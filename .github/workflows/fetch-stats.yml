@@ -1,1 +1,57 @@
+name: Fetch Spotify Stats
 
+on:
+  schedule:
+    - cron: '0 0 */2 * *'  # Every 2 days at midnight = ~15 runs/month = 75 calls (5 artists x 15)
+  workflow_dispatch:        # Also allows manual trigger from GitHub
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Fetch artist stats from RapidAPI
+        env:
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+        run: |
+          mkdir -p data
+
+          fetch_artist() {
+            local id=$1
+            local name=$2
+            curl -s --request GET \
+              --url "https://spotify-scraper.p.rapidapi.com/v1/artist/overview?artistId=${id}" \
+              --header "x-rapidapi-host: spotify-scraper.p.rapidapi.com" \
+              --header "x-rapidapi-key: ${RAPIDAPI_KEY}"
+          }
+
+          BLACKPINK=$(fetch_artist "41MozSoPIsD1dJM0CLPjZF" "BLACKPINK")
+          JISOO=$(fetch_artist "2Qd45y4xMOPhvZRioRjhtV" "JISOO")
+          JENNIE=$(fetch_artist "250b0Wlc5Vk0CoUsaCY84M" "JENNIE")
+          LISA=$(fetch_artist "5L1lO4eRHmJ7a0Q6csE5cT" "LISA")
+          ROSE=$(fetch_artist "3eVa5w3URK5duf6eyVDbu9" "ROSE")
+
+          echo "{
+            \"lastUpdated\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+            \"artists\": {
+              \"blackpink\": $BLACKPINK,
+              \"jisoo\": $JISOO,
+              \"jennie\": $JENNIE,
+              \"lisa\": $LISA,
+              \"rose\": $ROSE
+            }
+          }" > data/stats.json
+
+          echo "✅ Stats fetched successfully!"
+          cat data/stats.json | head -5
+
+      - name: Commit and push stats
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/stats.json
+          git diff --staged --quiet || git commit -m "📊 Auto-update Spotify stats $(date -u +%Y-%m-%d)"
+          git push
