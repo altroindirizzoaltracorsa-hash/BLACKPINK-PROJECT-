@@ -494,66 +494,63 @@
     <div class="songs-inner">
       <p class="section-label">// Active Streaming Campaigns</p>
       <h2 class="section-title animate-in">Our Targets</h2>
-      <div class="songs-grid">
+      <div class="songs-grid" id="songs-grid">
 
-        <div class="song-card animate-in">
+        <!-- JUMP -->
+        <div class="song-card animate-in" id="card-jump">
           <div class="song-number">01</div>
           <span class="song-tag">Priority I</span>
           <h3 class="song-title">JUMP</h3>
           <p class="song-meta">2024 · BORN PINK ERA</p>
           <div class="stream-target">
-            <p class="target-label">Spotify Streams — Current Goal</p>
-            <div class="progress-bar"><div class="progress-fill" style="width:68%"></div></div>
-            <div class="progress-nums"><span><strong>680M</strong> / 1B</span><span>68%</span></div>
+            <p class="target-label">Spotify Streams — Live Count</p>
+            <div class="progress-bar"><div class="progress-fill" id="fill-jump" style="width:0%"></div></div>
+            <div class="progress-nums">
+              <span><strong id="count-jump">Loading…</strong></span>
+              <span id="pct-jump"></span>
+            </div>
           </div>
-          <div class="stream-target" style="margin-top:1.2rem">
-            <p class="target-label">YouTube MV — View Target</p>
-            <div class="progress-bar"><div class="progress-fill" style="width:52%"></div></div>
-            <div class="progress-nums"><span><strong>520M</strong> / 1B</span><span>52%</span></div>
-          </div>
-          <a href="https://open.spotify.com/search/JUMP%20BLACKPINK" target="_blank" class="stream-btn">
+          <a href="https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY" target="_blank" class="stream-btn">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
             Stream on Spotify
           </a>
         </div>
 
-        <div class="song-card animate-in">
+        <!-- SHUT DOWN -->
+        <div class="song-card animate-in" id="card-shutdown">
           <div class="song-number">02</div>
           <span class="song-tag">Priority II</span>
           <h3 class="song-title">SHUT<br>DOWN</h3>
           <p class="song-meta">2022 · BORN PINK ALBUM</p>
           <div class="stream-target">
-            <p class="target-label">Spotify Streams — Current Goal</p>
-            <div class="progress-bar"><div class="progress-fill" style="width:81%"></div></div>
-            <div class="progress-nums"><span><strong>810M</strong> / 1B</span><span>81%</span></div>
+            <p class="target-label">Spotify Streams — Live Count</p>
+            <div class="progress-bar"><div class="progress-fill" id="fill-shutdown" style="width:0%"></div></div>
+            <div class="progress-nums">
+              <span><strong id="count-shutdown">Loading…</strong></span>
+              <span id="pct-shutdown"></span>
+            </div>
           </div>
-          <div class="stream-target" style="margin-top:1.2rem">
-            <p class="target-label">YouTube MV — View Target</p>
-            <div class="progress-bar"><div class="progress-fill" style="width:74%"></div></div>
-            <div class="progress-nums"><span><strong>740M</strong> / 1B</span><span>74%</span></div>
-          </div>
-          <a href="https://open.spotify.com/search/Shut%20Down%20BLACKPINK" target="_blank" class="stream-btn">
+          <a href="https://open.spotify.com/track/6tCd8bPvYnceDG7W9M1RMk" target="_blank" class="stream-btn">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
             Stream on Spotify
           </a>
         </div>
 
-        <div class="song-card animate-in">
+        <!-- DDU-DU DDU-DU -->
+        <div class="song-card animate-in" id="card-ddududu">
           <div class="song-number">03</div>
           <span class="song-tag">Priority III</span>
           <h3 class="song-title long">DDU-DU<br>DDU-DU</h3>
           <p class="song-meta">2018 · SQUARE UP EP</p>
           <div class="stream-target">
-            <p class="target-label">Spotify Streams — Current Goal</p>
-            <div class="progress-bar"><div class="progress-fill" style="width:92%"></div></div>
-            <div class="progress-nums"><span><strong>1.84B</strong> / 2B</span><span>92%</span></div>
+            <p class="target-label">Spotify Streams — Live Count</p>
+            <div class="progress-bar"><div class="progress-fill" id="fill-ddududu" style="width:0%"></div></div>
+            <div class="progress-nums">
+              <span><strong id="count-ddududu">Loading…</strong></span>
+              <span id="pct-ddududu"></span>
+            </div>
           </div>
-          <div class="stream-target" style="margin-top:1.2rem">
-            <p class="target-label">YouTube MV — 2B Views Target</p>
-            <div class="progress-bar"><div class="progress-fill" style="width:87%"></div></div>
-            <div class="progress-nums"><span><strong>1.74B</strong> / 2B</span><span>87%</span></div>
-          </div>
-          <a href="https://open.spotify.com/search/DDU-DU%20DDU-DU%20BLACKPINK" target="_blank" class="stream-btn">
+          <a href="https://open.spotify.com/track/69BIczdH6QMnFx7dsSssN8" target="_blank" class="stream-btn">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
             Stream on Spotify
           </a>
@@ -713,6 +710,53 @@
 </div><!-- end badge page -->
 
 <script>
+// ── SPOTIFY LIVE STREAM COUNTS ───────────────────────────────
+const RAPIDAPI_KEY = 'b294ce7ce8mshc10495197f2d6c6p1ba430jsnc7ffc5a6b5bb'; // replace with your new key after regenerating!
+const RAPIDAPI_HOST = 'spotify-scraper.p.rapidapi.com';
+
+const SPOTIFY_TRACKS = [
+  { id: 'jump',     trackId: '5H1sKFMzDeMtXwND3V6hRY', goal: 1_000_000_000 },
+  { id: 'shutdown', trackId: '6tCd8bPvYnceDG7W9M1RMk', goal: 1_000_000_000 },
+  { id: 'ddududu',  trackId: '69BIczdH6QMnFx7dsSssN8', goal: 2_000_000_000 },
+];
+
+function formatStreams(n) {
+  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(2) + 'B';
+  if (n >= 1_000_000)     return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000)         return (n / 1_000).toFixed(1) + 'K';
+  return n.toLocaleString();
+}
+
+async function fetchSpotifyStreams() {
+  for (const t of SPOTIFY_TRACKS) {
+    try {
+      const res = await fetch(
+        `https://spotify-scraper.p.rapidapi.com/v1/track/metadata?trackId=${t.trackId}`,
+        { headers: { 'x-rapidapi-key': RAPIDAPI_KEY, 'x-rapidapi-host': RAPIDAPI_HOST } }
+      );
+      const data = await res.json();
+      const plays = data?.playCount || 0;
+      const pct = Math.min(100, (plays / t.goal) * 100);
+      const goalFmt = formatStreams(t.goal);
+
+      document.getElementById(`count-${t.id}`).textContent =
+        `${formatStreams(plays)} / ${goalFmt}`;
+      document.getElementById(`pct-${t.id}`).textContent =
+        pct.toFixed(1) + '%';
+      // animate bar after short delay
+      setTimeout(() => {
+        const fill = document.getElementById(`fill-${t.id}`);
+        if (fill) fill.style.width = pct + '%';
+      }, 300);
+    } catch (e) {
+      document.getElementById(`count-${t.id}`).textContent = 'Unavailable';
+    }
+  }
+}
+
+// Fetch on load
+window.addEventListener('DOMContentLoaded', fetchSpotifyStreams);
+
 // ── PAGE ROUTING ─────────────────────────────────────────────
 function showPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
