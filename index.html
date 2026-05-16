@@ -420,28 +420,28 @@
 
   .chart-bars {
     display: flex; align-items: flex-end; gap: 4px;
-    height: 60px; margin-bottom: 0.5rem;
+    height: 80px; margin-bottom: 0.3rem;
   }
   .chart-bar-wrap {
     flex: 1; display: flex; flex-direction: column;
-    align-items: center; gap: 3px; position: relative;
+    align-items: center; justify-content: flex-end;
+    gap: 3px; position: relative; height: 100%;
   }
   .chart-bar {
-    width: 100%; background: rgba(255,0,102,0.3);
-    transition: height 0.6s ease, background 0.2s;
-    min-height: 2px; cursor: pointer; position: relative;
+    width: 100%; background: rgba(255,0,102,0.35);
+    transition: background 0.2s;
+    min-height: 3px; cursor: pointer; position: relative;
   }
-  .chart-bar.latest { background: var(--pink); }
+  .chart-bar.latest { background: var(--pink); box-shadow: 0 0 8px rgba(255,0,102,0.5); }
   .chart-bar:hover { background: var(--pink); }
   .chart-bar-val {
-    font-size: 0.38rem; letter-spacing: 0.05em;
+    font-size: 0.37rem; letter-spacing: 0.03em;
     color: var(--muted); text-align: center;
-    white-space: nowrap; overflow: hidden;
-    text-overflow: ellipsis; max-width: 100%;
+    white-space: nowrap;
   }
   .chart-bar-date {
-    font-size: 0.35rem; letter-spacing: 0.05em;
-    color: rgba(245,240,240,0.25); text-align: center;
+    font-size: 0.34rem; letter-spacing: 0.03em;
+    color: rgba(245,240,240,0.2); text-align: center;
     white-space: nowrap;
   }
   .chart-tooltip {
@@ -565,7 +565,7 @@
           <div class="song-number">01</div>
           <span class="song-tag">Priority I</span>
           <h3 class="song-title">JUMP</h3>
-          <p class="song-meta">2025 SINGLE · DEADLINE MINI ALBUM (2026)</p>
+          <p class="song-meta">2025 · BLACKPINK</p>
           <div class="stream-target">
             <p class="target-label">Spotify Streams — Live Count</p>
             <div class="progress-bar"><div class="progress-fill" id="fill-jump" style="width:0%"></div></div>
@@ -590,7 +590,7 @@
           <div class="song-number">02</div>
           <span class="song-tag">Priority II</span>
           <h3 class="song-title">SHUT<br>DOWN</h3>
-          <p class="song-meta">2022 · BORN PINK ALBUM</p>
+          <p class="song-meta">2022 · BLACKPINK</p>
           <div class="stream-target">
             <p class="target-label">Spotify Streams — Live Count</p>
             <div class="progress-bar"><div class="progress-fill" id="fill-shutdown" style="width:0%"></div></div>
@@ -615,7 +615,7 @@
           <div class="song-number">03</div>
           <span class="song-tag">Priority III</span>
           <h3 class="song-title long">DDU-DU<br>DDU-DU</h3>
-          <p class="song-meta">2018 · SQUARE UP EP</p>
+          <p class="song-meta">2018 · BLACKPINK</p>
           <div class="stream-target">
             <p class="target-label">Spotify Streams — Live Count</p>
             <div class="progress-bar"><div class="progress-fill" id="fill-ddududu" style="width:0%"></div></div>
@@ -842,29 +842,22 @@ function formatGoal(n) {
 }
 
 // ── INCREASE LOGIC ────────────────────────────────────────────
-// Stores the last seen play count. Only updates the "increase"
-// label when the live count actually changes, not just on revisit.
 function getAndUpdateIncrease(id, currentPlays) {
   const key = `bp_streams_${id}`;
   const incKey = `bp_increase_${id}`;
   try {
     const stored = JSON.parse(localStorage.getItem(key) || 'null');
-    // Always update stored to latest
     localStorage.setItem(key, JSON.stringify({ plays: currentPlays, ts: Date.now() }));
-
     if (stored && stored.plays) {
       const diff = currentPlays - stored.plays;
       if (diff > 0) {
-        // New increase — store it so it persists until next change
-        localStorage.setItem(incKey, JSON.stringify({ diff, since: stored.plays }));
-        return '+' + formatFull(diff) + ' since last check';
+        localStorage.setItem(incKey, '+' + formatFull(diff));
+        return '+' + formatFull(diff);
       }
     }
-    // No new increase — show last stored one if any
-    const lastInc = JSON.parse(localStorage.getItem(incKey) || 'null');
-    if (lastInc && lastInc.diff > 0) {
-      return '+' + formatFull(lastInc.diff) + ' (latest update)';
-    }
+    // No new gain — show last stored gain if any
+    const last = localStorage.getItem(incKey);
+    if (last) return last;
   } catch(e) {}
   return null;
 }
@@ -897,20 +890,15 @@ function renderHistory(id, liveStreams) {
   const barsHtml = history.map((h, i) => {
     const prev = i > 0 ? history[i - 1].streams : null;
     const diff = prev !== null ? h.streams - prev : null;
-    const heightPct = Math.max(4, (h.streams / max) * 100);
+    const growVal = Math.max(0.05, (h.streams / max));
     const isLatest = i === history.length - 1;
-    const gainLabel = diff !== null && diff > 0
-      ? `<span class="chart-gain">+${formatFull(diff)}</span>`
-      : diff !== null && diff < 0
-        ? `<span class="chart-drop">${formatFull(diff)}</span>`
-        : '';
     const tooltipGain = diff !== null
-      ? (diff >= 0 ? ` (+${formatFull(diff)})` : ` (${formatFull(diff)})`)
+      ? (diff >= 0 ? ` <span style="color:#00ff88">+${formatFull(diff)}</span>` : ` <span style="color:rgba(245,240,240,0.4)">${formatFull(diff)}</span>`)
       : '';
 
     return `<div class="chart-bar-wrap">
       <div class="chart-tooltip">${h.date}: ${formatFull(h.streams)}${tooltipGain}</div>
-      <div class="chart-bar${isLatest ? ' latest' : ''}" style="height:${heightPct}%"></div>
+      <div class="chart-bar${isLatest ? ' latest' : ''}" style="height:${Math.round(growVal*100)}%"></div>
       <div class="chart-bar-val">${formatShort(h.streams)}</div>
       <div class="chart-bar-date">${h.date}</div>
     </div>`;
