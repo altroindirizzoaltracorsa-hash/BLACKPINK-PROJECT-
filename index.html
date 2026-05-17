@@ -406,12 +406,11 @@
   .history-toggle.open .arrow { transform: rotate(180deg); }
 
   .history-panel {
-    display: none; margin-top: 1rem;
+    display: block; margin-top: 1rem;
     background: rgba(0,0,0,0.3);
     border: 1px solid rgba(255,0,102,0.12);
     padding: 1rem;
   }
-  .history-panel.open { display: block; }
 
   .history-title {
     font-size: 0.45rem; letter-spacing: 0.25em; text-transform: uppercase;
@@ -574,7 +573,7 @@
               <span><strong id="count-jump">Loading…</strong></span>
               <span id="pct-jump"></span>
             </div>
-            <div id="increase-jump" style="display:none;margin-top:0.4rem;font-size:0.5rem;letter-spacing:0.15em;color:#00ff88;">▲ <span></span></div>
+            <div id="increase-jump" style="display:none;margin-top:0.4rem;font-size:0.5rem;letter-spacing:0.15em;color:#00ff88;"></div>
           </div>
           <button class="history-toggle" onclick="toggleHistory('jump', this)">
             <span>Stream History</span> <span class="arrow">▾</span>
@@ -599,7 +598,7 @@
               <span><strong id="count-shutdown">Loading…</strong></span>
               <span id="pct-shutdown"></span>
             </div>
-            <div id="increase-shutdown" style="display:none;margin-top:0.4rem;font-size:0.5rem;letter-spacing:0.15em;color:#00ff88;">▲ <span></span></div>
+            <div id="increase-shutdown" style="display:none;margin-top:0.4rem;font-size:0.5rem;letter-spacing:0.15em;color:#00ff88;"></div>
           </div>
           <button class="history-toggle" onclick="toggleHistory('shutdown', this)">
             <span>Stream History</span> <span class="arrow">▾</span>
@@ -624,7 +623,7 @@
               <span><strong id="count-ddududu">Loading…</strong></span>
               <span id="pct-ddududu"></span>
             </div>
-            <div id="increase-ddududu" style="display:none;margin-top:0.4rem;font-size:0.5rem;letter-spacing:0.15em;color:#00ff88;">▲ <span></span></div>
+            <div id="increase-ddududu" style="display:none;margin-top:0.4rem;font-size:0.5rem;letter-spacing:0.15em;color:#00ff88;"></div>
           </div>
           <button class="history-toggle" onclick="toggleHistory('ddududu', this)">
             <span>Stream History</span> <span class="arrow">▾</span>
@@ -791,7 +790,7 @@
 
 <script>
 // ── SPOTIFY LIVE STREAM COUNTS ───────────────────────────────
-const RAPIDAPI_KEY = '084fb19f5amshb6f369f6c4511bbp1d2751jsn05f8a88bf0b0';
+const RAPIDAPI_KEY = 'PASTE_YOUR_NEW_KEY_HERE';
 const RAPIDAPI_HOST = 'spotify-scraper.p.rapidapi.com';
 const CACHE_MS = 3 * 60 * 60 * 1000; // 3 hours cache
 
@@ -858,24 +857,14 @@ function formatGoal(n) {
   return n.toLocaleString();
 }
 
-// ── INCREASE LOGIC ────────────────────────────────────────────
-function getAndUpdateIncrease(id, currentPlays) {
-  const key = `bp_streams_${id}`;
-  const incKey = `bp_increase_${id}`;
-  try {
-    const stored = JSON.parse(localStorage.getItem(key) || 'null');
-    localStorage.setItem(key, JSON.stringify({ plays: currentPlays, ts: Date.now() }));
-    if (stored && stored.plays) {
-      const diff = currentPlays - stored.plays;
-      if (diff > 0) {
-        localStorage.setItem(incKey, '+' + formatFull(diff));
-        return '+' + formatFull(diff);
-      }
-    }
-    // No new gain — show last stored gain if any
-    const last = localStorage.getItem(incKey);
-    if (last) return last;
-  } catch(e) {}
+// ── INCREASE LOGIC (derived from seeded history, no localStorage) ──
+function getSeededIncrease(id) {
+  const hist = STREAM_HISTORY[id];
+  if (!hist || hist.length < 2) return null;
+  const last = hist[hist.length - 1];
+  const prev = hist[hist.length - 2];
+  const diff = last.streams - prev.streams;
+  if (diff > 0) return `+${formatFull(diff)} (${prev.date} → ${last.date})`;
   return null;
 }
 
@@ -884,13 +873,7 @@ function renderHistory(id) {
   const panel = document.getElementById(`history-${id}`);
   if (!panel) return;
 
-  let history = [...(STREAM_HISTORY[id] || [])];
-  try {
-    const log = JSON.parse(localStorage.getItem(`bp_daylog_${id}`) || '[]');
-    log.forEach(entry => {
-      if (!history.find(h => h.date === entry.date)) history.push(entry);
-    });
-  } catch(e) {}
+  const history = STREAM_HISTORY[id] || [];
 
   if (history.length === 0) {
     panel.innerHTML = `<p class="history-title">// No history data yet</p>`;
@@ -933,55 +916,37 @@ function renderHistory(id) {
 
 function toggleHistory(id, btn) {
   const panel = document.getElementById(`history-${id}`);
-  const isOpen = panel.classList.contains('open');
-  panel.classList.toggle('open', !isOpen);
-  btn.classList.toggle('open', !isOpen);
-}
-
-// ── DAILY LOG: auto-save today's live count ───────────────────
-function logTodayStreams(id, dailyCount) {
-  if (!dailyCount || dailyCount <= 0) return;
-  const today = new Date();
-  const dateStr = `${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}`;
-  try {
-    const log = JSON.parse(localStorage.getItem(`bp_daylog_${id}`) || '[]');
-    const exists = log.find(e => e.date === dateStr);
-    if (!exists) {
-      log.push({ date: dateStr, streams: dailyCount });
-      // Keep last 30 days only
-      if (log.length > 30) log.shift();
-      localStorage.setItem(`bp_daylog_${id}`, JSON.stringify(log));
-    }
-  } catch(e) {}
+  const isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? 'block' : 'none';
+  btn.classList.toggle('open', isHidden);
 }
 
 async function fetchSpotifyStreams() {
   for (const t of SPOTIFY_TRACKS) {
+    // Always render history and increase from seeded data immediately
+    renderHistory(t.id);
+    const increase = getSeededIncrease(t.id);
+    if (increase) {
+      const el = document.getElementById(`increase-${t.id}`);
+      if (el) { el.textContent = '▲ ' + increase; el.style.display = 'block'; }
+    }
+
     try {
       const data = await fetchWithCache(t.trackId);
       const plays = data?.playCount || 0;
       const pct = Math.min(100, (plays / t.goal) * 100);
-      const increase = getAndUpdateIncrease(t.id, plays);
 
       document.getElementById(`count-${t.id}`).textContent =
         `${formatFull(plays)} / ${formatGoal(t.goal)}`;
       document.getElementById(`pct-${t.id}`).textContent =
         pct.toFixed(2) + '%';
 
-      if (increase) {
-        const el = document.getElementById(`increase-${t.id}`);
-        if (el) { el.querySelector('span').textContent = increase; el.style.display = 'block'; }
-      }
-
       setTimeout(() => {
         const fill = document.getElementById(`fill-${t.id}`);
         if (fill) fill.style.width = pct + '%';
       }, 300);
-
-      renderHistory(t.id);
     } catch (e) {
       document.getElementById(`count-${t.id}`).textContent = 'Unavailable';
-      renderHistory(t.id);
     }
   }
 }
