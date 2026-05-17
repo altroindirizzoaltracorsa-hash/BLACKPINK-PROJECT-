@@ -789,25 +789,7 @@
 </div><!-- end badge page -->
 
 <script>
-// ── SPOTIFY LIVE STREAM COUNTS ───────────────────────────────
-const RAPIDAPI_KEY = '084fb19f5amshb6f369f6c4511bbp1d2751jsn05f8a88bf0b0';
-const RAPIDAPI_HOST = 'spotify-scraper.p.rapidapi.com';
-const CACHE_MS = 3 * 60 * 60 * 1000; // 3 hours cache
-
-async function fetchWithCache(trackId) {
-  const cKey = `bp_cache_${trackId}`;
-  try {
-    const c = JSON.parse(localStorage.getItem(cKey) || 'null');
-    if (c && (Date.now() - c.ts) < CACHE_MS) return c.data;
-  } catch(e) {}
-  const res = await fetch(
-    `https://spotify-scraper.p.rapidapi.com/v1/track/metadata?trackId=${trackId}`,
-    { headers: { 'x-rapidapi-key': RAPIDAPI_KEY, 'x-rapidapi-host': RAPIDAPI_HOST } }
-  );
-  const data = await res.json();
-  try { localStorage.setItem(cKey, JSON.stringify({ data, ts: Date.now() })); } catch(e) {}
-  return data;
-}
+// ── API calls handled server-side by /api/streams ─────────────
 
 const SPOTIFY_TRACKS = [
   { id: 'jump',     trackId: '5H1sKFMzDeMtXwND3V6hRY', goal: 1_000_000_000 },
@@ -816,8 +798,6 @@ const SPOTIFY_TRACKS = [
 ];
 
 // ── SEEDED HISTORY (daily stream counts per song) ────────────
-// Format: { date: 'DD/MM', streams: number }
-// streams = how many times the song was played that specific day
 const STREAM_HISTORY = {
   jump: [
     { date: '10/05', streams: 805017 },
@@ -838,7 +818,7 @@ const STREAM_HISTORY = {
     { date: '14/05', streams: 283990 },
     { date: '15/05', streams: 272165 },
   ],
-  ddududu: [], // add data when available
+  ddududu: [],
 };
 
 function formatFull(n) {
@@ -857,7 +837,6 @@ function formatGoal(n) {
   return n.toLocaleString();
 }
 
-// ── INCREASE LOGIC (derived from seeded history, no localStorage) ──
 function getSeededIncrease(id) {
   const hist = STREAM_HISTORY[id];
   if (!hist || hist.length < 2) return null;
@@ -868,7 +847,6 @@ function getSeededIncrease(id) {
   return null;
 }
 
-// ── HISTORY CHART RENDERING ───────────────────────────────────
 function renderHistory(id) {
   const panel = document.getElementById(`history-${id}`);
   if (!panel) return;
@@ -923,30 +901,32 @@ function toggleHistory(id, btn) {
 
 async function fetchSpotifyStreams() {
   for (const t of SPOTIFY_TRACKS) {
-    // Always render history and increase from seeded data immediately
     renderHistory(t.id);
     const increase = getSeededIncrease(t.id);
     if (increase) {
       const el = document.getElementById(`increase-${t.id}`);
       if (el) { el.textContent = '▲ ' + increase; el.style.display = 'block'; }
     }
-
-    try {
-      const data = await fetchWithCache(t.trackId);
-      const plays = data?.playCount || 0;
+  }
+  try {
+    const res = await fetch('/api/streams');
+    const counts = await res.json();
+    for (const t of SPOTIFY_TRACKS) {
+      const plays = counts[t.id] || 0;
+      if (!plays) continue;
       const pct = Math.min(100, (plays / t.goal) * 100);
-
       document.getElementById(`count-${t.id}`).textContent =
         `${formatFull(plays)} / ${formatGoal(t.goal)}`;
       document.getElementById(`pct-${t.id}`).textContent =
         pct.toFixed(2) + '%';
-
       setTimeout(() => {
         const fill = document.getElementById(`fill-${t.id}`);
         if (fill) fill.style.width = pct + '%';
       }, 300);
-    } catch (e) {
-      document.getElementById(`count-${t.id}`).textContent = 'Unavailable';
+    }
+  } catch(e) {
+    for (const t of SPOTIFY_TRACKS) {
+      document.getElementById(`count-${t.id}`).textContent = 'Live count coming soon';
     }
   }
 }
@@ -980,7 +960,6 @@ function initAnimations() {
 }
 initAnimations();
 
-// Nav active on scroll
 window.addEventListener('scroll', () => {
   const navLinks = document.querySelectorAll('.nav-links a');
   let current = '';
@@ -994,7 +973,7 @@ window.addEventListener('scroll', () => {
 });
 
 // ── LAST.FM CONFIG ───────────────────────────────────────────
-const LASTFM_KEY = '2b75ad00cf31a9b4bce1d9d87b0ac5bf'; // replace with your own key
+const LASTFM_KEY = '2b75ad00cf31a9b4bce1d9d87b0ac5bf';
 const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
 
 const TRACKS = [
@@ -1071,7 +1050,6 @@ function renderResults(info, scrobbles) {
   document.getElementById('loading-panel').style.display = 'none';
   document.getElementById('results-panel').style.display = 'block';
 
-  // User info
   document.getElementById('result-username').textContent = info.name || info.realname || '';
   document.getElementById('result-total-plays').textContent = Number(info.playcount).toLocaleString();
 
@@ -1083,14 +1061,12 @@ function renderResults(info, scrobbles) {
     wrap.innerHTML = `<div class="user-avatar-placeholder">${(info.name||'?')[0].toUpperCase()}</div>`;
   }
 
-  // Summary
   const total = Object.values(scrobbles).reduce((a,b) => a+b, 0);
   const earned = TRACKS.filter(t => getBadge(scrobbles[t.id] || 0)).length;
   document.getElementById('sum-bp').textContent = total;
   document.getElementById('sum-badges').textContent = earned;
   document.getElementById('sum-left').textContent = TRACKS.length - earned;
 
-  // Track cards
   const container = document.getElementById('track-cards-container');
   container.innerHTML = TRACKS.map((t, i) => {
     const plays = scrobbles[t.id] || 0;
@@ -1129,7 +1105,6 @@ function renderResults(info, scrobbles) {
     </div>`;
   }).join('');
 
-  // Tiers grid
   const tiersGrid = document.getElementById('tiers-grid');
   tiersGrid.innerHTML = BADGE_TIERS.map(tier => {
     const allEarned = TRACKS.every(t => (scrobbles[t.id] || 0) >= tier.min);
@@ -1149,7 +1124,6 @@ function resetBadges() {
   document.getElementById('lfm-error').style.display = 'none';
 }
 
-// Enter key on input
 document.getElementById('lfm-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') checkScrobbles();
 });
