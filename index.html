@@ -789,7 +789,9 @@
 </div><!-- end badge page -->
 
 <script>
-// ── API calls handled server-side by /api/streams ─────────────
+// ── SPOTIFY LIVE STREAM COUNTS ───────────────────────────────
+// Stream counts fetched via /api/streams (Vercel serverless function)
+// API key lives in Vercel environment variables — never in this file
 
 const SPOTIFY_TRACKS = [
   { id: 'jump',     trackId: '5H1sKFMzDeMtXwND3V6hRY', goal: 1_000_000_000 },
@@ -798,6 +800,8 @@ const SPOTIFY_TRACKS = [
 ];
 
 // ── SEEDED HISTORY (daily stream counts per song) ────────────
+// Format: { date: 'DD/MM', streams: number }
+// streams = how many times the song was played that specific day
 const STREAM_HISTORY = {
   jump: [
     { date: '10/05', streams: 805017 },
@@ -818,7 +822,7 @@ const STREAM_HISTORY = {
     { date: '14/05', streams: 283990 },
     { date: '15/05', streams: 272165 },
   ],
-  ddududu: [],
+  ddududu: [], // add data when available
 };
 
 function formatFull(n) {
@@ -837,21 +841,24 @@ function formatGoal(n) {
   return n.toLocaleString();
 }
 
+// ── INCREASE LOGIC (derived from seeded history, no localStorage) ──
 function getSeededIncrease(id) {
   const hist = STREAM_HISTORY[id];
   if (!hist || hist.length < 2) return null;
   const last = hist[hist.length - 1];
   const prev = hist[hist.length - 2];
   const diff = last.streams - prev.streams;
-  if (diff > 0) return `+${formatFull(diff)} (${prev.date} → ${last.date})`;
-  return null;
+  // Show: "15/05 — 871,022 streams (+16,261)"
+  const gainPart = diff > 0 ? ` (+${formatFull(diff)})` : '';
+  return `${last.date} — ${formatFull(last.streams)} daily streams${gainPart}`;
 }
 
-function renderHistory(id) {
+// ── HISTORY CHART RENDERING ───────────────────────────────────
+function renderHistory(id, history) {
   const panel = document.getElementById(`history-${id}`);
   if (!panel) return;
 
-  const history = STREAM_HISTORY[id] || [];
+  history = history || [];
 
   if (history.length === 0) {
     panel.innerHTML = `<p class="history-title">// No history data yet</p>`;
@@ -900,29 +907,66 @@ function toggleHistory(id, btn) {
 }
 
 async function fetchSpotifyStreams() {
+  // Show seeded history immediately while API loads
   for (const t of SPOTIFY_TRACKS) {
-    renderHistory(t.id);
+    renderHistory(t.id, STREAM_HISTORY[t.id] || []);
     const increase = getSeededIncrease(t.id);
     if (increase) {
       const el = document.getElementById(`increase-${t.id}`);
       if (el) { el.textContent = '▲ ' + increase; el.style.display = 'block'; }
     }
   }
+
   try {
     const res = await fetch('/api/streams');
     const counts = await res.json();
+
     for (const t of SPOTIFY_TRACKS) {
-      const plays = counts[t.id] || 0;
-      if (!plays) continue;
-      const pct = Math.min(100, (plays / t.goal) * 100);
-      document.getElementById(`count-${t.id}`).textContent =
-        `${formatFull(plays)} / ${formatGoal(t.goal)}`;
-      document.getElementById(`pct-${t.id}`).textContent =
-        pct.toFixed(2) + '%';
-      setTimeout(() => {
-        const fill = document.getElementById(`fill-${t.id}`);
-        if (fill) fill.style.width = pct + '%';
-      }, 300);
+      const entry = counts[t.id];
+      if (!entry) continue;
+
+      const plays = entry.total || 0;
+      const apiHistory = entry.history || [];
+
+      // Update live total count
+      if (plays) {
+        const pct = Math.min(100, (plays / t.goal) * 100);
+        document.getElementById(`count-${t.id}`).textContent =
+          `${formatFull(plays)} / ${formatGoal(t.goal)}`;
+        document.getElementById(`pct-${t.id}`).textContent =
+          pct.toFixed(2) + '%';
+        setTimeout(() => {
+          const fill = document.getElementById(`fill-${t.id}`);
+          if (fill) fill.style.width = pct + '%';
+        }, 300);
+      }
+
+      // Merge seeded + API history, deduplicate by date
+      const seeded = STREAM_HISTORY[t.id] || [];
+      const merged = [...seeded];
+      for (const h of apiHistory) {
+        if (!merged.find(s => s.date === h.date)) merged.push(h);
+      }
+      merged.sort((a, b) => {
+        const [ad, am] = a.date.split('/').map(Number);
+        const [bd, bm] = b.date.split('/').map(Number);
+        return am !== bm ? am - bm : ad - bd;
+      });
+
+      // Update increase label from latest merged history
+      if (merged.length >= 2) {
+        const last = merged[merged.length - 1];
+        const prev = merged[merged.length - 2];
+        const diff = last.streams - prev.streams;
+        const el = document.getElementById(`increase-${t.id}`);
+        if (el) {
+          const gainPart = diff > 0 ? ` (+${formatFull(diff)})` : '';
+          el.textContent = `▲ ${last.date} — ${formatFull(last.streams)} daily streams${gainPart}`;
+          el.style.display = 'block';
+        }
+      }
+
+      renderHistory(t.id, merged);
     }
   } catch(e) {
     for (const t of SPOTIFY_TRACKS) {
@@ -960,6 +1004,7 @@ function initAnimations() {
 }
 initAnimations();
 
+// Nav active on scroll
 window.addEventListener('scroll', () => {
   const navLinks = document.querySelectorAll('.nav-links a');
   let current = '';
@@ -973,21 +1018,21 @@ window.addEventListener('scroll', () => {
 });
 
 // ── LAST.FM CONFIG ───────────────────────────────────────────
-const LASTFM_KEY = 'e77c14ea6b072b75f3356c30f2c9294a';
+const LASTFM_KEY = '2b75ad00cf31a9b4bce1d9d87b0ac5bf'; // replace with your own key
 const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
 
 const TRACKS = [
-  { id: 'jump',     title: 'JUMP',         artist: 'BLACKPINK', track: 'JUMP',                    year: '2025', era: 'DEADLINE MINI ALBUM',   spotify: 'https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY' },
-  { id: 'shutdown', title: 'SHUT DOWN',    artist: 'BLACKPINK', track: 'Shut Down',               year: '2022', era: 'BORN PINK ALBUM',  spotify: 'https://open.spotify.com/search/Shut%20Down%20BLACKPINK' },
-  { id: 'ddududu',  title: 'DDU-DU DDU-DU',artist: 'BLACKPINK', track: 'DDU-DU DDU-DU (뚜두뚜두)', year: '2018', era: 'SQUARE UP EP',     spotify: 'https://open.spotify.com/search/DDU-DU%20DDU-DU%20BLACKPINK' },
+  { id: 'jump',     title: 'JUMP',          artist: 'BLACKPINK', track: 'JUMP',         year: '2025', era: 'DEADLINE',   spotify: 'https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY' },
+  { id: 'shutdown', title: 'SHUT DOWN',     artist: 'BLACKPINK', track: 'Shut Down',    year: '2022', era: 'BORN PINK',  spotify: 'https://open.spotify.com/track/6tCd8bPvYnceDG7W9M1RMk' },
+  { id: 'ddududu',  title: 'DDU-DU DDU-DU', artist: 'BLACKPINK', track: 'DDU-DU DDU-DU', year: '2018', era: 'SQUARE UP', spotify: 'https://open.spotify.com/track/69BIczdH6QMnFx7dsSssN8' },
 ];
 
 const BADGE_TIERS = [
-  { id: 'blink',   label: 'BLINK',   min: 1,   icon: '💗', desc: 'Welcome to the fandom!' },
-  { id: 'stan',    label: 'STAN',    min: 10,  icon: '🖤', desc: "You're a real one." },
-  { id: 'soldier', label: 'SOLDIER', min: 50,  icon: '🎀', desc: 'Streaming warrior.' },
-  { id: 'queen',   label: 'QUEEN',   min: 100, icon: '👑', desc: 'Royalty in the fandom.' },
-  { id: 'legend',  label: 'LEGEND',  min: 500, icon: '⚡', desc: 'You ARE BLACKPINK.' },
+  { id: 'blink',        label: 'BLINK',        min: 1,   icon: '💗', desc: 'Welcome to the fandom!',     period: '' },
+  { id: 'daily-blink',  label: 'DAILY BLINK',  min: 5,   icon: '🖤', desc: 'Streamed every day.',         period: 'daily' },
+  { id: 'weekly-stan',  label: 'WEEKLY STAN',  min: 25,  icon: '🎀', desc: 'A full week of streaming.',   period: 'weekly' },
+  { id: 'soldier',      label: 'SOLDIER',      min: 50,  icon: '👑', desc: 'Dedicated streaming warrior.',period: '' },
+  { id: 'legend',       label: 'LEGEND',       min: 200, icon: '⚡', desc: 'You ARE BLACKPINK.',          period: '' },
 ];
 
 function getBadge(plays) {
@@ -1050,6 +1095,7 @@ function renderResults(info, scrobbles) {
   document.getElementById('loading-panel').style.display = 'none';
   document.getElementById('results-panel').style.display = 'block';
 
+  // User info
   document.getElementById('result-username').textContent = info.name || info.realname || '';
   document.getElementById('result-total-plays').textContent = Number(info.playcount).toLocaleString();
 
@@ -1061,12 +1107,14 @@ function renderResults(info, scrobbles) {
     wrap.innerHTML = `<div class="user-avatar-placeholder">${(info.name||'?')[0].toUpperCase()}</div>`;
   }
 
+  // Summary
   const total = Object.values(scrobbles).reduce((a,b) => a+b, 0);
   const earned = TRACKS.filter(t => getBadge(scrobbles[t.id] || 0)).length;
   document.getElementById('sum-bp').textContent = total;
   document.getElementById('sum-badges').textContent = earned;
   document.getElementById('sum-left').textContent = TRACKS.length - earned;
 
+  // Track cards
   const container = document.getElementById('track-cards-container');
   container.innerHTML = TRACKS.map((t, i) => {
     const plays = scrobbles[t.id] || 0;
@@ -1105,11 +1153,14 @@ function renderResults(info, scrobbles) {
     </div>`;
   }).join('');
 
+  // Tiers grid
   const tiersGrid = document.getElementById('tiers-grid');
   tiersGrid.innerHTML = BADGE_TIERS.map(tier => {
     const allEarned = TRACKS.every(t => (scrobbles[t.id] || 0) >= tier.min);
+    const periodLabel = tier.period ? `<div style="font-size:0.38rem;letter-spacing:0.15em;color:var(--pink);opacity:0.7;margin-bottom:0.15rem;">${tier.period.toUpperCase()}</div>` : '';
     return `<div class="tier-cell ${allEarned ? 'earned' : ''}">
       <div class="tier-cell-icon" style="opacity:${allEarned ? 1 : 0.2}">${tier.icon}</div>
+      ${periodLabel}
       <div class="tier-cell-name" style="color:${allEarned ? 'var(--pink)' : 'var(--white)'}">${tier.label}</div>
       <div class="tier-cell-req">${tier.min}+ plays/track</div>
       ${allEarned ? '<div class="tier-earned-tag">✓ EARNED</div>' : '<div class="tier-locked-tag">locked</div>'}
@@ -1124,6 +1175,7 @@ function resetBadges() {
   document.getElementById('lfm-error').style.display = 'none';
 }
 
+// Enter key on input
 document.getElementById('lfm-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') checkScrobbles();
 });
