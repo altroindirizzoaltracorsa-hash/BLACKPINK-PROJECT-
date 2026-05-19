@@ -11,8 +11,8 @@ const TRACKS = {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 's-maxage=10800');
-
-  const today = new Date().toISOString().slice(5, 10).replace('-', '/'); // "05/17"
+  
+const yesterday = new Date(Date.now() - 86400000).toISOString().slice(5, 10).replace('-', '/');
   const results = {};
 
   for (const [name, trackId] of Object.entries(TRACKS)) {
