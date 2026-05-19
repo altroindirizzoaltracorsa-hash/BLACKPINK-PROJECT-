@@ -11,8 +11,7 @@ const TRACKS = {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 's-maxage=10800');
-  
-const yesterday = new Date(Date.now() - 86400000).toISOString().slice(5, 10).replace('-', '/');
+
   const results = {};
 
   for (const [name, trackId] of Object.entries(TRACKS)) {
@@ -29,20 +28,29 @@ const yesterday = new Date(Date.now() - 86400000).toISOString().slice(5, 10).rep
 
       const prevKey = `bp_prev_${name}`;
       const histKey = `bp_hist_${name}`;
+
+      // Get previous snapshot: { total, date }
       const prev = await redis.get(prevKey);
 
       let dailyStreams = null;
-      if (prev && total > Number(prev)) {
-        dailyStreams = total - Number(prev);
+      let entryDate = null;
+
+      if (prev && total > Number(prev.total)) {
+        dailyStreams = total - Number(prev.total);
+        // Use the date the previous snapshot was taken — that's the day those streams happened
+        entryDate = prev.date;
       }
 
-      await redis.set(prevKey, total);
+      // Save today's snapshot with today's date
+      const todayLabel = new Date().toISOString().slice(5, 10).replace('-', '/');
+      await redis.set(prevKey, { total, date: todayLabel });
 
-      if (dailyStreams) {
+      // Add to history if we have a daily count and date
+      if (dailyStreams && entryDate) {
         const hist = (await redis.get(histKey)) || [];
-        const alreadyLogged = hist.find(h => h.date === today);
+        const alreadyLogged = hist.find(h => h.date === entryDate);
         if (!alreadyLogged) {
-          hist.push({ date: today, streams: dailyStreams });
+          hist.push({ date: entryDate, streams: dailyStreams });
           if (hist.length > 60) hist.shift();
           await redis.set(histKey, hist);
         }
