@@ -29,7 +29,6 @@ export default async function handler(req, res) {
       const prevKey = `bp_prev_${name}`;
       const histKey = `bp_hist_${name}`;
 
-      // Get previous snapshot: { total, date }
       const prev = await redis.get(prevKey);
 
       let dailyStreams = null;
@@ -37,15 +36,16 @@ export default async function handler(req, res) {
 
       if (prev && total > Number(prev.total)) {
         dailyStreams = total - Number(prev.total);
-        // Use the date the previous snapshot was taken — that's the day those streams happened
-        entryDate = prev.date;
+        // Streams happened the day BEFORE the previous snapshot was taken
+        // e.g. snapshot taken on 20/05 → streams refer to 19/05
+        const prevDate = new Date(prev.date);
+        prevDate.setDate(prevDate.getDate() - 1);
+        entryDate = prevDate.toISOString().slice(5, 10).replace('-', '/');
       }
 
-      // Save today's snapshot with today's date
       const todayLabel = new Date().toISOString().slice(5, 10).replace('-', '/');
       await redis.set(prevKey, { total, date: todayLabel });
 
-      // Add to history if we have a daily count and date
       if (dailyStreams && entryDate) {
         const hist = (await redis.get(histKey)) || [];
         const alreadyLogged = hist.find(h => h.date === entryDate);
