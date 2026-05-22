@@ -36,7 +36,13 @@ export default async function handler(req, res) {
 
       if (prev && total > Number(prev.total)) {
         dailyStreams = total - Number(prev.total);
-        entryDate = prev.date;
+        // prev.date is "DD/MM" — convert to proper date then subtract 1 day
+        // e.g. prev.date = "20/05" means snapshot was taken on 20/05
+        // so the streams happened on 19/05
+        const [dd, mm] = prev.date.split('/');
+        const prevDate = new Date(Date.UTC(new Date().getUTCFullYear(), Number(mm) - 1, Number(dd)));
+        prevDate.setUTCDate(prevDate.getUTCDate() - 1);
+        entryDate = prevDate.toISOString().slice(5, 10).replace('-', '/');
       }
 
       const todayLabel = new Date().toISOString().slice(5, 10).replace('-', '/');
