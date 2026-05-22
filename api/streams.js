@@ -8,10 +8,29 @@ const TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
+function getDateLabel(date) {
+  const dd = String(date.getUTCDate()).padStart(2, '0');
+  const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}`;
+}
+
+function parseDateLabel(label) {
+  const [dd, mm] = label.split('/').map(Number);
+  return new Date(Date.UTC(new Date().getUTCFullYear(), mm - 1, dd));
+}
+
+function daysBetween(labelA, labelB) {
+  const a = parseDateLabel(labelA);
+  const b = parseDateLabel(labelB);
+  return Math.round((b - a) / 86400000);
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 's-maxage=10800');
 
+  const today = new Date();
+  const todayLabel = getDateLabel(today);
   const results = {};
 
   for (const [name, trackId] of Object.entries(TRACKS)) {
@@ -31,31 +50,37 @@ export default async function handler(req, res) {
 
       const prev = await redis.get(prevKey);
 
-      let dailyStreams = null;
-      let entryDate = null;
-
-      if (prev && total > Number(prev.total)) {
-        dailyStreams = total - Number(prev.total);
-        // prev.date is "DD/MM" — convert to proper date then subtract 1 day
-        // e.g. prev.date = "20/05" means snapshot was taken on 20/05
-        // so the streams happened on 19/05
-        const [dd, mm] = prev.date.split('/');
-        const prevDate = new Date(Date.UTC(new Date().getUTCFullYear(), Number(mm) - 1, Number(dd)));
-        prevDate.setUTCDate(prevDate.getUTCDate() - 1);
-        entryDate = prevDate.toISOString().slice(5, 10).replace('-', '/');
-      }
-
-      const todayLabel = new Date().toISOString().slice(5, 10).replace('-', '/');
+      // Save today's snapshot immediately
       await redis.set(prevKey, { total, date: todayLabel });
 
-      if (dailyStreams && entryDate) {
+      if (prev && total > Number(prev.total)) {
+        const dailyStreams = total - Number(prev.total);
         const hist = (await redis.get(histKey)) || [];
-        const alreadyLogged = hist.find(h => h.date === entryDate);
-        if (!alreadyLogged) {
-          hist.push({ date: entryDate, streams: dailyStreams });
-          if (hist.length > 60) hist.shift();
-          await redis.set(histKey, hist);
+
+        const gap = daysBetween(prev.date, todayLabel);
+
+        if (gap === 1) {
+          // Normal case: 1 day gap → streams belong to prev.date (yesterday)
+          const entryDate = prev.date;
+          const alreadyLogged = hist.find(h => h.date === entryDate);
+          if (!alreadyLogged) {
+            hist.push({ date: entryDate, streams: dailyStreams });
+          }
+        } else if (gap > 1) {
+          // Spotify skipped days → label as prev.date with a note
+          const entryDate = prev.date;
+          const alreadyLogged = hist.find(h => h.date === entryDate);
+          if (!alreadyLogged) {
+            hist.push({
+              date: entryDate,
+              streams: dailyStreams,
+              note: `${gap} day total`
+            });
+          }
         }
+
+        if (hist.length > 60) hist.shift();
+        await redis.set(histKey, hist);
       }
 
       const hist = (await redis.get(histKey)) || [];
