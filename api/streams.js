@@ -36,9 +36,8 @@ export default async function handler(req, res) {
 
       if (prev && total > Number(prev.total)) {
         dailyStreams = total - Number(prev.total);
-        // Streams happened the day BEFORE the previous snapshot was taken
-        // e.g. snapshot taken on 20/05 → streams refer to 19/05
         entryDate = prev.date;
+      }
 
       const todayLabel = new Date().toISOString().slice(5, 10).replace('-', '/');
       await redis.set(prevKey, { total, date: todayLabel });
