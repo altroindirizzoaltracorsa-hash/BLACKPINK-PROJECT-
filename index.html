@@ -935,8 +935,10 @@ async function fetchSpotifyStreams() {
     const res = await fetch('/api/streams');
     const counts = await res.json();
     for (const t of SPOTIFY_TRACKS) {
-      const plays = counts[t.id] || 0;
-      if (!plays) continue;
+      // counts[t.id] is either { total, history } (new format) or a plain number (old format)
+      const entry = counts[t.id];
+      const plays = (entry && typeof entry === 'object') ? (entry.total || 0) : (entry || 0);
+      if (!plays || isNaN(plays)) continue;
       const pct = Math.min(100, (plays / t.goal) * 100);
       document.getElementById(`count-${t.id}`).textContent =
         `${formatFull(plays)} / ${formatGoal(t.goal)}`;
