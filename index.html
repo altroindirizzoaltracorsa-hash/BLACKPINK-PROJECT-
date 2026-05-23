@@ -34,11 +34,7 @@
     color: var(--white);
     font-family: var(--mono);
     overflow-x: hidden;
-    cursor: url('https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/cursor.png') 24 48, crosshair;
-  }
-
-  *, a, button, input, label, select, textarea {
-    cursor: url('https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/cursor.png') 24 48, auto !important;
+    cursor: crosshair;
   }
 
   body::before {
@@ -276,49 +272,6 @@
   /* ══════════════════════════════════════
      BADGE CHALLENGE PAGE
   ══════════════════════════════════════ */
-
-  /* ── SHARE BUTTON ── */
-  .share-btn {
-    background: transparent; border: 1px solid rgba(255,0,102,0.3);
-    color: var(--pink); font-family: var(--mono); font-size: 0.5rem;
-    letter-spacing: 0.18em; text-transform: uppercase;
-    padding: 0.5rem 1rem; cursor: pointer; transition: background 0.2s, color 0.2s;
-  }
-  .share-btn:hover { background: var(--pink); color: var(--black); }
-
-  /* ── DAILY CHALLENGE ── */
-  .daily-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5px; background: var(--border); }
-  .daily-card { background: var(--card); padding: 1.5rem; position: relative; overflow: hidden; }
-  .daily-song-name { font-family: var(--display); font-size: 1.2rem; letter-spacing: 0.06em; color: var(--white); margin-bottom: 0.3rem; }
-  .daily-count { font-family: var(--display); font-size: 2rem; color: var(--pink); line-height: 1; margin-bottom: 0.3rem; }
-  .daily-target { font-size: 0.45rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.8rem; }
-  .tier-dots { display: flex; gap: 4px; margin-bottom: 0.5rem; }
-  .tier-dot { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; border: 1px solid rgba(255,0,102,0.2); background: rgba(255,0,102,0.05); transition: all 0.3s; }
-  .tier-dot.earned { background: var(--pink); border-color: var(--pink); box-shadow: 0 0 8px rgba(255,0,102,0.4); }
-  .daily-progress-bar { height: 2px; background: rgba(255,255,255,0.06); margin-top: 0.5rem; }
-  .daily-progress-fill { height: 100%; background: var(--pink); transition: width 1s ease; }
-  .complete-banner { background: rgba(255,0,102,0.1); border: 1px solid rgba(255,0,102,0.3); padding: 1rem 1.5rem; text-align: center; margin-top: 1.5px; font-family: var(--display); font-size: 1.2rem; letter-spacing: 0.1em; color: var(--pink); }
-
-  /* ── WEEKLY GRID ── */
-  .weekly-table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); }
-  .weekly-table th { font-size: 0.45rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); padding: 0.6rem 0.8rem; text-align: center; border-bottom: 1px solid var(--border); font-weight: normal; }
-  .weekly-table th.song-col { text-align: left; color: var(--pink); }
-  .weekly-table td { padding: 0.8rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.55rem; }
-  .weekly-table td.song-name { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.06em; color: var(--white); text-align: left; }
-  .week-cell-done { color: var(--pink); font-size: 0.9rem; }
-  .week-cell-partial { color: rgba(245,240,240,0.4); font-size: 0.6rem; }
-  .week-cell-empty { color: rgba(245,240,240,0.15); }
-  .week-cell-future { color: rgba(245,240,240,0.1); }
-
-  /* ── BADGE HISTORY ── */
-  .badge-history-list { display: flex; flex-direction: column; gap: 1.5px; background: var(--border); }
-  .badge-history-item { background: var(--card); padding: 0.8rem 1.2rem; display: flex; align-items: center; gap: 1rem; }
-  .badge-history-icon { font-size: 1.4rem; flex-shrink: 0; }
-  .badge-history-label { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.08em; color: var(--pink); }
-  .badge-history-date { font-size: 0.45rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
-  .badge-history-song { font-size: 0.45rem; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(245,240,240,0.3); }
-  .badge-history-empty { background: var(--card); padding: 2rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); font-size: 0.9rem; }
-
   .badge-page {
     min-height: 100vh;
     background: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255,0,102,0.1) 0%, transparent 60%), var(--black);
@@ -440,15 +393,6 @@
   .logout-btn:hover { border-color: var(--pink); color: var(--pink); }
   .divider-line { width: 40px; height: 1px; background: var(--pink); margin: 1.5rem 0; }
 
-  .days-to-goal {
-    margin-top: 0.6rem;
-    font-size: 0.48rem;
-    letter-spacing: 0.15em;
-    color: rgba(245,240,240,0.4);
-    line-height: 1.6;
-  }
-  .days-to-goal strong { color: var(--pink); }
-
   /* ── HISTORY CHART ── */
   .history-toggle {
     display: inline-flex; align-items: center; gap: 0.4rem;
@@ -547,10 +491,7 @@
 
 <!-- ── NAV ── -->
 <nav>
-  <span class="nav-logo" onclick="showPage('home')" style="display:flex;align-items:center;gap:0.6rem;">
-    <img src="https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/blinksunited.jpg" alt="Blinks United" style="width:28px;height:28px;object-fit:cover;border-radius:50%;">
-    BLINKS UNITED
-  </span>
+  <span class="nav-logo" onclick="showPage('home')">BLINKS UNITED</span>
   <ul class="nav-links">
     <li><a href="#" onclick="showPage('home'); return false;" id="nav-home" class="active">Home</a></li>
     <li><a href="#songs" onclick="showPage('home'); setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100); return false;">Songs</a></li>
@@ -633,7 +574,6 @@
               <span id="pct-jump"></span>
             </div>
             <div id="increase-jump" style="display:none;margin-top:0.4rem;font-size:0.5rem;letter-spacing:0.15em;color:#00ff88;"></div>
-            <div class="days-to-goal" id="days-jump"></div>
           </div>
           <button class="history-toggle" onclick="toggleHistory('jump', this)">
             <span>Stream History</span> <span class="arrow">▾</span>
@@ -659,7 +599,6 @@
               <span id="pct-shutdown"></span>
             </div>
             <div id="increase-shutdown" style="display:none;margin-top:0.4rem;font-size:0.5rem;letter-spacing:0.15em;color:#00ff88;"></div>
-            <div class="days-to-goal" id="days-shutdown"></div>
           </div>
           <button class="history-toggle" onclick="toggleHistory('shutdown', this)">
             <span>Stream History</span> <span class="arrow">▾</span>
@@ -685,7 +624,6 @@
               <span id="pct-ddududu"></span>
             </div>
             <div id="increase-ddududu" style="display:none;margin-top:0.4rem;font-size:0.5rem;letter-spacing:0.15em;color:#00ff88;"></div>
-            <div class="days-to-goal" id="days-ddududu"></div>
           </div>
           <button class="history-toggle" onclick="toggleHistory('ddududu', this)">
             <span>Stream History</span> <span class="arrow">▾</span>
@@ -744,35 +682,9 @@
         <div class="animate-in">
           <div class="follow-col">
             <h3><span>Blinks United</span></h3>
-            <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:1rem;">
-              <img src="https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/blinksunited.jpg" alt="Blinks United" style="width:40px;height:40px;object-fit:cover;border-radius:50%;border:1px solid var(--border);">
-              <span style="font-family:var(--display);font-size:1rem;letter-spacing:0.15em;color:var(--white);">BLINKS UNITED</span>
-            </div>
             <div class="social-links">
-              <a href="https://x.com/blinksunitedtwt" target="_blank" class="social-link">
-                <span class="social-icon"><svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.63zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
-                <span class="social-name">@blinksunitedtwt</span>
-              </a>
-              <a href="https://www.instagram.com/blinksunitedtwt" target="_blank" class="social-link">
-                <span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></span>
-                <span class="social-name">@blinksunitedtwt</span>
-              </a>
-              <a href="https://www.tiktok.com/@blinksunitedtiktok" target="_blank" class="social-link">
-                <span class="social-icon"><svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg></span>
-                <span class="social-name">@blinksunitedtiktok</span>
-              </a>
-              <a href="https://open.spotify.com/user/31qfhtukpgz5nhi3jsf3c7pai7pi" target="_blank" class="social-link">
-                <span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg></span>
-                <span class="social-name">Spotify</span>
-              </a>
-              <a href="https://music.apple.com/profile/blinksunitedtwt" target="_blank" class="social-link">
-                <span class="social-icon"><svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg></span>
-                <span class="social-name">Apple Music</span>
-              </a>
-              <a href="https://www.stationhead.com/blinksunited" target="_blank" class="social-link">
-                <span class="social-icon" style="font-size:0.65rem;font-weight:bold;color:var(--pink);letter-spacing:0.05em;">SH</span>
-                <span class="social-name">Stationhead</span>
-              </a>
+              <a href="https://x.com" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.63zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span><span class="social-name">X / Twitter</span></a>
+              <a href="https://www.instagram.com" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></span><span class="social-name">Instagram</span></a>
             </div>
           </div>
         </div>
@@ -808,76 +720,68 @@
     <div class="badge-header">
       <p class="badge-header-eyebrow">✦ Blinks United — Streaming Challenge ✦</p>
       <h1 class="badge-header-title">BADGE<br><span>CHALLENGE</span></h1>
-      <p class="badge-header-sub">Connect Last.fm · Earn daily & weekly badges · Build your streak</p>
+      <p class="badge-header-sub">Connect Last.fm · Count your scrobbles · Earn your rank</p>
     </div>
 
     <!-- LOGIN PANEL -->
     <div id="login-panel" class="login-wrap">
       <div class="login-card">
-        <p class="login-label">Connect via
+        <p class="login-label">
+          Connect via
           <span class="lastfm-badge">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="#ff4444"><path d="M10.584 17.21l-.88-2.392s-1.43 1.596-3.573 1.596c-1.897 0-3.247-1.648-3.247-4.28 0-3.38 1.703-4.582 3.38-4.582 2.41 0 3.18 1.567 3.84 3.573l.88 2.393c.88 2.666 2.557 4.802 7.358 4.802 3.44 0 5.774-1.054 5.774-3.84 0-2.25-1.285-3.41-3.674-3.97l-1.775-.397c-1.23-.273-1.59-.77-1.59-1.59 0-.924.726-1.46 1.918-1.46 1.305 0 2.007.488 2.116 1.647l2.71-.33C23.432 6.11 21.95 4.9 19.27 4.9c-2.448 0-4.8 1.024-4.8 3.84 0 1.83.88 2.99 3.09 3.544l1.867.45c1.408.334 2.06.857 2.06 1.84 0 1.097-.99 1.543-2.96 1.543-2.87 0-4.074-1.502-4.734-3.476l-.9-2.393C12.098 7.34 10.59 5.4 6.924 5.4 3.1 5.4.5 7.854.5 12.176c0 4.16 2.448 6.425 5.972 6.425 3.09 0 4.11-1.39 4.11-1.39z"/></svg>
             LAST.FM
           </span>
         </p>
-        <p class="login-desc">Enter your Last.fm username to track your daily & weekly streaming challenges for JUMP, Shut Down and DDU-DU DDU-DU. No password needed.</p>
+        <p class="login-desc">Enter your Last.fm username and we'll count how many times you've scrobbled JUMP, Shut Down, and DDU-DU DDU-DU — then award the badges you've earned. No password needed.</p>
         <div class="input-row">
           <input class="username-input" id="lfm-input" type="text" placeholder="Your Last.fm username" />
-          <button class="btn-primary" onclick="loadProfile()">Check My Badges →</button>
+          <button class="btn-primary" id="lfm-submit" onclick="checkScrobbles()">Check My Scrobbles →</button>
         </div>
         <div id="lfm-error" class="error-msg" style="display:none"></div>
-        <p class="lastfm-tip">Don't have Last.fm? <a href="https://www.last.fm/join" target="_blank">Sign up free</a> and connect Spotify at <a href="https://www.last.fm/settings/applications" target="_blank">last.fm/settings/applications</a> so streams are tracked automatically.</p>
+        <p class="lastfm-tip">Don't have Last.fm? <a href="https://www.last.fm/join" target="_blank">Sign up free</a> and connect your Spotify at <a href="https://www.last.fm/settings/applications" target="_blank">last.fm/settings/applications</a> so your streams are tracked automatically.</p>
       </div>
     </div>
 
     <!-- LOADING -->
     <div id="loading-panel" class="loading-wrap" style="display:none">
       <div class="spinner"></div>
-      <p class="loading-text" id="loading-text">Loading your profile…</p>
+      <p class="loading-text" id="loading-text">Fetching your scrobbles…</p>
     </div>
 
-    <!-- PROFILE -->
-    <div id="profile-panel" style="display:none">
-
-      <!-- USER BAR -->
+    <!-- RESULTS -->
+    <div id="results-panel" style="display:none">
       <div class="user-bar">
         <div class="user-info">
-          <div id="profile-avatar-wrap"></div>
+          <div id="user-avatar-wrap"></div>
           <div>
-            <div class="user-name" id="profile-username"></div>
-            <div class="user-meta" id="profile-meta"></div>
+            <div class="user-name" id="result-username"></div>
+            <div class="user-meta"><span id="result-total-plays"></span> total scrobbles · Last.fm</div>
           </div>
         </div>
-        <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
-          <button class="share-btn" id="share-btn" onclick="shareProfile()">🔗 Share Profile</button>
-          <button class="logout-btn" onclick="resetProfile()">← Change User</button>
-        </div>
+        <button class="logout-btn" onclick="resetBadges()">← Change User</button>
       </div>
 
-      <!-- STREAK + SUMMARY -->
-      <div class="summary-strip" id="profile-summary"></div>
-
-      <!-- DAILY CHALLENGE -->
-      <div class="tracks-section" style="margin-top:2rem;">
-        <p class="section-label">// Today's Challenge</p>
-        <div id="daily-challenge-grid"></div>
+      <div class="summary-strip">
+        <div class="summary-cell"><div class="summary-num" id="sum-bp">0</div><div class="summary-lbl">BP Scrobbles (3 tracks)</div></div>
+        <div class="summary-cell"><div class="summary-num" id="sum-badges">0</div><div class="summary-lbl">Badges Earned</div></div>
+        <div class="summary-cell"><div class="summary-num" id="sum-left">3</div><div class="summary-lbl">Badges to Unlock</div></div>
       </div>
 
-      <!-- WEEKLY CHALLENGE -->
-      <div class="tracks-section" style="margin-top:2rem;">
-        <p class="section-label">// This Week's Challenge (Mon–Sun)</p>
-        <div id="weekly-challenge-grid"></div>
+      <div class="tracks-section">
+        <p class="section-label">// Your Stream Badges</p>
+        <div class="track-cards" id="track-cards-container"></div>
       </div>
 
-      <!-- BADGE HISTORY -->
-      <div class="tracks-section" style="margin-top:2rem;">
-        <p class="section-label">// Badge History</p>
-        <div id="badge-history-grid"></div>
+      <div class="tiers-section">
+        <p class="section-label" style="margin-top:2rem">// Badge Tiers Reference</p>
+        <div class="tiers-grid" id="tiers-grid"></div>
       </div>
 
-      <p class="badge-footer-note" style="margin-top:2rem;">
-        Data powered by <a href="https://www.last.fm" target="_blank">Last.fm</a> · Resets at 2am Italy time daily ·
-        Fan-made by Blinks United · Not affiliated with YG Entertainment · Made with 💗
+      <p class="badge-footer-note">
+        Scrobble data powered by <a href="https://www.last.fm" target="_blank">Last.fm</a>.
+        Connect Spotify at <a href="https://www.last.fm/settings/applications" target="_blank">last.fm/settings/applications</a> so every stream counts automatically.<br>
+        Fan-made by Blinks United · Not affiliated with YG Entertainment or Last.fm · Made with 💗
       </p>
     </div>
 
@@ -885,9 +789,7 @@
 </div><!-- end badge page -->
 
 <script>
-// ── SPOTIFY LIVE STREAM COUNTS ───────────────────────────────
-// Stream counts fetched via /api/streams (Vercel serverless function)
-// API key lives in Vercel environment variables — never in this file
+// ── API calls handled server-side by /api/streams ─────────────
 
 const SPOTIFY_TRACKS = [
   { id: 'jump',     trackId: '5H1sKFMzDeMtXwND3V6hRY', goal: 1_000_000_000 },
@@ -895,9 +797,9 @@ const SPOTIFY_TRACKS = [
   { id: 'ddududu',  trackId: '69BIczdH6QMnFx7dsSssN8', goal: 1_000_000_000 },
 ];
 
-// ── SEEDED HISTORY (daily stream counts per song) ────────────
-// Format: { date: 'DD/MM', streams: number }
-// streams = how many times the song was played that specific day
+// ── STREAM HISTORY (verified daily stream counts) ────────────
+// Each entry = streams played on that specific day (not cumulative total).
+// Last updated: 23/05/2026.
 const STREAM_HISTORY = {
   jump: [
     { date: '04/05', streams: 880380 },
@@ -917,6 +819,7 @@ const STREAM_HISTORY = {
     { date: '18/05', streams: 828566 },
     { date: '19/05', streams: 819229 },
     { date: '20/05', streams: 843147 },
+    { date: '21/05', streams: 846685 },
   ],
   shutdown: [
     { date: '08/05', streams: 265404 },
@@ -932,6 +835,7 @@ const STREAM_HISTORY = {
     { date: '18/05', streams: 248866 },
     { date: '19/05', streams: 244045 },
     { date: '20/05', streams: 244460 },
+    { date: '21/05', streams: 234115 },
   ],
   ddududu: [
     { date: '16/05', streams: 485887 },
@@ -954,43 +858,23 @@ function formatGoal(n) {
   return n.toLocaleString();
 }
 
-// ── INCREASE LOGIC (derived from seeded history, no localStorage) ──
 function getSeededIncrease(id) {
   const hist = STREAM_HISTORY[id];
   if (!hist || hist.length < 2) return null;
   const last = hist[hist.length - 1];
   const prev = hist[hist.length - 2];
   const diff = last.streams - prev.streams;
-  // Show: "15/05 — 871,022 streams (+16,261)"
-  const gainPart = diff > 0 ? ` (+${formatFull(diff)})` : '';
-  return `${last.date} — ${formatFull(last.streams)} daily streams${gainPart}`;
+  if (diff > 0) return {
+    text: `▲ ${formatFull(last.streams)} streams on ${last.date} (+${formatFull(diff)} from ${prev.date})`
+  };
+  return null;
 }
 
-// ── HISTORY CHART RENDERING ───────────────────────────────────
-function renderDaysToGoal(id, history, total, goal) {
-  const el = document.getElementById(`days-${id}`);
-  if (!el) return;
-
-  const remaining = goal - total;
-  if (remaining <= 0) { el.innerHTML = `<strong>🎉 Goal reached!</strong>`; return; }
-
-  // Use last 7 days of history (or all if less)
-  const recent = history.slice(-7);
-  if (recent.length < 2) { el.textContent = ''; return; }
-
-  const avg = recent.reduce((sum, h) => sum + h.streams, 0) / recent.length;
-  if (avg <= 0) { el.textContent = ''; return; }
-
-  const days = Math.ceil(remaining / avg);
-  const goalFmt = goal >= 1_000_000_000 ? (goal / 1_000_000_000) + 'B' : (goal / 1_000_000) + 'M';
-  el.innerHTML = `~ <strong>${days} days</strong> to ${goalFmt} · based on ${formatFull(Math.round(avg))}/day avg (last ${recent.length} days)`;
-}
-
-function renderHistory(id, history) {
+function renderHistory(id) {
   const panel = document.getElementById(`history-${id}`);
   if (!panel) return;
 
-  history = history || [];
+  const history = STREAM_HISTORY[id] || [];
 
   if (history.length === 0) {
     panel.innerHTML = `<p class="history-title">// No history data yet</p>`;
@@ -1039,69 +923,29 @@ function toggleHistory(id, btn) {
 }
 
 async function fetchSpotifyStreams() {
-  // Show seeded history immediately while API loads
   for (const t of SPOTIFY_TRACKS) {
-    const seeded = STREAM_HISTORY[t.id] || [];
-    renderHistory(t.id, seeded);
-    renderDaysToGoal(t.id, seeded, 0, t.goal);
+    renderHistory(t.id);
     const increase = getSeededIncrease(t.id);
     if (increase) {
       const el = document.getElementById(`increase-${t.id}`);
-      if (el) { el.textContent = '▲ ' + increase; el.style.display = 'block'; }
+      if (el) { el.textContent = increase.text; el.style.display = 'block'; }
     }
   }
-
   try {
     const res = await fetch('/api/streams');
     const counts = await res.json();
-
     for (const t of SPOTIFY_TRACKS) {
-      const entry = counts[t.id];
-      if (!entry) continue;
-
-      const plays = entry.total || 0;
-      const apiHistory = entry.history || [];
-
-      // Update live total count
-      if (plays) {
-        const pct = Math.min(100, (plays / t.goal) * 100);
-        document.getElementById(`count-${t.id}`).textContent =
-          `${formatFull(plays)} / ${formatGoal(t.goal)}`;
-        document.getElementById(`pct-${t.id}`).textContent =
-          pct.toFixed(2) + '%';
-        setTimeout(() => {
-          const fill = document.getElementById(`fill-${t.id}`);
-          if (fill) fill.style.width = pct + '%';
-        }, 300);
-      }
-
-      // Merge seeded + API history, deduplicate by date
-      const seeded = STREAM_HISTORY[t.id] || [];
-      const merged = [...seeded];
-      for (const h of apiHistory) {
-        if (!merged.find(s => s.date === h.date)) merged.push(h);
-      }
-      merged.sort((a, b) => {
-        const [ad, am] = a.date.split('/').map(Number);
-        const [bd, bm] = b.date.split('/').map(Number);
-        return am !== bm ? am - bm : ad - bd;
-      });
-
-      // Update increase label from latest merged history
-      if (merged.length >= 2) {
-        const last = merged[merged.length - 1];
-        const prev = merged[merged.length - 2];
-        const diff = last.streams - prev.streams;
-        const el = document.getElementById(`increase-${t.id}`);
-        if (el) {
-          const gainPart = diff > 0 ? ` (+${formatFull(diff)})` : '';
-          el.textContent = `▲ ${last.date} — ${formatFull(last.streams)} daily streams${gainPart}`;
-          el.style.display = 'block';
-        }
-      }
-
-      renderHistory(t.id, merged);
-      renderDaysToGoal(t.id, merged, plays, t.goal);
+      const plays = counts[t.id] || 0;
+      if (!plays) continue;
+      const pct = Math.min(100, (plays / t.goal) * 100);
+      document.getElementById(`count-${t.id}`).textContent =
+        `${formatFull(plays)} / ${formatGoal(t.goal)}`;
+      document.getElementById(`pct-${t.id}`).textContent =
+        pct.toFixed(2) + '%';
+      setTimeout(() => {
+        const fill = document.getElementById(`fill-${t.id}`);
+        if (fill) fill.style.width = pct + '%';
+      }, 300);
     }
   } catch(e) {
     for (const t of SPOTIFY_TRACKS) {
@@ -1139,7 +983,6 @@ function initAnimations() {
 }
 initAnimations();
 
-// Nav active on scroll
 window.addEventListener('scroll', () => {
   const navLinks = document.querySelectorAll('.nav-links a');
   let current = '';
@@ -1153,21 +996,21 @@ window.addEventListener('scroll', () => {
 });
 
 // ── LAST.FM CONFIG ───────────────────────────────────────────
-const LASTFM_KEY = '666b8ef2f3cc360fbc20df275fba2981';
+const LASTFM_KEY = '2b75ad00cf31a9b4bce1d9d87b0ac5bf';
 const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
 
 const TRACKS = [
-  { id: 'jump',     title: 'JUMP',          artist: 'BLACKPINK', track: 'JUMP',         year: '2025', era: 'DEADLINE',   spotify: 'https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY' },
-  { id: 'shutdown', title: 'SHUT DOWN',     artist: 'BLACKPINK', track: 'Shut Down',    year: '2022', era: 'BORN PINK',  spotify: 'https://open.spotify.com/track/6tCd8bPvYnceDG7W9M1RMk' },
-  { id: 'ddududu',  title: 'DDU-DU DDU-DU', artist: 'BLACKPINK', track: 'DDU-DU DDU-DU', year: '2018', era: 'SQUARE UP', spotify: 'https://open.spotify.com/track/69BIczdH6QMnFx7dsSssN8' },
+  { id: 'jump',     title: 'JUMP',         artist: 'BLACKPINK', track: 'JUMP',                    year: '2025', era: 'DEADLINE MINI ALBUM',   spotify: 'https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY' },
+  { id: 'shutdown', title: 'SHUT DOWN',    artist: 'BLACKPINK', track: 'Shut Down',               year: '2022', era: 'BORN PINK ALBUM',  spotify: 'https://open.spotify.com/search/Shut%20Down%20BLACKPINK' },
+  { id: 'ddududu',  title: 'DDU-DU DDU-DU',artist: 'BLACKPINK', track: 'DDU-DU DDU-DU (뚜두뚜두)', year: '2018', era: 'SQUARE UP EP',     spotify: 'https://open.spotify.com/search/DDU-DU%20DDU-DU%20BLACKPINK' },
 ];
 
 const BADGE_TIERS = [
-  { id: 'blink',        label: 'BLINK',        min: 1,   icon: '💗', desc: 'Welcome to the fandom!',     period: '' },
-  { id: 'daily-blink',  label: 'DAILY BLINK',  min: 5,   icon: '🖤', desc: 'Streamed every day.',         period: 'daily' },
-  { id: 'weekly-stan',  label: 'WEEKLY STAN',  min: 25,  icon: '🎀', desc: 'A full week of streaming.',   period: 'weekly' },
-  { id: 'soldier',      label: 'SOLDIER',      min: 50,  icon: '👑', desc: 'Dedicated streaming warrior.',period: '' },
-  { id: 'legend',       label: 'LEGEND',       min: 200, icon: '⚡', desc: 'You ARE BLACKPINK.',          period: '' },
+  { id: 'blink',   label: 'BLINK',   min: 1,   icon: '💗', desc: 'Welcome to the fandom!' },
+  { id: 'stan',    label: 'STAN',    min: 10,  icon: '🖤', desc: "You're a real one." },
+  { id: 'soldier', label: 'SOLDIER', min: 50,  icon: '🎀', desc: 'Streaming warrior.' },
+  { id: 'queen',   label: 'QUEEN',   min: 100, icon: '👑', desc: 'Royalty in the fandom.' },
+  { id: 'legend',  label: 'LEGEND',  min: 500, icon: '⚡', desc: 'You ARE BLACKPINK.' },
 ];
 
 function getBadge(plays) {
@@ -1230,7 +1073,6 @@ function renderResults(info, scrobbles) {
   document.getElementById('loading-panel').style.display = 'none';
   document.getElementById('results-panel').style.display = 'block';
 
-  // User info
   document.getElementById('result-username').textContent = info.name || info.realname || '';
   document.getElementById('result-total-plays').textContent = Number(info.playcount).toLocaleString();
 
@@ -1242,14 +1084,12 @@ function renderResults(info, scrobbles) {
     wrap.innerHTML = `<div class="user-avatar-placeholder">${(info.name||'?')[0].toUpperCase()}</div>`;
   }
 
-  // Summary
   const total = Object.values(scrobbles).reduce((a,b) => a+b, 0);
   const earned = TRACKS.filter(t => getBadge(scrobbles[t.id] || 0)).length;
   document.getElementById('sum-bp').textContent = total;
   document.getElementById('sum-badges').textContent = earned;
   document.getElementById('sum-left').textContent = TRACKS.length - earned;
 
-  // Track cards
   const container = document.getElementById('track-cards-container');
   container.innerHTML = TRACKS.map((t, i) => {
     const plays = scrobbles[t.id] || 0;
@@ -1288,14 +1128,11 @@ function renderResults(info, scrobbles) {
     </div>`;
   }).join('');
 
-  // Tiers grid
   const tiersGrid = document.getElementById('tiers-grid');
   tiersGrid.innerHTML = BADGE_TIERS.map(tier => {
     const allEarned = TRACKS.every(t => (scrobbles[t.id] || 0) >= tier.min);
-    const periodLabel = tier.period ? `<div style="font-size:0.38rem;letter-spacing:0.15em;color:var(--pink);opacity:0.7;margin-bottom:0.15rem;">${tier.period.toUpperCase()}</div>` : '';
     return `<div class="tier-cell ${allEarned ? 'earned' : ''}">
       <div class="tier-cell-icon" style="opacity:${allEarned ? 1 : 0.2}">${tier.icon}</div>
-      ${periodLabel}
       <div class="tier-cell-name" style="color:${allEarned ? 'var(--pink)' : 'var(--white)'}">${tier.label}</div>
       <div class="tier-cell-req">${tier.min}+ plays/track</div>
       ${allEarned ? '<div class="tier-earned-tag">✓ EARNED</div>' : '<div class="tier-locked-tag">locked</div>'}
@@ -1310,7 +1147,6 @@ function resetBadges() {
   document.getElementById('lfm-error').style.display = 'none';
 }
 
-// Enter key on input
 document.getElementById('lfm-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') checkScrobbles();
 });
