@@ -1,5 +1,4 @@
 import { Redis } from '@upstash/redis';
-
 const redis = Redis.fromEnv();
 
 const TRACKS = {
@@ -37,10 +36,12 @@ export default async function handler(req, res) {
     try {
       const r = await fetch(
         `https://spotify-scraper.p.rapidapi.com/v1/track/metadata?trackId=${trackId}`,
-        { headers: {
-          'x-rapidapi-key': process.env.RAPIDAPI_KEY,
-          'x-rapidapi-host': 'spotify-scraper.p.rapidapi.com'
-        }}
+        {
+          headers: {
+            'x-rapidapi-key': process.env.RAPIDAPI_KEY,
+            'x-rapidapi-host': 'spotify-scraper.p.rapidapi.com',
+          },
+        }
       );
       const data = await r.json();
       const total = data?.playCount || 0;
@@ -48,45 +49,37 @@ export default async function handler(req, res) {
       const prevKey = `bp_prev_${name}`;
       const histKey = `bp_hist_${name}`;
 
+      // Read previous snapshot BEFORE overwriting it
       const prev = await redis.get(prevKey);
-
-      // Save today's snapshot immediately
-      await redis.set(prevKey, { total, date: todayLabel });
+      const hist = (await redis.get(histKey)) || [];
 
       if (prev && total > Number(prev.total)) {
         const dailyStreams = total - Number(prev.total);
-        const hist = (await redis.get(histKey)) || [];
-
         const gap = daysBetween(prev.date, todayLabel);
 
-        if (gap === 1) {
-          // Normal case: 1 day gap → streams belong to prev.date (yesterday)
+        if (gap >= 1) {
+          // Label under prev.date — that's the day whose streams just completed
           const entryDate = prev.date;
-          const alreadyLogged = hist.find(h => h.date === entryDate);
-          if (!alreadyLogged) {
-            hist.push({ date: entryDate, streams: dailyStreams });
+          const existing = hist.find(h => h.date === entryDate);
+          if (!existing) {
+            const entry = { date: entryDate, streams: dailyStreams };
+            if (gap > 1) entry.note = `${gap}-day gap`;
+            hist.push(entry);
+          } else {
+            // Update if we get a better reading later in the same cycle
+            existing.streams = dailyStreams;
           }
-        } else if (gap > 1) {
-          // Spotify skipped days → label as prev.date with a note
-          const entryDate = prev.date;
-          const alreadyLogged = hist.find(h => h.date === entryDate);
-          if (!alreadyLogged) {
-            hist.push({
-              date: entryDate,
-              streams: dailyStreams,
-              note: `${gap} day total`
-            });
-          }
-        }
 
-        if (hist.length > 60) hist.shift();
-        await redis.set(histKey, hist);
+          if (hist.length > 60) hist.shift();
+          await redis.set(histKey, hist);
+        }
       }
 
-      const hist = (await redis.get(histKey)) || [];
-      results[name] = { total, history: hist };
+      // Save today's snapshot AFTER the diff is computed and logged
+      await redis.set(prevKey, { total, date: todayLabel });
 
-    } catch(e) {
+      results[name] = { total, history: hist };
+    } catch (e) {
       results[name] = { total: 0, history: [] };
     }
   }
