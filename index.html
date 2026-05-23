@@ -860,14 +860,12 @@ function formatGoal(n) {
 
 function getSeededIncrease(id) {
   const hist = STREAM_HISTORY[id];
-  if (!hist || hist.length < 2) return null;
+  if (!hist || hist.length < 1) return null;
   const last = hist[hist.length - 1];
-  const prev = hist[hist.length - 2];
-  const diff = last.streams - prev.streams;
-  if (diff > 0) return {
-    text: `▲ ${formatFull(last.streams)} — ${last.date} (+${formatFull(diff)})`
-  };
-  return null;
+  const prev = hist.length >= 2 ? hist[hist.length - 2] : null;
+  const diff = prev !== null ? last.streams - prev.streams : null;
+  const gainPart = diff !== null && diff > 0 ? ` (+${formatFull(diff)})` : '';
+  return { text: `▲ ${formatFull(last.streams)} — ${last.date}${gainPart}` };
 }
 
 function renderHistory(id) {
