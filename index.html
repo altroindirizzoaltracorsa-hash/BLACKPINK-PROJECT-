@@ -865,7 +865,7 @@ function getSeededIncrease(id) {
   const prev = hist[hist.length - 2];
   const diff = last.streams - prev.streams;
   if (diff > 0) return {
-    text: `▲ ${formatFull(last.streams)} streams on ${last.date} (+${formatFull(diff)} from ${prev.date})`
+    text: `▲ ${formatFull(last.streams)} — ${last.date} (+${formatFull(diff)})`
   };
   return null;
 }
