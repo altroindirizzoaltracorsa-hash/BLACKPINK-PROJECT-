@@ -9,527 +9,222 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
 <style>
   :root {
-    --pink: #FF0066;
-    --hot-pink: #FF2D8A;
-    --black: #080808;
-    --off-black: #111111;
-    --charcoal: #1a1a1a;
-    --card: #111111;
-    --card2: #161616;
-    --pink-muted: #ff006633;
-    --white: #F5F0F0;
-    --muted: rgba(245,240,240,0.45);
-    --border: rgba(255,0,102,0.18);
-    --mono: 'DM Mono', monospace;
-    --display: 'Bebas Neue', sans-serif;
-    --serif: 'Bodoni Moda', serif;
-    --light-serif: 'Cormorant Garamond', serif;
+    --pink: #FF0066;--hot-pink: #FF2D8A;--black: #080808;--off-black: #111111;
+    --charcoal: #1a1a1a;--card: #111111;--card2: #161616;--pink-muted: #ff006633;
+    --white: #F5F0F0;--muted: rgba(245,240,240,0.45);--border: rgba(255,0,102,0.18);
+    --mono: 'DM Mono', monospace;--display: 'Bebas Neue', sans-serif;
+    --serif: 'Bodoni Moda', serif;--light-serif: 'Cormorant Garamond', serif;
   }
-
-  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-
-  body {
-    background: var(--black);
-    color: var(--white);
-    font-family: var(--mono);
-    overflow-x: hidden;
-    cursor: crosshair;
-  }
-
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 9999;
-    opacity: 0.35;
-  }
-
-  /* ── NAV ── */
-  nav {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    z-index: 200;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.2rem 3rem;
-    background: rgba(8,8,8,0.88);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(255,0,102,0.2);
-  }
-  .nav-logo {
-    font-family: var(--display);
-    font-size: 1.4rem;
-    letter-spacing: 0.2em;
-    color: var(--pink);
-    text-decoration: none;
-    cursor: pointer;
-  }
-  .nav-links { display: flex; gap: 2rem; list-style: none; }
-  .nav-links a {
-    font-family: var(--mono);
-    font-size: 0.62rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--white);
-    text-decoration: none;
-    opacity: 0.7;
-    transition: opacity 0.2s, color 0.2s;
-    cursor: pointer;
-  }
-  .nav-links a:hover, .nav-links a.active { opacity: 1; color: var(--pink); }
-
-  /* ── PAGE SYSTEM ── */
-  .page { display: none; }
-  .page.active { display: block; }
-
-  /* ══════════════════════════════════════
-     HOME PAGE
-  ══════════════════════════════════════ */
-
-  /* HERO */
-  .hero {
-    min-height: 100vh;
-    display: grid;
-    grid-template-rows: 1fr auto;
-    padding-top: 80px;
-    position: relative;
-    overflow: hidden;
-  }
-  .hero-bg {
-    position: absolute; inset: 0;
-    background:
-      radial-gradient(ellipse 60% 50% at 80% 20%, rgba(255,0,102,0.18) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 60% at 10% 80%, rgba(255,0,102,0.08) 0%, transparent 55%),
-      linear-gradient(180deg, #080808 0%, #0d0008 100%);
-  }
-  .hero-grid-lines {
-    position: absolute; inset: 0;
-    background-image:
-      linear-gradient(rgba(255,0,102,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,0,102,0.04) 1px, transparent 1px);
-    background-size: 60px 60px;
-  }
-  .hero-content {
-    position: relative; z-index: 2;
-    display: flex; flex-direction: column;
-    justify-content: center; align-items: center;
-    text-align: center; padding: 4rem 2rem 2rem;
-  }
-  .hero-eyebrow {
-    font-size: 0.6rem; letter-spacing: 0.35em;
-    text-transform: uppercase; color: var(--pink);
-    margin-bottom: 1.5rem;
-    animation: fadeUp 0.8s ease both;
-  }
-  .hero-title {
-    font-family: var(--display);
-    font-size: clamp(5rem, 16vw, 14rem);
-    line-height: 0.88; letter-spacing: 0.04em;
-    color: var(--white);
-    animation: fadeUp 0.9s ease 0.1s both;
-  }
-  .hero-title span { display: block; color: var(--pink); }
-  .hero-title .outline { color: transparent; -webkit-text-stroke: 1.5px var(--white); }
-  .hero-subtitle {
-    font-family: var(--light-serif); font-style: italic;
-    font-size: clamp(1rem, 2.5vw, 1.5rem);
-    color: rgba(245,240,240,0.55); margin-top: 1.5rem;
-    animation: fadeUp 1s ease 0.2s both;
-  }
-  .hero-cta {
-    margin-top: 3rem; display: flex; gap: 1rem;
-    flex-wrap: wrap; justify-content: center;
-    animation: fadeUp 1s ease 0.35s both;
-  }
-
-  /* TICKER */
-  .ticker-wrap {
-    position: relative; z-index: 2;
-    background: var(--pink); padding: 0.6rem 0; overflow: hidden;
-  }
-  .ticker-track {
-    display: flex; animation: ticker 22s linear infinite; white-space: nowrap;
-  }
-  .ticker-item {
-    font-family: var(--display); font-size: 0.9rem;
-    letter-spacing: 0.15em; color: var(--black); padding: 0 2.5rem;
-  }
-
-  /* SECTIONS */
-  section { padding: 6rem 3rem; }
-  .section-label {
-    font-size: 0.55rem; letter-spacing: 0.3em;
-    text-transform: uppercase; color: var(--pink); margin-bottom: 1rem;
-  }
-  .section-title {
-    font-family: var(--display);
-    font-size: clamp(2.5rem, 6vw, 5rem);
-    letter-spacing: 0.05em; line-height: 0.95;
-    color: var(--white); margin-bottom: 3rem;
-  }
-
-  /* WELCOME */
-  .welcome-inner {
-    max-width: 1200px; margin: 0 auto;
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 6rem; align-items: center;
-  }
-  .welcome-text p {
-    font-family: var(--light-serif); font-size: 1.1rem;
-    line-height: 1.9; color: rgba(245,240,240,0.7); margin-bottom: 1.2rem;
-  }
-  .welcome-text p strong { color: var(--pink); font-weight: 600; }
-  .stat-cards {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
-  }
-  .stat-card {
-    background: var(--charcoal); border: 1px solid rgba(255,0,102,0.15);
-    padding: 1.5rem; position: relative; overflow: hidden;
-    transition: border-color 0.3s;
-  }
-  .stat-card::after {
-    content: ''; position: absolute; bottom: 0; left: 0; right: 0;
-    height: 2px; background: var(--pink);
-    transform: scaleX(0); transform-origin: left; transition: transform 0.3s;
-  }
-  .stat-card:hover { border-color: rgba(255,0,102,0.5); }
-  .stat-card:hover::after { transform: scaleX(1); }
-  .stat-num { font-family: var(--display); font-size: 2.8rem; color: var(--pink); line-height: 1; margin-bottom: 0.3rem; }
-  .stat-lbl { font-size: 0.55rem; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(245,240,240,0.5); }
-
-  /* SONGS */
-  .songs-section { background: var(--off-black); border-top: 1px solid rgba(255,0,102,0.15); border-bottom: 1px solid rgba(255,0,102,0.15); }
-  .songs-inner { max-width: 1200px; margin: 0 auto; }
-  .songs-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5px; background: rgba(255,0,102,0.15); }
-  .song-card {
-    background: var(--off-black); padding: 3rem 2.5rem;
-    position: relative; overflow: hidden; transition: background 0.3s; cursor: pointer;
-  }
-  .song-card::before {
-    content: ''; position: absolute; inset: 0;
-    background: linear-gradient(135deg, rgba(255,0,102,0.12) 0%, transparent 60%);
-    opacity: 0; transition: opacity 0.4s;
-  }
-  .song-card:hover { background: #161616; }
-  .song-card:hover::before { opacity: 1; }
-  .song-number {
-    font-family: var(--display); font-size: 5rem; line-height: 1;
-    color: rgba(255,0,102,0.1); position: absolute; top: 1.5rem; right: 2rem;
-    transition: color 0.3s;
-  }
-  .song-card:hover .song-number { color: rgba(255,0,102,0.25); }
-  .song-tag {
-    font-size: 0.5rem; letter-spacing: 0.25em; text-transform: uppercase;
-    color: var(--pink); margin-bottom: 1rem; display: inline-block;
-    background: rgba(255,0,102,0.1); padding: 0.2rem 0.6rem;
-  }
-  .song-title { font-family: var(--display); font-size: 2.2rem; letter-spacing: 0.06em; line-height: 1.1; margin-bottom: 1.2rem; color: var(--white); position: relative; z-index: 1; }
-  .song-title.long { font-size: 1.4rem; }
-  .song-meta { font-size: 0.55rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.4); text-transform: uppercase; margin-bottom: 2rem; position: relative; z-index: 1; }
-  .stream-target { margin-top: 1.5rem; position: relative; z-index: 1; }
-  .target-label { font-size: 0.5rem; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(245,240,240,0.45); margin-bottom: 0.5rem; }
-  .progress-bar { height: 2px; background: rgba(255,255,255,0.08); position: relative; margin-bottom: 0.5rem; }
-  .progress-fill { height: 100%; background: var(--pink); position: relative; transition: width 1.5s ease; }
-  .progress-fill::after { content: ''; position: absolute; right: 0; top: -3px; width: 7px; height: 7px; background: var(--pink); border-radius: 50%; box-shadow: 0 0 8px var(--pink); }
-  .progress-nums { display: flex; justify-content: space-between; font-size: 0.55rem; color: rgba(245,240,240,0.4); }
-  .progress-nums strong { color: var(--pink); }
-  .stream-btn {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    margin-top: 1.5rem; font-size: 0.55rem; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--pink); text-decoration: none;
-    border: 1px solid rgba(255,0,102,0.3); padding: 0.6rem 1.2rem;
-    transition: background 0.2s, color 0.2s;
-  }
-  .stream-btn:hover { background: var(--pink); color: var(--black); }
-  .stream-btn svg { width: 12px; height: 12px; fill: currentColor; }
-
-  /* HOW TO STREAM */
-  .howto-inner { max-width: 1200px; margin: 0 auto; }
-  .howto-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 5rem; align-items: start; }
-  .howto-intro p { font-family: var(--light-serif); font-size: 1.05rem; line-height: 1.9; color: rgba(245,240,240,0.65); margin-bottom: 1rem; }
-  .challenge-step { display: grid; grid-template-columns: 60px 1fr; gap: 1.5rem; padding: 2rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); align-items: start; }
-  .step-num { font-family: var(--display); font-size: 2.5rem; color: var(--pink); line-height: 1; }
-  .step-content h4 { font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--white); margin-bottom: 0.5rem; }
-  .step-content p { font-family: var(--light-serif); font-size: 0.95rem; line-height: 1.7; color: rgba(245,240,240,0.55); }
-
-  /* FOLLOW */
-  .follow-section { background: linear-gradient(135deg, #0d0008 0%, #080808 100%); border-top: 1px solid rgba(255,0,102,0.15); }
-  .follow-inner { max-width: 1200px; margin: 0 auto; }
-  .follow-columns { display: grid; grid-template-columns: repeat(3,1fr); gap: 3rem; }
-  .follow-col h3 { font-size: 0.55rem; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(245,240,240,0.4); margin-bottom: 1.5rem; padding-bottom: 0.8rem; border-bottom: 1px solid rgba(255,0,102,0.2); }
-  .follow-col h3 span { color: var(--pink); }
-  .social-links { display: flex; flex-direction: column; gap: 0.8rem; }
-  .social-link { display: flex; align-items: center; gap: 1rem; text-decoration: none; padding: 0.75rem 1rem; border: 1px solid rgba(255,255,255,0.06); transition: border-color 0.2s, background 0.2s; }
-  .social-link:hover { border-color: rgba(255,0,102,0.4); background: rgba(255,0,102,0.05); }
-  .social-icon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: rgba(255,0,102,0.1); flex-shrink: 0; }
-  .social-icon svg { width: 14px; height: 14px; fill: var(--pink); }
-  .social-name { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--white); }
-
-  /* ══════════════════════════════════════
-     BADGE CHALLENGE PAGE
-  ══════════════════════════════════════ */
-  .badge-page {
-    min-height: 100vh;
-    background: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255,0,102,0.1) 0%, transparent 60%), var(--black);
-    padding-top: 80px; padding-bottom: 4rem;
-  }
-  .badge-header { padding: 3rem 2rem 2rem; text-align: center; border-bottom: 1px solid var(--border); }
-  .badge-header-eyebrow { font-size: 0.55rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.8rem; }
-  .badge-header-title { font-family: var(--display); font-size: clamp(3rem, 10vw, 6rem); letter-spacing: 0.06em; line-height: 0.9; }
-  .badge-header-title span { color: var(--pink); }
-  .badge-header-sub { font-family: var(--light-serif); font-style: italic; font-size: 1rem; color: var(--muted); margin-top: 0.8rem; }
-
-  /* LOGIN */
-  .login-wrap { max-width: 520px; margin: 3rem auto; padding: 0 1.5rem; }
-  .login-card { background: var(--card); border: 1px solid var(--border); padding: 2.5rem; position: relative; overflow: hidden; }
-  .login-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--pink), transparent); }
-  .login-label { font-size: 0.55rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--pink); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
-  .lastfm-badge { display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(188,0,0,0.15); border: 1px solid rgba(188,0,0,0.3); padding: 0.2rem 0.6rem; font-size: 0.55rem; letter-spacing: 0.1em; color: #ff4444; }
-  .login-desc { font-family: var(--light-serif); font-size: 0.95rem; line-height: 1.7; color: var(--muted); margin-bottom: 1.5rem; }
-  .input-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-  .username-input { flex: 1; min-width: 0; background: #0d0d0d; border: 1px solid rgba(255,255,255,0.1); color: var(--white); font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.05em; padding: 0.75rem 1rem; outline: none; transition: border-color 0.2s; }
-  .username-input:focus { border-color: var(--pink); }
-  .username-input::placeholder { color: rgba(245,240,240,0.25); }
-  .error-msg { margin-top: 1rem; font-size: 0.6rem; letter-spacing: 0.1em; color: #ff4444; background: rgba(255,68,68,0.08); border: 1px solid rgba(255,68,68,0.2); padding: 0.6rem 1rem; }
-  .lastfm-tip { margin-top: 1.2rem; font-size: 0.5rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.25); line-height: 1.8; }
-  .lastfm-tip a { color: var(--pink); text-decoration: none; }
-
-  /* LOADING */
-  .loading-wrap { text-align: center; padding: 4rem 2rem; }
-  .spinner { width: 40px; height: 40px; border: 2px solid var(--border); border-top-color: var(--pink); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1.5rem; }
-  .loading-text { font-size: 0.6rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); }
-
-  /* USER BAR */
-  .user-bar { max-width: 900px; margin: 2rem auto 0; padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
-  .user-info { display: flex; align-items: center; gap: 1rem; }
-  .user-avatar { width: 48px; height: 48px; border: 1px solid var(--border); object-fit: cover; }
-  .user-avatar-placeholder { width: 48px; height: 48px; background: var(--pink-muted); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: 1.2rem; color: var(--pink); }
-  .user-name { font-family: var(--display); font-size: 1.4rem; letter-spacing: 0.08em; line-height: 1; margin-bottom: 0.2rem; }
-  .user-meta { font-size: 0.5rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
-  .user-meta span { color: var(--pink); }
-
-  /* SUMMARY STRIP */
-  .summary-strip { max-width: 900px; margin: 1.5rem auto 0; padding: 0 1.5rem; display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--border); }
-  .summary-cell { background: var(--card); padding: 1.2rem 1.5rem; text-align: center; }
-  .summary-num { font-family: var(--display); font-size: 2rem; color: var(--pink); line-height: 1; }
-  .summary-lbl { font-size: 0.45rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); margin-top: 0.25rem; }
-
-  /* TRACK CARDS */
-  .tracks-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem; }
-  .track-cards { display: flex; flex-direction: column; gap: 1.5px; background: var(--border); }
-  .track-card { background: var(--card); padding: 2rem; display: grid; grid-template-columns: 52px 1fr auto; gap: 1.5rem; align-items: center; transition: background 0.2s; }
-  .track-card:hover { background: var(--card2); }
-  .track-num { font-family: var(--display); font-size: 3.5rem; line-height: 1; color: rgba(255,0,102,0.1); text-align: center; transition: color 0.3s; }
-  .track-card:hover .track-num { color: rgba(255,0,102,0.3); }
-  .track-tag { font-size: 0.45rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--pink); background: var(--pink-muted); padding: 0.15rem 0.5rem; display: inline-block; margin-bottom: 0.5rem; }
-  .track-title { font-family: var(--display); font-size: 1.8rem; letter-spacing: 0.06em; line-height: 1; color: var(--white); margin-bottom: 0.4rem; }
-  .track-meta-small { font-size: 0.5rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 1rem; }
-  .plays-row { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.4rem; }
-  .plays-count { font-family: var(--display); font-size: 2.2rem; color: var(--pink); line-height: 1; }
-  .plays-label { font-size: 0.5rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
-  .tier-bar-bg { height: 2px; background: rgba(255,255,255,0.06); margin-bottom: 0.4rem; }
-  .tier-bar-fill { height: 100%; background: var(--pink); position: relative; transition: width 1.2s ease; }
-  .tier-bar-fill::after { content: ''; position: absolute; right: -3px; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 8px var(--pink); }
-  .tier-label-row { display: flex; justify-content: space-between; font-size: 0.45rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
-  .tier-label-row span { color: rgba(245,240,240,0.7); }
-  .stream-now-btn { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.8rem; font-size: 0.5rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--pink); text-decoration: none; border: 1px solid rgba(255,0,102,0.25); padding: 0.4rem 0.8rem; transition: background 0.2s, color 0.2s; }
-  .stream-now-btn:hover { background: var(--pink); color: var(--black); }
-
-  /* BADGE DISPLAY */
-  .badge-col { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; min-width: 90px; text-align: center; flex-shrink: 0; }
-  .badge-icon { font-size: 2.4rem; line-height: 1; animation: badge-pulse 2.5s ease-in-out infinite; }
-  .badge-name { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.15em; color: var(--pink); }
-  .badge-desc { font-family: var(--light-serif); font-style: italic; font-size: 0.65rem; color: var(--muted); line-height: 1.3; }
-  .badge-locked-icon { font-size: 1.8rem; opacity: 0.15; }
-  .badge-locked-text { font-size: 0.45rem; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(245,240,240,0.2); }
-
-  /* TIERS GRID */
-  .tiers-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem 1rem; }
-  .tiers-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 1px; background: var(--border); }
-  .tier-cell { background: var(--card); padding: 1.2rem 0.8rem; text-align: center; transition: background 0.2s; }
-  .tier-cell.earned { background: rgba(255,0,102,0.07); }
-  .tier-cell:hover { background: var(--card2); }
-  .tier-cell-icon { font-size: 1.5rem; margin-bottom: 0.3rem; }
-  .tier-cell-name { font-family: var(--display); font-size: 0.8rem; letter-spacing: 0.12em; margin-bottom: 0.15rem; }
-  .tier-cell-req { font-size: 0.45rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; }
-  .tier-earned-tag { font-size: 0.5rem; color: var(--pink); letter-spacing: 0.1em; }
-  .tier-locked-tag { font-size: 0.5rem; color: rgba(245,240,240,0.15); }
-
-  .badge-footer-note { max-width: 900px; margin: 2rem auto 0; padding: 0 1.5rem; font-size: 0.5rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.2); text-align: center; line-height: 1.8; }
-  .badge-footer-note a { color: var(--pink); text-decoration: none; }
-
-  /* ── FOOTER ── */
-  footer { padding: 2rem 3rem; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
-  footer p { font-size: 0.55rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.3); }
-  footer p a { color: var(--pink); text-decoration: none; }
-  .footer-logo { font-family: var(--display); font-size: 1.1rem; letter-spacing: 0.2em; color: var(--pink); }
-
-  /* ── SHARED BUTTONS ── */
-  .btn-primary {
-    background: var(--pink); color: var(--black);
-    font-family: var(--mono); font-size: 0.65rem;
-    letter-spacing: 0.2em; text-transform: uppercase; font-weight: 500;
-    padding: 0.9rem 2.5rem; border: none; text-decoration: none;
-    cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
-    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
-    display: inline-block;
-  }
-  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,0,102,0.5); }
-  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-  .btn-ghost {
-    background: transparent; color: var(--white);
-    font-family: var(--mono); font-size: 0.65rem;
-    letter-spacing: 0.2em; text-transform: uppercase;
-    padding: 0.9rem 2.5rem; border: 1px solid rgba(245,240,240,0.3);
-    text-decoration: none; cursor: pointer; transition: border-color 0.2s, color 0.2s;
-    display: inline-block;
-  }
-  .btn-ghost:hover { border-color: var(--pink); color: var(--pink); }
-  .logout-btn { background: transparent; border: 1px solid rgba(255,255,255,0.12); color: var(--muted); font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.18em; text-transform: uppercase; padding: 0.5rem 1rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
-  .logout-btn:hover { border-color: var(--pink); color: var(--pink); }
-  .divider-line { width: 40px; height: 1px; background: var(--pink); margin: 1.5rem 0; }
-
-  /* ── HISTORY CHART ── */
-  .history-toggle {
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    margin-top: 1rem; font-size: 0.5rem; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--muted); cursor: pointer;
-    background: none; border: none; padding: 0;
-    transition: color 0.2s;
-  }
-  .history-toggle:hover { color: var(--pink); }
-  .history-toggle .arrow { transition: transform 0.2s; display: inline-block; }
-  .history-toggle.open .arrow { transform: rotate(180deg); }
-
-  .history-panel {
-    display: block; margin-top: 1rem;
-    background: rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,0,102,0.12);
-    padding: 1rem;
-  }
-
-  .history-title {
-    font-size: 0.45rem; letter-spacing: 0.25em; text-transform: uppercase;
-    color: var(--pink); margin-bottom: 0.8rem;
-  }
-
-  .chart-bars {
-    display: flex; align-items: flex-end; gap: 4px;
-    height: 80px; margin-bottom: 0.6rem;
-  }
-  .chart-bar-wrap {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; position: relative;
-    height: 100%; justify-content: flex-end;
-  }
-  .chart-bar {
-    width: 100%; background: rgba(255,0,102,0.35);
-    transition: background 0.2s;
-    min-height: 3px; cursor: pointer; position: relative;
-    flex-shrink: 0;
-  }
-  .chart-bar.latest { background: var(--pink); box-shadow: 0 0 8px rgba(255,0,102,0.5); }
-  .chart-bar:hover { background: var(--pink); }
-  .chart-bar-val {
-    font-size: 0.37rem; letter-spacing: 0.03em;
-    color: var(--muted); text-align: center;
-    white-space: nowrap; margin-top: 3px;
-  }
-  .chart-bar-date {
-    font-size: 0.34rem; letter-spacing: 0.03em;
-    color: rgba(245,240,240,0.2); text-align: center;
-    white-space: nowrap;
-  }
-  .chart-tooltip {
-    position: absolute; bottom: calc(100% + 4px); left: 50%;
-    transform: translateX(-50%);
-    background: var(--charcoal); border: 1px solid var(--border);
-    padding: 0.3rem 0.5rem; white-space: nowrap;
-    font-size: 0.45rem; letter-spacing: 0.1em;
-    color: var(--white); pointer-events: none;
-    opacity: 0; transition: opacity 0.15s; z-index: 10;
-  }
-  .chart-bar-wrap:hover .chart-tooltip { opacity: 1; }
-  .chart-gain { color: #00ff88; }
-  .chart-drop { color: rgba(245,240,240,0.3); }
-
-  /* ── ANIMATIONS ── */
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes badge-pulse {
-    0%, 100% { filter: drop-shadow(0 0 8px rgba(255,0,102,0.4)); }
-    50%       { filter: drop-shadow(0 0 20px rgba(255,0,102,0.8)); }
-  }
-  .animate-in { opacity: 0; transform: translateY(20px); transition: opacity 0.7s ease, transform 0.7s ease; }
-  .animate-in.visible { opacity: 1; transform: translateY(0); }
-
-  /* ── RESPONSIVE ── */
-  @media (max-width: 900px) {
-    nav { padding: 1rem 1.5rem; }
-    section { padding: 4rem 1.5rem; }
-    .welcome-inner { grid-template-columns: 1fr; gap: 3rem; }
-    .songs-grid { grid-template-columns: 1fr; }
-    .howto-grid { grid-template-columns: 1fr; gap: 3rem; }
-    .follow-columns { grid-template-columns: 1fr; }
-    .tiers-grid { grid-template-columns: repeat(3,1fr); }
-    .track-card { grid-template-columns: 1fr auto; }
-    .track-num { display: none; }
-  }
-  @media (max-width: 600px) {
-    .nav-links li:not(:last-child) { display: none; }
-    .summary-strip { grid-template-columns: 1fr; }
-    footer { flex-direction: column; text-align: center; }
-  }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--black);color:var(--white);font-family:var(--mono);overflow-x:hidden;cursor:crosshair}
+  body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:.35}
+  nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;justify-content:space-between;align-items:center;padding:1.2rem 3rem;background:rgba(8,8,8,.88);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,0,102,.2)}
+  .nav-logo{font-family:var(--display);font-size:1.4rem;letter-spacing:.2em;color:var(--pink);text-decoration:none;cursor:pointer}
+  .nav-links{display:flex;gap:2rem;list-style:none}
+  .nav-links a{font-family:var(--mono);font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--white);text-decoration:none;opacity:.7;transition:opacity .2s,color .2s;cursor:pointer}
+  .nav-links a:hover,.nav-links a.active{opacity:1;color:var(--pink)}
+  .page{display:none}.page.active{display:block}
+  .hero{min-height:100vh;display:grid;grid-template-rows:1fr auto;padding-top:80px;position:relative;overflow:hidden}
+  .hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 80% 20%,rgba(255,0,102,.18) 0%,transparent 60%),radial-gradient(ellipse 40% 60% at 10% 80%,rgba(255,0,102,.08) 0%,transparent 55%),linear-gradient(180deg,#080808 0%,#0d0008 100%)}
+  .hero-grid-lines{position:absolute;inset:0;background-image:linear-gradient(rgba(255,0,102,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,0,102,.04) 1px,transparent 1px);background-size:60px 60px}
+  .hero-content{position:relative;z-index:2;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:4rem 2rem 2rem}
+  .hero-eyebrow{font-size:.6rem;letter-spacing:.35em;text-transform:uppercase;color:var(--pink);margin-bottom:1.5rem;animation:fadeUp .8s ease both}
+  .hero-title{font-family:var(--display);font-size:clamp(5rem,16vw,14rem);line-height:.88;letter-spacing:.04em;color:var(--white);animation:fadeUp .9s ease .1s both}
+  .hero-title span{display:block;color:var(--pink)}
+  .hero-title .outline{color:transparent;-webkit-text-stroke:1.5px var(--white)}
+  .hero-subtitle{font-family:var(--light-serif);font-style:italic;font-size:clamp(1rem,2.5vw,1.5rem);color:rgba(245,240,240,.55);margin-top:1.5rem;animation:fadeUp 1s ease .2s both}
+  .hero-cta{margin-top:3rem;display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;animation:fadeUp 1s ease .35s both}
+  .ticker-wrap{position:relative;z-index:2;background:var(--pink);padding:.6rem 0;overflow:hidden}
+  .ticker-track{display:flex;animation:ticker 22s linear infinite;white-space:nowrap}
+  .ticker-item{font-family:var(--display);font-size:.9rem;letter-spacing:.15em;color:var(--black);padding:0 2.5rem}
+  section{padding:6rem 3rem}
+  .section-label{font-size:.55rem;letter-spacing:.3em;text-transform:uppercase;color:var(--pink);margin-bottom:1rem}
+  .section-title{font-family:var(--display);font-size:clamp(2.5rem,6vw,5rem);letter-spacing:.05em;line-height:.95;color:var(--white);margin-bottom:3rem}
+  .welcome-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:6rem;align-items:center}
+  .welcome-text p{font-family:var(--light-serif);font-size:1.1rem;line-height:1.9;color:rgba(245,240,240,.7);margin-bottom:1.2rem}
+  .welcome-text p strong{color:var(--pink);font-weight:600}
+  .stat-cards{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  .stat-card{background:var(--charcoal);border:1px solid rgba(255,0,102,.15);padding:1.5rem;position:relative;overflow:hidden;transition:border-color .3s}
+  .stat-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--pink);transform:scaleX(0);transform-origin:left;transition:transform .3s}
+  .stat-card:hover{border-color:rgba(255,0,102,.5)}.stat-card:hover::after{transform:scaleX(1)}
+  .stat-num{font-family:var(--display);font-size:2.8rem;color:var(--pink);line-height:1;margin-bottom:.3rem}
+  .stat-lbl{font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(245,240,240,.5)}
+  .songs-section{background:var(--off-black);border-top:1px solid rgba(255,0,102,.15);border-bottom:1px solid rgba(255,0,102,.15)}
+  .songs-inner{max-width:1200px;margin:0 auto}
+  .songs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5px;background:rgba(255,0,102,.15)}
+  .song-card{background:var(--off-black);padding:3rem 2.5rem;position:relative;overflow:hidden;transition:background .3s;cursor:pointer}
+  .song-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,0,102,.12) 0%,transparent 60%);opacity:0;transition:opacity .4s}
+  .song-card:hover{background:#161616}.song-card:hover::before{opacity:1}
+  .song-number{font-family:var(--display);font-size:5rem;line-height:1;color:rgba(255,0,102,.1);position:absolute;top:1.5rem;right:2rem;transition:color .3s}
+  .song-card:hover .song-number{color:rgba(255,0,102,.25)}
+  .song-tag{font-size:.5rem;letter-spacing:.25em;text-transform:uppercase;color:var(--pink);margin-bottom:1rem;display:inline-block;background:rgba(255,0,102,.1);padding:.2rem .6rem}
+  .song-title{font-family:var(--display);font-size:2.2rem;letter-spacing:.06em;line-height:1.1;margin-bottom:1.2rem;color:var(--white);position:relative;z-index:1}
+  .song-title.long{font-size:1.4rem}
+  .song-meta{font-size:.55rem;letter-spacing:.15em;color:rgba(245,240,240,.4);text-transform:uppercase;margin-bottom:2rem;position:relative;z-index:1}
+  .stream-target{margin-top:1.5rem;position:relative;z-index:1}
+  .target-label{font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(245,240,240,.45);margin-bottom:.5rem}
+  .progress-bar{height:2px;background:rgba(255,255,255,.08);position:relative;margin-bottom:.5rem}
+  .progress-fill{height:100%;background:var(--pink);position:relative;transition:width 1.5s ease}
+  .progress-fill::after{content:'';position:absolute;right:0;top:-3px;width:7px;height:7px;background:var(--pink);border-radius:50%;box-shadow:0 0 8px var(--pink)}
+  .progress-nums{display:flex;justify-content:space-between;font-size:.55rem;color:rgba(245,240,240,.4)}
+  .progress-nums strong{color:var(--pink)}
+  .stream-btn{display:inline-flex;align-items:center;gap:.5rem;margin-top:1.5rem;font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--pink);text-decoration:none;border:1px solid rgba(255,0,102,.3);padding:.6rem 1.2rem;transition:background .2s,color .2s}
+  .stream-btn:hover{background:var(--pink);color:var(--black)}
+  .stream-btn svg{width:12px;height:12px;fill:currentColor}
+  .howto-inner{max-width:1200px;margin:0 auto}
+  .howto-grid{display:grid;grid-template-columns:1fr 1.2fr;gap:5rem;align-items:start}
+  .howto-intro p{font-family:var(--light-serif);font-size:1.05rem;line-height:1.9;color:rgba(245,240,240,.65);margin-bottom:1rem}
+  .challenge-step{display:grid;grid-template-columns:60px 1fr;gap:1.5rem;padding:2rem 0;border-bottom:1px solid rgba(255,255,255,.06);align-items:start}
+  .step-num{font-family:var(--display);font-size:2.5rem;color:var(--pink);line-height:1}
+  .step-content h4{font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:var(--white);margin-bottom:.5rem}
+  .step-content p{font-family:var(--light-serif);font-size:.95rem;line-height:1.7;color:rgba(245,240,240,.55)}
+  .follow-section{background:linear-gradient(135deg,#0d0008 0%,#080808 100%);border-top:1px solid rgba(255,0,102,.15)}
+  .follow-inner{max-width:1200px;margin:0 auto}
+  .follow-columns{display:grid;grid-template-columns:repeat(3,1fr);gap:3rem}
+  .follow-col h3{font-size:.55rem;letter-spacing:.3em;text-transform:uppercase;color:rgba(245,240,240,.4);margin-bottom:1.5rem;padding-bottom:.8rem;border-bottom:1px solid rgba(255,0,102,.2)}
+  .follow-col h3 span{color:var(--pink)}
+  .social-links{display:flex;flex-direction:column;gap:.8rem}
+  .social-link{display:flex;align-items:center;gap:1rem;text-decoration:none;padding:.75rem 1rem;border:1px solid rgba(255,255,255,.06);transition:border-color .2s,background .2s}
+  .social-link:hover{border-color:rgba(255,0,102,.4);background:rgba(255,0,102,.05)}
+  .social-icon{width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:rgba(255,0,102,.1);flex-shrink:0}
+  .social-icon svg{width:14px;height:14px;fill:var(--pink)}
+  .social-name{font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;color:var(--white)}
+  .badge-page{min-height:100vh;background:radial-gradient(ellipse 70% 40% at 50% 0%,rgba(255,0,102,.1) 0%,transparent 60%),var(--black);padding-top:80px;padding-bottom:4rem}
+  .badge-header{padding:3rem 2rem 2rem;text-align:center;border-bottom:1px solid var(--border)}
+  .badge-header-eyebrow{font-size:.55rem;letter-spacing:.35em;text-transform:uppercase;color:var(--pink);margin-bottom:.8rem}
+  .badge-header-title{font-family:var(--display);font-size:clamp(3rem,10vw,6rem);letter-spacing:.06em;line-height:.9}
+  .badge-header-title span{color:var(--pink)}
+  .badge-header-sub{font-family:var(--light-serif);font-style:italic;font-size:1rem;color:var(--muted);margin-top:.8rem}
+  .login-wrap{max-width:520px;margin:3rem auto;padding:0 1.5rem}
+  .login-card{background:var(--card);border:1px solid var(--border);padding:2.5rem;position:relative;overflow:hidden}
+  .login-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--pink),transparent)}
+  .login-label{font-size:.55rem;letter-spacing:.3em;text-transform:uppercase;color:var(--pink);margin-bottom:1.5rem;display:flex;align-items:center;gap:.5rem}
+  .lastfm-badge{display:inline-flex;align-items:center;gap:.4rem;background:rgba(188,0,0,.15);border:1px solid rgba(188,0,0,.3);padding:.2rem .6rem;font-size:.55rem;letter-spacing:.1em;color:#ff4444}
+  .login-desc{font-family:var(--light-serif);font-size:.95rem;line-height:1.7;color:var(--muted);margin-bottom:1.5rem}
+  .input-row{display:flex;gap:.75rem;flex-wrap:wrap}
+  .username-input{flex:1;min-width:0;background:#0d0d0d;border:1px solid rgba(255,255,255,.1);color:var(--white);font-family:var(--mono);font-size:.8rem;letter-spacing:.05em;padding:.75rem 1rem;outline:none;transition:border-color .2s}
+  .username-input:focus{border-color:var(--pink)}
+  .username-input::placeholder{color:rgba(245,240,240,.25)}
+  .error-msg{margin-top:1rem;font-size:.6rem;letter-spacing:.1em;color:#ff4444;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.2);padding:.6rem 1rem}
+  .lastfm-tip{margin-top:1.2rem;font-size:.5rem;letter-spacing:.12em;color:rgba(245,240,240,.25);line-height:1.8}
+  .lastfm-tip a{color:var(--pink);text-decoration:none}
+  .loading-wrap{text-align:center;padding:4rem 2rem}
+  .spinner{width:40px;height:40px;border:2px solid var(--border);border-top-color:var(--pink);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1.5rem}
+  .loading-text{font-size:.6rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted)}
+  .user-bar{max-width:900px;margin:2rem auto 0;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+  .user-info{display:flex;align-items:center;gap:1rem}
+  .user-avatar{width:48px;height:48px;border:1px solid var(--border);object-fit:cover}
+  .user-avatar-placeholder{width:48px;height:48px;background:var(--pink-muted);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:1.2rem;color:var(--pink)}
+  .user-name{font-family:var(--display);font-size:1.4rem;letter-spacing:.08em;line-height:1;margin-bottom:.2rem}
+  .user-meta{font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .user-meta span{color:var(--pink)}
+  .summary-strip{max-width:900px;margin:1.5rem auto 0;padding:0 1.5rem;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border)}
+  .summary-cell{background:var(--card);padding:1.2rem 1.5rem;text-align:center}
+  .summary-num{font-family:var(--display);font-size:2rem;color:var(--pink);line-height:1}
+  .summary-lbl{font-size:.45rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);margin-top:.25rem}
+  .tracks-section{max-width:900px;margin:2.5rem auto 0;padding:0 1.5rem}
+  .track-cards{display:flex;flex-direction:column;gap:1.5px;background:var(--border)}
+  .track-card{background:var(--card);padding:2rem;display:grid;grid-template-columns:52px 1fr auto;gap:1.5rem;align-items:center;transition:background .2s}
+  .track-card:hover{background:var(--card2)}
+  .track-num{font-family:var(--display);font-size:3.5rem;line-height:1;color:rgba(255,0,102,.1);text-align:center;transition:color .3s}
+  .track-card:hover .track-num{color:rgba(255,0,102,.3)}
+  .track-tag{font-size:.45rem;letter-spacing:.25em;text-transform:uppercase;color:var(--pink);background:var(--pink-muted);padding:.15rem .5rem;display:inline-block;margin-bottom:.5rem}
+  .track-title{font-family:var(--display);font-size:1.8rem;letter-spacing:.06em;line-height:1;color:var(--white);margin-bottom:.4rem}
+  .track-meta-small{font-size:.5rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem}
+  .plays-row{display:flex;align-items:baseline;gap:.5rem;margin-bottom:.4rem}
+  .plays-count{font-family:var(--display);font-size:2.2rem;color:var(--pink);line-height:1}
+  .plays-label{font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .tier-bar-bg{height:2px;background:rgba(255,255,255,.06);margin-bottom:.4rem}
+  .tier-bar-fill{height:100%;background:var(--pink);position:relative;transition:width 1.2s ease}
+  .tier-bar-fill::after{content:'';position:absolute;right:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--pink);box-shadow:0 0 8px var(--pink)}
+  .tier-label-row{display:flex;justify-content:space-between;font-size:.45rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  .tier-label-row span{color:rgba(245,240,240,.7)}
+  .stream-now-btn{display:inline-flex;align-items:center;gap:.4rem;margin-top:.8rem;font-size:.5rem;letter-spacing:.18em;text-transform:uppercase;color:var(--pink);text-decoration:none;border:1px solid rgba(255,0,102,.25);padding:.4rem .8rem;transition:background .2s,color .2s}
+  .stream-now-btn:hover{background:var(--pink);color:var(--black)}
+  .badge-col{display:flex;flex-direction:column;align-items:center;gap:.4rem;min-width:90px;text-align:center;flex-shrink:0}
+  .badge-icon{font-size:2.4rem;line-height:1;animation:badge-pulse 2.5s ease-in-out infinite}
+  .badge-name{font-family:var(--display);font-size:.9rem;letter-spacing:.15em;color:var(--pink)}
+  .badge-desc{font-family:var(--light-serif);font-style:italic;font-size:.65rem;color:var(--muted);line-height:1.3}
+  .badge-locked-icon{font-size:1.8rem;opacity:.15}
+  .badge-locked-text{font-size:.45rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(245,240,240,.2)}
+  .tiers-section{max-width:900px;margin:2.5rem auto 0;padding:0 1.5rem 1rem}
+  .tiers-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border)}
+  .tier-cell{background:var(--card);padding:1.2rem .8rem;text-align:center;transition:background .2s}
+  .tier-cell.earned{background:rgba(255,0,102,.07)}.tier-cell:hover{background:var(--card2)}
+  .tier-cell-icon{font-size:1.5rem;margin-bottom:.3rem}
+  .tier-cell-name{font-family:var(--display);font-size:.8rem;letter-spacing:.12em;margin-bottom:.15rem}
+  .tier-cell-req{font-size:.45rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem}
+  .tier-earned-tag{font-size:.5rem;color:var(--pink);letter-spacing:.1em}
+  .tier-locked-tag{font-size:.5rem;color:rgba(245,240,240,.15)}
+  .badge-footer-note{max-width:900px;margin:2rem auto 0;padding:0 1.5rem;font-size:.5rem;letter-spacing:.12em;color:rgba(245,240,240,.2);text-align:center;line-height:1.8}
+  .badge-footer-note a{color:var(--pink);text-decoration:none}
+  footer{padding:2rem 3rem;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+  footer p{font-size:.55rem;letter-spacing:.15em;color:rgba(245,240,240,.3)}
+  footer p a{color:var(--pink);text-decoration:none}
+  .footer-logo{font-family:var(--display);font-size:1.1rem;letter-spacing:.2em;color:var(--pink)}
+  .btn-primary{background:var(--pink);color:var(--black);font-family:var(--mono);font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;font-weight:500;padding:.9rem 2.5rem;border:none;text-decoration:none;cursor:pointer;transition:transform .2s,box-shadow .2s;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));display:inline-block}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(255,0,102,.5)}
+  .btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+  .btn-ghost{background:transparent;color:var(--white);font-family:var(--mono);font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;padding:.9rem 2.5rem;border:1px solid rgba(245,240,240,.3);text-decoration:none;cursor:pointer;transition:border-color .2s,color .2s;display:inline-block}
+  .btn-ghost:hover{border-color:var(--pink);color:var(--pink)}
+  .logout-btn{background:transparent;border:1px solid rgba(255,255,255,.12);color:var(--muted);font-family:var(--mono);font-size:.5rem;letter-spacing:.18em;text-transform:uppercase;padding:.5rem 1rem;cursor:pointer;transition:border-color .2s,color .2s}
+  .logout-btn:hover{border-color:var(--pink);color:var(--pink)}
+  .divider-line{width:40px;height:1px;background:var(--pink);margin:1.5rem 0}
+  .history-toggle{display:inline-flex;align-items:center;gap:.4rem;margin-top:1rem;font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);cursor:pointer;background:none;border:none;padding:0;transition:color .2s}
+  .history-toggle:hover{color:var(--pink)}
+  .history-toggle .arrow{transition:transform .2s;display:inline-block}
+  .history-toggle.open .arrow{transform:rotate(180deg)}
+  /* ── HISTORY PANEL: starts hidden ── */
+  .history-panel{display:none;margin-top:1rem;background:rgba(0,0,0,.3);border:1px solid rgba(255,0,102,.12);padding:1rem}
+  .history-title{font-size:.45rem;letter-spacing:.25em;text-transform:uppercase;color:var(--pink);margin-bottom:.8rem}
+  .chart-bars{display:flex;align-items:flex-end;gap:4px;height:80px;margin-bottom:.6rem}
+  .chart-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;height:100%;justify-content:flex-end}
+  .chart-bar{width:100%;background:rgba(255,0,102,.35);transition:background .2s;min-height:3px;cursor:pointer;position:relative;flex-shrink:0}
+  .chart-bar.latest{background:var(--pink);box-shadow:0 0 8px rgba(255,0,102,.5)}
+  .chart-bar:hover{background:var(--pink)}
+  .chart-tooltip{position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:var(--charcoal);border:1px solid var(--border);padding:.3rem .5rem;white-space:nowrap;font-size:.45rem;letter-spacing:.1em;color:var(--white);pointer-events:none;opacity:0;transition:opacity .15s;z-index:10}
+  .chart-bar-wrap:hover .chart-tooltip{opacity:1}
+  .animate-in{opacity:0;transform:translateY(20px);transition:opacity .7s ease,transform .7s ease}
+  .animate-in.visible{opacity:1;transform:translateY(0)}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes badge-pulse{0%,100%{filter:drop-shadow(0 0 8px rgba(255,0,102,.4))}50%{filter:drop-shadow(0 0 20px rgba(255,0,102,.8))}}
+  @media(max-width:900px){nav{padding:1rem 1.5rem}section{padding:4rem 1.5rem}.welcome-inner{grid-template-columns:1fr;gap:3rem}.songs-grid{grid-template-columns:1fr}.howto-grid{grid-template-columns:1fr;gap:3rem}.follow-columns{grid-template-columns:1fr}.tiers-grid{grid-template-columns:repeat(3,1fr)}.track-card{grid-template-columns:1fr auto}.track-num{display:none}}
+  @media(max-width:600px){.nav-links li:not(:last-child){display:none}.summary-strip{grid-template-columns:1fr}footer{flex-direction:column;text-align:center}}
 </style>
 </head>
 <body>
-
-<!-- ── NAV ── -->
 <nav>
   <span class="nav-logo" onclick="showPage('home')">BLINKS UNITED</span>
   <ul class="nav-links">
-    <li><a href="#" onclick="showPage('home'); return false;" id="nav-home" class="active">Home</a></li>
-    <li><a href="#songs" onclick="showPage('home'); setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100); return false;">Songs</a></li>
-    <li><a href="#" onclick="showPage('badges'); return false;" id="nav-badges">Badge Challenge</a></li>
-    <li><a href="#follow" onclick="showPage('home'); setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100); return false;">Follow</a></li>
+    <li><a href="#" onclick="showPage('home');return false;" id="nav-home" class="active">Home</a></li>
+    <li><a href="#songs" onclick="showPage('home');setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100);return false;">Songs</a></li>
+    <li><a href="#" onclick="showPage('badges');return false;" id="nav-badges">Badge Challenge</a></li>
+    <li><a href="#follow" onclick="showPage('home');setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100);return false;">Follow</a></li>
   </ul>
 </nav>
 
-<!-- ══════════════════════════════════════
-     HOME PAGE
-════════════════════════════════════════ -->
 <div id="page-home" class="page active">
-
-  <!-- HERO -->
   <section class="hero" id="home">
     <div class="hero-bg"></div>
     <div class="hero-grid-lines"></div>
     <div class="hero-content">
       <p class="hero-eyebrow">★ Blinks United — Global Streaming Collective ★</p>
-      <h1 class="hero-title">
-        <span>BLACK</span>
-        <span class="outline">PINK</span>
-      </h1>
+      <h1 class="hero-title"><span>BLACK</span><span class="outline">PINK</span></h1>
       <p class="hero-subtitle">United by music. Driven by love. Streaming together.</p>
       <div class="hero-cta">
         <a href="#songs" class="btn-primary" onclick="setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100)">Start Streaming</a>
-        <a href="#" class="btn-ghost" onclick="showPage('badges'); return false;">Badge Challenge</a>
+        <a href="#" class="btn-ghost" onclick="showPage('badges');return false;">Badge Challenge</a>
       </div>
     </div>
-    <div class="ticker-wrap">
-      <div class="ticker-track">
-        <span class="ticker-item">JUMP ✦</span><span class="ticker-item">SHUT DOWN ✦</span><span class="ticker-item">DDU-DU DDU-DU ✦</span><span class="ticker-item">BLINKS UNITED ✦</span><span class="ticker-item">STREAM NOW ✦</span><span class="ticker-item">BLACKPINK IN YOUR AREA ✦</span>
-        <span class="ticker-item">JUMP ✦</span><span class="ticker-item">SHUT DOWN ✦</span><span class="ticker-item">DDU-DU DDU-DU ✦</span><span class="ticker-item">BLINKS UNITED ✦</span><span class="ticker-item">STREAM NOW ✦</span><span class="ticker-item">BLACKPINK IN YOUR AREA ✦</span>
-      </div>
-    </div>
+    <div class="ticker-wrap"><div class="ticker-track">
+      <span class="ticker-item">JUMP ✦</span><span class="ticker-item">SHUT DOWN ✦</span><span class="ticker-item">DDU-DU DDU-DU ✦</span><span class="ticker-item">BLINKS UNITED ✦</span><span class="ticker-item">STREAM NOW ✦</span><span class="ticker-item">BLACKPINK IN YOUR AREA ✦</span>
+      <span class="ticker-item">JUMP ✦</span><span class="ticker-item">SHUT DOWN ✦</span><span class="ticker-item">DDU-DU DDU-DU ✦</span><span class="ticker-item">BLINKS UNITED ✦</span><span class="ticker-item">STREAM NOW ✦</span><span class="ticker-item">BLACKPINK IN YOUR AREA ✦</span>
+    </div></div>
   </section>
 
-  <!-- WELCOME -->
   <section>
     <div class="welcome-inner">
       <div class="welcome-text animate-in">
@@ -539,8 +234,7 @@
         <p>This is a space created to <strong>unite Blinks worldwide</strong> with one shared mission: supporting BLACKPINK through organized, goal-driven streaming campaigns.</p>
         <p>Here you'll find streaming targets designed to improve chart positions, boost visibility, and show our <strong>unwavering support</strong> for BLACKPINK's music and legacy.</p>
         <p>Every single stream matters. Together, we move mountains — and charts. Thank you for being part of this family. Let's stream, support, and shine. 🖤💗</p>
-        <br>
-        <a href="#" class="btn-primary" onclick="showPage('badges'); return false;">Check My Badges →</a>
+        <br><a href="#" class="btn-primary" onclick="showPage('badges');return false;">Check My Badges →</a>
       </div>
       <div class="animate-in">
         <div class="stat-cards">
@@ -553,14 +247,12 @@
     </div>
   </section>
 
-  <!-- SONGS -->
   <section class="songs-section" id="songs">
     <div class="songs-inner">
       <p class="section-label">// Active Streaming Campaigns</p>
       <h2 class="section-title animate-in">Our Targets</h2>
       <div class="songs-grid" id="songs-grid">
 
-        <!-- JUMP -->
         <div class="song-card animate-in" id="card-jump">
           <div class="song-number">01</div>
           <span class="song-tag">Priority I</span>
@@ -569,15 +261,10 @@
           <div class="stream-target">
             <p class="target-label">Spotify Streams — Live Count</p>
             <div class="progress-bar"><div class="progress-fill" id="fill-jump" style="width:0%"></div></div>
-            <div class="progress-nums">
-              <span><strong id="count-jump">Loading…</strong></span>
-              <span id="pct-jump"></span>
-            </div>
-            <div id="increase-jump" style="display:none;margin-top:0.4rem;font-size:0.5rem;letter-spacing:0.15em;color:#00ff88;"></div>
+            <div class="progress-nums"><span><strong id="count-jump">Loading…</strong></span><span id="pct-jump"></span></div>
+            <div id="increase-jump" style="display:none;margin-top:.4rem;font-size:.5rem;letter-spacing:.15em;color:#00ff88;"></div>
           </div>
-          <button class="history-toggle" onclick="toggleHistory('jump', this)">
-            <span>Stream History</span> <span class="arrow">▾</span>
-          </button>
+          <button class="history-toggle" onclick="toggleHistory('jump',this)"><span>Stream History</span> <span class="arrow">▾</span></button>
           <div class="history-panel" id="history-jump"></div>
           <a href="https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY" target="_blank" class="stream-btn">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
@@ -585,7 +272,6 @@
           </a>
         </div>
 
-        <!-- SHUT DOWN -->
         <div class="song-card animate-in" id="card-shutdown">
           <div class="song-number">02</div>
           <span class="song-tag">Priority II</span>
@@ -594,15 +280,10 @@
           <div class="stream-target">
             <p class="target-label">Spotify Streams — Live Count</p>
             <div class="progress-bar"><div class="progress-fill" id="fill-shutdown" style="width:0%"></div></div>
-            <div class="progress-nums">
-              <span><strong id="count-shutdown">Loading…</strong></span>
-              <span id="pct-shutdown"></span>
-            </div>
-            <div id="increase-shutdown" style="display:none;margin-top:0.4rem;font-size:0.5rem;letter-spacing:0.15em;color:#00ff88;"></div>
+            <div class="progress-nums"><span><strong id="count-shutdown">Loading…</strong></span><span id="pct-shutdown"></span></div>
+            <div id="increase-shutdown" style="display:none;margin-top:.4rem;font-size:.5rem;letter-spacing:.15em;color:#00ff88;"></div>
           </div>
-          <button class="history-toggle" onclick="toggleHistory('shutdown', this)">
-            <span>Stream History</span> <span class="arrow">▾</span>
-          </button>
+          <button class="history-toggle" onclick="toggleHistory('shutdown',this)"><span>Stream History</span> <span class="arrow">▾</span></button>
           <div class="history-panel" id="history-shutdown"></div>
           <a href="https://open.spotify.com/track/6tCd8bPvYnceDG7W9M1RMk" target="_blank" class="stream-btn">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
@@ -610,7 +291,6 @@
           </a>
         </div>
 
-        <!-- DDU-DU DDU-DU -->
         <div class="song-card animate-in" id="card-ddududu">
           <div class="song-number">03</div>
           <span class="song-tag">Priority III</span>
@@ -619,15 +299,10 @@
           <div class="stream-target">
             <p class="target-label">Spotify Streams — Live Count</p>
             <div class="progress-bar"><div class="progress-fill" id="fill-ddududu" style="width:0%"></div></div>
-            <div class="progress-nums">
-              <span><strong id="count-ddududu">Loading…</strong></span>
-              <span id="pct-ddududu"></span>
-            </div>
-            <div id="increase-ddududu" style="display:none;margin-top:0.4rem;font-size:0.5rem;letter-spacing:0.15em;color:#00ff88;"></div>
+            <div class="progress-nums"><span><strong id="count-ddududu">Loading…</strong></span><span id="pct-ddududu"></span></div>
+            <div id="increase-ddududu" style="display:none;margin-top:.4rem;font-size:.5rem;letter-spacing:.15em;color:#00ff88;"></div>
           </div>
-          <button class="history-toggle" onclick="toggleHistory('ddududu', this)">
-            <span>Stream History</span> <span class="arrow">▾</span>
-          </button>
+          <button class="history-toggle" onclick="toggleHistory('ddududu',this)"><span>Stream History</span> <span class="arrow">▾</span></button>
           <div class="history-panel" id="history-ddududu"></div>
           <a href="https://open.spotify.com/track/69BIczdH6QMnFx7dsSssN8" target="_blank" class="stream-btn">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
@@ -639,7 +314,6 @@
     </div>
   </section>
 
-  <!-- HOW TO STREAM -->
   <section>
     <div class="howto-inner">
       <p class="section-label">// How To Stream</p>
@@ -648,57 +322,49 @@
         <div class="howto-intro animate-in">
           <p>Streaming smart is just as important as streaming often. Follow these steps to maximize the impact of every play.</p>
           <p>Organized, consistent streaming moves the needle — not just for charts, but for algorithm visibility and long-term legacy.</p>
-          <br>
-          <a href="https://open.spotify.com/search/BLACKPINK" target="_blank" class="btn-primary">Open Spotify →</a>
+          <br><a href="https://open.spotify.com/search/BLACKPINK" target="_blank" class="btn-primary">Open Spotify →</a>
         </div>
         <div class="animate-in">
           <div class="challenge-step"><div class="step-num">01</div><div class="step-content"><h4>Use a Premium Account</h4><p>Premium streams count at full weight. Free tier still counts, but premium is preferred for algorithm signals.</p></div></div>
           <div class="challenge-step"><div class="step-num">02</div><div class="step-content"><h4>Stream on a Playlist</h4><p>Create a playlist with the target songs. Set volume above 30%, keep headphones connected, let it loop. No muting.</p></div></div>
           <div class="challenge-step"><div class="step-num">03</div><div class="step-content"><h4>Watch YouTube MVs Fully</h4><p>Views must be at least 50% of the video to fully count. Watch all the way through when you can.</p></div></div>
           <div class="challenge-step"><div class="step-num">04</div><div class="step-content"><h4>Add to Your Library</h4><p>Save songs to Liked Songs and personal playlists. This signals strong engagement to the algorithm.</p></div></div>
-          <div class="challenge-step"><div class="step-num">05</div><div class="step-content"><h4>Share & Rally Blinks</h4><p>Tag fellow Blinks, post stream screenshots, keep the energy up. Community momentum is our biggest advantage.</p></div></div>
+          <div class="challenge-step"><div class="step-num">05</div><div class="step-content"><h4>Share &amp; Rally Blinks</h4><p>Tag fellow Blinks, post stream screenshots, keep the energy up. Community momentum is our biggest advantage.</p></div></div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- FOLLOW -->
   <section class="follow-section" id="follow">
     <div class="follow-inner">
       <p class="section-label">// Connect</p>
-      <h2 class="section-title animate-in">Follow &<br>Support</h2>
+      <h2 class="section-title animate-in">Follow &amp;<br>Support</h2>
       <div class="follow-columns">
-        <div class="animate-in">
-          <div class="follow-col">
-            <h3><span>BLACKPINK</span> Official</h3>
-            <div class="social-links">
-              <a href="https://open.spotify.com/artist/41MozSoPIsD1dJM0CLPjZF" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg></span><span class="social-name">Spotify</span></a>
-              <a href="https://www.youtube.com/@BLACKPINK" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg></span><span class="social-name">YouTube</span></a>
-              <a href="https://www.instagram.com/blackpinkofficial/" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></span><span class="social-name">Instagram</span></a>
-              <a href="https://x.com/BLACKPINK" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.63zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span><span class="social-name">X / Twitter</span></a>
-            </div>
+        <div class="animate-in"><div class="follow-col">
+          <h3><span>BLACKPINK</span> Official</h3>
+          <div class="social-links">
+            <a href="https://open.spotify.com/artist/41MozSoPIsD1dJM0CLPjZF" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg></span><span class="social-name">Spotify</span></a>
+            <a href="https://www.youtube.com/@BLACKPINK" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg></span><span class="social-name">YouTube</span></a>
+            <a href="https://www.instagram.com/blackpinkofficial/" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></span><span class="social-name">Instagram</span></a>
+            <a href="https://x.com/BLACKPINK" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.63zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span><span class="social-name">X / Twitter</span></a>
           </div>
-        </div>
-        <div class="animate-in">
-          <div class="follow-col">
-            <h3><span>Blinks United</span></h3>
-            <div class="social-links">
-              <a href="https://x.com" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.63zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span><span class="social-name">X / Twitter</span></a>
-              <a href="https://www.instagram.com" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></span><span class="social-name">Instagram</span></a>
-            </div>
+        </div></div>
+        <div class="animate-in"><div class="follow-col">
+          <h3><span>Blinks United</span></h3>
+          <div class="social-links">
+            <a href="https://x.com" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.63zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span><span class="social-name">X / Twitter</span></a>
+            <a href="https://www.instagram.com" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></span><span class="social-name">Instagram</span></a>
           </div>
-        </div>
-        <div class="animate-in">
-          <div class="follow-col">
-            <h3><span>Stream</span> Now</h3>
-            <div class="social-links">
-              <a href="https://open.spotify.com/search/JUMP%20BLACKPINK" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg></span><span class="social-name">JUMP — Spotify</span></a>
-              <a href="https://open.spotify.com/search/Shut%20Down%20BLACKPINK" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg></span><span class="social-name">SHUT DOWN — Spotify</span></a>
-              <a href="https://open.spotify.com/search/DDU-DU%20DDU-DU%20BLACKPINK" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg></span><span class="social-name">DDU-DU DDU-DU — Spotify</span></a>
-              <a href="https://www.youtube.com/@BLACKPINK" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg></span><span class="social-name">BLACKPINK — YouTube</span></a>
-            </div>
+        </div></div>
+        <div class="animate-in"><div class="follow-col">
+          <h3><span>Stream</span> Now</h3>
+          <div class="social-links">
+            <a href="https://open.spotify.com/search/JUMP%20BLACKPINK" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg></span><span class="social-name">JUMP — Spotify</span></a>
+            <a href="https://open.spotify.com/search/Shut%20Down%20BLACKPINK" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg></span><span class="social-name">SHUT DOWN — Spotify</span></a>
+            <a href="https://open.spotify.com/search/DDU-DU%20DDU-DU%20BLACKPINK" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg></span><span class="social-name">DDU-DU DDU-DU — Spotify</span></a>
+            <a href="https://www.youtube.com/@BLACKPINK" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg></span><span class="social-name">BLACKPINK — YouTube</span></a>
           </div>
-        </div>
+        </div></div>
       </div>
     </div>
   </section>
@@ -708,31 +374,18 @@
     <div class="footer-logo">BLINKS UNITED</div>
     <p>Stream data by <a href="https://last.fm" target="_blank">Last.fm</a> · Goals are fan estimates</p>
   </footer>
+</div>
 
-</div><!-- end home page -->
-
-<!-- ══════════════════════════════════════
-     BADGE CHALLENGE PAGE
-════════════════════════════════════════ -->
 <div id="page-badges" class="page">
   <div class="badge-page">
-
     <div class="badge-header">
       <p class="badge-header-eyebrow">✦ Blinks United — Streaming Challenge ✦</p>
       <h1 class="badge-header-title">BADGE<br><span>CHALLENGE</span></h1>
       <p class="badge-header-sub">Connect Last.fm · Count your scrobbles · Earn your rank</p>
     </div>
-
-    <!-- LOGIN PANEL -->
     <div id="login-panel" class="login-wrap">
       <div class="login-card">
-        <p class="login-label">
-          Connect via
-          <span class="lastfm-badge">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="#ff4444"><path d="M10.584 17.21l-.88-2.392s-1.43 1.596-3.573 1.596c-1.897 0-3.247-1.648-3.247-4.28 0-3.38 1.703-4.582 3.38-4.582 2.41 0 3.18 1.567 3.84 3.573l.88 2.393c.88 2.666 2.557 4.802 7.358 4.802 3.44 0 5.774-1.054 5.774-3.84 0-2.25-1.285-3.41-3.674-3.97l-1.775-.397c-1.23-.273-1.59-.77-1.59-1.59 0-.924.726-1.46 1.918-1.46 1.305 0 2.007.488 2.116 1.647l2.71-.33C23.432 6.11 21.95 4.9 19.27 4.9c-2.448 0-4.8 1.024-4.8 3.84 0 1.83.88 2.99 3.09 3.544l1.867.45c1.408.334 2.06.857 2.06 1.84 0 1.097-.99 1.543-2.96 1.543-2.87 0-4.074-1.502-4.734-3.476l-.9-2.393C12.098 7.34 10.59 5.4 6.924 5.4 3.1 5.4.5 7.854.5 12.176c0 4.16 2.448 6.425 5.972 6.425 3.09 0 4.11-1.39 4.11-1.39z"/></svg>
-            LAST.FM
-          </span>
-        </p>
+        <p class="login-label">Connect via <span class="lastfm-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="#ff4444"><path d="M10.584 17.21l-.88-2.392s-1.43 1.596-3.573 1.596c-1.897 0-3.247-1.648-3.247-4.28 0-3.38 1.703-4.582 3.38-4.582 2.41 0 3.18 1.567 3.84 3.573l.88 2.393c.88 2.666 2.557 4.802 7.358 4.802 3.44 0 5.774-1.054 5.774-3.84 0-2.25-1.285-3.41-3.674-3.97l-1.775-.397c-1.23-.273-1.59-.77-1.59-1.59 0-.924.726-1.46 1.918-1.46 1.305 0 2.007.488 2.116 1.647l2.71-.33C23.432 6.11 21.95 4.9 19.27 4.9c-2.448 0-4.8 1.024-4.8 3.84 0 1.83.88 2.99 3.09 3.544l1.867.45c1.408.334 2.06.857 2.06 1.84 0 1.097-.99 1.543-2.96 1.543-2.87 0-4.074-1.502-4.734-3.476l-.9-2.393C12.098 7.34 10.59 5.4 6.924 5.4 3.1 5.4.5 7.854.5 12.176c0 4.16 2.448 6.425 5.972 6.425 3.09 0 4.11-1.39 4.11-1.39z"/></svg> LAST.FM</span></p>
         <p class="login-desc">Enter your Last.fm username and we'll count how many times you've scrobbled JUMP, Shut Down, and DDU-DU DDU-DU — then award the badges you've earned. No password needed.</p>
         <div class="input-row">
           <input class="username-input" id="lfm-input" type="text" placeholder="Your Last.fm username" />
@@ -742,64 +395,44 @@
         <p class="lastfm-tip">Don't have Last.fm? <a href="https://www.last.fm/join" target="_blank">Sign up free</a> and connect your Spotify at <a href="https://www.last.fm/settings/applications" target="_blank">last.fm/settings/applications</a> so your streams are tracked automatically.</p>
       </div>
     </div>
-
-    <!-- LOADING -->
     <div id="loading-panel" class="loading-wrap" style="display:none">
       <div class="spinner"></div>
       <p class="loading-text" id="loading-text">Fetching your scrobbles…</p>
     </div>
-
-    <!-- RESULTS -->
     <div id="results-panel" style="display:none">
       <div class="user-bar">
         <div class="user-info">
           <div id="user-avatar-wrap"></div>
-          <div>
-            <div class="user-name" id="result-username"></div>
-            <div class="user-meta"><span id="result-total-plays"></span> total scrobbles · Last.fm</div>
-          </div>
+          <div><div class="user-name" id="result-username"></div><div class="user-meta"><span id="result-total-plays"></span> total scrobbles · Last.fm</div></div>
         </div>
         <button class="logout-btn" onclick="resetBadges()">← Change User</button>
       </div>
-
       <div class="summary-strip">
         <div class="summary-cell"><div class="summary-num" id="sum-bp">0</div><div class="summary-lbl">BP Scrobbles (3 tracks)</div></div>
         <div class="summary-cell"><div class="summary-num" id="sum-badges">0</div><div class="summary-lbl">Badges Earned</div></div>
         <div class="summary-cell"><div class="summary-num" id="sum-left">3</div><div class="summary-lbl">Badges to Unlock</div></div>
       </div>
-
       <div class="tracks-section">
         <p class="section-label">// Your Stream Badges</p>
         <div class="track-cards" id="track-cards-container"></div>
       </div>
-
       <div class="tiers-section">
         <p class="section-label" style="margin-top:2rem">// Badge Tiers Reference</p>
         <div class="tiers-grid" id="tiers-grid"></div>
       </div>
-
-      <p class="badge-footer-note">
-        Scrobble data powered by <a href="https://www.last.fm" target="_blank">Last.fm</a>.
-        Connect Spotify at <a href="https://www.last.fm/settings/applications" target="_blank">last.fm/settings/applications</a> so every stream counts automatically.<br>
-        Fan-made by Blinks United · Not affiliated with YG Entertainment or Last.fm · Made with 💗
-      </p>
+      <p class="badge-footer-note">Scrobble data powered by <a href="https://www.last.fm" target="_blank">Last.fm</a>. Connect Spotify at <a href="https://www.last.fm/settings/applications" target="_blank">last.fm/settings/applications</a> so every stream counts automatically.<br>Fan-made by Blinks United · Not affiliated with YG Entertainment or Last.fm · Made with 💗</p>
     </div>
-
   </div>
-</div><!-- end badge page -->
+</div>
 
 <script>
-// ── API calls handled server-side by /api/streams ─────────────
-
 const SPOTIFY_TRACKS = [
   { id: 'jump',     trackId: '5H1sKFMzDeMtXwND3V6hRY', goal: 1_000_000_000 },
   { id: 'shutdown', trackId: '6tCd8bPvYnceDG7W9M1RMk', goal: 1_000_000_000 },
   { id: 'ddududu',  trackId: '69BIczdH6QMnFx7dsSssN8', goal: 1_000_000_000 },
 ];
 
-// ── STREAM HISTORY (verified daily stream counts) ────────────
-// Each entry = streams played on that specific day (not cumulative total).
-// Last updated: 23/05/2026.
+// ── STREAM HISTORY (daily stream counts) ── Last updated: 24/05/2026
 const STREAM_HISTORY = {
   jump: [
     { date: '04/05', streams: 880380 },
@@ -820,6 +453,12 @@ const STREAM_HISTORY = {
     { date: '19/05', streams: 819229 },
     { date: '20/05', streams: 843147 },
     { date: '21/05', streams: 846685 },
+    { date: '22/05', streams: 877329 },
+    { date: '23/05', streams: 869079 },
+    { date: '24/05', streams: 764904 },
+    { date: '25/05', streams: 806757 },
+    { date: '26/05', streams: 822104 },
+    { date: '27/05', streams: 812301 },
   ],
   shutdown: [
     { date: '08/05', streams: 265404 },
@@ -836,320 +475,164 @@ const STREAM_HISTORY = {
     { date: '19/05', streams: 244045 },
     { date: '20/05', streams: 244460 },
     { date: '21/05', streams: 234115 },
+    { date: '22/05', streams: 243710 },
+    { date: '23/05', streams: 249763 },
+    { date: '24/05', streams: 234026 },
+    { date: '25/05', streams: 235447 },
+    { date: '26/05', streams: 239857 },
+    { date: '27/05', streams: 238281 },
   ],
   ddududu: [
     { date: '16/05', streams: 485887 },
+    { date: '22/05', streams: 219465 },
+    { date: '27/05', streams: 204500 },
   ],
 };
 
-function formatFull(n) {
-  return Number(n).toLocaleString('en-US');
+function formatFull(n){return Number(n).toLocaleString('en-US')}
+function formatShort(n){if(n>=1_000_000)return(n/1_000_000).toFixed(1)+'M';if(n>=1_000)return(n/1_000).toFixed(0)+'K';return n.toLocaleString()}
+function formatGoal(n){if(n>=1_000_000_000)return(n/1_000_000_000)+'B';if(n>=1_000_000)return(n/1_000_000)+'M';return n.toLocaleString()}
+
+function getSeededIncrease(id){
+  const hist=STREAM_HISTORY[id];if(!hist||hist.length<1)return null;
+  const last=hist[hist.length-1];const prev=hist.length>=2?hist[hist.length-2]:null;
+  const diff=prev!==null?last.streams-prev.streams:null;
+  const gainPart=diff!==null&&diff>0?` (+${formatFull(diff)})`:''
+  return{text:`▲ ${formatFull(last.streams)} — ${last.date}${gainPart}`};
 }
 
-function formatShort(n) {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-  if (n >= 1_000)     return (n / 1_000).toFixed(0) + 'K';
-  return n.toLocaleString();
-}
-
-function formatGoal(n) {
-  if (n >= 1_000_000_000) return (n / 1_000_000_000) + 'B';
-  if (n >= 1_000_000)     return (n / 1_000_000) + 'M';
-  return n.toLocaleString();
-}
-
-function getSeededIncrease(id) {
-  const hist = STREAM_HISTORY[id];
-  if (!hist || hist.length < 1) return null;
-  const last = hist[hist.length - 1];
-  const prev = hist.length >= 2 ? hist[hist.length - 2] : null;
-  const diff = prev !== null ? last.streams - prev.streams : null;
-  const gainPart = diff !== null && diff > 0 ? ` (+${formatFull(diff)})` : '';
-  return { text: `▲ ${formatFull(last.streams)} — ${last.date}${gainPart}` };
-}
-
-function renderHistory(id) {
-  const panel = document.getElementById(`history-${id}`);
-  if (!panel) return;
-
-  const history = STREAM_HISTORY[id] || [];
-
-  if (history.length === 0) {
-    panel.innerHTML = `<p class="history-title">// No history data yet</p>`;
-    return;
-  }
-
-  const max = Math.max(...history.map(h => h.streams));
-
-  const barsHtml = history.map((h, i) => {
-    const prev = i > 0 ? history[i - 1].streams : null;
-    const diff = prev !== null ? h.streams - prev : null;
-    const heightPct = Math.max(4, Math.round((h.streams / max) * 100));
-    const isLatest = i === history.length - 1;
-    const gainHtml = diff !== null && diff > 0
-      ? ` <span style="color:#00ff88">+${formatFull(diff)}</span>` : '';
-    return `<div class="chart-bar-wrap">
-      <div class="chart-tooltip">${h.date}: ${formatFull(h.streams)}${gainHtml}</div>
-      <div class="chart-bar${isLatest ? ' latest' : ''}" style="height:${heightPct}%"></div>
-    </div>`;
+function renderHistory(id){
+  const panel=document.getElementById(`history-${id}`);if(!panel)return;
+  const history=STREAM_HISTORY[id]||[];
+  if(history.length===0){panel.innerHTML=`<p class="history-title">// No history data yet</p>`;return}
+  const max=Math.max(...history.map(h=>h.streams));
+  const barsHtml=history.map((h,i)=>{
+    const prev=i>0?history[i-1].streams:null;const diff=prev!==null?h.streams-prev:null;
+    const heightPct=Math.max(4,Math.round((h.streams/max)*100));const isLatest=i===history.length-1;
+    const gainHtml=diff!==null&&diff>0?` <span style="color:#00ff88">+${formatFull(diff)}</span>`:'';
+    return`<div class="chart-bar-wrap"><div class="chart-tooltip">${h.date}: ${formatFull(h.streams)}${gainHtml}</div><div class="chart-bar${isLatest?' latest':''}" style="height:${heightPct}%"></div></div>`;
   }).join('');
-
-  const datesHtml = history.map(h =>
-    `<div style="flex:1;font-size:0.34rem;letter-spacing:0.03em;color:rgba(245,240,240,0.2);text-align:center;white-space:nowrap;">${h.date}</div>`
-  ).join('');
-
-  const valsHtml = history.map(h =>
-    `<div style="flex:1;font-size:0.37rem;letter-spacing:0.03em;color:var(--muted);text-align:center;white-space:nowrap;">${formatShort(h.streams)}</div>`
-  ).join('');
-
-  const latest = history[history.length - 1];
-  panel.innerHTML = `
-    <p class="history-title">// Daily Stream History</p>
-    <div class="chart-bars">${barsHtml}</div>
-    <div style="display:flex;gap:4px;margin-bottom:2px;">${valsHtml}</div>
-    <div style="display:flex;gap:4px;margin-bottom:0.5rem;">${datesHtml}</div>
-    <p style="font-size:0.4rem;letter-spacing:0.12em;color:rgba(245,240,240,0.2);">
-      Latest: ${formatFull(latest.streams)} streams on ${latest.date} · Pink = most recent · Hover for details
-    </p>`;
+  const datesHtml=history.map(h=>`<div style="flex:1;font-size:.34rem;letter-spacing:.03em;color:rgba(245,240,240,.2);text-align:center;white-space:nowrap;">${h.date}</div>`).join('');
+  const valsHtml=history.map(h=>`<div style="flex:1;font-size:.37rem;letter-spacing:.03em;color:var(--muted);text-align:center;white-space:nowrap;">${formatShort(h.streams)}</div>`).join('');
+  const latest=history[history.length-1];
+  panel.innerHTML=`<p class="history-title">// Daily Stream History</p><div class="chart-bars">${barsHtml}</div><div style="display:flex;gap:4px;margin-bottom:2px;">${valsHtml}</div><div style="display:flex;gap:4px;margin-bottom:.5rem;">${datesHtml}</div><p style="font-size:.4rem;letter-spacing:.12em;color:rgba(245,240,240,.2);">Latest: ${formatFull(latest.streams)} streams on ${latest.date} · Pink = most recent · Hover for details</p>`;
 }
 
-function toggleHistory(id, btn) {
-  const panel = document.getElementById(`history-${id}`);
-  const isHidden = panel.style.display === 'none';
-  panel.style.display = isHidden ? 'block' : 'none';
-  btn.classList.toggle('open', isHidden);
+function toggleHistory(id,btn){
+  const panel=document.getElementById(`history-${id}`);
+  const isHidden=panel.style.display==='none'||panel.style.display==='';
+  panel.style.display=isHidden?'block':'none';
+  btn.classList.toggle('open',isHidden);
 }
 
-async function fetchSpotifyStreams() {
-  for (const t of SPOTIFY_TRACKS) {
+async function fetchSpotifyStreams(){
+  for(const t of SPOTIFY_TRACKS){
     renderHistory(t.id);
-    const increase = getSeededIncrease(t.id);
-    if (increase) {
-      const el = document.getElementById(`increase-${t.id}`);
-      if (el) { el.textContent = increase.text; el.style.display = 'block'; }
-    }
+    const increase=getSeededIncrease(t.id);
+    if(increase){const el=document.getElementById(`increase-${t.id}`);if(el){el.textContent=increase.text;el.style.display='block'}}
   }
-  try {
-    const res = await fetch('/api/streams');
-    const counts = await res.json();
-    for (const t of SPOTIFY_TRACKS) {
-      // counts[t.id] is either { total, history } (new format) or a plain number (old format)
-      const entry = counts[t.id];
-      const plays = (entry && typeof entry === 'object') ? (entry.total || 0) : (entry || 0);
-      if (!plays || isNaN(plays)) continue;
-      const pct = Math.min(100, (plays / t.goal) * 100);
-      document.getElementById(`count-${t.id}`).textContent =
-        `${formatFull(plays)} / ${formatGoal(t.goal)}`;
-      document.getElementById(`pct-${t.id}`).textContent =
-        pct.toFixed(2) + '%';
-      setTimeout(() => {
-        const fill = document.getElementById(`fill-${t.id}`);
-        if (fill) fill.style.width = pct + '%';
-      }, 300);
+  try{
+    const res=await fetch('/api/streams');const counts=await res.json();
+    for(const t of SPOTIFY_TRACKS){
+      const entry=counts[t.id];const plays=(entry&&typeof entry==='object')?(entry.total||0):(entry||0);
+      if(!plays||isNaN(plays))continue;
+      const pct=Math.min(100,(plays/t.goal)*100);
+      document.getElementById(`count-${t.id}`).textContent=`${formatFull(plays)} / ${formatGoal(t.goal)}`;
+      document.getElementById(`pct-${t.id}`).textContent=pct.toFixed(2)+'%';
+      setTimeout(()=>{const fill=document.getElementById(`fill-${t.id}`);if(fill)fill.style.width=pct+'%'},300);
     }
-  } catch(e) {
-    for (const t of SPOTIFY_TRACKS) {
-      document.getElementById(`count-${t.id}`).textContent = 'Live count coming soon';
-    }
-  }
+  }catch(e){for(const t of SPOTIFY_TRACKS)document.getElementById(`count-${t.id}`).textContent='Live count coming soon'}
+}
+window.addEventListener('DOMContentLoaded',fetchSpotifyStreams);
+
+function showPage(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active'));
+  document.getElementById('nav-'+page)?.classList.add('active');
+  window.scrollTo(0,0);if(page==='home')initAnimations();
 }
 
-window.addEventListener('DOMContentLoaded', fetchSpotifyStreams);
-
-// ── PAGE ROUTING ─────────────────────────────────────────────
-function showPage(page) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
-  document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
-  document.getElementById('nav-' + page)?.classList.add('active');
-  window.scrollTo(0, 0);
-  if (page === 'home') initAnimations();
-}
-
-// ── SCROLL ANIMATIONS ────────────────────────────────────────
-function initAnimations() {
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.12 });
-  document.querySelectorAll('#page-home .animate-in').forEach(el => {
-    el.classList.remove('visible');
-    observer.observe(el);
-  });
+function initAnimations(){
+  const observer=new IntersectionObserver((entries)=>{entries.forEach((entry)=>{if(entry.isIntersecting){entry.target.classList.add('visible');observer.unobserve(entry.target)}})},{threshold:.12});
+  document.querySelectorAll('#page-home .animate-in').forEach(el=>{el.classList.remove('visible');observer.observe(el)});
 }
 initAnimations();
 
-window.addEventListener('scroll', () => {
-  const navLinks = document.querySelectorAll('.nav-links a');
-  let current = '';
-  document.querySelectorAll('section[id]').forEach(s => {
-    if (window.scrollY >= s.offsetTop - 120) current = s.getAttribute('id');
-  });
-  navLinks.forEach(a => {
-    if (a.getAttribute('href') === '#' + current) { a.style.color = 'var(--pink)'; a.style.opacity = '1'; }
-    else { a.style.color = ''; a.style.opacity = ''; }
-  });
+window.addEventListener('scroll',()=>{
+  let current='';
+  document.querySelectorAll('section[id]').forEach(s=>{if(window.scrollY>=s.offsetTop-120)current=s.getAttribute('id')});
+  document.querySelectorAll('.nav-links a').forEach(a=>{if(a.getAttribute('href')==='#'+current){a.style.color='var(--pink)';a.style.opacity='1'}else{a.style.color='';a.style.opacity=''}});
 });
 
-// ── LAST.FM CONFIG ───────────────────────────────────────────
-const LASTFM_KEY = '2b75ad00cf31a9b4bce1d9d87b0ac5bf';
-const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
-
-const TRACKS = [
-  { id: 'jump',     title: 'JUMP',         artist: 'BLACKPINK', track: 'JUMP',                    year: '2025', era: 'DEADLINE MINI ALBUM',   spotify: 'https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY' },
-  { id: 'shutdown', title: 'SHUT DOWN',    artist: 'BLACKPINK', track: 'Shut Down',               year: '2022', era: 'BORN PINK ALBUM',  spotify: 'https://open.spotify.com/search/Shut%20Down%20BLACKPINK' },
-  { id: 'ddududu',  title: 'DDU-DU DDU-DU',artist: 'BLACKPINK', track: 'DDU-DU DDU-DU (뚜두뚜두)', year: '2018', era: 'SQUARE UP EP',     spotify: 'https://open.spotify.com/search/DDU-DU%20DDU-DU%20BLACKPINK' },
+const LASTFM_KEY='2b75ad00cf31a9b4bce1d9d87b0ac5bf';
+const LASTFM_BASE='https://ws.audioscrobbler.com/2.0/';
+const TRACKS=[
+  {id:'jump',    title:'JUMP',        artist:'BLACKPINK',track:'JUMP',                   year:'2025',era:'DEADLINE MINI ALBUM',spotify:'https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY'},
+  {id:'shutdown',title:'SHUT DOWN',   artist:'BLACKPINK',track:'Shut Down',              year:'2022',era:'BORN PINK ALBUM',    spotify:'https://open.spotify.com/search/Shut%20Down%20BLACKPINK'},
+  {id:'ddududu', title:'DDU-DU DDU-DU',artist:'BLACKPINK',track:'DDU-DU DDU-DU (뚜두뚜두)',year:'2018',era:'SQUARE UP EP',      spotify:'https://open.spotify.com/search/DDU-DU%20DDU-DU%20BLACKPINK'},
 ];
-
-const BADGE_TIERS = [
-  { id: 'blink',   label: 'BLINK',   min: 1,   icon: '💗', desc: 'Welcome to the fandom!' },
-  { id: 'stan',    label: 'STAN',    min: 10,  icon: '🖤', desc: "You're a real one." },
-  { id: 'soldier', label: 'SOLDIER', min: 50,  icon: '🎀', desc: 'Streaming warrior.' },
-  { id: 'queen',   label: 'QUEEN',   min: 100, icon: '👑', desc: 'Royalty in the fandom.' },
-  { id: 'legend',  label: 'LEGEND',  min: 500, icon: '⚡', desc: 'You ARE BLACKPINK.' },
+const BADGE_TIERS=[
+  {id:'blink',  label:'BLINK',  min:1,  icon:'💗',desc:'Welcome to the fandom!'},
+  {id:'stan',   label:'STAN',   min:10, icon:'🖤',desc:"You're a real one."},
+  {id:'soldier',label:'SOLDIER',min:50, icon:'🎀',desc:'Streaming warrior.'},
+  {id:'queen',  label:'QUEEN',  min:100,icon:'👑',desc:'Royalty in the fandom.'},
+  {id:'legend', label:'LEGEND', min:500,icon:'⚡',desc:'You ARE BLACKPINK.'},
 ];
-
-function getBadge(plays) {
-  let b = null;
-  for (const t of BADGE_TIERS) { if (plays >= t.min) b = t; }
-  return b;
-}
-function getNextBadge(plays) {
-  for (const t of BADGE_TIERS) { if (plays < t.min) return t; }
-  return null;
-}
-
-async function fetchUserInfo(username) {
-  const r = await fetch(`${LASTFM_BASE}?method=user.getInfo&api_key=${LASTFM_KEY}&user=${encodeURIComponent(username)}&format=json`);
-  const d = await r.json();
-  if (d?.user) return d.user;
-  throw new Error(d?.message || 'User not found');
-}
-
-async function fetchTrackPlays(username, artist, track) {
-  const r = await fetch(`${LASTFM_BASE}?method=track.getInfo&api_key=${LASTFM_KEY}&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}&username=${encodeURIComponent(username)}&format=json`);
-  const d = await r.json();
-  return parseInt(d?.track?.userplaycount || '0', 10);
-}
-
-async function checkScrobbles() {
-  const username = document.getElementById('lfm-input').value.trim();
-  if (!username) return;
-
-  document.getElementById('lfm-error').style.display = 'none';
-  document.getElementById('login-panel').style.display = 'none';
-  document.getElementById('loading-panel').style.display = 'block';
-  document.getElementById('results-panel').style.display = 'none';
-
-  try {
-    setLoading('Looking up your Last.fm profile…');
-    const info = await fetchUserInfo(username);
-
-    const scrobbles = {};
-    for (const t of TRACKS) {
-      setLoading(`Counting your ${t.title} scrobbles…`);
-      scrobbles[t.id] = await fetchTrackPlays(username, t.artist, t.track);
-    }
-
-    renderResults(info, scrobbles);
-  } catch (e) {
-    document.getElementById('login-panel').style.display = 'block';
-    document.getElementById('loading-panel').style.display = 'none';
-    const err = document.getElementById('lfm-error');
-    err.style.display = 'block';
-    err.textContent = '⚠ ' + (e.message || 'Something went wrong. Check your username.');
+function getBadge(plays){let b=null;for(const t of BADGE_TIERS){if(plays>=t.min)b=t}return b}
+function getNextBadge(plays){for(const t of BADGE_TIERS){if(plays<t.min)return t}return null}
+async function fetchUserInfo(username){const r=await fetch(`${LASTFM_BASE}?method=user.getInfo&api_key=${LASTFM_KEY}&user=${encodeURIComponent(username)}&format=json`);const d=await r.json();if(d?.user)return d.user;throw new Error(d?.message||'User not found')}
+async function fetchTrackPlays(username,artist,track){const r=await fetch(`${LASTFM_BASE}?method=track.getInfo&api_key=${LASTFM_KEY}&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}&username=${encodeURIComponent(username)}&format=json`);const d=await r.json();return parseInt(d?.track?.userplaycount||'0',10)}
+async function checkScrobbles(){
+  const username=document.getElementById('lfm-input').value.trim();if(!username)return;
+  document.getElementById('lfm-error').style.display='none';
+  document.getElementById('login-panel').style.display='none';
+  document.getElementById('loading-panel').style.display='block';
+  document.getElementById('results-panel').style.display='none';
+  try{
+    setLoading('Looking up your Last.fm profile…');const info=await fetchUserInfo(username);
+    const scrobbles={};
+    for(const t of TRACKS){setLoading(`Counting your ${t.title} scrobbles…`);scrobbles[t.id]=await fetchTrackPlays(username,t.artist,t.track)}
+    renderResults(info,scrobbles);
+  }catch(e){
+    document.getElementById('login-panel').style.display='block';
+    document.getElementById('loading-panel').style.display='none';
+    const err=document.getElementById('lfm-error');err.style.display='block';
+    err.textContent='⚠ '+(e.message||'Something went wrong. Check your username.');
   }
 }
-
-function setLoading(msg) {
-  document.getElementById('loading-text').textContent = msg;
-}
-
-function renderResults(info, scrobbles) {
-  document.getElementById('loading-panel').style.display = 'none';
-  document.getElementById('results-panel').style.display = 'block';
-
-  document.getElementById('result-username').textContent = info.name || info.realname || '';
-  document.getElementById('result-total-plays').textContent = Number(info.playcount).toLocaleString();
-
-  const avatarUrl = (info.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
-  const wrap = document.getElementById('user-avatar-wrap');
-  if (avatarUrl) {
-    wrap.innerHTML = `<img class="user-avatar" src="${avatarUrl}" alt="${info.name}">`;
-  } else {
-    wrap.innerHTML = `<div class="user-avatar-placeholder">${(info.name||'?')[0].toUpperCase()}</div>`;
-  }
-
-  const total = Object.values(scrobbles).reduce((a,b) => a+b, 0);
-  const earned = TRACKS.filter(t => getBadge(scrobbles[t.id] || 0)).length;
-  document.getElementById('sum-bp').textContent = total;
-  document.getElementById('sum-badges').textContent = earned;
-  document.getElementById('sum-left').textContent = TRACKS.length - earned;
-
-  const container = document.getElementById('track-cards-container');
-  container.innerHTML = TRACKS.map((t, i) => {
-    const plays = scrobbles[t.id] || 0;
-    const badge = getBadge(plays);
-    const next = getNextBadge(plays);
-    const prevMin = badge?.min || 0;
-    const nextMin = next?.min || prevMin;
-    const pct = next ? Math.min(100, ((plays - prevMin) / (nextMin - prevMin)) * 100) : 100;
-
-    const badgeHtml = badge
-      ? `<div class="badge-icon">${badge.icon}</div>
-         <div class="badge-name">${badge.label}</div>
-         <div class="badge-desc">${badge.desc}</div>`
-      : `<div class="badge-locked-icon">🔒</div>
-         <div class="badge-locked-text">Stream to unlock</div>`;
-
-    const progressHtml = next
-      ? `<div class="tier-bar-bg"><div class="tier-bar-fill" style="width:${pct}%"></div></div>
-         <div class="tier-label-row"><span>${badge ? badge.label + ' ✓' : 'No badge yet'}</span><span>${plays} / ${next.min} → ${next.label}</span></div>`
-      : `<div class="tier-label-row"><span style="color:var(--pink)">MAX TIER REACHED ⚡</span></div>`;
-
-    return `<div class="track-card">
-      <div class="track-num">0${i+1}</div>
-      <div>
-        <span class="track-tag">${t.era}</span>
-        <div class="track-title">${t.title}</div>
-        <div class="track-meta-small">${t.artist} · ${t.year}</div>
-        <div class="plays-row">
-          <div class="plays-count">${plays.toLocaleString()}</div>
-          <div class="plays-label">scrobbles</div>
-        </div>
-        ${progressHtml}
-        <a href="${t.spotify}" target="_blank" class="stream-now-btn">▶ Stream Now</a>
-      </div>
-      <div class="badge-col">${badgeHtml}</div>
-    </div>`;
+function setLoading(msg){document.getElementById('loading-text').textContent=msg}
+function renderResults(info,scrobbles){
+  document.getElementById('loading-panel').style.display='none';
+  document.getElementById('results-panel').style.display='block';
+  document.getElementById('result-username').textContent=info.name||info.realname||'';
+  document.getElementById('result-total-plays').textContent=Number(info.playcount).toLocaleString();
+  const avatarUrl=(info.image||[]).find(i=>i.size==='medium')?.[`#text`]||'';
+  const wrap=document.getElementById('user-avatar-wrap');
+  if(avatarUrl){wrap.innerHTML=`<img class="user-avatar" src="${avatarUrl}" alt="${info.name}">`}
+  else{wrap.innerHTML=`<div class="user-avatar-placeholder">${(info.name||'?')[0].toUpperCase()}</div>`}
+  const total=Object.values(scrobbles).reduce((a,b)=>a+b,0);
+  const earned=TRACKS.filter(t=>getBadge(scrobbles[t.id]||0)).length;
+  document.getElementById('sum-bp').textContent=total;
+  document.getElementById('sum-badges').textContent=earned;
+  document.getElementById('sum-left').textContent=TRACKS.length-earned;
+  const container=document.getElementById('track-cards-container');
+  container.innerHTML=TRACKS.map((t,i)=>{
+    const plays=scrobbles[t.id]||0;const badge=getBadge(plays);const next=getNextBadge(plays);
+    const prevMin=badge?.min||0;const nextMin=next?.min||prevMin;
+    const pct=next?Math.min(100,((plays-prevMin)/(nextMin-prevMin))*100):100;
+    const badgeHtml=badge?`<div class="badge-icon">${badge.icon}</div><div class="badge-name">${badge.label}</div><div class="badge-desc">${badge.desc}</div>`:`<div class="badge-locked-icon">🔒</div><div class="badge-locked-text">Stream to unlock</div>`;
+    const progressHtml=next?`<div class="tier-bar-bg"><div class="tier-bar-fill" style="width:${pct}%"></div></div><div class="tier-label-row"><span>${badge?badge.label+' ✓':'No badge yet'}</span><span>${plays} / ${next.min} → ${next.label}</span></div>`:`<div class="tier-label-row"><span style="color:var(--pink)">MAX TIER REACHED ⚡</span></div>`;
+    return`<div class="track-card"><div class="track-num">0${i+1}</div><div><span class="track-tag">${t.era}</span><div class="track-title">${t.title}</div><div class="track-meta-small">${t.artist} · ${t.year}</div><div class="plays-row"><div class="plays-count">${plays.toLocaleString()}</div><div class="plays-label">scrobbles</div></div>${progressHtml}<a href="${t.spotify}" target="_blank" class="stream-now-btn">▶ Stream Now</a></div><div class="badge-col">${badgeHtml}</div></div>`;
   }).join('');
-
-  const tiersGrid = document.getElementById('tiers-grid');
-  tiersGrid.innerHTML = BADGE_TIERS.map(tier => {
-    const allEarned = TRACKS.every(t => (scrobbles[t.id] || 0) >= tier.min);
-    return `<div class="tier-cell ${allEarned ? 'earned' : ''}">
-      <div class="tier-cell-icon" style="opacity:${allEarned ? 1 : 0.2}">${tier.icon}</div>
-      <div class="tier-cell-name" style="color:${allEarned ? 'var(--pink)' : 'var(--white)'}">${tier.label}</div>
-      <div class="tier-cell-req">${tier.min}+ plays/track</div>
-      ${allEarned ? '<div class="tier-earned-tag">✓ EARNED</div>' : '<div class="tier-locked-tag">locked</div>'}
-    </div>`;
+  const tiersGrid=document.getElementById('tiers-grid');
+  tiersGrid.innerHTML=BADGE_TIERS.map(tier=>{
+    const allEarned=TRACKS.every(t=>(scrobbles[t.id]||0)>=tier.min);
+    return`<div class="tier-cell ${allEarned?'earned':''}"><div class="tier-cell-icon" style="opacity:${allEarned?1:.2}">${tier.icon}</div><div class="tier-cell-name" style="color:${allEarned?'var(--pink)':'var(--white)'}">${tier.label}</div><div class="tier-cell-req">${tier.min}+ plays/track</div>${allEarned?'<div class="tier-earned-tag">✓ EARNED</div>':'<div class="tier-locked-tag">locked</div>'}</div>`;
   }).join('');
 }
-
-function resetBadges() {
-  document.getElementById('results-panel').style.display = 'none';
-  document.getElementById('login-panel').style.display = 'block';
-  document.getElementById('lfm-input').value = '';
-  document.getElementById('lfm-error').style.display = 'none';
-}
-
-document.getElementById('lfm-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') checkScrobbles();
-});
+function resetBadges(){document.getElementById('results-panel').style.display='none';document.getElementById('login-panel').style.display='block';document.getElementById('lfm-input').value='';document.getElementById('lfm-error').style.display='none'}
+document.getElementById('lfm-input').addEventListener('keydown',e=>{if(e.key==='Enter')checkScrobbles()});
 </script>
 </body>
 </html>
