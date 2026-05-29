@@ -34,7 +34,7 @@
     color: var(--white);
     font-family: var(--mono);
     overflow-x: hidden;
-    cursor: url('https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/cursor.png') 24 48, crosshair;
+    cursor: url('data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAwADADASIAAhEBAxEB/8QAGwABAAIDAQEAAAAAAAAAAAAAAAIIBQYHAwT/xAAqEAACAQMDAwMDBQAAAAAAAAABAgMABBEFBiEHEjETUXEiQWEVFqGx8P/EABcBAQEBAQAAAAAAAAAAAAAAAAABAwT/xAAhEQACAwABAwUAAAAAAAAAAAAAAQMEEQISITETMkFxgf/aAAwDAQACEQMRAD8AplSlWE6N9Nto7k6fWeqz24l1BpJFmkclgpB4HbkDjg1G8OunTkuSenH5zSvdTiillOIo3c+yqTXcN59M9uaQ36n6c/pesY5rdHwqklgO374BRhjPjBrK9Gp7K21hdsixifTbyR3UMv1o4GQS3kjC4x+ab20040OSsKGR5v79FeZEeORo5EZHU4KsMEVGrD9f7Ha1loF/2Wtul20iegygd/qZXPPkjHd/gKrxRPTK5VdWVxt6K6X0a6m/sa11Gzu7aa6trgCSFUI+iUcZOfsR5+K5pSjWmdexJXkUkbxo6zqHUFt363baeENjYDvkkaU9zOwyQcD5bj3Y1rmt7l1Lb+6BPoF9NbtFD2q7IufqHJxyK17apxrUXw39Gm6m7tZk/CqP4phpJakkfXy92+fk8dZ1jU9YuBPqd5LcuPBc8D4FfBSlU5m23rFKUoQzmzbOe41QTxqDHAMv78ggcVHeFnPa6s0syhUnHdH74HHisRFLLC/fFI8be6sQaSySSuXlkaRj92OTQu9iFKUoQ//Z') 24 48, crosshair;
   }
   * { cursor: inherit; }
 
@@ -545,8 +545,8 @@
             <div class="days-to-goal" id="days-jump"></div>
           </div>
           <button class="history-toggle open" onclick="toggleHistory('jump', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
-          <div class="history-panel" id="history-jump" style="display:none;"></div>
-          <a href="https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY" target="_blank" rel="noopener" class="stream-btn">
+          <div class="history-panel" id="history-jump"></div>
+          <a href="https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY" target="_blank" class="stream-btn">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
             Stream on Spotify
           </a>
@@ -565,8 +565,8 @@
             <div class="days-to-goal" id="days-shutdown"></div>
           </div>
           <button class="history-toggle open" onclick="toggleHistory('shutdown', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
-          <div class="history-panel" id="history-shutdown" style="display:none;"></div>
-          <a href="https://open.spotify.com/track/6tCd8bPvYnceDG7W9M1RMk" target="_blank" rel="noopener" class="stream-btn">
+          <div class="history-panel" id="history-shutdown"></div>
+          <a href="https://open.spotify.com/track/6tCd8bPvYnceDG7W9M1RMk" target="_blank" class="stream-btn">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
             Stream on Spotify
           </a>
@@ -585,8 +585,8 @@
             <div class="days-to-goal" id="days-ddududu"></div>
           </div>
           <button class="history-toggle open" onclick="toggleHistory('ddududu', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
-          <div class="history-panel" id="history-ddududu" style="display:none;"></div>
-          <a href="https://open.spotify.com/track/69BIczdH6QMnFx7dsSssN8" target="_blank" rel="noopener" class="stream-btn">
+          <div class="history-panel" id="history-ddududu"></div>
+          <a href="https://open.spotify.com/track/69BIczdH6QMnFx7dsSssN8" target="_blank" class="stream-btn">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
             Stream on Spotify
           </a>
@@ -1062,7 +1062,13 @@ async function fetchSpotifyStreams() {
     }
   }
 }
-window.addEventListener('DOMContentLoaded', fetchSpotifyStreams);
+window.addEventListener('DOMContentLoaded', () => {
+  fetchSpotifyStreams();
+  // If user lands directly on the badge page (e.g. refresh), auto-load
+  if (document.getElementById('page-badges')?.classList.contains('active')) {
+    tryAutoLoad();
+  }
+});
 
 // ── PAGE ROUTING ─────────────────────────────────────────────
 function showPage(page) {
@@ -1072,6 +1078,7 @@ function showPage(page) {
   document.getElementById('nav-' + page)?.classList.add('active');
   window.scrollTo(0, 0);
   if (page === 'home') initAnimations();
+  if (page === 'badges') tryAutoLoad();
 }
 
 function initAnimations() {
@@ -1145,6 +1152,11 @@ async function fetchUserInfo(username) {
 async function fetchTrackPlays(username, artist, track) {
   const d = await lfmFetch({ method: 'track.getInfo', artist, track, username });
   return parseInt(d?.track?.userplaycount || '0', 10);
+}
+
+async function fetchArtistPlays(username, artist) {
+  const d = await lfmFetch({ method: 'artist.getInfo', artist, username });
+  return parseInt(d?.artist?.stats?.userplaycount || '0', 10);
 }
 
 // Get recent scrobbles for a time window (unix timestamps)
@@ -1244,7 +1256,10 @@ async function loadProfile() {
     setLoading('Looking up your Last.fm profile…');
     const info = await fetchUserInfo(username);
 
-    setLoading('Counting total scrobbles for each track…');
+    setLoading('Counting total BLACKPINK scrobbles…');
+    const artistPlays = await fetchArtistPlays(username, 'BLACKPINK');
+
+    setLoading('Counting scrobbles for each campaign track…');
     const totalPlays = {};
     for (const t of TRACKS) {
       setLoading(`Counting ${t.title} plays…`);
@@ -1277,7 +1292,8 @@ async function loadProfile() {
       weekDays.push({ label, counts: countByTrack(daySc) });
     }
 
-    currentUser = { info, totalPlays, todayCounts, weekCounts, weekDays };
+    currentUser = { info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays };
+    saveUsername(username);
     renderProfile(currentUser);
 
   } catch(e) {
@@ -1291,7 +1307,29 @@ async function loadProfile() {
 
 function setLoading(msg) { document.getElementById('loading-text').textContent = msg; }
 
-function renderProfile({ info, totalPlays, todayCounts, weekCounts, weekDays }) {
+// ── PERSIST LOGIN ─────────────────────────────────────────────
+const LS_USER_KEY = 'bu_lfm_username';
+
+function saveUsername(username) {
+  try { localStorage.setItem(LS_USER_KEY, username); } catch(e) {}
+}
+function getSavedUsername() {
+  try { return localStorage.getItem(LS_USER_KEY) || ''; } catch(e) { return ''; }
+}
+function clearSavedUsername() {
+  try { localStorage.removeItem(LS_USER_KEY); } catch(e) {}
+}
+
+// Auto-load on page show if username was previously saved
+function tryAutoLoad() {
+  const saved = getSavedUsername();
+  if (saved) {
+    document.getElementById('lfm-input').value = saved;
+    loadProfile();
+  }
+}
+
+function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays }) {
   document.getElementById('loading-panel').style.display = 'none';
   document.getElementById('profile-panel').style.display = 'block';
 
@@ -1307,14 +1345,23 @@ function renderProfile({ info, totalPlays, todayCounts, weekCounts, weekDays }) 
     : `<div class="user-avatar-placeholder">${(info.name||'?')[0].toUpperCase()}</div>`;
 
   // Summary strip
-  const totalBP = Object.values(totalPlays).reduce((a,b) => a+b, 0);
+  const campaignTotal = Object.values(totalPlays).reduce((a,b) => a+b, 0);
   const earnedBadges = TRACKS.filter(t => getBadge(totalPlays[t.id] || 0)).length;
   const dailyDone = TRACKS.every(t => (todayCounts[t.id] || 0) >= DAILY_TARGET);
   const weeklyDone = TRACKS.every(t => (weekCounts[t.id] || 0) >= WEEKLY_TARGET);
   document.getElementById('profile-summary').innerHTML = `
-    <div class="summary-cell"><div class="summary-num">${totalBP.toLocaleString()}</div><div class="summary-lbl">Total BP Scrobbles</div></div>
-    <div class="summary-cell"><div class="summary-num">${earnedBadges}</div><div class="summary-lbl">Badges Earned</div></div>
-    <div class="summary-cell"><div class="summary-num">${dailyDone ? '✓' : (weeklyDone ? '~' : '…')}</div><div class="summary-lbl">${dailyDone ? 'Daily Complete!' : (weeklyDone ? 'Weekly Done' : 'Challenges Active')}</div></div>
+    <div class="summary-cell">
+      <div class="summary-num">${artistPlays.toLocaleString()}</div>
+      <div class="summary-lbl">Total BP Scrobbles (all time)</div>
+    </div>
+    <div class="summary-cell">
+      <div class="summary-num">${campaignTotal.toLocaleString()}</div>
+      <div class="summary-lbl">Campaign Tracks (3 songs)</div>
+    </div>
+    <div class="summary-cell">
+      <div class="summary-num">${earnedBadges}</div>
+      <div class="summary-lbl">Badges Earned</div>
+    </div>
   `;
 
   // Daily challenge
@@ -1432,6 +1479,7 @@ function shareProfile() {
 }
 
 function resetProfile() {
+  clearSavedUsername();
   document.getElementById('profile-panel').style.display = 'none';
   document.getElementById('login-panel').style.display = 'block';
   document.getElementById('lfm-input').value = '';
