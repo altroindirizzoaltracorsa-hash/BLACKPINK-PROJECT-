@@ -37,21 +37,6 @@
     cursor: url('https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/cursor.png') 24 48, crosshair;
   }
 
-  /* Custom cursor applied universally — pointer for interactive elements */
-  * {
-    cursor: url('https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/cursor.png') 24 48, auto !important;
-  }
-  a, button, [role="button"], input[type="submit"], input[type="button"],
-  input[type="checkbox"], input[type="radio"], select, label,
-  .song-card, .social-link, .stream-btn, .stream-now-btn,
-  .btn-primary, .btn-ghost, .logout-btn, .share-btn, .history-toggle,
-  .nav-logo, .nav-links a, .stat-card, .tier-cell, .track-card, .chart-bar {
-    cursor: url('https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/cursor.png') 24 48, pointer !important;
-  }
-  input[type="text"], textarea {
-    cursor: url('https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/cursor.png') 24 48, text !important;
-  }
-
   body::before {
     content: '';
     position: fixed;
@@ -850,8 +835,10 @@ function getSeededIncrease(id) {
   const last = hist[hist.length - 1];
   const prev = hist[hist.length - 2];
   const diff = last.streams - prev.streams;
-  const gainPart = diff > 0 ? ` (+${formatFull(diff)})` : (diff < 0 ? ` (${formatFull(diff)})` : '');
-  return `▲ ${last.date} — ${formatFull(last.streams)} streams/day${gainPart}`;
+  // Only show diff when positive; decreases shown via color only
+  const gainPart = diff > 0 ? ` (+${formatFull(diff)})` : '';
+  const color = diffColor(diff);
+  return { text: `▲ ${last.date} — ${formatFull(last.streams)} streams/day${gainPart}`, color };
 }
 
 // ── DAYS TO GOAL ─────────────────────────────────────────────
@@ -975,7 +962,10 @@ async function fetchSpotifyStreams() {
     const inc = getSeededIncrease(t.id);
     if (inc) {
       const el = document.getElementById(`increase-${t.id}`);
-      if (el) { el.textContent = inc; el.style.display = 'block'; }
+      if (el) {
+        el.innerHTML = `<span style="color:${inc.color}">${inc.text}</span>`;
+        el.style.display = 'block';
+      }
     }
   }
 
@@ -1048,20 +1038,18 @@ async function fetchSpotifyStreams() {
         renderHistory(t.id, merged);
         renderDaysToGoal(t.id, merged, plays, t.goal);
 
-        // ── Update the diff label with color coding ───────────
+        // ── Update the diff label — only show diff when positive ─
         if (merged.length >= 2) {
           const last = merged[merged.length - 1];
           const prev = merged[merged.length - 2];
           const diff = last.streams - prev.streams;
           const el = document.getElementById(`increase-${t.id}`);
           if (el) {
-            const tag  = last.auto ? ' · auto' : '';
-            const sign = diff > 0 ? '+' : '';
-            const diffStr = diff !== 0 ? ` (${sign}${formatFull(diff)})` : '';
-            const color = diffColor(diff);
-            el.innerHTML = `<span style="color:${color}">▲ ${last.date} — ${formatFull(last.streams)} streams/day${diffStr}${tag}</span>`;
+            const tag     = last.auto ? ' · auto' : '';
+            const diffStr = diff > 0 ? ` (+${formatFull(diff)})` : '';
+            const color   = diffColor(diff);
+            el.innerHTML  = `<span style="color:${color}">▲ ${last.date} — ${formatFull(last.streams)} streams/day${diffStr}${tag}</span>`;
             el.style.display = 'block';
-            el.style.color = ''; // let the inner span handle color
           }
         }
       }
