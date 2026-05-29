@@ -51,7 +51,6 @@
     opacity: 0.35;
   }
 
-  /* ── NAV ── */
   nav {
     position: fixed;
     top: 0; left: 0; right: 0;
@@ -86,15 +85,9 @@
   }
   .nav-links a:hover, .nav-links a.active { opacity: 1; color: var(--pink); }
 
-  /* ── PAGE SYSTEM ── */
   .page { display: none; }
   .page.active { display: block; }
 
-  /* ══════════════════════════════════════
-     HOME PAGE
-  ══════════════════════════════════════ */
-
-  /* HERO */
   .hero {
     min-height: 100vh;
     display: grid;
@@ -150,7 +143,6 @@
     animation: fadeUp 1s ease 0.35s both;
   }
 
-  /* TICKER */
   .ticker-wrap {
     position: relative; z-index: 2;
     background: var(--pink); padding: 0.6rem 0; overflow: hidden;
@@ -163,7 +155,6 @@
     letter-spacing: 0.15em; color: var(--black); padding: 0 2.5rem;
   }
 
-  /* SECTIONS */
   section { padding: 6rem 3rem; }
   .section-label {
     font-size: 0.55rem; letter-spacing: 0.3em;
@@ -176,7 +167,6 @@
     color: var(--white); margin-bottom: 3rem;
   }
 
-  /* WELCOME */
   .welcome-inner {
     max-width: 1200px; margin: 0 auto;
     display: grid; grid-template-columns: 1fr 1fr;
@@ -187,13 +177,10 @@
     line-height: 1.9; color: rgba(245,240,240,0.7); margin-bottom: 1.2rem;
   }
   .welcome-text p strong { color: var(--pink); font-weight: 600; }
-  .stat-cards {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
-  }
+  .stat-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   .stat-card {
     background: var(--charcoal); border: 1px solid rgba(255,0,102,0.15);
-    padding: 1.5rem; position: relative; overflow: hidden;
-    transition: border-color 0.3s;
+    padding: 1.5rem; position: relative; overflow: hidden; transition: border-color 0.3s;
   }
   .stat-card::after {
     content: ''; position: absolute; bottom: 0; left: 0; right: 0;
@@ -205,7 +192,6 @@
   .stat-num { font-family: var(--display); font-size: 2.8rem; color: var(--pink); line-height: 1; margin-bottom: 0.3rem; }
   .stat-lbl { font-size: 0.55rem; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(245,240,240,0.5); }
 
-  /* SONGS */
   .songs-section { background: var(--off-black); border-top: 1px solid rgba(255,0,102,0.15); border-bottom: 1px solid rgba(255,0,102,0.15); }
   .songs-inner { max-width: 1200px; margin: 0 auto; }
   .songs-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5px; background: rgba(255,0,102,0.15); }
@@ -222,8 +208,7 @@
   .song-card:hover::before { opacity: 1; }
   .song-number {
     font-family: var(--display); font-size: 5rem; line-height: 1;
-    color: rgba(255,0,102,0.1); position: absolute; top: 1.5rem; right: 2rem;
-    transition: color 0.3s;
+    color: rgba(255,0,102,0.1); position: absolute; top: 1.5rem; right: 2rem; transition: color 0.3s;
   }
   .song-card:hover .song-number { color: rgba(255,0,102,0.25); }
   .song-tag {
@@ -251,7 +236,6 @@
   .stream-btn:hover { background: var(--pink); color: var(--black); }
   .stream-btn svg { width: 12px; height: 12px; fill: currentColor; }
 
-  /* HOW TO STREAM */
   .howto-inner { max-width: 1200px; margin: 0 auto; }
   .howto-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 5rem; align-items: start; }
   .howto-intro p { font-family: var(--light-serif); font-size: 1.05rem; line-height: 1.9; color: rgba(245,240,240,0.65); margin-bottom: 1rem; }
@@ -260,7 +244,6 @@
   .step-content h4 { font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--white); margin-bottom: 0.5rem; }
   .step-content p { font-family: var(--light-serif); font-size: 0.95rem; line-height: 1.7; color: rgba(245,240,240,0.55); }
 
-  /* FOLLOW */
   .follow-section { background: linear-gradient(135deg, #0d0008 0%, #080808 100%); border-top: 1px solid rgba(255,0,102,0.15); }
   .follow-inner { max-width: 1200px; margin: 0 auto; }
   .follow-columns { display: grid; grid-template-columns: repeat(3,1fr); gap: 3rem; }
@@ -273,11 +256,6 @@
   .social-icon svg { width: 14px; height: 14px; fill: var(--pink); }
   .social-name { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--white); }
 
-  /* ══════════════════════════════════════
-     BADGE CHALLENGE PAGE
-  ══════════════════════════════════════ */
-
-  /* ── SHARE BUTTON ── */
   .share-btn {
     background: transparent; border: 1px solid rgba(255,0,102,0.3);
     color: var(--pink); font-family: var(--mono); font-size: 0.5rem;
@@ -286,7 +264,6 @@
   }
   .share-btn:hover { background: var(--pink); color: var(--black); }
 
-  /* ── DAILY CHALLENGE ── */
   .daily-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5px; background: var(--border); }
   .daily-card { background: var(--card); padding: 1.5rem; position: relative; overflow: hidden; }
   .daily-song-name { font-family: var(--display); font-size: 1.2rem; letter-spacing: 0.06em; color: var(--white); margin-bottom: 0.3rem; }
@@ -299,7 +276,6 @@
   .daily-progress-fill { height: 100%; background: var(--pink); transition: width 1s ease; }
   .complete-banner { background: rgba(255,0,102,0.1); border: 1px solid rgba(255,0,102,0.3); padding: 1rem 1.5rem; text-align: center; margin-top: 1.5px; font-family: var(--display); font-size: 1.2rem; letter-spacing: 0.1em; color: var(--pink); }
 
-  /* ── WEEKLY GRID ── */
   .weekly-table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); }
   .weekly-table th { font-size: 0.45rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); padding: 0.6rem 0.8rem; text-align: center; border-bottom: 1px solid var(--border); font-weight: normal; }
   .weekly-table th.song-col { text-align: left; color: var(--pink); }
@@ -310,7 +286,6 @@
   .week-cell-empty { color: rgba(245,240,240,0.15); }
   .week-cell-future { color: rgba(245,240,240,0.1); }
 
-  /* ── BADGE HISTORY ── */
   .badge-history-list { display: flex; flex-direction: column; gap: 1.5px; background: var(--border); }
   .badge-history-item { background: var(--card); padding: 0.8rem 1.2rem; display: flex; align-items: center; gap: 1rem; }
   .badge-history-icon { font-size: 1.4rem; flex-shrink: 0; }
@@ -330,7 +305,6 @@
   .badge-header-title span { color: var(--pink); }
   .badge-header-sub { font-family: var(--light-serif); font-style: italic; font-size: 1rem; color: var(--muted); margin-top: 0.8rem; }
 
-  /* LOGIN */
   .login-wrap { max-width: 520px; margin: 3rem auto; padding: 0 1.5rem; }
   .login-card { background: var(--card); border: 1px solid var(--border); padding: 2.5rem; position: relative; overflow: hidden; }
   .login-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--pink), transparent); }
@@ -345,12 +319,10 @@
   .lastfm-tip { margin-top: 1.2rem; font-size: 0.5rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.25); line-height: 1.8; }
   .lastfm-tip a { color: var(--pink); text-decoration: none; }
 
-  /* LOADING */
   .loading-wrap { text-align: center; padding: 4rem 2rem; }
   .spinner { width: 40px; height: 40px; border: 2px solid var(--border); border-top-color: var(--pink); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1.5rem; }
   .loading-text { font-size: 0.6rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); }
 
-  /* USER BAR */
   .user-bar { max-width: 900px; margin: 2rem auto 0; padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
   .user-info { display: flex; align-items: center; gap: 1rem; }
   .user-avatar { width: 48px; height: 48px; border: 1px solid var(--border); object-fit: cover; }
@@ -359,13 +331,11 @@
   .user-meta { font-size: 0.5rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
   .user-meta span { color: var(--pink); }
 
-  /* SUMMARY STRIP */
   .summary-strip { max-width: 900px; margin: 1.5rem auto 0; padding: 0 1.5rem; display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--border); }
   .summary-cell { background: var(--card); padding: 1.2rem 1.5rem; text-align: center; }
   .summary-num { font-family: var(--display); font-size: 2rem; color: var(--pink); line-height: 1; }
   .summary-lbl { font-size: 0.45rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); margin-top: 0.25rem; }
 
-  /* TRACK CARDS */
   .tracks-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem; }
   .track-cards { display: flex; flex-direction: column; gap: 1.5px; background: var(--border); }
   .track-card { background: var(--card); padding: 2rem; display: grid; grid-template-columns: 52px 1fr auto; gap: 1.5rem; align-items: center; transition: background 0.2s; }
@@ -386,7 +356,6 @@
   .stream-now-btn { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.8rem; font-size: 0.5rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--pink); text-decoration: none; border: 1px solid rgba(255,0,102,0.25); padding: 0.4rem 0.8rem; transition: background 0.2s, color 0.2s; }
   .stream-now-btn:hover { background: var(--pink); color: var(--black); }
 
-  /* BADGE DISPLAY */
   .badge-col { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; min-width: 90px; text-align: center; flex-shrink: 0; }
   .badge-icon { font-size: 2.4rem; line-height: 1; animation: badge-pulse 2.5s ease-in-out infinite; }
   .badge-name { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.15em; color: var(--pink); }
@@ -394,7 +363,6 @@
   .badge-locked-icon { font-size: 1.8rem; opacity: 0.15; }
   .badge-locked-text { font-size: 0.45rem; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(245,240,240,0.2); }
 
-  /* TIERS GRID */
   .tiers-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem 1rem; }
   .tiers-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 1px; background: var(--border); }
   .tier-cell { background: var(--card); padding: 1.2rem 0.8rem; text-align: center; transition: background 0.2s; }
@@ -409,13 +377,11 @@
   .badge-footer-note { max-width: 900px; margin: 2rem auto 0; padding: 0 1.5rem; font-size: 0.5rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.2); text-align: center; line-height: 1.8; }
   .badge-footer-note a { color: var(--pink); text-decoration: none; }
 
-  /* ── FOOTER ── */
   footer { padding: 2rem 3rem; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
   footer p { font-size: 0.55rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.3); }
   footer p a { color: var(--pink); text-decoration: none; }
   .footer-logo { font-family: var(--display); font-size: 1.1rem; letter-spacing: 0.2em; color: var(--pink); }
 
-  /* ── SHARED BUTTONS ── */
   .btn-primary {
     background: var(--pink); color: var(--black);
     font-family: var(--mono); font-size: 0.65rem;
@@ -440,80 +406,36 @@
   .logout-btn:hover { border-color: var(--pink); color: var(--pink); }
   .divider-line { width: 40px; height: 1px; background: var(--pink); margin: 1.5rem 0; }
 
-  .days-to-goal {
-    margin-top: 0.6rem;
-    font-size: 0.48rem;
-    letter-spacing: 0.15em;
-    color: rgba(245,240,240,0.4);
-    line-height: 1.6;
-  }
+  .days-to-goal { margin-top: 0.6rem; font-size: 0.48rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.4); line-height: 1.6; }
   .days-to-goal strong { color: var(--pink); }
 
-  /* ── HISTORY CHART ── */
   .history-toggle {
     display: inline-flex; align-items: center; gap: 0.4rem;
     margin-top: 1rem; font-size: 0.5rem; letter-spacing: 0.2em;
     text-transform: uppercase; color: var(--muted); cursor: pointer;
-    background: none; border: none; padding: 0;
-    transition: color 0.2s;
+    background: none; border: none; padding: 0; transition: color 0.2s;
   }
   .history-toggle:hover { color: var(--pink); }
   .history-toggle .arrow { transition: transform 0.2s; display: inline-block; }
   .history-toggle.open .arrow { transform: rotate(180deg); }
 
+  /* History panel starts hidden — inline style set by JS after render */
   .history-panel {
-    display: none; margin-top: 1rem;
+    margin-top: 1rem;
     background: rgba(0,0,0,0.3);
     border: 1px solid rgba(255,0,102,0.12);
     padding: 1rem;
   }
 
-  .history-title {
-    font-size: 0.45rem; letter-spacing: 0.25em; text-transform: uppercase;
-    color: var(--pink); margin-bottom: 0.8rem;
-  }
-
-  .chart-bars {
-    display: flex; align-items: flex-end; gap: 4px;
-    height: 80px; margin-bottom: 0.6rem;
-  }
-  .chart-bar-wrap {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; position: relative;
-    height: 100%; justify-content: flex-end;
-  }
-  .chart-bar {
-    width: 100%; background: rgba(255,0,102,0.35);
-    transition: background 0.2s;
-    min-height: 3px; cursor: pointer; position: relative;
-    flex-shrink: 0;
-  }
+  .history-title { font-size: 0.45rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.8rem; }
+  .chart-bars { display: flex; align-items: flex-end; gap: 4px; height: 80px; margin-bottom: 0.6rem; }
+  .chart-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; height: 100%; justify-content: flex-end; }
+  .chart-bar { width: 100%; background: rgba(255,0,102,0.35); transition: background 0.2s; min-height: 3px; cursor: pointer; position: relative; flex-shrink: 0; }
   .chart-bar.latest { background: var(--pink); box-shadow: 0 0 8px rgba(255,0,102,0.5); }
   .chart-bar:hover { background: var(--pink); }
-  .chart-bar-val {
-    font-size: 0.37rem; letter-spacing: 0.03em;
-    color: var(--muted); text-align: center;
-    white-space: nowrap; margin-top: 3px;
-  }
-  .chart-bar-date {
-    font-size: 0.34rem; letter-spacing: 0.03em;
-    color: rgba(245,240,240,0.2); text-align: center;
-    white-space: nowrap;
-  }
-  .chart-tooltip {
-    position: absolute; bottom: calc(100% + 4px); left: 50%;
-    transform: translateX(-50%);
-    background: var(--charcoal); border: 1px solid var(--border);
-    padding: 0.3rem 0.5rem; white-space: nowrap;
-    font-size: 0.45rem; letter-spacing: 0.1em;
-    color: var(--white); pointer-events: none;
-    opacity: 0; transition: opacity 0.15s; z-index: 10;
-  }
+  .chart-tooltip { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); background: var(--charcoal); border: 1px solid var(--border); padding: 0.3rem 0.5rem; white-space: nowrap; font-size: 0.45rem; letter-spacing: 0.1em; color: var(--white); pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 10; }
   .chart-bar-wrap:hover .chart-tooltip { opacity: 1; }
-  .chart-gain { color: #00ff88; }
-  .chart-drop { color: rgba(245,240,240,0.3); }
 
-  /* ── ANIMATIONS ── */
   @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -524,7 +446,6 @@
   .animate-in { opacity: 0; transform: translateY(20px); transition: opacity 0.7s ease, transform 0.7s ease; }
   .animate-in.visible { opacity: 1; transform: translateY(0); }
 
-  /* ── RESPONSIVE ── */
   @media (max-width: 900px) {
     nav { padding: 1rem 1.5rem; }
     section { padding: 4rem 1.5rem; }
@@ -535,6 +456,7 @@
     .tiers-grid { grid-template-columns: repeat(3,1fr); }
     .track-card { grid-template-columns: 1fr auto; }
     .track-num { display: none; }
+    .daily-grid { grid-template-columns: 1fr; }
   }
   @media (max-width: 600px) {
     .nav-links li:not(:last-child) { display: none; }
@@ -545,7 +467,6 @@
 </head>
 <body>
 
-<!-- ── NAV ── -->
 <nav>
   <span class="nav-logo" onclick="showPage('home')" style="display:flex;align-items:center;gap:0.6rem;">
     <img src="https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/blinksunited.jpg" alt="Blinks United" style="width:28px;height:28px;object-fit:cover;border-radius:50%;">
@@ -559,12 +480,9 @@
   </ul>
 </nav>
 
-<!-- ══════════════════════════════════════
-     HOME PAGE
-════════════════════════════════════════ -->
+<!-- HOME PAGE -->
 <div id="page-home" class="page active">
 
-  <!-- HERO -->
   <section class="hero" id="home">
     <div class="hero-bg"></div>
     <div class="hero-grid-lines"></div>
@@ -588,7 +506,6 @@
     </div>
   </section>
 
-  <!-- WELCOME -->
   <section>
     <div class="welcome-inner">
       <div class="welcome-text animate-in">
@@ -612,15 +529,13 @@
     </div>
   </section>
 
-  <!-- SONGS -->
   <section class="songs-section" id="songs">
     <div class="songs-inner">
       <p class="section-label">// Active Streaming Campaigns</p>
       <h2 class="section-title animate-in">Our Targets</h2>
-      <div class="songs-grid" id="songs-grid">
+      <div class="songs-grid">
 
-        <!-- JUMP -->
-        <div class="song-card animate-in" id="card-jump">
+        <div class="song-card animate-in">
           <div class="song-number">01</div>
           <span class="song-tag">Priority I</span>
           <h3 class="song-title">JUMP</h3>
@@ -628,25 +543,19 @@
           <div class="stream-target">
             <p class="target-label">Spotify Streams — Live Count</p>
             <div class="progress-bar"><div class="progress-fill" id="fill-jump" style="width:0%"></div></div>
-            <div class="progress-nums">
-              <span><strong id="count-jump">Loading…</strong></span>
-              <span id="pct-jump"></span>
-            </div>
+            <div class="progress-nums"><span><strong id="count-jump">Loading…</strong></span><span id="pct-jump"></span></div>
             <div id="increase-jump" style="display:none;margin-top:0.4rem;font-size:0.5rem;letter-spacing:0.15em;color:#00ff88;"></div>
             <div class="days-to-goal" id="days-jump"></div>
           </div>
-          <button class="history-toggle" onclick="toggleHistory('jump', this)">
-            <span>Stream History</span> <span class="arrow">▾</span>
-          </button>
-          <div class="history-panel" id="history-jump"></div>
+          <button class="history-toggle open" onclick="toggleHistory('jump', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
+          <div class="history-panel" id="history-jump" style="display:none;"></div>
           <a href="https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY" target="_blank" class="stream-btn">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
             Stream on Spotify
           </a>
         </div>
 
-        <!-- SHUT DOWN -->
-        <div class="song-card animate-in" id="card-shutdown">
+        <div class="song-card animate-in">
           <div class="song-number">02</div>
           <span class="song-tag">Priority II</span>
           <h3 class="song-title">SHUT<br>DOWN</h3>
@@ -654,25 +563,19 @@
           <div class="stream-target">
             <p class="target-label">Spotify Streams — Live Count</p>
             <div class="progress-bar"><div class="progress-fill" id="fill-shutdown" style="width:0%"></div></div>
-            <div class="progress-nums">
-              <span><strong id="count-shutdown">Loading…</strong></span>
-              <span id="pct-shutdown"></span>
-            </div>
+            <div class="progress-nums"><span><strong id="count-shutdown">Loading…</strong></span><span id="pct-shutdown"></span></div>
             <div id="increase-shutdown" style="display:none;margin-top:0.4rem;font-size:0.5rem;letter-spacing:0.15em;color:#00ff88;"></div>
             <div class="days-to-goal" id="days-shutdown"></div>
           </div>
-          <button class="history-toggle" onclick="toggleHistory('shutdown', this)">
-            <span>Stream History</span> <span class="arrow">▾</span>
-          </button>
-          <div class="history-panel" id="history-shutdown"></div>
+          <button class="history-toggle open" onclick="toggleHistory('shutdown', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
+          <div class="history-panel" id="history-shutdown" style="display:none;"></div>
           <a href="https://open.spotify.com/track/6tCd8bPvYnceDG7W9M1RMk" target="_blank" class="stream-btn">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
             Stream on Spotify
           </a>
         </div>
 
-        <!-- DDU-DU DDU-DU -->
-        <div class="song-card animate-in" id="card-ddududu">
+        <div class="song-card animate-in">
           <div class="song-number">03</div>
           <span class="song-tag">Priority III</span>
           <h3 class="song-title long">DDU-DU<br>DDU-DU</h3>
@@ -680,17 +583,12 @@
           <div class="stream-target">
             <p class="target-label">Spotify Streams — Live Count</p>
             <div class="progress-bar"><div class="progress-fill" id="fill-ddududu" style="width:0%"></div></div>
-            <div class="progress-nums">
-              <span><strong id="count-ddududu">Loading…</strong></span>
-              <span id="pct-ddududu"></span>
-            </div>
+            <div class="progress-nums"><span><strong id="count-ddududu">Loading…</strong></span><span id="pct-ddududu"></span></div>
             <div id="increase-ddududu" style="display:none;margin-top:0.4rem;font-size:0.5rem;letter-spacing:0.15em;color:#00ff88;"></div>
             <div class="days-to-goal" id="days-ddududu"></div>
           </div>
-          <button class="history-toggle" onclick="toggleHistory('ddududu', this)">
-            <span>Stream History</span> <span class="arrow">▾</span>
-          </button>
-          <div class="history-panel" id="history-ddududu"></div>
+          <button class="history-toggle open" onclick="toggleHistory('ddududu', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
+          <div class="history-panel" id="history-ddududu" style="display:none;"></div>
           <a href="https://open.spotify.com/track/69BIczdH6QMnFx7dsSssN8" target="_blank" class="stream-btn">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
             Stream on Spotify
@@ -701,7 +599,6 @@
     </div>
   </section>
 
-  <!-- HOW TO STREAM -->
   <section>
     <div class="howto-inner">
       <p class="section-label">// How To Stream</p>
@@ -718,17 +615,16 @@
           <div class="challenge-step"><div class="step-num">02</div><div class="step-content"><h4>Stream on a Playlist</h4><p>Create a playlist with the target songs. Set volume above 30%, keep headphones connected, let it loop. No muting.</p></div></div>
           <div class="challenge-step"><div class="step-num">03</div><div class="step-content"><h4>Watch YouTube MVs Fully</h4><p>Views must be at least 50% of the video to fully count. Watch all the way through when you can.</p></div></div>
           <div class="challenge-step"><div class="step-num">04</div><div class="step-content"><h4>Add to Your Library</h4><p>Save songs to Liked Songs and personal playlists. This signals strong engagement to the algorithm.</p></div></div>
-          <div class="challenge-step"><div class="step-num">05</div><div class="step-content"><h4>Share & Rally Blinks</h4><p>Tag fellow Blinks, post stream screenshots, keep the energy up. Community momentum is our biggest advantage.</p></div></div>
+          <div class="challenge-step"><div class="step-num">05</div><div class="step-content"><h4>Share &amp; Rally Blinks</h4><p>Tag fellow Blinks, post stream screenshots, keep the energy up. Community momentum is our biggest advantage.</p></div></div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- FOLLOW -->
   <section class="follow-section" id="follow">
     <div class="follow-inner">
       <p class="section-label">// Connect</p>
-      <h2 class="section-title animate-in">Follow &<br>Support</h2>
+      <h2 class="section-title animate-in">Follow &amp;<br>Support</h2>
       <div class="follow-columns">
         <div class="animate-in">
           <div class="follow-col">
@@ -749,30 +645,12 @@
               <span style="font-family:var(--display);font-size:1rem;letter-spacing:0.15em;color:var(--white);">BLINKS UNITED</span>
             </div>
             <div class="social-links">
-              <a href="https://x.com/blinksunitedtwt" target="_blank" class="social-link">
-                <span class="social-icon"><svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.63zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
-                <span class="social-name">@blinksunitedtwt</span>
-              </a>
-              <a href="https://www.instagram.com/blinksunitedtwt" target="_blank" class="social-link">
-                <span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></span>
-                <span class="social-name">@blinksunitedtwt</span>
-              </a>
-              <a href="https://www.tiktok.com/@blinksunitedtiktok" target="_blank" class="social-link">
-                <span class="social-icon"><svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg></span>
-                <span class="social-name">@blinksunitedtiktok</span>
-              </a>
-              <a href="https://open.spotify.com/user/31qfhtukpgz5nhi3jsf3c7pai7pi" target="_blank" class="social-link">
-                <span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg></span>
-                <span class="social-name">Spotify</span>
-              </a>
-              <a href="https://music.apple.com/profile/blinksunitedtwt" target="_blank" class="social-link">
-                <span class="social-icon"><svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg></span>
-                <span class="social-name">Apple Music</span>
-              </a>
-              <a href="https://www.stationhead.com/blinksunited" target="_blank" class="social-link">
-                <span class="social-icon" style="font-size:0.65rem;font-weight:bold;color:var(--pink);letter-spacing:0.05em;">SH</span>
-                <span class="social-name">Stationhead</span>
-              </a>
+              <a href="https://x.com/blinksunitedtwt" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.63zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span><span class="social-name">@blinksunitedtwt</span></a>
+              <a href="https://www.instagram.com/blinksunitedtwt" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></span><span class="social-name">@blinksunitedtwt</span></a>
+              <a href="https://www.tiktok.com/@blinksunitedtiktok" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg></span><span class="social-name">@blinksunitedtiktok</span></a>
+              <a href="https://open.spotify.com/user/31qfhtukpgz5nhi3jsf3c7pai7pi" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg></span><span class="social-name">Spotify</span></a>
+              <a href="https://music.apple.com/profile/blinksunitedtwt" target="_blank" class="social-link"><span class="social-icon"><svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg></span><span class="social-name">Apple Music</span></a>
+              <a href="https://www.stationhead.com/blinksunited" target="_blank" class="social-link"><span class="social-icon" style="font-size:0.65rem;font-weight:bold;color:var(--pink);letter-spacing:0.05em;">SH</span><span class="social-name">Stationhead</span></a>
             </div>
           </div>
         </div>
@@ -799,19 +677,15 @@
 
 </div><!-- end home page -->
 
-<!-- ══════════════════════════════════════
-     BADGE CHALLENGE PAGE
-════════════════════════════════════════ -->
+<!-- BADGE CHALLENGE PAGE -->
 <div id="page-badges" class="page">
   <div class="badge-page">
-
     <div class="badge-header">
       <p class="badge-header-eyebrow">✦ Blinks United — Streaming Challenge ✦</p>
       <h1 class="badge-header-title">BADGE<br><span>CHALLENGE</span></h1>
-      <p class="badge-header-sub">Connect Last.fm · Earn daily & weekly badges · Build your streak</p>
+      <p class="badge-header-sub">Connect Last.fm · Earn daily &amp; weekly badges · Build your streak</p>
     </div>
 
-    <!-- LOGIN PANEL -->
     <div id="login-panel" class="login-wrap">
       <div class="login-card">
         <p class="login-label">Connect via
@@ -820,7 +694,7 @@
             LAST.FM
           </span>
         </p>
-        <p class="login-desc">Enter your Last.fm username to track your daily & weekly streaming challenges for JUMP, Shut Down and DDU-DU DDU-DU. No password needed.</p>
+        <p class="login-desc">Enter your Last.fm username to track your daily &amp; weekly streaming challenges for JUMP, Shut Down and DDU-DU DDU-DU. No password needed.</p>
         <div class="input-row">
           <input class="username-input" id="lfm-input" type="text" placeholder="Your Last.fm username" />
           <button class="btn-primary" onclick="loadProfile()">Check My Badges →</button>
@@ -830,16 +704,12 @@
       </div>
     </div>
 
-    <!-- LOADING -->
     <div id="loading-panel" class="loading-wrap" style="display:none">
       <div class="spinner"></div>
       <p class="loading-text" id="loading-text">Loading your profile…</p>
     </div>
 
-    <!-- PROFILE -->
     <div id="profile-panel" style="display:none">
-
-      <!-- USER BAR -->
       <div class="user-bar">
         <div class="user-info">
           <div id="profile-avatar-wrap"></div>
@@ -849,27 +719,23 @@
           </div>
         </div>
         <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
-          <button class="share-btn" id="share-btn" onclick="shareProfile()">🔗 Share Profile</button>
+          <button class="share-btn" onclick="shareProfile()">🔗 Share Profile</button>
           <button class="logout-btn" onclick="resetProfile()">← Change User</button>
         </div>
       </div>
 
-      <!-- STREAK + SUMMARY -->
       <div class="summary-strip" id="profile-summary"></div>
 
-      <!-- DAILY CHALLENGE -->
       <div class="tracks-section" style="margin-top:2rem;">
         <p class="section-label">// Today's Challenge</p>
         <div id="daily-challenge-grid"></div>
       </div>
 
-      <!-- WEEKLY CHALLENGE -->
       <div class="tracks-section" style="margin-top:2rem;">
         <p class="section-label">// This Week's Challenge (Mon–Sun)</p>
         <div id="weekly-challenge-grid"></div>
       </div>
 
-      <!-- BADGE HISTORY -->
       <div class="tracks-section" style="margin-top:2rem;">
         <p class="section-label">// Badge History</p>
         <div id="badge-history-grid"></div>
@@ -885,19 +751,15 @@
 </div><!-- end badge page -->
 
 <script>
-// ── SPOTIFY LIVE STREAM COUNTS ───────────────────────────────
-// Stream counts fetched via /api/streams (Vercel serverless function)
-// API key lives in Vercel environment variables — never in this file
-
+// ── SPOTIFY TRACKS CONFIG ────────────────────────────────────
 const SPOTIFY_TRACKS = [
   { id: 'jump',     trackId: '5H1sKFMzDeMtXwND3V6hRY', goal: 1_000_000_000 },
   { id: 'shutdown', trackId: '6tCd8bPvYnceDG7W9M1RMk', goal: 1_000_000_000 },
   { id: 'ddududu',  trackId: '69BIczdH6QMnFx7dsSssN8', goal: 1_000_000_000 },
 ];
 
-// ── SEEDED HISTORY (daily stream counts per song) ────────────
-// Format: { date: 'DD/MM', streams: number }
-// streams = how many times the song was played that specific day
+// ── STREAM HISTORY (daily stream counts) ── Last updated: 29/05/2026
+// Each entry = streams played on that specific day (not cumulative)
 const STREAM_HISTORY = {
   jump: [
     { date: '04/05', streams: 880380 },
@@ -917,13 +779,14 @@ const STREAM_HISTORY = {
     { date: '18/05', streams: 828566 },
     { date: '19/05', streams: 819229 },
     { date: '20/05', streams: 843147 },
-           {   date:    '21/05',    streams:    846685 },
-           {   date:    '22/05',    streams:   877329 },
-           {   date:    '23/05',    streams:   869079 },
-           {   date:    '24/05',    streams:   764904 },
-           {  date:     '25/05',    streams:   806757 },
-           {  date:    '26/05',    streams:   822104 },
-           { date:     '27/05',   streams:     812301 },
+    { date: '21/05', streams: 846685 },
+    { date: '22/05', streams: 877329 },
+    { date: '23/05', streams: 869079 },
+    { date: '24/05', streams: 764904 },
+    { date: '25/05', streams: 806757 },
+    { date: '26/05', streams: 822104 },
+    { date: '27/05', streams: 812301 },
+    { date: '28/05', streams: 828924 },
   ],
   shutdown: [
     { date: '08/05', streams: 265404 },
@@ -939,88 +802,83 @@ const STREAM_HISTORY = {
     { date: '18/05', streams: 248866 },
     { date: '19/05', streams: 244045 },
     { date: '20/05', streams: 244460 },
-{ date: '21/05', streams: 234115 },
+    { date: '21/05', streams: 234115 },
     { date: '22/05', streams: 243710 },
     { date: '23/05', streams: 249763 },
     { date: '24/05', streams: 234026 },
     { date: '25/05', streams: 235447 },
     { date: '26/05', streams: 239857 },
     { date: '27/05', streams: 238281 },
+    { date: '28/05', streams: 244244 },
   ],
   ddududu: [
     { date: '16/05', streams: 485887 },
-   { date: '22/05', streams: 219465 },
+    { date: '22/05', streams: 219465 },
     { date: '27/05', streams: 204500 },
+    { date: '28/05', streams: 200298 },
   ],
 };
 
-function formatFull(n) {
-  return Number(n).toLocaleString('en-US');
-}
-
+// ── FORMATTERS ───────────────────────────────────────────────
+function formatFull(n) { return Number(n).toLocaleString('en-US'); }
 function formatShort(n) {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
   if (n >= 1_000)     return (n / 1_000).toFixed(0) + 'K';
   return n.toLocaleString();
 }
-
 function formatGoal(n) {
   if (n >= 1_000_000_000) return (n / 1_000_000_000) + 'B';
   if (n >= 1_000_000)     return (n / 1_000_000) + 'M';
   return n.toLocaleString();
 }
 
-// ── INCREASE LOGIC (derived from seeded history, no localStorage) ──
+// ── INCREASE BADGE ───────────────────────────────────────────
 function getSeededIncrease(id) {
   const hist = STREAM_HISTORY[id];
-  if (!hist || hist.length < 1) return null;
+  if (!hist || hist.length < 2) return null;
   const last = hist[hist.length - 1];
-  const prev = hist.length >= 2 ? hist[hist.length - 2] : null;
-  const diff = prev !== null ? last.streams - prev.streams : null;
-  const gainPart = diff !== null && diff > 0 ? ` (+${formatFull(diff)})` : '';
-  return { text: `▲ ${formatFull(last.streams)} — ${last.date}${gainPart}` };
+  const prev = hist[hist.length - 2];
+  const diff = last.streams - prev.streams;
+  const gainPart = diff > 0 ? ` (+${formatFull(diff)})` : (diff < 0 ? ` (${formatFull(diff)})` : '');
+  return `▲ ${last.date} — ${formatFull(last.streams)} streams/day${gainPart}`;
 }
 
-// ── HISTORY CHART RENDERING ───────────────────────────────────
+// ── DAYS TO GOAL ─────────────────────────────────────────────
 function renderDaysToGoal(id, history, total, goal) {
   const el = document.getElementById(`days-${id}`);
   if (!el) return;
-
   const remaining = goal - total;
   if (remaining <= 0) { el.innerHTML = `<strong>🎉 Goal reached!</strong>`; return; }
-
-  // Use last 7 days of history (or all if less)
   const recent = history.slice(-7);
   if (recent.length < 2) { el.textContent = ''; return; }
-
-  const avg = recent.reduce((sum, h) => sum + h.streams, 0) / recent.length;
+  const avg = recent.reduce((s, h) => s + h.streams, 0) / recent.length;
   if (avg <= 0) { el.textContent = ''; return; }
-
   const days = Math.ceil(remaining / avg);
-  const goalFmt = goal >= 1_000_000_000 ? (goal / 1_000_000_000) + 'B' : (goal / 1_000_000) + 'M';
-  el.innerHTML = `~ <strong>${days} days</strong> to ${goalFmt} · based on ${formatFull(Math.round(avg))}/day avg (last ${recent.length} days)`;
+  const goalFmt = formatGoal(goal);
+  el.innerHTML = `~ <strong>${days.toLocaleString()} days</strong> to ${goalFmt} · avg ${formatFull(Math.round(avg))}/day (last ${recent.length} days)`;
 }
 
+// ── HISTORY CHART ─────────────────────────────────────────────
 function renderHistory(id, history) {
   const panel = document.getElementById(`history-${id}`);
   if (!panel) return;
-
-  history = history || [];
+  history = history || STREAM_HISTORY[id] || [];
 
   if (history.length === 0) {
     panel.innerHTML = `<p class="history-title">// No history data yet</p>`;
+    panel.style.display = 'block';
     return;
   }
 
   const max = Math.max(...history.map(h => h.streams));
-
   const barsHtml = history.map((h, i) => {
     const prev = i > 0 ? history[i - 1].streams : null;
     const diff = prev !== null ? h.streams - prev : null;
     const heightPct = Math.max(4, Math.round((h.streams / max) * 100));
     const isLatest = i === history.length - 1;
     const gainHtml = diff !== null && diff > 0
-      ? ` <span style="color:#00ff88">+${formatFull(diff)}</span>` : '';
+      ? ` <span style="color:#00ff88">+${formatFull(diff)}</span>`
+      : (diff !== null && diff < 0 ? ` <span style="color:rgba(245,240,240,0.3)">${formatFull(diff)}</span>` : '');
     return `<div class="chart-bar-wrap">
       <div class="chart-tooltip">${h.date}: ${formatFull(h.streams)}${gainHtml}</div>
       <div class="chart-bar${isLatest ? ' latest' : ''}" style="height:${heightPct}%"></div>
@@ -1030,7 +888,6 @@ function renderHistory(id, history) {
   const datesHtml = history.map(h =>
     `<div style="flex:1;font-size:0.34rem;letter-spacing:0.03em;color:rgba(245,240,240,0.2);text-align:center;white-space:nowrap;">${h.date}</div>`
   ).join('');
-
   const valsHtml = history.map(h =>
     `<div style="flex:1;font-size:0.37rem;letter-spacing:0.03em;color:var(--muted);text-align:center;white-space:nowrap;">${formatShort(h.streams)}</div>`
   ).join('');
@@ -1044,51 +901,172 @@ function renderHistory(id, history) {
     <p style="font-size:0.4rem;letter-spacing:0.12em;color:rgba(245,240,240,0.2);">
       Latest: ${formatFull(latest.streams)} streams on ${latest.date} · Pink = most recent · Hover for details
     </p>`;
+  // Keep hidden until user clicks toggle
+  panel.style.display = 'block';
 }
 
 function toggleHistory(id, btn) {
   const panel = document.getElementById(`history-${id}`);
-  const isHidden = panel.style.display === 'none' || panel.style.display === '';
+  const isHidden = panel.style.display === 'none';
   panel.style.display = isHidden ? 'block' : 'none';
   btn.classList.toggle('open', isHidden);
 }
 
+// ── SPOTIFY LIVE FETCH ───────────────────────────────────────
+// ── localStorage KEYS ────────────────────────────────────────
+// KEY INSIGHT: Spotify updates yesterday's stream count each day.
+// So when today is May 29, the API total reflects May 28's streams.
+// We store snapshots as { date: 'DD/MM', total: number } keyed by
+// the *reporting date* (today's calendar date = yesterday's stream data).
+// Daily diff = today's API total − yesterday's stored total.
+const LS_PREFIX = 'bu_streams_';
+
+function dateLabel(offset = 0) {
+  // offset=0 → today's calendar date, offset=-1 → yesterday, etc.
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}`;
+}
+
+// The date label we attach to the auto entry in the chart.
+// Since Spotify shows yesterday's data, the bar should be labelled yesterday.
+function yesterdayLabel() { return dateLabel(-1); }
+function todayLabel()     { return dateLabel(0);  }
+
+function loadStored(id) {
+  try { return JSON.parse(localStorage.getItem(LS_PREFIX + id) || 'null'); }
+  catch(e) { return null; }
+}
+
+function saveStored(id, total) {
+  // Always store under today's calendar date + the total we saw
+  try { localStorage.setItem(LS_PREFIX + id, JSON.stringify({ date: todayLabel(), total })); }
+  catch(e) {}
+}
+
+// ── COLOR CODING for diff label ──────────────────────────────
+// Positive diff → green. Negative diff → color by severity.
+function diffColor(diff) {
+  if (diff >= 0)      return '#00ff88';  // green (gain or flat)
+  if (diff >= -4999)  return '#aaff00';  // light green (tiny dip)
+  if (diff >= -9999)  return '#ffee00';  // yellow  (moderate dip)
+  if (diff >= -14999) return '#ff9900';  // orange  (notable dip)
+  return '#ff3333';                       // red     (big drop ≥ −15k)
+}
+
 async function fetchSpotifyStreams() {
-  // Show seeded history immediately while API loads
+  const today     = todayLabel();
+  const yesterday = yesterdayLabel();
+
+  // Render seeded history immediately while API loads
   for (const t of SPOTIFY_TRACKS) {
-    const seeded = STREAM_HISTORY[t.id] || [];
-    renderHistory(t.id, seeded);
-    renderDaysToGoal(t.id, seeded, 0, t.goal);
-    const increase = getSeededIncrease(t.id);
-    if (increase) {
+    renderHistory(t.id, STREAM_HISTORY[t.id] || []);
+    renderDaysToGoal(t.id, STREAM_HISTORY[t.id] || [], 0, t.goal);
+    const inc = getSeededIncrease(t.id);
+    if (inc) {
       const el = document.getElementById(`increase-${t.id}`);
-      if (el) { el.textContent = increase.text; el.style.display = 'block'; }
+      if (el) { el.textContent = inc; el.style.display = 'block'; }
     }
   }
+
   try {
     const res = await fetch('/api/streams');
     const counts = await res.json();
+
     for (const t of SPOTIFY_TRACKS) {
       const entry = counts[t.id];
-      const plays = (entry && typeof entry === 'object') ? (entry.total || 0) : (entry || 0);
-      if (!plays || isNaN(plays)) continue;
-      const pct = Math.min(100, (plays / t.goal) * 100);
-      document.getElementById(`count-${t.id}`).textContent =
-        `${formatFull(plays)} / ${formatGoal(t.goal)}`;
-      document.getElementById(`pct-${t.id}`).textContent =
-        pct.toFixed(2) + '%';
-      setTimeout(() => {
-        const fill = document.getElementById(`fill-${t.id}`);
-        if (fill) fill.style.width = pct + '%';
-      }, 300);
+      if (!entry) continue;
+      const plays = (typeof entry === 'object') ? (entry.total || 0) : (entry || 0);
+      const apiHistory = (typeof entry === 'object') ? (entry.history || []) : [];
+
+      if (plays) {
+        const pct = Math.min(100, (plays / t.goal) * 100);
+        document.getElementById(`count-${t.id}`).textContent = `${formatFull(plays)} / ${formatGoal(t.goal)}`;
+        document.getElementById(`pct-${t.id}`).textContent = pct.toFixed(2) + '%';
+        setTimeout(() => {
+          const fill = document.getElementById(`fill-${t.id}`);
+          if (fill) fill.style.width = pct + '%';
+        }, 300);
+
+        // ── AUTO DAILY CALC via localStorage ─────────────────
+        // Spotify updates yesterday's count daily. So:
+        //   stored.date === yesterday → we already snapshotted yesterday,
+        //     today's new API total minus that = the auto daily diff for yesterday's bar
+        //   stored.date === today → same visit, nothing new to calculate yet
+        //   no stored / older than yesterday → first visit, just save and wait
+        const stored = loadStored(t.id);
+        let autoStreams = null;   // streams to show for the auto bar
+        let autoDate   = yesterday; // the bar is labelled yesterday (Spotify lag)
+
+        if (stored && stored.date === yesterday && stored.total > 0) {
+          // Perfect: we have yesterday's snapshot, diff = today's API total - yesterday's total
+          autoStreams = plays - stored.total;
+        }
+        // If stored.date === today, the snapshot was saved in this same calendar day —
+        // wait until tomorrow when the date rolls over.
+
+        // Save snapshot for today (only once per calendar day)
+        if (!stored || stored.date !== today) {
+          saveStored(t.id, plays);
+        }
+
+        // Merge seeded history + API history
+        const seeded = STREAM_HISTORY[t.id] || [];
+        const merged = [...seeded];
+        for (const h of apiHistory) {
+          if (!merged.find(s => s.date === h.date)) merged.push(h);
+        }
+
+        // Inject the auto-calculated bar for yesterday if we got a number
+        // and yesterday isn't already covered by seeded/api data
+        if (autoStreams !== null) {
+          const alreadyHas = merged.find(s => s.date === autoDate);
+          if (!alreadyHas) {
+            merged.push({ date: autoDate, streams: autoStreams, auto: true });
+          } else if (alreadyHas.auto) {
+            alreadyHas.streams = autoStreams; // refresh
+          }
+          // If it already has a manual entry for yesterday, leave it as-is
+        }
+
+        merged.sort((a, b) => {
+          const [ad, am] = a.date.split('/').map(Number);
+          const [bd, bm] = b.date.split('/').map(Number);
+          return am !== bm ? am - bm : ad - bd;
+        });
+
+        renderHistory(t.id, merged);
+        renderDaysToGoal(t.id, merged, plays, t.goal);
+
+        // ── Update the diff label with color coding ───────────
+        if (merged.length >= 2) {
+          const last = merged[merged.length - 1];
+          const prev = merged[merged.length - 2];
+          const diff = last.streams - prev.streams;
+          const el = document.getElementById(`increase-${t.id}`);
+          if (el) {
+            const tag  = last.auto ? ' · auto' : '';
+            const sign = diff > 0 ? '+' : '';
+            const diffStr = diff !== 0 ? ` (${sign}${formatFull(diff)})` : '';
+            const color = diffColor(diff);
+            el.innerHTML = `<span style="color:${color}">▲ ${last.date} — ${formatFull(last.streams)} streams/day${diffStr}${tag}</span>`;
+            el.style.display = 'block';
+            el.style.color = ''; // let the inner span handle color
+          }
+        }
+      }
     }
   } catch(e) {
     for (const t of SPOTIFY_TRACKS) {
-      document.getElementById(`count-${t.id}`).textContent = 'Live count coming soon';
+      const el = document.getElementById(`count-${t.id}`);
+      if (el && el.textContent === 'Loading…') el.textContent = 'Live count coming soon';
     }
   }
 }
 window.addEventListener('DOMContentLoaded', fetchSpotifyStreams);
+
 // ── PAGE ROUTING ─────────────────────────────────────────────
 function showPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1099,14 +1077,10 @@ function showPage(page) {
   if (page === 'home') initAnimations();
 }
 
-// ── SCROLL ANIMATIONS ────────────────────────────────────────
 function initAnimations() {
   const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
+    entries.forEach(entry => {
+      if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); }
     });
   }, { threshold: 0.12 });
   document.querySelectorAll('#page-home .animate-in').forEach(el => {
@@ -1116,14 +1090,12 @@ function initAnimations() {
 }
 initAnimations();
 
-// Nav active on scroll
 window.addEventListener('scroll', () => {
-  const navLinks = document.querySelectorAll('.nav-links a');
   let current = '';
   document.querySelectorAll('section[id]').forEach(s => {
     if (window.scrollY >= s.offsetTop - 120) current = s.getAttribute('id');
   });
-  navLinks.forEach(a => {
+  document.querySelectorAll('.nav-links a').forEach(a => {
     if (a.getAttribute('href') === '#' + current) { a.style.color = 'var(--pink)'; a.style.opacity = '1'; }
     else { a.style.color = ''; a.style.opacity = ''; }
   });
@@ -1134,18 +1106,21 @@ const LASTFM_KEY = '666b8ef2f3cc360fbc20df275fba2981';
 const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
 
 const TRACKS = [
-  { id: 'jump',     title: 'JUMP',          artist: 'BLACKPINK', track: 'JUMP',         year: '2025', era: 'DEADLINE',   spotify: 'https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY' },
-  { id: 'shutdown', title: 'SHUT DOWN',     artist: 'BLACKPINK', track: 'Shut Down',    year: '2022', era: 'BORN PINK',  spotify: 'https://open.spotify.com/track/6tCd8bPvYnceDG7W9M1RMk' },
+  { id: 'jump',     title: 'JUMP',          artist: 'BLACKPINK', track: 'JUMP',          year: '2025', era: 'DEADLINE',  spotify: 'https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY' },
+  { id: 'shutdown', title: 'SHUT DOWN',     artist: 'BLACKPINK', track: 'Shut Down',     year: '2022', era: 'BORN PINK', spotify: 'https://open.spotify.com/track/6tCd8bPvYnceDG7W9M1RMk' },
   { id: 'ddududu',  title: 'DDU-DU DDU-DU', artist: 'BLACKPINK', track: 'DDU-DU DDU-DU', year: '2018', era: 'SQUARE UP', spotify: 'https://open.spotify.com/track/69BIczdH6QMnFx7dsSssN8' },
 ];
 
 const BADGE_TIERS = [
-  { id: 'blink',        label: 'BLINK',        min: 1,   icon: '💗', desc: 'Welcome to the fandom!',     period: '' },
-  { id: 'daily-blink',  label: 'DAILY BLINK',  min: 5,   icon: '🖤', desc: 'Streamed every day.',         period: 'daily' },
-  { id: 'weekly-stan',  label: 'WEEKLY STAN',  min: 25,  icon: '🎀', desc: 'A full week of streaming.',   period: 'weekly' },
-  { id: 'soldier',      label: 'SOLDIER',      min: 50,  icon: '👑', desc: 'Dedicated streaming warrior.',period: '' },
-  { id: 'legend',       label: 'LEGEND',       min: 200, icon: '⚡', desc: 'You ARE BLACKPINK.',          period: '' },
+  { id: 'blink',   label: 'BLINK',   min: 1,   icon: '💗', desc: 'Welcome to the fandom!' },
+  { id: 'stan',    label: 'STAN',    min: 10,  icon: '🖤', desc: "You're a real one." },
+  { id: 'soldier', label: 'SOLDIER', min: 50,  icon: '🎀', desc: 'Streaming warrior.' },
+  { id: 'queen',   label: 'QUEEN',   min: 100, icon: '👑', desc: 'Royalty in the fandom.' },
+  { id: 'legend',  label: 'LEGEND',  min: 500, icon: '⚡', desc: 'You ARE BLACKPINK.' },
 ];
+
+const DAILY_TARGET = 3;   // streams per track per day to complete daily challenge
+const WEEKLY_TARGET = 15; // streams per track per week
 
 function getBadge(plays) {
   let b = null;
@@ -1157,40 +1132,158 @@ function getNextBadge(plays) {
   return null;
 }
 
+// ── LAST.FM API HELPERS ───────────────────────────────────────
+async function lfmFetch(params) {
+  const url = LASTFM_BASE + '?' + new URLSearchParams({ ...params, api_key: LASTFM_KEY, format: 'json' });
+  const r = await fetch(url);
+  return r.json();
+}
+
 async function fetchUserInfo(username) {
-  const r = await fetch(`${LASTFM_BASE}?method=user.getInfo&api_key=${LASTFM_KEY}&user=${encodeURIComponent(username)}&format=json`);
-  const d = await r.json();
+  const d = await lfmFetch({ method: 'user.getInfo', user: username });
   if (d?.user) return d.user;
   throw new Error(d?.message || 'User not found');
 }
 
 async function fetchTrackPlays(username, artist, track) {
-  const r = await fetch(`${LASTFM_BASE}?method=track.getInfo&api_key=${LASTFM_KEY}&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}&username=${encodeURIComponent(username)}&format=json`);
-  const d = await r.json();
+  const d = await lfmFetch({ method: 'track.getInfo', artist, track, username });
   return parseInt(d?.track?.userplaycount || '0', 10);
 }
 
-async function checkScrobbles() {
+// Get recent scrobbles for a time window (unix timestamps)
+async function fetchRecentScrobbles(username, from, to) {
+  const results = [];
+  let page = 1;
+  while (true) {
+    const d = await lfmFetch({ method: 'user.getRecentTracks', user: username, from, to, limit: 200, page });
+    const tracks = d?.recenttracks?.tracks || d?.recenttracks?.track || [];
+    const arr = Array.isArray(tracks) ? tracks : [tracks];
+    results.push(...arr.filter(t => t['@attr']?.nowplaying !== 'true'));
+    const total = parseInt(d?.recenttracks?.['@attr']?.totalPages || '1');
+    if (page >= total || page >= 5) break; // cap at 5 pages / 1000 tracks
+    page++;
+  }
+  return results;
+}
+
+// ── TIME HELPERS (Italy = CET/CEST, reset at 2am) ────────────
+function getItalyOffset() {
+  // Italy is UTC+1 (CET) or UTC+2 (CEST)
+  // Simple approximation: check if DST is active (last Sun March – last Sun Oct)
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const dstStart = lastSunday(year, 2); // March
+  const dstEnd   = lastSunday(year, 9); // October
+  return (now >= dstStart && now < dstEnd) ? 2 : 1;
+}
+function lastSunday(year, month) {
+  const d = new Date(Date.UTC(year, month + 1, 0)); // last day of month
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+  return d;
+}
+function italyNow() {
+  const offset = getItalyOffset();
+  return new Date(Date.now() + offset * 3600 * 1000);
+}
+// Day boundary = 2am Italy
+function getDayBounds() {
+  const it = italyNow();
+  const y = it.getUTCFullYear(), m = it.getUTCMonth(), d = it.getUTCDate();
+  const hour = it.getUTCHours();
+  const offset = getItalyOffset();
+  // If before 2am Italy, the "day" started at 2am yesterday
+  let dayStart = new Date(Date.UTC(y, m, d, 2 - offset, 0, 0));
+  if (hour < 2) dayStart = new Date(dayStart.getTime() - 86400000);
+  const dayEnd = new Date(dayStart.getTime() + 86400000);
+  return { from: Math.floor(dayStart / 1000), to: Math.floor(dayEnd / 1000) };
+}
+// Week boundary = Mon 2am Italy to Sun 2am Italy
+function getWeekBounds() {
+  const { from: dayFrom } = getDayBounds();
+  const dayFromDate = new Date(dayFrom * 1000);
+  // Find Monday of this week
+  const dow = dayFromDate.getUTCDay(); // 0=Sun
+  const daysToMon = (dow === 0) ? 6 : dow - 1;
+  const weekStart = new Date(dayFromDate.getTime() - daysToMon * 86400000);
+  const weekEnd = new Date(weekStart.getTime() + 7 * 86400000);
+  return { from: Math.floor(weekStart / 1000), to: Math.floor(weekEnd / 1000) };
+}
+function getDayLabel(unixFrom) {
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const d = new Date(unixFrom * 1000);
+  return days[d.getUTCDay()];
+}
+
+// Count scrobbles per track in a list
+function countByTrack(scrobbles) {
+  const counts = {};
+  for (const t of TRACKS) counts[t.id] = 0;
+  for (const s of scrobbles) {
+    const name = (s.name || '').toLowerCase();
+    const artist = (s.artist?.['#text'] || s.artist || '').toLowerCase();
+    if (artist.includes('blackpink')) {
+      for (const t of TRACKS) {
+        if (name === t.track.toLowerCase()) { counts[t.id]++; break; }
+      }
+    }
+  }
+  return counts;
+}
+
+// ── MAIN LOAD ────────────────────────────────────────────────
+let currentUser = null;
+let currentScrobbles = null;
+
+async function loadProfile() {
   const username = document.getElementById('lfm-input').value.trim();
   if (!username) return;
 
   document.getElementById('lfm-error').style.display = 'none';
   document.getElementById('login-panel').style.display = 'none';
   document.getElementById('loading-panel').style.display = 'block';
-  document.getElementById('results-panel').style.display = 'none';
+  document.getElementById('profile-panel').style.display = 'none';
 
   try {
     setLoading('Looking up your Last.fm profile…');
     const info = await fetchUserInfo(username);
 
-    const scrobbles = {};
+    setLoading('Counting total scrobbles for each track…');
+    const totalPlays = {};
     for (const t of TRACKS) {
-      setLoading(`Counting your ${t.title} scrobbles…`);
-      scrobbles[t.id] = await fetchTrackPlays(username, t.artist, t.track);
+      setLoading(`Counting ${t.title} plays…`);
+      totalPlays[t.id] = await fetchTrackPlays(username, t.artist, t.track);
     }
 
-    renderResults(info, scrobbles);
-  } catch (e) {
+    setLoading('Fetching today\'s streams…');
+    const { from: dayFrom, to: dayTo } = getDayBounds();
+    const todayScrobbles = await fetchRecentScrobbles(username, dayFrom, dayTo);
+    const todayCounts = countByTrack(todayScrobbles);
+
+    setLoading('Fetching this week\'s streams…');
+    const { from: weekFrom, to: weekTo } = getWeekBounds();
+    const weekScrobbles = await fetchRecentScrobbles(username, weekFrom, weekTo);
+    const weekCounts = countByTrack(weekScrobbles);
+
+    // Build daily breakdown (Mon–today)
+    setLoading('Building weekly breakdown…');
+    const weekDays = [];
+    const msPerDay = 86400000;
+    for (let i = 0; i < 7; i++) {
+      const dayStart = weekFrom * 1000 + i * msPerDay;
+      const dayEnd = dayStart + msPerDay;
+      if (dayStart > Date.now()) { weekDays.push(null); continue; }
+      const label = getDayLabel(Math.floor(dayStart / 1000));
+      const daySc = weekScrobbles.filter(s => {
+        const ts = parseInt(s.date?.uts || 0) * 1000;
+        return ts >= dayStart && ts < dayEnd;
+      });
+      weekDays.push({ label, counts: countByTrack(daySc) });
+    }
+
+    currentUser = { info, totalPlays, todayCounts, weekCounts, weekDays };
+    renderProfile(currentUser);
+
+  } catch(e) {
     document.getElementById('login-panel').style.display = 'block';
     document.getElementById('loading-panel').style.display = 'none';
     const err = document.getElementById('lfm-error');
@@ -1199,97 +1292,158 @@ async function checkScrobbles() {
   }
 }
 
-function setLoading(msg) {
-  document.getElementById('loading-text').textContent = msg;
-}
+function setLoading(msg) { document.getElementById('loading-text').textContent = msg; }
 
-function renderResults(info, scrobbles) {
+function renderProfile({ info, totalPlays, todayCounts, weekCounts, weekDays }) {
   document.getElementById('loading-panel').style.display = 'none';
-  document.getElementById('results-panel').style.display = 'block';
+  document.getElementById('profile-panel').style.display = 'block';
 
-  // User info
-  document.getElementById('result-username').textContent = info.name || info.realname || '';
-  document.getElementById('result-total-plays').textContent = Number(info.playcount).toLocaleString();
+  // Avatar + name
+  document.getElementById('profile-username').textContent = info.name || '';
+  document.getElementById('profile-meta').innerHTML =
+    `<span>${Number(info.playcount).toLocaleString()}</span> total scrobbles · Last.fm`;
 
   const avatarUrl = (info.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
-  const wrap = document.getElementById('user-avatar-wrap');
-  if (avatarUrl) {
-    wrap.innerHTML = `<img class="user-avatar" src="${avatarUrl}" alt="${info.name}">`;
-  } else {
-    wrap.innerHTML = `<div class="user-avatar-placeholder">${(info.name||'?')[0].toUpperCase()}</div>`;
-  }
+  const wrap = document.getElementById('profile-avatar-wrap');
+  wrap.innerHTML = avatarUrl
+    ? `<img class="user-avatar" src="${avatarUrl}" alt="${info.name}">`
+    : `<div class="user-avatar-placeholder">${(info.name||'?')[0].toUpperCase()}</div>`;
 
-  // Summary
-  const total = Object.values(scrobbles).reduce((a,b) => a+b, 0);
-  const earned = TRACKS.filter(t => getBadge(scrobbles[t.id] || 0)).length;
-  document.getElementById('sum-bp').textContent = total;
-  document.getElementById('sum-badges').textContent = earned;
-  document.getElementById('sum-left').textContent = TRACKS.length - earned;
+  // Summary strip
+  const totalBP = Object.values(totalPlays).reduce((a,b) => a+b, 0);
+  const earnedBadges = TRACKS.filter(t => getBadge(totalPlays[t.id] || 0)).length;
+  const dailyDone = TRACKS.every(t => (todayCounts[t.id] || 0) >= DAILY_TARGET);
+  const weeklyDone = TRACKS.every(t => (weekCounts[t.id] || 0) >= WEEKLY_TARGET);
+  document.getElementById('profile-summary').innerHTML = `
+    <div class="summary-cell"><div class="summary-num">${totalBP.toLocaleString()}</div><div class="summary-lbl">Total BP Scrobbles</div></div>
+    <div class="summary-cell"><div class="summary-num">${earnedBadges}</div><div class="summary-lbl">Badges Earned</div></div>
+    <div class="summary-cell"><div class="summary-num">${dailyDone ? '✓' : (weeklyDone ? '~' : '…')}</div><div class="summary-lbl">${dailyDone ? 'Daily Complete!' : (weeklyDone ? 'Weekly Done' : 'Challenges Active')}</div></div>
+  `;
 
-  // Track cards
-  const container = document.getElementById('track-cards-container');
-  container.innerHTML = TRACKS.map((t, i) => {
-    const plays = scrobbles[t.id] || 0;
+  // Daily challenge
+  const dailyGrid = document.getElementById('daily-challenge-grid');
+  const allDailyDone = TRACKS.every(t => (todayCounts[t.id] || 0) >= DAILY_TARGET);
+  dailyGrid.innerHTML = `
+    <div class="daily-grid">
+      ${TRACKS.map(t => {
+        const count = todayCounts[t.id] || 0;
+        const pct = Math.min(100, (count / DAILY_TARGET) * 100);
+        const done = count >= DAILY_TARGET;
+        return `<div class="daily-card">
+          <div class="daily-song-name">${t.title}</div>
+          <div class="daily-count">${count}</div>
+          <div class="daily-target">/ ${DAILY_TARGET} streams today</div>
+          <div class="tier-dots">
+            ${Array.from({length: DAILY_TARGET}, (_, i) =>
+              `<div class="tier-dot${i < count ? ' earned' : ''}">${i < count ? '✓' : ''}</div>`
+            ).join('')}
+          </div>
+          <div class="daily-progress-bar"><div class="daily-progress-fill" style="width:${pct}%"></div></div>
+          ${done ? `<div style="font-size:0.5rem;letter-spacing:0.15em;color:var(--pink);margin-top:0.4rem;">✓ Done!</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+    ${allDailyDone ? `<div class="complete-banner">🎉 Today's Challenge Complete! You're a true Blink! 💗</div>` : ''}
+  `;
+
+  // Weekly challenge table
+  const dayLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const weekGrid = document.getElementById('weekly-challenge-grid');
+  weekGrid.innerHTML = `
+    <table class="weekly-table">
+      <thead><tr>
+        <th class="song-col">Track</th>
+        ${dayLabels.map(d => `<th>${d}</th>`).join('')}
+        <th>Total</th>
+      </tr></thead>
+      <tbody>
+        ${TRACKS.map(t => `<tr>
+          <td class="song-name">${t.title}</td>
+          ${weekDays.map(day => {
+            if (!day) return `<td class="week-cell-future">—</td>`;
+            const c = day.counts[t.id] || 0;
+            if (c >= DAILY_TARGET) return `<td class="week-cell-done">✓<br><span style="font-size:0.4rem;color:var(--muted)">${c}</span></td>`;
+            if (c > 0) return `<td class="week-cell-partial">${c}</td>`;
+            return `<td class="week-cell-empty">·</td>`;
+          }).join('')}
+          <td style="color:${(weekCounts[t.id]||0) >= WEEKLY_TARGET ? 'var(--pink)' : 'var(--muted)'};">
+            ${weekCounts[t.id] || 0}/${WEEKLY_TARGET}
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+
+  // Badge history (total plays per track → badge earned)
+  const badgeHistGrid = document.getElementById('badge-history-grid');
+  const earnedItems = [];
+  for (const t of TRACKS) {
+    const plays = totalPlays[t.id] || 0;
     const badge = getBadge(plays);
-    const next = getNextBadge(plays);
-    const prevMin = badge?.min || 0;
-    const nextMin = next?.min || prevMin;
-    const pct = next ? Math.min(100, ((plays - prevMin) / (nextMin - prevMin)) * 100) : 100;
-
-    const badgeHtml = badge
-      ? `<div class="badge-icon">${badge.icon}</div>
-         <div class="badge-name">${badge.label}</div>
-         <div class="badge-desc">${badge.desc}</div>`
-      : `<div class="badge-locked-icon">🔒</div>
-         <div class="badge-locked-text">Stream to unlock</div>`;
-
-    const progressHtml = next
-      ? `<div class="tier-bar-bg"><div class="tier-bar-fill" style="width:${pct}%"></div></div>
-         <div class="tier-label-row"><span>${badge ? badge.label + ' ✓' : 'No badge yet'}</span><span>${plays} / ${next.min} → ${next.label}</span></div>`
-      : `<div class="tier-label-row"><span style="color:var(--pink)">MAX TIER REACHED ⚡</span></div>`;
-
-    return `<div class="track-card">
-      <div class="track-num">0${i+1}</div>
-      <div>
-        <span class="track-tag">${t.era}</span>
-        <div class="track-title">${t.title}</div>
-        <div class="track-meta-small">${t.artist} · ${t.year}</div>
-        <div class="plays-row">
-          <div class="plays-count">${plays.toLocaleString()}</div>
-          <div class="plays-label">scrobbles</div>
-        </div>
-        ${progressHtml}
-        <a href="${t.spotify}" target="_blank" class="stream-now-btn">▶ Stream Now</a>
+    if (badge) {
+      earnedItems.push({ badge, track: t, plays });
+    }
+  }
+  if (earnedItems.length === 0) {
+    badgeHistGrid.innerHTML = `<div class="badge-history-empty">No badges yet — stream JUMP, Shut Down and DDU-DU DDU-DU to earn your first badge! 💗</div>`;
+  } else {
+    badgeHistGrid.innerHTML = `
+      <div class="badge-history-list">
+        ${earnedItems.map(item => `
+          <div class="badge-history-item">
+            <div class="badge-history-icon">${item.badge.icon}</div>
+            <div>
+              <div class="badge-history-label">${item.badge.label}</div>
+              <div class="badge-history-song">${item.track.title}</div>
+              <div class="badge-history-date">${item.plays.toLocaleString()} scrobbles</div>
+            </div>
+            <div style="margin-left:auto;font-family:var(--light-serif);font-style:italic;font-size:0.65rem;color:var(--muted);">${item.badge.desc}</div>
+          </div>
+        `).join('')}
       </div>
-      <div class="badge-col">${badgeHtml}</div>
-    </div>`;
-  }).join('');
-
-  // Tiers grid
-  const tiersGrid = document.getElementById('tiers-grid');
-  tiersGrid.innerHTML = BADGE_TIERS.map(tier => {
-    const allEarned = TRACKS.every(t => (scrobbles[t.id] || 0) >= tier.min);
-    const periodLabel = tier.period ? `<div style="font-size:0.38rem;letter-spacing:0.15em;color:var(--pink);opacity:0.7;margin-bottom:0.15rem;">${tier.period.toUpperCase()}</div>` : '';
-    return `<div class="tier-cell ${allEarned ? 'earned' : ''}">
-      <div class="tier-cell-icon" style="opacity:${allEarned ? 1 : 0.2}">${tier.icon}</div>
-      ${periodLabel}
-      <div class="tier-cell-name" style="color:${allEarned ? 'var(--pink)' : 'var(--white)'}">${tier.label}</div>
-      <div class="tier-cell-req">${tier.min}+ plays/track</div>
-      ${allEarned ? '<div class="tier-earned-tag">✓ EARNED</div>' : '<div class="tier-locked-tag">locked</div>'}
-    </div>`;
-  }).join('');
+      <!-- Tiers reference -->
+      <div style="margin-top:1.5px;background:var(--border);">
+        <div class="tiers-grid">
+          ${BADGE_TIERS.map(tier => {
+            const allEarned = TRACKS.every(t => (totalPlays[t.id] || 0) >= tier.min);
+            return `<div class="tier-cell ${allEarned ? 'earned' : ''}">
+              <div class="tier-cell-icon" style="opacity:${allEarned ? 1 : 0.2}">${tier.icon}</div>
+              <div class="tier-cell-name" style="color:${allEarned ? 'var(--pink)' : 'var(--white)'}">${tier.label}</div>
+              <div class="tier-cell-req">${tier.min}+ plays/track</div>
+              ${allEarned ? '<div class="tier-earned-tag">✓ EARNED</div>' : '<div class="tier-locked-tag">locked</div>'}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
 }
 
-function resetBadges() {
-  document.getElementById('results-panel').style.display = 'none';
+function shareProfile() {
+  if (!currentUser) return;
+  const name = currentUser.info.name;
+  const total = Object.values(currentUser.totalPlays).reduce((a,b)=>a+b,0);
+  const text = `🖤💗 Check out my BLACKPINK streaming stats on Blinks United!\n👤 ${name} · ${total.toLocaleString()} BP scrobbles\n#BlinksUnited #BLACKPINK #StreamJUMP`;
+  if (navigator.share) {
+    navigator.share({ title: 'Blinks United — My Stats', text }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(text).then(() => {
+      const btn = document.getElementById('share-btn');
+      if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => btn.textContent = '🔗 Share Profile', 2000); }
+    });
+  }
+}
+
+function resetProfile() {
+  document.getElementById('profile-panel').style.display = 'none';
   document.getElementById('login-panel').style.display = 'block';
   document.getElementById('lfm-input').value = '';
   document.getElementById('lfm-error').style.display = 'none';
+  currentUser = null;
 }
 
-// Enter key on input
 document.getElementById('lfm-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') checkScrobbles();
+  if (e.key === 'Enter') loadProfile();
 });
 </script>
 </body>
