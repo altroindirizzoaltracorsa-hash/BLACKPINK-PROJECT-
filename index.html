@@ -37,8 +37,19 @@
     cursor: url('https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/cursor.png') 24 48, crosshair;
   }
 
-  *, a, button, input, label, select, textarea {
+  /* Custom cursor applied universally — pointer for interactive elements */
+  * {
     cursor: url('https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/cursor.png') 24 48, auto !important;
+  }
+  a, button, [role="button"], input[type="submit"], input[type="button"],
+  input[type="checkbox"], input[type="radio"], select, label,
+  .song-card, .social-link, .stream-btn, .stream-now-btn,
+  .btn-primary, .btn-ghost, .logout-btn, .share-btn, .history-toggle,
+  .nav-logo, .nav-links a, .stat-card, .tier-cell, .track-card, .chart-bar {
+    cursor: url('https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/cursor.png') 24 48, pointer !important;
+  }
+  input[type="text"], textarea {
+    cursor: url('https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/cursor.png') 24 48, text !important;
   }
 
   body::before {
@@ -886,22 +897,19 @@ function renderHistory(id, history) {
   }).join('');
 
   const datesHtml = history.map(h =>
-    `<div style="flex:1;font-size:0.34rem;letter-spacing:0.03em;color:rgba(245,240,240,0.2);text-align:center;white-space:nowrap;">${h.date}</div>`
-  ).join('');
-  const valsHtml = history.map(h =>
-    `<div style="flex:1;font-size:0.37rem;letter-spacing:0.03em;color:var(--muted);text-align:center;white-space:nowrap;">${formatShort(h.streams)}</div>`
+    `<div style="flex:1;font-size:0.34rem;letter-spacing:0.03em;color:rgba(245,240,240,0.2);text-align:center;white-space:nowrap;overflow:hidden;">${h.date}</div>`
   ).join('');
 
   const latest = history[history.length - 1];
+  // Show dates only when there are few bars; hide when too many to avoid overlap
+  const showDates = history.length <= 14;
   panel.innerHTML = `
     <p class="history-title">// Daily Stream History</p>
     <div class="chart-bars">${barsHtml}</div>
-    <div style="display:flex;gap:4px;margin-bottom:2px;">${valsHtml}</div>
-    <div style="display:flex;gap:4px;margin-bottom:0.5rem;">${datesHtml}</div>
+    ${showDates ? `<div style="display:flex;gap:4px;margin-bottom:0.5rem;">${datesHtml}</div>` : '<div style="margin-bottom:0.5rem;"></div>'}
     <p style="font-size:0.4rem;letter-spacing:0.12em;color:rgba(245,240,240,0.2);">
       Latest: ${formatFull(latest.streams)} streams on ${latest.date} · Pink = most recent · Hover for details
     </p>`;
-  // Keep hidden until user clicks toggle
   panel.style.display = 'block';
 }
 
