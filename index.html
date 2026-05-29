@@ -194,7 +194,7 @@
   .songs-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5px; background: rgba(255,0,102,0.15); }
   .song-card {
     background: var(--off-black); padding: 3rem 2.5rem;
-    position: relative; overflow: hidden; transition: background 0.3s; cursor: pointer;
+    position: relative; transition: background 0.3s; cursor: pointer;
   }
   .song-card::before {
     content: ''; position: absolute; inset: 0;
@@ -544,12 +544,13 @@
             <div id="increase-jump" style="display:none;margin-top:0.4rem;font-size:0.7rem;letter-spacing:0.15em;color:#00ff88;"></div>
             <div class="days-to-goal" id="days-jump"></div>
           </div>
-          <button class="history-toggle open" onclick="toggleHistory('jump', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
-          <div class="history-panel" id="history-jump"></div>
           <button class="stream-btn" onclick="window.open('https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY','_blank')">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
             Stream on Spotify
           </button>
+          <button class="history-toggle open" onclick="toggleHistory('jump', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
+          <div class="history-panel" id="history-jump"></div>
+          
         </div>
 
         <div class="song-card animate-in">
@@ -564,12 +565,13 @@
             <div id="increase-shutdown" style="display:none;margin-top:0.4rem;font-size:0.7rem;letter-spacing:0.15em;color:#00ff88;"></div>
             <div class="days-to-goal" id="days-shutdown"></div>
           </div>
-          <button class="history-toggle open" onclick="toggleHistory('shutdown', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
-          <div class="history-panel" id="history-shutdown"></div>
           <button class="stream-btn" onclick="window.open('https://open.spotify.com/track/6tCd8bPvYnceDG7W9M1RMk','_blank')">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
             Stream on Spotify
           </button>
+          <button class="history-toggle open" onclick="toggleHistory('shutdown', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
+          <div class="history-panel" id="history-shutdown"></div>
+          
         </div>
 
         <div class="song-card animate-in">
@@ -584,12 +586,13 @@
             <div id="increase-ddududu" style="display:none;margin-top:0.4rem;font-size:0.7rem;letter-spacing:0.15em;color:#00ff88;"></div>
             <div class="days-to-goal" id="days-ddududu"></div>
           </div>
-          <button class="history-toggle open" onclick="toggleHistory('ddududu', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
-          <div class="history-panel" id="history-ddududu"></div>
           <button class="stream-btn" onclick="window.open('https://open.spotify.com/track/69BIczdH6QMnFx7dsSssN8','_blank')">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
             Stream on Spotify
           </button>
+          <button class="history-toggle open" onclick="toggleHistory('ddududu', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
+          <div class="history-panel" id="history-ddududu"></div>
+          
         </div>
 
       </div>
@@ -1123,7 +1126,47 @@ const BADGE_TIERS = [
   { id: 'legend',  label: 'LEGEND',  min: 500, icon: '⚡', desc: 'You ARE BLACKPINK.' },
 ];
 
-const DAILY_TARGET = 3;   // streams per track per day to complete daily challenge
+// ── DAILY BADGE TIERS (per track, based on playlist structure) ────────────
+// JUMP is in the playlist 80x, SHUT DOWN 36x, DDU-DU 20x
+const DAILY_TIERS = {
+  jump:     [
+    { min: 20, label: 'JUMPER I',   icon: '🩷', desc: '20 streams today' },
+    { min: 40, label: 'JUMPER II',  icon: '💓', desc: '40 streams today' },
+    { min: 60, label: 'JUMPER III', icon: '💗', desc: '60 streams today' },
+    { min: 80, label: 'JUMPER MAX', icon: '⚡', desc: 'Full playlist run!' },
+    { min: 81, label: 'SUPER JUMP', icon: '🌟', desc: 'Beyond the playlist!' },
+  ],
+  shutdown: [
+    { min: 9,  label: 'SHUT I',    icon: '🩷', desc: '9 streams today' },
+    { min: 18, label: 'SHUT II',   icon: '💓', desc: '18 streams today' },
+    { min: 27, label: 'SHUT III',  icon: '💗', desc: '27 streams today' },
+    { min: 36, label: 'SHUT MAX',  icon: '⚡', desc: 'Full playlist run!' },
+    { min: 37, label: 'SUPER SHUT',icon: '🌟', desc: 'Beyond the playlist!' },
+  ],
+  ddududu: [
+    { min: 5,  label: 'DDU I',     icon: '🩷', desc: '5 streams today' },
+    { min: 10, label: 'DDU II',    icon: '💓', desc: '10 streams today' },
+    { min: 15, label: 'DDU III',   icon: '💗', desc: '15 streams today' },
+    { min: 20, label: 'DDU MAX',   icon: '⚡', desc: 'Full playlist run!' },
+    { min: 21, label: 'SUPER DDU', icon: '🌟', desc: 'Beyond the playlist!' },
+  ],
+};
+
+function getDailyBadge(trackId, count) {
+  const tiers = DAILY_TIERS[trackId] || [];
+  let badge = null;
+  for (const t of tiers) { if (count >= t.min) badge = t; }
+  return badge;
+}
+
+function hasCompletedAllDaily(trackId, count) {
+  const tiers = DAILY_TIERS[trackId] || [];
+  if (!tiers.length) return false;
+  // "completed" = reached at least the first tier
+  return count >= tiers[0].min;
+}
+
+const DAILY_TARGET = 3;   // minimum streams per track per day for old challenge display
 const WEEKLY_TARGET = 15; // streams per track per week
 
 function getBadge(plays) {
@@ -1377,23 +1420,49 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
     <div class="daily-grid">
       ${TRACKS.map(t => {
         const count = todayCounts[t.id] || 0;
-        const pct = Math.min(100, (count / DAILY_TARGET) * 100);
-        const done = count >= DAILY_TARGET;
+        const tiers = DAILY_TIERS[t.id] || [];
+        const maxTier = tiers[tiers.length - 2]; // last non-super tier
+        const superTier = tiers[tiers.length - 1];
+        const currentBadge = getDailyBadge(t.id, count);
+        const nextTier = tiers.find(tier => count < tier.min);
+        const target = nextTier ? nextTier.min : (maxTier ? maxTier.min : DAILY_TARGET);
+        const pct = nextTier
+          ? Math.min(100, (count / target) * 100)
+          : 100;
+        const isSuper = currentBadge && currentBadge.min === superTier?.min;
+        const badgeDisplay = currentBadge
+          ? `<div style="font-size:1.6rem;line-height:1;">${currentBadge.icon}</div>
+             <div style="font-family:var(--display);font-size:0.7rem;letter-spacing:0.1em;color:var(--pink);">${currentBadge.label}</div>
+             <div style="font-family:var(--light-serif);font-style:italic;font-size:0.55rem;color:var(--muted);">${currentBadge.desc}</div>`
+          : `<div style="font-size:1.2rem;opacity:0.15;">🔒</div>
+             <div style="font-size:0.45rem;letter-spacing:0.15em;color:rgba(245,240,240,0.2);">No badge yet</div>`;
         return `<div class="daily-card">
           <div class="daily-song-name">${t.title}</div>
-          <div class="daily-count">${count}</div>
-          <div class="daily-target">/ ${DAILY_TARGET} streams today</div>
+          <div class="daily-count" style="${isSuper ? 'color:#ffd700;' : ''}">${count}</div>
+          <div class="daily-target">${nextTier ? `/ ${target} for ${nextTier.label}` : (currentBadge ? '🌟 Max tier reached!' : 'streams today')}</div>
+          <div style="margin:0.6rem 0;">${badgeDisplay}</div>
           <div class="tier-dots">
-            ${Array.from({length: DAILY_TARGET}, (_, i) =>
-              `<div class="tier-dot${i < count ? ' earned' : ''}">${i < count ? '✓' : ''}</div>`
+            ${tiers.slice(0,4).map((tier, i) =>
+              `<div class="tier-dot${count >= tier.min ? ' earned' : ''}" title="${tier.label}: ${tier.min}+">${count >= tier.min ? tier.icon : ''}</div>`
             ).join('')}
           </div>
           <div class="daily-progress-bar"><div class="daily-progress-fill" style="width:${pct}%"></div></div>
-          ${done ? `<div style="font-size:0.5rem;letter-spacing:0.15em;color:var(--pink);margin-top:0.4rem;">✓ Done!</div>` : ''}
         </div>`;
       }).join('')}
     </div>
-    ${allDailyDone ? `<div class="complete-banner">🎉 Today's Challenge Complete! You're a true Blink! 💗</div>` : ''}
+    ${(() => {
+      const jumpDone     = (todayCounts['jump']     || 0) >= DAILY_TIERS.jump[0].min;
+      const shutdownDone = (todayCounts['shutdown'] || 0) >= DAILY_TIERS.shutdown[0].min;
+      const ddududuDone  = (todayCounts['ddududu']  || 0) >= DAILY_TIERS.ddududu[0].min;
+      const allDone = jumpDone && shutdownDone && ddududuDone;
+      const jumpMax     = (todayCounts['jump']     || 0) >= 80;
+      const shutdownMax = (todayCounts['shutdown'] || 0) >= 36;
+      const ddududuMax  = (todayCounts['ddududu']  || 0) >= 20;
+      const allMax = jumpMax && shutdownMax && ddududuMax;
+      if (allMax) return '<div class="complete-banner">🌟 LEGENDARY DAILY STAMP — Full playlist run on all tracks! 🌟</div>';
+      if (allDone) return '<div class="complete-banner">🏅 DAILY STAMP EARNED — You streamed all 3 tracks today! 💗</div>';
+      return '';
+    })()}
   `;
 
   // Weekly challenge table
@@ -1503,7 +1572,7 @@ document.getElementById('lfm-input').addEventListener('keydown', e => {
     position: fixed;
     top: 0; left: 0;
     width: 32px; height: 64px;
-    background: url('data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAwADADASIAAhEBAxEB/8QAGwABAAIDAQEAAAAAAAAAAAAAAAIIBQYHAwT/xAAqEAACAQMDAwMDBQAAAAAAAAABAgMABBEFBiEHEjETUXEiQWEVFqGx8P/EABcBAQEBAQAAAAAAAAAAAAAAAAABAwT/xAAhEQACAwABAwUAAAAAAAAAAAAAAQMEEQISITETMkFxgf/aAAwDAQACEQMRAD8AplSlWE6N9Nto7k6fWeqz24l1BpJFmkclgpB4HbkDjg1G8OunTkuSenH5zSvdTiillOIo3c+yqTXcN59M9uaQ36n6c/pesY5rdHwqklgO374BRhjPjBrK9Gp7K21hdsixifTbyR3UMv1o4GQS3kjC4x+ab20040OSsKGR5v79FeZEeORo5EZHU4KsMEVGrD9f7Ha1loF/2Wtul20iegygd/qZXPPkjHd/gKrxRPTK5VdWVxt6K6X0a6m/sa11Gzu7aa6trgCSFUI+iUcZOfsR5+K5pSjWmdexJXkUkbxo6zqHUFt363baeENjYDvkkaU9zOwyQcD5bj3Y1rmt7l1Lb+6BPoF9NbtFD2q7IufqHJxyK17apxrUXw39Gm6m7tZk/CqP4phpJakkfXy92+fk8dZ1jU9YuBPqd5LcuPBc8D4FfBSlU5m23rFKUoQzmzbOe41QTxqDHAMv78ggcVHeFnPa6s0syhUnHdH74HHisRFLLC/fFI8be6sQaSySSuXlkaRj92OTQu9iFKUoQ//Z') no-repeat center/contain;
+    background: url('data:image/png;base64,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') no-repeat center/contain;
     pointer-events: none;
     z-index: 99999;
     transform: translate(-4px, -4px);
