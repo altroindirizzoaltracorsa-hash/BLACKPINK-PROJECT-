@@ -330,7 +330,7 @@
   .user-meta { font-size: 0.5rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
   .user-meta span { color: var(--pink); }
 
-  .summary-strip { max-width: 900px; margin: 1.5rem auto 0; padding: 0 1.5rem; display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--border); }
+  .summary-strip { max-width: 900px; margin: 1.5rem auto 0; padding: 0 1.5rem; display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); }
   .summary-cell { background: var(--card); padding: 1.2rem 1.5rem; text-align: center; }
   .summary-num { font-family: var(--display); font-size: 2rem; color: var(--pink); line-height: 1; }
   .summary-lbl { font-size: 0.45rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); margin-top: 0.25rem; }
@@ -459,7 +459,7 @@
   }
   @media (max-width: 600px) {
     .nav-links li:not(:last-child) { display: none; }
-    .summary-strip { grid-template-columns: 1fr; }
+    .summary-strip { grid-template-columns: repeat(2,1fr); }
     footer { flex-direction: column; text-align: center; }
   }
 </style>
@@ -1349,8 +1349,10 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   // Summary strip
   const campaignTotal = Object.values(totalPlays).reduce((a,b) => a+b, 0);
   const earnedBadges = TRACKS.filter(t => getBadge(totalPlays[t.id] || 0)).length;
-  const dailyDone = TRACKS.every(t => (todayCounts[t.id] || 0) >= DAILY_TARGET);
-  const weeklyDone = TRACKS.every(t => (weekCounts[t.id] || 0) >= WEEKLY_TARGET);
+  const dailyDone  = TRACKS.every(t => (todayCounts[t.id] || 0) >= DAILY_TARGET);
+  const weeklyDone = TRACKS.every(t => (weekCounts[t.id]  || 0) >= WEEKLY_TARGET);
+  const challengeIcon  = dailyDone ? '✓' : (weeklyDone ? '~' : '…');
+  const challengeLabel = dailyDone ? 'Daily Complete!' : (weeklyDone ? 'Weekly Done' : 'Challenges Active');
   document.getElementById('profile-summary').innerHTML = `
     <div class="summary-cell">
       <div class="summary-num">${artistPlays.toLocaleString()}</div>
@@ -1363,6 +1365,10 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
     <div class="summary-cell">
       <div class="summary-num">${earnedBadges}</div>
       <div class="summary-lbl">Badges Earned</div>
+    </div>
+    <div class="summary-cell">
+      <div class="summary-num">${challengeIcon}</div>
+      <div class="summary-lbl">${challengeLabel}</div>
     </div>
   `;
 
