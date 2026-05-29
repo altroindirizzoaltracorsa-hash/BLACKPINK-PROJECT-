@@ -36,6 +36,17 @@
     overflow-x: hidden;
     cursor: url('https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/cursor.png') 24 48, crosshair;
   }
+  /* Inherit custom cursor everywhere — no !important so clicks still work */
+  * { cursor: inherit; }
+  /* Interactive elements keep their native pointer — cursor image still shows */
+  a, button, [onclick], label, select,
+  .song-card, .social-link, .stream-btn, .stream-now-btn,
+  .btn-primary, .btn-ghost, .logout-btn, .share-btn,
+  .history-toggle, .nav-logo, .nav-links a,
+  .stat-card, .tier-cell, .track-card, .chart-bar {
+    cursor: url('https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/cursor.png') 24 48, pointer;
+  }
+  input[type="text"], textarea { cursor: text; }
 
   body::before {
     content: '';
@@ -518,7 +529,7 @@
         <div class="stat-cards">
           <div class="stat-card"><div class="stat-num">3</div><div class="stat-lbl">Active Campaigns</div></div>
           <div class="stat-card"><div class="stat-num">∞</div><div class="stat-lbl">Blinks United</div></div>
-          <div class="stat-card"><div class="stat-num">#1</div><div class="stat-lbl">Goal: Chart Position</div></div>
+          <div class="stat-card"><div class="stat-num">1B</div><div class="stat-lbl">Goal: Streams per Song</div></div>
           <div class="stat-card"><div class="stat-num">24/7</div><div class="stat-lbl">We Never Stop</div></div>
         </div>
       </div>
