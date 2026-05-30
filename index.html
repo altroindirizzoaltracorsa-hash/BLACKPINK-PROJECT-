@@ -460,6 +460,83 @@
     .summary-strip { grid-template-columns: repeat(2,1fr); }
     footer { flex-direction: column; text-align: center; }
   }
+
+  /* ── LEADERBOARD PAGE ── */
+  .lb-page {
+    min-height: 100vh;
+    background: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255,0,102,0.1) 0%, transparent 60%), var(--black);
+    padding-top: 80px; padding-bottom: 4rem;
+  }
+  .lb-header { padding: 3rem 2rem 2rem; text-align: center; border-bottom: 1px solid var(--border); }
+  .lb-header-eyebrow { font-size: 0.55rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.8rem; }
+  .lb-header-title { font-family: var(--display); font-size: clamp(3rem, 10vw, 6rem); letter-spacing: 0.06em; line-height: 0.9; }
+  .lb-header-title span { color: var(--pink); }
+  .lb-header-sub { font-family: var(--light-serif); font-style: italic; font-size: 1rem; color: var(--muted); margin-top: 0.8rem; }
+  .lb-update-note { font-size: 0.5rem; letter-spacing: 0.2em; color: rgba(245,240,240,0.25); margin-top: 0.5rem; }
+
+  .lb-inner { max-width: 900px; margin: 0 auto; padding: 0 1.5rem; }
+
+  /* Tab system */
+  .lb-tabs { display: flex; gap: 1.5px; background: var(--border); margin: 2rem 0 0; }
+  .lb-tab {
+    flex: 1; padding: 0.8rem; text-align: center;
+    font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--muted);
+    background: var(--card); cursor: pointer; border: none;
+    transition: background 0.2s, color 0.2s;
+  }
+  .lb-tab:hover { background: var(--card2); color: var(--white); }
+  .lb-tab.active { background: var(--pink); color: var(--black); }
+
+  .lb-subtabs { display: flex; gap: 1.5px; background: var(--border); margin-bottom: 1.5px; }
+  .lb-subtab {
+    flex: 1; padding: 0.6rem; text-align: center;
+    font-family: var(--mono); font-size: 0.48rem; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--muted);
+    background: var(--card2); cursor: pointer; border: none;
+    transition: background 0.2s, color 0.2s;
+  }
+  .lb-subtab:hover { color: var(--white); }
+  .lb-subtab.active { color: var(--pink); border-bottom: 1px solid var(--pink); }
+
+  .lb-panel { display: none; }
+  .lb-panel.active { display: block; }
+
+  /* Ranking table */
+  .lb-table { width: 100%; border-collapse: collapse; background: var(--card); }
+  .lb-table th {
+    font-size: 0.45rem; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--muted); padding: 0.7rem 1rem; text-align: left;
+    border-bottom: 1px solid var(--border); font-weight: normal;
+  }
+  .lb-table th.right { text-align: right; }
+  .lb-table td { padding: 0.9rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+  .lb-table tr:hover td { background: var(--card2); }
+  .lb-table tr.me td { background: rgba(255,0,102,0.06); }
+  .lb-table tr.me td .lb-user { color: var(--pink); }
+
+  .lb-rank { font-family: var(--display); font-size: 1.4rem; color: rgba(255,0,102,0.3); width: 40px; }
+  .lb-rank.top1 { color: #ffd700; }
+  .lb-rank.top2 { color: #c0c0c0; }
+  .lb-rank.top3 { color: #cd7f32; }
+  .lb-user { font-family: var(--display); font-size: 1rem; letter-spacing: 0.06em; color: var(--white); }
+  .lb-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); object-fit: cover; margin-right: 0.8rem; vertical-align: middle; }
+  .lb-avatar-placeholder { width: 32px; height: 32px; border-radius: 50%; background: var(--pink-muted); border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; font-family: var(--display); font-size: 0.8rem; color: var(--pink); margin-right: 0.8rem; vertical-align: middle; }
+  .lb-score { font-family: var(--display); font-size: 1.2rem; color: var(--pink); text-align: right; }
+  .lb-badge { font-size: 1rem; }
+  .lb-delta-up { font-size: 0.5rem; color: #00ff88; letter-spacing: 0.1em; }
+  .lb-delta-dn { font-size: 0.5rem; color: rgba(245,240,240,0.3); letter-spacing: 0.1em; }
+  .lb-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
+  .lb-loading { padding: 3rem; text-align: center; color: var(--muted); font-size: 0.55rem; letter-spacing: 0.2em; }
+  .lb-refresh-btn {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--muted); font-family: var(--mono); font-size: 0.48rem;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    padding: 0.4rem 0.8rem; cursor: pointer; transition: border-color 0.2s, color 0.2s;
+    margin-left: 1rem;
+  }
+  .lb-refresh-btn:hover { border-color: var(--pink); color: var(--pink); }
+  .lb-last-updated { font-size: 0.45rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.25); }
 </style>
 </head>
 <body>
@@ -472,7 +549,8 @@
   <ul class="nav-links">
     <li><a href="#" onclick="showPage('home'); return false;" id="nav-home" class="active">Home</a></li>
     <li><a href="#songs" onclick="showPage('home'); setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100); return false;">Songs</a></li>
-    <li><a href="#" onclick="showPage('badges'); return false;" id="nav-badges">Badge Challenge</a></li>
+    <li><a href="#" onclick="showPage('badges'); return false;" id="nav-badges">My Badges</a></li>
+    <li><a href="#" onclick="showPage('leaderboard'); return false;" id="nav-leaderboard">Leaderboard</a></li>
     <li><a href="#follow" onclick="showPage('home'); setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100); return false;">Follow</a></li>
   </ul>
 </nav>
@@ -683,7 +761,7 @@
     <div class="badge-header">
       <p class="badge-header-eyebrow">✦ Blinks United — Streaming Challenge ✦</p>
       <h1 class="badge-header-title">BADGE<br><span>CHALLENGE</span></h1>
-      <p class="badge-header-sub">Connect Last.fm · Earn daily &amp; weekly badges · Build your streak</p>
+      <p class="badge-header-sub">Connect Last.fm · Track your scrobbles · Earn your badges</p>
     </div>
 
     <div id="login-panel" class="login-wrap">
@@ -748,7 +826,59 @@
     </div>
 
   </div>
+
 </div><!-- end badge page -->
+
+<!-- ══════════════════════════════════════
+     LEADERBOARD PAGE
+════════════════════════════════════════ -->
+<div id="page-leaderboard" class="page">
+  <div class="lb-page">
+
+    <div class="lb-header">
+      <p class="lb-header-eyebrow">✦ Blinks United — Global Rankings ✦</p>
+      <h1 class="lb-header-title">BLINKS<br><span>LEADERBOARD</span></h1>
+      <p class="lb-header-sub">The top streamers in our community — updated every hour</p>
+      <p class="lb-update-note">Rankings update every 60 minutes · Log into My Badges to join · Your scores are fetched live from Last.fm</p>
+    </div>
+
+    <div class="lb-inner">
+
+      <!-- Period tabs: Daily / Weekly -->
+      <div class="lb-tabs">
+        <button class="lb-tab active" onclick="switchLbPeriod('daily', this)">Today</button>
+        <button class="lb-tab" onclick="switchLbPeriod('weekly', this)">This Week</button>
+        <button class="lb-tab" onclick="switchLbPeriod('overall', this)">All Time</button>
+      </div>
+
+      <!-- Song subtabs -->
+      <div class="lb-subtabs">
+        <button class="lb-subtab active" onclick="switchLbSong('all', this)">Overall</button>
+        <button class="lb-subtab" onclick="switchLbSong('jump', this)">JUMP</button>
+        <button class="lb-subtab" onclick="switchLbSong('shutdown', this)">SHUT DOWN</button>
+        <button class="lb-subtab" onclick="switchLbSong('ddududu', this)">DDU-DU DDU-DU</button>
+      </div>
+
+      <!-- Header row -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0.8rem 0 0.4rem;">
+        <span class="lb-last-updated" id="lb-last-updated">Loading…</span>
+        <button class="lb-refresh-btn" onclick="refreshLeaderboard()">↻ Refresh</button>
+      </div>
+
+      <!-- Leaderboard table -->
+      <div id="lb-table-wrap">
+        <div class="lb-loading">Loading leaderboard…</div>
+      </div>
+
+    </div>
+
+    <p class="badge-footer-note" style="margin-top:2rem;">
+      Rankings are based on Last.fm scrobble data fetched when you log into My Badges.<br>
+      Scores update automatically every hour. Fan-made by Blinks United · Made with 💗
+    </p>
+
+  </div>
+</div><!-- end leaderboard page -->
 
 <script>
 // ── SPOTIFY TRACKS CONFIG ────────────────────────────────────
@@ -1082,6 +1212,7 @@ function showPage(page) {
   window.scrollTo(0, 0);
   if (page === 'home') initAnimations();
   if (page === 'badges') tryAutoLoad();
+  if (page === 'leaderboard') refreshLeaderboard();
 }
 
 function initAnimations() {
@@ -1338,6 +1469,8 @@ async function loadProfile() {
     currentUser = { info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays };
     saveUsername(username);
     renderProfile(currentUser);
+    // Submit scores to leaderboard in background (non-blocking)
+    submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays).catch(()=>{});
 
   } catch(e) {
     document.getElementById('login-panel').style.display = 'block';
@@ -1588,6 +1721,238 @@ document.getElementById('lfm-input').addEventListener('keydown', e => {
   });
   document.addEventListener('mouseleave', () => cur.style.opacity = '0');
   document.addEventListener('mouseenter', () => cur.style.opacity = '1');
+
+
+// ══════════════════════════════════════════════════════════════
+// LEADERBOARD — JSONBin.io storage
+// ══════════════════════════════════════════════════════════════
+
+const JSONBIN_KEY   = '$2a$10$wJBh1dvLmeA9Tq4cWldtkO/48d1fhmphHESwFziV7g57cGsvuzGmq';
+const JSONBIN_BASE  = 'https://api.jsonbin.io/v3';
+const BIN_NAME      = 'blinks-united-leaderboard';
+
+// State
+let lbData      = null;   // { users: { username: { avatar, scores: { daily, weekly, overall, jump_daily, ... } } }, lastUpdated: ISO }
+let lbBinId     = null;   // JSONBin bin ID (stored in localStorage after first create)
+let lbPeriod    = 'daily';
+let lbSong      = 'all';
+let lbCacheTime = null;
+
+const LS_BIN_ID = 'bu_jsonbin_id';
+
+function getLbBinId() {
+  try { return localStorage.getItem(LS_BIN_ID) || null; } catch(e) { return null; }
+}
+function setLbBinId(id) {
+  try { localStorage.setItem(LS_BIN_ID, id); } catch(e) {}
+}
+
+// ── Fetch or create the bin ───────────────────────────────────
+async function ensureBin() {
+  if (lbBinId) return lbBinId;
+  const stored = getLbBinId();
+  if (stored) { lbBinId = stored; return lbBinId; }
+
+  // Create a new bin
+  const res = await fetch(`${JSONBIN_BASE}/b`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': JSONBIN_KEY,
+      'X-Bin-Name': BIN_NAME,
+      'X-Bin-Private': 'false',
+    },
+    body: JSON.stringify({ users: {}, lastUpdated: new Date().toISOString() })
+  });
+  const d = await res.json();
+  lbBinId = d.metadata?.id;
+  if (lbBinId) setLbBinId(lbBinId);
+  return lbBinId;
+}
+
+// ── Read leaderboard data ─────────────────────────────────────
+async function fetchLbData(force = false) {
+  // Cache for 60 minutes
+  if (!force && lbData && lbCacheTime && (Date.now() - lbCacheTime) < 60 * 60 * 1000) {
+    return lbData;
+  }
+  const binId = await ensureBin();
+  if (!binId) throw new Error('No bin ID');
+  const res = await fetch(`${JSONBIN_BASE}/b/${binId}/latest`, {
+    headers: { 'X-Master-Key': JSONBIN_KEY }
+  });
+  const d = await res.json();
+  lbData = d.record || { users: {}, lastUpdated: new Date().toISOString() };
+  lbCacheTime = Date.now();
+  return lbData;
+}
+
+// ── Write user scores to leaderboard ─────────────────────────
+async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts, artistPlays) {
+  try {
+    const binId = await ensureBin();
+    if (!binId) return;
+    const data = await fetchLbData(true);
+
+    const username = userInfo.name || userInfo.realname || '';
+    if (!username) return;
+
+    const avatarUrl = (userInfo.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
+
+    // Calculate today's date string
+    const today = dateLabel(0);
+    const weekStart = (() => {
+      const d = new Date();
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const mon = new Date(d.setDate(diff));
+      return `${String(mon.getDate()).padStart(2,'0')}/${String(mon.getMonth()+1).padStart(2,'0')}`;
+    })();
+
+    // Build score entry
+    const campaignTotal = Object.values(totalPlays).reduce((a,b) => a+b, 0);
+    data.users[username] = {
+      avatar: avatarUrl,
+      updatedAt: new Date().toISOString(),
+      scores: {
+        // All-time overall
+        overall_all:      campaignTotal,
+        overall_jump:     totalPlays.jump     || 0,
+        overall_shutdown: totalPlays.shutdown || 0,
+        overall_ddududu:  totalPlays.ddududu  || 0,
+        overall_artist:   artistPlays         || 0,
+        // Today
+        daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0),
+        daily_jump:       todayCounts.jump     || 0,
+        daily_shutdown:   todayCounts.shutdown || 0,
+        daily_ddududu:    todayCounts.ddududu  || 0,
+        daily_date:       today,
+        // This week
+        weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0),
+        weekly_jump:      weekCounts.jump     || 0,
+        weekly_shutdown:  weekCounts.shutdown || 0,
+        weekly_ddududu:   weekCounts.ddududu  || 0,
+        weekly_start:     weekStart,
+      }
+    };
+    data.lastUpdated = new Date().toISOString();
+
+    // Write back
+    await fetch(`${JSONBIN_BASE}/b/${binId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': JSONBIN_KEY,
+      },
+      body: JSON.stringify(data)
+    });
+    lbData = data;
+    lbCacheTime = Date.now();
+    console.log('Leaderboard updated for', username);
+  } catch(e) {
+    console.warn('Leaderboard submit failed:', e);
+  }
+}
+
+// ── Render leaderboard table ──────────────────────────────────
+function getScoreKey() {
+  // period: daily | weekly | overall
+  // song:   all | jump | shutdown | ddududu
+  return `${lbPeriod}_${lbSong}`;
+}
+
+function renderLeaderboard() {
+  const wrap = document.getElementById('lb-table-wrap');
+  const updEl = document.getElementById('lb-last-updated');
+  if (!lbData) {
+    wrap.innerHTML = '<div class="lb-loading">Loading…</div>';
+    return;
+  }
+
+  const key = getScoreKey();
+  const today = dateLabel(0);
+  const myUsername = getSavedUsername();
+
+  // Build sorted array
+  const entries = Object.entries(lbData.users || {})
+    .map(([username, data]) => {
+      // For daily scores, only count if they were updated today
+      let score = data.scores?.[key] || 0;
+      if (lbPeriod === 'daily' && data.scores?.daily_date !== today) score = 0;
+      return { username, avatar: data.avatar, score, badge: getBadge(data.scores?.overall_all || 0) };
+    })
+    .filter(e => e.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (entries.length === 0) {
+    wrap.innerHTML = '<div class="lb-empty">No scores yet — log into My Badges to join the leaderboard! 💗</div>';
+  } else {
+    const periodLabel = lbPeriod === 'daily' ? 'streams today' : lbPeriod === 'weekly' ? 'streams this week' : 'total streams';
+    const songLabel   = lbSong === 'all' ? 'All Campaign Tracks' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : 'DDU-DU DDU-DU';
+    wrap.innerHTML = `
+      <table class="lb-table">
+        <thead><tr>
+          <th style="width:44px">#</th>
+          <th>Blink</th>
+          <th class="right">${songLabel} — ${periodLabel}</th>
+        </tr></thead>
+        <tbody>
+          ${entries.map((e, i) => {
+            const rankClass = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
+            const rankEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+            const isMe = e.username.toLowerCase() === myUsername.toLowerCase();
+            const avatarHtml = e.avatar
+              ? `<img class="lb-avatar" src="${e.avatar}" alt="${e.username}">`
+              : `<span class="lb-avatar-placeholder">${e.username[0].toUpperCase()}</span>`;
+            return `<tr class="${isMe ? 'me' : ''}">
+              <td><span class="lb-rank ${rankClass}">${rankEmoji || (i+1)}</span></td>
+              <td>${avatarHtml}<span class="lb-user">${e.username}</span>${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}</td>
+              <td class="lb-score">${e.score.toLocaleString()}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  // Update timestamp
+  if (lbData.lastUpdated) {
+    const d = new Date(lbData.lastUpdated);
+    updEl.textContent = `Last updated: ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} · refreshes every 60 min`;
+  }
+}
+
+async function refreshLeaderboard(force = false) {
+  const wrap = document.getElementById('lb-table-wrap');
+  if (wrap) wrap.innerHTML = '<div class="lb-loading">Loading leaderboard…</div>';
+  try {
+    await fetchLbData(force);
+    renderLeaderboard();
+  } catch(e) {
+    if (wrap) wrap.innerHTML = '<div class="lb-empty">Could not load leaderboard. Try again shortly.</div>';
+  }
+}
+
+function switchLbPeriod(period, btn) {
+  lbPeriod = period;
+  document.querySelectorAll('.lb-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLeaderboard();
+}
+
+function switchLbSong(song, btn) {
+  lbSong = song;
+  document.querySelectorAll('.lb-subtab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLeaderboard();
+}
+
+// Auto-refresh leaderboard every 60 minutes when on the page
+setInterval(() => {
+  if (document.getElementById('page-leaderboard')?.classList.contains('active')) {
+    refreshLeaderboard(true);
+  }
+}, 60 * 60 * 1000);
 </script>
 
 </body>
