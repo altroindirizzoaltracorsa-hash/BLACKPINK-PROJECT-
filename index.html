@@ -222,7 +222,7 @@
   .song-card::before {
     content: ''; position: absolute; inset: 0;
     background: linear-gradient(135deg, rgba(255,0,102,0.12) 0%, transparent 60%);
-    opacity: 0; transition: opacity 0.4s;
+    opacity: 0; transition: opacity 0.4s; pointer-events: none;
   }
   .song-card:hover { background: #161616; }
   .song-card:hover::before { opacity: 1; }
