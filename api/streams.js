@@ -8,137 +8,59 @@ const TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
-// 24-hour cache — daily cron pre-warms it once, so user requests never
-// trigger an expensive Spotify fetch between cron runs.
-const LIVE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const LIVE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 h
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
-function proxied(targetUrl, opts = {}) {
-  const key = process.env.SCRAPERAPI_KEY;
-  if (!key) throw new Error('SCRAPERAPI_KEY env var not set');
-  const params = new URLSearchParams({ api_key: key, url: targetUrl, keep_headers: 'true', ...opts });
-  return `http://api.scraperapi.com/?${params}`;
-}
+// ── Token via Spotify Client Credentials ─────────────────────────────────────
+// accounts.spotify.com/api/token is a proper server-to-server API endpoint.
+// Unlike the web-player token URL it is NOT behind Spotify’s WAF and is
+// reachable from Vercel without any proxy.
+// Whether this token is accepted by the partner GraphQL API is what we’re testing.
 
-// ── Anonymous Spotify token ───────────────────────────────────────────────────
-// Needs ultra_premium to bypass Spotify's WAF on open.spotify.com.
-// Cached in Redis so it only costs 25 credits once per expiry cycle.
+async function getClientCredToken() {
+  const cached = await redis.get('sp_cc_token');
+  if (cached?.token && cached.expiresAt > Date.now() + 60_000) return cached.token;
 
-async function getAnonToken() {
-  const cached = await redis.get('sp_anon_token');
-  if (cached?.token && cached.expiresAt > Date.now() + 120_000) return cached.token;
+  const clientId     = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  if (!clientId || !clientSecret) throw new Error('SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET not set');
 
-  const res  = await fetch(
-    proxied('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', { ultra_premium: 'true' }),
-    { headers: { 'User-Agent': UA, Accept: 'application/json', 'Accept-Language': 'en-US,en;q=0.9', Cookie: 'sp_t=1' } }
-  );
+  const creds = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+  const res   = await fetch('https://accounts.spotify.com/api/token', {
+    method:  'POST',
+    headers: { Authorization: `Basic ${creds}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body:    'grant_type=client_credentials',
+  });
   const body = await res.text();
-  if (!res.ok) throw new Error(`token_${res.status}: ${body.slice(0, 300)}`);
-  const parsed = JSON.parse(body);
-  if (!parsed.accessToken) throw new Error(`token_no_key: ${body.slice(0, 300)}`);
+  if (!res.ok) throw new Error(`cc_token_${res.status}: ${body.slice(0, 200)}`);
 
-  await redis.set('sp_anon_token', { token: parsed.accessToken, expiresAt: parsed.accessTokenExpirationTimestampMs });
-  return parsed.accessToken;
+  const { access_token, expires_in } = JSON.parse(body);
+  await redis.set('sp_cc_token', { token: access_token, expiresAt: Date.now() + expires_in * 1000 });
+  return access_token;
 }
 
-// ── Primary: Spotify internal partner GraphQL API ────────────────────────────
+// ── Partner GraphQL API ─────────────────────────────────────────────────────
+// Called directly (no proxy) — api-partner.spotify.com may allow datacenter
+// IPs since it’s an API endpoint rather than a user-facing web page.
 
 async function fetchViaPartnerAPI(trackId, token) {
   const variables  = encodeURIComponent(JSON.stringify({ uri: `spotify:track:${trackId}`, locale: '' }));
   const extensions = encodeURIComponent(JSON.stringify({
     persistedQuery: { version: 1, sha256Hash: 'ae85b52abb74d20a4c331d4143d4772c95f34757' },
   }));
-  const targetUrl = `https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${variables}&extensions=${extensions}`;
+  const url = `https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${variables}&extensions=${extensions}`;
 
-  const res  = await fetch(proxied(targetUrl), {
+  const res  = await fetch(url, {
     headers: { Authorization: `Bearer ${token}`, 'User-Agent': UA, Accept: 'application/json', 'App-Platform': 'WebPlayer' },
   });
   const body = await res.text();
-  if (res.status === 401) { await redis.del('sp_anon_token'); throw new Error(`partner_401: ${body.slice(0, 200)}`); }
-  if (!res.ok) throw new Error(`partner_${res.status}: ${body.slice(0, 200)}`);
+  if (!res.ok) throw new Error(`partner_${res.status}: ${body.slice(0, 300)}`);
 
   const data = JSON.parse(body);
   const raw  = data?.data?.trackUnion?.playcount;
-  if (!raw) throw new Error(`partner_no_playcount: ${body.slice(0, 300)}`);
+  if (!raw) throw new Error(`partner_no_playcount. keys=${JSON.stringify(Object.keys(data?.data || {}))} body=${body.slice(0, 200)}`);
   return Number(raw);
-}
-
-// ── Fallback: full page render via headless Chrome ───────────────────────────
-// ultra_premium + render gives us the fully hydrated DOM on a residential IP.
-// We try four extraction strategies in order of reliability.
-
-async function fetchViaHTMLScrape(trackId) {
-  const res = await fetch(
-    proxied(`https://open.spotify.com/track/${trackId}`, { ultra_premium: 'true', render: 'true' }),
-    { headers: { 'User-Agent': UA, Accept: 'text/html,*/*;q=0.8', 'Accept-Language': 'en-US,en;q=0.9' } }
-  );
-  if (!res.ok) throw new Error(`scrape_${res.status}`);
-  const html = await res.text();
-
-  // 1. __NEXT_DATA__ — present in Spotify's SSR output
-  const ndMarker = '<script id="__NEXT_DATA__" type="application/json">';
-  const ndIdx    = html.indexOf(ndMarker);
-  if (ndIdx !== -1) {
-    const end = html.indexOf('</script>', ndIdx + ndMarker.length);
-    if (end !== -1) {
-      const nextData = JSON.parse(html.slice(ndIdx + ndMarker.length, end));
-      const entity   = nextData?.props?.pageProps?.state?.data?.entity;
-      const raw      = entity?.playcount ?? entity?.play_count;
-      if (raw) return Number(raw);
-    }
-  }
-
-  // 2. JSON-LD structured data (schema.org ListenAction interactionStatistic)
-  const ldMarker = '<script type="application/ld+json">';
-  let ldIdx = 0;
-  while ((ldIdx = html.indexOf(ldMarker, ldIdx)) !== -1) {
-    const end = html.indexOf('</script>', ldIdx + ldMarker.length);
-    if (end !== -1) {
-      try {
-        const ld    = JSON.parse(html.slice(ldIdx + ldMarker.length, end));
-        const stats = ld?.interactionStatistic;
-        if (Array.isArray(stats)) {
-          const plays = stats.find(s => s?.interactionType?.['@type'] === 'ListenAction');
-          if (plays?.userInteractionCount) return Number(plays.userInteractionCount);
-        }
-      } catch (_) { /* malformed JSON-LD, skip */ }
-    }
-    ldIdx += ldMarker.length;
-  }
-
-  // 3. "playcount" key anywhere in inline script blobs
-  const pcIdx = html.indexOf('"playcount"');
-  if (pcIdx !== -1) {
-    const snippet = html.slice(pcIdx, pcIdx + 40);
-    const m = snippet.match(/"playcount"\s*:\s*"?(\d{4,})"?/);
-    if (m) return Number(m[1]);
-  }
-
-  // 4. "play_count" variant
-  const pcIdx2 = html.indexOf('"play_count"');
-  if (pcIdx2 !== -1) {
-    const snippet = html.slice(pcIdx2, pcIdx2 + 40);
-    const m = snippet.match(/"play_count"\s*:\s*"?(\d{4,})"?/);
-    if (m) return Number(m[1]);
-  }
-
-  throw new Error(`scrape_no_playcount (len=${html.length} has_nd=${ndIdx !== -1})`);
-}
-
-// ── Fetch with automatic fallback ────────────────────────────────────────────
-
-async function fetchPlayCount(trackId, token) {
-  const errs = [];
-  if (token) {
-    try { return await fetchViaPartnerAPI(trackId, token); }
-    catch (e) { errs.push(`partner: ${e.message}`); }
-  } else {
-    errs.push('partner: skipped (no token)');
-  }
-  try { return await fetchViaHTMLScrape(trackId); }
-  catch (e) { errs.push(`scrape: ${e.message}`); }
-  throw new Error(errs.join(' | '));
 }
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
@@ -176,7 +98,8 @@ export default async function handler(req, res) {
 
   let token = null;
   try {
-    token = await getAnonToken();
+    token = await getClientCredToken();
+    debugErrors.push('token: OK (client credentials)');
   } catch (e) {
     debugErrors.push(`token: ${e.message}`);
   }
@@ -201,7 +124,8 @@ export default async function handler(req, res) {
       if (cacheValid) {
         total = cached.total;
       } else {
-        total       = await fetchPlayCount(trackId, token);
+        if (!token) throw new Error('no token available');
+        total       = await fetchViaPartnerAPI(trackId, token);
         fetchedLive = true;
         await redis.set(liveKey, { total, ts: Date.now() });
 
