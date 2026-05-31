@@ -8,13 +8,12 @@ const TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
-const LIVE_CACHE_TTL_MS = 60 * 60 * 1000;
+// 24-hour cache — daily cron pre-warms it once, so user requests never
+// trigger an expensive Spotify fetch between cron runs.
+const LIVE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
-// Build a ScraperAPI proxy URL.
-// premium=true  → residential IPs, bypasses protected domains (10 credits each)
-// render=true   → headless Chrome for JS-heavy pages (25 credits each)
 function proxied(targetUrl, opts = {}) {
   const key = process.env.SCRAPERAPI_KEY;
   if (!key) throw new Error('SCRAPERAPI_KEY env var not set');
@@ -23,16 +22,16 @@ function proxied(targetUrl, opts = {}) {
 }
 
 // ── Anonymous Spotify token ───────────────────────────────────────────────────
-// open.spotify.com is a protected domain — requires premium=true.
-// Cached in Redis so this only costs credits once per expiry (~1/hr).
+// Needs ultra_premium to bypass Spotify's WAF on open.spotify.com.
+// Cached in Redis so it only costs 25 credits once per expiry cycle.
 
 async function getAnonToken() {
   const cached = await redis.get('sp_anon_token');
   if (cached?.token && cached.expiresAt > Date.now() + 120_000) return cached.token;
 
   const res  = await fetch(
-    proxied('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', { premium: 'true' }),
-    { headers: { 'User-Agent': UA, 'Accept': 'application/json', 'Accept-Language': 'en-US,en;q=0.9', 'Cookie': 'sp_t=1' } }
+    proxied('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', { ultra_premium: 'true' }),
+    { headers: { 'User-Agent': UA, Accept: 'application/json', 'Accept-Language': 'en-US,en;q=0.9', Cookie: 'sp_t=1' } }
   );
   const body = await res.text();
   if (!res.ok) throw new Error(`token_${res.status}: ${body.slice(0, 300)}`);
@@ -53,7 +52,7 @@ async function fetchViaPartnerAPI(trackId, token) {
   const targetUrl = `https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${variables}&extensions=${extensions}`;
 
   const res  = await fetch(proxied(targetUrl), {
-    headers: { Authorization: `Bearer ${token}`, 'User-Agent': UA, 'Accept': 'application/json', 'App-Platform': 'WebPlayer' },
+    headers: { Authorization: `Bearer ${token}`, 'User-Agent': UA, Accept: 'application/json', 'App-Platform': 'WebPlayer' },
   });
   const body = await res.text();
   if (res.status === 401) { await redis.del('sp_anon_token'); throw new Error(`partner_401: ${body.slice(0, 200)}`); }
@@ -65,36 +64,66 @@ async function fetchViaPartnerAPI(trackId, token) {
   return Number(raw);
 }
 
-// ── Fallback: render the full track page with headless Chrome ──────────────────
-// Uses indexOf instead of regex to avoid forward-slash escaping issues.
+// ── Fallback: full page render via headless Chrome ───────────────────────────
+// ultra_premium + render gives us the fully hydrated DOM on a residential IP.
+// We try four extraction strategies in order of reliability.
 
 async function fetchViaHTMLScrape(trackId) {
   const res = await fetch(
-    proxied(`https://open.spotify.com/track/${trackId}`, { premium: 'true', render: 'true' }),
-    { headers: { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8', 'Accept-Language': 'en-US,en;q=0.9' } }
+    proxied(`https://open.spotify.com/track/${trackId}`, { ultra_premium: 'true', render: 'true' }),
+    { headers: { 'User-Agent': UA, Accept: 'text/html,*/*;q=0.8', 'Accept-Language': 'en-US,en;q=0.9' } }
   );
   if (!res.ok) throw new Error(`scrape_${res.status}`);
   const html = await res.text();
 
-  // Extract __NEXT_DATA__ with indexOf to sidestep regex slash-escaping
-  const marker    = '<script id="__NEXT_DATA__" type="application/json">';
-  const markerIdx = html.indexOf(marker);
-  if (markerIdx !== -1) {
-    const jsonStart = markerIdx + marker.length;
-    const jsonEnd   = html.indexOf('</script>', jsonStart);
-    if (jsonEnd !== -1) {
-      const nextData = JSON.parse(html.slice(jsonStart, jsonEnd));
+  // 1. __NEXT_DATA__ — present in Spotify's SSR output
+  const ndMarker = '<script id="__NEXT_DATA__" type="application/json">';
+  const ndIdx    = html.indexOf(ndMarker);
+  if (ndIdx !== -1) {
+    const end = html.indexOf('</script>', ndIdx + ndMarker.length);
+    if (end !== -1) {
+      const nextData = JSON.parse(html.slice(ndIdx + ndMarker.length, end));
       const entity   = nextData?.props?.pageProps?.state?.data?.entity;
       const raw      = entity?.playcount ?? entity?.play_count;
       if (raw) return Number(raw);
     }
   }
 
-  // Last resort: grep for playcount anywhere in inline JSON blobs
-  const inline = html.match(/"playcount"\s*:\s*"?(\d{4,})"?/);
-  if (inline) return Number(inline[1]);
+  // 2. JSON-LD structured data (schema.org ListenAction interactionStatistic)
+  const ldMarker = '<script type="application/ld+json">';
+  let ldIdx = 0;
+  while ((ldIdx = html.indexOf(ldMarker, ldIdx)) !== -1) {
+    const end = html.indexOf('</script>', ldIdx + ldMarker.length);
+    if (end !== -1) {
+      try {
+        const ld    = JSON.parse(html.slice(ldIdx + ldMarker.length, end));
+        const stats = ld?.interactionStatistic;
+        if (Array.isArray(stats)) {
+          const plays = stats.find(s => s?.interactionType?.['@type'] === 'ListenAction');
+          if (plays?.userInteractionCount) return Number(plays.userInteractionCount);
+        }
+      } catch (_) { /* malformed JSON-LD, skip */ }
+    }
+    ldIdx += ldMarker.length;
+  }
 
-  throw new Error(`scrape_no_playcount (page_len=${html.length}, has_marker=${markerIdx !== -1})`);
+  // 3. "playcount" key anywhere in inline script blobs
+  const pcIdx = html.indexOf('"playcount"');
+  if (pcIdx !== -1) {
+    const snippet = html.slice(pcIdx, pcIdx + 40);
+    const m = snippet.match(/"playcount"\s*:\s*"?(\d{4,})"?/);
+    if (m) return Number(m[1]);
+  }
+
+  // 4. "play_count" variant
+  const pcIdx2 = html.indexOf('"play_count"');
+  if (pcIdx2 !== -1) {
+    const snippet = html.slice(pcIdx2, pcIdx2 + 40);
+    const m = snippet.match(/"play_count"\s*:\s*"?(\d{4,})"?/);
+    if (m) return Number(m[1]);
+  }
+
+  throw new Error(`scrape_no_playcount (len=${html.length} has_nd=${ndIdx !== -1})`);
 }
 
 // ── Fetch with automatic fallback ────────────────────────────────────────────
