@@ -100,12 +100,9 @@ export default async function handler(req, res) {
             await redis.set(histKey, history);
           }
 
-          // Only advance the baseline when the total has ACTUALLY increased AND the date
-          // has changed. This prevents storing a stale pre-batch-update total as the
-          // baseline, which would cause gap=0 when the batch update later arrives.
-          if (prev.date !== todayLabel) {
-            await redis.set(prevKey, { total, date: todayLabel });
-          }
+          // Always advance the baseline when total increases, even intraday.
+          // This captures the batch update value so tomorrow's delta is correct.
+          await redis.set(prevKey, { total, date: todayLabel });
         }
 
         // First-time baseline (no prev exists yet)
