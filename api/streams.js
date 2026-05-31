@@ -8,7 +8,7 @@ const TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
-const LIVE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour Redis cache
+const LIVE_CACHE_TTL_MS = 60 * 60 * 1000;
 
 function getDateLabel(date) {
   const dd = String(date.getUTCDate()).padStart(2, '0');
@@ -21,6 +21,11 @@ function parseDateLabel(label) {
 }
 function daysBetween(labelA, labelB) {
   return Math.round((parseDateLabel(labelB) - parseDateLabel(labelA)) / 86_400_000);
+}
+function yesterdayLabel() {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - 1);
+  return getDateLabel(d);
 }
 
 export default async function handler(req, res) {
@@ -51,8 +56,8 @@ export default async function handler(req, res) {
         redis.get(histKey),
       ]);
 
-      const history  = hist || [];
-      const cacheAge = cached?.ts ? Date.now() - cached.ts : Infinity;
+      const history   = hist || [];
+      const cacheAge  = cached?.ts ? Date.now() - cached.ts : Infinity;
       const cacheValid = !isCron && cacheAge < LIVE_CACHE_TTL_MS && (cached?.total || 0) > 0;
       let total;
 
@@ -61,12 +66,10 @@ export default async function handler(req, res) {
       } else {
         const r = await fetch(
           `https://spotify-scraper.p.rapidapi.com/v1/track/metadata?trackId=${trackId}`,
-          {
-            headers: {
+          { headers: {
               'x-rapidapi-key':  process.env.RAPIDAPI_KEY,
               'x-rapidapi-host': 'spotify-scraper.p.rapidapi.com',
-            },
-          }
+          } }
         );
         const data = await r.json();
         if (!r.ok || data?.message) errors[name] = data?.message || `HTTP ${r.status}`;
@@ -74,27 +77,40 @@ export default async function handler(req, res) {
         fetchedLive = true;
         if (total > 0) await redis.set(liveKey, { total, ts: Date.now() });
 
-        if (total > 0) {
-          if (prev && (prev.total || 0) > 0) {
-            const gap = daysBetween(prev.date, todayLabel);
-            if (gap >= 1) {
-              const dailyStreams = total - Number(prev.total);
-              const existing    = history.find(h => h.date === prev.date);
-              if (!existing) {
-                const entry = { date: prev.date, streams: dailyStreams };
-                if (gap > 1) entry.note = `${gap}-day gap`;
-                history.push(entry);
-              } else {
-                existing.streams = dailyStreams;
-              }
-              if (history.length > 60) history.shift();
-              await redis.set(histKey, history);
+        const prevTotal = Number(prev?.total || 0);
+
+        if (total > 0 && prevTotal > 0 && total > prevTotal) {
+          const gap = daysBetween(prev.date, todayLabel);
+
+          if (gap >= 1) {
+            // Label the entry as yesterday — the last fully-completed calendar day.
+            // Using yesterday (not prev.date) correctly handles multi-day gaps where
+            // prev.date could be 2+ days old but the streams just landed today.
+            const yLabel = yesterdayLabel();
+            const dailyStreams = total - prevTotal;
+            const existing = history.find(h => h.date === yLabel);
+            if (!existing) {
+              const entry = { date: yLabel, streams: dailyStreams };
+              if (gap > 1) entry.note = `${gap}-day gap`;
+              history.push(entry);
+            } else {
+              existing.streams = dailyStreams;
             }
+            if (history.length > 60) history.shift();
+            await redis.set(histKey, history);
           }
-          // Only snapshot once per day so opening balance is preserved for delta calc
-          if (!prev || prev.date !== todayLabel) {
+
+          // Only advance the baseline when the total has ACTUALLY increased AND the date
+          // has changed. This prevents storing a stale pre-batch-update total as the
+          // baseline, which would cause gap=0 when the batch update later arrives.
+          if (prev.date !== todayLabel) {
             await redis.set(prevKey, { total, date: todayLabel });
           }
+        }
+
+        // First-time baseline (no prev exists yet)
+        if (total > 0 && !prev) {
+          await redis.set(prevKey, { total, date: todayLabel });
         }
       }
 
