@@ -8,20 +8,29 @@ const TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
-const LIVE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const LIVE_CACHE_TTL_MS = 60 * 60 * 1000;
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
-// Route a Spotify URL through ScraperAPI's residential proxy pool.
-// This bypasses Spotify's datacenter IP block (Error 54113) while
-// keeping all scraping logic entirely in our own code.
-function proxied(url) {
+// Build a ScraperAPI proxy URL.
+// premium=true  → residential IPs, bypasses protected domains (10 credits each)
+// render=true   → headless Chrome rendering for JS-heavy pages (25 credits each)
+// Default (no flags) costs 1 credit per request.
+function proxied(targetUrl, opts = {}) {
   const key = process.env.SCRAPERAPI_KEY;
   if (!key) throw new Error('SCRAPERAPI_KEY env var not set');
-  return `http://api.scraperapi.com/?api_key=${key}&url=${encodeURIComponent(url)}&keep_headers=true`;
+  const params = new URLSearchParams({
+    api_key: key,
+    url: targetUrl,
+    keep_headers: 'true',
+    ...opts,
+  });
+  return `http://api.scraperapi.com/?${params}`;
 }
 
 // ── Anonymous Spotify token ───────────────────────────────────────────────────
+// open.spotify.com is a protected domain — needs premium=true.
+// Token is cached in Redis so this only costs credits when it expires (~1/hr).
 
 async function getAnonToken() {
   const cached = await redis.get('sp_anon_token');
@@ -30,7 +39,7 @@ async function getAnonToken() {
   }
 
   const res = await fetch(
-    proxied('https://open.spotify.com/get_access_token?reason=transport&productType=web_player'),
+    proxied('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', { premium: 'true' }),
     {
       headers: {
         'User-Agent': UA,
@@ -50,13 +59,13 @@ async function getAnonToken() {
 }
 
 // ── Primary: Spotify internal partner GraphQL API ────────────────────────────
+// api-partner.spotify.com may not need premium — try standard first.
 
 async function fetchViaPartnerAPI(trackId, token) {
   const variables  = encodeURIComponent(JSON.stringify({ uri: `spotify:track:${trackId}`, locale: '' }));
   const extensions = encodeURIComponent(JSON.stringify({
     persistedQuery: { version: 1, sha256Hash: 'ae85b52abb74d20a4c331d4143d4772c95f34757' },
   }));
-
   const targetUrl = `https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${variables}&extensions=${extensions}`;
 
   const res = await fetch(proxied(targetUrl), {
@@ -81,27 +90,38 @@ async function fetchViaPartnerAPI(trackId, token) {
   return Number(raw);
 }
 
-// ── Fallback: scrape open.spotify.com/track page ─────────────────────────────
+// ── Fallback: render the full track page with headless Chrome ──────────────────
+// render=true + premium=true makes ScraperAPI use a real Chrome browser
+// behind a residential IP — Spotify serves the full SSR page with __NEXT_DATA__.
 
 async function fetchViaHTMLScrape(trackId) {
-  const res = await fetch(proxied(`https://open.spotify.com/track/${trackId}`), {
-    headers: {
-      'User-Agent': UA,
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9',
-    },
-  });
+  const res = await fetch(
+    proxied(`https://open.spotify.com/track/${trackId}`, { premium: 'true', render: 'true' }),
+    {
+      headers: {
+        'User-Agent': UA,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    }
+  );
   if (!res.ok) throw new Error(`scrape_${res.status}`);
   const html = await res.text();
 
-  const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.+?)<\/script>/s);
-  if (!match) throw new Error(`scrape_no_next_data (page_len=${html.length})`);
+  // __NEXT_DATA__ is embedded in Spotify's SSR output
+  const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.+?)</script>/s);
+  if (match) {
+    const nextData = JSON.parse(match[1]);
+    const entity   = nextData?.props?.pageProps?.state?.data?.entity;
+    const raw      = entity?.playcount ?? entity?.play_count;
+    if (raw) return Number(raw);
+  }
 
-  const nextData = JSON.parse(match[1]);
-  const entity   = nextData?.props?.pageProps?.state?.data?.entity;
-  const raw      = entity?.playcount ?? entity?.play_count;
-  if (!raw) throw new Error(`scrape_no_playcount: keys=${JSON.stringify(Object.keys(entity || {}))}`);
-  return Number(raw);
+  // Fallback: look for playcount anywhere in the rendered JSON blobs
+  const inline = html.match(/"playcount"\s*:\s*"?(\d{4,})"?/);
+  if (inline) return Number(inline[1]);
+
+  throw new Error(`scrape_no_playcount (page_len=${html.length}, has_next_data=${!!match})`);
 }
 
 // ── Fetch with automatic fallback ────────────────────────────────────────────
