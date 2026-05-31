@@ -82,6 +82,27 @@
   }
   .nav-links a:hover, .nav-links a.active { opacity: 1; color: var(--pink); }
 
+  .nav-hamburger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    z-index: 1001;
+  }
+  .nav-hamburger span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: var(--white);
+    transition: transform 0.2s, opacity 0.2s;
+  }
+  .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .nav-hamburger.open span:nth-child(2) { opacity: 0; }
+  .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
   .page { display: none; }
   .page.active { display: block; }
 
@@ -456,7 +477,23 @@
     .daily-grid { grid-template-columns: 1fr; }
   }
   @media (max-width: 600px) {
-    .nav-links li:not(:last-child) { display: none; }
+    .nav-hamburger { display: flex; }
+    .nav-links {
+      display: none;
+      position: fixed;
+      top: 62px;
+      left: 0; right: 0;
+      background: rgba(8,8,8,0.97);
+      border-bottom: 1px solid rgba(255,0,102,0.2);
+      flex-direction: column;
+      padding: 0.5rem 2rem 1.2rem;
+      gap: 0;
+      z-index: 1000;
+    }
+    .nav-links.open { display: flex; }
+    .nav-links li { display: block; }
+    .nav-links a { display: block; padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); opacity: 0.85; }
+    .nav-links li:last-child a { border-bottom: none; }
     .summary-strip { grid-template-columns: repeat(2,1fr); }
     footer { flex-direction: column; text-align: center; }
   }
@@ -546,13 +583,16 @@
     <img src="https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/blinksunited.jpg" alt="Blinks United" style="width:28px;height:28px;object-fit:cover;border-radius:50%;">
     BLINKS UNITED
   </span>
-  <ul class="nav-links">
-    <li><a href="#" onclick="showPage('home'); return false;" id="nav-home" class="active">Home</a></li>
-    <li><a href="#songs" onclick="showPage('home'); setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100); return false;">Songs</a></li>
-    <li><a href="#" onclick="showPage('badges'); return false;" id="nav-badges">My Badges</a></li>
-    <li><a href="#" onclick="showPage('leaderboard'); return false;" id="nav-leaderboard">Leaderboard</a></li>
-    <li><a href="#follow" onclick="showPage('home'); setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100); return false;">Follow</a></li>
+  <ul class="nav-links" id="mobile-nav">
+    <li><a href="#" onclick="showPage('home'); closeMobileNav(); return false;" id="nav-home" class="active">Home</a></li>
+    <li><a href="#songs" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100); return false;">Songs</a></li>
+    <li><a href="#" onclick="showPage('badges'); closeMobileNav(); return false;" id="nav-badges">My Badges</a></li>
+    <li><a href="#" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
+    <li><a href="#follow" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100); return false;">Follow</a></li>
   </ul>
+  <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
 
 <!-- HOME PAGE -->
@@ -1207,6 +1247,17 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── PAGE ROUTING ─────────────────────────────────────────────
+function toggleMobileNav() {
+  const nav = document.getElementById('mobile-nav');
+  const btn = document.getElementById('nav-hamburger');
+  nav.classList.toggle('open');
+  btn.classList.toggle('open');
+}
+function closeMobileNav() {
+  document.getElementById('mobile-nav').classList.remove('open');
+  document.getElementById('nav-hamburger').classList.remove('open');
+}
+
 function showPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
