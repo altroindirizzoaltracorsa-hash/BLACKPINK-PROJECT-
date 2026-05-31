@@ -72,25 +72,30 @@ export default async function handler(req, res) {
         if (!r.ok || data?.message) errors[name] = data?.message || `HTTP ${r.status}`;
         total = data?.playCount || 0;
         fetchedLive = true;
-        await redis.set(liveKey, { total, ts: Date.now() });
+        if (total > 0) await redis.set(liveKey, { total, ts: Date.now() });
 
-        if (prev && total > Number(prev.total)) {
-          const gap = daysBetween(prev.date, todayLabel);
-          if (gap >= 1) {
-            const dailyStreams = total - Number(prev.total);
-            const existing    = history.find(h => h.date === prev.date);
-            if (!existing) {
-              const entry = { date: prev.date, streams: dailyStreams };
-              if (gap > 1) entry.note = `${gap}-day gap`;
-              history.push(entry);
-            } else {
-              existing.streams = dailyStreams;
+        if (total > 0) {
+          if (prev && (prev.total || 0) > 0) {
+            const gap = daysBetween(prev.date, todayLabel);
+            if (gap >= 1) {
+              const dailyStreams = total - Number(prev.total);
+              const existing    = history.find(h => h.date === prev.date);
+              if (!existing) {
+                const entry = { date: prev.date, streams: dailyStreams };
+                if (gap > 1) entry.note = `${gap}-day gap`;
+                history.push(entry);
+              } else {
+                existing.streams = dailyStreams;
+              }
+              if (history.length > 60) history.shift();
+              await redis.set(histKey, history);
             }
-            if (history.length > 60) history.shift();
-            await redis.set(histKey, history);
+          }
+          // Only snapshot once per day so opening balance is preserved for delta calc
+          if (!prev || prev.date !== todayLabel) {
+            await redis.set(prevKey, { total, date: todayLabel });
           }
         }
-        await redis.set(prevKey, { total, date: todayLabel });
       }
 
       results[name] = { total, history };
@@ -102,9 +107,14 @@ export default async function handler(req, res) {
     }
   }
 
+  const prevSnaps = {};
+  for (const name of Object.keys(TRACKS)) {
+    prevSnaps[name] = await redis.get(`bp_prev_${name}`);
+  }
+
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
   res.status(200).json({
     ...results,
-    _debug: { hasRapidKey: !!process.env.RAPIDAPI_KEY, errors, live: fetchedLive, ts: new Date().toISOString() },
+    _debug: { hasRapidKey: !!process.env.RAPIDAPI_KEY, errors, live: fetchedLive, prev: prevSnaps, ts: new Date().toISOString() },
   });
 }
