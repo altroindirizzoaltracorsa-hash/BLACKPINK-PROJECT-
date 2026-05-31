@@ -8,62 +8,7 @@ const TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
-const LIVE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 h
-
-const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-
-// ── Token via Spotify Client Credentials ─────────────────────────────────────
-// accounts.spotify.com/api/token is a proper server-to-server API endpoint.
-// Unlike the web-player token URL it is NOT behind Spotify’s WAF and is
-// reachable from Vercel without any proxy.
-// Whether this token is accepted by the partner GraphQL API is what we’re testing.
-
-async function getClientCredToken() {
-  const cached = await redis.get('sp_cc_token');
-  if (cached?.token && cached.expiresAt > Date.now() + 60_000) return cached.token;
-
-  const clientId     = process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-  if (!clientId || !clientSecret) throw new Error('SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET not set');
-
-  const creds = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-  const res   = await fetch('https://accounts.spotify.com/api/token', {
-    method:  'POST',
-    headers: { Authorization: `Basic ${creds}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-    body:    'grant_type=client_credentials',
-  });
-  const body = await res.text();
-  if (!res.ok) throw new Error(`cc_token_${res.status}: ${body.slice(0, 200)}`);
-
-  const { access_token, expires_in } = JSON.parse(body);
-  await redis.set('sp_cc_token', { token: access_token, expiresAt: Date.now() + expires_in * 1000 });
-  return access_token;
-}
-
-// ── Partner GraphQL API ─────────────────────────────────────────────────────
-// Called directly (no proxy) — api-partner.spotify.com may allow datacenter
-// IPs since it’s an API endpoint rather than a user-facing web page.
-
-async function fetchViaPartnerAPI(trackId, token) {
-  const variables  = encodeURIComponent(JSON.stringify({ uri: `spotify:track:${trackId}`, locale: '' }));
-  const extensions = encodeURIComponent(JSON.stringify({
-    persistedQuery: { version: 1, sha256Hash: 'ae85b52abb74d20a4c331d4143d4772c95f34757' },
-  }));
-  const url = `https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${variables}&extensions=${extensions}`;
-
-  const res  = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}`, 'User-Agent': UA, Accept: 'application/json', 'App-Platform': 'WebPlayer' },
-  });
-  const body = await res.text();
-  if (!res.ok) throw new Error(`partner_${res.status}: ${body.slice(0, 300)}`);
-
-  const data = JSON.parse(body);
-  const raw  = data?.data?.trackUnion?.playcount;
-  if (!raw) throw new Error(`partner_no_playcount. keys=${JSON.stringify(Object.keys(data?.data || {}))} body=${body.slice(0, 200)}`);
-  return Number(raw);
-}
-
-// ── Date helpers ──────────────────────────────────────────────────────────────
+const LIVE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour Redis cache
 
 function getDateLabel(date) {
   const dd = String(date.getUTCDate()).padStart(2, '0');
@@ -78,8 +23,6 @@ function daysBetween(labelA, labelB) {
   return Math.round((parseDateLabel(labelB) - parseDateLabel(labelA)) / 86_400_000);
 }
 
-// ── Vercel handler ────────────────────────────────────────────────────────────
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -91,18 +34,9 @@ export default async function handler(req, res) {
     }
   }
 
-  const todayLabel  = getDateLabel(new Date());
-  const results     = {};
-  const debugErrors = [];
-  let fetchedLive   = false;
-
-  let token = null;
-  try {
-    token = await getClientCredToken();
-    debugErrors.push('token: OK (client credentials)');
-  } catch (e) {
-    debugErrors.push(`token: ${e.message}`);
-  }
+  const todayLabel = getDateLabel(new Date());
+  const results    = {};
+  let fetchedLive  = false;
 
   for (const [name, trackId] of Object.entries(TRACKS)) {
     try {
@@ -124,8 +58,17 @@ export default async function handler(req, res) {
       if (cacheValid) {
         total = cached.total;
       } else {
-        if (!token) throw new Error('no token available');
-        total       = await fetchViaPartnerAPI(trackId, token);
+        const r = await fetch(
+          `https://spotify-scraper.p.rapidapi.com/v1/track/metadata?trackId=${trackId}`,
+          {
+            headers: {
+              'x-rapidapi-key':  process.env.RAPIDAPI_KEY,
+              'x-rapidapi-host': 'spotify-scraper.p.rapidapi.com',
+            },
+          }
+        );
+        const data = await r.json();
+        total = data?.playCount || 0;
         fetchedLive = true;
         await redis.set(liveKey, { total, ts: Date.now() });
 
@@ -150,16 +93,13 @@ export default async function handler(req, res) {
 
       results[name] = { total, history };
     } catch (e) {
-      debugErrors.push(`${name}: ${e.message}`);
+      console.error(`streams: ${name}:`, e.message);
       const stale   = await redis.get(`bp_live_${name}`);
       const history = await redis.get(`bp_hist_${name}`);
       results[name] = { total: stale?.total || 0, history: history || [] };
     }
   }
 
-  res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({
-    ...results,
-    _meta: { updatedAt: new Date().toISOString(), live: fetchedLive, errors: debugErrors },
-  });
+  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+  res.status(200).json(results);
 }
