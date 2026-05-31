@@ -215,7 +215,9 @@
   .songs-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5px; background: rgba(255,0,102,0.15); }
   .song-card {
     background: var(--off-black); padding: 3rem 2.5rem;
-    position: relative; transition: background 0.3s; cursor: pointer;
+    position: relative; transition: background 0.3s;
+    user-select: none; -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
   .song-card::before {
     content: ''; position: absolute; inset: 0;
@@ -245,6 +247,7 @@
   .progress-nums { display: flex; justify-content: space-between; font-size: 0.75rem; color: rgba(245,240,240,0.4); }
   .progress-nums strong { color: var(--pink); }
   .stream-btn {
+    -webkit-tap-highlight-color: transparent;
     display: inline-flex; align-items: center; gap: 0.5rem;
     margin-top: 1.5rem; font-size: 0.55rem; letter-spacing: 0.2em;
     text-transform: uppercase; color: var(--pink); text-decoration: none;
