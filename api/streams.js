@@ -8,17 +8,29 @@ const TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
-const LIVE_CACHE_TTL_MS = 60 * 60 * 1000;
+const LIVE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+// Route a Spotify URL through ScraperAPI's residential proxy pool.
+// This bypasses Spotify's datacenter IP block (Error 54113) while
+// keeping all scraping logic entirely in our own code.
+function proxied(url) {
+  const key = process.env.SCRAPERAPI_KEY;
+  if (!key) throw new Error('SCRAPERAPI_KEY env var not set');
+  return `http://api.scraperapi.com/?api_key=${key}&url=${encodeURIComponent(url)}&keep_headers=true`;
+}
+
+// ── Anonymous Spotify token ───────────────────────────────────────────────────
 
 async function getAnonToken() {
   const cached = await redis.get('sp_anon_token');
   if (cached?.token && cached.expiresAt > Date.now() + 120_000) {
     return cached.token;
   }
+
   const res = await fetch(
-    'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
+    proxied('https://open.spotify.com/get_access_token?reason=transport&productType=web_player'),
     {
       headers: {
         'User-Agent': UA,
@@ -28,45 +40,51 @@ async function getAnonToken() {
       },
     }
   );
-  // Surface the raw response body so we can debug what Spotify returns
   const body = await res.text();
   if (!res.ok) throw new Error(`token_${res.status}: ${body.slice(0, 300)}`);
   const parsed = JSON.parse(body);
   if (!parsed.accessToken) throw new Error(`token_no_key: ${body.slice(0, 300)}`);
+
   await redis.set('sp_anon_token', { token: parsed.accessToken, expiresAt: parsed.accessTokenExpirationTimestampMs });
   return parsed.accessToken;
 }
+
+// ── Primary: Spotify internal partner GraphQL API ────────────────────────────
 
 async function fetchViaPartnerAPI(trackId, token) {
   const variables  = encodeURIComponent(JSON.stringify({ uri: `spotify:track:${trackId}`, locale: '' }));
   const extensions = encodeURIComponent(JSON.stringify({
     persistedQuery: { version: 1, sha256Hash: 'ae85b52abb74d20a4c331d4143d4772c95f34757' },
   }));
-  const res = await fetch(
-    `https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${variables}&extensions=${extensions}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'User-Agent': UA,
-        'Accept': 'application/json',
-        'App-Platform': 'WebPlayer',
-      },
-    }
-  );
+
+  const targetUrl = `https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${variables}&extensions=${extensions}`;
+
+  const res = await fetch(proxied(targetUrl), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'User-Agent': UA,
+      'Accept': 'application/json',
+      'App-Platform': 'WebPlayer',
+    },
+  });
+
   const body = await res.text();
   if (res.status === 401) {
     await redis.del('sp_anon_token');
     throw new Error(`partner_401: ${body.slice(0, 200)}`);
   }
   if (!res.ok) throw new Error(`partner_${res.status}: ${body.slice(0, 200)}`);
+
   const data = JSON.parse(body);
   const raw  = data?.data?.trackUnion?.playcount;
   if (!raw) throw new Error(`partner_no_playcount: ${body.slice(0, 300)}`);
   return Number(raw);
 }
 
+// ── Fallback: scrape open.spotify.com/track page ─────────────────────────────
+
 async function fetchViaHTMLScrape(trackId) {
-  const res = await fetch(`https://open.spotify.com/track/${trackId}`, {
+  const res = await fetch(proxied(`https://open.spotify.com/track/${trackId}`), {
     headers: {
       'User-Agent': UA,
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -75,14 +93,18 @@ async function fetchViaHTMLScrape(trackId) {
   });
   if (!res.ok) throw new Error(`scrape_${res.status}`);
   const html = await res.text();
+
   const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.+?)<\/script>/s);
-  if (!match) throw new Error(`scrape_no_next_data (page_len=${html.length}, first200=${html.slice(0,200).replace(/\n/g,' ')}`);
+  if (!match) throw new Error(`scrape_no_next_data (page_len=${html.length})`);
+
   const nextData = JSON.parse(match[1]);
   const entity   = nextData?.props?.pageProps?.state?.data?.entity;
   const raw      = entity?.playcount ?? entity?.play_count;
-  if (!raw) throw new Error(`scrape_no_playcount: keys=${JSON.stringify(Object.keys(entity||{}))}`);
+  if (!raw) throw new Error(`scrape_no_playcount: keys=${JSON.stringify(Object.keys(entity || {}))}`);
   return Number(raw);
 }
+
+// ── Fetch with automatic fallback ────────────────────────────────────────────
 
 async function fetchPlayCount(trackId, token) {
   const errs = [];
@@ -103,6 +125,8 @@ async function fetchPlayCount(trackId, token) {
   throw new Error(errs.join(' | '));
 }
 
+// ── Date helpers ──────────────────────────────────────────────────────────────
+
 function getDateLabel(date) {
   const dd = String(date.getUTCDate()).padStart(2, '0');
   const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
@@ -115,6 +139,8 @@ function parseDateLabel(label) {
 function daysBetween(labelA, labelB) {
   return Math.round((parseDateLabel(labelB) - parseDateLabel(labelA)) / 86_400_000);
 }
+
+// ── Vercel handler ────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
