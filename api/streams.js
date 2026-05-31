@@ -36,6 +36,7 @@ export default async function handler(req, res) {
 
   const todayLabel = getDateLabel(new Date());
   const results    = {};
+  const errors     = {};
   let fetchedLive  = false;
 
   for (const [name, trackId] of Object.entries(TRACKS)) {
@@ -68,6 +69,7 @@ export default async function handler(req, res) {
           }
         );
         const data = await r.json();
+        if (!r.ok || data?.message) errors[name] = data?.message || `HTTP ${r.status}`;
         total = data?.playCount || 0;
         fetchedLive = true;
         await redis.set(liveKey, { total, ts: Date.now() });
@@ -101,5 +103,8 @@ export default async function handler(req, res) {
   }
 
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
-  res.status(200).json(results);
+  res.status(200).json({
+    ...results,
+    _debug: { hasRapidKey: !!process.env.RAPIDAPI_KEY, errors, live: fetchedLive, ts: new Date().toISOString() },
+  });
 }
