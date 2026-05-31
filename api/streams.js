@@ -8,20 +8,15 @@ const TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
-const LIVE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const LIVE_CACHE_TTL_MS = 60 * 60 * 1000;
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-
-// ── Anonymous Spotify token ───────────────────────────────────────────────────
-// Spotify’s web player fetches this same token without any login.
-// We cache it in Redis and reuse it until 2 min before it expires.
 
 async function getAnonToken() {
   const cached = await redis.get('sp_anon_token');
   if (cached?.token && cached.expiresAt > Date.now() + 120_000) {
     return cached.token;
   }
-
   const res = await fetch(
     'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
     {
@@ -33,22 +28,20 @@ async function getAnonToken() {
       },
     }
   );
-  if (!res.ok) throw new Error(`Spotify token ${res.status}`);
-
-  const { accessToken, accessTokenExpirationTimestampMs } = await res.json();
-  await redis.set('sp_anon_token', { token: accessToken, expiresAt: accessTokenExpirationTimestampMs });
-  return accessToken;
+  // Surface the raw response body so we can debug what Spotify returns
+  const body = await res.text();
+  if (!res.ok) throw new Error(`token_${res.status}: ${body.slice(0, 300)}`);
+  const parsed = JSON.parse(body);
+  if (!parsed.accessToken) throw new Error(`token_no_key: ${body.slice(0, 300)}`);
+  await redis.set('sp_anon_token', { token: parsed.accessToken, expiresAt: parsed.accessTokenExpirationTimestampMs });
+  return parsed.accessToken;
 }
-
-// ── Primary: Spotify internal partner GraphQL API ────────────────────────────
-// This is the same GraphQL endpoint Spotify’s own web player hits.
 
 async function fetchViaPartnerAPI(trackId, token) {
   const variables  = encodeURIComponent(JSON.stringify({ uri: `spotify:track:${trackId}`, locale: '' }));
   const extensions = encodeURIComponent(JSON.stringify({
     persistedQuery: { version: 1, sha256Hash: 'ae85b52abb74d20a4c331d4143d4772c95f34757' },
   }));
-
   const res = await fetch(
     `https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${variables}&extensions=${extensions}`,
     {
@@ -60,21 +53,17 @@ async function fetchViaPartnerAPI(trackId, token) {
       },
     }
   );
-
+  const body = await res.text();
   if (res.status === 401) {
     await redis.del('sp_anon_token');
-    throw new Error('Spotify token expired (401)');
+    throw new Error(`partner_401: ${body.slice(0, 200)}`);
   }
-  if (!res.ok) throw new Error(`Partner API ${res.status}`);
-
-  const data = await res.json();
+  if (!res.ok) throw new Error(`partner_${res.status}: ${body.slice(0, 200)}`);
+  const data = JSON.parse(body);
   const raw  = data?.data?.trackUnion?.playcount;
-  if (!raw) throw new Error('playcount missing from partner API response');
+  if (!raw) throw new Error(`partner_no_playcount: ${body.slice(0, 300)}`);
   return Number(raw);
 }
-
-// ── Fallback: scrape open.spotify.com/track page ─────────────────────────────
-// Spotify SSR-renders the track page with play count in __NEXT_DATA__.
 
 async function fetchViaHTMLScrape(trackId) {
   const res = await fetch(`https://open.spotify.com/track/${trackId}`, {
@@ -84,50 +73,48 @@ async function fetchViaHTMLScrape(trackId) {
       'Accept-Language': 'en-US,en;q=0.9',
     },
   });
-  if (!res.ok) throw new Error(`HTML scrape ${res.status}`);
+  if (!res.ok) throw new Error(`scrape_${res.status}`);
   const html = await res.text();
-
   const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.+?)<\/script>/s);
-  if (!match) throw new Error('__NEXT_DATA__ not found');
-
+  if (!match) throw new Error(`scrape_no_next_data (page_len=${html.length}, first200=${html.slice(0,200).replace(/\n/g,' ')}`);
   const nextData = JSON.parse(match[1]);
   const entity   = nextData?.props?.pageProps?.state?.data?.entity;
   const raw      = entity?.playcount ?? entity?.play_count;
-  if (!raw) throw new Error('playcount not in __NEXT_DATA__');
+  if (!raw) throw new Error(`scrape_no_playcount: keys=${JSON.stringify(Object.keys(entity||{}))}`);
   return Number(raw);
 }
 
-// ── Play count with automatic fallback ───────────────────────────────────────
-
 async function fetchPlayCount(trackId, token) {
+  const errs = [];
   if (token) {
     try {
       return await fetchViaPartnerAPI(trackId, token);
     } catch (e) {
-      console.warn(`streams: partner API failed (${trackId}) — falling back to HTML scrape:`, e.message);
+      errs.push(`partner: ${e.message}`);
     }
+  } else {
+    errs.push('partner: skipped (no token)');
   }
-  return fetchViaHTMLScrape(trackId);
+  try {
+    return await fetchViaHTMLScrape(trackId);
+  } catch (e) {
+    errs.push(`scrape: ${e.message}`);
+  }
+  throw new Error(errs.join(' | '));
 }
-
-// ── Date helpers ──────────────────────────────────────────────────────────────
 
 function getDateLabel(date) {
   const dd = String(date.getUTCDate()).padStart(2, '0');
   const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
   return `${dd}/${mm}`;
 }
-
 function parseDateLabel(label) {
   const [dd, mm] = label.split('/').map(Number);
   return new Date(Date.UTC(new Date().getUTCFullYear(), mm - 1, dd));
 }
-
 function daysBetween(labelA, labelB) {
   return Math.round((parseDateLabel(labelB) - parseDateLabel(labelA)) / 86_400_000);
 }
-
-// ── Vercel handler ────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -140,16 +127,16 @@ export default async function handler(req, res) {
     }
   }
 
-  const todayLabel = getDateLabel(new Date());
-  const results    = {};
-  let fetchedLive  = false;
+  const todayLabel  = getDateLabel(new Date());
+  const results     = {};
+  const debugErrors = [];
+  let fetchedLive   = false;
 
-  // One shared token for all three tracks
   let token = null;
   try {
     token = await getAnonToken();
   } catch (e) {
-    console.warn('streams: token unavailable, will use HTML scrape:', e.message);
+    debugErrors.push(`token: ${e.message}`);
   }
 
   for (const [name, trackId] of Object.entries(TRACKS)) {
@@ -164,11 +151,10 @@ export default async function handler(req, res) {
         redis.get(histKey),
       ]);
 
-      const history = hist || [];
-      let total;
-
-      const cacheAge   = cached?.ts ? Date.now() - cached.ts : Infinity;
+      const history  = hist || [];
+      const cacheAge = cached?.ts ? Date.now() - cached.ts : Infinity;
       const cacheValid = !isCron && cacheAge < LIVE_CACHE_TTL_MS;
+      let total;
 
       if (cacheValid) {
         total = cached.total;
@@ -193,22 +179,21 @@ export default async function handler(req, res) {
             await redis.set(histKey, history);
           }
         }
-
         await redis.set(prevKey, { total, date: todayLabel });
       }
 
       results[name] = { total, history };
     } catch (e) {
-      console.error(`streams: ${name}:`, e.message);
+      debugErrors.push(`${name}: ${e.message}`);
       const stale   = await redis.get(`bp_live_${name}`);
       const history = await redis.get(`bp_hist_${name}`);
       results[name] = { total: stale?.total || 0, history: history || [] };
     }
   }
 
-  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+  res.setHeader('Cache-Control', 'no-store');
   res.status(200).json({
     ...results,
-    _meta: { updatedAt: new Date().toISOString(), live: fetchedLive },
+    _meta: { updatedAt: new Date().toISOString(), live: fetchedLive, errors: debugErrors },
   });
 }
