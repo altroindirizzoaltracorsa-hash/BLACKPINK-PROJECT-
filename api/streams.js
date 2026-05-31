@@ -53,7 +53,7 @@ export default async function handler(req, res) {
 
       const history  = hist || [];
       const cacheAge = cached?.ts ? Date.now() - cached.ts : Infinity;
-      const cacheValid = !isCron && cacheAge < LIVE_CACHE_TTL_MS;
+      const cacheValid = !isCron && cacheAge < LIVE_CACHE_TTL_MS && (cached?.total || 0) > 0;
       let total;
 
       if (cacheValid) {
