@@ -83,9 +83,6 @@ export default async function handler(req, res) {
           const gap = daysBetween(prev.date, todayLabel);
 
           if (gap >= 1) {
-            // Label the entry as yesterday — the last fully-completed calendar day.
-            // Using yesterday (not prev.date) correctly handles multi-day gaps where
-            // prev.date could be 2+ days old but the streams just landed today.
             const yLabel = yesterdayLabel();
             const dailyStreams = total - prevTotal;
             const existing = history.find(h => h.date === yLabel);
@@ -100,12 +97,9 @@ export default async function handler(req, res) {
             await redis.set(histKey, history);
           }
 
-          // Always advance the baseline when total increases, even intraday.
-          // This captures the batch update value so tomorrow's delta is correct.
           await redis.set(prevKey, { total, date: todayLabel });
         }
 
-        // First-time baseline (no prev exists yet)
         if (total > 0 && !prev) {
           await redis.set(prevKey, { total, date: todayLabel });
         }
