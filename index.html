@@ -2241,6 +2241,10 @@ async function openSongCard(trackId) {
 
   const PX = art ? 460 : 80;  // text starts after artwork or at left margin
 
+  // Text shadow for readability over artwork
+  ctx.shadowColor = 'rgba(0,0,0,0.9)';
+  ctx.shadowBlur  = 20;
+
   // Era + year pill
   ctx.fillStyle = 'rgba(255,0,102,0.18)';
   ctx.fillRect(PX, 100, 240, 32);
