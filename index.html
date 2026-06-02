@@ -2170,13 +2170,20 @@ async function loadArtwork(trackId) {
 }
 
 function drawNoise(ctx, W, H, alpha = 0.04) {
-  const id = ctx.createImageData(W, H);
+  const tmp = document.createElement('canvas');
+  tmp.width = W; tmp.height = H;
+  const tctx = tmp.getContext('2d');
+  const id = tctx.createImageData(W, H);
   for (let i = 0; i < id.data.length; i += 4) {
     const v = Math.random() * 255 | 0;
     id.data[i] = id.data[i+1] = id.data[i+2] = v;
-    id.data[i+3] = alpha * 255 | 0;
+    id.data[i+3] = 255;
   }
-  ctx.putImageData(id, 0, 0);
+  tctx.putImageData(id, 0, 0);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(tmp, 0, 0);
+  ctx.restore();
 }
 
 // ── SONG UPDATE CARD ─────────────────────────────────────────────────────────
