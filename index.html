@@ -896,14 +896,6 @@
             </div>
           </div>
           <div class="settings-group">
-            <label class="settings-label">Songs to track</label>
-            <div class="settings-pills" id="s-songs">
-              <button class="s-pill s-toggle" data-id="jump"     onclick="toggleSong('jump')">JUMP</button>
-              <button class="s-pill s-toggle" data-id="shutdown" onclick="toggleSong('shutdown')">SHUT DOWN</button>
-              <button class="s-pill s-toggle" data-id="ddududu"  onclick="toggleSong('ddududu')">DDU-DU</button>
-            </div>
-          </div>
-          <div class="settings-group">
             <label class="settings-label">Personal daily streaming goal (all songs)</label>
             <input id="s-goal" class="settings-input" type="number" min="1" placeholder="e.g. 150" oninput="saveSetting('goal',this.value)">
             <p class="settings-hint">Overrides default tier targets for your display</p>
@@ -2142,23 +2134,15 @@ setInterval(() => {
 const TRACK_ARTWORK = {};   // { jump: artworkUrl, ... }
 let   cardCanvas    = null; // current canvas for download
 
-// Fetch album artwork via iTunes Search API (free, CORS-enabled)
+// Prefetch artwork via server-side endpoint (tries Spotify oEmbed → Last.fm → iTunes)
 async function fetchAllArtwork() {
-  const queries = {
-    jump:     'BLACKPINK JUMP DEADLINE',
-    shutdown: 'BLACKPINK Shut Down BORN PINK',
-    ddududu:  'BLACKPINK DDU-DU DDU-DU',
-  };
-  for (const [id, q] of Object.entries(queries)) {
+  await Promise.all(['jump', 'shutdown', 'ddududu'].map(async id => {
     try {
-      const r = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=3`);
+      const r = await fetch('/api/artwork?id=' + id);
       const d = await r.json();
-      const item = d.results?.find(x => x.artistName?.toLowerCase().includes('blackpink'));
-      if (item?.artworkUrl100) {
-        TRACK_ARTWORK[id] = item.artworkUrl100.replace('100x100bb', '600x600bb');
-      }
+      if (d.url) TRACK_ARTWORK[id] = d.url;
     } catch(e) {}
-  }
+  }));
 }
 fetchAllArtwork();
 
@@ -2188,11 +2172,20 @@ async function loadImg(url) {
 }
 
 async function loadArtwork(trackId) {
+  // Fetch URL if not cached yet
+  if (!TRACK_ARTWORK[trackId]) {
+    try {
+      const r = await fetch('/api/artwork?id=' + trackId);
+      const d = await r.json();
+      if (d.url) TRACK_ARTWORK[trackId] = d.url;
+    } catch(e) {}
+  }
   const url = TRACK_ARTWORK[trackId];
   if (!url) return null;
-  try { return await loadImg(url); } catch(e) {}
-  // Fallback: try via proxy
+  // Always load via proxy to avoid CORS issues
   try { return await loadImg('/api/proxy-image?url=' + encodeURIComponent(url)); } catch(e) {}
+  // Direct fallback
+  try { return await loadImg(url); } catch(e) {}
   return null;
 }
 
