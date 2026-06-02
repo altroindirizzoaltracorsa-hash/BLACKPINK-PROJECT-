@@ -2273,7 +2273,7 @@ async function openSongCard(trackId) {
   ctx.letterSpacing = '2px';
   ctx.fillText(formatFull(total), PX, 460);
 
-  ctx.fillStyle = 'rgba(245,240,240,0.36)';
+  ctx.fillStyle = 'rgba(245,240,240,0.62)';
   ctx.font = '500 22px "DM Mono", monospace';
   ctx.letterSpacing = '4px';
   ctx.fillText('TOTAL SPOTIFY STREAMS', PX, 496);
@@ -2293,7 +2293,7 @@ async function openSongCard(trackId) {
   // Timestamp
   const now = new Date();
   const ds  = String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear();
-  ctx.fillStyle = 'rgba(245,240,240,0.2)';
+  ctx.fillStyle = 'rgba(245,240,240,0.5)';
   ctx.font = '500 22px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
   ctx.fillText('Updated ' + ds, PX, 658);
