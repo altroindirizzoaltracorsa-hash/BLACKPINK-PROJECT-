@@ -2241,9 +2241,16 @@ async function openSongCard(trackId) {
 
   const PX = art ? 460 : 80;  // text starts after artwork or at left margin
 
-  // Text shadow for readability over artwork
-  ctx.shadowColor = 'rgba(0,0,0,0.9)';
-  ctx.shadowBlur  = 20;
+  // Helper: stroke-then-fill so text is readable over any background colour
+  function haloText(text, x, y, strokeWidth = 8) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+    ctx.lineWidth   = strokeWidth;
+    ctx.lineJoin    = 'round';
+    ctx.strokeText(text, x, y);
+    ctx.restore();
+    ctx.fillText(text, x, y);
+  }
 
   // Era + year pill
   ctx.fillStyle = 'rgba(255,0,102,0.18)';
@@ -2251,21 +2258,20 @@ async function openSongCard(trackId) {
   ctx.fillStyle = '#FF0066';
   ctx.font = '500 15px "DM Mono", monospace';
   ctx.letterSpacing = '4px';
-  ctx.fillText(track.era + ' · ' + track.year, PX + 12, 121);
+  haloText(track.era + ' · ' + track.year, PX + 12, 121, 5);
 
   // Song title
   ctx.fillStyle = '#F5F0F0';
   const titleSize = track.title.length > 10 ? 100 : track.title.length > 6 ? 118 : 140;
   ctx.font = `${titleSize}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '5px';
-  // wrap long titles
   if (track.title.includes(' ') && ctx.measureText(track.title).width > (W - PX - 60)) {
     const words = track.title.split(' ');
     const mid   = Math.ceil(words.length / 2);
-    ctx.fillText(words.slice(0, mid).join(' '), PX, 270);
-    ctx.fillText(words.slice(mid).join(' '),    PX, 270 + titleSize + 10);
+    haloText(words.slice(0, mid).join(' '), PX, 270, 12);
+    haloText(words.slice(mid).join(' '),    PX, 270 + titleSize + 10, 12);
   } else {
-    ctx.fillText(track.title, PX, 300);
+    haloText(track.title, PX, 300, 12);
   }
 
   // Pink rule
@@ -2276,12 +2282,12 @@ async function openSongCard(trackId) {
   ctx.fillStyle = '#FF0066';
   ctx.font = '88px "Bebas Neue", sans-serif';
   ctx.letterSpacing = '2px';
-  ctx.fillText(formatFull(total), PX, 460);
+  haloText(formatFull(total), PX, 460, 10);
 
   ctx.fillStyle = 'rgba(245,240,240,0.36)';
   ctx.font = '500 17px "DM Mono", monospace';
   ctx.letterSpacing = '4px';
-  ctx.fillText('TOTAL SPOTIFY STREAMS', PX, 496);
+  haloText('TOTAL SPOTIFY STREAMS', PX, 496, 5);
 
   // Daily streams + date
   if (daily !== null && daily !== undefined) {
@@ -2289,10 +2295,10 @@ async function openSongCard(trackId) {
     ctx.fillStyle = daily >= 0 ? '#00ff88' : '#ff4466';
     ctx.font = '58px "Bebas Neue", sans-serif';
     ctx.letterSpacing = '2px';
-    ctx.fillText(`${sign}${formatFull(daily)}`, PX, 582);
+    haloText(`${sign}${formatFull(daily)}`, PX, 582, 10);
     ctx.font = '500 16px "DM Mono", monospace';
     ctx.letterSpacing = '3px';
-    ctx.fillText('DAILY STREAMS' + (dailyDate ? ' · ' + dailyDate : ''), PX, 612);
+    haloText('DAILY STREAMS' + (dailyDate ? ' · ' + dailyDate : ''), PX, 612, 5);
   }
 
   // Timestamp
@@ -2301,7 +2307,7 @@ async function openSongCard(trackId) {
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
   ctx.font = '500 15px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
-  ctx.fillText('Updated ' + ds, PX, 658);
+  haloText('Updated ' + ds, PX, 658, 5);
 
   // Bottom rule
   ctx.fillStyle = 'rgba(255,0,102,0.22)';
@@ -2323,11 +2329,11 @@ async function openSongCard(trackId) {
   ctx.fillStyle = '#F5F0F0';
   ctx.font = '44px "Bebas Neue", sans-serif';
   ctx.letterSpacing = '10px';
-  ctx.fillText('BLINKS UNITED', brandX, H - 72);
+  haloText('BLINKS UNITED', brandX, H - 72, 8);
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
   ctx.font = '500 15px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', brandX, H - 42);
+  haloText('blackpink-project.vercel.app', brandX, H - 42, 5);
 
   cardCanvas = canvas;
   label.textContent = track.title + ' — STREAM UPDATE CARD';
