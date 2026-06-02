@@ -1399,34 +1399,42 @@ const BADGE_TIERS = [
   { id: 'legend',  label: 'LEGEND',  min: 500, icon: '⚡', desc: 'You ARE BLACKPINK.' },
 ];
 
-// ── DAILY BADGE TIERS (per track, based on playlist structure) ────────────
-// JUMP is in the playlist 80x, SHUT DOWN 36x, DDU-DU 20x
+// ── DAILY BADGE TIERS ────────────────────────────────────────────────────────
+// Each tier = one full account's worth of streams per day
+// JUMP: 80 streams per playlist run · Shut Down: 36 · DDU-DU: 20
+const TIER_ICONS = ['🩷','💓','💗','💖','💝','⚡','🌟','👑','🔥','✨'];
+
+function makeTiers(base, shortName, weekSuffix) {
+  return TIER_ICONS.map((icon, i) => ({
+    min:  base * (i + 1),
+    mult: i + 1,
+    label: `${shortName} ×${i + 1}`,
+    icon,
+    desc: `${i + 1} account${i > 0 ? 's' : ''} · ${base * (i + 1)} streams${weekSuffix || ''}`,
+  }));
+}
+
 const DAILY_TIERS = {
-  jump:     [
-    { min: 20, label: 'JUMPER I',   icon: '🩷', desc: '20 streams today' },
-    { min: 40, label: 'JUMPER II',  icon: '💓', desc: '40 streams today' },
-    { min: 60, label: 'JUMPER III', icon: '💗', desc: '60 streams today' },
-    { min: 80, label: 'JUMPER MAX', icon: '⚡', desc: 'Full playlist run!' },
-    { min: 81, label: 'SUPER JUMP', icon: '🌟', desc: 'Beyond the playlist!' },
-  ],
-  shutdown: [
-    { min: 9,  label: 'SHUT I',    icon: '🩷', desc: '9 streams today' },
-    { min: 18, label: 'SHUT II',   icon: '💓', desc: '18 streams today' },
-    { min: 27, label: 'SHUT III',  icon: '💗', desc: '27 streams today' },
-    { min: 36, label: 'SHUT MAX',  icon: '⚡', desc: 'Full playlist run!' },
-    { min: 37, label: 'SUPER SHUT',icon: '🌟', desc: 'Beyond the playlist!' },
-  ],
-  ddududu: [
-    { min: 5,  label: 'DDU I',     icon: '🩷', desc: '5 streams today' },
-    { min: 10, label: 'DDU II',    icon: '💓', desc: '10 streams today' },
-    { min: 15, label: 'DDU III',   icon: '💗', desc: '15 streams today' },
-    { min: 20, label: 'DDU MAX',   icon: '⚡', desc: 'Full playlist run!' },
-    { min: 21, label: 'SUPER DDU', icon: '🌟', desc: 'Beyond the playlist!' },
-  ],
+  jump:     makeTiers(80, 'JUMP'),
+  shutdown: makeTiers(36, 'SHUT DOWN'),
+  ddududu:  makeTiers(20, 'DDU-DU'),
+};
+
+const WEEKLY_TIERS = {
+  jump:     makeTiers(80 * 7, 'JUMP',      '/wk'),
+  shutdown: makeTiers(36 * 7, 'SHUT DOWN', '/wk'),
+  ddududu:  makeTiers(20 * 7, 'DDU-DU',    '/wk'),
 };
 
 function getDailyBadge(trackId, count) {
   const tiers = DAILY_TIERS[trackId] || [];
+  let badge = null;
+  for (const t of tiers) { if (count >= t.min) badge = t; }
+  return badge;
+}
+
+function getWeeklyBadge(trackId, count) {
+  const tiers = WEEKLY_TIERS[trackId] || [];
   let badge = null;
   for (const t of tiers) { if (count >= t.min) badge = t; }
   return badge;
@@ -1439,8 +1447,9 @@ function hasCompletedAllDaily(trackId, count) {
   return count >= tiers[0].min;
 }
 
-const DAILY_TARGET = 3;   // minimum streams per track per day for old challenge display
-const WEEKLY_TARGET = 15; // streams per track per week
+// "done" = reached tier ×1 on every track
+const dailyTier1 = id => DAILY_TIERS[id][0].min;
+const weeklyTier1 = id => WEEKLY_TIERS[id][0].min;
 
 function getBadge(plays) {
   let b = null;
@@ -1695,8 +1704,8 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   // Summary strip
   const campaignTotal = Object.values(totalPlays).reduce((a,b) => a+b, 0);
   const earnedBadges = TRACKS.filter(t => getBadge(totalPlays[t.id] || 0)).length;
-  const dailyDone  = TRACKS.every(t => (todayCounts[t.id] || 0) >= DAILY_TARGET);
-  const weeklyDone = TRACKS.every(t => (weekCounts[t.id]  || 0) >= WEEKLY_TARGET);
+  const dailyDone  = TRACKS.every(t => (todayCounts[t.id] || 0) >= dailyTier1(t.id));
+  const weeklyDone = TRACKS.every(t => (weekCounts[t.id]  || 0) >= weeklyTier1(t.id));
   const challengeIcon  = dailyDone ? '✓' : (weeklyDone ? '~' : '…');
   const challengeLabel = dailyDone ? 'Daily Complete!' : (weeklyDone ? 'Weekly Done' : 'Challenges Active');
   document.getElementById('profile-summary').innerHTML = `
@@ -1720,21 +1729,16 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
 
   // Daily challenge
   const dailyGrid = document.getElementById('daily-challenge-grid');
-  const allDailyDone = TRACKS.every(t => (todayCounts[t.id] || 0) >= DAILY_TARGET);
   dailyGrid.innerHTML = `
     <div class="daily-grid">
       ${TRACKS.map(t => {
         const count = todayCounts[t.id] || 0;
         const tiers = DAILY_TIERS[t.id] || [];
-        const maxTier = tiers[tiers.length - 2]; // last non-super tier
-        const superTier = tiers[tiers.length - 1];
         const currentBadge = getDailyBadge(t.id, count);
         const nextTier = tiers.find(tier => count < tier.min);
-        const target = nextTier ? nextTier.min : (maxTier ? maxTier.min : DAILY_TARGET);
         const pct = nextTier
-          ? Math.min(100, (count / target) * 100)
+          ? Math.min(100, (count / nextTier.min) * 100)
           : 100;
-        const isSuper = currentBadge && currentBadge.min === superTier?.min;
         const badgeDisplay = currentBadge
           ? `<div style="font-size:1.6rem;line-height:1;">${currentBadge.icon}</div>
              <div style="font-family:var(--display);font-size:0.7rem;letter-spacing:0.1em;color:var(--pink);">${currentBadge.label}</div>
@@ -1743,11 +1747,11 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
              <div style="font-size:0.45rem;letter-spacing:0.15em;color:rgba(245,240,240,0.2);">No badge yet</div>`;
         return `<div class="daily-card">
           <div class="daily-song-name">${t.title}</div>
-          <div class="daily-count" style="${isSuper ? 'color:#ffd700;' : ''}">${count}</div>
-          <div class="daily-target">${nextTier ? `/ ${target} for ${nextTier.label}` : (currentBadge ? '🌟 Max tier reached!' : 'streams today')}</div>
+          <div class="daily-count">${count}</div>
+          <div class="daily-target">${nextTier ? `/ ${nextTier.min} for ${nextTier.label}` : (currentBadge ? `✨ ×${currentBadge.mult} accounts!` : 'streams today')}</div>
           <div style="margin:0.6rem 0;">${badgeDisplay}</div>
           <div class="tier-dots">
-            ${tiers.slice(0,4).map((tier, i) =>
+            ${tiers.slice(0, 5).map(tier =>
               `<div class="tier-dot${count >= tier.min ? ' earned' : ''}" title="${tier.label}: ${tier.min}+">${count >= tier.min ? tier.icon : ''}</div>`
             ).join('')}
           </div>
@@ -1756,16 +1760,10 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
       }).join('')}
     </div>
     ${(() => {
-      const jumpDone     = (todayCounts['jump']     || 0) >= DAILY_TIERS.jump[0].min;
-      const shutdownDone = (todayCounts['shutdown'] || 0) >= DAILY_TIERS.shutdown[0].min;
-      const ddududuDone  = (todayCounts['ddududu']  || 0) >= DAILY_TIERS.ddududu[0].min;
-      const allDone = jumpDone && shutdownDone && ddududuDone;
-      const jumpMax     = (todayCounts['jump']     || 0) >= 80;
-      const shutdownMax = (todayCounts['shutdown'] || 0) >= 36;
-      const ddududuMax  = (todayCounts['ddududu']  || 0) >= 20;
-      const allMax = jumpMax && shutdownMax && ddududuMax;
-      if (allMax) return '<div class="complete-banner">🌟 LEGENDARY DAILY STAMP — Full playlist run on all tracks! 🌟</div>';
-      if (allDone) return '<div class="complete-banner">🏅 DAILY STAMP EARNED — You streamed all 3 tracks today! 💗</div>';
+      const mults = TRACKS.map(t => getDailyBadge(t.id, todayCounts[t.id] || 0)?.mult || 0);
+      const minMult = Math.min(...mults);
+      if (minMult >= 3) return `<div class="complete-banner">🌟 ×${minMult} MULTI-ACCOUNT STAMP — ${minMult} accounts' worth on all 3 tracks!</div>`;
+      if (minMult >= 1) return '<div class="complete-banner">🏅 DAILY STAMP EARNED — Full playlist run on all 3 tracks! 💗</div>';
       return '';
     })()}
   `;
@@ -1781,19 +1779,24 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
         <th>Total</th>
       </tr></thead>
       <tbody>
-        ${TRACKS.map(t => `<tr>
+        ${TRACKS.map(t => {
+          const wc = weekCounts[t.id] || 0;
+          const wBadge = getWeeklyBadge(t.id, wc);
+          const wNext  = WEEKLY_TIERS[t.id].find(tier => wc < tier.min);
+          const d1 = dailyTier1(t.id);
+          return `<tr>
           <td class="song-name">${t.title}</td>
           ${weekDays.map(day => {
             if (!day) return `<td class="week-cell-future">—</td>`;
             const c = day.counts[t.id] || 0;
-            if (c >= DAILY_TARGET) return `<td class="week-cell-done">✓<br><span style="font-size:0.4rem;color:var(--muted)">${c}</span></td>`;
-            if (c > 0) return `<td class="week-cell-partial">${c}</td>`;
+            if (c >= d1) return `<td class="week-cell-done">✓<br><span style="font-size:0.4rem;color:var(--muted)">${c}</span></td>`;
+            if (c > 0)   return `<td class="week-cell-partial">${c}</td>`;
             return `<td class="week-cell-empty">·</td>`;
           }).join('')}
-          <td style="color:${(weekCounts[t.id]||0) >= WEEKLY_TARGET ? 'var(--pink)' : 'var(--muted)'};">
-            ${weekCounts[t.id] || 0}/${WEEKLY_TARGET}
+          <td style="color:${wBadge ? 'var(--pink)' : 'var(--muted)'}; text-align:center;">
+            ${wBadge ? `${wBadge.icon} ${wBadge.label}` : (wNext ? `${wc}/${wNext.min}` : wc)}
           </td>
-        </tr>`).join('')}
+        </tr>`;}).join('')}
       </tbody>
     </table>
   `;
