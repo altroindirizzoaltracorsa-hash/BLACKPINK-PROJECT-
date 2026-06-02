@@ -2131,20 +2131,12 @@ setInterval(() => {
 
 // ── SHARE CARDS ──────────────────────────────────────────────────────────────
 
-const TRACK_ARTWORK = {};   // { jump: artworkUrl, ... }
-let   cardCanvas    = null; // current canvas for download
-
-// Prefetch artwork via server-side endpoint (tries Spotify oEmbed → Last.fm → iTunes)
-async function fetchAllArtwork() {
-  await Promise.all(['jump', 'shutdown', 'ddududu'].map(async id => {
-    try {
-      const r = await fetch('/api/artwork?id=' + id);
-      const d = await r.json();
-      if (d.url) TRACK_ARTWORK[id] = d.url;
-    } catch(e) {}
-  }));
-}
-fetchAllArtwork();
+const TRACK_ARTWORK = {
+  jump:     '/cover-jump.jpg',
+  shutdown: '/cover-shutdown.jpg',
+  ddududu:  '/cover-ddududu.jpg',
+};
+let cardCanvas = null; // current canvas for download
 
 function closeCard() {
   document.getElementById('card-overlay').style.display = 'none';
@@ -2172,19 +2164,8 @@ async function loadImg(url) {
 }
 
 async function loadArtwork(trackId) {
-  // Fetch URL if not cached yet
-  if (!TRACK_ARTWORK[trackId]) {
-    try {
-      const r = await fetch('/api/artwork?id=' + trackId);
-      const d = await r.json();
-      if (d.url) TRACK_ARTWORK[trackId] = d.url;
-    } catch(e) {}
-  }
   const url = TRACK_ARTWORK[trackId];
   if (!url) return null;
-  // Always load via proxy to avoid CORS issues
-  try { return await loadImg('/api/proxy-image?url=' + encodeURIComponent(url)); } catch(e) {}
-  // Direct fallback
   try { return await loadImg(url); } catch(e) {}
   return null;
 }
@@ -2200,11 +2181,10 @@ function drawNoise(ctx, W, H, alpha = 0.04) {
 }
 
 // ── SONG UPDATE CARD ─────────────────────────────────────────────────────────
-const BU_LOGO_URL = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/blinksunited.jpg';
 let buLogoImg = null;
 async function getBuLogo() {
   if (buLogoImg) return buLogoImg;
-  try { buLogoImg = await loadImg('/api/proxy-image?url=' + encodeURIComponent(BU_LOGO_URL)); } catch(e) {}
+  try { buLogoImg = await loadImg('/blinksunited.jpg'); } catch(e) {}
   return buLogoImg;
 }
 
