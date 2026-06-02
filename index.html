@@ -2217,23 +2217,19 @@ async function openSongCard(trackId) {
   ctx.fillStyle = '#080808';
   ctx.fillRect(0, 0, W, H);
 
-  // Album artwork — full left half, fades right
+  // Album artwork — full bleed, cover-fit, fades to dark on right for text legibility
   if (art) {
-    ctx.save();
-    ctx.drawImage(art, 0, 0, 480, H);
-    const gr = ctx.createLinearGradient(200, 0, 480, 0);
-    gr.addColorStop(0, 'rgba(8,8,8,0)');
-    gr.addColorStop(1, 'rgba(8,8,8,1)');
+    const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
+    const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+    ctx.drawImage(art, (W - iw) / 2, (H - ih) / 2, iw, ih);
+    // horizontal fade: left stays vivid, right goes almost fully dark
+    const gr = ctx.createLinearGradient(0, 0, W, 0);
+    gr.addColorStop(0,    'rgba(8,8,8,0.05)');
+    gr.addColorStop(0.38, 'rgba(8,8,8,0.45)');
+    gr.addColorStop(0.62, 'rgba(8,8,8,0.82)');
+    gr.addColorStop(1,    'rgba(8,8,8,0.96)');
     ctx.fillStyle = gr;
-    ctx.fillRect(0, 0, 480, H);
-    ctx.restore();
-    // pink glow along left edge
-    ctx.save();
-    ctx.globalAlpha = 0.08;
-    ctx.shadowColor = '#FF0066'; ctx.shadowBlur = 160;
-    ctx.fillStyle   = '#FF0066';
-    ctx.fillRect(0, 0, 200, H);
-    ctx.restore();
+    ctx.fillRect(0, 0, W, H);
   } else {
     const glow = ctx.createRadialGradient(0, H/2, 0, 0, H/2, 500);
     glow.addColorStop(0, 'rgba(255,0,102,0.15)');
