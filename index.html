@@ -327,6 +327,8 @@
   .user-name { font-family: var(--display); font-size: 1.4rem; letter-spacing: 0.08em; line-height: 1; margin-bottom: 0.2rem; }
   .user-meta { font-size: 0.5rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
   .user-meta span { color: var(--pink); }
+  .scrobble-warning { max-width: 900px; margin: 1rem auto 0; padding: 0.75rem 1.5rem; background: rgba(255,160,0,0.08); border: 1px solid rgba(255,160,0,0.3); color: rgba(255,180,0,0.9); font-size: 0.5rem; letter-spacing: 0.15em; text-transform: uppercase; display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+  .scrobble-warning a { color: rgba(255,180,0,0.9); text-decoration: underline; white-space: nowrap; }
 
   .summary-strip { max-width: 900px; margin: 1.5rem auto 0; padding: 0 1.5rem; display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); }
   .summary-cell { background: var(--card); padding: 1.2rem 1.5rem; text-align: center; }
@@ -800,6 +802,11 @@
           <button class="share-btn" onclick="shareProfile()">🔗 Share Profile</button>
           <button class="logout-btn" onclick="resetProfile()">← Change User</button>
         </div>
+      </div>
+
+      <div id="scrobble-warning" class="scrobble-warning" style="display:none">
+        ⚠ No scrobbles detected in the last 3 days — your Spotify→Last.fm connection may have stopped.
+        <a href="https://www.last.fm/settings/applications" target="_blank" rel="noopener">Check Last.fm settings →</a>
       </div>
 
       <div class="summary-strip" id="profile-summary"></div>
@@ -1349,6 +1356,14 @@ async function fetchRecentScrobbles(username, from, to) {
   return results;
 }
 
+async function fetchLastScrobble(username) {
+  const d = await lfmFetch({ method: 'user.getRecentTracks', user: username, limit: 2 });
+  const tracks = d?.recenttracks?.track || [];
+  const arr = Array.isArray(tracks) ? tracks : [tracks];
+  const last = arr.find(t => !t['@attr']?.nowplaying && t.date?.uts);
+  return last ? parseInt(last.date.uts, 10) * 1000 : null;
+}
+
 // ── TIME HELPERS (Italy = CET/CEST, reset at 2am) ────────────
 function getItalyOffset() {
   // Italy is UTC+1 (CET) or UTC+2 (CEST)
@@ -1466,11 +1481,14 @@ async function loadProfile() {
       weekDays.push({ label, counts: countByTrack(daySc) });
     }
 
-    currentUser = { info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays };
+    setLoading('Checking last scrobble time…');
+    const lastScrobbleTs = await fetchLastScrobble(username);
+
+    currentUser = { info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs };
     saveUsername(username);
     renderProfile(currentUser);
     // Submit scores to leaderboard in background (non-blocking)
-    submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays).catch(()=>{});
+    submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs).catch(()=>{});
 
   } catch(e) {
     document.getElementById('login-panel').style.display = 'block';
@@ -1505,14 +1523,31 @@ function tryAutoLoad() {
   }
 }
 
-function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays }) {
+function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs }) {
   document.getElementById('loading-panel').style.display = 'none';
   document.getElementById('profile-panel').style.display = 'block';
 
   // Avatar + name
   document.getElementById('profile-username').textContent = info.name || '';
+
+  let scrobbleAgo = '';
+  let showWarning = false;
+  if (lastScrobbleTs) {
+    const diffMs = Date.now() - lastScrobbleTs;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = diffMs / 86400000;
+    if (diffMins < 2) scrobbleAgo = 'just now';
+    else if (diffHours < 1) scrobbleAgo = `${diffMins}m ago`;
+    else if (diffHours < 24) scrobbleAgo = `${diffHours}h ago`;
+    else if (diffDays < 2) scrobbleAgo = 'yesterday';
+    else scrobbleAgo = `${Math.floor(diffDays)}d ago`;
+    showWarning = diffDays > 3;
+  }
   document.getElementById('profile-meta').innerHTML =
-    `<span>${Number(info.playcount).toLocaleString()}</span> total scrobbles · Last.fm`;
+    `<span>${Number(info.playcount).toLocaleString()}</span> total scrobbles · Last.fm`
+    + (scrobbleAgo ? ` · last scrobble: <span>${scrobbleAgo}</span>` : '');
+  document.getElementById('scrobble-warning').style.display = showWarning ? 'flex' : 'none';
 
   const avatarUrl = (info.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
   const wrap = document.getElementById('profile-avatar-wrap');
@@ -1788,7 +1823,7 @@ async function fetchLbData(force = false) {
 }
 
 // ── Write user scores to leaderboard ─────────────────────────
-async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts, artistPlays) {
+async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs) {
   try {
     const binId = await ensureBin();
     if (!binId) return;
@@ -1814,6 +1849,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
     data.users[username] = {
       avatar: avatarUrl,
       updatedAt: new Date().toISOString(),
+      lastScrobbleAt: lastScrobbleTs ? new Date(lastScrobbleTs).toISOString() : null,
       scores: {
         // All-time overall
         overall_all:      campaignTotal,
@@ -1879,7 +1915,9 @@ function renderLeaderboard() {
       // For daily scores, only count if they were updated today
       let score = data.scores?.[key] || 0;
       if (lbPeriod === 'daily' && data.scores?.daily_date !== today) score = 0;
-      return { username, avatar: data.avatar, score, badge: getBadge(data.scores?.overall_all || 0) };
+      const lastScrobbleAt = data.lastScrobbleAt || null;
+      const inactive = lastScrobbleAt && (Date.now() - new Date(lastScrobbleAt).getTime()) > 3 * 86400000;
+      return { username, avatar: data.avatar, score, badge: getBadge(data.scores?.overall_all || 0), inactive };
     })
     .filter(e => e.score > 0)
     .sort((a, b) => b.score - a.score);
@@ -1906,7 +1944,7 @@ function renderLeaderboard() {
               : `<span class="lb-avatar-placeholder">${e.username[0].toUpperCase()}</span>`;
             return `<tr class="${isMe ? 'me' : ''}">
               <td><span class="lb-rank ${rankClass}">${rankEmoji || (i+1)}</span></td>
-              <td>${avatarHtml}<span class="lb-user">${e.username}</span>${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}</td>
+              <td>${avatarHtml}<span class="lb-user">${e.username}</span>${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
               <td class="lb-score">${e.score.toLocaleString()}</td>
             </tr>`;
           }).join('')}
