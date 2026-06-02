@@ -326,6 +326,17 @@
   .badge-header-title span { color: var(--pink); }
   .badge-header-sub { font-family: var(--light-serif); font-style: italic; font-size: 1rem; color: var(--muted); margin-top: 0.8rem; }
 
+  /* ── SHARE CARDS ── */
+  .gen-card-btn { margin-top:0.8rem;width:100%;padding:0.6rem 0;background:transparent;border:1px solid rgba(255,0,102,0.2);color:rgba(255,0,102,0.55);font-family:var(--mono);font-size:0.44rem;letter-spacing:0.22em;text-transform:uppercase;cursor:pointer;transition:border-color .2s,color .2s; }
+  .gen-card-btn:hover { border-color:var(--pink);color:var(--pink); }
+  .card-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px); }
+  .card-box { background:var(--card);border:1px solid var(--border);max-width:540px;width:100%;padding:1.5rem; }
+  .card-box-label { font-size:0.46rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--pink);margin-bottom:0.8rem; }
+  .card-box canvas { width:100%;height:auto;display:block;border:1px solid var(--border); }
+  .card-box-actions { display:flex;gap:0.8rem;margin-top:1rem;flex-wrap:wrap; }
+  .card-dl-btn { flex:1;min-width:140px;padding:0.8rem;background:var(--pink);color:#000;font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;text-transform:uppercase;border:none;cursor:pointer; }
+  .card-cl-btn { padding:0.8rem 1.2rem;background:transparent;color:var(--muted);font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;text-transform:uppercase;border:1px solid var(--border);cursor:pointer; }
+
   .login-wrap { max-width: 520px; margin: 3rem auto; padding: 0 1.5rem; }
   .login-card { background: var(--card); border: 1px solid var(--border); padding: 2.5rem; position: relative; overflow: hidden; }
   .login-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--pink), transparent); }
@@ -675,7 +686,7 @@
           </a>
           <button class="history-toggle open" onclick="toggleHistory('jump', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
           <div class="history-panel" id="history-jump"></div>
-          
+          <button class="gen-card-btn" onclick="openSongCard('jump')">⬡ Generate Share Card</button>
         </div>
 
         <div class="song-card animate-in">
@@ -696,7 +707,7 @@
           </a>
           <button class="history-toggle open" onclick="toggleHistory('shutdown', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
           <div class="history-panel" id="history-shutdown"></div>
-          
+          <button class="gen-card-btn" onclick="openSongCard('shutdown')">⬡ Generate Share Card</button>
         </div>
 
         <div class="song-card animate-in">
@@ -717,7 +728,7 @@
           </a>
           <button class="history-toggle open" onclick="toggleHistory('ddududu', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
           <div class="history-panel" id="history-ddududu"></div>
-          
+          <button class="gen-card-btn" onclick="openSongCard('ddududu')">⬡ Generate Share Card</button>
         </div>
 
       </div>
@@ -855,6 +866,9 @@
       </div>
 
       <div class="summary-strip" id="profile-summary"></div>
+      <div style="max-width:900px;margin:0 auto;padding:0 1.5rem;">
+        <button class="gen-card-btn" onclick="openPersonalCard()">⬡ Generate My Stats Card</button>
+      </div>
 
       <div class="tracks-section" style="margin-top:2rem;">
         <p class="section-label">// Today's Challenge</p>
@@ -931,6 +945,18 @@
 
   </div>
 </div><!-- end leaderboard page -->
+
+<!-- Card modal -->
+<div id="card-overlay" class="card-overlay" style="display:none" onclick="if(event.target===this)closeCard()">
+  <div class="card-box">
+    <div class="card-box-label" id="card-box-label">GENERATING…</div>
+    <canvas id="card-canvas" width="1080" height="1080"></canvas>
+    <div class="card-box-actions">
+      <button class="card-dl-btn" onclick="downloadCard()">↓ Download PNG</button>
+      <button class="card-cl-btn" onclick="closeCard()">Close</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── SPOTIFY TRACKS CONFIG ────────────────────────────────────
@@ -1229,6 +1255,10 @@ async function fetchSpotifyStreams() {
 
         renderHistory(t.id, merged);
         renderDaysToGoal(t.id, merged, plays, t.goal);
+
+        // Store globally for card generation
+        window.streamData = window.streamData || {};
+        window.streamData[t.id] = { total: plays, daily: autoStreams };
 
         // ── Update the diff label — only show diff when positive ─
         if (merged.length >= 2) {
@@ -2053,6 +2083,346 @@ setInterval(() => {
     refreshLeaderboard(true);
   }
 }, 60 * 60 * 1000);
+
+// ── SHARE CARDS ──────────────────────────────────────────────────────────────
+
+const TRACK_ARTWORK = {};   // { jump: artworkUrl, ... }
+let   cardCanvas    = null; // current canvas for download
+
+// Fetch album artwork via iTunes Search API (free, CORS-enabled)
+async function fetchAllArtwork() {
+  const queries = {
+    jump:     'BLACKPINK JUMP DEADLINE',
+    shutdown: 'BLACKPINK Shut Down BORN PINK',
+    ddududu:  'BLACKPINK DDU-DU DDU-DU',
+  };
+  for (const [id, q] of Object.entries(queries)) {
+    try {
+      const r = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=3`);
+      const d = await r.json();
+      const item = d.results?.find(x => x.artistName?.toLowerCase().includes('blackpink'));
+      if (item?.artworkUrl100) {
+        TRACK_ARTWORK[id] = item.artworkUrl100.replace('100x100bb', '600x600bb');
+      }
+    } catch(e) {}
+  }
+}
+fetchAllArtwork();
+
+function closeCard() {
+  document.getElementById('card-overlay').style.display = 'none';
+}
+
+function downloadCard() {
+  if (!cardCanvas) return;
+  const now = new Date();
+  const stamp = `${now.getDate()}-${now.getMonth()+1}-${now.getFullYear()}`;
+  const a = document.createElement('a');
+  const label = document.getElementById('card-box-label').textContent.replace(/[^a-z0-9]/gi,'-').toLowerCase();
+  a.download = `bu-${label}-${stamp}.png`;
+  a.href = cardCanvas.toDataURL('image/png');
+  a.click();
+}
+
+async function loadImg(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload  = () => resolve(img);
+    img.onerror = () => reject();
+    img.src = url;
+  });
+}
+
+async function loadArtwork(trackId) {
+  const url = TRACK_ARTWORK[trackId];
+  if (!url) return null;
+  try { return await loadImg(url); } catch(e) {}
+  // Fallback: try via proxy
+  try { return await loadImg('/api/proxy-image?url=' + encodeURIComponent(url)); } catch(e) {}
+  return null;
+}
+
+function drawNoise(ctx, W, H, alpha = 0.04) {
+  const id = ctx.createImageData(W, H);
+  for (let i = 0; i < id.data.length; i += 4) {
+    const v = Math.random() * 255 | 0;
+    id.data[i] = id.data[i+1] = id.data[i+2] = v;
+    id.data[i+3] = alpha * 255 | 0;
+  }
+  ctx.putImageData(id, 0, 0);
+}
+
+// ── SONG UPDATE CARD ─────────────────────────────────────────────────────────
+async function openSongCard(trackId) {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+
+  const track  = TRACKS.find(t => t.id === trackId);
+  const data   = window.streamData?.[trackId] || {};
+  const total  = data.total || 0;
+  const daily  = data.daily;
+
+  await document.fonts.ready;
+
+  const canvas = document.getElementById('card-canvas');
+  const ctx    = canvas.getContext('2d');
+  const W = 1080, H = 1080;
+
+  // Background
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+
+  // Album artwork (bottom-left, 560×560, faded out)
+  const art = await loadArtwork(trackId);
+  if (art) {
+    const AS = 580;
+    ctx.save();
+    ctx.drawImage(art, 0, H - AS, AS, AS);
+    // Right fade
+    const gr = ctx.createLinearGradient(0, 0, AS, 0);
+    gr.addColorStop(0.4, 'rgba(8,8,8,0)');
+    gr.addColorStop(1,   'rgba(8,8,8,1)');
+    ctx.fillStyle = gr; ctx.fillRect(0, H - AS, AS, AS);
+    // Top fade
+    const gt = ctx.createLinearGradient(0, H - AS, 0, H - AS + 220);
+    gt.addColorStop(0, 'rgba(8,8,8,0.95)');
+    gt.addColorStop(1, 'rgba(8,8,8,0)');
+    ctx.fillStyle = gt; ctx.fillRect(0, H - AS, AS, 220);
+    ctx.restore();
+    // Pink glow
+    ctx.save();
+    ctx.globalAlpha = 0.12;
+    ctx.shadowColor = '#FF0066';
+    ctx.shadowBlur  = 180;
+    ctx.fillStyle   = '#FF0066';
+    ctx.fillRect(0, H - AS, 300, AS);
+    ctx.restore();
+  } else {
+    // No artwork: subtle radial glow
+    const glow = ctx.createRadialGradient(0, H, 0, 0, H, 600);
+    glow.addColorStop(0,   'rgba(255,0,102,0.18)');
+    glow.addColorStop(1,   'rgba(8,8,8,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  }
+
+  // Noise overlay
+  drawNoise(ctx, W, H, 0.03);
+
+  const PX = 80;
+
+  // Era + year pill
+  ctx.fillStyle = 'rgba(255,0,102,0.15)';
+  ctx.fillRect(PX, 90, 260, 34);
+  ctx.fillStyle = '#FF0066';
+  ctx.font = '500 17px "DM Mono", monospace';
+  ctx.letterSpacing = '4px';
+  ctx.fillText(track.era + ' · ' + track.year, PX + 14, 112);
+
+  // Song title
+  ctx.fillStyle = '#F5F0F0';
+  const titleSize = track.title.length > 10 ? 108 : track.title.length > 6 ? 130 : 150;
+  ctx.font = `${titleSize}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = '6px';
+  ctx.fillText(track.title, PX, 290);
+
+  // Pink rule
+  ctx.fillStyle = '#FF0066';
+  ctx.fillRect(PX, 320, 100, 3);
+
+  // Total streams
+  ctx.fillStyle = '#FF0066';
+  ctx.font = '96px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '2px';
+  ctx.fillText(formatFull(total), PX, 440);
+
+  ctx.fillStyle = 'rgba(245,240,240,0.38)';
+  ctx.font = '500 19px "DM Mono", monospace';
+  ctx.letterSpacing = '5px';
+  ctx.fillText('TOTAL SPOTIFY STREAMS', PX, 478);
+
+  // Daily streams
+  if (daily !== null && daily !== undefined) {
+    ctx.fillStyle = daily >= 0 ? '#00ff88' : '#ff4466';
+    ctx.font = '62px "Bebas Neue", sans-serif';
+    ctx.letterSpacing = '3px';
+    const sign = daily >= 0 ? '+' : '';
+    ctx.fillText(`${sign}${formatFull(daily)} TODAY`, PX, 568);
+  }
+
+  // Date
+  const now = new Date();
+  const ds  = String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear();
+  ctx.fillStyle = 'rgba(245,240,240,0.22)';
+  ctx.font = '500 18px "DM Mono", monospace';
+  ctx.letterSpacing = '3px';
+  ctx.fillText(ds, PX, 620);
+
+  // Bottom rule
+  ctx.fillStyle = 'rgba(255,0,102,0.25)';
+  ctx.fillRect(PX, H - 130, W - PX * 2, 1);
+
+  // Branding
+  ctx.fillStyle = '#FF0066';
+  ctx.font = '52px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '12px';
+  ctx.fillText('BLINKS UNITED', PX, H - 76);
+
+  ctx.fillStyle = 'rgba(245,240,240,0.22)';
+  ctx.font = '500 17px "DM Mono", monospace';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('blackpink-project.vercel.app', PX, H - 44);
+
+  cardCanvas = canvas;
+  label.textContent = track.title + ' — STREAM UPDATE CARD';
+}
+
+// ── PERSONAL STATS CARD ──────────────────────────────────────────────────────
+async function openPersonalCard() {
+  if (!currentUser) return;
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+
+  const { info, todayCounts, totalPlays, artistPlays } = currentUser;
+  await document.fonts.ready;
+
+  const canvas = document.getElementById('card-canvas');
+  const ctx    = canvas.getContext('2d');
+  const W = 1080, H = 1080;
+
+  // Background + radial glow
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W/2, 0, 0, W/2, 0, 700);
+  glow.addColorStop(0,   'rgba(255,0,102,0.12)');
+  glow.addColorStop(1,   'rgba(8,8,8,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  drawNoise(ctx, W, H, 0.03);
+
+  const PX = 90;
+
+  // Avatar
+  const avatarUrl = (info.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
+  let avatarImg = null;
+  if (avatarUrl && !avatarUrl.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
+    try { avatarImg = await loadImg('/api/proxy-image?url=' + encodeURIComponent(avatarUrl)); } catch(e) {}
+  }
+  const AV = 120;
+  if (avatarImg) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(PX + AV/2, 110, AV/2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(avatarImg, PX, 50, AV, AV);
+    ctx.restore();
+    // Pink ring
+    ctx.beginPath();
+    ctx.arc(PX + AV/2, 110, AV/2 + 2, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 2; ctx.stroke();
+  } else {
+    ctx.fillStyle = 'rgba(255,0,102,0.2)';
+    ctx.beginPath(); ctx.arc(PX + AV/2, 110, AV/2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FF0066';
+    ctx.font = '56px "Bebas Neue", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText((info.name||'?')[0].toUpperCase(), PX + AV/2, 130);
+    ctx.textAlign = 'left';
+  }
+
+  // Username + badge
+  const badge = getBadge(Object.values(totalPlays).reduce((a,b)=>a+b,0));
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = '64px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '4px';
+  ctx.fillText(info.name || '', PX + AV + 30, 100);
+  if (badge) {
+    ctx.fillStyle = '#FF0066';
+    ctx.font = '500 17px "DM Mono", monospace';
+    ctx.letterSpacing = '5px';
+    ctx.fillText(badge.icon + ' ' + badge.label, PX + AV + 32, 135);
+  }
+  ctx.fillStyle = 'rgba(245,240,240,0.3)';
+  ctx.font = '500 16px "DM Mono", monospace';
+  ctx.letterSpacing = '3px';
+  ctx.fillText('LAST.FM · BLINKS UNITED', PX + AV + 32, 162);
+
+  // Divider
+  ctx.fillStyle = 'rgba(255,0,102,0.3)';
+  ctx.fillRect(PX, 210, W - PX*2, 1);
+
+  // TODAY'S STREAMS header
+  ctx.fillStyle = 'rgba(245,240,240,0.35)';
+  ctx.font = '500 18px "DM Mono", monospace';
+  ctx.letterSpacing = '6px';
+  ctx.fillText("TODAY'S STREAMS", PX, 270);
+
+  // Song rows
+  const songRows = [
+    { id: 'jump',     label: 'JUMP' },
+    { id: 'shutdown', label: 'SHUT DOWN' },
+    { id: 'ddududu',  label: 'DDU-DU DDU-DU' },
+  ];
+  let rowY = 310;
+  for (const s of songRows) {
+    const count = todayCounts[s.id] || 0;
+
+    ctx.fillStyle = 'rgba(245,240,240,0.07)';
+    ctx.fillRect(PX, rowY, W - PX*2, 80);
+
+    ctx.fillStyle = 'rgba(245,240,240,0.7)';
+    ctx.font = '36px "Bebas Neue", sans-serif';
+    ctx.letterSpacing = '3px';
+    ctx.fillText(s.label, PX + 24, rowY + 50);
+
+    ctx.fillStyle = '#FF0066';
+    ctx.font = '52px "Bebas Neue", sans-serif';
+    ctx.letterSpacing = '2px';
+    ctx.textAlign = 'right';
+    ctx.fillText(count.toLocaleString(), W - PX - 24, rowY + 52);
+    ctx.textAlign = 'left';
+
+    rowY += 92;
+  }
+
+  // Total campaign plays
+  const campTotal = Object.values(totalPlays).reduce((a,b) => a+b, 0);
+  rowY += 20;
+  ctx.fillStyle = 'rgba(255,0,102,0.25)';
+  ctx.fillRect(PX, rowY, W - PX*2, 1);
+  rowY += 40;
+
+  ctx.fillStyle = 'rgba(245,240,240,0.35)';
+  ctx.font = '500 17px "DM Mono", monospace';
+  ctx.letterSpacing = '5px';
+  ctx.fillText('ALL-TIME CAMPAIGN PLAYS', PX, rowY);
+
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = '80px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '3px';
+  ctx.fillText(campTotal.toLocaleString(), PX, rowY + 80);
+
+  // Bottom branding
+  ctx.fillStyle = 'rgba(255,0,102,0.25)';
+  ctx.fillRect(PX, H - 130, W - PX*2, 1);
+
+  ctx.fillStyle = '#FF0066';
+  ctx.font = '52px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '12px';
+  ctx.fillText('BLINKS UNITED', PX, H - 76);
+
+  ctx.fillStyle = 'rgba(245,240,240,0.22)';
+  ctx.font = '500 17px "DM Mono", monospace';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('blackpink-project.vercel.app', PX, H - 44);
+
+  cardCanvas = canvas;
+  label.textContent = (info.name || 'YOUR') + ' — STATS CARD';
+}
+
 </script>
 
 </body>
