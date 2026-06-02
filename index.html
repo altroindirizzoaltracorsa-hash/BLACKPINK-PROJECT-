@@ -337,6 +337,19 @@
   .card-dl-btn { flex:1;min-width:140px;padding:0.8rem;background:var(--pink);color:#000;font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;text-transform:uppercase;border:none;cursor:pointer; }
   .card-cl-btn { padding:0.8rem 1.2rem;background:transparent;color:var(--muted);font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;text-transform:uppercase;border:1px solid var(--border);cursor:pointer; }
 
+  /* ── SETTINGS PANEL ── */
+  .settings-panel { max-width:900px;margin:1rem auto 0;padding:1.5rem;background:var(--card);border:1px solid var(--border); }
+  .settings-grid { display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1rem; }
+  @media(max-width:600px){ .settings-grid { grid-template-columns:1fr; } }
+  .settings-group { display:flex;flex-direction:column;gap:0.5rem; }
+  .settings-label { font-size:0.46rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted); }
+  .settings-input { background:var(--off-black);border:1px solid var(--border);color:var(--white);font-family:var(--mono);font-size:0.55rem;padding:0.6rem 0.8rem;width:100%;outline:none; }
+  .settings-input:focus { border-color:var(--pink); }
+  .settings-hint { font-size:0.42rem;letter-spacing:0.1em;color:rgba(245,240,240,0.2); }
+  .settings-pills { display:flex;gap:0.4rem;flex-wrap:wrap; }
+  .s-pill { padding:0.4rem 0.9rem;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:0.45rem;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;transition:all .15s; }
+  .s-pill.active { background:var(--pink);border-color:var(--pink);color:#000; }
+
   .login-wrap { max-width: 520px; margin: 3rem auto; padding: 0 1.5rem; }
   .login-card { background: var(--card); border: 1px solid var(--border); padding: 2.5rem; position: relative; overflow: hidden; }
   .login-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--pink), transparent); }
@@ -856,6 +869,7 @@
         </div>
         <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
           <button class="share-btn" onclick="shareProfile()">🔗 Share Profile</button>
+          <button class="share-btn" onclick="toggleSettings()">⚙ Settings</button>
           <button class="logout-btn" onclick="resetProfile()">← Change User</button>
         </div>
       </div>
@@ -863,6 +877,38 @@
       <div id="scrobble-warning" class="scrobble-warning" style="display:none">
         ⚠ No scrobbles detected in the last 3 days — your Spotify→Last.fm connection may have stopped.
         <a href="https://www.last.fm/settings/applications" target="_blank" rel="noopener">Check Last.fm settings →</a>
+      </div>
+
+      <div id="settings-panel" class="settings-panel" style="display:none">
+        <p class="section-label">// Personal Settings</p>
+        <div class="settings-grid">
+          <div class="settings-group">
+            <label class="settings-label">Email for inactivity alerts</label>
+            <input id="s-email" class="settings-input" type="email" placeholder="your@email.com" oninput="saveSetting('email',this.value)">
+            <p class="settings-hint">Receive a warning if scrobbling stops (coming soon)</p>
+          </div>
+          <div class="settings-group">
+            <label class="settings-label">Alert after inactivity of</label>
+            <div class="settings-pills" id="s-threshold">
+              <button class="s-pill" data-val="1" onclick="setThreshold(1)">1 day</button>
+              <button class="s-pill" data-val="3" onclick="setThreshold(3)">3 days</button>
+              <button class="s-pill" data-val="7" onclick="setThreshold(7)">7 days</button>
+            </div>
+          </div>
+          <div class="settings-group">
+            <label class="settings-label">Songs to track</label>
+            <div class="settings-pills" id="s-songs">
+              <button class="s-pill s-toggle" data-id="jump"     onclick="toggleSong('jump')">JUMP</button>
+              <button class="s-pill s-toggle" data-id="shutdown" onclick="toggleSong('shutdown')">SHUT DOWN</button>
+              <button class="s-pill s-toggle" data-id="ddududu"  onclick="toggleSong('ddududu')">DDU-DU</button>
+            </div>
+          </div>
+          <div class="settings-group">
+            <label class="settings-label">Personal daily streaming goal (all songs)</label>
+            <input id="s-goal" class="settings-input" type="number" min="1" placeholder="e.g. 150" oninput="saveSetting('goal',this.value)">
+            <p class="settings-hint">Overrides default tier targets for your display</p>
+          </div>
+        </div>
       </div>
 
       <div class="summary-strip" id="profile-summary"></div>
@@ -953,6 +999,7 @@
     <canvas id="card-canvas" width="1080" height="1080"></canvas>
     <div class="card-box-actions">
       <button class="card-dl-btn" onclick="downloadCard()">↓ Download PNG</button>
+      <button class="card-dl-btn" style="background:var(--off-black);color:var(--white);border:1px solid var(--border);" onclick="shareCard()">↗ Share</button>
       <button class="card-cl-btn" onclick="closeCard()">Close</button>
     </div>
   </div>
@@ -1256,9 +1303,13 @@ async function fetchSpotifyStreams() {
         renderHistory(t.id, merged);
         renderDaysToGoal(t.id, merged, plays, t.goal);
 
-        // Store globally for card generation
         window.streamData = window.streamData || {};
-        window.streamData[t.id] = { total: plays, daily: autoStreams };
+        const lastApiDay = apiHistory.length > 0 ? apiHistory[apiHistory.length - 1] : null;
+        window.streamData[t.id] = {
+          total:     plays,
+          daily:     lastApiDay?.streams ?? autoStreams,
+          dailyDate: lastApiDay?.date    ?? null,
+        };
 
         // ── Update the diff label — only show diff when positive ─
         if (merged.length >= 2) {
@@ -1640,6 +1691,8 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
     `<span>${Number(info.playcount).toLocaleString()}</span> total scrobbles · Last.fm`
     + (scrobbleAgo ? ` · last scrobble: <span>${scrobbleAgo}</span>` : '');
   document.getElementById('scrobble-warning').style.display = showWarning ? 'flex' : 'none';
+  document.getElementById('settings-panel').style.display = 'none'; // reset on new profile load
+  initSettings();
 
   const avatarUrl = (info.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
   const wrap = document.getElementById('profile-avatar-wrap');
@@ -2154,18 +2207,28 @@ function drawNoise(ctx, W, H, alpha = 0.04) {
 }
 
 // ── SONG UPDATE CARD ─────────────────────────────────────────────────────────
+const BU_LOGO_URL = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/blinksunited.jpg';
+let buLogoImg = null;
+async function getBuLogo() {
+  if (buLogoImg) return buLogoImg;
+  try { buLogoImg = await loadImg('/api/proxy-image?url=' + encodeURIComponent(BU_LOGO_URL)); } catch(e) {}
+  return buLogoImg;
+}
+
 async function openSongCard(trackId) {
   const overlay = document.getElementById('card-overlay');
   const label   = document.getElementById('card-box-label');
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
 
-  const track  = TRACKS.find(t => t.id === trackId);
-  const data   = window.streamData?.[trackId] || {};
-  const total  = data.total || 0;
-  const daily  = data.daily;
+  const track     = TRACKS.find(t => t.id === trackId);
+  const data      = window.streamData?.[trackId] || {};
+  const total     = data.total || 0;
+  const daily     = data.daily;
+  const dailyDate = data.dailyDate;
 
   await document.fonts.ready;
+  const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
 
   const canvas = document.getElementById('card-canvas');
   const ctx    = canvas.getContext('2d');
@@ -2175,109 +2238,202 @@ async function openSongCard(trackId) {
   ctx.fillStyle = '#080808';
   ctx.fillRect(0, 0, W, H);
 
-  // Album artwork (bottom-left, 560×560, faded out)
-  const art = await loadArtwork(trackId);
+  // Album artwork — full left half, fades right
   if (art) {
-    const AS = 580;
     ctx.save();
-    ctx.drawImage(art, 0, H - AS, AS, AS);
-    // Right fade
-    const gr = ctx.createLinearGradient(0, 0, AS, 0);
-    gr.addColorStop(0.4, 'rgba(8,8,8,0)');
-    gr.addColorStop(1,   'rgba(8,8,8,1)');
-    ctx.fillStyle = gr; ctx.fillRect(0, H - AS, AS, AS);
-    // Top fade
-    const gt = ctx.createLinearGradient(0, H - AS, 0, H - AS + 220);
-    gt.addColorStop(0, 'rgba(8,8,8,0.95)');
-    gt.addColorStop(1, 'rgba(8,8,8,0)');
-    ctx.fillStyle = gt; ctx.fillRect(0, H - AS, AS, 220);
+    ctx.drawImage(art, 0, 0, 480, H);
+    const gr = ctx.createLinearGradient(200, 0, 480, 0);
+    gr.addColorStop(0, 'rgba(8,8,8,0)');
+    gr.addColorStop(1, 'rgba(8,8,8,1)');
+    ctx.fillStyle = gr;
+    ctx.fillRect(0, 0, 480, H);
     ctx.restore();
-    // Pink glow
+    // pink glow along left edge
     ctx.save();
-    ctx.globalAlpha = 0.12;
-    ctx.shadowColor = '#FF0066';
-    ctx.shadowBlur  = 180;
+    ctx.globalAlpha = 0.08;
+    ctx.shadowColor = '#FF0066'; ctx.shadowBlur = 160;
     ctx.fillStyle   = '#FF0066';
-    ctx.fillRect(0, H - AS, 300, AS);
+    ctx.fillRect(0, 0, 200, H);
     ctx.restore();
   } else {
-    // No artwork: subtle radial glow
-    const glow = ctx.createRadialGradient(0, H, 0, 0, H, 600);
-    glow.addColorStop(0,   'rgba(255,0,102,0.18)');
-    glow.addColorStop(1,   'rgba(8,8,8,0)');
+    const glow = ctx.createRadialGradient(0, H/2, 0, 0, H/2, 500);
+    glow.addColorStop(0, 'rgba(255,0,102,0.15)');
+    glow.addColorStop(1, 'rgba(8,8,8,0)');
     ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
   }
 
-  // Noise overlay
   drawNoise(ctx, W, H, 0.03);
 
-  const PX = 80;
+  const PX = art ? 460 : 80;  // text starts after artwork or at left margin
 
   // Era + year pill
-  ctx.fillStyle = 'rgba(255,0,102,0.15)';
-  ctx.fillRect(PX, 90, 260, 34);
+  ctx.fillStyle = 'rgba(255,0,102,0.18)';
+  ctx.fillRect(PX, 100, 240, 32);
   ctx.fillStyle = '#FF0066';
-  ctx.font = '500 17px "DM Mono", monospace';
+  ctx.font = '500 15px "DM Mono", monospace';
   ctx.letterSpacing = '4px';
-  ctx.fillText(track.era + ' · ' + track.year, PX + 14, 112);
+  ctx.fillText(track.era + ' · ' + track.year, PX + 12, 121);
 
   // Song title
   ctx.fillStyle = '#F5F0F0';
-  const titleSize = track.title.length > 10 ? 108 : track.title.length > 6 ? 130 : 150;
+  const titleSize = track.title.length > 10 ? 100 : track.title.length > 6 ? 118 : 140;
   ctx.font = `${titleSize}px "Bebas Neue", sans-serif`;
-  ctx.letterSpacing = '6px';
-  ctx.fillText(track.title, PX, 290);
+  ctx.letterSpacing = '5px';
+  // wrap long titles
+  if (track.title.includes(' ') && ctx.measureText(track.title).width > (W - PX - 60)) {
+    const words = track.title.split(' ');
+    const mid   = Math.ceil(words.length / 2);
+    ctx.fillText(words.slice(0, mid).join(' '), PX, 270);
+    ctx.fillText(words.slice(mid).join(' '),    PX, 270 + titleSize + 10);
+  } else {
+    ctx.fillText(track.title, PX, 300);
+  }
 
   // Pink rule
   ctx.fillStyle = '#FF0066';
-  ctx.fillRect(PX, 320, 100, 3);
+  ctx.fillRect(PX, 340, 90, 3);
 
   // Total streams
   ctx.fillStyle = '#FF0066';
-  ctx.font = '96px "Bebas Neue", sans-serif';
+  ctx.font = '88px "Bebas Neue", sans-serif';
   ctx.letterSpacing = '2px';
-  ctx.fillText(formatFull(total), PX, 440);
+  ctx.fillText(formatFull(total), PX, 460);
 
-  ctx.fillStyle = 'rgba(245,240,240,0.38)';
-  ctx.font = '500 19px "DM Mono", monospace';
-  ctx.letterSpacing = '5px';
-  ctx.fillText('TOTAL SPOTIFY STREAMS', PX, 478);
+  ctx.fillStyle = 'rgba(245,240,240,0.36)';
+  ctx.font = '500 17px "DM Mono", monospace';
+  ctx.letterSpacing = '4px';
+  ctx.fillText('TOTAL SPOTIFY STREAMS', PX, 496);
 
-  // Daily streams
+  // Daily streams + date
   if (daily !== null && daily !== undefined) {
-    ctx.fillStyle = daily >= 0 ? '#00ff88' : '#ff4466';
-    ctx.font = '62px "Bebas Neue", sans-serif';
-    ctx.letterSpacing = '3px';
     const sign = daily >= 0 ? '+' : '';
-    ctx.fillText(`${sign}${formatFull(daily)} TODAY`, PX, 568);
+    ctx.fillStyle = daily >= 0 ? '#00ff88' : '#ff4466';
+    ctx.font = '58px "Bebas Neue", sans-serif';
+    ctx.letterSpacing = '2px';
+    ctx.fillText(`${sign}${formatFull(daily)}`, PX, 582);
+    ctx.font = '500 16px "DM Mono", monospace';
+    ctx.letterSpacing = '3px';
+    ctx.fillText('DAILY STREAMS' + (dailyDate ? ' · ' + dailyDate : ''), PX, 612);
   }
 
-  // Date
+  // Timestamp
   const now = new Date();
   const ds  = String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear();
-  ctx.fillStyle = 'rgba(245,240,240,0.22)';
-  ctx.font = '500 18px "DM Mono", monospace';
-  ctx.letterSpacing = '3px';
-  ctx.fillText(ds, PX, 620);
+  ctx.fillStyle = 'rgba(245,240,240,0.2)';
+  ctx.font = '500 15px "DM Mono", monospace';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('Updated ' + ds, PX, 658);
 
   // Bottom rule
-  ctx.fillStyle = 'rgba(255,0,102,0.25)';
-  ctx.fillRect(PX, H - 130, W - PX * 2, 1);
+  ctx.fillStyle = 'rgba(255,0,102,0.22)';
+  ctx.fillRect(PX, H - 138, W - PX - 60, 1);
 
-  // Branding
-  ctx.fillStyle = '#FF0066';
-  ctx.font = '52px "Bebas Neue", sans-serif';
-  ctx.letterSpacing = '12px';
-  ctx.fillText('BLINKS UNITED', PX, H - 76);
+  // BU Logo circle
+  if (logo) {
+    const LR = 28;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(PX + LR, H - 82, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, PX, H - 82 - LR, LR * 2, LR * 2);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(PX + LR, H - 82, LR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
 
-  ctx.fillStyle = 'rgba(245,240,240,0.22)';
-  ctx.font = '500 17px "DM Mono", monospace';
+  // Branding text
+  const brandX = logo ? PX + 70 : PX;
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = '44px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '10px';
+  ctx.fillText('BLINKS UNITED', brandX, H - 72);
+  ctx.fillStyle = 'rgba(245,240,240,0.2)';
+  ctx.font = '500 15px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', PX, H - 44);
+  ctx.fillText('blackpink-project.vercel.app', brandX, H - 42);
 
   cardCanvas = canvas;
   label.textContent = track.title + ' — STREAM UPDATE CARD';
 }
+
+// ── SHARE TO SOCIAL ──────────────────────────────────────────────────────────
+async function shareCard() {
+  if (!cardCanvas) return;
+  const title = document.getElementById('card-box-label').textContent;
+  const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\nblackpink-project.vercel.app';
+  // Mobile: Web Share API with image file
+  if (typeof navigator.share === 'function') {
+    cardCanvas.toBlob(async blob => {
+      const file = new File([blob], 'blinks-united-card.png', { type: 'image/png' });
+      try {
+        await navigator.share({ files: [file], title: 'BLINKS UNITED', text });
+        return;
+      } catch(e) { if (e.name !== 'AbortError') downloadCard(); }
+    }, 'image/png');
+  } else {
+    // Desktop: open Twitter intent (user downloads + attaches image themselves)
+    window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
+  }
+}
+
+// ── SETTINGS ─────────────────────────────────────────────────────────────────
+const S_KEYS = { email: 'bu_s_email', threshold: 'bu_s_threshold', songs: 'bu_s_songs', goal: 'bu_s_goal' };
+
+function loadSettings() {
+  return {
+    email:     localStorage.getItem(S_KEYS.email)     || '',
+    threshold: parseInt(localStorage.getItem(S_KEYS.threshold) || '3', 10),
+    songs:     JSON.parse(localStorage.getItem(S_KEYS.songs)   || '["jump","shutdown","ddududu"]'),
+    goal:      localStorage.getItem(S_KEYS.goal)      || '',
+  };
+}
+
+function saveSetting(key, value) {
+  localStorage.setItem(S_KEYS[key], typeof value === 'object' ? JSON.stringify(value) : value);
+}
+
+function toggleSettings() {
+  const panel = document.getElementById('settings-panel');
+  const open  = panel.style.display === 'none' || panel.style.display === '';
+  panel.style.display = open ? 'block' : 'none';
+  if (open) renderSettings();
+}
+
+function renderSettings() {
+  const s = loadSettings();
+  const emailEl = document.getElementById('s-email');
+  if (emailEl) emailEl.value = s.email;
+  const goalEl  = document.getElementById('s-goal');
+  if (goalEl)  goalEl.value  = s.goal;
+
+  // Threshold pills
+  document.querySelectorAll('#s-threshold .s-pill').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.val) === s.threshold);
+  });
+  // Song pills
+  document.querySelectorAll('#s-songs .s-pill').forEach(btn => {
+    btn.classList.toggle('active', s.songs.includes(btn.dataset.id));
+  });
+}
+
+function setThreshold(days) {
+  saveSetting('threshold', days);
+  document.querySelectorAll('#s-threshold .s-pill').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.val) === days);
+  });
+}
+
+function toggleSong(id) {
+  const s = loadSettings();
+  const idx = s.songs.indexOf(id);
+  if (idx >= 0) { if (s.songs.length > 1) s.songs.splice(idx, 1); }
+  else s.songs.push(id);
+  saveSetting('songs', s.songs);
+  document.querySelectorAll('#s-songs .s-pill').forEach(btn => {
+    btn.classList.toggle('active', s.songs.includes(btn.dataset.id));
+  });
+}
+
+// Initialise settings UI when profile loads
+function initSettings() { renderSettings(); }
 
 // ── PERSONAL STATS CARD ──────────────────────────────────────────────────────
 async function openPersonalCard() {
@@ -2405,19 +2561,28 @@ async function openPersonalCard() {
   ctx.letterSpacing = '3px';
   ctx.fillText(campTotal.toLocaleString(), PX, rowY + 80);
 
-  // Bottom branding
-  ctx.fillStyle = 'rgba(255,0,102,0.25)';
-  ctx.fillRect(PX, H - 130, W - PX*2, 1);
-
-  ctx.fillStyle = '#FF0066';
-  ctx.font = '52px "Bebas Neue", sans-serif';
-  ctx.letterSpacing = '12px';
-  ctx.fillText('BLINKS UNITED', PX, H - 76);
-
-  ctx.fillStyle = 'rgba(245,240,240,0.22)';
-  ctx.font = '500 17px "DM Mono", monospace';
+  // Bottom branding — same as song card
+  const logo2 = await getBuLogo();
+  ctx.fillStyle = 'rgba(255,0,102,0.22)';
+  ctx.fillRect(PX, H - 138, W - PX*2, 1);
+  if (logo2) {
+    const LR = 28;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(PX + LR, H - 82, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo2, PX, H - 82 - LR, LR * 2, LR * 2);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(PX + LR, H - 82, LR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  const bx = logo2 ? PX + 70 : PX;
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = '44px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '10px';
+  ctx.fillText('BLINKS UNITED', bx, H - 72);
+  ctx.fillStyle = 'rgba(245,240,240,0.2)';
+  ctx.font = '500 15px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', PX, H - 44);
+  ctx.fillText('blackpink-project.vercel.app', bx, H - 42);
 
   cardCanvas = canvas;
   label.textContent = (info.name || 'YOUR') + ' — STATS CARD';
