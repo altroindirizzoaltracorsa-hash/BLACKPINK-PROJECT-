@@ -2274,7 +2274,7 @@ async function openSongCard(trackId) {
   ctx.fillText(formatFull(total), PX, 460);
 
   ctx.fillStyle = 'rgba(245,240,240,0.36)';
-  ctx.font = '500 17px "DM Mono", monospace';
+  ctx.font = '500 22px "DM Mono", monospace';
   ctx.letterSpacing = '4px';
   ctx.fillText('TOTAL SPOTIFY STREAMS', PX, 496);
 
@@ -2285,7 +2285,7 @@ async function openSongCard(trackId) {
     ctx.font = '58px "Bebas Neue", sans-serif';
     ctx.letterSpacing = '2px';
     ctx.fillText(`${sign}${formatFull(daily)}`, PX, 582);
-    ctx.font = '500 16px "DM Mono", monospace';
+    ctx.font = '500 22px "DM Mono", monospace';
     ctx.letterSpacing = '3px';
     ctx.fillText('DAILY STREAMS' + (dailyDate ? ' · ' + dailyDate : ''), PX, 612);
   }
@@ -2294,7 +2294,7 @@ async function openSongCard(trackId) {
   const now = new Date();
   const ds  = String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear();
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
-  ctx.font = '500 15px "DM Mono", monospace';
+  ctx.font = '500 22px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
   ctx.fillText('Updated ' + ds, PX, 658);
 
