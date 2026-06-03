@@ -35,11 +35,16 @@ function getTimeBounds() {
   };
 }
 
+// Normalize a string for loose matching: lowercase, strip non-alphanumeric except spaces
+function norm(s) {
+  return (s || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+}
+
 // Count how many times artist/track appears in a time window,
 // paginating until we have all records (capped at 5 pages).
 async function countScrobbles(username, artist, track, from, to) {
-  const artistLow = artist.toLowerCase();
-  const trackLow  = track.toLowerCase();
+  const artistNorm = norm(artist);
+  const trackNorm  = norm(track);
   let count = 0;
   let page  = 1;
   const maxPages = 5;
@@ -59,8 +64,8 @@ async function countScrobbles(username, artist, track, from, to) {
     for (const t of tracks) {
       if (t['@attr']?.nowplaying) continue;
       if (
-        t.artist?.['#text']?.toLowerCase() === artistLow &&
-        t.name?.toLowerCase() === trackLow
+        norm(t.artist?.['#text']) === artistNorm &&
+        norm(t.name) === trackNorm
       ) count++;
     }
 
