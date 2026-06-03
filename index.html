@@ -2143,62 +2143,20 @@ document.getElementById('lfm-input').addEventListener('keydown', e => {
 // LEADERBOARD — JSONBin.io storage
 // ══════════════════════════════════════════════════════════════
 
-const JSONBIN_KEY   = '$2a$10$wJBh1dvLmeA9Tq4cWldtkO/48d1fhmphHESwFziV7g57cGsvuzGmq';
-const JSONBIN_BASE  = 'https://api.jsonbin.io/v3';
-const BIN_NAME      = 'blinks-united-leaderboard';
-
 // State
-let lbData      = null;   // { users: { username: { avatar, scores: { daily, weekly, overall, jump_daily, ... } } }, lastUpdated: ISO }
-let lbBinId     = null;   // JSONBin bin ID (stored in localStorage after first create)
+let lbData      = null;
 let lbPeriod    = 'daily';
 let lbSong      = 'all';
 let lbCacheTime = null;
 
-const LS_BIN_ID = 'bu_jsonbin_id';
-
-function getLbBinId() {
-  try { return localStorage.getItem(LS_BIN_ID) || null; } catch(e) { return null; }
-}
-function setLbBinId(id) {
-  try { localStorage.setItem(LS_BIN_ID, id); } catch(e) {}
-}
-
-// ── Fetch or create the bin ───────────────────────────────────
-async function ensureBin() {
-  if (lbBinId) return lbBinId;
-  const stored = getLbBinId();
-  if (stored) { lbBinId = stored; return lbBinId; }
-
-  // Create a new bin
-  const res = await fetch(`${JSONBIN_BASE}/b`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Master-Key': JSONBIN_KEY,
-      'X-Bin-Name': BIN_NAME,
-      'X-Bin-Private': 'false',
-    },
-    body: JSON.stringify({ users: {}, lastUpdated: new Date().toISOString() })
-  });
-  const d = await res.json();
-  lbBinId = d.metadata?.id;
-  if (lbBinId) setLbBinId(lbBinId);
-  return lbBinId;
-}
-
 // ── Read leaderboard data ─────────────────────────────────────
 async function fetchLbData(force = false) {
-  // Cache for 60 minutes
   if (!force && lbData && lbCacheTime && (Date.now() - lbCacheTime) < 60 * 60 * 1000) {
     return lbData;
   }
-  const binId = await ensureBin();
-  if (!binId) throw new Error('No bin ID');
-  const res = await fetch(`${JSONBIN_BASE}/b/${binId}/latest`, {
-    headers: { 'X-Master-Key': JSONBIN_KEY }
-  });
-  const d = await res.json();
-  lbData = d.record || { users: {}, lastUpdated: new Date().toISOString() };
+  const res = await fetch('/api/leaderboard');
+  const d   = await res.json();
+  lbData      = d || { users: {}, lastUpdated: new Date().toISOString() };
   lbCacheTime = Date.now();
   return lbData;
 }
@@ -2206,16 +2164,11 @@ async function fetchLbData(force = false) {
 // ── Write user scores to leaderboard ─────────────────────────
 async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs) {
   try {
-    const binId = await ensureBin();
-    if (!binId) return;
-    const data = await fetchLbData(true);
-
     const username = userInfo.name || userInfo.realname || '';
     if (!username) return;
 
     const avatarUrl = (userInfo.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
 
-    // Calculate today's date string
     const today = dateLabel(0);
     const weekStart = (() => {
       const d = new Date();
@@ -2225,47 +2178,42 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       return `${String(mon.getDate()).padStart(2,'0')}/${String(mon.getMonth()+1).padStart(2,'0')}`;
     })();
 
-    // Build score entry
     const campaignTotal = Object.values(totalPlays).reduce((a,b) => a+b, 0);
-    data.users[username] = {
-      avatar: avatarUrl,
-      updatedAt: new Date().toISOString(),
-      lastScrobbleAt: lastScrobbleTs ? new Date(lastScrobbleTs).toISOString() : null,
-      scores: {
-        // All-time overall
-        overall_all:      campaignTotal,
-        overall_jump:     totalPlays.jump     || 0,
-        overall_shutdown: totalPlays.shutdown || 0,
-        overall_ddududu:  totalPlays.ddududu  || 0,
-        overall_artist:   artistPlays         || 0,
-        // Today
-        daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0),
-        daily_jump:       todayCounts.jump     || 0,
-        daily_shutdown:   todayCounts.shutdown || 0,
-        daily_ddududu:    todayCounts.ddududu  || 0,
-        daily_date:       today,
-        // This week
-        weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0),
-        weekly_jump:      weekCounts.jump     || 0,
-        weekly_shutdown:  weekCounts.shutdown || 0,
-        weekly_ddududu:   weekCounts.ddududu  || 0,
-        weekly_start:     weekStart,
-      }
+    const scores = {
+      overall_all:      campaignTotal,
+      overall_jump:     totalPlays.jump     || 0,
+      overall_shutdown: totalPlays.shutdown || 0,
+      overall_ddududu:  totalPlays.ddududu  || 0,
+      overall_artist:   artistPlays         || 0,
+      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0),
+      daily_jump:       todayCounts.jump     || 0,
+      daily_shutdown:   todayCounts.shutdown || 0,
+      daily_ddududu:    todayCounts.ddududu  || 0,
+      daily_date:       today,
+      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0),
+      weekly_jump:      weekCounts.jump     || 0,
+      weekly_shutdown:  weekCounts.shutdown || 0,
+      weekly_ddududu:   weekCounts.ddududu  || 0,
+      weekly_start:     weekStart,
     };
-    data.lastUpdated = new Date().toISOString();
 
-    // Write back
-    await fetch(`${JSONBIN_BASE}/b/${binId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Master-Key': JSONBIN_KEY,
-      },
-      body: JSON.stringify(data)
+    await fetch('/api/leaderboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username,
+        avatar: avatarUrl,
+        scores,
+        updatedAt: new Date().toISOString(),
+        lastScrobbleAt: lastScrobbleTs ? new Date(lastScrobbleTs).toISOString() : null,
+      })
     });
-    lbData = data;
-    lbCacheTime = Date.now();
-    console.log('Leaderboard updated for', username);
+
+    // Update local cache so leaderboard reflects the new score immediately
+    if (lbData) {
+      lbData.users = lbData.users || {};
+      lbData.users[username] = { username, avatar: avatarUrl, scores, updatedAt: new Date().toISOString(), lastScrobbleAt: lastScrobbleTs ? new Date(lastScrobbleTs).toISOString() : null };
+    }
   } catch(e) {
     console.warn('Leaderboard submit failed:', e);
   }
