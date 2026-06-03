@@ -474,6 +474,7 @@
   .admin-hi { color:var(--pink); font-family:var(--display); font-size:0.85rem; }
   .admin-lo { color:rgba(245,240,240,0.3); }
   .admin-zero { color:rgba(245,240,240,0.12); }
+  .admin-flag { color:#ffaa00; font-weight:bold; }
   .admin-loading { text-align:center; padding:2rem; color:var(--muted); font-size:0.6rem; letter-spacing:0.15em; }
 
   footer { padding: 2rem 3rem; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
@@ -2431,38 +2432,57 @@ async function loadAdminRanking(key) {
 }
 
 function renderAdminTable(data) {
-  const today = dateLabel(0);
   const users = data.users || [];
   if (!users.length) {
     document.getElementById('admin-table-wrap').innerHTML = '<div class="admin-loading">No data yet.</div>';
     return;
   }
-  document.getElementById('admin-song-note').textContent = `Control song: ${data.song || '—'} · 1 scrobble = 1 full playlist run`;
+  document.getElementById('admin-song-note').textContent = `Control: ${data.song || '—'} · 1 scrobble = 1 complete playlist run`;
+
+  // Expected streams per run for each song
+  const EXP = { jump: 80, shutdown: 36, ddududu: 20 };
+
   document.getElementById('admin-table-wrap').innerHTML = `
     <table class="admin-table">
       <thead><tr>
         <th>#</th>
         <th>User</th>
-        <th>Today (ctrl)</th>
-        <th>Week (ctrl)</th>
-        <th>Today (declared)</th>
-        <th>Ratio</th>
+        <th>Runs today</th>
+        <th>Runs week</th>
+        <th>JUMP today</th>
+        <th>J/run</th>
+        <th>SD today</th>
+        <th>SD/run</th>
+        <th>DDU today</th>
+        <th>DDU/run</th>
       </tr></thead>
       <tbody>
         ${users.map((u, i) => {
-          const declared = lbData?.users?.[u.username]?.scores?.daily_all || 0;
-          const ratio = u.daily > 0 && declared > 0
-            ? (declared / u.daily).toFixed(1) + '×'
-            : '—';
-          const dClass  = u.daily  > 0 ? 'admin-hi' : 'admin-zero';
-          const wClass  = u.weekly > 0 ? 'admin-hi' : 'admin-zero';
+          const sc = lbData?.users?.[u.username]?.scores || {};
+          const j  = sc.daily_jump     || 0;
+          const sd = sc.daily_shutdown || 0;
+          const dd = sc.daily_ddududu  || 0;
+          const runs = u.daily;
+
+          function ratioCell(declared, expPerRun) {
+            if (!runs) return `<td class="admin-zero">—</td><td class="admin-zero">—</td>`;
+            const perRun = (declared / runs).toFixed(1);
+            // Flag if declared-per-run is more than 20% above expected
+            const flagHigh = declared / runs > expPerRun * 1.2;
+            const cls = flagHigh ? 'admin-flag' : 'admin-lo';
+            return `<td class="admin-lo">${declared.toLocaleString()}</td><td class="${cls}" title="expected ~${expPerRun}/run">${perRun}</td>`;
+          }
+
+          const runsClass  = runs  > 0 ? 'admin-hi' : 'admin-zero';
+          const wreaksClass = u.weekly > 0 ? 'admin-hi' : 'admin-zero';
           return `<tr>
             <td class="admin-lo">${i + 1}</td>
             <td>${u.username}</td>
-            <td class="${dClass}">${u.daily}</td>
-            <td class="${wClass}">${u.weekly}</td>
-            <td class="admin-lo">${declared.toLocaleString()}</td>
-            <td class="admin-lo" title="declared streams ÷ control scrobbles">${ratio}</td>
+            <td class="${runsClass}">${runs}</td>
+            <td class="${wreaksClass}">${u.weekly}</td>
+            ${ratioCell(j,  EXP.jump)}
+            ${ratioCell(sd, EXP.shutdown)}
+            ${ratioCell(dd, EXP.ddududu)}
           </tr>`;
         }).join('')}
       </tbody>
