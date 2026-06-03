@@ -2155,8 +2155,9 @@ async function fetchLbData(force = false) {
     return lbData;
   }
   const res = await fetch('/api/leaderboard');
+  if (!res.ok) throw new Error(`Leaderboard API error ${res.status}`);
   const d   = await res.json();
-  lbData      = d || { users: {}, lastUpdated: new Date().toISOString() };
+  lbData      = (d && d.users) ? d : { users: {}, lastUpdated: new Date().toISOString() };
   lbCacheTime = Date.now();
   return lbData;
 }
