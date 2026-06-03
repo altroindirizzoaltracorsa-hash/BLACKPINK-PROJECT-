@@ -424,6 +424,37 @@
   .badge-footer-note { max-width: 900px; margin: 2rem auto 0; padding: 0 1.5rem; font-size: 0.5rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.2); text-align: center; line-height: 1.8; }
   .badge-footer-note a { color: var(--pink); text-decoration: none; }
 
+  /* ── Stamp Archive ── */
+  .streak-bar { display:flex; align-items:center; gap:1.5rem; background:var(--card); border:1px solid var(--border); padding:1.2rem 1.5rem; margin-bottom:1.5rem; }
+  .streak-num  { font-family:var(--display); font-size:3rem; color:var(--pink); line-height:1; }
+  .streak-meta { display:flex; flex-direction:column; gap:0.2rem; }
+  .streak-title { font-size:0.45rem; letter-spacing:0.25em; text-transform:uppercase; color:var(--muted); }
+  .streak-msg   { font-family:var(--light-serif); font-style:italic; font-size:0.75rem; color:var(--white); }
+  .cal-nav-row  { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.8rem; }
+  .cal-month-label { font-family:var(--display); font-size:1.1rem; letter-spacing:0.12em; }
+  .cal-nav-btn  { background:none; border:1px solid var(--border); color:var(--white); width:32px; height:32px; cursor:pointer; font-size:1.1rem; display:flex; align-items:center; justify-content:center; }
+  .cal-nav-btn:hover { border-color:var(--pink); color:var(--pink); }
+  .cal-grid     { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+  .cal-day-header { text-align:center; font-size:0.4rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); padding:0.3rem 0; }
+  .cal-day      { background:var(--card); min-height:52px; padding:4px 5px; display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .cal-day.has-stamp  { background:rgba(255,0,102,0.08); border:1px solid rgba(255,0,102,0.25); cursor:pointer; }
+  .cal-day.has-stamp:hover { background:rgba(255,0,102,0.15); border-color:var(--pink); }
+  .cal-day.is-today   { outline:1.5px solid var(--pink); }
+  .cal-day.other-month { opacity:0.25; pointer-events:none; }
+  .cal-day.is-future  { opacity:0.2; pointer-events:none; }
+  .cal-day-num  { font-size:0.55rem; color:rgba(245,240,240,0.5); align-self:flex-start; line-height:1; }
+  .cal-day.has-stamp .cal-day-num { color:var(--white); }
+  .cal-day-icons { font-size:0.9rem; line-height:1; }
+  .cal-day-mult  { font-family:var(--mono); font-size:0.45rem; color:var(--pink); letter-spacing:0.05em; }
+  .stamp-detail  { background:var(--card); border:1px solid var(--border); padding:1rem 1.2rem; margin-top:0.8rem; }
+  .stamp-detail-date { font-size:0.45rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); margin-bottom:0.6rem; }
+  .stamp-detail-badges { display:flex; flex-direction:column; gap:0.5rem; }
+  .stamp-detail-item { display:flex; align-items:center; gap:0.8rem; }
+  .stamp-detail-icon  { font-size:1.4rem; }
+  .stamp-detail-label { font-family:var(--display); font-size:0.9rem; letter-spacing:0.1em; color:var(--pink); flex:1; }
+  .stamp-detail-count { font-family:var(--mono); font-size:0.55rem; color:var(--muted); }
+  @media(max-width:600px){ .cal-day { min-height:44px; } .cal-day-icons { font-size:0.75rem; } }
+
   footer { padding: 2rem 3rem; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
   footer p { font-size: 0.55rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.3); }
   footer p a { color: var(--pink); text-decoration: none; }
@@ -916,6 +947,11 @@
       <div class="tracks-section" style="margin-top:2rem;">
         <p class="section-label">// This Week's Challenge (Mon–Sun)</p>
         <div id="weekly-challenge-grid"></div>
+      </div>
+
+      <div class="tracks-section" style="margin-top:2rem;">
+        <p class="section-label">// Stamp Archive</p>
+        <div id="stamp-calendar-section"></div>
       </div>
 
       <div class="tracks-section" style="margin-top:2rem;">
@@ -1801,6 +1837,12 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
     </table>
   `;
 
+  // Save today's stamps and render calendar
+  saveTodayStamps(todayCounts);
+  calMonth = new Date().getMonth();
+  calYear  = new Date().getFullYear();
+  renderStampCalendar();
+
   // Badge history (total plays per track → badge earned)
   const badgeHistGrid = document.getElementById('badge-history-grid');
   const earnedItems = [];
@@ -1844,6 +1886,159 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
       </div>
     `;
   }
+}
+
+// ── STAMP ARCHIVE ────────────────────────────────────────────────────────────
+const STAMP_KEY = 'bu_stamp_archive';
+let calMonth = new Date().getMonth();
+let calYear  = new Date().getFullYear();
+
+function isoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function saveTodayStamps(todayCounts) {
+  const today = isoDate(new Date());
+  const stamps = {};
+  for (const t of TRACKS) {
+    const count = todayCounts[t.id] || 0;
+    const badge = getDailyBadge(t.id, count);
+    if (badge) stamps[t.id] = { mult: badge.mult, icon: badge.icon, label: badge.label, count };
+  }
+  if (!Object.keys(stamps).length) return;
+  const archive = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
+  // Keep highest mult seen today
+  const prev = archive[today] || {};
+  for (const [id, s] of Object.entries(stamps)) {
+    if (!prev[id] || s.mult >= prev[id].mult) prev[id] = s;
+  }
+  archive[today] = prev;
+  localStorage.setItem(STAMP_KEY, JSON.stringify(archive));
+}
+
+function calcStreak() {
+  const archive = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
+  const today = new Date();
+  const todayKey = isoDate(today);
+  const hasToday = archive[todayKey] && Object.keys(archive[todayKey]).length > 0;
+  let streak = 0;
+  for (let i = hasToday ? 0 : 1; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    if (!archive[isoDate(d)] || !Object.keys(archive[isoDate(d)]).length) break;
+    streak++;
+  }
+  return streak;
+}
+
+function calPrev() {
+  calMonth--;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderStampCalendar();
+}
+function calNext() {
+  const now = new Date();
+  if (calYear > now.getFullYear() || (calYear === now.getFullYear() && calMonth >= now.getMonth())) return;
+  calMonth++;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderStampCalendar();
+}
+
+function showStampDetail(dateKey) {
+  const archive = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
+  const stamps = archive[dateKey];
+  if (!stamps) return;
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const label = new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const el = document.getElementById('stamp-day-detail');
+  if (!el) return;
+  // Toggle off if already showing same day
+  if (el.dataset.date === dateKey && el.style.display !== 'none') {
+    el.style.display = 'none'; el.dataset.date = ''; return;
+  }
+  el.dataset.date = dateKey;
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="stamp-detail-date">${label}</div>
+    <div class="stamp-detail-badges">
+      ${TRACKS.filter(t => stamps[t.id]).map(t => {
+        const s = stamps[t.id];
+        return `<div class="stamp-detail-item">
+          <span class="stamp-detail-icon">${s.icon}</span>
+          <span class="stamp-detail-label">${s.label}</span>
+          <span class="stamp-detail-count">${s.count} streams</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function renderStampCalendar() {
+  const el = document.getElementById('stamp-calendar-section');
+  if (!el) return;
+  const archive  = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
+  const streak   = calcStreak();
+  const todayStr = isoDate(new Date());
+
+  const firstDay = new Date(calYear, calMonth, 1);
+  const lastDay  = new Date(calYear, calMonth + 1, 0);
+  const startDow = (firstDay.getDay() + 6) % 7; // Mon = 0
+
+  const days = [];
+  for (let i = 0; i < startDow; i++) {
+    const d = new Date(calYear, calMonth, 1 - startDow + i);
+    days.push({ key: isoDate(d), num: d.getDate(), other: true });
+  }
+  for (let n = 1; n <= lastDay.getDate(); n++) {
+    days.push({ key: isoDate(new Date(calYear, calMonth, n)), num: n, other: false });
+  }
+  const tail = 7 - (days.length % 7);
+  if (tail < 7) for (let i = 1; i <= tail; i++) {
+    const d = new Date(calYear, calMonth + 1, i);
+    days.push({ key: isoDate(d), num: d.getDate(), other: true });
+  }
+
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const streakMsg = streak === 0 ? 'Start streaming to begin your streak!' :
+    streak === 1 ? 'Streak started — keep going! 💗' :
+    streak < 7  ? 'Building momentum! 🩷' :
+    streak < 14 ? 'One week strong! 💓' :
+    streak < 30 ? 'Unstoppable! 💗' : '🌟 LEGENDARY STREAK 🌟';
+
+  el.innerHTML = `
+    <div class="streak-bar">
+      <div class="streak-num">${streak}</div>
+      <div class="streak-meta">
+        <div class="streak-title">Day Streak</div>
+        <div class="streak-msg">${streakMsg}</div>
+      </div>
+    </div>
+
+    <div class="cal-nav-row">
+      <button class="cal-nav-btn" onclick="calPrev()">‹</button>
+      <span class="cal-month-label">${MONTH_NAMES[calMonth]} ${calYear}</span>
+      <button class="cal-nav-btn" onclick="calNext()">›</button>
+    </div>
+
+    <div class="cal-grid">
+      ${['M','T','W','T','F','S','S'].map(h => `<div class="cal-day-header">${h}</div>`).join('')}
+      ${days.map(({ key, num, other }) => {
+        const stamps  = archive[key];
+        const hasStamp = stamps && Object.keys(stamps).length > 0;
+        const isToday  = key === todayStr;
+        const isFuture = key > todayStr;
+        const maxMult  = hasStamp ? Math.max(...Object.values(stamps).map(s => s.mult)) : 0;
+        const icons    = hasStamp ? Object.values(stamps).map(s => s.icon).join('') : '';
+        return `<div class="cal-day${hasStamp?' has-stamp':''}${isToday?' is-today':''}${other?' other-month':''}${isFuture?' is-future':''}"
+          ${hasStamp ? `onclick="showStampDetail('${key}')"` : ''}>
+          <div class="cal-day-num">${num}</div>
+          ${hasStamp ? `<div class="cal-day-icons">${icons}</div>` : ''}
+          ${hasStamp && maxMult > 1 ? `<div class="cal-day-mult">×${maxMult}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div id="stamp-day-detail" class="stamp-detail" style="display:none"></div>
+  `;
 }
 
 function shareProfile() {
