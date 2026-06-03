@@ -2437,7 +2437,9 @@ function renderAdminTable(data) {
     document.getElementById('admin-table-wrap').innerHTML = '<div class="admin-loading">No data yet.</div>';
     return;
   }
-  document.getElementById('admin-song-note').textContent = `Control: ${data.song || '—'} · 1 play = 1 complete playlist run`;
+  // Expected total streams per complete run (80 JUMP + 36 SD + 20 DDU = 136)
+  const EXP_PER_RUN = 136;
+  document.getElementById('admin-song-note').textContent = `Control: ${data.song || '—'} · 1 play = 1 complete playlist run · expected ~${EXP_PER_RUN} streams/run`;
 
   document.getElementById('admin-table-wrap').innerHTML = `
     <table class="admin-table">
@@ -2446,16 +2448,25 @@ function renderAdminTable(data) {
         <th>User</th>
         <th>Runs today</th>
         <th>Runs this week</th>
+        <th>Declared today</th>
+        <th>Streams / run</th>
       </tr></thead>
       <tbody>
         ${users.map((u, i) => {
-          const dClass = u.daily  > 0 ? 'admin-hi'   : 'admin-zero';
-          const wClass = u.weekly > 0 ? 'admin-hi'   : 'admin-zero';
+          const sc       = lbData?.users?.[u.username]?.scores || {};
+          const declared = (sc.daily_jump || 0) + (sc.daily_shutdown || 0) + (sc.daily_ddududu || 0);
+          const perRun   = u.daily > 0 ? (declared / u.daily).toFixed(0) : '—';
+          const flagHigh = u.daily > 0 && declared / u.daily > EXP_PER_RUN * 1.25;
+          const dClass   = u.daily  > 0 ? 'admin-hi'   : 'admin-zero';
+          const wClass   = u.weekly > 0 ? 'admin-hi'   : 'admin-zero';
+          const rClass   = flagHigh     ? 'admin-flag'  : 'admin-lo';
           return `<tr>
             <td class="admin-lo">${i + 1}</td>
             <td>${u.username}</td>
             <td class="${dClass}">${u.daily}</td>
             <td class="${wClass}">${u.weekly}</td>
+            <td class="admin-lo">${declared > 0 ? declared.toLocaleString() : '—'}</td>
+            <td class="${rClass}" title="expected ~${EXP_PER_RUN}/run">${perRun}</td>
           </tr>`;
         }).join('')}
       </tbody>
