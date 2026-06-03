@@ -1024,7 +1024,7 @@
       <!-- Header row -->
       <div style="display:flex;align-items:center;justify-content:space-between;padding:0.8rem 0 0.4rem;">
         <span class="lb-last-updated" id="lb-last-updated">Loading…</span>
-        <button class="lb-refresh-btn" onclick="refreshLeaderboard()">↻ Refresh</button>
+        <button class="lb-refresh-btn" onclick="refreshLeaderboard(true)">↻ Refresh</button>
       </div>
 
       <!-- Leaderboard table -->
@@ -2210,11 +2210,8 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       })
     });
 
-    // Update local cache so leaderboard reflects the new score immediately
-    if (lbData) {
-      lbData.users = lbData.users || {};
-      lbData.users[username] = { username, avatar: avatarUrl, scores, updatedAt: new Date().toISOString(), lastScrobbleAt: lastScrobbleTs ? new Date(lastScrobbleTs).toISOString() : null };
-    }
+    // Invalidate cache so next leaderboard view fetches fresh data from server
+    lbCacheTime = null;
   } catch(e) {
     console.warn('Leaderboard submit failed:', e);
   }
