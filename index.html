@@ -1335,15 +1335,19 @@ async function fetchSpotifyStreams() {
         //   stored.date === today → same visit, nothing new to calculate yet
         //   no stored / older than yesterday → first visit, just save and wait
         const stored = loadStored(t.id);
-        let autoStreams = null;   // streams to show for the auto bar
-        let autoDate   = yesterday; // the bar is labelled yesterday (Spotify lag)
+        let autoStreams = null;
+        let autoDate   = null;
 
-        if (stored && stored.date === yesterday && stored.total > 0) {
-          // Perfect: we have yesterday's snapshot, diff = today's API total - yesterday's total
-          autoStreams = plays - stored.total;
+        if (stored && stored.date !== today && stored.total > 0) {
+          // Streams = difference between current total and snapshot total.
+          // Label with stored.date (the day the snapshot was taken) since
+          // Spotify's update reflects that day's streams.
+          const diff = plays - stored.total;
+          if (diff > 0) {
+            autoStreams = diff;
+            autoDate   = stored.date;
+          }
         }
-        // If stored.date === today, the snapshot was saved in this same calendar day —
-        // wait until tomorrow when the date rolls over.
 
         // Save snapshot for today (only once per calendar day)
         if (!stored || stored.date !== today) {
@@ -1393,10 +1397,9 @@ async function fetchSpotifyStreams() {
           const diff = last.streams - prev.streams;
           const el = document.getElementById(`increase-${t.id}`);
           if (el) {
-            const tag     = last.auto ? ' · auto' : '';
             const diffStr = diff > 0 ? ` (+${formatFull(diff)})` : '';
             const color   = diffColor(diff);
-            el.innerHTML  = `<span style="color:${color}">▲ ${last.date} — ${formatFull(last.streams)} streams/day${diffStr}${tag}</span>`;
+            el.innerHTML  = `<span style="color:${color}">▲ ${last.date} — ${formatFull(last.streams)} streams/day${diffStr}</span>`;
             el.style.display = 'block';
           }
         }
