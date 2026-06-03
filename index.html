@@ -455,6 +455,27 @@
   .stamp-detail-count { font-family:var(--mono); font-size:0.55rem; color:var(--muted); }
   @media(max-width:600px){ .cal-day { min-height:44px; } .cal-day-icons { font-size:0.75rem; } }
 
+  /* ── Admin panel ── */
+  .admin-unlock { background:none; border:none; color:rgba(245,240,240,0.12); font-size:0.45rem; letter-spacing:0.2em; cursor:pointer; padding:0.2rem 0.4rem; }
+  .admin-unlock:hover { color:var(--pink); }
+  .admin-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:20000; display:flex; align-items:center; justify-content:center; padding:1rem; }
+  .admin-box { background:var(--card); border:1px solid var(--border); max-width:500px; width:100%; padding:1.8rem; }
+  .admin-box h2 { font-family:var(--display); font-size:1.4rem; letter-spacing:0.12em; color:var(--pink); margin-bottom:1.2rem; }
+  .admin-input-row { display:flex; gap:0.5rem; margin-bottom:0.4rem; }
+  .admin-input { flex:1; background:var(--charcoal); border:1px solid var(--border); color:var(--white); padding:0.6rem 0.8rem; font-family:var(--mono); font-size:0.65rem; }
+  .admin-input:focus { outline:none; border-color:var(--pink); }
+  .admin-err { font-size:0.5rem; color:#ff4466; letter-spacing:0.1em; min-height:1rem; margin-bottom:0.4rem; }
+  .admin-table-wrap { margin-top:1rem; overflow-x:auto; max-height:60vh; overflow-y:auto; }
+  .admin-table { width:100%; border-collapse:collapse; font-size:0.55rem; }
+  .admin-table th { font-size:0.42rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); padding:0.5rem 0.6rem; text-align:left; border-bottom:1px solid var(--border); font-weight:normal; position:sticky; top:0; background:var(--card); }
+  .admin-table td { padding:0.5rem 0.6rem; border-bottom:1px solid rgba(255,0,102,0.06); }
+  .admin-table tr:hover td { background:rgba(255,0,102,0.04); }
+  .admin-song-note { font-size:0.45rem; letter-spacing:0.1em; color:var(--muted); margin-top:0.8rem; font-style:italic; }
+  .admin-hi { color:var(--pink); font-family:var(--display); font-size:0.85rem; }
+  .admin-lo { color:rgba(245,240,240,0.3); }
+  .admin-zero { color:rgba(245,240,240,0.12); }
+  .admin-loading { text-align:center; padding:2rem; color:var(--muted); font-size:0.6rem; letter-spacing:0.15em; }
+
   footer { padding: 2rem 3rem; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
   footer p { font-size: 0.55rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.3); }
   footer p a { color: var(--pink); text-decoration: none; }
@@ -1014,11 +1035,36 @@
 
     <p class="badge-footer-note" style="margin-top:2rem;">
       Rankings are based on Last.fm scrobble data fetched when you log into My Badges.<br>
-      Scores update automatically every hour. Fan-made by Blinks United · Made with 💗
+      Scores update automatically every hour. Fan-made by Blinks United · Made with 💗<br>
+      <button class="admin-unlock" onclick="openAdminPanel()">· · ·</button>
     </p>
 
   </div>
 </div><!-- end leaderboard page -->
+
+<!-- Admin panel overlay -->
+<div id="admin-overlay" class="admin-overlay" style="display:none" onclick="if(event.target===this)closeAdminPanel()">
+  <div class="admin-box">
+    <h2>⬡ CONTROL RANKING</h2>
+    <div id="admin-auth" >
+      <div class="admin-input-row">
+        <input id="admin-key-input" class="admin-input" type="password" placeholder="Admin key" onkeydown="if(event.key==='Enter')submitAdminKey()">
+        <button class="btn-primary" onclick="submitAdminKey()">Unlock →</button>
+      </div>
+      <div id="admin-err" class="admin-err"></div>
+    </div>
+    <div id="admin-content" style="display:none">
+      <div id="admin-table-wrap" class="admin-table-wrap">
+        <div class="admin-loading">Loading…</div>
+      </div>
+      <div id="admin-song-note" class="admin-song-note"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
+      <button class="card-cl-btn" onclick="closeAdminPanel()">Close</button>
+      <button id="admin-refresh-btn" class="lb-refresh-btn" onclick="loadAdminRanking()" style="display:none">↻ Refresh</button>
+    </div>
+  </div>
+</div>
 
 <!-- Card modal -->
 <div id="card-overlay" class="card-overlay" style="display:none" onclick="if(event.target===this)closeCard()">
@@ -2318,6 +2364,110 @@ function switchLbSong(song, btn) {
   document.querySelectorAll('.lb-subtab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderLeaderboard();
+}
+
+// ── ADMIN PANEL ──────────────────────────────────────────────────────────────
+const ADMIN_KEY_LS = 'bu_admin_key';
+
+function openAdminPanel() {
+  document.getElementById('admin-overlay').style.display = 'flex';
+  const saved = localStorage.getItem(ADMIN_KEY_LS);
+  if (saved) {
+    document.getElementById('admin-auth').style.display = 'none';
+    document.getElementById('admin-content').style.display = 'block';
+    document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
+    loadAdminRanking(saved);
+  } else {
+    document.getElementById('admin-auth').style.display = 'block';
+    document.getElementById('admin-content').style.display = 'none';
+    document.getElementById('admin-refresh-btn').style.display = 'none';
+    setTimeout(() => document.getElementById('admin-key-input')?.focus(), 100);
+  }
+}
+
+function closeAdminPanel() {
+  document.getElementById('admin-overlay').style.display = 'none';
+}
+
+async function submitAdminKey() {
+  const key = document.getElementById('admin-key-input').value.trim();
+  const errEl = document.getElementById('admin-err');
+  if (!key) { errEl.textContent = 'Enter the admin key.'; return; }
+  errEl.textContent = 'Checking…';
+  const users = Object.keys(lbData?.users || {});
+  if (!users.length) { errEl.textContent = 'Leaderboard not loaded yet — try again in a moment.'; return; }
+  try {
+    const r = await fetch(`/api/control-ranking?key=${encodeURIComponent(key)}&users=${users.join(',')}`);
+    if (r.status === 401) { errEl.textContent = 'Wrong key.'; return; }
+    if (!r.ok) { errEl.textContent = `Server error (${r.status}).`; return; }
+    const d = await r.json();
+    localStorage.setItem(ADMIN_KEY_LS, key);
+    errEl.textContent = '';
+    document.getElementById('admin-auth').style.display = 'none';
+    document.getElementById('admin-content').style.display = 'block';
+    document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
+    renderAdminTable(d);
+  } catch(e) {
+    errEl.textContent = 'Request failed — check your connection.';
+  }
+}
+
+async function loadAdminRanking(key) {
+  const k = key || localStorage.getItem(ADMIN_KEY_LS);
+  if (!k) return;
+  const users = Object.keys(lbData?.users || {});
+  if (!users.length) {
+    document.getElementById('admin-table-wrap').innerHTML = '<div class="admin-loading">Leaderboard not loaded yet.</div>';
+    return;
+  }
+  document.getElementById('admin-table-wrap').innerHTML = '<div class="admin-loading">Fetching control data… this may take a moment.</div>';
+  try {
+    const r = await fetch(`/api/control-ranking?key=${encodeURIComponent(k)}&users=${users.join(',')}`);
+    if (r.status === 401) { localStorage.removeItem(ADMIN_KEY_LS); closeAdminPanel(); return; }
+    const d = await r.json();
+    renderAdminTable(d);
+  } catch(e) {
+    document.getElementById('admin-table-wrap').innerHTML = '<div class="admin-loading">Failed to load — try refreshing.</div>';
+  }
+}
+
+function renderAdminTable(data) {
+  const today = dateLabel(0);
+  const users = data.users || [];
+  if (!users.length) {
+    document.getElementById('admin-table-wrap').innerHTML = '<div class="admin-loading">No data yet.</div>';
+    return;
+  }
+  document.getElementById('admin-song-note').textContent = `Control song: ${data.song || '—'} · 1 scrobble = 1 full playlist run`;
+  document.getElementById('admin-table-wrap').innerHTML = `
+    <table class="admin-table">
+      <thead><tr>
+        <th>#</th>
+        <th>User</th>
+        <th>Today (ctrl)</th>
+        <th>Week (ctrl)</th>
+        <th>Today (declared)</th>
+        <th>Ratio</th>
+      </tr></thead>
+      <tbody>
+        ${users.map((u, i) => {
+          const declared = lbData?.users?.[u.username]?.scores?.daily_all || 0;
+          const ratio = u.daily > 0 && declared > 0
+            ? (declared / u.daily).toFixed(1) + '×'
+            : '—';
+          const dClass  = u.daily  > 0 ? 'admin-hi' : 'admin-zero';
+          const wClass  = u.weekly > 0 ? 'admin-hi' : 'admin-zero';
+          return `<tr>
+            <td class="admin-lo">${i + 1}</td>
+            <td>${u.username}</td>
+            <td class="${dClass}">${u.daily}</td>
+            <td class="${wClass}">${u.weekly}</td>
+            <td class="admin-lo">${declared.toLocaleString()}</td>
+            <td class="admin-lo" title="declared streams ÷ control scrobbles">${ratio}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
 }
 
 // Auto-refresh leaderboard every 60 minutes when on the page
