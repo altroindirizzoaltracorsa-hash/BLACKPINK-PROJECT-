@@ -1340,16 +1340,18 @@ async function fetchSpotifyStreams() {
         //     today's new API total minus that = the auto daily diff for yesterday's bar
         //   stored.date === today → same visit, nothing new to calculate yet
         //   no stored / older than yesterday → first visit, just save and wait
-        const stored = loadStored(t.id);
+        let stored = loadStored(t.id);
+        // If snapshot is dated today it was saved by a broken earlier version — discard it
+        if (stored && stored.date === today) {
+          try { localStorage.removeItem(LS_PREFIX + t.id); } catch(e) {}
+          stored = null;
+        }
         let autoStreams = null;
         let autoDate   = null;
 
-        if (stored && stored.date !== today && stored.total > 0) {
+        if (stored && stored.date === yesterday && stored.total > 0) {
           const diff = plays - stored.total;
-          if (diff > 0) {
-            autoStreams = diff;
-            autoDate   = yesterday;
-          }
+          if (diff > 0) { autoStreams = diff; autoDate = yesterday; }
         }
 
         // Save snapshot for today (only once per calendar day)
