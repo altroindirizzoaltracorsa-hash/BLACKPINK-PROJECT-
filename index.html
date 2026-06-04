@@ -1316,7 +1316,8 @@ async function fetchSpotifyStreams() {
   }
 
   try {
-    const res = await fetch('/api/streams');
+    const utcDate = new Date().toISOString().slice(0, 10); // daily CDN cache bust
+    const res = await fetch(`/api/streams?d=${utcDate}`);
     const counts = await res.json();
 
     for (const t of SPOTIFY_TRACKS) {
