@@ -1265,10 +1265,16 @@ function dateLabel(offset = 0) {
   return `${dd}/${mm}`;
 }
 
-// The date label we attach to the auto entry in the chart.
-// Since Spotify shows yesterday's data, the bar should be labelled yesterday.
 function yesterdayLabel() { return dateLabel(-1); }
 function todayLabel()     { return dateLabel(0);  }
+
+// Returns the day after a DD/MM label — used to date auto-calculated bars.
+function nextDayLabel(ddmm) {
+  const [dd, mm] = ddmm.split('/').map(Number);
+  const d = new Date(new Date().getUTCFullYear(), mm - 1, dd);
+  d.setDate(d.getDate() + 1);
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+}
 
 function loadStored(id) {
   try { return JSON.parse(localStorage.getItem(LS_PREFIX + id) || 'null'); }
@@ -1339,13 +1345,11 @@ async function fetchSpotifyStreams() {
         let autoDate   = null;
 
         if (stored && stored.date !== today && stored.total > 0) {
-          // Streams = difference between current total and snapshot total.
-          // Label with stored.date (the day the snapshot was taken) since
-          // Spotify's update reflects that day's streams.
           const diff = plays - stored.total;
           if (diff > 0) {
             autoStreams = diff;
-            autoDate   = stored.date;
+            // Date = the day after the snapshot: streams accumulated from that point belong to the next day
+            autoDate = nextDayLabel(stored.date);
           }
         }
 
