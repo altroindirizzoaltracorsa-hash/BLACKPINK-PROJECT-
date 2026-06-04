@@ -1348,8 +1348,7 @@ async function fetchSpotifyStreams() {
           const diff = plays - stored.total;
           if (diff > 0) {
             autoStreams = diff;
-            // Date = the day after the snapshot: streams accumulated from that point belong to the next day
-            autoDate = nextDayLabel(stored.date);
+            autoDate   = yesterday;
           }
         }
 
