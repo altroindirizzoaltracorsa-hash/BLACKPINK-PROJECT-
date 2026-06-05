@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron-scrobbles",
-      "schedule": "0 * * * *"
+      "schedule": "15 1 * * *"
     }
   ]
 }
