@@ -2,7 +2,7 @@ name: Refresh scrobbles
 
 on:
   schedule:
-    - cron: '0 */2 * * *'   # every 2 hours
+    - cron: '0 * * * *'   # every hour
   workflow_dispatch:          # also runnable manually from GitHub Actions tab
 
 jobs:
