@@ -58,7 +58,11 @@ export default async function handler(req, res) {
 
       const history   = hist || [];
       const cacheAge  = cached?.ts ? Date.now() - cached.ts : Infinity;
-      const cacheValid = !isCron && cacheAge < LIVE_CACHE_TTL_MS && (cached?.total || 0) > 0;
+      // Skip cache if we haven't recorded today's history entry yet, even if the
+      // live total is recent — otherwise a fetch that straddles midnight stays
+      // cached across the day boundary and the daily diff never gets written.
+      const needsDailyUpdate = !prev || prev.date !== todayLabel;
+      const cacheValid = !isCron && !needsDailyUpdate && cacheAge < LIVE_CACHE_TTL_MS && (cached?.total || 0) > 0;
       let total;
 
       if (cacheValid) {
