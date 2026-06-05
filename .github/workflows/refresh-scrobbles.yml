@@ -1,0 +1,16 @@
+name: Refresh scrobbles
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'   # every 2 hours
+  workflow_dispatch:          # also runnable manually from GitHub Actions tab
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cron endpoint
+        run: |
+          curl -sf -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.VERCEL_URL }}/api/cron-scrobbles"
