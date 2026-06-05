@@ -3,6 +3,10 @@
     {
       "path": "/api/streams?cron=1",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron-scrobbles",
+      "schedule": "0 * * * *"
     }
   ]
 }
