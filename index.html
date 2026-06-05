@@ -1420,9 +1420,13 @@ async function fetchSpotifyStreams() {
 }
 window.addEventListener('DOMContentLoaded', () => {
   fetchSpotifyStreams();
-  // If user lands directly on the badge page (e.g. refresh), auto-load
-  if (document.getElementById('page-badges')?.classList.contains('active')) {
-    tryAutoLoad();
+  const saved = getSavedUsername();
+  if (saved) {
+    if (document.getElementById('page-badges')?.classList.contains('active')) {
+      tryAutoLoad(); // full UI render on badges page
+    } else {
+      loadProfile(saved, true); // silent background submit to keep leaderboard fresh
+    }
   }
 });
 
@@ -1661,41 +1665,42 @@ function countByTrack(scrobbles) {
 let currentUser = null;
 let currentScrobbles = null;
 
-async function loadProfile() {
-  const username = document.getElementById('lfm-input').value.trim();
+async function loadProfile(usernameOverride, silent = false) {
+  const username = usernameOverride || document.getElementById('lfm-input').value.trim();
   if (!username) return;
 
-  document.getElementById('lfm-error').style.display = 'none';
-  document.getElementById('login-panel').style.display = 'none';
-  document.getElementById('loading-panel').style.display = 'block';
-  document.getElementById('profile-panel').style.display = 'none';
+  if (!silent) {
+    document.getElementById('lfm-error').style.display = 'none';
+    document.getElementById('login-panel').style.display = 'none';
+    document.getElementById('loading-panel').style.display = 'block';
+    document.getElementById('profile-panel').style.display = 'none';
+  }
 
   try {
-    setLoading('Looking up your Last.fm profile…');
+    if (!silent) setLoading('Looking up your Last.fm profile…');
     const info = await fetchUserInfo(username);
 
-    setLoading('Counting total BLACKPINK scrobbles…');
+    if (!silent) setLoading('Counting total BLACKPINK scrobbles…');
     const artistPlays = await fetchArtistPlays(username, 'BLACKPINK');
 
-    setLoading('Counting scrobbles for each campaign track…');
+    if (!silent) setLoading('Counting scrobbles for each campaign track…');
     const totalPlays = {};
     for (const t of TRACKS) {
-      setLoading(`Counting ${t.title} plays…`);
+      if (!silent) setLoading(`Counting ${t.title} plays…`);
       totalPlays[t.id] = await fetchTrackPlays(username, t.artist, t.track);
     }
 
-    setLoading('Fetching today\'s streams…');
+    if (!silent) setLoading('Fetching today\'s streams…');
     const { from: dayFrom, to: dayTo } = getDayBounds();
     const todayScrobbles = await fetchRecentScrobbles(username, dayFrom, dayTo);
     const todayCounts = countByTrack(todayScrobbles);
 
-    setLoading('Fetching this week\'s streams…');
+    if (!silent) setLoading('Fetching this week\'s streams…');
     const { from: weekFrom, to: weekTo } = getWeekBounds();
     const weekScrobbles = await fetchRecentScrobbles(username, weekFrom, weekTo);
     const weekCounts = countByTrack(weekScrobbles);
 
-    // Build daily breakdown (Mon–today)
-    setLoading('Building weekly breakdown…');
+    if (!silent) setLoading('Building weekly breakdown…');
     const weekDays = [];
     const msPerDay = 86400000;
     for (let i = 0; i < 7; i++) {
@@ -1721,16 +1726,18 @@ async function loadProfile() {
 
     currentUser = { info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs };
     saveUsername(username);
-    renderProfile(currentUser);
+    if (!silent) renderProfile(currentUser);
     // Submit scores to leaderboard in background (non-blocking)
     submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs).catch(()=>{});
 
   } catch(e) {
-    document.getElementById('login-panel').style.display = 'block';
-    document.getElementById('loading-panel').style.display = 'none';
-    const err = document.getElementById('lfm-error');
-    err.style.display = 'block';
-    err.textContent = '⚠ ' + (e.message || 'Something went wrong. Check your username.');
+    if (!silent) {
+      document.getElementById('login-panel').style.display = 'block';
+      document.getElementById('loading-panel').style.display = 'none';
+      const err = document.getElementById('lfm-error');
+      err.style.display = 'block';
+      err.textContent = '⚠ ' + (e.message || 'Something went wrong. Check your username.');
+    }
   }
 }
 
