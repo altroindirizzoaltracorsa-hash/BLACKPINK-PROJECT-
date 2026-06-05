@@ -48,6 +48,7 @@ async function countScrobbles(username, artist, track, from, to) {
   let count = 0;
   let page  = 1;
   const maxPages = 5;
+  const samples = []; // first few matched track names for debug
 
   while (page <= maxPages) {
     const url = `${LASTFM_BASE}?method=user.getRecentTracks&user=${encodeURIComponent(username)}&from=${from}&to=${to}&limit=200&page=${page}&api_key=${LASTFM_KEY}&format=json`;
@@ -63,10 +64,16 @@ async function countScrobbles(username, artist, track, from, to) {
 
     for (const t of tracks) {
       if (t['@attr']?.nowplaying) continue;
-      if (
-        norm(t.artist?.['#text']) === artistNorm &&
-        norm(t.name) === trackNorm
-      ) count++;
+      const aNorm = norm(t.artist?.['#text']);
+      const tNorm = norm(t.name);
+      // Artist must match exactly; track uses bidirectional contains to handle
+      // cases where Last.fm adds/omits a concert subtitle vs the env var value.
+      const artistMatch = aNorm === artistNorm;
+      const trackMatch  = tNorm === trackNorm || tNorm.includes(trackNorm) || trackNorm.includes(tNorm);
+      if (artistMatch && trackMatch) {
+        count++;
+        if (samples.length < 2) samples.push(`${t.artist?.['#text']} — ${t.name}`);
+      }
     }
 
     const total      = parseInt(attr.totalPages || '1', 10);
@@ -74,7 +81,7 @@ async function countScrobbles(username, artist, track, from, to) {
     if (fetchedAll) break;
     page++;
   }
-  return count;
+  return { count, samples };
 }
 
 export default async function handler(req, res) {
@@ -112,7 +119,7 @@ export default async function handler(req, res) {
         countScrobbles(username, artist, track, dayFrom, dayTo),
         countScrobbles(username, artist, track, weekFrom, weekTo),
       ]);
-      return { username, daily, weekly };
+      return { username, daily: daily.count, weekly: weekly.count, samples: weekly.samples };
     }));
     results.push(...batchRes);
   }
@@ -120,5 +127,9 @@ export default async function handler(req, res) {
   results.sort((a, b) => b.weekly - a.weekly || b.daily - a.daily);
 
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({ users: results, song: `${artist} — ${track}` });
+  res.status(200).json({
+    users: results,
+    song: `${artist} — ${track}`,
+    _debug: { artistNorm: norm(artist), trackNorm: norm(track) },
+  });
 }

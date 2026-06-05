@@ -2403,7 +2403,9 @@ function renderAdminTable(data) {
   }
   // Expected total streams per complete run (80 JUMP + 36 SD + 20 DDU = 136)
   const EXP_PER_RUN = 136;
-  document.getElementById('admin-song-note').textContent = `Control: ${data.song || '—'} · 1 play = 1 complete playlist run · expected ~${EXP_PER_RUN} streams/run`;
+  const allSamples = (data.users || []).flatMap(u => u.samples || []);
+  const sampleNote = allSamples.length ? ` · matched: "${allSamples[0]}"` : ' · no matches found';
+  document.getElementById('admin-song-note').textContent = `Control: ${data.song || '—'} · 1 play = 1 complete playlist run · expected ~${EXP_PER_RUN} streams/run${sampleNote}`;
 
   document.getElementById('admin-table-wrap').innerHTML = `
     <table class="admin-table">
