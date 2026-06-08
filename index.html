@@ -1959,8 +1959,17 @@ function isoDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+// Returns the ISO date key for the Italy-aware day, offset by N days back.
+// Uses getDayBounds() so it respects the 2am Italy reset — avoids midnight-to-2am
+// misattribution where isoDate(new Date()) flips to the next calendar date early.
+function italyDayKey(offsetDays = 0) {
+  const { from: dayFrom } = getDayBounds();
+  const d = new Date((dayFrom - offsetDays * 86400) * 1000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+}
+
 function saveTodayStamps(todayCounts) {
-  const today = isoDate(new Date());
+  const today = italyDayKey();
   const stamps = {};
   for (const t of TRACKS) {
     const count = todayCounts[t.id] || 0;
@@ -1980,14 +1989,12 @@ function saveTodayStamps(todayCounts) {
 
 function calcStreak() {
   const archive = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
-  const today = new Date();
-  const todayKey = isoDate(today);
+  const todayKey = italyDayKey(0);
   const hasToday = archive[todayKey] && Object.keys(archive[todayKey]).length > 0;
   let streak = 0;
   for (let i = hasToday ? 0 : 1; i < 365; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    if (!archive[isoDate(d)] || !Object.keys(archive[isoDate(d)]).length) break;
+    const key = italyDayKey(i);
+    if (!archive[key] || !Object.keys(archive[key]).length) break;
     streak++;
   }
   return streak;
@@ -2039,7 +2046,7 @@ function renderStampCalendar() {
   if (!el) return;
   const archive  = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
   const streak   = calcStreak();
-  const todayStr = isoDate(new Date());
+  const todayStr = italyDayKey();
 
   const firstDay = new Date(calYear, calMonth, 1);
   const lastDay  = new Date(calYear, calMonth + 1, 0);
