@@ -1968,6 +1968,13 @@ function italyDayKey(offsetDays = 0) {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 }
 
+// DD/MM label for the current Italy-aware day (used for daily_date in scores)
+function italyDateLabel() {
+  const { from: dayFrom } = getDayBounds();
+  const d = new Date(dayFrom * 1000);
+  return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+}
+
 function saveTodayStamps(todayCounts) {
   const today = italyDayKey();
   const stamps = {};
@@ -2193,14 +2200,10 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
 
     const avatarUrl = (userInfo.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
 
-    const today = dateLabel(0);
-    const weekStart = (() => {
-      const d = new Date();
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      const mon = new Date(d.setDate(diff));
-      return `${String(mon.getDate()).padStart(2,'0')}/${String(mon.getMonth()+1).padStart(2,'0')}`;
-    })();
+    const today = italyDateLabel();
+    const { from: _wf } = getWeekBounds();
+    const _wd = new Date(_wf * 1000);
+    const weekStart = `${String(_wd.getUTCDate()).padStart(2,'0')}/${String(_wd.getUTCMonth()+1).padStart(2,'0')}`;
 
     const campaignTotal = Object.values(totalPlays).reduce((a,b) => a+b, 0);
     const scores = {

@@ -121,8 +121,8 @@ async function refreshUser(entry) {
     ? new Date(parseInt(bpScrobbles[0].date.uts) * 1000).toISOString()
     : entry.lastScrobbleAt || null;
 
-  const campaignTotal = jumpPlays + shutdownPlays + ddududuPlays;
-  const todayLabel    = ddmm(new Date());
+  const campaignTotal  = jumpPlays + shutdownPlays + ddududuPlays;
+  const todayLabel     = ddmm(new Date(dayFrom * 1000));  // Italy-aware day, not UTC now
   const weekStartLabel = ddmm(new Date(weekFrom * 1000));
 
   return {
