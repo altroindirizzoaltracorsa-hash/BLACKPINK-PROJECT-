@@ -2265,13 +2265,10 @@ function renderLeaderboard() {
   // Build sorted array
   const entries = Object.entries(lbData.users || {})
     .map(([username, data]) => {
-      let score = data.scores?.[key] || 0;
-      // Daily score is stale if not refreshed today — keep it but flag it
-      const stale = lbPeriod === 'daily' && data.scores?.daily_date !== today;
-      if (stale) score = 0;
+      const score = data.scores?.[key] || 0;
       const lastScrobbleAt = data.lastScrobbleAt || null;
       const inactive = lastScrobbleAt && (Date.now() - new Date(lastScrobbleAt).getTime()) > 3 * 86400000;
-      return { username, avatar: data.avatar, score, stale, badge: getBadge(data.scores?.overall_all || 0), inactive };
+      return { username, avatar: data.avatar, score, badge: getBadge(data.scores?.overall_all || 0), inactive };
     })
     .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
 
@@ -2295,12 +2292,10 @@ function renderLeaderboard() {
             const avatarHtml = e.avatar
               ? `<img class="lb-avatar" src="${e.avatar}" alt="${e.username}">`
               : `<span class="lb-avatar-placeholder">${e.username[0].toUpperCase()}</span>`;
-            const rowStyle = e.stale ? ' style="opacity:0.4"' : '';
-            const scoreDisplay = e.stale ? '—' : e.score.toLocaleString();
-            return `<tr class="${isMe ? 'me' : ''}"${rowStyle}>
+            return `<tr class="${isMe ? 'me' : ''}">`
               <td><span class="lb-rank ${rankClass}">${rankEmoji || (i+1)}</span></td>
               <td>${avatarHtml}<span class="lb-user">${e.username}</span>${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
-              <td class="lb-score">${scoreDisplay}</td>
+              <td class="lb-score">${e.score > 0 ? e.score.toLocaleString() : '—'}</td>
             </tr>`;
           }).join('')}
         </tbody>
