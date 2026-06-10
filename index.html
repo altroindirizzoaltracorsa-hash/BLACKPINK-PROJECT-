@@ -2292,7 +2292,7 @@ function renderLeaderboard() {
             const avatarHtml = e.avatar
               ? `<img class="lb-avatar" src="${e.avatar}" alt="${e.username}">`
               : `<span class="lb-avatar-placeholder">${e.username[0].toUpperCase()}</span>`;
-            return `<tr class="${isMe ? 'me' : ''}">`
+            return `<tr class="${isMe ? 'me' : ''}">
               <td><span class="lb-rank ${rankClass}">${rankEmoji || (i+1)}</span></td>
               <td>${avatarHtml}<span class="lb-user">${e.username}</span>${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
               <td class="lb-score">${e.score > 0 ? e.score.toLocaleString() : '—'}</td>
