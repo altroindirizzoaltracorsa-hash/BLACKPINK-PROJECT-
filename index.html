@@ -918,6 +918,7 @@
           <div>
             <div class="user-name" id="profile-username"></div>
             <div class="user-meta" id="profile-meta"></div>
+            <div id="profile-debug" style="font-size:0.5rem;color:rgba(245,240,240,0.22);font-family:var(--mono);margin-top:0.2rem;"></div>
           </div>
         </div>
         <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
@@ -1560,8 +1561,10 @@ function getNextBadge(plays) {
 // ── LAST.FM API HELPERS ───────────────────────────────────────
 async function lfmFetch(params) {
   const url = LASTFM_BASE + '?' + new URLSearchParams({ ...params, api_key: LASTFM_KEY, format: 'json' });
-  const r = await fetch(url);
-  return r.json();
+  const r = await fetch(url, { cache: 'no-store' });
+  const data = await r.json();
+  if (data?.error) throw new Error(`Last.fm error ${data.error}: ${data.message || ''}`);
+  return data;
 }
 
 async function fetchUserInfo(username) {
@@ -1694,6 +1697,12 @@ async function loadProfile(usernameOverride, silent = false) {
     const { from: dayFrom, to: dayTo } = getDayBounds();
     const todayScrobbles = await fetchRecentScrobbles(username, dayFrom, dayTo);
     const todayCounts = countByTrack(todayScrobbles);
+
+    const _dbgFrom = new Date(dayFrom * 1000).toISOString().slice(0, 16) + ' UTC';
+    const _dbgTo   = new Date(dayTo   * 1000).toISOString().slice(0, 16) + ' UTC';
+    const _dbgMsg  = `window ${_dbgFrom} → ${_dbgTo} · ${todayScrobbles.length} scrobbles · J:${todayCounts.jump||0} S:${todayCounts.shutdown||0} D:${todayCounts.ddududu||0}`;
+    console.log('[BU today]', _dbgMsg);
+    if (!silent) { const dbgEl = document.getElementById('profile-debug'); if (dbgEl) dbgEl.textContent = _dbgMsg; }
 
     if (!silent) setLoading('Fetching this week\'s streams…');
     const { from: weekFrom, to: weekTo } = getWeekBounds();
