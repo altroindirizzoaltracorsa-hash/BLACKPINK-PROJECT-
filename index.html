@@ -658,6 +658,37 @@
   }
   .lb-refresh-btn:hover { border-color: var(--pink); color: var(--pink); }
   .lb-last-updated { font-size: 0.45rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.25); }
+
+/* ── BETA PAGE ── */
+.beta-page { max-width: 700px; margin: 0 auto; padding: 5rem 1.5rem 4rem; }
+.beta-header { text-align: center; margin-bottom: 3rem; }
+.beta-eyebrow { font-size: 0.55rem; letter-spacing: 0.3em; color: var(--pink); margin-bottom: 0.8rem; }
+.beta-title { font-family: var(--display); font-size: clamp(3rem,8vw,5.5rem); line-height: 0.9; color: var(--white); }
+.beta-title span { color: var(--pink); }
+.beta-sub { font-size: 0.7rem; color: rgba(245,240,240,0.55); letter-spacing: 0.1em; margin-top: 1rem; }
+.beta-card { background: var(--card); border: 1px solid var(--border); border-radius: 2px; padding: 2rem; margin-bottom: 2rem; }
+.beta-card-title { font-family: var(--display); font-size: 1.2rem; letter-spacing: 0.15em; margin-bottom: 1.2rem; }
+.beta-input { width: 100%; background: var(--off-black); border: 1px solid rgba(255,0,102,0.25); color: var(--white); font-family: var(--mono); font-size: 0.7rem; padding: 0.75rem 1rem; border-radius: 2px; outline: none; margin-bottom: 0.75rem; transition: border-color 0.2s; }
+.beta-input:focus { border-color: var(--pink); }
+.beta-label { font-size: 0.55rem; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 0.4rem; display: block; }
+.beta-btn { background: var(--pink); color: #fff; font-family: var(--display); font-size: 1.1rem; letter-spacing: 0.15em; border: none; padding: 0.75rem 2.5rem; cursor: pointer; border-radius: 2px; transition: opacity 0.2s; width: 100%; }
+.beta-btn:hover { opacity: 0.85; }
+.beta-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.beta-success { background: rgba(255,0,102,0.08); border: 1px solid rgba(255,0,102,0.3); border-radius: 2px; padding: 1rem 1.2rem; font-size: 0.65rem; color: var(--pink); margin-top: 1rem; display: none; letter-spacing: 0.05em; }
+.beta-error { background: rgba(255,80,80,0.08); border: 1px solid rgba(255,80,80,0.3); border-radius: 2px; padding: 0.8rem 1rem; font-size: 0.6rem; color: #ff5050; margin-top: 0.8rem; display: none; }
+.og-badge-info { display: flex; align-items: flex-start; gap: 1.2rem; padding: 1.2rem; background: rgba(255,215,0,0.05); border: 1px solid rgba(255,215,0,0.2); border-radius: 2px; margin-bottom: 1.2rem; }
+.og-badge-icon { font-size: 2.2rem; flex-shrink: 0; }
+.og-badge-text h3 { font-family: var(--display); font-size: 1rem; letter-spacing: 0.15em; color: #ffd700; }
+.og-badge-text p { font-size: 0.6rem; color: rgba(245,240,240,0.5); margin-top: 0.3rem; line-height: 1.6; }
+.feedback-form textarea { width: 100%; background: var(--off-black); border: 1px solid rgba(255,0,102,0.25); color: var(--white); font-family: var(--mono); font-size: 0.7rem; padding: 0.75rem 1rem; border-radius: 2px; outline: none; resize: vertical; min-height: 100px; margin-bottom: 0.75rem; }
+.feedback-form textarea:focus { border-color: var(--pink); }
+.feedback-form select { width: 100%; background: var(--off-black); border: 1px solid rgba(255,0,102,0.25); color: var(--white); font-family: var(--mono); font-size: 0.7rem; padding: 0.75rem 1rem; border-radius: 2px; outline: none; appearance: none; cursor: pointer; margin-bottom: 0.75rem; }
+/* OG badge in profile */
+.og-profile-badge { display: flex; align-items: center; gap: 0.8rem; background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,180,0,0.04)); border: 1px solid rgba(255,215,0,0.25); border-radius: 2px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; }
+.og-profile-badge-icon { font-size: 1.5rem; }
+.og-profile-badge-text { flex: 1; }
+.og-profile-badge-label { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.2em; color: #ffd700; }
+.og-profile-badge-sub { font-size: 0.5rem; color: rgba(245,240,240,0.45); letter-spacing: 0.1em; margin-top: 0.15rem; }
 </style>
 </head>
 <body>
@@ -672,6 +703,7 @@
     <li><a href="#songs" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100); return false;">Songs</a></li>
     <li><a href="#" onclick="showPage('badges'); closeMobileNav(); return false;" id="nav-badges">My Badges</a></li>
     <li><a href="#" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
+    <li><a href="#" onclick="showPage('beta'); closeMobileNav(); return false;" id="nav-beta">Beta</a></li>
     <li><a href="#follow" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100); return false;">Follow</a></li>
   </ul>
   <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
@@ -933,6 +965,16 @@
         <a href="https://www.last.fm/settings/applications" target="_blank" rel="noopener">Check Last.fm settings →</a>
       </div>
 
+      <div id="og-profile-badge-wrap" style="display:none; margin-bottom: 1.5rem;">
+        <div class="og-profile-badge">
+          <div class="og-profile-badge-icon">⭐</div>
+          <div class="og-profile-badge-text">
+            <div class="og-profile-badge-label">OG BETA TESTER</div>
+            <div class="og-profile-badge-sub" id="og-badge-sub">Here from the start · Joined the beta before it launched 💗</div>
+          </div>
+        </div>
+      </div>
+
       <div id="settings-panel" class="settings-panel" style="display:none">
         <p class="section-label">// Personal Settings</p>
         <div class="settings-grid">
@@ -1043,6 +1085,59 @@
 
   </div>
 </div><!-- end leaderboard page -->
+
+<!-- ══════════════════════════════════════
+     BETA PAGE
+════════════════════════════════════════ -->
+<div id="page-beta" class="page">
+  <div class="beta-page">
+
+    <div class="beta-header animate-in">
+      <p class="beta-eyebrow">✦ Early Access ✦</p>
+      <h1 class="beta-title">BETA<br><span>TESTERS</span></h1>
+      <p class="beta-sub">Be part of the community from day one.</p>
+    </div>
+
+    <!-- OG badge explanation -->
+    <div class="beta-card animate-in">
+      <div class="og-badge-info">
+        <div class="og-badge-icon">⭐</div>
+        <div class="og-badge-text">
+          <h3>OG BETA TESTER BADGE</h3>
+          <p>Sign up before September 1st, 2026 to earn the exclusive <strong style="color:#ffd700">OG Beta Tester</strong> badge — permanently displayed on your profile. This badge cannot be earned after the cutoff. It marks you as someone who was here when it all started.</p>
+        </div>
+      </div>
+
+      <p class="beta-label">LAST.FM USERNAME</p>
+      <input class="beta-input" id="beta-lfm-input" type="text" placeholder="your Last.fm username" maxlength="100" autocomplete="off">
+      <p class="beta-label">X / TWITTER HANDLE <span style="color:rgba(245,240,240,0.3)">(optional)</span></p>
+      <input class="beta-input" id="beta-twitter-input" type="text" placeholder="@handle" maxlength="100" autocomplete="off">
+      <button class="beta-btn" id="beta-submit-btn" onclick="submitBetaSignup()">JOIN BETA</button>
+      <div class="beta-success" id="beta-success"></div>
+      <div class="beta-error" id="beta-error"></div>
+    </div>
+
+    <!-- Feedback -->
+    <div class="beta-card animate-in feedback-form">
+      <p class="beta-card-title">// Feedback</p>
+      <p style="font-size:0.6rem;color:var(--muted);margin-bottom:1.2rem;">Found a bug? Have a suggestion? We want to hear from you.</p>
+      <p class="beta-label">CATEGORY</p>
+      <select id="feedback-category">
+        <option value="bug">Bug Report</option>
+        <option value="feature" selected>Feature Request</option>
+        <option value="general">General Feedback</option>
+      </select>
+      <p class="beta-label">MESSAGE</p>
+      <textarea id="feedback-message" placeholder="Tell us what's on your mind…" maxlength="2000"></textarea>
+      <p class="beta-label">CONTACT <span style="color:rgba(245,240,240,0.3)">(optional — email or @handle)</span></p>
+      <input class="beta-input" id="feedback-contact" type="text" placeholder="if you want a reply" maxlength="100">
+      <button class="beta-btn" id="feedback-submit-btn" onclick="submitFeedback()" style="margin-top:0.25rem;">SEND FEEDBACK</button>
+      <div class="beta-success" id="feedback-success"></div>
+      <div class="beta-error" id="feedback-error"></div>
+    </div>
+
+  </div>
+</div>
 
 <!-- Admin panel overlay -->
 <div id="admin-overlay" class="admin-overlay" style="display:none" onclick="if(event.target===this)closeAdminPanel()">
@@ -1429,6 +1524,9 @@ window.addEventListener('DOMContentLoaded', () => {
       loadProfile(saved, true); // silent background submit to keep leaderboard fresh
     }
   }
+  if (document.getElementById('page-beta')?.classList.contains('active')) {
+    initBetaPage();
+  }
 });
 
 // ── PAGE ROUTING ─────────────────────────────────────────────
@@ -1452,6 +1550,7 @@ function showPage(page) {
   if (page === 'home') initAnimations();
   if (page === 'badges') tryAutoLoad();
   if (page === 'leaderboard') refreshLeaderboard();
+  if (page === 'beta') initBetaPage();
 }
 
 function initAnimations() {
@@ -1736,6 +1835,9 @@ async function loadProfile(usernameOverride, silent = false) {
     currentUser = { info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs };
     saveUsername(username);
     if (!silent) renderProfile(currentUser);
+    if (!silent) {
+      fetchBetaStatus(username).then(status => { if (status.isOG) showOGBadge(status.signedUpAt); });
+    }
     // Submit scores to leaderboard in background (non-blocking)
     submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs).catch(()=>{});
 
@@ -1771,6 +1873,118 @@ function tryAutoLoad() {
   if (saved) {
     document.getElementById('lfm-input').value = saved;
     loadProfile();
+  }
+}
+
+// Beta / OG badge
+async function fetchBetaStatus(username) {
+  try {
+    const r = await fetch(`/api/beta-status?username=${encodeURIComponent(username)}`, { cache: 'no-store' });
+    return await r.json();
+  } catch { return { isBeta: false, isOG: false }; }
+}
+
+function showOGBadge(signedUpAt) {
+  const wrap = document.getElementById('og-profile-badge-wrap');
+  if (!wrap) return;
+  if (signedUpAt) {
+    const d = new Date(signedUpAt);
+    const label = `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+    const sub = document.getElementById('og-badge-sub');
+    if (sub) sub.textContent = `Here from the start · Joined ${label} 💗`;
+  }
+  wrap.style.display = 'block';
+}
+
+async function initBetaPage() {
+  const saved = getSavedUsername();
+  const lfmInput = document.getElementById('beta-lfm-input');
+  if (lfmInput && saved) lfmInput.value = saved;
+
+  // If already in beta, show status
+  if (saved) {
+    const status = await fetchBetaStatus(saved);
+    showBetaStatus(status);
+  }
+}
+
+function showBetaStatus(status) {
+  const successEl = document.getElementById('beta-success');
+  if (!successEl || !status.isBeta) return;
+  const d = new Date(status.signedUpAt);
+  const label = `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+  successEl.style.display = 'block';
+  successEl.textContent = status.isOG
+    ? `⭐ You're an OG Beta Tester! Signed up on ${label}. Your badge is live on your profile.`
+    : `✓ Signed up on ${label}. Keep streaming — OG badge closes Sept 1 2026!`;
+}
+
+async function submitBetaSignup() {
+  const lfm = document.getElementById('beta-lfm-input')?.value.trim();
+  const twitter = document.getElementById('beta-twitter-input')?.value.trim();
+  const btn = document.getElementById('beta-submit-btn');
+  const errEl = document.getElementById('beta-error');
+  const successEl = document.getElementById('beta-success');
+  if (!lfm) { errEl.style.display = 'block'; errEl.textContent = 'Last.fm username is required.'; return; }
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'JOINING…';
+  try {
+    const r = await fetch('/api/beta-signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lfm_username: lfm, twitter_handle: twitter || undefined }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Server error');
+    const d = new Date(data.signedUpAt);
+    const label = `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+    successEl.style.display = 'block';
+    successEl.textContent = data.alreadySigned
+      ? `Already signed up on ${label}! ${new Date(data.signedUpAt) < new Date('2026-09-01') ? '⭐ You have the OG badge.' : ''}`
+      : `⭐ Welcome, ${lfm}! You're in — signed up on ${label}. OG badge active on your profile.`;
+    btn.textContent = '✓ JOINED';
+    // If this is the logged-in user, update their profile badge
+    if (lfm.toLowerCase() === getSavedUsername().toLowerCase() && currentUser) {
+      showOGBadge(data.signedUpAt);
+    }
+  } catch(e) {
+    errEl.style.display = 'block';
+    errEl.textContent = e.message || 'Something went wrong. Try again.';
+    btn.disabled = false;
+    btn.textContent = 'JOIN BETA';
+  }
+}
+
+async function submitFeedback() {
+  const msg = document.getElementById('feedback-message')?.value.trim();
+  const cat = document.getElementById('feedback-category')?.value;
+  const contact = document.getElementById('feedback-contact')?.value.trim();
+  const btn = document.getElementById('feedback-submit-btn');
+  const errEl = document.getElementById('feedback-error');
+  const successEl = document.getElementById('feedback-success');
+  if (!msg) { errEl.style.display = 'block'; errEl.textContent = 'Message is required.'; return; }
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'SENDING…';
+  try {
+    const r = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, category: cat, contact: contact || undefined, username: getSavedUsername() || undefined }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Server error');
+    successEl.style.display = 'block';
+    successEl.textContent = '✓ Thank you! Your feedback has been submitted.';
+    document.getElementById('feedback-message').value = '';
+    document.getElementById('feedback-contact').value = '';
+    btn.textContent = '✓ SENT';
+  } catch(e) {
+    errEl.style.display = 'block';
+    errEl.textContent = e.message || 'Something went wrong. Try again.';
+    btn.disabled = false;
+    btn.textContent = 'SEND FEEDBACK';
   }
 }
 
