@@ -956,6 +956,7 @@
         <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
           <button class="share-btn" onclick="shareProfile()">🔗 Share Profile</button>
           <button class="share-btn" onclick="toggleSettings()">⚙ Settings</button>
+          <button class="share-btn" id="refresh-btn" onclick="refreshProfile()" style="background:transparent;border-color:rgba(255,255,255,0.15);color:var(--muted);">↻ Refresh</button>
           <button class="logout-btn" onclick="resetProfile()">← Change User</button>
         </div>
       </div>
@@ -1853,6 +1854,13 @@ function tryAutoLoad() {
     document.getElementById('lfm-input').value = saved;
     loadProfile();
   }
+}
+
+async function refreshProfile() {
+  const btn = document.getElementById('refresh-btn');
+  if (btn) { btn.textContent = '↻ Refreshing…'; btn.disabled = true; }
+  await loadProfile();
+  if (btn) { btn.textContent = '↻ Refresh'; btn.disabled = false; }
 }
 
 // Beta / OG badge
