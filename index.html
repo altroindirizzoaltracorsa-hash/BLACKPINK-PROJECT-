@@ -1812,6 +1812,8 @@ async function loadProfile(usernameOverride, silent = false) {
 
     currentUser = { info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs };
     saveUsername(username);
+    // Sync stamps from server before rendering so calendar has cross-device data
+    await syncStampsFromServer(username);
     if (!silent) renderProfile(currentUser);
     // Auto-register as beta tester (once per device per username)
     autoRegisterBeta(username);
@@ -2064,6 +2066,9 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
 
   // Save today's stamps and render calendar
   saveTodayStamps(todayCounts);
+  const _todayKey = italyDayKey();
+  const _todayArch = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
+  if (_todayArch[_todayKey]) pushStampToServer(getSavedUsername(), _todayKey, _todayArch[_todayKey]);
   calMonth = new Date().getMonth();
   calYear  = new Date().getFullYear();
   renderStampCalendar();
@@ -2117,6 +2122,50 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
 const STAMP_KEY = 'bu_stamp_archive';
 let calMonth = new Date().getMonth();
 let calYear  = new Date().getFullYear();
+
+async function syncStampsFromServer(username) {
+  if (!username) return;
+  try {
+    const r = await fetch(`/api/stamps?username=${encodeURIComponent(username)}`, { cache: 'no-store' });
+    if (!r.ok) return;
+    const data = await r.json();
+    if (!data.stamps) return;
+
+    const archive = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
+    let changed = false;
+    for (const [dayKey, serverStamps] of Object.entries(data.stamps)) {
+      const prev = archive[dayKey] || {};
+      for (const [id, s] of Object.entries(serverStamps)) {
+        if (!prev[id] || s.mult >= prev[id].mult) { prev[id] = s; changed = true; }
+      }
+      if (changed) archive[dayKey] = prev;
+    }
+    if (changed) localStorage.setItem(STAMP_KEY, JSON.stringify(archive));
+
+    // One-time migration: push all local stamps to server on first sync
+    const migKey = 'bu_stamps_migrated_' + username.toLowerCase();
+    if (!localStorage.getItem(migKey)) {
+      localStorage.setItem(migKey, '1');
+      const local = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
+      if (Object.keys(local).length > 0) {
+        fetch('/api/stamps', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, all_stamps: local }),
+        }).catch(() => {});
+      }
+    }
+  } catch {}
+}
+
+function pushStampToServer(username, dayKey, stamps) {
+  if (!username || !dayKey || !stamps || !Object.keys(stamps).length) return;
+  fetch('/api/stamps', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, day_key: dayKey, stamps }),
+  }).catch(() => {});
+}
 
 function isoDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
