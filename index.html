@@ -703,7 +703,7 @@
     <li><a href="#songs" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100); return false;">Songs</a></li>
     <li><a href="#" onclick="showPage('badges'); closeMobileNav(); return false;" id="nav-badges">My Badges</a></li>
     <li><a href="#" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
-    <li><a href="#" onclick="showPage('beta'); closeMobileNav(); return false;" id="nav-beta">Beta</a></li>
+    <li><a href="#" onclick="showPage('feedback'); closeMobileNav(); return false;" id="nav-feedback">Feedback</a></li>
     <li><a href="#follow" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100); return false;">Follow</a></li>
   </ul>
   <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
@@ -1089,49 +1089,30 @@
 <!-- ══════════════════════════════════════
      BETA PAGE
 ════════════════════════════════════════ -->
-<div id="page-beta" class="page">
+<!-- ══════════════════════════════════════
+     FEEDBACK PAGE
+════════════════════════════════════════ -->
+<div id="page-feedback" class="page">
   <div class="beta-page">
 
     <div class="beta-header animate-in">
-      <p class="beta-eyebrow">✦ Early Access ✦</p>
-      <h1 class="beta-title">BETA<br><span>TESTERS</span></h1>
-      <p class="beta-sub">Be part of the community from day one.</p>
+      <p class="beta-eyebrow">✦ Help Us Improve ✦</p>
+      <h1 class="beta-title">FEED<br><span>BACK</span></h1>
+      <p class="beta-sub">Found a bug? Have a suggestion? Tell us.</p>
     </div>
 
-    <!-- OG badge explanation -->
-    <div class="beta-card animate-in">
-      <div class="og-badge-info">
-        <div class="og-badge-icon">⭐</div>
-        <div class="og-badge-text">
-          <h3>OG BETA TESTER BADGE</h3>
-          <p>Sign up before September 1st, 2026 to earn the exclusive <strong style="color:#ffd700">OG Beta Tester</strong> badge — permanently displayed on your profile. This badge cannot be earned after the cutoff. It marks you as someone who was here when it all started.</p>
-        </div>
-      </div>
-
-      <p class="beta-label">LAST.FM USERNAME</p>
-      <input class="beta-input" id="beta-lfm-input" type="text" placeholder="your Last.fm username" maxlength="100" autocomplete="off">
-      <p class="beta-label">X / TWITTER HANDLE <span style="color:rgba(245,240,240,0.3)">(optional)</span></p>
-      <input class="beta-input" id="beta-twitter-input" type="text" placeholder="@handle" maxlength="100" autocomplete="off">
-      <button class="beta-btn" id="beta-submit-btn" onclick="submitBetaSignup()">JOIN BETA</button>
-      <div class="beta-success" id="beta-success"></div>
-      <div class="beta-error" id="beta-error"></div>
-    </div>
-
-    <!-- Feedback -->
     <div class="beta-card animate-in feedback-form">
-      <p class="beta-card-title">// Feedback</p>
-      <p style="font-size:0.6rem;color:var(--muted);margin-bottom:1.2rem;">Found a bug? Have a suggestion? We want to hear from you.</p>
       <p class="beta-label">CATEGORY</p>
       <select id="feedback-category">
         <option value="bug">Bug Report</option>
         <option value="feature" selected>Feature Request</option>
         <option value="general">General Feedback</option>
       </select>
-      <p class="beta-label">MESSAGE</p>
+      <p class="beta-label" style="margin-top:0.75rem;">MESSAGE</p>
       <textarea id="feedback-message" placeholder="Tell us what's on your mind…" maxlength="2000"></textarea>
-      <p class="beta-label">CONTACT <span style="color:rgba(245,240,240,0.3)">(optional — email or @handle)</span></p>
-      <input class="beta-input" id="feedback-contact" type="text" placeholder="if you want a reply" maxlength="100">
-      <button class="beta-btn" id="feedback-submit-btn" onclick="submitFeedback()" style="margin-top:0.25rem;">SEND FEEDBACK</button>
+      <p class="beta-label">CONTACT <span style="color:rgba(245,240,240,0.3)">(optional — email or @handle for a reply)</span></p>
+      <input class="beta-input" id="feedback-contact" type="text" placeholder="your email or @handle" maxlength="100">
+      <button class="beta-btn" id="feedback-submit-btn" onclick="submitFeedback()">SEND FEEDBACK</button>
       <div class="beta-success" id="feedback-success"></div>
       <div class="beta-error" id="feedback-error"></div>
     </div>
@@ -1524,9 +1505,6 @@ window.addEventListener('DOMContentLoaded', () => {
       loadProfile(saved, true); // silent background submit to keep leaderboard fresh
     }
   }
-  if (document.getElementById('page-beta')?.classList.contains('active')) {
-    initBetaPage();
-  }
 });
 
 // ── PAGE ROUTING ─────────────────────────────────────────────
@@ -1550,7 +1528,6 @@ function showPage(page) {
   if (page === 'home') initAnimations();
   if (page === 'badges') tryAutoLoad();
   if (page === 'leaderboard') refreshLeaderboard();
-  if (page === 'beta') initBetaPage();
 }
 
 function initAnimations() {
@@ -1835,6 +1812,8 @@ async function loadProfile(usernameOverride, silent = false) {
     currentUser = { info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs };
     saveUsername(username);
     if (!silent) renderProfile(currentUser);
+    // Auto-register as beta tester (once per device per username)
+    autoRegisterBeta(username);
     if (!silent) {
       fetchBetaStatus(username).then(status => { if (status.isOG) showOGBadge(status.signedUpAt); });
     }
@@ -1896,64 +1875,17 @@ function showOGBadge(signedUpAt) {
   wrap.style.display = 'block';
 }
 
-async function initBetaPage() {
-  const saved = getSavedUsername();
-  const lfmInput = document.getElementById('beta-lfm-input');
-  if (lfmInput && saved) lfmInput.value = saved;
-
-  // If already in beta, show status
-  if (saved) {
-    const status = await fetchBetaStatus(saved);
-    showBetaStatus(status);
-  }
-}
-
-function showBetaStatus(status) {
-  const successEl = document.getElementById('beta-success');
-  if (!successEl || !status.isBeta) return;
-  const d = new Date(status.signedUpAt);
-  const label = `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
-  successEl.style.display = 'block';
-  successEl.textContent = status.isOG
-    ? `⭐ You're an OG Beta Tester! Signed up on ${label}. Your badge is live on your profile.`
-    : `✓ Signed up on ${label}. Keep streaming — OG badge closes Sept 1 2026!`;
-}
-
-async function submitBetaSignup() {
-  const lfm = document.getElementById('beta-lfm-input')?.value.trim();
-  const twitter = document.getElementById('beta-twitter-input')?.value.trim();
-  const btn = document.getElementById('beta-submit-btn');
-  const errEl = document.getElementById('beta-error');
-  const successEl = document.getElementById('beta-success');
-  if (!lfm) { errEl.style.display = 'block'; errEl.textContent = 'Last.fm username is required.'; return; }
-  errEl.style.display = 'none';
-  btn.disabled = true;
-  btn.textContent = 'JOINING…';
+async function autoRegisterBeta(username) {
+  const key = 'bu_beta_reg_' + username.toLowerCase();
+  if (localStorage.getItem(key)) return;
   try {
     const r = await fetch('/api/beta-signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lfm_username: lfm, twitter_handle: twitter || undefined }),
+      body: JSON.stringify({ lfm_username: username }),
     });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error || 'Server error');
-    const d = new Date(data.signedUpAt);
-    const label = `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
-    successEl.style.display = 'block';
-    successEl.textContent = data.alreadySigned
-      ? `Already signed up on ${label}! ${new Date(data.signedUpAt) < new Date('2026-09-01') ? '⭐ You have the OG badge.' : ''}`
-      : `⭐ Welcome, ${lfm}! You're in — signed up on ${label}. OG badge active on your profile.`;
-    btn.textContent = '✓ JOINED';
-    // If this is the logged-in user, update their profile badge
-    if (lfm.toLowerCase() === getSavedUsername().toLowerCase() && currentUser) {
-      showOGBadge(data.signedUpAt);
-    }
-  } catch(e) {
-    errEl.style.display = 'block';
-    errEl.textContent = e.message || 'Something went wrong. Try again.';
-    btn.disabled = false;
-    btn.textContent = 'JOIN BETA';
-  }
+    if (r.ok) localStorage.setItem(key, '1');
+  } catch {}
 }
 
 async function submitFeedback() {
