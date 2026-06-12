@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     if (error) return res.status(200).json({ og: [] });
 
     const og = (data || []).map(r => r.lfm_username.toLowerCase());
-    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({ og });
   }
 
