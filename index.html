@@ -1863,7 +1863,7 @@ async function refreshProfile() {
 // Beta / OG badge
 async function fetchBetaStatus(username) {
   try {
-    const r = await fetch(`/api/beta-status?username=${encodeURIComponent(username)}`, { cache: 'no-store' });
+    const r = await fetch(`/api/beta?action=status&username=${encodeURIComponent(username)}`, { cache: 'no-store' });
     return await r.json();
   } catch { return { isBeta: false, isOG: false }; }
 }
@@ -1881,7 +1881,7 @@ async function autoRegisterBeta(username) {
   const key = 'bu_beta_reg_' + username.toLowerCase();
   if (localStorage.getItem(key)) return;
   try {
-    const r = await fetch('/api/beta-signup', {
+    const r = await fetch('/api/beta', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lfm_username: username }),
@@ -2385,7 +2385,7 @@ let ogUsers     = new Set(); // lowercase usernames who are OG beta testers
 
 async function fetchOgUsers() {
   try {
-    const r = await fetch('/api/og-users', { cache: 'no-store' });
+    const r = await fetch('/api/beta?action=og-users', { cache: 'no-store' });
     if (!r.ok) return;
     const data = await r.json();
     ogUsers = new Set(data.og || []);
