@@ -8,7 +8,7 @@ const TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
-const LIVE_CACHE_TTL_MS = 60 * 60 * 1000;
+const LIVE_CACHE_TTL_MS = 0; // temporary: force fresh fetch to pick up new API key
 
 function getDateLabel(date) {
   const dd = String(date.getUTCDate()).padStart(2, '0');
