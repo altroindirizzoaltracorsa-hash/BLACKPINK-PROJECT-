@@ -123,7 +123,7 @@ export default async function handler(req, res) {
     prevSnaps[name] = await redis.get(`bp_prev_${name}`);
   }
 
-  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+  res.setHeader('Cache-Control', 'no-store');
   res.status(200).json({
     ...results,
     _debug: { hasRapidKey: !!process.env.RAPIDAPI_KEY, errors, live: fetchedLive, prev: prevSnaps, ts: new Date().toISOString() },
