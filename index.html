@@ -683,12 +683,10 @@
 .feedback-form textarea { width: 100%; background: var(--off-black); border: 1px solid rgba(255,0,102,0.25); color: var(--white); font-family: var(--mono); font-size: 0.7rem; padding: 0.75rem 1rem; border-radius: 2px; outline: none; resize: vertical; min-height: 100px; margin-bottom: 0.75rem; }
 .feedback-form textarea:focus { border-color: var(--pink); }
 .feedback-form select { width: 100%; background: var(--off-black); border: 1px solid rgba(255,0,102,0.25); color: var(--white); font-family: var(--mono); font-size: 0.7rem; padding: 0.75rem 1rem; border-radius: 2px; outline: none; appearance: none; cursor: pointer; margin-bottom: 0.75rem; }
-/* OG badge in profile */
-.og-profile-badge { display: flex; align-items: center; gap: 0.8rem; background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,180,0,0.04)); border: 1px solid rgba(255,215,0,0.25); border-radius: 2px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; }
-.og-profile-badge-icon { font-size: 1.5rem; }
-.og-profile-badge-text { flex: 1; }
-.og-profile-badge-label { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.2em; color: #ffd700; }
-.og-profile-badge-sub { font-size: 0.5rem; color: rgba(245,240,240,0.45); letter-spacing: 0.1em; margin-top: 0.15rem; }
+/* OG inline badge next to username */
+.og-inline-badge { display:inline-flex; align-items:center; gap:0.3rem; font-family:var(--mono); font-size:0.42rem; letter-spacing:0.15em; color:#ffd700; background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.3); padding:0.2rem 0.5rem; cursor:default; position:relative; white-space:nowrap; vertical-align:middle; }
+.og-inline-badge::after { content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--card); border:1px solid rgba(255,215,0,0.25); color:rgba(245,240,240,0.75); font-family:var(--mono); font-size:0.45rem; letter-spacing:0.08em; padding:0.35rem 0.65rem; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.15s; z-index:10; }
+.og-inline-badge:hover::after { opacity:1; }
 </style>
 </head>
 <body>
@@ -948,7 +946,10 @@
         <div class="user-info">
           <div id="profile-avatar-wrap"></div>
           <div>
-            <div class="user-name" id="profile-username"></div>
+            <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+              <div class="user-name" id="profile-username"></div>
+              <span id="og-inline-badge" class="og-inline-badge" data-tip="" style="display:none;">⭐ OG</span>
+            </div>
             <div class="user-meta" id="profile-meta"></div>
             <div id="profile-debug" style="font-size:0.5rem;color:rgba(245,240,240,0.22);font-family:var(--mono);margin-top:0.2rem;"></div>
           </div>
@@ -966,15 +967,6 @@
         <a href="https://www.last.fm/settings/applications" target="_blank" rel="noopener">Check Last.fm settings →</a>
       </div>
 
-      <div id="og-profile-badge-wrap" style="display:none; margin-bottom: 1.5rem;">
-        <div class="og-profile-badge">
-          <div class="og-profile-badge-icon">⭐</div>
-          <div class="og-profile-badge-text">
-            <div class="og-profile-badge-label">OG BETA TESTER</div>
-            <div class="og-profile-badge-sub" id="og-badge-sub">Here from the start · Joined the beta before it launched 💗</div>
-          </div>
-        </div>
-      </div>
 
       <div id="settings-panel" class="settings-panel" style="display:none">
         <p class="section-label">// Personal Settings</p>
@@ -1877,15 +1869,12 @@ async function fetchBetaStatus(username) {
 }
 
 function showOGBadge(signedUpAt) {
-  const wrap = document.getElementById('og-profile-badge-wrap');
-  if (!wrap) return;
-  if (signedUpAt) {
-    const d = new Date(signedUpAt);
-    const label = `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
-    const sub = document.getElementById('og-badge-sub');
-    if (sub) sub.textContent = `Here from the start · Joined ${label} 💗`;
-  }
-  wrap.style.display = 'block';
+  const el = document.getElementById('og-inline-badge');
+  if (!el) return;
+  const d = new Date(signedUpAt);
+  const label = `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+  el.setAttribute('data-tip', `Here from the start · Joined ${label}`);
+  el.style.display = 'inline-flex';
 }
 
 async function autoRegisterBeta(username) {
