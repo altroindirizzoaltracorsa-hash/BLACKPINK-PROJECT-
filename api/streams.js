@@ -56,6 +56,11 @@ function parseDateLabel(label) {
 function daysBetween(labelA, labelB) {
   return Math.round((parseDateLabel(labelB) - parseDateLabel(labelA)) / 86_400_000);
 }
+function addDaysToLabel(ddmm, n) {
+  const [dd, mm] = ddmm.split('/').map(Number);
+  const d = new Date(Date.UTC(new Date().getUTCFullYear(), mm - 1, dd + n));
+  return getDateLabel(d);
+}
 function yesterdayLabel() {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - 1);
@@ -119,7 +124,9 @@ export default async function handler(req, res) {
           const gap = daysBetween(prev.date, todayLabel);
 
           if (gap >= 1) {
-            const yLabel = yesterdayLabel();
+            // Label as the day after the last snapshot, not "yesterday relative to now"
+            // so late Spotify updates still get the correct date regardless of when we fetch.
+            const yLabel = addDaysToLabel(prev.date, 1);
             const dailyStreams = total - prevTotal;
             const existing = history.find(h => h.date === yLabel);
             if (!existing) {
