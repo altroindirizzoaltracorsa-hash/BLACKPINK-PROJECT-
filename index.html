@@ -1653,7 +1653,7 @@ async function fetchArtistPlays(username, artist) {
 }
 
 // Get recent scrobbles for a time window (unix timestamps)
-async function fetchRecentScrobbles(username, from, to, maxPages = 25) {
+async function fetchRecentScrobbles(username, from, to, maxPages = 50) {
   const results = [];
   let page = 1;
   while (true) {
