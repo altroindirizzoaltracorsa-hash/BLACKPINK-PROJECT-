@@ -8,7 +8,41 @@ const TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
-const LIVE_CACHE_TTL_MS = 0; // temporary: force fresh fetch to pick up new API key
+const LIVE_CACHE_TTL_MS = 60 * 60 * 1000;
+
+// Returns all configured RapidAPI keys in priority order.
+// Add extras as RAPIDAPI_KEYS=key1,key2,key3 in Vercel env vars.
+function getApiKeys() {
+  const keys = [];
+  if (process.env.RAPIDAPI_KEYS) {
+    keys.push(...process.env.RAPIDAPI_KEYS.split(',').map(k => k.trim()).filter(Boolean));
+  }
+  if (process.env.RAPIDAPI_KEY && !keys.includes(process.env.RAPIDAPI_KEY)) {
+    keys.push(process.env.RAPIDAPI_KEY);
+  }
+  return keys;
+}
+
+// Tries each key in order, moving on if one is rate-limited or quota-exceeded.
+async function fetchTrackMetadata(trackId) {
+  const keys = getApiKeys();
+  let lastError = 'No API keys configured';
+  for (const key of keys) {
+    const r = await fetch(
+      `https://spotify-scraper.p.rapidapi.com/v1/track/metadata?trackId=${trackId}`,
+      { headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': 'spotify-scraper.p.rapidapi.com' } }
+    );
+    const data = await r.json();
+    // 429 = rate limit, 403 = quota exceeded, data.message = API-level error
+    if (r.status === 429 || r.status === 403 || data?.message) {
+      lastError = data?.message || `HTTP ${r.status}`;
+      continue;
+    }
+    if (!r.ok) { lastError = `HTTP ${r.status}`; continue; }
+    return data;
+  }
+  throw new Error(lastError);
+}
 
 function getDateLabel(date) {
   const dd = String(date.getUTCDate()).padStart(2, '0');
@@ -68,15 +102,13 @@ export default async function handler(req, res) {
       if (cacheValid) {
         total = cached.total;
       } else {
-        const r = await fetch(
-          `https://spotify-scraper.p.rapidapi.com/v1/track/metadata?trackId=${trackId}`,
-          { headers: {
-              'x-rapidapi-key':  process.env.RAPIDAPI_KEY,
-              'x-rapidapi-host': 'spotify-scraper.p.rapidapi.com',
-          } }
-        );
-        const data = await r.json();
-        if (!r.ok || data?.message) errors[name] = data?.message || `HTTP ${r.status}`;
+        let data;
+        try {
+          data = await fetchTrackMetadata(trackId);
+        } catch(e) {
+          errors[name] = e.message;
+          data = {};
+        }
         total = data?.playCount || 0;
         fetchedLive = true;
         if (total > 0) await redis.set(liveKey, { total, ts: Date.now() });
@@ -123,9 +155,9 @@ export default async function handler(req, res) {
     prevSnaps[name] = await redis.get(`bp_prev_${name}`);
   }
 
-  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
   res.status(200).json({
     ...results,
-    _debug: { hasRapidKey: !!process.env.RAPIDAPI_KEY, errors, live: fetchedLive, prev: prevSnaps, ts: new Date().toISOString() },
+    _debug: { keyCount: getApiKeys().length, errors, live: fetchedLive, prev: prevSnaps, ts: new Date().toISOString() },
   });
 }
