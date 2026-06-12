@@ -1775,7 +1775,7 @@ async function loadProfile(usernameOverride, silent = false) {
 
     if (!silent) setLoading('Fetching this week\'s streams…');
     const { from: weekFrom, to: weekTo } = getWeekBounds();
-    const weekScrobbles = await fetchRecentScrobbles(username, weekFrom, weekTo, 10);
+    const weekScrobbles = await fetchRecentScrobbles(username, weekFrom, weekTo, 50);
     const weekCounts = countByTrack(weekScrobbles);
 
     if (!silent) setLoading('Building weekly breakdown…');
