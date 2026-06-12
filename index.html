@@ -2381,6 +2381,16 @@ document.getElementById('lfm-input').addEventListener('keydown', e => {
 let lbData      = null;
 let lbPeriod    = 'daily';
 let lbSong      = 'all';
+let ogUsers     = new Set(); // lowercase usernames who are OG beta testers
+
+async function fetchOgUsers() {
+  try {
+    const r = await fetch('/api/og-users', { cache: 'no-store' });
+    if (!r.ok) return;
+    const data = await r.json();
+    ogUsers = new Set(data.og || []);
+  } catch {}
+}
 let lbCacheTime = null;
 
 // ── Read leaderboard data ─────────────────────────────────────
@@ -2498,7 +2508,7 @@ function renderLeaderboard() {
               : `<span class="lb-avatar-placeholder">${e.username[0].toUpperCase()}</span>`;
             return `<tr class="${isMe ? 'me' : ''}">
               <td><span class="lb-rank ${rankClass}">${rankEmoji || (i+1)}</span></td>
-              <td>${avatarHtml}<span class="lb-user">${e.username}</span>${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
+              <td>${avatarHtml}<span class="lb-user">${e.username}</span>${ogUsers.has(e.username.toLowerCase()) ? ' <span class="og-inline-badge" data-tip="Here from the start · OG Beta Tester">⭐ OG</span>' : ''}${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
               <td class="lb-score">${e.score > 0 ? e.score.toLocaleString() : '—'}</td>
             </tr>`;
           }).join('')}
@@ -2518,7 +2528,7 @@ async function refreshLeaderboard(force = false) {
   const wrap = document.getElementById('lb-table-wrap');
   if (wrap) wrap.innerHTML = '<div class="lb-loading">Loading leaderboard…</div>';
   try {
-    await fetchLbData(force);
+    await Promise.all([fetchLbData(force), fetchOgUsers()]);
     renderLeaderboard();
   } catch(e) {
     if (wrap) wrap.innerHTML = '<div class="lb-empty">Could not load leaderboard. Try again shortly.</div>';
