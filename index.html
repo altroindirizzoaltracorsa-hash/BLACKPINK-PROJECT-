@@ -1653,7 +1653,7 @@ async function fetchArtistPlays(username, artist) {
 }
 
 // Get recent scrobbles for a time window (unix timestamps)
-async function fetchRecentScrobbles(username, from, to) {
+async function fetchRecentScrobbles(username, from, to, maxPages = 25) {
   const results = [];
   let page = 1;
   while (true) {
@@ -1662,7 +1662,7 @@ async function fetchRecentScrobbles(username, from, to) {
     const arr = Array.isArray(tracks) ? tracks : [tracks];
     results.push(...arr.filter(t => t['@attr']?.nowplaying !== 'true'));
     const total = parseInt(d?.recenttracks?.['@attr']?.totalPages || '1');
-    if (page >= total || page >= 5) break; // cap at 5 pages / 1000 tracks
+    if (page >= total || page >= maxPages) break;
     page++;
   }
   return results;
@@ -1775,7 +1775,7 @@ async function loadProfile(usernameOverride, silent = false) {
 
     if (!silent) setLoading('Fetching this week\'s streams…');
     const { from: weekFrom, to: weekTo } = getWeekBounds();
-    const weekScrobbles = await fetchRecentScrobbles(username, weekFrom, weekTo);
+    const weekScrobbles = await fetchRecentScrobbles(username, weekFrom, weekTo, 10);
     const weekCounts = countByTrack(weekScrobbles);
 
     if (!silent) setLoading('Building weekly breakdown…');
