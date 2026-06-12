@@ -1818,7 +1818,10 @@ async function loadProfile(usernameOverride, silent = false) {
     // Auto-register as beta tester (once per device per username)
     autoRegisterBeta(username);
     if (!silent) {
-      fetchBetaStatus(username).then(status => { if (status.isOG) showOGBadge(status.signedUpAt); });
+      fetchBetaStatus(username).then(status => {
+        console.log('[BU beta]', status);
+        if (status.isOG) showOGBadge(status.signedUpAt);
+      });
     }
     // Submit scores to leaderboard in background (non-blocking)
     submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs).catch(()=>{});
