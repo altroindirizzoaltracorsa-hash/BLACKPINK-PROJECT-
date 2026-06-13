@@ -1780,42 +1780,65 @@ async function loadProfile(usernameOverride, silent = false) {
     console.log('[BU today]', _dbgMsg);
     if (!silent) { const dbgEl = document.getElementById('profile-debug'); if (dbgEl) dbgEl.textContent = _dbgMsg; }
 
-    if (!silent) setLoading('Fetching this week\'s streams…');
-    const { from: weekFrom, to: weekTo } = getWeekBounds();
-    const weekScrobbles = await fetchRecentScrobbles(username, weekFrom, weekTo);
-    const weekCounts = countByTrack(weekScrobbles);
-
     if (!silent) setLoading('Building weekly breakdown…');
-    const weekDays = [];
-    const msPerDay = 86400000;
-    for (let i = 0; i < 7; i++) {
-      const dayStart = weekFrom * 1000 + i * msPerDay;
-      const dayEnd = dayStart + msPerDay;
-      if (dayStart > Date.now()) { weekDays.push(null); continue; }
-      const label = getDayLabel(Math.floor(dayStart / 1000));
-      const daySc = weekScrobbles.filter(s => {
-        const ts = parseInt(s.date?.uts || 0) * 1000;
-        return ts >= dayStart && ts < dayEnd;
-      });
-      weekDays.push({ label, counts: countByTrack(daySc) });
-    }
+    const { from: weekFrom } = getWeekBounds();
+    const todayKey  = italyDayKey(0);
+    const weekCacheKey = `bu_weekly_${username.toLowerCase()}_${weekFrom}`;
+    let weekCache = {};
+    try { weekCache = JSON.parse(localStorage.getItem(weekCacheKey) || '{}'); } catch {}
 
-    // Derive last BLACKPINK scrobble from the already-fetched week data (no extra API call)
-    const bpWeekScrobbles = weekScrobbles.filter(s =>
-      (s.artist?.['#text'] || s.artist || '').toLowerCase().includes('blackpink') && s.date?.uts
-    );
-    bpWeekScrobbles.sort((a, b) => parseInt(b.date.uts) - parseInt(a.date.uts));
-    const lastScrobbleTs = bpWeekScrobbles.length
-      ? parseInt(bpWeekScrobbles[0].date.uts) * 1000
-      : null;
+    const weekDays = [];
+    const weekCounts = { jump: 0, shutdown: 0, ddududu: 0 };
+    let lastScrobbleTs = null;
+
+    for (let i = 0; i < 7; i++) {
+      const dayStart = weekFrom + i * 86400;
+      const dayEnd   = dayStart + 86400;
+      if (dayStart * 1000 > Date.now()) { weekDays.push(null); continue; }
+
+      const dayKey  = new Date(dayStart * 1000).toISOString().slice(0, 10);
+      const label   = getDayLabel(dayStart);
+      const isToday = dayKey === todayKey;
+      const isPast  = !isToday && dayEnd < Math.floor(Date.now() / 1000);
+
+      let counts;
+      if (isPast && weekCache[dayKey]) {
+        counts = weekCache[dayKey];
+      } else {
+        if (!silent) setLoading(`Fetching ${isToday ? 'today' : label}…`);
+        const daySc = await fetchRecentScrobbles(username, dayStart, dayEnd);
+        counts = countByTrack(daySc);
+        if (isPast) {
+          weekCache[dayKey] = counts;
+          try { localStorage.setItem(weekCacheKey, JSON.stringify(weekCache)); } catch {}
+        }
+        const bpDay = daySc.filter(s =>
+          (s.artist?.['#text'] || s.artist || '').toLowerCase().includes('blackpink') && s.date?.uts
+        );
+        if (bpDay.length) {
+          const ts = parseInt(bpDay[0].date.uts) * 1000;
+          if (!lastScrobbleTs || ts > lastScrobbleTs) lastScrobbleTs = ts;
+        }
+      }
+
+      weekDays.push({ label, counts });
+      weekCounts.jump     += counts.jump     || 0;
+      weekCounts.shutdown += counts.shutdown || 0;
+      weekCounts.ddududu  += counts.ddududu  || 0;
+    }
 
     currentUser = { info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs };
     saveUsername(username);
+    // Sync stamps from server before rendering so calendar has cross-device data
+    await syncStampsFromServer(username);
     if (!silent) renderProfile(currentUser);
     // Auto-register as beta tester (once per device per username)
     autoRegisterBeta(username);
     if (!silent) {
-      fetchBetaStatus(username).then(status => { if (status.isOG) showOGBadge(status.signedUpAt); });
+      fetchBetaStatus(username).then(status => {
+        console.log('[BU beta]', status);
+        if (status.isOG) showOGBadge(status.signedUpAt);
+      });
     }
     // Submit scores to leaderboard in background (non-blocking)
     submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs).catch(()=>{});
