@@ -96,6 +96,13 @@ export default async function handler(req, res) {
       ]);
 
       const history   = hist || [];
+      // One-time fix: relabel any entry misdated as today → yesterday.
+      // History entries should always represent the previous day's streams.
+      const misMaybe = history.find(h => h.date === todayLabel);
+      if (misMaybe) {
+        misMaybe.date = yesterdayLabel();
+        await redis.set(histKey, history);
+      }
       const cacheAge  = cached?.ts ? Date.now() - cached.ts : Infinity;
       // Skip cache if we haven't recorded today's history entry yet, even if the
       // live total is recent — otherwise a fetch that straddles midnight stays
