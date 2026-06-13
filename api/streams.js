@@ -10,6 +10,40 @@ const TRACKS = {
 
 const LIVE_CACHE_TTL_MS = 60 * 60 * 1000;
 
+// Returns all configured RapidAPI keys in priority order.
+// Add extras as RAPIDAPI_KEYS=key1,key2,key3 in Vercel env vars.
+function getApiKeys() {
+  const keys = [];
+  if (process.env.RAPIDAPI_KEYS) {
+    keys.push(...process.env.RAPIDAPI_KEYS.split(',').map(k => k.trim()).filter(Boolean));
+  }
+  if (process.env.RAPIDAPI_KEY && !keys.includes(process.env.RAPIDAPI_KEY)) {
+    keys.push(process.env.RAPIDAPI_KEY);
+  }
+  return keys;
+}
+
+// Tries each key in order, moving on if one is rate-limited or quota-exceeded.
+async function fetchTrackMetadata(trackId) {
+  const keys = getApiKeys();
+  let lastError = 'No API keys configured';
+  for (const key of keys) {
+    const r = await fetch(
+      `https://spotify-scraper.p.rapidapi.com/v1/track/metadata?trackId=${trackId}`,
+      { headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': 'spotify-scraper.p.rapidapi.com' } }
+    );
+    const data = await r.json();
+    // 429 = rate limit, 403 = quota exceeded, data.message = API-level error
+    if (r.status === 429 || r.status === 403 || data?.message) {
+      lastError = data?.message || `HTTP ${r.status}`;
+      continue;
+    }
+    if (!r.ok) { lastError = `HTTP ${r.status}`; continue; }
+    return data;
+  }
+  throw new Error(lastError);
+}
+
 function getDateLabel(date) {
   const dd = String(date.getUTCDate()).padStart(2, '0');
   const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
@@ -21,6 +55,11 @@ function parseDateLabel(label) {
 }
 function daysBetween(labelA, labelB) {
   return Math.round((parseDateLabel(labelB) - parseDateLabel(labelA)) / 86_400_000);
+}
+function addDaysToLabel(ddmm, n) {
+  const [dd, mm] = ddmm.split('/').map(Number);
+  const d = new Date(Date.UTC(new Date().getUTCFullYear(), mm - 1, dd + n));
+  return getDateLabel(d);
 }
 function yesterdayLabel() {
   const d = new Date();
@@ -68,15 +107,13 @@ export default async function handler(req, res) {
       if (cacheValid) {
         total = cached.total;
       } else {
-        const r = await fetch(
-          `https://spotify-scraper.p.rapidapi.com/v1/track/metadata?trackId=${trackId}`,
-          { headers: {
-              'x-rapidapi-key':  process.env.RAPIDAPI_KEY,
-              'x-rapidapi-host': 'spotify-scraper.p.rapidapi.com',
-          } }
-        );
-        const data = await r.json();
-        if (!r.ok || data?.message) errors[name] = data?.message || `HTTP ${r.status}`;
+        let data;
+        try {
+          data = await fetchTrackMetadata(trackId);
+        } catch(e) {
+          errors[name] = e.message;
+          data = {};
+        }
         total = data?.playCount || 0;
         fetchedLive = true;
         if (total > 0) await redis.set(liveKey, { total, ts: Date.now() });
@@ -87,7 +124,9 @@ export default async function handler(req, res) {
           const gap = daysBetween(prev.date, todayLabel);
 
           if (gap >= 1) {
-            const yLabel = yesterdayLabel();
+            // Label as the day after the last snapshot, not "yesterday relative to now"
+            // so late Spotify updates still get the correct date regardless of when we fetch.
+            const yLabel = addDaysToLabel(prev.date, 1);
             const dailyStreams = total - prevTotal;
             const existing = history.find(h => h.date === yLabel);
             if (!existing) {
@@ -126,6 +165,6 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
   res.status(200).json({
     ...results,
-    _debug: { hasRapidKey: !!process.env.RAPIDAPI_KEY, errors, live: fetchedLive, prev: prevSnaps, ts: new Date().toISOString() },
+    _debug: { keyCount: getApiKeys().length, errors, live: fetchedLive, prev: prevSnaps, ts: new Date().toISOString() },
   });
 }

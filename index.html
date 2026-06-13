@@ -683,12 +683,10 @@
 .feedback-form textarea { width: 100%; background: var(--off-black); border: 1px solid rgba(255,0,102,0.25); color: var(--white); font-family: var(--mono); font-size: 0.7rem; padding: 0.75rem 1rem; border-radius: 2px; outline: none; resize: vertical; min-height: 100px; margin-bottom: 0.75rem; }
 .feedback-form textarea:focus { border-color: var(--pink); }
 .feedback-form select { width: 100%; background: var(--off-black); border: 1px solid rgba(255,0,102,0.25); color: var(--white); font-family: var(--mono); font-size: 0.7rem; padding: 0.75rem 1rem; border-radius: 2px; outline: none; appearance: none; cursor: pointer; margin-bottom: 0.75rem; }
-/* OG badge in profile */
-.og-profile-badge { display: flex; align-items: center; gap: 0.8rem; background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,180,0,0.04)); border: 1px solid rgba(255,215,0,0.25); border-radius: 2px; padding: 0.8rem 1rem; margin-bottom: 1.5rem; }
-.og-profile-badge-icon { font-size: 1.5rem; }
-.og-profile-badge-text { flex: 1; }
-.og-profile-badge-label { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.2em; color: #ffd700; }
-.og-profile-badge-sub { font-size: 0.5rem; color: rgba(245,240,240,0.45); letter-spacing: 0.1em; margin-top: 0.15rem; }
+/* OG inline badge next to username */
+.og-inline-badge { display:inline-flex; align-items:center; gap:0.3rem; font-family:var(--mono); font-size:0.42rem; letter-spacing:0.15em; color:#ffd700; background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.3); padding:0.2rem 0.5rem; cursor:default; position:relative; white-space:nowrap; vertical-align:middle; }
+.og-inline-badge::after { content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--card); border:1px solid rgba(255,215,0,0.25); color:rgba(245,240,240,0.75); font-family:var(--mono); font-size:0.45rem; letter-spacing:0.08em; padding:0.35rem 0.65rem; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.15s; z-index:10; }
+.og-inline-badge:hover::after { opacity:1; }
 </style>
 </head>
 <body>
@@ -948,7 +946,10 @@
         <div class="user-info">
           <div id="profile-avatar-wrap"></div>
           <div>
-            <div class="user-name" id="profile-username"></div>
+            <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+              <div class="user-name" id="profile-username"></div>
+              <span id="og-inline-badge" class="og-inline-badge" data-tip="" style="display:none;">⭐ OG</span>
+            </div>
             <div class="user-meta" id="profile-meta"></div>
             <div id="profile-debug" style="font-size:0.5rem;color:rgba(245,240,240,0.22);font-family:var(--mono);margin-top:0.2rem;"></div>
           </div>
@@ -956,6 +957,7 @@
         <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
           <button class="share-btn" onclick="shareProfile()">🔗 Share Profile</button>
           <button class="share-btn" onclick="toggleSettings()">⚙ Settings</button>
+          <button class="share-btn" id="refresh-btn" onclick="refreshProfile()" style="background:transparent;border-color:rgba(255,255,255,0.15);color:var(--muted);">↻ Refresh</button>
           <button class="logout-btn" onclick="resetProfile()">← Change User</button>
         </div>
       </div>
@@ -965,15 +967,6 @@
         <a href="https://www.last.fm/settings/applications" target="_blank" rel="noopener">Check Last.fm settings →</a>
       </div>
 
-      <div id="og-profile-badge-wrap" style="display:none; margin-bottom: 1.5rem;">
-        <div class="og-profile-badge">
-          <div class="og-profile-badge-icon">⭐</div>
-          <div class="og-profile-badge-text">
-            <div class="og-profile-badge-label">OG BETA TESTER</div>
-            <div class="og-profile-badge-sub" id="og-badge-sub">Here from the start · Joined the beta before it launched 💗</div>
-          </div>
-        </div>
-      </div>
 
       <div id="settings-panel" class="settings-panel" style="display:none">
         <p class="section-label">// Personal Settings</p>
@@ -1095,13 +1088,13 @@
 <div id="page-feedback" class="page">
   <div class="beta-page">
 
-    <div class="beta-header animate-in">
+    <div class="beta-header">
       <p class="beta-eyebrow">✦ Help Us Improve ✦</p>
       <h1 class="beta-title">FEED<br><span>BACK</span></h1>
       <p class="beta-sub">Found a bug? Have a suggestion? Tell us.</p>
     </div>
 
-    <div class="beta-card animate-in feedback-form">
+    <div class="beta-card feedback-form">
       <p class="beta-label">CATEGORY</p>
       <select id="feedback-category">
         <option value="bug">Bug Report</option>
@@ -1223,7 +1216,6 @@ const STREAM_HISTORY = {
     { date: '30/05', streams: 251046 },
   ],
   ddududu: [
-    { date: '16/05', streams: 485887 },
     { date: '22/05', streams: 219465 },
     { date: '27/05', streams: 204500 },
     { date: '28/05', streams: 200298 },
@@ -1660,7 +1652,7 @@ async function fetchArtistPlays(username, artist) {
 }
 
 // Get recent scrobbles for a time window (unix timestamps)
-async function fetchRecentScrobbles(username, from, to) {
+async function fetchRecentScrobbles(username, from, to, maxPages = 50) {
   const results = [];
   let page = 1;
   while (true) {
@@ -1669,7 +1661,7 @@ async function fetchRecentScrobbles(username, from, to) {
     const arr = Array.isArray(tracks) ? tracks : [tracks];
     results.push(...arr.filter(t => t['@attr']?.nowplaying !== 'true'));
     const total = parseInt(d?.recenttracks?.['@attr']?.totalPages || '1');
-    if (page >= total || page >= 5) break; // cap at 5 pages / 1000 tracks
+    if (page >= total || page >= maxPages) break;
     page++;
   }
   return results;
@@ -1878,31 +1870,35 @@ function tryAutoLoad() {
   }
 }
 
+async function refreshProfile() {
+  const btn = document.getElementById('refresh-btn');
+  if (btn) { btn.textContent = '↻ Refreshing…'; btn.disabled = true; }
+  await loadProfile();
+  if (btn) { btn.textContent = '↻ Refresh'; btn.disabled = false; }
+}
+
 // Beta / OG badge
 async function fetchBetaStatus(username) {
   try {
-    const r = await fetch(`/api/beta-status?username=${encodeURIComponent(username)}`, { cache: 'no-store' });
+    const r = await fetch(`/api/beta?action=status&username=${encodeURIComponent(username)}`, { cache: 'no-store' });
     return await r.json();
   } catch { return { isBeta: false, isOG: false }; }
 }
 
 function showOGBadge(signedUpAt) {
-  const wrap = document.getElementById('og-profile-badge-wrap');
-  if (!wrap) return;
-  if (signedUpAt) {
-    const d = new Date(signedUpAt);
-    const label = `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
-    const sub = document.getElementById('og-badge-sub');
-    if (sub) sub.textContent = `Here from the start · Joined ${label} 💗`;
-  }
-  wrap.style.display = 'block';
+  const el = document.getElementById('og-inline-badge');
+  if (!el) return;
+  const d = new Date(signedUpAt);
+  const label = `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+  el.setAttribute('data-tip', `Here from the start · Joined ${label}`);
+  el.style.display = 'inline-flex';
 }
 
 async function autoRegisterBeta(username) {
   const key = 'bu_beta_reg_' + username.toLowerCase();
   if (localStorage.getItem(key)) return;
   try {
-    const r = await fetch('/api/beta-signup', {
+    const r = await fetch('/api/beta', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lfm_username: username }),
@@ -2079,6 +2075,9 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
 
   // Save today's stamps and render calendar
   saveTodayStamps(todayCounts);
+  const _todayKey = italyDayKey();
+  const _todayArch = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
+  if (_todayArch[_todayKey]) pushStampToServer(getSavedUsername(), _todayKey, _todayArch[_todayKey]);
   calMonth = new Date().getMonth();
   calYear  = new Date().getFullYear();
   renderStampCalendar();
@@ -2132,6 +2131,50 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
 const STAMP_KEY = 'bu_stamp_archive';
 let calMonth = new Date().getMonth();
 let calYear  = new Date().getFullYear();
+
+async function syncStampsFromServer(username) {
+  if (!username) return;
+  try {
+    const r = await fetch(`/api/stamps?username=${encodeURIComponent(username)}`, { cache: 'no-store' });
+    if (!r.ok) return;
+    const data = await r.json();
+    if (!data.stamps) return;
+
+    const archive = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
+    let changed = false;
+    for (const [dayKey, serverStamps] of Object.entries(data.stamps)) {
+      const prev = archive[dayKey] || {};
+      for (const [id, s] of Object.entries(serverStamps)) {
+        if (!prev[id] || s.mult >= prev[id].mult) { prev[id] = s; changed = true; }
+      }
+      if (changed) archive[dayKey] = prev;
+    }
+    if (changed) localStorage.setItem(STAMP_KEY, JSON.stringify(archive));
+
+    // One-time migration: push all local stamps to server on first sync
+    const migKey = 'bu_stamps_migrated_' + username.toLowerCase();
+    if (!localStorage.getItem(migKey)) {
+      localStorage.setItem(migKey, '1');
+      const local = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
+      if (Object.keys(local).length > 0) {
+        fetch('/api/stamps', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, all_stamps: local }),
+        }).catch(() => {});
+      }
+    }
+  } catch {}
+}
+
+function pushStampToServer(username, dayKey, stamps) {
+  if (!username || !dayKey || !stamps || !Object.keys(stamps).length) return;
+  fetch('/api/stamps', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, day_key: dayKey, stamps }),
+  }).catch(() => {});
+}
 
 function isoDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -2355,6 +2398,16 @@ document.getElementById('lfm-input').addEventListener('keydown', e => {
 let lbData      = null;
 let lbPeriod    = 'daily';
 let lbSong      = 'all';
+let ogUsers     = new Set(); // lowercase usernames who are OG beta testers
+
+async function fetchOgUsers() {
+  try {
+    const r = await fetch('/api/beta?action=og-users', { cache: 'no-store' });
+    if (!r.ok) return;
+    const data = await r.json();
+    ogUsers = new Set(data.og || []);
+  } catch {}
+}
 let lbCacheTime = null;
 
 // ── Read leaderboard data ─────────────────────────────────────
@@ -2443,7 +2496,14 @@ function renderLeaderboard() {
   // Build sorted array
   const entries = Object.entries(lbData.users || {})
     .map(([username, data]) => {
-      const score = data.scores?.[key] || 0;
+      const score = (() => {
+        const raw = data.scores?.[key] || 0;
+        if (lbPeriod === 'daily') {
+          const todayLabel = italyDateLabel();
+          if (data.scores?.daily_date && data.scores.daily_date !== todayLabel) return 0;
+        }
+        return raw;
+      })();
       const lastScrobbleAt = data.lastScrobbleAt || null;
       const inactive = lastScrobbleAt && (Date.now() - new Date(lastScrobbleAt).getTime()) > 3 * 86400000;
       return { username, avatar: data.avatar, score, badge: getBadge(data.scores?.overall_all || 0), inactive };
@@ -2472,7 +2532,7 @@ function renderLeaderboard() {
               : `<span class="lb-avatar-placeholder">${e.username[0].toUpperCase()}</span>`;
             return `<tr class="${isMe ? 'me' : ''}">
               <td><span class="lb-rank ${rankClass}">${rankEmoji || (i+1)}</span></td>
-              <td>${avatarHtml}<span class="lb-user">${e.username}</span>${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
+              <td>${avatarHtml}<span class="lb-user">${e.username}</span>${ogUsers.has(e.username.toLowerCase()) ? ' <span class="og-inline-badge" data-tip="Here from the start · OG Beta Tester">⭐ OG</span>' : ''}${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
               <td class="lb-score">${e.score > 0 ? e.score.toLocaleString() : '—'}</td>
             </tr>`;
           }).join('')}
@@ -2492,7 +2552,7 @@ async function refreshLeaderboard(force = false) {
   const wrap = document.getElementById('lb-table-wrap');
   if (wrap) wrap.innerHTML = '<div class="lb-loading">Loading leaderboard…</div>';
   try {
-    await fetchLbData(force);
+    await Promise.all([fetchLbData(force), fetchOgUsers()]);
     renderLeaderboard();
   } catch(e) {
     if (wrap) wrap.innerHTML = '<div class="lb-empty">Could not load leaderboard. Try again shortly.</div>';

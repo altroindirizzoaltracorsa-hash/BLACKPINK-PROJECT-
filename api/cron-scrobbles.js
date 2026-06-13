@@ -61,7 +61,7 @@ async function fetchArtistPlays(username, artist) {
   return parseInt(d?.artist?.stats?.userplaycount || '0', 10);
 }
 
-async function fetchRecentScrobbles(username, from, to) {
+async function fetchRecentScrobbles(username, from, to, maxPages = 50) {
   const results = [];
   let page = 1;
   while (true) {
@@ -70,7 +70,7 @@ async function fetchRecentScrobbles(username, from, to) {
     const arr = Array.isArray(tracks) ? tracks : [tracks];
     results.push(...arr.filter(t => t['@attr']?.nowplaying !== 'true'));
     const total = parseInt(d?.recenttracks?.['@attr']?.totalPages || '1');
-    if (page >= total || page >= 5) break;
+    if (page >= total || page >= maxPages) break;
     page++;
   }
   return results;
@@ -98,28 +98,39 @@ async function refreshUser(entry) {
   const { from: dayFrom, to: dayTo }   = getDayBounds();
   const { from: weekFrom, to: weekTo } = getWeekBounds();
 
-  // Fetch track totals + both scrobble windows in parallel
-  const [artistPlays, jumpPlays, shutdownPlays, ddududuPlays, todayScrobbles, weekScrobbles] =
+  // Fetch track totals + today's scrobbles in parallel
+  const [artistPlays, jumpPlays, shutdownPlays, ddududuPlays, todayScrobbles] =
     await Promise.all([
       fetchArtistPlays(username, 'BLACKPINK'),
       fetchTrackPlays(username, 'BLACKPINK', 'JUMP'),
       fetchTrackPlays(username, 'BLACKPINK', 'Shut Down'),
       fetchTrackPlays(username, 'BLACKPINK', 'DDU-DU DDU-DU'),
       fetchRecentScrobbles(username, dayFrom, dayTo),
-      fetchRecentScrobbles(username, weekFrom, weekTo),
     ]);
 
   const totalPlays  = { jump: jumpPlays, shutdown: shutdownPlays, ddududu: ddududuPlays };
   const todayCounts = countByTrack(todayScrobbles);
-  const weekCounts  = countByTrack(weekScrobbles);
 
-  const bpScrobbles = weekScrobbles.filter(s =>
-    (s.artist?.['#text'] || '').toLowerCase().includes('blackpink') && s.date?.uts
-  );
-  bpScrobbles.sort((a, b) => parseInt(b.date.uts) - parseInt(a.date.uts));
-  const lastScrobbleAt = bpScrobbles.length
-    ? new Date(parseInt(bpScrobbles[0].date.uts) * 1000).toISOString()
-    : entry.lastScrobbleAt || null;
+  // Fetch weekly data day-by-day so each day stays within the 50-page cap
+  const weekCounts = { jump: 0, shutdown: 0, ddududu: 0 };
+  let lastScrobbleAt = entry.lastScrobbleAt || null;
+  for (let i = 0; i < 7; i++) {
+    const dayStart = weekFrom + i * 86400;
+    const dayEnd   = dayStart + 86400;
+    if (dayStart > Math.floor(Date.now() / 1000)) break;
+    const daySc = await fetchRecentScrobbles(username, dayStart, dayEnd);
+    const dc = countByTrack(daySc);
+    weekCounts.jump     += dc.jump     || 0;
+    weekCounts.shutdown += dc.shutdown || 0;
+    weekCounts.ddududu  += dc.ddududu  || 0;
+    const bpDay = daySc.filter(s =>
+      (s.artist?.['#text'] || '').toLowerCase().includes('blackpink') && s.date?.uts
+    );
+    if (bpDay.length) {
+      const ts = new Date(parseInt(bpDay[0].date.uts) * 1000).toISOString();
+      if (!lastScrobbleAt || ts > lastScrobbleAt) lastScrobbleAt = ts;
+    }
+  }
 
   const campaignTotal  = jumpPlays + shutdownPlays + ddududuPlays;
   const todayLabel     = ddmm(new Date(dayFrom * 1000));  // Italy-aware day, not UTC now
