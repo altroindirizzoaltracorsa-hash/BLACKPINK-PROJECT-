@@ -2479,7 +2479,14 @@ function renderLeaderboard() {
   // Build sorted array
   const entries = Object.entries(lbData.users || {})
     .map(([username, data]) => {
-      const score = data.scores?.[key] || 0;
+      const score = (() => {
+        const raw = data.scores?.[key] || 0;
+        if (lbPeriod === 'daily') {
+          const todayLabel = italyDateLabel();
+          if (data.scores?.daily_date && data.scores.daily_date !== todayLabel) return 0;
+        }
+        return raw;
+      })();
       const lastScrobbleAt = data.lastScrobbleAt || null;
       const inactive = lastScrobbleAt && (Date.now() - new Date(lastScrobbleAt).getTime()) > 3 * 86400000;
       return { username, avatar: data.avatar, score, badge: getBadge(data.scores?.overall_all || 0), inactive };
