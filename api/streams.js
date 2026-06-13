@@ -124,9 +124,9 @@ export default async function handler(req, res) {
           const gap = daysBetween(prev.date, todayLabel);
 
           if (gap >= 1) {
-            // Label as the day after the last snapshot, not "yesterday relative to now"
-            // so late Spotify updates still get the correct date regardless of when we fetch.
-            const yLabel = addDaysToLabel(prev.date, 1);
+            // Spotify reports yesterday's finalized streams today, so the correct
+            // streaming day for this diff is always "yesterday" (today - 1).
+            const yLabel = yesterdayLabel();
             const dailyStreams = total - prevTotal;
             const existing = history.find(h => h.date === yLabel);
             if (!existing) {
