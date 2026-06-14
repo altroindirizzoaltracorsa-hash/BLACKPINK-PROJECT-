@@ -25,6 +25,23 @@ export default async function handler(req, res) {
 
   if (error) return res.status(500).json({ error: error.message });
 
+  // Discord notification (best-effort, don't fail the request if it errors)
+  if (process.env.DISCORD_WEBHOOK_URL) {
+    const categoryEmoji = { bug: '🐛', suggestion: '💡', praise: '💗', general: '💬' };
+    const emoji = categoryEmoji[category] || '💬';
+    const lines = [
+      `${emoji} **New feedback** · \`${category || 'general'}\``,
+      `>>> ${message.trim().slice(0, 1800)}`,
+    ];
+    if (username) lines.push(`**Last.fm:** ${username}`);
+    if (contact)  lines.push(`**Contact:** ${contact}`);
+    fetch(process.env.DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: lines.join('\n') }),
+    }).catch(() => {});
+  }
+
   res.setHeader('Cache-Control', 'no-store');
   res.status(201).json({ ok: true });
 }
