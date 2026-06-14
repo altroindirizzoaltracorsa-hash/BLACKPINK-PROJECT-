@@ -834,7 +834,7 @@
     <div class="ms-number" id="ms-number"></div>
     <div class="ms-sub" id="ms-sub"></div>
     <div class="ms-actions">
-      <button class="ms-btn ms-btn-primary" onclick="downloadMilestoneCard()">⬇ Save Card</button>
+      <button class="ms-btn ms-btn-primary" onclick="shareMilestoneCard()">↑ Share</button>
       <button class="ms-btn ms-btn-secondary" onclick="closeMilestone()">Dismiss</button>
     </div>
     <canvas id="ms-canvas" style="display:none"></canvas>
@@ -1613,6 +1613,7 @@ async function fetchSpotifyStreams() {
         }
       }
     }
+    showPendingMilestone();
   } catch(e) {
     for (const t of SPOTIFY_TRACKS) {
       const el = document.getElementById(`count-${t.id}`);
@@ -3258,13 +3259,22 @@ function formatMilestone(n) {
   return (n / 1_000_000) + 'M';
 }
 
+const _msPending = [];
 let _msActive = false;
+
 function checkMilestone(trackId, total) {
-  if (_msActive || !total) return;
+  if (!total) return;
   const milestone = getMilestone(total);
   if (!milestone) return;
   const key = `bu_ms_${trackId}_${milestone}`;
   if (localStorage.getItem(key)) return;
+  _msPending.push({ trackId, total, milestone, key });
+}
+
+function showPendingMilestone() {
+  if (_msActive || _msPending.length === 0) return;
+  _msPending.sort((a, b) => b.total - a.total);
+  const { trackId, total, milestone, key } = _msPending[0];
   localStorage.setItem(key, '1');
   showMilestone(trackId, total, milestone);
 }
@@ -3347,6 +3357,23 @@ function downloadMilestoneCard() {
   a.download = `blinks-united-milestone-${trackId}.png`;
   a.href = canvas.toDataURL('image/png');
   a.click();
+}
+
+async function shareMilestoneCard() {
+  const canvas = document.getElementById('ms-canvas');
+  const trackName = document.getElementById('ms-track-name').textContent;
+  const msNum = document.getElementById('ms-number').textContent;
+  const text = `${trackName} just hit ${msNum}! 🖤💗 #BLACKPINK #BLINKSUNITED\nblackpink-project.vercel.app`;
+  if (typeof navigator.share === 'function') {
+    canvas.toBlob(async blob => {
+      const file = new File([blob], 'blinks-united-milestone.png', { type: 'image/png' });
+      try {
+        await navigator.share({ files: [file], title: 'BLINKS UNITED', text });
+      } catch(e) { if (e.name !== 'AbortError') downloadMilestoneCard(); }
+    }, 'image/png');
+  } else {
+    window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
+  }
 }
 </script>
 
