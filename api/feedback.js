@@ -36,11 +36,13 @@ export default async function handler(req, res) {
     ];
     if (username) lines.push(`**Last.fm:** ${username}`);
     if (contact)  lines.push(`**Contact:** ${contact}`);
-    fetch(process.env.DISCORD_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: lines.join('\n') }),
-    }).catch(() => {});
+    try {
+      await fetch(process.env.DISCORD_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: lines.join('\n') }),
+      });
+    } catch (_) {}
   }
 
   res.setHeader('Cache-Control', 'no-store');
