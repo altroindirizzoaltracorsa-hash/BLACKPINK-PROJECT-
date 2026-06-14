@@ -343,6 +343,9 @@
   .card-dl-btn { flex:1;min-width:120px;padding:0.8rem;background:var(--pink);color:#000;font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;text-transform:uppercase;border:none;cursor:pointer; }
   .card-cl-btn { padding:0.8rem 1rem;background:transparent;color:var(--muted);font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;text-transform:uppercase;border:1px solid var(--border);cursor:pointer; }
   .card-copy-ok { color:#00ff88 !important; }
+  .card-fmt-toggle { display:flex;gap:2px; }
+  .card-fmt { background:transparent;border:1px solid rgba(255,0,102,0.2);color:var(--muted);font-family:var(--mono);font-size:0.42rem;letter-spacing:0.15em;text-transform:uppercase;padding:0.3rem 0.7rem;cursor:pointer;transition:all 0.2s; }
+  .card-fmt.active { background:var(--pink-muted);border-color:var(--pink);color:var(--pink); }
 
   /* ── SETTINGS PANEL ── */
   .settings-panel { max-width:900px;margin:1rem auto 0;padding:1.5rem;background:var(--card);border:1px solid var(--border); }
@@ -1295,7 +1298,13 @@
 <!-- Card modal -->
 <div id="card-overlay" class="card-overlay" style="display:none" onclick="if(event.target===this)closeCard()">
   <div class="card-box">
-    <div class="card-box-label" id="card-box-label">GENERATING…</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;flex-wrap:wrap;gap:0.5rem;">
+      <div class="card-box-label" id="card-box-label" style="margin-bottom:0;">GENERATING…</div>
+      <div class="card-fmt-toggle">
+        <button class="card-fmt active" id="fmt-landscape" onclick="setCardFormat('landscape',this)">▬ Landscape</button>
+        <button class="card-fmt" id="fmt-square" onclick="setCardFormat('square',this)">□ Square</button>
+      </div>
+    </div>
     <canvas id="card-canvas" width="1200" height="675"></canvas>
     <div class="card-box-actions">
       <button class="card-dl-btn" onclick="shareCard()">↑ Share</button>
@@ -2934,42 +2943,78 @@ async function getBuLogo() {
   return buLogoImg;
 }
 
+let _cardTrackId = null, _cardArt = null, _cardLogo = null, _cardFormat = 'landscape';
+
+function setCardFormat(fmt, btn) {
+  _cardFormat = fmt;
+  document.querySelectorAll('.card-fmt').forEach(b => b.classList.toggle('active', b === btn));
+  const canvas = document.getElementById('card-canvas');
+  if (fmt === 'landscape') { canvas.width = 1200; canvas.height = 675; }
+  else                     { canvas.width = 1080; canvas.height = 1080; }
+  if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
+}
+
 async function openSongCard(trackId) {
   const overlay = document.getElementById('card-overlay');
   const label   = document.getElementById('card-box-label');
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
-
-  const track     = TRACKS.find(t => t.id === trackId);
-  const data      = window.streamData?.[trackId] || {};
-  const total     = data.total || 0;
-  const daily     = data.daily;
-  const dailyDate = data.dailyDate;
+  _cardTrackId = trackId;
+  // Reset to landscape on each open
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
 
   await document.fonts.ready;
   const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
+  _cardArt = art; _cardLogo = logo;
+  renderSongCard(trackId, art, logo);
+  label.textContent = TRACKS.find(t => t.id === trackId)?.title + ' — STREAM UPDATE CARD';
+}
 
-  const canvas = document.getElementById('card-canvas');
-  const ctx    = canvas.getContext('2d');
-  const W = 1200, H = 675;
+function renderSongCard(trackId, art, logo) {
+  const track    = TRACKS.find(t => t.id === trackId);
+  const data     = window.streamData?.[trackId] || {};
+  const total    = data.total || 0;
+  const daily    = data.daily;
+  const dailyDate = data.dailyDate;
+  const canvas   = document.getElementById('card-canvas');
+  const ctx      = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const landscape = W > H;
 
   ctx.fillStyle = '#080808';
   ctx.fillRect(0, 0, W, H);
 
-  // Album artwork — left half, fading right
+  // Artwork
   if (art) {
-    const AW = 520;
-    const scale = Math.max(AW / art.naturalWidth, H / art.naturalHeight);
-    const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
-    ctx.drawImage(art, (AW - iw) / 2, (H - ih) / 2, iw, ih);
-    const gr = ctx.createLinearGradient(0, 0, AW + 120, 0);
-    gr.addColorStop(0,   'rgba(8,8,8,0)');
-    gr.addColorStop(0.5, 'rgba(8,8,8,0.6)');
-    gr.addColorStop(1,   'rgba(8,8,8,1)');
-    ctx.fillStyle = gr;
-    ctx.fillRect(0, 0, AW + 120, H);
+    if (landscape) {
+      // Left half of canvas
+      const AW = Math.round(W * 0.44);
+      const scale = Math.max(AW / art.naturalWidth, H / art.naturalHeight);
+      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      ctx.drawImage(art, (AW - iw) / 2, (H - ih) / 2, iw, ih);
+      const gr = ctx.createLinearGradient(0, 0, AW + 80, 0);
+      gr.addColorStop(0,    'rgba(8,8,8,0)');
+      gr.addColorStop(0.55, 'rgba(8,8,8,0.75)');
+      gr.addColorStop(1,    'rgba(8,8,8,1)');
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, AW + 80, H);
+    } else {
+      // Full bleed, fade to dark on right for square
+      const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
+      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      ctx.drawImage(art, (W - iw) / 2, (H - ih) / 2, iw, ih);
+      const gr = ctx.createLinearGradient(0, 0, W, 0);
+      gr.addColorStop(0,    'rgba(8,8,8,0)');
+      gr.addColorStop(0.28, 'rgba(8,8,8,0.55)');
+      gr.addColorStop(0.45, 'rgba(8,8,8,0.92)');
+      gr.addColorStop(1,    'rgba(8,8,8,0.98)');
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+    }
   } else {
-    const glow = ctx.createRadialGradient(0, H/2, 0, 0, H/2, 400);
+    const glow = ctx.createRadialGradient(0, H/2, 0, 0, H/2, H * 0.7);
     glow.addColorStop(0, 'rgba(255,0,102,0.15)');
     glow.addColorStop(1, 'rgba(8,8,8,0)');
     ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
@@ -2977,90 +3022,110 @@ async function openSongCard(trackId) {
 
   drawNoise(ctx, W, H, 0.03);
 
-  const PX = art ? 430 : 70;
+  // Text column: right portion for landscape, right half for square
+  const PX = landscape ? (art ? Math.round(W * 0.49) : 70) : (art ? Math.round(W * 0.42) : 80);
+  const textW = W - PX - (landscape ? 50 : 60);
 
-  // Era + year pill
+  // ── Era pill
+  const pillH = landscape ? 26 : 32;
+  const pillW = landscape ? 210 : 240;
+  const pillY = landscape ? 52 : 100;
   ctx.fillStyle = 'rgba(255,0,102,0.18)';
-  ctx.fillRect(PX, 58, 210, 26);
+  ctx.fillRect(PX, pillY, pillW, pillH);
   ctx.fillStyle = '#FF0066';
-  ctx.font = '500 12px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
   ctx.letterSpacing = '4px';
-  ctx.fillText(track.era + ' · ' + track.year, PX + 10, 76);
+  ctx.fillText(track.era + ' · ' + track.year, PX + 10, pillY + pillH - 7);
 
-  // Song title
+  // ── Title
   ctx.fillStyle = '#F5F0F0';
-  const titleSize = track.title.length > 10 ? 72 : track.title.length > 6 ? 86 : 100;
+  const tsBase = landscape ? 80 : 140;
+  const titleSize = track.title.length > 10 ? Math.round(tsBase * 0.72)
+                  : track.title.length > 6  ? Math.round(tsBase * 0.84)
+                  : tsBase;
   ctx.font = `${titleSize}px "Bebas Neue", sans-serif`;
-  ctx.letterSpacing = '4px';
-  if (track.title.includes(' ') && ctx.measureText(track.title).width > (W - PX - 60)) {
+  ctx.letterSpacing = '5px';
+  const titleY = landscape ? 160 : 270;
+  const lineH  = titleSize + (landscape ? 6 : 10);
+  if (track.title.includes(' ') && ctx.measureText(track.title).width > textW) {
     const words = track.title.split(' ');
     const mid   = Math.ceil(words.length / 2);
-    ctx.fillText(words.slice(0, mid).join(' '), PX, 175);
-    ctx.fillText(words.slice(mid).join(' '),    PX, 175 + titleSize + 8);
+    ctx.fillText(words.slice(0, mid).join(' '), PX, titleY);
+    ctx.fillText(words.slice(mid).join(' '),    PX, titleY + lineH);
   } else {
-    ctx.fillText(track.title, PX, 195);
+    ctx.fillText(track.title, PX, titleY);
   }
 
-  // Pink rule
+  // ── Pink rule
+  const ruleY = landscape ? 188 : 340;
   ctx.fillStyle = '#FF0066';
-  ctx.fillRect(PX, 225, 70, 2);
+  ctx.fillRect(PX, ruleY, 70, landscape ? 2 : 3);
 
-  // Total streams
+  // ── Total streams
+  const totalFontSz = landscape ? 64 : 88;
+  const totalY      = landscape ? 272 : 460;
+  const subY        = landscape ? 298 : 496;
   ctx.fillStyle = '#FF0066';
-  ctx.font = '70px "Bebas Neue", sans-serif';
+  ctx.font = `${totalFontSz}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '2px';
-  ctx.fillText(formatFull(total), PX, 315);
+  ctx.fillText(formatFull(total), PX, totalY);
   ctx.fillStyle = 'rgba(245,240,240,0.55)';
-  ctx.font = '500 14px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 13 : 22}px "DM Mono", monospace`;
   ctx.letterSpacing = '4px';
-  ctx.fillText('TOTAL SPOTIFY STREAMS', PX, 340);
+  ctx.fillText('TOTAL SPOTIFY STREAMS', PX, subY);
 
-  // Daily streams
+  // ── Daily streams
   if (daily !== null && daily !== undefined) {
     const sign = daily >= 0 ? '+' : '';
+    const dailyFontSz = landscape ? 44 : 58;
+    const dailyY      = landscape ? 356 : 582;
+    const dailySubY   = landscape ? 379 : 612;
     ctx.fillStyle = daily >= 0 ? '#00ff88' : '#ff4466';
-    ctx.font = '46px "Bebas Neue", sans-serif';
+    ctx.font = `${dailyFontSz}px "Bebas Neue", sans-serif`;
     ctx.letterSpacing = '2px';
-    ctx.fillText(`${sign}${formatFull(daily)}`, PX, 406);
-    ctx.font = '500 14px "DM Mono", monospace';
+    ctx.fillText(`${sign}${formatFull(daily)}`, PX, dailyY);
+    ctx.font = `500 ${landscape ? 13 : 22}px "DM Mono", monospace`;
     ctx.letterSpacing = '3px';
-    ctx.fillText('DAILY STREAMS' + (dailyDate ? ' · ' + dailyDate : ''), PX, 428);
+    ctx.fillText('DAILY STREAMS' + (dailyDate ? ' · ' + dailyDate : ''), PX, dailySubY);
   }
 
-  // Timestamp
+  // ── Timestamp
   const now = new Date();
   const ds  = String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear();
+  const tsY = landscape ? 420 : 658;
   ctx.fillStyle = 'rgba(245,240,240,0.38)';
-  ctx.font = '500 13px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 13 : 22}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText('Updated ' + ds, PX, 468);
+  ctx.fillText('Updated ' + ds, PX, tsY);
 
-  // Bottom rule
+  // ── Bottom rule
   ctx.fillStyle = 'rgba(255,0,102,0.2)';
-  ctx.fillRect(PX, H - 90, W - PX - 50, 1);
+  ctx.fillRect(PX, H - (landscape ? 90 : 138), W - PX - (landscape ? 50 : 60), 1);
 
-  // BU logo + branding
+  // ── Logo + branding
+  const LR     = landscape ? 22 : 28;
+  const logoY  = H - (landscape ? 46 : 82);
+  const brandY = H - (landscape ? 52 : 72);
+  const siteY  = H - (landscape ? 30 : 42);
   if (logo) {
-    const LR = 22;
     ctx.save();
-    ctx.beginPath(); ctx.arc(PX + LR, H - 46, LR, 0, Math.PI * 2); ctx.clip();
-    ctx.drawImage(logo, PX, H - 46 - LR, LR * 2, LR * 2);
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
     ctx.restore();
-    ctx.beginPath(); ctx.arc(PX + LR, H - 46, LR + 1, 0, Math.PI * 2);
-    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
   }
-  const brandX = logo ? PX + 56 : PX;
+  const brandX = logo ? PX + LR * 2 + 10 : PX;
   ctx.fillStyle = '#F5F0F0';
-  ctx.font = '34px "Bebas Neue", sans-serif';
-  ctx.letterSpacing = '8px';
-  ctx.fillText('BLINKS UNITED', brandX, H - 52);
+  ctx.font = `${landscape ? 34 : 44}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = '10px';
+  ctx.fillText('BLINKS UNITED', brandX, brandY);
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
-  ctx.font = '500 12px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', brandX, H - 30);
+  ctx.fillText('blackpink-project.vercel.app', brandX, siteY);
 
   cardCanvas = canvas;
-  label.textContent = track.title + ' — STREAM UPDATE CARD';
 }
 
 // ── SHARE TO SOCIAL ──────────────────────────────────────────────────────────
