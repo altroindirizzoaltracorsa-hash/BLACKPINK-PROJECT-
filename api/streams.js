@@ -96,12 +96,18 @@ export default async function handler(req, res) {
       ]);
 
       const history   = hist || [];
-      // One-time fix: relabel any entry misdated as today → yesterday.
-      // History entries should always represent the previous day's streams.
-      const misMaybe = history.find(h => h.date === todayLabel);
-      if (misMaybe) {
-        misMaybe.date = yesterdayLabel();
-        await redis.set(histKey, history);
+      // Fix mislabeled latest entry: if the gap between the last two entries
+      // is more than 1 day, the last entry was likely mislabeled by a previous
+      // bug. Relabel it to addDaysToLabel(secondLast, 1) which is the correct
+      // first new streaming day after the gap started.
+      if (history.length >= 2) {
+        const last       = history[history.length - 1];
+        const secondLast = history[history.length - 2];
+        const expected   = addDaysToLabel(secondLast.date, 1);
+        if (last.date !== expected && daysBetween(secondLast.date, last.date) > 1) {
+          last.date = expected;
+          await redis.set(histKey, history);
+        }
       }
       const cacheAge  = cached?.ts ? Date.now() - cached.ts : Infinity;
       // Skip cache if we haven't recorded today's history entry yet, even if the
@@ -131,8 +137,9 @@ export default async function handler(req, res) {
           const gap = daysBetween(prev.date, todayLabel);
 
           if (gap >= 1) {
-            // Spotify reports yesterday's finalized streams today, so label as yesterday.
-            const yLabel = yesterdayLabel();
+            // gap=1: prev.date IS the streaming day (snapshot was yesterday, streams are for that day)
+            // gap>1: Spotify skipped days, label as the day after the last snapshot
+            const yLabel = gap === 1 ? prev.date : addDaysToLabel(prev.date, 1);
             const dailyStreams = total - prevTotal;
             const existing = history.find(h => h.date === yLabel);
             if (!existing) {
