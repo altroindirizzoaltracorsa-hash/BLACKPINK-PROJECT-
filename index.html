@@ -1942,7 +1942,10 @@ async function loadProfile(usernameOverride, silent = false) {
 
     if (!silent) setLoading('Building weekly breakdown…');
     const { from: weekFrom } = getWeekBounds();
-    const msPerDay = 86400000;
+    const weekCacheKey = `bu_weekly_${username.toLowerCase()}_${weekFrom}`;
+    let weekCache = {};
+    try { weekCache = JSON.parse(localStorage.getItem(weekCacheKey) || '{}'); } catch {}
+
     const weekDays = [];
     const weekCounts = { jump: 0, shutdown: 0, ddududu: 0 };
     let lastScrobbleTs = null;
@@ -1951,22 +1954,38 @@ async function loadProfile(usernameOverride, silent = false) {
       const dayStart = weekFrom + i * 86400;
       const dayEnd   = dayStart + 86400;
       if (dayStart * 1000 > Date.now()) { weekDays.push(null); continue; }
-      if (!silent) setLoading(`Fetching week: day ${i + 1} of 7…`);
-      const label = getDayLabel(dayStart);
-      const daySc = await fetchRecentScrobbles(username, dayStart, dayEnd);
-      const counts = countByTrack(daySc);
+
+      const dayKey = new Date(dayStart * 1000).toISOString().slice(0, 10);
+      const label  = getDayLabel(dayStart);
+      const todayKey = italyDayKey(0);
+      const isToday  = dayKey === todayKey;
+      // A day's 2am-to-2am window is closed once dayEnd has passed
+      const isPast   = !isToday && dayEnd <= Math.floor(Date.now() / 1000);
+
+      let counts;
+      if (isPast && weekCache[dayKey]) {
+        counts = weekCache[dayKey];
+      } else {
+        if (!silent) setLoading(`Fetching ${isToday ? 'today' : label}…`);
+        const daySc = await fetchRecentScrobbles(username, dayStart, dayEnd);
+        counts = countByTrack(daySc);
+        if (isPast) {
+          weekCache[dayKey] = counts;
+          try { localStorage.setItem(weekCacheKey, JSON.stringify(weekCache)); } catch {}
+        }
+        const bpDay = daySc.filter(s =>
+          (s.artist?.['#text'] || s.artist || '').toLowerCase().includes('blackpink') && s.date?.uts
+        );
+        if (bpDay.length) {
+          const ts = parseInt(bpDay[0].date.uts) * 1000;
+          if (!lastScrobbleTs || ts > lastScrobbleTs) lastScrobbleTs = ts;
+        }
+      }
+
       weekDays.push({ label, counts });
       weekCounts.jump     += counts.jump     || 0;
       weekCounts.shutdown += counts.shutdown || 0;
       weekCounts.ddududu  += counts.ddududu  || 0;
-      // Track last BLACKPINK scrobble seen this week
-      const bpDay = daySc.filter(s =>
-        (s.artist?.['#text'] || s.artist || '').toLowerCase().includes('blackpink') && s.date?.uts
-      );
-      if (bpDay.length) {
-        const ts = parseInt(bpDay[0].date.uts) * 1000;
-        if (!lastScrobbleTs || ts > lastScrobbleTs) lastScrobbleTs = ts;
-      }
     }
 
     currentUser = { info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs };
