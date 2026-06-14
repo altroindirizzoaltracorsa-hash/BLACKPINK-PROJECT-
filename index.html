@@ -3172,6 +3172,30 @@ async function shareLbCard() {
 function renderLbCard(logo) {
   const canvas = document.getElementById('card-canvas');
   const ctx = canvas.getContext('2d');
+
+  // Build entries first so we can size the canvas to fit everyone
+  const key = getScoreKey();
+  const todayLabel = italyDateLabel();
+  let entries = Object.entries(lbData?.users || {})
+    .map(([username, data]) => {
+      let score = data.scores?.[key] || 0;
+      if (lbPeriod === 'daily' && data.scores?.daily_date && data.scores.daily_date !== todayLabel) score = 0;
+      return { username, score, raw: data.scores?.[key] || 0 };
+    })
+    .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
+
+  let dateNote = '';
+  if (lbPeriod === 'daily' && entries.every(e => e.score === 0)) {
+    entries = entries.map(e => ({ ...e, score: e.raw })).sort((a, b) => b.score - a.score);
+    dateNote = 'YESTERDAY';
+  }
+
+  entries = entries.filter(e => e.score > 0);
+
+  const rowH = 80;
+  const startY = 190;
+  const footerH = 140;
+  canvas.height = Math.max(600, startY + entries.length * rowH + footerH);
   const W = canvas.width, H = canvas.height;
 
   ctx.fillStyle = '#080808';
@@ -3202,29 +3226,7 @@ function renderLbCard(logo) {
   ctx.fillStyle = 'rgba(255,0,102,0.25)';
   ctx.fillRect(60, 162, W - 120, 1);
 
-  // Build entries — if daily and all scores are 0 after 2am, fall back to raw scores
-  const key = getScoreKey();
-  const todayLabel = italyDateLabel();
-  let entries = Object.entries(lbData?.users || {})
-    .map(([username, data]) => {
-      let score = data.scores?.[key] || 0;
-      if (lbPeriod === 'daily' && data.scores?.daily_date && data.scores.daily_date !== todayLabel) score = 0;
-      return { username, score, raw: data.scores?.[key] || 0 };
-    })
-    .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
-
-  let dateNote = '';
-  if (lbPeriod === 'daily' && entries.every(e => e.score === 0)) {
-    // Post-reset: use raw scores labelled as yesterday
-    entries = entries.map(e => ({ ...e, score: e.raw })).sort((a, b) => b.score - a.score);
-    dateNote = 'YESTERDAY';
-  }
-
-  entries = entries.filter(e => e.score > 0).slice(0, 7);
-
-  const goldColors   = ['#FFD700','#C0C0C0','#CD7F32'];
-  const rowH = H > 900 ? 98 : 72;
-  const startY = 190;
+  const goldColors = ['#FFD700','#C0C0C0','#CD7F32'];
   const PL = 70, PR = W - 70;
 
   entries.forEach((e, i) => {
