@@ -336,12 +336,13 @@
   .gen-card-btn { margin-top:0.8rem;width:100%;padding:0.6rem 0;background:transparent;border:1px solid rgba(255,0,102,0.2);color:rgba(255,0,102,0.55);font-family:var(--mono);font-size:0.44rem;letter-spacing:0.22em;text-transform:uppercase;cursor:pointer;transition:border-color .2s,color .2s; }
   .gen-card-btn:hover { border-color:var(--pink);color:var(--pink); }
   .card-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px); }
-  .card-box { background:var(--card);border:1px solid var(--border);max-width:540px;width:100%;padding:1.5rem; }
+  .card-box { background:var(--card);border:1px solid var(--border);max-width:760px;width:100%;padding:1.5rem; }
   .card-box-label { font-size:0.46rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--pink);margin-bottom:0.8rem; }
   .card-box canvas { width:100%;height:auto;display:block;border:1px solid var(--border); }
-  .card-box-actions { display:flex;gap:0.8rem;margin-top:1rem;flex-wrap:wrap; }
-  .card-dl-btn { flex:1;min-width:140px;padding:0.8rem;background:var(--pink);color:#000;font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;text-transform:uppercase;border:none;cursor:pointer; }
-  .card-cl-btn { padding:0.8rem 1.2rem;background:transparent;color:var(--muted);font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;text-transform:uppercase;border:1px solid var(--border);cursor:pointer; }
+  .card-box-actions { display:flex;gap:0.6rem;margin-top:1rem;flex-wrap:wrap; }
+  .card-dl-btn { flex:1;min-width:120px;padding:0.8rem;background:var(--pink);color:#000;font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;text-transform:uppercase;border:none;cursor:pointer; }
+  .card-cl-btn { padding:0.8rem 1rem;background:transparent;color:var(--muted);font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;text-transform:uppercase;border:1px solid var(--border);cursor:pointer; }
+  .card-copy-ok { color:#00ff88 !important; }
 
   /* ── SETTINGS PANEL ── */
   .settings-panel { max-width:900px;margin:1rem auto 0;padding:1.5rem;background:var(--card);border:1px solid var(--border); }
@@ -1295,11 +1296,12 @@
 <div id="card-overlay" class="card-overlay" style="display:none" onclick="if(event.target===this)closeCard()">
   <div class="card-box">
     <div class="card-box-label" id="card-box-label">GENERATING…</div>
-    <canvas id="card-canvas" width="1080" height="1080"></canvas>
+    <canvas id="card-canvas" width="1200" height="675"></canvas>
     <div class="card-box-actions">
-      <button class="card-dl-btn" onclick="downloadCard()">↓ Download PNG</button>
-      <button class="card-dl-btn" style="background:var(--off-black);color:var(--white);border:1px solid var(--border);" onclick="shareCard()">↗ Share</button>
-      <button class="card-cl-btn" onclick="closeCard()">Close</button>
+      <button class="card-dl-btn" onclick="shareCard()">↑ Share</button>
+      <button class="card-dl-btn" style="background:var(--off-black);color:var(--white);border:1px solid var(--border);" onclick="copyCard(this)">📋 Copy Image</button>
+      <button class="card-dl-btn" style="background:transparent;color:var(--muted);border:1px solid var(--border);" onclick="downloadCard()">↓ Download</button>
+      <button class="card-cl-btn" onclick="closeCard()">✕</button>
     </div>
   </div>
 </div>
@@ -2877,6 +2879,20 @@ function downloadCard() {
   a.click();
 }
 
+async function copyCard(btn) {
+  if (!cardCanvas) return;
+  try {
+    const blob = await new Promise(res => cardCanvas.toBlob(res, 'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('card-copy-ok');
+    setTimeout(() => { btn.textContent = '📋 Copy Image'; btn.classList.remove('card-copy-ok'); }, 2200);
+  } catch(e) {
+    btn.textContent = 'Not supported';
+    setTimeout(() => { btn.textContent = '📋 Copy Image'; }, 2200);
+  }
+}
+
 async function loadImg(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -2935,27 +2951,25 @@ async function openSongCard(trackId) {
 
   const canvas = document.getElementById('card-canvas');
   const ctx    = canvas.getContext('2d');
-  const W = 1080, H = 1080;
+  const W = 1200, H = 675;
 
-  // Background
   ctx.fillStyle = '#080808';
   ctx.fillRect(0, 0, W, H);
 
-  // Album artwork — full bleed, cover-fit, fades to dark on right for text legibility
+  // Album artwork — left half, fading right
   if (art) {
-    const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
+    const AW = 520;
+    const scale = Math.max(AW / art.naturalWidth, H / art.naturalHeight);
     const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
-    ctx.drawImage(art, (W - iw) / 2, (H - ih) / 2, iw, ih);
-    // left third: vivid art; centre: quick fade; right half: fully dark for text
-    const gr = ctx.createLinearGradient(0, 0, W, 0);
-    gr.addColorStop(0,    'rgba(8,8,8,0)');
-    gr.addColorStop(0.28, 'rgba(8,8,8,0.55)');
-    gr.addColorStop(0.45, 'rgba(8,8,8,0.92)');
-    gr.addColorStop(1,    'rgba(8,8,8,0.98)');
+    ctx.drawImage(art, (AW - iw) / 2, (H - ih) / 2, iw, ih);
+    const gr = ctx.createLinearGradient(0, 0, AW + 120, 0);
+    gr.addColorStop(0,   'rgba(8,8,8,0)');
+    gr.addColorStop(0.5, 'rgba(8,8,8,0.6)');
+    gr.addColorStop(1,   'rgba(8,8,8,1)');
     ctx.fillStyle = gr;
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, AW + 120, H);
   } else {
-    const glow = ctx.createRadialGradient(0, H/2, 0, 0, H/2, 500);
+    const glow = ctx.createRadialGradient(0, H/2, 0, 0, H/2, 400);
     glow.addColorStop(0, 'rgba(255,0,102,0.15)');
     glow.addColorStop(1, 'rgba(8,8,8,0)');
     ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
@@ -2963,90 +2977,87 @@ async function openSongCard(trackId) {
 
   drawNoise(ctx, W, H, 0.03);
 
-  const PX = art ? 460 : 80;  // text starts after artwork or at left margin
+  const PX = art ? 430 : 70;
 
   // Era + year pill
   ctx.fillStyle = 'rgba(255,0,102,0.18)';
-  ctx.fillRect(PX, 100, 240, 32);
+  ctx.fillRect(PX, 58, 210, 26);
   ctx.fillStyle = '#FF0066';
-  ctx.font = '500 15px "DM Mono", monospace';
+  ctx.font = '500 12px "DM Mono", monospace';
   ctx.letterSpacing = '4px';
-  ctx.fillText(track.era + ' · ' + track.year, PX + 12, 121);
+  ctx.fillText(track.era + ' · ' + track.year, PX + 10, 76);
 
   // Song title
   ctx.fillStyle = '#F5F0F0';
-  const titleSize = track.title.length > 10 ? 100 : track.title.length > 6 ? 118 : 140;
+  const titleSize = track.title.length > 10 ? 72 : track.title.length > 6 ? 86 : 100;
   ctx.font = `${titleSize}px "Bebas Neue", sans-serif`;
-  ctx.letterSpacing = '5px';
+  ctx.letterSpacing = '4px';
   if (track.title.includes(' ') && ctx.measureText(track.title).width > (W - PX - 60)) {
     const words = track.title.split(' ');
     const mid   = Math.ceil(words.length / 2);
-    ctx.fillText(words.slice(0, mid).join(' '), PX, 270);
-    ctx.fillText(words.slice(mid).join(' '),    PX, 270 + titleSize + 10);
+    ctx.fillText(words.slice(0, mid).join(' '), PX, 175);
+    ctx.fillText(words.slice(mid).join(' '),    PX, 175 + titleSize + 8);
   } else {
-    ctx.fillText(track.title, PX, 300);
+    ctx.fillText(track.title, PX, 195);
   }
 
   // Pink rule
   ctx.fillStyle = '#FF0066';
-  ctx.fillRect(PX, 340, 90, 3);
+  ctx.fillRect(PX, 225, 70, 2);
 
   // Total streams
   ctx.fillStyle = '#FF0066';
-  ctx.font = '88px "Bebas Neue", sans-serif';
+  ctx.font = '70px "Bebas Neue", sans-serif';
   ctx.letterSpacing = '2px';
-  ctx.fillText(formatFull(total), PX, 460);
-
-  ctx.fillStyle = 'rgba(245,240,240,0.62)';
-  ctx.font = '500 22px "DM Mono", monospace';
+  ctx.fillText(formatFull(total), PX, 315);
+  ctx.fillStyle = 'rgba(245,240,240,0.55)';
+  ctx.font = '500 14px "DM Mono", monospace';
   ctx.letterSpacing = '4px';
-  ctx.fillText('TOTAL SPOTIFY STREAMS', PX, 496);
+  ctx.fillText('TOTAL SPOTIFY STREAMS', PX, 340);
 
-  // Daily streams + date
+  // Daily streams
   if (daily !== null && daily !== undefined) {
     const sign = daily >= 0 ? '+' : '';
     ctx.fillStyle = daily >= 0 ? '#00ff88' : '#ff4466';
-    ctx.font = '58px "Bebas Neue", sans-serif';
+    ctx.font = '46px "Bebas Neue", sans-serif';
     ctx.letterSpacing = '2px';
-    ctx.fillText(`${sign}${formatFull(daily)}`, PX, 582);
-    ctx.font = '500 22px "DM Mono", monospace';
+    ctx.fillText(`${sign}${formatFull(daily)}`, PX, 406);
+    ctx.font = '500 14px "DM Mono", monospace';
     ctx.letterSpacing = '3px';
-    ctx.fillText('DAILY STREAMS' + (dailyDate ? ' · ' + dailyDate : ''), PX, 612);
+    ctx.fillText('DAILY STREAMS' + (dailyDate ? ' · ' + dailyDate : ''), PX, 428);
   }
 
   // Timestamp
   const now = new Date();
   const ds  = String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear();
-  ctx.fillStyle = 'rgba(245,240,240,0.5)';
-  ctx.font = '500 22px "DM Mono", monospace';
+  ctx.fillStyle = 'rgba(245,240,240,0.38)';
+  ctx.font = '500 13px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
-  ctx.fillText('Updated ' + ds, PX, 658);
+  ctx.fillText('Updated ' + ds, PX, 468);
 
   // Bottom rule
-  ctx.fillStyle = 'rgba(255,0,102,0.22)';
-  ctx.fillRect(PX, H - 138, W - PX - 60, 1);
+  ctx.fillStyle = 'rgba(255,0,102,0.2)';
+  ctx.fillRect(PX, H - 90, W - PX - 50, 1);
 
-  // BU Logo circle
+  // BU logo + branding
   if (logo) {
-    const LR = 28;
+    const LR = 22;
     ctx.save();
-    ctx.beginPath(); ctx.arc(PX + LR, H - 82, LR, 0, Math.PI * 2); ctx.clip();
-    ctx.drawImage(logo, PX, H - 82 - LR, LR * 2, LR * 2);
+    ctx.beginPath(); ctx.arc(PX + LR, H - 46, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, PX, H - 46 - LR, LR * 2, LR * 2);
     ctx.restore();
-    ctx.beginPath(); ctx.arc(PX + LR, H - 82, LR + 1, 0, Math.PI * 2);
-    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(PX + LR, H - 46, LR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.2; ctx.stroke();
   }
-
-  // Branding text
-  const brandX = logo ? PX + 70 : PX;
+  const brandX = logo ? PX + 56 : PX;
   ctx.fillStyle = '#F5F0F0';
-  ctx.font = '44px "Bebas Neue", sans-serif';
-  ctx.letterSpacing = '10px';
-  ctx.fillText('BLINKS UNITED', brandX, H - 72);
+  ctx.font = '34px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '8px';
+  ctx.fillText('BLINKS UNITED', brandX, H - 52);
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
-  ctx.font = '500 15px "DM Mono", monospace';
+  ctx.font = '500 12px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', brandX, H - 42);
+  ctx.fillText('blackpink-project.vercel.app', brandX, H - 30);
 
   cardCanvas = canvas;
   label.textContent = track.title + ' — STREAM UPDATE CARD';
