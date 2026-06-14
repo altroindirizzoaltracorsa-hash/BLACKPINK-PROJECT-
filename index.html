@@ -694,6 +694,43 @@
 .og-inline-badge::after { content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--card); border:1px solid rgba(255,215,0,0.25); color:rgba(245,240,240,0.75); font-family:var(--mono); font-size:0.45rem; letter-spacing:0.08em; padding:0.35rem 0.65rem; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.15s; z-index:10; }
 .og-inline-badge:hover::after { opacity:1; }
 
+/* ── MILESTONE CELEBRATION ───────────────────────────────── */
+#milestone-overlay {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(0,0,0,0.88); display: none;
+  align-items: center; justify-content: center;
+  animation: ms-fadein 0.4s ease;
+}
+#milestone-overlay.active { display: flex; }
+@keyframes ms-fadein { from { opacity:0 } to { opacity:1 } }
+
+#milestone-card {
+  background: var(--card); border: 1px solid rgba(255,0,102,0.35);
+  padding: 2.5rem 2rem; text-align: center; max-width: 340px; width: 90%;
+  position: relative; z-index: 2;
+  animation: ms-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+@keyframes ms-pop { from { transform:scale(0.7); opacity:0 } to { transform:scale(1); opacity:1 } }
+.ms-emoji { font-size: 2.8rem; display:block; margin-bottom:0.6rem; }
+.ms-label { font-family:var(--mono); font-size:0.5rem; letter-spacing:0.25em; color:var(--pink); margin-bottom:0.4rem; }
+.ms-track { font-family:var(--display); font-size:2rem; letter-spacing:0.1em; color:#fff; margin-bottom:0.2rem; }
+.ms-number { font-family:var(--display); font-size:3.2rem; color:var(--pink); line-height:1; margin-bottom:0.5rem; }
+.ms-sub { font-family:var(--mono); font-size:0.45rem; letter-spacing:0.12em; color:var(--muted); margin-bottom:1.4rem; }
+.ms-actions { display:flex; gap:0.6rem; justify-content:center; flex-wrap:wrap; }
+.ms-btn { font-family:var(--mono); font-size:0.48rem; letter-spacing:0.14em; text-transform:uppercase; padding:0.55rem 1rem; cursor:pointer; border:none; }
+.ms-btn-primary { background:var(--pink); color:#fff; }
+.ms-btn-secondary { background:transparent; border:1px solid rgba(255,255,255,0.2); color:var(--muted); }
+
+/* confetti particles */
+.ms-confetti { position:fixed; inset:0; pointer-events:none; z-index:9997; overflow:hidden; }
+.ms-confetti span {
+  position:absolute; top:-10px; width:8px; height:8px; border-radius:1px;
+  animation: conf-fall linear forwards;
+}
+@keyframes conf-fall {
+  to { transform: translateY(105vh) rotate(720deg); opacity:0; }
+}
+
 /* ── INTRO ANIMATION ──────────────────────────────────────── */
 #intro-overlay {
   position: fixed; inset: 0; background: #000; z-index: 99999;
@@ -786,6 +823,23 @@
     <span></span><span></span><span></span>
   </button>
 </nav>
+
+<!-- MILESTONE OVERLAY -->
+<div class="ms-confetti" id="ms-confetti"></div>
+<div id="milestone-overlay">
+  <div id="milestone-card">
+    <span class="ms-emoji">🎉</span>
+    <div class="ms-label">MILESTONE REACHED</div>
+    <div class="ms-track" id="ms-track-name"></div>
+    <div class="ms-number" id="ms-number"></div>
+    <div class="ms-sub" id="ms-sub"></div>
+    <div class="ms-actions">
+      <button class="ms-btn ms-btn-primary" onclick="downloadMilestoneCard()">⬇ Save Card</button>
+      <button class="ms-btn ms-btn-secondary" onclick="closeMilestone()">Dismiss</button>
+    </div>
+    <canvas id="ms-canvas" style="display:none"></canvas>
+  </div>
+</div>
 
 <!-- HOME PAGE -->
 <div id="page-home" class="page active">
@@ -1474,6 +1528,7 @@ async function fetchSpotifyStreams() {
       const apiHistory = (typeof entry === 'object') ? (entry.history || []) : [];
 
       if (plays) {
+        checkMilestone(t.id, plays);
         const pct = Math.min(100, (plays / t.goal) * 100);
         document.getElementById(`count-${t.id}`).textContent = `${formatFull(plays)} / ${formatGoal(t.goal)}`;
         document.getElementById(`pct-${t.id}`).textContent = pct.toFixed(2) + '%';
@@ -3183,6 +3238,118 @@ async function openPersonalCard() {
 }
 
 </script>
+<script>
+// ── MILESTONE CELEBRATION ─────────────────────────────────
+const TRACK_LABELS = { jump: 'JUMP', shutdown: 'SHUT DOWN', ddududu: 'DDU-DU DDU-DU' };
+
+function getMilestone(total) {
+  // Every 50M up to 1B, plus the goal itself
+  const steps = [];
+  for (let m = 50_000_000; m <= 1_000_000_000; m += 50_000_000) steps.push(m);
+  // Return the highest milestone that total has crossed
+  for (let i = steps.length - 1; i >= 0; i--) {
+    if (total >= steps[i]) return steps[i];
+  }
+  return null;
+}
+
+function formatMilestone(n) {
+  if (n >= 1_000_000_000) return '1B';
+  return (n / 1_000_000) + 'M';
+}
+
+let _msActive = false;
+function checkMilestone(trackId, total) {
+  if (_msActive || !total) return;
+  const milestone = getMilestone(total);
+  if (!milestone) return;
+  const key = `bu_ms_${trackId}_${milestone}`;
+  if (localStorage.getItem(key)) return;
+  localStorage.setItem(key, '1');
+  showMilestone(trackId, total, milestone);
+}
+
+function showMilestone(trackId, total, milestone) {
+  _msActive = true;
+  document.getElementById('ms-track-name').textContent = TRACK_LABELS[trackId] || trackId;
+  document.getElementById('ms-number').textContent = formatMilestone(milestone) + ' STREAMS';
+  document.getElementById('ms-sub').textContent = formatFull(total) + ' total · keep streaming!';
+  document.getElementById('milestone-overlay').classList.add('active');
+  launchConfetti();
+  // Pre-render the share card
+  renderMilestoneCanvas(trackId, total, milestone);
+}
+
+function closeMilestone() {
+  document.getElementById('milestone-overlay').classList.remove('active');
+  document.getElementById('ms-confetti').innerHTML = '';
+  _msActive = false;
+}
+
+function launchConfetti() {
+  const wrap = document.getElementById('ms-confetti');
+  wrap.innerHTML = '';
+  const colors = ['#FF0066','#ff66a3','#ffffff','#ffe0ed','#ff3385'];
+  for (let i = 0; i < 80; i++) {
+    const el = document.createElement('span');
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const left = Math.random() * 100;
+    const size = 5 + Math.random() * 8;
+    const dur  = 2 + Math.random() * 2;
+    const del  = Math.random() * 1.2;
+    el.style.cssText = `left:${left}%;background:${color};width:${size}px;height:${size}px;border-radius:${Math.random()>0.5?'50%':'2px'};animation-duration:${dur}s;animation-delay:${del}s;`;
+    wrap.appendChild(el);
+  }
+  setTimeout(() => { wrap.innerHTML = ''; }, 4000);
+}
+
+function renderMilestoneCanvas(trackId, total, milestone) {
+  const canvas = document.getElementById('ms-canvas');
+  const W = 1200, H = 675;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, W, H);
+
+  // Pink accent lines
+  ctx.fillStyle = '#FF0066';
+  ctx.fillRect(0, 0, W, 6);
+  ctx.fillRect(0, H - 6, W, 6);
+
+  // Milestone number
+  ctx.fillStyle = '#FF0066';
+  ctx.font = 'bold 160px Arial Black, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(formatMilestone(milestone), W / 2, H / 2 - 40);
+
+  // Track name
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 72px Arial, sans-serif';
+  ctx.fillText(TRACK_LABELS[trackId] || trackId, W / 2, H / 2 + 70);
+
+  // Subtitle
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '36px monospace';
+  ctx.fillText('STREAMS MILESTONE · ' + formatFull(total) + ' TOTAL', W / 2, H / 2 + 140);
+
+  // Branding
+  ctx.fillStyle = '#FF0066';
+  ctx.font = 'bold 30px monospace';
+  ctx.fillText('BLINKS UNITED', W / 2, H - 50);
+}
+
+function downloadMilestoneCard() {
+  const canvas = document.getElementById('ms-canvas');
+  const a = document.createElement('a');
+  const trackId = document.getElementById('ms-track-name').textContent.toLowerCase().replace(/ /g,'');
+  a.download = `blinks-united-milestone-${trackId}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+</script>
+
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
