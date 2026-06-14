@@ -3244,10 +3244,8 @@ async function openPersonalCard() {
 const TRACK_LABELS = { jump: 'JUMP', shutdown: 'SHUT DOWN', ddududu: 'DDU-DU DDU-DU' };
 
 function getMilestone(total) {
-  // Every 50M up to 1B, plus the goal itself
   const steps = [];
-  for (let m = 50_000_000; m <= 1_000_000_000; m += 50_000_000) steps.push(m);
-  // Return the highest milestone that total has crossed
+  for (let m = 10_000_000; m <= 1_000_000_000; m += 10_000_000) steps.push(m);
   for (let i = steps.length - 1; i >= 0; i--) {
     if (total >= steps[i]) return steps[i];
   }
