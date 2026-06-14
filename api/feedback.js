@@ -1,3 +1,4 @@
+// feedback → Supabase + Discord webhook notification
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
