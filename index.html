@@ -3386,9 +3386,10 @@ function renderMilestoneHistory(trackId) {
     milestones.push({ milestone: m, date });
   }
   if (milestones.length === 0) { el.style.display = 'none'; return; }
-  const recent = milestones.slice(-1);
+  const hasDates = milestones.some(m => m.date);
+  const toShow = hasDates ? milestones.reverse() : milestones.slice(-1);
   el.innerHTML = `<div class="ms-history-label">🏆 Milestones</div>` +
-    recent.map(m => `<div class="ms-history-item">${formatMilestone(m.milestone)}${m.date ? ' · ' + m.date : ''}</div>`).join('');
+    toShow.map(m => `<div class="ms-history-item">${formatMilestone(m.milestone)}${m.date ? ' · ' + m.date : ''}</div>`).join('');
   el.style.display = 'block';
 }
 
