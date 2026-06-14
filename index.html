@@ -389,6 +389,17 @@
   .summary-num { font-family: var(--display); font-size: 2rem; color: var(--pink); line-height: 1; }
   .summary-lbl { font-size: 0.45rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); margin-top: 0.25rem; }
 
+  .goal-tracker-wrap { max-width: 900px; margin: 1.2rem auto 0; padding: 0 1.5rem; }
+  .goal-tracker-card { background: var(--card); border: 1px solid rgba(255,0,102,0.18); padding: 1.4rem 2rem; display: flex; flex-direction: column; gap: 0.55rem; }
+  .goal-tracker-top { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; }
+  .goal-tracker-label { font-size: 0.48rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--pink); }
+  .goal-tracker-nums { font-family: var(--display); font-size: 2rem; color: var(--pink); line-height: 1; }
+  .goal-tracker-nums span { font-size: 1rem; color: var(--muted); }
+  .goal-tracker-bar { height: 3px; background: rgba(255,255,255,0.06); }
+  .goal-tracker-fill { height: 100%; background: var(--pink); transition: width 1s ease; }
+  .goal-tracker-status { font-size: 0.52rem; letter-spacing: 0.1em; color: var(--muted); }
+  .goal-tracker-done { color: #00ff88; }
+
   .tracks-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem; }
   .track-cards { display: flex; flex-direction: column; gap: 1.5px; background: var(--border); }
   .track-card { background: var(--card); padding: 2rem; display: grid; grid-template-columns: 52px 1fr auto; gap: 1.5rem; align-items: center; transition: background 0.2s; }
@@ -1135,6 +1146,7 @@
       </div>
 
       <div class="summary-strip" id="profile-summary"></div>
+      <div class="goal-tracker-wrap" id="daily-goal-tracker" style="display:none"></div>
       <div style="max-width:900px;margin:0 auto;padding:0 1.5rem;">
         <button class="gen-card-btn" onclick="openPersonalCard()">⬡ Generate My Stats Card</button>
       </div>
@@ -2125,6 +2137,31 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
       <div class="summary-lbl">${challengeLabel}</div>
     </div>
   `;
+
+  // Personal daily goal tracker
+  const _s = loadSettings();
+  const goalTrackerEl = document.getElementById('daily-goal-tracker');
+  const goalTarget = parseInt(_s.goal);
+  if (goalTarget > 0) {
+    const todayTotal = (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0);
+    const pct       = Math.min(100, (todayTotal / goalTarget) * 100);
+    const remaining = Math.max(0, goalTarget - todayTotal);
+    const done      = todayTotal >= goalTarget;
+    goalTrackerEl.innerHTML = `
+      <div class="goal-tracker-card">
+        <div class="goal-tracker-top">
+          <span class="goal-tracker-label">// My Daily Goal</span>
+          <span class="goal-tracker-nums">${todayTotal}<span> / ${goalTarget} streams</span></span>
+        </div>
+        <div class="goal-tracker-bar"><div class="goal-tracker-fill" style="width:${pct}%"></div></div>
+        <div class="goal-tracker-status ${done ? 'goal-tracker-done' : ''}">
+          ${done ? '✓ Daily goal reached! Keep streaming.' : `${remaining} more stream${remaining === 1 ? '' : 's'} to reach your goal`}
+        </div>
+      </div>`;
+    goalTrackerEl.style.display = 'block';
+  } else {
+    goalTrackerEl.style.display = 'none';
+  }
 
   // Daily challenge
   const dailyGrid = document.getElementById('daily-challenge-grid');
