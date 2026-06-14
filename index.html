@@ -1212,9 +1212,12 @@
       </div>
 
       <!-- Header row -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:0.8rem 0 0.4rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0.8rem 0 0.4rem;flex-wrap:wrap;gap:0.5rem;">
         <span class="lb-last-updated" id="lb-last-updated">Loading…</span>
-        <button class="lb-refresh-btn" onclick="refreshLeaderboard(true)">↻ Refresh</button>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="lb-refresh-btn" onclick="shareLbCard()">⬡ Share Card</button>
+          <button class="lb-refresh-btn" onclick="refreshLeaderboard(true)">↻ Refresh</button>
+        </div>
       </div>
 
       <!-- Leaderboard table -->
@@ -2958,7 +2961,7 @@ async function getBuLogo() {
   return buLogoImg;
 }
 
-let _cardTrackId = null, _cardArt = null, _cardLogo = null, _cardFormat = 'landscape';
+let _cardTrackId = null, _cardArt = null, _cardLogo = null, _cardFormat = 'landscape', _cardType = 'song';
 
 function setCardFormat(fmt, btn) {
   _cardFormat = fmt;
@@ -2966,7 +2969,8 @@ function setCardFormat(fmt, btn) {
   const canvas = document.getElementById('card-canvas');
   if (fmt === 'landscape') { canvas.width = 1200; canvas.height = 675; }
   else                     { canvas.width = 1080; canvas.height = 1080; }
-  if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
+  if (_cardType === 'lb') renderLbCard(_cardLogo);
+  else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
 async function openSongCard(trackId) {
@@ -2974,6 +2978,7 @@ async function openSongCard(trackId) {
   const label   = document.getElementById('card-box-label');
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
+  _cardType = 'song';
   _cardTrackId = trackId;
   // Reset to landscape on each open
   _cardFormat = 'landscape';
@@ -3139,6 +3144,162 @@ function renderSongCard(trackId, art, logo) {
   ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
   ctx.fillText('blackpink-project.vercel.app', brandX, siteY);
+
+  cardCanvas = canvas;
+}
+
+// ── LEADERBOARD CARD ─────────────────────────────────────────────────────────
+async function shareLbCard() {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  _cardType = 'lb';
+  _cardTrackId = null;
+  _cardFormat = 'square';
+  document.getElementById('fmt-landscape')?.classList.remove('active');
+  document.getElementById('fmt-square')?.classList.add('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1080; canvas.height = 1080;
+  await document.fonts.ready;
+  _cardLogo = await getBuLogo();
+  renderLbCard(_cardLogo);
+  const periodLabel = lbPeriod === 'daily' ? 'TODAY' : lbPeriod === 'weekly' ? 'THIS WEEK' : 'ALL TIME';
+  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : 'DDU-DU DDU-DU';
+  label.textContent = `LEADERBOARD · ${periodLabel} · ${songLabel}`;
+}
+
+function renderLbCard(logo) {
+  const canvas = document.getElementById('card-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+  drawNoise(ctx, W, H, 0.03);
+
+  // Pink accent bars
+  ctx.fillStyle = '#FF0066';
+  ctx.fillRect(0, 0, W, 5);
+  ctx.fillRect(0, H - 5, W, 5);
+
+  // Title
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#FF0066';
+  ctx.font = '96px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '6px';
+  ctx.fillText('BLINKS LEADERBOARD', W / 2, 108);
+
+  // Period + song subtitle
+  const periodLabel = lbPeriod === 'daily' ? 'TODAY' : lbPeriod === 'weekly' ? 'THIS WEEK' : 'ALL TIME';
+  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : 'DDU-DU DDU-DU';
+  ctx.fillStyle = 'rgba(245,240,240,0.45)';
+  ctx.font = '500 18px "DM Mono", monospace';
+  ctx.letterSpacing = '4px';
+  ctx.fillText(`${periodLabel} · ${songLabel}`, W / 2, 142);
+
+  // Divider
+  ctx.fillStyle = 'rgba(255,0,102,0.25)';
+  ctx.fillRect(60, 162, W - 120, 1);
+
+  // Build entries — if daily and all scores are 0 after 2am, fall back to raw scores
+  const key = getScoreKey();
+  const todayLabel = italyDateLabel();
+  let entries = Object.entries(lbData?.users || {})
+    .map(([username, data]) => {
+      let score = data.scores?.[key] || 0;
+      if (lbPeriod === 'daily' && data.scores?.daily_date && data.scores.daily_date !== todayLabel) score = 0;
+      return { username, score, raw: data.scores?.[key] || 0 };
+    })
+    .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
+
+  let dateNote = '';
+  if (lbPeriod === 'daily' && entries.every(e => e.score === 0)) {
+    // Post-reset: use raw scores labelled as yesterday
+    entries = entries.map(e => ({ ...e, score: e.raw })).sort((a, b) => b.score - a.score);
+    dateNote = 'YESTERDAY';
+  }
+
+  entries = entries.filter(e => e.score > 0).slice(0, 7);
+
+  const goldColors   = ['#FFD700','#C0C0C0','#CD7F32'];
+  const rowH = H > 900 ? 98 : 72;
+  const startY = 190;
+  const PL = 70, PR = W - 70;
+
+  entries.forEach((e, i) => {
+    const y = startY + i * rowH;
+    if (i < 3) {
+      ctx.fillStyle = 'rgba(255,255,255,0.03)';
+      ctx.fillRect(PL - 10, y - 8, W - (PL - 10) * 2, rowH - 6);
+    }
+
+    // Rank number
+    ctx.textAlign = 'left';
+    ctx.fillStyle = i < 3 ? goldColors[i] : 'rgba(245,240,240,0.3)';
+    ctx.font = `${i < 3 ? 50 : 42}px "Bebas Neue", sans-serif`;
+    ctx.letterSpacing = '2px';
+    ctx.fillText(String(i + 1).padStart(2, '0'), PL, y + rowH * 0.65);
+
+    // Username
+    ctx.fillStyle = i < 3 ? '#F5F0F0' : 'rgba(245,240,240,0.65)';
+    ctx.font = `500 ${i < 3 ? 26 : 22}px "DM Mono", monospace`;
+    ctx.letterSpacing = '1px';
+    const maxNameW = PR - PL - 200;
+    let name = e.username;
+    while (ctx.measureText(name).width > maxNameW && name.length > 6) name = name.slice(0, -1);
+    if (name !== e.username) name += '…';
+    ctx.fillText(name, PL + 80, y + rowH * 0.65);
+
+    // Score
+    ctx.textAlign = 'right';
+    ctx.fillStyle = i === 0 ? '#FF0066' : (i < 3 ? '#F5F0F0' : 'rgba(245,240,240,0.5)');
+    ctx.font = `${i < 3 ? 46 : 38}px "Bebas Neue", sans-serif`;
+    ctx.letterSpacing = '2px';
+    ctx.fillText(e.score.toLocaleString(), PR, y + rowH * 0.65);
+  });
+
+  if (entries.length === 0) {
+    ctx.fillStyle = 'rgba(245,240,240,0.25)';
+    ctx.font = '500 22px "DM Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.letterSpacing = '2px';
+    ctx.fillText('No scores yet', W / 2, H / 2);
+  }
+
+  // Footer divider
+  ctx.fillStyle = 'rgba(255,0,102,0.2)';
+  ctx.fillRect(60, H - 120, W - 120, 1);
+
+  // Date
+  const now = new Date();
+  const ds = String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear();
+  ctx.fillStyle = 'rgba(245,240,240,0.28)';
+  ctx.font = '500 16px "DM Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.letterSpacing = '2px';
+  ctx.fillText((dateNote || 'Updated') + ' · ' + ds, W / 2, H - 94);
+
+  // Logo + branding
+  const LR = 24, logoY = H - 52;
+  const brandCX = logo ? W / 2 + LR + 8 : W / 2;
+  if (logo) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(W / 2 - 80, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, W / 2 - 80 - LR, logoY - LR, LR * 2, LR * 2);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(W / 2 - 80, logoY, LR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = '38px "Bebas Neue", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.letterSpacing = '8px';
+  ctx.fillText('BLINKS UNITED', logo ? W / 2 + 30 : W / 2, H - 38);
+  ctx.fillStyle = 'rgba(245,240,240,0.2)';
+  ctx.font = '500 13px "DM Mono", monospace';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('blackpink-project.vercel.app', logo ? W / 2 + 30 : W / 2, H - 18);
 
   cardCanvas = canvas;
 }
