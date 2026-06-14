@@ -715,8 +715,14 @@
 .ms-label { font-family:var(--mono); font-size:0.5rem; letter-spacing:0.25em; color:var(--pink); margin-bottom:0.4rem; }
 .ms-track { font-family:var(--display); font-size:2rem; letter-spacing:0.1em; color:#fff; margin-bottom:0.2rem; }
 .ms-number { font-family:var(--display); font-size:3.2rem; color:var(--pink); line-height:1; margin-bottom:0.5rem; }
-.ms-sub { font-family:var(--mono); font-size:0.45rem; letter-spacing:0.12em; color:var(--muted); margin-bottom:1.4rem; }
+.ms-sub { font-family:var(--mono); font-size:0.45rem; letter-spacing:0.12em; color:var(--muted); margin-bottom:0.5rem; }
+.ms-date { font-family:var(--mono); font-size:0.42rem; letter-spacing:0.15em; text-transform:uppercase; color:rgba(255,0,102,0.6); margin-bottom:1.2rem; }
 .ms-actions { display:flex; gap:0.6rem; justify-content:center; flex-wrap:wrap; }
+
+/* milestone history in song cards */
+.ms-history { margin-top:0.9rem; padding-top:0.8rem; border-top:1px solid rgba(255,0,102,0.12); display:none; }
+.ms-history-label { font-size:0.46rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--pink); margin-bottom:0.45rem; }
+.ms-history-item { font-size:0.62rem; letter-spacing:0.07em; color:var(--muted); padding:0.12rem 0; }
 .ms-btn { font-family:var(--mono); font-size:0.48rem; letter-spacing:0.14em; text-transform:uppercase; padding:0.55rem 1rem; cursor:pointer; border:none; }
 .ms-btn-primary { background:var(--pink); color:#fff; }
 .ms-btn-secondary { background:transparent; border:1px solid rgba(255,255,255,0.2); color:var(--muted); }
@@ -833,6 +839,7 @@
     <div class="ms-track" id="ms-track-name"></div>
     <div class="ms-number" id="ms-number"></div>
     <div class="ms-sub" id="ms-sub"></div>
+    <div class="ms-date" id="ms-date"></div>
     <div class="ms-actions">
       <button class="ms-btn ms-btn-primary" onclick="shareMilestoneCard()">↑ Share</button>
       <button class="ms-btn ms-btn-secondary" onclick="closeMilestone()">Dismiss</button>
@@ -914,6 +921,7 @@
           </a>
           <button class="history-toggle open" onclick="toggleHistory('jump', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
           <div class="history-panel" id="history-jump"></div>
+          <div class="ms-history" id="ms-history-jump"></div>
           <button class="gen-card-btn" onclick="openSongCard('jump')">⬡ Generate Share Card</button>
         </div>
 
@@ -935,6 +943,7 @@
           </a>
           <button class="history-toggle open" onclick="toggleHistory('shutdown', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
           <div class="history-panel" id="history-shutdown"></div>
+          <div class="ms-history" id="ms-history-shutdown"></div>
           <button class="gen-card-btn" onclick="openSongCard('shutdown')">⬡ Generate Share Card</button>
         </div>
 
@@ -956,6 +965,7 @@
           </a>
           <button class="history-toggle open" onclick="toggleHistory('ddududu', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
           <div class="history-panel" id="history-ddududu"></div>
+          <div class="ms-history" id="ms-history-ddududu"></div>
           <button class="gen-card-btn" onclick="openSongCard('ddududu')">⬡ Generate Share Card</button>
         </div>
 
@@ -1526,9 +1536,10 @@ async function fetchSpotifyStreams() {
       if (!entry) continue;
       const plays = (typeof entry === 'object') ? (entry.total || 0) : (entry || 0);
       const apiHistory = (typeof entry === 'object') ? (entry.history || []) : [];
+      const lastApiDay = apiHistory.length > 0 ? apiHistory[apiHistory.length - 1] : null;
 
       if (plays) {
-        checkMilestone(t.id, plays);
+        checkMilestone(t.id, plays, lastApiDay?.date);
         const pct = Math.min(100, (plays / t.goal) * 100);
         document.getElementById(`count-${t.id}`).textContent = `${formatFull(plays)} / ${formatGoal(t.goal)}`;
         document.getElementById(`pct-${t.id}`).textContent = pct.toFixed(2) + '%';
@@ -1591,7 +1602,6 @@ async function fetchSpotifyStreams() {
         renderDaysToGoal(t.id, merged, plays, t.goal);
 
         window.streamData = window.streamData || {};
-        const lastApiDay = apiHistory.length > 0 ? apiHistory[apiHistory.length - 1] : null;
         window.streamData[t.id] = {
           total:     plays,
           daily:     lastApiDay?.streams ?? autoStreams,
@@ -1611,6 +1621,7 @@ async function fetchSpotifyStreams() {
             el.style.display = 'block';
           }
         }
+        renderMilestoneHistory(t.id);
       }
     }
     showPendingMilestone();
@@ -3260,32 +3271,47 @@ function formatMilestone(n) {
 const _msPending = [];
 let _msActive = false;
 
-function checkMilestone(trackId, total) {
+function checkMilestone(trackId, total, lastDayDate) {
   if (!total) return;
   const milestone = getMilestone(total);
   if (!milestone) return;
   const key = `bu_ms_${trackId}_${milestone}`;
-  if (localStorage.getItem(key)) return;
-  _msPending.push({ trackId, total, milestone, key });
+  const storedRaw = localStorage.getItem(key);
+  if (!storedRaw) {
+    // First detection — store streaming day date + year
+    const year = new Date().getUTCFullYear();
+    localStorage.setItem(key, JSON.stringify({ date: lastDayDate || null, year }));
+    if (lastDayDate) _msPending.push({ trackId, total, milestone, milestoneDate: `${lastDayDate}/${year}` });
+  } else {
+    // Already recorded — only re-show card while still on the same streaming day
+    try {
+      const data = JSON.parse(storedRaw);
+      if (data.date && data.date === lastDayDate) {
+        const year = data.year || new Date().getUTCFullYear();
+        _msPending.push({ trackId, total, milestone, milestoneDate: `${data.date}/${year}` });
+      }
+    } catch { /* legacy '1' value — already seen, treated as historical */ }
+  }
 }
 
 function showPendingMilestone() {
   if (_msActive || _msPending.length === 0) return;
   _msPending.sort((a, b) => b.total - a.total);
-  const { trackId, total, milestone, key } = _msPending[0];
-  localStorage.setItem(key, '1');
-  showMilestone(trackId, total, milestone);
+  const { trackId, total, milestone, milestoneDate } = _msPending[0];
+  showMilestone(trackId, total, milestone, milestoneDate);
 }
 
-function showMilestone(trackId, total, milestone) {
+function showMilestone(trackId, total, milestone, milestoneDate) {
   _msActive = true;
   document.getElementById('ms-track-name').textContent = TRACK_LABELS[trackId] || trackId;
   document.getElementById('ms-number').textContent = formatMilestone(milestone) + ' STREAMS';
   document.getElementById('ms-sub').textContent = formatFull(total) + ' total · keep streaming!';
+  const dateEl = document.getElementById('ms-date');
+  if (milestoneDate) { dateEl.textContent = 'reached on ' + milestoneDate; dateEl.style.display = 'block'; }
+  else { dateEl.style.display = 'none'; }
   document.getElementById('milestone-overlay').classList.add('active');
   launchConfetti();
-  // Pre-render the share card
-  renderMilestoneCanvas(trackId, total, milestone);
+  renderMilestoneCanvas(trackId, total, milestone, milestoneDate);
 }
 
 function closeMilestone() {
@@ -3311,41 +3337,59 @@ function launchConfetti() {
   setTimeout(() => { wrap.innerHTML = ''; }, 4000);
 }
 
-function renderMilestoneCanvas(trackId, total, milestone) {
+function renderMilestoneCanvas(trackId, total, milestone, milestoneDate) {
   const canvas = document.getElementById('ms-canvas');
   const W = 1200, H = 675;
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
 
-  // Background
   ctx.fillStyle = '#0a0a0a';
   ctx.fillRect(0, 0, W, H);
 
-  // Pink accent lines
   ctx.fillStyle = '#FF0066';
   ctx.fillRect(0, 0, W, 6);
   ctx.fillRect(0, H - 6, W, 6);
 
-  // Milestone number
   ctx.fillStyle = '#FF0066';
   ctx.font = 'bold 160px Arial Black, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(formatMilestone(milestone), W / 2, H / 2 - 40);
+  ctx.fillText(formatMilestone(milestone), W / 2, H / 2 - 50);
 
-  // Track name
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 72px Arial, sans-serif';
-  ctx.fillText(TRACK_LABELS[trackId] || trackId, W / 2, H / 2 + 70);
+  ctx.fillText(TRACK_LABELS[trackId] || trackId, W / 2, H / 2 + 60);
 
-  // Subtitle
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   ctx.font = '36px monospace';
-  ctx.fillText('STREAMS MILESTONE · ' + formatFull(total) + ' TOTAL', W / 2, H / 2 + 140);
+  ctx.fillText('STREAMS MILESTONE · ' + formatFull(total) + ' TOTAL', W / 2, H / 2 + 125);
 
-  // Branding
+  if (milestoneDate) {
+    ctx.fillStyle = 'rgba(255,0,102,0.7)';
+    ctx.font = '28px monospace';
+    ctx.fillText('REACHED ON ' + milestoneDate, W / 2, H / 2 + 175);
+  }
+
   ctx.fillStyle = '#FF0066';
   ctx.font = 'bold 30px monospace';
-  ctx.fillText('BLINKS UNITED', W / 2, H - 50);
+  ctx.fillText('BLINKS UNITED', W / 2, H - 40);
+}
+
+function renderMilestoneHistory(trackId) {
+  const el = document.getElementById(`ms-history-${trackId}`);
+  if (!el) return;
+  const milestones = [];
+  for (let m = 10_000_000; m <= 1_000_000_000; m += 10_000_000) {
+    const raw = localStorage.getItem(`bu_ms_${trackId}_${m}`);
+    if (!raw) continue;
+    let date = null;
+    try { const d = JSON.parse(raw); if (d.date && d.year) date = `${d.date}/${d.year}`; } catch {}
+    milestones.push({ milestone: m, date });
+  }
+  if (milestones.length === 0) { el.style.display = 'none'; return; }
+  const recent = milestones.slice(-5).reverse();
+  el.innerHTML = `<div class="ms-history-label">🏆 Milestones</div>` +
+    recent.map(m => `<div class="ms-history-item">${formatMilestone(m.milestone)}${m.date ? ' · ' + m.date : ''}</div>`).join('');
+  el.style.display = 'block';
 }
 
 function downloadMilestoneCard() {
@@ -3361,7 +3405,8 @@ async function shareMilestoneCard() {
   const canvas = document.getElementById('ms-canvas');
   const trackName = document.getElementById('ms-track-name').textContent;
   const msNum = document.getElementById('ms-number').textContent;
-  const text = `${trackName} just hit ${msNum}! 🖤💗 #BLACKPINK #BLINKSUNITED\nblackpink-project.vercel.app`;
+  const dateLabel = document.getElementById('ms-date').textContent;
+  const text = `${trackName} just hit ${msNum}! ${dateLabel ? '(' + dateLabel + ') ' : ''}🖤💗 #BLACKPINK #BLINKSUNITED\nblackpink-project.vercel.app`;
   if (typeof navigator.share === 'function') {
     canvas.toBlob(async blob => {
       const file = new File([blob], 'blinks-united-milestone.png', { type: 'image/png' });
