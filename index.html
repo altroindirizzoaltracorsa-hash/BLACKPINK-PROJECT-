@@ -779,7 +779,7 @@
   </ul>
   <button id="pwa-install-btn" onclick="triggerInstall()" style="display:none;background:transparent;border:1px solid rgba(255,0,102,0.5);color:var(--pink);font-family:var(--mono);font-size:0.48rem;letter-spacing:0.14em;text-transform:uppercase;padding:0.4rem 0.8rem;cursor:pointer;white-space:nowrap;transition:border-color 0.2s,background 0.2s;" title="Install as app">⬇ Install App</button>
   <div id="pwa-ios-tip" style="display:none;position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid rgba(255,0,102,0.4);color:rgba(245,240,240,0.85);font-family:var(--mono);font-size:0.5rem;letter-spacing:0.08em;padding:0.7rem 1.2rem;z-index:9999;text-align:center;max-width:280px;">
-    Tap <strong style="color:var(--pink)">Share ↑</strong> then <strong style="color:var(--pink)">Add to Home Screen</strong> to install
+    Tap <strong style="color:var(--pink)">Share ↑</strong> then <strong style="color:var(--pink)">Add to Home Screen</strong> to install the app
     <button onclick="document.getElementById('pwa-ios-tip').style.display='none'" style="display:block;margin:0.5rem auto 0;background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:0.45rem;cursor:pointer;letter-spacing:0.1em;">DISMISS</button>
   </div>
   <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
@@ -3194,31 +3194,30 @@ const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
 const isInStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 
 if (!isInStandalone) {
-  if (isIOS) {
-    // iOS: show button that reveals the tip
-    const btn = document.getElementById('pwa-install-btn');
-    btn.style.display = 'inline-block';
-    btn.onclick = () => { document.getElementById('pwa-ios-tip').style.display = 'block'; };
-  } else {
-    window.addEventListener('beforeinstallprompt', e => {
-      e.preventDefault();
-      _pwaPrompt = e;
-      document.getElementById('pwa-install-btn').style.display = 'inline-block';
-    });
-  }
+  document.getElementById('pwa-install-btn').style.display = 'inline-block';
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _pwaPrompt = e;
+  });
 }
 
 function triggerInstall() {
-  if (!_pwaPrompt) return;
-  _pwaPrompt.prompt();
-  _pwaPrompt.userChoice.then(() => {
-    _pwaPrompt = null;
-    document.getElementById('pwa-install-btn').style.display = 'none';
-  });
+  if (_pwaPrompt) {
+    _pwaPrompt.prompt();
+    _pwaPrompt.userChoice.then(() => {
+      _pwaPrompt = null;
+      document.getElementById('pwa-install-btn').style.display = 'none';
+    });
+  } else {
+    // Prompt not available (iOS, or Chrome cooldown after uninstall)
+    document.getElementById('pwa-ios-tip').style.display = 'block';
+    document.getElementById('pwa-ios-tip').querySelector('strong:first-of-type').textContent = isIOS ? 'Share ↑' : 'browser menu (⋮)';
+  }
 }
 
 window.addEventListener('appinstalled', () => {
   document.getElementById('pwa-install-btn').style.display = 'none';
+  document.getElementById('pwa-ios-tip').style.display = 'none';
 });
 </script>
 
