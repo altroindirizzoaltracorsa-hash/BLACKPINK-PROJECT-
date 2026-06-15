@@ -3628,41 +3628,113 @@ function launchConfetti() {
   setTimeout(() => { wrap.innerHTML = ''; }, 4000);
 }
 
-function renderMilestoneCanvas(trackId, total, milestone, milestoneDate) {
+async function renderMilestoneCanvas(trackId, total, milestone, milestoneDate) {
   const canvas = document.getElementById('ms-canvas');
   const W = 1200, H = 675;
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = '#0a0a0a';
+  await document.fonts.ready;
+  const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
+  const track = TRACKS.find(t => t.id === trackId);
+
+  // Background
+  ctx.fillStyle = '#080808';
   ctx.fillRect(0, 0, W, H);
 
-  ctx.fillStyle = '#FF0066';
-  ctx.fillRect(0, 0, W, 6);
-  ctx.fillRect(0, H - 6, W, 6);
-
-  ctx.fillStyle = '#FF0066';
-  ctx.font = 'bold 160px Arial Black, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(formatMilestone(milestone), W / 2, H / 2 - 50);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 72px Arial, sans-serif';
-  ctx.fillText(TRACK_LABELS[trackId] || trackId, W / 2, H / 2 + 60);
-
-  ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.font = '36px monospace';
-  ctx.fillText('STREAMS MILESTONE · ' + formatFull(total) + ' TOTAL', W / 2, H / 2 + 125);
-
-  if (milestoneDate) {
-    ctx.fillStyle = 'rgba(255,0,102,0.7)';
-    ctx.font = '28px monospace';
-    ctx.fillText('REACHED ON ' + milestoneDate, W / 2, H / 2 + 175);
+  // Artwork — left half with fade
+  if (art) {
+    const AW = Math.round(W * 0.44);
+    const scale = Math.max(AW / art.naturalWidth, H / art.naturalHeight);
+    const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+    ctx.drawImage(art, (AW - iw) / 2, (H - ih) / 2, iw, ih);
+    const gr = ctx.createLinearGradient(0, 0, AW + 80, 0);
+    gr.addColorStop(0,    'rgba(8,8,8,0)');
+    gr.addColorStop(0.55, 'rgba(8,8,8,0.75)');
+    gr.addColorStop(1,    'rgba(8,8,8,1)');
+    ctx.fillStyle = gr; ctx.fillRect(0, 0, AW + 80, H);
+  } else {
+    const glow = ctx.createRadialGradient(0, H / 2, 0, 0, H / 2, H * 0.7);
+    glow.addColorStop(0, 'rgba(255,0,102,0.15)');
+    glow.addColorStop(1, 'rgba(8,8,8,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
   }
 
+  drawNoise(ctx, W, H, 0.03);
+
+  const PX = art ? Math.round(W * 0.49) : 70;
+  ctx.textAlign = 'left';
+
+  // Pill — "MILESTONE REACHED"
+  ctx.fillStyle = 'rgba(255,0,102,0.18)';
+  ctx.fillRect(PX, 52, 230, 26);
   ctx.fillStyle = '#FF0066';
-  ctx.font = 'bold 30px monospace';
-  ctx.fillText('BLINKS UNITED', W / 2, H - 40);
+  ctx.font = '500 12px "DM Mono", monospace';
+  ctx.letterSpacing = '4px';
+  ctx.fillText('MILESTONE REACHED', PX + 10, 71);
+
+  // Track title
+  ctx.fillStyle = '#F5F0F0';
+  const titleSize = track.title.length > 10 ? 58 : track.title.length > 6 ? 68 : 80;
+  ctx.font = `${titleSize}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = '5px';
+  ctx.fillText(track.title, PX, 160);
+
+  // Pink rule
+  ctx.fillStyle = '#FF0066';
+  ctx.fillRect(PX, 188, 70, 2);
+
+  // Milestone number (big, pink)
+  ctx.fillStyle = '#FF0066';
+  ctx.font = '64px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '2px';
+  ctx.fillText(formatMilestone(milestone), PX, 272);
+  ctx.fillStyle = 'rgba(245,240,240,0.55)';
+  ctx.font = '500 13px "DM Mono", monospace';
+  ctx.letterSpacing = '4px';
+  ctx.fillText('STREAMS MILESTONE', PX, 298);
+
+  // Total streams
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = '44px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '2px';
+  ctx.fillText(formatFull(total), PX, 356);
+  ctx.fillStyle = 'rgba(245,240,240,0.55)';
+  ctx.font = '500 13px "DM Mono", monospace';
+  ctx.letterSpacing = '3px';
+  ctx.fillText('TOTAL SPOTIFY STREAMS', PX, 379);
+
+  // Date reached (where daily sits on the song card)
+  if (milestoneDate) {
+    ctx.fillStyle = 'rgba(245,240,240,0.38)';
+    ctx.font = '500 13px "DM Mono", monospace';
+    ctx.letterSpacing = '2px';
+    ctx.fillText('REACHED ON ' + milestoneDate, PX, 420);
+  }
+
+  // Bottom rule
+  ctx.fillStyle = 'rgba(255,0,102,0.2)';
+  ctx.fillRect(PX, H - 90, W - PX - 50, 1);
+
+  // Logo + branding
+  const LR = 22, logoY = H - 46;
+  if (logo) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  const brandX = logo ? PX + LR * 2 + 10 : PX;
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = '34px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '10px';
+  ctx.fillText('BLINKS UNITED', brandX, H - 52);
+  ctx.fillStyle = 'rgba(245,240,240,0.2)';
+  ctx.font = '500 12px "DM Mono", monospace';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('blackpink-project.vercel.app', brandX, H - 30);
 }
 
 function renderMilestoneHistory(trackId) {
