@@ -3303,26 +3303,34 @@ function renderLbCard(logo) {
   ctx.letterSpacing = '2px';
   ctx.fillText((dateNote || 'Updated') + ' · ' + ds, W / 2, H - 94);
 
-  // Logo + branding
+  // Logo + branding — measure text so the block is properly centred
   const LR = 24, logoY = H - 52;
-  const brandCX = logo ? W / 2 + LR + 8 : W / 2;
+  ctx.font = '38px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '8px';
+  const buText = 'BLINKS UNITED';
+  const buTextW = ctx.measureText(buText).width;
+  const gap = 14;
+  const blockW = logo ? LR * 2 + gap + buTextW : buTextW;
+  const blockX = (W - blockW) / 2;
+  const logoX  = logo ? blockX + LR : 0;
+  const textX  = logo ? blockX + LR * 2 + gap : W / 2;
+
   if (logo) {
     ctx.save();
-    ctx.beginPath(); ctx.arc(W / 2 - 80, logoY, LR, 0, Math.PI * 2); ctx.clip();
-    ctx.drawImage(logo, W / 2 - 80 - LR, logoY - LR, LR * 2, LR * 2);
+    ctx.beginPath(); ctx.arc(logoX, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, logoX - LR, logoY - LR, LR * 2, LR * 2);
     ctx.restore();
-    ctx.beginPath(); ctx.arc(W / 2 - 80, logoY, LR + 1, 0, Math.PI * 2);
+    ctx.beginPath(); ctx.arc(logoX, logoY, LR + 1, 0, Math.PI * 2);
     ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
   }
   ctx.fillStyle = '#F5F0F0';
-  ctx.font = '38px "Bebas Neue", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.letterSpacing = '8px';
-  ctx.fillText('BLINKS UNITED', logo ? W / 2 + 30 : W / 2, H - 38);
+  ctx.textAlign = logo ? 'left' : 'center';
+  ctx.fillText(buText, textX, H - 38);
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
   ctx.font = '500 13px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', logo ? W / 2 + 30 : W / 2, H - 18);
+  ctx.textAlign = 'center';
+  ctx.fillText('blackpink-project.vercel.app', W / 2, H - 18);
 
   cardCanvas = canvas;
 }
