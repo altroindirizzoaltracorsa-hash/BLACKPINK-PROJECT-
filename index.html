@@ -1655,6 +1655,21 @@ async function fetchSpotifyStreams() {
   }
 }
 window.addEventListener('DOMContentLoaded', () => {
+  // Seed known milestone dates that were reached before date-tracking was added
+  (function seedKnownMilestoneDates() {
+    const known = [
+      { key: 'bu_ms_jump_630000000', date: '14/05', year: 2026 },
+    ];
+    for (const { key, date, year } of known) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const data = JSON.parse(raw);
+        if (!data.date) localStorage.setItem(key, JSON.stringify({ date, year }));
+      } catch {}
+    }
+  })();
+
   fetchSpotifyStreams();
   const saved = getSavedUsername();
   if (saved) {
