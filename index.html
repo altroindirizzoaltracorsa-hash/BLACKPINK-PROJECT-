@@ -737,7 +737,9 @@
 /* milestone history in song cards */
 .ms-history { margin-top:0.9rem; padding-top:0.8rem; border-top:1px solid rgba(255,0,102,0.12); display:none; }
 .ms-history-label { font-size:0.46rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--pink); margin-bottom:0.45rem; }
-.ms-history-item { font-size:0.62rem; letter-spacing:0.07em; color:var(--muted); padding:0.12rem 0; }
+.ms-history-item { font-size:0.62rem; letter-spacing:0.07em; color:var(--muted); padding:0.2rem 0; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+.ms-history-item:hover { color:var(--pink); }
+.ms-history-item .ms-share-hint { font-size:0.5rem; letter-spacing:0.1em; opacity:0.4; }
 .ms-btn { font-family:var(--mono); font-size:0.48rem; letter-spacing:0.14em; text-transform:uppercase; padding:0.55rem 1rem; cursor:pointer; border:none; }
 .ms-btn-primary { background:var(--pink); color:#fff; }
 .ms-btn-secondary { background:transparent; border:1px solid rgba(255,255,255,0.2); color:var(--muted); }
@@ -2977,6 +2979,7 @@ async function getBuLogo() {
 }
 
 let _cardTrackId = null, _cardArt = null, _cardLogo = null, _cardFormat = 'landscape', _cardType = 'song';
+let _msMilestone = null, _msMilestoneTotal = 0, _msMilestoneDate = null;
 
 function setCardFormat(fmt, btn) {
   _cardFormat = fmt;
@@ -2985,6 +2988,7 @@ function setCardFormat(fmt, btn) {
   if (fmt === 'landscape') { canvas.width = 1200; canvas.height = 675; }
   else                     { canvas.width = 1080; canvas.height = 1080; }
   if (_cardType === 'lb') renderLbCard(_cardLogo);
+  else if (_cardType === 'milestone') drawMilestoneCard(canvas, _cardTrackId, _cardArt, _cardLogo, _msMilestoneTotal, _msMilestone, _msMilestoneDate);
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -3643,94 +3647,95 @@ function launchConfetti() {
   setTimeout(() => { wrap.innerHTML = ''; }, 4000);
 }
 
-async function renderMilestoneCanvas(trackId, total, milestone, milestoneDate) {
-  const canvas = document.getElementById('ms-canvas');
-  const W = 1200, H = 675;
-  canvas.width = W; canvas.height = H;
+function drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milestoneDate) {
   const ctx = canvas.getContext('2d');
-
-  await document.fonts.ready;
-  const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
+  const W = canvas.width, H = canvas.height;
+  const landscape = W > H;
   const track = TRACKS.find(t => t.id === trackId);
 
-  // Background
   ctx.fillStyle = '#080808';
   ctx.fillRect(0, 0, W, H);
 
-  // Artwork — left half with fade
   if (art) {
-    const AW = Math.round(W * 0.44);
-    const scale = Math.max(AW / art.naturalWidth, H / art.naturalHeight);
-    const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
-    ctx.drawImage(art, (AW - iw) / 2, (H - ih) / 2, iw, ih);
-    const gr = ctx.createLinearGradient(0, 0, AW + 80, 0);
-    gr.addColorStop(0,    'rgba(8,8,8,0)');
-    gr.addColorStop(0.55, 'rgba(8,8,8,0.75)');
-    gr.addColorStop(1,    'rgba(8,8,8,1)');
-    ctx.fillStyle = gr; ctx.fillRect(0, 0, AW + 80, H);
+    if (landscape) {
+      const AW = Math.round(W * 0.44);
+      const scale = Math.max(AW / art.naturalWidth, H / art.naturalHeight);
+      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      ctx.drawImage(art, (AW - iw) / 2, (H - ih) / 2, iw, ih);
+      const gr = ctx.createLinearGradient(0, 0, AW + 80, 0);
+      gr.addColorStop(0, 'rgba(8,8,8,0)'); gr.addColorStop(0.55, 'rgba(8,8,8,0.75)'); gr.addColorStop(1, 'rgba(8,8,8,1)');
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, AW + 80, H);
+    } else {
+      const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
+      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      ctx.drawImage(art, (W - iw) / 2, (H - ih) / 2, iw, ih);
+      const gr = ctx.createLinearGradient(0, 0, W, 0);
+      gr.addColorStop(0, 'rgba(8,8,8,0)'); gr.addColorStop(0.28, 'rgba(8,8,8,0.55)'); gr.addColorStop(0.45, 'rgba(8,8,8,0.92)'); gr.addColorStop(1, 'rgba(8,8,8,0.98)');
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+    }
   } else {
     const glow = ctx.createRadialGradient(0, H / 2, 0, 0, H / 2, H * 0.7);
-    glow.addColorStop(0, 'rgba(255,0,102,0.15)');
-    glow.addColorStop(1, 'rgba(8,8,8,0)');
+    glow.addColorStop(0, 'rgba(255,0,102,0.15)'); glow.addColorStop(1, 'rgba(8,8,8,0)');
     ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
   }
 
   drawNoise(ctx, W, H, 0.03);
 
-  const PX = art ? Math.round(W * 0.49) : 70;
+  const PX = landscape ? (art ? Math.round(W * 0.49) : 70) : (art ? Math.round(W * 0.42) : 80);
   ctx.textAlign = 'left';
 
-  // "MILESTONE REACHED" — big display header
+  // "MILESTONE REACHED" header
   ctx.fillStyle = '#FF0066';
-  ctx.font = '52px "Bebas Neue", sans-serif';
+  ctx.font = `${landscape ? 52 : 68}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '6px';
-  ctx.fillText('MILESTONE REACHED', PX, 80);
+  ctx.fillText('MILESTONE REACHED', PX, landscape ? 80 : 140);
 
-  // Track title (slightly smaller, white)
+  // Track title
   ctx.fillStyle = '#F5F0F0';
-  const titleSize = track.title.length > 10 ? 48 : track.title.length > 6 ? 58 : 68;
+  const titleSize = landscape
+    ? (track.title.length > 10 ? 48 : track.title.length > 6 ? 58 : 68)
+    : (track.title.length > 10 ? 62 : track.title.length > 6 ? 76 : 90);
   ctx.font = `${titleSize}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '5px';
-  ctx.fillText(track.title, PX, 155);
+  ctx.fillText(track.title, PX, landscape ? 155 : 270);
 
   // Pink rule
   ctx.fillStyle = '#FF0066';
-  ctx.fillRect(PX, 172, 70, 2);
+  ctx.fillRect(PX, landscape ? 172 : 295, 70, landscape ? 2 : 3);
 
-  // Milestone number (biggest element)
+  // Milestone number
   ctx.fillStyle = '#FF0066';
-  ctx.font = '88px "Bebas Neue", sans-serif';
+  ctx.font = `${landscape ? 88 : 120}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '2px';
-  ctx.fillText(formatMilestone(milestone), PX, 280);
+  ctx.fillText(formatMilestone(milestone), PX, landscape ? 280 : 460);
   ctx.fillStyle = 'rgba(245,240,240,0.55)';
-  ctx.font = '500 13px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
   ctx.letterSpacing = '4px';
-  ctx.fillText('STREAMS MILESTONE', PX, 304);
+  ctx.fillText('STREAMS MILESTONE', PX, landscape ? 304 : 490);
 
-  // Total streams
+  // Total
   ctx.fillStyle = '#F5F0F0';
-  ctx.font = '40px "Bebas Neue", sans-serif';
+  ctx.font = `${landscape ? 40 : 54}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '2px';
-  ctx.fillText(formatFull(total), PX, 360);
+  ctx.fillText(formatFull(total), PX, landscape ? 360 : 560);
   ctx.fillStyle = 'rgba(245,240,240,0.55)';
-  ctx.font = '500 13px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
   ctx.letterSpacing = '3px';
-  ctx.fillText('TOTAL SPOTIFY STREAMS', PX, 382);
+  ctx.fillText('TOTAL SPOTIFY STREAMS', PX, landscape ? 382 : 588);
 
   // Date reached
   if (milestoneDate) {
     ctx.fillStyle = 'rgba(245,240,240,0.38)';
-    ctx.font = '500 13px "DM Mono", monospace';
+    ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
     ctx.letterSpacing = '2px';
-    ctx.fillText('REACHED ON ' + milestoneDate, PX, 420);
+    ctx.fillText('REACHED ON ' + milestoneDate, PX, landscape ? 420 : 646);
   }
 
-  // Bottom rule
+  // Bottom rule + branding
+  const LR = landscape ? 22 : 28;
+  const logoY = H - (landscape ? 46 : 82);
   ctx.fillStyle = 'rgba(255,0,102,0.2)';
-  ctx.fillRect(PX, H - 90, W - PX - 50, 1);
-
-  // Logo + branding
-  const LR = 22, logoY = H - 46;
+  ctx.fillRect(PX, H - (landscape ? 90 : 135), W - PX - (landscape ? 50 : 60), 1);
   if (logo) {
     ctx.save();
     ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
@@ -3741,13 +3746,43 @@ async function renderMilestoneCanvas(trackId, total, milestone, milestoneDate) {
   }
   const brandX = logo ? PX + LR * 2 + 10 : PX;
   ctx.fillStyle = '#F5F0F0';
-  ctx.font = '34px "Bebas Neue", sans-serif';
+  ctx.font = `${landscape ? 34 : 44}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '10px';
-  ctx.fillText('BLINKS UNITED', brandX, H - 52);
+  ctx.fillText('BLINKS UNITED', brandX, H - (landscape ? 52 : 72));
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
-  ctx.font = '500 12px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', brandX, H - 30);
+  ctx.fillText('blackpink-project.vercel.app', brandX, H - (landscape ? 30 : 42));
+}
+
+async function renderMilestoneCanvas(trackId, total, milestone, milestoneDate) {
+  const canvas = document.getElementById('ms-canvas');
+  canvas.width = 1200; canvas.height = 675;
+  await document.fonts.ready;
+  const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
+  drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milestoneDate);
+}
+
+async function openMilestoneCard(trackId, milestone, milestoneDate) {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  _cardType      = 'milestone';
+  _cardTrackId   = trackId;
+  _msMilestone   = milestone;
+  _msMilestoneDate  = milestoneDate || null;
+  _msMilestoneTotal = window.streamData?.[trackId]?.total || 0;
+  _cardFormat    = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+  await document.fonts.ready;
+  const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
+  _cardArt = art; _cardLogo = logo;
+  drawMilestoneCard(canvas, trackId, art, logo, _msMilestoneTotal, milestone, milestoneDate);
+  label.textContent = `${TRACK_LABELS[trackId]} · ${formatMilestone(milestone)} MILESTONE`;
 }
 
 function renderMilestoneHistory(trackId) {
@@ -3765,7 +3800,13 @@ function renderMilestoneHistory(trackId) {
   const hasDates = milestones.some(m => m.date);
   const toShow = hasDates ? milestones.reverse() : milestones.slice(-1);
   el.innerHTML = `<div class="ms-history-label">🏆 Milestones</div>` +
-    toShow.map(m => `<div class="ms-history-item">${formatMilestone(m.milestone)}${m.date ? ' · ' + m.date : ''}</div>`).join('');
+    toShow.map(m => {
+      const dateArg = m.date ? `'${m.date}'` : 'null';
+      return `<div class="ms-history-item" onclick="openMilestoneCard('${trackId}', ${m.milestone}, ${dateArg})">
+        <span>${formatMilestone(m.milestone)}${m.date ? ' · ' + m.date : ''}</span>
+        <span class="ms-share-hint">↑ SHARE</span>
+      </div>`;
+    }).join('');
   el.style.display = 'block';
 }
 
