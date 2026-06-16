@@ -3715,7 +3715,8 @@ function drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milesto
   ctx.letterSpacing = '4px';
   ctx.fillText('STREAMS MILESTONE', PX, landscape ? 304 : 490);
 
-  // Total
+  // Total (with today's date to distinguish from the milestone total)
+  const todayDs = (() => { const n = new Date(); return String(n.getDate()).padStart(2,'0') + '/' + String(n.getMonth()+1).padStart(2,'0') + '/' + n.getFullYear(); })();
   ctx.fillStyle = '#F5F0F0';
   ctx.font = `${landscape ? 40 : 54}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '2px';
@@ -3723,7 +3724,7 @@ function drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milesto
   ctx.fillStyle = 'rgba(245,240,240,0.55)';
   ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
   ctx.letterSpacing = '3px';
-  ctx.fillText('TOTAL SPOTIFY STREAMS', PX, landscape ? 382 : 588);
+  ctx.fillText('TOTAL STREAMS · AS OF ' + todayDs, PX, landscape ? 382 : 588);
 
   // Date reached
   if (milestoneDate) {
