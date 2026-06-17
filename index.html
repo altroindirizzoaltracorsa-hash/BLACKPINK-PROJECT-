@@ -700,36 +700,36 @@
     padding-top: 80px; padding-bottom: 4rem;
   }
   .vote-header { padding: 3rem 2rem 2rem; text-align: center; border-bottom: 1px solid var(--border); }
-  .vote-header-eyebrow { font-size: 0.55rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.8rem; }
+  .vote-header-eyebrow { font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.8rem; }
   .vote-header-title { font-family: var(--display); font-size: clamp(3rem, 10vw, 6rem); letter-spacing: 0.06em; line-height: 0.9; }
   .vote-header-title span { color: var(--pink); }
   .vote-header-sub { font-family: var(--light-serif); font-style: italic; font-size: 1rem; color: var(--muted); margin-top: 0.8rem; }
-  .vote-update-note { font-size: 0.5rem; letter-spacing: 0.2em; color: rgba(245,240,240,0.25); margin-top: 0.5rem; }
+  .vote-update-note { font-size: 0.62rem; letter-spacing: 0.2em; color: rgba(245,240,240,0.25); margin-top: 0.5rem; }
   .vote-inner { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem 0; display: flex; flex-direction: column; gap: 1.5rem; }
 
   .vote-card { background: var(--card); border: 1px solid var(--border); padding: 1.8rem 2rem; position: relative; overflow: hidden; }
   .vote-card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--pink); }
   .vote-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
-  .vote-platform { font-size: 0.5rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; }
+  .vote-platform { font-size: 0.65rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; }
   .vote-title { font-family: var(--display); font-size: 1.8rem; letter-spacing: 0.05em; color: var(--white); }
   .vote-restriction {
     display: inline-block; margin-top: 0.6rem;
-    font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.12em; text-transform: uppercase;
+    font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
     color: #ffb020; border: 1px solid rgba(255,176,32,0.4); background: rgba(255,176,32,0.1);
-    padding: 0.35rem 0.7rem;
+    padding: 0.4rem 0.8rem;
   }
-  .vote-deadline { font-family: var(--mono); font-size: 0.48rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.4rem 0.7rem; border: 1px solid var(--border); white-space: nowrap; }
+  .vote-deadline { font-family: var(--mono); font-size: 0.95rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.55rem 0.9rem; border: 1px solid var(--border); white-space: nowrap; }
   .vote-deadline.urgent { color: #ff5050; border-color: rgba(255,80,80,0.4); background: rgba(255,80,80,0.08); }
   .vote-deadline.open { color: var(--pink); border-color: var(--pink); background: var(--pink-muted); }
   .vote-deadline.ended { color: var(--muted); }
 
-  .vote-reset { font-family: var(--mono); font-size: 0.48rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 1.2rem; }
-  .vote-reset-time { color: var(--pink); }
+  .vote-reset { font-family: var(--mono); font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 1.2rem; }
+  .vote-reset-time { color: var(--pink); font-weight: 500; }
 
   .vote-categories { display: flex; flex-direction: column; gap: 0.9rem; margin-bottom: 1.4rem; }
-  .vote-category-name { font-size: 0.5rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,0,102,0.7); margin-bottom: 0.5rem; }
+  .vote-category-name { font-size: 0.65rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,0,102,0.7); margin-bottom: 0.5rem; }
   .vote-nominees { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-  .vote-chip { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.06em; padding: 0.35rem 0.7rem; border: 1px solid var(--border); color: var(--muted); }
+  .vote-chip { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.05em; padding: 0.4rem 0.8rem; border: 1px solid var(--border); color: var(--muted); }
   .vote-chip.us { color: var(--pink); border-color: var(--pink); background: var(--pink-muted); }
 
   .vote-btn {
@@ -742,12 +742,12 @@
   .vote-card-actions { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
   .vote-share-btn {
     background: transparent; border: 1px solid var(--border);
-    color: var(--muted); font-family: var(--mono); font-size: 0.48rem;
-    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--muted); font-family: var(--mono); font-size: 0.62rem;
+    letter-spacing: 0.13em; text-transform: uppercase;
     padding: 0.65rem 0.9rem; cursor: pointer; transition: border-color 0.2s, color 0.2s;
   }
   .vote-share-btn:hover { border-color: var(--pink); color: var(--pink); }
-  .vote-results-note { font-size: 0.46rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.3); margin-top: 0.7rem; }
+  .vote-results-note { font-size: 0.6rem; letter-spacing: 0.08em; color: rgba(245,240,240,0.3); margin-top: 0.7rem; }
   .vote-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
 
 /* ── BETA PAGE ── */
