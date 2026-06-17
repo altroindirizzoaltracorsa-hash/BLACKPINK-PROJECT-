@@ -717,6 +717,14 @@
     padding: 0.7rem 1.6rem; transition: opacity 0.2s;
   }
   .vote-btn:hover { opacity: 0.85; }
+  .vote-card-actions { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+  .vote-share-btn {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--muted); font-family: var(--mono); font-size: 0.48rem;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    padding: 0.65rem 0.9rem; cursor: pointer; transition: border-color 0.2s, color 0.2s;
+  }
+  .vote-share-btn:hover { border-color: var(--pink); color: var(--pink); }
   .vote-results-note { font-size: 0.46rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.3); margin-top: 0.7rem; }
   .vote-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
 
@@ -1869,7 +1877,10 @@ function renderVoteCampaigns() {
           ${deadlineHtml}
         </div>
         <div class="vote-categories">${categoriesHtml}</div>
-        <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
+        <div class="vote-card-actions">
+          <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
+          <button class="vote-share-btn" onclick="openVoteCard('${c.id}')">⬡ Share</button>
+        </div>
         ${c.resultsNote ? `<div class="vote-results-note">${c.resultsNote}</div>` : ''}
       </div>`;
   }).join('');
@@ -3115,6 +3126,7 @@ async function getBuLogo() {
 
 let _cardTrackId = null, _cardArt = null, _cardLogo = null, _cardFormat = 'landscape', _cardType = 'song';
 let _msMilestone = null, _msMilestoneTotal = 0, _msMilestoneDate = null;
+let _voteCampaignId = null;
 
 function setCardFormat(fmt, btn) {
   _cardFormat = fmt;
@@ -3124,6 +3136,7 @@ function setCardFormat(fmt, btn) {
   else                     { canvas.width = 1080; canvas.height = 1080; }
   if (_cardType === 'lb') renderLbCard(_cardLogo);
   else if (_cardType === 'milestone') drawMilestoneCard(canvas, _cardTrackId, _cardArt, _cardLogo, _msMilestoneTotal, _msMilestone, _msMilestoneDate);
+  else if (_cardType === 'vote') drawVoteCard(canvas, VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId), _cardLogo);
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -3927,6 +3940,135 @@ async function openMilestoneCard(trackId, milestone, milestoneDate) {
   _cardArt = art; _cardLogo = logo;
   drawMilestoneCard(canvas, trackId, art, logo, _msMilestoneTotal, milestone, milestoneDate);
   label.textContent = `${TRACK_LABELS[trackId]} · ${formatMilestone(milestone)} MILESTONE`;
+}
+
+// ── VOTE CAMPAIGN CARD ────────────────────────────────────────
+const VOTE_MONTH_ABBR = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+function formatVoteDate(d) {
+  return `${String(d.getUTCDate()).padStart(2,'0')} ${VOTE_MONTH_ABBR[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+function formatVoteDeadline(campaign) {
+  if (!campaign.deadline) return { big: 'VOTING OPEN', sub: 'NO DEADLINE SET' };
+  const dl = new Date(campaign.deadline);
+  const diff = dl.getTime() - Date.now();
+  if (diff <= 0) return { big: 'VOTING CLOSED', sub: 'ENDED ' + formatVoteDate(dl) };
+  const hours = diff / 3600000;
+  const big = hours <= 48 ? `${Math.max(1, Math.round(hours))}H LEFT` : `${Math.ceil(hours / 24)} DAYS LEFT`;
+  return { big, sub: 'ENDS ' + formatVoteDate(dl) };
+}
+
+function drawVoteCard(canvas, campaign, logo) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const landscape = W > H;
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(0, H / 2, 0, 0, H / 2, H * 0.7);
+  glow.addColorStop(0, 'rgba(255,0,102,0.15)'); glow.addColorStop(1, 'rgba(8,8,8,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  drawNoise(ctx, W, H, 0.03);
+
+  const PX = landscape ? 70 : 80;
+  ctx.textAlign = 'left';
+
+  // "FAN VOTE" header
+  ctx.fillStyle = '#FF0066';
+  ctx.font = `${landscape ? 52 : 68}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = '6px';
+  ctx.fillText('FAN VOTE', PX, landscape ? 80 : 140);
+
+  // Platform title
+  ctx.fillStyle = '#F5F0F0';
+  const titleSize = landscape
+    ? (campaign.platform.length > 14 ? 42 : campaign.platform.length > 10 ? 52 : 62)
+    : (campaign.platform.length > 14 ? 54 : campaign.platform.length > 10 ? 68 : 84);
+  ctx.font = `${titleSize}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = '4px';
+  ctx.fillText(campaign.platform.toUpperCase(), PX, landscape ? 155 : 270);
+
+  // Pink rule
+  ctx.fillStyle = '#FF0066';
+  ctx.fillRect(PX, landscape ? 172 : 295, 70, landscape ? 2 : 3);
+
+  // Categories + nominees
+  let y = landscape ? 225 : 370;
+  const rowH = landscape ? 64 : 140;
+  for (const cat of campaign.categories) {
+    ctx.fillStyle = 'rgba(255,0,102,0.65)';
+    ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
+    ctx.letterSpacing = '3px';
+    ctx.fillText(cat.name.toUpperCase(), PX, y);
+    ctx.fillStyle = '#FF0066';
+    ctx.font = `${landscape ? 28 : 48}px "Bebas Neue", sans-serif`;
+    ctx.letterSpacing = '2px';
+    ctx.fillText(cat.nominees.map(n => n.name).join('  ·  '), PX, y + (landscape ? 26 : 45));
+    y += rowH;
+  }
+
+  // "Vote at" footnote
+  const urlShort = campaign.url.replace(/^https?:\/\//, '').replace(/\/$/, '').toUpperCase();
+  ctx.fillStyle = 'rgba(255,0,102,0.55)';
+  ctx.font = `500 ${landscape ? 13 : 16}px "DM Mono", monospace`;
+  ctx.letterSpacing = '2px';
+  ctx.fillText('VOTE AT ' + urlShort, PX, y + (landscape ? 14 : 30));
+
+  // Deadline countdown
+  const { big, sub } = formatVoteDeadline(campaign);
+  const dlY = y + (landscape ? 70 : 200);
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = `${landscape ? 40 : 64}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = '2px';
+  ctx.fillText(big, PX, dlY);
+  ctx.fillStyle = 'rgba(245,240,240,0.5)';
+  ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
+  ctx.letterSpacing = '2px';
+  ctx.fillText(sub, PX, dlY + (landscape ? 22 : 32));
+
+  // Bottom rule + BU branding
+  const LR = landscape ? 22 : 28;
+  const logoY = H - (landscape ? 46 : 82);
+  ctx.fillStyle = 'rgba(255,0,102,0.2)';
+  ctx.fillRect(PX, H - (landscape ? 90 : 135), W - PX - (landscape ? 50 : 60), 1);
+  if (logo) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  const brandX = logo ? PX + LR * 2 + 10 : PX;
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = `${landscape ? 34 : 44}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = '10px';
+  ctx.fillText('BLINKS UNITED', brandX, H - (landscape ? 52 : 72));
+  ctx.fillStyle = 'rgba(245,240,240,0.2)';
+  ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
+  ctx.letterSpacing = '2px';
+  ctx.fillText('blackpink-project.vercel.app', brandX, H - (landscape ? 30 : 42));
+
+  cardCanvas = canvas;
+}
+
+async function openVoteCard(campaignId) {
+  const campaign = VOTE_CAMPAIGNS.find(c => c.id === campaignId);
+  if (!campaign) return;
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  _cardType = 'vote';
+  _voteCampaignId = campaignId;
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+  await document.fonts.ready;
+  const logo = await getBuLogo();
+  _cardLogo = logo;
+  drawVoteCard(canvas, campaign, logo);
+  label.textContent = `${campaign.platform} · FAN VOTE CARD`;
 }
 
 function renderMilestoneHistory(trackId) {
