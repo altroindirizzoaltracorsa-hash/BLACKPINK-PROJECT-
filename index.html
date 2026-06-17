@@ -1854,12 +1854,20 @@ window.addEventListener('popstate', () => {
   showPage(pathToPage(location.pathname), { replace: true });
 });
 
-// Deep link / refresh — show whatever page the URL points to on first load
-(function routeInitial() {
+// Deep link / refresh — show whatever page the URL points to on first load.
+// Deferred to DOMContentLoaded so every script on the page (and the
+// const/let declarations further down this file) has finished running
+// before we call into page-specific init code like tryAutoLoad().
+function routeInitial() {
   const page = pathToPage(location.pathname);
   if (page !== 'home') showPage(page, { replace: true });
   else history.replaceState({ page: 'home' }, '', '/');
-})();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', routeInitial);
+} else {
+  routeInitial();
+}
 
 function initAnimations() {
   const observer = new IntersectionObserver((entries) => {
