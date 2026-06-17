@@ -699,10 +699,19 @@
   .vote-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
   .vote-platform { font-size: 0.5rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; }
   .vote-title { font-family: var(--display); font-size: 1.8rem; letter-spacing: 0.05em; color: var(--white); }
+  .vote-restriction {
+    display: inline-block; margin-top: 0.6rem;
+    font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: #ffb020; border: 1px solid rgba(255,176,32,0.4); background: rgba(255,176,32,0.1);
+    padding: 0.35rem 0.7rem;
+  }
   .vote-deadline { font-family: var(--mono); font-size: 0.48rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.4rem 0.7rem; border: 1px solid var(--border); white-space: nowrap; }
   .vote-deadline.urgent { color: #ff5050; border-color: rgba(255,80,80,0.4); background: rgba(255,80,80,0.08); }
   .vote-deadline.open { color: var(--pink); border-color: var(--pink); background: var(--pink-muted); }
   .vote-deadline.ended { color: var(--muted); }
+
+  .vote-reset { font-family: var(--mono); font-size: 0.48rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 1.2rem; }
+  .vote-reset-time { color: var(--pink); }
 
   .vote-categories { display: flex; flex-direction: column; gap: 0.9rem; margin-bottom: 1.4rem; }
   .vote-category-name { font-size: 0.5rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,0,102,0.7); margin-bottom: 0.5rem; }
@@ -1781,7 +1790,11 @@ function showPage(page) {
   if (page === 'home') initAnimations();
   if (page === 'badges') tryAutoLoad();
   if (page === 'leaderboard') refreshLeaderboard();
-  if (page === 'vote') renderVoteCampaigns();
+  if (_voteCountdownTimer) { clearInterval(_voteCountdownTimer); _voteCountdownTimer = null; }
+  if (page === 'vote') {
+    renderVoteCampaigns();
+    _voteCountdownTimer = setInterval(tickVoteCountdowns, 1000);
+  }
 }
 
 function initAnimations() {
@@ -1827,6 +1840,7 @@ const VOTE_CAMPAIGNS = [
     url: 'https://billboard.co.kr/vote/',
     deadline: '2026-06-23T04:00:00Z', // 23 Jun 2026, 1:00 PM KST
     resultsNote: 'Final results announced 30 June 2026',
+    resetOffset: 9, // daily vote reset at midnight KST
     categories: [
       { name: 'Female Group', nominees: [{ name: 'BLACKPINK', us: true }] },
       { name: 'Solo Female',  nominees: [
@@ -1844,6 +1858,7 @@ const VOTE_CAMPAIGNS = [
     url: 'https://promo-web.idolchamp.com/app_proxy.html?deeplink=https%3A%2F%2Fapp.idolchamp.com%2Fopen%2Fvote%2F01KTT3R0ZYTFJGZ02H4RB65AYF',
     deadline: '2026-07-14T14:59:00Z', // 14 Jul 2026, 23:59 KST
     resultsNote: 'Up to 100 votes per day via the IDOLCHAMP app',
+    resetOffset: 9, // daily vote reset at midnight KST
     categories: [
       { name: 'Korea Popularity Award (Female)', nominees: [{ name: 'JISOO', us: true }] },
     ],
@@ -1854,7 +1869,8 @@ const VOTE_CAMPAIGNS = [
     title: 'Billboard TOP K-Artists',
     url: 'https://c6.y.qq.com/base/fcgi-bin/u?__=yzx8Gag67qQZ',
     deadline: '2026-06-22T22:00:00Z', // ~23 Jun 2026, 06:00 CST (read from live countdown, approximate)
-    resultsNote: 'CHINA ONLY — voting requires a Chinese phone number to verify; not accessible internationally',
+    restriction: 'China only — requires a Chinese phone number',
+    resetOffset: 8, // daily vote reset at midnight CST
     categories: [
       { name: 'Girl Group', nominees: [{ name: 'BLACKPINK', us: true }] },
       { name: 'Female Solo', nominees: [
@@ -1866,6 +1882,45 @@ const VOTE_CAMPAIGNS = [
     ],
   },
 ];
+
+function formatCountdownLabel(ms) {
+  if (ms <= 0) return 'VOTING CLOSED';
+  const totalSec = Math.floor(ms / 1000);
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = n => String(n).padStart(2, '0');
+  if (d > 0) return `${d}D ${pad(h)}H ${pad(m)}M ${pad(s)}S`;
+  if (h > 0) return `${h}H ${pad(m)}M ${pad(s)}S`;
+  return `${m}M ${pad(s)}S`;
+}
+
+function msUntilNextReset(utcOffsetHours) {
+  const now = Date.now();
+  const nowInZone = new Date(now + utcOffsetHours * 3600000);
+  const nextMidnightInZone = Date.UTC(nowInZone.getUTCFullYear(), nowInZone.getUTCMonth(), nowInZone.getUTCDate() + 1, 0, 0, 0);
+  return (nextMidnightInZone - utcOffsetHours * 3600000) - now;
+}
+
+let _voteCountdownTimer = null;
+function tickVoteCountdowns() {
+  const now = Date.now();
+  document.querySelectorAll('.vote-deadline[data-deadline]').forEach(el => {
+    const diff = new Date(el.dataset.deadline).getTime() - now;
+    if (diff <= 0) {
+      el.textContent = 'VOTING CLOSED';
+      el.classList.remove('urgent');
+      el.classList.add('ended');
+      return;
+    }
+    el.classList.toggle('urgent', diff <= 48 * 3600000);
+    el.textContent = formatCountdownLabel(diff);
+  });
+  document.querySelectorAll('.vote-reset-time[data-reset-offset]').forEach(el => {
+    el.textContent = formatCountdownLabel(msUntilNextReset(parseFloat(el.dataset.resetOffset)));
+  });
+}
 
 function renderVoteCampaigns() {
   const el = document.getElementById('vote-list');
@@ -1881,12 +1936,11 @@ function renderVoteCampaigns() {
     if (!c.deadline) {
       deadlineHtml = `<span class="vote-deadline open">VOTING OPEN</span>`;
     } else if (ended) {
-      deadlineHtml = `<span class="vote-deadline ended">VOTING CLOSED</span>`;
+      deadlineHtml = `<span class="vote-deadline ended" data-deadline="${c.deadline}">VOTING CLOSED</span>`;
     } else {
-      const hours = (new Date(c.deadline).getTime() - now) / 3600000;
-      const urgent = hours <= 48;
-      const label = urgent ? `${Math.max(1, Math.round(hours))}H LEFT` : `${Math.ceil(hours / 24)} DAYS LEFT`;
-      deadlineHtml = `<span class="vote-deadline ${urgent ? 'urgent' : ''}">${label}</span>`;
+      const diff = new Date(c.deadline).getTime() - now;
+      const urgent = diff <= 48 * 3600000;
+      deadlineHtml = `<span class="vote-deadline ${urgent ? 'urgent' : ''}" data-deadline="${c.deadline}">${formatCountdownLabel(diff)}</span>`;
     }
     const categoriesHtml = c.categories.map(cat => `
         <div>
@@ -1901,9 +1955,11 @@ function renderVoteCampaigns() {
           <div>
             <div class="vote-platform">${c.platform}</div>
             <div class="vote-title">${c.title}</div>
+            ${c.restriction ? `<div class="vote-restriction">⚠ ${c.restriction}</div>` : ''}
           </div>
           ${deadlineHtml}
         </div>
+        ${c.resetOffset && !ended ? `<div class="vote-reset">🔄 Daily votes reset in <span class="vote-reset-time" data-reset-offset="${c.resetOffset}"></span></div>` : ''}
         <div class="vote-categories">${categoriesHtml}</div>
         <div class="vote-card-actions">
           <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
@@ -1912,6 +1968,7 @@ function renderVoteCampaigns() {
         ${c.resultsNote ? `<div class="vote-results-note">${c.resultsNote}</div>` : ''}
       </div>`;
   }).join('');
+  tickVoteCountdowns();
 }
 
 const BADGE_TIERS = [
