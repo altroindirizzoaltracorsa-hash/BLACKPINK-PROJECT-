@@ -1,4 +1,10 @@
 {
+  "rewrites": [
+    { "source": "/badges", "destination": "/index.html" },
+    { "source": "/leaderboard", "destination": "/index.html" },
+    { "source": "/voting", "destination": "/index.html" },
+    { "source": "/feedback", "destination": "/index.html" }
+  ],
   "crons": [
     {
       "path": "/api/streams?cron=1",

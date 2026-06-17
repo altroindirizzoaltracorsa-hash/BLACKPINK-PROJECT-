@@ -906,12 +906,12 @@
     BLINKS UNITED
   </span>
   <ul class="nav-links" id="mobile-nav">
-    <li><a href="#" onclick="showPage('home'); closeMobileNav(); return false;" id="nav-home" class="active">Home</a></li>
+    <li><a href="/" onclick="showPage('home'); closeMobileNav(); return false;" id="nav-home" class="active">Home</a></li>
     <li><a href="#songs" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100); return false;">Songs</a></li>
-    <li><a href="#" onclick="showPage('badges'); closeMobileNav(); return false;" id="nav-badges">My Badges</a></li>
-    <li><a href="#" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
-    <li><a href="#" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
-    <li><a href="#" onclick="showPage('feedback'); closeMobileNav(); return false;" id="nav-feedback">Feedback</a></li>
+    <li><a href="/badges" onclick="showPage('badges'); closeMobileNav(); return false;" id="nav-badges">My Badges</a></li>
+    <li><a href="/leaderboard" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
+    <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
+    <li><a href="/feedback" onclick="showPage('feedback'); closeMobileNav(); return false;" id="nav-feedback">Feedback</a></li>
     <li><a href="#follow" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100); return false;">Follow</a></li>
   </ul>
   <button id="pwa-install-btn" onclick="triggerInstall()" style="display:none;background:transparent;border:1px solid rgba(255,0,102,0.5);color:var(--pink);font-family:var(--mono);font-size:0.48rem;letter-spacing:0.14em;text-transform:uppercase;padding:0.4rem 0.8rem;cursor:pointer;white-space:nowrap;transition:border-color 0.2s,background 0.2s;" title="Install as app">⬇ Install App</button>
@@ -953,8 +953,8 @@
       <p class="hero-subtitle">United by music. Driven by love. Streaming together.</p>
       <div class="hero-cta">
         <a href="#songs" class="btn-primary" onclick="setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100)">Start Streaming</a>
-        <a href="#" class="btn-ghost" onclick="showPage('badges'); return false;">Badge Challenge</a>
-        <a href="#" class="btn-primary" onclick="showPage('vote'); return false;">Vote</a>
+        <a href="/badges" class="btn-ghost" onclick="showPage('badges'); return false;">Badge Challenge</a>
+        <a href="/voting" class="btn-primary" onclick="showPage('vote'); return false;">Vote</a>
       </div>
     </div>
     <div class="ticker-wrap">
@@ -975,7 +975,7 @@
         <p>Here you'll find streaming targets focused on boosting stream counts and reaching milestones that show our <strong>unwavering support</strong> for BLACKPINK's music and legacy.</p>
         <p>Every single stream matters. Thank you for being part of this family. Let's stream, support, and shine. 🖤💗</p>
         <br>
-        <a href="#" class="btn-primary" onclick="showPage('badges'); return false;">Check My Badges →</a>
+        <a href="/badges" class="btn-primary" onclick="showPage('badges'); return false;">Check My Badges →</a>
       </div>
       <div class="animate-in">
         <div class="stat-cards">
@@ -1819,7 +1819,15 @@ function closeMobileNav() {
   document.getElementById('nav-hamburger').classList.remove('open');
 }
 
-function showPage(page) {
+const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback' };
+
+function pathToPage(pathname) {
+  const clean = pathname.replace(/\/+$/, '') || '/';
+  const entry = Object.entries(PAGE_PATHS).find(([, p]) => p === clean);
+  return entry ? entry[0] : 'home';
+}
+
+function showPage(page, { replace = false } = {}) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
@@ -1833,7 +1841,25 @@ function showPage(page) {
     renderVoteCampaigns();
     _voteCountdownTimer = setInterval(tickVoteCountdowns, 1000);
   }
+
+  const path = PAGE_PATHS[page] || '/';
+  if (pathToPage(location.pathname) !== page) {
+    if (replace) history.replaceState({ page }, '', path);
+    else history.pushState({ page }, '', path);
+  }
 }
+
+// Browser back/forward — switch pages without re-pushing history
+window.addEventListener('popstate', () => {
+  showPage(pathToPage(location.pathname), { replace: true });
+});
+
+// Deep link / refresh — show whatever page the URL points to on first load
+(function routeInitial() {
+  const page = pathToPage(location.pathname);
+  if (page !== 'home') showPage(page, { replace: true });
+  else history.replaceState({ page: 'home' }, '', '/');
+})();
 
 function initAnimations() {
   const observer = new IntersectionObserver((entries) => {
