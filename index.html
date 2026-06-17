@@ -3685,7 +3685,12 @@ function renderLbCard(logo) {
 async function shareCard() {
   if (!cardCanvas) return;
   const title = document.getElementById('card-box-label').textContent;
-  const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\nblackpink-project.vercel.app';
+  let link = 'blackpink-project.vercel.app';
+  if (_cardType === 'vote') {
+    const campaign = VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId);
+    if (campaign) link = campaign.url;
+  }
+  const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + link;
   // Mobile: Web Share API with image file
   if (typeof navigator.share === 'function') {
     cardCanvas.toBlob(async blob => {
