@@ -359,6 +359,10 @@
   .card-fmt-toggle { display:flex;gap:2px; }
   .card-fmt { background:transparent;border:1px solid rgba(255,0,102,0.2);color:var(--muted);font-family:var(--mono);font-size:0.42rem;letter-spacing:0.15em;text-transform:uppercase;padding:0.3rem 0.7rem;cursor:pointer;transition:all 0.2s; }
   .card-fmt.active { background:var(--pink-muted);border-color:var(--pink);color:var(--pink); }
+  .card-range-toggle { display:flex;align-items:center;gap:6px; }
+  .card-range-toggle .card-fmt { padding:0.3rem 0.55rem; }
+  .card-range-toggle .card-fmt:disabled { opacity:0.3;cursor:default; }
+  .card-range-label { font-family:var(--mono);font-size:0.46rem;letter-spacing:0.15em;color:var(--muted);white-space:nowrap; }
 
   /* ── SETTINGS PANEL ── */
   .settings-panel { max-width:900px;margin:1rem auto 0;padding:1.5rem;background:var(--card);border:1px solid var(--border); }
@@ -1403,6 +1407,11 @@
   <div class="card-box">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;flex-wrap:wrap;gap:0.5rem;">
       <div class="card-box-label" id="card-box-label" style="margin-bottom:0;">GENERATING…</div>
+      <div class="card-range-toggle" id="lb-card-range-toggle" style="display:none;">
+        <button class="card-fmt" onclick="shiftLbCardRange(-1)">‹</button>
+        <span class="card-range-label" id="lb-card-range-label">1–20</span>
+        <button class="card-fmt" onclick="shiftLbCardRange(1)">›</button>
+      </div>
       <div class="card-fmt-toggle">
         <button class="card-fmt active" id="fmt-landscape" onclick="setCardFormat('landscape',this)">▬ Landscape</button>
         <button class="card-fmt" id="fmt-square" onclick="setCardFormat('square',this)">□ Square</button>
@@ -3259,6 +3268,7 @@ async function openSongCard(trackId) {
   const label   = document.getElementById('card-box-label');
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
   _cardType = 'song';
   _cardTrackId = trackId;
   // Reset to landscape on each open
@@ -3437,6 +3447,7 @@ async function shareLbCard() {
   label.textContent = 'GENERATING…';
   _cardType = 'lb';
   _cardTrackId = null;
+  _lbCardRangeStart = 0;
   _cardFormat = 'square';
   document.getElementById('fmt-landscape')?.classList.remove('active');
   document.getElementById('fmt-square')?.classList.add('active');
@@ -3450,11 +3461,10 @@ async function shareLbCard() {
   label.textContent = `LEADERBOARD · ${periodLabel} · ${songLabel}`;
 }
 
-function renderLbCard(logo) {
-  const canvas = document.getElementById('card-canvas');
-  const ctx = canvas.getContext('2d');
+let _lbCardRangeStart = 0;
+const LB_CARD_PAGE_SIZE = 20;
 
-  // Build entries first so we can size the canvas to fit everyone
+function getLbCardEntries() {
   const key = getScoreKey();
   const todayLabel = italyDateLabel();
   let entries = Object.entries(lbData?.users || {})
@@ -3472,6 +3482,44 @@ function renderLbCard(logo) {
   }
 
   entries = entries.filter(e => e.score > 0);
+  return { entries, dateNote };
+}
+
+function updateLbCardRangeUI(total) {
+  const toggle = document.getElementById('lb-card-range-toggle');
+  const label  = document.getElementById('lb-card-range-label');
+  if (!toggle || !label) return;
+  if (total <= LB_CARD_PAGE_SIZE) {
+    toggle.style.display = 'none';
+    return;
+  }
+  toggle.style.display = 'flex';
+  const end = Math.min(_lbCardRangeStart + LB_CARD_PAGE_SIZE, total);
+  label.textContent = `${_lbCardRangeStart + 1}–${end}`;
+  const buttons = toggle.querySelectorAll('button');
+  buttons[0].disabled = _lbCardRangeStart <= 0;
+  buttons[1].disabled = _lbCardRangeStart + LB_CARD_PAGE_SIZE >= total;
+}
+
+function shiftLbCardRange(dir) {
+  const { entries } = getLbCardEntries();
+  const next = _lbCardRangeStart + dir * LB_CARD_PAGE_SIZE;
+  if (next < 0 || next >= entries.length) return;
+  _lbCardRangeStart = next;
+  renderLbCard(_cardLogo);
+  const periodLabel = lbPeriod === 'daily' ? 'TODAY' : lbPeriod === 'weekly' ? 'THIS WEEK' : 'ALL TIME';
+  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : 'DDU-DU DDU-DU';
+  document.getElementById('card-box-label').textContent = `LEADERBOARD · ${periodLabel} · ${songLabel}`;
+}
+
+function renderLbCard(logo) {
+  const canvas = document.getElementById('card-canvas');
+  const ctx = canvas.getContext('2d');
+
+  // Build entries first so we can size the canvas to fit one rank range
+  const { entries: allEntries, dateNote } = getLbCardEntries();
+  updateLbCardRangeUI(allEntries.length);
+  const entries = allEntries.slice(_lbCardRangeStart, _lbCardRangeStart + LB_CARD_PAGE_SIZE);
 
   const rowH = 80;
   const startY = 190;
@@ -3498,10 +3546,13 @@ function renderLbCard(logo) {
   // Period + song subtitle
   const periodLabel = lbPeriod === 'daily' ? 'TODAY' : lbPeriod === 'weekly' ? 'THIS WEEK' : 'ALL TIME';
   const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : 'DDU-DU DDU-DU';
+  const rangeLabel  = allEntries.length > LB_CARD_PAGE_SIZE
+    ? ` · RANK ${_lbCardRangeStart + 1}–${Math.min(_lbCardRangeStart + LB_CARD_PAGE_SIZE, allEntries.length)}`
+    : '';
   ctx.fillStyle = 'rgba(245,240,240,0.45)';
   ctx.font = '500 18px "DM Mono", monospace';
   ctx.letterSpacing = '4px';
-  ctx.fillText(`${periodLabel} · ${songLabel}`, W / 2, 142);
+  ctx.fillText(`${periodLabel} · ${songLabel}${rangeLabel}`, W / 2, 142);
 
   // Divider
   ctx.fillStyle = 'rgba(255,0,102,0.25)';
@@ -3511,22 +3562,23 @@ function renderLbCard(logo) {
   const PL = 70, PR = W - 70;
 
   entries.forEach((e, i) => {
+    const rank = _lbCardRangeStart + i; // 0-based overall rank
     const y = startY + i * rowH;
-    if (i < 3) {
+    if (rank < 3) {
       ctx.fillStyle = 'rgba(255,255,255,0.03)';
       ctx.fillRect(PL - 10, y - 8, W - (PL - 10) * 2, rowH - 6);
     }
 
     // Rank number
     ctx.textAlign = 'left';
-    ctx.fillStyle = i < 3 ? goldColors[i] : 'rgba(245,240,240,0.3)';
-    ctx.font = `${i < 3 ? 50 : 42}px "Bebas Neue", sans-serif`;
+    ctx.fillStyle = rank < 3 ? goldColors[rank] : 'rgba(245,240,240,0.3)';
+    ctx.font = `${rank < 3 ? 50 : 42}px "Bebas Neue", sans-serif`;
     ctx.letterSpacing = '2px';
-    ctx.fillText(String(i + 1).padStart(2, '0'), PL, y + rowH * 0.65);
+    ctx.fillText(String(rank + 1).padStart(2, '0'), PL, y + rowH * 0.65);
 
     // Username
-    ctx.fillStyle = i < 3 ? '#F5F0F0' : 'rgba(245,240,240,0.65)';
-    ctx.font = `500 ${i < 3 ? 26 : 22}px "DM Mono", monospace`;
+    ctx.fillStyle = rank < 3 ? '#F5F0F0' : 'rgba(245,240,240,0.65)';
+    ctx.font = `500 ${rank < 3 ? 26 : 22}px "DM Mono", monospace`;
     ctx.letterSpacing = '1px';
     const maxNameW = PR - PL - 200;
     let name = e.username;
@@ -3536,8 +3588,8 @@ function renderLbCard(logo) {
 
     // Score
     ctx.textAlign = 'right';
-    ctx.fillStyle = i === 0 ? '#FF0066' : (i < 3 ? '#F5F0F0' : 'rgba(245,240,240,0.5)');
-    ctx.font = `${i < 3 ? 46 : 38}px "Bebas Neue", sans-serif`;
+    ctx.fillStyle = rank === 0 ? '#FF0066' : (rank < 3 ? '#F5F0F0' : 'rgba(245,240,240,0.5)');
+    ctx.font = `${rank < 3 ? 46 : 38}px "Bebas Neue", sans-serif`;
     ctx.letterSpacing = '2px';
     ctx.fillText(e.score.toLocaleString(), PR, y + rowH * 0.65);
   });
@@ -3683,6 +3735,8 @@ async function openPersonalCard() {
   const label   = document.getElementById('card-box-label');
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  _cardType = 'personal';
 
   const { info, todayCounts, totalPlays, artistPlays } = currentUser;
   await document.fonts.ready;
@@ -4039,6 +4093,7 @@ async function openMilestoneCard(trackId, milestone, milestoneDate) {
   const label   = document.getElementById('card-box-label');
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
   _cardType      = 'milestone';
   _cardTrackId   = trackId;
   _msMilestone   = milestone;
@@ -4178,6 +4233,7 @@ async function openVoteCard(campaignId) {
   const label   = document.getElementById('card-box-label');
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
   _cardType = 'vote';
   _voteCampaignId = campaignId;
   _cardFormat = 'landscape';
