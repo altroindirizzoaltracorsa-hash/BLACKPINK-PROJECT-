@@ -8,7 +8,18 @@ const TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
-const LIVE_CACHE_TTL_MS = 60 * 1000;
+// Spotify's public play count generally only jumps once a day, sometime
+// between midday and late evening Italy time. Outside that window (or once
+// today's jump has already landed) there's nothing new to find, so we poll
+// far less aggressively there to protect the RapidAPI quota.
+function getCacheTtlMs(needsDailyUpdate) {
+  if (!needsDailyUpdate) return 4 * 60 * 60 * 1000; // today's bump already seen — recheck in ~4h
+  const romeHour = Number(
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Rome', hour: 'numeric', hour12: false }).format(new Date())
+  );
+  if (romeHour < 12) return Infinity; // before midday — Spotify never updates this early, don't call at all
+  return 15 * 60 * 1000; // in the daily watch window — poll every ~15min
+}
 
 // Returns all configured RapidAPI keys in priority order.
 // Add extras as RAPIDAPI_KEYS=key1,key2,key3 in Vercel env vars.
@@ -119,7 +130,7 @@ export default async function handler(req, res) {
       // live total is recent — otherwise a fetch that straddles midnight stays
       // cached across the day boundary and the daily diff never gets written.
       const needsDailyUpdate = !prev || prev.date !== todayLabel;
-      const cacheValid = !isCron && !needsDailyUpdate && cacheAge < LIVE_CACHE_TTL_MS && (cached?.total || 0) > 0;
+      const cacheValid = !isCron && cacheAge < getCacheTtlMs(needsDailyUpdate) && (cached?.total || 0) > 0;
       let total;
       let updatedAt = cached?.ts || null;
       let stale = false;
@@ -199,7 +210,7 @@ export default async function handler(req, res) {
     prevSnaps[name] = await redis.get(`bp_prev_${name}`);
   }
 
-  res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=30');
+  res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
   res.status(200).json({
     ...results,
     _debug: { keyCount: getApiKeys().length, errors, live: fetchedLive, prev: prevSnaps, ts: new Date().toISOString() },
