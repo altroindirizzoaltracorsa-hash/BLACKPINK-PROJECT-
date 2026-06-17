@@ -8,7 +8,7 @@ const TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
-const LIVE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const LIVE_CACHE_TTL_MS = 60 * 1000;
 
 // Returns all configured RapidAPI keys in priority order.
 // Add extras as RAPIDAPI_KEYS=key1,key2,key3 in Vercel env vars.
@@ -199,7 +199,7 @@ export default async function handler(req, res) {
     prevSnaps[name] = await redis.get(`bp_prev_${name}`);
   }
 
-  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+  res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=30');
   res.status(200).json({
     ...results,
     _debug: { keyCount: getApiKeys().length, errors, live: fetchedLive, prev: prevSnaps, ts: new Date().toISOString() },
