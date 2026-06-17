@@ -725,10 +725,6 @@
     padding: 0.65rem 0.9rem; cursor: pointer; transition: border-color 0.2s, color 0.2s;
   }
   .vote-share-btn:hover { border-color: var(--pink); color: var(--pink); }
-  .vote-embed-wrap { margin-top: 1.2rem; border: 1px solid var(--border); background: #000; }
-  .vote-embed-wrap iframe { width: 100%; height: 700px; border: none; display: block; }
-  .vote-embed-fallback { font-size: 0.5rem; letter-spacing: 0.05em; color: var(--muted); padding: 0.6rem 0.8rem; }
-  .vote-embed-fallback a { color: var(--pink); }
   .vote-results-note { font-size: 0.46rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.3); margin-top: 0.7rem; }
   .vote-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
 
@@ -1848,7 +1844,6 @@ const VOTE_CAMPAIGNS = [
     url: 'https://promo-web.idolchamp.com/app_proxy.html?deeplink=https%3A%2F%2Fapp.idolchamp.com%2Fopen%2Fvote%2F01KTT3R0ZYTFJGZ02H4RB65AYF',
     deadline: '2026-07-14T14:59:00Z', // 14 Jul 2026, 23:59 KST
     resultsNote: 'Up to 100 votes per day via the IDOLCHAMP app',
-    embed: true,
     categories: [
       { name: 'Korea Popularity Award (Female)', nominees: [{ name: 'JISOO', us: true }] },
     ],
@@ -1896,28 +1891,10 @@ function renderVoteCampaigns() {
         <div class="vote-card-actions">
           <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
           <button class="vote-share-btn" onclick="openVoteCard('${c.id}')">⬡ Share</button>
-          ${c.embed ? `<button class="vote-share-btn" id="vote-embed-toggle-${c.id}" onclick="toggleVoteEmbed('${c.id}', this)">▾ Show Live Vote Page</button>` : ''}
         </div>
-        ${c.embed ? `
-        <div class="vote-embed-wrap" id="vote-embed-${c.id}" style="display:none">
-          <iframe data-src="${c.url}" loading="lazy" referrerpolicy="no-referrer" title="${c.title} — live vote"></iframe>
-          <p class="vote-embed-fallback">Not loading? Some vote pages block embedding — <a href="${c.url}" target="_blank" rel="noopener noreferrer">open it directly ↗</a> instead.</p>
-        </div>` : ''}
         ${c.resultsNote ? `<div class="vote-results-note">${c.resultsNote}</div>` : ''}
       </div>`;
   }).join('');
-}
-
-function toggleVoteEmbed(campaignId, btn) {
-  const wrap = document.getElementById(`vote-embed-${campaignId}`);
-  if (!wrap) return;
-  const opening = wrap.style.display === 'none';
-  wrap.style.display = opening ? 'block' : 'none';
-  btn.textContent = opening ? '▴ Hide Live Vote Page' : '▾ Show Live Vote Page';
-  if (opening) {
-    const iframe = wrap.querySelector('iframe');
-    if (iframe && !iframe.src) iframe.src = iframe.dataset.src;
-  }
 }
 
 const BADGE_TIERS = [
