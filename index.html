@@ -1837,6 +1837,17 @@ const VOTE_CAMPAIGNS = [
       ] },
     ],
   },
+  {
+    id: 'sda-2026-popularity-female',
+    platform: 'IDOLCHAMP',
+    title: 'Seoul International Drama Awards',
+    url: 'https://promo-web.idolchamp.com/app_proxy.html?deeplink=https%3A%2F%2Fapp.idolchamp.com%2Fopen%2Fvote%2F01KTT3R0ZYTFJGZ02H4RB65AYF',
+    deadline: '2026-07-14T14:59:00Z', // 14 Jul 2026, 23:59 KST
+    resultsNote: 'Up to 100 votes per day via the IDOLCHAMP app',
+    categories: [
+      { name: 'Korea Popularity Award (Female)', nominees: [{ name: 'JISOO', us: true }] },
+    ],
+  },
 ];
 
 function renderVoteCampaigns() {
@@ -3977,21 +3988,27 @@ function drawVoteCard(canvas, campaign, logo) {
   ctx.letterSpacing = '6px';
   ctx.fillText('FAN VOTE', PX, landscape ? 80 : 140);
 
-  // Platform title
+  // Award/campaign title
   ctx.fillStyle = '#F5F0F0';
   const titleSize = landscape
-    ? (campaign.platform.length > 14 ? 42 : campaign.platform.length > 10 ? 52 : 62)
-    : (campaign.platform.length > 14 ? 54 : campaign.platform.length > 10 ? 68 : 84);
+    ? (campaign.title.length > 28 ? 34 : campaign.title.length > 20 ? 42 : campaign.title.length > 14 ? 52 : 62)
+    : (campaign.title.length > 28 ? 46 : campaign.title.length > 20 ? 58 : campaign.title.length > 14 ? 72 : 88);
   ctx.font = `${titleSize}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '4px';
-  ctx.fillText(campaign.platform.toUpperCase(), PX, landscape ? 155 : 270);
+  ctx.fillText(campaign.title.toUpperCase(), PX, landscape ? 148 : 258);
+
+  // Platform subtitle
+  ctx.fillStyle = 'rgba(245,240,240,0.4)';
+  ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
+  ctx.letterSpacing = '3px';
+  ctx.fillText(campaign.platform.toUpperCase(), PX, landscape ? 168 : 290);
 
   // Pink rule
   ctx.fillStyle = '#FF0066';
-  ctx.fillRect(PX, landscape ? 172 : 295, 70, landscape ? 2 : 3);
+  ctx.fillRect(PX, landscape ? 188 : 320, 70, landscape ? 2 : 3);
 
   // Categories + nominees
-  let y = landscape ? 225 : 370;
+  let y = landscape ? 235 : 400;
   const rowH = landscape ? 64 : 140;
   for (const cat of campaign.categories) {
     ctx.fillStyle = 'rgba(255,0,102,0.65)';
@@ -4005,16 +4022,17 @@ function drawVoteCard(canvas, campaign, logo) {
     y += rowH;
   }
 
-  // "Vote at" footnote
-  const urlShort = campaign.url.replace(/^https?:\/\//, '').replace(/\/$/, '').toUpperCase();
+  // "Vote at" footnote (hostname only — some campaign URLs carry long deeplink query strings)
+  let urlShort;
+  try { urlShort = new URL(campaign.url).hostname.toUpperCase(); } catch (e) { urlShort = campaign.url.toUpperCase(); }
   ctx.fillStyle = 'rgba(255,0,102,0.55)';
   ctx.font = `500 ${landscape ? 13 : 16}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText('VOTE AT ' + urlShort, PX, y + (landscape ? 14 : 30));
+  ctx.fillText('VOTE AT ' + urlShort, PX, y + (landscape ? 16 : 30));
 
   // Deadline countdown
   const { big, sub } = formatVoteDeadline(campaign);
-  const dlY = y + (landscape ? 70 : 200);
+  const dlY = y + (landscape ? 72 : 140);
   ctx.fillStyle = '#F5F0F0';
   ctx.font = `${landscape ? 40 : 64}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '2px';
