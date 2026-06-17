@@ -8,14 +8,19 @@ const TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
-const LIVE_CACHE_TTL_MS = 60 * 60 * 1000;
+const LIVE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 // Returns all configured RapidAPI keys in priority order.
 // Add extras as RAPIDAPI_KEYS=key1,key2,key3 in Vercel env vars.
+// RAPIDAPI_KEYS_2 is a spillover slot for adding more keys without touching
+// the existing vars (handy when editing env vars from a phone).
 function getApiKeys() {
   const keys = [];
-  if (process.env.RAPIDAPI_KEYS) {
-    keys.push(...process.env.RAPIDAPI_KEYS.split(',').map(k => k.trim()).filter(Boolean));
+  for (const envVar of [process.env.RAPIDAPI_KEYS, process.env.RAPIDAPI_KEYS_2]) {
+    if (!envVar) continue;
+    for (const k of envVar.split(',').map(k => k.trim()).filter(Boolean)) {
+      if (!keys.includes(k)) keys.push(k);
+    }
   }
   if (process.env.RAPIDAPI_KEY && !keys.includes(process.env.RAPIDAPI_KEY)) {
     keys.push(process.env.RAPIDAPI_KEY);
@@ -116,6 +121,8 @@ export default async function handler(req, res) {
       const needsDailyUpdate = !prev || prev.date !== todayLabel;
       const cacheValid = !isCron && !needsDailyUpdate && cacheAge < LIVE_CACHE_TTL_MS && (cached?.total || 0) > 0;
       let total;
+      let updatedAt = cached?.ts || null;
+      let stale = false;
 
       if (cacheValid) {
         total = cached.total;
@@ -127,9 +134,18 @@ export default async function handler(req, res) {
           errors[name] = e.message;
           data = {};
         }
-        total = data?.playCount || 0;
+        const fetchedTotal = data?.playCount || 0;
         fetchedLive = true;
-        if (total > 0) await redis.set(liveKey, { total, ts: Date.now() });
+        if (fetchedTotal > 0) {
+          total = fetchedTotal;
+          updatedAt = Date.now();
+          await redis.set(liveKey, { total, ts: updatedAt });
+        } else {
+          // Live fetch failed (e.g. all RapidAPI keys exhausted) — fall back to
+          // the last known-good cached total instead of showing 0.
+          total = cached?.total || 0;
+          stale = total > 0;
+        }
 
         const prevTotal = Number(prev?.total || 0);
 
@@ -161,12 +177,20 @@ export default async function handler(req, res) {
         }
       }
 
-      results[name] = { total, history };
+      results[name] = {
+        total,
+        history,
+        ...(stale ? { stale: true, updatedAt: updatedAt ? new Date(updatedAt).toISOString() : null } : {}),
+      };
     } catch (e) {
       console.error(`streams: ${name}:`, e.message);
-      const stale   = await redis.get(`bp_live_${name}`);
-      const history = await redis.get(`bp_hist_${name}`);
-      results[name] = { total: stale?.total || 0, history: history || [] };
+      const fallback = await redis.get(`bp_live_${name}`);
+      const history  = await redis.get(`bp_hist_${name}`);
+      results[name] = {
+        total: fallback?.total || 0,
+        history: history || [],
+        ...(fallback?.total ? { stale: true, updatedAt: fallback?.ts ? new Date(fallback.ts).toISOString() : null } : {}),
+      };
     }
   }
 
