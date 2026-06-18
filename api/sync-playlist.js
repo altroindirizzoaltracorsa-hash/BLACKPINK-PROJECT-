@@ -90,6 +90,46 @@ async function findCandidatePlaylists(accountId, clientCredToken) {
   };
 }
 
+// Search is a public-catalog endpoint and (unlike /v1/users/{id}/playlists)
+// works reliably with Client Credentials, so it can surface a new playlist
+// the moment any of the 3 accounts creates it — no OAuth needed from anyone.
+const SEARCH_QUERIES = ['1B Day', 'GOALS RELEASE PARTY'];
+
+async function searchCandidatePlaylists(clientCredToken, accountIds) {
+  const accountSet = new Set(accountIds);
+  const seenIds = new Set();
+  const matches = [];
+  const queryResults = [];
+
+  for (const q of SEARCH_QUERIES) {
+    const r = await fetch(`https://api.spotify.com/v1/search?${new URLSearchParams({ q, type: 'playlist', limit: '50' })}`, {
+      headers: { 'Authorization': `Bearer ${clientCredToken}` },
+    });
+    if (!r.ok) {
+      const body = await r.text().catch(() => '');
+      queryResults.push({ query: q, status: r.status, error: body.slice(0, 200) });
+      continue;
+    }
+    const data = await r.json();
+    const items = data.playlists?.items || [];
+    queryResults.push({
+      query: q,
+      status: r.status,
+      found: items.map(pl => ({ name: pl?.name, owner: pl?.owner?.id })),
+    });
+    for (const pl of items) {
+      if (!pl || seenIds.has(pl.id)) continue;
+      if (!accountSet.has(pl.owner?.id)) continue;
+      const m = pl.name?.match(DAY_PATTERN);
+      if (!m) continue;
+      seenIds.add(pl.id);
+      matches.push({ id: pl.id, url: pl.external_urls?.spotify, name: pl.name, day: Number(m[1]), account: pl.owner.id });
+    }
+  }
+
+  return { matches, mode: 'search', queryResults };
+}
+
 // /api/spotify-oauth-start and /api/spotify-oauth-callback are rewritten to this
 // same function (vercel.json) to stay under the Hobby plan's 12-function cap —
 // they're handled here based on query params rather than separate files.
@@ -175,12 +215,16 @@ export default async function handler(req, res) {
 
   try {
     const token = await getClientCredentialsToken();
-    const results = await Promise.all(accountIds.map(id => findCandidatePlaylists(id, token)));
-    const allMatches = results.flatMap(r => r.matches);
+    const [results, searchResult] = await Promise.all([
+      Promise.all(accountIds.map(id => findCandidatePlaylists(id, token))),
+      searchCandidatePlaylists(token, accountIds),
+    ]);
+    const allMatches = results.flatMap(r => r.matches).concat(searchResult.matches);
     const accountDiagnostics = results.map(({ matches, ...rest }) => rest);
+    const searchDiagnostics = { matches: searchResult.matches, queryResults: searchResult.queryResults };
 
     if (!allMatches.length) {
-      return res.status(200).json({ ok: false, error: 'No matching playlist found on any configured account', checked: accountIds, accountDiagnostics });
+      return res.status(200).json({ ok: false, error: 'No matching playlist found on any configured account', checked: accountIds, accountDiagnostics, searchDiagnostics });
     }
 
     allMatches.sort((a, b) => b.day - a.day);
@@ -188,7 +232,7 @@ export default async function handler(req, res) {
 
     await redis.set(KEY, { id: best.id, url: best.url, updatedAt: Date.now(), day: best.day, account: best.account });
 
-    res.status(200).json({ ok: true, chosen: best, candidates: allMatches, accountDiagnostics });
+    res.status(200).json({ ok: true, chosen: best, candidates: allMatches, accountDiagnostics, searchDiagnostics });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
