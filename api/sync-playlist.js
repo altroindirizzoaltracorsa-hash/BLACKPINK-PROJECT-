@@ -36,13 +36,16 @@ async function findCandidatePlaylists(accountId, token) {
   const r = await fetch(`https://api.spotify.com/v1/users/${encodeURIComponent(accountId)}/playlists?limit=50`, {
     headers: { 'Authorization': `Bearer ${token}` },
   });
-  if (!r.ok) return matches;
+  if (!r.ok) {
+    const body = await r.text().catch(() => '');
+    return { matches, account: accountId, status: r.status, error: body.slice(0, 200) };
+  }
   const data = await r.json();
   for (const pl of data.items || []) {
     const m = pl?.name?.match(DAY_PATTERN);
     if (m) matches.push({ id: pl.id, url: pl.external_urls?.spotify, name: pl.name, day: Number(m[1]), account: accountId });
   }
-  return matches;
+  return { matches, account: accountId, status: r.status, total: data.total, namesSeen: (data.items || []).map(pl => pl.name) };
 }
 
 export default async function handler(req, res) {
@@ -77,10 +80,11 @@ export default async function handler(req, res) {
   try {
     const token = await getAccessToken();
     const results = await Promise.all(accountIds.map(id => findCandidatePlaylists(id, token)));
-    const allMatches = results.flat();
+    const allMatches = results.flatMap(r => r.matches);
+    const accountDiagnostics = results.map(({ matches, ...rest }) => rest);
 
     if (!allMatches.length) {
-      return res.status(200).json({ ok: false, error: 'No matching playlist found on any configured account', checked: accountIds });
+      return res.status(200).json({ ok: false, error: 'No matching playlist found on any configured account', checked: accountIds, accountDiagnostics });
     }
 
     allMatches.sort((a, b) => b.day - a.day);
@@ -88,7 +92,7 @@ export default async function handler(req, res) {
 
     await redis.set(KEY, { id: best.id, url: best.url, updatedAt: Date.now(), day: best.day, account: best.account });
 
-    res.status(200).json({ ok: true, chosen: best, candidates: allMatches });
+    res.status(200).json({ ok: true, chosen: best, candidates: allMatches, accountDiagnostics });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
