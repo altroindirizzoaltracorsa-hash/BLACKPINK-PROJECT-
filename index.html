@@ -4237,8 +4237,12 @@ function formatVoteDeadline(campaign) {
   const dl = new Date(campaign.deadline);
   const diff = dl.getTime() - Date.now();
   if (diff <= 0) return { big: 'VOTING CLOSED', sub: 'ENDED ' + formatVoteDate(dl) };
-  const hours = diff / 3600000;
-  const big = hours <= 48 ? `${Math.max(1, Math.round(hours))}H LEFT` : `${Math.ceil(hours / 24)} DAYS LEFT`;
+  const totalMin = Math.floor(diff / 60000);
+  const d = Math.floor(totalMin / 1440);
+  const h = Math.floor((totalMin % 1440) / 60);
+  const m = totalMin % 60;
+  const pad = n => String(n).padStart(2, '0');
+  const big = d > 0 ? `${d}D ${pad(h)}H ${pad(m)}M LEFT` : `${pad(h)}H ${pad(m)}M LEFT`;
   return { big, sub: 'ENDS ' + formatVoteDate(dl) };
 }
 
