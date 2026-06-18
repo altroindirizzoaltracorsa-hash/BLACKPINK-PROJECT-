@@ -21,41 +21,64 @@ function getCacheTtlMs(needsDailyUpdate) {
   return 15 * 60 * 1000; // in the daily watch window — poll every ~15min
 }
 
-// Returns all configured RapidAPI keys in priority order.
+// Returns all configured RapidAPI keys for the given env vars, in priority order.
 // Add extras as RAPIDAPI_KEYS=key1,key2,key3 in Vercel env vars.
-// RAPIDAPI_KEYS_2 is a spillover slot for adding more keys without touching
-// the existing vars (handy when editing env vars from a phone).
-function getApiKeys() {
+// RAPIDAPI_KEYS_2 is a spillover slot for adding more keys to the same provider
+// without touching the existing var (handy when editing env vars from a phone).
+function getApiKeys(envVarNames) {
   const keys = [];
-  for (const envVar of [process.env.RAPIDAPI_KEYS, process.env.RAPIDAPI_KEYS_2]) {
+  for (const name of envVarNames) {
+    const envVar = process.env[name];
     if (!envVar) continue;
     for (const k of envVar.split(',').map(k => k.trim()).filter(Boolean)) {
       if (!keys.includes(k)) keys.push(k);
     }
   }
-  if (process.env.RAPIDAPI_KEY && !keys.includes(process.env.RAPIDAPI_KEY)) {
-    keys.push(process.env.RAPIDAPI_KEY);
-  }
   return keys;
 }
 
-// Tries each key in order, moving on if one is rate-limited or quota-exceeded.
-async function fetchTrackMetadata(trackId) {
-  const keys = getApiKeys();
-  let lastError = 'No API keys configured';
-  for (const key of keys) {
-    const r = await fetch(
-      `https://spotify-scraper.p.rapidapi.com/v1/track/metadata?trackId=${trackId}`,
-      { headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': 'spotify-scraper.p.rapidapi.com' } }
-    );
-    const data = await r.json();
+// Two independent RapidAPI providers, each with its own subscription/quota.
+// If every key on one provider is rate-limited or quota-exceeded, we move on
+// to the next provider entirely before giving up.
+const PROVIDERS = [
+  {
+    name: 'spotify-scraper',
+    host: 'spotify-scraper.p.rapidapi.com',
+    keyEnvVars: ['RAPIDAPI_KEYS', 'RAPIDAPI_KEYS_2', 'RAPIDAPI_KEY'],
+    url: trackId => `https://spotify-scraper.p.rapidapi.com/v1/track/metadata?trackId=${trackId}`,
     // 429 = rate limit, 403 = quota exceeded, data.message = API-level error
-    if (r.status === 429 || r.status === 403 || data?.message) {
-      lastError = data?.message || `HTTP ${r.status}`;
-      continue;
+    isQuotaError: (r, data) => r.status === 429 || r.status === 403 || !!data?.message,
+    getPlayCount: data => Number(data?.playCount) || 0,
+  },
+  {
+    name: 'spotify-scraper-api',
+    host: 'spotify-scraper-api.p.rapidapi.com',
+    keyEnvVars: ['RAPIDAPI_KEYS_API2'],
+    url: trackId => `https://spotify-scraper-api.p.rapidapi.com/api/v1/track/info?track_id=${trackId}`,
+    // 429 = rate limit, 403 = quota exceeded, anything other than status "Successful" is an error
+    isQuotaError: (r, data) => r.status === 429 || r.status === 403 || data?.status !== 'Successful',
+    getPlayCount: data => Number(data?.data?.playcount) || 0,
+  },
+];
+
+// Tries each provider in order, and within a provider tries each key in
+// order, moving on if one is rate-limited or quota-exceeded.
+async function fetchTrackMetadata(trackId) {
+  let lastError = 'No API keys configured';
+  for (const provider of PROVIDERS) {
+    const keys = getApiKeys(provider.keyEnvVars);
+    for (const key of keys) {
+      const r = await fetch(provider.url(trackId), {
+        headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': provider.host },
+      });
+      const data = await r.json();
+      if (provider.isQuotaError(r, data)) {
+        lastError = data?.message || `HTTP ${r.status}`;
+        continue;
+      }
+      if (!r.ok) { lastError = `HTTP ${r.status}`; continue; }
+      return { playCount: provider.getPlayCount(data) };
     }
-    if (!r.ok) { lastError = `HTTP ${r.status}`; continue; }
-    return data;
   }
   throw new Error(lastError);
 }
@@ -210,9 +233,14 @@ export default async function handler(req, res) {
     prevSnaps[name] = await redis.get(`bp_prev_${name}`);
   }
 
+  const keyCounts = {};
+  for (const provider of PROVIDERS) {
+    keyCounts[provider.name] = getApiKeys(provider.keyEnvVars).length;
+  }
+
   res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
   res.status(200).json({
     ...results,
-    _debug: { keyCount: getApiKeys().length, errors, live: fetchedLive, prev: prevSnaps, ts: new Date().toISOString() },
+    _debug: { keyCounts, errors, live: fetchedLive, prev: prevSnaps, ts: new Date().toISOString() },
   });
 }
