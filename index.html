@@ -1928,18 +1928,20 @@ const VOTE_CAMPAIGNS = [
   {
     id: 'billboard-korea-2026',
     platform: 'Billboard Korea',
-    title: 'Billboard Korea Awards',
+    title: 'Billboard Top K-Artists',
     url: 'https://billboard.co.kr/vote/',
     deadline: '2026-06-23T04:00:00Z', // 23 Jun 2026, 1:00 PM KST
     resetOffset: 9, // daily vote reset at midnight KST
     rules: [
-      'Vote once per category, every day',
-      'Daily votes reset at midnight KST',
+      'Vote in 4 categories: Male Group, Female Group, Male Solo, Female Solo',
+      'Up to 32 votes per account, per day — shared across all categories',
+      'Votes reset at midnight KST',
+      'Results combine the Korea (Billboard Korea) and China (Billboard China / TME) channels',
       'Final results announced 30 June 2026',
     ],
     categories: [
       { name: 'Female Group', nominees: [{ name: 'BLACKPINK', us: true }] },
-      { name: 'Solo Female',  nominees: [
+      { name: 'Female Solo',  nominees: [
         { name: 'JISOO',  us: true },
         { name: 'JENNIE', us: true },
         { name: 'ROSÉ',   us: true },
@@ -1955,8 +1957,8 @@ const VOTE_CAMPAIGNS = [
     deadline: '2026-07-14T14:59:00Z', // 14 Jul 2026, 23:59 KST
     resetOffset: 9, // daily vote reset at midnight KST
     rules: [
-      'Vote via the IDOLCHAMP app',
-      "Up to 100 votes per day — they don't roll over",
+      'Vote via the IDOLCHAMP app (global voting, open since 15 Jun 2026)',
+      'Daily vote cap varies by event — check the in-app vote screen',
       'Daily votes reset at midnight KST',
     ],
     categories: [
@@ -1971,12 +1973,14 @@ const VOTE_CAMPAIGNS = [
     deadline: '2026-06-23T04:00:00Z', // 23 Jun 2026, 12:00 CST (official activity rules)
     restriction: 'China only — requires a Chinese phone number',
     rules: [
-      'Requires a Chinese phone number to register an account',
-      'Vote weight = your points + activity bonus points',
-      'No fixed daily cap — vote as often as you can',
+      'Vote in 4 categories: Male Group, Female Group, Male Solo, Female Solo',
+      'Up to 32 votes per account, per day — shared across all categories',
+      'Votes reset at midnight KST',
+      'Results combine the Korea (Billboard Korea) and China (Billboard China / TME) channels',
+      'Final results announced 30 June 2026',
     ],
     categories: [
-      { name: 'Girl Group', nominees: [{ name: 'BLACKPINK', us: true }] },
+      { name: 'Female Group', nominees: [{ name: 'BLACKPINK', us: true }] },
       { name: 'Female Solo', nominees: [
         { name: 'ROSÉ',   us: true },
         { name: 'JISOO',  us: true },
