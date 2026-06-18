@@ -3454,7 +3454,7 @@ function renderSongCard(trackId, art, logo) {
   drawNoise(ctx, W, H, 0.03);
 
   // Text column: right portion for landscape, right half for square
-  const PX = landscape ? (art ? Math.round(W * 0.51) : 70) : (art ? Math.round(W * 0.44) : 80);
+  const PX = landscape ? (art ? Math.round(W * 0.56) : 70) : (art ? Math.round(W * 0.44) : 80);
   const textW = W - PX - (landscape ? 50 : 60);
 
   // ── Era pill
@@ -3470,32 +3470,37 @@ function renderSongCard(trackId, art, logo) {
 
   // ── Title
   ctx.fillStyle = '#F5F0F0';
-  const tsBase = landscape ? 92 : 160;
+  const tsBase = landscape ? 108 : 160;
   const titleSize = track.title.length > 10 ? Math.round(tsBase * 0.72)
                   : track.title.length > 6  ? Math.round(tsBase * 0.84)
                   : tsBase;
   ctx.font = `${titleSize}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '5px';
-  const titleY = landscape ? 168 : 280;
+  const titleY = landscape ? 174 : 280;
   const lineH  = titleSize + (landscape ? 6 : 10);
+  let titleLines = 1;
   if (track.title.includes(' ') && ctx.measureText(track.title).width > textW) {
     const words = track.title.split(' ');
     const mid   = Math.ceil(words.length / 2);
     ctx.fillText(words.slice(0, mid).join(' '), PX, titleY);
     ctx.fillText(words.slice(mid).join(' '),    PX, titleY + lineH);
+    titleLines = 2;
   } else {
     ctx.fillText(track.title, PX, titleY);
   }
+  // Landscape positions everything below relative to the title's actual bottom edge
+  // (not a fixed offset) so a 2-line wrapped title never collides with the streams block.
+  const titleBottom = titleY + (titleLines - 1) * lineH;
 
   // ── Pink rule
-  const ruleY = landscape ? 196 : 350;
+  const ruleY = landscape ? titleBottom + 32 : 350;
   ctx.fillStyle = '#FF0066';
   ctx.fillRect(PX, ruleY, 70, landscape ? 2 : 3);
 
   // ── Total streams
-  const totalFontSz = landscape ? 74 : 102;
-  const totalY      = landscape ? 284 : 478;
-  const subY        = landscape ? 310 : 514;
+  const totalFontSz = landscape ? 88 : 102;
+  const totalY      = landscape ? ruleY + 96 : 478;
+  const subY        = landscape ? totalY + 28 : 514;
   ctx.fillStyle = '#FF0066';
   ctx.letterSpacing = '2px';
   fillTextFit(ctx, formatFull(total), PX, totalY, totalFontSz, textW, '"Bebas Neue", sans-serif');
@@ -3505,23 +3510,25 @@ function renderSongCard(trackId, art, logo) {
   ctx.fillText('TOTAL SPOTIFY STREAMS', PX, subY);
 
   // ── Daily streams
+  let lastY = subY;
   if (daily !== null && daily !== undefined) {
     const sign = daily >= 0 ? '+' : '';
-    const dailyFontSz = landscape ? 50 : 66;
-    const dailyY      = landscape ? 372 : 604;
-    const dailySubY   = landscape ? 396 : 634;
+    const dailyFontSz = landscape ? 62 : 66;
+    const dailyY      = landscape ? subY + 64 : 604;
+    const dailySubY   = landscape ? dailyY + 26 : 634;
     ctx.fillStyle = daily >= 0 ? '#00ff88' : '#ff4466';
     ctx.letterSpacing = '2px';
     fillTextFit(ctx, `${sign}${formatFull(daily)}`, PX, dailyY, dailyFontSz, textW, '"Bebas Neue", sans-serif');
     ctx.font = `500 ${landscape ? 13 : 22}px "DM Mono", monospace`;
     ctx.letterSpacing = '3px';
     ctx.fillText('DAILY STREAMS' + (dailyDate ? ' · ' + dailyDate : ''), PX, dailySubY);
+    lastY = dailySubY;
   }
 
   // ── Timestamp
   const now = new Date();
   const ds  = String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear();
-  const tsY = landscape ? 436 : 670;
+  const tsY = landscape ? lastY + 40 : 670;
   ctx.fillStyle = 'rgba(245,240,240,0.38)';
   ctx.font = `500 ${landscape ? 13 : 22}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
@@ -4132,55 +4139,52 @@ function drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milesto
 
   drawNoise(ctx, W, H, 0.03);
 
-  const PX = landscape ? (art ? Math.round(W * 0.51) : 70) : (art ? Math.round(W * 0.44) : 80);
+  const PX = landscape ? (art ? Math.round(W * 0.56) : 70) : (art ? Math.round(W * 0.44) : 80);
   const textW = W - PX - (landscape ? 50 : 60);
   ctx.textAlign = 'left';
 
   // "MILESTONE REACHED" header
   ctx.fillStyle = '#FF0066';
-  ctx.font = `${landscape ? 52 : 68}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '6px';
-  ctx.fillText('MILESTONE REACHED', PX, landscape ? 80 : 140);
+  fillTextFit(ctx, 'MILESTONE REACHED', PX, landscape ? 80 : 140, landscape ? 52 : 68, textW, '"Bebas Neue", sans-serif');
 
   // Track title
   ctx.fillStyle = '#F5F0F0';
   const titleSize = landscape
-    ? (track.title.length > 10 ? 54 : track.title.length > 6 ? 66 : 78)
+    ? (track.title.length > 10 ? 64 : track.title.length > 6 ? 78 : 92)
     : (track.title.length > 10 ? 70 : track.title.length > 6 ? 86 : 102);
-  ctx.font = `${titleSize}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '5px';
-  ctx.fillText(track.title, PX, landscape ? 164 : 280);
+  fillTextFit(ctx, track.title, PX, landscape ? 172 : 280, titleSize, textW, '"Bebas Neue", sans-serif');
 
   // Pink rule
   ctx.fillStyle = '#FF0066';
-  ctx.fillRect(PX, landscape ? 184 : 308, 70, landscape ? 2 : 3);
+  ctx.fillRect(PX, landscape ? 204 : 308, 70, landscape ? 2 : 3);
 
   // Milestone number
   ctx.fillStyle = '#FF0066';
-  ctx.font = `${landscape ? 100 : 136}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '2px';
-  ctx.fillText(formatMilestone(milestone), PX, landscape ? 300 : 488);
+  fillTextFit(ctx, formatMilestone(milestone), PX, landscape ? 322 : 488, landscape ? 116 : 136, textW, '"Bebas Neue", sans-serif');
   ctx.fillStyle = 'rgba(245,240,240,0.55)';
   ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
   ctx.letterSpacing = '4px';
-  ctx.fillText('STREAMS MILESTONE', PX, landscape ? 326 : 518);
+  ctx.fillText('STREAMS MILESTONE', PX, landscape ? 348 : 518);
 
   // Total (with today's date to distinguish from the milestone total)
   const todayDs = (() => { const n = new Date(); return String(n.getDate()).padStart(2,'0') + '/' + String(n.getMonth()+1).padStart(2,'0') + '/' + n.getFullYear(); })();
   ctx.fillStyle = '#F5F0F0';
   ctx.letterSpacing = '2px';
-  fillTextFit(ctx, formatFull(total), PX, landscape ? 384 : 596, landscape ? 46 : 62, textW, '"Bebas Neue", sans-serif');
+  fillTextFit(ctx, formatFull(total), PX, landscape ? 412 : 596, landscape ? 54 : 62, textW, '"Bebas Neue", sans-serif');
   ctx.fillStyle = 'rgba(245,240,240,0.55)';
   ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
   ctx.letterSpacing = '3px';
-  ctx.fillText('TOTAL STREAMS · AS OF ' + todayDs, PX, landscape ? 408 : 624);
+  ctx.fillText('TOTAL STREAMS · AS OF ' + todayDs, PX, landscape ? 436 : 624);
 
   // Date reached
   if (milestoneDate) {
     ctx.fillStyle = 'rgba(245,240,240,0.38)';
     ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
     ctx.letterSpacing = '2px';
-    ctx.fillText('REACHED ON ' + milestoneDate, PX, landscape ? 444 : 678);
+    ctx.fillText('REACHED ON ' + milestoneDate, PX, landscape ? 472 : 678);
   }
 
   // Bottom rule + branding
