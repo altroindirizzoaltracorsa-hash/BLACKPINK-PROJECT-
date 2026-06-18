@@ -101,6 +101,46 @@
   }
   .nav-links a:hover, .nav-links a.active { opacity: 1; color: var(--pink); }
 
+  .playlist-banner {
+    position: fixed;
+    top: 80px; left: 0; right: 0;
+    z-index: 150;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    padding: 0.55rem 1.5rem;
+    background: rgba(255,0,102,0.1);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,0,102,0.25);
+    font-family: var(--mono);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .playlist-banner-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--pink);
+  }
+  .playlist-banner-cta {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--white);
+    opacity: 0.85;
+  }
+  .playlist-banner:hover .playlist-banner-cta { opacity: 1; color: var(--pink); }
+
+  body.has-playlist-banner .hero,
+  body.has-playlist-banner .badge-page,
+  body.has-playlist-banner .lb-page,
+  body.has-playlist-banner .vote-page,
+  body.has-playlist-banner .beta-page {
+    padding-top: 132px;
+  }
+
   .nav-hamburger {
     display: none;
     flex-direction: column;
@@ -598,6 +638,7 @@
   }
   @media (max-width: 600px) {
     .nav-hamburger { display: flex; }
+    .playlist-banner { top: 62px; }
     .nav-links {
       display: none;
       position: fixed;
@@ -928,6 +969,12 @@
   </button>
 </nav>
 
+<a id="playlist-banner" class="playlist-banner" href="#" target="_blank" rel="noopener" style="display:none;">
+  <span class="playlist-banner-label">⬡ Today's Playlist</span>
+  <span id="playlist-banner-day"></span>
+  <span class="playlist-banner-cta">Listen on Spotify →</span>
+</a>
+
 <!-- MILESTONE OVERLAY -->
 <div class="ms-confetti" id="ms-confetti"></div>
 <div id="milestone-overlay">
@@ -1085,10 +1132,6 @@
           <p>Organized, consistent streaming moves the needle — not just for charts, but for algorithm visibility and long-term legacy.</p>
           <br>
           <a href="https://open.spotify.com/search/BLACKPINK" target="_blank" class="btn-primary" onclick=\"window.open('https://open.spotify.com/search/BLACKPINK','_blank','noopener')\">Open Spotify →</a>
-          <div id="todays-playlist-card" style="display:none;margin-top:1.5rem;">
-            <p class="target-label" style="margin-bottom:0.6rem;">Today's Playlist — via @BPSpotifySchool</p>
-            <div id="todays-playlist-embed"></div>
-          </div>
         </div>
         <div class="animate-in">
           <div class="challenge-step"><div class="step-num">01</div><div class="step-content"><h4>Use a Premium Account</h4><p>Premium and free accounts both count equally toward stream numbers. Premium is preferred for stronger algorithm signals, but every stream matters.</p></div></div>
@@ -3238,13 +3281,19 @@ function renderAdminTable(data) {
 }
 
 async function loadTodaysPlaylist() {
+  const banner = document.getElementById('playlist-banner');
   try {
     const r = await fetch('/api/playlist', { cache: 'no-store' });
     const d = await r.json();
-    if (!d?.id) return;
-    document.getElementById('todays-playlist-embed').innerHTML =
-      `<iframe style="border-radius:8px" src="https://open.spotify.com/embed/playlist/${d.id}?utm_source=generator&theme=0" width="100%" height="380" frameborder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
-    document.getElementById('todays-playlist-card').style.display = 'block';
+    if (!d?.id) {
+      banner.style.display = 'none';
+      document.body.classList.remove('has-playlist-banner');
+      return;
+    }
+    banner.href = d.url || `https://open.spotify.com/playlist/${d.id}`;
+    document.getElementById('playlist-banner-day').textContent = d.day ? `[Day ${d.day}]` : '';
+    banner.style.display = 'flex';
+    document.body.classList.add('has-playlist-banner');
   } catch(e) {}
 }
 
