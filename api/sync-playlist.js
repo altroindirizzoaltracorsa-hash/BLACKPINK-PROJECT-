@@ -90,20 +90,35 @@ async function findCandidatePlaylists(accountId, clientCredToken) {
   };
 }
 
-// Search is a public-catalog endpoint and (unlike /v1/users/{id}/playlists)
-// works reliably with Client Credentials, so it can surface a new playlist
-// the moment any of the 3 accounts creates it — no OAuth needed from anyone.
+// Since Spotify's Nov 2024 API changes, Development Mode apps lost Client
+// Credentials access to catalog endpoints like Search (it fails with a
+// misleading "Invalid limit" 400). A real OAuth user token still works, so
+// reuse whichever connected account's token we already have on hand —
+// search itself is catalog-wide, so it can surface a new playlist the
+// moment any of the 3 accounts creates it, regardless of whose token it is.
 const SEARCH_QUERIES = ['1B Day', 'GOALS RELEASE PARTY'];
 
-async function searchCandidatePlaylists(clientCredToken, accountIds) {
+async function getAnyUserToken(accountIds) {
+  for (const id of accountIds) {
+    const token = await getUserAccessToken(id);
+    if (token) return token;
+  }
+  return null;
+}
+
+async function searchCandidatePlaylists(browseToken, accountIds) {
   const accountSet = new Set(accountIds);
   const seenIds = new Set();
   const matches = [];
   const queryResults = [];
 
+  if (!browseToken) {
+    return { matches, mode: 'search', queryResults: [{ error: 'No connected account available to browse with' }] };
+  }
+
   for (const q of SEARCH_QUERIES) {
     const r = await fetch(`https://api.spotify.com/v1/search?${new URLSearchParams({ q, type: 'playlist', limit: '50' })}`, {
-      headers: { 'Authorization': `Bearer ${clientCredToken}` },
+      headers: { 'Authorization': `Bearer ${browseToken}` },
     });
     if (!r.ok) {
       const body = await r.text().catch(() => '');
@@ -215,10 +230,11 @@ export default async function handler(req, res) {
 
   try {
     const token = await getClientCredentialsToken();
-    const [results, searchResult] = await Promise.all([
+    const [results, browseToken] = await Promise.all([
       Promise.all(accountIds.map(id => findCandidatePlaylists(id, token))),
-      searchCandidatePlaylists(token, accountIds),
+      getAnyUserToken(accountIds),
     ]);
+    const searchResult = await searchCandidatePlaylists(browseToken, accountIds);
     const allMatches = results.flatMap(r => r.matches).concat(searchResult.matches);
     const accountDiagnostics = results.map(({ matches, ...rest }) => rest);
     const searchDiagnostics = { matches: searchResult.matches, queryResults: searchResult.queryResults };
