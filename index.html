@@ -244,6 +244,8 @@
     color: var(--white); margin-bottom: 3rem;
   }
 
+  .todays-playlist-inner { max-width: 700px; margin: 0 auto; text-align: center; }
+
   .welcome-inner {
     max-width: 1200px; margin: 0 auto;
     display: grid; grid-template-columns: 1fr 1fr;
@@ -1017,6 +1019,14 @@
         <span class="ticker-item">JUMP ✦</span><span class="ticker-item">SHUT DOWN ✦</span><span class="ticker-item">DDU-DU DDU-DU ✦</span><span class="ticker-item">BLINKS UNITED ✦</span><span class="ticker-item">STREAM NOW ✦</span><span class="ticker-item">BLACKPINK IN YOUR AREA ✦</span>
         <span class="ticker-item">JUMP ✦</span><span class="ticker-item">SHUT DOWN ✦</span><span class="ticker-item">DDU-DU DDU-DU ✦</span><span class="ticker-item">BLINKS UNITED ✦</span><span class="ticker-item">STREAM NOW ✦</span><span class="ticker-item">BLACKPINK IN YOUR AREA ✦</span>
       </div>
+    </div>
+  </section>
+
+  <section class="todays-playlist-section" id="todays-playlist-home" style="display:none;">
+    <div class="todays-playlist-inner">
+      <p class="section-label">// Stream Now</p>
+      <h2 class="section-title animate-in">Today's<br>Playlist</h2>
+      <div id="todays-playlist-embed-home"></div>
     </div>
   </section>
 
@@ -3282,11 +3292,13 @@ function renderAdminTable(data) {
 
 async function loadTodaysPlaylist() {
   const banner = document.getElementById('playlist-banner');
+  const homeSection = document.getElementById('todays-playlist-home');
   try {
     const r = await fetch('/api/playlist', { cache: 'no-store' });
     const d = await r.json();
     if (!d?.id) {
       banner.style.display = 'none';
+      homeSection.style.display = 'none';
       document.body.classList.remove('has-playlist-banner');
       return;
     }
@@ -3294,6 +3306,10 @@ async function loadTodaysPlaylist() {
     document.getElementById('playlist-banner-day').textContent = d.day ? `[Day ${d.day}]` : '';
     banner.style.display = 'flex';
     document.body.classList.add('has-playlist-banner');
+
+    document.getElementById('todays-playlist-embed-home').innerHTML =
+      `<iframe style="border-radius:8px" src="https://open.spotify.com/embed/playlist/${d.id}?utm_source=generator&theme=0" width="100%" height="380" frameborder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
+    homeSection.style.display = 'block';
   } catch(e) {}
 }
 
