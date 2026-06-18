@@ -13,16 +13,19 @@ function getAccountIds() {
     .split(',').map(s => s.trim()).filter(Boolean);
 }
 
-async function getAccessToken() {
+function basicAuthHeader() {
   const clientId = process.env.SPOTIFY_CLIENT_ID;
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
   if (!clientId || !clientSecret) throw new Error('SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET not set');
+  return 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+}
 
+async function getClientCredentialsToken() {
   const r = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64'),
+      'Authorization': basicAuthHeader(),
     },
     body: 'grant_type=client_credentials',
   });
@@ -31,21 +34,59 @@ async function getAccessToken() {
   return data.access_token;
 }
 
-async function findCandidatePlaylists(accountId, token) {
-  const matches = [];
-  const r = await fetch(`https://api.spotify.com/v1/users/${encodeURIComponent(accountId)}/playlists?limit=50`, {
-    headers: { 'Authorization': `Bearer ${token}` },
+// Client Credentials tokens can't reliably list another account's playlists
+// (Spotify intermittently/consistently 403s /v1/users/{id}/playlists for them).
+// If that account has gone through the one-time OAuth consent at
+// /api/spotify-oauth-start, use its stored refresh token + /v1/me/playlists instead.
+async function getUserAccessToken(accountId) {
+  const refreshToken = await redis.get(`spotify_refresh_token:${accountId}`);
+  if (!refreshToken) return null;
+
+  const r = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': basicAuthHeader(),
+    },
+    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken }).toString(),
   });
-  if (!r.ok) {
-    const body = await r.text().catch(() => '');
-    return { matches, account: accountId, status: r.status, error: body.slice(0, 200) };
-  }
   const data = await r.json();
-  for (const pl of data.items || []) {
+  if (!data.access_token) return null;
+  if (data.refresh_token) await redis.set(`spotify_refresh_token:${accountId}`, data.refresh_token);
+  return data.access_token;
+}
+
+function extractMatches(items, accountId) {
+  const matches = [];
+  for (const pl of items || []) {
     const m = pl?.name?.match(DAY_PATTERN);
     if (m) matches.push({ id: pl.id, url: pl.external_urls?.spotify, name: pl.name, day: Number(m[1]), account: accountId });
   }
-  return { matches, account: accountId, status: r.status, total: data.total, namesSeen: (data.items || []).map(pl => pl.name) };
+  return matches;
+}
+
+async function findCandidatePlaylists(accountId, clientCredToken) {
+  const userToken = await getUserAccessToken(accountId);
+  const url = userToken
+    ? 'https://api.spotify.com/v1/me/playlists?limit=50'
+    : `https://api.spotify.com/v1/users/${encodeURIComponent(accountId)}/playlists?limit=50`;
+  const mode = userToken ? 'oauth' : 'client_credentials';
+
+  const r = await fetch(url, {
+    headers: { 'Authorization': `Bearer ${userToken || clientCredToken}` },
+  });
+  if (!r.ok) {
+    const body = await r.text().catch(() => '');
+    return { matches: [], account: accountId, mode, status: r.status, error: body.slice(0, 200) };
+  }
+  const data = await r.json();
+  return {
+    matches: extractMatches(data.items, accountId),
+    account: accountId,
+    mode,
+    status: r.status,
+    namesSeen: (data.items || []).map(pl => pl.name),
+  };
 }
 
 export default async function handler(req, res) {
@@ -78,7 +119,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const token = await getAccessToken();
+    const token = await getClientCredentialsToken();
     const results = await Promise.all(accountIds.map(id => findCandidatePlaylists(id, token)));
     const allMatches = results.flatMap(r => r.matches);
     const accountDiagnostics = results.map(({ matches, ...rest }) => rest);
