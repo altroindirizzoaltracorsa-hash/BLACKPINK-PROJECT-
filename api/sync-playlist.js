@@ -2,6 +2,7 @@ import { Redis } from '@upstash/redis';
 
 const redis = Redis.fromEnv();
 const KEY = 'bp_current_playlist';
+const OAUTH_REDIRECT_URI = 'https://blackpink-project.vercel.app/api/spotify-oauth-callback';
 
 // Playlists are named like "JUMP -> 1B [Day 21]" — the day number only ever
 // increases through a campaign, so across however many candidate accounts
@@ -89,7 +90,61 @@ async function findCandidatePlaylists(accountId, clientCredToken) {
   };
 }
 
+// /api/spotify-oauth-start and /api/spotify-oauth-callback are rewritten to this
+// same function (vercel.json) to stay under the Hobby plan's 12-function cap —
+// they're handled here based on query params rather than separate files.
+function startOAuth(req, res) {
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const account = req.query.account;
+  if (!clientId) return res.status(500).json({ error: 'SPOTIFY_CLIENT_ID not set' });
+  if (!account) return res.status(400).json({ error: 'Missing ?account=<spotify_user_id> query param' });
+
+  const url = 'https://accounts.spotify.com/authorize?' + new URLSearchParams({
+    client_id: clientId,
+    response_type: 'code',
+    redirect_uri: OAUTH_REDIRECT_URI,
+    scope: 'playlist-read-private playlist-read-collaborative',
+    state: account,
+  }).toString();
+
+  res.writeHead(302, { Location: url });
+  res.end();
+}
+
+async function handleOAuthCallback(req, res) {
+  const { code, state, error } = req.query;
+  if (error) return res.status(400).send(`Spotify authorization failed: ${error}`);
+  if (!code || !state) return res.status(400).send('Missing code or state');
+
+  const r = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': basicAuthHeader(),
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: String(code),
+      redirect_uri: OAUTH_REDIRECT_URI,
+    }).toString(),
+  });
+  const data = await r.json();
+  if (!data.refresh_token) {
+    return res.status(500).send(`Failed to get refresh token: ${data.error_description || JSON.stringify(data)}`);
+  }
+
+  await redis.set(`spotify_refresh_token:${state}`, data.refresh_token);
+  res.status(200).send(`Connected ${state}. You can close this tab.`);
+}
+
 export default async function handler(req, res) {
+  if (req.query.code || req.query.error) {
+    return handleOAuthCallback(req, res);
+  }
+  if (req.query.account) {
+    return startOAuth(req, res);
+  }
+
   const secret = process.env.CRON_SECRET;
   const debugKey = process.env.SYNC_PLAYLIST_DEBUG_KEY;
   const auth = req.headers['authorization'];
