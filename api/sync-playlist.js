@@ -66,15 +66,21 @@ function extractMatches(items, accountId) {
   return matches;
 }
 
-async function findCandidatePlaylists(accountId, clientCredToken) {
+// /v1/users/{id}/playlists only ever returns that user's PUBLIC playlists, so
+// any valid token can read it — it doesn't require that user's own consent.
+// Client Credentials tokens blanket-403 here (Spotify Development Mode catalog
+// restriction), but an OAuth user token from a *different* connected account
+// works, since OAuth tokens aren't subject to that restriction.
+async function findCandidatePlaylists(accountId, browseToken, clientCredToken) {
   const userToken = await getUserAccessToken(accountId);
   const url = userToken
     ? 'https://api.spotify.com/v1/me/playlists?limit=50'
     : `https://api.spotify.com/v1/users/${encodeURIComponent(accountId)}/playlists?limit=50`;
-  const mode = userToken ? 'oauth' : 'client_credentials';
+  const mode = userToken ? 'oauth' : (browseToken ? 'oauth-browse' : 'client_credentials');
+  const token = userToken || browseToken || clientCredToken;
 
   const r = await fetch(url, {
-    headers: { 'Authorization': `Bearer ${userToken || clientCredToken}` },
+    headers: { 'Authorization': `Bearer ${token}` },
   });
   if (!r.ok) {
     const body = await r.text().catch(() => '');
@@ -90,59 +96,12 @@ async function findCandidatePlaylists(accountId, clientCredToken) {
   };
 }
 
-// Since Spotify's Nov 2024 API changes, Development Mode apps lost Client
-// Credentials access to catalog endpoints like Search (it fails with a
-// misleading "Invalid limit" 400). A real OAuth user token still works, so
-// reuse whichever connected account's token we already have on hand —
-// search itself is catalog-wide, so it can surface a new playlist the
-// moment any of the 3 accounts creates it, regardless of whose token it is.
-const SEARCH_QUERIES = ['1B Day', 'GOALS RELEASE PARTY'];
-
 async function getAnyUserToken(accountIds) {
   for (const id of accountIds) {
     const token = await getUserAccessToken(id);
     if (token) return token;
   }
   return null;
-}
-
-async function searchCandidatePlaylists(browseToken, accountIds) {
-  const accountSet = new Set(accountIds);
-  const seenIds = new Set();
-  const matches = [];
-  const queryResults = [];
-
-  if (!browseToken) {
-    return { matches, mode: 'search', queryResults: [{ error: 'No connected account available to browse with' }] };
-  }
-
-  for (const q of SEARCH_QUERIES) {
-    const r = await fetch(`https://api.spotify.com/v1/search?${new URLSearchParams({ q, type: 'playlist', limit: '50' })}`, {
-      headers: { 'Authorization': `Bearer ${browseToken}` },
-    });
-    if (!r.ok) {
-      const body = await r.text().catch(() => '');
-      queryResults.push({ query: q, status: r.status, error: body.slice(0, 200) });
-      continue;
-    }
-    const data = await r.json();
-    const items = data.playlists?.items || [];
-    queryResults.push({
-      query: q,
-      status: r.status,
-      found: items.map(pl => ({ name: pl?.name, owner: pl?.owner?.id })),
-    });
-    for (const pl of items) {
-      if (!pl || seenIds.has(pl.id)) continue;
-      if (!accountSet.has(pl.owner?.id)) continue;
-      const m = pl.name?.match(DAY_PATTERN);
-      if (!m) continue;
-      seenIds.add(pl.id);
-      matches.push({ id: pl.id, url: pl.external_urls?.spotify, name: pl.name, day: Number(m[1]), account: pl.owner.id });
-    }
-  }
-
-  return { matches, mode: 'search', queryResults };
 }
 
 // /api/spotify-oauth-start and /api/spotify-oauth-callback are rewritten to this
@@ -229,18 +188,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const token = await getClientCredentialsToken();
-    const [results, browseToken] = await Promise.all([
-      Promise.all(accountIds.map(id => findCandidatePlaylists(id, token))),
+    const [clientCredToken, browseToken] = await Promise.all([
+      getClientCredentialsToken(),
       getAnyUserToken(accountIds),
     ]);
-    const searchResult = await searchCandidatePlaylists(browseToken, accountIds);
-    const allMatches = results.flatMap(r => r.matches).concat(searchResult.matches);
+    const results = await Promise.all(accountIds.map(id => findCandidatePlaylists(id, browseToken, clientCredToken)));
+    const allMatches = results.flatMap(r => r.matches);
     const accountDiagnostics = results.map(({ matches, ...rest }) => rest);
-    const searchDiagnostics = { matches: searchResult.matches, queryResults: searchResult.queryResults };
 
     if (!allMatches.length) {
-      return res.status(200).json({ ok: false, error: 'No matching playlist found on any configured account', checked: accountIds, accountDiagnostics, searchDiagnostics });
+      return res.status(200).json({ ok: false, error: 'No matching playlist found on any configured account', checked: accountIds, accountDiagnostics });
     }
 
     allMatches.sort((a, b) => b.day - a.day);
@@ -248,7 +205,7 @@ export default async function handler(req, res) {
 
     await redis.set(KEY, { id: best.id, url: best.url, updatedAt: Date.now(), day: best.day, account: best.account });
 
-    res.status(200).json({ ok: true, chosen: best, candidates: allMatches, accountDiagnostics, searchDiagnostics });
+    res.status(200).json({ ok: true, chosen: best, candidates: allMatches, accountDiagnostics });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
