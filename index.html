@@ -1845,7 +1845,10 @@ async function fetchSpotifyStreams() {
   }
 }
 window.addEventListener('DOMContentLoaded', () => {
-  // Seed known milestone dates that were reached before date-tracking was added
+  // Pin known milestone dates so they can never drift to "today" — e.g. on a
+  // fresh browser/device with no localStorage entry yet, checkMilestone()
+  // below would otherwise treat that as a brand-new milestone and stamp it
+  // with the current date instead of when it was actually reached.
   (function seedKnownMilestoneDates() {
     const known = [
       { key: 'bu_ms_jump_630000000',     date: '14/05', year: 2026 },
@@ -1854,10 +1857,7 @@ window.addEventListener('DOMContentLoaded', () => {
     ];
     for (const { key, date, year } of known) {
       try {
-        const raw = localStorage.getItem(key);
-        if (!raw) continue;
-        const data = JSON.parse(raw);
-        if (!data.date) localStorage.setItem(key, JSON.stringify({ date, year }));
+        localStorage.setItem(key, JSON.stringify({ date, year }));
       } catch {}
     }
   })();
