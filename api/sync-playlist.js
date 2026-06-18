@@ -47,7 +47,13 @@ async function findCandidatePlaylists(accountId, token) {
 
 export default async function handler(req, res) {
   const secret = process.env.CRON_SECRET;
-  if (secret && req.headers['authorization'] !== `Bearer ${secret}`) {
+  const debugKey = process.env.SYNC_PLAYLIST_DEBUG_KEY;
+  const auth = req.headers['authorization'];
+  // Accepts CRON_SECRET (used by the scheduled cron) or a separate debug key
+  // (for manually triggering a test run) so testing never requires touching
+  // CRON_SECRET, which is shared with the cron-scrobbles GitHub Action.
+  const authorized = !secret || auth === `Bearer ${secret}` || (debugKey && auth === `Bearer ${debugKey}`);
+  if (!authorized) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
