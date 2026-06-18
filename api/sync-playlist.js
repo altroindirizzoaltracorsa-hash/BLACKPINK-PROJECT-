@@ -49,6 +49,18 @@ export default async function handler(req, res) {
   const secret = process.env.CRON_SECRET;
   const debugKey = process.env.SYNC_PLAYLIST_DEBUG_KEY;
   const auth = req.headers['authorization'];
+
+  // Temporary: visit ?diag=1 (no auth needed) to see why a debug key isn't matching,
+  // without exposing the actual secret values. Remove once SYNC_PLAYLIST_DEBUG_KEY works.
+  if (req.query.diag) {
+    return res.status(200).json({
+      hasDebugKeyEnv: !!debugKey,
+      debugKeyLength: debugKey ? debugKey.length : 0,
+      receivedAuthHeader: auth ? `len ${auth.length}: "${auth}"` : null,
+      expectedIfMatched: debugKey ? `Bearer ${debugKey}` : null,
+    });
+  }
+
   // Accepts CRON_SECRET (used by the scheduled cron) or a separate debug key
   // (for manually triggering a test run) so testing never requires touching
   // CRON_SECRET, which is shared with the cron-scrobbles GitHub Action.
