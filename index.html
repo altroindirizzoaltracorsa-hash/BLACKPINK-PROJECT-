@@ -1077,6 +1077,10 @@
           <p>Organized, consistent streaming moves the needle — not just for charts, but for algorithm visibility and long-term legacy.</p>
           <br>
           <a href="https://open.spotify.com/search/BLACKPINK" target="_blank" class="btn-primary" onclick=\"window.open('https://open.spotify.com/search/BLACKPINK','_blank','noopener')\">Open Spotify →</a>
+          <div id="todays-playlist-card" style="display:none;margin-top:1.5rem;">
+            <p class="target-label" style="margin-bottom:0.6rem;">Today's Playlist — via @BPSpotifySchool</p>
+            <div id="todays-playlist-embed"></div>
+          </div>
         </div>
         <div class="animate-in">
           <div class="challenge-step"><div class="step-num">01</div><div class="step-content"><h4>Use a Premium Account</h4><p>Premium and free accounts both count equally toward stream numbers. Premium is preferred for stronger algorithm signals, but every stream matters.</p></div></div>
@@ -1394,6 +1398,13 @@
         <div class="admin-loading">Loading…</div>
       </div>
       <div id="admin-song-note" class="admin-song-note"></div>
+
+      <div style="margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1.2rem;">
+        <h2 style="font-size:1rem;margin-bottom:0.8rem;">⬡ TODAY'S PLAYLIST</h2>
+        <input id="admin-playlist-input" class="beta-input" type="text" placeholder="Paste the Spotify playlist link…">
+        <button class="beta-btn" onclick="savePlaylistLink()">Save Playlist</button>
+        <div id="admin-playlist-msg" class="admin-err"></div>
+      </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
       <button class="card-cl-btn" onclick="closeAdminPanel()">Close</button>
@@ -1797,6 +1808,7 @@ window.addEventListener('DOMContentLoaded', () => {
   })();
 
   fetchSpotifyStreams();
+  loadTodaysPlaylist();
   const saved = getSavedUsername();
   if (saved) {
     if (document.getElementById('page-badges')?.classList.contains('active')) {
@@ -3193,6 +3205,40 @@ function renderAdminTable(data) {
         }).join('')}
       </tbody>
     </table>`;
+}
+
+async function loadTodaysPlaylist() {
+  try {
+    const r = await fetch('/api/playlist', { cache: 'no-store' });
+    const d = await r.json();
+    if (!d?.id) return;
+    document.getElementById('todays-playlist-embed').innerHTML =
+      `<iframe style="border-radius:8px" src="https://open.spotify.com/embed/playlist/${d.id}?utm_source=generator&theme=0" width="100%" height="380" frameborder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
+    document.getElementById('todays-playlist-card').style.display = 'block';
+  } catch(e) {}
+}
+
+async function savePlaylistLink() {
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  const url = document.getElementById('admin-playlist-input').value.trim();
+  const msgEl = document.getElementById('admin-playlist-msg');
+  if (!url) { msgEl.textContent = 'Paste a playlist link first.'; return; }
+  msgEl.textContent = 'Saving…';
+  try {
+    const r = await fetch(`/api/playlist?key=${encodeURIComponent(key)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    if (r.status === 401) { msgEl.textContent = 'Wrong key.'; return; }
+    const d = await r.json();
+    if (!r.ok) { msgEl.textContent = d.error || `Server error (${r.status}).`; return; }
+    msgEl.textContent = 'Saved ✓';
+    document.getElementById('admin-playlist-input').value = '';
+    loadTodaysPlaylist();
+  } catch(e) {
+    msgEl.textContent = 'Request failed — check your connection.';
+  }
 }
 
 // Auto-refresh leaderboard every 60 minutes when on the page
