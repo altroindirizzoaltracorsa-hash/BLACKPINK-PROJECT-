@@ -738,6 +738,15 @@
   .vote-chip { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.05em; padding: 0.4rem 0.8rem; border: 1px solid var(--border); color: var(--muted); }
   .vote-chip.us { color: var(--pink); border-color: var(--pink); background: var(--pink-muted); }
 
+  .vote-rules {
+    background: rgba(255,0,102,0.04); border: 1px solid var(--border);
+    padding: 0.9rem 1.1rem; margin-bottom: 1.4rem;
+  }
+  .vote-rules-label { font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.5rem; }
+  .vote-rules ul { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+  .vote-rules li { font-size: 0.7rem; color: rgba(245,240,240,0.65); line-height: 1.4; padding-left: 1rem; position: relative; }
+  .vote-rules li::before { content: '·'; position: absolute; left: 0; color: var(--pink); }
+
   .vote-btn {
     display: inline-flex; align-items: center; gap: 0.5rem;
     background: var(--pink); color: #000; font-family: var(--display);
@@ -753,7 +762,6 @@
     padding: 0.65rem 0.9rem; cursor: pointer; transition: border-color 0.2s, color 0.2s;
   }
   .vote-share-btn:hover { border-color: var(--pink); color: var(--pink); }
-  .vote-results-note { font-size: 0.6rem; letter-spacing: 0.08em; color: rgba(245,240,240,0.3); margin-top: 0.7rem; }
   .vote-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
 
 /* ── BETA PAGE ── */
@@ -1923,8 +1931,12 @@ const VOTE_CAMPAIGNS = [
     title: 'Billboard Korea Awards',
     url: 'https://billboard.co.kr/vote/',
     deadline: '2026-06-23T04:00:00Z', // 23 Jun 2026, 1:00 PM KST
-    resultsNote: 'Final results announced 30 June 2026',
     resetOffset: 9, // daily vote reset at midnight KST
+    rules: [
+      'Vote once per category, every day',
+      'Daily votes reset at midnight KST',
+      'Final results announced 30 June 2026',
+    ],
     categories: [
       { name: 'Female Group', nominees: [{ name: 'BLACKPINK', us: true }] },
       { name: 'Solo Female',  nominees: [
@@ -1941,8 +1953,12 @@ const VOTE_CAMPAIGNS = [
     title: 'Seoul International Drama Awards',
     url: 'https://promo-web.idolchamp.com/app_proxy.html?deeplink=https%3A%2F%2Fapp.idolchamp.com%2Fopen%2Fvote%2F01KTT3R0ZYTFJGZ02H4RB65AYF',
     deadline: '2026-07-14T14:59:00Z', // 14 Jul 2026, 23:59 KST
-    resultsNote: 'Up to 100 votes per day via the IDOLCHAMP app',
     resetOffset: 9, // daily vote reset at midnight KST
+    rules: [
+      'Vote via the IDOLCHAMP app',
+      "Up to 100 votes per day — they don't roll over",
+      'Daily votes reset at midnight KST',
+    ],
     categories: [
       { name: 'Korea Popularity Award (Female)', nominees: [{ name: 'JISOO', us: true }] },
     ],
@@ -1954,7 +1970,11 @@ const VOTE_CAMPAIGNS = [
     url: 'https://c6.y.qq.com/base/fcgi-bin/u?__=yzx8Gag67qQZ',
     deadline: '2026-06-23T04:00:00Z', // 23 Jun 2026, 12:00 CST (official activity rules)
     restriction: 'China only — requires a Chinese phone number',
-    resultsNote: 'Recommend value = your points + activity bonus points (no fixed daily vote cap)',
+    rules: [
+      'Requires a Chinese phone number to register an account',
+      'Vote weight = your points + activity bonus points',
+      'No fixed daily cap — vote as often as you can',
+    ],
     categories: [
       { name: 'Girl Group', nominees: [{ name: 'BLACKPINK', us: true }] },
       { name: 'Female Solo', nominees: [
@@ -2045,11 +2065,14 @@ function renderVoteCampaigns() {
         </div>
         ${c.resetOffset && !ended ? `<div class="vote-reset">🔄 Daily votes reset in <span class="vote-reset-time" data-reset-offset="${c.resetOffset}"></span></div>` : ''}
         <div class="vote-categories">${categoriesHtml}</div>
+        ${c.rules?.length ? `<div class="vote-rules">
+          <div class="vote-rules-label">📋 Rules</div>
+          <ul>${c.rules.map(r => `<li>${r}</li>`).join('')}</ul>
+        </div>` : ''}
         <div class="vote-card-actions">
           <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
           <button class="vote-share-btn" onclick="openVoteCard('${c.id}')">⬡ Share</button>
         </div>
-        ${c.resultsNote ? `<div class="vote-results-note">${c.resultsNote}</div>` : ''}
       </div>`;
   }).join('');
   tickVoteCountdowns();
@@ -3732,11 +3755,15 @@ async function shareCard() {
   if (!cardCanvas) return;
   const title = document.getElementById('card-box-label').textContent;
   let link = 'blackpink-project.vercel.app';
+  let rulesText = '';
   if (_cardType === 'vote') {
     const campaign = VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId);
-    if (campaign) link = campaign.url;
+    if (campaign) {
+      link = campaign.url;
+      if (campaign.rules?.length) rulesText = '\nRules:\n' + campaign.rules.map(r => `• ${r}`).join('\n') + '\n';
+    }
   }
-  const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + link;
+  const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + link;
   // Mobile: Web Share API with image file
   if (typeof navigator.share === 'function') {
     cardCanvas.toBlob(async blob => {
