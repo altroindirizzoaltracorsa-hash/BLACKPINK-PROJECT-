@@ -3729,7 +3729,7 @@ function renderLbCard(logo) {
   const entries = allEntries.slice(_lbCardRangeStart, _lbCardRangeStart + LB_CARD_PAGE_SIZE);
 
   const rowH = 80;
-  const startY = 190;
+  const startY = 220;
   const footerH = 140;
   canvas.height = Math.max(600, startY + entries.length * rowH + footerH);
   const W = canvas.width, H = canvas.height;
@@ -3761,9 +3761,16 @@ function renderLbCard(logo) {
   ctx.letterSpacing = '4px';
   ctx.fillText(`${periodLabel} · ${songLabel}${rangeLabel}`, W / 2, 142);
 
+  // Community total
+  const communityTotal = allEntries.reduce((sum, e) => sum + e.score, 0);
+  ctx.fillStyle = '#FF0066';
+  ctx.font = '600 20px "DM Mono", monospace';
+  ctx.letterSpacing = '3px';
+  ctx.fillText(`${allEntries.length} BLINKS · ${communityTotal.toLocaleString()} STREAMS COMBINED`, W / 2, 174);
+
   // Divider
   ctx.fillStyle = 'rgba(255,0,102,0.25)';
-  ctx.fillRect(60, 162, W - 120, 1);
+  ctx.fillRect(60, 194, W - 120, 1);
 
   const goldColors = ['#FFD700','#C0C0C0','#CD7F32'];
   const PL = 70, PR = W - 70;
