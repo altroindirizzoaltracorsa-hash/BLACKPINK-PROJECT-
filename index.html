@@ -769,8 +769,12 @@
   .vote-card { background: var(--card); border: 1px solid var(--border); padding: 1.8rem 2rem; position: relative; overflow: hidden; }
   .vote-card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--pink); }
   .vote-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
-  .vote-platform { font-size: 0.65rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; }
-  .vote-title { font-family: var(--display); font-size: 1.8rem; letter-spacing: 0.05em; color: var(--white); }
+  .vote-platform {
+    font-size: 0.5rem; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--pink); margin-bottom: 0.5rem; display: inline-block;
+    background: rgba(255,0,102,0.1); padding: 0.2rem 0.6rem;
+  }
+  .vote-title { font-family: var(--display); font-size: 2.2rem; letter-spacing: 0.06em; line-height: 1.1; color: var(--white); }
   .vote-restriction {
     display: inline-block; margin-top: 0.6rem;
     font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
