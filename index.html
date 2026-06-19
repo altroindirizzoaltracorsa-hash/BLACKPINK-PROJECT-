@@ -1503,7 +1503,7 @@
         <span class="card-range-label" id="lb-card-range-label">1–20</span>
         <button class="card-fmt" onclick="shiftLbCardRange(1)">›</button>
       </div>
-      <div class="card-fmt-toggle">
+      <div class="card-fmt-toggle" id="card-fmt-toggle">
         <button class="card-fmt active" id="fmt-landscape" onclick="setCardFormat('landscape',this)">▬ Landscape</button>
         <button class="card-fmt" id="fmt-square" onclick="setCardFormat('square',this)">□ Square</button>
       </div>
@@ -3392,6 +3392,7 @@ let cardCanvas = null; // current canvas for download
 
 function closeCard() {
   document.getElementById('card-overlay').style.display = 'none';
+  document.getElementById('card-fmt-toggle').style.display = 'flex';
 }
 
 function downloadCard() {
@@ -3994,7 +3995,9 @@ async function openPersonalCard() {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('card-fmt-toggle').style.display = 'none';
   _cardType = 'personal';
+  _cardFormat = 'square';
 
   const { info, todayCounts, totalPlays, artistPlays } = currentUser;
   await document.fonts.ready;
@@ -4002,6 +4005,7 @@ async function openPersonalCard() {
   const canvas = document.getElementById('card-canvas');
   const ctx    = canvas.getContext('2d');
   const W = 1080, H = 1080;
+  canvas.width = W; canvas.height = H;
 
   // Background + radial glow
   ctx.fillStyle = '#080808';
