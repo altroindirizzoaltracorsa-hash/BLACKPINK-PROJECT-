@@ -207,7 +207,7 @@
   }
   .hero-title {
     font-family: var(--display);
-    font-size: clamp(5rem, 16vw, 14rem);
+    font-size: clamp(5rem, 11vw, 8rem);
     line-height: 0.88; letter-spacing: 0.04em;
     color: var(--white);
     animation: fadeUp 0.9s ease 0.1s both;
@@ -1661,7 +1661,7 @@ function renderHistory(id, history) {
   }).join('');
 
   const datesHtml = history.map(h =>
-    `<div style="flex:1;font-size:0.48rem;letter-spacing:0.02em;color:rgba(245,240,240,0.25);text-align:center;white-space:nowrap;overflow:hidden;">${h.date}</div>`
+    `<div style="flex:1;font-size:0.65rem;letter-spacing:0.01em;color:rgba(245,240,240,0.45);text-align:center;white-space:nowrap;overflow:hidden;">${h.date}</div>`
   ).join('');
 
   const latest = history[history.length - 1];
@@ -1671,7 +1671,7 @@ function renderHistory(id, history) {
     <p class="history-title">// Daily Stream History</p>
     <div class="chart-bars">${barsHtml}</div>
     ${showDates ? `<div style="display:flex;gap:4px;margin-bottom:0.5rem;">${datesHtml}</div>` : '<div style="margin-bottom:0.5rem;"></div>'}
-    <p style="font-size:0.4rem;letter-spacing:0.12em;color:rgba(245,240,240,0.2);">
+    <p style="font-size:0.6rem;letter-spacing:0.08em;color:rgba(245,240,240,0.4);">
       Latest: ${formatFull(latest.streams)} streams on ${latest.date} · Pink = most recent · Hover for details
     </p>`;
   panel.style.display = 'block';
@@ -1914,6 +1914,16 @@ function closeMobileNav() {
 
 const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback' };
 
+// Mirrors the per-route <title> the Vercel edge middleware sets on first
+// load, so client-side navigation keeps the tab title in sync too.
+const PAGE_TITLES = {
+  home: 'BLINKS UNITED | BLACKPINK Streaming Hub',
+  badges: 'Badges | BLINKS UNITED',
+  leaderboard: 'Leaderboard | BLINKS UNITED',
+  vote: 'Vote Now | BLINKS UNITED',
+  feedback: 'Feedback | BLINKS UNITED',
+};
+
 function pathToPage(pathname) {
   const clean = pathname.replace(/\/+$/, '') || '/';
   const entry = Object.entries(PAGE_PATHS).find(([, p]) => p === clean);
@@ -1925,6 +1935,7 @@ function showPage(page, { replace = false } = {}) {
   document.getElementById('page-' + page).classList.add('active');
   document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
   document.getElementById('nav-' + page)?.classList.add('active');
+  document.title = PAGE_TITLES[page] || PAGE_TITLES.home;
   window.scrollTo(0, 0);
   if (page === 'home') initAnimations();
   if (page === 'badges') tryAutoLoad();
