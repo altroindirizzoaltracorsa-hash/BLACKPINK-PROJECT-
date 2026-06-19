@@ -1844,6 +1844,7 @@ async function fetchSpotifyStreams() {
           const last = merged[merged.length - 1];
           const prev = merged[merged.length - 2];
           const diff = last.streams - prev.streams;
+          window.streamData[t.id].dailyChange = diff;
           const el = document.getElementById(`increase-${t.id}`);
           if (el) {
             const diffStr = diff > 0 ? ` (+${formatFull(diff)})` : '';
@@ -3872,14 +3873,27 @@ async function shareCard() {
   const title = document.getElementById('card-box-label').textContent;
   let link = 'blackpink-project.vercel.app';
   let rulesText = '';
+  let statsText = '';
   if (_cardType === 'vote') {
     const campaign = VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId);
     if (campaign) {
       link = campaign.url;
       if (campaign.rules?.length) rulesText = '\nRules:\n' + campaign.rules.map(r => `• ${r}`).join('\n') + '\n';
     }
+  } else if (_cardType === 'song') {
+    const d = window.streamData?.[_cardTrackId];
+    if (d) {
+      const lines = [];
+      if (d.daily != null) {
+        const change = d.dailyChange;
+        const changeStr = (change != null && change !== 0) ? ` (${change > 0 ? '+' : ''}${formatFull(change)} vs prev day)` : '';
+        lines.push(`📊 Daily: ${formatFull(d.daily)} streams${changeStr}`);
+      }
+      if (d.total != null) lines.push(`🔥 Total: ${formatFull(d.total)} streams`);
+      if (lines.length) statsText = '\n' + lines.join('\n') + '\n';
+    }
   }
-  const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + link;
+  const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
   // Mobile: Web Share API with image file
   if (typeof navigator.share === 'function') {
     cardCanvas.toBlob(async blob => {
