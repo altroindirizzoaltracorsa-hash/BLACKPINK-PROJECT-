@@ -1017,7 +1017,7 @@
         <a href="/badges" class="btn-ghost" onclick="showPage('badges'); return false;">Badge Challenge</a>
         <a href="/voting" class="btn-primary" onclick="showPage('vote'); return false;">Vote</a>
       </div>
-      <div id="todays-playlist-home" style="display:none;margin-top:1.5rem;max-width:360px;">
+      <div id="todays-playlist-home" style="display:none;margin-top:1.5rem;max-width:420px;">
         <p class="stat-lbl" style="margin-bottom:0.5rem;">⬡ Today's Playlist</p>
         <div id="todays-playlist-embed-home"></div>
       </div>
@@ -3308,7 +3308,7 @@ async function loadTodaysPlaylist() {
     document.body.classList.add('has-playlist-banner');
 
     document.getElementById('todays-playlist-embed-home').innerHTML =
-      `<iframe style="border-radius:8px" src="https://open.spotify.com/embed/playlist/${d.id}?utm_source=generator&theme=0" width="100%" height="152" frameborder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
+      `<iframe style="border-radius:8px" src="https://open.spotify.com/embed/playlist/${d.id}?utm_source=generator&theme=0" width="100%" height="232" frameborder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
     homeSection.style.display = 'block';
   } catch(e) {}
 }
