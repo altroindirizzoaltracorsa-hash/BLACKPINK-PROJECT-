@@ -4432,7 +4432,7 @@ function drawVoteCard(canvas, campaign, logo, art) {
     ctx.fillText(cat.name.toUpperCase(), PX, y);
     ctx.fillStyle = '#FF0066';
     ctx.letterSpacing = '2px';
-    fillTextFit(ctx, cat.nominees.map(n => n.name).join('  ·  '), PX, y + (landscape ? 28 : 47), landscape ? 32 : 52, textW, '"Bebas Neue", sans-serif');
+    fillTextFit(ctx, cat.nominees.map(n => n.name).join('  ·  '), PX, y + (landscape ? 40 : 64), landscape ? 44 : 68, textW, '"Bebas Neue", sans-serif');
     y += rowH;
   }
 
