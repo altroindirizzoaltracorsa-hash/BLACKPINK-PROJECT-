@@ -3489,6 +3489,7 @@ function fillTextFit(ctx, text, x, y, maxSize, maxWidth, fontFamily) {
   if (w > maxWidth) size = Math.floor(size * maxWidth / w);
   ctx.font = `${size}px ${fontFamily}`;
   ctx.fillText(text, x, y);
+  return size;
 }
 
 function renderSongCard(trackId, art, logo) {
@@ -4379,6 +4380,7 @@ function drawVoteCard(canvas, campaign, logo, art) {
   drawNoise(ctx, W, H, 0.03);
 
   const PX = landscape ? (art ? Math.round(W * 0.49) : 70) : (art ? Math.round(W * 0.42) : 80);
+  const textW = W - PX - (landscape ? 50 : 60);
   ctx.textAlign = 'left';
 
   // "FAN VOTE" header
@@ -4387,27 +4389,41 @@ function drawVoteCard(canvas, campaign, logo, art) {
   ctx.letterSpacing = '6px';
   ctx.fillText('FAN VOTE', PX, landscape ? 80 : 140);
 
-  // Award/campaign title
+  // Award/campaign title — same big, bold treatment as the song cards' track titles.
+  // Campaign titles are full phrases (vs. short song titles), so wrap to a second line
+  // like long song titles do instead of shrinking the font down to stay on one line.
   ctx.fillStyle = '#F5F0F0';
-  const titleSize = landscape
-    ? (campaign.title.length > 28 ? 34 : campaign.title.length > 20 ? 42 : campaign.title.length > 14 ? 52 : 62)
-    : (campaign.title.length > 28 ? 46 : campaign.title.length > 20 ? 58 : campaign.title.length > 14 ? 72 : 88);
-  ctx.font = `${titleSize}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '4px';
-  ctx.fillText(campaign.title.toUpperCase(), PX, landscape ? 148 : 258);
+  const titleMax   = landscape ? 72 : 92;
+  const titleY     = landscape ? 168 : 280;
+  const titleLineH = landscape ? 62 : 74;
+  const titleUp    = campaign.title.toUpperCase();
+  ctx.font = `${titleMax}px "Bebas Neue", sans-serif`;
+  let titleBottom = titleY;
+  if (titleUp.includes(' ') && ctx.measureText(titleUp).width > textW) {
+    const words = titleUp.split(' ');
+    const mid = Math.ceil(words.length / 2);
+    fillTextFit(ctx, words.slice(0, mid).join(' '), PX, titleY, titleMax, textW, '"Bebas Neue", sans-serif');
+    fillTextFit(ctx, words.slice(mid).join(' '), PX, titleY + titleLineH, titleMax, textW, '"Bebas Neue", sans-serif');
+    titleBottom = titleY + titleLineH;
+  } else {
+    fillTextFit(ctx, titleUp, PX, titleY, titleMax, textW, '"Bebas Neue", sans-serif');
+  }
 
   // Platform subtitle
+  const platformY = titleBottom + (landscape ? 26 : 36);
   ctx.fillStyle = 'rgba(245,240,240,0.4)';
   ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
   ctx.letterSpacing = '3px';
-  ctx.fillText(campaign.platform.toUpperCase(), PX, landscape ? 168 : 290);
+  ctx.fillText(campaign.platform.toUpperCase(), PX, platformY);
 
   // Pink rule
+  const ruleY = platformY + (landscape ? 20 : 30);
   ctx.fillStyle = '#FF0066';
-  ctx.fillRect(PX, landscape ? 188 : 320, 70, landscape ? 2 : 3);
+  ctx.fillRect(PX, ruleY, 70, landscape ? 2 : 3);
 
   // Categories + nominees
-  let y = landscape ? 235 : 400;
+  let y = ruleY + (landscape ? 47 : 60);
   const rowH = landscape ? 64 : 140;
   for (const cat of campaign.categories) {
     ctx.fillStyle = 'rgba(255,0,102,0.65)';
@@ -4415,9 +4431,8 @@ function drawVoteCard(canvas, campaign, logo, art) {
     ctx.letterSpacing = '3px';
     ctx.fillText(cat.name.toUpperCase(), PX, y);
     ctx.fillStyle = '#FF0066';
-    ctx.font = `${landscape ? 28 : 48}px "Bebas Neue", sans-serif`;
     ctx.letterSpacing = '2px';
-    ctx.fillText(cat.nominees.map(n => n.name).join('  ·  '), PX, y + (landscape ? 26 : 45));
+    fillTextFit(ctx, cat.nominees.map(n => n.name).join('  ·  '), PX, y + (landscape ? 28 : 47), landscape ? 32 : 52, textW, '"Bebas Neue", sans-serif');
     y += rowH;
   }
 
@@ -4429,17 +4444,16 @@ function drawVoteCard(canvas, campaign, logo, art) {
   ctx.letterSpacing = '2px';
   ctx.fillText('VOTE AT ' + urlShort, PX, y + (landscape ? 16 : 30));
 
-  // Deadline countdown
+  // Deadline countdown — bumped up to match the weight of the song cards' stat numbers
   const { big, sub } = formatVoteDeadline(campaign);
-  const dlY = y + (landscape ? 72 : 140);
+  const dlY = y + (landscape ? 78 : 110);
   ctx.fillStyle = '#F5F0F0';
-  ctx.font = `${landscape ? 40 : 64}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '2px';
-  ctx.fillText(big, PX, dlY);
+  fillTextFit(ctx, big, PX, dlY, landscape ? 56 : 84, textW, '"Bebas Neue", sans-serif');
   ctx.fillStyle = 'rgba(245,240,240,0.5)';
   ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText(sub, PX, dlY + (landscape ? 22 : 32));
+  ctx.fillText(sub, PX, dlY + (landscape ? 26 : 30));
 
   // Bottom rule + BU branding
   const LR = landscape ? 22 : 28;
