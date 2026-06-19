@@ -743,6 +743,12 @@
   }
   .lb-refresh-btn:hover { border-color: var(--pink); color: var(--pink); }
   .lb-last-updated { font-size: 0.45rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.25); }
+  .lb-community-total {
+    font-family: var(--mono); text-align: center;
+    font-size: 0.8rem; letter-spacing: 0.04em;
+    color: var(--white); margin: 1.5rem 0 0;
+  }
+  .lb-community-total strong { color: var(--pink); font-size: 1rem; }
 
   .stream-stale-note { margin-top: 0.4rem; font-size: 0.6rem; letter-spacing: 0.08em; color: #ffb020; }
 
@@ -1358,6 +1364,9 @@
         <button class="lb-subtab" onclick="switchLbSong('shutdown', this)">SHUT DOWN</button>
         <button class="lb-subtab" onclick="switchLbSong('ddududu', this)">DDU-DU DDU-DU</button>
       </div>
+
+      <!-- Community total -->
+      <p class="lb-community-total" id="lb-community-total"></p>
 
       <!-- Header row -->
       <div style="display:flex;align-items:center;justify-content:space-between;padding:0.8rem 0 0.4rem;flex-wrap:wrap;gap:0.5rem;">
@@ -3092,8 +3101,10 @@ function getScoreKey() {
 function renderLeaderboard() {
   const wrap = document.getElementById('lb-table-wrap');
   const updEl = document.getElementById('lb-last-updated');
+  const totalEl = document.getElementById('lb-community-total');
   if (!lbData) {
     wrap.innerHTML = '<div class="lb-loading">Loading…</div>';
+    if (totalEl) totalEl.textContent = '';
     return;
   }
 
@@ -3120,9 +3131,15 @@ function renderLeaderboard() {
 
   if (entries.length === 0) {
     wrap.innerHTML = '<div class="lb-empty">No scores yet — log into My Badges to join the leaderboard! 💗</div>';
+    if (totalEl) totalEl.textContent = '';
   } else {
     const periodLabel = lbPeriod === 'daily' ? 'streams today' : lbPeriod === 'weekly' ? 'streams this week' : 'total streams';
     const songLabel   = lbSong === 'all' ? 'All Campaign Tracks' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : 'DDU-DU DDU-DU';
+
+    if (totalEl) {
+      const communityTotal = entries.reduce((sum, e) => sum + e.score, 0);
+      totalEl.innerHTML = `👥 ${entries.length} Blinks · <strong>${communityTotal.toLocaleString()}</strong> ${songLabel} ${periodLabel} combined`;
+    }
     wrap.innerHTML = `
       <table class="lb-table">
         <thead><tr>
