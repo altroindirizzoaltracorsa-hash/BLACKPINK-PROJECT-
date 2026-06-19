@@ -1,4 +1,4 @@
-const CACHE = 'bu-v1';
+const CACHE = 'bu-v2';
 const PRECACHE = ['/', '/index.html'];
 
 self.addEventListener('install', e => {
@@ -13,20 +13,14 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Network-first for API calls, cache-first for static assets
+// Network-first everywhere, so deploys show up on next load instead of being
+// masked by a stale cached copy. Cache is only a fallback for offline use.
 self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
-  if (url.pathname.startsWith('/api/')) {
-    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-    return;
-  }
+  if (e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      const network = fetch(e.request).then(res => {
-        if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
-        return res;
-      });
-      return cached || network;
-    })
+    fetch(e.request).then(res => {
+      if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+      return res;
+    }).catch(() => caches.match(e.request))
   );
 });
