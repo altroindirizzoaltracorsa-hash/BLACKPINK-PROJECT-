@@ -3413,7 +3413,7 @@ async function unlockPlaylistPanel(key) {
     errEl.textContent = '';
     document.getElementById('playlist-auth').style.display = 'none';
     document.getElementById('playlist-content').style.display = 'block';
-    showPendingStatus(d.pending);
+    showQueueStatus(d.queue);
     return true;
   } catch(e) {
     errEl.textContent = 'Request failed — check your connection.';
@@ -3421,11 +3421,13 @@ async function unlockPlaylistPanel(key) {
   }
 }
 
-function showPendingStatus(pending) {
+function showQueueStatus(queue) {
   const el = document.getElementById('admin-playlist-pending');
-  if (pending) {
-    const when = new Date(pending.publishAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
-    el.textContent = `⏳ Scheduled: ${pending.url} — goes live ${when} (next 2am Italy)`;
+  if (queue && queue.length) {
+    el.innerHTML = queue.map((q, i) => {
+      const when = new Date(q.etaPublishAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+      return `⏳ #${i + 1} queued: ${q.url} — goes live ~${when} (Italy time)`;
+    }).join('<br>');
     el.style.display = 'block';
   } else {
     el.style.display = 'none';
@@ -3448,10 +3450,10 @@ async function savePlaylistLink() {
     if (r.status === 401) { msgEl.textContent = 'Wrong key.'; return; }
     const d = await r.json();
     if (!r.ok) { msgEl.textContent = d.error || `Server error (${r.status}).`; return; }
-    msgEl.textContent = d.live ? 'Saved — live now ✓' : 'Scheduled ✓ — goes live at the next 2am reset (Italy time)';
+    msgEl.textContent = d.live ? 'Saved — live now ✓' : `Queued ✓ — #${(d.queue || []).length} in line, goes live one 2am reset at a time (Italy time)`;
     document.getElementById('admin-playlist-input').value = '';
     document.getElementById('admin-playlist-now').checked = false;
-    showPendingStatus(d.pending || null);
+    showQueueStatus(d.queue);
     loadTodaysPlaylist();
   } catch(e) {
     msgEl.textContent = 'Request failed — check your connection.';

@@ -2,7 +2,7 @@ import { Redis } from '@upstash/redis';
 
 const redis = Redis.fromEnv();
 const KEY = 'bp_current_playlist';
-const PENDING_KEY = 'bp_pending_playlist';
+const QUEUE_KEY = 'bp_pending_playlist_queue';
 
 function extractPlaylistId(url) {
   const match = String(url || '').match(/playlist[/:]([a-zA-Z0-9]+)/);
@@ -20,25 +20,41 @@ function getItalyOffset() {
   const year = now.getUTCFullYear();
   return (now >= lastSunday(year, 2) && now < lastSunday(year, 9)) ? 2 : 1;
 }
-// Returns the ms timestamp of the next 2am-Italy boundary after now.
-function nextItaly2am() {
+// Start of the current Italy-day (the most recent past 2am boundary), in ms.
+function currentItalyDayStart() {
   const offset = getItalyOffset();
   const it = new Date(Date.now() + offset * 3600 * 1000);
   const y = it.getUTCFullYear(), m = it.getUTCMonth(), d = it.getUTCDate();
   const hour = it.getUTCHours();
   let dayStart = new Date(Date.UTC(y, m, d, 2 - offset, 0, 0));
   if (hour < 2) dayStart = new Date(dayStart.getTime() - 86400000);
-  return dayStart.getTime() + 86400000;
+  return dayStart.getTime();
+}
+function nextItaly2am() {
+  return currentItalyDayStart() + 86400000;
 }
 
-// A manually-saved link defaults to staging in PENDING_KEY instead of going
-// live immediately, so the admin can load tomorrow's playlist in advance
-// without it replacing today's. Promote it here, lazily, on every read.
+// Manually-saved links queue up in QUEUE_KEY instead of going live immediately,
+// so the admin can load several days of playlists in advance without any of
+// them replacing the currently-live one early. At most one entry is promoted
+// per Italy-day, in the order it was saved — checked lazily on every read.
 async function promotePendingIfDue() {
-  const pending = await redis.get(PENDING_KEY);
-  if (!pending || Date.now() < pending.publishAt) return;
-  await redis.set(KEY, { id: pending.id, url: pending.url, updatedAt: Date.now() });
-  await redis.del(PENDING_KEY);
+  const live = await redis.get(KEY);
+  if (live?.updatedAt >= currentItalyDayStart()) return; // already refreshed this Italy-day
+  const next = await redis.lpop(QUEUE_KEY);
+  if (!next) return;
+  await redis.set(KEY, { id: next.id, url: next.url, updatedAt: Date.now() });
+}
+
+// Annotates each queued entry with an estimated go-live time, one Italy-day
+// apart. The next 2am-Italy boundary is always the earliest possible slot for
+// queue[0] — whether today's live entry is already "fresh" only matters to
+// promotePendingIfDue() at the moment that boundary actually arrives, not now.
+async function buildQueueStatus() {
+  const [live, queueRaw] = await Promise.all([redis.get(KEY), redis.lrange(QUEUE_KEY, 0, -1)]);
+  const nextSlot = nextItaly2am();
+  const queue = (queueRaw || []).map((item, i) => ({ ...item, etaPublishAt: nextSlot + i * 86400000 }));
+  return { live, queue };
 }
 
 export default async function handler(req, res) {
@@ -55,8 +71,8 @@ export default async function handler(req, res) {
       if (!adminSecret || req.query.key !== adminSecret) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
-      const [data, pending] = await Promise.all([redis.get(KEY), redis.get(PENDING_KEY)]);
-      return res.status(200).json({ ...(data || {}), pending: pending || null });
+      const { live, queue } = await buildQueueStatus();
+      return res.status(200).json({ ...(live || {}), queue });
     }
 
     const data = await redis.get(KEY);
@@ -73,15 +89,15 @@ export default async function handler(req, res) {
     if (!id) return res.status(400).json({ error: 'Could not find a playlist ID in that link' });
 
     if (req.body?.publishNow) {
-      await redis.del(PENDING_KEY);
       const data = { id, url: req.body.url, updatedAt: Date.now() };
       await redis.set(KEY, data);
-      return res.status(200).json({ live: data });
+      const { queue } = await buildQueueStatus();
+      return res.status(200).json({ live: data, queue });
     }
 
-    const pending = { id, url: req.body.url, publishAt: nextItaly2am(), savedAt: Date.now() };
-    await redis.set(PENDING_KEY, pending);
-    return res.status(200).json({ pending });
+    await redis.rpush(QUEUE_KEY, { id, url: req.body.url, savedAt: Date.now() });
+    const { queue } = await buildQueueStatus();
+    return res.status(200).json({ queued: true, queue });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
