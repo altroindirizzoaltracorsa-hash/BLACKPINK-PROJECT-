@@ -2457,6 +2457,9 @@ async function loadProfile(usernameOverride, silent = false) {
     saveUsername(username);
     // Sync stamps from server before rendering so calendar has cross-device data
     await syncStampsFromServer(username);
+    // Earn/persist today's stamp even on a silent background refresh, so a streak
+    // doesn't break just because the user never opened My Badges that day.
+    persistTodayStamp(username, todayCounts);
     if (!silent) renderProfile(currentUser);
     // Auto-register as beta tester (once per device per username)
     autoRegisterBeta(username);
@@ -2732,11 +2735,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
     </table>
   `;
 
-  // Save today's stamps and render calendar
-  saveTodayStamps(todayCounts);
-  const _todayKey = italyDayKey();
-  const _todayArch = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
-  if (_todayArch[_todayKey]) pushStampToServer(getSavedUsername(), _todayKey, _todayArch[_todayKey]);
+  // Today's stamp is persisted in loadProfile() (runs even in silent mode); just render the calendar.
   calMonth = new Date().getMonth();
   calYear  = new Date().getFullYear();
   renderStampCalendar();
@@ -2853,6 +2852,15 @@ function italyDateLabel() {
   const { from: dayFrom } = getDayBounds();
   const d = new Date(dayFrom * 1000);
   return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+}
+
+// Saves today's stamp locally and pushes it to the server — called from loadProfile()
+// regardless of silent mode, so streams earn their stamp even without opening My Badges.
+function persistTodayStamp(username, todayCounts) {
+  saveTodayStamps(todayCounts);
+  const todayKey = italyDayKey();
+  const archive = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
+  if (archive[todayKey]) pushStampToServer(username, todayKey, archive[todayKey]);
 }
 
 function saveTodayStamps(todayCounts) {
@@ -3179,7 +3187,9 @@ function renderLeaderboard() {
 
     if (totalEl) {
       const communityTotal = entries.reduce((sum, e) => sum + e.score, 0);
-      totalEl.innerHTML = `👥 ${entries.length} Blinks · <strong>${communityTotal.toLocaleString()}</strong> ${songLabel} ${periodLabel} combined`;
+      const contributors = entries.filter(e => e.score > 0).length;
+      const avg = contributors ? Math.round(communityTotal / contributors) : 0;
+      totalEl.innerHTML = `👥 ${entries.length} Blinks · <strong>${contributors}</strong> streamed · <strong>${communityTotal.toLocaleString()}</strong> ${songLabel} ${periodLabel} combined · avg <strong>${avg.toLocaleString()}</strong>/contributor`;
     }
     wrap.innerHTML = `
       <table class="lb-table">
