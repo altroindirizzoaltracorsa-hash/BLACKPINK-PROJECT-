@@ -47,13 +47,20 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     await promotePendingIfDue();
-    const data = await redis.get(KEY);
-    res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=60');
     const adminSecret = process.env.ADMIN_SECRET;
-    if (adminSecret && req.query.key === adminSecret) {
-      const pending = await redis.get(PENDING_KEY);
+
+    // ?key= doubles as the auth check for the "Today's Playlist" admin panel —
+    // wrong key gets a 401 instead of silently falling back to the public response.
+    if (req.query.key) {
+      if (!adminSecret || req.query.key !== adminSecret) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const [data, pending] = await Promise.all([redis.get(KEY), redis.get(PENDING_KEY)]);
       return res.status(200).json({ ...(data || {}), pending: pending || null });
     }
+
+    const data = await redis.get(KEY);
+    res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=60');
     return res.status(200).json(data || {});
   }
 

@@ -1222,7 +1222,7 @@
     <p>© 2025 Blinks United · Fan-made · Not affiliated with YG Entertainment · Made with 💗</p>
     <div class="footer-logo">BLINKS UNITED</div>
     <p>Stream data by <a href="https://last.fm" target="_blank" onclick=\"window.open('https://last.fm','_blank','noopener')\">Last.fm</a> · Goals are fan estimates</p>
-    <button class="admin-unlock" onclick="openAdminPanel()">· · ·</button>
+    <button class="admin-unlock" onclick="openPlaylistPanel()">· · ·</button>
   </footer>
 
 </div><!-- end home page -->
@@ -1397,7 +1397,8 @@
 
     <p class="badge-footer-note" style="margin-top:2rem;">
       Rankings are based on Last.fm scrobble data fetched when you log into My Badges.<br>
-      Scores update automatically every hour. Fan-made by Blinks United · Made with 💗
+      Scores update automatically every hour. Fan-made by Blinks United · Made with 💗<br>
+      <button class="admin-unlock" onclick="openAdminPanel()">· · ·</button>
     </p>
 
   </div>
@@ -1478,21 +1479,36 @@
         <div class="admin-loading">Loading…</div>
       </div>
       <div id="admin-song-note" class="admin-song-note"></div>
-
-      <div style="margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1.2rem;">
-        <h2 style="font-size:1rem;margin-bottom:0.8rem;">⬡ TODAY'S PLAYLIST</h2>
-        <div id="admin-playlist-pending" class="admin-song-note" style="display:none"></div>
-        <input id="admin-playlist-input" class="beta-input" type="text" placeholder="Paste the Spotify playlist link…">
-        <button class="beta-btn" onclick="savePlaylistLink()">Save Playlist</button>
-        <label style="display:block;margin-top:0.5rem;font-size:0.75rem;color:var(--muted);cursor:pointer;">
-          <input id="admin-playlist-now" type="checkbox" style="margin-right:0.4rem;">Publish immediately instead of waiting for the 2am reset
-        </label>
-        <div id="admin-playlist-msg" class="admin-err"></div>
-      </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
       <button class="card-cl-btn" onclick="closeAdminPanel()">Close</button>
       <button id="admin-refresh-btn" class="lb-refresh-btn" onclick="loadAdminRanking()" style="display:none">↻ Refresh</button>
+    </div>
+  </div>
+</div>
+
+<!-- Today's Playlist panel (separate from the control-ranking admin panel) -->
+<div id="playlist-overlay" class="admin-overlay" style="display:none" onclick="if(event.target===this)closePlaylistPanel()">
+  <div class="admin-box">
+    <h2>⬡ TODAY'S PLAYLIST</h2>
+    <div id="playlist-auth">
+      <div class="admin-input-row">
+        <input id="playlist-key-input" class="admin-input" type="password" placeholder="Admin key" onkeydown="if(event.key==='Enter')submitPlaylistKey()">
+        <button class="btn-primary" onclick="submitPlaylistKey()">Unlock →</button>
+      </div>
+      <div id="playlist-auth-err" class="admin-err"></div>
+    </div>
+    <div id="playlist-content" style="display:none">
+      <div id="admin-playlist-pending" class="admin-song-note" style="display:none"></div>
+      <input id="admin-playlist-input" class="beta-input" type="text" placeholder="Paste the Spotify playlist link…">
+      <button class="beta-btn" onclick="savePlaylistLink()">Save Playlist</button>
+      <label style="display:block;margin-top:0.5rem;font-size:0.75rem;color:var(--muted);cursor:pointer;">
+        <input id="admin-playlist-now" type="checkbox" style="margin-right:0.4rem;">Publish immediately instead of waiting for the 2am reset
+      </label>
+      <div id="admin-playlist-msg" class="admin-err"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
+      <button class="card-cl-btn" onclick="closePlaylistPanel()">Close</button>
     </div>
   </div>
 </div>
@@ -3234,7 +3250,6 @@ function openAdminPanel() {
     document.getElementById('admin-content').style.display = 'block';
     document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
     loadAdminRanking(saved);
-    loadPlaylistStatus(saved);
   } else {
     document.getElementById('admin-auth').style.display = 'block';
     document.getElementById('admin-content').style.display = 'none';
@@ -3265,7 +3280,6 @@ async function submitAdminKey() {
     document.getElementById('admin-content').style.display = 'block';
     document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
     renderAdminTable(d);
-    loadPlaylistStatus(key);
   } catch(e) {
     errEl.textContent = 'Request failed — check your connection.';
   }
@@ -3357,6 +3371,67 @@ async function loadTodaysPlaylist() {
   } catch(e) {}
 }
 
+function openPlaylistPanel() {
+  document.getElementById('playlist-overlay').style.display = 'flex';
+  const saved = localStorage.getItem(ADMIN_KEY_LS);
+  if (saved) {
+    unlockPlaylistPanel(saved);
+  } else {
+    document.getElementById('playlist-auth').style.display = 'block';
+    document.getElementById('playlist-content').style.display = 'none';
+    setTimeout(() => document.getElementById('playlist-key-input')?.focus(), 100);
+  }
+}
+
+function closePlaylistPanel() {
+  document.getElementById('playlist-overlay').style.display = 'none';
+}
+
+async function submitPlaylistKey() {
+  const key = document.getElementById('playlist-key-input').value.trim();
+  const errEl = document.getElementById('playlist-auth-err');
+  if (!key) { errEl.textContent = 'Enter the admin key.'; return; }
+  errEl.textContent = 'Checking…';
+  const ok = await unlockPlaylistPanel(key);
+  if (ok) localStorage.setItem(ADMIN_KEY_LS, key);
+}
+
+// Shared by the initial unlock and by re-opening the panel with a cached key.
+// /api/playlist's GET returns 401 for a wrong ?key=, so it doubles as the auth check.
+async function unlockPlaylistPanel(key) {
+  const errEl = document.getElementById('playlist-auth-err');
+  try {
+    const r = await fetch(`/api/playlist?key=${encodeURIComponent(key)}`, { cache: 'no-store' });
+    if (r.status === 401) {
+      localStorage.removeItem(ADMIN_KEY_LS);
+      document.getElementById('playlist-auth').style.display = 'block';
+      document.getElementById('playlist-content').style.display = 'none';
+      errEl.textContent = 'Wrong key.';
+      return false;
+    }
+    const d = await r.json();
+    errEl.textContent = '';
+    document.getElementById('playlist-auth').style.display = 'none';
+    document.getElementById('playlist-content').style.display = 'block';
+    showPendingStatus(d.pending);
+    return true;
+  } catch(e) {
+    errEl.textContent = 'Request failed — check your connection.';
+    return false;
+  }
+}
+
+function showPendingStatus(pending) {
+  const el = document.getElementById('admin-playlist-pending');
+  if (pending) {
+    const when = new Date(pending.publishAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+    el.textContent = `⏳ Scheduled: ${pending.url} — goes live ${when} (next 2am Italy)`;
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
 async function savePlaylistLink() {
   const key = localStorage.getItem(ADMIN_KEY_LS);
   const url = document.getElementById('admin-playlist-input').value.trim();
@@ -3376,26 +3451,11 @@ async function savePlaylistLink() {
     msgEl.textContent = d.live ? 'Saved — live now ✓' : 'Scheduled ✓ — goes live at the next 2am reset (Italy time)';
     document.getElementById('admin-playlist-input').value = '';
     document.getElementById('admin-playlist-now').checked = false;
+    showPendingStatus(d.pending || null);
     loadTodaysPlaylist();
-    loadPlaylistStatus(key);
   } catch(e) {
     msgEl.textContent = 'Request failed — check your connection.';
   }
-}
-
-async function loadPlaylistStatus(key) {
-  const el = document.getElementById('admin-playlist-pending');
-  try {
-    const r = await fetch(`/api/playlist?key=${encodeURIComponent(key)}`, { cache: 'no-store' });
-    const d = await r.json();
-    if (d?.pending) {
-      const when = new Date(d.pending.publishAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
-      el.textContent = `⏳ Scheduled: ${d.pending.url} — goes live ${when} (next 2am Italy)`;
-      el.style.display = 'block';
-    } else {
-      el.style.display = 'none';
-    }
-  } catch(e) {}
 }
 
 // Auto-refresh leaderboard every 60 minutes when on the page
