@@ -3232,7 +3232,7 @@ function renderLeaderboard() {
       const communityTotal = entries.reduce((sum, e) => sum + e.score, 0);
       const contributors = entries.filter(e => e.score > 0).length;
       const avg = contributors ? Math.round(communityTotal / contributors) : 0;
-      totalEl.innerHTML = `👥 ${entries.length} Blinks · <strong>${contributors}</strong> streamed · <strong>${communityTotal.toLocaleString()}</strong> ${songLabel} ${periodLabel} combined · avg <strong>${avg.toLocaleString()}</strong>/contributor`;
+      totalEl.innerHTML = `👥 ${entries.length} Blinks · <strong>${contributors}</strong> active · <strong>${communityTotal.toLocaleString()}</strong> ${songLabel} ${periodLabel} combined · avg <strong>${avg.toLocaleString()}</strong>/contributor`;
     }
     wrap.innerHTML = `
       <table class="lb-table">
