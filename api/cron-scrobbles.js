@@ -1,9 +1,15 @@
 import { Redis } from '@upstash/redis';
+import { createClient } from '@supabase/supabase-js';
 
 const redis = Redis.fromEnv();
 const LASTFM_KEY = '666b8ef2f3cc360fbc20df275fba2981';
 const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
 const LB_KEY = 'bu_leaderboard_v1';
+
+function supabase() {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return null;
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+}
 
 const TRACKS = [
   { id: 'jump',     artist: 'BLACKPINK', track: 'JUMP' },
@@ -41,6 +47,54 @@ function getWeekBounds() {
 }
 function ddmm(date) {
   return `${String(date.getUTCDate()).padStart(2,'0')}/${String(date.getUTCMonth()+1).padStart(2,'0')}`;
+}
+function dayKey(unixSeconds) {
+  const d = new Date(unixSeconds * 1000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+}
+
+// ── Daily badge tiers (mirrors index.html's DAILY_TIERS — only the daily side,
+// since the Stamp Archive only ever stores daily stamps) ──────
+const TIER_ICONS = ['🩷','💓','💗','💖','💝','⚡','🌟','👑','🔥','✨'];
+function makeDailyTiers(base, shortName) {
+  return TIER_ICONS.map((icon, i) => ({ min: base * (i + 1), mult: i + 1, label: `${shortName} ×${i + 1}`, icon }));
+}
+const DAILY_TIERS = {
+  jump:     makeDailyTiers(80, 'JUMP'),
+  shutdown: makeDailyTiers(36, 'SHUT DOWN'),
+  ddududu:  makeDailyTiers(20, 'DDU-DU'),
+};
+function getDailyBadge(trackId, count) {
+  const tiers = DAILY_TIERS[trackId] || [];
+  let badge = null;
+  for (const t of tiers) { if (count >= t.min) badge = t; }
+  return badge;
+}
+function buildTodayStamps(todayCounts) {
+  const stamps = {};
+  for (const t of TRACKS) {
+    const count = todayCounts[t.id] || 0;
+    const badge = getDailyBadge(t.id, count);
+    if (badge) stamps[t.id] = { mult: badge.mult, icon: badge.icon, label: badge.label, count };
+  }
+  return stamps;
+}
+
+// Same write path as /api/stamps' single-day upsert, but merges with whatever's
+// already there first — keeps the highest mult seen today per track, so an
+// hourly recompute can never downgrade a stamp the user already earned.
+async function persistStamp(sb, username, todayKey, stamps) {
+  if (!sb || !Object.keys(stamps).length) return;
+  const { data } = await sb.from('user_stamps').select('stamps')
+    .eq('lfm_username', username).eq('day_key', todayKey).maybeSingle();
+  const merged = data?.stamps || {};
+  for (const [id, s] of Object.entries(stamps)) {
+    if (!merged[id] || s.mult >= merged[id].mult) merged[id] = s;
+  }
+  await sb.from('user_stamps').upsert(
+    { lfm_username: username, day_key: todayKey, stamps: merged, updated_at: new Date().toISOString() },
+    { onConflict: 'lfm_username,day_key' }
+  );
 }
 
 // ── Last.fm helpers ───────────────────────────────────────────
@@ -92,7 +146,7 @@ function countByTrack(scrobbles) {
 }
 
 // ── Refresh one user's scores ─────────────────────────────────
-async function refreshUser(entry) {
+async function refreshUser(entry, sb) {
   const { username } = entry;
 
   const { from: dayFrom, to: dayTo }   = getDayBounds();
@@ -110,6 +164,11 @@ async function refreshUser(entry) {
 
   const totalPlays  = { jump: jumpPlays, shutdown: shutdownPlays, ddududu: ddududuPlays };
   const todayCounts = countByTrack(todayScrobbles);
+
+  // Keep the Stamp Archive fresh even for users who never open the site that day.
+  try {
+    await persistStamp(sb, username, dayKey(dayFrom), buildTodayStamps(todayCounts));
+  } catch {}
 
   // Fetch weekly data day-by-day so each day stays within the 50-page cap
   const weekCounts = { jump: 0, shutdown: 0, ddududu: 0 };
@@ -171,6 +230,7 @@ export default async function handler(req, res) {
   const data = await redis.get(LB_KEY);
   if (!data?.users) return res.status(200).json({ ok: true, skipped: 'no users' });
 
+  const sb      = supabase();
   const users   = Object.values(data.users);
   const ok      = [];
   const failed  = [];
@@ -180,7 +240,7 @@ export default async function handler(req, res) {
   for (let i = 0; i < users.length; i += batchSize) {
     await Promise.all(users.slice(i, i + batchSize).map(async entry => {
       try {
-        data.users[entry.username.toLowerCase()] = await refreshUser(entry);
+        data.users[entry.username.toLowerCase()] = await refreshUser(entry, sb);
         ok.push(entry.username);
       } catch (e) {
         failed.push({ username: entry.username, error: e.message });
