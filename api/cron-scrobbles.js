@@ -52,6 +52,21 @@ function dayKey(unixSeconds) {
   const d = new Date(unixSeconds * 1000);
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 }
+function fullDateLabel(date) {
+  return `${String(date.getUTCDate()).padStart(2,'0')}/${String(date.getUTCMonth()+1).padStart(2,'0')}/${date.getUTCFullYear()}`;
+}
+
+// ── Past-leaderboard archive ───────────────────────────────────
+// Snapshots the leaderboard exactly as it stood when a day/week closes, so
+// past rankings stay browsable/shareable after refreshUser() overwrites
+// daily_*/weekly_* with the next period's (zeroed) counts.
+async function archivePeriod(sb, period, periodKey, label, users) {
+  if (!sb || !periodKey || !Object.keys(users).length) return;
+  await sb.from('leaderboard_archive').upsert(
+    { period, period_key: periodKey, label, users, archived_at: new Date().toISOString() },
+    { onConflict: 'period,period_key' }
+  );
+}
 
 // ── Daily badge tiers (mirrors index.html's DAILY_TIERS — only the daily side,
 // since the Stamp Archive only ever stores daily stamps) ──────
@@ -230,7 +245,27 @@ export default async function handler(req, res) {
   const data = await redis.get(LB_KEY);
   if (!data?.users) return res.status(200).json({ ok: true, skipped: 'no users' });
 
-  const sb      = supabase();
+  const sb = supabase();
+
+  // Archive the closing day/week's final standings before anyone gets
+  // refreshed below, since refreshUser() overwrites daily_*/weekly_* with the
+  // new period's (zeroed) counts the moment the Italy day/week boundary passes.
+  const { from: dayFrom }  = getDayBounds();
+  const { from: weekFrom } = getWeekBounds();
+  const todayKey            = dayKey(dayFrom);
+  const thisWeekKey         = dayKey(weekFrom);
+
+  if (data.currentDayKey && data.currentDayKey !== todayKey) {
+    try { await archivePeriod(sb, 'daily', data.currentDayKey, data.currentDayLabel || data.currentDayKey, data.users); } catch {}
+  }
+  if (data.currentWeekKey && data.currentWeekKey !== thisWeekKey) {
+    try { await archivePeriod(sb, 'weekly', data.currentWeekKey, data.currentWeekLabel || data.currentWeekKey, data.users); } catch {}
+  }
+  data.currentDayKey    = todayKey;
+  data.currentDayLabel  = fullDateLabel(new Date(dayFrom * 1000));
+  data.currentWeekKey   = thisWeekKey;
+  data.currentWeekLabel = `Week of ${fullDateLabel(new Date(weekFrom * 1000))}`;
+
   const users   = Object.values(data.users);
   const ok      = [];
   const failed  = [];

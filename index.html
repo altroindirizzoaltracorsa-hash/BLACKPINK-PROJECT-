@@ -755,6 +755,20 @@
     color: var(--white); margin: 1.5rem 0 0;
   }
   .lb-community-total strong { color: var(--pink); font-size: 1rem; }
+  .lb-history-select {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--muted); font-family: var(--mono); font-size: 0.6rem;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 0.4rem 0.6rem; cursor: pointer; margin-left: 1rem;
+  }
+  .lb-history-select:hover { border-color: var(--pink); color: var(--pink); }
+  .lb-history-bar {
+    display: none; align-items: center; justify-content: space-between;
+    gap: 0.6rem; flex-wrap: wrap;
+    background: rgba(255,0,102,0.08); border: 1px solid rgba(255,0,102,0.25);
+    padding: 0.6rem 0.9rem; margin: 1rem 0 0;
+    font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; color: var(--white);
+  }
 
   .stream-stale-note { margin-top: 0.4rem; font-size: 0.6rem; letter-spacing: 0.08em; color: #ffb020; }
 
@@ -1363,9 +1377,18 @@
 
       <!-- Period tabs: Daily / Weekly -->
       <div class="lb-tabs">
-        <button class="lb-tab active" onclick="switchLbPeriod('daily', this)">Today</button>
-        <button class="lb-tab" onclick="switchLbPeriod('weekly', this)">This Week</button>
-        <button class="lb-tab" onclick="switchLbPeriod('overall', this)">All Time</button>
+        <button class="lb-tab active" data-period="daily" onclick="switchLbPeriod('daily', this)">Today</button>
+        <button class="lb-tab" data-period="weekly" onclick="switchLbPeriod('weekly', this)">This Week</button>
+        <button class="lb-tab" data-period="overall" onclick="switchLbPeriod('overall', this)">All Time</button>
+      </div>
+
+      <!-- Viewing-a-past-snapshot banner -->
+      <div class="lb-history-bar" id="lb-history-bar">
+        <span id="lb-history-label"></span>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="lb-refresh-btn" style="margin-left:0;" onclick="shareLbCard()">⬡ Share This Day</button>
+          <button class="lb-refresh-btn" style="margin-left:0;" onclick="exitLbHistory()">← Back to Live</button>
+        </div>
       </div>
 
       <!-- Song subtabs -->
@@ -1382,7 +1405,10 @@
       <!-- Header row -->
       <div style="display:flex;align-items:center;justify-content:space-between;padding:0.8rem 0 0.4rem;flex-wrap:wrap;gap:0.5rem;">
         <span class="lb-last-updated" id="lb-last-updated">Loading…</span>
-        <div style="display:flex;gap:0.5rem;">
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <select class="lb-history-select" id="lb-history-select" onchange="onLbHistoryPick(this.value)">
+            <option value="">📅 History…</option>
+          </select>
           <button class="lb-refresh-btn" onclick="shareLbCard()">⬡ Share Card</button>
           <button class="lb-refresh-btn" onclick="refreshLeaderboard(true)">↻ Refresh</button>
         </div>
@@ -1959,7 +1985,18 @@ function showPage(page, { replace = false } = {}) {
   window.scrollTo(0, 0);
   if (page === 'home') initAnimations();
   if (page === 'badges') tryAutoLoad();
-  if (page === 'leaderboard') refreshLeaderboard();
+  if (page === 'leaderboard') {
+    const pending = parseLbHistoryParam();
+    if (pending) {
+      lbPeriod = pending.period;
+      document.querySelectorAll('.lb-tab').forEach(b => b.classList.toggle('active', b.dataset.period === pending.period));
+      populateLbHistorySelect();
+      loadLbHistory(pending.period, pending.key);
+    } else {
+      refreshLeaderboard();
+      populateLbHistorySelect();
+    }
+  }
   if (_voteCountdownTimer) { clearInterval(_voteCountdownTimer); _voteCountdownTimer = null; }
   if (page === 'vote') {
     renderVoteCampaigns();
@@ -3075,6 +3112,7 @@ async function fetchOgUsers() {
   } catch {}
 }
 let lbCacheTime = null;
+let lbHistorySnapshot = null; // { period, key, label, archivedAt, users } when viewing a past archived leaderboard
 
 // ── Read leaderboard data ─────────────────────────────────────
 async function fetchLbData(force = false) {
@@ -3147,33 +3185,38 @@ function getScoreKey() {
   return `${lbPeriod}_${lbSong}`;
 }
 
+function getActiveLbUsers() {
+  return (lbHistorySnapshot ? lbHistorySnapshot.users : lbData?.users) || {};
+}
+
 function renderLeaderboard() {
   const wrap = document.getElementById('lb-table-wrap');
   const updEl = document.getElementById('lb-last-updated');
   const totalEl = document.getElementById('lb-community-total');
-  if (!lbData) {
+  if (!lbData && !lbHistorySnapshot) {
     wrap.innerHTML = '<div class="lb-loading">Loading…</div>';
     if (totalEl) totalEl.textContent = '';
     return;
   }
 
   const key = getScoreKey();
-  const today = dateLabel(0);
   const myUsername = getSavedUsername();
 
   // Build sorted array
-  const entries = Object.entries(lbData.users || {})
+  const entries = Object.entries(getActiveLbUsers())
     .map(([username, data]) => {
       const score = (() => {
         const raw = data.scores?.[key] || 0;
-        if (lbPeriod === 'daily') {
+        // Archived snapshots are already frozen at the moment they closed —
+        // only the live view needs to zero out a stale, not-yet-refreshed day.
+        if (!lbHistorySnapshot && lbPeriod === 'daily') {
           const todayLabel = italyDateLabel();
           if (data.scores?.daily_date && data.scores.daily_date !== todayLabel) return 0;
         }
         return raw;
       })();
       const lastScrobbleAt = data.lastScrobbleAt || null;
-      const inactive = lastScrobbleAt && (Date.now() - new Date(lastScrobbleAt).getTime()) > 3 * 86400000;
+      const inactive = !lbHistorySnapshot && lastScrobbleAt && (Date.now() - new Date(lastScrobbleAt).getTime()) > 3 * 86400000;
       return { username, avatar: data.avatar, score, badge: getBadge(data.scores?.overall_all || 0), inactive };
     })
     .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
@@ -3218,13 +3261,16 @@ function renderLeaderboard() {
   }
 
   // Update timestamp
-  if (lbData.lastUpdated) {
+  if (lbHistorySnapshot) {
+    updEl.textContent = `Archived snapshot · ${lbHistorySnapshot.label}`;
+  } else if (lbData.lastUpdated) {
     const d = new Date(lbData.lastUpdated);
     updEl.textContent = `Last updated: ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} · refreshes every 60 min`;
   }
 }
 
 async function refreshLeaderboard(force = false) {
+  if (lbHistorySnapshot) { exitLbHistory(); return; }
   const wrap = document.getElementById('lb-table-wrap');
   if (wrap) wrap.innerHTML = '<div class="lb-loading">Loading leaderboard…</div>';
   try {
@@ -3239,7 +3285,83 @@ function switchLbPeriod(period, btn) {
   lbPeriod = period;
   document.querySelectorAll('.lb-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  if (lbHistorySnapshot) exitLbHistory(); else renderLeaderboard();
+  populateLbHistorySelect();
+}
+
+// ── Past leaderboards (archived daily/weekly snapshots) ───────
+// cron-scrobbles.js archives the closing day/week's standings into Supabase
+// (leaderboard_archive) right before overwriting them with the new period's
+// counts — these helpers browse/share that archive from the client.
+async function populateLbHistorySelect() {
+  const sel = document.getElementById('lb-history-select');
+  if (!sel) return;
+  if (lbPeriod === 'overall') { sel.style.display = 'none'; return; }
+  sel.style.display = '';
+  sel.innerHTML = '<option value="">📅 History…</option>';
+  try {
+    const res = await fetch(`/api/leaderboard-archive?period=${lbPeriod}`, { cache: 'no-store' });
+    if (!res.ok) return;
+    const { items } = await res.json();
+    for (const it of (items || [])) {
+      const opt = document.createElement('option');
+      opt.value = it.key;
+      opt.textContent = it.label;
+      sel.appendChild(opt);
+    }
+  } catch {}
+}
+
+function onLbHistoryPick(key) {
+  if (!key) return;
+  loadLbHistory(lbPeriod, key);
+}
+
+async function loadLbHistory(period, key) {
+  const wrap = document.getElementById('lb-table-wrap');
+  if (wrap) wrap.innerHTML = '<div class="lb-loading">Loading archived leaderboard…</div>';
+  try {
+    const res = await fetch(`/api/leaderboard-archive?period=${period}&key=${key}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('not found');
+    const data = await res.json();
+    if (!data?.users) throw new Error('not found');
+    lbHistorySnapshot = { period, key, label: data.label, archivedAt: data.archivedAt, users: data.users };
+    const sel = document.getElementById('lb-history-select');
+    if (sel) sel.value = key;
+    showLbHistoryBar();
+    renderLeaderboard();
+    const path = `${PAGE_PATHS.leaderboard}?lb=${period}:${key}`;
+    if (location.pathname + location.search !== path) history.replaceState({ page: 'leaderboard' }, '', path);
+  } catch {
+    if (wrap) wrap.innerHTML = '<div class="lb-empty">Could not load that past leaderboard.</div>';
+  }
+}
+
+function exitLbHistory() {
+  lbHistorySnapshot = null;
+  const bar = document.getElementById('lb-history-bar');
+  if (bar) bar.style.display = 'none';
+  const sel = document.getElementById('lb-history-select');
+  if (sel) sel.value = '';
+  if (location.search) history.replaceState({ page: 'leaderboard' }, '', PAGE_PATHS.leaderboard);
   renderLeaderboard();
+}
+
+function showLbHistoryBar() {
+  const bar = document.getElementById('lb-history-bar');
+  const labelEl = document.getElementById('lb-history-label');
+  if (!bar || !labelEl || !lbHistorySnapshot) return;
+  const periodWord = lbHistorySnapshot.period === 'daily' ? 'Daily' : 'Weekly';
+  labelEl.textContent = `📅 Viewing archived ${periodWord} leaderboard · ${lbHistorySnapshot.label}`;
+  bar.style.display = 'flex';
+}
+
+function parseLbHistoryParam() {
+  const v = new URLSearchParams(location.search).get('lb');
+  if (!v) return null;
+  const [period, key] = v.split(':');
+  if ((period !== 'daily' && period !== 'weekly') || !/^\d{4}-\d{2}-\d{2}$/.test(key || '')) return null;
+  return { period, key };
 }
 
 function switchLbSong(song, btn) {
@@ -3783,9 +3905,14 @@ async function shareLbCard() {
   await document.fonts.ready;
   _cardLogo = await getBuLogo();
   renderLbCard(_cardLogo);
-  const periodLabel = lbPeriod === 'daily' ? 'TODAY' : lbPeriod === 'weekly' ? 'THIS WEEK' : 'ALL TIME';
+  const periodLabel = lbCardPeriodLabel();
   const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : 'DDU-DU DDU-DU';
   label.textContent = `LEADERBOARD · ${periodLabel} · ${songLabel}`;
+}
+
+function lbCardPeriodLabel() {
+  if (lbHistorySnapshot) return `${lbHistorySnapshot.label.toUpperCase()} · ARCHIVED`;
+  return lbPeriod === 'daily' ? 'TODAY' : lbPeriod === 'weekly' ? 'THIS WEEK' : 'ALL TIME';
 }
 
 let _lbCardRangeStart = 0;
@@ -3793,17 +3920,19 @@ const LB_CARD_PAGE_SIZE = 20;
 
 function getLbCardEntries() {
   const key = getScoreKey();
-  const todayLabel = italyDateLabel();
-  let entries = Object.entries(lbData?.users || {})
+  let entries = Object.entries(getActiveLbUsers())
     .map(([username, data]) => {
       let score = data.scores?.[key] || 0;
-      if (lbPeriod === 'daily' && data.scores?.daily_date && data.scores.daily_date !== todayLabel) score = 0;
+      if (!lbHistorySnapshot && lbPeriod === 'daily') {
+        const todayLabel = italyDateLabel();
+        if (data.scores?.daily_date && data.scores.daily_date !== todayLabel) score = 0;
+      }
       return { username, score, raw: data.scores?.[key] || 0 };
     })
     .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
 
   let dateNote = '';
-  if (lbPeriod === 'daily' && entries.every(e => e.score === 0)) {
+  if (!lbHistorySnapshot && lbPeriod === 'daily' && entries.every(e => e.score === 0)) {
     entries = entries.map(e => ({ ...e, score: e.raw })).sort((a, b) => b.score - a.score);
     dateNote = 'YESTERDAY';
   }
@@ -3834,7 +3963,7 @@ function shiftLbCardRange(dir) {
   if (next < 0 || next >= entries.length) return;
   _lbCardRangeStart = next;
   renderLbCard(_cardLogo);
-  const periodLabel = lbPeriod === 'daily' ? 'TODAY' : lbPeriod === 'weekly' ? 'THIS WEEK' : 'ALL TIME';
+  const periodLabel = lbCardPeriodLabel();
   const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : 'DDU-DU DDU-DU';
   document.getElementById('card-box-label').textContent = `LEADERBOARD · ${periodLabel} · ${songLabel}`;
 }
@@ -3871,7 +4000,7 @@ function renderLbCard(logo) {
   ctx.fillText('BLINKS LEADERBOARD', W / 2, 108);
 
   // Period + song subtitle
-  const periodLabel = lbPeriod === 'daily' ? 'TODAY' : lbPeriod === 'weekly' ? 'THIS WEEK' : 'ALL TIME';
+  const periodLabel = lbCardPeriodLabel();
   const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : 'DDU-DU DDU-DU';
   const rangeLabel  = allEntries.length > LB_CARD_PAGE_SIZE
     ? ` · RANK ${_lbCardRangeStart + 1}–${Math.min(_lbCardRangeStart + LB_CARD_PAGE_SIZE, allEntries.length)}`
