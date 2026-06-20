@@ -1,0 +1,16 @@
+name: Sync playlist
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # every hour
+  workflow_dispatch:          # also runnable manually from GitHub Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call sync-playlist endpoint
+        run: |
+          curl -sf -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.VERCEL_URL }}/api/sync-playlist"
