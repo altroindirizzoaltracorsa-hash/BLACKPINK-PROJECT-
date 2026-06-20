@@ -3392,7 +3392,6 @@ let cardCanvas = null; // current canvas for download
 
 function closeCard() {
   document.getElementById('card-overlay').style.display = 'none';
-  document.getElementById('card-fmt-toggle').style.display = 'flex';
 }
 
 function downloadCard() {
@@ -3464,6 +3463,7 @@ async function getBuLogo() {
 let _cardTrackId = null, _cardArt = null, _cardLogo = null, _cardFormat = 'landscape', _cardType = 'song';
 let _msMilestone = null, _msMilestoneTotal = 0, _msMilestoneDate = null;
 let _voteCampaignId = null;
+let _personalCardData = null;
 
 function setCardFormat(fmt, btn) {
   _cardFormat = fmt;
@@ -3474,6 +3474,7 @@ function setCardFormat(fmt, btn) {
   if (_cardType === 'lb') renderLbCard(_cardLogo);
   else if (_cardType === 'milestone') drawMilestoneCard(canvas, _cardTrackId, _cardArt, _cardLogo, _msMilestoneTotal, _msMilestone, _msMilestoneDate);
   else if (_cardType === 'vote') drawVoteCard(canvas, VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId), _cardLogo, _cardArt);
+  else if (_cardType === 'personal') drawPersonalCard(canvas, _personalCardData);
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -3995,83 +3996,96 @@ async function openPersonalCard() {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
-  document.getElementById('card-fmt-toggle').style.display = 'none';
   _cardType = 'personal';
   _cardFormat = 'square';
+  document.getElementById('fmt-landscape')?.classList.remove('active');
+  document.getElementById('fmt-square')?.classList.add('active');
 
-  const { info, todayCounts, totalPlays, artistPlays } = currentUser;
+  const { info, todayCounts, totalPlays } = currentUser;
   await document.fonts.ready;
 
   const canvas = document.getElementById('card-canvas');
-  const ctx    = canvas.getContext('2d');
-  const W = 1080, H = 1080;
-  canvas.width = W; canvas.height = H;
+  canvas.width = 1080; canvas.height = 1080;
 
-  // Background + radial glow
-  ctx.fillStyle = '#080808';
-  ctx.fillRect(0, 0, W, H);
-  const glow = ctx.createRadialGradient(W/2, 0, 0, W/2, 0, 700);
-  glow.addColorStop(0,   'rgba(255,0,102,0.12)');
-  glow.addColorStop(1,   'rgba(8,8,8,0)');
-  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
-  drawNoise(ctx, W, H, 0.03);
-
-  const PX = 90;
-
-  // Avatar
   const avatarUrl = (info.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
   let avatarImg = null;
   if (avatarUrl && !avatarUrl.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
     try { avatarImg = await loadImg('/api/proxy-image?url=' + encodeURIComponent(avatarUrl)); } catch(e) {}
   }
-  const AV = 120;
+  const logo = await getBuLogo();
+
+  _personalCardData = { info, todayCounts, totalPlays, avatarImg, logo };
+  drawPersonalCard(canvas, _personalCardData);
+  label.textContent = (info.name || 'YOUR') + ' — STATS CARD';
+}
+
+function drawPersonalCard(canvas, { info, todayCounts, totalPlays, avatarImg, logo }) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const landscape = W > H;
+
+  // Background + radial glow
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W/2, 0, 0, W/2, 0, landscape ? 460 : 700);
+  glow.addColorStop(0,   'rgba(255,0,102,0.12)');
+  glow.addColorStop(1,   'rgba(8,8,8,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  drawNoise(ctx, W, H, 0.03);
+
+  const PX = landscape ? 70 : 90;
+
+  // Avatar
+  const AV    = landscape ? 86 : 120;
+  const avTopY = landscape ? 36 : 50;
+  const avCY  = avTopY + AV / 2;
   if (avatarImg) {
     ctx.save();
     ctx.beginPath();
-    ctx.arc(PX + AV/2, 110, AV/2, 0, Math.PI * 2);
+    ctx.arc(PX + AV/2, avCY, AV/2, 0, Math.PI * 2);
     ctx.clip();
-    ctx.drawImage(avatarImg, PX, 50, AV, AV);
+    ctx.drawImage(avatarImg, PX, avTopY, AV, AV);
     ctx.restore();
-    // Pink ring
     ctx.beginPath();
-    ctx.arc(PX + AV/2, 110, AV/2 + 2, 0, Math.PI * 2);
+    ctx.arc(PX + AV/2, avCY, AV/2 + 2, 0, Math.PI * 2);
     ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 2; ctx.stroke();
   } else {
     ctx.fillStyle = 'rgba(255,0,102,0.2)';
-    ctx.beginPath(); ctx.arc(PX + AV/2, 110, AV/2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(PX + AV/2, avCY, AV/2, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#FF0066';
-    ctx.font = '56px "Bebas Neue", sans-serif';
+    ctx.font = `${landscape ? 42 : 56}px "Bebas Neue", sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText((info.name||'?')[0].toUpperCase(), PX + AV/2, 130);
+    ctx.fillText((info.name||'?')[0].toUpperCase(), PX + AV/2, avCY + (landscape ? 15 : 20));
     ctx.textAlign = 'left';
   }
 
   // Username + badge
   const badge = getBadge(Object.values(totalPlays).reduce((a,b)=>a+b,0));
+  const tx = PX + AV + (landscape ? 24 : 30);
   ctx.fillStyle = '#F5F0F0';
-  ctx.font = '64px "Bebas Neue", sans-serif';
+  ctx.font = `${landscape ? 44 : 64}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '4px';
-  ctx.fillText(info.name || '', PX + AV + 30, 100);
+  ctx.fillText(info.name || '', tx, landscape ? 66 : 100);
   if (badge) {
     ctx.fillStyle = '#FF0066';
-    ctx.font = '500 17px "DM Mono", monospace';
+    ctx.font = `500 ${landscape ? 13 : 17}px "DM Mono", monospace`;
     ctx.letterSpacing = '5px';
-    ctx.fillText(badge.icon + ' ' + badge.label, PX + AV + 32, 135);
+    ctx.fillText(badge.icon + ' ' + badge.label, tx + 2, landscape ? 90 : 135);
   }
   ctx.fillStyle = 'rgba(245,240,240,0.3)';
-  ctx.font = '500 16px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 12 : 16}px "DM Mono", monospace`;
   ctx.letterSpacing = '3px';
-  ctx.fillText('LAST.FM · BLINKS UNITED', PX + AV + 32, 162);
+  ctx.fillText('LAST.FM · BLINKS UNITED', tx + 2, landscape ? 112 : 162);
 
   // Divider
   ctx.fillStyle = 'rgba(255,0,102,0.3)';
-  ctx.fillRect(PX, 210, W - PX*2, 1);
+  ctx.fillRect(PX, landscape ? 144 : 210, W - PX*2, 1);
 
   // TODAY'S STREAMS header
   ctx.fillStyle = 'rgba(245,240,240,0.35)';
-  ctx.font = '500 18px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
   ctx.letterSpacing = '6px';
-  ctx.fillText("TODAY'S STREAMS", PX, 270);
+  ctx.fillText("TODAY'S STREAMS", PX, landscape ? 182 : 270);
 
   // Song rows
   const songRows = [
@@ -4079,70 +4093,71 @@ async function openPersonalCard() {
     { id: 'shutdown', label: 'SHUT DOWN' },
     { id: 'ddududu',  label: 'DDU-DU DDU-DU' },
   ];
-  let rowY = 310;
+  const rowH    = landscape ? 50 : 80;
+  const rowStep = landscape ? 58 : 92;
+  let rowY = landscape ? 206 : 310;
   for (const s of songRows) {
     const count = todayCounts[s.id] || 0;
 
     ctx.fillStyle = 'rgba(245,240,240,0.07)';
-    ctx.fillRect(PX, rowY, W - PX*2, 80);
+    ctx.fillRect(PX, rowY, W - PX*2, rowH);
 
     ctx.fillStyle = 'rgba(245,240,240,0.7)';
-    ctx.font = '36px "Bebas Neue", sans-serif';
+    ctx.font = `${landscape ? 24 : 36}px "Bebas Neue", sans-serif`;
     ctx.letterSpacing = '3px';
-    ctx.fillText(s.label, PX + 24, rowY + 50);
+    ctx.fillText(s.label, PX + 20, rowY + (landscape ? 32 : 50));
 
     ctx.fillStyle = '#FF0066';
-    ctx.font = '52px "Bebas Neue", sans-serif';
+    ctx.font = `${landscape ? 34 : 52}px "Bebas Neue", sans-serif`;
     ctx.letterSpacing = '2px';
     ctx.textAlign = 'right';
-    ctx.fillText(count.toLocaleString(), W - PX - 24, rowY + 52);
+    ctx.fillText(count.toLocaleString(), W - PX - 20, rowY + (landscape ? 34 : 52));
     ctx.textAlign = 'left';
 
-    rowY += 92;
+    rowY += rowStep;
   }
 
   // Total campaign plays
   const campTotal = Object.values(totalPlays).reduce((a,b) => a+b, 0);
-  rowY += 20;
+  rowY += landscape ? 12 : 20;
   ctx.fillStyle = 'rgba(255,0,102,0.25)';
   ctx.fillRect(PX, rowY, W - PX*2, 1);
-  rowY += 40;
+  rowY += landscape ? 24 : 40;
 
   ctx.fillStyle = 'rgba(245,240,240,0.35)';
-  ctx.font = '500 17px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 12 : 17}px "DM Mono", monospace`;
   ctx.letterSpacing = '5px';
   ctx.fillText('ALL-TIME CAMPAIGN PLAYS', PX, rowY);
 
   ctx.fillStyle = '#F5F0F0';
-  ctx.font = '80px "Bebas Neue", sans-serif';
+  ctx.font = `${landscape ? 50 : 80}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '3px';
-  ctx.fillText(campTotal.toLocaleString(), PX, rowY + 80);
+  ctx.fillText(campTotal.toLocaleString(), PX, rowY + (landscape ? 46 : 80));
 
-  // Bottom branding — same as song card
-  const logo2 = await getBuLogo();
+  // Bottom branding — same convention as the other card types
   ctx.fillStyle = 'rgba(255,0,102,0.22)';
-  ctx.fillRect(PX, H - 138, W - PX*2, 1);
-  if (logo2) {
-    const LR = 28;
+  ctx.fillRect(PX, H - (landscape ? 90 : 138), W - PX*2, 1);
+  const LR    = landscape ? 22 : 28;
+  const logoY = H - (landscape ? 46 : 82);
+  if (logo) {
     ctx.save();
-    ctx.beginPath(); ctx.arc(PX + LR, H - 82, LR, 0, Math.PI * 2); ctx.clip();
-    ctx.drawImage(logo2, PX, H - 82 - LR, LR * 2, LR * 2);
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
     ctx.restore();
-    ctx.beginPath(); ctx.arc(PX + LR, H - 82, LR + 1, 0, Math.PI * 2);
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
     ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
   }
-  const bx = logo2 ? PX + 70 : PX;
+  const bx = logo ? PX + LR * 2 + 10 : PX;
   ctx.fillStyle = '#F5F0F0';
-  ctx.font = '44px "Bebas Neue", sans-serif';
+  ctx.font = `${landscape ? 34 : 44}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '10px';
-  ctx.fillText('BLINKS UNITED', bx, H - 72);
+  ctx.fillText('BLINKS UNITED', bx, H - (landscape ? 52 : 72));
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
-  ctx.font = '500 15px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', bx, H - 42);
+  ctx.fillText('blackpink-project.vercel.app', bx, H - (landscape ? 30 : 42));
 
   cardCanvas = canvas;
-  label.textContent = (info.name || 'YOUR') + ' — STATS CARD';
 }
 
 </script>
