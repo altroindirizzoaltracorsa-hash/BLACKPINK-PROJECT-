@@ -560,6 +560,12 @@
   .admin-zero { color:rgba(245,240,240,0.12); }
   .admin-flag { color:#ffaa00; font-weight:bold; }
   .admin-loading { text-align:center; padding:2rem; color:var(--muted); font-size:0.6rem; letter-spacing:0.15em; }
+  .admin-ban-section { margin-top:1.4rem; padding-top:1rem; border-top:1px solid var(--border); }
+  .admin-ban-title { font-family:var(--mono); font-size:0.55rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:0.6rem; }
+  .admin-ban-list { display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.4rem; }
+  .admin-ban-chip { display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,0,102,0.08); border:1px solid rgba(255,0,102,0.25); color:var(--white); font-family:var(--mono); font-size:0.55rem; letter-spacing:0.05em; padding:0.3rem 0.5rem; }
+  .admin-ban-chip button { background:none; border:none; color:var(--pink); cursor:pointer; font-family:var(--mono); font-size:0.6rem; padding:0; }
+  .admin-ban-chip button:hover { text-decoration:underline; }
 
   footer { padding: 2rem 3rem; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
   footer p { font-size: 0.55rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.3); }
@@ -1505,6 +1511,16 @@
         <div class="admin-loading">Loading…</div>
       </div>
       <div id="admin-song-note" class="admin-song-note"></div>
+
+      <div class="admin-ban-section">
+        <div class="admin-ban-title">⛔ Banned users — removed from the leaderboard, can't rejoin</div>
+        <div class="admin-input-row">
+          <input id="admin-ban-input" class="admin-input" type="text" placeholder="Last.fm username" onkeydown="if(event.key==='Enter')banUser()">
+          <button class="btn-primary" onclick="banUser()">Ban</button>
+        </div>
+        <div id="admin-ban-err" class="admin-err"></div>
+        <div id="admin-ban-list" class="admin-ban-list"></div>
+      </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
       <button class="card-cl-btn" onclick="closeAdminPanel()">Close</button>
@@ -3382,6 +3398,7 @@ function openAdminPanel() {
     document.getElementById('admin-content').style.display = 'block';
     document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
     loadAdminRanking(saved);
+    loadBannedUsers(saved);
   } else {
     document.getElementById('admin-auth').style.display = 'block';
     document.getElementById('admin-content').style.display = 'none';
@@ -3412,9 +3429,70 @@ async function submitAdminKey() {
     document.getElementById('admin-content').style.display = 'block';
     document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
     renderAdminTable(d);
+    loadBannedUsers(key);
   } catch(e) {
     errEl.textContent = 'Request failed — check your connection.';
   }
+}
+
+// ── Ban list (removes a user from the leaderboard and blocks re-registration) ──
+async function loadBannedUsers(key) {
+  const k = key || localStorage.getItem(ADMIN_KEY_LS);
+  if (!k) return;
+  try {
+    const r = await fetch(`/api/leaderboard?action=banned&key=${encodeURIComponent(k)}`, { cache: 'no-store' });
+    if (!r.ok) return;
+    const { banned } = await r.json();
+    renderBannedList(banned || []);
+  } catch {}
+}
+
+function renderBannedList(banned) {
+  const wrap = document.getElementById('admin-ban-list');
+  if (!wrap) return;
+  if (!banned.length) {
+    wrap.innerHTML = '<span style="color:var(--muted);font-size:0.55rem;">No one banned.</span>';
+    return;
+  }
+  wrap.innerHTML = banned.map(u => `<span class="admin-ban-chip">${u} <button onclick="unbanUser(${JSON.stringify(u)})">✕</button></span>`).join('');
+}
+
+async function banUser() {
+  const input = document.getElementById('admin-ban-input');
+  const errEl = document.getElementById('admin-ban-err');
+  const username = input.value.trim();
+  if (!username) { errEl.textContent = 'Enter a username.'; return; }
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  errEl.textContent = 'Banning…';
+  try {
+    const r = await fetch(`/api/leaderboard?action=ban&key=${encodeURIComponent(key)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    });
+    if (!r.ok) { errEl.textContent = 'Failed to ban — try again.'; return; }
+    const { banned } = await r.json();
+    input.value = '';
+    errEl.textContent = '';
+    renderBannedList(banned || []);
+    lbCacheTime = null; // force the leaderboard to refetch so the banned user disappears
+  } catch {
+    errEl.textContent = 'Request failed — check your connection.';
+  }
+}
+
+async function unbanUser(username) {
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  try {
+    const r = await fetch(`/api/leaderboard?action=unban&key=${encodeURIComponent(key)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    });
+    if (!r.ok) return;
+    const { banned } = await r.json();
+    renderBannedList(banned || []);
+  } catch {}
 }
 
 async function loadAdminRanking(key) {

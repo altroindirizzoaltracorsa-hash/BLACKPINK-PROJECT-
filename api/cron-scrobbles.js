@@ -266,6 +266,10 @@ export default async function handler(req, res) {
   data.currentWeekKey   = thisWeekKey;
   data.currentWeekLabel = `Week of ${fullDateLabel(new Date(weekFrom * 1000))}`;
 
+  // Drop any banned usernames that linger in data.users (e.g. banned mid-run)
+  // so they never get refreshed back to life by this loop.
+  for (const u of data.banned || []) delete data.users[u];
+
   const users   = Object.values(data.users);
   const ok      = [];
   const failed  = [];
