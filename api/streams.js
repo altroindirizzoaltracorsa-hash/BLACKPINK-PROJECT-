@@ -8,38 +8,77 @@ const TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
-const LIVE_CACHE_TTL_MS = 60 * 60 * 1000;
+// Spotify's public play count generally only jumps once a day, sometime
+// between midday and late evening Italy time. Outside that window (or once
+// today's jump has already landed) there's nothing new to find, so we poll
+// far less aggressively there to protect the RapidAPI quota.
+function getCacheTtlMs(needsDailyUpdate) {
+  if (!needsDailyUpdate) return 4 * 60 * 60 * 1000; // today's bump already seen — recheck in ~4h
+  const romeHour = Number(
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Rome', hour: 'numeric', hour12: false }).format(new Date())
+  );
+  if (romeHour < 12) return Infinity; // before midday — Spotify never updates this early, don't call at all
+  return 15 * 60 * 1000; // in the daily watch window — poll every ~15min
+}
 
-// Returns all configured RapidAPI keys in priority order.
+// Returns all configured RapidAPI keys for the given env vars, in priority order.
 // Add extras as RAPIDAPI_KEYS=key1,key2,key3 in Vercel env vars.
-function getApiKeys() {
+// RAPIDAPI_KEYS_2 is a spillover slot for adding more keys to the same provider
+// without touching the existing var (handy when editing env vars from a phone).
+function getApiKeys(envVarNames) {
   const keys = [];
-  if (process.env.RAPIDAPI_KEYS) {
-    keys.push(...process.env.RAPIDAPI_KEYS.split(',').map(k => k.trim()).filter(Boolean));
-  }
-  if (process.env.RAPIDAPI_KEY && !keys.includes(process.env.RAPIDAPI_KEY)) {
-    keys.push(process.env.RAPIDAPI_KEY);
+  for (const name of envVarNames) {
+    const envVar = process.env[name];
+    if (!envVar) continue;
+    for (const k of envVar.split(',').map(k => k.trim()).filter(Boolean)) {
+      if (!keys.includes(k)) keys.push(k);
+    }
   }
   return keys;
 }
 
-// Tries each key in order, moving on if one is rate-limited or quota-exceeded.
-async function fetchTrackMetadata(trackId) {
-  const keys = getApiKeys();
-  let lastError = 'No API keys configured';
-  for (const key of keys) {
-    const r = await fetch(
-      `https://spotify-scraper.p.rapidapi.com/v1/track/metadata?trackId=${trackId}`,
-      { headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': 'spotify-scraper.p.rapidapi.com' } }
-    );
-    const data = await r.json();
+// Two independent RapidAPI providers, each with its own subscription/quota.
+// If every key on one provider is rate-limited or quota-exceeded, we move on
+// to the next provider entirely before giving up.
+const PROVIDERS = [
+  {
+    name: 'spotify-scraper',
+    host: 'spotify-scraper.p.rapidapi.com',
+    keyEnvVars: ['RAPIDAPI_KEYS', 'RAPIDAPI_KEYS_2', 'RAPIDAPI_KEY'],
+    url: trackId => `https://spotify-scraper.p.rapidapi.com/v1/track/metadata?trackId=${trackId}`,
     // 429 = rate limit, 403 = quota exceeded, data.message = API-level error
-    if (r.status === 429 || r.status === 403 || data?.message) {
-      lastError = data?.message || `HTTP ${r.status}`;
-      continue;
+    isQuotaError: (r, data) => r.status === 429 || r.status === 403 || !!data?.message,
+    getPlayCount: data => Number(data?.playCount) || 0,
+  },
+  {
+    name: 'spotify-scraper-api',
+    host: 'spotify-scraper-api.p.rapidapi.com',
+    keyEnvVars: ['RAPIDAPI_KEYS_API2'],
+    url: trackId => `https://spotify-scraper-api.p.rapidapi.com/api/v1/track/info?track_id=${trackId}`,
+    // 429 = rate limit, 403 = quota exceeded, anything other than status "Successful" is an error
+    isQuotaError: (r, data) => r.status === 429 || r.status === 403 || data?.status !== 'Successful',
+    getPlayCount: data => Number(data?.data?.playcount) || 0,
+  },
+];
+
+// Tries each provider in order, and within a provider tries each key in
+// order, moving on if one is rate-limited or quota-exceeded.
+async function fetchTrackMetadata(trackId) {
+  let lastError = 'No API keys configured';
+  for (const provider of PROVIDERS) {
+    const keys = getApiKeys(provider.keyEnvVars);
+    for (const key of keys) {
+      const r = await fetch(provider.url(trackId), {
+        headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': provider.host },
+      });
+      const data = await r.json();
+      if (provider.isQuotaError(r, data)) {
+        lastError = data?.message || `HTTP ${r.status}`;
+        continue;
+      }
+      if (!r.ok) { lastError = `HTTP ${r.status}`; continue; }
+      return { playCount: provider.getPlayCount(data) };
     }
-    if (!r.ok) { lastError = `HTTP ${r.status}`; continue; }
-    return data;
   }
   throw new Error(lastError);
 }
@@ -88,6 +127,7 @@ export default async function handler(req, res) {
       const liveKey = `bp_live_${name}`;
       const prevKey = `bp_prev_${name}`;
       const histKey = `bp_hist_${name}`;
+      const errKey  = `bp_err_${name}`;
 
       const [cached, prev, hist] = await Promise.all([
         redis.get(liveKey),
@@ -96,13 +136,28 @@ export default async function handler(req, res) {
       ]);
 
       const history   = hist || [];
+      // Fix mislabeled latest entry: if the gap between the last two entries
+      // is more than 1 day, the last entry was likely mislabeled by a previous
+      // bug. Relabel it to addDaysToLabel(secondLast, 1) which is the correct
+      // first new streaming day after the gap started.
+      if (history.length >= 2) {
+        const last       = history[history.length - 1];
+        const secondLast = history[history.length - 2];
+        const expected   = addDaysToLabel(secondLast.date, 1);
+        if (last.date !== expected && daysBetween(secondLast.date, last.date) > 1) {
+          last.date = expected;
+          await redis.set(histKey, history);
+        }
+      }
       const cacheAge  = cached?.ts ? Date.now() - cached.ts : Infinity;
       // Skip cache if we haven't recorded today's history entry yet, even if the
       // live total is recent — otherwise a fetch that straddles midnight stays
       // cached across the day boundary and the daily diff never gets written.
       const needsDailyUpdate = !prev || prev.date !== todayLabel;
-      const cacheValid = !isCron && !needsDailyUpdate && cacheAge < LIVE_CACHE_TTL_MS && (cached?.total || 0) > 0;
+      const cacheValid = !isCron && cacheAge < getCacheTtlMs(needsDailyUpdate) && (cached?.total || 0) > 0;
       let total;
+      let updatedAt = cached?.ts || null;
+      let stale = false;
 
       if (cacheValid) {
         total = cached.total;
@@ -111,12 +166,23 @@ export default async function handler(req, res) {
         try {
           data = await fetchTrackMetadata(trackId);
         } catch(e) {
-          errors[name] = e.message;
+          errors[name] = { message: e.message, ts: new Date().toISOString() };
+          await redis.set(errKey, { message: e.message, ts: Date.now() });
           data = {};
         }
-        total = data?.playCount || 0;
+        const fetchedTotal = data?.playCount || 0;
         fetchedLive = true;
-        if (total > 0) await redis.set(liveKey, { total, ts: Date.now() });
+        if (fetchedTotal > 0) {
+          total = fetchedTotal;
+          updatedAt = Date.now();
+          await redis.set(liveKey, { total, ts: updatedAt });
+          await redis.del(errKey);
+        } else {
+          // Live fetch failed (e.g. all RapidAPI keys exhausted) — fall back to
+          // the last known-good cached total instead of showing 0.
+          total = cached?.total || 0;
+          stale = total > 0;
+        }
 
         const prevTotal = Number(prev?.total || 0);
 
@@ -124,9 +190,9 @@ export default async function handler(req, res) {
           const gap = daysBetween(prev.date, todayLabel);
 
           if (gap >= 1) {
-            // Spotify reports yesterday's finalized streams today, so the correct
-            // streaming day for this diff is always "yesterday" (today - 1).
-            const yLabel = yesterdayLabel();
+            // gap=1: prev.date IS the streaming day (snapshot was yesterday, streams are for that day)
+            // gap>1: Spotify skipped days, label as the day after the last snapshot
+            const yLabel = gap === 1 ? prev.date : addDaysToLabel(prev.date, 1);
             const dailyStreams = total - prevTotal;
             const existing = history.find(h => h.date === yLabel);
             if (!existing) {
@@ -148,23 +214,40 @@ export default async function handler(req, res) {
         }
       }
 
-      results[name] = { total, history };
+      results[name] = {
+        total,
+        history,
+        ...(stale ? { stale: true, updatedAt: updatedAt ? new Date(updatedAt).toISOString() : null } : {}),
+      };
     } catch (e) {
       console.error(`streams: ${name}:`, e.message);
-      const stale   = await redis.get(`bp_live_${name}`);
-      const history = await redis.get(`bp_hist_${name}`);
-      results[name] = { total: stale?.total || 0, history: history || [] };
+      const fallback = await redis.get(`bp_live_${name}`);
+      const history  = await redis.get(`bp_hist_${name}`);
+      results[name] = {
+        total: fallback?.total || 0,
+        history: history || [],
+        ...(fallback?.total ? { stale: true, updatedAt: fallback?.ts ? new Date(fallback.ts).toISOString() : null } : {}),
+      };
     }
   }
 
   const prevSnaps = {};
   for (const name of Object.keys(TRACKS)) {
     prevSnaps[name] = await redis.get(`bp_prev_${name}`);
+    if (!errors[name]) {
+      const lastErr = await redis.get(`bp_err_${name}`);
+      if (lastErr) errors[name] = { message: lastErr.message, ts: new Date(lastErr.ts).toISOString() };
+    }
   }
 
-  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+  const keyCounts = {};
+  for (const provider of PROVIDERS) {
+    keyCounts[provider.name] = getApiKeys(provider.keyEnvVars).length;
+  }
+
+  res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
   res.status(200).json({
     ...results,
-    _debug: { keyCount: getApiKeys().length, errors, live: fetchedLive, prev: prevSnaps, ts: new Date().toISOString() },
+    _debug: { keyCounts, errors, live: fetchedLive, prev: prevSnaps, ts: new Date().toISOString() },
   });
 }

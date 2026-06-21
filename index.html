@@ -4,6 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BLINKS UNITED | BLACKPINK Streaming Hub</title>
+<meta name="description" content="Stream tracker, leaderboard, badges, and fan-vote hub for BLACKPINK — built by Blinks United.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Blinks United">
+<meta property="og:title" content="BLINKS UNITED | BLACKPINK Streaming Hub">
+<meta property="og:description" content="Stream tracker, leaderboard, badges, and fan-vote hub for BLACKPINK — built by Blinks United.">
+<meta property="og:url" content="https://blackpink-project.vercel.app/">
+<meta property="og:image" content="https://blackpink-project.vercel.app/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="BLINKS UNITED | BLACKPINK Streaming Hub">
+<meta name="twitter:description" content="Stream tracker, leaderboard, badges, and fan-vote hub for BLACKPINK — built by Blinks United.">
+<meta name="twitter:image" content="https://blackpink-project.vercel.app/og-image.jpg">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#FF0066">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Blinks United">
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/blinksunited.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
@@ -82,6 +101,52 @@
   }
   .nav-links a:hover, .nav-links a.active { opacity: 1; color: var(--pink); }
 
+  .playlist-banner {
+    position: fixed;
+    top: 80px; left: 0; right: 0;
+    z-index: 150;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    padding: 0.55rem 1.5rem;
+    background: rgba(255,0,102,0.1);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,0,102,0.25);
+    font-family: var(--mono);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .playlist-banner-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--pink);
+  }
+  .playlist-banner-day {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--white);
+  }
+  .playlist-banner-cta {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--white);
+    opacity: 0.85;
+  }
+  .playlist-banner:hover .playlist-banner-cta { opacity: 1; color: var(--pink); }
+
+  body.has-playlist-banner .hero,
+  body.has-playlist-banner .badge-page,
+  body.has-playlist-banner .lb-page,
+  body.has-playlist-banner .vote-page,
+  body.has-playlist-banner .beta-page {
+    padding-top: 132px;
+  }
+
   .nav-hamburger {
     display: none;
     flex-direction: column;
@@ -142,7 +207,7 @@
   }
   .hero-title {
     font-family: var(--display);
-    font-size: clamp(5rem, 16vw, 14rem);
+    font-size: clamp(5rem, 11vw, 8rem);
     line-height: 0.88; letter-spacing: 0.04em;
     color: var(--white);
     animation: fadeUp 0.9s ease 0.1s both;
@@ -262,8 +327,8 @@
   .howto-intro p { font-family: var(--light-serif); font-size: 1.05rem; line-height: 1.9; color: rgba(245,240,240,0.65); margin-bottom: 1rem; }
   .challenge-step { display: grid; grid-template-columns: 60px 1fr; gap: 1.5rem; padding: 2rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); align-items: start; }
   .step-num { font-family: var(--display); font-size: 2.5rem; color: var(--pink); line-height: 1; }
-  .step-content h4 { font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--white); margin-bottom: 0.5rem; }
-  .step-content p { font-family: var(--light-serif); font-size: 0.95rem; line-height: 1.7; color: rgba(245,240,240,0.55); }
+  .step-content h4 { font-size: 0.85rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--white); margin-bottom: 0.5rem; }
+  .step-content p { font-family: var(--light-serif); font-size: 1.05rem; line-height: 1.7; color: rgba(245,240,240,0.55); }
 
   .follow-section { background: linear-gradient(135deg, #0d0008 0%, #080808 100%); border-top: 1px solid rgba(255,0,102,0.15); }
   .follow-inner { max-width: 1200px; margin: 0 auto; }
@@ -279,8 +344,8 @@
 
   .share-btn {
     background: transparent; border: 1px solid rgba(255,0,102,0.3);
-    color: var(--pink); font-family: var(--mono); font-size: 0.5rem;
-    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--pink); font-family: var(--mono); font-size: 0.62rem;
+    letter-spacing: 0.14em; text-transform: uppercase;
     padding: 0.5rem 1rem; cursor: pointer; transition: background 0.2s, color 0.2s;
   }
   .share-btn:hover { background: var(--pink); color: var(--black); }
@@ -289,7 +354,7 @@
   .daily-card { background: var(--card); padding: 1.5rem; position: relative; overflow: hidden; }
   .daily-song-name { font-family: var(--display); font-size: 1.2rem; letter-spacing: 0.06em; color: var(--white); margin-bottom: 0.3rem; }
   .daily-count { font-family: var(--display); font-size: 2rem; color: var(--pink); line-height: 1; margin-bottom: 0.3rem; }
-  .daily-target { font-size: 0.45rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.8rem; }
+  .daily-target { font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.8rem; }
   .tier-dots { display: flex; gap: 4px; margin-bottom: 0.5rem; }
   .tier-dot { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; border: 1px solid rgba(255,0,102,0.2); background: rgba(255,0,102,0.05); transition: all 0.3s; }
   .tier-dot.earned { background: var(--pink); border-color: var(--pink); box-shadow: 0 0 8px rgba(255,0,102,0.4); }
@@ -298,12 +363,12 @@
   .complete-banner { background: rgba(255,0,102,0.1); border: 1px solid rgba(255,0,102,0.3); padding: 1rem 1.5rem; text-align: center; margin-top: 1.5px; font-family: var(--display); font-size: 1.2rem; letter-spacing: 0.1em; color: var(--pink); }
 
   .weekly-table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); }
-  .weekly-table th { font-size: 0.45rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); padding: 0.6rem 0.8rem; text-align: center; border-bottom: 1px solid var(--border); font-weight: normal; }
+  .weekly-table th { font-size: 0.58rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); padding: 0.6rem 0.8rem; text-align: center; border-bottom: 1px solid var(--border); font-weight: normal; }
   .weekly-table th.song-col { text-align: left; color: var(--pink); }
-  .weekly-table td { padding: 0.8rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.55rem; }
+  .weekly-table td { padding: 0.8rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.68rem; }
   .weekly-table td.song-name { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.06em; color: var(--white); text-align: left; }
   .week-cell-done { color: var(--pink); font-size: 0.9rem; }
-  .week-cell-partial { color: rgba(245,240,240,0.4); font-size: 0.6rem; }
+  .week-cell-partial { color: rgba(245,240,240,0.4); font-size: 0.7rem; }
   .week-cell-empty { color: rgba(245,240,240,0.15); }
   .week-cell-future { color: rgba(245,240,240,0.1); }
 
@@ -311,8 +376,8 @@
   .badge-history-item { background: var(--card); padding: 0.8rem 1.2rem; display: flex; align-items: center; gap: 1rem; }
   .badge-history-icon { font-size: 1.4rem; flex-shrink: 0; }
   .badge-history-label { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.08em; color: var(--pink); }
-  .badge-history-date { font-size: 0.45rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
-  .badge-history-song { font-size: 0.45rem; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(245,240,240,0.3); }
+  .badge-history-date { font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .badge-history-song { font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,240,240,0.3); }
   .badge-history-empty { background: var(--card); padding: 2rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); font-size: 0.9rem; }
 
   .badge-page {
@@ -321,67 +386,86 @@
     padding-top: 80px; padding-bottom: 4rem;
   }
   .badge-header { padding: 3rem 2rem 2rem; text-align: center; border-bottom: 1px solid var(--border); }
-  .badge-header-eyebrow { font-size: 0.55rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.8rem; }
+  .badge-header-eyebrow { font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.8rem; }
   .badge-header-title { font-family: var(--display); font-size: clamp(3rem, 10vw, 6rem); letter-spacing: 0.06em; line-height: 0.9; }
   .badge-header-title span { color: var(--pink); }
   .badge-header-sub { font-family: var(--light-serif); font-style: italic; font-size: 1rem; color: var(--muted); margin-top: 0.8rem; }
 
   /* ── SHARE CARDS ── */
-  .gen-card-btn { margin-top:0.8rem;width:100%;padding:0.6rem 0;background:transparent;border:1px solid rgba(255,0,102,0.2);color:rgba(255,0,102,0.55);font-family:var(--mono);font-size:0.44rem;letter-spacing:0.22em;text-transform:uppercase;cursor:pointer;transition:border-color .2s,color .2s; }
+  .gen-card-btn { margin-top:0.8rem;width:100%;padding:0.6rem 0;background:transparent;border:1px solid rgba(255,0,102,0.2);color:rgba(255,0,102,0.55);font-family:var(--mono);font-size:0.58rem;letter-spacing:0.18em;text-transform:uppercase;cursor:pointer;transition:border-color .2s,color .2s; }
   .gen-card-btn:hover { border-color:var(--pink);color:var(--pink); }
-  .card-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px); }
-  .card-box { background:var(--card);border:1px solid var(--border);max-width:540px;width:100%;padding:1.5rem; }
-  .card-box-label { font-size:0.46rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--pink);margin-bottom:0.8rem; }
-  .card-box canvas { width:100%;height:auto;display:block;border:1px solid var(--border); }
-  .card-box-actions { display:flex;gap:0.8rem;margin-top:1rem;flex-wrap:wrap; }
-  .card-dl-btn { flex:1;min-width:140px;padding:0.8rem;background:var(--pink);color:#000;font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;text-transform:uppercase;border:none;cursor:pointer; }
-  .card-cl-btn { padding:0.8rem 1.2rem;background:transparent;color:var(--muted);font-family:var(--mono);font-size:0.5rem;letter-spacing:0.2em;text-transform:uppercase;border:1px solid var(--border);cursor:pointer; }
+  .card-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px);overflow-y:auto; }
+  .card-box { background:var(--card);border:1px solid var(--border);max-width:760px;width:100%;padding:1.5rem;margin:auto; }
+  .card-box-label { font-size:0.6rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--pink);margin-bottom:0.8rem; }
+  .card-box canvas { max-width:100%;max-height:70vh;width:auto;height:auto;display:block;margin:0 auto;border:1px solid var(--border); }
+  .card-box-actions { display:flex;gap:0.6rem;margin-top:1rem;flex-wrap:wrap; }
+  .card-dl-btn { flex:1;min-width:120px;padding:0.8rem;background:var(--pink);color:#000;font-family:var(--mono);font-size:0.62rem;letter-spacing:0.16em;text-transform:uppercase;border:none;cursor:pointer; }
+  .card-cl-btn { padding:0.8rem 1rem;background:transparent;color:var(--muted);font-family:var(--mono);font-size:0.62rem;letter-spacing:0.16em;text-transform:uppercase;border:1px solid var(--border);cursor:pointer; }
+  .card-copy-ok { color:#00ff88 !important; }
+  .card-fmt-toggle { display:flex;gap:2px; }
+  .card-fmt { background:transparent;border:1px solid rgba(255,0,102,0.2);color:var(--muted);font-family:var(--mono);font-size:0.54rem;letter-spacing:0.12em;text-transform:uppercase;padding:0.3rem 0.7rem;cursor:pointer;transition:all 0.2s; }
+  .card-fmt.active { background:var(--pink-muted);border-color:var(--pink);color:var(--pink); }
+  .card-range-toggle { display:flex;align-items:center;gap:6px; }
+  .card-range-toggle .card-fmt { padding:0.3rem 0.55rem; }
+  .card-range-toggle .card-fmt:disabled { opacity:0.3;cursor:default; }
+  .card-range-label { font-family:var(--mono);font-size:0.58rem;letter-spacing:0.12em;color:var(--muted);white-space:nowrap; }
 
   /* ── SETTINGS PANEL ── */
   .settings-panel { max-width:900px;margin:1rem auto 0;padding:1.5rem;background:var(--card);border:1px solid var(--border); }
   .settings-grid { display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1rem; }
   @media(max-width:600px){ .settings-grid { grid-template-columns:1fr; } }
   .settings-group { display:flex;flex-direction:column;gap:0.5rem; }
-  .settings-label { font-size:0.46rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted); }
-  .settings-input { background:var(--off-black);border:1px solid var(--border);color:var(--white);font-family:var(--mono);font-size:0.55rem;padding:0.6rem 0.8rem;width:100%;outline:none; }
+  .settings-label { font-size:0.6rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted); }
+  .settings-input { background:var(--off-black);border:1px solid var(--border);color:var(--white);font-family:var(--mono);font-size:0.68rem;padding:0.6rem 0.8rem;width:100%;outline:none; }
   .settings-input:focus { border-color:var(--pink); }
-  .settings-hint { font-size:0.42rem;letter-spacing:0.1em;color:rgba(245,240,240,0.2); }
+  .settings-hint { font-size:0.56rem;letter-spacing:0.08em;color:rgba(245,240,240,0.2); }
   .settings-pills { display:flex;gap:0.4rem;flex-wrap:wrap; }
-  .s-pill { padding:0.4rem 0.9rem;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:0.45rem;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;transition:all .15s; }
+  .s-pill { padding:0.4rem 0.9rem;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:0.58rem;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;transition:all .15s; }
   .s-pill.active { background:var(--pink);border-color:var(--pink);color:#000; }
 
   .login-wrap { max-width: 520px; margin: 3rem auto; padding: 0 1.5rem; }
   .login-card { background: var(--card); border: 1px solid var(--border); padding: 2.5rem; position: relative; overflow: hidden; }
   .login-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--pink), transparent); }
-  .login-label { font-size: 0.55rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--pink); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
-  .lastfm-badge { display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(188,0,0,0.15); border: 1px solid rgba(188,0,0,0.3); padding: 0.2rem 0.6rem; font-size: 0.55rem; letter-spacing: 0.1em; color: #ff4444; }
+  .login-label { font-size: 0.68rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--pink); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+  .lastfm-badge { display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(188,0,0,0.15); border: 1px solid rgba(188,0,0,0.3); padding: 0.2rem 0.6rem; font-size: 0.65rem; letter-spacing: 0.08em; color: #ff4444; }
   .login-desc { font-family: var(--light-serif); font-size: 0.95rem; line-height: 1.7; color: var(--muted); margin-bottom: 1.5rem; }
   .input-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
   .username-input { flex: 1; min-width: 0; background: #0d0d0d; border: 1px solid rgba(255,255,255,0.1); color: var(--white); font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.05em; padding: 0.75rem 1rem; outline: none; transition: border-color 0.2s; }
   .username-input:focus { border-color: var(--pink); }
   .username-input::placeholder { color: rgba(245,240,240,0.25); }
-  .error-msg { margin-top: 1rem; font-size: 0.6rem; letter-spacing: 0.1em; color: #ff4444; background: rgba(255,68,68,0.08); border: 1px solid rgba(255,68,68,0.2); padding: 0.6rem 1rem; }
-  .lastfm-tip { margin-top: 1.2rem; font-size: 0.5rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.25); line-height: 1.8; }
+  .error-msg { margin-top: 1rem; font-size: 0.7rem; letter-spacing: 0.08em; color: #ff4444; background: rgba(255,68,68,0.08); border: 1px solid rgba(255,68,68,0.2); padding: 0.6rem 1rem; }
+  .lastfm-tip { margin-top: 1.2rem; font-size: 0.62rem; letter-spacing: 0.08em; color: rgba(245,240,240,0.25); line-height: 1.8; }
   .lastfm-tip a { color: var(--pink); text-decoration: none; }
 
   .loading-wrap { text-align: center; padding: 4rem 2rem; }
   .spinner { width: 40px; height: 40px; border: 2px solid var(--border); border-top-color: var(--pink); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1.5rem; }
-  .loading-text { font-size: 0.6rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); }
+  .loading-text { font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
 
   .user-bar { max-width: 900px; margin: 2rem auto 0; padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
   .user-info { display: flex; align-items: center; gap: 1rem; }
   .user-avatar { width: 48px; height: 48px; border: 1px solid var(--border); object-fit: cover; }
   .user-avatar-placeholder { width: 48px; height: 48px; background: var(--pink-muted); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: 1.2rem; color: var(--pink); }
   .user-name { font-family: var(--display); font-size: 1.4rem; letter-spacing: 0.08em; line-height: 1; margin-bottom: 0.2rem; }
-  .user-meta { font-size: 0.5rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+  .user-meta { font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
   .user-meta span { color: var(--pink); }
-  .scrobble-warning { max-width: 900px; margin: 1rem auto 0; padding: 0.75rem 1.5rem; background: rgba(255,160,0,0.08); border: 1px solid rgba(255,160,0,0.3); color: rgba(255,180,0,0.9); font-size: 0.5rem; letter-spacing: 0.15em; text-transform: uppercase; display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+  .scrobble-warning { max-width: 900px; margin: 1rem auto 0; padding: 0.75rem 1.5rem; background: rgba(255,160,0,0.08); border: 1px solid rgba(255,160,0,0.3); color: rgba(255,180,0,0.9); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
   .scrobble-warning a { color: rgba(255,180,0,0.9); text-decoration: underline; white-space: nowrap; }
 
   .summary-strip { max-width: 900px; margin: 1.5rem auto 0; padding: 0 1.5rem; display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); }
   .summary-cell { background: var(--card); padding: 1.2rem 1.5rem; text-align: center; }
   .summary-num { font-family: var(--display); font-size: 2rem; color: var(--pink); line-height: 1; }
-  .summary-lbl { font-size: 0.45rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); margin-top: 0.25rem; }
+  .summary-lbl { font-size: 0.58rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-top: 0.25rem; }
+
+  .goal-tracker-wrap { max-width: 900px; margin: 1.2rem auto 0; padding: 0 1.5rem; }
+  .goal-tracker-card { background: var(--card); border: 1px solid rgba(255,0,102,0.18); padding: 1.4rem 2rem; display: flex; flex-direction: column; gap: 0.55rem; }
+  .goal-tracker-top { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; }
+  .goal-tracker-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pink); }
+  .goal-tracker-nums { font-family: var(--display); font-size: 2rem; color: var(--pink); line-height: 1; }
+  .goal-tracker-nums span { font-size: 1rem; color: var(--muted); }
+  .goal-tracker-bar { height: 3px; background: rgba(255,255,255,0.06); }
+  .goal-tracker-fill { height: 100%; background: var(--pink); transition: width 1s ease; }
+  .goal-tracker-status { font-size: 0.65rem; letter-spacing: 0.08em; color: var(--muted); }
+  .goal-tracker-done { color: #00ff88; }
 
   .tracks-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem; }
   .track-cards { display: flex; flex-direction: column; gap: 1.5px; background: var(--border); }
@@ -398,17 +482,17 @@
   .tier-bar-bg { height: 2px; background: rgba(255,255,255,0.06); margin-bottom: 0.4rem; }
   .tier-bar-fill { height: 100%; background: var(--pink); position: relative; transition: width 1.2s ease; }
   .tier-bar-fill::after { content: ''; position: absolute; right: -3px; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 8px var(--pink); }
-  .tier-label-row { display: flex; justify-content: space-between; font-size: 0.45rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+  .tier-label-row { display: flex; justify-content: space-between; font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
   .tier-label-row span { color: rgba(245,240,240,0.7); }
-  .stream-now-btn { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.8rem; font-size: 0.5rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--pink); text-decoration: none; border: 1px solid rgba(255,0,102,0.25); padding: 0.4rem 0.8rem; transition: background 0.2s, color 0.2s; }
+  .stream-now-btn { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.8rem; font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pink); text-decoration: none; border: 1px solid rgba(255,0,102,0.25); padding: 0.4rem 0.8rem; transition: background 0.2s, color 0.2s; }
   .stream-now-btn:hover { background: var(--pink); color: var(--black); }
 
   .badge-col { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; min-width: 90px; text-align: center; flex-shrink: 0; }
   .badge-icon { font-size: 2.4rem; line-height: 1; animation: badge-pulse 2.5s ease-in-out infinite; }
   .badge-name { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.15em; color: var(--pink); }
-  .badge-desc { font-family: var(--light-serif); font-style: italic; font-size: 0.65rem; color: var(--muted); line-height: 1.3; }
+  .badge-desc { font-family: var(--light-serif); font-style: italic; font-size: 0.78rem; color: var(--muted); line-height: 1.3; }
   .badge-locked-icon { font-size: 1.8rem; opacity: 0.15; }
-  .badge-locked-text { font-size: 0.45rem; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(245,240,240,0.2); }
+  .badge-locked-text { font-size: 0.58rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(245,240,240,0.2); }
 
   .tiers-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem 1rem; }
   .tiers-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 1px; background: var(--border); }
@@ -417,42 +501,42 @@
   .tier-cell:hover { background: var(--card2); }
   .tier-cell-icon { font-size: 1.5rem; margin-bottom: 0.3rem; }
   .tier-cell-name { font-family: var(--display); font-size: 0.8rem; letter-spacing: 0.12em; margin-bottom: 0.15rem; }
-  .tier-cell-req { font-size: 0.45rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; }
-  .tier-earned-tag { font-size: 0.5rem; color: var(--pink); letter-spacing: 0.1em; }
-  .tier-locked-tag { font-size: 0.5rem; color: rgba(245,240,240,0.15); }
+  .tier-cell-req { font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; }
+  .tier-earned-tag { font-size: 0.62rem; color: var(--pink); letter-spacing: 0.08em; }
+  .tier-locked-tag { font-size: 0.62rem; color: rgba(245,240,240,0.15); }
 
-  .badge-footer-note { max-width: 900px; margin: 2rem auto 0; padding: 0 1.5rem; font-size: 0.5rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.2); text-align: center; line-height: 1.8; }
+  .badge-footer-note { max-width: 900px; margin: 2rem auto 0; padding: 0 1.5rem; font-size: 0.62rem; letter-spacing: 0.1em; color: rgba(245,240,240,0.2); text-align: center; line-height: 1.8; }
   .badge-footer-note a { color: var(--pink); text-decoration: none; }
 
   /* ── Stamp Archive ── */
   .streak-bar { display:flex; align-items:center; gap:1.5rem; background:var(--card); border:1px solid var(--border); padding:1.2rem 1.5rem; margin-bottom:1.5rem; }
   .streak-num  { font-family:var(--display); font-size:3rem; color:var(--pink); line-height:1; }
   .streak-meta { display:flex; flex-direction:column; gap:0.2rem; }
-  .streak-title { font-size:0.45rem; letter-spacing:0.25em; text-transform:uppercase; color:var(--muted); }
+  .streak-title { font-size:0.58rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); }
   .streak-msg   { font-family:var(--light-serif); font-style:italic; font-size:0.75rem; color:var(--white); }
   .cal-nav-row  { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.8rem; }
   .cal-month-label { font-family:var(--display); font-size:1.1rem; letter-spacing:0.12em; }
   .cal-nav-btn  { background:none; border:1px solid var(--border); color:var(--white); width:32px; height:32px; cursor:pointer; font-size:1.1rem; display:flex; align-items:center; justify-content:center; }
   .cal-nav-btn:hover { border-color:var(--pink); color:var(--pink); }
   .cal-grid     { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
-  .cal-day-header { text-align:center; font-size:0.4rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); padding:0.3rem 0; }
+  .cal-day-header { text-align:center; font-size:0.5rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--muted); padding:0.3rem 0; }
   .cal-day      { background:var(--card); min-height:52px; padding:4px 5px; display:flex; flex-direction:column; align-items:center; gap:2px; }
   .cal-day.has-stamp  { background:rgba(255,0,102,0.08); border:1px solid rgba(255,0,102,0.25); cursor:pointer; }
   .cal-day.has-stamp:hover { background:rgba(255,0,102,0.15); border-color:var(--pink); }
   .cal-day.is-today   { outline:1.5px solid var(--pink); }
   .cal-day.other-month { opacity:0.25; pointer-events:none; }
   .cal-day.is-future  { opacity:0.2; pointer-events:none; }
-  .cal-day-num  { font-size:0.55rem; color:rgba(245,240,240,0.5); align-self:flex-start; line-height:1; }
+  .cal-day-num  { font-size:0.62rem; color:rgba(245,240,240,0.5); align-self:flex-start; line-height:1; }
   .cal-day.has-stamp .cal-day-num { color:var(--white); }
   .cal-day-icons { font-size:0.9rem; line-height:1; }
-  .cal-day-mult  { font-family:var(--mono); font-size:0.45rem; color:var(--pink); letter-spacing:0.05em; }
+  .cal-day-mult  { font-family:var(--mono); font-size:0.52rem; color:var(--pink); letter-spacing:0.04em; }
   .stamp-detail  { background:var(--card); border:1px solid var(--border); padding:1rem 1.2rem; margin-top:0.8rem; }
-  .stamp-detail-date { font-size:0.45rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); margin-bottom:0.6rem; }
+  .stamp-detail-date { font-size:0.58rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--muted); margin-bottom:0.6rem; }
   .stamp-detail-badges { display:flex; flex-direction:column; gap:0.5rem; }
   .stamp-detail-item { display:flex; align-items:center; gap:0.8rem; }
   .stamp-detail-icon  { font-size:1.4rem; }
   .stamp-detail-label { font-family:var(--display); font-size:0.9rem; letter-spacing:0.1em; color:var(--pink); flex:1; }
-  .stamp-detail-count { font-family:var(--mono); font-size:0.55rem; color:var(--muted); }
+  .stamp-detail-count { font-family:var(--mono); font-size:0.65rem; color:var(--muted); }
   @media(max-width:600px){ .cal-day { min-height:44px; } .cal-day-icons { font-size:0.75rem; } }
 
   /* ── Admin panel ── */
@@ -476,6 +560,12 @@
   .admin-zero { color:rgba(245,240,240,0.12); }
   .admin-flag { color:#ffaa00; font-weight:bold; }
   .admin-loading { text-align:center; padding:2rem; color:var(--muted); font-size:0.6rem; letter-spacing:0.15em; }
+  .admin-ban-section { margin-top:1.4rem; padding-top:1rem; border-top:1px solid var(--border); }
+  .admin-ban-title { font-family:var(--mono); font-size:0.55rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:0.6rem; }
+  .admin-ban-list { display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.4rem; }
+  .admin-ban-chip { display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,0,102,0.08); border:1px solid rgba(255,0,102,0.25); color:var(--white); font-family:var(--mono); font-size:0.55rem; letter-spacing:0.05em; padding:0.3rem 0.5rem; }
+  .admin-ban-chip button { background:none; border:none; color:var(--pink); cursor:pointer; font-family:var(--mono); font-size:0.6rem; padding:0; }
+  .admin-ban-chip button:hover { text-decoration:underline; }
 
   footer { padding: 2rem 3rem; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
   footer p { font-size: 0.55rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.3); }
@@ -502,16 +592,16 @@
     display: inline-block;
   }
   .btn-ghost:hover { border-color: var(--pink); color: var(--pink); }
-  .logout-btn { background: transparent; border: 1px solid rgba(255,255,255,0.12); color: var(--muted); font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.18em; text-transform: uppercase; padding: 0.5rem 1rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
+  .logout-btn { background: transparent; border: 1px solid rgba(255,255,255,0.12); color: var(--muted); font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; padding: 0.5rem 1rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
   .logout-btn:hover { border-color: var(--pink); color: var(--pink); }
   .divider-line { width: 40px; height: 1px; background: var(--pink); margin: 1.5rem 0; }
 
-  .days-to-goal { margin-top: 0.6rem; font-size: 0.48rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.4); line-height: 1.6; }
+  .days-to-goal { margin-top: 0.6rem; font-size: 0.65rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.4); line-height: 1.6; }
   .days-to-goal strong { color: var(--pink); }
 
   .history-toggle {
     display: inline-flex; align-items: center; gap: 0.4rem;
-    margin-top: 1rem; font-size: 0.5rem; letter-spacing: 0.2em;
+    margin-top: 1rem; font-size: 0.62rem; letter-spacing: 0.16em;
     text-transform: uppercase; color: var(--muted); cursor: pointer;
     background: none; border: none; padding: 0; transition: color 0.2s;
   }
@@ -527,13 +617,13 @@
     padding: 1rem;
   }
 
-  .history-title { font-size: 0.45rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.8rem; }
+  .history-title { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.8rem; }
   .chart-bars { display: flex; align-items: flex-end; gap: 4px; height: 80px; margin-bottom: 0.6rem; }
   .chart-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; height: 100%; justify-content: flex-end; }
   .chart-bar { width: 100%; background: rgba(255,0,102,0.35); transition: background 0.2s; min-height: 3px; cursor: pointer; position: relative; flex-shrink: 0; }
   .chart-bar.latest { background: var(--pink); box-shadow: 0 0 8px rgba(255,0,102,0.5); }
   .chart-bar:hover { background: var(--pink); }
-  .chart-tooltip { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); background: var(--charcoal); border: 1px solid var(--border); padding: 0.3rem 0.5rem; white-space: nowrap; font-size: 0.45rem; letter-spacing: 0.1em; color: var(--white); pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 10; }
+  .chart-tooltip { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); background: var(--charcoal); border: 1px solid var(--border); padding: 0.3rem 0.5rem; white-space: nowrap; font-size: 0.58rem; letter-spacing: 0.08em; color: var(--white); pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 10; }
   .chart-bar-wrap:hover .chart-tooltip { opacity: 1; }
 
   @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
@@ -546,6 +636,12 @@
   .animate-in { opacity: 0; transform: translateY(20px); transition: opacity 0.7s ease, transform 0.7s ease; }
   .animate-in.visible { opacity: 1; transform: translateY(0); }
 
+  /* Text is sized in rem throughout; the mobile-tuned 16px root reads too
+     small on wide desktop monitors, so bump it for the same min-width
+     this file already uses as its desktop breakpoint. */
+  @media (min-width: 901px) {
+    html { font-size: 18px; }
+  }
   @media (max-width: 900px) {
     nav { padding: 1rem 1.5rem; }
     section { padding: 4rem 1.5rem; }
@@ -560,6 +656,7 @@
   }
   @media (max-width: 600px) {
     .nav-hamburger { display: flex; }
+    .playlist-banner { top: 62px; }
     .nav-links {
       display: none;
       position: fixed;
@@ -589,11 +686,11 @@
     padding-top: 80px; padding-bottom: 4rem;
   }
   .lb-header { padding: 3rem 2rem 2rem; text-align: center; border-bottom: 1px solid var(--border); }
-  .lb-header-eyebrow { font-size: 0.55rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.8rem; }
+  .lb-header-eyebrow { font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.8rem; }
   .lb-header-title { font-family: var(--display); font-size: clamp(3rem, 10vw, 6rem); letter-spacing: 0.06em; line-height: 0.9; }
   .lb-header-title span { color: var(--pink); }
   .lb-header-sub { font-family: var(--light-serif); font-style: italic; font-size: 1rem; color: var(--muted); margin-top: 0.8rem; }
-  .lb-update-note { font-size: 0.5rem; letter-spacing: 0.2em; color: rgba(245,240,240,0.25); margin-top: 0.5rem; }
+  .lb-update-note { font-size: 0.62rem; letter-spacing: 0.16em; color: rgba(245,240,240,0.25); margin-top: 0.5rem; }
 
   .lb-inner { max-width: 900px; margin: 0 auto; padding: 0 1.5rem; }
 
@@ -601,7 +698,7 @@
   .lb-tabs { display: flex; gap: 1.5px; background: var(--border); margin: 2rem 0 0; }
   .lb-tab {
     flex: 1; padding: 0.8rem; text-align: center;
-    font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.2em;
+    font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.14em;
     text-transform: uppercase; color: var(--muted);
     background: var(--card); cursor: pointer; border: none;
     transition: background 0.2s, color 0.2s;
@@ -612,7 +709,7 @@
   .lb-subtabs { display: flex; gap: 1.5px; background: var(--border); margin-bottom: 1.5px; }
   .lb-subtab {
     flex: 1; padding: 0.6rem; text-align: center;
-    font-family: var(--mono); font-size: 0.48rem; letter-spacing: 0.18em;
+    font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.14em;
     text-transform: uppercase; color: var(--muted);
     background: var(--card2); cursor: pointer; border: none;
     transition: background 0.2s, color 0.2s;
@@ -626,7 +723,7 @@
   /* Ranking table */
   .lb-table { width: 100%; border-collapse: collapse; background: var(--card); }
   .lb-table th {
-    font-size: 0.45rem; letter-spacing: 0.2em; text-transform: uppercase;
+    font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase;
     color: var(--muted); padding: 0.7rem 1rem; text-align: left;
     border-bottom: 1px solid var(--border); font-weight: normal;
   }
@@ -645,19 +742,111 @@
   .lb-avatar-placeholder { width: 32px; height: 32px; border-radius: 50%; background: var(--pink-muted); border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; font-family: var(--display); font-size: 0.8rem; color: var(--pink); margin-right: 0.8rem; vertical-align: middle; }
   .lb-score { font-family: var(--display); font-size: 1.2rem; color: var(--pink); text-align: right; }
   .lb-badge { font-size: 1rem; }
-  .lb-delta-up { font-size: 0.5rem; color: #00ff88; letter-spacing: 0.1em; }
-  .lb-delta-dn { font-size: 0.5rem; color: rgba(245,240,240,0.3); letter-spacing: 0.1em; }
+  .lb-streak { display:inline-flex; align-items:center; gap:0.3rem; font-family:var(--mono); font-size:0.42rem; letter-spacing:0.15em; color:#ff8a00; background:rgba(255,138,0,0.08); border:1px solid rgba(255,138,0,0.3); padding:0.2rem 0.5rem; white-space:nowrap; vertical-align:middle; }
+  .lb-delta-up { font-size: 0.62rem; color: #00ff88; letter-spacing: 0.08em; }
+  .lb-delta-dn { font-size: 0.62rem; color: rgba(245,240,240,0.3); letter-spacing: 0.08em; }
   .lb-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
-  .lb-loading { padding: 3rem; text-align: center; color: var(--muted); font-size: 0.55rem; letter-spacing: 0.2em; }
+  .lb-loading { padding: 3rem; text-align: center; color: var(--muted); font-size: 0.68rem; letter-spacing: 0.16em; }
   .lb-refresh-btn {
     background: transparent; border: 1px solid var(--border);
-    color: var(--muted); font-family: var(--mono); font-size: 0.48rem;
-    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--muted); font-family: var(--mono); font-size: 0.6rem;
+    letter-spacing: 0.12em; text-transform: uppercase;
     padding: 0.4rem 0.8rem; cursor: pointer; transition: border-color 0.2s, color 0.2s;
     margin-left: 1rem;
   }
   .lb-refresh-btn:hover { border-color: var(--pink); color: var(--pink); }
-  .lb-last-updated { font-size: 0.45rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.25); }
+  .lb-last-updated { font-size: 0.58rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.25); }
+  .lb-community-total {
+    font-family: var(--mono); text-align: center;
+    font-size: 0.8rem; letter-spacing: 0.04em;
+    color: var(--white); margin: 1.5rem 0 0;
+  }
+  .lb-community-total strong { color: var(--pink); font-size: 1rem; }
+  .lb-history-select {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--muted); font-family: var(--mono); font-size: 0.6rem;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 0.4rem 0.6rem; cursor: pointer; margin-left: 1rem;
+  }
+  .lb-history-select:hover { border-color: var(--pink); color: var(--pink); }
+  .lb-history-bar {
+    display: none; align-items: center; justify-content: space-between;
+    gap: 0.6rem; flex-wrap: wrap;
+    background: rgba(255,0,102,0.08); border: 1px solid rgba(255,0,102,0.25);
+    padding: 0.6rem 0.9rem; margin: 1rem 0 0;
+    font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; color: var(--white);
+  }
+
+  .stream-stale-note { margin-top: 0.4rem; font-size: 0.6rem; letter-spacing: 0.08em; color: #ffb020; }
+
+  /* ── VOTE PAGE ── */
+  .vote-page {
+    min-height: 100vh;
+    background: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255,0,102,0.1) 0%, transparent 60%), var(--black);
+    padding-top: 80px; padding-bottom: 4rem;
+  }
+  .vote-header { padding: 3rem 2rem 2rem; text-align: center; border-bottom: 1px solid var(--border); }
+  .vote-header-eyebrow { font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.8rem; }
+  .vote-header-title { font-family: var(--display); font-size: clamp(3rem, 10vw, 6rem); letter-spacing: 0.06em; line-height: 0.9; }
+  .vote-header-title span { color: var(--pink); }
+  .vote-header-sub { font-family: var(--light-serif); font-style: italic; font-size: 1rem; color: var(--muted); margin-top: 0.8rem; }
+  .vote-update-note { font-size: 0.62rem; letter-spacing: 0.2em; color: rgba(245,240,240,0.25); margin-top: 0.5rem; }
+  .vote-inner { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem 0; display: flex; flex-direction: column; gap: 1.5rem; }
+
+  .vote-card { background: var(--card); border: 1px solid var(--border); padding: 1.8rem 2rem; position: relative; overflow: hidden; }
+  .vote-card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--pink); }
+  .vote-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .vote-platform {
+    font-size: 0.5rem; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--pink); margin-bottom: 0.5rem; display: inline-block;
+    background: rgba(255,0,102,0.1); padding: 0.2rem 0.6rem;
+  }
+  .vote-title { font-family: var(--display); font-size: 2.2rem; letter-spacing: 0.06em; line-height: 1.1; color: var(--white); }
+  .vote-restriction {
+    display: inline-block; margin-top: 0.6rem;
+    font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: #ffb020; border: 1px solid rgba(255,176,32,0.4); background: rgba(255,176,32,0.1);
+    padding: 0.4rem 0.8rem;
+  }
+  .vote-deadline { font-family: var(--mono); font-size: 0.95rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.55rem 0.9rem; border: 1px solid var(--border); white-space: nowrap; }
+  .vote-deadline.urgent { color: #ff5050; border-color: rgba(255,80,80,0.4); background: rgba(255,80,80,0.08); }
+  .vote-deadline.open { color: var(--pink); border-color: var(--pink); background: var(--pink-muted); }
+  .vote-deadline.ended { color: var(--muted); }
+
+  .vote-reset { font-family: var(--mono); font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 1.2rem; }
+  .vote-reset-time { color: var(--pink); font-weight: 500; }
+
+  .vote-categories { display: flex; flex-direction: column; gap: 0.9rem; margin-bottom: 1.4rem; }
+  .vote-category-name { font-size: 0.65rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,0,102,0.7); margin-bottom: 0.5rem; }
+  .vote-nominees { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .vote-chip { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.05em; padding: 0.4rem 0.8rem; border: 1px solid var(--border); color: var(--muted); }
+  .vote-chip.us { color: var(--pink); border-color: var(--pink); background: var(--pink-muted); }
+
+  .vote-rules {
+    background: rgba(255,0,102,0.04); border: 1px solid var(--border);
+    padding: 0.9rem 1.1rem; margin-bottom: 1.4rem;
+  }
+  .vote-rules-label { font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.5rem; }
+  .vote-rules ul { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+  .vote-rules li { font-size: 0.7rem; color: rgba(245,240,240,0.65); line-height: 1.4; padding-left: 1rem; position: relative; }
+  .vote-rules li::before { content: '·'; position: absolute; left: 0; color: var(--pink); }
+
+  .vote-btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: var(--pink); color: #000; font-family: var(--display);
+    font-size: 1rem; letter-spacing: 0.1em; text-decoration: none;
+    padding: 0.7rem 1.6rem; transition: opacity 0.2s;
+  }
+  .vote-btn:hover { opacity: 0.85; }
+  .vote-card-actions { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+  .vote-share-btn {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--muted); font-family: var(--mono); font-size: 0.62rem;
+    letter-spacing: 0.13em; text-transform: uppercase;
+    padding: 0.65rem 0.9rem; cursor: pointer; transition: border-color 0.2s, color 0.2s;
+  }
+  .vote-share-btn:hover { border-color: var(--pink); color: var(--pink); }
+  .vote-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
 
 /* ── BETA PAGE ── */
 .beta-page { max-width: 700px; margin: 0 auto; padding: 5rem 1.5rem 4rem; }
@@ -687,9 +876,121 @@
 .og-inline-badge { display:inline-flex; align-items:center; gap:0.3rem; font-family:var(--mono); font-size:0.42rem; letter-spacing:0.15em; color:#ffd700; background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.3); padding:0.2rem 0.5rem; cursor:default; position:relative; white-space:nowrap; vertical-align:middle; }
 .og-inline-badge::after { content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--card); border:1px solid rgba(255,215,0,0.25); color:rgba(245,240,240,0.75); font-family:var(--mono); font-size:0.45rem; letter-spacing:0.08em; padding:0.35rem 0.65rem; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.15s; z-index:10; }
 .og-inline-badge:hover::after { opacity:1; }
+
+/* ── MILESTONE CELEBRATION ───────────────────────────────── */
+#milestone-overlay {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(0,0,0,0.88); display: none;
+  align-items: center; justify-content: center;
+  animation: ms-fadein 0.4s ease;
+}
+#milestone-overlay.active { display: flex; }
+@keyframes ms-fadein { from { opacity:0 } to { opacity:1 } }
+
+#milestone-card {
+  background: var(--card); border: 1px solid rgba(255,0,102,0.35);
+  padding: 2.5rem 2rem; text-align: center; max-width: 340px; width: 90%;
+  position: relative; z-index: 2;
+  animation: ms-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+@keyframes ms-pop { from { transform:scale(0.7); opacity:0 } to { transform:scale(1); opacity:1 } }
+.ms-emoji { font-size: 3.4rem; display:block; margin-bottom:0.4rem; }
+.ms-label { font-family:var(--display); font-size:1.6rem; letter-spacing:0.18em; color:var(--pink); margin-bottom:0.3rem; text-shadow:0 0 24px rgba(255,0,102,0.5); }
+.ms-track { font-family:var(--display); font-size:2rem; letter-spacing:0.1em; color:#fff; margin-bottom:0.2rem; }
+.ms-number { font-family:var(--display); font-size:3.2rem; color:var(--pink); line-height:1; margin-bottom:0.5rem; }
+.ms-sub { font-family:var(--mono); font-size:0.45rem; letter-spacing:0.12em; color:var(--muted); margin-bottom:0.5rem; }
+.ms-date { font-family:var(--mono); font-size:0.42rem; letter-spacing:0.15em; text-transform:uppercase; color:rgba(255,0,102,0.6); margin-bottom:1.2rem; }
+.ms-actions { display:flex; gap:0.6rem; justify-content:center; flex-wrap:wrap; }
+
+/* milestone history in song cards */
+.ms-history { margin-top:0.9rem; padding-top:0.8rem; border-top:1px solid rgba(255,0,102,0.12); display:none; }
+.ms-history-label { font-size:0.46rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--pink); margin-bottom:0.45rem; }
+.ms-history-item { font-size:0.62rem; letter-spacing:0.07em; color:var(--muted); padding:0.2rem 0; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+.ms-history-item:hover { color:var(--pink); }
+.ms-history-item .ms-share-hint { font-size:0.5rem; letter-spacing:0.1em; opacity:0.4; }
+.ms-btn { font-family:var(--mono); font-size:0.48rem; letter-spacing:0.14em; text-transform:uppercase; padding:0.55rem 1rem; cursor:pointer; border:none; }
+.ms-btn-primary { background:var(--pink); color:#fff; }
+.ms-btn-secondary { background:transparent; border:1px solid rgba(255,255,255,0.2); color:var(--muted); }
+
+/* confetti particles */
+.ms-confetti { position:fixed; inset:0; pointer-events:none; z-index:9997; overflow:hidden; }
+.ms-confetti span {
+  position:absolute; top:-10px; width:8px; height:8px; border-radius:1px;
+  animation: conf-fall linear forwards;
+}
+@keyframes conf-fall {
+  to { transform: translateY(105vh) rotate(720deg); opacity:0; }
+}
+
+/* ── INTRO ANIMATION ──────────────────────────────────────── */
+#intro-overlay {
+  position: fixed; inset: 0; background: #000; z-index: 99999;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+#intro-overlay.fade-out { animation: intro-out 0.55s ease forwards; }
+@keyframes intro-out { to { opacity: 0; } }
+
+#intro-logo {
+  width: 190px; height: 190px; object-fit: contain; border-radius: 50%;
+  position: relative; z-index: 2;
+  opacity: 0; transform: rotate(-200deg) scale(0.2);
+  animation: intro-spin-in 1.1s cubic-bezier(0.22, 0.61, 0.36, 1) forwards 0.25s;
+}
+@keyframes intro-spin-in {
+  0%   { opacity: 0; transform: rotate(-200deg) scale(0.2); }
+  55%  { opacity: 1; transform: rotate(12deg)   scale(1.08); }
+  75%  { transform: rotate(-6deg)  scale(0.97); }
+  100% { opacity: 1; transform: rotate(0deg)    scale(1); }
+}
+
+#intro-lines { position: absolute; inset: 0; }
+.i-line {
+  position: absolute; top: 50%; left: 50%;
+  height: 2px; width: 0;
+  background: rgba(255,255,255,0.75);
+  transform-origin: left center;
+  border-radius: 2px; opacity: 0;
+  animation: line-shoot 0.55s ease-out forwards;
+}
+@keyframes line-shoot {
+  0%   { width: 0;     opacity: 0; }
+  15%  { opacity: 0.9; }
+  60%  { opacity: 0.7; }
+  100% { width: var(--len); opacity: 0; }
+}
 </style>
 </head>
 <body>
+<div id="intro-overlay">
+  <div id="intro-lines"></div>
+  <img id="intro-logo" src="https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/blinksunited.jpg" alt="">
+</div>
+<script>
+(function() {
+  if (sessionStorage.getItem('bu_intro_done')) {
+    document.getElementById('intro-overlay').remove();
+    return;
+  }
+  const angles = [0,26,49,72,96,118,144,168,192,214,238,262,288,312,336];
+  const lengths = [130,100,150,85,120,110,140,95,125,105,145,90,115,135,100];
+  const wrap = document.getElementById('intro-lines');
+  angles.forEach((deg, i) => {
+    const el = document.createElement('div');
+    el.className = 'i-line';
+    el.style.cssText = `transform:rotate(${deg}deg);--len:${lengths[i]}px;animation-delay:${0.22 + i * 0.018}s`;
+    wrap.appendChild(el);
+  });
+  const overlay = document.getElementById('intro-overlay');
+  setTimeout(() => {
+    overlay.classList.add('fade-out');
+    overlay.addEventListener('animationend', () => {
+      overlay.remove();
+      sessionStorage.setItem('bu_intro_done', '1');
+    }, { once: true });
+  }, 1900);
+})();
+</script>
 
 <nav>
   <span class="nav-logo" onclick="showPage('home')" style="display:flex;align-items:center;gap:0.6rem;">
@@ -697,17 +998,43 @@
     BLINKS UNITED
   </span>
   <ul class="nav-links" id="mobile-nav">
-    <li><a href="#" onclick="showPage('home'); closeMobileNav(); return false;" id="nav-home" class="active">Home</a></li>
+    <li><a href="/" onclick="showPage('home'); closeMobileNav(); return false;" id="nav-home" class="active">Home</a></li>
     <li><a href="#songs" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100); return false;">Songs</a></li>
-    <li><a href="#" onclick="showPage('badges'); closeMobileNav(); return false;" id="nav-badges">My Badges</a></li>
-    <li><a href="#" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
-    <li><a href="#" onclick="showPage('feedback'); closeMobileNav(); return false;" id="nav-feedback">Feedback</a></li>
+    <li><a href="/badges" onclick="showPage('badges'); closeMobileNav(); return false;" id="nav-badges">My Badges</a></li>
+    <li><a href="/leaderboard" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
+    <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
+    <li><a href="/feedback" onclick="showPage('feedback'); closeMobileNav(); return false;" id="nav-feedback">Feedback</a></li>
     <li><a href="#follow" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100); return false;">Follow</a></li>
   </ul>
+  <button id="pwa-install-btn" onclick="triggerInstall()" style="display:none;background:transparent;border:1px solid rgba(255,0,102,0.5);color:var(--pink);font-family:var(--mono);font-size:0.48rem;letter-spacing:0.14em;text-transform:uppercase;padding:0.4rem 0.8rem;cursor:pointer;white-space:nowrap;transition:border-color 0.2s,background 0.2s;" title="Install as app">⬇ Install App</button>
   <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
     <span></span><span></span><span></span>
   </button>
 </nav>
+
+<a id="playlist-banner" class="playlist-banner" href="#" target="_blank" rel="noopener" style="display:none;">
+  <span class="playlist-banner-label">⬡ Today's Playlist</span>
+  <span id="playlist-banner-day" class="playlist-banner-day"></span>
+  <span class="playlist-banner-cta">Listen on Spotify →</span>
+</a>
+
+<!-- MILESTONE OVERLAY -->
+<div class="ms-confetti" id="ms-confetti"></div>
+<div id="milestone-overlay">
+  <div id="milestone-card">
+    <span class="ms-emoji">🎉</span>
+    <div class="ms-label">MILESTONE REACHED</div>
+    <div class="ms-track" id="ms-track-name"></div>
+    <div class="ms-number" id="ms-number"></div>
+    <div class="ms-sub" id="ms-sub"></div>
+    <div class="ms-date" id="ms-date"></div>
+    <div class="ms-actions">
+      <button class="ms-btn ms-btn-primary" onclick="shareMilestoneCard()">↑ Share</button>
+      <button class="ms-btn ms-btn-secondary" onclick="closeMilestone()">Dismiss</button>
+    </div>
+    <canvas id="ms-canvas" style="display:none"></canvas>
+  </div>
+</div>
 
 <!-- HOME PAGE -->
 <div id="page-home" class="page active">
@@ -724,7 +1051,22 @@
       <p class="hero-subtitle">United by music. Driven by love. Streaming together.</p>
       <div class="hero-cta">
         <a href="#songs" class="btn-primary" onclick="setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100)">Start Streaming</a>
-        <a href="#" class="btn-ghost" onclick="showPage('badges'); return false;">Badge Challenge</a>
+        <a href="/badges" class="btn-ghost" onclick="showPage('badges'); return false;">Badge Challenge</a>
+        <a href="/voting" class="btn-primary" onclick="showPage('vote'); return false;">Vote</a>
+      </div>
+      <div id="community-goal-home" style="display:none;margin-top:1.5rem;max-width:480px;width:100%;">
+        <div class="goal-tracker-card">
+          <div class="goal-tracker-top">
+            <span class="goal-tracker-label">// Today's Community Goal</span>
+            <span class="goal-tracker-nums" id="community-goal-nums">0<span> / 15,000 scrobbles</span></span>
+          </div>
+          <div class="goal-tracker-bar"><div class="goal-tracker-fill" id="community-goal-fill" style="width:0%"></div></div>
+          <div class="goal-tracker-status" id="community-goal-status">Loading today's progress…</div>
+        </div>
+      </div>
+      <div id="todays-playlist-home" style="display:none;margin-top:1.5rem;max-width:480px;width:100%;">
+        <p class="stat-lbl" style="margin-bottom:0.5rem;">⬡ Today's Playlist</p>
+        <div id="todays-playlist-embed-home"></div>
       </div>
     </div>
     <div class="ticker-wrap">
@@ -742,10 +1084,10 @@
         <h2 class="section-title">Hello,<br>Blink 💖</h2>
         <div class="divider-line"></div>
         <p>This is a space created to <strong>unite Blinks worldwide</strong> with one shared mission: supporting BLACKPINK through organized, goal-driven streaming campaigns.</p>
-        <p>Here you'll find streaming targets designed to improve chart positions, boost visibility, and show our <strong>unwavering support</strong> for BLACKPINK's music and legacy.</p>
-        <p>Every single stream matters. Together, we move mountains — and charts. Thank you for being part of this family. Let's stream, support, and shine. 🖤💗</p>
+        <p>Here you'll find streaming targets focused on boosting stream counts and reaching milestones that show our <strong>unwavering support</strong> for BLACKPINK's music and legacy.</p>
+        <p>Every single stream matters. Thank you for being part of this family. Let's stream, support, and shine. 🖤💗</p>
         <br>
-        <a href="#" class="btn-primary" onclick="showPage('badges'); return false;">Check My Badges →</a>
+        <a href="/badges" class="btn-primary" onclick="showPage('badges'); return false;">Check My Badges →</a>
       </div>
       <div class="animate-in">
         <div class="stat-cards">
@@ -775,6 +1117,7 @@
             <div class="progress-nums"><span><strong id="count-jump">Loading…</strong></span><span id="pct-jump"></span></div>
             <div id="increase-jump" style="display:none;margin-top:0.4rem;font-size:0.7rem;letter-spacing:0.15em;color:#00ff88;"></div>
             <div class="days-to-goal" id="days-jump"></div>
+            <div class="stream-stale-note" id="stale-jump" style="display:none;"></div>
           </div>
           <a class="stream-btn" href="https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY" target="_blank" rel="noopener">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
@@ -782,6 +1125,7 @@
           </a>
           <button class="history-toggle open" onclick="toggleHistory('jump', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
           <div class="history-panel" id="history-jump"></div>
+          <div class="ms-history" id="ms-history-jump"></div>
           <button class="gen-card-btn" onclick="openSongCard('jump')">⬡ Generate Share Card</button>
         </div>
 
@@ -796,6 +1140,7 @@
             <div class="progress-nums"><span><strong id="count-shutdown">Loading…</strong></span><span id="pct-shutdown"></span></div>
             <div id="increase-shutdown" style="display:none;margin-top:0.4rem;font-size:0.7rem;letter-spacing:0.15em;color:#00ff88;"></div>
             <div class="days-to-goal" id="days-shutdown"></div>
+            <div class="stream-stale-note" id="stale-shutdown" style="display:none;"></div>
           </div>
           <a class="stream-btn" href="https://open.spotify.com/track/6tCd8bPvYnceDG7W9M1RMk" target="_blank" rel="noopener">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
@@ -803,6 +1148,7 @@
           </a>
           <button class="history-toggle open" onclick="toggleHistory('shutdown', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
           <div class="history-panel" id="history-shutdown"></div>
+          <div class="ms-history" id="ms-history-shutdown"></div>
           <button class="gen-card-btn" onclick="openSongCard('shutdown')">⬡ Generate Share Card</button>
         </div>
 
@@ -817,6 +1163,7 @@
             <div class="progress-nums"><span><strong id="count-ddududu">Loading…</strong></span><span id="pct-ddududu"></span></div>
             <div id="increase-ddududu" style="display:none;margin-top:0.4rem;font-size:0.7rem;letter-spacing:0.15em;color:#00ff88;"></div>
             <div class="days-to-goal" id="days-ddududu"></div>
+            <div class="stream-stale-note" id="stale-ddududu" style="display:none;"></div>
           </div>
           <a class="stream-btn" href="https://open.spotify.com/track/69BIczdH6QMnFx7dsSssN8" target="_blank" rel="noopener">
             <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
@@ -824,6 +1171,7 @@
           </a>
           <button class="history-toggle open" onclick="toggleHistory('ddududu', this)"><span>Stream History</span> <span class="arrow">▾</span></button>
           <div class="history-panel" id="history-ddududu"></div>
+          <div class="ms-history" id="ms-history-ddududu"></div>
           <button class="gen-card-btn" onclick="openSongCard('ddududu')">⬡ Generate Share Card</button>
         </div>
 
@@ -843,10 +1191,10 @@
           <a href="https://open.spotify.com/search/BLACKPINK" target="_blank" class="btn-primary" onclick=\"window.open('https://open.spotify.com/search/BLACKPINK','_blank','noopener')\">Open Spotify →</a>
         </div>
         <div class="animate-in">
-          <div class="challenge-step"><div class="step-num">01</div><div class="step-content"><h4>Use a Premium Account</h4><p>Premium streams count at full weight. Free tier still counts, but premium is preferred for algorithm signals.</p></div></div>
-          <div class="challenge-step"><div class="step-num">02</div><div class="step-content"><h4>Stream on a Playlist</h4><p>Create a playlist with the target songs. Set volume above 30%, keep headphones connected, let it loop. No muting.</p></div></div>
-          <div class="challenge-step"><div class="step-num">03</div><div class="step-content"><h4>Watch YouTube MVs Fully</h4><p>Views must be at least 50% of the video to fully count. Watch all the way through when you can.</p></div></div>
-          <div class="challenge-step"><div class="step-num">04</div><div class="step-content"><h4>Add to Your Library</h4><p>Save songs to Liked Songs and personal playlists. This signals strong engagement to the algorithm.</p></div></div>
+          <div class="challenge-step"><div class="step-num">01</div><div class="step-content"><h4>Free or Premium — Both Count</h4><p>Premium and free accounts both count equally toward stream numbers. Premium is preferred for stronger algorithm signals, but every stream matters.</p></div></div>
+          <div class="challenge-step"><div class="step-num">02</div><div class="step-content"><h4>Disable Autoplay &amp; No Looping</h4><p>Turn off Autoplay in the Spotify mobile app settings. Do not loop — let the playlist run naturally. Our daily playlist is shared on <a href="https://x.com/BPSpotifySchool" target="_blank" rel="noopener" style="color:var(--pink);text-decoration:none;">@BPSpotifySchool</a>.</p></div></div>
+          <div class="challenge-step"><div class="step-num">03</div><div class="step-content"><h4>Stream on Spotify</h4><p>Use the daily playlist provided by <a href="https://x.com/BPSpotifySchool" target="_blank" rel="noopener" style="color:var(--pink);text-decoration:none;">@BPSpotifySchool</a>. Keep volume above 30%, headphones connected, and never mute.</p></div></div>
+          <div class="challenge-step"><div class="step-num">04</div><div class="step-content"><h4>Add to Your Library</h4><p>Save the songs to Liked Songs and personal playlists. This signals strong engagement to the algorithm.</p></div></div>
           <div class="challenge-step"><div class="step-num">05</div><div class="step-content"><h4>Share &amp; Rally Blinks</h4><p>Tag fellow Blinks, post stream screenshots, keep the energy up. Community momentum is our biggest advantage.</p></div></div>
         </div>
       </div>
@@ -905,6 +1253,7 @@
     <p>© 2025 Blinks United · Fan-made · Not affiliated with YG Entertainment · Made with 💗</p>
     <div class="footer-logo">BLINKS UNITED</div>
     <p>Stream data by <a href="https://last.fm" target="_blank" onclick=\"window.open('https://last.fm','_blank','noopener')\">Last.fm</a> · Goals are fan estimates</p>
+    <button class="admin-unlock" onclick="openPlaylistPanel()">· · ·</button>
   </footer>
 
 </div><!-- end home page -->
@@ -993,6 +1342,7 @@
       </div>
 
       <div class="summary-strip" id="profile-summary"></div>
+      <div class="goal-tracker-wrap" id="daily-goal-tracker" style="display:none"></div>
       <div style="max-width:900px;margin:0 auto;padding:0 1.5rem;">
         <button class="gen-card-btn" onclick="openPersonalCard()">⬡ Generate My Stats Card</button>
       </div>
@@ -1044,9 +1394,18 @@
 
       <!-- Period tabs: Daily / Weekly -->
       <div class="lb-tabs">
-        <button class="lb-tab active" onclick="switchLbPeriod('daily', this)">Today</button>
-        <button class="lb-tab" onclick="switchLbPeriod('weekly', this)">This Week</button>
-        <button class="lb-tab" onclick="switchLbPeriod('overall', this)">All Time</button>
+        <button class="lb-tab active" data-period="daily" onclick="switchLbPeriod('daily', this)">Today</button>
+        <button class="lb-tab" data-period="weekly" onclick="switchLbPeriod('weekly', this)">This Week</button>
+        <button class="lb-tab" data-period="overall" onclick="switchLbPeriod('overall', this)">All Time</button>
+      </div>
+
+      <!-- Viewing-a-past-snapshot banner -->
+      <div class="lb-history-bar" id="lb-history-bar">
+        <span id="lb-history-label"></span>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="lb-refresh-btn" style="margin-left:0;" onclick="shareLbCard()">⬡ Share This Day</button>
+          <button class="lb-refresh-btn" style="margin-left:0;" onclick="exitLbHistory()">← Back to Live</button>
+        </div>
       </div>
 
       <!-- Song subtabs -->
@@ -1057,10 +1416,19 @@
         <button class="lb-subtab" onclick="switchLbSong('ddududu', this)">DDU-DU DDU-DU</button>
       </div>
 
+      <!-- Community total -->
+      <p class="lb-community-total" id="lb-community-total"></p>
+
       <!-- Header row -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:0.8rem 0 0.4rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0.8rem 0 0.4rem;flex-wrap:wrap;gap:0.5rem;">
         <span class="lb-last-updated" id="lb-last-updated">Loading…</span>
-        <button class="lb-refresh-btn" onclick="refreshLeaderboard(true)">↻ Refresh</button>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <select class="lb-history-select" id="lb-history-select" onchange="onLbHistoryPick(this.value)">
+            <option value="">📅 History…</option>
+          </select>
+          <button class="lb-refresh-btn" onclick="shareLbCard()">⬡ Share Card</button>
+          <button class="lb-refresh-btn" onclick="refreshLeaderboard(true)">↻ Refresh</button>
+        </div>
       </div>
 
       <!-- Leaderboard table -->
@@ -1078,6 +1446,31 @@
 
   </div>
 </div><!-- end leaderboard page -->
+
+<!-- ══════════════════════════════════════
+     VOTE PAGE
+════════════════════════════════════════ -->
+<div id="page-vote" class="page">
+  <div class="vote-page">
+
+    <div class="vote-header">
+      <p class="vote-header-eyebrow">✦ Make Every Vote Count ✦</p>
+      <h1 class="vote-header-title">FAN<br><span>VOTING</span></h1>
+      <p class="vote-header-sub">Award show campaigns where BLACKPINK & the members are nominated</p>
+      <p class="vote-update-note">We don't host the vote — tap through to the official page and vote there</p>
+    </div>
+
+    <div class="vote-inner" id="vote-list">
+      <!-- populated by renderVoteCampaigns() -->
+    </div>
+
+    <p class="badge-footer-note" style="margin-top:2rem;">
+      Know about another vote we should track? Tell us via Feedback.<br>
+      Fan-made by Blinks United · Made with 💗
+    </p>
+
+  </div>
+</div><!-- end vote page -->
 
 <!-- ══════════════════════════════════════
      BETA PAGE
@@ -1129,6 +1522,16 @@
         <div class="admin-loading">Loading…</div>
       </div>
       <div id="admin-song-note" class="admin-song-note"></div>
+
+      <div class="admin-ban-section">
+        <div class="admin-ban-title">⛔ Banned users — removed from the leaderboard, can't rejoin</div>
+        <div class="admin-input-row">
+          <input id="admin-ban-input" class="admin-input" type="text" placeholder="Last.fm username" onkeydown="if(event.key==='Enter')banUser()">
+          <button class="btn-primary" onclick="banUser()">Ban</button>
+        </div>
+        <div id="admin-ban-err" class="admin-err"></div>
+        <div id="admin-ban-list" class="admin-ban-list"></div>
+      </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
       <button class="card-cl-btn" onclick="closeAdminPanel()">Close</button>
@@ -1137,15 +1540,54 @@
   </div>
 </div>
 
+<!-- Today's Playlist panel (separate from the control-ranking admin panel) -->
+<div id="playlist-overlay" class="admin-overlay" style="display:none" onclick="if(event.target===this)closePlaylistPanel()">
+  <div class="admin-box">
+    <h2>⬡ TODAY'S PLAYLIST</h2>
+    <div id="playlist-auth">
+      <div class="admin-input-row">
+        <input id="playlist-key-input" class="admin-input" type="password" placeholder="Admin key" onkeydown="if(event.key==='Enter')submitPlaylistKey()">
+        <button class="btn-primary" onclick="submitPlaylistKey()">Unlock →</button>
+      </div>
+      <div id="playlist-auth-err" class="admin-err"></div>
+    </div>
+    <div id="playlist-content" style="display:none">
+      <div id="admin-playlist-pending" class="admin-song-note" style="display:none"></div>
+      <input id="admin-playlist-input" class="beta-input" type="text" placeholder="Paste the Spotify playlist link…">
+      <input id="admin-playlist-day" class="beta-input" type="number" min="1" placeholder="Day # (optional)" style="margin-top:0.5rem;max-width:140px;">
+      <button class="beta-btn" onclick="savePlaylistLink()">Save Playlist</button>
+      <label style="display:block;margin-top:0.5rem;font-size:0.75rem;color:var(--muted);cursor:pointer;">
+        <input id="admin-playlist-now" type="checkbox" style="margin-right:0.4rem;">Publish immediately instead of waiting for the 2am reset
+      </label>
+      <div id="admin-playlist-msg" class="admin-err"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
+      <button class="card-cl-btn" onclick="closePlaylistPanel()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Card modal -->
 <div id="card-overlay" class="card-overlay" style="display:none" onclick="if(event.target===this)closeCard()">
   <div class="card-box">
-    <div class="card-box-label" id="card-box-label">GENERATING…</div>
-    <canvas id="card-canvas" width="1080" height="1080"></canvas>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;flex-wrap:wrap;gap:0.5rem;">
+      <div class="card-box-label" id="card-box-label" style="margin-bottom:0;">GENERATING…</div>
+      <div class="card-range-toggle" id="lb-card-range-toggle" style="display:none;">
+        <button class="card-fmt" onclick="shiftLbCardRange(-1)">‹</button>
+        <span class="card-range-label" id="lb-card-range-label">1–20</span>
+        <button class="card-fmt" onclick="shiftLbCardRange(1)">›</button>
+      </div>
+      <div class="card-fmt-toggle" id="card-fmt-toggle">
+        <button class="card-fmt active" id="fmt-landscape" onclick="setCardFormat('landscape',this)">▬ Landscape</button>
+        <button class="card-fmt" id="fmt-square" onclick="setCardFormat('square',this)">□ Square</button>
+      </div>
+    </div>
+    <canvas id="card-canvas" width="1200" height="675"></canvas>
     <div class="card-box-actions">
-      <button class="card-dl-btn" onclick="downloadCard()">↓ Download PNG</button>
-      <button class="card-dl-btn" style="background:var(--off-black);color:var(--white);border:1px solid var(--border);" onclick="shareCard()">↗ Share</button>
-      <button class="card-cl-btn" onclick="closeCard()">Close</button>
+      <button class="card-dl-btn" onclick="shareCard()">↑ Share</button>
+      <button class="card-dl-btn" style="background:var(--off-black);color:var(--white);border:1px solid var(--border);" onclick="copyCard(this)">📋 Copy Image</button>
+      <button class="card-dl-btn" style="background:transparent;color:var(--muted);border:1px solid var(--border);" onclick="downloadCard()">↓ Download</button>
+      <button class="card-cl-btn" onclick="closeCard()">✕</button>
     </div>
   </div>
 </div>
@@ -1293,7 +1735,7 @@ function renderHistory(id, history) {
   }).join('');
 
   const datesHtml = history.map(h =>
-    `<div style="flex:1;font-size:0.34rem;letter-spacing:0.03em;color:rgba(245,240,240,0.2);text-align:center;white-space:nowrap;overflow:hidden;">${h.date}</div>`
+    `<div style="flex:1;font-size:0.65rem;letter-spacing:0.01em;color:rgba(245,240,240,0.45);text-align:center;white-space:nowrap;overflow:hidden;">${h.date}</div>`
   ).join('');
 
   const latest = history[history.length - 1];
@@ -1303,7 +1745,7 @@ function renderHistory(id, history) {
     <p class="history-title">// Daily Stream History</p>
     <div class="chart-bars">${barsHtml}</div>
     ${showDates ? `<div style="display:flex;gap:4px;margin-bottom:0.5rem;">${datesHtml}</div>` : '<div style="margin-bottom:0.5rem;"></div>'}
-    <p style="font-size:0.4rem;letter-spacing:0.12em;color:rgba(245,240,240,0.2);">
+    <p style="font-size:0.6rem;letter-spacing:0.08em;color:rgba(245,240,240,0.4);">
       Latest: ${formatFull(latest.streams)} streams on ${latest.date} · Pink = most recent · Hover for details
     </p>`;
   panel.style.display = 'block';
@@ -1394,8 +1836,21 @@ async function fetchSpotifyStreams() {
       if (!entry) continue;
       const plays = (typeof entry === 'object') ? (entry.total || 0) : (entry || 0);
       const apiHistory = (typeof entry === 'object') ? (entry.history || []) : [];
+      const lastApiDay = apiHistory.length > 0 ? apiHistory[apiHistory.length - 1] : null;
+
+      const staleEl = document.getElementById(`stale-${t.id}`);
+      if (staleEl) {
+        if (entry?.stale && entry?.updatedAt) {
+          const d = new Date(entry.updatedAt);
+          staleEl.textContent = `⚠ Live count temporarily unavailable — showing last known total (${d.toLocaleDateString()})`;
+          staleEl.style.display = 'block';
+        } else {
+          staleEl.style.display = 'none';
+        }
+      }
 
       if (plays) {
+        checkMilestone(t.id, plays, lastApiDay?.date);
         const pct = Math.min(100, (plays / t.goal) * 100);
         document.getElementById(`count-${t.id}`).textContent = `${formatFull(plays)} / ${formatGoal(t.goal)}`;
         document.getElementById(`pct-${t.id}`).textContent = pct.toFixed(2) + '%';
@@ -1458,7 +1913,6 @@ async function fetchSpotifyStreams() {
         renderDaysToGoal(t.id, merged, plays, t.goal);
 
         window.streamData = window.streamData || {};
-        const lastApiDay = apiHistory.length > 0 ? apiHistory[apiHistory.length - 1] : null;
         window.streamData[t.id] = {
           total:     plays,
           daily:     lastApiDay?.streams ?? autoStreams,
@@ -1470,6 +1924,7 @@ async function fetchSpotifyStreams() {
           const last = merged[merged.length - 1];
           const prev = merged[merged.length - 2];
           const diff = last.streams - prev.streams;
+          window.streamData[t.id].dailyChange = diff;
           const el = document.getElementById(`increase-${t.id}`);
           if (el) {
             const diffStr = diff > 0 ? ` (+${formatFull(diff)})` : '';
@@ -1478,8 +1933,10 @@ async function fetchSpotifyStreams() {
             el.style.display = 'block';
           }
         }
+        renderMilestoneHistory(t.id);
       }
     }
+    showPendingMilestone();
   } catch(e) {
     for (const t of SPOTIFY_TRACKS) {
       const el = document.getElementById(`count-${t.id}`);
@@ -1488,7 +1945,26 @@ async function fetchSpotifyStreams() {
   }
 }
 window.addEventListener('DOMContentLoaded', () => {
+  // Pin known milestone dates so they can never drift to "today" — e.g. on a
+  // fresh browser/device with no localStorage entry yet, checkMilestone()
+  // below would otherwise treat that as a brand-new milestone and stamp it
+  // with the current date instead of when it was actually reached.
+  (function seedKnownMilestoneDates() {
+    const known = [
+      { key: 'bu_ms_jump_630000000',     date: '14/05', year: 2026 },
+      { key: 'bu_ms_shutdown_890000000', date: '12/06', year: 2026 },
+      { key: 'bu_ms_ddududu_870000000',  date: '05/06', year: 2026 },
+    ];
+    for (const { key, date, year } of known) {
+      try {
+        localStorage.setItem(key, JSON.stringify({ date, year }));
+      } catch {}
+    }
+  })();
+
   fetchSpotifyStreams();
+  loadTodaysPlaylist();
+  loadCommunityGoal();
   const saved = getSavedUsername();
   if (saved) {
     if (document.getElementById('page-badges')?.classList.contains('active')) {
@@ -1511,15 +1987,76 @@ function closeMobileNav() {
   document.getElementById('nav-hamburger').classList.remove('open');
 }
 
-function showPage(page) {
+const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback' };
+
+// Mirrors the per-route <title> the Vercel edge middleware sets on first
+// load, so client-side navigation keeps the tab title in sync too.
+const PAGE_TITLES = {
+  home: 'BLINKS UNITED | BLACKPINK Streaming Hub',
+  badges: 'Badges | BLINKS UNITED',
+  leaderboard: 'Leaderboard | BLINKS UNITED',
+  vote: 'Vote Now | BLINKS UNITED',
+  feedback: 'Feedback | BLINKS UNITED',
+};
+
+function pathToPage(pathname) {
+  const clean = pathname.replace(/\/+$/, '') || '/';
+  const entry = Object.entries(PAGE_PATHS).find(([, p]) => p === clean);
+  return entry ? entry[0] : 'home';
+}
+
+function showPage(page, { replace = false } = {}) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
   document.getElementById('nav-' + page)?.classList.add('active');
+  document.title = PAGE_TITLES[page] || PAGE_TITLES.home;
   window.scrollTo(0, 0);
   if (page === 'home') initAnimations();
   if (page === 'badges') tryAutoLoad();
-  if (page === 'leaderboard') refreshLeaderboard();
+  if (page === 'leaderboard') {
+    const pending = parseLbHistoryParam();
+    if (pending) {
+      lbPeriod = pending.period;
+      document.querySelectorAll('.lb-tab').forEach(b => b.classList.toggle('active', b.dataset.period === pending.period));
+      populateLbHistorySelect();
+      loadLbHistory(pending.period, pending.key);
+    } else {
+      refreshLeaderboard();
+      populateLbHistorySelect();
+    }
+  }
+  if (_voteCountdownTimer) { clearInterval(_voteCountdownTimer); _voteCountdownTimer = null; }
+  if (page === 'vote') {
+    renderVoteCampaigns();
+    _voteCountdownTimer = setInterval(tickVoteCountdowns, 1000);
+  }
+
+  const path = PAGE_PATHS[page] || '/';
+  if (pathToPage(location.pathname) !== page) {
+    if (replace) history.replaceState({ page }, '', path);
+    else history.pushState({ page }, '', path);
+  }
+}
+
+// Browser back/forward — switch pages without re-pushing history
+window.addEventListener('popstate', () => {
+  showPage(pathToPage(location.pathname), { replace: true });
+});
+
+// Deep link / refresh — show whatever page the URL points to on first load.
+// Deferred to DOMContentLoaded so every script on the page (and the
+// const/let declarations further down this file) has finished running
+// before we call into page-specific init code like tryAutoLoad().
+function routeInitial() {
+  const page = pathToPage(location.pathname);
+  if (page !== 'home') showPage(page, { replace: true });
+  else history.replaceState({ page: 'home' }, '', '/');
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', routeInitial);
+} else {
+  routeInitial();
 }
 
 function initAnimations() {
@@ -1555,6 +2092,168 @@ const TRACKS = [
   { id: 'shutdown', title: 'SHUT DOWN',     artist: 'BLACKPINK', track: 'Shut Down',     year: '2022', era: 'BORN PINK', spotify: 'https://open.spotify.com/track/6tCd8bPvYnceDG7W9M1RMk' },
   { id: 'ddududu',  title: 'DDU-DU DDU-DU', artist: 'BLACKPINK', track: 'DDU-DU DDU-DU', year: '2018', era: 'SQUARE UP', spotify: 'https://open.spotify.com/track/69BIczdH6QMnFx7dsSssN8' },
 ];
+
+// ── VOTE CAMPAIGNS ───────────────────────────────────────────
+const VOTE_CAMPAIGNS = [
+  {
+    id: 'billboard-korea-2026',
+    platform: 'Billboard Korea',
+    title: 'Billboard Top K-Artists',
+    url: 'https://billboard.co.kr/vote/',
+    image: '/vote-blackpink-ot4.jpg',
+    deadline: '2026-06-23T04:00:00Z', // 23 Jun 2026, 1:00 PM KST
+    resetOffset: 9, // daily vote reset at midnight KST
+    rules: [
+      'Vote for BLACKPINK in Female Group, and the members in Female Solo',
+      'Up to 32 votes per account, per day — shared across all categories',
+      'Votes reset at midnight KST',
+      'Final ranking standardizes and combines both the Korea and China channels',
+      'Final results announced 30 June 2026',
+    ],
+    categories: [
+      { name: 'Female Group', nominees: [{ name: 'BLACKPINK', us: true }] },
+      { name: 'Female Solo',  nominees: [
+        { name: 'JISOO',  us: true },
+        { name: 'JENNIE', us: true },
+        { name: 'ROSÉ',   us: true },
+        { name: 'LISA',   us: true },
+      ] },
+    ],
+  },
+  {
+    id: 'sda-2026-popularity-female',
+    platform: 'IDOLCHAMP',
+    title: 'Seoul International Drama Awards',
+    url: 'https://promo-web.idolchamp.com/app_proxy.html?deeplink=https%3A%2F%2Fapp.idolchamp.com%2Fopen%2Fvote%2F01KTT3R0ZYTFJGZ02H4RB65AYF',
+    image: '/vote-jisoo.jpg',
+    deadline: '2026-07-14T14:59:00Z', // 14 Jul 2026, 23:59 KST
+    resetOffset: 9, // daily vote reset at midnight KST
+    rules: [
+      'Vote via the IDOLCHAMP app',
+      "Up to 100 votes per day — they don't roll over",
+      'Daily votes reset at midnight KST',
+    ],
+    categories: [
+      { name: 'Korea Popularity Award (Female)', nominees: [{ name: 'JISOO', us: true }] },
+    ],
+  },
+  {
+    id: 'qqmusic-billboard-topkartists-2026',
+    platform: 'QQ Music · Billboard',
+    title: 'Billboard TOP K-Artists',
+    url: 'https://c6.y.qq.com/base/fcgi-bin/u?__=yzx8Gag67qQZ',
+    image: '/vote-blackpink-ot4.jpg',
+    deadline: '2026-06-23T04:00:00Z', // 23 Jun 2026, 12:00 CST (official activity rules)
+    restriction: 'China only — requires a Chinese phone number',
+    rules: [
+      'Vote for BLACKPINK in Female Group, and the members in Female Solo',
+      'Your Tencent Music points + exclusive campaign points = recommend value (no fixed daily cap)',
+      'Final ranking standardizes and combines both the Korea and China channels',
+      "This channel's own #1 per group also gets a separate \"China Channel No.1\" title",
+      'Final results announced 30 June 2026',
+    ],
+    categories: [
+      { name: 'Female Group', nominees: [{ name: 'BLACKPINK', us: true }] },
+      { name: 'Female Solo', nominees: [
+        { name: 'ROSÉ',   us: true },
+        { name: 'JISOO',  us: true },
+        { name: 'JENNIE', us: true },
+        { name: 'LISA',   us: true },
+      ] },
+    ],
+  },
+];
+
+function formatCountdownLabel(ms) {
+  if (ms <= 0) return 'VOTING CLOSED';
+  const totalSec = Math.floor(ms / 1000);
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = n => String(n).padStart(2, '0');
+  if (d > 0) return `${d}D ${pad(h)}H ${pad(m)}M ${pad(s)}S`;
+  if (h > 0) return `${h}H ${pad(m)}M ${pad(s)}S`;
+  return `${m}M ${pad(s)}S`;
+}
+
+function msUntilNextReset(utcOffsetHours) {
+  const now = Date.now();
+  const nowInZone = new Date(now + utcOffsetHours * 3600000);
+  const nextMidnightInZone = Date.UTC(nowInZone.getUTCFullYear(), nowInZone.getUTCMonth(), nowInZone.getUTCDate() + 1, 0, 0, 0);
+  return (nextMidnightInZone - utcOffsetHours * 3600000) - now;
+}
+
+let _voteCountdownTimer = null;
+function tickVoteCountdowns() {
+  const now = Date.now();
+  document.querySelectorAll('.vote-deadline[data-deadline]').forEach(el => {
+    const diff = new Date(el.dataset.deadline).getTime() - now;
+    if (diff <= 0) {
+      el.textContent = 'VOTING CLOSED';
+      el.classList.remove('urgent');
+      el.classList.add('ended');
+      return;
+    }
+    el.classList.toggle('urgent', diff <= 48 * 3600000);
+    el.textContent = formatCountdownLabel(diff);
+  });
+  document.querySelectorAll('.vote-reset-time[data-reset-offset]').forEach(el => {
+    el.textContent = formatCountdownLabel(msUntilNextReset(parseFloat(el.dataset.resetOffset)));
+  });
+}
+
+function renderVoteCampaigns() {
+  const el = document.getElementById('vote-list');
+  if (!el) return;
+  if (VOTE_CAMPAIGNS.length === 0) {
+    el.innerHTML = `<div class="vote-empty">No active campaigns right now — check back soon.</div>`;
+    return;
+  }
+  const now = Date.now();
+  el.innerHTML = VOTE_CAMPAIGNS.map(c => {
+    const ended = c.deadline && new Date(c.deadline).getTime() <= now;
+    let deadlineHtml;
+    if (!c.deadline) {
+      deadlineHtml = `<span class="vote-deadline open">VOTING OPEN</span>`;
+    } else if (ended) {
+      deadlineHtml = `<span class="vote-deadline ended" data-deadline="${c.deadline}">VOTING CLOSED</span>`;
+    } else {
+      const diff = new Date(c.deadline).getTime() - now;
+      const urgent = diff <= 48 * 3600000;
+      deadlineHtml = `<span class="vote-deadline ${urgent ? 'urgent' : ''}" data-deadline="${c.deadline}">${formatCountdownLabel(diff)}</span>`;
+    }
+    const categoriesHtml = c.categories.map(cat => `
+        <div>
+          <div class="vote-category-name">${cat.name}</div>
+          <div class="vote-nominees">
+            ${cat.nominees.map(n => `<span class="vote-chip ${n.us ? 'us' : ''}">${n.name}</span>`).join('')}
+          </div>
+        </div>`).join('');
+    return `
+      <div class="vote-card">
+        <div class="vote-card-top">
+          <div>
+            <div class="vote-platform">${c.platform}</div>
+            <div class="vote-title">${c.title}</div>
+            ${c.restriction ? `<div class="vote-restriction">⚠ ${c.restriction}</div>` : ''}
+          </div>
+          ${deadlineHtml}
+        </div>
+        ${c.resetOffset && !ended ? `<div class="vote-reset">🔄 Daily votes reset in <span class="vote-reset-time" data-reset-offset="${c.resetOffset}"></span></div>` : ''}
+        <div class="vote-categories">${categoriesHtml}</div>
+        ${c.rules?.length ? `<div class="vote-rules">
+          <div class="vote-rules-label">📋 Rules</div>
+          <ul>${c.rules.map(r => `<li>${r}</li>`).join('')}</ul>
+        </div>` : ''}
+        <div class="vote-card-actions">
+          <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
+          <button class="vote-share-btn" onclick="openVoteCard('${c.id}')">⬡ Share</button>
+        </div>
+      </div>`;
+  }).join('');
+  tickVoteCountdowns();
+}
 
 const BADGE_TIERS = [
   { id: 'blink',   label: 'BLINK',   min: 1,   icon: '💗', desc: 'Welcome to the fandom!' },
@@ -1774,7 +2473,6 @@ async function loadProfile(usernameOverride, silent = false) {
 
     if (!silent) setLoading('Building weekly breakdown…');
     const { from: weekFrom } = getWeekBounds();
-    const todayKey  = italyDayKey(0);
     const weekCacheKey = `bu_weekly_${username.toLowerCase()}_${weekFrom}`;
     let weekCache = {};
     try { weekCache = JSON.parse(localStorage.getItem(weekCacheKey) || '{}'); } catch {}
@@ -1788,10 +2486,12 @@ async function loadProfile(usernameOverride, silent = false) {
       const dayEnd   = dayStart + 86400;
       if (dayStart * 1000 > Date.now()) { weekDays.push(null); continue; }
 
-      const dayKey  = new Date(dayStart * 1000).toISOString().slice(0, 10);
-      const label   = getDayLabel(dayStart);
-      const isToday = dayKey === todayKey;
-      const isPast  = !isToday && dayEnd < Math.floor(Date.now() / 1000);
+      const dayKey = new Date(dayStart * 1000).toISOString().slice(0, 10);
+      const label  = getDayLabel(dayStart);
+      const todayKey = italyDayKey(0);
+      const isToday  = dayKey === todayKey;
+      // A day's 2am-to-2am window is closed once dayEnd has passed
+      const isPast   = !isToday && dayEnd <= Math.floor(Date.now() / 1000);
 
       let counts;
       if (isPast && weekCache[dayKey]) {
@@ -1823,6 +2523,9 @@ async function loadProfile(usernameOverride, silent = false) {
     saveUsername(username);
     // Sync stamps from server before rendering so calendar has cross-device data
     await syncStampsFromServer(username);
+    // Earn/persist today's stamp even on a silent background refresh, so a streak
+    // doesn't break just because the user never opened My Badges that day.
+    persistTodayStamp(username, todayCounts);
     if (!silent) renderProfile(currentUser);
     // Auto-register as beta tester (once per device per username)
     autoRegisterBeta(username);
@@ -1999,6 +2702,31 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
     </div>
   `;
 
+  // Personal daily goal tracker
+  const _s = loadSettings();
+  const goalTrackerEl = document.getElementById('daily-goal-tracker');
+  const goalTarget = parseInt(_s.goal);
+  if (goalTarget > 0) {
+    const todayTotal = (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0);
+    const pct       = Math.min(100, (todayTotal / goalTarget) * 100);
+    const remaining = Math.max(0, goalTarget - todayTotal);
+    const done      = todayTotal >= goalTarget;
+    goalTrackerEl.innerHTML = `
+      <div class="goal-tracker-card">
+        <div class="goal-tracker-top">
+          <span class="goal-tracker-label">// My Daily Goal</span>
+          <span class="goal-tracker-nums">${todayTotal}<span> / ${goalTarget} streams</span></span>
+        </div>
+        <div class="goal-tracker-bar"><div class="goal-tracker-fill" style="width:${pct}%"></div></div>
+        <div class="goal-tracker-status ${done ? 'goal-tracker-done' : ''}">
+          ${done ? '✓ Daily goal reached! Keep streaming.' : `${remaining} more stream${remaining === 1 ? '' : 's'} to reach your goal`}
+        </div>
+      </div>`;
+    goalTrackerEl.style.display = 'block';
+  } else {
+    goalTrackerEl.style.display = 'none';
+  }
+
   // Daily challenge
   const dailyGrid = document.getElementById('daily-challenge-grid');
   dailyGrid.innerHTML = `
@@ -2073,11 +2801,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
     </table>
   `;
 
-  // Save today's stamps and render calendar
-  saveTodayStamps(todayCounts);
-  const _todayKey = italyDayKey();
-  const _todayArch = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
-  if (_todayArch[_todayKey]) pushStampToServer(getSavedUsername(), _todayKey, _todayArch[_todayKey]);
+  // Today's stamp is persisted in loadProfile() (runs even in silent mode); just render the calendar.
   calMonth = new Date().getMonth();
   calYear  = new Date().getFullYear();
   renderStampCalendar();
@@ -2194,6 +2918,15 @@ function italyDateLabel() {
   const { from: dayFrom } = getDayBounds();
   const d = new Date(dayFrom * 1000);
   return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+}
+
+// Saves today's stamp locally and pushes it to the server — called from loadProfile()
+// regardless of silent mode, so streams earn their stamp even without opening My Badges.
+function persistTodayStamp(username, todayCounts) {
+  saveTodayStamps(todayCounts);
+  const todayKey = italyDayKey();
+  const archive = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
+  if (archive[todayKey]) pushStampToServer(username, todayKey, archive[todayKey]);
 }
 
 function saveTodayStamps(todayCounts) {
@@ -2375,16 +3108,15 @@ document.getElementById('lfm-input').addEventListener('keydown', e => {
     background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAALBElEQVR4nM2ZW29cyXHHf9XdZ64ckpZESowi71Vx7HU2iWM7QR4SbIzAeUleAuQ5yGO+Qr5O3v1kA0EM5MkWjI3WiaSsLrvSSiTFi0iJmjvPpbvycC5zZjhcrS0B6yIGZ6ZPX/7/6qruqqI4QIFQPBEAEM2fpnpnKEUAW3zX4nez+J4QyKRoVGhpOYcQC2hUzBMAr1gFKRb1KMWymOKbqVry+X0JwORPxzKZjSGc87rs4ov5sqItq7PUunKKH17zdz4HXs1lZH5dDeUUpU6XYpRSk4G58XODdLGhbBTAlBotqJpa3wBNcRifw0wJFUFX7GGWM5mJERCBoKCK6GzKM5YiBYFSy4ts64SWqkEAKU0rLGceOAMi71YYhxV88BWgeQUZ8KGymFICoKWpL+IqbX6OwGKnmo1XnRcBLI4NYMRUZLwqKiDWEEIoHMvkk5a7WapbZz5XNpf4nMrZDoaas1DrXbbp7OmK/sncdtX6WpM/A2gAGxRB8+EKkvn8uxTQrJkfX6wVdLYLpZKF0omLjiXeM6ajM8cPhS+WmmkU3XzxkdpCHnJtlit6iMiVlQ8Xus02o3iCV8i84tXPgNftpphioQk3Z5iLwEvRfOE6wTTkQBYtaW5oOa8KRgyrLuKSRPQabW112thGRKfT4eDZIU/7h3JazJtS7EgNV7np9XV0kcCc5moEhFzThhx0QxwjzWhEEXGa0mw2mCQJSG4WxlhEDUEDISg2anDRNfnnv/9H/fDyNaZHJwyGL0nSlKjT4sn+U259dk9tr8PhcMDuyZGMfQoImc7fA4tKdtVxpEt8sHAymwS6NNjorqgkGaurq7TXV2n2uqQEPvn0tlgFFzkaEhHHU6xYFEFdhMNw/a139Pvf/WO+GXXJGivsPPKsXlolVk87hQ/evc5Jdoq9sMZP/uNnem/nCxmm8XIDqQF1M70vu7JAs0DbOn78l3+lH33vz/HDCaN+n9ZajyeHe7zzres0vOogjdnZ25fjwQv+8Np7unbxEr1vrDHOEp7tHxBZy82bNzmKuvzoz37IWqNNr90mSRLe+/1r/M+Du2x9820eHO/zd3/zEV/8+w6Jz5gEfwZ0DsycvYnn2BY7Y0T4vY0N/uLDP+X717/DeP8Z++kuKo5BZhnvHPKjD3+AaTWJ1euNjz9hfWsT2+lwKoF1Z/BJSjIac+OTX7HbWOXbb7/DuxtX8KMpK67JWrPHhfYK8XBCx0ZsXL3MhbV1PTl8KkvB18Sc+bIgwSsNjF5odmlOUzZthz+5+i4/ePtb/NNf/5irrs33rr7HRmL5o41r/PD6Bzzf3ssvIBGGwyFxlhJ129i1LgPj+fnHv+RoPEAahngyJUxjNi9cJEsSWo0GJ8+PMaJLz5b5XVjAXY8C6qyNVyROaMSebiasBUc4HuDGCW9dukJ/d4+31i9xeviC777/PiutNg8fPmR7d4fBYECWZXmgZg2xyfj08WckWcxKu0O72SJNUw73D+i2OxwfH7O/v8/B4aFEVpaTqDWaL9ue0rlfvjiRJw8ewmlKxwsrODaabXrWsXX5Cs+eH7N5aYOjg0NarRaXr1xhEp9ymiaMRyNMULIsI8syRIR2o4mknslwhBjlxYtjUp8xnk7ACHcf3GeqnthrhaMOvrz087up6FPcM7MzvYxjBIbZlEdPt0mM5uFyltG2EX44oR0ca40ug5cv6a72UGs47L+gu76CSsC1mhgnBBQTOQJgGxFxmkHU4Ol4wF464SjE3D3Y5c6jz7l557Z4lsQ5C9Zi6gQ8eShchcMh/zSdIQN+9fmn3DrcZtx1DCXDe087OMzJBDdOabY7PJ9OGPiYUTYl0ZRUM2IfcyoZ0rTE6hmMxmxsbRGt9TjwU/77ZJ87Ych9P+TjvS/4xb078kJTMsCXEduCHeW6zf9ceXqWycLiLZqkgQh4lgzll3f/V7/z7vuYTkR/dMqF9Qs8evyQzto697afsLJ5kdv37zIcDlEL670uiXq8OJI44eXRsfiXI7aPj/T/dp7gNXDj87s8G/d5enjA4fGR9KfDQneCcZbgM75MpH4PVPFOib9gs9JwmDjj+uqG/tu//CsfbFyD50MIyq0nD2luXuRg0mdsAj/9r5+jDYu1Ftdq0h+PaK2tcDIesrO7K8PRkPWozWZnVY/6RxK1Vxklp0z86UyJYoqELSzNQ+rhdXUKLcbcVaOFUZKRAnuDF/KLe7cYtoX4YodfHz2hvxLxcPyc5yblxu1fc2v7roxO+rg00EnhvUtbXO1dwHrldDolA16mU3aGL2RA4Hj6kok/BQQrDmMsXnU5eM42VRfZUvBQpHpKDAyC5z9v3qB38Rs0phl379+jc+Uytz+/D87y+PFjyYDBeMSHf/BttjY2aa10GSRTHu3vIiK5rwmchrQKxS2WIBBrNot2AescPvuKJmRroUSV8ZTZexkKZtBUuLq6RjwYIhgSaxn4uOrSAN66sKX/8NHfEpKM+5894FQCd7Yfyt64Dw1LluXhgQg0cATvCehCuiiICBrmQxxZCDwdEvIkaHEX6vFrecNZSAJsD/o0gKYVpj7GGstp8DhriH1gRCaPnh/o0d4BrVYLbwyh6fBjUO9nWgIysrkMy1oLRvBZhuor7+JZQqN6TjhXkojy/FQtZAqNyDJMPE1jiYPHNlx+tgMnyYQvDvdoNhyJj8FFBGfmYvyoWNMDYgzGGLyGPD9eHlcuzVtmwVwx4ZyT1DOVpFIZANPE56lkCHmC4wunc5ZUhCSyBIWgCsGTlMooMjmDoCievIQS/Hmol4Mve7u5NKsgMTeongvXJiq5lRtU+YwBL3nSbkQIAqKKLydemrf+9nK2sFXb5jO7sUR8WY+qLhCFkFfcTFAkFNnvgobT+aXOlyW3cF3MnJbrJOY6zX/Om6xsNICUJBTUB9SHIlGXvMpQmM+5gJfhWiLLS4sFiTM+8WVSW1i8YpSqsqYa8tpPbe459ev8q2XrnsfFSc2mlxWwytOpnnjWJ7PFSaJ+Ho2qVv4UVGcEqrLh+cr5ykoDXHlPzQFb4tihoDDXR8s6j5IGCIVmVfLvmeREUg34smpQmIYDLEL2Cjs592wqMC7PJJfY36tM0tTYqSqhIFJ+Kq1Xx+hZkOc9v0yMp6b9ZQirtrD0kxDAOnxRLmy5Bj5O8N6DNWSaO7BPs6JqJ0VUIiS18OG857mKKxVxpoPyipHzxIIIwcys1qcpqopzjiiKaLfbGGMgFEYY8oFiDWJm/7447/kqOa8Y8ZVFNc93rbFYY1FVpMgFfRH3JEkiZVzjnMOIwXs/fzL9lnL+MfobiKqiKEFzLYtIcQrlZLJaSJymaUXwTchr70AURUAez5TSbDYxzuIaETZyGGdpNpsAFVFrbTX2deSNqcJKXsy9srHJysoKa2trKiIYYxiPxyRJIs+Oj+kP+hgxBPQrhcuvkjdiQpA7ZdM1uLy1pd1ul1DUgQB6vR7NdlsDyGQywRcn05uQ1yZgili+LFxZa+l0OmRJQrkD1loarRYASZZWY0tfeR15bROykctPm5A7bKfVptfrsb66qq1WixAC4/FYTvp9RqPRjMAbCqtf3wcWgJQ/I2MxxuCcI8sy4gK4ku9aQPMY5esmIMU/5QyFOYT8SD1/gFTp4+8EgWU7IEh11osIIQTqtERk9us1CbyxU6gkkitVkcI5zWIUS/6+qtx+3U6MmWlailhfVc8CK+s8RYhdvf+dMaFSFpy5MqeCaEDni1VfNwEbuTz+D/NOeW5KWDErduQ1L7T/B5qM3csP0KsoAAAAAElFTkSuQmCC') no-repeat center/contain;
     pointer-events: none;
     z-index: 99999;
-    transform: translate(-4px, -4px);
     transition: opacity 0.1s;
+    will-change: transform;
   }
 </style>
 <div id="js-cursor"></div>
 <script>
   const cur = document.getElementById('js-cursor');
   document.addEventListener('mousemove', e => {
-    cur.style.left = e.clientX + 'px';
-    cur.style.top  = e.clientY + 'px';
+    cur.style.transform = `translate3d(${e.clientX - 4}px, ${e.clientY - 4}px, 0)`;
   });
   document.addEventListener('mouseleave', () => cur.style.opacity = '0');
   document.addEventListener('mouseenter', () => cur.style.opacity = '1');
@@ -2409,6 +3141,7 @@ async function fetchOgUsers() {
   } catch {}
 }
 let lbCacheTime = null;
+let lbHistorySnapshot = null; // { period, key, label, archivedAt, users } when viewing a past archived leaderboard
 
 // ── Read leaderboard data ─────────────────────────────────────
 async function fetchLbData(force = false) {
@@ -2475,46 +3208,73 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
 }
 
 // ── Render leaderboard table ──────────────────────────────────
+// leaderStreak is only tracked against the Overall · All Tracks ranking
+// (api/leaderboard.js / api/cron-scrobbles.js updateLeaderStreak()), so the
+// badge only makes sense on that specific rank-1 row, on the live view.
+function leaderStreakBadge(rankIndex, username) {
+  const streak = lbData?.leaderStreak;
+  if (lbHistorySnapshot || rankIndex !== 0 || lbPeriod !== 'overall' || lbSong !== 'all') return '';
+  if (!streak || streak.username.toLowerCase() !== username.toLowerCase()) return '';
+  const days = Math.floor((Date.now() - new Date(streak.since).getTime()) / 86400000);
+  const label = days <= 0 ? 'New leader today' : `🔥 ${days} day${days === 1 ? '' : 's'} in the lead`;
+  return ` <span class="lb-streak" title="Leading Overall · All Tracks since ${new Date(streak.since).toLocaleDateString()}">${label}</span>`;
+}
+
 function getScoreKey() {
   // period: daily | weekly | overall
   // song:   all | jump | shutdown | ddududu
   return `${lbPeriod}_${lbSong}`;
 }
 
+function getActiveLbUsers() {
+  return (lbHistorySnapshot ? lbHistorySnapshot.users : lbData?.users) || {};
+}
+
 function renderLeaderboard() {
   const wrap = document.getElementById('lb-table-wrap');
   const updEl = document.getElementById('lb-last-updated');
-  if (!lbData) {
+  const totalEl = document.getElementById('lb-community-total');
+  if (!lbData && !lbHistorySnapshot) {
     wrap.innerHTML = '<div class="lb-loading">Loading…</div>';
+    if (totalEl) totalEl.textContent = '';
     return;
   }
 
   const key = getScoreKey();
-  const today = dateLabel(0);
   const myUsername = getSavedUsername();
 
   // Build sorted array
-  const entries = Object.entries(lbData.users || {})
+  const entries = Object.entries(getActiveLbUsers())
     .map(([username, data]) => {
       const score = (() => {
         const raw = data.scores?.[key] || 0;
-        if (lbPeriod === 'daily') {
+        // Archived snapshots are already frozen at the moment they closed —
+        // only the live view needs to zero out a stale, not-yet-refreshed day.
+        if (!lbHistorySnapshot && lbPeriod === 'daily') {
           const todayLabel = italyDateLabel();
           if (data.scores?.daily_date && data.scores.daily_date !== todayLabel) return 0;
         }
         return raw;
       })();
       const lastScrobbleAt = data.lastScrobbleAt || null;
-      const inactive = lastScrobbleAt && (Date.now() - new Date(lastScrobbleAt).getTime()) > 3 * 86400000;
+      const inactive = !lbHistorySnapshot && lastScrobbleAt && (Date.now() - new Date(lastScrobbleAt).getTime()) > 3 * 86400000;
       return { username, avatar: data.avatar, score, badge: getBadge(data.scores?.overall_all || 0), inactive };
     })
     .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
 
   if (entries.length === 0) {
     wrap.innerHTML = '<div class="lb-empty">No scores yet — log into My Badges to join the leaderboard! 💗</div>';
+    if (totalEl) totalEl.textContent = '';
   } else {
     const periodLabel = lbPeriod === 'daily' ? 'streams today' : lbPeriod === 'weekly' ? 'streams this week' : 'total streams';
     const songLabel   = lbSong === 'all' ? 'All Campaign Tracks' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : 'DDU-DU DDU-DU';
+
+    if (totalEl) {
+      const communityTotal = entries.reduce((sum, e) => sum + e.score, 0);
+      const contributors = entries.filter(e => e.score > 0).length;
+      const avg = contributors ? Math.round(communityTotal / contributors) : 0;
+      totalEl.innerHTML = `👥 ${entries.length} Blinks · <strong>${contributors}</strong> active · <strong>${communityTotal.toLocaleString()}</strong> ${songLabel} ${periodLabel} combined · avg <strong>${avg.toLocaleString()}</strong>/contributor`;
+    }
     wrap.innerHTML = `
       <table class="lb-table">
         <thead><tr>
@@ -2532,7 +3292,7 @@ function renderLeaderboard() {
               : `<span class="lb-avatar-placeholder">${e.username[0].toUpperCase()}</span>`;
             return `<tr class="${isMe ? 'me' : ''}">
               <td><span class="lb-rank ${rankClass}">${rankEmoji || (i+1)}</span></td>
-              <td>${avatarHtml}<span class="lb-user">${e.username}</span>${ogUsers.has(e.username.toLowerCase()) ? ' <span class="og-inline-badge" data-tip="Here from the start · OG Beta Tester">⭐ OG</span>' : ''}${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
+              <td>${avatarHtml}<span class="lb-user">${e.username}</span>${ogUsers.has(e.username.toLowerCase()) ? ' <span class="og-inline-badge" data-tip="Here from the start · OG Beta Tester">⭐ OG</span>' : ''}${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${leaderStreakBadge(i, e.username)}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
               <td class="lb-score">${e.score > 0 ? e.score.toLocaleString() : '—'}</td>
             </tr>`;
           }).join('')}
@@ -2542,13 +3302,16 @@ function renderLeaderboard() {
   }
 
   // Update timestamp
-  if (lbData.lastUpdated) {
+  if (lbHistorySnapshot) {
+    updEl.textContent = `Archived snapshot · ${lbHistorySnapshot.label}`;
+  } else if (lbData.lastUpdated) {
     const d = new Date(lbData.lastUpdated);
     updEl.textContent = `Last updated: ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} · refreshes every 60 min`;
   }
 }
 
 async function refreshLeaderboard(force = false) {
+  if (lbHistorySnapshot) { exitLbHistory(); return; }
   const wrap = document.getElementById('lb-table-wrap');
   if (wrap) wrap.innerHTML = '<div class="lb-loading">Loading leaderboard…</div>';
   try {
@@ -2563,7 +3326,83 @@ function switchLbPeriod(period, btn) {
   lbPeriod = period;
   document.querySelectorAll('.lb-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  if (lbHistorySnapshot) exitLbHistory(); else renderLeaderboard();
+  populateLbHistorySelect();
+}
+
+// ── Past leaderboards (archived daily/weekly snapshots) ───────
+// cron-scrobbles.js archives the closing day/week's standings into Supabase
+// (leaderboard_archive) right before overwriting them with the new period's
+// counts — these helpers browse/share that archive from the client.
+async function populateLbHistorySelect() {
+  const sel = document.getElementById('lb-history-select');
+  if (!sel) return;
+  if (lbPeriod === 'overall') { sel.style.display = 'none'; return; }
+  sel.style.display = '';
+  sel.innerHTML = '<option value="">📅 History…</option>';
+  try {
+    const res = await fetch(`/api/leaderboard-archive?period=${lbPeriod}`, { cache: 'no-store' });
+    if (!res.ok) return;
+    const { items } = await res.json();
+    for (const it of (items || [])) {
+      const opt = document.createElement('option');
+      opt.value = it.key;
+      opt.textContent = it.label;
+      sel.appendChild(opt);
+    }
+  } catch {}
+}
+
+function onLbHistoryPick(key) {
+  if (!key) return;
+  loadLbHistory(lbPeriod, key);
+}
+
+async function loadLbHistory(period, key) {
+  const wrap = document.getElementById('lb-table-wrap');
+  if (wrap) wrap.innerHTML = '<div class="lb-loading">Loading archived leaderboard…</div>';
+  try {
+    const res = await fetch(`/api/leaderboard-archive?period=${period}&key=${key}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('not found');
+    const data = await res.json();
+    if (!data?.users) throw new Error('not found');
+    lbHistorySnapshot = { period, key, label: data.label, archivedAt: data.archivedAt, users: data.users };
+    const sel = document.getElementById('lb-history-select');
+    if (sel) sel.value = key;
+    showLbHistoryBar();
+    renderLeaderboard();
+    const path = `${PAGE_PATHS.leaderboard}?lb=${period}:${key}`;
+    if (location.pathname + location.search !== path) history.replaceState({ page: 'leaderboard' }, '', path);
+  } catch {
+    if (wrap) wrap.innerHTML = '<div class="lb-empty">Could not load that past leaderboard.</div>';
+  }
+}
+
+function exitLbHistory() {
+  lbHistorySnapshot = null;
+  const bar = document.getElementById('lb-history-bar');
+  if (bar) bar.style.display = 'none';
+  const sel = document.getElementById('lb-history-select');
+  if (sel) sel.value = '';
+  if (location.search) history.replaceState({ page: 'leaderboard' }, '', PAGE_PATHS.leaderboard);
   renderLeaderboard();
+}
+
+function showLbHistoryBar() {
+  const bar = document.getElementById('lb-history-bar');
+  const labelEl = document.getElementById('lb-history-label');
+  if (!bar || !labelEl || !lbHistorySnapshot) return;
+  const periodWord = lbHistorySnapshot.period === 'daily' ? 'Daily' : 'Weekly';
+  labelEl.textContent = `📅 Viewing archived ${periodWord} leaderboard · ${lbHistorySnapshot.label}`;
+  bar.style.display = 'flex';
+}
+
+function parseLbHistoryParam() {
+  const v = new URLSearchParams(location.search).get('lb');
+  if (!v) return null;
+  const [period, key] = v.split(':');
+  if ((period !== 'daily' && period !== 'weekly') || !/^\d{4}-\d{2}-\d{2}$/.test(key || '')) return null;
+  return { period, key };
 }
 
 function switchLbSong(song, btn) {
@@ -2584,6 +3423,7 @@ function openAdminPanel() {
     document.getElementById('admin-content').style.display = 'block';
     document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
     loadAdminRanking(saved);
+    loadBannedUsers(saved);
   } else {
     document.getElementById('admin-auth').style.display = 'block';
     document.getElementById('admin-content').style.display = 'none';
@@ -2614,9 +3454,70 @@ async function submitAdminKey() {
     document.getElementById('admin-content').style.display = 'block';
     document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
     renderAdminTable(d);
+    loadBannedUsers(key);
   } catch(e) {
     errEl.textContent = 'Request failed — check your connection.';
   }
+}
+
+// ── Ban list (removes a user from the leaderboard and blocks re-registration) ──
+async function loadBannedUsers(key) {
+  const k = key || localStorage.getItem(ADMIN_KEY_LS);
+  if (!k) return;
+  try {
+    const r = await fetch(`/api/leaderboard?action=banned&key=${encodeURIComponent(k)}`, { cache: 'no-store' });
+    if (!r.ok) return;
+    const { banned } = await r.json();
+    renderBannedList(banned || []);
+  } catch {}
+}
+
+function renderBannedList(banned) {
+  const wrap = document.getElementById('admin-ban-list');
+  if (!wrap) return;
+  if (!banned.length) {
+    wrap.innerHTML = '<span style="color:var(--muted);font-size:0.55rem;">No one banned.</span>';
+    return;
+  }
+  wrap.innerHTML = banned.map(u => `<span class="admin-ban-chip">${u} <button onclick="unbanUser(${JSON.stringify(u)})">✕</button></span>`).join('');
+}
+
+async function banUser() {
+  const input = document.getElementById('admin-ban-input');
+  const errEl = document.getElementById('admin-ban-err');
+  const username = input.value.trim();
+  if (!username) { errEl.textContent = 'Enter a username.'; return; }
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  errEl.textContent = 'Banning…';
+  try {
+    const r = await fetch(`/api/leaderboard?action=ban&key=${encodeURIComponent(key)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    });
+    if (!r.ok) { errEl.textContent = 'Failed to ban — try again.'; return; }
+    const { banned } = await r.json();
+    input.value = '';
+    errEl.textContent = '';
+    renderBannedList(banned || []);
+    lbCacheTime = null; // force the leaderboard to refetch so the banned user disappears
+  } catch {
+    errEl.textContent = 'Request failed — check your connection.';
+  }
+}
+
+async function unbanUser(username) {
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  try {
+    const r = await fetch(`/api/leaderboard?action=unban&key=${encodeURIComponent(key)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    });
+    if (!r.ok) return;
+    const { banned } = await r.json();
+    renderBannedList(banned || []);
+  } catch {}
 }
 
 async function loadAdminRanking(key) {
@@ -2682,6 +3583,175 @@ function renderAdminTable(data) {
     </table>`;
 }
 
+async function loadTodaysPlaylist() {
+  const banner = document.getElementById('playlist-banner');
+  const homeSection = document.getElementById('todays-playlist-home');
+  try {
+    const r = await fetch('/api/playlist', { cache: 'no-store' });
+    const d = await r.json();
+    if (!d?.id) {
+      banner.style.display = 'none';
+      homeSection.style.display = 'none';
+      document.body.classList.remove('has-playlist-banner');
+      return;
+    }
+    banner.href = d.url || `https://open.spotify.com/playlist/${d.id}`;
+    document.getElementById('playlist-banner-day').textContent = d.day ? `[Day ${d.day}]` : '';
+    banner.style.display = 'flex';
+    document.body.classList.add('has-playlist-banner');
+
+    document.getElementById('todays-playlist-embed-home').innerHTML =
+      `<iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/${d.id}?utm_source=generator&theme=0" width="100%" height="352" frameborder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
+    homeSection.style.display = 'block';
+  } catch(e) {}
+}
+
+const COMMUNITY_GOAL_PRIMARY   = 15000;
+const COMMUNITY_GOAL_SECONDARY = 20000;
+
+// Sitewide daily scrobble total across all campaign tracks, summed the same
+// way the leaderboard's community-total line does (renderLeaderboard()) —
+// only counts each user's daily_all if it was actually refreshed today.
+async function loadCommunityGoal() {
+  const wrap = document.getElementById('community-goal-home');
+  if (!wrap) return;
+  try {
+    const r = await fetch('/api/leaderboard', { cache: 'no-store' });
+    const data = await r.json();
+    const todayLabel = italyDateLabel();
+    const total = Object.values(data.users || {}).reduce((sum, u) => {
+      const s = u.scores || {};
+      return s.daily_date === todayLabel ? sum + (s.daily_all || 0) : sum;
+    }, 0);
+
+    const goal = total < COMMUNITY_GOAL_PRIMARY ? COMMUNITY_GOAL_PRIMARY : COMMUNITY_GOAL_SECONDARY;
+    const pct  = Math.min(100, (total / goal) * 100);
+
+    document.getElementById('community-goal-nums').innerHTML = `${total.toLocaleString()}<span> / ${goal.toLocaleString()} scrobbles</span>`;
+    document.getElementById('community-goal-fill').style.width = `${pct}%`;
+
+    const statusEl = document.getElementById('community-goal-status');
+    if (total >= COMMUNITY_GOAL_SECONDARY) {
+      statusEl.textContent = `🎉 Secondary goal smashed — ${total.toLocaleString()} scrobbles today!`;
+      statusEl.className = 'goal-tracker-status goal-tracker-done';
+    } else if (total >= COMMUNITY_GOAL_PRIMARY) {
+      statusEl.textContent = `🎉 Primary goal hit! ${(COMMUNITY_GOAL_SECONDARY - total).toLocaleString()} more to reach the stretch goal`;
+      statusEl.className = 'goal-tracker-status goal-tracker-done';
+    } else {
+      statusEl.textContent = `${(COMMUNITY_GOAL_PRIMARY - total).toLocaleString()} more scrobbles to hit today's goal — stream now!`;
+      statusEl.className = 'goal-tracker-status';
+    }
+    wrap.style.display = 'block';
+  } catch(e) {}
+}
+
+// Installed/standalone PWAs are usually just suspended in the background, not
+// torn down — reopening resumes the same page without a fresh DOMContentLoaded
+// or fetch, so the banner can keep showing whatever was rendered before the
+// app was backgrounded. Re-fetch whenever the page becomes visible again.
+//
+// A backgrounded-but-not-closed tab also never re-checks for a new sw.js —
+// browsers only do that on a fresh navigation or their own throttled (~24h)
+// background sweep — so it can keep running an old service worker indefinitely.
+// Force an update check on resume so a stale worker doesn't outlive its tab.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  loadTodaysPlaylist();
+  loadCommunityGoal();
+  navigator.serviceWorker?.getRegistration().then(reg => reg?.update());
+});
+
+function openPlaylistPanel() {
+  document.getElementById('playlist-overlay').style.display = 'flex';
+  const saved = localStorage.getItem(ADMIN_KEY_LS);
+  if (saved) {
+    unlockPlaylistPanel(saved);
+  } else {
+    document.getElementById('playlist-auth').style.display = 'block';
+    document.getElementById('playlist-content').style.display = 'none';
+    setTimeout(() => document.getElementById('playlist-key-input')?.focus(), 100);
+  }
+}
+
+function closePlaylistPanel() {
+  document.getElementById('playlist-overlay').style.display = 'none';
+}
+
+async function submitPlaylistKey() {
+  const key = document.getElementById('playlist-key-input').value.trim();
+  const errEl = document.getElementById('playlist-auth-err');
+  if (!key) { errEl.textContent = 'Enter the admin key.'; return; }
+  errEl.textContent = 'Checking…';
+  const ok = await unlockPlaylistPanel(key);
+  if (ok) localStorage.setItem(ADMIN_KEY_LS, key);
+}
+
+// Shared by the initial unlock and by re-opening the panel with a cached key.
+// /api/playlist's GET returns 401 for a wrong ?key=, so it doubles as the auth check.
+async function unlockPlaylistPanel(key) {
+  const errEl = document.getElementById('playlist-auth-err');
+  try {
+    const r = await fetch(`/api/playlist?key=${encodeURIComponent(key)}`, { cache: 'no-store' });
+    if (r.status === 401) {
+      localStorage.removeItem(ADMIN_KEY_LS);
+      document.getElementById('playlist-auth').style.display = 'block';
+      document.getElementById('playlist-content').style.display = 'none';
+      errEl.textContent = 'Wrong key.';
+      return false;
+    }
+    const d = await r.json();
+    errEl.textContent = '';
+    document.getElementById('playlist-auth').style.display = 'none';
+    document.getElementById('playlist-content').style.display = 'block';
+    showQueueStatus(d.queue);
+    return true;
+  } catch(e) {
+    errEl.textContent = 'Request failed — check your connection.';
+    return false;
+  }
+}
+
+function showQueueStatus(queue) {
+  const el = document.getElementById('admin-playlist-pending');
+  if (queue && queue.length) {
+    el.innerHTML = queue.map((q, i) => {
+      const when = new Date(q.etaPublishAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+      return `⏳ #${i + 1} queued: ${q.day ? `[Day ${q.day}] ` : ''}${q.url} — goes live ~${when} (Italy time)`;
+    }).join('<br>');
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+async function savePlaylistLink() {
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  const url = document.getElementById('admin-playlist-input').value.trim();
+  const dayInput = document.getElementById('admin-playlist-day').value.trim();
+  const publishNow = document.getElementById('admin-playlist-now').checked;
+  const msgEl = document.getElementById('admin-playlist-msg');
+  if (!url) { msgEl.textContent = 'Paste a playlist link first.'; return; }
+  msgEl.textContent = 'Saving…';
+  try {
+    const r = await fetch(`/api/playlist?key=${encodeURIComponent(key)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, publishNow, day: dayInput ? Number(dayInput) : undefined }),
+    });
+    if (r.status === 401) { msgEl.textContent = 'Wrong key.'; return; }
+    const d = await r.json();
+    if (!r.ok) { msgEl.textContent = d.error || `Server error (${r.status}).`; return; }
+    msgEl.textContent = d.live ? 'Saved — live now ✓' : `Queued ✓ — #${(d.queue || []).length} in line, goes live one 2am reset at a time (Italy time)`;
+    document.getElementById('admin-playlist-input').value = '';
+    document.getElementById('admin-playlist-day').value = '';
+    document.getElementById('admin-playlist-now').checked = false;
+    showQueueStatus(d.queue);
+    loadTodaysPlaylist();
+  } catch(e) {
+    msgEl.textContent = 'Request failed — check your connection.';
+  }
+}
+
 // Auto-refresh leaderboard every 60 minutes when on the page
 setInterval(() => {
   if (document.getElementById('page-leaderboard')?.classList.contains('active')) {
@@ -2711,6 +3781,20 @@ function downloadCard() {
   a.download = `bu-${label}-${stamp}.png`;
   a.href = cardCanvas.toDataURL('image/png');
   a.click();
+}
+
+async function copyCard(btn) {
+  if (!cardCanvas) return;
+  try {
+    const blob = await new Promise(res => cardCanvas.toBlob(res, 'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('card-copy-ok');
+    setTimeout(() => { btn.textContent = '📋 Copy Image'; btn.classList.remove('card-copy-ok'); }, 2200);
+  } catch(e) {
+    btn.textContent = 'Not supported';
+    setTimeout(() => { btn.textContent = '📋 Copy Image'; }, 2200);
+  }
 }
 
 async function loadImg(url) {
@@ -2754,44 +3838,98 @@ async function getBuLogo() {
   return buLogoImg;
 }
 
+let _cardTrackId = null, _cardArt = null, _cardLogo = null, _cardFormat = 'landscape', _cardType = 'song';
+let _msMilestone = null, _msMilestoneTotal = 0, _msMilestoneDate = null;
+let _voteCampaignId = null;
+let _personalCardData = null;
+
+function setCardFormat(fmt, btn) {
+  _cardFormat = fmt;
+  document.querySelectorAll('.card-fmt').forEach(b => b.classList.toggle('active', b === btn));
+  const canvas = document.getElementById('card-canvas');
+  if (fmt === 'landscape') { canvas.width = 1200; canvas.height = 675; }
+  else                     { canvas.width = 1080; canvas.height = 1080; }
+  if (_cardType === 'lb') renderLbCard(_cardLogo);
+  else if (_cardType === 'milestone') drawMilestoneCard(canvas, _cardTrackId, _cardArt, _cardLogo, _msMilestoneTotal, _msMilestone, _msMilestoneDate);
+  else if (_cardType === 'vote') drawVoteCard(canvas, VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId), _cardLogo, _cardArt);
+  else if (_cardType === 'personal') drawPersonalCard(canvas, _personalCardData);
+  else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
+}
+
 async function openSongCard(trackId) {
   const overlay = document.getElementById('card-overlay');
   const label   = document.getElementById('card-box-label');
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
-
-  const track     = TRACKS.find(t => t.id === trackId);
-  const data      = window.streamData?.[trackId] || {};
-  const total     = data.total || 0;
-  const daily     = data.daily;
-  const dailyDate = data.dailyDate;
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  _cardType = 'song';
+  _cardTrackId = trackId;
+  // Reset to landscape on each open
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
 
   await document.fonts.ready;
   const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
+  _cardArt = art; _cardLogo = logo;
+  renderSongCard(trackId, art, logo);
+  label.textContent = TRACKS.find(t => t.id === trackId)?.title + ' — STREAM UPDATE CARD';
+}
 
-  const canvas = document.getElementById('card-canvas');
-  const ctx    = canvas.getContext('2d');
-  const W = 1080, H = 1080;
+// Draws text at the largest size up to maxSize that still fits maxWidth (shrinks long stream counts).
+function fillTextFit(ctx, text, x, y, maxSize, maxWidth, fontFamily) {
+  let size = maxSize;
+  ctx.font = `${size}px ${fontFamily}`;
+  const w = ctx.measureText(text).width;
+  if (w > maxWidth) size = Math.floor(size * maxWidth / w);
+  ctx.font = `${size}px ${fontFamily}`;
+  ctx.fillText(text, x, y);
+  return size;
+}
 
-  // Background
+function renderSongCard(trackId, art, logo) {
+  const track    = TRACKS.find(t => t.id === trackId);
+  const data     = window.streamData?.[trackId] || {};
+  const total    = data.total || 0;
+  const daily    = data.daily;
+  const dailyDate = data.dailyDate;
+  const canvas   = document.getElementById('card-canvas');
+  const ctx      = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const landscape = W > H;
+
   ctx.fillStyle = '#080808';
   ctx.fillRect(0, 0, W, H);
 
-  // Album artwork — full bleed, cover-fit, fades to dark on right for text legibility
+  // Artwork
   if (art) {
-    const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
-    const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
-    ctx.drawImage(art, (W - iw) / 2, (H - ih) / 2, iw, ih);
-    // left third: vivid art; centre: quick fade; right half: fully dark for text
-    const gr = ctx.createLinearGradient(0, 0, W, 0);
-    gr.addColorStop(0,    'rgba(8,8,8,0)');
-    gr.addColorStop(0.28, 'rgba(8,8,8,0.55)');
-    gr.addColorStop(0.45, 'rgba(8,8,8,0.92)');
-    gr.addColorStop(1,    'rgba(8,8,8,0.98)');
-    ctx.fillStyle = gr;
-    ctx.fillRect(0, 0, W, H);
+    if (landscape) {
+      // Left half of canvas
+      const AW = Math.round(W * 0.44);
+      const scale = Math.max(AW / art.naturalWidth, H / art.naturalHeight);
+      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      ctx.drawImage(art, (AW - iw) / 2, (H - ih) / 2, iw, ih);
+      const gr = ctx.createLinearGradient(0, 0, AW + 80, 0);
+      gr.addColorStop(0,    'rgba(8,8,8,0)');
+      gr.addColorStop(0.55, 'rgba(8,8,8,0.75)');
+      gr.addColorStop(1,    'rgba(8,8,8,1)');
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, AW + 80, H);
+    } else {
+      // Full bleed, fade to dark on right for square
+      const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
+      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      ctx.drawImage(art, (W - iw) / 2, (H - ih) / 2, iw, ih);
+      const gr = ctx.createLinearGradient(0, 0, W, 0);
+      gr.addColorStop(0,    'rgba(8,8,8,0)');
+      gr.addColorStop(0.28, 'rgba(8,8,8,0.55)');
+      gr.addColorStop(0.45, 'rgba(8,8,8,0.92)');
+      gr.addColorStop(1,    'rgba(8,8,8,0.98)');
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+    }
   } else {
-    const glow = ctx.createRadialGradient(0, H/2, 0, 0, H/2, 500);
+    const glow = ctx.createRadialGradient(0, H/2, 0, 0, H/2, H * 0.7);
     glow.addColorStop(0, 'rgba(255,0,102,0.15)');
     glow.addColorStop(1, 'rgba(8,8,8,0)');
     ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
@@ -2799,100 +3937,366 @@ async function openSongCard(trackId) {
 
   drawNoise(ctx, W, H, 0.03);
 
-  const PX = art ? 460 : 80;  // text starts after artwork or at left margin
+  // Text column: right portion for landscape, right half for square
+  const PX = landscape ? (art ? Math.round(W * 0.59) : 70) : (art ? Math.round(W * 0.44) : 80);
+  const textW = W - PX - (landscape ? 50 : 60);
 
-  // Era + year pill
+  // ── Era pill
+  const pillH = landscape ? 26 : 32;
+  const pillW = landscape ? 210 : 240;
+  const pillY = landscape ? 52 : 100;
   ctx.fillStyle = 'rgba(255,0,102,0.18)';
-  ctx.fillRect(PX, 100, 240, 32);
+  ctx.fillRect(PX, pillY, pillW, pillH);
   ctx.fillStyle = '#FF0066';
-  ctx.font = '500 15px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
   ctx.letterSpacing = '4px';
-  ctx.fillText(track.era + ' · ' + track.year, PX + 12, 121);
+  ctx.fillText(track.era + ' · ' + track.year, PX + 10, pillY + pillH - 7);
 
-  // Song title
+  // ── Title
   ctx.fillStyle = '#F5F0F0';
-  const titleSize = track.title.length > 10 ? 100 : track.title.length > 6 ? 118 : 140;
+  const tsBase = landscape ? 116 : 160;
+  const titleSize = track.title.length > 10 ? Math.round(tsBase * 0.72)
+                  : track.title.length > 6  ? Math.round(tsBase * 0.84)
+                  : tsBase;
   ctx.font = `${titleSize}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '5px';
-  if (track.title.includes(' ') && ctx.measureText(track.title).width > (W - PX - 60)) {
+  const titleY = landscape ? 178 : 280;
+  const lineH  = titleSize + (landscape ? 6 : 10);
+  let titleLines = 1;
+  if (track.title.includes(' ') && ctx.measureText(track.title).width > textW) {
     const words = track.title.split(' ');
     const mid   = Math.ceil(words.length / 2);
-    ctx.fillText(words.slice(0, mid).join(' '), PX, 270);
-    ctx.fillText(words.slice(mid).join(' '),    PX, 270 + titleSize + 10);
+    ctx.fillText(words.slice(0, mid).join(' '), PX, titleY);
+    ctx.fillText(words.slice(mid).join(' '),    PX, titleY + lineH);
+    titleLines = 2;
   } else {
-    ctx.fillText(track.title, PX, 300);
+    ctx.fillText(track.title, PX, titleY);
   }
+  // Landscape positions everything below relative to the title's actual bottom edge
+  // (not a fixed offset) so a 2-line wrapped title never collides with the streams block.
+  const titleBottom = titleY + (titleLines - 1) * lineH;
 
-  // Pink rule
+  // ── Pink rule
+  const ruleY = landscape ? titleBottom + 34 : 350;
   ctx.fillStyle = '#FF0066';
-  ctx.fillRect(PX, 340, 90, 3);
+  ctx.fillRect(PX, ruleY, 70, landscape ? 2 : 3);
 
-  // Total streams
+  // ── Total streams
+  const totalFontSz = landscape ? 94 : 102;
+  const totalY      = landscape ? ruleY + 102 : 478;
+  const subY        = landscape ? totalY + 28 : 514;
   ctx.fillStyle = '#FF0066';
-  ctx.font = '88px "Bebas Neue", sans-serif';
   ctx.letterSpacing = '2px';
-  ctx.fillText(formatFull(total), PX, 460);
-
-  ctx.fillStyle = 'rgba(245,240,240,0.62)';
-  ctx.font = '500 22px "DM Mono", monospace';
+  fillTextFit(ctx, formatFull(total), PX, totalY, totalFontSz, textW, '"Bebas Neue", sans-serif');
+  ctx.fillStyle = 'rgba(245,240,240,0.55)';
+  ctx.font = `500 ${landscape ? 13 : 22}px "DM Mono", monospace`;
   ctx.letterSpacing = '4px';
-  ctx.fillText('TOTAL SPOTIFY STREAMS', PX, 496);
+  ctx.fillText('TOTAL SPOTIFY STREAMS', PX, subY);
 
-  // Daily streams + date
+  // ── Daily streams
+  let lastY = subY;
   if (daily !== null && daily !== undefined) {
     const sign = daily >= 0 ? '+' : '';
+    const dailyFontSz = landscape ? 67 : 66;
+    const dailyY      = landscape ? subY + 68 : 604;
+    const dailySubY   = landscape ? dailyY + 27 : 634;
     ctx.fillStyle = daily >= 0 ? '#00ff88' : '#ff4466';
-    ctx.font = '58px "Bebas Neue", sans-serif';
     ctx.letterSpacing = '2px';
-    ctx.fillText(`${sign}${formatFull(daily)}`, PX, 582);
-    ctx.font = '500 22px "DM Mono", monospace';
+    fillTextFit(ctx, `${sign}${formatFull(daily)}`, PX, dailyY, dailyFontSz, textW, '"Bebas Neue", sans-serif');
+    ctx.font = `500 ${landscape ? 13 : 22}px "DM Mono", monospace`;
     ctx.letterSpacing = '3px';
-    ctx.fillText('DAILY STREAMS' + (dailyDate ? ' · ' + dailyDate : ''), PX, 612);
+    ctx.fillText('DAILY STREAMS' + (dailyDate ? ' · ' + dailyDate : ''), PX, dailySubY);
+    lastY = dailySubY;
   }
 
-  // Timestamp
+  // ── Timestamp
   const now = new Date();
   const ds  = String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear();
-  ctx.fillStyle = 'rgba(245,240,240,0.5)';
-  ctx.font = '500 22px "DM Mono", monospace';
+  const tsY = landscape ? lastY + 41 : 670;
+  ctx.fillStyle = 'rgba(245,240,240,0.38)';
+  ctx.font = `500 ${landscape ? 13 : 22}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText('Updated ' + ds, PX, 658);
+  ctx.fillText('Updated ' + ds, PX, tsY);
 
-  // Bottom rule
-  ctx.fillStyle = 'rgba(255,0,102,0.22)';
-  ctx.fillRect(PX, H - 138, W - PX - 60, 1);
+  // ── Bottom rule
+  ctx.fillStyle = 'rgba(255,0,102,0.2)';
+  ctx.fillRect(PX, H - (landscape ? 90 : 138), W - PX - (landscape ? 50 : 60), 1);
 
-  // BU Logo circle
+  // ── Logo + branding
+  const LR     = landscape ? 22 : 28;
+  const logoY  = H - (landscape ? 46 : 82);
+  const brandY = H - (landscape ? 52 : 72);
+  const siteY  = H - (landscape ? 30 : 42);
   if (logo) {
-    const LR = 28;
     ctx.save();
-    ctx.beginPath(); ctx.arc(PX + LR, H - 82, LR, 0, Math.PI * 2); ctx.clip();
-    ctx.drawImage(logo, PX, H - 82 - LR, LR * 2, LR * 2);
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
     ctx.restore();
-    ctx.beginPath(); ctx.arc(PX + LR, H - 82, LR + 1, 0, Math.PI * 2);
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
     ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
   }
-
-  // Branding text
-  const brandX = logo ? PX + 70 : PX;
+  const brandX = logo ? PX + LR * 2 + 10 : PX;
   ctx.fillStyle = '#F5F0F0';
-  ctx.font = '44px "Bebas Neue", sans-serif';
+  ctx.font = `${landscape ? 34 : 44}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '10px';
-  ctx.fillText('BLINKS UNITED', brandX, H - 72);
+  ctx.fillText('BLINKS UNITED', brandX, brandY);
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
-  ctx.font = '500 15px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', brandX, H - 42);
+  ctx.fillText('blackpink-project.vercel.app', brandX, siteY);
 
   cardCanvas = canvas;
-  label.textContent = track.title + ' — STREAM UPDATE CARD';
+}
+
+// ── LEADERBOARD CARD ─────────────────────────────────────────────────────────
+async function shareLbCard() {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  _cardType = 'lb';
+  _cardTrackId = null;
+  _lbCardRangeStart = 0;
+  _cardFormat = 'square';
+  document.getElementById('fmt-landscape')?.classList.remove('active');
+  document.getElementById('fmt-square')?.classList.add('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1080; canvas.height = 1080;
+  await document.fonts.ready;
+  _cardLogo = await getBuLogo();
+  renderLbCard(_cardLogo);
+  const periodLabel = lbCardPeriodLabel();
+  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : 'DDU-DU DDU-DU';
+  label.textContent = `LEADERBOARD · ${periodLabel} · ${songLabel}`;
+}
+
+function lbCardPeriodLabel() {
+  if (lbHistorySnapshot) return `${lbHistorySnapshot.label.toUpperCase()} · ARCHIVED`;
+  return lbPeriod === 'daily' ? 'TODAY' : lbPeriod === 'weekly' ? 'THIS WEEK' : 'ALL TIME';
+}
+
+let _lbCardRangeStart = 0;
+const LB_CARD_PAGE_SIZE = 20;
+
+function getLbCardEntries() {
+  const key = getScoreKey();
+  let entries = Object.entries(getActiveLbUsers())
+    .map(([username, data]) => {
+      let score = data.scores?.[key] || 0;
+      if (!lbHistorySnapshot && lbPeriod === 'daily') {
+        const todayLabel = italyDateLabel();
+        if (data.scores?.daily_date && data.scores.daily_date !== todayLabel) score = 0;
+      }
+      return { username, score, raw: data.scores?.[key] || 0 };
+    })
+    .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
+
+  let dateNote = '';
+  if (!lbHistorySnapshot && lbPeriod === 'daily' && entries.every(e => e.score === 0)) {
+    entries = entries.map(e => ({ ...e, score: e.raw })).sort((a, b) => b.score - a.score);
+    dateNote = 'YESTERDAY';
+  }
+
+  entries = entries.filter(e => e.score > 0);
+  return { entries, dateNote };
+}
+
+function updateLbCardRangeUI(total) {
+  const toggle = document.getElementById('lb-card-range-toggle');
+  const label  = document.getElementById('lb-card-range-label');
+  if (!toggle || !label) return;
+  if (total <= LB_CARD_PAGE_SIZE) {
+    toggle.style.display = 'none';
+    return;
+  }
+  toggle.style.display = 'flex';
+  const end = Math.min(_lbCardRangeStart + LB_CARD_PAGE_SIZE, total);
+  label.textContent = `${_lbCardRangeStart + 1}–${end}`;
+  const buttons = toggle.querySelectorAll('button');
+  buttons[0].disabled = _lbCardRangeStart <= 0;
+  buttons[1].disabled = _lbCardRangeStart + LB_CARD_PAGE_SIZE >= total;
+}
+
+function shiftLbCardRange(dir) {
+  const { entries } = getLbCardEntries();
+  const next = _lbCardRangeStart + dir * LB_CARD_PAGE_SIZE;
+  if (next < 0 || next >= entries.length) return;
+  _lbCardRangeStart = next;
+  renderLbCard(_cardLogo);
+  const periodLabel = lbCardPeriodLabel();
+  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : 'DDU-DU DDU-DU';
+  document.getElementById('card-box-label').textContent = `LEADERBOARD · ${periodLabel} · ${songLabel}`;
+}
+
+function renderLbCard(logo) {
+  const canvas = document.getElementById('card-canvas');
+  const ctx = canvas.getContext('2d');
+
+  // Build entries first so we can size the canvas to fit one rank range
+  const { entries: allEntries, dateNote } = getLbCardEntries();
+  updateLbCardRangeUI(allEntries.length);
+  const entries = allEntries.slice(_lbCardRangeStart, _lbCardRangeStart + LB_CARD_PAGE_SIZE);
+
+  const rowH = 80;
+  const startY = 220;
+  const footerH = 140;
+  canvas.height = Math.max(600, startY + entries.length * rowH + footerH);
+  const W = canvas.width, H = canvas.height;
+
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+  drawNoise(ctx, W, H, 0.03);
+
+  // Pink accent bars
+  ctx.fillStyle = '#FF0066';
+  ctx.fillRect(0, 0, W, 5);
+  ctx.fillRect(0, H - 5, W, 5);
+
+  // Title
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#FF0066';
+  ctx.font = '96px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '6px';
+  ctx.fillText('BLINKS LEADERBOARD', W / 2, 108);
+
+  // Period + song subtitle
+  const periodLabel = lbCardPeriodLabel();
+  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : 'DDU-DU DDU-DU';
+  const rangeLabel  = allEntries.length > LB_CARD_PAGE_SIZE
+    ? ` · RANK ${_lbCardRangeStart + 1}–${Math.min(_lbCardRangeStart + LB_CARD_PAGE_SIZE, allEntries.length)}`
+    : '';
+  ctx.fillStyle = 'rgba(245,240,240,0.45)';
+  ctx.font = '500 18px "DM Mono", monospace';
+  ctx.letterSpacing = '4px';
+  ctx.fillText(`${periodLabel} · ${songLabel}${rangeLabel}`, W / 2, 142);
+
+  // Community total
+  const communityTotal = allEntries.reduce((sum, e) => sum + e.score, 0);
+  ctx.fillStyle = '#FF0066';
+  ctx.font = '600 20px "DM Mono", monospace';
+  ctx.letterSpacing = '3px';
+  ctx.fillText(`${allEntries.length} BLINKS · ${communityTotal.toLocaleString()} STREAMS COMBINED`, W / 2, 174);
+
+  // Divider
+  ctx.fillStyle = 'rgba(255,0,102,0.25)';
+  ctx.fillRect(60, 194, W - 120, 1);
+
+  const goldColors = ['#FFD700','#C0C0C0','#CD7F32'];
+  const PL = 70, PR = W - 70;
+
+  entries.forEach((e, i) => {
+    const rank = _lbCardRangeStart + i; // 0-based overall rank
+    const y = startY + i * rowH;
+    if (rank < 3) {
+      ctx.fillStyle = 'rgba(255,255,255,0.03)';
+      ctx.fillRect(PL - 10, y - 8, W - (PL - 10) * 2, rowH - 6);
+    }
+
+    // Rank number
+    ctx.textAlign = 'left';
+    ctx.fillStyle = rank < 3 ? goldColors[rank] : 'rgba(245,240,240,0.3)';
+    ctx.font = `${rank < 3 ? 50 : 42}px "Bebas Neue", sans-serif`;
+    ctx.letterSpacing = '2px';
+    ctx.fillText(String(rank + 1).padStart(2, '0'), PL, y + rowH * 0.65);
+
+    // Username
+    ctx.fillStyle = rank < 3 ? '#F5F0F0' : 'rgba(245,240,240,0.65)';
+    ctx.font = `500 ${rank < 3 ? 26 : 22}px "DM Mono", monospace`;
+    ctx.letterSpacing = '1px';
+    const maxNameW = PR - PL - 200;
+    let name = e.username;
+    while (ctx.measureText(name).width > maxNameW && name.length > 6) name = name.slice(0, -1);
+    if (name !== e.username) name += '…';
+    ctx.fillText(name, PL + 80, y + rowH * 0.65);
+
+    // Score
+    ctx.textAlign = 'right';
+    ctx.fillStyle = rank === 0 ? '#FF0066' : (rank < 3 ? '#F5F0F0' : 'rgba(245,240,240,0.5)');
+    ctx.font = `${rank < 3 ? 46 : 38}px "Bebas Neue", sans-serif`;
+    ctx.letterSpacing = '2px';
+    ctx.fillText(e.score.toLocaleString(), PR, y + rowH * 0.65);
+  });
+
+  if (entries.length === 0) {
+    ctx.fillStyle = 'rgba(245,240,240,0.25)';
+    ctx.font = '500 22px "DM Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.letterSpacing = '2px';
+    ctx.fillText('No scores yet', W / 2, H / 2);
+  }
+
+  // Footer divider
+  ctx.fillStyle = 'rgba(255,0,102,0.2)';
+  ctx.fillRect(60, H - 120, W - 120, 1);
+
+  // Date
+  const now = new Date();
+  const ds = String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear();
+  ctx.fillStyle = 'rgba(245,240,240,0.28)';
+  ctx.font = '500 16px "DM Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.letterSpacing = '2px';
+  ctx.fillText((dateNote || 'Updated') + ' · ' + ds, W / 2, H - 94);
+
+  // Logo + branding — measure text so the block is properly centred
+  const LR = 24, logoY = H - 52;
+  ctx.font = '38px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '8px';
+  const buText = 'BLINKS UNITED';
+  const buTextW = ctx.measureText(buText).width;
+  const gap = 14;
+  const blockW = logo ? LR * 2 + gap + buTextW : buTextW;
+  const blockX = (W - blockW) / 2;
+  const logoX  = logo ? blockX + LR : 0;
+  const textX  = logo ? blockX + LR * 2 + gap : W / 2;
+
+  if (logo) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(logoX, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, logoX - LR, logoY - LR, LR * 2, LR * 2);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(logoX, logoY, LR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  ctx.fillStyle = '#F5F0F0';
+  ctx.textAlign = logo ? 'left' : 'center';
+  ctx.fillText(buText, textX, H - 38);
+  ctx.fillStyle = 'rgba(245,240,240,0.2)';
+  ctx.font = '500 13px "DM Mono", monospace';
+  ctx.letterSpacing = '2px';
+  ctx.textAlign = 'center';
+  ctx.fillText('blackpink-project.vercel.app', W / 2, H - 18);
+
+  cardCanvas = canvas;
 }
 
 // ── SHARE TO SOCIAL ──────────────────────────────────────────────────────────
 async function shareCard() {
   if (!cardCanvas) return;
   const title = document.getElementById('card-box-label').textContent;
-  const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\nblackpink-project.vercel.app';
+  let link = 'blackpink-project.vercel.app';
+  let rulesText = '';
+  let statsText = '';
+  if (_cardType === 'vote') {
+    const campaign = VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId);
+    if (campaign) {
+      link = campaign.url;
+      if (campaign.rules?.length) rulesText = '\nRules:\n' + campaign.rules.map(r => `• ${r}`).join('\n') + '\n';
+    }
+  } else if (_cardType === 'song') {
+    const d = window.streamData?.[_cardTrackId];
+    if (d) {
+      const lines = [];
+      if (d.daily != null) {
+        const change = d.dailyChange;
+        const changeStr = (change != null && change !== 0) ? ` (${change > 0 ? '+' : ''}${formatFull(change)} vs prev day)` : '';
+        lines.push(`📊 Daily: ${formatFull(d.daily)} streams${changeStr}`);
+      }
+      if (d.total != null) lines.push(`🔥 Total: ${formatFull(d.total)} streams`);
+      if (lines.length) statsText = '\n' + lines.join('\n') + '\n';
+    }
+  }
+  const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
   // Mobile: Web Share API with image file
   if (typeof navigator.share === 'function') {
     cardCanvas.toBlob(async blob => {
@@ -2976,79 +4380,97 @@ async function openPersonalCard() {
   const label   = document.getElementById('card-box-label');
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  _cardType = 'personal';
+  _cardFormat = 'square';
+  document.getElementById('fmt-landscape')?.classList.remove('active');
+  document.getElementById('fmt-square')?.classList.add('active');
 
-  const { info, todayCounts, totalPlays, artistPlays } = currentUser;
+  const { info, todayCounts, totalPlays } = currentUser;
   await document.fonts.ready;
 
   const canvas = document.getElementById('card-canvas');
-  const ctx    = canvas.getContext('2d');
-  const W = 1080, H = 1080;
+  canvas.width = 1080; canvas.height = 1080;
 
-  // Background + radial glow
-  ctx.fillStyle = '#080808';
-  ctx.fillRect(0, 0, W, H);
-  const glow = ctx.createRadialGradient(W/2, 0, 0, W/2, 0, 700);
-  glow.addColorStop(0,   'rgba(255,0,102,0.12)');
-  glow.addColorStop(1,   'rgba(8,8,8,0)');
-  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
-  drawNoise(ctx, W, H, 0.03);
-
-  const PX = 90;
-
-  // Avatar
   const avatarUrl = (info.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
   let avatarImg = null;
   if (avatarUrl && !avatarUrl.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
     try { avatarImg = await loadImg('/api/proxy-image?url=' + encodeURIComponent(avatarUrl)); } catch(e) {}
   }
-  const AV = 120;
+  const logo = await getBuLogo();
+
+  _personalCardData = { info, todayCounts, totalPlays, avatarImg, logo };
+  drawPersonalCard(canvas, _personalCardData);
+  label.textContent = (info.name || 'YOUR') + ' — STATS CARD';
+}
+
+function drawPersonalCard(canvas, { info, todayCounts, totalPlays, avatarImg, logo }) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const landscape = W > H;
+
+  // Background + radial glow
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W/2, 0, 0, W/2, 0, landscape ? 460 : 700);
+  glow.addColorStop(0,   'rgba(255,0,102,0.12)');
+  glow.addColorStop(1,   'rgba(8,8,8,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  drawNoise(ctx, W, H, 0.03);
+
+  const PX = landscape ? 70 : 90;
+
+  // Avatar
+  const AV    = landscape ? 86 : 120;
+  const avTopY = landscape ? 36 : 50;
+  const avCY  = avTopY + AV / 2;
   if (avatarImg) {
     ctx.save();
     ctx.beginPath();
-    ctx.arc(PX + AV/2, 110, AV/2, 0, Math.PI * 2);
+    ctx.arc(PX + AV/2, avCY, AV/2, 0, Math.PI * 2);
     ctx.clip();
-    ctx.drawImage(avatarImg, PX, 50, AV, AV);
+    ctx.drawImage(avatarImg, PX, avTopY, AV, AV);
     ctx.restore();
-    // Pink ring
     ctx.beginPath();
-    ctx.arc(PX + AV/2, 110, AV/2 + 2, 0, Math.PI * 2);
+    ctx.arc(PX + AV/2, avCY, AV/2 + 2, 0, Math.PI * 2);
     ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 2; ctx.stroke();
   } else {
     ctx.fillStyle = 'rgba(255,0,102,0.2)';
-    ctx.beginPath(); ctx.arc(PX + AV/2, 110, AV/2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(PX + AV/2, avCY, AV/2, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#FF0066';
-    ctx.font = '56px "Bebas Neue", sans-serif';
+    ctx.font = `${landscape ? 42 : 56}px "Bebas Neue", sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText((info.name||'?')[0].toUpperCase(), PX + AV/2, 130);
+    ctx.fillText((info.name||'?')[0].toUpperCase(), PX + AV/2, avCY + (landscape ? 15 : 20));
     ctx.textAlign = 'left';
   }
 
   // Username + badge
   const badge = getBadge(Object.values(totalPlays).reduce((a,b)=>a+b,0));
+  const tx = PX + AV + (landscape ? 24 : 30);
   ctx.fillStyle = '#F5F0F0';
-  ctx.font = '64px "Bebas Neue", sans-serif';
+  ctx.font = `${landscape ? 44 : 64}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '4px';
-  ctx.fillText(info.name || '', PX + AV + 30, 100);
+  ctx.fillText(info.name || '', tx, landscape ? 66 : 100);
   if (badge) {
     ctx.fillStyle = '#FF0066';
-    ctx.font = '500 17px "DM Mono", monospace';
+    ctx.font = `500 ${landscape ? 13 : 17}px "DM Mono", monospace`;
     ctx.letterSpacing = '5px';
-    ctx.fillText(badge.icon + ' ' + badge.label, PX + AV + 32, 135);
+    ctx.fillText(badge.icon + ' ' + badge.label, tx + 2, landscape ? 90 : 135);
   }
   ctx.fillStyle = 'rgba(245,240,240,0.3)';
-  ctx.font = '500 16px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 12 : 16}px "DM Mono", monospace`;
   ctx.letterSpacing = '3px';
-  ctx.fillText('LAST.FM · BLINKS UNITED', PX + AV + 32, 162);
+  ctx.fillText('LAST.FM · BLINKS UNITED', tx + 2, landscape ? 112 : 162);
 
   // Divider
   ctx.fillStyle = 'rgba(255,0,102,0.3)';
-  ctx.fillRect(PX, 210, W - PX*2, 1);
+  ctx.fillRect(PX, landscape ? 144 : 210, W - PX*2, 1);
 
   // TODAY'S STREAMS header
   ctx.fillStyle = 'rgba(245,240,240,0.35)';
-  ctx.font = '500 18px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
   ctx.letterSpacing = '6px';
-  ctx.fillText("TODAY'S STREAMS", PX, 270);
+  ctx.fillText("TODAY'S STREAMS", PX, landscape ? 182 : 270);
 
   // Song rows
   const songRows = [
@@ -3056,73 +4478,568 @@ async function openPersonalCard() {
     { id: 'shutdown', label: 'SHUT DOWN' },
     { id: 'ddududu',  label: 'DDU-DU DDU-DU' },
   ];
-  let rowY = 310;
+  const rowH    = landscape ? 50 : 80;
+  const rowStep = landscape ? 58 : 92;
+  let rowY = landscape ? 206 : 310;
   for (const s of songRows) {
     const count = todayCounts[s.id] || 0;
 
     ctx.fillStyle = 'rgba(245,240,240,0.07)';
-    ctx.fillRect(PX, rowY, W - PX*2, 80);
+    ctx.fillRect(PX, rowY, W - PX*2, rowH);
 
     ctx.fillStyle = 'rgba(245,240,240,0.7)';
-    ctx.font = '36px "Bebas Neue", sans-serif';
+    ctx.font = `${landscape ? 24 : 36}px "Bebas Neue", sans-serif`;
     ctx.letterSpacing = '3px';
-    ctx.fillText(s.label, PX + 24, rowY + 50);
+    ctx.fillText(s.label, PX + 20, rowY + (landscape ? 32 : 50));
 
     ctx.fillStyle = '#FF0066';
-    ctx.font = '52px "Bebas Neue", sans-serif';
+    ctx.font = `${landscape ? 34 : 52}px "Bebas Neue", sans-serif`;
     ctx.letterSpacing = '2px';
     ctx.textAlign = 'right';
-    ctx.fillText(count.toLocaleString(), W - PX - 24, rowY + 52);
+    ctx.fillText(count.toLocaleString(), W - PX - 20, rowY + (landscape ? 34 : 52));
     ctx.textAlign = 'left';
 
-    rowY += 92;
+    rowY += rowStep;
   }
 
   // Total campaign plays
   const campTotal = Object.values(totalPlays).reduce((a,b) => a+b, 0);
-  rowY += 20;
+  rowY += landscape ? 12 : 20;
   ctx.fillStyle = 'rgba(255,0,102,0.25)';
   ctx.fillRect(PX, rowY, W - PX*2, 1);
-  rowY += 40;
+  rowY += landscape ? 24 : 40;
 
   ctx.fillStyle = 'rgba(245,240,240,0.35)';
-  ctx.font = '500 17px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 12 : 17}px "DM Mono", monospace`;
   ctx.letterSpacing = '5px';
   ctx.fillText('ALL-TIME CAMPAIGN PLAYS', PX, rowY);
 
   ctx.fillStyle = '#F5F0F0';
-  ctx.font = '80px "Bebas Neue", sans-serif';
+  ctx.font = `${landscape ? 50 : 80}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '3px';
-  ctx.fillText(campTotal.toLocaleString(), PX, rowY + 80);
+  ctx.fillText(campTotal.toLocaleString(), PX, rowY + (landscape ? 46 : 80));
 
-  // Bottom branding — same as song card
-  const logo2 = await getBuLogo();
+  // Bottom branding — same convention as the other card types
   ctx.fillStyle = 'rgba(255,0,102,0.22)';
-  ctx.fillRect(PX, H - 138, W - PX*2, 1);
-  if (logo2) {
-    const LR = 28;
+  ctx.fillRect(PX, H - (landscape ? 90 : 138), W - PX*2, 1);
+  const LR    = landscape ? 22 : 28;
+  const logoY = H - (landscape ? 46 : 82);
+  if (logo) {
     ctx.save();
-    ctx.beginPath(); ctx.arc(PX + LR, H - 82, LR, 0, Math.PI * 2); ctx.clip();
-    ctx.drawImage(logo2, PX, H - 82 - LR, LR * 2, LR * 2);
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
     ctx.restore();
-    ctx.beginPath(); ctx.arc(PX + LR, H - 82, LR + 1, 0, Math.PI * 2);
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
     ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
   }
-  const bx = logo2 ? PX + 70 : PX;
+  const bx = logo ? PX + LR * 2 + 10 : PX;
   ctx.fillStyle = '#F5F0F0';
-  ctx.font = '44px "Bebas Neue", sans-serif';
+  ctx.font = `${landscape ? 34 : 44}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '10px';
-  ctx.fillText('BLINKS UNITED', bx, H - 72);
+  ctx.fillText('BLINKS UNITED', bx, H - (landscape ? 52 : 72));
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
-  ctx.font = '500 15px "DM Mono", monospace';
+  ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', bx, H - 42);
+  ctx.fillText('blackpink-project.vercel.app', bx, H - (landscape ? 30 : 42));
 
   cardCanvas = canvas;
-  label.textContent = (info.name || 'YOUR') + ' — STATS CARD';
 }
 
 </script>
+<script>
+// ── MILESTONE CELEBRATION ─────────────────────────────────
+const TRACK_LABELS = { jump: 'JUMP', shutdown: 'SHUT DOWN', ddududu: 'DDU-DU DDU-DU' };
+
+function getMilestone(total) {
+  const steps = [];
+  for (let m = 10_000_000; m <= 1_000_000_000; m += 10_000_000) steps.push(m);
+  for (let i = steps.length - 1; i >= 0; i--) {
+    if (total >= steps[i]) return steps[i];
+  }
+  return null;
+}
+
+function formatMilestone(n) {
+  if (n >= 1_000_000_000) return '1B';
+  return (n / 1_000_000) + 'M';
+}
+
+const _msPending = [];
+let _msActive = false;
+
+function checkMilestone(trackId, total, lastDayDate) {
+  if (!total) return;
+  const milestone = getMilestone(total);
+  if (!milestone) return;
+  const key = `bu_ms_${trackId}_${milestone}`;
+  const storedRaw = localStorage.getItem(key);
+  if (!storedRaw) {
+    // First detection — store streaming day date + year
+    const year = new Date().getUTCFullYear();
+    localStorage.setItem(key, JSON.stringify({ date: lastDayDate || null, year }));
+    if (lastDayDate) _msPending.push({ trackId, total, milestone, milestoneDate: `${lastDayDate}/${year}` });
+  } else {
+    // Already recorded — only re-show card while still on the same streaming day
+    try {
+      const data = JSON.parse(storedRaw);
+      if (data.date && data.date === lastDayDate) {
+        const year = data.year || new Date().getUTCFullYear();
+        _msPending.push({ trackId, total, milestone, milestoneDate: `${data.date}/${year}` });
+      }
+    } catch { /* legacy '1' value — already seen, treated as historical */ }
+  }
+}
+
+function showPendingMilestone() {
+  if (_msActive || _msPending.length === 0) return;
+  _msPending.sort((a, b) => b.total - a.total);
+  const { trackId, total, milestone, milestoneDate } = _msPending[0];
+  showMilestone(trackId, total, milestone, milestoneDate);
+}
+
+function showMilestone(trackId, total, milestone, milestoneDate) {
+  _msActive = true;
+  document.getElementById('ms-track-name').textContent = TRACK_LABELS[trackId] || trackId;
+  document.getElementById('ms-number').textContent = formatMilestone(milestone) + ' STREAMS';
+  document.getElementById('ms-sub').textContent = formatFull(total) + ' total · keep streaming!';
+  const dateEl = document.getElementById('ms-date');
+  if (milestoneDate) { dateEl.textContent = 'reached on ' + milestoneDate; dateEl.style.display = 'block'; }
+  else { dateEl.style.display = 'none'; }
+  document.getElementById('milestone-overlay').classList.add('active');
+  launchConfetti();
+  renderMilestoneCanvas(trackId, total, milestone, milestoneDate);
+}
+
+function closeMilestone() {
+  document.getElementById('milestone-overlay').classList.remove('active');
+  document.getElementById('ms-confetti').innerHTML = '';
+  _msActive = false;
+}
+
+function launchConfetti() {
+  const wrap = document.getElementById('ms-confetti');
+  wrap.innerHTML = '';
+  const colors = ['#FF0066','#ff66a3','#ffffff','#ffe0ed','#ff3385'];
+  for (let i = 0; i < 80; i++) {
+    const el = document.createElement('span');
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const left = Math.random() * 100;
+    const size = 5 + Math.random() * 8;
+    const dur  = 2 + Math.random() * 2;
+    const del  = Math.random() * 1.2;
+    el.style.cssText = `left:${left}%;background:${color};width:${size}px;height:${size}px;border-radius:${Math.random()>0.5?'50%':'2px'};animation-duration:${dur}s;animation-delay:${del}s;`;
+    wrap.appendChild(el);
+  }
+  setTimeout(() => { wrap.innerHTML = ''; }, 4000);
+}
+
+function drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milestoneDate) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const landscape = W > H;
+  const track = TRACKS.find(t => t.id === trackId);
+
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+
+  if (art) {
+    if (landscape) {
+      const AW = Math.round(W * 0.44);
+      const scale = Math.max(AW / art.naturalWidth, H / art.naturalHeight);
+      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      ctx.drawImage(art, (AW - iw) / 2, (H - ih) / 2, iw, ih);
+      const gr = ctx.createLinearGradient(0, 0, AW + 80, 0);
+      gr.addColorStop(0, 'rgba(8,8,8,0)'); gr.addColorStop(0.55, 'rgba(8,8,8,0.75)'); gr.addColorStop(1, 'rgba(8,8,8,1)');
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, AW + 80, H);
+    } else {
+      const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
+      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      ctx.drawImage(art, (W - iw) / 2, (H - ih) / 2, iw, ih);
+      const gr = ctx.createLinearGradient(0, 0, W, 0);
+      gr.addColorStop(0, 'rgba(8,8,8,0)'); gr.addColorStop(0.28, 'rgba(8,8,8,0.55)'); gr.addColorStop(0.45, 'rgba(8,8,8,0.92)'); gr.addColorStop(1, 'rgba(8,8,8,0.98)');
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+    }
+  } else {
+    const glow = ctx.createRadialGradient(0, H / 2, 0, 0, H / 2, H * 0.7);
+    glow.addColorStop(0, 'rgba(255,0,102,0.15)'); glow.addColorStop(1, 'rgba(8,8,8,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  }
+
+  drawNoise(ctx, W, H, 0.03);
+
+  const PX = landscape ? (art ? Math.round(W * 0.59) : 70) : (art ? Math.round(W * 0.44) : 80);
+  const textW = W - PX - (landscape ? 50 : 60);
+  ctx.textAlign = 'left';
+
+  // "MILESTONE REACHED" header
+  ctx.fillStyle = '#FF0066';
+  ctx.letterSpacing = '6px';
+  fillTextFit(ctx, 'MILESTONE REACHED', PX, landscape ? 80 : 140, landscape ? 55 : 68, textW, '"Bebas Neue", sans-serif');
+
+  // Track title
+  ctx.fillStyle = '#F5F0F0';
+  const titleSize = landscape
+    ? (track.title.length > 10 ? 68 : track.title.length > 6 ? 83 : 98)
+    : (track.title.length > 10 ? 70 : track.title.length > 6 ? 86 : 102);
+  ctx.letterSpacing = '5px';
+  fillTextFit(ctx, track.title, PX, landscape ? 176 : 280, titleSize, textW, '"Bebas Neue", sans-serif');
+
+  // Pink rule
+  ctx.fillStyle = '#FF0066';
+  ctx.fillRect(PX, landscape ? 208 : 308, 70, landscape ? 2 : 3);
+
+  // Milestone number
+  ctx.fillStyle = '#FF0066';
+  ctx.letterSpacing = '2px';
+  fillTextFit(ctx, formatMilestone(milestone), PX, landscape ? 330 : 488, landscape ? 124 : 136, textW, '"Bebas Neue", sans-serif');
+  ctx.fillStyle = 'rgba(245,240,240,0.55)';
+  ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
+  ctx.letterSpacing = '4px';
+  ctx.fillText('STREAMS MILESTONE', PX, landscape ? 357 : 518);
+
+  // Total (with today's date to distinguish from the milestone total)
+  const todayDs = (() => { const n = new Date(); return String(n.getDate()).padStart(2,'0') + '/' + String(n.getMonth()+1).padStart(2,'0') + '/' + n.getFullYear(); })();
+  ctx.fillStyle = '#F5F0F0';
+  ctx.letterSpacing = '2px';
+  fillTextFit(ctx, formatFull(total), PX, landscape ? 422 : 596, landscape ? 58 : 62, textW, '"Bebas Neue", sans-serif');
+  ctx.fillStyle = 'rgba(245,240,240,0.55)';
+  ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
+  ctx.letterSpacing = '3px';
+  ctx.fillText('TOTAL STREAMS · AS OF ' + todayDs, PX, landscape ? 447 : 624);
+
+  // Date reached
+  if (milestoneDate) {
+    ctx.fillStyle = 'rgba(245,240,240,0.38)';
+    ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
+    ctx.letterSpacing = '2px';
+    ctx.fillText('REACHED ON ' + milestoneDate, PX, landscape ? 484 : 678);
+  }
+
+  // Bottom rule + branding
+  const LR = landscape ? 22 : 28;
+  const logoY = H - (landscape ? 46 : 82);
+  ctx.fillStyle = 'rgba(255,0,102,0.2)';
+  ctx.fillRect(PX, H - (landscape ? 90 : 135), W - PX - (landscape ? 50 : 60), 1);
+  if (logo) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  const brandX = logo ? PX + LR * 2 + 10 : PX;
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = `${landscape ? 34 : 44}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = '10px';
+  ctx.fillText('BLINKS UNITED', brandX, H - (landscape ? 52 : 72));
+  ctx.fillStyle = 'rgba(245,240,240,0.2)';
+  ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
+  ctx.letterSpacing = '2px';
+  ctx.fillText('blackpink-project.vercel.app', brandX, H - (landscape ? 30 : 42));
+}
+
+async function renderMilestoneCanvas(trackId, total, milestone, milestoneDate) {
+  const canvas = document.getElementById('ms-canvas');
+  canvas.width = 1200; canvas.height = 675;
+  await document.fonts.ready;
+  const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
+  drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milestoneDate);
+}
+
+async function openMilestoneCard(trackId, milestone, milestoneDate) {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  _cardType      = 'milestone';
+  _cardTrackId   = trackId;
+  _msMilestone   = milestone;
+  _msMilestoneDate  = milestoneDate || null;
+  _msMilestoneTotal = window.streamData?.[trackId]?.total || 0;
+  _cardFormat    = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+  await document.fonts.ready;
+  const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
+  _cardArt = art; _cardLogo = logo;
+  drawMilestoneCard(canvas, trackId, art, logo, _msMilestoneTotal, milestone, milestoneDate);
+  label.textContent = `${TRACK_LABELS[trackId]} · ${formatMilestone(milestone)} MILESTONE`;
+}
+
+// ── VOTE CAMPAIGN CARD ────────────────────────────────────────
+const VOTE_MONTH_ABBR = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+function formatVoteDate(d) {
+  return `${String(d.getUTCDate()).padStart(2,'0')} ${VOTE_MONTH_ABBR[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+function formatVoteDeadline(campaign) {
+  if (!campaign.deadline) return { big: 'VOTING OPEN', sub: 'NO DEADLINE SET' };
+  const dl = new Date(campaign.deadline);
+  const diff = dl.getTime() - Date.now();
+  if (diff <= 0) return { big: 'VOTING CLOSED', sub: 'ENDED ' + formatVoteDate(dl) };
+  const totalMin = Math.floor(diff / 60000);
+  const d = Math.floor(totalMin / 1440);
+  const h = Math.floor((totalMin % 1440) / 60);
+  const m = totalMin % 60;
+  const pad = n => String(n).padStart(2, '0');
+  const big = d > 0 ? `${d}D ${pad(h)}H ${pad(m)}M LEFT` : `${pad(h)}H ${pad(m)}M LEFT`;
+  return { big, sub: 'ENDS ' + formatVoteDate(dl) };
+}
+
+function drawVoteCard(canvas, campaign, logo, art) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const landscape = W > H;
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+
+  if (art) {
+    // Confine art to a dedicated left panel and *contain*-fit it (never crop) so
+    // nominees stay fully visible — group photos are wider than the panel is tall.
+    const AW = Math.round(W * (landscape ? 0.44 : 0.36));
+    const scale = Math.min(AW / art.naturalWidth, H / art.naturalHeight);
+    const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+    ctx.drawImage(art, (AW - iw) / 2, (H - ih) / 2, iw, ih);
+    const gr = ctx.createLinearGradient(AW - 40, 0, AW + 50, 0);
+    gr.addColorStop(0, 'rgba(8,8,8,0)'); gr.addColorStop(1, 'rgba(8,8,8,1)');
+    ctx.fillStyle = gr; ctx.fillRect(AW - 40, 0, 90, H);
+  } else {
+    const glow = ctx.createRadialGradient(0, H / 2, 0, 0, H / 2, H * 0.7);
+    glow.addColorStop(0, 'rgba(255,0,102,0.15)'); glow.addColorStop(1, 'rgba(8,8,8,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  }
+  drawNoise(ctx, W, H, 0.03);
+
+  const PX = landscape ? (art ? Math.round(W * 0.49) : 70) : (art ? Math.round(W * 0.42) : 80);
+  const textW = W - PX - (landscape ? 50 : 60);
+  ctx.textAlign = 'left';
+
+  // "FAN VOTE" header
+  ctx.fillStyle = '#FF0066';
+  ctx.font = `${landscape ? 52 : 68}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = '6px';
+  ctx.fillText('FAN VOTE', PX, landscape ? 80 : 140);
+
+  // Award/campaign title — same big, bold treatment as the song cards' track titles.
+  // Campaign titles are full phrases (vs. short song titles), so wrap to a second line
+  // like long song titles do instead of shrinking the font down to stay on one line.
+  ctx.fillStyle = '#F5F0F0';
+  ctx.letterSpacing = '4px';
+  const titleMax   = landscape ? 72 : 92;
+  const titleY     = landscape ? 168 : 280;
+  const titleLineH = landscape ? 62 : 74;
+  const titleUp    = campaign.title.toUpperCase();
+  ctx.font = `${titleMax}px "Bebas Neue", sans-serif`;
+  let titleBottom = titleY;
+  if (titleUp.includes(' ') && ctx.measureText(titleUp).width > textW) {
+    const words = titleUp.split(' ');
+    const mid = Math.ceil(words.length / 2);
+    fillTextFit(ctx, words.slice(0, mid).join(' '), PX, titleY, titleMax, textW, '"Bebas Neue", sans-serif');
+    fillTextFit(ctx, words.slice(mid).join(' '), PX, titleY + titleLineH, titleMax, textW, '"Bebas Neue", sans-serif');
+    titleBottom = titleY + titleLineH;
+  } else {
+    fillTextFit(ctx, titleUp, PX, titleY, titleMax, textW, '"Bebas Neue", sans-serif');
+  }
+
+  // Platform subtitle
+  const platformY = titleBottom + (landscape ? 26 : 36);
+  ctx.fillStyle = 'rgba(245,240,240,0.4)';
+  ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
+  ctx.letterSpacing = '3px';
+  ctx.fillText(campaign.platform.toUpperCase(), PX, platformY);
+
+  // Pink rule
+  const ruleY = platformY + (landscape ? 20 : 30);
+  ctx.fillStyle = '#FF0066';
+  ctx.fillRect(PX, ruleY, 70, landscape ? 2 : 3);
+
+  // Categories + nominees
+  let y = ruleY + (landscape ? 47 : 60);
+  const rowH = landscape ? 64 : 140;
+  for (const cat of campaign.categories) {
+    ctx.fillStyle = 'rgba(255,0,102,0.65)';
+    ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
+    ctx.letterSpacing = '3px';
+    ctx.fillText(cat.name.toUpperCase(), PX, y);
+    ctx.fillStyle = '#FF0066';
+    ctx.letterSpacing = '2px';
+    fillTextFit(ctx, cat.nominees.map(n => n.name).join('  ·  '), PX, y + (landscape ? 40 : 64), landscape ? 44 : 68, textW, '"Bebas Neue", sans-serif');
+    y += rowH;
+  }
+
+  // "Vote at" footnote (hostname only — some campaign URLs carry long deeplink query strings)
+  let urlShort;
+  try { urlShort = new URL(campaign.url).hostname.toUpperCase(); } catch (e) { urlShort = campaign.url.toUpperCase(); }
+  ctx.fillStyle = 'rgba(255,0,102,0.55)';
+  ctx.font = `500 ${landscape ? 13 : 16}px "DM Mono", monospace`;
+  ctx.letterSpacing = '2px';
+  ctx.fillText('VOTE AT ' + urlShort, PX, y + (landscape ? 16 : 30));
+
+  // Deadline countdown — bumped up to match the weight of the song cards' stat numbers
+  const { big, sub } = formatVoteDeadline(campaign);
+  const dlY = y + (landscape ? 78 : 110);
+  ctx.fillStyle = '#F5F0F0';
+  ctx.letterSpacing = '2px';
+  fillTextFit(ctx, big, PX, dlY, landscape ? 56 : 84, textW, '"Bebas Neue", sans-serif');
+  ctx.fillStyle = 'rgba(245,240,240,0.5)';
+  ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
+  ctx.letterSpacing = '2px';
+  ctx.fillText(sub, PX, dlY + (landscape ? 26 : 30));
+
+  // Bottom rule + BU branding
+  const LR = landscape ? 22 : 28;
+  const logoY = H - (landscape ? 46 : 82);
+  ctx.fillStyle = 'rgba(255,0,102,0.2)';
+  ctx.fillRect(PX, H - (landscape ? 90 : 135), W - PX - (landscape ? 50 : 60), 1);
+  if (logo) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  const brandX = logo ? PX + LR * 2 + 10 : PX;
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = `${landscape ? 34 : 44}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = '10px';
+  ctx.fillText('BLINKS UNITED', brandX, H - (landscape ? 52 : 72));
+  ctx.fillStyle = 'rgba(245,240,240,0.2)';
+  ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
+  ctx.letterSpacing = '2px';
+  ctx.fillText('blackpink-project.vercel.app', brandX, H - (landscape ? 30 : 42));
+
+  cardCanvas = canvas;
+}
+
+async function openVoteCard(campaignId) {
+  const campaign = VOTE_CAMPAIGNS.find(c => c.id === campaignId);
+  if (!campaign) return;
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  _cardType = 'vote';
+  _voteCampaignId = campaignId;
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+  await document.fonts.ready;
+  const [art, logo] = await Promise.all([
+    campaign.image ? loadImg(campaign.image).catch(() => null) : Promise.resolve(null),
+    getBuLogo(),
+  ]);
+  _cardArt = art; _cardLogo = logo;
+  drawVoteCard(canvas, campaign, logo, art);
+  label.textContent = `${campaign.platform} · FAN VOTE CARD`;
+}
+
+function renderMilestoneHistory(trackId) {
+  const el = document.getElementById(`ms-history-${trackId}`);
+  if (!el) return;
+  const milestones = [];
+  for (let m = 10_000_000; m <= 1_000_000_000; m += 10_000_000) {
+    const raw = localStorage.getItem(`bu_ms_${trackId}_${m}`);
+    if (!raw) continue;
+    let date = null;
+    try { const d = JSON.parse(raw); if (d.date && d.year) date = `${d.date}/${d.year}`; } catch {}
+    milestones.push({ milestone: m, date });
+  }
+  const toShow = milestones.filter(m => m.date).reverse();
+  if (toShow.length === 0) { el.style.display = 'none'; return; }
+  el.innerHTML = `<div class="ms-history-label">🏆 Milestones</div>` +
+    toShow.map(m => {
+      const dateArg = m.date ? `'${m.date}'` : 'null';
+      return `<div class="ms-history-item" onclick="openMilestoneCard('${trackId}', ${m.milestone}, ${dateArg})">
+        <span>${formatMilestone(m.milestone)}${m.date ? ' · ' + m.date : ''}</span>
+        <span class="ms-share-hint">↑ SHARE</span>
+      </div>`;
+    }).join('');
+  el.style.display = 'block';
+}
+
+function downloadMilestoneCard() {
+  const canvas = document.getElementById('ms-canvas');
+  const a = document.createElement('a');
+  const trackId = document.getElementById('ms-track-name').textContent.toLowerCase().replace(/ /g,'');
+  a.download = `blinks-united-milestone-${trackId}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+
+async function shareMilestoneCard() {
+  const canvas = document.getElementById('ms-canvas');
+  const trackName = document.getElementById('ms-track-name').textContent;
+  const msNum = document.getElementById('ms-number').textContent;
+  const dateLabel = document.getElementById('ms-date').textContent;
+  const text = `${trackName} just hit ${msNum}! ${dateLabel ? '(' + dateLabel + ') ' : ''}🖤💗 #BLACKPINK #BLINKSUNITED\nblackpink-project.vercel.app`;
+  if (typeof navigator.share === 'function') {
+    canvas.toBlob(async blob => {
+      const file = new File([blob], 'blinks-united-milestone.png', { type: 'image/png' });
+      try {
+        await navigator.share({ files: [file], title: 'BLINKS UNITED', text });
+      } catch(e) { if (e.name !== 'AbortError') downloadMilestoneCard(); }
+    }, 'image/png');
+  } else {
+    window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
+  }
+}
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+}
+
+// PWA install button logic
+let _pwaPrompt = null;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+const isInStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+
+if (!isInStandalone) {
+  document.getElementById('pwa-install-btn').style.display = 'inline-block';
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _pwaPrompt = e;
+  });
+}
+
+function triggerInstall() {
+  if (_pwaPrompt) {
+    _pwaPrompt.prompt();
+    _pwaPrompt.userChoice.then(() => {
+      _pwaPrompt = null;
+      document.getElementById('pwa-install-btn').style.display = 'none';
+    });
+  } else if (isIOS) {
+    document.getElementById('pwa-ios-tip').style.display = 'block';
+  } else {
+    document.getElementById('pwa-android-tip').style.display = 'block';
+  }
+}
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('pwa-install-btn').style.display = 'none';
+  document.getElementById('pwa-ios-tip').style.display = 'none';
+  document.getElementById('pwa-android-tip').style.display = 'none';
+});
+</script>
+
+<!-- PWA install tips — must be outside <nav> to avoid stacking-context clipping -->
+<div id="pwa-ios-tip" style="display:none;position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid rgba(255,0,102,0.4);color:rgba(245,240,240,0.85);font-family:var(--mono);font-size:0.5rem;letter-spacing:0.08em;padding:0.7rem 1.2rem;z-index:99999;text-align:center;max-width:280px;width:90%;">
+  Tap <strong style="color:var(--pink)">Share ↑</strong> then <strong style="color:var(--pink)">Add to Home Screen</strong> to install the app
+  <button onclick="document.getElementById('pwa-ios-tip').style.display='none'" style="display:block;margin:0.5rem auto 0;background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:0.45rem;cursor:pointer;letter-spacing:0.1em;">DISMISS</button>
+</div>
+<div id="pwa-android-tip" style="display:none;position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid rgba(255,0,102,0.4);color:rgba(245,240,240,0.85);font-family:var(--mono);font-size:0.5rem;letter-spacing:0.08em;padding:0.7rem 1.2rem;z-index:99999;text-align:center;max-width:280px;width:90%;">
+  Tap <strong style="color:var(--pink)">⋮</strong> then <strong style="color:var(--pink)">Add to Home screen</strong> to install the app
+  <button onclick="document.getElementById('pwa-android-tip').style.display='none'" style="display:block;margin:0.5rem auto 0;background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:0.45rem;cursor:pointer;letter-spacing:0.1em;">DISMISS</button>
+</div>
 
 </body>
 </html>
