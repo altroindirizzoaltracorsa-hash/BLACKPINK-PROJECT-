@@ -3582,6 +3582,14 @@ async function loadTodaysPlaylist() {
   } catch(e) {}
 }
 
+// Installed/standalone PWAs are usually just suspended in the background, not
+// torn down — reopening resumes the same page without a fresh DOMContentLoaded
+// or fetch, so the banner can keep showing whatever was rendered before the
+// app was backgrounded. Re-fetch whenever the page becomes visible again.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') loadTodaysPlaylist();
+});
+
 function openPlaylistPanel() {
   document.getElementById('playlist-overlay').style.display = 'flex';
   const saved = localStorage.getItem(ADMIN_KEY_LS);
