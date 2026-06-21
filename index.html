@@ -330,6 +330,16 @@
   .step-content h4 { font-size: 0.85rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--white); margin-bottom: 0.5rem; }
   .step-content p { font-family: var(--light-serif); font-size: 1.05rem; line-height: 1.7; color: rgba(245,240,240,0.55); }
 
+  .watch-section { background: var(--off-black); border-top: 1px solid rgba(255,0,102,0.15); border-bottom: 1px solid rgba(255,0,102,0.15); }
+  .watch-inner { max-width: 1200px; margin: 0 auto; }
+  .watch-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5px; background: rgba(255,0,102,0.15); }
+  .video-card { background: var(--off-black); padding-bottom: 2rem; }
+  .video-frame { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; }
+  .video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .video-meta { padding: 1.5rem 1.8rem 0; }
+  .video-title { font-family: var(--display); font-size: 1.4rem; letter-spacing: 0.06em; color: var(--white); margin-bottom: 0.4rem; }
+  .video-tag { font-size: 0.65rem; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase; }
+
   .follow-section { background: linear-gradient(135deg, #0d0008 0%, #080808 100%); border-top: 1px solid rgba(255,0,102,0.15); }
   .follow-inner { max-width: 1200px; margin: 0 auto; }
   .follow-columns { display: grid; grid-template-columns: repeat(3,1fr); gap: 3rem; }
@@ -647,6 +657,7 @@
     section { padding: 4rem 1.5rem; }
     .welcome-inner { grid-template-columns: 1fr; gap: 3rem; }
     .songs-grid { grid-template-columns: 1fr; }
+    .watch-grid { grid-template-columns: 1fr; }
     .howto-grid { grid-template-columns: 1fr; gap: 3rem; }
     .follow-columns { grid-template-columns: 1fr; }
     .tiers-grid { grid-template-columns: repeat(3,1fr); }
@@ -1004,6 +1015,7 @@
     <li><a href="/leaderboard" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
     <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
     <li><a href="/feedback" onclick="showPage('feedback'); closeMobileNav(); return false;" id="nav-feedback">Feedback</a></li>
+    <li><a href="#watch" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('watch').scrollIntoView({behavior:'smooth'}),100); return false;">Watch</a></li>
     <li><a href="#follow" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100); return false;">Follow</a></li>
   </ul>
   <button id="pwa-install-btn" onclick="triggerInstall()" style="display:none;background:transparent;border:1px solid rgba(255,0,102,0.5);color:var(--pink);font-family:var(--mono);font-size:0.48rem;letter-spacing:0.14em;text-transform:uppercase;padding:0.4rem 0.8rem;cursor:pointer;white-space:nowrap;transition:border-color 0.2s,background 0.2s;" title="Install as app">⬇ Install App</button>
@@ -1197,6 +1209,68 @@
           <div class="challenge-step"><div class="step-num">04</div><div class="step-content"><h4>Add to Your Library</h4><p>Save the songs to Liked Songs and personal playlists. This signals strong engagement to the algorithm.</p></div></div>
           <div class="challenge-step"><div class="step-num">05</div><div class="step-content"><h4>Share &amp; Rally Blinks</h4><p>Tag fellow Blinks, post stream screenshots, keep the energy up. Community momentum is our biggest advantage.</p></div></div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="howto-inner">
+      <p class="section-label">// How To Shazam</p>
+      <h2 class="section-title animate-in">Shazam<br>Smart</h2>
+      <div class="howto-grid">
+        <div class="howto-intro animate-in">
+          <p>Shazam plays a crucial role in boosting BLACKPINK's digital performance. Every Shazam helps increase visibility, discoverability, and global chart impact — right alongside your streams.</p>
+          <p>Get the official Shazam app (or the Chrome extension on desktop), then follow the steps for your device so every Shazam counts.</p>
+          <br>
+          <a href="https://orcd.co/blackpink-deadline" target="_blank" rel="noopener" class="btn-primary">Shazam BLACKPINK →</a>
+        </div>
+        <div class="animate-in">
+          <div class="challenge-step"><div class="step-num">01</div><div class="step-content"><h4>Get Shazam</h4><p>Download Shazam from the App Store (iOS) or Google Play (Android), or install the Shazam extension from the Chrome Web Store on desktop.</p></div></div>
+          <div class="challenge-step"><div class="step-num">02</div><div class="step-content"><h4>Android — Allow Permissions</h4><p>Open Shazam and allow microphone and location access (App Info → Permissions → Location → Allow while using the app), then tap the Shazam button while a track plays.</p></div></div>
+          <div class="challenge-step"><div class="step-num">03</div><div class="step-content"><h4>Android — Reset Between Shazams</h4><p>Long-press the app icon → App Info → Storage → Clear Data, then Shazam again during the same song to log another play.</p></div></div>
+          <div class="challenge-step"><div class="step-num">04</div><div class="step-content"><h4>iOS — One Per Day</h4><p>Allow microphone and location access, tap the Shazam button once, then wait 24 hours before Shazaming the same track again.</p></div></div>
+          <div class="challenge-step"><div class="step-num">05</div><div class="step-content"><h4>Desktop — Chrome Extension</h4><p>Pin the Shazam extension, click it while the song is playing, then delete the recognition from your history and repeat.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="watch-section" id="watch">
+    <div class="watch-inner">
+      <p class="section-label">// Watch &amp; Subscribe</p>
+      <h2 class="section-title animate-in">Stream On<br>YouTube</h2>
+      <div class="watch-grid">
+
+        <div class="video-card animate-in">
+          <div class="video-frame">
+            <iframe src="https://www.youtube.com/embed/CgCVZdcKcqY" title="BLACKPINK - 뛰어(JUMP) M/V" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+          </div>
+          <div class="video-meta">
+            <h3 class="video-title">JUMP</h3>
+            <p class="video-tag">Official M/V</p>
+          </div>
+        </div>
+
+        <div class="video-card animate-in">
+          <div class="video-frame">
+            <iframe src="https://www.youtube.com/embed/POe9SOEKotk" title="BLACKPINK - 'Shut Down' M/V" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+          </div>
+          <div class="video-meta">
+            <h3 class="video-title">SHUT DOWN</h3>
+            <p class="video-tag">Official M/V</p>
+          </div>
+        </div>
+
+        <div class="video-card animate-in">
+          <div class="video-frame">
+            <iframe src="https://www.youtube.com/embed/IHNzOHi8sJs" title="BLACKPINK - '뚜두뚜두 (DDU-DU DDU-DU)' M/V" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+          </div>
+          <div class="video-meta">
+            <h3 class="video-title">DDU-DU DDU-DU</h3>
+            <p class="video-tag">Official M/V</p>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
