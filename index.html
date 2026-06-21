@@ -2076,9 +2076,9 @@ function track(event, meta) {
   try {
     const payload = JSON.stringify(meta ? { event, meta } : { event });
     if (navigator.sendBeacon) {
-      navigator.sendBeacon('/api/track', new Blob([payload], { type: 'application/json' }));
+      navigator.sendBeacon('/api/leaderboard?action=track', new Blob([payload], { type: 'application/json' }));
     } else {
-      fetch('/api/track', { method: 'POST', body: payload, headers: { 'Content-Type': 'application/json' }, keepalive: true }).catch(() => {});
+      fetch('/api/leaderboard?action=track', { method: 'POST', body: payload, headers: { 'Content-Type': 'application/json' }, keepalive: true }).catch(() => {});
     }
   } catch {}
 }
@@ -3586,7 +3586,7 @@ async function loadStats(key) {
   if (!k || !wrap) return;
   wrap.textContent = 'Loading…';
   try {
-    const r = await fetch(`/api/track?key=${encodeURIComponent(k)}`, { cache: 'no-store' });
+    const r = await fetch(`/api/leaderboard?action=stats&key=${encodeURIComponent(k)}`, { cache: 'no-store' });
     if (!r.ok) { wrap.textContent = `Server error (${r.status}).`; return; }
     const { counts } = await r.json();
     renderStats(counts || {});

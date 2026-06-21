@@ -2,10 +2,20 @@ import { Redis } from '@upstash/redis';
 
 const redis = Redis.fromEnv();
 const LB_KEY = 'bu_leaderboard_v1';
+const ANALYTICS_KEY = 'bu_analytics_v1';
+
+// Allow-list keeps the analytics hash bounded — arbitrary client input
+// can't write arbitrary fields into it.
+const TRACK_EVENTS = new Set(['pageview', 'playlist_click', 'share_click', 'vote_click']);
 
 function isAdmin(req) {
   const adminSecret = process.env.ADMIN_SECRET;
   return !!adminSecret && req.query.key === adminSecret;
+}
+
+function safeMeta(meta) {
+  if (typeof meta !== 'string') return '';
+  return meta.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
 }
 
 // Same ranking + tie-break as the client's Overall · All Tracks leaderboard
@@ -39,6 +49,14 @@ export default async function handler(req, res) {
     const data = (await redis.get(LB_KEY)) || {};
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({ banned: data.banned || [] });
+  }
+
+  // ── GET /api/leaderboard?action=stats&key=ADMIN_SECRET — admin: site analytics counters ──
+  if (req.method === 'GET' && action === 'stats') {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const counts = (await redis.hgetall(ANALYTICS_KEY)) || {};
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ counts });
   }
 
   // ── GET: return full leaderboard ──────────────────────────────
@@ -79,6 +97,25 @@ export default async function handler(req, res) {
 
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({ ok: true, banned: data.banned });
+  }
+
+  // ── POST /api/leaderboard?action=track — public: record one analytics event ──
+  if (req.method === 'POST' && action === 'track') {
+    let body;
+    try {
+      body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    } catch {
+      return res.status(400).json({ error: 'Invalid JSON' });
+    }
+
+    const event = body?.event;
+    if (!TRACK_EVENTS.has(event)) return res.status(400).json({ error: 'Unknown event' });
+
+    const meta = safeMeta(body?.meta);
+    const fields = meta ? [event, `${event}:${meta}`] : [event];
+    await Promise.all(fields.map(f => redis.hincrby(ANALYTICS_KEY, f, 1)));
+
+    return res.status(204).end();
   }
 
   // ── POST: upsert a single user's scores ───────────────────────
