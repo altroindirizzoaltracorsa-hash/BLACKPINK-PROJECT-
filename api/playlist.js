@@ -43,7 +43,7 @@ async function promotePendingIfDue() {
   if (live?.updatedAt >= currentItalyDayStart()) return; // already refreshed this Italy-day
   const next = await redis.lpop(QUEUE_KEY);
   if (!next) return;
-  await redis.set(KEY, { id: next.id, url: next.url, updatedAt: Date.now() });
+  await redis.set(KEY, { id: next.id, url: next.url, updatedAt: Date.now(), ...(next.day ? { day: next.day } : {}) });
 }
 
 // Annotates each queued entry with an estimated go-live time, one Italy-day
@@ -87,15 +87,16 @@ export default async function handler(req, res) {
     }
     const id = extractPlaylistId(req.body?.url);
     if (!id) return res.status(400).json({ error: 'Could not find a playlist ID in that link' });
+    const day = req.body?.day ? Number(req.body.day) : undefined;
 
     if (req.body?.publishNow) {
-      const data = { id, url: req.body.url, updatedAt: Date.now() };
+      const data = { id, url: req.body.url, updatedAt: Date.now(), ...(day ? { day } : {}) };
       await redis.set(KEY, data);
       const { queue } = await buildQueueStatus();
       return res.status(200).json({ live: data, queue });
     }
 
-    await redis.rpush(QUEUE_KEY, { id, url: req.body.url, savedAt: Date.now() });
+    await redis.rpush(QUEUE_KEY, { id, url: req.body.url, savedAt: Date.now(), ...(day ? { day } : {}) });
     const { queue } = await buildQueueStatus();
     return res.status(200).json({ queued: true, queue });
   }

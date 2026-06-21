@@ -1543,6 +1543,7 @@
     <div id="playlist-content" style="display:none">
       <div id="admin-playlist-pending" class="admin-song-note" style="display:none"></div>
       <input id="admin-playlist-input" class="beta-input" type="text" placeholder="Paste the Spotify playlist link…">
+      <input id="admin-playlist-day" class="beta-input" type="number" min="1" placeholder="Day # (optional)" style="margin-top:0.5rem;max-width:140px;">
       <button class="beta-btn" onclick="savePlaylistLink()">Save Playlist</button>
       <label style="display:block;margin-top:0.5rem;font-size:0.75rem;color:var(--muted);cursor:pointer;">
         <input id="admin-playlist-now" type="checkbox" style="margin-right:0.4rem;">Publish immediately instead of waiting for the 2am reset
@@ -3636,7 +3637,7 @@ function showQueueStatus(queue) {
   if (queue && queue.length) {
     el.innerHTML = queue.map((q, i) => {
       const when = new Date(q.etaPublishAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
-      return `⏳ #${i + 1} queued: ${q.url} — goes live ~${when} (Italy time)`;
+      return `⏳ #${i + 1} queued: ${q.day ? `[Day ${q.day}] ` : ''}${q.url} — goes live ~${when} (Italy time)`;
     }).join('<br>');
     el.style.display = 'block';
   } else {
@@ -3647,6 +3648,7 @@ function showQueueStatus(queue) {
 async function savePlaylistLink() {
   const key = localStorage.getItem(ADMIN_KEY_LS);
   const url = document.getElementById('admin-playlist-input').value.trim();
+  const dayInput = document.getElementById('admin-playlist-day').value.trim();
   const publishNow = document.getElementById('admin-playlist-now').checked;
   const msgEl = document.getElementById('admin-playlist-msg');
   if (!url) { msgEl.textContent = 'Paste a playlist link first.'; return; }
@@ -3655,13 +3657,14 @@ async function savePlaylistLink() {
     const r = await fetch(`/api/playlist?key=${encodeURIComponent(key)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, publishNow }),
+      body: JSON.stringify({ url, publishNow, day: dayInput ? Number(dayInput) : undefined }),
     });
     if (r.status === 401) { msgEl.textContent = 'Wrong key.'; return; }
     const d = await r.json();
     if (!r.ok) { msgEl.textContent = d.error || `Server error (${r.status}).`; return; }
     msgEl.textContent = d.live ? 'Saved — live now ✓' : `Queued ✓ — #${(d.queue || []).length} in line, goes live one 2am reset at a time (Italy time)`;
     document.getElementById('admin-playlist-input').value = '';
+    document.getElementById('admin-playlist-day').value = '';
     document.getElementById('admin-playlist-now').checked = false;
     showQueueStatus(d.queue);
     loadTodaysPlaylist();
