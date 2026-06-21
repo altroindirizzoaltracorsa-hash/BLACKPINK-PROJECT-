@@ -127,6 +127,7 @@ export default async function handler(req, res) {
       const liveKey = `bp_live_${name}`;
       const prevKey = `bp_prev_${name}`;
       const histKey = `bp_hist_${name}`;
+      const errKey  = `bp_err_${name}`;
 
       const [cached, prev, hist] = await Promise.all([
         redis.get(liveKey),
@@ -165,7 +166,8 @@ export default async function handler(req, res) {
         try {
           data = await fetchTrackMetadata(trackId);
         } catch(e) {
-          errors[name] = e.message;
+          errors[name] = { message: e.message, ts: new Date().toISOString() };
+          await redis.set(errKey, { message: e.message, ts: Date.now() });
           data = {};
         }
         const fetchedTotal = data?.playCount || 0;
@@ -174,6 +176,7 @@ export default async function handler(req, res) {
           total = fetchedTotal;
           updatedAt = Date.now();
           await redis.set(liveKey, { total, ts: updatedAt });
+          await redis.del(errKey);
         } else {
           // Live fetch failed (e.g. all RapidAPI keys exhausted) — fall back to
           // the last known-good cached total instead of showing 0.
@@ -231,6 +234,10 @@ export default async function handler(req, res) {
   const prevSnaps = {};
   for (const name of Object.keys(TRACKS)) {
     prevSnaps[name] = await redis.get(`bp_prev_${name}`);
+    if (!errors[name]) {
+      const lastErr = await redis.get(`bp_err_${name}`);
+      if (lastErr) errors[name] = { message: lastErr.message, ts: new Date(lastErr.ts).toISOString() };
+    }
   }
 
   const keyCounts = {};
