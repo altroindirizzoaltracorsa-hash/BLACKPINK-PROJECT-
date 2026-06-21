@@ -203,6 +203,19 @@ export default async function handler(req, res) {
     allMatches.sort((a, b) => b.day - a.day);
     const best = allMatches[0];
 
+    // Never let a flaky scan (stale token, privacy-toggle lag, etc.) regress the
+    // live playlist to a lower day number than what's already published.
+    const current = await redis.get(KEY);
+    const currentDay = current?.day || 0;
+    if (best.day < currentDay) {
+      return res.status(200).json({
+        ok: false,
+        error: `Found Day ${best.day} but Day ${currentDay} is already live — refusing to go backwards`,
+        candidates: allMatches,
+        accountDiagnostics,
+      });
+    }
+
     await redis.set(KEY, { id: best.id, url: best.url, updatedAt: Date.now(), day: best.day, account: best.account });
 
     res.status(200).json({ ok: true, chosen: best, candidates: allMatches, accountDiagnostics });
