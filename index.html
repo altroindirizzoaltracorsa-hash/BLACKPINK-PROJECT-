@@ -576,6 +576,8 @@
   .admin-ban-chip { display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,0,102,0.08); border:1px solid rgba(255,0,102,0.25); color:var(--white); font-family:var(--mono); font-size:0.55rem; letter-spacing:0.05em; padding:0.3rem 0.5rem; }
   .admin-ban-chip button { background:none; border:none; color:var(--pink); cursor:pointer; font-family:var(--mono); font-size:0.6rem; padding:0; }
   .admin-ban-chip button:hover { text-decoration:underline; }
+  .admin-stats-row { display:flex; justify-content:space-between; font-family:var(--mono); font-size:0.7rem; letter-spacing:0.04em; color:var(--white); padding:0.35rem 0; }
+  .admin-stats-sub { display:flex; justify-content:space-between; font-family:var(--mono); font-size:0.6rem; letter-spacing:0.04em; color:var(--muted); padding:0.15rem 0 0.15rem 1rem; }
 
   footer { padding: 2rem 3rem; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
   footer p { font-size: 0.55rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.3); }
@@ -1024,7 +1026,7 @@
   </button>
 </nav>
 
-<a id="playlist-banner" class="playlist-banner" href="#" target="_blank" rel="noopener" style="display:none;">
+<a id="playlist-banner" class="playlist-banner" href="#" target="_blank" rel="noopener" style="display:none;" onclick="track('playlist_click')">
   <span class="playlist-banner-label">⬡ Today's Playlist</span>
   <span id="playlist-banner-day" class="playlist-banner-day"></span>
   <span class="playlist-banner-cta">Listen on Spotify →</span>
@@ -1606,6 +1608,11 @@
         <div id="admin-ban-err" class="admin-err"></div>
         <div id="admin-ban-list" class="admin-ban-list"></div>
       </div>
+
+      <div class="admin-ban-section">
+        <div class="admin-ban-title">📊 Site stats</div>
+        <div id="admin-stats-wrap" class="admin-loading">Loading…</div>
+      </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
       <button class="card-cl-btn" onclick="closeAdminPanel()">Close</button>
@@ -2063,6 +2070,19 @@ function closeMobileNav() {
 
 const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback' };
 
+// Fire-and-forget analytics ping — sendBeacon survives page unload (e.g. the
+// user clicking an outbound link), with a keepalive fetch as fallback.
+function track(event, meta) {
+  try {
+    const payload = JSON.stringify(meta ? { event, meta } : { event });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/api/track', new Blob([payload], { type: 'application/json' }));
+    } else {
+      fetch('/api/track', { method: 'POST', body: payload, headers: { 'Content-Type': 'application/json' }, keepalive: true }).catch(() => {});
+    }
+  } catch {}
+}
+
 // Mirrors the per-route <title> the Vercel edge middleware sets on first
 // load, so client-side navigation keeps the tab title in sync too.
 const PAGE_TITLES = {
@@ -2086,6 +2106,7 @@ function showPage(page, { replace = false } = {}) {
   document.getElementById('nav-' + page)?.classList.add('active');
   document.title = PAGE_TITLES[page] || PAGE_TITLES.home;
   window.scrollTo(0, 0);
+  track('pageview', page);
   if (page === 'home') initAnimations();
   if (page === 'badges') tryAutoLoad();
   if (page === 'leaderboard') {
@@ -2321,7 +2342,7 @@ function renderVoteCampaigns() {
           <ul>${c.rules.map(r => `<li>${r}</li>`).join('')}</ul>
         </div>` : ''}
         <div class="vote-card-actions">
-          <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
+          <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer" onclick="track('vote_click', '${c.id}')">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
           <button class="vote-share-btn" onclick="openVoteCard('${c.id}')">⬡ Share</button>
         </div>
       </div>`;
@@ -3168,6 +3189,7 @@ function renderStampCalendar() {
 
 function shareProfile() {
   if (!currentUser) return;
+  track('share_click', 'profile');
   const name = currentUser.info.name;
   const total = Object.values(currentUser.totalPlays).reduce((a,b)=>a+b,0);
   const text = `🖤💗 Check out my BLACKPINK streaming stats on Blinks United!\n👤 ${name} · ${total.toLocaleString()} BP scrobbles\n#BlinksUnited #BLACKPINK #StreamJUMP`;
@@ -3519,6 +3541,7 @@ function openAdminPanel() {
     document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
     loadAdminRanking(saved);
     loadBannedUsers(saved);
+    loadStats(saved);
   } else {
     document.getElementById('admin-auth').style.display = 'block';
     document.getElementById('admin-content').style.display = 'none';
@@ -3550,9 +3573,46 @@ async function submitAdminKey() {
     document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
     renderAdminTable(d);
     loadBannedUsers(key);
+    loadStats(key);
   } catch(e) {
     errEl.textContent = 'Request failed — check your connection.';
   }
+}
+
+// ── Site stats (pageviews, playlist/share/vote-link clicks) ───
+async function loadStats(key) {
+  const k = key || localStorage.getItem(ADMIN_KEY_LS);
+  const wrap = document.getElementById('admin-stats-wrap');
+  if (!k || !wrap) return;
+  wrap.textContent = 'Loading…';
+  try {
+    const r = await fetch(`/api/track?key=${encodeURIComponent(k)}`, { cache: 'no-store' });
+    if (!r.ok) { wrap.textContent = `Server error (${r.status}).`; return; }
+    const { counts } = await r.json();
+    renderStats(counts || {});
+  } catch {
+    wrap.textContent = 'Request failed — check your connection.';
+  }
+}
+
+function renderStats(counts) {
+  const wrap = document.getElementById('admin-stats-wrap');
+  if (!wrap) return;
+  const num = n => parseInt(n || '0', 10).toLocaleString();
+  const breakdown = prefix => Object.entries(counts)
+    .filter(([k]) => k.startsWith(prefix + ':'))
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `<div class="admin-stats-sub"><span>${k.slice(prefix.length + 1)}</span><span>${num(v)}</span></div>`)
+    .join('');
+  wrap.innerHTML = `
+    <div class="admin-stats-row"><span>Pageviews</span><span>${num(counts.pageview)}</span></div>
+    ${breakdown('pageview')}
+    <div class="admin-stats-row"><span>Playlist clicks</span><span>${num(counts.playlist_click)}</span></div>
+    <div class="admin-stats-row"><span>Card shares</span><span>${num(counts.share_click)}</span></div>
+    ${breakdown('share_click')}
+    <div class="admin-stats-row"><span>Vote link clicks</span><span>${num(counts.vote_click)}</span></div>
+    ${breakdown('vote_click')}
+  `;
 }
 
 // ── Ban list (removes a user from the leaderboard and blocks re-registration) ──
@@ -4368,6 +4428,7 @@ function renderLbCard(logo) {
 // ── SHARE TO SOCIAL ──────────────────────────────────────────────────────────
 async function shareCard() {
   if (!cardCanvas) return;
+  track('share_click', _cardType || 'card');
   const title = document.getElementById('card-box-label').textContent;
   let link = 'blackpink-project.vercel.app';
   let rulesText = '';
@@ -5069,6 +5130,7 @@ function downloadMilestoneCard() {
 }
 
 async function shareMilestoneCard() {
+  track('share_click', 'milestone');
   const canvas = document.getElementById('ms-canvas');
   const trackName = document.getElementById('ms-track-name').textContent;
   const msNum = document.getElementById('ms-number').textContent;
