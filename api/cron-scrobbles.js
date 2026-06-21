@@ -235,6 +235,22 @@ async function refreshUser(entry, sb) {
   };
 }
 
+// Same ranking + tie-break as the client's Overall · All Tracks leaderboard
+// view, so the tracked leader always matches whoever is actually shown as #1.
+function computeLeader(users) {
+  const entries = Object.values(users || {}).map(u => ({ username: u.username, score: u.scores?.overall_all || 0 }));
+  entries.sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
+  return entries[0]?.score > 0 ? entries[0] : null;
+}
+
+function updateLeaderStreak(data) {
+  const leader = computeLeader(data.users);
+  if (!leader) return;
+  if (data.leaderStreak?.username?.toLowerCase() !== leader.username.toLowerCase()) {
+    data.leaderStreak = { username: leader.username, since: new Date().toISOString() };
+  }
+}
+
 // ── Handler ───────────────────────────────────────────────────
 export default async function handler(req, res) {
   const secret = process.env.CRON_SECRET;
@@ -288,6 +304,7 @@ export default async function handler(req, res) {
   }
 
   data.lastUpdated = new Date().toISOString();
+  updateLeaderStreak(data);
   await redis.set(LB_KEY, data);
 
   res.setHeader('Cache-Control', 'no-store');

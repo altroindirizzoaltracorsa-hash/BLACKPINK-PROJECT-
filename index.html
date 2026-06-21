@@ -742,6 +742,7 @@
   .lb-avatar-placeholder { width: 32px; height: 32px; border-radius: 50%; background: var(--pink-muted); border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; font-family: var(--display); font-size: 0.8rem; color: var(--pink); margin-right: 0.8rem; vertical-align: middle; }
   .lb-score { font-family: var(--display); font-size: 1.2rem; color: var(--pink); text-align: right; }
   .lb-badge { font-size: 1rem; }
+  .lb-streak { display:inline-flex; align-items:center; gap:0.3rem; font-family:var(--mono); font-size:0.42rem; letter-spacing:0.15em; color:#ff8a00; background:rgba(255,138,0,0.08); border:1px solid rgba(255,138,0,0.3); padding:0.2rem 0.5rem; white-space:nowrap; vertical-align:middle; }
   .lb-delta-up { font-size: 0.62rem; color: #00ff88; letter-spacing: 0.08em; }
   .lb-delta-dn { font-size: 0.62rem; color: rgba(245,240,240,0.3); letter-spacing: 0.08em; }
   .lb-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
@@ -3207,6 +3208,18 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
 }
 
 // ── Render leaderboard table ──────────────────────────────────
+// leaderStreak is only tracked against the Overall · All Tracks ranking
+// (api/leaderboard.js / api/cron-scrobbles.js updateLeaderStreak()), so the
+// badge only makes sense on that specific rank-1 row, on the live view.
+function leaderStreakBadge(rankIndex, username) {
+  const streak = lbData?.leaderStreak;
+  if (lbHistorySnapshot || rankIndex !== 0 || lbPeriod !== 'overall' || lbSong !== 'all') return '';
+  if (!streak || streak.username.toLowerCase() !== username.toLowerCase()) return '';
+  const days = Math.floor((Date.now() - new Date(streak.since).getTime()) / 86400000);
+  const label = days <= 0 ? 'New leader today' : `🔥 ${days} day${days === 1 ? '' : 's'} in the lead`;
+  return ` <span class="lb-streak" title="Leading Overall · All Tracks since ${new Date(streak.since).toLocaleDateString()}">${label}</span>`;
+}
+
 function getScoreKey() {
   // period: daily | weekly | overall
   // song:   all | jump | shutdown | ddududu
@@ -3279,7 +3292,7 @@ function renderLeaderboard() {
               : `<span class="lb-avatar-placeholder">${e.username[0].toUpperCase()}</span>`;
             return `<tr class="${isMe ? 'me' : ''}">
               <td><span class="lb-rank ${rankClass}">${rankEmoji || (i+1)}</span></td>
-              <td>${avatarHtml}<span class="lb-user">${e.username}</span>${ogUsers.has(e.username.toLowerCase()) ? ' <span class="og-inline-badge" data-tip="Here from the start · OG Beta Tester">⭐ OG</span>' : ''}${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
+              <td>${avatarHtml}<span class="lb-user">${e.username}</span>${ogUsers.has(e.username.toLowerCase()) ? ' <span class="og-inline-badge" data-tip="Here from the start · OG Beta Tester">⭐ OG</span>' : ''}${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${leaderStreakBadge(i, e.username)}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
               <td class="lb-score">${e.score > 0 ? e.score.toLocaleString() : '—'}</td>
             </tr>`;
           }).join('')}

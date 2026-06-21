@@ -8,6 +8,22 @@ function isAdmin(req) {
   return !!adminSecret && req.query.key === adminSecret;
 }
 
+// Same ranking + tie-break as the client's Overall · All Tracks leaderboard
+// view, so the tracked leader always matches whoever is actually shown as #1.
+function computeLeader(users) {
+  const entries = Object.values(users || {}).map(u => ({ username: u.username, score: u.scores?.overall_all || 0 }));
+  entries.sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
+  return entries[0]?.score > 0 ? entries[0] : null;
+}
+
+function updateLeaderStreak(data) {
+  const leader = computeLeader(data.users);
+  if (!leader) return;
+  if (data.leaderStreak?.username?.toLowerCase() !== leader.username.toLowerCase()) {
+    data.leaderStreak = { username: leader.username, since: new Date().toISOString() };
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -44,6 +60,7 @@ export default async function handler(req, res) {
     data.banned = data.banned || [];
     if (!data.banned.includes(username)) data.banned.push(username);
     delete data.users[username];
+    updateLeaderStreak(data);
     await redis.set(LB_KEY, data);
 
     res.setHeader('Cache-Control', 'no-store');
@@ -86,6 +103,7 @@ export default async function handler(req, res) {
 
     data.users[username.toLowerCase()] = { username, avatar, scores, updatedAt, lastScrobbleAt };
     data.lastUpdated = new Date().toISOString();
+    updateLeaderStreak(data);
     await redis.set(LB_KEY, data);
 
     res.setHeader('Cache-Control', 'no-store');
