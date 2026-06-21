@@ -113,11 +113,35 @@ async function persistStamp(sb, username, todayKey, stamps) {
 }
 
 // ── Last.fm helpers ───────────────────────────────────────────
-async function lfmFetch(params) {
+// Same retry policy as index.html's client-side lfmFetch: retry transient
+// Last.fm/network failures with backoff, fail fast on permanent errors.
+// Critically, also checks data.error — Last.fm returns HTTP 200 even on
+// error (e.g. error 8), so checking r.ok alone let bad responses silently
+// flow through as zeroed-out play counts.
+const LASTFM_RETRYABLE_ERRORS = new Set([8, 11, 16]);
+
+async function lfmFetch(params, attempt = 0) {
   const url = LASTFM_BASE + '?' + new URLSearchParams({ ...params, api_key: LASTFM_KEY, format: 'json' });
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`Last.fm HTTP ${r.status}`);
-  return r.json();
+  let data;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`Last.fm HTTP ${r.status}`);
+    data = await r.json();
+  } catch (e) {
+    if (attempt < 2) {
+      await new Promise(res => setTimeout(res, 500 * 3 ** attempt));
+      return lfmFetch(params, attempt + 1);
+    }
+    throw e;
+  }
+  if (data?.error) {
+    if (LASTFM_RETRYABLE_ERRORS.has(data.error) && attempt < 2) {
+      await new Promise(res => setTimeout(res, 500 * 3 ** attempt));
+      return lfmFetch(params, attempt + 1);
+    }
+    throw new Error(`Last.fm error ${data.error}: ${data.message || ''}`);
+  }
+  return data;
 }
 
 async function fetchTrackPlays(username, artist, track) {

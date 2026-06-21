@@ -2400,11 +2400,32 @@ function getNextBadge(plays) {
 }
 
 // ── LAST.FM API HELPERS ───────────────────────────────────────
-async function lfmFetch(params) {
+// Error codes Last.fm itself flags as transient/server-side (8 = operation
+// failed/backend service failed, 11 = service offline, 16 = temporarily
+// unavailable) get retried with backoff; anything else (bad user, bad key,
+// etc.) fails fast since retrying won't change the outcome.
+const LASTFM_RETRYABLE_ERRORS = new Set([8, 11, 16]);
+
+async function lfmFetch(params, attempt = 0) {
   const url = LASTFM_BASE + '?' + new URLSearchParams({ ...params, api_key: LASTFM_KEY, format: 'json' });
-  const r = await fetch(url, { cache: 'no-store' });
-  const data = await r.json();
-  if (data?.error) throw new Error(`Last.fm error ${data.error}: ${data.message || ''}`);
+  let data;
+  try {
+    const r = await fetch(url, { cache: 'no-store' });
+    data = await r.json();
+  } catch (e) {
+    if (attempt < 2) {
+      await new Promise(res => setTimeout(res, 500 * 3 ** attempt));
+      return lfmFetch(params, attempt + 1);
+    }
+    throw e;
+  }
+  if (data?.error) {
+    if (LASTFM_RETRYABLE_ERRORS.has(data.error) && attempt < 2) {
+      await new Promise(res => setTimeout(res, 500 * 3 ** attempt));
+      return lfmFetch(params, attempt + 1);
+    }
+    throw new Error(`Last.fm error ${data.error}: ${data.message || ''}`);
+  }
   return data;
 }
 
