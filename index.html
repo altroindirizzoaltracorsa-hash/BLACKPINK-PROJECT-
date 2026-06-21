@@ -3586,8 +3586,15 @@ async function loadTodaysPlaylist() {
 // torn down — reopening resumes the same page without a fresh DOMContentLoaded
 // or fetch, so the banner can keep showing whatever was rendered before the
 // app was backgrounded. Re-fetch whenever the page becomes visible again.
+//
+// A backgrounded-but-not-closed tab also never re-checks for a new sw.js —
+// browsers only do that on a fresh navigation or their own throttled (~24h)
+// background sweep — so it can keep running an old service worker indefinitely.
+// Force an update check on resume so a stale worker doesn't outlive its tab.
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') loadTodaysPlaylist();
+  if (document.visibilityState !== 'visible') return;
+  loadTodaysPlaylist();
+  navigator.serviceWorker?.getRegistration().then(reg => reg?.update());
 });
 
 function openPlaylistPanel() {
