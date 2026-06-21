@@ -1053,6 +1053,16 @@
         <a href="/badges" class="btn-ghost" onclick="showPage('badges'); return false;">Badge Challenge</a>
         <a href="/voting" class="btn-primary" onclick="showPage('vote'); return false;">Vote</a>
       </div>
+      <div id="community-goal-home" style="display:none;margin-top:1.5rem;max-width:480px;width:100%;">
+        <div class="goal-tracker-card">
+          <div class="goal-tracker-top">
+            <span class="goal-tracker-label">// Today's Community Goal</span>
+            <span class="goal-tracker-nums" id="community-goal-nums">0<span> / 15,000 scrobbles</span></span>
+          </div>
+          <div class="goal-tracker-bar"><div class="goal-tracker-fill" id="community-goal-fill" style="width:0%"></div></div>
+          <div class="goal-tracker-status" id="community-goal-status">Loading today's progress…</div>
+        </div>
+      </div>
       <div id="todays-playlist-home" style="display:none;margin-top:1.5rem;max-width:480px;width:100%;">
         <p class="stat-lbl" style="margin-bottom:0.5rem;">⬡ Today's Playlist</p>
         <div id="todays-playlist-embed-home"></div>
@@ -1953,6 +1963,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   fetchSpotifyStreams();
   loadTodaysPlaylist();
+  loadCommunityGoal();
   const saved = getSavedUsername();
   if (saved) {
     if (document.getElementById('page-badges')?.classList.contains('active')) {
@@ -3582,6 +3593,45 @@ async function loadTodaysPlaylist() {
   } catch(e) {}
 }
 
+const COMMUNITY_GOAL_PRIMARY   = 15000;
+const COMMUNITY_GOAL_SECONDARY = 20000;
+
+// Sitewide daily scrobble total across all campaign tracks, summed the same
+// way the leaderboard's community-total line does (renderLeaderboard()) —
+// only counts each user's daily_all if it was actually refreshed today.
+async function loadCommunityGoal() {
+  const wrap = document.getElementById('community-goal-home');
+  if (!wrap) return;
+  try {
+    const r = await fetch('/api/leaderboard', { cache: 'no-store' });
+    const data = await r.json();
+    const todayLabel = italyDateLabel();
+    const total = Object.values(data.users || {}).reduce((sum, u) => {
+      const s = u.scores || {};
+      return s.daily_date === todayLabel ? sum + (s.daily_all || 0) : sum;
+    }, 0);
+
+    const goal = total < COMMUNITY_GOAL_PRIMARY ? COMMUNITY_GOAL_PRIMARY : COMMUNITY_GOAL_SECONDARY;
+    const pct  = Math.min(100, (total / goal) * 100);
+
+    document.getElementById('community-goal-nums').innerHTML = `${total.toLocaleString()}<span> / ${goal.toLocaleString()} scrobbles</span>`;
+    document.getElementById('community-goal-fill').style.width = `${pct}%`;
+
+    const statusEl = document.getElementById('community-goal-status');
+    if (total >= COMMUNITY_GOAL_SECONDARY) {
+      statusEl.textContent = `🎉 Secondary goal smashed — ${total.toLocaleString()} scrobbles today!`;
+      statusEl.className = 'goal-tracker-status goal-tracker-done';
+    } else if (total >= COMMUNITY_GOAL_PRIMARY) {
+      statusEl.textContent = `🎉 Primary goal hit! ${(COMMUNITY_GOAL_SECONDARY - total).toLocaleString()} more to reach the stretch goal`;
+      statusEl.className = 'goal-tracker-status goal-tracker-done';
+    } else {
+      statusEl.textContent = `${(COMMUNITY_GOAL_PRIMARY - total).toLocaleString()} more scrobbles to hit today's goal — stream now!`;
+      statusEl.className = 'goal-tracker-status';
+    }
+    wrap.style.display = 'block';
+  } catch(e) {}
+}
+
 // Installed/standalone PWAs are usually just suspended in the background, not
 // torn down — reopening resumes the same page without a fresh DOMContentLoaded
 // or fetch, so the banner can keep showing whatever was rendered before the
@@ -3594,6 +3644,7 @@ async function loadTodaysPlaylist() {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
   loadTodaysPlaylist();
+  loadCommunityGoal();
   navigator.serviceWorker?.getRegistration().then(reg => reg?.update());
 });
 
