@@ -3459,7 +3459,7 @@ async function populateLbHistorySelect() {
   sel.innerHTML = '<option value="">📅 History…</option>';
   try {
     const res = await fetch(`/api/leaderboard-archive?period=${lbPeriod}`, { cache: 'no-store' });
-    if (!res.ok) return;
+    if (!res.ok) throw new Error(`leaderboard-archive ${res.status}`);
     const { items } = await res.json();
     for (const it of (items || [])) {
       const opt = document.createElement('option');
@@ -3467,7 +3467,13 @@ async function populateLbHistorySelect() {
       opt.textContent = it.label;
       sel.appendChild(opt);
     }
-  } catch {}
+  } catch (e) {
+    console.error('populateLbHistorySelect failed:', e);
+    const opt = document.createElement('option');
+    opt.value = ''; opt.disabled = true;
+    opt.textContent = '⚠ History unavailable';
+    sel.appendChild(opt);
+  }
 }
 
 function onLbHistoryPick(key) {

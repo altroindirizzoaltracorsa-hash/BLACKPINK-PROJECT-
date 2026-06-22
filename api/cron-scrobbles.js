@@ -296,10 +296,12 @@ export default async function handler(req, res) {
   const thisWeekKey         = dayKey(weekFrom);
 
   if (data.currentDayKey && data.currentDayKey !== todayKey) {
-    try { await archivePeriod(sb, 'daily', data.currentDayKey, data.currentDayLabel || data.currentDayKey, data.users); } catch {}
+    try { await archivePeriod(sb, 'daily', data.currentDayKey, data.currentDayLabel || data.currentDayKey, data.users); }
+    catch (e) { console.error('archivePeriod(daily) failed:', e); }
   }
   if (data.currentWeekKey && data.currentWeekKey !== thisWeekKey) {
-    try { await archivePeriod(sb, 'weekly', data.currentWeekKey, data.currentWeekLabel || data.currentWeekKey, data.users); } catch {}
+    try { await archivePeriod(sb, 'weekly', data.currentWeekKey, data.currentWeekLabel || data.currentWeekKey, data.users); }
+    catch (e) { console.error('archivePeriod(weekly) failed:', e); }
   }
   data.currentDayKey    = todayKey;
   data.currentDayLabel  = fullDateLabel(new Date(dayFrom * 1000));
