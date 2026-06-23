@@ -62,10 +62,11 @@ function fullDateLabel(date) {
 // daily_*/weekly_* with the next period's (zeroed) counts.
 async function archivePeriod(sb, period, periodKey, label, users) {
   if (!sb || !periodKey || !Object.keys(users).length) return;
-  await sb.from('leaderboard_archive').upsert(
+  const { error } = await sb.from('leaderboard_archive').upsert(
     { period, period_key: periodKey, label, users, archived_at: new Date().toISOString() },
     { onConflict: 'period,period_key' }
   );
+  if (error) throw error;
 }
 
 // ── Daily badge tiers (mirrors index.html's DAILY_TIERS — only the daily side,
