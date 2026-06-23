@@ -23,6 +23,12 @@ jobs:
           curl -sf -X GET \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.VERCEL_URL }}/api/cron-scrobbles"
+      - name: Force archive write (debug only)
+        if: ${{ inputs.checkArchive }}
+        run: |
+          curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.VERCEL_URL }}/api/cron-scrobbles?debugArchive=1"
       - name: Check archive (debug only)
         if: ${{ inputs.checkArchive }}
         run: |
