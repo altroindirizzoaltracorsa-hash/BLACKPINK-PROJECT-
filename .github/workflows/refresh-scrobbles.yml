@@ -8,11 +8,6 @@ on:
     # streams right before reset that no later run would ever look back for.
     - cron: '55 * * * *'   # every hour, 5 min before the top of the hour
   workflow_dispatch:          # also runnable manually from GitHub Actions tab
-    inputs:
-      debugArchive:
-        description: 'Force an archive-write test and print the raw error'
-        type: boolean
-        default: false
 
 jobs:
   refresh:
@@ -20,8 +15,6 @@ jobs:
     steps:
       - name: Call cron endpoint
         run: |
-          URL="${{ secrets.VERCEL_URL }}/api/cron-scrobbles"
-          if [ "${{ inputs.debugArchive }}" = "true" ]; then URL="$URL?debugArchive=1"; fi
           curl -sf -X GET \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "$URL"
+            "${{ secrets.VERCEL_URL }}/api/cron-scrobbles"
