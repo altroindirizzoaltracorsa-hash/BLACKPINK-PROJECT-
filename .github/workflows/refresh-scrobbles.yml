@@ -8,11 +8,6 @@ on:
     # streams right before reset that no later run would ever look back for.
     - cron: '55 * * * *'   # every hour, 5 min before the top of the hour
   workflow_dispatch:          # also runnable manually from GitHub Actions tab
-    inputs:
-      checkArchive:
-        description: 'Read-only check: print the archive table contents'
-        type: boolean
-        default: false
 
 jobs:
   refresh:
@@ -23,11 +18,3 @@ jobs:
           curl -sf -X GET \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.VERCEL_URL }}/api/cron-scrobbles"
-      - name: Check archive (debug only)
-        if: ${{ inputs.checkArchive }}
-        run: |
-          echo "--- daily ---"
-          curl -s "https://blackpink-project.vercel.app/api/leaderboard-archive?period=daily"
-          echo
-          echo "--- weekly ---"
-          curl -s "https://blackpink-project.vercel.app/api/leaderboard-archive?period=weekly"
