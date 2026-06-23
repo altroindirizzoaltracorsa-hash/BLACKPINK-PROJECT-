@@ -280,6 +280,19 @@ export default async function handler(req, res) {
     try { await archivePeriod(sb, 'weekly', data.currentWeekKey, data.currentWeekLabel || data.currentWeekKey, data.users); }
     catch (e) { console.error('archivePeriod(weekly) failed:', e); }
   }
+
+  // TEMP DEBUG: ?debugArchive=1 forces an archive write attempt right now (bypassing
+  // the boundary check above) and echoes the raw Supabase error back in the response,
+  // since Vercel's free-tier log retention is too short to catch the nightly attempt.
+  let debugArchiveResult;
+  if (req.query.debugArchive === '1') {
+    try {
+      await archivePeriod(sb, 'daily', todayKey, fullDateLabel(new Date(dayFrom * 1000)), data.users);
+      debugArchiveResult = { ok: true };
+    } catch (e) {
+      debugArchiveResult = { ok: false, message: e.message, details: e.details, hint: e.hint, code: e.code };
+    }
+  }
   data.currentDayKey    = todayKey;
   data.currentDayLabel  = fullDateLabel(new Date(dayFrom * 1000));
   data.currentWeekKey   = thisWeekKey;
@@ -311,5 +324,5 @@ export default async function handler(req, res) {
   await redis.set(LB_KEY, data);
 
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({ ok: true, refreshed: ok, failed });
+  res.status(200).json({ ok: true, refreshed: ok, failed, ...(debugArchiveResult ? { debugArchiveResult } : {}) });
 }
