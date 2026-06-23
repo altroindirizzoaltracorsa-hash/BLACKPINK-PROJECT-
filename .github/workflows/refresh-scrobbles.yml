@@ -25,3 +25,11 @@ jobs:
           curl -sf -X GET \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "$URL"
+      - name: Read back archive (debug only)
+        if: ${{ inputs.debugArchive }}
+        run: |
+          echo "--- daily ---"
+          curl -s "https://blackpink-project.vercel.app/api/leaderboard-archive?period=daily"
+          echo
+          echo "--- weekly ---"
+          curl -s "https://blackpink-project.vercel.app/api/leaderboard-archive?period=weekly"
