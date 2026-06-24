@@ -4,7 +4,8 @@ import crypto from 'crypto';
 
 const redis = Redis.fromEnv();
 const LB_KEY = 'bu_leaderboard_v1';
-const UNLOCK_THRESHOLD = 1500; // mirrors index.html's CHAT_THRESHOLD
+const UNLOCK_THRESHOLD = 10000; // mirrors index.html's CHAT_THRESHOLD
+const UNLOCK_MIN = { jump: 3000, shutdown: 2000, ddududu: 1500 }; // mirrors index.html's CHAT_MIN
 const MIN_POST_INTERVAL_MS = 3000;
 
 function supabase() {
@@ -82,9 +83,15 @@ export default async function handler(req, res) {
     if (!claim || claim.secret !== secret) return res.status(401).json({ error: 'Unauthorized' });
 
     const entry = lb.users?.[key];
-    const score = entry?.scores?.overall_all || 0;
-    if (score < UNLOCK_THRESHOLD) {
-      return res.status(403).json({ error: `Chat unlocks at ${UNLOCK_THRESHOLD} Overall · All Tracks scrobbles` });
+    const scores = entry?.scores || {};
+    const meetsThreshold = (scores.overall_all || 0) >= UNLOCK_THRESHOLD
+      && (scores.overall_jump || 0) >= UNLOCK_MIN.jump
+      && (scores.overall_shutdown || 0) >= UNLOCK_MIN.shutdown
+      && (scores.overall_ddududu || 0) >= UNLOCK_MIN.ddududu;
+    if (!meetsThreshold) {
+      return res.status(403).json({
+        error: `Chat unlocks at ${UNLOCK_THRESHOLD.toLocaleString()} Overall · All Tracks scrobbles, including at least ${UNLOCK_MIN.jump.toLocaleString()} JUMP, ${UNLOCK_MIN.shutdown.toLocaleString()} Shut Down & ${UNLOCK_MIN.ddududu.toLocaleString()} DDU-DU DDU-DU`,
+      });
     }
 
     const { data: last, error: lastErr } = await sb

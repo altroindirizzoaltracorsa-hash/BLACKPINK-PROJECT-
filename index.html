@@ -1463,13 +1463,13 @@
         <div class="lb-loading">Loading leaderboard…</div>
       </div>
 
-      <!-- Group chat — unlocks at CHAT_THRESHOLD Overall · All Tracks scrobbles -->
+      <!-- Group chat — unlocks at CHAT_THRESHOLD Overall · All Tracks scrobbles, plus CHAT_MIN per-track floors -->
       <div style="margin-top:3rem;">
         <p class="lb-header-eyebrow" style="margin-bottom:0.4rem;">✦ Members Only ✦</p>
         <h2 class="chat-title">GROUP CHAT</h2>
 
         <div id="chat-locked" class="chat-locked" style="display:none;">
-          <p>🔒 Unlocks at <strong id="chat-locked-threshold"></strong> Overall scrobbles.</p>
+          <p>🔒 Unlocks at <strong>10,000</strong> Overall · All Tracks scrobbles — including at least <strong>3,000 JUMP</strong>, <strong>2,000 Shut Down</strong> &amp; <strong>1,500 DDU-DU DDU-DU</strong>.</p>
           <p id="chat-locked-progress"></p>
         </div>
         <div id="chat-blocked" class="chat-locked" style="display:none;">
@@ -3378,12 +3378,14 @@ async function refreshLeaderboard(force = false) {
 
 // ══════════════════════════════════════════════════════════════
 // GROUP CHAT — unlocks once a user's Overall · All Tracks score
-// crosses CHAT_THRESHOLD. Mirrors api/chat.js's UNLOCK_THRESHOLD.
+// crosses CHAT_THRESHOLD AND each per-track floor in CHAT_MIN is met.
+// Mirrors api/chat.js's UNLOCK_THRESHOLD / UNLOCK_MIN.
 // Identity: the first browser to use a username claims a private
 // secret for it (server-issued, stored in localStorage), so other
 // browsers can no longer post chat messages under that name.
 // ══════════════════════════════════════════════════════════════
-const CHAT_THRESHOLD     = 1500;
+const CHAT_THRESHOLD     = 10000;
+const CHAT_MIN           = { jump: 3000, shutdown: 2000, ddududu: 1500 };
 const CHAT_SECRET_PREFIX = 'bu_chat_secret_';
 let   chatPollTimer      = null;
 
@@ -3413,8 +3415,6 @@ async function refreshChatAccess() {
   lockedEl.style.display = blockedEl.style.display = unlockedEl.style.display = 'none';
   stopChatPolling();
 
-  document.getElementById('chat-locked-threshold').textContent = CHAT_THRESHOLD.toLocaleString();
-
   const username = getSavedUsername();
   if (!username) {
     lockedEl.style.display = 'block';
@@ -3423,13 +3423,23 @@ async function refreshChatAccess() {
   }
 
   if (!lbData) { try { await fetchLbData(); } catch { return; } }
-  const entry = lbData?.users?.[username.toLowerCase()];
-  const score = entry?.scores?.overall_all || 0;
+  const entry  = lbData?.users?.[username.toLowerCase()];
+  const scores = entry?.scores || {};
+  const meetsThreshold = (scores.overall_all || 0) >= CHAT_THRESHOLD
+    && (scores.overall_jump || 0) >= CHAT_MIN.jump
+    && (scores.overall_shutdown || 0) >= CHAT_MIN.shutdown
+    && (scores.overall_ddududu || 0) >= CHAT_MIN.ddududu;
 
-  if (score < CHAT_THRESHOLD) {
+  if (!meetsThreshold) {
     lockedEl.style.display = 'block';
-    document.getElementById('chat-locked-progress').textContent =
-      `You're at ${score.toLocaleString()} / ${CHAT_THRESHOLD.toLocaleString()}.`;
+    document.getElementById('chat-locked-progress').innerHTML = [
+      ['Overall',         scores.overall_all || 0,      CHAT_THRESHOLD],
+      ['JUMP',            scores.overall_jump || 0,      CHAT_MIN.jump],
+      ['Shut Down',       scores.overall_shutdown || 0,  CHAT_MIN.shutdown],
+      ['DDU-DU DDU-DU',   scores.overall_ddududu || 0,   CHAT_MIN.ddududu],
+    ].map(([label, have, need]) =>
+      `${have >= need ? '✅' : '▫️'} ${label}: ${have.toLocaleString()} / ${need.toLocaleString()}`
+    ).join('<br>');
     return;
   }
 
