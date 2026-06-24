@@ -186,14 +186,22 @@ async function refreshUser(entry, sb) {
     await persistStamp(sb, username, dayKey(dayFrom), buildTodayStamps(todayCounts));
   } catch {}
 
-  // Fetch weekly data day-by-day so each day stays within the 50-page cap
-  const weekCounts = { jump: 0, shutdown: 0, ddududu: 0 };
-  let lastScrobbleAt = entry.lastScrobbleAt || null;
+  // Fetch weekly data day-by-day (in parallel, not sequentially — with growing
+  // leaderboard size, 7 sequential round trips per user was pushing the whole
+  // batch past Vercel's execution ceiling) so each day stays within the 50-page cap
+  const nowSec = Math.floor(Date.now() / 1000);
+  const dayStarts = [];
   for (let i = 0; i < 7; i++) {
     const dayStart = weekFrom + i * 86400;
-    const dayEnd   = dayStart + 86400;
-    if (dayStart > Math.floor(Date.now() / 1000)) break;
-    const daySc = await fetchRecentScrobbles(username, dayStart, dayEnd);
+    if (dayStart > nowSec) break;
+    dayStarts.push(dayStart);
+  }
+  const weekScrobbles = await Promise.all(
+    dayStarts.map(dayStart => fetchRecentScrobbles(username, dayStart, dayStart + 86400))
+  );
+  const weekCounts = { jump: 0, shutdown: 0, ddududu: 0 };
+  let lastScrobbleAt = entry.lastScrobbleAt || null;
+  for (const daySc of weekScrobbles) {
     const dc = countByTrack(daySc);
     weekCounts.jump     += dc.jump     || 0;
     weekCounts.shutdown += dc.shutdown || 0;
