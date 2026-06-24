@@ -10,6 +10,8 @@ const LB_KEY = 'bu_leaderboard_v1';
 const CHAT_UNLOCK_THRESHOLD = 10000; // mirrors index.html's CHAT_THRESHOLD
 const CHAT_UNLOCK_MIN = { jump: 3000, shutdown: 2000, ddududu: 1500 }; // mirrors index.html's CHAT_MIN
 const CHAT_MIN_POST_INTERVAL_MS = 3000;
+// Grandfathered in regardless of scrobble count — the fanbase's own account, not a listener. Mirrors index.html's CHAT_EXEMPT.
+const CHAT_UNLOCK_EXEMPT = ['blinksunited'];
 
 function isAdmin(req) {
   const adminSecret = process.env.ADMIN_SECRET;
@@ -158,10 +160,12 @@ export default async function handler(req, res) {
 
     const entry = lb.users?.[key];
     const scores = entry?.scores || {};
-    const meetsThreshold = (scores.overall_artist || 0) >= CHAT_UNLOCK_THRESHOLD
+    const meetsThreshold = CHAT_UNLOCK_EXEMPT.includes(key) || (
+      (scores.overall_artist || 0) >= CHAT_UNLOCK_THRESHOLD
       && (scores.overall_jump || 0) >= CHAT_UNLOCK_MIN.jump
       && (scores.overall_shutdown || 0) >= CHAT_UNLOCK_MIN.shutdown
-      && (scores.overall_ddududu || 0) >= CHAT_UNLOCK_MIN.ddududu;
+      && (scores.overall_ddududu || 0) >= CHAT_UNLOCK_MIN.ddududu
+    );
     if (!meetsThreshold) {
       return res.status(403).json({
         error: `Chat unlocks at ${CHAT_UNLOCK_THRESHOLD.toLocaleString()} all-time BLACKPINK scrobbles, including at least ${CHAT_UNLOCK_MIN.jump.toLocaleString()} JUMP, ${CHAT_UNLOCK_MIN.shutdown.toLocaleString()} Shut Down & ${CHAT_UNLOCK_MIN.ddududu.toLocaleString()} DDU-DU DDU-DU`,

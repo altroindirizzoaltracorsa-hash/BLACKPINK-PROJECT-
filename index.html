@@ -3413,6 +3413,8 @@ async function refreshLeaderboard(force = false) {
 // ══════════════════════════════════════════════════════════════
 const CHAT_THRESHOLD     = 10000;
 const CHAT_MIN           = { jump: 3000, shutdown: 2000, ddududu: 1500 };
+// Grandfathered in regardless of scrobble count — the fanbase's own account, not a listener. Mirrors api/leaderboard.js's CHAT_UNLOCK_EXEMPT.
+const CHAT_EXEMPT        = ['blinksunited'];
 const CHAT_SECRET_PREFIX = 'bu_chat_secret_';
 let   chatPollTimer      = null;
 let   chatPanelOpen      = false;
@@ -3462,10 +3464,12 @@ async function refreshChatAccess() {
   if (!lbData) { try { await fetchLbData(); } catch { return; } }
   const entry  = lbData?.users?.[username.toLowerCase()];
   const scores = entry?.scores || {};
-  const meetsThreshold = (scores.overall_artist || 0) >= CHAT_THRESHOLD
+  const meetsThreshold = CHAT_EXEMPT.includes(username.toLowerCase()) || (
+    (scores.overall_artist || 0) >= CHAT_THRESHOLD
     && (scores.overall_jump || 0) >= CHAT_MIN.jump
     && (scores.overall_shutdown || 0) >= CHAT_MIN.shutdown
-    && (scores.overall_ddududu || 0) >= CHAT_MIN.ddududu;
+    && (scores.overall_ddududu || 0) >= CHAT_MIN.ddududu
+  );
 
   if (!meetsThreshold) {
     lockedEl.style.display = 'block';
