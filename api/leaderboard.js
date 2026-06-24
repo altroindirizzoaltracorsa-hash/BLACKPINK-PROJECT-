@@ -158,13 +158,13 @@ export default async function handler(req, res) {
 
     const entry = lb.users?.[key];
     const scores = entry?.scores || {};
-    const meetsThreshold = (scores.overall_all || 0) >= CHAT_UNLOCK_THRESHOLD
+    const meetsThreshold = (scores.overall_artist || 0) >= CHAT_UNLOCK_THRESHOLD
       && (scores.overall_jump || 0) >= CHAT_UNLOCK_MIN.jump
       && (scores.overall_shutdown || 0) >= CHAT_UNLOCK_MIN.shutdown
       && (scores.overall_ddududu || 0) >= CHAT_UNLOCK_MIN.ddududu;
     if (!meetsThreshold) {
       return res.status(403).json({
-        error: `Chat unlocks at ${CHAT_UNLOCK_THRESHOLD.toLocaleString()} Overall · All Tracks scrobbles, including at least ${CHAT_UNLOCK_MIN.jump.toLocaleString()} JUMP, ${CHAT_UNLOCK_MIN.shutdown.toLocaleString()} Shut Down & ${CHAT_UNLOCK_MIN.ddududu.toLocaleString()} DDU-DU DDU-DU`,
+        error: `Chat unlocks at ${CHAT_UNLOCK_THRESHOLD.toLocaleString()} all-time BLACKPINK scrobbles, including at least ${CHAT_UNLOCK_MIN.jump.toLocaleString()} JUMP, ${CHAT_UNLOCK_MIN.shutdown.toLocaleString()} Shut Down & ${CHAT_UNLOCK_MIN.ddududu.toLocaleString()} DDU-DU DDU-DU`,
       });
     }
 

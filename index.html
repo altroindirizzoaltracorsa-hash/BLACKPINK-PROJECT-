@@ -1558,7 +1558,7 @@
 </div>
 
 <!-- Group chat — floating widget, visible on every page. Unlocks at
-     CHAT_THRESHOLD Overall · All Tracks scrobbles, plus CHAT_MIN per-track floors -->
+     CHAT_THRESHOLD all-time BLACKPINK scrobbles, plus CHAT_MIN per-track floors -->
 <button id="chat-fab" class="chat-fab" onclick="toggleChatWidget()" aria-label="Open group chat">💬</button>
 
 <div id="chat-panel" class="chat-panel" style="display:none;">
@@ -1568,7 +1568,7 @@
   </div>
 
   <div id="chat-locked" class="chat-locked" style="display:none;">
-    <p>🔒 Unlocks at <strong>10,000</strong> Overall · All Tracks scrobbles — including at least <strong>3,000 JUMP</strong>, <strong>2,000 Shut Down</strong> &amp; <strong>1,500 DDU-DU DDU-DU</strong>.</p>
+    <p>🔒 Unlocks at <strong>10,000</strong> all-time BLACKPINK scrobbles — including at least <strong>3,000 JUMP</strong>, <strong>2,000 Shut Down</strong> &amp; <strong>1,500 DDU-DU DDU-DU</strong>.</p>
     <p id="chat-locked-progress"></p>
   </div>
   <div id="chat-blocked" class="chat-locked" style="display:none;">
@@ -3404,9 +3404,9 @@ async function refreshLeaderboard(force = false) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// GROUP CHAT — unlocks once a user's Overall · All Tracks score
+// GROUP CHAT — unlocks once a user's all-time BLACKPINK scrobble count
 // crosses CHAT_THRESHOLD AND each per-track floor in CHAT_MIN is met.
-// Mirrors api/chat.js's UNLOCK_THRESHOLD / UNLOCK_MIN.
+// Mirrors api/leaderboard.js's CHAT_UNLOCK_THRESHOLD / CHAT_UNLOCK_MIN.
 // Identity: the first browser to use a username claims a private
 // secret for it (server-issued, stored in localStorage), so other
 // browsers can no longer post chat messages under that name.
@@ -3462,7 +3462,7 @@ async function refreshChatAccess() {
   if (!lbData) { try { await fetchLbData(); } catch { return; } }
   const entry  = lbData?.users?.[username.toLowerCase()];
   const scores = entry?.scores || {};
-  const meetsThreshold = (scores.overall_all || 0) >= CHAT_THRESHOLD
+  const meetsThreshold = (scores.overall_artist || 0) >= CHAT_THRESHOLD
     && (scores.overall_jump || 0) >= CHAT_MIN.jump
     && (scores.overall_shutdown || 0) >= CHAT_MIN.shutdown
     && (scores.overall_ddududu || 0) >= CHAT_MIN.ddududu;
@@ -3470,10 +3470,10 @@ async function refreshChatAccess() {
   if (!meetsThreshold) {
     lockedEl.style.display = 'block';
     document.getElementById('chat-locked-progress').innerHTML = [
-      ['Overall',         scores.overall_all || 0,      CHAT_THRESHOLD],
-      ['JUMP',            scores.overall_jump || 0,      CHAT_MIN.jump],
-      ['Shut Down',       scores.overall_shutdown || 0,  CHAT_MIN.shutdown],
-      ['DDU-DU DDU-DU',   scores.overall_ddududu || 0,   CHAT_MIN.ddududu],
+      ['Total BP (all time)', scores.overall_artist || 0,   CHAT_THRESHOLD],
+      ['JUMP',                scores.overall_jump || 0,      CHAT_MIN.jump],
+      ['Shut Down',           scores.overall_shutdown || 0,  CHAT_MIN.shutdown],
+      ['DDU-DU DDU-DU',       scores.overall_ddududu || 0,   CHAT_MIN.ddududu],
     ].map(([label, have, need]) =>
       `${have >= need ? '✅' : '▫️'} ${label}: ${have.toLocaleString()} / ${need.toLocaleString()}`
     ).join('<br>');
