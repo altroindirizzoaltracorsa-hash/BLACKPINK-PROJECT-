@@ -3446,7 +3446,7 @@ async function refreshChatAccess() {
   let secret = getChatSecret(username);
   if (!secret) {
     try {
-      const r = await fetch('/api/chat?action=claim', {
+      const r = await fetch('/api/leaderboard?action=chat-claim', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username }),
       });
@@ -3479,7 +3479,7 @@ async function loadChatMessages() {
   const wrap = document.getElementById('chat-messages');
   if (!wrap) return;
   try {
-    const r = await fetch('/api/chat', { cache: 'no-store' });
+    const r = await fetch('/api/leaderboard?action=chat-messages', { cache: 'no-store' });
     const d = await r.json();
     if (!r.ok) return;
     const adminKey = localStorage.getItem(ADMIN_KEY_LS);
@@ -3508,7 +3508,7 @@ async function sendChatMessage() {
 
   input.disabled = true;
   try {
-    const r = await fetch('/api/chat?action=send', {
+    const r = await fetch('/api/leaderboard?action=chat-send', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, secret, message: text }),
     });
@@ -3528,7 +3528,7 @@ async function deleteChatMessage(id) {
   const key = localStorage.getItem(ADMIN_KEY_LS);
   if (!key) return;
   try {
-    await fetch(`/api/chat?action=delete&key=${encodeURIComponent(key)}`, {
+    await fetch(`/api/leaderboard?action=chat-delete&key=${encodeURIComponent(key)}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     });
