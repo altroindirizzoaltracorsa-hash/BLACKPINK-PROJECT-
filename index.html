@@ -3210,10 +3210,13 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
 // ── Render leaderboard table ──────────────────────────────────
 // leaderStreak is only tracked against the Overall · All Tracks ranking
 // (api/leaderboard.js / api/cron-scrobbles.js updateLeaderStreak()), so the
-// badge only makes sense on that specific rank-1 row, on the live view.
+// badge only makes sense on that rank-1 row, on the live view — but it's
+// shown on both the Overall and Daily tabs since the Daily #1 is often the
+// same person holding the Overall lead.
 function leaderStreakBadge(rankIndex, username) {
   const streak = lbData?.leaderStreak;
-  if (lbHistorySnapshot || rankIndex !== 0 || lbPeriod !== 'overall' || lbSong !== 'all') return '';
+  if (lbHistorySnapshot || rankIndex !== 0 || lbSong !== 'all') return '';
+  if (lbPeriod !== 'overall' && lbPeriod !== 'daily') return '';
   if (!streak || streak.username.toLowerCase() !== username.toLowerCase()) return '';
   const days = Math.floor((Date.now() - new Date(streak.since).getTime()) / 86400000);
   const label = days <= 0 ? 'New leader today' : `🔥 ${days} day${days === 1 ? '' : 's'} in the lead`;
