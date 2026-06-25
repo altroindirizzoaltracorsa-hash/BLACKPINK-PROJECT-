@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How to Shazam · BLACKPINK SHAZAM</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    @font-face{
+      font-family:"BPFont";
+      src:url("fonts/ZEN-SERIF-TTF-Regular.ttf") format("truetype");
+    }
+
+    *{box-sizing:border-box;}
+
+    body {
+      margin: 0;
+      font-family: "BPFont", 'Poppins', sans-serif;
+      background-color: #0b0b0b;
+      color: #f2f2f2;
+    }
+
+    /* HEADER */
+    header {
+      display: flex;
+      align-items: center;
+      padding: 16px 20px;
+    }
+
+    .menu-btn {
+      font-size: 28px;
+      cursor: pointer;
+      color: #ff5fa2;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -260px;
+      width: 260px;
+      height: 100%;
+      background-color: #141414;
+      padding: 30px 20px;
+      transition: left 0.3s ease;
+      z-index: 1000;
+      overflow-y: auto;
+    }
+
+    .sidebar a {
+      display: block;
+      color: #f2f2f2;
+      text-decoration: none;
+      margin-bottom: 20px;
+      font-weight: 600;
+      font-size: 1.05rem;
+    }
+
+    .sidebar a:hover {
+      color: #ff8fc7;
+    }
+
+    .sidebar.open {
+      left: 0;
+    }
+
+    /* OVERLAY */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 999;
+    }
+
+    .overlay.show {
+      display: block;
+    }
+
+    /* BANNER */
+    .banner {
+      display: flex;
+      justify-content: center;
+      margin: 10px 0 30px;
+      padding: 0 16px;
+    }
+
+    .banner a {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-decoration: none;
+      animation: pinkPulse 2.5s infinite ease-in-out;
+    }
+
+    .banner img {
+      max-width: 340px;
+      width: 100%;
+      margin: 8px 0;
+    }
+
+    @keyframes pinkPulse {
+      0% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 6px rgba(255,95,162,0.3));
+      }
+      50% {
+        transform: scale(1.04);
+        filter: drop-shadow(0 0 18px rgba(255,95,162,0.9));
+      }
+      100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 6px rgba(255,95,162,0.3));
+      }
+    }
+
+    /* CONTENT */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 10px 20px 60px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #ff5fa2;
+      font-size: 2.6rem;
+      margin-bottom: 40px;
+    }
+
+    h2 {
+      color: #ff8fc7;
+      margin-top: 50px;
+    }
+
+    .box {
+      background-color: #141414;
+      border: 1px solid #ff5fa240;
+      border-radius: 14px;
+      padding: 25px;
+      margin-top: 20px;
+      box-shadow: 0 12px 30px rgba(255,95,162,0.08);
+    }
+
+    ol {
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 10px;
+      color: #eaeaea;
+    }
+
+    .attention {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #1a1a1a;
+      border-left: 4px solid #ff5fa2;
+      color: #ffb3d9;
+      font-size: 0.95rem;
+    }
+
+    /* FOLLOW US */
+    .follow {
+      margin: 60px 0 40px;
+      text-align: center;
+    }
+
+    .follow h3 {
+      color: #ff8fc7;
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+    }
+
+    .socials {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+    }
+
+    .socials img {
+      width: 36px;
+    }
+
+    /* MOBILE */
+    @media (max-width: 600px) {
+      header{padding:12px 16px;}
+
+      .menu-btn{font-size:24px;}
+
+      .banner{margin:8px 0 20px;}
+
+      .banner img{max-width:220px;}
+
+      h1{
+        font-size:1.8rem;
+        letter-spacing:1px;
+        margin-bottom:24px;
+      }
+
+      h2{
+        font-size:1.2rem;
+        margin-top:32px;
+      }
+
+      .box{
+        padding:16px;
+        border-radius:10px;
+      }
+
+      ol{padding-left:16px;}
+
+      li{
+        font-size:0.9rem;
+        margin-bottom:8px;
+      }
+
+      .attention{font-size:0.85rem;}
+
+      .follow{margin:40px 0 30px;}
+
+      .follow h3{font-size:0.9rem;}
+
+      .socials{gap:20px;}
+
+      .socials img{width:28px;}
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <a href="index.html">🏠 Home</a>
+  <a href="tutorials.html">📖 How to Shazam</a>
+  <a href="tracker.html">🖤 BLACKPINK</a>
+  <a href="jisoo.html">💙 JISOO</a>
+  <a href="jennie.html">❤️ JENNIE</a>
+  <a href="rose.html">🌸 ROSÉ</a>
+  <a href="lisa.html">💛 LISA</a>
+</div>
+
+<div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+<header>
+  <span class="menu-btn" onclick="toggleMenu()">☰</span>
+</header>
+
+<!-- BANNER -->
+<div class="banner">
+  <a href="https://orcd.co/blackpink-deadline" target="_blank">
+    <img src="blackpinkdeadline.png" alt="BLACKPINK Deadline">
+    <img src="BLACKPINK.png" alt="BLACKPINK">
+  </a>
+</div>
+
+<div class="container">
+
+  <h1>How to Shazam</h1>
+
+  <h2>General</h2>
+  <div class="box">
+    Get Shazam from the App Store (iOS) or Google Play Store (Android).
+    Play the song on any platform such as Spotify, YouTube, or Apple Music.
+  </div>
+
+  <h2>Android</h2>
+  <div class="box">
+    <ol>
+      <li>Open Shazam and allow microphone and location access.</li>
+      <li>Tap the large Shazam button.</li>
+      <li>Go to Shazam App Info (long-press the app icon).</li>
+      <li>Storage → CLEAR DATA.</li>
+      <li>Repeat during the same song play.</li>
+    </ol>
+
+    <div class="attention">
+      App Info → Permissions → Location → Allow while using the app
+    </div>
+  </div>
+
+  <h2>iOS</h2>
+  <div class="box">
+    <ol>
+      <li>Open Shazam and allow microphone and location access.</li>
+      <li>Tap the Shazam button.</li>
+      <li>Wait 24 hours before Shazaming again.</li>
+    </ol>
+  </div>
+
+  <h2>Chrome Extension</h2>
+  <div class="box">
+    <ol>
+      <li>Install Shazam from the Chrome Web Store.</li>
+      <li>Pin the extension.</li>
+      <li>Click Shazam while the song is playing.</li>
+      <li>Do not leave the tab.</li>
+      <li>Delete recognition and repeat.</li>
+    </ol>
+  </div>
+
+  <!-- FOLLOW US -->
+  <div class="follow">
+    <h3>FOLLOW US ON:</h3>
+    <div class="socials">
+      <a href="https://x.com/blackpinkshaza" target="_blank">
+        <img src="x.png" alt="X">
+      </a>
+      <a href="https://www.tiktok.com/@blackpinkshazam" target="_blank">
+        <img src="tiktok.png" alt="TikTok">
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function toggleMenu() {
+    document.getElementById("sidebar").classList.toggle("open");
+    document.getElementById("overlay").classList.toggle("show");
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JENNIE Shazam Stats</title>
+<meta property="og:title" content="JENNIE Shazam Stats">
+<meta property="og:description" content="Track JENNIE Shazam counts across all songs!">
+<meta property="og:image" content="https://blackpinkshazamupdate-debug.github.io/BLACKPINK-SHAZAM/images/jennie.jpg">
+<meta property="og:url" content="https://blackpinkshazamupdate-debug.github.io/BLACKPINK-SHAZAM/jennie.html">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="JENNIE Shazam Stats">
+<meta name="twitter:description" content="Track JENNIE Shazam counts across all songs!">
+<meta name="twitter:image" content="https://blackpinkshazamupdate-debug.github.io/BLACKPINK-SHAZAM/images/jennie.jpg">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+@font-face{
+  font-family:"BPFont";
+  src:url("fonts/ZEN-SERIF-TTF-Regular.ttf") format("truetype");
+}
+
+*{box-sizing:border-box;}
+
+:root{
+  --accent:#e05555;
+  --accent-glow:#f08080;
+  --accent-dim:#a83a3a;
+  --bg:#120a0a;
+  --bg-section:#1a0f0f;
+  --bg-card:#150c0c;
+}
+
+body{margin:0;background:var(--bg);color:white;font-family:"BPFont",sans-serif;position:relative;}
+
+/* SIDEBAR */
+.sidebar{
+  position:fixed;
+  top:0;
+  left:-260px;
+  width:260px;
+  height:100%;
+  background-color:#1c0e0e;
+  padding:30px 20px;
+  transition:left 0.3s ease;
+  z-index:1000;
+  overflow-y:auto;
+}
+.sidebar a{
+  display:block;
+  color:#f2f2f2;
+  text-decoration:none;
+  margin-bottom:20px;
+  font-weight:600;
+  font-size:1.05rem;
+  font-family:"BPFont",sans-serif;
+}
+.sidebar a:hover{color:var(--accent);}
+.sidebar.open{left:0;}
+
+.sidebar-overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.6);
+  z-index:999;
+}
+.sidebar-overlay.show{display:block;}
+
+/* HEADER */
+header{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  padding:24px 20px;
+  font-size:34px;
+  color:var(--accent);
+}
+
+.menu-btn{
+  position:absolute;
+  left:20px;
+  font-size:28px;
+  cursor:pointer;
+  color:var(--accent);
+  line-height:1;
+}
+
+/* BANNER */
+.banner{
+  display:flex;
+  justify-content:center;
+  margin:10px 0 30px;
+  padding:0 16px;
+}
+.banner a{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-decoration:none;
+  animation:redPulse 2.5s infinite ease-in-out;
+}
+.banner img{
+  max-width:340px;
+  width:100%;
+  margin:8px 0;
+}
+@keyframes redPulse{
+  0%{transform:scale(1);filter:drop-shadow(0 0 6px rgba(224,85,85,0.3));}
+  50%{transform:scale(1.04);filter:drop-shadow(0 0 20px rgba(224,85,85,0.9));}
+  100%{transform:scale(1);filter:drop-shadow(0 0 6px rgba(224,85,85,0.3));}
+}
+
+.updated{text-align:center;opacity:.7;margin-bottom:20px;font-size:14px;}
+
+/* SECTIONS */
+.section{margin:40px 0;position:relative;overflow:hidden;}
+.section-bg{position:absolute;width:100%;height:100%;background-size:cover;background-position:center;filter:blur(12px) brightness(.25);transform:scale(1.2);}
+.section-content{position:relative;padding:30px;}
+.section h2{
+  color:var(--accent);
+  font-size:28px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.share-icon{
+  width:20px;height:20px;cursor:pointer;
+  fill:var(--accent);transition:.2s;
+}
+.share-icon:hover{transform:scale(1.2);}
+
+/* SONGS */
+.song{
+  display:flex;
+  align-items:center;
+  gap:15px;
+  padding:10px;
+  margin:8px 0;
+  background:rgba(35,15,15,0.7);
+  border-radius:10px;
+  transition:.25s;
+  position:relative;
+}
+.song:hover{transform:scale(1.03);box-shadow:0 0 15px var(--accent-dim);}
+
+.rank{font-size:20px;width:40px;flex-shrink:0;}
+.song img{width:50px;height:50px;object-fit:cover;border-radius:6px;display:block;flex-shrink:0;}
+
+.info{flex:1;min-width:0;}
+.info .song-title{font-size:15px;word-break:break-word;}
+
+.bar{height:6px;background:#2a1010;margin-top:6px;border-radius:5px;overflow:hidden;}
+.bar span{display:block;height:100%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));}
+
+.total-shazams{font-size:12px;opacity:.7;margin-top:3px;}
+.hoverstats{font-size:12px;opacity:0;transition:.2s;margin-top:5px;color:var(--accent-glow);}
+.song:hover .hoverstats{opacity:1;}
+.song:hover .total-shazams{opacity:0.5;}
+.song.active .hoverstats{opacity:1;}
+.song.active .total-shazams{opacity:0.5;}
+
+body.no-hover .song:hover .hoverstats{opacity:0;}
+body.no-hover .song:hover .total-shazams{opacity:.7;}
+
+/* SHARE OVERLAY */
+.overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.7);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:1001;
+  padding:20px;
+}
+
+.card{
+  background:var(--bg-card);
+  border:1px solid var(--accent-dim);
+  border-radius:12px;
+  width:min(440px,92%);
+  padding:20px;
+  position:relative;
+}
+
+.close-x{
+  position:absolute;top:10px;right:15px;
+  font-size:22px;color:var(--accent);cursor:pointer;
+}
+
+.exportArea{
+  text-align:center;width:100%;
+  box-sizing:border-box;padding:10px;
+  background:var(--bg-card);border-radius:10px;
+}
+.exportArea img{width:100%;height:auto;object-fit:cover;border-radius:10px;margin-bottom:10px;display:block;}
+.exportArea h2{text-align:center;margin:8px 0;color:var(--accent);}
+.exportArea p{text-align:center;margin:4px 0;}
+
+.socials{
+  display:flex;justify-content:center;
+  gap:18px;margin-top:15px;flex-wrap:wrap;
+}
+.socials img{width:30px;cursor:pointer;transition:.2s;}
+.socials img:hover{transform:scale(1.2);}
+
+.download-btn{
+  background:var(--accent-dim);border:none;
+  color:white;padding:6px 12px;
+  border-radius:6px;cursor:pointer;
+}
+
+/* MILESTONE POPUP */
+.milestone-popup{
+  position:absolute;top:110px;left:50%;
+  transform:translateX(-50%);
+  background:rgba(20,8,8,0.95);
+  padding:15px;border-radius:14px;
+  z-index:9999;border:1px solid var(--accent);
+  text-align:center;width:min(400px,90%);
+  max-height:70vh;overflow-y:auto;
+  scrollbar-width:none;font-size:14px;
+  pointer-events:auto;
+}
+.milestone-popup::-webkit-scrollbar{display:none;}
+.milestone-popup b{font-size:16px;display:block;margin-bottom:10px;color:var(--accent);}
+
+.milestone-item{
+  display:flex;align-items:center;gap:10px;
+  margin:5px 0;padding:5px;
+  border-bottom:1px solid rgba(224,85,85,0.3);
+}
+.milestone-item:last-child{border-bottom:none;}
+
+.milestone-close{
+  position:sticky;top:0;float:right;
+  font-size:20px;color:var(--accent);
+  cursor:pointer;z-index:1;
+}
+
+.confetti-piece{
+  position:fixed;pointer-events:none;
+  z-index:10000;width:60px;height:60px;
+  background-size:contain;background-repeat:no-repeat;
+  background-position:center;opacity:1;
+}
+
+/* DESKTOP */
+@media(min-width:768px){
+  header{font-size:42px;padding:30px 20px;}
+  #content{max-width:900px;margin:0 auto;}
+  .section-content{padding:40px;}
+  .section h2{font-size:32px;}
+  .song{padding:14px;gap:20px;}
+  .song img{width:64px;height:64px;}
+  .rank{font-size:22px;width:50px;}
+  .info{font-size:16px;}
+  .card{width:480px;}
+}
+
+/* MOBILE */
+@media(max-width:767px){
+  header{font-size:20px;padding:16px 10px 16px 50px;}
+  .menu-btn{font-size:22px;left:14px;}
+  .updated{font-size:12px;}
+  .section-content{padding:15px 10px;}
+  .section h2{font-size:20px;}
+  .song{padding:8px;gap:10px;}
+  .song img{width:42px;height:42px;}
+  .rank{font-size:16px;width:28px;}
+  .info{font-size:13px;}
+  .total-shazams{font-size:11px;}
+  .hoverstats{font-size:11px;}
+  .share-icon{width:18px;height:18px;}
+  .card{width:95%;padding:14px;}
+  .socials{gap:12px;}
+  .socials img{width:26px;}
+  .milestone-popup{width:92%;font-size:13px;}
+  .banner img{max-width:220px;}
+}
+</style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <a href="index.html">🏠 Home</a>
+  <a href="tutorials.html">📖 How to Shazam</a>
+  <a href="tracker.html">🖤 BLACKPINK</a>
+  <a href="jisoo.html">💙 JISOO</a>
+  <a href="jennie.html">❤️ JENNIE</a>
+  <a href="rose.html">🌸 ROSÉ</a>
+  <a href="lisa.html">💛 LISA</a>
+</div>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
+
+<header>
+  <span class="menu-btn" onclick="toggleMenu()">☰</span>
+  JENNIE Shazam Stats
+</header>
+
+<!-- BANNER -->
+<div class="banner">
+  <a href="#" target="_blank">
+    <img src="images/jennie.jpg" alt="JENNIE">
+  </a>
+</div>
+
+<div class="updated" id="updated"></div>
+<div id="content"></div>
+
+<script>
+function toggleMenu(){
+  document.getElementById("sidebar").classList.toggle("open");
+  document.getElementById("sidebarOverlay").classList.toggle("show");
+}
+
+let songs=[]
+let confettiActive=[]
+let previousMilestones={}
+
+function exact(n){ return Number(n).toLocaleString() }
+
+const milestones=[]
+for(let i=100000;i<=5000000;i+=100000){ milestones.push(i) }
+
+function nextMilestone(v){ return milestones.find(m=>m>v) }
+function lastMilestone(v){ return milestones.filter(m=>v>=m).pop()||0 }
+
+function progress(v){
+ let prev=lastMilestone(v)
+ let next=nextMilestone(v)
+ if(!next)return 100
+ return Math.floor(((v-prev)/(next-prev))*100)
+}
+
+function milestoneText(v){
+ if(v>=1000000) return (v/1000000).toFixed(1)+"M"
+ return (v/1000)+"k"
+}
+
+function launchConfetti(){
+ const images=["images/lightstick1.png","images/lightstick2.png","images/bplogo.png"]
+ for(let i=0;i<40;i++){
+  let c=document.createElement("div")
+  c.className="confetti-piece"
+  let img=images[Math.floor(Math.random()*images.length)]
+  c.style.backgroundImage=`url('${img}')`
+  if(img.includes("bplogo")) c.style.filter="drop-shadow(0 0 20px var(--accent))"
+  c.style.left=Math.random()*window.innerWidth+"px"
+  c.style.top="-60px"
+  c.style.opacity="1"
+  document.body.appendChild(c)
+  animateConfetti(c)
+  confettiActive.push(c)
+ }
+}
+
+function animateConfetti(el){
+ let speed=1.5+Math.random()*2
+ let rotation=Math.random()*360
+ let rotationSpeed=Math.random()*8-4
+ let startTime=Date.now()
+ function frame(){
+  let elapsed=Date.now()-startTime
+  let top=parseFloat(el.style.top)+speed
+  rotation+=rotationSpeed
+  el.style.top=top+"px"
+  el.style.transform=`rotate(${rotation}deg)`
+  el.style.opacity=Math.max(0,1-(elapsed/30000))
+  if(top<window.innerHeight+80 && elapsed<30000){
+   requestAnimationFrame(frame)
+  } else {
+   el.remove()
+  }
+ }
+ requestAnimationFrame(frame)
+}
+
+function showMilestonePopup(list){
+ if(!list.length) return
+ launchConfetti()
+ let pop=document.createElement("div")
+ pop.className="milestone-popup"
+ pop.innerHTML="<span class='milestone-close' onclick='this.parentNode.remove()'>✕</span><b>🎉 Milestones reached!</b><br><br>"+
+ list.map(s=>`<div class='milestone-item'><span style='color:var(--accent);font-weight:bold;'>${milestoneText(lastMilestone(s.Shazams))}</span> — ${s.Song}</div>`).join("")
+ document.body.appendChild(pop)
+ setTimeout(()=>{if(pop.parentNode) pop.remove()},30000)
+}
+
+async function toDataURL(url){
+ let res=await fetch(url)
+ let blob=await res.blob()
+ return new Promise(resolve=>{
+  let r=new FileReader()
+  r.onload=()=>resolve(r.result)
+  r.readAsDataURL(blob)
+ })
+}
+
+async function exportImage(){
+ let area=document.getElementById("exportArea")
+ let imgs=area.querySelectorAll("img")
+ let origSrcs=[]
+ for(let img of imgs){
+  origSrcs.push(img.src)
+  try{ img.src=await toDataURL(img.src) }catch(e){}
+ }
+ let canvas=await html2canvas(area,{backgroundColor:"#150c0c",scale:2,useCORS:true})
+ imgs.forEach((img,i)=>img.src=origSrcs[i])
+ return new Promise(resolve=>canvas.toBlob(resolve))
+}
+
+async function shareTo(platform,title){
+ let url=location.href
+ let text='Check out '+title+' on JENNIE Shazam Stats!'
+ try{
+  let blob=await exportImage()
+  let file=new File([blob],"jennie-"+title+".png",{type:"image/png"})
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+   await navigator.share({files:[file],title:"JENNIE Shazam Stats",text:text,url:url})
+   return
+  }
+ }catch(e){}
+ if(platform==="x") window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,"_blank")
+ if(platform==="facebook") window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,"_blank")
+ if(platform==="instagram"||platform==="tiktok") downloadPromo()
+}
+
+async function downloadPromo(){
+ let blob=await exportImage()
+ let a=document.createElement("a")
+ a.href=URL.createObjectURL(blob)
+ a.download="jennie-stats.png"
+ a.click()
+}
+
+function shareSVG(){
+ return `
+ <svg class="share-icon" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none">
+  <circle cx="18" cy="5" r="3"/>
+  <circle cx="6" cy="12" r="3"/>
+  <circle cx="18" cy="19" r="3"/>
+  <line x1="8.7" y1="13.4" x2="15.3" y2="17.6"/>
+  <line x1="15.3" y1="6.4" x2="8.7" y2="10.6"/>
+ </svg>`
+}
+
+function openPromo(title,subtitle,shazams,img,list=null){
+ let contentHTML=""
+ if(list){
+  contentHTML+="<div style='text-align:left;margin-top:10px;'>"
+  list.forEach((s,i)=>{contentHTML+=`${i+1}. ${s.Song} — ${exact(s.Shazams)}<br>`})
+  contentHTML+="</div>"
+ }
+ let overlay=document.createElement("div")
+ overlay.className="overlay"
+ overlay.innerHTML=`
+ <div class="card">
+  <div class="close-x" onclick="this.closest('.overlay').remove()">✕</div>
+  <div id="exportArea" class="exportArea">
+   <img src="${img}" alt="${title}">
+   <h2 style="color:var(--accent)">${title}</h2>
+   <p>${exact(shazams)} Shazams</p>
+   ${contentHTML}
+  </div>
+  <div class="socials">
+   <img src="https://cdn.simpleicons.org/x/ffffff" alt="X" onclick="shareTo('x','${title}')">
+   <img src="https://cdn.simpleicons.org/facebook/ffffff" alt="Facebook" onclick="shareTo('facebook','${title}')">
+   <img src="https://cdn.simpleicons.org/instagram/ffffff" alt="Instagram" onclick="shareTo('instagram','${title}')">
+   <img src="https://cdn.simpleicons.org/tiktok/ffffff" alt="TikTok" onclick="shareTo('tiktok','${title}')">
+   <button class="download-btn" onclick="downloadPromo()">Download</button>
+  </div>
+ </div>`
+ document.body.appendChild(overlay)
+}
+
+function createSong(s,rank){
+ let div=document.createElement("div")
+ div.className="song"
+ div.innerHTML=`
+ <div class="rank">${rank}</div>
+ <img src="images/${s.ImageFile}" alt="${s.Song}" loading="eager" decoding="sync" onerror="console.error('FAILED TO LOAD: images/${s.ImageFile}', this.src)">
+ <div class="info">
+  <span class="song-title">${s.Song}</span>
+  <div class="total-shazams">${exact(s.Shazams)} Shazams</div>
+  <div class="bar"><span style="width:${progress(s.Shazams)}%"></span></div>
+  <div class="hoverstats">+${exact(s.Shazams-s.Previous)} • ${progress(s.Shazams)}% to ${milestoneText(nextMilestone(s.Shazams))}</div>
+ </div>
+ ${shareSVG()}
+ `
+ div.querySelector("svg").onclick=e=>{e.stopPropagation();openPromo(s.Song,"",s.Shazams,"images/"+s.ImageFile)}
+ div.addEventListener("click",()=>div.classList.toggle("active"))
+ return div
+}
+
+function createSection(name,list){
+ let div=document.createElement("div")
+ div.className="section"
+ let total=list.reduce((a,b)=>a+b.Shazams,0)
+ let promoImage=sectionImage(name)
+ div.innerHTML=`
+ <div class="section-bg" style="background-image:url('${promoImage}')"></div>
+ <div class="section-content">
+  <h2>${name} ${shareSVG()}</h2>
+ </div>`
+ div.querySelector("svg").onclick=()=>openPromo(name,"",total,promoImage,list)
+ let content=div.querySelector(".section-content")
+ list.forEach((s,i)=>{
+  if(name === "GLOBAL TOP 10"){
+   content.appendChild(createSong(s,i+1))
+  } else {
+   let songDiv=createSong(s,i+1)
+   songDiv.querySelector(".rank").remove()
+   content.appendChild(songDiv)
+  }
+ })
+ return div
+}
+
+function sectionImage(name){
+ const map={
+  "GLOBAL TOP 10":"images/jennie.jpg"
+ }
+ return map[name]||"images/jennie.jpg"
+}
+
+function checkMilestones(){
+ let reached=[]
+ songs.forEach(s=>{
+  let current=lastMilestone(s.Shazams)
+  let prev=previousMilestones[s.Song]||0
+  if(current>prev && current>0){
+   reached.push(s)
+   previousMilestones[s.Song]=current
+  }
+ })
+ if(reached.length>0) showMilestonePopup(reached)
+}
+
+function build(){
+ let c=document.getElementById("content")
+ c.innerHTML=""
+ let top=[...songs].sort((a,b)=>b.Shazams-a.Shazams).slice(0,10)
+ c.appendChild(createSection("GLOBAL TOP 10",top))
+ let sections=[...new Set(songs.map(s=>s.Section))]
+ sections.forEach(sec=>{
+  if(sec!=="GLOBAL TOP 10")
+   c.appendChild(createSection(sec,songs.filter(x=>x.Section===sec)))
+ })
+ checkMilestones()
+}
+
+if('ontouchstart' in window || navigator.maxTouchPoints>0){
+ document.body.classList.add('no-hover')
+}
+
+Papa.parse("jennie.csv",{download:true,header:true,dynamicTyping:true,
+ complete:function(res){
+  songs=res.data.filter(s=>s.Song)
+  build()
+  let lastUpdate=songs.length && songs[0]["Last Update"] ? songs[0]["Last Update"] : "Unknown"
+  document.getElementById("updated").innerText="Last Updated: "+lastUpdate
+ }})
+</script>
+
+</body>
+</html>
