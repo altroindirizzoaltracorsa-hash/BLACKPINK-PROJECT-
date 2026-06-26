@@ -128,6 +128,32 @@ export default async function handler(req, res) {
     }
   }
 
+  // Manual escape hatch for directly setting/correcting a single day's history
+  // entry — for when the upstream play count genuinely never moved (e.g. a
+  // multi-day Spotify reporting freeze), so there's no live diff to compute and
+  // the normal fetch-and-diff flow has nothing to write.
+  if (req.query.action === 'set-entry') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    if (!adminSecret || req.query.key !== adminSecret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const { track, date, streams } = req.query;
+    if (!TRACKS[track] || !date || streams === undefined) {
+      return res.status(400).json({ error: 'Requires track, date (dd/mm), and streams query params' });
+    }
+    const histKey = `bp_hist_${track}`;
+    const history = (await redis.get(histKey)) || [];
+    const entry = history.find(h => h.date === date);
+    if (entry) {
+      entry.streams = Number(streams);
+    } else {
+      history.push({ date, streams: Number(streams) });
+      history.sort((a, b) => parseDateLabel(a.date) - parseDateLabel(b.date));
+    }
+    await redis.set(histKey, history);
+    return res.status(200).json({ ok: true, track, history });
+  }
+
   const todayLabel = getDateLabel(new Date());
   const results    = {};
   const errors     = {};
