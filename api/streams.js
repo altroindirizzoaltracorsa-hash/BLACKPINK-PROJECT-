@@ -117,6 +117,17 @@ export default async function handler(req, res) {
     }
   }
 
+  // Manual escape hatch for when a RapidAPI quota outage causes a day's entry
+  // to go unrecorded — lets an admin force a real (non-cached) fetch on demand
+  // instead of waiting for the next watch-window poll or the midnight cron.
+  const isForced = req.query.force === '1';
+  if (isForced) {
+    const adminSecret = process.env.ADMIN_SECRET;
+    if (!adminSecret || req.query.key !== adminSecret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
+
   const todayLabel = getDateLabel(new Date());
   const results    = {};
   const errors     = {};
@@ -154,7 +165,7 @@ export default async function handler(req, res) {
       // live total is recent — otherwise a fetch that straddles midnight stays
       // cached across the day boundary and the daily diff never gets written.
       const needsDailyUpdate = !prev || prev.date !== todayLabel;
-      const cacheValid = !isCron && cacheAge < getCacheTtlMs(needsDailyUpdate) && (cached?.total || 0) > 0;
+      const cacheValid = !isCron && !isForced && cacheAge < getCacheTtlMs(needsDailyUpdate) && (cached?.total || 0) > 0;
       let total;
       let updatedAt = cached?.ts || null;
       let stale = false;
