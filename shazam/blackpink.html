@@ -17,68 +17,101 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
 <style>
-@font-face{
-  font-family:"BPFont";
-  src:url("fonts/ZEN-SERIF-TTF-Regular.ttf") format("truetype");
+:root{
+  --pink:#FF0066;
+  --black:#080808;
+  --off-black:#111111;
+  --card:#111111;
+  --white:#F5F0F0;
+  --muted:rgba(245,240,240,0.45);
+  --mono:'DM Mono', monospace;
+  --display:'Bebas Neue', sans-serif;
+  --accent:#ff2ea6;
+  --accent-glow:#ff6fc7;
+  --accent-dim:#a81f70;
+  --border:rgba(255,46,166,0.18);
 }
 
 *{box-sizing:border-box;}
 
-body{margin:0;background:black;color:white;font-family:"BPFont",sans-serif;position:relative;}
+body{margin:0;background:var(--black);color:var(--white);font-family:var(--mono);position:relative;}
 
-/* SIDEBAR */
-.sidebar{
-  position:fixed;
-  top:0;
-  left:-260px;
-  width:260px;
-  height:100%;
-  background-color:#141414;
-  padding:30px 20px;
-  transition:left 0.3s ease;
-  z-index:1000;
-  overflow-y:auto;
-}
-.sidebar a{
-  display:block;
-  color:#f2f2f2;
-  text-decoration:none;
-  margin-bottom:20px;
-  font-weight:600;
-  font-size:1.05rem;
-  font-family:"BPFont",sans-serif;
-}
-.sidebar a:hover{color:#ff2ea6;}
-.sidebar.open{left:0;}
-
-.sidebar-overlay{
-  display:none;
+body::before{
+  content:'';
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,0.6);
-  z-index:999;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none;
+  z-index:9999;
+  opacity:0.35;
 }
-.sidebar-overlay.show{display:block;}
 
-/* HEADER */
-header{
+/* NAV */
+nav{
+  position:fixed;
+  top:0;left:0;right:0;
+  z-index:1000;
   display:flex;
+  justify-content:space-between;
   align-items:center;
-  justify-content:center;
-  position:relative;
-  padding:24px 20px;
-  font-size:34px;
-  color:#ff2ea6;
+  padding:1.2rem 2rem;
+  background:rgba(8,8,8,0.88);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
 }
-
-.menu-btn{
-  position:absolute;
-  left:20px;
-  font-size:28px;
+.nav-logo{
+  font-family:var(--display);
+  font-size:1.3rem;
+  letter-spacing:0.15em;
+  color:var(--accent);
+  text-decoration:none;
+  white-space:nowrap;
+}
+.nav-links{display:flex;gap:1.6rem;list-style:none;margin:0;padding:0;}
+.nav-links a{
+  font-family:var(--mono);
+  font-size:0.62rem;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  color:var(--white);
+  text-decoration:none;
+  opacity:0.7;
+  transition:opacity .2s,color .2s;
+}
+.nav-links a:hover,.nav-links a.active{opacity:1;color:var(--accent);}
+.nav-hamburger{
+  display:none;
+  flex-direction:column;
+  gap:5px;
+  background:none;
+  border:none;
   cursor:pointer;
-  color:#ff2ea6;
-  line-height:1;
+  padding:4px;
+  z-index:1001;
+}
+.nav-hamburger span{
+  display:block;width:22px;height:2px;
+  background:var(--white);
+  transition:transform .2s,opacity .2s;
+}
+.nav-hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+.nav-hamburger.open span:nth-child(2){opacity:0;}
+.nav-hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+
+/* PAGE TITLE */
+.page-title{
+  font-family:var(--display);
+  text-align:center;
+  color:var(--accent);
+  font-size:2.4rem;
+  letter-spacing:0.05em;
+  margin:0;
+  padding:96px 20px 10px;
 }
 
 .updated{text-align:center;opacity:.7;margin-bottom:20px;}
@@ -87,7 +120,7 @@ header{
 .section-bg{position:absolute;width:100%;height:100%;background-size:cover;background-position:center;filter:blur(12px) brightness(.35);transform:scale(1.2);}
 .section-content{position:relative;padding:30px;}
 .section h2{
-  color:#ff2ea6;
+  color:var(--accent);
   font-size:28px;
   display:flex;
   align-items:center;
@@ -98,7 +131,7 @@ header{
   width:20px;
   height:20px;
   cursor:pointer;
-  fill:#ff2ea6;
+  fill:var(--accent);
   transition:.2s;
 }
 .share-icon:hover{transform:scale(1.2);}
@@ -110,20 +143,20 @@ header{
   padding:10px;
   margin:8px 0;
   background:rgba(0,0,0,.55);
-  border-radius:10px;
+  border-radius:2px;
   transition:.25s;
   position:relative;
 }
-.song:hover{transform:scale(1.03);box-shadow:0 0 15px #ff2ea6;}
+.song:hover{transform:scale(1.03);box-shadow:0 0 15px var(--accent);}
 
 .rank{font-size:20px;width:40px;flex-shrink:0;}
-.song img{width:50px;height:50px;object-fit:cover;border-radius:6px;display:block;flex-shrink:0;}
+.song img{width:50px;height:50px;object-fit:cover;border-radius:2px;display:block;flex-shrink:0;}
 
 .info{flex:1;min-width:0;}
 .info .song-title{font-size:15px;word-break:break-word;}
 
-.bar{height:6px;background:#333;margin-top:6px;border-radius:5px;overflow:hidden;}
-.bar span{display:block;height:100%;background:#ff2ea6;}
+.bar{height:6px;background:#333;margin-top:6px;border-radius:2px;overflow:hidden;}
+.bar span{display:block;height:100%;background:var(--accent);}
 
 .total-shazams{font-size:12px;opacity:.7;margin-top:3px;}
 .hoverstats{font-size:12px;opacity:0;transition:.2s;margin-top:5px;}
@@ -147,8 +180,9 @@ body.no-hover .song:hover .hoverstats{opacity:0;}
 body.no-hover .song:hover .total-shazams{opacity:.7;}
 
 .card{
-  background:black;
-  border-radius:12px;
+  background:var(--off-black);
+  border:1px solid var(--accent-dim);
+  border-radius:2px;
   width:min(440px,92%);
   padding:20px;
   position:relative;
@@ -159,7 +193,7 @@ body.no-hover .song:hover .total-shazams{opacity:.7;}
   top:10px;
   right:15px;
   font-size:22px;
-  color:#ff2ea6;
+  color:var(--accent);
   cursor:pointer;
 }
 
@@ -168,10 +202,10 @@ body.no-hover .song:hover .total-shazams{opacity:.7;}
   width:100%;
   box-sizing:border-box;
   padding:10px;
-  background:#000;
-  border-radius:10px;
+  background:var(--off-black);
+  border-radius:2px;
 }
-.exportArea img{width:100%;height:auto;object-fit:cover;border-radius:10px;margin-bottom:10px;display:block;}
+.exportArea img{width:100%;height:auto;object-fit:cover;border-radius:2px;margin-bottom:10px;display:block;}
 .exportArea h2{text-align:center;margin:8px 0;}
 .exportArea p{text-align:center;margin:4px 0;}
 
@@ -186,11 +220,12 @@ body.no-hover .song:hover .total-shazams{opacity:.7;}
 .socials img:hover{transform:scale(1.2);}
 
 .download-btn{
-  background:#ff2ea6;
+  background:var(--accent);
   border:none;
-  color:white;
+  color:var(--black);
+  font-family:var(--mono);
   padding:6px 12px;
-  border-radius:6px;
+  border-radius:2px;
   cursor:pointer;
 }
 
@@ -201,9 +236,9 @@ body.no-hover .song:hover .total-shazams{opacity:.7;}
   transform:translateX(-50%);
   background:rgba(0,0,0,0.9);
   padding:15px;
-  border-radius:14px;
+  border-radius:2px;
   z-index:9999;
-  border:1px solid #ff2ea6;
+  border:1px solid var(--accent);
   text-align:center;
   width:min(400px,90%);
   max-height:70vh;
@@ -230,7 +265,7 @@ body.no-hover .song:hover .total-shazams{opacity:.7;}
   top:0;
   float:right;
   font-size:20px;
-  color:#ff2ea6;
+  color:var(--accent);
   cursor:pointer;
   z-index:1;
 }
@@ -249,7 +284,6 @@ body.no-hover .song:hover .total-shazams{opacity:.7;}
 
 /* DESKTOP */
 @media(min-width:768px){
-  header{font-size:42px;padding:30px 20px;}
   #content{max-width:900px;margin:0 auto;}
   .section-content{padding:40px;}
   .section h2{font-size:32px;}
@@ -262,8 +296,24 @@ body.no-hover .song:hover .total-shazams{opacity:.7;}
 
 /* MOBILE */
 @media(max-width:767px){
-  header{font-size:20px;padding:16px 10px 16px 50px;}
-  .menu-btn{font-size:22px;left:14px;}
+  nav{padding:1rem 1.2rem;}
+  .nav-hamburger{display:flex;}
+  .nav-links{
+    display:none;
+    position:fixed;
+    top:60px;
+    left:0; right:0;
+    background:rgba(8,8,8,0.97);
+    border-bottom:1px solid var(--border);
+    flex-direction:column;
+    padding:0.5rem 1.5rem 1.2rem;
+    gap:0;
+  }
+  .nav-links.open{display:flex;}
+  .nav-links li{display:block;}
+  .nav-links a{display:block;padding:0.75rem 0;border-bottom:1px solid rgba(255,255,255,0.05);opacity:0.85;}
+  .nav-links li:last-child a{border-bottom:none;}
+  .page-title{font-size:1.6rem;padding-top:84px;}
   .updated{font-size:12px;}
   .section-content{padding:15px 10px;}
   .section h2{font-size:20px;}
@@ -284,29 +334,34 @@ body.no-hover .song:hover .total-shazams{opacity:.7;}
 
 <body>
 
-<!-- SIDEBAR -->
-<div class="sidebar" id="sidebar">
-  <a href="index.html">🏠 Home</a>
-  <a href="tutorials.html">📖 How to Shazam</a>
-  <a href="blackpink.html">🖤 BLACKPINK</a>
-  <a href="jisoo.html">💙 JISOO</a>
-  <a href="jennie.html">❤️ JENNIE</a>
-  <a href="rosé.html">🌸 ROSÉ</a>
-  <a href="lisa.html">💛 LISA</a>
-</div>
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
+<nav>
+  <a href="index.html" class="nav-logo">BLACKPINK SHAZAM</a>
+  <ul class="nav-links" id="mobile-nav">
+    <li><a href="index.html" onclick="closeMobileNav()">Home</a></li>
+    <li><a href="tutorials.html" onclick="closeMobileNav()">How to Shazam</a></li>
+    <li><a href="blackpink.html" onclick="closeMobileNav()" class="active">BLACKPINK</a></li>
+    <li><a href="jisoo.html" onclick="closeMobileNav()">JISOO</a></li>
+    <li><a href="jennie.html" onclick="closeMobileNav()">JENNIE</a></li>
+    <li><a href="rosé.html" onclick="closeMobileNav()">ROSÉ</a></li>
+    <li><a href="lisa.html" onclick="closeMobileNav()">LISA</a></li>
+  </ul>
+  <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
 
-<header>
-  <span class="menu-btn" onclick="toggleMenu()">☰</span>
-  BLACKPINK Shazam Tracker
-</header>
+<h1 class="page-title">BLACKPINK Shazam Tracker</h1>
 <div class="updated" id="updated"></div>
 <div id="content"></div>
 
 <script>
-function toggleMenu(){
-  document.getElementById("sidebar").classList.toggle("open");
-  document.getElementById("sidebarOverlay").classList.toggle("show");
+function toggleMobileNav(){
+  document.getElementById("mobile-nav").classList.toggle("open");
+  document.getElementById("nav-hamburger").classList.toggle("open");
+}
+function closeMobileNav(){
+  document.getElementById("mobile-nav").classList.remove("open");
+  document.getElementById("nav-hamburger").classList.remove("open");
 }
 
 let songs=[]
@@ -340,7 +395,7 @@ function launchConfetti(){
   c.className="confetti-piece"
   let img=images[Math.floor(Math.random()*images.length)]
   c.style.backgroundImage=`url('${img}')`
-  if(img.includes("bplogo")) c.style.filter="drop-shadow(0 0 20px #ff2ea6)"
+  if(img.includes("bplogo")) c.style.filter="drop-shadow(0 0 20px var(--accent))"
   c.style.left=Math.random()*window.innerWidth+"px"
   c.style.top="-60px"
   c.style.opacity="1"
@@ -377,7 +432,7 @@ function showMilestonePopup(list){
  let pop=document.createElement("div")
  pop.className="milestone-popup"
  pop.innerHTML="<span class='milestone-close' onclick='this.parentNode.remove()'>✕</span><b>🎉 Milestones reached!</b><br><br>"+
- list.map(s=>`<div class='milestone-item'><span style='color:#ff2ea6;font-weight:bold;'>${milestoneText(lastMilestone(s.Shazams))}</span> — ${s.Song}</div>`).join("")
+ list.map(s=>`<div class='milestone-item'><span style='color:var(--accent);font-weight:bold;'>${milestoneText(lastMilestone(s.Shazams))}</span> — ${s.Song}</div>`).join("")
  document.body.appendChild(pop)
  setTimeout(()=>{if(pop.parentNode) pop.remove()},30000)
 }
@@ -468,7 +523,7 @@ function openPromo(title,subtitle,shazams,img,list=null){
   <div class="close-x" onclick="this.closest('.overlay').remove()">✕</div>
   <div id="exportArea" class="exportArea">
    <img src="${img}" alt="${title}">
-   <h2 style="color:#ff2ea6">${title}</h2>
+   <h2 style="color:var(--accent)">${title}</h2>
    <p>${exact(shazams)} Shazams</p>
    ${contentHTML}
   </div>

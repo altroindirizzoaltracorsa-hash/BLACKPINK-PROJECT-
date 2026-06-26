@@ -5,78 +5,99 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BLACKPINK SHAZAM</title>
 
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
   <style>
-    @font-face{
-      font-family:"BPFont";
-      src:url("fonts/ZEN-SERIF-TTF-Regular.ttf") format("truetype");
+    :root{
+      --pink:#FF0066;
+      --hot-pink:#FF2D8A;
+      --black:#080808;
+      --off-black:#111111;
+      --card:#111111;
+      --white:#F5F0F0;
+      --muted:rgba(245,240,240,0.45);
+      --border:rgba(255,0,102,0.18);
+      --mono:'DM Mono', monospace;
+      --display:'Bebas Neue', sans-serif;
+      --accent:#FF0066;
+      --accent-glow:#FF2D8A;
     }
 
     *{box-sizing:border-box;}
 
     body {
       margin: 0;
-      font-family: "BPFont", 'Poppins', sans-serif;
-      background-color: #0b0b0b;
-      color: #f2f2f2;
+      font-family: var(--mono);
+      background-color: var(--black);
+      color: var(--white);
+      position: relative;
     }
 
-    /* HEADER */
-    header {
-      display: flex;
-      align-items: center;
-      padding: 16px 20px;
+    body::before{
+      content:'';
+      position:fixed;
+      inset:0;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events:none;
+      z-index:9999;
+      opacity:0.35;
     }
 
-    .menu-btn {
-      font-size: 28px;
-      cursor: pointer;
-      color: #ff5fa2;
-    }
-
-    /* SIDEBAR */
-    .sidebar {
+    /* NAV */
+    nav {
       position: fixed;
-      top: 0;
-      left: -260px;
-      width: 260px;
-      height: 100%;
-      background-color: #141414;
-      padding: 30px 20px;
-      transition: left 0.3s ease;
+      top: 0; left: 0; right: 0;
       z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.2rem 2rem;
+      background: rgba(8,8,8,0.88);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
     }
-
-    .sidebar a {
-      display: block;
-      color: #f2f2f2;
+    .nav-logo {
+      font-family: var(--display);
+      font-size: 1.3rem;
+      letter-spacing: 0.15em;
+      color: var(--accent);
       text-decoration: none;
-      margin-bottom: 20px;
-      font-weight: 600;
-      font-size: 1.05rem;
+      white-space: nowrap;
     }
-
-    .sidebar a:hover {
-      color: #ff8fc7;
+    .nav-links { display: flex; gap: 1.6rem; list-style: none; margin: 0; padding: 0; }
+    .nav-links a {
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--white);
+      text-decoration: none;
+      opacity: 0.7;
+      transition: opacity 0.2s, color 0.2s;
     }
-
-    .sidebar.open {
-      left: 0;
-    }
-
-    /* OVERLAY */
-    .overlay {
+    .nav-links a:hover, .nav-links a.active { opacity: 1; color: var(--accent); }
+    .nav-hamburger {
       display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.6);
-      z-index: 999;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      z-index: 1001;
     }
-
-    .overlay.show {
+    .nav-hamburger span {
       display: block;
+      width: 22px;
+      height: 2px;
+      background: var(--white);
+      transition: transform 0.2s, opacity 0.2s;
     }
+    .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav-hamburger.open span:nth-child(2) { opacity: 0; }
+    .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
     /* BANNER */
     .banner {
@@ -103,15 +124,15 @@
     @keyframes pinkPulse {
       0% {
         transform: scale(1);
-        filter: drop-shadow(0 0 6px rgba(255,95,162,0.3));
+        filter: drop-shadow(0 0 6px rgba(255,0,102,0.3));
       }
       50% {
         transform: scale(1.04);
-        filter: drop-shadow(0 0 18px rgba(255,95,162,0.9));
+        filter: drop-shadow(0 0 18px rgba(255,0,102,0.9));
       }
       100% {
         transform: scale(1);
-        filter: drop-shadow(0 0 6px rgba(255,95,162,0.3));
+        filter: drop-shadow(0 0 6px rgba(255,0,102,0.3));
       }
     }
 
@@ -119,14 +140,15 @@
     .container {
       max-width: 900px;
       margin: 0 auto;
-      padding: 10px 20px 40px;
+      padding: 110px 20px 40px;
       text-align: center;
     }
 
     h1 {
-      color: #ff5fa2;
+      font-family: var(--display);
+      color: var(--accent);
       font-size: 3rem;
-      letter-spacing: 3px;
+      letter-spacing: 0.08em;
       margin-bottom: 20px;
     }
 
@@ -137,7 +159,7 @@
     }
 
     p {
-      color: #eaeaea;
+      color: var(--white);
       font-size: 1.05rem;
       max-width: 700px;
       margin: 0 auto 36px;
@@ -146,15 +168,20 @@
 
     .button {
       display: inline-block;
-      padding: 14px 30px;
-      background-color: #ff5fa2;
-      color: #0b0b0b;
+      padding: 0.9rem 2.5rem;
+      background-color: var(--accent);
+      color: var(--black);
       text-decoration: none;
-      font-weight: 700;
-      border-radius: 30px;
-      box-shadow: 0 8px 25px rgba(255, 95, 162, 0.35);
-      font-size: 1rem;
+      font-family: var(--mono);
+      font-weight: 500;
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+      box-shadow: 0 8px 25px rgba(255,0,102,0.35);
+      transition: transform 0.2s, box-shadow 0.2s;
     }
+    .button:hover { transform: translateY(-2px); }
 
     /* FOLLOW US */
     .follow {
@@ -163,7 +190,8 @@
     }
 
     .follow h3 {
-      color: #ff8fc7;
+      font-family: var(--display);
+      color: var(--accent-glow);
       letter-spacing: 2px;
       margin-bottom: 20px;
     }
@@ -180,9 +208,31 @@
 
     /* MOBILE */
     @media (max-width: 600px) {
-      header{padding:12px 16px;}
+      nav{padding:1rem 1.2rem;}
 
-      .menu-btn{font-size:24px;}
+      .nav-hamburger{display:flex;}
+
+      .nav-links{
+        display:none;
+        position:fixed;
+        top:60px;
+        left:0; right:0;
+        background:rgba(8,8,8,0.97);
+        border-bottom:1px solid var(--border);
+        flex-direction:column;
+        padding:0.5rem 1.5rem 1.2rem;
+        gap:0;
+      }
+
+      .nav-links.open{display:flex;}
+
+      .nav-links li{display:block;}
+
+      .nav-links a{display:block;padding:0.75rem 0;border-bottom:1px solid rgba(255,255,255,0.05);opacity:0.85;}
+
+      .nav-links li:last-child a{border-bottom:none;}
+
+      .container{padding-top:90px;}
 
       .banner{margin:8px 0 20px;}
 
@@ -190,7 +240,7 @@
 
       h1{
         font-size:1.8rem;
-        letter-spacing:1px;
+        letter-spacing:0.04em;
         margin-bottom:16px;
       }
 
@@ -203,8 +253,8 @@
       }
 
       .button{
-        padding:12px 24px;
-        font-size:0.9rem;
+        padding:0.75rem 1.8rem;
+        font-size:0.62rem;
       }
 
       .follow{margin:40px 0 30px;}
@@ -220,22 +270,21 @@
 
 <body>
 
-<!-- SIDEBAR -->
-<div class="sidebar" id="sidebar">
-  <a href="index.html">🏠 Home</a>
-  <a href="tutorials.html">📖 How to Shazam</a>
-  <a href="blackpink.html">🖤 BLACKPINK</a>
-  <a href="jisoo.html">💙 JISOO</a>
-  <a href="jennie.html">❤️ JENNIE</a>
-  <a href="rosé.html">🌸 ROSÉ</a>
-  <a href="lisa.html">💛 LISA</a>
-</div>
-
-<div class="overlay" id="overlay" onclick="toggleMenu()"></div>
-
-<header>
-  <span class="menu-btn" onclick="toggleMenu()">☰</span>
-</header>
+<nav>
+  <a href="index.html" class="nav-logo">BLACKPINK SHAZAM</a>
+  <ul class="nav-links" id="mobile-nav">
+    <li><a href="index.html" onclick="closeMobileNav()" class="active">Home</a></li>
+    <li><a href="tutorials.html" onclick="closeMobileNav()">How to Shazam</a></li>
+    <li><a href="blackpink.html" onclick="closeMobileNav()">BLACKPINK</a></li>
+    <li><a href="jisoo.html" onclick="closeMobileNav()">JISOO</a></li>
+    <li><a href="jennie.html" onclick="closeMobileNav()">JENNIE</a></li>
+    <li><a href="rosé.html" onclick="closeMobileNav()">ROSÉ</a></li>
+    <li><a href="lisa.html" onclick="closeMobileNav()">LISA</a></li>
+  </ul>
+  <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
 
 <!-- BANNER -->
 <div class="banner">
@@ -276,9 +325,13 @@
 </div>
 
 <script>
-  function toggleMenu() {
-    document.getElementById("sidebar").classList.toggle("open");
-    document.getElementById("overlay").classList.toggle("show");
+  function toggleMobileNav() {
+    document.getElementById("mobile-nav").classList.toggle("open");
+    document.getElementById("nav-hamburger").classList.toggle("open");
+  }
+  function closeMobileNav() {
+    document.getElementById("mobile-nav").classList.remove("open");
+    document.getElementById("nav-hamburger").classList.remove("open");
   }
 </script>
 
