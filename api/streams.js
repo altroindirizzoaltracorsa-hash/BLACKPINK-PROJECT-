@@ -160,11 +160,25 @@ export default async function handler(req, res) {
   let fetchedLive  = false;
 
   for (const [name, trackId] of Object.entries(TRACKS)) {
+    const liveKey = `bp_live_${name}`;
+    const prevKey = `bp_prev_${name}`;
+    const histKey = `bp_hist_${name}`;
+    const errKey  = `bp_err_${name}`;
+    const lockKey = `bp_lock_${name}`;
+    let gotLock = false;
+
     try {
-      const liveKey = `bp_live_${name}`;
-      const prevKey = `bp_prev_${name}`;
-      const histKey = `bp_hist_${name}`;
-      const errKey  = `bp_err_${name}`;
+      // Overlapping requests (cron + a concurrent visitor poll, say) can both read
+      // history/prev at once and then race to write it back, silently losing
+      // whichever update saves first. A short-lived per-track lock serializes the
+      // read-modify-write so only one request updates a track at a time; a request
+      // that loses the race just returns the current cached snapshot instead.
+      gotLock = !!(await redis.set(lockKey, '1', { nx: true, ex: 30 }));
+      if (!gotLock) {
+        const [cachedOnly, histOnly] = await Promise.all([redis.get(liveKey), redis.get(histKey)]);
+        results[name] = { total: cachedOnly?.total || 0, history: histOnly || [] };
+        continue;
+      }
 
       const [cached, prev, hist] = await Promise.all([
         redis.get(liveKey),
@@ -265,6 +279,8 @@ export default async function handler(req, res) {
         history: history || [],
         ...(fallback?.total ? { stale: true, updatedAt: fallback?.ts ? new Date(fallback.ts).toISOString() : null } : {}),
       };
+    } finally {
+      if (gotLock) await redis.del(lockKey);
     }
   }
 
