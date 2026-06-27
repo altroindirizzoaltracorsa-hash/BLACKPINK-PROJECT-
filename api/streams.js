@@ -137,7 +137,7 @@ export default async function handler(req, res) {
     if (!adminSecret || req.query.key !== adminSecret) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    const { track, date, streams } = req.query;
+    const { track, date, streams, total } = req.query;
     if (!TRACKS[track] || !date || streams === undefined) {
       return res.status(400).json({ error: 'Requires track, date (dd/mm), and streams query params' });
     }
@@ -151,6 +151,18 @@ export default async function handler(req, res) {
       history.sort((a, b) => parseDateLabel(a.date) - parseDateLabel(b.date));
     }
     await redis.set(histKey, history);
+
+    // Optional: also correct the running total/snapshot used as the baseline for
+    // the next live diff, so a backfilled day doesn't get double-counted once
+    // real fetches resume.
+    if (total !== undefined) {
+      const prevKey = `bp_prev_${track}`;
+      const liveKey = `bp_live_${track}`;
+      const prev = await redis.get(prevKey);
+      await redis.set(prevKey, { total: Number(total), date: prev?.date || date });
+      await redis.set(liveKey, { total: Number(total), ts: Date.now() });
+    }
+
     return res.status(200).json({ ok: true, track, history });
   }
 
