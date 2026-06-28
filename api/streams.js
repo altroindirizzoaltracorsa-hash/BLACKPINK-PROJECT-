@@ -141,29 +141,42 @@ export default async function handler(req, res) {
     if (!TRACKS[track] || !date || streams === undefined) {
       return res.status(400).json({ error: 'Requires track, date (dd/mm), and streams query params' });
     }
-    const histKey = `bp_hist_${track}`;
-    const history = (await redis.get(histKey)) || [];
-    const entry = history.find(h => h.date === date);
-    if (entry) {
-      entry.streams = Number(streams);
-    } else {
-      history.push({ date, streams: Number(streams) });
-      history.sort((a, b) => parseDateLabel(a.date) - parseDateLabel(b.date));
-    }
-    await redis.set(histKey, history);
 
-    // Optional: also correct the running total/snapshot used as the baseline for
-    // the next live diff, so a backfilled day doesn't get double-counted once
-    // real fetches resume.
-    if (total !== undefined) {
-      const prevKey = `bp_prev_${track}`;
-      const liveKey = `bp_live_${track}`;
-      const prev = await redis.get(prevKey);
-      await redis.set(prevKey, { total: Number(total), date: prev?.date || date });
-      await redis.set(liveKey, { total: Number(total), ts: Date.now() });
+    // Share the same per-track lock as the regular fetch loop below — without
+    // this, a manual correction can land in the middle of a cron/visitor-poll
+    // fetch and get its write clobbered (or clobber that fetch's write).
+    const lockKey = `bp_lock_${track}`;
+    const gotLock = !!(await redis.set(lockKey, '1', { nx: true, ex: 30 }));
+    if (!gotLock) {
+      return res.status(409).json({ error: 'Track is busy updating, try again in a few seconds' });
     }
+    try {
+      const histKey = `bp_hist_${track}`;
+      const history = (await redis.get(histKey)) || [];
+      const entry = history.find(h => h.date === date);
+      if (entry) {
+        entry.streams = Number(streams);
+      } else {
+        history.push({ date, streams: Number(streams) });
+        history.sort((a, b) => parseDateLabel(a.date) - parseDateLabel(b.date));
+      }
+      await redis.set(histKey, history);
 
-    return res.status(200).json({ ok: true, track, history });
+      // Optional: also correct the running total/snapshot used as the baseline
+      // for the next live diff, so a backfilled day doesn't get double-counted
+      // once real fetches resume. The asserted date always wins here, since a
+      // stale or race-written prev snapshot shouldn't override an explicit fix.
+      if (total !== undefined) {
+        const prevKey = `bp_prev_${track}`;
+        const liveKey = `bp_live_${track}`;
+        await redis.set(prevKey, { total: Number(total), date });
+        await redis.set(liveKey, { total: Number(total), ts: Date.now() });
+      }
+
+      return res.status(200).json({ ok: true, track, history });
+    } finally {
+      await redis.del(lockKey);
+    }
   }
 
   const todayLabel = getDateLabel(new Date());
