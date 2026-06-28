@@ -4,6 +4,7 @@
     { "source": "/leaderboard", "destination": "/index.html" },
     { "source": "/voting", "destination": "/index.html" },
     { "source": "/feedback", "destination": "/index.html" },
+    { "source": "/account", "destination": "/index.html" },
     { "source": "/api/spotify-oauth-start", "destination": "/api/sync-playlist" },
     { "source": "/api/spotify-oauth-callback", "destination": "/api/sync-playlist" }
   ],
