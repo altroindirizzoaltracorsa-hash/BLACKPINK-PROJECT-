@@ -2231,11 +2231,11 @@ window.addEventListener('scroll', () => {
 });
 
 // ── ACCOUNT / SUPABASE AUTH ───────────────────────────────────
-// Filled in once the project's real values are available (Supabase
-// dashboard → Settings → API). Left as placeholders, the account page
-// just shows a "coming soon" message instead of breaking the site.
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+// The anon key is meant to be public/embeddable client-side (unlike the
+// service role key used server-side elsewhere) — RLS on linked_accounts
+// is what actually keeps this safe.
+const SUPABASE_URL = 'https://esbzlrmrdvvsrsobrzfz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzYnpscm1yZHZ2c3Jzb2JyemZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODQyNDYsImV4cCI6MjA5NTY2MDI0Nn0.P3VhWYeog5CmE67VjvHboG3rP876OPjcmmtBmz1zfck';
 
 const sb = (typeof supabase !== 'undefined' && SUPABASE_URL.startsWith('http'))
   ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
