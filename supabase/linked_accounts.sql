@@ -15,6 +15,8 @@ create unique index if not exists linked_accounts_source_username_uniq on linked
 
 alter table linked_accounts enable row level security;
 
+grant select, insert, delete on linked_accounts to authenticated;
+
 create policy "select own linked accounts" on linked_accounts
   for select using (auth.uid() = app_user_id);
 

@@ -1474,7 +1474,14 @@
       <div class="login-card">
         <p class="login-label">Signed in as</p>
         <p class="account-email" id="account-email-display"></p>
-        <button class="logout-btn" onclick="signOutAccount()">← Sign Out</button>
+        <p class="login-label" style="margin-top:1.5rem;">Display name</p>
+        <p class="login-desc" style="margin-top:-0.25rem;">Shown instead of your email wherever your profile appears.</p>
+        <div class="input-row">
+          <input class="username-input" id="account-displayname-input" type="text" placeholder="Choose a display name" maxlength="40" />
+          <button class="btn-primary" onclick="saveDisplayName()">Save</button>
+        </div>
+        <div id="account-displayname-status" class="error-msg" style="display:none"></div>
+        <button class="logout-btn" onclick="signOutAccount()" style="margin-top:1rem;">← Sign Out</button>
       </div>
 
       <div class="login-card" style="margin-top:1.5rem;">
@@ -2261,6 +2268,7 @@ function renderAccountPage(session) {
     signedOut.style.display = 'none';
     signedIn.style.display = 'block';
     document.getElementById('account-email-display').textContent = session.user.email || session.user.id;
+    document.getElementById('account-displayname-input').value = session.user.user_metadata?.display_name || '';
     loadLinkedAccounts();
   } else {
     signedOut.style.display = 'block';
@@ -2286,6 +2294,19 @@ async function signInWithEmail() {
   }
   const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + '/account' } });
   status.textContent = error ? error.message : 'Check your inbox for a magic link!';
+  status.style.color = error ? '#ff4444' : '#4caf50';
+  status.style.display = 'block';
+}
+
+async function saveDisplayName() {
+  const input = document.getElementById('account-displayname-input');
+  const status = document.getElementById('account-displayname-status');
+  const display_name = input.value.trim();
+  status.style.display = 'none';
+
+  const { error } = await sb.auth.updateUser({ data: { display_name } });
+
+  status.textContent = error ? error.message : 'Saved!';
   status.style.color = error ? '#ff4444' : '#4caf50';
   status.style.display = 'block';
 }
