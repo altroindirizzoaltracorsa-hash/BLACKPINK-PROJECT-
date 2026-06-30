@@ -2146,7 +2146,7 @@ function closeMobileNav() {
   document.getElementById('nav-hamburger').classList.remove('open');
 }
 
-const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', account: '/account' };
+const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback' };
 
 // Mirrors the per-route <title> the Vercel edge middleware sets on first
 // load, so client-side navigation keeps the tab title in sync too.
@@ -2290,7 +2290,7 @@ function renderAccountPage(session) {
 
 async function signInWithProvider(provider) {
   if (!sb) return;
-  await sb.auth.signInWithOAuth({ provider, options: { redirectTo: location.origin + '/account' } });
+  await sb.auth.signInWithOAuth({ provider, options: { redirectTo: location.origin + '/badges' } });
 }
 
 async function signInWithEmail() {
@@ -2304,7 +2304,7 @@ async function signInWithEmail() {
     status.style.display = 'block';
     return;
   }
-  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + '/account' } });
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + '/badges' } });
   status.textContent = error ? error.message : 'Check your inbox for a magic link!';
   status.style.color = error ? '#ff4444' : '#4caf50';
   status.style.display = 'block';
