@@ -1367,6 +1367,7 @@
           </div>
           <div id="linked-accounts-status" class="error-msg" style="display:none"></div>
           <p class="lastfm-tip" style="margin-top:1rem;">Don't have Last.fm? <a href="https://www.last.fm/join" target="_blank" rel="noopener">Sign up free</a> and connect Spotify at <a href="https://www.last.fm/settings/applications" target="_blank" rel="noopener">last.fm/settings/applications</a>.</p>
+          <button id="badges-done-btn" class="btn-primary" style="display:none;width:100%;margin-top:1.25rem;font-size:1rem;" onclick="initMyBadgesFromAccount()">Done — View My Profile →</button>
         </div>
       </div>
 
@@ -2474,12 +2475,18 @@ async function addLinkedAccountSettings() {
 
 async function loadLinkedAccountsInline() {
   const list = document.getElementById('linked-accounts-list-inline');
+  const doneBtn = document.getElementById('badges-done-btn');
   if (!list || !sb) return;
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return;
   const { data } = await sb.from('linked_accounts').select('id, source, source_username').order('created_at', { ascending: true });
-  if (!data || data.length === 0) { list.innerHTML = '<p class="settings-hint">No accounts linked yet.</p>'; return; }
+  if (!data || data.length === 0) {
+    list.innerHTML = '<p class="settings-hint">No accounts linked yet.</p>';
+    if (doneBtn) doneBtn.style.display = 'none';
+    return;
+  }
   list.innerHTML = data.map(row => `<div class="linked-row"><div class="linked-row-label"><span class="linked-row-source">${ACCOUNT_SOURCE_LABELS[row.source] || row.source}</span>${row.source_username}</div><button class="linked-remove-btn" onclick="removeLinkedAccount('${row.id}')">Remove</button></div>`).join('');
+  if (doneBtn) doneBtn.style.display = 'block';
 }
 
 async function addLinkedAccount() {
@@ -3241,6 +3248,7 @@ async function fetchSingleAccountStats(source, username) {
     for (const t of TRACKS) res.totalPlays[t.id] = await fetchTrackPlays(username, t.artist, t.track);
     const todaySc = await fetchRecentScrobbles(username, dayFrom, dayTo);
     Object.assign(res.todayCounts, countByTrack(todaySc));
+    let _lastTs = null;
     for (let i = 0; i < 7; i++) {
       const ds = weekFrom + i * 86400;
       if (ds * 1000 > Date.now()) { res.weekDayCounts.push(null); continue; }
@@ -3250,7 +3258,10 @@ async function fetchSingleAccountStats(source, username) {
       res.weekCounts.jump     += dc.jump     || 0;
       res.weekCounts.shutdown += dc.shutdown || 0;
       res.weekCounts.ddududu  += dc.ddududu  || 0;
+      const bpSc = sc.filter(s => (s.artist?.['#text']||s.artist||'').toLowerCase().includes('blackpink') && s.date?.uts);
+      if (bpSc.length) { const ts = parseInt(bpSc[0].date.uts)*1000; if (!_lastTs || ts > _lastTs) _lastTs = ts; }
     }
+    res.lastScrobbleTs = _lastTs;
   } else if (source === 'listenbrainz') {
     const [lbTotals, lbArtist, lbToday] = await Promise.all([
       fetchLbTrackCounts(username), fetchLbArtistPlays(username),
@@ -3293,6 +3304,13 @@ async function loadMultiAccountProfile(accounts) {
     setLoading(`Loading ${acct.source_username}…`);
     try {
       const stats = await fetchSingleAccountStats(acct.source, acct.source_username);
+      // Fetch per-account total playcount for LFM
+      if (acct.source === 'lastfm') {
+        try { const ui = await fetchUserInfo(acct.source_username); stats.playcount = Number(ui.playcount) || 0; } catch {}
+      }
+      if (!combined.lastScrobbleTs || (stats.lastScrobbleTs && stats.lastScrobbleTs > combined.lastScrobbleTs)) {
+        combined.lastScrobbleTs = stats.lastScrobbleTs;
+      }
       acctBreakdown.push(stats);
       combined.artistPlays += stats.artistPlays;
       for (const k of ['jump','shutdown','ddududu']) {
@@ -3323,6 +3341,17 @@ async function loadMultiAccountProfile(accounts) {
   setLoading('Loading profile info…');
   try { combined.info = await fetchUserInfo(primaryUsername); } catch {}
   if (!combined.info) combined.info = { name: primaryUsername, image: [{}], playcount: 0 };
+  // Attach per-account list and display name to info for renderProfile
+  combined.info.allAccounts = acctBreakdown.map(a => ({
+    username: a.username, source: a.source,
+    playcount: a.playcount || 0, lastScrobbleTs: a.lastScrobbleTs || null,
+  }));
+  if (sb) {
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.user?.user_metadata?.display_name) combined.info.displayName = session.user.user_metadata.display_name;
+    } catch {}
+  }
 
   currentUser = combined;
   saveUsername(primaryUsername);
@@ -3336,27 +3365,44 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   document.getElementById('loading-panel').style.display = 'none';
   document.getElementById('profile-panel').style.display = 'block';
 
-  // Avatar + name
-  document.getElementById('profile-username').textContent = info.name || '';
+  // Avatar + name — multi-account aware
+  const _tsAgo = ts => {
+    if (!ts) return '';
+    const diffMs = Date.now() - ts, diffMins = Math.floor(diffMs/60000),
+          diffHours = Math.floor(diffMs/3600000), diffDays = diffMs/86400000;
+    if (diffMins < 2) return 'just now';
+    if (diffHours < 1) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 2) return 'yesterday';
+    return `${Math.floor(diffDays)}d ago`;
+  };
 
-  let scrobbleAgo = '';
-  let showWarning = false;
-  if (lastScrobbleTs) {
-    const diffMs = Date.now() - lastScrobbleTs;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = diffMs / 86400000;
-    if (diffMins < 2) scrobbleAgo = 'just now';
-    else if (diffHours < 1) scrobbleAgo = `${diffMins}m ago`;
-    else if (diffHours < 24) scrobbleAgo = `${diffHours}h ago`;
-    else if (diffDays < 2) scrobbleAgo = 'yesterday';
-    else scrobbleAgo = `${Math.floor(diffDays)}d ago`;
-    showWarning = diffDays > 3;
+  if (info.allAccounts && info.allAccounts.length > 1) {
+    // Multi-account: show display name (or combined usernames), list each account below
+    document.getElementById('profile-username').textContent =
+      info.displayName || info.allAccounts.map(a => a.username).join(' + ');
+    let metaHtml = info.allAccounts.map(a => {
+      const platform = a.source === 'lastfm' ? 'Last.fm' : 'ListenBrainz';
+      const ago = _tsAgo(a.lastScrobbleTs);
+      return `<div>${a.username} · ${platform}` +
+        (a.playcount ? ` · <span>${a.playcount.toLocaleString()}</span> total scrobbles` : '') +
+        (ago ? ` · last scrobble: <span>${ago}</span>` : '') + `</div>`;
+    }).join('');
+    document.getElementById('profile-meta').innerHTML = metaHtml;
+    const maxDays = info.allAccounts.reduce((m, a) => {
+      if (!a.lastScrobbleTs) return m;
+      return Math.max(m, (Date.now() - a.lastScrobbleTs) / 86400000);
+    }, 0);
+    document.getElementById('scrobble-warning').style.display = maxDays > 3 ? 'flex' : 'none';
+  } else {
+    document.getElementById('profile-username').textContent = info.displayName || info.name || '';
+    let scrobbleAgo = _tsAgo(lastScrobbleTs);
+    const showWarning = lastScrobbleTs ? (Date.now() - lastScrobbleTs) / 86400000 > 3 : false;
+    document.getElementById('profile-meta').innerHTML =
+      `<span>${Number(info.playcount).toLocaleString()}</span> total scrobbles · Last.fm`
+      + (scrobbleAgo ? ` · last scrobble: <span>${scrobbleAgo}</span>` : '');
+    document.getElementById('scrobble-warning').style.display = showWarning ? 'flex' : 'none';
   }
-  document.getElementById('profile-meta').innerHTML =
-    `<span>${Number(info.playcount).toLocaleString()}</span> total scrobbles · Last.fm`
-    + (scrobbleAgo ? ` · last scrobble: <span>${scrobbleAgo}</span>` : '');
-  document.getElementById('scrobble-warning').style.display = showWarning ? 'flex' : 'none';
   document.getElementById('settings-panel').style.display = 'none'; // reset on new profile load
   initSettings();
 
@@ -3765,9 +3811,17 @@ function renderStampCalendar() {
 
 function shareProfile() {
   if (!currentUser) return;
-  const name = currentUser.info.name;
-  const total = Object.values(currentUser.totalPlays).reduce((a,b)=>a+b,0);
-  const text = `🖤💗 Check out my BLACKPINK streaming stats on Blinks United!\n👤 ${name} · ${total.toLocaleString()} BP scrobbles\n#BlinksUnited #BLACKPINK #StreamJUMP`;
+  const name = currentUser.info.displayName || (currentUser.info.allAccounts?.length > 1
+    ? currentUser.info.allAccounts.map(a=>a.username).join(' + ')
+    : currentUser.info.name);
+  const td = currentUser.todayCounts;
+  const todayTotal = (td.jump||0) + (td.shutdown||0) + (td.ddududu||0);
+  const text = `🖤💗 ${name} — BLACKPINK streaming stats on Blinks United!\n` +
+    `Today: ${todayTotal.toLocaleString()} campaign streams\n` +
+    `↳ JUMP: ${(td.jump||0).toLocaleString()}\n` +
+    `↳ SHUT DOWN: ${(td.shutdown||0).toLocaleString()}\n` +
+    `↳ DDU-DU DDU-DU: ${(td.ddududu||0).toLocaleString()}\n` +
+    `#BlinksUnited #BLACKPINK #StreamJUMP`;
   if (navigator.share) {
     navigator.share({ title: 'Blinks United — My Stats', text }).catch(() => {});
   } else {
