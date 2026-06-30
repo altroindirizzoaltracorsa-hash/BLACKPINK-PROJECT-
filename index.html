@@ -2072,11 +2072,20 @@ async function fetchSpotifyStreams() {
         renderHistory(t.id, merged);
         renderDaysToGoal(t.id, merged, plays, t.goal);
 
+        // Prefer the most recent daily: auto-calc wins if it's for a newer date than
+        // the API's last history entry (handles the gap=0 race where the cron ran
+        // before Spotify updated and the Redis entry hasn't caught up yet).
+        const _cmpDate = (a, b) => { // returns >0 if a is newer than b (DD/MM strings)
+          const [ad,am] = a.split('/').map(Number), [bd,bm] = b.split('/').map(Number);
+          return am !== bm ? am - bm : ad - bd;
+        };
+        const _useAuto = autoStreams !== null && autoDate &&
+          (!lastApiDay || _cmpDate(autoDate, lastApiDay.date) > 0);
         window.streamData = window.streamData || {};
         window.streamData[t.id] = {
           total:     plays,
-          daily:     lastApiDay?.streams ?? autoStreams,
-          dailyDate: lastApiDay?.date    ?? null,
+          daily:     _useAuto ? autoStreams : (lastApiDay?.streams ?? autoStreams),
+          dailyDate: _useAuto ? autoDate    : (lastApiDay?.date    ?? null),
         };
 
         // ── Update the diff label — only show diff when positive ─

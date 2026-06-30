@@ -264,25 +264,43 @@ export default async function handler(req, res) {
 
         if (total > 0 && prevTotal > 0 && total > prevTotal) {
           const gap = daysBetween(prev.date, todayLabel);
+          const dailyStreams = total - prevTotal;
 
           if (gap >= 1) {
             // gap=1: prev.date IS the streaming day (snapshot was yesterday, streams are for that day)
             // gap>1: Spotify skipped days, label as the day after the last snapshot
             const yLabel = gap === 1 ? prev.date : addDaysToLabel(prev.date, 1);
-            const dailyStreams = total - prevTotal;
             const existing = history.find(h => h.date === yLabel);
             if (!existing) {
               const entry = { date: yLabel, streams: dailyStreams };
               if (gap > 1) entry.note = `${gap}-day gap`;
               history.push(entry);
             } else {
+              // Always overwrite — corrects any partial write from a pre-update snapshot
               existing.streams = dailyStreams;
+              delete existing.note;
             }
             if (history.length > 60) history.shift();
             await redis.set(histKey, history);
+            // Advance the snapshot date only after a confirmed history write
+            await redis.set(prevKey, { total, date: todayLabel });
+          } else {
+            // gap=0: the cron ran earlier today (before Spotify updated) and set prev.date to
+            // todayLabel. Now Spotify has updated on the same calendar day. The daily belongs
+            // to the day before today (Spotify always reflects D-1 streams on day D).
+            const yLabel = addDaysToLabel(prev.date, -1);
+            const existing = history.find(h => h.date === yLabel);
+            // Only update if this value is larger — guards against clobbering a correct entry
+            // with a partial/noise write from the earlier same-day snapshot.
+            if (!existing || dailyStreams > existing.streams) {
+              if (!existing) history.push({ date: yLabel, streams: dailyStreams });
+              else existing.streams = dailyStreams;
+              if (history.length > 60) history.shift();
+              await redis.set(histKey, history);
+            }
+            // Keep prev.date unchanged so tomorrow's gap=1 fetch labels today's daily correctly.
+            await redis.set(prevKey, { total, date: prev.date });
           }
-
-          await redis.set(prevKey, { total, date: todayLabel });
         }
 
         if (total > 0 && !prev) {
