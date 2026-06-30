@@ -2389,13 +2389,27 @@ async function initMyBadgesFromAccount() {
     return;
   }
 
-  // Populate localStorage so loadProfile() / getSavedUsername() work normally
-  const lfm = data.find(a => a.source === 'lastfm');
-  const lb  = data.find(a => a.source === 'listenbrainz');
-  if (lfm) { saveUsername(lfm.source_username); const el = document.getElementById('lfm-input'); if (el) el.value = lfm.source_username; }
-  if (lb)  { saveLbUsername(lb.source_username); const el = document.getElementById('lb-input');  if (el) el.value  = lb.source_username;  }
-  if (!lfm && !lb) return;
+  // For 2+ accounts: aggregate all; for 1: use existing loadProfile
+  if (data.length >= 2) {
+    acctBreakdown = null;
+    const lfm = data.find(a => a.source === 'lastfm');
+    const lb  = data.find(a => a.source === 'listenbrainz');
+    if (lfm) { saveUsername(lfm.source_username); const el = document.getElementById('lfm-input'); if (el) el.value = lfm.source_username; }
+    if (lb)  { saveLbUsername(lb.source_username); const el = document.getElementById('lb-input');  if (el) el.value  = lb.source_username;  }
+    await loadMultiAccountProfile(data);
+    return;
+  }
 
+  // Single account
+  const acct = data[0];
+  acctBreakdown = null;
+  if (acct.source === 'lastfm') {
+    saveUsername(acct.source_username);
+    const el = document.getElementById('lfm-input'); if (el) el.value = acct.source_username;
+  } else {
+    saveLbUsername(acct.source_username);
+    const el = document.getElementById('lb-input'); if (el) el.value = acct.source_username;
+  }
   await loadProfile();
 }
 
@@ -2922,6 +2936,7 @@ function countByTrack(scrobbles) {
 // ── MAIN LOAD ────────────────────────────────────────────────
 let currentUser = null;
 let currentScrobbles = null;
+let acctBreakdown = null; // [{label, source, username, artistPlays, totalPlays, todayCounts, weekCounts, weekDayCounts}]
 
 async function loadProfile(usernameOverride, silent = false) {
   const username = usernameOverride || document.getElementById('lfm-input').value.trim();
@@ -3162,6 +3177,161 @@ async function submitFeedback() {
   }
 }
 
+
+// ── BREAKDOWN POPUP ─────────────────────────────────────────────
+function showBreakdown(type, key) {
+  if (!acctBreakdown || acctBreakdown.length < 2) return;
+  const labels = {
+    artistPlays:   'Total BP Scrobbles',
+    campaignTotal: 'Campaign Tracks (all time)',
+    'daily:jump':       'JUMP — Today',
+    'daily:shutdown':   'SHUT DOWN — Today',
+    'daily:ddududu':    'DDU-DU DDU-DU — Today',
+    'weekly:jump':      'JUMP — This Week',
+    'weekly:shutdown':  'SHUT DOWN — This Week',
+    'weekly:ddududu':   'DDU-DU DDU-DU — This Week',
+  };
+  const compositeKey = key ? `${type}:${key}` : type;
+  document.getElementById('breakdown-title').textContent = '// ' + (labels[compositeKey] || labels[type] || type.toUpperCase());
+
+  let getVal;
+  if (type === 'artistPlays')   getVal = a => a.artistPlays;
+  else if (type === 'campaignTotal') getVal = a => Object.values(a.totalPlays).reduce((s,v)=>s+v,0);
+  else if (type === 'daily')    getVal = a => a.todayCounts[key] || 0;
+  else if (type === 'weekly')   getVal = a => a.weekCounts[key]  || 0;
+  else getVal = () => 0;
+
+  const rows = document.getElementById('breakdown-rows');
+  rows.innerHTML = acctBreakdown.map(a => `
+    <div class="breakdown-row">
+      <div class="breakdown-acct">
+        ${a.username}<span class="breakdown-acct-source">${a.source === 'lastfm' ? 'Last.fm' : 'ListenBrainz'}</span>
+      </div>
+      <div class="breakdown-val">${getVal(a).toLocaleString()}</div>
+    </div>`).join('');
+
+  const grand = acctBreakdown.reduce((s,a) => s + getVal(a), 0);
+  document.getElementById('breakdown-grand-total').textContent = grand.toLocaleString();
+
+  const overlay = document.getElementById('breakdown-overlay');
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeBreakdown() {
+  document.getElementById('breakdown-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// Fetch stats for a single linked account (LFM or LB)
+async function fetchSingleAccountStats(source, username) {
+  const { from: dayFrom, to: dayTo } = getDayBounds();
+  const { from: weekFrom } = getWeekBounds();
+  const res = {
+    label: username + (source === 'lastfm' ? ' (Last.fm)' : ' (ListenBrainz)'),
+    source, username,
+    artistPlays: 0,
+    totalPlays:  { jump: 0, shutdown: 0, ddududu: 0 },
+    todayCounts: { jump: 0, shutdown: 0, ddududu: 0 },
+    weekCounts:  { jump: 0, shutdown: 0, ddududu: 0 },
+    weekDayCounts: [],
+  };
+  if (source === 'lastfm') {
+    res.artistPlays = await fetchArtistPlays(username, 'BLACKPINK');
+    for (const t of TRACKS) res.totalPlays[t.id] = await fetchTrackPlays(username, t.artist, t.track);
+    const todaySc = await fetchRecentScrobbles(username, dayFrom, dayTo);
+    Object.assign(res.todayCounts, countByTrack(todaySc));
+    for (let i = 0; i < 7; i++) {
+      const ds = weekFrom + i * 86400;
+      if (ds * 1000 > Date.now()) { res.weekDayCounts.push(null); continue; }
+      const sc = await fetchRecentScrobbles(username, ds, ds + 86400);
+      const dc = countByTrack(sc);
+      res.weekDayCounts.push(dc);
+      res.weekCounts.jump     += dc.jump     || 0;
+      res.weekCounts.shutdown += dc.shutdown || 0;
+      res.weekCounts.ddududu  += dc.ddududu  || 0;
+    }
+  } else if (source === 'listenbrainz') {
+    const [lbTotals, lbArtist, lbToday] = await Promise.all([
+      fetchLbTrackCounts(username), fetchLbArtistPlays(username),
+      fetchLbRecentListens(username, dayFrom, dayTo),
+    ]);
+    res.artistPlays = lbArtist;
+    for (const k of ['jump','shutdown','ddududu']) res.totalPlays[k] = lbTotals[k] || 0;
+    Object.assign(res.todayCounts, countLbByTrack(lbToday));
+    for (let i = 0; i < 7; i++) {
+      const ds = weekFrom + i * 86400;
+      if (ds * 1000 > Date.now()) { res.weekDayCounts.push(null); continue; }
+      const dc = countLbByTrack(await fetchLbRecentListens(username, ds, ds + 86400));
+      res.weekDayCounts.push(dc);
+      res.weekCounts.jump     += dc.jump     || 0;
+      res.weekCounts.shutdown += dc.shutdown || 0;
+      res.weekCounts.ddududu  += dc.ddududu  || 0;
+    }
+  }
+  return res;
+}
+
+// Load and aggregate multiple linked accounts, then render combined profile
+async function loadMultiAccountProfile(accounts) {
+  document.getElementById('lfm-error').style.display = 'none';
+  document.getElementById('login-panel').style.display = 'none';
+  document.getElementById('loading-panel').style.display = 'block';
+  document.getElementById('profile-panel').style.display = 'none';
+
+  const { from: weekFrom } = getWeekBounds();
+  const combined = {
+    artistPlays: 0,
+    totalPlays:  { jump: 0, shutdown: 0, ddududu: 0 },
+    todayCounts: { jump: 0, shutdown: 0, ddududu: 0 },
+    weekCounts:  { jump: 0, shutdown: 0, ddududu: 0 },
+    weekDays: null, info: null, lastScrobbleTs: null,
+  };
+  acctBreakdown = [];
+
+  for (const acct of accounts) {
+    setLoading(`Loading ${acct.source_username}…`);
+    try {
+      const stats = await fetchSingleAccountStats(acct.source, acct.source_username);
+      acctBreakdown.push(stats);
+      combined.artistPlays += stats.artistPlays;
+      for (const k of ['jump','shutdown','ddududu']) {
+        combined.totalPlays[k]  += stats.totalPlays[k]  || 0;
+        combined.todayCounts[k] += stats.todayCounts[k] || 0;
+        combined.weekCounts[k]  += stats.weekCounts[k]  || 0;
+      }
+    } catch(e) { console.warn('Multi-account fetch failed for', acct.source_username, e); }
+  }
+
+  // Combine per-day counts across all accounts for weekly table
+  const weekDays = [];
+  for (let i = 0; i < 7; i++) {
+    const ds = weekFrom + i * 86400;
+    if (ds * 1000 > Date.now()) { weekDays.push(null); continue; }
+    const day = { jump: 0, shutdown: 0, ddududu: 0 };
+    for (const a of acctBreakdown) {
+      const dc = a.weekDayCounts[i];
+      if (dc) { day.jump += dc.jump||0; day.shutdown += dc.shutdown||0; day.ddududu += dc.ddududu||0; }
+    }
+    weekDays.push({ label: getDayLabel(ds), counts: day });
+  }
+  combined.weekDays = weekDays;
+
+  // User info for display header: use first LFM account
+  const primaryLfm = accounts.find(a => a.source === 'lastfm');
+  const primaryUsername = primaryLfm?.source_username || accounts[0].source_username;
+  setLoading('Loading profile info…');
+  try { combined.info = await fetchUserInfo(primaryUsername); } catch {}
+  if (!combined.info) combined.info = { name: primaryUsername, image: [{}], playcount: 0 };
+
+  currentUser = combined;
+  saveUsername(primaryUsername);
+  await syncStampsFromServer(primaryUsername);
+  persistTodayStamp(primaryUsername, combined.todayCounts);
+  renderProfile(combined);
+  submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs).catch(()=>{});
+}
+
 function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs }) {
   document.getElementById('loading-panel').style.display = 'none';
   document.getElementById('profile-panel').style.display = 'block';
@@ -3203,13 +3373,15 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   const weeklyDone = TRACKS.every(t => (weekCounts[t.id]  || 0) >= weeklyTier1(t.id));
   const challengeIcon  = dailyDone ? '✓' : (weeklyDone ? '~' : '…');
   const challengeLabel = dailyDone ? 'Daily Complete!' : (weeklyDone ? 'Weekly Done' : 'Challenges Active');
+  const _tap = acctBreakdown && acctBreakdown.length > 1;
+  const _tc = (type, key) => _tap ? `class="summary-num tappable" onclick="showBreakdown('${type}'${key?`,'${key}'`:''})"` : 'class="summary-num"';
   document.getElementById('profile-summary').innerHTML = `
     <div class="summary-cell">
-      <div class="summary-num">${artistPlays.toLocaleString()}</div>
+      <div ${_tc('artistPlays')}>${artistPlays.toLocaleString()}</div>
       <div class="summary-lbl">Total BP Scrobbles (all time)</div>
     </div>
     <div class="summary-cell">
-      <div class="summary-num">${campaignTotal.toLocaleString()}</div>
+      <div ${_tc('campaignTotal')}>${campaignTotal.toLocaleString()}</div>
       <div class="summary-lbl">Campaign Tracks (3 songs)</div>
     </div>
     <div class="summary-cell">
@@ -3267,7 +3439,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
              <div style="font-size:0.45rem;letter-spacing:0.15em;color:rgba(245,240,240,0.2);">No badge yet</div>`;
         return `<div class="daily-card">
           <div class="daily-song-name">${t.title}</div>
-          <div class="daily-count">${count}</div>
+          <div class="${acctBreakdown&&acctBreakdown.length>1?'daily-count tappable':'daily-count'}" ${acctBreakdown&&acctBreakdown.length>1?`onclick="showBreakdown('daily','${t.id}')"`:''} >${count}</div>
           <div class="daily-target">${nextTier ? `/ ${nextTier.min} for ${nextTier.label}` : (currentBadge ? `✨ ×${currentBadge.mult} accounts!` : 'streams today')}</div>
           <div style="margin:0.6rem 0;">${badgeDisplay}</div>
           <div class="tier-dots">
@@ -3634,6 +3806,65 @@ if (lbInputEl) lbInputEl.addEventListener('keydown', e => { if (e.key === 'Enter
     transition: opacity 0.1s;
     will-change: transform;
   }
+
+  /* ── BREAKDOWN POPUP ─────────────────────────────────────── */
+  .daily-count.tappable, .summary-num.tappable {
+    cursor: pointer;
+    text-decoration: underline dotted rgba(255,0,102,0.5);
+    text-underline-offset: 4px;
+    transition: opacity .15s;
+  }
+  .daily-count.tappable:hover, .summary-num.tappable:hover { opacity: .75; }
+  .breakdown-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; align-items: flex-end; justify-content: center;
+    background: rgba(0,0,0,.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  .breakdown-sheet {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 1.25rem 1.25rem 0 0;
+    padding: 1.75rem 1.5rem 2rem;
+    width: 100%; max-width: 460px;
+    max-height: 70vh; overflow-y: auto;
+  }
+  .breakdown-handle {
+    width: 2.5rem; height: 3px;
+    background: rgba(255,255,255,.2);
+    border-radius: 2px;
+    margin: 0 auto 1.25rem;
+  }
+  .breakdown-title {
+    font-family: var(--display); font-size: .7rem;
+    letter-spacing: .2em; color: var(--pink);
+    text-transform: uppercase; margin-bottom: 1rem;
+  }
+  .breakdown-row {
+    display: flex; justify-content: space-between;
+    align-items: center; padding: .6rem 0;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    gap: 1rem;
+  }
+  .breakdown-row:last-of-type { border-bottom: none; }
+  .breakdown-acct { font-size: .88rem; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .breakdown-acct-source { font-size: .65rem; color: var(--muted); display: block; }
+  .breakdown-val { color: var(--pink); font-size: 1.1rem; font-weight: 700; flex-shrink: 0; }
+  .breakdown-total-row {
+    display: flex; justify-content: space-between;
+    align-items: center; margin-top: .75rem;
+    padding: .75rem 0 0; border-top: 1px solid var(--border);
+    color: var(--muted); font-size: .8rem;
+  }
+  .breakdown-close-btn {
+    display: block; width: 100%; margin-top: 1.25rem;
+    padding: .75rem; background: none;
+    border: 1px solid var(--border); border-radius: .5rem;
+    color: var(--text); font-family: var(--display);
+    letter-spacing: .1em; font-size: .8rem; cursor: pointer;
+  }
+  .breakdown-close-btn:hover { border-color: var(--pink); }
 </style>
 <div id="js-cursor"></div>
 <script>
@@ -5747,6 +5978,21 @@ window.addEventListener('appinstalled', () => {
 <div id="pwa-android-tip" style="display:none;position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid rgba(255,0,102,0.4);color:rgba(245,240,240,0.85);font-family:var(--mono);font-size:0.5rem;letter-spacing:0.08em;padding:0.7rem 1.2rem;z-index:99999;text-align:center;max-width:280px;width:90%;">
   Tap <strong style="color:var(--pink)">⋮</strong> then <strong style="color:var(--pink)">Add to Home screen</strong> to install the app
   <button onclick="document.getElementById('pwa-android-tip').style.display='none'" style="display:block;margin:0.5rem auto 0;background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:0.45rem;cursor:pointer;letter-spacing:0.1em;">DISMISS</button>
+</div>
+
+
+<!-- ── BREAKDOWN POPUP ──────────────────────────────────────── -->
+<div id="breakdown-overlay" class="breakdown-overlay" style="display:none" onclick="if(event.target===this)closeBreakdown()">
+  <div class="breakdown-sheet">
+    <div class="breakdown-handle"></div>
+    <div class="breakdown-title" id="breakdown-title">// Account Breakdown</div>
+    <div id="breakdown-rows"></div>
+    <div class="breakdown-total-row">
+      <span>Combined total</span>
+      <span id="breakdown-grand-total" style="color:var(--text);font-weight:700;"></span>
+    </div>
+    <button class="breakdown-close-btn" onclick="closeBreakdown()">× Close</button>
+  </div>
 </div>
 
 </body>
