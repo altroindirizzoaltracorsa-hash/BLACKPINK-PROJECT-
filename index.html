@@ -1065,7 +1065,7 @@
   <ul class="nav-links" id="mobile-nav">
     <li><a href="/" onclick="showPage('home'); closeMobileNav(); return false;" id="nav-home" class="active">Home</a></li>
     <li><a href="#songs" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100); return false;">Songs</a></li>
-    <li><a href="/badges" onclick="showPage('badges'); closeMobileNav(); return false;" id="nav-badges">My Badges</a></li>
+    <li><a href="/badges" onclick="goToMyBadges(); closeMobileNav(); return false;" id="nav-badges">My Badges</a></li>
     <li><a href="/leaderboard" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
     <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
     <li><a href="/feedback" onclick="showPage('feedback'); closeMobileNav(); return false;" id="nav-feedback">Feedback</a></li>
@@ -1490,6 +1490,7 @@
 
       <div class="login-card" style="margin-top:1.5rem;">
         <p class="login-label">Linked Accounts</p>
+        <p class="login-desc" style="margin-top:-0.25rem;">Add your Last.fm and/or ListenBrainz usernames — all streams count toward one leaderboard row.</p>
         <div id="linked-accounts-list"></div>
         <div class="input-row" style="margin-top:1rem;">
           <select id="linked-source-select" class="username-input" style="flex:0 0 140px;">
@@ -1500,6 +1501,25 @@
           <button class="btn-primary" onclick="addLinkedAccount()">+ Link</button>
         </div>
         <div id="linked-accounts-status" class="error-msg" style="display:none"></div>
+        <div id="account-goto-badges" style="display:none;margin-top:1.5rem;text-align:center;">
+          <button class="btn-primary" style="width:100%;font-size:1rem;" onclick="goToMyBadges()">→ Open My Badges</button>
+        </div>
+      </div>
+
+      <div class="login-card" style="margin-top:1.5rem;">
+        <p class="login-label">Personal Daily Goal</p>
+        <p class="login-desc" style="margin-top:-0.25rem;">How many streams do you want to hit per day? Shown on your My Badges page.</p>
+        <div class="input-row">
+          <input class="username-input" id="account-goal-input" type="number" min="1" max="99999" placeholder="e.g. 800" style="max-width:160px;" />
+          <button class="btn-primary" onclick="saveAccountGoal()">Save</button>
+        </div>
+        <div id="account-goal-status" class="error-msg" style="display:none"></div>
+      </div>
+
+      <div class="login-card" style="margin-top:1.5rem;border-color:rgba(255,50,50,0.3);">
+        <p class="login-label" style="color:#ff6666;">Danger Zone</p>
+        <p class="login-desc">Permanently delete your account and all linked accounts. Your leaderboard history stays, but it will no longer be associated with any account.</p>
+        <button class="logout-btn" onclick="deleteAccount()" style="background:rgba(255,50,50,0.15);border-color:rgba(255,50,50,0.4);color:#ff8888;">Delete Account</button>
       </div>
     </div>
 
@@ -2273,6 +2293,9 @@ function renderAccountPage(session) {
     signedIn.style.display = 'block';
     document.getElementById('account-email-display').textContent = session.user.email || session.user.id;
     document.getElementById('account-displayname-input').value = session.user.user_metadata?.display_name || '';
+    const savedGoal = localStorage.getItem('bu_s_goal');
+    const goalInput = document.getElementById('account-goal-input');
+    if (goalInput && savedGoal) goalInput.value = savedGoal;
     loadLinkedAccounts();
   } else {
     signedOut.style.display = 'block';
@@ -2321,6 +2344,92 @@ async function signOutAccount() {
   renderAccountPage(null);
 }
 
+async function saveAccountGoal() {
+  const input  = document.getElementById('account-goal-input');
+  const status = document.getElementById('account-goal-status');
+  const val    = parseInt(input.value, 10);
+  status.style.display = 'none';
+  if (!val || val < 1) {
+    status.textContent = 'Enter a number greater than 0.';
+    status.style.display = 'block';
+    return;
+  }
+  try {
+    localStorage.setItem('bu_s_goal', String(val));
+    const goalEl = document.getElementById('goal-input');
+    if (goalEl) goalEl.value = String(val);
+    status.textContent = 'Saved!';
+    status.style.color = '#4caf50';
+  } catch(e) {
+    status.textContent = 'Could not save.';
+    status.style.color = '#ff4444';
+  }
+  status.style.display = 'block';
+}
+
+async function deleteAccount() {
+  if (!sb) return;
+  if (!confirm('Delete your account? This cannot be undone. Your leaderboard data stays but will no longer be linked to any account.')) return;
+  const { error } = await sb.auth.admin?.deleteUser
+    ? (() => ({ error: null }))()   // service-role only — use RPC instead
+    : await sb.rpc('delete_account');
+  if (error) {
+    // Fallback: just sign out and remove linked accounts
+    await sb.from('linked_accounts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await sb.auth.signOut();
+    renderAccountPage(null);
+    alert('Signed out and removed linked accounts.');
+    return;
+  }
+  await sb.auth.signOut();
+  renderAccountPage(null);
+}
+
+// Auth-gated entry to My Badges — redirects to Account if not signed in,
+// then auto-loads profile from linked Supabase accounts.
+async function goToMyBadges() {
+  if (!sb) {
+    // No Supabase configured — fall back to legacy guest flow
+    showPage('badges');
+    return;
+  }
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    showPage('account');
+    return;
+  }
+  showPage('badges');
+  await initMyBadgesFromAccount();
+}
+
+// Load linked accounts from Supabase and populate the badges page.
+async function initMyBadgesFromAccount() {
+  if (!sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+
+  const { data } = await sb.from('linked_accounts')
+    .select('source, source_username')
+    .order('created_at', { ascending: true });
+
+  if (!data || data.length === 0) {
+    // No linked accounts yet — send back to Account to add one
+    showPage('account');
+    const st = document.getElementById('linked-accounts-status');
+    if (st) { st.textContent = 'Add at least one Last.fm account to load your badges.'; st.style.display = 'block'; st.style.color = '#ff9800'; }
+    return;
+  }
+
+  // Populate localStorage so loadProfile() / getSavedUsername() work normally
+  const lfm = data.find(a => a.source === 'lastfm');
+  const lb  = data.find(a => a.source === 'listenbrainz');
+  if (lfm) { saveUsername(lfm.source_username); const el = document.getElementById('lfm-input'); if (el) el.value = lfm.source_username; }
+  if (lb)  { saveLbUsername(lb.source_username); const el = document.getElementById('lb-input');  if (el) el.value  = lb.source_username;  }
+  if (!lfm && !lb) return;
+
+  await loadProfile();
+}
+
 async function loadLinkedAccounts() {
   const list = document.getElementById('linked-accounts-list');
   const { data: { session } } = await sb.auth.getSession();
@@ -2349,6 +2458,14 @@ async function loadLinkedAccounts() {
       <button class="linked-remove-btn" onclick="removeLinkedAccount('${row.id}')">Remove</button>
     </div>
   `).join('');
+
+  // Show "Open My Badges" CTA and populate localStorage for smooth nav
+  const ctaEl = document.getElementById('account-goto-badges');
+  if (ctaEl) ctaEl.style.display = 'block';
+  const lfm = data.find(r => r.source === 'lastfm');
+  const lb  = data.find(r => r.source === 'listenbrainz');
+  if (lfm) saveUsername(lfm.source_username);
+  if (lb)  saveLbUsername(lb.source_username);
 }
 
 async function addLinkedAccount() {
@@ -2383,7 +2500,9 @@ async function addLinkedAccount() {
   }
 
   usernameInput.value = '';
-  loadLinkedAccounts();
+  await loadLinkedAccounts();
+  const ctaEl = document.getElementById('account-goto-badges');
+  if (ctaEl) { ctaEl.style.display = 'block'; ctaEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
 }
 
 async function removeLinkedAccount(id) {
