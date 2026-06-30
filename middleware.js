@@ -15,10 +15,14 @@ const PAGES = {
     title: 'Feedback | BLINKS UNITED',
     description: 'Share your feedback and help us improve the BLACKPINK streaming hub.',
   },
+  '/account': {
+    title: 'My Account | BLINKS UNITED',
+    description: 'Sign in and link multiple Last.fm or ListenBrainz accounts to combine your BLACKPINK streams into one profile.',
+  },
 };
 
 export const config = {
-  matcher: ['/voting', '/leaderboard', '/badges', '/feedback'],
+  matcher: ['/voting', '/leaderboard', '/badges', '/feedback', '/account'],
 };
 
 // Lets the request fall through to the normal Vercel routing (the

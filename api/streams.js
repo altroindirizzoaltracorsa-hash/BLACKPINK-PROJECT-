@@ -117,17 +117,93 @@ export default async function handler(req, res) {
     }
   }
 
+  // Manual escape hatch for when a RapidAPI quota outage causes a day's entry
+  // to go unrecorded — lets an admin force a real (non-cached) fetch on demand
+  // instead of waiting for the next watch-window poll or the midnight cron.
+  const isForced = req.query.force === '1';
+  if (isForced) {
+    const adminSecret = process.env.ADMIN_SECRET;
+    if (!adminSecret || req.query.key !== adminSecret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
+
+  // Manual escape hatch for directly setting/correcting a single day's history
+  // entry — for when the upstream play count genuinely never moved (e.g. a
+  // multi-day Spotify reporting freeze), so there's no live diff to compute and
+  // the normal fetch-and-diff flow has nothing to write.
+  if (req.query.action === 'set-entry') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    if (!adminSecret || req.query.key !== adminSecret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const { track, date, streams, total } = req.query;
+    if (!TRACKS[track] || !date || streams === undefined) {
+      return res.status(400).json({ error: 'Requires track, date (dd/mm), and streams query params' });
+    }
+
+    // Share the same per-track lock as the regular fetch loop below — without
+    // this, a manual correction can land in the middle of a cron/visitor-poll
+    // fetch and get its write clobbered (or clobber that fetch's write).
+    const lockKey = `bp_lock_${track}`;
+    const gotLock = !!(await redis.set(lockKey, '1', { nx: true, ex: 30 }));
+    if (!gotLock) {
+      return res.status(409).json({ error: 'Track is busy updating, try again in a few seconds' });
+    }
+    try {
+      const histKey = `bp_hist_${track}`;
+      const history = (await redis.get(histKey)) || [];
+      const entry = history.find(h => h.date === date);
+      if (entry) {
+        entry.streams = Number(streams);
+      } else {
+        history.push({ date, streams: Number(streams) });
+        history.sort((a, b) => parseDateLabel(a.date) - parseDateLabel(b.date));
+      }
+      await redis.set(histKey, history);
+
+      // Optional: also correct the running total/snapshot used as the baseline
+      // for the next live diff, so a backfilled day doesn't get double-counted
+      // once real fetches resume. The asserted date always wins here, since a
+      // stale or race-written prev snapshot shouldn't override an explicit fix.
+      if (total !== undefined) {
+        const prevKey = `bp_prev_${track}`;
+        const liveKey = `bp_live_${track}`;
+        await redis.set(prevKey, { total: Number(total), date });
+        await redis.set(liveKey, { total: Number(total), ts: Date.now() });
+      }
+
+      return res.status(200).json({ ok: true, track, history });
+    } finally {
+      await redis.del(lockKey);
+    }
+  }
+
   const todayLabel = getDateLabel(new Date());
   const results    = {};
   const errors     = {};
   let fetchedLive  = false;
 
   for (const [name, trackId] of Object.entries(TRACKS)) {
+    const liveKey = `bp_live_${name}`;
+    const prevKey = `bp_prev_${name}`;
+    const histKey = `bp_hist_${name}`;
+    const errKey  = `bp_err_${name}`;
+    const lockKey = `bp_lock_${name}`;
+    let gotLock = false;
+
     try {
-      const liveKey = `bp_live_${name}`;
-      const prevKey = `bp_prev_${name}`;
-      const histKey = `bp_hist_${name}`;
-      const errKey  = `bp_err_${name}`;
+      // Overlapping requests (cron + a concurrent visitor poll, say) can both read
+      // history/prev at once and then race to write it back, silently losing
+      // whichever update saves first. A short-lived per-track lock serializes the
+      // read-modify-write so only one request updates a track at a time; a request
+      // that loses the race just returns the current cached snapshot instead.
+      gotLock = !!(await redis.set(lockKey, '1', { nx: true, ex: 30 }));
+      if (!gotLock) {
+        const [cachedOnly, histOnly] = await Promise.all([redis.get(liveKey), redis.get(histKey)]);
+        results[name] = { total: cachedOnly?.total || 0, history: histOnly || [] };
+        continue;
+      }
 
       const [cached, prev, hist] = await Promise.all([
         redis.get(liveKey),
@@ -154,7 +230,7 @@ export default async function handler(req, res) {
       // live total is recent — otherwise a fetch that straddles midnight stays
       // cached across the day boundary and the daily diff never gets written.
       const needsDailyUpdate = !prev || prev.date !== todayLabel;
-      const cacheValid = !isCron && cacheAge < getCacheTtlMs(needsDailyUpdate) && (cached?.total || 0) > 0;
+      const cacheValid = !isCron && !isForced && cacheAge < getCacheTtlMs(needsDailyUpdate) && (cached?.total || 0) > 0;
       let total;
       let updatedAt = cached?.ts || null;
       let stale = false;
@@ -228,6 +304,8 @@ export default async function handler(req, res) {
         history: history || [],
         ...(fallback?.total ? { stale: true, updatedAt: fallback?.ts ? new Date(fallback.ts).toISOString() : null } : {}),
       };
+    } finally {
+      if (gotLock) await redis.del(lockKey);
     }
   }
 

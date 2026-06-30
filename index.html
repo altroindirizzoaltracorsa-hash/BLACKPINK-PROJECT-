@@ -26,6 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
     --pink: #FF0066;
@@ -330,16 +331,6 @@
   .step-content h4 { font-size: 0.85rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--white); margin-bottom: 0.5rem; }
   .step-content p { font-family: var(--light-serif); font-size: 1.05rem; line-height: 1.7; color: rgba(245,240,240,0.55); }
 
-  .watch-section { background: var(--off-black); border-top: 1px solid rgba(255,0,102,0.15); border-bottom: 1px solid rgba(255,0,102,0.15); }
-  .watch-inner { max-width: 1200px; margin: 0 auto; }
-  .watch-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5px; background: rgba(255,0,102,0.15); }
-  .video-card { background: var(--off-black); padding-bottom: 2rem; }
-  .video-frame { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; }
-  .video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-  .video-meta { padding: 1.5rem 1.8rem 0; }
-  .video-title { font-family: var(--display); font-size: 1.4rem; letter-spacing: 0.06em; color: var(--white); margin-bottom: 0.4rem; }
-  .video-tag { font-size: 0.65rem; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase; }
-
   .follow-section { background: linear-gradient(135deg, #0d0008 0%, #080808 100%); border-top: 1px solid rgba(255,0,102,0.15); }
   .follow-inner { max-width: 1200px; margin: 0 auto; }
   .follow-columns { display: grid; grid-template-columns: repeat(3,1fr); gap: 3rem; }
@@ -446,6 +437,19 @@
   .error-msg { margin-top: 1rem; font-size: 0.7rem; letter-spacing: 0.08em; color: #ff4444; background: rgba(255,68,68,0.08); border: 1px solid rgba(255,68,68,0.2); padding: 0.6rem 1rem; }
   .lastfm-tip { margin-top: 1.2rem; font-size: 0.62rem; letter-spacing: 0.08em; color: rgba(245,240,240,0.25); line-height: 1.8; }
   .lastfm-tip a { color: var(--pink); text-decoration: none; }
+
+  .oauth-btn { display:flex; align-items:center; justify-content:center; gap:0.6rem; width:100%; padding:0.85rem 1rem; margin-bottom:0.6rem; background:var(--card2); border:1px solid var(--border); color:var(--white); font-family:var(--mono); font-size:0.72rem; letter-spacing:0.06em; cursor:pointer; transition:border-color 0.2s,background 0.2s; }
+  .oauth-btn:hover { border-color:var(--pink); background:rgba(255,0,102,0.08); }
+  .oauth-divider { display:flex; align-items:center; gap:0.8rem; margin:1.2rem 0; color:var(--muted); font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; }
+  .oauth-divider::before, .oauth-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+  .linked-row { display:flex; align-items:center; justify-content:space-between; background:var(--card2); border:1px solid var(--border); padding:0.8rem 1rem; margin-bottom:0.5rem; }
+  .linked-row-label { font-size:0.78rem; }
+  .linked-row-source { color:var(--pink); text-transform:uppercase; font-size:0.6rem; letter-spacing:0.1em; margin-right:0.6rem; }
+  .linked-remove-btn { background:transparent; border:1px solid var(--border); color:var(--muted); font-size:0.6rem; padding:0.3rem 0.6rem; cursor:pointer; }
+  .linked-remove-btn:hover { border-color:#ff4444; color:#ff4444; }
+  .account-email { font-size:0.7rem; color:var(--muted); margin-bottom:1.5rem; }
+  .logout-btn { background:transparent; border:1px solid var(--border); color:var(--muted); font-family:var(--mono); font-size:0.62rem; letter-spacing:0.1em; text-transform:uppercase; padding:0.55rem 1.1rem; cursor:pointer; transition:border-color 0.2s,color 0.2s; }
+  .logout-btn:hover { border-color:var(--pink); color:var(--pink); }
 
   .loading-wrap { text-align: center; padding: 4rem 2rem; }
   .spinner { width: 40px; height: 40px; border: 2px solid var(--border); border-top-color: var(--pink); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1.5rem; }
@@ -576,8 +580,6 @@
   .admin-ban-chip { display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,0,102,0.08); border:1px solid rgba(255,0,102,0.25); color:var(--white); font-family:var(--mono); font-size:0.55rem; letter-spacing:0.05em; padding:0.3rem 0.5rem; }
   .admin-ban-chip button { background:none; border:none; color:var(--pink); cursor:pointer; font-family:var(--mono); font-size:0.6rem; padding:0; }
   .admin-ban-chip button:hover { text-decoration:underline; }
-  .admin-stats-row { display:flex; justify-content:space-between; font-family:var(--mono); font-size:0.7rem; letter-spacing:0.04em; color:var(--white); padding:0.35rem 0; }
-  .admin-stats-sub { display:flex; justify-content:space-between; font-family:var(--mono); font-size:0.6rem; letter-spacing:0.04em; color:var(--muted); padding:0.15rem 0 0.15rem 1rem; }
 
   footer { padding: 2rem 3rem; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
   footer p { font-size: 0.55rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.3); }
@@ -659,7 +661,6 @@
     section { padding: 4rem 1.5rem; }
     .welcome-inner { grid-template-columns: 1fr; gap: 3rem; }
     .songs-grid { grid-template-columns: 1fr; }
-    .watch-grid { grid-template-columns: 1fr; }
     .howto-grid { grid-template-columns: 1fr; gap: 3rem; }
     .follow-columns { grid-template-columns: 1fr; }
     .tiers-grid { grid-template-columns: repeat(3,1fr); }
@@ -791,6 +792,57 @@
   }
 
   .stream-stale-note { margin-top: 0.4rem; font-size: 0.6rem; letter-spacing: 0.08em; color: #ffb020; }
+
+  /* ── GROUP CHAT (floating widget, lives outside .page so it persists across all pages) ── */
+  .chat-fab {
+    position: fixed; bottom: 1.4rem; right: 1.4rem; z-index: 9000;
+    width: 54px; height: 54px; border-radius: 50%;
+    background: var(--pink); border: none; color: var(--white);
+    font-size: 1.4rem; cursor: pointer; box-shadow: 0 4px 18px rgba(255,0,102,0.45);
+    display: flex; align-items: center; justify-content: center; transition: transform 0.15s;
+  }
+  .chat-fab:hover { transform: scale(1.08); }
+
+  .chat-panel {
+    position: fixed; bottom: 5.2rem; right: 1.4rem; z-index: 9000;
+    width: min(340px, calc(100vw - 2.4rem)); max-height: min(480px, 70vh);
+    background: var(--card); border: 1px solid var(--border);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .chat-panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.8rem 1rem; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    font-family: var(--display); letter-spacing: 0.08em; font-size: 0.95rem; color: var(--pink);
+  }
+  .chat-panel-close { background: transparent; border: none; color: var(--muted); font-size: 0.9rem; cursor: pointer; line-height: 1; }
+  .chat-panel-close:hover { color: var(--white); }
+
+  .chat-locked {
+    padding: 1.8rem 1.3rem; text-align: center;
+    font-family: var(--light-serif); font-style: italic; color: var(--muted); font-size: 0.85rem;
+  }
+  .chat-locked strong { color: var(--pink); font-style: normal; }
+  #chat-unlocked { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .chat-messages {
+    flex: 1; min-height: 200px; overflow-y: auto; padding: 1rem;
+    display: flex; flex-direction: column; gap: 0.7rem;
+  }
+  .chat-msg { font-size: 0.78rem; line-height: 1.45; color: var(--white); }
+  .chat-msg-user { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em; color: var(--pink); margin-right: 0.5rem; }
+  .chat-msg-time { font-size: 0.55rem; color: rgba(245,240,240,0.25); margin-left: 0.4rem; }
+  .chat-input-row { display: flex; gap: 0.6rem; padding: 0 1rem 1rem; flex-shrink: 0; }
+  .chat-input {
+    flex: 1; background: var(--card2); border: 1px solid var(--border);
+    color: var(--white); padding: 0.6rem 0.8rem; font-family: inherit; font-size: 0.8rem;
+  }
+  .chat-input:focus { outline: none; border-color: var(--pink); }
+  #chat-err { padding: 0 1rem 0.6rem; }
+  .chat-msg-del {
+    background: transparent; border: none; color: rgba(255,80,80,0.5);
+    cursor: pointer; font-size: 0.6rem; margin-left: 0.4rem;
+  }
+  .chat-msg-del:hover { color: #ff5050; }
 
   /* ── VOTE PAGE ── */
   .vote-page {
@@ -1017,7 +1069,7 @@
     <li><a href="/leaderboard" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
     <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
     <li><a href="/feedback" onclick="showPage('feedback'); closeMobileNav(); return false;" id="nav-feedback">Feedback</a></li>
-    <li><a href="#watch" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('watch').scrollIntoView({behavior:'smooth'}),100); return false;">Watch</a></li>
+    <li><a href="/account" onclick="showPage('account'); closeMobileNav(); return false;" id="nav-account">Account</a></li>
     <li><a href="#follow" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100); return false;">Follow</a></li>
   </ul>
   <button id="pwa-install-btn" onclick="triggerInstall()" style="display:none;background:transparent;border:1px solid rgba(255,0,102,0.5);color:var(--pink);font-family:var(--mono);font-size:0.48rem;letter-spacing:0.14em;text-transform:uppercase;padding:0.4rem 0.8rem;cursor:pointer;white-space:nowrap;transition:border-color 0.2s,background 0.2s;" title="Install as app">⬇ Install App</button>
@@ -1026,7 +1078,7 @@
   </button>
 </nav>
 
-<a id="playlist-banner" class="playlist-banner" href="#" target="_blank" rel="noopener" style="display:none;" onclick="track('playlist_click')">
+<a id="playlist-banner" class="playlist-banner" href="#" target="_blank" rel="noopener" style="display:none;">
   <span class="playlist-banner-label">⬡ Today's Playlist</span>
   <span id="playlist-banner-day" class="playlist-banner-day"></span>
   <span class="playlist-banner-cta">Listen on Spotify →</span>
@@ -1215,68 +1267,6 @@
     </div>
   </section>
 
-  <section>
-    <div class="howto-inner">
-      <p class="section-label">// How To Shazam</p>
-      <h2 class="section-title animate-in">Shazam<br>Smart</h2>
-      <div class="howto-grid">
-        <div class="howto-intro animate-in">
-          <p>Shazam plays a crucial role in boosting BLACKPINK's digital performance. Every Shazam helps increase visibility, discoverability, and global chart impact — right alongside your streams.</p>
-          <p>Get the official Shazam app (or the Chrome extension on desktop), then follow the steps for your device so every Shazam counts.</p>
-          <br>
-          <a href="https://orcd.co/blackpink-deadline" target="_blank" rel="noopener" class="btn-primary">Shazam BLACKPINK →</a>
-        </div>
-        <div class="animate-in">
-          <div class="challenge-step"><div class="step-num">01</div><div class="step-content"><h4>Get Shazam</h4><p>Download Shazam from the App Store (iOS) or Google Play (Android), or install the Shazam extension from the Chrome Web Store on desktop.</p></div></div>
-          <div class="challenge-step"><div class="step-num">02</div><div class="step-content"><h4>Android — Allow Permissions</h4><p>Open Shazam and allow microphone and location access (App Info → Permissions → Location → Allow while using the app), then tap the Shazam button while a track plays.</p></div></div>
-          <div class="challenge-step"><div class="step-num">03</div><div class="step-content"><h4>Android — Reset Between Shazams</h4><p>Long-press the app icon → App Info → Storage → Clear Data, then Shazam again during the same song to log another play.</p></div></div>
-          <div class="challenge-step"><div class="step-num">04</div><div class="step-content"><h4>iOS — One Per Day</h4><p>Allow microphone and location access, tap the Shazam button once, then wait 24 hours before Shazaming the same track again.</p></div></div>
-          <div class="challenge-step"><div class="step-num">05</div><div class="step-content"><h4>Desktop — Chrome Extension</h4><p>Pin the Shazam extension, click it while the song is playing, then delete the recognition from your history and repeat.</p></div></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="watch-section" id="watch">
-    <div class="watch-inner">
-      <p class="section-label">// Watch &amp; Subscribe</p>
-      <h2 class="section-title animate-in">Stream On<br>YouTube</h2>
-      <div class="watch-grid">
-
-        <div class="video-card animate-in">
-          <div class="video-frame">
-            <iframe src="https://www.youtube.com/embed/CgCVZdcKcqY" title="BLACKPINK - 뛰어(JUMP) M/V" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-          </div>
-          <div class="video-meta">
-            <h3 class="video-title">JUMP</h3>
-            <p class="video-tag">Official M/V</p>
-          </div>
-        </div>
-
-        <div class="video-card animate-in">
-          <div class="video-frame">
-            <iframe src="https://www.youtube.com/embed/POe9SOEKotk" title="BLACKPINK - 'Shut Down' M/V" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-          </div>
-          <div class="video-meta">
-            <h3 class="video-title">SHUT DOWN</h3>
-            <p class="video-tag">Official M/V</p>
-          </div>
-        </div>
-
-        <div class="video-card animate-in">
-          <div class="video-frame">
-            <iframe src="https://www.youtube.com/embed/IHNzOHi8sJs" title="BLACKPINK - '뚜두뚜두 (DDU-DU DDU-DU)' M/V" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-          </div>
-          <div class="video-meta">
-            <h3 class="video-title">DDU-DU DDU-DU</h3>
-            <p class="video-tag">Official M/V</p>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
   <section class="follow-section" id="follow">
     <div class="follow-inner">
       <p class="section-label">// Connect</p>
@@ -1458,6 +1448,65 @@
 </div><!-- end badge page -->
 
 <!-- ══════════════════════════════════════
+     ACCOUNT PAGE
+════════════════════════════════════════ -->
+<div id="page-account" class="page">
+  <div class="badge-page">
+    <div class="badge-header">
+      <p class="badge-header-eyebrow">✦ Blinks United — One Profile, Every Account ✦</p>
+      <h1 class="badge-header-title">MY<br><span>ACCOUNT</span></h1>
+      <p class="badge-header-sub">Link multiple Last.fm or ListenBrainz accounts — all your streams combine into one profile</p>
+    </div>
+
+    <div id="account-signedout-panel" class="login-wrap">
+      <div class="login-card">
+        <p class="login-label">Sign in</p>
+        <p class="login-desc">Create a free account to link more than one Last.fm (or ListenBrainz) account and combine all your streams into a single profile on the leaderboard.</p>
+        <button class="oauth-btn" onclick="signInWithProvider('google')">Continue with Google</button>
+        <button class="oauth-btn" onclick="signInWithProvider('x')">Continue with X</button>
+        <button class="oauth-btn" onclick="signInWithProvider('discord')">Continue with Discord</button>
+        <div class="oauth-divider">or</div>
+        <div class="input-row">
+          <input class="username-input" id="account-email-input" type="email" placeholder="you@email.com" />
+          <button class="btn-primary" onclick="signInWithEmail()">Send Magic Link →</button>
+        </div>
+        <div id="account-email-status" class="error-msg" style="display:none"></div>
+      </div>
+    </div>
+
+    <div id="account-signedin-panel" style="display:none;max-width:520px;margin:3rem auto;padding:0 1.5rem;">
+      <div class="login-card">
+        <p class="login-label">Signed in as</p>
+        <p class="account-email" id="account-email-display"></p>
+        <p class="login-label" style="margin-top:1.5rem;">Display name</p>
+        <p class="login-desc" style="margin-top:-0.25rem;">Shown instead of your email wherever your profile appears.</p>
+        <div class="input-row">
+          <input class="username-input" id="account-displayname-input" type="text" placeholder="Choose a display name" maxlength="40" />
+          <button class="btn-primary" onclick="saveDisplayName()">Save</button>
+        </div>
+        <div id="account-displayname-status" class="error-msg" style="display:none"></div>
+        <button class="logout-btn" onclick="signOutAccount()" style="margin-top:1rem;">← Sign Out</button>
+      </div>
+
+      <div class="login-card" style="margin-top:1.5rem;">
+        <p class="login-label">Linked Accounts</p>
+        <div id="linked-accounts-list"></div>
+        <div class="input-row" style="margin-top:1rem;">
+          <select id="linked-source-select" class="username-input" style="flex:0 0 140px;">
+            <option value="lastfm">Last.fm</option>
+            <option value="listenbrainz">ListenBrainz</option>
+          </select>
+          <input class="username-input" id="linked-username-input" type="text" placeholder="Username" />
+          <button class="btn-primary" onclick="addLinkedAccount()">+ Link</button>
+        </div>
+        <div id="linked-accounts-status" class="error-msg" style="display:none"></div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- end account page -->
+
+<!-- ══════════════════════════════════════
      LEADERBOARD PAGE
 ════════════════════════════════════════ -->
 <div id="page-leaderboard" class="page">
@@ -1586,6 +1635,33 @@
   </div>
 </div>
 
+<!-- Group chat — floating widget, visible on every page. Unlocks at
+     CHAT_THRESHOLD all-time BLACKPINK scrobbles, plus CHAT_MIN per-track floors -->
+<button id="chat-fab" class="chat-fab" onclick="toggleChatWidget()" aria-label="Open group chat">💬</button>
+
+<div id="chat-panel" class="chat-panel" style="display:none;">
+  <div class="chat-panel-header">
+    <span>✦ GROUP CHAT</span>
+    <button class="chat-panel-close" onclick="toggleChatWidget()">✕</button>
+  </div>
+
+  <div id="chat-locked" class="chat-locked" style="display:none;">
+    <p>🔒 Unlocks at <strong>10,000</strong> all-time BLACKPINK scrobbles — including at least <strong>3,000 JUMP</strong>, <strong>2,000 Shut Down</strong> &amp; <strong>1,500 DDU-DU DDU-DU</strong>.</p>
+    <p id="chat-locked-progress"></p>
+  </div>
+  <div id="chat-blocked" class="chat-locked" style="display:none;">
+    <p id="chat-blocked-msg"></p>
+  </div>
+  <div id="chat-unlocked" style="display:none;">
+    <div id="chat-messages" class="chat-messages"></div>
+    <div class="chat-input-row">
+      <input id="chat-input" class="chat-input" type="text" maxlength="500" placeholder="Say something…" onkeydown="if(event.key==='Enter')sendChatMessage()">
+      <button class="btn-primary" onclick="sendChatMessage()">Send</button>
+    </div>
+    <div id="chat-err" class="admin-err"></div>
+  </div>
+</div>
+
 <!-- Admin panel overlay -->
 <div id="admin-overlay" class="admin-overlay" style="display:none" onclick="if(event.target===this)closeAdminPanel()">
   <div class="admin-box">
@@ -1611,11 +1687,6 @@
         </div>
         <div id="admin-ban-err" class="admin-err"></div>
         <div id="admin-ban-list" class="admin-ban-list"></div>
-      </div>
-
-      <div class="admin-ban-section">
-        <div class="admin-ban-title">📊 Site stats</div>
-        <div id="admin-stats-wrap" class="admin-loading">Loading…</div>
       </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
@@ -2072,20 +2143,7 @@ function closeMobileNav() {
   document.getElementById('nav-hamburger').classList.remove('open');
 }
 
-const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback' };
-
-// Fire-and-forget analytics ping — sendBeacon survives page unload (e.g. the
-// user clicking an outbound link), with a keepalive fetch as fallback.
-function track(event, meta) {
-  try {
-    const payload = JSON.stringify(meta ? { event, meta } : { event });
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon('/api/leaderboard?action=track', new Blob([payload], { type: 'application/json' }));
-    } else {
-      fetch('/api/leaderboard?action=track', { method: 'POST', body: payload, headers: { 'Content-Type': 'application/json' }, keepalive: true }).catch(() => {});
-    }
-  } catch {}
-}
+const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', account: '/account' };
 
 // Mirrors the per-route <title> the Vercel edge middleware sets on first
 // load, so client-side navigation keeps the tab title in sync too.
@@ -2095,6 +2153,7 @@ const PAGE_TITLES = {
   leaderboard: 'Leaderboard | BLINKS UNITED',
   vote: 'Vote Now | BLINKS UNITED',
   feedback: 'Feedback | BLINKS UNITED',
+  account: 'My Account | BLINKS UNITED',
 };
 
 function pathToPage(pathname) {
@@ -2110,9 +2169,9 @@ function showPage(page, { replace = false } = {}) {
   document.getElementById('nav-' + page)?.classList.add('active');
   document.title = PAGE_TITLES[page] || PAGE_TITLES.home;
   window.scrollTo(0, 0);
-  track('pageview', page);
   if (page === 'home') initAnimations();
   if (page === 'badges') tryAutoLoad();
+  if (page === 'account') initAccountPage();
   if (page === 'leaderboard') {
     const pending = parseLbHistoryParam();
     if (pending) {
@@ -2181,6 +2240,164 @@ window.addEventListener('scroll', () => {
     else { a.style.color = ''; a.style.opacity = ''; }
   });
 });
+
+// ── ACCOUNT / SUPABASE AUTH ───────────────────────────────────
+// The anon key is meant to be public/embeddable client-side (unlike the
+// service role key used server-side elsewhere) — RLS on linked_accounts
+// is what actually keeps this safe.
+const SUPABASE_URL = 'https://esbzlrmrdvvsrsobrzfz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzYnpscm1yZHZ2c3Jzb2JyemZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODQyNDYsImV4cCI6MjA5NTY2MDI0Nn0.P3VhWYeog5CmE67VjvHboG3rP876OPjcmmtBmz1zfck';
+
+const sb = (typeof supabase !== 'undefined' && SUPABASE_URL.startsWith('http'))
+  ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+const ACCOUNT_SOURCE_LABELS = { lastfm: 'Last.fm', listenbrainz: 'ListenBrainz' };
+
+async function initAccountPage() {
+  if (!sb) {
+    document.getElementById('account-signedout-panel').innerHTML =
+      '<div class="login-card"><p class="login-label">Coming soon</p><p class="login-desc">Account linking is being set up — check back soon!</p></div>';
+    document.getElementById('account-signedin-panel').style.display = 'none';
+    return;
+  }
+  const { data: { session } } = await sb.auth.getSession();
+  renderAccountPage(session);
+}
+
+function renderAccountPage(session) {
+  const signedOut = document.getElementById('account-signedout-panel');
+  const signedIn  = document.getElementById('account-signedin-panel');
+  if (session) {
+    signedOut.style.display = 'none';
+    signedIn.style.display = 'block';
+    document.getElementById('account-email-display').textContent = session.user.email || session.user.id;
+    document.getElementById('account-displayname-input').value = session.user.user_metadata?.display_name || '';
+    loadLinkedAccounts();
+  } else {
+    signedOut.style.display = 'block';
+    signedIn.style.display = 'none';
+  }
+}
+
+async function signInWithProvider(provider) {
+  if (!sb) return;
+  await sb.auth.signInWithOAuth({ provider, options: { redirectTo: location.origin + '/account' } });
+}
+
+async function signInWithEmail() {
+  if (!sb) return;
+  const input = document.getElementById('account-email-input');
+  const status = document.getElementById('account-email-status');
+  const email = input.value.trim();
+  status.style.display = 'none';
+  if (!email) {
+    status.textContent = 'Enter an email address first.';
+    status.style.display = 'block';
+    return;
+  }
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + '/account' } });
+  status.textContent = error ? error.message : 'Check your inbox for a magic link!';
+  status.style.color = error ? '#ff4444' : '#4caf50';
+  status.style.display = 'block';
+}
+
+async function saveDisplayName() {
+  const input = document.getElementById('account-displayname-input');
+  const status = document.getElementById('account-displayname-status');
+  const display_name = input.value.trim();
+  status.style.display = 'none';
+
+  const { error } = await sb.auth.updateUser({ data: { display_name } });
+
+  status.textContent = error ? error.message : 'Saved!';
+  status.style.color = error ? '#ff4444' : '#4caf50';
+  status.style.display = 'block';
+}
+
+async function signOutAccount() {
+  if (!sb) return;
+  await sb.auth.signOut();
+  renderAccountPage(null);
+}
+
+async function loadLinkedAccounts() {
+  const list = document.getElementById('linked-accounts-list');
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+
+  const { data, error } = await sb
+    .from('linked_accounts')
+    .select('id, source, source_username')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    list.innerHTML = `<p class="login-desc">Couldn't load linked accounts: ${error.message}</p>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = '<p class="login-desc">No accounts linked yet — add your first one below.</p>';
+    return;
+  }
+
+  list.innerHTML = data.map(row => `
+    <div class="linked-row">
+      <div class="linked-row-label">
+        <span class="linked-row-source">${ACCOUNT_SOURCE_LABELS[row.source] || row.source}</span>${row.source_username}
+      </div>
+      <button class="linked-remove-btn" onclick="removeLinkedAccount('${row.id}')">Remove</button>
+    </div>
+  `).join('');
+}
+
+async function addLinkedAccount() {
+  const sourceSelect = document.getElementById('linked-source-select');
+  const usernameInput = document.getElementById('linked-username-input');
+  const status = document.getElementById('linked-accounts-status');
+  const source = sourceSelect.value;
+  const username = usernameInput.value.trim();
+
+  status.style.display = 'none';
+  if (!username) {
+    status.textContent = 'Enter a username first.';
+    status.style.display = 'block';
+    return;
+  }
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+
+  const { error } = await sb.from('linked_accounts').insert({
+    app_user_id: session.user.id,
+    source,
+    source_username: username,
+  });
+
+  if (error) {
+    status.textContent = error.code === '23505'
+      ? "That account is already linked to a profile (yours or someone else's)."
+      : error.message;
+    status.style.display = 'block';
+    return;
+  }
+
+  usernameInput.value = '';
+  loadLinkedAccounts();
+}
+
+async function removeLinkedAccount(id) {
+  await sb.from('linked_accounts').delete().eq('id', id);
+  loadLinkedAccounts();
+}
+
+if (sb) {
+  sb.auth.onAuthStateChange((_event, session) => {
+    if (document.getElementById('page-account')?.classList.contains('active')) {
+      renderAccountPage(session);
+    }
+  });
+}
 
 // ── LAST.FM CONFIG ───────────────────────────────────────────
 const LASTFM_KEY = '666b8ef2f3cc360fbc20df275fba2981';
@@ -2347,7 +2564,7 @@ function renderVoteCampaigns() {
           <ul>${c.rules.map(r => `<li>${r}</li>`).join('')}</ul>
         </div>` : ''}
         <div class="vote-card-actions">
-          <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer" onclick="track('vote_click', '${c.id}')">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
+          <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
           <button class="vote-share-btn" onclick="openVoteCard('${c.id}')">⬡ Share</button>
         </div>
       </div>`;
@@ -2426,32 +2643,11 @@ function getNextBadge(plays) {
 }
 
 // ── LAST.FM API HELPERS ───────────────────────────────────────
-// Error codes Last.fm itself flags as transient/server-side (8 = operation
-// failed/backend service failed, 11 = service offline, 16 = temporarily
-// unavailable) get retried with backoff; anything else (bad user, bad key,
-// etc.) fails fast since retrying won't change the outcome.
-const LASTFM_RETRYABLE_ERRORS = new Set([8, 11, 16]);
-
-async function lfmFetch(params, attempt = 0) {
+async function lfmFetch(params) {
   const url = LASTFM_BASE + '?' + new URLSearchParams({ ...params, api_key: LASTFM_KEY, format: 'json' });
-  let data;
-  try {
-    const r = await fetch(url, { cache: 'no-store' });
-    data = await r.json();
-  } catch (e) {
-    if (attempt < 2) {
-      await new Promise(res => setTimeout(res, 500 * 3 ** attempt));
-      return lfmFetch(params, attempt + 1);
-    }
-    throw e;
-  }
-  if (data?.error) {
-    if (LASTFM_RETRYABLE_ERRORS.has(data.error) && attempt < 2) {
-      await new Promise(res => setTimeout(res, 500 * 3 ** attempt));
-      return lfmFetch(params, attempt + 1);
-    }
-    throw new Error(`Last.fm error ${data.error}: ${data.message || ''}`);
-  }
+  const r = await fetch(url, { cache: 'no-store' });
+  const data = await r.json();
+  if (data?.error) throw new Error(`Last.fm error ${data.error}: ${data.message || ''}`);
   return data;
 }
 
@@ -2710,7 +2906,6 @@ async function loadProfile(usernameOverride, silent = false) {
           todayCounts[k] += lbTodayCounts[k] || 0;
         }
         artistPlays += lbArtist;
-        // LB weekly counts (day-by-day to match Last.fm approach)
         const { from: lbWeekFrom } = getWeekBounds();
         for (let i = 0; i < 7; i++) {
           const ds = lbWeekFrom + i * 86400;
@@ -3281,7 +3476,6 @@ function renderStampCalendar() {
 
 function shareProfile() {
   if (!currentUser) return;
-  track('share_click', 'profile');
   const name = currentUser.info.name;
   const total = Object.values(currentUser.totalPlays).reduce((a,b)=>a+b,0);
   const text = `🖤💗 Check out my BLACKPINK streaming stats on Blinks United!\n👤 ${name} · ${total.toLocaleString()} BP scrobbles\n#BlinksUnited #BLACKPINK #StreamJUMP`;
@@ -3429,10 +3623,13 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
 // ── Render leaderboard table ──────────────────────────────────
 // leaderStreak is only tracked against the Overall · All Tracks ranking
 // (api/leaderboard.js / api/cron-scrobbles.js updateLeaderStreak()), so the
-// badge only makes sense on that specific rank-1 row, on the live view.
+// badge only makes sense on that rank-1 row, on the live view — but it's
+// shown on both the Overall and Daily tabs since the Daily #1 is often the
+// same person holding the Overall lead.
 function leaderStreakBadge(rankIndex, username) {
   const streak = lbData?.leaderStreak;
-  if (lbHistorySnapshot || rankIndex !== 0 || lbPeriod !== 'overall' || lbSong !== 'all') return '';
+  if (lbHistorySnapshot || rankIndex !== 0 || lbSong !== 'all') return '';
+  if (lbPeriod !== 'overall' && lbPeriod !== 'daily') return '';
   if (!streak || streak.username.toLowerCase() !== username.toLowerCase()) return '';
   const days = Math.floor((Date.now() - new Date(streak.since).getTime()) / 86400000);
   const label = days <= 0 ? 'New leader today' : `🔥 ${days} day${days === 1 ? '' : 's'} in the lead`;
@@ -3541,6 +3738,180 @@ async function refreshLeaderboard(force = false) {
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+// GROUP CHAT — unlocks once a user's all-time BLACKPINK scrobble count
+// crosses CHAT_THRESHOLD AND each per-track floor in CHAT_MIN is met.
+// Mirrors api/leaderboard.js's CHAT_UNLOCK_THRESHOLD / CHAT_UNLOCK_MIN.
+// Identity: the first browser to use a username claims a private
+// secret for it (server-issued, stored in localStorage), so other
+// browsers can no longer post chat messages under that name.
+// ══════════════════════════════════════════════════════════════
+const CHAT_THRESHOLD     = 10000;
+const CHAT_MIN           = { jump: 3000, shutdown: 2000, ddududu: 1500 };
+// Grandfathered in regardless of scrobble count — the fanbase's own account, not a listener. Mirrors api/leaderboard.js's CHAT_UNLOCK_EXEMPT.
+const CHAT_EXEMPT        = ['blinksunited'];
+const CHAT_SECRET_PREFIX = 'bu_chat_secret_';
+let   chatPollTimer      = null;
+let   chatPanelOpen      = false;
+
+function toggleChatWidget() {
+  const panel = document.getElementById('chat-panel');
+  if (!panel) return;
+  chatPanelOpen = !chatPanelOpen;
+  panel.style.display = chatPanelOpen ? 'flex' : 'none';
+  if (chatPanelOpen) refreshChatAccess();
+  else stopChatPolling();
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+function getChatSecret(username) {
+  try { return localStorage.getItem(CHAT_SECRET_PREFIX + username.toLowerCase()); } catch { return null; }
+}
+function setChatSecret(username, secret) {
+  try { localStorage.setItem(CHAT_SECRET_PREFIX + username.toLowerCase(), secret); } catch {}
+}
+
+function startChatPolling() {
+  if (chatPollTimer) return;
+  chatPollTimer = setInterval(loadChatMessages, 8000);
+}
+function stopChatPolling() {
+  if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; }
+}
+
+async function refreshChatAccess() {
+  const lockedEl   = document.getElementById('chat-locked');
+  const blockedEl  = document.getElementById('chat-blocked');
+  const unlockedEl = document.getElementById('chat-unlocked');
+  if (!lockedEl || !blockedEl || !unlockedEl) return;
+  lockedEl.style.display = blockedEl.style.display = unlockedEl.style.display = 'none';
+  stopChatPolling();
+
+  const username = getSavedUsername();
+  if (!username) {
+    lockedEl.style.display = 'block';
+    document.getElementById('chat-locked-progress').textContent = 'Log into My Badges to check your progress.';
+    return;
+  }
+
+  if (!lbData) { try { await fetchLbData(); } catch { return; } }
+  const entry  = lbData?.users?.[username.toLowerCase()];
+  const scores = entry?.scores || {};
+  const meetsThreshold = CHAT_EXEMPT.includes(username.toLowerCase()) || (
+    (scores.overall_artist || 0) >= CHAT_THRESHOLD
+    && (scores.overall_jump || 0) >= CHAT_MIN.jump
+    && (scores.overall_shutdown || 0) >= CHAT_MIN.shutdown
+    && (scores.overall_ddududu || 0) >= CHAT_MIN.ddududu
+  );
+
+  if (!meetsThreshold) {
+    lockedEl.style.display = 'block';
+    document.getElementById('chat-locked-progress').innerHTML = [
+      ['Total BP (all time)', scores.overall_artist || 0,   CHAT_THRESHOLD],
+      ['JUMP',                scores.overall_jump || 0,      CHAT_MIN.jump],
+      ['Shut Down',           scores.overall_shutdown || 0,  CHAT_MIN.shutdown],
+      ['DDU-DU DDU-DU',       scores.overall_ddududu || 0,   CHAT_MIN.ddududu],
+    ].map(([label, have, need]) =>
+      `${have >= need ? '✅' : '▫️'} ${label}: ${have.toLocaleString()} / ${need.toLocaleString()}`
+    ).join('<br>');
+    return;
+  }
+
+  let secret = getChatSecret(username);
+  if (!secret) {
+    try {
+      const r = await fetch('/api/leaderboard?action=chat-claim', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username }),
+      });
+      const d = await r.json();
+      if (r.ok) {
+        secret = d.secret;
+        setChatSecret(username, secret);
+      } else if (r.status === 409) {
+        blockedEl.style.display = 'block';
+        document.getElementById('chat-blocked-msg').textContent = 'This username is already linked to chat from another device.';
+        return;
+      } else {
+        blockedEl.style.display = 'block';
+        document.getElementById('chat-blocked-msg').textContent = d.error || 'Chat unavailable right now.';
+        return;
+      }
+    } catch {
+      blockedEl.style.display = 'block';
+      document.getElementById('chat-blocked-msg').textContent = 'Could not connect — try again later.';
+      return;
+    }
+  }
+
+  unlockedEl.style.display = 'flex';
+  loadChatMessages();
+  startChatPolling();
+}
+
+async function loadChatMessages() {
+  const wrap = document.getElementById('chat-messages');
+  if (!wrap) return;
+  try {
+    const r = await fetch('/api/leaderboard?action=chat-messages', { cache: 'no-store' });
+    const d = await r.json();
+    if (!r.ok) return;
+    const adminKey = localStorage.getItem(ADMIN_KEY_LS);
+    const wasAtBottom = wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 20;
+    wrap.innerHTML = (d.messages || []).map(m => `
+      <div class="chat-msg" data-id="${m.id}">
+        <span class="chat-msg-user">${escapeHtml(m.username)}</span>${escapeHtml(m.message)}
+        <span class="chat-msg-time">${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
+        ${adminKey ? `<button class="chat-msg-del" onclick="deleteChatMessage(${m.id})">✕</button>` : ''}
+      </div>
+    `).join('') || '<span style="color:var(--muted);font-size:0.7rem;">No messages yet — say hi!</span>';
+    if (wasAtBottom) wrap.scrollTop = wrap.scrollHeight;
+  } catch {}
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const errEl = document.getElementById('chat-err');
+  const text  = input.value.trim();
+  errEl.textContent = '';
+  if (!text) return;
+
+  const username = getSavedUsername();
+  const secret   = getChatSecret(username);
+  if (!username || !secret) return;
+
+  input.disabled = true;
+  try {
+    const r = await fetch('/api/leaderboard?action=chat-send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, secret, message: text }),
+    });
+    const d = await r.json();
+    if (!r.ok) { errEl.textContent = d.error || 'Could not send.'; return; }
+    input.value = '';
+    loadChatMessages();
+  } catch {
+    errEl.textContent = 'Request failed — check your connection.';
+  } finally {
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+async function deleteChatMessage(id) {
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  if (!key) return;
+  try {
+    await fetch(`/api/leaderboard?action=chat-delete&key=${encodeURIComponent(key)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    loadChatMessages();
+  } catch {}
+}
+
 function switchLbPeriod(period, btn) {
   lbPeriod = period;
   document.querySelectorAll('.lb-tab').forEach(b => b.classList.remove('active'));
@@ -3561,7 +3932,7 @@ async function populateLbHistorySelect() {
   sel.innerHTML = '<option value="">📅 History…</option>';
   try {
     const res = await fetch(`/api/leaderboard-archive?period=${lbPeriod}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`leaderboard-archive ${res.status}`);
+    if (!res.ok) return;
     const { items } = await res.json();
     for (const it of (items || [])) {
       const opt = document.createElement('option');
@@ -3569,13 +3940,7 @@ async function populateLbHistorySelect() {
       opt.textContent = it.label;
       sel.appendChild(opt);
     }
-  } catch (e) {
-    console.error('populateLbHistorySelect failed:', e);
-    const opt = document.createElement('option');
-    opt.value = ''; opt.disabled = true;
-    opt.textContent = '⚠ History unavailable';
-    sel.appendChild(opt);
-  }
+  } catch {}
 }
 
 function onLbHistoryPick(key) {
@@ -3649,7 +4014,6 @@ function openAdminPanel() {
     document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
     loadAdminRanking(saved);
     loadBannedUsers(saved);
-    loadStats(saved);
   } else {
     document.getElementById('admin-auth').style.display = 'block';
     document.getElementById('admin-content').style.display = 'none';
@@ -3681,46 +4045,9 @@ async function submitAdminKey() {
     document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
     renderAdminTable(d);
     loadBannedUsers(key);
-    loadStats(key);
   } catch(e) {
     errEl.textContent = 'Request failed — check your connection.';
   }
-}
-
-// ── Site stats (pageviews, playlist/share/vote-link clicks) ───
-async function loadStats(key) {
-  const k = key || localStorage.getItem(ADMIN_KEY_LS);
-  const wrap = document.getElementById('admin-stats-wrap');
-  if (!k || !wrap) return;
-  wrap.textContent = 'Loading…';
-  try {
-    const r = await fetch(`/api/leaderboard?action=stats&key=${encodeURIComponent(k)}`, { cache: 'no-store' });
-    if (!r.ok) { wrap.textContent = `Server error (${r.status}).`; return; }
-    const { counts } = await r.json();
-    renderStats(counts || {});
-  } catch {
-    wrap.textContent = 'Request failed — check your connection.';
-  }
-}
-
-function renderStats(counts) {
-  const wrap = document.getElementById('admin-stats-wrap');
-  if (!wrap) return;
-  const num = n => parseInt(n || '0', 10).toLocaleString();
-  const breakdown = prefix => Object.entries(counts)
-    .filter(([k]) => k.startsWith(prefix + ':'))
-    .sort((a, b) => b[1] - a[1])
-    .map(([k, v]) => `<div class="admin-stats-sub"><span>${k.slice(prefix.length + 1)}</span><span>${num(v)}</span></div>`)
-    .join('');
-  wrap.innerHTML = `
-    <div class="admin-stats-row"><span>Pageviews</span><span>${num(counts.pageview)}</span></div>
-    ${breakdown('pageview')}
-    <div class="admin-stats-row"><span>Playlist clicks</span><span>${num(counts.playlist_click)}</span></div>
-    <div class="admin-stats-row"><span>Card shares</span><span>${num(counts.share_click)}</span></div>
-    ${breakdown('share_click')}
-    <div class="admin-stats-row"><span>Vote link clicks</span><span>${num(counts.vote_click)}</span></div>
-    ${breakdown('vote_click')}
-  `;
 }
 
 // ── Ban list (removes a user from the leaderboard and blocks re-registration) ──
@@ -4536,7 +4863,6 @@ function renderLbCard(logo) {
 // ── SHARE TO SOCIAL ──────────────────────────────────────────────────────────
 async function shareCard() {
   if (!cardCanvas) return;
-  track('share_click', _cardType || 'card');
   const title = document.getElementById('card-box-label').textContent;
   let link = 'blackpink-project.vercel.app';
   let rulesText = '';
@@ -5238,7 +5564,6 @@ function downloadMilestoneCard() {
 }
 
 async function shareMilestoneCard() {
-  track('share_click', 'milestone');
   const canvas = document.getElementById('ms-canvas');
   const trackName = document.getElementById('ms-track-name').textContent;
   const msNum = document.getElementById('ms-number').textContent;

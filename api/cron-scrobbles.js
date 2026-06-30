@@ -2,10 +2,10 @@ import { Redis } from '@upstash/redis';
 import { createClient } from '@supabase/supabase-js';
 
 const redis = Redis.fromEnv();
-const LASTFM_KEY  = '666b8ef2f3cc360fbc20df275fba2981';
+const LASTFM_KEY = '666b8ef2f3cc360fbc20df275fba2981';
 const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
 const LB_BASE     = 'https://api.listenbrainz.org/1/';
-const LB_KEY      = 'bu_leaderboard_v1';
+const LB_KEY = 'bu_leaderboard_v1';
 
 function supabase() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return null;
@@ -181,9 +181,6 @@ async function lbFetch(path, params = {}) {
   return r.json();
 }
 
-// Returns campaign track play counts from the user's top-100 all-time recordings.
-// Tracks outside the top 100 will show 0 — acceptable for users active enough
-// to appear on the leaderboard.
 async function fetchLbTrackCounts(username) {
   const counts = { jump: 0, shutdown: 0, ddududu: 0 };
   const d = await lbFetch(`stats/user/${encodeURIComponent(username)}/recordings`, { count: 100, range: 'all_time' });
@@ -224,8 +221,8 @@ async function fetchLbRecentListens(username, from, to) {
 function countLbByTrack(listens) {
   const counts = { jump: 0, shutdown: 0, ddududu: 0 };
   for (const l of listens) {
-    const name   = (l.track_metadata?.track_name   || '').toLowerCase().trim();
-    const artist = (l.track_metadata?.artist_name  || '').toLowerCase();
+    const name   = (l.track_metadata?.track_name  || '').toLowerCase().trim();
+    const artist = (l.track_metadata?.artist_name || '').toLowerCase();
     if (!artist.includes('blackpink')) continue;
     if (name === 'jump')               counts.jump++;
     else if (name === 'shut down')     counts.shutdown++;
@@ -234,143 +231,105 @@ function countLbByTrack(listens) {
   return counts;
 }
 
-// ── Per-account score fetchers ────────────────────────────────
-
-async function fetchLastFmScores(username, dayFrom, dayTo, weekFrom, prevLastScrobbleAt) {
-  const [artistPlays, jumpPlays, shutdownPlays, ddududuPlays, todayScrobbles] =
-    await Promise.all([
-      fetchArtistPlays(username, 'BLACKPINK'),
-      fetchTrackPlays(username, 'BLACKPINK', 'JUMP'),
-      fetchTrackPlays(username, 'BLACKPINK', 'Shut Down'),
-      fetchTrackPlays(username, 'BLACKPINK', 'DDU-DU DDU-DU'),
-      fetchRecentScrobbles(username, dayFrom, dayTo),
-    ]);
-
-  const totalPlays  = { jump: jumpPlays, shutdown: shutdownPlays, ddududu: ddududuPlays };
-  const todayCounts = countByTrack(todayScrobbles);
-
-  const weekCounts = { jump: 0, shutdown: 0, ddududu: 0 };
-  let lastScrobbleAt = prevLastScrobbleAt || null;
-
-  for (let i = 0; i < 7; i++) {
-    const dayStart = weekFrom + i * 86400;
-    const dayEnd   = dayStart + 86400;
-    if (dayStart > Math.floor(Date.now() / 1000)) break;
-    const daySc = await fetchRecentScrobbles(username, dayStart, dayEnd);
-    const dc = countByTrack(daySc);
-    weekCounts.jump     += dc.jump     || 0;
-    weekCounts.shutdown += dc.shutdown || 0;
-    weekCounts.ddududu  += dc.ddududu  || 0;
-    const bpDay = daySc.filter(s =>
-      (s.artist?.['#text'] || '').toLowerCase().includes('blackpink') && s.date?.uts
-    );
-    if (bpDay.length) {
-      const ts = new Date(parseInt(bpDay[0].date.uts) * 1000).toISOString();
-      if (!lastScrobbleAt || ts > lastScrobbleAt) lastScrobbleAt = ts;
-    }
-  }
-
-  return { totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleAt };
-}
-
-async function fetchLbScores(username, dayFrom, dayTo, weekFrom) {
-  const [totalPlays, artistPlays, todayListens] = await Promise.all([
-    fetchLbTrackCounts(username),
-    fetchLbArtistPlays(username),
-    fetchLbRecentListens(username, dayFrom, dayTo),
-  ]);
-
-  const todayCounts = countLbByTrack(todayListens);
-  const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0 };
-
-  for (let i = 0; i < 7; i++) {
-    const dayStart = weekFrom + i * 86400;
-    const dayEnd   = dayStart + 86400;
-    if (dayStart > Math.floor(Date.now() / 1000)) break;
-    const dayListens = await fetchLbRecentListens(username, dayStart, dayEnd);
-    const dc = countLbByTrack(dayListens);
-    weekCounts.jump     += dc.jump     || 0;
-    weekCounts.shutdown += dc.shutdown || 0;
-    weekCounts.ddududu  += dc.ddududu  || 0;
-  }
-
-  return { totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleAt: null };
-}
-
-// Same ranking + tie-break as the client's Overall · All Tracks leaderboard
-// view, so the tracked leader always matches whoever is actually shown as #1.
-function computeLeader(users) {
-  const entries = Object.values(users || {}).map(u => ({
-    username: u.displayName || u.username,
-    score: u.scores?.overall_all || 0,
-  }));
-  entries.sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
-  return entries[0]?.score > 0 ? entries[0] : null;
-}
-
-function updateLeaderStreak(data) {
-  const leader = computeLeader(data.users);
-  if (!leader) return;
-  if (data.leaderStreak?.username?.toLowerCase() !== leader.username.toLowerCase()) {
-    data.leaderStreak = { username: leader.username, since: new Date().toISOString() };
-  }
-}
-
 // ── Refresh one user's scores ─────────────────────────────────
-// Supports both the old format (entry.username = Last.fm username, no
-// linkedAccounts) and the new format (entry.linkedAccounts = [{type,username}]).
 async function refreshUser(entry, sb) {
   const linkedAccounts = entry.linkedAccounts || [{ type: 'lastfm', username: entry.username }];
   const displayName    = entry.displayName    || entry.username;
 
-  const { from: dayFrom, to: dayTo } = getDayBounds();
-  const { from: weekFrom }           = getWeekBounds();
+  const { from: dayFrom, to: dayTo }   = getDayBounds();
+  const { from: weekFrom, to: weekTo } = getWeekBounds();
 
   const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0 };
+  let artistPlays   = 0;
   const todayCounts = { jump: 0, shutdown: 0, ddududu: 0 };
   const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0 };
-  let artistPlays   = 0;
   let lastScrobbleAt = entry.lastScrobbleAt || null;
 
-  for (const account of linkedAccounts) {
-    try {
-      let scores;
-      if (account.type === 'lastfm') {
-        scores = await fetchLastFmScores(account.username, dayFrom, dayTo, weekFrom, lastScrobbleAt);
-        if (scores.lastScrobbleAt && (!lastScrobbleAt || scores.lastScrobbleAt > lastScrobbleAt)) {
-          lastScrobbleAt = scores.lastScrobbleAt;
+  // Primary Last.fm account (first one, for stamps)
+  const lfmAccount = linkedAccounts.find(a => a.type === 'lastfm');
+
+  for (const acct of linkedAccounts) {
+    if (acct.type === 'lastfm') {
+      const u = acct.username;
+      const [ap, jumpPlays, shutdownPlays, ddududuPlays, todaySc] = await Promise.all([
+        fetchArtistPlays(u, 'BLACKPINK'),
+        fetchTrackPlays(u, 'BLACKPINK', 'JUMP'),
+        fetchTrackPlays(u, 'BLACKPINK', 'Shut Down'),
+        fetchTrackPlays(u, 'BLACKPINK', 'DDU-DU DDU-DU'),
+        fetchRecentScrobbles(u, dayFrom, dayTo),
+      ]);
+      artistPlays        += ap;
+      totalPlays.jump    += jumpPlays;
+      totalPlays.shutdown += shutdownPlays;
+      totalPlays.ddududu += ddududuPlays;
+      const dc = countByTrack(todaySc);
+      todayCounts.jump     += dc.jump     || 0;
+      todayCounts.shutdown += dc.shutdown || 0;
+      todayCounts.ddududu  += dc.ddududu  || 0;
+
+      // Weekly day-by-day
+      for (let i = 0; i < 7; i++) {
+        const dayStart = weekFrom + i * 86400;
+        if (dayStart > Math.floor(Date.now() / 1000)) break;
+        const daySc = await fetchRecentScrobbles(u, dayStart, dayStart + 86400);
+        const wdc = countByTrack(daySc);
+        weekCounts.jump     += wdc.jump     || 0;
+        weekCounts.shutdown += wdc.shutdown || 0;
+        weekCounts.ddududu  += wdc.ddududu  || 0;
+        const bpDay = daySc.filter(s =>
+          (s.artist?.['#text'] || '').toLowerCase().includes('blackpink') && s.date?.uts
+        );
+        if (bpDay.length) {
+          const ts = new Date(parseInt(bpDay[0].date.uts) * 1000).toISOString();
+          if (!lastScrobbleAt || ts > lastScrobbleAt) lastScrobbleAt = ts;
         }
-      } else if (account.type === 'listenbrainz') {
-        scores = await fetchLbScores(account.username, dayFrom, dayTo, weekFrom);
-      } else {
-        continue;
       }
-      for (const k of ['jump', 'shutdown', 'ddududu']) {
-        totalPlays[k]  += scores.totalPlays[k]  || 0;
-        todayCounts[k] += scores.todayCounts[k] || 0;
-        weekCounts[k]  += scores.weekCounts[k]  || 0;
+    } else if (acct.type === 'listenbrainz') {
+      const u = acct.username;
+      try {
+        const [lbTotals, lbAp, lbToday] = await Promise.all([
+          fetchLbTrackCounts(u),
+          fetchLbArtistPlays(u),
+          fetchLbRecentListens(u, dayFrom, dayTo),
+        ]);
+        artistPlays         += lbAp;
+        totalPlays.jump     += lbTotals.jump     || 0;
+        totalPlays.shutdown += lbTotals.shutdown || 0;
+        totalPlays.ddududu  += lbTotals.ddududu  || 0;
+        const lbTodayCounts = countLbByTrack(lbToday);
+        todayCounts.jump     += lbTodayCounts.jump     || 0;
+        todayCounts.shutdown += lbTodayCounts.shutdown || 0;
+        todayCounts.ddududu  += lbTodayCounts.ddududu  || 0;
+
+        // Weekly day-by-day
+        for (let i = 0; i < 7; i++) {
+          const dayStart = weekFrom + i * 86400;
+          if (dayStart * 1000 > Date.now()) break;
+          const dc = countLbByTrack(await fetchLbRecentListens(u, dayStart, dayStart + 86400));
+          weekCounts.jump     += dc.jump     || 0;
+          weekCounts.shutdown += dc.shutdown || 0;
+          weekCounts.ddududu  += dc.ddududu  || 0;
+        }
+      } catch (e) {
+        console.warn(`LB fetch failed for ${u}:`, e.message);
       }
-      artistPlays += scores.artistPlays || 0;
-    } catch (e) {
-      console.error(`refresh ${account.type}:${account.username}:`, e.message);
     }
   }
 
-  // Persist stamps for the primary Last.fm account (stamps are keyed by LFM username in Supabase)
-  const primaryLfm = linkedAccounts.find(a => a.type === 'lastfm');
-  if (primaryLfm) {
+  // Keep Stamp Archive fresh (keyed by primary Last.fm username)
+  if (lfmAccount) {
     try {
-      await persistStamp(sb, primaryLfm.username, dayKey(dayFrom), buildTodayStamps(todayCounts));
+      await persistStamp(sb, lfmAccount.username, dayKey(dayFrom), buildTodayStamps(todayCounts));
     } catch {}
   }
 
+  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu;
   const todayLabel     = ddmm(new Date(dayFrom * 1000));
   const weekStartLabel = ddmm(new Date(weekFrom * 1000));
-  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu;
 
   return {
-    displayName,
     username:      displayName,
+    displayName,
     linkedAccounts,
     avatar:        entry.avatar,
     updatedAt:     new Date().toISOString(),
@@ -395,6 +354,20 @@ async function refreshUser(entry, sb) {
   };
 }
 
+function computeLeader(users) {
+  const entries = Object.values(users || {}).map(u => ({ username: u.displayName || u.username, score: u.scores?.overall_all || 0 }));
+  entries.sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
+  return entries[0]?.score > 0 ? entries[0] : null;
+}
+
+function updateLeaderStreak(data) {
+  const leader = computeLeader(data.users);
+  if (!leader) return;
+  if (data.leaderStreak?.username?.toLowerCase() !== leader.username.toLowerCase()) {
+    data.leaderStreak = { username: leader.username, since: new Date().toISOString() };
+  }
+}
+
 // ── Handler ───────────────────────────────────────────────────
 export default async function handler(req, res) {
   const secret = process.env.CRON_SECRET;
@@ -407,9 +380,6 @@ export default async function handler(req, res) {
 
   const sb = supabase();
 
-  // Archive the closing day/week's final standings before anyone gets
-  // refreshed below, since refreshUser() overwrites daily_*/weekly_* with the
-  // new period's (zeroed) counts the moment the Italy day/week boundary passes.
   const { from: dayFrom }  = getDayBounds();
   const { from: weekFrom } = getWeekBounds();
   const todayKey            = dayKey(dayFrom);
@@ -428,20 +398,24 @@ export default async function handler(req, res) {
   data.currentWeekKey   = thisWeekKey;
   data.currentWeekLabel = `Week of ${fullDateLabel(new Date(weekFrom * 1000))}`;
 
-  // Drop any banned usernames that linger in data.users
   for (const u of data.banned || []) delete data.users[u];
 
   const users   = Object.values(data.users);
   const ok      = [];
   const failed  = [];
 
-  // Process 3 users at a time to stay within Last.fm rate limits
   const batchSize = 3;
   for (let i = 0; i < users.length; i += batchSize) {
     await Promise.all(users.slice(i, i + batchSize).map(async entry => {
       try {
-        data.users[entry.username.toLowerCase()] = await refreshUser(entry, sb);
-        ok.push(entry.username);
+        const refreshed = await refreshUser(entry, sb);
+        // Key by displayName (lowercased) so linked-account rows consolidate
+        data.users[refreshed.displayName.toLowerCase()] = refreshed;
+        // Remove the old key if the display name differs from the raw username
+        if (entry.username.toLowerCase() !== refreshed.displayName.toLowerCase()) {
+          delete data.users[entry.username.toLowerCase()];
+        }
+        ok.push(refreshed.displayName);
       } catch (e) {
         failed.push({ username: entry.username, error: e.message });
       }
