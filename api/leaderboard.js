@@ -21,7 +21,7 @@ function safeMeta(meta) {
 // Same ranking + tie-break as the client's Overall · All Tracks leaderboard
 // view, so the tracked leader always matches whoever is actually shown as #1.
 function computeLeader(users) {
-  const entries = Object.values(users || {}).map(u => ({ username: u.username, score: u.scores?.overall_all || 0 }));
+  const entries = Object.values(users || {}).map(u => ({ username: u.displayName || u.username, score: u.scores?.overall_all || 0 }));
   entries.sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
   return entries[0]?.score > 0 ? entries[0] : null;
 }
@@ -127,7 +127,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid JSON' });
     }
 
-    const { username, scores, avatar, updatedAt, lastScrobbleAt } = body || {};
+    const { username, scores, avatar, updatedAt, lastScrobbleAt, displayName, linkedAccounts } = body || {};
     if (!username || !scores) return res.status(400).json({ error: 'username and scores required' });
 
     // Read current data, merge user entry, write back
@@ -138,7 +138,15 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'This account is blocked from the leaderboard' });
     }
 
-    data.users[username.toLowerCase()] = { username, avatar, scores, updatedAt, lastScrobbleAt };
+    data.users[username.toLowerCase()] = {
+      username,
+      displayName: displayName || username,
+      linkedAccounts: linkedAccounts || [{ type: 'lastfm', username }],
+      avatar,
+      scores,
+      updatedAt,
+      lastScrobbleAt,
+    };
     data.lastUpdated = new Date().toISOString();
     updateLeaderStreak(data);
     await redis.set(LB_KEY, data);
@@ -149,4 +157,3 @@ export default async function handler(req, res) {
 
   return res.status(405).json({ error: 'Method not allowed' });
 }
-
