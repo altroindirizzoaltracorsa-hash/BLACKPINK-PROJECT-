@@ -1357,6 +1357,10 @@
           <button class="btn-primary" onclick="loadProfile()">Check My Badges →</button>
         </div>
         <div id="lfm-error" class="error-msg" style="display:none"></div>
+    <div class="input-row" style="margin-top:0.6rem">
+      <input class="username-input" id="lb-input" type="text" placeholder="ListenBrainz username (optional)" style="font-size:0.9em;opacity:0.85;" oninput="saveLbUsername(this.value.trim())" />
+    </div>
+    <p class="lastfm-tip" style="margin-top:0.4rem">Link a <strong>ListenBrainz</strong> account to combine its scrobbles with Last.fm.</p>
         <p class="lastfm-tip">Don't have Last.fm? <a href="https://www.last.fm/join" target="_blank" onclick=\"window.open('https://www.last.fm/join','_blank','noopener')\">Sign up free</a> and connect Spotify at <a href="https://www.last.fm/settings/applications" target="_blank" onclick=\"window.open('https://www.last.fm/settings/applications','_blank','noopener')\">last.fm/settings/applications</a> so streams are tracked automatically.</p>
       </div>
     </div>
@@ -2181,6 +2185,7 @@ window.addEventListener('scroll', () => {
 // ── LAST.FM CONFIG ───────────────────────────────────────────
 const LASTFM_KEY = '666b8ef2f3cc360fbc20df275fba2981';
 const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
+const LB_BASE     = 'https://api.listenbrainz.org/1/';
 
 const TRACKS = [
   { id: 'jump',     title: 'JUMP',          artist: 'BLACKPINK', track: 'JUMP',          year: '2025', era: 'DEADLINE',  spotify: 'https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY' },
@@ -2450,6 +2455,60 @@ async function lfmFetch(params, attempt = 0) {
   return data;
 }
 
+async function lbFetch(path, params = {}) {
+  const qs = Object.keys(params).length ? '?' + new URLSearchParams(params) : '';
+  const r = await fetch(LB_BASE + path + qs, { cache: 'no-store' });
+  if (!r.ok) throw new Error(`ListenBrainz HTTP ${r.status}`);
+  return r.json();
+}
+async function fetchLbTrackCounts(username) {
+  const counts = { jump: 0, shutdown: 0, ddududu: 0 };
+  try {
+    const d = await lbFetch(`stats/user/${encodeURIComponent(username)}/recordings`, { count: 100, range: 'all_time' });
+    for (const rec of d?.payload?.recordings || []) {
+      const name   = (rec.track_name  || '').toLowerCase().trim();
+      const artist = (rec.artist_name || '').toLowerCase();
+      if (!artist.includes('blackpink')) continue;
+      if (name === 'jump')               counts.jump     += rec.listen_count || 0;
+      else if (name === 'shut down')     counts.shutdown += rec.listen_count || 0;
+      else if (name === 'ddu-du ddu-du') counts.ddududu  += rec.listen_count || 0;
+    }
+  } catch (e) { console.warn('LB track counts:', e.message); }
+  return counts;
+}
+async function fetchLbArtistPlays(username) {
+  try {
+    const d = await lbFetch(`stats/user/${encodeURIComponent(username)}/artists`, { count: 100, range: 'all_time' });
+    const bp = (d?.payload?.artists || []).find(a => (a.artist_name || '').toLowerCase().includes('blackpink'));
+    return bp?.listen_count || 0;
+  } catch { return 0; }
+}
+async function fetchLbRecentListens(username, from, to) {
+  const results = [];
+  let maxTs = to;
+  for (let page = 0; page < 50; page++) {
+    const d = await lbFetch(`user/${encodeURIComponent(username)}/listens`, { min_ts: from, max_ts: maxTs, count: 100 });
+    const listens = d?.payload?.listens || [];
+    if (!listens.length) break;
+    results.push(...listens);
+    if (listens.length < 100) break;
+    maxTs = listens[listens.length - 1].listened_at - 1;
+    if (maxTs < from) break;
+  }
+  return results;
+}
+function countLbByTrack(listens) {
+  const counts = { jump: 0, shutdown: 0, ddududu: 0 };
+  for (const l of listens) {
+    const name   = (l.track_metadata?.track_name   || '').toLowerCase().trim();
+    const artist = (l.track_metadata?.artist_name  || '').toLowerCase();
+    if (!artist.includes('blackpink')) continue;
+    if (name === 'jump')               counts.jump++;
+    else if (name === 'shut down')     counts.shutdown++;
+    else if (name === 'ddu-du ddu-du') counts.ddududu++;
+  }
+  return counts;
+}
 async function fetchUserInfo(username) {
   const d = await lfmFetch({ method: 'user.getInfo', user: username });
   if (d?.user) return d.user;
@@ -2635,6 +2694,34 @@ async function loadProfile(usernameOverride, silent = false) {
       weekCounts.ddududu  += counts.ddududu  || 0;
     }
 
+    // Merge ListenBrainz scores if a LB username is linked
+    const lbUsername = getSavedLbUsername();
+    if (lbUsername) {
+      if (!silent) setLoading('Fetching ListenBrainz stats…');
+      try {
+        const [lbTotals, lbArtist, lbToday] = await Promise.all([
+          fetchLbTrackCounts(lbUsername),
+          fetchLbArtistPlays(lbUsername),
+          fetchLbRecentListens(lbUsername, dayFrom, dayTo),
+        ]);
+        const lbTodayCounts = countLbByTrack(lbToday);
+        for (const k of ['jump', 'shutdown', 'ddududu']) {
+          totalPlays[k]  += lbTotals[k]      || 0;
+          todayCounts[k] += lbTodayCounts[k] || 0;
+        }
+        artistPlays += lbArtist;
+        // LB weekly counts (day-by-day to match Last.fm approach)
+        const { from: lbWeekFrom } = getWeekBounds();
+        for (let i = 0; i < 7; i++) {
+          const ds = lbWeekFrom + i * 86400;
+          if (ds * 1000 > Date.now()) break;
+          const dc = countLbByTrack(await fetchLbRecentListens(lbUsername, ds, ds + 86400));
+          weekCounts.jump     += dc.jump     || 0;
+          weekCounts.shutdown += dc.shutdown || 0;
+          weekCounts.ddududu  += dc.ddududu  || 0;
+        }
+      } catch (e) { console.warn('LB fetch failed:', e.message); }
+    }
     currentUser = { info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs };
     saveUsername(username);
     // Sync stamps from server before rendering so calendar has cross-device data
@@ -2668,7 +2755,8 @@ async function loadProfile(usernameOverride, silent = false) {
 function setLoading(msg) { document.getElementById('loading-text').textContent = msg; }
 
 // ── PERSIST LOGIN ─────────────────────────────────────────────
-const LS_USER_KEY = 'bu_lfm_username';
+const LS_USER_KEY    = 'bu_lfm_username';
+const LS_LB_KEY      = 'bu_lb_username';
 
 function saveUsername(username) {
   try { localStorage.setItem(LS_USER_KEY, username); } catch(e) {}
@@ -2679,12 +2767,16 @@ function getSavedUsername() {
 function clearSavedUsername() {
   try { localStorage.removeItem(LS_USER_KEY); } catch(e) {}
 }
+function saveLbUsername(u) { try { localStorage.setItem(LS_LB_KEY, u); } catch(e) {} }
+function getSavedLbUsername() { try { return localStorage.getItem(LS_LB_KEY) || ''; } catch(e) { return ''; } }
 
 // Auto-load on page show if username was previously saved
 function tryAutoLoad() {
   const saved = getSavedUsername();
   if (saved) {
     document.getElementById('lfm-input').value = saved;
+    const lbEl = document.getElementById('lb-input');
+    if (lbEl) lbEl.value = getSavedLbUsername();
     loadProfile();
   }
 }
@@ -3215,6 +3307,8 @@ function resetProfile() {
 document.getElementById('lfm-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') loadProfile();
 });
+const lbInputEl = document.getElementById('lb-input');
+if (lbInputEl) lbInputEl.addEventListener('keydown', e => { if (e.key === 'Enter') loadProfile(); });
 </script>
 
 <style>
@@ -3276,8 +3370,14 @@ async function fetchLbData(force = false) {
 // ── Write user scores to leaderboard ─────────────────────────
 async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs) {
   try {
-    const username = userInfo.name || userInfo.realname || '';
-    if (!username) return;
+    const lfmUsername  = userInfo.name || userInfo.realname || '';
+    const lbUsername   = getSavedLbUsername();
+    const displayName  = lfmUsername || lbUsername;
+    if (!displayName) return;
+
+    const linkedAccounts = [];
+    if (lfmUsername) linkedAccounts.push({ type: 'lastfm',       username: lfmUsername });
+    if (lbUsername)  linkedAccounts.push({ type: 'listenbrainz', username: lbUsername  });
 
     const avatarUrl = (userInfo.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
 
@@ -3309,10 +3409,12 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        username,
-        avatar: avatarUrl,
+        username:       displayName,
+        displayName,
+        linkedAccounts,
+        avatar:         avatarUrl,
         scores,
-        updatedAt: new Date().toISOString(),
+        updatedAt:      new Date().toISOString(),
         lastScrobbleAt: lastScrobbleTs ? new Date(lastScrobbleTs).toISOString() : null,
       })
     });
@@ -3375,7 +3477,7 @@ function renderLeaderboard() {
       })();
       const lastScrobbleAt = data.lastScrobbleAt || null;
       const inactive = !lbHistorySnapshot && lastScrobbleAt && (Date.now() - new Date(lastScrobbleAt).getTime()) > 3 * 86400000;
-      return { username, avatar: data.avatar, score, badge: getBadge(data.scores?.overall_all || 0), inactive };
+      return { username, displayName: data.displayName || username, avatar: data.avatar, score, badge: getBadge(data.scores?.overall_all || 0), inactive };
     })
     .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
 
@@ -3409,7 +3511,7 @@ function renderLeaderboard() {
               : `<span class="lb-avatar-placeholder">${e.username[0].toUpperCase()}</span>`;
             return `<tr class="${isMe ? 'me' : ''}">
               <td><span class="lb-rank ${rankClass}">${rankEmoji || (i+1)}</span></td>
-              <td>${avatarHtml}<span class="lb-user">${e.username}</span>${ogUsers.has(e.username.toLowerCase()) ? ' <span class="og-inline-badge" data-tip="Here from the start · OG Beta Tester">⭐ OG</span>' : ''}${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${leaderStreakBadge(i, e.username)}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
+              <td>${avatarHtml}<span class="lb-user">${e.displayName || e.username}</span>${ogUsers.has(e.username.toLowerCase()) ? ' <span class="og-inline-badge" data-tip="Here from the start · OG Beta Tester">⭐ OG</span>' : ''}${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${leaderStreakBadge(i, e.username)}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
               <td class="lb-score">${e.score > 0 ? e.score.toLocaleString() : '—'}</td>
             </tr>`;
           }).join('')}
