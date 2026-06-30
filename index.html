@@ -1069,7 +1069,6 @@
     <li><a href="/leaderboard" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
     <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
     <li><a href="/feedback" onclick="showPage('feedback'); closeMobileNav(); return false;" id="nav-feedback">Feedback</a></li>
-    <li><a href="/account" onclick="showPage('account'); closeMobileNav(); return false;" id="nav-account">Account</a></li>
     <li><a href="#follow" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100); return false;">Follow</a></li>
   </ul>
   <button id="pwa-install-btn" onclick="triggerInstall()" style="display:none;background:transparent;border:1px solid rgba(255,0,102,0.5);color:var(--pink);font-family:var(--mono);font-size:0.48rem;letter-spacing:0.14em;text-transform:uppercase;padding:0.4rem 0.8rem;cursor:pointer;white-space:nowrap;transition:border-color 0.2s,background 0.2s;" title="Install as app">⬇ Install App</button>
@@ -1334,25 +1333,47 @@
     </div>
 
     <div id="login-panel" class="login-wrap">
-      <div class="login-card">
-        <p class="login-label">Connect via
-          <span class="lastfm-badge">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="#ff4444"><path d="M10.584 17.21l-.88-2.392s-1.43 1.596-3.573 1.596c-1.897 0-3.247-1.648-3.247-4.28 0-3.38 1.703-4.582 3.38-4.582 2.41 0 3.18 1.567 3.84 3.573l.88 2.393c.88 2.666 2.557 4.802 7.358 4.802 3.44 0 5.774-1.054 5.774-3.84 0-2.25-1.285-3.41-3.674-3.97l-1.775-.397c-1.23-.273-1.59-.77-1.59-1.59 0-.924.726-1.46 1.918-1.46 1.305 0 2.007.488 2.116 1.647l2.71-.33C23.432 6.11 21.95 4.9 19.27 4.9c-2.448 0-4.8 1.024-4.8 3.84 0 1.83.88 2.99 3.09 3.544l1.867.45c1.408.334 2.06.857 2.06 1.84 0 1.097-.99 1.543-2.96 1.543-2.87 0-4.074-1.502-4.734-3.476l-.9-2.393C12.098 7.34 10.59 5.4 6.924 5.4 3.1 5.4.5 7.854.5 12.176c0 4.16 2.448 6.425 5.972 6.425 3.09 0 4.11-1.39 4.11-1.39z"/></svg>
-            LAST.FM
-          </span>
-        </p>
-        <p class="login-desc">Enter your Last.fm username to track your daily &amp; weekly streaming challenges for JUMP, Shut Down and DDU-DU DDU-DU. No password needed.</p>
-        <div class="input-row">
-          <input class="username-input" id="lfm-input" type="text" placeholder="Your Last.fm username" />
-          <button class="btn-primary" onclick="loadProfile()">Check My Badges →</button>
+
+      <!-- NOT SIGNED IN -->
+      <div id="badges-auth-signout">
+        <div class="login-card">
+          <p class="login-label">Sign in to track your badges</p>
+          <p class="login-desc">Create a free account to link your Last.fm and ListenBrainz usernames, earn badges, and appear on the leaderboard.</p>
+          <button class="oauth-btn" onclick="signInWithProvider('google')">Continue with Google</button>
+          <button class="oauth-btn" onclick="signInWithProvider('x')">Continue with X</button>
+          <button class="oauth-btn" onclick="signInWithProvider('discord')">Continue with Discord</button>
+          <div class="oauth-divider">or</div>
+          <div class="input-row">
+            <input class="username-input" id="account-email-input" type="email" placeholder="you@email.com" />
+            <button class="btn-primary" onclick="signInWithEmail()">Send Magic Link →</button>
+          </div>
+          <div id="account-email-status" class="error-msg" style="display:none"></div>
         </div>
-        <div id="lfm-error" class="error-msg" style="display:none"></div>
-    <div class="input-row" style="margin-top:0.6rem">
-      <input class="username-input" id="lb-input" type="text" placeholder="ListenBrainz username (optional)" style="font-size:0.9em;opacity:0.85;" oninput="saveLbUsername(this.value.trim())" />
-    </div>
-    <p class="lastfm-tip" style="margin-top:0.4rem">Link a <strong>ListenBrainz</strong> account to combine its scrobbles with Last.fm.</p>
-        <p class="lastfm-tip">Don't have Last.fm? <a href="https://www.last.fm/join" target="_blank" onclick=\"window.open('https://www.last.fm/join','_blank','noopener')\">Sign up free</a> and connect Spotify at <a href="https://www.last.fm/settings/applications" target="_blank" onclick=\"window.open('https://www.last.fm/settings/applications','_blank','noopener')\">last.fm/settings/applications</a> so streams are tracked automatically.</p>
       </div>
+
+      <!-- SIGNED IN — NO LINKED ACCOUNTS YET -->
+      <div id="badges-auth-link" style="display:none">
+        <div class="login-card">
+          <p class="login-label">Link your scrobbling accounts</p>
+          <p class="login-desc">Add your Last.fm and/or ListenBrainz usernames — all your streams count toward one leaderboard row.</p>
+          <div id="linked-accounts-list-inline"></div>
+          <div class="input-row" style="margin-top:1rem;">
+            <select id="linked-source-select" class="username-input" style="flex:0 0 140px;">
+              <option value="lastfm">Last.fm</option>
+              <option value="listenbrainz">ListenBrainz</option>
+            </select>
+            <input class="username-input" id="linked-username-input" type="text" placeholder="Username" />
+            <button class="btn-primary" onclick="addLinkedAccount()">+ Link</button>
+          </div>
+          <div id="linked-accounts-status" class="error-msg" style="display:none"></div>
+          <p class="lastfm-tip" style="margin-top:1rem;">Don't have Last.fm? <a href="https://www.last.fm/join" target="_blank" rel="noopener">Sign up free</a> and connect Spotify at <a href="https://www.last.fm/settings/applications" target="_blank" rel="noopener">last.fm/settings/applications</a>.</p>
+        </div>
+      </div>
+
+      <!-- hidden inputs kept for loadProfile() compatibility -->
+      <input type="hidden" id="lfm-input" />
+      <input type="hidden" id="lb-input" />
+      <div id="lfm-error" class="error-msg" style="display:none"></div>
     </div>
 
     <div id="loading-panel" class="loading-wrap" style="display:none">
@@ -1409,6 +1430,45 @@
             <p class="settings-hint">Overrides default tier targets for your display</p>
           </div>
         </div>
+
+        <!-- Account Settings (shown when signed in) -->
+        <div id="settings-account-section" style="display:none;margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1.5rem;">
+          <p class="settings-label" style="margin-bottom:0.75rem;">Account</p>
+          <div class="settings-grid">
+            <div class="settings-group">
+              <label class="settings-label">Signed in as</label>
+              <p class="settings-hint" id="settings-account-email" style="font-size:0.9rem;margin:0.25rem 0;"></p>
+            </div>
+            <div class="settings-group">
+              <label class="settings-label">Display name</label>
+              <div class="input-row" style="gap:0.5rem;">
+                <input class="settings-input" id="linked-displayname-input-settings" type="text" placeholder="Choose a display name" maxlength="40" style="flex:1;" />
+                <button class="btn-primary" onclick="saveDisplayName()">Save</button>
+              </div>
+              <p class="settings-hint" id="settings-displayname-status"></p>
+            </div>
+          </div>
+
+          <div style="margin-top:1rem;">
+            <label class="settings-label">Linked Accounts</label>
+            <p class="settings-hint" style="margin-bottom:0.5rem;">Last.fm and ListenBrainz usernames — all streams count toward one leaderboard row.</p>
+            <div id="linked-accounts-list-settings" style="margin-bottom:0.75rem;"></div>
+            <div class="input-row" style="gap:0.5rem;">
+              <select id="linked-source-select-settings" class="settings-input" style="flex:0 0 140px;">
+                <option value="lastfm">Last.fm</option>
+                <option value="listenbrainz">ListenBrainz</option>
+              </select>
+              <input class="settings-input" id="linked-username-input-settings" type="text" placeholder="Username" style="flex:1;" />
+              <button class="btn-primary" onclick="addLinkedAccountSettings()">+ Link</button>
+            </div>
+            <p class="settings-hint" id="settings-linked-status" style="margin-top:0.35rem;"></p>
+          </div>
+
+          <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+            <button class="logout-btn" onclick="signOutAccount()" style="flex:1;min-width:120px;">← Sign Out</button>
+            <button class="logout-btn" onclick="deleteAccount()" style="flex:1;min-width:120px;background:rgba(255,50,50,0.12);border-color:rgba(255,50,50,0.35);color:#ff8888;">Delete Account</button>
+          </div>
+        </div>
       </div>
 
       <div class="summary-strip" id="profile-summary"></div>
@@ -1447,84 +1507,7 @@
 
 </div><!-- end badge page -->
 
-<!-- ══════════════════════════════════════
-     ACCOUNT PAGE
-════════════════════════════════════════ -->
-<div id="page-account" class="page">
-  <div class="badge-page">
-    <div class="badge-header">
-      <p class="badge-header-eyebrow">✦ Blinks United — One Profile, Every Account ✦</p>
-      <h1 class="badge-header-title">MY<br><span>ACCOUNT</span></h1>
-      <p class="badge-header-sub">Link multiple Last.fm or ListenBrainz accounts — all your streams combine into one profile</p>
-    </div>
 
-    <div id="account-signedout-panel" class="login-wrap">
-      <div class="login-card">
-        <p class="login-label">Sign in</p>
-        <p class="login-desc">Create a free account to link more than one Last.fm (or ListenBrainz) account and combine all your streams into a single profile on the leaderboard.</p>
-        <button class="oauth-btn" onclick="signInWithProvider('google')">Continue with Google</button>
-        <button class="oauth-btn" onclick="signInWithProvider('x')">Continue with X</button>
-        <button class="oauth-btn" onclick="signInWithProvider('discord')">Continue with Discord</button>
-        <div class="oauth-divider">or</div>
-        <div class="input-row">
-          <input class="username-input" id="account-email-input" type="email" placeholder="you@email.com" />
-          <button class="btn-primary" onclick="signInWithEmail()">Send Magic Link →</button>
-        </div>
-        <div id="account-email-status" class="error-msg" style="display:none"></div>
-      </div>
-    </div>
-
-    <div id="account-signedin-panel" style="display:none;max-width:520px;margin:3rem auto;padding:0 1.5rem;">
-      <div class="login-card">
-        <p class="login-label">Signed in as</p>
-        <p class="account-email" id="account-email-display"></p>
-        <p class="login-label" style="margin-top:1.5rem;">Display name</p>
-        <p class="login-desc" style="margin-top:-0.25rem;">Shown instead of your email wherever your profile appears.</p>
-        <div class="input-row">
-          <input class="username-input" id="account-displayname-input" type="text" placeholder="Choose a display name" maxlength="40" />
-          <button class="btn-primary" onclick="saveDisplayName()">Save</button>
-        </div>
-        <div id="account-displayname-status" class="error-msg" style="display:none"></div>
-        <button class="logout-btn" onclick="signOutAccount()" style="margin-top:1rem;">← Sign Out</button>
-      </div>
-
-      <div class="login-card" style="margin-top:1.5rem;">
-        <p class="login-label">Linked Accounts</p>
-        <p class="login-desc" style="margin-top:-0.25rem;">Add your Last.fm and/or ListenBrainz usernames — all streams count toward one leaderboard row.</p>
-        <div id="linked-accounts-list"></div>
-        <div class="input-row" style="margin-top:1rem;">
-          <select id="linked-source-select" class="username-input" style="flex:0 0 140px;">
-            <option value="lastfm">Last.fm</option>
-            <option value="listenbrainz">ListenBrainz</option>
-          </select>
-          <input class="username-input" id="linked-username-input" type="text" placeholder="Username" />
-          <button class="btn-primary" onclick="addLinkedAccount()">+ Link</button>
-        </div>
-        <div id="linked-accounts-status" class="error-msg" style="display:none"></div>
-        <div id="account-goto-badges" style="display:none;margin-top:1.5rem;text-align:center;">
-          <button class="btn-primary" style="width:100%;font-size:1rem;" onclick="goToMyBadges()">→ Open My Badges</button>
-        </div>
-      </div>
-
-      <div class="login-card" style="margin-top:1.5rem;">
-        <p class="login-label">Personal Daily Goal</p>
-        <p class="login-desc" style="margin-top:-0.25rem;">How many streams do you want to hit per day? Shown on your My Badges page.</p>
-        <div class="input-row">
-          <input class="username-input" id="account-goal-input" type="number" min="1" max="99999" placeholder="e.g. 800" style="max-width:160px;" />
-          <button class="btn-primary" onclick="saveAccountGoal()">Save</button>
-        </div>
-        <div id="account-goal-status" class="error-msg" style="display:none"></div>
-      </div>
-
-      <div class="login-card" style="margin-top:1.5rem;border-color:rgba(255,50,50,0.3);">
-        <p class="login-label" style="color:#ff6666;">Danger Zone</p>
-        <p class="login-desc">Permanently delete your account and all linked accounts. Your leaderboard history stays, but it will no longer be associated with any account.</p>
-        <button class="logout-btn" onclick="deleteAccount()" style="background:rgba(255,50,50,0.15);border-color:rgba(255,50,50,0.4);color:#ff8888;">Delete Account</button>
-      </div>
-    </div>
-
-  </div>
-</div><!-- end account page -->
 
 <!-- ══════════════════════════════════════
      LEADERBOARD PAGE
@@ -2191,7 +2174,6 @@ function showPage(page, { replace = false } = {}) {
   window.scrollTo(0, 0);
   if (page === 'home') initAnimations();
   if (page === 'badges') tryAutoLoad();
-  if (page === 'account') initAccountPage();
   if (page === 'leaderboard') {
     const pending = parseLbHistoryParam();
     if (pending) {
@@ -2274,11 +2256,11 @@ const sb = (typeof supabase !== 'undefined' && SUPABASE_URL.startsWith('http'))
 
 const ACCOUNT_SOURCE_LABELS = { lastfm: 'Last.fm', listenbrainz: 'ListenBrainz' };
 
-async function initAccountPage() {
+async function initBadgesAuthPanel() {
   if (!sb) {
-    document.getElementById('account-signedout-panel').innerHTML =
+    document.getElementById('badges-auth-signout').innerHTML =
       '<div class="login-card"><p class="login-label">Coming soon</p><p class="login-desc">Account linking is being set up — check back soon!</p></div>';
-    document.getElementById('account-signedin-panel').style.display = 'none';
+    document.getElementById('badges-auth-link').style.display = 'none';
     return;
   }
   const { data: { session } } = await sb.auth.getSession();
@@ -2286,20 +2268,23 @@ async function initAccountPage() {
 }
 
 function renderAccountPage(session) {
-  const signedOut = document.getElementById('account-signedout-panel');
-  const signedIn  = document.getElementById('account-signedin-panel');
+  const signedOut = document.getElementById('badges-auth-signout');
+  const signedIn  = document.getElementById('badges-auth-link');
+  const settingsSection = document.getElementById('settings-account-section');
   if (session) {
     signedOut.style.display = 'none';
     signedIn.style.display = 'block';
-    document.getElementById('account-email-display').textContent = session.user.email || session.user.id;
-    document.getElementById('account-displayname-input').value = session.user.user_metadata?.display_name || '';
-    const savedGoal = localStorage.getItem('bu_s_goal');
-    const goalInput = document.getElementById('account-goal-input');
-    if (goalInput && savedGoal) goalInput.value = savedGoal;
+    if (settingsSection) settingsSection.style.display = 'block';
+    const emailEl = document.getElementById('settings-account-email');
+    if (emailEl) emailEl.textContent = session.user.email || session.user.id;
+    const dnInput = document.getElementById('linked-displayname-input-settings');
+    if (dnInput) dnInput.value = session.user.user_metadata?.display_name || '';
     loadLinkedAccounts();
+    loadLinkedAccountsInline();
   } else {
     signedOut.style.display = 'block';
     signedIn.style.display = 'none';
+    if (settingsSection) settingsSection.style.display = 'none';
   }
 }
 
@@ -2326,46 +2311,29 @@ async function signInWithEmail() {
 }
 
 async function saveDisplayName() {
-  const input = document.getElementById('account-displayname-input');
-  const status = document.getElementById('account-displayname-status');
+  const input = document.getElementById('linked-displayname-input-settings');
+  const status = document.getElementById('settings-displayname-status');
+  if (!input) return;
   const display_name = input.value.trim();
-  status.style.display = 'none';
+  if (status) status.textContent = '';
 
   const { error } = await sb.auth.updateUser({ data: { display_name } });
 
-  status.textContent = error ? error.message : 'Saved!';
-  status.style.color = error ? '#ff4444' : '#4caf50';
-  status.style.display = 'block';
+  if (status) {
+    status.textContent = error ? error.message : 'Saved!';
+    status.style.color = error ? '#ff4444' : '#4caf50';
+  }
 }
 
 async function signOutAccount() {
   if (!sb) return;
   await sb.auth.signOut();
   renderAccountPage(null);
+  // Show sign-in panel, hide profile
+  document.getElementById('login-panel').style.display = 'block';
+  document.getElementById('profile-panel').style.display = 'none';
 }
 
-async function saveAccountGoal() {
-  const input  = document.getElementById('account-goal-input');
-  const status = document.getElementById('account-goal-status');
-  const val    = parseInt(input.value, 10);
-  status.style.display = 'none';
-  if (!val || val < 1) {
-    status.textContent = 'Enter a number greater than 0.';
-    status.style.display = 'block';
-    return;
-  }
-  try {
-    localStorage.setItem('bu_s_goal', String(val));
-    const goalEl = document.getElementById('goal-input');
-    if (goalEl) goalEl.value = String(val);
-    status.textContent = 'Saved!';
-    status.style.color = '#4caf50';
-  } catch(e) {
-    status.textContent = 'Could not save.';
-    status.style.color = '#ff4444';
-  }
-  status.style.display = 'block';
-}
 
 async function deleteAccount() {
   if (!sb) return;
@@ -2395,7 +2363,7 @@ async function goToMyBadges() {
   }
   const { data: { session } } = await sb.auth.getSession();
   if (!session) {
-    showPage('account');
+    showPage('badges');
     return;
   }
   showPage('badges');
@@ -2413,10 +2381,11 @@ async function initMyBadgesFromAccount() {
     .order('created_at', { ascending: true });
 
   if (!data || data.length === 0) {
-    // No linked accounts yet — send back to Account to add one
-    showPage('account');
-    const st = document.getElementById('linked-accounts-status');
-    if (st) { st.textContent = 'Add at least one Last.fm account to load your badges.'; st.style.display = 'block'; st.style.color = '#ff9800'; }
+    // No linked accounts yet — show the link panel
+    document.getElementById('login-panel').style.display = 'block';
+    document.getElementById('badges-auth-signout').style.display = 'none';
+    document.getElementById('badges-auth-link').style.display = 'block';
+    await loadLinkedAccountsInline();
     return;
   }
 
@@ -2431,7 +2400,7 @@ async function initMyBadgesFromAccount() {
 }
 
 async function loadLinkedAccounts() {
-  const list = document.getElementById('linked-accounts-list');
+  const list = document.getElementById('linked-accounts-list') || document.getElementById('linked-accounts-list-inline');
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return;
 
@@ -2450,7 +2419,7 @@ async function loadLinkedAccounts() {
     return;
   }
 
-  list.innerHTML = data.map(row => `
+  const rowHtml = data.map(row => `
     <div class="linked-row">
       <div class="linked-row-label">
         <span class="linked-row-source">${ACCOUNT_SOURCE_LABELS[row.source] || row.source}</span>${row.source_username}
@@ -2458,14 +2427,45 @@ async function loadLinkedAccounts() {
       <button class="linked-remove-btn" onclick="removeLinkedAccount('${row.id}')">Remove</button>
     </div>
   `).join('');
-
-  // Show "Open My Badges" CTA and populate localStorage for smooth nav
-  const ctaEl = document.getElementById('account-goto-badges');
-  if (ctaEl) ctaEl.style.display = 'block';
+  list.innerHTML = rowHtml;
+  const settingsList = document.getElementById('linked-accounts-list-settings');
+  if (settingsList) settingsList.innerHTML = rowHtml;
   const lfm = data.find(r => r.source === 'lastfm');
   const lb  = data.find(r => r.source === 'listenbrainz');
   if (lfm) saveUsername(lfm.source_username);
   if (lb)  saveLbUsername(lb.source_username);
+}
+
+async function addLinkedAccountSettings() {
+  const sourceSelect  = document.getElementById('linked-source-select-settings');
+  const usernameInput = document.getElementById('linked-username-input-settings');
+  const status        = document.getElementById('settings-linked-status');
+  const source        = sourceSelect.value;
+  const username      = usernameInput.value.trim();
+  status.style.display = 'none';
+  if (!username) { status.textContent = 'Enter a username first.'; status.style.display = 'block'; return; }
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+  const { error } = await sb.from('linked_accounts').insert({ app_user_id: session.user.id, source, source_username: username });
+  if (error) {
+    status.textContent = error.code === '23505' ? "That account is already linked to a profile." : error.message;
+    status.style.display = 'block';
+    return;
+  }
+  usernameInput.value = '';
+  await loadLinkedAccounts();
+  // Refresh badges data with new account
+  await initMyBadgesFromAccount();
+}
+
+async function loadLinkedAccountsInline() {
+  const list = document.getElementById('linked-accounts-list-inline');
+  if (!list || !sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+  const { data } = await sb.from('linked_accounts').select('id, source, source_username').order('created_at', { ascending: true });
+  if (!data || data.length === 0) { list.innerHTML = '<p class="settings-hint">No accounts linked yet.</p>'; return; }
+  list.innerHTML = data.map(row => `<div class="linked-row"><div class="linked-row-label"><span class="linked-row-source">${ACCOUNT_SOURCE_LABELS[row.source] || row.source}</span>${row.source_username}</div><button class="linked-remove-btn" onclick="removeLinkedAccount('${row.id}')">Remove</button></div>`).join('');
 }
 
 async function addLinkedAccount() {
@@ -2501,8 +2501,6 @@ async function addLinkedAccount() {
 
   usernameInput.value = '';
   await loadLinkedAccounts();
-  const ctaEl = document.getElementById('account-goto-badges');
-  if (ctaEl) { ctaEl.style.display = 'block'; ctaEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
 }
 
 async function removeLinkedAccount(id) {
@@ -2512,7 +2510,7 @@ async function removeLinkedAccount(id) {
 
 if (sb) {
   sb.auth.onAuthStateChange((_event, session) => {
-    if (document.getElementById('page-account')?.classList.contains('active')) {
+    if (document.getElementById('page-badges')?.classList.contains('active')) {
       renderAccountPage(session);
     }
   });
@@ -3609,6 +3607,7 @@ function shareProfile() {
 }
 
 function resetProfile() {
+  if (sb) sb.auth.signOut().catch(() => {});
   clearSavedUsername();
   document.getElementById('profile-panel').style.display = 'none';
   document.getElementById('login-panel').style.display = 'block';
