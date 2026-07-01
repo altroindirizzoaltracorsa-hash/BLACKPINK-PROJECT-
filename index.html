@@ -4176,8 +4176,22 @@ function renderLeaderboard() {
   const key = getScoreKey();
   const myUsername = getSavedUsername();
 
+  // Collect secondary account keys absorbed into a combined entry so they
+  // don't appear as separate rows (e.g. alice2996 merged under alice9629).
+  const allLbUsers = Object.entries(getActiveLbUsers());
+  const secondaryKeys = new Set();
+  for (const [k, d] of allLbUsers) {
+    if (Array.isArray(d.linkedAccounts)) {
+      for (const a of d.linkedAccounts) {
+        const ak = (a.username || '').toLowerCase();
+        if (ak && ak !== k) secondaryKeys.add(ak);
+      }
+    }
+  }
+
   // Build sorted array
-  const entries = Object.entries(getActiveLbUsers())
+  const entries = allLbUsers
+    .filter(([username]) => !secondaryKeys.has(username.toLowerCase()))
     .map(([username, data]) => {
       const score = (() => {
         const raw = data.scores?.[key] || 0;
