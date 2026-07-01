@@ -2252,7 +2252,7 @@ function showPage(page, { replace = false } = {}) {
   document.title = PAGE_TITLES[page] || PAGE_TITLES.home;
   window.scrollTo(0, 0);
   if (page === 'home') initAnimations();
-  if (page === 'badges') { tryAutoLoad(); maybeShowTutorial(); }
+  if (page === 'badges') tryAutoLoad();
   if (page === 'leaderboard') {
     const pending = parseLbHistoryParam();
     if (pending) {
@@ -2291,6 +2291,7 @@ function routeInitial() {
   const page = pathToPage(location.pathname);
   if (page !== 'home') showPage(page, { replace: true });
   else history.replaceState({ page: 'home' }, '', '/');
+  maybeShowTutorial();
 }
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', routeInitial);
@@ -4240,22 +4241,27 @@ let   chatCongratsText   = null;
 const TUTORIAL_SEEN_KEY = 'bu_tutorial_seen';
 const TUTORIAL_STEPS = [
   {
-    eyebrow: 'Step 1 of 4',
+    eyebrow: 'Step 1 of 5',
     title: 'WELCOME TO<br><span>BLINKS UNITED</span>',
     body: 'The streaming hub for BLACKPINK fans. This quick guide walks you through the account system — it takes less than a minute to set up.',
   },
   {
-    eyebrow: 'Step 2 of 4',
+    eyebrow: 'Step 2 of 5',
     title: 'CREATE YOUR<br><span>ACCOUNT</span>',
     body: 'Sign in with Google, X, or Discord — no password needed. Prefer email? Enter your address and we\'ll send a one-click Magic Link straight to your inbox.',
   },
   {
-    eyebrow: 'Step 3 of 4',
+    eyebrow: 'Step 3 of 5',
+    title: 'YOUR PROGRESS<br><span>IS SAFE</span>',
+    body: 'Were you already tracking streams with your Last.fm username? Nothing is lost. Sign up and link that same Last.fm account — your badges, leaderboard position, and all your scrobbles will be right there waiting for you.',
+  },
+  {
+    eyebrow: 'Step 4 of 5',
     title: 'LINK YOUR<br><span>MUSIC TRACKER</span>',
     body: 'Connect your Last.fm and/or ListenBrainz usernames. All linked accounts count together — giving you one combined scrobble total on the leaderboard.',
   },
   {
-    eyebrow: 'Step 4 of 4',
+    eyebrow: 'Step 5 of 5',
     title: 'EARN BADGES<br><span>&amp; JOIN THE CHAT</span>',
     body: 'Hit streaming milestones on JUMP, Shut Down, and DDU-DU DDU-DU to earn badge tiers. Reach 10,000 all-time BLACKPINK scrobbles to unlock the group chat.',
   },
