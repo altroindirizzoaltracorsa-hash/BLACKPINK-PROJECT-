@@ -838,11 +838,66 @@
   }
   .chat-input:focus { outline: none; border-color: var(--pink); }
   #chat-err { padding: 0 1rem 0.6rem; }
-  .chat-msg-del {
-    background: transparent; border: none; color: rgba(255,80,80,0.5);
-    cursor: pointer; font-size: 0.6rem; margin-left: 0.4rem;
+  .chat-msg-system {
+    text-align: center; padding: 0.55rem 0.8rem;
+    background: rgba(255,0,102,0.08); border: 1px solid rgba(255,0,102,0.2);
+    font-family: var(--light-serif); font-style: italic; font-size: 0.78rem;
+    color: var(--pink); letter-spacing: 0.01em;
   }
-  .chat-msg-del:hover { color: #ff5050; }
+
+  /* ── TUTORIAL MODAL ── */
+  .tutorial-overlay {
+    position: fixed; inset: 0; z-index: 10000;
+    background: rgba(8,8,8,0.88); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+  }
+  .tutorial-card {
+    background: var(--card); border: 1px solid var(--border);
+    width: min(460px, 100%); padding: 2.5rem 2rem 2rem;
+    box-shadow: 0 20px 60px rgba(255,0,102,0.15); position: relative;
+  }
+  .tutorial-skip {
+    position: absolute; top: 1rem; right: 1rem; background: transparent; border: none;
+    color: var(--muted); font-size: 0.65rem; cursor: pointer;
+    font-family: var(--mono); letter-spacing: 0.08em;
+  }
+  .tutorial-skip:hover { color: var(--white); }
+  .tutorial-dots { display: flex; gap: 0.45rem; margin-bottom: 2rem; }
+  .tutorial-dot { width: 28px; height: 2px; background: var(--border); transition: background 0.2s; }
+  .tutorial-dot.active { background: var(--pink); }
+  .tutorial-eyebrow {
+    font-size: 0.58rem; letter-spacing: 0.28em; color: var(--pink);
+    font-family: var(--mono); text-transform: uppercase; margin-bottom: 0.7rem;
+  }
+  .tutorial-title {
+    font-family: var(--display); font-size: clamp(1.8rem, 8vw, 2.5rem);
+    letter-spacing: 0.06em; line-height: 1; margin-bottom: 1.2rem; color: var(--white);
+  }
+  .tutorial-title span { color: var(--pink); }
+  .tutorial-body {
+    font-family: var(--light-serif); font-size: 0.95rem; line-height: 1.65;
+    color: var(--muted); margin-bottom: 2rem;
+  }
+  .tutorial-nav { display: flex; justify-content: space-between; align-items: center; }
+  .tutorial-btn-back {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    padding: 0.5rem 1.2rem; cursor: pointer; font-family: var(--mono);
+    font-size: 0.65rem; letter-spacing: 0.08em;
+  }
+  .tutorial-btn-back:hover { border-color: var(--white); color: var(--white); }
+  .tutorial-btn-next {
+    background: var(--pink); border: none; color: var(--white);
+    padding: 0.6rem 1.6rem; cursor: pointer; font-family: var(--display);
+    font-size: 0.9rem; letter-spacing: 0.1em;
+  }
+  .tutorial-btn-next:hover { background: var(--hot-pink); }
+  .tutorial-help-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    font-size: 0.6rem; font-family: var(--mono); letter-spacing: 0.08em;
+    padding: 0.28rem 0.65rem; cursor: pointer; margin-top: 0.9rem;
+    display: inline-flex; align-items: center; gap: 0.35rem;
+  }
+  .tutorial-help-btn:hover { border-color: var(--pink); color: var(--pink); }
 
   /* ── VOTE PAGE ── */
   .vote-page {
@@ -1065,11 +1120,10 @@
   <ul class="nav-links" id="mobile-nav">
     <li><a href="/" onclick="showPage('home'); closeMobileNav(); return false;" id="nav-home" class="active">Home</a></li>
     <li><a href="#songs" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100); return false;">Songs</a></li>
-    <li><a href="/badges" onclick="showPage('badges'); closeMobileNav(); return false;" id="nav-badges">My Badges</a></li>
+    <li><a href="/badges" onclick="goToMyBadges(); closeMobileNav(); return false;" id="nav-badges">My Badges</a></li>
     <li><a href="/leaderboard" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
     <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
     <li><a href="/feedback" onclick="showPage('feedback'); closeMobileNav(); return false;" id="nav-feedback">Feedback</a></li>
-    <li><a href="/account" onclick="showPage('account'); closeMobileNav(); return false;" id="nav-account">Account</a></li>
     <li><a href="#follow" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100); return false;">Follow</a></li>
   </ul>
   <button id="pwa-install-btn" onclick="triggerInstall()" style="display:none;background:transparent;border:1px solid rgba(255,0,102,0.5);color:var(--pink);font-family:var(--mono);font-size:0.48rem;letter-spacing:0.14em;text-transform:uppercase;padding:0.4rem 0.8rem;cursor:pointer;white-space:nowrap;transition:border-color 0.2s,background 0.2s;" title="Install as app">⬇ Install App</button>
@@ -1331,24 +1385,52 @@
       <p class="badge-header-eyebrow">✦ Blinks United — Streaming Challenge ✦</p>
       <h1 class="badge-header-title">BADGE<br><span>CHALLENGE</span></h1>
       <p class="badge-header-sub">Connect Last.fm · Track your scrobbles · Earn your badges</p>
+      <button class="tutorial-help-btn" onclick="openTutorial()">? How it works</button>
     </div>
 
     <div id="login-panel" class="login-wrap">
-      <div class="login-card">
-        <p class="login-label">Connect via
-          <span class="lastfm-badge">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="#ff4444"><path d="M10.584 17.21l-.88-2.392s-1.43 1.596-3.573 1.596c-1.897 0-3.247-1.648-3.247-4.28 0-3.38 1.703-4.582 3.38-4.582 2.41 0 3.18 1.567 3.84 3.573l.88 2.393c.88 2.666 2.557 4.802 7.358 4.802 3.44 0 5.774-1.054 5.774-3.84 0-2.25-1.285-3.41-3.674-3.97l-1.775-.397c-1.23-.273-1.59-.77-1.59-1.59 0-.924.726-1.46 1.918-1.46 1.305 0 2.007.488 2.116 1.647l2.71-.33C23.432 6.11 21.95 4.9 19.27 4.9c-2.448 0-4.8 1.024-4.8 3.84 0 1.83.88 2.99 3.09 3.544l1.867.45c1.408.334 2.06.857 2.06 1.84 0 1.097-.99 1.543-2.96 1.543-2.87 0-4.074-1.502-4.734-3.476l-.9-2.393C12.098 7.34 10.59 5.4 6.924 5.4 3.1 5.4.5 7.854.5 12.176c0 4.16 2.448 6.425 5.972 6.425 3.09 0 4.11-1.39 4.11-1.39z"/></svg>
-            LAST.FM
-          </span>
-        </p>
-        <p class="login-desc">Enter your Last.fm username to track your daily &amp; weekly streaming challenges for JUMP, Shut Down and DDU-DU DDU-DU. No password needed.</p>
-        <div class="input-row">
-          <input class="username-input" id="lfm-input" type="text" placeholder="Your Last.fm username" />
-          <button class="btn-primary" onclick="loadProfile()">Check My Badges →</button>
+
+      <!-- NOT SIGNED IN -->
+      <div id="badges-auth-signout">
+        <div class="login-card">
+          <p class="login-label">Sign in to track your badges</p>
+          <p class="login-desc">Create a free account to link your Last.fm and ListenBrainz usernames, earn badges, and appear on the leaderboard.</p>
+          <button class="oauth-btn" onclick="signInWithProvider('google')">Continue with Google</button>
+          <button class="oauth-btn" onclick="signInWithProvider('x')">Continue with X</button>
+          <button class="oauth-btn" onclick="signInWithProvider('discord')">Continue with Discord</button>
+          <div class="oauth-divider">or</div>
+          <div class="input-row">
+            <input class="username-input" id="account-email-input" type="email" placeholder="you@email.com" />
+            <button class="btn-primary" onclick="signInWithEmail()">Send Magic Link →</button>
+          </div>
+          <div id="account-email-status" class="error-msg" style="display:none"></div>
         </div>
-        <div id="lfm-error" class="error-msg" style="display:none"></div>
-        <p class="lastfm-tip">Don't have Last.fm? <a href="https://www.last.fm/join" target="_blank" onclick=\"window.open('https://www.last.fm/join','_blank','noopener')\">Sign up free</a> and connect Spotify at <a href="https://www.last.fm/settings/applications" target="_blank" onclick=\"window.open('https://www.last.fm/settings/applications','_blank','noopener')\">last.fm/settings/applications</a> so streams are tracked automatically.</p>
       </div>
+
+      <!-- SIGNED IN — NO LINKED ACCOUNTS YET -->
+      <div id="badges-auth-link" style="display:none">
+        <div class="login-card">
+          <p class="login-label">Link your scrobbling accounts</p>
+          <p class="login-desc">Add your Last.fm and/or ListenBrainz usernames — all your streams count toward one leaderboard row.</p>
+          <div id="linked-accounts-list-inline"></div>
+          <div class="input-row" style="margin-top:1rem;">
+            <select id="linked-source-select" class="username-input" style="flex:0 0 140px;">
+              <option value="lastfm">Last.fm</option>
+              <option value="listenbrainz">ListenBrainz</option>
+            </select>
+            <input class="username-input" id="linked-username-input" type="text" placeholder="Username" />
+            <button class="btn-primary" onclick="addLinkedAccount()">+ Link</button>
+          </div>
+          <div id="linked-accounts-status" class="error-msg" style="display:none"></div>
+          <p class="lastfm-tip" style="margin-top:1rem;">Don't have Last.fm? <a href="https://www.last.fm/join" target="_blank" rel="noopener">Sign up free</a> and connect Spotify at <a href="https://www.last.fm/settings/applications" target="_blank" rel="noopener">last.fm/settings/applications</a>.</p>
+          <button id="badges-done-btn" class="btn-primary" style="display:none;width:100%;margin-top:1.25rem;font-size:1rem;" onclick="initMyBadgesFromAccount()">Done — View My Profile →</button>
+        </div>
+      </div>
+
+      <!-- hidden inputs kept for loadProfile() compatibility -->
+      <input type="hidden" id="lfm-input" />
+      <input type="hidden" id="lb-input" />
+      <div id="lfm-error" class="error-msg" style="display:none"></div>
     </div>
 
     <div id="loading-panel" class="loading-wrap" style="display:none">
@@ -1405,6 +1487,45 @@
             <p class="settings-hint">Overrides default tier targets for your display</p>
           </div>
         </div>
+
+        <!-- Account Settings (shown when signed in) -->
+        <div id="settings-account-section" style="display:none;margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1.5rem;">
+          <p class="settings-label" style="margin-bottom:0.75rem;">Account</p>
+          <div class="settings-grid">
+            <div class="settings-group">
+              <label class="settings-label">Signed in as</label>
+              <p class="settings-hint" id="settings-account-email" style="font-size:0.9rem;margin:0.25rem 0;"></p>
+            </div>
+            <div class="settings-group">
+              <label class="settings-label">Display name</label>
+              <div class="input-row" style="gap:0.5rem;">
+                <input class="settings-input" id="linked-displayname-input-settings" type="text" placeholder="Choose a display name" maxlength="40" style="flex:1;" />
+                <button class="btn-primary" onclick="saveDisplayName()">Save</button>
+              </div>
+              <p class="settings-hint" id="settings-displayname-status"></p>
+            </div>
+          </div>
+
+          <div style="margin-top:1rem;">
+            <label class="settings-label">Linked Accounts</label>
+            <p class="settings-hint" style="margin-bottom:0.5rem;">Last.fm and ListenBrainz usernames — all streams count toward one leaderboard row.</p>
+            <div id="linked-accounts-list-settings" style="margin-bottom:0.75rem;"></div>
+            <div class="input-row" style="gap:0.5rem;">
+              <select id="linked-source-select-settings" class="settings-input" style="flex:0 0 140px;">
+                <option value="lastfm">Last.fm</option>
+                <option value="listenbrainz">ListenBrainz</option>
+              </select>
+              <input class="settings-input" id="linked-username-input-settings" type="text" placeholder="Username" style="flex:1;" />
+              <button class="btn-primary" onclick="addLinkedAccountSettings()">+ Link</button>
+            </div>
+            <p class="settings-hint" id="settings-linked-status" style="margin-top:0.35rem;"></p>
+          </div>
+
+          <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+            <button class="logout-btn" onclick="signOutAccount()" style="flex:1;min-width:120px;">← Sign Out</button>
+            <button class="logout-btn" onclick="deleteAccount()" style="flex:1;min-width:120px;background:rgba(255,50,50,0.12);border-color:rgba(255,50,50,0.35);color:#ff8888;">Delete Account</button>
+          </div>
+        </div>
       </div>
 
       <div class="summary-strip" id="profile-summary"></div>
@@ -1443,64 +1564,7 @@
 
 </div><!-- end badge page -->
 
-<!-- ══════════════════════════════════════
-     ACCOUNT PAGE
-════════════════════════════════════════ -->
-<div id="page-account" class="page">
-  <div class="badge-page">
-    <div class="badge-header">
-      <p class="badge-header-eyebrow">✦ Blinks United — One Profile, Every Account ✦</p>
-      <h1 class="badge-header-title">MY<br><span>ACCOUNT</span></h1>
-      <p class="badge-header-sub">Link multiple Last.fm or ListenBrainz accounts — all your streams combine into one profile</p>
-    </div>
 
-    <div id="account-signedout-panel" class="login-wrap">
-      <div class="login-card">
-        <p class="login-label">Sign in</p>
-        <p class="login-desc">Create a free account to link more than one Last.fm (or ListenBrainz) account and combine all your streams into a single profile on the leaderboard.</p>
-        <button class="oauth-btn" onclick="signInWithProvider('google')">Continue with Google</button>
-        <button class="oauth-btn" onclick="signInWithProvider('x')">Continue with X</button>
-        <button class="oauth-btn" onclick="signInWithProvider('discord')">Continue with Discord</button>
-        <div class="oauth-divider">or</div>
-        <div class="input-row">
-          <input class="username-input" id="account-email-input" type="email" placeholder="you@email.com" />
-          <button class="btn-primary" onclick="signInWithEmail()">Send Magic Link →</button>
-        </div>
-        <div id="account-email-status" class="error-msg" style="display:none"></div>
-      </div>
-    </div>
-
-    <div id="account-signedin-panel" style="display:none;max-width:520px;margin:3rem auto;padding:0 1.5rem;">
-      <div class="login-card">
-        <p class="login-label">Signed in as</p>
-        <p class="account-email" id="account-email-display"></p>
-        <p class="login-label" style="margin-top:1.5rem;">Display name</p>
-        <p class="login-desc" style="margin-top:-0.25rem;">Shown instead of your email wherever your profile appears.</p>
-        <div class="input-row">
-          <input class="username-input" id="account-displayname-input" type="text" placeholder="Choose a display name" maxlength="40" />
-          <button class="btn-primary" onclick="saveDisplayName()">Save</button>
-        </div>
-        <div id="account-displayname-status" class="error-msg" style="display:none"></div>
-        <button class="logout-btn" onclick="signOutAccount()" style="margin-top:1rem;">← Sign Out</button>
-      </div>
-
-      <div class="login-card" style="margin-top:1.5rem;">
-        <p class="login-label">Linked Accounts</p>
-        <div id="linked-accounts-list"></div>
-        <div class="input-row" style="margin-top:1rem;">
-          <select id="linked-source-select" class="username-input" style="flex:0 0 140px;">
-            <option value="lastfm">Last.fm</option>
-            <option value="listenbrainz">ListenBrainz</option>
-          </select>
-          <input class="username-input" id="linked-username-input" type="text" placeholder="Username" />
-          <button class="btn-primary" onclick="addLinkedAccount()">+ Link</button>
-        </div>
-        <div id="linked-accounts-status" class="error-msg" style="display:none"></div>
-      </div>
-    </div>
-
-  </div>
-</div><!-- end account page -->
 
 <!-- ══════════════════════════════════════
      LEADERBOARD PAGE
@@ -1655,6 +1719,19 @@
       <button class="btn-primary" onclick="sendChatMessage()">Send</button>
     </div>
     <div id="chat-err" class="admin-err"></div>
+  </div>
+</div>
+
+<!-- Tutorial overlay — shown on first visit to the badges page -->
+<div id="tutorial-overlay" class="tutorial-overlay" style="display:none" onclick="if(event.target===this)closeTutorial()">
+  <div class="tutorial-card">
+    <button class="tutorial-skip" onclick="closeTutorial()">SKIP ✕</button>
+    <div class="tutorial-dots" id="tutorial-dots"></div>
+    <div id="tutorial-content"></div>
+    <div class="tutorial-nav">
+      <button class="tutorial-btn-back" id="tutorial-back" onclick="tutorialNav(-1)">← Back</button>
+      <button class="tutorial-btn-next" id="tutorial-next" onclick="tutorialNav(1)">Next →</button>
+    </div>
   </div>
 </div>
 
@@ -2064,11 +2141,20 @@ async function fetchSpotifyStreams() {
         renderHistory(t.id, merged);
         renderDaysToGoal(t.id, merged, plays, t.goal);
 
+        // Prefer the most recent daily: auto-calc wins if it's for a newer date than
+        // the API's last history entry (handles the gap=0 race where the cron ran
+        // before Spotify updated and the Redis entry hasn't caught up yet).
+        const _cmpDate = (a, b) => { // returns >0 if a is newer than b (DD/MM strings)
+          const [ad,am] = a.split('/').map(Number), [bd,bm] = b.split('/').map(Number);
+          return am !== bm ? am - bm : ad - bd;
+        };
+        const _useAuto = autoStreams !== null && autoDate &&
+          (!lastApiDay || _cmpDate(autoDate, lastApiDay.date) > 0);
         window.streamData = window.streamData || {};
         window.streamData[t.id] = {
           total:     plays,
-          daily:     lastApiDay?.streams ?? autoStreams,
-          dailyDate: lastApiDay?.date    ?? null,
+          daily:     _useAuto ? autoStreams : (lastApiDay?.streams ?? autoStreams),
+          dailyDate: _useAuto ? autoDate    : (lastApiDay?.date    ?? null),
         };
 
         // ── Update the diff label — only show diff when positive ─
@@ -2104,6 +2190,7 @@ window.addEventListener('DOMContentLoaded', () => {
   (function seedKnownMilestoneDates() {
     const known = [
       { key: 'bu_ms_jump_630000000',     date: '14/05', year: 2026 },
+      { key: 'bu_ms_jump_640000000',     date: '28/06', year: 2026 },
       { key: 'bu_ms_shutdown_890000000', date: '12/06', year: 2026 },
       { key: 'bu_ms_ddududu_870000000',  date: '05/06', year: 2026 },
     ];
@@ -2139,7 +2226,7 @@ function closeMobileNav() {
   document.getElementById('nav-hamburger').classList.remove('open');
 }
 
-const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', account: '/account' };
+const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback' };
 
 // Mirrors the per-route <title> the Vercel edge middleware sets on first
 // load, so client-side navigation keeps the tab title in sync too.
@@ -2167,7 +2254,6 @@ function showPage(page, { replace = false } = {}) {
   window.scrollTo(0, 0);
   if (page === 'home') initAnimations();
   if (page === 'badges') tryAutoLoad();
-  if (page === 'account') initAccountPage();
   if (page === 'leaderboard') {
     const pending = parseLbHistoryParam();
     if (pending) {
@@ -2206,6 +2292,7 @@ function routeInitial() {
   const page = pathToPage(location.pathname);
   if (page !== 'home') showPage(page, { replace: true });
   else history.replaceState({ page: 'home' }, '', '/');
+  maybeShowTutorial();
 }
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', routeInitial);
@@ -2250,11 +2337,11 @@ const sb = (typeof supabase !== 'undefined' && SUPABASE_URL.startsWith('http'))
 
 const ACCOUNT_SOURCE_LABELS = { lastfm: 'Last.fm', listenbrainz: 'ListenBrainz' };
 
-async function initAccountPage() {
+async function initBadgesAuthPanel() {
   if (!sb) {
-    document.getElementById('account-signedout-panel').innerHTML =
+    document.getElementById('badges-auth-signout').innerHTML =
       '<div class="login-card"><p class="login-label">Coming soon</p><p class="login-desc">Account linking is being set up — check back soon!</p></div>';
-    document.getElementById('account-signedin-panel').style.display = 'none';
+    document.getElementById('badges-auth-link').style.display = 'none';
     return;
   }
   const { data: { session } } = await sb.auth.getSession();
@@ -2262,23 +2349,29 @@ async function initAccountPage() {
 }
 
 function renderAccountPage(session) {
-  const signedOut = document.getElementById('account-signedout-panel');
-  const signedIn  = document.getElementById('account-signedin-panel');
+  const signedOut = document.getElementById('badges-auth-signout');
+  const signedIn  = document.getElementById('badges-auth-link');
+  const settingsSection = document.getElementById('settings-account-section');
   if (session) {
     signedOut.style.display = 'none';
     signedIn.style.display = 'block';
-    document.getElementById('account-email-display').textContent = session.user.email || session.user.id;
-    document.getElementById('account-displayname-input').value = session.user.user_metadata?.display_name || '';
+    if (settingsSection) settingsSection.style.display = 'block';
+    const emailEl = document.getElementById('settings-account-email');
+    if (emailEl) emailEl.textContent = session.user.email || session.user.id;
+    const dnInput = document.getElementById('linked-displayname-input-settings');
+    if (dnInput) dnInput.value = session.user.user_metadata?.display_name || '';
     loadLinkedAccounts();
+    loadLinkedAccountsInline();
   } else {
     signedOut.style.display = 'block';
     signedIn.style.display = 'none';
+    if (settingsSection) settingsSection.style.display = 'none';
   }
 }
 
 async function signInWithProvider(provider) {
   if (!sb) return;
-  await sb.auth.signInWithOAuth({ provider, options: { redirectTo: location.origin + '/account' } });
+  await sb.auth.signInWithOAuth({ provider, options: { redirectTo: location.origin + '/badges' } });
 }
 
 async function signInWithEmail() {
@@ -2292,33 +2385,117 @@ async function signInWithEmail() {
     status.style.display = 'block';
     return;
   }
-  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + '/account' } });
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + '/badges' } });
   status.textContent = error ? error.message : 'Check your inbox for a magic link!';
   status.style.color = error ? '#ff4444' : '#4caf50';
   status.style.display = 'block';
 }
 
 async function saveDisplayName() {
-  const input = document.getElementById('account-displayname-input');
-  const status = document.getElementById('account-displayname-status');
+  const input = document.getElementById('linked-displayname-input-settings');
+  const status = document.getElementById('settings-displayname-status');
+  if (!input) return;
   const display_name = input.value.trim();
-  status.style.display = 'none';
+  if (status) status.textContent = '';
 
   const { error } = await sb.auth.updateUser({ data: { display_name } });
 
-  status.textContent = error ? error.message : 'Saved!';
-  status.style.color = error ? '#ff4444' : '#4caf50';
-  status.style.display = 'block';
+  if (status) {
+    status.textContent = error ? error.message : 'Saved!';
+    status.style.color = error ? '#ff4444' : '#4caf50';
+  }
 }
 
 async function signOutAccount() {
   if (!sb) return;
   await sb.auth.signOut();
   renderAccountPage(null);
+  // Show sign-in panel, hide profile
+  document.getElementById('login-panel').style.display = 'block';
+  document.getElementById('profile-panel').style.display = 'none';
+}
+
+
+async function deleteAccount() {
+  if (!sb) return;
+  if (!confirm('Delete your account? This cannot be undone. Your leaderboard data stays but will no longer be linked to any account.')) return;
+  const { error } = await sb.auth.admin?.deleteUser
+    ? (() => ({ error: null }))()   // service-role only — use RPC instead
+    : await sb.rpc('delete_account');
+  if (error) {
+    // Fallback: just sign out and remove linked accounts
+    await sb.from('linked_accounts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await sb.auth.signOut();
+    renderAccountPage(null);
+    alert('Signed out and removed linked accounts.');
+    return;
+  }
+  await sb.auth.signOut();
+  renderAccountPage(null);
+}
+
+// Auth-gated entry to My Badges — redirects to Account if not signed in,
+// then auto-loads profile from linked Supabase accounts.
+async function goToMyBadges() {
+  if (!sb) {
+    // No Supabase configured — fall back to legacy guest flow
+    showPage('badges');
+    return;
+  }
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    showPage('badges');
+    return;
+  }
+  showPage('badges');
+  await initMyBadgesFromAccount();
+}
+
+// Load linked accounts from Supabase and populate the badges page.
+async function initMyBadgesFromAccount() {
+  if (!sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+
+  const { data } = await sb.from('linked_accounts')
+    .select('source, source_username')
+    .order('created_at', { ascending: true });
+
+  if (!data || data.length === 0) {
+    // No linked accounts yet — show the link panel
+    document.getElementById('login-panel').style.display = 'block';
+    document.getElementById('badges-auth-signout').style.display = 'none';
+    document.getElementById('badges-auth-link').style.display = 'block';
+    await loadLinkedAccountsInline();
+    return;
+  }
+
+  // For 2+ accounts: aggregate all; for 1: use existing loadProfile
+  if (data.length >= 2) {
+    acctBreakdown = null;
+    const lfm = data.find(a => a.source === 'lastfm');
+    const lb  = data.find(a => a.source === 'listenbrainz');
+    if (lfm) { saveUsername(lfm.source_username); const el = document.getElementById('lfm-input'); if (el) el.value = lfm.source_username; }
+    if (lb)  { saveLbUsername(lb.source_username); const el = document.getElementById('lb-input');  if (el) el.value  = lb.source_username;  }
+    await loadMultiAccountProfile(data);
+    return;
+  }
+
+  // Single account
+  const acct = data[0];
+  acctBreakdown = null;
+  if (acct.source === 'lastfm') {
+    saveUsername(acct.source_username);
+    const el = document.getElementById('lfm-input'); if (el) el.value = acct.source_username;
+  } else {
+    saveLbUsername(acct.source_username);
+    const el = document.getElementById('lb-input'); if (el) el.value = acct.source_username;
+  }
+  await loadProfile();
 }
 
 async function loadLinkedAccounts() {
-  const list = document.getElementById('linked-accounts-list');
+  const list = document.getElementById('linked-accounts-list') || document.getElementById('linked-accounts-list-inline');
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return;
 
@@ -2337,7 +2514,7 @@ async function loadLinkedAccounts() {
     return;
   }
 
-  list.innerHTML = data.map(row => `
+  const rowHtml = data.map(row => `
     <div class="linked-row">
       <div class="linked-row-label">
         <span class="linked-row-source">${ACCOUNT_SOURCE_LABELS[row.source] || row.source}</span>${row.source_username}
@@ -2345,6 +2522,51 @@ async function loadLinkedAccounts() {
       <button class="linked-remove-btn" onclick="removeLinkedAccount('${row.id}')">Remove</button>
     </div>
   `).join('');
+  list.innerHTML = rowHtml;
+  const settingsList = document.getElementById('linked-accounts-list-settings');
+  if (settingsList) settingsList.innerHTML = rowHtml;
+  const lfm = data.find(r => r.source === 'lastfm');
+  const lb  = data.find(r => r.source === 'listenbrainz');
+  if (lfm) saveUsername(lfm.source_username);
+  if (lb)  saveLbUsername(lb.source_username);
+}
+
+async function addLinkedAccountSettings() {
+  const sourceSelect  = document.getElementById('linked-source-select-settings');
+  const usernameInput = document.getElementById('linked-username-input-settings');
+  const status        = document.getElementById('settings-linked-status');
+  const source        = sourceSelect.value;
+  const username      = usernameInput.value.trim();
+  status.style.display = 'none';
+  if (!username) { status.textContent = 'Enter a username first.'; status.style.display = 'block'; return; }
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+  const { error } = await sb.from('linked_accounts').insert({ app_user_id: session.user.id, source, source_username: username });
+  if (error) {
+    status.textContent = error.code === '23505' ? "That account is already linked to a profile." : error.message;
+    status.style.display = 'block';
+    return;
+  }
+  usernameInput.value = '';
+  await loadLinkedAccounts();
+  // Refresh badges data with new account
+  await initMyBadgesFromAccount();
+}
+
+async function loadLinkedAccountsInline() {
+  const list = document.getElementById('linked-accounts-list-inline');
+  const doneBtn = document.getElementById('badges-done-btn');
+  if (!list || !sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+  const { data } = await sb.from('linked_accounts').select('id, source, source_username').order('created_at', { ascending: true });
+  if (!data || data.length === 0) {
+    list.innerHTML = '<p class="settings-hint">No accounts linked yet.</p>';
+    if (doneBtn) doneBtn.style.display = 'none';
+    return;
+  }
+  list.innerHTML = data.map(row => `<div class="linked-row"><div class="linked-row-label"><span class="linked-row-source">${ACCOUNT_SOURCE_LABELS[row.source] || row.source}</span>${row.source_username}</div><button class="linked-remove-btn" onclick="removeLinkedAccount('${row.id}')">Remove</button></div>`).join('');
+  if (doneBtn) doneBtn.style.display = 'block';
 }
 
 async function addLinkedAccount() {
@@ -2379,7 +2601,7 @@ async function addLinkedAccount() {
   }
 
   usernameInput.value = '';
-  loadLinkedAccounts();
+  await loadLinkedAccounts();
 }
 
 async function removeLinkedAccount(id) {
@@ -2389,7 +2611,7 @@ async function removeLinkedAccount(id) {
 
 if (sb) {
   sb.auth.onAuthStateChange((_event, session) => {
-    if (document.getElementById('page-account')?.classList.contains('active')) {
+    if (document.getElementById('page-badges')?.classList.contains('active')) {
       renderAccountPage(session);
     }
   });
@@ -2398,6 +2620,7 @@ if (sb) {
 // ── LAST.FM CONFIG ───────────────────────────────────────────
 const LASTFM_KEY = '666b8ef2f3cc360fbc20df275fba2981';
 const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
+const LB_BASE     = 'https://api.listenbrainz.org/1/';
 
 const TRACKS = [
   { id: 'jump',     title: 'JUMP',          artist: 'BLACKPINK', track: 'JUMP',          year: '2025', era: 'DEADLINE',  spotify: 'https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY' },
@@ -2646,6 +2869,60 @@ async function lfmFetch(params) {
   return data;
 }
 
+async function lbFetch(path, params = {}) {
+  const qs = Object.keys(params).length ? '?' + new URLSearchParams(params) : '';
+  const r = await fetch(LB_BASE + path + qs, { cache: 'no-store' });
+  if (!r.ok) throw new Error(`ListenBrainz HTTP ${r.status}`);
+  return r.json();
+}
+async function fetchLbTrackCounts(username) {
+  const counts = { jump: 0, shutdown: 0, ddududu: 0 };
+  try {
+    const d = await lbFetch(`stats/user/${encodeURIComponent(username)}/recordings`, { count: 100, range: 'all_time' });
+    for (const rec of d?.payload?.recordings || []) {
+      const name   = (rec.track_name  || '').toLowerCase().trim();
+      const artist = (rec.artist_name || '').toLowerCase();
+      if (!artist.includes('blackpink')) continue;
+      if (name === 'jump')               counts.jump     += rec.listen_count || 0;
+      else if (name === 'shut down')     counts.shutdown += rec.listen_count || 0;
+      else if (name === 'ddu-du ddu-du') counts.ddududu  += rec.listen_count || 0;
+    }
+  } catch (e) { console.warn('LB track counts:', e.message); }
+  return counts;
+}
+async function fetchLbArtistPlays(username) {
+  try {
+    const d = await lbFetch(`stats/user/${encodeURIComponent(username)}/artists`, { count: 100, range: 'all_time' });
+    const bp = (d?.payload?.artists || []).find(a => (a.artist_name || '').toLowerCase().includes('blackpink'));
+    return bp?.listen_count || 0;
+  } catch { return 0; }
+}
+async function fetchLbRecentListens(username, from, to) {
+  const results = [];
+  let maxTs = to;
+  for (let page = 0; page < 50; page++) {
+    const d = await lbFetch(`user/${encodeURIComponent(username)}/listens`, { min_ts: from, max_ts: maxTs, count: 100 });
+    const listens = d?.payload?.listens || [];
+    if (!listens.length) break;
+    results.push(...listens);
+    if (listens.length < 100) break;
+    maxTs = listens[listens.length - 1].listened_at - 1;
+    if (maxTs < from) break;
+  }
+  return results;
+}
+function countLbByTrack(listens) {
+  const counts = { jump: 0, shutdown: 0, ddududu: 0 };
+  for (const l of listens) {
+    const name   = (l.track_metadata?.track_name   || '').toLowerCase().trim();
+    const artist = (l.track_metadata?.artist_name  || '').toLowerCase();
+    if (!artist.includes('blackpink')) continue;
+    if (name === 'jump')               counts.jump++;
+    else if (name === 'shut down')     counts.shutdown++;
+    else if (name === 'ddu-du ddu-du') counts.ddududu++;
+  }
+  return counts;
+}
 async function fetchUserInfo(username) {
   const d = await lfmFetch({ method: 'user.getInfo', user: username });
   if (d?.user) return d.user;
@@ -2746,6 +3023,7 @@ function countByTrack(scrobbles) {
 // ── MAIN LOAD ────────────────────────────────────────────────
 let currentUser = null;
 let currentScrobbles = null;
+let acctBreakdown = null; // [{label, source, username, artistPlays, totalPlays, todayCounts, weekCounts, weekDayCounts}]
 
 async function loadProfile(usernameOverride, silent = false) {
   const username = usernameOverride || document.getElementById('lfm-input').value.trim();
@@ -2831,6 +3109,33 @@ async function loadProfile(usernameOverride, silent = false) {
       weekCounts.ddududu  += counts.ddududu  || 0;
     }
 
+    // Merge ListenBrainz scores if a LB username is linked
+    const lbUsername = getSavedLbUsername();
+    if (lbUsername) {
+      if (!silent) setLoading('Fetching ListenBrainz stats…');
+      try {
+        const [lbTotals, lbArtist, lbToday] = await Promise.all([
+          fetchLbTrackCounts(lbUsername),
+          fetchLbArtistPlays(lbUsername),
+          fetchLbRecentListens(lbUsername, dayFrom, dayTo),
+        ]);
+        const lbTodayCounts = countLbByTrack(lbToday);
+        for (const k of ['jump', 'shutdown', 'ddududu']) {
+          totalPlays[k]  += lbTotals[k]      || 0;
+          todayCounts[k] += lbTodayCounts[k] || 0;
+        }
+        artistPlays += lbArtist;
+        const { from: lbWeekFrom } = getWeekBounds();
+        for (let i = 0; i < 7; i++) {
+          const ds = lbWeekFrom + i * 86400;
+          if (ds * 1000 > Date.now()) break;
+          const dc = countLbByTrack(await fetchLbRecentListens(lbUsername, ds, ds + 86400));
+          weekCounts.jump     += dc.jump     || 0;
+          weekCounts.shutdown += dc.shutdown || 0;
+          weekCounts.ddududu  += dc.ddududu  || 0;
+        }
+      } catch (e) { console.warn('LB fetch failed:', e.message); }
+    }
     currentUser = { info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs };
     saveUsername(username);
     // Sync stamps from server before rendering so calendar has cross-device data
@@ -2864,7 +3169,8 @@ async function loadProfile(usernameOverride, silent = false) {
 function setLoading(msg) { document.getElementById('loading-text').textContent = msg; }
 
 // ── PERSIST LOGIN ─────────────────────────────────────────────
-const LS_USER_KEY = 'bu_lfm_username';
+const LS_USER_KEY    = 'bu_lfm_username';
+const LS_LB_KEY      = 'bu_lb_username';
 
 function saveUsername(username) {
   try { localStorage.setItem(LS_USER_KEY, username); } catch(e) {}
@@ -2875,12 +3181,16 @@ function getSavedUsername() {
 function clearSavedUsername() {
   try { localStorage.removeItem(LS_USER_KEY); } catch(e) {}
 }
+function saveLbUsername(u) { try { localStorage.setItem(LS_LB_KEY, u); } catch(e) {} }
+function getSavedLbUsername() { try { return localStorage.getItem(LS_LB_KEY) || ''; } catch(e) { return ''; } }
 
 // Auto-load on page show if username was previously saved
 function tryAutoLoad() {
   const saved = getSavedUsername();
   if (saved) {
     document.getElementById('lfm-input').value = saved;
+    const lbEl = document.getElementById('lb-input');
+    if (lbEl) lbEl.value = getSavedLbUsername();
     loadProfile();
   }
 }
@@ -2954,31 +3264,225 @@ async function submitFeedback() {
   }
 }
 
+
+// ── BREAKDOWN POPUP ─────────────────────────────────────────────
+function showBreakdown(type, key) {
+  if (!acctBreakdown || acctBreakdown.length < 2) return;
+  const labels = {
+    artistPlays:   'Total BP Scrobbles',
+    campaignTotal: 'Campaign Tracks (all time)',
+    'daily:jump':       'JUMP — Today',
+    'daily:shutdown':   'SHUT DOWN — Today',
+    'daily:ddududu':    'DDU-DU DDU-DU — Today',
+    'weekly:jump':      'JUMP — This Week',
+    'weekly:shutdown':  'SHUT DOWN — This Week',
+    'weekly:ddududu':   'DDU-DU DDU-DU — This Week',
+  };
+  const compositeKey = key ? `${type}:${key}` : type;
+  document.getElementById('breakdown-title').textContent = '// ' + (labels[compositeKey] || labels[type] || type.toUpperCase());
+
+  let getVal;
+  if (type === 'artistPlays')   getVal = a => a.artistPlays;
+  else if (type === 'campaignTotal') getVal = a => Object.values(a.totalPlays).reduce((s,v)=>s+v,0);
+  else if (type === 'daily')    getVal = a => a.todayCounts[key] || 0;
+  else if (type === 'weekly')   getVal = a => a.weekCounts[key]  || 0;
+  else getVal = () => 0;
+
+  const rows = document.getElementById('breakdown-rows');
+  rows.innerHTML = acctBreakdown.map(a => `
+    <div class="breakdown-row">
+      <div class="breakdown-acct">
+        ${a.username}<span class="breakdown-acct-source">${a.source === 'lastfm' ? 'Last.fm' : 'ListenBrainz'}</span>
+      </div>
+      <div class="breakdown-val">${getVal(a).toLocaleString()}</div>
+    </div>`).join('');
+
+  const grand = acctBreakdown.reduce((s,a) => s + getVal(a), 0);
+  document.getElementById('breakdown-grand-total').textContent = grand.toLocaleString();
+
+  const overlay = document.getElementById('breakdown-overlay');
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeBreakdown() {
+  document.getElementById('breakdown-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// Fetch stats for a single linked account (LFM or LB)
+async function fetchSingleAccountStats(source, username) {
+  const { from: dayFrom, to: dayTo } = getDayBounds();
+  const { from: weekFrom } = getWeekBounds();
+  const res = {
+    label: username + (source === 'lastfm' ? ' (Last.fm)' : ' (ListenBrainz)'),
+    source, username,
+    artistPlays: 0,
+    totalPlays:  { jump: 0, shutdown: 0, ddududu: 0 },
+    todayCounts: { jump: 0, shutdown: 0, ddududu: 0 },
+    weekCounts:  { jump: 0, shutdown: 0, ddududu: 0 },
+    weekDayCounts: [],
+  };
+  if (source === 'lastfm') {
+    res.artistPlays = await fetchArtistPlays(username, 'BLACKPINK');
+    for (const t of TRACKS) res.totalPlays[t.id] = await fetchTrackPlays(username, t.artist, t.track);
+    const todaySc = await fetchRecentScrobbles(username, dayFrom, dayTo);
+    Object.assign(res.todayCounts, countByTrack(todaySc));
+    let _lastTs = null;
+    for (let i = 0; i < 7; i++) {
+      const ds = weekFrom + i * 86400;
+      if (ds * 1000 > Date.now()) { res.weekDayCounts.push(null); continue; }
+      const sc = await fetchRecentScrobbles(username, ds, ds + 86400);
+      const dc = countByTrack(sc);
+      res.weekDayCounts.push(dc);
+      res.weekCounts.jump     += dc.jump     || 0;
+      res.weekCounts.shutdown += dc.shutdown || 0;
+      res.weekCounts.ddududu  += dc.ddududu  || 0;
+      const bpSc = sc.filter(s => (s.artist?.['#text']||s.artist||'').toLowerCase().includes('blackpink') && s.date?.uts);
+      if (bpSc.length) { const ts = parseInt(bpSc[0].date.uts)*1000; if (!_lastTs || ts > _lastTs) _lastTs = ts; }
+    }
+    res.lastScrobbleTs = _lastTs;
+  } else if (source === 'listenbrainz') {
+    const [lbTotals, lbArtist, lbToday] = await Promise.all([
+      fetchLbTrackCounts(username), fetchLbArtistPlays(username),
+      fetchLbRecentListens(username, dayFrom, dayTo),
+    ]);
+    res.artistPlays = lbArtist;
+    for (const k of ['jump','shutdown','ddududu']) res.totalPlays[k] = lbTotals[k] || 0;
+    Object.assign(res.todayCounts, countLbByTrack(lbToday));
+    for (let i = 0; i < 7; i++) {
+      const ds = weekFrom + i * 86400;
+      if (ds * 1000 > Date.now()) { res.weekDayCounts.push(null); continue; }
+      const dc = countLbByTrack(await fetchLbRecentListens(username, ds, ds + 86400));
+      res.weekDayCounts.push(dc);
+      res.weekCounts.jump     += dc.jump     || 0;
+      res.weekCounts.shutdown += dc.shutdown || 0;
+      res.weekCounts.ddududu  += dc.ddududu  || 0;
+    }
+  }
+  return res;
+}
+
+// Load and aggregate multiple linked accounts, then render combined profile
+async function loadMultiAccountProfile(accounts) {
+  document.getElementById('lfm-error').style.display = 'none';
+  document.getElementById('login-panel').style.display = 'none';
+  document.getElementById('loading-panel').style.display = 'block';
+  document.getElementById('profile-panel').style.display = 'none';
+
+  const { from: weekFrom } = getWeekBounds();
+  const combined = {
+    artistPlays: 0,
+    totalPlays:  { jump: 0, shutdown: 0, ddududu: 0 },
+    todayCounts: { jump: 0, shutdown: 0, ddududu: 0 },
+    weekCounts:  { jump: 0, shutdown: 0, ddududu: 0 },
+    weekDays: null, info: null, lastScrobbleTs: null,
+  };
+  acctBreakdown = [];
+
+  for (const acct of accounts) {
+    setLoading(`Loading ${acct.source_username}…`);
+    try {
+      const stats = await fetchSingleAccountStats(acct.source, acct.source_username);
+      // Fetch per-account total playcount for LFM
+      if (acct.source === 'lastfm') {
+        try { const ui = await fetchUserInfo(acct.source_username); stats.playcount = Number(ui.playcount) || 0; } catch {}
+      }
+      if (!combined.lastScrobbleTs || (stats.lastScrobbleTs && stats.lastScrobbleTs > combined.lastScrobbleTs)) {
+        combined.lastScrobbleTs = stats.lastScrobbleTs;
+      }
+      acctBreakdown.push(stats);
+      combined.artistPlays += stats.artistPlays;
+      for (const k of ['jump','shutdown','ddududu']) {
+        combined.totalPlays[k]  += stats.totalPlays[k]  || 0;
+        combined.todayCounts[k] += stats.todayCounts[k] || 0;
+        combined.weekCounts[k]  += stats.weekCounts[k]  || 0;
+      }
+    } catch(e) { console.warn('Multi-account fetch failed for', acct.source_username, e); }
+  }
+
+  // Combine per-day counts across all accounts for weekly table
+  const weekDays = [];
+  for (let i = 0; i < 7; i++) {
+    const ds = weekFrom + i * 86400;
+    if (ds * 1000 > Date.now()) { weekDays.push(null); continue; }
+    const day = { jump: 0, shutdown: 0, ddududu: 0 };
+    for (const a of acctBreakdown) {
+      const dc = a.weekDayCounts[i];
+      if (dc) { day.jump += dc.jump||0; day.shutdown += dc.shutdown||0; day.ddududu += dc.ddududu||0; }
+    }
+    weekDays.push({ label: getDayLabel(ds), counts: day });
+  }
+  combined.weekDays = weekDays;
+
+  // User info for display header: use first LFM account
+  const primaryLfm = accounts.find(a => a.source === 'lastfm');
+  const primaryUsername = primaryLfm?.source_username || accounts[0].source_username;
+  setLoading('Loading profile info…');
+  try { combined.info = await fetchUserInfo(primaryUsername); } catch {}
+  if (!combined.info) combined.info = { name: primaryUsername, image: [{}], playcount: 0 };
+  // Attach per-account list and display name to info for renderProfile
+  combined.info.allAccounts = acctBreakdown.map(a => ({
+    username: a.username, source: a.source,
+    playcount: a.playcount || 0, lastScrobbleTs: a.lastScrobbleTs || null,
+  }));
+  if (sb) {
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.user?.user_metadata?.display_name) combined.info.displayName = session.user.user_metadata.display_name;
+    } catch {}
+  }
+
+  currentUser = combined;
+  saveUsername(primaryUsername);
+  await syncStampsFromServer(primaryUsername);
+  persistTodayStamp(primaryUsername, combined.todayCounts);
+  renderProfile(combined);
+  submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs).catch(()=>{});
+}
+
 function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs }) {
   document.getElementById('loading-panel').style.display = 'none';
   document.getElementById('profile-panel').style.display = 'block';
 
-  // Avatar + name
-  document.getElementById('profile-username').textContent = info.name || '';
+  // Avatar + name — multi-account aware
+  const _tsAgo = ts => {
+    if (!ts) return '';
+    const diffMs = Date.now() - ts, diffMins = Math.floor(diffMs/60000),
+          diffHours = Math.floor(diffMs/3600000), diffDays = diffMs/86400000;
+    if (diffMins < 2) return 'just now';
+    if (diffHours < 1) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 2) return 'yesterday';
+    return `${Math.floor(diffDays)}d ago`;
+  };
 
-  let scrobbleAgo = '';
-  let showWarning = false;
-  if (lastScrobbleTs) {
-    const diffMs = Date.now() - lastScrobbleTs;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = diffMs / 86400000;
-    if (diffMins < 2) scrobbleAgo = 'just now';
-    else if (diffHours < 1) scrobbleAgo = `${diffMins}m ago`;
-    else if (diffHours < 24) scrobbleAgo = `${diffHours}h ago`;
-    else if (diffDays < 2) scrobbleAgo = 'yesterday';
-    else scrobbleAgo = `${Math.floor(diffDays)}d ago`;
-    showWarning = diffDays > 3;
+  if (info.allAccounts && info.allAccounts.length > 1) {
+    // Multi-account: show display name (or combined usernames), list each account below
+    document.getElementById('profile-username').textContent =
+      info.displayName || info.allAccounts.map(a => a.username).join(' + ');
+    let metaHtml = info.allAccounts.map(a => {
+      const platform = a.source === 'lastfm' ? 'Last.fm' : 'ListenBrainz';
+      const ago = _tsAgo(a.lastScrobbleTs);
+      return `<div>${a.username} · ${platform}` +
+        (a.playcount ? ` · <span>${a.playcount.toLocaleString()}</span> total scrobbles` : '') +
+        (ago ? ` · last scrobble: <span>${ago}</span>` : '') + `</div>`;
+    }).join('');
+    document.getElementById('profile-meta').innerHTML = metaHtml;
+    const maxDays = info.allAccounts.reduce((m, a) => {
+      if (!a.lastScrobbleTs) return m;
+      return Math.max(m, (Date.now() - a.lastScrobbleTs) / 86400000);
+    }, 0);
+    document.getElementById('scrobble-warning').style.display = maxDays > 3 ? 'flex' : 'none';
+  } else {
+    document.getElementById('profile-username').textContent = info.displayName || info.name || '';
+    let scrobbleAgo = _tsAgo(lastScrobbleTs);
+    const showWarning = lastScrobbleTs ? (Date.now() - lastScrobbleTs) / 86400000 > 3 : false;
+    document.getElementById('profile-meta').innerHTML =
+      `<span>${Number(info.playcount).toLocaleString()}</span> total scrobbles · Last.fm`
+      + (scrobbleAgo ? ` · last scrobble: <span>${scrobbleAgo}</span>` : '');
+    document.getElementById('scrobble-warning').style.display = showWarning ? 'flex' : 'none';
   }
-  document.getElementById('profile-meta').innerHTML =
-    `<span>${Number(info.playcount).toLocaleString()}</span> total scrobbles · Last.fm`
-    + (scrobbleAgo ? ` · last scrobble: <span>${scrobbleAgo}</span>` : '');
-  document.getElementById('scrobble-warning').style.display = showWarning ? 'flex' : 'none';
   document.getElementById('settings-panel').style.display = 'none'; // reset on new profile load
   initSettings();
 
@@ -2995,13 +3499,15 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   const weeklyDone = TRACKS.every(t => (weekCounts[t.id]  || 0) >= weeklyTier1(t.id));
   const challengeIcon  = dailyDone ? '✓' : (weeklyDone ? '~' : '…');
   const challengeLabel = dailyDone ? 'Daily Complete!' : (weeklyDone ? 'Weekly Done' : 'Challenges Active');
+  const _tap = acctBreakdown && acctBreakdown.length > 1;
+  const _tc = (type, key) => _tap ? `class="summary-num tappable" onclick="showBreakdown('${type}'${key?`,'${key}'`:''})"` : 'class="summary-num"';
   document.getElementById('profile-summary').innerHTML = `
     <div class="summary-cell">
-      <div class="summary-num">${artistPlays.toLocaleString()}</div>
+      <div ${_tc('artistPlays')}>${artistPlays.toLocaleString()}</div>
       <div class="summary-lbl">Total BP Scrobbles (all time)</div>
     </div>
     <div class="summary-cell">
-      <div class="summary-num">${campaignTotal.toLocaleString()}</div>
+      <div ${_tc('campaignTotal')}>${campaignTotal.toLocaleString()}</div>
       <div class="summary-lbl">Campaign Tracks (3 songs)</div>
     </div>
     <div class="summary-cell">
@@ -3059,7 +3565,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
              <div style="font-size:0.45rem;letter-spacing:0.15em;color:rgba(245,240,240,0.2);">No badge yet</div>`;
         return `<div class="daily-card">
           <div class="daily-song-name">${t.title}</div>
-          <div class="daily-count">${count}</div>
+          <div class="${acctBreakdown&&acctBreakdown.length>1?'daily-count tappable':'daily-count'}" ${acctBreakdown&&acctBreakdown.length>1?`onclick="showBreakdown('daily','${t.id}')"`:''} >${count}</div>
           <div class="daily-target">${nextTier ? `/ ${nextTier.min} for ${nextTier.label}` : (currentBadge ? `✨ ×${currentBadge.mult} accounts!` : 'streams today')}</div>
           <div style="margin:0.6rem 0;">${badgeDisplay}</div>
           <div class="tier-dots">
@@ -3385,9 +3891,17 @@ function renderStampCalendar() {
 
 function shareProfile() {
   if (!currentUser) return;
-  const name = currentUser.info.name;
-  const total = Object.values(currentUser.totalPlays).reduce((a,b)=>a+b,0);
-  const text = `🖤💗 Check out my BLACKPINK streaming stats on Blinks United!\n👤 ${name} · ${total.toLocaleString()} BP scrobbles\n#BlinksUnited #BLACKPINK #StreamJUMP`;
+  const name = currentUser.info.displayName || (currentUser.info.allAccounts?.length > 1
+    ? currentUser.info.allAccounts.map(a=>a.username).join(' + ')
+    : currentUser.info.name);
+  const td = currentUser.todayCounts;
+  const todayTotal = (td.jump||0) + (td.shutdown||0) + (td.ddududu||0);
+  const text = `🖤💗 ${name} — BLACKPINK streaming stats on Blinks United!\n` +
+    `Today: ${todayTotal.toLocaleString()} campaign streams\n` +
+    `↳ JUMP: ${(td.jump||0).toLocaleString()}\n` +
+    `↳ SHUT DOWN: ${(td.shutdown||0).toLocaleString()}\n` +
+    `↳ DDU-DU DDU-DU: ${(td.ddududu||0).toLocaleString()}\n` +
+    `#BlinksUnited #BLACKPINK #StreamJUMP`;
   if (navigator.share) {
     navigator.share({ title: 'Blinks United — My Stats', text }).catch(() => {});
   } else {
@@ -3399,6 +3913,7 @@ function shareProfile() {
 }
 
 function resetProfile() {
+  if (sb) sb.auth.signOut().catch(() => {});
   clearSavedUsername();
   document.getElementById('profile-panel').style.display = 'none';
   document.getElementById('login-panel').style.display = 'block';
@@ -3410,6 +3925,8 @@ function resetProfile() {
 document.getElementById('lfm-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') loadProfile();
 });
+const lbInputEl = document.getElementById('lb-input');
+if (lbInputEl) lbInputEl.addEventListener('keydown', e => { if (e.key === 'Enter') loadProfile(); });
 </script>
 
 <style>
@@ -3423,6 +3940,65 @@ document.getElementById('lfm-input').addEventListener('keydown', e => {
     transition: opacity 0.1s;
     will-change: transform;
   }
+
+  /* ── BREAKDOWN POPUP ─────────────────────────────────────── */
+  .daily-count.tappable, .summary-num.tappable {
+    cursor: pointer;
+    text-decoration: underline dotted rgba(255,0,102,0.5);
+    text-underline-offset: 4px;
+    transition: opacity .15s;
+  }
+  .daily-count.tappable:hover, .summary-num.tappable:hover { opacity: .75; }
+  .breakdown-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; align-items: flex-end; justify-content: center;
+    background: rgba(0,0,0,.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  .breakdown-sheet {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 1.25rem 1.25rem 0 0;
+    padding: 1.75rem 1.5rem 2rem;
+    width: 100%; max-width: 460px;
+    max-height: 70vh; overflow-y: auto;
+  }
+  .breakdown-handle {
+    width: 2.5rem; height: 3px;
+    background: rgba(255,255,255,.2);
+    border-radius: 2px;
+    margin: 0 auto 1.25rem;
+  }
+  .breakdown-title {
+    font-family: var(--display); font-size: .7rem;
+    letter-spacing: .2em; color: var(--pink);
+    text-transform: uppercase; margin-bottom: 1rem;
+  }
+  .breakdown-row {
+    display: flex; justify-content: space-between;
+    align-items: center; padding: .6rem 0;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    gap: 1rem;
+  }
+  .breakdown-row:last-of-type { border-bottom: none; }
+  .breakdown-acct { font-size: .88rem; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .breakdown-acct-source { font-size: .65rem; color: var(--muted); display: block; }
+  .breakdown-val { color: var(--pink); font-size: 1.1rem; font-weight: 700; flex-shrink: 0; }
+  .breakdown-total-row {
+    display: flex; justify-content: space-between;
+    align-items: center; margin-top: .75rem;
+    padding: .75rem 0 0; border-top: 1px solid var(--border);
+    color: var(--muted); font-size: .8rem;
+  }
+  .breakdown-close-btn {
+    display: block; width: 100%; margin-top: 1.25rem;
+    padding: .75rem; background: none;
+    border: 1px solid var(--border); border-radius: .5rem;
+    color: var(--text); font-family: var(--display);
+    letter-spacing: .1em; font-size: .8rem; cursor: pointer;
+  }
+  .breakdown-close-btn:hover { border-color: var(--pink); }
 </style>
 <div id="js-cursor"></div>
 <script>
@@ -3471,8 +4047,14 @@ async function fetchLbData(force = false) {
 // ── Write user scores to leaderboard ─────────────────────────
 async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs) {
   try {
-    const username = userInfo.name || userInfo.realname || '';
-    if (!username) return;
+    const lfmUsername  = userInfo.name || userInfo.realname || '';
+    const lbUsername   = getSavedLbUsername();
+    const displayName  = lfmUsername || lbUsername;
+    if (!displayName) return;
+
+    const linkedAccounts = [];
+    if (lfmUsername) linkedAccounts.push({ type: 'lastfm',       username: lfmUsername });
+    if (lbUsername)  linkedAccounts.push({ type: 'listenbrainz', username: lbUsername  });
 
     const avatarUrl = (userInfo.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
 
@@ -3504,10 +4086,12 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        username,
-        avatar: avatarUrl,
+        username:       displayName,
+        displayName,
+        linkedAccounts,
+        avatar:         avatarUrl,
         scores,
-        updatedAt: new Date().toISOString(),
+        updatedAt:      new Date().toISOString(),
         lastScrobbleAt: lastScrobbleTs ? new Date(lastScrobbleTs).toISOString() : null,
       })
     });
@@ -3573,7 +4157,7 @@ function renderLeaderboard() {
       })();
       const lastScrobbleAt = data.lastScrobbleAt || null;
       const inactive = !lbHistorySnapshot && lastScrobbleAt && (Date.now() - new Date(lastScrobbleAt).getTime()) > 3 * 86400000;
-      return { username, avatar: data.avatar, score, badge: getBadge(data.scores?.overall_all || 0), inactive };
+      return { username, displayName: data.displayName || username, avatar: data.avatar, score, badge: getBadge(data.scores?.overall_all || 0), inactive };
     })
     .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
 
@@ -3607,7 +4191,7 @@ function renderLeaderboard() {
               : `<span class="lb-avatar-placeholder">${e.username[0].toUpperCase()}</span>`;
             return `<tr class="${isMe ? 'me' : ''}">
               <td><span class="lb-rank ${rankClass}">${rankEmoji || (i+1)}</span></td>
-              <td>${avatarHtml}<span class="lb-user">${e.username}</span>${ogUsers.has(e.username.toLowerCase()) ? ' <span class="og-inline-badge" data-tip="Here from the start · OG Beta Tester">⭐ OG</span>' : ''}${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${leaderStreakBadge(i, e.username)}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
+              <td>${avatarHtml}<span class="lb-user">${e.displayName || e.username}</span>${ogUsers.has(e.username.toLowerCase()) ? ' <span class="og-inline-badge" data-tip="Here from the start · OG Beta Tester">⭐ OG</span>' : ''}${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${leaderStreakBadge(i, e.username)}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
               <td class="lb-score">${e.score > 0 ? e.score.toLocaleString() : '—'}</td>
             </tr>`;
           }).join('')}
@@ -3652,6 +4236,78 @@ const CHAT_EXEMPT        = ['blinksunited'];
 const CHAT_SECRET_PREFIX = 'bu_chat_secret_';
 let   chatPollTimer      = null;
 let   chatPanelOpen      = false;
+let   chatCongratsText   = null;
+
+// ── TUTORIAL ─────────────────────────────────────────────────
+const TUTORIAL_SEEN_KEY = 'bu_tutorial_seen';
+const TUTORIAL_STEPS = [
+  {
+    eyebrow: 'Step 1 of 5',
+    title: 'WELCOME TO<br><span>BLINKS UNITED</span>',
+    body: 'The streaming hub for BLACKPINK fans. This quick guide walks you through the account system — it takes less than a minute to set up.',
+  },
+  {
+    eyebrow: 'Step 2 of 5',
+    title: 'CREATE YOUR<br><span>ACCOUNT</span>',
+    body: 'Sign in with Google, X, or Discord — no password needed. Prefer email? Enter your address and we\'ll send a one-click Magic Link straight to your inbox.',
+  },
+  {
+    eyebrow: 'Step 3 of 5',
+    title: 'YOUR PROGRESS<br><span>IS SAFE</span>',
+    body: 'Were you already tracking streams with your Last.fm username? Nothing is lost. Sign up and link that same Last.fm account — your badges, leaderboard position, and all your scrobbles will be right there waiting for you.',
+  },
+  {
+    eyebrow: 'Step 4 of 5',
+    title: 'LINK YOUR<br><span>MUSIC TRACKER</span>',
+    body: 'Connect your Last.fm and/or ListenBrainz usernames. All linked accounts count together — giving you one combined scrobble total on the leaderboard.',
+  },
+  {
+    eyebrow: 'Step 5 of 5',
+    title: 'EARN BADGES<br><span>&amp; JOIN THE CHAT</span>',
+    body: 'Hit streaming milestones on JUMP, Shut Down, and DDU-DU DDU-DU to earn badge tiers. Reach 10,000 all-time BLACKPINK scrobbles to unlock the group chat.',
+  },
+];
+let tutorialCurrentStep = 0;
+
+function openTutorial() {
+  tutorialCurrentStep = 0;
+  renderTutorialStep();
+  document.getElementById('tutorial-overlay').style.display = 'flex';
+}
+
+function closeTutorial() {
+  document.getElementById('tutorial-overlay').style.display = 'none';
+  try { localStorage.setItem(TUTORIAL_SEEN_KEY, '1'); } catch {}
+}
+
+function tutorialNav(dir) {
+  const next = tutorialCurrentStep + dir;
+  if (next < 0) return;
+  if (next >= TUTORIAL_STEPS.length) { closeTutorial(); return; }
+  tutorialCurrentStep = next;
+  renderTutorialStep();
+}
+
+function renderTutorialStep() {
+  const s     = TUTORIAL_STEPS[tutorialCurrentStep];
+  const total = TUTORIAL_STEPS.length;
+  document.getElementById('tutorial-dots').innerHTML =
+    Array.from({ length: total }, (_, i) =>
+      `<div class="tutorial-dot${i === tutorialCurrentStep ? ' active' : ''}"></div>`
+    ).join('');
+  document.getElementById('tutorial-content').innerHTML =
+    `<p class="tutorial-eyebrow">${s.eyebrow}</p>
+     <h2 class="tutorial-title">${s.title}</h2>
+     <p class="tutorial-body">${s.body}</p>`;
+  const backBtn = document.getElementById('tutorial-back');
+  const nextBtn = document.getElementById('tutorial-next');
+  backBtn.style.visibility = tutorialCurrentStep === 0 ? 'hidden' : '';
+  nextBtn.textContent = tutorialCurrentStep === total - 1 ? 'Got it ✓' : 'Next →';
+}
+
+function maybeShowTutorial() {
+  try { if (!localStorage.getItem(TUTORIAL_SEEN_KEY)) openTutorial(); } catch {}
+}
 
 function toggleChatWidget() {
   const panel = document.getElementById('chat-panel');
@@ -3746,6 +4402,11 @@ async function refreshChatAccess() {
   }
 
   unlockedEl.style.display = 'flex';
+  const welcomedKey = 'bu_chat_welcomed_' + username.toLowerCase();
+  if (!localStorage.getItem(welcomedKey)) {
+    try { localStorage.setItem(welcomedKey, '1'); } catch {}
+    chatCongratsText = '🎉 Congratulations! You\'ve just unlocked the Blink Chat — say hi!';
+  }
   loadChatMessages();
   startChatPolling();
 }
@@ -3757,15 +4418,16 @@ async function loadChatMessages() {
     const r = await fetch('/api/leaderboard?action=chat-messages', { cache: 'no-store' });
     const d = await r.json();
     if (!r.ok) return;
-    const adminKey = localStorage.getItem(ADMIN_KEY_LS);
     const wasAtBottom = wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 20;
-    wrap.innerHTML = (d.messages || []).map(m => `
+    const congrats = chatCongratsText
+      ? `<div class="chat-msg-system">${escapeHtml(chatCongratsText)}</div>` : '';
+    const msgs = (d.messages || []).map(m => `
       <div class="chat-msg" data-id="${m.id}">
         <span class="chat-msg-user">${escapeHtml(m.username)}</span>${escapeHtml(m.message)}
         <span class="chat-msg-time">${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
-        ${adminKey ? `<button class="chat-msg-del" onclick="deleteChatMessage(${m.id})">✕</button>` : ''}
       </div>
     `).join('') || '<span style="color:var(--muted);font-size:0.7rem;">No messages yet — say hi!</span>';
+    wrap.innerHTML = congrats + msgs;
     if (wasAtBottom) wrap.scrollTop = wrap.scrollHeight;
   } catch {}
 }
@@ -3797,18 +4459,6 @@ async function sendChatMessage() {
     input.disabled = false;
     input.focus();
   }
-}
-
-async function deleteChatMessage(id) {
-  const key = localStorage.getItem(ADMIN_KEY_LS);
-  if (!key) return;
-  try {
-    await fetch(`/api/leaderboard?action=chat-delete&key=${encodeURIComponent(key)}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
-    loadChatMessages();
-  } catch {}
 }
 
 function switchLbPeriod(period, btn) {
@@ -5528,6 +6178,21 @@ window.addEventListener('appinstalled', () => {
 <div id="pwa-android-tip" style="display:none;position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid rgba(255,0,102,0.4);color:rgba(245,240,240,0.85);font-family:var(--mono);font-size:0.5rem;letter-spacing:0.08em;padding:0.7rem 1.2rem;z-index:99999;text-align:center;max-width:280px;width:90%;">
   Tap <strong style="color:var(--pink)">⋮</strong> then <strong style="color:var(--pink)">Add to Home screen</strong> to install the app
   <button onclick="document.getElementById('pwa-android-tip').style.display='none'" style="display:block;margin:0.5rem auto 0;background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:0.45rem;cursor:pointer;letter-spacing:0.1em;">DISMISS</button>
+</div>
+
+
+<!-- ── BREAKDOWN POPUP ──────────────────────────────────────── -->
+<div id="breakdown-overlay" class="breakdown-overlay" style="display:none" onclick="if(event.target===this)closeBreakdown()">
+  <div class="breakdown-sheet">
+    <div class="breakdown-handle"></div>
+    <div class="breakdown-title" id="breakdown-title">// Account Breakdown</div>
+    <div id="breakdown-rows"></div>
+    <div class="breakdown-total-row">
+      <span>Combined total</span>
+      <span id="breakdown-grand-total" style="color:var(--text);font-weight:700;"></span>
+    </div>
+    <button class="breakdown-close-btn" onclick="closeBreakdown()">× Close</button>
+  </div>
 </div>
 
 </body>

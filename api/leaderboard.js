@@ -4,6 +4,9 @@ import crypto from 'crypto';
 
 const redis = Redis.fromEnv();
 const LB_KEY = 'bu_leaderboard_v1';
+const ANALYTICS_KEY = 'bu_analytics_v1';
+const TRACK_EVENTS = new Set(['pageview', 'playlist_click', 'share_click', 'vote_click']);
+
 
 // Chat shares this file (instead of its own /api/chat.js) to stay under
 // Vercel Hobby's 12-serverless-function cap.
@@ -23,10 +26,15 @@ function supabase() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 }
 
+function safeMeta(meta) {
+  if (typeof meta !== 'string') return '';
+  return meta.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
+}
+
 // Same ranking + tie-break as the client's Overall · All Tracks leaderboard
 // view, so the tracked leader always matches whoever is actually shown as #1.
 function computeLeader(users) {
-  const entries = Object.values(users || {}).map(u => ({ username: u.username, score: u.scores?.overall_all || 0 }));
+  const entries = Object.values(users || {}).map(u => ({ username: u.displayName || u.username, score: u.scores?.overall_all || 0 }));
   entries.sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
   return entries[0]?.score > 0 ? entries[0] : null;
 }
@@ -56,6 +64,14 @@ export default async function handler(req, res) {
     return res.status(200).json({ banned: data.banned || [] });
   }
 
+  // ── GET /api/leaderboard?action=stats&key=ADMIN_SECRET — admin: site analytics counters ──
+  if (req.method === 'GET' && action === 'stats') {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const counts = (await redis.hgetall(ANALYTICS_KEY)) || {};
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ counts });
+  }
+
   // ── GET /api/leaderboard?action=chat-messages — public: list recent chat messages ──
   if (req.method === 'GET' && action === 'chat-messages') {
     const sb = supabase();
@@ -78,6 +94,22 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     const { banned, ...publicData } = data;
     return res.status(200).json(publicData);
+  }
+
+  // ── POST /api/leaderboard?action=track — public: record one analytics event ──
+  if (req.method === 'POST' && action === 'track') {
+    let body;
+    try {
+      body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    } catch {
+      return res.status(400).json({ error: 'Invalid JSON' });
+    }
+    const event = body?.event;
+    if (!TRACK_EVENTS.has(event)) return res.status(400).json({ error: 'Unknown event' });
+    const meta = safeMeta(body?.meta);
+    const fields = meta ? [event, `${event}:${meta}`] : [event];
+    await Promise.all(fields.map(f => redis.hincrby(ANALYTICS_KEY, f, 1)));
+    return res.status(204).end();
   }
 
   // ── POST /api/leaderboard?action=ban&key=ADMIN_SECRET — admin: remove + block a user ──
@@ -214,7 +246,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid JSON' });
     }
 
-    const { username, scores, avatar, updatedAt, lastScrobbleAt } = body || {};
+    const { username, scores, avatar, updatedAt, lastScrobbleAt, displayName, linkedAccounts } = body || {};
     if (!username || !scores) return res.status(400).json({ error: 'username and scores required' });
 
     // Read current data, merge user entry, write back
@@ -225,7 +257,15 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'This account is blocked from the leaderboard' });
     }
 
-    data.users[username.toLowerCase()] = { username, avatar, scores, updatedAt, lastScrobbleAt };
+    data.users[username.toLowerCase()] = {
+      username,
+      displayName: displayName || username,
+      linkedAccounts: linkedAccounts || [{ type: 'lastfm', username }],
+      avatar,
+      scores,
+      updatedAt,
+      lastScrobbleAt,
+    };
     data.lastUpdated = new Date().toISOString();
     updateLeaderStreak(data);
     await redis.set(LB_KEY, data);
