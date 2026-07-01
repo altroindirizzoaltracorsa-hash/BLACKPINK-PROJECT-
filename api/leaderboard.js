@@ -246,7 +246,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid JSON' });
     }
 
-    const { username, scores, avatar, updatedAt, lastScrobbleAt, displayName, linkedAccounts } = body || {};
+    const { username, scores, avatar, updatedAt, lastScrobbleAt, displayName, linkedAccounts, cleanupKeys } = body || {};
     if (!username || !scores) return res.status(400).json({ error: 'username and scores required' });
 
     // Read current data, merge user entry, write back
@@ -266,6 +266,20 @@ export default async function handler(req, res) {
       updatedAt,
       lastScrobbleAt,
     };
+
+    // Remove old per-account entries now merged into this combined entry.
+    // Only delete entries whose username appears in the submitted linkedAccounts list
+    // (so a user can only clean up accounts they claim to own).
+    if (Array.isArray(cleanupKeys) && Array.isArray(linkedAccounts)) {
+      const ownedKeys = new Set(linkedAccounts.map(a => (a.username || '').toLowerCase()));
+      for (const k of cleanupKeys) {
+        const kl = (k || '').toLowerCase();
+        if (kl && kl !== username.toLowerCase() && ownedKeys.has(kl) && !(data.banned || []).includes(kl)) {
+          delete data.users[kl];
+        }
+      }
+    }
+
     data.lastUpdated = new Date().toISOString();
     updateLeaderStreak(data);
     await redis.set(LB_KEY, data);
