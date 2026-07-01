@@ -3185,7 +3185,17 @@ function saveLbUsername(u) { try { localStorage.setItem(LS_LB_KEY, u); } catch(e
 function getSavedLbUsername() { try { return localStorage.getItem(LS_LB_KEY) || ''; } catch(e) { return ''; } }
 
 // Auto-load on page show if username was previously saved
-function tryAutoLoad() {
+async function tryAutoLoad() {
+  if (sb) {
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        await initMyBadgesFromAccount();
+        return;
+      }
+    } catch {}
+  }
+  // Fallback: legacy guest flow (no Supabase session)
   const saved = getSavedUsername();
   if (saved) {
     document.getElementById('lfm-input').value = saved;
@@ -3289,13 +3299,17 @@ function showBreakdown(type, key) {
   else getVal = () => 0;
 
   const rows = document.getElementById('breakdown-rows');
-  rows.innerHTML = acctBreakdown.map(a => `
+  rows.innerHTML = acctBreakdown.map(a => {
+    const ago = tsAgo(a.lastScrobbleTs);
+    return `
     <div class="breakdown-row">
       <div class="breakdown-acct">
         ${a.username}<span class="breakdown-acct-source">${a.source === 'lastfm' ? 'Last.fm' : 'ListenBrainz'}</span>
+        ${ago ? `<span class="breakdown-acct-ago">last scrobble: ${ago}</span>` : ''}
       </div>
       <div class="breakdown-val">${getVal(a).toLocaleString()}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   const grand = acctBreakdown.reduce((s,a) => s + getVal(a), 0);
   document.getElementById('breakdown-grand-total').textContent = grand.toLocaleString();
@@ -3348,6 +3362,7 @@ async function fetchSingleAccountStats(source, username) {
       fetchLbRecentListens(username, dayFrom, dayTo),
     ]);
     res.artistPlays = lbArtist;
+    res.playcount   = lbArtist; // total BLACKPINK plays on LB
     for (const k of ['jump','shutdown','ddududu']) res.totalPlays[k] = lbTotals[k] || 0;
     Object.assign(res.todayCounts, countLbByTrack(lbToday));
     for (let i = 0; i < 7; i++) {
@@ -3359,6 +3374,12 @@ async function fetchSingleAccountStats(source, username) {
       res.weekCounts.shutdown += dc.shutdown || 0;
       res.weekCounts.ddududu  += dc.ddududu  || 0;
     }
+    // Most recent listen timestamp
+    try {
+      const latest = await lbFetch(`user/${encodeURIComponent(username)}/listens`, { count: 1 });
+      const la = latest?.payload?.listens?.[0]?.listened_at;
+      if (la) res.lastScrobbleTs = la * 1000;
+    } catch {}
   }
   return res;
 }
@@ -3441,21 +3462,22 @@ async function loadMultiAccountProfile(accounts) {
   submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs).catch(()=>{});
 }
 
+function tsAgo(ts) {
+  if (!ts) return '';
+  const diffMs = Date.now() - ts, diffMins = Math.floor(diffMs/60000),
+        diffHours = Math.floor(diffMs/3600000), diffDays = diffMs/86400000;
+  if (diffMins < 2) return 'just now';
+  if (diffHours < 1) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 2) return 'yesterday';
+  return `${Math.floor(diffDays)}d ago`;
+}
+
 function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs }) {
   document.getElementById('loading-panel').style.display = 'none';
   document.getElementById('profile-panel').style.display = 'block';
 
-  // Avatar + name — multi-account aware
-  const _tsAgo = ts => {
-    if (!ts) return '';
-    const diffMs = Date.now() - ts, diffMins = Math.floor(diffMs/60000),
-          diffHours = Math.floor(diffMs/3600000), diffDays = diffMs/86400000;
-    if (diffMins < 2) return 'just now';
-    if (diffHours < 1) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 2) return 'yesterday';
-    return `${Math.floor(diffDays)}d ago`;
-  };
+  const _tsAgo = tsAgo;
 
   if (info.allAccounts && info.allAccounts.length > 1) {
     // Multi-account: show display name (or combined usernames), list each account below
@@ -3984,6 +4006,7 @@ if (lbInputEl) lbInputEl.addEventListener('keydown', e => { if (e.key === 'Enter
   .breakdown-row:last-of-type { border-bottom: none; }
   .breakdown-acct { font-size: .88rem; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .breakdown-acct-source { font-size: .65rem; color: var(--muted); display: block; }
+  .breakdown-acct-ago { font-size: .6rem; color: var(--muted); display: block; font-style: italic; }
   .breakdown-val { color: var(--pink); font-size: 1.1rem; font-weight: 700; flex-shrink: 0; }
   .breakdown-total-row {
     display: flex; justify-content: space-between;
