@@ -2205,12 +2205,8 @@ window.addEventListener('DOMContentLoaded', () => {
   loadTodaysPlaylist();
   loadCommunityGoal();
   const saved = getSavedUsername();
-  if (saved) {
-    if (document.getElementById('page-badges')?.classList.contains('active')) {
-      tryAutoLoad(); // full UI render on badges page
-    } else {
-      loadProfile(saved, true); // silent background submit to keep leaderboard fresh
-    }
+  if (saved && !document.getElementById('page-badges')?.classList.contains('active')) {
+    loadProfile(saved, true); // silent background submit to keep leaderboard fresh
   }
 });
 
@@ -2436,19 +2432,8 @@ async function deleteAccount() {
 
 // Auth-gated entry to My Badges — redirects to Account if not signed in,
 // then auto-loads profile from linked Supabase accounts.
-async function goToMyBadges() {
-  if (!sb) {
-    // No Supabase configured — fall back to legacy guest flow
-    showPage('badges');
-    return;
-  }
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) {
-    showPage('badges');
-    return;
-  }
+function goToMyBadges() {
   showPage('badges');
-  await initMyBadgesFromAccount();
 }
 
 // Load linked accounts from Supabase and populate the badges page.
@@ -2456,6 +2441,8 @@ async function initMyBadgesFromAccount() {
   if (!sb) return;
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return;
+
+  renderAccountPage(session);
 
   const { data } = await sb.from('linked_accounts')
     .select('source, source_username')
@@ -3401,7 +3388,15 @@ async function loadMultiAccountProfile(accounts) {
   };
   acctBreakdown = [];
 
-  for (const acct of accounts) {
+  // Deduplicate by source+username in case the same account was linked twice
+  const _seen = new Set();
+  const _accounts = accounts.filter(a => {
+    const k = `${a.source}:${a.source_username}`;
+    if (_seen.has(k)) return false;
+    _seen.add(k); return true;
+  });
+
+  for (const acct of _accounts) {
     setLoading(`Loading ${acct.source_username}…`);
     try {
       const stats = await fetchSingleAccountStats(acct.source, acct.source_username);
@@ -3437,8 +3432,8 @@ async function loadMultiAccountProfile(accounts) {
   combined.weekDays = weekDays;
 
   // User info for display header: use first LFM account
-  const primaryLfm = accounts.find(a => a.source === 'lastfm');
-  const primaryUsername = primaryLfm?.source_username || accounts[0].source_username;
+  const primaryLfm = _accounts.find(a => a.source === 'lastfm');
+  const primaryUsername = primaryLfm?.source_username || _accounts[0].source_username;
   setLoading('Loading profile info…');
   try { combined.info = await fetchUserInfo(primaryUsername); } catch {}
   if (!combined.info) combined.info = { name: primaryUsername, image: [{}], playcount: 0 };
@@ -4070,14 +4065,29 @@ async function fetchLbData(force = false) {
 // ── Write user scores to leaderboard ─────────────────────────
 async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs) {
   try {
-    const lfmUsername  = userInfo.name || userInfo.realname || '';
-    const lbUsername   = getSavedLbUsername();
-    const displayName  = lfmUsername || lbUsername;
-    if (!displayName) return;
+    const lfmUsername = userInfo.name || userInfo.realname || '';
+    const lbUsername  = getSavedLbUsername();
+    // Stable leaderboard key = primary account username (keeps chat claims working)
+    const username = lfmUsername || lbUsername;
+    if (!username) return;
+    // Display name shown in the leaderboard UI — prefer user's configured name
+    const displayName = userInfo.displayName || username;
 
+    // Build linked accounts from allAccounts (multi-account) or saved usernames (single)
     const linkedAccounts = [];
-    if (lfmUsername) linkedAccounts.push({ type: 'lastfm',       username: lfmUsername });
-    if (lbUsername)  linkedAccounts.push({ type: 'listenbrainz', username: lbUsername  });
+    if (userInfo.allAccounts?.length) {
+      for (const a of userInfo.allAccounts) {
+        linkedAccounts.push({ type: a.source, username: a.username });
+      }
+    } else {
+      if (lfmUsername) linkedAccounts.push({ type: 'lastfm',       username: lfmUsername });
+      if (lbUsername)  linkedAccounts.push({ type: 'listenbrainz', username: lbUsername  });
+    }
+
+    // Secondary account keys to clean up (merged into this combined entry)
+    const cleanupKeys = linkedAccounts
+      .map(a => a.username.toLowerCase())
+      .filter(k => k !== username.toLowerCase());
 
     const avatarUrl = (userInfo.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
 
@@ -4109,9 +4119,10 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        username:       displayName,
+        username,
         displayName,
         linkedAccounts,
+        cleanupKeys,
         avatar:         avatarUrl,
         scores,
         updatedAt:      new Date().toISOString(),
