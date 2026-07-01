@@ -4070,8 +4070,16 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
     // Stable leaderboard key = primary account username (keeps chat claims working)
     const username = lfmUsername || lbUsername;
     if (!username) return;
-    // Display name shown in the leaderboard UI — prefer user's configured name
-    const displayName = userInfo.displayName || username;
+    // Display name shown in the leaderboard UI — prefer user's configured name.
+    // Always try Supabase session so single-account users also get their display name.
+    let displayName = userInfo.displayName;
+    if (!displayName && sb) {
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session?.user?.user_metadata?.display_name) displayName = session.user.user_metadata.display_name;
+      } catch {}
+    }
+    displayName = displayName || username;
 
     // Build linked accounts from allAccounts (multi-account) or saved usernames (single)
     const linkedAccounts = [];
