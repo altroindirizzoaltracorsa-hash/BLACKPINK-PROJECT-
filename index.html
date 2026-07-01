@@ -838,11 +838,66 @@
   }
   .chat-input:focus { outline: none; border-color: var(--pink); }
   #chat-err { padding: 0 1rem 0.6rem; }
-  .chat-msg-del {
-    background: transparent; border: none; color: rgba(255,80,80,0.5);
-    cursor: pointer; font-size: 0.6rem; margin-left: 0.4rem;
+  .chat-msg-system {
+    text-align: center; padding: 0.55rem 0.8rem;
+    background: rgba(255,0,102,0.08); border: 1px solid rgba(255,0,102,0.2);
+    font-family: var(--light-serif); font-style: italic; font-size: 0.78rem;
+    color: var(--pink); letter-spacing: 0.01em;
   }
-  .chat-msg-del:hover { color: #ff5050; }
+
+  /* ── TUTORIAL MODAL ── */
+  .tutorial-overlay {
+    position: fixed; inset: 0; z-index: 10000;
+    background: rgba(8,8,8,0.88); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+  }
+  .tutorial-card {
+    background: var(--card); border: 1px solid var(--border);
+    width: min(460px, 100%); padding: 2.5rem 2rem 2rem;
+    box-shadow: 0 20px 60px rgba(255,0,102,0.15); position: relative;
+  }
+  .tutorial-skip {
+    position: absolute; top: 1rem; right: 1rem; background: transparent; border: none;
+    color: var(--muted); font-size: 0.65rem; cursor: pointer;
+    font-family: var(--mono); letter-spacing: 0.08em;
+  }
+  .tutorial-skip:hover { color: var(--white); }
+  .tutorial-dots { display: flex; gap: 0.45rem; margin-bottom: 2rem; }
+  .tutorial-dot { width: 28px; height: 2px; background: var(--border); transition: background 0.2s; }
+  .tutorial-dot.active { background: var(--pink); }
+  .tutorial-eyebrow {
+    font-size: 0.58rem; letter-spacing: 0.28em; color: var(--pink);
+    font-family: var(--mono); text-transform: uppercase; margin-bottom: 0.7rem;
+  }
+  .tutorial-title {
+    font-family: var(--display); font-size: clamp(1.8rem, 8vw, 2.5rem);
+    letter-spacing: 0.06em; line-height: 1; margin-bottom: 1.2rem; color: var(--white);
+  }
+  .tutorial-title span { color: var(--pink); }
+  .tutorial-body {
+    font-family: var(--light-serif); font-size: 0.95rem; line-height: 1.65;
+    color: var(--muted); margin-bottom: 2rem;
+  }
+  .tutorial-nav { display: flex; justify-content: space-between; align-items: center; }
+  .tutorial-btn-back {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    padding: 0.5rem 1.2rem; cursor: pointer; font-family: var(--mono);
+    font-size: 0.65rem; letter-spacing: 0.08em;
+  }
+  .tutorial-btn-back:hover { border-color: var(--white); color: var(--white); }
+  .tutorial-btn-next {
+    background: var(--pink); border: none; color: var(--white);
+    padding: 0.6rem 1.6rem; cursor: pointer; font-family: var(--display);
+    font-size: 0.9rem; letter-spacing: 0.1em;
+  }
+  .tutorial-btn-next:hover { background: var(--hot-pink); }
+  .tutorial-help-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    font-size: 0.6rem; font-family: var(--mono); letter-spacing: 0.08em;
+    padding: 0.28rem 0.65rem; cursor: pointer; margin-top: 0.9rem;
+    display: inline-flex; align-items: center; gap: 0.35rem;
+  }
+  .tutorial-help-btn:hover { border-color: var(--pink); color: var(--pink); }
 
   /* ── VOTE PAGE ── */
   .vote-page {
@@ -1330,6 +1385,7 @@
       <p class="badge-header-eyebrow">✦ Blinks United — Streaming Challenge ✦</p>
       <h1 class="badge-header-title">BADGE<br><span>CHALLENGE</span></h1>
       <p class="badge-header-sub">Connect Last.fm · Track your scrobbles · Earn your badges</p>
+      <button class="tutorial-help-btn" onclick="openTutorial()">? How it works</button>
     </div>
 
     <div id="login-panel" class="login-wrap">
@@ -1663,6 +1719,19 @@
       <button class="btn-primary" onclick="sendChatMessage()">Send</button>
     </div>
     <div id="chat-err" class="admin-err"></div>
+  </div>
+</div>
+
+<!-- Tutorial overlay — shown on first visit to the badges page -->
+<div id="tutorial-overlay" class="tutorial-overlay" style="display:none" onclick="if(event.target===this)closeTutorial()">
+  <div class="tutorial-card">
+    <button class="tutorial-skip" onclick="closeTutorial()">SKIP ✕</button>
+    <div class="tutorial-dots" id="tutorial-dots"></div>
+    <div id="tutorial-content"></div>
+    <div class="tutorial-nav">
+      <button class="tutorial-btn-back" id="tutorial-back" onclick="tutorialNav(-1)">← Back</button>
+      <button class="tutorial-btn-next" id="tutorial-next" onclick="tutorialNav(1)">Next →</button>
+    </div>
   </div>
 </div>
 
@@ -2183,7 +2252,7 @@ function showPage(page, { replace = false } = {}) {
   document.title = PAGE_TITLES[page] || PAGE_TITLES.home;
   window.scrollTo(0, 0);
   if (page === 'home') initAnimations();
-  if (page === 'badges') tryAutoLoad();
+  if (page === 'badges') { tryAutoLoad(); maybeShowTutorial(); }
   if (page === 'leaderboard') {
     const pending = parseLbHistoryParam();
     if (pending) {
@@ -4165,6 +4234,73 @@ const CHAT_EXEMPT        = ['blinksunited'];
 const CHAT_SECRET_PREFIX = 'bu_chat_secret_';
 let   chatPollTimer      = null;
 let   chatPanelOpen      = false;
+let   chatCongratsText   = null;
+
+// ── TUTORIAL ─────────────────────────────────────────────────
+const TUTORIAL_SEEN_KEY = 'bu_tutorial_seen';
+const TUTORIAL_STEPS = [
+  {
+    eyebrow: 'Step 1 of 4',
+    title: 'WELCOME TO<br><span>BLINKS UNITED</span>',
+    body: 'The streaming hub for BLACKPINK fans. This quick guide walks you through the account system — it takes less than a minute to set up.',
+  },
+  {
+    eyebrow: 'Step 2 of 4',
+    title: 'CREATE YOUR<br><span>ACCOUNT</span>',
+    body: 'Sign in with Google, X, or Discord — no password needed. Prefer email? Enter your address and we\'ll send a one-click Magic Link straight to your inbox.',
+  },
+  {
+    eyebrow: 'Step 3 of 4',
+    title: 'LINK YOUR<br><span>MUSIC TRACKER</span>',
+    body: 'Connect your Last.fm and/or ListenBrainz usernames. All linked accounts count together — giving you one combined scrobble total on the leaderboard.',
+  },
+  {
+    eyebrow: 'Step 4 of 4',
+    title: 'EARN BADGES<br><span>&amp; JOIN THE CHAT</span>',
+    body: 'Hit streaming milestones on JUMP, Shut Down, and DDU-DU DDU-DU to earn badge tiers. Reach 10,000 all-time BLACKPINK scrobbles to unlock the group chat.',
+  },
+];
+let tutorialCurrentStep = 0;
+
+function openTutorial() {
+  tutorialCurrentStep = 0;
+  renderTutorialStep();
+  document.getElementById('tutorial-overlay').style.display = 'flex';
+}
+
+function closeTutorial() {
+  document.getElementById('tutorial-overlay').style.display = 'none';
+  try { localStorage.setItem(TUTORIAL_SEEN_KEY, '1'); } catch {}
+}
+
+function tutorialNav(dir) {
+  const next = tutorialCurrentStep + dir;
+  if (next < 0) return;
+  if (next >= TUTORIAL_STEPS.length) { closeTutorial(); return; }
+  tutorialCurrentStep = next;
+  renderTutorialStep();
+}
+
+function renderTutorialStep() {
+  const s     = TUTORIAL_STEPS[tutorialCurrentStep];
+  const total = TUTORIAL_STEPS.length;
+  document.getElementById('tutorial-dots').innerHTML =
+    Array.from({ length: total }, (_, i) =>
+      `<div class="tutorial-dot${i === tutorialCurrentStep ? ' active' : ''}"></div>`
+    ).join('');
+  document.getElementById('tutorial-content').innerHTML =
+    `<p class="tutorial-eyebrow">${s.eyebrow}</p>
+     <h2 class="tutorial-title">${s.title}</h2>
+     <p class="tutorial-body">${s.body}</p>`;
+  const backBtn = document.getElementById('tutorial-back');
+  const nextBtn = document.getElementById('tutorial-next');
+  backBtn.style.visibility = tutorialCurrentStep === 0 ? 'hidden' : '';
+  nextBtn.textContent = tutorialCurrentStep === total - 1 ? 'Got it ✓' : 'Next →';
+}
+
+function maybeShowTutorial() {
+  try { if (!localStorage.getItem(TUTORIAL_SEEN_KEY)) openTutorial(); } catch {}
+}
 
 function toggleChatWidget() {
   const panel = document.getElementById('chat-panel');
@@ -4259,6 +4395,11 @@ async function refreshChatAccess() {
   }
 
   unlockedEl.style.display = 'flex';
+  const welcomedKey = 'bu_chat_welcomed_' + username.toLowerCase();
+  if (!localStorage.getItem(welcomedKey)) {
+    try { localStorage.setItem(welcomedKey, '1'); } catch {}
+    chatCongratsText = '🎉 Congratulations! You\'ve just unlocked the Blink Chat — say hi!';
+  }
   loadChatMessages();
   startChatPolling();
 }
@@ -4270,15 +4411,16 @@ async function loadChatMessages() {
     const r = await fetch('/api/leaderboard?action=chat-messages', { cache: 'no-store' });
     const d = await r.json();
     if (!r.ok) return;
-    const adminKey = localStorage.getItem(ADMIN_KEY_LS);
     const wasAtBottom = wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 20;
-    wrap.innerHTML = (d.messages || []).map(m => `
+    const congrats = chatCongratsText
+      ? `<div class="chat-msg-system">${escapeHtml(chatCongratsText)}</div>` : '';
+    const msgs = (d.messages || []).map(m => `
       <div class="chat-msg" data-id="${m.id}">
         <span class="chat-msg-user">${escapeHtml(m.username)}</span>${escapeHtml(m.message)}
         <span class="chat-msg-time">${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
-        ${adminKey ? `<button class="chat-msg-del" onclick="deleteChatMessage(${m.id})">✕</button>` : ''}
       </div>
     `).join('') || '<span style="color:var(--muted);font-size:0.7rem;">No messages yet — say hi!</span>';
+    wrap.innerHTML = congrats + msgs;
     if (wasAtBottom) wrap.scrollTop = wrap.scrollHeight;
   } catch {}
 }
@@ -4310,18 +4452,6 @@ async function sendChatMessage() {
     input.disabled = false;
     input.focus();
   }
-}
-
-async function deleteChatMessage(id) {
-  const key = localStorage.getItem(ADMIN_KEY_LS);
-  if (!key) return;
-  try {
-    await fetch(`/api/leaderboard?action=chat-delete&key=${encodeURIComponent(key)}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
-    loadChatMessages();
-  } catch {}
 }
 
 function switchLbPeriod(period, btn) {
