@@ -91,6 +91,27 @@ export default async function handler(req, res) {
   // ── GET: return full leaderboard ──────────────────────────────
   if (req.method === 'GET') {
     const data = (await redis.get(LB_KEY)) || { users: {}, lastUpdated: new Date().toISOString() };
+
+    // Server-side dedup: hide usernames that appear as secondary accounts
+    // in another entry's linkedAccounts (multi-account users show only once).
+    const users = data.users || {};
+    const secondaryKeys = new Set();
+    for (const [k, d] of Object.entries(users)) {
+      if (Array.isArray(d.linkedAccounts)) {
+        for (const a of d.linkedAccounts) {
+          const ak = (a.username || '').toLowerCase();
+          if (ak && ak !== k) secondaryKeys.add(ak);
+        }
+      }
+    }
+    if (secondaryKeys.size > 0) {
+      const filteredUsers = {};
+      for (const [k, d] of Object.entries(users)) {
+        if (!secondaryKeys.has(k)) filteredUsers[k] = d;
+      }
+      data.users = filteredUsers;
+    }
+
     res.setHeader('Cache-Control', 'no-store');
     const { banned, ...publicData } = data;
     return res.status(200).json(publicData);
