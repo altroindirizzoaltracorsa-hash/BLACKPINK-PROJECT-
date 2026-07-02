@@ -2863,7 +2863,9 @@ async function lbFetch(path, params = {}) {
   const r = await fetch(LB_BASE + path + qs, { cache: 'no-store' });
   if (r.status === 204) return null; // no stats yet for this user
   if (!r.ok) throw new Error(`ListenBrainz HTTP ${r.status}`);
-  return r.json();
+  const text = await r.text();
+  if (!text.trim()) return null; // empty body (some LB endpoints return 200 with no body)
+  return JSON.parse(text);
 }
 // Returns { jump, shutdown, ddududu, artistPlays } by trying the LB stats API
 // first (fast, pre-computed) then falling back to paging through full listen
