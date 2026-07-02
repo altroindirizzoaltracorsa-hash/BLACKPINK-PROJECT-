@@ -2861,30 +2861,64 @@ async function lfmFetch(params) {
 async function lbFetch(path, params = {}) {
   const qs = Object.keys(params).length ? '?' + new URLSearchParams(params) : '';
   const r = await fetch(LB_BASE + path + qs, { cache: 'no-store' });
+  if (r.status === 204) return null; // no stats yet for this user
   if (!r.ok) throw new Error(`ListenBrainz HTTP ${r.status}`);
-  return r.json();
+  const text = await r.text();
+  if (!text.trim()) return null; // empty body (some LB endpoints return 200 with no body)
+  return JSON.parse(text);
+}
+// Returns { jump, shutdown, ddududu, artistPlays } by trying the LB stats API
+// first (fast, pre-computed) then falling back to paging through full listen
+// history when stats haven't been calculated yet or don't include BLACKPINK.
+function _lbIsBp(artist) {
+  const a = (artist || '').toLowerCase().trim();
+  return a === 'blackpink' || a.startsWith('blackpink ') || a.startsWith('blackpink,') || a.includes(' blackpink');
 }
 async function fetchLbTrackCounts(username) {
-  const counts = { jump: 0, shutdown: 0, ddududu: 0 };
+  const counts = { jump: 0, shutdown: 0, ddududu: 0, artistPlays: 0 };
   try {
-    const d = await lbFetch(`stats/user/${encodeURIComponent(username)}/recordings`, { count: 100, range: 'all_time' });
-    for (const rec of d?.payload?.recordings || []) {
-      const name   = (rec.track_name  || '').toLowerCase().trim();
-      const artist = (rec.artist_name || '').toLowerCase();
-      if (!artist.includes('blackpink')) continue;
-      if (name === 'jump')               counts.jump     += rec.listen_count || 0;
-      else if (name === 'shut down')     counts.shutdown += rec.listen_count || 0;
-      else if (name === 'ddu-du ddu-du') counts.ddududu  += rec.listen_count || 0;
+    const [recStats, artStats] = await Promise.all([
+      lbFetch(`stats/user/${encodeURIComponent(username)}/recordings`, { count: 100, range: 'all_time' }),
+      lbFetch(`stats/user/${encodeURIComponent(username)}/artists`,    { count: 100, range: 'all_time' }),
+    ]);
+    if (recStats !== null && artStats !== null) {
+      for (const rec of recStats?.payload?.recordings || []) {
+        const name = (rec.track_name || '').toLowerCase().trim();
+        if (!_lbIsBp(rec.artist_name)) continue;
+        if (name === 'jump')               counts.jump     += rec.listen_count || 0;
+        else if (name === 'shut down')     counts.shutdown += rec.listen_count || 0;
+        else if (name === 'ddu-du ddu-du') counts.ddududu  += rec.listen_count || 0;
+      }
+      const bp = (artStats?.payload?.artists || []).find(a => _lbIsBp(a.artist_name));
+      counts.artistPlays = bp?.listen_count || 0;
+      // Only trust stats if they show BLACKPINK — stale stats may predate the user's BP listening
+      if (counts.artistPlays > 0) return counts;
     }
-  } catch (e) { console.warn('LB track counts:', e.message); }
-  return counts;
-}
-async function fetchLbArtistPlays(username) {
+  } catch (e) { console.warn('LB stats API:', e.message); }
+  // Stats missing or don't include BLACKPINK — scan listen history directly
+  counts.jump = 0; counts.shutdown = 0; counts.ddududu = 0; counts.artistPlays = 0;
   try {
-    const d = await lbFetch(`stats/user/${encodeURIComponent(username)}/artists`, { count: 100, range: 'all_time' });
-    const bp = (d?.payload?.artists || []).find(a => (a.artist_name || '').toLowerCase().includes('blackpink'));
-    return bp?.listen_count || 0;
-  } catch { return 0; }
+    let maxTs = Math.floor(Date.now() / 1000);
+    const _debugArtists = [];
+    for (let page = 0; page < 300; page++) {
+      const d = await lbFetch(`user/${encodeURIComponent(username)}/listens`, { max_ts: maxTs, count: 100 });
+      const listens = d?.payload?.listens || [];
+      if (!listens.length) break;
+      if (page === 0) listens.slice(0, 5).forEach(l => _debugArtists.push(l.track_metadata?.artist_name));
+      for (const l of listens) {
+        if (!_lbIsBp(l.track_metadata?.artist_name)) continue;
+        counts.artistPlays++;
+        const name = (l.track_metadata?.track_name || '').toLowerCase().trim();
+        if (name === 'jump')               counts.jump++;
+        else if (name === 'shut down')     counts.shutdown++;
+        else if (name === 'ddu-du ddu-du') counts.ddududu++;
+      }
+      if (listens.length < 100) break;
+      maxTs = listens[listens.length - 1].listened_at - 1;
+    }
+    if (!counts.artistPlays) console.warn('[BU LB] 0 BP found for', username, '— first artists:', _debugArtists);
+  } catch (e2) { console.warn('LB listen fallback:', e2.message); }
+  return counts;
 }
 async function fetchLbRecentListens(username, from, to) {
   const results = [];
@@ -3044,11 +3078,7 @@ async function loadProfile(usernameOverride, silent = false) {
     const todayScrobbles = await fetchRecentScrobbles(username, dayFrom, dayTo);
     const todayCounts = countByTrack(todayScrobbles);
 
-    const _dbgFrom = new Date(dayFrom * 1000).toISOString().slice(0, 16) + ' UTC';
-    const _dbgTo   = new Date(dayTo   * 1000).toISOString().slice(0, 16) + ' UTC';
-    const _dbgMsg  = `window ${_dbgFrom} → ${_dbgTo} · ${todayScrobbles.length} scrobbles · J:${todayCounts.jump||0} S:${todayCounts.shutdown||0} D:${todayCounts.ddududu||0}`;
-    console.log('[BU today]', _dbgMsg);
-    if (!silent) { const dbgEl = document.getElementById('profile-debug'); if (dbgEl) dbgEl.textContent = _dbgMsg; }
+    if (!silent) { const dbgEl = document.getElementById('profile-debug'); if (dbgEl) dbgEl.textContent = `window ${new Date(dayFrom*1000).toISOString().slice(0,16)} UTC → ${new Date(dayTo*1000).toISOString().slice(0,16)} UTC · ${todayScrobbles.length} scrobbles · J:${todayCounts.jump||0} S:${todayCounts.shutdown||0} D:${todayCounts.ddududu||0}`; }
 
     if (!silent) setLoading('Building weekly breakdown…');
     const { from: weekFrom } = getWeekBounds();
@@ -3103,17 +3133,16 @@ async function loadProfile(usernameOverride, silent = false) {
     if (lbUsername) {
       if (!silent) setLoading('Fetching ListenBrainz stats…');
       try {
-        const [lbTotals, lbArtist, lbToday] = await Promise.all([
+        const [lbCounts, lbToday] = await Promise.all([
           fetchLbTrackCounts(lbUsername),
-          fetchLbArtistPlays(lbUsername),
           fetchLbRecentListens(lbUsername, dayFrom, dayTo),
         ]);
         const lbTodayCounts = countLbByTrack(lbToday);
         for (const k of ['jump', 'shutdown', 'ddududu']) {
-          totalPlays[k]  += lbTotals[k]      || 0;
+          totalPlays[k]  += lbCounts[k]      || 0;
           todayCounts[k] += lbTodayCounts[k] || 0;
         }
-        artistPlays += lbArtist;
+        artistPlays += lbCounts.artistPlays || 0;
         const { from: lbWeekFrom } = getWeekBounds();
         for (let i = 0; i < 7; i++) {
           const ds = lbWeekFrom + i * 86400;
@@ -3346,18 +3375,22 @@ async function fetchSingleAccountStats(source, username) {
     }
     res.lastScrobbleTs = _lastTs;
   } else if (source === 'listenbrainz') {
-    const [lbTotals, lbArtist, lbToday] = await Promise.all([
-      fetchLbTrackCounts(username), fetchLbArtistPlays(username),
-      fetchLbRecentListens(username, dayFrom, dayTo),
-    ]);
-    res.artistPlays = lbArtist;
-    res.playcount   = lbArtist; // total BLACKPINK plays on LB
-    for (const k of ['jump','shutdown','ddududu']) res.totalPlays[k] = lbTotals[k] || 0;
+    let lbCounts = { jump: 0, shutdown: 0, ddududu: 0, artistPlays: 0 }, lbToday = [];
+    try {
+      [lbCounts, lbToday] = await Promise.all([
+        fetchLbTrackCounts(username),
+        fetchLbRecentListens(username, dayFrom, dayTo),
+      ]);
+    } catch(e) { console.warn('LB fetch failed for', username, e.message); }
+    res.artistPlays = lbCounts.artistPlays;
+    res.playcount   = lbCounts.artistPlays; // total BLACKPINK plays on LB
+    for (const k of ['jump','shutdown','ddududu']) res.totalPlays[k] = lbCounts[k] || 0;
     Object.assign(res.todayCounts, countLbByTrack(lbToday));
     for (let i = 0; i < 7; i++) {
       const ds = weekFrom + i * 86400;
       if (ds * 1000 > Date.now()) { res.weekDayCounts.push(null); continue; }
-      const dc = countLbByTrack(await fetchLbRecentListens(username, ds, ds + 86400));
+      let dc = { jump: 0, shutdown: 0, ddududu: 0 };
+      try { dc = countLbByTrack(await fetchLbRecentListens(username, ds, ds + 86400)); } catch {}
       res.weekDayCounts.push(dc);
       res.weekCounts.jump     += dc.jump     || 0;
       res.weekCounts.shutdown += dc.shutdown || 0;
