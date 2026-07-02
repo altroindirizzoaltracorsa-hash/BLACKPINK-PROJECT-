@@ -2867,7 +2867,11 @@ async function lbFetch(path, params = {}) {
 }
 // Returns { jump, shutdown, ddududu, artistPlays } by trying the LB stats API
 // first (fast, pre-computed) then falling back to paging through full listen
-// history when stats haven't been calculated yet (new / recently-active accounts).
+// history when stats haven't been calculated yet or don't include BLACKPINK.
+function _lbIsBp(artist) {
+  const a = (artist || '').toLowerCase().trim();
+  return a === 'blackpink' || a.startsWith('blackpink ') || a.startsWith('blackpink,') || a.includes(' blackpink');
+}
 async function fetchLbTrackCounts(username) {
   const counts = { jump: 0, shutdown: 0, ddududu: 0, artistPlays: 0 };
   try {
@@ -2877,30 +2881,32 @@ async function fetchLbTrackCounts(username) {
     ]);
     if (recStats !== null && artStats !== null) {
       for (const rec of recStats?.payload?.recordings || []) {
-        const name   = (rec.track_name  || '').toLowerCase().trim();
-        const artist = (rec.artist_name || '').toLowerCase();
-        if (!artist.includes('blackpink')) continue;
+        const name = (rec.track_name || '').toLowerCase().trim();
+        if (!_lbIsBp(rec.artist_name)) continue;
         if (name === 'jump')               counts.jump     += rec.listen_count || 0;
         else if (name === 'shut down')     counts.shutdown += rec.listen_count || 0;
         else if (name === 'ddu-du ddu-du') counts.ddududu  += rec.listen_count || 0;
       }
-      const bp = (artStats?.payload?.artists || []).find(a => (a.artist_name || '').toLowerCase().includes('blackpink'));
+      const bp = (artStats?.payload?.artists || []).find(a => _lbIsBp(a.artist_name));
       counts.artistPlays = bp?.listen_count || 0;
-      return counts;
+      // Only trust stats if they show BLACKPINK — stale stats may predate the user's BP listening
+      if (counts.artistPlays > 0) return counts;
     }
   } catch (e) { console.warn('LB stats API:', e.message); }
-  // Stats not yet computed — page through full listen history instead
+  // Stats missing or don't include BLACKPINK — scan listen history directly
+  counts.jump = 0; counts.shutdown = 0; counts.ddududu = 0; counts.artistPlays = 0;
   try {
     let maxTs = Math.floor(Date.now() / 1000);
+    const _debugArtists = [];
     for (let page = 0; page < 300; page++) {
       const d = await lbFetch(`user/${encodeURIComponent(username)}/listens`, { max_ts: maxTs, count: 100 });
       const listens = d?.payload?.listens || [];
       if (!listens.length) break;
+      if (page === 0) listens.slice(0, 5).forEach(l => _debugArtists.push(l.track_metadata?.artist_name));
       for (const l of listens) {
-        const name   = (l.track_metadata?.track_name   || '').toLowerCase().trim();
-        const artist = (l.track_metadata?.artist_name  || '').toLowerCase();
-        if (!artist.includes('blackpink')) continue;
+        if (!_lbIsBp(l.track_metadata?.artist_name)) continue;
         counts.artistPlays++;
+        const name = (l.track_metadata?.track_name || '').toLowerCase().trim();
         if (name === 'jump')               counts.jump++;
         else if (name === 'shut down')     counts.shutdown++;
         else if (name === 'ddu-du ddu-du') counts.ddududu++;
@@ -2908,6 +2914,7 @@ async function fetchLbTrackCounts(username) {
       if (listens.length < 100) break;
       maxTs = listens[listens.length - 1].listened_at - 1;
     }
+    if (!counts.artistPlays) console.warn('[BU LB] 0 BP found for', username, '— first artists:', _debugArtists);
   } catch (e2) { console.warn('LB listen fallback:', e2.message); }
   return counts;
 }
