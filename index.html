@@ -1413,12 +1413,13 @@
       <div id="badges-auth-link" style="display:none">
         <div class="login-card">
           <p class="login-label">Link your scrobbling accounts</p>
-          <p class="login-desc">Add your Last.fm and/or ListenBrainz usernames — all your streams count toward one leaderboard row.</p>
+          <p class="login-desc">Add your Last.fm, ListenBrainz, and/or Libre.fm usernames — all your streams count toward one leaderboard row.</p>
           <div id="linked-accounts-list-inline"></div>
           <div class="input-row" style="margin-top:1rem;">
             <select id="linked-source-select" class="username-input" style="flex:0 0 140px;">
               <option value="lastfm">Last.fm</option>
               <option value="listenbrainz">ListenBrainz</option>
+              <option value="librefm">Libre.fm</option>
             </select>
             <input class="username-input" id="linked-username-input" type="text" placeholder="Username" />
             <button class="btn-primary" onclick="addLinkedAccount()">+ Link</button>
@@ -1510,12 +1511,13 @@
 
           <div style="margin-top:1rem;">
             <label class="settings-label">Linked Accounts</label>
-            <p class="settings-hint" style="margin-bottom:0.5rem;">Last.fm and ListenBrainz usernames — all streams count toward one leaderboard row.</p>
+            <p class="settings-hint" style="margin-bottom:0.5rem;">Last.fm, ListenBrainz, and/or Libre.fm usernames — all streams count toward one leaderboard row.</p>
             <div id="linked-accounts-list-settings" style="margin-bottom:0.75rem;"></div>
             <div class="input-row" style="gap:0.5rem;">
               <select id="linked-source-select-settings" class="settings-input" style="flex:0 0 140px;">
                 <option value="lastfm">Last.fm</option>
                 <option value="listenbrainz">ListenBrainz</option>
+                <option value="librefm">Libre.fm</option>
               </select>
               <input class="settings-input" id="linked-username-input-settings" type="text" placeholder="Username" style="flex:1;" />
               <button class="btn-primary" onclick="addLinkedAccountSettings()">+ Link</button>
@@ -2333,7 +2335,7 @@ const sb = (typeof supabase !== 'undefined' && SUPABASE_URL.startsWith('http'))
   ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
-const ACCOUNT_SOURCE_LABELS = { lastfm: 'Last.fm', listenbrainz: 'ListenBrainz' };
+const ACCOUNT_SOURCE_LABELS = { lastfm: 'Last.fm', listenbrainz: 'ListenBrainz', librefm: 'Libre.fm' };
 
 async function initBadgesAuthPanel() {
   if (!sb) {
@@ -2459,8 +2461,9 @@ async function initMyBadgesFromAccount() {
     return;
   }
 
-  // For 2+ accounts: aggregate all; for 1: use existing loadProfile
-  if (data.length >= 2) {
+  // For 2+ accounts, or a single non-Last.fm account: use multi-account path
+  const isSingleLfm = data.length === 1 && data[0].source === 'lastfm';
+  if (!isSingleLfm) {
     acctBreakdown = null;
     const lfm = data.find(a => a.source === 'lastfm');
     const lb  = data.find(a => a.source === 'listenbrainz');
@@ -2470,16 +2473,11 @@ async function initMyBadgesFromAccount() {
     return;
   }
 
-  // Single account
+  // Single Last.fm account — use the legacy loadProfile() path
   const acct = data[0];
   acctBreakdown = null;
-  if (acct.source === 'lastfm') {
-    saveUsername(acct.source_username);
-    const el = document.getElementById('lfm-input'); if (el) el.value = acct.source_username;
-  } else {
-    saveLbUsername(acct.source_username);
-    const el = document.getElementById('lb-input'); if (el) el.value = acct.source_username;
-  }
+  saveUsername(acct.source_username);
+  const el = document.getElementById('lfm-input'); if (el) el.value = acct.source_username;
   await loadProfile();
 }
 
@@ -2607,8 +2605,9 @@ if (sb) {
 }
 
 // ── LAST.FM CONFIG ───────────────────────────────────────────
-const LASTFM_KEY = '666b8ef2f3cc360fbc20df275fba2981';
+const LASTFM_KEY  = '666b8ef2f3cc360fbc20df275fba2981';
 const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
+const LIBREFM_BASE = 'https://libre.fm/2.0/';
 const LB_BASE     = 'https://api.listenbrainz.org/1/';
 
 const TRACKS = [
@@ -2849,12 +2848,20 @@ function getNextBadge(plays) {
   return null;
 }
 
-// ── LAST.FM API HELPERS ───────────────────────────────────────
+// ── LAST.FM / LIBRE.FM API HELPERS ───────────────────────────
 async function lfmFetch(params) {
   const url = LASTFM_BASE + '?' + new URLSearchParams({ ...params, api_key: LASTFM_KEY, format: 'json' });
   const r = await fetch(url, { cache: 'no-store' });
   const data = await r.json();
   if (data?.error) throw new Error(`Last.fm error ${data.error}: ${data.message || ''}`);
+  return data;
+}
+
+async function librefmFetch(params) {
+  const url = LIBREFM_BASE + '?' + new URLSearchParams({ ...params, format: 'json' });
+  const r = await fetch(url, { cache: 'no-store' });
+  const data = await r.json();
+  if (data?.error) throw new Error(`Libre.fm error ${data.error}: ${data.message || ''}`);
   return data;
 }
 
@@ -2973,28 +2980,28 @@ function countLbByTrack(listens) {
   }
   return counts;
 }
-async function fetchUserInfo(username) {
-  const d = await lfmFetch({ method: 'user.getInfo', user: username });
+async function fetchUserInfo(username, fetchFn = lfmFetch) {
+  const d = await fetchFn({ method: 'user.getInfo', user: username });
   if (d?.user) return d.user;
   throw new Error(d?.message || 'User not found');
 }
 
-async function fetchTrackPlays(username, artist, track) {
-  const d = await lfmFetch({ method: 'track.getInfo', artist, track, username });
+async function fetchTrackPlays(username, artist, track, fetchFn = lfmFetch) {
+  const d = await fetchFn({ method: 'track.getInfo', artist, track, username });
   return parseInt(d?.track?.userplaycount || '0', 10);
 }
 
-async function fetchArtistPlays(username, artist) {
-  const d = await lfmFetch({ method: 'artist.getInfo', artist, username });
+async function fetchArtistPlays(username, artist, fetchFn = lfmFetch) {
+  const d = await fetchFn({ method: 'artist.getInfo', artist, username });
   return parseInt(d?.artist?.stats?.userplaycount || '0', 10);
 }
 
 // Get recent scrobbles for a time window (unix timestamps)
-async function fetchRecentScrobbles(username, from, to, maxPages = 50) {
+async function fetchRecentScrobbles(username, from, to, maxPages = 50, fetchFn = lfmFetch) {
   const results = [];
   let page = 1;
   while (true) {
-    const d = await lfmFetch({ method: 'user.getRecentTracks', user: username, from, to, limit: 200, page });
+    const d = await fetchFn({ method: 'user.getRecentTracks', user: username, from, to, limit: 200, page });
     const tracks = d?.recenttracks?.tracks || d?.recenttracks?.track || [];
     const arr = Array.isArray(tracks) ? tracks : [tracks];
     results.push(...arr.filter(t => t['@attr']?.nowplaying !== 'true'));
@@ -3369,12 +3376,13 @@ function closeBreakdown() {
   document.body.style.overflow = '';
 }
 
-// Fetch stats for a single linked account (LFM or LB)
+// Fetch stats for a single linked account (LFM, Libre.fm, or LB)
 async function fetchSingleAccountStats(source, username) {
   const { from: dayFrom, to: dayTo } = getDayBounds();
   const { from: weekFrom } = getWeekBounds();
+  const platformLabel = ACCOUNT_SOURCE_LABELS[source] || source;
   const res = {
-    label: username + (source === 'lastfm' ? ' (Last.fm)' : ' (ListenBrainz)'),
+    label: `${username} (${platformLabel})`,
     source, username,
     artistPlays: 0,
     totalPlays:  { jump: 0, shutdown: 0, ddududu: 0 },
@@ -3382,16 +3390,17 @@ async function fetchSingleAccountStats(source, username) {
     weekCounts:  { jump: 0, shutdown: 0, ddududu: 0 },
     weekDayCounts: [],
   };
-  if (source === 'lastfm') {
-    res.artistPlays = await fetchArtistPlays(username, 'BLACKPINK');
-    for (const t of TRACKS) res.totalPlays[t.id] = await fetchTrackPlays(username, t.artist, t.track);
-    const todaySc = await fetchRecentScrobbles(username, dayFrom, dayTo);
+  if (source === 'lastfm' || source === 'librefm') {
+    const fetchFn = source === 'librefm' ? librefmFetch : lfmFetch;
+    res.artistPlays = await fetchArtistPlays(username, 'BLACKPINK', fetchFn);
+    for (const t of TRACKS) res.totalPlays[t.id] = await fetchTrackPlays(username, t.artist, t.track, fetchFn);
+    const todaySc = await fetchRecentScrobbles(username, dayFrom, dayTo, 50, fetchFn);
     Object.assign(res.todayCounts, countByTrack(todaySc));
     let _lastTs = null;
     for (let i = 0; i < 7; i++) {
       const ds = weekFrom + i * 86400;
       if (ds * 1000 > Date.now()) { res.weekDayCounts.push(null); continue; }
-      const sc = await fetchRecentScrobbles(username, ds, ds + 86400);
+      const sc = await fetchRecentScrobbles(username, ds, ds + 86400, 50, fetchFn);
       const dc = countByTrack(sc);
       res.weekDayCounts.push(dc);
       res.weekCounts.jump     += dc.jump     || 0;
@@ -3462,9 +3471,10 @@ async function loadMultiAccountProfile(accounts) {
     setLoading(`Loading ${acct.source_username}…`);
     try {
       const stats = await fetchSingleAccountStats(acct.source, acct.source_username);
-      // Fetch per-account total playcount for LFM
-      if (acct.source === 'lastfm') {
-        try { const ui = await fetchUserInfo(acct.source_username); stats.playcount = Number(ui.playcount) || 0; } catch {}
+      // Fetch per-account total playcount for LFM-compatible sources
+      if (acct.source === 'lastfm' || acct.source === 'librefm') {
+        const fetchFn = acct.source === 'librefm' ? librefmFetch : lfmFetch;
+        try { const ui = await fetchUserInfo(acct.source_username, fetchFn); stats.playcount = Number(ui.playcount) || 0; } catch {}
       }
       if (!combined.lastScrobbleTs || (stats.lastScrobbleTs && stats.lastScrobbleTs > combined.lastScrobbleTs)) {
         combined.lastScrobbleTs = stats.lastScrobbleTs;
@@ -3493,11 +3503,13 @@ async function loadMultiAccountProfile(accounts) {
   }
   combined.weekDays = weekDays;
 
-  // User info for display header: use first LFM account
-  const primaryLfm = _accounts.find(a => a.source === 'lastfm');
-  const primaryUsername = primaryLfm?.source_username || _accounts[0].source_username;
+  // User info for display header: use first LFM-compatible account (Last.fm or Libre.fm)
+  const primaryLfm = _accounts.find(a => a.source === 'lastfm' || a.source === 'librefm');
+  const primaryAccount = primaryLfm || _accounts[0];
+  const primaryUsername = primaryAccount.source_username;
+  const primaryFetchFn = primaryAccount.source === 'librefm' ? librefmFetch : lfmFetch;
   setLoading('Loading profile info…');
-  try { combined.info = await fetchUserInfo(primaryUsername); } catch {}
+  try { combined.info = await fetchUserInfo(primaryUsername, primaryFetchFn); } catch {}
   if (!combined.info) combined.info = { name: primaryUsername, image: [{}], playcount: 0 };
   // Attach per-account list and display name to info for renderProfile
   combined.info.allAccounts = acctBreakdown.map(a => ({
@@ -3536,12 +3548,12 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
 
   const _tsAgo = tsAgo;
 
-  if (info.allAccounts && info.allAccounts.length > 1) {
-    // Multi-account: show display name (or combined usernames), list each account below
+  if (info.allAccounts && info.allAccounts.length >= 1) {
+    // Multi-account (or single non-LFM): show display name (or combined usernames), list each account below
     document.getElementById('profile-username').textContent =
       info.displayName || info.allAccounts.map(a => a.username).join(' + ');
     let metaHtml = info.allAccounts.map(a => {
-      const platform = a.source === 'lastfm' ? 'Last.fm' : 'ListenBrainz';
+      const platform = ACCOUNT_SOURCE_LABELS[a.source] || a.source;
       const ago = _tsAgo(a.lastScrobbleTs);
       return `<div>${a.username} · ${platform}` +
         (a.playcount ? ` · <span>${a.playcount.toLocaleString()}</span> total scrobbles` : '') +
