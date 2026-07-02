@@ -133,6 +133,22 @@ export default async function handler(req, res) {
     return res.status(204).end();
   }
 
+  // ── POST /api/leaderboard?action=delete-entry&key=ADMIN_SECRET — admin: remove without banning ──
+  if (req.method === 'POST' && action === 'delete-entry') {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const username = (req.body?.username || '').trim().toLowerCase();
+    if (!username) return res.status(400).json({ error: 'username required' });
+
+    const data = (await redis.get(LB_KEY)) || { users: {} };
+    data.users = data.users || {};
+    delete data.users[username];
+    updateLeaderStreak(data);
+    await redis.set(LB_KEY, data);
+
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ ok: true });
+  }
+
   // ── POST /api/leaderboard?action=ban&key=ADMIN_SECRET — admin: remove + block a user ──
   if (req.method === 'POST' && action === 'ban') {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
