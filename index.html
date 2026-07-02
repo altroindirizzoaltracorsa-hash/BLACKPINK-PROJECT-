@@ -2876,6 +2876,8 @@ function _lbIsBp(artist) {
 }
 async function fetchLbTrackCounts(username) {
   const counts = { jump: 0, shutdown: 0, ddududu: 0, artistPlays: 0 };
+
+  // 1. Try LB stats API first — fast when stats exist and include BLACKPINK
   try {
     const [recStats, artStats] = await Promise.all([
       lbFetch(`stats/user/${encodeURIComponent(username)}/recordings`, { count: 100, range: 'all_time' }),
@@ -2891,33 +2893,58 @@ async function fetchLbTrackCounts(username) {
       }
       const bp = (artStats?.payload?.artists || []).find(a => _lbIsBp(a.artist_name));
       counts.artistPlays = bp?.listen_count || 0;
-      // Only trust stats if they show BLACKPINK — stale stats may predate the user's BP listening
-      if (counts.artistPlays > 0) return counts;
+      if (counts.artistPlays > 0) return counts; // only trust stats if they show BP
     }
   } catch (e) { console.warn('LB stats API:', e.message); }
-  // Stats missing or don't include BLACKPINK — scan listen history directly
-  counts.jump = 0; counts.shutdown = 0; counts.ddududu = 0; counts.artistPlays = 0;
+
+  // 2. Scan listen history with localStorage caching so only new listens are
+  //    fetched on subsequent loads — full rescan only on first load or after 24h.
+  const CACHE_KEY = `bu_lb_scan_v1_${username.toLowerCase()}`;
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch {}
+
+  const nowTs = Math.floor(Date.now() / 1000);
+  const cacheAge = cached ? Date.now() - (cached.savedAt || 0) : Infinity;
+  const doFull = !cached || cacheAge > 24 * 3600 * 1000;
+  const base = doFull ? { jump: 0, shutdown: 0, ddududu: 0, artistPlays: 0 } : { ...cached.counts };
+  const delta = { jump: 0, shutdown: 0, ddududu: 0, artistPlays: 0 };
+  const _debugArtists = [];
+  let maxListenedAt = doFull ? 0 : (cached.maxListenedAt || 0);
+
   try {
-    let maxTs = Math.floor(Date.now() / 1000);
-    const _debugArtists = [];
+    let maxTs = nowTs;
+    const minTs = doFull ? null : cached.maxListenedAt;
     for (let page = 0; page < 300; page++) {
-      const d = await lbFetch(`user/${encodeURIComponent(username)}/listens`, { max_ts: maxTs, count: 100 });
+      const params = { max_ts: maxTs, count: 100 };
+      if (minTs) params.min_ts = minTs;
+      const d = await lbFetch(`user/${encodeURIComponent(username)}/listens`, params);
       const listens = d?.payload?.listens || [];
       if (!listens.length) break;
       if (page === 0) listens.slice(0, 5).forEach(l => _debugArtists.push(l.track_metadata?.artist_name));
       for (const l of listens) {
+        if ((l.listened_at || 0) > maxListenedAt) maxListenedAt = l.listened_at;
         if (!_lbIsBp(l.track_metadata?.artist_name)) continue;
-        counts.artistPlays++;
+        delta.artistPlays++;
         const name = (l.track_metadata?.track_name || '').toLowerCase().trim();
-        if (name === 'jump')               counts.jump++;
-        else if (name === 'shut down')     counts.shutdown++;
-        else if (name === 'ddu-du ddu-du') counts.ddududu++;
+        if (name === 'jump')               delta.jump++;
+        else if (name === 'shut down')     delta.shutdown++;
+        else if (name === 'ddu-du ddu-du') delta.ddududu++;
       }
       if (listens.length < 100) break;
       maxTs = listens[listens.length - 1].listened_at - 1;
+      if (minTs && maxTs < minTs) break;
     }
-    if (!counts.artistPlays) console.warn('[BU LB] 0 BP found for', username, '— first artists:', _debugArtists);
-  } catch (e2) { console.warn('LB listen fallback:', e2.message); }
+  } catch (e2) { console.warn('LB listen scan:', e2.message); }
+
+  for (const k of ['jump', 'shutdown', 'ddududu', 'artistPlays']) counts[k] = base[k] + delta[k];
+
+  if (!counts.artistPlays && doFull) {
+    console.warn('[BU LB] 0 BP found for', username, '— first artists:', _debugArtists);
+  }
+
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ counts, maxListenedAt, savedAt: Date.now() }));
+  } catch {}
   return counts;
 }
 async function fetchLbRecentListens(username, from, to) {
