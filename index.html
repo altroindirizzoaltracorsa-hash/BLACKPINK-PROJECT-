@@ -3044,11 +3044,7 @@ async function loadProfile(usernameOverride, silent = false) {
     const todayScrobbles = await fetchRecentScrobbles(username, dayFrom, dayTo);
     const todayCounts = countByTrack(todayScrobbles);
 
-    const _dbgFrom = new Date(dayFrom * 1000).toISOString().slice(0, 16) + ' UTC';
-    const _dbgTo   = new Date(dayTo   * 1000).toISOString().slice(0, 16) + ' UTC';
-    const _dbgMsg  = `window ${_dbgFrom} → ${_dbgTo} · ${todayScrobbles.length} scrobbles · J:${todayCounts.jump||0} S:${todayCounts.shutdown||0} D:${todayCounts.ddududu||0}`;
-    console.log('[BU today]', _dbgMsg);
-    if (!silent) { const dbgEl = document.getElementById('profile-debug'); if (dbgEl) dbgEl.textContent = _dbgMsg; }
+    if (!silent) { const dbgEl = document.getElementById('profile-debug'); if (dbgEl) dbgEl.textContent = `window ${new Date(dayFrom*1000).toISOString().slice(0,16)} UTC → ${new Date(dayTo*1000).toISOString().slice(0,16)} UTC · ${todayScrobbles.length} scrobbles · J:${todayCounts.jump||0} S:${todayCounts.shutdown||0} D:${todayCounts.ddududu||0}`; }
 
     if (!silent) setLoading('Building weekly breakdown…');
     const { from: weekFrom } = getWeekBounds();
