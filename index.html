@@ -3237,23 +3237,30 @@ function saveLbUsername(u) { try { localStorage.setItem(LS_LB_KEY, u); } catch(e
 function getSavedLbUsername() { try { return localStorage.getItem(LS_LB_KEY) || ''; } catch(e) { return ''; } }
 
 // Auto-load on page show if username was previously saved
+let _autoLoadInProgress = false;
 async function tryAutoLoad() {
-  if (sb) {
-    try {
-      const { data: { session } } = await sb.auth.getSession();
-      if (session) {
-        await initMyBadgesFromAccount();
-        return;
-      }
-    } catch {}
-  }
-  // Fallback: legacy guest flow (no Supabase session)
-  const saved = getSavedUsername();
-  if (saved) {
-    document.getElementById('lfm-input').value = saved;
-    const lbEl = document.getElementById('lb-input');
-    if (lbEl) lbEl.value = getSavedLbUsername();
-    loadProfile();
+  if (_autoLoadInProgress) return;
+  _autoLoadInProgress = true;
+  try {
+    if (sb) {
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
+          await initMyBadgesFromAccount();
+          return;
+        }
+      } catch {}
+    }
+    // Fallback: legacy guest flow (no Supabase session)
+    const saved = getSavedUsername();
+    if (saved) {
+      document.getElementById('lfm-input').value = saved;
+      const lbEl = document.getElementById('lb-input');
+      if (lbEl) lbEl.value = getSavedLbUsername();
+      loadProfile();
+    }
+  } finally {
+    _autoLoadInProgress = false;
   }
 }
 
@@ -3457,7 +3464,8 @@ async function loadMultiAccountProfile(accounts) {
     weekCounts:  { jump: 0, shutdown: 0, ddududu: 0 },
     weekDays: null, info: null, lastScrobbleTs: null,
   };
-  acctBreakdown = [];
+  // Use a local array to avoid race conditions when two loads overlap
+  const _breakdown = [];
 
   // Deduplicate by source+username in case the same account was linked twice
   const _seen = new Set();
@@ -3479,7 +3487,7 @@ async function loadMultiAccountProfile(accounts) {
       if (!combined.lastScrobbleTs || (stats.lastScrobbleTs && stats.lastScrobbleTs > combined.lastScrobbleTs)) {
         combined.lastScrobbleTs = stats.lastScrobbleTs;
       }
-      acctBreakdown.push(stats);
+      _breakdown.push(stats);
       combined.artistPlays += stats.artistPlays;
       for (const k of ['jump','shutdown','ddududu']) {
         combined.totalPlays[k]  += stats.totalPlays[k]  || 0;
@@ -3495,13 +3503,16 @@ async function loadMultiAccountProfile(accounts) {
     const ds = weekFrom + i * 86400;
     if (ds * 1000 > Date.now()) { weekDays.push(null); continue; }
     const day = { jump: 0, shutdown: 0, ddududu: 0 };
-    for (const a of acctBreakdown) {
+    for (const a of _breakdown) {
       const dc = a.weekDayCounts[i];
       if (dc) { day.jump += dc.jump||0; day.shutdown += dc.shutdown||0; day.ddududu += dc.ddududu||0; }
     }
     weekDays.push({ label: getDayLabel(ds), counts: day });
   }
   combined.weekDays = weekDays;
+
+  // Assign to global only now — avoids race where two overlapping calls both push to the same array
+  acctBreakdown = _breakdown;
 
   // User info for display header: use first LFM-compatible account (Last.fm or Libre.fm)
   const primaryLfm = _accounts.find(a => a.source === 'lastfm' || a.source === 'librefm');
