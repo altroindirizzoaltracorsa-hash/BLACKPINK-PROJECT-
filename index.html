@@ -914,6 +914,14 @@
   .vote-header-sub { font-family: var(--light-serif); font-style: italic; font-size: 1rem; color: var(--muted); margin-top: 0.8rem; }
   .vote-update-note { font-size: 0.62rem; letter-spacing: 0.2em; color: rgba(245,240,240,0.25); margin-top: 0.5rem; }
   .vote-inner { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem 0; display: flex; flex-direction: column; gap: 1.5rem; }
+  .vote-ended-toggle { border: 1px solid var(--border); background: var(--card); padding: 0 2rem; }
+  .vote-ended-toggle summary { padding: 1rem 0; cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(245,240,240,0.4); user-select: none; }
+  .vote-ended-toggle summary::after { content: '▾'; font-size: 1rem; opacity: 0.5; transition: transform 0.2s; }
+  .vote-ended-toggle[open] summary::after { transform: rotate(180deg); }
+  .vote-ended-toggle summary::-webkit-details-marker { display: none; }
+  .vote-ended-inner { display: flex; flex-direction: column; gap: 1.5rem; padding-bottom: 1.5rem; }
+  .vote-ended-inner .vote-card { opacity: 0.55; }
+  .vote-ended-inner .vote-card:hover { opacity: 0.8; }
 
   .vote-card { background: var(--card); border: 1px solid var(--border); padding: 1.8rem 2rem; position: relative; overflow: hidden; }
   .vote-card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--pink); }
@@ -2766,7 +2774,8 @@ function renderVoteCampaigns() {
     return;
   }
   const now = Date.now();
-  el.innerHTML = VOTE_CAMPAIGNS.map(c => {
+
+  function buildCard(c) {
     const ended = c.deadline && new Date(c.deadline).getTime() <= now;
     let deadlineHtml;
     if (!c.deadline) {
@@ -2806,7 +2815,20 @@ function renderVoteCampaigns() {
           <button class="vote-share-btn" onclick="openVoteCard('${c.id}')">⬡ Share</button>
         </div>
       </div>`;
-  }).join('');
+  }
+
+  const active = VOTE_CAMPAIGNS.filter(c => !c.deadline || new Date(c.deadline).getTime() > now);
+  const ended  = VOTE_CAMPAIGNS.filter(c =>  c.deadline && new Date(c.deadline).getTime() <= now);
+
+  let html = active.map(buildCard).join('');
+  if (ended.length) {
+    html += `
+      <details class="vote-ended-toggle">
+        <summary>Past Votings (${ended.length})</summary>
+        <div class="vote-ended-inner">${ended.map(buildCard).join('')}</div>
+      </details>`;
+  }
+  el.innerHTML = html;
   tickVoteCountdowns();
 }
 
