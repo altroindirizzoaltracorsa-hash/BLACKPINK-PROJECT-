@@ -46,7 +46,7 @@
 
   .yt-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 1.25rem;
   }
 
@@ -94,9 +94,11 @@
 
   /* ── BLACKPINK LOGO ───────────────────────────────── */
   .bp-logo {
-    width: clamp(220px, 70vw, 420px);
+    width: clamp(220px, 70vw, 400px);
     height: auto;
     display: block;
+    /* invert white bg to black, rotate hue to restore pink */
+    filter: invert(1) hue-rotate(180deg);
   }
 
   /* ── HERO / COUNTDOWN ─────────────────────────────── */
@@ -251,7 +253,7 @@
 
   .sp-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 1.25rem;
   }
 
@@ -354,14 +356,7 @@
 
   <div class="hero-inner">
 
-    <!-- BLACKPINK horizontal wordmark — double border, single line -->
-    <svg class="bp-logo anim" style="animation-delay:0.5s" viewBox="0 0 540 90" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BLACKPINK">
-      <rect x="2.5" y="2.5" width="535" height="85" rx="2" fill="none" stroke="#FF2D6B" stroke-width="3"/>
-      <rect x="11" y="11" width="518" height="68" rx="1" fill="none" stroke="#FF2D6B" stroke-width="1.2"/>
-      <text x="270" y="61" text-anchor="middle"
-        font-family="'Arial Black',Arial,Impact,sans-serif"
-        font-size="48" font-weight="900" fill="#FF2D6B" letter-spacing="5">BLACKPINK</text>
-    </svg>
+    <img class="bp-logo anim" style="animation-delay:0.5s" src="/bp-logo.jpg" alt="BLACKPINK">
 
     <p class="eyebrow anim" style="animation-delay:0.7s">August 8, 2016 · August 8, 2026</p>
 
@@ -407,7 +402,7 @@
       </div>
       <div class="sp-iframe-box">
         <iframe
-          src="https://open.spotify.com/embed/track/13MF2TYuyfITClL1R2ei6e?utm_source=generator&theme=0"
+          src="https://open.spotify.com/embed/track/6NEoeBLQbOMw92qMeLfI40?utm_source=generator&theme=0"
           title="WHISTLE on Spotify"
           allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
           loading="lazy"
@@ -422,7 +417,7 @@
       </div>
       <div class="sp-iframe-box">
         <iframe
-          src="https://open.spotify.com/embed/track/6NEoeBLQbOMw92qMeLfI40?utm_source=generator&theme=0"
+          src="https://open.spotify.com/embed/track/13MF2TYuyfITClL1R2ei6e?utm_source=generator&theme=0"
           title="BOOMBAYAH on Spotify"
           allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
           loading="lazy"
