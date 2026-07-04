@@ -6,7 +6,7 @@
     --pink:     #FF2D6B;
     --pink-dim: rgba(255,45,107,0.10);
     --pink-border: rgba(255,45,107,0.22);
-    --gold-bg:  rgba(245,200,66,0.045);
+    --gold-bg:  rgba(245,200,66,0.11);
     --text:     #F0DCE4;
     --muted:    #7A5A68;
     --faint:    #38202C;
@@ -31,12 +31,12 @@
   }
   .anim {
     opacity: 0;
-    animation: rise 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: rise 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
 
   /* ── YOUTUBE SECTION ──────────────────────────────── */
   .yt-section {
-    padding: clamp(2.5rem, 5vh, 4rem) clamp(1rem, 5vw, 3rem) clamp(1.5rem, 3vh, 2.5rem);
+    padding: 1.5rem clamp(1rem, 5vw, 3rem) 0.75rem;
     max-width: 1040px;
     margin: 0 auto;
   }
@@ -92,12 +92,11 @@
   /* ── HERO / COUNTDOWN ─────────────────────────────── */
   .hero {
     position: relative;
-    min-height: 70svh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 3rem 1.5rem 3.5rem;
+    padding: 2.5rem 1.5rem 2.5rem;
     text-align: center;
     overflow: hidden;
   }
@@ -234,7 +233,7 @@
 
   /* ── SPOTIFY SECTION ──────────────────────────────── */
   .sp-section {
-    padding: clamp(2rem, 4vh, 3.5rem) clamp(1rem, 5vw, 3rem) clamp(2.5rem, 5vh, 4rem);
+    padding: 0.75rem clamp(1rem, 5vw, 3rem) 2rem;
     max-width: 1040px;
     margin: 0 auto;
   }
@@ -303,7 +302,7 @@
 <section class="yt-section">
   <div class="yt-grid">
 
-    <div class="yt-wrap anim" style="animation-delay:0.1s">
+    <div class="yt-wrap anim" style="animation-delay:0.15s">
       <div class="yt-iframe-box">
         <iframe
           src="https://www.youtube-nocookie.com/embed/dISNgvVpWlo"
@@ -319,7 +318,7 @@
       </div>
     </div>
 
-    <div class="yt-wrap anim" style="animation-delay:0.3s">
+    <div class="yt-wrap anim" style="animation-delay:0.4s">
       <div class="yt-iframe-box">
         <iframe
           src="https://www.youtube-nocookie.com/embed/bwmSjveL3Lc"
@@ -343,16 +342,16 @@
   <div class="bg-ten" aria-hidden="true"><span class="bg-ten-num">10</span></div>
 
   <div class="hero-inner">
-    <p class="eyebrow anim" style="animation-delay:0.5s">August 8, 2016 · August 8, 2026</p>
+    <p class="eyebrow anim" style="animation-delay:1.05s">August 8, 2016 · August 8, 2026</p>
 
-    <h1 class="hero-title anim" style="animation-delay:0.65s">
+    <h1 class="hero-title anim" style="animation-delay:1.05s">
       10 YEARS OF<br><span class="accent">BLACKPINK</span>
     </h1>
 
-    <div class="hero-rule anim" style="animation-delay:0.75s"></div>
-    <p class="hero-sub anim" style="animation-delay:0.8s">Countdown to the anniversary</p>
+    <div class="hero-rule anim" style="animation-delay:1.2s"></div>
+    <p class="hero-sub anim" style="animation-delay:1.05s">Countdown to the anniversary</p>
 
-    <div class="countdown anim" style="animation-delay:0.95s" role="timer" aria-label="Countdown to BLACKPINK 10th anniversary">
+    <div class="countdown anim" style="animation-delay:1.2s" role="timer" aria-label="Countdown to BLACKPINK 10th anniversary">
       <div class="cd-unit">
         <div class="cd-num" id="cd-d">--</div>
         <div class="cd-label">Days</div>
@@ -382,7 +381,7 @@
 <section class="sp-section">
   <div class="sp-grid">
 
-    <div class="sp-wrap anim" style="animation-delay:1.1s">
+    <div class="sp-wrap anim" style="animation-delay:1.4s">
       <div class="sp-label">
         <span class="sp-label-tag">Listen on Spotify</span>
         <span class="sp-label-name">WHISTLE</span>
@@ -397,7 +396,7 @@
       </div>
     </div>
 
-    <div class="sp-wrap anim" style="animation-delay:1.3s">
+    <div class="sp-wrap anim" style="animation-delay:1.65s">
       <div class="sp-label">
         <span class="sp-label-tag">Listen on Spotify</span>
         <span class="sp-label-name">BOOMBAYAH</span>
@@ -415,7 +414,7 @@
   </div>
 </section>
 
-<footer class="page-footer anim" style="animation-delay:1.5s">
+<footer class="page-footer anim" style="animation-delay:1.9s">
   <a href="/">← Back to Blinks United</a>
   &nbsp;·&nbsp; BLINKS UNITED · 10TH ANNIVERSARY
 </footer>
