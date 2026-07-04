@@ -36,7 +36,7 @@
 
   /* ── YOUTUBE SECTION ──────────────────────────────── */
   .yt-section {
-    padding: 2.5rem clamp(1rem, 5vw, 3rem) 1.5rem;
+    padding: 1.75rem clamp(1rem, 5vw, 3rem) 1rem;
     max-width: 1040px;
     margin: 0 auto;
   }
@@ -91,7 +91,7 @@
 
   /* ── BLACKPINK LOGO ───────────────────────────────── */
   .bp-logo {
-    width: clamp(140px, 38vw, 210px);
+    width: clamp(220px, 70vw, 420px);
     height: auto;
     display: block;
   }
@@ -99,12 +99,11 @@
   /* ── HERO / COUNTDOWN ─────────────────────────────── */
   .hero {
     position: relative;
-    min-height: 80svh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 4rem 1.5rem 4.5rem;
+    padding: 3.5rem 1.5rem 4rem;
     text-align: center;
     overflow: hidden;
   }
@@ -241,7 +240,7 @@
 
   /* ── SPOTIFY SECTION ──────────────────────────────── */
   .sp-section {
-    padding: 1.5rem clamp(1rem, 5vw, 3rem) 3rem;
+    padding: 1rem clamp(1rem, 5vw, 3rem) 2.5rem;
     max-width: 1040px;
     margin: 0 auto;
   }
@@ -351,15 +350,32 @@
 
   <div class="hero-inner">
 
-    <svg class="bp-logo anim" style="animation-delay:0.5s" viewBox="0 0 220 70" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BLACKPINK">
-      <rect x="1" y="1" width="218" height="68" rx="3" fill="none" stroke="rgba(255,45,107,0.45)" stroke-width="1.2"/>
-      <text x="110" y="26" text-anchor="middle" dominant-baseline="middle"
+    <!-- BLACKPINK horizontal wordmark — double-border, single-line -->
+    <svg class="bp-logo anim" style="animation-delay:0.5s" viewBox="0 0 520 88" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BLACKPINK">
+      <!-- outer border -->
+      <rect x="2" y="2" width="516" height="84" rx="2" fill="none" stroke="#FF2D6B" stroke-width="2.5"/>
+      <!-- inner border -->
+      <rect x="10" y="10" width="500" height="68" rx="1" fill="none" stroke="#FF2D6B" stroke-width="1"/>
+      <!-- BLA -->
+      <text x="28" y="62"
         font-family="'Arial Black',Arial,Impact,sans-serif"
-        font-size="22" font-weight="900" fill="#F0DCE4" letter-spacing="9">BLACK</text>
-      <line x1="18" y1="35" x2="202" y2="35" stroke="rgba(255,45,107,0.35)" stroke-width="0.8"/>
-      <text x="110" y="52" text-anchor="middle" dominant-baseline="middle"
+        font-size="50" font-weight="900" fill="#FF2D6B" letter-spacing="2">BL</text>
+      <!-- A without crossbar: just two diagonal strokes -->
+      <polygon points="108,62 128,18 148,62" fill="none" stroke="#FF2D6B" stroke-width="9" stroke-linejoin="miter"/>
+      <!-- CKPI -->
+      <text x="152" y="62"
         font-family="'Arial Black',Arial,Impact,sans-serif"
-        font-size="22" font-weight="900" fill="#FF2D6B" letter-spacing="14">PINK</text>
+        font-size="50" font-weight="900" fill="#FF2D6B" letter-spacing="2">CKPI</text>
+      <!-- backwards N -->
+      <g transform="translate(376,0)">
+        <text x="0" y="62" transform="scale(-1,1) translate(-36,0)"
+          font-family="'Arial Black',Arial,Impact,sans-serif"
+          font-size="50" font-weight="900" fill="#FF2D6B" letter-spacing="2">N</text>
+      </g>
+      <!-- K -->
+      <text x="410" y="62"
+        font-family="'Arial Black',Arial,Impact,sans-serif"
+        font-size="50" font-weight="900" fill="#FF2D6B" letter-spacing="2">K</text>
     </svg>
 
     <p class="eyebrow anim" style="animation-delay:0.7s">August 8, 2016 · August 8, 2026</p>
