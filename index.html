@@ -2620,6 +2620,26 @@ const TRACKS = [
 // ── VOTE CAMPAIGNS ───────────────────────────────────────────
 const VOTE_CAMPAIGNS = [
   {
+    id: 'jma-2026-preliminary',
+    platform: 'Mubeat · My1pick · Idolchamp · Muniverse · Fancast',
+    title: '3rd Jupiter Music Awards 2026',
+    url: 'https://jupitermusicawards.com/',
+    image: '/vote-blackpink-ot4.jpg',
+    deadline: '2026-07-15T16:59:59Z', // 16 Jul 2026, 01:59:59 KST — Preliminary Round ends
+    resetOffset: 9, // daily votes reset at midnight KST
+    rules: [
+      'Preliminary Round: Jul 1 – Jul 16, 01:59 KST · Top 20 advance to the next round',
+      'Download voting apps and collect votes daily on each platform',
+      'Voting combined across all 5 official partner apps (Mubeat, My1pick, Idolchamp, Muniverse, Fancast)',
+      '100% global fan voting — daily votes make a big difference',
+      'Winners are invited to the Jupiter Music Awards ceremony to receive the official trophy',
+    ],
+    categories: [
+      { name: 'Female Group of the Year', nominees: [{ name: 'BLACKPINK', us: true }] },
+      { name: 'Female Artist of the Year', nominees: [{ name: 'JENNIE', us: true }] },
+    ],
+  },
+  {
     id: 'billboard-korea-2026',
     platform: 'Billboard Korea',
     title: 'Billboard Top K-Artists',
