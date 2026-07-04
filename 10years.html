@@ -4,10 +4,9 @@
     --bg:       #0A0608;
     --bg-card:  #160A10;
     --pink:     #FF2D6B;
-    --pink-dim: rgba(255,45,107,0.14);
+    --pink-dim: rgba(255,45,107,0.10);
     --pink-border: rgba(255,45,107,0.22);
-    --gold:     #F5C842;
-    --gold-bg:  rgba(245,200,66,0.055);
+    --gold-bg:  rgba(245,200,66,0.045);
     --text:     #F0DCE4;
     --muted:    #7A5A68;
     --faint:    #38202C;
@@ -25,20 +24,84 @@
     overflow-x: hidden;
   }
 
-  /* ── HERO ─────────────────────────────────────────────── */
+  /* ── ENTRANCE ANIMATION ───────────────────────────── */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(28px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .anim {
+    opacity: 0;
+    animation: rise 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  /* ── YOUTUBE SECTION ──────────────────────────────── */
+  .yt-section {
+    padding: clamp(2.5rem, 5vh, 4rem) clamp(1rem, 5vw, 3rem) clamp(1.5rem, 3vh, 2.5rem);
+    max-width: 1040px;
+    margin: 0 auto;
+  }
+
+  .yt-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .yt-wrap {
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid var(--faint);
+    background: var(--bg-card);
+    transition: border-color 0.2s;
+  }
+  .yt-wrap:hover { border-color: var(--pink-border); }
+
+  .yt-iframe-box {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+  }
+  .yt-iframe-box iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  .yt-label {
+    padding: 0.65rem 0.9rem 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+  .yt-label-tag {
+    font-size: 0.55rem;
+    letter-spacing: 0.22em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .yt-label-name {
+    font-family: 'Arial Black', Arial, Impact, sans-serif;
+    font-size: 1.05rem;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+
+  /* ── HERO / COUNTDOWN ─────────────────────────────── */
   .hero {
     position: relative;
-    min-height: 100svh;
+    min-height: 70svh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 3rem 1.5rem 4rem;
+    padding: 3rem 1.5rem 3.5rem;
     text-align: center;
     overflow: hidden;
   }
 
-  /* Giant "10" in the background — the architectural bet */
   .bg-ten {
     position: absolute;
     inset: 0;
@@ -51,7 +114,7 @@
   }
   .bg-ten-num {
     font-family: 'Arial Black', Arial, Impact, sans-serif;
-    font-size: clamp(280px, 65vw, 900px);
+    font-size: clamp(260px, 62vw, 860px);
     font-weight: 900;
     line-height: 1;
     letter-spacing: -0.06em;
@@ -59,7 +122,6 @@
     user-select: none;
   }
 
-  /* Radial vignette so the "10" fades to black at edges */
   .hero::before {
     content: '';
     position: absolute;
@@ -75,11 +137,11 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1.25rem;
+    gap: 1.1rem;
   }
 
   .eyebrow {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 600;
     letter-spacing: 0.28em;
     color: var(--pink);
@@ -88,38 +150,37 @@
 
   .hero-title {
     font-family: 'Arial Black', Arial, Impact, sans-serif;
-    font-size: clamp(2.4rem, 9vw, 6.5rem);
+    font-size: clamp(2.2rem, 8.5vw, 6rem);
     font-weight: 900;
-    line-height: 0.88;
+    line-height: 0.9;
     letter-spacing: -0.025em;
     color: var(--text);
     text-wrap: balance;
   }
   .hero-title .accent { color: var(--pink); }
 
+  .hero-rule {
+    width: 38px;
+    height: 2px;
+    background: var(--pink);
+    border-radius: 1px;
+    opacity: 0.55;
+    margin: 0.1rem 0;
+  }
+
   .hero-sub {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     letter-spacing: 0.22em;
     color: var(--muted);
     text-transform: uppercase;
   }
 
-  /* Pink line separator */
-  .hero-rule {
-    width: 40px;
-    height: 2px;
-    background: var(--pink);
-    border-radius: 1px;
-    opacity: 0.6;
-    margin: 0.25rem 0;
-  }
-
-  /* ── COUNTDOWN ────────────────────────────────────────── */
+  /* ── COUNTDOWN ────────────────────────────────────── */
   .countdown {
     display: flex;
     align-items: flex-start;
-    gap: clamp(0.3rem, 1.5vw, 1.25rem);
-    margin-top: 0.5rem;
+    gap: clamp(0.3rem, 1.5vw, 1.1rem);
+    margin-top: 0.3rem;
   }
 
   .cd-unit {
@@ -131,7 +192,7 @@
 
   .cd-num {
     font-family: 'Arial Black', Arial, Impact, sans-serif;
-    font-size: clamp(3.2rem, 11vw, 7.5rem);
+    font-size: clamp(3rem, 10.5vw, 7rem);
     font-weight: 900;
     line-height: 1;
     letter-spacing: -0.04em;
@@ -142,7 +203,7 @@
   }
 
   .cd-label {
-    font-size: 0.55rem;
+    font-size: 0.52rem;
     letter-spacing: 0.22em;
     color: var(--muted);
     text-transform: uppercase;
@@ -150,7 +211,7 @@
 
   .cd-sep {
     font-family: 'Arial Black', Arial, Impact, sans-serif;
-    font-size: clamp(2.2rem, 7.5vw, 5.5rem);
+    font-size: clamp(2rem, 7vw, 5rem);
     font-weight: 900;
     line-height: 1;
     color: var(--pink);
@@ -158,198 +219,74 @@
     padding-top: 0.15em;
   }
 
-  /* Blinking colon animation */
   @keyframes blink { 0%,49%{opacity:0.55} 50%,100%{opacity:0.15} }
   .cd-sep { animation: blink 1s step-end infinite; }
 
-  /* Bottom glow line */
   .hero-glow {
     position: absolute;
     bottom: 0;
     left: 0; right: 0;
     height: 1px;
     background: linear-gradient(90deg, transparent 0%, var(--pink) 50%, transparent 100%);
-    opacity: 0.5;
+    opacity: 0.45;
     z-index: 2;
   }
 
-  /* ── DEBUT SECTION ────────────────────────────────────── */
-  .debut {
-    padding: clamp(3rem, 7vh, 5.5rem) clamp(1rem, 5vw, 3rem);
-    max-width: 920px;
+  /* ── SPOTIFY SECTION ──────────────────────────────── */
+  .sp-section {
+    padding: clamp(2rem, 4vh, 3.5rem) clamp(1rem, 5vw, 3rem) clamp(2.5rem, 5vh, 4rem);
+    max-width: 1040px;
     margin: 0 auto;
   }
 
-  .section-head {
-    text-align: center;
-    margin-bottom: 2.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-  .section-eyebrow {
-    font-size: 0.65rem;
-    letter-spacing: 0.28em;
-    color: var(--pink);
-    text-transform: uppercase;
-  }
-  .section-title {
-    font-family: 'Arial Black', Arial, Impact, sans-serif;
-    font-size: clamp(1.4rem, 4vw, 2.2rem);
-    font-weight: 900;
-    letter-spacing: -0.02em;
-    color: var(--text);
-  }
-
-  .songs-grid {
+  .sp-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.25rem;
   }
 
-  .song-card {
-    background: var(--bg-card);
-    border: 1px solid var(--faint);
-    border-radius: 3px;
+  .sp-wrap {
+    border-radius: 4px;
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    border: 1px solid var(--faint);
+    background: var(--bg-card);
     transition: border-color 0.2s;
   }
-  .song-card:hover { border-color: var(--pink-border); }
+  .sp-wrap:hover { border-color: var(--green-border); }
 
-  /* Video thumbnail area — pure CSS, no external images */
-  .song-thumb {
-    aspect-ratio: 16/9;
-    position: relative;
+  .sp-label {
+    padding: 0.65rem 0.9rem 0.55rem;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
+    flex-direction: column;
+    gap: 0.1rem;
   }
-  .song-thumb-whistle {
-    background: linear-gradient(135deg, #0d0508 0%, #1f0a16 40%, #2b0d1c 70%, #0d0508 100%);
-  }
-  .song-thumb-boombayah {
-    background: linear-gradient(135deg, #07080d 0%, #0d101f 40%, #141622 70%, #07080d 100%);
-  }
-
-  /* Subtle animated grain texture */
-  .song-thumb::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.07'/%3E%3C/svg%3E");
-    opacity: 0.4;
-  }
-
-  .song-thumb-label {
-    position: absolute;
-    bottom: 0.85rem;
-    left: 1rem;
-    right: 1rem;
-    z-index: 1;
-  }
-  .song-thumb-label .tl-tag {
+  .sp-label-tag {
     font-size: 0.55rem;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.22em;
     color: var(--muted);
     text-transform: uppercase;
-    display: block;
-    margin-bottom: 0.2rem;
   }
-  .song-thumb-label .tl-name {
+  .sp-label-name {
     font-family: 'Arial Black', Arial, Impact, sans-serif;
-    font-size: 1.6rem;
+    font-size: 1.05rem;
     font-weight: 900;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
     color: var(--text);
-    line-height: 1;
   }
 
-  .play-btn {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: var(--pink);
+  .sp-iframe-box iframe {
+    display: block;
+    width: 100%;
     border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    z-index: 1;
-    transition: transform 0.15s, box-shadow 0.15s;
-    box-shadow: 0 0 20px rgba(255,45,107,0.4);
-  }
-  .play-btn:hover { transform: scale(1.1); box-shadow: 0 0 30px rgba(255,45,107,0.6); }
-  .play-btn svg { width: 18px; height: 18px; fill: #fff; transform: translateX(2px); }
-
-  .song-body {
-    padding: 1.1rem 1.2rem 1.4rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.85rem;
+    height: 80px;
   }
 
-  .song-name-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-  }
-  .song-en {
-    font-family: 'Arial Black', Arial, sans-serif;
-    font-size: 1rem;
-    font-weight: 900;
-    letter-spacing: 0.04em;
-    color: var(--text);
-  }
-  .song-kr {
-    font-size: 0.75rem;
-    color: var(--muted);
-    letter-spacing: 0.06em;
-  }
-
-  .song-links {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
-  .link-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.4rem 0.8rem;
-    border-radius: 2px;
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    text-decoration: none;
-    cursor: pointer;
-    transition: opacity 0.15s;
-    border: 1px solid;
-  }
-  .link-btn:hover { opacity: 0.75; }
-
-  .link-yt {
-    background: var(--pink-dim);
-    border-color: var(--pink-border);
-    color: var(--pink);
-  }
-  .link-sp {
-    background: var(--green-dim);
-    border-color: var(--green-border);
-    color: var(--green);
-  }
-
-  /* ── FOOTER ───────────────────────────────────────────── */
+  /* ── FOOTER ───────────────────────────────────────── */
   .page-footer {
     border-top: 1px solid var(--faint);
     padding: 2rem;
     text-align: center;
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     letter-spacing: 0.2em;
     color: var(--faint);
     text-transform: uppercase;
@@ -362,21 +299,60 @@
   .page-footer a:hover { opacity: 1; }
 </style>
 
-<!-- ══ HERO ══════════════════════════════════════════════ -->
+<!-- ══ YOUTUBE VIDEOS ═════════════════════════════════ -->
+<section class="yt-section">
+  <div class="yt-grid">
+
+    <div class="yt-wrap anim" style="animation-delay:0.1s">
+      <div class="yt-iframe-box">
+        <iframe
+          src="https://www.youtube-nocookie.com/embed/dISNgvVpSU0"
+          title="BLACKPINK - WHISTLE M/V"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+          loading="lazy"
+        ></iframe>
+      </div>
+      <div class="yt-label">
+        <span class="yt-label-tag">Official M/V</span>
+        <span class="yt-label-name">WHISTLE</span>
+      </div>
+    </div>
+
+    <div class="yt-wrap anim" style="animation-delay:0.3s">
+      <div class="yt-iframe-box">
+        <iframe
+          src="https://www.youtube-nocookie.com/embed/bwmSjveL3Lc"
+          title="BLACKPINK - BOOMBAYAH M/V"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+          loading="lazy"
+        ></iframe>
+      </div>
+      <div class="yt-label">
+        <span class="yt-label-tag">Official M/V</span>
+        <span class="yt-label-name">BOOMBAYAH</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ HERO / COUNTDOWN ══════════════════════════════ -->
 <section class="hero">
   <div class="bg-ten" aria-hidden="true"><span class="bg-ten-num">10</span></div>
 
   <div class="hero-inner">
-    <p class="eyebrow">August 8, 2016 · August 8, 2026</p>
+    <p class="eyebrow anim" style="animation-delay:0.5s">August 8, 2016 · August 8, 2026</p>
 
-    <h1 class="hero-title">
+    <h1 class="hero-title anim" style="animation-delay:0.65s">
       10 YEARS OF<br><span class="accent">BLACKPINK</span>
     </h1>
 
-    <p class="hero-sub">Countdown to the anniversary</p>
-    <div class="hero-rule"></div>
+    <div class="hero-rule anim" style="animation-delay:0.75s"></div>
+    <p class="hero-sub anim" style="animation-delay:0.8s">Countdown to the anniversary</p>
 
-    <div class="countdown" role="timer" aria-label="Countdown to BLACKPINK 10th anniversary">
+    <div class="countdown anim" style="animation-delay:0.95s" role="timer" aria-label="Countdown to BLACKPINK 10th anniversary">
       <div class="cd-unit">
         <div class="cd-num" id="cd-d">--</div>
         <div class="cd-label">Days</div>
@@ -402,91 +378,62 @@
   <div class="hero-glow"></div>
 </section>
 
-<!-- ══ DEBUT SONGS ═══════════════════════════════════════ -->
-<section class="debut">
-  <div class="section-head">
-    <p class="section-eyebrow">Square One · August 8, 2016</p>
-    <h2 class="section-title">THE DEBUT</h2>
-  </div>
+<!-- ══ SPOTIFY EMBEDS ════════════════════════════════ -->
+<section class="sp-section">
+  <div class="sp-grid">
 
-  <div class="songs-grid">
-
-    <!-- WHISTLE -->
-    <div class="song-card">
-      <div class="song-thumb song-thumb-whistle">
-        <button class="play-btn" onclick="window.open('https://www.youtube.com/watch?v=dISNgvVpSU0','_blank')" aria-label="Watch WHISTLE on YouTube">
-          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-        </button>
-        <div class="song-thumb-label">
-          <span class="tl-tag">Official MV</span>
-          <span class="tl-name">WHISTLE</span>
-        </div>
+    <div class="sp-wrap anim" style="animation-delay:1.1s">
+      <div class="sp-label">
+        <span class="sp-label-tag">Listen on Spotify</span>
+        <span class="sp-label-name">WHISTLE</span>
       </div>
-      <div class="song-body">
-        <div class="song-name-row">
-          <span class="song-en">WHISTLE</span>
-          <span class="song-kr">휘파람</span>
-        </div>
-        <div class="song-links">
-          <a class="link-btn link-yt" href="https://www.youtube.com/watch?v=dISNgvVpSU0" target="_blank" rel="noopener">▶ YouTube</a>
-          <a class="link-btn link-sp" href="https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY" target="_blank" rel="noopener">● Spotify</a>
-        </div>
+      <div class="sp-iframe-box">
+        <iframe
+          src="https://open.spotify.com/embed/track/5H1sKFMzDeMtXwND3V6hRY?utm_source=generator&theme=0"
+          title="WHISTLE on Spotify"
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy"
+        ></iframe>
       </div>
     </div>
 
-    <!-- BOOMBAYAH -->
-    <div class="song-card">
-      <div class="song-thumb song-thumb-boombayah">
-        <button class="play-btn" onclick="window.open('https://www.youtube.com/watch?v=bwmSjveL3Lc','_blank')" aria-label="Watch BOOMBAYAH on YouTube">
-          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-        </button>
-        <div class="song-thumb-label">
-          <span class="tl-tag">Official MV</span>
-          <span class="tl-name">BOOMBAYAH</span>
-        </div>
+    <div class="sp-wrap anim" style="animation-delay:1.3s">
+      <div class="sp-label">
+        <span class="sp-label-tag">Listen on Spotify</span>
+        <span class="sp-label-name">BOOMBAYAH</span>
       </div>
-      <div class="song-body">
-        <div class="song-name-row">
-          <span class="song-en">BOOMBAYAH</span>
-          <span class="song-kr">붐바야</span>
-        </div>
-        <div class="song-links">
-          <a class="link-btn link-yt" href="https://www.youtube.com/watch?v=bwmSjveL3Lc" target="_blank" rel="noopener">▶ YouTube</a>
-          <a class="link-btn link-sp" href="https://open.spotify.com/track/0lHAMNU8RGiDeBMoTSFyDj" target="_blank" rel="noopener">● Spotify</a>
-        </div>
+      <div class="sp-iframe-box">
+        <iframe
+          src="https://open.spotify.com/embed/track/0lHAMNU8RGiDeBMoTSFyDj?utm_source=generator&theme=0"
+          title="BOOMBAYAH on Spotify"
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy"
+        ></iframe>
       </div>
     </div>
 
   </div>
 </section>
 
-<footer class="page-footer">
+<footer class="page-footer anim" style="animation-delay:1.5s">
   <a href="/">← Back to Blinks United</a>
   &nbsp;·&nbsp; BLINKS UNITED · 10TH ANNIVERSARY
 </footer>
 
 <script>
-  // August 8, 2026 00:00:00 KST = UTC+9
   const TARGET = new Date('2026-08-08T00:00:00+09:00').getTime();
-
   function pad(n) { return String(Math.max(0, n)).padStart(2, '0'); }
-
   function tick() {
     const diff = TARGET - Date.now();
     if (diff <= 0) {
       ['d','h','m','s'].forEach(id => document.getElementById('cd-'+id).textContent = '00');
       return;
     }
-    const d = Math.floor(diff / 86400000);
-    const h = Math.floor((diff % 86400000) / 3600000);
-    const m = Math.floor((diff % 3600000)  / 60000);
-    const s = Math.floor((diff % 60000)    / 1000);
-    document.getElementById('cd-d').textContent = pad(d);
-    document.getElementById('cd-h').textContent = pad(h);
-    document.getElementById('cd-m').textContent = pad(m);
-    document.getElementById('cd-s').textContent = pad(s);
+    document.getElementById('cd-d').textContent = pad(Math.floor(diff / 86400000));
+    document.getElementById('cd-h').textContent = pad(Math.floor((diff % 86400000) / 3600000));
+    document.getElementById('cd-m').textContent = pad(Math.floor((diff % 3600000)  / 60000));
+    document.getElementById('cd-s').textContent = pad(Math.floor((diff % 60000)    / 1000));
   }
-
   tick();
   setInterval(tick, 1000);
 </script>
