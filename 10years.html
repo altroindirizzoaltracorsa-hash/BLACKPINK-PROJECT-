@@ -22,6 +22,9 @@
     color: var(--text);
     font-family: system-ui, -apple-system, sans-serif;
     overflow-x: hidden;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
   }
 
   /* ── ENTRANCE ANIMATION ───────────────────────────── */
@@ -99,11 +102,12 @@
   /* ── HERO / COUNTDOWN ─────────────────────────────── */
   .hero {
     position: relative;
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 3.5rem 1.5rem 4rem;
+    padding: 2.5rem 1.5rem 3rem;
     text-align: center;
     overflow: hidden;
   }
@@ -350,32 +354,13 @@
 
   <div class="hero-inner">
 
-    <!-- BLACKPINK horizontal wordmark — double-border, single-line -->
-    <svg class="bp-logo anim" style="animation-delay:0.5s" viewBox="0 0 520 88" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BLACKPINK">
-      <!-- outer border -->
-      <rect x="2" y="2" width="516" height="84" rx="2" fill="none" stroke="#FF2D6B" stroke-width="2.5"/>
-      <!-- inner border -->
-      <rect x="10" y="10" width="500" height="68" rx="1" fill="none" stroke="#FF2D6B" stroke-width="1"/>
-      <!-- BLA -->
-      <text x="28" y="62"
+    <!-- BLACKPINK horizontal wordmark — double border, single line -->
+    <svg class="bp-logo anim" style="animation-delay:0.5s" viewBox="0 0 540 90" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BLACKPINK">
+      <rect x="2.5" y="2.5" width="535" height="85" rx="2" fill="none" stroke="#FF2D6B" stroke-width="3"/>
+      <rect x="11" y="11" width="518" height="68" rx="1" fill="none" stroke="#FF2D6B" stroke-width="1.2"/>
+      <text x="270" y="61" text-anchor="middle"
         font-family="'Arial Black',Arial,Impact,sans-serif"
-        font-size="50" font-weight="900" fill="#FF2D6B" letter-spacing="2">BL</text>
-      <!-- A without crossbar: just two diagonal strokes -->
-      <polygon points="108,62 128,18 148,62" fill="none" stroke="#FF2D6B" stroke-width="9" stroke-linejoin="miter"/>
-      <!-- CKPI -->
-      <text x="152" y="62"
-        font-family="'Arial Black',Arial,Impact,sans-serif"
-        font-size="50" font-weight="900" fill="#FF2D6B" letter-spacing="2">CKPI</text>
-      <!-- backwards N -->
-      <g transform="translate(376,0)">
-        <text x="0" y="62" transform="scale(-1,1) translate(-36,0)"
-          font-family="'Arial Black',Arial,Impact,sans-serif"
-          font-size="50" font-weight="900" fill="#FF2D6B" letter-spacing="2">N</text>
-      </g>
-      <!-- K -->
-      <text x="410" y="62"
-        font-family="'Arial Black',Arial,Impact,sans-serif"
-        font-size="50" font-weight="900" fill="#FF2D6B" letter-spacing="2">K</text>
+        font-size="48" font-weight="900" fill="#FF2D6B" letter-spacing="5">BLACKPINK</text>
     </svg>
 
     <p class="eyebrow anim" style="animation-delay:0.7s">August 8, 2016 · August 8, 2026</p>
