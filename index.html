@@ -1424,7 +1424,7 @@
           <p class="login-desc">Add your Last.fm, ListenBrainz, Libre.fm, and/or Musicat usernames — all your streams count toward one leaderboard row.</p>
           <div id="linked-accounts-list-inline"></div>
           <div class="input-row" style="margin-top:1rem;">
-            <select id="linked-source-select" class="username-input" style="flex:0 0 140px;">
+            <select id="linked-source-select" class="username-input" style="flex:0 0 140px;" onchange="updateLbHint('linked-source-select','lb-hint-inline')">
               <option value="lastfm">Last.fm</option>
               <option value="listenbrainz">ListenBrainz</option>
               <option value="librefm">Libre.fm</option>
@@ -1433,6 +1433,10 @@
             <input class="username-input" id="linked-username-input" type="text" placeholder="Username" />
             <button class="btn-primary" onclick="addLinkedAccount()">+ Link</button>
           </div>
+          <p id="lb-hint-inline" class="lastfm-tip" style="display:none;margin-top:0.5rem;">
+            📱 Mobile: <a href="https://play.google.com/store/apps/details?id=com.arn.scrobble" target="_blank" rel="noopener">Pano Scrobbler</a>
+            &nbsp;·&nbsp; 💻 PC: <a href="https://web-scrobbler.com/" target="_blank" rel="noopener">Web Scrobbler</a> or <a href="https://github.com/evilarceus/owline-scrobbler" target="_blank" rel="noopener">Owline Scrobbler</a>
+          </p>
           <div id="linked-accounts-status" class="error-msg" style="display:none"></div>
           <p class="lastfm-tip" style="margin-top:1rem;">Don't have Last.fm? <a href="https://www.last.fm/join" target="_blank" rel="noopener">Sign up free</a> and connect Spotify at <a href="https://www.last.fm/settings/applications" target="_blank" rel="noopener">last.fm/settings/applications</a>.</p>
           <button id="badges-done-btn" class="btn-primary" style="display:none;width:100%;margin-top:1.25rem;font-size:1rem;" onclick="initMyBadgesFromAccount()">Done — View My Profile →</button>
@@ -1523,7 +1527,7 @@
             <p class="settings-hint" style="margin-bottom:0.5rem;">Last.fm, ListenBrainz, Libre.fm, and/or Musicat usernames — all streams count toward one leaderboard row.</p>
             <div id="linked-accounts-list-settings" style="margin-bottom:0.75rem;"></div>
             <div class="input-row" style="gap:0.5rem;">
-              <select id="linked-source-select-settings" class="settings-input" style="flex:0 0 140px;">
+              <select id="linked-source-select-settings" class="settings-input" style="flex:0 0 140px;" onchange="updateLbHint('linked-source-select-settings','lb-hint-settings')">
                 <option value="lastfm">Last.fm</option>
                 <option value="listenbrainz">ListenBrainz</option>
                 <option value="librefm">Libre.fm</option>
@@ -1532,6 +1536,10 @@
               <input class="settings-input" id="linked-username-input-settings" type="text" placeholder="Username" style="flex:1;" />
               <button class="btn-primary" onclick="addLinkedAccountSettings()">+ Link</button>
             </div>
+            <p id="lb-hint-settings" class="settings-hint" style="display:none;margin-top:0.35rem;">
+              📱 Mobile: <a href="https://play.google.com/store/apps/details?id=com.arn.scrobble" target="_blank" rel="noopener">Pano Scrobbler</a>
+              &nbsp;·&nbsp; 💻 PC: <a href="https://web-scrobbler.com/" target="_blank" rel="noopener">Web Scrobbler</a> or <a href="https://github.com/evilarceus/owline-scrobbler" target="_blank" rel="noopener">Owline Scrobbler</a>
+            </p>
             <p class="settings-hint" id="settings-linked-status" style="margin-top:0.35rem;"></p>
           </div>
 
@@ -2573,6 +2581,12 @@ async function loadLinkedAccountsInline() {
   }
   list.innerHTML = data.map(row => `<div class="linked-row"><div class="linked-row-label"><span class="linked-row-source">${ACCOUNT_SOURCE_LABELS[row.source] || row.source}</span>${row.source_username}</div><button class="linked-remove-btn" onclick="removeLinkedAccount('${row.id}')">Remove</button></div>`).join('');
   if (doneBtn) doneBtn.style.display = 'block';
+}
+
+function updateLbHint(selectId, hintId) {
+  const sel = document.getElementById(selectId);
+  const hint = document.getElementById(hintId);
+  if (sel && hint) hint.style.display = sel.value === 'listenbrainz' ? 'block' : 'none';
 }
 
 async function addLinkedAccount() {
