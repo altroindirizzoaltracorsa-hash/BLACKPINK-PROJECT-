@@ -1428,6 +1428,7 @@
               <option value="lastfm">Last.fm</option>
               <option value="listenbrainz">ListenBrainz</option>
               <option value="librefm">Libre.fm</option>
+              <option value="musicat">Musicat</option>
             </select>
             <input class="username-input" id="linked-username-input" type="text" placeholder="Username" />
             <button class="btn-primary" onclick="addLinkedAccount()">+ Link</button>
@@ -2352,7 +2353,7 @@ const sb = (typeof supabase !== 'undefined' && SUPABASE_URL.startsWith('http'))
   ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
-const ACCOUNT_SOURCE_LABELS = { lastfm: 'Last.fm', listenbrainz: 'ListenBrainz', librefm: 'Libre.fm' };
+const ACCOUNT_SOURCE_LABELS = { lastfm: 'Last.fm', listenbrainz: 'ListenBrainz', librefm: 'Libre.fm', musicat: 'Musicat' };
 
 async function initBadgesAuthPanel() {
   if (!sb) {
@@ -3507,6 +3508,20 @@ async function fetchSingleAccountStats(source, username) {
       const la = latest?.payload?.listens?.[0]?.listened_at;
       if (la) res.lastScrobbleTs = la * 1000;
     } catch {}
+  } else if (source === 'musicat') {
+    try {
+      const r = await fetch(`/api/musicat?user=${encodeURIComponent(username)}`);
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      res.artistPlays = d.artistPlays || 0;
+      res.playcount   = d.playcount  || d.artistPlays || 0;
+      for (const k of ['jump', 'shutdown', 'ddududu']) {
+        res.totalPlays[k]  = d.tracks?.[k] || 0;
+        res.todayCounts[k] = d.today?.[k]  || 0;
+      }
+      // Musicat doesn't expose per-day history yet — weekDayCounts stay empty
+      for (let i = 0; i < 7; i++) res.weekDayCounts.push(null);
+    } catch(e) { console.warn('Musicat fetch failed for', username, e.message); }
   }
   return res;
 }
@@ -3580,9 +3595,11 @@ async function loadMultiAccountProfile(accounts) {
   const primaryLfm = _accounts.find(a => a.source === 'lastfm' || a.source === 'librefm');
   const primaryAccount = primaryLfm || _accounts[0];
   const primaryUsername = primaryAccount.source_username;
-  const primaryFetchFn = primaryAccount.source === 'librefm' ? librefmFetch : lfmFetch;
-  setLoading('Loading profile info…');
-  try { combined.info = await fetchUserInfo(primaryUsername, primaryFetchFn); } catch {}
+  if (primaryAccount.source === 'lastfm' || primaryAccount.source === 'librefm') {
+    const primaryFetchFn = primaryAccount.source === 'librefm' ? librefmFetch : lfmFetch;
+    setLoading('Loading profile info…');
+    try { combined.info = await fetchUserInfo(primaryUsername, primaryFetchFn); } catch {}
+  }
   if (!combined.info) combined.info = { name: primaryUsername, image: [{}], playcount: 0 };
   // Attach per-account list and display name to info for renderProfile
   combined.info.allAccounts = acctBreakdown.map(a => ({
