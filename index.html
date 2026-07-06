@@ -3427,7 +3427,7 @@ function showBreakdown(type, key) {
     return `
     <div class="breakdown-row">
       <div class="breakdown-acct">
-        ${a.username}<span class="breakdown-acct-source">${a.source === 'lastfm' ? 'Last.fm' : 'ListenBrainz'}</span>
+        ${a.username}<span class="breakdown-acct-source">${ACCOUNT_SOURCE_LABELS[a.source] || a.source}</span>
         ${ago ? `<span class="breakdown-acct-ago">last scrobble: ${ago}</span>` : ''}
       </div>
       <div class="breakdown-val">${getVal(a).toLocaleString()}</div>
