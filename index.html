@@ -3510,7 +3510,7 @@ async function fetchSingleAccountStats(source, username) {
     } catch {}
   } else if (source === 'musicat') {
     try {
-      const r = await fetch(`/api/musicat?user=${encodeURIComponent(username)}`);
+      const r = await fetch(`/api/proxy-image?musicat_user=${encodeURIComponent(username)}`);
       const d = await r.json();
       if (d.error) throw new Error(d.error);
       res.artistPlays = d.artistPlays || 0;
