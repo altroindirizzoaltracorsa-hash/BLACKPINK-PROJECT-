@@ -3557,10 +3557,13 @@ async function loadMultiAccountProfile(accounts) {
     setLoading(`Loading ${acct.source_username}…`);
     try {
       const stats = await fetchSingleAccountStats(acct.source, acct.source_username);
-      // Fetch per-account total playcount for LFM-compatible sources
+      // BP family plays: BLACKPINK + all 4 solo artists
       if (acct.source === 'lastfm' || acct.source === 'librefm') {
         const fetchFn = acct.source === 'librefm' ? librefmFetch : lfmFetch;
-        try { const ui = await fetchUserInfo(acct.source_username, fetchFn); stats.playcount = Number(ui.playcount) || 0; } catch {}
+        try {
+          const solos = await Promise.all(['JISOO', 'JENNIE', 'ROSÉ', 'LISA'].map(a => fetchArtistPlays(acct.source_username, a, fetchFn)));
+          stats.playcount = stats.artistPlays + solos.reduce((s, n) => s + n, 0);
+        } catch {}
       }
       if (!combined.lastScrobbleTs || (stats.lastScrobbleTs && stats.lastScrobbleTs > combined.lastScrobbleTs)) {
         combined.lastScrobbleTs = stats.lastScrobbleTs;
@@ -3647,7 +3650,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
       const platform = ACCOUNT_SOURCE_LABELS[a.source] || a.source;
       const ago = _tsAgo(a.lastScrobbleTs);
       return `<div>${a.username} · ${platform}` +
-        (a.playcount ? ` · <span>${a.playcount.toLocaleString()}</span> total scrobbles` : '') +
+        (a.playcount ? ` · <span>${a.playcount.toLocaleString()}</span> BP family plays` : '') +
         (ago ? ` · last scrobble: <span>${ago}</span>` : '') + `</div>`;
     }).join('');
     document.getElementById('profile-meta').innerHTML = metaHtml;
