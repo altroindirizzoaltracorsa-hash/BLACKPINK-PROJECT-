@@ -4411,6 +4411,9 @@ function renderLeaderboard() {
   } else {
     const periodLabel = lbPeriod === 'daily' ? 'streams today' : lbPeriod === 'weekly' ? 'streams this week' : 'total streams';
     const songLabel   = lbSong === 'all' ? 'All Campaign Tracks' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : 'DDU-DU DDU-DU';
+    const colHeader   = lbSong === 'all'
+      ? (lbPeriod === 'daily' ? 'Streams Today' : lbPeriod === 'weekly' ? 'Streams This Week' : 'Total Streams')
+      : `${songLabel} — ${lbPeriod === 'daily' ? 'Today' : lbPeriod === 'weekly' ? 'This Week' : 'All Time'}`;
 
     if (totalEl) {
       const communityTotal = entries.reduce((sum, e) => sum + e.score, 0);
@@ -4423,7 +4426,7 @@ function renderLeaderboard() {
         <thead><tr>
           <th style="width:44px">#</th>
           <th>Blink</th>
-          <th class="right">${songLabel} — ${periodLabel}</th>
+          <th class="right">${colHeader}</th>
         </tr></thead>
         <tbody>
           ${entries.map((e, i) => {
