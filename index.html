@@ -743,7 +743,8 @@
     color: var(--muted); padding: 0.7rem 1rem; text-align: left;
     border-bottom: 1px solid var(--border); font-weight: normal;
   }
-  .lb-table th.right { text-align: right; white-space: nowrap; }
+  .lb-table th.right { text-align: right; }
+  #lb-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .lb-table td { padding: 0.9rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
   .lb-table tr:hover td { background: var(--card2); }
   .lb-table tr.me td { background: rgba(255,0,102,0.06); }
@@ -4342,7 +4343,7 @@ function leaderStreakBadge(rankIndex, username) {
   if (lbPeriod !== 'overall' && lbPeriod !== 'daily') return '';
   if (!streak || streak.username.toLowerCase() !== username.toLowerCase()) return '';
   const days = Math.floor((Date.now() - new Date(streak.since).getTime()) / 86400000);
-  const label = days <= 0 ? 'New leader today' : `🔥 ${days} day${days === 1 ? '' : 's'} in the lead`;
+  const label = days <= 0 ? 'New leader' : `🔥 ${days} day${days === 1 ? '' : 's'}`;
   return ` <span class="lb-streak" title="Leading Overall · All Tracks since ${new Date(streak.since).toLocaleDateString()}">${label}</span>`;
 }
 
