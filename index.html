@@ -49,7 +49,7 @@
   }
 
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; overflow-x: hidden; }
+  html { scroll-behavior: smooth; }
 
   html, body { cursor: crosshair; }
   body {
@@ -89,6 +89,7 @@
     color: var(--pink);
     text-decoration: none;
     cursor: pointer;
+    white-space: nowrap;
   }
   .nav-links { display: flex; gap: 2rem; list-style: none; }
   .nav-links a {
@@ -178,6 +179,7 @@
     min-height: 100vh;
     display: grid;
     grid-template-rows: 1fr auto;
+    grid-template-columns: minmax(0, 1fr);
     padding-top: 80px;
     position: relative;
     overflow: hidden;
@@ -231,7 +233,7 @@
 
   .ticker-wrap {
     position: relative; z-index: 2;
-    background: var(--pink); padding: 0.6rem 0; overflow: hidden;
+    background: var(--pink); padding: 0.6rem 0; overflow: clip;
   }
   .ticker-track {
     display: flex; animation: ticker 22s linear infinite; white-space: nowrap;
