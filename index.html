@@ -49,7 +49,7 @@
   }
 
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; overflow-x: hidden; max-width: 100%; }
+  html { scroll-behavior: smooth; overflow-x: hidden; }
 
   html, body { cursor: crosshair; }
   body {
@@ -90,6 +90,8 @@
     color: var(--pink);
     text-decoration: none;
     cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
   .nav-links { display: flex; gap: 2rem; list-style: none; }
   .nav-links a {
