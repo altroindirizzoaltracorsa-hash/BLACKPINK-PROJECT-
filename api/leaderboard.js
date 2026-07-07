@@ -56,6 +56,47 @@ export default async function handler(req, res) {
 
   const action = req.query.action;
 
+  // ── GET /api/leaderboard?action=purge-unverified&key=ADMIN_SECRET[&dry=1] — admin: remove old-method users ──
+  // Deletes leaderboard entries whose linked usernames have no row in Supabase linked_accounts.
+  // Pass dry=1 to preview without deleting.
+  if (req.method === 'GET' && action === 'purge-unverified') {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const sb = supabase();
+    if (!sb) return res.status(503).json({ error: 'Supabase not configured' });
+
+    const { data: linked, error: sbErr } = await sb
+      .from('linked_accounts')
+      .select('source_username');
+    if (sbErr) return res.status(500).json({ error: sbErr.message });
+
+    const verified = new Set((linked || []).map(a => (a.source_username || '').toLowerCase()));
+
+    const data = (await redis.get(LB_KEY)) || { users: {} };
+    const removed = [];
+    const kept    = [];
+
+    for (const [key, entry] of Object.entries(data.users || {})) {
+      const accounts = Array.isArray(entry.linkedAccounts) && entry.linkedAccounts.length
+        ? entry.linkedAccounts
+        : [{ username: entry.username }];
+      const hasVerified = accounts.some(a => verified.has((a.username || '').toLowerCase()));
+      if (hasVerified) {
+        kept.push(entry.displayName || entry.username);
+      } else {
+        removed.push(entry.displayName || entry.username);
+        if (req.query.dry !== '1') delete data.users[key];
+      }
+    }
+
+    if (req.query.dry !== '1') {
+      updateLeaderStreak(data);
+      await redis.set(LB_KEY, data);
+    }
+
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ dry: req.query.dry === '1', removed, kept });
+  }
+
   // ── GET /api/leaderboard?action=banned&key=ADMIN_SECRET — admin: list bans ──
   if (req.method === 'GET' && action === 'banned') {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
