@@ -49,7 +49,7 @@
   }
 
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; overflow-x: hidden; }
 
   html, body { cursor: crosshair; }
   body {
@@ -765,6 +765,7 @@
   .lb-delta-dn { font-size: 0.62rem; color: rgba(245,240,240,0.3); letter-spacing: 0.08em; }
   .lb-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
   .lb-loading { padding: 3rem; text-align: center; color: var(--muted); font-size: 0.68rem; letter-spacing: 0.16em; }
+  #lb-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .lb-refresh-btn {
     background: transparent; border: 1px solid var(--border);
     color: var(--muted); font-family: var(--mono); font-size: 0.6rem;
