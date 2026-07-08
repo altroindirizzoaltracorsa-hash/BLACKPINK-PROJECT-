@@ -60,6 +60,54 @@ export default async function handler(req, res) {
     }
   }
 
+  // Stats.fm stats proxy
+  const sfmUser = req.query.statsfm_user;
+  if (sfmUser) {
+    try {
+      const SFM_BASE = 'https://api.stats.fm/api/v1';
+      const SFM_HEADERS = { 'content-type': 'application/json' };
+
+      const ur = await fetch(`${SFM_BASE}/users/${encodeURIComponent(sfmUser)}`, { headers: SFM_HEADERS });
+      if (!ur.ok) return res.status(400).json({ error: `Stats.fm user "${sfmUser}" not found (${ur.status})` });
+      const ud = await ur.json();
+      const user = ud.item ?? ud;
+      const customId = user.customId ?? user.id ?? sfmUser;
+      const displayName = user.displayName ?? customId;
+      const totalStreams = user.stats?.count ?? 0;
+
+      // Fetch lifetime top tracks — high limit to catch our target tracks even for
+      // users with large libraries
+      const tr = await fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=500`, { headers: SFM_HEADERS });
+      if (!tr.ok) return res.status(400).json({ error: 'Could not fetch track stats from Stats.fm' });
+      const td = await tr.json();
+      const items = td.items ?? [];
+
+      const SPOTIFY_IDS = {
+        jump:     '5H1sKFMzDeMtXwND3V6hRY',
+        shutdown: '6tCd8bPvYnceDG7W9M1RMk',
+        ddududu:  '69BIczdH6QMnFx7dsSssN8',
+      };
+
+      const tracks = {};
+      for (const [key, spotifyId] of Object.entries(SPOTIFY_IDS)) {
+        const match = items.find(i => i.track?.spotifyId === spotifyId);
+        tracks[key] = match?.streams ?? 0;
+      }
+
+      const artistPlays = Object.values(tracks).reduce((s, v) => s + v, 0);
+
+      return res.status(200).json({
+        customId, displayName,
+        playcount: totalStreams || artistPlays,
+        artistPlays,
+        tracks,
+        today: { jump: 0, shutdown: 0, ddududu: 0 },
+      });
+    } catch(err) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
+
   // Image proxy
   const { url } = req.query;
   if (!url || !/^https?:\/\//.test(url)) return res.status(400).json({ error: 'Invalid URL' });

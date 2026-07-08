@@ -1453,7 +1453,7 @@
       <div id="badges-auth-link" style="display:none">
         <div class="login-card">
           <p class="login-label">Link your scrobbling accounts</p>
-          <p class="login-desc">Add your Last.fm, ListenBrainz, Libre.fm, and/or Musicat usernames — all your streams count toward one leaderboard row.</p>
+          <p class="login-desc">Add your Last.fm, ListenBrainz, Libre.fm, Musicat, and/or Stats.fm usernames — all your streams count toward one leaderboard row.</p>
           <div id="linked-accounts-list-inline"></div>
           <div class="input-row" style="margin-top:1rem;">
             <select id="linked-source-select" class="username-input" style="flex:0 0 140px;" onchange="updateLbHint('linked-source-select','lb-hint-inline')">
@@ -1461,6 +1461,7 @@
               <option value="listenbrainz">ListenBrainz</option>
               <option value="librefm">Libre.fm</option>
               <option value="musicat">Musicat</option>
+              <option value="statsfm">Stats.fm</option>
             </select>
             <input class="username-input" id="linked-username-input" type="text" placeholder="Username" />
             <button class="btn-primary" onclick="addLinkedAccount()">+ Link</button>
@@ -1556,7 +1557,7 @@
 
           <div style="margin-top:1rem;">
             <label class="settings-label">Linked Accounts</label>
-            <p class="settings-hint" style="margin-bottom:0.5rem;">Last.fm, ListenBrainz, Libre.fm, and/or Musicat usernames — all streams count toward one leaderboard row.</p>
+            <p class="settings-hint" style="margin-bottom:0.5rem;">Last.fm, ListenBrainz, Libre.fm, Musicat, and/or Stats.fm usernames — all streams count toward one leaderboard row.</p>
             <div id="linked-accounts-list-settings" style="margin-bottom:0.75rem;"></div>
             <div class="input-row" style="gap:0.5rem;">
               <select id="linked-source-select-settings" class="settings-input" style="flex:0 0 140px;" onchange="updateLbHint('linked-source-select-settings','lb-hint-settings')">
@@ -1564,6 +1565,7 @@
                 <option value="listenbrainz">ListenBrainz</option>
                 <option value="librefm">Libre.fm</option>
                 <option value="musicat">Musicat</option>
+                <option value="statsfm">Stats.fm</option>
               </select>
               <input class="settings-input" id="linked-username-input-settings" type="text" placeholder="Username" style="flex:1;" />
               <button class="btn-primary" onclick="addLinkedAccountSettings()">+ Link</button>
@@ -2483,7 +2485,7 @@ const sb = (typeof supabase !== 'undefined' && SUPABASE_URL.startsWith('http'))
   ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
-const ACCOUNT_SOURCE_LABELS = { lastfm: 'Last.fm', listenbrainz: 'ListenBrainz', librefm: 'Libre.fm', musicat: 'Musicat' };
+const ACCOUNT_SOURCE_LABELS = { lastfm: 'Last.fm', listenbrainz: 'ListenBrainz', librefm: 'Libre.fm', musicat: 'Musicat', statsfm: 'Stats.fm' };
 
 async function initBadgesAuthPanel() {
   if (!sb) {
@@ -3658,6 +3660,20 @@ async function fetchSingleAccountStats(source, username) {
       // Musicat doesn't expose per-day history yet — weekDayCounts stay empty
       for (let i = 0; i < 7; i++) res.weekDayCounts.push(null);
     } catch(e) { console.warn('Musicat fetch failed for', username, e.message); }
+  } else if (source === 'statsfm') {
+    try {
+      const r = await fetch(`/api/proxy-image?statsfm_user=${encodeURIComponent(username)}`);
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      res.artistPlays = d.artistPlays || 0;
+      res.playcount   = d.playcount  || d.artistPlays || 0;
+      for (const k of ['jump', 'shutdown', 'ddududu']) {
+        res.totalPlays[k]  = d.tracks?.[k] || 0;
+        res.todayCounts[k] = d.today?.[k]  || 0;
+      }
+      // Stats.fm public API doesn't expose per-day history — weekDayCounts stay empty
+      for (let i = 0; i < 7; i++) res.weekDayCounts.push(null);
+    } catch(e) { console.warn('Stats.fm fetch failed for', username, e.message); }
   }
   return res;
 }
