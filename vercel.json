@@ -8,6 +8,20 @@
     { "source": "/api/spotify-oauth-start", "destination": "/api/sync-playlist" },
     { "source": "/api/spotify-oauth-callback", "destination": "/api/sync-playlist" }
   ],
+  "headers": [
+    {
+      "source": "/",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
+    {
+      "source": "/index.html",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    }
+  ],
   "crons": [
     {
       "path": "/api/streams?cron=1",
