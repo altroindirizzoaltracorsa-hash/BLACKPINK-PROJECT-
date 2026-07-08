@@ -73,14 +73,18 @@ export default async function handler(req, res) {
       const user = ud.item ?? ud;
       const customId = user.customId ?? user.id ?? sfmUser;
       const displayName = user.displayName ?? customId;
-      const totalStreams = user.stats?.count ?? 0;
 
-      // Fetch lifetime top tracks — high limit to catch our target tracks even for
-      // users with large libraries
-      const tr = await fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=500`, { headers: SFM_HEADERS });
+      // Fetch lifetime top tracks and total stream count in parallel.
+      // Track Spotify ID lives at externalIds.spotify (string[]), not spotifyId.
+      // Total stream count is not on the user profile — needs a separate /stats call.
+      const [tr, sr] = await Promise.all([
+        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=500`, { headers: SFM_HEADERS }),
+        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/stats?range=lifetime`, { headers: SFM_HEADERS }),
+      ]);
       if (!tr.ok) return res.status(400).json({ error: 'Could not fetch track stats from Stats.fm' });
-      const td = await tr.json();
+      const [td, sd] = await Promise.all([tr.json(), sr.ok ? sr.json() : Promise.resolve(null)]);
       const items = td.items ?? [];
+      const totalStreams = (sd?.item ?? sd)?.count ?? 0;
 
       const SPOTIFY_IDS = {
         jump:     '5H1sKFMzDeMtXwND3V6hRY',
@@ -90,7 +94,7 @@ export default async function handler(req, res) {
 
       const tracks = {};
       for (const [key, spotifyId] of Object.entries(SPOTIFY_IDS)) {
-        const match = items.find(i => i.track?.spotifyId === spotifyId);
+        const match = items.find(i => i.track?.externalIds?.spotify?.includes(spotifyId));
         tracks[key] = match?.streams ?? 0;
       }
 
