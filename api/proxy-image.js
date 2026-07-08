@@ -74,9 +74,6 @@ export default async function handler(req, res) {
       const customId = user.customId ?? user.id ?? sfmUser;
       const displayName = user.displayName ?? customId;
       const privacy = user.privacySettings;
-      if (privacy && (privacy.topTracks === false || privacy.streamStats === false)) {
-        return res.status(403).json({ error: `Stats.fm profile "${displayName}" has stream stats set to private. Enable public stats in Stats.fm settings.` });
-      }
 
       // Fetch lifetime top tracks and total stream count in parallel.
       // Track Spotify ID lives at externalIds.spotify (string[]), not spotifyId.
@@ -117,6 +114,7 @@ export default async function handler(req, res) {
           firstTrack: items[0]?.track ?? null,
           trStatus: tr.status,
           srStatus: sr.status,
+          privacy,
         },
       });
     } catch(err) {
