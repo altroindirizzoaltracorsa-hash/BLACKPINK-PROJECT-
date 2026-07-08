@@ -110,6 +110,14 @@ export default async function handler(req, res) {
         artistPlays,
         tracks,
         today: { jump: 0, shutdown: 0, ddududu: 0 },
+        _debug: {
+          itemCount: items.length,
+          statsOk: sr.ok,
+          totalStreams,
+          firstTrack: items[0]?.track ?? null,
+          trStatus: tr.status,
+          srStatus: sr.status,
+        },
       });
     } catch(err) {
       return res.status(400).json({ error: err.message });
