@@ -111,10 +111,11 @@ export default async function handler(req, res) {
           itemCount: items.length,
           statsOk: sr.ok,
           totalStreams,
-          firstTrack: items[0]?.track ?? null,
           trStatus: tr.status,
           srStatus: sr.status,
-          privacy,
+          bpTracks: items
+            .filter(i => i.track?.artists?.some(a => a.name === 'BLACKPINK'))
+            .map(i => ({ name: i.track.name, streams: i.streams, spotifyId: i.track.externalIds?.spotify?.[0] })),
         },
       });
     } catch(err) {
