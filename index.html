@@ -643,6 +643,13 @@
   .chart-bar:hover { background: var(--pink); }
   .chart-tooltip { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); background: var(--charcoal); border: 1px solid var(--border); padding: 0.3rem 0.5rem; white-space: nowrap; font-size: 0.58rem; letter-spacing: 0.08em; color: var(--white); pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 10; }
   .chart-bar-wrap:hover .chart-tooltip { opacity: 1; }
+  .history-older { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid rgba(255,0,102,0.12); }
+  .history-older-label { font-size: 0.55rem; letter-spacing: 0.18em; color: rgba(245,240,240,0.3); margin-bottom: 0.6rem; }
+  .history-month-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(245,240,240,0.5); background: none; border: none; border-bottom: 1px solid rgba(255,255,255,0.04); cursor: pointer; padding: 0.5rem 0; transition: color 0.2s; }
+  .history-month-toggle:hover { color: var(--pink); }
+  .history-month-toggle .arrow { transition: transform 0.2s; display: inline-block; }
+  .history-month-toggle.open .arrow { transform: rotate(180deg); }
+  .history-month-panel { display: none; padding: 0.75rem 0 0.25rem; }
 
   @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
@@ -1996,6 +2003,31 @@ function renderDaysToGoal(id, history, total, goal) {
 }
 
 // ── HISTORY CHART ─────────────────────────────────────────────
+const HIST_MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function buildMonthChartHtml(entries, markLatest) {
+  const max = Math.max(...entries.map(h => h.streams));
+  const barsHtml = entries.map((h, i) => {
+    const prev = i > 0 ? entries[i - 1].streams : null;
+    const diff = prev !== null ? h.streams - prev : null;
+    const heightPct = Math.max(4, Math.round((h.streams / max) * 100));
+    const isLatest = markLatest && i === entries.length - 1;
+    const gainHtml = diff !== null && diff > 0
+      ? ` <span style="color:#00ff88">+${formatFull(diff)}</span>`
+      : (diff !== null && diff < 0 ? ` <span style="color:rgba(245,240,240,0.3)">${formatFull(diff)}</span>` : '');
+    return `<div class="chart-bar-wrap">
+      <div class="chart-tooltip">${h.date}: ${formatFull(h.streams)}${gainHtml}</div>
+      <div class="chart-bar${isLatest ? ' latest' : ''}" style="height:${heightPct}%"></div>
+    </div>`;
+  }).join('');
+  const showDates = entries.length <= 14;
+  const datesHtml = showDates ? entries.map(h =>
+    `<div style="flex:1;font-size:0.65rem;letter-spacing:0.01em;color:rgba(245,240,240,0.45);text-align:center;white-space:nowrap;overflow:hidden;">${h.date}</div>`
+  ).join('') : '';
+  return `<div class="chart-bars">${barsHtml}</div>
+    ${showDates ? `<div style="display:flex;gap:4px;margin-bottom:0.5rem;">${datesHtml}</div>` : '<div style="margin-bottom:0.5rem;"></div>'}`;
+}
+
 function renderHistory(id, history) {
   const panel = document.getElementById(`history-${id}`);
   if (!panel) return;
@@ -2007,36 +2039,57 @@ function renderHistory(id, history) {
     return;
   }
 
-  const max = Math.max(...history.map(h => h.streams));
-  const barsHtml = history.map((h, i) => {
-    const prev = i > 0 ? history[i - 1].streams : null;
-    const diff = prev !== null ? h.streams - prev : null;
-    const heightPct = Math.max(4, Math.round((h.streams / max) * 100));
-    const isLatest = i === history.length - 1;
-    const gainHtml = diff !== null && diff > 0
-      ? ` <span style="color:#00ff88">+${formatFull(diff)}</span>`
-      : (diff !== null && diff < 0 ? ` <span style="color:rgba(245,240,240,0.3)">${formatFull(diff)}</span>` : '');
-    return `<div class="chart-bar-wrap">
-      <div class="chart-tooltip">${h.date}: ${formatFull(h.streams)}${gainHtml}</div>
-      <div class="chart-bar${isLatest ? ' latest' : ''}" style="height:${heightPct}%"></div>
-    </div>`;
-  }).join('');
+  // Group by month (DD/MM → key = MM)
+  const byMonth = {};
+  history.forEach(h => {
+    const mm = h.date.split('/')[1];
+    if (!byMonth[mm]) byMonth[mm] = [];
+    byMonth[mm].push(h);
+  });
 
-  const datesHtml = history.map(h =>
-    `<div style="flex:1;font-size:0.65rem;letter-spacing:0.01em;color:rgba(245,240,240,0.45);text-align:center;white-space:nowrap;overflow:hidden;">${h.date}</div>`
-  ).join('');
+  // Sort month keys ascending; latest month = current
+  const sortedMMs = Object.keys(byMonth).sort((a, b) => Number(a) - Number(b));
+  const currentMM = sortedMMs[sortedMMs.length - 1];
+  const currentEntries = byMonth[currentMM];
+  const olderMMs = sortedMMs.slice(0, -1);
 
-  const latest = history[history.length - 1];
-  // Show dates only when there are few bars; hide when too many to avoid overlap
-  const showDates = history.length <= 14;
+  const currentLabel = HIST_MONTH_LABELS[parseInt(currentMM, 10) - 1] + ' 2026';
+  const latest = currentEntries[currentEntries.length - 1];
+
+  const olderHtml = olderMMs.length > 0 ? `
+    <div class="history-older">
+      <p class="history-older-label">// Older months</p>
+      ${olderMMs.reverse().map(mm => {
+        const entries = byMonth[mm];
+        const label = HIST_MONTH_LABELS[parseInt(mm, 10) - 1] + ' 2026';
+        const peak = Math.max(...entries.map(e => e.streams));
+        const monthLatest = entries[entries.length - 1];
+        return `<button class="history-month-toggle" onclick="toggleMonthHistory(this)">
+          <span>${label} <span style="color:rgba(245,240,240,0.3);font-size:0.9em">(${entries.length} days tracked)</span></span>
+          <span class="arrow">▾</span>
+        </button>
+        <div class="history-month-panel">
+          ${buildMonthChartHtml(entries, false)}
+          <p style="font-size:0.58rem;letter-spacing:0.08em;color:rgba(245,240,240,0.35);">Peak: ${formatFull(peak)} · Last entry: ${formatFull(monthLatest.streams)} on ${monthLatest.date}</p>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
   panel.innerHTML = `
-    <p class="history-title">// Daily Stream History</p>
-    <div class="chart-bars">${barsHtml}</div>
-    ${showDates ? `<div style="display:flex;gap:4px;margin-bottom:0.5rem;">${datesHtml}</div>` : '<div style="margin-bottom:0.5rem;"></div>'}
-    <p style="font-size:0.6rem;letter-spacing:0.08em;color:rgba(245,240,240,0.4);">
+    <p class="history-title">// Daily Stream History · ${currentLabel}</p>
+    ${buildMonthChartHtml(currentEntries, true)}
+    <p style="font-size:0.6rem;letter-spacing:0.08em;color:rgba(245,240,240,0.4);margin-bottom:0.5rem;">
       Latest: ${formatFull(latest.streams)} streams on ${latest.date} · Pink = most recent · Hover for details
-    </p>`;
+    </p>
+    ${olderHtml}`;
   panel.style.display = 'block';
+}
+
+function toggleMonthHistory(btn) {
+  const panel = btn.nextElementSibling;
+  const isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? 'block' : 'none';
+  btn.classList.toggle('open', isHidden);
 }
 
 function toggleHistory(id, btn) {
