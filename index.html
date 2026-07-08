@@ -2206,6 +2206,7 @@ async function fetchSpotifyStreams() {
       if (!entry) continue;
       const plays = (typeof entry === 'object') ? (entry.total || 0) : (entry || 0);
       const apiHistory = (typeof entry === 'object') ? (entry.history || []) : [];
+      const apiPrev = (typeof entry === 'object') ? (entry.prev || null) : null;
       const lastApiDay = apiHistory.length > 0 ? apiHistory[apiHistory.length - 1] : null;
 
       const staleEl = document.getElementById(`stale-${t.id}`);
@@ -2246,6 +2247,16 @@ async function fetchSpotifyStreams() {
 
         if (stored && stored.date === yesterday && stored.total > 0) {
           const diff = plays - stored.total;
+          if (diff > 0) { autoStreams = diff; autoDate = yesterday; }
+        }
+
+        // Fallback: if localStorage doesn't have yesterday's snapshot (user
+        // skipped a day, cleared storage, or is on a new device), use the
+        // server's prev snapshot which the API now returns alongside history.
+        // apiPrev.date === yesterday means the server saw a new total yesterday
+        // and stored it — so plays - apiPrev.total = yesterday's daily streams.
+        if (autoStreams === null && apiPrev && apiPrev.date === yesterday && apiPrev.total > 0) {
+          const diff = plays - apiPrev.total;
           if (diff > 0) { autoStreams = diff; autoDate = yesterday; }
         }
 
