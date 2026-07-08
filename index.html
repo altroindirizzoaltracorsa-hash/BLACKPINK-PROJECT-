@@ -1883,7 +1883,7 @@ const SPOTIFY_TRACKS = [
   { id: 'ddududu',  trackId: '69BIczdH6QMnFx7dsSssN8', goal: 1_000_000_000 },
 ];
 
-// ── STREAM HISTORY (daily stream counts) ── Last updated: 05/07/2026
+// ── STREAM HISTORY (daily stream counts) ── Last updated: 06/07/2026
 // Each entry = streams played on that specific day (not cumulative)
 const STREAM_HISTORY = {
   jump: [
@@ -1918,6 +1918,7 @@ const STREAM_HISTORY = {
     { date: '03/07', streams: 706034 },
     { date: '04/07', streams: 668626 },
     { date: '05/07', streams: 623401 },
+    { date: '06/07', streams: 666283 },
   ],
   shutdown: [
     { date: '08/05', streams: 265404 },
@@ -1947,6 +1948,7 @@ const STREAM_HISTORY = {
     { date: '03/07', streams: 223425 },
     { date: '04/07', streams: 218558 },
     { date: '05/07', streams: 208771 },
+    { date: '06/07', streams: 214129 },
   ],
   ddududu: [
     { date: '22/05', streams: 219465 },
@@ -1958,6 +1960,7 @@ const STREAM_HISTORY = {
     { date: '03/07', streams: 205407 },
     { date: '04/07', streams: 189567 },
     { date: '05/07', streams: 185295 },
+    { date: '06/07', streams: 199851 },
   ],
 };
 
@@ -2005,8 +2008,19 @@ function renderDaysToGoal(id, history, total, goal) {
 // ── HISTORY CHART ─────────────────────────────────────────────
 const HIST_MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-function buildMonthChartHtml(entries, markLatest) {
+function buildMonthChartHtml(entries, markLatest, baseTotal) {
   const max = Math.max(...entries.map(h => h.streams));
+  // Compute running (cumulative) totals backwards from baseTotal so each bar
+  // can show the all-time total as of that day in its tooltip.
+  let runningTotals = null;
+  if (baseTotal != null) {
+    runningTotals = new Array(entries.length);
+    let accum = baseTotal;
+    for (let i = entries.length - 1; i >= 0; i--) {
+      runningTotals[i] = accum;
+      if (i > 0) accum -= entries[i].streams;
+    }
+  }
   const barsHtml = entries.map((h, i) => {
     const prev = i > 0 ? entries[i - 1].streams : null;
     const diff = prev !== null ? h.streams - prev : null;
@@ -2015,8 +2029,11 @@ function buildMonthChartHtml(entries, markLatest) {
     const gainHtml = diff !== null && diff > 0
       ? ` <span style="color:#00ff88">+${formatFull(diff)}</span>`
       : (diff !== null && diff < 0 ? ` <span style="color:rgba(245,240,240,0.3)">${formatFull(diff)}</span>` : '');
+    const totalHtml = runningTotals != null
+      ? `<br><span style="color:rgba(245,240,240,0.5)">Total: ${formatFull(runningTotals[i])}</span>`
+      : '';
     return `<div class="chart-bar-wrap">
-      <div class="chart-tooltip">${h.date}: ${formatFull(h.streams)}${gainHtml}</div>
+      <div class="chart-tooltip">${h.date}: ${formatFull(h.streams)}${gainHtml}${totalHtml}</div>
       <div class="chart-bar${isLatest ? ' latest' : ''}" style="height:${heightPct}%"></div>
     </div>`;
   }).join('');
@@ -2028,7 +2045,7 @@ function buildMonthChartHtml(entries, markLatest) {
     ${showDates ? `<div style="display:flex;gap:4px;margin-bottom:0.5rem;">${datesHtml}</div>` : '<div style="margin-bottom:0.5rem;"></div>'}`;
 }
 
-function renderHistory(id, history) {
+function renderHistory(id, history, currentTotal) {
   const panel = document.getElementById(`history-${id}`);
   if (!panel) return;
   history = history || STREAM_HISTORY[id] || [];
@@ -2056,6 +2073,18 @@ function renderHistory(id, history) {
   const currentLabel = HIST_MONTH_LABELS[parseInt(currentMM, 10) - 1] + ' 2026';
   const latest = currentEntries[currentEntries.length - 1];
 
+  // Compute base totals per month: total as of last day of that month.
+  // Work backwards from currentTotal, subtracting each month's daily sum.
+  const monthBaseTotals = {};
+  if (currentTotal != null) {
+    let base = currentTotal;
+    for (let i = sortedMMs.length - 1; i >= 0; i--) {
+      const mm = sortedMMs[i];
+      monthBaseTotals[mm] = base;
+      base -= byMonth[mm].reduce((s, e) => s + e.streams, 0);
+    }
+  }
+
   const olderHtml = olderMMs.length > 0 ? `
     <div class="history-older">
       <p class="history-older-label">// Older months</p>
@@ -2069,7 +2098,7 @@ function renderHistory(id, history) {
           <span class="arrow">▾</span>
         </button>
         <div class="history-month-panel">
-          ${buildMonthChartHtml(entries, false)}
+          ${buildMonthChartHtml(entries, false, monthBaseTotals[mm])}
           <p style="font-size:0.58rem;letter-spacing:0.08em;color:rgba(245,240,240,0.35);">Peak: ${formatFull(peak)} · Last entry: ${formatFull(monthLatest.streams)} on ${monthLatest.date}</p>
         </div>`;
       }).join('')}
@@ -2077,7 +2106,7 @@ function renderHistory(id, history) {
 
   panel.innerHTML = `
     <p class="history-title">// Daily Stream History · ${currentLabel}</p>
-    ${buildMonthChartHtml(currentEntries, true)}
+    ${buildMonthChartHtml(currentEntries, true, monthBaseTotals[currentMM])}
     <p style="font-size:0.6rem;letter-spacing:0.08em;color:rgba(245,240,240,0.4);margin-bottom:0.5rem;">
       Latest: ${formatFull(latest.streams)} streams on ${latest.date} · Pink = most recent · Hover for details
     </p>
@@ -2250,7 +2279,7 @@ async function fetchSpotifyStreams() {
           return am !== bm ? am - bm : ad - bd;
         });
 
-        renderHistory(t.id, merged);
+        renderHistory(t.id, merged, plays);
         renderDaysToGoal(t.id, merged, plays, t.goal);
 
         // Prefer the most recent daily: auto-calc wins if it's for a newer date than
