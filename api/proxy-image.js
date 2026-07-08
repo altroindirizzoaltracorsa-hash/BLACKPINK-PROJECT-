@@ -87,15 +87,22 @@ export default async function handler(req, res) {
       const items = td.items ?? [];
       const totalStreams = (sd?.item ?? sd)?.count ?? 0;
 
-      const SPOTIFY_IDS = {
-        jump:     '5H1sKFMzDeMtXwND3V6hRY',
-        shutdown: '6tCd8bPvYnceDG7W9M1RMk',
-        ddududu:  '69BIczdH6QMnFx7dsSssN8',
+      // Multiple known IDs per track (different regional/album versions) plus a
+      // name+artist fallback for tracks with no Spotify ID in Stats.fm's data.
+      const TRACK_TARGETS = {
+        jump:     { ids: ['5H1sKFMzDeMtXwND3V6hRY', '4TbkhyiZjLS2srPUVez9Fm'], name: 'jump' },
+        shutdown: { ids: ['6tCd8bPvYnceDG7W9M1RMk', '7gRFDGEzF9UkBV233yv2dc'], name: 'shut down' },
+        ddududu:  { ids: ['69BIczdH6QMnFx7dsSssN8'], name: 'ddu-du ddu-du' },
       };
 
       const tracks = {};
-      for (const [key, spotifyId] of Object.entries(SPOTIFY_IDS)) {
-        const match = items.find(i => i.track?.externalIds?.spotify?.includes(spotifyId));
+      for (const [key, t] of Object.entries(TRACK_TARGETS)) {
+        const match = items.find(i => {
+          const spotify = i.track?.externalIds?.spotify ?? [];
+          if (t.ids.some(id => spotify.includes(id))) return true;
+          return i.track?.name?.toLowerCase() === t.name &&
+                 i.track?.artists?.some(a => a.name === 'BLACKPINK');
+        });
         tracks[key] = match?.streams ?? 0;
       }
 
@@ -107,16 +114,7 @@ export default async function handler(req, res) {
         artistPlays,
         tracks,
         today: { jump: 0, shutdown: 0, ddududu: 0 },
-        _debug: {
-          itemCount: items.length,
-          statsOk: sr.ok,
-          totalStreams,
-          trStatus: tr.status,
-          srStatus: sr.status,
-          bpTracks: items
-            .filter(i => i.track?.artists?.some(a => a.name === 'BLACKPINK'))
-            .map(i => ({ name: i.track.name, streams: i.streams, spotifyId: i.track.externalIds?.spotify?.[0] })),
-        },
+        _debug: { itemCount: items.length, statsOk: sr.ok, totalStreams, rawStats: sd },
       });
     } catch(err) {
       return res.status(400).json({ error: err.message });
