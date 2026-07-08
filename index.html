@@ -767,6 +767,17 @@
   .lb-loading { padding: 3rem; text-align: center; color: var(--muted); font-size: 0.68rem; letter-spacing: 0.16em; }
   #lb-table-wrap { }
   @media (max-width: 480px) {
+    /* Nav: shrink logo so logo+install+hamburger aren't cramped */
+    .nav-logo { font-size: 1rem; letter-spacing: 0.14em; }
+    /* Playlist banner: fit all three spans on one line */
+    .playlist-banner { flex-wrap: nowrap; gap: 0.5rem; }
+    .playlist-banner-label { font-size: 0.52rem; }
+    .playlist-banner-day { font-size: 0.62rem; }
+    .playlist-banner-cta { font-size: 0.52rem; }
+    /* Hero CTA: Badge Challenge + Vote sit side by side */
+    .hero-cta { gap: 0.7rem; }
+    .hero-cta .btn-primary, .hero-cta .btn-ghost { padding: 0.9rem 1.8rem; }
+    /* Leaderboard table */
     .lb-inner { padding: 0 0.5rem; }
     .lb-table { table-layout: fixed; }
     .lb-table th, .lb-table td { padding: 0.7rem 0.4rem; }
