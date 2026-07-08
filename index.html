@@ -49,7 +49,7 @@
   }
 
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; overflow-x: hidden; }
+  html { scroll-behavior: smooth; }
 
   html, body { cursor: crosshair; }
   body {
@@ -765,7 +765,18 @@
   .lb-delta-dn { font-size: 0.62rem; color: rgba(245,240,240,0.3); letter-spacing: 0.08em; }
   .lb-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
   .lb-loading { padding: 3rem; text-align: center; color: var(--muted); font-size: 0.68rem; letter-spacing: 0.16em; }
-  #lb-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #lb-table-wrap { }
+  @media (max-width: 480px) {
+    .lb-inner { padding: 0 0.5rem; }
+    .lb-table { table-layout: fixed; }
+    .lb-table th, .lb-table td { padding: 0.7rem 0.4rem; }
+    .lb-table th:last-child, .lb-table td:last-child { width: 90px; }
+    .lb-score { font-size: 1rem; }
+    .lb-rank { font-size: 1.1rem; width: auto; }
+    .lb-avatar { width: 26px; height: 26px; margin-right: 0.5rem; }
+    .lb-avatar-placeholder { width: 26px; height: 26px; margin-right: 0.5rem; }
+    .lb-user { font-size: 0.9rem; }
+  }
   .lb-refresh-btn {
     background: transparent; border: 1px solid var(--border);
     color: var(--muted); font-family: var(--mono); font-size: 0.6rem;
