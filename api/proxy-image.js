@@ -73,13 +73,17 @@ export default async function handler(req, res) {
       const user = ud.item ?? ud;
       const customId = user.customId ?? user.id ?? sfmUser;
       const displayName = user.displayName ?? customId;
+      const privacy = user.privacySettings;
+      if (privacy && (privacy.topTracks === false || privacy.streamStats === false)) {
+        return res.status(403).json({ error: `Stats.fm profile "${displayName}" has stream stats set to private. Enable public stats in Stats.fm settings.` });
+      }
 
       // Fetch lifetime top tracks and total stream count in parallel.
       // Track Spotify ID lives at externalIds.spotify (string[]), not spotifyId.
       // Total stream count is not on the user profile — needs a separate /stats call.
       const [tr, sr] = await Promise.all([
         fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=500`, { headers: SFM_HEADERS }),
-        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/stats?range=lifetime`, { headers: SFM_HEADERS }),
+        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/streams/stats?range=lifetime`, { headers: SFM_HEADERS }),
       ]);
       if (!tr.ok) return res.status(400).json({ error: 'Could not fetch track stats from Stats.fm' });
       const [td, sd] = await Promise.all([tr.json(), sr.ok ? sr.json() : Promise.resolve(null)]);
