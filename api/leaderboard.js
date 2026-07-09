@@ -278,15 +278,16 @@ export default async function handler(req, res) {
     if ((lb.banned || []).includes(key)) return res.status(403).json({ error: 'This account is blocked' });
 
     // Auth: Supabase session token (account-based, works on any device)
-    let allLinkedKeys = null; // set when Supabase auth used, for broader entry lookup
+    // The JWT itself proves identity — no need to also verify the frontend-provided username.
+    // We use all linked accounts for leaderboard entry lookup instead.
+    let allLinkedKeys = null;
     if (accessToken) {
       const { data: { user }, error: authErr } = await sb.auth.getUser(accessToken);
       if (authErr || !user) return res.status(401).json({ error: 'Session expired — please reload' });
       const { data: linked } = await sb
         .from('linked_accounts').select('source_username').eq('app_user_id', user.id);
       const linkedList = linked || [];
-      const owns = linkedList.some(a => a.source_username.toLowerCase() === key);
-      if (!owns) return res.status(403).json({ error: 'This username is not linked to your account' });
+      if (!linkedList.length) return res.status(403).json({ error: 'No accounts linked — go to My Badges to link your account' });
       allLinkedKeys = new Set(linkedList.map(a => a.source_username.toLowerCase()));
     } else {
       // Legacy: device-secret claim
