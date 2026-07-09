@@ -1791,7 +1791,7 @@
 </div>
 
 <!-- Group chat — floating widget, visible on every page. Unlocks at
-     CHAT_THRESHOLD all-time BLACKPINK scrobbles, plus CHAT_MIN per-track floors -->
+     10k BLACKPINK group + 2k member solo streams (≥500 each) + per-track floors -->
 <button id="chat-fab" class="chat-fab" onclick="toggleChatWidget()" aria-label="Open group chat">💬<span id="chat-unread-badge" style="display:none"></span></button>
 <div id="chat-unlock-toast" style="display:none"></div>
 
@@ -3447,7 +3447,7 @@ async function loadProfile(usernameOverride, silent = false) {
       });
     }
     // Submit scores to leaderboard in background (non-blocking)
-    submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs).catch(()=>{});
+    submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs, artistPlays, null).catch(()=>{});
     // Re-render leaderboard if visible so "YOU" highlight appears immediately after login
     if (document.getElementById('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
 
@@ -3646,6 +3646,8 @@ async function fetchSingleAccountStats(source, username) {
     label: `${username} (${platformLabel})`,
     source, username,
     artistPlays: 0,
+    bpGroupPlays: 0,
+    memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 },
     totalPlays:  { jump: 0, shutdown: 0, ddududu: 0 },
     todayCounts: { jump: 0, shutdown: 0, ddududu: 0 },
     weekCounts:  { jump: 0, shutdown: 0, ddududu: 0 },
@@ -3654,6 +3656,7 @@ async function fetchSingleAccountStats(source, username) {
   if (source === 'lastfm' || source === 'librefm') {
     const fetchFn = source === 'librefm' ? librefmFetch : lfmFetch;
     res.artistPlays = await fetchArtistPlays(username, 'BLACKPINK', fetchFn);
+    res.bpGroupPlays = res.artistPlays;
     for (const t of TRACKS) res.totalPlays[t.id] = await fetchTrackPlays(username, t.artist, t.track, fetchFn);
     const todaySc = await fetchRecentScrobbles(username, dayFrom, dayTo, 50, fetchFn);
     Object.assign(res.todayCounts, countByTrack(todaySc));
@@ -3680,6 +3683,7 @@ async function fetchSingleAccountStats(source, username) {
       ]);
     } catch(e) { console.warn('LB fetch failed for', username, e.message); }
     res.artistPlays = lbCounts.artistPlays;
+    res.bpGroupPlays = lbCounts.artistPlays;
     res.playcount   = lbCounts.artistPlays; // total BLACKPINK plays on LB
     for (const k of ['jump','shutdown','ddududu']) res.totalPlays[k] = lbCounts[k] || 0;
     Object.assign(res.todayCounts, countLbByTrack(lbToday));
@@ -3705,6 +3709,7 @@ async function fetchSingleAccountStats(source, username) {
       const d = await r.json();
       if (d.error) throw new Error(d.error);
       res.artistPlays = d.artistPlays || 0;
+      res.bpGroupPlays = d.artistPlays || 0;
       res.playcount   = d.playcount  || d.artistPlays || 0;
       for (const k of ['jump', 'shutdown', 'ddududu']) {
         res.totalPlays[k]  = d.tracks?.[k] || 0;
@@ -3719,6 +3724,8 @@ async function fetchSingleAccountStats(source, username) {
       const d = await r.json();
       if (d.error) throw new Error(d.error);
       res.artistPlays = d.artistPlays || 0;
+      res.bpGroupPlays = d.bpGroupPlays || 0;
+      if (d.memberPlays) res.memberPlays = { ...res.memberPlays, ...d.memberPlays };
       res.playcount   = d.playcount  || d.artistPlays || 0;
       for (const k of ['jump', 'shutdown', 'ddududu']) {
         res.totalPlays[k]  = d.tracks?.[k] || 0;
@@ -3741,6 +3748,8 @@ async function loadMultiAccountProfile(accounts) {
   const { from: weekFrom } = getWeekBounds();
   const combined = {
     artistPlays: 0,
+    bpGroupPlays: 0,
+    memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 },
     totalPlays:  { jump: 0, shutdown: 0, ddududu: 0 },
     todayCounts: { jump: 0, shutdown: 0, ddududu: 0 },
     weekCounts:  { jump: 0, shutdown: 0, ddududu: 0 },
@@ -3761,11 +3770,14 @@ async function loadMultiAccountProfile(accounts) {
     setLoading(`Loading ${acct.source_username}…`);
     try {
       const stats = await fetchSingleAccountStats(acct.source, acct.source_username);
-      // BP family plays: BLACKPINK + all 4 solo artists
+      // BP family plays: BLACKPINK group + all 4 solo artists (per-member tracking)
       if (acct.source === 'lastfm' || acct.source === 'librefm') {
         const fetchFn = acct.source === 'librefm' ? librefmFetch : lfmFetch;
         try {
           const solos = await Promise.all(['JISOO', 'JENNIE', 'ROSÉ', 'LISA'].map(a => fetchArtistPlays(acct.source_username, a, fetchFn)));
+          const [jisooP, jennieP, roseP, lisaP] = solos;
+          stats.memberPlays = { jisoo: jisooP, jennie: jennieP, rose: roseP, lisa: lisaP };
+          stats.bpGroupPlays = stats.artistPlays;
           stats.playcount = stats.artistPlays + solos.reduce((s, n) => s + n, 0);
         } catch {}
       }
@@ -3773,7 +3785,11 @@ async function loadMultiAccountProfile(accounts) {
         combined.lastScrobbleTs = stats.lastScrobbleTs;
       }
       _breakdown.push(stats);
-      combined.artistPlays += stats.artistPlays;
+      combined.artistPlays  += stats.artistPlays;
+      combined.bpGroupPlays += stats.bpGroupPlays || 0;
+      for (const m of ['jisoo', 'lisa', 'rose', 'jennie']) {
+        combined.memberPlays[m] += stats.memberPlays?.[m] || 0;
+      }
       for (const k of ['jump','shutdown','ddududu']) {
         combined.totalPlays[k]  += stats.totalPlays[k]  || 0;
         combined.todayCounts[k] += stats.todayCounts[k] || 0;
@@ -3826,7 +3842,7 @@ async function loadMultiAccountProfile(accounts) {
   await syncStampsFromServer(primaryUsername);
   persistTodayStamp(primaryUsername, combined.todayCounts);
   renderProfile(combined);
-  submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs).catch(()=>{});
+  submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs, combined.bpGroupPlays, combined.memberPlays).catch(()=>{});
   if (document.getElementById('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
 }
 
@@ -4436,7 +4452,7 @@ async function fetchLbData(force = false) {
 }
 
 // ── Write user scores to leaderboard ─────────────────────────
-async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs) {
+async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs, bpGroupPlays, memberPlays) {
   try {
     const lfmUsername = userInfo.name || userInfo.realname || '';
     const lbUsername  = getSavedLbUsername();
@@ -4484,6 +4500,11 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       overall_shutdown: totalPlays.shutdown || 0,
       overall_ddududu:  totalPlays.ddududu  || 0,
       overall_artist:   artistPlays         || 0,
+      overall_bp_group: bpGroupPlays        || artistPlays || 0,
+      overall_jisoo:    memberPlays?.jisoo  || 0,
+      overall_lisa:     memberPlays?.lisa   || 0,
+      overall_rose:     memberPlays?.rose   || 0,
+      overall_jennie:   memberPlays?.jennie || 0,
       daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0),
       daily_jump:       todayCounts.jump     || 0,
       daily_shutdown:   todayCounts.shutdown || 0,
@@ -4731,7 +4752,9 @@ async function refreshLeaderboard(force = false) {
 // ══════════════════════════════════════════════════════════════
 // GROUP CHAT
 // ══════════════════════════════════════════════════════════════
-const CHAT_THRESHOLD     = 10000;
+const CHAT_THRESHOLD     = 10000;    // BLACKPINK group plays required
+const CHAT_MEMBER_TOTAL  = 2000;     // combined member solo plays required
+const CHAT_MEMBER_EACH   = 500;      // per-member minimum
 const CHAT_MIN           = { jump: 3000, shutdown: 2000, ddududu: 1500 };
 const CHAT_EXEMPT        = ['blinksunited'];
 const CHAT_SECRET_PREFIX = 'bu_chat_secret_';
@@ -4895,20 +4918,32 @@ async function refreshChatAccess() {
     );
   }
   const scores = entry?.scores || {};
+  // Fall back to overall_artist for entries not yet re-synced with the new score fields.
+  const bpGroup = scores.overall_bp_group ?? scores.overall_artist ?? 0;
+  const memberTotal = (scores.overall_jisoo || 0) + (scores.overall_lisa || 0) + (scores.overall_rose || 0) + (scores.overall_jennie || 0);
   const meetsThreshold = CHAT_EXEMPT.includes(username.toLowerCase()) || (
-    (scores.overall_artist || 0) >= CHAT_THRESHOLD
-    && (scores.overall_jump || 0) >= CHAT_MIN.jump
+    bpGroup >= CHAT_THRESHOLD
+    && memberTotal >= CHAT_MEMBER_TOTAL
+    && (scores.overall_jisoo  || 0) >= CHAT_MEMBER_EACH
+    && (scores.overall_lisa   || 0) >= CHAT_MEMBER_EACH
+    && (scores.overall_rose   || 0) >= CHAT_MEMBER_EACH
+    && (scores.overall_jennie || 0) >= CHAT_MEMBER_EACH
+    && (scores.overall_jump     || 0) >= CHAT_MIN.jump
     && (scores.overall_shutdown || 0) >= CHAT_MIN.shutdown
-    && (scores.overall_ddududu || 0) >= CHAT_MIN.ddududu
+    && (scores.overall_ddududu  || 0) >= CHAT_MIN.ddududu
   );
 
   if (!meetsThreshold) {
     lockedEl.style.display = 'block';
     document.getElementById('chat-locked-progress').innerHTML = [
-      ['Total BP (all time)', scores.overall_artist || 0,   CHAT_THRESHOLD],
-      ['JUMP',                scores.overall_jump || 0,      CHAT_MIN.jump],
-      ['Shut Down',           scores.overall_shutdown || 0,  CHAT_MIN.shutdown],
-      ['DDU-DU DDU-DU',       scores.overall_ddududu || 0,   CHAT_MIN.ddududu],
+      ['BLACKPINK group (all time)', bpGroup,                          CHAT_THRESHOLD],
+      ['JISOO solo',                 scores.overall_jisoo  || 0,       CHAT_MEMBER_EACH],
+      ['LISA solo',                  scores.overall_lisa   || 0,       CHAT_MEMBER_EACH],
+      ['ROSÉ solo',                  scores.overall_rose   || 0,       CHAT_MEMBER_EACH],
+      ['JENNIE solo',                scores.overall_jennie || 0,       CHAT_MEMBER_EACH],
+      ['JUMP',                       scores.overall_jump     || 0,     CHAT_MIN.jump],
+      ['Shut Down',                  scores.overall_shutdown || 0,     CHAT_MIN.shutdown],
+      ['DDU-DU DDU-DU',              scores.overall_ddududu  || 0,     CHAT_MIN.ddududu],
     ].map(([label, have, need]) =>
       `${have >= need ? '✅' : '▫️'} ${label}: ${have.toLocaleString()} / ${need.toLocaleString()}`
     ).join('<br>');

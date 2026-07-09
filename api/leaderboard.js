@@ -10,7 +10,9 @@ const TRACK_EVENTS = new Set(['pageview', 'playlist_click', 'share_click', 'vote
 
 // Chat shares this file (instead of its own /api/chat.js) to stay under
 // Vercel Hobby's 12-serverless-function cap.
-const CHAT_UNLOCK_THRESHOLD = 10000; // mirrors index.html's CHAT_THRESHOLD
+const CHAT_UNLOCK_THRESHOLD = 10000;    // mirrors index.html's CHAT_THRESHOLD (bp group plays)
+const CHAT_UNLOCK_MEMBER_TOTAL = 2000;  // combined member solo plays required
+const CHAT_UNLOCK_MEMBER_EACH  = 500;   // per-member minimum
 const CHAT_UNLOCK_MIN = { jump: 3000, shutdown: 2000, ddududu: 1500 }; // mirrors index.html's CHAT_MIN
 const CHAT_MIN_POST_INTERVAL_MS = 3000;
 // Grandfathered in regardless of scrobble count — the fanbase's own account, not a listener. Mirrors index.html's CHAT_EXEMPT.
@@ -309,20 +311,31 @@ export default async function handler(req, res) {
       );
     }
     const scores = entry?.scores || {};
+    // Fall back to overall_artist for entries not yet re-synced with the new score fields.
+    const bpGroup  = scores.overall_bp_group ?? scores.overall_artist ?? 0;
+    const memberTotal = (scores.overall_jisoo || 0) + (scores.overall_lisa || 0) + (scores.overall_rose || 0) + (scores.overall_jennie || 0);
     const meetsThreshold = CHAT_UNLOCK_EXEMPT.includes(key) || (
-      (scores.overall_artist || 0) >= CHAT_UNLOCK_THRESHOLD
-      && (scores.overall_jump || 0) >= CHAT_UNLOCK_MIN.jump
+      bpGroup >= CHAT_UNLOCK_THRESHOLD
+      && memberTotal >= CHAT_UNLOCK_MEMBER_TOTAL
+      && (scores.overall_jisoo  || 0) >= CHAT_UNLOCK_MEMBER_EACH
+      && (scores.overall_lisa   || 0) >= CHAT_UNLOCK_MEMBER_EACH
+      && (scores.overall_rose   || 0) >= CHAT_UNLOCK_MEMBER_EACH
+      && (scores.overall_jennie || 0) >= CHAT_UNLOCK_MEMBER_EACH
+      && (scores.overall_jump     || 0) >= CHAT_UNLOCK_MIN.jump
       && (scores.overall_shutdown || 0) >= CHAT_UNLOCK_MIN.shutdown
-      && (scores.overall_ddududu || 0) >= CHAT_UNLOCK_MIN.ddududu
+      && (scores.overall_ddududu  || 0) >= CHAT_UNLOCK_MIN.ddududu
     );
     if (!meetsThreshold) {
       return res.status(403).json({
-        error: `Chat unlocks at ${CHAT_UNLOCK_THRESHOLD.toLocaleString()} all-time BLACKPINK scrobbles, including at least ${CHAT_UNLOCK_MIN.jump.toLocaleString()} JUMP, ${CHAT_UNLOCK_MIN.shutdown.toLocaleString()} Shut Down & ${CHAT_UNLOCK_MIN.ddududu.toLocaleString()} DDU-DU DDU-DU`,
+        error: `Chat requires ${CHAT_UNLOCK_THRESHOLD.toLocaleString()} BLACKPINK group streams + ${CHAT_UNLOCK_MEMBER_TOTAL.toLocaleString()} member solo streams (≥${CHAT_UNLOCK_MEMBER_EACH} each) + ${CHAT_UNLOCK_MIN.jump.toLocaleString()} JUMP + ${CHAT_UNLOCK_MIN.shutdown.toLocaleString()} Shut Down + ${CHAT_UNLOCK_MIN.ddududu.toLocaleString()} DDU-DU DDU-DU`,
       });
     }
 
+    // Use display name as author; fall back to primary leaderboard key.
+    const chatAuthor = entry.displayName || entry.username || username;
+
     const { data: last, error: lastErr } = await sb
-      .from('chat_messages').select('created_at').eq('username', entry.username)
+      .from('chat_messages').select('created_at').eq('username', chatAuthor)
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
     if (lastErr) return res.status(500).json({ error: lastErr.message });
     if (last && Date.now() - new Date(last.created_at).getTime() < CHAT_MIN_POST_INTERVAL_MS) {
@@ -330,7 +343,7 @@ export default async function handler(req, res) {
     }
 
     const { error } = await sb.from('chat_messages').insert({
-      username: entry.username,
+      username: chatAuthor,
       avatar: entry.avatar || null,
       message: text,
     });

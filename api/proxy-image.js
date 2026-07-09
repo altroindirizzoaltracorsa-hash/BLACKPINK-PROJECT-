@@ -89,11 +89,17 @@ export default async function handler(req, res) {
       ]);
       const items = td.items ?? [];
 
-      // BP family plays: sum streams across BLACKPINK + all solo members.
-      const BP_ARTISTS = new Set(['BLACKPINK', 'JISOO', 'LISA', 'ROSÉ', 'JENNIE']);
-      const artistPlays = (ad?.items ?? [])
-        .filter(i => BP_ARTISTS.has(i.artist?.name))
-        .reduce((sum, i) => sum + (i.streams ?? 0), 0);
+      // BP plays split by group vs individual members.
+      const MEMBER_MAP = { 'JISOO': 'jisoo', 'LISA': 'lisa', 'ROSÉ': 'rose', 'JENNIE': 'jennie' };
+      let bpGroupPlays = 0;
+      const memberPlays = { jisoo: 0, lisa: 0, rose: 0, jennie: 0 };
+      for (const item of (ad?.items ?? [])) {
+        const n = item.artist?.name;
+        const streams = item.streams ?? 0;
+        if (n === 'BLACKPINK') bpGroupPlays += streams;
+        else if (MEMBER_MAP[n]) memberPlays[MEMBER_MAP[n]] += streams;
+      }
+      const artistPlays = bpGroupPlays + Object.values(memberPlays).reduce((s, v) => s + v, 0);
 
       // Match all versions of each song by name prefix + BLACKPINK artist.
       const TRACK_PREFIXES = { jump: 'jump', shutdown: 'shut down', ddududu: 'ddu-du ddu-du' };
@@ -109,6 +115,8 @@ export default async function handler(req, res) {
         customId, displayName,
         playcount: artistPlays || Object.values(tracks).reduce((s, v) => s + v, 0),
         artistPlays,
+        bpGroupPlays,
+        memberPlays,
         tracks,
         today: { jump: 0, shutdown: 0, ddududu: 0 },
       });
