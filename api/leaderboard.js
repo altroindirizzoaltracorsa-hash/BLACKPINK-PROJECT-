@@ -311,16 +311,20 @@ export default async function handler(req, res) {
       );
     }
     const scores = entry?.scores || {};
-    // Fall back to overall_artist for entries not yet re-synced with the new score fields.
-    const bpGroup  = scores.overall_bp_group ?? scores.overall_artist ?? 0;
+    const bpGroup = scores.overall_bp_group ?? scores.overall_artist ?? 0;
+    // Member requirement only applies once the entry has been synced with new score fields.
+    const memberSynced = 'overall_bp_group' in scores;
     const memberTotal = (scores.overall_jisoo || 0) + (scores.overall_lisa || 0) + (scores.overall_rose || 0) + (scores.overall_jennie || 0);
-    const meetsThreshold = CHAT_UNLOCK_EXEMPT.includes(key) || (
-      bpGroup >= CHAT_UNLOCK_THRESHOLD
-      && memberTotal >= CHAT_UNLOCK_MEMBER_TOTAL
+    const meetsMemberReq = !memberSynced || (
+      memberTotal >= CHAT_UNLOCK_MEMBER_TOTAL
       && (scores.overall_jisoo  || 0) >= CHAT_UNLOCK_MEMBER_EACH
       && (scores.overall_lisa   || 0) >= CHAT_UNLOCK_MEMBER_EACH
       && (scores.overall_rose   || 0) >= CHAT_UNLOCK_MEMBER_EACH
       && (scores.overall_jennie || 0) >= CHAT_UNLOCK_MEMBER_EACH
+    );
+    const meetsThreshold = CHAT_UNLOCK_EXEMPT.includes(key) || (
+      bpGroup >= CHAT_UNLOCK_THRESHOLD
+      && meetsMemberReq
       && (scores.overall_jump     || 0) >= CHAT_UNLOCK_MIN.jump
       && (scores.overall_shutdown || 0) >= CHAT_UNLOCK_MIN.shutdown
       && (scores.overall_ddududu  || 0) >= CHAT_UNLOCK_MIN.ddududu
