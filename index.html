@@ -3123,14 +3123,25 @@ function _lbIsBp(artist) {
   const a = (artist || '').toLowerCase().trim();
   return a === 'blackpink' || a.startsWith('blackpink ') || a.startsWith('blackpink,') || a.includes(' blackpink');
 }
+// Maps common LB artist name variants → member key
+const LB_MEMBER_MAP = {
+  'jisoo': 'jisoo', 'kim jisoo': 'jisoo', 'kim ji-soo': 'jisoo', '지수': 'jisoo',
+  'lisa': 'lisa', 'lalisa': 'lisa', 'lalisa manobal': 'lisa',
+  'rosé': 'rose', 'rose': 'rose', 'roseanne park': 'rose', 'roseanne': 'rose',
+  'jennie': 'jennie', 'kim jennie': 'jennie', '제니': 'jennie',
+};
+function _lbMemberKey(artist) {
+  return LB_MEMBER_MAP[(artist || '').toLowerCase().trim()] || null;
+}
+
 async function fetchLbTrackCounts(username) {
-  const counts = { jump: 0, shutdown: 0, ddududu: 0, artistPlays: 0 };
+  const counts = { jump: 0, shutdown: 0, ddududu: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } };
 
   // 1. Try LB stats API first — fast when stats exist and include BLACKPINK
   try {
     const [recStats, artStats] = await Promise.all([
       lbFetch(`stats/user/${encodeURIComponent(username)}/recordings`, { count: 100, range: 'all_time' }),
-      lbFetch(`stats/user/${encodeURIComponent(username)}/artists`,    { count: 100, range: 'all_time' }),
+      lbFetch(`stats/user/${encodeURIComponent(username)}/artists`,    { count: 200, range: 'all_time' }),
     ]);
     if (recStats !== null && artStats !== null) {
       for (const rec of recStats?.payload?.recordings || []) {
@@ -3140,8 +3151,11 @@ async function fetchLbTrackCounts(username) {
         else if (name === 'shut down')     counts.shutdown += rec.listen_count || 0;
         else if (name === 'ddu-du ddu-du') counts.ddududu  += rec.listen_count || 0;
       }
-      const bp = (artStats?.payload?.artists || []).find(a => _lbIsBp(a.artist_name));
-      counts.artistPlays = bp?.listen_count || 0;
+      for (const a of artStats?.payload?.artists || []) {
+        if (_lbIsBp(a.artist_name)) counts.artistPlays += a.listen_count || 0;
+        const mk = _lbMemberKey(a.artist_name);
+        if (mk) counts.memberPlays[mk] += a.listen_count || 0;
+      }
       if (counts.artistPlays > 0) return counts; // only trust stats if they show BP
     }
   } catch (e) { console.warn('LB stats API:', e.message); }
@@ -3155,8 +3169,10 @@ async function fetchLbTrackCounts(username) {
   const nowTs = Math.floor(Date.now() / 1000);
   const cacheAge = cached ? Date.now() - (cached.savedAt || 0) : Infinity;
   const doFull = !cached || cacheAge > 24 * 3600 * 1000;
-  const base = doFull ? { jump: 0, shutdown: 0, ddududu: 0, artistPlays: 0 } : { ...cached.counts };
-  const delta = { jump: 0, shutdown: 0, ddududu: 0, artistPlays: 0 };
+  const base = doFull
+    ? { jump: 0, shutdown: 0, ddududu: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } }
+    : { ...cached.counts, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0, ...(cached.counts?.memberPlays || {}) } };
+  const delta = { jump: 0, shutdown: 0, ddududu: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } };
   const _debugArtists = [];
   let maxListenedAt = doFull ? 0 : (cached.maxListenedAt || 0);
 
@@ -3172,7 +3188,10 @@ async function fetchLbTrackCounts(username) {
       if (page === 0) listens.slice(0, 5).forEach(l => _debugArtists.push(l.track_metadata?.artist_name));
       for (const l of listens) {
         if ((l.listened_at || 0) > maxListenedAt) maxListenedAt = l.listened_at;
-        if (!_lbIsBp(l.track_metadata?.artist_name)) continue;
+        const artistName = l.track_metadata?.artist_name;
+        const mk = _lbMemberKey(artistName);
+        if (mk) { delta.memberPlays[mk]++; continue; }
+        if (!_lbIsBp(artistName)) continue;
         delta.artistPlays++;
         const name = (l.track_metadata?.track_name || '').toLowerCase().trim();
         if (name === 'jump')               delta.jump++;
@@ -3186,6 +3205,7 @@ async function fetchLbTrackCounts(username) {
   } catch (e2) { console.warn('LB listen scan:', e2.message); }
 
   for (const k of ['jump', 'shutdown', 'ddududu', 'artistPlays']) counts[k] = base[k] + delta[k];
+  for (const m of ['jisoo', 'lisa', 'rose', 'jennie']) counts.memberPlays[m] = base.memberPlays[m] + delta.memberPlays[m];
 
   if (!counts.artistPlays && doFull) {
     console.warn('[BU LB] 0 BP found for', username, '— first artists:', _debugArtists);
@@ -3682,9 +3702,10 @@ async function fetchSingleAccountStats(source, username) {
         fetchLbRecentListens(username, dayFrom, dayTo),
       ]);
     } catch(e) { console.warn('LB fetch failed for', username, e.message); }
-    res.artistPlays = lbCounts.artistPlays;
+    res.artistPlays  = lbCounts.artistPlays;
     res.bpGroupPlays = lbCounts.artistPlays;
-    res.playcount   = lbCounts.artistPlays; // total BLACKPINK plays on LB
+    res.playcount    = lbCounts.artistPlays;
+    if (lbCounts.memberPlays) res.memberPlays = { ...res.memberPlays, ...lbCounts.memberPlays };
     for (const k of ['jump','shutdown','ddududu']) res.totalPlays[k] = lbCounts[k] || 0;
     Object.assign(res.todayCounts, countLbByTrack(lbToday));
     for (let i = 0; i < 7; i++) {
