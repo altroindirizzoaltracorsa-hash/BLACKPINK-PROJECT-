@@ -228,6 +228,39 @@ export default async function handler(req, res) {
     return res.status(200).json({ secret });
   }
 
+  // ── POST ?action=chat-reclaim — re-issue secret for a Supabase-authenticated user ──
+  // Verifies the caller's Supabase JWT, checks the username is in their linked_accounts,
+  // then replaces the stale claim so they can chat from a new device.
+  if (req.method === 'POST' && action === 'chat-reclaim') {
+    const sb = supabase();
+    if (!sb) return res.status(503).json({ error: 'Server not configured' });
+
+    const { username, accessToken } = req.body || {};
+    if (!username || !accessToken) return res.status(400).json({ error: 'username and accessToken required' });
+    const key = username.toLowerCase();
+
+    // Verify the Supabase JWT and get the user
+    const { data: { user }, error: authErr } = await sb.auth.getUser(accessToken);
+    if (authErr || !user) return res.status(401).json({ error: 'Invalid session' });
+
+    // Confirm this username belongs to one of their linked accounts
+    const { data: linked } = await sb
+      .from('linked_accounts')
+      .select('source_username')
+      .eq('app_user_id', user.id);
+    const owns = (linked || []).some(a => a.source_username.toLowerCase() === key);
+    if (!owns) return res.status(403).json({ error: 'This username is not linked to your account' });
+
+    // Replace the existing claim with a fresh secret
+    const secret = crypto.randomBytes(24).toString('hex');
+    await sb.from('chat_claims').delete().eq('username', key);
+    const { error: insErr } = await sb.from('chat_claims').insert({ username: key, secret });
+    if (insErr) return res.status(500).json({ error: insErr.message });
+
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ secret });
+  }
+
   // ── POST ?action=chat-send — post a chat message ──────────────
   if (req.method === 'POST' && action === 'chat-send') {
     const sb = supabase();

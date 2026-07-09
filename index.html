@@ -4871,9 +4871,30 @@ async function refreshChatAccess() {
         secret = d.secret;
         setChatSecret(username, secret);
       } else if (r.status === 409) {
-        blockedEl.style.display = 'block';
-        document.getElementById('chat-blocked-msg').textContent = 'This username is already linked to chat from another device.';
-        return;
+        // If logged in via Supabase and this username is a linked account, reclaim automatically
+        let reclaimed = false;
+        if (sb) {
+          try {
+            const { data: { session } } = await sb.auth.getSession();
+            if (session?.access_token) {
+              const rr = await fetch('/api/leaderboard?action=chat-reclaim', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, accessToken: session.access_token }),
+              });
+              const rd = await rr.json();
+              if (rr.ok) {
+                secret = rd.secret;
+                setChatSecret(username, secret);
+                reclaimed = true;
+              }
+            }
+          } catch {}
+        }
+        if (!reclaimed) {
+          blockedEl.style.display = 'block';
+          document.getElementById('chat-blocked-msg').textContent = 'This username is already linked to chat from another device.';
+          return;
+        }
       } else {
         blockedEl.style.display = 'block';
         document.getElementById('chat-blocked-msg').textContent = d.error || 'Chat unavailable right now.';
