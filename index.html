@@ -3562,6 +3562,11 @@ function showBreakdown(type, key) {
   const labels = {
     artistPlays:   'Total BP Scrobbles',
     campaignTotal: 'Campaign Tracks (all time)',
+    'daily':            'All Tracks — Today',
+    'weekly':           'All Tracks — This Week',
+    'overall:jump':     'JUMP — All Time',
+    'overall:shutdown': 'SHUT DOWN — All Time',
+    'overall:ddududu':  'DDU-DU DDU-DU — All Time',
     'daily:jump':       'JUMP — Today',
     'daily:shutdown':   'SHUT DOWN — Today',
     'daily:ddududu':    'DDU-DU DDU-DU — Today',
@@ -3573,10 +3578,11 @@ function showBreakdown(type, key) {
   document.getElementById('breakdown-title').textContent = '// ' + (labels[compositeKey] || labels[type] || type.toUpperCase());
 
   let getVal;
-  if (type === 'artistPlays')   getVal = a => a.artistPlays;
+  if (type === 'artistPlays')     getVal = a => a.artistPlays;
   else if (type === 'campaignTotal') getVal = a => Object.values(a.totalPlays).reduce((s,v)=>s+v,0);
-  else if (type === 'daily')    getVal = a => a.todayCounts[key] || 0;
-  else if (type === 'weekly')   getVal = a => a.weekCounts[key]  || 0;
+  else if (type === 'overall')    getVal = a => a.totalPlays[key] || 0;
+  else if (type === 'daily')      getVal = key ? (a => a.todayCounts[key] || 0) : (a => Object.values(a.todayCounts).reduce((s,v)=>s+v,0));
+  else if (type === 'weekly')     getVal = key ? (a => a.weekCounts[key]  || 0) : (a => Object.values(a.weekCounts).reduce((s,v)=>s+v,0));
   else getVal = () => 0;
 
   const rows = document.getElementById('breakdown-rows');
@@ -4610,6 +4616,19 @@ function renderLeaderboard() {
 }
 
 function showLbUserProfile(username) {
+  // For the logged-in user with multiple accounts: show per-service breakdown
+  // for whatever period/song the leaderboard is currently showing.
+  const myUsername = getSavedUsername();
+  const isMe = myUsername && username.toLowerCase() === myUsername.toLowerCase();
+  if (isMe && acctBreakdown && acctBreakdown.length >= 2) {
+    const type = lbPeriod === 'overall'
+      ? (lbSong === 'all' ? 'campaignTotal' : 'overall')
+      : lbPeriod;
+    const key = lbSong === 'all' ? undefined : lbSong;
+    showBreakdown(type, key);
+    return;
+  }
+
   const users = getActiveLbUsers();
   const data = users[username];
   if (!data) return;
