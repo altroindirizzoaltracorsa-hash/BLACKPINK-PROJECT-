@@ -4859,51 +4859,39 @@ async function refreshChatAccess() {
     return;
   }
 
-  let secret = getChatSecret(username);
-  if (!secret) {
+  // Prefer Supabase session auth — works across all devices with no claim step
+  let chatUseSupabase = false;
+  if (sb) {
     try {
-      const r = await fetch('/api/leaderboard?action=chat-claim', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }),
-      });
-      const d = await r.json();
-      if (r.ok) {
-        secret = d.secret;
-        setChatSecret(username, secret);
-      } else if (r.status === 409) {
-        // If logged in via Supabase and this username is a linked account, reclaim automatically
-        let reclaimed = false;
-        if (sb) {
-          try {
-            const { data: { session } } = await sb.auth.getSession();
-            if (session?.access_token) {
-              const rr = await fetch('/api/leaderboard?action=chat-reclaim', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, accessToken: session.access_token }),
-              });
-              const rd = await rr.json();
-              if (rr.ok) {
-                secret = rd.secret;
-                setChatSecret(username, secret);
-                reclaimed = true;
-              }
-            }
-          } catch {}
-        }
-        if (!reclaimed) {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.access_token) chatUseSupabase = true;
+    } catch {}
+  }
+
+  if (!chatUseSupabase) {
+    // Legacy guest flow: device-secret claim
+    let secret = getChatSecret(username);
+    if (!secret) {
+      try {
+        const r = await fetch('/api/leaderboard?action=chat-claim', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username }),
+        });
+        const d = await r.json();
+        if (r.ok) {
+          secret = d.secret;
+          setChatSecret(username, secret);
+        } else {
           blockedEl.style.display = 'block';
-          document.getElementById('chat-blocked-msg').textContent = 'This username is already linked to chat from another device.';
+          document.getElementById('chat-blocked-msg').textContent =
+            r.status === 409 ? 'Log in to your account to chat from any device.' : (d.error || 'Chat unavailable right now.');
           return;
         }
-      } else {
+      } catch {
         blockedEl.style.display = 'block';
-        document.getElementById('chat-blocked-msg').textContent = d.error || 'Chat unavailable right now.';
+        document.getElementById('chat-blocked-msg').textContent = 'Could not connect — try again later.';
         return;
       }
-    } catch {
-      blockedEl.style.display = 'block';
-      document.getElementById('chat-blocked-msg').textContent = 'Could not connect — try again later.';
-      return;
     }
   }
 
@@ -4946,14 +4934,27 @@ async function sendChatMessage() {
   if (!text) return;
 
   const username = getSavedUsername();
-  const secret   = getChatSecret(username);
-  if (!username || !secret) return;
+  if (!username) return;
+
+  // Build auth payload — prefer live Supabase session, fall back to device secret
+  let authPayload = null;
+  if (sb) {
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.access_token) authPayload = { accessToken: session.access_token };
+    } catch {}
+  }
+  if (!authPayload) {
+    const secret = getChatSecret(username);
+    if (!secret) return;
+    authPayload = { secret };
+  }
 
   input.disabled = true;
   try {
     const r = await fetch('/api/leaderboard?action=chat-send', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, secret, message: text }),
+      body: JSON.stringify({ username, ...authPayload, message: text }),
     });
     const d = await r.json();
     if (!r.ok) { errEl.textContent = d.error || 'Could not send.'; return; }

@@ -266,19 +266,30 @@ export default async function handler(req, res) {
     const sb = supabase();
     if (!sb) return res.status(503).json({ error: 'Server not configured' });
 
-    const { username, secret, message } = req.body || {};
+    const { username, secret, accessToken, message } = req.body || {};
     const text = (message || '').trim().slice(0, 500);
-    if (!username || !secret) return res.status(400).json({ error: 'username and secret required' });
+    if (!username || (!secret && !accessToken)) return res.status(400).json({ error: 'username and auth required' });
     if (!text) return res.status(400).json({ error: 'message required' });
     const key = username.toLowerCase();
 
     const lb = (await redis.get(LB_KEY)) || {};
     if ((lb.banned || []).includes(key)) return res.status(403).json({ error: 'This account is blocked' });
 
-    const { data: claim, error: claimErr } = await sb
-      .from('chat_claims').select('secret').eq('username', key).maybeSingle();
-    if (claimErr) return res.status(500).json({ error: claimErr.message });
-    if (!claim || claim.secret !== secret) return res.status(401).json({ error: 'Unauthorized' });
+    // Auth: Supabase session token (account-based, works on any device)
+    if (accessToken) {
+      const { data: { user }, error: authErr } = await sb.auth.getUser(accessToken);
+      if (authErr || !user) return res.status(401).json({ error: 'Session expired — please reload' });
+      const { data: linked } = await sb
+        .from('linked_accounts').select('source_username').eq('app_user_id', user.id);
+      const owns = (linked || []).some(a => a.source_username.toLowerCase() === key);
+      if (!owns) return res.status(403).json({ error: 'This username is not linked to your account' });
+    } else {
+      // Legacy: device-secret claim
+      const { data: claim, error: claimErr } = await sb
+        .from('chat_claims').select('secret').eq('username', key).maybeSingle();
+      if (claimErr) return res.status(500).json({ error: claimErr.message });
+      if (!claim || claim.secret !== secret) return res.status(401).json({ error: 'Unauthorized' });
+    }
 
     // Look up by key, then fall back to searching linkedAccounts (handles renames + multi-account)
     let entry = lb.users?.[key];
