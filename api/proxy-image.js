@@ -85,7 +85,7 @@ export default async function handler(req, res) {
       if (!tr.ok) return res.status(400).json({ error: 'Could not fetch track stats from Stats.fm' });
       const [td, sd] = await Promise.all([tr.json(), sr.ok ? sr.json() : Promise.resolve(null)]);
       const items = td.items ?? [];
-      const totalStreams = (sd?.item ?? sd)?.count ?? 0;
+      const totalStreams = sd?.items?.count ?? 0;
 
       // Match all versions of each song (single, album, Japanese, live, remix…)
       // by checking that the track name starts with the target and the artist is BLACKPINK.
@@ -107,7 +107,6 @@ export default async function handler(req, res) {
         artistPlays,
         tracks,
         today: { jump: 0, shutdown: 0, ddududu: 0 },
-        _debug: { itemCount: items.length, statsOk: sr.ok, totalStreams, rawStats: sd },
       });
     } catch(err) {
       return res.status(400).json({ error: err.message });
