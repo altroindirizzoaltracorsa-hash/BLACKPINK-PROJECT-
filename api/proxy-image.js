@@ -1,5 +1,11 @@
 const MUSICAT_BASE     = 'https://api.musicat.fm/v1';
 const BLACKPINK_ARTIST = 'b88d8d75-b62c-489b-80a5-4e455157edb1';
+const MEMBER_ARTIST_IDS = {
+  rose:   '1c2b9c70-2eea-4617-b1b0-d839582ef98f',
+  lisa:   'b2962140-c2b8-4bdf-b108-86dedc4ba983',
+  jennie: '88b78015-73ec-4427-8e83-f7b57c070706',
+  jisoo:  '0a098f13-dab1-496f-b84b-de036e57791c',
+};
 const TRACK_IDS = {
   jump:     '502a16cf-fa8a-4fd3-a184-dbd49c10ce5f',
   shutdown: '3420a915-4654-4251-9c5b-43039ca74b66',
@@ -38,8 +44,12 @@ export default async function handler(req, res) {
       const allTime    = { start: null, end: null };
       const today      = { start: todayStart, end: null };
 
-      const [artistPlays, jumpAll, shutdownAll, ddududuAll, jumpToday, shutdownToday, ddududuToday] = await Promise.all([
+      const [bpGroupPlays, jisooPlays, lisaPlays, rosePlays, jenniePlays, jumpAll, shutdownAll, ddududuAll, jumpToday, shutdownToday, ddududuToday] = await Promise.all([
         statsPost({ range: allTime, publicUserId: publicId, publicArtistId: BLACKPINK_ARTIST }),
+        statsPost({ range: allTime, publicUserId: publicId, publicArtistId: MEMBER_ARTIST_IDS.jisoo }),
+        statsPost({ range: allTime, publicUserId: publicId, publicArtistId: MEMBER_ARTIST_IDS.lisa }),
+        statsPost({ range: allTime, publicUserId: publicId, publicArtistId: MEMBER_ARTIST_IDS.rose }),
+        statsPost({ range: allTime, publicUserId: publicId, publicArtistId: MEMBER_ARTIST_IDS.jennie }),
         statsPost({ range: allTime, publicUserId: publicId, publicTrackId: TRACK_IDS.jump }),
         statsPost({ range: allTime, publicUserId: publicId, publicTrackId: TRACK_IDS.shutdown }),
         statsPost({ range: allTime, publicUserId: publicId, publicTrackId: TRACK_IDS.ddududu }),
@@ -47,11 +57,15 @@ export default async function handler(req, res) {
         statsPost({ range: today,   publicUserId: publicId, publicTrackId: TRACK_IDS.shutdown }),
         statsPost({ range: today,   publicUserId: publicId, publicTrackId: TRACK_IDS.ddududu }),
       ]);
+      const memberPlays = { jisoo: jisooPlays, lisa: lisaPlays, rose: rosePlays, jennie: jenniePlays };
+      const artistPlays = bpGroupPlays + Object.values(memberPlays).reduce((s, v) => s + v, 0);
 
       return res.status(200).json({
         publicId, displayName,
         playcount: totalScrobbles ?? artistPlays,
         artistPlays,
+        bpGroupPlays,
+        memberPlays,
         tracks: { jump: jumpAll, shutdown: shutdownAll, ddududu: ddududuAll },
         today:  { jump: jumpToday, shutdown: shutdownToday, ddududu: ddududuToday },
       });
@@ -89,11 +103,17 @@ export default async function handler(req, res) {
       ]);
       const items = td.items ?? [];
 
-      // BP family plays: sum streams across BLACKPINK + all solo members.
-      const BP_ARTISTS = new Set(['BLACKPINK', 'JISOO', 'LISA', 'ROSÉ', 'JENNIE']);
-      const artistPlays = (ad?.items ?? [])
-        .filter(i => BP_ARTISTS.has(i.artist?.name))
-        .reduce((sum, i) => sum + (i.streams ?? 0), 0);
+      // BP plays split by group vs individual members.
+      const MEMBER_MAP = { 'JISOO': 'jisoo', 'LISA': 'lisa', 'ROSÉ': 'rose', 'JENNIE': 'jennie' };
+      let bpGroupPlays = 0;
+      const memberPlays = { jisoo: 0, lisa: 0, rose: 0, jennie: 0 };
+      for (const item of (ad?.items ?? [])) {
+        const n = item.artist?.name;
+        const streams = item.streams ?? 0;
+        if (n === 'BLACKPINK') bpGroupPlays += streams;
+        else if (MEMBER_MAP[n]) memberPlays[MEMBER_MAP[n]] += streams;
+      }
+      const artistPlays = bpGroupPlays + Object.values(memberPlays).reduce((s, v) => s + v, 0);
 
       // Match all versions of each song by name prefix + BLACKPINK artist.
       const TRACK_PREFIXES = { jump: 'jump', shutdown: 'shut down', ddududu: 'ddu-du ddu-du' };
@@ -109,6 +129,8 @@ export default async function handler(req, res) {
         customId, displayName,
         playcount: artistPlays || Object.values(tracks).reduce((s, v) => s + v, 0),
         artistPlays,
+        bpGroupPlays,
+        memberPlays,
         tracks,
         today: { jump: 0, shutdown: 0, ddududu: 0 },
       });

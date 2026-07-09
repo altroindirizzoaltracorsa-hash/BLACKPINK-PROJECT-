@@ -10,7 +10,9 @@ const TRACK_EVENTS = new Set(['pageview', 'playlist_click', 'share_click', 'vote
 
 // Chat shares this file (instead of its own /api/chat.js) to stay under
 // Vercel Hobby's 12-serverless-function cap.
-const CHAT_UNLOCK_THRESHOLD = 10000; // mirrors index.html's CHAT_THRESHOLD
+const CHAT_UNLOCK_THRESHOLD = 10000;    // mirrors index.html's CHAT_THRESHOLD (bp group plays)
+const CHAT_UNLOCK_MEMBER_TOTAL = 2000;  // combined member solo plays required
+const CHAT_UNLOCK_MEMBER_EACH  = 500;   // per-member minimum
 const CHAT_UNLOCK_MIN = { jump: 3000, shutdown: 2000, ddududu: 1500 }; // mirrors index.html's CHAT_MIN
 const CHAT_MIN_POST_INTERVAL_MS = 3000;
 // Grandfathered in regardless of scrobble count — the fanbase's own account, not a listener. Mirrors index.html's CHAT_EXEMPT.
@@ -228,48 +230,112 @@ export default async function handler(req, res) {
     return res.status(200).json({ secret });
   }
 
+  // ── POST ?action=chat-reclaim — re-issue secret for a Supabase-authenticated user ──
+  // Verifies the caller's Supabase JWT, checks the username is in their linked_accounts,
+  // then replaces the stale claim so they can chat from a new device.
+  if (req.method === 'POST' && action === 'chat-reclaim') {
+    const sb = supabase();
+    if (!sb) return res.status(503).json({ error: 'Server not configured' });
+
+    const { username, accessToken } = req.body || {};
+    if (!username || !accessToken) return res.status(400).json({ error: 'username and accessToken required' });
+    const key = username.toLowerCase();
+
+    // Verify the Supabase JWT and get the user
+    const { data: { user }, error: authErr } = await sb.auth.getUser(accessToken);
+    if (authErr || !user) return res.status(401).json({ error: 'Invalid session' });
+
+    // Confirm this username belongs to one of their linked accounts
+    const { data: linked } = await sb
+      .from('linked_accounts')
+      .select('source_username')
+      .eq('app_user_id', user.id);
+    const owns = (linked || []).some(a => a.source_username.toLowerCase() === key);
+    if (!owns) return res.status(403).json({ error: 'This username is not linked to your account' });
+
+    // Replace the existing claim with a fresh secret
+    const secret = crypto.randomBytes(24).toString('hex');
+    await sb.from('chat_claims').delete().eq('username', key);
+    const { error: insErr } = await sb.from('chat_claims').insert({ username: key, secret });
+    if (insErr) return res.status(500).json({ error: insErr.message });
+
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ secret });
+  }
+
   // ── POST ?action=chat-send — post a chat message ──────────────
   if (req.method === 'POST' && action === 'chat-send') {
     const sb = supabase();
     if (!sb) return res.status(503).json({ error: 'Server not configured' });
 
-    const { username, secret, message } = req.body || {};
+    const { username, secret, accessToken, message } = req.body || {};
     const text = (message || '').trim().slice(0, 500);
-    if (!username || !secret) return res.status(400).json({ error: 'username and secret required' });
+    if (!username || (!secret && !accessToken)) return res.status(400).json({ error: 'username and auth required' });
     if (!text) return res.status(400).json({ error: 'message required' });
     const key = username.toLowerCase();
 
     const lb = (await redis.get(LB_KEY)) || {};
     if ((lb.banned || []).includes(key)) return res.status(403).json({ error: 'This account is blocked' });
 
-    const { data: claim, error: claimErr } = await sb
-      .from('chat_claims').select('secret').eq('username', key).maybeSingle();
-    if (claimErr) return res.status(500).json({ error: claimErr.message });
-    if (!claim || claim.secret !== secret) return res.status(401).json({ error: 'Unauthorized' });
+    // Auth: Supabase session token (account-based, works on any device)
+    let allLinkedKeys = null; // set when Supabase auth used, for broader entry lookup
+    if (accessToken) {
+      const { data: { user }, error: authErr } = await sb.auth.getUser(accessToken);
+      if (authErr || !user) return res.status(401).json({ error: 'Session expired — please reload' });
+      const { data: linked } = await sb
+        .from('linked_accounts').select('source_username').eq('app_user_id', user.id);
+      const linkedList = linked || [];
+      const owns = linkedList.some(a => a.source_username.toLowerCase() === key);
+      if (!owns) return res.status(403).json({ error: 'This username is not linked to your account' });
+      allLinkedKeys = new Set(linkedList.map(a => a.source_username.toLowerCase()));
+    } else {
+      // Legacy: device-secret claim
+      const { data: claim, error: claimErr } = await sb
+        .from('chat_claims').select('secret').eq('username', key).maybeSingle();
+      if (claimErr) return res.status(500).json({ error: claimErr.message });
+      if (!claim || claim.secret !== secret) return res.status(401).json({ error: 'Unauthorized' });
+    }
 
-    // Look up by key, then fall back to searching linkedAccounts (handles renames + multi-account)
-    let entry = lb.users?.[key];
+    // Look up leaderboard entry — try all linked account usernames so multi-account
+    // users are found even when the leaderboard key doesn't match the chat username.
+    const lookupKeys = allLinkedKeys ? [...allLinkedKeys] : [key];
+    let entry = null;
+    for (const k of lookupKeys) {
+      entry = lb.users?.[k];
+      if (entry) break;
+    }
     if (!entry && lb.users) {
       entry = Object.values(lb.users).find(d =>
         Array.isArray(d.linkedAccounts) &&
-        d.linkedAccounts.some(a => (a.username || '').toLowerCase() === key)
+        d.linkedAccounts.some(a => lookupKeys.includes((a.username || '').toLowerCase()))
       );
     }
     const scores = entry?.scores || {};
+    // Fall back to overall_artist for entries not yet re-synced with the new score fields.
+    const bpGroup  = scores.overall_bp_group ?? scores.overall_artist ?? 0;
+    const memberTotal = (scores.overall_jisoo || 0) + (scores.overall_lisa || 0) + (scores.overall_rose || 0) + (scores.overall_jennie || 0);
     const meetsThreshold = CHAT_UNLOCK_EXEMPT.includes(key) || (
-      (scores.overall_artist || 0) >= CHAT_UNLOCK_THRESHOLD
-      && (scores.overall_jump || 0) >= CHAT_UNLOCK_MIN.jump
+      bpGroup >= CHAT_UNLOCK_THRESHOLD
+      && memberTotal >= CHAT_UNLOCK_MEMBER_TOTAL
+      && (scores.overall_jisoo  || 0) >= CHAT_UNLOCK_MEMBER_EACH
+      && (scores.overall_lisa   || 0) >= CHAT_UNLOCK_MEMBER_EACH
+      && (scores.overall_rose   || 0) >= CHAT_UNLOCK_MEMBER_EACH
+      && (scores.overall_jennie || 0) >= CHAT_UNLOCK_MEMBER_EACH
+      && (scores.overall_jump     || 0) >= CHAT_UNLOCK_MIN.jump
       && (scores.overall_shutdown || 0) >= CHAT_UNLOCK_MIN.shutdown
-      && (scores.overall_ddududu || 0) >= CHAT_UNLOCK_MIN.ddududu
+      && (scores.overall_ddududu  || 0) >= CHAT_UNLOCK_MIN.ddududu
     );
     if (!meetsThreshold) {
       return res.status(403).json({
-        error: `Chat unlocks at ${CHAT_UNLOCK_THRESHOLD.toLocaleString()} all-time BLACKPINK scrobbles, including at least ${CHAT_UNLOCK_MIN.jump.toLocaleString()} JUMP, ${CHAT_UNLOCK_MIN.shutdown.toLocaleString()} Shut Down & ${CHAT_UNLOCK_MIN.ddududu.toLocaleString()} DDU-DU DDU-DU`,
+        error: `Chat requires ${CHAT_UNLOCK_THRESHOLD.toLocaleString()} BLACKPINK group streams + ${CHAT_UNLOCK_MEMBER_TOTAL.toLocaleString()} member solo streams (≥${CHAT_UNLOCK_MEMBER_EACH} each) + ${CHAT_UNLOCK_MIN.jump.toLocaleString()} JUMP + ${CHAT_UNLOCK_MIN.shutdown.toLocaleString()} Shut Down + ${CHAT_UNLOCK_MIN.ddududu.toLocaleString()} DDU-DU DDU-DU`,
       });
     }
 
+    // Use display name as author; fall back to primary leaderboard key.
+    const chatAuthor = entry.displayName || entry.username || username;
+
     const { data: last, error: lastErr } = await sb
-      .from('chat_messages').select('created_at').eq('username', entry.username)
+      .from('chat_messages').select('created_at').eq('username', chatAuthor)
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
     if (lastErr) return res.status(500).json({ error: lastErr.message });
     if (last && Date.now() - new Date(last.created_at).getTime() < CHAT_MIN_POST_INTERVAL_MS) {
@@ -277,7 +343,7 @@ export default async function handler(req, res) {
     }
 
     const { error } = await sb.from('chat_messages').insert({
-      username: entry.username,
+      username: chatAuthor,
       avatar: entry.avatar || null,
       message: text,
     });
