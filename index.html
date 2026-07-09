@@ -855,6 +855,26 @@
     display: flex; align-items: center; justify-content: center; transition: transform 0.15s;
   }
   .chat-fab:hover { transform: scale(1.08); }
+  #chat-unread-badge {
+    position: absolute; top: -4px; right: -4px;
+    background: #ff4400; color: #fff; font-family: var(--mono);
+    font-size: 0.55rem; font-weight: 700; line-height: 1;
+    min-width: 16px; height: 16px; border-radius: 8px; padding: 0 4px;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  #chat-unlock-toast {
+    position: fixed; bottom: 5.8rem; right: 1.4rem; z-index: 9001;
+    background: var(--card); border: 1px solid var(--pink);
+    border-radius: 0.75rem; padding: 0.9rem 1.1rem;
+    width: min(300px, calc(100vw - 2.8rem));
+    box-shadow: 0 4px 20px rgba(255,0,102,0.35);
+    font-family: var(--mono); font-size: 0.72rem; color: var(--white);
+    animation: toast-slide-in 0.3s ease;
+  }
+  #chat-unlock-toast .toast-title { color: var(--pink); font-weight: 700; margin-bottom: 0.35rem; letter-spacing: 0.08em; }
+  #chat-unlock-toast .toast-close { float: right; cursor: pointer; opacity: 0.6; margin-left: 0.5rem; font-size: 0.9rem; }
+  @keyframes toast-slide-in { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
 
   .chat-panel {
     position: fixed; bottom: 5.2rem; right: 1.4rem; z-index: 9000;
@@ -1772,7 +1792,8 @@
 
 <!-- Group chat — floating widget, visible on every page. Unlocks at
      CHAT_THRESHOLD all-time BLACKPINK scrobbles, plus CHAT_MIN per-track floors -->
-<button id="chat-fab" class="chat-fab" onclick="toggleChatWidget()" aria-label="Open group chat">💬</button>
+<button id="chat-fab" class="chat-fab" onclick="toggleChatWidget()" aria-label="Open group chat">💬<span id="chat-unread-badge" style="display:none"></span></button>
+<div id="chat-unlock-toast" style="display:none"></div>
 
 <div id="chat-panel" class="chat-panel" style="display:none;">
   <div class="chat-panel-header">
@@ -4707,21 +4728,17 @@ async function refreshLeaderboard(force = false) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// GROUP CHAT — unlocks once a user's all-time BLACKPINK scrobble count
-// crosses CHAT_THRESHOLD AND each per-track floor in CHAT_MIN is met.
-// Mirrors api/leaderboard.js's CHAT_UNLOCK_THRESHOLD / CHAT_UNLOCK_MIN.
-// Identity: the first browser to use a username claims a private
-// secret for it (server-issued, stored in localStorage), so other
-// browsers can no longer post chat messages under that name.
+// ══════════════════════════════════════════════════════════════
+// GROUP CHAT
 // ══════════════════════════════════════════════════════════════
 const CHAT_THRESHOLD     = 10000;
 const CHAT_MIN           = { jump: 3000, shutdown: 2000, ddududu: 1500 };
-// Grandfathered in regardless of scrobble count — the fanbase's own account, not a listener. Mirrors api/leaderboard.js's CHAT_UNLOCK_EXEMPT.
 const CHAT_EXEMPT        = ['blinksunited'];
 const CHAT_SECRET_PREFIX = 'bu_chat_secret_';
 let   chatPollTimer      = null;
 let   chatPanelOpen      = false;
-let   chatCongratsText   = null;
+let   chatLastSeenId     = null; // most recent message id the user has seen
+let   chatUnreadCount    = 0;
 
 // ── TUTORIAL ─────────────────────────────────────────────────
 const TUTORIAL_SEEN_KEY = 'bu_tutorial_seen';
@@ -4799,8 +4816,33 @@ function toggleChatWidget() {
   if (!panel) return;
   chatPanelOpen = !chatPanelOpen;
   panel.style.display = chatPanelOpen ? 'flex' : 'none';
-  if (chatPanelOpen) refreshChatAccess();
-  else stopChatPolling();
+  if (chatPanelOpen) {
+    setChatUnread(0);
+    document.getElementById('chat-unlock-toast').style.display = 'none';
+    refreshChatAccess();
+  } else {
+    stopChatPolling();
+  }
+}
+
+function setChatUnread(n) {
+  chatUnreadCount = n;
+  const badge = document.getElementById('chat-unread-badge');
+  if (!badge) return;
+  if (n > 0) { badge.textContent = n > 99 ? '99+' : n; badge.style.display = 'flex'; }
+  else badge.style.display = 'none';
+}
+
+function showChatUnlockToast(username) {
+  const toastKey = 'bu_chat_toast_' + username.toLowerCase();
+  try { if (localStorage.getItem(toastKey)) return; localStorage.setItem(toastKey, '1'); } catch {}
+  const el = document.getElementById('chat-unlock-toast');
+  if (!el) return;
+  el.innerHTML = `<span class="toast-close" onclick="this.parentElement.style.display='none'">✕</span>
+    <div class="toast-title">✦ GROUP CHAT UNLOCKED</div>
+    You've earned access to the Blinks United group chat! Tap 💬 to join the conversation.`;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 12000);
 }
 
 function escapeHtml(str) {
@@ -4813,12 +4855,18 @@ function setChatSecret(username, secret) {
   try { localStorage.setItem(CHAT_SECRET_PREFIX + username.toLowerCase(), secret); } catch {}
 }
 
+let chatBgPollTimer = null;
 function startChatPolling() {
   if (chatPollTimer) return;
   chatPollTimer = setInterval(loadChatMessages, 8000);
 }
 function stopChatPolling() {
   if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; }
+}
+// Background badge poll — slower, runs even when panel is closed
+function startChatBgPoll() {
+  if (chatBgPollTimer) return;
+  chatBgPollTimer = setInterval(() => { if (!chatPanelOpen) loadChatMessages(); }, 30000);
 }
 
 async function refreshChatAccess() {
@@ -4837,7 +4885,15 @@ async function refreshChatAccess() {
   }
 
   if (!lbData) { try { await fetchLbData(); } catch { return; } }
-  const entry  = lbData?.users?.[username.toLowerCase()];
+  // Look up by primary username, fall back to any entry listing this username as a linked account
+  const key = username.toLowerCase();
+  let entry = lbData?.users?.[key];
+  if (!entry && lbData?.users) {
+    entry = Object.values(lbData.users).find(d =>
+      Array.isArray(d.linkedAccounts) &&
+      d.linkedAccounts.some(a => (a.username || '').toLowerCase() === key)
+    );
+  }
   const scores = entry?.scores || {};
   const meetsThreshold = CHAT_EXEMPT.includes(username.toLowerCase()) || (
     (scores.overall_artist || 0) >= CHAT_THRESHOLD
@@ -4896,32 +4952,44 @@ async function refreshChatAccess() {
   }
 
   unlockedEl.style.display = 'flex';
-  const welcomedKey = 'bu_chat_welcomed_' + username.toLowerCase();
-  if (!localStorage.getItem(welcomedKey)) {
-    try { localStorage.setItem(welcomedKey, '1'); } catch {}
-    chatCongratsText = '🎉 Congratulations! You\'ve just unlocked the Blink Chat — say hi!';
-  }
+  showChatUnlockToast(username); // first-time only; toast handles its own seen-check
   loadChatMessages();
   startChatPolling();
+  startChatBgPoll();
 }
 
 async function loadChatMessages() {
   const wrap = document.getElementById('chat-messages');
-  if (!wrap) return;
   try {
     const r = await fetch('/api/leaderboard?action=chat-messages', { cache: 'no-store' });
     const d = await r.json();
     if (!r.ok) return;
+    const messages = d.messages || [];
+
+    // Unread badge: count messages newer than the last seen id
+    if (messages.length) {
+      const newestId = messages[messages.length - 1].id;
+      if (chatPanelOpen) {
+        chatLastSeenId = newestId;
+        setChatUnread(0);
+      } else if (chatLastSeenId === null) {
+        chatLastSeenId = newestId; // first load — treat all as seen
+      } else if (chatLastSeenId !== newestId) {
+        const unseenIdx = messages.findIndex(m => m.id === chatLastSeenId);
+        const newCount = unseenIdx === -1 ? messages.length : messages.length - unseenIdx - 1;
+        if (newCount > 0) setChatUnread(newCount);
+      }
+    }
+
+    if (!wrap) return;
     const wasAtBottom = wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 20;
-    const congrats = chatCongratsText
-      ? `<div class="chat-msg-system">${escapeHtml(chatCongratsText)}</div>` : '';
-    const msgs = (d.messages || []).map(m => `
+    const msgs = messages.map(m => `
       <div class="chat-msg" data-id="${m.id}">
         <span class="chat-msg-user">${escapeHtml(m.username)}</span>${escapeHtml(m.message)}
         <span class="chat-msg-time">${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
       </div>
     `).join('') || '<span style="color:var(--muted);font-size:0.7rem;">No messages yet — say hi!</span>';
-    wrap.innerHTML = congrats + msgs;
+    wrap.innerHTML = msgs;
     if (wasAtBottom) wrap.scrollTop = wrap.scrollHeight;
   } catch {}
 }

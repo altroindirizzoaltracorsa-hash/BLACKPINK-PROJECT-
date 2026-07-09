@@ -276,13 +276,16 @@ export default async function handler(req, res) {
     if ((lb.banned || []).includes(key)) return res.status(403).json({ error: 'This account is blocked' });
 
     // Auth: Supabase session token (account-based, works on any device)
+    let allLinkedKeys = null; // set when Supabase auth used, for broader entry lookup
     if (accessToken) {
       const { data: { user }, error: authErr } = await sb.auth.getUser(accessToken);
       if (authErr || !user) return res.status(401).json({ error: 'Session expired — please reload' });
       const { data: linked } = await sb
         .from('linked_accounts').select('source_username').eq('app_user_id', user.id);
-      const owns = (linked || []).some(a => a.source_username.toLowerCase() === key);
+      const linkedList = linked || [];
+      const owns = linkedList.some(a => a.source_username.toLowerCase() === key);
       if (!owns) return res.status(403).json({ error: 'This username is not linked to your account' });
+      allLinkedKeys = new Set(linkedList.map(a => a.source_username.toLowerCase()));
     } else {
       // Legacy: device-secret claim
       const { data: claim, error: claimErr } = await sb
@@ -291,12 +294,18 @@ export default async function handler(req, res) {
       if (!claim || claim.secret !== secret) return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Look up by key, then fall back to searching linkedAccounts (handles renames + multi-account)
-    let entry = lb.users?.[key];
+    // Look up leaderboard entry — try all linked account usernames so multi-account
+    // users are found even when the leaderboard key doesn't match the chat username.
+    const lookupKeys = allLinkedKeys ? [...allLinkedKeys] : [key];
+    let entry = null;
+    for (const k of lookupKeys) {
+      entry = lb.users?.[k];
+      if (entry) break;
+    }
     if (!entry && lb.users) {
       entry = Object.values(lb.users).find(d =>
         Array.isArray(d.linkedAccounts) &&
-        d.linkedAccounts.some(a => (a.username || '').toLowerCase() === key)
+        d.linkedAccounts.some(a => lookupKeys.includes((a.username || '').toLowerCase()))
       );
     }
     const scores = entry?.scores || {};
