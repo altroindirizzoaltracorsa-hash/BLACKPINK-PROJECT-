@@ -795,6 +795,25 @@
     .lb-avatar-placeholder { width: 26px; height: 26px; margin-right: 0.5rem; }
     .lb-user { font-size: 0.9rem; }
   }
+  .lb-table tbody tr { cursor: pointer; }
+  #lb-user-overlay { position:fixed;inset:0;z-index:9998;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px); }
+  #lb-user-sheet { background:var(--card);border:1px solid var(--border);border-radius:1.25rem 1.25rem 0 0;padding:1.75rem 1.5rem 2rem;width:100%;max-width:480px;max-height:80vh;overflow-y:auto; }
+  .lb-user-header { display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem; }
+  .lb-user-header img,.lb-user-header .lb-user-initials { width:44px;height:44px;border-radius:50%;border:1px solid var(--border);object-fit:cover;flex-shrink:0; }
+  .lb-user-initials { background:var(--pink-muted);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:1.1rem;color:var(--pink); }
+  .lb-user-name { font-family:var(--display);font-size:1.1rem;letter-spacing:0.06em; }
+  .lb-user-meta { font-size:0.6rem;letter-spacing:0.12em;color:var(--muted);margin-top:0.2rem; }
+  .lb-profile-section { margin-top:1.1rem; }
+  .lb-profile-section-title { font-size:0.55rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--pink);margin-bottom:0.5rem; }
+  .lb-profile-row { display:flex;justify-content:space-between;align-items:center;padding:0.45rem 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:0.85rem; }
+  .lb-profile-row:last-child { border-bottom:none; }
+  .lb-profile-row .label { color:var(--muted);font-size:0.78rem; }
+  .lb-profile-row .val { font-family:var(--display);color:var(--pink);font-size:0.95rem; }
+  .lb-profile-row.total .label { color:var(--white);font-size:0.82rem; }
+  .lb-profile-row.total .val { font-size:1.1rem; }
+  .lb-profile-close { display:block;width:100%;margin-top:1.25rem;padding:0.75rem;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;transition:border-color .2s,color .2s; }
+  .lb-profile-close:hover { border-color:var(--pink);color:var(--pink); }
+
   .lb-refresh-btn {
     background: transparent; border: 1px solid var(--border);
     color: var(--muted); font-family: var(--mono); font-size: 0.6rem;
@@ -3407,6 +3426,8 @@ async function loadProfile(usernameOverride, silent = false) {
     }
     // Submit scores to leaderboard in background (non-blocking)
     submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs).catch(()=>{});
+    // Re-render leaderboard if visible so "YOU" highlight appears immediately after login
+    if (document.getElementById('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
 
   } catch(e) {
     if (!silent) {
@@ -3774,6 +3795,7 @@ async function loadMultiAccountProfile(accounts) {
   persistTodayStamp(primaryUsername, combined.todayCounts);
   renderProfile(combined);
   submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs).catch(()=>{});
+  if (document.getElementById('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
 }
 
 function tsAgo(ts) {
@@ -4567,7 +4589,7 @@ function renderLeaderboard() {
             const avatarHtml = e.avatar
               ? `<img class="lb-avatar" src="${e.avatar}" alt="${e.username}">`
               : `<span class="lb-avatar-placeholder">${e.username[0].toUpperCase()}</span>`;
-            return `<tr class="${isMe ? 'me' : ''}">
+            return `<tr class="${isMe ? 'me' : ''}" onclick="showLbUserProfile('${e.username.replace(/'/g,"\\'")}')">
               <td><span class="lb-rank ${rankClass}">${rankEmoji || (i+1)}</span></td>
               <td>${avatarHtml}<span class="lb-user">${e.displayName || e.username}</span>${ogUsers.has(e.username.toLowerCase()) ? ' <span class="og-inline-badge" data-tip="Here from the start · OG Beta Tester">⭐ OG</span>' : ''}${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${leaderStreakBadge(i, e.username)}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
               <td class="lb-score">${e.score > 0 ? e.score.toLocaleString() : '—'}</td>
@@ -4585,6 +4607,49 @@ function renderLeaderboard() {
     const d = new Date(lbData.lastUpdated);
     updEl.textContent = `Last updated: ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} · refreshes every 60 min`;
   }
+}
+
+function showLbUserProfile(username) {
+  const users = getActiveLbUsers();
+  const data = users[username];
+  if (!data) return;
+  const s = data.scores || {};
+  const fmt = n => (n > 0 ? Number(n).toLocaleString() : '—');
+
+  const headerEl = document.getElementById('lb-user-header');
+  const initials = (data.displayName || username)[0].toUpperCase();
+  const avatarHtml = data.avatar
+    ? `<img src="${data.avatar}" alt="${username}">`
+    : `<div class="lb-user-initials">${initials}</div>`;
+  const badge = getBadge(s.overall_all || 0);
+  const accounts = (data.linkedAccounts || []).map(a => `${a.username} (${(a.type||'').replace('lastfm','Last.fm').replace('listenbrainz','LBz').replace('librefm','Libre.fm').replace('musicat','Musicat').replace('statsfm','Stats.fm')})`).join(' · ');
+  headerEl.innerHTML = `
+    ${avatarHtml}
+    <div>
+      <div class="lb-user-name">${data.displayName || username}${badge ? ` <span>${badge.icon}</span>` : ''}</div>
+      ${accounts ? `<div class="lb-user-meta">${accounts}</div>` : ''}
+    </div>`;
+
+  const sections = [
+    { title: 'Campaign Total (All Time)', all: s.overall_all, jump: s.overall_jump, shutdown: s.overall_shutdown, ddududu: s.overall_ddududu },
+    { title: 'This Week', all: s.weekly_all, jump: s.weekly_jump, shutdown: s.weekly_shutdown, ddududu: s.weekly_ddududu },
+    { title: 'Today', all: s.daily_all, jump: s.daily_jump, shutdown: s.daily_shutdown, ddududu: s.daily_ddududu },
+  ];
+
+  document.getElementById('lb-user-sections').innerHTML = sections.map(sec => `
+    <div class="lb-profile-section">
+      <div class="lb-profile-section-title">${sec.title}</div>
+      <div class="lb-profile-row total"><span class="label">All Tracks</span><span class="val">${fmt(sec.all)}</span></div>
+      <div class="lb-profile-row"><span class="label">JUMP</span><span class="val">${fmt(sec.jump)}</span></div>
+      <div class="lb-profile-row"><span class="label">SHUT DOWN</span><span class="val">${fmt(sec.shutdown)}</span></div>
+      <div class="lb-profile-row"><span class="label">DDU-DU DDU-DU</span><span class="val">${fmt(sec.ddududu)}</span></div>
+    </div>`).join('');
+
+  document.getElementById('lb-user-overlay').style.display = 'flex';
+}
+
+function closeLbUserProfile() {
+  document.getElementById('lb-user-overlay').style.display = 'none';
 }
 
 async function refreshLeaderboard(force = false) {
@@ -6560,6 +6625,15 @@ window.addEventListener('appinstalled', () => {
 
 
 <!-- ── BREAKDOWN POPUP ──────────────────────────────────────── -->
+<div id="lb-user-overlay" style="display:none" onclick="if(event.target===this)closeLbUserProfile()">
+  <div id="lb-user-sheet">
+    <div class="breakdown-handle"></div>
+    <div class="lb-user-header" id="lb-user-header"></div>
+    <div id="lb-user-sections"></div>
+    <button class="lb-profile-close" onclick="closeLbUserProfile()">× Close</button>
+  </div>
+</div>
+
 <div id="breakdown-overlay" class="breakdown-overlay" style="display:none" onclick="if(event.target===this)closeBreakdown()">
   <div class="breakdown-sheet">
     <div class="breakdown-handle"></div>
