@@ -3461,30 +3461,34 @@ function getSavedLbUsername() { try { return localStorage.getItem(LS_LB_KEY) || 
 
 // Auto-load on page show if username was previously saved
 let _autoLoadInProgress = false;
+let _autoLoadPromise = null;
 async function tryAutoLoad() {
-  if (_autoLoadInProgress) return;
+  if (_autoLoadInProgress) return _autoLoadPromise; // let callers await the same in-flight load
   _autoLoadInProgress = true;
-  try {
-    if (sb) {
-      try {
-        const { data: { session } } = await sb.auth.getSession();
-        if (session) {
-          await initMyBadgesFromAccount();
-          return;
-        }
-      } catch {}
+  _autoLoadPromise = (async () => {
+    try {
+      if (sb) {
+        try {
+          const { data: { session } } = await sb.auth.getSession();
+          if (session) {
+            await initMyBadgesFromAccount();
+            return;
+          }
+        } catch {}
+      }
+      // Fallback: legacy guest flow (no Supabase session)
+      const saved = getSavedUsername();
+      if (saved) {
+        document.getElementById('lfm-input').value = saved;
+        const lbEl = document.getElementById('lb-input');
+        if (lbEl) lbEl.value = getSavedLbUsername();
+        await loadProfile();
+      }
+    } finally {
+      _autoLoadInProgress = false;
     }
-    // Fallback: legacy guest flow (no Supabase session)
-    const saved = getSavedUsername();
-    if (saved) {
-      document.getElementById('lfm-input').value = saved;
-      const lbEl = document.getElementById('lb-input');
-      if (lbEl) lbEl.value = getSavedLbUsername();
-      loadProfile();
-    }
-  } finally {
-    _autoLoadInProgress = false;
-  }
+  })();
+  return _autoLoadPromise;
 }
 
 async function refreshProfile() {
@@ -4623,7 +4627,7 @@ async function showLbUserProfile(username) {
   const isMe = myUsername && username.toLowerCase() === myUsername.toLowerCase();
 
   if (isMe) {
-    // If acctBreakdown isn't ready yet, show a loading state and wait for it
+    // If acctBreakdown isn't ready yet, show a loading state and await the in-flight load
     if (!acctBreakdown) {
       document.getElementById('breakdown-title').textContent = '// Loading your breakdown…';
       document.getElementById('breakdown-rows').innerHTML =
@@ -4632,15 +4636,8 @@ async function showLbUserProfile(username) {
       const ovl = document.getElementById('breakdown-overlay');
       ovl.style.display = 'flex';
       document.body.style.overflow = 'hidden';
-      tryAutoLoad().catch(() => {});
-      // Poll up to 12 s for acctBreakdown to be populated
-      await new Promise(resolve => {
-        let elapsed = 0;
-        const t = setInterval(() => {
-          elapsed += 250;
-          if (acctBreakdown || elapsed >= 12000) { clearInterval(t); resolve(); }
-        }, 250);
-      });
+      // tryAutoLoad() returns the shared in-flight promise if already running
+      await tryAutoLoad().catch(() => {});
     }
     if (acctBreakdown && acctBreakdown.length >= 2) {
       const type = lbPeriod === 'overall'
