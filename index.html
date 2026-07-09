@@ -2288,6 +2288,7 @@ function showPage(page, { replace = false } = {}) {
   if (page === 'home') initAnimations();
   if (page === 'badges') tryAutoLoad();
   if (page === 'leaderboard') {
+    if (!acctBreakdown) tryAutoLoad(); // pre-load per-service data so own-row breakdown works
     const pending = parseLbHistoryParam();
     if (pending) {
       lbPeriod = pending.period;
@@ -4456,6 +4457,64 @@ function renderLeaderboard() {
   }
 }
 
+function showLbUserProfile(username) {
+  // For the logged-in user with multiple accounts: show per-service breakdown
+  // for whatever period/song the leaderboard is currently showing.
+  const myUsername = getSavedUsername();
+  const isMe = myUsername && username.toLowerCase() === myUsername.toLowerCase();
+  if (isMe && acctBreakdown && acctBreakdown.length >= 2) {
+    const type = lbPeriod === 'overall'
+      ? (lbSong === 'all' ? 'campaignTotal' : 'overall')
+      : lbPeriod;
+    const key = lbSong === 'all' ? undefined : lbSong;
+    showBreakdown(type, key);
+    return;
+  }
+  // If it's my row but acctBreakdown isn't loaded yet, trigger a background load
+  // and show the generic sheet as a fallback. Next tap will use the per-service view.
+  if (isMe && !acctBreakdown) tryAutoLoad().catch(() => {});
+
+  const users = getActiveLbUsers();
+  const data = users[username];
+  if (!data) return;
+  const s = data.scores || {};
+  const fmt = n => (n > 0 ? Number(n).toLocaleString() : '—');
+
+  const headerEl = document.getElementById('lb-user-header');
+  const initials = (data.displayName || username)[0].toUpperCase();
+  const avatarHtml = data.avatar
+    ? `<img src="${data.avatar}" alt="${username}">`
+    : `<div class="lb-user-initials">${initials}</div>`;
+  const badge = getBadge(s.overall_all || 0);
+  const accounts = (data.linkedAccounts || []).map(a => `${a.username} (${(a.type||'').replace('lastfm','Last.fm').replace('listenbrainz','LBz').replace('librefm','Libre.fm').replace('musicat','Musicat').replace('statsfm','Stats.fm')})`).join(' · ');
+  headerEl.innerHTML = `
+    ${avatarHtml}
+    <div>
+      <div class="lb-user-name">${data.displayName || username}${badge ? ` <span>${badge.icon}</span>` : ''}</div>
+      ${accounts ? `<div class="lb-user-meta">${accounts}</div>` : ''}
+    </div>`;
+
+  const sections = [
+    { title: 'Campaign Total (All Time)', all: s.overall_all, jump: s.overall_jump, shutdown: s.overall_shutdown, ddududu: s.overall_ddududu },
+    { title: 'This Week', all: s.weekly_all, jump: s.weekly_jump, shutdown: s.weekly_shutdown, ddududu: s.weekly_ddududu },
+    { title: 'Today', all: s.daily_all, jump: s.daily_jump, shutdown: s.daily_shutdown, ddududu: s.daily_ddududu },
+  ];
+
+  document.getElementById('lb-user-sections').innerHTML = sections.map(sec => `
+    <div class="lb-profile-section">
+      <div class="lb-profile-section-title">${sec.title}</div>
+      <div class="lb-profile-row total"><span class="label">All Tracks</span><span class="val">${fmt(sec.all)}</span></div>
+      <div class="lb-profile-row"><span class="label">JUMP</span><span class="val">${fmt(sec.jump)}</span></div>
+      <div class="lb-profile-row"><span class="label">SHUT DOWN</span><span class="val">${fmt(sec.shutdown)}</span></div>
+      <div class="lb-profile-row"><span class="label">DDU-DU DDU-DU</span><span class="val">${fmt(sec.ddududu)}</span></div>
+    </div>`).join('');
+
+  document.getElementById('lb-user-overlay').style.display = 'flex';
+}
+
+function closeLbUserProfile() {
+  document.getElementById('lb-user-overlay').style.display = 'none';
+}
 async function refreshLeaderboard(force = false) {
   if (lbHistorySnapshot) { exitLbHistory(); return; }
   const wrap = document.getElementById('lb-table-wrap');
