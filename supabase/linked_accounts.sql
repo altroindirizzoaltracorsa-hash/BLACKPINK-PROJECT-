@@ -5,7 +5,7 @@
 create table if not exists linked_accounts (
   id uuid primary key default gen_random_uuid(),
   app_user_id uuid not null references auth.users(id) on delete cascade,
-  source text not null check (source in ('lastfm', 'listenbrainz')),
+  source text not null check (source in ('lastfm', 'listenbrainz', 'librefm', 'musicat', 'statsfm')),
   source_username text not null,
   created_at timestamptz not null default now()
 );

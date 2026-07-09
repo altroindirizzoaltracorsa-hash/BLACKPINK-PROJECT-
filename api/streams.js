@@ -200,8 +200,8 @@ export default async function handler(req, res) {
       // that loses the race just returns the current cached snapshot instead.
       gotLock = !!(await redis.set(lockKey, '1', { nx: true, ex: 30 }));
       if (!gotLock) {
-        const [cachedOnly, histOnly] = await Promise.all([redis.get(liveKey), redis.get(histKey)]);
-        results[name] = { total: cachedOnly?.total || 0, history: histOnly || [] };
+        const [cachedOnly, histOnly, prevOnly] = await Promise.all([redis.get(liveKey), redis.get(histKey), redis.get(prevKey)]);
+        results[name] = { total: cachedOnly?.total || 0, history: histOnly || [], prev: prevOnly ? { total: prevOnly.total, date: prevOnly.date } : null };
         continue;
       }
 
@@ -293,6 +293,7 @@ export default async function handler(req, res) {
       results[name] = {
         total,
         history,
+        prev: prev ? { total: prev.total, date: prev.date } : null,
         ...(stale ? { stale: true, updatedAt: updatedAt ? new Date(updatedAt).toISOString() : null } : {}),
       };
     } catch (e) {

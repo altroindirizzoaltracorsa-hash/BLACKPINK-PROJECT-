@@ -60,6 +60,63 @@ export default async function handler(req, res) {
     }
   }
 
+  // Stats.fm stats proxy
+  const sfmUser = req.query.statsfm_user;
+  if (sfmUser) {
+    try {
+      const SFM_BASE = 'https://api.stats.fm/api/v1';
+      const SFM_HEADERS = { 'content-type': 'application/json' };
+
+      const ur = await fetch(`${SFM_BASE}/users/${encodeURIComponent(sfmUser)}`, { headers: SFM_HEADERS });
+      if (!ur.ok) return res.status(400).json({ error: `Stats.fm user "${sfmUser}" not found (${ur.status})` });
+      const ud = await ur.json();
+      const user = ud.item ?? ud;
+      const customId = user.customId ?? user.id ?? sfmUser;
+      const displayName = user.displayName ?? customId;
+      const privacy = user.privacySettings;
+
+      // Fetch top tracks, top artists, and stream stats in parallel.
+      const [tr, ar, sr] = await Promise.all([
+        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=500`, { headers: SFM_HEADERS }),
+        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`, { headers: SFM_HEADERS }),
+        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/streams/stats?range=lifetime`, { headers: SFM_HEADERS }),
+      ]);
+      if (!tr.ok) return res.status(400).json({ error: 'Could not fetch track stats from Stats.fm' });
+      const [td, ad, sd] = await Promise.all([
+        tr.json(),
+        ar.ok ? ar.json() : Promise.resolve(null),
+        sr.ok ? sr.json() : Promise.resolve(null),
+      ]);
+      const items = td.items ?? [];
+
+      // BP family plays: sum streams across BLACKPINK + all solo members.
+      const BP_ARTISTS = new Set(['BLACKPINK', 'JISOO', 'LISA', 'ROSÉ', 'JENNIE']);
+      const artistPlays = (ad?.items ?? [])
+        .filter(i => BP_ARTISTS.has(i.artist?.name))
+        .reduce((sum, i) => sum + (i.streams ?? 0), 0);
+
+      // Match all versions of each song by name prefix + BLACKPINK artist.
+      const TRACK_PREFIXES = { jump: 'jump', shutdown: 'shut down', ddududu: 'ddu-du ddu-du' };
+      const tracks = {};
+      for (const [key, prefix] of Object.entries(TRACK_PREFIXES)) {
+        tracks[key] = items
+          .filter(i => i.track?.name?.toLowerCase().startsWith(prefix) &&
+                       i.track?.artists?.some(a => a.name === 'BLACKPINK'))
+          .reduce((sum, i) => sum + (i.streams ?? 0), 0);
+      }
+
+      return res.status(200).json({
+        customId, displayName,
+        playcount: artistPlays || Object.values(tracks).reduce((s, v) => s + v, 0),
+        artistPlays,
+        tracks,
+        today: { jump: 0, shutdown: 0, ddududu: 0 },
+      });
+    } catch(err) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
+
   // Image proxy
   const { url } = req.query;
   if (!url || !/^https?:\/\//.test(url)) return res.status(400).json({ error: 'Invalid URL' });

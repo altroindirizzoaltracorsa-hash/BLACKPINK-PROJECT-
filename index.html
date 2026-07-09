@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
 <title>BLINKS UNITED | BLACKPINK Streaming Hub</title>
 <meta name="description" content="Stream tracker, leaderboard, badges, and fan-vote hub for BLACKPINK — built by Blinks United.">
 <meta property="og:type" content="website">
@@ -49,7 +49,7 @@
   }
 
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; overflow-x: hidden; }
+  html { scroll-behavior: smooth; }
 
   html, body { cursor: crosshair; }
   body {
@@ -643,6 +643,13 @@
   .chart-bar:hover { background: var(--pink); }
   .chart-tooltip { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); background: var(--charcoal); border: 1px solid var(--border); padding: 0.3rem 0.5rem; white-space: nowrap; font-size: 0.58rem; letter-spacing: 0.08em; color: var(--white); pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 10; }
   .chart-bar-wrap:hover .chart-tooltip { opacity: 1; }
+  .history-older { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid rgba(255,0,102,0.12); }
+  .history-older-label { font-size: 0.55rem; letter-spacing: 0.18em; color: rgba(245,240,240,0.3); margin-bottom: 0.6rem; }
+  .history-month-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(245,240,240,0.5); background: none; border: none; border-bottom: 1px solid rgba(255,255,255,0.04); cursor: pointer; padding: 0.5rem 0; transition: color 0.2s; }
+  .history-month-toggle:hover { color: var(--pink); }
+  .history-month-toggle .arrow { transition: transform 0.2s; display: inline-block; }
+  .history-month-toggle.open .arrow { transform: rotate(180deg); }
+  .history-month-panel { display: none; padding: 0.75rem 0 0.25rem; }
 
   @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
@@ -765,7 +772,48 @@
   .lb-delta-dn { font-size: 0.62rem; color: rgba(245,240,240,0.3); letter-spacing: 0.08em; }
   .lb-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
   .lb-loading { padding: 3rem; text-align: center; color: var(--muted); font-size: 0.68rem; letter-spacing: 0.16em; }
-  #lb-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #lb-table-wrap { }
+  @media (max-width: 480px) {
+    /* Nav: shrink logo so logo+install+hamburger aren't cramped */
+    .nav-logo { font-size: 1rem; letter-spacing: 0.14em; }
+    /* Playlist banner: fit all three spans on one line */
+    .playlist-banner { flex-wrap: nowrap; gap: 0.5rem; }
+    .playlist-banner-label { font-size: 0.52rem; }
+    .playlist-banner-day { font-size: 0.62rem; }
+    .playlist-banner-cta { font-size: 0.52rem; }
+    /* Hero CTA: Badge Challenge + Vote sit side by side */
+    .hero-cta { gap: 0.7rem; }
+    .hero-cta .btn-primary, .hero-cta .btn-ghost { padding: 0.9rem 1.8rem; }
+    /* Leaderboard table */
+    .lb-inner { padding: 0 0.5rem; }
+    .lb-table { table-layout: fixed; }
+    .lb-table th, .lb-table td { padding: 0.7rem 0.4rem; }
+    .lb-table th:last-child, .lb-table td:last-child { width: 90px; }
+    .lb-score { font-size: 1rem; }
+    .lb-rank { font-size: 1.1rem; width: auto; }
+    .lb-avatar { width: 26px; height: 26px; margin-right: 0.5rem; }
+    .lb-avatar-placeholder { width: 26px; height: 26px; margin-right: 0.5rem; }
+    .lb-user { font-size: 0.9rem; }
+  }
+  .lb-table tbody tr { cursor: pointer; }
+  #lb-user-overlay { position:fixed;inset:0;z-index:9998;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px); }
+  #lb-user-sheet { background:var(--card);border:1px solid var(--border);border-radius:1.25rem 1.25rem 0 0;padding:1.75rem 1.5rem 2rem;width:100%;max-width:480px;max-height:80vh;overflow-y:auto; }
+  .lb-user-header { display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem; }
+  .lb-user-header img,.lb-user-header .lb-user-initials { width:44px;height:44px;border-radius:50%;border:1px solid var(--border);object-fit:cover;flex-shrink:0; }
+  .lb-user-initials { background:var(--pink-muted);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:1.1rem;color:var(--pink); }
+  .lb-user-name { font-family:var(--display);font-size:1.1rem;letter-spacing:0.06em; }
+  .lb-user-meta { font-size:0.6rem;letter-spacing:0.12em;color:var(--muted);margin-top:0.2rem; }
+  .lb-profile-section { margin-top:1.1rem; }
+  .lb-profile-section-title { font-size:0.55rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--pink);margin-bottom:0.5rem; }
+  .lb-profile-row { display:flex;justify-content:space-between;align-items:center;padding:0.45rem 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:0.85rem; }
+  .lb-profile-row:last-child { border-bottom:none; }
+  .lb-profile-row .label { color:var(--muted);font-size:0.78rem; }
+  .lb-profile-row .val { font-family:var(--display);color:var(--pink);font-size:0.95rem; }
+  .lb-profile-row.total .label { color:var(--white);font-size:0.82rem; }
+  .lb-profile-row.total .val { font-size:1.1rem; }
+  .lb-profile-close { display:block;width:100%;margin-top:1.25rem;padding:0.75rem;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;transition:border-color .2s,color .2s; }
+  .lb-profile-close:hover { border-color:var(--pink);color:var(--pink); }
+
   .lb-refresh-btn {
     background: transparent; border: 1px solid var(--border);
     color: var(--muted); font-family: var(--mono); font-size: 0.6rem;
@@ -1424,7 +1472,7 @@
       <div id="badges-auth-link" style="display:none">
         <div class="login-card">
           <p class="login-label">Link your scrobbling accounts</p>
-          <p class="login-desc">Add your Last.fm, ListenBrainz, Libre.fm, and/or Musicat usernames — all your streams count toward one leaderboard row.</p>
+          <p class="login-desc">Add your Last.fm, ListenBrainz, Libre.fm, Musicat, and/or Stats.fm usernames — all your streams count toward one leaderboard row.</p>
           <div id="linked-accounts-list-inline"></div>
           <div class="input-row" style="margin-top:1rem;">
             <select id="linked-source-select" class="username-input" style="flex:0 0 140px;" onchange="updateLbHint('linked-source-select','lb-hint-inline')">
@@ -1432,6 +1480,7 @@
               <option value="listenbrainz">ListenBrainz</option>
               <option value="librefm">Libre.fm</option>
               <option value="musicat">Musicat</option>
+              <option value="statsfm">Stats.fm</option>
             </select>
             <input class="username-input" id="linked-username-input" type="text" placeholder="Username" />
             <button class="btn-primary" onclick="addLinkedAccount()">+ Link</button>
@@ -1527,7 +1576,7 @@
 
           <div style="margin-top:1rem;">
             <label class="settings-label">Linked Accounts</label>
-            <p class="settings-hint" style="margin-bottom:0.5rem;">Last.fm, ListenBrainz, Libre.fm, and/or Musicat usernames — all streams count toward one leaderboard row.</p>
+            <p class="settings-hint" style="margin-bottom:0.5rem;">Last.fm, ListenBrainz, Libre.fm, Musicat, and/or Stats.fm usernames — all streams count toward one leaderboard row.</p>
             <div id="linked-accounts-list-settings" style="margin-bottom:0.75rem;"></div>
             <div class="input-row" style="gap:0.5rem;">
               <select id="linked-source-select-settings" class="settings-input" style="flex:0 0 140px;" onchange="updateLbHint('linked-source-select-settings','lb-hint-settings')">
@@ -1535,6 +1584,7 @@
                 <option value="listenbrainz">ListenBrainz</option>
                 <option value="librefm">Libre.fm</option>
                 <option value="musicat">Musicat</option>
+                <option value="statsfm">Stats.fm</option>
               </select>
               <input class="settings-input" id="linked-username-input-settings" type="text" placeholder="Username" style="flex:1;" />
               <button class="btn-primary" onclick="addLinkedAccountSettings()">+ Link</button>
@@ -1854,7 +1904,7 @@ const SPOTIFY_TRACKS = [
   { id: 'ddududu',  trackId: '69BIczdH6QMnFx7dsSssN8', goal: 1_000_000_000 },
 ];
 
-// ── STREAM HISTORY (daily stream counts) ── Last updated: 05/07/2026
+// ── STREAM HISTORY (daily stream counts) ── Last updated: 06/07/2026
 // Each entry = streams played on that specific day (not cumulative)
 const STREAM_HISTORY = {
   jump: [
@@ -1889,6 +1939,7 @@ const STREAM_HISTORY = {
     { date: '03/07', streams: 706034 },
     { date: '04/07', streams: 668626 },
     { date: '05/07', streams: 623401 },
+    { date: '06/07', streams: 666283 },
   ],
   shutdown: [
     { date: '08/05', streams: 265404 },
@@ -1918,6 +1969,7 @@ const STREAM_HISTORY = {
     { date: '03/07', streams: 223425 },
     { date: '04/07', streams: 218558 },
     { date: '05/07', streams: 208771 },
+    { date: '06/07', streams: 214129 },
   ],
   ddududu: [
     { date: '22/05', streams: 219465 },
@@ -1929,6 +1981,7 @@ const STREAM_HISTORY = {
     { date: '03/07', streams: 205407 },
     { date: '04/07', streams: 189567 },
     { date: '05/07', streams: 185295 },
+    { date: '06/07', streams: 199851 },
   ],
 };
 
@@ -1974,7 +2027,46 @@ function renderDaysToGoal(id, history, total, goal) {
 }
 
 // ── HISTORY CHART ─────────────────────────────────────────────
-function renderHistory(id, history) {
+const HIST_MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function buildMonthChartHtml(entries, markLatest, baseTotal) {
+  const max = Math.max(...entries.map(h => h.streams));
+  // Compute running (cumulative) totals backwards from baseTotal so each bar
+  // can show the all-time total as of that day in its tooltip.
+  let runningTotals = null;
+  if (baseTotal != null) {
+    runningTotals = new Array(entries.length);
+    let accum = baseTotal;
+    for (let i = entries.length - 1; i >= 0; i--) {
+      runningTotals[i] = accum;
+      if (i > 0) accum -= entries[i].streams;
+    }
+  }
+  const barsHtml = entries.map((h, i) => {
+    const prev = i > 0 ? entries[i - 1].streams : null;
+    const diff = prev !== null ? h.streams - prev : null;
+    const heightPct = Math.max(4, Math.round((h.streams / max) * 100));
+    const isLatest = markLatest && i === entries.length - 1;
+    const gainHtml = diff !== null && diff > 0
+      ? ` <span style="color:#00ff88">+${formatFull(diff)}</span>`
+      : (diff !== null && diff < 0 ? ` <span style="color:rgba(245,240,240,0.3)">${formatFull(diff)}</span>` : '');
+    const totalHtml = runningTotals != null
+      ? `<br><span style="color:rgba(245,240,240,0.5)">Total: ${formatFull(runningTotals[i])}</span>`
+      : '';
+    return `<div class="chart-bar-wrap">
+      <div class="chart-tooltip">${h.date}: ${formatFull(h.streams)}${gainHtml}${totalHtml}</div>
+      <div class="chart-bar${isLatest ? ' latest' : ''}" style="height:${heightPct}%"></div>
+    </div>`;
+  }).join('');
+  const showDates = entries.length <= 14;
+  const datesHtml = showDates ? entries.map(h =>
+    `<div style="flex:1;font-size:0.65rem;letter-spacing:0.01em;color:rgba(245,240,240,0.45);text-align:center;white-space:nowrap;overflow:hidden;">${h.date}</div>`
+  ).join('') : '';
+  return `<div class="chart-bars">${barsHtml}</div>
+    ${showDates ? `<div style="display:flex;gap:4px;margin-bottom:0.5rem;">${datesHtml}</div>` : '<div style="margin-bottom:0.5rem;"></div>'}`;
+}
+
+function renderHistory(id, history, currentTotal) {
   const panel = document.getElementById(`history-${id}`);
   if (!panel) return;
   history = history || STREAM_HISTORY[id] || [];
@@ -1985,36 +2077,69 @@ function renderHistory(id, history) {
     return;
   }
 
-  const max = Math.max(...history.map(h => h.streams));
-  const barsHtml = history.map((h, i) => {
-    const prev = i > 0 ? history[i - 1].streams : null;
-    const diff = prev !== null ? h.streams - prev : null;
-    const heightPct = Math.max(4, Math.round((h.streams / max) * 100));
-    const isLatest = i === history.length - 1;
-    const gainHtml = diff !== null && diff > 0
-      ? ` <span style="color:#00ff88">+${formatFull(diff)}</span>`
-      : (diff !== null && diff < 0 ? ` <span style="color:rgba(245,240,240,0.3)">${formatFull(diff)}</span>` : '');
-    return `<div class="chart-bar-wrap">
-      <div class="chart-tooltip">${h.date}: ${formatFull(h.streams)}${gainHtml}</div>
-      <div class="chart-bar${isLatest ? ' latest' : ''}" style="height:${heightPct}%"></div>
-    </div>`;
-  }).join('');
+  // Group by month (DD/MM → key = MM)
+  const byMonth = {};
+  history.forEach(h => {
+    const mm = h.date.split('/')[1];
+    if (!byMonth[mm]) byMonth[mm] = [];
+    byMonth[mm].push(h);
+  });
 
-  const datesHtml = history.map(h =>
-    `<div style="flex:1;font-size:0.65rem;letter-spacing:0.01em;color:rgba(245,240,240,0.45);text-align:center;white-space:nowrap;overflow:hidden;">${h.date}</div>`
-  ).join('');
+  // Sort month keys ascending; latest month = current
+  const sortedMMs = Object.keys(byMonth).sort((a, b) => Number(a) - Number(b));
+  const currentMM = sortedMMs[sortedMMs.length - 1];
+  const currentEntries = byMonth[currentMM];
+  const olderMMs = sortedMMs.slice(0, -1);
 
-  const latest = history[history.length - 1];
-  // Show dates only when there are few bars; hide when too many to avoid overlap
-  const showDates = history.length <= 14;
+  const currentLabel = HIST_MONTH_LABELS[parseInt(currentMM, 10) - 1] + ' 2026';
+  const latest = currentEntries[currentEntries.length - 1];
+
+  // Compute base totals per month: total as of last day of that month.
+  // Work backwards from currentTotal, subtracting each month's daily sum.
+  const monthBaseTotals = {};
+  if (currentTotal != null) {
+    let base = currentTotal;
+    for (let i = sortedMMs.length - 1; i >= 0; i--) {
+      const mm = sortedMMs[i];
+      monthBaseTotals[mm] = base;
+      base -= byMonth[mm].reduce((s, e) => s + e.streams, 0);
+    }
+  }
+
+  const olderHtml = olderMMs.length > 0 ? `
+    <div class="history-older">
+      <p class="history-older-label">// Older months</p>
+      ${olderMMs.reverse().map(mm => {
+        const entries = byMonth[mm];
+        const label = HIST_MONTH_LABELS[parseInt(mm, 10) - 1] + ' 2026';
+        const peak = Math.max(...entries.map(e => e.streams));
+        const monthLatest = entries[entries.length - 1];
+        return `<button class="history-month-toggle" onclick="toggleMonthHistory(this)">
+          <span>${label} <span style="color:rgba(245,240,240,0.3);font-size:0.9em">(${entries.length} days tracked)</span></span>
+          <span class="arrow">▾</span>
+        </button>
+        <div class="history-month-panel">
+          ${buildMonthChartHtml(entries, false, monthBaseTotals[mm])}
+          <p style="font-size:0.58rem;letter-spacing:0.08em;color:rgba(245,240,240,0.35);">Peak: ${formatFull(peak)} · Last entry: ${formatFull(monthLatest.streams)} on ${monthLatest.date}</p>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
   panel.innerHTML = `
-    <p class="history-title">// Daily Stream History</p>
-    <div class="chart-bars">${barsHtml}</div>
-    ${showDates ? `<div style="display:flex;gap:4px;margin-bottom:0.5rem;">${datesHtml}</div>` : '<div style="margin-bottom:0.5rem;"></div>'}
-    <p style="font-size:0.6rem;letter-spacing:0.08em;color:rgba(245,240,240,0.4);">
+    <p class="history-title">// Daily Stream History · ${currentLabel}</p>
+    ${buildMonthChartHtml(currentEntries, true, monthBaseTotals[currentMM])}
+    <p style="font-size:0.6rem;letter-spacing:0.08em;color:rgba(245,240,240,0.4);margin-bottom:0.5rem;">
       Latest: ${formatFull(latest.streams)} streams on ${latest.date} · Pink = most recent · Hover for details
-    </p>`;
+    </p>
+    ${olderHtml}`;
   panel.style.display = 'block';
+}
+
+function toggleMonthHistory(btn) {
+  const panel = btn.nextElementSibling;
+  const isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? 'block' : 'none';
+  btn.classList.toggle('open', isHidden);
 }
 
 function toggleHistory(id, btn) {
@@ -2102,6 +2227,7 @@ async function fetchSpotifyStreams() {
       if (!entry) continue;
       const plays = (typeof entry === 'object') ? (entry.total || 0) : (entry || 0);
       const apiHistory = (typeof entry === 'object') ? (entry.history || []) : [];
+      const apiPrev = (typeof entry === 'object') ? (entry.prev || null) : null;
       const lastApiDay = apiHistory.length > 0 ? apiHistory[apiHistory.length - 1] : null;
 
       const staleEl = document.getElementById(`stale-${t.id}`);
@@ -2145,6 +2271,16 @@ async function fetchSpotifyStreams() {
           if (diff > 0) { autoStreams = diff; autoDate = yesterday; }
         }
 
+        // Fallback: if localStorage doesn't have yesterday's snapshot (user
+        // skipped a day, cleared storage, or is on a new device), use the
+        // server's prev snapshot which the API now returns alongside history.
+        // apiPrev.date === yesterday means the server saw a new total yesterday
+        // and stored it — so plays - apiPrev.total = yesterday's daily streams.
+        if (autoStreams === null && apiPrev && apiPrev.date === yesterday && apiPrev.total > 0) {
+          const diff = plays - apiPrev.total;
+          if (diff > 0) { autoStreams = diff; autoDate = yesterday; }
+        }
+
         // Save snapshot for today (only once per calendar day)
         if (!stored || stored.date !== today) {
           saveStored(t.id, plays);
@@ -2175,7 +2311,7 @@ async function fetchSpotifyStreams() {
           return am !== bm ? am - bm : ad - bd;
         });
 
-        renderHistory(t.id, merged);
+        renderHistory(t.id, merged, plays);
         renderDaysToGoal(t.id, merged, plays, t.goal);
 
         // Prefer the most recent daily: auto-calc wins if it's for a newer date than
@@ -2369,7 +2505,7 @@ const sb = (typeof supabase !== 'undefined' && SUPABASE_URL.startsWith('http'))
   ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
-const ACCOUNT_SOURCE_LABELS = { lastfm: 'Last.fm', listenbrainz: 'ListenBrainz', librefm: 'Libre.fm', musicat: 'Musicat' };
+const ACCOUNT_SOURCE_LABELS = { lastfm: 'Last.fm', listenbrainz: 'ListenBrainz', librefm: 'Libre.fm', musicat: 'Musicat', statsfm: 'Stats.fm' };
 
 async function initBadgesAuthPanel() {
   if (!sb) {
@@ -3291,6 +3427,8 @@ async function loadProfile(usernameOverride, silent = false) {
     }
     // Submit scores to leaderboard in background (non-blocking)
     submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs).catch(()=>{});
+    // Re-render leaderboard if visible so "YOU" highlight appears immediately after login
+    if (document.getElementById('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
 
   } catch(e) {
     if (!silent) {
@@ -3425,6 +3563,11 @@ function showBreakdown(type, key) {
   const labels = {
     artistPlays:   'Total BP Scrobbles',
     campaignTotal: 'Campaign Tracks (all time)',
+    'daily':            'All Tracks — Today',
+    'weekly':           'All Tracks — This Week',
+    'overall:jump':     'JUMP — All Time',
+    'overall:shutdown': 'SHUT DOWN — All Time',
+    'overall:ddududu':  'DDU-DU DDU-DU — All Time',
     'daily:jump':       'JUMP — Today',
     'daily:shutdown':   'SHUT DOWN — Today',
     'daily:ddududu':    'DDU-DU DDU-DU — Today',
@@ -3436,10 +3579,11 @@ function showBreakdown(type, key) {
   document.getElementById('breakdown-title').textContent = '// ' + (labels[compositeKey] || labels[type] || type.toUpperCase());
 
   let getVal;
-  if (type === 'artistPlays')   getVal = a => a.artistPlays;
+  if (type === 'artistPlays')     getVal = a => a.artistPlays;
   else if (type === 'campaignTotal') getVal = a => Object.values(a.totalPlays).reduce((s,v)=>s+v,0);
-  else if (type === 'daily')    getVal = a => a.todayCounts[key] || 0;
-  else if (type === 'weekly')   getVal = a => a.weekCounts[key]  || 0;
+  else if (type === 'overall')    getVal = a => a.totalPlays[key] || 0;
+  else if (type === 'daily')      getVal = key ? (a => a.todayCounts[key] || 0) : (a => Object.values(a.todayCounts).reduce((s,v)=>s+v,0));
+  else if (type === 'weekly')     getVal = key ? (a => a.weekCounts[key]  || 0) : (a => Object.values(a.weekCounts).reduce((s,v)=>s+v,0));
   else getVal = () => 0;
 
   const rows = document.getElementById('breakdown-rows');
@@ -3544,6 +3688,20 @@ async function fetchSingleAccountStats(source, username) {
       // Musicat doesn't expose per-day history yet — weekDayCounts stay empty
       for (let i = 0; i < 7; i++) res.weekDayCounts.push(null);
     } catch(e) { console.warn('Musicat fetch failed for', username, e.message); }
+  } else if (source === 'statsfm') {
+    try {
+      const r = await fetch(`/api/proxy-image?statsfm_user=${encodeURIComponent(username)}`);
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      res.artistPlays = d.artistPlays || 0;
+      res.playcount   = d.playcount  || d.artistPlays || 0;
+      for (const k of ['jump', 'shutdown', 'ddududu']) {
+        res.totalPlays[k]  = d.tracks?.[k] || 0;
+        res.todayCounts[k] = d.today?.[k]  || 0;
+      }
+      // Stats.fm public API doesn't expose per-day history — weekDayCounts stay empty
+      for (let i = 0; i < 7; i++) res.weekDayCounts.push(null);
+    } catch(e) { console.warn('Stats.fm fetch failed for', username, e.message); }
   }
   return res;
 }
@@ -3644,6 +3802,7 @@ async function loadMultiAccountProfile(accounts) {
   persistTodayStamp(primaryUsername, combined.todayCounts);
   renderProfile(combined);
   submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs).catch(()=>{});
+  if (document.getElementById('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
 }
 
 function tsAgo(ts) {
@@ -4437,7 +4596,7 @@ function renderLeaderboard() {
             const avatarHtml = e.avatar
               ? `<img class="lb-avatar" src="${e.avatar}" alt="${e.username}">`
               : `<span class="lb-avatar-placeholder">${e.username[0].toUpperCase()}</span>`;
-            return `<tr class="${isMe ? 'me' : ''}">
+            return `<tr class="${isMe ? 'me' : ''}" onclick="showLbUserProfile('${e.username.replace(/'/g,"\\'")}')">
               <td><span class="lb-rank ${rankClass}">${rankEmoji || (i+1)}</span></td>
               <td>${avatarHtml}<span class="lb-user">${e.displayName || e.username}</span>${ogUsers.has(e.username.toLowerCase()) ? ' <span class="og-inline-badge" data-tip="Here from the start · OG Beta Tester">⭐ OG</span>' : ''}${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${e.badge ? ` <span class="lb-badge">${e.badge.icon}</span>` : ''}${leaderStreakBadge(i, e.username)}${e.inactive ? ' <span style="font-size:0.42rem;color:rgba(255,160,0,0.7);letter-spacing:0.1em;" title="No scrobbles in 3+ days">⚠ inactive</span>' : ''}</td>
               <td class="lb-score">${e.score > 0 ? e.score.toLocaleString() : '—'}</td>
@@ -4515,6 +4674,7 @@ function showLbUserProfile(username) {
 function closeLbUserProfile() {
   document.getElementById('lb-user-overlay').style.display = 'none';
 }
+
 async function refreshLeaderboard(force = false) {
   if (lbHistorySnapshot) { exitLbHistory(); return; }
   const wrap = document.getElementById('lb-table-wrap');
@@ -6488,6 +6648,15 @@ window.addEventListener('appinstalled', () => {
 
 
 <!-- ── BREAKDOWN POPUP ──────────────────────────────────────── -->
+<div id="lb-user-overlay" style="display:none" onclick="if(event.target===this)closeLbUserProfile()">
+  <div id="lb-user-sheet">
+    <div class="breakdown-handle"></div>
+    <div class="lb-user-header" id="lb-user-header"></div>
+    <div id="lb-user-sections"></div>
+    <button class="lb-profile-close" onclick="closeLbUserProfile()">× Close</button>
+  </div>
+</div>
+
 <div id="breakdown-overlay" class="breakdown-overlay" style="display:none" onclick="if(event.target===this)closeBreakdown()">
   <div class="breakdown-sheet">
     <div class="breakdown-handle"></div>
