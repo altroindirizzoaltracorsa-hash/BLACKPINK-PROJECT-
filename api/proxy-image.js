@@ -87,23 +87,16 @@ export default async function handler(req, res) {
       const items = td.items ?? [];
       const totalStreams = (sd?.item ?? sd)?.count ?? 0;
 
-      // Multiple known IDs per track (different regional/album versions) plus a
-      // name+artist fallback for tracks with no Spotify ID in Stats.fm's data.
-      const TRACK_TARGETS = {
-        jump:     { ids: ['5H1sKFMzDeMtXwND3V6hRY', '4TbkhyiZjLS2srPUVez9Fm'], name: 'jump' },
-        shutdown: { ids: ['6tCd8bPvYnceDG7W9M1RMk', '7gRFDGEzF9UkBV233yv2dc'], name: 'shut down' },
-        ddududu:  { ids: ['69BIczdH6QMnFx7dsSssN8'], name: 'ddu-du ddu-du' },
-      };
+      // Match all versions of each song (single, album, Japanese, live, remix…)
+      // by checking that the track name starts with the target and the artist is BLACKPINK.
+      const TRACK_PREFIXES = { jump: 'jump', shutdown: 'shut down', ddududu: 'ddu-du ddu-du' };
 
       const tracks = {};
-      for (const [key, t] of Object.entries(TRACK_TARGETS)) {
-        const match = items.find(i => {
-          const spotify = i.track?.externalIds?.spotify ?? [];
-          if (t.ids.some(id => spotify.includes(id))) return true;
-          return i.track?.name?.toLowerCase() === t.name &&
-                 i.track?.artists?.some(a => a.name === 'BLACKPINK');
-        });
-        tracks[key] = match?.streams ?? 0;
+      for (const [key, prefix] of Object.entries(TRACK_PREFIXES)) {
+        tracks[key] = items
+          .filter(i => i.track?.name?.toLowerCase().startsWith(prefix) &&
+                       i.track?.artists?.some(a => a.name === 'BLACKPINK'))
+          .reduce((sum, i) => sum + (i.streams ?? 0), 0);
       }
 
       const artistPlays = Object.values(tracks).reduce((s, v) => s + v, 0);
