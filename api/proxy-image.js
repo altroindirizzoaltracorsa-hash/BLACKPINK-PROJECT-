@@ -75,22 +75,28 @@ export default async function handler(req, res) {
       const displayName = user.displayName ?? customId;
       const privacy = user.privacySettings;
 
-      // Fetch lifetime top tracks and total stream count in parallel.
-      // Track Spotify ID lives at externalIds.spotify (string[]), not spotifyId.
-      // Total stream count is not on the user profile — needs a separate /stats call.
-      const [tr, sr] = await Promise.all([
+      // Fetch top tracks, top artists, and stream stats in parallel.
+      const [tr, ar, sr] = await Promise.all([
         fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=500`, { headers: SFM_HEADERS }),
+        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`, { headers: SFM_HEADERS }),
         fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/streams/stats?range=lifetime`, { headers: SFM_HEADERS }),
       ]);
       if (!tr.ok) return res.status(400).json({ error: 'Could not fetch track stats from Stats.fm' });
-      const [td, sd] = await Promise.all([tr.json(), sr.ok ? sr.json() : Promise.resolve(null)]);
+      const [td, ad, sd] = await Promise.all([
+        tr.json(),
+        ar.ok ? ar.json() : Promise.resolve(null),
+        sr.ok ? sr.json() : Promise.resolve(null),
+      ]);
       const items = td.items ?? [];
-      const totalStreams = sd?.items?.count ?? 0;
 
-      // Match all versions of each song (single, album, Japanese, live, remix…)
-      // by checking that the track name starts with the target and the artist is BLACKPINK.
+      // BP family plays: sum streams across BLACKPINK + all solo members.
+      const BP_ARTISTS = new Set(['BLACKPINK', 'JISOO', 'LISA', 'ROSÉ', 'JENNIE']);
+      const artistPlays = (ad?.items ?? [])
+        .filter(i => BP_ARTISTS.has(i.artist?.name))
+        .reduce((sum, i) => sum + (i.streams ?? 0), 0);
+
+      // Match all versions of each song by name prefix + BLACKPINK artist.
       const TRACK_PREFIXES = { jump: 'jump', shutdown: 'shut down', ddududu: 'ddu-du ddu-du' };
-
       const tracks = {};
       for (const [key, prefix] of Object.entries(TRACK_PREFIXES)) {
         tracks[key] = items
@@ -99,11 +105,9 @@ export default async function handler(req, res) {
           .reduce((sum, i) => sum + (i.streams ?? 0), 0);
       }
 
-      const artistPlays = Object.values(tracks).reduce((s, v) => s + v, 0);
-
       return res.status(200).json({
         customId, displayName,
-        playcount: totalStreams || artistPlays,
+        playcount: artistPlays || Object.values(tracks).reduce((s, v) => s + v, 0),
         artistPlays,
         tracks,
         today: { jump: 0, shutdown: 0, ddududu: 0 },
