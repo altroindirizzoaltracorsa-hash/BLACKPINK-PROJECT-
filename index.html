@@ -4616,22 +4616,44 @@ function renderLeaderboard() {
   }
 }
 
-function showLbUserProfile(username) {
+async function showLbUserProfile(username) {
   // For the logged-in user with multiple accounts: show per-service breakdown
   // for whatever period/song the leaderboard is currently showing.
   const myUsername = getSavedUsername();
   const isMe = myUsername && username.toLowerCase() === myUsername.toLowerCase();
-  if (isMe && acctBreakdown && acctBreakdown.length >= 2) {
-    const type = lbPeriod === 'overall'
-      ? (lbSong === 'all' ? 'campaignTotal' : 'overall')
-      : lbPeriod;
-    const key = lbSong === 'all' ? undefined : lbSong;
-    showBreakdown(type, key);
-    return;
+
+  if (isMe) {
+    // If acctBreakdown isn't ready yet, show a loading state and wait for it
+    if (!acctBreakdown) {
+      document.getElementById('breakdown-title').textContent = '// Loading your breakdown…';
+      document.getElementById('breakdown-rows').innerHTML =
+        '<div style="padding:2rem 0;text-align:center;color:var(--muted);font-size:0.75rem;letter-spacing:0.12em;">Fetching account data…</div>';
+      document.getElementById('breakdown-grand-total').textContent = '';
+      const ovl = document.getElementById('breakdown-overlay');
+      ovl.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      tryAutoLoad().catch(() => {});
+      // Poll up to 12 s for acctBreakdown to be populated
+      await new Promise(resolve => {
+        let elapsed = 0;
+        const t = setInterval(() => {
+          elapsed += 250;
+          if (acctBreakdown || elapsed >= 12000) { clearInterval(t); resolve(); }
+        }, 250);
+      });
+    }
+    if (acctBreakdown && acctBreakdown.length >= 2) {
+      const type = lbPeriod === 'overall'
+        ? (lbSong === 'all' ? 'campaignTotal' : 'overall')
+        : lbPeriod;
+      const key = lbSong === 'all' ? undefined : lbSong;
+      showBreakdown(type, key);
+      return;
+    }
+    // Single-account user or load failed — close loading overlay and show generic sheet
+    document.getElementById('breakdown-overlay').style.display = 'none';
+    document.body.style.overflow = '';
   }
-  // If it's my row but acctBreakdown isn't loaded yet, trigger a background load
-  // and show the generic sheet as a fallback. Next tap will use the per-service view.
-  if (isMe && !acctBreakdown) tryAutoLoad().catch(() => {});
 
   const users = getActiveLbUsers();
   const data = users[username];
