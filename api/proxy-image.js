@@ -32,15 +32,15 @@ async function statsPost(body) {
   return Number(d?.total_streams ?? d?.totalStreams ?? d?.count ?? 0);
 }
 
-async function sbFetch(path, options = {}) {
+async function sbFetch(path, { headers: extraHeaders, ...restOptions } = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1${path}`, {
     headers: {
       'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
       'apikey':        SUPABASE_SERVICE_KEY,
       'Content-Type':  'application/json',
-      ...options.headers,
+      ...extraHeaders,
     },
-    ...options,
+    ...restOptions,
   });
 }
 
