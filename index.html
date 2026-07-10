@@ -3467,7 +3467,9 @@ async function loadProfile(usernameOverride, silent = false) {
       });
     }
     // Submit scores to leaderboard in background (non-blocking)
-    submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs, artistPlays, null).catch(()=>{});
+    // No bpGroupPlays/memberPlays — old path doesn't fetch solos, so we don't
+    // write overall_bp_group, keeping the "not yet synced" fallback threshold.
+    submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs).catch(()=>{});
     // Re-render leaderboard if visible so "YOU" highlight appears immediately after login
     if (document.getElementById('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
 
@@ -4522,11 +4524,15 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       overall_shutdown: totalPlays.shutdown || 0,
       overall_ddududu:  totalPlays.ddududu  || 0,
       overall_artist:   artistPlays         || 0,
-      overall_bp_group: bpGroupPlays        || artistPlays || 0,
-      overall_jisoo:    memberPlays?.jisoo  || 0,
-      overall_lisa:     memberPlays?.lisa   || 0,
-      overall_rose:     memberPlays?.rose   || 0,
-      overall_jennie:   memberPlays?.jennie || 0,
+      // Only written when per-member data was fetched (multi-account path).
+      // Absence of overall_bp_group signals "not yet synced" → old threshold applies.
+      ...(bpGroupPlays !== undefined ? {
+        overall_bp_group: bpGroupPlays || 0,
+        overall_jisoo:    memberPlays?.jisoo  || 0,
+        overall_lisa:     memberPlays?.lisa   || 0,
+        overall_rose:     memberPlays?.rose   || 0,
+        overall_jennie:   memberPlays?.jennie || 0,
+      } : {}),
       daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0),
       daily_jump:       todayCounts.jump     || 0,
       daily_shutdown:   todayCounts.shutdown || 0,
@@ -4940,16 +4946,21 @@ async function refreshChatAccess() {
     );
   }
   const scores = entry?.scores || {};
-  // Fall back to overall_artist for entries not yet re-synced with the new score fields.
   const bpGroup = scores.overall_bp_group ?? scores.overall_artist ?? 0;
+  // Member play requirement only applies once the entry has been synced with the
+  // new per-member score fields — entries without overall_bp_group haven't synced yet.
+  const memberSynced = 'overall_bp_group' in scores;
   const memberTotal = (scores.overall_jisoo || 0) + (scores.overall_lisa || 0) + (scores.overall_rose || 0) + (scores.overall_jennie || 0);
-  const meetsThreshold = CHAT_EXEMPT.includes(username.toLowerCase()) || (
-    bpGroup >= CHAT_THRESHOLD
-    && memberTotal >= CHAT_MEMBER_TOTAL
+  const meetsMemberReq = !memberSynced || (
+    memberTotal >= CHAT_MEMBER_TOTAL
     && (scores.overall_jisoo  || 0) >= CHAT_MEMBER_EACH
     && (scores.overall_lisa   || 0) >= CHAT_MEMBER_EACH
     && (scores.overall_rose   || 0) >= CHAT_MEMBER_EACH
     && (scores.overall_jennie || 0) >= CHAT_MEMBER_EACH
+  );
+  const meetsThreshold = CHAT_EXEMPT.includes(username.toLowerCase()) || (
+    bpGroup >= CHAT_THRESHOLD
+    && meetsMemberReq
     && (scores.overall_jump     || 0) >= CHAT_MIN.jump
     && (scores.overall_shutdown || 0) >= CHAT_MIN.shutdown
     && (scores.overall_ddududu  || 0) >= CHAT_MIN.ddududu
@@ -4957,18 +4968,25 @@ async function refreshChatAccess() {
 
   if (!meetsThreshold) {
     lockedEl.style.display = 'block';
-    document.getElementById('chat-locked-progress').innerHTML = [
-      ['BLACKPINK group (all time)', bpGroup,                          CHAT_THRESHOLD],
-      ['JISOO solo',                 scores.overall_jisoo  || 0,       CHAT_MEMBER_EACH],
-      ['LISA solo',                  scores.overall_lisa   || 0,       CHAT_MEMBER_EACH],
-      ['ROSÉ solo',                  scores.overall_rose   || 0,       CHAT_MEMBER_EACH],
-      ['JENNIE solo',                scores.overall_jennie || 0,       CHAT_MEMBER_EACH],
-      ['JUMP',                       scores.overall_jump     || 0,     CHAT_MIN.jump],
-      ['Shut Down',                  scores.overall_shutdown || 0,     CHAT_MIN.shutdown],
-      ['DDU-DU DDU-DU',              scores.overall_ddududu  || 0,     CHAT_MIN.ddududu],
-    ].map(([label, have, need]) =>
-      `${have >= need ? '✅' : '▫️'} ${label}: ${have.toLocaleString()} / ${need.toLocaleString()}`
-    ).join('<br>');
+    const rows = [
+      ['BLACKPINK group (all time)', bpGroup, CHAT_THRESHOLD],
+      ['JUMP',        scores.overall_jump     || 0, CHAT_MIN.jump],
+      ['Shut Down',   scores.overall_shutdown || 0, CHAT_MIN.shutdown],
+      ['DDU-DU DDU-DU', scores.overall_ddududu || 0, CHAT_MIN.ddududu],
+    ];
+    if (memberSynced) {
+      rows.splice(1, 0,
+        ['JISOO solo',  scores.overall_jisoo  || 0, CHAT_MEMBER_EACH],
+        ['LISA solo',   scores.overall_lisa   || 0, CHAT_MEMBER_EACH],
+        ['ROSÉ solo',   scores.overall_rose   || 0, CHAT_MEMBER_EACH],
+        ['JENNIE solo', scores.overall_jennie || 0, CHAT_MEMBER_EACH],
+      );
+    }
+    document.getElementById('chat-locked-progress').innerHTML =
+      rows.map(([label, have, need]) =>
+        `${have >= need ? '✅' : '▫️'} ${label}: ${have.toLocaleString()} / ${need.toLocaleString()}`
+      ).join('<br>') +
+      (!memberSynced ? '<br><span style="opacity:0.6;font-size:0.75em">Reload My Badges to track member plays</span>' : '');
     return;
   }
 
