@@ -37,7 +37,7 @@
     },
     {
       "path": "/api/proxy-image?global_streams=cron",
-      "schedule": "0 2 * * *"
+      "schedule": "5 2 * * *"
     }
   ]
 }
