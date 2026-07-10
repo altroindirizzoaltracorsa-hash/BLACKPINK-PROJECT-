@@ -89,11 +89,15 @@ async function storeGlobalSnapshot(date, jumpTotal, shutdownTotal, ddududuTotal)
   const shutdownDaily = prev ? shutdownTotal - prev.shutdown_total : null;
   const ddududuDaily  = prev ? ddududuTotal  - prev.ddududu_total  : null;
 
-  await sbFetch('/global_stream_snapshots', {
+  const insertRes = await sbFetch('/global_stream_snapshots', {
     method:  'POST',
     headers: { Prefer: 'resolution=merge-duplicates' },
     body: JSON.stringify({ date, jump_total: jumpTotal, shutdown_total: shutdownTotal, ddududu_total: ddududuTotal, jump_daily: jumpDaily, shutdown_daily: shutdownDaily, ddududu_daily: ddududuDaily }),
   });
+  if (!insertRes.ok) {
+    const errBody = await insertRes.text();
+    throw new Error(`Supabase insert ${insertRes.status}: ${errBody}`);
+  }
 
   const nextRes = await sbFetch(
     `/global_stream_snapshots?date=gt.${date}&order=date.asc&limit=1&select=date,jump_total,shutdown_total,ddududu_total`,
