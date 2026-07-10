@@ -1,5 +1,5 @@
 const SUPABASE_URL         = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 const MUSICAT_BASE     = 'https://api.musicat.fm/v1';
 const BLACKPINK_ARTIST = 'b88d8d75-b62c-489b-80a5-4e455157edb1';
