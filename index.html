@@ -3467,7 +3467,9 @@ async function loadProfile(usernameOverride, silent = false) {
       });
     }
     // Submit scores to leaderboard in background (non-blocking)
-    submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs, artistPlays, null).catch(()=>{});
+    // No bpGroupPlays/memberPlays — old path doesn't fetch solos, so we don't
+    // write overall_bp_group, keeping the "not yet synced" fallback threshold.
+    submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs).catch(()=>{});
     // Re-render leaderboard if visible so "YOU" highlight appears immediately after login
     if (document.getElementById('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
 
@@ -4522,11 +4524,15 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       overall_shutdown: totalPlays.shutdown || 0,
       overall_ddududu:  totalPlays.ddududu  || 0,
       overall_artist:   artistPlays         || 0,
-      overall_bp_group: bpGroupPlays        || artistPlays || 0,
-      overall_jisoo:    memberPlays?.jisoo  || 0,
-      overall_lisa:     memberPlays?.lisa   || 0,
-      overall_rose:     memberPlays?.rose   || 0,
-      overall_jennie:   memberPlays?.jennie || 0,
+      // Only written when per-member data was fetched (multi-account path).
+      // Absence of overall_bp_group signals "not yet synced" → old threshold applies.
+      ...(bpGroupPlays !== undefined ? {
+        overall_bp_group: bpGroupPlays || 0,
+        overall_jisoo:    memberPlays?.jisoo  || 0,
+        overall_lisa:     memberPlays?.lisa   || 0,
+        overall_rose:     memberPlays?.rose   || 0,
+        overall_jennie:   memberPlays?.jennie || 0,
+      } : {}),
       daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0),
       daily_jump:       todayCounts.jump     || 0,
       daily_shutdown:   todayCounts.shutdown || 0,
