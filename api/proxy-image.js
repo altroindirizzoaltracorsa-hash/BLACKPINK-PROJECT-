@@ -1,3 +1,6 @@
+const SUPABASE_URL         = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 const MUSICAT_BASE     = 'https://api.musicat.fm/v1';
 const BLACKPINK_ARTIST = 'b88d8d75-b62c-489b-80a5-4e455157edb1';
 const MEMBER_ARTIST_IDS = {
@@ -13,6 +16,12 @@ const TRACK_IDS = {
 };
 const MC_HEADERS = { 'Authorization': 'Bearer empty', 'Content-Type': 'application/json' };
 
+const SP_TRACKS = {
+  jump:     '5H1sKFMzDeMtXwND3V6hRY',
+  shutdown: '6tCd8bPvYnceDG7W9M1RMk',
+  ddududu:  '69BIczdH6QMnFx7dsSssN8',
+};
+
 async function statsPost(body) {
   const r = await fetch(`${MUSICAT_BASE}/history/stats`, {
     method: 'POST', headers: MC_HEADERS,
@@ -23,11 +32,140 @@ async function statsPost(body) {
   return Number(d?.total_streams ?? d?.totalStreams ?? d?.count ?? 0);
 }
 
+async function sbFetch(path, options = {}) {
+  return fetch(`${SUPABASE_URL}/rest/v1${path}`, {
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+      'apikey':        SUPABASE_SERVICE_KEY,
+      'Content-Type':  'application/json',
+      ...options.headers,
+    },
+    ...options,
+  });
+}
+
+async function getSpotifyToken() {
+  const r = await fetch(
+    'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
+    { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } },
+  );
+  if (!r.ok) throw new Error(`Spotify token: ${r.status}`);
+  const d = await r.json();
+  if (!d.accessToken) throw new Error('accessToken missing');
+  return d.accessToken;
+}
+
+async function fetchSpotifyPlayCount(token, trackId) {
+  try {
+    const variables  = JSON.stringify({ uri: `spotify:track:${trackId}` });
+    const extensions = JSON.stringify({ persistedQuery: { version: 1, sha256Hash: 'ae85b52abb74d20a4c331d4143d4772c95f34757a435d55406e6a2f17ad41c42' } });
+    const url = `https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${encodeURIComponent(variables)}&extensions=${encodeURIComponent(extensions)}`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) throw new Error(`partner ${r.status}`);
+    const d = await r.json();
+    const count = d?.data?.trackUnion?.playcount;
+    if (!count) throw new Error('no playcount in response');
+    return Number(count);
+  } catch {
+    const r = await fetch(`https://open.spotify.com/track/${trackId}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+    });
+    if (!r.ok) throw new Error(`scrape ${r.status}`);
+    const html = await r.text();
+    const m = html.match(/"playCount":"(\d+)"/i);
+    if (!m) throw new Error('playCount not found in HTML');
+    return Number(m[1]);
+  }
+}
+
+async function storeGlobalSnapshot(date, jumpTotal, shutdownTotal, ddududuTotal) {
+  const prevRes = await sbFetch(
+    `/global_stream_snapshots?date=lt.${date}&order=date.desc&limit=1&select=jump_total,shutdown_total,ddududu_total`,
+    { headers: { Accept: 'application/json' } },
+  );
+  const prev = prevRes.ok ? (await prevRes.json())[0] ?? null : null;
+
+  const jumpDaily     = prev ? jumpTotal     - prev.jump_total     : null;
+  const shutdownDaily = prev ? shutdownTotal - prev.shutdown_total : null;
+  const ddududuDaily  = prev ? ddududuTotal  - prev.ddududu_total  : null;
+
+  await sbFetch('/global_stream_snapshots', {
+    method:  'POST',
+    headers: { Prefer: 'resolution=merge-duplicates' },
+    body: JSON.stringify({ date, jump_total: jumpTotal, shutdown_total: shutdownTotal, ddududu_total: ddududuTotal, jump_daily: jumpDaily, shutdown_daily: shutdownDaily, ddududu_daily: ddududuDaily }),
+  });
+
+  const nextRes = await sbFetch(
+    `/global_stream_snapshots?date=gt.${date}&order=date.asc&limit=1&select=date,jump_total,shutdown_total,ddududu_total`,
+    { headers: { Accept: 'application/json' } },
+  );
+  const next = nextRes.ok ? (await nextRes.json())[0] ?? null : null;
+  if (next) {
+    await sbFetch(`/global_stream_snapshots?date=eq.${next.date}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        jump_daily:     next.jump_total     - jumpTotal,
+        shutdown_daily: next.shutdown_total - shutdownTotal,
+        ddududu_daily:  next.ddududu_total  - ddududuTotal,
+      }),
+    });
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Musicat stats proxy
+  // ── POST: global stream backfill (admin only) ──────────────────────────────
+  if (req.method === 'POST') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    if (!adminSecret || req.headers['x-admin-secret'] !== adminSecret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const { date, jump_total, shutdown_total, ddududu_total } = req.body ?? {};
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || jump_total == null || shutdown_total == null || ddududu_total == null) {
+      return res.status(400).json({ error: 'Required: date (YYYY-MM-DD), jump_total, shutdown_total, ddududu_total' });
+    }
+    try {
+      await storeGlobalSnapshot(date, Number(jump_total), Number(shutdown_total), Number(ddududu_total));
+      return res.status(200).json({ ok: true, date });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // ── GET ?global_streams=history ───────────────────────────────────────────
+  if (req.query.global_streams === 'history') {
+    const limit = Math.min(Number(req.query.limit ?? 30), 365);
+    const r = await sbFetch(
+      `/global_stream_snapshots?order=date.desc&limit=${limit}&select=date,jump_total,shutdown_total,ddududu_total,jump_daily,shutdown_daily,ddududu_daily`,
+      { headers: { Accept: 'application/json' } },
+    );
+    return res.status(200).json({ data: r.ok ? await r.json() : [] });
+  }
+
+  // ── GET ?global_streams=cron (cron trigger) ─────────────────────────────
+  if (req.query.global_streams === 'cron') {
+    const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret && req.headers.authorization !== `Bearer ${cronSecret}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const token = await getSpotifyToken();
+      const [jumpTotal, shutdownTotal, ddududuTotal] = await Promise.all([
+        fetchSpotifyPlayCount(token, SP_TRACKS.jump),
+        fetchSpotifyPlayCount(token, SP_TRACKS.shutdown),
+        fetchSpotifyPlayCount(token, SP_TRACKS.ddududu),
+      ]);
+      await storeGlobalSnapshot(today, jumpTotal, shutdownTotal, ddududuTotal);
+      return res.status(200).json({ ok: true, date: today, jump: jumpTotal, shutdown: shutdownTotal, ddududu: ddududuTotal });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // ── Musicat stats proxy ──────────────────────────────────────────────────
   const mcUser = req.query.musicat_user;
   if (mcUser) {
     try {
@@ -63,9 +201,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         publicId, displayName,
         playcount: totalScrobbles ?? artistPlays,
-        artistPlays,
-        bpGroupPlays,
-        memberPlays,
+        artistPlays, bpGroupPlays, memberPlays,
         tracks: { jump: jumpAll, shutdown: shutdownAll, ddududu: ddududuAll },
         today:  { jump: jumpToday, shutdown: shutdownToday, ddududu: ddududuToday },
       });
@@ -74,36 +210,29 @@ export default async function handler(req, res) {
     }
   }
 
-  // Stats.fm stats proxy
+  // ── Stats.fm stats proxy ───────────────────────────────────────────────
   const sfmUser = req.query.statsfm_user;
   if (sfmUser) {
     try {
-      const SFM_BASE = 'https://api.stats.fm/api/v1';
+      const SFM_BASE    = 'https://api.stats.fm/api/v1';
       const SFM_HEADERS = { 'content-type': 'application/json' };
 
       const ur = await fetch(`${SFM_BASE}/users/${encodeURIComponent(sfmUser)}`, { headers: SFM_HEADERS });
       if (!ur.ok) return res.status(400).json({ error: `Stats.fm user "${sfmUser}" not found (${ur.status})` });
       const ud = await ur.json();
       const user = ud.item ?? ud;
-      const customId = user.customId ?? user.id ?? sfmUser;
+      const customId    = user.customId ?? user.id ?? sfmUser;
       const displayName = user.displayName ?? customId;
-      const privacy = user.privacySettings;
 
-      // Fetch top tracks, top artists, and stream stats in parallel.
       const [tr, ar, sr] = await Promise.all([
         fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=500`, { headers: SFM_HEADERS }),
-        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`, { headers: SFM_HEADERS }),
-        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/streams/stats?range=lifetime`, { headers: SFM_HEADERS }),
+        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`,  { headers: SFM_HEADERS }),
+        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/streams/stats?range=lifetime`,          { headers: SFM_HEADERS }),
       ]);
       if (!tr.ok) return res.status(400).json({ error: 'Could not fetch track stats from Stats.fm' });
-      const [td, ad, sd] = await Promise.all([
-        tr.json(),
-        ar.ok ? ar.json() : Promise.resolve(null),
-        sr.ok ? sr.json() : Promise.resolve(null),
-      ]);
+      const [td, ad] = await Promise.all([ tr.json(), ar.ok ? ar.json() : Promise.resolve(null), sr.ok ? sr.json() : Promise.resolve(null) ]);
       const items = td.items ?? [];
 
-      // BP plays split by group vs individual members.
       const MEMBER_MAP = { 'JISOO': 'jisoo', 'LISA': 'lisa', 'ROSÉ': 'rose', 'JENNIE': 'jennie' };
       let bpGroupPlays = 0;
       const memberPlays = { jisoo: 0, lisa: 0, rose: 0, jennie: 0 };
@@ -115,23 +244,18 @@ export default async function handler(req, res) {
       }
       const artistPlays = bpGroupPlays + Object.values(memberPlays).reduce((s, v) => s + v, 0);
 
-      // Match all versions of each song by name prefix + BLACKPINK artist.
       const TRACK_PREFIXES = { jump: 'jump', shutdown: 'shut down', ddududu: 'ddu-du ddu-du' };
       const tracks = {};
       for (const [key, prefix] of Object.entries(TRACK_PREFIXES)) {
         tracks[key] = items
-          .filter(i => i.track?.name?.toLowerCase().startsWith(prefix) &&
-                       i.track?.artists?.some(a => a.name === 'BLACKPINK'))
+          .filter(i => i.track?.name?.toLowerCase().startsWith(prefix) && i.track?.artists?.some(a => a.name === 'BLACKPINK'))
           .reduce((sum, i) => sum + (i.streams ?? 0), 0);
       }
 
       return res.status(200).json({
         customId, displayName,
         playcount: artistPlays || Object.values(tracks).reduce((s, v) => s + v, 0),
-        artistPlays,
-        bpGroupPlays,
-        memberPlays,
-        tracks,
+        artistPlays, bpGroupPlays, memberPlays, tracks,
         today: { jump: 0, shutdown: 0, ddududu: 0 },
       });
     } catch(err) {
@@ -139,7 +263,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // Image proxy
+  // ── Image proxy ─────────────────────────────────────────────────────────
   const { url } = req.query;
   if (!url || !/^https?:\/\//.test(url)) return res.status(400).json({ error: 'Invalid URL' });
   try {
