@@ -19,6 +19,25 @@ function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: CORS });
 }
 
+// Returns the UTC ISO timestamp for midnight in the given IANA timezone.
+// Uses noon UTC on the local date to determine the offset reliably (avoids DST ambiguity at midnight).
+function localMidnightUTC(tz) {
+  try {
+    const now = new Date();
+    const localDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(now);
+    const utcNoon = new Date(`${localDateStr}T12:00:00Z`);
+    const localNoonStr = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false,
+    }).format(utcNoon);
+    const [h, m] = localNoonStr.split(':').map(Number);
+    const offsetMinutes = (h * 60 + m) - 720; // local noon minus UTC noon (720 min)
+    const utcMidnight = new Date(`${localDateStr}T00:00:00Z`);
+    return new Date(utcMidnight.getTime() - offsetMinutes * 60 * 1000).toISOString();
+  } catch {
+    return new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z';
+  }
+}
+
 export default async function handler(request) {
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET', 'Access-Control-Allow-Headers': '*' } });
@@ -37,7 +56,6 @@ export default async function handler(request) {
     let ud;
     try { ud = JSON.parse(urText); } catch { return json({ error: 'Stats.fm returned non-JSON', raw: urText.substring(0, 300) }, 502); }
 
-    // Detect error body even when HTTP status is 200
     if (ud.status >= 400 || ud.error || ud.message === 'Forbidden') {
       return json({ error: `Stats.fm error: ${ud.message || ud.error || ud.status}`, raw: urText.substring(0, 300) }, 502);
     }
@@ -45,15 +63,17 @@ export default async function handler(request) {
     const user = ud.item ?? ud;
     const customId = user.customId ?? user.id ?? username;
     const displayName = user.displayName ?? customId;
-    const profileTz = user.timezone ?? user.tz ?? user.utcOffset ?? user.timeZone ?? null;
+    const profileTz = user.timezone ?? 'UTC';
 
-    if (debug) return json({ step: 'user_ok', customId, displayName, profileTz, allKeys: Object.keys(user), raw: ud });
+    if (debug) return json({ step: 'user_ok', customId, displayName, profileTz, raw: ud });
 
-    const [tr, ar, trToday] = await Promise.all([
+    const localMidnight = localMidnightUTC(profileTz);
+
+    const [tr, ar, trToday, recentR] = await Promise.all([
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=100`, { headers: SFM_H }),
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`, { headers: SFM_H }),
-      // range=today uses Stats.fm's own "today" bucket — same source as their web app's Top Today view
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?range=today&limit=100&orderBy=COUNT`, { headers: SFM_H }),
+      fetch(`${SFM}/users/${encodeURIComponent(customId)}/streams/recent?after=${encodeURIComponent(localMidnight)}&limit=1000`, { headers: SFM_H }),
     ]);
 
     if (!tr.ok) return json({ error: `Stats.fm tracks blocked (HTTP ${tr.status}) — try visiting https://stats.fm/${username}` }, 502);
@@ -62,16 +82,18 @@ export default async function handler(request) {
     const td = await tr.json();
     const ad = await ar.json();
     const tdToday = trToday.ok ? await trToday.json() : null;
+    const recentData = recentR.ok ? await recentR.json() : null;
+
     const items = td.items ?? [];
     const adItems = ad.items ?? [];
     const itemsToday = tdToday?.items ?? [];
+    const recentItems = recentData?.items ?? [];
 
     const MEMBER_MAP = { 'JISOO': 'jisoo', 'LISA': 'lisa', 'ROSÉ': 'rose', 'JENNIE': 'jennie' };
     let bpGroupPlays = 0;
     const memberPlays = { jisoo: 0, lisa: 0, rose: 0, jennie: 0 };
     for (const item of adItems) {
       const n = item.artist?.name;
-      // Try all known field names for stream count
       const streams = item.streams ?? item.count ?? item.playCount ?? Math.round((item.playedMs ?? item.durationMs ?? 0) / 180000);
       if (n === 'BLACKPINK') bpGroupPlays += streams;
       else if (MEMBER_MAP[n]) memberPlays[MEMBER_MAP[n]] += streams;
@@ -94,9 +116,31 @@ export default async function handler(request) {
       return result;
     }
 
-    const tracks = countTracks(items);
+    function countRecent(list) {
+      const result = { jump: 0, shutdown: 0, ddududu: 0 };
+      for (const stream of list) {
+        const name = (stream.track?.name ?? '').toLowerCase();
+        const artists = stream.track?.artists ?? [];
+        if (!artists.some(a => a.name === 'BLACKPINK')) continue;
+        if (name.startsWith('jump')) result.jump++;
+        else if (name.startsWith('shut down')) result.shutdown++;
+        else if (name.startsWith('ddu-du ddu-du')) result.ddududu++;
+      }
+      return result;
+    }
 
-    const tracksToday = countTracks(itemsToday);
+    const tracks = countTracks(items);
+    const todayRange = countTracks(itemsToday);   // Stats.fm aggregated today bucket
+    const todayRecent = countRecent(recentItems);  // individual streams from local midnight
+
+    // Prefer streams/recent (exact local-midnight timestamps) when it's well-synced.
+    // Fall back to range=today when streams/recent is severely behind (< 70% of today's count).
+    const tracksToday = {};
+    for (const k of ['jump', 'shutdown', 'ddududu']) {
+      const agg = todayRange[k] || 0;
+      const rec = todayRecent[k] || 0;
+      tracksToday[k] = (agg > 0 && rec >= agg * 0.7) ? rec : agg;
+    }
 
     return json({
       customId, displayName,
