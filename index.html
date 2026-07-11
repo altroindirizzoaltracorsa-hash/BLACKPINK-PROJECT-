@@ -3853,7 +3853,7 @@ async function fetchSingleAccountStats(source, username) {
         res.todayCounts[k] = d.today?.[k]  || 0;
       }
       for (let i = 0; i < 7; i++) res.weekDayCounts.push(null);
-      if (d._debug) res.sfmDebug = `${d._debug.totalArtists} artists, keys: ${d._debug.firstArtistKeys||'?'} | BP: ${d._debug.bpRaw||'not found'}`;
+      if (d._debug) res.sfmDebug = `BP calc=${d._debug.bpGroupPlays} | ${d._debug.bpDebug}`;
     } catch(e) {
       console.warn('Stats.fm fetch failed for', username, e.message);
       res.sfmError = e.message;
