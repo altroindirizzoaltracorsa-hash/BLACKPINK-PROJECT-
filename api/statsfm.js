@@ -48,16 +48,11 @@ export default async function handler(request) {
 
     if (debug) return json({ step: 'user_ok', customId, displayName, raw: ud });
 
-    // Today's midnight in UTC
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
-    const afterParam = todayStart.toISOString();
-
-    // streams/recent gives real-time scrobbles; top/tracks has processing delay
-    const [tr, ar, recentR] = await Promise.all([
+    const [tr, ar, trToday] = await Promise.all([
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=100`, { headers: SFM_H }),
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`, { headers: SFM_H }),
-      fetch(`${SFM}/users/${encodeURIComponent(customId)}/streams/recent?after=${afterParam}&limit=1000`, { headers: SFM_H }),
+      // range=today uses Stats.fm's own "today" bucket — same source as their web app's Top Today view
+      fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?range=today&limit=100&orderBy=COUNT`, { headers: SFM_H }),
     ]);
 
     if (!tr.ok) return json({ error: `Stats.fm tracks blocked (HTTP ${tr.status}) — try visiting https://stats.fm/${username}` }, 502);
@@ -65,10 +60,10 @@ export default async function handler(request) {
 
     const td = await tr.json();
     const ad = await ar.json();
-    const recentData = recentR.ok ? await recentR.json() : null;
+    const tdToday = trToday.ok ? await trToday.json() : null;
     const items = td.items ?? [];
     const adItems = ad.items ?? [];
-    const recentItems = recentData?.items ?? [];
+    const itemsToday = tdToday?.items ?? [];
 
     const MEMBER_MAP = { 'JISOO': 'jisoo', 'LISA': 'lisa', 'ROSÉ': 'rose', 'JENNIE': 'jennie' };
     let bpGroupPlays = 0;
@@ -100,16 +95,7 @@ export default async function handler(request) {
 
     const tracks = countTracks(items);
 
-    // Count today's plays from real-time recent streams
-    const tracksToday = { jump: 0, shutdown: 0, ddududu: 0 };
-    for (const stream of recentItems) {
-      const name = (stream.track?.name ?? '').toLowerCase();
-      const artists = stream.track?.artists ?? [];
-      if (!artists.some(a => a.name === 'BLACKPINK')) continue;
-      if (name.startsWith('jump')) tracksToday.jump++;
-      else if (name.startsWith('shut down')) tracksToday.shutdown++;
-      else if (name.startsWith('ddu-du ddu-du')) tracksToday.ddududu++;
-    }
+    const tracksToday = countTracks(itemsToday);
 
     return json({
       customId, displayName,
