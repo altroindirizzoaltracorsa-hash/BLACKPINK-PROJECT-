@@ -867,7 +867,7 @@
     pointer-events: none;
   }
   #chat-unlock-toast {
-    position: fixed; bottom: 5.8rem; right: 1.4rem; z-index: 9001;
+    position: fixed; top: 1.2rem; right: 1.4rem; z-index: 9001;
     background: var(--card); border: 1px solid var(--pink);
     border-radius: 0.75rem; padding: 0.9rem 1.1rem;
     width: min(300px, calc(100vw - 2.8rem));
@@ -877,7 +877,7 @@
   }
   #chat-unlock-toast .toast-title { color: var(--pink); font-weight: 700; margin-bottom: 0.35rem; letter-spacing: 0.08em; }
   #chat-unlock-toast .toast-close { float: right; cursor: pointer; opacity: 0.6; margin-left: 0.5rem; font-size: 0.9rem; }
-  @keyframes toast-slide-in { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
+  @keyframes toast-slide-in { from { opacity:0; transform: translateY(-12px); } to { opacity:1; transform: translateY(0); } }
 
   .chat-panel {
     position: fixed; bottom: 5.2rem; right: 1.4rem; z-index: 9000;
