@@ -95,41 +95,13 @@ export default async function handler(request) {
 
     const tracks = countTracks(items);
 
-    // Count today using streams field (may be lifetime total — see todayDebug)
     const tracksToday = countTracks(itemsToday);
-
-    // Also count using playedMs/180000 to compare (Stats.fm may store lifetime `streams` on today items)
-    function countTracksMs(list) {
-      const result = {};
-      for (const [key, prefix] of Object.entries(TRACK_PREFIXES)) {
-        result[key] = list
-          .filter(i => {
-            const name = (i.track?.name ?? i.name ?? '').toLowerCase();
-            const artists = i.track?.artists ?? i.artists ?? [];
-            return name.startsWith(prefix) && artists.some(a => a.name === 'BLACKPINK');
-          })
-          .reduce((sum, i) => sum + Math.round((i.playedMs ?? 0) / 180000), 0);
-      }
-      return result;
-    }
-    const tracksTodayMs = countTracksMs(itemsToday);
-
-    // Debug: first 5 today items so we can inspect field values
-    const todayDebug = itemsToday.slice(0, 5).map(i => ({
-      name: i.track?.name,
-      streams: i.streams,
-      count: i.count,
-      playedMs: i.playedMs,
-      msDiv180k: Math.round((i.playedMs ?? 0) / 180000),
-    }));
 
     return json({
       customId, displayName,
       playcount: artistPlays || Object.values(tracks).reduce((s, v) => s + v, 0),
       artistPlays, bpGroupPlays, memberPlays, tracks,
       today: tracksToday,
-      todayMs: tracksTodayMs,
-      todayDebug,
     });
   } catch (e) {
     return json({ error: e.message }, 500);
