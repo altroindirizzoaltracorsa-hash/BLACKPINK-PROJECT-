@@ -379,6 +379,31 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Spotify artwork proxy (?spotify_art=<trackId>) ──────────────────────
+  const spotifyArtTrack = req.query.spotify_art;
+  if (spotifyArtTrack) {
+    try {
+      const token = await getSpotifyToken();
+      const variables  = JSON.stringify({ uri: `spotify:track:${spotifyArtTrack}` });
+      const extensions = JSON.stringify({ persistedQuery: { version: 1, sha256Hash: 'ae85b52abb74d20a4c331d4143d4772c95f34757a435d55406e6a2f17ad41c42' } });
+      const apiUrl = `https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${encodeURIComponent(variables)}&extensions=${encodeURIComponent(extensions)}`;
+      const r = await fetch(apiUrl, { headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) return res.status(502).json({ error: `Spotify partner API: ${r.status}` });
+      const d = await r.json();
+      const sources = d?.data?.trackUnion?.albumOfTrack?.coverArt?.sources ?? [];
+      const artUrl = sources.sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0]?.url;
+      if (!artUrl) return res.status(404).json({ error: 'No artwork found' });
+      const imgRes = await fetch(artUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      if (!imgRes.ok) return res.status(imgRes.status).end();
+      const buf = await imgRes.arrayBuffer();
+      res.setHeader('Cache-Control', 'public, max-age=604800');
+      res.setHeader('Content-Type', imgRes.headers.get('content-type') || 'image/jpeg');
+      return res.end(Buffer.from(buf));
+    } catch(e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Image proxy ─────────────────────────────────────────────────────────
   const { url } = req.query;
   if (!url || !/^https?:\/\//.test(url)) return res.status(400).json({ error: 'Invalid URL' });
