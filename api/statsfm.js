@@ -48,16 +48,16 @@ export default async function handler(request) {
 
     if (debug) return json({ step: 'user_ok', customId, displayName, raw: ud });
 
-    // Today's midnight in UTC for the daily range
+    // Today's midnight in UTC
     const todayStart = new Date();
     todayStart.setUTCHours(0, 0, 0, 0);
     const afterParam = todayStart.toISOString();
 
-    const [tr, ar, trToday, arToday] = await Promise.all([
+    // streams/recent gives real-time scrobbles; top/tracks has processing delay
+    const [tr, ar, recentR] = await Promise.all([
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=100`, { headers: SFM_H }),
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`, { headers: SFM_H }),
-      fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?after=${afterParam}&limit=100&orderBy=COUNT`, { headers: SFM_H }),
-      fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/artists?after=${afterParam}&limit=50&orderBy=COUNT`, { headers: SFM_H }),
+      fetch(`${SFM}/users/${encodeURIComponent(customId)}/streams/recent?after=${afterParam}&limit=1000`, { headers: SFM_H }),
     ]);
 
     if (!tr.ok) return json({ error: `Stats.fm tracks blocked (HTTP ${tr.status}) — try visiting https://stats.fm/${username}` }, 502);
@@ -65,12 +65,10 @@ export default async function handler(request) {
 
     const td = await tr.json();
     const ad = await ar.json();
-    const tdToday = trToday.ok ? await trToday.json() : null;
-    const adToday = arToday.ok ? await arToday.json() : null;
+    const recentData = recentR.ok ? await recentR.json() : null;
     const items = td.items ?? [];
     const adItems = ad.items ?? [];
-    const itemsToday = tdToday?.items ?? [];
-    const adItemsToday = adToday?.items ?? [];
+    const recentItems = recentData?.items ?? [];
 
     const MEMBER_MAP = { 'JISOO': 'jisoo', 'LISA': 'lisa', 'ROSÉ': 'rose', 'JENNIE': 'jennie' };
     let bpGroupPlays = 0;
@@ -101,14 +99,16 @@ export default async function handler(request) {
     }
 
     const tracks = countTracks(items);
-    const tracksToday = countTracks(itemsToday);
 
-    // Today's total BLACKPINK plays from the artists endpoint
-    let bpTodayPlays = 0;
-    for (const item of adItemsToday) {
-      const n = item.artist?.name;
-      const s = item.streams ?? item.count ?? item.playCount ?? Math.round((item.playedMs ?? item.durationMs ?? 0) / 180000);
-      if (n === 'BLACKPINK' || MEMBER_MAP[n]) bpTodayPlays += s;
+    // Count today's plays from real-time recent streams
+    const tracksToday = { jump: 0, shutdown: 0, ddududu: 0 };
+    for (const stream of recentItems) {
+      const name = (stream.track?.name ?? '').toLowerCase();
+      const artists = stream.track?.artists ?? [];
+      if (!artists.some(a => a.name === 'BLACKPINK')) continue;
+      if (name.startsWith('jump')) tracksToday.jump++;
+      else if (name.startsWith('shut down')) tracksToday.shutdown++;
+      else if (name.startsWith('ddu-du ddu-du')) tracksToday.ddududu++;
     }
 
     return json({
