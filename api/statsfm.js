@@ -48,9 +48,16 @@ export default async function handler(request) {
 
     if (debug) return json({ step: 'user_ok', customId, displayName, raw: ud });
 
-    const [tr, ar] = await Promise.all([
+    // Today's midnight in UTC for the daily range
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+    const afterParam = todayStart.toISOString();
+
+    const [tr, ar, trToday, arToday] = await Promise.all([
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=100`, { headers: SFM_H }),
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`, { headers: SFM_H }),
+      fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?after=${afterParam}&limit=100&orderBy=COUNT`, { headers: SFM_H }),
+      fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/artists?after=${afterParam}&limit=50&orderBy=COUNT`, { headers: SFM_H }),
     ]);
 
     if (!tr.ok) return json({ error: `Stats.fm tracks blocked (HTTP ${tr.status}) — try visiting https://stats.fm/${username}` }, 502);
@@ -58,8 +65,12 @@ export default async function handler(request) {
 
     const td = await tr.json();
     const ad = await ar.json();
+    const tdToday = trToday.ok ? await trToday.json() : null;
+    const adToday = arToday.ok ? await arToday.json() : null;
     const items = td.items ?? [];
     const adItems = ad.items ?? [];
+    const itemsToday = tdToday?.items ?? [];
+    const adItemsToday = adToday?.items ?? [];
 
     const MEMBER_MAP = { 'JISOO': 'jisoo', 'LISA': 'lisa', 'ROSÉ': 'rose', 'JENNIE': 'jennie' };
     let bpGroupPlays = 0;
@@ -74,22 +85,37 @@ export default async function handler(request) {
     const artistPlays = bpGroupPlays + Object.values(memberPlays).reduce((s, v) => s + v, 0);
 
     const TRACK_PREFIXES = { jump: 'jump', shutdown: 'shut down', ddududu: 'ddu-du ddu-du' };
-    const tracks = {};
-    for (const [key, prefix] of Object.entries(TRACK_PREFIXES)) {
-      tracks[key] = items
-        .filter(i => {
-          const name = (i.track?.name ?? i.name ?? '').toLowerCase();
-          const artists = i.track?.artists ?? i.artists ?? [];
-          return name.startsWith(prefix) && artists.some(a => a.name === 'BLACKPINK');
-        })
-        .reduce((sum, i) => sum + (i.streams ?? i.count ?? Math.round((i.playedMs ?? 0) / 180000)), 0);
+
+    function countTracks(list) {
+      const result = {};
+      for (const [key, prefix] of Object.entries(TRACK_PREFIXES)) {
+        result[key] = list
+          .filter(i => {
+            const name = (i.track?.name ?? i.name ?? '').toLowerCase();
+            const artists = i.track?.artists ?? i.artists ?? [];
+            return name.startsWith(prefix) && artists.some(a => a.name === 'BLACKPINK');
+          })
+          .reduce((sum, i) => sum + (i.streams ?? i.count ?? Math.round((i.playedMs ?? 0) / 180000)), 0);
+      }
+      return result;
+    }
+
+    const tracks = countTracks(items);
+    const tracksToday = countTracks(itemsToday);
+
+    // Today's total BLACKPINK plays from the artists endpoint
+    let bpTodayPlays = 0;
+    for (const item of adItemsToday) {
+      const n = item.artist?.name;
+      const s = item.streams ?? item.count ?? item.playCount ?? Math.round((item.playedMs ?? item.durationMs ?? 0) / 180000);
+      if (n === 'BLACKPINK' || MEMBER_MAP[n]) bpTodayPlays += s;
     }
 
     return json({
       customId, displayName,
       playcount: artistPlays || Object.values(tracks).reduce((s, v) => s + v, 0),
       artistPlays, bpGroupPlays, memberPlays, tracks,
-      today: { jump: 0, shutdown: 0, ddududu: 0 },
+      today: tracksToday,
     });
   } catch (e) {
     return json({ error: e.message }, 500);
