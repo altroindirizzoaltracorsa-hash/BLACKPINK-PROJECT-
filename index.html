@@ -1501,7 +1501,7 @@
           <input id="ms-admin-date" class="admin-input" type="text" placeholder="Date reached dd/mm/yyyy (optional)">
         </div>
         <div class="admin-input-row">
-          <input id="ms-admin-art" class="admin-input" type="text" placeholder="Artwork URL (optional)">
+          <input id="ms-admin-art" class="admin-input" type="text" placeholder="Artwork URL or Spotify Track ID (optional)">
         </div>
         <div class="admin-input-row">
           <button class="btn-primary" style="width:100%" onclick="triggerMilestoneFromPanel()">🎉 Show Milestone →</button>
@@ -5419,7 +5419,10 @@ async function triggerMilestoneFromPanel() {
   const msInput    = document.getElementById('ms-admin-milestone').value.trim();
   const totalInput = document.getElementById('ms-admin-total').value.trim();
   const dateInput  = document.getElementById('ms-admin-date').value.trim() || null;
-  const artUrl     = document.getElementById('ms-admin-art').value.trim() || null;
+  const artRaw     = document.getElementById('ms-admin-art').value.trim();
+  const artUrl     = artRaw
+    ? (/^[A-Za-z0-9]{22}$/.test(artRaw) ? `/api/proxy-image?spotify_art=${artRaw}` : artRaw)
+    : null;
   const errEl      = document.getElementById('ms-admin-err');
 
   const msNum = /^\d+$/.test(msInput) ? Number(msInput)
@@ -5461,7 +5464,7 @@ async function triggerMilestoneFromPanel() {
   errEl.textContent = '';
   _globalMsCache = null;
   if (artUrl) TRACK_ARTWORK[trackInput] = artUrl;
-  localStorage.removeItem(`bu_global_ms_seen_${trackInput}_${msNum}`);
+  sessionStorage.removeItem(`bu_global_ms_seen_${trackInput}_${msNum}`);
   closeMilestoneAdminPanel();
   renderMoreMilestones();
   showMilestone(trackInput, total, msNum, dateInput);
@@ -6617,8 +6620,7 @@ async function renderMoreMilestones() {
   if (!milestones.length) { section.style.display = 'none'; return; }
   section.style.display = '';
   grid.innerHTML = milestones.slice().reverse().map(m => {
-    const safeId = JSON.stringify(m.id);
-    return `<div class="more-ms-card" onclick="replayGlobalMilestone(${safeId})">
+    return `<div class="more-ms-card" onclick="replayGlobalMilestone(decodeURIComponent('${encodeURIComponent(m.id)}'))">
       <div class="more-ms-track">${m.trackId}</div>
       <div class="more-ms-milestone">${formatMilestone(m.milestone)} STREAMS</div>
       <div class="more-ms-sub">${m.milestoneDate ? 'Reached ' + m.milestoneDate + ' · ' : ''}${Number(m.total).toLocaleString()} total</div>
@@ -6639,11 +6641,11 @@ async function checkGlobalMilestonesOnLoad() {
   const milestones = await fetchGlobalMilestones();
   for (const m of milestones) {
     const seenKey = `bu_global_ms_seen_${m.id}`;
-    if (localStorage.getItem(seenKey)) continue;
+    if (sessionStorage.getItem(seenKey)) continue;
     if (Date.now() - m.savedAt < WINDOW_MS) {
       if (m.artUrl) TRACK_ARTWORK[m.trackId] = m.artUrl;
       _msPending.push({ trackId: m.trackId, total: m.total, milestone: m.milestone, milestoneDate: m.milestoneDate });
-      localStorage.setItem(seenKey, '1');
+      sessionStorage.setItem(seenKey, '1');
     }
   }
 }
