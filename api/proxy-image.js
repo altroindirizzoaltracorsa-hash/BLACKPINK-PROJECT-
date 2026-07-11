@@ -155,15 +155,19 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     try {
-      const today = new Date().toISOString().split('T')[0];
+      // Spotify publishes yesterday's stream count today, so label the entry
+      // with the actual streaming day (yesterday), not the fetch day.
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() - 1);
+      const streamDate = d.toISOString().split('T')[0];
       const token = await getSpotifyToken();
       const [jumpTotal, shutdownTotal, ddududuTotal] = await Promise.all([
         fetchSpotifyPlayCount(token, SP_TRACKS.jump),
         fetchSpotifyPlayCount(token, SP_TRACKS.shutdown),
         fetchSpotifyPlayCount(token, SP_TRACKS.ddududu),
       ]);
-      await storeGlobalSnapshot(today, jumpTotal, shutdownTotal, ddududuTotal);
-      return res.status(200).json({ ok: true, date: today, jump: jumpTotal, shutdown: shutdownTotal, ddududu: ddududuTotal });
+      await storeGlobalSnapshot(streamDate, jumpTotal, shutdownTotal, ddududuTotal);
+      return res.status(200).json({ ok: true, date: streamDate, jump: jumpTotal, shutdown: shutdownTotal, ddududu: ddududuTotal });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
