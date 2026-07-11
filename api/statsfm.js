@@ -21,33 +21,50 @@ function json(data, status = 200) {
 
 export default async function handler(request) {
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET', 'Access-Control-Allow-Headers': 'Content-Type' } });
+    return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET', 'Access-Control-Allow-Headers': '*' } });
   }
 
   const { searchParams } = new URL(request.url);
   const username = searchParams.get('user');
+  const debug = searchParams.get('debug') === '1';
   if (!username) return json({ error: 'user required' }, 400);
 
   try {
     const ur = await fetch(`${SFM}/users/${encodeURIComponent(username)}`, { headers: SFM_H });
-    if (!ur.ok) return json({ error: `Stats.fm user not found (${ur.status})` }, 400);
-    const ud = await ur.json();
+    const urText = await ur.text();
+    if (!ur.ok) return json({ error: `Stats.fm user lookup failed (HTTP ${ur.status})`, raw: urText.substring(0, 300) }, 502);
+
+    let ud;
+    try { ud = JSON.parse(urText); } catch { return json({ error: 'Stats.fm returned non-JSON', raw: urText.substring(0, 300) }, 502); }
+
+    // Detect error body even when HTTP status is 200
+    if (ud.status >= 400 || ud.error || ud.message === 'Forbidden') {
+      return json({ error: `Stats.fm error: ${ud.message || ud.error || ud.status}`, raw: urText.substring(0, 300) }, 502);
+    }
+
     const user = ud.item ?? ud;
     const customId = user.customId ?? user.id ?? username;
     const displayName = user.displayName ?? customId;
+
+    if (debug) return json({ step: 'user_ok', customId, displayName, raw: ud });
 
     const [tr, ar] = await Promise.all([
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=100`, { headers: SFM_H }),
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`, { headers: SFM_H }),
     ]);
 
-    const items = tr.ok ? ((await tr.json()).items ?? []) : [];
-    const adData = ar.ok ? await ar.json() : null;
+    if (!tr.ok) return json({ error: `Stats.fm tracks blocked (HTTP ${tr.status}) — try visiting https://stats.fm/${username}` }, 502);
+    if (!ar.ok) return json({ error: `Stats.fm artists blocked (HTTP ${ar.status})` }, 502);
+
+    const td = await tr.json();
+    const ad = await ar.json();
+    const items = td.items ?? [];
+    const adItems = ad.items ?? [];
 
     const MEMBER_MAP = { 'JISOO': 'jisoo', 'LISA': 'lisa', 'ROSÉ': 'rose', 'JENNIE': 'jennie' };
     let bpGroupPlays = 0;
     const memberPlays = { jisoo: 0, lisa: 0, rose: 0, jennie: 0 };
-    for (const item of (adData?.items ?? [])) {
+    for (const item of adItems) {
       const n = item.artist?.name;
       const streams = item.streams ?? Math.round((item.playedMs ?? 0) / 180000);
       if (n === 'BLACKPINK') bpGroupPlays += streams;
@@ -67,11 +84,15 @@ export default async function handler(request) {
         .reduce((sum, i) => sum + (i.streams ?? i.count ?? Math.round((i.playedMs ?? 0) / 180000)), 0);
     }
 
+    // Include diagnostic counts in the response so we can see if data is there but BLACKPINK is missing
+    const topArtistNames = adItems.slice(0, 5).map(i => i.artist?.name).filter(Boolean);
+
     return json({
       customId, displayName,
       playcount: artistPlays || Object.values(tracks).reduce((s, v) => s + v, 0),
       artistPlays, bpGroupPlays, memberPlays, tracks,
       today: { jump: 0, shutdown: 0, ddududu: 0 },
+      _debug: { totalItems: items.length, totalArtists: adItems.length, topArtistNames },
     });
   } catch (e) {
     return json({ error: e.message }, 500);

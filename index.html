@@ -3735,7 +3735,8 @@ function showBreakdown(type, key) {
       <div class="breakdown-acct">
         ${a.username}<span class="breakdown-acct-source">${ACCOUNT_SOURCE_LABELS[a.source] || a.source}</span>
         ${ago ? `<span class="breakdown-acct-ago">last scrobble: ${ago}</span>` : ''}
-        ${a.sfmError ? `<span class="breakdown-acct-ago" style="color:#e87;"> ${a.sfmError}</span>` : ''}
+        ${a.sfmError ? `<span class="breakdown-acct-ago" style="color:#e87;display:block"> ⚠ ${a.sfmError}</span>` : ''}
+        ${a.sfmDebug ? `<span class="breakdown-acct-ago" style="color:#8cf;display:block"> ℹ ${a.sfmDebug}</span>` : ''}
       </div>
       <div class="breakdown-val">${getVal(a).toLocaleString()}</div>
     </div>`;
@@ -3852,6 +3853,7 @@ async function fetchSingleAccountStats(source, username) {
         res.todayCounts[k] = d.today?.[k]  || 0;
       }
       for (let i = 0; i < 7; i++) res.weekDayCounts.push(null);
+      if (d._debug) res.sfmDebug = `${d._debug.totalArtists} artists, top: ${(d._debug.topArtistNames||[]).join(', ')||'none'}`;
     } catch(e) {
       console.warn('Stats.fm fetch failed for', username, e.message);
       res.sfmError = e.message;
