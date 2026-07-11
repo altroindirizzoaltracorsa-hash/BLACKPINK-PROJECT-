@@ -1123,6 +1123,16 @@
   to { transform: translateY(105vh) rotate(720deg); opacity:0; }
 }
 
+/* ── MORE MILESTONES SECTION ─────────────────────────────── */
+.more-ms-inner { max-width: 960px; margin: 0 auto; padding: 3rem 1.5rem; }
+.more-ms-grid { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; }
+.more-ms-card { background: var(--card); border: 1px solid var(--border); padding: 1.2rem 1.4rem; flex: 1 1 220px; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+.more-ms-card:hover { border-color: var(--pink); background: rgba(255,0,102,0.04); }
+.more-ms-track { font-family: var(--display); font-size: 0.95rem; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 0.2rem; }
+.more-ms-milestone { font-family: var(--display); font-size: 2rem; letter-spacing: 0.05em; color: var(--pink); line-height: 1; }
+.more-ms-sub { font-size: 0.52rem; letter-spacing: 0.14em; color: var(--muted); margin-top: 0.4rem; }
+.more-ms-action { margin-top: 0.9rem; font-size: 0.52rem; letter-spacing: 0.14em; color: var(--pink); opacity: 0.7; }
+
 /* ── INTRO ANIMATION ──────────────────────────────────────── */
 #intro-overlay {
   position: fixed; inset: 0; background: #000; z-index: 99999;
@@ -1377,6 +1387,14 @@
         </div>
 
       </div>
+    </div>
+  </section>
+
+  <section id="more-milestones-section" style="display:none">
+    <div class="more-ms-inner">
+      <p class="section-label">// Community Milestones</p>
+      <h2 class="section-title animate-in">More<br>Milestones</h2>
+      <div class="more-ms-grid" id="more-ms-grid"></div>
     </div>
   </section>
 
@@ -2406,6 +2424,8 @@ async function fetchSpotifyStreams() {
         renderMilestoneHistory(t.id);
       }
     }
+    checkGlobalMilestonesOnLoad();
+    renderMoreMilestones();
     showPendingMilestone();
   } catch(e) {
     for (const t of SPOTIFY_TRACKS) {
@@ -5334,8 +5354,19 @@ function triggerCustomMilestone() {
   if (!total)           { errEl.textContent = 'Invalid total streams.'; return; }
   errEl.textContent = '';
 
+  // Persist so all visitors see the pop-up for 24h and can reshare any time
+  const id = `${trackInput}_${msNum}`;
+  const stored = loadGlobalMilestones();
+  const idx = stored.findIndex(m => m.id === id);
+  const entry = { id, trackId: trackInput, milestone: msNum, total, milestoneDate: dateInput, artUrl, savedAt: Date.now() };
+  if (idx >= 0) stored[idx] = entry; else stored.push(entry);
+  localStorage.setItem('bu_global_milestones', JSON.stringify(stored));
+  // Reset the per-user "already seen" flag so admin also sees the pop-up
+  localStorage.removeItem(`bu_global_ms_seen_${id}`);
+
   if (artUrl) TRACK_ARTWORK[trackInput] = artUrl;
   closeAdminPanel();
+  renderMoreMilestones();
   showMilestone(trackInput, total, msNum, dateInput);
 }
 
@@ -6465,6 +6496,50 @@ function showMilestone(trackId, total, milestone, milestoneDate) {
   document.getElementById('milestone-overlay').classList.add('active');
   launchConfetti();
   renderMilestoneCanvas(trackId, total, milestone, milestoneDate);
+}
+
+// ── GLOBAL (CUSTOM) MILESTONES — 24h auto-show + persistent "More Milestones" section ──
+
+function loadGlobalMilestones() {
+  try { return JSON.parse(localStorage.getItem('bu_global_milestones') || '[]'); } catch { return []; }
+}
+
+function renderMoreMilestones() {
+  const milestones = loadGlobalMilestones();
+  const section = document.getElementById('more-milestones-section');
+  const grid    = document.getElementById('more-ms-grid');
+  if (!section || !grid) return;
+  if (!milestones.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  grid.innerHTML = milestones.slice().reverse().map(m => {
+    const safeId = JSON.stringify(m.id);
+    return `<div class="more-ms-card" onclick="replayGlobalMilestone(${safeId})">
+      <div class="more-ms-track">${m.trackId}</div>
+      <div class="more-ms-milestone">${formatMilestone(m.milestone)} STREAMS</div>
+      <div class="more-ms-sub">${m.milestoneDate ? 'Reached ' + m.milestoneDate + ' · ' : ''}${Number(m.total).toLocaleString()} total</div>
+      <div class="more-ms-action">↑ Tap to celebrate &amp; share</div>
+    </div>`;
+  }).join('');
+}
+
+function replayGlobalMilestone(id) {
+  const m = loadGlobalMilestones().find(x => x.id === id);
+  if (!m) return;
+  if (m.artUrl) TRACK_ARTWORK[m.trackId] = m.artUrl;
+  showMilestone(m.trackId, m.total, m.milestone, m.milestoneDate);
+}
+
+function checkGlobalMilestonesOnLoad() {
+  const WINDOW_MS = 24 * 60 * 60 * 1000;
+  for (const m of loadGlobalMilestones()) {
+    const seenKey = `bu_global_ms_seen_${m.id}`;
+    if (localStorage.getItem(seenKey)) continue;
+    if (Date.now() - m.savedAt < WINDOW_MS) {
+      if (m.artUrl) TRACK_ARTWORK[m.trackId] = m.artUrl;
+      _msPending.push({ trackId: m.trackId, total: m.total, milestone: m.milestone, milestoneDate: m.milestoneDate });
+      localStorage.setItem(seenKey, '1');
+    }
+  }
 }
 
 function closeMilestone() {
