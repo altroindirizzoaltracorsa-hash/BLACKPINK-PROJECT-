@@ -682,6 +682,9 @@
   @media (max-width: 600px) {
     .nav-hamburger { display: flex; }
     .playlist-banner { top: 62px; }
+    .song-card { padding: 2.5rem 1rem; }
+    .stream-increase { letter-spacing: 0.06em !important; font-size: 0.65rem !important; }
+    .days-to-goal { letter-spacing: 0.06em; font-size: 0.6rem; }
     .nav-links {
       display: none;
       position: fixed;
@@ -1330,7 +1333,7 @@
             <p class="target-label">Spotify Streams — Live Count</p>
             <div class="progress-bar"><div class="progress-fill" id="fill-jump" style="width:0%"></div></div>
             <div class="progress-nums"><span><strong id="count-jump">Loading…</strong></span><span id="pct-jump"></span></div>
-            <div id="increase-jump" style="display:none;margin-top:0.4rem;font-size:0.7rem;letter-spacing:0.15em;color:#00ff88;"></div>
+            <div id="increase-jump" class="stream-increase" style="display:none;margin-top:0.4rem;font-size:0.7rem;letter-spacing:0.15em;"></div>
             <div class="days-to-goal" id="days-jump"></div>
             <div class="stream-stale-note" id="stale-jump" style="display:none;"></div>
           </div>
@@ -1353,7 +1356,7 @@
             <p class="target-label">Spotify Streams — Live Count</p>
             <div class="progress-bar"><div class="progress-fill" id="fill-shutdown" style="width:0%"></div></div>
             <div class="progress-nums"><span><strong id="count-shutdown">Loading…</strong></span><span id="pct-shutdown"></span></div>
-            <div id="increase-shutdown" style="display:none;margin-top:0.4rem;font-size:0.7rem;letter-spacing:0.15em;color:#00ff88;"></div>
+            <div id="increase-shutdown" class="stream-increase" style="display:none;margin-top:0.4rem;font-size:0.7rem;letter-spacing:0.15em;"></div>
             <div class="days-to-goal" id="days-shutdown"></div>
             <div class="stream-stale-note" id="stale-shutdown" style="display:none;"></div>
           </div>
@@ -1376,7 +1379,7 @@
             <p class="target-label">Spotify Streams — Live Count</p>
             <div class="progress-bar"><div class="progress-fill" id="fill-ddududu" style="width:0%"></div></div>
             <div class="progress-nums"><span><strong id="count-ddududu">Loading…</strong></span><span id="pct-ddududu"></span></div>
-            <div id="increase-ddududu" style="display:none;margin-top:0.4rem;font-size:0.7rem;letter-spacing:0.15em;color:#00ff88;"></div>
+            <div id="increase-ddududu" class="stream-increase" style="display:none;margin-top:0.4rem;font-size:0.7rem;letter-spacing:0.15em;"></div>
             <div class="days-to-goal" id="days-ddududu"></div>
             <div class="stream-stale-note" id="stale-ddududu" style="display:none;"></div>
           </div>
