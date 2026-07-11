@@ -287,8 +287,11 @@ export default async function handler(req, res) {
       const { data: linked } = await sb
         .from('linked_accounts').select('source_username').eq('app_user_id', user.id);
       const linkedList = linked || [];
-      if (!linkedList.length) return res.status(403).json({ error: 'No accounts linked — go to My Badges to link your account' });
-      allLinkedKeys = new Set(linkedList.map(a => a.source_username.toLowerCase()));
+      // If no accounts linked yet, fall back to looking up by the provided username
+      // (same path as the legacy device-secret flow). Supabase auth still proves a real user.
+      if (linkedList.length) {
+        allLinkedKeys = new Set(linkedList.map(a => a.source_username.toLowerCase()));
+      }
     } else {
       // Legacy: device-secret claim
       const { data: claim, error: claimErr } = await sb
