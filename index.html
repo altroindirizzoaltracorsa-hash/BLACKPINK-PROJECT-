@@ -1472,8 +1472,48 @@
     <p>© 2025 Blinks United · Fan-made · Not affiliated with YG Entertainment · Made with 💗</p>
     <div class="footer-logo">BLINKS UNITED</div>
     <p>Stream data by <a href="https://last.fm" target="_blank" onclick=\"window.open('https://last.fm','_blank','noopener')\">Last.fm</a> · Goals are fan estimates</p>
-    <button class="admin-unlock" onclick="openPlaylistPanel()">· · ·</button>
+    <div style="display:flex;gap:0.5rem;align-items:center;">
+      <button class="admin-unlock" onclick="openMilestoneAdminPanel()" title="Milestone admin">🎉</button>
+      <button class="admin-unlock" onclick="openPlaylistPanel()">· · ·</button>
+    </div>
   </footer>
+
+  <!-- MILESTONE ADMIN PANEL -->
+  <div id="milestone-admin-overlay" class="admin-overlay" style="display:none" onclick="if(event.target===this)closeMilestoneAdminPanel()">
+    <div class="admin-box">
+      <h2>🎉 MILESTONE</h2>
+      <div id="ms-admin-auth">
+        <div class="admin-input-row">
+          <input id="ms-admin-key-input" class="admin-input" type="password" placeholder="Admin key" onkeydown="if(event.key==='Enter')submitMsAdminKey()">
+          <button class="btn-primary" onclick="submitMsAdminKey()">Unlock →</button>
+        </div>
+        <div id="ms-admin-auth-err" class="admin-err"></div>
+      </div>
+      <div id="ms-admin-content" style="display:none">
+        <div class="admin-input-row">
+          <input id="ms-admin-track" class="admin-input" type="text" placeholder="Track name (e.g. AS IF IT'S YOUR LAST)" style="text-transform:uppercase">
+        </div>
+        <div class="admin-input-row">
+          <input id="ms-admin-milestone" class="admin-input" type="text" placeholder="Milestone (e.g. 800M)">
+          <input id="ms-admin-total" class="admin-input" type="text" placeholder="Current total streams">
+        </div>
+        <div class="admin-input-row">
+          <input id="ms-admin-date" class="admin-input" type="text" placeholder="Date reached dd/mm/yyyy (optional)">
+        </div>
+        <div class="admin-input-row">
+          <input id="ms-admin-art" class="admin-input" type="text" placeholder="Artwork URL (optional)">
+        </div>
+        <div class="admin-input-row">
+          <button class="btn-primary" style="width:100%" onclick="triggerMilestoneFromPanel()">🎉 Show Milestone →</button>
+        </div>
+        <div id="ms-admin-err" class="admin-err"></div>
+        <div class="admin-song-note">Tip: for artwork use <code style="font-size:0.6rem;color:var(--pink)">/api/proxy-image?spotify_art=TRACK_ID</code></div>
+      </div>
+      <div style="margin-top:1rem;text-align:right;">
+        <button class="card-cl-btn" onclick="closeMilestoneAdminPanel()">Close</button>
+      </div>
+    </div>
+  </div>
 
 </div><!-- end home page -->
 
@@ -1894,24 +1934,6 @@
         </div>
         <div id="admin-ban-err" class="admin-err"></div>
         <div id="admin-ban-list" class="admin-ban-list"></div>
-      </div>
-      <div class="admin-ban-section">
-        <div class="admin-ban-title">🎉 Trigger custom milestone pop-up</div>
-        <div class="admin-input-row">
-          <input id="admin-ms-track" class="admin-input" type="text" placeholder="Track name (e.g. PINK VENOM)" style="text-transform:uppercase">
-        </div>
-        <div class="admin-input-row">
-          <input id="admin-ms-milestone" class="admin-input" type="text" placeholder="Milestone (e.g. 650M or 650000000)">
-          <input id="admin-ms-total" class="admin-input" type="text" placeholder="Current total streams">
-        </div>
-        <div class="admin-input-row">
-          <input id="admin-ms-date" class="admin-input" type="text" placeholder="Date reached dd/mm/yyyy (optional)">
-          <input id="admin-ms-art" class="admin-input" type="text" placeholder="Artwork URL (optional)">
-        </div>
-        <div class="admin-input-row">
-          <button class="btn-primary" onclick="triggerCustomMilestone()">Show Milestone →</button>
-        </div>
-        <div id="admin-ms-err" class="admin-err"></div>
       </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
@@ -2424,7 +2446,7 @@ async function fetchSpotifyStreams() {
         renderMilestoneHistory(t.id);
       }
     }
-    checkGlobalMilestonesOnLoad();
+    await checkGlobalMilestonesOnLoad();
     renderMoreMilestones();
     showPendingMilestone();
   } catch(e) {
@@ -5354,20 +5376,96 @@ function triggerCustomMilestone() {
   if (!total)           { errEl.textContent = 'Invalid total streams.'; return; }
   errEl.textContent = '';
 
-  // Persist so all visitors see the pop-up for 24h and can reshare any time
-  const id = `${trackInput}_${msNum}`;
-  const stored = loadGlobalMilestones();
-  const idx = stored.findIndex(m => m.id === id);
-  const entry = { id, trackId: trackInput, milestone: msNum, total, milestoneDate: dateInput, artUrl, savedAt: Date.now() };
-  if (idx >= 0) stored[idx] = entry; else stored.push(entry);
-  localStorage.setItem('bu_global_milestones', JSON.stringify(stored));
-  // Reset the per-user "already seen" flag so admin also sees the pop-up
-  localStorage.removeItem(`bu_global_ms_seen_${id}`);
-
+  // triggerCustomMilestone is the badges-page admin shortcut; actual server save
+  // happens via triggerMilestoneFromPanel in the dedicated milestone admin panel.
   if (artUrl) TRACK_ARTWORK[trackInput] = artUrl;
   closeAdminPanel();
   renderMoreMilestones();
   showMilestone(trackInput, total, msNum, dateInput);
+}
+
+// ── MILESTONE ADMIN PANEL (main page footer 🎉 button) ──────────────────────
+
+function openMilestoneAdminPanel() {
+  const overlay = document.getElementById('milestone-admin-overlay');
+  overlay.style.display = 'flex';
+  const saved = localStorage.getItem(ADMIN_KEY_LS);
+  if (saved) {
+    document.getElementById('ms-admin-auth').style.display = 'none';
+    document.getElementById('ms-admin-content').style.display = 'block';
+  } else {
+    document.getElementById('ms-admin-auth').style.display = 'block';
+    document.getElementById('ms-admin-content').style.display = 'none';
+    setTimeout(() => document.getElementById('ms-admin-key-input')?.focus(), 100);
+  }
+}
+
+function closeMilestoneAdminPanel() {
+  document.getElementById('milestone-admin-overlay').style.display = 'none';
+}
+
+async function submitMsAdminKey() {
+  const key = document.getElementById('ms-admin-key-input').value.trim();
+  const errEl = document.getElementById('ms-admin-auth-err');
+  if (!key) return;
+  localStorage.setItem(ADMIN_KEY_LS, key);
+  document.getElementById('ms-admin-auth').style.display = 'none';
+  document.getElementById('ms-admin-content').style.display = 'block';
+  errEl.textContent = '';
+}
+
+async function triggerMilestoneFromPanel() {
+  const trackInput = document.getElementById('ms-admin-track').value.trim().toUpperCase();
+  const msInput    = document.getElementById('ms-admin-milestone').value.trim();
+  const totalInput = document.getElementById('ms-admin-total').value.trim();
+  const dateInput  = document.getElementById('ms-admin-date').value.trim() || null;
+  const artUrl     = document.getElementById('ms-admin-art').value.trim() || null;
+  const errEl      = document.getElementById('ms-admin-err');
+
+  const msNum = /^\d+$/.test(msInput) ? Number(msInput)
+              : /^\d+(\.\d+)?[mM]$/.test(msInput) ? Math.round(parseFloat(msInput) * 1_000_000)
+              : NaN;
+  const total = Number(totalInput.replace(/[^0-9]/g, ''));
+
+  if (!trackInput)           { errEl.textContent = 'Track name is required.'; return; }
+  if (!msNum || msNum < 1e6) { errEl.textContent = 'Invalid milestone — use e.g. 800M or 800000000.'; return; }
+  if (!total)                { errEl.textContent = 'Invalid total streams.'; return; }
+
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  if (!key) {
+    document.getElementById('ms-admin-content').style.display = 'none';
+    document.getElementById('ms-admin-auth').style.display = 'block';
+    return;
+  }
+
+  errEl.textContent = 'Saving…';
+  const params = new URLSearchParams({ track: trackInput, milestone: String(msNum), total: String(total), key });
+  if (dateInput) params.set('date', dateInput);
+  if (artUrl) params.set('art', artUrl);
+
+  try {
+    const r = await fetch(`/api/proxy-image?global_milestones=save&${params}`);
+    if (r.status === 401) {
+      localStorage.removeItem(ADMIN_KEY_LS);
+      document.getElementById('ms-admin-content').style.display = 'none';
+      document.getElementById('ms-admin-auth').style.display = 'block';
+      document.getElementById('ms-admin-auth-err').textContent = 'Wrong key — please re-authenticate.';
+      errEl.textContent = '';
+      return;
+    }
+    if (!r.ok) { errEl.textContent = `Server error (${r.status}).`; return; }
+  } catch(e) {
+    errEl.textContent = 'Network error.'; return;
+  }
+
+  errEl.textContent = '';
+  _globalMsCache = null;
+  if (artUrl) TRACK_ARTWORK[trackInput] = artUrl;
+  localStorage.removeItem(`bu_global_ms_seen_${trackInput}_${msNum}`);
+  closeMilestoneAdminPanel();
+  renderMoreMilestones();
+  showMilestone(trackInput, total, msNum, dateInput);
+}
 }
 
 async function banUser() {
@@ -6500,12 +6598,20 @@ function showMilestone(trackId, total, milestone, milestoneDate) {
 
 // ── GLOBAL (CUSTOM) MILESTONES — 24h auto-show + persistent "More Milestones" section ──
 
-function loadGlobalMilestones() {
-  try { return JSON.parse(localStorage.getItem('bu_global_milestones') || '[]'); } catch { return []; }
+let _globalMsCache = null;
+
+async function fetchGlobalMilestones() {
+  if (_globalMsCache) return _globalMsCache;
+  try {
+    const r = await fetch('/api/proxy-image?global_milestones=list');
+    const d = await r.json();
+    _globalMsCache = Array.isArray(d.milestones) ? d.milestones : [];
+  } catch { _globalMsCache = []; }
+  return _globalMsCache;
 }
 
-function renderMoreMilestones() {
-  const milestones = loadGlobalMilestones();
+async function renderMoreMilestones() {
+  const milestones = await fetchGlobalMilestones();
   const section = document.getElementById('more-milestones-section');
   const grid    = document.getElementById('more-ms-grid');
   if (!section || !grid) return;
@@ -6523,15 +6629,16 @@ function renderMoreMilestones() {
 }
 
 function replayGlobalMilestone(id) {
-  const m = loadGlobalMilestones().find(x => x.id === id);
+  const m = (_globalMsCache || []).find(x => x.id === id);
   if (!m) return;
   if (m.artUrl) TRACK_ARTWORK[m.trackId] = m.artUrl;
   showMilestone(m.trackId, m.total, m.milestone, m.milestoneDate);
 }
 
-function checkGlobalMilestonesOnLoad() {
+async function checkGlobalMilestonesOnLoad() {
   const WINDOW_MS = 24 * 60 * 60 * 1000;
-  for (const m of loadGlobalMilestones()) {
+  const milestones = await fetchGlobalMilestones();
+  for (const m of milestones) {
     const seenKey = `bu_global_ms_seen_${m.id}`;
     if (localStorage.getItem(seenKey)) continue;
     if (Date.now() - m.savedAt < WINDOW_MS) {

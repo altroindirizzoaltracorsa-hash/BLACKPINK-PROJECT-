@@ -116,9 +116,57 @@ async function storeGlobalSnapshot(date, jumpTotal, shutdownTotal, ddududuTotal)
   }
 }
 
+async function upstashGet(key) {
+  const r = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/get/${encodeURIComponent(key)}`, {
+    headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}` },
+  });
+  const d = await r.json();
+  if (d.result === null || d.result === undefined) return null;
+  try { return JSON.parse(d.result); } catch { return d.result; }
+}
+
+async function upstashSet(key, value) {
+  await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify([['SET', key, JSON.stringify(value)]]),
+  });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // ── GET ?global_milestones=list (public) ──────────────────────────────────
+  if (req.query.global_milestones === 'list') {
+    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ milestones: [] });
+    try {
+      const milestones = await upstashGet('bu_global_milestones_list');
+      return res.status(200).json({ milestones: Array.isArray(milestones) ? milestones : [] });
+    } catch { return res.status(200).json({ milestones: [] }); }
+  }
+
+  // ── GET ?global_milestones=save (admin) ───────────────────────────────────
+  if (req.query.global_milestones === 'save') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    const key = req.headers['x-admin-secret'] || req.query.key;
+    if (!adminSecret || key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
+    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(500).json({ error: 'Redis not configured' });
+    const { track, milestone, total, date, art } = req.query;
+    if (!track || !milestone || !total) return res.status(400).json({ error: 'Required: track, milestone, total' });
+    const msNum    = Number(milestone);
+    const totalNum = Number(String(total).replace(/[^0-9]/g, ''));
+    if (!msNum || !totalNum) return res.status(400).json({ error: 'Invalid milestone or total' });
+    const trackId = track.toUpperCase();
+    const id      = `${trackId}_${msNum}`;
+    const entry   = { id, trackId, milestone: msNum, total: totalNum, milestoneDate: date || null, artUrl: art || null, savedAt: Date.now() };
+    let existing = [];
+    try { existing = (await upstashGet('bu_global_milestones_list')) || []; if (!Array.isArray(existing)) existing = []; } catch {}
+    const idx = existing.findIndex(m => m.id === id);
+    if (idx >= 0) existing[idx] = entry; else existing.push(entry);
+    await upstashSet('bu_global_milestones_list', existing);
+    return res.status(200).json({ ok: true, id, count: existing.length });
+  }
 
   // ── POST: global stream backfill (admin only) ──────────────────────────────
   if (req.method === 'POST') {
