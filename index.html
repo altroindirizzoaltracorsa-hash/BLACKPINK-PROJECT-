@@ -2101,7 +2101,7 @@ function buildMonthChartHtml(entries, markLatest, baseTotal) {
   }).join('');
   const showDates = entries.length <= 14;
   const datesHtml = showDates ? entries.map(h =>
-    `<div style="flex:1;font-size:0.65rem;letter-spacing:0.01em;color:rgba(245,240,240,0.45);text-align:center;white-space:nowrap;overflow:hidden;">${h.date}</div>`
+    `<div style="flex:1;font-size:0.65rem;letter-spacing:0.01em;color:rgba(245,240,240,0.45);text-align:center;white-space:nowrap;overflow:hidden;">${parseInt(h.date)}</div>`
   ).join('') : '';
   return `<div class="chart-bars">${barsHtml}</div>
     ${showDates ? `<div style="display:flex;gap:4px;margin-bottom:0.5rem;">${datesHtml}</div>` : '<div style="margin-bottom:0.5rem;"></div>'}`;

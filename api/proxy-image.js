@@ -169,6 +169,113 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── GET ?global_streams=migrate (one-time Redis→Supabase history migration) ─
+  if (req.query.global_streams === 'migrate') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    if (!adminSecret || req.headers['x-admin-secret'] !== adminSecret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const UPSTASH_URL   = process.env.UPSTASH_REDIS_REST_URL;
+    const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (!UPSTASH_URL || !UPSTASH_TOKEN) {
+      return res.status(500).json({ error: 'Missing UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN' });
+    }
+    async function rGet(key) {
+      const r = await fetch(`${UPSTASH_URL}/get/${encodeURIComponent(key)}`, {
+        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
+      });
+      const d = await r.json();
+      if (d.result === null || d.result === undefined) return null;
+      try { return JSON.parse(d.result); } catch { return d.result; }
+    }
+    const [histJump, histSD, histDDU, prevJump, prevSD, prevDDU] = await Promise.all([
+      rGet('bp_hist_jump'), rGet('bp_hist_shutdown'), rGet('bp_hist_ddududu'),
+      rGet('bp_prev_jump'), rGet('bp_prev_shutdown'), rGet('bp_prev_ddududu'),
+    ]);
+    // Reconstruct cumulative totals working backwards from latest bp_prev snapshot.
+    // History entry {date: D, streams: S} means snapshot(D+1) - snapshot(D) = S,
+    // so snapshot(D) = snapshot(D+1) - S. bp_prev holds the most recent snapshot.
+    function reconstructTotals(history, prev) {
+      if (!history?.length || !prev) return {};
+      const sorted = [...history].sort((a, b) => {
+        const [ad, am] = a.date.split('/').map(Number);
+        const [bd, bm] = b.date.split('/').map(Number);
+        return (bm * 100 + bd) - (am * 100 + ad);
+      });
+      const totals = {};
+      let running = prev.total;
+      totals[prev.date] = prev.total;
+      for (const entry of sorted) {
+        running -= entry.streams;
+        totals[entry.date] = running;
+      }
+      return totals;
+    }
+    const jumpTotals = reconstructTotals(histJump, prevJump);
+    const sdTotals   = reconstructTotals(histSD,   prevSD);
+    const dduTotals  = reconstructTotals(histDDU,  prevDDU);
+    function toISO(ddmm) {
+      const [dd, mm] = ddmm.split('/').map(Number);
+      return `2026-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+    }
+    const allDDMM = new Set([...Object.keys(jumpTotals), ...Object.keys(sdTotals), ...Object.keys(dduTotals)]);
+    const rows = [];
+    for (const ddmm of allDDMM) {
+      const jt = jumpTotals[ddmm], st = sdTotals[ddmm], dt = dduTotals[ddmm];
+      if (!jt || !st || !dt) continue;
+      rows.push({ _ddmm: ddmm, date: toISO(ddmm), jump_total: jt, shutdown_total: st, ddududu_total: dt });
+    }
+    rows.sort((a, b) => a.date.localeCompare(b.date));
+    for (let i = 0; i < rows.length; i++) {
+      rows[i].jump_daily     = i === 0 ? null : rows[i].jump_total     - rows[i-1].jump_total;
+      rows[i].shutdown_daily = i === 0 ? null : rows[i].shutdown_total - rows[i-1].shutdown_total;
+      rows[i].ddududu_daily  = i === 0 ? null : rows[i].ddududu_total  - rows[i-1].ddududu_total;
+    }
+    const insertPayload = rows.map(({ _ddmm, ...r }) => r);
+    const insertRes = await sbFetch('/global_stream_snapshots', {
+      method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates' },
+      body: JSON.stringify(insertPayload),
+    });
+    if (!insertRes.ok) {
+      const errBody = await insertRes.text();
+      return res.status(500).json({ error: `Supabase insert failed: ${errBody}` });
+    }
+    // Patch any pre-existing rows whose daily is null but predecessor now exists in batch
+    const totalsMap = {};
+    for (const r of rows) totalsMap[r.date] = r;
+    const nullRes = await sbFetch(
+      '/global_stream_snapshots?jump_daily=is.null&select=date,jump_total,shutdown_total,ddududu_total&order=date.asc',
+      { headers: { Accept: 'application/json' } },
+    );
+    const patchedDates = [];
+    if (nullRes.ok) {
+      for (const entry of await nullRes.json()) {
+        const d = new Date(entry.date + 'T00:00:00Z');
+        d.setUTCDate(d.getUTCDate() - 1);
+        const prevDate = d.toISOString().split('T')[0];
+        const prevRow  = totalsMap[prevDate];
+        if (!prevRow) continue;
+        await sbFetch(`/global_stream_snapshots?date=eq.${entry.date}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            jump_daily:     entry.jump_total     - prevRow.jump_total,
+            shutdown_daily: entry.shutdown_total - prevRow.shutdown_total,
+            ddududu_daily:  entry.ddududu_total  - prevRow.ddududu_total,
+          }),
+        });
+        patchedDates.push(entry.date);
+      }
+    }
+    return res.status(200).json({
+      ok: true, rows_attempted: rows.length, patched_nulls: patchedDates,
+      date_range: rows.length ? `${rows[0].date} → ${rows[rows.length-1].date}` : null,
+      debug: {
+        histLengths: { jump: histJump?.length, sd: histSD?.length, ddu: histDDU?.length },
+        prevDates:   { jump: prevJump?.date,   sd: prevSD?.date,   ddu: prevDDU?.date   },
+      },
+    });
+  }
+
   // ── Musicat stats proxy ──────────────────────────────────────────────────
   const mcUser = req.query.musicat_user;
   if (mcUser) {
