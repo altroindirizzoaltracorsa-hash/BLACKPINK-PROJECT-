@@ -422,42 +422,49 @@ export default async function handler(req, res) {
   const sfmUser = req.query.statsfm_user;
   if (sfmUser) {
     try {
-      const SFM_BASE    = 'https://api.stats.fm/api/v1';
-      const SFM_HEADERS = { 'content-type': 'application/json' };
+      const SFM_BASE = 'https://api.stats.fm/api/v1';
+      const SFM_H = { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' };
 
-      const ur = await fetch(`${SFM_BASE}/users/${encodeURIComponent(sfmUser)}`, { headers: SFM_HEADERS });
+      const ur = await fetch(`${SFM_BASE}/users/${encodeURIComponent(sfmUser)}`, { headers: SFM_H });
       if (!ur.ok) return res.status(400).json({ error: `Stats.fm user "${sfmUser}" not found (${ur.status})` });
       const ud = await ur.json();
       const user = ud.item ?? ud;
       const customId    = user.customId ?? user.id ?? sfmUser;
       const displayName = user.displayName ?? customId;
 
-      const [tr, ar, sr] = await Promise.all([
-        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=500`, { headers: SFM_HEADERS }),
-        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`,  { headers: SFM_HEADERS }),
-        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/streams/stats?range=lifetime`,          { headers: SFM_HEADERS }),
+      // Fetch top tracks (try limit=100; Stats.fm may reject higher limits).
+      // Also fetch top artists for member breakdown.
+      const [tr, ar] = await Promise.all([
+        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=100`, { headers: SFM_H }),
+        fetch(`${SFM_BASE}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`, { headers: SFM_H }),
       ]);
-      if (!tr.ok) return res.status(400).json({ error: 'Could not fetch track stats from Stats.fm' });
-      const [td, ad] = await Promise.all([ tr.json(), ar.ok ? ar.json() : Promise.resolve(null), sr.ok ? sr.json() : Promise.resolve(null) ]);
-      const items = td.items ?? [];
+
+      const items = tr.ok ? ((await tr.json()).items ?? []) : [];
+      const adData = ar.ok ? await ar.json() : null;
 
       const MEMBER_MAP = { 'JISOO': 'jisoo', 'LISA': 'lisa', 'ROSÉ': 'rose', 'JENNIE': 'jennie' };
       let bpGroupPlays = 0;
       const memberPlays = { jisoo: 0, lisa: 0, rose: 0, jennie: 0 };
-      for (const item of (ad?.items ?? [])) {
+      for (const item of (adData?.items ?? [])) {
         const n = item.artist?.name;
-        const streams = item.streams ?? 0;
+        // streams field or playedMs/60000 as fallback
+        const streams = item.streams ?? Math.round((item.playedMs ?? 0) / 180000);
         if (n === 'BLACKPINK') bpGroupPlays += streams;
         else if (MEMBER_MAP[n]) memberPlays[MEMBER_MAP[n]] += streams;
       }
       const artistPlays = bpGroupPlays + Object.values(memberPlays).reduce((s, v) => s + v, 0);
 
+      // Match tracks by name prefix; also accept streams or count field
       const TRACK_PREFIXES = { jump: 'jump', shutdown: 'shut down', ddududu: 'ddu-du ddu-du' };
       const tracks = {};
       for (const [key, prefix] of Object.entries(TRACK_PREFIXES)) {
         tracks[key] = items
-          .filter(i => i.track?.name?.toLowerCase().startsWith(prefix) && i.track?.artists?.some(a => a.name === 'BLACKPINK'))
-          .reduce((sum, i) => sum + (i.streams ?? 0), 0);
+          .filter(i => {
+            const name = (i.track?.name ?? i.name ?? '').toLowerCase();
+            const artists = i.track?.artists ?? i.artists ?? [];
+            return name.startsWith(prefix) && artists.some(a => a.name === 'BLACKPINK');
+          })
+          .reduce((sum, i) => sum + (i.streams ?? i.count ?? Math.round((i.playedMs ?? 0) / 180000)), 0);
       }
 
       return res.status(200).json({
