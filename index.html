@@ -1112,6 +1112,8 @@
 .ms-btn { font-family:var(--mono); font-size:0.48rem; letter-spacing:0.14em; text-transform:uppercase; padding:0.55rem 1rem; cursor:pointer; border:none; }
 .ms-btn-primary { background:var(--pink); color:#fff; }
 .ms-btn-secondary { background:transparent; border:1px solid rgba(255,255,255,0.2); color:var(--muted); }
+.ms-close { position:absolute; top:0.6rem; right:0.8rem; background:none; border:none; color:var(--muted); font-size:1.4rem; line-height:1; cursor:pointer; padding:0.2rem 0.4rem; }
+.ms-close:hover { color:var(--text); }
 
 /* confetti particles */
 .ms-confetti { position:fixed; inset:0; pointer-events:none; z-index:9997; overflow:hidden; }
@@ -1233,6 +1235,7 @@
 <div class="ms-confetti" id="ms-confetti"></div>
 <div id="milestone-overlay">
   <div id="milestone-card">
+    <button class="ms-close" onclick="closeMilestone()" aria-label="Close">×</button>
     <span class="ms-emoji">🎉</span>
     <div class="ms-label">MILESTONE REACHED</div>
     <div class="ms-track" id="ms-track-name"></div>
@@ -1241,6 +1244,7 @@
     <div class="ms-date" id="ms-date"></div>
     <div class="ms-actions">
       <button class="ms-btn ms-btn-primary" onclick="shareMilestoneCard()">↑ Share</button>
+      <button class="ms-btn ms-btn-secondary" onclick="downloadMilestoneCard()">↓ Save</button>
       <button class="ms-btn ms-btn-secondary" onclick="closeMilestone()">Dismiss</button>
     </div>
     <canvas id="ms-canvas" style="display:none"></canvas>
@@ -5754,6 +5758,9 @@ const TRACK_ARTWORK = {
   shutdown: '/cover-shutdown.jpg',
   ddududu:  '/cover-ddududu.jpg',
 };
+const KNOWN_SPOTIFY_IDS = {
+  "AS IF IT'S YOUR LAST": '4ZxOuNHhpyOj4gv52MtQpT',
+};
 let cardCanvas = null; // current canvas for download
 
 function closeCard() {
@@ -5795,7 +5802,11 @@ async function loadImg(url) {
 }
 
 async function loadArtwork(trackId) {
-  const url = TRACK_ARTWORK[trackId];
+  let url = TRACK_ARTWORK[trackId];
+  if (!url && KNOWN_SPOTIFY_IDS[trackId]) {
+    url = `/api/proxy-image?spotify_art=${KNOWN_SPOTIFY_IDS[trackId]}`;
+    TRACK_ARTWORK[trackId] = url;
+  }
   if (!url) return null;
   try { return await loadImg(url); } catch(e) {}
   return null;
