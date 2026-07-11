@@ -78,6 +78,49 @@ async function fetchSpotifyPlayCount(token, trackId) {
   }
 }
 
+async function fetchSpotifyArtworkUrl(trackId) {
+  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+  // Try 1: oEmbed API — official, public, no auth required
+  try {
+    const r = await fetch(
+      `https://open.spotify.com/oembed?url=${encodeURIComponent('https://open.spotify.com/track/' + trackId)}`,
+      { headers: { 'User-Agent': UA } },
+    );
+    if (r.ok) {
+      const d = await r.json();
+      if (d.thumbnail_url) return d.thumbnail_url;
+    }
+  } catch {}
+
+  // Try 2: Partner API persisted query
+  try {
+    const token = await getSpotifyToken();
+    const variables  = JSON.stringify({ uri: `spotify:track:${trackId}` });
+    const extensions = JSON.stringify({ persistedQuery: { version: 1, sha256Hash: 'ae85b52abb74d20a4c331d4143d4772c95f34757a435d55406e6a2f17ad41c42' } });
+    const url = `https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${encodeURIComponent(variables)}&extensions=${encodeURIComponent(extensions)}`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}`, 'User-Agent': UA } });
+    if (r.ok) {
+      const d = await r.json();
+      const sources = d?.data?.trackUnion?.albumOfTrack?.coverArt?.sources ?? [];
+      const best = sources.sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0]?.url;
+      if (best) return best;
+    }
+  } catch {}
+
+  // Try 3: Scrape og:image from track page
+  try {
+    const r = await fetch(`https://open.spotify.com/track/${trackId}`, { headers: { 'User-Agent': UA } });
+    if (r.ok) {
+      const html = await r.text();
+      const m = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/);
+      if (m) return m[1];
+    }
+  } catch {}
+
+  return null;
+}
+
 async function storeGlobalSnapshot(date, jumpTotal, shutdownTotal, ddududuTotal) {
   const prevRes = await sbFetch(
     `/global_stream_snapshots?date=lt.${date}&order=date.desc&limit=1&select=jump_total,shutdown_total,ddududu_total`,
@@ -137,7 +180,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // ── GET ?global_milestones=list (public) ──────────────────────────────────
+  // ── GET ?global_milestones=list (public) ──────────────────────��───────────
   if (req.query.global_milestones === 'list') {
     if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ milestones: [] });
     try {
@@ -159,7 +202,12 @@ export default async function handler(req, res) {
     if (!msNum || !totalNum) return res.status(400).json({ error: 'Invalid milestone or total' });
     const trackId = track.toUpperCase();
     const id      = `${trackId}_${msNum}`;
-    const entry   = { id, trackId, milestone: msNum, total: totalNum, milestoneDate: date || null, artUrl: art || null, savedAt: Date.now() };
+    // If art param looks like a bare Spotify track ID (22 alphanumeric chars), convert to proxy URL
+    let artUrl = art || null;
+    if (artUrl && /^[A-Za-z0-9]{22}$/.test(artUrl)) {
+      artUrl = `/api/proxy-image?spotify_art=${artUrl}`;
+    }
+    const entry = { id, trackId, milestone: msNum, total: totalNum, milestoneDate: date || null, artUrl, savedAt: Date.now() };
     let existing = [];
     try { existing = (await upstashGet('bu_global_milestones_list')) || []; if (!Array.isArray(existing)) existing = []; } catch {}
     const idx = existing.findIndex(m => m.id === id);
@@ -245,9 +293,6 @@ export default async function handler(req, res) {
       rGet('bp_hist_jump'), rGet('bp_hist_shutdown'), rGet('bp_hist_ddududu'),
       rGet('bp_prev_jump'), rGet('bp_prev_shutdown'), rGet('bp_prev_ddududu'),
     ]);
-    // Reconstruct cumulative totals working backwards from latest bp_prev snapshot.
-    // History entry {date: D, streams: S} means snapshot(D+1) - snapshot(D) = S,
-    // so snapshot(D) = snapshot(D+1) - S. bp_prev holds the most recent snapshot.
     function reconstructTotals(history, prev) {
       if (!history?.length || !prev) return {};
       const sorted = [...history].sort((a, b) => {
@@ -293,7 +338,6 @@ export default async function handler(req, res) {
       const errBody = await insertRes.text();
       return res.status(500).json({ error: `Supabase insert failed: ${errBody}` });
     }
-    // Patch any pre-existing rows whose daily is null but predecessor now exists in batch
     const totalsMap = {};
     for (const r of rows) totalsMap[r.date] = r;
     const nullRes = await sbFetch(
@@ -329,7 +373,7 @@ export default async function handler(req, res) {
     });
   }
 
-  // ── Musicat stats proxy ──────────────────────────────────────────────────
+  // ── Musicat stats proxy ───────────────────────────────────────���──────────
   const mcUser = req.query.musicat_user;
   if (mcUser) {
     try {
@@ -431,15 +475,7 @@ export default async function handler(req, res) {
   const spotifyArtTrack = req.query.spotify_art;
   if (spotifyArtTrack) {
     try {
-      const token = await getSpotifyToken();
-      const variables  = JSON.stringify({ uri: `spotify:track:${spotifyArtTrack}` });
-      const extensions = JSON.stringify({ persistedQuery: { version: 1, sha256Hash: 'ae85b52abb74d20a4c331d4143d4772c95f34757a435d55406e6a2f17ad41c42' } });
-      const apiUrl = `https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${encodeURIComponent(variables)}&extensions=${encodeURIComponent(extensions)}`;
-      const r = await fetch(apiUrl, { headers: { Authorization: `Bearer ${token}` } });
-      if (!r.ok) return res.status(502).json({ error: `Spotify partner API: ${r.status}` });
-      const d = await r.json();
-      const sources = d?.data?.trackUnion?.albumOfTrack?.coverArt?.sources ?? [];
-      const artUrl = sources.sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0]?.url;
+      const artUrl = await fetchSpotifyArtworkUrl(spotifyArtTrack);
       if (!artUrl) return res.status(404).json({ error: 'No artwork found' });
       const imgRes = await fetch(artUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
       if (!imgRes.ok) return res.status(imgRes.status).end();
