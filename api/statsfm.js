@@ -45,8 +45,9 @@ export default async function handler(request) {
     const user = ud.item ?? ud;
     const customId = user.customId ?? user.id ?? username;
     const displayName = user.displayName ?? customId;
+    const profileTz = user.timezone ?? user.tz ?? user.utcOffset ?? user.timeZone ?? null;
 
-    if (debug) return json({ step: 'user_ok', customId, displayName, raw: ud });
+    if (debug) return json({ step: 'user_ok', customId, displayName, profileTz, allKeys: Object.keys(user), raw: ud });
 
     const [tr, ar, trToday] = await Promise.all([
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=100`, { headers: SFM_H }),
