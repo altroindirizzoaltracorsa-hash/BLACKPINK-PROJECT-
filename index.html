@@ -3838,17 +3838,51 @@ async function fetchSingleAccountStats(source, username) {
     } catch(e) { console.warn('Musicat fetch failed for', username, e.message); }
   } else if (source === 'statsfm') {
     try {
-      const r = await fetch(`/api/proxy-image?statsfm_user=${encodeURIComponent(username)}`);
-      const d = await r.json();
-      if (d.error) throw new Error(d.error);
-      res.artistPlays = d.artistPlays || 0;
-      res.bpGroupPlays = d.bpGroupPlays || 0;
-      if (d.memberPlays) res.memberPlays = { ...res.memberPlays, ...d.memberPlays };
-      res.playcount   = d.playcount  || d.artistPlays || 0;
-      for (const k of ['jump', 'shutdown', 'ddududu']) {
-        res.totalPlays[k]  = d.tracks?.[k] || 0;
-        res.todayCounts[k] = d.today?.[k]  || 0;
+      // Call Stats.fm directly from the browser — Vercel server IPs are blocked by Cloudflare
+      const SFM = 'https://api.stats.fm/api/v1';
+      const sfmH = { 'Accept': 'application/json' };
+      const ur = await fetch(`${SFM}/users/${encodeURIComponent(username)}`, { headers: sfmH });
+      if (!ur.ok) throw new Error(`Stats.fm user not found (${ur.status})`);
+      const ud = await ur.json();
+      const user = ud.item ?? ud;
+      const customId = user.customId ?? user.id ?? username;
+
+      const [tr, ar] = await Promise.all([
+        fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=100`, { headers: sfmH }),
+        fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`, { headers: sfmH }),
+      ]);
+
+      const items = tr.ok ? ((await tr.json()).items ?? []) : [];
+      const adData = ar.ok ? await ar.json() : null;
+
+      const MEMBER_MAP = { 'JISOO': 'jisoo', 'LISA': 'lisa', 'ROSÉ': 'rose', 'JENNIE': 'jennie' };
+      let bpGroupPlays = 0;
+      const memberPlays = { jisoo: 0, lisa: 0, rose: 0, jennie: 0 };
+      for (const item of (adData?.items ?? [])) {
+        const n = item.artist?.name;
+        const streams = item.streams ?? Math.round((item.playedMs ?? 0) / 180000);
+        if (n === 'BLACKPINK') bpGroupPlays += streams;
+        else if (MEMBER_MAP[n]) memberPlays[MEMBER_MAP[n]] += streams;
       }
+      const artistPlays = bpGroupPlays + Object.values(memberPlays).reduce((s, v) => s + v, 0);
+
+      const TRACK_PREFIXES = { jump: 'jump', shutdown: 'shut down', ddududu: 'ddu-du ddu-du' };
+      const tracks = {};
+      for (const [key, prefix] of Object.entries(TRACK_PREFIXES)) {
+        tracks[key] = items
+          .filter(i => {
+            const name = (i.track?.name ?? i.name ?? '').toLowerCase();
+            const artists = i.track?.artists ?? i.artists ?? [];
+            return name.startsWith(prefix) && artists.some(a => a.name === 'BLACKPINK');
+          })
+          .reduce((sum, i) => sum + (i.streams ?? i.count ?? Math.round((i.playedMs ?? 0) / 180000)), 0);
+      }
+
+      res.artistPlays = artistPlays;
+      res.bpGroupPlays = bpGroupPlays;
+      res.memberPlays = { ...res.memberPlays, ...memberPlays };
+      res.playcount = artistPlays || Object.values(tracks).reduce((s, v) => s + v, 0);
+      for (const k of ['jump', 'shutdown', 'ddududu']) res.totalPlays[k] = tracks[k] || 0;
       // Stats.fm public API doesn't expose per-day history — weekDayCounts stay empty
       for (let i = 0; i < 7; i++) res.weekDayCounts.push(null);
     } catch(e) { console.warn('Stats.fm fetch failed for', username, e.message); }
