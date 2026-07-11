@@ -66,7 +66,8 @@ export default async function handler(request) {
     const memberPlays = { jisoo: 0, lisa: 0, rose: 0, jennie: 0 };
     for (const item of adItems) {
       const n = item.artist?.name;
-      const streams = item.streams ?? Math.round((item.playedMs ?? 0) / 180000);
+      // Try all known field names for stream count
+      const streams = item.streams ?? item.count ?? item.playCount ?? Math.round((item.playedMs ?? item.durationMs ?? 0) / 180000);
       if (n === 'BLACKPINK') bpGroupPlays += streams;
       else if (MEMBER_MAP[n]) memberPlays[MEMBER_MAP[n]] += streams;
     }
@@ -84,15 +85,19 @@ export default async function handler(request) {
         .reduce((sum, i) => sum + (i.streams ?? i.count ?? Math.round((i.playedMs ?? 0) / 180000)), 0);
     }
 
-    // Include diagnostic counts in the response so we can see if data is there but BLACKPINK is missing
+    // Include diagnostic counts so we can see if data is there but BLACKPINK is missing
     const topArtistNames = adItems.slice(0, 5).map(i => i.artist?.name).filter(Boolean);
+    // Show all keys of the first artist item so we know the correct field name for stream count
+    const firstArtistKeys = adItems[0] ? Object.keys(adItems[0]).join(',') : 'none';
+    const bpItem = adItems.find(i => i.artist?.name === 'BLACKPINK');
+    const bpRaw = bpItem ? JSON.stringify(bpItem).substring(0, 300) : 'not found';
 
     return json({
       customId, displayName,
       playcount: artistPlays || Object.values(tracks).reduce((s, v) => s + v, 0),
       artistPlays, bpGroupPlays, memberPlays, tracks,
       today: { jump: 0, shutdown: 0, ddududu: 0 },
-      _debug: { totalItems: items.length, totalArtists: adItems.length, topArtistNames },
+      _debug: { totalItems: items.length, totalArtists: adItems.length, topArtistNames, firstArtistKeys, bpRaw },
     });
   } catch (e) {
     return json({ error: e.message }, 500);
