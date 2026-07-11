@@ -172,7 +172,8 @@ export default async function handler(req, res) {
   // ── GET ?global_streams=migrate (one-time Redis→Supabase history migration) ─
   if (req.query.global_streams === 'migrate') {
     const adminSecret = process.env.ADMIN_SECRET;
-    if (!adminSecret || req.headers['x-admin-secret'] !== adminSecret) {
+    const providedSecret = req.headers['x-admin-secret'] || req.query.key;
+    if (!adminSecret || providedSecret !== adminSecret) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     const UPSTASH_URL   = process.env.UPSTASH_REDIS_REST_URL;
