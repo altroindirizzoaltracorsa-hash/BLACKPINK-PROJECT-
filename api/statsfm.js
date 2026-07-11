@@ -85,17 +85,11 @@ export default async function handler(request) {
         .reduce((sum, i) => sum + (i.streams ?? i.count ?? Math.round((i.playedMs ?? 0) / 180000)), 0);
     }
 
-    const bpItem = adItems.find(i => i.artist?.name === 'BLACKPINK');
-    const bpDebug = bpItem
-      ? `streams=${bpItem.streams} playedMs=${bpItem.playedMs} count=${bpItem.count} pos=${bpItem.position}`
-      : 'BLACKPINK not found in artists';
-
     return json({
       customId, displayName,
       playcount: artistPlays || Object.values(tracks).reduce((s, v) => s + v, 0),
       artistPlays, bpGroupPlays, memberPlays, tracks,
       today: { jump: 0, shutdown: 0, ddududu: 0 },
-      _debug: { totalArtists: adItems.length, bpGroupPlays, bpDebug },
     });
   } catch (e) {
     return json({ error: e.message }, 500);
