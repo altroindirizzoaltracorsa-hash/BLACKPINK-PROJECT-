@@ -1877,6 +1877,24 @@
         <div id="admin-ban-err" class="admin-err"></div>
         <div id="admin-ban-list" class="admin-ban-list"></div>
       </div>
+      <div class="admin-ban-section">
+        <div class="admin-ban-title">🎉 Trigger custom milestone pop-up</div>
+        <div class="admin-input-row">
+          <input id="admin-ms-track" class="admin-input" type="text" placeholder="Track name (e.g. PINK VENOM)" style="text-transform:uppercase">
+        </div>
+        <div class="admin-input-row">
+          <input id="admin-ms-milestone" class="admin-input" type="text" placeholder="Milestone (e.g. 650M or 650000000)">
+          <input id="admin-ms-total" class="admin-input" type="text" placeholder="Current total streams">
+        </div>
+        <div class="admin-input-row">
+          <input id="admin-ms-date" class="admin-input" type="text" placeholder="Date reached dd/mm/yyyy (optional)">
+          <input id="admin-ms-art" class="admin-input" type="text" placeholder="Artwork URL (optional)">
+        </div>
+        <div class="admin-input-row">
+          <button class="btn-primary" onclick="triggerCustomMilestone()">Show Milestone →</button>
+        </div>
+        <div id="admin-ms-err" class="admin-err"></div>
+      </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
       <button class="card-cl-btn" onclick="closeAdminPanel()">Close</button>
@@ -5298,6 +5316,29 @@ function renderBannedList(banned) {
   wrap.innerHTML = banned.map(u => `<span class="admin-ban-chip">${u} <button onclick="unbanUser(${JSON.stringify(u)})">✕</button></span>`).join('');
 }
 
+function triggerCustomMilestone() {
+  const trackInput = document.getElementById('admin-ms-track').value.trim().toUpperCase();
+  const msInput    = document.getElementById('admin-ms-milestone').value.trim();
+  const totalInput = document.getElementById('admin-ms-total').value.trim();
+  const dateInput  = document.getElementById('admin-ms-date').value.trim() || null;
+  const artUrl     = document.getElementById('admin-ms-art').value.trim() || null;
+  const errEl      = document.getElementById('admin-ms-err');
+
+  const msNum = /^\d+$/.test(msInput) ? Number(msInput)
+              : /^\d+(\.\d+)?[mM]$/.test(msInput) ? Math.round(parseFloat(msInput) * 1_000_000)
+              : NaN;
+  const total = Number(totalInput.replace(/[^0-9]/g, ''));
+
+  if (!trackInput)      { errEl.textContent = 'Track name is required.'; return; }
+  if (!msNum || msNum < 1_000_000) { errEl.textContent = 'Invalid milestone — use e.g. 650M or 650000000.'; return; }
+  if (!total)           { errEl.textContent = 'Invalid total streams.'; return; }
+  errEl.textContent = '';
+
+  if (artUrl) TRACK_ARTWORK[trackInput] = artUrl;
+  closeAdminPanel();
+  showMilestone(trackInput, total, msNum, dateInput);
+}
+
 async function banUser() {
   const input = document.getElementById('admin-ban-input');
   const errEl = document.getElementById('admin-ban-err');
@@ -6492,13 +6533,14 @@ function drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milesto
   ctx.letterSpacing = '6px';
   fillTextFit(ctx, 'MILESTONE REACHED', PX, landscape ? 80 : 140, landscape ? 55 : 68, textW, '"Bebas Neue", sans-serif');
 
-  // Track title
+  // Track title (falls back to raw trackId string for non-tracked tracks)
+  const trackTitle = track?.title ?? trackId;
   ctx.fillStyle = '#F5F0F0';
   const titleSize = landscape
-    ? (track.title.length > 10 ? 68 : track.title.length > 6 ? 83 : 98)
-    : (track.title.length > 10 ? 70 : track.title.length > 6 ? 86 : 102);
+    ? (trackTitle.length > 10 ? 68 : trackTitle.length > 6 ? 83 : 98)
+    : (trackTitle.length > 10 ? 70 : trackTitle.length > 6 ? 86 : 102);
   ctx.letterSpacing = '5px';
-  fillTextFit(ctx, track.title, PX, landscape ? 176 : 280, titleSize, textW, '"Bebas Neue", sans-serif');
+  fillTextFit(ctx, trackTitle, PX, landscape ? 176 : 280, titleSize, textW, '"Bebas Neue", sans-serif');
 
   // Pink rule
   ctx.fillStyle = '#FF0066';
