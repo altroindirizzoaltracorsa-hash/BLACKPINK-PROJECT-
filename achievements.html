@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>BLACKPINK — Guinness World Records</title>
+<title>BLACKPINK — Achievements & World Records</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Every official Guinness World Record held by BLACKPINK — as a group and as individual members.">
+<meta name="description" content="Every Guinness World Record, chart first, and major milestone achieved by BLACKPINK and its members.">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -18,99 +18,58 @@
     --rose:   #8B1C4A;
     --dim:    #906878;
     --faint:  #1C0D15;
-    --green:  #1DB954;
   }
 
   html { scroll-behavior: smooth; }
-  body {
-    background: var(--bg);
-    color: var(--blush);
-    font-family: system-ui, -apple-system, sans-serif;
-    overflow-x: hidden;
-  }
+  body { background: var(--bg); color: var(--blush); font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
 
-  /* ── NAV ── */
   .back {
     position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); z-index: 200;
-    color: var(--dim); text-decoration: none;
-    font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase;
-    display: inline-flex; align-items: center; gap: 0.35rem;
+    color: var(--dim); text-decoration: none; font-size: 0.72rem; letter-spacing: 0.12em;
+    text-transform: uppercase; display: inline-flex; align-items: center; gap: 0.35rem;
     transition: color 0.2s; white-space: nowrap;
   }
   .back:hover { color: var(--pink); }
 
-  /* ── HERO ── */
   #hero {
-    position: relative;
-    min-height: 55svh;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    text-align: center; padding: 6rem 1.4rem 4rem;
-    overflow: hidden;
+    position: relative; min-height: 52svh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 6rem 1.4rem 4rem; overflow: hidden;
   }
   #hero::after {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0; height: 3px; z-index: 3;
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; z-index: 3;
     background: linear-gradient(90deg, transparent, var(--pink) 35%, var(--gold) 65%, transparent);
   }
-  .hero-inner { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
-
-  .bp-logo { display: block; max-width: 180px; width: 100%; height: auto; margin-bottom: 0.25rem; }
-
+  .hero-inner { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 0.9rem; }
+  .bp-logo { display: block; max-width: 160px; width: 100%; height: auto; margin-bottom: 0.2rem; }
   .icon-badge {
     display: inline-flex; align-items: center; gap: 0.5rem;
-    border: 1px solid var(--gold); padding: 0.35rem 1rem;
-    font-size: 0.6rem; letter-spacing: 0.3em; text-transform: uppercase;
-    color: var(--gold); margin-bottom: 0.5rem;
+    border: 1px solid var(--gold); padding: 0.3rem 0.9rem;
+    font-size: 0.58rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--gold);
   }
-  .icon-badge-gem { width: 6px; height: 6px; background: var(--gold); transform: rotate(45deg); flex-shrink: 0; }
-
-  .hero-eye {
-    font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase;
-    color: var(--gold);
-  }
+  .icon-badge-gem { width: 5px; height: 5px; background: var(--gold); transform: rotate(45deg); flex-shrink: 0; }
   h1.hero-title {
     font-family: 'Arial Black', Impact, sans-serif;
-    font-size: clamp(2rem, 6vw, 4rem);
-    font-weight: 900; line-height: 0.95;
-    letter-spacing: -0.02em; text-transform: uppercase;
-    color: var(--blush); text-wrap: balance;
+    font-size: clamp(1.8rem, 5.5vw, 3.8rem); font-weight: 900; line-height: 0.95;
+    letter-spacing: -0.02em; text-transform: uppercase; color: var(--blush); text-wrap: balance;
   }
   h1.hero-title em { font-style: normal; color: var(--pink); }
-  .hero-sub {
-    font-size: 0.8rem; color: var(--dim); max-width: 440px; line-height: 1.6;
-    letter-spacing: 0.04em;
-  }
-  .hero-count {
+  .hero-sub { font-size: 0.78rem; color: var(--dim); max-width: 420px; line-height: 1.65; letter-spacing: 0.03em; }
+  .hero-stats { display: flex; gap: 2.5rem; margin-top: 0.4rem; }
+  .hero-stat-n {
     font-family: 'Arial Black', Impact, sans-serif;
-    font-size: clamp(3rem, 10vw, 6rem); font-weight: 900;
-    color: var(--pink); line-height: 1; letter-spacing: -0.04em;
-    font-variant-numeric: tabular-nums;
+    font-size: clamp(2.2rem, 7vw, 4rem); font-weight: 900; color: var(--pink); line-height: 1;
+    letter-spacing: -0.04em; font-variant-numeric: tabular-nums; text-align: center;
   }
-  .hero-count-label {
-    font-size: 0.62rem; letter-spacing: 0.25em; text-transform: uppercase;
-    color: var(--dim); margin-top: -0.2rem;
-  }
-  .hero-glow {
-    position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, transparent, var(--pink) 50%, transparent);
-    opacity: 0.45;
-  }
+  .hero-stat-n sup { font-size: 0.38em; color: var(--gold); vertical-align: super; }
+  .hero-stat-l { font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); text-align: center; margin-top: 0.1rem; }
+  .hero-glow { position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--pink) 50%, transparent); opacity: 0.4; }
 
-  /* ── LAYOUT ── */
-  .sect { padding: 4.5rem 1.4rem; max-width: 900px; margin: 0 auto; }
-  .sect-eye { font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); text-align: center; margin-bottom: 0.5rem; }
-  .sect-h {
-    font-family: 'Arial Black', Impact, sans-serif;
-    font-size: clamp(1.3rem, 3.5vw, 2.2rem); font-weight: 900;
-    text-transform: uppercase; letter-spacing: -0.01em;
-    color: var(--blush); text-align: center; margin-bottom: 0.3em;
-  }
+  .sect { padding: 4rem 1.4rem; max-width: 900px; margin: 0 auto; }
+  .sect-eye { font-size: 0.63rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); text-align: center; margin-bottom: 0.5rem; }
+  .sect-h { font-family: 'Arial Black', Impact, sans-serif; font-size: clamp(1.2rem, 3vw, 2rem); font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; color: var(--blush); text-align: center; margin-bottom: 0.3em; }
   .sect-h em { font-style: normal; color: var(--pink); }
-  .sect-sub {
-    font-size: 0.82rem; color: var(--dim); text-align: center;
-    max-width: 460px; margin: 0 auto 2.2rem; line-height: 1.65;
-  }
+  .sect-sub { font-size: 0.8rem; color: var(--dim); text-align: center; max-width: 460px; margin: 0 auto 2rem; line-height: 1.65; }
 
   .divider { display: flex; align-items: center; gap: 1.2rem; padding: 0 2rem; max-width: 860px; margin: 0 auto; }
   .divider::before, .divider::after { content: ''; flex: 1; height: 1px; }
@@ -118,261 +77,234 @@
   .divider::after  { background: linear-gradient(90deg, var(--rose), transparent); }
   .divider-gem { width: 7px; height: 7px; background: var(--pink); transform: rotate(45deg); flex-shrink: 0; }
 
-  /* ── RECORD LIST ── */
+  /* Record list */
   .rec-list { list-style: none; border: 1px solid var(--faint); }
   .rec-item {
-    display: grid; grid-template-columns: 2.8rem 1fr;
-    align-items: baseline; gap: 0 1rem;
-    padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--faint);
-    transition: background 0.15s;
+    display: grid; grid-template-columns: 2.6rem 1fr; align-items: baseline;
+    gap: 0 1rem; padding: 1rem 1.4rem; border-bottom: 1px solid var(--faint); transition: background 0.15s;
   }
   .rec-item:last-child { border-bottom: none; }
   .rec-item:hover { background: var(--surf); }
-  .rec-gem {
-    font-size: 0.65rem; color: var(--pink);
-    display: flex; align-items: center; justify-content: center;
-    padding-top: 0.15em;
-  }
+  .rec-gem { font-size: 0.65rem; color: var(--pink); display: flex; align-items: center; justify-content: center; padding-top: 0.15em; }
   .rec-text { font-size: 0.875rem; color: var(--blush); line-height: 1.55; }
   .rec-text strong { color: var(--gold); font-weight: 600; }
-  .rec-text .year {
-    display: inline-block; margin-left: 0.4em;
-    font-size: 0.68rem; letter-spacing: 0.1em; color: var(--dim);
-  }
+  .year { display: inline-block; margin-left: 0.45em; font-size: 0.65rem; letter-spacing: 0.1em; color: var(--dim); }
 
-  /* ── MEMBER HEADER ── */
-  .member-head {
-    display: flex; align-items: center; gap: 1rem;
-    margin-bottom: 1.6rem; padding-bottom: 1rem;
-    border-bottom: 1px solid var(--faint);
+  /* Timeline milestones */
+  .milestone-grid { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--faint); }
+  .ms-row {
+    display: grid; grid-template-columns: 4rem 1fr; align-items: baseline;
+    gap: 0 1.2rem; padding: 1rem 1.4rem; border-bottom: 1px solid var(--faint); transition: background 0.15s;
   }
-  .member-name {
-    font-family: 'Arial Black', Impact, sans-serif;
-    font-size: clamp(1.4rem, 3.5vw, 2rem); font-weight: 900;
-    text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--pink);
-  }
-  .member-count {
-    font-family: 'Arial Black', Impact, sans-serif;
-    font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase;
-    color: var(--dim); padding: 0.25rem 0.7rem;
-    border: 1px solid var(--rose);
-  }
+  .ms-row:last-child { border-bottom: none; }
+  .ms-row:hover { background: var(--surf); }
+  .ms-year { font-family: 'Arial Black', Impact, sans-serif; font-size: 0.7rem; font-weight: 900; color: var(--rose); letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+  .ms-text { font-size: 0.875rem; color: var(--blush); line-height: 1.55; }
+  .ms-text strong { color: var(--gold); font-weight: 600; }
 
-  /* ── ICON STATUS ── */
-  .icon-sect {
-    background: var(--surf); border: 1px solid var(--rose);
-    padding: 2.4rem 2rem; text-align: center; margin-top: 0;
-    max-width: 900px; margin: 0 auto 0;
-  }
-  .icon-sect-title {
-    font-family: 'Arial Black', Impact, sans-serif;
-    font-size: clamp(1rem, 2.5vw, 1.5rem); font-weight: 900;
-    text-transform: uppercase; letter-spacing: 0.06em;
-    color: var(--blush); margin-bottom: 0.6rem;
-  }
-  .icon-sect-title em { color: var(--pink); font-style: normal; }
-  .icon-sect p { font-size: 0.82rem; color: var(--dim); line-height: 1.65; max-width: 520px; margin: 0 auto; }
+  /* Member section */
+  .member-head { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.4rem; padding-bottom: 0.9rem; border-bottom: 1px solid var(--faint); }
+  .member-name { font-family: 'Arial Black', Impact, sans-serif; font-size: clamp(1.3rem, 3vw, 1.9rem); font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; color: var(--pink); }
+  .member-badge { font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); padding: 0.22rem 0.65rem; border: 1px solid var(--rose); white-space: nowrap; }
 
-  /* ── REVEAL ── */
-  .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  /* ICON block */
+  .icon-block { background: var(--surf); border: 1px solid var(--rose); padding: 2.2rem 1.8rem; text-align: center; }
+  .icon-block-title { font-family: 'Arial Black', Impact, sans-serif; font-size: clamp(0.95rem, 2.2vw, 1.4rem); font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; color: var(--blush); margin-bottom: 0.6rem; }
+  .icon-block-title em { color: var(--pink); font-style: normal; }
+  .icon-block p { font-size: 0.82rem; color: var(--dim); line-height: 1.7; max-width: 520px; margin: 0 auto; }
+
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.6s ease, transform 0.6s ease; }
   .reveal.in { opacity: 1; transform: none; }
 
-  /* ── FOOTER ── */
-  footer { border-top: 1px solid var(--faint); padding: 3rem 1.4rem; display: flex; flex-direction: column; align-items: center; gap: 1.1rem; text-align: center; }
-  .footer-link { color: var(--blush); text-decoration: none; border: 1px solid var(--rose); padding: 0.55rem 1.5rem; font-size: 0.82rem; letter-spacing: 0.1em; transition: border-color 0.2s, color 0.2s, background 0.2s; }
+  footer { border-top: 1px solid var(--faint); padding: 3rem 1.4rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; text-align: center; }
+  .footer-links { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+  .footer-link { color: var(--blush); text-decoration: none; border: 1px solid var(--rose); padding: 0.5rem 1.3rem; font-size: 0.78rem; letter-spacing: 0.1em; transition: border-color 0.2s, color 0.2s, background 0.2s; }
   .footer-link:hover { border-color: var(--pink); color: var(--pink); background: rgba(255,0,128,0.06); }
-  .footer-copy { font-size: 0.65rem; color: var(--rose); letter-spacing: 0.08em; }
+  .footer-copy { font-size: 0.62rem; color: var(--rose); letter-spacing: 0.08em; }
 
   @media (prefers-reduced-motion: reduce) { .reveal { transition: none; } }
 </style>
 </head>
 <body>
 
-<a href="/" class="back" aria-label="Back to Blinks United">← Blinks United</a>
+<a href="/leaderboard" class="back">← Blinks United</a>
 
 <section id="hero">
   <div class="hero-inner">
     <img src="bp-logo.png" alt="BLACKPINK" class="bp-logo">
     <div class="icon-badge"><div class="icon-badge-gem"></div>Guinness World Records ICON 2026<div class="icon-badge-gem"></div></div>
-    <p class="hero-eye">◆ Official record holders ◆</p>
-    <h1 class="hero-title">BLACKPINK<br><em>World Records</em></h1>
-    <p class="hero-sub">Every official Guinness World Record title held by BLACKPINK — as a group and as individual members.</p>
-    <div class="hero-count">25<sup style="font-size:0.4em;color:var(--gold);vertical-align:super">+</sup></div>
-    <p class="hero-count-label">Official GWR Titles</p>
+    <p class="sect-eye" style="margin:0">◆ Every record. Every first. ◆</p>
+    <h1 class="hero-title">BLACKPINK<br><em>Achievements</em></h1>
+    <p class="hero-sub">Official Guinness World Records, chart firsts, and streaming milestones — as a group and as individuals.</p>
+    <div class="hero-stats">
+      <div>
+        <div class="hero-stat-n">19</div>
+        <div class="hero-stat-l">Group GWR titles</div>
+      </div>
+      <div>
+        <div class="hero-stat-n">9</div>
+        <div class="hero-stat-l">Lisa GWR titles</div>
+      </div>
+      <div>
+        <div class="hero-stat-n">8</div>
+        <div class="hero-stat-l">Rosé GWR titles</div>
+      </div>
+    </div>
   </div>
   <div class="hero-glow"></div>
 </section>
 
 <div class="divider"><div class="divider-gem"></div></div>
 
+<!-- GROUP — GWR -->
 <section class="sect reveal">
-  <p class="sect-eye">◆ As a group ◆</p>
-  <h2 class="sect-h">BLACKPINK</h2>
-  <p class="sect-sub">Records held collectively by all four members — Jisoo, Jennie, Rosé & Lisa.</p>
+  <p class="sect-eye">◆ Official Guinness World Records ◆</p>
+  <h2 class="sect-h">BLACKPINK — Group</h2>
+  <p class="sect-sub">19 official GWR titles held collectively by Jisoo, Jennie, Rosé & Lisa.</p>
   <ul class="rec-list">
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>Guinness World Records ICON</strong> — first K-pop group to receive this distinction<span class="year">2026</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>Most subscribed band on YouTube</strong> — 100M+ subscribers<span class="year">2024–26</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>Most viewed group on YouTube</strong> — 41.7B+ total views<span class="year">2026</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>Most streamed female group on Spotify</strong> — 16.9B+ streams<span class="year">2026</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>First Korean group's MV to surpass 1 billion YouTube views</strong> — DDU-DU DDU-DU<span class="year">2019</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>First Korean group's MV to surpass 2 billion YouTube views</strong> — DDU-DU DDU-DU<span class="year">2022</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>Most viewed YouTube video in 24 hours</strong> at time of release — How You Like That, 86.3M views<span class="year">2020</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>First K-pop girl group to debut at #1 on the Billboard 200</strong> — Born Pink<span class="year">2022</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>First K-pop girl group to debut at #1 on the UK Official Albums Chart</strong> — Born Pink<span class="year">2022</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>First winner of Best Metaverse Performance</strong> at the MTV Video Music Awards<span class="year">2022</span></span>
-    </li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>Guinness World Records ICON</strong> — first K-pop group to receive this distinction<span class="year">2026</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>Most subscribed band on YouTube</strong> — 100M+ subscribers<span class="year">2024–26</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>Most viewed group on YouTube</strong> — 41.7B+ total views<span class="year">2026</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>Most streamed female group on Spotify</strong> — 16.9B+ streams<span class="year">2026</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First K-pop girl group to enter the UK Official Singles Chart Top 40</strong> — DDU-DU DDU-DU<span class="year">2018</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First Korean group's MV to surpass 1 billion YouTube views</strong> — DDU-DU DDU-DU<span class="year">2019</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First Korean group's MV to surpass 2 billion YouTube views</strong> — DDU-DU DDU-DU<span class="year">2022</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>Most viewed YouTube video in 24 hours</strong> at time of release — How You Like That, 86.3M views<span class="year">2020</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First K-pop girl group to debut at #1 on the Billboard 200</strong> — Born Pink<span class="year">2022</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First K-pop girl group to debut at #1 on the UK Official Albums Chart</strong> — Born Pink<span class="year">2022</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First winner of Best Metaverse Performance</strong> at the MTV Video Music Awards<span class="year">2022</span></span></li>
   </ul>
 </section>
 
 <div class="divider"><div class="divider-gem"></div></div>
 
+<!-- GROUP — MILESTONES -->
+<section class="sect reveal">
+  <p class="sect-eye">◆ Major firsts & milestones ◆</p>
+  <h2 class="sect-h">Beyond the Records</h2>
+  <p class="sect-sub">Chart firsts, streaming milestones and cultural landmarks — with or without a certificate.</p>
+  <div class="milestone-grid">
+    <div class="ms-row"><span class="ms-year">2019</span><span class="ms-text"><strong>First Asian act to headline Coachella</strong></span></div>
+    <div class="ms-row"><span class="ms-year">2019</span><span class="ms-text">First K-pop act awarded <strong>honorary MBEs</strong> by King Charles</span></div>
+    <div class="ms-row"><span class="ms-year">2022</span><span class="ms-text"><strong>Born Pink</strong> — first K-pop girl group to sell 1 million album copies; Born Pink also crossed 2 million, a first for a K-pop girl group</span></div>
+    <div class="ms-row"><span class="ms-year">2022</span><span class="ms-text">First girl group to win <strong>Group of the Year at the MTV VMAs</strong> in the 21st century — ties TLC for the most wins ever by a girl group</span></div>
+    <div class="ms-row"><span class="ms-year">2023</span><span class="ms-text">First girl group named a <strong>Guinness World Records ICON</strong> (announced 2026, recognition of decade-long achievements)</span></div>
+    <div class="ms-row"><span class="ms-year">2024</span><span class="ms-text"><strong>"How You Like That"</strong> joins Spotify's Billions Club — first K-pop girl group track to reach 1 billion streams</span></div>
+    <div class="ms-row"><span class="ms-year">2025</span><span class="ms-text"><strong>"Kill This Love"</strong> crosses 1 billion Spotify streams — BLACKPINK become only the 2nd girl group after Fifth Harmony to achieve this</span></div>
+    <div class="ms-row"><span class="ms-year">2026</span><span class="ms-text"><strong>"Pink Venom"</strong> crosses 1 billion Spotify streams — first female group to do so with that track</span></div>
+    <div class="ms-row"><span class="ms-year">2026</span><span class="ms-text"><strong>DEADLINE</strong> — first girl group to surpass 1 million Spotify presaves</span></div>
+  </div>
+</section>
+
+<div class="divider"><div class="divider-gem"></div></div>
+
+<!-- LISA -->
 <section class="sect reveal">
   <p class="sect-eye">◆ Individual records ◆</p>
   <h2 class="sect-h"><em>Lisa</em></h2>
   <div class="member-head">
     <span class="member-name">Lisa</span>
-    <span class="member-count">9 GWR titles</span>
+    <span class="member-badge">9 GWR titles</span>
   </div>
   <ul class="rec-list">
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>First solo K-pop winner at the MTV Video Music Awards</strong><span class="year">2021</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>First solo K-pop winner at the MTV Europe Music Awards</strong><span class="year">2021</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>Most Instagram followers for a K-pop artist</strong><span class="year">2023</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>Fastest female solo K-pop artist to reach 1 billion Spotify streams</strong><span class="year">2022</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>Fastest 1 million TikTok followers</strong> as a K-pop artist<span class="year">2021</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>Most viewed YouTube MV in 24 hours by a female solo K-pop artist</strong> — LALISA<span class="year">2021</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>First K-pop album to surpass 1 billion Spotify plays</strong> — LALISA<span class="year">2022</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>First K-pop solo track to surpass 1 billion streams on Spotify</strong> — Money<span class="year">2022</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>Fastest billion Spotify plays by a female artist</strong> — 3 LALISA tracks in 411 days<span class="year">2022</span></span>
-    </li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First solo K-pop winner at the MTV Video Music Awards</strong><span class="year">2021</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First solo K-pop winner at the MTV Europe Music Awards</strong><span class="year">2021</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>Most Instagram followers for a K-pop artist</strong><span class="year">2023</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>Fastest female solo K-pop artist to reach 1 billion Spotify streams</strong><span class="year">2022</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>Fastest 1 million TikTok followers</strong> as a K-pop artist<span class="year">2021</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>Most viewed YouTube MV in 24 hours by a female solo K-pop artist</strong> — LALISA<span class="year">2021</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First K-pop album to surpass 1 billion Spotify plays</strong> — LALISA<span class="year">2022</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First K-pop solo track to surpass 1 billion Spotify streams</strong> — Money<span class="year">2022</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>Fastest billion Spotify plays by a female artist</strong> — 3 LALISA tracks in 411 days<span class="year">2022</span></span></li>
   </ul>
 </section>
 
 <div class="divider"><div class="divider-gem"></div></div>
 
+<!-- ROSÉ -->
 <section class="sect reveal">
   <p class="sect-eye">◆ Individual records ◆</p>
   <h2 class="sect-h"><em>Rosé</em></h2>
   <div class="member-head">
     <span class="member-name">Rosé</span>
-    <span class="member-count">8 GWR titles</span>
+    <span class="member-badge">8 GWR titles</span>
   </div>
   <ul class="rec-list">
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>Most viewed solo K-pop debut MV in 24 hours</strong> — On The Ground, 41.6M views<span class="year">2021</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>First artist to reach #1 on a Billboard Global chart as both a soloist and as part of a group</strong><span class="year">2021</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>First female K-pop artist to enter the Billboard Radio Songs Top 10</strong> — APT.<span class="year">2024</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>First K-pop act nominated for Record of the Year at the GRAMMY Awards</strong> — APT.<span class="year">2025</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>First K-pop act nominated for Song of the Year at the GRAMMY Awards</strong> — APT.<span class="year">2025</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>First K-pop artist to win at the Brit Awards</strong> — APT., International Song of the Year<span class="year">2026</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>Korean solo artist with the most Guinness World Records</strong> — 8 titles, surpassing Jungkook (BTS)<span class="year">2025</span></span>
-    </li>
-    <li class="rec-item">
-      <span class="rec-gem">◆</span>
-      <span class="rec-text"><strong>Second Asian solo artist with the most GWR titles in history</strong> — behind groupmate Lisa<span class="year">2025</span></span>
-    </li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>Most viewed solo K-pop debut MV in 24 hours</strong> — On The Ground, 41.6M views<span class="year">2021</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First artist to reach #1 on a Billboard Global chart as both a soloist and as part of a group</strong><span class="year">2021</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First female K-pop artist to enter the Billboard Radio Songs Top 10</strong> — APT.<span class="year">2024</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First K-pop act nominated for Record of the Year at the GRAMMYs</strong> — APT.<span class="year">2025</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First K-pop act nominated for Song of the Year at the GRAMMYs</strong> — APT.<span class="year">2025</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First K-pop artist to win at the Brit Awards</strong> — APT., International Song of the Year<span class="year">2026</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>Korean soloist with the most GWR titles</strong> — 8 titles, surpassing Jungkook of BTS<span class="year">2025</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>Second Asian solo artist with the most GWR titles in history</strong> — behind groupmate Lisa<span class="year">2025</span></span></li>
   </ul>
 </section>
 
 <div class="divider"><div class="divider-gem"></div></div>
 
+<!-- JENNIE -->
+<section class="sect reveal">
+  <p class="sect-eye">◆ Individual achievements ◆</p>
+  <h2 class="sect-h"><em>Jennie</em></h2>
+  <div class="member-head">
+    <span class="member-name">Jennie</span>
+    <span class="member-badge">Solo milestones</span>
+  </div>
+  <ul class="rec-list">
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text"><strong>First BLACKPINK member to debut as a solo artist</strong> — "SOLO"<span class="year">2018</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text">"SOLO" topped <strong>Billboard World Digital Song Sales</strong> — one of the first K-pop female soloist tracks to do so<span class="year">2018</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text">One of the first K-pop artists to become a <strong>global Chanel ambassador</strong> — pioneering the luxury fashion era for K-pop<span class="year">2017</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text">First K-pop artist to star as lead in a major <strong>Western prestige TV series</strong> — The Idol (HBO)<span class="year">2023</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text">"You &amp; Me" performed live at <strong>Coachella 2023</strong> — debuted at #1 on multiple global charts<span class="year">2023</span></span></li>
+  </ul>
+</section>
+
+<div class="divider"><div class="divider-gem"></div></div>
+
+<!-- JISOO -->
+<section class="sect reveal">
+  <p class="sect-eye">◆ Individual achievements ◆</p>
+  <h2 class="sect-h"><em>Jisoo</em></h2>
+  <div class="member-head">
+    <span class="member-name">Jisoo</span>
+    <span class="member-badge">Solo milestones</span>
+  </div>
+  <ul class="rec-list">
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text">Solo debut album <strong>"ME"</strong> sold over 1.17 million copies in its first week — record-breaking for a K-pop girl group solo debut (Hanteo Chart)<span class="year">2023</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text">"Flower" debuted at <strong>#1 on Melon</strong> and topped charts across multiple platforms simultaneously<span class="year">2023</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text">Lead role in <strong>Snowdrop</strong> (tvN / Disney+) — one of the highest-profile Korean drama debuts by a K-pop idol<span class="year">2021</span></span></li>
+    <li class="rec-item"><span class="rec-gem">◆</span><span class="rec-text">Among the <strong>most-followed Korean celebrities on Instagram</strong> with 80M+ followers<span class="year">2023</span></span></li>
+  </ul>
+</section>
+
+<div class="divider"><div class="divider-gem"></div></div>
+
+<!-- ICON BLOCK -->
 <section class="sect reveal" style="padding-bottom: 3rem;">
-  <div class="icon-sect">
-    <p class="icon-sect-title">◆ Guinness World Records <em>ICON</em> ◆</p>
-    <p>In 2026, BLACKPINK became the first K-pop group to receive the <strong style="color:var(--blush)">Guinness World Records ICON</strong> designation — an honour reserved for artists whose record-breaking achievements have permanently reshaped their industry. Jisoo, Jennie, Rosé, and Lisa hold this status jointly as a group, in addition to their individual titles.</p>
+  <div class="icon-block">
+    <p class="icon-block-title">◆ Guinness World Records <em>ICON</em> · 2026 ◆</p>
+    <p>In 2026, BLACKPINK became the first K-pop group — and first Asian act — to receive the <strong style="color:var(--blush)">Guinness World Records ICON</strong> designation. Reserved for artists whose achievements have permanently reshaped their field, the ICON status recognises a decade of firsts spanning music, charts, streaming, and live performance. Jisoo, Jennie, Rosé, and Lisa hold this honour jointly as BLACKPINK.</p>
   </div>
 </section>
 
 <div class="divider"><div class="divider-gem"></div></div>
 
 <footer>
-  <img src="bp-logo.png" alt="BLACKPINK" style="max-width:120px;height:auto;display:block;">
-  <a href="/10years.html" class="footer-link">← 10 Years of BLACKPINK</a>
-  <a href="/" class="footer-link">← Back to Blinks United</a>
+  <img src="bp-logo.png" alt="BLACKPINK" style="max-width:110px;height:auto;display:block;">
+  <div class="footer-links">
+    <a href="/10years.html" class="footer-link">10 Years of BLACKPINK</a>
+    <a href="/leaderboard" class="footer-link">← Blinks United</a>
+  </div>
   <p class="footer-copy">Fan site · Not affiliated with YG Entertainment or BLACKPINK · Records sourced from Guinness World Records</p>
 </footer>
 
 <script>
   const obs = new IntersectionObserver(
     es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); obs.unobserve(e.target); } }),
-    { threshold: 0.08 }
+    { threshold: 0.07 }
   );
   document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
 </script>
-
 </body>
 </html>
