@@ -217,37 +217,38 @@
     white-space: nowrap;
     width: 90vw;
   }
+  /* BOOMBAYAH/WHISTLE at center — visually sits below the date */
   #intro-bottom {
-    position: absolute; top: calc(50% + 3.2rem); left: 50%;
-    transform: translateX(-50%);
-    font-family: 'Arial Black', Impact, sans-serif;
-    font-size: clamp(1.1rem, 3.5vw, 2.4rem);
-    font-weight: 900;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--blush);
-    text-align: center;
-    opacity: 0;
-    transition: opacity 0.18s ease;
-    white-space: nowrap;
-  }
-  #intro-reveal {
     position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    display: flex; flex-direction: column;
-    align-items: center; gap: 0.9rem; text-align: center;
-    opacity: 0; pointer-events: none;
-    width: 90%; max-width: 420px;
+    font-family: 'Arial Black', Impact, sans-serif;
+    font-size: clamp(1.4rem, 4vw, 2.8rem);
+    font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--blush); text-align: center;
+    opacity: 0; transition: opacity 0.18s ease;
+    white-space: nowrap; z-index: 2;
   }
+  /* date floats above center */
   #intro-date {
-    font-size: 0.68rem; letter-spacing: 0.32em; text-transform: uppercase;
-    color: var(--gold); opacity: 0; transition: opacity 1.1s ease;
+    position: absolute;
+    top: calc(50% - 5.5rem); left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.72rem; letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--gold); text-align: center; white-space: nowrap;
+    opacity: 0; transition: opacity 0.9s ease;
   }
+  /* logo at center, replaces song titles */
   #intro-logo {
-    max-width: 210px; width: 80%; height: auto;
-    opacity: 0; transition: opacity 1.1s ease;
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 220px; width: 75%; height: auto;
+    opacity: 0; transition: opacity 1.1s ease; z-index: 1;
   }
+  /* countdown below center */
   #intro-cd {
+    position: absolute;
+    top: calc(50% + 5.5rem); left: 50%;
+    transform: translateX(-50%);
     display: flex; gap: clamp(0.7rem, 2.5vw, 1.8rem);
     opacity: 0; transition: opacity 1.1s ease;
   }
@@ -278,18 +279,16 @@
 <div id="intro-ov">
   <div id="intro-song"></div>
   <div id="intro-bottom"></div>
-  <div id="intro-reveal">
-    <p id="intro-date">August 8, 2016</p>
-    <img src="bp-logo.png" alt="BLACKPINK" id="intro-logo">
-    <div id="intro-cd">
-      <div class="icd-u"><span class="icd-n" id="icd-d">--</span><span class="icd-l">Days</span></div>
-      <span class="icd-sep" aria-hidden="true">:</span>
-      <div class="icd-u"><span class="icd-n" id="icd-h">--</span><span class="icd-l">Hrs</span></div>
-      <span class="icd-sep" aria-hidden="true">:</span>
-      <div class="icd-u"><span class="icd-n" id="icd-m">--</span><span class="icd-l">Min</span></div>
-      <span class="icd-sep" aria-hidden="true">:</span>
-      <div class="icd-u"><span class="icd-n" id="icd-s">--</span><span class="icd-l">Sec</span></div>
-    </div>
+  <p id="intro-date">August 8, 2016</p>
+  <img src="bp-logo.png" alt="BLACKPINK" id="intro-logo">
+  <div id="intro-cd">
+    <div class="icd-u"><span class="icd-n" id="icd-d">--</span><span class="icd-l">Days</span></div>
+    <span class="icd-sep" aria-hidden="true">:</span>
+    <div class="icd-u"><span class="icd-n" id="icd-h">--</span><span class="icd-l">Hrs</span></div>
+    <span class="icd-sep" aria-hidden="true">:</span>
+    <div class="icd-u"><span class="icd-n" id="icd-m">--</span><span class="icd-l">Min</span></div>
+    <span class="icd-sep" aria-hidden="true">:</span>
+    <div class="icd-u"><span class="icd-n" id="icd-s">--</span><span class="icd-l">Sec</span></div>
   </div>
 </div>
 
@@ -453,7 +452,10 @@
 
   async function runIntro() {
     document.body.style.overflow = 'hidden';
-    var sb = document.getElementById('intro-bottom');
+    var sb      = document.getElementById('intro-bottom');
+    var dateEl  = document.getElementById('intro-date');
+    var logoEl  = document.getElementById('intro-logo');
+    var cdEl    = document.getElementById('intro-cd');
     await sleep(350);
 
     // Phase 1 — each member fades IN then OUT sequentially (no overlap)
@@ -468,9 +470,9 @@
       el.getBoundingClientRect();
       el.style.transition = 'opacity 0.55s ease';
       el.style.opacity    = '1';
-      await sleep(820);   // hold visible
+      await sleep(820);
       el.style.opacity    = '0';
-      await sleep(520);   // fade out before next
+      await sleep(520);
     }
     await sleep(200);
 
@@ -478,13 +480,13 @@
     IDS.forEach(function(id) {
       var el = document.getElementById(id);
       el.style.transition = 'opacity 0.7s ease, transform 1.9s cubic-bezier(0.22, 1, 0.36, 1), font-size 1.7s cubic-bezier(0.22, 1, 0.36, 1)';
-      el.style.fontSize   = '';   // revert to CSS corner size
-      el.style.transform  = '';   // fly to corner
+      el.style.fontSize   = '';
+      el.style.transform  = '';
       el.style.opacity    = '0.85';
     });
     await sleep(1700);
 
-    // Phase 3 — regular songs flash at center (all except last 2)
+    // Phase 3 — songs GO → PLAYING WITH FIRE flash at center
     var mainSongs = SONGS.slice(0, SONGS.length - 2);
     for (var s = 0; s < mainSongs.length; s++) {
       sf.textContent = mainSongs[s];
@@ -494,48 +496,39 @@
       sf.style.opacity = '0';
       await sleep(85);
     }
-    await sleep(80);
+    await sleep(100);
 
-    // Phase 4 — BOOMBAYAH and WHISTLE appear at #intro-bottom (slightly below center)
-    var last2 = SONGS.slice(SONGS.length - 2);
+    // Phase 4 — debut date appears above center
+    dateEl.style.opacity = '1';
+    await sleep(750);
+
+    // Phase 5 — BOOMBAYAH then WHISTLE appear at center, below the date
+    var last2 = SONGS.slice(-2);
     for (var s = 0; s < last2.length; s++) {
-      var isLast = s === last2.length - 1;
       sb.textContent = last2[s];
-      sb.style.color = 'var(--blush)';
-      sb.style.fontSize = '';
-      sb.style.letterSpacing = '';
       sb.style.transition = 'opacity 0.18s ease';
       sb.style.opacity = '1';
-      await sleep(isLast ? 520 : 440);
+      await sleep(s === 0 ? 460 : 520);
       sb.style.opacity = '0';
-      await sleep(150);
+      await sleep(160);
     }
+    await sleep(80);
 
-    // Phase 5 — "BLACKPINK" replaces them at same position
-    await sleep(120);
-    sb.textContent = 'BLACKPINK';
-    sb.style.color = 'var(--pink)';
-    sb.style.fontSize = 'clamp(2rem, 5.5vw, 3.8rem)';
-    sb.style.letterSpacing = '0.18em';
-    sb.style.transition = 'opacity 0.45s ease';
-    sb.style.opacity = '1';
-    await sleep(1300);
-    sb.style.opacity = '0';
-    await sleep(400);
+    // Phase 6 — logo appears where the titles were; date becomes full range
+    dateEl.style.transition = 'opacity 0.5s ease';
+    dateEl.style.opacity = '0';
+    await sleep(300);
+    dateEl.textContent = 'August 8, 2016 — August 8, 2026';
+    dateEl.style.opacity = '1';
+    logoEl.style.opacity = '1';
+    await sleep(1000);
 
-    // Phase 6 — reveal: date → logo → countdown (slower)
-    var rev = document.getElementById('intro-reveal');
-    rev.style.pointerEvents = 'auto';
-    await sleep(60);
-    document.getElementById('intro-date').style.opacity  = '1';
-    await sleep(950);
-    document.getElementById('intro-logo').style.opacity  = '1';
-    await sleep(950);
-    document.getElementById('intro-cd').style.opacity    = '1';
+    // Phase 7 — countdown appears
+    cdEl.style.opacity = '1';
     var cdTimer = startCd();
     await sleep(3000);
 
-    // Phase 7 — fade overlay, reveal page
+    // Phase 8 — fade overlay, reveal page
     ov.style.opacity = '0';
     ov.style.pointerEvents = 'none';
     document.body.style.overflow = '';
