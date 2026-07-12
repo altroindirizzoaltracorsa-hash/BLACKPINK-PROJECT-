@@ -4706,7 +4706,8 @@ function renderLeaderboard() {
 
   // Collect secondary account keys absorbed into a combined entry so they
   // don't appear as separate rows (e.g. alice2996 merged under alice9629).
-  const allLbUsers = Object.entries(getActiveLbUsers());
+  const allLbUsersMap = getActiveLbUsers();
+  const allLbUsers = Object.entries(allLbUsersMap);
   const secondaryKeys = new Set();
   for (const [k, d] of allLbUsers) {
     if (Array.isArray(d.linkedAccounts)) {
@@ -4764,7 +4765,11 @@ function renderLeaderboard() {
           ${entries.map((e, i) => {
             const rankClass = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
             const rankEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
-            const isMe = e.username.toLowerCase() === myUsername.toLowerCase();
+            const lbEntry = allLbUsersMap[e.username.toLowerCase()];
+            const isMe = myUsername && (
+              e.username.toLowerCase() === myUsername.toLowerCase() ||
+              (lbEntry?.linkedAccounts || []).some(a => a.username.toLowerCase() === myUsername.toLowerCase())
+            );
             const avatarHtml = e.avatar
               ? `<img class="lb-avatar" src="${e.avatar}" alt="${e.username}">`
               : `<span class="lb-avatar-placeholder">${e.username[0].toUpperCase()}</span>`;
@@ -4837,7 +4842,7 @@ async function showLbUserProfile(username) {
     ${avatarHtml}
     <div>
       <div class="lb-user-name">${data.displayName || username}${badge ? ` <span>${badge.icon}</span>` : ''}</div>
-      ${accounts ? `<div class="lb-user-meta">${accounts}</div>` : ''}
+      ${accounts && isMe ? `<div class="lb-user-meta">${accounts}</div>` : ''}
     </div>`;
 
   const sections = [
