@@ -189,7 +189,7 @@
     opacity: 0;
     pointer-events: none;
     white-space: nowrap;
-    transition: opacity 0.7s ease, transform 1.8s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: opacity 0.7s ease, transform 1.8s cubic-bezier(0.22, 1, 0.36, 1), font-size 1.6s cubic-bezier(0.22, 1, 0.36, 1);
   }
   #mc-jisoo  { top: 1rem; left: 1rem; }
   #mc-jennie { top: 1rem; right: 1rem; text-align: right; }
@@ -223,15 +223,15 @@
   }
   #intro-date {
     font-size: 0.68rem; letter-spacing: 0.32em; text-transform: uppercase;
-    color: var(--gold); opacity: 0; transition: opacity 0.6s ease;
+    color: var(--gold); opacity: 0; transition: opacity 1.1s ease;
   }
   #intro-logo {
     max-width: 210px; width: 80%; height: auto;
-    opacity: 0; transition: opacity 0.6s ease;
+    opacity: 0; transition: opacity 1.1s ease;
   }
   #intro-cd {
     display: flex; gap: clamp(0.7rem, 2.5vw, 1.8rem);
-    opacity: 0; transition: opacity 0.6s ease;
+    opacity: 0; transition: opacity 1.1s ease;
   }
   .icd-u { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
   .icd-n {
@@ -399,10 +399,10 @@
 (function () {
   // Songs in reverse-chronological order — BOOMBAYAH and WHISTLE last
   var SONGS = [
-    'GO','JUMP','FOREVER','PINK VENOM','SHUT DOWN',
-    'LOVESICK GIRLS','HOW YOU LIKE THAT','KILL THIS LOVE',
-    'DDU-DU DDU-DU','FOREVER YOUNG',"AS IF IT'S YOUR LAST",
-    'PLAYING WITH FIRE','STAY','BOOMBAYAH','WHISTLE'
+    'GO','JUMP','THE GIRLS','SHUT DOWN','PINK VENOM',
+    'LOVESICK GIRLS','ICE CREAM','HOW YOU LIKE THAT','KILL THIS LOVE',
+    'DDU-DU DDU-DU',"AS IF IT'S YOUR LAST",
+    'PLAYING WITH FIRE','BOOMBAYAH','WHISTLE'
   ];
 
   var IDS = ['mc-jisoo','mc-jennie','mc-rose','mc-lisa'];
@@ -436,30 +436,36 @@
     document.body.style.overflow = 'hidden';
     await sleep(350);
 
-    // Phase 1 — members appear one by one, centered
+    // Phase 1 — members appear one by one, HUGE in center
     for (var i = 0; i < IDS.length; i++) {
       var el = document.getElementById(IDS[i]);
+      // Set large font first (no transition), then compute center offset
       el.style.transition = 'none';
-      el.style.transform  = centerTransform(el);
+      el.style.fontSize   = 'clamp(3.5rem, 10vw, 7rem)';
       el.style.opacity    = '0';
-      el.getBoundingClientRect(); // force reflow
-      el.style.transition = '';
+      el.style.transform  = '';
+      el.getBoundingClientRect(); // reflow with large font at corner
+      el.style.transform  = centerTransform(el);
+      el.getBoundingClientRect(); // apply transform
+      el.style.transition = 'opacity 0.5s ease';
       // dim already-shown members
       for (var j = 0; j < i; j++) {
-        document.getElementById(IDS[j]).style.opacity = '0.32';
+        document.getElementById(IDS[j]).style.opacity = '0.28';
       }
       el.style.opacity = '1';
-      await sleep(620);
+      await sleep(700);
     }
-    await sleep(500);
+    await sleep(550);
 
-    // Phase 2 — all fly to corners
+    // Phase 2 — all shrink AND fly to corners simultaneously
     IDS.forEach(function(id){
       var el = document.getElementById(id);
-      el.style.transform = '';
-      el.style.opacity   = '0.85';
+      el.style.transition = 'opacity 0.7s ease, transform 1.8s cubic-bezier(0.22, 1, 0.36, 1), font-size 1.6s cubic-bezier(0.22, 1, 0.36, 1)';
+      el.style.fontSize   = '';   // reverts to CSS default (small corner size)
+      el.style.transform  = '';   // fly to corner
+      el.style.opacity    = '0.85';
     });
-    await sleep(1400);
+    await sleep(1600);
 
     // Phase 3 — song titles flash
     for (var s = 0; s < SONGS.length; s++) {
@@ -485,12 +491,12 @@
     rev.style.display = 'flex';
     await sleep(60);
     document.getElementById('intro-date').style.opacity  = '1';
-    await sleep(520);
+    await sleep(900);
     document.getElementById('intro-logo').style.opacity  = '1';
-    await sleep(520);
+    await sleep(900);
     document.getElementById('intro-cd').style.opacity    = '1';
     var cdTimer = startCd();
-    await sleep(2100);
+    await sleep(3000);
 
     // Phase 5 — fade overlay, reveal page
     ov.style.opacity = '0';
