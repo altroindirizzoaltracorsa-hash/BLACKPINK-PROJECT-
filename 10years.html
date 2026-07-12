@@ -502,17 +502,13 @@
     dateEl.style.opacity = '1';
     await sleep(750);
 
-    // Phase 5 — BOOMBAYAH then WHISTLE appear at center, below the date
-    var last2 = SONGS.slice(-2);
-    for (var s = 0; s < last2.length; s++) {
-      sb.textContent = last2[s];
-      sb.style.transition = 'opacity 0.18s ease';
-      sb.style.opacity = '1';
-      await sleep(s === 0 ? 460 : 520);
-      sb.style.opacity = '0';
-      await sleep(160);
-    }
-    await sleep(80);
+    // Phase 5 — BOOMBAYAH and WHISTLE appear side by side below the date
+    sb.textContent = 'BOOMBAYAH  ·  WHISTLE';
+    sb.style.transition = 'opacity 0.22s ease';
+    sb.style.opacity = '1';
+    await sleep(700);
+    sb.style.opacity = '0';
+    await sleep(180);
 
     // Phase 6 — logo appears where the titles were; date becomes full range
     dateEl.style.transition = 'opacity 0.5s ease';
