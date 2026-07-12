@@ -187,7 +187,8 @@
   #music-btn.on   { border-color: var(--pink); color: var(--pink); }
   #yt-holder { position: fixed; width: 1px; height: 1px; opacity: 0; top: -2px; left: -2px; pointer-events: none; overflow: hidden; }
 
-  .vid-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 1.5rem; }
+  .vid-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+  @media (max-width: 600px) { .vid-grid { grid-template-columns: 1fr; } }
   .vid-card { background: var(--surf); border: 1px solid var(--faint); overflow: hidden; border-radius: 1px; transition: border-color 0.25s, transform 0.25s; }
   .vid-card:hover { border-color: var(--pink); transform: translateY(-3px); }
   .vid-meta { padding: 0.85rem 1.1rem 0.6rem; }
@@ -402,20 +403,20 @@
   <p class="sect-sub">Two songs. One explosion. The world hasn't been the same since.</p>
   <div class="vid-grid">
     <div class="vid-card">
-      <div class="vid-meta"><div class="vid-tag">Display Picture · WHISTLE</div><div class="vid-name">WHISTLE <small>휘파람 — DP Ver.</small></div></div>
-      <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/1kYrp_Bs8DU" title="BLACKPINK — WHISTLE DP" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
-    </div>
-    <div class="vid-card">
       <div class="vid-meta"><div class="vid-tag">Official MV · WHISTLE</div><div class="vid-name">WHISTLE <small>휘파람</small></div></div>
       <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/dISNgvVpWlo" title="BLACKPINK — WHISTLE MV" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
     <div class="vid-card">
-      <div class="vid-meta"><div class="vid-tag">Display Picture · BOOMBAYAH</div><div class="vid-name">BOOMBAYAH <small>붐바야 — DP Ver.</small></div></div>
-      <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/ivoS3HUJB3Q" title="BLACKPINK — BOOMBAYAH DP" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
-    </div>
-    <div class="vid-card">
       <div class="vid-meta"><div class="vid-tag">Official MV · BOOMBAYAH</div><div class="vid-name">BOOMBAYAH <small>붐바야</small></div></div>
       <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/bwmSjveL3Lc" title="BLACKPINK — BOOMBAYAH MV" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
+    </div>
+    <div class="vid-card">
+      <div class="vid-meta"><div class="vid-tag">Display Picture · WHISTLE</div><div class="vid-name">WHISTLE <small>휘파람 — DP Ver.</small></div></div>
+      <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/1kYrp_Bs8DU" title="BLACKPINK — WHISTLE DP" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
+    </div>
+    <div class="vid-card">
+      <div class="vid-meta"><div class="vid-tag">Display Picture · BOOMBAYAH</div><div class="vid-name">BOOMBAYAH <small>붐바야 — DP Ver.</small></div></div>
+      <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/ivoS3HUJB3Q" title="BLACKPINK — BOOMBAYAH DP" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
   </div>
 </section>
