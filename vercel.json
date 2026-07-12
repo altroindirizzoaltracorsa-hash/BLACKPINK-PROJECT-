@@ -1,6 +1,8 @@
 {
+  "redirects": [
+    { "source": "/", "destination": "/10years.html", "permanent": false }
+  ],
   "rewrites": [
-    { "source": "/", "destination": "/10years.html" },
     { "source": "/badges", "destination": "/index.html" },
     { "source": "/leaderboard", "destination": "/index.html" },
     { "source": "/voting", "destination": "/index.html" },
