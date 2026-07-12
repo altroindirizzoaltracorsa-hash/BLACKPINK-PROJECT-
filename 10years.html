@@ -181,7 +181,7 @@
     position: fixed;
     z-index: 600;
     font-family: 'Arial Black', Impact, sans-serif;
-    font-size: clamp(0.9rem, 1.6vw, 1.15rem);
+    font-size: clamp(1.3rem, 2.1vw, 1.7rem);
     font-weight: 900;
     letter-spacing: 0.3em;
     text-transform: uppercase;
@@ -200,11 +200,11 @@
   #intro-ov {
     position: fixed; inset: 0; z-index: 400;
     background: var(--bg);
-    display: flex; align-items: center; justify-content: center;
-    flex-direction: column; gap: 1.2rem;
     transition: opacity 0.9s ease;
   }
   #intro-song {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
     font-family: 'Arial Black', Impact, sans-serif;
     font-size: clamp(1.1rem, 3.5vw, 2.4rem);
     font-weight: 900;
@@ -214,12 +214,30 @@
     text-align: center;
     opacity: 0;
     transition: opacity 0.12s ease;
-    min-height: 1.2em;
-    padding: 0 2rem;
+    white-space: nowrap;
+    width: 90vw;
+  }
+  #intro-bottom {
+    position: absolute; top: calc(50% + 3.2rem); left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Arial Black', Impact, sans-serif;
+    font-size: clamp(1.1rem, 3.5vw, 2.4rem);
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--blush);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+    white-space: nowrap;
   }
   #intro-reveal {
-    display: none; flex-direction: column;
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex; flex-direction: column;
     align-items: center; gap: 0.9rem; text-align: center;
+    opacity: 0; pointer-events: none;
+    width: 90%; max-width: 420px;
   }
   #intro-date {
     font-size: 0.68rem; letter-spacing: 0.32em; text-transform: uppercase;
@@ -259,6 +277,7 @@
 
 <div id="intro-ov">
   <div id="intro-song"></div>
+  <div id="intro-bottom"></div>
   <div id="intro-reveal">
     <p id="intro-date">August 8, 2016</p>
     <img src="bp-logo.png" alt="BLACKPINK" id="intro-logo">
@@ -434,75 +453,93 @@
 
   async function runIntro() {
     document.body.style.overflow = 'hidden';
+    var sb = document.getElementById('intro-bottom');
     await sleep(350);
 
-    // Phase 1 — members appear one by one, HUGE in center
+    // Phase 1 — each member fades IN then OUT sequentially (no overlap)
     for (var i = 0; i < IDS.length; i++) {
       var el = document.getElementById(IDS[i]);
-      // Set large font first (no transition), then compute center offset
       el.style.transition = 'none';
       el.style.fontSize   = 'clamp(3.5rem, 10vw, 7rem)';
       el.style.opacity    = '0';
       el.style.transform  = '';
-      el.getBoundingClientRect(); // reflow with large font at corner
+      el.getBoundingClientRect();
       el.style.transform  = centerTransform(el);
-      el.getBoundingClientRect(); // apply transform
-      el.style.transition = 'opacity 0.5s ease';
-      // dim already-shown members
-      for (var j = 0; j < i; j++) {
-        document.getElementById(IDS[j]).style.opacity = '0.28';
-      }
-      el.style.opacity = '1';
-      await sleep(700);
+      el.getBoundingClientRect();
+      el.style.transition = 'opacity 0.55s ease';
+      el.style.opacity    = '1';
+      await sleep(820);   // hold visible
+      el.style.opacity    = '0';
+      await sleep(520);   // fade out before next
     }
-    await sleep(550);
+    await sleep(200);
 
-    // Phase 2 — all shrink AND fly to corners simultaneously
-    IDS.forEach(function(id){
+    // Phase 2 — all four simultaneously shrink and fly to corners
+    IDS.forEach(function(id) {
       var el = document.getElementById(id);
-      el.style.transition = 'opacity 0.7s ease, transform 1.8s cubic-bezier(0.22, 1, 0.36, 1), font-size 1.6s cubic-bezier(0.22, 1, 0.36, 1)';
-      el.style.fontSize   = '';   // reverts to CSS default (small corner size)
+      el.style.transition = 'opacity 0.7s ease, transform 1.9s cubic-bezier(0.22, 1, 0.36, 1), font-size 1.7s cubic-bezier(0.22, 1, 0.36, 1)';
+      el.style.fontSize   = '';   // revert to CSS corner size
       el.style.transform  = '';   // fly to corner
       el.style.opacity    = '0.85';
     });
-    await sleep(1600);
+    await sleep(1700);
 
-    // Phase 3 — song titles flash
-    for (var s = 0; s < SONGS.length; s++) {
-      var last2 = s >= SONGS.length - 2;
-      var last  = s === SONGS.length - 1;
-      sf.textContent = SONGS[s];
+    // Phase 3 — regular songs flash at center (all except last 2)
+    var mainSongs = SONGS.slice(0, SONGS.length - 2);
+    for (var s = 0; s < mainSongs.length; s++) {
+      sf.textContent = mainSongs[s];
       sf.style.transition = 'opacity 0.11s ease';
       sf.style.opacity = '1';
-      await sleep(last ? 520 : last2 ? 440 : 185);
-      if (!last) {
-        sf.style.opacity = '0';
-        await sleep(last2 ? 160 : 85);
-      }
+      await sleep(185);
+      sf.style.opacity = '0';
+      await sleep(85);
+    }
+    await sleep(80);
+
+    // Phase 4 — BOOMBAYAH and WHISTLE appear at #intro-bottom (slightly below center)
+    var last2 = SONGS.slice(SONGS.length - 2);
+    for (var s = 0; s < last2.length; s++) {
+      var isLast = s === last2.length - 1;
+      sb.textContent = last2[s];
+      sb.style.color = 'var(--blush)';
+      sb.style.fontSize = '';
+      sb.style.letterSpacing = '';
+      sb.style.transition = 'opacity 0.18s ease';
+      sb.style.opacity = '1';
+      await sleep(isLast ? 520 : 440);
+      sb.style.opacity = '0';
+      await sleep(150);
     }
 
-    // Phase 4 — debut reveal
-    await sleep(220);
-    sf.style.transition = 'opacity 0.4s ease';
-    sf.style.opacity = '0';
-    await sleep(280);
+    // Phase 5 — "BLACKPINK" replaces them at same position
+    await sleep(120);
+    sb.textContent = 'BLACKPINK';
+    sb.style.color = 'var(--pink)';
+    sb.style.fontSize = 'clamp(2rem, 5.5vw, 3.8rem)';
+    sb.style.letterSpacing = '0.18em';
+    sb.style.transition = 'opacity 0.45s ease';
+    sb.style.opacity = '1';
+    await sleep(1300);
+    sb.style.opacity = '0';
+    await sleep(400);
 
+    // Phase 6 — reveal: date → logo → countdown (slower)
     var rev = document.getElementById('intro-reveal');
-    rev.style.display = 'flex';
+    rev.style.pointerEvents = 'auto';
     await sleep(60);
     document.getElementById('intro-date').style.opacity  = '1';
-    await sleep(900);
+    await sleep(950);
     document.getElementById('intro-logo').style.opacity  = '1';
-    await sleep(900);
+    await sleep(950);
     document.getElementById('intro-cd').style.opacity    = '1';
     var cdTimer = startCd();
     await sleep(3000);
 
-    // Phase 5 — fade overlay, reveal page
+    // Phase 7 — fade overlay, reveal page
     ov.style.opacity = '0';
     ov.style.pointerEvents = 'none';
     document.body.style.overflow = '';
-    IDS.forEach(function(id){
+    IDS.forEach(function(id) {
       document.getElementById(id).style.opacity = '1';
     });
     await sleep(900);
