@@ -173,6 +173,20 @@
   }
   .ach-link:hover { border-color: var(--pink); color: var(--blush); }
 
+  /* ── MUSIC BUTTON ── */
+  #music-btn {
+    position: fixed; bottom: 1.2rem; right: 1.2rem; z-index: 700;
+    background: rgba(7,4,7,0.85); border: 1px solid var(--rose);
+    color: var(--dim); font-size: 1rem; width: 2.4rem; height: 2.4rem;
+    border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.2s, color 0.2s, opacity 0.5s;
+    opacity: 0; pointer-events: none; backdrop-filter: blur(6px);
+  }
+  #music-btn.show { opacity: 1; pointer-events: auto; }
+  #music-btn.on   { border-color: var(--pink); color: var(--pink); }
+  #yt-holder { position: fixed; width: 1px; height: 1px; opacity: 0; top: -2px; left: -2px; pointer-events: none; overflow: hidden; }
+
   .vid-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 1.5rem; }
   .vid-card { background: var(--surf); border: 1px solid var(--faint); overflow: hidden; border-radius: 1px; transition: border-color 0.25s, transform 0.25s; }
   .vid-card:hover { border-color: var(--pink); transform: translateY(-3px); }
@@ -364,16 +378,16 @@
   <h2 class="sect-h">10 Defining Moments</h2>
   <p class="sect-sub">From debut day to global dominance — the records that rewrote K-pop history.</p>
   <ol class="ach-list">
-    <li class="ach-item"><span class="ach-n">01</span><span class="ach-text">First K-pop girl group to <strong>headline Coachella</strong> — April 2019</span></li>
-    <li class="ach-item"><span class="ach-n">02</span><span class="ach-text"><strong>Born Pink</strong> debuted at #1 on the Billboard 200 — first K-pop girl group album to do so (2022)</span></li>
-    <li class="ach-item"><span class="ach-n">03</span><span class="ach-text"><strong>101M YouTube subscribers</strong> — most subscribed band and most viewed group in YouTube history</span></li>
-    <li class="ach-item"><span class="ach-n">04</span><span class="ach-text"><strong>60M+ Spotify followers</strong> — most followed female act ever, first female K-pop group to hit that milestone</span></li>
-    <li class="ach-item"><span class="ach-n">05</span><span class="ach-text"><strong>"How You Like That"</strong> broke the YouTube record for most views in 24 hours at release — 86.3M views (2020)</span></li>
-    <li class="ach-item"><span class="ach-n">06</span><span class="ach-text"><strong>"DDU-DU DDU-DU"</strong> surpassed 2 billion views — most-viewed MV by a K-pop girl group</span></li>
-    <li class="ach-item"><span class="ach-n">07</span><span class="ach-text">First K-pop girl group to perform at <strong>Glastonbury Festival</strong> (2023)</span></li>
-    <li class="ach-item"><span class="ach-n">08</span><span class="ach-text"><strong>Born Pink World Tour</strong> — highest-grossing tour by an Asian act at the time</span></li>
-    <li class="ach-item"><span class="ach-n">09</span><span class="ach-text">First female K-pop artists to top the <strong>UK Albums Chart</strong> (Born Pink, 2022)</span></li>
-    <li class="ach-item"><span class="ach-n">10</span><span class="ach-text">Only girl group to have <strong>all four members</strong> simultaneously active as solo artists with charting releases</span></li>
+    <li class="ach-item"><span class="ach-n">01</span><span class="ach-text">First <strong>Asian act</strong> to headline Coachella — April 2019</span></li>
+    <li class="ach-item"><span class="ach-n">02</span><span class="ach-text">First K-pop act to be awarded <strong>honorary MBEs</strong> by King Charles</span></li>
+    <li class="ach-item"><span class="ach-n">03</span><span class="ach-text">First girl group to be named a <strong>Guinness World Records ICON</strong></span></li>
+    <li class="ach-item"><span class="ach-n">04</span><span class="ach-text">First K-pop girl group to debut at <strong>#1 on the Billboard 200</strong> — Born Pink (2022)</span></li>
+    <li class="ach-item"><span class="ach-n">05</span><span class="ach-text">First K-pop girl group to debut at <strong>#1 on the UK Official Albums Chart</strong> — Born Pink (2022)</span></li>
+    <li class="ach-item"><span class="ach-n">06</span><span class="ach-text">First girl group to win <strong>Group of the Year at the MTV VMAs</strong> in the 21st century — ties TLC for most wins ever by a girl group</span></li>
+    <li class="ach-item"><span class="ach-n">07</span><span class="ach-text"><strong>Most subscribed music act on YouTube</strong> — 101M+ subscribers</span></li>
+    <li class="ach-item"><span class="ach-n">08</span><span class="ach-text"><strong>Most viewed group on YouTube</strong> — 41B+ total views</span></li>
+    <li class="ach-item"><span class="ach-n">09</span><span class="ach-text"><strong>Most streamed girl group of all time</strong> — 17.5B+ Spotify streams</span></li>
+    <li class="ach-item"><span class="ach-n">10</span><span class="ach-text">First girl group to have <strong>3 songs each surpass 1 billion streams</strong> on Spotify</span></li>
   </ol>
   <div class="ach-cta">
     <a href="/achievements" class="ach-link">See all BLACKPINK achievements →</a>
@@ -431,6 +445,9 @@
 </section>
 
 <div class="divider"><div class="divider-gem"></div></div>
+
+<div id="yt-holder"><div id="yt-player"></div></div>
+<button id="music-btn" aria-label="Toggle music" title="Champion — BLACKPINK">♪</button>
 
 <footer>
   <img src="bp-logo.png" alt="BLACKPINK" class="bp-logo bp-logo-sm">
@@ -575,6 +592,7 @@
     });
     await sleep(900);
     ov.style.display = 'none';
+    if (window._showMusicBtn) window._showMusicBtn();
   }
 
   if (document.readyState === 'loading') {
@@ -582,6 +600,70 @@
   } else {
     runIntro();
   }
+})();
+</script>
+
+<script>
+(function() {
+  var VIDEO_ID = 'PgOGYHPoPsE';
+  var player   = null;
+  var apiReady = false;
+  var started  = false;
+  var muted    = false;
+  var btn      = document.getElementById('music-btn');
+
+  // Load YouTube IFrame API
+  var tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+
+  window.onYouTubeIframeAPIReady = function() {
+    player = new YT.Player('yt-player', {
+      videoId: VIDEO_ID,
+      playerVars: { autoplay: 0, controls: 0, loop: 1, playlist: VIDEO_ID, rel: 0 },
+      events: {
+        onReady: function() {
+          apiReady = true;
+          player.setVolume(55);
+          if (started) player.playVideo();
+        }
+      }
+    });
+  };
+
+  function startMusic() {
+    if (started) return;
+    started = true;
+    if (apiReady && player) player.playVideo();
+    btn.classList.add('on');
+  }
+
+  // Start on first user interaction anywhere on the page
+  function onFirstInteraction() {
+    document.removeEventListener('click',      onFirstInteraction);
+    document.removeEventListener('touchstart', onFirstInteraction);
+    document.removeEventListener('keydown',    onFirstInteraction);
+    startMusic();
+  }
+  document.addEventListener('click',      onFirstInteraction);
+  document.addEventListener('touchstart', onFirstInteraction);
+  document.addEventListener('keydown',    onFirstInteraction);
+
+  // Toggle mute on button click
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (!started) { startMusic(); return; }
+    if (muted) {
+      player.unMute(); player.setVolume(55);
+      muted = false; btn.classList.add('on');
+    } else {
+      player.mute();
+      muted = true; btn.classList.remove('on');
+    }
+  });
+
+  // Show button when intro ends
+  window._showMusicBtn = function() { btn.classList.add('show'); };
 })();
 </script>
 
