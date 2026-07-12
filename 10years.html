@@ -519,12 +519,9 @@
     logoEl.style.opacity = '1';
     await sleep(1000);
 
-    // Phase 7 — countdown appears
-    cdEl.style.opacity = '1';
-    var cdTimer = startCd();
-    await sleep(3000);
+    await sleep(2200);
 
-    // Phase 8 — fade overlay, reveal page
+    // Phase 7 — fade overlay, reveal page
     ov.style.opacity = '0';
     ov.style.pointerEvents = 'none';
     document.body.style.overflow = '';
@@ -533,7 +530,6 @@
     });
     await sleep(900);
     ov.style.display = 'none';
-    clearInterval(cdTimer);
   }
 
   if (document.readyState === 'loading') {
