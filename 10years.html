@@ -29,7 +29,6 @@
     overflow-x: hidden;
   }
 
-  /* Back link */
   .back {
     position: fixed; top: 1.1rem; left: 1.2rem; z-index: 200;
     color: var(--dim); text-decoration: none;
@@ -39,7 +38,6 @@
   }
   .back:hover { color: var(--pink); }
 
-  /* ── HERO ── */
   #hero {
     position: relative;
     min-height: 100svh;
@@ -82,15 +80,11 @@
     display: flex; flex-direction: column; align-items: center; gap: 1rem;
   }
 
-  .wordmark {
-    display: inline-flex; margin-bottom: 0.5rem;
-    font-family: 'Arial Black', Impact, sans-serif;
-    font-size: clamp(0.85rem, 2.2vw, 1.3rem);
-    font-weight: 900; letter-spacing: 0.22em; text-transform: uppercase;
+  .bp-logo {
+    display: block; max-width: 260px; width: 100%; height: auto;
+    background: #fff; padding: 0.55rem 0.9rem; margin-bottom: 0.5rem;
   }
-  .wordmark .wm-b { background: var(--blush); color: var(--bg); padding: 0.28em 0.55em; }
-  .wordmark .wm-div { width: 2px; background: var(--pink); flex-shrink: 0; }
-  .wordmark .wm-p { background: var(--pink); color: #fff; padding: 0.28em 0.55em; }
+  .bp-logo-sm { max-width: 150px; padding: 0.35rem 0.6rem; margin-bottom: 0; }
 
   .hero-eyebrow {
     font-size: 0.68rem; letter-spacing: 0.28em; text-transform: uppercase;
@@ -106,14 +100,10 @@
   }
   h1.hero-title em { font-style: normal; color: var(--pink); }
 
-  .hero-sub {
-    font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase;
-    color: var(--dim);
-  }
+  .hero-sub { font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); }
 
   .countdown {
-    display: flex; align-items: flex-start; gap: clamp(0.5rem, 3vw, 2rem);
-    margin-top: 0.5rem;
+    display: flex; align-items: flex-start; gap: clamp(0.5rem, 3vw, 2rem); margin-top: 0.5rem;
   }
   .cd-u { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
   .cd-n {
@@ -141,129 +131,52 @@
   }
 
   .sect { padding: 5rem 1.4rem; max-width: 960px; margin: 0 auto; }
+  .sect-eye { font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); text-align: center; margin-bottom: 0.5rem; }
+  .sect-h { font-family: 'Arial Black', Impact, sans-serif; font-size: clamp(1.5rem, 4vw, 2.6rem); font-weight: 900; text-transform: uppercase; letter-spacing: -0.015em; color: var(--blush); text-align: center; margin-bottom: 0.35em; }
+  .sect-sub { font-size: 0.875rem; color: var(--dim); text-align: center; max-width: 480px; margin: 0 auto 2.8rem; line-height: 1.65; }
 
-  .sect-eye {
-    font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase;
-    color: var(--gold); text-align: center; margin-bottom: 0.5rem;
-  }
-  .sect-h {
-    font-family: 'Arial Black', Impact, sans-serif;
-    font-size: clamp(1.5rem, 4vw, 2.6rem); font-weight: 900;
-    text-transform: uppercase; letter-spacing: -0.015em;
-    color: var(--blush); text-align: center; margin-bottom: 0.35em;
-  }
-  .sect-sub {
-    font-size: 0.875rem; color: var(--dim); text-align: center;
-    max-width: 480px; margin: 0 auto 2.8rem; line-height: 1.65;
-  }
-
-  .divider {
-    display: flex; align-items: center; gap: 1.2rem;
-    padding: 0 2rem; max-width: 860px; margin: 0 auto;
-  }
-  .divider::before, .divider::after {
-    content: ''; flex: 1; height: 1px;
-  }
+  .divider { display: flex; align-items: center; gap: 1.2rem; padding: 0 2rem; max-width: 860px; margin: 0 auto; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; }
   .divider::before { background: linear-gradient(90deg, transparent, var(--rose)); }
   .divider::after  { background: linear-gradient(90deg, var(--rose), transparent); }
-  .divider-gem {
-    width: 7px; height: 7px; background: var(--pink); transform: rotate(45deg); flex-shrink: 0;
-  }
+  .divider-gem { width: 7px; height: 7px; background: var(--pink); transform: rotate(45deg); flex-shrink: 0; }
 
-  .milestones {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: 1px; background: var(--faint);
-    border: 1px solid var(--faint);
-  }
-  .ms {
-    background: var(--surf); padding: 1.7rem 1rem; text-align: center;
-    transition: background 0.2s;
-  }
+  .milestones { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1px; background: var(--faint); border: 1px solid var(--faint); }
+  .ms { background: var(--surf); padding: 1.7rem 1rem; text-align: center; transition: background 0.2s; }
   .ms:hover { background: #180f16; }
-  .ms-num {
-    font-family: 'Arial Black', Impact, sans-serif;
-    font-size: clamp(1.7rem, 4vw, 2.6rem); font-weight: 900;
-    color: var(--pink); line-height: 1;
-    font-variant-numeric: tabular-nums; margin-bottom: 0.35rem;
-  }
+  .ms-num { font-family: 'Arial Black', Impact, sans-serif; font-size: clamp(1.7rem, 4vw, 2.6rem); font-weight: 900; color: var(--pink); line-height: 1; font-variant-numeric: tabular-nums; margin-bottom: 0.35rem; }
   .ms-num sup { font-size: 0.42em; color: var(--gold); vertical-align: super; }
   .ms-lbl { font-size: 0.67rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--dim); line-height: 1.4; }
 
-  .vid-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
-    gap: 1.5rem;
-  }
-  .vid-card {
-    background: var(--surf); border: 1px solid var(--faint);
-    overflow: hidden; border-radius: 1px;
-    transition: border-color 0.25s, transform 0.25s;
-  }
+  .vid-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 1.5rem; }
+  .vid-card { background: var(--surf); border: 1px solid var(--faint); overflow: hidden; border-radius: 1px; transition: border-color 0.25s, transform 0.25s; }
   .vid-card:hover { border-color: var(--pink); transform: translateY(-3px); }
-
   .vid-meta { padding: 0.85rem 1.1rem 0.6rem; }
   .vid-tag { font-size: 0.58rem; letter-spacing: 0.25em; color: var(--gold); text-transform: uppercase; }
-  .vid-name {
-    font-family: 'Arial Black', sans-serif; font-size: 1.1rem; font-weight: 900;
-    color: var(--blush); letter-spacing: 0.04em; margin-top: 0.1rem;
-  }
+  .vid-name { font-family: 'Arial Black', sans-serif; font-size: 1.1rem; font-weight: 900; color: var(--blush); letter-spacing: 0.04em; margin-top: 0.1rem; }
   .vid-name small { font-size: 0.68rem; color: var(--dim); letter-spacing: 0.06em; display: block; margin-top: 0.15rem; }
-
   .vid-wrap { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; }
   .vid-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
 
-  .sp-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
-    gap: 1.2rem;
-  }
-  .sp-card {
-    background: var(--surf); border: 1px solid var(--faint);
-    border-radius: 1px; overflow: hidden;
-    transition: border-color 0.25s;
-  }
+  .sp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 1.2rem; }
+  .sp-card { background: var(--surf); border: 1px solid var(--faint); border-radius: 1px; overflow: hidden; transition: border-color 0.25s; }
   .sp-card:hover { border-color: var(--green); }
-
-  .sp-header {
-    padding: 0.8rem 1.1rem 0.5rem;
-    display: flex; align-items: center; gap: 0.55rem;
-  }
+  .sp-header { padding: 0.8rem 1.1rem 0.5rem; display: flex; align-items: center; gap: 0.55rem; }
   .sp-ico { width: 16px; height: 16px; flex-shrink: 0; }
   .sp-track { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
-
   .sp-wrap { overflow-x: auto; }
   .sp-wrap iframe { display: block; width: 100%; border: none; }
 
-  footer {
-    border-top: 1px solid var(--faint);
-    padding: 3rem 1.4rem;
-    display: flex; flex-direction: column; align-items: center; gap: 1.1rem;
-    text-align: center;
-  }
-  .footer-link {
-    color: var(--blush); text-decoration: none;
-    border: 1px solid var(--rose); padding: 0.55rem 1.5rem;
-    font-size: 0.82rem; letter-spacing: 0.1em;
-    transition: border-color 0.2s, color 0.2s, background 0.2s;
-  }
+  footer { border-top: 1px solid var(--faint); padding: 3rem 1.4rem; display: flex; flex-direction: column; align-items: center; gap: 1.1rem; text-align: center; }
+  .footer-link { color: var(--blush); text-decoration: none; border: 1px solid var(--rose); padding: 0.55rem 1.5rem; font-size: 0.82rem; letter-spacing: 0.1em; transition: border-color 0.2s, color 0.2s, background 0.2s; }
   .footer-link:hover { border-color: var(--pink); color: var(--pink); background: rgba(255,26,108,0.06); }
   .footer-copy { font-size: 0.65rem; color: var(--rose); letter-spacing: 0.08em; }
 
-  .reveal {
-    opacity: 0; transform: translateY(24px);
-    transition: opacity 0.65s ease, transform 0.65s ease;
-  }
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.65s ease, transform 0.65s ease; }
   .reveal.in { opacity: 1; transform: none; }
 
-  @media (max-width: 480px) {
-    .cd-colon { display: none; }
-    .countdown { gap: 1rem; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .reveal { transition: none; }
-    .cd-colon { animation: none; }
-  }
+  @media (max-width: 480px) { .cd-colon { display: none; } .countdown { gap: 1rem; } }
+  @media (prefers-reduced-motion: reduce) { .reveal { transition: none; } .cd-colon { animation: none; } }
 </style>
 </head>
 <body>
@@ -272,22 +185,11 @@
 
 <section id="hero">
   <div class="bg10" aria-hidden="true"><span>10</span></div>
-
   <div class="hero-inner">
-    <div class="wordmark" aria-label="BLACKPINK">
-      <span class="wm-b">BLACK</span>
-      <span class="wm-div"></span>
-      <span class="wm-p">PINK</span>
-    </div>
-
+    <img src="bp-logo.png" alt="BLACKPINK" class="bp-logo">
     <p class="hero-eyebrow">August 8, 2016 — August 8, 2026</p>
-
-    <h1 class="hero-title">
-      <em>10&nbsp;Years</em><br>of BLACKPINK
-    </h1>
-
+    <h1 class="hero-title"><em>10&nbsp;Years</em><br>of BLACKPINK</h1>
     <p class="hero-sub">Countdown to the anniversary</p>
-
     <div class="countdown" role="timer" aria-label="Countdown to 10th anniversary">
       <div class="cd-u"><span class="cd-n" id="cd-d">--</span><span class="cd-l">Days</span></div>
       <span class="cd-colon" aria-hidden="true">:</span>
@@ -297,10 +199,8 @@
       <span class="cd-colon" aria-hidden="true">:</span>
       <div class="cd-u"><span class="cd-n" id="cd-s">--</span><span class="cd-l">Sec</span></div>
     </div>
-
     <p class="cd-note" id="cd-note">Until <strong>August 8, 2026</strong></p>
   </div>
-
   <div class="hero-glow"></div>
 </section>
 
@@ -310,28 +210,12 @@
   <p class="sect-eye">By the numbers</p>
   <h2 class="sect-h">A Decade of Records</h2>
   <p class="sect-sub">From debut day to global icon — ten years of firsts.</p>
-
   <div class="milestones">
-    <div class="ms">
-      <div class="ms-num">1<sup>st</sup></div>
-      <div class="ms-lbl">K-pop group to headline Coachella</div>
-    </div>
-    <div class="ms">
-      <div class="ms-num">90M<sup>+</sup></div>
-      <div class="ms-lbl">YouTube subscribers</div>
-    </div>
-    <div class="ms">
-      <div class="ms-num">2B<sup>+</sup></div>
-      <div class="ms-lbl">streams on Pink Venom</div>
-    </div>
-    <div class="ms">
-      <div class="ms-num">4</div>
-      <div class="ms-lbl">members · one identity</div>
-    </div>
-    <div class="ms">
-      <div class="ms-num">10</div>
-      <div class="ms-lbl">years and counting</div>
-    </div>
+    <div class="ms"><div class="ms-num">1<sup>st</sup></div><div class="ms-lbl">K-pop group to headline Coachella</div></div>
+    <div class="ms"><div class="ms-num">90M<sup>+</sup></div><div class="ms-lbl">YouTube subscribers</div></div>
+    <div class="ms"><div class="ms-num">2B<sup>+</sup></div><div class="ms-lbl">streams on Pink Venom</div></div>
+    <div class="ms"><div class="ms-num">4</div><div class="ms-lbl">members · one identity</div></div>
+    <div class="ms"><div class="ms-num">10</div><div class="ms-lbl">years and counting</div></div>
   </div>
 </section>
 
@@ -341,35 +225,14 @@
   <p class="sect-eye">Square One · August 8, 2016</p>
   <h2 class="sect-h">The Debut</h2>
   <p class="sect-sub">Two songs. One explosion. The world hasn't been the same since.</p>
-
   <div class="vid-grid">
     <div class="vid-card">
-      <div class="vid-meta">
-        <div class="vid-tag">Official MV · #1</div>
-        <div class="vid-name">WHISTLE <small>휘파람</small></div>
-      </div>
-      <div class="vid-wrap">
-        <iframe
-          src="https://www.youtube-nocookie.com/embed/dISNgvVpSU0"
-          title="BLACKPINK — WHISTLE MV"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen loading="lazy"
-        ></iframe>
-      </div>
+      <div class="vid-meta"><div class="vid-tag">Official MV · #1</div><div class="vid-name">WHISTLE <small>휘파람</small></div></div>
+      <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/dISNgvVpSU0" title="BLACKPINK — WHISTLE MV" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
     <div class="vid-card">
-      <div class="vid-meta">
-        <div class="vid-tag">Official MV · #2</div>
-        <div class="vid-name">BOOMBAYAH <small>붐바야</small></div>
-      </div>
-      <div class="vid-wrap">
-        <iframe
-          src="https://www.youtube-nocookie.com/embed/bwmSjveL3Lc"
-          title="BLACKPINK — BOOMBAYAH MV"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen loading="lazy"
-        ></iframe>
-      </div>
+      <div class="vid-meta"><div class="vid-tag">Official MV · #2</div><div class="vid-name">BOOMBAYAH <small>붐바야</small></div></div>
+      <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/bwmSjveL3Lc" title="BLACKPINK — BOOMBAYAH MV" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
   </div>
 </section>
@@ -380,32 +243,20 @@
   <p class="sect-eye">Stream the debut</p>
   <h2 class="sect-h">Still Going Strong</h2>
   <p class="sect-sub">Ten years later the debut tracks still hit different.</p>
-
   <div class="sp-grid">
     <div class="sp-card">
       <div class="sp-header">
         <svg class="sp-ico" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.36-.66.48-1.021.24-2.82-1.74-6.36-2.1-10.561-1.14-.418.12-.779-.18-.899-.54-.12-.42.18-.78.54-.9 4.56-1.02 8.52-.6 11.64 1.32.42.18.479.66.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.02.6-1.14C9.6 9.9 15 10.56 18.72 12.84c.361.18.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.3c-.6.18-1.2-.18-1.38-.72-.18-.6.18-1.2.72-1.38 4.26-1.26 11.28-1.02 15.72 1.62.54.3.72 1.02.42 1.56-.3.42-1.02.6-1.56.3z"/></svg>
         <span class="sp-track">Whistle · 휘파람</span>
       </div>
-      <div class="sp-wrap">
-        <iframe src="https://open.spotify.com/embed/track/5H1sKFMzDeMtXwND3V6hRY?utm_source=generator&theme=0"
-          width="100%" height="152"
-          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-          loading="lazy"></iframe>
-      </div>
+      <div class="sp-wrap"><iframe src="https://open.spotify.com/embed/track/5H1sKFMzDeMtXwND3V6hRY?utm_source=generator&theme=0" width="100%" height="152" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>
     </div>
-
     <div class="sp-card">
       <div class="sp-header">
         <svg class="sp-ico" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.36-.66.48-1.021.24-2.82-1.74-6.36-2.1-10.561-1.14-.418.12-.779-.18-.899-.54-.12-.42.18-.78.54-.9 4.56-1.02 8.52-.6 11.64 1.32.42.18.479.66.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.02.6-1.14C9.6 9.9 15 10.56 18.72 12.84c.361.18.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.3c-.6.18-1.2-.18-1.38-.72-.18-.6.18-1.2.72-1.38 4.26-1.26 11.28-1.02 15.72 1.62.54.3.72 1.02.42 1.56-.3.42-1.02.6-1.56.3z"/></svg>
         <span class="sp-track">Boombayah · 붐바야</span>
       </div>
-      <div class="sp-wrap">
-        <iframe src="https://open.spotify.com/embed/track/0lHAMNU8RGiDeBMoTSFyDj?utm_source=generator&theme=0"
-          width="100%" height="152"
-          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-          loading="lazy"></iframe>
-      </div>
+      <div class="sp-wrap"><iframe src="https://open.spotify.com/embed/track/0lHAMNU8RGiDeBMoTSFyDj?utm_source=generator&theme=0" width="100%" height="152" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>
     </div>
   </div>
 </section>
@@ -413,9 +264,7 @@
 <div class="divider"><div class="divider-gem"></div></div>
 
 <footer>
-  <div class="wordmark" aria-label="BLACKPINK" style="font-size:0.8rem">
-    <span class="wm-b">BLACK</span><span class="wm-div"></span><span class="wm-p">PINK</span>
-  </div>
+  <img src="bp-logo.png" alt="BLACKPINK" class="bp-logo bp-logo-sm">
   <a href="/" class="footer-link">← Back to Blinks United</a>
   <p class="footer-copy">Fan site · Not affiliated with YG Entertainment or BLACKPINK</p>
 </footer>
@@ -423,7 +272,6 @@
 <script>
   const TARGET = new Date('2026-08-08T00:00:00+09:00').getTime();
   const pad = n => String(Math.max(0, n)).padStart(2, '0');
-
   function tick() {
     const diff = TARGET - Date.now();
     if (diff <= 0) {
@@ -439,13 +287,11 @@
   }
   tick();
   setInterval(tick, 1000);
-
   const obs = new IntersectionObserver(
     es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); obs.unobserve(e.target); } }),
     { threshold: 0.1 }
   );
   document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
 </script>
-
 </body>
 </html>
