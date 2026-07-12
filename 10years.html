@@ -30,11 +30,11 @@
   }
 
   .back {
-    position: fixed; top: 1.1rem; left: 1.2rem; z-index: 200;
+    position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); z-index: 200;
     color: var(--dim); text-decoration: none;
     font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase;
     display: inline-flex; align-items: center; gap: 0.35rem;
-    transition: color 0.2s;
+    transition: color 0.2s; white-space: nowrap;
   }
   .back:hover { color: var(--pink); }
 
@@ -145,6 +145,33 @@
   .ms-num { font-family: 'Arial Black', Impact, sans-serif; font-size: clamp(1.7rem, 4vw, 2.6rem); font-weight: 900; color: var(--pink); line-height: 1; font-variant-numeric: tabular-nums; margin-bottom: 0.35rem; }
   .ms-num sup { font-size: 0.42em; color: var(--gold); vertical-align: super; }
   .ms-lbl { font-size: 0.67rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--dim); line-height: 1.4; }
+
+  .ach-list { list-style: none; display: flex; flex-direction: column; gap: 0; border: 1px solid var(--faint); }
+  .ach-item {
+    display: grid; grid-template-columns: 2.6rem 1fr;
+    align-items: baseline; gap: 0 1rem;
+    padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--faint);
+    transition: background 0.18s;
+  }
+  .ach-item:last-child { border-bottom: none; }
+  .ach-item:hover { background: var(--surf); }
+  .ach-n {
+    font-family: 'Arial Black', Impact, sans-serif;
+    font-size: 0.72rem; font-weight: 900;
+    color: var(--pink); letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+  .ach-text { font-size: 0.875rem; color: var(--blush); line-height: 1.5; }
+  .ach-text strong { color: var(--gold); font-weight: 600; }
+  .ach-cta { text-align: center; margin-top: 2.4rem; }
+  .ach-link {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    color: var(--pink); text-decoration: none;
+    font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase;
+    border-bottom: 1px solid var(--rose); padding-bottom: 0.2rem;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .ach-link:hover { border-color: var(--pink); color: var(--blush); }
 
   .vid-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 1.5rem; }
   .vid-card { background: var(--surf); border: 1px solid var(--faint); overflow: hidden; border-radius: 1px; transition: border-color 0.25s, transform 0.25s; }
@@ -333,6 +360,29 @@
 <div class="divider"><div class="divider-gem"></div></div>
 
 <section class="sect reveal">
+  <p class="sect-eye">◆ A decade of firsts ◆</p>
+  <h2 class="sect-h">10 Defining Moments</h2>
+  <p class="sect-sub">From debut day to global dominance — the records that rewrote K-pop history.</p>
+  <ol class="ach-list">
+    <li class="ach-item"><span class="ach-n">01</span><span class="ach-text">First K-pop girl group to <strong>headline Coachella</strong> — April 2019</span></li>
+    <li class="ach-item"><span class="ach-n">02</span><span class="ach-text"><strong>Born Pink</strong> debuted at #1 on the Billboard 200 — first K-pop girl group album to do so (2022)</span></li>
+    <li class="ach-item"><span class="ach-n">03</span><span class="ach-text"><strong>101M YouTube subscribers</strong> — most subscribed band and most viewed group in YouTube history</span></li>
+    <li class="ach-item"><span class="ach-n">04</span><span class="ach-text"><strong>60M+ Spotify followers</strong> — most followed female act ever, first female K-pop group to hit that milestone</span></li>
+    <li class="ach-item"><span class="ach-n">05</span><span class="ach-text"><strong>"How You Like That"</strong> broke the YouTube record for most views in 24 hours at release — 86.3M views (2020)</span></li>
+    <li class="ach-item"><span class="ach-n">06</span><span class="ach-text"><strong>"DDU-DU DDU-DU"</strong> surpassed 2 billion views — most-viewed MV by a K-pop girl group</span></li>
+    <li class="ach-item"><span class="ach-n">07</span><span class="ach-text">First K-pop girl group to perform at <strong>Glastonbury Festival</strong> (2023)</span></li>
+    <li class="ach-item"><span class="ach-n">08</span><span class="ach-text"><strong>Born Pink World Tour</strong> — highest-grossing tour by an Asian act at the time</span></li>
+    <li class="ach-item"><span class="ach-n">09</span><span class="ach-text">First female K-pop artists to top the <strong>UK Albums Chart</strong> (Born Pink, 2022)</span></li>
+    <li class="ach-item"><span class="ach-n">10</span><span class="ach-text">Only girl group to have <strong>all four members</strong> simultaneously active as solo artists with charting releases</span></li>
+  </ol>
+  <div class="ach-cta">
+    <a href="/achievements" class="ach-link">See all BLACKPINK achievements →</a>
+  </div>
+</section>
+
+<div class="divider"><div class="divider-gem"></div></div>
+
+<section class="sect reveal">
   <p class="sect-eye">◆ Square One · August 8, 2016 ◆</p>
   <h2 class="sect-h">The Debut</h2>
   <p class="sect-sub">Two songs. One explosion. The world hasn't been the same since.</p>
@@ -510,12 +560,7 @@
     sb.style.opacity = '0';
     await sleep(180);
 
-    // Phase 6 — logo appears where the titles were; date becomes full range
-    dateEl.style.transition = 'opacity 0.5s ease';
-    dateEl.style.opacity = '0';
-    await sleep(300);
-    dateEl.textContent = 'August 8, 2016 — August 8, 2026';
-    dateEl.style.opacity = '1';
+    // Phase 6 — logo appears where the titles were
     logoEl.style.opacity = '1';
     await sleep(1000);
 
