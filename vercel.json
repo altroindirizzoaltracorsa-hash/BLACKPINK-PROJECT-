@@ -28,7 +28,7 @@
   "crons": [
     {
       "path": "/api/streams?cron=1",
-      "schedule": "0 0 * * *"
+      "schedule": "0 21 * * *"
     },
     {
       "path": "/api/cron-scrobbles",
