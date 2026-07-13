@@ -293,6 +293,9 @@ export default async function handler(req, res) {
       rGet('bp_hist_jump'), rGet('bp_hist_shutdown'), rGet('bp_hist_ddududu'),
       rGet('bp_prev_jump'), rGet('bp_prev_shutdown'), rGet('bp_prev_ddududu'),
     ]);
+    // Reconstruct cumulative totals working backwards from latest bp_prev snapshot.
+    // History entry {date: D, streams: S} means snapshot(D+1) - snapshot(D) = S,
+    // so snapshot(D) = snapshot(D+1) - S. bp_prev holds the most recent snapshot.
     function reconstructTotals(history, prev) {
       if (!history?.length || !prev) return {};
       const sorted = [...history].sort((a, b) => {
@@ -338,6 +341,7 @@ export default async function handler(req, res) {
       const errBody = await insertRes.text();
       return res.status(500).json({ error: `Supabase insert failed: ${errBody}` });
     }
+    // Patch any pre-existing rows whose daily is null but predecessor now exists in batch
     const totalsMap = {};
     for (const r of rows) totalsMap[r.date] = r;
     const nullRes = await sbFetch(
@@ -373,7 +377,7 @@ export default async function handler(req, res) {
     });
   }
 
-  // ── Musicat stats proxy ───────────────────────────────────────���──────────
+  // ── Musicat stats proxy ──────────────────────────────────────────────────
   const mcUser = req.query.musicat_user;
   if (mcUser) {
     try {
