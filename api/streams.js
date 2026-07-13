@@ -63,8 +63,15 @@ const PROVIDERS = [
 
 // Tries each provider in order, and within a provider tries each key in
 // order, moving on if one is rate-limited or quota-exceeded.
-async function fetchTrackMetadata(trackId) {
+// prevTotal: if a provider returns this exact count (or lower), its scraper
+// cache is stale — we continue to the next provider instead of returning
+// immediately, since it may have already picked up the day's update.
+// All keys on the same provider share the same scraper cache, so there's no
+// point trying more than one key per provider on a stale response — we break
+// out and try the next provider directly.
+async function fetchTrackMetadata(trackId, prevTotal = 0) {
   let lastError = 'No API keys configured';
+  let staleResult = null; // best valid-but-unchanged result seen so far
   for (const provider of PROVIDERS) {
     const keys = getApiKeys(provider.keyEnvVars);
     for (const key of keys) {
@@ -77,9 +84,17 @@ async function fetchTrackMetadata(trackId) {
         continue;
       }
       if (!r.ok) { lastError = `HTTP ${r.status}`; continue; }
-      return { playCount: provider.getPlayCount(data) };
+      const playCount = provider.getPlayCount(data);
+      // Fresh data — higher than yesterday's snapshot, return immediately.
+      if (playCount > prevTotal) return { playCount };
+      // Stale data — same or lower than yesterday. Save it as a fallback,
+      // then break out of the key loop and try the next provider.
+      if (!staleResult) staleResult = { playCount };
+      break;
     }
   }
+  // All providers tried — return stale result if any provider gave us something
+  if (staleResult) return staleResult;
   throw new Error(lastError);
 }
 
@@ -252,7 +267,7 @@ export default async function handler(req, res) {
       } else {
         let data;
         try {
-          data = await fetchTrackMetadata(trackId);
+          data = await fetchTrackMetadata(trackId, Number(prev?.total || 0));
         } catch(e) {
           errors[name] = { message: e.message, ts: new Date().toISOString() };
           await redis.set(errKey, { message: e.message, ts: Date.now() });
