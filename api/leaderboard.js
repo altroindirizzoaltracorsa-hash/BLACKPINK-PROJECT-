@@ -384,8 +384,23 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid JSON' });
     }
 
-    const { username, scores, avatar, updatedAt, lastScrobbleAt, displayName, linkedAccounts, cleanupKeys } = body || {};
+    const { username, scores, avatar, updatedAt, lastScrobbleAt, displayName, linkedAccounts, cleanupKeys, accessToken } = body || {};
     if (!username || !scores) return res.status(400).json({ error: 'username and scores required' });
+
+    // Require Supabase auth — old-method (no-token) submissions are no longer accepted.
+    if (!accessToken) return res.status(401).json({ error: 'Sign in required to appear on the leaderboard' });
+    const sb = supabase();
+    if (!sb) return res.status(503).json({ error: 'Server not configured' });
+    const { data: { user }, error: authErr } = await sb.auth.getUser(accessToken);
+    if (authErr || !user) return res.status(401).json({ error: 'Session expired — please sign in again' });
+
+    // Verify at least one submitted username is linked to this Supabase account.
+    const { data: linked } = await sb.from('linked_accounts').select('source_username').eq('app_user_id', user.id);
+    const linkedSet = new Set((linked || []).map(a => a.source_username.toLowerCase()));
+    const submitted = [username, ...(Array.isArray(linkedAccounts) ? linkedAccounts.map(a => a.username || '') : [])].map(u => u.toLowerCase());
+    if (!submitted.some(u => linkedSet.has(u))) {
+      return res.status(403).json({ error: 'Link your scrobbling account in settings before submitting scores' });
+    }
 
     // Read current data, merge user entry, write back
     const data = (await redis.get(LB_KEY)) || { users: {} };

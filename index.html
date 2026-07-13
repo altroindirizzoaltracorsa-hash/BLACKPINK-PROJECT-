@@ -4586,10 +4586,12 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
     // Display name shown in the leaderboard UI — prefer user's configured name.
     // Always try Supabase session so single-account users also get their display name.
     let displayName = userInfo.displayName;
-    if (!displayName && sb) {
+    let accessToken = null;
+    if (sb) {
       try {
         const { data: { session } } = await sb.auth.getSession();
         if (session?.user?.user_metadata?.display_name) displayName = session.user.user_metadata.display_name;
+        accessToken = session?.access_token || null;
       } catch {}
     }
     displayName = displayName || username;
@@ -4657,6 +4659,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
         scores,
         updatedAt:      new Date().toISOString(),
         lastScrobbleAt: lastScrobbleTs ? new Date(lastScrobbleTs).toISOString() : null,
+        accessToken,
       })
     });
 
