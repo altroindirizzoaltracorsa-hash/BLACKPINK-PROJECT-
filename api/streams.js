@@ -147,6 +147,30 @@ export default async function handler(req, res) {
   // entry — for when the upstream play count genuinely never moved (e.g. a
   // multi-day Spotify reporting freeze), so there's no live diff to compute and
   // the normal fetch-and-diff flow has nothing to write.
+  if (req.query.action === 'delete-history-entry') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    if (!adminSecret || req.query.key !== adminSecret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const { track, date } = req.query;
+    if (!TRACKS[track] || !date) {
+      return res.status(400).json({ error: 'Requires track and date (dd/mm) query params' });
+    }
+    const lockKey = `bp_lock_${track}`;
+    const gotLock = !!(await redis.set(lockKey, '1', { nx: true, ex: 30 }));
+    if (!gotLock) return res.status(409).json({ error: 'Track is busy updating, try again in a few seconds' });
+    try {
+      const histKey = `bp_hist_${track}`;
+      const history = (await redis.get(histKey)) || [];
+      const before = history.length;
+      const updated = history.filter(h => h.date !== date);
+      await redis.set(histKey, updated);
+      return res.status(200).json({ ok: true, track, removed: before - updated.length, history: updated });
+    } finally {
+      await redis.del(lockKey);
+    }
+  }
+
   if (req.query.action === 'set-entry') {
     const adminSecret = process.env.ADMIN_SECRET;
     if (!adminSecret || req.query.key !== adminSecret) {
