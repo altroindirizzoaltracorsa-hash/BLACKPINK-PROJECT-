@@ -137,7 +137,7 @@ export default async function handler(req, res) {
     if (!adminSecret || req.query.key !== adminSecret) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    const { track, date, streams, total } = req.query;
+    const { track, date, streams, total, prevDate } = req.query;
     if (!TRACKS[track] || !date || streams === undefined) {
       return res.status(400).json({ error: 'Requires track, date (dd/mm), and streams query params' });
     }
@@ -166,10 +166,14 @@ export default async function handler(req, res) {
       // for the next live diff, so a backfilled day doesn't get double-counted
       // once real fetches resume. The asserted date always wins here, since a
       // stale or race-written prev snapshot shouldn't override an explicit fix.
+      // prevDate overrides the date stamped on prevKey — use it when the history
+      // entry date (e.g. "10/07") differs from the actual snapshot date whose
+      // total you're supplying (e.g. "11/07"), so the next live diff is anchored
+      // to the right day instead of re-computing from the history entry date.
       if (total !== undefined) {
         const prevKey = `bp_prev_${track}`;
         const liveKey = `bp_live_${track}`;
-        await redis.set(prevKey, { total: Number(total), date });
+        await redis.set(prevKey, { total: Number(total), date: prevDate || date });
         await redis.set(liveKey, { total: Number(total), ts: Date.now() });
       }
 
