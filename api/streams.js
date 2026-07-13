@@ -188,7 +188,15 @@ export default async function handler(req, res) {
   const errors     = {};
   let fetchedLive  = false;
 
-  for (const [name, trackId] of Object.entries(TRACKS)) {
+  // Shuffle track order so no single track is always last when quota runs dry
+  // mid-loop. Fisher-Yates on the entries array.
+  const trackEntries = Object.entries(TRACKS);
+  for (let i = trackEntries.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [trackEntries[i], trackEntries[j]] = [trackEntries[j], trackEntries[i]];
+  }
+
+  for (const [name, trackId] of trackEntries) {
     const liveKey = `bp_live_${name}`;
     const prevKey = `bp_prev_${name}`;
     const histKey = `bp_hist_${name}`;
@@ -254,8 +262,14 @@ export default async function handler(req, res) {
         fetchedLive = true;
         if (fetchedTotal > 0) {
           total = fetchedTotal;
-          updatedAt = Date.now();
-          await redis.set(liveKey, { total, ts: updatedAt });
+          // Only refresh the timestamp when the value actually changed.
+          // If we reset it on every fetch (even stale/unchanged data), the
+          // 15-min cache window restarts and blocks the next retry — which
+          // is exactly how Shut Down and DDU-DU missed their daily diff.
+          if (fetchedTotal !== (cached?.total || 0)) {
+            updatedAt = Date.now();
+            await redis.set(liveKey, { total, ts: updatedAt });
+          }
           await redis.del(errKey);
         } else {
           // Live fetch failed (e.g. all RapidAPI keys exhausted) — fall back to
