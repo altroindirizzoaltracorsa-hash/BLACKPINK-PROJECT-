@@ -262,14 +262,8 @@ export default async function handler(req, res) {
         fetchedLive = true;
         if (fetchedTotal > 0) {
           total = fetchedTotal;
-          // Only refresh the timestamp when the value actually changed.
-          // If we reset it on every fetch (even stale/unchanged data), the
-          // 15-min cache window restarts and blocks the next retry — which
-          // is exactly how Shut Down and DDU-DU missed their daily diff.
-          if (fetchedTotal !== (cached?.total || 0)) {
-            updatedAt = Date.now();
-            await redis.set(liveKey, { total, ts: updatedAt });
-          }
+          updatedAt = Date.now();
+          await redis.set(liveKey, { total, ts: updatedAt });
           await redis.del(errKey);
         } else {
           // Live fetch failed (e.g. all RapidAPI keys exhausted) — fall back to
