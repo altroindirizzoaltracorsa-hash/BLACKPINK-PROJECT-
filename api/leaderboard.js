@@ -82,10 +82,11 @@ export default async function handler(req, res) {
         ? entry.linkedAccounts
         : [{ username: entry.username }];
       const hasVerified = accounts.some(a => verified.has((a.username || '').toLowerCase()));
+      const info = { name: entry.displayName || entry.username, updatedAt: entry.updatedAt || null, lastScrobbleAt: entry.lastScrobbleAt || null };
       if (hasVerified) {
-        kept.push(entry.displayName || entry.username);
+        kept.push(info);
       } else {
-        removed.push(entry.displayName || entry.username);
+        removed.push(info);
         if (req.query.dry !== '1') delete data.users[key];
       }
     }
@@ -94,6 +95,15 @@ export default async function handler(req, res) {
       updateLeaderStreak(data);
       await redis.set(LB_KEY, data);
     }
+
+    // Sort most-recently-active first so recent accounts are visible at the top.
+    const byActivity = (a, b) => {
+      const ta = a.updatedAt || a.lastScrobbleAt || '';
+      const tb = b.updatedAt || b.lastScrobbleAt || '';
+      return tb.localeCompare(ta);
+    };
+    removed.sort(byActivity);
+    kept.sort(byActivity);
 
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({ dry: req.query.dry === '1', removed, kept });
