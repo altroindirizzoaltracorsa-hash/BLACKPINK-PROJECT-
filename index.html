@@ -6288,6 +6288,47 @@ function renderLbCard(logo) {
 }
 
 // ── SHARE TO SOCIAL ──────────────────────────────────────────────────────────
+function _showShareHint(msg) {
+  let el = document.getElementById('_bu-share-hint');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '_bu-share-hint';
+    el.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#f5f0f0;border:1px solid rgba(255,0,102,0.5);padding:0.6rem 1.1rem;font-size:0.62rem;letter-spacing:0.1em;z-index:99999;pointer-events:none;text-align:center;max-width:80vw;transition:opacity 0.4s;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.opacity = '0'; }, 3500);
+}
+
+function _shareImageAndText(blob, filename, text) {
+  const file = new File([blob], filename, { type: 'image/png' });
+  // Try Web Share API with files (works on some Android + iOS setups)
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], title: 'BLINKS UNITED', text }).catch(e => {
+      if (e.name === 'AbortError') return;
+      // File share failed — fall back to download + X
+      _downloadBlob(blob, filename);
+      setTimeout(() => window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener'), 400);
+      _showShareHint('Image saved! Attach it to your X post 📎');
+    });
+  } else {
+    // No file-share support: download image + open X
+    _downloadBlob(blob, filename);
+    setTimeout(() => window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener'), 400);
+    _showShareHint('Image saved! Attach it to your X post 📎');
+  }
+}
+
+function _downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 async function shareCard() {
   if (!cardCanvas) return;
   const title = document.getElementById('card-box-label').textContent;
@@ -6313,20 +6354,8 @@ async function shareCard() {
       if (lines.length) statsText = '\n' + lines.join('\n') + '\n';
     }
   }
-  const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
-  // Mobile: Web Share API with image file
-  if (typeof navigator.share === 'function') {
-    cardCanvas.toBlob(async blob => {
-      const file = new File([blob], 'blinks-united-card.png', { type: 'image/png' });
-      try {
-        await navigator.share({ files: [file], title: 'BLINKS UNITED', text });
-        return;
-      } catch(e) { if (e.name !== 'AbortError') downloadCard(); }
-    }, 'image/png');
-  } else {
-    // Desktop: open Twitter intent (user downloads + attaches image themselves)
-    window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
-  }
+  const text = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
+  cardCanvas.toBlob(blob => _shareImageAndText(blob, 'blinks-united-card.png', text), 'image/png');
 }
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────────
@@ -7044,22 +7073,13 @@ function downloadMilestoneCard() {
   a.click();
 }
 
-async function shareMilestoneCard() {
+function shareMilestoneCard() {
   const canvas = document.getElementById('ms-canvas');
   const trackName = document.getElementById('ms-track-name').textContent;
   const msNum = document.getElementById('ms-number').textContent;
   const dateLabel = document.getElementById('ms-date').textContent;
   const text = `${trackName} just hit ${msNum}! ${dateLabel ? '(' + dateLabel + ') ' : ''}🖤💗 #BLACKPINK #BLINKSUNITED\nblackpink-project.vercel.app`;
-  if (typeof navigator.share === 'function') {
-    canvas.toBlob(async blob => {
-      const file = new File([blob], 'blinks-united-milestone.png', { type: 'image/png' });
-      try {
-        await navigator.share({ files: [file], title: 'BLINKS UNITED', text });
-      } catch(e) { if (e.name !== 'AbortError') downloadMilestoneCard(); }
-    }, 'image/png');
-  } else {
-    window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
-  }
+  canvas.toBlob(blob => _shareImageAndText(blob, 'blinks-united-milestone.png', text), 'image/png');
 }
 </script>
 
