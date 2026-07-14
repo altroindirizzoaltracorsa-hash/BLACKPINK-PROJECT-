@@ -2166,12 +2166,15 @@ function buildMonthChartHtml(entries, markLatest, baseTotal) {
       <div class="chart-bar${isLatest ? ' latest' : ''}" style="height:${heightPct}%"></div>
     </div>`;
   }).join('');
-  const showDates = entries.length <= 14;
-  const datesHtml = showDates ? entries.map(h =>
-    `<div style="flex:1;font-size:0.65rem;letter-spacing:0.01em;color:rgba(245,240,240,0.45);text-align:center;white-space:nowrap;overflow:hidden;">${parseInt(h.date)}</div>`
-  ).join('') : '';
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 400;
+  const maxLabels = Math.max(7, Math.floor(vw / 28));
+  const step = entries.length <= maxLabels ? 1 : Math.ceil(entries.length / maxLabels);
+  const datesHtml = entries.map((h, i) => {
+    const label = i % step === 0 ? parseInt(h.date) : '';
+    return `<div style="flex:1;font-size:0.65rem;letter-spacing:0.01em;color:rgba(245,240,240,0.45);text-align:center;white-space:nowrap;overflow:hidden;">${label}</div>`;
+  }).join('');
   return `<div class="chart-bars">${barsHtml}</div>
-    ${showDates ? `<div style="display:flex;gap:4px;margin-bottom:0.5rem;">${datesHtml}</div>` : '<div style="margin-bottom:0.5rem;"></div>'}`;
+    <div style="display:flex;gap:4px;margin-bottom:0.5rem;">${datesHtml}</div>`;
 }
 
 function renderHistory(id, history, currentTotal) {
