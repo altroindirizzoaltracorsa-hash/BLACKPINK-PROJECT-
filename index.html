@@ -6832,6 +6832,7 @@ async function openMilestoneCard(trackId, milestone, milestoneDate) {
   document.getElementById('fmt-landscape')?.classList.add('active');
   document.getElementById('fmt-square')?.classList.remove('active');
   const canvas = document.getElementById('card-canvas');
+  cardCanvas = canvas;
   canvas.width = 1200; canvas.height = 675;
   await document.fonts.ready;
   const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
