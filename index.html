@@ -6313,7 +6313,8 @@ async function shareCard() {
       if (lines.length) statsText = '\n' + lines.join('\n') + '\n';
     }
   }
-  const text = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
+  const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
+  // Mobile: Web Share API with image file
   if (typeof navigator.share === 'function') {
     cardCanvas.toBlob(async blob => {
       const file = new File([blob], 'blinks-united-card.png', { type: 'image/png' });
@@ -6323,6 +6324,7 @@ async function shareCard() {
       } catch(e) { if (e.name !== 'AbortError') downloadCard(); }
     }, 'image/png');
   } else {
+    // Desktop: open Twitter intent (user downloads + attaches image themselves)
     window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
   }
 }
@@ -6627,14 +6629,6 @@ function showMilestone(trackId, total, milestone, milestoneDate) {
 
 // ── GLOBAL (CUSTOM) MILESTONES — 24h auto-show + persistent "More Milestones" section ──
 
-// Wrap external art URLs through the server-side image proxy so they're same-origin
-// when drawn to a canvas — prevents canvas taint that silently blocks toBlob/share.
-function safeArtUrl(url) {
-  if (!url) return null;
-  if (/^https?:\/\//.test(url)) return `/api/proxy-image?url=${encodeURIComponent(url)}`;
-  return url;
-}
-
 let _globalMsCache = null;
 
 async function fetchGlobalMilestones() {
@@ -6667,7 +6661,7 @@ async function renderMoreMilestones() {
 function replayGlobalMilestone(id) {
   const m = (_globalMsCache || []).find(x => x.id === id);
   if (!m) return;
-  if (m.artUrl) TRACK_ARTWORK[m.trackId] = safeArtUrl(m.artUrl);
+  if (m.artUrl) TRACK_ARTWORK[m.trackId] = m.artUrl;
   showMilestone(m.trackId, m.total, m.milestone, m.milestoneDate);
 }
 
@@ -6678,7 +6672,7 @@ async function checkGlobalMilestonesOnLoad() {
     const seenKey = `bu_global_ms_seen_${m.id}`;
     if (sessionStorage.getItem(seenKey)) continue;
     if (Date.now() - m.savedAt < WINDOW_MS) {
-      if (m.artUrl) TRACK_ARTWORK[m.trackId] = safeArtUrl(m.artUrl);
+      if (m.artUrl) TRACK_ARTWORK[m.trackId] = m.artUrl;
       _msPending.push({ trackId: m.trackId, total: m.total, milestone: m.milestone, milestoneDate: m.milestoneDate });
       sessionStorage.setItem(seenKey, '1');
     }
