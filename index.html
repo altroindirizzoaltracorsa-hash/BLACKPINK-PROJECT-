@@ -6317,6 +6317,7 @@ async function shareCard() {
   const text = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
   if (typeof navigator.share === 'function') {
     cardCanvas.toBlob(async blob => {
+      if (!blob || blob.size === 0) { downloadCard(); return; }
       const file = new File([blob], 'blinks-united-card.png', { type: 'image/png' });
       try {
         await navigator.share({ files: [file], title: 'BLINKS UNITED', text });
@@ -6613,6 +6614,8 @@ function showPendingMilestone() {
   showMilestone(trackId, total, milestone, milestoneDate);
 }
 
+let _msCanvasReady = null; // resolves when ms-canvas finishes rendering
+
 function showMilestone(trackId, total, milestone, milestoneDate) {
   _msActive = true;
   document.getElementById('ms-track-name').textContent = TRACK_LABELS[trackId] || trackId;
@@ -6623,10 +6626,18 @@ function showMilestone(trackId, total, milestone, milestoneDate) {
   else { dateEl.style.display = 'none'; }
   document.getElementById('milestone-overlay').classList.add('active');
   launchConfetti();
-  renderMilestoneCanvas(trackId, total, milestone, milestoneDate);
+  _msCanvasReady = renderMilestoneCanvas(trackId, total, milestone, milestoneDate);
 }
 
 // ── GLOBAL (CUSTOM) MILESTONES — 24h auto-show + persistent "More Milestones" section ──
+
+// Wrap external art URLs through the server-side image proxy so they're same-origin
+// when drawn to a canvas — prevents canvas taint that silently blocks toBlob/share.
+function safeArtUrl(url) {
+  if (!url) return null;
+  if (/^https?:\/\//.test(url)) return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+  return url;
+}
 
 let _globalMsCache = null;
 
@@ -6660,7 +6671,7 @@ async function renderMoreMilestones() {
 function replayGlobalMilestone(id) {
   const m = (_globalMsCache || []).find(x => x.id === id);
   if (!m) return;
-  if (m.artUrl) TRACK_ARTWORK[m.trackId] = m.artUrl;
+  if (m.artUrl) TRACK_ARTWORK[m.trackId] = safeArtUrl(m.artUrl);
   showMilestone(m.trackId, m.total, m.milestone, m.milestoneDate);
 }
 
@@ -6671,7 +6682,7 @@ async function checkGlobalMilestonesOnLoad() {
     const seenKey = `bu_global_ms_seen_${m.id}`;
     if (sessionStorage.getItem(seenKey)) continue;
     if (Date.now() - m.savedAt < WINDOW_MS) {
-      if (m.artUrl) TRACK_ARTWORK[m.trackId] = m.artUrl;
+      if (m.artUrl) TRACK_ARTWORK[m.trackId] = safeArtUrl(m.artUrl);
       _msPending.push({ trackId: m.trackId, total: m.total, milestone: m.milestone, milestoneDate: m.milestoneDate });
       sessionStorage.setItem(seenKey, '1');
     }
@@ -7044,6 +7055,8 @@ function downloadMilestoneCard() {
 }
 
 async function shareMilestoneCard() {
+  // Wait for the canvas to finish rendering (it loads artwork async after the popup opens)
+  if (_msCanvasReady) await _msCanvasReady;
   const canvas = document.getElementById('ms-canvas');
   const trackName = document.getElementById('ms-track-name').textContent;
   const msNum = document.getElementById('ms-number').textContent;
@@ -7051,6 +7064,7 @@ async function shareMilestoneCard() {
   const text = `${trackName} just hit ${msNum}! ${dateLabel ? '(' + dateLabel + ') ' : ''}🖤💗 #BLACKPINK #BLINKSUNITED\nblackpink-project.vercel.app`;
   if (typeof navigator.share === 'function') {
     canvas.toBlob(async blob => {
+      if (!blob || blob.size === 0) { downloadMilestoneCard(); return; }
       const file = new File([blob], 'blinks-united-milestone.png', { type: 'image/png' });
       try {
         await navigator.share({ files: [file], title: 'BLINKS UNITED', text });
