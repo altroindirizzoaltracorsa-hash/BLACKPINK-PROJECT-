@@ -5813,7 +5813,6 @@ async function copyCard(btn) {
 async function loadImg(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
     img.onload  = () => resolve(img);
     img.onerror = () => reject();
     img.src = url;
@@ -6317,12 +6316,12 @@ async function shareCard() {
   const text = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
   if (typeof navigator.share === 'function') {
     cardCanvas.toBlob(async blob => {
-      const file = new File([blob], 'blinks-united-card.jpg', { type: 'image/jpeg' });
+      const file = new File([blob], 'blinks-united-card.png', { type: 'image/png' });
       try {
         await navigator.share({ files: [file], title: 'BLINKS UNITED', text });
         return;
       } catch(e) { if (e.name !== 'AbortError') downloadCard(); }
-    }, 'image/jpeg', 0.92);
+    }, 'image/png');
   } else {
     window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
   }
@@ -7059,11 +7058,11 @@ async function shareMilestoneCard() {
   const text = `${trackName} just hit ${msNum}! ${dateLabel ? '(' + dateLabel + ') ' : ''}🖤💗 #BLACKPINK #BLINKSUNITED\nblackpink-project.vercel.app`;
   if (typeof navigator.share === 'function') {
     canvas.toBlob(async blob => {
-      const file = new File([blob], 'blinks-united-milestone.jpg', { type: 'image/jpeg' });
+      const file = new File([blob], 'blinks-united-milestone.png', { type: 'image/png' });
       try {
         await navigator.share({ files: [file], title: 'BLINKS UNITED', text });
       } catch(e) { if (e.name !== 'AbortError') downloadMilestoneCard(); }
-    }, 'image/jpeg', 0.92);
+    }, 'image/png');
   } else {
     window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
   }
