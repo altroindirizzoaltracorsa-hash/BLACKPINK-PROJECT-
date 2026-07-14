@@ -5779,7 +5779,9 @@ const TRACK_ARTWORK = {
 const KNOWN_SPOTIFY_IDS = {
   "AS IF IT'S YOUR LAST": '4ZxOuNHhpyOj4gv52MtQpT',
 };
-let cardCanvas = null; // current canvas for download
+let cardCanvas = null;
+let _cardShareFile = null; // pre-generated File for sharing
+let _msShareFile   = null; // pre-generated File for milestone sharing
 
 function closeCard() {
   document.getElementById('card-overlay').style.display = 'none';
@@ -6063,6 +6065,7 @@ function renderSongCard(trackId, art, logo) {
   ctx.fillText('blackpink-project.vercel.app', brandX, siteY);
 
   cardCanvas = canvas;
+  try { _cardShareFile = _canvasToFile(canvas, 'blinks-united-card.png'); } catch(e) { _cardShareFile = null; }
 }
 
 // ── LEADERBOARD CARD ─────────────────────────────────────────────────────────
@@ -6285,6 +6288,7 @@ function renderLbCard(logo) {
   ctx.fillText('blackpink-project.vercel.app', W / 2, H - 18);
 
   cardCanvas = canvas;
+  try { _cardShareFile = _canvasToFile(canvas, 'blinks-united-card.png'); } catch(e) { _cardShareFile = null; }
 }
 
 // ── SHARE TO SOCIAL ──────────────────────────────────────────────────────────
@@ -6324,9 +6328,10 @@ async function shareCard() {
   }
   const text = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
   if (typeof navigator.share === 'function') {
-    const file = _canvasToFile(cardCanvas, 'blinks-united-card.png');
     try {
-      await navigator.share({ files: [file], title: 'BLINKS UNITED', text });
+      const file = _cardShareFile || _canvasToFile(cardCanvas, 'blinks-united-card.png');
+      const canFile = !navigator.canShare || navigator.canShare({ files: [file] });
+      await navigator.share(canFile ? { files: [file], title: 'BLINKS UNITED', text } : { title: 'BLINKS UNITED', text });
       return;
     } catch(e) { if (e.name !== 'AbortError') downloadCard(); }
   } else {
@@ -6565,6 +6570,7 @@ function drawPersonalCard(canvas, { info, todayCounts, totalPlays, avatarImg, lo
   ctx.fillText('blackpink-project.vercel.app', bx, H - (landscape ? 30 : 42));
 
   cardCanvas = canvas;
+  try { _cardShareFile = _canvasToFile(canvas, 'blinks-united-card.png'); } catch(e) { _cardShareFile = null; }
 }
 
 </script>
@@ -6815,11 +6821,15 @@ function drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milesto
 }
 
 async function renderMilestoneCanvas(trackId, total, milestone, milestoneDate) {
+  _msShareFile = null;
   const canvas = document.getElementById('ms-canvas');
   canvas.width = 1200; canvas.height = 675;
   await document.fonts.ready;
   const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
   drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milestoneDate);
+  try {
+    _msShareFile = _canvasToFile(canvas, 'blinks-united-milestone.png');
+  } catch(e) {}
 }
 
 async function openMilestoneCard(trackId, milestone, milestoneDate) {
@@ -6844,6 +6854,7 @@ async function openMilestoneCard(trackId, milestone, milestoneDate) {
   _cardArt = art; _cardLogo = logo;
   drawMilestoneCard(canvas, trackId, art, logo, _msMilestoneTotal, milestone, milestoneDate);
   label.textContent = `${TRACK_LABELS[trackId]} · ${formatMilestone(milestone)} MILESTONE`;
+  try { _cardShareFile = _canvasToFile(canvas, 'blinks-united-card.png'); } catch(e) { _cardShareFile = null; }
 }
 
 // ── VOTE CAMPAIGN CARD ────────────────────────────────────────
@@ -6989,6 +7000,7 @@ function drawVoteCard(canvas, campaign, logo, art) {
   ctx.fillText('blackpink-project.vercel.app', brandX, H - (landscape ? 30 : 42));
 
   cardCanvas = canvas;
+  try { _cardShareFile = _canvasToFile(canvas, 'blinks-united-card.png'); } catch(e) { _cardShareFile = null; }
 }
 
 async function openVoteCard(campaignId) {
@@ -7056,9 +7068,10 @@ async function shareMilestoneCard() {
   const dateLabel = document.getElementById('ms-date').textContent;
   const text = `${trackName} just hit ${msNum}! ${dateLabel ? '(' + dateLabel + ') ' : ''}🖤💗 #BLACKPINK #BLINKSUNITED\nblackpink-project.vercel.app`;
   if (typeof navigator.share === 'function') {
-    const file = _canvasToFile(canvas, 'blinks-united-milestone.png');
     try {
-      await navigator.share({ files: [file], title: 'BLINKS UNITED', text });
+      const file = _msShareFile || _canvasToFile(canvas, 'blinks-united-milestone.png');
+      const canFile = !navigator.canShare || navigator.canShare({ files: [file] });
+      await navigator.share(canFile ? { files: [file], title: 'BLINKS UNITED', text } : { title: 'BLINKS UNITED', text });
     } catch(e) { if (e.name !== 'AbortError') downloadMilestoneCard(); }
   } else {
     window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
