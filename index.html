@@ -6614,8 +6614,6 @@ function showPendingMilestone() {
   showMilestone(trackId, total, milestone, milestoneDate);
 }
 
-let _msCanvasReady = null; // resolves when ms-canvas finishes rendering
-
 function showMilestone(trackId, total, milestone, milestoneDate) {
   _msActive = true;
   document.getElementById('ms-track-name').textContent = TRACK_LABELS[trackId] || trackId;
@@ -6626,7 +6624,7 @@ function showMilestone(trackId, total, milestone, milestoneDate) {
   else { dateEl.style.display = 'none'; }
   document.getElementById('milestone-overlay').classList.add('active');
   launchConfetti();
-  _msCanvasReady = renderMilestoneCanvas(trackId, total, milestone, milestoneDate);
+  renderMilestoneCanvas(trackId, total, milestone, milestoneDate);
 }
 
 // ── GLOBAL (CUSTOM) MILESTONES — 24h auto-show + persistent "More Milestones" section ──
@@ -7055,8 +7053,6 @@ function downloadMilestoneCard() {
 }
 
 async function shareMilestoneCard() {
-  // Wait for the canvas to finish rendering (it loads artwork async after the popup opens)
-  if (_msCanvasReady) await _msCanvasReady;
   const canvas = document.getElementById('ms-canvas');
   const trackName = document.getElementById('ms-track-name').textContent;
   const msNum = document.getElementById('ms-number').textContent;
