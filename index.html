@@ -7037,7 +7037,7 @@ function renderMilestoneHistory(trackId) {
   el.innerHTML = `<div class="ms-history-label">🏆 Milestones</div>` +
     toShow.map(m => {
       const dateArg = m.date ? `'${m.date}'` : 'null';
-      return `<div class="ms-history-item" onclick="openMilestoneCard('${trackId}', ${m.milestone}, ${dateArg})">
+      return `<div class="ms-history-item" onclick="showMilestone('${trackId}', ${m.milestone}, ${m.milestone}, ${dateArg})">
         <span>${formatMilestone(m.milestone)}${m.date ? ' · ' + m.date : ''}</span>
         <span class="ms-share-hint">↑ SHARE</span>
       </div>`;
