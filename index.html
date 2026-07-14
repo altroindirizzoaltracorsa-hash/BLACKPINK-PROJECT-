@@ -2170,7 +2170,7 @@ function buildMonthChartHtml(entries, markLatest, baseTotal) {
   const maxLabels = Math.max(7, Math.floor(vw / 28));
   const step = entries.length <= maxLabels ? 1 : Math.ceil(entries.length / maxLabels);
   const datesHtml = entries.map((h, i) => {
-    const label = i % step === 0 ? parseInt(h.date) : '';
+    const label = i % step === 0 ? h.date : '';
     return `<div style="flex:1;font-size:0.65rem;letter-spacing:0.01em;color:rgba(245,240,240,0.45);text-align:center;white-space:nowrap;overflow:hidden;">${label}</div>`;
   }).join('');
   return `<div class="chart-bars">${barsHtml}</div>
@@ -2477,6 +2477,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const known = [
       { key: 'bu_ms_jump_630000000',     date: '14/05', year: 2026 },
       { key: 'bu_ms_jump_640000000',     date: '28/06', year: 2026 },
+      { key: 'bu_ms_jump_650000000',     date: '12/07', year: 2026 },
       { key: 'bu_ms_shutdown_890000000', date: '12/06', year: 2026 },
       { key: 'bu_ms_ddududu_870000000',  date: '05/06', year: 2026 },
     ];
