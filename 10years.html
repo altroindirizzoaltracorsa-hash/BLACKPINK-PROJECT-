@@ -254,18 +254,17 @@
   #mc-rose   { bottom: 1rem; left: 1rem; }
   #mc-lisa   { bottom: 1rem; right: 1rem; text-align: right; }
 
-  /* ── INTRO SKIP ── */
+  /* ── INTRO JUMP BUTTON ── */
   #intro-skip {
-    position: absolute; bottom: 1.8rem; right: 1.5rem;
-    background: none; border: 1px solid rgba(255,255,255,0.15);
-    color: rgba(255,255,255,0.38); font-size: 0.6rem;
-    letter-spacing: 0.22em; text-transform: uppercase;
-    padding: 0.45rem 1rem; cursor: pointer;
-    transition: color 0.2s, border-color 0.2s, opacity 0.5s;
+    position: absolute; bottom: 1.6rem; right: 1.4rem;
+    display: block; width: clamp(120px, 22vw, 180px);
     opacity: 0; pointer-events: none;
+    transition: opacity 0.5s, transform 0.18s;
+    transform: rotate(-3deg);
   }
   #intro-skip.visible { opacity: 1; pointer-events: auto; }
-  #intro-skip:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.35); }
+  #intro-skip:hover { transform: rotate(-3deg) scale(1.06); }
+  #intro-skip img { width: 100%; display: block; border-radius: 4px; }
 
   /* ── INTRO OVERLAY ── */
   #intro-ov {
@@ -382,7 +381,9 @@
 <div class="mc" id="mc-lisa">LISA</div>
 
 <div id="intro-ov">
-  <button id="intro-skip" onclick="window._skipIntro && window._skipIntro()" aria-label="Skip intro">Skip ›</button>
+  <a id="intro-skip" href="https://blackpink-project.vercel.app" aria-label="Jump to main site">
+    <img src="/jump.png" alt="JUMP — go to main site">
+  </a>
   <div id="intro-song"></div>
   <div id="intro-bottom"></div>
   <p id="intro-date">August 8, 2016</p>
