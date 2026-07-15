@@ -407,7 +407,7 @@
       <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/dISNgvVpWlo" title="BLACKPINK — WHISTLE MV" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
     <div class="vid-card">
-      <div class="vid-meta"><div class="vid-tag">Official MV · BOOMBAYAH</div><div class="vid-name">BOOMBAYAH <small>봐바야</small></div></div>
+      <div class="vid-meta"><div class="vid-tag">Official MV · BOOMBAYAH</div><div class="vid-name">BOOMBAYAH <small>붐바야</small></div></div>
       <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/bwmSjveL3Lc" title="BLACKPINK — BOOMBAYAH MV" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
     <div class="vid-card">
@@ -415,7 +415,7 @@
       <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/1kYrp_Bs8DU" title="BLACKPINK — WHISTLE DP" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
     <div class="vid-card">
-      <div class="vid-meta"><div class="vid-tag">Display Picture · BOOMBAYAH</div><div class="vid-name">BOOMBAYAH <small>봐바야 — DP Ver.</small></div></div>
+      <div class="vid-meta"><div class="vid-tag">Display Picture · BOOMBAYAH</div><div class="vid-name">BOOMBAYAH <small>붐바야 — DP Ver.</small></div></div>
       <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/ivoS3HUJB3Q" title="BLACKPINK — BOOMBAYAH DP" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
   </div>
@@ -438,7 +438,7 @@
     <div class="sp-card">
       <div class="sp-header">
         <svg class="sp-ico" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.36-.66.48-1.021.24-2.82-1.74-6.36-2.1-10.561-1.14-.418.12-.779-.18-.899-.54-.12-.42.18-.78.54-.9 4.56-1.02 8.52-.6 11.64 1.32.42.18.479.66.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.02.6-1.14C9.6 9.9 15 10.56 18.72 12.84c.361.18.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.3c-.6.18-1.2-.18-1.38-.72-.18-.6.18-1.2.72-1.38 4.26-1.26 11.28-1.02 15.72 1.62.54.3.72 1.02.42 1.56-.3.42-1.02.6-1.56.3z"/></svg>
-        <span class="sp-track">Boombayah · 봐바야</span>
+        <span class="sp-track">Boombayah · 붐바야</span>
       </div>
       <div class="sp-wrap"><iframe src="https://open.spotify.com/embed/track/13MF2TYuyfITClL1R2ei6e?utm_source=generator&theme=0" width="100%" height="152" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>
     </div>
@@ -660,5 +660,233 @@
 })();
 </script>
 
+
+<script>
+/* ── VIDEO DOWNLOAD ── */
+(function () {
+  var btn = document.createElement('button');
+  btn.id = 'vid-dl-btn';
+  btn.setAttribute('aria-label', 'Download as video');
+  btn.title = 'Save 10 Years intro as video';
+  btn.innerHTML = '&#x2193; Save video';
+  btn.style.cssText = [
+    'position:fixed','bottom:3.8rem','left:1.2rem','z-index:700',
+    'background:rgba(7,4,7,0.85)','border:1px solid #8B1C4A',
+    'color:#906878','font-size:0.58rem','letter-spacing:0.12em',
+    'text-transform:uppercase','padding:0 1rem','height:2.4rem',
+    'border-radius:1.2rem','cursor:pointer','backdrop-filter:blur(6px)',
+    'transition:border-color .2s,color .2s,opacity .5s',
+    'opacity:0','pointer-events:none',
+    'font-family:system-ui,sans-serif','white-space:nowrap',
+    'display:inline-flex','align-items:center','gap:0.3em'
+  ].join(';');
+  document.body.appendChild(btn);
+
+  btn.addEventListener('pointerenter', function(){ btn.style.borderColor='#FF0080'; btn.style.color='#FF0080'; });
+  btn.addEventListener('pointerleave', function(){ btn.style.borderColor='#8B1C4A'; btn.style.color='#906878'; });
+
+  var _orig = window._showMusicBtn;
+  window._showMusicBtn = function () {
+    if (_orig) _orig();
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+  };
+
+  btn.addEventListener('click', function () {
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
+      alert('Video recording needs Chrome or Edge on desktop.'); return;
+    }
+    btn.innerHTML = '&#x23FA; Recording&hellip;';
+    btn.disabled = true; btn.style.color = '#FF0080'; btn.style.borderColor = '#FF0080';
+    runRecording()
+      .then(function () { btn.innerHTML = '&#x2193; Save video'; btn.disabled = false; btn.style.color = ''; btn.style.borderColor = ''; })
+      .catch(function (e) { console.error(e); btn.innerHTML = '&#x2193; Save video'; btn.disabled = false; });
+  });
+
+  function runRecording() {
+    var W = 1080, H = 1920, FPS = 30, MS = 1000 / FPS;
+    var canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    var ctx = canvas.getContext('2d');
+
+    var BG = '#070407', PINK = '#FF0080', GOLD = '#C8A84B', BLUSH = '#EEE6EE', DIM = '#906878';
+    var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+    var eo = function (t) { return 1 - (1-t)*(1-t); };
+
+    var mime = ['video/webm;codecs=vp9','video/webm'].find(function (t) {
+      try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; }
+    }) || 'video/webm';
+
+    var stream = canvas.captureStream(FPS);
+    var rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6000000 });
+    var chunks = [];
+    rec.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
+
+    function C(fn, a) { ctx.save(); ctx.globalAlpha = a === undefined ? 1 : a; fn(); ctx.restore(); }
+    function clr() { ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H); }
+    function bar(a) {
+      C(function () {
+        var g = ctx.createLinearGradient(0,0,W,0);
+        g.addColorStop(0,'transparent'); g.addColorStop(.3,PINK); g.addColorStop(.7,GOLD); g.addColorStop(1,'transparent');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, W, 6);
+      }, a === undefined ? 1 : a);
+    }
+    function mark(a) {
+      C(function () {
+        ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+        ctx.font = '900 52px Arial Black,sans-serif'; ctx.fillStyle = PINK;
+        ctx.fillText('BLINKS UNITED', W - 52, H - 70);
+        ctx.font = '400 30px Arial,sans-serif'; ctx.fillStyle = DIM;
+        ctx.fillText('blackpink-project.vercel.app', W - 52, H - 28);
+      }, a === undefined ? 0.5 : a);
+    }
+    function mname(n, a) {
+      C(function () {
+        ctx.font = '900 144px Arial Black,Impact,sans-serif'; ctx.fillStyle = PINK;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n, W/2, H/2);
+      }, a);
+    }
+    function corners(a) {
+      if (!a) return;
+      C(function () {
+        var ns = ['JISOO','JENNIE','ROSÉ','LISA'];
+        var ps = [[64,90,'left'],[W-64,90,'right'],[64,H-90,'left'],[W-64,H-90,'right']];
+        ctx.font = '900 58px Arial Black,Impact,sans-serif'; ctx.fillStyle = PINK; ctx.textBaseline = 'middle';
+        ns.forEach(function (n, i) { ctx.textAlign = ps[i][2]; ctx.fillText(n, ps[i][0], ps[i][1]); });
+      }, a);
+    }
+    function sng(t, a) {
+      C(function () {
+        ctx.font = '900 80px Arial Black,Impact,sans-serif'; ctx.fillStyle = BLUSH;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(t, W/2, H/2);
+      }, a);
+    }
+    function dateText(a) {
+      C(function () {
+        ctx.font = '600 42px Arial,sans-serif'; ctx.fillStyle = GOLD;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('AUGUST  8,  2016', W/2, H/2 - 240);
+      }, a);
+    }
+    function debutText(a) {
+      C(function () {
+        ctx.font = '900 66px Arial Black,Impact,sans-serif'; ctx.fillStyle = BLUSH;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('BOOMBAYAH  ·  WHISTLE', W/2, H/2);
+      }, a);
+    }
+    function bpLogo(logoEl, a) {
+      if (!logoEl || !logoEl.naturalWidth) return;
+      C(function () {
+        var s = Math.min(520 / logoEl.naturalWidth, 220 / logoEl.naturalHeight);
+        var lw = logoEl.naturalWidth * s, lh = logoEl.naturalHeight * s;
+        ctx.drawImage(logoEl, W/2 - lw/2, H/2 - lh/2 - 80, lw, lh);
+      }, a);
+    }
+    function heroTitle(a) {
+      C(function () {
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = '900 150px Arial Black,Impact,sans-serif'; ctx.fillStyle = PINK; ctx.fillText('10 YEARS', W/2, H/2+140);
+        ctx.font = '900 84px Arial Black,Impact,sans-serif'; ctx.fillStyle = BLUSH; ctx.fillText('OF BLACKPINK', W/2, H/2+268);
+      }, a);
+    }
+    function cdTimer(a) {
+      C(function () {
+        var T = new Date('2026-08-08T00:00:00+09:00').getTime(), d = T - Date.now();
+        var p = function (n) { return String(Math.max(0,n)).padStart(2,'0'); };
+        var us = [[p(Math.floor(d/86400000)),'DAYS'],[p(Math.floor((d%86400000)/3600000)),'HRS'],[p(Math.floor((d%3600000)/60000)),'MIN'],[p(Math.floor((d%60000)/1000)),'SEC']];
+        var gx = [W/2-330, W/2-110, W/2+110, W/2+330], y = H/2+460;
+        ctx.textAlign = 'center';
+        us.forEach(function (u, i) {
+          ctx.font = '900 92px Arial Black,monospace'; ctx.fillStyle = BLUSH; ctx.textBaseline = 'middle'; ctx.fillText(u[0], gx[i], y);
+          ctx.font = '600 26px Arial,sans-serif'; ctx.fillStyle = DIM; ctx.fillText(u[1], gx[i], y+72);
+        });
+        ctx.font = '900 70px Arial Black,monospace'; ctx.fillStyle = PINK;
+        [1,2,3].forEach(function (i) { ctx.fillText(':', (gx[i-1]+gx[i])/2, y-8); });
+      }, a);
+    }
+
+    function base(cn) { clr(); bar(); corners(cn || 0); mark(); }
+
+    return new Promise(function (resolve, reject) {
+      var logoEl = document.querySelector('img.bp-logo');
+      var recDone = new Promise(function (r) { rec.onstop = r; });
+      rec.start(100);
+
+      (async function () {
+        var MEMBERS = ['JISOO','JENNIE','ROSÉ','LISA'];
+        var SONGS = ['PINK VENOM','LOVESICK GIRLS','HOW YOU LIKE THAT','DDU-DU DDU-DU','KILL THIS LOVE','PLAYING WITH FIRE','BOOMBAYAH','WHISTLE'];
+
+        async function fade(ms, fn, ease) {
+          ease = ease || eo;
+          var fs = Math.max(1, Math.round(ms / MS));
+          for (var f = 0; f <= fs; f++) { fn(ease(f / fs)); await sleep(MS); }
+        }
+        async function hold(ms, fn) {
+          var fs = Math.round(ms / MS);
+          for (var f = 0; f < fs; f++) { fn(); await sleep(MS); }
+        }
+
+        // Phase 1: member names
+        for (var i = 0; i < MEMBERS.length; i++) {
+          var nm = MEMBERS[i];
+          await fade(380, (function(n){ return function(a){base();mname(n,a);}; })(nm));
+          await hold(700, (function(n){ return function(){base();mname(n,1);}; })(nm));
+          await fade(320, (function(n){ return function(a){base();mname(n,1-a);}; })(nm));
+          await sleep(120);
+        }
+
+        // Phase 2: all four in corners
+        await fade(450, function(a){base(a*.85);});
+        await hold(500, function(){base(.85);});
+
+        // Phase 3: song titles
+        for (var j = 0; j < SONGS.length; j++) {
+          var s = SONGS[j];
+          await fade(110, (function(t){ return function(a){base(.85);sng(t,a);}; })(s));
+          await hold(160, (function(t){ return function(){base(.85);sng(t,1);}; })(s));
+          await fade(100, (function(t){ return function(a){base(.85);sng(t,1-a);}; })(s));
+          await sleep(30);
+        }
+        await sleep(180);
+
+        // Phase 4: date + debut
+        await fade(550, function(a){base(.85);dateText(a);});
+        await hold(450, function(){base(.85);dateText(1);});
+        await fade(280, function(a){base(.85);dateText(1);debutText(a);});
+        await hold(550, function(){base(.85);dateText(1);debutText(1);});
+        await fade(230, function(a){base(.85);dateText(1);debutText(1-a);});
+
+        // Phase 5: logo
+        await fade(650, function(a){base(.85);dateText(1);bpLogo(logoEl,a);});
+        await hold(700, function(){base(.85);dateText(1);bpLogo(logoEl,1);});
+
+        // Phase 6: hero title
+        await fade(230, function(a){base(.85);dateText(1-a);bpLogo(logoEl,1);});
+        await fade(550, function(a){base(.85);bpLogo(logoEl,1);heroTitle(a);});
+        await hold(350, function(){base(.85);bpLogo(logoEl,1);heroTitle(1);});
+
+        // Phase 7: countdown
+        await fade(450, function(a){base(.85);bpLogo(logoEl,1);heroTitle(1);cdTimer(a);});
+        await hold(2200, function(){base(.85);bpLogo(logoEl,1);heroTitle(1);cdTimer(1);});
+
+        // Fade to black
+        await fade(650, function(a){
+          var v=1-a; clr(); bar(v); corners(.85*v); bpLogo(logoEl,v); heroTitle(v); cdTimer(v); mark(.5*v);
+        }, function(t){return t;});
+
+        rec.stop();
+        await recDone;
+
+        var blob = new Blob(chunks, { type: mime });
+        var aEl = document.createElement('a');
+        aEl.href = URL.createObjectURL(blob);
+        aEl.download = 'blinks-united-10years.webm';
+        aEl.click();
+        setTimeout(function () { URL.revokeObjectURL(aEl.href); }, 15000);
+        resolve();
+      })().catch(reject);
+    });
+  }
+})();
+</script>
 </body>
 </html>
