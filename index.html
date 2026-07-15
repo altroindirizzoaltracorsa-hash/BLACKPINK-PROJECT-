@@ -5788,7 +5788,7 @@ let _msShareBlob   = null; // pre-generated blob for shareMilestoneCard
 function _markCardReady(canvas) {
   cardCanvas = canvas;
   _cardShareBlob = null;
-  canvas.toBlob(blob => { _cardShareBlob = blob; }, 'image/png');
+  canvas.toBlob(blob => { _cardShareBlob = blob; }, 'image/jpeg', 0.92);
 }
 
 function closeCard() {
@@ -5879,7 +5879,7 @@ function setCardFormat(fmt, btn) {
   if (_cardType === 'lb') renderLbCard(_cardLogo);
   else if (_cardType === 'milestone') {
     drawMilestoneCard(canvas, _cardTrackId, _cardArt, _cardLogo, _msMilestoneTotal, _msMilestone, _msMilestoneDate);
-    canvas.toBlob(blob => { _cardShareBlob = blob; }, 'image/png');
+    canvas.toBlob(blob => { _cardShareBlob = blob; }, 'image/jpeg', 0.92);
   }
   else if (_cardType === 'vote') drawVoteCard(canvas, VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId), _cardLogo, _cardArt);
   else if (_cardType === 'personal') drawPersonalCard(canvas, _personalCardData);
@@ -6333,11 +6333,11 @@ async function shareCard() {
     // drawing) so navigator.share() is called immediately within the gesture,
     // with no async gap that could cause the file to be lost or X to misbehave.
     const doShare = blob => {
-      const file = new File([blob], 'blinks-united-card.png', { type: 'image/png' });
+      const file = new File([blob], 'blinks-united-card.jpg', { type: 'image/jpeg' });
       navigator.share({ files: [file], title: 'BLINKS UNITED', text }).catch(e => { if (e.name !== 'AbortError') downloadCard(); });
     };
     if (_cardShareBlob) { doShare(_cardShareBlob); }
-    else { cardCanvas.toBlob(blob => doShare(blob), 'image/png'); }
+    else { cardCanvas.toBlob(blob => doShare(blob), 'image/jpeg', 0.92); }
   } else {
     // Desktop: open Twitter intent (user downloads + attaches image themselves)
     window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
@@ -6832,7 +6832,7 @@ async function renderMilestoneCanvas(trackId, total, milestone, milestoneDate) {
   await document.fonts.ready;
   const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
   drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milestoneDate);
-  canvas.toBlob(blob => { _msShareBlob = blob; }, 'image/png');
+  canvas.toBlob(blob => { _msShareBlob = blob; }, 'image/jpeg', 0.92);
 }
 
 async function openMilestoneCard(trackId, milestone, milestoneDate) {
@@ -6856,7 +6856,7 @@ async function openMilestoneCard(trackId, milestone, milestoneDate) {
   const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
   _cardArt = art; _cardLogo = logo;
   drawMilestoneCard(canvas, trackId, art, logo, _msMilestoneTotal, milestone, milestoneDate);
-  canvas.toBlob(blob => { _cardShareBlob = blob; }, 'image/png');
+  canvas.toBlob(blob => { _cardShareBlob = blob; }, 'image/jpeg', 0.92);
   label.textContent = `${TRACK_LABELS[trackId]} · ${formatMilestone(milestone)} MILESTONE`;
 }
 
@@ -7071,11 +7071,11 @@ async function shareMilestoneCard() {
   const text = `${trackName} just hit ${msNum}! ${dateLabel ? '(' + dateLabel + ') ' : ''}🖤💗 #BLACKPINK #BLINKSUNITED\nblackpink-project.vercel.app`;
   if (typeof navigator.share === 'function') {
     const doShare = blob => {
-      const file = new File([blob], 'blinks-united-milestone.png', { type: 'image/png' });
+      const file = new File([blob], 'blinks-united-milestone.jpg', { type: 'image/jpeg' });
       navigator.share({ files: [file], title: 'BLINKS UNITED', text }).catch(e => { if (e.name !== 'AbortError') downloadMilestoneCard(); });
     };
     if (_msShareBlob) { doShare(_msShareBlob); }
-    else { canvas.toBlob(blob => doShare(blob), 'image/png'); }
+    else { canvas.toBlob(blob => doShare(blob), 'image/jpeg', 0.92); }
   } else {
     window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
   }
