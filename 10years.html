@@ -870,14 +870,7 @@
     var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
     var eo = function (t) { return 1 - (1-t)*(1-t); };
 
-    var mime = [
-      'video/mp4;codecs="avc1.42E01E,mp4a.40.2"',
-      'video/mp4;codecs="avc1.42E01E"',
-      'video/mp4',
-      'video/webm;codecs=vp9,opus',
-      'video/webm;codecs=vp9',
-      'video/webm'
-    ].find(function (t) {
+    var mime = ['video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm'].find(function (t) {
       try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; }
     }) || 'video/webm';
     var ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
@@ -1019,7 +1012,7 @@
           );
         }
 
-        var rec = new MediaRecorder(recStream, { mimeType: mime, videoBitsPerSecond: 6000000 });
+        var rec = new MediaRecorder(recStream, { mimeType: mime, videoBitsPerSecond: 3000000 });
         var chunks = [];
         rec.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
         var recDone = new Promise(function (r) { rec.onstop = r; });
