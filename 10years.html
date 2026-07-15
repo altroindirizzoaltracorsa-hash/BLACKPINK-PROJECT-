@@ -321,6 +321,44 @@
     animation: blink-col 1s step-start infinite;
   }
 
+  /* ── ADMIN UNLOCK ── */
+  .admin-unlock {
+    background: none; border: none;
+    color: rgba(255,255,255,0.08); font-size: 0.6rem;
+    letter-spacing: 0.22em; cursor: pointer; padding: 0.4rem 0.6rem;
+    transition: color 0.2s;
+  }
+  .admin-unlock:hover { color: var(--rose); }
+  .admin-ov {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+    z-index: 20000; display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+  }
+  .admin-box {
+    background: var(--surf); border: 1px solid var(--faint);
+    max-width: 360px; width: 100%; padding: 1.6rem;
+  }
+  .admin-box h2 {
+    font-family: 'Arial Black', Impact, sans-serif;
+    font-size: 0.9rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--pink); margin-bottom: 1rem;
+  }
+  .admin-row { display: flex; gap: 0.5rem; margin-bottom: 0.4rem; }
+  .admin-inp {
+    flex: 1; background: var(--faint); border: 1px solid var(--rose);
+    color: var(--blush); padding: 0.55rem 0.75rem;
+    font-family: system-ui, sans-serif; font-size: 0.65rem; letter-spacing: 0.04em;
+  }
+  .admin-inp:focus { outline: none; border-color: var(--pink); }
+  .admin-submit {
+    background: none; border: 1px solid var(--rose); color: var(--pink);
+    padding: 0 1rem; font-size: 0.6rem; letter-spacing: 0.12em;
+    text-transform: uppercase; cursor: pointer; white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .admin-submit:hover { background: rgba(255,26,108,0.1); }
+  .admin-err { font-size: 0.55rem; color: #ff4466; letter-spacing: 0.08em; min-height: 1em; }
+
 </style>
 </head>
 <body>
@@ -407,7 +445,7 @@
       <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/dISNgvVpWlo" title="BLACKPINK — WHISTLE MV" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
     <div class="vid-card">
-      <div class="vid-meta"><div class="vid-tag">Official MV · BOOMBAYAH</div><div class="vid-name">BOOMBAYAH <small>붐바야</small></div></div>
+      <div class="vid-meta"><div class="vid-tag">Official MV · BOOMBAYAH</div><div class="vid-name">BOOMBAYAH <small>봐바야</small></div></div>
       <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/bwmSjveL3Lc" title="BLACKPINK — BOOMBAYAH MV" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
     <div class="vid-card">
@@ -415,7 +453,7 @@
       <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/1kYrp_Bs8DU" title="BLACKPINK — WHISTLE DP" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
     <div class="vid-card">
-      <div class="vid-meta"><div class="vid-tag">Display Picture · BOOMBAYAH</div><div class="vid-name">BOOMBAYAH <small>붐바야 — DP Ver.</small></div></div>
+      <div class="vid-meta"><div class="vid-tag">Display Picture · BOOMBAYAH</div><div class="vid-name">BOOMBAYAH <small>봐바야 — DP Ver.</small></div></div>
       <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/ivoS3HUJB3Q" title="BLACKPINK — BOOMBAYAH DP" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
   </div>
@@ -438,7 +476,7 @@
     <div class="sp-card">
       <div class="sp-header">
         <svg class="sp-ico" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.36-.66.48-1.021.24-2.82-1.74-6.36-2.1-10.561-1.14-.418.12-.779-.18-.899-.54-.12-.42.18-.78.54-.9 4.56-1.02 8.52-.6 11.64 1.32.42.18.479.66.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.02.6-1.14C9.6 9.9 15 10.56 18.72 12.84c.361.18.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.3c-.6.18-1.2-.18-1.38-.72-.18-.6.18-1.2.72-1.38 4.26-1.26 11.28-1.02 15.72 1.62.54.3.72 1.02.42 1.56-.3.42-1.02.6-1.56.3z"/></svg>
-        <span class="sp-track">Boombayah · 붐바야</span>
+        <span class="sp-track">Boombayah · 봐바야</span>
       </div>
       <div class="sp-wrap"><iframe src="https://open.spotify.com/embed/track/13MF2TYuyfITClL1R2ei6e?utm_source=generator&theme=0" width="100%" height="152" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>
     </div>
@@ -458,7 +496,20 @@
     <span class="bu-cta-btn">Enter the Hub →</span>
   </a>
   <p class="footer-copy">Fan site · Not affiliated with YG Entertainment or BLACKPINK</p>
+  <button class="admin-unlock" onclick="openVidAdminPanel()" aria-label="Admin">· · ·</button>
 </footer>
+
+<div id="vid-admin-ov" class="admin-ov" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="admin-box">
+    <h2>Admin Access</h2>
+    <div class="admin-row">
+      <input id="vid-admin-inp" class="admin-inp" type="password" placeholder="Admin key"
+             onkeydown="if(event.key==='Enter')submitVidAdminKey()">
+      <button class="admin-submit" onclick="submitVidAdminKey()">Unlock</button>
+    </div>
+    <div id="vid-admin-err" class="admin-err"></div>
+  </div>
+</div>
 
 <script>
   const TARGET = new Date('2026-08-08T00:00:00+09:00').getTime();
@@ -685,19 +736,48 @@
   btn.addEventListener('pointerenter', function(){ btn.style.borderColor='#FF0080'; btn.style.color='#FF0080'; });
   btn.addEventListener('pointerleave', function(){ btn.style.borderColor='#8B1C4A'; btn.style.color='#906878'; });
 
+  function _checkKey(k) {
+    try { return !!k && btoa(k) === 'YmxpbmtlZDIwMTY='; } catch (e) { return false; }
+  }
   var _adminOk = (function () {
     try {
-      var k = new URLSearchParams(window.location.search).get('key');
-      return !!k && btoa(k) === 'YmxpbmtlZDIwMTY=';
+      var urlKey = new URLSearchParams(window.location.search).get('key');
+      if (_checkKey(urlKey)) return true;
+      return _checkKey(localStorage.getItem('bu_admin_key'));
     } catch (e) { return false; }
   })();
+
+  function _revealDlBtn() {
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+  }
 
   var _orig = window._showMusicBtn;
   window._showMusicBtn = function () {
     if (_orig) _orig();
     if (!_adminOk) return;
-    btn.style.opacity = '1';
-    btn.style.pointerEvents = 'auto';
+    _revealDlBtn();
+  };
+
+  window.openVidAdminPanel = function () {
+    document.getElementById('vid-admin-ov').style.display = 'flex';
+    setTimeout(function () { document.getElementById('vid-admin-inp').focus(); }, 80);
+  };
+
+  window.submitVidAdminKey = function () {
+    var k = document.getElementById('vid-admin-inp').value.trim();
+    var errEl = document.getElementById('vid-admin-err');
+    if (!k) return;
+    if (_checkKey(k)) {
+      try { localStorage.setItem('bu_admin_key', k); } catch (e) {}
+      _adminOk = true;
+      document.getElementById('vid-admin-ov').style.display = 'none';
+      _revealDlBtn();
+    } else {
+      errEl.textContent = 'Wrong key.';
+      document.getElementById('vid-admin-inp').value = '';
+      setTimeout(function () { document.getElementById('vid-admin-inp').focus(); }, 50);
+    }
   };
 
   btn.addEventListener('click', function () {
