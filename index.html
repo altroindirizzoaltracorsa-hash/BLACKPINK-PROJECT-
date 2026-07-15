@@ -5780,6 +5780,16 @@ const KNOWN_SPOTIFY_IDS = {
   "AS IF IT'S YOUR LAST": '4ZxOuNHhpyOj4gv52MtQpT',
 };
 let cardCanvas = null; // current canvas for download
+let _cardShareBlob = null; // pre-generated blob for shareCard (set when drawing completes)
+let _msShareBlob   = null; // pre-generated blob for shareMilestoneCard
+
+// Called at the end of every card draw function so the share blob is ready
+// before the user taps Share — avoids async toBlob inside the gesture handler.
+function _markCardReady(canvas) {
+  cardCanvas = canvas;
+  _cardShareBlob = null;
+  canvas.toBlob(blob => { _cardShareBlob = blob; }, 'image/png');
+}
 
 function closeCard() {
   document.getElementById('card-overlay').style.display = 'none';
@@ -5867,7 +5877,10 @@ function setCardFormat(fmt, btn) {
   if (fmt === 'landscape') { canvas.width = 1200; canvas.height = 675; }
   else                     { canvas.width = 1080; canvas.height = 1080; }
   if (_cardType === 'lb') renderLbCard(_cardLogo);
-  else if (_cardType === 'milestone') drawMilestoneCard(canvas, _cardTrackId, _cardArt, _cardLogo, _msMilestoneTotal, _msMilestone, _msMilestoneDate);
+  else if (_cardType === 'milestone') {
+    drawMilestoneCard(canvas, _cardTrackId, _cardArt, _cardLogo, _msMilestoneTotal, _msMilestone, _msMilestoneDate);
+    canvas.toBlob(blob => { _cardShareBlob = blob; }, 'image/png');
+  }
   else if (_cardType === 'vote') drawVoteCard(canvas, VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId), _cardLogo, _cardArt);
   else if (_cardType === 'personal') drawPersonalCard(canvas, _personalCardData);
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
@@ -6062,7 +6075,7 @@ function renderSongCard(trackId, art, logo) {
   ctx.letterSpacing = '2px';
   ctx.fillText('blackpink-project.vercel.app', brandX, siteY);
 
-  cardCanvas = canvas;
+  _markCardReady(canvas);
 }
 
 // ── LEADERBOARD CARD ─────────────────────────────────────────────────────────
@@ -6284,7 +6297,7 @@ function renderLbCard(logo) {
   ctx.textAlign = 'center';
   ctx.fillText('blackpink-project.vercel.app', W / 2, H - 18);
 
-  cardCanvas = canvas;
+  _markCardReady(canvas);
 }
 
 // ── SHARE TO SOCIAL ──────────────────────────────────────────────────────────
@@ -6316,13 +6329,15 @@ async function shareCard() {
   const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
   // Mobile: Web Share API with image file
   if (typeof navigator.share === 'function') {
-    cardCanvas.toBlob(async blob => {
+    // Use the pre-generated blob if available (created when the card finished
+    // drawing) so navigator.share() is called immediately within the gesture,
+    // with no async gap that could cause the file to be lost or X to misbehave.
+    const doShare = blob => {
       const file = new File([blob], 'blinks-united-card.png', { type: 'image/png' });
-      try {
-        await navigator.share({ files: [file], text });
-        return;
-      } catch(e) { if (e.name !== 'AbortError') downloadCard(); }
-    }, 'image/png');
+      navigator.share({ files: [file], text }).catch(e => { if (e.name !== 'AbortError') downloadCard(); });
+    };
+    if (_cardShareBlob) { doShare(_cardShareBlob); }
+    else { cardCanvas.toBlob(blob => doShare(blob), 'image/png'); }
   } else {
     // Desktop: open Twitter intent (user downloads + attaches image themselves)
     window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
@@ -6559,7 +6574,7 @@ function drawPersonalCard(canvas, { info, todayCounts, totalPlays, avatarImg, lo
   ctx.letterSpacing = '2px';
   ctx.fillText('blackpink-project.vercel.app', bx, H - (landscape ? 30 : 42));
 
-  cardCanvas = canvas;
+  _markCardReady(canvas);
 }
 
 </script>
@@ -6817,6 +6832,7 @@ async function renderMilestoneCanvas(trackId, total, milestone, milestoneDate) {
   await document.fonts.ready;
   const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
   drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milestoneDate);
+  canvas.toBlob(blob => { _msShareBlob = blob; }, 'image/png');
 }
 
 async function openMilestoneCard(trackId, milestone, milestoneDate) {
@@ -6840,6 +6856,7 @@ async function openMilestoneCard(trackId, milestone, milestoneDate) {
   const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
   _cardArt = art; _cardLogo = logo;
   drawMilestoneCard(canvas, trackId, art, logo, _msMilestoneTotal, milestone, milestoneDate);
+  canvas.toBlob(blob => { _cardShareBlob = blob; }, 'image/png');
   label.textContent = `${TRACK_LABELS[trackId]} · ${formatMilestone(milestone)} MILESTONE`;
 }
 
@@ -6985,7 +7002,7 @@ function drawVoteCard(canvas, campaign, logo, art) {
   ctx.letterSpacing = '2px';
   ctx.fillText('blackpink-project.vercel.app', brandX, H - (landscape ? 30 : 42));
 
-  cardCanvas = canvas;
+  _markCardReady(canvas);
 }
 
 async function openVoteCard(campaignId) {
@@ -7053,12 +7070,12 @@ async function shareMilestoneCard() {
   const dateLabel = document.getElementById('ms-date').textContent;
   const text = `${trackName} just hit ${msNum}! ${dateLabel ? '(' + dateLabel + ') ' : ''}🖤💗 #BLACKPINK #BLINKSUNITED\nblackpink-project.vercel.app`;
   if (typeof navigator.share === 'function') {
-    canvas.toBlob(async blob => {
+    const doShare = blob => {
       const file = new File([blob], 'blinks-united-milestone.png', { type: 'image/png' });
-      try {
-        await navigator.share({ files: [file], text });
-      } catch(e) { if (e.name !== 'AbortError') downloadMilestoneCard(); }
-    }, 'image/png');
+      navigator.share({ files: [file], text }).catch(e => { if (e.name !== 'AbortError') downloadMilestoneCard(); });
+    };
+    if (_msShareBlob) { doShare(_msShareBlob); }
+    else { canvas.toBlob(blob => doShare(blob), 'image/png'); }
   } else {
     window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
   }
