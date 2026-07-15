@@ -30,19 +30,23 @@
   }
 
   .back {
-    position: fixed; top: 0.85rem; left: 50%; transform: translateX(-50%); z-index: 200;
-    color: rgba(255,26,108,0.85); text-decoration: none;
-    font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
-    transition: color 0.2s, opacity 0.2s; white-space: nowrap;
-    display: inline-flex; align-items: center; gap: 0.35em;
+    position: fixed; top: 0.6rem; left: 50%; transform: translateX(-50%); z-index: 200;
+    text-decoration: none; white-space: nowrap;
+    display: inline-flex; flex-direction: column; align-items: center; gap: 0.06em;
+    text-align: center;
   }
-  .back::after {
-    content: '\2192';
-    display: inline-block;
-    transition: transform 0.2s;
+  .back-join {
+    font-size: 0.48rem; letter-spacing: 0.3em; text-transform: uppercase;
+    color: rgba(255,26,108,0.55); transition: color 0.2s;
   }
-  .back:hover { color: var(--pink); }
-  .back:hover::after { transform: translateX(3px); }
+  .back-name {
+    font-family: 'Arial Black', Impact, sans-serif;
+    font-size: 0.72rem; font-weight: 900;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: rgba(255,26,108,0.85); transition: color 0.2s;
+  }
+  .back:hover .back-join,
+  .back:hover .back-name { color: var(--pink); }
 
   #hero {
     position: relative;
@@ -346,7 +350,10 @@
   </div>
 </div>
 
-<a href="/leaderboard" class="back" aria-label="Join Blinks United — stream, vote and celebrate">Stream &amp; vote with Blinks worldwide</a>
+<a href="/leaderboard" class="back" aria-label="Join Blinks United">
+  <span class="back-join">Join here</span>
+  <span class="back-name">Blinks United</span>
+</a>
 
 <section id="hero">
   <div class="bg10" aria-hidden="true"><span>10</span></div>
