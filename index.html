@@ -1129,6 +1129,45 @@
   to { transform: translateY(105vh) rotate(720deg); opacity:0; }
 }
 
+/* ── WINNER ANNOUNCEMENT POPUP ──────────────────────────── */
+#winner-overlay {
+  display:none; position:fixed; inset:0; z-index:10001;
+  background:rgba(0,0,0,0.92); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  align-items:center; justify-content:center;
+  animation:ms-fadein 0.35s ease;
+}
+#winner-overlay.active { display:flex; }
+#winner-card {
+  background:#080808; border:1px solid rgba(255,215,0,0.35);
+  padding:2rem 1.8rem 1.8rem; max-width:360px; width:90%; text-align:center;
+  position:relative; z-index:2; box-shadow:0 0 60px rgba(255,215,0,0.1);
+  animation:ms-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+.winner-photo {
+  width:90px; height:90px; border-radius:50%; object-fit:cover; object-position:center top;
+  border:2px solid rgba(255,215,0,0.5); margin:0 auto 1rem; display:block;
+  box-shadow:0 0 20px rgba(255,215,0,0.2);
+}
+.winner-eyebrow { font-family:var(--mono); font-size:0.5rem; letter-spacing:0.35em; text-transform:uppercase; color:rgba(255,215,0,0.65); margin-bottom:0.2rem; }
+.winner-trophy { font-size:2.2rem; display:block; margin-bottom:0.1rem; }
+.winner-title { font-family:var(--display); font-size:2.8rem; letter-spacing:0.08em; color:#ffd700; line-height:1; margin-bottom:0.2rem; text-shadow:0 0 30px rgba(255,215,0,0.45); }
+.winner-name { font-family:var(--display); font-size:1.5rem; letter-spacing:0.14em; color:#fff; margin-bottom:0.8rem; }
+.winner-divider { width:36px; height:1px; background:rgba(255,215,0,0.35); margin:0.8rem auto; }
+.winner-award-label { font-family:var(--mono); font-size:0.48rem; letter-spacing:0.24em; text-transform:uppercase; color:rgba(255,215,0,0.55); margin-bottom:0.4rem; }
+.winner-award { font-family:var(--mono); font-size:0.7rem; letter-spacing:0.04em; color:#fff; line-height:1.55; margin-bottom:0.3rem; }
+.winner-ceremony { font-family:var(--mono); font-size:0.44rem; letter-spacing:0.18em; text-transform:uppercase; color:rgba(255,215,0,0.45); margin-bottom:1rem; }
+.winner-thanks { font-size:0.68rem; color:var(--muted); margin-bottom:1.4rem; }
+/* vote card won treatment */
+.vote-card.won { border-color:rgba(255,215,0,0.35); }
+.vote-card.won::before { background:#ffd700; }
+.vote-winner-badge {
+  display:flex; align-items:center; gap:0.5rem;
+  background:linear-gradient(90deg,rgba(255,215,0,0.1) 0%,transparent 100%);
+  border-bottom:1px solid rgba(255,215,0,0.12);
+  padding:0.45rem 0; margin-bottom:1rem;
+  font-family:var(--mono); font-size:0.58rem; letter-spacing:0.2em; text-transform:uppercase; color:#ffd700;
+}
+
 /* ── MORE MILESTONES SECTION ─────────────────────────────── */
 .more-ms-inner { max-width: 960px; margin: 0 auto; padding: 3rem 1.5rem; }
 .more-ms-grid { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; }
@@ -1254,6 +1293,27 @@
       <button class="ms-btn ms-btn-secondary" onclick="closeMilestone()">Dismiss</button>
     </div>
     <canvas id="ms-canvas" style="display:none"></canvas>
+  </div>
+</div>
+
+<!-- WINNER ANNOUNCEMENT OVERLAY -->
+<div id="winner-overlay">
+  <div id="winner-card">
+    <button class="ms-close" onclick="closeWinnerAnnouncement()" aria-label="Close">×</button>
+    <img class="winner-photo" src="/vote-jisoo.jpg" alt="JISOO">
+    <div class="winner-eyebrow">SDA 2026</div>
+    <span class="winner-trophy">🏆</span>
+    <div class="winner-title">WE WON!</div>
+    <div class="winner-name">#JISOO</div>
+    <div class="winner-divider"></div>
+    <div class="winner-award-label">Outstanding Asian Star</div>
+    <div class="winner-award">Popularity of Korea (Female)</div>
+    <div class="winner-ceremony">Official Ceremony · October 8, 2026</div>
+    <div class="winner-thanks">Thank you to every Blink who voted! 💜</div>
+    <div class="ms-actions">
+      <button class="ms-btn ms-btn-primary" onclick="shareWinnerAnnouncement()">↑ Share</button>
+      <button class="ms-btn ms-btn-secondary" onclick="closeWinnerAnnouncement()">Dismiss</button>
+    </div>
   </div>
 </div>
 
@@ -2551,6 +2611,11 @@ function showPage(page, { replace = false } = {}) {
   if (page === 'vote') {
     renderVoteCampaigns();
     _voteCountdownTimer = setInterval(tickVoteCountdowns, 1000);
+    const wonCampaign = VOTE_CAMPAIGNS.find(c => c.winner);
+    if (wonCampaign && !sessionStorage.getItem('winner-seen-' + wonCampaign.id)) {
+      sessionStorage.setItem('winner-seen-' + wonCampaign.id, '1');
+      setTimeout(() => showWinnerAnnouncement(wonCampaign.id), 700);
+    }
   }
 
   const path = PAGE_PATHS[page] || '/';
@@ -2968,7 +3033,7 @@ const VOTE_CAMPAIGNS = [
     url: 'https://promo-web.idolchamp.com/app_proxy.html?deeplink=https%3A%2F%2Fapp.idolchamp.com%2Fopen%2Fvote%2F01KTT3R0ZYTFJGZ02H4RB65AYF',
     image: '/vote-jisoo.jpg',
     deadline: '2026-07-14T14:59:00Z', // 14 Jul 2026, 23:59 KST
-    resetOffset: 9, // daily vote reset at midnight KST
+    resetOffset: 9,
     rules: [
       'Vote via the IDOLCHAMP app',
       "Up to 100 votes per day — they don't roll over",
@@ -2977,6 +3042,11 @@ const VOTE_CAMPAIGNS = [
     categories: [
       { name: 'Korea Popularity Award (Female)', nominees: [{ name: 'JISOO', us: true }] },
     ],
+    winner: {
+      name: 'JISOO',
+      award: 'Outstanding Asian Star: Popularity of Korea (Female)',
+      ceremony: 'October 8, 2026',
+    },
   },
   {
     id: 'qqmusic-billboard-topkartists-2026',
@@ -3072,8 +3142,10 @@ function renderVoteCampaigns() {
             ${cat.nominees.map(n => `<span class="vote-chip ${n.us ? 'us' : ''}">${n.name}</span>`).join('')}
           </div>
         </div>`).join('');
+    const wonBadge = c.winner ? `<div class="vote-winner-badge">🏆 WE WON — ${c.winner.name}</div>` : '';
     return `
-      <div class="vote-card">
+      <div class="vote-card${c.winner ? ' won' : ''}">
+        ${wonBadge}
         <div class="vote-card-top">
           <div>
             <div class="vote-platform">${c.platform}</div>
@@ -3090,7 +3162,7 @@ function renderVoteCampaigns() {
         </div>` : ''}
         <div class="vote-card-actions">
           <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
-          <button class="vote-share-btn" onclick="openVoteCard('${c.id}')">⬡ Share</button>
+          ${c.winner ? `<button class="vote-share-btn" style="color:#ffd700;border-color:rgba(255,215,0,0.35);" onclick="showWinnerAnnouncement('${c.id}')">🏆 See Announcement</button>` : `<button class="vote-share-btn" onclick="openVoteCard('${c.id}')">⬡ Share</button>`}
         </div>
       </div>`;
   }
@@ -6734,6 +6806,46 @@ function launchConfetti() {
     wrap.appendChild(el);
   }
   setTimeout(() => { wrap.innerHTML = ''; }, 4000);
+}
+
+function showWinnerAnnouncement(campaignId) {
+  const campaign = VOTE_CAMPAIGNS.find(c => c.id === campaignId);
+  if (!campaign?.winner) return;
+  document.getElementById('winner-overlay').classList.add('active');
+  launchGoldConfetti();
+}
+
+function closeWinnerAnnouncement() {
+  document.getElementById('winner-overlay').classList.remove('active');
+}
+
+function shareWinnerAnnouncement() {
+  const text = '🏆 #JISOO has won the SDA 2026 Outstanding Asian Star: Popularity of Korea (Female)!\n\nThank you to every Blink who voted! 💜🖤\n#BLACKPINK #BlinksUnited\nblackpink-project.vercel.app';
+  if (typeof navigator.share === 'function') {
+    navigator.clipboard?.writeText(text).catch(() => {});
+    _showShareToast('Caption copied — paste it into X ✓');
+    navigator.share({ text }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(text).catch(() => {});
+    _showShareToast('Copied to clipboard ✓');
+  }
+}
+
+function launchGoldConfetti() {
+  const wrap = document.getElementById('ms-confetti');
+  wrap.innerHTML = '';
+  const colors = ['#ffd700','#ffe066','#fff0a0','#ffffff','#ffb700','#ffd700'];
+  for (let i = 0; i < 90; i++) {
+    const el = document.createElement('span');
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const left = Math.random() * 100;
+    const size = 4 + Math.random() * 8;
+    const dur  = 2 + Math.random() * 2;
+    const del  = Math.random() * 1.4;
+    el.style.cssText = `left:${left}%;background:${color};width:${size}px;height:${size}px;border-radius:${Math.random()>0.5?'50%':'2px'};animation-duration:${dur}s;animation-delay:${del}s;`;
+    wrap.appendChild(el);
+  }
+  setTimeout(() => { wrap.innerHTML = ''; }, 5000);
 }
 
 function drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milestoneDate) {
