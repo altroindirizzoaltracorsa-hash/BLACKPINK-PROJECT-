@@ -6334,7 +6334,7 @@ async function shareCard() {
     // with no async gap that could cause the file to be lost or X to misbehave.
     const doShare = blob => {
       const file = new File([blob], 'blinks-united-card.png', { type: 'image/png' });
-      navigator.share({ files: [file], text }).catch(e => { if (e.name !== 'AbortError') downloadCard(); });
+      navigator.share({ files: [file], title: 'BLINKS UNITED', text }).catch(e => { if (e.name !== 'AbortError') downloadCard(); });
     };
     if (_cardShareBlob) { doShare(_cardShareBlob); }
     else { cardCanvas.toBlob(blob => doShare(blob), 'image/png'); }
@@ -7072,7 +7072,7 @@ async function shareMilestoneCard() {
   if (typeof navigator.share === 'function') {
     const doShare = blob => {
       const file = new File([blob], 'blinks-united-milestone.png', { type: 'image/png' });
-      navigator.share({ files: [file], text }).catch(e => { if (e.name !== 'AbortError') downloadMilestoneCard(); });
+      navigator.share({ files: [file], title: 'BLINKS UNITED', text }).catch(e => { if (e.name !== 'AbortError') downloadMilestoneCard(); });
     };
     if (_msShareBlob) { doShare(_msShareBlob); }
     else { canvas.toBlob(blob => doShare(blob), 'image/png'); }
