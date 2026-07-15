@@ -685,9 +685,17 @@
   btn.addEventListener('pointerenter', function(){ btn.style.borderColor='#FF0080'; btn.style.color='#FF0080'; });
   btn.addEventListener('pointerleave', function(){ btn.style.borderColor='#8B1C4A'; btn.style.color='#906878'; });
 
+  var _adminOk = (function () {
+    try {
+      var k = new URLSearchParams(window.location.search).get('key');
+      return !!k && btoa(k) === 'YmxpbmtlZDIwMTY=';
+    } catch (e) { return false; }
+  })();
+
   var _orig = window._showMusicBtn;
   window._showMusicBtn = function () {
     if (_orig) _orig();
+    if (!_adminOk) return;
     btn.style.opacity = '1';
     btn.style.pointerEvents = 'auto';
   };
