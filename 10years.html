@@ -33,11 +33,10 @@
     position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); z-index: 200;
     color: var(--dim); text-decoration: none;
     font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase;
-    display: inline-flex; flex-direction: column; align-items: center; gap: 0.1rem;
-    transition: color 0.2s; white-space: nowrap; text-align: center;
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    transition: color 0.2s; white-space: nowrap;
   }
   .back:hover { color: var(--pink); }
-  .back:hover .back-sub { color: var(--pink); }
 
   #hero {
     position: relative;
@@ -215,8 +214,8 @@
   .bu-cta:hover { border-color:var(--pink); background:rgba(255,26,108,0.05); }
   .bu-cta-name { font-size:0.62rem; letter-spacing:0.3em; text-transform:uppercase; color:var(--pink); margin-bottom:0.5rem; display:block; }
   .bu-cta-desc { font-size:0.72rem; letter-spacing:0.04em; color:var(--blush); line-height:1.65; margin-bottom:0.9rem; display:block; }
-  .bu-cta-btn { font-size:0.65rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--white); border:1px solid rgba(255,255,255,0.2); padding:0.4rem 1.1rem; display:inline-block; transition:border-color .2s,color .2s; }
-  .bu-cta:hover .bu-cta-btn { border-color:var(--pink); color:var(--pink); }
+  .bu-cta-btn { font-size:0.65rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--pink); border:1px solid rgba(255,26,108,0.4); padding:0.4rem 1.1rem; display:inline-block; transition:border-color .2s,background .2s; }
+  .bu-cta:hover .bu-cta-btn { border-color:var(--pink); background:rgba(255,26,108,0.08); }
   .back-sub { display:block; font-size:0.52rem; letter-spacing:0.1em; color:var(--rose); margin-top:0.15rem; text-transform:none; }
 
   .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.65s ease, transform 0.65s ease; }
@@ -341,10 +340,7 @@
   </div>
 </div>
 
-<a href="/" class="back" aria-label="Visit Blinks United">
-  ← Blinks United
-  <span class="back-sub">Stream tracker · Leaderboard · Fan Voting</span>
-</a>
+<a href="/" class="back" aria-label="Visit Blinks United">← Blinks United</a>
 
 <section id="hero">
   <div class="bg10" aria-hidden="true"><span>10</span></div>
