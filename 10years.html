@@ -886,13 +886,16 @@
       }, a === undefined ? 1 : a);
     }
     function mark(a) {
+      var logoImg = document.getElementById('bu-watermark-img');
       C(function () {
-        ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
-        ctx.font = '900 52px Arial Black,sans-serif'; ctx.fillStyle = PINK;
-        ctx.fillText('BLINKS UNITED', W - 52, H - 70);
-        ctx.font = '400 30px Arial,sans-serif'; ctx.fillStyle = DIM;
-        ctx.fillText('blackpink-project.vercel.app', W - 52, H - 28);
-      }, a === undefined ? 0.5 : a);
+        if (logoImg && logoImg.naturalWidth) {
+          var sz = 180;
+          ctx.drawImage(logoImg, W/2 - sz/2, H - 90 - sz/2, sz, sz);
+        }
+        ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        ctx.font = '400 26px Arial,sans-serif'; ctx.fillStyle = DIM;
+        ctx.fillText('blackpink-project.vercel.app', W/2, H - 28);
+      }, a === undefined ? 0.2 : a);
     }
     function mname(n, a) {
       C(function () {
