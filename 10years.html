@@ -254,6 +254,19 @@
   #mc-rose   { bottom: 1rem; left: 1rem; }
   #mc-lisa   { bottom: 1rem; right: 1rem; text-align: right; }
 
+  /* ── INTRO SKIP ── */
+  #intro-skip {
+    position: absolute; bottom: 1.8rem; right: 1.5rem;
+    background: none; border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.38); font-size: 0.6rem;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    padding: 0.45rem 1rem; cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, opacity 0.5s;
+    opacity: 0; pointer-events: none;
+  }
+  #intro-skip.visible { opacity: 1; pointer-events: auto; }
+  #intro-skip:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.35); }
+
   /* ── INTRO OVERLAY ── */
   #intro-ov {
     position: fixed; inset: 0; z-index: 400;
@@ -369,6 +382,7 @@
 <div class="mc" id="mc-lisa">LISA</div>
 
 <div id="intro-ov">
+  <button id="intro-skip" onclick="window._skipIntro && window._skipIntro()" aria-label="Skip intro">Skip ›</button>
   <div id="intro-song"></div>
   <div id="intro-bottom"></div>
   <p id="intro-date">August 8, 2016</p>
@@ -560,8 +574,30 @@
   var IDS = ['mc-jisoo','mc-jennie','mc-rose','mc-lisa'];
   var ov   = document.getElementById('intro-ov');
   var sf   = document.getElementById('intro-song');
+  var _skipped = false;
 
-  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function sleep(ms){ return new Promise(function(r){ if (_skipped) { r(); return; } setTimeout(r, ms); }); }
+
+  function _endIntro() {
+    _skipped = true;
+    ov.style.transition = 'opacity 0.3s ease';
+    ov.style.opacity = '0';
+    ov.style.pointerEvents = 'none';
+    document.body.style.overflow = '';
+    IDS.forEach(function(id) {
+      var el = document.getElementById(id);
+      el.style.transition = 'none';
+      el.style.opacity = '1';
+      el.style.fontSize = '';
+      el.style.transform = '';
+    });
+    setTimeout(function() {
+      ov.style.display = 'none';
+      if (window._showMusicBtn) window._showMusicBtn();
+    }, 350);
+  }
+
+  window._skipIntro = _endIntro;
 
   function centerTransform(el) {
     var r  = el.getBoundingClientRect();
@@ -590,6 +626,10 @@
     var dateEl  = document.getElementById('intro-date');
     var logoEl  = document.getElementById('intro-logo');
     var cdEl    = document.getElementById('intro-cd');
+    setTimeout(function() {
+      var sk = document.getElementById('intro-skip');
+      if (sk && !_skipped) sk.classList.add('visible');
+    }, 1000);
     await sleep(350);
 
     for (var i = 0; i < IDS.length; i++) {
@@ -644,15 +684,8 @@
 
     await sleep(2200);
 
-    ov.style.opacity = '0';
-    ov.style.pointerEvents = 'none';
-    document.body.style.overflow = '';
-    IDS.forEach(function(id) {
-      document.getElementById(id).style.opacity = '1';
-    });
+    _endIntro();
     await sleep(900);
-    ov.style.display = 'none';
-    if (window._showMusicBtn) window._showMusicBtn();
   }
 
   if (document.readyState === 'loading') {
