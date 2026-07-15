@@ -889,13 +889,13 @@
       var logoImg = document.getElementById('bu-watermark-img');
       C(function () {
         if (logoImg && logoImg.naturalWidth) {
-          var sz = 180;
-          ctx.drawImage(logoImg, W/2 - sz/2, H - 90 - sz/2, sz, sz);
+          var sz = 200;
+          ctx.drawImage(logoImg, W/2 - sz/2, H - sz - 20, sz, sz);
         }
         ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
         ctx.font = '400 26px Arial,sans-serif'; ctx.fillStyle = DIM;
-        ctx.fillText('blackpink-project.vercel.app', W/2, H - 28);
-      }, a === undefined ? 0.2 : a);
+        ctx.fillText('blackpink-project.vercel.app', W/2, H - 14);
+      }, a === undefined ? 0.45 : a);
     }
     function mname(n, a) {
       C(function () {
@@ -1017,8 +1017,10 @@
         var recDone = new Promise(function (r) { rec.onstop = r; });
         rec.start(100);
         if (audioSource) audioSource.start();
+        var audioDurMs = (audio && audio.buf) ? Math.round(audio.buf.duration * 1000) : 0;
 
         (async function () {
+        var animStart = performance.now();
         var MEMBERS = ['JISOO','JENNIE','ROSÉ','LISA'];
         var SONGS = ['PINK VENOM','LOVESICK GIRLS','HOW YOU LIKE THAT','DDU-DU DDU-DU','KILL THIS LOVE','PLAYING WITH FIRE','BOOMBAYAH','WHISTLE'];
 
@@ -1066,7 +1068,10 @@
         await hold(350, function(){base(.85);bpLogo(logoEl,1);heroTitle(1);});
 
         await fade(450, function(a){base(.85);bpLogo(logoEl,1);heroTitle(1);cdTimer(a);});
-        await hold(2200, function(){base(.85);bpLogo(logoEl,1);heroTitle(1);cdTimer(1);});
+        var holdMs = audioDurMs > 0
+          ? Math.max(500, audioDurMs - Math.round(performance.now() - animStart) - 700)
+          : 2200;
+        await hold(holdMs, function(){base(.85);bpLogo(logoEl,1);heroTitle(1);cdTimer(1);});
 
         await fade(650, function(a){
           var v=1-a; clr(); bar(v); corners(.85*v); bpLogo(logoEl,v); heroTitle(v); cdTimer(v); mark(.5*v);
