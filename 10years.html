@@ -30,13 +30,23 @@
   }
 
   .back {
-    position: fixed; top: 0.8rem; right: 1rem; z-index: 200;
-    color: rgba(255,26,108,0.7); text-decoration: underline;
-    text-underline-offset: 3px; text-decoration-color: rgba(255,26,108,0.35);
-    font-size: 0.58rem; letter-spacing: 0.1em;
-    transition: color 0.2s, text-decoration-color 0.2s; white-space: nowrap;
+    position: fixed; top: 0.6rem; left: 50%; transform: translateX(-50%); z-index: 200;
+    text-decoration: none; white-space: nowrap;
+    display: inline-flex; flex-direction: column; align-items: center; gap: 0.06em;
+    text-align: center;
   }
-  .back:hover { color: var(--pink); text-decoration-color: var(--pink); }
+  .back-join {
+    font-size: 0.48rem; letter-spacing: 0.3em; text-transform: uppercase;
+    color: rgba(255,26,108,0.55); transition: color 0.2s;
+  }
+  .back-name {
+    font-family: 'Arial Black', Impact, sans-serif;
+    font-size: 0.72rem; font-weight: 900;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: rgba(255,26,108,0.85); transition: color 0.2s;
+  }
+  .back:hover .back-join,
+  .back:hover .back-name { color: var(--pink); }
 
   #hero {
     position: relative;
@@ -340,7 +350,10 @@
   </div>
 </div>
 
-<a href="/leaderboard" class="back" aria-label="Visit Blinks United">Blinks United ↗</a>
+<a href="/leaderboard" class="back" aria-label="Join Blinks United">
+  <span class="back-join">Join here</span>
+  <span class="back-name">Blinks United</span>
+</a>
 
 <section id="hero">
   <div class="bg10" aria-hidden="true"><span>10</span></div>
@@ -398,7 +411,7 @@
       <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/dISNgvVpWlo" title="BLACKPINK — WHISTLE MV" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
     <div class="vid-card">
-      <div class="vid-meta"><div class="vid-tag">Official MV · BOOMBAYAH</div><div class="vid-name">BOOMBAYAH <small>붐바야</small></div></div>
+      <div class="vid-meta"><div class="vid-tag">Official MV · BOOMBAYAH</div><div class="vid-name">BOOMBAYAH <small>봐바야</small></div></div>
       <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/bwmSjveL3Lc" title="BLACKPINK — BOOMBAYAH MV" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
     <div class="vid-card">
@@ -406,7 +419,7 @@
       <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/1kYrp_Bs8DU" title="BLACKPINK — WHISTLE DP" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
     <div class="vid-card">
-      <div class="vid-meta"><div class="vid-tag">Display Picture · BOOMBAYAH</div><div class="vid-name">BOOMBAYAH <small>붐바야 — DP Ver.</small></div></div>
+      <div class="vid-meta"><div class="vid-tag">Display Picture · BOOMBAYAH</div><div class="vid-name">BOOMBAYAH <small>봐바야 — DP Ver.</small></div></div>
       <div class="vid-wrap"><iframe src="https://www.youtube-nocookie.com/embed/ivoS3HUJB3Q" title="BLACKPINK — BOOMBAYAH DP" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
     </div>
   </div>
@@ -429,7 +442,7 @@
     <div class="sp-card">
       <div class="sp-header">
         <svg class="sp-ico" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.36-.66.48-1.021.24-2.82-1.74-6.36-2.1-10.561-1.14-.418.12-.779-.18-.899-.54-.12-.42.18-.78.54-.9 4.56-1.02 8.52-.6 11.64 1.32.42.18.479.66.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.02.6-1.14C9.6 9.9 15 10.56 18.72 12.84c.361.18.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.3c-.6.18-1.2-.18-1.38-.72-.18-.6.18-1.2.72-1.38 4.26-1.26 11.28-1.02 15.72 1.62.54.3.72 1.02.42 1.56-.3.42-1.02.6-1.56.3z"/></svg>
-        <span class="sp-track">Boombayah · 붐바야</span>
+        <span class="sp-track">Boombayah · 봐바야</span>
       </div>
       <div class="sp-wrap"><iframe src="https://open.spotify.com/embed/track/13MF2TYuyfITClL1R2ei6e?utm_source=generator&theme=0" width="100%" height="152" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>
     </div>
@@ -478,7 +491,6 @@
 
 <script>
 (function () {
-  // Songs in reverse-chronological order — BOOMBAYAH and WHISTLE last
   var SONGS = [
     'GO','JUMP','THE GIRLS','SHUT DOWN','PINK VENOM',
     'LOVESICK GIRLS','ICE CREAM','HOW YOU LIKE THAT','KILL THIS LOVE',
@@ -521,7 +533,6 @@
     var cdEl    = document.getElementById('intro-cd');
     await sleep(350);
 
-    // Phase 1 — each member fades IN then OUT sequentially (no overlap)
     for (var i = 0; i < IDS.length; i++) {
       var el = document.getElementById(IDS[i]);
       el.style.transition = 'none';
@@ -539,7 +550,6 @@
     }
     await sleep(200);
 
-    // Phase 2 — all four simultaneously shrink and fly to corners
     IDS.forEach(function(id) {
       var el = document.getElementById(id);
       el.style.transition = 'opacity 0.7s ease, transform 1.9s cubic-bezier(0.22, 1, 0.36, 1), font-size 1.7s cubic-bezier(0.22, 1, 0.36, 1)';
@@ -549,7 +559,6 @@
     });
     await sleep(1700);
 
-    // Phase 3 — songs GO → PLAYING WITH FIRE flash at center
     var mainSongs = SONGS.slice(0, SONGS.length - 2);
     for (var s = 0; s < mainSongs.length; s++) {
       sf.textContent = mainSongs[s];
@@ -561,11 +570,9 @@
     }
     await sleep(100);
 
-    // Phase 4 — debut date appears above center
     dateEl.style.opacity = '1';
     await sleep(750);
 
-    // Phase 5 — BOOMBAYAH and WHISTLE appear side by side below the date
     sb.textContent = 'BOOMBAYAH  ·  WHISTLE';
     sb.style.transition = 'opacity 0.22s ease';
     sb.style.opacity = '1';
@@ -573,13 +580,11 @@
     sb.style.opacity = '0';
     await sleep(180);
 
-    // Phase 6 — logo appears where the titles were
     logoEl.style.opacity = '1';
     await sleep(1000);
 
     await sleep(2200);
 
-    // Phase 7 — fade overlay, reveal page
     ov.style.opacity = '0';
     ov.style.pointerEvents = 'none';
     document.body.style.overflow = '';
@@ -608,7 +613,6 @@
   var muted    = false;
   var btn      = document.getElementById('music-btn');
 
-  // Load YouTube IFrame API
   var tag = document.createElement('script');
   tag.src = 'https://www.youtube.com/iframe_api';
   document.head.appendChild(tag);
@@ -634,7 +638,6 @@
     btn.classList.add('on');
   }
 
-  // Start on first user interaction anywhere on the page
   function onFirstInteraction() {
     document.removeEventListener('click',      onFirstInteraction);
     document.removeEventListener('touchstart', onFirstInteraction);
@@ -645,7 +648,6 @@
   document.addEventListener('touchstart', onFirstInteraction);
   document.addEventListener('keydown',    onFirstInteraction);
 
-  // Toggle mute on button click
   btn.addEventListener('click', function(e) {
     e.stopPropagation();
     if (!started) { startMusic(); return; }
@@ -658,7 +660,6 @@
     }
   });
 
-  // Show button when intro ends
   window._showMusicBtn = function() { btn.classList.add('show'); };
 })();
 </script>
