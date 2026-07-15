@@ -989,7 +989,7 @@
               });
             } catch (e) { tryFetch(); }
             function tryFetch() {
-              fetch('/Champion%20-%20BLACKPINK.%20m4a')
+              fetch('/api/audio')
                 .then(function (r) { return r.arrayBuffer(); })
                 .then(function (buf) { decodeAndResolve(buf); })
                 .catch(function () { res(null); });
