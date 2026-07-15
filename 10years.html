@@ -870,9 +870,17 @@
     var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
     var eo = function (t) { return 1 - (1-t)*(1-t); };
 
-    var mime = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm'].find(function (t) {
+    var mime = [
+      'video/mp4;codecs="avc1.42E01E,mp4a.40.2"',
+      'video/mp4;codecs="avc1.42E01E"',
+      'video/mp4',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp9',
+      'video/webm'
+    ].find(function (t) {
       try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; }
     }) || 'video/webm';
+    var ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
 
     var videoStream = canvas.captureStream(FPS);
 
@@ -1084,7 +1092,7 @@
         var blob = new Blob(chunks, { type: mime });
         var aEl = document.createElement('a');
         aEl.href = URL.createObjectURL(blob);
-        aEl.download = 'blinks-united-10years.webm';
+        aEl.download = 'blinks-united-10years.' + ext;
         aEl.click();
         setTimeout(function () { URL.revokeObjectURL(aEl.href); }, 15000);
         resolve();
