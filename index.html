@@ -6661,8 +6661,9 @@ async function renderMoreMilestones() {
 function replayGlobalMilestone(id) {
   const m = (_globalMsCache || []).find(x => x.id === id);
   if (!m) return;
-  if (m.artUrl) TRACK_ARTWORK[m.trackId] = m.artUrl;
-  showMilestone(m.trackId, m.total, m.milestone, m.milestoneDate);
+  const tid = m.trackId.toLowerCase();
+  if (m.artUrl) TRACK_ARTWORK[tid] = m.artUrl;
+  showMilestone(tid, m.total, m.milestone, m.milestoneDate);
 }
 
 async function checkGlobalMilestonesOnLoad() {
@@ -6672,8 +6673,9 @@ async function checkGlobalMilestonesOnLoad() {
     const seenKey = `bu_global_ms_seen_${m.id}`;
     if (sessionStorage.getItem(seenKey)) continue;
     if (Date.now() - m.savedAt < WINDOW_MS) {
-      if (m.artUrl) TRACK_ARTWORK[m.trackId] = m.artUrl;
-      _msPending.push({ trackId: m.trackId, total: m.total, milestone: m.milestone, milestoneDate: m.milestoneDate });
+      const tid = m.trackId.toLowerCase();
+      if (m.artUrl) TRACK_ARTWORK[tid] = m.artUrl;
+      _msPending.push({ trackId: tid, total: m.total, milestone: m.milestone, milestoneDate: m.milestoneDate });
       sessionStorage.setItem(seenKey, '1');
     }
   }
