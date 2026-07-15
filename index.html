@@ -1138,25 +1138,22 @@
 }
 #winner-overlay.active { display:flex; }
 #winner-card {
-  background:#080808; border:1px solid rgba(255,215,0,0.35);
-  padding:2rem 1.8rem 1.8rem; max-width:360px; width:90%; text-align:center;
-  position:relative; z-index:2; box-shadow:0 0 60px rgba(255,215,0,0.1);
+  background:#050505; border:1px solid rgba(255,215,0,0.3);
+  padding:0; max-width:360px; width:92%; text-align:center;
+  position:relative; z-index:2; box-shadow:0 0 80px rgba(255,215,0,0.15);
   animation:ms-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  overflow:hidden;
 }
-.winner-photo {
-  width:90px; height:90px; border-radius:50%; object-fit:cover; object-position:center top;
-  border:2px solid rgba(255,215,0,0.5); margin:0 auto 1rem; display:block;
-  box-shadow:0 0 20px rgba(255,215,0,0.2);
+.winner-poster {
+  width:100%; display:block;
+  max-height:62vh; object-fit:cover; object-position:center top;
 }
-.winner-eyebrow { font-family:var(--mono); font-size:0.5rem; letter-spacing:0.35em; text-transform:uppercase; color:rgba(255,215,0,0.65); margin-bottom:0.2rem; }
-.winner-trophy { font-size:2.2rem; display:block; margin-bottom:0.1rem; }
-.winner-title { font-family:var(--display); font-size:2.8rem; letter-spacing:0.08em; color:#ffd700; line-height:1; margin-bottom:0.2rem; text-shadow:0 0 30px rgba(255,215,0,0.45); }
-.winner-name { font-family:var(--display); font-size:1.5rem; letter-spacing:0.14em; color:#fff; margin-bottom:0.8rem; }
-.winner-divider { width:36px; height:1px; background:rgba(255,215,0,0.35); margin:0.8rem auto; }
-.winner-award-label { font-family:var(--mono); font-size:0.48rem; letter-spacing:0.24em; text-transform:uppercase; color:rgba(255,215,0,0.55); margin-bottom:0.4rem; }
-.winner-award { font-family:var(--mono); font-size:0.7rem; letter-spacing:0.04em; color:#fff; line-height:1.55; margin-bottom:0.3rem; }
-.winner-ceremony { font-family:var(--mono); font-size:0.44rem; letter-spacing:0.18em; text-transform:uppercase; color:rgba(255,215,0,0.45); margin-bottom:1rem; }
-.winner-thanks { font-size:0.68rem; color:var(--muted); margin-bottom:1.4rem; }
+.winner-footer {
+  padding:1.1rem 1.4rem 1.4rem;
+  background:linear-gradient(180deg,rgba(5,5,5,0.0) 0%,#050505 18%);
+}
+.winner-ceremony { font-family:var(--mono); font-size:0.46rem; letter-spacing:0.2em; text-transform:uppercase; color:rgba(255,215,0,0.55); margin-bottom:0.5rem; }
+.winner-thanks { font-size:0.68rem; color:var(--muted); margin-bottom:1.1rem; }
 /* vote card won treatment */
 .vote-card.won { border-color:rgba(255,215,0,0.35); }
 .vote-card.won::before { background:#ffd700; }
@@ -1299,20 +1296,15 @@
 <!-- WINNER ANNOUNCEMENT OVERLAY -->
 <div id="winner-overlay">
   <div id="winner-card">
-    <button class="ms-close" onclick="closeWinnerAnnouncement()" aria-label="Close">×</button>
-    <img class="winner-photo" src="/vote-jisoo.jpg" alt="JISOO">
-    <div class="winner-eyebrow">SDA 2026</div>
-    <span class="winner-trophy">🏆</span>
-    <div class="winner-title">WE WON!</div>
-    <div class="winner-name">#JISOO</div>
-    <div class="winner-divider"></div>
-    <div class="winner-award-label">Outstanding Asian Star</div>
-    <div class="winner-award">Popularity of Korea (Female)</div>
-    <div class="winner-ceremony">Official Ceremony · October 8, 2026</div>
-    <div class="winner-thanks">Thank you to every Blink who voted! 💜</div>
-    <div class="ms-actions">
-      <button class="ms-btn ms-btn-primary" onclick="shareWinnerAnnouncement()">↑ Share</button>
-      <button class="ms-btn ms-btn-secondary" onclick="closeWinnerAnnouncement()">Dismiss</button>
+    <button class="ms-close" onclick="closeWinnerAnnouncement()" aria-label="Close" style="z-index:3;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.8);">×</button>
+    <img class="winner-poster" src="/sda-2026-winner.jpg" alt="SDA 2026 Winner — JISOO">
+    <div class="winner-footer">
+      <div class="winner-ceremony">Official Ceremony · October 8, 2026</div>
+      <div class="winner-thanks">Thank you to every Blink who voted! 💜🖤</div>
+      <div class="ms-actions">
+        <button class="ms-btn ms-btn-primary" onclick="shareWinnerAnnouncement()">↑ Share</button>
+        <button class="ms-btn ms-btn-secondary" onclick="closeWinnerAnnouncement()">Dismiss</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2592,7 +2584,16 @@ function showPage(page, { replace = false } = {}) {
   document.getElementById('nav-' + page)?.classList.add('active');
   document.title = PAGE_TITLES[page] || PAGE_TITLES.home;
   window.scrollTo(0, 0);
-  if (page === 'home') initAnimations();
+  if (page === 'home') {
+    initAnimations();
+    // Show winner popup on home page for 24h from announcement (Jul 15 2026 10:00 UTC)
+    const WINNER_ANNOUNCED = 1752573600000;
+    const wonCampaign = VOTE_CAMPAIGNS.find(c => c.winner);
+    if (wonCampaign && Date.now() < WINNER_ANNOUNCED + 86400000 && !sessionStorage.getItem('winner-seen-home')) {
+      sessionStorage.setItem('winner-seen-home', '1');
+      setTimeout(() => showWinnerAnnouncement(wonCampaign.id), 900);
+    }
+  }
   if (page === 'badges') tryAutoLoad();
   if (page === 'leaderboard') {
     if (!acctBreakdown) tryAutoLoad(); // pre-load per-service data so own-row breakdown works
