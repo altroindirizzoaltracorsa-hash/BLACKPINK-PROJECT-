@@ -6318,9 +6318,8 @@ async function shareCard() {
   if (typeof navigator.share === 'function') {
     cardCanvas.toBlob(async blob => {
       const file = new File([blob], 'blinks-united-card.png', { type: 'image/png' });
-      try { await navigator.clipboard.writeText(text); } catch(e) {}
       try {
-        await navigator.share({ files: [file] });
+        await navigator.share({ files: [file], title: 'BLINKS UNITED', text });
         return;
       } catch(e) { if (e.name !== 'AbortError') downloadCard(); }
     }, 'image/png');
@@ -7054,9 +7053,8 @@ async function shareMilestoneCard() {
   if (typeof navigator.share === 'function') {
     canvas.toBlob(async blob => {
       const file = new File([blob], 'blinks-united-milestone.png', { type: 'image/png' });
-      try { await navigator.clipboard.writeText(text); } catch(e) {}
       try {
-        await navigator.share({ files: [file] });
+        await navigator.share({ files: [file], title: 'BLINKS UNITED', text });
       } catch(e) { if (e.name !== 'AbortError') downloadMilestoneCard(); }
     }, 'image/png');
   } else {
