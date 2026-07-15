@@ -257,13 +257,13 @@
   /* ── INTRO JUMP BUTTON ── */
   #intro-skip {
     position: absolute; bottom: 1.6rem; right: 1.4rem;
-    display: block; width: clamp(120px, 22vw, 180px);
+    display: block; width: clamp(90px, 16vw, 130px);
     opacity: 0; pointer-events: none;
     transition: opacity 0.5s, transform 0.18s;
     transform: rotate(-3deg);
   }
-  #intro-skip.visible { opacity: 1; pointer-events: auto; }
-  #intro-skip:hover { transform: rotate(-3deg) scale(1.06); }
+  #intro-skip.visible { opacity: 0.65; pointer-events: auto; }
+  #intro-skip:hover { opacity: 0.9; transform: rotate(-3deg) scale(1.06); }
   #intro-skip img { width: 100%; display: block; border-radius: 4px; }
 
   /* ── INTRO OVERLAY ── */
@@ -399,7 +399,7 @@
   </div>
 </div>
 
-<a href="/leaderboard" class="back" aria-label="Join Blinks United">
+<a href="https://blackpink-project.vercel.app/" class="back" aria-label="Join Blinks United">
   <span class="back-join">Join here</span>
   <span class="back-name">Blinks United</span>
 </a>
