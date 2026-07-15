@@ -502,12 +502,24 @@
 <div id="vid-admin-ov" class="admin-ov" style="display:none" onclick="if(event.target===this)this.style.display='none'">
   <div class="admin-box">
     <h2>Admin Access</h2>
-    <div class="admin-row">
-      <input id="vid-admin-inp" class="admin-inp" type="password" placeholder="Admin key"
-             onkeydown="if(event.key==='Enter')submitVidAdminKey()">
-      <button class="admin-submit" onclick="submitVidAdminKey()">Unlock</button>
+    <div id="vid-admin-auth">
+      <div class="admin-row">
+        <input id="vid-admin-inp" class="admin-inp" type="password" placeholder="Admin key"
+               onkeydown="if(event.key==='Enter')submitVidAdminKey()">
+        <button class="admin-submit" onclick="submitVidAdminKey()">Unlock</button>
+      </div>
+      <div id="vid-admin-err" class="admin-err"></div>
     </div>
-    <div id="vid-admin-err" class="admin-err"></div>
+    <div id="vid-admin-content" style="display:none">
+      <p style="font-size:0.55rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--dim);margin-bottom:0.8rem">Champion audio</p>
+      <div class="admin-row">
+        <label class="admin-submit" style="cursor:pointer">
+          Choose file
+          <input type="file" accept="audio/*,.m4a,.mp3,.aac" style="display:none" onchange="handleVidAudioFile(this)">
+        </label>
+        <span id="vid-audio-status" style="flex:1;font-size:0.55rem;letter-spacing:0.06em;color:var(--dim);padding-left:0.7rem;align-self:center"></span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -759,9 +771,43 @@
     _revealDlBtn();
   };
 
+  function _openAdminDb(cb) {
+    var req = indexedDB.open('bu_admin', 1);
+    req.onupgradeneeded = function (ev) { ev.target.result.createObjectStore('audio'); };
+    req.onsuccess = function (ev) { cb(null, ev.target.result); };
+    req.onerror = function () { cb(new Error('idb')); };
+  }
+
+  function _refreshAudioStatus() {
+    var el = document.getElementById('vid-audio-status');
+    if (!el) return;
+    el.textContent = 'Checking…';
+    try {
+      _openAdminDb(function (err, db) {
+        if (err) { el.textContent = 'No audio stored'; return; }
+        var tx = db.transaction('audio', 'readonly');
+        var get = tx.objectStore('audio').get('champion');
+        get.onsuccess = function () {
+          db.close();
+          el.textContent = get.result ? 'Audio stored ✓' : 'No audio stored';
+        };
+        get.onerror = function () { db.close(); el.textContent = 'No audio stored'; };
+      });
+    } catch (e) { el.textContent = 'No audio stored'; }
+  }
+
   window.openVidAdminPanel = function () {
-    document.getElementById('vid-admin-ov').style.display = 'flex';
-    setTimeout(function () { document.getElementById('vid-admin-inp').focus(); }, 80);
+    var ov = document.getElementById('vid-admin-ov');
+    ov.style.display = 'flex';
+    if (_adminOk) {
+      document.getElementById('vid-admin-auth').style.display = 'none';
+      document.getElementById('vid-admin-content').style.display = 'block';
+      _refreshAudioStatus();
+    } else {
+      document.getElementById('vid-admin-auth').style.display = 'block';
+      document.getElementById('vid-admin-content').style.display = 'none';
+      setTimeout(function () { document.getElementById('vid-admin-inp').focus(); }, 80);
+    }
   };
 
   window.submitVidAdminKey = function () {
@@ -771,13 +817,36 @@
     if (_checkKey(k)) {
       try { localStorage.setItem('bu_admin_key', k); } catch (e) {}
       _adminOk = true;
-      document.getElementById('vid-admin-ov').style.display = 'none';
+      document.getElementById('vid-admin-auth').style.display = 'none';
+      document.getElementById('vid-admin-content').style.display = 'block';
       _revealDlBtn();
+      _refreshAudioStatus();
     } else {
       errEl.textContent = 'Wrong key.';
       document.getElementById('vid-admin-inp').value = '';
       setTimeout(function () { document.getElementById('vid-admin-inp').focus(); }, 50);
     }
+  };
+
+  window.handleVidAudioFile = function (input) {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    var statusEl = document.getElementById('vid-audio-status');
+    statusEl.textContent = 'Saving…';
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        _openAdminDb(function (err, db) {
+          if (err) { statusEl.textContent = 'Failed to save.'; return; }
+          var tx = db.transaction('audio', 'readwrite');
+          tx.objectStore('audio').put(e.target.result, 'champion');
+          tx.oncomplete = function () { db.close(); statusEl.textContent = file.name + ' ✓'; };
+          tx.onerror = function () { db.close(); statusEl.textContent = 'Failed to save.'; };
+        });
+      } catch (ex) { statusEl.textContent = 'Failed to save.'; }
+    };
+    reader.onerror = function () { statusEl.textContent = 'Could not read file.'; };
+    reader.readAsArrayBuffer(file);
   };
 
   btn.addEventListener('click', function () {
@@ -897,11 +966,31 @@
       var audioSetup = (function () {
         try {
           var actx = new (window.AudioContext || window.webkitAudioContext)();
-          return fetch('/Champion%20-%20BLACKPINK.%20m4a')
-            .then(function (r) { return r.arrayBuffer(); })
-            .then(function (buf) { return actx.decodeAudioData(buf); })
-            .then(function (decoded) { return { actx: actx, buf: decoded }; })
-            .catch(function () { return null; });
+          return new Promise(function (res) {
+            function decodeAndResolve(buf) {
+              actx.decodeAudioData(buf.slice ? buf.slice(0) : buf)
+                .then(function (decoded) { res({ actx: actx, buf: decoded }); })
+                .catch(function () { res(null); });
+            }
+            try {
+              _openAdminDb(function (err, db) {
+                if (err) { tryFetch(); return; }
+                var tx = db.transaction('audio', 'readonly');
+                var get = tx.objectStore('audio').get('champion');
+                get.onsuccess = function () {
+                  db.close();
+                  if (get.result) { decodeAndResolve(get.result); } else { tryFetch(); }
+                };
+                get.onerror = function () { db.close(); tryFetch(); };
+              });
+            } catch (e) { tryFetch(); }
+            function tryFetch() {
+              fetch('/Champion%20-%20BLACKPINK.%20m4a')
+                .then(function (r) { return r.arrayBuffer(); })
+                .then(function (buf) { decodeAndResolve(buf); })
+                .catch(function () { res(null); });
+            }
+          });
         } catch (e) { return Promise.resolve(null); }
       })();
 
