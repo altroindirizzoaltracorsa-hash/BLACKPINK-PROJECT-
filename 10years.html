@@ -265,6 +265,12 @@
   #intro-skip.visible { opacity: 0.65; pointer-events: auto; }
   #intro-skip:hover { opacity: 0.9; transform: rotate(-3deg) scale(1.06); }
   #intro-skip img { width: 100%; display: block; border-radius: 4px; }
+  #intro-skip-label {
+    display: block; text-align: center;
+    font-family: 'Arial Black', Impact, sans-serif;
+    font-size: 0.55rem; letter-spacing: 0.22em; text-transform: uppercase;
+    color: rgba(255,255,255,0.55); margin-top: 0.3rem;
+  }
 
   /* ── INTRO OVERLAY ── */
   #intro-ov {
@@ -381,8 +387,9 @@
 <div class="mc" id="mc-lisa">LISA</div>
 
 <div id="intro-ov">
-  <a id="intro-skip" href="https://blackpink-project.vercel.app" aria-label="Jump to main site">
-    <img src="/jump.png" alt="JUMP — go to main site">
+  <a id="intro-skip" href="/leaderboard" aria-label="Jump to main site">
+    <img src="/jump.png" alt="JUMP">
+    <span id="intro-skip-label">to main</span>
   </a>
   <div id="intro-song"></div>
   <div id="intro-bottom"></div>
@@ -399,7 +406,7 @@
   </div>
 </div>
 
-<a href="https://blackpink-project.vercel.app/" class="back" aria-label="Join Blinks United">
+<a href="/leaderboard" class="back" aria-label="Join Blinks United">
   <span class="back-join">Join here</span>
   <span class="back-name">Blinks United</span>
 </a>
