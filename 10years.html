@@ -721,14 +721,11 @@
     var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
     var eo = function (t) { return 1 - (1-t)*(1-t); };
 
-    var mime = ['video/webm;codecs=vp9','video/webm'].find(function (t) {
+    var mime = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm'].find(function (t) {
       try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; }
     }) || 'video/webm';
 
-    var stream = canvas.captureStream(FPS);
-    var rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6000000 });
-    var chunks = [];
-    rec.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
+    var videoStream = canvas.captureStream(FPS);
 
     function C(fn, a) { ctx.save(); ctx.globalAlpha = a === undefined ? 1 : a; fn(); ctx.restore(); }
     function clr() { ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H); }
@@ -816,10 +813,40 @@
 
     return new Promise(function (resolve, reject) {
       var logoEl = document.querySelector('img.bp-logo');
-      var recDone = new Promise(function (r) { rec.onstop = r; });
-      rec.start(100);
 
-      (async function () {
+      var audioSetup = (function () {
+        try {
+          var actx = new (window.AudioContext || window.webkitAudioContext)();
+          return fetch('/Champion%20-%20BLACKPINK.%20m4a')
+            .then(function (r) { return r.arrayBuffer(); })
+            .then(function (buf) { return actx.decodeAudioData(buf); })
+            .then(function (decoded) { return { actx: actx, buf: decoded }; })
+            .catch(function () { return null; });
+        } catch (e) { return Promise.resolve(null); }
+      })();
+
+      audioSetup.then(function (audio) {
+        var audioSource = null;
+        var recStream = videoStream;
+
+        if (audio) {
+          var audioDest = audio.actx.createMediaStreamDestination();
+          audioSource = audio.actx.createBufferSource();
+          audioSource.buffer = audio.buf;
+          audioSource.connect(audioDest);
+          recStream = new MediaStream(
+            videoStream.getVideoTracks().concat(audioDest.stream.getAudioTracks())
+          );
+        }
+
+        var rec = new MediaRecorder(recStream, { mimeType: mime, videoBitsPerSecond: 6000000 });
+        var chunks = [];
+        rec.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
+        var recDone = new Promise(function (r) { rec.onstop = r; });
+        rec.start(100);
+        if (audioSource) audioSource.start();
+
+        (async function () {
         var MEMBERS = ['JISOO','JENNIE','ROSÉ','LISA'];
         var SONGS = ['PINK VENOM','LOVESICK GIRLS','HOW YOU LIKE THAT','DDU-DU DDU-DU','KILL THIS LOVE','PLAYING WITH FIRE','BOOMBAYAH','WHISTLE'];
 
@@ -833,7 +860,6 @@
           for (var f = 0; f < fs; f++) { fn(); await sleep(MS); }
         }
 
-        // Phase 1: member names
         for (var i = 0; i < MEMBERS.length; i++) {
           var nm = MEMBERS[i];
           await fade(380, (function(n){ return function(a){base();mname(n,a);}; })(nm));
@@ -842,11 +868,9 @@
           await sleep(120);
         }
 
-        // Phase 2: all four in corners
         await fade(450, function(a){base(a*.85);});
         await hold(500, function(){base(.85);});
 
-        // Phase 3: song titles
         for (var j = 0; j < SONGS.length; j++) {
           var s = SONGS[j];
           await fade(110, (function(t){ return function(a){base(.85);sng(t,a);}; })(s));
@@ -856,32 +880,28 @@
         }
         await sleep(180);
 
-        // Phase 4: date + debut
         await fade(550, function(a){base(.85);dateText(a);});
         await hold(450, function(){base(.85);dateText(1);});
         await fade(280, function(a){base(.85);dateText(1);debutText(a);});
         await hold(550, function(){base(.85);dateText(1);debutText(1);});
         await fade(230, function(a){base(.85);dateText(1);debutText(1-a);});
 
-        // Phase 5: logo
         await fade(650, function(a){base(.85);dateText(1);bpLogo(logoEl,a);});
         await hold(700, function(){base(.85);dateText(1);bpLogo(logoEl,1);});
 
-        // Phase 6: hero title
         await fade(230, function(a){base(.85);dateText(1-a);bpLogo(logoEl,1);});
         await fade(550, function(a){base(.85);bpLogo(logoEl,1);heroTitle(a);});
         await hold(350, function(){base(.85);bpLogo(logoEl,1);heroTitle(1);});
 
-        // Phase 7: countdown
         await fade(450, function(a){base(.85);bpLogo(logoEl,1);heroTitle(1);cdTimer(a);});
         await hold(2200, function(){base(.85);bpLogo(logoEl,1);heroTitle(1);cdTimer(1);});
 
-        // Fade to black
         await fade(650, function(a){
           var v=1-a; clr(); bar(v); corners(.85*v); bpLogo(logoEl,v); heroTitle(v); cdTimer(v); mark(.5*v);
         }, function(t){return t;});
 
         rec.stop();
+        try { if (audioSource) audioSource.stop(); } catch (e) {}
         await recDone;
 
         var blob = new Blob(chunks, { type: mime });
@@ -892,6 +912,7 @@
         setTimeout(function () { URL.revokeObjectURL(aEl.href); }, 15000);
         resolve();
       })().catch(reject);
+      }).catch(reject);
     });
   }
 })();
