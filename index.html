@@ -6771,7 +6771,11 @@ async function renderMoreMilestones() {
   if (!milestones.length) { section.style.display = 'none'; return; }
   section.style.display = '';
   grid.innerHTML = milestones.slice().reverse().map(m => {
-    return `<div class="more-ms-card" onclick="replayGlobalMilestone(decodeURIComponent('${encodeURIComponent(m.id)}'))">
+    const msData = JSON.stringify({
+      trackId: m.trackId, total: m.total, milestone: m.milestone,
+      milestoneDate: m.milestoneDate || '', artUrl: m.artUrl || ''
+    }).replace(/"/g, '&quot;');
+    return `<div class="more-ms-card" data-ms="${msData}" onclick="replayGlobalMilestoneFromEl(this)">
       <div class="more-ms-track">${m.trackId}</div>
       <div class="more-ms-milestone">${formatMilestone(m.milestone)} STREAMS</div>
       <div class="more-ms-sub">${m.milestoneDate ? 'Reached ' + m.milestoneDate + ' · ' : ''}${Number(m.total).toLocaleString()} total</div>
@@ -6780,8 +6784,18 @@ async function renderMoreMilestones() {
   }).join('');
 }
 
-function replayGlobalMilestone(id) {
-  const m = (_globalMsCache || []).find(x => x.id === id);
+function replayGlobalMilestoneFromEl(el) {
+  try {
+    const m = JSON.parse(el.getAttribute('data-ms'));
+    const tid = m.trackId.toLowerCase();
+    if (m.artUrl) TRACK_ARTWORK[tid] = m.artUrl;
+    showMilestone(tid, m.total, m.milestone, m.milestoneDate);
+  } catch(e) {}
+}
+
+async function replayGlobalMilestone(id) {
+  const cache = _globalMsCache || await fetchGlobalMilestones();
+  const m = (cache || []).find(x => x.id === id);
   if (!m) return;
   const tid = m.trackId.toLowerCase();
   if (m.artUrl) TRACK_ARTWORK[tid] = m.artUrl;
