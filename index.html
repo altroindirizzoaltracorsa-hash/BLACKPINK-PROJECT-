@@ -5937,9 +5937,12 @@ async function loadImg(url) {
 
 async function loadArtwork(trackId) {
   let url = TRACK_ARTWORK[trackId];
-  if (!url && KNOWN_SPOTIFY_IDS[trackId]) {
-    url = `/api/proxy-image?spotify_art=${KNOWN_SPOTIFY_IDS[trackId]}`;
-    TRACK_ARTWORK[trackId] = url;
+  if (!url) {
+    const spotifyId = KNOWN_SPOTIFY_IDS[trackId] || KNOWN_SPOTIFY_IDS[trackId.toUpperCase()];
+    if (spotifyId) {
+      url = `/api/proxy-image?spotify_art=${spotifyId}`;
+      TRACK_ARTWORK[trackId] = url;
+    }
   }
   if (!url) return null;
   try { return await loadImg(url); } catch(e) {}
