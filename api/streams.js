@@ -61,6 +61,43 @@ const PROVIDERS = [
   },
 ];
 
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+async function getSpotifyToken() {
+  const r = await fetch(
+    'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
+    { headers: { 'User-Agent': UA } },
+  );
+  if (!r.ok) throw new Error(`Spotify token: ${r.status}`);
+  const d = await r.json();
+  if (!d.accessToken) throw new Error('accessToken missing');
+  return d.accessToken;
+}
+
+// Direct Spotify fallback — no RapidAPI needed.
+// Tries the unofficial partner API first, then scrapes the track page.
+async function fetchSpotifyDirectPlayCount(trackId) {
+  try {
+    const token = await getSpotifyToken();
+    const variables  = JSON.stringify({ uri: `spotify:track:${trackId}` });
+    const extensions = JSON.stringify({ persistedQuery: { version: 1, sha256Hash: 'ae85b52abb74d20a4c331d4143d4772c95f34757a435d55406e6a2f17ad41c42' } });
+    const url = `https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${encodeURIComponent(variables)}&extensions=${encodeURIComponent(extensions)}`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}`, 'User-Agent': UA } });
+    if (!r.ok) throw new Error(`partner ${r.status}`);
+    const d = await r.json();
+    const count = d?.data?.trackUnion?.playcount;
+    if (!count) throw new Error('no playcount in response');
+    return Number(count);
+  } catch {
+    const r = await fetch(`https://open.spotify.com/track/${trackId}`, { headers: { 'User-Agent': UA } });
+    if (!r.ok) throw new Error(`scrape ${r.status}`);
+    const html = await r.text();
+    const m = html.match(/"playCount":"(\d+)"/i);
+    if (!m) throw new Error('playCount not found in HTML');
+    return Number(m[1]);
+  }
+}
+
 // Tries each provider in order, and within a provider tries each key in
 // order, moving on if one is rate-limited or quota-exceeded.
 // prevTotal: if a provider returns this exact count (or lower), its scraper
@@ -93,7 +130,14 @@ async function fetchTrackMetadata(trackId, prevTotal = 0) {
       break;
     }
   }
-  // All providers tried — return stale result if any provider gave us something
+  // All RapidAPI providers failed or returned stale — try direct Spotify as last resort.
+  try {
+    const playCount = await fetchSpotifyDirectPlayCount(trackId);
+    if (playCount > 0) return { playCount };
+  } catch(e) {
+    lastError = `direct: ${e.message}`;
+  }
+  // Return stale RapidAPI result if we have one, otherwise throw.
   if (staleResult) return staleResult;
   throw new Error(lastError);
 }
