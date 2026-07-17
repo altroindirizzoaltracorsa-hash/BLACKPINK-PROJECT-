@@ -7164,17 +7164,29 @@ function drawVoteCard(canvas, campaign, logo, art) {
 
   if (art) {
     const AW = Math.round(W * (landscape ? 0.50 : 0.42));
-    // Always cover-fit — fills the panel, crops edges, no letterboxing
-    const scale = Math.max(AW / art.naturalWidth, H / art.naturalHeight);
-    const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
-    ctx.drawImage(art, (AW - iw) / 2, (H - ih) / 2, iw, ih);
-    // Milestone-style gradient: transparent on the left (image visible),
-    // fades to opaque dark on the right (text area)
-    const gr = ctx.createLinearGradient(0, 0, AW + 80, 0);
-    gr.addColorStop(0,    'rgba(8,8,8,0)');
-    gr.addColorStop(0.50, 'rgba(8,8,8,0.70)');
-    gr.addColorStop(1,    'rgba(8,8,8,1)');
-    ctx.fillStyle = gr; ctx.fillRect(0, 0, AW + 80, H);
+    const isPortrait = art.naturalHeight > art.naturalWidth;
+    if (isPortrait) {
+      // Solo portrait shots: cover-fit clipped to panel + milestone-style gradient
+      const scale = Math.max(AW / art.naturalWidth, H / art.naturalHeight);
+      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, AW, H); ctx.clip();
+      ctx.drawImage(art, (AW - iw) / 2, (H - ih) / 2, iw, ih);
+      ctx.restore();
+      const gr = ctx.createLinearGradient(0, 0, AW + 80, 0);
+      gr.addColorStop(0,    'rgba(8,8,8,0)');
+      gr.addColorStop(0.50, 'rgba(8,8,8,0.65)');
+      gr.addColorStop(1,    'rgba(8,8,8,1)');
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, AW + 80, H);
+    } else {
+      // Landscape group photos: contain-fit so all members stay visible
+      const scale = Math.min(AW / art.naturalWidth, H / art.naturalHeight);
+      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      ctx.drawImage(art, (AW - iw) / 2, (H - ih) / 2, iw, ih);
+      const gr = ctx.createLinearGradient(AW - 40, 0, AW + 60, 0);
+      gr.addColorStop(0, 'rgba(8,8,8,0)'); gr.addColorStop(1, 'rgba(8,8,8,1)');
+      ctx.fillStyle = gr; ctx.fillRect(AW - 40, 0, 100, H);
+    }
   } else {
     const glow = ctx.createRadialGradient(0, H / 2, 0, 0, H / 2, H * 0.7);
     glow.addColorStop(0, 'rgba(255,0,102,0.15)'); glow.addColorStop(1, 'rgba(8,8,8,0)');
