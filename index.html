@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+<meta name="viewport" content="width=490, minimum-scale=0.5">
 <title>BLINKS UNITED | BLACKPINK Streaming Hub</title>
 <meta name="description" content="Stream tracker, leaderboard, badges, and fan-vote hub for BLACKPINK — built by Blinks United.">
 <meta property="og:type" content="website">
@@ -49,7 +49,7 @@
   }
 
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; overflow-x: hidden; max-width: 100%; }
 
   html, body { cursor: crosshair; }
   body {
@@ -633,11 +633,12 @@
     background: rgba(0,0,0,0.3);
     border: 1px solid rgba(255,0,102,0.12);
     padding: 1rem;
+    overflow: hidden;
   }
 
   .history-title { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.8rem; }
-  .chart-bars { display: flex; align-items: flex-end; gap: 4px; height: 80px; margin-bottom: 0.6rem; }
-  .chart-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; height: 100%; justify-content: flex-end; }
+  .chart-bars { display: flex; align-items: flex-end; gap: 4px; height: 80px; margin-bottom: 0.6rem; width: 100%; }
+  .chart-bar-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; position: relative; height: 100%; justify-content: flex-end; }
   .chart-bar { width: 100%; background: rgba(255,0,102,0.35); transition: background 0.2s; min-height: 3px; cursor: pointer; position: relative; flex-shrink: 0; }
   .chart-bar.latest { background: var(--pink); box-shadow: 0 0 8px rgba(255,0,102,0.5); }
   .chart-bar:hover { background: var(--pink); }
@@ -776,7 +777,7 @@
   .lb-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
   .lb-loading { padding: 3rem; text-align: center; color: var(--muted); font-size: 0.68rem; letter-spacing: 0.16em; }
   #lb-table-wrap { }
-  @media (max-width: 480px) {
+  @media (max-width: 500px) {
     /* Nav: shrink logo so logo+install+hamburger aren't cramped */
     .nav-logo { font-size: 1rem; letter-spacing: 0.14em; }
     /* Playlist banner: fit all three spans on one line */
@@ -1137,6 +1138,42 @@
   to { transform: translateY(105vh) rotate(720deg); opacity:0; }
 }
 
+/* ── WINNER ANNOUNCEMENT POPUP ──────────────────────────── */
+#winner-overlay {
+  display:none; position:fixed; inset:0; z-index:10001;
+  background:rgba(0,0,0,0.92); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  align-items:center; justify-content:center;
+  animation:ms-fadein 0.35s ease;
+}
+#winner-overlay.active { display:flex; }
+#winner-card {
+  background:#050505; border:1px solid rgba(255,215,0,0.3);
+  padding:0; max-width:360px; width:92%; text-align:center;
+  position:relative; z-index:2; box-shadow:0 0 80px rgba(255,215,0,0.15);
+  animation:ms-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  overflow:hidden;
+}
+.winner-poster {
+  width:100%; display:block;
+  max-height:62vh; object-fit:cover; object-position:center top;
+}
+.winner-footer {
+  padding:1.1rem 1.4rem 1.4rem;
+  background:linear-gradient(180deg,rgba(5,5,5,0.0) 0%,#050505 18%);
+}
+.winner-ceremony { font-family:var(--mono); font-size:0.46rem; letter-spacing:0.2em; text-transform:uppercase; color:rgba(255,215,0,0.55); margin-bottom:0.5rem; }
+.winner-thanks { font-size:0.68rem; color:var(--muted); margin-bottom:1.1rem; }
+/* vote card won treatment */
+.vote-card.won { border-color:rgba(255,215,0,0.35); }
+.vote-card.won::before { background:#ffd700; }
+.vote-winner-badge {
+  display:flex; align-items:center; gap:0.5rem;
+  background:linear-gradient(90deg,rgba(255,215,0,0.1) 0%,transparent 100%);
+  border-bottom:1px solid rgba(255,215,0,0.12);
+  padding:0.45rem 0; margin-bottom:1rem;
+  font-family:var(--mono); font-size:0.58rem; letter-spacing:0.2em; text-transform:uppercase; color:#ffd700;
+}
+
 /* ── MORE MILESTONES SECTION ─────────────────────────────── */
 .more-ms-inner { max-width: 960px; margin: 0 auto; padding: 3rem 1.5rem; }
 .more-ms-grid { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; }
@@ -1262,6 +1299,22 @@
       <button class="ms-btn ms-btn-secondary" onclick="closeMilestone()">Dismiss</button>
     </div>
     <canvas id="ms-canvas" style="display:none"></canvas>
+  </div>
+</div>
+
+<!-- WINNER ANNOUNCEMENT OVERLAY -->
+<div id="winner-overlay">
+  <div id="winner-card">
+    <button class="ms-close" onclick="closeWinnerAnnouncement()" aria-label="Close" style="z-index:3;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.8);">×</button>
+    <img class="winner-poster" src="/sda-2026-winner.jpg" alt="SDA 2026 Winner — JISOO">
+    <div class="winner-footer">
+      <div class="winner-ceremony">Official Ceremony · October 8, 2026</div>
+      <div class="winner-thanks">Thank you to every Blink who voted! 💜🖤</div>
+      <div class="ms-actions">
+        <button class="ms-btn ms-btn-primary" onclick="shareWinnerAnnouncement()">↑ Share</button>
+        <button class="ms-btn ms-btn-secondary" onclick="closeWinnerAnnouncement()">Dismiss</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2185,15 +2238,11 @@ function buildMonthChartHtml(entries, markLatest, baseTotal) {
       <div class="chart-bar${isLatest ? ' latest' : ''}" style="height:${heightPct}%"></div>
     </div>`;
   }).join('');
-  const vw = typeof window !== 'undefined' ? window.innerWidth : 400;
-  const maxLabels = Math.max(7, Math.floor(vw / 28));
-  const step = entries.length <= maxLabels ? 1 : Math.ceil(entries.length / maxLabels);
-  const datesHtml = entries.map((h, i) => {
-    const label = i % step === 0 ? parseInt(h.date) : '';
-    return `<div style="flex:1;font-size:0.65rem;letter-spacing:0.01em;color:rgba(245,240,240,0.45);text-align:center;white-space:nowrap;overflow:hidden;">${label}</div>`;
-  }).join('');
+  const datesHtml = entries.map(h =>
+    `<div style="flex:1;min-width:0;font-size:0.5rem;color:rgba(245,240,240,0.45);text-align:center;white-space:nowrap;overflow:hidden;">${h.date}</div>`
+  ).join('');
   return `<div class="chart-bars">${barsHtml}</div>
-    <div style="display:flex;gap:4px;margin-bottom:0.5rem;">${datesHtml}</div>`;
+    <div style="display:flex;gap:2px;margin-bottom:0.5rem;">${datesHtml}</div>`;
 }
 
 function renderHistory(id, history, currentTotal) {
@@ -2531,6 +2580,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const known = [
       { key: 'bu_ms_jump_630000000',     date: '14/05', year: 2026 },
       { key: 'bu_ms_jump_640000000',     date: '28/06', year: 2026 },
+      { key: 'bu_ms_jump_650000000',     date: '12/07', year: 2026 },
       { key: 'bu_ms_shutdown_890000000', date: '12/06', year: 2026 },
       { key: 'bu_ms_ddududu_870000000',  date: '05/06', year: 2026 },
     ];
@@ -2589,7 +2639,16 @@ function showPage(page, { replace = false } = {}) {
   document.getElementById('nav-' + page)?.classList.add('active');
   document.title = PAGE_TITLES[page] || PAGE_TITLES.home;
   window.scrollTo(0, 0);
-  if (page === 'home') initAnimations();
+  if (page === 'home') {
+    initAnimations();
+    // Show winner popup on home page for 24h from announcement (Jul 15 2026 10:00 UTC)
+    const WINNER_ANNOUNCED = 1752573600000;
+    const wonCampaign = VOTE_CAMPAIGNS.find(c => c.winner);
+    if (wonCampaign && Date.now() < WINNER_ANNOUNCED + 86400000 && !sessionStorage.getItem('winner-seen-home')) {
+      sessionStorage.setItem('winner-seen-home', '1');
+      setTimeout(() => showWinnerAnnouncement(wonCampaign.id), 900);
+    }
+  }
   if (page === 'badges') tryAutoLoad();
   if (page === 'leaderboard') {
     if (!acctBreakdown) tryAutoLoad(); // pre-load per-service data so own-row breakdown works
@@ -2608,6 +2667,11 @@ function showPage(page, { replace = false } = {}) {
   if (page === 'vote') {
     renderVoteCampaigns();
     _voteCountdownTimer = setInterval(tickVoteCountdowns, 1000);
+    const wonCampaign = VOTE_CAMPAIGNS.find(c => c.winner);
+    if (wonCampaign && !sessionStorage.getItem('winner-seen-' + wonCampaign.id)) {
+      sessionStorage.setItem('winner-seen-' + wonCampaign.id, '1');
+      setTimeout(() => showWinnerAnnouncement(wonCampaign.id), 700);
+    }
   }
 
   const path = PAGE_PATHS[page] || '/';
@@ -2963,6 +3027,23 @@ const TRACKS = [
 // ── VOTE CAMPAIGNS ───────────────────────────────────────────
 const VOTE_CAMPAIGNS = [
   {
+    id: 'billboard-fan-army-2026-r1',
+    platform: 'Billboard',
+    title: 'Fan Army Face-Off 2026 — Round 1',
+    url: 'https://www.billboard.com/music/music-news/fan-army-face-off-2026-voting-1236294570/',
+    image: '/vote-blackpink-ot4.jpg',
+    deadline: '2026-07-22T16:00:00Z', // Jul 22 at noon ET (UTC-4)
+    rules: [
+      'Round 1 runs July 15 – July 22 at noon ET — vote as many times as you can',
+      'Vote directly on Billboard.com — no app or account required',
+      'Round 2 begins July 22 at noon ET for teams that advance',
+      'Share the link to get more BLINKs voting!',
+    ],
+    categories: [
+      { name: 'Fan Army Face-Off', nominees: [{ name: 'BLINKS (BLACKPINK)', us: true }] },
+    ],
+  },
+  {
     id: 'jma-2026-preliminary',
     platform: 'Mubeat · My1pick · Idolchamp · Muniverse · Fancast',
     title: '3rd Jupiter Music Awards 2026',
@@ -3025,7 +3106,7 @@ const VOTE_CAMPAIGNS = [
     url: 'https://promo-web.idolchamp.com/app_proxy.html?deeplink=https%3A%2F%2Fapp.idolchamp.com%2Fopen%2Fvote%2F01KTT3R0ZYTFJGZ02H4RB65AYF',
     image: '/vote-jisoo.jpg',
     deadline: '2026-07-14T14:59:00Z', // 14 Jul 2026, 23:59 KST
-    resetOffset: 9, // daily vote reset at midnight KST
+    resetOffset: 9,
     rules: [
       'Vote via the IDOLCHAMP app',
       "Up to 100 votes per day — they don't roll over",
@@ -3034,6 +3115,11 @@ const VOTE_CAMPAIGNS = [
     categories: [
       { name: 'Korea Popularity Award (Female)', nominees: [{ name: 'JISOO', us: true }] },
     ],
+    winner: {
+      name: 'JISOO',
+      award: 'Outstanding Asian Star: Popularity of Korea (Female)',
+      ceremony: 'October 8, 2026',
+    },
   },
   {
     id: 'qqmusic-billboard-topkartists-2026',
@@ -3129,8 +3215,10 @@ function renderVoteCampaigns() {
             ${cat.nominees.map(n => `<span class="vote-chip ${n.us ? 'us' : ''}">${n.name}</span>`).join('')}
           </div>
         </div>`).join('');
+    const wonBadge = c.winner ? `<div class="vote-winner-badge">🏆 WE WON — ${c.winner.name}</div>` : '';
     return `
-      <div class="vote-card">
+      <div class="vote-card${c.winner ? ' won' : ''}">
+        ${wonBadge}
         <div class="vote-card-top">
           <div>
             <div class="vote-platform">${c.platform}</div>
@@ -3147,7 +3235,7 @@ function renderVoteCampaigns() {
         </div>` : ''}
         <div class="vote-card-actions">
           <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
-          <button class="vote-share-btn" onclick="openVoteCard('${c.id}')">⬡ Share</button>
+          ${c.winner ? `<button class="vote-share-btn" style="color:#ffd700;border-color:rgba(255,215,0,0.35);" onclick="showWinnerAnnouncement('${c.id}')">🏆 See Announcement</button>` : `<button class="vote-share-btn" onclick="openVoteCard('${c.id}')">⬡ Share</button>`}
         </div>
       </div>`;
   }
@@ -5835,8 +5923,34 @@ const TRACK_ARTWORK = {
 };
 const KNOWN_SPOTIFY_IDS = {
   "AS IF IT'S YOUR LAST": '4ZxOuNHhpyOj4gv52MtQpT',
+  "BAD ANGEL": '4QR40LqFAbMdabh4AoZJGZ',
 };
 let cardCanvas = null; // current canvas for download
+let _cardShareBlob = null; // pre-generated blob for shareCard (set when drawing completes)
+let _msShareBlob   = null; // pre-generated blob for shareMilestoneCard
+
+// Called at the end of every card draw function so the share blob is ready
+// before the user taps Share — avoids async toBlob inside the gesture handler.
+function _markCardReady(canvas) {
+  cardCanvas = canvas;
+  _cardShareBlob = null;
+  canvas.toBlob(blob => { _cardShareBlob = blob; }, 'image/jpeg', 0.92);
+}
+
+function _showShareToast(msg) {
+  let el = document.getElementById('_share-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '_share-toast';
+    el.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(8px);background:rgba(20,20,20,0.92);color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;font-weight:500;letter-spacing:.2px;z-index:10000;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  el.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(-50%) translateY(8px)'; }, 3000);
+}
 
 function closeCard() {
   document.getElementById('card-overlay').style.display = 'none';
@@ -5878,9 +5992,12 @@ async function loadImg(url) {
 
 async function loadArtwork(trackId) {
   let url = TRACK_ARTWORK[trackId];
-  if (!url && KNOWN_SPOTIFY_IDS[trackId]) {
-    url = `/api/proxy-image?spotify_art=${KNOWN_SPOTIFY_IDS[trackId]}`;
-    TRACK_ARTWORK[trackId] = url;
+  if (!url) {
+    const spotifyId = KNOWN_SPOTIFY_IDS[trackId] || KNOWN_SPOTIFY_IDS[trackId.toUpperCase()];
+    if (spotifyId) {
+      url = `/api/proxy-image?spotify_art=${spotifyId}`;
+      TRACK_ARTWORK[trackId] = url;
+    }
   }
   if (!url) return null;
   try { return await loadImg(url); } catch(e) {}
@@ -5924,7 +6041,10 @@ function setCardFormat(fmt, btn) {
   if (fmt === 'landscape') { canvas.width = 1200; canvas.height = 675; }
   else                     { canvas.width = 1080; canvas.height = 1080; }
   if (_cardType === 'lb') renderLbCard(_cardLogo);
-  else if (_cardType === 'milestone') drawMilestoneCard(canvas, _cardTrackId, _cardArt, _cardLogo, _msMilestoneTotal, _msMilestone, _msMilestoneDate);
+  else if (_cardType === 'milestone') {
+    drawMilestoneCard(canvas, _cardTrackId, _cardArt, _cardLogo, _msMilestoneTotal, _msMilestone, _msMilestoneDate);
+    canvas.toBlob(blob => { _cardShareBlob = blob; }, 'image/jpeg', 0.92);
+  }
   else if (_cardType === 'vote') drawVoteCard(canvas, VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId), _cardLogo, _cardArt);
   else if (_cardType === 'personal') drawPersonalCard(canvas, _personalCardData);
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
@@ -6119,7 +6239,7 @@ function renderSongCard(trackId, art, logo) {
   ctx.letterSpacing = '2px';
   ctx.fillText('blackpink-project.vercel.app', brandX, siteY);
 
-  cardCanvas = canvas;
+  _markCardReady(canvas);
 }
 
 // ── LEADERBOARD CARD ─────────────────────────────────────────────────────────
@@ -6341,7 +6461,7 @@ function renderLbCard(logo) {
   ctx.textAlign = 'center';
   ctx.fillText('blackpink-project.vercel.app', W / 2, H - 18);
 
-  cardCanvas = canvas;
+  _markCardReady(canvas);
 }
 
 // ── SHARE TO SOCIAL ──────────────────────────────────────────────────────────
@@ -6373,13 +6493,17 @@ async function shareCard() {
   const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
   // Mobile: Web Share API with image file
   if (typeof navigator.share === 'function') {
-    cardCanvas.toBlob(async blob => {
-      const file = new File([blob], 'blinks-united-card.png', { type: 'image/png' });
-      try {
-        await navigator.share({ files: [file], title: 'BLINKS UNITED', text });
-        return;
-      } catch(e) { if (e.name !== 'AbortError') downloadCard(); }
-    }, 'image/png');
+    // Use the pre-generated blob if available (created when the card finished
+    // drawing) so navigator.share() is called immediately within the gesture,
+    // with no async gap that could cause the file to be lost or X to misbehave.
+    const doShare = blob => {
+      const file = new File([blob], 'blinks-united-card.jpg', { type: 'image/jpeg' });
+      navigator.clipboard?.writeText(text).catch(() => {});
+      _showShareToast('Caption copied — paste it into X ✓');
+      navigator.share({ files: [file] }).catch(e => { if (e.name !== 'AbortError') downloadCard(); });
+    };
+    if (_cardShareBlob) { doShare(_cardShareBlob); }
+    else { cardCanvas.toBlob(blob => doShare(blob), 'image/jpeg', 0.92); }
   } else {
     // Desktop: open Twitter intent (user downloads + attaches image themselves)
     window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
@@ -6616,7 +6740,7 @@ function drawPersonalCard(canvas, { info, todayCounts, totalPlays, avatarImg, lo
   ctx.letterSpacing = '2px';
   ctx.fillText('blackpink-project.vercel.app', bx, H - (landscape ? 30 : 42));
 
-  cardCanvas = canvas;
+  _markCardReady(canvas);
 }
 
 </script>
@@ -6706,7 +6830,11 @@ async function renderMoreMilestones() {
   if (!milestones.length) { section.style.display = 'none'; return; }
   section.style.display = '';
   grid.innerHTML = milestones.slice().reverse().map(m => {
-    return `<div class="more-ms-card" onclick="replayGlobalMilestone(decodeURIComponent('${encodeURIComponent(m.id)}'))">
+    const msData = JSON.stringify({
+      trackId: m.trackId, total: m.total, milestone: m.milestone,
+      milestoneDate: m.milestoneDate || '', artUrl: m.artUrl || ''
+    }).replace(/"/g, '&quot;');
+    return `<div class="more-ms-card" data-ms="${msData}" onclick="replayGlobalMilestoneFromEl(this)">
       <div class="more-ms-track">${m.trackId}</div>
       <div class="more-ms-milestone">${formatMilestone(m.milestone)} STREAMS</div>
       <div class="more-ms-sub">${m.milestoneDate ? 'Reached ' + m.milestoneDate + ' · ' : ''}${Number(m.total).toLocaleString()} total</div>
@@ -6715,11 +6843,22 @@ async function renderMoreMilestones() {
   }).join('');
 }
 
-function replayGlobalMilestone(id) {
-  const m = (_globalMsCache || []).find(x => x.id === id);
+function replayGlobalMilestoneFromEl(el) {
+  try {
+    const m = JSON.parse(el.getAttribute('data-ms'));
+    const tid = m.trackId.toLowerCase();
+    if (m.artUrl) TRACK_ARTWORK[tid] = m.artUrl;
+    showMilestone(tid, m.total, m.milestone, m.milestoneDate);
+  } catch(e) {}
+}
+
+async function replayGlobalMilestone(id) {
+  const cache = _globalMsCache || await fetchGlobalMilestones();
+  const m = (cache || []).find(x => x.id === id);
   if (!m) return;
-  if (m.artUrl) TRACK_ARTWORK[m.trackId] = m.artUrl;
-  showMilestone(m.trackId, m.total, m.milestone, m.milestoneDate);
+  const tid = m.trackId.toLowerCase();
+  if (m.artUrl) TRACK_ARTWORK[tid] = m.artUrl;
+  showMilestone(tid, m.total, m.milestone, m.milestoneDate);
 }
 
 async function checkGlobalMilestonesOnLoad() {
@@ -6729,8 +6868,9 @@ async function checkGlobalMilestonesOnLoad() {
     const seenKey = `bu_global_ms_seen_${m.id}`;
     if (sessionStorage.getItem(seenKey)) continue;
     if (Date.now() - m.savedAt < WINDOW_MS) {
-      if (m.artUrl) TRACK_ARTWORK[m.trackId] = m.artUrl;
-      _msPending.push({ trackId: m.trackId, total: m.total, milestone: m.milestone, milestoneDate: m.milestoneDate });
+      const tid = m.trackId.toLowerCase();
+      if (m.artUrl) TRACK_ARTWORK[tid] = m.artUrl;
+      _msPending.push({ trackId: tid, total: m.total, milestone: m.milestone, milestoneDate: m.milestoneDate });
       sessionStorage.setItem(seenKey, '1');
     }
   }
@@ -6757,6 +6897,46 @@ function launchConfetti() {
     wrap.appendChild(el);
   }
   setTimeout(() => { wrap.innerHTML = ''; }, 4000);
+}
+
+function showWinnerAnnouncement(campaignId) {
+  const campaign = VOTE_CAMPAIGNS.find(c => c.id === campaignId);
+  if (!campaign?.winner) return;
+  document.getElementById('winner-overlay').classList.add('active');
+  launchGoldConfetti();
+}
+
+function closeWinnerAnnouncement() {
+  document.getElementById('winner-overlay').classList.remove('active');
+}
+
+function shareWinnerAnnouncement() {
+  const text = '🏆 #JISOO has won the SDA 2026 Outstanding Asian Star: Popularity of Korea (Female)!\n\nThank you to every Blink who voted! 💜🖤\n#BLACKPINK #BlinksUnited\nblackpink-project.vercel.app';
+  if (typeof navigator.share === 'function') {
+    navigator.clipboard?.writeText(text).catch(() => {});
+    _showShareToast('Caption copied — paste it into X ✓');
+    navigator.share({ text }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(text).catch(() => {});
+    _showShareToast('Copied to clipboard ✓');
+  }
+}
+
+function launchGoldConfetti() {
+  const wrap = document.getElementById('ms-confetti');
+  wrap.innerHTML = '';
+  const colors = ['#ffd700','#ffe066','#fff0a0','#ffffff','#ffb700','#ffd700'];
+  for (let i = 0; i < 90; i++) {
+    const el = document.createElement('span');
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const left = Math.random() * 100;
+    const size = 4 + Math.random() * 8;
+    const dur  = 2 + Math.random() * 2;
+    const del  = Math.random() * 1.4;
+    el.style.cssText = `left:${left}%;background:${color};width:${size}px;height:${size}px;border-radius:${Math.random()>0.5?'50%':'2px'};animation-duration:${dur}s;animation-delay:${del}s;`;
+    wrap.appendChild(el);
+  }
+  setTimeout(() => { wrap.innerHTML = ''; }, 5000);
 }
 
 function drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milestoneDate) {
@@ -6872,6 +7052,7 @@ async function renderMilestoneCanvas(trackId, total, milestone, milestoneDate) {
   await document.fonts.ready;
   const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
   drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milestoneDate);
+  canvas.toBlob(blob => { _msShareBlob = blob; }, 'image/jpeg', 0.92);
 }
 
 async function openMilestoneCard(trackId, milestone, milestoneDate) {
@@ -6889,11 +7070,13 @@ async function openMilestoneCard(trackId, milestone, milestoneDate) {
   document.getElementById('fmt-landscape')?.classList.add('active');
   document.getElementById('fmt-square')?.classList.remove('active');
   const canvas = document.getElementById('card-canvas');
+  cardCanvas = canvas;
   canvas.width = 1200; canvas.height = 675;
   await document.fonts.ready;
   const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
   _cardArt = art; _cardLogo = logo;
   drawMilestoneCard(canvas, trackId, art, logo, _msMilestoneTotal, milestone, milestoneDate);
+  canvas.toBlob(blob => { _cardShareBlob = blob; }, 'image/jpeg', 0.92);
   label.textContent = `${TRACK_LABELS[trackId]} · ${formatMilestone(milestone)} MILESTONE`;
 }
 
@@ -7039,7 +7222,7 @@ function drawVoteCard(canvas, campaign, logo, art) {
   ctx.letterSpacing = '2px';
   ctx.fillText('blackpink-project.vercel.app', brandX, H - (landscape ? 30 : 42));
 
-  cardCanvas = canvas;
+  _markCardReady(canvas);
 }
 
 async function openVoteCard(campaignId) {
@@ -7107,12 +7290,14 @@ async function shareMilestoneCard() {
   const dateLabel = document.getElementById('ms-date').textContent;
   const text = `${trackName} just hit ${msNum}! ${dateLabel ? '(' + dateLabel + ') ' : ''}🖤💗 #BLACKPINK #BLINKSUNITED\nblackpink-project.vercel.app`;
   if (typeof navigator.share === 'function') {
-    canvas.toBlob(async blob => {
-      const file = new File([blob], 'blinks-united-milestone.png', { type: 'image/png' });
-      try {
-        await navigator.share({ files: [file], title: 'BLINKS UNITED', text });
-      } catch(e) { if (e.name !== 'AbortError') downloadMilestoneCard(); }
-    }, 'image/png');
+    const doShare = blob => {
+      const file = new File([blob], 'blinks-united-milestone.jpg', { type: 'image/jpeg' });
+      navigator.clipboard?.writeText(text).catch(() => {});
+      _showShareToast('Caption copied — paste it into X ✓');
+      navigator.share({ files: [file] }).catch(e => { if (e.name !== 'AbortError') downloadMilestoneCard(); });
+    };
+    if (_msShareBlob) { doShare(_msShareBlob); }
+    else { canvas.toBlob(blob => doShare(blob), 'image/jpeg', 0.92); }
   } else {
     window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
   }

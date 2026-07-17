@@ -1,4 +1,4 @@
-const CACHE = 'bu-v3';
+const CACHE = 'bu-v5';
 const PRECACHE = ['/', '/index.html'];
 
 self.addEventListener('install', e => {
