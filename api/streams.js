@@ -293,12 +293,24 @@ async function fetchCatalogViaKworb() {
   throw new Error('kworb: no data found');
 }
 
-async function updateCatalogHistory(total) {
+async function updateCatalogHistory(total, daily = null, overrideDate = null) {
   const d    = new Date();
-  const date = `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+  const date = overrideDate || `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}`;
   const hist = (await redis.get(CAT_HIST_KEY)) || [];
   const ex   = hist.find(h => h.date === date);
-  if (ex) { if (total > ex.total) ex.total = total; } else hist.push({ date, total });
+  if (ex) {
+    if (total > ex.total) ex.total = total;
+    if (daily !== null) ex.daily = daily;
+  } else {
+    const entry = { date, total };
+    if (daily !== null) entry.daily = daily;
+    hist.push(entry);
+    hist.sort((a, b) => {
+      const [ad, am] = a.date.split('/').map(Number);
+      const [bd, bm] = b.date.split('/').map(Number);
+      return am !== bm ? am - bm : ad - bd;
+    });
+  }
   if (hist.length > 90) hist.shift();
   await redis.set(CAT_HIST_KEY, hist);
   return hist;
@@ -313,15 +325,18 @@ async function handleCatalogRequest(req, res) {
     }
   }
 
-  // Admin manual seed
+  // Admin manual seed: ?action=set&total=X[&daily=Y][&date=DD/MM]&key=admin
   if (req.query.action === 'set') {
     const adminSecret = process.env.ADMIN_SECRET;
     if (!adminSecret || req.query.key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
     const total = Number(String(req.query.total || '').replace(/[^0-9]/g, ''));
     if (!total || total < 100000000) return res.status(400).json({ error: 'total must be > 100M' });
+    const daily = req.query.daily ? Number(String(req.query.daily).replace(/[^0-9]/g, '')) : null;
     const entry = { total, source: 'manual', ts: Date.now() };
     await redis.set(CAT_CACHE_KEY, entry);
-    const hist = await updateCatalogHistory(total);
+    // Override date if provided (for backfilling historical entries)
+    const overrideDate = req.query.date || null;
+    const hist = await updateCatalogHistory(total, daily, overrideDate);
     return res.status(200).json({ ok: true, ...entry, history: hist });
   }
 
