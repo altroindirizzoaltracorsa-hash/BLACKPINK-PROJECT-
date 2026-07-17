@@ -934,6 +934,9 @@
     var canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     var ctx = canvas.getContext('2d');
+    // Must be in the DOM so the compositor delivers frames to captureStream on mobile Chrome
+    canvas.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.001;pointer-events:none;z-index:-9999';
+    document.body.appendChild(canvas);
 
     var BG = '#070407', PINK = '#FF0080', GOLD = '#C8A84B', BLUSH = '#EEE6EE', DIM = '#906878';
     var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
@@ -1160,8 +1163,9 @@
         aEl.download = 'blinks-united-10years.' + ext;
         aEl.click();
         setTimeout(function () { URL.revokeObjectURL(aEl.href); }, 15000);
+        try { document.body.removeChild(canvas); } catch (e) {}
         resolve();
-      })().catch(reject);
+      })().catch(function (e) { try { document.body.removeChild(canvas); } catch (ex) {} reject(e); });
       }).catch(reject);
     });
   }
