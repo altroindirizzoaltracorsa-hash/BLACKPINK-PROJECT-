@@ -1475,6 +1475,7 @@
       <p class="catalog-daily" id="catalog-daily-info"></p>
       <div class="catalog-daily-list" id="catalog-daily-list" style="display:none"></div>
       <p class="catalog-source" id="catalog-source-info"></p>
+      <button class="gen-card-btn" style="max-width:260px;margin-top:0.4rem" onclick="openCatalogCard()">⬡ Generate Share Card</button>
     </div>
   </section>
 
@@ -2402,6 +2403,7 @@ async function loadCatalogStreams() {
     countEl.textContent = d.total.toLocaleString('en-US');
 
     const hist = d.history || [];
+    _catalogCardData = { total: d.total, history: hist };
 
     // Compute daily streams for each history entry
     const dailyRows = [];
@@ -2416,9 +2418,12 @@ async function loadCatalogStreams() {
     }
 
     // Latest daily in the subtitle
-    if (dailyRows.length > 0 && dailyEl) {
+    if (dailyRows.length > 0) {
       const latest = dailyRows[dailyRows.length - 1];
-      dailyEl.innerHTML = `<strong>+${latest.streams.toLocaleString('en-US')}</strong> streams on ${latest.date}`;
+      _catalogCardData.dailyStreams = latest.streams;
+      _catalogCardData.dailyDate   = latest.date;
+      _catalogCardData.dailyRows   = dailyRows;
+      if (dailyEl) dailyEl.innerHTML = `<strong>+${latest.streams.toLocaleString('en-US')}</strong> streams on ${latest.date}`;
     }
 
     // Recent daily breakdown list (last 7 days, newest first)
@@ -6064,6 +6069,7 @@ let _cardTrackId = null, _cardArt = null, _cardLogo = null, _cardFormat = 'lands
 let _msMilestone = null, _msMilestoneTotal = 0, _msMilestoneDate = null;
 let _voteCampaignId = null;
 let _personalCardData = null;
+let _catalogCardData = null;
 
 function setCardFormat(fmt, btn) {
   _cardFormat = fmt;
@@ -6078,6 +6084,7 @@ function setCardFormat(fmt, btn) {
   }
   else if (_cardType === 'vote') drawVoteCard(canvas, VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId), _cardLogo, _cardArt);
   else if (_cardType === 'personal') drawPersonalCard(canvas, _personalCardData);
+  else if (_cardType === 'catalog') drawCatalogCard(canvas, _catalogCardData, _cardLogo);
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -7279,6 +7286,136 @@ async function openVoteCard(campaignId) {
   _cardArt = art; _cardLogo = logo;
   drawVoteCard(canvas, campaign, logo, art);
   label.textContent = `${campaign.platform} · FAN VOTE CARD`;
+}
+
+function drawCatalogCard(canvas, data, logo) {
+  if (!data) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const landscape = W > H;
+
+  // Background
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+
+  // Radial glow — pink emanating from top-left
+  const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, W * 0.75);
+  glow.addColorStop(0, 'rgba(255,0,102,0.18)');
+  glow.addColorStop(0.5, 'rgba(255,0,102,0.06)');
+  glow.addColorStop(1, 'rgba(8,8,8,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+
+  drawNoise(ctx, W, H, 0.03);
+
+  const PX    = landscape ? 70 : 80;
+  const textW = W - PX - (landscape ? 50 : 60);
+  ctx.textAlign = 'left';
+
+  // Eyebrow
+  ctx.fillStyle = '#FF0066';
+  ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
+  ctx.letterSpacing = '4px';
+  ctx.fillText('// FULL CATALOG · SPOTIFY', PX, landscape ? 76 : 118);
+
+  // "BLACKPINK" logotype
+  ctx.fillStyle = '#F5F0F0';
+  ctx.letterSpacing = '8px';
+  fillTextFit(ctx, 'BLACKPINK', PX, landscape ? 182 : 298, landscape ? 116 : 148, textW, '"Bebas Neue", sans-serif');
+
+  // Pink rule
+  ctx.fillStyle = '#FF0066';
+  ctx.fillRect(PX, landscape ? 208 : 328, 70, landscape ? 2 : 3);
+
+  // Total streams — centrepiece number
+  ctx.fillStyle = '#FF0066';
+  ctx.letterSpacing = '2px';
+  fillTextFit(ctx, formatFull(data.total), PX, landscape ? 358 : 548, landscape ? 102 : 112, textW, '"Bebas Neue", sans-serif');
+  ctx.fillStyle = 'rgba(245,240,240,0.45)';
+  ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
+  ctx.letterSpacing = '3px';
+  ctx.fillText('TOTAL STREAMS ACROSS ALL RELEASES', PX, landscape ? 386 : 582);
+
+  // Daily delta
+  if (data.dailyStreams && data.dailyDate) {
+    const dailyY = landscape ? 452 : 680;
+    ctx.fillStyle = '#F5F0F0';
+    ctx.letterSpacing = '2px';
+    fillTextFit(ctx, '+' + formatFull(data.dailyStreams), PX, dailyY, landscape ? 68 : 82, textW, '"Bebas Neue", sans-serif');
+    ctx.fillStyle = 'rgba(245,240,240,0.4)';
+    ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
+    ctx.letterSpacing = '3px';
+    ctx.fillText('DAILY STREAMS · ' + data.dailyDate, PX, dailyY + (landscape ? 28 : 36));
+
+    // Mini bar chart (last 5 days, newest first)
+    if (data.dailyRows && data.dailyRows.length > 1) {
+      const rows = [...data.dailyRows].reverse().slice(0, 5);
+      const maxV = Math.max(...rows.map(r => r.streams));
+      const barH = landscape ? 3 : 4;
+      const barMaxW = landscape ? 220 : 280;
+      const startY = dailyY + (landscape ? 58 : 74);
+      const rowGap = landscape ? 14 : 18;
+      rows.forEach((row, i) => {
+        const y = startY + i * rowGap;
+        const bw = Math.round(row.streams / maxV * barMaxW);
+        // bar track
+        ctx.fillStyle = 'rgba(255,255,255,0.07)';
+        ctx.fillRect(PX, y, barMaxW, barH);
+        // bar fill
+        ctx.fillStyle = i === 0 ? '#FF0066' : 'rgba(255,0,102,0.5)';
+        ctx.fillRect(PX, y, bw, barH);
+        // date label
+        ctx.fillStyle = 'rgba(245,240,240,0.35)';
+        ctx.font = `500 ${landscape ? 10 : 13}px "DM Mono", monospace`;
+        ctx.letterSpacing = '1px';
+        ctx.fillText(row.date, PX + barMaxW + (landscape ? 8 : 10), y + barH);
+      });
+    }
+  }
+
+  // Bottom rule + branding
+  const LR   = landscape ? 22 : 28;
+  const logoY = H - (landscape ? 46 : 82);
+  ctx.fillStyle = 'rgba(255,0,102,0.2)';
+  ctx.fillRect(PX, H - (landscape ? 90 : 135), W - PX - (landscape ? 50 : 60), 1);
+  if (logo) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  const brandX = logo ? PX + LR * 2 + 10 : PX;
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = `${landscape ? 34 : 44}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = '10px';
+  ctx.fillText('BLINKS UNITED', brandX, H - (landscape ? 52 : 72));
+  ctx.fillStyle = 'rgba(245,240,240,0.2)';
+  ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
+  ctx.letterSpacing = '2px';
+  ctx.fillText('blackpink-project.vercel.app', brandX, H - (landscape ? 30 : 42));
+
+  _markCardReady(canvas);
+}
+
+async function openCatalogCard() {
+  if (!_catalogCardData) return;
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  _cardType = 'catalog';
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+  await document.fonts.ready;
+  _cardLogo = await getBuLogo();
+  drawCatalogCard(canvas, _catalogCardData, _cardLogo);
+  label.textContent = 'BLACKPINK CATALOG · STREAM UPDATE CARD';
 }
 
 function renderMilestoneHistory(trackId) {
