@@ -2380,7 +2380,7 @@ function diffColor(diff) {
 
 async function loadCatalogStreams() {
   try {
-    const r = await fetch('/api/catalog-streams');
+    const r = await fetch('/api/streams?catalog=1');
     if (!r.ok) return;
     const d = await r.json();
     if (!d || !d.total) return;

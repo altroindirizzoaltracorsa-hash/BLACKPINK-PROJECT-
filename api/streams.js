@@ -186,6 +186,173 @@ async function fetchTrackMetadata(trackId, prevTotal = 0) {
   throw new Error(lastError);
 }
 
+// ── Catalog total helpers (merged from catalog-streams.js) ───────────────────
+
+const CAT_CACHE_KEY = 'bp_catalog_total';
+const CAT_HIST_KEY  = 'bp_catalog_hist';
+
+async function getSpotifyClientToken() {
+  const id     = process.env.SPOTIFY_CLIENT_ID;
+  const secret = process.env.SPOTIFY_CLIENT_SECRET;
+  if (!id || !secret) throw new Error('SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET not set');
+  const r = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${Buffer.from(`${id}:${secret}`).toString('base64')}`,
+    },
+    body: 'grant_type=client_credentials',
+  });
+  if (!r.ok) throw new Error(`client-token ${r.status}`);
+  return (await r.json()).access_token;
+}
+
+async function getSpotifyAnonToken() {
+  const r = await fetch(
+    'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
+    { headers: { 'User-Agent': UA } },
+  );
+  if (!r.ok) throw new Error(`anon-token ${r.status}`);
+  const d = await r.json();
+  if (!d.accessToken) throw new Error('accessToken missing');
+  return d.accessToken;
+}
+
+async function getAllBpTrackIds(clientToken) {
+  const ARTIST_ID = '41MozSoPIsD1dJM0CLPjZF';
+  const albumIds  = [];
+  let url = `https://api.spotify.com/v1/artists/${ARTIST_ID}/albums?include_groups=album,single&limit=50&market=US`;
+  while (url) {
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${clientToken}` } });
+    if (!r.ok) throw new Error(`albums ${r.status}`);
+    const d = await r.json();
+    for (const a of (d.items || [])) albumIds.push(a.id);
+    url = d.next || null;
+  }
+  const seen = new Set(), ids = [];
+  for (let i = 0; i < albumIds.length; i += 20) {
+    const r = await fetch(`https://api.spotify.com/v1/albums?ids=${albumIds.slice(i,i+20).join(',')}&market=US`, {
+      headers: { Authorization: `Bearer ${clientToken}` },
+    });
+    if (!r.ok) continue;
+    for (const album of ((await r.json()).albums || [])) {
+      for (const t of (album?.tracks?.items || [])) {
+        if (t?.id && !seen.has(t.id)) { seen.add(t.id); ids.push(t.id); }
+      }
+    }
+  }
+  return ids;
+}
+
+async function fetchCatalogViaSpotifyAPI() {
+  const ct  = await getSpotifyClientToken();
+  const ids = await getAllBpTrackIds(ct);
+  const at  = await getSpotifyAnonToken();
+  let total = 0, failed = 0;
+  for (let i = 0; i < ids.length; i += 10) {
+    const counts = await Promise.all(ids.slice(i, i + 10).map(async id => {
+      try {
+        const vars = JSON.stringify({ uri: `spotify:track:${id}` });
+        const exts = JSON.stringify({ persistedQuery: { version: 1, sha256Hash: 'ae85b52abb74d20a4c331d4143d4772c95f34757a435d55406e6a2f17ad41c42' } });
+        const r = await fetch(`https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${encodeURIComponent(vars)}&extensions=${encodeURIComponent(exts)}`, {
+          headers: { Authorization: `Bearer ${at}`, 'User-Agent': UA },
+        });
+        const count = (await r.json())?.data?.trackUnion?.playcount;
+        return count ? Number(count) : 0;
+      } catch { failed++; return 0; }
+    }));
+    total += counts.reduce((s, c) => s + c, 0);
+  }
+  if (!total) throw new Error('all play counts returned 0');
+  return { total, trackCount: ids.length, failed, source: 'spotify-api' };
+}
+
+async function fetchCatalogViaKworb() {
+  const r = await fetch('https://kworb.net/spotify/artist/41MozSoPIsD1dJM0CLPjZF.html', {
+    headers: { 'User-Agent': UA, 'Accept': 'text/html,*/*' },
+  });
+  if (!r.ok) throw new Error(`kworb ${r.status}`);
+  const html = await r.text();
+  const totalRow = html.match(/<tr[^>]*class="[^"]*total[^"]*"[^>]*>([\s\S]*?)<\/tr>/i)
+    || html.match(/>Total<\/(td|th)>[\s\S]{0,200}?([\d,]{8,})/i);
+  if (totalRow) {
+    const nums = totalRow[0].match(/[\d]{1,3}(?:,[\d]{3}){3,}/g);
+    if (nums) {
+      const v = Math.max(...nums.map(n => Number(n.replace(/,/g, ''))));
+      if (v > 100000000) return { total: v, source: 'kworb' };
+    }
+  }
+  const marks = [...html.matchAll(/class="mark[^"]*"[^>]*>([\d,]+)/g)]
+    .map(m => Number(m[1].replace(/,/g, ''))).filter(n => n >= 1000000);
+  if (marks.length >= 3) {
+    const sorted = [...marks].sort((a, b) => b - a);
+    const rest   = sorted.slice(1).reduce((s, n) => s + n, 0);
+    if (sorted[0] >= rest * 0.8 && sorted[0] > 500000000) return { total: sorted[0], source: 'kworb' };
+    return { total: sorted.reduce((s, n) => s + n, 0), trackCount: marks.length, source: 'kworb' };
+  }
+  throw new Error('kworb: no data found');
+}
+
+async function updateCatalogHistory(total) {
+  const d    = new Date();
+  const date = `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+  const hist = (await redis.get(CAT_HIST_KEY)) || [];
+  const ex   = hist.find(h => h.date === date);
+  if (ex) { if (total > ex.total) ex.total = total; } else hist.push({ date, total });
+  if (hist.length > 90) hist.shift();
+  await redis.set(CAT_HIST_KEY, hist);
+  return hist;
+}
+
+async function handleCatalogRequest(req, res) {
+  const isForced = req.query.force === '1';
+  if (isForced) {
+    const adminSecret = process.env.ADMIN_SECRET;
+    if (!adminSecret || req.query.key !== adminSecret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
+
+  // Admin manual seed
+  if (req.query.action === 'set') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    if (!adminSecret || req.query.key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
+    const total = Number(String(req.query.total || '').replace(/[^0-9]/g, ''));
+    if (!total || total < 100000000) return res.status(400).json({ error: 'total must be > 100M' });
+    const entry = { total, source: 'manual', ts: Date.now() };
+    await redis.set(CAT_CACHE_KEY, entry);
+    const hist = await updateCatalogHistory(total);
+    return res.status(200).json({ ok: true, ...entry, history: hist });
+  }
+
+  const cached  = await redis.get(CAT_CACHE_KEY);
+  const cacheMs = cached?.ts ? Date.now() - cached.ts : Infinity;
+  if (!isForced && cacheMs < 4 * 60 * 60 * 1000 && (cached?.total || 0) > 0) {
+    const hist = (await redis.get(CAT_HIST_KEY)) || [];
+    return res.status(200).json({ ...cached, history: hist, cached: true });
+  }
+
+  const errors = [];
+  let result   = null;
+  try { result = await fetchCatalogViaSpotifyAPI(); } catch(e) { errors.push(`spotify-api: ${e.message}`); }
+  if (!result) { try { result = await fetchCatalogViaKworb(); } catch(e) { errors.push(`kworb: ${e.message}`); } }
+
+  if (!result) {
+    if (cached?.total) {
+      const hist = (await redis.get(CAT_HIST_KEY)) || [];
+      return res.status(200).json({ ...cached, history: hist, stale: true, errors });
+    }
+    return res.status(503).json({ error: 'All methods failed. Use ?action=set&total=X&key=<admin> to seed.', errors });
+  }
+
+  result.ts = Date.now();
+  await redis.set(CAT_CACHE_KEY, result);
+  const hist = await updateCatalogHistory(result.total);
+  return res.status(200).json({ ...result, history: hist });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function getDateLabel(date) {
   const dd = String(date.getUTCDate()).padStart(2, '0');
   const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
@@ -211,6 +378,9 @@ function yesterdayLabel() {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+
+  // Catalog total sub-route: /api/streams?catalog=1[&action=set&total=X&key=Y | &force=1&key=Y]
+  if (req.query.catalog === '1') return handleCatalogRequest(req, res);
 
   const isCron = req.query.cron === '1';
   if (isCron) {
@@ -463,10 +633,10 @@ export default async function handler(req, res) {
     keyCounts[provider.name] = getApiKeys(provider.keyEnvVars).length;
   }
 
-  // Trigger catalog-streams update on cron runs (fire-and-forget, no await)
+  // Trigger catalog total update on cron runs (fire-and-forget, no await)
   if (isCron && fetchedLive) {
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'blackpink-project.vercel.app';
-    fetch(`https://${host}/api/catalog-streams?cron=1`).catch(() => {});
+    fetch(`https://${host}/api/streams?catalog=1&force=1&key=${process.env.ADMIN_SECRET || ''}`).catch(() => {});
   }
 
   res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
