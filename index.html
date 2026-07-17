@@ -7303,10 +7303,11 @@ function drawCatalogCard(canvas, data, logo, art) {
     if (landscape) {
       // Anchor top-center so faces sit at the top of the card
       ctx.drawImage(art, (W - iw) / 2, 0, iw, ih);
-      // Bottom-up gradient: faces visible at top, dark at bottom for text
-      const gr = ctx.createLinearGradient(0, H * 0.22, 0, H);
-      gr.addColorStop(0,    'rgba(8,8,8,0)');
-      gr.addColorStop(0.45, 'rgba(8,8,8,0.82)');
+      // Gradient: barely tinted at top, very dark from ~50% down for text readability
+      const gr = ctx.createLinearGradient(0, 0, 0, H);
+      gr.addColorStop(0,    'rgba(8,8,8,0.05)');
+      gr.addColorStop(0.30, 'rgba(8,8,8,0.30)');
+      gr.addColorStop(0.48, 'rgba(8,8,8,0.86)');
       gr.addColorStop(1,    'rgba(8,8,8,0.97)');
       ctx.fillStyle = gr;
       ctx.fillRect(0, 0, W, H);
@@ -7361,42 +7362,42 @@ function drawCatalogCard(canvas, data, logo, art) {
     ctx.letterSpacing = '2px';
     ctx.fillText('blackpink-project.vercel.app', brandX, H - 30);
 
-    // Content block — grow upward from just above the rule
-    let y = H - 108;
-
-    if (data.dailyStreams && data.dailyDate) {
-      ctx.fillStyle = 'rgba(245,240,240,0.4)';
-      ctx.font = `500 13px "DM Mono", monospace`;
-      ctx.letterSpacing = '3px';
-      ctx.fillText('DAILY STREAMS · ' + data.dailyDate, PX, y);
-      y -= 50;
-      ctx.fillStyle = '#F5F0F0';
-      ctx.letterSpacing = '2px';
-      fillTextFit(ctx, '+' + formatFull(data.dailyStreams), PX, y, 66, textW, '"Bebas Neue", sans-serif');
-      y -= 28;
-    }
-
-    ctx.fillStyle = 'rgba(245,240,240,0.45)';
-    ctx.font = `500 13px "DM Mono", monospace`;
-    ctx.letterSpacing = '3px';
-    ctx.fillText('TOTAL STREAMS ACROSS ALL RELEASES', PX, y);
-    y -= 66;
-
-    ctx.fillStyle = '#FF0066';
-    ctx.letterSpacing = '2px';
-    fillTextFit(ctx, formatFull(data.total), PX, y, 94, textW, '"Bebas Neue", sans-serif');
-    y -= 24;
-
-    // Pink rule separator
-    ctx.fillStyle = '#FF0066';
-    ctx.fillRect(PX, y, 70, 2);
-    y -= 24;
+    // Fixed positions — calculated to never overlap (all y = baseline)
+    const hasDaily = !!(data.dailyStreams && data.dailyDate);
 
     // Eyebrow
     ctx.fillStyle = '#FF0066';
     ctx.font = `500 13px "DM Mono", monospace`;
     ctx.letterSpacing = '4px';
-    ctx.fillText('// FULL CATALOG · SPOTIFY', PX, y);
+    ctx.fillText('// FULL CATALOG · SPOTIFY', PX, hasDaily ? 348 : 390);
+
+    // Pink rule (10px below eyebrow baseline)
+    ctx.fillStyle = '#FF0066';
+    ctx.fillRect(PX, hasDaily ? 360 : 402, 70, 2);
+
+    // Total number (86px Bebas — top sits ~72px above baseline, so baseline at rule+72+gap)
+    ctx.fillStyle = '#FF0066';
+    ctx.letterSpacing = '2px';
+    fillTextFit(ctx, formatFull(data.total), PX, hasDaily ? 450 : 510, 86, textW, '"Bebas Neue", sans-serif');
+
+    // "TOTAL STREAMS" label (18px below total baseline)
+    ctx.fillStyle = 'rgba(245,240,240,0.45)';
+    ctx.font = `500 13px "DM Mono", monospace`;
+    ctx.letterSpacing = '3px';
+    ctx.fillText('TOTAL STREAMS ACROSS ALL RELEASES', PX, hasDaily ? 472 : 534);
+
+    if (hasDaily) {
+      // Daily number (62px Bebas, starts ~55px below "TOTAL STREAMS" baseline)
+      ctx.fillStyle = '#F5F0F0';
+      ctx.letterSpacing = '2px';
+      fillTextFit(ctx, '+' + formatFull(data.dailyStreams), PX, 538, 62, textW, '"Bebas Neue", sans-serif');
+
+      // Daily label (18px below daily number baseline)
+      ctx.fillStyle = 'rgba(245,240,240,0.4)';
+      ctx.font = `500 13px "DM Mono", monospace`;
+      ctx.letterSpacing = '3px';
+      ctx.fillText('DAILY STREAMS · ' + data.dailyDate, PX, 558);
+    }
 
   } else {
     // ── Square: top-down layout ──
