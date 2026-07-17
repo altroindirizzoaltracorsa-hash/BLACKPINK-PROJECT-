@@ -7303,11 +7303,11 @@ function drawCatalogCard(canvas, data, logo, art) {
     if (landscape) {
       // Anchor top-center so faces sit at the top of the card
       ctx.drawImage(art, (W - iw) / 2, 0, iw, ih);
-      // Gradient: barely tinted at top, very dark from ~50% down for text readability
+      // Gradient: fully transparent over faces, sharp ramp below them
       const gr = ctx.createLinearGradient(0, 0, 0, H);
-      gr.addColorStop(0,    'rgba(8,8,8,0.05)');
-      gr.addColorStop(0.30, 'rgba(8,8,8,0.30)');
-      gr.addColorStop(0.48, 'rgba(8,8,8,0.86)');
+      gr.addColorStop(0,    'rgba(8,8,8,0)');
+      gr.addColorStop(0.44, 'rgba(8,8,8,0)');
+      gr.addColorStop(0.54, 'rgba(8,8,8,0.86)');
       gr.addColorStop(1,    'rgba(8,8,8,0.97)');
       ctx.fillStyle = gr;
       ctx.fillRect(0, 0, W, H);
@@ -7369,34 +7369,34 @@ function drawCatalogCard(canvas, data, logo, art) {
     ctx.fillStyle = '#FF0066';
     ctx.font = `500 13px "DM Mono", monospace`;
     ctx.letterSpacing = '4px';
-    ctx.fillText('// FULL CATALOG · SPOTIFY', PX, hasDaily ? 348 : 390);
+    ctx.fillText('// FULL CATALOG · SPOTIFY', PX, hasDaily ? 370 : 410);
 
-    // Pink rule (10px below eyebrow baseline)
+    // Pink rule (12px below eyebrow baseline)
     ctx.fillStyle = '#FF0066';
-    ctx.fillRect(PX, hasDaily ? 360 : 402, 70, 2);
+    ctx.fillRect(PX, hasDaily ? 382 : 422, 70, 2);
 
-    // Total number (86px Bebas — top sits ~72px above baseline, so baseline at rule+72+gap)
+    // Total number (86px Bebas)
     ctx.fillStyle = '#FF0066';
     ctx.letterSpacing = '2px';
-    fillTextFit(ctx, formatFull(data.total), PX, hasDaily ? 450 : 510, 86, textW, '"Bebas Neue", sans-serif');
+    fillTextFit(ctx, formatFull(data.total), PX, hasDaily ? 468 : 524, 86, textW, '"Bebas Neue", sans-serif');
 
-    // "TOTAL STREAMS" label (18px below total baseline)
+    // "TOTAL STREAMS" label
     ctx.fillStyle = 'rgba(245,240,240,0.45)';
     ctx.font = `500 13px "DM Mono", monospace`;
     ctx.letterSpacing = '3px';
-    ctx.fillText('TOTAL STREAMS ACROSS ALL RELEASES', PX, hasDaily ? 472 : 534);
+    ctx.fillText('TOTAL STREAMS ACROSS ALL RELEASES', PX, hasDaily ? 490 : 548);
 
     if (hasDaily) {
-      // Daily number (62px Bebas, starts ~55px below "TOTAL STREAMS" baseline)
+      // Daily number (62px Bebas)
       ctx.fillStyle = '#F5F0F0';
       ctx.letterSpacing = '2px';
-      fillTextFit(ctx, '+' + formatFull(data.dailyStreams), PX, 538, 62, textW, '"Bebas Neue", sans-serif');
+      fillTextFit(ctx, '+' + formatFull(data.dailyStreams), PX, 550, 62, textW, '"Bebas Neue", sans-serif');
 
-      // Daily label (18px below daily number baseline)
+      // Daily label
       ctx.fillStyle = 'rgba(245,240,240,0.4)';
       ctx.font = `500 13px "DM Mono", monospace`;
       ctx.letterSpacing = '3px';
-      ctx.fillText('DAILY STREAMS · ' + data.dailyDate, PX, 558);
+      ctx.fillText('DAILY STREAMS · ' + data.dailyDate, PX, 568);
     }
 
   } else {
