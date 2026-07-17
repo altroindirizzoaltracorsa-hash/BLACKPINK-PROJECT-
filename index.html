@@ -6010,15 +6010,18 @@ function closeCard() {
   document.getElementById('card-overlay').style.display = 'none';
 }
 
-function downloadCard() {
+async function downloadCard() {
   if (!cardCanvas) return;
   const now = new Date();
   const stamp = `${now.getDate()}-${now.getMonth()+1}-${now.getFullYear()}`;
-  const a = document.createElement('a');
   const label = document.getElementById('card-box-label').textContent.replace(/[^a-z0-9]/gi,'-').toLowerCase();
+  const blob = await new Promise(res => cardCanvas.toBlob(res, 'image/png'));
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
   a.download = `bu-${label}-${stamp}.png`;
-  a.href = cardCanvas.toDataURL('image/png');
+  a.href = url;
   a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
 async function copyCard(btn) {
