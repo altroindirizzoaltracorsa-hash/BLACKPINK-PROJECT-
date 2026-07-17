@@ -908,23 +908,76 @@
       .catch(function (e) { console.error(e); btn.innerHTML = '&#x2193; Save video'; btn.disabled = false; });
   });
 
-  function fixWebmDuration(blob, durationMs) {
+  function fixDuration(blob, durationMs) {
     return new Promise(function (resolve) {
       var reader = new FileReader();
       reader.onload = function (ev) {
         var buf = new Uint8Array(ev.target.result);
-        var durationSec = durationMs / 1000;
-        // Search for EBML Duration element (ID 0x4489) with an 8-byte float payload (size byte 0x88)
-        for (var i = 0; i < buf.length - 10; i++) {
-          if (buf[i] === 0x44 && buf[i + 1] === 0x89 && buf[i + 2] === 0x88) {
-            var view = new DataView(buf.buffer);
-            view.setFloat64(i + 3, durationSec, false); // big-endian IEEE 754
-            break;
+        var view = new DataView(buf.buffer);
+
+        if (blob.type.indexOf('webm') !== -1) {
+          // WebM: patch EBML Duration element (ID 0x4489, 8-byte float payload 0x88)
+          for (var i = 0; i < buf.length - 10; i++) {
+            if (buf[i] === 0x44 && buf[i+1] === 0x89 && buf[i+2] === 0x88) {
+              view.setFloat64(i + 3, durationMs / 1000, false);
+              break;
+            }
+          }
+        } else {
+          // MP4: navigate box tree inside moov, patch mvhd/tkhd/mdhd duration fields
+          var movieTs = 0;
+          function scanMp4(start, end, firstPass) {
+            var p = start;
+            while (p + 8 <= end) {
+              var bsz = view.getUint32(p, false);
+              if (bsz < 8 || p + bsz > end + 8) break;
+              var bt = String.fromCharCode(buf[p+4], buf[p+5], buf[p+6], buf[p+7]);
+              var ver = buf[p+8];
+              if (firstPass) {
+                if (bt === 'mvhd') {
+                  movieTs = ver === 0 ? view.getUint32(p+20, false) : view.getUint32(p+28, false);
+                  return; // found timescale
+                }
+              } else {
+                if (bt === 'mvhd' && movieTs > 0) {
+                  var d = Math.round(durationMs * movieTs / 1000);
+                  if (ver === 0) { view.setUint32(p+24, d, false); }
+                  else { view.setUint32(p+32, 0, false); view.setUint32(p+36, d, false); }
+                } else if (bt === 'tkhd' && movieTs > 0) {
+                  var d = Math.round(durationMs * movieTs / 1000);
+                  if (ver === 0) { view.setUint32(p+28, d, false); }
+                  else { view.setUint32(p+36, 0, false); view.setUint32(p+40, d, false); }
+                } else if (bt === 'mdhd') {
+                  var mts = ver === 0 ? view.getUint32(p+20, false) : view.getUint32(p+28, false);
+                  if (mts > 0) {
+                    var d = Math.round(durationMs * mts / 1000);
+                    if (ver === 0) { view.setUint32(p+24, d, false); }
+                    else { view.setUint32(p+32, 0, false); view.setUint32(p+36, d, false); }
+                  }
+                }
+              }
+              if ('moov trak mdia minf stbl udta'.indexOf(bt) !== -1) scanMp4(p+8, p+bsz, firstPass);
+              p += bsz;
+            }
+          }
+          // Find moov box (skip mdat to avoid scanning video data)
+          var mp4pos = 0;
+          while (mp4pos + 8 <= buf.length) {
+            var bsz = view.getUint32(mp4pos, false);
+            if (bsz < 8) break;
+            var bt = String.fromCharCode(buf[mp4pos+4], buf[mp4pos+5], buf[mp4pos+6], buf[mp4pos+7]);
+            if (bt === 'moov') {
+              scanMp4(mp4pos + 8, mp4pos + bsz, true);  // first pass: get timescale
+              scanMp4(mp4pos + 8, mp4pos + bsz, false); // second pass: patch durations
+              break;
+            }
+            mp4pos += bsz;
           }
         }
+
         resolve(new Blob([buf], { type: blob.type }));
       };
-      reader.onerror = function () { resolve(blob); }; // fallback: return original
+      reader.onerror = function () { resolve(blob); };
       reader.readAsArrayBuffer(blob);
     });
   }
@@ -942,12 +995,10 @@
     var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
     var eo = function (t) { return 1 - (1-t)*(1-t); };
 
-    // Force WebM — Chrome's native format. MP4 from MediaRecorder is fragmented fMP4
-    // which Samsung Gallery and many mobile players reject as "unsupported".
-    var mime = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm;codecs=vp8,opus','video/webm;codecs=vp8','video/webm'].find(function (t) {
+    var mime = ['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm'].find(function (t) {
       try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; }
     }) || 'video/webm';
-    var ext = 'webm';
+    var ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
 
     var videoStream = canvas.captureStream(FPS);
 
@@ -1160,7 +1211,7 @@
         await recDone;
 
         var rawBlob = new Blob(chunks, { type: mime });
-        var blob = await fixWebmDuration(rawBlob, recDurMs);
+        var blob = await fixDuration(rawBlob, recDurMs);
         var aEl = document.createElement('a');
         aEl.href = URL.createObjectURL(blob);
         aEl.download = 'blinks-united-10years.' + ext;
