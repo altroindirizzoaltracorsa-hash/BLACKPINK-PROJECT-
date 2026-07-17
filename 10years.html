@@ -892,10 +892,10 @@
   };
 
   btn.addEventListener('click', function () {
-    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
+    if ((!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) && !window.VideoEncoder) {
       (function(){
         var t=document.createElement('div');
-        t.textContent='Video download requires Chrome or Edge on desktop.';
+        t.textContent='Video download requires Chrome 94+, Safari 16.4+, or Edge.';
         t.style.cssText='position:fixed;bottom:5.5rem;left:1.2rem;z-index:800;background:rgba(7,4,7,0.92);border:1px solid #8B1C4A;color:#EEE6EE;font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.6rem 1.1rem;border-radius:0.6rem;backdrop-filter:blur(8px);font-family:system-ui,sans-serif;max-width:calc(100vw - 2.4rem);line-height:1.5;transition:opacity 0.4s';
         document.body.appendChild(t);
         setTimeout(function(){t.style.opacity='0';setTimeout(function(){t.remove();},500);},3500);
@@ -980,6 +980,107 @@
       reader.onerror = function () { resolve(blob); };
       reader.readAsArrayBuffer(blob);
     });
+  }
+
+  function buildMp4FromH264(samples, avcCDesc, W, H, fps) {
+    var timescale = 90000;
+    var frameDur  = Math.round(timescale / fps);
+    var totalDur  = samples.length * frameDur;
+
+    function u16(n) { return new Uint8Array([(n>>>8)&0xFF, n&0xFF]); }
+    function u32(n) { return new Uint8Array([(n>>>24)&0xFF,(n>>>16)&0xFF,(n>>>8)&0xFF,n&0xFF]); }
+    function s4(s)  { return new Uint8Array([s.charCodeAt(0),s.charCodeAt(1),s.charCodeAt(2),s.charCodeAt(3)]); }
+    function cat()  {
+      var ps = [].slice.call(arguments);
+      var len = ps.reduce(function(a,p){return a+p.length;},0);
+      var out = new Uint8Array(len), pos = 0;
+      ps.forEach(function(p){ out.set(p,pos); pos+=p.length; });
+      return out;
+    }
+    function box(type) {
+      var payload = cat.apply(null,[].slice.call(arguments,1));
+      var b = new Uint8Array(8+payload.length);
+      new DataView(b.buffer).setUint32(0,b.length,false);
+      b[4]=type.charCodeAt(0); b[5]=type.charCodeAt(1); b[6]=type.charCodeAt(2); b[7]=type.charCodeAt(3);
+      b.set(payload,8); return b;
+    }
+    function fbox(type, ver, flags) {
+      var vf = new Uint8Array([ver,(flags>>>16)&0xFF,(flags>>>8)&0xFF,flags&0xFF]);
+      return box.apply(null,[type,vf].concat([].slice.call(arguments,3)));
+    }
+    var IDX = new Uint8Array([
+      0x00,0x01,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
+      0x00,0x00,0x00,0x00, 0x00,0x01,0x00,0x00, 0x00,0x00,0x00,0x00,
+      0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x40,0x00,0x00,0x00
+    ]);
+
+    var avcCBox = box('avcC', avcCDesc);
+    var avc1Box = box('avc1',
+      new Uint8Array(6), u16(1), new Uint8Array(16),
+      u16(W), u16(H), u32(0x00480000), u32(0x00480000), u32(0), u16(1),
+      new Uint8Array(32), u16(0x0018), new Uint8Array([0xFF,0xFF]), avcCBox);
+    var stsd = fbox('stsd',0,0, u32(1), avc1Box);
+    var stts = fbox('stts',0,0, u32(1), u32(samples.length), u32(frameDur));
+
+    var keyParts = [];
+    samples.forEach(function(s,i){ if(s.isKey) keyParts.push(u32(i+1)); });
+    var stss = fbox.apply(null,['stss',0,0,u32(keyParts.length)].concat(keyParts));
+
+    var stsc = fbox('stsc',0,0, u32(1), u32(1), u32(samples.length), u32(1));
+
+    var szParts = [u32(0), u32(samples.length)];
+    samples.forEach(function(s){ szParts.push(u32(s.data.length)); });
+    var stsz = fbox.apply(null,['stsz',0,0].concat(szParts));
+
+    var stcoPlac = fbox('stco',0,0, u32(1), u32(0));
+    var stbl = box('stbl', stsd, stts, stss, stsc, stsz, stcoPlac);
+
+    var vmhd = fbox('vmhd',0,1, u16(0), new Uint8Array(6));
+    var urlB = fbox('url ',0,1);
+    var dref = fbox('dref',0,0, u32(1), urlB);
+    var minf = box('minf', vmhd, box('dinf', dref), stbl);
+
+    var mdhd = fbox('mdhd',0,0, u32(0),u32(0), u32(timescale),u32(totalDur), u16(0x55C4),u16(0));
+    var hdlr = fbox('hdlr',0,0, u32(0), s4('vide'), new Uint8Array(12), new Uint8Array([86,105,100,101,111,0]));
+    var mdia = box('mdia', mdhd, hdlr, minf);
+
+    var tkhd = fbox('tkhd',0,3,
+      u32(0),u32(0), u32(1),u32(0), u32(totalDur),
+      new Uint8Array(8), u16(0),u16(0), u16(0),u16(0),
+      IDX, u32(W<<16), u32(H<<16));
+    var trak = box('trak', tkhd, mdia);
+
+    var mvhd = fbox('mvhd',0,0,
+      u32(0),u32(0), u32(timescale),u32(totalDur),
+      u32(0x00010000), u16(0x0100), new Uint8Array(10), IDX, new Uint8Array(24), u32(2));
+    var moov = box('moov', mvhd, trak);
+    var ftyp = box('ftyp', s4('mp42'), u32(0), s4('mp42'), s4('isom'), s4('avc1'));
+
+    /* Patch stco chunk offset: mdat payload follows ftyp + moov + 8-byte mdat header */
+    var mdatOffset = ftyp.length + moov.length + 8;
+    var mv = new DataView(moov.buffer, moov.byteOffset, moov.byteLength);
+    function findStco(buf, p, end) {
+      while (p+8 <= end) {
+        var sz = (buf[p]<<24|buf[p+1]<<16|buf[p+2]<<8|buf[p+3])>>>0;
+        if (sz<8||p+sz>end) break;
+        var t = String.fromCharCode(buf[p+4],buf[p+5],buf[p+6],buf[p+7]);
+        if (t==='stco') return p;
+        if ('trak mdia minf stbl'.indexOf(t)!==-1) { var r=findStco(buf,p+8,p+sz); if(r!==-1) return r; }
+        p+=sz;
+      }
+      return -1;
+    }
+    var stcoOff = findStco(moov, 8, moov.length);
+    if (stcoOff !== -1) mv.setUint32(stcoOff+16, mdatOffset, false);
+
+    var mdatPayloadLen = samples.reduce(function(a,s){return a+s.data.length;},0);
+    var mdatH = new Uint8Array(8);
+    new DataView(mdatH.buffer).setUint32(0,8+mdatPayloadLen,false);
+    mdatH[4]=109; mdatH[5]=100; mdatH[6]=97; mdatH[7]=116;
+
+    var parts = [ftyp, moov, mdatH];
+    samples.forEach(function(s){ parts.push(s.data); });
+    return cat.apply(null, parts);
   }
 
   function runRecording() {
@@ -1133,7 +1234,98 @@
         } catch (e) { return Promise.resolve(null); }
       })();
 
-      audioSetup.then(function (audio) {
+      audioSetup.then(async function (audio) {
+        /* ── WebCodecs path: explicit frame encoding, works on Android & iOS ── */
+        if (window.VideoEncoder && window.VideoFrame) {
+          var wcOk = false, wcCodec = 'avc1.4D0028';
+          try {
+            var wcCs = await VideoEncoder.isConfigSupported({ codec: wcCodec, width: W, height: H, bitrate: 3000000, framerate: FPS });
+            wcOk = wcCs.supported;
+          } catch(e) {}
+
+          if (wcOk) {
+            var wcChunks = [], wcAvcC = null, wcErr = null, wcFi = 0;
+            var wcEnc = new VideoEncoder({
+              output: function(chunk, meta) {
+                if (meta && meta.decoderConfig && meta.decoderConfig.description)
+                  wcAvcC = new Uint8Array(meta.decoderConfig.description);
+                var d = new Uint8Array(chunk.byteLength); chunk.copyTo(d);
+                wcChunks.push({ data: d, isKey: chunk.type === 'key' });
+              },
+              error: function(e) { wcErr = e; }
+            });
+            wcEnc.configure({ codec: wcCodec, width: W, height: H, bitrate: 3000000, framerate: FPS, avc: { format: 'avc' } });
+
+            var wcEncF = async function() {
+              var vf = new VideoFrame(canvas, { timestamp: Math.round(wcFi * 1e6 / FPS) });
+              wcEnc.encode(vf, { keyFrame: wcFi % (FPS * 2) === 0 }); vf.close(); wcFi++;
+              if (wcFi % 10 === 0 || wcEnc.encodeQueueSize > 8)
+                await new Promise(function(r){ setTimeout(r,0); });
+            };
+            var wcFade = async function(ms, fn, ease) {
+              ease = ease || eo;
+              var fs = Math.max(1, Math.round(ms / MS));
+              for (var f = 0; f <= fs; f++) { fn(ease(f / fs)); await wcEncF(); }
+            };
+            var wcHold = async function(ms, fn) {
+              var fs = Math.round(ms / MS);
+              for (var f = 0; f < fs; f++) { fn(); await wcEncF(); }
+            };
+            var wcSleep = async function(ms) {
+              var fs = Math.max(1, Math.round(ms / MS));
+              for (var f = 0; f < fs; f++) { await wcEncF(); }
+            };
+            try {
+              var WC_MEMBERS = ['JISOO','JENNIE','ROSÉ','LISA'];
+              var WC_SONGS   = ['PINK VENOM','LOVESICK GIRLS','HOW YOU LIKE THAT','DDU-DU DDU-DU','KILL THIS LOVE','PLAYING WITH FIRE','BOOMBAYAH','WHISTLE'];
+              for (var wci = 0; wci < WC_MEMBERS.length; wci++) {
+                var wcNm = WC_MEMBERS[wci];
+                await wcFade(380, (function(n){ return function(a){base();mname(n,a);}; })(wcNm));
+                await wcHold(700, (function(n){ return function(){base();mname(n,1);}; })(wcNm));
+                await wcFade(320, (function(n){ return function(a){base();mname(n,1-a);}; })(wcNm));
+                await wcSleep(120);
+              }
+              await wcFade(450, function(a){base(a*.85);});
+              await wcHold(500, function(){base(.85);});
+              for (var wcj = 0; wcj < WC_SONGS.length; wcj++) {
+                var wcS = WC_SONGS[wcj];
+                await wcFade(110, (function(t){ return function(a){base(.85);sng(t,a);}; })(wcS));
+                await wcHold(160, (function(t){ return function(){base(.85);sng(t,1);}; })(wcS));
+                await wcFade(100, (function(t){ return function(a){base(.85);sng(t,1-a);}; })(wcS));
+                await wcSleep(30);
+              }
+              await wcSleep(180);
+              await wcFade(550, function(a){base(.85);dateText(a);});
+              await wcHold(450, function(){base(.85);dateText(1);});
+              await wcFade(280, function(a){base(.85);dateText(1);debutText(a);});
+              await wcHold(550, function(){base(.85);dateText(1);debutText(1);});
+              await wcFade(230, function(a){base(.85);dateText(1);debutText(1-a);});
+              await wcFade(650, function(a){base(.85);dateText(1);bpLogo(logoEl,a);});
+              await wcHold(700, function(){base(.85);dateText(1);bpLogo(logoEl,1);});
+              await wcFade(230, function(a){base(.85);dateText(1-a);bpLogo(logoEl,1);});
+              await wcFade(550, function(a){base(.85);bpLogo(logoEl,1);heroTitle(a);});
+              await wcHold(350, function(){base(.85);bpLogo(logoEl,1);heroTitle(1);});
+              await wcFade(450, function(a){base(.85);bpLogo(logoEl,1);heroTitle(1);cdTimer(a);});
+              await wcHold(2200, function(){base(.85);bpLogo(logoEl,1);heroTitle(1);cdTimer(1);});
+              await wcFade(650, function(a){
+                var v=1-a; clr(); bar(v); corners(.85*v); bpLogo(logoEl,v); heroTitle(v); cdTimer(v); mark(.5*v);
+              }, function(t){return t;});
+              await wcEnc.flush(); wcEnc.close();
+              if (wcErr) throw wcErr;
+              if (!wcAvcC) throw new Error('No SPS/PPS from encoder');
+              var wcMp4 = buildMp4FromH264(wcChunks, wcAvcC, W, H, FPS);
+              var wcBlob = new Blob([wcMp4], { type: 'video/mp4' });
+              var wcA = document.createElement('a'); wcA.href = URL.createObjectURL(wcBlob);
+              wcA.download = 'blinks-united-10years.mp4'; wcA.click();
+              setTimeout(function(){ URL.revokeObjectURL(wcA.href); }, 15000);
+              try { document.body.removeChild(canvas); } catch(e) {}
+              resolve();
+            } catch(e) { try { wcEnc.close(); } catch(_){} try { document.body.removeChild(canvas); } catch(_){} reject(e); }
+            return;
+          }
+        }
+
+        /* ── MediaRecorder fallback ─────────────────────────────────────────── */
         var audioSource = null;
         var recStream = videoStream;
 
