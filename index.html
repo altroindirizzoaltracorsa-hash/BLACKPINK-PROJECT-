@@ -7163,15 +7163,20 @@ function drawVoteCard(canvas, campaign, logo, art) {
   ctx.fillRect(0, 0, W, H);
 
   if (art) {
-    // Confine art to a dedicated left panel and *contain*-fit it (never crop) so
-    // nominees stay fully visible — group photos are wider than the panel is tall.
-    const AW = Math.round(W * (landscape ? 0.44 : 0.36));
-    const scale = Math.min(AW / art.naturalWidth, H / art.naturalHeight);
+    const AW = Math.round(W * (landscape ? 0.50 : 0.42));
+    const isPortrait = art.naturalHeight > art.naturalWidth;
+    // Portrait shots: cover-fit so the face fills the panel. Landscape group
+    // shots: contain-fit so all nominees stay fully visible.
+    const scale = isPortrait
+      ? Math.max(AW / art.naturalWidth, H / art.naturalHeight)
+      : Math.min(AW / art.naturalWidth, H / art.naturalHeight);
     const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+    if (isPortrait) { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, AW, H); ctx.clip(); }
     ctx.drawImage(art, (AW - iw) / 2, (H - ih) / 2, iw, ih);
-    const gr = ctx.createLinearGradient(AW - 40, 0, AW + 50, 0);
+    if (isPortrait) ctx.restore();
+    const gr = ctx.createLinearGradient(AW - 40, 0, AW + 60, 0);
     gr.addColorStop(0, 'rgba(8,8,8,0)'); gr.addColorStop(1, 'rgba(8,8,8,1)');
-    ctx.fillStyle = gr; ctx.fillRect(AW - 40, 0, 90, H);
+    ctx.fillStyle = gr; ctx.fillRect(AW - 40, 0, 100, H);
   } else {
     const glow = ctx.createRadialGradient(0, H / 2, 0, 0, H / 2, H * 0.7);
     glow.addColorStop(0, 'rgba(255,0,102,0.15)'); glow.addColorStop(1, 'rgba(8,8,8,0)');
@@ -7179,7 +7184,7 @@ function drawVoteCard(canvas, campaign, logo, art) {
   }
   drawNoise(ctx, W, H, 0.03);
 
-  const PX = landscape ? (art ? Math.round(W * 0.49) : 70) : (art ? Math.round(W * 0.42) : 80);
+  const PX = landscape ? (art ? Math.round(W * 0.54) : 70) : (art ? Math.round(W * 0.46) : 80);
   const textW = W - PX - (landscape ? 50 : 60);
   ctx.textAlign = 'left';
 
