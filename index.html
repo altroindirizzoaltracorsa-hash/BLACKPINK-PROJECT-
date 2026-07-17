@@ -858,6 +858,12 @@
   .catalog-daily { font-size: 0.7rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.55); margin-top: 0.2rem; }
   .catalog-daily strong { color: var(--white); }
   .catalog-source { font-size: 0.52rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(245,240,240,0.28); margin-top: 0.3rem; }
+  .catalog-daily-list { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 0.45rem; margin-top: 0.6rem; }
+  .cat-daily-row { display: grid; grid-template-columns: 3.2rem 1fr 5.8rem; align-items: center; gap: 0.6rem; }
+  .cat-daily-date { font-size: 0.58rem; letter-spacing: 0.1em; color: rgba(245,240,240,0.45); text-align: right; white-space: nowrap; }
+  .cat-daily-bar-wrap { height: 4px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
+  .cat-daily-bar { height: 100%; background: var(--pink); border-radius: 2px; transition: width 0.4s ease; }
+  .cat-daily-num { font-size: 0.6rem; letter-spacing: 0.08em; color: rgba(245,240,240,0.65); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
   /* ── GROUP CHAT (floating widget, lives outside .page so it persists across all pages) ── */
   .chat-fab {
@@ -1467,6 +1473,7 @@
       <div class="catalog-total-num" id="catalog-total-count">—</div>
       <p class="catalog-total-label">Total Streams Across All Releases</p>
       <p class="catalog-daily" id="catalog-daily-info"></p>
+      <div class="catalog-daily-list" id="catalog-daily-list" style="display:none"></div>
       <p class="catalog-source" id="catalog-source-info"></p>
     </div>
   </section>
@@ -2389,22 +2396,46 @@ async function loadCatalogStreams() {
     const countEl  = document.getElementById('catalog-total-count');
     const dailyEl  = document.getElementById('catalog-daily-info');
     const srcEl    = document.getElementById('catalog-source-info');
+    const histEl   = document.getElementById('catalog-daily-list');
     if (!section || !countEl) return;
 
     countEl.textContent = d.total.toLocaleString('en-US');
 
     const hist = d.history || [];
-    if (hist.length >= 2) {
-      const last  = hist[hist.length - 1];
-      const prev  = hist[hist.length - 2];
-      const daily = last.total - prev.total;
-      if (daily > 0 && dailyEl) {
-        dailyEl.innerHTML = `<strong>+${daily.toLocaleString('en-US')}</strong> streams on ${last.date}`;
+
+    // Compute daily streams for each history entry
+    const dailyRows = [];
+    for (let i = 0; i < hist.length; i++) {
+      const entry = hist[i];
+      let streams = entry.daily ?? null;
+      if (streams === null && i > 0) {
+        const diff = entry.total - hist[i - 1].total;
+        if (diff > 0) streams = diff;
       }
+      if (streams !== null && streams > 0) dailyRows.push({ date: entry.date, streams });
+    }
+
+    // Latest daily in the subtitle
+    if (dailyRows.length > 0 && dailyEl) {
+      const latest = dailyRows[dailyRows.length - 1];
+      dailyEl.innerHTML = `<strong>+${latest.streams.toLocaleString('en-US')}</strong> streams on ${latest.date}`;
+    }
+
+    // Recent daily breakdown list (last 7 days, newest first)
+    if (histEl && dailyRows.length > 0) {
+      const rows = [...dailyRows].reverse().slice(0, 7);
+      const max  = Math.max(...rows.map(r => r.streams));
+      histEl.innerHTML = rows.map(row => `
+        <div class="cat-daily-row">
+          <span class="cat-daily-date">${row.date}</span>
+          <div class="cat-daily-bar-wrap"><div class="cat-daily-bar" style="width:${Math.round(row.streams/max*100)}%"></div></div>
+          <span class="cat-daily-num">+${row.streams.toLocaleString('en-US')}</span>
+        </div>`).join('');
+      histEl.style.display = '';
     }
 
     if (srcEl) {
-      const agoH  = d.ts ? Math.round((Date.now() - d.ts) / 3_600_000) : null;
+      const agoH  = d.ts ? Math.round((Date.now() - d.ts) / 3600000) : null;
       const agoTx = agoH === null ? 'daily' : agoH < 1 ? 'recently' : `${agoH}h ago`;
       srcEl.textContent = `Updated ${agoTx}${d.stale ? ' · stale' : ''}`;
     }
