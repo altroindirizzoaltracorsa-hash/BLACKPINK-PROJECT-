@@ -893,7 +893,13 @@
 
   btn.addEventListener('click', function () {
     if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
-      alert('Video recording needs Chrome or Edge on desktop.'); return;
+      (function(){
+        var t=document.createElement('div');
+        t.textContent='Video download requires Chrome or Edge on desktop.';
+        t.style.cssText='position:fixed;bottom:5.5rem;left:1.2rem;z-index:800;background:rgba(7,4,7,0.92);border:1px solid #8B1C4A;color:#EEE6EE;font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.6rem 1.1rem;border-radius:0.6rem;backdrop-filter:blur(8px);font-family:system-ui,sans-serif;max-width:calc(100vw - 2.4rem);line-height:1.5;transition:opacity 0.4s';
+        document.body.appendChild(t);
+        setTimeout(function(){t.style.opacity='0';setTimeout(function(){t.remove();},500);},3500);
+      })(); return;
     }
     btn.innerHTML = '&#x23FA; Recording&hellip;';
     btn.disabled = true; btn.style.color = '#FF0080'; btn.style.borderColor = '#FF0080';
@@ -901,6 +907,27 @@
       .then(function () { btn.innerHTML = '&#x2193; Save video'; btn.disabled = false; btn.style.color = ''; btn.style.borderColor = ''; })
       .catch(function (e) { console.error(e); btn.innerHTML = '&#x2193; Save video'; btn.disabled = false; });
   });
+
+  function fixWebmDuration(blob, durationMs) {
+    return new Promise(function (resolve) {
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        var buf = new Uint8Array(ev.target.result);
+        var durationSec = durationMs / 1000;
+        // Search for EBML Duration element (ID 0x4489) with an 8-byte float payload (size byte 0x88)
+        for (var i = 0; i < buf.length - 10; i++) {
+          if (buf[i] === 0x44 && buf[i + 1] === 0x89 && buf[i + 2] === 0x88) {
+            var view = new DataView(buf.buffer);
+            view.setFloat64(i + 3, durationSec, false); // big-endian IEEE 754
+            break;
+          }
+        }
+        resolve(new Blob([buf], { type: blob.type }));
+      };
+      reader.onerror = function () { resolve(blob); }; // fallback: return original
+      reader.readAsArrayBuffer(blob);
+    });
+  }
 
   function runRecording() {
     var W = 1080, H = 1920, FPS = 30, MS = 1000 / FPS;
@@ -1058,6 +1085,7 @@
         var chunks = [];
         rec.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
         var recDone = new Promise(function (r) { rec.onstop = r; });
+        var recStartMs = performance.now();
         rec.start(100);
         if (audioSource) audioSource.start();
         var audioDurMs = (audio && audio.buf) ? Math.round(audio.buf.duration * 1000) : 0;
@@ -1120,11 +1148,13 @@
           var v=1-a; clr(); bar(v); corners(.85*v); bpLogo(logoEl,v); heroTitle(v); cdTimer(v); mark(.5*v);
         }, function(t){return t;});
 
+        var recDurMs = Math.round(performance.now() - recStartMs);
         rec.stop();
         try { if (audioSource) audioSource.stop(); } catch (e) {}
         await recDone;
 
-        var blob = new Blob(chunks, { type: mime });
+        var rawBlob = new Blob(chunks, { type: mime });
+        var blob = await fixWebmDuration(rawBlob, recDurMs);
         var aEl = document.createElement('a');
         aEl.href = URL.createObjectURL(blob);
         aEl.download = 'blinks-united-10years.' + ext;
