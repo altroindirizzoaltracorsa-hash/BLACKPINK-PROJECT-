@@ -992,7 +992,17 @@
     document.body.appendChild(canvas);
 
     var BG = '#070407', PINK = '#FF0080', GOLD = '#C8A84B', BLUSH = '#EEE6EE', DIM = '#906878';
-    var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+    // rAF-based sleep: guaranteed to respect real wall-clock time on mobile Chrome
+    // (setTimeout can be throttled or batched on Android, causing the animation to
+    // run at near-instant speed and produce a 1-second file)
+    var sleep = function (ms) {
+      return new Promise(function (r) {
+        var end = performance.now() + ms;
+        (function tick() {
+          if (performance.now() >= end) { r(); } else { requestAnimationFrame(tick); }
+        })();
+      });
+    };
     var eo = function (t) { return 1 - (1-t)*(1-t); };
 
     var mime = ['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm'].find(function (t) {
@@ -1142,8 +1152,11 @@
         rec.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
         var recDone = new Promise(function (r) { rec.onstop = r; });
         var recStartMs = performance.now();
-        // No timeslice — collect one chunk on stop; avoids GOP-boundary stalling on mobile
-        rec.start();
+        // 500ms timeslice: Chrome emits ftyp+moov in the first chunk (initialization
+        // segment), so moov is always at the front of the concatenated file. Without
+        // a timeslice Chrome may place moov at the end, which many mobile gallery
+        // apps can't handle.
+        rec.start(500);
         if (audioSource) audioSource.start();
         var audioDurMs = (audio && audio.buf) ? Math.round(audio.buf.duration * 1000) : 0;
 
