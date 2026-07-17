@@ -7294,38 +7294,33 @@ function drawCatalogCard(canvas, data, logo, art) {
   const W = canvas.width, H = canvas.height;
   const landscape = W > H;
 
-  // Background
   ctx.fillStyle = '#080808';
   ctx.fillRect(0, 0, W, H);
 
   if (art) {
+    const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
+    const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
     if (landscape) {
-      // Full-bleed cover, anchored right so faces stay in frame
-      const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
-      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
-      ctx.drawImage(art, W - iw, (H - ih) / 2, iw, ih);
-      // Left-to-right gradient: fully dark on text side, fades to transparent
-      const gr = ctx.createLinearGradient(0, 0, W, 0);
-      gr.addColorStop(0,    'rgba(8,8,8,1)');
-      gr.addColorStop(0.42, 'rgba(8,8,8,0.88)');
-      gr.addColorStop(0.65, 'rgba(8,8,8,0.35)');
-      gr.addColorStop(1,    'rgba(8,8,8,0)');
+      // Anchor top-center so faces sit at the top of the card
+      ctx.drawImage(art, (W - iw) / 2, 0, iw, ih);
+      // Bottom-up gradient: faces visible at top, dark at bottom for text
+      const gr = ctx.createLinearGradient(0, H * 0.22, 0, H);
+      gr.addColorStop(0,    'rgba(8,8,8,0)');
+      gr.addColorStop(0.45, 'rgba(8,8,8,0.82)');
+      gr.addColorStop(1,    'rgba(8,8,8,0.97)');
       ctx.fillStyle = gr;
       ctx.fillRect(0, 0, W, H);
     } else {
-      // Square: art as full background, cover-fit, heavy dark overlay
-      const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
-      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      // Square: cover-fit centered, heavy bottom overlay
       ctx.drawImage(art, (W - iw) / 2, (H - ih) / 2, iw, ih);
       const gr = ctx.createLinearGradient(0, 0, 0, H);
-      gr.addColorStop(0, 'rgba(8,8,8,0.55)');
+      gr.addColorStop(0,    'rgba(8,8,8,0.55)');
       gr.addColorStop(0.35, 'rgba(8,8,8,0.82)');
-      gr.addColorStop(1,   'rgba(8,8,8,0.97)');
+      gr.addColorStop(1,    'rgba(8,8,8,0.97)');
       ctx.fillStyle = gr;
       ctx.fillRect(0, 0, W, H);
     }
   } else {
-    // No art — pink radial glow fallback
     const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, W * 0.75);
     glow.addColorStop(0, 'rgba(255,0,102,0.18)');
     glow.addColorStop(0.5, 'rgba(255,0,102,0.06)');
@@ -7337,67 +7332,126 @@ function drawCatalogCard(canvas, data, logo, art) {
   drawNoise(ctx, W, H, 0.03);
 
   const PX    = landscape ? 70 : 80;
-  const textW = landscape ? Math.round(W * 0.54) - PX : W - PX - 60;
+  const textW = W - PX - (landscape ? 50 : 60);
   ctx.textAlign = 'left';
 
-  // Eyebrow
-  ctx.fillStyle = '#FF0066';
-  ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
-  ctx.letterSpacing = '4px';
-  ctx.fillText('// FULL CATALOG · SPOTIFY', PX, landscape ? 76 : 118);
+  if (landscape) {
+    // ── All text bottom-anchored, under the faces ──
+    const LR    = 22;
+    const logoY = H - 46;
 
-  // "BLACKPINK" logotype
-  ctx.fillStyle = '#F5F0F0';
-  ctx.letterSpacing = '8px';
-  fillTextFit(ctx, 'BLACKPINK', PX, landscape ? 182 : 298, landscape ? 116 : 148, textW, '"Bebas Neue", sans-serif');
-
-  // Pink rule
-  ctx.fillStyle = '#FF0066';
-  ctx.fillRect(PX, landscape ? 208 : 328, 70, landscape ? 2 : 3);
-
-  // Total streams — centrepiece number
-  ctx.fillStyle = '#FF0066';
-  ctx.letterSpacing = '2px';
-  fillTextFit(ctx, formatFull(data.total), PX, landscape ? 358 : 548, landscape ? 102 : 112, textW, '"Bebas Neue", sans-serif');
-  ctx.fillStyle = 'rgba(245,240,240,0.45)';
-  ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
-  ctx.letterSpacing = '3px';
-  ctx.fillText('TOTAL STREAMS ACROSS ALL RELEASES', PX, landscape ? 386 : 582);
-
-  // Daily delta
-  if (data.dailyStreams && data.dailyDate) {
-    const dailyY = landscape ? 452 : 680;
+    // Branding row
+    ctx.fillStyle = 'rgba(255,0,102,0.2)';
+    ctx.fillRect(PX, H - 90, W - PX - 50, 1);
+    if (logo) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+      ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
+      ctx.restore();
+      ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
+      ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    const brandX = logo ? PX + LR * 2 + 10 : PX;
     ctx.fillStyle = '#F5F0F0';
+    ctx.font = `34px "Bebas Neue", sans-serif`;
+    ctx.letterSpacing = '10px';
+    ctx.fillText('BLINKS UNITED', brandX, H - 52);
+    ctx.fillStyle = 'rgba(245,240,240,0.2)';
+    ctx.font = `500 12px "DM Mono", monospace`;
     ctx.letterSpacing = '2px';
-    fillTextFit(ctx, '+' + formatFull(data.dailyStreams), PX, dailyY, landscape ? 68 : 82, textW, '"Bebas Neue", sans-serif');
-    ctx.fillStyle = 'rgba(245,240,240,0.4)';
-    ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
-    ctx.letterSpacing = '3px';
-    ctx.fillText('DAILY STREAMS · ' + data.dailyDate, PX, dailyY + (landscape ? 28 : 36));
-  }
+    ctx.fillText('blackpink-project.vercel.app', brandX, H - 30);
 
-  // Bottom rule + branding
-  const LR   = landscape ? 22 : 28;
-  const logoY = H - (landscape ? 46 : 82);
-  ctx.fillStyle = 'rgba(255,0,102,0.2)';
-  ctx.fillRect(PX, H - (landscape ? 90 : 135), W - PX - (landscape ? 50 : 60), 1);
-  if (logo) {
-    ctx.save();
-    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
-    ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
-    ctx.restore();
-    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
-    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Content block — grow upward from just above the rule
+    let y = H - 108;
+
+    if (data.dailyStreams && data.dailyDate) {
+      ctx.fillStyle = 'rgba(245,240,240,0.4)';
+      ctx.font = `500 13px "DM Mono", monospace`;
+      ctx.letterSpacing = '3px';
+      ctx.fillText('DAILY STREAMS · ' + data.dailyDate, PX, y);
+      y -= 50;
+      ctx.fillStyle = '#F5F0F0';
+      ctx.letterSpacing = '2px';
+      fillTextFit(ctx, '+' + formatFull(data.dailyStreams), PX, y, 66, textW, '"Bebas Neue", sans-serif');
+      y -= 28;
+    }
+
+    ctx.fillStyle = 'rgba(245,240,240,0.45)';
+    ctx.font = `500 13px "DM Mono", monospace`;
+    ctx.letterSpacing = '3px';
+    ctx.fillText('TOTAL STREAMS ACROSS ALL RELEASES', PX, y);
+    y -= 66;
+
+    ctx.fillStyle = '#FF0066';
+    ctx.letterSpacing = '2px';
+    fillTextFit(ctx, formatFull(data.total), PX, y, 94, textW, '"Bebas Neue", sans-serif');
+    y -= 24;
+
+    // Pink rule separator
+    ctx.fillStyle = '#FF0066';
+    ctx.fillRect(PX, y, 70, 2);
+    y -= 24;
+
+    // Eyebrow
+    ctx.fillStyle = '#FF0066';
+    ctx.font = `500 13px "DM Mono", monospace`;
+    ctx.letterSpacing = '4px';
+    ctx.fillText('// FULL CATALOG · SPOTIFY', PX, y);
+
+  } else {
+    // ── Square: top-down layout ──
+    ctx.fillStyle = '#FF0066';
+    ctx.font = `500 18px "DM Mono", monospace`;
+    ctx.letterSpacing = '4px';
+    ctx.fillText('// FULL CATALOG · SPOTIFY', PX, 118);
+
+    ctx.fillStyle = '#F5F0F0';
+    ctx.letterSpacing = '8px';
+    fillTextFit(ctx, 'BLACKPINK', PX, 298, 148, textW, '"Bebas Neue", sans-serif');
+
+    ctx.fillStyle = '#FF0066';
+    ctx.fillRect(PX, 328, 70, 3);
+
+    ctx.fillStyle = '#FF0066';
+    ctx.letterSpacing = '2px';
+    fillTextFit(ctx, formatFull(data.total), PX, 548, 112, textW, '"Bebas Neue", sans-serif');
+    ctx.fillStyle = 'rgba(245,240,240,0.45)';
+    ctx.font = `500 18px "DM Mono", monospace`;
+    ctx.letterSpacing = '3px';
+    ctx.fillText('TOTAL STREAMS ACROSS ALL RELEASES', PX, 582);
+
+    if (data.dailyStreams && data.dailyDate) {
+      ctx.fillStyle = '#F5F0F0';
+      ctx.letterSpacing = '2px';
+      fillTextFit(ctx, '+' + formatFull(data.dailyStreams), PX, 680, 82, textW, '"Bebas Neue", sans-serif');
+      ctx.fillStyle = 'rgba(245,240,240,0.4)';
+      ctx.font = `500 18px "DM Mono", monospace`;
+      ctx.letterSpacing = '3px';
+      ctx.fillText('DAILY STREAMS · ' + data.dailyDate, PX, 716);
+    }
+
+    const LR    = 28;
+    const logoY = H - 82;
+    ctx.fillStyle = 'rgba(255,0,102,0.2)';
+    ctx.fillRect(PX, H - 135, W - PX - 60, 1);
+    if (logo) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+      ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
+      ctx.restore();
+      ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
+      ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    const brandX = logo ? PX + LR * 2 + 10 : PX;
+    ctx.fillStyle = '#F5F0F0';
+    ctx.font = `44px "Bebas Neue", sans-serif`;
+    ctx.letterSpacing = '10px';
+    ctx.fillText('BLINKS UNITED', brandX, H - 72);
+    ctx.fillStyle = 'rgba(245,240,240,0.2)';
+    ctx.font = `500 15px "DM Mono", monospace`;
+    ctx.letterSpacing = '2px';
+    ctx.fillText('blackpink-project.vercel.app', brandX, H - 42);
   }
-  const brandX = logo ? PX + LR * 2 + 10 : PX;
-  ctx.fillStyle = '#F5F0F0';
-  ctx.font = `${landscape ? 34 : 44}px "Bebas Neue", sans-serif`;
-  ctx.letterSpacing = '10px';
-  ctx.fillText('BLINKS UNITED', brandX, H - (landscape ? 52 : 72));
-  ctx.fillStyle = 'rgba(245,240,240,0.2)';
-  ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
-  ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', brandX, H - (landscape ? 30 : 42));
 
   _markCardReady(canvas);
 }
