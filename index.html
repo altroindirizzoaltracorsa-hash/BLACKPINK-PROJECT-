@@ -6084,7 +6084,7 @@ function setCardFormat(fmt, btn) {
   }
   else if (_cardType === 'vote') drawVoteCard(canvas, VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId), _cardLogo, _cardArt);
   else if (_cardType === 'personal') drawPersonalCard(canvas, _personalCardData);
-  else if (_cardType === 'catalog') drawCatalogCard(canvas, _catalogCardData, _cardLogo);
+  else if (_cardType === 'catalog') drawCatalogCard(canvas, _catalogCardData, _cardLogo, _cardArt);
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -7288,7 +7288,7 @@ async function openVoteCard(campaignId) {
   label.textContent = `${campaign.platform} · FAN VOTE CARD`;
 }
 
-function drawCatalogCard(canvas, data, logo) {
+function drawCatalogCard(canvas, data, logo, art) {
   if (!data) return;
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
@@ -7298,18 +7298,46 @@ function drawCatalogCard(canvas, data, logo) {
   ctx.fillStyle = '#080808';
   ctx.fillRect(0, 0, W, H);
 
-  // Radial glow — pink emanating from top-left
-  const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, W * 0.75);
-  glow.addColorStop(0, 'rgba(255,0,102,0.18)');
-  glow.addColorStop(0.5, 'rgba(255,0,102,0.06)');
-  glow.addColorStop(1, 'rgba(8,8,8,0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
+  if (art) {
+    if (landscape) {
+      // Art on the right half, contain-fit so faces aren't cropped
+      const AW = Math.round(W * 0.52);
+      const ox  = W - AW;
+      const scale = Math.min(AW / art.naturalWidth, H / art.naturalHeight);
+      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      ctx.drawImage(art, ox + (AW - iw) / 2, (H - ih) / 2, iw, ih);
+      // Gradient fade: right panel bleeds left into the text area
+      const gr = ctx.createLinearGradient(ox - 60, 0, ox + 180, 0);
+      gr.addColorStop(0, 'rgba(8,8,8,1)');
+      gr.addColorStop(1, 'rgba(8,8,8,0)');
+      ctx.fillStyle = gr;
+      ctx.fillRect(ox - 60, 0, 240, H);
+    } else {
+      // Square: art as full background, cover-fit, heavy dark overlay
+      const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
+      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      ctx.drawImage(art, (W - iw) / 2, (H - ih) / 2, iw, ih);
+      const gr = ctx.createLinearGradient(0, 0, 0, H);
+      gr.addColorStop(0, 'rgba(8,8,8,0.55)');
+      gr.addColorStop(0.35, 'rgba(8,8,8,0.82)');
+      gr.addColorStop(1,   'rgba(8,8,8,0.97)');
+      ctx.fillStyle = gr;
+      ctx.fillRect(0, 0, W, H);
+    }
+  } else {
+    // No art — pink radial glow fallback
+    const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, W * 0.75);
+    glow.addColorStop(0, 'rgba(255,0,102,0.18)');
+    glow.addColorStop(0.5, 'rgba(255,0,102,0.06)');
+    glow.addColorStop(1, 'rgba(8,8,8,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+  }
 
   drawNoise(ctx, W, H, 0.03);
 
   const PX    = landscape ? 70 : 80;
-  const textW = W - PX - (landscape ? 50 : 60);
+  const textW = (landscape && art) ? Math.round(W * 0.48) - PX - 20 : W - PX - (landscape ? 50 : 60);
   ctx.textAlign = 'left';
 
   // Eyebrow
@@ -7388,8 +7416,12 @@ async function openCatalogCard() {
   const canvas = document.getElementById('card-canvas');
   canvas.width = 1200; canvas.height = 675;
   await document.fonts.ready;
-  _cardLogo = await getBuLogo();
-  drawCatalogCard(canvas, _catalogCardData, _cardLogo);
+  const [art, logo] = await Promise.all([
+    loadImg('/vote-blackpink-ot4.jpg').catch(() => null),
+    getBuLogo(),
+  ]);
+  _cardArt = art; _cardLogo = logo;
+  drawCatalogCard(canvas, _catalogCardData, logo, art);
   label.textContent = 'BLACKPINK CATALOG · STREAM UPDATE CARD';
 }
 
