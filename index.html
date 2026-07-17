@@ -7303,11 +7303,12 @@ function drawCatalogCard(canvas, data, logo, art) {
     if (landscape) {
       // Anchor top-center so faces sit at the top of the card
       ctx.drawImage(art, (W - iw) / 2, 0, iw, ih);
-      // Gradient: fully transparent over faces, sharp ramp below them
+      // Gradient: transparent over faces, long smooth ramp into dark text area
       const gr = ctx.createLinearGradient(0, 0, 0, H);
       gr.addColorStop(0,    'rgba(8,8,8,0)');
-      gr.addColorStop(0.44, 'rgba(8,8,8,0)');
-      gr.addColorStop(0.54, 'rgba(8,8,8,0.86)');
+      gr.addColorStop(0.40, 'rgba(8,8,8,0)');
+      gr.addColorStop(0.62, 'rgba(8,8,8,0.75)');
+      gr.addColorStop(0.80, 'rgba(8,8,8,0.92)');
       gr.addColorStop(1,    'rgba(8,8,8,0.97)');
       ctx.fillStyle = gr;
       ctx.fillRect(0, 0, W, H);
