@@ -463,6 +463,12 @@ export default async function handler(req, res) {
     keyCounts[provider.name] = getApiKeys(provider.keyEnvVars).length;
   }
 
+  // Trigger catalog-streams update on cron runs (fire-and-forget, no await)
+  if (isCron && fetchedLive) {
+    const host = req.headers['x-forwarded-host'] || req.headers.host || 'blackpink-project.vercel.app';
+    fetch(`https://${host}/api/catalog-streams?cron=1`).catch(() => {});
+  }
+
   res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
   res.status(200).json({
     ...results,
