@@ -295,6 +295,7 @@ async function fetchCatalogViaKworb() {
 
 async function updateCatalogHistory(total, daily = null, overrideDate = null) {
   const d    = new Date();
+  d.setUTCDate(d.getUTCDate() - 1); // Spotify reports previous day's streams
   const date = overrideDate || `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}`;
   const hist = (await redis.get(CAT_HIST_KEY)) || [];
   const ex   = hist.find(h => h.date === date);
