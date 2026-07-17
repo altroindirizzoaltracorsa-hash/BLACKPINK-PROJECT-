@@ -942,10 +942,12 @@
     var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
     var eo = function (t) { return 1 - (1-t)*(1-t); };
 
-    var mime = ['video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm'].find(function (t) {
+    // Force WebM — Chrome's native format. MP4 from MediaRecorder is fragmented fMP4
+    // which Samsung Gallery and many mobile players reject as "unsupported".
+    var mime = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm;codecs=vp8,opus','video/webm;codecs=vp8','video/webm'].find(function (t) {
       try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; }
     }) || 'video/webm';
-    var ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
+    var ext = 'webm';
 
     var videoStream = canvas.captureStream(FPS);
 
@@ -1089,7 +1091,8 @@
         rec.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
         var recDone = new Promise(function (r) { rec.onstop = r; });
         var recStartMs = performance.now();
-        rec.start(100);
+        // No timeslice — collect one chunk on stop; avoids GOP-boundary stalling on mobile
+        rec.start();
         if (audioSource) audioSource.start();
         var audioDurMs = (audio && audio.buf) ? Math.round(audio.buf.duration * 1000) : 0;
 
