@@ -7346,31 +7346,6 @@ function drawCatalogCard(canvas, data, logo) {
     ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
     ctx.letterSpacing = '3px';
     ctx.fillText('DAILY STREAMS · ' + data.dailyDate, PX, dailyY + (landscape ? 28 : 36));
-
-    // Mini bar chart (last 5 days, newest first)
-    if (data.dailyRows && data.dailyRows.length > 1) {
-      const rows = [...data.dailyRows].reverse().slice(0, 5);
-      const maxV = Math.max(...rows.map(r => r.streams));
-      const barH = landscape ? 3 : 4;
-      const barMaxW = landscape ? 220 : 280;
-      const startY = dailyY + (landscape ? 58 : 74);
-      const rowGap = landscape ? 14 : 18;
-      rows.forEach((row, i) => {
-        const y = startY + i * rowGap;
-        const bw = Math.round(row.streams / maxV * barMaxW);
-        // bar track
-        ctx.fillStyle = 'rgba(255,255,255,0.07)';
-        ctx.fillRect(PX, y, barMaxW, barH);
-        // bar fill
-        ctx.fillStyle = i === 0 ? '#FF0066' : 'rgba(255,0,102,0.5)';
-        ctx.fillRect(PX, y, bw, barH);
-        // date label
-        ctx.fillStyle = 'rgba(245,240,240,0.35)';
-        ctx.font = `500 ${landscape ? 10 : 13}px "DM Mono", monospace`;
-        ctx.letterSpacing = '1px';
-        ctx.fillText(row.date, PX + barMaxW + (landscape ? 8 : 10), y + barH);
-      });
-    }
   }
 
   // Bottom rule + branding
