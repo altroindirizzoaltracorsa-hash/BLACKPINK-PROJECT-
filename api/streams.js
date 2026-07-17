@@ -325,6 +325,19 @@ async function handleCatalogRequest(req, res) {
     }
   }
 
+  // Admin delete history entry: ?action=delete&date=DD/MM&key=admin
+  if (req.query.action === 'delete') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    if (!adminSecret || req.query.key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
+    const date = req.query.date;
+    if (!date) return res.status(400).json({ error: 'date required (DD/MM)' });
+    const hist = (await redis.get(CAT_HIST_KEY)) || [];
+    const before = hist.length;
+    const updated = hist.filter(h => h.date !== date);
+    await redis.set(CAT_HIST_KEY, updated);
+    return res.status(200).json({ ok: true, removed: before - updated.length, history: updated });
+  }
+
   // Admin manual seed: ?action=set&total=X[&daily=Y][&date=DD/MM]&key=admin
   if (req.query.action === 'set') {
     const adminSecret = process.env.ADMIN_SECRET;
