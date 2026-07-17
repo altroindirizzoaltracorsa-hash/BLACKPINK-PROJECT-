@@ -41,6 +41,10 @@
     {
       "path": "/api/proxy-image?global_streams=cron",
       "schedule": "5 2 * * *"
+    },
+    {
+      "path": "/api/catalog-streams?cron=1",
+      "schedule": "0 22 * * *"
     }
   ]
 }

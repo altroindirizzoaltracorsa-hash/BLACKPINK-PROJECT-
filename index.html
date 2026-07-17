@@ -850,6 +850,15 @@
 
   .stream-stale-note { margin-top: 0.4rem; font-size: 0.6rem; letter-spacing: 0.08em; color: #ffb020; }
 
+  .catalog-total-section { background: var(--charcoal); border-top: 1px solid rgba(255,0,102,0.12); border-bottom: 1px solid rgba(255,0,102,0.12); }
+  .catalog-total-inner { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.7rem; }
+  .catalog-total-eyebrow { font-size: 0.6rem; letter-spacing: 0.25em; text-transform: uppercase; color: rgba(245,240,240,0.4); }
+  .catalog-total-num { font-family: var(--display); font-size: clamp(2.6rem, 9vw, 5.5rem); color: var(--pink); line-height: 1; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+  .catalog-total-label { font-size: 0.58rem; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(245,240,240,0.45); }
+  .catalog-daily { font-size: 0.7rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.55); margin-top: 0.2rem; }
+  .catalog-daily strong { color: var(--white); }
+  .catalog-source { font-size: 0.52rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(245,240,240,0.28); margin-top: 0.3rem; }
+
   /* ── GROUP CHAT (floating widget, lives outside .page so it persists across all pages) ── */
   .chat-fab {
     position: fixed; bottom: 1.4rem; right: 1.4rem; z-index: 9000;
@@ -1449,6 +1458,16 @@
         </div>
 
       </div>
+    </div>
+  </section>
+
+  <section class="catalog-total-section" id="catalog-total-section" style="display:none">
+    <div class="catalog-total-inner">
+      <p class="catalog-total-eyebrow">// Full BLACKPINK Catalog · Spotify</p>
+      <div class="catalog-total-num" id="catalog-total-count">—</div>
+      <p class="catalog-total-label">Total Streams Across All Releases</p>
+      <p class="catalog-daily" id="catalog-daily-info"></p>
+      <p class="catalog-source" id="catalog-source-info"></p>
     </div>
   </section>
 
@@ -2359,6 +2378,41 @@ function diffColor(diff) {
   return '#ff3333';                       // red     (big drop ≥ −15k)
 }
 
+async function loadCatalogStreams() {
+  try {
+    const r = await fetch('/api/catalog-streams');
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d || !d.total) return;
+
+    const section  = document.getElementById('catalog-total-section');
+    const countEl  = document.getElementById('catalog-total-count');
+    const dailyEl  = document.getElementById('catalog-daily-info');
+    const srcEl    = document.getElementById('catalog-source-info');
+    if (!section || !countEl) return;
+
+    countEl.textContent = d.total.toLocaleString('en-US');
+
+    const hist = d.history || [];
+    if (hist.length >= 2) {
+      const last  = hist[hist.length - 1];
+      const prev  = hist[hist.length - 2];
+      const daily = last.total - prev.total;
+      if (daily > 0 && dailyEl) {
+        dailyEl.innerHTML = `<strong>+${daily.toLocaleString('en-US')}</strong> streams on ${last.date}`;
+      }
+    }
+
+    if (srcEl) {
+      const agoH  = d.ts ? Math.round((Date.now() - d.ts) / 3_600_000) : null;
+      const agoTx = agoH === null ? 'daily' : agoH < 1 ? 'recently' : `${agoH}h ago`;
+      srcEl.textContent = `Updated ${agoTx}${d.stale ? ' · stale' : ''}`;
+    }
+
+    section.style.display = '';
+  } catch {}
+}
+
 async function fetchSpotifyStreams() {
   const today     = todayLabel();
   const yesterday = yesterdayLabel();
@@ -2538,6 +2592,7 @@ window.addEventListener('DOMContentLoaded', () => {
   })();
 
   fetchSpotifyStreams();
+  loadCatalogStreams();
   loadTodaysPlaylist();
   loadCommunityGoal();
   const saved = getSavedUsername();
