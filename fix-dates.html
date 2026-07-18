@@ -69,7 +69,7 @@ body{
 <div class="card">
   <div class="card-header">
     <h1>Stream Date Fix</h1>
-    <p>Moves 17/07 entries → 16/07 for Jump, DDU-DU &amp; Shut Down</p>
+    <p>Sets 16/07 daily entries for DDU-DU &amp; Shut Down</p>
   </div>
   <div class="card-body">
 
@@ -79,7 +79,7 @@ body{
     </div>
 
     <div id="preview">
-      <h3>17/07 entries in Redis</h3>
+      <h3>Entries to rename → 16/07</h3>
       <div id="track-list"></div>
     </div>
 
@@ -91,9 +91,13 @@ body{
 </div>
 
 <script>
-var TRACKS = ['jump','ddududu','shutdown'];
-var LABELS = {jump:'JUMP',ddududu:'DDU-DU DDU-DU',shutdown:'Shut Down'};
-var found  = {};
+// Per-track: which mislabeled date to rename → 16/07
+var TRACK_CFG = [
+  { id: 'jump',     label: 'JUMP',         from: '17/07' },
+  { id: 'ddududu',  label: 'DDU-DU DDU-DU', from: '15/07' },
+  { id: 'shutdown', label: 'Shut Down',     from: '15/07' },
+];
+var found = {}; // id → { streams, from }
 
 function addLog(type, icon, msg) {
   var el = document.createElement('div');
@@ -111,21 +115,21 @@ async function loadPreview() {
     found = {};
     var html = '';
     var anyFound = false;
-    for (var i = 0; i < TRACKS.length; i++) {
-      var t = TRACKS[i];
-      var hist = (data[t] && data[t].history) ? data[t].history : [];
-      var entry = hist.find(function(h){return h.date==='17/07';});
+    for (var i = 0; i < TRACK_CFG.length; i++) {
+      var cfg = TRACK_CFG[i];
+      var hist = (data[cfg.id] && data[cfg.id].history) ? data[cfg.id].history : [];
+      var entry = hist.find(function(h){return h.date===cfg.from;});
       if (entry) {
-        found[t] = entry.streams;
+        found[cfg.id] = { streams: entry.streams, from: cfg.from };
         anyFound = true;
         html += '<div class="track-row">'
-          + '<span class="track-name">' + LABELS[t] + '</span>'
+          + '<span class="track-name">' + cfg.label + '</span>'
           + '<div><div class="track-meta">' + entry.streams.toLocaleString() + ' streams/day</div>'
-          + '<span class="badge badge-found">17/07 → 16/07</span></div></div>';
+          + '<span class="badge badge-found">' + cfg.from + ' → 16/07</span></div></div>';
       } else {
         html += '<div class="track-row">'
-          + '<span class="track-name">' + LABELS[t] + '</span>'
-          + '<span class="badge badge-missing">no 17/07 entry</span></div>';
+          + '<span class="track-name">' + cfg.label + '</span>'
+          + '<span class="badge badge-missing">no ' + cfg.from + ' entry</span></div>';
       }
     }
     document.getElementById('track-list').innerHTML = html;
@@ -134,7 +138,7 @@ async function loadPreview() {
     if (anyFound) {
       document.getElementById('fix-btn').style.display = 'block';
     } else {
-      addLog('warn','⚠','No 17/07 entries found — nothing to fix.');
+      addLog('warn','⚠','No entries to fix found.');
     }
   } catch(e) {
     addLog('err','✕','Failed to load: ' + e.message);
@@ -149,23 +153,25 @@ async function runFix() {
   btn.textContent = 'Fixing…';
   document.getElementById('log').innerHTML = '';
   var allOk = true;
-  for (var i = 0; i < TRACKS.length; i++) {
-    var t = TRACKS[i];
-    if (!found[t]) { addLog('info','—', LABELS[t] + ': no 17/07 entry, skipped'); continue; }
-    addLog('info','<span class="spin"></span>', LABELS[t] + ': setting 16/07 = ' + found[t].toLocaleString() + '…');
-    var r1 = await fetch('/api/streams?action=set-entry&track=' + t + '&date=16%2F07&streams=' + found[t] + '&key=' + encodeURIComponent(key)).then(function(r){return r.json();});
+  for (var i = 0; i < TRACK_CFG.length; i++) {
+    var cfg = TRACK_CFG[i];
+    var f = found[cfg.id];
+    if (!f) { addLog('info','—', cfg.label + ': no ' + cfg.from + ' entry, skipped'); continue; }
+    addLog('info','<span class="spin"></span>', cfg.label + ': setting 16/07 = ' + f.streams.toLocaleString() + '…');
+    var r1 = await fetch('/api/streams?action=set-entry&track=' + cfg.id + '&date=16%2F07&streams=' + f.streams + '&key=' + encodeURIComponent(key)).then(function(r){return r.json();});
     if (!r1.ok) {
       allOk = false;
-      addLog('err','✕', LABELS[t] + ' set-entry failed: ' + JSON.stringify(r1));
+      addLog('err','✕', cfg.label + ' set-entry failed: ' + JSON.stringify(r1));
       continue;
     }
-    addLog('ok','✓', LABELS[t] + ': 16/07 entry created');
-    var r2 = await fetch('/api/streams?action=delete-history-entry&track=' + t + '&date=17%2F07&key=' + encodeURIComponent(key)).then(function(r){return r.json();});
+    addLog('ok','✓', cfg.label + ': 16/07 entry created');
+    var fromEnc = f.from.replace('/','%2F');
+    var r2 = await fetch('/api/streams?action=delete-history-entry&track=' + cfg.id + '&date=' + fromEnc + '&key=' + encodeURIComponent(key)).then(function(r){return r.json();});
     if (!r2.ok) {
       allOk = false;
-      addLog('err','✕', LABELS[t] + ' delete 17/07 failed: ' + JSON.stringify(r2));
+      addLog('err','✕', cfg.label + ' delete ' + f.from + ' failed: ' + JSON.stringify(r2));
     } else {
-      addLog('ok','✓', LABELS[t] + ': 17/07 entry removed');
+      addLog('ok','✓', cfg.label + ': ' + f.from + ' entry removed');
     }
   }
   if (allOk) {
