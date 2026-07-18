@@ -2025,11 +2025,6 @@
         <div id="admin-ban-list" class="admin-ban-list"></div>
       </div>
 
-      <div class="admin-ban-section">
-        <div class="admin-ban-title">📊 Catalog total — fetches all BLACKPINK track streams from your browser (free, no API quota)</div>
-        <div id="admin-catalog-status" class="admin-song-note" style="margin-bottom:0.6rem;min-height:1.2rem;"></div>
-        <button class="btn-primary" id="admin-catalog-btn" onclick="refreshCatalogTotal()">↻ Refresh catalog total</button>
-      </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
       <button class="card-cl-btn" onclick="closeAdminPanel()">Close</button>
@@ -2058,6 +2053,12 @@
         <input id="admin-playlist-now" type="checkbox" style="margin-right:0.4rem;">Publish immediately instead of waiting for the 2am reset
       </label>
       <div id="admin-playlist-msg" class="admin-err"></div>
+
+      <div class="admin-ban-section">
+        <div class="admin-ban-title">📊 Catalog total — fetches all BLACKPINK track streams directly from your browser (free, no API quota)</div>
+        <div id="admin-catalog-status" class="admin-song-note" style="margin-bottom:0.6rem;min-height:1.2rem;"></div>
+        <button class="btn-primary" id="admin-catalog-btn" onclick="refreshCatalogTotal()">↻ Refresh catalog total</button>
+      </div>
     </div>
     <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
       <button class="card-cl-btn" onclick="closePlaylistPanel()">Close</button>
