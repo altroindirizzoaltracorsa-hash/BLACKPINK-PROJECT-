@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>July History Fix · BLINKS Admin</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:#0d0d0d;color:#f0eaf2;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  font-size:15px;line-height:1.5;
+  min-height:100vh;display:flex;align-items:flex-start;justify-content:center;
+  padding:24px 16px 64px;
+}
+.wrap{width:100%;max-width:720px;display:flex;flex-direction:column;gap:20px}
+.card{background:#1a1a1a;border:1px solid #2e2e2e;border-radius:14px;overflow:hidden}
+.card-header{background:#ff1a6e;padding:16px 20px}
+.card-header h1{font-size:1.05rem;font-weight:700;letter-spacing:.03em;color:#fff}
+.card-header p{font-size:.78rem;color:rgba(255,255,255,.75);margin-top:2px}
+.card-body{padding:16px 20px;display:flex;flex-direction:column;gap:14px}
+.field label{display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#888;margin-bottom:5px}
+.field input{width:100%;background:#0d0d0d;border:1px solid #2e2e2e;border-radius:8px;padding:10px 12px;color:#f0eaf2;font-size:.95rem;font-family:inherit;outline:none;transition:border-color .15s}
+.field input:focus{border-color:#ff1a6e}
+
+.track-section h2{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:#888;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{text-align:left;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#555;padding:6px 8px;border-bottom:1px solid #2e2e2e}
+td{padding:5px 8px;border-bottom:1px solid #1e1e1e;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.date-cell{color:#888;font-size:.8rem;width:60px}
+.streams-cell input{
+  background:#0d0d0d;border:1px solid #2e2e2e;border-radius:6px;
+  padding:4px 8px;color:#f0eaf2;font-size:.85rem;font-family:inherit;
+  font-variant-numeric:tabular-nums;width:130px;outline:none;transition:border-color .15s
+}
+.streams-cell input:focus{border-color:#ff1a6e}
+.streams-cell input.modified{border-color:#f5c518}
+.streams-cell input.ok{border-color:#3ecf8e}
+.status-cell{width:28px;text-align:center;font-size:.85rem}
+.note-cell{color:#555;font-size:.75rem;white-space:nowrap}
+
+.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:.68rem;font-weight:700;letter-spacing:.04em}
+.badge-locked{background:rgba(62,207,142,.15);color:#3ecf8e}
+.badge-redis{background:rgba(136,136,136,.12);color:#666}
+.badge-missing{background:rgba(255,90,90,.1);color:#ff5a5a}
+.badge-warn{background:rgba(245,197,24,.12);color:#f5c518}
+
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{border:none;border-radius:8px;padding:10px 18px;font-size:.9rem;font-weight:700;letter-spacing:.03em;cursor:pointer;transition:background .15s,opacity .15s}
+.btn-primary{background:#ff1a6e;color:#fff}
+.btn-primary:hover:not(:disabled){background:#cc1558}
+.btn-secondary{background:#2a2a2a;color:#f0eaf2;border:1px solid #3e3e3e}
+.btn-secondary:hover:not(:disabled){background:#333}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+#log{display:flex;flex-direction:column;gap:5px}
+.log-line{display:flex;align-items:flex-start;gap:10px;font-size:.82rem;padding:7px 11px;background:#0d0d0d;border-radius:7px;border-left:3px solid transparent}
+.log-line.info{border-color:#555;color:#888}
+.log-line.ok{border-color:#3ecf8e}
+.log-line.err{border-color:#ff5a5a;color:#ff5a5a}
+.log-line.warn{border-color:#f5c518;color:#f5c518}
+.icon{flex-shrink:0;width:16px;text-align:center}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.15);border-top-color:#ff1a6e;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.summary-row{background:#151515;font-size:.8rem;color:#888;padding:8px 12px;border-radius:8px;border:1px solid #2e2e2e}
+.summary-row span{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card">
+    <div class="card-header">
+      <h1>July History Fix · BLINKS Admin</h1>
+      <p>View &amp; fix all July daily stream entries in Redis</p>
+    </div>
+    <div class="card-body">
+
+      <div class="field">
+        <label>Admin key</label>
+        <input type="password" id="key-input" placeholder="Enter admin secret…" autocomplete="off">
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-secondary" id="load-btn" onclick="loadData()">Load Current Data</button>
+        <button class="btn btn-primary" id="apply-btn" onclick="applyChanges()" disabled style="display:none">Apply All Edits</button>
+      </div>
+
+      <div id="log"></div>
+
+    </div>
+  </div>
+
+  <!-- Track tables populated dynamically -->
+  <div id="tables-wrap" style="display:none">
+    <div class="card" id="card-jump">
+      <div class="card-header"><h1>JUMP</h1><p id="summary-jump"></p></div>
+      <div class="card-body"><table id="table-jump"><thead><tr><th>Date</th><th>Daily Streams</th><th></th><th>Source / Note</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="card" id="card-shutdown">
+      <div class="card-header"><h1>Shut Down</h1><p id="summary-shutdown"></p></div>
+      <div class="card-body"><table id="table-shutdown"><thead><tr><th>Date</th><th>Daily Streams</th><th></th><th>Source / Note</th></tr></thead></tbody></table></div>
+    </div>
+    <div class="card" id="card-ddududu">
+      <div class="card-header"><h1>DDU-DU DDU-DU</h1><p id="summary-ddududu"></p></div>
+      <div class="card-body"><table id="table-ddududu"><thead><tr><th>Date</th><th>Daily Streams</th><th></th><th>Source / Note</th></tr></thead></tbody></table></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Known anchor data ─────────────────────────────────────────────────────────
+
+// Hardcoded in index.html STREAM_HISTORY — these always win over Redis
+var LOCKED = {
+  jump:     { '02/07':703231,'03/07':706034,'04/07':668626,'05/07':623401,'06/07':666283 },
+  shutdown: { '02/07':225062,'03/07':223425,'04/07':218558,'05/07':208771,'06/07':214129,
+              '11/07':223822,'16/07':217433 },
+  ddududu:  { '02/07':205411,'03/07':205407,'04/07':189567,'05/07':185295,'06/07':199851,
+              '11/07':200658,'16/07':201736 },
+};
+
+// July 1 Spotify totals (from screenshot — total streams on July 1)
+var T1 = { jump:642602926, shutdown:894762390, ddududu:875860770 };
+// July 16 Spotify totals
+var T16 = { jump:652801439, shutdown:898075850, ddududu:878862398 };
+
+var LABELS = { jump:'JUMP', shutdown:'Shut Down', ddududu:'DDU-DU DDU-DU' };
+var TRACKS = ['jump','shutdown','ddududu'];
+
+// All dates July 1–17
+var DATES = [];
+for (var d = 1; d <= 17; d++) {
+  DATES.push((d < 10 ? '0' : '') + d + '/07');
+}
+
+// Current Redis data (loaded on demand)
+var redisData = null;
+// Edits pending: { track+date → value }
+var edits = {};
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function addLog(type, icon, msg) {
+  var el = document.createElement('div');
+  el.className = 'log-line ' + type;
+  el.innerHTML = '<span class="icon">' + icon + '</span><span>' + msg + '</span>';
+  document.getElementById('log').appendChild(el);
+  el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function fmt(n) {
+  return n == null ? '—' : Number(n).toLocaleString('en-US');
+}
+
+// ── Load ──────────────────────────────────────────────────────────────────────
+
+async function loadData() {
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('tables-wrap').style.display = 'none';
+  document.getElementById('apply-btn').style.display = 'none';
+  addLog('info','<span class="spin"></span>','Fetching /api/streams…');
+
+  try {
+    redisData = await fetch('/api/streams').then(function(r){ return r.json(); });
+  } catch(e) {
+    addLog('err','✕','Failed: ' + e.message);
+    return;
+  }
+
+  document.getElementById('log').innerHTML = '';
+  edits = {};
+  renderAllTracks();
+  document.getElementById('tables-wrap').style.display = 'flex';
+  document.getElementById('tables-wrap').style.flexDirection = 'column';
+  document.getElementById('tables-wrap').style.gap = '16px';
+  document.getElementById('apply-btn').style.display = 'inline-block';
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+
+function renderAllTracks() {
+  for (var i = 0; i < TRACKS.length; i++) {
+    renderTrack(TRACKS[i]);
+  }
+}
+
+function renderTrack(t) {
+  var td = redisData[t] || {};
+  var hist = td.history || [];
+  var prev = td.prev || {};
+
+  // Build a map of what's in Redis
+  var redisMap = {};
+  for (var i = 0; i < hist.length; i++) {
+    redisMap[hist[i].date] = hist[i].streams;
+  }
+
+  var tbody = document.querySelector('#table-' + t + ' tbody');
+  tbody.innerHTML = '';
+
+  // Compute expected avg daily for range reference
+  var locked = LOCKED[t] || {};
+  var lockedSum = 0;
+  var lockedCount = 0;
+  Object.keys(locked).forEach(function(d){
+    lockedSum += locked[d];
+    lockedCount++;
+  });
+  var avgDaily = lockedCount > 0 ? lockedSum / lockedCount : 0;
+
+  // Total sum of locked July 2-6 for reference
+  var sum26 = 0;
+  ['02/07','03/07','04/07','05/07','06/07'].forEach(function(d){
+    if (locked[d]) sum26 += locked[d];
+  });
+  // remaining = T16 - T1 - sum26 for July 1 + July 7-15 (10 days)
+  var remaining = T16[t] - T1[t] - sum26;
+  var avgRemaining = remaining > 0 ? remaining / 10 : avgDaily;
+
+  // Running sum of what we'll show
+  var totalShown = 0;
+  var missingDates = [];
+
+  for (var di = 0; di < DATES.length; di++) {
+    var date = DATES[di];
+    var isLocked = locked.hasOwnProperty(date);
+    var redisVal = redisMap[date];
+    var displayVal = isLocked ? locked[date] : redisVal;
+    var missing = !isLocked && redisVal == null;
+    if (!missing) totalShown += (displayVal || 0);
+
+    // Detect possible outliers (skip locked dates — those are correct)
+    var isOutlier = false;
+    if (!isLocked && displayVal != null && avgRemaining > 0) {
+      var ratio = displayVal / avgRemaining;
+      if (ratio > 3.5 || ratio < 0.1) isOutlier = true;
+    }
+
+    var tr = document.createElement('tr');
+
+    // Date cell
+    var tdDate = document.createElement('td');
+    tdDate.className = 'date-cell';
+    tdDate.textContent = date;
+    tr.appendChild(tdDate);
+
+    // Streams input cell
+    var tdStreams = document.createElement('td');
+    tdStreams.className = 'streams-cell';
+    if (isLocked) {
+      // Locked — just show value, no edit
+      var lockedSpan = document.createElement('span');
+      lockedSpan.style.fontVariantNumeric = 'tabular-nums';
+      lockedSpan.style.color = '#3ecf8e';
+      lockedSpan.style.fontSize = '.85rem';
+      lockedSpan.textContent = locked[date].toLocaleString('en-US');
+      tdStreams.appendChild(lockedSpan);
+    } else if (missing) {
+      var inp = document.createElement('input');
+      inp.type = 'number';
+      inp.placeholder = 'not in Redis';
+      inp.className = '';
+      inp.dataset.track = t;
+      inp.dataset.date = date;
+      inp.addEventListener('input', function(){ onEdit(this); });
+      tdStreams.appendChild(inp);
+    } else {
+      var inp2 = document.createElement('input');
+      inp2.type = 'number';
+      inp2.value = displayVal;
+      inp2.className = '';
+      inp2.dataset.track = t;
+      inp2.dataset.date = date;
+      inp2.dataset.original = displayVal;
+      inp2.addEventListener('input', function(){ onEdit(this); });
+      tdStreams.appendChild(inp2);
+    }
+    tr.appendChild(tdStreams);
+
+    // Status cell
+    var tdStatus = document.createElement('td');
+    tdStatus.className = 'status-cell';
+    if (isLocked) {
+      tdStatus.innerHTML = '<span title="Locked in STREAM_HISTORY">🔒</span>';
+    } else if (missing) {
+      tdStatus.innerHTML = '<span title="Missing from Redis">❌</span>';
+      missingDates.push(date);
+    } else if (isOutlier) {
+      tdStatus.innerHTML = '<span title="Value looks unusual">⚠️</span>';
+    } else {
+      tdStatus.innerHTML = '<span title="In Redis">✓</span>';
+    }
+    tr.appendChild(tdStatus);
+
+    // Note cell
+    var tdNote = document.createElement('td');
+    tdNote.className = 'note-cell';
+    if (isLocked) {
+      tdNote.innerHTML = '<span class="badge badge-locked">locked</span>';
+    } else if (missing) {
+      tdNote.innerHTML = '<span class="badge badge-missing">missing</span>';
+    } else if (isOutlier) {
+      tdNote.innerHTML = '<span class="badge badge-warn">check value</span>';
+    } else {
+      tdNote.innerHTML = '<span class="badge badge-redis">redis</span>';
+    }
+    tr.appendChild(tdNote);
+
+    tbody.appendChild(tr);
+  }
+
+  // Summary line
+  var sumEl = document.getElementById('summary-' + t);
+  var t1label = T1[t].toLocaleString('en-US');
+  var t16label = T16[t].toLocaleString('en-US');
+  var increase = (T16[t] - T1[t]).toLocaleString('en-US');
+  sumEl.textContent = 'Jul 1 total: ' + t1label + ' · Jul 16 total: ' + t16label + ' · increase: +' + increase + ' over 15 days';
+}
+
+function onEdit(inp) {
+  var key = inp.dataset.track + '|' + inp.dataset.date;
+  var val = parseInt(inp.value, 10);
+  var orig = parseInt(inp.dataset.original || '', 10);
+  if (!isNaN(val) && val !== orig) {
+    edits[key] = { track: inp.dataset.track, date: inp.dataset.date, streams: val };
+    inp.className = 'modified';
+  } else {
+    delete edits[key];
+    inp.className = '';
+  }
+  var count = Object.keys(edits).length;
+  var btn = document.getElementById('apply-btn');
+  btn.textContent = count > 0 ? 'Apply ' + count + ' Edit' + (count > 1 ? 's' : '') : 'No Edits';
+  btn.disabled = count === 0;
+}
+
+// ── Apply ─────────────────────────────────────────────────────────────────────
+
+async function applyChanges() {
+  var key = document.getElementById('key-input').value.trim();
+  if (!key) { addLog('err','✕','Enter the admin key first.'); return; }
+
+  var pending = Object.values(edits);
+  if (pending.length === 0) { addLog('warn','⚠','No edits to apply.'); return; }
+
+  var btn = document.getElementById('apply-btn');
+  btn.disabled = true;
+  btn.textContent = 'Applying…';
+  document.getElementById('log').innerHTML = '';
+
+  var allOk = true;
+
+  for (var i = 0; i < pending.length; i++) {
+    var op = pending[i];
+    addLog('info','<span class="spin"></span>',
+      LABELS[op.track] + ' ' + op.date + ' → ' + op.streams.toLocaleString('en-US') + '…');
+
+    var url = '/api/streams?action=set-entry&track=' + op.track
+      + '&date=' + encodeURIComponent(op.date)
+      + '&streams=' + op.streams
+      + '&key=' + encodeURIComponent(key);
+
+    var r;
+    try {
+      r = await fetch(url).then(function(res){ return res.json(); });
+    } catch(e) {
+      allOk = false;
+      addLog('err','✕', LABELS[op.track] + ' ' + op.date + ': network error — ' + e.message);
+      continue;
+    }
+
+    if (!r.ok) {
+      allOk = false;
+      addLog('err','✕', LABELS[op.track] + ' ' + op.date + ': ' + JSON.stringify(r));
+    } else {
+      addLog('ok','✓', LABELS[op.track] + ' ' + op.date + ' set to ' + op.streams.toLocaleString('en-US'));
+      // Mark input as confirmed
+      var inp = document.querySelector(
+        'input[data-track="' + op.track + '"][data-date="' + op.date + '"]');
+      if (inp) { inp.className = 'ok'; inp.dataset.original = op.streams; }
+    }
+  }
+
+  edits = {};
+
+  if (allOk) {
+    addLog('ok','🎉','All done! Reload the site to verify the chart.');
+    btn.textContent = 'Done ✓';
+  } else {
+    addLog('err','✕','Some steps failed — see above.');
+    btn.disabled = false;
+    btn.textContent = 'Retry Failed';
+  }
+}
+
+// Auto-load when key is entered
+document.getElementById('key-input').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') loadData();
+});
+document.getElementById('key-input').addEventListener('change', loadData);
+</script>
+</body>
+</html>
