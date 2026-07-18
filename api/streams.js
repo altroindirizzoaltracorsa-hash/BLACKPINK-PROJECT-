@@ -300,55 +300,74 @@ async function fetchCatalogViaSpotifyAPI() {
 }
 
 async function fetchCatalogViaKworb() {
-  const r = await fetch('https://kworb.net/spotify/artist/41MozSoPIsD1dJM0CLPjZF.html', {
-    headers: { 'User-Agent': UA, 'Accept': 'text/html,*/*' },
-  });
-  if (!r.ok) throw new Error(`kworb ${r.status}`);
-  const html = await r.text();
+  // Try both the songs page (has per-track streams) and the main artist page
+  const urls = [
+    'https://kworb.net/spotify/artist/41MozSoPIsD1dJM0CLPjZF_songs.html',
+    'https://kworb.net/spotify/artist/41MozSoPIsD1dJM0CLPjZF.html',
+  ];
+  const errors = [];
+  for (const kworbUrl of urls) {
+    let html;
+    try {
+      const r = await fetch(kworbUrl, { headers: { 'User-Agent': UA, 'Accept': 'text/html,*/*' } });
+      if (!r.ok) { errors.push(`kworb ${r.status} (${kworbUrl})`); continue; }
+      html = await r.text();
+    } catch(e) { errors.push(`kworb fetch error: ${e.message}`); continue; }
 
-  // Try 1: explicit total/sum row by class or text label
-  const totalRow = html.match(/<tr[^>]*class="[^"]*total[^"]*"[^>]*>([\s\S]*?)<\/tr>/i)
-    || html.match(/<tr[^>]*class="[^"]*sum[^"]*"[^>]*>([\s\S]*?)<\/tr>/i)
-    || html.match(/>Total<\/(td|th)>[\s\S]{0,300}?([\d,]{8,})/i)
-    || html.match(/>Sum<\/(td|th)>[\s\S]{0,300}?([\d,]{8,})/i);
-  if (totalRow) {
-    const nums = totalRow[0].match(/\d{1,3}(?:,\d{3}){3,}/g);
-    if (nums) {
-      const v = Math.max(...nums.map(n => Number(n.replace(/,/g, ''))));
-      if (v > 100_000_000) return { total: v, source: 'kworb' };
+    // Try 1: explicit total/sum row by class or text label
+    const totalRow = html.match(/<tr[^>]*class="[^"]*total[^"]*"[^>]*>([\s\S]*?)<\/tr>/i)
+      || html.match(/<tr[^>]*class="[^"]*sum[^"]*"[^>]*>([\s\S]*?)<\/tr>/i)
+      || html.match(/>Total<\/(td|th)>[\s\S]{0,300}?([\d,]{8,})/i)
+      || html.match(/>Sum<\/(td|th)>[\s\S]{0,300}?([\d,]{8,})/i);
+    if (totalRow) {
+      const nums = totalRow[0].match(/\d{1,3}(?:,\d{3}){3,}/g);
+      if (nums) {
+        const v = Math.max(...nums.map(n => Number(n.replace(/,/g, ''))));
+        if (v > 100_000_000) return { total: v, source: 'kworb' };
+      }
     }
+
+    // Try 2: US comma format >= 10 billion (17,517,380,913)
+    const hugeNums = [...html.matchAll(/\b(\d{1,3}(?:,\d{3}){3,})\b/g)]
+      .map(m => Number(m[1].replace(/,/g, '')))
+      .filter(n => n >= 10_000_000_000);
+    if (hugeNums.length >= 1) return { total: Math.max(...hugeNums), source: 'kworb' };
+
+    // Try 3: European dot format >= 10 billion (17.517.380.913)
+    const euroNums = [...html.matchAll(/\b(\d{1,3}(?:\.\d{3}){3,})\b/g)]
+      .map(m => Number(m[1].replace(/\./g, '')))
+      .filter(n => n >= 10_000_000_000);
+    if (euroNums.length >= 1) return { total: Math.max(...euroNums), source: 'kworb' };
+
+    // Try 4: raw unseparated 11+ digit number (17517380913) — cap at 1T to skip IDs/attributes
+    const rawNums = [...html.matchAll(/\b(\d{11,})\b/g)]
+      .map(m => Number(m[1]))
+      .filter(n => n >= 10_000_000_000 && n < 1_000_000_000_000);
+    if (rawNums.length >= 1) return { total: Math.max(...rawNums), source: 'kworb' };
+
+    // Try 5: sum individual track streams from <td> cells (each 10M–5B, total should be >10B)
+    const tdNums = [...html.matchAll(/<td[^>]*>\s*([\d,]{7,})\s*<\/td>/g)]
+      .map(m => Number(m[1].replace(/,/g, '')))
+      .filter(n => n >= 10_000_000 && n < 5_000_000_000);
+    if (tdNums.length >= 10) {
+      const sum = tdNums.reduce((s, n) => s + n, 0);
+      if (sum > 5_000_000_000) return { total: sum, trackCount: tdNums.length, source: 'kworb-sum' };
+    }
+
+    // Try 6: mark elements (legacy fallback)
+    const marks = [...html.matchAll(/class="mark[^"]*"[^>]*>([\d,]+)/g)]
+      .map(m => Number(m[1].replace(/,/g, ''))).filter(n => n >= 1_000_000);
+    if (marks.length >= 3) {
+      const sorted = [...marks].sort((a, b) => b - a);
+      const rest   = sorted.slice(1).reduce((s, n) => s + n, 0);
+      if (sorted[0] >= rest * 0.8 && sorted[0] > 500_000_000) return { total: sorted[0], source: 'kworb' };
+      return { total: sorted.reduce((s, n) => s + n, 0), trackCount: marks.length, source: 'kworb' };
+    }
+
+    errors.push(`kworb: no pattern matched (${kworbUrl}) mid: ${html.slice(2000, 3000)}`);
   }
 
-  // Try 2: US comma format >= 10 billion (17,517,380,913)
-  const hugeNums = [...html.matchAll(/\b(\d{1,3}(?:,\d{3}){3,})\b/g)]
-    .map(m => Number(m[1].replace(/,/g, '')))
-    .filter(n => n >= 10_000_000_000);
-  if (hugeNums.length >= 1) return { total: Math.max(...hugeNums), source: 'kworb' };
-
-  // Try 3: European dot format >= 10 billion (17.517.380.913)
-  const euroNums = [...html.matchAll(/\b(\d{1,3}(?:\.\d{3}){3,})\b/g)]
-    .map(m => Number(m[1].replace(/\./g, '')))
-    .filter(n => n >= 10_000_000_000);
-  if (euroNums.length >= 1) return { total: Math.max(...euroNums), source: 'kworb' };
-
-  // Try 4: raw unseparated 11+ digit number (17517380913) — cap at 1T to skip IDs/attributes
-  const rawNums = [...html.matchAll(/\b(\d{11,})\b/g)]
-    .map(m => Number(m[1]))
-    .filter(n => n >= 10_000_000_000 && n < 1_000_000_000_000);
-  if (rawNums.length >= 1) return { total: Math.max(...rawNums), source: 'kworb' };
-
-  // Try 5: mark elements (legacy fallback — sum individual tracks)
-  const marks = [...html.matchAll(/class="mark[^"]*"[^>]*>([\d,]+)/g)]
-    .map(m => Number(m[1].replace(/,/g, ''))).filter(n => n >= 1_000_000);
-  if (marks.length >= 3) {
-    const sorted = [...marks].sort((a, b) => b - a);
-    const rest   = sorted.slice(1).reduce((s, n) => s + n, 0);
-    if (sorted[0] >= rest * 0.8 && sorted[0] > 500_000_000) return { total: sorted[0], source: 'kworb' };
-    return { total: sorted.reduce((s, n) => s + n, 0), trackCount: marks.length, source: 'kworb' };
-  }
-
-  // Log the TAIL of the HTML — the data table is at the bottom, not the head
-  throw new Error(`kworb: no data found (tail: ${html.slice(-1000)})`);
+  throw new Error(errors.join(' | '));
 }
 
 async function updateCatalogHistory(total, daily = null, overrideDate = null, forceOverwrite = false) {
