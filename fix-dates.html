@@ -13,33 +13,28 @@ body{
   min-height:100vh;display:flex;align-items:flex-start;justify-content:center;
   padding:24px 16px 64px;
 }
-.card{
-  background:#1a1a1a;border:1px solid #2e2e2e;
-  border-radius:14px;width:100%;max-width:440px;overflow:hidden;
-}
+.card{background:#1a1a1a;border:1px solid #2e2e2e;border-radius:14px;width:100%;max-width:440px;overflow:hidden}
 .card-header{background:#ff1a6e;padding:20px 24px}
 .card-header h1{font-size:1.1rem;font-weight:700;letter-spacing:.03em;color:#fff}
 .card-header p{font-size:.8rem;color:rgba(255,255,255,.75);margin-top:2px}
 .card-body{padding:20px 24px;display:flex;flex-direction:column;gap:16px}
 .field label{display:block;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:#888;margin-bottom:6px}
 .field input{
-  width:100%;background:#0d0d0d;border:1px solid #2e2e2e;
-  border-radius:8px;padding:12px 14px;color:#f0eaf2;
-  font-size:1rem;font-family:inherit;outline:none;transition:border-color .15s;
+  width:100%;background:#0d0d0d;border:1px solid #2e2e2e;border-radius:8px;
+  padding:12px 14px;color:#f0eaf2;font-size:1rem;font-family:inherit;outline:none;transition:border-color .15s;
 }
 .field input:focus{border-color:#ff1a6e}
 #preview{background:#0d0d0d;border:1px solid #2e2e2e;border-radius:10px;padding:14px;display:none}
 #preview h3{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:#888;margin-bottom:10px}
-.track-row{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:7px 0;border-bottom:1px solid #2e2e2e;font-size:.9rem;gap:8px;
-}
+.track-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #2e2e2e;font-size:.9rem;gap:8px}
 .track-row:last-child{border-bottom:none}
-.track-name{font-weight:600}
-.track-meta{color:#888;font-size:.8rem;text-align:right}
-.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.7rem;font-weight:700;letter-spacing:.04em}
-.badge-found{background:rgba(255,26,110,.15);color:#ff1a6e}
-.badge-missing{background:rgba(136,136,136,.15);color:#888}
+.track-name{font-weight:600;min-width:110px}
+.track-detail{text-align:right}
+.track-detail .streams{color:#f0eaf2;font-size:.85rem}
+.track-detail .action{display:inline-block;margin-top:2px;padding:2px 8px;border-radius:20px;font-size:.7rem;font-weight:700;letter-spacing:.04em}
+.action-rename{background:rgba(255,26,110,.15);color:#ff1a6e}
+.action-add{background:rgba(62,207,142,.15);color:#3ecf8e}
+.action-none{background:rgba(136,136,136,.15);color:#888}
 #fix-btn{
   width:100%;background:#ff1a6e;color:#fff;border:none;border-radius:10px;
   padding:15px;font-size:1rem;font-weight:700;letter-spacing:.04em;
@@ -48,28 +43,21 @@ body{
 #fix-btn:hover:not(:disabled){background:#cc1558}
 #fix-btn:disabled{opacity:.5;cursor:not-allowed}
 #log{display:flex;flex-direction:column;gap:6px}
-.log-line{
-  display:flex;align-items:flex-start;gap:10px;font-size:.85rem;
-  padding:8px 12px;background:#0d0d0d;border-radius:8px;border-left:3px solid transparent;
-}
+.log-line{display:flex;align-items:flex-start;gap:10px;font-size:.85rem;padding:8px 12px;background:#0d0d0d;border-radius:8px;border-left:3px solid transparent}
 .log-line.info{border-color:#888;color:#888}
 .log-line.ok{border-color:#3ecf8e}
 .log-line.err{border-color:#ff5a5a;color:#ff5a5a}
 .log-line.warn{border-color:#f5c518;color:#f5c518}
 .icon{flex-shrink:0;width:16px;text-align:center}
-.spin{
-  display:inline-block;width:14px;height:14px;
-  border:2px solid rgba(255,255,255,.2);border-top-color:#ff1a6e;
-  border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;
-}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.2);border-top-color:#ff1a6e;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 <div class="card">
   <div class="card-header">
-    <h1>Stream Date Fix</h1>
-    <p>Sets 16/07 daily entries for DDU-DU &amp; Shut Down</p>
+    <h1>Stream Date Fix · 16/07</h1>
+    <p>Adds 16/07 daily entries · Fixes 17/07 label on Jump</p>
   </div>
   <div class="card-body">
 
@@ -79,105 +67,163 @@ body{
     </div>
 
     <div id="preview">
-      <h3>Entries to rename → 16/07</h3>
+      <h3>Changes to apply</h3>
       <div id="track-list"></div>
     </div>
 
-    <button id="fix-btn" onclick="runFix()">Fix Dates Now</button>
-
+    <button id="fix-btn" onclick="runFix()">Apply Fixes</button>
     <div id="log"></div>
 
   </div>
 </div>
 
 <script>
-// Per-track: which mislabeled date to rename → 16/07
-var TRACK_CFG = [
-  { id: 'jump',     label: 'JUMP',         from: '17/07' },
-  { id: 'ddududu',  label: 'DDU-DU DDU-DU', from: '17/07' },
-  { id: 'shutdown', label: 'Shut Down',     from: '17/07' },
-];
-var found = {}; // id → { streams, from }
+// July 16th Spotify totals (from screenshot)
+var S16 = { jump: 652801439, ddududu: 878862398, shutdown: 898075850 };
+var LABELS = { jump: 'JUMP', ddududu: 'DDU-DU DDU-DU', shutdown: 'Shut Down' };
+
+// What to do per track (populated after loading Redis data)
+var ops = []; // { id, label, action:'rename'|'add', streams, from? }
 
 function addLog(type, icon, msg) {
   var el = document.createElement('div');
   el.className = 'log-line ' + type;
   el.innerHTML = '<span class="icon">' + icon + '</span><span>' + msg + '</span>';
   document.getElementById('log').appendChild(el);
-  el.scrollIntoView({behavior:'smooth',block:'nearest'});
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 async function loadPreview() {
   document.getElementById('log').innerHTML = '';
-  addLog('info','<span class="spin"></span>','Reading Redis…');
+  document.getElementById('fix-btn').style.display = 'none';
+  document.getElementById('preview').style.display = 'none';
+  addLog('info', '<span class="spin"></span>', 'Reading Redis…');
+
+  var data;
   try {
-    var data = await fetch('/api/streams').then(function(r){return r.json();});
-    found = {};
-    var html = '';
-    var anyFound = false;
-    for (var i = 0; i < TRACK_CFG.length; i++) {
-      var cfg = TRACK_CFG[i];
-      var hist = (data[cfg.id] && data[cfg.id].history) ? data[cfg.id].history : [];
-      var entry = hist.find(function(h){return h.date===cfg.from;});
-      if (entry) {
-        found[cfg.id] = { streams: entry.streams, from: cfg.from };
-        anyFound = true;
-        html += '<div class="track-row">'
-          + '<span class="track-name">' + cfg.label + '</span>'
-          + '<div><div class="track-meta">' + entry.streams.toLocaleString() + ' streams/day</div>'
-          + '<span class="badge badge-found">' + cfg.from + ' → 16/07</span></div></div>';
-      } else {
-        html += '<div class="track-row">'
-          + '<span class="track-name">' + cfg.label + '</span>'
-          + '<span class="badge badge-missing">no ' + cfg.from + ' entry</span></div>';
-      }
-    }
-    document.getElementById('track-list').innerHTML = html;
-    document.getElementById('preview').style.display = 'block';
-    document.getElementById('log').innerHTML = '';
-    if (anyFound) {
-      document.getElementById('fix-btn').style.display = 'block';
-    } else {
-      addLog('warn','⚠','No entries to fix found.');
-    }
+    data = await fetch('/api/streams').then(function(r) { return r.json(); });
   } catch(e) {
-    addLog('err','✕','Failed to load: ' + e.message);
+    addLog('err', '✕', 'Failed to load: ' + e.message);
+    return;
   }
+
+  ops = [];
+  var html = '';
+
+  var tracks = ['jump', 'ddududu', 'shutdown'];
+  for (var i = 0; i < tracks.length; i++) {
+    var t = tracks[i];
+    var td = data[t] || {};
+    var hist = td.history || [];
+    var prev = td.prev; // { total, date }
+
+    var has16 = hist.some(function(h) { return h.date === '16/07'; });
+    var entry17 = hist.find(function(h) { return h.date === '17/07'; });
+
+    if (has16) {
+      // Already correct
+      html += row(t, '<span class="action action-none">16/07 already exists</span>', '');
+      continue;
+    }
+
+    if (entry17) {
+      // Wrong date label — rename 17/07 → 16/07
+      ops.push({ id: t, label: LABELS[t], action: 'rename', streams: entry17.streams, from: '17/07' });
+      html += row(t,
+        '<span class="action action-rename">17/07 → 16/07</span>',
+        entry17.streams.toLocaleString() + ' streams'
+      );
+      continue;
+    }
+
+    // No 16/07 and no 17/07 — compute from S16 - prev.total
+    if (!prev || !prev.total) {
+      html += row(t, '<span class="action action-none">no prev snapshot</span>', '');
+      continue;
+    }
+
+    var daily = S16[t] - prev.total;
+    if (daily <= 0) {
+      html += row(t,
+        '<span class="action action-none">prev already at S16</span>',
+        'prev=' + prev.total.toLocaleString() + ' date=' + prev.date
+      );
+      continue;
+    }
+
+    ops.push({ id: t, label: LABELS[t], action: 'add', streams: daily });
+    html += row(t,
+      '<span class="action action-add">add 16/07</span>',
+      daily.toLocaleString() + ' streams (S16 − prev/' + prev.date + ')'
+    );
+  }
+
+  document.getElementById('track-list').innerHTML = html;
+  document.getElementById('preview').style.display = 'block';
+  document.getElementById('log').innerHTML = '';
+
+  if (ops.length > 0) {
+    document.getElementById('fix-btn').style.display = 'block';
+  } else {
+    addLog('warn', '⚠', 'Nothing to fix — all tracks look correct.');
+  }
+}
+
+function row(track, badge, detail) {
+  return '<div class="track-row">'
+    + '<span class="track-name">' + LABELS[track] + '</span>'
+    + '<div class="track-detail">'
+    + (detail ? '<div class="streams">' + detail + '</div>' : '')
+    + badge
+    + '</div></div>';
 }
 
 async function runFix() {
   var key = document.getElementById('key-input').value.trim();
-  if (!key) { addLog('err','✕','Enter the admin key first.'); return; }
+  if (!key) { addLog('err', '✕', 'Enter the admin key first.'); return; }
+
   var btn = document.getElementById('fix-btn');
   btn.disabled = true;
-  btn.textContent = 'Fixing…';
+  btn.textContent = 'Applying…';
   document.getElementById('log').innerHTML = '';
+
   var allOk = true;
-  for (var i = 0; i < TRACK_CFG.length; i++) {
-    var cfg = TRACK_CFG[i];
-    var f = found[cfg.id];
-    if (!f) { addLog('info','—', cfg.label + ': no ' + cfg.from + ' entry, skipped'); continue; }
-    addLog('info','<span class="spin"></span>', cfg.label + ': setting 16/07 = ' + f.streams.toLocaleString() + '…');
-    var r1 = await fetch('/api/streams?action=set-entry&track=' + cfg.id + '&date=16%2F07&streams=' + f.streams + '&key=' + encodeURIComponent(key)).then(function(r){return r.json();});
-    if (!r1.ok) {
-      allOk = false;
-      addLog('err','✕', cfg.label + ' set-entry failed: ' + JSON.stringify(r1));
-      continue;
+
+  for (var i = 0; i < ops.length; i++) {
+    var op = ops[i];
+
+    if (op.action === 'rename') {
+      // Set 16/07 entry
+      addLog('info', '<span class="spin"></span>', op.label + ': setting 16/07 = ' + op.streams.toLocaleString() + '…');
+      var r1 = await fetch('/api/streams?action=set-entry&track=' + op.id + '&date=16%2F07&streams=' + op.streams + '&key=' + encodeURIComponent(key)).then(function(r) { return r.json(); });
+      if (!r1.ok) { allOk = false; addLog('err', '✕', op.label + ' set-entry failed: ' + JSON.stringify(r1)); continue; }
+      addLog('ok', '✓', op.label + ': 16/07 entry set');
+
+      // Delete 17/07 entry
+      var r2 = await fetch('/api/streams?action=delete-history-entry&track=' + op.id + '&date=17%2F07&key=' + encodeURIComponent(key)).then(function(r) { return r.json(); });
+      if (!r2.ok) { allOk = false; addLog('err', '✕', op.label + ' delete 17/07 failed: ' + JSON.stringify(r2)); }
+      else addLog('ok', '✓', op.label + ': 17/07 entry removed');
+
+    } else if (op.action === 'add') {
+      addLog('info', '<span class="spin"></span>', op.label + ': adding 16/07 = ' + op.streams.toLocaleString() + '…');
+      var r3 = await fetch('/api/streams?action=set-entry&track=' + op.id + '&date=16%2F07&streams=' + op.streams + '&key=' + encodeURIComponent(key)).then(function(r) { return r.json(); });
+      if (!r3.ok) { allOk = false; addLog('err', '✕', op.label + ' set-entry failed: ' + JSON.stringify(r3)); }
+      else addLog('ok', '✓', op.label + ': 16/07 entry added');
     }
-    addLog('ok','✓', cfg.label + ': 16/07 entry created');
   }
+
   if (allOk) {
-    addLog('ok','🎉','All done! You can close this page.');
+    addLog('ok', '🎉', 'All done! Reload the site to verify.');
     btn.textContent = 'Done ✓';
   } else {
-    addLog('err','✕','Some steps failed — see errors above.');
+    addLog('err', '✕', 'Some steps failed — see above.');
     btn.disabled = false;
     btn.textContent = 'Retry';
   }
 }
 
 document.getElementById('key-input').addEventListener('change', loadPreview);
-document.getElementById('key-input').addEventListener('keydown', function(e){ if(e.key==='Enter') loadPreview(); });
+document.getElementById('key-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') loadPreview(); });
 </script>
 </body>
 </html>
