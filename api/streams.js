@@ -241,7 +241,7 @@ async function getSpotifyAnonToken() {
 async function getAllBpTrackIds(clientToken) {
   const ARTIST_ID = '41MozSoPIsD1dJM0CLPjZF';
   const albumIds  = [];
-  let url = `https://api.spotify.com/v1/artists/${ARTIST_ID}/albums?include_groups=album,single&limit=50&market=US`;
+  let url = `https://api.spotify.com/v1/artists/${ARTIST_ID}/albums?include_groups=album,single&limit=20&market=US`;
   while (url) {
     const r = await fetch(url, { headers: { Authorization: `Bearer ${clientToken}` } });
     if (!r.ok) throw new Error(`albums ${r.status}: ${await r.text()}`);
@@ -319,16 +319,25 @@ async function fetchCatalogViaKworb() {
     }
   }
 
-  // Try 2: find any number >= 10 billion — the catalog total (~17.5B) is
-  // far larger than any individual track, so it's unambiguous.
+  // Try 2: US comma format >= 10 billion (17,517,380,913)
   const hugeNums = [...html.matchAll(/\b(\d{1,3}(?:,\d{3}){3,})\b/g)]
     .map(m => Number(m[1].replace(/,/g, '')))
     .filter(n => n >= 10_000_000_000);
-  if (hugeNums.length >= 1) {
-    return { total: Math.max(...hugeNums), source: 'kworb' };
-  }
+  if (hugeNums.length >= 1) return { total: Math.max(...hugeNums), source: 'kworb' };
 
-  // Try 3: mark elements (legacy fallback)
+  // Try 3: European dot format >= 10 billion (17.517.380.913)
+  const euroNums = [...html.matchAll(/\b(\d{1,3}(?:\.\d{3}){3,})\b/g)]
+    .map(m => Number(m[1].replace(/\./g, '')))
+    .filter(n => n >= 10_000_000_000);
+  if (euroNums.length >= 1) return { total: Math.max(...euroNums), source: 'kworb' };
+
+  // Try 4: raw unseparated 11+ digit number (17517380913)
+  const rawNums = [...html.matchAll(/\b(\d{11,})\b/g)]
+    .map(m => Number(m[1]))
+    .filter(n => n >= 10_000_000_000);
+  if (rawNums.length >= 1) return { total: Math.max(...rawNums), source: 'kworb' };
+
+  // Try 5: mark elements (legacy fallback — sum individual tracks)
   const marks = [...html.matchAll(/class="mark[^"]*"[^>]*>([\d,]+)/g)]
     .map(m => Number(m[1].replace(/,/g, ''))).filter(n => n >= 1_000_000);
   if (marks.length >= 3) {
@@ -338,7 +347,8 @@ async function fetchCatalogViaKworb() {
     return { total: sorted.reduce((s, n) => s + n, 0), trackCount: marks.length, source: 'kworb' };
   }
 
-  throw new Error(`kworb: no data found (html snippet: ${html.slice(0, 500)})`);
+  // Log the TAIL of the HTML — the data table is at the bottom, not the head
+  throw new Error(`kworb: no data found (tail: ${html.slice(-1000)})`);
 }
 
 async function updateCatalogHistory(total, daily = null, overrideDate = null) {
