@@ -498,7 +498,11 @@ async function handleCatalogRequest(req, res) {
 
   result.ts = Date.now();
   await redis.set(CAT_CACHE_KEY, result);
-  const hist = await updateCatalogHistory(result.total);
+  // Compute daily delta from the most recent history entry
+  const prevHist = (await redis.get(CAT_HIST_KEY)) || [];
+  const prevEntry = prevHist.length ? prevHist[prevHist.length - 1] : null;
+  const daily = (prevEntry && result.total > prevEntry.total) ? result.total - prevEntry.total : null;
+  const hist = await updateCatalogHistory(result.total, daily);
   return res.status(200).json({ ...result, history: hist });
 }
 
