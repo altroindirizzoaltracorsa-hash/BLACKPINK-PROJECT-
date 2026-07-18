@@ -244,7 +244,7 @@ async function getAllBpTrackIds(clientToken) {
   let url = `https://api.spotify.com/v1/artists/${ARTIST_ID}/albums?include_groups=album,single&limit=50&market=US`;
   while (url) {
     const r = await fetch(url, { headers: { Authorization: `Bearer ${clientToken}` } });
-    if (!r.ok) throw new Error(`albums ${r.status}`);
+    if (!r.ok) throw new Error(`albums ${r.status}: ${await r.text()}`);
     const d = await r.json();
     for (const a of (d.items || [])) albumIds.push(a.id);
     url = d.next || null;
@@ -338,7 +338,7 @@ async function fetchCatalogViaKworb() {
     return { total: sorted.reduce((s, n) => s + n, 0), trackCount: marks.length, source: 'kworb' };
   }
 
-  throw new Error('kworb: no data found');
+  throw new Error(`kworb: no data found (html snippet: ${html.slice(0, 500)})`);
 }
 
 async function updateCatalogHistory(total, daily = null, overrideDate = null) {
