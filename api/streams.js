@@ -188,8 +188,10 @@ async function fetchTrackMetadata(trackId, prevTotal = 0) {
 
 // ── Catalog total helpers (merged from catalog-streams.js) ───────────────────
 
-const CAT_CACHE_KEY = 'bp_catalog_total';
-const CAT_HIST_KEY  = 'bp_catalog_hist';
+const CAT_CACHE_KEY    = 'bp_catalog_total';
+const CAT_HIST_KEY     = 'bp_catalog_hist';
+const BP_TRACK_IDS_KEY = 'bp_track_ids';
+const BP_TRACK_IDS_TTL = 14 * 24 * 60 * 60 * 1000; // 14 days
 
 async function getSpotifyClientToken() {
   const id     = process.env.SPOTIFY_CLIENT_ID;
@@ -245,8 +247,18 @@ async function getAllBpTrackIds(clientToken) {
 }
 
 async function fetchCatalogViaSpotifyAPI() {
-  const ct  = await getSpotifyClientToken();
-  const ids = await getAllBpTrackIds(ct);
+  // Use cached track IDs to avoid the albums-listing 429 on every fetch.
+  // Only fetch fresh IDs when the cache is missing or older than 14 days.
+  let ids = null;
+  const cachedIds = await redis.get(BP_TRACK_IDS_KEY);
+  if (cachedIds?.ids?.length && cachedIds.ts && Date.now() - cachedIds.ts < BP_TRACK_IDS_TTL) {
+    ids = cachedIds.ids;
+  } else {
+    const ct = await getSpotifyClientToken();
+    ids = await getAllBpTrackIds(ct);
+    await redis.set(BP_TRACK_IDS_KEY, { ids, ts: Date.now() });
+  }
+
   const at  = await getSpotifyAnonToken();
   let total = 0, failed = 0;
   for (let i = 0; i < ids.length; i += 10) {
@@ -264,6 +276,8 @@ async function fetchCatalogViaSpotifyAPI() {
     total += counts.reduce((s, c) => s + c, 0);
   }
   if (!total) throw new Error('all play counts returned 0');
+  // Refresh cache timestamp on successful full fetch
+  await redis.set(BP_TRACK_IDS_KEY, { ids, ts: Date.now() });
   return { total, trackCount: ids.length, failed, source: 'spotify-api' };
 }
 
@@ -273,23 +287,39 @@ async function fetchCatalogViaKworb() {
   });
   if (!r.ok) throw new Error(`kworb ${r.status}`);
   const html = await r.text();
+
+  // Try 1: explicit total/sum row by class or text label
   const totalRow = html.match(/<tr[^>]*class="[^"]*total[^"]*"[^>]*>([\s\S]*?)<\/tr>/i)
-    || html.match(/>Total<\/(td|th)>[\s\S]{0,200}?([\d,]{8,})/i);
+    || html.match(/<tr[^>]*class="[^"]*sum[^"]*"[^>]*>([\s\S]*?)<\/tr>/i)
+    || html.match(/>Total<\/(td|th)>[\s\S]{0,300}?([\d,]{8,})/i)
+    || html.match(/>Sum<\/(td|th)>[\s\S]{0,300}?([\d,]{8,})/i);
   if (totalRow) {
-    const nums = totalRow[0].match(/[\d]{1,3}(?:,[\d]{3}){3,}/g);
+    const nums = totalRow[0].match(/\d{1,3}(?:,\d{3}){3,}/g);
     if (nums) {
       const v = Math.max(...nums.map(n => Number(n.replace(/,/g, ''))));
-      if (v > 100000000) return { total: v, source: 'kworb' };
+      if (v > 100_000_000) return { total: v, source: 'kworb' };
     }
   }
+
+  // Try 2: find any number >= 10 billion — the catalog total (~17.5B) is
+  // far larger than any individual track, so it's unambiguous.
+  const hugeNums = [...html.matchAll(/\b(\d{1,3}(?:,\d{3}){3,})\b/g)]
+    .map(m => Number(m[1].replace(/,/g, '')))
+    .filter(n => n >= 10_000_000_000);
+  if (hugeNums.length >= 1) {
+    return { total: Math.max(...hugeNums), source: 'kworb' };
+  }
+
+  // Try 3: mark elements (legacy fallback)
   const marks = [...html.matchAll(/class="mark[^"]*"[^>]*>([\d,]+)/g)]
-    .map(m => Number(m[1].replace(/,/g, ''))).filter(n => n >= 1000000);
+    .map(m => Number(m[1].replace(/,/g, ''))).filter(n => n >= 1_000_000);
   if (marks.length >= 3) {
     const sorted = [...marks].sort((a, b) => b - a);
     const rest   = sorted.slice(1).reduce((s, n) => s + n, 0);
-    if (sorted[0] >= rest * 0.8 && sorted[0] > 500000000) return { total: sorted[0], source: 'kworb' };
+    if (sorted[0] >= rest * 0.8 && sorted[0] > 500_000_000) return { total: sorted[0], source: 'kworb' };
     return { total: sorted.reduce((s, n) => s + n, 0), trackCount: marks.length, source: 'kworb' };
   }
+
   throw new Error('kworb: no data found');
 }
 
