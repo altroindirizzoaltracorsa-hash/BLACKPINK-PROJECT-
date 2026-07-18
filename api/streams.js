@@ -613,11 +613,10 @@ export default async function handler(req, res) {
               const entry = { date: yLabel, streams: dailyStreams };
               if (gap > 1) entry.note = `${gap}-day gap`;
               history.push(entry);
-            } else {
-              existing.streams = dailyStreams;
+              if (history.length > 60) history.shift();
+              await redis.set(histKey, history);
             }
-            if (history.length > 60) history.shift();
-            await redis.set(histKey, history);
+            // Never overwrite an existing entry — it may have been manually corrected.
           }
 
           await redis.set(prevKey, { total, date: todayLabel });
