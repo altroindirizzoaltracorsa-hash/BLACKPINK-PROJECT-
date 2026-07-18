@@ -137,24 +137,32 @@ async function loadPreview() {
     }
 
     // No 16/07 and no 17/07 — compute from S16 - prev.total
-    if (!prev || !prev.total) {
-      html += row(t, '<span class="action action-none">no prev snapshot</span>', '');
-      continue;
+    var daily = 0;
+    var note = '';
+
+    if (prev && prev.total && S16[t] > prev.total) {
+      daily = S16[t] - prev.total;
+      note = S16[t].toLocaleString() + ' − prev(' + prev.date + ')';
+    } else {
+      // prev is already at S16 (was updated when "15/07" entry was written).
+      // The "15/07" history entry = T16 − T15 = the July 16th daily under the
+      // correct labelling, just stored with the wrong date label.
+      var entry15 = hist.find(function(h) { return h.date === '15/07'; });
+      if (entry15) {
+        daily = entry15.streams;
+        note = 'from 15/07 entry (= T16 − T15)';
+      }
     }
 
-    var daily = S16[t] - prev.total;
     if (daily <= 0) {
-      html += row(t,
-        '<span class="action action-none">prev already at S16</span>',
-        'prev=' + prev.total.toLocaleString() + ' date=' + prev.date
-      );
+      html += row(t, '<span class="action action-none">cannot compute daily</span>', '');
       continue;
     }
 
     ops.push({ id: t, label: LABELS[t], action: 'add', streams: daily });
     html += row(t,
       '<span class="action action-add">add 16/07</span>',
-      daily.toLocaleString() + ' streams (S16 − prev/' + prev.date + ')'
+      daily.toLocaleString() + ' streams · ' + note
     );
   }
 
