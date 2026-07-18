@@ -209,6 +209,24 @@ async function getSpotifyClientToken() {
   return (await r.json()).access_token;
 }
 
+// Separate Spotify app credentials used only for the catalog fetch,
+// so the main SPOTIFY_CLIENT_ID/SECRET quota is never touched.
+async function getCatalogClientToken() {
+  const id     = process.env.SPOTIFY_CLIENT_ID_2     || process.env.SPOTIFY_CLIENT_ID;
+  const secret = process.env.SPOTIFY_CLIENT_SECRET_2 || process.env.SPOTIFY_CLIENT_SECRET;
+  if (!id || !secret) throw new Error('SPOTIFY_CLIENT_ID_2 / SPOTIFY_CLIENT_SECRET_2 not set');
+  const r = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${Buffer.from(`${id}:${secret}`).toString('base64')}`,
+    },
+    body: 'grant_type=client_credentials',
+  });
+  if (!r.ok) throw new Error(`catalog-client-token ${r.status}`);
+  return (await r.json()).access_token;
+}
+
 async function getSpotifyAnonToken() {
   const r = await fetch(
     'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
@@ -254,7 +272,7 @@ async function fetchCatalogViaSpotifyAPI() {
   if (cachedIds?.ids?.length && cachedIds.ts && Date.now() - cachedIds.ts < BP_TRACK_IDS_TTL) {
     ids = cachedIds.ids;
   } else {
-    const ct = await getSpotifyClientToken();
+    const ct = await getCatalogClientToken();
     ids = await getAllBpTrackIds(ct);
     await redis.set(BP_TRACK_IDS_KEY, { ids, ts: Date.now() });
   }
