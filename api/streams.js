@@ -331,10 +331,10 @@ async function fetchCatalogViaKworb() {
     .filter(n => n >= 10_000_000_000);
   if (euroNums.length >= 1) return { total: Math.max(...euroNums), source: 'kworb' };
 
-  // Try 4: raw unseparated 11+ digit number (17517380913)
+  // Try 4: raw unseparated 11+ digit number (17517380913) — cap at 1T to skip IDs/attributes
   const rawNums = [...html.matchAll(/\b(\d{11,})\b/g)]
     .map(m => Number(m[1]))
-    .filter(n => n >= 10_000_000_000);
+    .filter(n => n >= 10_000_000_000 && n < 1_000_000_000_000);
   if (rawNums.length >= 1) return { total: Math.max(...rawNums), source: 'kworb' };
 
   // Try 5: mark elements (legacy fallback — sum individual tracks)
@@ -351,14 +351,15 @@ async function fetchCatalogViaKworb() {
   throw new Error(`kworb: no data found (tail: ${html.slice(-1000)})`);
 }
 
-async function updateCatalogHistory(total, daily = null, overrideDate = null) {
+async function updateCatalogHistory(total, daily = null, overrideDate = null, forceOverwrite = false) {
   const d    = new Date();
   d.setUTCDate(d.getUTCDate() - 1); // Spotify reports previous day's streams
   const date = overrideDate || `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}`;
   const hist = (await redis.get(CAT_HIST_KEY)) || [];
   const ex   = hist.find(h => h.date === date);
   if (ex) {
-    if (total > ex.total) ex.total = total;
+    // Also overwrite if the stored value looks corrupted (>10× new = stale junk from a bad parse)
+    if (forceOverwrite || total > ex.total || ex.total > total * 10) ex.total = total;
     if (daily !== null) ex.daily = daily;
   } else {
     const entry = { date, total };
@@ -408,7 +409,7 @@ async function handleCatalogRequest(req, res) {
     await redis.set(CAT_CACHE_KEY, entry);
     // Override date if provided (for backfilling historical entries)
     const overrideDate = req.query.date || null;
-    const hist = await updateCatalogHistory(total, daily, overrideDate);
+    const hist = await updateCatalogHistory(total, daily, overrideDate, true);
     return res.status(200).json({ ok: true, ...entry, history: hist });
   }
 
