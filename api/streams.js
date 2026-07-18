@@ -241,7 +241,7 @@ async function getSpotifyAnonToken() {
 async function getAllBpTrackIds(clientToken) {
   const ARTIST_ID = '41MozSoPIsD1dJM0CLPjZF';
   const albumIds  = [];
-  let url = `https://api.spotify.com/v1/artists/${ARTIST_ID}/albums?include_groups=album,single&limit=20&market=US`;
+  let url = `https://api.spotify.com/v1/artists/${ARTIST_ID}/albums?include_groups=album,single`;
   while (url) {
     const r = await fetch(url, { headers: { Authorization: `Bearer ${clientToken}` } });
     if (!r.ok) throw new Error(`albums ${r.status}: ${await r.text()}`);
