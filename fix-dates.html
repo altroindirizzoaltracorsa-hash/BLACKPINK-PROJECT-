@@ -94,8 +94,8 @@ body{
 // Per-track: which mislabeled date to rename → 16/07
 var TRACK_CFG = [
   { id: 'jump',     label: 'JUMP',         from: '17/07' },
-  { id: 'ddududu',  label: 'DDU-DU DDU-DU', from: '15/07' },
-  { id: 'shutdown', label: 'Shut Down',     from: '15/07' },
+  { id: 'ddududu',  label: 'DDU-DU DDU-DU', from: '17/07' },
+  { id: 'shutdown', label: 'Shut Down',     from: '17/07' },
 ];
 var found = {}; // id → { streams, from }
 
@@ -165,14 +165,6 @@ async function runFix() {
       continue;
     }
     addLog('ok','✓', cfg.label + ': 16/07 entry created');
-    var fromEnc = f.from.replace('/','%2F');
-    var r2 = await fetch('/api/streams?action=delete-history-entry&track=' + cfg.id + '&date=' + fromEnc + '&key=' + encodeURIComponent(key)).then(function(r){return r.json();});
-    if (!r2.ok) {
-      allOk = false;
-      addLog('err','✕', cfg.label + ' delete ' + f.from + ' failed: ' + JSON.stringify(r2));
-    } else {
-      addLog('ok','✓', cfg.label + ': ' + f.from + ' entry removed');
-    }
   }
   if (allOk) {
     addLog('ok','🎉','All done! You can close this page.');
