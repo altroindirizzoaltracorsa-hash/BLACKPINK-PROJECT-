@@ -1046,12 +1046,38 @@
 
         if (useWC) {
           wcTarget = new Mp4Muxer.ArrayBufferTarget();
-          wcMuxer = new Mp4Muxer.Muxer({ target: wcTarget, video: { codec: 'avc', width: W, height: H }, fastStart: 'in-memory' });
+          var wcAudioEncoder = null;
+          var muxerCfg = { target: wcTarget, video: { codec: 'avc', width: W, height: H }, fastStart: 'in-memory' };
+          if (audio && audio.buf) muxerCfg.audio = { codec: 'aac', numberOfChannels: audio.buf.numberOfChannels, sampleRate: audio.buf.sampleRate };
+          wcMuxer = new Mp4Muxer.Muxer(muxerCfg);
+
           wcEncoder = new VideoEncoder({
             output: function (chunk, meta) { wcMuxer.addVideoChunk(chunk, meta); },
             error: function (e) { console.error('VideoEncoder:', e); },
           });
           wcEncoder.configure({ codec: 'avc1.4d0028', width: W, height: H, bitrate: 3000000, framerate: FPS });
+
+          if (audio && audio.buf) {
+            wcAudioEncoder = new AudioEncoder({
+              output: function (chunk, meta) { wcMuxer.addAudioChunk(chunk, meta); },
+              error: function (e) { console.error('AudioEncoder:', e); },
+            });
+            wcAudioEncoder.configure({ codec: 'mp4a.40.2', numberOfChannels: audio.buf.numberOfChannels, sampleRate: audio.buf.sampleRate, bitrate: 128000 });
+            // Encode the full audio buffer in chunks before animation starts
+            var ACHUNK = 4096;
+            var nCh = audio.buf.numberOfChannels, sr = audio.buf.sampleRate, len = audio.buf.length;
+            var chData = [];
+            for (var ci = 0; ci < nCh; ci++) chData.push(audio.buf.getChannelData(ci));
+            for (var off = 0; off < len; off += ACHUNK) {
+              var fc = Math.min(ACHUNK, len - off);
+              var pcm = new Float32Array(nCh * fc);
+              for (var ci = 0; ci < nCh; ci++) pcm.set(chData[ci].subarray(off, off + fc), ci * fc);
+              var ad = new AudioData({ format: 'f32-planar', sampleRate: sr, numberOfFrames: fc, numberOfChannels: nCh, timestamp: Math.round(off / sr * 1e6), data: pcm });
+              wcAudioEncoder.encode(ad);
+              ad.close();
+            }
+          }
+
           var _baseSleep = sleep;
           sleep = function (ms) {
             try {
@@ -1063,6 +1089,7 @@
             return _baseSleep(ms);
           };
           finalize = async function () {
+            if (wcAudioEncoder) await wcAudioEncoder.flush();
             await wcEncoder.flush();
             wcMuxer.finalize();
             return new Blob([wcTarget.buffer], { type: 'video/mp4' });
