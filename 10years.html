@@ -912,10 +912,10 @@
     var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
     var eo = function (t) { return 1 - (1-t)*(1-t); };
 
-    var mime = ['video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm'].find(function (t) {
+    var mime = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm'].find(function (t) {
       try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; }
     }) || 'video/webm';
-    var ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
+    var ext = 'webm';
 
     var videoStream = canvas.captureStream(FPS);
 
