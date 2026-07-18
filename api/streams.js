@@ -264,6 +264,49 @@ async function getAllBpTrackIds(clientToken) {
   return ids;
 }
 
+const BP_ARTIST_ID = '41MozSoPIsD1dJM0CLPjZF';
+
+// Single-call artist overview endpoints — much cheaper than summing 113 tracks individually.
+// Tries both RapidAPI providers in order; falls back gracefully on any error.
+async function fetchCatalogViaRapidAPI() {
+  const ARTIST_ENDPOINTS = [
+    {
+      name: 'spotify-scraper',
+      keyEnvVars: ['RAPIDAPI_KEYS', 'RAPIDAPI_KEYS_2', 'RAPIDAPI_KEY'],
+      host: 'spotify-scraper.p.rapidapi.com',
+      url: `https://spotify-scraper.p.rapidapi.com/v1/artist/overview?artistId=${BP_ARTIST_ID}`,
+      // Returns { totalPlayCount, monthlyListeners, ... }
+      getTotal: d => Number(d?.totalPlayCount || d?.total_play_count || d?.streams || 0),
+    },
+    {
+      name: 'spotify-scraper-api',
+      keyEnvVars: ['RAPIDAPI_KEYS_API2'],
+      host: 'spotify-scraper-api.p.rapidapi.com',
+      url: `https://spotify-scraper-api.p.rapidapi.com/api/v1/artist/info?artist_id=${BP_ARTIST_ID}`,
+      getTotal: d => Number(d?.data?.total_play_count || d?.data?.streams || d?.data?.totalStreams || 0),
+    },
+  ];
+
+  const errors = [];
+  for (const ep of ARTIST_ENDPOINTS) {
+    const keys = getApiKeys(ep.keyEnvVars);
+    for (const key of keys) {
+      try {
+        const r = await fetch(ep.url, {
+          headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': ep.host },
+        });
+        const data = await r.json();
+        if (!r.ok) { errors.push(`${ep.name}: HTTP ${r.status}`); break; }
+        const total = ep.getTotal(data);
+        if (total > 1_000_000_000) return { total, source: `rapidapi-${ep.name}` };
+        errors.push(`${ep.name}: total=${total} (raw: ${JSON.stringify(data).slice(0, 200)})`);
+      } catch(e) { errors.push(`${ep.name}: ${e.message}`); }
+      break;
+    }
+  }
+  throw new Error(errors.join('; ') || 'no RapidAPI keys configured');
+}
+
 async function fetchCatalogViaSpotifyAPI() {
   // Use cached track IDs to avoid the albums-listing 429 on every fetch.
   // Only fetch fresh IDs when the cache is missing or older than 14 days.
@@ -441,7 +484,8 @@ async function handleCatalogRequest(req, res) {
 
   const errors = [];
   let result   = null;
-  try { result = await fetchCatalogViaSpotifyAPI(); } catch(e) { errors.push(`spotify-api: ${e.message}`); }
+  try { result = await fetchCatalogViaRapidAPI(); } catch(e) { errors.push(`rapidapi: ${e.message}`); }
+  if (!result) { try { result = await fetchCatalogViaSpotifyAPI(); } catch(e) { errors.push(`spotify-api: ${e.message}`); } }
   if (!result) { try { result = await fetchCatalogViaKworb(); } catch(e) { errors.push(`kworb: ${e.message}`); } }
 
   if (!result) {
