@@ -766,6 +766,7 @@
 </script>
 
 
+<script src="https://cdn.jsdelivr.net/npm/mp4-muxer@4/build/mp4-muxer.js"></script>
 <script>
 /* ── VIDEO DOWNLOAD ── */
 (function () {
@@ -892,7 +893,9 @@
   };
 
   btn.addEventListener('click', function () {
-    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
+    var hasWC = typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined' && typeof Mp4Muxer !== 'undefined';
+    var hasMR = !!(window.MediaRecorder && HTMLCanvasElement.prototype.captureStream);
+    if (!hasWC && !hasMR) {
       alert('Video recording needs Chrome or Edge on desktop.'); return;
     }
     btn.innerHTML = '&#x23FA; Recording&hellip;';
@@ -912,12 +915,6 @@
     var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
     var eo = function (t) { return 1 - (1-t)*(1-t); };
 
-    var mime = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm'].find(function (t) {
-      try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; }
-    }) || 'video/webm';
-    var ext = 'webm';
-
-    var videoStream = canvas.captureStream(FPS);
 
     function C(fn, a) { ctx.save(); ctx.globalAlpha = a === undefined ? 1 : a; fn(); ctx.restore(); }
     function clr() { ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H); }
@@ -1041,26 +1038,60 @@
       })();
 
       audioSetup.then(function (audio) {
-        var audioSource = null;
-        var recStream = videoStream;
-
-        if (audio) {
-          var audioDest = audio.actx.createMediaStreamDestination();
-          audioSource = audio.actx.createBufferSource();
-          audioSource.buffer = audio.buf;
-          audioSource.connect(audioDest);
-          recStream = new MediaStream(
-            videoStream.getVideoTracks().concat(audioDest.stream.getAudioTracks())
-          );
-        }
-
-        var rec = new MediaRecorder(recStream, { mimeType: mime, videoBitsPerSecond: 3000000 });
-        var chunks = [];
-        rec.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
-        var recDone = new Promise(function (r) { rec.onstop = r; });
-        rec.start(100);
-        if (audioSource) audioSource.start();
         var audioDurMs = (audio && audio.buf) ? Math.round(audio.buf.duration * 1000) : 0;
+        var useWC = typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined' && typeof Mp4Muxer !== 'undefined';
+        var wcEncoder = null, wcMuxer = null, wcTarget = null, wcFrameIdx = 0;
+        var rec = null, chunks = [], recDone = null, audioSource = null;
+        var finalize;
+
+        if (useWC) {
+          wcTarget = new Mp4Muxer.ArrayBufferTarget();
+          wcMuxer = new Mp4Muxer.Muxer({ target: wcTarget, video: { codec: 'avc', width: W, height: H }, fastStart: 'in-memory' });
+          wcEncoder = new VideoEncoder({
+            output: function (chunk, meta) { wcMuxer.addVideoChunk(chunk, meta); },
+            error: function (e) { console.error('VideoEncoder:', e); },
+          });
+          wcEncoder.configure({ codec: 'avc1.4d0028', width: W, height: H, bitrate: 3000000, framerate: FPS });
+          var _baseSleep = sleep;
+          sleep = function (ms) {
+            try {
+              var frame = new VideoFrame(canvas, { timestamp: Math.round(wcFrameIdx * MS * 1000) });
+              wcEncoder.encode(frame, { keyFrame: wcFrameIdx % (FPS * 2) === 0 });
+              frame.close();
+              wcFrameIdx++;
+            } catch (e) {}
+            return _baseSleep(ms);
+          };
+          finalize = async function () {
+            await wcEncoder.flush();
+            wcMuxer.finalize();
+            return new Blob([wcTarget.buffer], { type: 'video/mp4' });
+          };
+        } else {
+          var videoStream = canvas.captureStream(FPS);
+          var mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp9', 'video/webm'].find(function (t) {
+            try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; }
+          }) || 'video/webm';
+          var recStream = videoStream;
+          if (audio) {
+            var audioDest = audio.actx.createMediaStreamDestination();
+            audioSource = audio.actx.createBufferSource();
+            audioSource.buffer = audio.buf;
+            audioSource.connect(audioDest);
+            recStream = new MediaStream(videoStream.getVideoTracks().concat(audioDest.stream.getAudioTracks()));
+          }
+          rec = new MediaRecorder(recStream, { mimeType: mime, videoBitsPerSecond: 3000000 });
+          rec.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
+          recDone = new Promise(function (r) { rec.onstop = r; });
+          rec.start(100);
+          if (audioSource) audioSource.start();
+          finalize = async function () {
+            rec.stop();
+            try { if (audioSource) audioSource.stop(); } catch (e) {}
+            await recDone;
+            return new Blob(chunks, { type: mime });
+          };
+        }
 
         (async function () {
         var animStart = performance.now();
@@ -1120,11 +1151,8 @@
           var v=1-a; clr(); bar(v); corners(.85*v); bpLogo(logoEl,v); heroTitle(v); cdTimer(v); mark(.5*v);
         }, function(t){return t;});
 
-        rec.stop();
-        try { if (audioSource) audioSource.stop(); } catch (e) {}
-        await recDone;
-
-        var blob = new Blob(chunks, { type: mime });
+        var blob = await finalize();
+        var ext = blob.type.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
         var aEl = document.createElement('a');
         aEl.href = URL.createObjectURL(blob);
         aEl.download = 'blinks-united-10years.' + ext;
