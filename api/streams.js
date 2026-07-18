@@ -407,7 +407,7 @@ async function fetchCatalogViaKworb() {
       return { total: sorted.reduce((s, n) => s + n, 0), trackCount: marks.length, source: 'kworb' };
     }
 
-    errors.push(`kworb: no pattern matched (${kworbUrl}) mid: ${html.slice(2000, 3000)}`);
+    errors.push(`kworb no match (${kworbUrl}) len=${html.length} s2k=${html.slice(2000,3000)} s5k=${html.slice(5000,6000)}`);
   }
 
   throw new Error(errors.join(' | '));
