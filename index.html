@@ -2024,6 +2024,12 @@
         <div id="admin-ban-err" class="admin-err"></div>
         <div id="admin-ban-list" class="admin-ban-list"></div>
       </div>
+
+      <div class="admin-ban-section">
+        <div class="admin-ban-title">📊 Catalog total — fetches all BLACKPINK track streams from your browser (free, no API quota)</div>
+        <div id="admin-catalog-status" class="admin-song-note" style="margin-bottom:0.6rem;min-height:1.2rem;"></div>
+        <button class="btn-primary" id="admin-catalog-btn" onclick="refreshCatalogTotal()">↻ Refresh catalog total</button>
+      </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
       <button class="card-cl-btn" onclick="closeAdminPanel()">Close</button>
@@ -5760,6 +5766,88 @@ async function unbanUser(username) {
     const { banned } = await r.json();
     renderBannedList(banned || []);
   } catch {}
+}
+
+async function refreshCatalogTotal() {
+  const btn    = document.getElementById('admin-catalog-btn');
+  const status = document.getElementById('admin-catalog-status');
+  const key    = localStorage.getItem(ADMIN_KEY_LS);
+  btn.disabled = true;
+  const setStatus = t => { status.textContent = t; };
+
+  try {
+    setStatus('Getting Spotify token from your browser…');
+    const tr = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', { credentials: 'include' });
+    const td = await tr.json();
+    const token = td.accessToken;
+    if (!token) throw new Error('Could not get Spotify token — are you logged into Spotify in this browser?');
+
+    const ARTIST_ID = '41MozSoPIsD1dJM0CLPjZF';
+
+    setStatus('Fetching BLACKPINK albums…');
+    const albumIds = [];
+    let albumsUrl = `https://api.spotify.com/v1/artists/${ARTIST_ID}/albums?include_groups=album,single`;
+    while (albumsUrl) {
+      const ar = await fetch(albumsUrl, { headers: { Authorization: `Bearer ${token}` } });
+      if (!ar.ok) throw new Error(`Albums API ${ar.status}`);
+      const ad = await ar.json();
+      for (const a of (ad.items || [])) albumIds.push(a.id);
+      albumsUrl = ad.next || null;
+    }
+
+    setStatus(`Got ${albumIds.length} albums — fetching track IDs…`);
+    const seen = new Set(), ids = [];
+    for (let i = 0; i < albumIds.length; i += 20) {
+      const ar = await fetch(`https://api.spotify.com/v1/albums?ids=${albumIds.slice(i, i+20).join(',')}&market=US`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!ar.ok) continue;
+      for (const album of ((await ar.json()).albums || []))
+        for (const t of (album?.tracks?.items || []))
+          if (t?.id && !seen.has(t.id)) { seen.add(t.id); ids.push(t.id); }
+    }
+
+    setStatus(`Got ${ids.length} tracks — fetching play counts…`);
+    let total = 0, failed = 0;
+    const EXT  = JSON.stringify({ persistedQuery: { version: 1, sha256Hash: 'ae85b52abb74d20a4c331d4143d4772c95f34757a435d55406e6a2f17ad41c42' } });
+    for (let i = 0; i < ids.length; i += 10) {
+      const counts = await Promise.all(ids.slice(i, i+10).map(async id => {
+        try {
+          const vars = JSON.stringify({ uri: `spotify:track:${id}` });
+          const r = await fetch(`https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${encodeURIComponent(vars)}&extensions=${encodeURIComponent(EXT)}`, { headers: { Authorization: `Bearer ${token}` } });
+          const count = (await r.json())?.data?.trackUnion?.playcount;
+          return count ? Number(count) : 0;
+        } catch { failed++; return 0; }
+      }));
+      total += counts.reduce((s, c) => s + c, 0);
+      setStatus(`Fetching play counts… ${Math.min(i+10, ids.length)}/${ids.length} tracks`);
+      if (i + 10 < ids.length) await new Promise(r => setTimeout(r, 150));
+    }
+
+    if (!total) throw new Error('All play counts returned 0 — Spotify may have blocked this request');
+
+    // Get yesterday's total from the history to compute daily delta
+    let daily = null;
+    try {
+      const cr = await fetch('/api/streams?catalog=1');
+      const cd = await cr.json();
+      if (cd.history?.length) {
+        const prev = cd.history[cd.history.length - 1];
+        daily = total - prev.total;
+        if (daily < 0) daily = null;
+      }
+    } catch {}
+
+    setStatus(`Total: ${total.toLocaleString()}${daily ? ` (+${daily.toLocaleString()})` : ''} — saving…`);
+    const dailyParam = daily ? `&daily=${daily}` : '';
+    const sr = await fetch(`/api/streams?catalog=1&action=set&total=${total}${dailyParam}&key=${encodeURIComponent(key)}`);
+    const sd = await sr.json();
+    if (!sd.ok) throw new Error(JSON.stringify(sd));
+
+    setStatus(`✓ Saved! ${total.toLocaleString()} streams across ${ids.length} tracks${failed ? ` (${failed} failed)` : ''}.`);
+  } catch(e) {
+    setStatus(`✗ ${e.message}`);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function loadAdminRanking(key) {
