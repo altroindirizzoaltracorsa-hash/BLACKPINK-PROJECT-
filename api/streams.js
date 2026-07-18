@@ -17,7 +17,7 @@ function getCacheTtlMs(needsDailyUpdate) {
   const romeHour = Number(
     new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Rome', hour: 'numeric', hour12: false }).format(new Date())
   );
-  if (romeHour < 12) return Infinity; // before midday — Spotify never updates this early, don't call at all
+  if (romeHour < 14) return Infinity; // before 2pm Rome — Spotify never updates this early, don't call at all
   return 15 * 60 * 1000; // in the daily watch window — poll every ~15min
 }
 
