@@ -5,6 +5,11 @@ on:
     # 10 PM UTC daily — Spotify usually updates earlier in the evening
     - cron: '0 22 * * *'
   workflow_dispatch:   # also allows manual trigger from the GitHub Actions tab
+    inputs:
+      base_url:
+        description: 'Base URL to test against (leave blank for production). Use a Vercel preview URL to validate api/streams.js changes before they reach main.'
+        required: false
+        default: ''
 
 jobs:
   fetch:
@@ -19,5 +24,5 @@ jobs:
       - name: Force-refresh BLACKPINK catalog total on Vercel
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
-          VERCEL_URL: https://blackpink-project.vercel.app
+          VERCEL_URL: ${{ inputs.base_url != '' && inputs.base_url || 'https://blackpink-project.vercel.app' }}
         run: node .github/scripts/fetch-catalog.mjs
