@@ -374,15 +374,12 @@ async function fetchCatalogViaSpotifyAPI() {
     await redis.set(BP_TRACK_IDS_KEY, { ids, ts: Date.now() });
   }
 
-  // Prefer the stored OAuth user token (works from Vercel IPs).
-  // Fall back to the anon token endpoint (blocked from most cloud IPs, but kept
-  // as a forward-compatibility fallback in case Spotify ever unblocks it).
+  // The partner API only accepts the web-player anon token — OAuth and
+  // client-credentials tokens are rejected with 403 "Client/request not allowed".
+  // getSpotifyAnonToken() checks Redis first for a token cached by a browser visitor.
   let at, tokenSource;
-  try { at = await getStoredUserToken(); tokenSource = 'oauth'; }
-  catch(e) {
-    try { at = await getSpotifyAnonToken(); tokenSource = 'anon'; }
-    catch(e2) { throw new Error(`token: oauth=${e.message}; anon=${e2.message}`); }
-  }
+  try { at = await getSpotifyAnonToken(); tokenSource = 'anon'; }
+  catch(e) { throw new Error(`anon-token: ${e.message}`); }
 
   // Probe the first track to detect partner API auth failures early
   const probeId = ids[0];
