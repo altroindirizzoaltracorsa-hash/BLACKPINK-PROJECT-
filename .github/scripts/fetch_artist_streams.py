@@ -17,7 +17,7 @@ Requires SUPABASE_URL / SUPABASE_SERVICE_KEY env vars.
 
 import os
 import sys
-from datetime import date
+from datetime import date, timedelta
 
 import httpx
 from spotify_scraper import SpotifyClient
@@ -25,7 +25,10 @@ from spotify_scraper import SpotifyClient
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
 
-TODAY = date.today().isoformat()
+# Spotify's public play_count always lags by a day -- whatever we fetch
+# "today" is actually yesterday's finalized count, same convention kworb
+# uses. Label the snapshot with the day it reflects, not the day we ran.
+TODAY = (date.today() - timedelta(days=1)).isoformat()
 
 BLACKPINK_ID = "41MozSoPIsD1dJM0CLPjZF"
 
