@@ -23,6 +23,10 @@ async function main() {
 
   console.log(`✓ Total: ${body.total.toLocaleString()} (source: ${body.source})`);
   console.log(`History entries: ${body.history?.length}`);
+  if (body.errors?.length) {
+    console.log('Methods tried before the winning source (in order):');
+    for (const e of body.errors) console.log(`  - ${e}`);
+  }
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
