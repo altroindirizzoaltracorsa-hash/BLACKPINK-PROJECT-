@@ -779,6 +779,10 @@
   #lb-table-wrap { }
 
   .as-error { padding: 2rem; text-align: center; color: var(--pink); font-size: 0.8rem; }
+  .as-back-link { display: inline-block; color: var(--muted); font-size: 0.72rem; letter-spacing: 0.06em; text-decoration: none; margin-top: 1rem; }
+  .as-back-link:hover { color: var(--pink); }
+  .as-list-artist { display: flex; align-items: center; gap: 0.7rem; }
+  .as-list-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--card2); }
   .as-artist-header { display: flex; align-items: center; gap: 1rem; padding: 1.5rem 0 1rem; }
   .as-avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
   .as-artist-name { font-family: var(--display); font-size: 1.8rem; letter-spacing: 0.04em; }
@@ -1910,7 +1914,15 @@
       <div id="as-loading" class="lb-loading">Loading…</div>
       <div id="as-error" class="as-error" style="display:none;"></div>
 
+      <div id="as-list" style="display:none;">
+        <table class="lb-table">
+          <thead><tr><th>Artist</th><th class="right">Total Streams</th><th class="right">Daily Change</th><th class="right">Tracks</th></tr></thead>
+          <tbody id="as-list-body"></tbody>
+        </table>
+      </div>
+
       <div id="as-content" style="display:none;">
+        <a href="/streams" class="as-back-link" onclick="return goToArtistList(event);">&larr; All artists</a>
         <div class="as-artist-header">
           <img id="as-avatar" class="as-avatar" src="" alt="" style="display:none;">
           <div>
@@ -2780,7 +2792,6 @@ function pathToPage(pathname) {
 }
 
 // ── Artist Streams page ──────────────────────────────────────────────────
-const BLACKPINK_SPOTIFY_ID = '41MozSoPIsD1dJM0CLPjZF';
 let artistStreamsData = null;
 let artistTrackSort = 'streams';
 
@@ -2793,16 +2804,69 @@ function fmtDelta(n) {
   return `<span class="${cls}">${sign}${Number(n).toLocaleString()}</span>`;
 }
 
-async function loadArtistStreamsPage() {
+function loadArtistStreamsPage() {
+  const artistId = new URLSearchParams(location.search).get('artist');
+  if (artistId) loadArtistStreamsDetail(artistId);
+  else loadArtistStreamsList();
+}
+
+function goToArtistList(e) {
+  e.preventDefault();
+  history.pushState({ page: 'streams' }, '', PAGE_PATHS.streams);
+  loadArtistStreamsList();
+  return false;
+}
+
+function openArtistDetail(id) {
+  history.pushState({ page: 'streams' }, '', `${PAGE_PATHS.streams}?artist=${id}`);
+  loadArtistStreamsDetail(id);
+}
+
+async function loadArtistStreamsList() {
   const loading = document.getElementById('as-loading');
   const errorEl = document.getElementById('as-error');
+  const list = document.getElementById('as-list');
   const content = document.getElementById('as-content');
   loading.style.display = 'block';
   errorEl.style.display = 'none';
+  list.style.display = 'none';
   content.style.display = 'none';
 
   try {
-    const r = await fetch(`/api/proxy-image?artist_streams=detail&artist=${BLACKPINK_SPOTIFY_ID}`);
+    const r = await fetch('/api/proxy-image?artist_streams=list');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    const artists = data.artists || [];
+    document.getElementById('as-list-body').innerHTML = artists.map(a => `
+      <tr onclick="openArtistDetail('${a.id}')">
+        <td><div class="as-list-artist">${a.avatarUrl ? `<img class="as-list-avatar" src="${a.avatarUrl}" alt="">` : ''}<span>${a.name}</span></div></td>
+        <td class="right">${fmtNum(a.total_streams)}</td>
+        <td class="right">${fmtDelta(a.daily_delta)}</td>
+        <td class="right">${fmtNum(a.track_count)}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="4">No artists tracked yet</td></tr>';
+    loading.style.display = 'none';
+    list.style.display = 'block';
+  } catch (e) {
+    loading.style.display = 'none';
+    errorEl.textContent = `Couldn't load artist streams (${e.message}).`;
+    errorEl.style.display = 'block';
+  }
+}
+
+async function loadArtistStreamsDetail(artistId) {
+  const loading = document.getElementById('as-loading');
+  const errorEl = document.getElementById('as-error');
+  const list = document.getElementById('as-list');
+  const content = document.getElementById('as-content');
+  loading.style.display = 'block';
+  errorEl.style.display = 'none';
+  list.style.display = 'none';
+  content.style.display = 'none';
+
+  try {
+    const r = await fetch(`/api/proxy-image?artist_streams=detail&artist=${artistId}`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
     if (data.error) throw new Error(data.error);
