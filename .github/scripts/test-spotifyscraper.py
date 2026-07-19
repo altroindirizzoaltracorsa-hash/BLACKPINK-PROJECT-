@@ -24,14 +24,25 @@ def main():
         track_ids = []
         seen = set()
         album_failures = []
+        print()
+        print("Per-album breakdown:")
         for ref, item in zip(albums, album_results):
             if not item.ok:
                 album_failures.append(f"{ref.name}: {item.error}")
+                print(f"  FAILED  {ref.id}  {ref.name!r}: {item.error}")
                 continue
-            for t in item.result.tracks:
+            a = item.result
+            new_ids = [t.id for t in a.tracks if t.id]
+            dup_in_this_album = len(new_ids) - len(set(new_ids))
+            already_seen = sum(1 for tid in new_ids if tid in seen)
+            print(f"  {a.id}  {a.name!r}  type={a.album_type}  release={a.release_date}  "
+                  f"total_tracks={a.total_tracks}  tracks_returned={len(new_ids)}  "
+                  f"already_seen_elsewhere={already_seen}")
+            for t in a.tracks:
                 if t.id and t.id not in seen:
                     seen.add(t.id)
                     track_ids.append(t.id)
+        print()
 
         print(f"  {len(track_ids)} unique tracks across {len(album_ids) - len(album_failures)} albums")
         if album_failures:
