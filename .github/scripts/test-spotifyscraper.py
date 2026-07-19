@@ -71,6 +71,11 @@ def main():
             raw_total += pc
             playcount_by_id[tid] = (item.result.name, pc)
 
+        print()
+        print(f"All {len(playcount_by_id)} tracks fetched (name, play_count, id):")
+        for tid, (name, pc) in sorted(playcount_by_id.items(), key=lambda kv: -kv[1][1]):
+            print(f"  {pc:,}  {name}  ({tid})")
+
         # Diagnostic: side-by-side comparison of DEADLINE's two album IDs
         # (explicit vs clean), matched by track name, to see the actual
         # play_count gap rather than a binary matched/unmatched verdict.
