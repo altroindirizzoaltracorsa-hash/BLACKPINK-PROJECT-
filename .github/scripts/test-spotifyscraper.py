@@ -53,27 +53,48 @@ def main():
         print("Fetching per-track play counts (batched)...")
         track_results = client.get_tracks(track_ids)
 
-        total = 0
+        raw_total = 0
         missing_playcount = 0
         track_failures = []
+        by_playcount = {}  # play_count -> list of (id, name)
         for tid, item in zip(track_ids, track_results):
             if not item.ok:
                 track_failures.append(f"{tid}: {item.error}")
                 continue
-            if item.result.play_count is None:
+            pc = item.result.play_count
+            if pc is None:
                 missing_playcount += 1
                 continue
-            total += item.result.play_count
+            raw_total += pc
+            by_playcount.setdefault(pc, []).append((tid, item.result.name))
+
+        # Spotify serves the *same* play_count under multiple track IDs when a
+        # song exists as both a standalone single and (later) embedded in an
+        # album, or as explicit/clean edition pairs -- these are linked, not
+        # independent, so each distinct play_count value should count once.
+        dedup_total = 0
+        linked_groups = []
+        for pc, entries in by_playcount.items():
+            dedup_total += pc
+            if len(entries) > 1:
+                linked_groups.append((pc, entries))
 
         print()
-        print(f"TOTAL: {total:,}")
-        print(f"Tracks summed: {len(track_ids) - len(track_failures) - missing_playcount}/{len(track_ids)}")
+        print(f"RAW TOTAL (every track ID counted): {raw_total:,}")
+        print(f"DEDUPED TOTAL (each distinct play_count counted once): {dedup_total:,}")
+        print(f"Distinct play_count values: {len(by_playcount)}  (from {len(track_ids)} track IDs)")
         print(f"Tracks with no play_count (Tier-2 fallback, no token): {missing_playcount}")
         print(f"Track fetch failures: {len(track_failures)}")
         if track_failures:
             print("First 5 track failures:")
             for f in track_failures[:5]:
                 print(f"  - {f}")
+
+        print()
+        print(f"Linked groups found (same play_count across multiple IDs): {len(linked_groups)}")
+        for pc, entries in sorted(linked_groups, key=lambda g: -g[0]):
+            names = ", ".join(f"{name!r}({tid})" for tid, name in entries)
+            print(f"  {pc:,} shared by {len(entries)}: {names}")
 
 
 if __name__ == "__main__":
