@@ -371,11 +371,32 @@ async function fetchCatalogViaSpotifyAPI() {
   // Prefer the stored OAuth user token (works from Vercel IPs).
   // Fall back to the anon token endpoint (blocked from most cloud IPs, but kept
   // as a forward-compatibility fallback in case Spotify ever unblocks it).
-  let at;
-  try { at = await getStoredUserToken(); }
-  catch { at = await getSpotifyAnonToken(); }
-  let total = 0, failed = 0;
-  for (let i = 0; i < ids.length; i += 10) {
+  let at, tokenSource;
+  try { at = await getStoredUserToken(); tokenSource = 'oauth'; }
+  catch(e) {
+    try { at = await getSpotifyAnonToken(); tokenSource = 'anon'; }
+    catch(e2) { throw new Error(`token: oauth=${e.message}; anon=${e2.message}`); }
+  }
+
+  // Probe the first track to detect partner API auth failures early
+  const probeId = ids[0];
+  const probeVars = JSON.stringify({ uri: `spotify:track:${probeId}` });
+  const probeExts = JSON.stringify({ persistedQuery: { version: 1, sha256Hash: 'ae85b52abb74d20a4c331d4143d4772c95f34757a435d55406e6a2f17ad41c42' } });
+  const probeR = await fetch(`https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${encodeURIComponent(probeVars)}&extensions=${encodeURIComponent(probeExts)}`, {
+    headers: { Authorization: `Bearer ${at}`, 'User-Agent': UA },
+  });
+  if (!probeR.ok) {
+    const probeText = await probeR.text();
+    throw new Error(`partner-api ${probeR.status} (token=${tokenSource}): ${probeText.slice(0, 200)}`);
+  }
+  const probeD = await probeR.json();
+  const probeCount = probeD?.data?.trackUnion?.playcount;
+  if (!probeCount && probeD?.errors) {
+    throw new Error(`partner-api errors (token=${tokenSource}): ${JSON.stringify(probeD.errors).slice(0, 200)}`);
+  }
+
+  let total = probeCount ? Number(probeCount) : 0, failed = 0;
+  for (let i = 1; i < ids.length; i += 10) {
     const counts = await Promise.all(ids.slice(i, i + 10).map(async id => {
       try {
         const vars = JSON.stringify({ uri: `spotify:track:${id}` });
@@ -389,7 +410,7 @@ async function fetchCatalogViaSpotifyAPI() {
     }));
     total += counts.reduce((s, c) => s + c, 0);
   }
-  if (!total) throw new Error('all play counts returned 0');
+  if (!total) throw new Error(`all play counts returned 0 (token=${tokenSource})`);
   // Refresh cache timestamp on successful full fetch
   await redis.set(BP_TRACK_IDS_KEY, { ids, ts: Date.now() });
   return { total, trackCount: ids.length, failed, source: 'spotify-api' };
@@ -576,7 +597,7 @@ async function handleCatalogRequest(req, res) {
   const prevEntry = prevHist.length ? prevHist[prevHist.length - 1] : null;
   const daily     = (prevEntry && result.total > prevEntry.total) ? result.total - prevEntry.total : null;
   const hist = await updateCatalogHistory(result.total, daily);
-  return res.status(200).json({ ...result, history: hist });
+  return res.status(200).json({ ...result, history: hist, ...(errors.length ? { errors } : {}) });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
