@@ -45,3 +45,25 @@ jobs:
 
       - name: Run test fetch
         run: python .github/scripts/test-spotifyscraper.py
+
+  # Manual-only for now, until fetch-artist-streams.yml exists on main and
+  # can run on its own daily schedule -- same registration limitation as
+  # test-spotifyscraper above.
+  fetch-artist-streams:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper
+
+      - name: Fetch and store artist streams
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python .github/scripts/fetch_artist_streams.py
