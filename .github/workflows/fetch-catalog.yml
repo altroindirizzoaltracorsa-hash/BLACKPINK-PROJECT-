@@ -74,6 +74,7 @@ jobs:
   # once it's been run.
   backfill-july17-baseline:
     if: github.event_name == 'workflow_dispatch'
+    needs: fetch-artist-streams
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -81,6 +82,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Install httpx
+        run: pip install httpx
 
       - name: Backfill July 17 baseline and relabel July 19 -> July 18
         env:
