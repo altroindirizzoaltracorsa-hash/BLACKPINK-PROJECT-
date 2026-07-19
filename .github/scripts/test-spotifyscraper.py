@@ -59,7 +59,6 @@ def main():
         raw_total = 0
         missing_playcount = 0
         track_failures = []
-        by_playcount = {}  # play_count -> list of (id, name)
         playcount_by_id = {}
         for tid, item in zip(track_ids, track_results):
             if not item.ok:
@@ -70,7 +69,6 @@ def main():
                 missing_playcount += 1
                 continue
             raw_total += pc
-            by_playcount.setdefault(pc, []).append((tid, item.result.name))
             playcount_by_id[tid] = (item.result.name, pc)
 
         # Diagnostic: side-by-side comparison of DEADLINE's two album IDs
@@ -95,21 +93,43 @@ def main():
                     delta = a_pc - b_pc
                     print(f"  {name!r}: A={a_pc:,} ({a_tid})  B={b_pc:,} ({b_tid})  delta={delta:,}")
 
-        # Spotify serves the *same* play_count under multiple track IDs when a
-        # song exists as both a standalone single and (later) embedded in an
-        # album, or as explicit/clean edition pairs -- these are linked, not
-        # independent, so each distinct play_count value should count once.
+        # Spotify serves the *same* underlying play count under multiple track
+        # IDs when a song exists as both a standalone single and (later)
+        # embedded in an album, or as explicit/clean edition pairs. Requiring
+        # an exact numeric match misses this when the shared counter ticks
+        # over between the two async batch fetches (seen on DEADLINE's fast-
+        # moving tracks: ~0.1-0.2% drift). Group by track name instead, and
+        # treat a small spread as timing noise -- take the max (freshest
+        # sample) and count it once. A large spread means the names just
+        # coincide and isn't safe to auto-merge; each is counted separately
+        # and flagged for manual review.
+        DRIFT_TOLERANCE = 0.01  # 1% -- comfortably above the ~0.2% drift observed
+
+        by_name = {}
+        for tid, (name, pc) in playcount_by_id.items():
+            by_name.setdefault(name, []).append((tid, pc))
+
         dedup_total = 0
-        linked_groups = []
-        for pc, entries in by_playcount.items():
-            dedup_total += pc
-            if len(entries) > 1:
-                linked_groups.append((pc, entries))
+        merged_groups = []
+        unmerged_groups = []
+        for name, entries in by_name.items():
+            values = [pc for _, pc in entries]
+            hi, lo = max(values), min(values)
+            if len(entries) == 1:
+                dedup_total += values[0]
+                continue
+            spread = (hi - lo) / hi if hi else 0
+            if spread <= DRIFT_TOLERANCE:
+                dedup_total += hi
+                merged_groups.append((name, entries, hi))
+            else:
+                dedup_total += sum(values)
+                unmerged_groups.append((name, entries, spread))
 
         print()
         print(f"RAW TOTAL (every track ID counted): {raw_total:,}")
-        print(f"DEDUPED TOTAL (each distinct play_count counted once): {dedup_total:,}")
-        print(f"Distinct play_count values: {len(by_playcount)}  (from {len(track_ids)} track IDs)")
+        print(f"DEDUPED TOTAL (name-grouped, max of each group counted once): {dedup_total:,}")
+        print(f"Distinct song names: {len(by_name)}  (from {len(track_ids)} track IDs)")
         print(f"Tracks with no play_count (Tier-2 fallback, no token): {missing_playcount}")
         print(f"Track fetch failures: {len(track_failures)}")
         if track_failures:
@@ -118,10 +138,17 @@ def main():
                 print(f"  - {f}")
 
         print()
-        print(f"Linked groups found (same play_count across multiple IDs): {len(linked_groups)}")
-        for pc, entries in sorted(linked_groups, key=lambda g: -g[0]):
-            names = ", ".join(f"{name!r}({tid})" for tid, name in entries)
-            print(f"  {pc:,} shared by {len(entries)}: {names}")
+        print(f"Merged groups (same name, within {DRIFT_TOLERANCE:.0%} -- treated as one song): {len(merged_groups)}")
+        for name, entries, hi in sorted(merged_groups, key=lambda g: -g[2]):
+            parts = ", ".join(f"{pc:,}({tid})" for tid, pc in entries)
+            print(f"  {name!r} -> counted once at {hi:,}: {parts}")
+
+        if unmerged_groups:
+            print()
+            print(f"NOT auto-merged (same name, spread > {DRIFT_TOLERANCE:.0%} -- needs manual review): {len(unmerged_groups)}")
+            for name, entries, spread in sorted(unmerged_groups, key=lambda g: -g[2]):
+                parts = ", ".join(f"{pc:,}({tid})" for tid, pc in entries)
+                print(f"  {name!r} spread={spread:.1%}: {parts}")
 
 
 if __name__ == "__main__":
