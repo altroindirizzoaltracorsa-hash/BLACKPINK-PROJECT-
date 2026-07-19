@@ -34,6 +34,8 @@ def sb(method, path, **kwargs):
         **kwargs.pop("headers", {}),
     }
     r = httpx.request(method, f"{SUPABASE_URL}/rest/v1{path}", headers=headers, timeout=30, **kwargs)
+    if r.is_error:
+        print(f"  Supabase error body: {r.text}", file=sys.stderr)
     r.raise_for_status()
     return r.json() if r.content else None
 
