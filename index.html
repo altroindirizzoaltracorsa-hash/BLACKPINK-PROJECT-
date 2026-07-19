@@ -2874,6 +2874,12 @@ let artistTrackSort = 'streams';
 
 function fmtNum(n) { return n == null ? '—' : Number(n).toLocaleString(); }
 
+function fmtDate(isoDate) {
+  if (!isoDate) return '—';
+  const [y, m, d] = isoDate.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 function fmtDelta(n) {
   if (n == null) return '—';
   const cls = n >= 0 ? 'as-delta-up' : 'as-delta-down';
@@ -2991,7 +2997,7 @@ function renderArtistStreamsPage() {
   const historyBody = document.getElementById('as-history-body');
   historyBody.innerHTML = (d.history || []).map(h => `
     <tr>
-      <td>${h.date}</td>
+      <td>${fmtDate(h.date)}</td>
       <td class="right">${fmtNum(h.total_streams)}</td>
       <td class="right">${fmtDelta(h.daily_delta)}</td>
     </tr>
