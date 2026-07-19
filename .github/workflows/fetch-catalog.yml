@@ -68,13 +68,11 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python .github/scripts/fetch_artist_streams.py
 
-  # One-time, manual-only: relabels the mislabeled 07-19 snapshot as 07-18
-  # (Spotify's play_count lags a day) and backfills a 07-17 baseline from
-  # kworb so 07-18's daily_delta is real instead of null. Safe to remove
-  # once it's been run.
-  backfill-july17-baseline:
+  # One-time, manual-only: extends artist_daily_stats back to 07-14 using
+  # the site's older kworb-derived widget's daily deltas, and patches
+  # 07-17's own delta (null until now). Safe to remove once it's been run.
+  backfill-widget-history:
     if: github.event_name == 'workflow_dispatch'
-    needs: fetch-artist-streams
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -86,8 +84,8 @@ jobs:
       - name: Install httpx
         run: pip install httpx
 
-      - name: Backfill July 17 baseline and relabel July 19 -> July 18
+      - name: Backfill 07-14 through 07-16 from the widget's known deltas
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python .github/scripts/backfill_july17_baseline.py
+        run: python .github/scripts/backfill_widget_history.py
