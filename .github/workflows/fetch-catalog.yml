@@ -26,3 +26,22 @@ jobs:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           VERCEL_URL: ${{ inputs.base_url != '' && inputs.base_url || 'https://blackpink-project.vercel.app' }}
         run: node .github/scripts/fetch-catalog.mjs
+
+  # Experimental, manual-only: test whether spotifyscraper's embed-page-bootstrapped
+  # anon token survives GitHub Actions' network, unlike open.spotify.com/get_access_token
+  # which is blocked here. Prints diagnostics only, does not touch production data.
+  test-spotifyscraper:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper
+
+      - name: Run test fetch
+        run: python .github/scripts/test-spotifyscraper.py
