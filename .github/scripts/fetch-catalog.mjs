@@ -13,18 +13,55 @@ const CLIENT_ID    = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
 async function getAnonToken() {
-  const r = await fetch(
-    'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
-    { headers: { 'User-Agent': UA, 'Accept': 'application/json' } },
-  );
-  const text = await r.text();
-  if (!r.ok || !text.trimStart().startsWith('{')) {
-    throw new Error(`anon-token ${r.status}: ${text.slice(0, 300)}`);
+  // Method 1: dedicated token endpoint (blocked from most datacenter IPs)
+  try {
+    const r = await fetch(
+      'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
+      { headers: { 'User-Agent': UA, 'Accept': 'application/json' } },
+    );
+    const text = await r.text();
+    if (r.ok && text.trimStart().startsWith('{')) {
+      const d = JSON.parse(text);
+      if (d.accessToken) { console.log('✓ Got anon token (endpoint)'); return d.accessToken; }
+    }
+    console.log(`token endpoint: ${r.status} — trying page scrape`);
+  } catch(e) { console.log(`token endpoint error: ${e.message} — trying page scrape`); }
+
+  // Method 2: Spotify embeds the access token in the initial HTML of the web player.
+  // The HTML pages are on a different WAF path than the /get_access_token API endpoint
+  // and may be accessible from datacenter IPs even when the endpoint is blocked.
+  const scrapeUrls = [
+    'https://open.spotify.com/',
+    `https://open.spotify.com/artist/${ARTIST_ID}`,
+    'https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY',
+  ];
+  for (const url of scrapeUrls) {
+    try {
+      const r = await fetch(url, {
+        headers: {
+          'User-Agent': UA,
+          'Accept': 'text/html,application/xhtml+xml,*/*;q=0.9',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+      });
+      if (!r.ok) { console.log(`page ${url}: ${r.status}`); continue; }
+      const html = await r.text();
+      for (const re of [
+        /"accessToken"\s*:\s*"([^"]+)"/,
+        /"sp_t"\s*:\s*"([^"]+)"/,
+        /accessToken["']\s*:\s*["']([^"']{50,})/,
+      ]) {
+        const m = html.match(re);
+        if (m?.[1] && m[1].length > 50) {
+          console.log(`✓ Got anon token (scraped from ${url})`);
+          return m[1];
+        }
+      }
+      console.log(`page ${url}: token not found in HTML (len=${html.length}, head=${html.slice(0,200)})`);
+    } catch(e) { console.log(`page ${url} error: ${e.message}`); }
   }
-  const d = JSON.parse(text);
-  if (!d.accessToken) throw new Error(`accessToken missing: ${text.slice(0, 200)}`);
-  console.log('✓ Got anon token');
-  return d.accessToken;
+
+  throw new Error('Could not obtain anon token from any source');
 }
 
 async function getClientToken() {
