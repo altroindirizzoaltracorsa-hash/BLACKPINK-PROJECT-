@@ -24,6 +24,7 @@ def main():
         track_ids = []
         seen = set()
         album_failures = []
+        track_album = {}  # track id -> (album_id, album_name, track_number)
         print()
         print("Per-album breakdown:")
         for ref, item in zip(albums, album_results):
@@ -39,6 +40,8 @@ def main():
                   f"total_tracks={a.total_tracks}  tracks_returned={len(new_ids)}  "
                   f"already_seen_elsewhere={already_seen}")
             for t in a.tracks:
+                if t.id:
+                    track_album[t.id] = (a.id, a.name, t.track_number)
                 if t.id and t.id not in seen:
                     seen.add(t.id)
                     track_ids.append(t.id)
@@ -57,6 +60,7 @@ def main():
         missing_playcount = 0
         track_failures = []
         by_playcount = {}  # play_count -> list of (id, name)
+        playcount_by_id = {}
         for tid, item in zip(track_ids, track_results):
             if not item.ok:
                 track_failures.append(f"{tid}: {item.error}")
@@ -67,6 +71,29 @@ def main():
                 continue
             raw_total += pc
             by_playcount.setdefault(pc, []).append((tid, item.result.name))
+            playcount_by_id[tid] = (item.result.name, pc)
+
+        # Diagnostic: side-by-side comparison of DEADLINE's two album IDs
+        # (explicit vs clean), matched by track name, to see the actual
+        # play_count gap rather than a binary matched/unmatched verdict.
+        deadline_albums = {}
+        for tid, (album_id, album_name, track_number) in track_album.items():
+            if album_name == "DEADLINE":
+                deadline_albums.setdefault(album_id, []).append((track_number, tid))
+        if len(deadline_albums) == 2:
+            print()
+            print("DEADLINE explicit vs clean, track-by-track (matched by name):")
+            (aid_a, tracks_a), (aid_b, tracks_b) = list(deadline_albums.items())
+            by_name_a = {playcount_by_id.get(tid, (None, None))[0]: (tid, playcount_by_id.get(tid, (None, None))[1]) for _, tid in tracks_a}
+            by_name_b = {playcount_by_id.get(tid, (None, None))[0]: (tid, playcount_by_id.get(tid, (None, None))[1]) for _, tid in tracks_b}
+            for name in by_name_a:
+                a_tid, a_pc = by_name_a[name]
+                b_tid, b_pc = by_name_b.get(name, (None, None))
+                if b_pc is None:
+                    print(f"  {name!r}: album A={a_pc:,} ({a_tid})  |  album B=<no match by name>")
+                else:
+                    delta = a_pc - b_pc
+                    print(f"  {name!r}: A={a_pc:,} ({a_tid})  B={b_pc:,} ({b_tid})  delta={delta:,}")
 
         # Spotify serves the *same* play_count under multiple track IDs when a
         # song exists as both a standalone single and (later) embedded in an
