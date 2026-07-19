@@ -353,7 +353,7 @@ async function fetchCatalogViaRapidAPI() {
         if (!r.ok) { errors.push(`${ep.name}: HTTP ${r.status}`); break; }
         const total = ep.getTotal(data);
         if (total > 1_000_000_000) return { total, source: `rapidapi-${ep.name}` };
-        errors.push(`${ep.name}: total=${total} (raw: ${JSON.stringify(data).slice(0, 200)})`);
+        errors.push(`${ep.name}: total=${total} (raw: ${JSON.stringify(data).slice(0, 2000)})`);
       } catch(e) { errors.push(`${ep.name}: ${e.message}`); }
       break;
     }
