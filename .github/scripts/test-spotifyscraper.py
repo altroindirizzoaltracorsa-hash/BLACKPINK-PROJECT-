@@ -155,6 +155,31 @@ def main():
                 parts = ", ".join(f"{pc:,}({tid})" for tid, pc in entries)
                 print(f"  {name!r} spread={spread:.1%}: {parts}")
 
+        # Full canonical (post-dedup) list, matching exactly what
+        # fetch_artist_streams.py's dedupe() produces and stores -- one row
+        # per merged group (max value), one row per singleton, and one row
+        # PER TRACK for unmerged collisions (disambiguated by album), so
+        # this can be diffed name-for-name against kworb's list.
+        canonical = []
+        for name, entries in by_name.items():
+            values = [pc for _, pc in entries]
+            hi, lo = max(values), min(values)
+            if len(entries) == 1:
+                canonical.append((name, values[0]))
+                continue
+            spread = (hi - lo) / hi if hi else 0
+            if spread <= DRIFT_TOLERANCE:
+                canonical.append((name, hi))
+            else:
+                for tid, pc in entries:
+                    album = track_album.get(tid, (None, "unknown album", None))[1]
+                    canonical.append((f"{name} ({album})", pc))
+
+        print()
+        print(f"CANONICAL LIST ({len(canonical)} rows, sum={sum(v for _, v in canonical):,}):")
+        for name, v in sorted(canonical, key=lambda x: -x[1]):
+            print(f"  {v:,}  {name}")
+
 
 if __name__ == "__main__":
     main()
