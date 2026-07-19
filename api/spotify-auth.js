@@ -1,5 +1,5 @@
 /**
- * Spotify OAuth handler — one-time user authorization flow.
+ * Spotify OAuth handler — one-time user authorization flow (Edge Runtime).
  *
  * GET /api/spotify-auth                → redirects to Spotify login
  * GET /api/spotify-auth?code=...       → exchanges code for tokens, stores refresh token in Redis
@@ -15,29 +15,32 @@
  *   3. Log in with your Spotify account → done.
  */
 
+export const config = { runtime: 'edge' };
+
 import { Redis } from '@upstash/redis';
 
 export const SPOTIFY_USER_CREDS_KEY = 'bp_spotify_user_creds';
 
 const REDIRECT_URI = 'https://blackpink-project.vercel.app/api/spotify-auth';
 
-export default async function handler(req, res) {
+export default async function handler(req) {
+  const url    = new URL(req.url);
   const id     = process.env.SPOTIFY_CLIENT_ID_2 || process.env.SPOTIFY_CLIENT_ID;
   const secret = process.env.SPOTIFY_CLIENT_SECRET_2 || process.env.SPOTIFY_CLIENT_SECRET;
 
-  const { code, error, key } = req.query;
+  const code  = url.searchParams.get('code');
+  const error = url.searchParams.get('error');
+  const key   = url.searchParams.get('key');
 
-  // If an error came back from Spotify
   if (error) {
-    return res.status(400).send(`Spotify auth error: ${error}`);
+    return new Response(`Spotify auth error: ${error}`, { status: 400 });
   }
 
   // Step 1 — no code yet: redirect to Spotify authorization page
   if (!code) {
-    // Require admin key to initiate the flow so random visitors can't spam it
     const adminSecret = process.env.ADMIN_SECRET;
     if (!adminSecret || key !== adminSecret) {
-      return res.status(401).send('Unauthorized. Visit /api/spotify-auth?key=<admin-key>');
+      return new Response('Unauthorized. Visit /api/spotify-auth?key=<admin-key>', { status: 401 });
     }
     const params = new URLSearchParams({
       client_id:     id,
@@ -46,7 +49,7 @@ export default async function handler(req, res) {
       scope:         'user-read-private',
       state:         'catalog',
     });
-    return res.redirect(`https://accounts.spotify.com/authorize?${params}`);
+    return Response.redirect(`https://accounts.spotify.com/authorize?${params}`, 302);
   }
 
   // Step 2 — Spotify redirected back with a code: exchange it for tokens
@@ -54,7 +57,7 @@ export default async function handler(req, res) {
     method: 'POST',
     headers: {
       'Content-Type':  'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${Buffer.from(`${id}:${secret}`).toString('base64')}`,
+      'Authorization': `Basic ${btoa(`${id}:${secret}`)}`,
     },
     body: new URLSearchParams({
       grant_type:   'authorization_code',
@@ -65,7 +68,10 @@ export default async function handler(req, res) {
   const d = await r.json();
 
   if (!d.access_token) {
-    return res.status(502).json({ error: 'Token exchange failed', details: d });
+    return new Response(JSON.stringify({ error: 'Token exchange failed', details: d }), {
+      status: 502,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   const redis = Redis.fromEnv();
@@ -76,11 +82,11 @@ export default async function handler(req, res) {
     ts:            Date.now(),
   });
 
-  return res.status(200).send(`
+  return new Response(`
     <html><body style="font-family:sans-serif;padding:2rem;max-width:500px">
     <h2>✓ Spotify authorized!</h2>
     <p>Refresh token saved to Redis. The daily catalog fetch will now use your user token automatically — no GitHub Actions or Cloudflare Worker needed.</p>
     <p style="color:#666;font-size:.9rem">Refresh token is permanent (until you revoke access in your Spotify account). Access tokens are refreshed automatically every hour.</p>
     </body></html>
-  `);
+  `, { status: 200, headers: { 'Content-Type': 'text/html' } });
 }
