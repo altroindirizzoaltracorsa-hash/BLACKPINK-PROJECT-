@@ -16,9 +16,26 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Playwright + Chromium
-        run: npm install && npx playwright install chromium --with-deps
-        working-directory: .github/scripts
+      - name: Get Spotify anon token via Tor
+        run: |
+          sudo apt-get install -y tor >/dev/null 2>&1
+          sudo systemctl start tor
+          echo "Waiting for Tor circuit to establish..."
+          sleep 12
+          RESP=$(curl -s --max-time 25 \
+            --socks5-hostname 127.0.0.1:9050 \
+            'https://open.spotify.com/get_access_token?reason=transport&productType=web_player' \
+            -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36' \
+            -H 'Accept: application/json' \
+            -H 'Accept-Language: en-US,en;q=0.9' 2>/dev/null || echo '{}')
+          echo "Token response (first 300 chars): ${RESP:0:300}"
+          TOKEN=$(python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('accessToken',''))" <<< "$RESP" 2>/dev/null || echo "")
+          if [ -n "$TOKEN" ]; then
+            echo "✓ Got Spotify anon token via Tor"
+            echo "SPOTIFY_ANON_TOKEN=$TOKEN" >> $GITHUB_ENV
+          else
+            echo "⚠ Tor did not return a token — script will try fallbacks"
+          fi
 
       - name: Fetch BLACKPINK catalog total and save to Redis
         env:
@@ -26,4 +43,5 @@ jobs:
           SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
           SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
           VERCEL_URL: https://blackpink-project.vercel.app
+          SPOTIFY_ANON_TOKEN: ${{ env.SPOTIFY_ANON_TOKEN }}
         run: node .github/scripts/fetch-catalog.mjs

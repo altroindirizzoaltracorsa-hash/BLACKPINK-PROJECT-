@@ -13,6 +13,12 @@ const CLIENT_ID    = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
 async function getAnonToken() {
+  // Method 0: token pre-fetched via Tor in the workflow step
+  if (process.env.SPOTIFY_ANON_TOKEN) {
+    console.log('✓ Got anon token (Tor)');
+    return process.env.SPOTIFY_ANON_TOKEN;
+  }
+
   // Method 1: dedicated token endpoint (fast but blocked from most datacenter IPs)
   try {
     const r = await fetch(
