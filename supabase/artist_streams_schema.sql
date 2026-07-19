@@ -58,3 +58,12 @@ create index if not exists idx_track_daily_stats_track_date
 insert into tracked_artists (spotify_artist_id, name, avatar_url)
 values ('41MozSoPIsD1dJM0CLPjZF', 'BLACKPINK', null)
 on conflict (spotify_artist_id) do nothing;
+
+-- Tables created via the SQL editor don't automatically get the privilege
+-- grants the Table Editor UI sets up for you -- service_role needs these
+-- explicitly or every request 403s with "permission denied for table ...".
+grant select, insert, update on public.tracked_artists     to service_role;
+grant select, insert, update on public.artist_daily_stats  to service_role;
+grant select, insert, update on public.artist_tracks       to service_role;
+grant select, insert, update on public.track_daily_stats   to service_role;
+grant usage, select on all sequences in schema public to service_role;
