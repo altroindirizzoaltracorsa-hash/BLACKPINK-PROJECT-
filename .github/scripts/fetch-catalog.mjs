@@ -13,7 +13,7 @@ const CLIENT_ID    = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
 async function getAnonToken() {
-  // Method 1: dedicated token endpoint (blocked from most datacenter IPs)
+  // Method 1: dedicated token endpoint (fast but blocked from most datacenter IPs)
   try {
     const r = await fetch(
       'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
@@ -24,42 +24,61 @@ async function getAnonToken() {
       const d = JSON.parse(text);
       if (d.accessToken) { console.log('✓ Got anon token (endpoint)'); return d.accessToken; }
     }
-    console.log(`token endpoint: ${r.status} — trying page scrape`);
-  } catch(e) { console.log(`token endpoint error: ${e.message} — trying page scrape`); }
+    console.log(`token endpoint: ${r.status} — trying Playwright browser`);
+  } catch(e) { console.log(`token endpoint: ${e.message} — trying Playwright browser`); }
 
-  // Method 2: Spotify embeds the access token in the initial HTML of the web player.
-  // The HTML pages are on a different WAF path than the /get_access_token API endpoint
-  // and may be accessible from datacenter IPs even when the endpoint is blocked.
-  const scrapeUrls = [
-    'https://open.spotify.com/',
-    `https://open.spotify.com/artist/${ARTIST_ID}`,
-    'https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY',
-  ];
-  for (const url of scrapeUrls) {
+  // Method 2: Run a real headless Chromium browser. The browser executes Spotify's
+  // JavaScript which internally calls get_access_token; we intercept that response.
+  // A real browser fingerprint may bypass WAF rules that block plain HTTP clients.
+  try {
+    const { chromium } = await import('playwright');
+    const browser = await chromium.launch({ headless: true });
     try {
-      const r = await fetch(url, {
-        headers: {
-          'User-Agent': UA,
-          'Accept': 'text/html,application/xhtml+xml,*/*;q=0.9',
-          'Accept-Language': 'en-US,en;q=0.9',
-        },
+      const context = await browser.newContext({ userAgent: UA, locale: 'en-US' });
+      const page = await context.newPage();
+
+      let capturedToken = null;
+
+      // Capture the token from the network response
+      page.on('response', async response => {
+        if (capturedToken) return;
+        if (!response.url().includes('get_access_token')) return;
+        try {
+          const text = await response.text();
+          if (text.includes('accessToken')) {
+            const d = JSON.parse(text);
+            if (d.accessToken) capturedToken = d.accessToken;
+          }
+        } catch {}
       });
-      if (!r.ok) { console.log(`page ${url}: ${r.status}`); continue; }
-      const html = await r.text();
-      for (const re of [
-        /"accessToken"\s*:\s*"([^"]+)"/,
-        /"sp_t"\s*:\s*"([^"]+)"/,
-        /accessToken["']\s*:\s*["']([^"']{50,})/,
-      ]) {
-        const m = html.match(re);
-        if (m?.[1] && m[1].length > 50) {
-          console.log(`✓ Got anon token (scraped from ${url})`);
-          return m[1];
-        }
+
+      await page.goto('https://open.spotify.com/', {
+        waitUntil: 'networkidle',
+        timeout: 30_000,
+      });
+
+      // Also check localStorage as a fallback
+      if (!capturedToken) {
+        capturedToken = await page.evaluate(() => {
+          for (const key of Object.keys(localStorage)) {
+            try {
+              const v = JSON.parse(localStorage.getItem(key) || '');
+              if (v?.accessToken) return v.accessToken;
+            } catch {}
+          }
+          return null;
+        });
       }
-      console.log(`page ${url}: token not found in HTML (len=${html.length}, head=${html.slice(0,200)})`);
-    } catch(e) { console.log(`page ${url} error: ${e.message}`); }
-  }
+
+      if (capturedToken) {
+        console.log('✓ Got anon token (Playwright)');
+        return capturedToken;
+      }
+      console.log('Playwright: token not captured — page loaded but no token intercepted');
+    } finally {
+      await browser.close();
+    }
+  } catch(e) { console.log(`Playwright error: ${e.message}`); }
 
   throw new Error('Could not obtain anon token from any source');
 }

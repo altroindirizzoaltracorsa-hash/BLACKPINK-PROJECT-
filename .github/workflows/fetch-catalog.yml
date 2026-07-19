@@ -16,6 +16,10 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install Playwright + Chromium
+        run: npm install && npx playwright install chromium --with-deps
+        working-directory: .github/scripts
+
       - name: Fetch BLACKPINK catalog total and save to Redis
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
