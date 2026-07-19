@@ -1,54 +1,34 @@
 """
-One-off: search for the Spotify track IDs of BLACKPINK's featured-artist
-tracks (not on BLACKPINK's own discography page, so get_discography()
-misses them), and print the full discography canonical list WITH track
-IDs so a fixed, kworb-matching track list can be pinned down.
+One-off: resolve final track IDs for a kworb-matching fixed track list --
+get real play_count for the featured-artist candidates found via search
+last run, and confirm the SOLO - Live ambiguity (kworb tracks only the
+SEOUL tour version, not THE SHOW or ARENA TOUR OSAKA).
 """
 
 from spotify_scraper import SpotifyClient
 
-ARTIST_ID = "41MozSoPIsD1dJM0CLPjZF"
-
-SEARCHES = [
-    "Kiss and Make Up Dua Lipa BLACKPINK",
-    "Kiss and Make Up Remix Dua Lipa BLACKPINK",
-    "Sour Candy Shygirl Mura Masa Remix Lady Gaga BLACKPINK",
-]
+CANDIDATE_IDS = {
+    "Kiss and Make Up (candidate A)": "7jr3iPu4O4bTCVwLMbdU2i",
+    "Kiss and Make Up (candidate B)": "66xk2wDM30vUTw5rsEJexi",
+    "Kiss and Make Up (Remix) [Mixed]": "6P8SQWN3pcLKChWHt73fZV",
+    "Sour Candy - Shygirl & Mura Masa Remix": "56kudbKiRjWCwiAS3FRHCL",
+    "SOLO - Live (SEOUL, expected kworb match)": "40HHE2cHpWC3JajQytQUtD",
+    "SOLO - Live (THE SHOW, expected extra)": "6V3dOOUiPg53wUf83tBLR8",
+}
 
 
 def main():
     with SpotifyClient() as client:
-        print("=== Searches for missing featured-artist tracks ===")
-        for q in SEARCHES:
-            print(f"\nQuery: {q!r}")
-            results = client.search(q, types=("track",), limit=5)
-            for t in results.tracks:
-                artist_names = ", ".join(a.name for a in t.artists)
-                print(f"  {t.id}  {t.name!r} by {artist_names}  play_count={t.play_count}")
-
-        print("\n\n=== Full discography canonical list (name, streams, track_id, album) ===")
-        albums = client.get_discography(ARTIST_ID)
-        album_results = client.get_albums([a.id for a in albums])
-
-        track_ids, seen, track_album = [], set(), {}
-        for ref, item in zip(albums, album_results):
+        ids = list(CANDIDATE_IDS.values())
+        results = client.get_tracks(ids)
+        for label, tid, item in zip(CANDIDATE_IDS.keys(), ids, results):
             if not item.ok:
+                print(f"{label}  [{tid}]  FAILED: {item.error}")
                 continue
-            for t in item.result.tracks:
-                if t.id:
-                    track_album[t.id] = item.result.name
-                    if t.id not in seen:
-                        seen.add(t.id)
-                        track_ids.append(t.id)
-
-        track_results = client.get_tracks(track_ids)
-        rows = []
-        for tid, item in zip(track_ids, track_results):
-            if item.ok and item.result.play_count is not None:
-                rows.append((item.result.name, item.result.play_count, tid, track_album.get(tid)))
-
-        for name, pc, tid, album in sorted(rows, key=lambda r: -r[1]):
-            print(f"  {pc:,}  {name}  [{tid}]  ({album})")
+            t = item.result
+            artists = ", ".join(a.name for a in t.artists)
+            album_name = t.album.name if t.album else None
+            print(f"{label}  [{tid}]  play_count={t.play_count:,}  name={t.name!r}  artists={artists}  album={album_name!r}")
 
 
 if __name__ == "__main__":
