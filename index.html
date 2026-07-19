@@ -778,24 +778,92 @@
   .lb-loading { padding: 3rem; text-align: center; color: var(--muted); font-size: 0.68rem; letter-spacing: 0.16em; }
   #lb-table-wrap { }
 
+  /* ── ARTIST STREAMS PAGE ── */
+  .as-page {
+    min-height: 100vh;
+    background: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255,0,102,0.1) 0%, transparent 60%), var(--black);
+    padding-top: 80px; padding-bottom: 4rem;
+  }
+  .as-header { padding: 3.2rem 2rem 2rem; text-align: center; border-bottom: 1px solid var(--border); overflow-x: hidden; display: flex; flex-direction: column; align-items: center; }
+  .as-gem { width: 26px; height: 22px; color: var(--pink); margin-bottom: 1rem; filter: drop-shadow(0 0 8px rgba(255,0,102,0.5)); }
+  .as-eyebrow { font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.8rem; }
+  .as-title { font-family: var(--display); font-size: clamp(2.4rem, 9vw, 5rem); letter-spacing: 0.05em; line-height: 0.95; }
+  .as-title span { color: var(--pink); }
+  .as-sub { font-family: var(--light-serif); font-style: italic; font-size: 1rem; color: var(--muted); margin-top: 0.8rem; }
+
+  .as-inner { max-width: 900px; margin: 0 auto; padding: 0 1.5rem; }
+
   .as-error { padding: 2rem; text-align: center; color: var(--pink); font-size: 0.8rem; }
-  .as-back-link { display: inline-block; color: var(--muted); font-size: 0.72rem; letter-spacing: 0.06em; text-decoration: none; margin-top: 1rem; }
+  .as-back-link { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none; margin: 1.8rem 0 0.5rem; transition: color 0.2s; }
   .as-back-link:hover { color: var(--pink); }
-  .as-list-artist { display: flex; align-items: center; gap: 0.7rem; }
-  .as-list-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--card2); }
-  .as-artist-header { display: flex; align-items: center; gap: 1rem; padding: 1.5rem 0 1rem; }
-  .as-avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
-  .as-artist-name { font-family: var(--display); font-size: 1.8rem; letter-spacing: 0.04em; }
-  .as-artist-meta { color: var(--muted); font-size: 0.75rem; margin-top: 0.2rem; }
-  .as-stat-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-  .as-stat { flex: 1; min-width: 140px; background: var(--card); border: 1px solid var(--border); padding: 1rem; display: flex; flex-direction: column; gap: 0.3rem; }
+
+  /* Artist list — card grid */
+  .as-list-grid { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border); margin-top: 1.8rem; }
+  .as-list-card {
+    display: flex; align-items: center; gap: 1rem;
+    background: var(--card); padding: 1.1rem 1.3rem; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .as-list-card:hover { background: var(--card2); }
+  .as-list-avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--card2); border: 1px solid var(--border); }
+  .as-list-avatar-fallback {
+    width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+    background: var(--pink-muted); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; color: var(--pink);
+  }
+  .as-list-avatar-fallback svg { width: 18px; height: 15px; }
+  .as-list-name { font-family: var(--display); font-size: 1.15rem; letter-spacing: 0.05em; color: var(--white); }
+  .as-list-meta { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.04em; margin-top: 0.1rem; }
+  .as-list-figures { margin-left: auto; text-align: right; flex-shrink: 0; }
+  .as-list-total { font-family: var(--display); font-size: 1.3rem; color: var(--pink); letter-spacing: 0.02em; }
+  .as-list-delta { font-size: 0.68rem; margin-top: 0.1rem; }
+  .as-list-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
+
+  /* Artist detail */
+  .as-artist-header { display: flex; align-items: center; gap: 1.1rem; padding: 2rem 0 1.4rem; }
+  .as-avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); box-shadow: 0 0 0 4px rgba(255,0,102,0.08); }
+  .as-avatar-fallback { display: none; align-items: center; justify-content: center; background: var(--pink-muted); color: var(--pink); }
+  .as-avatar-fallback svg { width: 26px; height: 22px; }
+  .as-artist-name { font-family: var(--display); font-size: 2.1rem; letter-spacing: 0.04em; }
+  .as-artist-meta { color: var(--muted); font-size: 0.75rem; margin-top: 0.25rem; letter-spacing: 0.02em; }
+
+  .as-hero-stat {
+    display: flex; flex-direction: column; gap: 0.5rem;
+    background: linear-gradient(160deg, rgba(255,0,102,0.1), var(--card) 65%);
+    border: 1px solid var(--border); border-top: 2px solid var(--pink);
+    padding: 1.6rem 1.6rem 1.4rem; margin-bottom: 1rem;
+  }
+  .as-hero-stat-value {
+    font-family: var(--display); font-size: clamp(2.2rem, 7vw, 3.4rem); letter-spacing: 0.02em;
+    background: linear-gradient(100deg, var(--white) 10%, var(--pink) 90%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    line-height: 1.05;
+  }
+  .as-stat-row { display: flex; gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 2rem; }
+  .as-stat { flex: 1; min-width: 140px; background: var(--card); padding: 1rem 1.2rem; display: flex; flex-direction: column; gap: 0.3rem; }
   .as-stat-label { font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
   .as-stat-value { font-family: var(--display); font-size: 1.6rem; }
-  .as-section-title { font-family: var(--display); font-size: 1.1rem; letter-spacing: 0.06em; margin: 1.5rem 0 0.6rem; }
+  .as-section-title { font-family: var(--display); font-size: 1.1rem; letter-spacing: 0.06em; margin: 2.2rem 0 0.8rem; color: var(--white); }
   .as-tracks-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
   .as-sort-tabs { display: flex; gap: 0.5rem; }
   .as-delta-up { color: #2ecc71; }
   .as-delta-down { color: var(--pink); }
+
+  /* Shared table wrap for history + tracklist */
+  .as-table-wrap { border: 1px solid var(--border); overflow-x: auto; }
+  .as-table { width: 100%; border-collapse: collapse; background: var(--card); }
+  .as-table th {
+    font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--muted); padding: 0.7rem 1rem; text-align: left;
+    border-bottom: 1px solid var(--border); font-weight: normal;
+    position: sticky; top: 0; background: var(--card);
+  }
+  .as-table th.right { text-align: right; }
+  .as-table td { padding: 0.8rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; font-size: 0.85rem; }
+  .as-table tr:last-child td { border-bottom: none; }
+  .as-table tr:hover td { background: var(--card2); }
+  .as-rank-col { width: 2.4rem; }
+  .as-rank { font-family: var(--display); font-size: 1rem; color: rgba(255,0,102,0.35); }
   @media (max-width: 500px) {
     /* Nav: shrink logo so logo+install+hamburger aren't cramped */
     .nav-logo { font-size: 1rem; letter-spacing: 0.14em; }
@@ -1902,46 +1970,53 @@
      ARTIST STREAMS PAGE
 ════════════════════════════════════════ -->
 <div id="page-streams" class="page">
-  <div class="lb-page">
+  <div class="as-page">
 
-    <div class="lb-header">
-      <p class="lb-header-eyebrow">✦ Spotify Artist Streams ✦</p>
-      <h1 class="lb-header-title">ARTIST<br><span>STREAMS</span></h1>
-      <p class="lb-header-sub">BLACKPINK's full catalog, tracked daily</p>
+    <div class="as-header">
+      <svg class="as-gem" viewBox="-1 -1 52 45" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M25,8 C25,3 21,0 16,0 C8,0 2,6 2,14 C2,26 14,34 25,42 C36,34 48,26 48,14 C48,6 42,0 34,0 C29,0 25,3 25,8Z"/><line x1="25" y1="8" x2="25" y2="42"/><line x1="3" y1="22" x2="25" y2="22"/></svg>
+      <p class="as-eyebrow">Spotify Catalog Tracker</p>
+      <h1 class="as-title">BLACKPINK<br><span>SPOTIFY STREAMS</span></h1>
+      <p class="as-sub">Full catalog streams, tracked daily</p>
     </div>
 
-    <div class="lb-inner">
+    <div class="as-inner">
       <div id="as-loading" class="lb-loading">Loading…</div>
       <div id="as-error" class="as-error" style="display:none;"></div>
 
       <div id="as-list" style="display:none;">
-        <table class="lb-table">
-          <thead><tr><th>Artist</th><th class="right">Total Streams</th><th class="right">Daily Change</th><th class="right">Tracks</th></tr></thead>
-          <tbody id="as-list-body"></tbody>
-        </table>
+        <div class="as-list-grid" id="as-list-body"></div>
       </div>
 
       <div id="as-content" style="display:none;">
         <a href="/streams" class="as-back-link" onclick="return goToArtistList(event);">&larr; All artists</a>
+
         <div class="as-artist-header">
           <img id="as-avatar" class="as-avatar" src="" alt="" style="display:none;">
+          <div id="as-avatar-fallback" class="as-avatar as-avatar-fallback">
+            <svg viewBox="-1 -1 52 45" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M25,8 C25,3 21,0 16,0 C8,0 2,6 2,14 C2,26 14,34 25,42 C36,34 48,26 48,14 C48,6 42,0 34,0 C29,0 25,3 25,8Z"/></svg>
+          </div>
           <div>
             <h2 id="as-artist-name" class="as-artist-name"></h2>
             <p id="as-artist-meta" class="as-artist-meta"></p>
           </div>
         </div>
 
+        <div class="as-hero-stat">
+          <span class="as-stat-label">Total Streams Across All Releases</span>
+          <span class="as-hero-stat-value" id="as-total-streams"></span>
+        </div>
         <div class="as-stat-row">
-          <div class="as-stat"><span class="as-stat-label">Total Streams</span><span class="as-stat-value" id="as-total-streams"></span></div>
           <div class="as-stat"><span class="as-stat-label">Daily Avg</span><span class="as-stat-value" id="as-daily-avg"></span></div>
           <div class="as-stat"><span class="as-stat-label">Tracks</span><span class="as-stat-value" id="as-track-count"></span></div>
         </div>
 
-        <h3 class="as-section-title">Streams last 7 days</h3>
-        <table class="lb-table">
-          <thead><tr><th>Date</th><th class="right">Total Streams</th><th class="right">Daily Change</th></tr></thead>
-          <tbody id="as-history-body"></tbody>
-        </table>
+        <h3 class="as-section-title">Streams — Last 7 Days</h3>
+        <div class="as-table-wrap">
+          <table class="as-table">
+            <thead><tr><th>Date</th><th class="right">Total Streams</th><th class="right">Daily Change</th></tr></thead>
+            <tbody id="as-history-body"></tbody>
+          </table>
+        </div>
 
         <div class="as-tracks-header">
           <h3 class="as-section-title" style="margin-bottom:0;">All Tracks</h3>
@@ -1950,10 +2025,12 @@
             <button class="lb-tab" data-sort="daily_delta" onclick="setArtistTrackSort('daily_delta', this)">Daily Change</button>
           </div>
         </div>
-        <table class="lb-table">
-          <thead><tr><th>Track</th><th class="right">Streams</th><th class="right">Daily Change</th></tr></thead>
-          <tbody id="as-tracks-body"></tbody>
-        </table>
+        <div class="as-table-wrap">
+          <table class="as-table">
+            <thead><tr><th class="as-rank-col"></th><th>Track</th><th class="right">Streams</th><th class="right">Daily Change</th></tr></thead>
+            <tbody id="as-tracks-body"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -2782,7 +2859,7 @@ const PAGE_TITLES = {
   vote: 'Vote Now | BLINKS UNITED',
   feedback: 'Feedback | BLINKS UNITED',
   account: 'My Account | BLINKS UNITED',
-  streams: 'Artist Streams | BLINKS UNITED',
+  streams: 'BLACKPINK Spotify Streams | BLINKS UNITED',
 };
 
 function pathToPage(pathname) {
@@ -2839,13 +2916,20 @@ async function loadArtistStreamsList() {
     if (data.error) throw new Error(data.error);
     const artists = data.artists || [];
     document.getElementById('as-list-body').innerHTML = artists.map(a => `
-      <tr onclick="openArtistDetail('${a.id}')">
-        <td><div class="as-list-artist">${a.avatarUrl ? `<img class="as-list-avatar" src="${a.avatarUrl}" alt="">` : ''}<span>${a.name}</span></div></td>
-        <td class="right">${fmtNum(a.total_streams)}</td>
-        <td class="right">${fmtDelta(a.daily_delta)}</td>
-        <td class="right">${fmtNum(a.track_count)}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="4">No artists tracked yet</td></tr>';
+      <div class="as-list-card" onclick="openArtistDetail('${a.id}')">
+        ${a.avatarUrl
+          ? `<img class="as-list-avatar" src="${a.avatarUrl}" alt="">`
+          : `<div class="as-list-avatar-fallback"><svg viewBox="-1 -1 52 45" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M25,8 C25,3 21,0 16,0 C8,0 2,6 2,14 C2,26 14,34 25,42 C36,34 48,26 48,14 C48,6 42,0 34,0 C29,0 25,3 25,8Z"/></svg></div>`}
+        <div>
+          <div class="as-list-name">${a.name}</div>
+          <div class="as-list-meta">${fmtNum(a.track_count)} tracks tracked</div>
+        </div>
+        <div class="as-list-figures">
+          <div class="as-list-total">${fmtNum(a.total_streams)}</div>
+          <div class="as-list-delta">${fmtDelta(a.daily_delta)}</div>
+        </div>
+      </div>
+    `).join('') || '<div class="as-list-empty">No artists tracked yet</div>';
     loading.style.display = 'none';
     list.style.display = 'block';
   } catch (e) {
@@ -2886,8 +2970,14 @@ function renderArtistStreamsPage() {
   const latest = d.history?.[0] || {};
 
   const avatarEl = document.getElementById('as-avatar');
-  if (d.avatar_url) { avatarEl.src = d.avatar_url; avatarEl.style.display = ''; }
-  else avatarEl.style.display = 'none';
+  const avatarFallback = document.getElementById('as-avatar-fallback');
+  if (d.avatar_url) {
+    avatarEl.src = d.avatar_url; avatarEl.style.display = '';
+    avatarFallback.style.display = 'none';
+  } else {
+    avatarEl.style.display = 'none';
+    avatarFallback.style.display = 'flex';
+  }
   document.getElementById('as-artist-name').textContent = d.name || '';
   document.getElementById('as-artist-meta').textContent =
     `${fmtNum(latest.followers)} followers · ${fmtNum(latest.monthly_listeners)} monthly listeners`;
@@ -2920,13 +3010,14 @@ function setArtistTrackSort(sort, btn) {
 function renderArtistTracks() {
   const tracks = [...(artistStreamsData?.tracks || [])]
     .sort((a, b) => (b[artistTrackSort] || 0) - (a[artistTrackSort] || 0));
-  document.getElementById('as-tracks-body').innerHTML = tracks.map(t => `
+  document.getElementById('as-tracks-body').innerHTML = tracks.map((t, i) => `
     <tr>
+      <td class="as-rank">${i + 1}</td>
       <td>${t.name}</td>
       <td class="right">${fmtNum(t.streams)}</td>
       <td class="right">${fmtDelta(t.daily_delta)}</td>
     </tr>
-  `).join('') || '<tr><td colspan="3">No tracks yet</td></tr>';
+  `).join('') || '<tr><td colspan="4">No tracks yet</td></tr>';
 }
 
 function showPage(page, { replace = false } = {}) {

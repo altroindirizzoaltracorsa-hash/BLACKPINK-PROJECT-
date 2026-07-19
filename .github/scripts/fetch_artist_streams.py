@@ -258,6 +258,17 @@ def process_artist(client, artist_id, artist_name):
        json=track_rows)
 
     artist_data = client.get_artist(artist_id)
+    if artist_data.images:
+        avatar_url = max(artist_data.images, key=lambda im: im.width or 0).url
+        sb("POST", "/tracked_artists",
+           params={"on_conflict": "spotify_artist_id"},
+           headers={"Prefer": "resolution=merge-duplicates"},
+           json=[{
+               "spotify_artist_id": artist_id,
+               "name": artist_name,
+               "avatar_url": avatar_url,
+           }])
+
     artist_delta = (total_streams - prev_artist["total_streams"]) if prev_artist else None
     sb("POST", "/artist_daily_stats",
        params={"on_conflict": "artist_id,date"},
