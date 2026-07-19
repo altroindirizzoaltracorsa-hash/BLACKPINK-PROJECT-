@@ -5,17 +5,23 @@ One-time fix, not part of the daily pipeline:
    it ran (2026-07-19) instead of the day the numbers reflect (Spotify's
    public play_count always lags a day, so that snapshot is really
    2026-07-18's data -- see the TODAY comment in fetch_artist_streams.py
-   for the same fix applied going forward).
+   for the same fix applied going forward). Later runs pick up the fix
+   and correctly write to 2026-07-18 directly, leaving the original
+   2026-07-19 rows as orphaned duplicates that need deleting -- if left
+   in place they'd be picked as "latest" by the site's order-by-date
+   queries and show stale/wrong numbers.
 2. We already have a trustworthy 2026-07-17 baseline for every one of the
    113 pinned tracks: the kworb.net snapshot used to reconcile the pinned
    track list in the first place. Backfilling it lets 07-18's daily_delta
    be real instead of null.
 
-Deletes the mislabeled 07-19 rows and replaces them with correctly dated
-07-17 (baseline, no delta) and 07-18 (the real fetched numbers, with
-delta computed against the 07-17 baseline) rows.
+Reads whatever is currently dated 2026-07-18 as the authoritative fetched
+snapshot, deletes any leftover 2026-07-19 rows, inserts the 2026-07-17
+baseline, and patches 07-18's daily_delta against it.
 
-Requires SUPABASE_URL / SUPABASE_SERVICE_KEY env vars.
+Requires SUPABASE_URL / SUPABASE_SERVICE_KEY env vars, and service_role
+needs delete (not just select/insert/update) on artist_daily_stats and
+track_daily_stats -- see the bottom of supabase/artist_streams_schema.sql.
 """
 
 import os
@@ -177,31 +183,31 @@ def main():
         print(f"FATAL: {len(missing)} baseline track IDs have no artist_tracks row: {missing}", file=sys.stderr)
         sys.exit(1)
 
-    mislabeled = sb("GET", "/track_daily_stats", params={
-        "date": f"eq.{MISLABELED_DATE}",
+    fetched = sb("GET", "/track_daily_stats", params={
+        "date": f"eq.{FETCHED_DATE}",
         "track_ref": f"in.({','.join(str(t['id']) for t in tracks)})",
         "select": "track_ref,streams",
     })
-    fetched_by_ref = {r["track_ref"]: r["streams"] for r in mislabeled}
+    fetched_by_ref = {r["track_ref"]: r["streams"] for r in fetched}
 
-    mislabeled_artist = sb("GET", "/artist_daily_stats", params={
-        "date": f"eq.{MISLABELED_DATE}",
+    fetched_artist = sb("GET", "/artist_daily_stats", params={
+        "date": f"eq.{FETCHED_DATE}",
         "artist_id": f"eq.{BLACKPINK_ID}",
         "select": "followers,monthly_listeners",
     })
-    if not mislabeled_artist:
-        print(f"FATAL: no {MISLABELED_DATE} artist_daily_stats row for {BLACKPINK_ID}", file=sys.stderr)
+    if not fetched_artist:
+        print(f"FATAL: no {FETCHED_DATE} artist_daily_stats row for {BLACKPINK_ID} -- run fetch_artist_streams.py first", file=sys.stderr)
         sys.exit(1)
-    followers = mislabeled_artist[0]["followers"]
-    monthly_listeners = mislabeled_artist[0]["monthly_listeners"]
+    followers = fetched_artist[0]["followers"]
+    monthly_listeners = fetched_artist[0]["monthly_listeners"]
 
     ref_by_track_id = {tid: id_by_track_id[tid] for tid in JULY17_BASELINE}
     missing_fetched = set(ref_by_track_id.values()) - set(fetched_by_ref)
     if missing_fetched:
-        print(f"FATAL: {len(missing_fetched)} track_refs have no {MISLABELED_DATE} row to relabel", file=sys.stderr)
+        print(f"FATAL: {len(missing_fetched)} track_refs have no {FETCHED_DATE} row", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Deleting mislabeled {MISLABELED_DATE} rows...")
+    print(f"Deleting orphaned {MISLABELED_DATE} rows (if any)...")
     sb("DELETE", "/track_daily_stats", params={
         "date": f"eq.{MISLABELED_DATE}",
         "track_ref": f"in.({','.join(str(t['id']) for t in tracks)})",
@@ -243,7 +249,7 @@ def main():
            "track_count": len(JULY17_BASELINE),
        }])
 
-    print(f"Inserting {FETCHED_DATE} (total={fetched_total:,}, delta={fetched_total - baseline_total:,})...")
+    print(f"Patching {FETCHED_DATE} daily_delta against the baseline (total={fetched_total:,}, delta={fetched_total - baseline_total:,})...")
     sb("POST", "/track_daily_stats",
        params={"on_conflict": "track_ref,date"},
        headers={"Prefer": "resolution=merge-duplicates"},

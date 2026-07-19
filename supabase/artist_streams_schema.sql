@@ -67,3 +67,8 @@ grant select, insert, update on public.artist_daily_stats  to service_role;
 grant select, insert, update on public.artist_tracks       to service_role;
 grant select, insert, update on public.track_daily_stats   to service_role;
 grant usage, select on all sequences in schema public to service_role;
+
+-- delete needed for one-off cleanup migrations (e.g. removing rows written
+-- under a bug-mislabeled date) -- not used by the daily fetch itself.
+grant delete on public.artist_daily_stats to service_role;
+grant delete on public.track_daily_stats  to service_role;
