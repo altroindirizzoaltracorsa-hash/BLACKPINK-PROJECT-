@@ -188,11 +188,12 @@ async function fetchTrackMetadata(trackId, prevTotal = 0) {
 
 // ── Catalog total helpers (merged from catalog-streams.js) ───────────────────
 
-const CAT_CACHE_KEY        = 'bp_catalog_total';
-const CAT_HIST_KEY         = 'bp_catalog_hist';
-const BP_TRACK_IDS_KEY     = 'bp_track_ids';
-const BP_TRACK_IDS_TTL     = 14 * 24 * 60 * 60 * 1000; // 14 days
+const CAT_CACHE_KEY          = 'bp_catalog_total';
+const CAT_HIST_KEY           = 'bp_catalog_hist';
+const BP_TRACK_IDS_KEY       = 'bp_track_ids';
+const BP_TRACK_IDS_TTL       = 14 * 24 * 60 * 60 * 1000; // 14 days
 const SPOTIFY_USER_CREDS_KEY = 'bp_spotify_user_creds';
+const BP_ANON_TOKEN_KEY      = 'bp_spotify_anon_token';
 
 async function getSpotifyClientToken() {
   const id     = process.env.SPOTIFY_CLIENT_ID;
@@ -229,11 +230,16 @@ async function getCatalogClientToken() {
 }
 
 async function getSpotifyAnonToken() {
+  // Check Redis for a token cached by a browser visitor (residential IP, not blocked)
+  const cached = await redis.get(BP_ANON_TOKEN_KEY);
+  if (cached?.token && cached.expires_at > Date.now()) return cached.token;
+
+  // Fall through to the endpoint — blocked from cloud IPs, but try anyway
   const r = await fetch(
     'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
     { headers: { 'User-Agent': UA } },
   );
-  if (!r.ok) throw new Error(`anon-token ${r.status}`);
+  if (!r.ok) throw new Error(`anon-token ${r.status} (no cached token in Redis)`);
   const d = await r.json();
   if (!d.accessToken) throw new Error('accessToken missing');
   return d.accessToken;
@@ -538,6 +544,17 @@ async function handleCatalogRequest(req, res) {
     if (!adminSecret || req.query.key !== adminSecret) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
+  }
+
+  // Browser token cache: ?action=cache-anon-token&token=<spotify-anon-token>
+  // Called from page load JS (no auth required — token is public and expires in 50 min)
+  if (req.query.action === 'cache-anon-token') {
+    const token = req.query.token;
+    if (!token || typeof token !== 'string' || token.length < 50) {
+      return res.status(400).json({ error: 'invalid token' });
+    }
+    await redis.set(BP_ANON_TOKEN_KEY, { token, expires_at: Date.now() + 50 * 60 * 1000 });
+    return res.status(200).json({ ok: true });
   }
 
   // Admin delete history entry: ?action=delete&date=DD/MM&key=admin

@@ -5778,10 +5778,22 @@ async function refreshCatalogTotal() {
 
   try {
     setStatus('Getting Spotify token from your browser…');
-    const tr = await fetch('/api/spotify-token');
-    const td = await tr.json();
-    const token = td.accessToken;
+    // Fetch anon token directly from the browser (residential IP, not IP-blocked by Spotify)
+    let token;
+    try {
+      const tr = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', { headers: { Accept: 'application/json' } });
+      const td = await tr.json();
+      token = td.accessToken;
+    } catch {}
+    // Fallback: edge proxy (returns client-credentials token if anon is blocked)
+    if (!token) {
+      const tr = await fetch('/api/spotify-token');
+      const td = await tr.json();
+      token = td.accessToken;
+    }
     if (!token) throw new Error('Could not get Spotify token — are you logged into Spotify in this browser?');
+    // Cache the token in Redis so the server-side cron can use it within the next 50 min
+    fetch(`/api/streams?catalog=1&action=cache-anon-token&token=${encodeURIComponent(token)}`).catch(() => {});
 
     const ARTIST_ID = '41MozSoPIsD1dJM0CLPjZF';
 
@@ -5991,6 +6003,20 @@ document.addEventListener('visibilitychange', () => {
   loadCommunityGoal();
   navigator.serviceWorker?.getRegistration().then(reg => reg?.update());
 });
+
+// Silently cache the Spotify anon token in Redis on every page load.
+// The server-side cron can't get this token (Spotify blocks cloud IPs), but
+// browsers on residential IPs can. Storing it lets the cron reuse it for up
+// to 50 minutes without any user interaction.
+(async () => {
+  try {
+    const r = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', { headers: { Accept: 'application/json' } });
+    const d = await r.json();
+    if (d.accessToken) {
+      fetch(`/api/streams?catalog=1&action=cache-anon-token&token=${encodeURIComponent(d.accessToken)}`).catch(() => {});
+    }
+  } catch {}
+})();
 
 function openPlaylistPanel() {
   document.getElementById('playlist-overlay').style.display = 'flex';
