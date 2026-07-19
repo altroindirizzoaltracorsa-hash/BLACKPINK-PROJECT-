@@ -188,10 +188,11 @@ async function fetchTrackMetadata(trackId, prevTotal = 0) {
 
 // ── Catalog total helpers (merged from catalog-streams.js) ───────────────────
 
-const CAT_CACHE_KEY    = 'bp_catalog_total';
-const CAT_HIST_KEY     = 'bp_catalog_hist';
-const BP_TRACK_IDS_KEY = 'bp_track_ids';
-const BP_TRACK_IDS_TTL = 14 * 24 * 60 * 60 * 1000; // 14 days
+const CAT_CACHE_KEY        = 'bp_catalog_total';
+const CAT_HIST_KEY         = 'bp_catalog_hist';
+const BP_TRACK_IDS_KEY     = 'bp_track_ids';
+const BP_TRACK_IDS_TTL     = 14 * 24 * 60 * 60 * 1000; // 14 days
+const SPOTIFY_USER_CREDS_KEY = 'bp_spotify_user_creds';
 
 async function getSpotifyClientToken() {
   const id     = process.env.SPOTIFY_CLIENT_ID;
@@ -236,6 +237,53 @@ async function getSpotifyAnonToken() {
   const d = await r.json();
   if (!d.accessToken) throw new Error('accessToken missing');
   return d.accessToken;
+}
+
+// Returns a valid Spotify user access token using the refresh token stored in
+// Redis after a one-time OAuth authorization via /api/spotify-auth.
+// accounts.spotify.com/api/token (refresh) is not IP-blocked, so this works
+// from Vercel even though open.spotify.com/get_access_token is blocked.
+async function getStoredUserToken() {
+  const creds = await redis.get(SPOTIFY_USER_CREDS_KEY);
+  if (!creds?.refresh_token) {
+    throw new Error('No stored Spotify OAuth token — visit /api/spotify-auth?key=<admin> to authorize once');
+  }
+
+  // Return cached token if it has more than 5 minutes remaining
+  if (creds.access_token && creds.expires_at && Date.now() < creds.expires_at - 5 * 60 * 1000) {
+    return creds.access_token;
+  }
+
+  // Refresh the access token using the stored refresh token
+  const id     = process.env.SPOTIFY_CLIENT_ID_2 || process.env.SPOTIFY_CLIENT_ID;
+  const secret = process.env.SPOTIFY_CLIENT_SECRET_2 || process.env.SPOTIFY_CLIENT_SECRET;
+  if (!id || !secret) throw new Error('SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET not set');
+
+  const r = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${Buffer.from(`${id}:${secret}`).toString('base64')}`,
+    },
+    body: new URLSearchParams({
+      grant_type:    'refresh_token',
+      refresh_token: creds.refresh_token,
+    }),
+  });
+  if (!r.ok) throw new Error(`token-refresh ${r.status}: ${await r.text()}`);
+  const d = await r.json();
+  if (!d.access_token) throw new Error('token-refresh: access_token missing');
+
+  const updated = {
+    ...creds,
+    access_token: d.access_token,
+    expires_at:   Date.now() + d.expires_in * 1000,
+    ts:           Date.now(),
+  };
+  if (d.refresh_token) updated.refresh_token = d.refresh_token;
+  await redis.set(SPOTIFY_USER_CREDS_KEY, updated);
+
+  return d.access_token;
 }
 
 async function getAllBpTrackIds(clientToken) {
@@ -320,7 +368,12 @@ async function fetchCatalogViaSpotifyAPI() {
     await redis.set(BP_TRACK_IDS_KEY, { ids, ts: Date.now() });
   }
 
-  const at  = await getSpotifyAnonToken();
+  // Prefer the stored OAuth user token (works from Vercel IPs).
+  // Fall back to the anon token endpoint (blocked from most cloud IPs, but kept
+  // as a forward-compatibility fallback in case Spotify ever unblocks it).
+  let at;
+  try { at = await getStoredUserToken(); }
+  catch { at = await getSpotifyAnonToken(); }
   let total = 0, failed = 0;
   for (let i = 0; i < ids.length; i += 10) {
     const counts = await Promise.all(ids.slice(i, i + 10).map(async id => {
