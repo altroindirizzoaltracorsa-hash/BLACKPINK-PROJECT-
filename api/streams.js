@@ -342,6 +342,25 @@ async function fetchCatalogViaSpotifyAPI() {
   return { total, trackCount: ids.length, failed, source: 'spotify-api' };
 }
 
+// Calls the Cloudflare Worker which gets a fresh Spotify anon token (Cloudflare
+// IPs are not blocked by Spotify) and sums play counts via the partner API.
+// Requires SPOTIFY_WORKER_URL and SPOTIFY_WORKER_KEY env vars in Vercel.
+async function fetchCatalogViaWorker() {
+  const workerUrl = process.env.SPOTIFY_WORKER_URL;
+  const workerKey = process.env.SPOTIFY_WORKER_KEY;
+  if (!workerUrl || !workerKey) throw new Error('SPOTIFY_WORKER_URL / SPOTIFY_WORKER_KEY not set');
+  const r = await fetch(`${workerUrl}?key=${encodeURIComponent(workerKey)}`, {
+    signal: AbortSignal.timeout(90_000), // Worker may take up to ~60s for 120 tracks
+  });
+  if (!r.ok) {
+    const text = await r.text();
+    throw new Error(`worker ${r.status}: ${text.slice(0, 300)}`);
+  }
+  const d = await r.json();
+  if (!d.total || d.total < 1_000_000_000) throw new Error(`worker bad total: ${JSON.stringify(d).slice(0, 200)}`);
+  return { total: d.total, trackCount: d.trackCount, failed: d.failed || 0, source: 'cloudflare-worker' };
+}
+
 async function fetchCatalogViaKworb() {
   // Try both the songs page (has per-track streams) and the main artist page
   const urls = [
@@ -484,7 +503,8 @@ async function handleCatalogRequest(req, res) {
 
   const errors = [];
   let result   = null;
-  try { result = await fetchCatalogViaRapidAPI(); } catch(e) { errors.push(`rapidapi: ${e.message}`); }
+  try { result = await fetchCatalogViaWorker(); } catch(e) { errors.push(`worker: ${e.message}`); }
+  if (!result) { try { result = await fetchCatalogViaRapidAPI(); } catch(e) { errors.push(`rapidapi: ${e.message}`); } }
   if (!result) { try { result = await fetchCatalogViaSpotifyAPI(); } catch(e) { errors.push(`spotify-api: ${e.message}`); } }
   if (!result) { try { result = await fetchCatalogViaKworb(); } catch(e) { errors.push(`kworb: ${e.message}`); } }
 
@@ -499,9 +519,9 @@ async function handleCatalogRequest(req, res) {
   result.ts = Date.now();
   await redis.set(CAT_CACHE_KEY, result);
   // Compute daily delta from the most recent history entry
-  const prevHist = (await redis.get(CAT_HIST_KEY)) || [];
+  const prevHist  = (await redis.get(CAT_HIST_KEY)) || [];
   const prevEntry = prevHist.length ? prevHist[prevHist.length - 1] : null;
-  const daily = (prevEntry && result.total > prevEntry.total) ? result.total - prevEntry.total : null;
+  const daily     = (prevEntry && result.total > prevEntry.total) ? result.total - prevEntry.total : null;
   const hist = await updateCatalogHistory(result.total, daily);
   return res.status(200).json({ ...result, history: hist });
 }
