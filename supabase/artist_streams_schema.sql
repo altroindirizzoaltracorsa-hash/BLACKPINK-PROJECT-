@@ -59,6 +59,15 @@ insert into tracked_artists (spotify_artist_id, name, avatar_url)
 values ('41MozSoPIsD1dJM0CLPjZF', 'BLACKPINK', null)
 on conflict (spotify_artist_id) do nothing;
 
+-- The 4 members, added later. IDs verified via test-spotifyscraper.py
+-- against their actual Spotify artist pages before insertion.
+insert into tracked_artists (spotify_artist_id, name, avatar_url) values
+  ('6UZ0ba50XreR4TM8u322gs', 'JISOO',  null),
+  ('250b0Wlc5Vk0CoUsaCY84M', 'JENNIE', null),
+  ('3eVa5w3URK5duf6eyVDbu9', 'ROSÉ',   null),
+  ('5L1lO4eRHmJ7a0Q6csE5cT', 'LISA',   null)
+on conflict (spotify_artist_id) do nothing;
+
 -- Tables created via the SQL editor don't automatically get the privilege
 -- grants the Table Editor UI sets up for you -- service_role needs these
 -- explicitly or every request 403s with "permission denied for table ...".
