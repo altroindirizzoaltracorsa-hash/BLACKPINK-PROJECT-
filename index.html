@@ -5778,22 +5778,22 @@ async function refreshCatalogTotal() {
 
   try {
     setStatus('Getting Spotify token from your browser…');
-    // Fetch anon token directly from the browser (residential IP, not IP-blocked by Spotify)
+    // Fetch anon token directly from the browser (residential IP, not IP-blocked by Spotify).
+    // Do NOT fall back to client-credentials — those are separate app quota and get rate-limited.
     let token;
     try {
       const tr = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', { headers: { Accept: 'application/json' } });
       const td = await tr.json();
       token = td.accessToken;
-    } catch {}
-    // Fallback: edge proxy (returns client-credentials token if anon is blocked)
-    if (!token) {
-      const tr = await fetch('/api/spotify-token');
-      const td = await tr.json();
-      token = td.accessToken;
+    } catch(e) {
+      setStatus(`Browser token fetch failed (${e.message}) — trying server-side force fetch with cached token…`);
     }
-    if (!token) throw new Error('Could not get Spotify token — are you logged into Spotify in this browser?');
-    // Cache the token in Redis so the server-side cron can use it within the next 50 min
-    fetch(`/api/streams?catalog=1&action=cache-anon-token&token=${encodeURIComponent(token)}`).catch(() => {});
+    if (token) {
+      // Cache the anon token in Redis for the server-side cron (50-min TTL)
+      await fetch(`/api/streams?catalog=1&action=cache-anon-token&token=${encodeURIComponent(token)}`);
+    }
+
+    if (!token) throw new Error('Could not get Spotify anon token from browser. Try opening open.spotify.com in another tab first, then retry.');
 
     const ARTIST_ID = '41MozSoPIsD1dJM0CLPjZF';
 

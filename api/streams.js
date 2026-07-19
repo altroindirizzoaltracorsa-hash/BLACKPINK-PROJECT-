@@ -362,24 +362,31 @@ async function fetchCatalogViaRapidAPI() {
 }
 
 async function fetchCatalogViaSpotifyAPI() {
-  // Use cached track IDs to avoid the albums-listing 429 on every fetch.
+  // The partner API only accepts the web-player anon token. Get it first so we
+  // fail fast if it isn't cached yet (no point enumerating albums we can't use).
+  // getSpotifyAnonToken() checks Redis first for a token cached by a browser visitor.
+  const at = await getSpotifyAnonToken(); // throws if not cached
+
+  // Use cached track IDs to avoid the albums-listing rate limit on every fetch.
   // Only fetch fresh IDs when the cache is missing or older than 14 days.
+  // Use the anon token for enumeration too — it works for the official API and
+  // doesn't consume the client-credentials quota.
   let ids = null;
   const cachedIds = await redis.get(BP_TRACK_IDS_KEY);
   if (cachedIds?.ids?.length && cachedIds.ts && Date.now() - cachedIds.ts < BP_TRACK_IDS_TTL) {
     ids = cachedIds.ids;
   } else {
-    const ct = await getCatalogClientToken();
-    ids = await getAllBpTrackIds(ct);
+    // Try anon token first; fall back to OAuth token then client credentials
+    try {
+      ids = await getAllBpTrackIds(at);
+    } catch {
+      try { ids = await getAllBpTrackIds(await getStoredUserToken()); }
+      catch { ids = await getAllBpTrackIds(await getCatalogClientToken()); }
+    }
     await redis.set(BP_TRACK_IDS_KEY, { ids, ts: Date.now() });
   }
 
-  // The partner API only accepts the web-player anon token — OAuth and
-  // client-credentials tokens are rejected with 403 "Client/request not allowed".
-  // getSpotifyAnonToken() checks Redis first for a token cached by a browser visitor.
-  let at, tokenSource;
-  try { at = await getSpotifyAnonToken(); tokenSource = 'anon'; }
-  catch(e) { throw new Error(`anon-token: ${e.message}`); }
+  const tokenSource = 'anon';
 
   // Probe the first track to detect partner API auth failures early
   const probeId = ids[0];
