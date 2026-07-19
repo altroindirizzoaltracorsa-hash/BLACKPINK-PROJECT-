@@ -554,6 +554,18 @@ async function handleCatalogRequest(req, res) {
     return res.status(200).json({ ok: true });
   }
 
+  // Browser track-ID cache: POST ?action=cache-track-ids&key=admin  body: {ids:[...]}
+  // Called from the admin "Refresh catalog total" button after it enumerates albums
+  // in the browser (no rate-limit issues there), so the server never needs to enumerate.
+  if (req.query.action === 'cache-track-ids') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    if (!adminSecret || req.query.key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
+    const ids = req.body?.ids;
+    if (!Array.isArray(ids) || ids.length < 10) return res.status(400).json({ error: 'ids array required' });
+    await redis.set(BP_TRACK_IDS_KEY, { ids, ts: Date.now() });
+    return res.status(200).json({ ok: true, count: ids.length });
+  }
+
   // Admin delete history entry: ?action=delete&date=DD/MM&key=admin
   if (req.query.action === 'delete') {
     const adminSecret = process.env.ADMIN_SECRET;

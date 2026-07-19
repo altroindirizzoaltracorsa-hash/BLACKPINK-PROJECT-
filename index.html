@@ -5818,6 +5818,14 @@ async function refreshCatalogTotal() {
           if (t?.id && !seen.has(t.id)) { seen.add(t.id); ids.push(t.id); }
     }
 
+    setStatus(`Got ${ids.length} tracks — saving IDs to server cache…`);
+    // Cache track IDs in Redis so the server-side cron skips album enumeration
+    fetch(`/api/streams?catalog=1&action=cache-track-ids&key=${encodeURIComponent(key)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    }).catch(() => {});
+
     setStatus(`Got ${ids.length} tracks — fetching play counts…`);
     let total = 0, failed = 0;
     const EXT  = JSON.stringify({ persistedQuery: { version: 1, sha256Hash: 'ae85b52abb74d20a4c331d4143d4772c95f34757a435d55406e6a2f17ad41c42' } });
