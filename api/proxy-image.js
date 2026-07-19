@@ -234,6 +234,54 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── GET ?artist_streams=list — every tracked artist's latest snapshot ──────
+  if (req.query.artist_streams === 'list') {
+    const r = await sbFetch(
+      '/tracked_artists?active=eq.true&select=spotify_artist_id,name,avatar_url,' +
+      'artist_daily_stats(date,total_streams,daily_delta,followers,monthly_listeners,track_count)' +
+      '&artist_daily_stats.order=date.desc&artist_daily_stats.limit=1',
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!r.ok) return res.status(200).json({ artists: [] });
+    const rows = await r.json();
+    const artists = rows
+      .map(a => ({
+        id: a.spotify_artist_id,
+        name: a.name,
+        avatarUrl: a.avatar_url,
+        ...(a.artist_daily_stats[0] || {}),
+      }))
+      .sort((a, b) => (b.total_streams || 0) - (a.total_streams || 0));
+    return res.status(200).json({ artists });
+  }
+
+  // ── GET ?artist_streams=detail&artist=<id> — one artist's full page data ───
+  if (req.query.artist_streams === 'detail') {
+    const artistId = req.query.artist;
+    if (!artistId) return res.status(400).json({ error: 'artist required' });
+
+    const [artistRes, historyRes, tracksRes] = await Promise.all([
+      sbFetch(`/tracked_artists?spotify_artist_id=eq.${artistId}&select=name,avatar_url`, { headers: { Accept: 'application/json' } }),
+      sbFetch(`/artist_daily_stats?artist_id=eq.${artistId}&order=date.desc&limit=7&select=date,total_streams,daily_delta,followers,monthly_listeners,track_count`, { headers: { Accept: 'application/json' } }),
+      sbFetch(
+        `/artist_tracks?artist_id=eq.${artistId}&select=id,name,track_daily_stats(date,streams,daily_delta)` +
+        '&track_daily_stats.order=date.desc&track_daily_stats.limit=1',
+        { headers: { Accept: 'application/json' } },
+      ),
+    ]);
+    if (!artistRes.ok || !historyRes.ok || !tracksRes.ok) {
+      return res.status(502).json({ error: 'Supabase query failed' });
+    }
+    const [artistRows, history, trackRows] = await Promise.all([artistRes.json(), historyRes.json(), tracksRes.json()]);
+    if (!artistRows.length) return res.status(404).json({ error: 'Artist not tracked' });
+
+    const tracks = trackRows
+      .map(t => ({ name: t.name, ...(t.track_daily_stats[0] || {}) }))
+      .sort((a, b) => (b.streams || 0) - (a.streams || 0));
+
+    return res.status(200).json({ ...artistRows[0], history, tracks });
+  }
+
   // ── GET ?global_streams=history ───────────────────────────────────────────
   if (req.query.global_streams === 'history') {
     const limit = Math.min(Number(req.query.limit ?? 30), 365);
