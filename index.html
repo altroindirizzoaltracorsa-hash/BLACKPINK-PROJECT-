@@ -1997,6 +1997,11 @@
         <div id="badge-history-grid"></div>
       </div>
 
+      <div class="tracks-section" style="margin-top:2rem;">
+        <p class="section-label">// Special Badges</p>
+        <div id="special-badges-grid"></div>
+      </div>
+
       <p class="badge-footer-note" style="margin-top:2rem;">
         Data powered by <a href="https://www.last.fm" target="_blank" onclick=\"window.open('https://www.last.fm','_blank','noopener')\">Last.fm</a> · Resets at 2am Italy time daily ·
         Fan-made by Blinks United · Not affiliated with YG Entertainment · Made with 💗
@@ -3250,7 +3255,7 @@ function showPage(page, { replace = false } = {}) {
       setTimeout(() => showWinnerAnnouncement(wonCampaign.id), 900);
     }
   }
-  if (page === 'badges') tryAutoLoad();
+  if (page === 'badges') { tryAutoLoad(); renderSpecialBadges(); }
   if (page === 'streams') loadArtistStreamsPage();
   if (page === 'leaderboard') {
     if (!acctBreakdown) tryAutoLoad(); // pre-load per-service data so own-row breakdown works
@@ -4963,6 +4968,41 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
       </div>
     `;
   }
+}
+
+// ── SPECIAL BADGES (one-off, non-scrobble challenges) ───────────────────────
+// Unlike BADGE_TIERS above, these aren't Last.fm scrobble tiers -- just a
+// browser-local flag set the moment a fan completes a one-off action, so they
+// don't require being logged in / having Last.fm linked.
+const SPECIAL_BADGES = [
+  {
+    id: 'jennie-ltal-presave',
+    icon: '🏆',
+    label: 'EARLY SUPPORTER',
+    song: 'Less Than a Lover — JENNIE',
+    desc: 'Pre-saved before release',
+    check: () => !!localStorage.getItem('bu_jennie_ltal_saved'),
+  },
+];
+
+function renderSpecialBadges() {
+  const el = document.getElementById('special-badges-grid');
+  if (!el) return;
+  const earned = SPECIAL_BADGES.filter(b => b.check());
+  el.innerHTML = earned.length
+    ? `<div class="badge-history-list">
+        ${earned.map(b => `
+          <div class="badge-history-item">
+            <div class="badge-history-icon">${b.icon}</div>
+            <div>
+              <div class="badge-history-label">${b.label}</div>
+              <div class="badge-history-song">${b.song}</div>
+            </div>
+            <div style="margin-left:auto;font-family:var(--light-serif);font-style:italic;font-size:0.65rem;color:var(--muted);">${b.desc}</div>
+          </div>
+        `).join('')}
+      </div>`
+    : `<div class="badge-history-empty">No special badges yet — keep an eye on the home page for limited-time challenges! 💗</div>`;
 }
 
 // ── STAMP ARCHIVE ────────────────────────────────────────────────────────────
