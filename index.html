@@ -489,12 +489,12 @@
   .goal-tracker-status { font-size: 0.65rem; letter-spacing: 0.08em; color: var(--muted); }
 
   @keyframes release-breathe {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(224,17,95,0), 0 4px 24px rgba(0,0,0,0.35); border-color: rgba(224,17,95,0.3); transform: scale(1); }
-    50%      { box-shadow: 0 0 34px 8px rgba(224,17,95,0.45), 0 8px 30px rgba(0,0,0,0.4); border-color: rgba(224,17,95,0.75); transform: scale(1.025); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,30,60,0), 0 4px 24px rgba(0,0,0,0.35); border-color: rgba(255,30,60,0.3); transform: scale(1); }
+    50%      { box-shadow: 0 0 34px 8px rgba(255,30,60,0.45), 0 8px 30px rgba(0,0,0,0.4); border-color: rgba(255,30,60,0.75); transform: scale(1.025); }
   }
   .release-card {
     position: relative; background: #0a0a0a url('/jennie-ltal-photo.jpg') center 25% / cover no-repeat;
-    border: 1px solid rgba(224,17,95,0.3);
+    border: 1px solid rgba(255,30,60,0.3);
     padding: 1.4rem 2rem; display: flex; flex-direction: column; gap: 0.4rem;
     text-decoration: none; overflow: hidden;
     animation: release-breathe 3.2s ease-in-out infinite;
@@ -503,33 +503,33 @@
   .release-card::before {
     content: ''; position: absolute; inset: 0;
     background:
-      radial-gradient(ellipse at top right, rgba(224,17,95,0.2), transparent 65%),
+      radial-gradient(ellipse at top right, rgba(255,30,60,0.2), transparent 65%),
       linear-gradient(180deg, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0.72) 55%, rgba(8,8,8,0.92) 100%);
     pointer-events: none;
   }
   .release-card > * { position: relative; z-index: 1; }
   .release-card-label {
     display: inline-block; align-self: flex-start;
-    background: rgba(8,8,8,0.65); border: 1px solid rgba(224,17,95,0.4); border-radius: 4px;
+    background: rgba(8,8,8,0.65); border: 1px solid rgba(255,30,60,0.4); border-radius: 4px;
     padding: 0.25rem 0.55rem; margin-bottom: 0.15rem;
-    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #E0115F;
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #FF1E3C;
   }
   .release-card-title { font-family: var(--display); font-size: 1.9rem; letter-spacing: 0.03em; color: var(--white); text-shadow: 0 1px 8px rgba(0,0,0,0.6); }
-  .release-card-timer { font-family: var(--display); font-size: 1.5rem; letter-spacing: 0.02em; color: #E0115F; text-shadow: 0 1px 8px rgba(0,0,0,0.6); }
+  .release-card-timer { font-family: var(--display); font-size: 1.5rem; letter-spacing: 0.02em; color: #FF1E3C; text-shadow: 0 1px 8px rgba(0,0,0,0.6); }
   .release-card-timer.is-live { color: #2ecc71; }
   .release-card-sub { font-size: 0.62rem; letter-spacing: 0.08em; color: rgba(245,240,240,0.75); text-transform: uppercase; }
-  .release-card:hover .release-card-sub { color: #E0115F; }
+  .release-card:hover .release-card-sub { color: #FF1E3C; }
   .release-card-saves { font-size: 0.62rem; letter-spacing: 0.05em; color: rgba(245,240,240,0.6); margin-top: 0.1rem; }
-  .release-card-saves b { color: #E0115F; font-weight: 700; }
+  .release-card-saves b { color: #FF1E3C; font-weight: 700; }
   .release-card-share {
     position: absolute; top: 1rem; right: 1rem; z-index: 2;
-    background: rgba(8,8,8,0.55); border: 1px solid rgba(224,17,95,0.5); color: #E0115F;
+    background: rgba(8,8,8,0.55); border: 1px solid rgba(255,30,60,0.5); color: #FF1E3C;
     font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase;
     padding: 0.35rem 0.6rem; cursor: pointer; transition: background 0.2s;
   }
-  .release-card-share:hover { background: rgba(224,17,95,0.35); }
+  .release-card-share:hover { background: rgba(255,30,60,0.35); }
   .release-card-posters { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
-  .release-card-poster { width: 52px; height: 74px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(224,17,95,0.4); flex-shrink: 0; }
+  .release-card-poster { width: 52px; height: 74px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(255,30,60,0.4); flex-shrink: 0; }
   .goal-tracker-done { color: #00ff88; }
 
   .tracks-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem; }
@@ -8530,10 +8530,10 @@ function drawReleaseCard(canvas, logo, art) {
   const eyebrowW = ctx.measureText(eyebrowText).width + eyebrowPad * 2;
   ctx.fillStyle = 'rgba(8,8,8,0.65)';
   ctx.fillRect(PX - eyebrowPad, eyebrowY - (landscape ? 20 : 26), eyebrowW, landscape ? 30 : 38);
-  ctx.fillStyle = '#E0115F';
+  ctx.fillStyle = '#FF1E3C';
   ctx.fillText(eyebrowText, PX, eyebrowY);
 
-  ctx.fillStyle = '#E0115F';
+  ctx.fillStyle = '#FF1E3C';
   ctx.fillRect(PX, eyebrowY + (landscape ? 20 : 26), 70, landscape ? 2 : 3);
 
   const titleY = landscape ? 468 : 320;
@@ -8543,7 +8543,7 @@ function drawReleaseCard(canvas, logo, art) {
 
   const { big, sub } = formatReleaseCountdown();
   const timerY = landscape ? 546 : 560;
-  ctx.fillStyle = '#E0115F';
+  ctx.fillStyle = '#FF1E3C';
   ctx.letterSpacing = '2px';
   fillTextFit(ctx, big, PX, timerY, landscape ? 52 : 82, textW, '"Bebas Neue", sans-serif');
 
