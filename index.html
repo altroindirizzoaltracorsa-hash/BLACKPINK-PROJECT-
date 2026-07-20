@@ -2005,6 +2005,7 @@
           <span class="as-stat-label">Total Streams Across All Releases</span>
           <span class="as-hero-stat-value" id="as-total-streams"></span>
         </div>
+        <button class="gen-card-btn" style="max-width:260px;margin-top:0.4rem" onclick="openArtistCard()">⬡ Generate Share Card</button>
         <div class="as-stat-row">
           <div class="as-stat"><span class="as-stat-label">Daily Avg</span><span class="as-stat-value" id="as-daily-avg"></span></div>
           <div class="as-stat"><span class="as-stat-label">Tracks</span><span class="as-stat-value" id="as-track-count"></span></div>
@@ -2587,10 +2588,10 @@ function diffColor(diff) {
 
 async function loadCatalogStreams() {
   try {
-    const r = await fetch('/api/streams?catalog=1');
+    const r = await fetch('/api/proxy-image?artist_streams=detail&artist=41MozSoPIsD1dJM0CLPjZF');
     if (!r.ok) return;
     const d = await r.json();
-    if (!d || !d.total) return;
+    if (!d || !d.history?.length) return;
 
     const section  = document.getElementById('catalog-total-section');
     const countEl  = document.getElementById('catalog-total-count');
@@ -2599,10 +2600,16 @@ async function loadCatalogStreams() {
     const histEl   = document.getElementById('catalog-daily-list');
     if (!section || !countEl) return;
 
-    countEl.textContent = d.total.toLocaleString('en-US');
+    const total = d.history[0].total_streams;
+    countEl.textContent = total.toLocaleString('en-US');
 
-    const hist = d.history || [];
-    _catalogCardData = { total: d.total, history: hist };
+    // Same source as /streams now (artist_daily_stats), oldest-first for the renderer below.
+    const hist = [...d.history].reverse().map(h => ({
+      date: fmtDate(h.date).slice(0, 5),
+      total: h.total_streams,
+      daily: h.daily_delta,
+    }));
+    _catalogCardData = { total, history: hist };
 
     // Compute daily streams for each history entry
     const dailyRows = [];
@@ -2638,11 +2645,7 @@ async function loadCatalogStreams() {
       histEl.style.display = '';
     }
 
-    if (srcEl) {
-      const agoH  = d.ts ? Math.round((Date.now() - d.ts) / 3600000) : null;
-      const agoTx = agoH === null ? 'daily' : agoH < 1 ? 'recently' : `${agoH}h ago`;
-      srcEl.textContent = `Updated ${agoTx}${d.stale ? ' · stale' : ''}`;
-    }
+    if (srcEl) srcEl.textContent = 'Updated daily';
 
     section.style.display = '';
   } catch {}
@@ -6566,6 +6569,7 @@ let _msMilestone = null, _msMilestoneTotal = 0, _msMilestoneDate = null;
 let _voteCampaignId = null;
 let _personalCardData = null;
 let _catalogCardData = null;
+let _artistCardData = null;
 
 function setCardFormat(fmt, btn) {
   _cardFormat = fmt;
@@ -7022,6 +7026,16 @@ async function shareCard() {
       }
       if (d.total != null) lines.push(`🔥 Total: ${formatFull(d.total)} streams`);
       if (lines.length) statsText = '\n' + lines.join('\n') + '\n';
+    }
+  } else if (_cardType === 'artist') {
+    const d = _artistCardData;
+    if (d) {
+      const lines = [`🔥 Total: ${formatFull(d.total)} streams`];
+      if (d.dailyStreams != null) {
+        const sign = d.dailyStreams >= 0 ? '+' : '';
+        lines.push(`📊 Daily: ${sign}${formatFull(d.dailyStreams)} streams (${d.dailyDate})`);
+      }
+      statsText = '\n' + lines.join('\n') + '\n';
     }
   }
   const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
@@ -7969,6 +7983,166 @@ function drawCatalogCard(canvas, data, logo, art) {
   _markCardReady(canvas);
 }
 
+function drawArtistCard(canvas, data, logo, art, artistName) {
+  if (!data) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const landscape = W > H;
+
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+
+  if (art) {
+    const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
+    const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+    if (landscape) {
+      ctx.drawImage(art, (W - iw) / 2, 0, iw, ih);
+      const gr = ctx.createLinearGradient(0, 0, 0, H);
+      gr.addColorStop(0,    'rgba(8,8,8,0)');
+      gr.addColorStop(0.40, 'rgba(8,8,8,0)');
+      gr.addColorStop(0.62, 'rgba(8,8,8,0.75)');
+      gr.addColorStop(0.80, 'rgba(8,8,8,0.92)');
+      gr.addColorStop(1,    'rgba(8,8,8,0.97)');
+      ctx.fillStyle = gr;
+      ctx.fillRect(0, 0, W, H);
+    } else {
+      ctx.drawImage(art, (W - iw) / 2, (H - ih) / 2, iw, ih);
+      const gr = ctx.createLinearGradient(0, 0, 0, H);
+      gr.addColorStop(0,    'rgba(8,8,8,0.55)');
+      gr.addColorStop(0.35, 'rgba(8,8,8,0.82)');
+      gr.addColorStop(1,    'rgba(8,8,8,0.97)');
+      ctx.fillStyle = gr;
+      ctx.fillRect(0, 0, W, H);
+    }
+  } else {
+    const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, W * 0.75);
+    glow.addColorStop(0, 'rgba(255,0,102,0.18)');
+    glow.addColorStop(0.5, 'rgba(255,0,102,0.06)');
+    glow.addColorStop(1, 'rgba(8,8,8,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  drawNoise(ctx, W, H, 0.03);
+
+  const PX    = landscape ? 70 : 80;
+  const textW = W - PX - (landscape ? 50 : 60);
+  ctx.textAlign = 'left';
+  const eyebrow = `// ${artistName.toUpperCase()} · SPOTIFY`;
+
+  if (landscape) {
+    const LR    = 22;
+    const logoY = H - 46;
+
+    ctx.fillStyle = 'rgba(255,0,102,0.2)';
+    ctx.fillRect(PX, H - 90, W - PX - 50, 1);
+    if (logo) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+      ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
+      ctx.restore();
+      ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
+      ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    const brandX = logo ? PX + LR * 2 + 10 : PX;
+    ctx.fillStyle = '#F5F0F0';
+    ctx.font = `34px "Bebas Neue", sans-serif`;
+    ctx.letterSpacing = '10px';
+    ctx.fillText('BLINKS UNITED', brandX, H - 52);
+    ctx.fillStyle = 'rgba(245,240,240,0.2)';
+    ctx.font = `500 12px "DM Mono", monospace`;
+    ctx.letterSpacing = '2px';
+    ctx.fillText('blackpink-project.vercel.app', brandX, H - 30);
+
+    const hasDaily = !!(data.dailyStreams != null && data.dailyDate);
+
+    ctx.fillStyle = '#FF0066';
+    ctx.font = `500 13px "DM Mono", monospace`;
+    ctx.letterSpacing = '4px';
+    ctx.fillText(eyebrow, PX, hasDaily ? 370 : 410);
+
+    ctx.fillStyle = '#FF0066';
+    ctx.fillRect(PX, hasDaily ? 382 : 422, 70, 2);
+
+    ctx.fillStyle = '#FF0066';
+    ctx.letterSpacing = '2px';
+    fillTextFit(ctx, formatFull(data.total), PX, hasDaily ? 468 : 524, 86, textW, '"Bebas Neue", sans-serif');
+
+    ctx.fillStyle = 'rgba(245,240,240,0.45)';
+    ctx.font = `500 13px "DM Mono", monospace`;
+    ctx.letterSpacing = '3px';
+    ctx.fillText('TOTAL STREAMS ACROSS ALL RELEASES', PX, hasDaily ? 490 : 548);
+
+    if (hasDaily) {
+      ctx.fillStyle = '#F5F0F0';
+      ctx.letterSpacing = '2px';
+      const sign = data.dailyStreams >= 0 ? '+' : '';
+      fillTextFit(ctx, sign + formatFull(data.dailyStreams), PX, 550, 62, textW, '"Bebas Neue", sans-serif');
+
+      ctx.fillStyle = 'rgba(245,240,240,0.4)';
+      ctx.font = `500 13px "DM Mono", monospace`;
+      ctx.letterSpacing = '3px';
+      ctx.fillText('DAILY STREAMS · ' + data.dailyDate, PX, 568);
+    }
+
+  } else {
+    ctx.fillStyle = '#FF0066';
+    ctx.font = `500 18px "DM Mono", monospace`;
+    ctx.letterSpacing = '4px';
+    ctx.fillText(eyebrow, PX, 118);
+
+    ctx.fillStyle = '#F5F0F0';
+    ctx.letterSpacing = '8px';
+    fillTextFit(ctx, artistName.toUpperCase(), PX, 298, 148, textW, '"Bebas Neue", sans-serif');
+
+    ctx.fillStyle = '#FF0066';
+    ctx.fillRect(PX, 328, 70, 3);
+
+    ctx.fillStyle = '#FF0066';
+    ctx.letterSpacing = '2px';
+    fillTextFit(ctx, formatFull(data.total), PX, 548, 112, textW, '"Bebas Neue", sans-serif');
+    ctx.fillStyle = 'rgba(245,240,240,0.45)';
+    ctx.font = `500 18px "DM Mono", monospace`;
+    ctx.letterSpacing = '3px';
+    ctx.fillText('TOTAL STREAMS ACROSS ALL RELEASES', PX, 582);
+
+    if (data.dailyStreams != null && data.dailyDate) {
+      ctx.fillStyle = '#F5F0F0';
+      ctx.letterSpacing = '2px';
+      const sign = data.dailyStreams >= 0 ? '+' : '';
+      fillTextFit(ctx, sign + formatFull(data.dailyStreams), PX, 680, 82, textW, '"Bebas Neue", sans-serif');
+      ctx.fillStyle = 'rgba(245,240,240,0.4)';
+      ctx.font = `500 18px "DM Mono", monospace`;
+      ctx.letterSpacing = '3px';
+      ctx.fillText('DAILY STREAMS · ' + data.dailyDate, PX, 716);
+    }
+
+    const LR    = 28;
+    const logoY = H - 82;
+    ctx.fillStyle = 'rgba(255,0,102,0.2)';
+    ctx.fillRect(PX, H - 135, W - PX - 60, 1);
+    if (logo) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+      ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
+      ctx.restore();
+      ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
+      ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    const brandX = logo ? PX + LR * 2 + 10 : PX;
+    ctx.fillStyle = '#F5F0F0';
+    ctx.font = `44px "Bebas Neue", sans-serif`;
+    ctx.letterSpacing = '10px';
+    ctx.fillText('BLINKS UNITED', brandX, H - 72);
+    ctx.fillStyle = 'rgba(245,240,240,0.2)';
+    ctx.font = `500 15px "DM Mono", monospace`;
+    ctx.letterSpacing = '2px';
+    ctx.fillText('blackpink-project.vercel.app', brandX, H - 42);
+  }
+
+  _markCardReady(canvas);
+}
+
 async function openCatalogCard() {
   if (!_catalogCardData) return;
   const overlay = document.getElementById('card-overlay');
@@ -7990,6 +8164,40 @@ async function openCatalogCard() {
   _cardArt = art; _cardLogo = logo;
   drawCatalogCard(canvas, _catalogCardData, logo, art);
   label.textContent = 'BLACKPINK CATALOG · STREAM UPDATE CARD';
+}
+
+async function openArtistCard() {
+  if (!artistStreamsData) return;
+  const latest = artistStreamsData.history?.[0];
+  if (!latest) return;
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  _cardType = 'artist';
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+  await document.fonts.ready;
+  const artUrl = artistStreamsData.avatar_url
+    ? `/api/proxy-image?url=${encodeURIComponent(artistStreamsData.avatar_url)}`
+    : '/vote-blackpink-ot4.jpg';
+  const [art, logo] = await Promise.all([
+    loadImg(artUrl).catch(() => null),
+    getBuLogo(),
+  ]);
+  _cardArt = art; _cardLogo = logo;
+  _artistCardData = {
+    total: latest.total_streams,
+    dailyStreams: latest.daily_delta,
+    dailyDate: fmtDate(latest.date),
+    artistName: artistStreamsData.name,
+  };
+  drawArtistCard(canvas, _artistCardData, logo, art, artistStreamsData.name);
+  label.textContent = `${artistStreamsData.name.toUpperCase()} · STREAM UPDATE CARD`;
 }
 
 function renderMilestoneHistory(trackId) {
