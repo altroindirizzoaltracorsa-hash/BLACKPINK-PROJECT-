@@ -2014,7 +2014,7 @@
         <h3 class="as-section-title">Streams — Last 7 Days</h3>
         <div class="as-table-wrap">
           <table class="as-table">
-            <thead><tr><th>Date</th><th class="right">Total Streams</th><th class="right">Daily Change</th></tr></thead>
+            <thead><tr><th>Date</th><th class="right">Total Streams</th><th class="right">Daily Change</th><th class="right">Trend</th></tr></thead>
             <tbody id="as-history-body"></tbody>
           </table>
         </div>
@@ -2028,7 +2028,7 @@
         </div>
         <div class="as-table-wrap">
           <table class="as-table">
-            <thead><tr><th class="as-rank-col"></th><th>Track</th><th class="right">Streams</th><th class="right">Daily Change</th></tr></thead>
+            <thead><tr><th class="as-rank-col"></th><th>Track</th><th class="right">Streams</th><th class="right">Daily Change</th><th class="right">Trend</th></tr></thead>
             <tbody id="as-tracks-body"></tbody>
           </table>
         </div>
@@ -2890,6 +2890,17 @@ function fmtDelta(n) {
   return `<span class="${cls}">${sign}${Number(n).toLocaleString()}</span>`;
 }
 
+// Change in the daily-change itself vs. the day before (is the daily
+// number trending up or down), e.g. "(+73,456)" — not the same as fmtDelta,
+// which is streams-vs-yesterday's-total, not delta-vs-yesterday's-delta.
+function fmtTrend(curDelta, prevDelta) {
+  if (curDelta == null || prevDelta == null) return '—';
+  const diff = curDelta - prevDelta;
+  const cls = diff >= 0 ? 'as-delta-up' : 'as-delta-down';
+  const sign = diff >= 0 ? '+' : '';
+  return `<span class="${cls}">(${sign}${diff.toLocaleString()})</span>`;
+}
+
 function loadArtistStreamsPage() {
   const artistId = new URLSearchParams(location.search).get('artist');
   if (artistId) loadArtistStreamsDetail(artistId);
@@ -2998,13 +3009,15 @@ function renderArtistStreamsPage() {
   document.getElementById('as-daily-avg').textContent = fmtNum(dailyAvg);
 
   const historyBody = document.getElementById('as-history-body');
-  historyBody.innerHTML = (d.history || []).map(h => `
+  const hist = d.history || [];
+  historyBody.innerHTML = hist.map((h, i) => `
     <tr>
       <td>${fmtDate(h.date)}</td>
       <td class="right">${fmtNum(h.total_streams)}</td>
       <td class="right">${fmtDelta(h.daily_delta)}</td>
+      <td class="right">${fmtTrend(h.daily_delta, hist[i + 1]?.daily_delta)}</td>
     </tr>
-  `).join('') || '<tr><td colspan="3">No history yet</td></tr>';
+  `).join('') || '<tr><td colspan="4">No history yet</td></tr>';
 
   renderArtistTracks();
 }
@@ -3025,8 +3038,9 @@ function renderArtistTracks() {
       <td>${t.name}</td>
       <td class="right">${fmtNum(t.streams)}</td>
       <td class="right">${fmtDelta(t.daily_delta)}</td>
+      <td class="right">${fmtTrend(t.daily_delta, t.prev_daily_delta)}</td>
     </tr>
-  `).join('') || '<tr><td colspan="4">No tracks yet</td></tr>';
+  `).join('') || '<tr><td colspan="5">No tracks yet</td></tr>';
 }
 
 function showPage(page, { replace = false } = {}) {

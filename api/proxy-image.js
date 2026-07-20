@@ -265,7 +265,7 @@ export default async function handler(req, res) {
       sbFetch(`/artist_daily_stats?artist_id=eq.${artistId}&order=date.desc&limit=7&select=date,total_streams,daily_delta,followers,monthly_listeners,track_count`, { headers: { Accept: 'application/json' } }),
       sbFetch(
         `/artist_tracks?artist_id=eq.${artistId}&select=id,name,track_daily_stats(date,streams,daily_delta)` +
-        '&track_daily_stats.order=date.desc&track_daily_stats.limit=1',
+        '&track_daily_stats.order=date.desc&track_daily_stats.limit=2',
         { headers: { Accept: 'application/json' } },
       ),
     ]);
@@ -276,7 +276,11 @@ export default async function handler(req, res) {
     if (!artistRows.length) return res.status(404).json({ error: 'Artist not tracked' });
 
     const tracks = trackRows
-      .map(t => ({ name: t.name, ...(t.track_daily_stats[0] || {}) }))
+      .map(t => ({
+        name: t.name,
+        ...(t.track_daily_stats[0] || {}),
+        prev_daily_delta: t.track_daily_stats[1]?.daily_delta ?? null,
+      }))
       .sort((a, b) => (b.streams || 0) - (a.streams || 0));
 
     return res.status(200).json({ ...artistRows[0], history, tracks });
