@@ -886,7 +886,7 @@
   .as-track-sub { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; margin-top: 0.2rem; }
   .as-track-daily-num { font-family: var(--display); font-size: 1.35rem; letter-spacing: 0.02em; }
   .as-track-trend { font-size: 0.68rem; color: var(--muted); margin-top: 0.15rem; }
-  .as-tracks-table .as-album-row td { border-radius: 8px; }
+  .as-tracks-table .as-album-row td { border-radius: 8px; border-bottom: none; padding: 0.85rem 1.1rem; background: #1a1014; }
   @media (max-width: 500px) {
     /* Nav: shrink logo so logo+install+hamburger aren't cramped */
     .nav-logo { font-size: 1rem; letter-spacing: 0.14em; }
@@ -3070,17 +3070,18 @@ function toggleArtistTrackGrouping(btn) {
   renderArtistTracks();
 }
 
-function trackRowHtml(t) {
+function trackRowHtml(t, showRank) {
+  const trend = fmtTrend(t.daily_delta, t.prev_daily_delta);
   return `
     <tr>
-      <td class="as-rank">${t.rank}</td>
+      <td class="as-rank">${showRank ? t.rank : ''}</td>
       <td>
         <div class="as-track-name">${t.name}</div>
         <div class="as-track-sub">${fmtNum(t.streams)} total streams</div>
       </td>
       <td class="right">
         <div class="as-track-daily-num">${fmtDelta(t.daily_delta)}</div>
-        <div class="as-track-trend">${fmtTrend(t.daily_delta, t.prev_daily_delta)}</div>
+        ${trend === '—' ? '' : `<div class="as-track-trend">${trend}</div>`}
       </td>
     </tr>
   `;
@@ -3094,7 +3095,7 @@ function renderArtistTracks() {
   const body = document.getElementById('as-tracks-body');
 
   if (!artistTrackGroupByAlbum) {
-    body.innerHTML = ranked.map(trackRowHtml).join('') || '<tr><td colspan="3">No tracks yet</td></tr>';
+    body.innerHTML = ranked.map(t => trackRowHtml(t, true)).join('') || '<tr><td colspan="3">No tracks yet</td></tr>';
     return;
   }
 
@@ -3129,7 +3130,7 @@ function renderArtistTracks() {
         </div>
       </div>
     </td></tr>
-    ${g.tracks.map(trackRowHtml).join('')}
+    ${g.tracks.map(t => trackRowHtml(t, false)).join('')}
   `;
   }).join('') || '<tr><td colspan="3">No tracks yet</td></tr>';
 }
