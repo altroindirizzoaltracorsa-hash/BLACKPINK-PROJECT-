@@ -7378,9 +7378,12 @@ async function shareCard() {
       statsText = '\n' + lines.join('\n') + '\n';
     }
   } else if (_cardType === 'release') {
-    link = JENNIE_RELEASE.link.replace(/^https?:\/\//, '');
+    // Deliberately keep `link` pointing at our own site (the default set
+    // above), not jennie.lnk.to directly -- clicking the countdown card
+    // there is what counts toward the pre-save challenge/badge, so a share
+    // that sends people straight to Spotify would bypass that entirely.
     const { big } = formatReleaseCountdown();
-    statsText = `\n⏰ ${big}\n`;
+    statsText = `\n⏰ ${big}\n👉 Tap the countdown on our site to pre-save + join the challenge!\n`;
   }
   const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
   // Mobile: Web Share API with image file
