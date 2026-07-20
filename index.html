@@ -27,7 +27,7 @@
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/blinksunited.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&family=Pinyon+Script&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
@@ -489,12 +489,12 @@
   .goal-tracker-status { font-size: 0.65rem; letter-spacing: 0.08em; color: var(--muted); }
 
   @keyframes release-breathe {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(255,30,60,0), 0 4px 24px rgba(0,0,0,0.35); border-color: rgba(255,30,60,0.3); transform: scale(1); }
-    50%      { box-shadow: 0 0 34px 8px rgba(255,30,60,0.45), 0 8px 30px rgba(0,0,0,0.4); border-color: rgba(255,30,60,0.75); transform: scale(1.025); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(232,17,13,0), 0 4px 24px rgba(0,0,0,0.35); border-color: rgba(232,17,13,0.3); transform: scale(1); }
+    50%      { box-shadow: 0 0 34px 8px rgba(232,17,13,0.45), 0 8px 30px rgba(0,0,0,0.4); border-color: rgba(232,17,13,0.75); transform: scale(1.025); }
   }
   .release-card {
     position: relative; background: #0a0a0a url('/jennie-ltal-photo.jpg') center 25% / cover no-repeat;
-    border: 1px solid rgba(255,30,60,0.3);
+    border: 1px solid rgba(232,17,13,0.3);
     padding: 1.4rem 2rem; display: flex; flex-direction: column; gap: 0.4rem;
     text-decoration: none; overflow: hidden;
     animation: release-breathe 3.2s ease-in-out infinite;
@@ -503,33 +503,34 @@
   .release-card::before {
     content: ''; position: absolute; inset: 0;
     background:
-      radial-gradient(ellipse at top right, rgba(255,30,60,0.2), transparent 65%),
+      radial-gradient(ellipse at top right, rgba(232,17,13,0.2), transparent 65%),
       linear-gradient(180deg, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0.72) 55%, rgba(8,8,8,0.92) 100%);
     pointer-events: none;
   }
   .release-card > * { position: relative; z-index: 1; }
   .release-card-label {
     display: inline-block; align-self: flex-start;
-    background: rgba(8,8,8,0.65); border: 1px solid rgba(255,30,60,0.4); border-radius: 4px;
+    background: rgba(8,8,8,0.65); border: 1px solid rgba(232,17,13,0.4); border-radius: 4px;
     padding: 0.25rem 0.55rem; margin-bottom: 0.15rem;
-    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #FF1E3C;
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #E8110D;
   }
-  .release-card-title { font-family: var(--display); font-size: 1.9rem; letter-spacing: 0.03em; color: var(--white); text-shadow: 0 1px 8px rgba(0,0,0,0.6); }
-  .release-card-timer { font-family: var(--display); font-size: 1.5rem; letter-spacing: 0.02em; color: #FF1E3C; text-shadow: 0 1px 8px rgba(0,0,0,0.6); }
+  .release-card-jennie { font-family: 'Pinyon Script', cursive; font-size: 1.7rem; line-height: 1; color: #E8110D; text-shadow: 0 1px 8px rgba(0,0,0,0.6); margin-bottom: -0.2rem; }
+  .release-card-wordmark { display: block; width: 68%; max-width: 240px; height: auto; filter: drop-shadow(0 1px 8px rgba(0,0,0,0.6)); margin: 0.2rem 0; }
+  .release-card-timer { font-family: var(--display); font-size: 1.5rem; letter-spacing: 0.02em; color: #E8110D; text-shadow: 0 1px 8px rgba(0,0,0,0.6); }
   .release-card-timer.is-live { color: #2ecc71; }
   .release-card-sub { font-size: 0.62rem; letter-spacing: 0.08em; color: rgba(245,240,240,0.75); text-transform: uppercase; }
-  .release-card:hover .release-card-sub { color: #FF1E3C; }
+  .release-card:hover .release-card-sub { color: #E8110D; }
   .release-card-saves { font-size: 0.62rem; letter-spacing: 0.05em; color: rgba(245,240,240,0.6); margin-top: 0.1rem; }
-  .release-card-saves b { color: #FF1E3C; font-weight: 700; }
+  .release-card-saves b { color: #E8110D; font-weight: 700; }
   .release-card-share {
     position: absolute; top: 1rem; right: 1rem; z-index: 2;
-    background: rgba(8,8,8,0.55); border: 1px solid rgba(255,30,60,0.5); color: #FF1E3C;
+    background: rgba(8,8,8,0.55); border: 1px solid rgba(232,17,13,0.5); color: #E8110D;
     font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase;
     padding: 0.35rem 0.6rem; cursor: pointer; transition: background 0.2s;
   }
-  .release-card-share:hover { background: rgba(255,30,60,0.35); }
+  .release-card-share:hover { background: rgba(232,17,13,0.35); }
   .release-card-posters { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
-  .release-card-poster { width: 52px; height: 74px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(255,30,60,0.4); flex-shrink: 0; }
+  .release-card-poster { width: 52px; height: 74px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(232,17,13,0.4); flex-shrink: 0; }
   .goal-tracker-done { color: #00ff88; }
 
   .tracks-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem; }
@@ -1513,8 +1514,9 @@
       </div>
       <a href="https://jennie.lnk.to/LessthanaLover" target="_blank" rel="noopener" class="release-card" id="jennie-release-card" onclick="saveJennieCountdown()" style="display:none;margin-top:1.5rem;max-width:480px;width:100%;">
         <button class="release-card-share" onclick="event.preventDefault(); event.stopPropagation(); openReleaseCard();">⬡ Share</button>
-        <span class="release-card-label">🔔 JENNIE · NEW SINGLE</span>
-        <span class="release-card-title">Less Than a Lover</span>
+        <span class="release-card-label">🔔 NEW SINGLE</span>
+        <span class="release-card-jennie">Jennie</span>
+        <img class="release-card-wordmark" src="/jennie-ltal-wordmark.png" alt="Less Than a Lover">
         <span class="release-card-timer" id="jennie-release-timer">Loading…</span>
         <span class="release-card-sub">Out Fri, July 24 · 12AM EDT / 1PM KST — Pre-save →</span>
         <span class="release-card-saves" id="jennie-release-saves"></span>
@@ -6817,6 +6819,13 @@ async function getBuLogo() {
   return buLogoImg;
 }
 
+let ltalWordmarkImg = null;
+async function getLtalWordmark() {
+  if (ltalWordmarkImg) return ltalWordmarkImg;
+  try { ltalWordmarkImg = await loadImg('/jennie-ltal-wordmark.png'); } catch(e) {}
+  return ltalWordmarkImg;
+}
+
 let _cardTrackId = null, _cardArt = null, _cardLogo = null, _cardFormat = 'landscape', _cardType = 'song';
 let _msMilestone = null, _msMilestoneTotal = 0, _msMilestoneDate = null;
 let _voteCampaignId = null;
@@ -6839,7 +6848,7 @@ function setCardFormat(fmt, btn) {
   else if (_cardType === 'personal') drawPersonalCard(canvas, _personalCardData);
   else if (_cardType === 'catalog') drawCatalogCard(canvas, _catalogCardData, _cardLogo, _cardArt);
   else if (_cardType === 'artist') drawArtistCard(canvas, _artistCardData, _cardLogo, _cardArt, _artistCardData?.artistName);
-  else if (_cardType === 'release') drawReleaseCard(canvas, _cardLogo, _cardArt);
+  else if (_cardType === 'release') drawReleaseCard(canvas, _cardLogo, _cardArt, ltalWordmarkImg);
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -8477,7 +8486,7 @@ function formatReleaseCountdown() {
   return { big, sub: 'OUT FRI JULY 24 · 12AM EDT / 1PM KST' };
 }
 
-function drawReleaseCard(canvas, logo, art) {
+function drawReleaseCard(canvas, logo, art, wordmark) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   const landscape = W > H;
@@ -8509,8 +8518,8 @@ function drawReleaseCard(canvas, logo, art) {
     }
   } else {
     const glow = ctx.createRadialGradient(W * 0.8, H * 0.15, 0, W * 0.8, H * 0.15, W * 0.8);
-    glow.addColorStop(0, 'rgba(255,0,102,0.22)');
-    glow.addColorStop(0.5, 'rgba(255,0,102,0.07)');
+    glow.addColorStop(0, 'rgba(232,17,13,0.22)');
+    glow.addColorStop(0.5, 'rgba(232,17,13,0.07)');
     glow.addColorStop(1, 'rgba(8,8,8,0)');
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, W, H);
@@ -8522,28 +8531,39 @@ function drawReleaseCard(canvas, logo, art) {
   const textW = W - PX - (landscape ? 50 : 60);
   ctx.textAlign = 'left';
 
-  const eyebrowY = landscape ? 370 : 130;
-  const eyebrowText = '// JENNIE · NEW SINGLE';
+  const eyebrowY = landscape ? 330 : 120;
+  const eyebrowText = '// NEW SINGLE';
   ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
   ctx.letterSpacing = '4px';
   const eyebrowPad = landscape ? 12 : 16;
   const eyebrowW = ctx.measureText(eyebrowText).width + eyebrowPad * 2;
   ctx.fillStyle = 'rgba(8,8,8,0.65)';
   ctx.fillRect(PX - eyebrowPad, eyebrowY - (landscape ? 20 : 26), eyebrowW, landscape ? 30 : 38);
-  ctx.fillStyle = '#FF1E3C';
+  ctx.fillStyle = '#E8110D';
   ctx.fillText(eyebrowText, PX, eyebrowY);
 
-  ctx.fillStyle = '#FF1E3C';
-  ctx.fillRect(PX, eyebrowY + (landscape ? 20 : 26), 70, landscape ? 2 : 3);
+  // Signature "Jennie" script, matching her Ruby-era logotype treatment
+  const jennieY = landscape ? 385 : 200;
+  ctx.letterSpacing = '0px';
+  ctx.fillStyle = '#E8110D';
+  ctx.font = `${landscape ? 36 : 62}px "Pinyon Script", cursive`;
+  ctx.fillText('Jennie', PX, jennieY);
 
-  const titleY = landscape ? 468 : 320;
-  ctx.fillStyle = '#F5F0F0';
-  ctx.letterSpacing = '2px';
-  fillTextFit(ctx, 'LESS THAN A LOVER', PX, titleY, landscape ? 68 : 100, textW, '"Bebas Neue", sans-serif');
+  const titleY = landscape ? 466 : 340;
+  if (wordmark) {
+    const maxH = landscape ? 60 : 110;
+    const wmScale = Math.min(textW / wordmark.naturalWidth, maxH / wordmark.naturalHeight);
+    const wmW = wordmark.naturalWidth * wmScale, wmH = wordmark.naturalHeight * wmScale;
+    ctx.drawImage(wordmark, PX, titleY - wmH, wmW, wmH);
+  } else {
+    ctx.fillStyle = '#F5F0F0';
+    ctx.letterSpacing = '2px';
+    fillTextFit(ctx, 'LESS THAN A LOVER', PX, titleY, landscape ? 68 : 100, textW, '"Bebas Neue", sans-serif');
+  }
 
   const { big, sub } = formatReleaseCountdown();
-  const timerY = landscape ? 546 : 560;
-  ctx.fillStyle = '#FF1E3C';
+  const timerY = landscape ? 526 : 560;
+  ctx.fillStyle = '#E8110D';
   ctx.letterSpacing = '2px';
   fillTextFit(ctx, big, PX, timerY, landscape ? 52 : 82, textW, '"Bebas Neue", sans-serif');
 
@@ -8595,12 +8615,14 @@ async function openReleaseCard() {
   const canvas = document.getElementById('card-canvas');
   canvas.width = 1200; canvas.height = 675;
   await document.fonts.ready;
-  const [art, logo] = await Promise.all([
+  await document.fonts.load('40px "Pinyon Script"').catch(() => {});
+  const [art, logo, wordmark] = await Promise.all([
     loadImg(RELEASE_CARD_PICS[0]).catch(() => null),
     getBuLogo(),
+    getLtalWordmark(),
   ]);
   _cardArt = art; _cardLogo = logo;
-  drawReleaseCard(canvas, logo, art);
+  drawReleaseCard(canvas, logo, art, wordmark);
   label.textContent = 'JENNIE · LESS THAN A LOVER';
 }
 
@@ -8610,9 +8632,9 @@ async function selectReleaseCardArt(url, thumbEl) {
   const canvas = document.getElementById('card-canvas');
   const label  = document.getElementById('card-box-label');
   label.textContent = 'GENERATING…';
-  const art = await loadImg(url).catch(() => null);
+  const [art, wordmark] = await Promise.all([loadImg(url).catch(() => null), getLtalWordmark()]);
   _cardArt = art;
-  drawReleaseCard(canvas, _cardLogo, art);
+  drawReleaseCard(canvas, _cardLogo, art, wordmark);
   label.textContent = 'JENNIE · LESS THAN A LOVER';
 }
 
