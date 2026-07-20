@@ -2025,8 +2025,9 @@
         <div class="as-tracks-header">
           <h3 class="as-section-title" style="margin-bottom:0;">All Tracks</h3>
           <div class="as-sort-tabs">
-            <button class="lb-tab active" data-sort="streams" onclick="setArtistTrackSort('streams', this)">Total Streams</button>
-            <button class="lb-tab" data-sort="daily_delta" onclick="setArtistTrackSort('daily_delta', this)">Daily Change</button>
+            <button class="lb-tab as-sort-btn active" data-sort="streams" onclick="setArtistTrackSort('streams', this)">Total Streams</button>
+            <button class="lb-tab as-sort-btn" data-sort="daily_delta" onclick="setArtistTrackSort('daily_delta', this)">Daily Change</button>
+            <button class="lb-tab active" id="as-album-toggle" onclick="toggleArtistTrackGrouping(this)">📀 By Album</button>
           </div>
         </div>
         <div class="as-table-wrap">
@@ -2883,6 +2884,7 @@ function pathToPage(pathname) {
 // ── Artist Streams page ──────────────────────────────────────────────────
 let artistStreamsData = null;
 let artistTrackSort = 'streams';
+let artistTrackGroupByAlbum = true;
 
 function fmtNum(n) { return n == null ? '—' : Number(n).toLocaleString(); }
 
@@ -3037,8 +3039,14 @@ function renderArtistStreamsPage() {
 
 function setArtistTrackSort(sort, btn) {
   artistTrackSort = sort;
-  document.querySelectorAll('.as-sort-tabs .lb-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.as-sort-tabs .as-sort-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  renderArtistTracks();
+}
+
+function toggleArtistTrackGrouping(btn) {
+  artistTrackGroupByAlbum = !artistTrackGroupByAlbum;
+  btn.classList.toggle('active', artistTrackGroupByAlbum);
   renderArtistTracks();
 }
 
@@ -3046,6 +3054,21 @@ function renderArtistTracks() {
   const ranked = [...(artistStreamsData?.tracks || [])]
     .sort((a, b) => (b[artistTrackSort] || 0) - (a[artistTrackSort] || 0))
     .map((t, i) => ({ ...t, rank: i + 1 }));
+
+  const body = document.getElementById('as-tracks-body');
+
+  if (!artistTrackGroupByAlbum) {
+    body.innerHTML = ranked.map(t => `
+      <tr>
+        <td class="as-rank">${t.rank}</td>
+        <td>${t.name}</td>
+        <td class="right">${fmtNum(t.streams)}</td>
+        <td class="right">${fmtDelta(t.daily_delta)}</td>
+        <td class="right">${fmtTrend(t.daily_delta, t.prev_daily_delta)}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5">No tracks yet</td></tr>';
+    return;
+  }
 
   const groups = new Map();
   for (const t of ranked) {
@@ -3061,7 +3084,7 @@ function renderArtistTracks() {
     return b.release_date.localeCompare(a.release_date);
   });
 
-  document.getElementById('as-tracks-body').innerHTML = sortedGroups.map(g => `
+  body.innerHTML = sortedGroups.map(g => `
     <tr class="as-album-row"><td colspan="5">${g.album || 'Other'}<span class="as-album-count">${g.tracks.length} track${g.tracks.length === 1 ? '' : 's'}</span></td></tr>
     ${g.tracks.map(t => `
       <tr>
