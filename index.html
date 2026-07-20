@@ -2219,6 +2219,11 @@
         <div id="admin-catalog-status" class="admin-song-note" style="margin-bottom:0.6rem;min-height:1.2rem;"></div>
         <button class="btn-primary" id="admin-catalog-btn" onclick="refreshCatalogTotal()">↻ Refresh catalog total</button>
       </div>
+
+      <div class="admin-ban-section">
+        <div class="admin-ban-title">📄 Artist streams CSV — full daily history for BLACKPINK + all 4 members, always current</div>
+        <button class="btn-primary" onclick="downloadArtistStreamsCsv()">⬇ Download CSV</button>
+      </div>
     </div>
     <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
       <button class="card-cl-btn" onclick="closePlaylistPanel()">Close</button>
@@ -6209,6 +6214,12 @@ async function refreshCatalogTotal() {
   } finally {
     btn.disabled = false;
   }
+}
+
+function downloadArtistStreamsCsv() {
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  if (!key) return;
+  window.location.href = `/api/proxy-image?artist_streams=csv&key=${encodeURIComponent(key)}`;
 }
 
 async function loadAdminRanking(key) {

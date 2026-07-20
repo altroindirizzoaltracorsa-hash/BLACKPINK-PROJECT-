@@ -287,6 +287,44 @@ export default async function handler(req, res) {
     return res.status(200).json({ ...artistRows[0], history, tracks });
   }
 
+  // ── GET ?artist_streams=csv (admin) — full daily history for every artist ──
+  if (req.query.artist_streams === 'csv') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    const key = req.headers['x-admin-secret'] || req.query.key;
+    if (!adminSecret || key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
+
+    const [artistsRes, statsRes] = await Promise.all([
+      sbFetch('/tracked_artists?select=spotify_artist_id,name', { headers: { Accept: 'application/json' } }),
+      sbFetch(
+        '/artist_daily_stats?select=artist_id,date,total_streams,daily_delta,followers,monthly_listeners,track_count&order=artist_id.asc,date.asc',
+        { headers: { Accept: 'application/json' } },
+      ),
+    ]);
+    if (!artistsRes.ok || !statsRes.ok) return res.status(502).json({ error: 'Supabase query failed' });
+    const [artists, stats] = await Promise.all([artistsRes.json(), statsRes.json()]);
+    const nameById = Object.fromEntries(artists.map(a => [a.spotify_artist_id, a.name]));
+
+    const ARTIST_ORDER = ['BLACKPINK', 'JISOO', 'JENNIE', 'ROSÉ', 'LISA'];
+    const rows = stats
+      .map(s => ({ ...s, artist: nameById[s.artist_id] || s.artist_id }))
+      .sort((a, b) => (ARTIST_ORDER.indexOf(a.artist) - ARTIST_ORDER.indexOf(b.artist)) || a.date.localeCompare(b.date));
+
+    const esc = v => {
+      if (v == null) return '';
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ['artist', 'date', 'total_streams', 'daily_delta', 'followers', 'monthly_listeners', 'track_count'];
+    const csv = [header.join(',')]
+      .concat(rows.map(r => header.map(h => esc(r[h])).join(',')))
+      .join('\n');
+
+    res.status(200);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="artist_streams_${new Date().toISOString().slice(0, 10)}.csv"`);
+    return res.end(csv);
+  }
+
   // ── GET ?global_streams=history ───────────────────────────────────────────
   if (req.query.global_streams === 'history') {
     const limit = Math.min(Number(req.query.limit ?? 30), 365);
