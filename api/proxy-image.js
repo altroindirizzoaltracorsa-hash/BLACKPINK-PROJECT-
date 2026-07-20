@@ -265,7 +265,7 @@ export default async function handler(req, res) {
       sbFetch(`/tracked_artists?spotify_artist_id=eq.${artistId}&select=name,avatar_url`, { headers: { Accept: 'application/json' } }),
       sbFetch(`/artist_daily_stats?artist_id=eq.${artistId}&order=date.desc&limit=7&select=date,total_streams,daily_delta,followers,monthly_listeners,track_count`, { headers: { Accept: 'application/json' } }),
       sbFetch(
-        `/artist_tracks?artist_id=eq.${artistId}&select=id,name,album,album_release_date,track_number,track_daily_stats(date,streams,daily_delta)` +
+        `/artist_tracks?artist_id=eq.${artistId}&select=id,name,album,album_release_date,track_number,album_art_url,track_daily_stats(date,streams,daily_delta)` +
         '&track_daily_stats.order=date.desc&track_daily_stats.limit=2',
         { headers: { Accept: 'application/json' } },
       ),
@@ -282,6 +282,7 @@ export default async function handler(req, res) {
         album: t.album,
         album_release_date: t.album_release_date,
         track_number: t.track_number,
+        album_art_url: t.album_art_url,
         ...(t.track_daily_stats[0] || {}),
         prev_daily_delta: t.track_daily_stats[1]?.daily_delta ?? null,
       }))

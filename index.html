@@ -864,9 +864,14 @@
   .as-table tr:hover td { background: var(--card2); }
   .as-rank-col { width: 2.4rem; }
   .as-rank { font-family: var(--display); font-size: 1rem; color: rgba(255,0,102,0.35); }
-  .as-album-row td { background: var(--card2); padding: 0.55rem 1rem; font-family: var(--display); font-size: 0.8rem; letter-spacing: 0.08em; color: var(--pink); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  .as-album-row td { background: var(--card2); padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); }
   .as-album-row:hover td { background: var(--card2); }
-  .as-album-count { color: var(--muted); text-transform: none; letter-spacing: normal; font-family: inherit; margin-left: 0.4rem; }
+  .as-album-header { display: flex; align-items: center; gap: 0.8rem; }
+  .as-album-art { width: 44px; height: 44px; border-radius: 4px; object-fit: cover; flex-shrink: 0; background: var(--card); border: 1px solid var(--border); }
+  .as-album-art-fallback { width: 44px; height: 44px; border-radius: 4px; flex-shrink: 0; background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: rgba(255,0,102,0.35); }
+  .as-album-art-fallback svg { width: 16px; height: 13px; }
+  .as-album-name { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.06em; color: var(--pink); text-transform: uppercase; }
+  .as-album-stats { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; margin-top: 0.15rem; }
   @media (max-width: 500px) {
     /* Nav: shrink logo so logo+install+hamburger aren't cramped */
     .nav-logo { font-size: 1rem; letter-spacing: 0.14em; }
@@ -3073,7 +3078,7 @@ function renderArtistTracks() {
   const groups = new Map();
   for (const t of ranked) {
     const key = t.album || '\0other';
-    if (!groups.has(key)) groups.set(key, { album: t.album, release_date: t.album_release_date, tracks: [] });
+    if (!groups.has(key)) groups.set(key, { album: t.album, release_date: t.album_release_date, art: t.album_art_url, tracks: [] });
     groups.get(key).tracks.push(t);
   }
   // Albums newest-first by release date; tracks with no album metadata sink to an "Other" group at the end.
@@ -3084,8 +3089,23 @@ function renderArtistTracks() {
     return b.release_date.localeCompare(a.release_date);
   });
 
-  body.innerHTML = sortedGroups.map(g => `
-    <tr class="as-album-row"><td colspan="5">${g.album || 'Other'}<span class="as-album-count">${g.tracks.length} track${g.tracks.length === 1 ? '' : 's'}</span></td></tr>
+  body.innerHTML = sortedGroups.map(g => {
+    const totalStreams = g.tracks.reduce((s, t) => s + (t.streams || 0), 0);
+    const hasDaily = g.tracks.some(t => t.daily_delta != null);
+    const totalDaily = hasDaily ? g.tracks.reduce((s, t) => s + (t.daily_delta || 0), 0) : null;
+    const art = g.art
+      ? `<img class="as-album-art" src="${g.art}" alt="">`
+      : `<div class="as-album-art-fallback"><svg viewBox="-1 -1 52 45" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M25,8 C25,3 21,0 16,0 C8,0 2,6 2,14 C2,26 14,34 25,42 C36,34 48,26 48,14 C48,6 42,0 34,0 C29,0 25,3 25,8Z"/></svg></div>`;
+    return `
+    <tr class="as-album-row"><td colspan="5">
+      <div class="as-album-header">
+        ${art}
+        <div>
+          <div class="as-album-name">${g.album || 'Other'}</div>
+          <div class="as-album-stats">${g.tracks.length} track${g.tracks.length === 1 ? '' : 's'} · ${fmtNum(totalStreams)} streams · ${fmtDelta(totalDaily)} today</div>
+        </div>
+      </div>
+    </td></tr>
     ${g.tracks.map(t => `
       <tr>
         <td class="as-rank">${t.rank}</td>
@@ -3095,7 +3115,8 @@ function renderArtistTracks() {
         <td class="right">${fmtTrend(t.daily_delta, t.prev_daily_delta)}</td>
       </tr>
     `).join('')}
-  `).join('') || '<tr><td colspan="5">No tracks yet</td></tr>';
+  `;
+  }).join('') || '<tr><td colspan="5">No tracks yet</td></tr>';
 }
 
 function showPage(page, { replace = false } = {}) {

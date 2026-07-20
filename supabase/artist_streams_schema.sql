@@ -90,3 +90,4 @@ grant delete on public.track_daily_stats  to service_role;
 alter table public.artist_tracks add column if not exists album text;
 alter table public.artist_tracks add column if not exists album_release_date date;
 alter table public.artist_tracks add column if not exists track_number int;
+alter table public.artist_tracks add column if not exists album_art_url text;

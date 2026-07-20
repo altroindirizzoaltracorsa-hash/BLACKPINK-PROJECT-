@@ -2,9 +2,9 @@
 One-time backfill, not part of the daily pipeline:
 
 artist_tracks didn't originally store album metadata. fetch_artist_streams.py
-now captures it (album, album_release_date, track_number) for every track it
-touches going forward, but the ~214 tracks inserted before that change need a
-one-off pass to fill those columns in.
+now captures it (album, album_release_date, track_number, album_art_url) for
+every track it touches going forward, but the ~214 tracks inserted before
+that change need a one-off pass to fill those columns in.
 
 Deliberately does NOT touch track_daily_stats or artist_daily_stats -- it
 only PATCHes artist_tracks, so unlike fetch_artist_streams.py it's safe to
@@ -59,10 +59,14 @@ def main():
                     print(f"  fetch failed: {t['name']!r}: {item.error}", file=sys.stderr)
                     continue
                 r = item.result
+                album_art_url = None
+                if r.album and r.album.images:
+                    album_art_url = max(r.album.images, key=lambda im: im.width or 0).url
                 sb("PATCH", f"/artist_tracks?id=eq.{t['id']}", json={
                     "album": r.album.name if r.album else None,
                     "album_release_date": r.release_date.date().isoformat() if r.release_date else None,
                     "track_number": r.track_number,
+                    "album_art_url": album_art_url,
                 })
                 patched += 1
             print(f"  patched {patched}/{len(artist_tracks)}")
