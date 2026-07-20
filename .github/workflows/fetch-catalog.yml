@@ -72,12 +72,13 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python .github/scripts/fetch_artist_streams.py
 
-  # One-time, manual-only: a workflow_dispatch run at 02:51 UTC on 07-20
-  # re-triggered fetch-artist-streams right after the calendar rolled
-  # over, before Spotify had actually updated its public counts, so it
-  # wrote a bogus 07-19 row (verbatim copy of 07-18, delta=0) for every
-  # artist. Deletes those rows. Safe to remove once it's been run.
-  cleanup-premature-0719:
+  # One-time, manual-only: backfill_kworb_subtraction.py's LISA 07-16
+  # upsert passed the LATER date (07-17) as prev_date_for_delta, so
+  # 07-16's delta was computed backwards (total_16 - total_17, a bogus
+  # negative number) instead of being left null, and 07-17's real delta
+  # against 07-16 was never computed at all. Fixes both. Safe to remove
+  # once it's been run.
+  fix-lisa-0716-0717-delta:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
@@ -90,8 +91,8 @@ jobs:
       - name: Install httpx
         run: pip install httpx
 
-      - name: Delete the premature 07-19 rows
+      - name: Fix LISA 07-16 / 07-17 deltas
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python .github/scripts/cleanup_premature_0719.py
+        run: python .github/scripts/fix_lisa_0716_0717_delta.py
