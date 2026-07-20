@@ -520,8 +520,19 @@
   .release-card-timer.is-live { color: #2ecc71; }
   .release-card-sub { font-size: 0.62rem; letter-spacing: 0.08em; color: rgba(245,240,240,0.75); text-transform: uppercase; }
   .release-card:hover .release-card-sub { color: #E8110D; }
-  .release-card-saves { font-size: 0.62rem; letter-spacing: 0.05em; color: rgba(245,240,240,0.6); margin-top: 0.1rem; }
-  .release-card-saves b { color: #E8110D; font-weight: 700; }
+  .release-goal { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem; }
+  .release-goal-top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+  .release-goal-label { font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(245,240,240,0.75); }
+  .release-goal-nums { font-family: var(--display); font-size: 1rem; color: #E8110D; letter-spacing: 0.02em; }
+  .release-goal-nums span { font-size: 0.65rem; color: rgba(245,240,240,0.55); }
+  .release-goal-bar { height: 5px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; }
+  .release-goal-fill { height: 100%; background: linear-gradient(90deg, #E8110D, #FF6B5B); border-radius: 3px; transition: width 0.8s ease; }
+  .release-badge-chip {
+    display: inline-flex; align-self: flex-start; align-items: center; gap: 0.35rem;
+    background: rgba(232,17,13,0.18); border: 1px solid rgba(232,17,13,0.5); border-radius: 4px;
+    padding: 0.3rem 0.6rem; margin-top: 0.5rem;
+    font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; color: #FF6B5B;
+  }
   .release-card-share {
     position: absolute; top: 1rem; right: 1rem; z-index: 2;
     background: rgba(8,8,8,0.55); border: 1px solid rgba(232,17,13,0.5); color: #E8110D;
@@ -1519,7 +1530,14 @@
         <img class="release-card-wordmark" src="/jennie-ltal-wordmark.png" alt="Less Than a Lover">
         <span class="release-card-timer" id="jennie-release-timer">Loading…</span>
         <span class="release-card-sub">Out Fri, July 24 · 12AM EDT / 1PM KST — Pre-save →</span>
-        <span class="release-card-saves" id="jennie-release-saves"></span>
+        <div class="release-goal" id="jennie-release-goal" style="display:none;">
+          <div class="release-goal-top">
+            <span class="release-goal-label">🎯 Blinks Pre-Save Challenge</span>
+            <span class="release-goal-nums" id="jennie-release-goal-nums"></span>
+          </div>
+          <div class="release-goal-bar"><div class="release-goal-fill" id="jennie-release-goal-fill" style="width:0%"></div></div>
+        </div>
+        <span class="release-badge-chip" id="jennie-release-badge" style="display:none;">🏆 Early Supporter — you pre-saved this!</span>
         <div class="release-card-posters">
           <img class="release-card-poster" src="/jennie-ltal-poster1.jpg" alt="Less Than a Lover poster 1" loading="lazy">
           <img class="release-card-poster" src="/jennie-ltal-poster2.jpg" alt="Less Than a Lover poster 2" loading="lazy">
@@ -6488,14 +6506,28 @@ function renderReleaseCountdown() {
 }
 
 const JENNIE_SAVE_LS = 'bu_jennie_ltal_saved';
+const JENNIE_SAVE_GOAL = 5000;
 
 function renderJennieSaveCount(count) {
-  const el = document.getElementById('jennie-release-saves');
-  if (!el) return;
-  el.innerHTML = count > 0 ? `🎧 <b>${count.toLocaleString()}</b> Blinks have saved this` : '';
+  const wrap = document.getElementById('jennie-release-goal');
+  const numsEl = document.getElementById('jennie-release-goal-nums');
+  const fillEl = document.getElementById('jennie-release-goal-fill');
+  if (!wrap || count <= 0) return;
+  wrap.style.display = 'flex';
+  const pct = Math.min(100, (count / JENNIE_SAVE_GOAL) * 100);
+  fillEl.style.width = pct + '%';
+  numsEl.innerHTML = count >= JENNIE_SAVE_GOAL
+    ? '🎉 GOAL REACHED!'
+    : `${count.toLocaleString()}<span> / ${JENNIE_SAVE_GOAL.toLocaleString()} pre-saves</span>`;
+}
+
+function renderJennieBadge() {
+  const el = document.getElementById('jennie-release-badge');
+  if (el) el.style.display = localStorage.getItem(JENNIE_SAVE_LS) ? 'inline-flex' : 'none';
 }
 
 async function loadJennieSaveCount() {
+  renderJennieBadge();
   try {
     const r = await fetch('/api/proxy-image?jennie_save=count');
     const d = await r.json();
@@ -6504,10 +6536,13 @@ async function loadJennieSaveCount() {
 }
 
 // Fires once per browser when a fan clicks through to pre-save — doesn't block
-// the outbound navigation, just fires the increment alongside it.
+// the outbound navigation, just fires the increment alongside it. Unlocks the
+// "Early Supporter" badge and pushes the community goal bar forward.
 function saveJennieCountdown() {
   if (localStorage.getItem(JENNIE_SAVE_LS)) return;
   localStorage.setItem(JENNIE_SAVE_LS, '1');
+  renderJennieBadge();
+  _showShareToast('🏆 Badge unlocked: Early Supporter!');
   fetch('/api/proxy-image?jennie_save=increment').then(r => r.json()).then(d => renderJennieSaveCount(d.count || 0)).catch(() => {});
 }
 
