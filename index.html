@@ -411,6 +411,10 @@
   .card-fmt { background:transparent;border:1px solid rgba(255,0,102,0.2);color:var(--muted);font-family:var(--mono);font-size:0.54rem;letter-spacing:0.12em;text-transform:uppercase;padding:0.3rem 0.7rem;cursor:pointer;transition:all 0.2s; }
   .card-fmt.active { background:var(--pink-muted);border-color:var(--pink);color:var(--pink); }
   .card-range-toggle { display:flex;align-items:center;gap:6px; }
+  .release-pic-picker { display:flex; gap:0.5rem; margin-bottom:0.8rem; }
+  .release-pic-thumb { width:56px; height:56px; object-fit:cover; border-radius:6px; border:2px solid transparent; opacity:0.55; cursor:pointer; transition:opacity 0.2s, border-color 0.2s; }
+  .release-pic-thumb:hover { opacity:0.85; }
+  .release-pic-thumb.active { opacity:1; border-color:var(--pink); }
   .card-range-toggle .card-fmt { padding:0.3rem 0.55rem; }
   .card-range-toggle .card-fmt:disabled { opacity:0.3;cursor:default; }
   .card-range-label { font-family:var(--mono);font-size:0.58rem;letter-spacing:0.12em;color:var(--muted);white-space:nowrap; }
@@ -484,37 +488,48 @@
   .goal-tracker-fill { height: 100%; background: var(--pink); transition: width 1s ease; }
   .goal-tracker-status { font-size: 0.65rem; letter-spacing: 0.08em; color: var(--muted); }
 
+  @keyframes release-breathe {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(224,17,95,0), 0 4px 24px rgba(0,0,0,0.35); border-color: rgba(224,17,95,0.3); }
+    50%      { box-shadow: 0 0 30px 6px rgba(224,17,95,0.4), 0 4px 24px rgba(0,0,0,0.35); border-color: rgba(224,17,95,0.7); }
+  }
   .release-card {
     position: relative; background: #0a0a0a url('/jennie-ltal-photo.jpg') center 25% / cover no-repeat;
-    border: 1px solid rgba(255,0,102,0.25);
+    border: 1px solid rgba(224,17,95,0.3);
     padding: 1.4rem 2rem; display: flex; flex-direction: column; gap: 0.4rem;
     text-decoration: none; overflow: hidden;
+    animation: release-breathe 3.2s ease-in-out infinite;
   }
+  @media (prefers-reduced-motion: reduce) { .release-card { animation: none; } }
   .release-card::before {
     content: ''; position: absolute; inset: 0;
     background:
-      radial-gradient(ellipse at top right, rgba(255,0,102,0.18), transparent 65%),
+      radial-gradient(ellipse at top right, rgba(224,17,95,0.2), transparent 65%),
       linear-gradient(180deg, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0.72) 55%, rgba(8,8,8,0.92) 100%);
     pointer-events: none;
   }
   .release-card > * { position: relative; z-index: 1; }
-  .release-card-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pink); text-shadow: 0 1px 6px rgba(0,0,0,0.6); }
+  .release-card-label {
+    display: inline-block; align-self: flex-start;
+    background: rgba(8,8,8,0.65); border: 1px solid rgba(224,17,95,0.4); border-radius: 4px;
+    padding: 0.25rem 0.55rem; margin-bottom: 0.15rem;
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #E0115F;
+  }
   .release-card-title { font-family: var(--display); font-size: 1.9rem; letter-spacing: 0.03em; color: var(--white); text-shadow: 0 1px 8px rgba(0,0,0,0.6); }
-  .release-card-timer { font-family: var(--display); font-size: 1.5rem; letter-spacing: 0.02em; color: #FF6FA8; text-shadow: 0 1px 8px rgba(0,0,0,0.6); }
+  .release-card-timer { font-family: var(--display); font-size: 1.5rem; letter-spacing: 0.02em; color: #E0115F; text-shadow: 0 1px 8px rgba(0,0,0,0.6); }
   .release-card-timer.is-live { color: #2ecc71; }
   .release-card-sub { font-size: 0.62rem; letter-spacing: 0.08em; color: rgba(245,240,240,0.75); text-transform: uppercase; }
-  .release-card:hover .release-card-sub { color: var(--pink); }
+  .release-card:hover .release-card-sub { color: #E0115F; }
   .release-card-saves { font-size: 0.62rem; letter-spacing: 0.05em; color: rgba(245,240,240,0.6); margin-top: 0.1rem; }
-  .release-card-saves b { color: #FF6FA8; font-weight: 700; }
+  .release-card-saves b { color: #E0115F; font-weight: 700; }
   .release-card-share {
     position: absolute; top: 1rem; right: 1rem; z-index: 2;
-    background: rgba(8,8,8,0.55); border: 1px solid rgba(255,0,102,0.4); color: var(--pink);
+    background: rgba(8,8,8,0.55); border: 1px solid rgba(224,17,95,0.5); color: #E0115F;
     font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase;
     padding: 0.35rem 0.6rem; cursor: pointer; transition: background 0.2s;
   }
-  .release-card-share:hover { background: rgba(255,0,102,0.3); }
+  .release-card-share:hover { background: rgba(224,17,95,0.35); }
   .release-card-posters { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
-  .release-card-poster { width: 52px; height: 74px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(255,0,102,0.3); flex-shrink: 0; }
+  .release-card-poster { width: 52px; height: 74px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(224,17,95,0.4); flex-shrink: 0; }
   .goal-tracker-done { color: #00ff88; }
 
   .tracks-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem; }
@@ -2325,6 +2340,11 @@
         <button class="card-fmt active" id="fmt-landscape" onclick="setCardFormat('landscape',this)">▬ Landscape</button>
         <button class="card-fmt" id="fmt-square" onclick="setCardFormat('square',this)">□ Square</button>
       </div>
+    </div>
+    <div id="release-pic-picker" class="release-pic-picker" style="display:none;">
+      <img class="release-pic-thumb active" src="/jennie-ltal-photo.jpg" alt="" onclick="selectReleaseCardArt('/jennie-ltal-photo.jpg', this)">
+      <img class="release-pic-thumb" src="/jennie-ltal-poster1.jpg" alt="" onclick="selectReleaseCardArt('/jennie-ltal-poster1.jpg', this)">
+      <img class="release-pic-thumb" src="/jennie-ltal-poster2.jpg" alt="" onclick="selectReleaseCardArt('/jennie-ltal-poster2.jpg', this)">
     </div>
     <canvas id="card-canvas" width="1200" height="675"></canvas>
     <div class="card-box-actions">
@@ -6829,6 +6849,7 @@ async function openSongCard(trackId) {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none';
   _cardType = 'song';
   _cardTrackId = trackId;
   // Reset to landscape on each open
@@ -7366,6 +7387,7 @@ async function openPersonalCard() {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none';
   _cardType = 'personal';
   _cardFormat = 'square';
   document.getElementById('fmt-landscape')?.classList.remove('active');
@@ -7848,6 +7870,7 @@ async function openMilestoneCard(trackId, milestone, milestoneDate) {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none';
   _cardType      = 'milestone';
   _cardTrackId   = trackId;
   _msMilestone   = milestone;
@@ -8035,6 +8058,7 @@ async function openVoteCard(campaignId) {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none';
   _cardType = 'vote';
   _voteCampaignId = campaignId;
   _cardFormat = 'landscape';
@@ -8389,6 +8413,7 @@ async function openCatalogCard() {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none';
   _cardType = 'catalog';
   _cardFormat = 'landscape';
   document.getElementById('fmt-landscape')?.classList.add('active');
@@ -8414,6 +8439,7 @@ async function openArtistCard() {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none';
   _cardType = 'artist';
   _cardFormat = 'landscape';
   document.getElementById('fmt-landscape')?.classList.add('active');
@@ -8497,13 +8523,18 @@ function drawReleaseCard(canvas, logo, art) {
   ctx.textAlign = 'left';
 
   const eyebrowY = landscape ? 370 : 130;
-  ctx.fillStyle = '#FF0066';
+  const eyebrowText = '// JENNIE · NEW SINGLE';
   ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
   ctx.letterSpacing = '4px';
-  ctx.fillText('// JENNIE · NEW SINGLE', PX, eyebrowY);
+  const eyebrowPad = landscape ? 12 : 16;
+  const eyebrowW = ctx.measureText(eyebrowText).width + eyebrowPad * 2;
+  ctx.fillStyle = 'rgba(8,8,8,0.65)';
+  ctx.fillRect(PX - eyebrowPad, eyebrowY - (landscape ? 20 : 26), eyebrowW, landscape ? 30 : 38);
+  ctx.fillStyle = '#E0115F';
+  ctx.fillText(eyebrowText, PX, eyebrowY);
 
-  ctx.fillStyle = '#FF0066';
-  ctx.fillRect(PX, eyebrowY + (landscape ? 12 : 16), 70, landscape ? 2 : 3);
+  ctx.fillStyle = '#E0115F';
+  ctx.fillRect(PX, eyebrowY + (landscape ? 20 : 26), 70, landscape ? 2 : 3);
 
   const titleY = landscape ? 468 : 320;
   ctx.fillStyle = '#F5F0F0';
@@ -8512,7 +8543,7 @@ function drawReleaseCard(canvas, logo, art) {
 
   const { big, sub } = formatReleaseCountdown();
   const timerY = landscape ? 546 : 560;
-  ctx.fillStyle = '#FF6FA8';
+  ctx.fillStyle = '#E0115F';
   ctx.letterSpacing = '2px';
   fillTextFit(ctx, big, PX, timerY, landscape ? 52 : 82, textW, '"Bebas Neue", sans-serif');
 
@@ -8546,12 +8577,17 @@ function drawReleaseCard(canvas, logo, art) {
   _markCardReady(canvas);
 }
 
+const RELEASE_CARD_PICS = ['/jennie-ltal-photo.jpg', '/jennie-ltal-poster1.jpg', '/jennie-ltal-poster2.jpg'];
+
 async function openReleaseCard() {
   const overlay = document.getElementById('card-overlay');
   const label   = document.getElementById('card-box-label');
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
+  const picker = document.getElementById('release-pic-picker');
+  picker.style.display = 'flex';
+  picker.querySelectorAll('.release-pic-thumb').forEach((t, i) => t.classList.toggle('active', i === 0));
   _cardType = 'release';
   _cardFormat = 'landscape';
   document.getElementById('fmt-landscape')?.classList.add('active');
@@ -8560,11 +8596,23 @@ async function openReleaseCard() {
   canvas.width = 1200; canvas.height = 675;
   await document.fonts.ready;
   const [art, logo] = await Promise.all([
-    loadImg('/jennie-ltal-photo.jpg').catch(() => null),
+    loadImg(RELEASE_CARD_PICS[0]).catch(() => null),
     getBuLogo(),
   ]);
   _cardArt = art; _cardLogo = logo;
   drawReleaseCard(canvas, logo, art);
+  label.textContent = 'JENNIE · LESS THAN A LOVER';
+}
+
+async function selectReleaseCardArt(url, thumbEl) {
+  document.querySelectorAll('.release-pic-thumb').forEach(t => t.classList.remove('active'));
+  thumbEl.classList.add('active');
+  const canvas = document.getElementById('card-canvas');
+  const label  = document.getElementById('card-box-label');
+  label.textContent = 'GENERATING…';
+  const art = await loadImg(url).catch(() => null);
+  _cardArt = art;
+  drawReleaseCard(canvas, _cardLogo, art);
   label.textContent = 'JENNIE · LESS THAN A LOVER';
 }
 
