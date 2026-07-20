@@ -1975,7 +1975,7 @@
     <div class="as-header">
       <svg class="as-gem" viewBox="-1 -1 52 45" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M25,8 C25,3 21,0 16,0 C8,0 2,6 2,14 C2,26 14,34 25,42 C36,34 48,26 48,14 C48,6 42,0 34,0 C29,0 25,3 25,8Z"/><line x1="25" y1="8" x2="25" y2="42"/><line x1="3" y1="22" x2="25" y2="22"/></svg>
       <p class="as-eyebrow">Spotify Catalog Tracker</p>
-      <h1 class="as-title">BLACKPINK<br><span>SPOTIFY STREAMS</span></h1>
+      <h1 class="as-title" id="as-title">BLACKPINK<br><span>SPOTIFY STREAMS</span></h1>
       <p class="as-sub">Full catalog streams, tracked daily</p>
     </div>
 
@@ -2924,6 +2924,7 @@ async function loadArtistStreamsList() {
   const errorEl = document.getElementById('as-error');
   const list = document.getElementById('as-list');
   const content = document.getElementById('as-content');
+  document.getElementById('as-title').innerHTML = 'BLACKPINK<br><span>SPOTIFY STREAMS</span>';
   loading.style.display = 'block';
   errorEl.style.display = 'none';
   list.style.display = 'none';
@@ -2988,6 +2989,9 @@ async function loadArtistStreamsDetail(artistId) {
 function renderArtistStreamsPage() {
   const d = artistStreamsData;
   const latest = d.history?.[0] || {};
+
+  document.getElementById('as-title').innerHTML =
+    `${(d.name || 'BLACKPINK').toUpperCase()}<br><span>SPOTIFY STREAMS</span>`;
 
   const avatarEl = document.getElementById('as-avatar');
   const avatarFallback = document.getElementById('as-avatar-fallback');
@@ -6599,6 +6603,7 @@ function setCardFormat(fmt, btn) {
   else if (_cardType === 'vote') drawVoteCard(canvas, VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId), _cardLogo, _cardArt);
   else if (_cardType === 'personal') drawPersonalCard(canvas, _personalCardData);
   else if (_cardType === 'catalog') drawCatalogCard(canvas, _catalogCardData, _cardLogo, _cardArt);
+  else if (_cardType === 'artist') drawArtistCard(canvas, _artistCardData, _cardLogo, _cardArt, _artistCardData?.artistName);
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 

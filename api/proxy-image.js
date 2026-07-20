@@ -244,6 +244,7 @@ export default async function handler(req, res) {
     );
     if (!r.ok) return res.status(200).json({ artists: [] });
     const rows = await r.json();
+    const ARTIST_ORDER = ['BLACKPINK', 'JISOO', 'JENNIE', 'ROSÉ', 'LISA'];
     const artists = rows
       .map(a => ({
         id: a.spotify_artist_id,
@@ -251,7 +252,7 @@ export default async function handler(req, res) {
         avatarUrl: a.avatar_url,
         ...(a.artist_daily_stats[0] || {}),
       }))
-      .sort((a, b) => (b.total_streams || 0) - (a.total_streams || 0));
+      .sort((a, b) => ARTIST_ORDER.indexOf(a.name) - ARTIST_ORDER.indexOf(b.name));
     return res.status(200).json({ artists });
   }
 
