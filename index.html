@@ -8566,46 +8566,46 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   const textW = W - PX - (landscape ? 50 : 60);
   ctx.textAlign = 'left';
 
-  const eyebrowY = landscape ? 330 : 120;
+  const eyebrowY = landscape ? 320 : 130;
   const eyebrowText = '// NEW SINGLE';
-  ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
+  ctx.font = `500 ${landscape ? 16 : 22}px "DM Mono", monospace`;
   ctx.letterSpacing = '4px';
-  const eyebrowPad = landscape ? 12 : 16;
+  const eyebrowPad = landscape ? 14 : 18;
   const eyebrowW = ctx.measureText(eyebrowText).width + eyebrowPad * 2;
   ctx.fillStyle = 'rgba(8,8,8,0.65)';
-  ctx.fillRect(PX - eyebrowPad, eyebrowY - (landscape ? 20 : 26), eyebrowW, landscape ? 30 : 38);
+  ctx.fillRect(PX - eyebrowPad, eyebrowY - (landscape ? 24 : 32), eyebrowW, landscape ? 34 : 44);
   ctx.fillStyle = '#E8110D';
   ctx.fillText(eyebrowText, PX, eyebrowY);
 
   // Signature "Jennie" script, matching her Ruby-era logotype treatment
-  const jennieY = landscape ? 385 : 200;
+  const jennieY = landscape ? 380 : 230;
   ctx.letterSpacing = '0px';
   ctx.fillStyle = '#E8110D';
-  ctx.font = `${landscape ? 36 : 62}px "Pinyon Script", cursive`;
+  ctx.font = `${landscape ? 44 : 72}px "Pinyon Script", cursive`;
   ctx.fillText('Jennie', PX, jennieY);
 
-  const titleY = landscape ? 466 : 340;
+  const titleY = landscape ? 485 : 400;
   if (wordmark) {
-    const maxH = landscape ? 60 : 110;
+    const maxH = landscape ? 80 : 140;
     const wmScale = Math.min(textW / wordmark.naturalWidth, maxH / wordmark.naturalHeight);
     const wmW = wordmark.naturalWidth * wmScale, wmH = wordmark.naturalHeight * wmScale;
     ctx.drawImage(wordmark, PX, titleY - wmH, wmW, wmH);
   } else {
     ctx.fillStyle = '#F5F0F0';
     ctx.letterSpacing = '2px';
-    fillTextFit(ctx, 'LESS THAN A LOVER', PX, titleY, landscape ? 68 : 100, textW, '"Bebas Neue", sans-serif');
+    fillTextFit(ctx, 'LESS THAN A LOVER', PX, titleY, landscape ? 80 : 120, textW, '"Bebas Neue", sans-serif');
   }
 
   const { big, sub } = formatReleaseCountdown();
-  const timerY = landscape ? 526 : 560;
+  const timerY = landscape ? 548 : 620;
   ctx.fillStyle = '#E8110D';
   ctx.letterSpacing = '2px';
-  fillTextFit(ctx, big, PX, timerY, landscape ? 52 : 82, textW, '"Bebas Neue", sans-serif');
+  fillTextFit(ctx, big, PX, timerY, landscape ? 60 : 92, textW, '"Bebas Neue", sans-serif');
 
-  ctx.fillStyle = 'rgba(245,240,240,0.45)';
-  ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
+  ctx.fillStyle = 'rgba(245,240,240,0.55)';
+  ctx.font = `500 ${landscape ? 15 : 22}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText(sub, PX, timerY + (landscape ? 22 : 32));
+  ctx.fillText(sub, PX, timerY + (landscape ? 28 : 36));
 
   const LR = landscape ? 22 : 28;
   const logoY = H - (landscape ? 46 : 82);
