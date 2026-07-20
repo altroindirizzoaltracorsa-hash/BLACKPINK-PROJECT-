@@ -872,6 +872,21 @@
   .as-album-art-fallback svg { width: 16px; height: 13px; }
   .as-album-name { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.06em; color: var(--pink); text-transform: uppercase; }
   .as-album-stats { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; margin-top: 0.15rem; }
+
+  /* All Tracks: card-style rows instead of plain table lines */
+  .as-tracks-wrap { border: none; overflow: visible; }
+  .as-tracks-table { border-collapse: separate; border-spacing: 0 0.6rem; }
+  .as-tracks-table thead th { background: transparent; border-bottom: none; position: static; padding: 0 1.1rem 0.4rem; }
+  .as-tracks-table tbody tr:not(.as-album-row) td { background: var(--card2); border-bottom: none; padding: 0.95rem 1.1rem; transition: background 0.15s ease; }
+  .as-tracks-table tbody tr:not(.as-album-row):hover td { background: #1c1c1c; }
+  .as-tracks-table tbody tr:not(.as-album-row) td:first-child { border-radius: 8px 0 0 8px; }
+  .as-tracks-table tbody tr:not(.as-album-row) td:last-child { border-radius: 0 8px 8px 0; }
+  .as-tracks-table .as-rank { font-size: 1.25rem; }
+  .as-track-name { font-family: var(--display); font-size: 1.05rem; letter-spacing: 0.03em; color: var(--white); }
+  .as-track-sub { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; margin-top: 0.2rem; }
+  .as-track-daily-num { font-family: var(--display); font-size: 1.35rem; letter-spacing: 0.02em; }
+  .as-track-trend { font-size: 0.68rem; color: var(--muted); margin-top: 0.15rem; }
+  .as-tracks-table .as-album-row td { border-radius: 8px; }
   @media (max-width: 500px) {
     /* Nav: shrink logo so logo+install+hamburger aren't cramped */
     .nav-logo { font-size: 1rem; letter-spacing: 0.14em; }
@@ -2035,9 +2050,9 @@
             <button class="lb-tab active" id="as-album-toggle" onclick="toggleArtistTrackGrouping(this)">📀 By Album</button>
           </div>
         </div>
-        <div class="as-table-wrap">
-          <table class="as-table">
-            <thead><tr><th class="as-rank-col"></th><th>Track</th><th class="right">Streams</th><th class="right">Daily Change</th><th class="right">Trend</th></tr></thead>
+        <div class="as-table-wrap as-tracks-wrap">
+          <table class="as-table as-tracks-table">
+            <thead><tr><th class="as-rank-col"></th><th>Track</th><th class="right">Daily Streams</th></tr></thead>
             <tbody id="as-tracks-body"></tbody>
           </table>
         </div>
@@ -3055,6 +3070,22 @@ function toggleArtistTrackGrouping(btn) {
   renderArtistTracks();
 }
 
+function trackRowHtml(t) {
+  return `
+    <tr>
+      <td class="as-rank">${t.rank}</td>
+      <td>
+        <div class="as-track-name">${t.name}</div>
+        <div class="as-track-sub">${fmtNum(t.streams)} total streams</div>
+      </td>
+      <td class="right">
+        <div class="as-track-daily-num">${fmtDelta(t.daily_delta)}</div>
+        <div class="as-track-trend">${fmtTrend(t.daily_delta, t.prev_daily_delta)}</div>
+      </td>
+    </tr>
+  `;
+}
+
 function renderArtistTracks() {
   const ranked = [...(artistStreamsData?.tracks || [])]
     .sort((a, b) => (b[artistTrackSort] || 0) - (a[artistTrackSort] || 0))
@@ -3063,15 +3094,7 @@ function renderArtistTracks() {
   const body = document.getElementById('as-tracks-body');
 
   if (!artistTrackGroupByAlbum) {
-    body.innerHTML = ranked.map(t => `
-      <tr>
-        <td class="as-rank">${t.rank}</td>
-        <td>${t.name}</td>
-        <td class="right">${fmtNum(t.streams)}</td>
-        <td class="right">${fmtDelta(t.daily_delta)}</td>
-        <td class="right">${fmtTrend(t.daily_delta, t.prev_daily_delta)}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="5">No tracks yet</td></tr>';
+    body.innerHTML = ranked.map(trackRowHtml).join('') || '<tr><td colspan="3">No tracks yet</td></tr>';
     return;
   }
 
@@ -3097,7 +3120,7 @@ function renderArtistTracks() {
       ? `<img class="as-album-art" src="${g.art}" alt="">`
       : `<div class="as-album-art-fallback"><svg viewBox="-1 -1 52 45" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M25,8 C25,3 21,0 16,0 C8,0 2,6 2,14 C2,26 14,34 25,42 C36,34 48,26 48,14 C48,6 42,0 34,0 C29,0 25,3 25,8Z"/></svg></div>`;
     return `
-    <tr class="as-album-row"><td colspan="5">
+    <tr class="as-album-row"><td colspan="3">
       <div class="as-album-header">
         ${art}
         <div>
@@ -3106,17 +3129,9 @@ function renderArtistTracks() {
         </div>
       </div>
     </td></tr>
-    ${g.tracks.map(t => `
-      <tr>
-        <td class="as-rank">${t.rank}</td>
-        <td>${t.name}</td>
-        <td class="right">${fmtNum(t.streams)}</td>
-        <td class="right">${fmtDelta(t.daily_delta)}</td>
-        <td class="right">${fmtTrend(t.daily_delta, t.prev_daily_delta)}</td>
-      </tr>
-    `).join('')}
+    ${g.tracks.map(trackRowHtml).join('')}
   `;
-  }).join('') || '<tr><td colspan="5">No tracks yet</td></tr>';
+  }).join('') || '<tr><td colspan="3">No tracks yet</td></tr>';
 }
 
 function showPage(page, { replace = false } = {}) {
