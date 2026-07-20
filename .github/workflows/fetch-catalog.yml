@@ -68,14 +68,13 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python .github/scripts/fetch_artist_streams.py
 
-  # One-time, manual-only: kworb shows both a track's total and its most
-  # recent daily delta, so total - daily reconstructs the previous day's
-  # total for free. Backfills BLACKPINK 07-16, JENNIE/ROSÉ 07-17, LISA
-  # 07-16/07-17, and patches JENNIE/ROSÉ/LISA's 07-18 delta (null until
-  # now). Safe to remove once it's been run.
-  backfill-kworb-subtraction:
+  # One-time, manual-only: backfill_kworb_subtraction.py re-inserted
+  # BLACKPINK's 07-16 artist_daily_stats row without a previous-date
+  # reference, nulling out the correct delta that backfill_widget_history.py
+  # had already set. Recomputes it from 07-16 total minus 07-15 total.
+  # Safe to remove once it's been run.
+  fix-blackpink-0716-delta:
     if: github.event_name == 'workflow_dispatch'
-    needs: fetch-artist-streams
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -87,8 +86,8 @@ jobs:
       - name: Install httpx
         run: pip install httpx
 
-      - name: Backfill via kworb's total-minus-daily subtraction
+      - name: Fix BLACKPINK 07-16 daily_delta
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python .github/scripts/backfill_kworb_subtraction.py
+        run: python .github/scripts/fix_blackpink_0716_delta.py
