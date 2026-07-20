@@ -483,6 +483,30 @@
   .goal-tracker-bar { height: 3px; background: rgba(255,255,255,0.06); }
   .goal-tracker-fill { height: 100%; background: var(--pink); transition: width 1s ease; }
   .goal-tracker-status { font-size: 0.65rem; letter-spacing: 0.08em; color: var(--muted); }
+
+  .release-card {
+    position: relative; background: var(--card); border: 1px solid rgba(255,0,102,0.25);
+    padding: 1.4rem 2rem; display: flex; flex-direction: column; gap: 0.4rem;
+    text-decoration: none; overflow: hidden;
+  }
+  .release-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at top right, rgba(255,0,102,0.14), transparent 65%);
+    pointer-events: none;
+  }
+  .release-card-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pink); }
+  .release-card-title { font-family: var(--display); font-size: 1.9rem; letter-spacing: 0.03em; color: var(--white); }
+  .release-card-timer { font-family: var(--display); font-size: 1.5rem; letter-spacing: 0.02em; color: #FF6FA8; }
+  .release-card-timer.is-live { color: #2ecc71; }
+  .release-card-sub { font-size: 0.62rem; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+  .release-card:hover .release-card-sub { color: var(--pink); }
+  .release-card-share {
+    position: absolute; top: 1rem; right: 1rem; z-index: 1;
+    background: rgba(255,0,102,0.12); border: 1px solid rgba(255,0,102,0.3); color: var(--pink);
+    font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 0.35rem 0.6rem; cursor: pointer; transition: background 0.2s;
+  }
+  .release-card-share:hover { background: rgba(255,0,102,0.22); }
   .goal-tracker-done { color: #00ff88; }
 
   .tracks-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem; }
@@ -1464,6 +1488,13 @@
         <a href="/badges" class="btn-ghost" onclick="showPage('badges'); return false;">Badge Challenge</a>
         <a href="/voting" class="btn-primary" onclick="showPage('vote'); return false;">Vote</a>
       </div>
+      <a href="https://jennie.lnk.to/LessthanaLover" target="_blank" rel="noopener" class="release-card" id="jennie-release-card" style="display:none;margin-top:1.5rem;max-width:480px;width:100%;">
+        <button class="release-card-share" onclick="event.preventDefault(); event.stopPropagation(); openReleaseCard();">⬡ Share</button>
+        <span class="release-card-label">🔔 JENNIE · NEW SINGLE</span>
+        <span class="release-card-title">Less Than a Lover</span>
+        <span class="release-card-timer" id="jennie-release-timer">Loading…</span>
+        <span class="release-card-sub">Out Fri, July 24 · 12AM EDT / 1PM KST — Pre-save →</span>
+      </a>
       <div id="community-goal-home" style="display:none;margin-top:1.5rem;max-width:480px;width:100%;">
         <div class="goal-tracker-card">
           <div class="goal-tracker-top">
@@ -2874,6 +2905,8 @@ window.addEventListener('DOMContentLoaded', () => {
   loadCatalogStreams();
   loadTodaysPlaylist();
   loadCommunityGoal();
+  renderReleaseCountdown();
+  setInterval(renderReleaseCountdown, 1000);
   const saved = getSavedUsername();
   if (saved && !document.getElementById('page-badges')?.classList.contains('active')) {
     loadProfile(saved, true); // silent background submit to keep leaderboard fresh
@@ -6385,6 +6418,39 @@ function renderAdminTable(data) {
     </table>`;
 }
 
+// ── JENNIE "Less Than a Lover" release countdown ────────────────────────────
+const JENNIE_RELEASE = {
+  title: 'Less Than a Lover',
+  releaseAt: '2026-07-24T04:00:00Z', // 12:00 AM EDT / 1:00 PM KST
+  hideAfter: '2026-07-31T04:00:00Z', // stop showing the banner 7 days after release
+  link: 'https://jennie.lnk.to/LessthanaLover',
+};
+
+function renderReleaseCountdown() {
+  const card = document.getElementById('jennie-release-card');
+  if (!card) return;
+  const now = Date.now();
+  const releaseTime = new Date(JENNIE_RELEASE.releaseAt).getTime();
+  const hideTime = new Date(JENNIE_RELEASE.hideAfter).getTime();
+  if (now >= hideTime) { card.style.display = 'none'; return; }
+  card.style.display = 'flex';
+
+  const timerEl = document.getElementById('jennie-release-timer');
+  if (now >= releaseTime) {
+    timerEl.textContent = '● OUT NOW — Stream it';
+    timerEl.classList.add('is-live');
+  } else {
+    const diff = releaseTime - now;
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    const pad = n => String(n).padStart(2, '0');
+    timerEl.textContent = d > 0 ? `${d}d ${pad(h)}h ${pad(m)}m` : `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+    timerEl.classList.remove('is-live');
+  }
+}
+
 async function loadTodaysPlaylist() {
   const banner = document.getElementById('playlist-banner');
   const homeSection = document.getElementById('todays-playlist-home');
@@ -6715,6 +6781,7 @@ function setCardFormat(fmt, btn) {
   else if (_cardType === 'personal') drawPersonalCard(canvas, _personalCardData);
   else if (_cardType === 'catalog') drawCatalogCard(canvas, _catalogCardData, _cardLogo, _cardArt);
   else if (_cardType === 'artist') drawArtistCard(canvas, _artistCardData, _cardLogo, _cardArt, _artistCardData?.artistName);
+  else if (_cardType === 'release') drawReleaseCard(canvas, _cardLogo);
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -7167,6 +7234,10 @@ async function shareCard() {
       }
       statsText = '\n' + lines.join('\n') + '\n';
     }
+  } else if (_cardType === 'release') {
+    link = JENNIE_RELEASE.link.replace(/^https?:\/\//, '');
+    const { big } = formatReleaseCountdown();
+    statsText = `\n⏰ ${big}\n`;
   }
   const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
   // Mobile: Web Share API with image file
@@ -8328,6 +8399,108 @@ async function openArtistCard() {
   };
   drawArtistCard(canvas, _artistCardData, logo, art, artistStreamsData.name);
   label.textContent = `${artistStreamsData.name.toUpperCase()} · STREAM UPDATE CARD`;
+}
+
+function formatReleaseCountdown() {
+  const diff = new Date(JENNIE_RELEASE.releaseAt).getTime() - Date.now();
+  if (diff <= 0) return { big: 'OUT NOW', sub: 'STREAM IT NOW' };
+  const totalMin = Math.floor(diff / 60000);
+  const d = Math.floor(totalMin / 1440);
+  const h = Math.floor((totalMin % 1440) / 60);
+  const m = totalMin % 60;
+  const pad = n => String(n).padStart(2, '0');
+  const big = d > 0 ? `${d}D ${pad(h)}H ${pad(m)}M` : `${pad(h)}H ${pad(m)}M LEFT`;
+  return { big, sub: 'OUT FRI JULY 24 · 12AM EDT / 1PM KST' };
+}
+
+function drawReleaseCard(canvas, logo) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const landscape = W > H;
+
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+
+  const glow = ctx.createRadialGradient(W * 0.8, H * 0.15, 0, W * 0.8, H * 0.15, W * 0.8);
+  glow.addColorStop(0, 'rgba(255,0,102,0.22)');
+  glow.addColorStop(0.5, 'rgba(255,0,102,0.07)');
+  glow.addColorStop(1, 'rgba(8,8,8,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+
+  drawNoise(ctx, W, H, 0.03);
+
+  const PX = landscape ? 70 : 80;
+  const textW = W - PX - (landscape ? 50 : 60);
+  ctx.textAlign = 'left';
+
+  const eyebrowY = landscape ? 350 : 130;
+  ctx.fillStyle = '#FF0066';
+  ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
+  ctx.letterSpacing = '4px';
+  ctx.fillText('// JENNIE · NEW SINGLE', PX, eyebrowY);
+
+  ctx.fillStyle = '#FF0066';
+  ctx.fillRect(PX, eyebrowY + (landscape ? 12 : 16), 70, landscape ? 2 : 3);
+
+  const titleY = landscape ? 460 : 320;
+  ctx.fillStyle = '#F5F0F0';
+  ctx.letterSpacing = '2px';
+  fillTextFit(ctx, 'LESS THAN A LOVER', PX, titleY, landscape ? 74 : 100, textW, '"Bebas Neue", sans-serif');
+
+  const { big, sub } = formatReleaseCountdown();
+  const timerY = landscape ? 540 : 560;
+  ctx.fillStyle = '#FF6FA8';
+  ctx.letterSpacing = '2px';
+  fillTextFit(ctx, big, PX, timerY, landscape ? 56 : 82, textW, '"Bebas Neue", sans-serif');
+
+  ctx.fillStyle = 'rgba(245,240,240,0.45)';
+  ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
+  ctx.letterSpacing = '2px';
+  ctx.fillText(sub, PX, timerY + (landscape ? 24 : 32));
+
+  const LR = landscape ? 22 : 28;
+  const logoY = H - (landscape ? 46 : 82);
+  ctx.fillStyle = 'rgba(255,0,102,0.2)';
+  ctx.fillRect(PX, H - (landscape ? 90 : 135), W - PX - (landscape ? 50 : 60), 1);
+  if (logo) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  const brandX = logo ? PX + LR * 2 + 10 : PX;
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = `${landscape ? 34 : 44}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = '10px';
+  ctx.fillText('BLINKS UNITED', brandX, H - (landscape ? 52 : 72));
+  ctx.fillStyle = 'rgba(245,240,240,0.2)';
+  ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
+  ctx.letterSpacing = '2px';
+  ctx.fillText('blackpink-project.vercel.app', brandX, H - (landscape ? 30 : 42));
+
+  _markCardReady(canvas);
+}
+
+async function openReleaseCard() {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  _cardType = 'release';
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+  await document.fonts.ready;
+  const logo = await getBuLogo();
+  _cardArt = null; _cardLogo = logo;
+  drawReleaseCard(canvas, logo);
+  label.textContent = 'JENNIE · LESS THAN A LOVER';
 }
 
 function renderMilestoneHistory(trackId) {
