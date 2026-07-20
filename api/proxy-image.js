@@ -216,6 +216,23 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, id, count: existing.length });
   }
 
+  // ── GET ?jennie_save=count|increment — "Less Than a Lover" save counter ────
+  if (req.query.jennie_save === 'count' || req.query.jennie_save === 'increment') {
+    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ count: 0 });
+    const KEY = 'bu_jennie_ltal_saves';
+    try {
+      if (req.query.jennie_save === 'increment') {
+        const r = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/incr/${KEY}`, {
+          headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}` },
+        });
+        const d = await r.json();
+        return res.status(200).json({ count: Number(d.result) || 0 });
+      }
+      const count = await upstashGet(KEY);
+      return res.status(200).json({ count: Number(count) || 0 });
+    } catch { return res.status(200).json({ count: 0 }); }
+  }
+
   // ── POST: global stream backfill (admin only) ──────────────────────────────
   if (req.method === 'POST') {
     const adminSecret = process.env.ADMIN_SECRET;

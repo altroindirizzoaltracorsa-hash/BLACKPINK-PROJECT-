@@ -485,28 +485,36 @@
   .goal-tracker-status { font-size: 0.65rem; letter-spacing: 0.08em; color: var(--muted); }
 
   .release-card {
-    position: relative; background: var(--card); border: 1px solid rgba(255,0,102,0.25);
+    position: relative; background: #0a0a0a url('/jennie-ltal-photo.jpg') center 25% / cover no-repeat;
+    border: 1px solid rgba(255,0,102,0.25);
     padding: 1.4rem 2rem; display: flex; flex-direction: column; gap: 0.4rem;
     text-decoration: none; overflow: hidden;
   }
   .release-card::before {
     content: ''; position: absolute; inset: 0;
-    background: radial-gradient(ellipse at top right, rgba(255,0,102,0.14), transparent 65%);
+    background:
+      radial-gradient(ellipse at top right, rgba(255,0,102,0.18), transparent 65%),
+      linear-gradient(180deg, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0.72) 55%, rgba(8,8,8,0.92) 100%);
     pointer-events: none;
   }
-  .release-card-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pink); }
-  .release-card-title { font-family: var(--display); font-size: 1.9rem; letter-spacing: 0.03em; color: var(--white); }
-  .release-card-timer { font-family: var(--display); font-size: 1.5rem; letter-spacing: 0.02em; color: #FF6FA8; }
+  .release-card > * { position: relative; z-index: 1; }
+  .release-card-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pink); text-shadow: 0 1px 6px rgba(0,0,0,0.6); }
+  .release-card-title { font-family: var(--display); font-size: 1.9rem; letter-spacing: 0.03em; color: var(--white); text-shadow: 0 1px 8px rgba(0,0,0,0.6); }
+  .release-card-timer { font-family: var(--display); font-size: 1.5rem; letter-spacing: 0.02em; color: #FF6FA8; text-shadow: 0 1px 8px rgba(0,0,0,0.6); }
   .release-card-timer.is-live { color: #2ecc71; }
-  .release-card-sub { font-size: 0.62rem; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+  .release-card-sub { font-size: 0.62rem; letter-spacing: 0.08em; color: rgba(245,240,240,0.75); text-transform: uppercase; }
   .release-card:hover .release-card-sub { color: var(--pink); }
+  .release-card-saves { font-size: 0.62rem; letter-spacing: 0.05em; color: rgba(245,240,240,0.6); margin-top: 0.1rem; }
+  .release-card-saves b { color: #FF6FA8; font-weight: 700; }
   .release-card-share {
-    position: absolute; top: 1rem; right: 1rem; z-index: 1;
-    background: rgba(255,0,102,0.12); border: 1px solid rgba(255,0,102,0.3); color: var(--pink);
+    position: absolute; top: 1rem; right: 1rem; z-index: 2;
+    background: rgba(8,8,8,0.55); border: 1px solid rgba(255,0,102,0.4); color: var(--pink);
     font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase;
     padding: 0.35rem 0.6rem; cursor: pointer; transition: background 0.2s;
   }
-  .release-card-share:hover { background: rgba(255,0,102,0.22); }
+  .release-card-share:hover { background: rgba(255,0,102,0.3); }
+  .release-card-posters { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
+  .release-card-poster { width: 52px; height: 74px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(255,0,102,0.3); flex-shrink: 0; }
   .goal-tracker-done { color: #00ff88; }
 
   .tracks-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem; }
@@ -1488,12 +1496,17 @@
         <a href="/badges" class="btn-ghost" onclick="showPage('badges'); return false;">Badge Challenge</a>
         <a href="/voting" class="btn-primary" onclick="showPage('vote'); return false;">Vote</a>
       </div>
-      <a href="https://jennie.lnk.to/LessthanaLover" target="_blank" rel="noopener" class="release-card" id="jennie-release-card" style="display:none;margin-top:1.5rem;max-width:480px;width:100%;">
+      <a href="https://jennie.lnk.to/LessthanaLover" target="_blank" rel="noopener" class="release-card" id="jennie-release-card" onclick="saveJennieCountdown()" style="display:none;margin-top:1.5rem;max-width:480px;width:100%;">
         <button class="release-card-share" onclick="event.preventDefault(); event.stopPropagation(); openReleaseCard();">⬡ Share</button>
         <span class="release-card-label">🔔 JENNIE · NEW SINGLE</span>
         <span class="release-card-title">Less Than a Lover</span>
         <span class="release-card-timer" id="jennie-release-timer">Loading…</span>
         <span class="release-card-sub">Out Fri, July 24 · 12AM EDT / 1PM KST — Pre-save →</span>
+        <span class="release-card-saves" id="jennie-release-saves"></span>
+        <div class="release-card-posters">
+          <img class="release-card-poster" src="/jennie-ltal-poster1.jpg" alt="Less Than a Lover poster 1" loading="lazy">
+          <img class="release-card-poster" src="/jennie-ltal-poster2.jpg" alt="Less Than a Lover poster 2" loading="lazy">
+        </div>
       </a>
       <div id="community-goal-home" style="display:none;margin-top:1.5rem;max-width:480px;width:100%;">
         <div class="goal-tracker-card">
@@ -2907,6 +2920,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadCommunityGoal();
   renderReleaseCountdown();
   setInterval(renderReleaseCountdown, 1000);
+  loadJennieSaveCount();
   const saved = getSavedUsername();
   if (saved && !document.getElementById('page-badges')?.classList.contains('active')) {
     loadProfile(saved, true); // silent background submit to keep leaderboard fresh
@@ -6451,6 +6465,30 @@ function renderReleaseCountdown() {
   }
 }
 
+const JENNIE_SAVE_LS = 'bu_jennie_ltal_saved';
+
+function renderJennieSaveCount(count) {
+  const el = document.getElementById('jennie-release-saves');
+  if (!el) return;
+  el.innerHTML = count > 0 ? `🎧 <b>${count.toLocaleString()}</b> Blinks have saved this` : '';
+}
+
+async function loadJennieSaveCount() {
+  try {
+    const r = await fetch('/api/proxy-image?jennie_save=count');
+    const d = await r.json();
+    renderJennieSaveCount(d.count || 0);
+  } catch {}
+}
+
+// Fires once per browser when a fan clicks through to pre-save — doesn't block
+// the outbound navigation, just fires the increment alongside it.
+function saveJennieCountdown() {
+  if (localStorage.getItem(JENNIE_SAVE_LS)) return;
+  localStorage.setItem(JENNIE_SAVE_LS, '1');
+  fetch('/api/proxy-image?jennie_save=increment').then(r => r.json()).then(d => renderJennieSaveCount(d.count || 0)).catch(() => {});
+}
+
 async function loadTodaysPlaylist() {
   const banner = document.getElementById('playlist-banner');
   const homeSection = document.getElementById('todays-playlist-home');
@@ -6781,7 +6819,7 @@ function setCardFormat(fmt, btn) {
   else if (_cardType === 'personal') drawPersonalCard(canvas, _personalCardData);
   else if (_cardType === 'catalog') drawCatalogCard(canvas, _catalogCardData, _cardLogo, _cardArt);
   else if (_cardType === 'artist') drawArtistCard(canvas, _artistCardData, _cardLogo, _cardArt, _artistCardData?.artistName);
-  else if (_cardType === 'release') drawReleaseCard(canvas, _cardLogo);
+  else if (_cardType === 'release') drawReleaseCard(canvas, _cardLogo, _cardArt);
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -8413,7 +8451,7 @@ function formatReleaseCountdown() {
   return { big, sub: 'OUT FRI JULY 24 · 12AM EDT / 1PM KST' };
 }
 
-function drawReleaseCard(canvas, logo) {
+function drawReleaseCard(canvas, logo, art) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   const landscape = W > H;
@@ -8421,12 +8459,36 @@ function drawReleaseCard(canvas, logo) {
   ctx.fillStyle = '#080808';
   ctx.fillRect(0, 0, W, H);
 
-  const glow = ctx.createRadialGradient(W * 0.8, H * 0.15, 0, W * 0.8, H * 0.15, W * 0.8);
-  glow.addColorStop(0, 'rgba(255,0,102,0.22)');
-  glow.addColorStop(0.5, 'rgba(255,0,102,0.07)');
-  glow.addColorStop(1, 'rgba(8,8,8,0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
+  if (art) {
+    const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
+    const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+    if (landscape) {
+      ctx.drawImage(art, (W - iw) / 2, 0, iw, ih);
+      const gr = ctx.createLinearGradient(0, 0, 0, H);
+      gr.addColorStop(0,    'rgba(8,8,8,0)');
+      gr.addColorStop(0.40, 'rgba(8,8,8,0)');
+      gr.addColorStop(0.62, 'rgba(8,8,8,0.75)');
+      gr.addColorStop(0.80, 'rgba(8,8,8,0.92)');
+      gr.addColorStop(1,    'rgba(8,8,8,0.97)');
+      ctx.fillStyle = gr;
+      ctx.fillRect(0, 0, W, H);
+    } else {
+      ctx.drawImage(art, (W - iw) / 2, (H - ih) / 2, iw, ih);
+      const gr = ctx.createLinearGradient(0, 0, 0, H);
+      gr.addColorStop(0,    'rgba(8,8,8,0.55)');
+      gr.addColorStop(0.35, 'rgba(8,8,8,0.82)');
+      gr.addColorStop(1,    'rgba(8,8,8,0.97)');
+      ctx.fillStyle = gr;
+      ctx.fillRect(0, 0, W, H);
+    }
+  } else {
+    const glow = ctx.createRadialGradient(W * 0.8, H * 0.15, 0, W * 0.8, H * 0.15, W * 0.8);
+    glow.addColorStop(0, 'rgba(255,0,102,0.22)');
+    glow.addColorStop(0.5, 'rgba(255,0,102,0.07)');
+    glow.addColorStop(1, 'rgba(8,8,8,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+  }
 
   drawNoise(ctx, W, H, 0.03);
 
@@ -8434,7 +8496,7 @@ function drawReleaseCard(canvas, logo) {
   const textW = W - PX - (landscape ? 50 : 60);
   ctx.textAlign = 'left';
 
-  const eyebrowY = landscape ? 350 : 130;
+  const eyebrowY = landscape ? 370 : 130;
   ctx.fillStyle = '#FF0066';
   ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
   ctx.letterSpacing = '4px';
@@ -8443,21 +8505,21 @@ function drawReleaseCard(canvas, logo) {
   ctx.fillStyle = '#FF0066';
   ctx.fillRect(PX, eyebrowY + (landscape ? 12 : 16), 70, landscape ? 2 : 3);
 
-  const titleY = landscape ? 460 : 320;
+  const titleY = landscape ? 468 : 320;
   ctx.fillStyle = '#F5F0F0';
   ctx.letterSpacing = '2px';
-  fillTextFit(ctx, 'LESS THAN A LOVER', PX, titleY, landscape ? 74 : 100, textW, '"Bebas Neue", sans-serif');
+  fillTextFit(ctx, 'LESS THAN A LOVER', PX, titleY, landscape ? 68 : 100, textW, '"Bebas Neue", sans-serif');
 
   const { big, sub } = formatReleaseCountdown();
-  const timerY = landscape ? 540 : 560;
+  const timerY = landscape ? 546 : 560;
   ctx.fillStyle = '#FF6FA8';
   ctx.letterSpacing = '2px';
-  fillTextFit(ctx, big, PX, timerY, landscape ? 56 : 82, textW, '"Bebas Neue", sans-serif');
+  fillTextFit(ctx, big, PX, timerY, landscape ? 52 : 82, textW, '"Bebas Neue", sans-serif');
 
   ctx.fillStyle = 'rgba(245,240,240,0.45)';
   ctx.font = `500 ${landscape ? 13 : 18}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText(sub, PX, timerY + (landscape ? 24 : 32));
+  ctx.fillText(sub, PX, timerY + (landscape ? 22 : 32));
 
   const LR = landscape ? 22 : 28;
   const logoY = H - (landscape ? 46 : 82);
@@ -8497,9 +8559,12 @@ async function openReleaseCard() {
   const canvas = document.getElementById('card-canvas');
   canvas.width = 1200; canvas.height = 675;
   await document.fonts.ready;
-  const logo = await getBuLogo();
-  _cardArt = null; _cardLogo = logo;
-  drawReleaseCard(canvas, logo);
+  const [art, logo] = await Promise.all([
+    loadImg('/jennie-ltal-photo.jpg').catch(() => null),
+    getBuLogo(),
+  ]);
+  _cardArt = art; _cardLogo = logo;
+  drawReleaseCard(canvas, logo, art);
   label.textContent = 'JENNIE · LESS THAN A LOVER';
 }
 
