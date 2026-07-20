@@ -867,26 +867,37 @@
   .as-album-row td { background: var(--card2); padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); }
   .as-album-row:hover td { background: var(--card2); }
   .as-album-header { display: flex; align-items: center; gap: 0.8rem; }
-  .as-album-art { width: 44px; height: 44px; border-radius: 4px; object-fit: cover; flex-shrink: 0; background: var(--card); border: 1px solid var(--border); }
-  .as-album-art-fallback { width: 44px; height: 44px; border-radius: 4px; flex-shrink: 0; background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: rgba(255,0,102,0.35); }
+  .as-album-art { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: var(--card); border: 1px solid rgba(255,0,102,0.15); }
+  .as-album-art-fallback { width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0; background: var(--card); border: 1px solid rgba(255,0,102,0.15); display: flex; align-items: center; justify-content: center; color: rgba(255,0,102,0.35); }
   .as-album-art-fallback svg { width: 16px; height: 13px; }
-  .as-album-name { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.06em; color: var(--pink); text-transform: uppercase; }
+  .as-album-name { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.06em; color: #FF6FA8; text-transform: uppercase; }
   .as-album-stats { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; margin-top: 0.15rem; }
 
-  /* All Tracks: card-style rows instead of plain table lines */
+  /* All Tracks: soft card-style rows instead of plain table lines */
   .as-tracks-wrap { border: none; overflow: visible; }
-  .as-tracks-table { border-collapse: separate; border-spacing: 0 0.6rem; }
-  .as-tracks-table thead th { background: transparent; border-bottom: none; position: static; padding: 0 1.1rem 0.4rem; }
-  .as-tracks-table tbody tr:not(.as-album-row) td { background: var(--card2); border-bottom: none; padding: 0.95rem 1.1rem; transition: background 0.15s ease; }
-  .as-tracks-table tbody tr:not(.as-album-row):hover td { background: #1c1c1c; }
-  .as-tracks-table tbody tr:not(.as-album-row) td:first-child { border-radius: 8px 0 0 8px; }
-  .as-tracks-table tbody tr:not(.as-album-row) td:last-child { border-radius: 0 8px 8px 0; }
-  .as-tracks-table .as-rank { font-size: 1.25rem; }
+  .as-tracks-table { border-collapse: separate; border-spacing: 0 0.7rem; }
+  .as-tracks-table thead th { background: transparent; border-bottom: none; position: static; padding: 0 1.2rem 0.5rem; }
+  .as-tracks-table tbody tr:not(.as-album-row) td {
+    background: linear-gradient(135deg, rgba(255,0,102,0.05), rgba(255,0,102,0.015) 60%), var(--card2);
+    border: 1px solid rgba(255,0,102,0.08);
+    border-left: none; border-right: none;
+    box-shadow: 0 2px 14px rgba(255,0,102,0.045);
+    padding: 1.05rem 1.2rem;
+    transition: background 0.2s ease, border-color 0.2s ease;
+  }
+  .as-tracks-table tbody tr:not(.as-album-row):hover td { background: linear-gradient(135deg, rgba(255,0,102,0.09), rgba(255,0,102,0.025) 60%), var(--card2); border-color: rgba(255,0,102,0.18); }
+  .as-tracks-table tbody tr:not(.as-album-row) td:first-child { border-radius: 14px 0 0 14px; border-left: 1px solid rgba(255,0,102,0.08); }
+  .as-tracks-table tbody tr:not(.as-album-row) td:last-child { border-radius: 0 14px 14px 0; border-right: 1px solid rgba(255,0,102,0.08); }
+  .as-tracks-table .as-rank { font-size: 1.25rem; color: rgba(255,111,168,0.5); }
   .as-track-name { font-family: var(--display); font-size: 1.05rem; letter-spacing: 0.03em; color: var(--white); }
-  .as-track-sub { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; margin-top: 0.2rem; }
+  .as-track-sub { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; margin-top: 0.25rem; }
   .as-track-daily-num { font-family: var(--display); font-size: 1.35rem; letter-spacing: 0.02em; }
   .as-track-trend { font-size: 0.68rem; color: var(--muted); margin-top: 0.15rem; }
-  .as-tracks-table .as-album-row td { border-radius: 8px; border-bottom: none; padding: 0.85rem 1.1rem; background: #1a1014; }
+  .as-tracks-table .as-album-row td {
+    border-radius: 14px; border: 1px solid rgba(255,0,102,0.16); border-bottom: 1px solid rgba(255,0,102,0.16);
+    padding: 0.9rem 1.2rem;
+    background: linear-gradient(135deg, rgba(255,0,102,0.1), rgba(255,0,102,0.02) 65%), var(--card2);
+  }
   @media (max-width: 500px) {
     /* Nav: shrink logo so logo+install+hamburger aren't cramped */
     .nav-logo { font-size: 1rem; letter-spacing: 0.14em; }
