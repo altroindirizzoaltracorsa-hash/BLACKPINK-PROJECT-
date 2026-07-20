@@ -72,13 +72,13 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python .github/scripts/fetch_artist_streams.py
 
-  # One-time, manual-only: backfill_kworb_subtraction.py's LISA 07-16
-  # upsert passed the LATER date (07-17) as prev_date_for_delta, so
-  # 07-16's delta was computed backwards (total_16 - total_17, a bogus
-  # negative number) instead of being left null, and 07-17's real delta
-  # against 07-16 was never computed at all. Fixes both. Safe to remove
-  # once it's been run.
-  fix-lisa-0716-0717-delta:
+  # One-time, manual-only: artist_tracks didn't originally store album
+  # metadata. Backfills album/album_release_date/track_number for every
+  # existing track by re-fetching each one via spotifyscraper and PATCHing
+  # artist_tracks only -- doesn't touch daily-stats tables, so unlike
+  # fetch-artist-streams it's safe to run outside Spotify's update window.
+  # Safe to remove once it's been run.
+  backfill-track-albums:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
@@ -88,11 +88,11 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install httpx
-        run: pip install httpx
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper
 
-      - name: Fix LISA 07-16 / 07-17 deltas
+      - name: Backfill track album metadata
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python .github/scripts/fix_lisa_0716_0717_delta.py
+        run: python .github/scripts/backfill_track_albums.py

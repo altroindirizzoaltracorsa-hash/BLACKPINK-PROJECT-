@@ -285,7 +285,7 @@ def sb(method, path, **kwargs):
 
 
 def fetch_fixed_tracks(client, track_specs):
-    """track_specs: [(name, track_id), ...]. Returns [{name, streams, source_track_ids}]."""
+    """track_specs: [(name, track_id), ...]. Returns [{name, streams, source_track_ids, album, album_release_date, track_number}]."""
     ids = [tid for _, tid in track_specs]
     results = client.get_tracks(ids)
     canonical = []
@@ -296,14 +296,29 @@ def fetch_fixed_tracks(client, track_specs):
         if item.result.play_count is None:
             print(f"  no play_count for: {name!r} [{tid}]", file=sys.stderr)
             continue
-        canonical.append({"name": name, "streams": item.result.play_count, "source_track_ids": [tid]})
+        t = item.result
+        canonical.append({
+            "name": name,
+            "streams": t.play_count,
+            "source_track_ids": [tid],
+            "album": t.album.name if t.album else None,
+            "album_release_date": t.release_date.date().isoformat() if t.release_date else None,
+            "track_number": t.track_number,
+        })
     return canonical
 
 
 def upsert_artist_tracks(artist_id, canonical_tracks):
     """Upserts artist_tracks rows, returns {name: track_ref_id}."""
     rows = [
-        {"artist_id": artist_id, "name": c["name"], "source_track_ids": c["source_track_ids"]}
+        {
+            "artist_id": artist_id,
+            "name": c["name"],
+            "source_track_ids": c["source_track_ids"],
+            "album": c["album"],
+            "album_release_date": c["album_release_date"],
+            "track_number": c["track_number"],
+        }
         for c in canonical_tracks
     ]
     result = sb(

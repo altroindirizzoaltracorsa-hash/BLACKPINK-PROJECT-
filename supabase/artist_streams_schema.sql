@@ -81,3 +81,12 @@ grant usage, select on all sequences in schema public to service_role;
 -- under a bug-mislabeled date) -- not used by the daily fetch itself.
 grant delete on public.artist_daily_stats to service_role;
 grant delete on public.track_daily_stats  to service_role;
+
+-- Album metadata, so the streams page/CSV can group tracks by album.
+-- Populated by fetch_artist_streams.py going forward and backfilled once
+-- for existing rows by backfill_track_albums.py. release_date/track_number
+-- are nullable since a few tracks (e.g. from search-only lookups) may not
+-- carry them.
+alter table public.artist_tracks add column if not exists album text;
+alter table public.artist_tracks add column if not exists album_release_date date;
+alter table public.artist_tracks add column if not exists track_number int;

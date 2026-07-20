@@ -265,7 +265,7 @@ export default async function handler(req, res) {
       sbFetch(`/tracked_artists?spotify_artist_id=eq.${artistId}&select=name,avatar_url`, { headers: { Accept: 'application/json' } }),
       sbFetch(`/artist_daily_stats?artist_id=eq.${artistId}&order=date.desc&limit=7&select=date,total_streams,daily_delta,followers,monthly_listeners,track_count`, { headers: { Accept: 'application/json' } }),
       sbFetch(
-        `/artist_tracks?artist_id=eq.${artistId}&select=id,name,track_daily_stats(date,streams,daily_delta)` +
+        `/artist_tracks?artist_id=eq.${artistId}&select=id,name,album,album_release_date,track_number,track_daily_stats(date,streams,daily_delta)` +
         '&track_daily_stats.order=date.desc&track_daily_stats.limit=2',
         { headers: { Accept: 'application/json' } },
       ),
@@ -279,6 +279,9 @@ export default async function handler(req, res) {
     const tracks = trackRows
       .map(t => ({
         name: t.name,
+        album: t.album,
+        album_release_date: t.album_release_date,
+        track_number: t.track_number,
         ...(t.track_daily_stats[0] || {}),
         prev_daily_delta: t.track_daily_stats[1]?.daily_delta ?? null,
       }))
@@ -287,11 +290,57 @@ export default async function handler(req, res) {
     return res.status(200).json({ ...artistRows[0], history, tracks });
   }
 
-  // ── GET ?artist_streams=csv (admin) — full daily history for every artist ──
+  // ── GET ?artist_streams=csv[&scope=tracks] (admin) — daily history CSV ─────
   if (req.query.artist_streams === 'csv') {
     const adminSecret = process.env.ADMIN_SECRET;
     const key = req.headers['x-admin-secret'] || req.query.key;
     if (!adminSecret || key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
+
+    const ARTIST_ORDER = ['BLACKPINK', 'JISOO', 'JENNIE', 'ROSÉ', 'LISA'];
+    const esc = v => {
+      if (v == null) return '';
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const toCsv = (header, rows) => [header.join(',')]
+      .concat(rows.map(r => header.map(h => esc(r[h])).join(',')))
+      .join('\n');
+
+    if (req.query.scope === 'tracks') {
+      // Every track this tracker follows for each artist (113 for BLACKPINK,
+      // 12 for JISOO, 40 for JENNIE, 18 for ROSÉ, 31 for LISA), one row per
+      // track per day -- this list *is* "the ones we track", there's no
+      // separate untracked set to distinguish it from.
+      const [artistsRes, tracksRes] = await Promise.all([
+        sbFetch('/tracked_artists?select=spotify_artist_id,name', { headers: { Accept: 'application/json' } }),
+        sbFetch(
+          '/artist_tracks?select=id,artist_id,name,album,track_daily_stats(date,streams,daily_delta)',
+          { headers: { Accept: 'application/json' } },
+        ),
+      ]);
+      if (!artistsRes.ok || !tracksRes.ok) return res.status(502).json({ error: 'Supabase query failed' });
+      const [artists, trackRows] = await Promise.all([artistsRes.json(), tracksRes.json()]);
+      const nameById = Object.fromEntries(artists.map(a => [a.spotify_artist_id, a.name]));
+
+      const rows = [];
+      for (const t of trackRows) {
+        const artist = nameById[t.artist_id] || t.artist_id;
+        for (const d of t.track_daily_stats) {
+          rows.push({ artist, album: t.album || '', track: t.name, date: d.date, streams: d.streams, daily_delta: d.daily_delta });
+        }
+      }
+      rows.sort((a, b) =>
+        (ARTIST_ORDER.indexOf(a.artist) - ARTIST_ORDER.indexOf(b.artist)) ||
+        a.album.localeCompare(b.album) ||
+        a.track.localeCompare(b.track) ||
+        a.date.localeCompare(b.date));
+
+      const csv = toCsv(['artist', 'album', 'track', 'date', 'streams', 'daily_delta'], rows);
+      res.status(200);
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="track_streams_${new Date().toISOString().slice(0, 10)}.csv"`);
+      return res.end(csv);
+    }
 
     const [artistsRes, statsRes] = await Promise.all([
       sbFetch('/tracked_artists?select=spotify_artist_id,name', { headers: { Accept: 'application/json' } }),
@@ -304,21 +353,11 @@ export default async function handler(req, res) {
     const [artists, stats] = await Promise.all([artistsRes.json(), statsRes.json()]);
     const nameById = Object.fromEntries(artists.map(a => [a.spotify_artist_id, a.name]));
 
-    const ARTIST_ORDER = ['BLACKPINK', 'JISOO', 'JENNIE', 'ROSÉ', 'LISA'];
     const rows = stats
       .map(s => ({ ...s, artist: nameById[s.artist_id] || s.artist_id }))
       .sort((a, b) => (ARTIST_ORDER.indexOf(a.artist) - ARTIST_ORDER.indexOf(b.artist)) || a.date.localeCompare(b.date));
 
-    const esc = v => {
-      if (v == null) return '';
-      const s = String(v);
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const header = ['artist', 'date', 'total_streams', 'daily_delta', 'followers', 'monthly_listeners', 'track_count'];
-    const csv = [header.join(',')]
-      .concat(rows.map(r => header.map(h => esc(r[h])).join(',')))
-      .join('\n');
-
+    const csv = toCsv(['artist', 'date', 'total_streams', 'daily_delta', 'followers', 'monthly_listeners', 'track_count'], rows);
     res.status(200);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="artist_streams_${new Date().toISOString().slice(0, 10)}.csv"`);

@@ -864,6 +864,9 @@
   .as-table tr:hover td { background: var(--card2); }
   .as-rank-col { width: 2.4rem; }
   .as-rank { font-family: var(--display); font-size: 1rem; color: rgba(255,0,102,0.35); }
+  .as-album-row td { background: var(--card2); padding: 0.55rem 1rem; font-family: var(--display); font-size: 0.8rem; letter-spacing: 0.08em; color: var(--pink); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  .as-album-row:hover td { background: var(--card2); }
+  .as-album-count { color: var(--muted); text-transform: none; letter-spacing: normal; font-family: inherit; margin-left: 0.4rem; }
   @media (max-width: 500px) {
     /* Nav: shrink logo so logo+install+hamburger aren't cramped */
     .nav-logo { font-size: 1rem; letter-spacing: 0.14em; }
@@ -2222,7 +2225,8 @@
 
       <div class="admin-ban-section">
         <div class="admin-ban-title">📄 Artist streams CSV — full daily history for BLACKPINK + all 4 members, always current</div>
-        <button class="btn-primary" onclick="downloadArtistStreamsCsv()">⬇ Download CSV</button>
+        <button class="btn-primary" onclick="downloadArtistStreamsCsv()">⬇ Download Artist CSV</button>
+        <button class="btn-primary" style="margin-left:0.5rem" onclick="downloadTrackStreamsCsv()">⬇ Download Track CSV</button>
       </div>
     </div>
     <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
@@ -3039,16 +3043,35 @@ function setArtistTrackSort(sort, btn) {
 }
 
 function renderArtistTracks() {
-  const tracks = [...(artistStreamsData?.tracks || [])]
-    .sort((a, b) => (b[artistTrackSort] || 0) - (a[artistTrackSort] || 0));
-  document.getElementById('as-tracks-body').innerHTML = tracks.map((t, i) => `
-    <tr>
-      <td class="as-rank">${i + 1}</td>
-      <td>${t.name}</td>
-      <td class="right">${fmtNum(t.streams)}</td>
-      <td class="right">${fmtDelta(t.daily_delta)}</td>
-      <td class="right">${fmtTrend(t.daily_delta, t.prev_daily_delta)}</td>
-    </tr>
+  const ranked = [...(artistStreamsData?.tracks || [])]
+    .sort((a, b) => (b[artistTrackSort] || 0) - (a[artistTrackSort] || 0))
+    .map((t, i) => ({ ...t, rank: i + 1 }));
+
+  const groups = new Map();
+  for (const t of ranked) {
+    const key = t.album || '\0other';
+    if (!groups.has(key)) groups.set(key, { album: t.album, release_date: t.album_release_date, tracks: [] });
+    groups.get(key).tracks.push(t);
+  }
+  // Albums newest-first by release date; tracks with no album metadata sink to an "Other" group at the end.
+  const sortedGroups = [...groups.values()].sort((a, b) => {
+    if (!a.release_date && !b.release_date) return 0;
+    if (!a.release_date) return 1;
+    if (!b.release_date) return -1;
+    return b.release_date.localeCompare(a.release_date);
+  });
+
+  document.getElementById('as-tracks-body').innerHTML = sortedGroups.map(g => `
+    <tr class="as-album-row"><td colspan="5">${g.album || 'Other'}<span class="as-album-count">${g.tracks.length} track${g.tracks.length === 1 ? '' : 's'}</span></td></tr>
+    ${g.tracks.map(t => `
+      <tr>
+        <td class="as-rank">${t.rank}</td>
+        <td>${t.name}</td>
+        <td class="right">${fmtNum(t.streams)}</td>
+        <td class="right">${fmtDelta(t.daily_delta)}</td>
+        <td class="right">${fmtTrend(t.daily_delta, t.prev_daily_delta)}</td>
+      </tr>
+    `).join('')}
   `).join('') || '<tr><td colspan="5">No tracks yet</td></tr>';
 }
 
@@ -6220,6 +6243,12 @@ function downloadArtistStreamsCsv() {
   const key = localStorage.getItem(ADMIN_KEY_LS);
   if (!key) return;
   window.location.href = `/api/proxy-image?artist_streams=csv&key=${encodeURIComponent(key)}`;
+}
+
+function downloadTrackStreamsCsv() {
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  if (!key) return;
+  window.location.href = `/api/proxy-image?artist_streams=csv&scope=tracks&key=${encodeURIComponent(key)}`;
 }
 
 async function loadAdminRanking(key) {
