@@ -251,67 +251,65 @@ async function refreshUser(entry, sb) {
   for (const acct of linkedAccounts) {
     if (acct.type === 'lastfm') {
       const u = acct.username;
-      const [ap, jumpPlays, shutdownPlays, ddududuPlays, todaySc] = await Promise.all([
+      // Single fetch spanning the whole week through today -- Last.fm returns
+      // scrobbles newest-first, so today's counts, the weekly counts, and the
+      // most recent BLACKPINK scrobble can all be derived from one paginated
+      // range instead of re-fetching/re-paginating once per day.
+      const [ap, jumpPlays, shutdownPlays, ddududuPlays, weekSc] = await Promise.all([
         fetchArtistPlays(u, 'BLACKPINK'),
         fetchTrackPlays(u, 'BLACKPINK', 'JUMP'),
         fetchTrackPlays(u, 'BLACKPINK', 'Shut Down'),
         fetchTrackPlays(u, 'BLACKPINK', 'DDU-DU DDU-DU'),
-        fetchRecentScrobbles(u, dayFrom, dayTo),
+        fetchRecentScrobbles(u, weekFrom, dayTo),
       ]);
       artistPlays        += ap;
       totalPlays.jump    += jumpPlays;
       totalPlays.shutdown += shutdownPlays;
       totalPlays.ddududu += ddududuPlays;
+
+      const todaySc = weekSc.filter(s => {
+        const ts = parseInt(s.date?.uts || '0', 10);
+        return ts >= dayFrom && ts < dayTo;
+      });
       const dc = countByTrack(todaySc);
       todayCounts.jump     += dc.jump     || 0;
       todayCounts.shutdown += dc.shutdown || 0;
       todayCounts.ddududu  += dc.ddududu  || 0;
 
-      // Weekly day-by-day. `dayFrom` is always one of these 7 days, so reuse
-      // todaySc for it instead of re-fetching + re-parsing the same range.
-      for (let i = 0; i < 7; i++) {
-        const dayStart = weekFrom + i * 86400;
-        if (dayStart > Math.floor(Date.now() / 1000)) break;
-        const daySc = dayStart === dayFrom ? todaySc : await fetchRecentScrobbles(u, dayStart, dayStart + 86400);
-        const wdc = countByTrack(daySc);
-        weekCounts.jump     += wdc.jump     || 0;
-        weekCounts.shutdown += wdc.shutdown || 0;
-        weekCounts.ddududu  += wdc.ddududu  || 0;
-        const bpDay = daySc.filter(s =>
-          (s.artist?.['#text'] || '').toLowerCase().includes('blackpink') && s.date?.uts
-        );
-        if (bpDay.length) {
-          const ts = new Date(parseInt(bpDay[0].date.uts) * 1000).toISOString();
-          if (!lastScrobbleAt || ts > lastScrobbleAt) lastScrobbleAt = ts;
-        }
+      const wdc = countByTrack(weekSc);
+      weekCounts.jump     += wdc.jump     || 0;
+      weekCounts.shutdown += wdc.shutdown || 0;
+      weekCounts.ddududu  += wdc.ddududu  || 0;
+
+      const bpEntry = weekSc.find(s => (s.artist?.['#text'] || '').toLowerCase().includes('blackpink') && s.date?.uts);
+      if (bpEntry) {
+        const ts = new Date(parseInt(bpEntry.date.uts) * 1000).toISOString();
+        if (!lastScrobbleAt || ts > lastScrobbleAt) lastScrobbleAt = ts;
       }
     } else if (acct.type === 'listenbrainz') {
       const u = acct.username;
       try {
-        const [lbTotals, lbAp, lbToday] = await Promise.all([
+        // Same single-fetch-for-the-week approach as the Last.fm branch above.
+        const [lbTotals, lbAp, weekListens] = await Promise.all([
           fetchLbTrackCounts(u),
           fetchLbArtistPlays(u),
-          fetchLbRecentListens(u, dayFrom, dayTo),
+          fetchLbRecentListens(u, weekFrom, dayTo),
         ]);
         artistPlays         += lbAp;
         totalPlays.jump     += lbTotals.jump     || 0;
         totalPlays.shutdown += lbTotals.shutdown || 0;
         totalPlays.ddududu  += lbTotals.ddududu  || 0;
-        const lbTodayCounts = countLbByTrack(lbToday);
+
+        const todayListens = weekListens.filter(l => l.listened_at >= dayFrom && l.listened_at < dayTo);
+        const lbTodayCounts = countLbByTrack(todayListens);
         todayCounts.jump     += lbTodayCounts.jump     || 0;
         todayCounts.shutdown += lbTodayCounts.shutdown || 0;
         todayCounts.ddududu  += lbTodayCounts.ddududu  || 0;
 
-        // Weekly day-by-day. `dayFrom` is always one of these 7 days, so reuse
-        // lbToday for it instead of re-fetching + re-parsing the same range.
-        for (let i = 0; i < 7; i++) {
-          const dayStart = weekFrom + i * 86400;
-          if (dayStart * 1000 > Date.now()) break;
-          const dc = countLbByTrack(dayStart === dayFrom ? lbToday : await fetchLbRecentListens(u, dayStart, dayStart + 86400));
-          weekCounts.jump     += dc.jump     || 0;
-          weekCounts.shutdown += dc.shutdown || 0;
-          weekCounts.ddududu  += dc.ddududu  || 0;
-        }
+        const lbWeekCounts = countLbByTrack(weekListens);
+        weekCounts.jump     += lbWeekCounts.jump     || 0;
+        weekCounts.shutdown += lbWeekCounts.shutdown || 0;
+        weekCounts.ddududu  += lbWeekCounts.ddududu  || 0;
       } catch (e) {
         console.warn(`LB fetch failed for ${u}:`, e.message);
       }
