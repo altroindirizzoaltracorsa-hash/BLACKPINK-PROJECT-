@@ -9,14 +9,14 @@
 <meta property="og:site_name" content="Blinks United">
 <meta property="og:title" content="BLINKS UNITED | BLACKPINK Streaming Hub">
 <meta property="og:description" content="Stream tracker, leaderboard, badges, and fan-vote hub for BLACKPINK — built by Blinks United.">
-<meta property="og:url" content="https://blackpink-project.vercel.app/">
-<meta property="og:image" content="https://blackpink-project.vercel.app/og-image.jpg">
+<meta property="og:url" content="https://blinksunited.com/">
+<meta property="og:image" content="https://blinksunited.com/og-image.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="BLINKS UNITED | BLACKPINK Streaming Hub">
 <meta name="twitter:description" content="Stream tracker, leaderboard, badges, and fan-vote hub for BLACKPINK — built by Blinks United.">
-<meta name="twitter:image" content="https://blackpink-project.vercel.app/og-image.jpg">
+<meta name="twitter:image" content="https://blinksunited.com/og-image.jpg">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon-192.png" type="image/png">
 <meta name="theme-color" content="#FF0066">
@@ -7117,7 +7117,7 @@ function renderSongCard(trackId, art, logo) {
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
   ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', brandX, siteY);
+  ctx.fillText('blinksunited.com', brandX, siteY);
 
   _markCardReady(canvas);
 }
@@ -7339,7 +7339,7 @@ function renderLbCard(logo) {
   ctx.font = '500 13px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
   ctx.textAlign = 'center';
-  ctx.fillText('blackpink-project.vercel.app', W / 2, H - 18);
+  ctx.fillText('blinksunited.com', W / 2, H - 18);
 
   _markCardReady(canvas);
 }
@@ -7348,7 +7348,7 @@ function renderLbCard(logo) {
 async function shareCard() {
   if (!cardCanvas) return;
   const title = document.getElementById('card-box-label').textContent;
-  let link = 'blackpink-project.vercel.app';
+  let link = 'blinksunited.com';
   let rulesText = '';
   let statsText = '';
   if (_cardType === 'vote') {
@@ -7636,7 +7636,7 @@ function drawPersonalCard(canvas, { info, todayCounts, totalPlays, avatarImg, lo
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
   ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', bx, H - (landscape ? 30 : 42));
+  ctx.fillText('blinksunited.com', bx, H - (landscape ? 30 : 42));
 
   _markCardReady(canvas);
 }
@@ -7809,7 +7809,7 @@ function closeWinnerAnnouncement() {
 }
 
 function shareWinnerAnnouncement() {
-  const text = '🏆 #JISOO has won the SDA 2026 Outstanding Asian Star: Popularity of Korea (Female)!\n\nThank you to every Blink who voted! 💜🖤\n#BLACKPINK #BlinksUnited\nblackpink-project.vercel.app';
+  const text = '🏆 #JISOO has won the SDA 2026 Outstanding Asian Star: Popularity of Korea (Female)!\n\nThank you to every Blink who voted! 💜🖤\n#BLACKPINK #BlinksUnited\nblinksunited.com';
   if (typeof navigator.share === 'function') {
     navigator.clipboard?.writeText(text).catch(() => {});
     _showShareToast('Caption copied — paste it into X ✓');
@@ -7941,7 +7941,7 @@ function drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milesto
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
   ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', brandX, H - (landscape ? 30 : 42));
+  ctx.fillText('blinksunited.com', brandX, H - (landscape ? 30 : 42));
 }
 
 async function renderMilestoneCanvas(trackId, total, milestone, milestoneDate) {
@@ -8134,7 +8134,7 @@ function drawVoteCard(canvas, campaign, logo, art) {
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
   ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', brandX, H - (landscape ? 30 : 42));
+  ctx.fillText('blinksunited.com', brandX, H - (landscape ? 30 : 42));
 
   _markCardReady(canvas);
 }
@@ -8238,7 +8238,7 @@ function drawCatalogCard(canvas, data, logo, art) {
     ctx.fillStyle = 'rgba(245,240,240,0.2)';
     ctx.font = `500 12px "DM Mono", monospace`;
     ctx.letterSpacing = '2px';
-    ctx.fillText('blackpink-project.vercel.app', brandX, H - 30);
+    ctx.fillText('blinksunited.com', brandX, H - 30);
 
     // Fixed positions — calculated to never overlap (all y = baseline)
     const hasDaily = !!(data.dailyStreams && data.dailyDate);
@@ -8329,7 +8329,7 @@ function drawCatalogCard(canvas, data, logo, art) {
     ctx.fillStyle = 'rgba(245,240,240,0.2)';
     ctx.font = `500 15px "DM Mono", monospace`;
     ctx.letterSpacing = '2px';
-    ctx.fillText('blackpink-project.vercel.app', brandX, H - 42);
+    ctx.fillText('blinksunited.com', brandX, H - 42);
   }
 
   _markCardReady(canvas);
@@ -8404,7 +8404,7 @@ function drawArtistCard(canvas, data, logo, art, artistName) {
     ctx.fillStyle = 'rgba(245,240,240,0.2)';
     ctx.font = `500 12px "DM Mono", monospace`;
     ctx.letterSpacing = '2px';
-    ctx.fillText('blackpink-project.vercel.app', brandX, H - 30);
+    ctx.fillText('blinksunited.com', brandX, H - 30);
 
     const hasDaily = !!(data.dailyStreams != null && data.dailyDate);
 
@@ -8489,7 +8489,7 @@ function drawArtistCard(canvas, data, logo, art, artistName) {
     ctx.fillStyle = 'rgba(245,240,240,0.2)';
     ctx.font = `500 15px "DM Mono", monospace`;
     ctx.letterSpacing = '2px';
-    ctx.fillText('blackpink-project.vercel.app', brandX, H - 42);
+    ctx.fillText('blinksunited.com', brandX, H - 42);
   }
 
   _markCardReady(canvas);
@@ -8672,7 +8672,7 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
   ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText('blackpink-project.vercel.app', brandX, H - (landscape ? 30 : 42));
+  ctx.fillText('blinksunited.com', brandX, H - (landscape ? 30 : 42));
 
   _markCardReady(canvas);
 }
@@ -8756,7 +8756,7 @@ async function shareMilestoneCard() {
   const trackName = document.getElementById('ms-track-name').textContent;
   const msNum = document.getElementById('ms-number').textContent;
   const dateLabel = document.getElementById('ms-date').textContent;
-  const text = `${trackName} just hit ${msNum}! ${dateLabel ? '(' + dateLabel + ') ' : ''}🖤💗 #BLACKPINK #BLINKSUNITED\nblackpink-project.vercel.app`;
+  const text = `${trackName} just hit ${msNum}! ${dateLabel ? '(' + dateLabel + ') ' : ''}🖤💗 #BLACKPINK #BLINKSUNITED\nblinksunited.com`;
   if (typeof navigator.share === 'function') {
     const doShare = blob => {
       const file = new File([blob], 'blinks-united-milestone.jpg', { type: 'image/jpeg' });

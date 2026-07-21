@@ -916,7 +916,7 @@ export default async function handler(req, res) {
 
   // Trigger catalog total update on cron runs or manual force (fire-and-forget, no await)
   if ((isCron || isForced) && fetchedLive) {
-    const host = req.headers['x-forwarded-host'] || req.headers.host || 'blackpink-project.vercel.app';
+    const host = req.headers['x-forwarded-host'] || req.headers.host || 'blinksunited.com';
     fetch(`https://${host}/api/streams?catalog=1&force=1&key=${process.env.ADMIN_SECRET || ''}`).catch(() => {});
   }
 
