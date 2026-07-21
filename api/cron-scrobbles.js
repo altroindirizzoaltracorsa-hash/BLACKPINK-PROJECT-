@@ -267,11 +267,12 @@ async function refreshUser(entry, sb) {
       todayCounts.shutdown += dc.shutdown || 0;
       todayCounts.ddududu  += dc.ddududu  || 0;
 
-      // Weekly day-by-day
+      // Weekly day-by-day. `dayFrom` is always one of these 7 days, so reuse
+      // todaySc for it instead of re-fetching + re-parsing the same range.
       for (let i = 0; i < 7; i++) {
         const dayStart = weekFrom + i * 86400;
         if (dayStart > Math.floor(Date.now() / 1000)) break;
-        const daySc = await fetchRecentScrobbles(u, dayStart, dayStart + 86400);
+        const daySc = dayStart === dayFrom ? todaySc : await fetchRecentScrobbles(u, dayStart, dayStart + 86400);
         const wdc = countByTrack(daySc);
         weekCounts.jump     += wdc.jump     || 0;
         weekCounts.shutdown += wdc.shutdown || 0;
@@ -301,11 +302,12 @@ async function refreshUser(entry, sb) {
         todayCounts.shutdown += lbTodayCounts.shutdown || 0;
         todayCounts.ddududu  += lbTodayCounts.ddududu  || 0;
 
-        // Weekly day-by-day
+        // Weekly day-by-day. `dayFrom` is always one of these 7 days, so reuse
+        // lbToday for it instead of re-fetching + re-parsing the same range.
         for (let i = 0; i < 7; i++) {
           const dayStart = weekFrom + i * 86400;
           if (dayStart * 1000 > Date.now()) break;
-          const dc = countLbByTrack(await fetchLbRecentListens(u, dayStart, dayStart + 86400));
+          const dc = countLbByTrack(dayStart === dayFrom ? lbToday : await fetchLbRecentListens(u, dayStart, dayStart + 86400));
           weekCounts.jump     += dc.jump     || 0;
           weekCounts.shutdown += dc.shutdown || 0;
           weekCounts.ddududu  += dc.ddududu  || 0;
