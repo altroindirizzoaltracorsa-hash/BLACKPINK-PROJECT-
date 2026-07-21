@@ -8600,23 +8600,12 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
 
   // Text sits higher up (in the sky/negative-space band most of these photos
   // have near the top) instead of over the middle-lower area where the
-  // subject usually is. A single compact backing panel behind the eyebrow
-  // through the release-date line keeps everything legible against any photo
-  // without needing to darken the whole image.
+  // subject usually is.
   const eyebrowY = landscape ? 210 : 130;
   const jennieY  = landscape ? 270 : 230;
   const titleY   = landscape ? 375 : 400;
   const timerY   = landscape ? 438 : 620;
   const subY     = timerY + (landscape ? 28 : 36);
-
-  const panelW = Math.min(landscape ? 620 : 420, textW + (landscape ? 24 : 32));
-  ctx.fillStyle = 'rgba(8,8,8,0.68)';
-  ctx.fillRect(
-    PX - (landscape ? 24 : 32),
-    eyebrowY - (landscape ? 55 : 65),
-    panelW,
-    (subY + (landscape ? 30 : 36)) - (eyebrowY - (landscape ? 55 : 65)),
-  );
 
   const eyebrowText = '// NEW SINGLE';
   ctx.font = `500 ${landscape ? 16 : 22}px "DM Mono", monospace`;
@@ -8627,6 +8616,11 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   ctx.fillRect(PX - eyebrowPad, eyebrowY - (landscape ? 24 : 32), eyebrowW, landscape ? 34 : 44);
   ctx.fillStyle = '#E8110D';
   ctx.fillText(eyebrowText, PX, eyebrowY);
+
+  // Soft drop shadow (rather than a background box) keeps everything below
+  // the eyebrow tag legible over any part of the photo -- bright sky or dark.
+  ctx.shadowColor = 'rgba(0,0,0,0.85)';
+  ctx.shadowBlur = 14;
 
   // Signature "Jennie" script, matching her Ruby-era logotype treatment
   ctx.letterSpacing = '0px';
@@ -8650,10 +8644,13 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   ctx.letterSpacing = '2px';
   fillTextFit(ctx, big, PX, timerY, landscape ? 60 : 92, textW, '"Bebas Neue", sans-serif');
 
-  ctx.fillStyle = 'rgba(245,240,240,0.75)';
+  ctx.fillStyle = 'rgba(245,240,240,0.9)';
   ctx.font = `500 ${landscape ? 15 : 22}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
   ctx.fillText(sub, PX, subY);
+
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
 
   // Solid (non-fading) footer bar -- keeps the logo/brand/domain legible
   // without darkening the rest of the photo above it.
