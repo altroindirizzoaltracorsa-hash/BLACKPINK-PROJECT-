@@ -8580,22 +8580,8 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
     const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
     if (landscape) {
       ctx.drawImage(art, (W - iw) / 2, 0, iw, ih);
-      const gr = ctx.createLinearGradient(0, 0, 0, H);
-      gr.addColorStop(0,    'rgba(8,8,8,0)');
-      gr.addColorStop(0.40, 'rgba(8,8,8,0)');
-      gr.addColorStop(0.62, 'rgba(8,8,8,0.75)');
-      gr.addColorStop(0.80, 'rgba(8,8,8,0.92)');
-      gr.addColorStop(1,    'rgba(8,8,8,0.97)');
-      ctx.fillStyle = gr;
-      ctx.fillRect(0, 0, W, H);
     } else {
       ctx.drawImage(art, (W - iw) / 2, (H - ih) / 2, iw, ih);
-      const gr = ctx.createLinearGradient(0, 0, 0, H);
-      gr.addColorStop(0,    'rgba(8,8,8,0.55)');
-      gr.addColorStop(0.35, 'rgba(8,8,8,0.82)');
-      gr.addColorStop(1,    'rgba(8,8,8,0.97)');
-      ctx.fillStyle = gr;
-      ctx.fillRect(0, 0, W, H);
     }
   } else {
     const glow = ctx.createRadialGradient(W * 0.8, H * 0.15, 0, W * 0.8, H * 0.15, W * 0.8);
@@ -8612,7 +8598,26 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   const textW = W - PX - (landscape ? 50 : 60);
   ctx.textAlign = 'left';
 
-  const eyebrowY = landscape ? 320 : 130;
+  // Text sits higher up (in the sky/negative-space band most of these photos
+  // have near the top) instead of over the middle-lower area where the
+  // subject usually is. A single compact backing panel behind the eyebrow
+  // through the release-date line keeps everything legible against any photo
+  // without needing to darken the whole image.
+  const eyebrowY = landscape ? 210 : 130;
+  const jennieY  = landscape ? 270 : 230;
+  const titleY   = landscape ? 375 : 400;
+  const timerY   = landscape ? 438 : 620;
+  const subY     = timerY + (landscape ? 28 : 36);
+
+  const panelW = Math.min(landscape ? 620 : 420, textW + (landscape ? 24 : 32));
+  ctx.fillStyle = 'rgba(8,8,8,0.68)';
+  ctx.fillRect(
+    PX - (landscape ? 24 : 32),
+    eyebrowY - (landscape ? 55 : 65),
+    panelW,
+    (subY + (landscape ? 30 : 36)) - (eyebrowY - (landscape ? 55 : 65)),
+  );
+
   const eyebrowText = '// NEW SINGLE';
   ctx.font = `500 ${landscape ? 16 : 22}px "DM Mono", monospace`;
   ctx.letterSpacing = '4px';
@@ -8624,13 +8629,11 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   ctx.fillText(eyebrowText, PX, eyebrowY);
 
   // Signature "Jennie" script, matching her Ruby-era logotype treatment
-  const jennieY = landscape ? 380 : 230;
   ctx.letterSpacing = '0px';
   ctx.fillStyle = '#E8110D';
   ctx.font = `${landscape ? 44 : 72}px "Pinyon Script", cursive`;
   ctx.fillText('Jennie', PX, jennieY);
 
-  const titleY = landscape ? 485 : 400;
   if (wordmark) {
     const maxH = landscape ? 80 : 140;
     const wmScale = Math.min(textW / wordmark.naturalWidth, maxH / wordmark.naturalHeight);
@@ -8643,15 +8646,19 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   }
 
   const { big, sub } = formatReleaseCountdown();
-  const timerY = landscape ? 548 : 620;
   ctx.fillStyle = '#E8110D';
   ctx.letterSpacing = '2px';
   fillTextFit(ctx, big, PX, timerY, landscape ? 60 : 92, textW, '"Bebas Neue", sans-serif');
 
-  ctx.fillStyle = 'rgba(245,240,240,0.55)';
+  ctx.fillStyle = 'rgba(245,240,240,0.75)';
   ctx.font = `500 ${landscape ? 15 : 22}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText(sub, PX, timerY + (landscape ? 28 : 36));
+  ctx.fillText(sub, PX, subY);
+
+  // Solid (non-fading) footer bar -- keeps the logo/brand/domain legible
+  // without darkening the rest of the photo above it.
+  ctx.fillStyle = 'rgba(8,8,8,0.75)';
+  ctx.fillRect(0, H - (landscape ? 100 : 145), W, landscape ? 100 : 145);
 
   const LR = landscape ? 22 : 28;
   const logoY = H - (landscape ? 46 : 82);
