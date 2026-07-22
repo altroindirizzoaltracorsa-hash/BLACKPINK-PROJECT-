@@ -544,15 +544,17 @@
   .release-card-share:hover { background: rgba(232,17,13,0.35); }
   .release-card-posters { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
   .release-card-poster { width: 52px; height: 74px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(232,17,13,0.4); flex-shrink: 0; }
-  .release-expand-toggle {
-    position: relative; z-index: 1; margin-top: 0.7rem; padding-top: 0.6rem;
-    border: none; border-top: 1px solid rgba(232,17,13,0.3); background: transparent;
-    font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase;
-    color: rgba(245,240,240,0.75); text-align: left; cursor: pointer; width: 100%; transition: color 0.2s;
+  .release-title-tap { position: relative; display: inline-block; cursor: pointer; }
+  .release-title-hint {
+    display: block; font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.03em;
+    color: #E8110D; margin-top: -0.1rem; animation: release-hint-pulse 1.8s ease-in-out infinite;
   }
-  .release-expand-toggle:hover { color: #E8110D; }
+  @media (prefers-reduced-motion: reduce) { .release-title-hint { animation: none; } }
+  @keyframes release-hint-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
   .release-expand-panel {
-    position: relative; z-index: 1; margin-top: 0.7rem; display: flex; flex-direction: column; gap: 0.8rem;
+    background: #0a0a0a; border: 1px solid rgba(232,17,13,0.3);
+    padding: 1.2rem 1.5rem; display: flex; flex-direction: column; gap: 0.9rem;
   }
   .release-expand-heading {
     font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase;
@@ -565,8 +567,6 @@
     padding: 0.15rem 0;
   }
   .release-expand-time-row span:last-child { color: #E8110D; }
-  .release-expand-goals { font-size: 0.72rem; line-height: 1.6; color: rgba(245,240,240,0.85); }
-  .release-expand-goals strong { color: #E8110D; }
   .release-expand-links { display: flex; flex-direction: column; gap: 0.4rem; }
   .release-expand-links a {
     font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.04em;
@@ -574,6 +574,21 @@
     padding-bottom: 0.2rem; width: fit-content; transition: border-color 0.2s;
   }
   .release-expand-links a:hover { border-color: #E8110D; }
+
+  .ltal-goals-list { display: flex; flex-direction: column; gap: 0.8rem; }
+  .ltal-goals-category-label {
+    font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: #E8110D; margin-bottom: 0.3rem;
+  }
+  .ltal-goal-item {
+    display: flex; align-items: baseline; gap: 0.4rem;
+    font-size: 0.7rem; line-height: 1.55; color: rgba(245,240,240,0.7);
+  }
+  .ltal-goal-item.is-reached { color: #F5F0F0; }
+  .ltal-goal-check { flex-shrink: 0; width: 1rem; color: rgba(245,240,240,0.3); }
+  .ltal-goal-item.is-reached .ltal-goal-check { color: #2ecc71; }
+  .ltal-goal-item.is-admin { cursor: pointer; }
+  .ltal-goal-item.is-admin:hover { color: #E8110D; }
   .goal-tracker-done { color: #00ff88; }
 
   .tracks-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem; }
@@ -1555,12 +1570,32 @@
         <a href="/badges" class="btn-ghost" onclick="showPage('badges'); return false;">Badge Challenge</a>
         <a href="/voting" class="btn-primary" onclick="showPage('vote'); return false;">Vote</a>
       </div>
+      <div class="release-expand-panel" id="release-expand-panel" style="display:none;margin-top:1.5rem;max-width:480px;width:100%;">
+        <div class="release-expand-section">
+          <p class="release-expand-heading">🌍 Releases around the globe</p>
+          <div class="release-expand-times" id="release-expand-times"></div>
+        </div>
+        <div class="release-expand-section">
+          <p class="release-expand-heading">🎯 Campaign Goals</p>
+          <div class="ltal-goals-list" id="ltal-goals-list"></div>
+        </div>
+        <div class="release-expand-section">
+          <p class="release-expand-heading">🔗 Links</p>
+          <div class="release-expand-links">
+            <a href="https://jennie.lnk.to/LessthanaLover" target="_blank" rel="noopener" onclick="saveJennieCountdown()">Pre-save / Pre-add →</a>
+            <a href="/badges" onclick="showPage('badges'); return false;">Early Supporter badge →</a>
+          </div>
+        </div>
+      </div>
       <div class="release-card" id="jennie-release-card" style="display:none;margin-top:1.5rem;max-width:480px;width:100%;">
         <button class="release-card-share" onclick="event.preventDefault(); event.stopPropagation(); openReleaseCard();">⬡ Share</button>
         <a href="https://jennie.lnk.to/LessthanaLover" target="_blank" rel="noopener" class="release-card-link" onclick="saveJennieCountdown()">
           <span class="release-card-label">🔔 NEW SINGLE</span>
           <span class="release-card-jennie">Jennie</span>
-          <img class="release-card-wordmark" src="/jennie-ltal-wordmark.png" alt="Less Than a Lover">
+          <span class="release-title-tap" onclick="event.preventDefault(); event.stopPropagation(); toggleReleaseExpand();">
+            <img class="release-card-wordmark" src="/jennie-ltal-wordmark.png" alt="Less Than a Lover">
+            <span class="release-title-hint" id="release-title-hint">ⓘ tap the title for global times &amp; goals ↑</span>
+          </span>
           <span class="release-card-timer" id="jennie-release-timer">Loading…</span>
           <span class="release-card-sub">Out Fri, July 24 · 12AM EDT / 1PM KST — Pre-save →</span>
           <div class="release-goal" id="jennie-release-goal" style="display:none;">
@@ -1578,26 +1613,6 @@
             <img class="release-card-poster" src="/jennie-ltal-poster4.jpg" alt="Less Than a Lover poster 4" loading="lazy">
           </div>
         </a>
-        <button class="release-expand-toggle" id="release-expand-toggle" onclick="toggleReleaseExpand()">
-          <span id="release-expand-toggle-label">▾ Global times, goals &amp; links</span>
-        </button>
-        <div class="release-expand-panel" id="release-expand-panel" style="display:none;">
-          <div class="release-expand-section">
-            <p class="release-expand-heading">🌍 Releases around the globe</p>
-            <div class="release-expand-times" id="release-expand-times"></div>
-          </div>
-          <div class="release-expand-section">
-            <p class="release-expand-heading">🎯 Goals</p>
-            <div class="release-expand-goals" id="release-expand-goals"></div>
-          </div>
-          <div class="release-expand-section">
-            <p class="release-expand-heading">🔗 Links</p>
-            <div class="release-expand-links">
-              <a href="https://jennie.lnk.to/LessthanaLover" target="_blank" rel="noopener" onclick="saveJennieCountdown()">Pre-save / Pre-add →</a>
-              <a href="/badges" onclick="showPage('badges'); return false;">Early Supporter badge →</a>
-            </div>
-          </div>
-        </div>
       </div>
       <div id="community-goal-home" style="display:none;margin-top:1.5rem;max-width:480px;width:100%;">
         <div class="goal-tracker-card">
@@ -6606,14 +6621,10 @@ function renderReleaseCountdown() {
 const JENNIE_SAVE_LS = 'bu_jennie_ltal_saved';
 const JENNIE_SAVE_GOAL = 50;
 
-let _jennieSaveCount = 0;
-
 function renderJennieSaveCount(count) {
-  _jennieSaveCount = count;
   const wrap = document.getElementById('jennie-release-goal');
   const numsEl = document.getElementById('jennie-release-goal-nums');
   const fillEl = document.getElementById('jennie-release-goal-fill');
-  if (document.getElementById('release-expand-panel')?.style.display !== 'none') renderReleaseGoalsExpand();
   if (!wrap || count <= 0) return;
   wrap.style.display = 'flex';
   const pct = Math.min(100, (count / JENNIE_SAVE_GOAL) * 100);
@@ -6664,25 +6675,79 @@ function renderReleaseGlobalTimes() {
   el.dataset.filled = '1';
 }
 
-function renderReleaseGoalsExpand() {
-  const el = document.getElementById('release-expand-goals');
+// Campaign goal checklist -- reached/not-reached is stored server-side
+// (Redis via /api/proxy-image) so every visitor sees the same checkmarks.
+// Admins (with the admin key already saved from the badges page) can tap
+// a goal to toggle it.
+const LTAL_GOALS = [
+  { category: 'Spotify', items: [
+    { id: 'spotify_24h',   label: '24 Hours: 4.5M filtered streams' },
+    { id: 'spotify_week1', label: '1st Week: 10M filtered streams (Primary Goal)' },
+  ]},
+  { category: 'YouTube', items: [
+    { id: 'youtube_24h',   label: '24 Hours: 4M views' },
+    { id: 'youtube_week1', label: '1st Week: 8M views' },
+  ]},
+  { category: 'iTunes', items: [
+    { id: 'itunes_primary',   label: 'Primary Goal: #1 in 10 countries' },
+    { id: 'itunes_secondary', label: 'Secondary Goal: #1 in 20 countries' },
+    { id: 'itunes_majors',    label: 'Chart in all major markets: US, UK, JP, FR, DE, AU, BR, CA' },
+    { id: 'itunes_week1',     label: '1st Week: #1 in 25 countries' },
+  ]},
+  { category: 'Shazam', items: [
+    { id: 'shazam_24h',   label: '24 Hours: 10K Shazams' },
+    { id: 'shazam_week1', label: '1st Week: 30K Shazams' },
+  ]},
+  { category: 'Chart Goals', items: [
+    { id: 'chart_hot100',          label: 'Billboard Hot 100 debut' },
+    { id: 'chart_global200',       label: 'Billboard Global 200 entry' },
+    { id: 'chart_global_excl_us',  label: 'Billboard Global Excl. U.S. Top 10' },
+    { id: 'chart_uk',              label: 'UK Singles Chart debut' },
+    { id: 'chart_sales',           label: 'Worldwide Digital Song Sales Top 10' },
+  ]},
+];
+
+async function renderLtalGoalsList() {
+  const el = document.getElementById('ltal-goals-list');
   if (!el) return;
-  const pct = Math.min(100, Math.round((_jennieSaveCount / JENNIE_SAVE_GOAL) * 100));
-  el.innerHTML = _jennieSaveCount >= JENNIE_SAVE_GOAL
-    ? `<strong>🎉 Pre-save goal reached!</strong> ${_jennieSaveCount.toLocaleString()} Blinks pre-saved so far — next stop: 100.`
-    : `<strong>${_jennieSaveCount.toLocaleString()} / ${JENNIE_SAVE_GOAL.toLocaleString()}</strong> Blinks have pre-saved so far (${pct}%). Click through and pre-save to help hit the goal!`;
+  const isAdmin = !!localStorage.getItem(ADMIN_KEY_LS);
+  let reached = {};
+  try {
+    const r = await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' });
+    reached = (await r.json()).reached || {};
+  } catch {}
+  el.innerHTML = LTAL_GOALS.map(cat => `
+    <div>
+      <p class="ltal-goals-category-label">${cat.category}</p>
+      ${cat.items.map(g => {
+        const isReached = !!reached[g.id];
+        return `<div class="ltal-goal-item${isReached ? ' is-reached' : ''}${isAdmin ? ' is-admin' : ''}"${isAdmin ? ` onclick="toggleLtalGoal('${g.id}')"` : ''}>
+          <span class="ltal-goal-check">${isReached ? '✔️' : '○'}</span><span>${g.label}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  `).join('');
+}
+
+async function toggleLtalGoal(id) {
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  if (!key) return;
+  try {
+    await fetch(`/api/proxy-image?ltal_goals=toggle&id=${encodeURIComponent(id)}&key=${encodeURIComponent(key)}`);
+    renderLtalGoalsList();
+  } catch {}
 }
 
 function toggleReleaseExpand() {
   const panel = document.getElementById('release-expand-panel');
-  const label = document.getElementById('release-expand-toggle-label');
+  const hint = document.getElementById('release-title-hint');
   if (!panel) return;
   const opening = panel.style.display === 'none';
   panel.style.display = opening ? 'flex' : 'none';
-  if (label) label.textContent = opening ? '▴ Hide details' : '▾ Global times, goals & links';
+  if (hint) hint.textContent = opening ? 'ⓘ tap the title to hide' : 'ⓘ tap the title for global times & goals ↑';
   if (opening) {
     renderReleaseGlobalTimes();
-    renderReleaseGoalsExpand();
+    renderLtalGoalsList();
   }
 }
 

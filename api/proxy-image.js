@@ -216,6 +216,30 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, id, count: existing.length });
   }
 
+  // ── GET ?ltal_goals=list (public) — campaign-goal checkmarks ───────────────
+  if (req.query.ltal_goals === 'list') {
+    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ reached: {} });
+    try {
+      const reached = await upstashGet('bu_ltal_goals');
+      return res.status(200).json({ reached: reached && typeof reached === 'object' ? reached : {} });
+    } catch { return res.status(200).json({ reached: {} }); }
+  }
+
+  // ── GET ?ltal_goals=toggle&id=<goalId>&key=<admin> (admin) ─────────────────
+  if (req.query.ltal_goals === 'toggle') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    const key = req.headers['x-admin-secret'] || req.query.key;
+    if (!adminSecret || key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
+    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(500).json({ error: 'Redis not configured' });
+    const id = req.query.id;
+    if (!id) return res.status(400).json({ error: 'id required' });
+    let reached = {};
+    try { reached = (await upstashGet('bu_ltal_goals')) || {}; if (typeof reached !== 'object') reached = {}; } catch {}
+    reached[id] = !reached[id];
+    await upstashSet('bu_ltal_goals', reached);
+    return res.status(200).json({ ok: true, id, reached });
+  }
+
   // ── GET ?jennie_save=count|increment — "Less Than a Lover" save counter ────
   if (req.query.jennie_save === 'count' || req.query.jennie_save === 'increment') {
     if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ count: 0 });
