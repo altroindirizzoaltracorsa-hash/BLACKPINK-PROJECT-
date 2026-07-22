@@ -8649,12 +8649,10 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   ctx.shadowColor = 'rgba(0,0,0,0.85)';
   ctx.shadowBlur = 14;
 
-  // Signature "Jennie" script -- Bodoni Moda italic to match her actual
-  // press-kit signature style (used in the reference art), not a generic
-  // calligraphy script.
+  // Signature "Jennie" script, matching her Ruby-era logotype treatment
   ctx.letterSpacing = '0px';
   ctx.fillStyle = '#E8110D';
-  ctx.font = `italic 500 ${landscape ? 38 : 60}px "Bodoni Moda", serif`;
+  ctx.font = `${landscape ? 44 : 72}px "Pinyon Script", cursive`;
   ctx.fillText('Jennie', PX, jennieY);
 
   const titleAlign = tightChin ? 'center' : 'left';
@@ -8666,12 +8664,17 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
     const wmScale = Math.min(textW / wordmark.naturalWidth, maxH / wordmark.naturalHeight);
     const wmW = wordmark.naturalWidth * wmScale, wmH = wordmark.naturalHeight * wmScale;
     const wmX = tightChin ? (W - wmW) / 2 : PX;
-    // Wordmark PNG is baked in white -- tint it red so it stays readable
-    // against bright photos instead of washing out.
-    const redWordmark = tintImage(wordmark, '#E8110D', wmW, wmH);
-    ctx.drawImage(redWordmark, wmX, titleY - wmH, wmW, wmH);
+    if (tightChin) {
+      // Wordmark PNG is baked in white -- on the close-up it needs to be
+      // red to stay readable against her skin tone. The other backgrounds
+      // (open sky/dark areas) already had enough contrast in white.
+      const redWordmark = tintImage(wordmark, '#E8110D', wmW, wmH);
+      ctx.drawImage(redWordmark, wmX, titleY - wmH, wmW, wmH);
+    } else {
+      ctx.drawImage(wordmark, wmX, titleY - wmH, wmW, wmH);
+    }
   } else {
-    ctx.fillStyle = '#E8110D';
+    ctx.fillStyle = tightChin ? '#E8110D' : '#F5F0F0';
     ctx.letterSpacing = '2px';
     fillTextFit(ctx, 'LESS THAN A LOVER', titleX, titleY, tightChin ? 70 : (landscape ? 80 : 120), textW, '"Bebas Neue", sans-serif');
   }
@@ -8681,7 +8684,7 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   ctx.letterSpacing = '2px';
   fillTextFit(ctx, big, titleX, timerY, tightChin ? 58 : (landscape ? 60 : 92), textW, '"Bebas Neue", sans-serif');
 
-  ctx.fillStyle = '#E8110D';
+  ctx.fillStyle = tightChin ? '#E8110D' : 'rgba(245,240,240,0.9)';
   ctx.font = `500 ${tightChin ? 15 : (landscape ? 15 : 22)}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
   ctx.fillText(sub, titleX, subY);
