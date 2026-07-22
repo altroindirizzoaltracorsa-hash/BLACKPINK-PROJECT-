@@ -1,0 +1,36 @@
+name: Purge unverified leaderboard entries
+
+# Manual-only: calls /api/leaderboard?action=purge-unverified, which removes
+# leaderboard rows whose account was never linked through the Supabase
+# account system (old method: just typing a Last.fm username, no login).
+# Always run with dry=true first to preview before actually deleting.
+on:
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: 'true = preview only (no deletes), false = actually delete'
+        required: false
+        default: 'true'
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call purge-unverified endpoint
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          set -e
+          DRY_PARAM=""
+          if [ "${{ inputs.dry }}" = "true" ]; then DRY_PARAM="&dry=1"; fi
+          http_code=$(curl -s -o response.json -w "%{http_code}" -L --location-trusted \
+            "https://blinksunited.com/api/leaderboard?action=purge-unverified&key=${ADMIN_KEY}${DRY_PARAM}")
+          echo "HTTP $http_code"
+          echo "--- response ---"
+          cat response.json
+          echo ""
+          echo "--- summary ---"
+          jq -r '"kept: \(.kept | length) · removed: \(.removed | length) · dry=\(.dry)"' response.json || true
+          echo "--- removed (would-be-removed if dry) ---"
+          jq -r '.removed[]? | "  \(.name) — last scrobble: \(.lastScrobbleAt // "never") · last updated: \(.updatedAt // "never")"' response.json || true
+          if [ "$http_code" -ge 400 ]; then exit 1; fi
