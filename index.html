@@ -5474,6 +5474,30 @@ async function fetchLbData(force = false) {
   return lbData;
 }
 
+// Today's combined daily_all total across every user, deduped the same way
+// renderLeaderboard()'s own "combined" line is: secondary linked-account
+// entries already absorbed into someone's combined entry are excluded so a
+// multi-account user (or a stray leftover duplicate) isn't counted twice.
+// Shared by the leaderboard page and the home page's Community Goal banner
+// so the two never disagree.
+function computeDailyCommunityTotal(users) {
+  const todayLabel = italyDateLabel();
+  const secondaryKeys = new Set();
+  for (const [k, d] of Object.entries(users)) {
+    if (Array.isArray(d.linkedAccounts)) {
+      for (const a of d.linkedAccounts) {
+        const ak = (a.username || '').toLowerCase();
+        if (ak && ak !== k) secondaryKeys.add(ak);
+      }
+    }
+  }
+  return Object.entries(users).reduce((sum, [username, d]) => {
+    if (secondaryKeys.has(username.toLowerCase())) return sum;
+    const s = d.scores || {};
+    return s.daily_date === todayLabel ? sum + (s.daily_all || 0) : sum;
+  }, 0);
+}
+
 // ── Write user scores to leaderboard ─────────────────────────
 async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs, bpGroupPlays, memberPlays) {
   try {
@@ -6902,20 +6926,15 @@ async function loadTodaysPlaylist() {
 const COMMUNITY_GOAL_PRIMARY   = 15000;
 const COMMUNITY_GOAL_SECONDARY = 20000;
 
-// Sitewide daily scrobble total across all campaign tracks, summed the same
-// way the leaderboard's community-total line does (renderLeaderboard()) —
-// only counts each user's daily_all if it was actually refreshed today.
+// Sitewide daily scrobble total across all campaign tracks. Shares the same
+// cached fetch (fetchLbData) and the same dedup formula (computeDailyCommunityTotal)
+// as the leaderboard page's own "combined" total, so the two numbers always agree.
 async function loadCommunityGoal() {
   const wrap = document.getElementById('community-goal-home');
   if (!wrap) return;
   try {
-    const r = await fetch('/api/leaderboard', { cache: 'no-store' });
-    const data = await r.json();
-    const todayLabel = italyDateLabel();
-    const total = Object.values(data.users || {}).reduce((sum, u) => {
-      const s = u.scores || {};
-      return s.daily_date === todayLabel ? sum + (s.daily_all || 0) : sum;
-    }, 0);
+    const data = await fetchLbData();
+    const total = computeDailyCommunityTotal(data.users || {});
 
     const goal = total < COMMUNITY_GOAL_PRIMARY ? COMMUNITY_GOAL_PRIMARY : COMMUNITY_GOAL_SECONDARY;
     const pct  = Math.min(100, (total / goal) * 100);
