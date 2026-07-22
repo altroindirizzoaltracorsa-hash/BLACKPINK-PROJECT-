@@ -15,6 +15,15 @@ jobs:
     steps:
       - name: Call cron endpoint
         run: |
-          curl -sf -X GET \
+          set -e
+          http_code=$(curl -s -o response.json -w "%{http_code}" -X GET \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.VERCEL_URL }}/api/cron-scrobbles"
+            "${{ secrets.VERCEL_URL }}/api/cron-scrobbles")
+          echo "HTTP $http_code"
+          echo "--- response body ---"
+          cat response.json
+          echo ""
+          echo "--- summary ---"
+          jq -r '"refreshed: \(.refreshed | length) · failed: \(.failed | length)"' response.json || true
+          jq -r '.failed[]? | "  FAILED: \(.username) — \(.error)"' response.json || true
+          if [ "$http_code" -ge 400 ]; then exit 1; fi
