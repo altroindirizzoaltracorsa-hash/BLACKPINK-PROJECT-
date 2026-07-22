@@ -8612,10 +8612,13 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   // subject usually is.
   const eyebrowY = landscape ? 210 : 130;
   const jennieY  = landscape ? 270 : 230;
-  const titleY   = tightChin ? 890 : (landscape ? 375 : 400);
-  const timerY   = tightChin ? 955 : (landscape ? 438 : 620);
-  const subY     = timerY + (tightChin ? 25 : (landscape ? 28 : 36));
-  const footerH  = tightChin ? 90 : (landscape ? 100 : 145);
+  // tightChin: brand block moves to the top (small) instead of a bottom
+  // footer bar, so the title/countdown/date can sit lower and centered
+  // in the newly-freed bottom area instead of being squeezed above a bar.
+  const titleY   = tightChin ? 980 : (landscape ? 375 : 400);
+  const timerY   = tightChin ? 1030 : (landscape ? 438 : 620);
+  const subY     = timerY + (tightChin ? 24 : (landscape ? 28 : 36));
+  const footerH  = landscape ? 100 : 145;
 
   const eyebrowText = '// NEW SINGLE';
   ctx.font = `500 ${landscape ? 16 : 22}px "DM Mono", monospace`;
@@ -8632,43 +8635,76 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   ctx.shadowColor = 'rgba(0,0,0,0.85)';
   ctx.shadowBlur = 14;
 
-  // Signature "Jennie" script, matching her Ruby-era logotype treatment
+  // Signature "Jennie" script -- Bodoni Moda italic to match her actual
+  // press-kit signature style (used in the reference art), not a generic
+  // calligraphy script.
   ctx.letterSpacing = '0px';
   ctx.fillStyle = '#E8110D';
-  ctx.font = `${landscape ? 44 : 72}px "Pinyon Script", cursive`;
+  ctx.font = `italic 500 ${landscape ? 38 : 60}px "Bodoni Moda", serif`;
   ctx.fillText('Jennie', PX, jennieY);
 
+  const titleAlign = tightChin ? 'center' : 'left';
+  const titleX     = tightChin ? W / 2 : PX;
+  ctx.textAlign = titleAlign;
+
   if (wordmark) {
-    const maxH = tightChin ? 85 : (landscape ? 80 : 140);
+    const maxH = tightChin ? 95 : (landscape ? 80 : 140);
     const wmScale = Math.min(textW / wordmark.naturalWidth, maxH / wordmark.naturalHeight);
     const wmW = wordmark.naturalWidth * wmScale, wmH = wordmark.naturalHeight * wmScale;
-    ctx.drawImage(wordmark, PX, titleY - wmH, wmW, wmH);
+    const wmX = tightChin ? (W - wmW) / 2 : PX;
+    ctx.drawImage(wordmark, wmX, titleY - wmH, wmW, wmH);
   } else {
     ctx.fillStyle = '#F5F0F0';
     ctx.letterSpacing = '2px';
-    fillTextFit(ctx, 'LESS THAN A LOVER', PX, titleY, tightChin ? 70 : (landscape ? 80 : 120), textW, '"Bebas Neue", sans-serif');
+    fillTextFit(ctx, 'LESS THAN A LOVER', titleX, titleY, tightChin ? 70 : (landscape ? 80 : 120), textW, '"Bebas Neue", sans-serif');
   }
 
   const { big, sub } = formatReleaseCountdown();
   ctx.fillStyle = '#E8110D';
   ctx.letterSpacing = '2px';
-  fillTextFit(ctx, big, PX, timerY, tightChin ? 58 : (landscape ? 60 : 92), textW, '"Bebas Neue", sans-serif');
+  fillTextFit(ctx, big, titleX, timerY, tightChin ? 58 : (landscape ? 60 : 92), textW, '"Bebas Neue", sans-serif');
 
   ctx.fillStyle = 'rgba(245,240,240,0.9)';
   ctx.font = `500 ${tightChin ? 15 : (landscape ? 15 : 22)}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText(sub, PX, subY);
+  ctx.fillText(sub, titleX, subY);
 
+  ctx.textAlign = 'left';
   ctx.shadowColor = 'transparent';
   ctx.shadowBlur = 0;
+
+  if (tightChin) {
+    // Small brand block at the top instead of a bottom footer bar.
+    const LR = 15;
+    const logoY = 52;
+    const brandX = logo ? PX + LR * 2 + 8 : PX;
+    if (logo) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+      ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
+      ctx.restore();
+      ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
+      ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    ctx.fillStyle = '#F5F0F0';
+    ctx.font = `22px "Bebas Neue", sans-serif`;
+    ctx.letterSpacing = '6px';
+    ctx.fillText('BLINKS UNITED', brandX, logoY + 6);
+    ctx.fillStyle = 'rgba(245,240,240,0.5)';
+    ctx.font = `500 10px "DM Mono", monospace`;
+    ctx.letterSpacing = '1px';
+    ctx.fillText('blinksunited.com', brandX, logoY + 22);
+    _markCardReady(canvas);
+    return;
+  }
 
   // Solid (non-fading) footer bar -- keeps the logo/brand/domain legible
   // without darkening the rest of the photo above it.
   ctx.fillStyle = 'rgba(8,8,8,0.75)';
   ctx.fillRect(0, H - footerH, W, footerH);
 
-  const LR = tightChin ? 20 : (landscape ? 22 : 28);
-  const logoY = H - (tightChin ? 32 : (landscape ? 46 : 82));
+  const LR = landscape ? 22 : 28;
+  const logoY = H - (landscape ? 46 : 82);
   ctx.fillStyle = 'rgba(255,0,102,0.2)';
   ctx.fillRect(PX, H - footerH + 10, W - PX - (landscape ? 50 : 60), 1);
   if (logo) {
@@ -8681,13 +8717,13 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   }
   const brandX = logo ? PX + LR * 2 + 10 : PX;
   ctx.fillStyle = '#F5F0F0';
-  ctx.font = `${tightChin ? 28 : (landscape ? 34 : 44)}px "Bebas Neue", sans-serif`;
+  ctx.font = `${landscape ? 34 : 44}px "Bebas Neue", sans-serif`;
   ctx.letterSpacing = '10px';
-  ctx.fillText('BLINKS UNITED', brandX, H - (tightChin ? 40 : (landscape ? 52 : 72)));
+  ctx.fillText('BLINKS UNITED', brandX, H - (landscape ? 52 : 72));
   ctx.fillStyle = 'rgba(245,240,240,0.2)';
-  ctx.font = `500 ${tightChin ? 11 : (landscape ? 12 : 15)}px "DM Mono", monospace`;
+  ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText('blinksunited.com', brandX, H - (tightChin ? 18 : (landscape ? 30 : 42)));
+  ctx.fillText('blinksunited.com', brandX, H - (landscape ? 30 : 42));
 
   _markCardReady(canvas);
 }
