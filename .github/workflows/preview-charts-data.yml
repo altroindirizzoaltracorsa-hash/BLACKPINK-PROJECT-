@@ -1,0 +1,23 @@
+name: Preview charts data
+
+# One-off, manual-only: pulls real Daily/Weekly Songs, Artists, and Albums
+# data from Supabase so the new Charts feature can be built/previewed with
+# real numbers. Safe to remove once the Charts feature ships.
+on:
+  workflow_dispatch:
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Pull chart data
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node .github/scripts/preview-charts-data.mjs
