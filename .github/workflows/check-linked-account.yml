@@ -1,0 +1,33 @@
+name: Check linked account
+
+# One-off diagnostic, manual-only: looks up who a given source_username is
+# currently linked to in Supabase, so a "username already linked" support
+# report can be diagnosed instead of guessed at. Safe to remove once used.
+on:
+  workflow_dispatch:
+    inputs:
+      username:
+        description: 'The source_username to look up (e.g. a Last.fm username)'
+        required: true
+      source:
+        description: 'lastfm | listenbrainz | librefm | musicat | statsfm'
+        required: false
+        default: 'lastfm'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Look up linked_accounts row + owning user
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          LOOKUP_USERNAME: ${{ inputs.username }}
+          LOOKUP_SOURCE: ${{ inputs.source }}
+        run: node .github/scripts/check-linked-account.mjs
