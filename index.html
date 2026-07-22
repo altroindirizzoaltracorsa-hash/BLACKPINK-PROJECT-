@@ -561,7 +561,7 @@
     font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase;
     color: rgba(245,240,240,0.55); margin-bottom: 0.35rem;
   }
-  .release-expand-times { display: flex; flex-direction: column; gap: 0.25rem; }
+  .release-expand-times { display: flex; flex-direction: column; gap: 0.25rem; max-height: 220px; overflow-y: auto; }
   .release-expand-time-row {
     display: flex; justify-content: space-between; gap: 0.5rem;
     font-family: var(--mono); font-size: 0.68rem; color: rgba(245,240,240,0.85);
@@ -6663,28 +6663,59 @@ async function loadJennieSaveCount() {
 
 // ── Release card expand panel: global release times, goals, links ─────────
 const RELEASE_TIMEZONES = [
-  { city: 'Los Angeles', tz: 'America/Los_Angeles' },
-  { city: 'New York',    tz: 'America/New_York' },
-  { city: 'London',      tz: 'Europe/London' },
-  { city: 'Paris',       tz: 'Europe/Paris' },
-  { city: 'Seoul',       tz: 'Asia/Seoul' },
-  { city: 'Tokyo',       tz: 'Asia/Tokyo' },
-  { city: 'Manila',      tz: 'Asia/Manila' },
-  { city: 'Mumbai',      tz: 'Asia/Kolkata' },
-  { city: 'Sydney',      tz: 'Australia/Sydney' },
+  { city: 'Los Angeles',  tz: 'America/Los_Angeles' },
+  { city: 'Mexico City',  tz: 'America/Mexico_City' },
+  { city: 'Bogotá',       tz: 'America/Bogota' },
+  { city: 'New York',     tz: 'America/New_York' },
+  { city: 'Toronto',      tz: 'America/Toronto' },
+  { city: 'São Paulo',    tz: 'America/Sao_Paulo' },
+  { city: 'Buenos Aires', tz: 'America/Argentina/Buenos_Aires' },
+  { city: 'Santiago',     tz: 'America/Santiago' },
+  { city: 'London',       tz: 'Europe/London' },
+  { city: 'Roskilde',     tz: 'Europe/Copenhagen' },
+  { city: 'Madrid',       tz: 'Europe/Madrid' },
+  { city: 'Paris',        tz: 'Europe/Paris' },
+  { city: 'Berlin',       tz: 'Europe/Berlin' },
+  { city: 'Rome',         tz: 'Europe/Rome' },
+  { city: 'Warsaw',       tz: 'Europe/Warsaw' },
+  { city: 'Johannesburg', tz: 'Africa/Johannesburg' },
+  { city: 'Moscow',       tz: 'Europe/Moscow' },
+  { city: 'Istanbul',     tz: 'Europe/Istanbul' },
+  { city: 'Riyadh',       tz: 'Asia/Riyadh' },
+  { city: 'Dubai',        tz: 'Asia/Dubai' },
+  { city: 'Mumbai',       tz: 'Asia/Kolkata' },
+  { city: 'Karachi',      tz: 'Asia/Karachi' },
+  { city: 'Bangkok',      tz: 'Asia/Bangkok' },
+  { city: 'Hanoi',        tz: 'Asia/Ho_Chi_Minh' },
+  { city: 'Jakarta',      tz: 'Asia/Jakarta' },
+  { city: 'Singapore',    tz: 'Asia/Singapore' },
+  { city: 'Manila',       tz: 'Asia/Manila' },
+  { city: 'Taipei',       tz: 'Asia/Taipei' },
+  { city: 'Beijing',      tz: 'Asia/Shanghai' },
+  { city: 'Seoul',        tz: 'Asia/Seoul' },
+  { city: 'Tokyo',        tz: 'Asia/Tokyo' },
+  { city: 'Sydney',       tz: 'Australia/Sydney' },
+  { city: 'Auckland',     tz: 'Pacific/Auckland' },
 ];
 
 function renderReleaseGlobalTimes() {
   const el = document.getElementById('release-expand-times');
   if (!el || el.dataset.filled) return;
   const releaseDate = new Date(JENNIE_RELEASE.releaseAt);
-  el.innerHTML = RELEASE_TIMEZONES.map(({ city, tz }) => {
+  const rows = RELEASE_TIMEZONES.map(({ city, tz }) => {
     const label = new Intl.DateTimeFormat('en-US', {
       timeZone: tz, weekday: 'short', month: 'short', day: 'numeric',
       hour: 'numeric', minute: '2-digit',
     }).format(releaseDate);
-    return `<div class="release-expand-time-row"><span>${city}</span><span>${label}</span></div>`;
-  }).join('');
+    const sortKey = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit',
+    }).format(releaseDate);
+    return { city, label, sortKey };
+  }).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  el.innerHTML = rows.map(({ city, label }) =>
+    `<div class="release-expand-time-row"><span>${city}</span><span>${label}</span></div>`
+  ).join('');
   el.dataset.filled = '1';
 }
 
