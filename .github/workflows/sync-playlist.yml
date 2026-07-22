@@ -11,6 +11,16 @@ jobs:
     steps:
       - name: Call sync-playlist endpoint
         run: |
-          curl -sf -X GET \
+          set -e
+          # --location-trusted: see refresh-scrobbles.yml -- VERCEL_URL may
+          # point at an old domain that now 307-redirects to the current one,
+          # and a bare curl -sf "succeeds" on the redirect stub without ever
+          # reaching the real endpoint.
+          http_code=$(curl -s -L --location-trusted -o response.json -w "%{http_code}" -X GET \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.VERCEL_URL }}/api/sync-playlist"
+            "${{ secrets.VERCEL_URL }}/api/sync-playlist")
+          echo "HTTP $http_code"
+          echo "--- response body ---"
+          cat response.json
+          echo ""
+          if [ "$http_code" -ge 400 ]; then exit 1; fi

@@ -16,7 +16,13 @@ jobs:
       - name: Call cron endpoint
         run: |
           set -e
-          http_code=$(curl -s -o response.json -w "%{http_code}" -X GET \
+          # --location-trusted: VERCEL_URL may point at an old domain that now
+          # 307-redirects to the current one (e.g. after a custom-domain
+          # migration) — without following, curl "succeeds" on the redirect
+          # stub and never reaches the real endpoint. Safe to keep the
+          # Authorization header across the redirect here since both ends are
+          # our own infrastructure.
+          http_code=$(curl -s -L --location-trusted -o response.json -w "%{http_code}" -X GET \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.VERCEL_URL }}/api/cron-scrobbles")
           echo "HTTP $http_code"
