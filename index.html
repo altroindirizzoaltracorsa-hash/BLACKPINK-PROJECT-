@@ -2304,22 +2304,21 @@
 <button id="chat-fab" class="chat-fab" onclick="toggleChatWidget()" aria-label="Open group chat">💬<span id="chat-unread-badge" style="display:none"></span></button>
 <div id="chat-unlock-toast" style="display:none"></div>
 
-<!-- Legacy migration notice -->
-<div id="legacy-migration-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;padding:1.5rem;">
+<!-- Legacy migration ultimatum — no dismiss button on purpose. Anyone still on
+     the old Last.fm-username-only method must create a real account before
+     using the site any further. -->
+<div id="legacy-migration-modal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;padding:1.5rem;">
   <div style="background:var(--bg-card,#1a0a0f);border:1px solid var(--pink,#e91e8c);border-radius:12px;max-width:420px;width:100%;padding:2rem;text-align:center;">
     <div style="font-size:2rem;margin-bottom:0.75rem;">🔐</div>
-    <h3 style="color:var(--pink,#e91e8c);margin:0 0 0.75rem;font-size:1.1rem;letter-spacing:0.05em;text-transform:uppercase;">Account upgrade required</h3>
+    <h3 style="color:var(--pink,#e91e8c);margin:0 0 0.75rem;font-size:1.1rem;letter-spacing:0.05em;text-transform:uppercase;">Action required to continue</h3>
     <p style="color:var(--text,#fff);margin:0 0 0.5rem;font-size:0.95rem;line-height:1.5;">
       You were signed in as <strong id="legacy-migration-username" style="color:var(--pink,#e91e8c)"></strong> via Last.fm only.
     </p>
     <p style="color:var(--muted,#aaa);margin:0 0 1.5rem;font-size:0.85rem;line-height:1.5;">
-      We've moved to a full account system. Please create an account in <strong style="color:var(--text,#fff)">My Badges</strong> and link your streaming services to keep your leaderboard position and access the group chat.
+      We've moved to a full account system. The old method is no longer accepted — create a free account (X, Discord, Google, or email) and re-link your streaming usernames in <strong style="color:var(--text,#fff)">My Badges</strong> now, or your entry will be removed from the leaderboard.
     </p>
-    <button onclick="showPage('badges');closeLegacyMigration();" style="width:100%;padding:0.75rem;background:var(--pink,#e91e8c);color:#fff;border:none;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer;letter-spacing:0.05em;margin-bottom:0.75rem;">
+    <button onclick="showPage('badges');closeLegacyMigration();" style="width:100%;padding:0.75rem;background:var(--pink,#e91e8c);color:#fff;border:none;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer;letter-spacing:0.05em;">
       CREATE ACCOUNT →
-    </button>
-    <button onclick="closeLegacyMigration();" style="width:100%;padding:0.6rem;background:transparent;color:var(--muted,#aaa);border:1px solid rgba(255,255,255,0.15);border-radius:8px;font-size:0.85rem;cursor:pointer;">
-      Remind me later
     </button>
   </div>
 </div>
@@ -3395,6 +3394,7 @@ function routeInitial() {
   if (page !== 'home') showPage(page, { replace: true });
   else history.replaceState({ page: 'home' }, '', '/');
   maybeShowTutorial();
+  checkLegacyMigrationGate();
 }
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', routeInitial);
@@ -4483,15 +4483,29 @@ async function tryAutoLoad() {
 }
 
 function showLegacyMigrationNotice(username) {
-  if (sessionStorage.getItem('bu_migration_seen')) return;
-  sessionStorage.setItem('bu_migration_seen', '1');
   const el = document.getElementById('legacy-migration-modal');
   if (!el) return;
   document.getElementById('legacy-migration-username').textContent = username;
   el.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
 }
 function closeLegacyMigration() {
   document.getElementById('legacy-migration-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// Runs once on initial page load, regardless of which page the visitor
+// lands on, so the migration ultimatum shows up immediately rather than
+// only after navigating to Badges or the Leaderboard.
+async function checkLegacyMigrationGate() {
+  if (sb) {
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) return;
+    } catch {}
+  }
+  const saved = getSavedUsername();
+  if (saved) showLegacyMigrationNotice(saved);
 }
 
 async function refreshProfile() {
