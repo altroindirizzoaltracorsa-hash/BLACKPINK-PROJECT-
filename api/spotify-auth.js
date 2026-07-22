@@ -10,8 +10,8 @@
  *
  * Setup (one time):
  *   1. In Spotify Developer Dashboard → "Blackpink Catalog" app → Edit → Redirect URIs
- *      Add: https://blackpink-project.vercel.app/api/spotify-auth
- *   2. Visit https://blackpink-project.vercel.app/api/spotify-auth?key=<admin-key>
+ *      Add: https://blinksunited.com/api/spotify-auth
+ *   2. Visit https://blinksunited.com/api/spotify-auth?key=<admin-key>
  *   3. Log in with your Spotify account → done.
  */
 
@@ -21,7 +21,7 @@ import { Redis } from '@upstash/redis';
 
 export const SPOTIFY_USER_CREDS_KEY = 'bp_spotify_user_creds';
 
-const REDIRECT_URI = 'https://blackpink-project.vercel.app/api/spotify-auth';
+const REDIRECT_URI = 'https://blinksunited.com/api/spotify-auth';
 
 export default async function handler(req) {
   const url    = new URL(req.url);

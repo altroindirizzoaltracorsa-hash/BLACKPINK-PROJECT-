@@ -2,7 +2,7 @@ import { Redis } from '@upstash/redis';
 
 const redis = Redis.fromEnv();
 const KEY = 'bp_current_playlist';
-const OAUTH_REDIRECT_URI = 'https://blackpink-project.vercel.app/api/spotify-oauth-callback';
+const OAUTH_REDIRECT_URI = 'https://blinksunited.com/api/spotify-oauth-callback';
 
 // Playlists are named like "JUMP -> 1B [Day 21]" — the day number only ever
 // increases through a campaign, so across however many candidate accounts
