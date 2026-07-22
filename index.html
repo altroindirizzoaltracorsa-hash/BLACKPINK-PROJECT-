@@ -6891,6 +6891,20 @@ function drawNoise(ctx, W, H, alpha = 0.04) {
   ctx.restore();
 }
 
+// Recolors a white/alpha PNG (e.g. a wordmark) to a solid color, preserving
+// its shape. Draws onto an offscreen canvas first so 'source-in' only
+// affects the image's own pixels, not whatever it'll later be drawn over.
+function tintImage(img, color, w, h) {
+  const tmp = document.createElement('canvas');
+  tmp.width = w; tmp.height = h;
+  const tctx = tmp.getContext('2d');
+  tctx.drawImage(img, 0, 0, w, h);
+  tctx.globalCompositeOperation = 'source-in';
+  tctx.fillStyle = color;
+  tctx.fillRect(0, 0, w, h);
+  return tmp;
+}
+
 // ── SONG UPDATE CARD ─────────────────────────────────────────────────────────
 let buLogoImg = null;
 async function getBuLogo() {
@@ -8652,9 +8666,12 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
     const wmScale = Math.min(textW / wordmark.naturalWidth, maxH / wordmark.naturalHeight);
     const wmW = wordmark.naturalWidth * wmScale, wmH = wordmark.naturalHeight * wmScale;
     const wmX = tightChin ? (W - wmW) / 2 : PX;
-    ctx.drawImage(wordmark, wmX, titleY - wmH, wmW, wmH);
+    // Wordmark PNG is baked in white -- tint it red so it stays readable
+    // against bright photos instead of washing out.
+    const redWordmark = tintImage(wordmark, '#E8110D', wmW, wmH);
+    ctx.drawImage(redWordmark, wmX, titleY - wmH, wmW, wmH);
   } else {
-    ctx.fillStyle = '#F5F0F0';
+    ctx.fillStyle = '#E8110D';
     ctx.letterSpacing = '2px';
     fillTextFit(ctx, 'LESS THAN A LOVER', titleX, titleY, tightChin ? 70 : (landscape ? 80 : 120), textW, '"Bebas Neue", sans-serif');
   }
@@ -8664,7 +8681,7 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   ctx.letterSpacing = '2px';
   fillTextFit(ctx, big, titleX, timerY, tightChin ? 58 : (landscape ? 60 : 92), textW, '"Bebas Neue", sans-serif');
 
-  ctx.fillStyle = 'rgba(245,240,240,0.9)';
+  ctx.fillStyle = '#E8110D';
   ctx.font = `500 ${tightChin ? 15 : (landscape ? 15 : 22)}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
   ctx.fillText(sub, titleX, subY);
