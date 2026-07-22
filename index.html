@@ -691,6 +691,13 @@
   .admin-ban-chip { display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,0,102,0.08); border:1px solid rgba(255,0,102,0.25); color:var(--white); font-family:var(--mono); font-size:0.55rem; letter-spacing:0.05em; padding:0.3rem 0.5rem; }
   .admin-ban-chip button { background:none; border:none; color:var(--pink); cursor:pointer; font-family:var(--mono); font-size:0.6rem; padding:0; }
   .admin-ban-chip button:hover { text-decoration:underline; }
+  .admin-entry-results { display:flex; flex-direction:column; gap:0.4rem; margin-top:0.6rem; max-height:260px; overflow-y:auto; }
+  .admin-entry-row { display:flex; align-items:center; justify-content:space-between; gap:0.6rem; background:rgba(255,0,102,0.05); border:1px solid rgba(255,0,102,0.18); padding:0.5rem 0.7rem; }
+  .admin-entry-name { font-family:var(--display); font-size:0.85rem; color:var(--white); letter-spacing:0.04em; }
+  .admin-entry-meta { font-family:var(--mono); font-size:0.48rem; color:var(--muted); letter-spacing:0.04em; margin-top:0.15rem; word-break:break-all; }
+  .admin-entry-del { flex-shrink:0; background:none; border:1px solid rgba(255,0,102,0.4); color:var(--pink); cursor:pointer; font-family:var(--mono); font-size:0.52rem; letter-spacing:0.08em; text-transform:uppercase; padding:0.35rem 0.6rem; }
+  .admin-entry-del:hover { background:rgba(255,0,102,0.15); }
+  .admin-entry-del:disabled { opacity:0.5; cursor:default; }
 
   footer { padding: 2rem 3rem; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
   footer p { font-size: 0.55rem; letter-spacing: 0.15em; color: rgba(245,240,240,0.3); }
@@ -2378,6 +2385,14 @@
         </div>
         <div id="admin-ban-err" class="admin-err"></div>
         <div id="admin-ban-list" class="admin-ban-list"></div>
+      </div>
+
+      <div class="admin-ban-section">
+        <div class="admin-ban-title">🧹 Remove a leaderboard entry — e.g. duplicate rows from a display-name edit</div>
+        <div class="admin-input-row">
+          <input id="admin-entry-search" class="admin-input" type="text" placeholder="Search display name or username…" oninput="renderAdminEntrySearch()">
+        </div>
+        <div id="admin-entry-results" class="admin-entry-results"></div>
       </div>
 
     </div>
@@ -6411,6 +6426,61 @@ async function unbanUser(username) {
     const { banned } = await r.json();
     renderBannedList(banned || []);
   } catch {}
+}
+
+// Full raw leaderboard (keyed by username, not the sorted/filtered array the
+// public page uses) — fetched lazily so the admin panel can search entries
+// by display name to find duplicate rows left behind by a display-name edit.
+let adminEntrySearchData = null;
+
+async function renderAdminEntrySearch() {
+  const q = document.getElementById('admin-entry-search').value.trim().toLowerCase();
+  const wrap = document.getElementById('admin-entry-results');
+  if (!q) { wrap.innerHTML = ''; return; }
+  if (!adminEntrySearchData) {
+    wrap.innerHTML = '<div class="admin-loading">Loading…</div>';
+    try {
+      const r = await fetch('/api/leaderboard', { cache: 'no-store' });
+      adminEntrySearchData = (await r.json()).users || {};
+    } catch {
+      wrap.innerHTML = '<div class="admin-loading">Failed to load — try again.</div>';
+      return;
+    }
+  }
+  const matches = Object.entries(adminEntrySearchData).filter(([key, u]) =>
+    key.includes(q) || (u.displayName || '').toLowerCase().includes(q) || (u.username || '').toLowerCase().includes(q)
+  );
+  if (!matches.length) { wrap.innerHTML = '<div class="admin-loading">No matches.</div>'; return; }
+  wrap.innerHTML = matches.map(([key, u]) => `
+    <div class="admin-entry-row" data-key="${escapeHtml(key)}">
+      <div>
+        <div class="admin-entry-name">${escapeHtml(u.displayName || u.username)}</div>
+        <div class="admin-entry-meta">key: ${escapeHtml(key)}${u.updatedAt ? ' · updated ' + new Date(u.updatedAt).toLocaleDateString() : ''}</div>
+      </div>
+      <button class="admin-entry-del" onclick="deleteLeaderboardEntry(this.closest('.admin-entry-row').dataset.key, this)">✕ Delete</button>
+    </div>
+  `).join('');
+}
+
+async function deleteLeaderboardEntry(key, btn) {
+  if (!confirm(`Delete this leaderboard entry (key: "${key}")? This can't be undone.`)) return;
+  const adminKey = localStorage.getItem(ADMIN_KEY_LS);
+  btn.disabled = true;
+  btn.textContent = 'Deleting…';
+  try {
+    const r = await fetch(`/api/leaderboard?action=delete-entry&key=${encodeURIComponent(adminKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: key }),
+    });
+    if (!r.ok) { btn.textContent = '✕ Failed'; btn.disabled = false; return; }
+    delete adminEntrySearchData[key];
+    lbCacheTime = null; // force the public leaderboard to refetch without this entry
+    renderAdminEntrySearch();
+  } catch {
+    btn.textContent = '✕ Failed';
+    btn.disabled = false;
+  }
 }
 
 async function refreshCatalogTotal() {
