@@ -10,7 +10,7 @@
  * instead of depending on that best-effort trigger.
  */
 
-const VERCEL_URL = process.env.VERCEL_URL || 'https://blackpink-project.vercel.app';
+const VERCEL_URL = process.env.VERCEL_URL || 'https://blinksunited.com';
 const ADMIN_KEY  = process.env.ADMIN_KEY;
 
 async function main() {

@@ -28,13 +28,13 @@ jobs:
       - name: Force-refresh campaign tracks (JUMP / Shut Down / DDU-DU DDU-DU) on Vercel
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
-          VERCEL_URL: ${{ inputs.base_url != '' && inputs.base_url || 'https://blackpink-project.vercel.app' }}
+          VERCEL_URL: ${{ inputs.base_url != '' && inputs.base_url || 'https://blinksunited.com' }}
         run: node .github/scripts/fetch-tracks.mjs
 
       - name: Force-refresh BLACKPINK catalog total on Vercel
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
-          VERCEL_URL: ${{ inputs.base_url != '' && inputs.base_url || 'https://blackpink-project.vercel.app' }}
+          VERCEL_URL: ${{ inputs.base_url != '' && inputs.base_url || 'https://blinksunited.com' }}
         run: node .github/scripts/fetch-catalog.mjs
 
   # Experimental, manual-only: test whether spotifyscraper's embed-page-bootstrapped
