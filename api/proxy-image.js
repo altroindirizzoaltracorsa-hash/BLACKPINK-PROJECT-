@@ -22,28 +22,6 @@ const SP_TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
-// Shazam's public endpoints require the real app's HTTP fingerprint, not a
-// browser's -- these two headers plus an app-style (not browser) User-Agent,
-// matching what the reverse-engineered ShazamIO library sends. Without them
-// Shazam's edge returns a 405 on search/chart/count endpoints (though not on
-// the looser "locations" endpoint).
-const SHAZAM_HEADERS = {
-  'X-Shazam-Platform': 'IPHONE',
-  'X-Shazam-AppVersion': '14.1.0',
-  'Accept': '*/*',
-  'Accept-Language': 'en',
-  'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 5.0.2; VS980 4G Build/LRX22G)',
-};
-
-async function shazamFetch(url) {
-  const r = await fetch(url, { headers: SHAZAM_HEADERS });
-  if (!r.ok) {
-    const body = await r.text();
-    throw new Error(`Shazam HTTP ${r.status} for ${url} -- ${body.slice(0, 200)}`);
-  }
-  return r.json();
-}
-
 async function statsPost(body) {
   const r = await fetch(`${MUSICAT_BASE}/history/stats`, {
     method: 'POST', headers: MC_HEADERS,
@@ -541,54 +519,6 @@ export default async function handler(req, res) {
     if (!rowsRes.ok) return res.status(502).json({ error: 'Supabase query failed' });
     const rows = await rowsRes.json();
     return res.status(200).json({ chartType, country, trackingDate: latest.tracking_date, rows });
-  }
-
-  // ── GET ?shazam=probe (admin) — one-off diagnostic ──────────────────────────
-  // Verifies Shazam's public app-backend endpoints (search / playlist-tracks /
-  // listening-counter) work from Vercel with the real Shazam mobile-app HTTP
-  // fingerprint (X-Shazam-Platform / X-Shazam-AppVersion headers + an app-style
-  // User-Agent) -- a plain browser request to these same endpoints gets a 405
-  // from Shazam's edge, but the "locations" endpoint doesn't require this.
-  // Safe to remove once the real fetch endpoint is confirmed working.
-  if (req.query.shazam === 'probe') {
-    const adminSecret = process.env.ADMIN_SECRET;
-    const adminKey = (req.headers['x-admin-secret'] || req.query.key) === adminSecret && adminSecret;
-    if (!adminKey) return res.status(401).json({ error: 'Unauthorized' });
-
-    const out = {};
-    try {
-      const search = await shazamFetch(
-        'https://www.shazam.com/services/search/v3/en/us/web/search?query=JUMP%20BLACKPINK&numResults=5&offset=0&types=songs',
-      );
-      out.search = search;
-      const key = search?.tracks?.hits?.[0]?.track?.key;
-      out.resolvedKey = key ?? null;
-
-      if (key) {
-        out.listeningCount = await shazamFetch(`https://www.shazam.com/services/count/v2/web/track/${key}`);
-      }
-    } catch (e) {
-      out.searchError = e.message;
-    }
-
-    try {
-      out.playlistTracks = await shazamFetch(
-        'https://www.shazam.com/services/amapi/v1/catalog/us/playlists/pl.92d704ba99a3411289a34fab82866a62/tracks?limit=10&offset=0&l=en',
-      );
-    } catch (e) {
-      out.playlistError = e.message;
-    }
-
-    // Known-real track id from ShazamIO's own docs (Rampampam, 559284007) --
-    // tests the listening-counter endpoint in isolation, independent of
-    // whether search resolved anything above.
-    try {
-      out.knownCount = await shazamFetch('https://www.shazam.com/services/count/v2/web/track/559284007');
-    } catch (e) {
-      out.knownCountError = e.message;
-    }
-
-    return res.status(200).json(out);
   }
 
   // ── GET ?artist_streams=csv[&scope=tracks] (admin) — daily history CSV ─────
