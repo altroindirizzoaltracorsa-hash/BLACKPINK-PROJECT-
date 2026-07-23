@@ -1,0 +1,25 @@
+name: Trigger fetch-artists on Vercel preview
+
+# One-off, manual-only: curls the Vercel PREVIEW deployment's
+# ?charts=fetch-artists endpoint (can't be reached directly from this sandbox
+# or reliably tested any other way) to verify the official Spotify Top
+# Artists chart fetch works end-to-end before merging to production.
+# Safe to remove once the feature ships.
+on:
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: 'Vercel preview deployment base URL'
+        required: true
+        default: 'https://blackpink-project-om2ggswcz.vercel.app'
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call charts=fetch-artists on the preview deployment
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          curl -sS -w "\nHTTP_STATUS:%{http_code}\n" \
+            "${{ github.event.inputs.preview_url }}/api/proxy-image?charts=fetch-artists&key=${ADMIN_KEY}"
