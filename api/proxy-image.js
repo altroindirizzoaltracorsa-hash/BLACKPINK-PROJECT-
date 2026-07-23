@@ -332,6 +332,35 @@ export default async function handler(req, res) {
     return res.status(200).json({ ...artistRows[0], history, tracks });
   }
 
+  // ── GET ?charts=list&chart_type=daily|weekly&country=GLOBAL&limit=50 ───────
+  // Real per-country Spotify chart positions (BLACKPINK + members), sourced
+  // from kworb.net's official-chart mirror via fetch_chart_positions.mjs --
+  // NOT our own tracked-catalog streams-gained ranking.
+  if (req.query.charts === 'list') {
+    const chartType = req.query.chart_type === 'weekly' ? 'weekly' : 'daily';
+    const country = (req.query.country || 'GLOBAL').toUpperCase();
+    const limit = Math.min(Number(req.query.limit ?? 50), 200);
+
+    const latestRes = await sbFetch(
+      `/chart_positions?chart_type=eq.${chartType}&country=eq.${country}&select=tracking_date&order=tracking_date.desc&limit=1`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!latestRes.ok) return res.status(502).json({ error: 'Supabase query failed' });
+    const [latest] = await latestRes.json();
+    if (!latest) return res.status(200).json({ chartType, country, trackingDate: null, rows: [] });
+
+    const rowsRes = await sbFetch(
+      `/chart_positions?chart_type=eq.${chartType}&country=eq.${country}&tracking_date=eq.${latest.tracking_date}` +
+      `&select=spotify_track_id,track_name,primary_artist_name,featured_artists,position,peak_position,` +
+      `days_on_chart,streams,total_streams,previous_position,position_change,entry_status` +
+      `&order=position.asc&limit=${limit}`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!rowsRes.ok) return res.status(502).json({ error: 'Supabase query failed' });
+    const rows = await rowsRes.json();
+    return res.status(200).json({ chartType, country, trackingDate: latest.tracking_date, rows });
+  }
+
   // ── GET ?artist_streams=csv[&scope=tracks] (admin) — daily history CSV ─────
   if (req.query.artist_streams === 'csv') {
     const adminSecret = process.env.ADMIN_SECRET;
