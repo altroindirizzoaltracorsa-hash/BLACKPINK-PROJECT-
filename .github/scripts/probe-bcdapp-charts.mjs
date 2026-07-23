@@ -1,8 +1,8 @@
 /**
- * One-off diagnostic: inspects b-cd.app (a reference fan-chart site with the
- * same Daily/Weekly Songs/Artists/Albums chart UI we're trying to build) to
- * find its real charts API endpoint and see what data/source it actually
- * returns, ahead of designing our own Charts feature.
+ * One-off diagnostic: hits b-cd.app's real charts API (found via user-supplied
+ * devtools inspection: https://api.b-cd.app/api/spotify/charts?chart_type=...)
+ * to see its response shape and, most importantly, what upstream source note
+ * (if any) it exposes -- ahead of designing our own Charts feature.
  * Safe to remove once the Charts feature is built.
  */
 
@@ -10,7 +10,7 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 
 async function tryFetch(url, opts = {}) {
   try {
-    const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: '*/*' }, ...opts });
+    const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json,*/*' }, ...opts });
     const text = await r.text();
     return { url, ok: r.ok, status: r.status, headers: Object.fromEntries(r.headers.entries()), length: text.length, text };
   } catch (e) {
@@ -26,42 +26,29 @@ function log(label, result) {
   }
   console.log(`status=${result.status} length=${result.length}`);
   console.log(`content-type=${result.headers['content-type']}`);
-  console.log(result.text.slice(0, 3000));
+  console.log(`access-control-allow-origin=${result.headers['access-control-allow-origin']}`);
+  console.log(result.text.slice(0, 6000));
 }
 
 async function main() {
-  // 1. Fetch the page itself to see its HTML/embedded config (API base URL, etc.)
-  const page = await tryFetch('https://b-cd.app/spotify/daily-top-songs');
-  log('page HTML (first 3000 chars)', page);
+  const base = 'https://api.b-cd.app/api/spotify/charts';
 
-  // Look for API base hints in the HTML (e.g. env vars baked into client bundle refs, or absolute API URLs).
-  if (page.text) {
-    const apiHints = [...new Set((page.text.match(/https?:\/\/[a-z0-9.-]+\/(api|charts)[^"'\s]*/gi) || []))];
-    console.log('\n=== API URL hints found in HTML ===');
-    console.log(apiHints.slice(0, 20));
-  }
+  const r1 = await tryFetch(`${base}?chart_type=daily-songs&limit=10&bts=true&country=GLOBAL`);
+  log('daily-songs, GLOBAL, limit=10', r1);
 
-  // 2. Confirmed: root-level /charts and /api/charts 404 -- the chart data is NOT
-  // a separate client-side fetch at all. Skip straight to inspecting the full RSC
-  // payload (previous run showed status=200, content-type=text/x-component, and
-  // the data is embedded directly in server-rendered props).
-  const rsc = await tryFetch('https://b-cd.app/spotify/daily-top-songs', { headers: { 'User-Agent': UA, Accept: 'text/x-component', 'RSC': '1' } });
-  console.log(`\n=== full RSC payload: status=${rsc.status} length=${rsc.length} ===`);
-  if (rsc.text) {
-    // Find and print the chunk(s) mentioning known song/chart keywords, to see how
-    // the actual chart rows (position, streams, DoC, peak) are structured in the payload.
-    const keywords = ['SWIM', 'streams', 'position', 'peak', 'daysOnChart', 'DoC', 'chartType', 'rank'];
-    for (const kw of keywords) {
-      const idx = rsc.text.indexOf(kw);
-      console.log(`keyword "${kw}": ${idx === -1 ? 'not found' : `found at index ${idx}`}`);
-    }
-    // Print the largest JSON-looking segment -- RSC payloads are line-prefixed
-    // (e.g. "8:[...]"), so split on newlines and show the longest few lines.
-    const lines = rsc.text.split('\n');
-    const longest = [...lines].sort((a, b) => b.length - a.length).slice(0, 3);
-    console.log('\n--- 3 longest lines in RSC payload (likely the data-bearing ones) ---');
-    for (const line of longest) console.log(line.slice(0, 4000));
-  }
+  const r2 = await tryFetch(`${base}?chart_type=daily-songs&limit=200&bts=false&country=GLOBAL`);
+  log('daily-songs, GLOBAL, limit=200, bts=false', r2);
+
+  const r3 = await tryFetch(`${base}?chart_type=daily-artists&limit=10&bts=true&country=GLOBAL`);
+  log('daily-artists, GLOBAL, limit=10', r3);
+
+  const r4 = await tryFetch(`${base}?chart_type=weekly-songs&limit=10&bts=true&country=GLOBAL`);
+  log('weekly-songs, GLOBAL, limit=10', r4);
+
+  // Try a non-existent/malformed request to see if error responses leak useful info
+  // (e.g. an upstream source name, or validation messages revealing the schema).
+  const r5 = await tryFetch(`${base}`);
+  log('no query params at all', r5);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
