@@ -794,12 +794,15 @@
     .track-num { display: none; }
     .daily-grid { grid-template-columns: 1fr; }
   }
-  @media (max-width: 600px) {
+  /* Nav collapses to the hamburger well before a typical desktop viewport
+     runs out of room -- 11 nav items in one row has no wrap/shrink fallback,
+     so it silently overflows/cuts off rather than adapting (most noticeable
+     at non-100% browser zoom, which changes the effective CSS viewport
+     width). The nav's unwrapped content needs ~1477px (measured); 1560px
+     gives headroom before collapsing early avoids the cutoff regardless of
+     zoom level. */
+  @media (max-width: 1560px) {
     .nav-hamburger { display: flex; }
-    .playlist-banner { top: 62px; }
-    .song-card { padding: 2.5rem 1rem; }
-    .stream-increase { letter-spacing: 0.06em !important; font-size: 0.65rem !important; }
-    .days-to-goal { letter-spacing: 0.06em; font-size: 0.6rem; }
     .nav-links {
       display: none;
       position: fixed;
@@ -816,6 +819,17 @@
     .nav-links li { display: block; }
     .nav-links a { display: block; padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); opacity: 0.85; }
     .nav-links li:last-child a { border-bottom: none; }
+  }
+  /* Above 900px the 18px root font + full nav padding kick back in, making
+     the nav taller than the 62px the dropdown position above assumes. */
+  @media (min-width: 901px) and (max-width: 1560px) {
+    .nav-links { top: 80px; }
+  }
+  @media (max-width: 600px) {
+    .playlist-banner { top: 62px; }
+    .song-card { padding: 2.5rem 1rem; }
+    .stream-increase { letter-spacing: 0.06em !important; font-size: 0.65rem !important; }
+    .days-to-goal { letter-spacing: 0.06em; font-size: 0.6rem; }
     .summary-strip { grid-template-columns: repeat(2,1fr); }
     footer { flex-direction: column; text-align: center; }
     html, body { cursor: auto; }
