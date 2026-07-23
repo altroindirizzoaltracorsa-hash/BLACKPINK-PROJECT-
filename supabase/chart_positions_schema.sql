@@ -33,3 +33,7 @@ create index if not exists idx_chart_positions_track_country
 
 grant select, insert, update on public.chart_positions to service_role;
 grant usage, select on all sequences in schema public to service_role;
+
+-- delete needed for one-off cleanup migrations (e.g. removing rows written
+-- under a wrong tracking_date) -- not used by the daily fetch itself.
+grant delete on public.chart_positions to service_role;
