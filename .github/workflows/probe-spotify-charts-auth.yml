@@ -1,0 +1,21 @@
+name: Probe official Spotify charts auth flow
+
+# One-off, manual-only: tries to replicate charts.spotify.com's OAuth PKCE
+# auth flow purely via server-side HTTP requests, to see if it's usable
+# without a real logged-in Spotify account / browser JS.
+# Safe to remove once the feature (if built) ships.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Probe official Spotify charts auth flow
+        run: node .github/scripts/probe-spotify-charts-auth.mjs
