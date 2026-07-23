@@ -9,46 +9,31 @@
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
-const URLS = [
-  'https://charts.spotify.com/charts/view/artist-global-daily/latest',
-  'https://charts.spotify.com/charts/view/artist-global-weekly/latest',
-];
-
 async function main() {
-  for (const url of URLS) {
-    console.log(`\n=== ${url} ===`);
-    try {
-      const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*' } });
-      console.log(`status=${r.status}`);
-      const html = await r.text();
-      console.log(`length=${html.length}`);
-      console.log(html.slice(0, 1500));
+  const pageRes = await fetch('https://charts.spotify.com/charts/view/artist-global-daily/latest', {
+    headers: { 'User-Agent': UA, Accept: 'text/html,*/*' },
+  });
+  const html = await pageRes.text();
+  const scriptSrcs = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(m => m[1]);
+  console.log(`found ${scriptSrcs.length} script tags`);
 
-      // Look for embedded JSON/state blobs, and for BLACKPINK/member names.
-      const hasBlackpink = html.includes('BLACKPINK');
-      console.log(`\ncontains "BLACKPINK": ${hasBlackpink}`);
-      const scriptSrcs = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(m => m[1]);
-      console.log(`script srcs (first 10): ${JSON.stringify(scriptSrcs.slice(0, 10))}`);
-    } catch (e) {
-      console.log(`ERROR: ${e.message}`);
-    }
-  }
-
-  // Try common API path guesses for the backing data.
-  console.log('\n=== API path guesses ===');
-  const apiGuesses = [
-    'https://charts.spotify.com/api/v2/charts/artist-global-daily/latest',
-    'https://charts.spotify.com/api/charts/artist-global-daily/latest',
-    'https://charts.spotify.com/api/graphql',
-  ];
-  for (const url of apiGuesses) {
+  // Fetch each JS chunk and grep for API-looking base URLs / fetch calls.
+  const apiPatterns = new Set();
+  for (const src of scriptSrcs) {
     try {
-      const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json,*/*' } });
-      console.log(`${url} -> ${r.status}`);
-    } catch (e) {
-      console.log(`${url} -> ERROR ${e.message}`);
-    }
+      const r = await fetch(src, { headers: { 'User-Agent': UA } });
+      if (!r.ok) continue;
+      const js = await r.text();
+      // Look for absolute URLs that look like API hosts (not the static asset CDN itself).
+      const matches = js.match(/https?:\/\/[a-z0-9.-]*(api|charts-service|gateway|graphql)[a-z0-9.-]*\/[a-zA-Z0-9/_-]*/gi) || [];
+      for (const m of matches) apiPatterns.add(m);
+      // Also look for relative "/api/..." style path literals.
+      const relMatches = js.match(/["'](\/api\/[a-zA-Z0-9/_-]+)["']/g) || [];
+      for (const m of relMatches) apiPatterns.add(m);
+    } catch {}
   }
+  console.log(`\n=== candidate API patterns found across bundles (${apiPatterns.size}) ===`);
+  console.log([...apiPatterns].slice(0, 40));
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
