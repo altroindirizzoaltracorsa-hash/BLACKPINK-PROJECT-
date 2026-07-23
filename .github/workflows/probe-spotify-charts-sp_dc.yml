@@ -1,0 +1,23 @@
+name: Probe Spotify charts via sp_dc cookie
+
+# One-off, manual-only: tests whether a token minted from a real account's
+# sp_dc session cookie can call charts.spotify.com's internal charts API.
+# Never logs the cookie or full token -- see the script for details.
+# Safe to remove once the feature (if built) ships.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Probe charts.spotify.com via sp_dc cookie
+        env:
+          SPOTIFY_SP_DC: ${{ secrets.SPOTIFY_SP_DC }}
+        run: node .github/scripts/probe-spotify-charts-sp_dc.mjs
