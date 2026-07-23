@@ -18,7 +18,19 @@ const SP_DC = process.env.SPOTIFY_SP_DC;
 async function main() {
   if (!SP_DC) { console.error('SPOTIFY_SP_DC not set'); process.exit(1); }
 
-  console.log('=== Minting access token from sp_dc cookie ===');
+  console.log('=== Control: anonymous request (no cookie) -- this same endpoint already works from Vercel in production ===');
+  try {
+    const controlRes = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', {
+      headers: { 'User-Agent': UA, Accept: 'application/json' },
+    });
+    console.log(`status=${controlRes.status}`);
+    const controlText = await controlRes.text();
+    console.log(`body starts with: ${controlText.slice(0, 120)}`);
+  } catch (e) {
+    console.log(`control ERROR: ${e.message}`);
+  }
+
+  console.log('\n=== Minting access token from sp_dc cookie ===');
   const tokenRes = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', {
     headers: {
       'User-Agent': UA,
@@ -26,7 +38,12 @@ async function main() {
     },
   });
   console.log(`status=${tokenRes.status}`);
-  const tokenData = await tokenRes.json();
+  const tokenText = await tokenRes.text();
+  if (!tokenRes.ok) {
+    console.log(`body starts with: ${tokenText.slice(0, 300)}`);
+    return;
+  }
+  const tokenData = JSON.parse(tokenText);
   console.log(`isAnonymous=${tokenData.isAnonymous}`);
   console.log(`clientId=${tokenData.clientId}`);
   console.log(`accessToken present=${!!tokenData.accessToken}, length=${tokenData.accessToken?.length}`);
