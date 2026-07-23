@@ -3405,6 +3405,7 @@ let chartCountry = 'GLOBAL';
 
 function loadChartsPage() {
   fetchAndRenderCharts();
+  refreshChartCountryHighlights();
 }
 
 function setChartType(type, btn) {
@@ -3412,11 +3413,29 @@ function setChartType(type, btn) {
   document.querySelectorAll('.ch-tabs .lb-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   fetchAndRenderCharts();
+  refreshChartCountryHighlights();
 }
 
 function setChartCountry(country) {
   chartCountry = country;
   fetchAndRenderCharts();
+}
+
+// Marks (★ prefix) which countries have at least one BLACKPINK/member entry
+// currently charting for the active chart type, so the dropdown itself shows
+// where there's something to see before you even pick a country.
+async function refreshChartCountryHighlights() {
+  try {
+    const r = await fetch(`/api/proxy-image?charts=countries&chart_type=${chartType}`);
+    if (!r.ok) return;
+    const data = await r.json();
+    const withEntries = new Set(data.countries || []);
+    document.querySelectorAll('#ch-country-select option').forEach(opt => {
+      const base = opt.textContent.replace(/^★ /, '');
+      opt.textContent = withEntries.has(opt.value) ? `★ ${base}` : base;
+      opt.style.color = withEntries.has(opt.value) ? 'var(--pink, #e91e8c)' : '';
+    });
+  } catch (e) { /* non-critical -- dropdown just stays unmarked */ }
 }
 
 function fmtChartMovement(row) {

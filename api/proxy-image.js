@@ -404,6 +404,31 @@ export default async function handler(req, res) {
     return res.status(200).json({ chartType, country, trackingDate: latest.tracking_date, rows });
   }
 
+  // ── GET ?charts=countries&chart_type=daily|weekly ───────────────────────────
+  // Which countries have at least one BLACKPINK/member entry on the most
+  // recent tracking_date for this chart type -- powers the "currently
+  // charting" highlight in the Charts page's country dropdown.
+  if (req.query.charts === 'countries') {
+    const chartType = req.query.chart_type === 'weekly' ? 'weekly' : 'daily';
+
+    const latestRes = await sbFetch(
+      `/chart_positions?chart_type=eq.${chartType}&select=tracking_date&order=tracking_date.desc&limit=1`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!latestRes.ok) return res.status(502).json({ error: 'Supabase query failed' });
+    const [latest] = await latestRes.json();
+    if (!latest) return res.status(200).json({ chartType, trackingDate: null, countries: [] });
+
+    const rowsRes = await sbFetch(
+      `/chart_positions?chart_type=eq.${chartType}&tracking_date=eq.${latest.tracking_date}&select=country`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!rowsRes.ok) return res.status(502).json({ error: 'Supabase query failed' });
+    const rows = await rowsRes.json();
+    const countries = [...new Set(rows.map(r => r.country))];
+    return res.status(200).json({ chartType, trackingDate: latest.tracking_date, countries });
+  }
+
   // ── GET ?charts=fetch-artists (cron/admin trigger) ──────────────────────────
   // Fetches REAL per-country/global Spotify "Top Artists" chart positions
   // (official charts.spotify.com data) for BLACKPINK + members and stores them.
