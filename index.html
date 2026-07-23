@@ -6995,10 +6995,20 @@ function renderJennieSaveCount(count) {
   const fillEl = document.getElementById('jennie-release-goal-fill');
   if (!wrap || count <= 0) return;
   wrap.style.display = 'flex';
-  const pct = Math.min(100, (count / JENNIE_SAVE_GOAL) * 100);
-  fillEl.style.width = pct + '%';
-  numsEl.innerHTML = count >= JENNIE_SAVE_GOAL
-    ? '🎉 GOAL REACHED!'
+
+  // Once the original goal is passed, keep raising the bar in the same-size
+  // steps rather than freezing on "GOAL REACHED!" -- the count itself never
+  // stops climbing server-side, so the display shouldn't stop moving either.
+  const milestonesPassed = Math.floor(count / JENNIE_SAVE_GOAL);
+  const currentMilestone = milestonesPassed * JENNIE_SAVE_GOAL;
+  const nextMilestone = currentMilestone + JENNIE_SAVE_GOAL;
+  const pct = milestonesPassed > 0
+    ? ((count - currentMilestone) / JENNIE_SAVE_GOAL) * 100
+    : (count / JENNIE_SAVE_GOAL) * 100;
+  fillEl.style.width = Math.min(100, pct) + '%';
+
+  numsEl.innerHTML = milestonesPassed > 0
+    ? `🎉 ${currentMilestone.toLocaleString()} reached — ${count.toLocaleString()}<span> / ${nextMilestone.toLocaleString()} pre-saves</span>`
     : `${count.toLocaleString()}<span> / ${JENNIE_SAVE_GOAL.toLocaleString()} pre-saves</span>`;
 }
 
