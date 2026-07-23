@@ -121,6 +121,49 @@ async function fetchSpotifyArtworkUrl(trackId) {
   return null;
 }
 
+// ── Official Spotify "Top Artists" charts (charts.spotify.com) ─────────────
+// This calls charts-spotify-com-service.spotify.com, which Spotify's anti-bot
+// layer blocks from GitHub Actions IP ranges but not Vercel's -- hence this
+// lives here rather than in a .github/scripts fetch job. Needs a real
+// account's long-lived `sp_dc` session cookie (SPOTIFY_SP_DC env var) to mint
+// a non-anonymous access token; a plain anonymous token (like getSpotifyToken()
+// above returns) is not accepted by this particular service.
+const CHARTS_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+
+const CHARTS_TRACKED_ARTISTS = {
+  '41MozSoPIsD1dJM0CLPjZF': 'BLACKPINK',
+  '6UZ0ba50XreR4TM8u322gs': 'JISOO',
+  '250b0Wlc5Vk0CoUsaCY84M': 'JENNIE',
+  '3eVa5w3URK5duf6eyVDbu9': 'ROSÉ',
+  '5L1lO4eRHmJ7a0Q6csE5cT': 'LISA',
+};
+
+async function getChartsAuthToken() {
+  const spDc = process.env.SPOTIFY_SP_DC;
+  if (!spDc) throw new Error('SPOTIFY_SP_DC not set');
+  const r = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', {
+    headers: { 'User-Agent': CHARTS_UA, Cookie: `sp_dc=${spDc}` },
+  });
+  if (!r.ok) {
+    const body = await r.text();
+    throw new Error(`token mint failed: HTTP ${r.status} -- ${body.slice(0, 200)}`);
+  }
+  const d = await r.json();
+  if (d.isAnonymous !== false) throw new Error('sp_dc cookie did not authenticate a real account (isAnonymous truthy)');
+  if (!d.accessToken) throw new Error('no accessToken in token response');
+  return d.accessToken;
+}
+
+async function fetchOfficialArtistChart(token, chartType, country) {
+  const alias = `artist-${country.toLowerCase()}-${chartType}`;
+  const r = await fetch(`https://charts-spotify-com-service.spotify.com/auth/v0/charts/${alias}/latest`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'App-Platform': 'Browser', 'User-Agent': CHARTS_UA },
+  });
+  if (!r.ok) return { ok: false, status: r.status, alias };
+  const data = await r.json();
+  return { ok: true, alias, data };
+}
+
 async function storeGlobalSnapshot(date, jumpTotal, shutdownTotal, ddududuTotal) {
   const prevRes = await sbFetch(
     `/global_stream_snapshots?date=lt.${date}&order=date.desc&limit=1&select=jump_total,shutdown_total,ddududu_total`,
@@ -330,6 +373,152 @@ export default async function handler(req, res) {
       .sort((a, b) => (b.streams || 0) - (a.streams || 0));
 
     return res.status(200).json({ ...artistRows[0], history, tracks });
+  }
+
+  // ── GET ?charts=list&chart_type=daily|weekly&country=GLOBAL&limit=50 ───────
+  // Real per-country Spotify chart positions (BLACKPINK + members), sourced
+  // from kworb.net's official-chart mirror via fetch_chart_positions.mjs --
+  // NOT our own tracked-catalog streams-gained ranking.
+  if (req.query.charts === 'list') {
+    const chartType = req.query.chart_type === 'weekly' ? 'weekly' : 'daily';
+    const country = (req.query.country || 'GLOBAL').toUpperCase();
+    const limit = Math.min(Number(req.query.limit ?? 50), 200);
+
+    const latestRes = await sbFetch(
+      `/chart_positions?chart_type=eq.${chartType}&country=eq.${country}&select=tracking_date&order=tracking_date.desc&limit=1`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!latestRes.ok) return res.status(502).json({ error: 'Supabase query failed' });
+    const [latest] = await latestRes.json();
+    if (!latest) return res.status(200).json({ chartType, country, trackingDate: null, rows: [] });
+
+    const rowsRes = await sbFetch(
+      `/chart_positions?chart_type=eq.${chartType}&country=eq.${country}&tracking_date=eq.${latest.tracking_date}` +
+      `&select=spotify_track_id,track_name,primary_artist_name,featured_artists,position,peak_position,` +
+      `days_on_chart,streams,streams_change,total_streams,previous_position,position_change,entry_status` +
+      `&order=position.asc&limit=${limit}`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!rowsRes.ok) return res.status(502).json({ error: 'Supabase query failed' });
+    const rows = await rowsRes.json();
+    return res.status(200).json({ chartType, country, trackingDate: latest.tracking_date, rows });
+  }
+
+  // ── GET ?charts=countries&chart_type=daily|weekly ───────────────────────────
+  // Which countries have at least one BLACKPINK/member entry on the most
+  // recent tracking_date for this chart type -- powers the "currently
+  // charting" highlight in the Charts page's country dropdown.
+  if (req.query.charts === 'countries') {
+    const chartType = req.query.chart_type === 'weekly' ? 'weekly' : 'daily';
+
+    const latestRes = await sbFetch(
+      `/chart_positions?chart_type=eq.${chartType}&select=tracking_date&order=tracking_date.desc&limit=1`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!latestRes.ok) return res.status(502).json({ error: 'Supabase query failed' });
+    const [latest] = await latestRes.json();
+    if (!latest) return res.status(200).json({ chartType, trackingDate: null, countries: [] });
+
+    const rowsRes = await sbFetch(
+      `/chart_positions?chart_type=eq.${chartType}&tracking_date=eq.${latest.tracking_date}&select=country`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!rowsRes.ok) return res.status(502).json({ error: 'Supabase query failed' });
+    const rows = await rowsRes.json();
+    const countries = [...new Set(rows.map(r => r.country))];
+    return res.status(200).json({ chartType, trackingDate: latest.tracking_date, countries });
+  }
+
+  // ── GET ?charts=fetch-artists (cron/admin trigger) ──────────────────────────
+  // Fetches REAL per-country/global Spotify "Top Artists" chart positions
+  // (official charts.spotify.com data) for BLACKPINK + members and stores them.
+  // Runs here (Vercel), not GitHub Actions, because Spotify's anti-bot layer
+  // blocks GitHub Actions' IP ranges but not Vercel's.
+  if (req.query.charts === 'fetch-artists') {
+    const cronSecret = process.env.CRON_SECRET;
+    const adminSecret = process.env.ADMIN_SECRET;
+    const bearer = req.headers.authorization === `Bearer ${cronSecret}` && cronSecret;
+    const adminKey = (req.headers['x-admin-secret'] || req.query.key) === adminSecret && adminSecret;
+    if (!bearer && !adminKey) return res.status(401).json({ error: 'Unauthorized' });
+
+    const CHART_COUNTRIES = ['global', 'us', 'gb', 'kr', 'fr', 'de', 'br', 'mx', 'jp', 'au', 'ca'];
+    const today = new Date().toISOString().slice(0, 10);
+
+    try {
+      const token = await getChartsAuthToken();
+      const upsertRows = [];
+      const skipped = [];
+
+      for (const chartType of ['daily', 'weekly']) {
+        for (const country of CHART_COUNTRIES) {
+          const result = await fetchOfficialArtistChart(token, chartType, country);
+          if (!result.ok) { skipped.push({ chartType, country, status: result.status }); continue; }
+
+          const entries = result.data?.displayChart?.entries ?? [];
+          for (const entry of entries) {
+            const uri = entry.artistMetadata?.artistUri || '';
+            const artistId = uri.startsWith('spotify:artist:') ? uri.slice('spotify:artist:'.length) : null;
+            if (!artistId || !CHARTS_TRACKED_ARTISTS[artistId]) continue;
+
+            const d = entry.chartEntryData;
+            upsertRows.push({
+              artist_spotify_id: artistId,
+              artist_name: CHARTS_TRACKED_ARTISTS[artistId],
+              country: country.toUpperCase(),
+              chart_type: chartType,
+              tracking_date: today,
+              current_rank: d.currentRank,
+              previous_rank: d.previousRank ?? null,
+              peak_rank: d.peakRank ?? null,
+              streak: d.appearancesOnChart ?? null,
+              entry_status: d.entryStatus ?? null,
+              entry_date: d.entryDate ?? null,
+              peak_date: d.peakDate ?? null,
+              image_url: entry.artistMetadata?.displayImageUri ?? null,
+            });
+          }
+        }
+      }
+
+      if (upsertRows.length) {
+        const upsertRes = await sbFetch('/artist_chart_positions?on_conflict=artist_spotify_id,country,chart_type,tracking_date', {
+          method: 'POST',
+          headers: { Prefer: 'resolution=merge-duplicates' },
+          body: JSON.stringify(upsertRows),
+        });
+        if (!upsertRes.ok) return res.status(502).json({ error: `Supabase upsert failed: ${await upsertRes.text()}` });
+      }
+
+      return res.status(200).json({ ok: true, date: today, upserted: upsertRows.length, skipped });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // ── GET ?charts=list-artists&chart_type=daily|weekly&country=GLOBAL ────────
+  // Real per-country/global Spotify Top Artists chart positions (BLACKPINK +
+  // members), sourced from the official charts.spotify.com data above.
+  if (req.query.charts === 'list-artists') {
+    const chartType = req.query.chart_type === 'weekly' ? 'weekly' : 'daily';
+    const country = (req.query.country || 'GLOBAL').toUpperCase();
+
+    const latestRes = await sbFetch(
+      `/artist_chart_positions?chart_type=eq.${chartType}&country=eq.${country}&select=tracking_date&order=tracking_date.desc&limit=1`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!latestRes.ok) return res.status(502).json({ error: 'Supabase query failed' });
+    const [latest] = await latestRes.json();
+    if (!latest) return res.status(200).json({ chartType, country, trackingDate: null, rows: [] });
+
+    const rowsRes = await sbFetch(
+      `/artist_chart_positions?chart_type=eq.${chartType}&country=eq.${country}&tracking_date=eq.${latest.tracking_date}` +
+      `&select=artist_spotify_id,artist_name,current_rank,previous_rank,peak_rank,streak,entry_status,entry_date,peak_date,image_url` +
+      `&order=current_rank.asc`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!rowsRes.ok) return res.status(502).json({ error: 'Supabase query failed' });
+    const rows = await rowsRes.json();
+    return res.status(200).json({ chartType, country, trackingDate: latest.tracking_date, rows });
   }
 
   // ── GET ?artist_streams=csv[&scope=tracks] (admin) — daily history CSV ─────

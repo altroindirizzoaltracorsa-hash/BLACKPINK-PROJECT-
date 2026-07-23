@@ -1012,6 +1012,21 @@
     padding: 0.9rem 1.2rem;
     background: linear-gradient(135deg, rgba(255,0,102,0.1), rgba(255,0,102,0.02) 65%), var(--card2);
   }
+
+  /* Charts page */
+  .ch-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.8rem; margin-bottom: 1.4rem; }
+  .ch-tabs { display: flex; gap: 0.5rem; }
+  .ch-country-select {
+    background: var(--card2); color: var(--white); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.55rem 0.9rem; font-family: var(--mono); font-size: 0.8rem;
+    letter-spacing: 0.03em; cursor: pointer;
+  }
+  .ch-meta { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; margin-bottom: 1rem; }
+  .ch-artist { font-size: 0.72rem; color: #FF6FA8; letter-spacing: 0.03em; margin-top: 0.15rem; }
+  .ch-featured { color: var(--muted); }
+  .ch-status { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.03em; white-space: nowrap; }
+  .ch-status-new { color: #ffd700; }
+  .ch-empty { padding: 2.5rem 1rem; text-align: center; color: var(--muted); font-size: 0.85rem; }
   @media (max-width: 500px) {
     /* Nav: shrink logo so logo+install+hamburger aren't cramped */
     .nav-logo { font-size: 1rem; letter-spacing: 0.14em; }
@@ -1506,6 +1521,7 @@
     <li><a href="/badges" onclick="goToMyBadges(); closeMobileNav(); return false;" id="nav-badges">My Badges</a></li>
     <li><a href="/leaderboard" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
     <li><a href="/streams" onclick="showPage('streams'); closeMobileNav(); return false;" id="nav-streams">Streams</a></li>
+    <li><a href="/charts" onclick="showPage('charts'); closeMobileNav(); return false;" id="nav-charts">Charts</a></li>
     <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
     <li><a href="/feedback" onclick="showPage('feedback'); closeMobileNav(); return false;" id="nav-feedback">Feedback</a></li>
     <li><a href="#follow" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100); return false;">Follow</a></li>
@@ -2239,6 +2255,120 @@
 
   </div>
 </div><!-- end artist streams page -->
+
+<!-- ══════════════════════════════════════
+     CHARTS PAGE
+════════════════════════════════════════ -->
+<div id="page-charts" class="page">
+  <div class="as-page">
+
+    <div class="as-header">
+      <svg class="as-gem" viewBox="-1 -1 52 45" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M25,8 C25,3 21,0 16,0 C8,0 2,6 2,14 C2,26 14,34 25,42 C36,34 48,26 48,14 C48,6 42,0 34,0 C29,0 25,3 25,8Z"/><line x1="25" y1="8" x2="25" y2="42"/><line x1="3" y1="22" x2="25" y2="22"/></svg>
+      <p class="as-eyebrow">Spotify Charts</p>
+      <h1 class="as-title">BLACKPINK<br><span>ON THE CHARTS</span></h1>
+      <p class="as-sub">Real Spotify Top 200 chart positions — BLACKPINK + members</p>
+    </div>
+
+    <div class="as-inner">
+      <div class="ch-controls">
+        <div class="ch-tabs">
+          <button class="lb-tab active" data-chart-type="daily" onclick="setChartType('daily', this)">Daily</button>
+          <button class="lb-tab" data-chart-type="weekly" onclick="setChartType('weekly', this)">Weekly</button>
+        </div>
+        <select class="ch-country-select" id="ch-country-select" onchange="setChartCountry(this.value)">
+          <option value="GLOBAL">🌐 Global</option>
+          <option value="AR">🇦🇷 Argentina</option>
+          <option value="AU">🇦🇺 Australia</option>
+          <option value="AT">🇦🇹 Austria</option>
+          <option value="BY">🇧🇾 Belarus</option>
+          <option value="BE">🇧🇪 Belgium</option>
+          <option value="BO">🇧🇴 Bolivia</option>
+          <option value="BR">🇧🇷 Brazil</option>
+          <option value="BG">🇧🇬 Bulgaria</option>
+          <option value="CA">🇨🇦 Canada</option>
+          <option value="CL">🇨🇱 Chile</option>
+          <option value="CO">🇨🇴 Colombia</option>
+          <option value="CR">🇨🇷 Costa Rica</option>
+          <option value="CY">🇨🇾 Cyprus</option>
+          <option value="CZ">🇨🇿 Czechia</option>
+          <option value="DK">🇩🇰 Denmark</option>
+          <option value="DO">🇩🇴 Dominican Republic</option>
+          <option value="EC">🇪🇨 Ecuador</option>
+          <option value="EG">🇪🇬 Egypt</option>
+          <option value="SV">🇸🇻 El Salvador</option>
+          <option value="EE">🇪🇪 Estonia</option>
+          <option value="FI">🇫🇮 Finland</option>
+          <option value="FR">🇫🇷 France</option>
+          <option value="DE">🇩🇪 Germany</option>
+          <option value="GR">🇬🇷 Greece</option>
+          <option value="GT">🇬🇹 Guatemala</option>
+          <option value="HN">🇭🇳 Honduras</option>
+          <option value="HK">🇭🇰 Hong Kong</option>
+          <option value="HU">🇭🇺 Hungary</option>
+          <option value="IS">🇮🇸 Iceland</option>
+          <option value="IN">🇮🇳 India</option>
+          <option value="ID">🇮🇩 Indonesia</option>
+          <option value="IE">🇮🇪 Ireland</option>
+          <option value="IL">🇮🇱 Israel</option>
+          <option value="IT">🇮🇹 Italy</option>
+          <option value="JP">🇯🇵 Japan</option>
+          <option value="KZ">🇰🇿 Kazakhstan</option>
+          <option value="LV">🇱🇻 Latvia</option>
+          <option value="LT">🇱🇹 Lithuania</option>
+          <option value="LU">🇱🇺 Luxembourg</option>
+          <option value="MY">🇲🇾 Malaysia</option>
+          <option value="MX">🇲🇽 Mexico</option>
+          <option value="MA">🇲🇦 Morocco</option>
+          <option value="NL">🇳🇱 Netherlands</option>
+          <option value="NZ">🇳🇿 New Zealand</option>
+          <option value="NI">🇳🇮 Nicaragua</option>
+          <option value="NG">🇳🇬 Nigeria</option>
+          <option value="NO">🇳🇴 Norway</option>
+          <option value="PK">🇵🇰 Pakistan</option>
+          <option value="PA">🇵🇦 Panama</option>
+          <option value="PY">🇵🇾 Paraguay</option>
+          <option value="PE">🇵🇪 Peru</option>
+          <option value="PH">🇵🇭 Philippines</option>
+          <option value="PL">🇵🇱 Poland</option>
+          <option value="PT">🇵🇹 Portugal</option>
+          <option value="RO">🇷🇴 Romania</option>
+          <option value="SA">🇸🇦 Saudi Arabia</option>
+          <option value="SG">🇸🇬 Singapore</option>
+          <option value="SK">🇸🇰 Slovakia</option>
+          <option value="ZA">🇿🇦 South Africa</option>
+          <option value="KR">🇰🇷 South Korea</option>
+          <option value="ES">🇪🇸 Spain</option>
+          <option value="SE">🇸🇪 Sweden</option>
+          <option value="CH">🇨🇭 Switzerland</option>
+          <option value="TW">🇹🇼 Taiwan</option>
+          <option value="TH">🇹🇭 Thailand</option>
+          <option value="TR">🇹🇷 Turkey</option>
+          <option value="AE">🇦🇪 United Arab Emirates</option>
+          <option value="UA">🇺🇦 Ukraine</option>
+          <option value="GB">🇬🇧 United Kingdom</option>
+          <option value="UY">🇺🇾 Uruguay</option>
+          <option value="US">🇺🇸 United States</option>
+          <option value="VE">🇻🇪 Venezuela</option>
+          <option value="VN">🇻🇳 Vietnam</option>
+        </select>
+      </div>
+
+      <div id="ch-meta" class="ch-meta"></div>
+
+      <div id="ch-loading" class="lb-loading">Loading…</div>
+      <div id="ch-error" class="as-error" style="display:none;"></div>
+      <div id="ch-empty" class="ch-empty" style="display:none;">No BLACKPINK/member tracks currently charting in this region.</div>
+
+      <div class="as-table-wrap as-tracks-wrap" id="ch-table-wrap" style="display:none;">
+        <table class="as-table as-tracks-table">
+          <thead><tr><th class="as-rank-col"></th><th>Track</th><th class="right">Streams</th><th class="right">Peak / On Chart</th><th class="right">Movement</th></tr></thead>
+          <tbody id="ch-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div><!-- end charts page -->
 
 <!-- ══════════════════════════════════════
      VOTE PAGE
@@ -3076,7 +3206,7 @@ function closeMobileNav() {
   document.getElementById('nav-hamburger').classList.remove('open');
 }
 
-const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams' };
+const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', charts: '/charts' };
 
 // Mirrors the per-route <title> the Vercel edge middleware sets on first
 // load, so client-side navigation keeps the tab title in sync too.
@@ -3088,6 +3218,7 @@ const PAGE_TITLES = {
   feedback: 'Feedback | BLINKS UNITED',
   account: 'My Account | BLINKS UNITED',
   streams: 'BLACKPINK Spotify Streams | BLINKS UNITED',
+  charts: 'BLACKPINK Spotify Charts | BLINKS UNITED',
 };
 
 function pathToPage(pathname) {
@@ -3265,6 +3396,107 @@ function toggleArtistTrackGrouping(btn) {
   renderArtistTracks();
 }
 
+// ── Charts page ───────────────────────────────────────────────────────────
+// Real per-country Spotify Top 200 chart positions (BLACKPINK + members),
+// sourced from kworb.net's official-chart mirror -- not our own tracked-
+// catalog streams-gained ranking. See fetch_chart_positions.mjs.
+let chartType = 'daily';
+let chartCountry = 'GLOBAL';
+
+function loadChartsPage() {
+  fetchAndRenderCharts();
+  refreshChartCountryHighlights();
+}
+
+function setChartType(type, btn) {
+  chartType = type;
+  document.querySelectorAll('.ch-tabs .lb-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  fetchAndRenderCharts();
+  refreshChartCountryHighlights();
+}
+
+function setChartCountry(country) {
+  chartCountry = country;
+  fetchAndRenderCharts();
+}
+
+// Marks (★ prefix) which countries have at least one BLACKPINK/member entry
+// currently charting for the active chart type, so the dropdown itself shows
+// where there's something to see before you even pick a country.
+async function refreshChartCountryHighlights() {
+  try {
+    const r = await fetch(`/api/proxy-image?charts=countries&chart_type=${chartType}`);
+    if (!r.ok) return;
+    const data = await r.json();
+    const withEntries = new Set(data.countries || []);
+    document.querySelectorAll('#ch-country-select option').forEach(opt => {
+      const base = opt.textContent.replace(/^★ /, '');
+      opt.textContent = withEntries.has(opt.value) ? `★ ${base}` : base;
+      opt.style.color = withEntries.has(opt.value) ? 'var(--pink, #e91e8c)' : '';
+    });
+  } catch (e) { /* non-critical -- dropdown just stays unmarked */ }
+}
+
+function fmtChartMovement(row) {
+  if (row.entry_status === 'NEW') return `<span class="ch-status ch-status-new">NEW</span>`;
+  if (row.entry_status === 'RE-ENTRY') return `<span class="ch-status ch-status-new">RE-ENTRY</span>`;
+  if (row.position_change > 0) return `<span class="ch-status as-delta-up">▲ ${row.position_change}</span>`;
+  if (row.position_change < 0) return `<span class="ch-status as-delta-down">▼ ${Math.abs(row.position_change)}</span>`;
+  return `<span class="ch-status">—</span>`;
+}
+
+async function fetchAndRenderCharts() {
+  const loading = document.getElementById('ch-loading');
+  const errorEl = document.getElementById('ch-error');
+  const emptyEl = document.getElementById('ch-empty');
+  const tableWrap = document.getElementById('ch-table-wrap');
+  const meta = document.getElementById('ch-meta');
+  loading.style.display = 'block';
+  errorEl.style.display = 'none';
+  emptyEl.style.display = 'none';
+  tableWrap.style.display = 'none';
+  meta.textContent = '';
+
+  try {
+    const r = await fetch(`/api/proxy-image?charts=list&chart_type=${chartType}&country=${chartCountry}&limit=50`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    const rows = data.rows || [];
+    loading.style.display = 'none';
+
+    if (!rows.length) {
+      emptyEl.style.display = 'block';
+      return;
+    }
+
+    const onChartLabel = chartType === 'weekly' ? 'wks' : 'days';
+    meta.textContent = data.trackingDate ? `As of ${fmtDate(data.trackingDate)} · ${rows.length} entr${rows.length === 1 ? 'y' : 'ies'} charting` : '';
+
+    document.getElementById('ch-body').innerHTML = rows.map(row => `
+      <tr>
+        <td class="as-rank">${row.position}</td>
+        <td>
+          <div class="as-track-name">${row.track_name}</div>
+          <div class="ch-artist">${row.primary_artist_name}${row.featured_artists && row.featured_artists.length ? ` <span class="ch-featured">· w/ ${row.featured_artists.join(', ')}</span>` : ''}</div>
+        </td>
+        <td class="right">
+          <div class="as-track-daily-num">${fmtNum(row.streams)}</div>
+          ${row.streams_change != null ? `<div class="as-track-trend">${fmtDelta(row.streams_change)} streams</div>` : ''}
+        </td>
+        <td class="right as-track-sub">Peak #${fmtNum(row.peak_position)} · ${fmtNum(row.days_on_chart)} ${onChartLabel}</td>
+        <td class="right">${fmtChartMovement(row)}</td>
+      </tr>
+    `).join('');
+    tableWrap.style.display = 'block';
+  } catch (e) {
+    loading.style.display = 'none';
+    errorEl.textContent = `Couldn't load charts (${e.message}).`;
+    errorEl.style.display = 'block';
+  }
+}
+
 function trackRowHtml(t, showRank) {
   const trend = fmtTrend(t.daily_delta, t.prev_daily_delta);
   return `
@@ -3349,6 +3581,7 @@ function showPage(page, { replace = false } = {}) {
   }
   if (page === 'badges') { tryAutoLoad(); renderSpecialBadges(); }
   if (page === 'streams') loadArtistStreamsPage();
+  if (page === 'charts') loadChartsPage();
   if (page === 'leaderboard') {
     if (!acctBreakdown) tryAutoLoad(); // pre-load per-service data so own-row breakdown works
     const pending = parseLbHistoryParam();
