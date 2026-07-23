@@ -8941,7 +8941,10 @@ function drawArtistCard(canvas, data, logo, art, artistName) {
     const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
     const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
     if (landscape) {
-      ctx.drawImage(art, (W - iw) / 2, 0, iw, ih);
+      // Center vertically (not top-anchored) -- artist avatars are usually
+      // near-square and get scaled well past the card's height to cover its
+      // width, so top-anchoring cropped off the lower half of the face.
+      ctx.drawImage(art, (W - iw) / 2, (H - ih) / 2, iw, ih);
       const gr = ctx.createLinearGradient(0, 0, 0, H);
       gr.addColorStop(0,    'rgba(8,8,8,0)');
       gr.addColorStop(0.40, 'rgba(8,8,8,0)');
