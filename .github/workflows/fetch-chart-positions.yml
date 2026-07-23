@@ -1,0 +1,23 @@
+name: Chart Positions Tracker
+
+# Fetches real per-country Spotify chart positions for BLACKPINK + members
+# from kworb.net's daily Top 200 mirror. Manual-only for now while the
+# Charts feature is being previewed -- add a `schedule:` cron once it ships.
+on:
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch and store chart positions
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node .github/scripts/fetch_chart_positions.mjs
