@@ -31,8 +31,8 @@ const REGIONS = ['global', 'us', 'gb', 'kr', 'fr', 'de', 'br', 'mx', 'jp', 'au',
 // "days_on_chart" holds Days for daily rows and Wks (weeks on chart) for weekly rows -- different units,
 // the API/frontend should show the right label based on chart_type.
 const CHART_TYPES = {
-  daily: { suffix: 'daily', cellCount: 11, idx: { pos: 0, title: 2, onChart: 3, peak: 4, streams: 6, total: 10 } },
-  weekly: { suffix: 'weekly', cellCount: 9, idx: { pos: 0, title: 2, onChart: 3, peak: 4, streams: 6, total: 8 } },
+  daily: { suffix: 'daily', cellCount: 11, idx: { pos: 0, title: 2, onChart: 3, peak: 4, streams: 6, streamsChange: 7, total: 10 } },
+  weekly: { suffix: 'weekly', cellCount: 9, idx: { pos: 0, title: 2, onChart: 3, peak: 4, streams: 6, streamsChange: 7, total: 8 } },
 };
 
 async function sb(path, opts = {}) {
@@ -97,6 +97,7 @@ function parseRows(html, chartType) {
       peak_position: parseNumber(cells[idx.peak].replace(/<[^>]+>/g, '')),
       days_on_chart: parseNumber(cells[idx.onChart].replace(/<[^>]+>/g, '')),
       streams: parseNumber(cells[idx.streams].replace(/<[^>]+>/g, '')),
+      streams_change: parseNumber(cells[idx.streamsChange].replace(/<[^>]+>/g, '')),
       total_streams: parseNumber(cells[idx.total].replace(/<[^>]+>/g, '')),
     });
   }
@@ -127,7 +128,9 @@ async function main() {
   console.log(`\nTotal matched rows across ${REGIONS.length} regions x ${Object.keys(CHART_TYPES).length} chart types: ${allRows.length}`);
   if (!allRows.length) { console.log('Nothing to upsert.'); return; }
 
-  // Pull our own most recent prior snapshot per (track, country, chart_type) to compute movement ourselves.
+  // Pull our FULL prior history per (track, country, chart_type) -- not just the most
+  // recent row -- so we can tell a true chart debut (NEW, never seen before) apart from
+  // a RE-ENTRY (charted before, absent from our most recent prior fetch, now back).
   const trackIds = [...new Set(allRows.map(r => r.spotify_track_id))];
   const countries = [...new Set(allRows.map(r => r.country))];
   const priorRows = await sb(
@@ -138,13 +141,36 @@ async function main() {
     const key = `${r.spotify_track_id}::${r.country}::${r.chart_type}`;
     if (!(key in priorByKey)) priorByKey[key] = r; // first (most recent) wins
   }
+  // Date of our own most recent prior fetch run, per (country, chart_type) -- the
+  // "was this track present last time we checked" reference point, independent of
+  // whether our cron actually ran on a strictly daily/weekly cadence.
+  const lastRunDateByGroup = {};
+  for (const r of priorRows) {
+    const groupKey = `${r.country}::${r.chart_type}`;
+    if (!lastRunDateByGroup[groupKey] || r.tracking_date > lastRunDateByGroup[groupKey]) {
+      lastRunDateByGroup[groupKey] = r.tracking_date;
+    }
+  }
 
   const upsertRows = allRows.map(row => {
     const key = `${row.spotify_track_id}::${row.country}::${row.chart_type}`;
     const prior = priorByKey[key];
-    const previous_position = prior ? prior.position : null;
-    const position_change = previous_position != null ? previous_position - row.position : null;
-    const entry_status = previous_position == null ? 'NEW' : position_change > 0 ? 'MOVED_UP' : position_change < 0 ? 'MOVED_DOWN' : 'NO_CHANGE';
+    const lastRunDate = lastRunDateByGroup[`${row.country}::${row.chart_type}`];
+
+    let previous_position = null;
+    let position_change = null;
+    let entry_status;
+    if (!prior) {
+      entry_status = 'NEW'; // never charted before, in our records
+    } else if (prior.tracking_date === lastRunDate) {
+      // Present in our most recent prior fetch too -- continuing streak, show movement.
+      previous_position = prior.position;
+      position_change = previous_position - row.position;
+      entry_status = position_change > 0 ? 'MOVED_UP' : position_change < 0 ? 'MOVED_DOWN' : 'NO_CHANGE';
+    } else {
+      // Charted before, but was missing from our most recent prior fetch -- came back.
+      entry_status = 'RE-ENTRY';
+    }
     return { ...row, tracking_date: today, previous_position, position_change, entry_status };
   });
 
@@ -156,7 +182,9 @@ async function main() {
 
   console.log(`\nUpserted ${upsertRows.length} rows for ${today}.`);
   for (const row of upsertRows) {
-    console.log(`  [${row.chart_type}/${row.country}] #${row.position} (${row.entry_status}${row.position_change ? ' ' + (row.position_change > 0 ? '+' : '') + row.position_change : ''}) ${row.primary_artist_name} - ${row.track_name}`);
+    const posMove = row.position_change ? ' ' + (row.position_change > 0 ? '+' : '') + row.position_change : '';
+    const streamsMove = row.streams_change != null ? ` streams ${row.streams_change > 0 ? '+' : ''}${row.streams_change.toLocaleString()}` : '';
+    console.log(`  [${row.chart_type}/${row.country}] #${row.position} (${row.entry_status}${posMove}${streamsMove}) ${row.primary_artist_name} - ${row.track_name}`);
   }
 }
 

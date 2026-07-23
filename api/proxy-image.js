@@ -352,7 +352,7 @@ export default async function handler(req, res) {
     const rowsRes = await sbFetch(
       `/chart_positions?chart_type=eq.${chartType}&country=eq.${country}&tracking_date=eq.${latest.tracking_date}` +
       `&select=spotify_track_id,track_name,primary_artist_name,featured_artists,position,peak_position,` +
-      `days_on_chart,streams,total_streams,previous_position,position_change,entry_status` +
+      `days_on_chart,streams,streams_change,total_streams,previous_position,position_change,entry_status` +
       `&order=position.asc&limit=${limit}`,
       { headers: { Accept: 'application/json' } },
     );

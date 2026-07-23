@@ -3358,6 +3358,7 @@ function setChartCountry(country) {
 
 function fmtChartMovement(row) {
   if (row.entry_status === 'NEW') return `<span class="ch-status ch-status-new">NEW</span>`;
+  if (row.entry_status === 'RE-ENTRY') return `<span class="ch-status ch-status-new">RE-ENTRY</span>`;
   if (row.position_change > 0) return `<span class="ch-status as-delta-up">▲ ${row.position_change}</span>`;
   if (row.position_change < 0) return `<span class="ch-status as-delta-down">▼ ${Math.abs(row.position_change)}</span>`;
   return `<span class="ch-status">—</span>`;
@@ -3398,7 +3399,10 @@ async function fetchAndRenderCharts() {
           <div class="as-track-name">${row.track_name}</div>
           <div class="ch-artist">${row.primary_artist_name}${row.featured_artists && row.featured_artists.length ? ` <span class="ch-featured">· w/ ${row.featured_artists.join(', ')}</span>` : ''}</div>
         </td>
-        <td class="right as-track-daily-num">${fmtNum(row.streams)}</td>
+        <td class="right">
+          <div class="as-track-daily-num">${fmtNum(row.streams)}</div>
+          ${row.streams_change != null ? `<div class="as-track-trend">${fmtDelta(row.streams_change)} streams</div>` : ''}
+        </td>
         <td class="right as-track-sub">Peak #${fmtNum(row.peak_position)} · ${fmtNum(row.days_on_chart)} ${onChartLabel}</td>
         <td class="right">${fmtChartMovement(row)}</td>
       </tr>
