@@ -1,0 +1,27 @@
+name: Probe Spotify playlist
+
+# One-off, manual-only: checks whether a specific Spotify playlist (e.g. an
+# editorial "New Music Videos" playlist) is fetchable via the official
+# Client Credentials OAuth flow, ahead of deciding whether to build a
+# playlist-position tracking feature on it.
+# Safe to remove once the feature (if built) ships.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Probe Spotify playlist
+        env:
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          SPOTIFY_CLIENT_ID_2: ${{ secrets.SPOTIFY_CLIENT_ID_2 }}
+          SPOTIFY_CLIENT_SECRET_2: ${{ secrets.SPOTIFY_CLIENT_SECRET_2 }}
+        run: node .github/scripts/probe-spotify-playlist.mjs
