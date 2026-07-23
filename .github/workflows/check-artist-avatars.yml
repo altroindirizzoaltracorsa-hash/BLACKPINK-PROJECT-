@@ -1,0 +1,13 @@
+name: Check artist avatar URLs (production)
+
+# One-off diagnostic: curls the public, unauthenticated artist_streams=list
+# endpoint on production to confirm avatar_url values after a forced fetch.
+# Safe to remove any time.
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -sS "https://blinksunited.com/api/proxy-image?artist_streams=list" | python3 -m json.tool
