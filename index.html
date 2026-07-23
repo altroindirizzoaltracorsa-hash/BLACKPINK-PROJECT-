@@ -8928,6 +8928,22 @@ function drawCatalogCard(canvas, data, logo, art) {
   _markCardReady(canvas);
 }
 
+// Per-artist fine-tuning for the landscape share-card crop -- source photos
+// aren't all framed the same way, so a single center-crop doesn't fit every
+// artist's face the same. x/y are pixel nudges (at the 1200x675 card size)
+// applied on top of the centered position: positive x/y shift the photo
+// (and the face in it) right/down on the card. A cover-fit square photo has
+// zero horizontal slack to pan with, so any x nudge needs `zoom` (extra
+// scale beyond the minimum cover-fit) to create room to pan into.
+// anchorTop reverts fully to the old top-anchored crop for artists whose
+// photo was already better framed that way.
+const ARTIST_CARD_CROP = {
+  'ROSÉ':   { anchorTop: true },
+  'JISOO':  { x: 50, y: 100, zoom: 1.15 },
+  'LISA':   { x: 40, y: 50,  zoom: 1.15 },
+  'JENNIE': { x: 70, y: 0,   zoom: 1.15 },
+};
+
 function drawArtistCard(canvas, data, logo, art, artistName) {
   if (!data) return;
   const ctx = canvas.getContext('2d');
@@ -8938,13 +8954,16 @@ function drawArtistCard(canvas, data, logo, art, artistName) {
   ctx.fillRect(0, 0, W, H);
 
   if (art) {
-    const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
+    const crop = landscape ? (ARTIST_CARD_CROP[artistName] || {}) : {};
+    const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight) * (crop.zoom || 1);
     const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
     if (landscape) {
-      // Center vertically (not top-anchored) -- artist avatars are usually
-      // near-square and get scaled well past the card's height to cover its
-      // width, so top-anchoring cropped off the lower half of the face.
-      ctx.drawImage(art, (W - iw) / 2, (H - ih) / 2, iw, ih);
+      const baseX = (W - iw) / 2;
+      const baseY = crop.anchorTop ? 0 : (H - ih) / 2;
+      // Clamp so the nudge can't pull an empty edge into view.
+      const dx = Math.min(0, Math.max(W - iw, baseX + (crop.x || 0)));
+      const dy = Math.min(0, Math.max(H - ih, baseY + (crop.y || 0)));
+      ctx.drawImage(art, dx, dy, iw, ih);
       const gr = ctx.createLinearGradient(0, 0, 0, H);
       gr.addColorStop(0,    'rgba(8,8,8,0)');
       gr.addColorStop(0.40, 'rgba(8,8,8,0)');
