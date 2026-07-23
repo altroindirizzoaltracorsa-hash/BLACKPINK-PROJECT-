@@ -1,0 +1,22 @@
+name: Trigger Shazam probe on Vercel preview
+
+# One-off, manual-only: curls the Vercel PREVIEW deployment's ?shazam=probe
+# endpoint to verify Shazam's search/chart/count endpoints work from Vercel
+# with the real app HTTP fingerprint. Safe to remove once confirmed.
+on:
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: 'Vercel preview deployment base URL'
+        required: true
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call shazam=probe on the preview deployment
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          curl -sS -w "\nHTTP_STATUS:%{http_code}\n" \
+            "${{ github.event.inputs.preview_url }}/api/proxy-image?shazam=probe&key=${ADMIN_KEY}"
