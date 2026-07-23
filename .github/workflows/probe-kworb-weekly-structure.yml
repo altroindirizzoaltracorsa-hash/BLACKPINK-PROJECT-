@@ -1,0 +1,20 @@
+name: Probe kworb weekly structure
+
+# One-off, manual-only: checks kworb.net's weekly chart page structure ahead
+# of extending the Charts feature to cover weekly charts too.
+# Safe to remove once the Charts feature is built.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Probe kworb weekly structure
+        run: node .github/scripts/probe-kworb-weekly-structure.mjs
