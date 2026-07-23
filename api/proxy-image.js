@@ -144,7 +144,10 @@ async function getChartsAuthToken() {
   const r = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', {
     headers: { 'User-Agent': CHARTS_UA, Cookie: `sp_dc=${spDc}` },
   });
-  if (!r.ok) throw new Error(`token mint failed: HTTP ${r.status}`);
+  if (!r.ok) {
+    const body = await r.text();
+    throw new Error(`token mint failed: HTTP ${r.status} -- ${body.slice(0, 200)}`);
+  }
   const d = await r.json();
   if (d.isAnonymous !== false) throw new Error('sp_dc cookie did not authenticate a real account (isAnonymous truthy)');
   if (!d.accessToken) throw new Error('no accessToken in token response');
