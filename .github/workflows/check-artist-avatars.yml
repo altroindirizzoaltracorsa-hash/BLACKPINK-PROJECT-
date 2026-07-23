@@ -10,4 +10,4 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - run: curl -sS "https://blinksunited.com/api/proxy-image?artist_streams=list" | python3 -m json.tool
+      - run: curl -sS -w "\nHTTP_STATUS:%{http_code}\n" "https://blinksunited.com/api/proxy-image?artist_streams=list"
