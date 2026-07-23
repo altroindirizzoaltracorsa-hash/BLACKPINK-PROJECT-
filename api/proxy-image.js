@@ -579,6 +579,15 @@ export default async function handler(req, res) {
       out.playlistError = e.message;
     }
 
+    // Known-real track id from ShazamIO's own docs (Rampampam, 559284007) --
+    // tests the listening-counter endpoint in isolation, independent of
+    // whether search resolved anything above.
+    try {
+      out.knownCount = await shazamFetch('https://www.shazam.com/services/count/v2/web/track/559284007');
+    } catch (e) {
+      out.knownCountError = e.message;
+    }
+
     return res.status(200).json(out);
   }
 
