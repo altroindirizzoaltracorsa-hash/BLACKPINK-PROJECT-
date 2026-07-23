@@ -1,0 +1,21 @@
+name: Probe kworb country charts
+
+# One-off, manual-only: checks whether kworb.net's per-country Spotify
+# charts are reachable/parseable and whether BLACKPINK/members currently
+# appear in them, ahead of building a real regional Charts feature.
+# Safe to remove once the Charts feature is built.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Probe kworb country chart pages
+        run: node .github/scripts/probe-kworb-country-charts.mjs
