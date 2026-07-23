@@ -74,6 +74,41 @@ async function main() {
     }
   });
   if (!found) console.log('  none found in this playlist right now');
+
+  // Fallback: try the public playlist page + oEmbed, the same way
+  // fetchSpotifyArtworkUrl() falls back for tracks, in case the official
+  // Catalog API is blocking this specific (likely Spotify-owned editorial)
+  // playlist for third-party apps.
+  console.log('\n=== fallback: oEmbed ===');
+  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  try {
+    const oembedRes = await fetch(
+      `https://open.spotify.com/oembed?url=${encodeURIComponent(`https://open.spotify.com/playlist/${PLAYLIST_ID}`)}`,
+      { headers: { 'User-Agent': UA } },
+    );
+    console.log(`oembed status=${oembedRes.status}`);
+    console.log(await oembedRes.text());
+  } catch (e) {
+    console.log(`oembed error: ${e.message}`);
+  }
+
+  console.log('\n=== fallback: public playlist page HTML ===');
+  try {
+    const pageRes = await fetch(`https://open.spotify.com/playlist/${PLAYLIST_ID}`, { headers: { 'User-Agent': UA } });
+    console.log(`page status=${pageRes.status}`);
+    const html = await pageRes.text();
+    console.log(`page length=${html.length}`);
+    const titleMatch = html.match(/<title>([^<]+)<\/title>/);
+    console.log(`title: ${titleMatch ? titleMatch[1] : 'not found'}`);
+    // Look for embedded state JSON with track data
+    const hasResourceData = html.includes('Spotify.Entity');
+    console.log(`contains "Spotify.Entity": ${hasResourceData}`);
+    for (const name of Object.values(TRACKED_ARTISTS)) {
+      console.log(`  "${name}" appears in page HTML: ${html.includes(name)}`);
+    }
+  } catch (e) {
+    console.log(`page error: ${e.message}`);
+  }
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
