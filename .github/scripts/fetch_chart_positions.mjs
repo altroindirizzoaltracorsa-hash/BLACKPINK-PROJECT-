@@ -24,7 +24,20 @@ const TRACKED_ARTISTS = {
   '5L1lO4eRHmJ7a0Q6csE5cT': 'LISA',
 };
 
-const REGIONS = ['global', 'us', 'gb', 'kr', 'fr', 'de', 'br', 'mx', 'jp', 'au', 'ca'];
+// Full list of countries Spotify actually publishes charts for (matches the
+// countryFilters list from charts.spotify.com's own official chart API), plus
+// GLOBAL. kworb mirrors the same per-country chart set. fetchRegion() already
+// skips any code kworb doesn't have a page for (logs + returns []), so it's
+// safe to list every code here rather than a hand-picked subset.
+const REGIONS = [
+  'global',
+  'ar', 'au', 'at', 'by', 'be', 'bo', 'br', 'bg', 'ca', 'cl', 'co', 'cr', 'cy', 'cz',
+  'dk', 'do', 'ec', 'eg', 'sv', 'ee', 'fi', 'fr', 'de', 'gr', 'gt', 'hn', 'hk', 'hu',
+  'is', 'in', 'id', 'ie', 'il', 'it', 'jp', 'kz', 'lv', 'lt', 'lu', 'my', 'mx', 'ma',
+  'nl', 'nz', 'ni', 'ng', 'no', 'pk', 'pa', 'py', 'pe', 'ph', 'pl', 'pt', 'ro', 'sa',
+  'sg', 'sk', 'za', 'kr', 'es', 'se', 'ch', 'tw', 'th', 'tr', 'ae', 'ua', 'gb', 'uy',
+  'us', 've', 'vn',
+];
 
 // Daily pages: Pos | P+ | Artist/Title | Days | Pk | (x?) | Streams | Streams+ | 7Day | 7Day+ | Total  (11 cells)
 // Weekly pages: Pos | P+ | Artist/Title | Wks  | Pk | (x?) | Streams | Streams+ | Total              (9 cells)
