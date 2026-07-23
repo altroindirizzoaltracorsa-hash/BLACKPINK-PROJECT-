@@ -1,0 +1,20 @@
+name: Probe kworb artist charts
+
+# One-off, manual-only: checks whether kworb.net has a genuine per-country
+# daily/weekly ARTIST rank chart before building an artist-charts feature.
+# Safe to remove once the feature (if built) ships.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Probe kworb artist charts
+        run: node .github/scripts/probe-kworb-artist-charts.mjs
