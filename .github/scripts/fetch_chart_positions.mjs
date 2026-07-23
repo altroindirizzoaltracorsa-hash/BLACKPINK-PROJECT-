@@ -1,13 +1,14 @@
 /**
  * Fetches REAL per-country Spotify chart positions (not our own tracked-catalog
- * streams-gained ranking) for BLACKPINK + members, from kworb.net's daily Top 200
- * mirror per country -- the same underlying source real chart trackers like
- * jenniecharts.com/b-cd.app ultimately rely on, just run ourselves instead of
- * depending on a third party's private backend.
+ * streams-gained ranking) for BLACKPINK + members, from kworb.net's daily AND
+ * weekly Top 200 mirrors per country -- the same underlying source real chart
+ * trackers like jenniecharts.com/b-cd.app ultimately rely on, just run
+ * ourselves instead of depending on a third party's private backend.
  *
  * Row/rank movement (previous_position, position_change, entry_status) is
- * computed from OUR OWN stored history, not parsed from kworb's own delta
- * column, so it stays consistent regardless of any gaps in our fetch history.
+ * computed from OUR OWN stored history (scoped per chart_type), not parsed
+ * from kworb's own delta column, so it stays consistent regardless of any
+ * gaps in our fetch history.
  */
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
@@ -24,6 +25,15 @@ const TRACKED_ARTISTS = {
 };
 
 const REGIONS = ['global', 'us', 'gb', 'kr', 'fr', 'de', 'br', 'mx', 'jp', 'au', 'ca'];
+
+// Daily pages: Pos | P+ | Artist/Title | Days | Pk | (x?) | Streams | Streams+ | 7Day | 7Day+ | Total  (11 cells)
+// Weekly pages: Pos | P+ | Artist/Title | Wks  | Pk | (x?) | Streams | Streams+ | Total              (9 cells)
+// "days_on_chart" holds Days for daily rows and Wks (weeks on chart) for weekly rows -- different units,
+// the API/frontend should show the right label based on chart_type.
+const CHART_TYPES = {
+  daily: { suffix: 'daily', cellCount: 11, idx: { pos: 0, title: 2, onChart: 3, peak: 4, streams: 6, total: 10 } },
+  weekly: { suffix: 'weekly', cellCount: 9, idx: { pos: 0, title: 2, onChart: 3, peak: 4, streams: 6, total: 8 } },
+};
 
 async function sb(path, opts = {}) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
@@ -48,7 +58,8 @@ function parseNumber(text) {
   return Number.isFinite(n) ? n : null;
 }
 
-function parseRows(html) {
+function parseRows(html, chartType) {
+  const { cellCount, idx } = CHART_TYPES[chartType];
   const rows = [];
   const rowRe = /<tr>([\s\S]*?)<\/tr>/g;
   let m;
@@ -60,12 +71,12 @@ function parseRows(html) {
     const cells = [];
     let cm;
     while ((cm = cellRe.exec(rowHtml))) cells.push(cm[1]);
-    if (cells.length < 11) continue;
+    if (cells.length < cellCount) continue;
 
-    const [posCell, , titleCell, daysCell, pkCell, , streamsCell, , , , totalCell] = cells;
-    const position = parseNumber(posCell.replace(/<[^>]+>/g, ''));
+    const position = parseNumber(cells[idx.pos].replace(/<[^>]+>/g, ''));
     if (position == null) continue;
 
+    const titleCell = cells[idx.title];
     const artistLinkRe = /<a href="\.\.\/artist\/([A-Za-z0-9]+)\.html">([^<]+)<\/a>/g;
     const trackLinkRe = /<a href="\.\.\/track\/([A-Za-z0-9]+)\.html">([^<]+)<\/a>/;
 
@@ -83,22 +94,22 @@ function parseRows(html) {
       primary_artist_name: TRACKED_ARTISTS[matchedTracked.id],
       featured_artists: artistMatches.filter(a => a.id !== matchedTracked.id).map(a => a.name),
       position,
-      peak_position: parseNumber(pkCell.replace(/<[^>]+>/g, '')),
-      days_on_chart: parseNumber(daysCell.replace(/<[^>]+>/g, '')),
-      streams: parseNumber(streamsCell.replace(/<[^>]+>/g, '')),
-      total_streams: parseNumber(totalCell.replace(/<[^>]+>/g, '')),
+      peak_position: parseNumber(cells[idx.peak].replace(/<[^>]+>/g, '')),
+      days_on_chart: parseNumber(cells[idx.onChart].replace(/<[^>]+>/g, '')),
+      streams: parseNumber(cells[idx.streams].replace(/<[^>]+>/g, '')),
+      total_streams: parseNumber(cells[idx.total].replace(/<[^>]+>/g, '')),
     });
   }
   return rows;
 }
 
-async function fetchRegion(region) {
-  const url = `https://kworb.net/spotify/country/${region}_daily.html`;
+async function fetchRegion(region, chartType) {
+  const url = `https://kworb.net/spotify/country/${region}_${CHART_TYPES[chartType].suffix}.html`;
   const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*' } });
-  if (!r.ok) { console.log(`${region}: HTTP ${r.status}, skipping`); return []; }
+  if (!r.ok) { console.log(`[${chartType}] ${region}: HTTP ${r.status}, skipping`); return []; }
   const html = await r.text();
-  const rows = parseRows(html).map(row => ({ ...row, country: region.toUpperCase() }));
-  console.log(`${region}: ${rows.length} BLACKPINK/member row(s) found`);
+  const rows = parseRows(html, chartType).map(row => ({ ...row, country: region.toUpperCase(), chart_type: chartType }));
+  console.log(`[${chartType}] ${region}: ${rows.length} BLACKPINK/member row(s) found`);
   return rows;
 }
 
@@ -108,26 +119,28 @@ async function main() {
   const today = new Date().toISOString().slice(0, 10);
 
   let allRows = [];
-  for (const region of REGIONS) {
-    allRows = allRows.concat(await fetchRegion(region));
+  for (const chartType of Object.keys(CHART_TYPES)) {
+    for (const region of REGIONS) {
+      allRows = allRows.concat(await fetchRegion(region, chartType));
+    }
   }
-  console.log(`\nTotal matched rows across ${REGIONS.length} regions: ${allRows.length}`);
+  console.log(`\nTotal matched rows across ${REGIONS.length} regions x ${Object.keys(CHART_TYPES).length} chart types: ${allRows.length}`);
   if (!allRows.length) { console.log('Nothing to upsert.'); return; }
 
-  // Pull our own most recent prior snapshot per (track, country) to compute movement ourselves.
+  // Pull our own most recent prior snapshot per (track, country, chart_type) to compute movement ourselves.
   const trackIds = [...new Set(allRows.map(r => r.spotify_track_id))];
   const countries = [...new Set(allRows.map(r => r.country))];
   const priorRows = await sb(
-    `/chart_positions?spotify_track_id=in.(${trackIds.join(',')})&country=in.(${countries.join(',')})&tracking_date=lt.${today}&select=spotify_track_id,country,position,tracking_date&order=tracking_date.desc`
+    `/chart_positions?spotify_track_id=in.(${trackIds.join(',')})&country=in.(${countries.join(',')})&tracking_date=lt.${today}&select=spotify_track_id,country,chart_type,position,tracking_date&order=tracking_date.desc`
   );
   const priorByKey = {};
   for (const r of priorRows) {
-    const key = `${r.spotify_track_id}::${r.country}`;
+    const key = `${r.spotify_track_id}::${r.country}::${r.chart_type}`;
     if (!(key in priorByKey)) priorByKey[key] = r; // first (most recent) wins
   }
 
   const upsertRows = allRows.map(row => {
-    const key = `${row.spotify_track_id}::${row.country}`;
+    const key = `${row.spotify_track_id}::${row.country}::${row.chart_type}`;
     const prior = priorByKey[key];
     const previous_position = prior ? prior.position : null;
     const position_change = previous_position != null ? previous_position - row.position : null;
@@ -135,7 +148,7 @@ async function main() {
     return { ...row, tracking_date: today, previous_position, position_change, entry_status };
   });
 
-  await sb('/chart_positions?on_conflict=spotify_track_id,country,tracking_date', {
+  await sb('/chart_positions?on_conflict=spotify_track_id,country,tracking_date,chart_type', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates' },
     body: JSON.stringify(upsertRows),
@@ -143,7 +156,7 @@ async function main() {
 
   console.log(`\nUpserted ${upsertRows.length} rows for ${today}.`);
   for (const row of upsertRows) {
-    console.log(`  [${row.country}] #${row.position} (${row.entry_status}${row.position_change ? ' ' + (row.position_change > 0 ? '+' : '') + row.position_change : ''}) ${row.primary_artist_name} - ${row.track_name}`);
+    console.log(`  [${row.chart_type}/${row.country}] #${row.position} (${row.entry_status}${row.position_change ? ' ' + (row.position_change > 0 ? '+' : '') + row.position_change : ''}) ${row.primary_artist_name} - ${row.track_name}`);
   }
 }
 

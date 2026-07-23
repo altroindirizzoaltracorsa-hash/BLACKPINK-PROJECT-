@@ -11,21 +11,22 @@ create table if not exists chart_positions (
   primary_artist_name     text not null,
   featured_artists        text[],
   country                 text not null,
+  chart_type              text not null default 'daily', -- 'daily' or 'weekly'
   tracking_date           date not null,
   position                int not null,
   peak_position           int,
-  days_on_chart           int,
+  days_on_chart           int, -- days on chart for 'daily' rows, WEEKS on chart for 'weekly' rows
   streams                 bigint,
   total_streams           bigint,
   previous_position       int,
   position_change         int,
   entry_status            text,
   created_at              timestamptz not null default now(),
-  unique (spotify_track_id, country, tracking_date)
+  unique (spotify_track_id, country, tracking_date, chart_type)
 );
 
 create index if not exists idx_chart_positions_country_date
-  on chart_positions (country, tracking_date desc, position);
+  on chart_positions (chart_type, country, tracking_date desc, position);
 
 create index if not exists idx_chart_positions_track_country
   on chart_positions (spotify_track_id, country, tracking_date desc);
