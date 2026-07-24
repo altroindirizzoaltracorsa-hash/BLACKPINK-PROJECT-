@@ -86,7 +86,7 @@ async function resolveKey(song) {
   const r = await shazamFetch(`/v2/search?term=${term}&locale=en-US&offset=0&limit=5`);
   if (!r.ok) return null;
   const data = await r.json();
-  const key = data?.tracks?.hits?.[0]?.track?.key;
+  const key = data?.results?.songs?.data?.[0]?.id;
   if (!key) return null;
 
   await redis.set(cacheKey, key); // permanent — never expires
@@ -96,12 +96,16 @@ async function resolveKey(song) {
 // Fetch global Shazam chart (top 200). Returns Map<key, rank>.
 async function fetchChartMap() {
   try {
-    const r = await shazamFetch('/charts/list?locale=en-US&pageSize=200&startFrom=0');
+    const r = await shazamFetch('/charts/get-top-songs-in-world?locale=en-US&pageSize=200&startFrom=0&listId=ip-worldwide-chart');
     if (!r.ok) return new Map();
     const data = await r.json();
-    // apidojo returns { tracks: [...] } or { chart: { tracks: [...] } }
+    // Response has { tracks: [...] } where each track has a key or id
     const tracks = data?.tracks ?? data?.chart?.tracks ?? [];
-    return new Map(tracks.map((t, i) => [String(t?.key ?? ''), i + 1]).filter(([k]) => k));
+    return new Map(
+      tracks
+        .map((t, i) => [String(t?.key ?? t?.adamid ?? ''), i + 1])
+        .filter(([k]) => k)
+    );
   } catch {
     return new Map();
   }
@@ -168,13 +172,14 @@ export default async function handler(req, res) {
         return { status: r.status, body: typeof parsed === 'string' ? parsed.slice(0, 300) : parsed };
       } catch(e) { return { error: e.message }; }
     };
-    const [getCount, v2search, v2chart, chart] = await Promise.all([
+    const [countOld, countNew, v2search, chartWorld, chartUS] = await Promise.all([
       probe('/songs/get-count?key=1874125269', true),
+      probe('/songs/get-count?key=1315917630', true),
       probe('/v2/search?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=3'),
-      probe('/v2/charts/list?locale=en-US&pageSize=200&startFrom=0'),
-      probe('/charts/list?locale=en-US&pageSize=200&startFrom=0'),
+      probe('/charts/get-top-songs-in-world?locale=en-US&pageSize=5&startFrom=0&listId=ip-worldwide-chart'),
+      probe('/charts/get-top-songs-in-country?locale=en-US&pageSize=5&startFrom=0&countrycode=US&listId=ip-country-chart-US'),
     ]);
-    return res.json({ getCount, v2search, v2chart, chart });
+    return res.json({ countOld, countNew, v2search, chartWorld, chartUS });
   }
 
   // Cron / forced refresh path
