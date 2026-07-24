@@ -438,10 +438,38 @@ export default async function handler(req, res) {
     }));
   }
 
+  // Defensive merge: if two entries share any linked-account username, they're
+  // the same person filed under two different top-level keys -- e.g. a stale
+  // key left over from before this identity's "stable key" (derived from a
+  // Last.fm/session lookup) happened to resolve to something else on an
+  // earlier submission (see the matching fix in api/leaderboard.js's POST
+  // handler). Left alone, the cron keeps refreshing both every hour forever,
+  // and whichever one it happens to write last wins -- so a stale duplicate
+  // can silently freeze or resurrect what a user sees. Keep whichever entry
+  // was updated most recently and drop the rest.
+  const entries = Object.entries(data.users);
+  const removedKeys = new Set();
+  for (let i = 0; i < entries.length; i++) {
+    const [keyA, entryA] = entries[i];
+    if (removedKeys.has(keyA)) continue;
+    const linkedA = new Set((entryA.linkedAccounts || []).map(a => (a.username || '').toLowerCase()));
+    if (!linkedA.size) continue;
+    for (let j = i + 1; j < entries.length; j++) {
+      const [keyB, entryB] = entries[j];
+      if (removedKeys.has(keyB)) continue;
+      const linkedB = (entryB.linkedAccounts || []).map(a => (a.username || '').toLowerCase());
+      if (!linkedB.some(u => linkedA.has(u))) continue;
+      const aTime = new Date(entryA.updatedAt || 0).getTime();
+      const bTime = new Date(entryB.updatedAt || 0).getTime();
+      if (bTime >= aTime) { delete data.users[keyA]; removedKeys.add(keyA); break; }
+      delete data.users[keyB]; removedKeys.add(keyB);
+    }
+  }
+
   data.lastUpdated = new Date().toISOString();
   updateLeaderStreak(data);
   await redis.set(LB_KEY, data);
 
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({ ok: true, refreshed: ok, failed });
+  res.status(200).json({ ok: true, refreshed: ok, failed, merged: [...removedKeys] });
 }
