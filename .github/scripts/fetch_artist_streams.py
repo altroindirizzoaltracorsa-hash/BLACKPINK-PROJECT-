@@ -199,6 +199,7 @@ FIXED_TRACKS = {
         ("SOLO - Live", "6V3dOOUiPg53wUf83tBLR8"),
         ("SPOT!", "1SS0WlKhJewviwEDZ6dWj0"),
         ("Seoul City", "3Rb70FTNnpmhDjTIWNlkww"),
+        ("Less Than a Lover", "19UnXjpLshSLobPspdyxlD"),
         ("Slow Motion", "5Y1JLn2xFudNJolHkvoTXk"),
         ("Special", "4MwT3qzF3tfMtSFr9b2nKa"),
         ("Starlight", "2qgS0EKSu94srT6vmj7Ig9"),
