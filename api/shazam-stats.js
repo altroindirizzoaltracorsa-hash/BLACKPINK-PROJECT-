@@ -156,21 +156,24 @@ export default async function handler(req, res) {
   if (debug === '1') {
     if (!apiKey()) return res.status(500).json({ error: 'RAPIDAPI_SHAZAM_KEY not configured' });
     const k = apiKey();
-    const headers = { 'x-rapidapi-key': k, 'x-rapidapi-host': HOST };
-    const probe = async (path) => {
+    const h = { 'x-rapidapi-key': k, 'x-rapidapi-host': HOST, 'Content-Type': 'application/json' };
+    const probe = async (path, asText = false) => {
       try {
-        const r = await fetch(`https://${HOST}${path}`, { headers });
-        const body = r.ok ? await r.json().catch(e => e.message) : await r.text().catch(() => '');
-        return { status: r.status, body: typeof body === 'string' ? body.slice(0, 200) : body };
+        const r = await fetch(`https://${HOST}${path}`, { headers: h });
+        const raw = await r.text().catch(() => '');
+        let parsed = raw;
+        if (!asText) { try { parsed = JSON.parse(raw); } catch { parsed = raw; } }
+        return { status: r.status, body: typeof parsed === 'string' ? parsed.slice(0, 300) : parsed };
       } catch(e) { return { error: e.message }; }
     };
-    const [getCount, search1, search2, search3] = await Promise.all([
+    const [getCount, getCountText, search1, search2, search3] = await Promise.all([
       probe('/songs/get-count?key=1874125269'),
-      probe('/songs/search?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=3'),
+      probe('/songs/get-count?key=1874125269', true),
       probe('/search?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=3'),
       probe('/auto-complete?term=BOOMBAYAH+BLACKPINK&locale=en-US'),
+      probe('/songs/list-recommendations?key=1874125269&locale=en-US'),
     ]);
-    return res.json({ getCount, 'songs/search': search1, '/search': search2, 'auto-complete': search3 });
+    return res.json({ getCount, getCountRaw: getCountText, '/search': search1, 'auto-complete': search2, 'list-recs': search3 });
   }
 
   // Cron / forced refresh path
