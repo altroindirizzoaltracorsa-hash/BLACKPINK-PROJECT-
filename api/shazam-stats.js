@@ -13,6 +13,10 @@ function apiKey() {
   return apiKeys()[0] || '';
 }
 
+function isQuotaError(status) {
+  return status === 429 || status === 402;
+}
+
 async function shazamFetch(path) {
   const keys = apiKeys();
   if (!keys.length) throw new Error('RAPIDAPI_SHAZAM_KEY not configured');
@@ -22,7 +26,7 @@ async function shazamFetch(path) {
       headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': HOST },
     }).catch(() => null);
     if (!r) continue;
-    if (r.status !== 429) return r;
+    if (!isQuotaError(r.status)) return r;
     last = r;
   }
   return last;
@@ -37,7 +41,7 @@ async function apidojoFetch(path) {
       headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': APIDOJO_HOST },
     }).catch(() => null);
     if (!r) continue;
-    if (r.status !== 429) return r;
+    if (!isQuotaError(r.status)) return r;
     last = r;
   }
   return last;
@@ -257,19 +261,22 @@ export default async function handler(req, res) {
     return res.json({ flushed: all.length });
   }
 
-  // Debug: probe known-working key + candidate search endpoints
+  // Debug: probe known-working key + candidate search endpoints (rotates through all keys)
   if (debug === '1') {
-    if (!apiKey()) return res.status(500).json({ error: 'RAPIDAPI_SHAZAM_KEY not configured' });
-    const k = apiKey();
-    const h = { 'x-rapidapi-key': k, 'x-rapidapi-host': HOST, 'Content-Type': 'application/json' };
-    const probe = async (path, asText = false) => {
-      try {
-        const r = await fetch(`https://${HOST}${path}`, { headers: h });
-        const raw = await r.text().catch(() => '');
-        let parsed = raw;
-        if (!asText) { try { parsed = JSON.parse(raw); } catch { parsed = raw; } }
-        return { status: r.status, body: typeof parsed === 'string' ? parsed.slice(0, 300) : parsed };
-      } catch(e) { return { error: e.message }; }
+    const dbgKeys = apiKeys();
+    if (!dbgKeys.length) return res.status(500).json({ error: 'RAPIDAPI_SHAZAM_KEY not configured' });
+    // Rotates through keys on 429/402; reports which key index succeeded.
+    const probe = async (path) => {
+      for (let i = 0; i < dbgKeys.length; i++) {
+        try {
+          const h = { 'x-rapidapi-key': dbgKeys[i], 'x-rapidapi-host': HOST };
+          const r = await fetch(`https://${HOST}${path}`, { headers: h });
+          const raw = await r.text().catch(() => '');
+          let parsed; try { parsed = JSON.parse(raw); } catch { parsed = raw; }
+          if (isQuotaError(r.status) && i < dbgKeys.length - 1) continue;
+          return { status: r.status, keyIndex: i, totalKeys: dbgKeys.length, body: typeof parsed === 'string' ? parsed.slice(0, 300) : parsed };
+        } catch(e) { return { error: e.message }; }
+      }
     };
     const which = req.query.which ?? 'search';
     if (which === 'shazams') {
@@ -289,18 +296,20 @@ export default async function handler(req, res) {
       const r = await probe(`/v2/search/multi?search_type=SONGS&offset=0&query=${q}`);
       return res.json({ search2: r });
     }
-    // Test apidojo search directly
+    // Test apidojo search directly (with key rotation)
     if (which === 'apidojo') {
       const q = encodeURIComponent(req.query.q ?? 'BOOMBAYAH BLACKPINK');
-      const ak = apiKey();
-      const ah = { 'x-rapidapi-key': ak, 'x-rapidapi-host': APIDOJO_HOST };
-      try {
-        const r = await fetch(`https://${APIDOJO_HOST}/v2/search?term=${q}&locale=en-US&offset=0&limit=5`, { headers: ah });
-        const raw = await r.text();
-        let parsed; try { parsed = JSON.parse(raw); } catch { parsed = raw; }
-        const appleId = parsed?.results?.songs?.data?.[0]?.id;
-        return res.json({ status: r.status, appleId, first: parsed?.results?.songs?.data?.[0] ?? parsed });
-      } catch(e) { return res.json({ error: e.message }); }
+      for (let i = 0; i < dbgKeys.length; i++) {
+        try {
+          const ah = { 'x-rapidapi-key': dbgKeys[i], 'x-rapidapi-host': APIDOJO_HOST };
+          const r = await fetch(`https://${APIDOJO_HOST}/v2/search?term=${q}&locale=en-US&offset=0&limit=5`, { headers: ah });
+          const raw = await r.text();
+          let parsed; try { parsed = JSON.parse(raw); } catch { parsed = raw; }
+          if (isQuotaError(r.status) && i < dbgKeys.length - 1) continue;
+          const appleId = parsed?.results?.songs?.data?.[0]?.id;
+          return res.json({ status: r.status, keyIndex: i, totalKeys: dbgKeys.length, appleId, first: parsed?.results?.songs?.data?.[0] ?? parsed });
+        } catch(e) { return res.json({ error: e.message }); }
+      }
     }
     // Show how many shazam:id:* keys are cached (without deleting)
     if (which === 'status') {
