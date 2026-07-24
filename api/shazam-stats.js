@@ -150,7 +150,17 @@ async function refreshAll() {
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
 
-  const { page, cron } = req.query;
+  const { page, cron, debug } = req.query;
+
+  // Debug: raw probe of one search call
+  if (debug === '1') {
+    if (!apiKey()) return res.status(500).json({ error: 'RAPIDAPI_SHAZAM_KEY not configured' });
+    const term = encodeURIComponent('BOOMBAYAH BLACKPINK');
+    const r = await shazamFetch(`/search?term=${term}&locale=en-US&offset=0&limit=3`).catch(e => ({ ok: false, status: 0, error: e.message }));
+    const status = r.status;
+    const body = r.ok ? await r.json().catch(e => ({ parseError: e.message })) : await r.text().catch(() => '(unreadable)');
+    return res.json({ status, body });
+  }
 
   // Cron / forced refresh path
   if (cron === '1') {
