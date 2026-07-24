@@ -5318,21 +5318,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
           </div>
         `).join('')}
       </div>
-      <!-- Tiers reference -->
-      <div style="margin-top:1.5px;background:var(--border);">
-        <div class="tiers-grid">
-          ${BADGE_TIERS.map(tier => {
-            const allEarned = TRACKS.every(t => (totalPlays[t.id] || 0) >= tier.min);
-            return `<div class="tier-cell ${allEarned ? 'earned' : ''}">
-              <div class="tier-cell-icon" style="opacity:${allEarned ? 1 : 0.2}">${tier.icon}</div>
-              <div class="tier-cell-name" style="color:${allEarned ? 'var(--pink)' : 'var(--white)'}">${tier.label}</div>
-              <div class="tier-cell-req">${tier.min}+ plays/track</div>
-              ${allEarned ? '<div class="tier-earned-tag">✓ EARNED</div>' : '<div class="tier-locked-tag">locked</div>'}
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
-      <!-- Less Than a Lover tiers (song-specific, same thresholds/icons as above) -->
+      <!-- Less Than a Lover tiers -->
       <p style="margin:1.2rem 0 0.5rem;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);">// Less Than a Lover Tiers</p>
       <div style="background:var(--border);">
         <div class="tiers-grid">
