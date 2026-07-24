@@ -13,6 +13,7 @@ const TRACK_IDS = {
   jump:     '502a16cf-fa8a-4fd3-a184-dbd49c10ce5f',
   shutdown: '3420a915-4654-4251-9c5b-43039ca74b66',
   ddududu:  '736f62c7-066c-4dd1-853c-c5cf5934b642',
+  ltal:     '8b627a61-8507-4f65-9d21-987679d35cc3',
 };
 const MC_HEADERS = { 'Authorization': 'Bearer empty', 'Content-Type': 'application/json' };
 
@@ -755,7 +756,7 @@ export default async function handler(req, res) {
       const allTime    = { start: null, end: null };
       const today      = { start: todayStart, end: null };
 
-      const [bpGroupPlays, jisooPlays, lisaPlays, rosePlays, jenniePlays, jumpAll, shutdownAll, ddududuAll, jumpToday, shutdownToday, ddududuToday] = await Promise.all([
+      const [bpGroupPlays, jisooPlays, lisaPlays, rosePlays, jenniePlays, jumpAll, shutdownAll, ddududuAll, ltalAll, jumpToday, shutdownToday, ddududuToday, ltalToday] = await Promise.all([
         statsPost({ range: allTime, publicUserId: publicId, publicArtistId: BLACKPINK_ARTIST }),
         statsPost({ range: allTime, publicUserId: publicId, publicArtistId: MEMBER_ARTIST_IDS.jisoo }),
         statsPost({ range: allTime, publicUserId: publicId, publicArtistId: MEMBER_ARTIST_IDS.lisa }),
@@ -764,9 +765,11 @@ export default async function handler(req, res) {
         statsPost({ range: allTime, publicUserId: publicId, publicTrackId: TRACK_IDS.jump }),
         statsPost({ range: allTime, publicUserId: publicId, publicTrackId: TRACK_IDS.shutdown }),
         statsPost({ range: allTime, publicUserId: publicId, publicTrackId: TRACK_IDS.ddududu }),
+        statsPost({ range: allTime, publicUserId: publicId, publicTrackId: TRACK_IDS.ltal }),
         statsPost({ range: today,   publicUserId: publicId, publicTrackId: TRACK_IDS.jump }),
         statsPost({ range: today,   publicUserId: publicId, publicTrackId: TRACK_IDS.shutdown }),
         statsPost({ range: today,   publicUserId: publicId, publicTrackId: TRACK_IDS.ddududu }),
+        statsPost({ range: today,   publicUserId: publicId, publicTrackId: TRACK_IDS.ltal }),
       ]);
       const memberPlays = { jisoo: jisooPlays, lisa: lisaPlays, rose: rosePlays, jennie: jenniePlays };
       const artistPlays = bpGroupPlays + Object.values(memberPlays).reduce((s, v) => s + v, 0);
@@ -775,8 +778,8 @@ export default async function handler(req, res) {
         publicId, displayName,
         playcount: totalScrobbles ?? artistPlays,
         artistPlays, bpGroupPlays, memberPlays,
-        tracks: { jump: jumpAll, shutdown: shutdownAll, ddududu: ddududuAll },
-        today:  { jump: jumpToday, shutdown: shutdownToday, ddududu: ddududuToday },
+        tracks: { jump: jumpAll, shutdown: shutdownAll, ddududu: ddududuAll, ltal: ltalAll },
+        today:  { jump: jumpToday, shutdown: shutdownToday, ddududu: ddududuToday, ltal: ltalToday },
       });
     } catch(err) {
       return res.status(400).json({ error: err.message });
