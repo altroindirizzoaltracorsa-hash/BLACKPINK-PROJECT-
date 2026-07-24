@@ -179,13 +179,16 @@ export default async function handler(req, res) {
         return { status: r.status, body: typeof parsed === 'string' ? parsed.slice(0, 300) : parsed };
       } catch(e) { return { error: e.message }; }
     };
-    const [search, countTest, chartUS, chartKR] = await Promise.all([
-      probe('/search/multi?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=3'),
-      probe('/songs/get-count?id=40333609', true),
-      probe('/charts/get-top-songs-in-country?country_code=US&locale=en-US&pageSize=5&startFrom=0&listId=ip-country-chart-US'),
-      probe('/charts/get-top-songs-in-country?country_code=KR&locale=en-US&pageSize=5&startFrom=0&listId=ip-country-chart-KR'),
+    // Sequential search first to avoid rate-limit burst
+    const search = await probe('/search/multi?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=1');
+    // Probe count and chart path variations in parallel
+    const [countA, countB, chartA, chartB] = await Promise.all([
+      probe('/songs/count?id=40333609', true),
+      probe('/song/count?id=40333609', true),
+      probe('/charts/world-chart?locale=en-US&pageSize=5&startFrom=0'),
+      probe('/charts/list?locale=en-US'),
     ]);
-    return res.json({ search, countTest, chartUS, chartKR });
+    return res.json({ search, countA, countB, chartA, chartB });
   }
 
   // Cron / forced refresh path
