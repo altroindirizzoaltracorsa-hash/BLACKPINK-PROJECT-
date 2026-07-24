@@ -9644,10 +9644,12 @@ async function selectReleaseCardArt(url, thumbEl) {
   // cuts off her chin/neck entirely and dumps the text back over her eye.
   if (url === '/jennie-ltal-poster4.jpg' && _cardFormat !== 'square') {
     setCardFormat('square', document.getElementById('fmt-square'));
+  } else if (_cardType === 'goals') {
+    drawGoalsCard(canvas, _cardLogo, art, _goalsCardData);
   } else {
     drawReleaseCard(canvas, _cardLogo, art, wordmark);
   }
-  label.textContent = 'JENNIE · LESS THAN A LOVER';
+  label.textContent = _cardType === 'goals' ? 'LESS THAN A LOVER · CAMPAIGN MILESTONES' : 'JENNIE · LESS THAN A LOVER';
 }
 
 // ── LTAL CAMPAIGN GOALS CARD ─────────────────────────────────────────────────
@@ -9789,7 +9791,9 @@ async function openGoalsCard() {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
-  document.getElementById('release-pic-picker').style.display = 'none';
+  const picker = document.getElementById('release-pic-picker');
+  picker.style.display = 'flex';
+  picker.querySelectorAll('.release-pic-thumb').forEach((t, i) => t.classList.toggle('active', i === 0));
   _cardType = 'goals';
   _cardFormat = 'landscape';
   document.getElementById('fmt-landscape')?.classList.add('active');
@@ -9813,6 +9817,7 @@ async function openGoalsCard() {
     loadImg(RELEASE_CARD_PICS[0]).catch(() => null),
     getBuLogo(),
   ]);
+  _releaseArtUrl = RELEASE_CARD_PICS[0];
   _cardArt = art; _cardLogo = logo;
   _goalsCardData = {
     count: ITUNES_NO1_COUNTRIES.length,
