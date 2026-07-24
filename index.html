@@ -1609,6 +1609,7 @@
         <div class="release-expand-section">
           <p class="release-expand-heading">🎯 Campaign Goals</p>
           <div class="ltal-goals-list" id="ltal-goals-list"></div>
+          <button class="gen-card-btn" onclick="openGoalsCard()">⬡ Generate Share Card</button>
         </div>
         <div class="release-expand-section">
           <button class="history-toggle" onclick="toggleReleaseGlobalTimes(this)"><span>🌍 Releases around the globe</span> <span class="arrow">▾</span></button>
@@ -7735,6 +7736,7 @@ let _voteCampaignId = null;
 let _personalCardData = null;
 let _catalogCardData = null;
 let _artistCardData = null;
+let _goalsCardData = null;
 
 function setCardFormat(fmt, btn) {
   _cardFormat = fmt;
@@ -7752,6 +7754,7 @@ function setCardFormat(fmt, btn) {
   else if (_cardType === 'catalog') drawCatalogCard(canvas, _catalogCardData, _cardLogo, _cardArt);
   else if (_cardType === 'artist') drawArtistCard(canvas, _artistCardData, _cardLogo, _cardArt, _artistCardData?.artistName);
   else if (_cardType === 'release') drawReleaseCard(canvas, _cardLogo, _cardArt, ltalWordmarkImg);
+  else if (_cardType === 'goals') drawGoalsCard(canvas, _cardLogo, _cardArt, _goalsCardData);
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -8212,6 +8215,13 @@ async function shareCard() {
     // that sends people straight to Spotify would bypass that entirely.
     const { big } = formatReleaseCountdown();
     statsText = `\n⏰ ${big}\n👉 Let's count our pre-saves: go to our website and click the "Less Than a Lover" banner. Don't forget to share!\n`;
+  } else if (_cardType === 'goals') {
+    const d = _goalsCardData;
+    if (d) {
+      const lines = [`🎵 iTunes #1 in ${d.count} countries!`, d.countries.join(', ')];
+      if (d.extraGoals?.length) lines.push(...d.extraGoals.map(g => `✔ ${g}`));
+      statsText = '\n' + lines.join('\n') + '\n';
+    }
   }
   const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
   // Mobile: Web Share API with image file
@@ -9638,6 +9648,170 @@ async function selectReleaseCardArt(url, thumbEl) {
     drawReleaseCard(canvas, _cardLogo, art, wordmark);
   }
   label.textContent = 'JENNIE · LESS THAN A LOVER';
+}
+
+// ── LTAL CAMPAIGN GOALS CARD ─────────────────────────────────────────────────
+function drawGoalsCard(canvas, logo, art, data) {
+  if (!data) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const landscape = W > H;
+
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+
+  if (art) {
+    const AW = Math.round(W * (landscape ? 0.44 : 0.42));
+    if (landscape) {
+      const scale = Math.max(AW / art.naturalWidth, H / art.naturalHeight);
+      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      ctx.drawImage(art, (AW - iw) / 2, (H - ih) / 2, iw, ih);
+      const gr = ctx.createLinearGradient(0, 0, AW + 80, 0);
+      gr.addColorStop(0, 'rgba(8,8,8,0)'); gr.addColorStop(0.55, 'rgba(8,8,8,0.75)'); gr.addColorStop(1, 'rgba(8,8,8,1)');
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, AW + 80, H);
+    } else {
+      const scale = Math.max(W / art.naturalWidth, H / art.naturalHeight);
+      const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      ctx.drawImage(art, (W - iw) / 2, (H - ih) / 2, iw, ih);
+      const gr = ctx.createLinearGradient(0, 0, W, 0);
+      gr.addColorStop(0, 'rgba(8,8,8,0)'); gr.addColorStop(0.28, 'rgba(8,8,8,0.55)'); gr.addColorStop(0.45, 'rgba(8,8,8,0.92)'); gr.addColorStop(1, 'rgba(8,8,8,0.98)');
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+    }
+  } else {
+    const glow = ctx.createRadialGradient(0, H / 2, 0, 0, H / 2, H * 0.7);
+    glow.addColorStop(0, 'rgba(255,0,102,0.15)'); glow.addColorStop(1, 'rgba(8,8,8,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  }
+  drawNoise(ctx, W, H, 0.03);
+
+  const PX = landscape ? (art ? Math.round(W * 0.48) : 70) : (art ? Math.round(W * 0.44) : 80);
+  const textW = W - PX - (landscape ? 50 : 60);
+  ctx.textAlign = 'left';
+
+  // Header
+  ctx.fillStyle = '#FF0066';
+  ctx.letterSpacing = '6px';
+  fillTextFit(ctx, 'CAMPAIGN MILESTONES', PX, landscape ? 80 : 140, landscape ? 46 : 58, textW, '"Bebas Neue", sans-serif');
+
+  // Title
+  ctx.fillStyle = '#F5F0F0';
+  ctx.letterSpacing = '4px';
+  fillTextFit(ctx, 'LESS THAN A LOVER', PX, landscape ? 150 : 240, landscape ? 60 : 76, textW, '"Bebas Neue", sans-serif');
+
+  // Pink rule
+  ctx.fillStyle = '#FF0066';
+  ctx.fillRect(PX, landscape ? 180 : 272, 70, landscape ? 2 : 3);
+
+  // iTunes #1 count -- the headline stat
+  ctx.fillStyle = 'rgba(245,240,240,0.55)';
+  ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
+  ctx.letterSpacing = '3px';
+  ctx.fillText('ITUNES #1 CHARTS', PX, landscape ? 222 : 322);
+  ctx.fillStyle = '#FF0066';
+  ctx.letterSpacing = '2px';
+  fillTextFit(ctx, String(data.count), PX, landscape ? 316 : 446, landscape ? 128 : 148, textW, '"Bebas Neue", sans-serif');
+  ctx.fillStyle = 'rgba(245,240,240,0.55)';
+  ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
+  ctx.letterSpacing = '3px';
+  ctx.fillText('COUNTRIES AND COUNTING', PX, landscape ? 344 : 476);
+
+  // Country list -- word-wrapped, plain text (no flag emoji: canvas emoji-flag
+  // rendering is unreliable across OSes, esp. compound-codepoint flags)
+  let y = landscape ? 390 : 528;
+  const lineH = landscape ? 25 : 33;
+  const countryFontSize = landscape ? 15 : 19;
+  ctx.font = `500 ${countryFontSize}px "DM Mono", monospace`;
+  ctx.fillStyle = 'rgba(245,240,240,0.75)';
+  ctx.letterSpacing = '0.5px';
+  let line = '';
+  for (const name of data.countries) {
+    const test = line ? `${line}   ·   ${name}` : name;
+    if (line && ctx.measureText(test).width > textW) {
+      ctx.fillText(line, PX, y);
+      y += lineH;
+      line = name;
+    } else {
+      line = test;
+    }
+  }
+  if (line) { ctx.fillText(line, PX, y); y += lineH; }
+
+  // Any other server-marked reached goals (Spotify/YouTube/Shazam/Chart)
+  if (data.extraGoals?.length) {
+    y += landscape ? 12 : 18;
+    ctx.fillStyle = '#FF0066';
+    ctx.font = `500 ${landscape ? 13 : 17}px "DM Mono", monospace`;
+    ctx.letterSpacing = '1.5px';
+    for (const g of data.extraGoals) {
+      ctx.fillText('✔ ' + g.toUpperCase(), PX, y);
+      y += landscape ? 24 : 30;
+    }
+  }
+
+  // Bottom rule + BU branding
+  const LR = landscape ? 22 : 28;
+  const logoY = H - (landscape ? 46 : 82);
+  ctx.fillStyle = 'rgba(255,0,102,0.2)';
+  ctx.fillRect(PX, H - (landscape ? 90 : 135), W - PX - (landscape ? 50 : 60), 1);
+  if (logo) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  const brandX = logo ? PX + LR * 2 + 10 : PX;
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = `${landscape ? 34 : 44}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = '10px';
+  ctx.fillText('BLINKS UNITED', brandX, H - (landscape ? 52 : 72));
+  ctx.fillStyle = 'rgba(245,240,240,0.2)';
+  ctx.font = `500 ${landscape ? 12 : 15}px "DM Mono", monospace`;
+  ctx.letterSpacing = '2px';
+  ctx.fillText('blinksunited.com', brandX, H - (landscape ? 30 : 42));
+
+  _markCardReady(canvas);
+}
+
+async function openGoalsCard() {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none';
+  _cardType = 'goals';
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+  await document.fonts.ready;
+  let reached = {};
+  try {
+    const r = await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' });
+    reached = (await r.json()).reached || {};
+  } catch {}
+  const extraGoals = [];
+  for (const cat of LTAL_GOALS) {
+    if (cat.category === 'iTunes') continue; // handled via ITUNES_NO1_COUNTRIES below instead
+    for (const g of cat.items) {
+      if (reached[g.id]) extraGoals.push(g.label);
+    }
+  }
+  const [art, logo] = await Promise.all([
+    loadImg(RELEASE_CARD_PICS[0]).catch(() => null),
+    getBuLogo(),
+  ]);
+  _cardArt = art; _cardLogo = logo;
+  _goalsCardData = {
+    count: ITUNES_NO1_COUNTRIES.length,
+    countries: ITUNES_NO1_COUNTRIES.map(c => c.name),
+    extraGoals,
+  };
+  drawGoalsCard(canvas, logo, art, _goalsCardData);
+  label.textContent = 'LESS THAN A LOVER · CAMPAIGN MILESTONES';
 }
 
 function renderMilestoneHistory(trackId) {
