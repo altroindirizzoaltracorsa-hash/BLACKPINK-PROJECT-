@@ -4673,10 +4673,12 @@ async function loadProfile(usernameOverride, silent = false) {
         if (status.isOG) showOGBadge(status.signedUpAt);
       });
     }
-    // Submit scores to leaderboard in background (non-blocking)
+    // Submit scores to leaderboard. Awaited (not fire-and-forget) so callers
+    // that await loadProfile() -- e.g. a forced leaderboard refresh -- can
+    // trust the server actually has the fresh numbers before re-fetching it.
     // No bpGroupPlays/memberPlays — old path doesn't fetch solos, so we don't
     // write overall_bp_group, keeping the "not yet synced" fallback threshold.
-    submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs).catch(()=>{});
+    await submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs).catch(()=>{});
     // Re-render leaderboard if visible so "YOU" highlight appears immediately after login
     if (document.getElementById('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
 
@@ -5103,7 +5105,11 @@ async function loadMultiAccountProfile(accounts) {
   await syncStampsFromServer(primaryUsername);
   persistTodayStamp(primaryUsername, combined.todayCounts);
   renderProfile(combined);
-  submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs, combined.bpGroupPlays, combined.memberPlays).catch(()=>{});
+  // Awaited (not fire-and-forget) so callers that await loadMultiAccountProfile()
+  // -- e.g. a forced leaderboard refresh -- can trust the server actually has
+  // the fresh numbers before re-fetching it (otherwise the re-fetch can win
+  // the race and return the pre-submission snapshot).
+  await submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs, combined.bpGroupPlays, combined.memberPlays).catch(()=>{});
   if (document.getElementById('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
 }
 
