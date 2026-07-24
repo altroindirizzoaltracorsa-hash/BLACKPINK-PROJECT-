@@ -1607,12 +1607,12 @@
       </div>
       <div class="release-expand-panel" id="release-expand-panel" style="display:none;margin-top:0.8rem;max-width:900px;width:calc(100% + 4rem);margin-left:-2rem;margin-right:-2rem;text-align:left;">
         <div class="release-expand-section">
-          <p class="release-expand-heading">🌍 Releases around the globe</p>
-          <div class="release-expand-times" id="release-expand-times"></div>
-        </div>
-        <div class="release-expand-section">
           <p class="release-expand-heading">🎯 Campaign Goals</p>
           <div class="ltal-goals-list" id="ltal-goals-list"></div>
+        </div>
+        <div class="release-expand-section">
+          <button class="history-toggle" onclick="toggleReleaseGlobalTimes(this)"><span>🌍 Releases around the globe</span> <span class="arrow">▾</span></button>
+          <div class="release-expand-times" id="release-expand-times" style="display:none;margin-top:0.6rem;"></div>
         </div>
         <div class="release-expand-section">
           <p class="release-expand-heading">🔗 Links</p>
@@ -7321,6 +7321,14 @@ function toggleReleaseExpand() {
     renderReleaseGlobalTimes();
     renderLtalGoalsList();
   }
+}
+
+function toggleReleaseGlobalTimes(btn) {
+  const panel = document.getElementById('release-expand-times');
+  if (!panel) return;
+  const isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? 'flex' : 'none';
+  btn.classList.toggle('open', isHidden);
 }
 
 function renderItunesInlineBadge() {
