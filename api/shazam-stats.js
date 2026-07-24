@@ -155,11 +155,24 @@ export default async function handler(req, res) {
   // Debug: raw probe of one search call
   if (debug === '1') {
     if (!apiKey()) return res.status(500).json({ error: 'RAPIDAPI_SHAZAM_KEY not configured' });
+    const key = apiKey();
     const term = encodeURIComponent('BOOMBAYAH BLACKPINK');
-    const r = await shazamFetch(`/search?term=${term}&locale=en-US&offset=0&limit=3`).catch(e => ({ ok: false, status: 0, error: e.message }));
-    const status = r.status;
-    const body = r.ok ? await r.json().catch(e => ({ parseError: e.message })) : await r.text().catch(() => '(unreadable)');
-    return res.json({ status, body });
+    const url = `https://${HOST}/search?term=${term}&locale=en-US&offset=0&limit=3`;
+    const r = await fetch(url, {
+      redirect: 'manual',
+      headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': HOST },
+    }).catch(e => null);
+    if (!r) return res.json({ error: 'fetch threw' });
+    const location = r.headers.get('location');
+    const bodyText = await r.text().catch(() => '');
+    // Also try with redirect:follow
+    const r2 = await fetch(url, {
+      redirect: 'follow',
+      headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': HOST },
+    }).catch(e => ({ ok: false, status: 0, _err: e.message }));
+    const status2 = r2.status;
+    const body2 = r2.ok ? await r2.json().catch(e => e.message) : await r2.text?.().catch(() => r2._err);
+    return res.json({ manualStatus: r.status, location, manualBody: bodyText.slice(0, 300), followStatus: status2, followBody: body2 });
   }
 
   // Cron / forced refresh path
