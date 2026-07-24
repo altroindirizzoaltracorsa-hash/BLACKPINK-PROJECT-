@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 const redis = Redis.fromEnv();
 const LASTFM_KEY = '666b8ef2f3cc360fbc20df275fba2981';
 const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
+const LIBREFM_BASE = 'https://libre.fm/2.0/';
 const LB_BASE     = 'https://api.listenbrainz.org/1/';
 const LB_KEY = 'bu_leaderboard_v1';
 
@@ -135,21 +136,31 @@ async function lfmFetch(params, attempt = 0) {
   return data;
 }
 
-async function fetchTrackPlays(username, artist, track) {
-  const d = await lfmFetch({ method: 'track.getInfo', artist, track, username });
+// Libre.fm implements the same AudioScrobbler 2.0 API as Last.fm (no api_key).
+async function librefmFetch(params) {
+  const url = LIBREFM_BASE + '?' + new URLSearchParams({ ...params, format: 'json' });
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Libre.fm HTTP ${r.status}`);
+  const data = await r.json();
+  if (data?.error) throw new Error(`Libre.fm error ${data.error}: ${data.message || ''}`);
+  return data;
+}
+
+async function fetchTrackPlays(username, artist, track, fetchFn = lfmFetch) {
+  const d = await fetchFn({ method: 'track.getInfo', artist, track, username });
   return parseInt(d?.track?.userplaycount || '0', 10);
 }
 
-async function fetchArtistPlays(username, artist) {
-  const d = await lfmFetch({ method: 'artist.getInfo', artist, username });
+async function fetchArtistPlays(username, artist, fetchFn = lfmFetch) {
+  const d = await fetchFn({ method: 'artist.getInfo', artist, username });
   return parseInt(d?.artist?.stats?.userplaycount || '0', 10);
 }
 
-async function fetchRecentScrobbles(username, from, to, maxPages = 50) {
+async function fetchRecentScrobbles(username, from, to, maxPages = 50, fetchFn = lfmFetch) {
   const results = [];
   let page = 1;
   while (true) {
-    const d = await lfmFetch({ method: 'user.getRecentTracks', user: username, from, to, limit: 200, page });
+    const d = await fetchFn({ method: 'user.getRecentTracks', user: username, from, to, limit: 200, page });
     const tracks = d?.recenttracks?.tracks || d?.recenttracks?.track || [];
     const arr = Array.isArray(tracks) ? tracks : [tracks];
     results.push(...arr.filter(t => t['@attr']?.nowplaying !== 'true'));
@@ -255,19 +266,20 @@ async function refreshUser(entry, sb) {
   const lfmAccount = linkedAccounts.find(a => a.type === 'lastfm');
 
   for (const acct of linkedAccounts) {
-    if (acct.type === 'lastfm') {
+    if (acct.type === 'lastfm' || acct.type === 'librefm') {
       const u = acct.username;
-      // Single fetch spanning the whole week through today -- Last.fm returns
-      // scrobbles newest-first, so today's counts, the weekly counts, and the
-      // most recent BLACKPINK scrobble can all be derived from one paginated
-      // range instead of re-fetching/re-paginating once per day.
+      const fetchFn = acct.type === 'librefm' ? librefmFetch : lfmFetch;
+      // Single fetch spanning the whole week through today -- Last.fm/Libre.fm
+      // return scrobbles newest-first, so today's counts, the weekly counts,
+      // and the most recent BLACKPINK scrobble can all be derived from one
+      // paginated range instead of re-fetching/re-paginating once per day.
       const [ap, jumpPlays, shutdownPlays, ddududuPlays, ltalPlays, weekSc] = await Promise.all([
-        fetchArtistPlays(u, 'BLACKPINK'),
-        fetchTrackPlays(u, 'BLACKPINK', 'JUMP'),
-        fetchTrackPlays(u, 'BLACKPINK', 'Shut Down'),
-        fetchTrackPlays(u, 'BLACKPINK', 'DDU-DU DDU-DU'),
-        fetchTrackPlays(u, 'Jennie', 'Less Than a Lover'),
-        fetchRecentScrobbles(u, weekFrom, dayTo),
+        fetchArtistPlays(u, 'BLACKPINK', fetchFn),
+        fetchTrackPlays(u, 'BLACKPINK', 'JUMP', fetchFn),
+        fetchTrackPlays(u, 'BLACKPINK', 'Shut Down', fetchFn),
+        fetchTrackPlays(u, 'BLACKPINK', 'DDU-DU DDU-DU', fetchFn),
+        fetchTrackPlays(u, 'Jennie', 'Less Than a Lover', fetchFn),
+        fetchRecentScrobbles(u, weekFrom, dayTo, 50, fetchFn),
       ]);
       artistPlays        += ap;
       totalPlays.jump    += jumpPlays;
@@ -329,6 +341,18 @@ async function refreshUser(entry, sb) {
         weekCounts.shutdown += lbWeekCounts.shutdown || 0;
         weekCounts.ddududu  += lbWeekCounts.ddududu  || 0;
         weekCounts.ltal     += lbWeekCounts.ltal     || 0;
+
+        // ListenBrainz never fed lastScrobbleAt before -- a fan scrobbling only
+        // through LB (e.g. after moving off Last.fm) would drift towards a
+        // false "inactive" label as the Last.fm-only timestamp above went stale.
+        try {
+          const latest = await lbFetch(`user/${encodeURIComponent(u)}/listens`, { count: 1 });
+          const la = latest?.payload?.listens?.[0]?.listened_at;
+          if (la) {
+            const ts = new Date(la * 1000).toISOString();
+            if (!lastScrobbleAt || ts > lastScrobbleAt) lastScrobbleAt = ts;
+          }
+        } catch {}
       } catch (e) {
         console.warn(`LB fetch failed for ${u}:`, e.message);
       }
