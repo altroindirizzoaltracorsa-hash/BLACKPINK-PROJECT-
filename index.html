@@ -2582,6 +2582,15 @@
         <div id="admin-entry-results" class="admin-entry-results"></div>
       </div>
 
+      <div class="admin-ban-section">
+        <div class="admin-ban-title">🎯 LTAL Campaign Goals — mark reached / not reached</div>
+        <div class="admin-input-row">
+          <select id="admin-goal-select" class="admin-input" style="flex:1;cursor:pointer;"></select>
+          <button class="btn-primary" onclick="adminToggleGoal()">Toggle ✓/○</button>
+        </div>
+        <div id="admin-goal-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
+      </div>
+
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
       <button class="card-cl-btn" onclick="closeAdminPanel()">Close</button>
@@ -6640,6 +6649,7 @@ function openAdminPanel() {
     document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
     loadAdminRanking(saved);
     loadBannedUsers(saved);
+    populateAdminGoalSelect();
   } else {
     document.getElementById('admin-auth').style.display = 'block';
     document.getElementById('admin-content').style.display = 'none';
@@ -6671,6 +6681,7 @@ async function submitAdminKey() {
     document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
     renderAdminTable(d);
     loadBannedUsers(key);
+    populateAdminGoalSelect();
   } catch(e) {
     errEl.textContent = 'Request failed — check your connection.';
   }
@@ -7309,6 +7320,34 @@ async function toggleLtalGoal(id) {
     await fetch(`/api/proxy-image?ltal_goals=toggle&id=${encodeURIComponent(id)}&key=${encodeURIComponent(key)}`);
     renderLtalGoalsList();
   } catch {}
+}
+
+function populateAdminGoalSelect() {
+  const sel = document.getElementById('admin-goal-select');
+  if (!sel || sel.options.length > 0) return;
+  sel.innerHTML = LTAL_GOALS.flatMap(cat =>
+    cat.items.map(g => `<option value="${g.id}">[${cat.category}] ${g.label.replace(/ — ACHIEVED!.*/, '')}</option>`)
+  ).join('');
+}
+
+async function adminToggleGoal() {
+  const sel = document.getElementById('admin-goal-select');
+  const statusEl = document.getElementById('admin-goal-status');
+  if (!sel || !statusEl) return;
+  const id = sel.value;
+  if (!id) return;
+  statusEl.textContent = 'Toggling…';
+  statusEl.style.color = 'var(--muted)';
+  await toggleLtalGoal(id);
+  try {
+    const r = await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' });
+    const reached = (await r.json()).reached || {};
+    const isReached = !!reached[id];
+    statusEl.textContent = isReached ? `✔ Marked as reached: ${id}` : `○ Marked as not reached: ${id}`;
+    statusEl.style.color = isReached ? '#2ecc71' : 'rgba(245,240,240,0.45)';
+  } catch {
+    statusEl.textContent = 'Toggled — refresh the goals panel to confirm.';
+  }
 }
 
 function toggleReleaseExpand() {
