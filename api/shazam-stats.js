@@ -89,7 +89,8 @@ const SONGS = {
     { id: 'je-lovehangover',  song: 'Love Hangover',     artist: 'JENNIE', section: 'RUBY' },
     { id: 'je-nothing',       song: 'Nothing',           artist: 'JENNIE', section: 'RUBY' },
     { id: 'je-norules',       song: 'No Rules',          artist: 'JENNIE', section: 'RUBY' },
-    { id: 'je-allmine',       song: 'All Mine',          artist: 'JENNIE', section: 'RUBY' },
+    { id: 'je-allmine',          song: 'All Mine',          artist: 'JENNIE', section: 'RUBY' },
+    { id: 'je-lessthanelover', song: 'Less Than a Lover', artist: 'JENNIE', section: 'RUBY' },
   ],
   lisa: [
     { id: 'li-lalisa',      song: 'LALISA',          artist: 'LISA', section: 'LALISA' },
@@ -102,6 +103,7 @@ const SONGS = {
     { id: 'li-stereo',      song: 'Stereo',           artist: 'LISA', section: 'ALTER EGO' },
     { id: 'li-closer',      song: 'Closer',           artist: 'LISA', section: 'ALTER EGO' },
     { id: 'li-liftmeup',    song: 'LIFT ME UP',       artist: 'LISA', section: 'ALTER EGO' },
+    { id: 'li-goals',       song: 'GOALS',            artist: 'LISA', section: 'Singles' },
   ],
   rose: [
     { id: 'ro-ontheground', song: 'On The Ground',   artist: 'ROSÉ', section: '-R-' },
@@ -109,7 +111,12 @@ const SONGS = {
     { id: 'ro-apt',         song: 'APT.',            artist: 'ROSÉ', searchTerm: 'APT. ROSÉ Bruno Mars', section: 'rosie' },
     { id: 'ro-number1girl', song: 'Number One Girl', artist: 'ROSÉ', section: 'rosie' },
     { id: 'ro-toobad',      song: 'Too Bad',         artist: 'ROSÉ', section: 'rosie' },
-    { id: 'ro-poison',      song: 'Poison',          artist: 'ROSÉ', section: 'rosie' },
+    { id: 'ro-poison',          song: 'Poison',              artist: 'ROSÉ', section: 'rosie' },
+    { id: 'ro-toxictilend',     song: 'Toxic Till the End',  artist: 'ROSÉ', section: 'rosie' },
+    { id: 'ro-stayalittle',     song: 'Stay a Little Longer', artist: 'ROSÉ', section: 'rosie' },
+    { id: 'ro-messy',           song: 'Messy',               artist: 'ROSÉ', section: 'rosie' },
+    { id: 'ro-drinkorcoffee',   song: 'Drinks or Coffee',    artist: 'ROSÉ', section: 'rosie' },
+    { id: 'ro-wintercherry',    song: 'WINTER CHERRY',       artist: 'ROSÉ', section: 'Singles' },
   ],
 };
 
