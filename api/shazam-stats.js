@@ -223,6 +223,24 @@ export default async function handler(req, res) {
       const r = await probe(`/v2/search/multi?search_type=SONGS&offset=0&query=${q}`);
       return res.json({ search2: r });
     }
+    // Test apidojo search directly
+    if (which === 'apidojo') {
+      const q = encodeURIComponent(req.query.q ?? 'BOOMBAYAH BLACKPINK');
+      const ak = apiKey();
+      const ah = { 'x-rapidapi-key': ak, 'x-rapidapi-host': APIDOJO_HOST };
+      try {
+        const r = await fetch(`https://${APIDOJO_HOST}/v2/search?query=${q}&language=en-US`, { headers: ah });
+        const raw = await r.text();
+        let parsed; try { parsed = JSON.parse(raw); } catch { parsed = raw; }
+        const appleId = parsed?.results?.songs?.data?.[0]?.id;
+        return res.json({ status: r.status, appleId, first: parsed?.results?.songs?.data?.[0] ?? parsed });
+      } catch(e) { return res.json({ error: e.message }); }
+    }
+    // Show how many shazam:id:* keys are cached (without deleting)
+    if (which === 'status') {
+      const idKeys = await redis.keys('shazam:id:*');
+      return res.json({ cachedIds: idKeys.length, keys: idKeys });
+    }
     const q = encodeURIComponent(req.query.q ?? 'BOOMBAYAH BLACKPINK');
     const st = req.query.st ?? 'SONGS';
     const search = await probe(`/v1/search/multi?search_type=${st}&offset=0&query=${q}`);
