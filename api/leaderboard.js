@@ -443,6 +443,27 @@ export default async function handler(req, res) {
       }
     }
 
+    // Defensive merge: cleanupKeys only covers keys the client itself knows
+    // to expect (its current linkedAccounts' own usernames). If this identity's
+    // "stable key" ever changed across past submissions -- e.g. an early
+    // submission fell back to a different value before a Last.fm/session
+    // fetch succeeded -- the old key is orphaned forever, since nothing the
+    // client sends would ever name it. Close that gap server-side: any other
+    // entry whose OWN linkedAccounts shares a username with what's being
+    // submitted now is provably the same person, whatever raw key it sits
+    // under, so fold it in here instead of leaving a duplicate that a later
+    // background refresh can silently resurrect and race against.
+    if (Array.isArray(linkedAccounts) && linkedAccounts.length) {
+      const ownedKeys = new Set(linkedAccounts.map(a => (a.username || '').toLowerCase()));
+      const selfKey = username.toLowerCase();
+      for (const [k, entry] of Object.entries(data.users)) {
+        if (k === selfKey || (data.banned || []).includes(k)) continue;
+        const otherLinked = Array.isArray(entry.linkedAccounts) ? entry.linkedAccounts : [];
+        const overlaps = otherLinked.some(a => ownedKeys.has((a.username || '').toLowerCase()));
+        if (overlaps) delete data.users[k];
+      }
+    }
+
     data.lastUpdated = new Date().toISOString();
     updateLeaderStreak(data);
     await redis.set(LB_KEY, data);
