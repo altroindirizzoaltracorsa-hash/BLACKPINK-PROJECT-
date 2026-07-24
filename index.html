@@ -9663,9 +9663,16 @@ function drawGoalsCard(canvas, logo, art, data) {
   if (art) {
     const AW = Math.round(W * (landscape ? 0.44 : 0.42));
     if (landscape) {
+      // Clip to the art's own box first -- without this, a source photo
+      // whose aspect ratio doesn't match the AW×H box can extend well past
+      // AW (drawImage isn't auto-cropped), leaking bright pixels into the
+      // text column that the gradient below was never sized to cover.
       const scale = Math.max(AW / art.naturalWidth, H / art.naturalHeight);
       const iw = art.naturalWidth * scale, ih = art.naturalHeight * scale;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, AW, H); ctx.clip();
       ctx.drawImage(art, (AW - iw) / 2, (H - ih) / 2, iw, ih);
+      ctx.restore();
       const gr = ctx.createLinearGradient(0, 0, AW + 80, 0);
       gr.addColorStop(0, 'rgba(8,8,8,0)'); gr.addColorStop(0.55, 'rgba(8,8,8,0.75)'); gr.addColorStop(1, 'rgba(8,8,8,1)');
       ctx.fillStyle = gr; ctx.fillRect(0, 0, AW + 80, H);
@@ -9684,7 +9691,9 @@ function drawGoalsCard(canvas, logo, art, data) {
   }
   drawNoise(ctx, W, H, 0.03);
 
-  const PX = landscape ? (art ? Math.round(W * 0.48) : 70) : (art ? Math.round(W * 0.44) : 80);
+  // Landscape PX must clear AW+80 (where the gradient above reaches full
+  // opacity) or text starts on still-fading, not-yet-solid background.
+  const PX = landscape ? (art ? Math.round(W * 0.59) : 70) : (art ? Math.round(W * 0.44) : 80);
   const textW = W - PX - (landscape ? 50 : 60);
   ctx.textAlign = 'left';
 
