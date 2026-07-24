@@ -530,6 +530,21 @@
   .release-goal-nums span { font-size: 0.65rem; color: rgba(245,240,240,0.55); }
   .release-goal-bar { height: 5px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; }
   .release-goal-fill { height: 100%; background: linear-gradient(90deg, #E8110D, #FF6B5B); border-radius: 3px; transition: width 0.8s ease; }
+  .release-card-tag {
+    display: inline-block; align-self: flex-start; font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: #E8110D; background: rgba(232,17,13,0.15); border: 1px solid rgba(232,17,13,0.45);
+    padding: 0.25rem 0.6rem; border-radius: 4px; margin-bottom: 0.1rem;
+  }
+  .release-stream-goal {
+    margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem;
+    padding: 0.7rem 0.8rem; background: rgba(8,8,8,0.55); border: 1px solid rgba(232,17,13,0.35); border-radius: 8px;
+  }
+  .release-stream-goal-row { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+  .release-stream-goal-label { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,240,240,0.85); }
+  .release-stream-goal-pct { font-family: var(--display); font-size: 0.95rem; color: #E8110D; }
+  .release-stream-goal-nums { font-family: var(--display); font-size: 1.9rem; letter-spacing: 0.02em; color: #E8110D; text-shadow: 0 1px 8px rgba(0,0,0,0.6); }
+  .release-stream-goal-nums span { font-size: 0.7rem; color: rgba(245,240,240,0.6); letter-spacing: 0.03em; }
+  .release-stream-goal-note { font-size: 0.62rem; letter-spacing: 0.03em; color: rgba(245,240,240,0.65); line-height: 1.4; }
   .release-badge-chip {
     display: inline-flex; align-self: flex-start; align-items: center; gap: 0.35rem;
     background: rgba(232,17,13,0.18); border: 1px solid rgba(232,17,13,0.5); border-radius: 4px;
@@ -1639,14 +1654,24 @@
       <div class="release-card" id="jennie-release-card" style="display:none;margin-top:0.8rem;max-width:480px;width:100%;">
         <button class="release-card-share" onclick="event.preventDefault(); event.stopPropagation(); openReleaseCard();">⬡ Share</button>
         <a href="https://jennie.lnk.to/LessthanaLover" target="_blank" rel="noopener" class="release-card-link" onclick="saveJennieCountdown()">
+          <span class="release-card-tag" id="release-card-tag">🔔 NEW RELEASE</span>
           <span class="release-card-timer" id="jennie-release-timer">Loading…</span>
-          <span class="release-card-sub">Out Fri, July 24 · 12AM EDT / 1PM KST — Pre-save →</span>
+          <span class="release-card-sub" id="jennie-release-sub">Out Fri, July 24 · 12AM EDT / 1PM KST — Pre-save →</span>
           <div class="release-goal" id="jennie-release-goal" style="display:none;">
             <div class="release-goal-top">
               <span class="release-goal-label">🎯 Blinks Pre-Save Challenge</span>
               <span class="release-goal-nums" id="jennie-release-goal-nums"></span>
             </div>
             <div class="release-goal-bar"><div class="release-goal-fill" id="jennie-release-goal-fill" style="width:0%"></div></div>
+          </div>
+          <div class="release-stream-goal" id="release-stream-goal" style="display:none;">
+            <span class="release-stream-goal-label">🎯 Blinks United's Contribution</span>
+            <div class="release-goal-bar"><div class="release-goal-fill" id="release-stream-goal-fill" style="width:0%"></div></div>
+            <div class="release-stream-goal-row">
+              <span class="release-stream-goal-nums" id="release-stream-goal-nums">0<span> / 4,500,000 streams</span></span>
+              <span class="release-stream-goal-pct" id="release-stream-goal-pct"></span>
+            </div>
+            <div class="release-stream-goal-note">toward Jennie's fandom-wide 4.5M streams goal (first 24h) — every stream counts!</div>
           </div>
           <span class="release-badge-chip" id="jennie-release-badge" style="display:none;">🏆 Early Supporter — you pre-saved this!</span>
           <div class="release-card-posters">
@@ -1656,16 +1681,6 @@
             <img class="release-card-poster" src="/jennie-ltal-poster4.jpg" alt="Less Than a Lover poster 4" loading="lazy">
           </div>
         </a>
-      </div>
-      <div id="ltal-streams-goal" style="display:none;margin-top:0.8rem;max-width:480px;width:100%;">
-        <div class="goal-tracker-card">
-          <div class="goal-tracker-top">
-            <span class="goal-tracker-label">🎯 Our Streams — Less Than a Lover</span>
-            <span class="goal-tracker-nums" id="ltal-streams-nums">0<span> streams</span></span>
-          </div>
-          <div class="goal-tracker-bar"><div class="goal-tracker-fill" id="ltal-streams-fill" style="width:0%"></div></div>
-          <div class="goal-tracker-status" id="ltal-streams-status">Loading Blinks United's contribution…</div>
-        </div>
       </div>
       <div id="community-goal-home" style="display:none;margin-top:1.5rem;max-width:480px;width:100%;">
         <div class="goal-tracker-card">
@@ -7010,9 +7025,15 @@ function renderReleaseCountdown() {
   if (titleHeader) titleHeader.style.display = 'flex';
 
   const timerEl = document.getElementById('jennie-release-timer');
+  const subEl   = document.getElementById('jennie-release-sub');
+  const presaveGoalEl = document.getElementById('jennie-release-goal');
   if (now >= releaseTime) {
     timerEl.textContent = '● OUT NOW — Stream it';
     timerEl.classList.add('is-live');
+    if (subEl) subEl.textContent = 'Stream now — every play counts →';
+    // Pre-save window has closed — the streams-contribution box (handled by
+    // loadLtalStreamsGoal) takes its place instead of stacking both.
+    if (presaveGoalEl) presaveGoalEl.style.display = 'none';
   } else {
     const diff = releaseTime - now;
     const d = Math.floor(diff / 86400000);
@@ -7022,6 +7043,7 @@ function renderReleaseCountdown() {
     const pad = n => String(n).padStart(2, '0');
     timerEl.textContent = d > 0 ? `${d}d ${pad(h)}h ${pad(m)}m` : `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
     timerEl.classList.remove('is-live');
+    if (subEl) subEl.textContent = 'Out Fri, July 24 · 12AM EDT / 1PM KST — Pre-save →';
   }
 }
 
@@ -7033,6 +7055,9 @@ function renderJennieSaveCount(count) {
   const numsEl = document.getElementById('jennie-release-goal-nums');
   const fillEl = document.getElementById('jennie-release-goal-fill');
   if (!wrap || count <= 0) return;
+  // Pre-save window is over once the single is out — the streams-contribution
+  // box takes this slot instead (see renderReleaseCountdown/loadLtalStreamsGoal).
+  if (Date.now() >= new Date(JENNIE_RELEASE.releaseAt).getTime()) return;
   wrap.style.display = 'flex';
 
   // Once the original goal is passed, keep raising the bar in the same-size
@@ -7286,34 +7311,27 @@ function computeCommunityTotal(users, scoreKey) {
 }
 
 const LTAL_STREAMS_GOAL_INDUSTRY = 4_500_000; // fandom-wide 24h goal, not just our leaderboard
-const LTAL_STREAMS_STEP = 1000; // our leaderboard's own escalating milestone, same pattern as the pre-save bar
 
-// "Our leaderboard's contribution" toward Jennie's fandom-wide 4.5M-streams-in-
+// "Blinks United's Contribution" toward Jennie's fandom-wide 4.5M-streams-in-
 // 24h goal. overall_ltal is all-time since we only started tracking the track
 // the day it released, so right after release it doubles as "since release".
+// Lives inside the release card itself, replacing the pre-save challenge box
+// once the single is out (see renderReleaseCountdown/renderJennieSaveCount).
 async function loadLtalStreamsGoal() {
-  const wrap = document.getElementById('ltal-streams-goal');
+  const wrap = document.getElementById('release-stream-goal');
   if (!wrap) return;
   if (Date.now() < new Date(JENNIE_RELEASE.releaseAt).getTime()) { wrap.style.display = 'none'; return; }
   try {
     const data = await fetchLbData();
     const total = computeCommunityTotal(data.users || {}, 'overall_ltal');
+    const pct = (total / LTAL_STREAMS_GOAL_INDUSTRY) * 100;
+    const pctLabel = pct >= 0.1 ? pct.toFixed(2) : pct.toFixed(4);
 
-    const milestonesPassed = Math.floor(total / LTAL_STREAMS_STEP);
-    const currentMilestone = milestonesPassed * LTAL_STREAMS_STEP;
-    const nextMilestone = currentMilestone + LTAL_STREAMS_STEP;
-    const pct = milestonesPassed > 0
-      ? ((total - currentMilestone) / LTAL_STREAMS_STEP) * 100
-      : (total / LTAL_STREAMS_STEP) * 100;
-
-    document.getElementById('ltal-streams-fill').style.width = Math.min(100, pct) + '%';
-    document.getElementById('ltal-streams-nums').innerHTML = milestonesPassed > 0
-      ? `🎉 ${currentMilestone.toLocaleString()} reached — ${total.toLocaleString()}<span> / ${nextMilestone.toLocaleString()} streams</span>`
-      : `${total.toLocaleString()}<span> / ${LTAL_STREAMS_STEP.toLocaleString()} streams</span>`;
-
-    document.getElementById('ltal-streams-status').textContent =
-      `Every stream from Blinks United counts toward Jennie's ${(LTAL_STREAMS_GOAL_INDUSTRY / 1_000_000)}M streams goal (first 24h) — stream now!`;
-    wrap.style.display = 'block';
+    document.getElementById('release-stream-goal-fill').style.width = Math.min(100, pct) + '%';
+    document.getElementById('release-stream-goal-nums').innerHTML =
+      `${total.toLocaleString()}<span> / ${LTAL_STREAMS_GOAL_INDUSTRY.toLocaleString()} streams</span>`;
+    document.getElementById('release-stream-goal-pct').textContent = `${pctLabel}%`;
+    wrap.style.display = 'flex';
   } catch(e) {}
 }
 
@@ -7587,6 +7605,7 @@ async function getLtalWordmark() {
 
 let _cardTrackId = null, _cardArt = null, _cardLogo = null, _cardFormat = 'landscape', _cardType = 'song';
 let _releaseArtUrl = null;
+let _releaseContributionTotal = null; // Blinks United's overall_ltal total, cached for drawReleaseCard
 let _msMilestone = null, _msMilestoneTotal = 0, _msMilestoneDate = null;
 let _voteCampaignId = null;
 let _personalCardData = null;
@@ -9377,6 +9396,17 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   ctx.letterSpacing = '2px';
   ctx.fillText(sub, titleX, subY);
 
+  // Blinks United's own streams contribution toward the fandom-wide 4.5M-in-
+  // 24h goal -- only once it's actually live and there's room to fit it
+  // (poster4's tight face crop has no space left below the sub line).
+  if (!tightChin && _releaseContributionTotal != null && Date.now() >= new Date(JENNIE_RELEASE.releaseAt).getTime()) {
+    const contribY = subY + (landscape ? 34 : 46);
+    ctx.fillStyle = '#E8110D';
+    ctx.font = `500 ${landscape ? 14 : 18}px "DM Mono", monospace`;
+    ctx.letterSpacing = '2px';
+    ctx.fillText(`🎯 ${_releaseContributionTotal.toLocaleString()} STREAMS FROM BLINKS UNITED`, titleX, contribY);
+  }
+
   ctx.textAlign = 'left';
   ctx.shadowColor = 'transparent';
   ctx.shadowBlur = 0;
@@ -9459,6 +9489,7 @@ async function openReleaseCard() {
     loadImg(RELEASE_CARD_PICS[0]).catch(() => null),
     getBuLogo(),
     getLtalWordmark(),
+    fetchLbData().then(d => { _releaseContributionTotal = computeCommunityTotal(d.users || {}, 'overall_ltal'); }).catch(() => {}),
   ]);
   _cardArt = art; _cardLogo = logo;
   _releaseArtUrl = RELEASE_CARD_PICS[0];
