@@ -1,0 +1,17 @@
+name: Find duplicate leaderboard keys
+
+# One-off diagnostic, manual-only. Safe to delete this workflow (and its
+# script) once the duplicate-entry leaderboard bug is fixed and cleaned up.
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Find duplicates
+        run: node .github/scripts/find-duplicate-leaderboard-keys.mjs
