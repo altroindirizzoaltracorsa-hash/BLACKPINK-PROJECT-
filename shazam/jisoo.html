@@ -186,6 +186,7 @@ nav{
 .bar span{display:block;height:100%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));}
 
 .total-shazams{font-size:12px;opacity:.7;margin-top:3px;}
+.chart-badge{display:inline-block;font-size:0.55rem;font-family:var(--mono);letter-spacing:0.12em;background:var(--accent);color:#000;padding:1px 5px;border-radius:2px;margin-left:6px;vertical-align:middle;font-weight:600;}
 .hoverstats{font-size:12px;opacity:0;transition:.2s;margin-top:5px;color:var(--accent-glow);}
 .song:hover .hoverstats{opacity:1;}
 .song:hover .total-shazams{opacity:0.5;}
@@ -533,18 +534,20 @@ function openPromo(title,subtitle,shazams,img,list=null){
 function createSong(s,rank){
  let div=document.createElement("div")
  div.className="song"
+ const count=s.Shazams||0
+ const chartBadge=s.chartRank?`<span class="chart-badge">#${s.chartRank} GLOBAL</span>`:''
  div.innerHTML=`
  <div class="rank">${rank}</div>
- <img src="images/${s.ImageFile}" alt="${s.Song}" loading="eager" decoding="sync" onerror="console.error('FAILED TO LOAD: images/${s.ImageFile}', this.src)">
+ <img src="images/${s.ImageFile}" alt="${s.Song}" loading="eager" decoding="sync" onerror="this.style.display='none'">
  <div class="info">
-  <span class="song-title">${s.Song}</span>
-  <div class="total-shazams">${exact(s.Shazams)} Shazams</div>
-  <div class="bar"><span style="width:${progress(s.Shazams)}%"></span></div>
-  <div class="hoverstats">+${exact(s.Shazams-s.Previous)} • ${progress(s.Shazams)}% to ${milestoneText(nextMilestone(s.Shazams))}</div>
+  <span class="song-title">${s.Song}${chartBadge}</span>
+  <div class="total-shazams">${exact(count)} Shazams</div>
+  <div class="bar"><span style="width:${progress(count)}%"></span></div>
+  <div class="hoverstats">+${exact(count-s.Previous)} • ${progress(count)}% to ${milestoneText(nextMilestone(count))}</div>
  </div>
  ${shareSVG()}
  `
- div.querySelector("svg").onclick=e=>{e.stopPropagation();openPromo(s.Song,"",s.Shazams,"images/"+s.ImageFile)}
+ div.querySelector("svg").onclick=e=>{e.stopPropagation();openPromo(s.Song,"",count,"images/"+s.ImageFile)}
  div.addEventListener("click",()=>div.classList.toggle("active"))
  return div
 }
@@ -611,12 +614,30 @@ if('ontouchstart' in window || navigator.maxTouchPoints>0){
  document.body.classList.add('no-hover')
 }
 
+async function enrichFromAPI(){
+ try{
+  const res=await fetch('/api/shazam-stats?page=jisoo')
+  if(!res.ok)return
+  const data=await res.json()
+  if(!Array.isArray(data))return
+  let changed=false
+  for(const a of data){
+   const s=songs.find(s=>s.Song&&s.Song.toLowerCase()===a.song.toLowerCase())
+   if(!s)continue
+   if(a.numShazams!=null){s.Shazams=a.numShazams;changed=true}
+   if(a.chartRank!=null){s.chartRank=a.chartRank;changed=true}
+  }
+  if(changed)build()
+ }catch{}
+}
+
 Papa.parse("jisoo.csv",{download:true,header:true,dynamicTyping:true,
  complete:function(res){
   songs=res.data.filter(s=>s.Song)
   build()
   let lastUpdate=songs.length && songs[0]["Last Update"] ? songs[0]["Last Update"] : "Unknown"
   document.getElementById("updated").innerText="Last Updated: "+lastUpdate
+  enrichFromAPI()
  }})
 </script>
 
