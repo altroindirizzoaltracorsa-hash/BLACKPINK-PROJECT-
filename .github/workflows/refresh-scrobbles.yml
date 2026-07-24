@@ -30,6 +30,7 @@ jobs:
           cat response.json
           echo ""
           echo "--- summary ---"
-          jq -r '"refreshed: \(.refreshed | length) · failed: \(.failed | length)"' response.json || true
+          jq -r '"refreshed: \(.refreshed | length) · failed: \(.failed | length) · unverified (skipped): \(.unverified | length) · merged duplicates: \(.merged | length)"' response.json || true
           jq -r '.failed[]? | "  FAILED: \(.username) — \(.error)"' response.json || true
+          jq -r '.merged[]? | "  MERGED (dropped stale duplicate): \(.)"' response.json || true
           if [ "$http_code" -ge 400 ]; then exit 1; fi

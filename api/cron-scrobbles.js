@@ -396,6 +396,31 @@ export default async function handler(req, res) {
 
   const sb = supabase();
 
+  // Old-method entries (guest, just typed a username, never signed up with a
+  // real account) are frozen out of the leaderboard entirely per the site's
+  // migration notice: they neither count new scrobbles nor burn Last.fm API
+  // calls until they create an account and re-link. The client submission
+  // path already enforces this (it requires a Supabase session + verified
+  // linked_accounts row), but this cron runs server-to-server with no client
+  // involved, so it must check independently or it'll keep an old guest
+  // entry updating forever. null (couldn't determine -- e.g. Supabase
+  // unreachable this run) fails OPEN so a transient outage can't freeze
+  // everyone.
+  let verifiedUsernames = null;
+  if (sb) {
+    try {
+      const { data: linked, error } = await sb.from('linked_accounts').select('source_username');
+      if (!error) verifiedUsernames = new Set((linked || []).map(a => a.source_username.toLowerCase()));
+    } catch (e) { console.error('Failed to fetch verified linked accounts:', e); }
+  }
+  function isVerified(entry) {
+    if (!verifiedUsernames) return true;
+    const accounts = Array.isArray(entry.linkedAccounts) && entry.linkedAccounts.length
+      ? entry.linkedAccounts
+      : [{ username: entry.username }];
+    return accounts.some(a => verifiedUsernames.has((a.username || '').toLowerCase()));
+  }
+
   const { from: dayFrom }  = getDayBounds();
   const { from: weekFrom } = getWeekBounds();
   const todayKey            = dayKey(dayFrom);
@@ -416,13 +441,15 @@ export default async function handler(req, res) {
 
   for (const u of data.banned || []) delete data.users[u];
 
-  const users   = Object.values(data.users);
-  const ok      = [];
-  const failed  = [];
+  const users     = Object.values(data.users);
+  const ok        = [];
+  const failed    = [];
+  const unverified = [];
 
   const batchSize = 3;
   for (let i = 0; i < users.length; i += batchSize) {
     await Promise.all(users.slice(i, i + batchSize).map(async entry => {
+      if (!isVerified(entry)) { unverified.push(entry.username); return; }
       try {
         const refreshed = await refreshUser(entry, sb);
         // Key by displayName (lowercased) so linked-account rows consolidate
@@ -471,5 +498,5 @@ export default async function handler(req, res) {
   await redis.set(LB_KEY, data);
 
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({ ok: true, refreshed: ok, failed, merged: [...removedKeys] });
+  res.status(200).json({ ok: true, refreshed: ok, failed, unverified, merged: [...removedKeys] });
 }
