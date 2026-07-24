@@ -83,7 +83,7 @@ async function resolveKey(song) {
   if (cached) return cached;
 
   const query = encodeURIComponent(song.searchTerm || `${song.song} ${song.artist}`);
-  const r = await shazamFetch(`/v1/search/multi?offset=0&query=${query}`);
+  const r = await shazamFetch(`/v1/search/multi?search_type=SONGS&offset=0&query=${query}`);
   if (!r.ok) return null;
   const data = await r.json();
   // Shazam Core /v1/search/multi: { tracks: { hits: [{ track: { key } }] } }
@@ -176,8 +176,9 @@ export default async function handler(req, res) {
       return res.json({ shazams: r });
     }
     const q = encodeURIComponent(req.query.q ?? 'BOOMBAYAH BLACKPINK');
-    const search = await probe(`/v1/search/multi?offset=0&query=${q}`);
-    return res.json({ search });
+    const st = req.query.st ?? 'SONGS';
+    const search = await probe(`/v1/search/multi?search_type=${st}&offset=0&query=${q}`);
+    return res.json({ search, st });
   }
 
   // Cron / forced refresh path
