@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 
 const redis = Redis.fromEnv();
-const HOST = 'shazam.p.rapidapi.com';
+const HOST = 'shazam-core.p.rapidapi.com';
 const STATS_TTL = 6 * 3600; // 6-hour cache
 
 function apiKey() {
@@ -83,10 +83,11 @@ async function resolveKey(song) {
   if (cached) return cached;
 
   const term = encodeURIComponent(song.searchTerm || `${song.song} ${song.artist}`);
-  const r = await shazamFetch(`/v2/search?term=${term}&locale=en-US&offset=0&limit=5`);
+  const r = await shazamFetch(`/search/multi?term=${term}&locale=en-US&offset=0&limit=5`);
   if (!r.ok) return null;
   const data = await r.json();
-  const key = data?.results?.songs?.data?.[0]?.id;
+  // Shazam Core returns { tracks: { hits: [{ track: { key } }] } }
+  const key = data?.tracks?.hits?.[0]?.track?.key;
   if (!key) return null;
 
   await redis.set(cacheKey, key); // permanent — never expires
@@ -96,10 +97,9 @@ async function resolveKey(song) {
 // Fetch global Shazam chart (top 200). Returns Map<key, rank>.
 async function fetchChartMap() {
   try {
-    const r = await shazamFetch('/charts/get-top-songs-in-world?locale=en-US&pageSize=200&startFrom=0&listId=ip-worldwide-chart');
+    const r = await shazamFetch('/charts/get-top-songs-in-country?country_code=US&locale=en-US&pageSize=200&startFrom=0&listId=ip-country-chart-US');
     if (!r.ok) return new Map();
     const data = await r.json();
-    // Response has { tracks: [...] } where each track has a key or id
     const tracks = data?.tracks ?? data?.chart?.tracks ?? [];
     return new Map(
       tracks
@@ -111,9 +111,9 @@ async function fetchChartMap() {
   }
 }
 
-// Fetch numShazams for a single track via apidojo get-count (returns plain integer text).
+// Fetch numShazams for a single track (returns plain integer text).
 async function fetchNumShazams(shazamKey) {
-  const r = await shazamFetch(`/songs/get-count?key=${shazamKey}`);
+  const r = await shazamFetch(`/songs/get-count?id=${shazamKey}`);
   if (!r.ok) return null;
   const text = await r.text();
   const n = parseInt(text, 10);
@@ -156,7 +156,14 @@ async function refreshAll() {
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
 
-  const { page, cron, debug } = req.query;
+  const { page, cron, debug, flush } = req.query;
+
+  // Flush all cached shazam:id:* keys (needed when switching APIs)
+  if (flush === '1') {
+    const keys = await redis.keys('shazam:id:*');
+    if (keys.length) await redis.del(...keys);
+    return res.json({ flushed: keys.length });
+  }
 
   // Debug: probe known-working key + candidate search endpoints
   if (debug === '1') {
@@ -172,13 +179,13 @@ export default async function handler(req, res) {
         return { status: r.status, body: typeof parsed === 'string' ? parsed.slice(0, 300) : parsed };
       } catch(e) { return { error: e.message }; }
     };
-    const [trackUS, trackKpop, trackKR, trackGlobal] = await Promise.all([
-      probe('/charts/track?locale=en-US&pageSize=5&startFrom=0&listid=ip-country-chart-US'),
-      probe('/charts/track?locale=en-US&pageSize=5&startFrom=0&listid=genre-global-chart-15'),
-      probe('/charts/track?locale=en-US&pageSize=5&startFrom=0&listid=ip-country-chart-KR'),
-      probe('/charts/track?locale=en-US&pageSize=200&startFrom=0&listid=genre-global-chart-12'),
+    const [search, countTest, chartUS, chartKR] = await Promise.all([
+      probe('/search/multi?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=3'),
+      probe('/songs/get-count?id=40333609', true),
+      probe('/charts/get-top-songs-in-country?country_code=US&locale=en-US&pageSize=5&startFrom=0&listId=ip-country-chart-US'),
+      probe('/charts/get-top-songs-in-country?country_code=KR&locale=en-US&pageSize=5&startFrom=0&listId=ip-country-chart-KR'),
     ]);
-    return res.json({ trackUS, trackKpop, trackKR, trackGlobal });
+    return res.json({ search, countTest, chartUS, chartKR });
   }
 
   // Cron / forced refresh path
