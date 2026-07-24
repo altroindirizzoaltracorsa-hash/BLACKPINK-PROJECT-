@@ -5855,7 +5855,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       weekly_start:     weekStart,
     };
 
-    await fetch('/api/leaderboard', {
+    const postScores = tok => fetch('/api/leaderboard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -5867,9 +5867,31 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
         scores,
         updatedAt:      new Date().toISOString(),
         lastScrobbleAt: lastScrobbleTs ? new Date(lastScrobbleTs).toISOString() : null,
-        accessToken,
+        accessToken: tok,
       })
     });
+
+    // fetch() only rejects on a network failure -- a 4xx/5xx response (e.g. an
+    // expired Supabase session token) resolves normally and was previously
+    // ignored entirely, so a rejected submission looked identical to a
+    // successful one and the leaderboard silently kept serving stale scores.
+    let res = await postScores(accessToken);
+    if (!res.ok && res.status === 401 && sb) {
+      // Access token likely expired -- refresh the session and retry once.
+      try {
+        const { data: refreshed } = await sb.auth.refreshSession();
+        const freshToken = refreshed?.session?.access_token;
+        if (freshToken) res = await postScores(freshToken);
+      } catch (e) {
+        console.warn('Leaderboard submit: session refresh failed:', e);
+      }
+    }
+    if (!res.ok) {
+      let body = null;
+      try { body = await res.json(); } catch {}
+      console.warn('Leaderboard submit rejected:', res.status, body?.error || body);
+      return;
+    }
 
     // Invalidate cache so next leaderboard view fetches fresh data from server
     lbCacheTime = null;
