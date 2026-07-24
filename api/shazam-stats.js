@@ -179,16 +179,19 @@ export default async function handler(req, res) {
         return { status: r.status, body: typeof parsed === 'string' ? parsed.slice(0, 300) : parsed };
       } catch(e) { return { error: e.message }; }
     };
-    // Sequential search first to avoid rate-limit burst
-    const search = await probe('/search/multi?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=1');
-    // Probe count and chart path variations in parallel
-    const [countA, countB, chartA, chartB] = await Promise.all([
-      probe('/songs/count?id=40333609', true),
-      probe('/song/count?id=40333609', true),
-      probe('/charts/world-chart?locale=en-US&pageSize=5&startFrom=0'),
-      probe('/charts/list?locale=en-US'),
+    // Search path variations
+    const [searchA, searchB, searchC] = await Promise.all([
+      probe('/search/multi?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=1'),
+      probe('/v1/search?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=1'),
+      probe('/search?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=1'),
     ]);
-    return res.json({ search, countA, countB, chartA, chartB });
+    // Count path variations (using a known BOOMBAYAH adamid from Apple Music)
+    const [countA, countB, countC] = await Promise.all([
+      probe('/songs/get-count?track_id=40333609', true),
+      probe('/songs/get-count?id=40333609', true),
+      probe('/songs/total-shazams?track_id=40333609', true),
+    ]);
+    return res.json({ searchA, searchB, searchC, countA, countB, countC });
   }
 
   // Cron / forced refresh path
