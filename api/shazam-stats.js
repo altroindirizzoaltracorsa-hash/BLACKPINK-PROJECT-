@@ -96,22 +96,24 @@ async function resolveKey(song) {
 // Fetch global Shazam chart (top 200). Returns Map<key, rank>.
 async function fetchChartMap() {
   try {
-    const r = await shazamFetch('/charts/track?locale=en-US&pageSize=200&startFrom=0');
+    const r = await shazamFetch('/charts/list?locale=en-US&pageSize=200&startFrom=0');
     if (!r.ok) return new Map();
     const data = await r.json();
-    const tracks = data?.tracks ?? [];
+    // apidojo returns { tracks: [...] } or { chart: { tracks: [...] } }
+    const tracks = data?.tracks ?? data?.chart?.tracks ?? [];
     return new Map(tracks.map((t, i) => [String(t?.key ?? ''), i + 1]).filter(([k]) => k));
   } catch {
     return new Map();
   }
 }
 
-// Fetch numShazams for a single track.
+// Fetch numShazams for a single track via apidojo get-count (returns plain integer text).
 async function fetchNumShazams(shazamKey) {
-  const r = await shazamFetch(`/songs/get-details?key=${shazamKey}&locale=en-US`);
+  const r = await shazamFetch(`/songs/get-count?key=${shazamKey}`);
   if (!r.ok) return null;
-  const data = await r.json();
-  return data?.statistics?.numShazams ?? null;
+  const text = await r.text();
+  const n = parseInt(text, 10);
+  return isNaN(n) ? null : n;
 }
 
 // Refresh stats for one page. Returns enriched song array.
