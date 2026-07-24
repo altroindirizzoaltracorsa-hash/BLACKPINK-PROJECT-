@@ -2156,7 +2156,7 @@
             <option value="">📅 History…</option>
           </select>
           <button class="lb-refresh-btn" onclick="shareLbCard()">⬡ Share Card</button>
-          <button class="lb-refresh-btn" onclick="refreshLeaderboard(true)">↻ Refresh</button>
+          <button class="lb-refresh-btn" id="lb-refresh-btn" onclick="refreshLeaderboard(true)">↻ Refresh</button>
         </div>
       </div>
 
@@ -4201,6 +4201,17 @@ function renderVoteCampaigns() {
   tickVoteCountdowns();
 }
 
+// Less Than a Lover-themed tier names, same thresholds/icons as BADGE_TIERS,
+// used only for that song's own tier progress (not the combined all-4-songs
+// grid, which keeps the generic BLINK/STAN/SOLDIER/QUEEN/LEGEND names).
+const LTAL_TIER_LABELS = {
+  blink:   'A little bit less than a lover',
+  stan:    'Less than a Lover',
+  soldier: 'Lover',
+  queen:   'More than a lover',
+  legend:  'A little bit more than a lover',
+};
+
 const BADGE_TIERS = [
   { id: 'blink',   label: 'BLINK',   min: 1,   icon: '💗', desc: 'Welcome to the fandom!' },
   { id: 'stan',    label: 'STAN',    min: 10,  icon: '🖤', desc: "You're a real one." },
@@ -5299,7 +5310,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
           <div class="badge-history-item">
             <div class="badge-history-icon">${item.badge.icon}</div>
             <div>
-              <div class="badge-history-label">${item.badge.label}</div>
+              <div class="badge-history-label">${item.track.id === 'ltal' ? LTAL_TIER_LABELS[item.badge.id] : item.badge.label}</div>
               <div class="badge-history-song">${item.track.title}</div>
               <div class="badge-history-date">${item.plays.toLocaleString()} scrobbles</div>
             </div>
@@ -5317,6 +5328,22 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
               <div class="tier-cell-name" style="color:${allEarned ? 'var(--pink)' : 'var(--white)'}">${tier.label}</div>
               <div class="tier-cell-req">${tier.min}+ plays/track</div>
               ${allEarned ? '<div class="tier-earned-tag">✓ EARNED</div>' : '<div class="tier-locked-tag">locked</div>'}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <!-- Less Than a Lover tiers (song-specific, same thresholds/icons as above) -->
+      <p style="margin:1.2rem 0 0.5rem;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);">// Less Than a Lover Tiers</p>
+      <div style="background:var(--border);">
+        <div class="tiers-grid">
+          ${BADGE_TIERS.map(tier => {
+            const ltalPlays = totalPlays.ltal || 0;
+            const earned = ltalPlays >= tier.min;
+            return `<div class="tier-cell ${earned ? 'earned' : ''}">
+              <div class="tier-cell-icon" style="opacity:${earned ? 1 : 0.2}">${tier.icon}</div>
+              <div class="tier-cell-name" style="color:${earned ? 'var(--pink)' : 'var(--white)'}">${LTAL_TIER_LABELS[tier.id]}</div>
+              <div class="tier-cell-req">${tier.min}+ plays</div>
+              ${earned ? '<div class="tier-earned-tag">✓ EARNED</div>' : '<div class="tier-locked-tag">locked</div>'}
             </div>`;
           }).join('')}
         </div>
@@ -6065,12 +6092,24 @@ function closeLbUserProfile() {
 async function refreshLeaderboard(force = false) {
   if (lbHistorySnapshot) { exitLbHistory(); return; }
   const wrap = document.getElementById('lb-table-wrap');
+  const btn  = document.getElementById('lb-refresh-btn');
   if (wrap) wrap.innerHTML = '<div class="lb-loading">Loading leaderboard…</div>';
   try {
+    // A forced refresh (the Refresh button) is meant to mean "my numbers are
+    // current" -- re-fetching the server snapshot alone can't do that, since
+    // the snapshot is only as fresh as the last hourly cron run or the last
+    // time this browser itself submitted scores. Re-sync this browser's own
+    // scrobbles first so its row is guaranteed live, then fetch the board.
+    if (force) {
+      if (btn) { btn.textContent = '↻ Syncing your streams…'; btn.disabled = true; }
+      await tryAutoLoad().catch(() => {});
+    }
     await Promise.all([fetchLbData(force), fetchOgUsers()]);
     renderLeaderboard();
   } catch(e) {
     if (wrap) wrap.innerHTML = '<div class="lb-empty">Could not load leaderboard. Try again shortly.</div>';
+  } finally {
+    if (btn) { btn.textContent = '↻ Refresh'; btn.disabled = false; }
   }
 }
 
