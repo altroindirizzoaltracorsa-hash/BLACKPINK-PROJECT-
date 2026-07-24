@@ -175,6 +175,18 @@ export default async function handler(req, res) {
       const r = await probe(`/v1/tracks/total-shazams?track_id=${trackId}`);
       return res.json({ shazams: r });
     }
+    if (which === 'details') {
+      // 1315917630 = BOOMBAYAH Apple Music ID from apidojo search
+      const trackId = req.query.id ?? '1315917630';
+      const v1 = await probe(`/v1/tracks/details?track_id=${trackId}`);
+      const v2 = await probe(`/v2/tracks/details?track_id=${trackId}`);
+      return res.json({ v1, v2 });
+    }
+    if (which === 'search2') {
+      const q = encodeURIComponent(req.query.q ?? 'BOOMBAYAH BLACKPINK');
+      const r = await probe(`/v2/search/multi?search_type=SONGS&offset=0&query=${q}`);
+      return res.json({ search2: r });
+    }
     const q = encodeURIComponent(req.query.q ?? 'BOOMBAYAH BLACKPINK');
     const st = req.query.st ?? 'SONGS';
     const search = await probe(`/v1/search/multi?search_type=${st}&offset=0&query=${q}`);
