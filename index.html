@@ -562,6 +562,16 @@
     color: #2ecc71; border: 1px solid rgba(46,204,113,0.35); border-radius: 2px;
     padding: 0.2rem 0.45rem; white-space: nowrap;
   }
+  .itunes-inline-badge {
+    -webkit-tap-highlight-color: transparent;
+    display: block; width: 100%; text-align: left;
+    font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.04em;
+    color: #2ecc71; background: transparent; cursor: pointer;
+    border: 1px solid rgba(46,204,113,0.3); border-radius: 2px;
+    padding: 0.5rem 0.7rem; margin-bottom: 0.9rem;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .itunes-inline-badge:hover { border-color: #2ecc71; background: rgba(46,204,113,0.08); }
 
   .tracks-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem; }
   .track-cards { display: flex; flex-direction: column; gap: 1.5px; background: var(--border); }
@@ -1629,6 +1639,8 @@
           </div>
           <div class="release-goal-bar"><div class="release-goal-fill" id="jennie-release-goal-fill" style="width:0%"></div></div>
         </div>
+
+        <button class="itunes-inline-badge" id="itunes-inline-badge" onclick="openReleaseGoalsFromCard()">🎵 iTunes #1: <span id="itunes-inline-count">0/10</span> countries — tap to view →</button>
 
         <div class="stream-target" id="release-stream-goal" style="display:none;">
           <p class="target-label">🎯 Blinks United's Contribution — Toward Jennie's 4.5M Filtered Streams (First 24h)</p>
@@ -3215,6 +3227,7 @@ window.addEventListener('DOMContentLoaded', () => {
   setInterval(renderReleaseCountdown, 1000);
   loadJennieSaveCount();
   loadLtalStreamsGoal();
+  renderItunesInlineBadge();
   const saved = getSavedUsername();
   if (saved && !document.getElementById('page-badges')?.classList.contains('active')) {
     loadProfile(saved, true); // silent background submit to keep leaderboard fresh
@@ -7279,6 +7292,21 @@ function toggleReleaseExpand() {
     renderReleaseGlobalTimes();
     renderLtalGoalsList();
   }
+}
+
+function renderItunesInlineBadge() {
+  const el = document.getElementById('itunes-inline-count');
+  if (el) el.textContent = `${ITUNES_NO1_COUNTRIES.length}/10`;
+}
+
+// Tapping the inline "iTunes #1" badge on the song-card opens the same
+// expand panel used by the release title (rather than duplicating the
+// goals list), then scrolls it into view since the panel sits higher up.
+function openReleaseGoalsFromCard() {
+  const panel = document.getElementById('release-expand-panel');
+  if (!panel) return;
+  if (panel.style.display === 'none') toggleReleaseExpand();
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Fires once per browser when a fan clicks through to pre-save — doesn't block
