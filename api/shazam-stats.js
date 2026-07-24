@@ -72,10 +72,11 @@ const SONGS = {
     { id: 'ji-flower',        song: 'FLOWER',          artist: 'JISOO', section: 'ME' },
     { id: 'ji-alleyes',       song: 'All Eyes On Me',  artist: 'JISOO', section: 'ME' },
     { id: 'ji-eyesclosed',    song: 'EYES CLOSED',     artist: 'JISOO', searchTerm: 'EYES CLOSED JISOO ZAYN', section: 'Others' },
-    { id: 'ji-earthquake',    song: 'earthquake',      artist: 'JISOO', section: 'AMORTAGE' },
-    { id: 'ji-yourlove',      song: 'Your Love',       artist: 'JISOO', section: 'AMORTAGE' },
-    { id: 'ji-hugsandkisses', song: 'Hugs & Kisses',   artist: 'JISOO', section: 'AMORTAGE' },
-    { id: 'ji-tears',         song: 'TEARS',           artist: 'JISOO', section: 'AMORTAGE' },
+    { id: 'ji-earthquake',       song: 'earthquake',                  artist: 'JISOO', section: 'AMORTAGE' },
+    { id: 'ji-earthquakeremix', song: 'earthquake (Sam Feldt Remix)', artist: 'JISOO', searchTerm: 'earthquake Sam Feldt Remix JISOO', section: 'AMORTAGE' },
+    { id: 'ji-yourlove',        song: 'Your Love',                   artist: 'JISOO', section: 'AMORTAGE' },
+    { id: 'ji-hugsandkisses',   song: 'Hugs & Kisses',              artist: 'JISOO', section: 'AMORTAGE' },
+    { id: 'ji-tears',           song: 'TEARS',                       artist: 'JISOO', section: 'AMORTAGE' },
   ],
   jennie: [
     { id: 'je-solo',           song: 'SOLO',                  artist: 'JENNIE', section: "SOLO 'J'" },
@@ -114,6 +115,9 @@ const SONGS = {
     { id: 'li-chill',       song: 'Chill',                artist: 'LISA', section: 'ALTER EGO' },
     { id: 'li-dream',       song: 'Dream',                artist: 'LISA', section: 'ALTER EGO' },
     { id: 'li-goals',       song: 'GOALS',                artist: 'LISA', searchTerm: 'GOALS LISA Anitta Rema', section: 'Singles' },
+    { id: 'li-shoong',      song: 'Shoong!',              artist: 'LISA', searchTerm: 'Shoong TAEYANG LISA', section: 'Singles' },
+    { id: 'li-priceless',   song: 'Priceless',            artist: 'LISA', searchTerm: 'Priceless Maroon 5 LISA', section: 'Singles' },
+    { id: 'li-badangel',    song: 'Bad Angel',            artist: 'LISA', searchTerm: 'Bad Angel Anyma LISA', section: 'Singles' },
   ],
   rose: [
     { id: 'ro-ontheground',   song: 'On The Ground',      artist: 'ROSÉ', section: '-R-' },
@@ -130,7 +134,8 @@ const SONGS = {
     { id: 'ro-callitend',     song: 'Call It the End',    artist: 'ROSÉ', section: 'rosie' },
     { id: 'ro-toobadfor',     song: 'Too Bad for Us',     artist: 'ROSÉ', section: 'rosie' },
     { id: 'ro-danceallnight', song: 'Dance All Night',    artist: 'ROSÉ', section: 'rosie' },
-    { id: 'ro-vampirehollie', song: 'Vampirehollie',      artist: 'ROSÉ', section: 'rosie' },
+    { id: 'ro-messy',         song: 'Messy',             artist: 'ROSÉ', section: 'Singles' },
+    { id: 'ro-onmymind',      song: 'On My Mind',        artist: 'ROSÉ', searchTerm: 'On My Mind ROSÉ Alex Warren', section: 'Singles' },
   ],
 };
 
