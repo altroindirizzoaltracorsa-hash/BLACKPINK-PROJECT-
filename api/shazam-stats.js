@@ -5,24 +5,42 @@ const HOST = 'shazam-core.p.rapidapi.com';
 const APIDOJO_HOST = 'shazam.p.rapidapi.com';
 const STATS_TTL = 6 * 3600; // 6-hour cache
 
+function apiKeys() {
+  return (process.env.RAPIDAPI_SHAZAM_KEY || '').split(',').map(k => k.trim()).filter(Boolean);
+}
+
 function apiKey() {
-  return process.env.RAPIDAPI_SHAZAM_KEY || '';
+  return apiKeys()[0] || '';
 }
 
-function shazamFetch(path) {
-  const key = apiKey();
-  if (!key) throw new Error('RAPIDAPI_SHAZAM_KEY not configured');
-  return fetch(`https://${HOST}${path}`, {
-    headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': HOST },
-  });
+async function shazamFetch(path) {
+  const keys = apiKeys();
+  if (!keys.length) throw new Error('RAPIDAPI_SHAZAM_KEY not configured');
+  let last = null;
+  for (const key of keys) {
+    const r = await fetch(`https://${HOST}${path}`, {
+      headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': HOST },
+    }).catch(() => null);
+    if (!r) continue;
+    if (r.status !== 429) return r;
+    last = r;
+  }
+  return last;
 }
 
-function apidojoFetch(path) {
-  const key = apiKey();
-  if (!key) throw new Error('RAPIDAPI_SHAZAM_KEY not configured');
-  return fetch(`https://${APIDOJO_HOST}${path}`, {
-    headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': APIDOJO_HOST },
-  });
+async function apidojoFetch(path) {
+  const keys = apiKeys();
+  if (!keys.length) throw new Error('RAPIDAPI_SHAZAM_KEY not configured');
+  let last = null;
+  for (const key of keys) {
+    const r = await fetch(`https://${APIDOJO_HOST}${path}`, {
+      headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': APIDOJO_HOST },
+    }).catch(() => null);
+    if (!r) continue;
+    if (r.status !== 429) return r;
+    last = r;
+  }
+  return last;
 }
 
 // Song registry. `searchTerm` overrides the default "{song} {artist}" search.
