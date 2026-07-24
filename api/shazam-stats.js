@@ -169,13 +169,15 @@ export default async function handler(req, res) {
         return { status: r.status, body: typeof parsed === 'string' ? parsed.slice(0, 300) : parsed };
       } catch(e) { return { error: e.message }; }
     };
-    // Test search with simple single-word query and with %20-encoded multi-word
-    const [searchSimple, searchEncoded, shazams] = await Promise.all([
-      probe('/v1/search/multi?search_type=SONGS&offset=0&query=blackpink'),
-      probe('/v1/search/multi?search_type=SONGS&offset=0&query=BOOMBAYAH%20BLACKPINK'),
-      probe('/v1/tracks/total-shazams?track_id=1874125269'),
-    ]);
-    return res.json({ searchSimple, searchEncoded, shazams });
+    const which = req.query.which ?? 'search';
+    if (which === 'shazams') {
+      const trackId = req.query.id ?? '40333609';
+      const r = await probe(`/v1/tracks/total-shazams?track_id=${trackId}`);
+      return res.json({ shazams: r });
+    }
+    const q = encodeURIComponent(req.query.q ?? 'BOOMBAYAH BLACKPINK');
+    const search = await probe(`/v1/search/multi?search_type=SONGS&offset=0&query=${q}`);
+    return res.json({ search });
   }
 
   // Cron / forced refresh path
