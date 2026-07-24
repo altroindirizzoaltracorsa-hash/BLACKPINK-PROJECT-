@@ -4614,9 +4614,13 @@ async function loadProfile(usernameOverride, silent = false) {
           weekCache[dayKey] = counts;
           try { localStorage.setItem(weekCacheKey, JSON.stringify(weekCache)); } catch {}
         }
-        const bpDay = daySc.filter(s =>
-          (s.artist?.['#text'] || s.artist || '').toLowerCase().includes('blackpink') && s.date?.uts
-        );
+        // "blackpink" alone misses activity on Jennie's solo campaign track
+        // (Less Than a Lover), which would otherwise wrongly flag an actively-
+        // streaming fan as inactive just because their recent plays are all solo.
+        const bpDay = daySc.filter(s => {
+          const a = (s.artist?.['#text'] || s.artist || '').toLowerCase();
+          return (a.includes('blackpink') || a.includes('jennie')) && s.date?.uts;
+        });
         if (bpDay.length) {
           const ts = parseInt(bpDay[0].date.uts) * 1000;
           if (!lastScrobbleTs || ts > lastScrobbleTs) lastScrobbleTs = ts;
@@ -4927,7 +4931,13 @@ async function fetchSingleAccountStats(source, username) {
       res.weekCounts.shutdown += dc.shutdown || 0;
       res.weekCounts.ddududu  += dc.ddududu  || 0;
       res.weekCounts.ltal     += dc.ltal     || 0;
-      const bpSc = sc.filter(s => (s.artist?.['#text']||s.artist||'').toLowerCase().includes('blackpink') && s.date?.uts);
+      // "blackpink" alone misses activity on Jennie's solo campaign track
+      // (Less Than a Lover), which would otherwise wrongly flag an actively-
+      // streaming fan as inactive just because their recent plays are all solo.
+      const bpSc = sc.filter(s => {
+        const a = (s.artist?.['#text']||s.artist||'').toLowerCase();
+        return (a.includes('blackpink') || a.includes('jennie')) && s.date?.uts;
+      });
       if (bpSc.length) { const ts = parseInt(bpSc[0].date.uts)*1000; if (!_lastTs || ts > _lastTs) _lastTs = ts; }
     }
     res.lastScrobbleTs = _lastTs;

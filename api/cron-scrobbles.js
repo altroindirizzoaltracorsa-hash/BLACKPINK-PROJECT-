@@ -291,7 +291,13 @@ async function refreshUser(entry, sb) {
       weekCounts.ddududu  += wdc.ddududu  || 0;
       weekCounts.ltal     += wdc.ltal     || 0;
 
-      const bpEntry = weekSc.find(s => (s.artist?.['#text'] || '').toLowerCase().includes('blackpink') && s.date?.uts);
+      // "blackpink" alone misses activity on Jennie's solo campaign track
+      // (Less Than a Lover), which would otherwise wrongly flag an actively-
+      // streaming fan as inactive just because their recent plays are all solo.
+      const bpEntry = weekSc.find(s => {
+        const a = (s.artist?.['#text'] || '').toLowerCase();
+        return (a.includes('blackpink') || a.includes('jennie')) && s.date?.uts;
+      });
       if (bpEntry) {
         const ts = new Date(parseInt(bpEntry.date.uts) * 1000).toISOString();
         if (!lastScrobbleAt || ts > lastScrobbleAt) lastScrobbleAt = ts;
