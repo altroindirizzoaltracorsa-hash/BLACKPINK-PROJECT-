@@ -213,8 +213,10 @@ async function refreshAll() {
   const results = {};
   for (const page of Object.keys(SONGS)) {
     const data = await refreshPage(page, chartMap);
-    await redis.set(`shazam:stats:${page}`, data, { ex: STATS_TTL });
-    results[page] = data.length;
+    if (data.some(s => s.numShazams !== null)) {
+      await redis.set(`shazam:stats:${page}`, data, { ex: STATS_TTL });
+    }
+    results[page] = data.filter(s => s.numShazams !== null).length;
   }
   return results;
 }
@@ -300,8 +302,11 @@ export default async function handler(req, res) {
       if (page && SONGS[page]) {
         const chartMap = await fetchChartMap();
         const data = await refreshPage(page, chartMap);
-        await redis.set(`shazam:stats:${page}`, data, { ex: STATS_TTL });
-        return res.json({ ok: true, updatedAt: new Date().toISOString(), [page]: data.length });
+        const populated = data.filter(s => s.numShazams !== null).length;
+        if (populated > 0) {
+          await redis.set(`shazam:stats:${page}`, data, { ex: STATS_TTL });
+        }
+        return res.json({ ok: true, updatedAt: new Date().toISOString(), [page]: data.length, populated, cached: populated > 0 });
       }
       const counts = await refreshAll();
       return res.json({ ok: true, updatedAt: new Date().toISOString(), ...counts });
