@@ -2,6 +2,7 @@ import { Redis } from '@upstash/redis';
 
 const redis = Redis.fromEnv();
 const HOST = 'shazam-core.p.rapidapi.com';
+const APIDOJO_HOST = 'shazam.p.rapidapi.com';
 const STATS_TTL = 6 * 3600; // 6-hour cache
 
 function apiKey() {
@@ -13,6 +14,14 @@ function shazamFetch(path) {
   if (!key) throw new Error('RAPIDAPI_SHAZAM_KEY not configured');
   return fetch(`https://${HOST}${path}`, {
     headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': HOST },
+  });
+}
+
+function apidojoFetch(path) {
+  const key = apiKey();
+  if (!key) throw new Error('RAPIDAPI_SHAZAM_KEY not configured');
+  return fetch(`https://${APIDOJO_HOST}${path}`, {
+    headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': APIDOJO_HOST },
   });
 }
 
@@ -75,23 +84,30 @@ const SONGS = {
   ],
 };
 
-// Resolve a song to its Shazam track key. Keys are cached permanently in Redis
-// so we only pay the search API cost once per song ever.
+// Resolve a song to its Shazam internal ID. Permanently cached in Redis.
+// Pipeline: apidojo search → Apple Music ID → Shazam Core v2 details → Shazam ID
 async function resolveKey(song) {
   const cacheKey = `shazam:id:${song.id}`;
   const cached = await redis.get(cacheKey);
   if (cached) return cached;
 
+  // Step 1: apidojo search → Apple Music song ID
   const query = encodeURIComponent(song.searchTerm || `${song.song} ${song.artist}`);
-  const r = await shazamFetch(`/v1/search/multi?search_type=SONGS&offset=0&query=${query}`);
-  if (!r.ok) return null;
-  const data = await r.json();
-  // Shazam Core /v1/search/multi: { tracks: { hits: [{ track: { key } }] } }
-  const key = data?.tracks?.hits?.[0]?.track?.key;
-  if (!key) return null;
+  const r1 = await apidojoFetch(`/v2/search?query=${query}&language=en-US`).catch(() => null);
+  if (!r1?.ok) return null;
+  const d1 = await r1.json().catch(() => null);
+  const appleId = d1?.results?.songs?.data?.[0]?.id;
+  if (!appleId) return null;
 
-  await redis.set(cacheKey, key); // permanent — never expires
-  return key;
+  // Step 2: Shazam Core v2 track details → Shazam internal ID
+  const r2 = await shazamFetch(`/v2/tracks/details?track_id=${appleId}`).catch(() => null);
+  if (!r2?.ok) return null;
+  const d2 = await r2.json().catch(() => null);
+  const shazamKey = d2?.data?.[0]?.id;
+  if (!shazamKey) return null;
+
+  await redis.set(cacheKey, shazamKey); // permanent — never expires
+  return shazamKey;
 }
 
 // Shazam Core API has no chart endpoint — chart ranks not available.
