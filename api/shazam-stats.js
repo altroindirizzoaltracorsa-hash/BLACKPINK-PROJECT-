@@ -169,11 +169,13 @@ export default async function handler(req, res) {
         return { status: r.status, body: typeof parsed === 'string' ? parsed.slice(0, 300) : parsed };
       } catch(e) { return { error: e.message }; }
     };
-    const [search, totalShazams] = await Promise.all([
-      probe('/v1/search/multi?search_type=SONGS&offset=0&query=BOOMBAYAH+BLACKPINK'),
+    // Test search with simple single-word query and with %20-encoded multi-word
+    const [searchSimple, searchEncoded, shazams] = await Promise.all([
+      probe('/v1/search/multi?search_type=SONGS&offset=0&query=blackpink'),
+      probe('/v1/search/multi?search_type=SONGS&offset=0&query=BOOMBAYAH%20BLACKPINK'),
       probe('/v1/tracks/total-shazams?track_id=1874125269'),
     ]);
-    return res.json({ search, totalShazams });
+    return res.json({ searchSimple, searchEncoded, shazams });
   }
 
   // Cron / forced refresh path
