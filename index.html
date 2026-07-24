@@ -329,6 +329,13 @@
   .stream-btn svg { width: 12px; height: 12px; fill: currentColor; }
   .release-playlist-btns { display: flex; flex-direction: column; gap: 0.6rem; align-items: flex-start; }
   .release-playlist-btns .stream-btn { margin-top: 0; }
+  .platform-links { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .platform-chip {
+    font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.04em;
+    color: var(--pink); text-decoration: none; border: 1px solid rgba(255,0,102,0.3);
+    border-radius: 2px; padding: 0.35rem 0.6rem; transition: background 0.2s, color 0.2s;
+  }
+  .platform-chip:hover { background: var(--pink); color: var(--black); }
 
   .howto-inner { max-width: 1200px; margin: 0 auto; }
   .howto-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 5rem; align-items: start; }
@@ -1624,20 +1631,6 @@
             <a href="https://open.spotify.com/playlist/64Zdj33nc9MQz8dQcII5LW" target="_blank" rel="noopener">LTAL x JUMP →</a>
           </div>
         </div>
-        <div class="release-expand-section">
-          <p class="release-expand-heading">🌐 Stream Everywhere</p>
-          <div class="release-expand-links">
-            <a href="https://open.spotify.com/track/19UnXjpLshSLobPspdyxlD" target="_blank" rel="noopener">Spotify →</a>
-            <a href="https://music.apple.com/album/less-than-a-lover/6793277024?i=6793277028" target="_blank" rel="noopener">Apple Music →</a>
-            <a href="https://music.youtube.com/watch?v=z9ifbheDGFM" target="_blank" rel="noopener">YouTube Music →</a>
-            <a href="https://youtu.be/1PVUTUFxq8g" target="_blank" rel="noopener">YouTube →</a>
-            <a href="https://kko.to/C6uw6Ng7AP" target="_blank" rel="noopener">Melon →</a>
-            <a href="https://genie.co.kr/JY7MR4" target="_blank" rel="noopener">Genie →</a>
-            <a href="https://m.bugs.co.kr/track/6495171" target="_blank" rel="noopener">Bugs →</a>
-            <a href="https://flomuz.io/s/b.OI2KV" target="_blank" rel="noopener">FLO →</a>
-            <a href="https://naver.me/xeFo7tkU" target="_blank" rel="noopener">VIBE →</a>
-          </div>
-        </div>
       </div>
       <div class="song-card" id="jennie-release-card" style="display:none;margin-top:0.8rem;max-width:480px;width:100%;padding:1.6rem 1.6rem 1.8rem;">
         <div class="song-number" style="font-size:3rem;top:1rem;right:1.2rem;">04</div>
@@ -1682,6 +1675,18 @@
               LTAL x JUMP
             </a>
           </div>
+        </div>
+
+        <p class="release-expand-heading" style="margin-top:1rem;margin-bottom:0.5rem;">🌐 Also Streaming On</p>
+        <div class="platform-links">
+          <a class="platform-chip" href="https://music.apple.com/album/less-than-a-lover/6793277024?i=6793277028" target="_blank" rel="noopener">Apple Music</a>
+          <a class="platform-chip" href="https://music.youtube.com/watch?v=z9ifbheDGFM" target="_blank" rel="noopener">YouTube Music</a>
+          <a class="platform-chip" href="https://youtu.be/1PVUTUFxq8g" target="_blank" rel="noopener">YouTube</a>
+          <a class="platform-chip" href="https://kko.to/C6uw6Ng7AP" target="_blank" rel="noopener">Melon</a>
+          <a class="platform-chip" href="https://genie.co.kr/JY7MR4" target="_blank" rel="noopener">Genie</a>
+          <a class="platform-chip" href="https://m.bugs.co.kr/track/6495171" target="_blank" rel="noopener">Bugs</a>
+          <a class="platform-chip" href="https://flomuz.io/s/b.OI2KV" target="_blank" rel="noopener">FLO</a>
+          <a class="platform-chip" href="https://naver.me/xeFo7tkU" target="_blank" rel="noopener">VIBE</a>
         </div>
 
         <div class="release-card-posters" style="margin-top:1.2rem;">
