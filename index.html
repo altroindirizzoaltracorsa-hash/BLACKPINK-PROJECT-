@@ -1647,7 +1647,7 @@
           <div class="release-goal-bar"><div class="release-goal-fill" id="jennie-release-goal-fill" style="width:0%"></div></div>
         </div>
 
-        <button class="itunes-inline-badge" id="itunes-inline-badge" onclick="openReleaseGoalsFromCard()">🎵 iTunes #1: <span id="itunes-inline-count">0/10</span> countries — tap to view →</button>
+        <button class="itunes-inline-badge" id="itunes-inline-badge" onclick="openReleaseGoalsFromCard()">🎵 iTunes #1: <span id="itunes-inline-count">0/10 countries</span> — tap to view →</button>
 
         <div class="stream-target" id="release-stream-goal" style="display:none;">
           <p class="target-label">🎯 Blinks United's Contribution — Toward Jennie's 4.5M Filtered Streams (First 24h)</p>
@@ -7232,12 +7232,19 @@ function renderReleaseGlobalTimes() {
 // Manually updated as #1 charts come in -- shown as a chip list under the
 // iTunes Primary Goal so fans can see which countries are already done.
 const ITUNES_NO1_COUNTRIES = [
+  { flag: '🇦🇲', name: 'Armenia' },
   { flag: '🇧🇾', name: 'Belarus' },
   { flag: '🇧🇷', name: 'Brazil' },
+  { flag: '🇰🇭', name: 'Cambodia' },
+  { flag: '🇨🇱', name: 'Chile' },
+  { flag: '🇨🇴', name: 'Colombia' },
+  { flag: '🇸🇻', name: 'El Salvador' },
   { flag: '🇮🇩', name: 'Indonesia' },
+  { flag: '🇱🇧', name: 'Lebanon' },
+  { flag: '🇴🇲', name: 'Oman' },
   { flag: '🇸🇦', name: 'Saudi Arabia' },
-  { flag: '🇸🇬', name: 'Singapore' },
   { flag: '🇹🇭', name: 'Thailand' },
+  { flag: '🇦🇪', name: 'United Arab Emirates' },
   { flag: '🇻🇳', name: 'Vietnam' },
 ];
 
@@ -7251,7 +7258,9 @@ const LTAL_GOALS = [
     { id: 'youtube_week1', label: '1st Week: 8M views' },
   ]},
   { category: 'iTunes', items: [
-    { id: 'itunes_primary',   label: `Primary Goal: #1 in 10 countries (${ITUNES_NO1_COUNTRIES.length}/10 so far)` },
+    { id: 'itunes_primary',   label: ITUNES_NO1_COUNTRIES.length >= 10
+      ? `Primary Goal: #1 in 10 countries — ACHIEVED! (${ITUNES_NO1_COUNTRIES.length} so far)`
+      : `Primary Goal: #1 in 10 countries (${ITUNES_NO1_COUNTRIES.length}/10 so far)` },
     { id: 'itunes_secondary', label: 'Secondary Goal: #1 in 20 countries' },
     { id: 'itunes_majors',    label: 'Chart in all major markets: US, UK, JP, FR, DE, AU, BR, CA' },
     { id: 'itunes_week1',     label: '1st Week: #1 in 25 countries' },
@@ -7316,7 +7325,9 @@ function toggleReleaseExpand() {
 
 function renderItunesInlineBadge() {
   const el = document.getElementById('itunes-inline-count');
-  if (el) el.textContent = `${ITUNES_NO1_COUNTRIES.length}/10`;
+  if (!el) return;
+  const n = ITUNES_NO1_COUNTRIES.length;
+  el.textContent = n >= 10 ? `${n} countries (goal reached!)` : `${n}/10 countries`;
 }
 
 // Tapping the inline "iTunes #1" badge on the song-card opens the same
