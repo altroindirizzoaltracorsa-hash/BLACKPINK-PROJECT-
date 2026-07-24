@@ -152,27 +152,25 @@ export default async function handler(req, res) {
 
   const { page, cron, debug } = req.query;
 
-  // Debug: raw probe of one search call
+  // Debug: probe known-working key + candidate search endpoints
   if (debug === '1') {
     if (!apiKey()) return res.status(500).json({ error: 'RAPIDAPI_SHAZAM_KEY not configured' });
-    const key = apiKey();
-    const term = encodeURIComponent('BOOMBAYAH BLACKPINK');
-    const url = `https://${HOST}/search?term=${term}&locale=en-US&offset=0&limit=3`;
-    const r = await fetch(url, {
-      redirect: 'manual',
-      headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': HOST },
-    }).catch(e => null);
-    if (!r) return res.json({ error: 'fetch threw' });
-    const location = r.headers.get('location');
-    const bodyText = await r.text().catch(() => '');
-    // Also try with redirect:follow
-    const r2 = await fetch(url, {
-      redirect: 'follow',
-      headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': HOST },
-    }).catch(e => ({ ok: false, status: 0, _err: e.message }));
-    const status2 = r2.status;
-    const body2 = r2.ok ? await r2.json().catch(e => e.message) : await r2.text?.().catch(() => r2._err);
-    return res.json({ manualStatus: r.status, location, manualBody: bodyText.slice(0, 300), followStatus: status2, followBody: body2 });
+    const k = apiKey();
+    const headers = { 'x-rapidapi-key': k, 'x-rapidapi-host': HOST };
+    const probe = async (path) => {
+      try {
+        const r = await fetch(`https://${HOST}${path}`, { headers });
+        const body = r.ok ? await r.json().catch(e => e.message) : await r.text().catch(() => '');
+        return { status: r.status, body: typeof body === 'string' ? body.slice(0, 200) : body };
+      } catch(e) { return { error: e.message }; }
+    };
+    const [getCount, search1, search2, search3] = await Promise.all([
+      probe('/songs/get-count?key=1874125269'),
+      probe('/songs/search?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=3'),
+      probe('/search?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=3'),
+      probe('/auto-complete?term=BOOMBAYAH+BLACKPINK&locale=en-US'),
+    ]);
+    return res.json({ getCount, 'songs/search': search1, '/search': search2, 'auto-complete': search3 });
   }
 
   // Cron / forced refresh path
