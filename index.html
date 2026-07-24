@@ -556,6 +556,12 @@
   .ltal-goal-item.is-admin { cursor: pointer; }
   .ltal-goal-item.is-admin:hover { color: #E8110D; }
   .goal-tracker-done { color: #00ff88; }
+  .itunes-no1-list { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.4rem 0 0.2rem 1.4rem; }
+  .itunes-no1-chip {
+    font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.03em;
+    color: #2ecc71; border: 1px solid rgba(46,204,113,0.35); border-radius: 2px;
+    padding: 0.2rem 0.45rem; white-space: nowrap;
+  }
 
   .tracks-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem; }
   .track-cards { display: flex; flex-direction: column; gap: 1.5px; background: var(--border); }
@@ -1625,7 +1631,7 @@
         </div>
 
         <div class="stream-target" id="release-stream-goal" style="display:none;">
-          <p class="target-label">🎯 Blinks United's Contribution — Toward Jennie's 4.5M (First 24h)</p>
+          <p class="target-label">🎯 Blinks United's Contribution — Toward Jennie's 4.5M Filtered Streams (First 24h)</p>
           <div class="progress-bar"><div class="progress-fill" id="release-stream-goal-fill" style="width:0%"></div></div>
           <div class="progress-nums"><span><strong id="release-stream-goal-nums">0 / 4,500,000</strong></span><span id="release-stream-goal-pct"></span></div>
         </div>
@@ -7191,6 +7197,17 @@ function renderReleaseGlobalTimes() {
 // (Redis via /api/proxy-image) so every visitor sees the same checkmarks.
 // Admins (with the admin key already saved from the badges page) can tap
 // a goal to toggle it.
+// Manually updated as #1 charts come in -- shown as a chip list under the
+// iTunes Primary Goal so fans can see which countries are already done.
+const ITUNES_NO1_COUNTRIES = [
+  { flag: '🇧🇷', name: 'Brazil' },
+  { flag: '🇧🇾', name: 'Belarus' },
+  { flag: '🇸🇬', name: 'Singapore' },
+  { flag: '🇻🇳', name: 'Vietnam' },
+  { flag: '🇸🇦', name: 'Saudi Arabia' },
+  { flag: '🇹🇭', name: 'Thailand' },
+];
+
 const LTAL_GOALS = [
   { category: 'Spotify', items: [
     { id: 'spotify_24h',   label: '24 Hours: 4.5M filtered streams' },
@@ -7201,7 +7218,7 @@ const LTAL_GOALS = [
     { id: 'youtube_week1', label: '1st Week: 8M views' },
   ]},
   { category: 'iTunes', items: [
-    { id: 'itunes_primary',   label: 'Primary Goal: #1 in 10 countries' },
+    { id: 'itunes_primary',   label: `Primary Goal: #1 in 10 countries (${ITUNES_NO1_COUNTRIES.length}/10 so far)` },
     { id: 'itunes_secondary', label: 'Secondary Goal: #1 in 20 countries' },
     { id: 'itunes_majors',    label: 'Chart in all major markets: US, UK, JP, FR, DE, AU, BR, CA' },
     { id: 'itunes_week1',     label: '1st Week: #1 in 25 countries' },
@@ -7237,6 +7254,7 @@ async function renderLtalGoalsList() {
           <span class="ltal-goal-check">${isReached ? '✔️' : '○'}</span><span>${g.label}</span>
         </div>`;
       }).join('')}
+      ${cat.category === 'iTunes' ? `<div class="itunes-no1-list">${ITUNES_NO1_COUNTRIES.map(c => `<span class="itunes-no1-chip">${c.flag} #1 ${c.name}</span>`).join('')}</div>` : ''}
     </div>
   `).join('');
 }
