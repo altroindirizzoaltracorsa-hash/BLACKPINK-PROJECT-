@@ -81,6 +81,7 @@ const SONGS = {
   jennie: [
     { id: 'je-solo',           song: 'SOLO',                  artist: 'JENNIE', section: "SOLO 'J'" },
     { id: 'je-youandme',       song: 'You & Me',              artist: 'JENNIE', section: "SOLO 'J'" },
+    { id: 'je-intro',          song: 'Intro: Jane',           artist: 'JENNIE', searchTerm: 'Intro Jane JENNIE FKJ', section: 'RUBY' },
     { id: 'je-like',           song: 'like JENNIE',           artist: 'JENNIE', section: 'RUBY' },
     { id: 'je-startawar',      song: 'start a war',           artist: 'JENNIE', section: 'RUBY' },
     { id: 'je-handlebars',     song: 'Handlebars',            artist: 'JENNIE', searchTerm: 'Handlebars JENNIE Dua Lipa', section: 'RUBY' },
@@ -96,6 +97,12 @@ const SONGS = {
     { id: 'je-starlight',      song: 'Starlight',             artist: 'JENNIE', section: 'RUBY' },
     { id: 'je-twin',           song: 'Twin',                  artist: 'JENNIE', section: 'RUBY' },
     { id: 'je-lessthanelover', song: 'Less Than a Lover',     artist: 'JENNIE', section: 'Singles' },
+    { id: 'je-oneofthegirls', song: 'One of the Girls',      artist: 'JENNIE', searchTerm: 'One of the Girls The Weeknd JENNIE Lily Rose Depp', section: 'Singles' },
+    { id: 'je-spot',          song: 'SPOT!',                 artist: 'JENNIE', searchTerm: 'SPOT ZICO JENNIE', section: 'Singles' },
+    { id: 'je-slowmotion',    song: 'Slow Motion',           artist: 'JENNIE', searchTerm: 'Slow Motion JENNIE Matt Champion', section: 'Singles' },
+    { id: 'je-dracula',       song: 'Dracula',               artist: 'JENNIE', searchTerm: 'Dracula Remix Tame Impala JENNIE', section: 'Singles' },
+    { id: 'je-special',       song: 'Special',               artist: 'JENNIE', searchTerm: 'Special Lee Hi JENNIE', section: 'Singles' },
+    { id: 'je-black',         song: 'BLACK',                 artist: 'JENNIE', searchTerm: 'BLACK G-Dragon JENNIE', section: 'Singles' },
   ],
   lisa: [
     { id: 'li-lalisa',      song: 'LALISA',               artist: 'LISA', section: 'LALISA' },
@@ -136,6 +143,7 @@ const SONGS = {
     { id: 'ro-danceallnight', song: 'Dance All Night',    artist: 'ROSÉ', section: 'rosie' },
     { id: 'ro-messy',         song: 'Messy',             artist: 'ROSÉ', section: 'Singles' },
     { id: 'ro-onmymind',      song: 'On My Mind',        artist: 'ROSÉ', searchTerm: 'On My Mind ROSÉ Alex Warren', section: 'Singles' },
+    { id: 'ro-withoutyou',    song: 'Without You',       artist: 'ROSÉ', searchTerm: 'Without You G-Dragon ROSÉ', section: 'Singles' },
   ],
 };
 
