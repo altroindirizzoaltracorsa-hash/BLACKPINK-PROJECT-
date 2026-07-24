@@ -83,7 +83,7 @@ async function resolveKey(song) {
   if (cached) return cached;
 
   const term = encodeURIComponent(song.searchTerm || `${song.song} ${song.artist}`);
-  const r = await shazamFetch(`/songs/search?term=${term}&locale=en-US&offset=0&limit=5`);
+  const r = await shazamFetch(`/search?term=${term}&locale=en-US&offset=0&limit=5`);
   if (!r.ok) return null;
   const data = await r.json();
   const key = data?.tracks?.hits?.[0]?.track?.key;
