@@ -82,11 +82,11 @@ async function resolveKey(song) {
   const cached = await redis.get(cacheKey);
   if (cached) return cached;
 
-  const term = encodeURIComponent(song.searchTerm || `${song.song} ${song.artist}`);
-  const r = await shazamFetch(`/search/multi?term=${term}&locale=en-US&offset=0&limit=5`);
+  const query = encodeURIComponent(song.searchTerm || `${song.song} ${song.artist}`);
+  const r = await shazamFetch(`/v1/search/multi?search_type=SONGS&offset=0&query=${query}`);
   if (!r.ok) return null;
   const data = await r.json();
-  // Shazam Core returns { tracks: { hits: [{ track: { key } }] } }
+  // Shazam Core /v1/search/multi: { tracks: { hits: [{ track: { key } }] } }
   const key = data?.tracks?.hits?.[0]?.track?.key;
   if (!key) return null;
 
@@ -94,30 +94,20 @@ async function resolveKey(song) {
   return key;
 }
 
-// Fetch global Shazam chart (top 200). Returns Map<key, rank>.
+// Shazam Core API has no chart endpoint — chart ranks not available.
 async function fetchChartMap() {
-  try {
-    const r = await shazamFetch('/charts/get-top-songs-in-country?country_code=US&locale=en-US&pageSize=200&startFrom=0&listId=ip-country-chart-US');
-    if (!r.ok) return new Map();
-    const data = await r.json();
-    const tracks = data?.tracks ?? data?.chart?.tracks ?? [];
-    return new Map(
-      tracks
-        .map((t, i) => [String(t?.key ?? t?.adamid ?? ''), i + 1])
-        .filter(([k]) => k)
-    );
-  } catch {
-    return new Map();
-  }
+  return new Map();
 }
 
-// Fetch numShazams for a single track (returns plain integer text).
+// Fetch numShazams via /v1/tracks/total-shazams.
 async function fetchNumShazams(shazamKey) {
-  const r = await shazamFetch(`/songs/get-count?id=${shazamKey}`);
+  const r = await shazamFetch(`/v1/tracks/total-shazams?track_id=${shazamKey}`);
   if (!r.ok) return null;
-  const text = await r.text();
-  const n = parseInt(text, 10);
-  return isNaN(n) ? null : n;
+  const data = await r.json().catch(() => null);
+  // Response is either a plain number or { count: N } or { result: N }
+  if (typeof data === 'number') return data;
+  const n = data?.count ?? data?.result ?? data?.total ?? data?.shazams ?? null;
+  return typeof n === 'number' ? n : null;
 }
 
 // Refresh stats for one page. Returns enriched song array.
@@ -179,19 +169,11 @@ export default async function handler(req, res) {
         return { status: r.status, body: typeof parsed === 'string' ? parsed.slice(0, 300) : parsed };
       } catch(e) { return { error: e.message }; }
     };
-    // Search path variations
-    const [searchA, searchB, searchC] = await Promise.all([
-      probe('/search/multi?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=1'),
-      probe('/v1/search?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=1'),
-      probe('/search?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=1'),
+    const [search, totalShazams] = await Promise.all([
+      probe('/v1/search/multi?search_type=SONGS&offset=0&query=BOOMBAYAH+BLACKPINK'),
+      probe('/v1/tracks/total-shazams?track_id=1874125269'),
     ]);
-    // Count path variations (using a known BOOMBAYAH adamid from Apple Music)
-    const [countA, countB, countC] = await Promise.all([
-      probe('/songs/get-count?track_id=40333609', true),
-      probe('/songs/get-count?id=40333609', true),
-      probe('/songs/total-shazams?track_id=40333609', true),
-    ]);
-    return res.json({ searchA, searchB, searchC, countA, countB, countC });
+    return res.json({ search, totalShazams });
   }
 
   // Cron / forced refresh path
