@@ -110,7 +110,7 @@ async function resolveKey(song) {
 
   // Step 1: apidojo search → Apple Music song ID
   const query = encodeURIComponent(song.searchTerm || `${song.song} ${song.artist}`);
-  const r1 = await apidojoFetch(`/v2/search?query=${query}&language=en-US`).catch(() => null);
+  const r1 = await apidojoFetch(`/v2/search?term=${query}&locale=en-US&offset=0&limit=5`).catch(() => null);
   if (!r1?.ok) return null;
   const d1 = await r1.json().catch(() => null);
   const appleId = d1?.results?.songs?.data?.[0]?.id;
@@ -229,7 +229,7 @@ export default async function handler(req, res) {
       const ak = apiKey();
       const ah = { 'x-rapidapi-key': ak, 'x-rapidapi-host': APIDOJO_HOST };
       try {
-        const r = await fetch(`https://${APIDOJO_HOST}/v2/search?query=${q}&language=en-US`, { headers: ah });
+        const r = await fetch(`https://${APIDOJO_HOST}/v2/search?term=${q}&locale=en-US&offset=0&limit=5`, { headers: ah });
         const raw = await r.text();
         let parsed; try { parsed = JSON.parse(raw); } catch { parsed = raw; }
         const appleId = parsed?.results?.songs?.data?.[0]?.id;
