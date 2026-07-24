@@ -489,28 +489,7 @@
   .goal-tracker-fill { height: 100%; background: var(--pink); transition: width 1s ease; }
   .goal-tracker-status { font-size: 0.65rem; letter-spacing: 0.08em; color: var(--muted); }
 
-  @keyframes release-breathe {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(232,17,13,0), 0 4px 24px rgba(0,0,0,0.35); border-color: rgba(232,17,13,0.3); transform: scale(1); }
-    50%      { box-shadow: 0 0 50px 14px rgba(232,17,13,0.6), 0 10px 34px rgba(0,0,0,0.45); border-color: rgba(232,17,13,0.9); transform: scale(1.055); }
-  }
-  .release-card {
-    position: relative; background: #0a0a0a url('/jennie-ltal-photo.jpg') center 25% / cover no-repeat;
-    border: 1px solid rgba(232,17,13,0.3);
-    padding: 1.4rem 2rem; display: flex; flex-direction: column; gap: 0.4rem;
-    text-decoration: none; overflow: hidden;
-    animation: release-breathe 2.2s cubic-bezier(.34, 1.56, .64, 1) infinite;
-  }
-  @media (prefers-reduced-motion: reduce) { .release-card { animation: none; } }
-  .release-card::before {
-    content: ''; position: absolute; inset: 0;
-    background:
-      radial-gradient(ellipse at top right, rgba(232,17,13,0.2), transparent 65%),
-      linear-gradient(180deg, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0.72) 55%, rgba(8,8,8,0.92) 100%);
-    pointer-events: none;
-  }
-  .release-card > * { position: relative; z-index: 1; }
   .release-title-header { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; }
-  .release-card-link { display: flex; flex-direction: column; gap: 0.4rem; text-decoration: none; color: inherit; }
   .release-card-label {
     display: inline-block; align-self: flex-start;
     background: rgba(8,8,8,0.65); border: 1px solid rgba(232,17,13,0.4); border-radius: 4px;
@@ -519,10 +498,7 @@
   }
   .release-card-jennie { font-family: 'Pinyon Script', cursive; font-size: 1.7rem; line-height: 1; color: #E8110D; text-shadow: 0 1px 8px rgba(0,0,0,0.6); margin-bottom: -0.2rem; }
   .release-card-wordmark { display: block; width: 68%; max-width: 240px; height: auto; filter: drop-shadow(0 1px 8px rgba(0,0,0,0.6)); margin: 0.2rem 0; }
-  .release-card-timer { font-family: var(--display); font-size: 1.5rem; letter-spacing: 0.02em; color: #E8110D; text-shadow: 0 1px 8px rgba(0,0,0,0.6); }
-  .release-card-timer.is-live { color: #2ecc71; }
-  .release-card-sub { font-size: 0.62rem; letter-spacing: 0.08em; color: rgba(245,240,240,0.75); text-transform: uppercase; }
-  .release-card-link:hover .release-card-sub { color: #E8110D; }
+  #jennie-release-card.song-card .song-meta.is-live { color: #2ecc71; }
   .release-goal { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem; }
   .release-goal-top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
   .release-goal-label { font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(245,240,240,0.75); }
@@ -530,34 +506,6 @@
   .release-goal-nums span { font-size: 0.65rem; color: rgba(245,240,240,0.55); }
   .release-goal-bar { height: 5px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; }
   .release-goal-fill { height: 100%; background: linear-gradient(90deg, #E8110D, #FF6B5B); border-radius: 3px; transition: width 0.8s ease; }
-  .release-card-tag {
-    display: inline-block; align-self: flex-start; font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase;
-    color: #E8110D; background: rgba(232,17,13,0.15); border: 1px solid rgba(232,17,13,0.45);
-    padding: 0.25rem 0.6rem; border-radius: 4px; margin-bottom: 0.1rem;
-  }
-  .release-stream-goal {
-    margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem;
-    padding: 0.7rem 0.8rem; background: rgba(8,8,8,0.55); border: 1px solid rgba(232,17,13,0.35); border-radius: 8px;
-  }
-  .release-stream-goal-row { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
-  .release-stream-goal-label { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,240,240,0.85); }
-  .release-stream-goal-pct { font-family: var(--display); font-size: 0.95rem; color: #E8110D; }
-  .release-stream-goal-nums { font-family: var(--display); font-size: 1.9rem; letter-spacing: 0.02em; color: #E8110D; text-shadow: 0 1px 8px rgba(0,0,0,0.6); }
-  .release-stream-goal-nums span { font-size: 0.7rem; color: rgba(245,240,240,0.6); letter-spacing: 0.03em; }
-  .release-stream-goal-note { font-size: 0.62rem; letter-spacing: 0.03em; color: rgba(245,240,240,0.65); line-height: 1.4; }
-  .release-badge-chip {
-    display: inline-flex; align-self: flex-start; align-items: center; gap: 0.35rem;
-    background: rgba(232,17,13,0.18); border: 1px solid rgba(232,17,13,0.5); border-radius: 4px;
-    padding: 0.3rem 0.6rem; margin-top: 0.5rem;
-    font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; color: #FF6B5B;
-  }
-  .release-card-share {
-    position: absolute; top: 1rem; right: 1rem; z-index: 2;
-    background: rgba(8,8,8,0.55); border: 1px solid rgba(232,17,13,0.5); color: #E8110D;
-    font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase;
-    padding: 0.35rem 0.6rem; cursor: pointer; transition: background 0.2s;
-  }
-  .release-card-share:hover { background: rgba(232,17,13,0.35); }
   .release-card-posters { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
   .release-card-poster { width: 52px; height: 74px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(232,17,13,0.4); flex-shrink: 0; }
   .release-title-tap { position: relative; display: inline-block; cursor: pointer; }
@@ -1651,36 +1599,40 @@
           </div>
         </div>
       </div>
-      <div class="release-card" id="jennie-release-card" style="display:none;margin-top:0.8rem;max-width:480px;width:100%;">
-        <button class="release-card-share" onclick="event.preventDefault(); event.stopPropagation(); openReleaseCard();">⬡ Share</button>
-        <a href="https://jennie.lnk.to/LessthanaLover" target="_blank" rel="noopener" class="release-card-link" onclick="saveJennieCountdown()">
-          <span class="release-card-tag" id="release-card-tag">🔔 NEW RELEASE</span>
-          <span class="release-card-timer" id="jennie-release-timer">Loading…</span>
-          <span class="release-card-sub" id="jennie-release-sub">Out Fri, July 24 · 12AM EDT / 1PM KST — Pre-save →</span>
-          <div class="release-goal" id="jennie-release-goal" style="display:none;">
-            <div class="release-goal-top">
-              <span class="release-goal-label">🎯 Blinks Pre-Save Challenge</span>
-              <span class="release-goal-nums" id="jennie-release-goal-nums"></span>
-            </div>
-            <div class="release-goal-bar"><div class="release-goal-fill" id="jennie-release-goal-fill" style="width:0%"></div></div>
+      <div class="song-card" id="jennie-release-card" style="display:none;margin-top:0.8rem;max-width:480px;width:100%;padding:1.6rem 1.6rem 1.8rem;">
+        <div class="song-number" style="font-size:3rem;top:1rem;right:1.2rem;">04</div>
+        <span class="song-tag">Priority IV</span>
+        <h3 class="song-title" style="font-size:1.7rem;">LESS THAN A LOVER</h3>
+        <p class="song-meta" id="jennie-release-timer" style="margin-bottom:0.2rem;">Loading…</p>
+        <p class="song-meta">2026</p>
+
+        <div class="release-goal" id="jennie-release-goal" style="display:none;">
+          <div class="release-goal-top">
+            <span class="release-goal-label">🎯 Blinks Pre-Save Challenge</span>
+            <span class="release-goal-nums" id="jennie-release-goal-nums"></span>
           </div>
-          <div class="release-stream-goal" id="release-stream-goal" style="display:none;">
-            <span class="release-stream-goal-label">🎯 Blinks United's Contribution</span>
-            <div class="release-goal-bar"><div class="release-goal-fill" id="release-stream-goal-fill" style="width:0%"></div></div>
-            <div class="release-stream-goal-row">
-              <span class="release-stream-goal-nums" id="release-stream-goal-nums">0<span> / 4,500,000 streams</span></span>
-              <span class="release-stream-goal-pct" id="release-stream-goal-pct"></span>
-            </div>
-            <div class="release-stream-goal-note">toward Jennie's fandom-wide 4.5M streams goal (first 24h) — every stream counts!</div>
-          </div>
-          <span class="release-badge-chip" id="jennie-release-badge" style="display:none;">🏆 Early Supporter — you pre-saved this!</span>
-          <div class="release-card-posters">
-            <img class="release-card-poster" src="/jennie-ltal-poster1.jpg" alt="Less Than a Lover poster 1" loading="lazy">
-            <img class="release-card-poster" src="/jennie-ltal-poster2.jpg" alt="Less Than a Lover poster 2" loading="lazy">
-            <img class="release-card-poster" src="/jennie-ltal-poster3.jpg" alt="Less Than a Lover poster 3" loading="lazy">
-            <img class="release-card-poster" src="/jennie-ltal-poster4.jpg" alt="Less Than a Lover poster 4" loading="lazy">
-          </div>
+          <div class="release-goal-bar"><div class="release-goal-fill" id="jennie-release-goal-fill" style="width:0%"></div></div>
+        </div>
+
+        <div class="stream-target" id="release-stream-goal" style="display:none;">
+          <p class="target-label">🎯 Blinks United's Contribution — Toward Jennie's 4.5M (First 24h)</p>
+          <div class="progress-bar"><div class="progress-fill" id="release-stream-goal-fill" style="width:0%"></div></div>
+          <div class="progress-nums"><span><strong id="release-stream-goal-nums">0 / 4,500,000</strong></span><span id="release-stream-goal-pct"></span></div>
+        </div>
+
+        <a class="stream-btn" href="https://open.spotify.com/track/19UnXjpLshSLobPspdyxlD" target="_blank" rel="noopener" onclick="if (Date.now() < new Date(JENNIE_RELEASE.releaseAt).getTime()) saveJennieCountdown();">
+          <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+          Stream on Spotify
         </a>
+
+        <div class="release-card-posters" style="margin-top:1.2rem;">
+          <img class="release-card-poster" src="/jennie-ltal-poster1.jpg" alt="Less Than a Lover poster 1" loading="lazy">
+          <img class="release-card-poster" src="/jennie-ltal-poster2.jpg" alt="Less Than a Lover poster 2" loading="lazy">
+          <img class="release-card-poster" src="/jennie-ltal-poster3.jpg" alt="Less Than a Lover poster 3" loading="lazy">
+          <img class="release-card-poster" src="/jennie-ltal-poster4.jpg" alt="Less Than a Lover poster 4" loading="lazy">
+        </div>
+
+        <button class="gen-card-btn" onclick="openReleaseCard()">⬡ Generate Share Card</button>
       </div>
       <div id="community-goal-home" style="display:none;margin-top:1.5rem;max-width:480px;width:100%;">
         <div class="goal-tracker-card">
@@ -7021,16 +6973,14 @@ function renderReleaseCountdown() {
     if (panel) panel.style.display = 'none';
     return;
   }
-  card.style.display = 'flex';
+  card.style.display = 'block';
   if (titleHeader) titleHeader.style.display = 'flex';
 
   const timerEl = document.getElementById('jennie-release-timer');
-  const subEl   = document.getElementById('jennie-release-sub');
   const presaveGoalEl = document.getElementById('jennie-release-goal');
   if (now >= releaseTime) {
     timerEl.textContent = '● OUT NOW — Stream it';
     timerEl.classList.add('is-live');
-    if (subEl) subEl.textContent = 'Stream now — every play counts →';
     // Pre-save window has closed — the streams-contribution box (handled by
     // loadLtalStreamsGoal) takes its place instead of stacking both.
     if (presaveGoalEl) presaveGoalEl.style.display = 'none';
@@ -7043,7 +6993,6 @@ function renderReleaseCountdown() {
     const pad = n => String(n).padStart(2, '0');
     timerEl.textContent = d > 0 ? `${d}d ${pad(h)}h ${pad(m)}m` : `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
     timerEl.classList.remove('is-live');
-    if (subEl) subEl.textContent = 'Out Fri, July 24 · 12AM EDT / 1PM KST — Pre-save →';
   }
 }
 
@@ -7328,10 +7277,10 @@ async function loadLtalStreamsGoal() {
     const pctLabel = pct >= 0.1 ? pct.toFixed(2) : pct.toFixed(4);
 
     document.getElementById('release-stream-goal-fill').style.width = Math.min(100, pct) + '%';
-    document.getElementById('release-stream-goal-nums').innerHTML =
-      `${total.toLocaleString()}<span> / ${LTAL_STREAMS_GOAL_INDUSTRY.toLocaleString()} streams</span>`;
+    document.getElementById('release-stream-goal-nums').textContent =
+      `${total.toLocaleString()} / ${LTAL_STREAMS_GOAL_INDUSTRY.toLocaleString()}`;
     document.getElementById('release-stream-goal-pct').textContent = `${pctLabel}%`;
-    wrap.style.display = 'flex';
+    wrap.style.display = 'block';
   } catch(e) {}
 }
 
