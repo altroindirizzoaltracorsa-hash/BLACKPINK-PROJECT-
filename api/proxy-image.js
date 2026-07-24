@@ -820,14 +820,19 @@ export default async function handler(req, res) {
       const artistPlays = bpGroupPlays + Object.values(memberPlays).reduce((s, v) => s + v, 0);
 
       // Match tracks by name prefix; also accept streams or count field
-      const TRACK_PREFIXES = { jump: 'jump', shutdown: 'shut down', ddududu: 'ddu-du ddu-du' };
+      const TRACKS = [
+        { id: 'jump',     prefix: 'jump',              artist: 'BLACKPINK' },
+        { id: 'shutdown', prefix: 'shut down',          artist: 'BLACKPINK' },
+        { id: 'ddududu',  prefix: 'ddu-du ddu-du',      artist: 'BLACKPINK' },
+        { id: 'ltal',     prefix: 'less than a lover',  artist: 'JENNIE' },
+      ];
       const tracks = {};
-      for (const [key, prefix] of Object.entries(TRACK_PREFIXES)) {
-        tracks[key] = items
+      for (const t of TRACKS) {
+        tracks[t.id] = items
           .filter(i => {
             const name = (i.track?.name ?? i.name ?? '').toLowerCase();
             const artists = i.track?.artists ?? i.artists ?? [];
-            return name.startsWith(prefix) && artists.some(a => a.name === 'BLACKPINK');
+            return name.startsWith(t.prefix) && artists.some(a => a.name === t.artist);
           })
           .reduce((sum, i) => sum + (i.streams ?? i.count ?? Math.round((i.playedMs ?? 0) / 180000)), 0);
       }
@@ -836,7 +841,7 @@ export default async function handler(req, res) {
         customId, displayName,
         playcount: artistPlays || Object.values(tracks).reduce((s, v) => s + v, 0),
         artistPlays, bpGroupPlays, memberPlays, tracks,
-        today: { jump: 0, shutdown: 0, ddududu: 0 },
+        today: { jump: 0, shutdown: 0, ddududu: 0, ltal: 0 },
       });
     } catch(err) {
       return res.status(400).json({ error: err.message });

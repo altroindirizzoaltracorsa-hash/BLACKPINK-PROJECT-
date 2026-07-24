@@ -100,16 +100,21 @@ export default async function handler(request) {
     }
     const artistPlays = bpGroupPlays + Object.values(memberPlays).reduce((s, v) => s + v, 0);
 
-    const TRACK_PREFIXES = { jump: 'jump', shutdown: 'shut down', ddududu: 'ddu-du ddu-du' };
+    const TRACKS = [
+      { id: 'jump',     prefix: 'jump',              artist: 'BLACKPINK' },
+      { id: 'shutdown', prefix: 'shut down',          artist: 'BLACKPINK' },
+      { id: 'ddududu',  prefix: 'ddu-du ddu-du',      artist: 'BLACKPINK' },
+      { id: 'ltal',     prefix: 'less than a lover',  artist: 'JENNIE' },
+    ];
 
     function countTracks(list) {
       const result = {};
-      for (const [key, prefix] of Object.entries(TRACK_PREFIXES)) {
-        result[key] = list
+      for (const t of TRACKS) {
+        result[t.id] = list
           .filter(i => {
             const name = (i.track?.name ?? i.name ?? '').toLowerCase();
             const artists = i.track?.artists ?? i.artists ?? [];
-            return name.startsWith(prefix) && artists.some(a => a.name === 'BLACKPINK');
+            return name.startsWith(t.prefix) && artists.some(a => a.name === t.artist);
           })
           .reduce((sum, i) => sum + (i.streams ?? i.count ?? Math.round((i.playedMs ?? 0) / 180000)), 0);
       }
@@ -117,14 +122,12 @@ export default async function handler(request) {
     }
 
     function countRecent(list) {
-      const result = { jump: 0, shutdown: 0, ddududu: 0 };
+      const result = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0 };
       for (const stream of list) {
         const name = (stream.track?.name ?? '').toLowerCase();
         const artists = stream.track?.artists ?? [];
-        if (!artists.some(a => a.name === 'BLACKPINK')) continue;
-        if (name.startsWith('jump')) result.jump++;
-        else if (name.startsWith('shut down')) result.shutdown++;
-        else if (name.startsWith('ddu-du ddu-du')) result.ddududu++;
+        const t = TRACKS.find(t => name.startsWith(t.prefix) && artists.some(a => a.name === t.artist));
+        if (t) result[t.id]++;
       }
       return result;
     }
@@ -136,7 +139,7 @@ export default async function handler(request) {
     // Prefer streams/recent (exact local-midnight timestamps) when it's well-synced.
     // Fall back to range=today when streams/recent is severely behind (< 70% of today's count).
     const tracksToday = {};
-    for (const k of ['jump', 'shutdown', 'ddududu']) {
+    for (const k of ['jump', 'shutdown', 'ddududu', 'ltal']) {
       const agg = todayRange[k] || 0;
       const rec = todayRecent[k] || 0;
       tracksToday[k] = (agg > 0 && rec >= agg * 0.7) ? rec : agg;
