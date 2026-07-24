@@ -83,7 +83,7 @@ async function resolveKey(song) {
   if (cached) return cached;
 
   const term = encodeURIComponent(song.searchTerm || `${song.song} ${song.artist}`);
-  const r = await shazamFetch(`/search?term=${term}&locale=en-US&offset=0&limit=5`);
+  const r = await shazamFetch(`/v2/search?term=${term}&locale=en-US&offset=0&limit=5`);
   if (!r.ok) return null;
   const data = await r.json();
   const key = data?.tracks?.hits?.[0]?.track?.key;
@@ -168,14 +168,13 @@ export default async function handler(req, res) {
         return { status: r.status, body: typeof parsed === 'string' ? parsed.slice(0, 300) : parsed };
       } catch(e) { return { error: e.message }; }
     };
-    const [getCount, getCountText, search1, search2, search3] = await Promise.all([
-      probe('/songs/get-count?key=1874125269'),
+    const [getCount, v2search, v2chart, chart] = await Promise.all([
       probe('/songs/get-count?key=1874125269', true),
-      probe('/search?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=3'),
-      probe('/auto-complete?term=BOOMBAYAH+BLACKPINK&locale=en-US'),
-      probe('/songs/list-recommendations?key=1874125269&locale=en-US'),
+      probe('/v2/search?term=BOOMBAYAH+BLACKPINK&locale=en-US&offset=0&limit=3'),
+      probe('/v2/charts/list?locale=en-US&pageSize=200&startFrom=0'),
+      probe('/charts/list?locale=en-US&pageSize=200&startFrom=0'),
     ]);
-    return res.json({ getCount, getCountRaw: getCountText, '/search': search1, 'auto-complete': search2, 'list-recs': search3 });
+    return res.json({ getCount, v2search, v2chart, chart });
   }
 
   // Cron / forced refresh path
