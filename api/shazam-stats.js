@@ -78,9 +78,26 @@ const SONGS = {
     { id: 'ji-tears',         song: 'TEARS',           artist: 'JISOO', section: 'AMORTAGE' },
   ],
   jennie: [
-    { id: 'je-solo',    song: 'SOLO',     artist: 'JENNIE', section: "SOLO 'J'" },
-    { id: 'je-youandme',song: 'You & Me', artist: 'JENNIE', section: "SOLO 'J'" },
-    { id: 'je-mantra',  song: 'Mantra',   artist: 'JENNIE', section: "SOLO 'J'" },
+    { id: 'je-solo',     song: 'SOLO',        artist: 'JENNIE', section: "SOLO 'J'" },
+    { id: 'je-youandme', song: 'You & Me',    artist: 'JENNIE', section: "SOLO 'J'" },
+    { id: 'je-mantra',   song: 'Mantra',      artist: 'JENNIE', section: "SOLO 'J'" },
+    { id: 'je-like',     song: 'like JENNIE', artist: 'JENNIE', section: 'RUBY' },
+    { id: 'je-extral',   song: 'ExtraL',      artist: 'JENNIE', searchTerm: 'ExtraL JENNIE Doechii', section: 'RUBY' },
+  ],
+  lisa: [
+    { id: 'li-lalisa',   song: 'LALISA',        artist: 'LISA', section: 'LALISA' },
+    { id: 'li-money',    song: 'MONEY',         artist: 'LISA', section: 'LALISA' },
+    { id: 'li-sg',       song: 'SG',            artist: 'LISA', searchTerm: 'SG LISA Ozuna DJ Snake', section: 'Others' },
+    { id: 'li-moonlit',  song: 'MOONLIT FLOOR', artist: 'LISA', section: 'ALTER EGO' },
+    { id: 'li-rockstar', song: 'ROCKSTAR',      artist: 'LISA', section: 'ALTER EGO' },
+  ],
+  rose: [
+    { id: 'ro-ontheground', song: 'On The Ground',   artist: 'ROSÉ', section: '-R-' },
+    { id: 'ro-gone',        song: 'Gone',            artist: 'ROSÉ', section: '-R-' },
+    { id: 'ro-apt',         song: 'APT.',            artist: 'ROSÉ', searchTerm: 'APT. ROSÉ Bruno Mars', section: 'rosie' },
+    { id: 'ro-number1girl', song: 'Number One Girl', artist: 'ROSÉ', section: 'rosie' },
+    { id: 'ro-toobad',      song: 'Too Bad',         artist: 'ROSÉ', section: 'rosie' },
+    { id: 'ro-poison',      song: 'Poison',          artist: 'ROSÉ', section: 'rosie' },
   ],
 };
 
@@ -126,49 +143,52 @@ async function fetchNumShazams(shazamKey) {
   return typeof n === 'number' ? n : null;
 }
 
-// Refresh stats for one page. Returns enriched song array.
+// Refresh stats for one page sequentially to avoid rate limits. Returns enriched song array.
 async function refreshPage(page, chartMap) {
   const songs = SONGS[page];
-  const results = await Promise.allSettled(
-    songs.map(async song => {
+  const enriched = [];
+  for (const song of songs) {
+    try {
       const shazamKey = await resolveKey(song);
-      if (!shazamKey) return { ...song, numShazams: null, chartRank: null };
+      if (!shazamKey) { enriched.push({ ...song, numShazams: null, chartRank: null }); continue; }
       const numShazams = await fetchNumShazams(shazamKey).catch(() => null);
       const chartRank = chartMap.get(String(shazamKey)) ?? null;
-      return { ...song, numShazams, chartRank, shazamKey };
-    })
-  );
-  return results.map((r, i) =>
-    r.status === 'fulfilled' ? r.value : { ...songs[i], numShazams: null, chartRank: null }
-  );
+      enriched.push({ ...song, numShazams, chartRank, shazamKey });
+    } catch {
+      enriched.push({ ...song, numShazams: null, chartRank: null });
+    }
+  }
+  return enriched;
 }
 
-// Refresh all pages and store in Redis.
+// Refresh all pages sequentially and store in Redis.
 async function refreshAll() {
   const chartMap = await fetchChartMap();
-  const [blackpink, jisoo, jennie] = await Promise.all([
-    refreshPage('blackpink', chartMap),
-    refreshPage('jisoo', chartMap),
-    refreshPage('jennie', chartMap),
-  ]);
-  await Promise.all([
-    redis.set('shazam:stats:blackpink', blackpink, { ex: STATS_TTL }),
-    redis.set('shazam:stats:jisoo',     jisoo,     { ex: STATS_TTL }),
-    redis.set('shazam:stats:jennie',    jennie,    { ex: STATS_TTL }),
-  ]);
-  return { blackpink: blackpink.length, jisoo: jisoo.length, jennie: jennie.length };
+  const results = {};
+  for (const page of Object.keys(SONGS)) {
+    const data = await refreshPage(page, chartMap);
+    await redis.set(`shazam:stats:${page}`, data, { ex: STATS_TTL });
+    results[page] = data.length;
+  }
+  return results;
 }
+
+export const config = { maxDuration: 60 };
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
 
   const { page, cron, debug, flush } = req.query;
 
-  // Flush all cached shazam:id:* keys (needed when switching APIs)
+  // Flush cached keys so cron can re-run cleanly
   if (flush === '1') {
-    const keys = await redis.keys('shazam:id:*');
-    if (keys.length) await redis.del(...keys);
-    return res.json({ flushed: keys.length });
+    const [idKeys, statKeys] = await Promise.all([
+      redis.keys('shazam:id:*'),
+      redis.keys('shazam:stats:*'),
+    ]);
+    const all = [...idKeys, ...statKeys];
+    if (all.length) await redis.del(...all);
+    return res.json({ flushed: all.length });
   }
 
   // Debug: probe known-working key + candidate search endpoints
@@ -209,10 +229,16 @@ export default async function handler(req, res) {
     return res.json({ search, st });
   }
 
-  // Cron / forced refresh path
+  // Cron / forced refresh — ?cron=1 for all pages, ?cron=1&page=X for one page
   if (cron === '1') {
     if (!apiKey()) return res.status(500).json({ error: 'RAPIDAPI_SHAZAM_KEY not configured' });
     try {
+      if (page && SONGS[page]) {
+        const chartMap = await fetchChartMap();
+        const data = await refreshPage(page, chartMap);
+        await redis.set(`shazam:stats:${page}`, data, { ex: STATS_TTL });
+        return res.json({ ok: true, updatedAt: new Date().toISOString(), [page]: data.length });
+      }
       const counts = await refreshAll();
       return res.json({ ok: true, updatedAt: new Date().toISOString(), ...counts });
     } catch (e) {
