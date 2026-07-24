@@ -172,14 +172,13 @@ export default async function handler(req, res) {
         return { status: r.status, body: typeof parsed === 'string' ? parsed.slice(0, 300) : parsed };
       } catch(e) { return { error: e.message }; }
     };
-    const [details, chartGet, chartListWorld, chartTrack, chartsRaw] = await Promise.all([
-      probe('/songs/get-details?key=1315917630&locale=en-US'),
-      probe('/charts/get?locale=en-US&pageSize=5&startFrom=0&listId=ip-worldwide-chart'),
-      probe('/charts/list-top-songs-in-world?locale=en-US&pageSize=5&startFrom=0'),
-      probe('/charts/track?locale=en-US&pageSize=5&startFrom=0&countryCode=US&listId=ip-country-chart-US'),
-      probe('/charts/list?locale=en-US'),
+    const [trackUS, trackKpop, trackKR, trackGlobal] = await Promise.all([
+      probe('/charts/track?locale=en-US&pageSize=5&startFrom=0&listid=ip-country-chart-US'),
+      probe('/charts/track?locale=en-US&pageSize=5&startFrom=0&listid=genre-global-chart-15'),
+      probe('/charts/track?locale=en-US&pageSize=5&startFrom=0&listid=ip-country-chart-KR'),
+      probe('/charts/track?locale=en-US&pageSize=200&startFrom=0&listid=genre-global-chart-12'),
     ]);
-    return res.json({ details, chartGet, chartListWorld, chartTrack, chartsRaw });
+    return res.json({ trackUS, trackKpop, trackKR, trackGlobal });
   }
 
   // Cron / forced refresh path
