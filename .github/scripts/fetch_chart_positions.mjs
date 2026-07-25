@@ -74,7 +74,7 @@ function parseNumber(text) {
 function parseRows(html, chartType) {
   const { cellCount, idx } = CHART_TYPES[chartType];
   const rows = [];
-  const rowRe = /<tr>([\s\S]*?)<\/tr>/g;
+  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/g;
   let m;
   while ((m = rowRe.exec(html))) {
     const rowHtml = m[1];
@@ -95,26 +95,9 @@ function parseRows(html, chartType) {
 
     const artistMatches = [...titleCell.matchAll(artistLinkRe)].map(am => ({ id: am[1], name: am[2] }));
     const trackMatch = titleCell.match(trackLinkRe);
-
-    // Debug: log rows that have a tracked artist but no track link (reveals new-track format issues)
-    if (!trackMatch && artistMatches.length) {
-      const matched = artistMatches.find(a => TRACKED_ARTISTS[a.id]);
-      if (matched) console.log(`[SKIP-NO-TRACK-LINK] pos=${position} titleCell=${titleCell.replace(/\s+/g, ' ').slice(0, 300)}`);
-    }
-    if (!trackMatch || !artistMatches.length) {
-      // Also log if any tracked artist ID appears as raw text in the cell (different link format)
-      const trackedIds = Object.keys(TRACKED_ARTISTS);
-      if (trackedIds.some(id => titleCell.includes(id))) {
-        console.log(`[SKIP-ARTIST-ID-IN-CELL] pos=${position} cell=${titleCell.replace(/\s+/g, ' ').slice(0, 300)}`);
-      }
-      continue;
-    }
+    if (!trackMatch || !artistMatches.length) continue;
 
     const matchedTracked = artistMatches.find(a => TRACKED_ARTISTS[a.id]);
-    // Debug: log rows that matched a track+artist but didn't match a tracked artist -- helps spot new artist IDs
-    if (!matchedTracked && /jennie|jisoo|ros[eé]|lisa|blackpink/i.test(titleCell)) {
-      console.log(`[SKIP-UNTRACKED-ARTIST] pos=${position} cell=${titleCell.replace(/\s+/g, ' ').slice(0, 300)}`);
-    }
     if (!matchedTracked) continue;
 
     rows.push({
@@ -150,16 +133,8 @@ async function fetchRegion(region, chartType) {
   const rows = parseRows(html, chartType).map(row => ({ ...row, country: region.toUpperCase(), chart_type: chartType }));
   console.log(`[${chartType}] ${region}: ${rows.length} BLACKPINK/member row(s) found`);
 
-  // Debug: on global daily, log HTML size, search for known new track, and log all artist IDs
+  // Debug: on global daily, log every artist ID seen so we can spot untracked members/new acts
   if (region === 'global' && chartType === 'daily') {
-    console.log(`[DEBUG] global daily HTML size: ${html.length} chars`);
-    const NEW_TRACK_ID = '19UnXjpLshSLobPspdyxlD'; // LESS THAN A LOVER - JENNIE
-    if (html.includes(NEW_TRACK_ID)) {
-      const idx2 = html.indexOf(NEW_TRACK_ID);
-      console.log(`[DEBUG] FOUND track ID ${NEW_TRACK_ID} at offset ${idx2}: ...${html.slice(Math.max(0, idx2-200), idx2+200)}...`);
-    } else {
-      console.log(`[DEBUG] track ID ${NEW_TRACK_ID} NOT found in global daily HTML`);
-    }
     const artistLinkRe = /<a href="\.\.\/artist\/([A-Za-z0-9]+)\.html">([^<]+)<\/a>/g;
     const seen = new Map();
     let m;
