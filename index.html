@@ -1651,9 +1651,11 @@
         <button class="itunes-inline-badge" id="itunes-inline-badge" onclick="openReleaseGoalsFromCard()">🎵 iTunes #1: <span id="itunes-inline-count">0/10 countries</span> — tap to view →</button>
 
         <div class="stream-target" id="release-stream-goal" style="display:none;">
-          <p class="target-label">🎯 Blinks United's Contribution — Toward Jennie's 10M Filtered Streams (1st Week)</p>
+          <p class="target-label">🎯 Blinks United — First 24 Hours</p>
+          <div class="progress-nums" style="margin-bottom:0.9rem;"><span><strong id="release-24h-nums">7,802 streams</strong></span><span id="release-24h-pct"></span></div>
+          <p class="target-label">📈 1st Week — Toward 10M Filtered Streams</p>
           <div class="progress-bar"><div class="progress-fill" id="release-stream-goal-fill" style="width:0%"></div></div>
-          <div class="progress-nums"><span><strong id="release-stream-goal-nums">0 / 4,500,000</strong></span><span id="release-stream-goal-pct"></span></div>
+          <div class="progress-nums"><span><strong id="release-stream-goal-nums">0 / 10,000,000</strong></span><span id="release-stream-goal-pct"></span></div>
         </div>
 
         <div class="release-stream-row" style="display:flex;gap:0.7rem;align-items:flex-start;flex-wrap:wrap;margin-top:1.5rem;">
@@ -2598,6 +2600,15 @@
           <button class="btn-primary" onclick="adminSetYtViews()">Save</button>
         </div>
         <div id="admin-yt-views-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
+      </div>
+
+      <div class="admin-ban-section">
+        <div class="admin-ban-title">📊 Official 24H Spotify streams — total fandom streams (to show ratio once numbers drop)</div>
+        <div class="admin-input-row">
+          <input id="admin-24h-official" class="admin-input" type="text" placeholder="e.g. 89232" style="flex:1;">
+          <button class="btn-primary" onclick="adminSet24hOfficial()">Save</button>
+        </div>
+        <div id="admin-24h-official-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
       </div>
 
       <div class="admin-ban-section">
@@ -7440,6 +7451,33 @@ async function adminSetYtViews() {
   }
 }
 
+async function adminSet24hOfficial() {
+  const input = document.getElementById('admin-24h-official');
+  const statusEl = document.getElementById('admin-24h-official-status');
+  const raw = (input?.value || '').trim();
+  if (!raw || !statusEl) return;
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  if (!key) return;
+  statusEl.textContent = 'Saving…';
+  statusEl.style.color = 'var(--muted)';
+  try {
+    const r = await fetch(`/api/proxy-image?ltal_goals=set_24h_official&count=${encodeURIComponent(raw)}&key=${encodeURIComponent(key)}`);
+    const d = await r.json();
+    if (d.ok) {
+      statusEl.textContent = `✔ Saved: ${Number(d.ltal_24h_official).toLocaleString()} streams`;
+      statusEl.style.color = '#2ecc71';
+      input.value = '';
+      input.placeholder = `Current: ${Number(d.ltal_24h_official).toLocaleString()}`;
+    } else {
+      statusEl.textContent = d.error || 'Failed';
+      statusEl.style.color = '#ff3333';
+    }
+  } catch {
+    statusEl.textContent = 'Error saving';
+    statusEl.style.color = '#ff3333';
+  }
+}
+
 async function adminAddCountry() {
   const flagInput = document.getElementById('admin-country-flag');
   const nameInput = document.getElementById('admin-country-name');
@@ -7500,6 +7538,10 @@ async function loadAdminCountryList() {
     if (d.yt_mv_views) {
       const inp = document.getElementById('admin-yt-views');
       if (inp && !inp.value) inp.placeholder = `Current: ${d.yt_mv_views}`;
+    }
+    if (d.ltal_24h_official) {
+      const inp = document.getElementById('admin-24h-official');
+      if (inp && !inp.value) inp.placeholder = `Current: ${Number(d.ltal_24h_official).toLocaleString()}`;
     }
   } catch {}
 }
@@ -7650,18 +7692,43 @@ async function loadLtalStreamsGoal() {
   const wrap = document.getElementById('release-stream-goal');
   if (!wrap) return;
   if (Date.now() < new Date(JENNIE_RELEASE.releaseAt).getTime()) { wrap.style.display = 'none'; return; }
+
+  // Fetch official 24H count from backend (admin-settable once Spotify releases numbers)
+  let official24h = null;
+  try {
+    const r = await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' });
+    const d = await r.json();
+    official24h = d.ltal_24h_official || null;
+  } catch {}
+
+  // Render frozen 24H contribution section
+  const nums24h = document.getElementById('release-24h-nums');
+  const pct24h  = document.getElementById('release-24h-pct');
+  if (nums24h) {
+    if (official24h) {
+      const off = Number(official24h);
+      const ratio = off > 0 ? ((LTAL_24H_CONTRIBUTION / off) * 100).toFixed(2) : null;
+      nums24h.textContent = `${LTAL_24H_CONTRIBUTION.toLocaleString()} / ${off.toLocaleString()} streams`;
+      if (pct24h && ratio) pct24h.textContent = `${ratio}% of fandom`;
+    } else {
+      nums24h.textContent = `${LTAL_24H_CONTRIBUTION.toLocaleString()} streams`;
+      if (pct24h) pct24h.textContent = '';
+    }
+  }
+
+  // Render live 1st-week progress bar
   try {
     const data = await fetchLbData();
     const total = computeCommunityTotal(data.users || {}, 'overall_ltal');
     const pct = (total / LTAL_STREAMS_GOAL_INDUSTRY) * 100;
     const pctLabel = pct >= 0.1 ? pct.toFixed(2) : pct.toFixed(4);
-
     document.getElementById('release-stream-goal-fill').style.width = Math.min(100, pct) + '%';
     document.getElementById('release-stream-goal-nums').textContent =
       `${total.toLocaleString()} / ${LTAL_STREAMS_GOAL_INDUSTRY.toLocaleString()}`;
     document.getElementById('release-stream-goal-pct').textContent = `${pctLabel}%`;
-    wrap.style.display = 'block';
   } catch(e) {}
+
+  wrap.style.display = 'block';
 }
 
 // Installed/standalone PWAs are usually just suspended in the background, not

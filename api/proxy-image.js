@@ -267,9 +267,10 @@ export default async function handler(req, res) {
       const stored = await upstashGet('bu_ltal_goals');
       const obj = (stored && typeof stored === 'object') ? stored : {};
       return res.status(200).json({
-        reached:      obj._reached      && typeof obj._reached === 'object' ? obj._reached : obj,
-        yt_mv_views:  obj._yt_mv_views  || null,
-        countries:    Array.isArray(obj._countries) ? obj._countries : null,
+        reached:           obj._reached && typeof obj._reached === 'object' ? obj._reached : obj,
+        yt_mv_views:       obj._yt_mv_views       || null,
+        countries:         Array.isArray(obj._countries) ? obj._countries : null,
+        ltal_24h_official: obj._ltal_24h_official  || null,
       });
     } catch { return res.status(200).json({ reached: {}, yt_mv_views: null, countries: null }); }
   }
@@ -308,6 +309,15 @@ export default async function handler(req, res) {
       stored._yt_mv_views = views;
       await upstashSet('bu_ltal_goals', stored);
       return res.status(200).json({ ok: true, yt_mv_views: views });
+    }
+
+    // set_24h_official — store the total fandom 24H Spotify stream count
+    if (req.query.ltal_goals === 'set_24h_official') {
+      const count = parseInt((req.query.count || '').replace(/[^0-9]/g, ''), 10);
+      if (!count || count < 1) return res.status(400).json({ error: 'valid count required' });
+      stored._ltal_24h_official = count;
+      await upstashSet('bu_ltal_goals', stored);
+      return res.status(200).json({ ok: true, ltal_24h_official: count });
     }
 
     // add_country — append a country to the iTunes #1 list
