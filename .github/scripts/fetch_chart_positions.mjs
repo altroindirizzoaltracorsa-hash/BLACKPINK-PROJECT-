@@ -119,11 +119,31 @@ function parseRows(html, chartType) {
 
 async function fetchRegion(region, chartType) {
   const url = `https://kworb.net/spotify/country/${region}_${CHART_TYPES[chartType].suffix}.html`;
-  const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*' } });
+  const r = await fetch(url, {
+    headers: {
+      'User-Agent': UA,
+      Accept: 'text/html,*/*',
+      'Cache-Control': 'no-cache, no-store',
+      Pragma: 'no-cache',
+    },
+  });
   if (!r.ok) { console.log(`[${chartType}] ${region}: HTTP ${r.status}, skipping`); return []; }
   const html = await r.text();
   const rows = parseRows(html, chartType).map(row => ({ ...row, country: region.toUpperCase(), chart_type: chartType }));
   console.log(`[${chartType}] ${region}: ${rows.length} BLACKPINK/member row(s) found`);
+
+  // Debug: on global daily, log every artist ID seen so we can spot untracked members/new acts
+  if (region === 'global' && chartType === 'daily') {
+    const artistLinkRe = /<a href="\.\.\/artist\/([A-Za-z0-9]+)\.html">([^<]+)<\/a>/g;
+    const seen = new Map();
+    let m;
+    while ((m = artistLinkRe.exec(html))) {
+      if (!seen.has(m[1])) seen.set(m[1], m[2]);
+    }
+    console.log(`[DEBUG] global daily artist IDs on chart (${seen.size} unique):`);
+    for (const [id, name] of seen) console.log(`  ${id} -> ${name}`);
+  }
+
   return rows;
 }
 
