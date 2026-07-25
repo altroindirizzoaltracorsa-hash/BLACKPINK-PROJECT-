@@ -8904,26 +8904,47 @@ function showPendingMilestone() {
   showMilestone(trackId, total, milestone, milestoneDate);
 }
 
-function openMilestoneList() {
-  const items = _globalMsCache || [];
+async function openMilestoneList() {
+  document.getElementById('ms-list-view').style.display = 'block';
+  document.getElementById('ms-detail-view').style.display = 'none';
+  document.getElementById('milestone-overlay').classList.add('active');
+
   const el = document.getElementById('ms-list-items');
+  el.innerHTML = '<p style="font-family:var(--mono);font-size:0.55rem;letter-spacing:0.1em;color:var(--muted);text-align:center;padding:1rem;">Loading…</p>';
+
+  // Always force a fresh server fetch so historical milestones appear
+  _globalMsCache = null;
+  const items = await fetchGlobalMilestones();
+
+  const isAdmin = !!localStorage.getItem(ADMIN_KEY_LS);
   el.innerHTML = items.length === 0
     ? '<p style="font-family:var(--mono);font-size:0.55rem;letter-spacing:0.1em;color:var(--muted);text-align:center;padding:1rem;">No milestones saved yet.</p>'
     : items.slice().reverse().map(m => {
         const label = TRACK_LABELS[m.trackId.toLowerCase()] || m.trackId;
         const dateStr = m.milestoneDate ? ' · ' + m.milestoneDate : '';
         const msData = JSON.stringify({ trackId: m.trackId, total: m.total, milestone: m.milestone, milestoneDate: m.milestoneDate || '', artUrl: m.artUrl || '' }).replace(/"/g, '&quot;');
-        return `<div class="ms-list-item" data-ms="${msData}" onclick="showMilestoneFromList(this)">
-          <div class="ms-list-meta">
+        const editBtn = isAdmin
+          ? `<button onclick="event.stopPropagation();editMilestoneFromList(${m.milestone},${m.total},'${m.trackId}','${(m.milestoneDate||'').replace(/'/g,"\\'")}','${(m.artUrl||'').replace(/'/g,"\\'")}' )" style="background:none;border:1px solid rgba(255,255,255,0.15);color:var(--muted);font-family:var(--mono);font-size:0.42rem;letter-spacing:0.1em;padding:0.2rem 0.4rem;cursor:pointer;flex-shrink:0;">✎</button>`
+          : '';
+        return `<div class="ms-list-item" data-ms="${msData}" onclick="showMilestoneFromList(this)" style="gap:0.4rem;">
+          <div class="ms-list-meta" style="flex:1;min-width:0;">
             <div class="ms-list-track">${label}</div>
             <div class="ms-list-num">${formatMilestone(m.milestone)} STREAMS${dateStr}</div>
           </div>
+          ${editBtn}
           <div class="ms-list-arrow">↑ SHARE</div>
         </div>`;
       }).join('');
-  document.getElementById('ms-list-view').style.display = 'block';
-  document.getElementById('ms-detail-view').style.display = 'none';
-  document.getElementById('milestone-overlay').classList.add('active');
+}
+
+function editMilestoneFromList(milestone, total, trackId, milestoneDate, artUrl) {
+  closeMilestone();
+  document.getElementById('ms-admin-track').value     = trackId;
+  document.getElementById('ms-admin-milestone').value = String(milestone);
+  document.getElementById('ms-admin-total').value     = String(total);
+  document.getElementById('ms-admin-date').value      = milestoneDate || '';
+  document.getElementById('ms-admin-art').value       = artUrl || '';
+  openMilestoneAdminPanel();
 }
 
 function showMilestoneFromList(el) {
