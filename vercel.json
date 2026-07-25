@@ -27,6 +27,9 @@
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     }
   ],
+  "functions": {
+    "api/proxy-image.js": { "maxDuration": 60 }
+  },
   "crons": [
     {
       "path": "/api/streams?cron=1",
@@ -43,6 +46,10 @@
     {
       "path": "/api/proxy-image?global_streams=cron",
       "schedule": "5 2 * * *"
+    },
+    {
+      "path": "/api/proxy-image?charts=fetch-tracks",
+      "schedule": "35 22 * * *"
     }
   ]
 }
