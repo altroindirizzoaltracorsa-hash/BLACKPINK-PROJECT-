@@ -45,7 +45,29 @@ const KNOWN_IDS = {
   'je-dracula':        860647502,
   'je-special':        83470933,
   'je-black':          96826182,
-  // BLACKPINK, JISOO, ROSÉ, LISA — add as discovered
+  // BLACKPINK — found via shazam.com/track/{id} URLs 2026-07-25
+  'bp-ddududu':         428139529,
+  'bp-dduremix':        462992064,
+  'bp-killthislove':    462992062,
+  'bp-hopnot':          462992061,
+  'bp-lovesickgirls':   544496183,
+  'bp-prettysavage':    538811088,
+  'bp-icecream':        534715814,
+  'bp-lovetohateme':    538811085,
+  'bp-youneverknow':    538811103,
+  'bp-betyouwanna':     538811087,
+  'bp-pinkvenom':       627526308,
+  'bp-typagirl':        631823406,
+  'bp-hylt':            526538828,
+  'bp-stay':            334421986,
+  'bp-playingwithfire': 334421985,
+  'bp-whistleacoustic': 334917639,
+  'bp-really':          428240635,
+  // JISOO
+  'ji-flower':          660498510,
+  // ROSÉ
+  'ro-ontheground':     560854676,
+  // JISOO, LISA, and remaining BLACKPINK/ROSÉ — add as discovered
 };
 
 async function shazamFetch(path) {
