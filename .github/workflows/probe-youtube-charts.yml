@@ -1,0 +1,20 @@
+name: Probe YouTube Charts API
+
+# One-off diagnostic to map the charts.youtube.com internal API structure
+# so we can build a proper nightly fetcher without going through kworb.
+# Run manually; safe to remove once fetch_youtube_chart_positions.mjs ships.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Probe YouTube Charts API
+        run: node .github/scripts/probe-youtube-charts.mjs
