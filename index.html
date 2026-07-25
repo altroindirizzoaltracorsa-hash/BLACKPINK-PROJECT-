@@ -1386,6 +1386,12 @@
 .ms-btn-secondary { background:transparent; border:1px solid rgba(255,255,255,0.2); color:var(--muted); }
 .ms-close { position:absolute; top:0.6rem; right:0.8rem; background:none; border:none; color:var(--muted); font-size:1.4rem; line-height:1; cursor:pointer; padding:0.2rem 0.4rem; }
 .ms-close:hover { color:var(--text); }
+.ms-list-item { display:flex; align-items:center; justify-content:space-between; gap:0.6rem; background:rgba(255,255,255,0.03); border:1px solid rgba(255,0,102,0.18); padding:0.7rem 0.9rem; cursor:pointer; }
+.ms-list-item:hover, .ms-list-item:active { background:rgba(255,0,102,0.08); border-color:rgba(255,0,102,0.4); }
+.ms-list-meta { flex:1; min-width:0; }
+.ms-list-track { font-family:var(--display); font-size:0.95rem; letter-spacing:0.06em; color:var(--white); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ms-list-num { font-family:var(--mono); font-size:0.5rem; letter-spacing:0.14em; color:rgba(255,0,102,0.8); margin-top:0.15rem; }
+.ms-list-arrow { font-family:var(--mono); font-size:0.5rem; letter-spacing:0.1em; color:var(--muted); flex-shrink:0; }
 
 /* confetti particles */
 .ms-confetti { position:fixed; inset:0; pointer-events:none; z-index:9997; overflow:hidden; }
@@ -1548,18 +1554,29 @@
 <div id="milestone-overlay">
   <div id="milestone-card">
     <button class="ms-close" onclick="closeMilestone()" aria-label="Close">×</button>
-    <span class="ms-emoji">🎉</span>
-    <div class="ms-label">MILESTONE REACHED</div>
-    <div class="ms-track" id="ms-track-name"></div>
-    <div class="ms-number" id="ms-number"></div>
-    <div class="ms-sub" id="ms-sub"></div>
-    <div class="ms-date" id="ms-date"></div>
-    <div class="ms-actions">
-      <button class="ms-btn ms-btn-primary" onclick="shareMilestoneCard()">↑ Share</button>
-      <button class="ms-btn ms-btn-secondary" onclick="downloadMilestoneCard()">↓ Save</button>
-      <button class="ms-btn ms-btn-secondary" onclick="closeMilestone()">Dismiss</button>
+
+    <!-- LIST VIEW: all milestones, tap one to share -->
+    <div id="ms-list-view" style="display:none;">
+      <div class="ms-label" style="margin-bottom:1rem;">🎉 MILESTONES</div>
+      <div id="ms-list-items" style="display:flex;flex-direction:column;gap:0.4rem;max-height:55vh;overflow-y:auto;"></div>
     </div>
-    <canvas id="ms-canvas" style="display:none"></canvas>
+
+    <!-- DETAIL VIEW: single milestone + share card -->
+    <div id="ms-detail-view">
+      <span class="ms-emoji">🎉</span>
+      <div class="ms-label">MILESTONE REACHED</div>
+      <div class="ms-track" id="ms-track-name"></div>
+      <div class="ms-number" id="ms-number"></div>
+      <div class="ms-sub" id="ms-sub"></div>
+      <div class="ms-date" id="ms-date"></div>
+      <div class="ms-actions">
+        <button class="ms-btn ms-btn-primary" onclick="shareMilestoneCard()">↑ Share</button>
+        <button class="ms-btn ms-btn-secondary" onclick="downloadMilestoneCard()">↓ Save</button>
+        <button id="ms-back-btn" class="ms-btn ms-btn-secondary" onclick="openMilestoneList()" style="display:none;">← All</button>
+        <button class="ms-btn ms-btn-secondary" onclick="closeMilestone()">Dismiss</button>
+      </div>
+      <canvas id="ms-canvas" style="display:none"></canvas>
+    </div>
   </div>
 </div>
 
@@ -6900,7 +6917,7 @@ async function saveMilestoneOnly() {
   renderMoreMilestones();
 }
 
-// "🎉 Save & Show" — saves then shows the milestone popup
+// "🎉 Save & Show" — saves then opens the milestone list so you can tap & share any
 async function triggerMilestoneFromPanel() {
   const data = _readMilestoneForm();
   const ok   = await _saveMilestoneToServer(data);
@@ -6909,7 +6926,7 @@ async function triggerMilestoneFromPanel() {
   _clearMilestoneForm();
   closeMilestoneAdminPanel();
   renderMoreMilestones();
-  showMilestone(data.trackInput, data.total, data.msNum, data.dateInput);
+  openMilestoneList();
 }
 
 async function banUser() {
@@ -8887,9 +8904,42 @@ function showPendingMilestone() {
   showMilestone(trackId, total, milestone, milestoneDate);
 }
 
-function showMilestone(trackId, total, milestone, milestoneDate) {
+function openMilestoneList() {
+  const items = _globalMsCache || [];
+  const el = document.getElementById('ms-list-items');
+  el.innerHTML = items.length === 0
+    ? '<p style="font-family:var(--mono);font-size:0.55rem;letter-spacing:0.1em;color:var(--muted);text-align:center;padding:1rem;">No milestones saved yet.</p>'
+    : items.slice().reverse().map(m => {
+        const label = TRACK_LABELS[m.trackId.toLowerCase()] || m.trackId;
+        const dateStr = m.milestoneDate ? ' · ' + m.milestoneDate : '';
+        const msData = JSON.stringify({ trackId: m.trackId, total: m.total, milestone: m.milestone, milestoneDate: m.milestoneDate || '', artUrl: m.artUrl || '' }).replace(/"/g, '&quot;');
+        return `<div class="ms-list-item" data-ms="${msData}" onclick="showMilestoneFromList(this)">
+          <div class="ms-list-meta">
+            <div class="ms-list-track">${label}</div>
+            <div class="ms-list-num">${formatMilestone(m.milestone)} STREAMS${dateStr}</div>
+          </div>
+          <div class="ms-list-arrow">↑ SHARE</div>
+        </div>`;
+      }).join('');
+  document.getElementById('ms-list-view').style.display = 'block';
+  document.getElementById('ms-detail-view').style.display = 'none';
+  document.getElementById('milestone-overlay').classList.add('active');
+}
+
+function showMilestoneFromList(el) {
+  try {
+    const m = JSON.parse(el.getAttribute('data-ms'));
+    if (m.artUrl) TRACK_ARTWORK[m.trackId.toLowerCase()] = m.artUrl;
+    showMilestone(m.trackId, m.total, m.milestone, m.milestoneDate || null, true);
+  } catch(e) {}
+}
+
+function showMilestone(trackId, total, milestone, milestoneDate, fromList = false) {
   _msActive = true;
   _msShareBlob = null; // clear stale blob so we don't share the wrong card
+  document.getElementById('ms-list-view').style.display = 'none';
+  document.getElementById('ms-detail-view').style.display = 'block';
+  document.getElementById('ms-back-btn').style.display = fromList ? '' : 'none';
   document.getElementById('ms-track-name').textContent = TRACK_LABELS[trackId] || trackId;
   document.getElementById('ms-number').textContent = formatMilestone(milestone) + ' STREAMS';
   document.getElementById('ms-sub').textContent = formatFull(total) + ' total · keep streaming!';
@@ -8972,6 +9022,8 @@ async function checkGlobalMilestonesOnLoad() {
 function closeMilestone() {
   document.getElementById('milestone-overlay').classList.remove('active');
   document.getElementById('ms-confetti').innerHTML = '';
+  document.getElementById('ms-list-view').style.display = 'none';
+  document.getElementById('ms-detail-view').style.display = 'block';
   _msActive = false;
 }
 
