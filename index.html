@@ -7735,51 +7735,94 @@ async function fetchArtistCharts() {
 }
 
 async function renderArtistCharts() {
-  const [entries, avatars] = await Promise.all([fetchArtistCharts(), loadArtistAvatars()]);
+  const [chartData, adminEntries, avatars] = await Promise.all([
+    fetch('/api/proxy-image?charts=list&chart_type=daily&country=GLOBAL', { cache: 'no-store' })
+      .then(r => r.json()).catch(() => ({ rows: [], trackingDate: null })),
+    fetchArtistCharts(),
+    loadArtistAvatars(),
+  ]);
+
   const section = document.getElementById('ac-section');
-  const rows    = document.getElementById('ac-cards');
-  if (!section || !rows) return;
-  if (!entries.length) { section.style.display = 'none'; return; }
+  const rowsEl  = document.getElementById('ac-cards');
+  if (!section || !rowsEl) return;
+
+  // Convert Supabase chart rows (Global daily Top 200) to unified display entries
+  const trackDate = chartData.trackingDate
+    ? chartData.trackingDate.split('-').reverse().join('/')
+    : null;
+  const autoEntries = (chartData.rows || []).map(r => ({
+    _auto: true,
+    _trackId: r.spotify_track_id,
+    _avatarArtist: (r.primary_artist_name || '').toUpperCase(),
+    artist: r.track_name,
+    position: r.position,
+    change: r.position_change ?? null,
+    chartName: 'Top 200',
+    region: 'Global',
+    date: trackDate,
+    entryStatus: r.entry_status,
+  }));
+
+  // Auto rows first (position-ascending), then admin-entered extras (newest first)
+  const allEntries = [...autoEntries, ...adminEntries.slice().reverse()];
+
+  if (!allEntries.length) { section.style.display = 'none'; return; }
   const isAdmin = !!localStorage.getItem(ADMIN_KEY_LS);
   section.style.display = '';
-  rows.innerHTML = entries.slice().reverse().map(e => {
-    // resolve artwork: explicit artUrl > artist avatar cache > initials fallback
+
+  rowsEl.innerHTML = allEntries.map(e => {
     let photoHtml;
-    if (e.artUrl) {
+    if (e._auto && e._trackId) {
+      const fallbackSrc = avatars[e._avatarArtist] || '';
+      photoHtml = `<img class="ac-row-avatar" src="/api/proxy-image?spotify_art=${e._trackId}" alt="${e.artist}" data-fallback="${fallbackSrc}" onerror="this.onerror=null;this.src=this.dataset.fallback">`;
+    } else if (e.artUrl) {
       const src = /^[A-Za-z0-9]{22}$/.test(e.artUrl)
         ? `/api/proxy-image?spotify_art=${e.artUrl}`
         : e.artUrl;
       photoHtml = `<img class="ac-row-avatar" src="${src}" alt="${e.artist}">`;
     } else {
-      const avatarUrl = avatars[e.artist] || null;
+      const avatarUrl = avatars[(e.artist || '').toUpperCase()] || null;
       photoHtml = avatarUrl
         ? `<img class="ac-row-avatar" src="${avatarUrl}" alt="${e.artist}">`
         : `<div class="ac-row-avatar-fallback">${(e.artist||'?')[0]}</div>`;
     }
 
     const chg = e.change;
-    let moveCls, moveLabel, moveText;
-    if (chg === null || chg === undefined || chg === '') {
-      moveCls = 'new-entry'; moveLabel = 'NEW ENTRY'; moveText = 'NEW';
+    const isNew = e._auto
+      ? (e.entryStatus === 'NEW' || e.entryStatus === 'RE-ENTRY')
+      : (chg === null || chg === undefined || chg === '');
+    let moveCls, moveLabel;
+    if (isNew) {
+      moveCls = 'new-entry';
+      moveLabel = e.entryStatus === 'RE-ENTRY' ? 'RE-ENTRY' : 'NEW ENTRY';
     } else if (Number(chg) > 0) {
-      moveCls = 'up'; moveLabel = `▲ ${chg} spots`; moveText = `▲${chg}`;
+      moveCls = 'up'; moveLabel = `▲ ${Math.abs(Number(chg))} spots`;
     } else if (Number(chg) < 0) {
-      moveCls = 'down'; moveLabel = `▼ ${Math.abs(chg)} spots`; moveText = `▼${Math.abs(chg)}`;
+      moveCls = 'down'; moveLabel = `▼ ${Math.abs(Number(chg))} spots`;
     } else {
-      moveCls = 'same'; moveLabel = '= no change'; moveText = '=';
+      moveCls = 'same'; moveLabel = '= no change';
     }
 
     const chartName = e.chartName || 'Top Artists';
     const region    = e.region || 'Global';
-    const metaParts = [`${region} ${chartName}`];
+    const metaParts = [];
+    if (e._avatarArtist) metaParts.push(e._avatarArtist);
+    metaParts.push(`${region} ${chartName}`);
     if (e.date) metaParts.push(e.date);
 
-    const verb = chg === null || chg === undefined || chg === ''
-      ? 'enters at'
-      : (Number(chg) >= 0 ? `is up ${Math.abs(Number(chg))} spot${Math.abs(Number(chg)) !== 1 ? 's' : ''} to` : `is down ${Math.abs(Number(chg))} spot${Math.abs(Number(chg)) !== 1 ? 's' : ''} to`);
-    const shareText = `#${e.artist} ${verb} #${e.position} on the ${region} Spotify ${chartName}.`;
+    const n = Math.abs(Number(chg));
+    let shareText;
+    if (isNew) {
+      shareText = `#${e.artist} enters the ${region} Spotify ${chartName} at #${e.position}!`;
+    } else if (Number(chg) > 0) {
+      shareText = `#${e.artist} is up ${n} spot${n !== 1 ? 's' : ''} to #${e.position} on the ${region} Spotify ${chartName}.`;
+    } else if (Number(chg) < 0) {
+      shareText = `#${e.artist} is down ${n} spot${n !== 1 ? 's' : ''} to #${e.position} on the ${region} Spotify ${chartName}.`;
+    } else {
+      shareText = `#${e.artist} holds at #${e.position} on the ${region} Spotify ${chartName}.`;
+    }
 
-    const delBtn = isAdmin
+    const delBtn = (!e._auto && isAdmin)
       ? `<button class="ac-row-del" onclick="adminDeleteArtistChart('${e.id}')" title="Delete">✕</button>`
       : '';
 
