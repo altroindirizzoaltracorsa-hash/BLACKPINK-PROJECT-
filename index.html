@@ -6775,13 +6775,11 @@ function triggerCustomMilestone() {
   const artUrl     = document.getElementById('admin-ms-art').value.trim() || null;
   const errEl      = document.getElementById('admin-ms-err');
 
-  const msNum = /^\d+$/.test(msInput) ? Number(msInput)
-              : /^\d+(\.\d+)?[mM]$/.test(msInput) ? Math.round(parseFloat(msInput) * 1_000_000)
-              : NaN;
+  const msNum = parseMilestoneInput(msInput);
   const total = Number(totalInput.replace(/[^0-9]/g, ''));
 
   if (!trackInput)      { errEl.textContent = 'Track name is required.'; return; }
-  if (!msNum || msNum < 1_000_000) { errEl.textContent = 'Invalid milestone — use e.g. 650M or 650000000.'; return; }
+  if (!msNum || msNum < 1_000_000) { errEl.textContent = 'Invalid milestone — use e.g. 650M, 2.75B, or the raw number.'; return; }
   if (!total)           { errEl.textContent = 'Invalid total streams.'; return; }
   errEl.textContent = '';
 
@@ -6834,13 +6832,11 @@ async function triggerMilestoneFromPanel() {
     : null;
   const errEl      = document.getElementById('ms-admin-err');
 
-  const msNum = /^\d+$/.test(msInput) ? Number(msInput)
-              : /^\d+(\.\d+)?[mM]$/.test(msInput) ? Math.round(parseFloat(msInput) * 1_000_000)
-              : NaN;
+  const msNum = parseMilestoneInput(msInput);
   const total = Number(totalInput.replace(/[^0-9]/g, ''));
 
   if (!trackInput)           { errEl.textContent = 'Track name is required.'; return; }
-  if (!msNum || msNum < 1e6) { errEl.textContent = 'Invalid milestone — use e.g. 800M or 800000000.'; return; }
+  if (!msNum || msNum < 1e6) { errEl.textContent = 'Invalid milestone — use e.g. 800M, 2.75B, or the raw number.'; return; }
   if (!total)                { errEl.textContent = 'Invalid total streams.'; return; }
 
   const key = localStorage.getItem(ADMIN_KEY_LS);
@@ -8809,9 +8805,21 @@ function getMilestone(total) {
   return null;
 }
 
+function parseMilestoneInput(s) {
+  s = s.replace(/,/g, '').trim();
+  if (/^\d+$/.test(s)) return Number(s);
+  if (/^\d+(\.\d+)?[mM]$/.test(s)) return Math.round(parseFloat(s) * 1_000_000);
+  if (/^\d+(\.\d+)?[bB]$/.test(s)) return Math.round(parseFloat(s) * 1_000_000_000);
+  return NaN;
+}
+
 function formatMilestone(n) {
-  if (n >= 1_000_000_000) return '1B';
-  return (n / 1_000_000) + 'M';
+  if (n >= 1_000_000_000) {
+    const b = n / 1_000_000_000;
+    return (b % 1 === 0 ? b : +b.toFixed(2)) + 'B';
+  }
+  const m = n / 1_000_000;
+  return (m % 1 === 0 ? m : +m.toFixed(1)) + 'M';
 }
 
 const _msPending = [];
