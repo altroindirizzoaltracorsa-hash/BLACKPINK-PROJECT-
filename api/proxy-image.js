@@ -276,17 +276,22 @@ export default async function handler(req, res) {
     const key = req.headers['x-admin-secret'] || req.query.key;
     if (!adminSecret || key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
     if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(500).json({ error: 'Redis not configured' });
-    const { artist, position, change, region, date } = req.query;
+    const { artist, position, change, chartName, region, date, art } = req.query;
     if (!artist || !position) return res.status(400).json({ error: 'artist and position required' });
     const pos = parseInt(position, 10);
     if (!pos || pos < 1) return res.status(400).json({ error: 'Invalid position' });
-    const artistUp = artist.trim().toUpperCase();
-    const regionStr = (region || 'Global').trim();
-    const id = `${artistUp}_${regionStr.toUpperCase().replace(/\s+/g, '_')}`;
+    const artistUp   = artist.trim().toUpperCase();
+    const chartStr   = (chartName || 'Top Artists').trim();
+    const regionStr  = (region || 'Global').trim();
+    const id = `${artistUp}_${regionStr.toUpperCase().replace(/\s+/g, '_')}_${chartStr.toUpperCase().replace(/\s+/g, '_')}`;
+    let artUrl = art || null;
+    if (artUrl && /^[A-Za-z0-9]{22}$/.test(artUrl)) artUrl = `/api/proxy-image?spotify_art=${artUrl}`;
     const entry = {
       id, artist: artistUp, position: pos,
       change: change !== undefined && change !== '' ? parseInt(change, 10) : null,
-      region: regionStr, date: date || null, savedAt: Date.now(),
+      chartName: chartStr, region: regionStr,
+      artUrl: artUrl || null,
+      date: date || null, savedAt: Date.now(),
     };
     let existing = [];
     try { existing = (await upstashGet('bu_artist_charts')) || []; if (!Array.isArray(existing)) existing = []; } catch {}

@@ -1016,29 +1016,31 @@
     background: linear-gradient(135deg, rgba(255,0,102,0.1), rgba(255,0,102,0.02) 65%), var(--card2);
   }
 
-  /* Charts page — Top Artists section */
+  /* Charts page — Chart Updates section (artist + track positions) */
   .ac-section { margin-bottom: 2rem; }
   .ac-section-title { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.9rem; }
-  .ac-cards { display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.4rem; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .ac-cards::-webkit-scrollbar { display: none; }
-  .ac-card {
-    flex: 0 0 auto; width: 160px; background: var(--card2); border: 1px solid var(--border);
-    padding: 0.85rem 0.9rem; display: flex; flex-direction: column; gap: 0.35rem; position: relative;
+  .ac-rows { display: flex; flex-direction: column; gap: 0.7rem; }
+  .ac-row {
+    display: flex; align-items: center; gap: 1.1rem;
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 1rem 1.2rem; position: relative;
   }
-  .ac-card-artist { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase; }
-  .ac-card-pos { font-family: var(--mono); font-size: 1.7rem; font-weight: 700; color: var(--white); line-height: 1; }
-  .ac-card-move { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.05em; font-weight: 600; }
-  .ac-card-move.up { color: #2ecc71; }
-  .ac-card-move.down { color: #e74c3c; }
-  .ac-card-move.same { color: var(--muted); }
-  .ac-card-move.new-entry { color: #ffd700; }
-  .ac-card-chart { font-family: var(--mono); font-size: 0.46rem; letter-spacing: 0.08em; color: rgba(245,240,240,0.45); margin-top: 0.15rem; }
-  .ac-card-date { font-family: var(--mono); font-size: 0.42rem; letter-spacing: 0.06em; color: rgba(245,240,240,0.25); }
-  .ac-card-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); display: block; margin-bottom: 0.3rem; }
-  .ac-card-share { position: absolute; top: 0.5rem; right: 0.5rem; background: none; border: none; color: rgba(245,240,240,0.25); font-size: 0.7rem; cursor: pointer; padding: 0.1rem; line-height: 1; transition: color 0.15s; }
-  .ac-card-share:hover { color: var(--pink); }
-  .ac-admin-del { position: absolute; bottom: 0.4rem; right: 0.5rem; background: none; border: none; color: rgba(245,240,240,0.15); font-size: 0.6rem; cursor: pointer; padding: 0; line-height: 1; transition: color 0.15s; }
-  .ac-admin-del:hover { color: #e74c3c; }
+  .ac-row-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid var(--border); background: var(--card2); }
+  .ac-row-avatar-fallback { width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0; background: var(--pink-muted); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--pink); font-family: var(--mono); font-size: 0.9rem; font-weight: 700; }
+  .ac-row-body { flex: 1; min-width: 0; }
+  .ac-row-name { font-family: var(--display); font-size: 1.1rem; letter-spacing: 0.04em; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ac-row-meta { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.03em; margin-top: 0.15rem; }
+  .ac-row-right { text-align: right; flex-shrink: 0; }
+  .ac-row-pos { font-family: var(--display); font-size: 1.5rem; color: var(--pink); letter-spacing: 0.02em; line-height: 1; }
+  .ac-row-move { font-family: var(--mono); font-size: 0.65rem; font-weight: 600; margin-top: 0.15rem; }
+  .ac-row-move.up { color: #2ecc71; }
+  .ac-row-move.down { color: #e74c3c; }
+  .ac-row-move.same { color: var(--muted); }
+  .ac-row-move.new-entry { color: #ffd700; }
+  .ac-row-share { background: none; border: none; color: rgba(245,240,240,0.3); font-size: 0.75rem; cursor: pointer; padding: 0.2rem 0; line-height: 1; transition: color 0.15s; display: block; margin-top: 0.3rem; }
+  .ac-row-share:hover { color: var(--pink); }
+  .ac-row-del { position: absolute; top: 0.6rem; right: 0.8rem; background: none; border: none; color: rgba(245,240,240,0.12); font-size: 0.65rem; cursor: pointer; padding: 0; line-height: 1; transition: color 0.15s; }
+  .ac-row-del:hover { color: #e74c3c; }
 
   /* Charts page */
   .ch-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.8rem; margin-bottom: 1.4rem; }
@@ -2374,10 +2376,10 @@
 
     <div class="as-inner">
 
-      <!-- Top Artists chart positions (admin-entered) -->
+      <!-- Chart updates (admin-entered artist + track positions) -->
       <div class="ac-section" id="ac-section" style="display:none;">
-        <div class="ac-section-title">Top Artists — Spotify</div>
-        <div class="ac-cards" id="ac-cards"></div>
+        <div class="ac-section-title">Chart Updates</div>
+        <div class="ac-rows" id="ac-cards"></div>
       </div>
 
       <div class="ch-controls">
@@ -2666,15 +2668,19 @@
       </div>
 
       <div class="admin-ban-section">
-        <div class="admin-ban-title">📈 Top Artists chart — Spotify (Global or regional)</div>
+        <div class="admin-ban-title">📈 Chart Updates — artist or track positions (Spotify, iTunes, etc.)</div>
         <div class="admin-input-row" style="gap:0.4rem;flex-wrap:wrap;">
-          <input id="admin-ac-artist" class="admin-input" type="text" placeholder="Artist (e.g. JENNIE)" style="flex:1;min-width:80px;text-transform:uppercase;">
+          <input id="admin-ac-artist" class="admin-input" type="text" placeholder="Name (e.g. JENNIE or JUMP)" style="flex:1;min-width:80px;text-transform:uppercase;">
           <input id="admin-ac-pos" class="admin-input" type="number" min="1" placeholder="#" style="width:54px;flex:none;">
           <input id="admin-ac-change" class="admin-input" type="number" placeholder="±spots" style="width:60px;flex:none;" title="Positive = up, negative = down, 0 = same, blank = NEW">
         </div>
         <div class="admin-input-row" style="gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">
-          <input id="admin-ac-region" class="admin-input" type="text" placeholder="Region (e.g. Global, US)" style="flex:1;min-width:80px;">
-          <input id="admin-ac-date" class="admin-input" type="text" placeholder="Date (dd/mm/yyyy)" style="flex:1;min-width:90px;">
+          <input id="admin-ac-chart" class="admin-input" type="text" placeholder="Chart (e.g. Top Artists, Top 200)" style="flex:1;min-width:100px;">
+          <input id="admin-ac-region" class="admin-input" type="text" placeholder="Region (e.g. Global, US)" style="flex:1;min-width:70px;">
+        </div>
+        <div class="admin-input-row" style="gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">
+          <input id="admin-ac-art" class="admin-input" type="text" placeholder="Artwork: Spotify Track ID or URL (optional)" style="flex:1;min-width:120px;">
+          <input id="admin-ac-date" class="admin-input" type="text" placeholder="Date dd/mm/yyyy" style="width:100px;flex:none;">
           <button class="btn-primary" onclick="adminSaveArtistChart()">Save</button>
         </div>
         <div id="admin-ac-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
@@ -7731,40 +7737,63 @@ async function fetchArtistCharts() {
 async function renderArtistCharts() {
   const [entries, avatars] = await Promise.all([fetchArtistCharts(), loadArtistAvatars()]);
   const section = document.getElementById('ac-section');
-  const cards   = document.getElementById('ac-cards');
-  if (!section || !cards) return;
+  const rows    = document.getElementById('ac-cards');
+  if (!section || !rows) return;
   if (!entries.length) { section.style.display = 'none'; return; }
   const isAdmin = !!localStorage.getItem(ADMIN_KEY_LS);
   section.style.display = '';
-  cards.innerHTML = entries.slice().reverse().map(e => {
-    const avatarUrl = avatars[e.artist] || avatars[e.artist.replace('É', 'É')] || null;
-    let moveHtml, moveText;
-    if (e.change === null || e.change === undefined || e.change === '') {
-      moveHtml = `<div class="ac-card-move new-entry">NEW</div>`;
-      moveText = 'NEW';
-    } else if (Number(e.change) > 0) {
-      moveHtml = `<div class="ac-card-move up">▲ ${e.change} spots</div>`;
-      moveText = `▲${e.change}`;
-    } else if (Number(e.change) < 0) {
-      moveHtml = `<div class="ac-card-move down">▼ ${Math.abs(e.change)} spots</div>`;
-      moveText = `▼${Math.abs(e.change)}`;
+  rows.innerHTML = entries.slice().reverse().map(e => {
+    // resolve artwork: explicit artUrl > artist avatar cache > initials fallback
+    let photoHtml;
+    if (e.artUrl) {
+      const src = /^[A-Za-z0-9]{22}$/.test(e.artUrl)
+        ? `/api/proxy-image?spotify_art=${e.artUrl}`
+        : e.artUrl;
+      photoHtml = `<img class="ac-row-avatar" src="${src}" alt="${e.artist}">`;
     } else {
-      moveHtml = `<div class="ac-card-move same">= no change</div>`;
-      moveText = '=';
+      const avatarUrl = avatars[e.artist] || null;
+      photoHtml = avatarUrl
+        ? `<img class="ac-row-avatar" src="${avatarUrl}" alt="${e.artist}">`
+        : `<div class="ac-row-avatar-fallback">${(e.artist||'?')[0]}</div>`;
     }
-    const region = e.region || 'Global';
-    const shareText = `#${e.artist} ${moveText !== 'NEW' ? `is ${Number(e.change) >= 0 ? 'up' : 'down'} ${Math.abs(Number(e.change))} spot${Math.abs(Number(e.change)) !== 1 ? 's' : ''} to` : 'enters at'} #${e.position} on the ${region} Spotify Top Artists chart.`;
+
+    const chg = e.change;
+    let moveCls, moveLabel, moveText;
+    if (chg === null || chg === undefined || chg === '') {
+      moveCls = 'new-entry'; moveLabel = 'NEW ENTRY'; moveText = 'NEW';
+    } else if (Number(chg) > 0) {
+      moveCls = 'up'; moveLabel = `▲ ${chg} spots`; moveText = `▲${chg}`;
+    } else if (Number(chg) < 0) {
+      moveCls = 'down'; moveLabel = `▼ ${Math.abs(chg)} spots`; moveText = `▼${Math.abs(chg)}`;
+    } else {
+      moveCls = 'same'; moveLabel = '= no change'; moveText = '=';
+    }
+
+    const chartName = e.chartName || 'Top Artists';
+    const region    = e.region || 'Global';
+    const metaParts = [`${region} ${chartName}`];
+    if (e.date) metaParts.push(e.date);
+
+    const verb = chg === null || chg === undefined || chg === ''
+      ? 'enters at'
+      : (Number(chg) >= 0 ? `is up ${Math.abs(Number(chg))} spot${Math.abs(Number(chg)) !== 1 ? 's' : ''} to` : `is down ${Math.abs(Number(chg))} spot${Math.abs(Number(chg)) !== 1 ? 's' : ''} to`);
+    const shareText = `#${e.artist} ${verb} #${e.position} on the ${region} Spotify ${chartName}.`;
+
     const delBtn = isAdmin
-      ? `<button class="ac-admin-del" onclick="adminDeleteArtistChart('${e.id}')" title="Delete">✕</button>`
+      ? `<button class="ac-row-del" onclick="adminDeleteArtistChart('${e.id}')" title="Delete">✕</button>`
       : '';
-    return `<div class="ac-card">
-      <button class="ac-card-share" onclick="shareArtistChart(${JSON.stringify(shareText)})" title="Copy shareable text">↑</button>
-      ${avatarUrl ? `<img class="ac-card-avatar" src="${avatarUrl}" alt="${e.artist}">` : ''}
-      <div class="ac-card-artist">${e.artist}</div>
-      <div class="ac-card-pos">#${e.position}</div>
-      ${moveHtml}
-      <div class="ac-card-chart">${region} Top Artists</div>
-      ${e.date ? `<div class="ac-card-date">${e.date}</div>` : ''}
+
+    return `<div class="ac-row">
+      ${photoHtml}
+      <div class="ac-row-body">
+        <div class="ac-row-name">${e.artist}</div>
+        <div class="ac-row-meta">${metaParts.join(' · ')}</div>
+      </div>
+      <div class="ac-row-right">
+        <div class="ac-row-pos">#${e.position}</div>
+        <div class="ac-row-move ${moveCls}">${moveLabel}</div>
+        <button class="ac-row-share" onclick="shareArtistChart(${JSON.stringify(shareText)})" title="Copy shareable text">↑ share</button>
+      </div>
       ${delBtn}
     </div>`;
   }).join('');
@@ -7795,21 +7824,24 @@ async function adminSaveArtistChart() {
   const key = localStorage.getItem(ADMIN_KEY_LS);
   if (!key) { if (statusEl) { statusEl.textContent = 'Not authenticated'; statusEl.style.color = '#ff3333'; } return; }
 
-  const artist  = (document.getElementById('admin-ac-artist').value.trim() || '').toUpperCase();
-  const posVal  = document.getElementById('admin-ac-pos').value.trim();
-  const chgVal  = document.getElementById('admin-ac-change').value.trim();
-  const region  = document.getElementById('admin-ac-region').value.trim() || 'Global';
-  const date    = document.getElementById('admin-ac-date').value.trim() || '';
+  const artist    = (document.getElementById('admin-ac-artist').value.trim() || '').toUpperCase();
+  const posVal    = document.getElementById('admin-ac-pos').value.trim();
+  const chgVal    = document.getElementById('admin-ac-change').value.trim();
+  const chartName = document.getElementById('admin-ac-chart').value.trim() || 'Top Artists';
+  const region    = document.getElementById('admin-ac-region').value.trim() || 'Global';
+  const artRaw    = document.getElementById('admin-ac-art').value.trim();
+  const date      = document.getElementById('admin-ac-date').value.trim() || '';
 
-  if (!artist) { if (statusEl) { statusEl.textContent = 'Artist is required'; statusEl.style.color = '#ff3333'; } return; }
+  if (!artist) { if (statusEl) { statusEl.textContent = 'Name is required'; statusEl.style.color = '#ff3333'; } return; }
   const position = parseInt(posVal, 10);
   if (!position || position < 1) { if (statusEl) { statusEl.textContent = 'Position is required (#)'; statusEl.style.color = '#ff3333'; } return; }
 
   if (statusEl) { statusEl.textContent = 'Saving…'; statusEl.style.color = 'var(--muted)'; }
 
-  const params = new URLSearchParams({ artist, position, region, key });
+  const params = new URLSearchParams({ artist, position, chartName, region, key });
   if (chgVal !== '') params.set('change', chgVal);
   if (date) params.set('date', date);
+  if (artRaw) params.set('art', artRaw);
 
   try {
     const r = await fetch(`/api/proxy-image?artist_charts=save&${params}`, { method: 'POST' });
@@ -7819,7 +7851,9 @@ async function adminSaveArtistChart() {
     document.getElementById('admin-ac-artist').value = '';
     document.getElementById('admin-ac-pos').value = '';
     document.getElementById('admin-ac-change').value = '';
+    document.getElementById('admin-ac-chart').value = '';
     document.getElementById('admin-ac-region').value = '';
+    document.getElementById('admin-ac-art').value = '';
     document.getElementById('admin-ac-date').value = '';
     _artistChartsCache = null;
     renderArtistCharts();
