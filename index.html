@@ -6881,7 +6881,7 @@ async function _saveMilestoneToServer({ trackInput, msNum, total, dateInput, art
   if (artUrl)    params.set('art', artUrl);
 
   try {
-    const r = await fetch(`/api/proxy-image?global_milestones=save&${params}`);
+    const r = await fetch(`/api/proxy-image?global_milestones=save&${params}`, { method: 'POST' });
     if (r.status === 401) {
       localStorage.removeItem(ADMIN_KEY_LS);
       document.getElementById('ms-admin-content').style.display = 'none';
@@ -7452,7 +7452,7 @@ async function toggleLtalGoal(id) {
   const key = localStorage.getItem(ADMIN_KEY_LS);
   if (!key) return;
   try {
-    await fetch(`/api/proxy-image?ltal_goals=toggle&id=${encodeURIComponent(id)}&key=${encodeURIComponent(key)}`);
+    await fetch(`/api/proxy-image?ltal_goals=toggle&id=${encodeURIComponent(id)}&key=${encodeURIComponent(key)}`, { method: 'POST' });
     renderLtalGoalsList();
   } catch {}
 }
@@ -7495,7 +7495,7 @@ async function adminSetYt24hViews() {
   statusEl.textContent = 'Saving…';
   statusEl.style.color = 'var(--muted)';
   try {
-    const r = await fetch(`/api/proxy-image?ltal_goals=set_yt_24h_views&views=${encodeURIComponent(views)}&key=${encodeURIComponent(key)}`);
+    const r = await fetch(`/api/proxy-image?ltal_goals=set_yt_24h_views&views=${encodeURIComponent(views)}&key=${encodeURIComponent(key)}`, { method: 'POST' });
     const d = await r.json();
     if (d.ok) {
       statusEl.textContent = `✔ 24H views set to: ${views}`;
@@ -7522,7 +7522,7 @@ async function adminSetYtViews() {
   statusEl.textContent = 'Saving…';
   statusEl.style.color = 'var(--muted)';
   try {
-    const r = await fetch(`/api/proxy-image?ltal_goals=set_yt_views&views=${encodeURIComponent(views)}&key=${encodeURIComponent(key)}`);
+    const r = await fetch(`/api/proxy-image?ltal_goals=set_yt_views&views=${encodeURIComponent(views)}&key=${encodeURIComponent(key)}`, { method: 'POST' });
     const d = await r.json();
     if (d.ok) {
       statusEl.textContent = `✔ YouTube views updated to: ${views}`;
@@ -7547,7 +7547,7 @@ async function adminSet24hOfficial() {
   statusEl.textContent = 'Saving…';
   statusEl.style.color = 'var(--muted)';
   try {
-    const r = await fetch(`/api/proxy-image?ltal_goals=set_24h_official&count=${encodeURIComponent(raw)}&key=${encodeURIComponent(key)}`);
+    const r = await fetch(`/api/proxy-image?ltal_goals=set_24h_official&count=${encodeURIComponent(raw)}&key=${encodeURIComponent(key)}`, { method: 'POST' });
     const d = await r.json();
     if (d.ok) {
       statusEl.textContent = `✔ Saved: ${Number(d.ltal_24h_official).toLocaleString()} streams`;
@@ -7576,7 +7576,7 @@ async function adminAddCountry() {
   statusEl.textContent = 'Adding…';
   statusEl.style.color = 'var(--muted)';
   try {
-    const r = await fetch(`/api/proxy-image?ltal_goals=add_country&flag=${encodeURIComponent(flag)}&name=${encodeURIComponent(name)}&key=${encodeURIComponent(key)}`);
+    const r = await fetch(`/api/proxy-image?ltal_goals=add_country&flag=${encodeURIComponent(flag)}&name=${encodeURIComponent(name)}&key=${encodeURIComponent(key)}`, { method: 'POST' });
     const d = await r.json();
     if (d.ok) {
       statusEl.textContent = `✔ Added: ${flag} ${name}`;
@@ -7601,7 +7601,7 @@ async function adminRemoveCountry(name) {
   if (!key) return;
   if (statusEl) { statusEl.textContent = `Removing ${name}…`; statusEl.style.color = 'var(--muted)'; }
   try {
-    const r = await fetch(`/api/proxy-image?ltal_goals=remove_country&name=${encodeURIComponent(name)}&key=${encodeURIComponent(key)}`);
+    const r = await fetch(`/api/proxy-image?ltal_goals=remove_country&name=${encodeURIComponent(name)}&key=${encodeURIComponent(key)}`, { method: 'POST' });
     const d = await r.json();
     if (d.ok) {
       if (statusEl) { statusEl.textContent = `✔ Removed: ${name}`; statusEl.style.color = '#2ecc71'; }
