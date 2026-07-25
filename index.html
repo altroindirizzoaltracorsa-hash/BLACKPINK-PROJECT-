@@ -1034,6 +1034,7 @@
   .ac-card-move.new-entry { color: #ffd700; }
   .ac-card-chart { font-family: var(--mono); font-size: 0.46rem; letter-spacing: 0.08em; color: rgba(245,240,240,0.45); margin-top: 0.15rem; }
   .ac-card-date { font-family: var(--mono); font-size: 0.42rem; letter-spacing: 0.06em; color: rgba(245,240,240,0.25); }
+  .ac-card-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); display: block; margin-bottom: 0.3rem; }
   .ac-card-share { position: absolute; top: 0.5rem; right: 0.5rem; background: none; border: none; color: rgba(245,240,240,0.25); font-size: 0.7rem; cursor: pointer; padding: 0.1rem; line-height: 1; transition: color 0.15s; }
   .ac-card-share:hover { color: var(--pink); }
   .ac-admin-del { position: absolute; bottom: 0.4rem; right: 0.5rem; background: none; border: none; color: rgba(245,240,240,0.15); font-size: 0.6rem; cursor: pointer; padding: 0; line-height: 1; transition: color 0.15s; }
@@ -7702,6 +7703,20 @@ function renderAdminCountryList(countries) {
 // ── TOP ARTISTS CHART (admin-entered Spotify Top Artists positions) ────────────
 
 let _artistChartsCache = null;
+let _artistAvatarCache = null;  // { 'JENNIE': url, 'ROSÉ': url, ... }
+
+async function loadArtistAvatars() {
+  if (_artistAvatarCache) return _artistAvatarCache;
+  try {
+    const r = await fetch('/api/proxy-image?artist_streams=list', { cache: 'no-store' });
+    const d = await r.json();
+    _artistAvatarCache = {};
+    for (const a of (d.artists || [])) {
+      if (a.name && a.avatarUrl) _artistAvatarCache[a.name.toUpperCase()] = a.avatarUrl;
+    }
+  } catch { _artistAvatarCache = {}; }
+  return _artistAvatarCache;
+}
 
 async function fetchArtistCharts() {
   if (_artistChartsCache) return _artistChartsCache;
@@ -7714,7 +7729,7 @@ async function fetchArtistCharts() {
 }
 
 async function renderArtistCharts() {
-  const entries = await fetchArtistCharts();
+  const [entries, avatars] = await Promise.all([fetchArtistCharts(), loadArtistAvatars()]);
   const section = document.getElementById('ac-section');
   const cards   = document.getElementById('ac-cards');
   if (!section || !cards) return;
@@ -7722,6 +7737,7 @@ async function renderArtistCharts() {
   const isAdmin = !!localStorage.getItem(ADMIN_KEY_LS);
   section.style.display = '';
   cards.innerHTML = entries.slice().reverse().map(e => {
+    const avatarUrl = avatars[e.artist] || avatars[e.artist.replace('É', 'É')] || null;
     let moveHtml, moveText;
     if (e.change === null || e.change === undefined || e.change === '') {
       moveHtml = `<div class="ac-card-move new-entry">NEW</div>`;
@@ -7743,6 +7759,7 @@ async function renderArtistCharts() {
       : '';
     return `<div class="ac-card">
       <button class="ac-card-share" onclick="shareArtistChart(${JSON.stringify(shareText)})" title="Copy shareable text">↑</button>
+      ${avatarUrl ? `<img class="ac-card-avatar" src="${avatarUrl}" alt="${e.artist}">` : ''}
       <div class="ac-card-artist">${e.artist}</div>
       <div class="ac-card-pos">#${e.position}</div>
       ${moveHtml}
