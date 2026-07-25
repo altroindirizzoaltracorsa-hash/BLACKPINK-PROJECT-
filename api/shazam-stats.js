@@ -13,6 +13,41 @@ function apiKey() {
   return apiKeys()[0] || '';
 }
 
+function isQuotaError(status) {
+  return status === 429 || status === 402;
+}
+
+// Hardcoded Shazam track IDs — bypasses the 2-call resolution pipeline entirely.
+// Add IDs here as they're discovered (from shazam.com track URLs or the debug endpoint).
+const KNOWN_IDS = {
+  // JENNIE — all resolved 2026-07-25
+  'je-solo':           448842632,
+  'je-youandme':       679066831,
+  'je-intro':          813628626,
+  'je-like':           813538120,
+  'je-startawar':      813575646,
+  'je-handlebars':     813544354,
+  'je-withtheie':      813507532,
+  'je-extral':         813713629,
+  'je-mantra':         716913297,
+  'je-lovehangover':   811257502,
+  'je-zen':            811674284,
+  'je-damnright':      813303240,
+  'je-fts':            813455200,
+  'je-filter':         813546157,
+  'je-seoulcity':      813405738,
+  'je-starlight':      813447012,
+  'je-twin':           813649877,
+  'je-lessthanelover': 890286552,
+  'je-oneofthegirls':  670152796,
+  'je-spot':           698454731,
+  'je-slowmotion':     694001625,
+  'je-dracula':        860647502,
+  'je-special':        83470933,
+  'je-black':          96826182,
+  // BLACKPINK, JISOO, ROSÉ, LISA — add as discovered
+};
+
 async function shazamFetch(path) {
   const keys = apiKeys();
   if (!keys.length) throw new Error('RAPIDAPI_SHAZAM_KEY not configured');
@@ -22,7 +57,7 @@ async function shazamFetch(path) {
       headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': HOST },
     }).catch(() => null);
     if (!r) continue;
-    if (r.status !== 429) return r;
+    if (!isQuotaError(r.status)) return r;
     last = r;
   }
   return last;
@@ -37,7 +72,7 @@ async function apidojoFetch(path) {
       headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': APIDOJO_HOST },
     }).catch(() => null);
     if (!r) continue;
-    if (r.status !== 429) return r;
+    if (!isQuotaError(r.status)) return r;
     last = r;
   }
   return last;
@@ -166,11 +201,17 @@ const SONGS = {
 };
 
 // Resolve a song to its Shazam internal ID. Permanently cached in Redis.
-// Pipeline: apidojo search → Apple Music ID → Shazam Core v2 details → Shazam ID
+// Checks KNOWN_IDS first (0 API calls), then falls back to: apidojo search → Apple Music ID → Shazam Core v2 details → Shazam ID
 async function resolveKey(song) {
   const cacheKey = `shazam:id:${song.id}`;
   const cached = await redis.get(cacheKey);
   if (cached) return cached;
+
+  if (KNOWN_IDS[song.id]) {
+    const id = String(KNOWN_IDS[song.id]);
+    await redis.set(cacheKey, id);
+    return id;
+  }
 
   // Step 1: apidojo search → Apple Music song ID
   const query = encodeURIComponent(song.searchTerm || `${song.song} ${song.artist}`);
