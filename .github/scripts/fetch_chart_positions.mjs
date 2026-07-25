@@ -118,7 +118,8 @@ function parseRows(html, chartType) {
 }
 
 async function fetchRegion(region, chartType) {
-  const url = `https://kworb.net/spotify/country/${region}_${CHART_TYPES[chartType].suffix}.html`;
+  // Append a timestamp so CDN caches treat each run as a unique resource
+  const url = `https://kworb.net/spotify/country/${region}_${CHART_TYPES[chartType].suffix}.html?_=${Date.now()}`;
   const r = await fetch(url, {
     headers: {
       'User-Agent': UA,
