@@ -150,8 +150,16 @@ async function fetchRegion(region, chartType) {
   const rows = parseRows(html, chartType).map(row => ({ ...row, country: region.toUpperCase(), chart_type: chartType }));
   console.log(`[${chartType}] ${region}: ${rows.length} BLACKPINK/member row(s) found`);
 
-  // Debug: on global daily, log every artist ID seen so we can spot untracked members/new acts
+  // Debug: on global daily, log HTML size, search for known new track, and log all artist IDs
   if (region === 'global' && chartType === 'daily') {
+    console.log(`[DEBUG] global daily HTML size: ${html.length} chars`);
+    const NEW_TRACK_ID = '19UnXjpLshSLobPspdyxlD'; // LESS THAN A LOVER - JENNIE
+    if (html.includes(NEW_TRACK_ID)) {
+      const idx2 = html.indexOf(NEW_TRACK_ID);
+      console.log(`[DEBUG] FOUND track ID ${NEW_TRACK_ID} at offset ${idx2}: ...${html.slice(Math.max(0, idx2-200), idx2+200)}...`);
+    } else {
+      console.log(`[DEBUG] track ID ${NEW_TRACK_ID} NOT found in global daily HTML`);
+    }
     const artistLinkRe = /<a href="\.\.\/artist\/([A-Za-z0-9]+)\.html">([^<]+)<\/a>/g;
     const seen = new Map();
     let m;
