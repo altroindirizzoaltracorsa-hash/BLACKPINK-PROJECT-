@@ -1651,7 +1651,7 @@
         <button class="itunes-inline-badge" id="itunes-inline-badge" onclick="openReleaseGoalsFromCard()">🎵 iTunes #1: <span id="itunes-inline-count">0/10 countries</span> — tap to view →</button>
 
         <div class="stream-target" id="release-stream-goal" style="display:none;">
-          <p class="target-label">🎯 Blinks United's Contribution — Toward Jennie's 4.5M Filtered Streams (First 24h)</p>
+          <p class="target-label">🎯 Blinks United's Contribution — Toward Jennie's 10M Filtered Streams (1st Week)</p>
           <div class="progress-bar"><div class="progress-fill" id="release-stream-goal-fill" style="width:0%"></div></div>
           <div class="progress-nums"><span><strong id="release-stream-goal-nums">0 / 4,500,000</strong></span><span id="release-stream-goal-pct"></span></div>
         </div>
@@ -1702,7 +1702,7 @@
       <div id="community-goal-home" style="display:none;margin-top:1.5rem;max-width:900px;width:calc(100% + 4rem);margin-left:-2rem;margin-right:-2rem;">
         <div class="goal-tracker-card">
           <div class="goal-tracker-top">
-            <span class="goal-tracker-label">// Today's Community Goal</span>
+            <span class="goal-tracker-label">// Today's Community Goal — JUMP + Shut Down + DDU-DU DDU-DU</span>
             <span class="goal-tracker-nums" id="community-goal-nums">0<span> / 15,000 scrobbles</span></span>
           </div>
           <div class="goal-tracker-bar"><div class="goal-tracker-fill" id="community-goal-fill" style="width:0%"></div></div>
@@ -2589,6 +2589,26 @@
           <button class="btn-primary" onclick="adminToggleGoal()">Toggle ✓/○</button>
         </div>
         <div id="admin-goal-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
+      </div>
+
+      <div class="admin-ban-section">
+        <div class="admin-ban-title">📺 YouTube MV views — update the "X now" count on the 24H goal</div>
+        <div class="admin-input-row">
+          <input id="admin-yt-views" class="admin-input" type="text" placeholder="e.g. 5.3M" style="flex:1;">
+          <button class="btn-primary" onclick="adminSetYtViews()">Save</button>
+        </div>
+        <div id="admin-yt-views-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
+      </div>
+
+      <div class="admin-ban-section">
+        <div class="admin-ban-title">🌍 iTunes #1 Countries — add or remove from the list</div>
+        <div class="admin-input-row" style="gap:0.4rem;flex-wrap:wrap;">
+          <input id="admin-country-flag" class="admin-input" type="text" placeholder="🇺🇸 flag emoji" style="width:70px;flex:none;">
+          <input id="admin-country-name" class="admin-input" type="text" placeholder="Country name" style="flex:1;">
+          <button class="btn-primary" onclick="adminAddCountry()">Add</button>
+        </div>
+        <div id="admin-country-list" style="margin-top:0.5rem;display:flex;flex-wrap:wrap;gap:0.35rem;"></div>
+        <div id="admin-country-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
       </div>
 
     </div>
@@ -5880,7 +5900,8 @@ function computeDailyCommunityTotal(users) {
   return Object.entries(users).reduce((sum, [username, d]) => {
     if (secondaryKeys.has(username.toLowerCase())) return sum;
     const s = d.scores || {};
-    return s.daily_date === todayLabel ? sum + (s.daily_all || 0) : sum;
+    if (s.daily_date !== todayLabel) return sum;
+    return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0);
   }, 0);
 }
 
@@ -6669,6 +6690,7 @@ function openAdminPanel() {
     loadAdminRanking(saved);
     loadBannedUsers(saved);
     populateAdminGoalSelect();
+    loadAdminCountryList();
   } else {
     document.getElementById('admin-auth').style.display = 'block';
     document.getElementById('admin-content').style.display = 'none';
@@ -6701,6 +6723,7 @@ async function submitAdminKey() {
     renderAdminTable(d);
     loadBannedUsers(key);
     populateAdminGoalSelect();
+    loadAdminCountryList();
   } catch(e) {
     errEl.textContent = 'Request failed — check your connection.';
   }
@@ -7262,6 +7285,9 @@ function renderReleaseGlobalTimes() {
 // a goal to toggle it.
 // Manually updated as #1 charts come in -- shown as a chip list under the
 // iTunes Primary Goal so fans can see which countries are already done.
+// Runtime may be replaced by backend list (admin-managed via ltal_goals=add/remove_country).
+let _ltalCountriesLive = null; // set by renderLtalGoalsList / loadAdminCountryList
+function getLtalCountries() { return _ltalCountriesLive || ITUNES_NO1_COUNTRIES; }
 const ITUNES_NO1_COUNTRIES = [
   { flag: '🇦🇲', name: 'Armenia' },
   { flag: '🇧🇾', name: 'Belarus' },
@@ -7313,12 +7339,32 @@ async function renderLtalGoalsList() {
   const el = document.getElementById('ltal-goals-list');
   if (!el) return;
   const isAdmin = !!localStorage.getItem(ADMIN_KEY_LS);
-  let reached = {};
+  let reached = {}, ytViews = null, backendCountries = null;
   try {
     const r = await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' });
-    reached = (await r.json()).reached || {};
+    const d = await r.json();
+    reached = d.reached || {};
+    ytViews = d.yt_mv_views || null;
+    backendCountries = Array.isArray(d.countries) ? d.countries : null;
   } catch {}
-  el.innerHTML = LTAL_GOALS.map(cat => `
+  const countries = backendCountries || ITUNES_NO1_COUNTRIES;
+  if (backendCountries) _ltalCountriesLive = backendCountries;
+  const goals = LTAL_GOALS.map(cat => ({
+    ...cat,
+    items: cat.items.map(g => {
+      let label = g.label;
+      if (g.id === 'youtube_24h' && ytViews) {
+        label = `24 Hours: 4M views — ACHIEVED! (${ytViews} now)`;
+      }
+      if (g.id === 'itunes_primary') {
+        label = countries.length >= 10
+          ? `Primary Goal: #1 in 10 countries — ACHIEVED! (${countries.length} so far)`
+          : `Primary Goal: #1 in 10 countries (${countries.length}/10 so far)`;
+      }
+      return { ...g, label };
+    }),
+  }));
+  el.innerHTML = goals.map(cat => `
     <div>
       <p class="ltal-goals-category-label">${cat.category}</p>
       ${cat.items.map(g => {
@@ -7327,7 +7373,7 @@ async function renderLtalGoalsList() {
           <span class="ltal-goal-check">${isReached ? '✔️' : '○'}</span><span>${g.label}</span>
         </div>`;
       }).join('')}
-      ${cat.category === 'iTunes' ? `<div class="itunes-no1-list">${ITUNES_NO1_COUNTRIES.map(c => `<span class="itunes-no1-chip">${c.flag} #1 ${c.name}</span>`).join('')}</div>` : ''}
+      ${cat.category === 'iTunes' ? `<div class="itunes-no1-list">${countries.map(c => `<span class="itunes-no1-chip">${c.flag} #1 ${c.name}</span>`).join('')}</div>` : ''}
     </div>
   `).join('');
 }
@@ -7369,6 +7415,106 @@ async function adminToggleGoal() {
   }
 }
 
+async function adminSetYtViews() {
+  const input = document.getElementById('admin-yt-views');
+  const statusEl = document.getElementById('admin-yt-views-status');
+  const views = (input?.value || '').trim();
+  if (!views || !statusEl) return;
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  if (!key) return;
+  statusEl.textContent = 'Saving…';
+  statusEl.style.color = 'var(--muted)';
+  try {
+    const r = await fetch(`/api/proxy-image?ltal_goals=set_yt_views&views=${encodeURIComponent(views)}&key=${encodeURIComponent(key)}`);
+    const d = await r.json();
+    if (d.ok) {
+      statusEl.textContent = `✔ YouTube views updated to: ${views}`;
+      statusEl.style.color = '#2ecc71';
+    } else {
+      statusEl.textContent = d.error || 'Failed';
+      statusEl.style.color = '#ff3333';
+    }
+  } catch {
+    statusEl.textContent = 'Error saving';
+    statusEl.style.color = '#ff3333';
+  }
+}
+
+async function adminAddCountry() {
+  const flagInput = document.getElementById('admin-country-flag');
+  const nameInput = document.getElementById('admin-country-name');
+  const statusEl  = document.getElementById('admin-country-status');
+  const flag = (flagInput?.value || '').trim();
+  const name = (nameInput?.value || '').trim();
+  if (!name || !statusEl) return;
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  if (!key) return;
+  statusEl.textContent = 'Adding…';
+  statusEl.style.color = 'var(--muted)';
+  try {
+    const r = await fetch(`/api/proxy-image?ltal_goals=add_country&flag=${encodeURIComponent(flag)}&name=${encodeURIComponent(name)}&key=${encodeURIComponent(key)}`);
+    const d = await r.json();
+    if (d.ok) {
+      statusEl.textContent = `✔ Added: ${flag} ${name}`;
+      statusEl.style.color = '#2ecc71';
+      if (nameInput) nameInput.value = '';
+      if (flagInput) flagInput.value = '';
+      renderAdminCountryList(d.countries || []);
+      renderItunesInlineBadge();
+    } else {
+      statusEl.textContent = d.error || 'Failed';
+      statusEl.style.color = '#ff3333';
+    }
+  } catch {
+    statusEl.textContent = 'Error adding';
+    statusEl.style.color = '#ff3333';
+  }
+}
+
+async function adminRemoveCountry(name) {
+  const statusEl = document.getElementById('admin-country-status');
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  if (!key) return;
+  if (statusEl) { statusEl.textContent = `Removing ${name}…`; statusEl.style.color = 'var(--muted)'; }
+  try {
+    const r = await fetch(`/api/proxy-image?ltal_goals=remove_country&name=${encodeURIComponent(name)}&key=${encodeURIComponent(key)}`);
+    const d = await r.json();
+    if (d.ok) {
+      if (statusEl) { statusEl.textContent = `✔ Removed: ${name}`; statusEl.style.color = '#2ecc71'; }
+      renderAdminCountryList(d.countries || []);
+      renderItunesInlineBadge();
+    }
+  } catch {
+    if (statusEl) { statusEl.textContent = 'Error removing'; statusEl.style.color = '#ff3333'; }
+  }
+}
+
+async function loadAdminCountryList() {
+  try {
+    const r = await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' });
+    const d = await r.json();
+    const countries = Array.isArray(d.countries) ? d.countries : ITUNES_NO1_COUNTRIES;
+    _ltalCountriesLive = Array.isArray(d.countries) ? d.countries : null;
+    renderAdminCountryList(countries);
+    renderItunesInlineBadge();
+    if (d.yt_mv_views) {
+      const inp = document.getElementById('admin-yt-views');
+      if (inp && !inp.value) inp.placeholder = `Current: ${d.yt_mv_views}`;
+    }
+  } catch {}
+}
+
+function renderAdminCountryList(countries) {
+  const el = document.getElementById('admin-country-list');
+  if (!el) return;
+  el.innerHTML = countries.map(c =>
+    `<span style="display:inline-flex;align-items:center;gap:0.3rem;background:rgba(255,255,255,0.06);border:1px solid var(--border);padding:0.2rem 0.5rem;border-radius:4px;font-size:0.62rem;letter-spacing:0.1em;">
+      ${c.flag} ${c.name}
+      <button onclick="adminRemoveCountry('${c.name.replace(/'/g, "\\'")}')" style="background:none;border:none;color:#ff3333;cursor:pointer;font-size:0.8rem;padding:0 0.1rem;line-height:1;">✕</button>
+    </span>`
+  ).join('');
+}
+
 function toggleReleaseExpand() {
   const panel = document.getElementById('release-expand-panel');
   const hint = document.getElementById('release-title-hint');
@@ -7393,7 +7539,7 @@ function toggleReleaseGlobalTimes(btn) {
 function renderItunesInlineBadge() {
   const el = document.getElementById('itunes-inline-count');
   if (!el) return;
-  const n = ITUNES_NO1_COUNTRIES.length;
+  const n = getLtalCountries().length;
   el.textContent = n >= 10 ? `${n} countries (goal reached!)` : `${n}/10 countries`;
 }
 
@@ -7493,11 +7639,11 @@ function computeCommunityTotal(users, scoreKey) {
   }, 0);
 }
 
-const LTAL_STREAMS_GOAL_INDUSTRY = 4_500_000; // fandom-wide 24h goal, not just our leaderboard
+const LTAL_STREAMS_GOAL_INDUSTRY = 10_000_000; // fandom-wide 1st-week goal
+const LTAL_24H_CONTRIBUTION = 7802; // frozen 24h snapshot shown on share card
 
-// "Blinks United's Contribution" toward Jennie's fandom-wide 4.5M-streams-in-
-// 24h goal. overall_ltal is all-time since we only started tracking the track
-// the day it released, so right after release it doubles as "since release".
+// "Blinks United's Contribution" toward Jennie's fandom-wide 10M-streams-in-
+// 1st-week goal. overall_ltal accumulates all-time since the track released.
 // Lives inside the release card itself, replacing the pre-save challenge box
 // once the single is out (see renderReleaseCountdown/renderJennieSaveCount).
 async function loadLtalStreamsGoal() {
@@ -9591,12 +9737,12 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   // Blinks United's own streams contribution toward the fandom-wide 4.5M-in-
   // 24h goal -- only once it's actually live and there's room to fit it
   // (poster4's tight face crop has no space left below the sub line).
-  if (!tightChin && _releaseContributionTotal != null && Date.now() >= new Date(JENNIE_RELEASE.releaseAt).getTime()) {
+  if (!tightChin && Date.now() >= new Date(JENNIE_RELEASE.releaseAt).getTime()) {
     const contribY = subY + (landscape ? 34 : 46);
     ctx.fillStyle = '#E8110D';
     ctx.font = `500 ${landscape ? 14 : 18}px "DM Mono", monospace`;
     ctx.letterSpacing = '2px';
-    ctx.fillText(`🎯 ${_releaseContributionTotal.toLocaleString()} STREAMS FROM BLINKS UNITED`, titleX, contribY);
+    ctx.fillText(`🎯 ${LTAL_24H_CONTRIBUTION.toLocaleString()} STREAMS FROM BLINKS UNITED`, titleX, contribY);
   }
 
   ctx.textAlign = 'left';
@@ -9878,8 +10024,8 @@ async function openGoalsCard() {
   _releaseArtUrl = RELEASE_CARD_PICS[0];
   _cardArt = art; _cardLogo = logo;
   _goalsCardData = {
-    count: ITUNES_NO1_COUNTRIES.length,
-    countries: ITUNES_NO1_COUNTRIES.map(c => c.name),
+    count: getLtalCountries().length,
+    countries: getLtalCountries().map(c => c.name),
     extraGoals,
   };
   drawGoalsCard(canvas, logo, art, _goalsCardData);

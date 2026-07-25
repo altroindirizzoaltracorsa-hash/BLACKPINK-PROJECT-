@@ -260,28 +260,79 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, id, count: existing.length });
   }
 
-  // ── GET ?ltal_goals=list (public) — campaign-goal checkmarks ───────────────
+  // ── GET ?ltal_goals=list (public) — campaign-goal checkmarks + meta ─────────
   if (req.query.ltal_goals === 'list') {
-    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ reached: {} });
+    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ reached: {}, yt_mv_views: null, countries: null });
     try {
-      const reached = await upstashGet('bu_ltal_goals');
-      return res.status(200).json({ reached: reached && typeof reached === 'object' ? reached : {} });
-    } catch { return res.status(200).json({ reached: {} }); }
+      const stored = await upstashGet('bu_ltal_goals');
+      const obj = (stored && typeof stored === 'object') ? stored : {};
+      return res.status(200).json({
+        reached:      obj._reached      && typeof obj._reached === 'object' ? obj._reached : obj,
+        yt_mv_views:  obj._yt_mv_views  || null,
+        countries:    Array.isArray(obj._countries) ? obj._countries : null,
+      });
+    } catch { return res.status(200).json({ reached: {}, yt_mv_views: null, countries: null }); }
   }
 
-  // ── GET ?ltal_goals=toggle&id=<goalId>&key=<admin> (admin) ─────────────────
-  if (req.query.ltal_goals === 'toggle') {
+  // ── LTAL goals admin actions (all require admin key) ─────────────────────────
+  if (req.query.ltal_goals) {
     const adminSecret = process.env.ADMIN_SECRET;
     const key = req.headers['x-admin-secret'] || req.query.key;
     if (!adminSecret || key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
     if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(500).json({ error: 'Redis not configured' });
-    const id = req.query.id;
-    if (!id) return res.status(400).json({ error: 'id required' });
-    let reached = {};
-    try { reached = (await upstashGet('bu_ltal_goals')) || {}; if (typeof reached !== 'object') reached = {}; } catch {}
-    reached[id] = !reached[id];
-    await upstashSet('bu_ltal_goals', reached);
-    return res.status(200).json({ ok: true, id, reached });
+
+    let stored = {};
+    try { stored = (await upstashGet('bu_ltal_goals')) || {}; if (typeof stored !== 'object') stored = {}; } catch {}
+    // Migrate flat {goalId: bool} → new shape { _reached:{}, _yt_mv_views:'', _countries:[] }
+    if (!stored._reached) {
+      const legacyReached = {};
+      for (const [k, v] of Object.entries(stored)) {
+        if (!k.startsWith('_')) legacyReached[k] = v;
+      }
+      stored = { _reached: legacyReached, _yt_mv_views: stored._yt_mv_views || null, _countries: stored._countries || null };
+    }
+
+    // toggle — mark/unmark a goal as reached
+    if (req.query.ltal_goals === 'toggle') {
+      const id = req.query.id;
+      if (!id) return res.status(400).json({ error: 'id required' });
+      stored._reached[id] = !stored._reached[id];
+      await upstashSet('bu_ltal_goals', stored);
+      return res.status(200).json({ ok: true, id, reached: stored._reached });
+    }
+
+    // set_yt_views — update the YouTube MV view count string
+    if (req.query.ltal_goals === 'set_yt_views') {
+      const views = (req.query.views || '').trim();
+      if (!views) return res.status(400).json({ error: 'views required' });
+      stored._yt_mv_views = views;
+      await upstashSet('bu_ltal_goals', stored);
+      return res.status(200).json({ ok: true, yt_mv_views: views });
+    }
+
+    // add_country — append a country to the iTunes #1 list
+    if (req.query.ltal_goals === 'add_country') {
+      const flag = (req.query.flag || '').trim();
+      const name = (req.query.name || '').trim();
+      if (!name) return res.status(400).json({ error: 'name required' });
+      if (!Array.isArray(stored._countries)) stored._countries = [];
+      if (!stored._countries.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+        stored._countries.push({ flag, name });
+      }
+      await upstashSet('bu_ltal_goals', stored);
+      return res.status(200).json({ ok: true, countries: stored._countries });
+    }
+
+    // remove_country — remove a country from the iTunes #1 list
+    if (req.query.ltal_goals === 'remove_country') {
+      const name = (req.query.name || '').trim();
+      if (!Array.isArray(stored._countries)) stored._countries = [];
+      stored._countries = stored._countries.filter(c => c.name.toLowerCase() !== name.toLowerCase());
+      await upstashSet('bu_ltal_goals', stored);
+      return res.status(200).json({ ok: true, countries: stored._countries });
+    }
+
+    return res.status(400).json({ error: 'unknown ltal_goals action' });
   }
 
   // ── GET ?jennie_save=count|increment — "Less Than a Lover" save counter ────
