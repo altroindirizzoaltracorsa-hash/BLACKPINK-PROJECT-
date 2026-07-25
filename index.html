@@ -2595,10 +2595,14 @@
       </div>
 
       <div class="admin-ban-section">
-        <div class="admin-ban-title">📺 YouTube MV views — update the "X now" count on the 24H goal</div>
+        <div class="admin-ban-title">📺 YouTube MV views — shown as "(X after 24h · Y now)"</div>
         <div class="admin-input-row">
-          <input id="admin-yt-views" class="admin-input" type="text" placeholder="e.g. 5.3M" style="flex:1;">
-          <button class="btn-primary" onclick="adminSetYtViews()">Save</button>
+          <input id="admin-yt-24h-views" class="admin-input" type="text" placeholder="Views at 24H mark (e.g. 5.1M)" style="flex:1;">
+          <button class="btn-primary" onclick="adminSetYt24hViews()">Save 24H</button>
+        </div>
+        <div class="admin-input-row" style="margin-top:0.4rem;">
+          <input id="admin-yt-views" class="admin-input" type="text" placeholder="Current views (e.g. 5.3M)" style="flex:1;">
+          <button class="btn-primary" onclick="adminSetYtViews()">Save Now</button>
         </div>
         <div id="admin-yt-views-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
       </div>
@@ -6870,6 +6874,12 @@ async function triggerMilestoneFromPanel() {
   _globalMsCache = null;
   if (artUrl) TRACK_ARTWORK[trackInput] = artUrl;
   sessionStorage.removeItem(`bu_global_ms_seen_${trackInput}_${msNum}`);
+  // Clear form so the next milestone entry starts fresh
+  document.getElementById('ms-admin-track').value = '';
+  document.getElementById('ms-admin-milestone').value = '';
+  document.getElementById('ms-admin-total').value = '';
+  document.getElementById('ms-admin-date').value = '';
+  document.getElementById('ms-admin-art').value = '';
   closeMilestoneAdminPanel();
   renderMoreMilestones();
   showMilestone(trackInput, total, msNum, dateInput);
@@ -7351,12 +7361,13 @@ async function renderLtalGoalsList() {
   const el = document.getElementById('ltal-goals-list');
   if (!el) return;
   const isAdmin = !!localStorage.getItem(ADMIN_KEY_LS);
-  let reached = {}, ytViews = null, backendCountries = null;
+  let reached = {}, ytViews = null, yt24hViews = null, backendCountries = null;
   try {
     const r = await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' });
     const d = await r.json();
     reached = d.reached || {};
     ytViews = d.yt_mv_views || null;
+    yt24hViews = d.yt_24h_views || null;
     backendCountries = Array.isArray(d.countries) ? d.countries : null;
   } catch {}
   const countries = backendCountries || ITUNES_NO1_COUNTRIES;
@@ -7365,8 +7376,11 @@ async function renderLtalGoalsList() {
     ...cat,
     items: cat.items.map(g => {
       let label = g.label;
-      if (g.id === 'youtube_24h' && ytViews) {
-        label = `24 Hours: 4M views — ACHIEVED! (${ytViews} now)`;
+      if (g.id === 'youtube_24h' && (ytViews || yt24hViews)) {
+        const parts = [];
+        if (yt24hViews) parts.push(`${yt24hViews} after 24h`);
+        if (ytViews)    parts.push(`${ytViews} now`);
+        label = `24 Hours: 4M views — ACHIEVED! (${parts.join(' · ')})`;
       }
       if (g.id === 'itunes_primary') {
         label = countries.length >= 10
@@ -7424,6 +7438,33 @@ async function adminToggleGoal() {
     statusEl.style.color = isReached ? '#2ecc71' : 'rgba(245,240,240,0.45)';
   } catch {
     statusEl.textContent = 'Toggled — refresh the goals panel to confirm.';
+  }
+}
+
+async function adminSetYt24hViews() {
+  const input = document.getElementById('admin-yt-24h-views');
+  const statusEl = document.getElementById('admin-yt-views-status');
+  const views = (input?.value || '').trim();
+  if (!views || !statusEl) return;
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  if (!key) return;
+  statusEl.textContent = 'Saving…';
+  statusEl.style.color = 'var(--muted)';
+  try {
+    const r = await fetch(`/api/proxy-image?ltal_goals=set_yt_24h_views&views=${encodeURIComponent(views)}&key=${encodeURIComponent(key)}`);
+    const d = await r.json();
+    if (d.ok) {
+      statusEl.textContent = `✔ 24H views set to: ${views}`;
+      statusEl.style.color = '#2ecc71';
+      input.value = '';
+      input.placeholder = `Current: ${views}`;
+    } else {
+      statusEl.textContent = d.error || 'Failed';
+      statusEl.style.color = '#ff3333';
+    }
+  } catch {
+    statusEl.textContent = 'Error saving';
+    statusEl.style.color = '#ff3333';
   }
 }
 
@@ -7536,6 +7577,10 @@ async function loadAdminCountryList() {
     _ltalCountriesLive = Array.isArray(d.countries) ? d.countries : null;
     renderAdminCountryList(countries);
     renderItunesInlineBadge();
+    if (d.yt_24h_views) {
+      const inp = document.getElementById('admin-yt-24h-views');
+      if (inp && !inp.value) inp.placeholder = `Current: ${d.yt_24h_views}`;
+    }
     if (d.yt_mv_views) {
       const inp = document.getElementById('admin-yt-views');
       if (inp && !inp.value) inp.placeholder = `Current: ${d.yt_mv_views}`;
@@ -8771,6 +8816,7 @@ function formatMilestone(n) {
 
 const _msPending = [];
 let _msActive = false;
+let _msRenderGen = 0;
 
 function checkMilestone(trackId, total, lastDayDate) {
   if (!total) return;
@@ -8804,6 +8850,7 @@ function showPendingMilestone() {
 
 function showMilestone(trackId, total, milestone, milestoneDate) {
   _msActive = true;
+  _msShareBlob = null; // clear stale blob so we don't share the wrong card
   document.getElementById('ms-track-name').textContent = TRACK_LABELS[trackId] || trackId;
   document.getElementById('ms-number').textContent = formatMilestone(milestone) + ' STREAMS';
   document.getElementById('ms-sub').textContent = formatFull(total) + ' total · keep streaming!';
@@ -9054,12 +9101,14 @@ function drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milesto
 }
 
 async function renderMilestoneCanvas(trackId, total, milestone, milestoneDate) {
+  const gen = ++_msRenderGen;
   const canvas = document.getElementById('ms-canvas');
   canvas.width = 1200; canvas.height = 675;
   await document.fonts.ready;
   const [art, logo] = await Promise.all([loadArtwork(trackId), getBuLogo()]);
+  if (gen !== _msRenderGen) return; // superseded by a newer render, abort
   drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milestoneDate);
-  canvas.toBlob(blob => { _msShareBlob = blob; }, 'image/jpeg', 0.92);
+  canvas.toBlob(blob => { if (gen === _msRenderGen) _msShareBlob = blob; }, 'image/jpeg', 0.92);
 }
 
 async function openMilestoneCard(trackId, milestone, milestoneDate) {

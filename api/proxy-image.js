@@ -269,6 +269,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         reached:           obj._reached && typeof obj._reached === 'object' ? obj._reached : obj,
         yt_mv_views:       obj._yt_mv_views       || null,
+        yt_24h_views:      obj._yt_24h_views       || null,
         countries:         Array.isArray(obj._countries) ? obj._countries : null,
         ltal_24h_official: obj._ltal_24h_official  || null,
       });
@@ -302,13 +303,22 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, id, reached: stored._reached });
     }
 
-    // set_yt_views — update the YouTube MV view count string
+    // set_yt_views — update the current YouTube MV view count string
     if (req.query.ltal_goals === 'set_yt_views') {
       const views = (req.query.views || '').trim();
       if (!views) return res.status(400).json({ error: 'views required' });
       stored._yt_mv_views = views;
       await upstashSet('bu_ltal_goals', stored);
       return res.status(200).json({ ok: true, yt_mv_views: views });
+    }
+
+    // set_yt_24h_views — store the frozen view count at the 24H mark
+    if (req.query.ltal_goals === 'set_yt_24h_views') {
+      const views = (req.query.views || '').trim();
+      if (!views) return res.status(400).json({ error: 'views required' });
+      stored._yt_24h_views = views;
+      await upstashSet('bu_ltal_goals', stored);
+      return res.status(200).json({ ok: true, yt_24h_views: views });
     }
 
     // set_24h_official — store the total fandom 24H Spotify stream count
