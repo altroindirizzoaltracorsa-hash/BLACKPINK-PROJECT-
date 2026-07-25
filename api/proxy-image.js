@@ -261,6 +261,56 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, id, count: existing.length });
   }
 
+  // ── GET ?artist_charts=list (public) ────────────────────────────────────────
+  if (req.query.artist_charts === 'list') {
+    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ entries: [] });
+    try {
+      const entries = await upstashGet('bu_artist_charts');
+      return res.status(200).json({ entries: Array.isArray(entries) ? entries : [] });
+    } catch { return res.status(200).json({ entries: [] }); }
+  }
+
+  // ── POST ?artist_charts=save (admin) ─────────────────────────────────────────
+  if (req.query.artist_charts === 'save') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    const key = req.headers['x-admin-secret'] || req.query.key;
+    if (!adminSecret || key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
+    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(500).json({ error: 'Redis not configured' });
+    const { artist, position, change, region, date } = req.query;
+    if (!artist || !position) return res.status(400).json({ error: 'artist and position required' });
+    const pos = parseInt(position, 10);
+    if (!pos || pos < 1) return res.status(400).json({ error: 'Invalid position' });
+    const artistUp = artist.trim().toUpperCase();
+    const regionStr = (region || 'Global').trim();
+    const id = `${artistUp}_${regionStr.toUpperCase().replace(/\s+/g, '_')}`;
+    const entry = {
+      id, artist: artistUp, position: pos,
+      change: change !== undefined && change !== '' ? parseInt(change, 10) : null,
+      region: regionStr, date: date || null, savedAt: Date.now(),
+    };
+    let existing = [];
+    try { existing = (await upstashGet('bu_artist_charts')) || []; if (!Array.isArray(existing)) existing = []; } catch {}
+    const idx = existing.findIndex(e => e.id === id);
+    if (idx >= 0) existing[idx] = entry; else existing.push(entry);
+    await upstashSet('bu_artist_charts', existing);
+    return res.status(200).json({ ok: true, id, count: existing.length });
+  }
+
+  // ── POST ?artist_charts=delete (admin) ───────────────────────────────────────
+  if (req.query.artist_charts === 'delete') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    const key = req.headers['x-admin-secret'] || req.query.key;
+    if (!adminSecret || key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
+    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(500).json({ error: 'Redis not configured' });
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: 'id required' });
+    let existing = [];
+    try { existing = (await upstashGet('bu_artist_charts')) || []; if (!Array.isArray(existing)) existing = []; } catch {}
+    const filtered = existing.filter(e => e.id !== id);
+    await upstashSet('bu_artist_charts', filtered);
+    return res.status(200).json({ ok: true, count: filtered.length });
+  }
+
   // ── GET ?ltal_goals=list (public) — campaign-goal checkmarks + meta ─────────
   if (req.query.ltal_goals === 'list') {
     if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ reached: {}, yt_mv_views: null, countries: null });
