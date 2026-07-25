@@ -1,199 +1,232 @@
 /**
- * Probe: maps the charts.youtube.com internal API so we can build a proper
- * nightly fetch without going through kworb.
+ * Probe v2: round 1 got 400 on every charts.youtube.com/youtubei call,
+ * and the API key wasn't in the page HTML (it's in the JS bundles).
  *
- * What this does:
- * 1. Fetches the charts.youtube.com homepage and extracts:
- *    - the embedded API key
- *    - any ytInitialData / initialData JSON baked into the page
- * 2. Makes a direct POST to the browse endpoint for Global top songs
- * 3. Repeats for a few key countries (KR, US, TW, SG)
- * 4. Logs the raw JSON and a structural summary so we know how to parse entries
- *
- * Safe to remove once fetch_youtube_chart_positions.mjs ships.
+ * This version:
+ * 1. Downloads the JS bundles from charts.youtube.com to extract the real
+ *    API key, client name/version, and any browseId references.
+ * 2. Tries the YouTube Music API (music.youtube.com/youtubei/v1/browse)
+ *    with the WEB_REMIX client -- this is the better-documented path that
+ *    powers the music.youtube.com/charts page.
+ * 3. Tries charts.youtube.com with multiple browseId candidates and the
+ *    extracted (or fallback) key.
  */
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-const BASE = 'https://charts.youtube.com';
 
-// Known fallback key embedded in the public site (may rotate, so we also try
-// to extract dynamically below).
-const FALLBACK_KEY = 'AIzaSyC9XL3ZjWddXya6X74dJoCTL-NKNELL6Cs';
+// ── helpers ───────────────────────────────────────────────────────────────
 
-function excerpt(obj, depth = 0, maxDepth = 3) {
-  if (depth > maxDepth) return '…';
+function snip(text, max = 300) { return text.length > max ? text.slice(0, max) + '…' : text; }
+
+function printShape(obj, indent = 0) {
+  const pad = '  '.repeat(indent);
   if (Array.isArray(obj)) {
-    const items = obj.slice(0, 2).map(v => excerpt(v, depth + 1, maxDepth));
-    return `[${items.join(', ')}${obj.length > 2 ? `, … (${obj.length} total)` : ''}]`;
-  }
-  if (obj && typeof obj === 'object') {
-    const keys = Object.keys(obj);
-    const pairs = keys.slice(0, 6).map(k => `${k}: ${excerpt(obj[k], depth + 1, maxDepth)}`);
-    return `{${pairs.join(', ')}${keys.length > 6 ? ', …' : ''}}`;
-  }
-  if (typeof obj === 'string') return obj.length > 80 ? `"${obj.slice(0, 80)}…"` : `"${obj}"`;
-  return String(obj);
-}
-
-function walk(obj, path = '') {
-  if (Array.isArray(obj)) {
-    if (obj.length) walk(obj[0], `${path}[0]`);
+    console.log(`${pad}Array[${obj.length}]`);
+    if (obj.length) printShape(obj[0], indent + 1);
     return;
   }
   if (obj && typeof obj === 'object') {
     const keys = Object.keys(obj);
-    if (keys.length <= 12) {
-      console.log(`${path || '(root)'}: { ${keys.join(', ')} }`);
-    } else {
-      console.log(`${path || '(root)'}: { ${keys.slice(0, 12).join(', ')} … (${keys.length} keys) }`);
-    }
-    for (const k of keys) walk(obj[k], path ? `${path}.${k}` : k);
+    console.log(`${pad}Object { ${keys.slice(0, 10).join(', ')}${keys.length > 10 ? ` … +${keys.length - 10}` : ''} }`);
+    if (indent < 3) for (const k of keys.slice(0, 5)) printShape(obj[k], indent + 1);
+    return;
   }
+  const s = String(obj);
+  console.log(`${pad}${s.length > 80 ? s.slice(0, 80) + '…' : s}`);
 }
 
-async function fetchPage() {
-  console.log('\n=== Fetching charts.youtube.com homepage ===');
-  const r = await fetch(`${BASE}/`, {
+// ── Step 1: scrape JS bundles from charts.youtube.com ─────────────────────
+
+async function extractFromBundles() {
+  console.log('\n=== Step 1: extract API config from charts.youtube.com JS bundles ===');
+  const pageRes = await fetch('https://charts.youtube.com/', {
     headers: { 'User-Agent': UA, Accept: 'text/html,*/*', 'Accept-Language': 'en-US,en;q=0.9' },
   });
-  console.log(`Status: ${r.status}`);
-  if (!r.ok) { console.log('Homepage fetch failed'); return { key: null, initialData: null }; }
+  const html = await pageRes.text();
+  console.log(`Homepage status: ${pageRes.status}, length: ${html.length}`);
+  console.log('First 800 chars:', snip(html, 800));
 
-  const html = await r.text();
-  console.log(`HTML length: ${html.length}`);
+  // Find all script src URLs
+  const scriptSrcs = [...html.matchAll(/src="([^"]+\.js[^"]*)"/g)].map(m => m[1]);
+  console.log(`\nScript src URLs (${scriptSrcs.length}):`, scriptSrcs.slice(0, 10));
 
-  // Extract API key
-  const keyMatch = html.match(/"key"\s*:\s*"(AIzaSy[A-Za-z0-9_\-]{30,})"/);
-  const key = keyMatch?.[1] ?? null;
-  console.log(`API key from page: ${key ?? '(not found, will use fallback)'}`);
+  // Resolve relative URLs
+  const base = 'https://charts.youtube.com';
+  const resolved = scriptSrcs.map(s => s.startsWith('http') ? s : `${base}${s}`);
 
-  // Look for ytInitialData or similar
-  const initMatch = html.match(/(?:ytInitialData|initialData)\s*=\s*(\{[\s\S]{0,500000}\});/);
-  let initialData = null;
-  if (initMatch) {
+  const found = { apiKey: null, clientName: null, clientVersion: null, browseIds: new Set() };
+
+  for (const src of resolved.slice(0, 8)) { // check up to 8 bundles
     try {
-      initialData = JSON.parse(initMatch[1]);
-      console.log(`Found initialData, top-level keys: ${Object.keys(initialData).join(', ')}`);
-    } catch { console.log('Found initialData but failed to parse'); }
-  } else {
-    console.log('No ytInitialData/initialData found in page');
+      const r = await fetch(src, { headers: { 'User-Agent': UA, Referer: base + '/' } });
+      if (!r.ok) { console.log(`  ${src} -> ${r.status}`); continue; }
+      const js = await r.text();
+      console.log(`\n  Bundle: ${src.slice(0, 80)} (${js.length} chars)`);
+
+      // Look for API key
+      const keyMatches = [...js.matchAll(/["']?(INNERTUBE_API_KEY|key)["']?\s*[=:]\s*["']?(AIzaSy[A-Za-z0-9_\-]{30,})["']?/g)];
+      for (const m of keyMatches) { console.log(`    API key candidate: ${m[2]}`); found.apiKey = m[2]; }
+
+      // Look for client name
+      const nameMatches = [...js.matchAll(/["']?clientName["']?\s*[=:]\s*["']([A-Z_]+)["']/g)];
+      for (const m of nameMatches.slice(0, 3)) { console.log(`    clientName: ${m[1]}`); found.clientName = m[1]; }
+
+      // Look for client version
+      const verMatches = [...js.matchAll(/["']?clientVersion["']?\s*[=:]\s*["']([0-9.]+)["']/g)];
+      for (const m of verMatches.slice(0, 3)) { console.log(`    clientVersion: ${m[1]}`); found.clientVersion = m[1]; }
+
+      // Look for browseId values
+      const browseMatches = [...js.matchAll(/browseId["']?\s*[=:]\s*["'](FE[A-Za-z_]+)["']/g)];
+      for (const m of browseMatches) { found.browseIds.add(m[1]); }
+      if (browseMatches.length) console.log(`    browseIds found: ${browseMatches.map(m => m[1]).join(', ')}`);
+
+      // Look for "charts" related strings
+      const chartRefs = [...js.matchAll(/"(FE[a-zA-Z_]*chart[a-zA-Z_]*)"/gi)].map(m => m[1]);
+      if (chartRefs.length) console.log(`    chart-related IDs: ${[...new Set(chartRefs)].join(', ')}`);
+
+      // Look for youtubei endpoint paths
+      const endpoints = [...js.matchAll(/["'](\/youtubei\/v1\/[a-zA-Z/]+)["']/g)].map(m => m[1]);
+      if (endpoints.length) console.log(`    youtubei paths: ${[...new Set(endpoints)].slice(0, 5).join(', ')}`);
+
+    } catch (e) { console.log(`  ${src}: ${e.message}`); }
   }
 
-  // Look for any JSON blobs
-  const jsonBlobs = html.match(/window\["ytcfg"\]\.set\((\{[\s\S]{0,2000}\})\)/);
-  if (jsonBlobs) {
-    try {
-      const cfg = JSON.parse(jsonBlobs[1]);
-      console.log(`ytcfg keys: ${Object.keys(cfg).slice(0, 20).join(', ')}`);
-      if (cfg.INNERTUBE_API_KEY) console.log(`INNERTUBE_API_KEY: ${cfg.INNERTUBE_API_KEY}`);
-      if (cfg.INNERTUBE_CLIENT_NAME) console.log(`INNERTUBE_CLIENT_NAME: ${cfg.INNERTUBE_CLIENT_NAME}`);
-      if (cfg.INNERTUBE_CLIENT_VERSION) console.log(`INNERTUBE_CLIENT_VERSION: ${cfg.INNERTUBE_CLIENT_VERSION}`);
-    } catch {}
-  }
-
-  return { key, initialData };
+  console.log('\nExtracted config:', { ...found, browseIds: [...found.browseIds] });
+  return found;
 }
 
-async function browse(apiKey, gl, chartType = 'songs') {
-  const url = `${BASE}/youtubei/v1/browse?alt=json&key=${apiKey}`;
+// ── Step 2: try YouTube Music (music.youtube.com) API ─────────────────────
 
-  // browseId options to try:
-  // 'FEmusic_top_charts'  -- main charts page (then tab-navigate)
-  // 'FEmusic_trending'    -- trending
-  // We'll start with the main charts page.
-  const browseId = 'FEmusic_top_charts';
+async function tryYtMusic(country = 'US') {
+  // YouTube Music's charts page lives at music.youtube.com/charts
+  // The API uses the WEB_REMIX client which is well-documented.
+  const endpoint = 'https://music.youtube.com/youtubei/v1/browse';
+  const clientVersion = '1.20240724.00.00';
 
-  const body = {
-    browseId,
-    context: {
-      client: {
-        clientName: 'WEB_MUSIC_ANALYTICS',
-        clientVersion: '0.2',
-        hl: 'en',
-        gl: gl ?? 'US',
-      },
-    },
-  };
-
-  console.log(`\n=== Browse (gl=${gl ?? 'US'}, browseId=${browseId}) ===`);
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'User-Agent': UA,
-      'Origin': BASE,
-      'Referer': `${BASE}/`,
-      'Accept': 'application/json',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'X-YouTube-Client-Name': '85',
-      'X-YouTube-Client-Version': '0.2',
-    },
-    body: JSON.stringify(body),
-  });
-  console.log(`Status: ${r.status}`);
-  if (!r.ok) {
-    const errText = await r.text();
-    console.log(`Error body: ${errText.slice(0, 500)}`);
-    return null;
-  }
-
-  const text = await r.text();
-  let data;
-  try { data = JSON.parse(text); } catch { console.log(`Non-JSON response: ${text.slice(0, 300)}`); return null; }
-
-  console.log(`\nTop-level keys: ${Object.keys(data).join(', ')}`);
-  console.log(`\nStructural walk (first branch of each array):`);
-  walk(data);
-
-  // Try to find anything that looks like a ranked list
-  const raw = JSON.stringify(data);
-  console.log(`\nTotal response size: ${raw.length} chars`);
-
-  // Look for chart entry patterns
-  const rankPatterns = ['currentRank', 'rank', 'position', 'chartPosition'];
-  for (const p of rankPatterns) {
-    const count = (raw.match(new RegExp(`"${p}"`, 'g')) || []).length;
-    if (count > 0) console.log(`  "${p}" appears ${count} time(s)`);
-  }
-
-  // Look for BLACKPINK/member names
-  const names = ['BLACKPINK', 'JENNIE', 'JISOO', 'ROSÉ', 'LISA'];
-  for (const name of names) {
-    if (raw.includes(name)) console.log(`  ★ "${name}" found in response`);
-  }
-
-  // Look for videoId patterns
-  const videoIds = raw.match(/"videoId"\s*:\s*"([A-Za-z0-9_-]{11})"/g);
-  if (videoIds) console.log(`  ${videoIds.length} videoId(s) in response (first 3: ${videoIds.slice(0, 3).join(', ')})`);
-
-  // Show first 3000 chars of raw JSON for manual inspection
-  console.log(`\nFirst 3000 chars of raw response:\n${raw.slice(0, 3000)}`);
-
-  return data;
-}
-
-async function main() {
-  // Step 1: get API key from page
-  const { key: pageKey } = await fetchPage();
-  const apiKey = pageKey ?? FALLBACK_KEY;
-  console.log(`\nUsing API key: ${apiKey}`);
-
-  // Step 2: probe browse endpoint for a handful of regions
-  const regions = [
-    { gl: null,  label: 'Global (no gl)' },
-    { gl: 'US',  label: 'United States' },
-    { gl: 'KR',  label: 'South Korea' },
-    { gl: 'TW',  label: 'Taiwan' },
-    { gl: 'SG',  label: 'Singapore' },
+  // browseId candidates for YT Music charts
+  const candidates = [
+    'FEmusic_charts',
+    'FEmusic_trending',
+    'FEmusic_top_charts',
   ];
 
-  for (const { gl, label } of regions) {
-    await browse(apiKey, gl);
-    // Small delay to avoid rate limiting
-    await new Promise(r => setTimeout(r, 800));
-  }
+  console.log(`\n=== Step 2: music.youtube.com (WEB_REMIX, gl=${country}) ===`);
 
-  console.log('\n=== Probe complete ===');
+  for (const browseId of candidates) {
+    const body = {
+      browseId,
+      context: {
+        client: {
+          clientName: 'WEB_REMIX',
+          clientVersion,
+          hl: 'en',
+          gl: country,
+          userAgent: UA,
+        },
+      },
+    };
+
+    const r = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': UA,
+        'Origin': 'https://music.youtube.com',
+        'Referer': 'https://music.youtube.com/',
+        'X-YouTube-Client-Name': '67',
+        'X-YouTube-Client-Version': clientVersion,
+      },
+      body: JSON.stringify(body),
+    });
+
+    console.log(`  [${browseId}] status: ${r.status}`);
+    if (r.ok) {
+      const text = await r.text();
+      let data;
+      try { data = JSON.parse(text); } catch { console.log('  non-JSON:', snip(text)); continue; }
+      console.log('  Shape:'); printShape(data);
+      const raw = JSON.stringify(data);
+      console.log(`  Total size: ${raw.length}`);
+      for (const n of ['BLACKPINK','JENNIE','JISOO','ROSÉ','ROSA','LISA']) {
+        if (raw.includes(n)) console.log(`  ★ "${n}" found!`);
+      }
+      const videoIds = (raw.match(/"videoId"\s*:\s*"([A-Za-z0-9_-]{11})"/g) || []);
+      console.log(`  videoId count: ${videoIds.length}`);
+      console.log('  First 2000 chars:', snip(raw, 2000));
+      return data;
+    } else {
+      const err = await r.text();
+      console.log('  Error:', snip(err, 200));
+    }
+    await new Promise(r => setTimeout(r, 400));
+  }
+  return null;
+}
+
+// ── Step 3: retry charts.youtube.com with extracted key + more browseIds ──
+
+async function tryChartsYt(apiKey, country = 'US') {
+  const base = 'https://charts.youtube.com';
+  const candidates = [
+    'FEmusic_top_charts',
+    'FEmusic_charts',
+    'FEtop_charts',
+    'FEmusic_trending',
+    'FEmusic_top_charts_artworks',
+  ];
+
+  // Try to find the real key from page JS if not passed in
+  const key = apiKey || 'AIzaSyC9XL3ZjWddXya6X74dJoCTL-NKNELL6Cs';
+
+  console.log(`\n=== Step 3: charts.youtube.com browse (key=${key.slice(0,20)}…, gl=${country}) ===`);
+
+  for (const browseId of candidates) {
+    const url = `${base}/youtubei/v1/browse?alt=json&key=${key}`;
+    const body = {
+      browseId,
+      context: {
+        client: {
+          clientName: 'WEB_MUSIC_ANALYTICS',
+          clientVersion: '0.2',
+          hl: 'en',
+          gl: country,
+        },
+      },
+    };
+
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': UA,
+        'Origin': base,
+        'Referer': base + '/',
+      },
+      body: JSON.stringify(body),
+    });
+
+    console.log(`  [${browseId}] status: ${r.status}`);
+    if (r.ok) {
+      const data = await r.json();
+      console.log('  Shape:'); printShape(data);
+      console.log('  First 2000 chars:', snip(JSON.stringify(data), 2000));
+      return data;
+    } else {
+      console.log('  Error:', snip(await r.text(), 150));
+    }
+    await new Promise(r => setTimeout(r, 400));
+  }
+  return null;
+}
+
+// ── main ──────────────────────────────────────────────────────────────────
+
+async function main() {
+  const config = await extractFromBundles();
+  const ytMusicResult = await tryYtMusic('US');
+  if (!ytMusicResult) await tryYtMusic('KR');
+  await tryChartsYt(config.apiKey, 'US');
+  console.log('\n=== Probe v2 complete ===');
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
