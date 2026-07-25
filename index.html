@@ -1952,8 +1952,9 @@
         <div class="admin-input-row">
           <input id="ms-admin-art" class="admin-input" type="text" placeholder="Artwork URL or Spotify Track ID (optional)">
         </div>
-        <div class="admin-input-row">
-          <button class="btn-primary" style="width:100%" onclick="triggerMilestoneFromPanel()">🎉 Show Milestone →</button>
+        <div class="admin-input-row" style="gap:0.4rem;">
+          <button class="btn-primary" style="flex:1" onclick="saveMilestoneOnly()">💾 Save</button>
+          <button class="btn-primary" style="flex:1" onclick="triggerMilestoneFromPanel()">🎉 Save & Show</button>
         </div>
         <div id="ms-admin-err" class="admin-err"></div>
         <div class="admin-song-note">Tip: for artwork use <code style="font-size:0.6rem;color:var(--pink)">/api/proxy-image?spotify_art=TRACK_ID</code></div>
@@ -6821,7 +6822,7 @@ async function submitMsAdminKey() {
   errEl.textContent = '';
 }
 
-async function triggerMilestoneFromPanel() {
+function _readMilestoneForm() {
   const trackInput = document.getElementById('ms-admin-track').value.trim().toUpperCase();
   const msInput    = document.getElementById('ms-admin-milestone').value.trim();
   const totalInput = document.getElementById('ms-admin-total').value.trim();
@@ -6830,26 +6831,37 @@ async function triggerMilestoneFromPanel() {
   const artUrl     = artRaw
     ? (/^[A-Za-z0-9]{22}$/.test(artRaw) ? `/api/proxy-image?spotify_art=${artRaw}` : artRaw)
     : null;
-  const errEl      = document.getElementById('ms-admin-err');
-
   const msNum = parseMilestoneInput(msInput);
   const total = Number(totalInput.replace(/[^0-9]/g, ''));
+  return { trackInput, msNum, total, dateInput, artUrl };
+}
 
-  if (!trackInput)           { errEl.textContent = 'Track name is required.'; return; }
-  if (!msNum || msNum < 1e6) { errEl.textContent = 'Invalid milestone — use e.g. 800M, 2.75B, or the raw number.'; return; }
-  if (!total)                { errEl.textContent = 'Invalid total streams.'; return; }
+function _clearMilestoneForm() {
+  document.getElementById('ms-admin-track').value = '';
+  document.getElementById('ms-admin-milestone').value = '';
+  document.getElementById('ms-admin-total').value = '';
+  document.getElementById('ms-admin-date').value = '';
+  document.getElementById('ms-admin-art').value = '';
+}
+
+// Shared save — returns true on success, false on error (error message already set)
+async function _saveMilestoneToServer({ trackInput, msNum, total, dateInput, artUrl }) {
+  const errEl = document.getElementById('ms-admin-err');
+  if (!trackInput)           { errEl.textContent = 'Track name is required.'; return false; }
+  if (!msNum || msNum < 1e6) { errEl.textContent = 'Invalid milestone — use e.g. 800M, 2.75B, or the raw number.'; return false; }
+  if (!total)                { errEl.textContent = 'Invalid total streams.'; return false; }
 
   const key = localStorage.getItem(ADMIN_KEY_LS);
   if (!key) {
     document.getElementById('ms-admin-content').style.display = 'none';
     document.getElementById('ms-admin-auth').style.display = 'block';
-    return;
+    return false;
   }
 
   errEl.textContent = 'Saving…';
   const params = new URLSearchParams({ track: trackInput, milestone: String(msNum), total: String(total), key });
   if (dateInput) params.set('date', dateInput);
-  if (artUrl) params.set('art', artUrl);
+  if (artUrl)    params.set('art', artUrl);
 
   try {
     const r = await fetch(`/api/proxy-image?global_milestones=save&${params}`);
@@ -6859,26 +6871,45 @@ async function triggerMilestoneFromPanel() {
       document.getElementById('ms-admin-auth').style.display = 'block';
       document.getElementById('ms-admin-auth-err').textContent = 'Wrong key — please re-authenticate.';
       errEl.textContent = '';
-      return;
+      return false;
     }
-    if (!r.ok) { errEl.textContent = `Server error (${r.status}).`; return; }
-  } catch(e) {
-    errEl.textContent = 'Network error.'; return;
-  }
+    if (!r.ok) { errEl.textContent = `Server error (${r.status}).`; return false; }
+  } catch { errEl.textContent = 'Network error.'; return false; }
 
-  errEl.textContent = '';
-  _globalMsCache = null;
+  // Optimistically update local cache to avoid race conditions between saves
   if (artUrl) TRACK_ARTWORK[trackInput] = artUrl;
   sessionStorage.removeItem(`bu_global_ms_seen_${trackInput}_${msNum}`);
-  // Clear form so the next milestone entry starts fresh
-  document.getElementById('ms-admin-track').value = '';
-  document.getElementById('ms-admin-milestone').value = '';
-  document.getElementById('ms-admin-total').value = '';
-  document.getElementById('ms-admin-date').value = '';
-  document.getElementById('ms-admin-art').value = '';
+  const entry = { id: `${trackInput}_${msNum}`, trackId: trackInput, milestone: msNum, total, milestoneDate: dateInput || null, artUrl: artUrl || null, savedAt: Date.now() };
+  if (!Array.isArray(_globalMsCache)) _globalMsCache = [];
+  const cidx = _globalMsCache.findIndex(m => m.id === entry.id);
+  if (cidx >= 0) _globalMsCache[cidx] = entry; else _globalMsCache.push(entry);
+
+  return true;
+}
+
+// "💾 Save" — saves to Redis, stays open for the next entry
+async function saveMilestoneOnly() {
+  const errEl = document.getElementById('ms-admin-err');
+  const data  = _readMilestoneForm();
+  const ok    = await _saveMilestoneToServer(data);
+  if (!ok) return;
+  errEl.textContent = `✔ Saved: ${data.trackInput} — ${formatMilestone(data.msNum)}`;
+  errEl.style.color = '#2ecc71';
+  setTimeout(() => { errEl.textContent = ''; errEl.style.color = ''; }, 3000);
+  _clearMilestoneForm();
+  renderMoreMilestones();
+}
+
+// "🎉 Save & Show" — saves then shows the milestone popup
+async function triggerMilestoneFromPanel() {
+  const data = _readMilestoneForm();
+  const ok   = await _saveMilestoneToServer(data);
+  if (!ok) return;
+  document.getElementById('ms-admin-err').textContent = '';
+  _clearMilestoneForm();
   closeMilestoneAdminPanel();
   renderMoreMilestones();
-  showMilestone(trackInput, total, msNum, dateInput);
+  showMilestone(data.trackInput, data.total, data.msNum, data.dateInput);
 }
 
 async function banUser() {
