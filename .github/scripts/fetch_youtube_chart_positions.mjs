@@ -73,13 +73,14 @@ const REGIONS = [
 ];
 
 // Artist patterns to match (check artist names only, not song titles)
+// Use ^ and $ anchors on Latin names to avoid false positives (e.g. "De La Rose", "Manon Lisa")
 const ARTIST_PATTERNS = [
-  /blackpink/i,
-  /\blisa\b/i,
-  /lalisa/i,
-  /\bjennie\b/i,
-  /ros[eé]/i,
-  /\bjisoo\b/i,
+  /^blackpink$/i,
+  /^lisa$/i,
+  /^lalisa$/i,
+  /^jennie$/i,
+  /^ros[eé]$/i,
+  /^jisoo$/i,
   /블랙핑크/,
   /리사/,
   /제니/,
@@ -94,11 +95,11 @@ function isBlackpinkArtist(artists = []) {
 function identifyMember(artists = []) {
   for (const a of artists) {
     const n = a.name ?? '';
-    if (/blackpink/i.test(n) || /블랙핑크/.test(n)) return 'BLACKPINK';
-    if (/\blisa\b/i.test(n) || /lalisa/i.test(n) || /리사/.test(n)) return 'LISA';
-    if (/\bjennie\b/i.test(n) || /제니/.test(n)) return 'JENNIE';
-    if (/ros[eé]/i.test(n) || /로제/.test(n)) return 'ROSÉ';
-    if (/\bjisoo\b/i.test(n) || /지수/.test(n)) return 'JISOO';
+    if (/^blackpink$/i.test(n) || /블랙핑크/.test(n)) return 'BLACKPINK';
+    if (/^lisa$/i.test(n) || /^lalisa$/i.test(n) || /리사/.test(n)) return 'LISA';
+    if (/^jennie$/i.test(n) || /제니/.test(n)) return 'JENNIE';
+    if (/^ros[eé]$/i.test(n) || /로제/.test(n)) return 'ROSÉ';
+    if (/^jisoo$/i.test(n) || /지수/.test(n)) return 'JISOO';
   }
   return 'BLACKPINK';
 }
