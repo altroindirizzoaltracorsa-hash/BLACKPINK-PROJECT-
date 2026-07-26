@@ -1,19 +1,23 @@
 /**
  * fetch_youtube_chart_positions.mjs
  *
- * Nightly script: fetches YouTube chart positions for BLACKPINK and solo members
+ * Daily script: fetches YouTube chart positions for BLACKPINK and solo members
  * across multiple regions via charts.youtube.com InnerTube API.
  *
- * Working API (confirmed probe v16–v21):
+ * Weekly chart API (confirmed probe v16–v21):
  *   POST https://charts.youtube.com/youtubei/v1/browse
  *   browseId: "FEmusic_analytics_charts_home"
  *   query: JSON.stringify({ region: <countryCode> })
- *   client.gl: <COUNTRY_CODE>   ← CRITICAL: gl controls which country's chart is returned
+ *   client.gl: <COUNTRY_CODE>
  *
- * Data path: response.contents.sectionListRenderer.contents[0]
- *   .musicAnalyticsSectionRenderer.content.trackTypes[0].trackViews
- *   Each entry: { id, name, viewCount, encryptedVideoId, chartEntryMetadata.currentPosition,
- *                 artists[*].{name, id}, atvExternalVideoId, releaseDate, thumbnail }
+ * Daily chart API (confirmed probe v25 via Playwright intercept):
+ *   POST https://charts.youtube.com/youtubei/v1/browse?alt=json
+ *   browseId: "FEmusic_analytics_charts_home"
+ *   query: "flags=MusicCharts__enable_apac_and_shorts_charts_expansion
+ *           &perspective=CHART_DETAILS
+ *           &chart_params_country_code=<region|global>
+ *           &chart_params_chart_type=VIDEOS
+ *           &chart_params_period_type=DAILY"
  */
 
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'fs';
@@ -26,8 +30,9 @@ const DATA_DIR = join(REPO_ROOT, 'data');
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const BROWSE = 'https://charts.youtube.com/youtubei/v1/browse';
+const BROWSE_ALT = 'https://charts.youtube.com/youtubei/v1/browse?alt=json';
 
-// Target regions to fetch
+// Target regions to fetch (weekly + daily)
 const REGIONS = [
   // East Asia / Pacific
   { gl: 'KR', region: 'kr', name: 'South Korea' },
@@ -70,6 +75,12 @@ const REGIONS = [
   // Middle East / Africa
   { gl: 'SA', region: 'sa', name: 'Saudi Arabia' },
   { gl: 'ZA', region: 'za', name: 'South Africa' },
+];
+
+// Daily chart also includes global aggregate
+const DAILY_REGIONS = [
+  { gl: 'US', region: 'global', name: 'Global' },
+  ...REGIONS,
 ];
 
 // Artist patterns to match (check artist names only, not song titles)
@@ -142,6 +153,39 @@ async function fetchChartsHome(baseClient, gl, region) {
   return resp.json();
 }
 
+async function fetchDailyChart(baseClient, gl, region) {
+  const clientGl = region === 'global' ? 'US' : gl.toUpperCase();
+  const client = { ...baseClient, gl: clientGl, hl: 'en' };
+  const query = [
+    'flags=MusicCharts__enable_apac_and_shorts_charts_expansion',
+    'perspective=CHART_DETAILS',
+    `chart_params_country_code=${region}`,
+    'chart_params_chart_type=VIDEOS',
+    'chart_params_period_type=DAILY',
+  ].join('&');
+  const resp = await fetch(BROWSE_ALT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': UA,
+      'Origin': 'https://charts.youtube.com',
+      'Referer': 'https://charts.youtube.com/',
+      'X-YouTube-Client-Name': '31',
+      'X-YouTube-Client-Version': '2.0',
+    },
+    body: JSON.stringify({
+      browseId: 'FEmusic_analytics_charts_home',
+      query,
+      context: { client },
+    }),
+  });
+  if (!resp.ok) {
+    console.error(`  [${gl}] daily HTTP ${resp.status}`);
+    return null;
+  }
+  return resp.json();
+}
+
 function extractPeriodInfo(data) {
   const pm = data?.contents?.sectionListRenderer?.contents?.[0]
     ?.musicAnalyticsSectionRenderer?.content?.perspectiveMetadata;
@@ -192,16 +236,7 @@ function extractArtistEntries(data) {
   return allEntries;
 }
 
-async function fetchRegionData(baseClient, { gl, region, name }) {
-  console.log(`  Fetching ${name} (gl=${gl})...`);
-  const data = await fetchChartsHome(baseClient, gl, region);
-  if (!data) return null;
-
-  const period = extractPeriodInfo(data);
-  const entries = extractChartEntries(data);
-  const artistEntries = extractArtistEntries(data);
-
-  // Find BLACKPINK entries in video chart
+function extractBpHits(entries, artistEntries) {
   const videoBpHits = entries
     .filter(e => isBlackpinkArtist(e.artists))
     .map(e => ({
@@ -215,7 +250,6 @@ async function fetchRegionData(baseClient, { gl, region, name }) {
       releaseDate: e.releaseDate ?? null,
     }));
 
-  // Find BLACKPINK entries in artist chart (artist name matching)
   const artistBpHits = artistEntries
     .filter(e => ARTIST_PATTERNS.some(p => p.test(e.name ?? '')))
     .map(e => ({
@@ -228,7 +262,36 @@ async function fetchRegionData(baseClient, { gl, region, name }) {
       viewCount: parseInt(e.viewCount ?? '0', 10) || 0,
     }));
 
-  const hits = [...videoBpHits, ...artistBpHits];
+  return [...videoBpHits, ...artistBpHits];
+}
+
+async function fetchRegionData(baseClient, { gl, region, name }) {
+  console.log(`  Fetching ${name} (gl=${gl})...`);
+  const data = await fetchChartsHome(baseClient, gl, region);
+  if (!data) return null;
+
+  const period = extractPeriodInfo(data);
+  const entries = extractChartEntries(data);
+  const artistEntries = extractArtistEntries(data);
+  const hits = extractBpHits(entries, artistEntries);
+
+  console.log(`    ${period.entityId} | ${entries.length} video entries | ${hits.length} BP hits`);
+  if (hits.length > 0) {
+    hits.forEach(h => console.log(`      ${h.chartType} #${h.position} "${h.name}" — ${h.artists.join(', ')} (${(h.viewCount ?? 0).toLocaleString()} views)`));
+  }
+
+  return { region: name, gl, period, totalEntries: entries.length, hits };
+}
+
+async function fetchDailyRegionData(baseClient, { gl, region, name }) {
+  console.log(`  Fetching daily ${name} (${region})...`);
+  const data = await fetchDailyChart(baseClient, gl, region);
+  if (!data) return null;
+
+  const period = extractPeriodInfo(data);
+  const entries = extractChartEntries(data);
+  const artistEntries = extractArtistEntries(data);
+  const hits = extractBpHits(entries, artistEntries);
 
   console.log(`    ${period.entityId} | ${entries.length} video entries | ${hits.length} BP hits`);
   if (hits.length > 0) {
@@ -245,62 +308,94 @@ async function main() {
   const baseClient = await fetchBaseClient();
   console.log(`  Client: ${baseClient.clientName ?? 'WEB_MUSIC_ANALYTICS'} (gl base: ${baseClient.gl ?? 'US'})`);
 
-  const results = {};
-  let anyHits = false;
+  mkdirSync(DATA_DIR, { recursive: true });
+  const today = new Date().toISOString().slice(0, 10);
 
+  // ── Weekly charts ──────────────────────────────────────────────────────────
+  console.log('\n--- Weekly charts ---');
+  const weeklyResults = {};
   for (const regionConfig of REGIONS) {
     try {
       const regionData = await fetchRegionData(baseClient, regionConfig);
-      if (regionData) {
-        results[regionConfig.region] = regionData;
-        if (regionData.hits.length > 0) anyHits = true;
-      }
+      if (regionData) weeklyResults[regionConfig.region] = regionData;
     } catch (e) {
       console.error(`  Error fetching ${regionConfig.name}: ${e.message}`);
     }
     await delay(250);
   }
 
-  // Determine period info for file naming (use KR period or first available)
-  const krPeriod = results['kr']?.period ?? results['us']?.period;
-  const weekEnd = krPeriod?.endDate ?? new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const krPeriod = weeklyResults['kr']?.period ?? weeklyResults['us']?.period;
+  const weekEnd = krPeriod?.endDate ?? today.replace(/-/g, '');
   const weekLabel = weekEnd
     ? `${weekEnd.slice(0, 4)}-${weekEnd.slice(4, 6)}-${weekEnd.slice(6, 8)}`
-    : new Date().toISOString().slice(0, 10);
+    : today;
 
-  // Build output
-  const output = {
+  const weeklyOutput = {
     generatedAt: new Date().toISOString(),
+    chartType: 'weekly',
     weekEndingDate: weekLabel,
-    regions: results,
+    regions: weeklyResults,
     summary: {
-      totalHits: Object.values(results).reduce((n, r) => n + (r?.hits?.length ?? 0), 0),
-      regionsChecked: Object.keys(results).length,
+      totalHits: Object.values(weeklyResults).reduce((n, r) => n + (r?.hits?.length ?? 0), 0),
+      regionsChecked: Object.keys(weeklyResults).length,
     },
   };
 
-  // Save to data directory
-  mkdirSync(DATA_DIR, { recursive: true });
-  const outFile = join(DATA_DIR, `youtube-chart-positions-${weekLabel}.json`);
-  writeFileSync(outFile, JSON.stringify(output, null, 2));
-  console.log(`\n  Saved: ${outFile}`);
+  const weeklyFile = join(DATA_DIR, `youtube-chart-positions-${weekLabel}.json`);
+  writeFileSync(weeklyFile, JSON.stringify(weeklyOutput, null, 2));
+  writeFileSync(join(DATA_DIR, 'youtube-chart-positions-latest.json'), JSON.stringify(weeklyOutput, null, 2));
+  console.log(`\n  Weekly saved: ${weeklyFile}`);
 
-  // Also update the "latest" pointer
-  const latestFile = join(DATA_DIR, 'youtube-chart-positions-latest.json');
-  writeFileSync(latestFile, JSON.stringify(output, null, 2));
-  console.log(`  Saved: ${latestFile}`);
+  // ── Daily charts ───────────────────────────────────────────────────────────
+  console.log('\n--- Daily charts ---');
+  const dailyResults = {};
+  for (const regionConfig of DAILY_REGIONS) {
+    try {
+      const regionData = await fetchDailyRegionData(baseClient, regionConfig);
+      if (regionData) dailyResults[regionConfig.region] = regionData;
+    } catch (e) {
+      console.error(`  Error fetching daily ${regionConfig.name}: ${e.message}`);
+    }
+    await delay(250);
+  }
 
-  // Print summary
-  console.log('\n=== Summary ===');
-  for (const [code, r] of Object.entries(results)) {
+  const dailyOutput = {
+    generatedAt: new Date().toISOString(),
+    chartType: 'daily',
+    date: today,
+    regions: dailyResults,
+    summary: {
+      totalHits: Object.values(dailyResults).reduce((n, r) => n + (r?.hits?.length ?? 0), 0),
+      regionsChecked: Object.keys(dailyResults).length,
+    },
+  };
+
+  const dailyFile = join(DATA_DIR, `youtube-chart-positions-daily-${today}.json`);
+  writeFileSync(dailyFile, JSON.stringify(dailyOutput, null, 2));
+  writeFileSync(join(DATA_DIR, 'youtube-chart-positions-daily-latest.json'), JSON.stringify(dailyOutput, null, 2));
+  console.log(`  Daily saved: ${dailyFile}`);
+
+  // ── Summary ────────────────────────────────────────────────────────────────
+  console.log('\n=== Weekly Summary ===');
+  for (const [, r] of Object.entries(weeklyResults)) {
     if (!r) continue;
     const hitLine = r.hits.length === 0
-      ? '(no BP entries this week)'
+      ? '(no BP entries)'
       : r.hits.map(h => `#${h.position} ${h.member} "${h.name}"`).join(', ');
     console.log(`  ${r.region} (${r.period.entityId}): ${hitLine}`);
   }
-  console.log(`\n  Total BLACKPINK/member chart entries found: ${output.summary.totalHits}`);
-  console.log('=== Done ===');
+  console.log(`  Total weekly hits: ${weeklyOutput.summary.totalHits}`);
+
+  console.log('\n=== Daily Summary ===');
+  for (const [, r] of Object.entries(dailyResults)) {
+    if (!r) continue;
+    if (r.hits.length === 0) continue;
+    const hitLine = r.hits.map(h => `#${h.position} ${h.member} "${h.name}"`).join(', ');
+    console.log(`  ${r.region} (${r.period.entityId}): ${hitLine}`);
+  }
+  console.log(`  Total daily hits: ${dailyOutput.summary.totalHits}`);
+
+  console.log('\n=== Done ===');
   process.exit(0);
 }
 

@@ -3,8 +3,8 @@ name: Fetch YouTube Chart Positions
 on:
   workflow_dispatch:
   schedule:
-    # Every Thursday at 06:00 UTC (charts update weekly, Thursday start)
-    - cron: '0 6 * * 4'
+    # Every day at 06:00 UTC (daily charts refresh daily; weekly charts update Thursday)
+    - cron: '0 6 * * *'
 
 jobs:
   fetch:
