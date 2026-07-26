@@ -1,0 +1,200 @@
+{
+  "generatedAt": "2026-07-26T14:36:40.965Z",
+  "weekEndingDate": "2026-07-23",
+  "regions": {
+    "kr": {
+      "region": "South Korea",
+      "gl": "KR",
+      "period": {
+        "entityId": "weekly:20260717:20260723:kr",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "kr"
+      },
+      "totalEntries": 97,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "ROSÉ",
+          "position": 30,
+          "name": "APT.",
+          "artists": [
+            "ROSÉ",
+            "Bruno Mars"
+          ],
+          "videoId": "ekr2nIex040",
+          "viewCount": 731775,
+          "releaseDate": {
+            "year": 2024,
+            "month": 10,
+            "day": 18
+          }
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "BLACKPINK",
+          "position": 27,
+          "name": "BLACKPINK",
+          "artists": [
+            "BLACKPINK"
+          ],
+          "channelId": "UCOmHUn--16B90oW2L6FRR3A",
+          "viewCount": 3811371
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "JENNIE",
+          "position": 54,
+          "name": "JENNIE",
+          "artists": [
+            "JENNIE"
+          ],
+          "channelId": "UCNYi_zGmR519r5gYdOKLTjQ",
+          "viewCount": 2482069
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "ROSÉ",
+          "position": 58,
+          "name": "ROSÉ",
+          "artists": [
+            "ROSÉ"
+          ],
+          "channelId": "UCBo1hnzxV9rz3WVsv__Rn1g",
+          "viewCount": 2379386
+        }
+      ]
+    },
+    "us": {
+      "region": "United States",
+      "gl": "US",
+      "period": {
+        "entityId": "weekly:20260717:20260723:us",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "us"
+      },
+      "totalEntries": 94,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 28,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 1611654,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        }
+      ]
+    },
+    "jp": {
+      "region": "Japan",
+      "gl": "JP",
+      "period": {
+        "entityId": "weekly:20260717:20260723:jp",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "jp"
+      },
+      "totalEntries": 90,
+      "hits": []
+    },
+    "gb": {
+      "region": "United Kingdom",
+      "gl": "GB",
+      "period": {
+        "entityId": "weekly:20260717:20260723:gb",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "gb"
+      },
+      "totalEntries": 91,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 19,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 349416,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        }
+      ]
+    },
+    "id": {
+      "region": "Indonesia",
+      "gl": "ID",
+      "period": {
+        "entityId": "weekly:20260717:20260723:id",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "id"
+      },
+      "totalEntries": 95,
+      "hits": []
+    },
+    "th": {
+      "region": "Thailand",
+      "gl": "TH",
+      "period": {
+        "entityId": "weekly:20260717:20260723:th",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "th"
+      },
+      "totalEntries": 95,
+      "hits": [
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "JENNIE",
+          "position": 87,
+          "name": "JENNIE",
+          "artists": [
+            "JENNIE"
+          ],
+          "channelId": "UCNYi_zGmR519r5gYdOKLTjQ",
+          "viewCount": 2194148
+        }
+      ]
+    },
+    "ph": {
+      "region": "Philippines",
+      "gl": "PH",
+      "period": {
+        "entityId": "weekly:20260717:20260723:ph",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "ph"
+      },
+      "totalEntries": 94,
+      "hits": []
+    }
+  },
+  "summary": {
+    "totalHits": 7,
+    "regionsChecked": 7
+  }
+}
