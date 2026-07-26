@@ -1,0 +1,21 @@
+name: Probe YouTube Charts v25
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install playwright
+          PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright install chromium --with-deps 2>/dev/null || true
+      - name: Run probe v25 (Playwright intercept daily chart API)
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: /opt/pw-browsers
+        run: node .github/scripts/probe-youtube-charts-v25.mjs
