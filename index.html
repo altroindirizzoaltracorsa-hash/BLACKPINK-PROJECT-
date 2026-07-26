@@ -2599,23 +2599,57 @@
           <button class="lb-tab active" onclick="setYtChartType('daily', this)">Daily</button>
           <button class="lb-tab" onclick="setYtChartType('weekly', this)">Weekly</button>
         </div>
+        <select class="ch-country-select" id="yt-country-select" onchange="setYtCountry(this.value)">
+          <option value="global">🌐 Global</option>
+          <option value="kr">🇰🇷 South Korea</option>
+          <option value="jp">🇯🇵 Japan</option>
+          <option value="tw">🇹🇼 Taiwan</option>
+          <option value="hk">🇭🇰 Hong Kong</option>
+          <option value="id">🇮🇩 Indonesia</option>
+          <option value="th">🇹🇭 Thailand</option>
+          <option value="ph">🇵🇭 Philippines</option>
+          <option value="my">🇲🇾 Malaysia</option>
+          <option value="vn">🇻🇳 Vietnam</option>
+          <option value="sg">🇸🇬 Singapore</option>
+          <option value="in">🇮🇳 India</option>
+          <option value="au">🇦🇺 Australia</option>
+          <option value="nz">🇳🇿 New Zealand</option>
+          <option value="us">🇺🇸 United States</option>
+          <option value="ca">🇨🇦 Canada</option>
+          <option value="mx">🇲🇽 Mexico</option>
+          <option value="br">🇧🇷 Brazil</option>
+          <option value="ar">🇦🇷 Argentina</option>
+          <option value="cl">🇨🇱 Chile</option>
+          <option value="co">🇨🇴 Colombia</option>
+          <option value="pe">🇵🇪 Peru</option>
+          <option value="gb">🇬🇧 United Kingdom</option>
+          <option value="fr">🇫🇷 France</option>
+          <option value="de">🇩🇪 Germany</option>
+          <option value="es">🇪🇸 Spain</option>
+          <option value="it">🇮🇹 Italy</option>
+          <option value="nl">🇳🇱 Netherlands</option>
+          <option value="se">🇸🇪 Sweden</option>
+          <option value="no">🇳🇴 Norway</option>
+          <option value="pl">🇵🇱 Poland</option>
+          <option value="tr">🇹🇷 Turkey</option>
+          <option value="sa">🇸🇦 Saudi Arabia</option>
+          <option value="za">🇿🇦 South Africa</option>
+        </select>
       </div>
 
       <div id="yt-meta" class="ch-meta"></div>
       <div id="yt-loading" class="lb-loading">Loading…</div>
       <div id="yt-error" class="as-error" style="display:none;"></div>
-      <div id="yt-empty" class="ch-empty" style="display:none;">No YouTube chart data available.</div>
-
-      <div id="yt-cards" class="yt-cards"></div>
+      <div id="yt-empty" class="ch-empty" style="display:none;"></div>
 
       <div class="as-table-wrap as-tracks-wrap" id="yt-table-wrap" style="display:none;">
         <table class="as-table as-tracks-table">
           <thead><tr>
-            <th>Region</th>
-            <th>Pos</th>
+            <th class="as-rank-col"></th>
+            <th>Track</th>
             <th>Member</th>
-            <th>Song</th>
-            <th class="right">Views</th>
+            <th class="right">Views today</th>
+            <th class="right">Days</th>
           </tr></thead>
           <tbody id="yt-body"></tbody>
         </table>
@@ -3751,102 +3785,94 @@ const YT_DAILY_URL  = 'https://raw.githubusercontent.com/altroindirizzoaltracors
 const YT_WEEKLY_URL = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/youtube-chart-positions-latest.json';
 const YT_MEMBER_COLORS = { JENNIE: '#FF0066', 'ROSÉ': '#ff9eb5', LISA: '#ffce6e', JISOO: '#7eb8f7', BLACKPINK: '#c084fc' };
 let ytChartType = 'daily';
+let ytCountry   = 'global';
+let ytData      = null;
 
 function setYtChartType(type, btn) {
   ytChartType = type;
+  ytData = null;
   document.querySelectorAll('#yt-tabs .lb-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   loadYouTubeCharts();
 }
 
+function setYtCountry(val) {
+  ytCountry = val;
+  renderYtRegion();
+}
+
+function _ytClear() {
+  document.getElementById('yt-empty').style.display    = 'none';
+  document.getElementById('yt-table-wrap').style.display = 'none';
+  document.getElementById('yt-body').innerHTML          = '';
+  document.getElementById('yt-meta').textContent        = '';
+}
+
 async function loadYouTubeCharts() {
-  const loadEl    = document.getElementById('yt-loading');
-  const errorEl   = document.getElementById('yt-error');
-  const emptyEl   = document.getElementById('yt-empty');
-  const cardsEl   = document.getElementById('yt-cards');
-  const tableWrap = document.getElementById('yt-table-wrap');
-  const metaEl    = document.getElementById('yt-meta');
+  const loadEl  = document.getElementById('yt-loading');
+  const errorEl = document.getElementById('yt-error');
   if (!loadEl) return;
 
-  loadEl.style.display = 'block';
+  loadEl.style.display  = 'block';
   errorEl.style.display = 'none';
-  emptyEl.style.display = 'none';
-  cardsEl.innerHTML = '';
-  tableWrap.style.display = 'none';
-  metaEl.textContent = '';
+  _ytClear();
 
   try {
-    const url = (ytChartType === 'daily' ? YT_DAILY_URL : YT_WEEKLY_URL) + '?_=' + Date.now();
-    const r = await fetch(url);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const data = await r.json();
+    if (!ytData) {
+      const url = (ytChartType === 'daily' ? YT_DAILY_URL : YT_WEEKLY_URL) + '?_=' + Date.now();
+      const r = await fetch(url);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      ytData = await r.json();
+    }
     loadEl.style.display = 'none';
-
-    const hits = [];
-    for (const region of Object.values(data.regions || {})) {
-      for (const h of (region.hits || [])) {
-        if (h.chartType === 'TOP_VIDEOS') hits.push({ ...h, regionName: region.region });
-      }
-    }
-    hits.sort((a, b) => a.position - b.position);
-
-    if (!hits.length) { emptyEl.style.display = 'block'; return; }
-
-    const dateLabel = data.date ? data.date : (data.weekEndingDate ? 'Week ending ' + data.weekEndingDate : '');
-    const totalHits = data.summary ? data.summary.totalHits : hits.length;
-    const regCount  = data.summary ? data.summary.regionsChecked : 0;
-    metaEl.textContent = totalHits + ' entries across ' + regCount + ' regions' + (dateLabel ? ' · ' + dateLabel : '');
-
-    const songMap = {};
-    for (const h of hits) {
-      if (!songMap[h.name]) songMap[h.name] = { member: h.member, minPos: h.position, totalViews: 0, regions: [] };
-      const entry = songMap[h.name];
-      entry.regions.push(h.regionName + ' #' + h.position);
-      if (h.position < entry.minPos) entry.minPos = h.position;
-      entry.totalViews += (h.viewCount || 0);
-    }
-
-    cardsEl.innerHTML = Object.entries(songMap)
-      .sort((a, b) => a[1].minPos - b[1].minPos)
-      .map(([name, info]) => {
-        const color = YT_MEMBER_COLORS[info.member] || '#FF0066';
-        return '<div class="yt-card" style="border-left-color:' + color + '">' +
-          '<div class="yt-card-top">' +
-            '<div>' +
-              '<div class="yt-card-member" style="color:' + color + '">' + info.member + '</div>' +
-              '<div class="yt-card-name">' + name + '</div>' +
-              '<div class="yt-card-peak">Peak #' + info.minPos + ' · ' + info.regions.length + ' ' + (info.regions.length === 1 ? 'region' : 'regions') + '</div>' +
-            '</div>' +
-            '<div>' +
-              '<div class="yt-card-views-label">total views</div>' +
-              '<div class="yt-card-views" style="color:' + color + '">' + fmtNum(info.totalViews) + '</div>' +
-            '</div>' +
-          '</div>' +
-          '<div class="yt-chips">' + info.regions.map(r => '<span class="yt-chip">' + r + '</span>').join('') + '</div>' +
-        '</div>';
-      }).join('');
-
-    document.getElementById('yt-body').innerHTML = hits.map(h => {
-      const color = YT_MEMBER_COLORS[h.member] || '#FF0066';
-      const song  = h.videoId
-        ? '<a href="https://www.youtube.com/watch?v=' + h.videoId + '" target="_blank" rel="noopener" style="color:var(--white);text-decoration:none">' + h.name + '</a>'
-        : h.name;
-      return '<tr>' +
-        '<td style="color:var(--muted);font-size:0.8rem">' + h.regionName + '</td>' +
-        '<td style="font-family:var(--display);font-size:1rem;color:' + color + '">#' + h.position + '</td>' +
-        '<td><span class="yt-member-tag" style="background:' + color + '22;color:' + color + '">' + h.member + '</span></td>' +
-        '<td style="color:var(--white);font-size:0.85rem">' + song + '</td>' +
-        '<td class="right" style="color:var(--muted);font-size:0.8rem">' + fmtNum(h.viewCount) + '</td>' +
-      '</tr>';
-    }).join('');
-    tableWrap.style.display = '';
-
+    renderYtRegion();
   } catch(e) {
-    loadEl.style.display = 'none';
+    loadEl.style.display  = 'none';
     errorEl.style.display = 'block';
-    errorEl.textContent = 'Could not load YouTube chart data.';
+    errorEl.textContent   = 'Could not load YouTube chart data.';
     console.error('YT charts error:', e);
   }
+}
+
+function renderYtRegion() {
+  if (!ytData) return;
+  _ytClear();
+
+  const emptyEl   = document.getElementById('yt-empty');
+  const tableWrap = document.getElementById('yt-table-wrap');
+  const metaEl    = document.getElementById('yt-meta');
+
+  const regionData = ytData.regions[ytCountry] || {};
+  const hits = (regionData.hits || []).filter(h => h.chartType === 'TOP_VIDEOS');
+  hits.sort((a, b) => a.position - b.position);
+
+  const regionName = regionData.region || ytCountry;
+  const dateLabel  = ytData.date || (ytData.weekEndingDate ? 'Week of ' + ytData.weekEndingDate : '');
+  metaEl.textContent = [dateLabel, regionName].filter(Boolean).join(' · ');
+
+  if (!hits.length) {
+    emptyEl.textContent    = 'No BLACKPINK/member entries charting in ' + regionName + '.';
+    emptyEl.style.display  = 'block';
+    return;
+  }
+
+  document.getElementById('yt-body').innerHTML = hits.map(h => {
+    const color = YT_MEMBER_COLORS[h.member] || '#FF0066';
+    const song  = h.videoId
+      ? '<a href="https://www.youtube.com/watch?v=' + h.videoId + '" target="_blank" rel="noopener" style="color:var(--white);text-decoration:none">' + h.name + '</a>'
+      : h.name;
+    const days = h.releaseDate && ytData.date
+      ? Math.max(1, Math.round((new Date(ytData.date) - new Date(h.releaseDate)) / 86400000) + 1)
+      : null;
+    return '<tr>' +
+      '<td class="as-rank-col" style="font-family:var(--display);font-size:1.2rem;color:' + color + '">' + h.position + '</td>' +
+      '<td style="font-size:0.88rem">' + song + '<br><span style="color:var(--muted);font-size:0.75rem">' + (h.artists || []).join(', ') + '</span></td>' +
+      '<td><span class="yt-member-tag" style="background:' + color + '22;color:' + color + '">' + h.member + '</span></td>' +
+      '<td class="right" style="color:var(--muted);font-size:0.8rem">' + fmtNum(h.viewCount) + '</td>' +
+      '<td class="right" style="color:var(--muted);font-size:0.75rem">' + (days !== null ? days + 'd' : '—') + '</td>' +
+    '</tr>';
+  }).join('');
+  tableWrap.style.display = '';
 }
 
 
