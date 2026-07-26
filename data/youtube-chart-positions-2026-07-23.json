@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-26T14:36:40.965Z",
+  "generatedAt": "2026-07-26T14:54:18.245Z",
   "weekEndingDate": "2026-07-23",
   "regions": {
     "kr": {
@@ -39,7 +39,7 @@
           "artists": [
             "BLACKPINK"
           ],
-          "channelId": "UCOmHUn--16B90oW2L6FRR3A",
+          "channelId": null,
           "viewCount": 3811371
         },
         {
@@ -50,50 +50,19 @@
           "artists": [
             "JENNIE"
           ],
-          "channelId": "UCNYi_zGmR519r5gYdOKLTjQ",
+          "channelId": null,
           "viewCount": 2482069
         },
         {
           "chartType": "TOP_ARTISTS",
           "member": "ROSÉ",
           "position": 58,
-          "name": "ROSÉ",
+          "name": "Rosé",
           "artists": [
-            "ROSÉ"
+            "Rosé"
           ],
-          "channelId": "UCBo1hnzxV9rz3WVsv__Rn1g",
+          "channelId": null,
           "viewCount": 2379386
-        }
-      ]
-    },
-    "us": {
-      "region": "United States",
-      "gl": "US",
-      "period": {
-        "entityId": "weekly:20260717:20260723:us",
-        "periodType": "weekly",
-        "startDate": "20260717",
-        "endDate": "20260723",
-        "region": "us"
-      },
-      "totalEntries": 94,
-      "hits": [
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "JENNIE",
-          "position": 28,
-          "name": "Dracula (Remix)",
-          "artists": [
-            "Tame Impala",
-            "JENNIE"
-          ],
-          "videoId": "0UPDBODtxzw",
-          "viewCount": 1611654,
-          "releaseDate": {
-            "year": 2026,
-            "month": 2,
-            "day": 5
-          }
         }
       ]
     },
@@ -110,34 +79,86 @@
       "totalEntries": 90,
       "hits": []
     },
-    "gb": {
-      "region": "United Kingdom",
-      "gl": "GB",
+    "tw": {
+      "region": "Taiwan",
+      "gl": "TW",
       "period": {
-        "entityId": "weekly:20260717:20260723:gb",
+        "entityId": "weekly:20260717:20260723:tw",
         "periodType": "weekly",
         "startDate": "20260717",
         "endDate": "20260723",
-        "region": "gb"
+        "region": "tw"
       },
-      "totalEntries": 91,
+      "totalEntries": 96,
       "hits": [
         {
-          "chartType": "TOP_VIDEOS",
-          "member": "JENNIE",
-          "position": 19,
-          "name": "Dracula (Remix)",
+          "chartType": "TOP_ARTISTS",
+          "member": "BLACKPINK",
+          "position": 48,
+          "name": "BLACKPINK",
           "artists": [
-            "Tame Impala",
+            "BLACKPINK"
+          ],
+          "channelId": null,
+          "viewCount": 1021717
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "ROSÉ",
+          "position": 84,
+          "name": "Rosé",
+          "artists": [
+            "Rosé"
+          ],
+          "channelId": null,
+          "viewCount": 697239
+        }
+      ]
+    },
+    "hk": {
+      "region": "Hong Kong",
+      "gl": "HK",
+      "period": {
+        "entityId": "weekly:20260717:20260723:hk",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "hk"
+      },
+      "totalEntries": 94,
+      "hits": [
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "BLACKPINK",
+          "position": 46,
+          "name": "BLACKPINK",
+          "artists": [
+            "BLACKPINK"
+          ],
+          "channelId": null,
+          "viewCount": 269772
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "JENNIE",
+          "position": 87,
+          "name": "JENNIE",
+          "artists": [
             "JENNIE"
           ],
-          "videoId": "0UPDBODtxzw",
-          "viewCount": 349416,
-          "releaseDate": {
-            "year": 2026,
-            "month": 2,
-            "day": 5
-          }
+          "channelId": null,
+          "viewCount": 176635
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "ROSÉ",
+          "position": 93,
+          "name": "Rosé",
+          "artists": [
+            "Rosé"
+          ],
+          "channelId": null,
+          "viewCount": 168105
         }
       ]
     },
@@ -174,7 +195,7 @@
           "artists": [
             "JENNIE"
           ],
-          "channelId": "UCNYi_zGmR519r5gYdOKLTjQ",
+          "channelId": null,
           "viewCount": 2194148
         }
       ]
@@ -191,10 +212,843 @@
       },
       "totalEntries": 94,
       "hits": []
+    },
+    "my": {
+      "region": "Malaysia",
+      "gl": "MY",
+      "period": {
+        "entityId": "weekly:20260717:20260723:my",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "my"
+      },
+      "totalEntries": 99,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 75,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 211863,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "BLACKPINK",
+          "position": 39,
+          "name": "BLACKPINK",
+          "artists": [
+            "BLACKPINK"
+          ],
+          "channelId": null,
+          "viewCount": 1138852
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "JENNIE",
+          "position": 55,
+          "name": "JENNIE",
+          "artists": [
+            "JENNIE"
+          ],
+          "channelId": null,
+          "viewCount": 1012334
+        }
+      ]
+    },
+    "vn": {
+      "region": "Vietnam",
+      "gl": "VN",
+      "period": {
+        "entityId": "weekly:20260717:20260723:vn",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "vn"
+      },
+      "totalEntries": 84,
+      "hits": []
+    },
+    "sg": {
+      "region": "Singapore",
+      "gl": "SG",
+      "period": {
+        "entityId": "weekly:20260717:20260723:sg",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "sg"
+      },
+      "totalEntries": 97,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 27,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 35175,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "BLACKPINK",
+          "position": 43,
+          "name": "BLACKPINK",
+          "artists": [
+            "BLACKPINK"
+          ],
+          "channelId": null,
+          "viewCount": 155662
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "JENNIE",
+          "position": 47,
+          "name": "JENNIE",
+          "artists": [
+            "JENNIE"
+          ],
+          "channelId": null,
+          "viewCount": 145502
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "ROSÉ",
+          "position": 80,
+          "name": "Rosé",
+          "artists": [
+            "Rosé"
+          ],
+          "channelId": null,
+          "viewCount": 103860
+        }
+      ]
+    },
+    "in": {
+      "region": "India",
+      "gl": "IN",
+      "period": {
+        "entityId": "weekly:20260717:20260723:in",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "in"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "au": {
+      "region": "Australia",
+      "gl": "AU",
+      "period": {
+        "entityId": "weekly:20260717:20260723:au",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "au"
+      },
+      "totalEntries": 93,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 11,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 164930,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        }
+      ]
+    },
+    "nz": {
+      "region": "New Zealand",
+      "gl": "NZ",
+      "period": {
+        "entityId": "weekly:20260717:20260723:nz",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "nz"
+      },
+      "totalEntries": 94,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 37,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 23304,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        }
+      ]
+    },
+    "us": {
+      "region": "United States",
+      "gl": "US",
+      "period": {
+        "entityId": "weekly:20260717:20260723:us",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "us"
+      },
+      "totalEntries": 94,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 28,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 1611654,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        }
+      ]
+    },
+    "ca": {
+      "region": "Canada",
+      "gl": "CA",
+      "period": {
+        "entityId": "weekly:20260717:20260723:ca",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "ca"
+      },
+      "totalEntries": 96,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 8,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 288753,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        }
+      ]
+    },
+    "mx": {
+      "region": "Mexico",
+      "gl": "MX",
+      "period": {
+        "entityId": "weekly:20260717:20260723:mx",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "mx"
+      },
+      "totalEntries": 98,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "ROSÉ",
+          "position": 66,
+          "name": "444 (Remix)",
+          "artists": [
+            "Yan Block",
+            "De La Rose",
+            "Hades66",
+            "Ñengo Flow"
+          ],
+          "videoId": "v6Ga63b2Q-E",
+          "viewCount": 1073093,
+          "releaseDate": {
+            "year": 2025,
+            "month": 10,
+            "day": 30
+          }
+        }
+      ]
+    },
+    "br": {
+      "region": "Brazil",
+      "gl": "BR",
+      "period": {
+        "entityId": "weekly:20260717:20260723:br",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "br"
+      },
+      "totalEntries": 96,
+      "hits": []
+    },
+    "ar": {
+      "region": "Argentina",
+      "gl": "AR",
+      "period": {
+        "entityId": "weekly:20260717:20260723:ar",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "ar"
+      },
+      "totalEntries": 96,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "ROSÉ",
+          "position": 30,
+          "name": "Argentina (La Escaloneta Llego)",
+          "artists": [
+            "ROSE BEAT"
+          ],
+          "videoId": "uyD4v0ZNqIM",
+          "viewCount": 932963,
+          "releaseDate": {
+            "year": 2026,
+            "month": 6,
+            "day": 11
+          }
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "ROSÉ",
+          "position": 34,
+          "name": "WYA REMIX RED (feat. Jay Wheeler & iZaak)",
+          "artists": [
+            "J Abdiel",
+            "De La Rose",
+            "Yan Block"
+          ],
+          "videoId": "g5Ow-kFPtLI",
+          "viewCount": 875129,
+          "releaseDate": {
+            "year": 2023,
+            "month": 9,
+            "day": 19
+          }
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "ROSÉ",
+          "position": 79,
+          "name": "De La Rose",
+          "artists": [
+            "De La Rose"
+          ],
+          "channelId": null,
+          "viewCount": 4116652
+        }
+      ]
+    },
+    "cl": {
+      "region": "Chile",
+      "gl": "CL",
+      "period": {
+        "entityId": "weekly:20260717:20260723:cl",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "cl"
+      },
+      "totalEntries": 96,
+      "hits": [
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "ROSÉ",
+          "position": 85,
+          "name": "De La Rose",
+          "artists": [
+            "De La Rose"
+          ],
+          "channelId": null,
+          "viewCount": 1215066
+        }
+      ]
+    },
+    "co": {
+      "region": "Colombia",
+      "gl": "CO",
+      "period": {
+        "entityId": "weekly:20260717:20260723:co",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "co"
+      },
+      "totalEntries": 97,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "ROSÉ",
+          "position": 16,
+          "name": "MERO TOTE",
+          "artists": [
+            "Blessd",
+            "De La Rose",
+            "Los Money Makers"
+          ],
+          "videoId": "crBawh4FT4w",
+          "viewCount": 1122515,
+          "releaseDate": {
+            "year": 2026,
+            "month": 6,
+            "day": 18
+          }
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "ROSÉ",
+          "position": 51,
+          "name": "De La Rose",
+          "artists": [
+            "De La Rose"
+          ],
+          "channelId": null,
+          "viewCount": 3789534
+        }
+      ]
+    },
+    "pe": {
+      "region": "Peru",
+      "gl": "PE",
+      "period": {
+        "entityId": "weekly:20260717:20260723:pe",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "pe"
+      },
+      "totalEntries": 98,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "ROSÉ",
+          "position": 30,
+          "name": "WYA REMIX RED (feat. Jay Wheeler & iZaak)",
+          "artists": [
+            "J Abdiel",
+            "De La Rose",
+            "Yan Block"
+          ],
+          "videoId": "g5Ow-kFPtLI",
+          "viewCount": 496331,
+          "releaseDate": {
+            "year": 2023,
+            "month": 9,
+            "day": 19
+          }
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "ROSÉ",
+          "position": 53,
+          "name": "De La Rose",
+          "artists": [
+            "De La Rose"
+          ],
+          "channelId": null,
+          "viewCount": 2260298
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "ROSÉ",
+          "position": 65,
+          "name": "Segundo Rosero",
+          "artists": [
+            "Segundo Rosero"
+          ],
+          "channelId": null,
+          "viewCount": 1948229
+        }
+      ]
+    },
+    "gb": {
+      "region": "United Kingdom",
+      "gl": "GB",
+      "period": {
+        "entityId": "weekly:20260717:20260723:gb",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "gb"
+      },
+      "totalEntries": 91,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 19,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 349416,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        }
+      ]
+    },
+    "fr": {
+      "region": "France",
+      "gl": "FR",
+      "period": {
+        "entityId": "weekly:20260717:20260723:fr",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "fr"
+      },
+      "totalEntries": 95,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 35,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 420699,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 66,
+          "name": "Le Petit Pêcheur",
+          "artists": [
+            "Manon Lisa"
+          ],
+          "videoId": "8jtA-uYv5Aw",
+          "viewCount": 255134,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 11
+          }
+        }
+      ]
+    },
+    "de": {
+      "region": "Germany",
+      "gl": "DE",
+      "period": {
+        "entityId": "weekly:20260717:20260723:de",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "de"
+      },
+      "totalEntries": 92,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 27,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 285022,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        }
+      ]
+    },
+    "es": {
+      "region": "Spain",
+      "gl": "ES",
+      "period": {
+        "entityId": "weekly:20260717:20260723:es",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "es"
+      },
+      "totalEntries": 97,
+      "hits": [
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "ROSÉ",
+          "position": 59,
+          "name": "De La Rose",
+          "artists": [
+            "De La Rose"
+          ],
+          "channelId": null,
+          "viewCount": 1372735
+        }
+      ]
+    },
+    "it": {
+      "region": "Italy",
+      "gl": "IT",
+      "period": {
+        "entityId": "weekly:20260717:20260723:it",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "it"
+      },
+      "totalEntries": 99,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 77,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 212312,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        }
+      ]
+    },
+    "nl": {
+      "region": "Netherlands",
+      "gl": "NL",
+      "period": {
+        "entityId": "weekly:20260717:20260723:nl",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "nl"
+      },
+      "totalEntries": 94,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 31,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 57388,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        }
+      ]
+    },
+    "se": {
+      "region": "Sweden",
+      "gl": "SE",
+      "period": {
+        "entityId": "weekly:20260717:20260723:se",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "se"
+      },
+      "totalEntries": 93,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 36,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 24224,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        }
+      ]
+    },
+    "no": {
+      "region": "Norway",
+      "gl": "NO",
+      "period": {
+        "entityId": "weekly:20260717:20260723:no",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "no"
+      },
+      "totalEntries": 91,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 16,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 18005,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "JENNIE",
+          "position": 92,
+          "name": "JENNIE",
+          "artists": [
+            "JENNIE"
+          ],
+          "channelId": null,
+          "viewCount": 35816
+        }
+      ]
+    },
+    "pl": {
+      "region": "Poland",
+      "gl": "PL",
+      "period": {
+        "entityId": "weekly:20260717:20260723:pl",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "pl"
+      },
+      "totalEntries": 97,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 61,
+          "name": "Dracula (Remix)",
+          "artists": [
+            "Tame Impala",
+            "JENNIE"
+          ],
+          "videoId": "0UPDBODtxzw",
+          "viewCount": 259271,
+          "releaseDate": {
+            "year": 2026,
+            "month": 2,
+            "day": 5
+          }
+        }
+      ]
+    },
+    "tr": {
+      "region": "Turkey",
+      "gl": "TR",
+      "period": {
+        "entityId": "weekly:20260717:20260723:tr",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "tr"
+      },
+      "totalEntries": 98,
+      "hits": []
+    },
+    "sa": {
+      "region": "Saudi Arabia",
+      "gl": "SA",
+      "period": {
+        "entityId": "weekly:20260717:20260723:sa",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "sa"
+      },
+      "totalEntries": 98,
+      "hits": []
+    },
+    "za": {
+      "region": "South Africa",
+      "gl": "ZA",
+      "period": {
+        "entityId": "weekly:20260717:20260723:za",
+        "periodType": "weekly",
+        "startDate": "20260717",
+        "endDate": "20260723",
+        "region": "za"
+      },
+      "totalEntries": 98,
+      "hits": []
     }
   },
   "summary": {
-    "totalHits": 7,
-    "regionsChecked": 7
+    "totalHits": 42,
+    "regionsChecked": 33
   }
 }
