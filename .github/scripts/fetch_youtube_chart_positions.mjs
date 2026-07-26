@@ -206,7 +206,7 @@ function extractChartEntries(data) {
     ?.musicAnalyticsSectionRenderer?.content;
   if (!content) return [];
 
-  // Primary source: trackTypes[*].trackViews (full chart with positions)
+  // Weekly: trackTypes[*].trackViews
   const allEntries = [];
   for (const tt of (content.trackTypes ?? [])) {
     if (tt.listType === 'TOP_VIEWS_CHART' && Array.isArray(tt.trackViews)) {
@@ -214,10 +214,30 @@ function extractChartEntries(data) {
     }
   }
 
-  // Filter to visible entries with valid data
   return allEntries
     .filter(e => e.atvExternalVideoId && e.chartEntryMetadata?.currentPosition)
     .sort((a, b) => (a.chartEntryMetadata.currentPosition ?? 999) - (b.chartEntryMetadata.currentPosition ?? 999));
+}
+
+function extractDailyChartEntries(data) {
+  const content = data?.contents?.sectionListRenderer?.contents?.[0]
+    ?.musicAnalyticsSectionRenderer?.content;
+  if (!content) return [];
+
+  // Daily: content.videos (array ordered by position)
+  return (content.videos ?? [])
+    .filter(v => v.id && v.isVisible !== false)
+    .map((v, idx) => ({
+      name: v.title ?? '',
+      artists: (v.artists ?? []).map(a => ({ name: a.name ?? '' })),
+      encryptedVideoId: v.id,
+      atvExternalVideoId: v.id,
+      chartEntryMetadata: { currentPosition: idx + 1 },
+      viewCount: v.viewCount ?? '0',
+      releaseDate: v.releaseDate
+        ? `${v.releaseDate.year}-${String(v.releaseDate.month).padStart(2, '0')}-${String(v.releaseDate.day).padStart(2, '0')}`
+        : null,
+    }));
 }
 
 function extractArtistEntries(data) {
@@ -288,8 +308,9 @@ async function fetchDailyRegionData(baseClient, { gl, region, name }) {
   const data = await fetchDailyChart(baseClient, gl, region);
   if (!data) return null;
 
-  const period = extractPeriodInfo(data);
-  const entries = extractChartEntries(data);
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const period = { entityId: `daily:${today}:${region}`, periodType: 'daily', startDate: today, endDate: today, region };
+  const entries = extractDailyChartEntries(data);
   const artistEntries = extractArtistEntries(data);
   const hits = extractBpHits(entries, artistEntries);
 
