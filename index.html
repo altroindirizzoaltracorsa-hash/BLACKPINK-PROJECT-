@@ -1512,6 +1512,25 @@
   60%  { opacity: 0.7; }
   100% { width: var(--len); opacity: 0; }
 }
+
+  /* ── YouTube Charts ── */
+  .yt-section { margin-top: 2.5rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+  .yt-section-hd { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem; flex-wrap: wrap; justify-content: space-between; }
+  .yt-section-hd-left { display: flex; align-items: center; gap: 0.7rem; }
+  .yt-section-icon { width: 22px; height: 22px; color: #ff4444; flex-shrink: 0; }
+  .yt-title { font-family: var(--display); font-size: 1.4rem; letter-spacing: 0.05em; color: var(--white); }
+  .yt-meta { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; margin-top: 0.2rem; }
+  .yt-cards { display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 1.8rem; }
+  .yt-card { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--pink); border-radius: 12px; padding: 1rem 1.2rem; }
+  .yt-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+  .yt-card-member { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700; margin-bottom: 0.3rem; font-family: var(--mono); }
+  .yt-card-name { font-family: var(--display); font-size: 1.1rem; letter-spacing: 0.04em; color: var(--white); margin-bottom: 0.2rem; }
+  .yt-card-peak { font-size: 0.68rem; color: var(--muted); }
+  .yt-card-views-label { font-size: 0.62rem; color: var(--muted); text-align: right; margin-bottom: 0.15rem; }
+  .yt-card-views { font-family: var(--display); font-size: 1.3rem; letter-spacing: 0.03em; text-align: right; }
+  .yt-chips { margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; }
+  .yt-chip { font-size: 0.62rem; background: var(--charcoal); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; padding: 0.15rem 0.45rem; color: var(--muted); font-family: var(--mono); }
+  .yt-member-tag { font-size: 0.65rem; border-radius: 4px; padding: 0.15rem 0.5rem; font-weight: 600; font-family: var(--mono); }
 </style>
 </head>
 <body>
@@ -2480,6 +2499,44 @@
     </div>
 
   </div>
+
+      <!-- YouTube Charts -->
+      <div class="yt-section" id="yt-section">
+        <div class="yt-section-hd">
+          <div class="yt-section-hd-left">
+            <svg class="yt-section-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.75 15.5v-7l6.25 3.5-6.25 3.5z"/>
+            </svg>
+            <div>
+              <div class="yt-title">YouTube Charts</div>
+              <div class="yt-meta" id="yt-meta"></div>
+            </div>
+          </div>
+          <div class="ch-tabs" id="yt-tabs">
+            <button class="lb-tab active" onclick="setYtChartType('daily', this)">Daily</button>
+            <button class="lb-tab" onclick="setYtChartType('weekly', this)">Weekly</button>
+          </div>
+        </div>
+
+        <div id="yt-loading" class="lb-loading">Loading…</div>
+        <div id="yt-error" class="as-error" style="display:none;"></div>
+        <div id="yt-empty" class="ch-empty" style="display:none;">No YouTube chart data available.</div>
+
+        <div id="yt-cards" class="yt-cards"></div>
+
+        <div class="as-table-wrap as-tracks-wrap" id="yt-table-wrap" style="display:none;">
+          <table class="as-table as-tracks-table">
+            <thead><tr>
+              <th>Region</th>
+              <th>Pos</th>
+              <th>Member</th>
+              <th>Song</th>
+              <th class="right">Views</th>
+            </tr></thead>
+            <tbody id="yt-body"></tbody>
+          </table>
+        </div>
+      </div>
 </div><!-- end charts page -->
 
 <!-- ══════════════════════════════════════
@@ -3583,7 +3640,111 @@ function loadChartsPage() {
   fetchAndRenderCharts();
   refreshChartCountryHighlights();
   renderArtistCharts();
+  loadYouTubeCharts();
 }
+
+const YT_DAILY_URL  = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/youtube-chart-positions-daily-latest.json';
+const YT_WEEKLY_URL = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/youtube-chart-positions-latest.json';
+const YT_MEMBER_COLORS = { JENNIE: '#FF0066', 'ROSÉ': '#ff9eb5', LISA: '#ffce6e', JISOO: '#7eb8f7', BLACKPINK: '#c084fc' };
+let ytChartType = 'daily';
+
+function setYtChartType(type, btn) {
+  ytChartType = type;
+  document.querySelectorAll('#yt-tabs .lb-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadYouTubeCharts();
+}
+
+async function loadYouTubeCharts() {
+  const loadEl    = document.getElementById('yt-loading');
+  const errorEl   = document.getElementById('yt-error');
+  const emptyEl   = document.getElementById('yt-empty');
+  const cardsEl   = document.getElementById('yt-cards');
+  const tableWrap = document.getElementById('yt-table-wrap');
+  const metaEl    = document.getElementById('yt-meta');
+  if (!loadEl) return;
+
+  loadEl.style.display = 'block';
+  errorEl.style.display = 'none';
+  emptyEl.style.display = 'none';
+  cardsEl.innerHTML = '';
+  tableWrap.style.display = 'none';
+  metaEl.textContent = '';
+
+  try {
+    const url = (ytChartType === 'daily' ? YT_DAILY_URL : YT_WEEKLY_URL) + '?_=' + Date.now();
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    loadEl.style.display = 'none';
+
+    const hits = [];
+    for (const region of Object.values(data.regions || {})) {
+      for (const h of (region.hits || [])) {
+        if (h.chartType === 'TOP_VIDEOS') hits.push({ ...h, regionName: region.region });
+      }
+    }
+    hits.sort((a, b) => a.position - b.position);
+
+    if (!hits.length) { emptyEl.style.display = 'block'; return; }
+
+    const dateLabel = data.date ? data.date : (data.weekEndingDate ? 'Week ending ' + data.weekEndingDate : '');
+    const totalHits = data.summary ? data.summary.totalHits : hits.length;
+    const regCount  = data.summary ? data.summary.regionsChecked : 0;
+    metaEl.textContent = totalHits + ' entries across ' + regCount + ' regions' + (dateLabel ? ' · ' + dateLabel : '');
+
+    const songMap = {};
+    for (const h of hits) {
+      if (!songMap[h.name]) songMap[h.name] = { member: h.member, minPos: h.position, totalViews: 0, regions: [] };
+      const entry = songMap[h.name];
+      entry.regions.push(h.regionName + ' #' + h.position);
+      if (h.position < entry.minPos) entry.minPos = h.position;
+      entry.totalViews += (h.viewCount || 0);
+    }
+
+    cardsEl.innerHTML = Object.entries(songMap)
+      .sort((a, b) => a[1].minPos - b[1].minPos)
+      .map(([name, info]) => {
+        const color = YT_MEMBER_COLORS[info.member] || '#FF0066';
+        return '<div class="yt-card" style="border-left-color:' + color + '">' +
+          '<div class="yt-card-top">' +
+            '<div>' +
+              '<div class="yt-card-member" style="color:' + color + '">' + info.member + '</div>' +
+              '<div class="yt-card-name">' + name + '</div>' +
+              '<div class="yt-card-peak">Peak #' + info.minPos + ' · ' + info.regions.length + ' ' + (info.regions.length === 1 ? 'region' : 'regions') + '</div>' +
+            '</div>' +
+            '<div>' +
+              '<div class="yt-card-views-label">total views</div>' +
+              '<div class="yt-card-views" style="color:' + color + '">' + fmtNum(info.totalViews) + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="yt-chips">' + info.regions.map(r => '<span class="yt-chip">' + r + '</span>').join('') + '</div>' +
+        '</div>';
+      }).join('');
+
+    document.getElementById('yt-body').innerHTML = hits.map(h => {
+      const color = YT_MEMBER_COLORS[h.member] || '#FF0066';
+      const song  = h.videoId
+        ? '<a href="https://www.youtube.com/watch?v=' + h.videoId + '" target="_blank" rel="noopener" style="color:var(--white);text-decoration:none">' + h.name + '</a>'
+        : h.name;
+      return '<tr>' +
+        '<td style="color:var(--muted);font-size:0.8rem">' + h.regionName + '</td>' +
+        '<td style="font-family:var(--display);font-size:1rem;color:' + color + '">#' + h.position + '</td>' +
+        '<td><span class="yt-member-tag" style="background:' + color + '22;color:' + color + '">' + h.member + '</span></td>' +
+        '<td style="color:var(--white);font-size:0.85rem">' + song + '</td>' +
+        '<td class="right" style="color:var(--muted);font-size:0.8rem">' + fmtNum(h.viewCount) + '</td>' +
+      '</tr>';
+    }).join('');
+    tableWrap.style.display = '';
+
+  } catch(e) {
+    loadEl.style.display = 'none';
+    errorEl.style.display = 'block';
+    errorEl.textContent = 'Could not load YouTube chart data.';
+    console.error('YT charts error:', e);
+  }
+}
+
 
 function setChartType(type, btn) {
   chartType = type;
