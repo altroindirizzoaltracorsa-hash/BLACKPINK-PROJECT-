@@ -1514,7 +1514,7 @@
 }
 
   /* ── YouTube Charts ── */
-  .yt-section { margin-top: 2.5rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+  .yt-section { }
   .yt-section-hd { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem; flex-wrap: wrap; justify-content: space-between; }
   .yt-section-hd-left { display: flex; align-items: center; gap: 0.7rem; }
   .yt-section-icon { width: 22px; height: 22px; color: #ff4444; flex-shrink: 0; }
@@ -1644,14 +1644,14 @@
     <li><a href="/leaderboard" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
     <li><a href="/streams" onclick="showPage('streams'); closeMobileNav(); return false;" id="nav-streams">Streams</a></li>
     <li class="nav-has-dropdown" id="nav-charts-dropdown">
-      <a href="/charts" class="nav-dropdown-trigger" id="nav-charts"
+      <a href="/spotify-charts" class="nav-dropdown-trigger" id="nav-charts"
          onclick="toggleChartsDropdown(event)">Charts <span class="nav-chevron">▾</span></a>
       <div class="nav-dropdown" id="charts-dropdown-panel">
         <div class="nav-dropdown-section-label">Spotify</div>
-        <a class="nav-dropdown-item" href="/charts" onclick="showChartsSection('spotify'); return false;">Charts</a>
+        <a class="nav-dropdown-item" id="nav-spotify-charts" href="/spotify-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('spotify-charts'); return false;">Charts</a>
         <div class="nav-dropdown-sep"></div>
         <div class="nav-dropdown-section-label">YouTube</div>
-        <a class="nav-dropdown-item" href="/charts" onclick="showChartsSection('youtube'); return false;">Charts</a>
+        <a class="nav-dropdown-item" id="nav-youtube" href="/youtube" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('youtube'); return false;">Charts</a>
       </div>
     </li>
     <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
@@ -2461,7 +2461,7 @@
 <!-- ══════════════════════════════════════
      CHARTS PAGE
 ════════════════════════════════════════ -->
-<div id="page-charts" class="page">
+<div id="page-spotify-charts" class="page">
   <div class="as-page">
 
     <div class="as-header">
@@ -2578,44 +2578,55 @@
 
   </div>
 
-      <!-- YouTube Charts -->
-      <div class="yt-section" id="yt-section">
-        <div class="yt-section-hd">
-          <div class="yt-section-hd-left">
-            <svg class="yt-section-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.75 15.5v-7l6.25 3.5-6.25 3.5z"/>
-            </svg>
-            <div>
-              <div class="yt-title">YouTube Charts</div>
-              <div class="yt-meta" id="yt-meta"></div>
-            </div>
-          </div>
-          <div class="ch-tabs" id="yt-tabs">
-            <button class="lb-tab active" onclick="setYtChartType('daily', this)">Daily</button>
-            <button class="lb-tab" onclick="setYtChartType('weekly', this)">Weekly</button>
-          </div>
-        </div>
 
-        <div id="yt-loading" class="lb-loading">Loading…</div>
-        <div id="yt-error" class="as-error" style="display:none;"></div>
-        <div id="yt-empty" class="ch-empty" style="display:none;">No YouTube chart data available.</div>
+</div><!-- end spotify charts page -->
 
-        <div id="yt-cards" class="yt-cards"></div>
+<!-- ══════════════════════════════════════
+     YOUTUBE CHARTS PAGE
+════════════════════════════════════════ -->
+<div id="page-youtube" class="page">
+  <div class="as-page">
 
-        <div class="as-table-wrap as-tracks-wrap" id="yt-table-wrap" style="display:none;">
-          <table class="as-table as-tracks-table">
-            <thead><tr>
-              <th>Region</th>
-              <th>Pos</th>
-              <th>Member</th>
-              <th>Song</th>
-              <th class="right">Views</th>
-            </tr></thead>
-            <tbody id="yt-body"></tbody>
-          </table>
+    <div class="as-header">
+      <svg class="as-gem" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="color:#ff4444;width:32px;height:32px;">
+        <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.75 15.5v-7l6.25 3.5-6.25 3.5z"/>
+      </svg>
+      <p class="as-eyebrow">YouTube Charts</p>
+      <h1 class="as-title">BLACKPINK<br><span>ON YOUTUBE</span></h1>
+      <p class="as-sub">Real YouTube Top Videos chart positions — BLACKPINK + members</p>
+    </div>
+
+    <div class="as-inner">
+      <div class="ch-controls">
+        <div class="ch-tabs" id="yt-tabs">
+          <button class="lb-tab active" onclick="setYtChartType('daily', this)">Daily</button>
+          <button class="lb-tab" onclick="setYtChartType('weekly', this)">Weekly</button>
         </div>
       </div>
-</div><!-- end charts page -->
+
+      <div id="yt-meta" class="ch-meta"></div>
+      <div id="yt-loading" class="lb-loading">Loading…</div>
+      <div id="yt-error" class="as-error" style="display:none;"></div>
+      <div id="yt-empty" class="ch-empty" style="display:none;">No YouTube chart data available.</div>
+
+      <div id="yt-cards" class="yt-cards"></div>
+
+      <div class="as-table-wrap as-tracks-wrap" id="yt-table-wrap" style="display:none;">
+        <table class="as-table as-tracks-table">
+          <thead><tr>
+            <th>Region</th>
+            <th>Pos</th>
+            <th>Member</th>
+            <th>Song</th>
+            <th class="right">Views</th>
+          </tr></thead>
+          <tbody id="yt-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div><!-- end youtube page -->
 
 <!-- ══════════════════════════════════════
      VOTE PAGE
@@ -3523,19 +3534,6 @@ function toggleChartsDropdown(e) {
   }
 }
 
-function showChartsSection(section) {
-  document.getElementById('nav-charts-dropdown')?.classList.remove('open');
-  closeMobileNav();
-  showPage('charts');
-  if (section === 'youtube') {
-    setTimeout(() => {
-      const el = document.getElementById('yt-section');
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 180);
-  } else {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-}
 
 function toggleMobileNav() {
   const nav = document.getElementById('mobile-nav');
@@ -3548,7 +3546,7 @@ function closeMobileNav() {
   document.getElementById('nav-hamburger').classList.remove('open');
 }
 
-const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', charts: '/charts' };
+const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube' };
 
 // Mirrors the per-route <title> the Vercel edge middleware sets on first
 // load, so client-side navigation keeps the tab title in sync too.
@@ -3560,7 +3558,8 @@ const PAGE_TITLES = {
   feedback: 'Feedback | BLINKS UNITED',
   account: 'My Account | BLINKS UNITED',
   streams: 'BLACKPINK Spotify Streams | BLINKS UNITED',
-  charts: 'BLACKPINK Spotify Charts | BLINKS UNITED',
+  'spotify-charts': 'Spotify Charts | BLINKS UNITED',
+  youtube: 'YouTube Charts | BLINKS UNITED',
 };
 
 function pathToPage(pathname) {
@@ -3745,11 +3744,10 @@ function toggleArtistTrackGrouping(btn) {
 let chartType = 'daily';
 let chartCountry = 'GLOBAL';
 
-function loadChartsPage() {
+function loadSpotifyChartsPage() {
   fetchAndRenderCharts();
   refreshChartCountryHighlights();
   renderArtistCharts();
-  loadYouTubeCharts();
 }
 
 const YT_DAILY_URL  = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/youtube-chart-positions-daily-latest.json';
@@ -4027,8 +4025,10 @@ function showPage(page, { replace = false } = {}) {
     }
   }
   if (page === 'badges') { tryAutoLoad(); renderSpecialBadges(); }
+  if (page === 'spotify-charts' || page === 'youtube') document.getElementById('nav-charts')?.classList.add('active');
   if (page === 'streams') loadArtistStreamsPage();
-  if (page === 'charts') loadChartsPage();
+  if (page === 'spotify-charts') loadSpotifyChartsPage();
+  if (page === 'youtube') loadYouTubeCharts();
   if (page === 'leaderboard') {
     if (!acctBreakdown) tryAutoLoad(); // pre-load per-service data so own-row breakdown works
     const pending = parseLbHistoryParam();
