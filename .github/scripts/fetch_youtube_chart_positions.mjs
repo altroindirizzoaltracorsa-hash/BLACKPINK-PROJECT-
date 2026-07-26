@@ -29,13 +29,47 @@ const BROWSE = 'https://charts.youtube.com/youtubei/v1/browse';
 
 // Target regions to fetch
 const REGIONS = [
+  // East Asia / Pacific
   { gl: 'KR', region: 'kr', name: 'South Korea' },
-  { gl: 'US', region: 'us', name: 'United States' },
   { gl: 'JP', region: 'jp', name: 'Japan' },
-  { gl: 'GB', region: 'gb', name: 'United Kingdom' },
+  { gl: 'TW', region: 'tw', name: 'Taiwan' },
+  { gl: 'HK', region: 'hk', name: 'Hong Kong' },
+  // Southeast Asia
   { gl: 'ID', region: 'id', name: 'Indonesia' },
   { gl: 'TH', region: 'th', name: 'Thailand' },
   { gl: 'PH', region: 'ph', name: 'Philippines' },
+  { gl: 'MY', region: 'my', name: 'Malaysia' },
+  { gl: 'VN', region: 'vn', name: 'Vietnam' },
+  { gl: 'SG', region: 'sg', name: 'Singapore' },
+  // South Asia
+  { gl: 'IN', region: 'in', name: 'India' },
+  // Oceania
+  { gl: 'AU', region: 'au', name: 'Australia' },
+  { gl: 'NZ', region: 'nz', name: 'New Zealand' },
+  // North America
+  { gl: 'US', region: 'us', name: 'United States' },
+  { gl: 'CA', region: 'ca', name: 'Canada' },
+  { gl: 'MX', region: 'mx', name: 'Mexico' },
+  // Latin America
+  { gl: 'BR', region: 'br', name: 'Brazil' },
+  { gl: 'AR', region: 'ar', name: 'Argentina' },
+  { gl: 'CL', region: 'cl', name: 'Chile' },
+  { gl: 'CO', region: 'co', name: 'Colombia' },
+  { gl: 'PE', region: 'pe', name: 'Peru' },
+  // Europe
+  { gl: 'GB', region: 'gb', name: 'United Kingdom' },
+  { gl: 'FR', region: 'fr', name: 'France' },
+  { gl: 'DE', region: 'de', name: 'Germany' },
+  { gl: 'ES', region: 'es', name: 'Spain' },
+  { gl: 'IT', region: 'it', name: 'Italy' },
+  { gl: 'NL', region: 'nl', name: 'Netherlands' },
+  { gl: 'SE', region: 'se', name: 'Sweden' },
+  { gl: 'NO', region: 'no', name: 'Norway' },
+  { gl: 'PL', region: 'pl', name: 'Poland' },
+  { gl: 'TR', region: 'tr', name: 'Turkey' },
+  // Middle East / Africa
+  { gl: 'SA', region: 'sa', name: 'Saudi Arabia' },
+  { gl: 'ZA', region: 'za', name: 'South Africa' },
 ];
 
 // Artist patterns to match (check artist names only, not song titles)
