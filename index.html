@@ -1531,6 +1531,74 @@
   .yt-chips { margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; }
   .yt-chip { font-size: 0.62rem; background: var(--charcoal); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; padding: 0.15rem 0.45rem; color: var(--muted); font-family: var(--mono); }
   .yt-member-tag { font-size: 0.65rem; border-radius: 4px; padding: 0.15rem 0.5rem; font-weight: 600; font-family: var(--mono); }
+
+  /* ── Charts nav dropdown (b-cd style) ── */
+  .nav-has-dropdown { position: relative; }
+  .nav-dropdown-trigger { display: inline-flex !important; align-items: center; gap: 0.3em; }
+  .nav-chevron { font-size: 0.75em; display: inline-block; transition: transform 0.2s; line-height: 1; }
+  .nav-has-dropdown.open .nav-chevron { transform: rotate(180deg); }
+
+  .nav-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    left: -1rem;
+    min-width: 210px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    padding: 0.5rem 0 0.7rem;
+    z-index: 600;
+  }
+  .nav-has-dropdown.open .nav-dropdown { display: block; }
+
+  .nav-dropdown-sep {
+    height: 1px;
+    background: #ececec;
+    margin: 0.4rem 0;
+  }
+  .nav-dropdown-section-label {
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.16em;
+    color: #aaa;
+    text-transform: uppercase;
+    padding: 0.55rem 1.2rem 0.2rem;
+  }
+  .nav-dropdown-item {
+    display: block;
+    padding: 0.55rem 1.5rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: #222 !important;
+    text-decoration: none;
+    opacity: 1 !important;
+    transition: background 0.12s, color 0.12s;
+    white-space: nowrap;
+  }
+  .nav-dropdown-item:hover { background: rgba(255,0,102,0.07); color: var(--pink) !important; }
+
+  /* Mobile: expand inline inside hamburger menu */
+  @media (max-width: 900px) {
+    .nav-dropdown {
+      position: static;
+      background: transparent;
+      box-shadow: none;
+      border-radius: 0;
+      padding: 0 0 0.2rem;
+    }
+    .nav-dropdown-sep { background: rgba(255,255,255,0.06); margin: 0.2rem 0; }
+    .nav-dropdown-section-label { color: rgba(255,255,255,0.3); padding: 0.4rem 0 0.15rem 1.2rem; }
+    .nav-dropdown-item {
+      color: var(--white) !important;
+      padding: 0.55rem 0 0.55rem 1.4rem;
+      font-size: 0.6rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      opacity: 0.8 !important;
+    }
+    .nav-dropdown-item:hover { background: transparent; color: var(--pink) !important; opacity: 1 !important; }
+  }
 </style>
 </head>
 <body>
@@ -1575,7 +1643,17 @@
     <li><a href="/badges" onclick="goToMyBadges(); closeMobileNav(); return false;" id="nav-badges">My Badges</a></li>
     <li><a href="/leaderboard" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
     <li><a href="/streams" onclick="showPage('streams'); closeMobileNav(); return false;" id="nav-streams">Streams</a></li>
-    <li><a href="/charts" onclick="showPage('charts'); closeMobileNav(); return false;" id="nav-charts">Charts</a></li>
+    <li class="nav-has-dropdown" id="nav-charts-dropdown">
+      <a href="/charts" class="nav-dropdown-trigger" id="nav-charts"
+         onclick="toggleChartsDropdown(event)">Charts <span class="nav-chevron">▾</span></a>
+      <div class="nav-dropdown" id="charts-dropdown-panel">
+        <div class="nav-dropdown-section-label">Spotify</div>
+        <a class="nav-dropdown-item" href="/charts" onclick="showChartsSection('spotify'); return false;">Charts</a>
+        <div class="nav-dropdown-sep"></div>
+        <div class="nav-dropdown-section-label">YouTube</div>
+        <a class="nav-dropdown-item" href="/charts" onclick="showChartsSection('youtube'); return false;">Charts</a>
+      </div>
+    </li>
     <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
     <li><a href="/feedback" onclick="showPage('feedback'); closeMobileNav(); return false;" id="nav-feedback">Feedback</a></li>
     <li><a href="#follow" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100); return false;">Follow</a></li>
@@ -3428,6 +3506,37 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── PAGE ROUTING ─────────────────────────────────────────────
+
+function toggleChartsDropdown(e) {
+  e.preventDefault();
+  const li = document.getElementById('nav-charts-dropdown');
+  const wasOpen = li.classList.contains('open');
+  li.classList.toggle('open');
+  if (!wasOpen) {
+    const closeOutside = (ev) => {
+      if (!li.contains(ev.target)) {
+        li.classList.remove('open');
+        document.removeEventListener('click', closeOutside);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeOutside), 0);
+  }
+}
+
+function showChartsSection(section) {
+  document.getElementById('nav-charts-dropdown')?.classList.remove('open');
+  closeMobileNav();
+  showPage('charts');
+  if (section === 'youtube') {
+    setTimeout(() => {
+      const el = document.getElementById('yt-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 180);
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
 function toggleMobileNav() {
   const nav = document.getElementById('mobile-nav');
   const btn = document.getElementById('nav-hamburger');
