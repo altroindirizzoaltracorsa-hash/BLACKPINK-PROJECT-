@@ -20,9 +20,6 @@ async function main() {
   console.log('=== Probe v25: Playwright intercept of YouTube Charts daily API ===');
 
   const browser = await chromium.launch({
-    executablePath: process.env.PLAYWRIGHT_BROWSERS_PATH
-      ? `${process.env.PLAYWRIGHT_BROWSERS_PATH}/chromium/chrome`
-      : undefined,
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
