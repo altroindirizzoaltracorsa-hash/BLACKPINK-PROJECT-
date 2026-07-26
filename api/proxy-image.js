@@ -408,6 +408,16 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, countries: stored._countries });
     }
 
+    // set_countries — replace the full iTunes #1 countries list at once
+    if (req.query.ltal_goals === 'set_countries') {
+      let countries;
+      try { countries = JSON.parse(req.query.countries || '[]'); } catch { countries = []; }
+      if (!Array.isArray(countries)) return res.status(400).json({ error: 'countries must be a JSON array' });
+      stored._countries = countries.filter(c => c && typeof c.name === 'string');
+      await upstashSet('bu_ltal_goals', stored);
+      return res.status(200).json({ ok: true, countries: stored._countries });
+    }
+
     return res.status(400).json({ error: 'unknown ltal_goals action' });
   }
 

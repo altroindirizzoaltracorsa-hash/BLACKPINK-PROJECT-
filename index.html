@@ -2692,6 +2692,7 @@
           <input id="admin-country-flag" class="admin-input" type="text" placeholder="🇺🇸 flag emoji" style="width:70px;flex:none;">
           <input id="admin-country-name" class="admin-input" type="text" placeholder="Country name" style="flex:1;">
           <button class="btn-primary" onclick="adminAddCountry()">Add</button>
+          <button class="btn-secondary" onclick="adminRestoreDefaultCountries()" style="font-size:0.62rem;padding:0.25rem 0.5rem;opacity:0.7;" title="Merge the 14 default countries back into the list">Restore defaults</button>
         </div>
         <div id="admin-country-list" style="margin-top:0.5rem;display:flex;flex-wrap:wrap;gap:0.35rem;"></div>
         <div id="admin-country-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
@@ -7642,6 +7643,7 @@ async function adminAddCountry() {
       statusEl.style.color = '#2ecc71';
       if (nameInput) nameInput.value = '';
       if (flagInput) flagInput.value = '';
+      _ltalCountriesLive = d.countries || [];
       renderAdminCountryList(d.countries || []);
       renderItunesInlineBadge();
     } else {
@@ -7664,6 +7666,7 @@ async function adminRemoveCountry(name) {
     const d = await r.json();
     if (d.ok) {
       if (statusEl) { statusEl.textContent = `✔ Removed: ${name}`; statusEl.style.color = '#2ecc71'; }
+      _ltalCountriesLive = d.countries || [];
       renderAdminCountryList(d.countries || []);
       renderItunesInlineBadge();
     }
@@ -7676,6 +7679,17 @@ async function loadAdminCountryList() {
   try {
     const r = await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' });
     const d = await r.json();
+    // First open: Redis has no countries yet — migrate the hardcoded defaults automatically
+    if (d.countries === null) {
+      const key = localStorage.getItem(ADMIN_KEY_LS);
+      if (key) {
+        try {
+          const mr = await fetch(`/api/proxy-image?ltal_goals=set_countries&countries=${encodeURIComponent(JSON.stringify(ITUNES_NO1_COUNTRIES))}&key=${encodeURIComponent(key)}`, { method: 'POST' });
+          const md = await mr.json();
+          if (md.ok) d.countries = md.countries;
+        } catch {}
+      }
+    }
     const countries = Array.isArray(d.countries) ? d.countries : ITUNES_NO1_COUNTRIES;
     _ltalCountriesLive = Array.isArray(d.countries) ? d.countries : null;
     renderAdminCountryList(countries);
@@ -7704,6 +7718,37 @@ function renderAdminCountryList(countries) {
       <button onclick="adminRemoveCountry('${c.name.replace(/'/g, "\\'")}')" style="background:none;border:none;color:#ff3333;cursor:pointer;font-size:0.8rem;padding:0 0.1rem;line-height:1;">✕</button>
     </span>`
   ).join('');
+}
+
+async function adminRestoreDefaultCountries() {
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  const statusEl = document.getElementById('admin-country-status');
+  if (!key || !statusEl) return;
+  // Merge: all 14 defaults + any extra countries currently in Redis
+  const existing = Array.isArray(_ltalCountriesLive) ? _ltalCountriesLive : [];
+  const merged = [...ITUNES_NO1_COUNTRIES];
+  for (const c of existing) {
+    if (!merged.some(m => m.name.toLowerCase() === c.name.toLowerCase())) merged.push(c);
+  }
+  statusEl.textContent = 'Restoring…';
+  statusEl.style.color = 'var(--muted)';
+  try {
+    const r = await fetch(`/api/proxy-image?ltal_goals=set_countries&countries=${encodeURIComponent(JSON.stringify(merged))}&key=${encodeURIComponent(key)}`, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      _ltalCountriesLive = d.countries;
+      renderAdminCountryList(d.countries || []);
+      renderItunesInlineBadge();
+      statusEl.textContent = `✔ Restored ${(d.countries || []).length} countries`;
+      statusEl.style.color = '#2ecc71';
+    } else {
+      statusEl.textContent = d.error || 'Failed';
+      statusEl.style.color = '#ff3333';
+    }
+  } catch {
+    statusEl.textContent = 'Error restoring';
+    statusEl.style.color = '#ff3333';
+  }
 }
 
 // ── TOP ARTISTS CHART (admin-entered Spotify Top Artists positions) ────────────
