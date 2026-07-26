@@ -224,18 +224,29 @@ function extractDailyChartEntries(data) {
     ?.musicAnalyticsSectionRenderer?.content;
   if (!content) return [];
 
-  // Daily: content.videos (array ordered by position)
-  return (content.videos ?? [])
-    .filter(v => v.id && v.isVisible !== false)
+  // Daily: content.videos is an array of chart sections (like weekly's trackTypes);
+  // each section has a videoViews array with the actual entries.
+  // Entry fields: {id, title, viewCount, artists, isVisible, releaseDate, ...}
+  const allEntries = [];
+  for (const vs of (content.videos ?? [])) {
+    if (Array.isArray(vs.videoViews)) {
+      allEntries.push(...vs.videoViews);
+    }
+  }
+
+  return allEntries
+    .filter(v => (v.id ?? v.atvExternalVideoId) && v.isVisible !== false)
     .map((v, idx) => ({
-      name: v.title ?? '',
+      name: v.title ?? v.name ?? '',
       artists: (v.artists ?? []).map(a => ({ name: a.name ?? '' })),
-      encryptedVideoId: v.id,
-      atvExternalVideoId: v.id,
-      chartEntryMetadata: { currentPosition: idx + 1 },
+      encryptedVideoId: v.id ?? v.encryptedVideoId ?? '',
+      atvExternalVideoId: v.id ?? v.atvExternalVideoId ?? '',
+      chartEntryMetadata: { currentPosition: v.chartEntryMetadata?.currentPosition ?? idx + 1 },
       viewCount: v.viewCount ?? '0',
       releaseDate: v.releaseDate
-        ? `${v.releaseDate.year}-${String(v.releaseDate.month).padStart(2, '0')}-${String(v.releaseDate.day).padStart(2, '0')}`
+        ? (typeof v.releaseDate === 'string'
+            ? v.releaseDate
+            : `${v.releaseDate.year}-${String(v.releaseDate.month).padStart(2, '0')}-${String(v.releaseDate.day).padStart(2, '0')}`)
         : null,
     }));
 }
