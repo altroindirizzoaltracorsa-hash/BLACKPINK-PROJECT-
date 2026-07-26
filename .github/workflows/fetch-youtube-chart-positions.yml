@@ -1,0 +1,27 @@
+name: Fetch YouTube Chart Positions
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every Thursday at 06:00 UTC (charts update weekly, Thursday start)
+    - cron: '0 6 * * 4'
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Fetch YouTube chart positions
+        run: node .github/scripts/fetch_youtube_chart_positions.mjs
+      - name: Commit chart data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "chore: update YouTube chart positions $(date -u +%Y-%m-%d)"
+          git push
