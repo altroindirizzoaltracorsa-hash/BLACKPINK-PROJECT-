@@ -3892,8 +3892,9 @@ function renderArtistStreamsPage() {
   document.getElementById('as-artist-name').textContent = d.name || '';
   const followersDelta = latest.followers_delta != null ? ` (${latest.followers_delta >= 0 ? '+' : ''}${fmtNum(latest.followers_delta)})` : '';
   const monthlyDelta  = latest.monthly_listeners_delta != null ? ` (${latest.monthly_listeners_delta >= 0 ? '+' : ''}${fmtNum(latest.monthly_listeners_delta)})` : '';
+  const rankStr = latest.world_rank != null ? ` · #${fmtNum(latest.world_rank)} globally${latest.world_rank_delta != null ? ` (${latest.world_rank_delta <= 0 ? '+' : ''}${fmtNum(-latest.world_rank_delta)})` : ''}` : '';
   document.getElementById('as-artist-meta').textContent =
-    `${fmtNum(latest.followers)} followers${followersDelta} · ${fmtNum(latest.monthly_listeners)} monthly listeners${monthlyDelta}`;
+    `${fmtNum(latest.followers)} followers${followersDelta} · ${fmtNum(latest.monthly_listeners)} monthly listeners${monthlyDelta}${rankStr}`;
 
   document.getElementById('as-total-streams').textContent = fmtNum(latest.total_streams);
   document.getElementById('as-track-count').textContent = fmtNum(latest.track_count);

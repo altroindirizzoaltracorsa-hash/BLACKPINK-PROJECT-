@@ -358,7 +358,7 @@ def previous_artist_stat(artist_id):
         "date": f"lt.{TODAY}",
         "order": "date.desc",
         "limit": 1,
-        "select": "date,total_streams,followers,monthly_listeners",
+        "select": "date,total_streams,followers,monthly_listeners,world_rank",
     })
     return rows[0] if rows else None
 
@@ -410,8 +410,10 @@ def process_artist(client, artist_id, artist_name):
     artist_delta = (total_streams - prev_artist["total_streams"]) if prev_artist else None
     prev_followers = prev_artist.get("followers") if prev_artist else None
     prev_monthly = prev_artist.get("monthly_listeners") if prev_artist else None
+    prev_rank = prev_artist.get("world_rank") if prev_artist else None
     followers_delta = (artist_data.followers - prev_followers) if (artist_data.followers is not None and prev_followers is not None) else None
     monthly_delta = (artist_data.monthly_listeners - prev_monthly) if (artist_data.monthly_listeners is not None and prev_monthly is not None) else None
+    rank_delta = (artist_data.world_rank - prev_rank) if (artist_data.world_rank is not None and prev_rank is not None) else None
     sb("POST", "/artist_daily_stats",
        params={"on_conflict": "artist_id,date"},
        headers={"Prefer": "resolution=merge-duplicates"},
@@ -424,9 +426,11 @@ def process_artist(client, artist_id, artist_name):
            "followers_delta": followers_delta,
            "monthly_listeners": artist_data.monthly_listeners,
            "monthly_listeners_delta": monthly_delta,
+           "world_rank": artist_data.world_rank,
+           "world_rank_delta": rank_delta,
            "track_count": len(canonical),
        }])
-    print(f"  saved. daily_delta={artist_delta}, followers_delta={followers_delta}, monthly_listeners_delta={monthly_delta}")
+    print(f"  saved. delta={artist_delta}, followers_delta={followers_delta}, monthly_delta={monthly_delta}, rank=#{artist_data.world_rank} (delta={rank_delta})")
 
 
 def main():
