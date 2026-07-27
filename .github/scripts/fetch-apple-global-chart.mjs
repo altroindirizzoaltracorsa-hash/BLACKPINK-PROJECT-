@@ -104,7 +104,7 @@ async function extractTokenViaBrowser() {
     const auth = request.headers()['authorization'];
     if (auth?.startsWith('Bearer ') && !capturedToken) {
       capturedToken = auth.slice(7);
-      console.log(`  ✓ Captured bearer token (${capturedToken.slice(0, 20)}…)`);
+      console.log(`  ✓ Captured bearer token via request intercept (${capturedToken.slice(0, 20)}…)`);
     }
   });
 
@@ -129,25 +129,67 @@ async function extractTokenViaBrowser() {
   }
   await page.waitForTimeout(5000);
 
-  // If we got tracks via intercept but not yet via direct call, use them
-  if (!capturedTracks && capturedToken) {
+  // Try extracting token from Apple Music's embedded config meta tag
+  // Apple injects their developer token into the page for their own web player
+  if (!capturedToken) {
+    capturedToken = await page.evaluate(() => {
+      // Method 1: desktop-music-app config meta tag
+      try {
+        const meta = document.querySelector('meta[name="desktop-music-app/config/environment"]');
+        if (meta) {
+          const cfg = JSON.parse(decodeURIComponent(meta.getAttribute('content') || ''));
+          const t = cfg?.MEDIA_API?.token;
+          if (t) return t;
+        }
+      } catch (_) {}
+
+      // Method 2: scan all inline script tags for a JWT-looking token
+      for (const s of document.querySelectorAll('script:not([src])')) {
+        const m = s.textContent.match(/"token"\s*:\s*"(eyJ[A-Za-z0-9._-]{50,})"/);
+        if (m) return m[1];
+      }
+
+      // Method 3: look for MusicKit.configure call
+      for (const s of document.querySelectorAll('script:not([src])')) {
+        const m = s.textContent.match(/developerToken\s*[=:]\s*["'](eyJ[A-Za-z0-9._-]{50,})["']/);
+        if (m) return m[1];
+      }
+
+      return null;
+    }).catch(() => null);
+
+    if (capturedToken) {
+      console.log(`  ✓ Extracted bearer token from page HTML (${capturedToken.slice(0, 20)}…)`);
+    }
+  }
+
+  // If we now have a token, call the API
+  if (capturedToken && !capturedTracks) {
     console.log('  Trying API with captured token…');
     capturedTracks = await fetchWithToken(capturedToken);
   }
 
-  // Last resort: scrape from DOM
+  // Last resort: scrape visible track list from DOM
   if (!capturedTracks) {
     console.log('  Falling back to DOM scrape…');
     capturedTracks = await page.evaluate(() => {
+      // Log all text on page to help debug selectors
       const rows = Array.from(document.querySelectorAll(
-        '[data-testid="tracklist-row"], .songs-list-row, li.row'
+        '[data-testid="tracklist-row"], .songs-list-row, li.row, [class*="track"], [class*="song"]'
       ));
+      console.log('DOM rows found:', rows.length);
       return rows.map((row, i) => {
-        const title = row.querySelector('[data-testid="track-title"], .songs-list__col--song-name, .title')?.textContent?.trim();
-        const artist = row.querySelector('[data-testid="track-artist"], .songs-list__col--artist, .artist')?.textContent?.trim();
-        return title ? { _domScrape: true, position: i + 1, title, artist } : null;
+        const title =
+          row.querySelector('[data-testid="track-title"], [class*="track-name"], [class*="song-name"], .title')?.textContent?.trim()
+          ?? row.querySelector('span:first-child')?.textContent?.trim();
+        const artist =
+          row.querySelector('[data-testid="track-artist"], [class*="artist"], .artist')?.textContent?.trim();
+        return title ? { _domScrape: true, position: i + 1, title, artist: artist ?? '' } : null;
       }).filter(Boolean);
     });
+    if (capturedTracks?.length) {
+      console.log(`  DOM scrape: ${capturedTracks.length} rows, sample: ${JSON.stringify(capturedTracks.slice(0,3))}`);
+    }
   }
 
   await browser.close();
