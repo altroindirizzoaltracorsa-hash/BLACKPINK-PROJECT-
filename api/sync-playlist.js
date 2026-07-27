@@ -9,6 +9,24 @@ const OAUTH_REDIRECT_URI = 'https://blinksunited.com/api/spotify-oauth-callback'
 // currently host a live playlist, the highest day number is the newest one.
 const DAY_PATTERN = /\[Day\s*(\d+)\]/i;
 
+function _lastSunday(year, month) {
+  const d = new Date(Date.UTC(year, month + 1, 0));
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+  return d;
+}
+function _italyOffset() {
+  const now = new Date();
+  return (now >= _lastSunday(now.getUTCFullYear(), 2) && now < _lastSunday(now.getUTCFullYear(), 9)) ? 2 : 1;
+}
+function currentItalyDayStart() {
+  const offset = _italyOffset();
+  const it = new Date(Date.now() + offset * 3600 * 1000);
+  const [y, m, d, h] = [it.getUTCFullYear(), it.getUTCMonth(), it.getUTCDate(), it.getUTCHours()];
+  let start = new Date(Date.UTC(y, m, d, 2 - offset, 0, 0));
+  if (h < 2) start = new Date(start.getTime() - 86400000);
+  return start.getTime();
+}
+
 function getAccountIds() {
   return (process.env.SPOTIFY_PLAYLIST_ACCOUNTS || '')
     .split(',').map(s => s.trim()).filter(Boolean);
@@ -206,7 +224,20 @@ export default async function handler(req, res) {
     // Never let a flaky scan (stale token, privacy-toggle lag, etc.) regress the
     // live playlist to a lower day number than what's already published.
     const current = await redis.get(KEY);
-    const currentDay = current?.day || 0;
+    const currentDay = current?.day ?? 0;
+
+    // Don't overwrite a playlist the admin published manually today — they set it
+    // intentionally and the cron shouldn't undo it just because Spotify hasn't
+    // been updated yet (or they saved without a day number).
+    if (current?.source === 'manual' && (current?.updatedAt ?? 0) >= currentItalyDayStart()) {
+      return res.status(200).json({
+        ok: false,
+        error: `Manual playlist published today (Day ${currentDay || '?'}) — skipping cron update`,
+        candidates: allMatches,
+        accountDiagnostics,
+      });
+    }
+
     if (best.day < currentDay) {
       return res.status(200).json({
         ok: false,
@@ -216,7 +247,19 @@ export default async function handler(req, res) {
       });
     }
 
-    await redis.set(KEY, { id: best.id, url: best.url, updatedAt: Date.now(), day: best.day, account: best.account });
+    // Preserve the original updatedAt so promotePendingIfDue() in playlist.js can
+    // still correctly detect whether a queued entry is due at the 2am boundary.
+    // The cron running at 1:30 UTC (after 2am Italy) must NOT stamp a post-2am
+    // updatedAt, otherwise the queue is never promoted.
+    await redis.set(KEY, {
+      id: best.id,
+      url: best.url,
+      updatedAt: current?.updatedAt ?? Date.now(),
+      cronAt: Date.now(),
+      day: best.day,
+      account: best.account,
+      source: 'cron',
+    });
 
     res.status(200).json({ ok: true, chosen: best, candidates: allMatches, accountDiagnostics });
   } catch (e) {
