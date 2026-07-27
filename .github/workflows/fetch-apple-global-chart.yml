@@ -26,10 +26,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Remove npm artifacts so they don't block git pull --rebase
-          rm -rf node_modules package.json package-lock.json
           git add data/
           [ -f .apple-token-cache ] && git add .apple-token-cache || true
           git diff --cached --quiet || git commit -m "chore: update Apple Music Global Top 100 $(date -u +%Y-%m-%d)"
+          # Reset working tree to HEAD so git pull --rebase doesn't complain about
+          # unstaged changes (npm artifacts may be tracked from a prior run, making
+          # their deletion appear as an unstaged change even after we rm -rf them).
+          git restore . 2>/dev/null || git checkout -- . 2>/dev/null || true
+          git clean -fd 2>/dev/null || true
           git pull --rebase
           git push
