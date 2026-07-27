@@ -1,9 +1,801 @@
 {
-  "generatedAt": "2026-07-27T10:23:38.889Z",
+  "generatedAt": "2026-07-27T10:10:20.631Z",
   "date": "2026-07-27",
-  "regions": {},
+  "regions": {
+    "gb": {
+      "region": "United Kingdom",
+      "cc": "gb",
+      "totalEntries": 100,
+      "hits": []
+    },
+    "kr": {
+      "region": "South Korea",
+      "cc": "kr",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 1,
+          "name": "Less than a Lover",
+          "artists": "제니",
+          "member": "JENNIE",
+          "releaseDate": "2026-07-24",
+          "url": "https://music.apple.com/kr/album/less-than-a-lover/6792226269?i=6792226270",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/a0/8a/84/a08a8464-c3d8-04aa-84a0-9498a52985dd/196874620281.jpg/100x100bb.jpg",
+          "appleId": "6792226270"
+        },
+        {
+          "position": 39,
+          "name": "toxic till the end",
+          "artists": "로제",
+          "member": "ROSÉ",
+          "releaseDate": "2024-11-27",
+          "url": "https://music.apple.com/kr/album/toxic-till-the-end/1783280221?i=1783280225",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/4d/cb/54/4dcb5453-7493-cd68-81f8-fc7ae28101ce/8800287299416_cover.jpg/100x100bb.jpg",
+          "appleId": "1783280225"
+        },
+        {
+          "position": 66,
+          "name": "Love Hangover",
+          "artists": "제니 & Dominic Fike",
+          "member": "JENNIE",
+          "releaseDate": "2025-01-31",
+          "url": "https://music.apple.com/kr/album/love-hangover/1792161325?i=1792161326",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/1d/95/73/1d95730a-ab3a-fed0-1d62-4576e76353be/cover_KM0020933_1.jpg/100x100bb.jpg",
+          "appleId": "1792161326"
+        }
+      ]
+    },
+    "jp": {
+      "region": "Japan",
+      "cc": "jp",
+      "totalEntries": 100,
+      "hits": []
+    },
+    "au": {
+      "region": "Australia",
+      "cc": "au",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 90,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-02-06",
+          "url": "https://music.apple.com/au/album/dracula-jennie-remix/1874125260?i=1874125269",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/af/3f/26/af3f2607-c541-a340-b028-7210634cf47b/196874054246.jpg/100x100bb.jpg",
+          "appleId": "1874125269"
+        }
+      ]
+    },
+    "ca": {
+      "region": "Canada",
+      "cc": "ca",
+      "totalEntries": 100,
+      "hits": []
+    },
+    "de": {
+      "region": "Germany",
+      "cc": "de",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 57,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-02-06",
+          "url": "https://music.apple.com/de/album/dracula-jennie-remix/1874125260?i=1874125269",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/af/3f/26/af3f2607-c541-a340-b028-7210634cf47b/196874054246.jpg/100x100bb.jpg",
+          "appleId": "1874125269"
+        }
+      ]
+    },
+    "it": {
+      "region": "Italy",
+      "cc": "it",
+      "totalEntries": 100,
+      "hits": []
+    },
+    "br": {
+      "region": "Brazil",
+      "cc": "br",
+      "totalEntries": 100,
+      "hits": []
+    },
+    "mx": {
+      "region": "Mexico",
+      "cc": "mx",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 93,
+          "name": "Q U E V A S H A C E R H O Y ?",
+          "artists": "Omar Courtz & De La Rose",
+          "member": "ROSÉ",
+          "releaseDate": "2024-09-20",
+          "url": "https://music.apple.com/mx/album/q-u-e-v-a-s-h-a-c-e-r-h-o-y/1760193416?i=1760194559",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/30/0f/48/300f48fd-f560-8aaf-17c1-00a4531ad61a/198588847695.jpg/100x100bb.jpg",
+          "appleId": "1760194559"
+        }
+      ]
+    },
+    "tw": {
+      "region": "Taiwan",
+      "cc": "tw",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 1,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-07-24",
+          "url": "https://music.apple.com/tw/album/less-than-a-lover/6793277024?i=6793277028",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/8d/ac/90/8dac9090-2a14-20d9-ed97-6a35ad299beb/196874620281.jpg/100x100bb.jpg",
+          "appleId": "6793277028"
+        },
+        {
+          "position": 34,
+          "name": "like JENNIE",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2025-03-03",
+          "url": "https://music.apple.com/tw/album/like-jennie/1795979743?i=1795979745",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/ec/13/67/ec13677e-f7b4-acc2-b59b-ea8533b1a374/196872890983.jpg/100x100bb.jpg",
+          "appleId": "1795979745"
+        },
+        {
+          "position": 78,
+          "name": "JUMP",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "releaseDate": "2025-07-11",
+          "url": "https://music.apple.com/tw/album/jump/1824672650?i=1824672652",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/ee/5e/74/ee5e747e-52e5-458c-e850-0ed3d703b184/8809519880736.jpg/100x100bb.jpg",
+          "appleId": "1824672652"
+        }
+      ]
+    },
+    "hk": {
+      "region": "Hong Kong",
+      "cc": "hk",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 1,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-07-24",
+          "url": "https://music.apple.com/hk/album/less-than-a-lover/6793277024?i=6793277028",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/8d/ac/90/8dac9090-2a14-20d9-ed97-6a35ad299beb/196874620281.jpg/100x100bb.jpg",
+          "appleId": "6793277028"
+        },
+        {
+          "position": 67,
+          "name": "like JENNIE",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2025-03-03",
+          "url": "https://music.apple.com/hk/album/like-jennie/1795979743?i=1795979745",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/ec/13/67/ec13677e-f7b4-acc2-b59b-ea8533b1a374/196872890983.jpg/100x100bb.jpg",
+          "appleId": "1795979745"
+        }
+      ]
+    },
+    "sg": {
+      "region": "Singapore",
+      "cc": "sg",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 2,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-07-24",
+          "url": "https://music.apple.com/sg/album/less-than-a-lover/6793277024?i=6793277028",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/8d/ac/90/8dac9090-2a14-20d9-ed97-6a35ad299beb/196874620281.jpg/100x100bb.jpg",
+          "appleId": "6793277028"
+        },
+        {
+          "position": 32,
+          "name": "like JENNIE",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2025-03-03",
+          "url": "https://music.apple.com/sg/album/like-jennie/1795979743?i=1795979745",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/ec/13/67/ec13677e-f7b4-acc2-b59b-ea8533b1a374/196872890983.jpg/100x100bb.jpg",
+          "appleId": "1795979745"
+        },
+        {
+          "position": 39,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-02-06",
+          "url": "https://music.apple.com/sg/album/dracula-jennie-remix/1874125260?i=1874125269",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/af/3f/26/af3f2607-c541-a340-b028-7210634cf47b/196874054246.jpg/100x100bb.jpg",
+          "appleId": "1874125269"
+        },
+        {
+          "position": 48,
+          "name": "JUMP",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "releaseDate": "2025-07-11",
+          "url": "https://music.apple.com/sg/album/jump/1824672650?i=1824672652",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/ee/5e/74/ee5e747e-52e5-458c-e850-0ed3d703b184/8809519880736.jpg/100x100bb.jpg",
+          "appleId": "1824672652"
+        }
+      ]
+    },
+    "ph": {
+      "region": "Philippines",
+      "cc": "ph",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 45,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-07-24",
+          "url": "https://music.apple.com/ph/album/less-than-a-lover/6793277024?i=6793277028",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/8d/ac/90/8dac9090-2a14-20d9-ed97-6a35ad299beb/196874620281.jpg/100x100bb.jpg",
+          "appleId": "6793277028"
+        },
+        {
+          "position": 90,
+          "name": "Handlebars",
+          "artists": "JENNIE & Dua Lipa",
+          "member": "JENNIE",
+          "releaseDate": "2025-03-06",
+          "url": "https://music.apple.com/ph/album/handlebars/1795979743?i=1795979748",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/ec/13/67/ec13677e-f7b4-acc2-b59b-ea8533b1a374/196872890983.jpg/100x100bb.jpg",
+          "appleId": "1795979748"
+        }
+      ]
+    },
+    "th": {
+      "region": "Thailand",
+      "cc": "th",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 10,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-07-24",
+          "url": "https://music.apple.com/th/album/less-than-a-lover/6793277024?i=6793277028",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/8d/ac/90/8dac9090-2a14-20d9-ed97-6a35ad299beb/196874620281.jpg/100x100bb.jpg",
+          "appleId": "6793277028"
+        },
+        {
+          "position": 97,
+          "name": "Handlebars",
+          "artists": "JENNIE & Dua Lipa",
+          "member": "JENNIE",
+          "releaseDate": "2025-03-06",
+          "url": "https://music.apple.com/th/album/handlebars/1795979743?i=1795979748",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/ec/13/67/ec13677e-f7b4-acc2-b59b-ea8533b1a374/196872890983.jpg/100x100bb.jpg",
+          "appleId": "1795979748"
+        }
+      ]
+    },
+    "id": {
+      "region": "Indonesia",
+      "cc": "id",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 25,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-07-24",
+          "url": "https://music.apple.com/id/album/less-than-a-lover/6793277024?i=6793277028",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/8d/ac/90/8dac9090-2a14-20d9-ed97-6a35ad299beb/196874620281.jpg/100x100bb.jpg",
+          "appleId": "6793277028"
+        }
+      ]
+    },
+    "my": {
+      "region": "Malaysia",
+      "cc": "my",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 5,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-07-24",
+          "url": "https://music.apple.com/my/album/less-than-a-lover/6793277024?i=6793277028",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/8d/ac/90/8dac9090-2a14-20d9-ed97-6a35ad299beb/196874620281.jpg/100x100bb.jpg",
+          "appleId": "6793277028"
+        },
+        {
+          "position": 38,
+          "name": "like JENNIE",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2025-03-03",
+          "url": "https://music.apple.com/my/album/like-jennie/1795979743?i=1795979745",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/ec/13/67/ec13677e-f7b4-acc2-b59b-ea8533b1a374/196872890983.jpg/100x100bb.jpg",
+          "appleId": "1795979745"
+        },
+        {
+          "position": 72,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-02-06",
+          "url": "https://music.apple.com/my/album/dracula-jennie-remix/1874125260?i=1874125269",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/af/3f/26/af3f2607-c541-a340-b028-7210634cf47b/196874054246.jpg/100x100bb.jpg",
+          "appleId": "1874125269"
+        }
+      ]
+    },
+    "vn": {
+      "region": "Vietnam",
+      "cc": "vn",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 5,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-07-24",
+          "url": "https://music.apple.com/vn/album/less-than-a-lover/6793277024?i=6793277028",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/8d/ac/90/8dac9090-2a14-20d9-ed97-6a35ad299beb/196874620281.jpg/100x100bb.jpg",
+          "appleId": "6793277028"
+        },
+        {
+          "position": 100,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-02-06",
+          "url": "https://music.apple.com/vn/album/dracula-jennie-remix/1874125260?i=1874125269",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/af/3f/26/af3f2607-c541-a340-b028-7210634cf47b/196874054246.jpg/100x100bb.jpg",
+          "appleId": "1874125269"
+        }
+      ]
+    },
+    "in": {
+      "region": "India",
+      "cc": "in",
+      "totalEntries": 100,
+      "hits": []
+    },
+    "nz": {
+      "region": "New Zealand",
+      "cc": "nz",
+      "totalEntries": 100,
+      "hits": []
+    },
+    "nl": {
+      "region": "Netherlands",
+      "cc": "nl",
+      "totalEntries": 100,
+      "hits": []
+    },
+    "se": {
+      "region": "Sweden",
+      "cc": "se",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 46,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-07-24",
+          "url": "https://music.apple.com/se/album/less-than-a-lover/6793277024?i=6793277028",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/8d/ac/90/8dac9090-2a14-20d9-ed97-6a35ad299beb/196874620281.jpg/100x100bb.jpg",
+          "appleId": "6793277028"
+        },
+        {
+          "position": 69,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-02-06",
+          "url": "https://music.apple.com/se/album/dracula-jennie-remix/1874125260?i=1874125269",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/af/3f/26/af3f2607-c541-a340-b028-7210634cf47b/196874054246.jpg/100x100bb.jpg",
+          "appleId": "1874125269"
+        }
+      ]
+    },
+    "no": {
+      "region": "Norway",
+      "cc": "no",
+      "totalEntries": 100,
+      "hits": []
+    },
+    "pl": {
+      "region": "Poland",
+      "cc": "pl",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 46,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-02-06",
+          "url": "https://music.apple.com/pl/album/dracula-jennie-remix/1874125260?i=1874125269",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/af/3f/26/af3f2607-c541-a340-b028-7210634cf47b/196874054246.jpg/100x100bb.jpg",
+          "appleId": "1874125269"
+        }
+      ]
+    },
+    "tr": {
+      "region": "Turkey",
+      "cc": "tr",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 25,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-07-24",
+          "url": "https://music.apple.com/tr/album/less-than-a-lover/6793277024?i=6793277028",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/8d/ac/90/8dac9090-2a14-20d9-ed97-6a35ad299beb/196874620281.jpg/100x100bb.jpg",
+          "appleId": "6793277028"
+        }
+      ]
+    },
+    "ar": {
+      "region": "Argentina",
+      "cc": "ar",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 29,
+          "name": "Q U E V A S H A C E R H O Y ?",
+          "artists": "Omar Courtz & De La Rose",
+          "member": "ROSÉ",
+          "releaseDate": "2024-09-20",
+          "url": "https://music.apple.com/ar/album/q-u-e-v-a-s-h-a-c-e-r-h-o-y/1760193416?i=1760194559",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/30/0f/48/300f48fd-f560-8aaf-17c1-00a4531ad61a/198588847695.jpg/100x100bb.jpg",
+          "appleId": "1760194559"
+        },
+        {
+          "position": 88,
+          "name": "Toda (Remix) [feat. Lyanno & Cazzu]",
+          "artists": "Alex Rose, Rauw Alejandro & Lenny Tavárez",
+          "member": "ROSÉ",
+          "releaseDate": "2018-05-31",
+          "url": "https://music.apple.com/ar/album/toda-remix-feat-lyanno-cazzu/1888597357?i=1888597358",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/be/69/e6/be69e6a9-2b75-0994-9dfd-bc71fe839bf6/0.jpg/100x100bb.jpg",
+          "appleId": "1888597358"
+        },
+        {
+          "position": 90,
+          "name": "444 (Remix)",
+          "artists": "Yan Block, De La Rose, Hades66 & Ñengo Flow",
+          "member": "ROSÉ",
+          "releaseDate": "2025-10-31",
+          "url": "https://music.apple.com/ar/album/444-remix/1847491294?i=1847491295",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/34/5c/6b/345c6b5c-d097-edaa-505d-0aec3422f989/199806054369.jpg/100x100bb.jpg",
+          "appleId": "1847491295"
+        }
+      ]
+    },
+    "cl": {
+      "region": "Chile",
+      "cc": "cl",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 35,
+          "name": "Q U E V A S H A C E R H O Y ?",
+          "artists": "Omar Courtz & De La Rose",
+          "member": "ROSÉ",
+          "releaseDate": "2024-09-20",
+          "url": "https://music.apple.com/cl/album/q-u-e-v-a-s-h-a-c-e-r-h-o-y/1760193416?i=1760194559",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/30/0f/48/300f48fd-f560-8aaf-17c1-00a4531ad61a/198588847695.jpg/100x100bb.jpg",
+          "appleId": "1760194559"
+        }
+      ]
+    },
+    "co": {
+      "region": "Colombia",
+      "cc": "co",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 4,
+          "name": "MERO TOTE",
+          "artists": "Blessd, De La Rose & Los Money Makers",
+          "member": "ROSÉ",
+          "releaseDate": "2026-06-18",
+          "url": "https://music.apple.com/co/album/mero-tote/6779825180?i=6779825388",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/33/a1/e5/33a1e588-73c9-9bf1-54eb-91275332dde2/1200214359645.jpg/100x100bb.jpg",
+          "appleId": "6779825388"
+        },
+        {
+          "position": 54,
+          "name": "Q U E V A S H A C E R H O Y ?",
+          "artists": "Omar Courtz & De La Rose",
+          "member": "ROSÉ",
+          "releaseDate": "2024-09-20",
+          "url": "https://music.apple.com/co/album/q-u-e-v-a-s-h-a-c-e-r-h-o-y/1760193416?i=1760194559",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/30/0f/48/300f48fd-f560-8aaf-17c1-00a4531ad61a/198588847695.jpg/100x100bb.jpg",
+          "appleId": "1760194559"
+        }
+      ]
+    },
+    "pe": {
+      "region": "Peru",
+      "cc": "pe",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 22,
+          "name": "Q U E V A S H A C E R H O Y ?",
+          "artists": "Omar Courtz & De La Rose",
+          "member": "ROSÉ",
+          "releaseDate": "2024-09-20",
+          "url": "https://music.apple.com/pe/album/q-u-e-v-a-s-h-a-c-e-r-h-o-y/1760193416?i=1760194559",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/30/0f/48/300f48fd-f560-8aaf-17c1-00a4531ad61a/198588847695.jpg/100x100bb.jpg",
+          "appleId": "1760194559"
+        }
+      ]
+    },
+    "sa": {
+      "region": "Saudi Arabia",
+      "cc": "sa",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 45,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-07-24",
+          "url": "https://music.apple.com/sa/album/less-than-a-lover/6793277024?i=6793277028",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/8d/ac/90/8dac9090-2a14-20d9-ed97-6a35ad299beb/196874620281.jpg/100x100bb.jpg",
+          "appleId": "6793277028"
+        }
+      ]
+    },
+    "za": {
+      "region": "South Africa",
+      "cc": "za",
+      "totalEntries": 100,
+      "hits": []
+    },
+    "at": {
+      "region": "Austria",
+      "cc": "at",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 82,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-02-06",
+          "url": "https://music.apple.com/at/album/dracula-jennie-remix/1874125260?i=1874125269",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/af/3f/26/af3f2607-c541-a340-b028-7210634cf47b/196874054246.jpg/100x100bb.jpg",
+          "appleId": "1874125269"
+        }
+      ]
+    },
+    "ch": {
+      "region": "Switzerland",
+      "cc": "ch",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 60,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-02-06",
+          "url": "https://music.apple.com/ch/album/dracula-jennie-remix/1874125260?i=1874125269",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/af/3f/26/af3f2607-c541-a340-b028-7210634cf47b/196874054246.jpg/100x100bb.jpg",
+          "appleId": "1874125269"
+        }
+      ]
+    },
+    "pt": {
+      "region": "Portugal",
+      "cc": "pt",
+      "totalEntries": 100,
+      "hits": []
+    },
+    "fi": {
+      "region": "Finland",
+      "cc": "fi",
+      "totalEntries": 100,
+      "hits": []
+    },
+    "ie": {
+      "region": "Ireland",
+      "cc": "ie",
+      "totalEntries": 100,
+      "hits": []
+    },
+    "cn": {
+      "region": "China",
+      "cc": "cn",
+      "totalEntries": 100,
+      "hits": [
+        {
+          "position": 15,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-07-24",
+          "url": "https://music.apple.com/cn/album/less-than-a-lover/6793277024?i=6793277028",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/8d/ac/90/8dac9090-2a14-20d9-ed97-6a35ad299beb/196874620281.jpg/100x100bb.jpg",
+          "appleId": "6793277028"
+        }
+      ]
+    },
+    "global": {
+      "region": "Global (synthetic)",
+      "cc": "global",
+      "totalEntries": 3600,
+      "hits": [
+        {
+          "position": 1,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-07-24",
+          "url": "https://music.apple.com/tw/album/less-than-a-lover/6793277024?i=6793277028",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/8d/ac/90/8dac9090-2a14-20d9-ed97-6a35ad299beb/196874620281.jpg/100x100bb.jpg",
+          "appleId": "6793277028",
+          "countriesCharting": ["tw","hk","sg","ph","th","id","my","vn","se","tr","sa","cn"],
+          "bestPosition": 1
+        },
+        {
+          "position": 2,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2026-02-06",
+          "url": "https://music.apple.com/au/album/dracula-jennie-remix/1874125260?i=1874125269",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/af/3f/26/af3f2607-c541-a340-b028-7210634cf47b/196874054246.jpg/100x100bb.jpg",
+          "appleId": "1874125269",
+          "countriesCharting": ["au","de","sg","my","vn","se","pl","at","ch"],
+          "bestPosition": 39
+        },
+        {
+          "position": 3,
+          "name": "Q U E V A S H A C E R H O Y ?",
+          "artists": "Omar Courtz & De La Rose",
+          "member": "ROSÉ",
+          "releaseDate": "2024-09-20",
+          "url": "https://music.apple.com/mx/album/q-u-e-v-a-s-h-a-c-e-r-h-o-y/1760193416?i=1760194559",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/30/0f/48/300f48fd-f560-8aaf-17c1-00a4531ad61a/198588847695.jpg/100x100bb.jpg",
+          "appleId": "1760194559",
+          "countriesCharting": ["mx","ar","cl","co","pe"],
+          "bestPosition": 22
+        },
+        {
+          "position": 4,
+          "name": "like JENNIE",
+          "artists": "JENNIE",
+          "member": "JENNIE",
+          "releaseDate": "2025-03-03",
+          "url": "https://music.apple.com/tw/album/like-jennie/1795979743?i=1795979745",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/ec/13/67/ec13677e-f7b4-acc2-b59b-ea8533b1a374/196872890983.jpg/100x100bb.jpg",
+          "appleId": "1795979745",
+          "countriesCharting": ["tw","hk","sg","my"],
+          "bestPosition": 32
+        },
+        {
+          "position": 5,
+          "name": "JUMP",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "releaseDate": "2025-07-11",
+          "url": "https://music.apple.com/tw/album/jump/1824672650?i=1824672652",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/ee/5e/74/ee5e747e-52e5-458c-e850-0ed3d703b184/8809519880736.jpg/100x100bb.jpg",
+          "appleId": "1824672652",
+          "countriesCharting": ["tw","sg"],
+          "bestPosition": 48
+        },
+        {
+          "position": 6,
+          "name": "Handlebars",
+          "artists": "JENNIE & Dua Lipa",
+          "member": "JENNIE",
+          "releaseDate": "2025-03-06",
+          "url": "https://music.apple.com/ph/album/handlebars/1795979743?i=1795979748",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/ec/13/67/ec13677e-f7b4-acc2-b59b-ea8533b1a374/196872890983.jpg/100x100bb.jpg",
+          "appleId": "1795979748",
+          "countriesCharting": ["ph","th"],
+          "bestPosition": 90
+        },
+        {
+          "position": 7,
+          "name": "Less than a Lover",
+          "artists": "제니",
+          "member": "JENNIE",
+          "releaseDate": "2026-07-24",
+          "url": "https://music.apple.com/kr/album/less-than-a-lover/6792226269?i=6792226270",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/a0/8a/84/a08a8464-c3d8-04aa-84a0-9498a52985dd/196874620281.jpg/100x100bb.jpg",
+          "appleId": "6792226270",
+          "countriesCharting": ["kr"],
+          "bestPosition": 1
+        },
+        {
+          "position": 8,
+          "name": "MERO TOTE",
+          "artists": "Blessd, De La Rose & Los Money Makers",
+          "member": "ROSÉ",
+          "releaseDate": "2026-06-18",
+          "url": "https://music.apple.com/co/album/mero-tote/6779825180?i=6779825388",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/33/a1/e5/33a1e588-73c9-9bf1-54eb-91275332dde2/1200214359645.jpg/100x100bb.jpg",
+          "appleId": "6779825388",
+          "countriesCharting": ["co"],
+          "bestPosition": 4
+        },
+        {
+          "position": 9,
+          "name": "toxic till the end",
+          "artists": "로제",
+          "member": "ROSÉ",
+          "releaseDate": "2024-11-27",
+          "url": "https://music.apple.com/kr/album/toxic-till-the-end/1783280221?i=1783280225",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/4d/cb/54/4dcb5453-7493-cd68-81f8-fc7ae28101ce/8800287299416_cover.jpg/100x100bb.jpg",
+          "appleId": "1783280225",
+          "countriesCharting": ["kr"],
+          "bestPosition": 39
+        },
+        {
+          "position": 10,
+          "name": "Love Hangover",
+          "artists": "제니 & Dominic Fike",
+          "member": "JENNIE",
+          "releaseDate": "2025-01-31",
+          "url": "https://music.apple.com/kr/album/love-hangover/1792161325?i=1792161326",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/1d/95/73/1d95730a-ab3a-fed0-1d62-4576e76353be/cover_KM0020933_1.jpg/100x100bb.jpg",
+          "appleId": "1792161326",
+          "countriesCharting": ["kr"],
+          "bestPosition": 66
+        },
+        {
+          "position": 11,
+          "name": "Toda (Remix) [feat. Lyanno & Cazzu]",
+          "artists": "Alex Rose, Rauw Alejandro & Lenny Tavárez",
+          "member": "ROSÉ",
+          "releaseDate": "2018-05-31",
+          "url": "https://music.apple.com/ar/album/toda-remix-feat-lyanno-cazzu/1888597357?i=1888597358",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/be/69/e6/be69e6a9-2b75-0994-9dfd-bc71fe839bf6/0.jpg/100x100bb.jpg",
+          "appleId": "1888597358",
+          "countriesCharting": ["ar"],
+          "bestPosition": 88
+        },
+        {
+          "position": 12,
+          "name": "444 (Remix)",
+          "artists": "Yan Block, De La Rose, Hades66 & Ñengo Flow",
+          "member": "ROSÉ",
+          "releaseDate": "2025-10-31",
+          "url": "https://music.apple.com/ar/album/444-remix/1847491294?i=1847491295",
+          "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/34/5c/6b/345c6b5c-d097-edaa-505d-0aec3422f989/199806054369.jpg/100x100bb.jpg",
+          "appleId": "1847491295",
+          "countriesCharting": ["ar"],
+          "bestPosition": 90
+        }
+      ],
+      "note": "Ranked by number of storefronts charting, then best position"
+    }
+  },
   "summary": {
-    "totalHits": 0,
-    "regionsChecked": 0
+    "totalHits": 52,
+    "regionsChecked": 36
   }
 }
