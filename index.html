@@ -2748,9 +2748,10 @@
 
       <div class="ch-controls">
         <select class="ch-country-select" id="am-country-select" onchange="setAmCountry(this.value)">
+          <option value="" disabled selected>— Select a country —</option>
           <option value="us">🇺🇸 United States</option>
           <option value="gb">🇬🇧 United Kingdom</option>
-          <option value="kr" selected>🇰🇷 South Korea</option>
+          <option value="kr">🇰🇷 South Korea</option>
           <option value="jp">🇯🇵 Japan</option>
           <option value="au">🇦🇺 Australia</option>
           <option value="ca">🇨🇦 Canada</option>
@@ -4035,7 +4036,7 @@ function renderYtRegion() {
 const AM_URL        = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/apple-chart-positions-latest.json';
 const AM_GLOBAL_URL = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/apple-global-chart-latest.json';
 const AM_MEMBER_COLORS = { JENNIE: '#FF0066', 'ROSÉ': '#ff9eb5', LISA: '#ffce6e', JISOO: '#7eb8f7', BLACKPINK: '#c084fc' };
-let amCountry    = 'kr';
+let amCountry    = '';
 let amData       = null;
 let amGlobalData = null;
 let amGlobalFullShown = false;
@@ -4078,11 +4079,11 @@ async function loadAppleCharts() {
   }
 
   renderAmGlobal();
-  renderAmRegion();
+  if (amCountry) renderAmRegion();
 }
 
 function renderAmRegion() {
-  if (!amData) return;
+  if (!amCountry || !amData) return;
   _amClear();
   const regionData = amData.regions?.[amCountry];
   if (!regionData) {
