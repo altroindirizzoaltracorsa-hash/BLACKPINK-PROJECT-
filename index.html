@@ -1649,6 +1649,7 @@
       <div class="nav-dropdown" id="charts-dropdown-panel">
         <a class="nav-dropdown-item" id="nav-spotify-charts" href="/spotify-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('spotify-charts'); return false;">Spotify Charts</a>
         <a class="nav-dropdown-item" id="nav-youtube" href="/youtube" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('youtube'); return false;">YouTube Charts</a>
+        <a class="nav-dropdown-item" id="nav-apple" href="/apple-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('apple'); return false;">Apple Music Charts</a>
       </div>
     </li>
     <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
@@ -2660,6 +2661,88 @@
 </div><!-- end youtube page -->
 
 <!-- ══════════════════════════════════════
+     APPLE MUSIC CHARTS PAGE
+     ══════════════════════════════════════ -->
+<div id="page-apple" class="page">
+  <div class="as-page">
+
+    <div class="as-header">
+      <svg class="as-gem" viewBox="0 0 814 1000" fill="currentColor" aria-hidden="true" style="color:#fc3c44;width:30px;height:30px;">
+        <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-42.3-150.3-109.2c-52.3-75.5-96.1-193.9-96.1-306.1 0-211.8 138.4-323.8 274.3-323.8 72.5 0 132.9 47.8 178.7 47.8 43.6 0 112.1-50.8 193.4-50.8 31.2 0 108.2 2.6 168.2 79.6zm-47.7-177.7c32.4-38.5 55.6-91.9 55.6-145.3 0-7.5-.6-15.1-1.9-21.7-51.9 1.9-112.8 34.9-149.2 80.5-28.7 34.2-56.9 88.9-56.9 143 0 8.3 1.3 16.6 1.9 19.2 3.2.6 8.4 1.3 13.6 1.3 46.5 0 103.1-31.2 136.9-77z"/>
+      </svg>
+      <p class="as-eyebrow">Apple Music Charts</p>
+      <h1 class="as-title">BLACKPINK<br><span>ON APPLE MUSIC</span></h1>
+      <p class="as-sub">Real Apple Music Most Played chart positions — BLACKPINK + members</p>
+    </div>
+
+    <div class="as-inner">
+      <div class="ch-controls">
+        <select class="ch-country-select" id="am-country-select" onchange="setAmCountry(this.value)">
+          <option value="us">🇺🇸 United States</option>
+          <option value="gb">🇬🇧 United Kingdom</option>
+          <option value="kr">🇰🇷 South Korea</option>
+          <option value="jp">🇯🇵 Japan</option>
+          <option value="au">🇦🇺 Australia</option>
+          <option value="ca">🇨🇦 Canada</option>
+          <option value="de">🇩🇪 Germany</option>
+          <option value="fr">🇫🇷 France</option>
+          <option value="it">🇮🇹 Italy</option>
+          <option value="es">🇪🇸 Spain</option>
+          <option value="br">🇧🇷 Brazil</option>
+          <option value="mx">🇲🇽 Mexico</option>
+          <option value="tw">🇹🇼 Taiwan</option>
+          <option value="hk">🇭🇰 Hong Kong</option>
+          <option value="sg">🇸🇬 Singapore</option>
+          <option value="ph">🇵🇭 Philippines</option>
+          <option value="th">🇹🇭 Thailand</option>
+          <option value="id">🇮🇩 Indonesia</option>
+          <option value="my">🇲🇾 Malaysia</option>
+          <option value="vn">🇻🇳 Vietnam</option>
+          <option value="in">🇮🇳 India</option>
+          <option value="nz">🇳🇿 New Zealand</option>
+          <option value="nl">🇳🇱 Netherlands</option>
+          <option value="se">🇸🇪 Sweden</option>
+          <option value="no">🇳🇴 Norway</option>
+          <option value="pl">🇵🇱 Poland</option>
+          <option value="tr">🇹🇷 Turkey</option>
+          <option value="ar">🇦🇷 Argentina</option>
+          <option value="cl">🇨🇱 Chile</option>
+          <option value="co">🇨🇴 Colombia</option>
+          <option value="pe">🇵🇪 Peru</option>
+          <option value="sa">🇸🇦 Saudi Arabia</option>
+          <option value="za">🇿🇦 South Africa</option>
+          <option value="be">🇧🇪 Belgium</option>
+          <option value="at">🇦🇹 Austria</option>
+          <option value="ch">🇨🇭 Switzerland</option>
+          <option value="pt">🇵🇹 Portugal</option>
+          <option value="fi">🇫🇮 Finland</option>
+          <option value="dk">🇩🇰 Denmark</option>
+          <option value="ie">🇮🇪 Ireland</option>
+        </select>
+      </div>
+
+      <div id="am-meta" class="ch-meta"></div>
+      <div id="am-loading" class="lb-loading">Loading…</div>
+      <div id="am-error" class="as-error" style="display:none;"></div>
+      <div id="am-empty" class="ch-empty" style="display:none;"></div>
+
+      <div class="as-table-wrap as-tracks-wrap" id="am-table-wrap" style="display:none;">
+        <table class="as-table as-tracks-table">
+          <thead><tr>
+            <th class="as-rank-col"></th>
+            <th>Track</th>
+            <th>Member</th>
+            <th class="right">Days</th>
+          </tr></thead>
+          <tbody id="am-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div><!-- end apple music page -->
+
+<!-- ══════════════════════════════════════
      VOTE PAGE
 ════════════════════════════════════════ -->
 <div id="page-vote" class="page">
@@ -3577,7 +3660,7 @@ function closeMobileNav() {
   document.getElementById('nav-hamburger').classList.remove('open');
 }
 
-const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube' };
+const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube', apple: '/apple-charts' };
 
 // Mirrors the per-route <title> the Vercel edge middleware sets on first
 // load, so client-side navigation keeps the tab title in sync too.
@@ -3591,6 +3674,7 @@ const PAGE_TITLES = {
   streams: 'BLACKPINK Spotify Streams | BLINKS UNITED',
   'spotify-charts': 'Spotify Charts | BLINKS UNITED',
   youtube: 'YouTube Charts | BLINKS UNITED',
+  apple: 'Apple Music Charts | BLINKS UNITED',
 };
 
 function pathToPage(pathname) {
@@ -3875,6 +3959,83 @@ function renderYtRegion() {
   tableWrap.style.display = '';
 }
 
+// ── Apple Music Charts ─────────────────────────────────────────────────────
+const AM_URL = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/apple-chart-positions-latest.json';
+const AM_MEMBER_COLORS = { JENNIE: '#FF0066', 'ROSÉ': '#ff9eb5', LISA: '#ffce6e', JISOO: '#7eb8f7', BLACKPINK: '#c084fc' };
+let amCountry = 'us';
+let amData    = null;
+
+function setAmCountry(val) {
+  amCountry = val;
+  renderAmRegion();
+}
+
+function _amClear() {
+  document.getElementById('am-empty').style.display     = 'none';
+  document.getElementById('am-table-wrap').style.display = 'none';
+  document.getElementById('am-body').innerHTML           = '';
+  document.getElementById('am-meta').textContent         = '';
+}
+
+async function loadAppleCharts() {
+  const loadEl  = document.getElementById('am-loading');
+  const errorEl = document.getElementById('am-error');
+  if (!loadEl) return;
+  loadEl.style.display  = 'block';
+  errorEl.style.display = 'none';
+  _amClear();
+  try {
+    if (!amData) {
+      const r = await fetch(AM_URL + '?_=' + Date.now());
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      amData = await r.json();
+    }
+    loadEl.style.display = 'none';
+    renderAmRegion();
+  } catch(e) {
+    loadEl.style.display  = 'none';
+    errorEl.style.display = 'block';
+    errorEl.textContent   = 'Could not load Apple Music chart data.';
+  }
+}
+
+function renderAmRegion() {
+  if (!amData) return;
+  _amClear();
+  const regionData = amData.regions?.[amCountry];
+  if (!regionData) {
+    const emptyEl = document.getElementById('am-empty');
+    emptyEl.textContent   = 'No data available for this region yet.';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  const hits = (regionData.hits || []).slice().sort((a, b) => a.position - b.position);
+  const regionName = regionData.region || amCountry.toUpperCase();
+  const dateLabel  = amData.date || '';
+  document.getElementById('am-meta').textContent = [dateLabel, regionName, 'Apple Music Most Played'].filter(Boolean).join(' · ');
+  if (!hits.length) {
+    const emptyEl = document.getElementById('am-empty');
+    emptyEl.textContent   = 'No BLACKPINK/member entries in the top 100 for ' + regionName + '.';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  document.getElementById('am-body').innerHTML = hits.map(h => {
+    const color = AM_MEMBER_COLORS[h.member] || '#FF0066';
+    const song  = h.url
+      ? '<a href="' + h.url + '" target="_blank" rel="noopener" style="color:var(--white);text-decoration:none">' + h.name + '</a>'
+      : h.name;
+    const days = h.releaseDate && amData.date
+      ? Math.max(1, Math.round((new Date(amData.date) - new Date(h.releaseDate)) / 86400000) + 1)
+      : null;
+    return '<tr>' +
+      '<td class="as-rank-col" style="font-family:var(--display);font-size:1.2rem;color:' + color + '">' + h.position + '</td>' +
+      '<td style="font-size:0.88rem">' + song + '<br><span style="color:var(--muted);font-size:0.75rem">' + (h.artists || '') + '</span></td>' +
+      '<td><span class="yt-member-tag" style="background:' + color + '22;color:' + color + '">' + h.member + '</span></td>' +
+      '<td class="right" style="color:var(--muted);font-size:0.75rem">' + (days !== null ? days + 'd' : '—') + '</td>' +
+    '</tr>';
+  }).join('');
+  document.getElementById('am-table-wrap').style.display = '';
+}
 
 function setChartType(type, btn) {
   chartType = type;
@@ -4048,10 +4209,11 @@ function showPage(page, { replace = false } = {}) {
     }
   }
   if (page === 'badges') { tryAutoLoad(); renderSpecialBadges(); }
-  if (page === 'spotify-charts' || page === 'youtube') document.getElementById('nav-charts')?.classList.add('active');
+  if (page === 'spotify-charts' || page === 'youtube' || page === 'apple') document.getElementById('nav-charts')?.classList.add('active');
   if (page === 'streams') loadArtistStreamsPage();
   if (page === 'spotify-charts') loadSpotifyChartsPage();
   if (page === 'youtube') loadYouTubeCharts();
+  if (page === 'apple') loadAppleCharts();
   if (page === 'leaderboard') {
     if (!acctBreakdown) tryAutoLoad(); // pre-load per-service data so own-row breakdown works
     const pending = parseLbHistoryParam();
