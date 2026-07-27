@@ -1665,7 +1665,8 @@
     <li><a href="/streams" onclick="showPage('streams'); closeMobileNav(); return false;" id="nav-streams">Streams</a></li>
     <li class="nav-has-dropdown" id="nav-charts-dropdown">
       <a href="/charts" class="nav-dropdown-trigger" id="nav-charts"
-         onclick="toggleChartsDropdown(event)">Charts <span class="nav-chevron">▾</span></a>
+         onclick="toggleChartsDropdown(event)"
+         ondblclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); showPage('charts');">Charts <span class="nav-chevron">▾</span></a>
       <div class="nav-dropdown" id="charts-dropdown-panel">
         <a class="nav-dropdown-item" id="nav-spotify-charts" href="/spotify-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('spotify-charts'); return false;">Spotify Charts</a>
         <a class="nav-dropdown-item" id="nav-youtube" href="/youtube" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('youtube'); return false;">YouTube Charts</a>
