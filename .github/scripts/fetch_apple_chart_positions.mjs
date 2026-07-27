@@ -103,11 +103,32 @@ function identifyMember(artistName = '') {
 
 async function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+async function fetchWithRetry(url, opts, retries = 3) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const r = await fetch(url, opts);
+      if ((r.status === 503 || r.status === 429) && attempt < retries - 1) {
+        const wait = 3000 * (attempt + 1);
+        console.log(`  → HTTP ${r.status}, retrying in ${wait / 1000}s…`);
+        await delay(wait);
+        continue;
+      }
+      return r;
+    } catch (e) {
+      if (attempt < retries - 1) {
+        await delay(3000 * (attempt + 1));
+      } else {
+        throw e;
+      }
+    }
+  }
+}
+
 async function fetchStorefront({ cc, name }) {
   const url = `${BASE}/${cc}/music/top-songs/100/songs.json`;
   let resp;
   try {
-    resp = await fetch(url, { headers: { 'User-Agent': UA } });
+    resp = await fetchWithRetry(url, { headers: { 'User-Agent': UA } });
   } catch (e) {
     console.error(`  [${cc}] fetch error: ${e.message}`);
     return null;
