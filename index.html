@@ -1654,12 +1654,12 @@
     <li><a href="/leaderboard" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
     <li><a href="/streams" onclick="showPage('streams'); closeMobileNav(); return false;" id="nav-streams">Streams</a></li>
     <li class="nav-has-dropdown" id="nav-charts-dropdown">
-      <a href="/spotify-charts" class="nav-dropdown-trigger" id="nav-charts"
+      <a href="/charts" class="nav-dropdown-trigger" id="nav-charts"
          onclick="toggleChartsDropdown(event)">Charts <span class="nav-chevron">▾</span></a>
       <div class="nav-dropdown" id="charts-dropdown-panel">
         <a class="nav-dropdown-item" id="nav-spotify-charts" href="/spotify-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('spotify-charts'); return false;">Spotify Charts</a>
         <a class="nav-dropdown-item" id="nav-youtube" href="/youtube" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('youtube'); return false;">YouTube Charts</a>
-        <a class="nav-dropdown-item" id="nav-apple" href="/apple-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('apple'); return false;">Apple Music Charts</a>
+        <a class="nav-dropdown-item" id="nav-apple" href="/charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('apple'); return false;">Apple Music Charts</a>
       </div>
     </li>
     <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
@@ -3696,7 +3696,7 @@ function closeMobileNav() {
   document.getElementById('nav-hamburger').classList.remove('open');
 }
 
-const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube', apple: '/apple-charts' };
+const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube', apple: '/charts' };
 
 // Mirrors the per-route <title> the Vercel edge middleware sets on first
 // load, so client-side navigation keeps the tab title in sync too.
@@ -3714,7 +3714,8 @@ const PAGE_TITLES = {
 };
 
 function pathToPage(pathname) {
-  const clean = pathname.replace(/\/+$/, '') || '/';
+  let clean = pathname.replace(/\/+$/, '') || '/';
+  if (clean === '/apple-charts') clean = '/charts';
   const entry = Object.entries(PAGE_PATHS).find(([, p]) => p === clean);
   return entry ? entry[0] : 'home';
 }
