@@ -3890,8 +3890,10 @@ function renderArtistStreamsPage() {
     avatarFallback.style.display = 'flex';
   }
   document.getElementById('as-artist-name').textContent = d.name || '';
+  const followersDelta = latest.followers_delta != null ? ` (${latest.followers_delta >= 0 ? '+' : ''}${fmtNum(latest.followers_delta)})` : '';
+  const monthlyDelta  = latest.monthly_listeners_delta != null ? ` (${latest.monthly_listeners_delta >= 0 ? '+' : ''}${fmtNum(latest.monthly_listeners_delta)})` : '';
   document.getElementById('as-artist-meta').textContent =
-    `${fmtNum(latest.followers)} followers · ${fmtNum(latest.monthly_listeners)} monthly listeners`;
+    `${fmtNum(latest.followers)} followers${followersDelta} · ${fmtNum(latest.monthly_listeners)} monthly listeners${monthlyDelta}`;
 
   document.getElementById('as-total-streams').textContent = fmtNum(latest.total_streams);
   document.getElementById('as-track-count').textContent = fmtNum(latest.track_count);
