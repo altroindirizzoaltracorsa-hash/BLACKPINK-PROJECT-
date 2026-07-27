@@ -2723,11 +2723,34 @@
     </div>
 
     <div class="as-inner">
+
+      <div class="am-global-section">
+        <p class="am-section-label">🌍 GLOBAL TOP 100</p>
+        <div id="amg-loading" class="lb-loading">Loading…</div>
+        <div id="amg-error" class="as-error" style="display:none;"></div>
+        <div id="amg-empty" class="ch-empty" style="display:none;"></div>
+        <div id="amg-hits-wrap" style="display:none;">
+          <div id="amg-meta" class="ch-meta" style="margin-bottom:0.5rem;"></div>
+          <div id="amg-hits-list"></div>
+        </div>
+        <div id="amg-full-wrap" style="display:none;margin-top:1rem;">
+          <div class="as-table-wrap">
+            <table class="as-table as-tracks-table">
+              <thead><tr><th class="as-rank-col"></th><th>Track</th><th>Artist</th></tr></thead>
+              <tbody id="amg-full-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <button id="amg-toggle-btn" class="am-toggle-btn" style="display:none;" onclick="toggleAmGlobalFull()">Show Full Top 100 ▾</button>
+      </div>
+      <hr class="am-divider">
+      <p class="am-section-label">📍 COUNTRY CHARTS</p>
+
       <div class="ch-controls">
         <select class="ch-country-select" id="am-country-select" onchange="setAmCountry(this.value)">
           <option value="us">🇺🇸 United States</option>
           <option value="gb">🇬🇧 United Kingdom</option>
-          <option value="kr">🇰🇷 South Korea</option>
+          <option value="kr" selected>🇰🇷 South Korea</option>
           <option value="jp">🇯🇵 Japan</option>
           <option value="au">🇦🇺 Australia</option>
           <option value="ca">🇨🇦 Canada</option>
