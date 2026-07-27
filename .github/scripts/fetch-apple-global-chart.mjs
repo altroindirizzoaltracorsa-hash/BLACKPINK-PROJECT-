@@ -5,8 +5,10 @@
  *
  * Token extraction order:
  *   1. Cached token (.apple-token-cache) — call API directly, fast
- *   2. Plain HTTP fetch of music.apple.com — scan HTML/scripts for JWT
- *   3. Playwright browser — intercept window.fetch via addInitScript
+ *   2. Plain HTTP fetch of music.apple.com — scan ALL scripts for JWT,
+ *      also try MusicKit.js directly from Apple's CDN
+ *   3. Playwright browser — block service workers + context.route() for
+ *      network-level interception; also try JSON-LD from rendered DOM
  *
  * Saves:
  *   data/apple-global-chart-latest.json
@@ -42,6 +44,17 @@ function identifyMember(a = '') {
   return 'BLACKPINK';
 }
 
+// ── JWT detection ─────────────────────────────────────────────────────────────
+
+// A JWT has three base64url-encoded segments separated by dots.
+// Apple's developer tokens start with eyJ (base64 for '{"').
+const JWT_RE = /eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}/;
+
+function findJwt(text) {
+  const m = text.match(JWT_RE);
+  return m ? m[0] : null;
+}
+
 // ── API call ──────────────────────────────────────────────────────────────────
 
 async function callApi(token, path) {
@@ -68,12 +81,13 @@ async function fetchTracks(token) {
 // ── Token extraction: Method 1 — plain HTTP scan ──────────────────────────────
 
 async function extractTokenFromHttp() {
-  console.log('  [Method 1] Scanning music.apple.com HTML for token…');
+  console.log('  [Method 1] Scanning music.apple.com for embedded token…');
   try {
     const resp = await fetch(PLAYLIST_URL, {
       headers: { 'User-Agent': UA, Accept: 'text/html,*/*' },
     });
     const html = await resp.text();
+    console.log(`  HTML: ${html.length} chars — first 300: ${html.slice(0, 300).replace(/\n/g, ' ')}`);
 
     // Pattern A: meta tag config
     const metaM = html.match(/name="desktop-music-app\/config\/environment"\s+content="([^"]+)"/);
@@ -85,20 +99,47 @@ async function extractTokenFromHttp() {
       } catch (_) {}
     }
 
-    // Pattern B: token JSON key
-    const tokenM = html.match(/"token"\s*:\s*"(eyJ[A-Za-z0-9._-]{50,})"/);
-    if (tokenM) { console.log('  ✓ Token from HTML script'); return tokenM[1]; }
+    // Pattern B: JWT directly in HTML
+    const inlineJwt = findJwt(html);
+    if (inlineJwt) { console.log('  ✓ Token inline in HTML'); return inlineJwt; }
 
-    // Pattern C: scan JS bundle URLs found in the HTML
-    const scriptUrls = [...html.matchAll(/src="(https?:\/\/[^"]*\.js[^"]*)"/g)].map(m => m[1]);
-    const appBundles = scriptUrls.filter(u => u.includes('music.apple.com'));
-    console.log(`  Scanning ${appBundles.length} app JS bundles…`);
-    for (const url of appBundles.slice(0, 5)) {
-      const r = await fetch(url, { headers: { 'User-Agent': UA } }).catch(() => null);
-      if (!r?.ok) continue;
-      const js = await r.text();
-      const m = js.match(/["']?(eyJ[A-Za-z0-9._-]{100,})["']?/);
-      if (m) { console.log(`  ✓ Token from JS bundle ${url.split('/').pop()}`); return m[1]; }
+    // Pattern C: scan ALL <script src="..."> — handle relative and absolute URLs
+    const srcMatches = [...html.matchAll(/\bsrc="([^"]+)"/g)].map(m => m[1]);
+    const jsSrcs = srcMatches.filter(u => u.includes('.js'));
+    const absUrls = jsSrcs.map(u => {
+      if (u.startsWith('http')) return u;
+      if (u.startsWith('//')) return `https:${u}`;
+      return `https://music.apple.com${u.startsWith('/') ? '' : '/'}${u}`;
+    });
+    console.log(`  ${srcMatches.length} src= attrs, ${jsSrcs.length} JS files to scan`);
+
+    for (const url of absUrls.slice(0, 8)) {
+      try {
+        const r = await fetch(url, { headers: { 'User-Agent': UA } });
+        if (!r.ok) continue;
+        const js = await r.text();
+        const t = findJwt(js);
+        if (t) { console.log(`  ✓ Token from JS bundle ${url.split('/').pop().slice(0, 40)}`); return t; }
+      } catch (_) {}
+    }
+
+    // Pattern D: try Apple's MusicKit CDN directly (well-known source of the token)
+    console.log('  Trying MusicKit CDN URLs…');
+    const musicKitUrls = [
+      'https://js-cdn.music.apple.com/musickit/v3/musickit.js',
+      'https://js-cdn.music.apple.com/musickit/v1/musickit.js',
+    ];
+    for (const url of musicKitUrls) {
+      try {
+        const r = await fetch(url, { headers: { 'User-Agent': UA } });
+        if (!r.ok) { console.log(`  ${url} → HTTP ${r.status}`); continue; }
+        const js = await r.text();
+        const t = findJwt(js);
+        if (t) { console.log(`  ✓ Token from MusicKit CDN`); return t; }
+        console.log(`  MusicKit.js fetched (${js.length} chars) but no JWT found`);
+      } catch (e) {
+        console.log(`  MusicKit fetch error: ${e.message}`);
+      }
     }
   } catch (e) {
     console.log(`  Method 1 error: ${e.message}`);
@@ -106,56 +147,50 @@ async function extractTokenFromHttp() {
   return null;
 }
 
-// ── Token extraction: Method 2 — Playwright with fetch intercept ──────────────
+// ── Token extraction: Method 2 — Playwright with route interception ───────────
 
 async function extractTokenViaBrowser() {
-  console.log('  [Method 2] Launching Chromium with fetch intercept…');
+  console.log('  [Method 2] Playwright (service workers blocked, context.route intercept)…');
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ userAgent: UA, locale: 'en-US' });
 
-  // Inject script before any page JS runs — intercepts window.fetch
-  await context.addInitScript(() => {
-    const _fetch = window.fetch;
-    window.fetch = async function (input, init) {
-      const url = typeof input === 'string' ? input : input?.url ?? '';
-      if (url.includes('api.music.apple.com')) {
-        const auth = (init?.headers?.Authorization ?? init?.headers?.authorization ?? '');
-        if (auth.startsWith('Bearer ')) {
-          window.__amToken = auth.slice(7);
-        }
-      }
-      return _fetch.apply(this, arguments);
-    };
+  // Block service workers so ALL requests go through channels Playwright can intercept.
+  // Apple Music's web player uses SWs for caching/API calls; without this block,
+  // the Bearer token never appears in network events we can observe.
+  const context = await browser.newContext({
+    userAgent: UA,
+    locale: 'en-US',
+    serviceWorkers: 'block',
+  });
 
-    // Also intercept XMLHttpRequest
-    const _open = XMLHttpRequest.prototype.open;
-    const _setReqHeader = XMLHttpRequest.prototype.setRequestHeader;
-    const _xhrUrls = new WeakMap();
-    XMLHttpRequest.prototype.open = function (m, url) {
-      _xhrUrls.set(this, url);
-      return _open.apply(this, arguments);
-    };
-    XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
-      if ((_xhrUrls.get(this) ?? '').includes('api.music.apple.com') &&
-          name.toLowerCase() === 'authorization' && value.startsWith('Bearer ')) {
-        window.__amToken = value.slice(7);
-      }
-      return _setReqHeader.apply(this, arguments);
-    };
+  let capturedToken = null;
+  let capturedData = null;
+
+  // Network-level route intercept — fires for every request before it's sent.
+  // Works regardless of service workers because SWs are blocked above.
+  await context.route('**/api.music.apple.com/**', async route => {
+    const req = route.request();
+    const auth = req.headers()['authorization'] ?? '';
+    if (auth.startsWith('Bearer ') && !capturedToken) {
+      capturedToken = auth.slice(7);
+      console.log(`  ✓ Token captured via route (${capturedToken.slice(0, 20)}…)`);
+    }
+    await route.continue();
   });
 
   const page = await context.newPage();
-  let capturedData = null;
 
-  // Also intercept response bodies for playlist data
+  // Also capture response bodies for playlist data
   page.on('response', async response => {
     const url = response.url();
     if (!url.includes('api.music.apple.com') || !url.includes('playlists')) return;
     try {
       const json = await response.json();
       const tracks = json?.data?.[0]?.relationships?.tracks?.data ?? [];
-      if (tracks.length > 0) capturedData = tracks;
+      if (tracks.length > 0) {
+        capturedData = tracks;
+        console.log(`  ✓ ${tracks.length} tracks captured from API response`);
+      }
     } catch (_) {}
   });
 
@@ -164,19 +199,52 @@ async function extractTokenViaBrowser() {
   } catch (e) {
     console.log(`  Navigation: ${e.message}`);
   }
-  await page.waitForTimeout(6000);
+  await page.waitForTimeout(8000);
 
-  // Read token from page context
-  const token = await page.evaluate(() => window.__amToken ?? null).catch(() => null);
-  if (token) console.log(`  ✓ Token captured via fetch intercept (${token.slice(0, 20)}…)`);
+  // Fallback: check if token is in page-level meta tag after JS hydration
+  if (!capturedToken) {
+    capturedToken = await page.evaluate(() => {
+      try {
+        const content = document.querySelector('meta[name="desktop-music-app/config/environment"]')?.content;
+        if (content) return JSON.parse(decodeURIComponent(content))?.MEDIA_API?.token ?? null;
+      } catch (_) {}
+      return null;
+    }).catch(() => null);
+    if (capturedToken) console.log('  ✓ Token from page meta tag (post-hydration)');
+  }
 
-  // If we have response data already, use it
-  if (!capturedData && token) {
-    capturedData = await fetchTracks(token);
+  // Fallback: extract from JSON-LD structured data in the rendered DOM
+  if (!capturedData) {
+    console.log('  Trying JSON-LD / structured data extraction from DOM…');
+    capturedData = await page.evaluate(() => {
+      for (const s of document.querySelectorAll('script[type="application/ld+json"]')) {
+        try {
+          const d = JSON.parse(s.textContent ?? '');
+          if (d['@type'] === 'MusicPlaylist' && Array.isArray(d.track) && d.track.length > 10) {
+            return d.track.map((t, i) => ({
+              id: String(i),
+              attributes: {
+                name: t.name ?? '',
+                artistName: (t.byArtist?.name ?? t.byArtist ?? ''),
+                url: t.url ?? null,
+                artwork: null,
+                releaseDate: null,
+              },
+            }));
+          }
+        } catch (_) {}
+      }
+      return null;
+    }).catch(() => null);
+    if (capturedData) console.log(`  ✓ ${capturedData.length} tracks from JSON-LD`);
+  }
+
+  if (!capturedData && capturedToken) {
+    capturedData = await fetchTracks(capturedToken);
   }
 
   await browser.close();
-  return { token, tracks: capturedData };
+  return { token: capturedToken, tracks: capturedData };
 }
 
 // ── Parse raw track objects ───────────────────────────────────────────────────
