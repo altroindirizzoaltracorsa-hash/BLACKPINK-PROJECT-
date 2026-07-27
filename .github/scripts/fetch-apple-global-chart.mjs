@@ -1,22 +1,22 @@
 /**
  * fetch-apple-global-chart.mjs
  *
- * Fetches the Apple Music Global Top 100 playlist by:
- *   1. First trying a direct API call using a cached developer token
- *   2. If that fails (token expired), launching headless Chromium to intercept
- *      the actual API request Apple's web player makes, extract the token,
- *      then call the API directly and cache the new token.
+ * Fetches the Apple Music Global Top 100 playlist.
+ *
+ * Token extraction order:
+ *   1. Cached token (.apple-token-cache) — call API directly, fast
+ *   2. Plain HTTP fetch of music.apple.com — scan HTML/scripts for JWT
+ *   3. Playwright browser — intercept window.fetch via addInitScript
  *
  * Saves:
  *   data/apple-global-chart-latest.json
  *   data/apple-global-chart-YYYY-MM-DD.json
- *   .apple-token-cache (bearer token, refreshed as needed)
+ *   .apple-token-cache  (committed, refreshed when expired)
  */
 
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { chromium } from 'playwright';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..', '..');
@@ -26,99 +26,136 @@ const TOKEN_CACHE = join(REPO_ROOT, '.apple-token-cache');
 const PLAYLIST_ID = 'pl.d25f5d1181894928af76c85c967f8f31';
 const PLAYLIST_URL = `https://music.apple.com/us/playlist/top-100-global/${PLAYLIST_ID}`;
 const API_BASE = 'https://api.music.apple.com/v1';
-
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
 const ARTIST_PATTERNS = [
-  /\bblackpink\b/i,
-  /\blisa\b/i,
-  /\blalisa\b/i,
-  /\bjennie\b/i,
-  /ros[eé]/i,
-  /\bjisoo\b/i,
-  /블랙핑크/,
-  /리사/,
-  /제니/,
-  /로제/,
-  /지수/,
+  /\bblackpink\b/i, /\blisa\b/i, /\blalisa\b/i, /\bjennie\b/i,
+  /ros[eé]/i, /\bjisoo\b/i, /블랙핑크/, /리사/, /제니/, /로제/, /지수/,
 ];
-
-function isBlackpink(artist = '') {
-  return ARTIST_PATTERNS.some(p => p.test(artist));
-}
-
-function identifyMember(artist = '') {
-  if (/\bblackpink\b/i.test(artist) || /블랙핑크/.test(artist)) return 'BLACKPINK';
-  if (/\blisa\b/i.test(artist) || /\blalisa\b/i.test(artist) || /리사/.test(artist)) return 'LISA';
-  if (/\bjennie\b/i.test(artist) || /제니/.test(artist)) return 'JENNIE';
-  if (/ros[eé]/i.test(artist) || /로제/.test(artist)) return 'ROSÉ';
-  if (/\bjisoo\b/i.test(artist) || /지수/.test(artist)) return 'JISOO';
+function isBlackpink(a = '') { return ARTIST_PATTERNS.some(p => p.test(a)); }
+function identifyMember(a = '') {
+  if (/\bblackpink\b/i.test(a) || /블랙핑크/.test(a)) return 'BLACKPINK';
+  if (/\blisa\b/i.test(a) || /\blalisa\b/i.test(a) || /리사/.test(a)) return 'LISA';
+  if (/\bjennie\b/i.test(a) || /제니/.test(a)) return 'JENNIE';
+  if (/ros[eé]/i.test(a) || /로제/.test(a)) return 'ROSÉ';
+  if (/\bjisoo\b/i.test(a) || /지수/.test(a)) return 'JISOO';
   return 'BLACKPINK';
 }
 
+// ── API call ──────────────────────────────────────────────────────────────────
+
 async function callApi(token, path) {
-  const url = `${API_BASE}${path}`;
-  const resp = await fetch(url, {
+  const resp = await fetch(`${API_BASE}${path}`, {
     headers: {
-      'Authorization': `Bearer ${token}`,
-      'Origin': 'https://music.apple.com',
-      'Referer': 'https://music.apple.com/',
+      Authorization: `Bearer ${token}`,
+      Origin: 'https://music.apple.com',
+      Referer: 'https://music.apple.com/',
       'User-Agent': UA,
     },
   });
-  if (!resp.ok) return null;
+  if (!resp.ok) {
+    console.log(`  API ${path} → HTTP ${resp.status}`);
+    return null;
+  }
   return resp.json();
 }
 
-async function fetchWithToken(token) {
-  console.log('  Trying direct API call…');
-  // Fetch playlist, then its tracks (relationships)
-  const data = await callApi(token,
-    `/catalog/us/playlists/${PLAYLIST_ID}?include=tracks&limit=100`);
-  if (!data) return null;
-
-  const tracks = data?.data?.[0]?.relationships?.tracks?.data ?? [];
-  if (tracks.length === 0) {
-    // Try without limit param
-    const data2 = await callApi(token, `/catalog/us/playlists/${PLAYLIST_ID}?include=tracks`);
-    const tracks2 = data2?.data?.[0]?.relationships?.tracks?.data ?? [];
-    if (tracks2.length === 0) return null;
-    return tracks2;
-  }
-  return tracks;
+async function fetchTracks(token) {
+  const data = await callApi(token, `/catalog/us/playlists/${PLAYLIST_ID}?include=tracks`);
+  return data?.data?.[0]?.relationships?.tracks?.data ?? null;
 }
 
+// ── Token extraction: Method 1 — plain HTTP scan ──────────────────────────────
+
+async function extractTokenFromHttp() {
+  console.log('  [Method 1] Scanning music.apple.com HTML for token…');
+  try {
+    const resp = await fetch(PLAYLIST_URL, {
+      headers: { 'User-Agent': UA, Accept: 'text/html,*/*' },
+    });
+    const html = await resp.text();
+
+    // Pattern A: meta tag config
+    const metaM = html.match(/name="desktop-music-app\/config\/environment"\s+content="([^"]+)"/);
+    if (metaM) {
+      try {
+        const cfg = JSON.parse(decodeURIComponent(metaM[1]));
+        const t = cfg?.MEDIA_API?.token;
+        if (t) { console.log('  ✓ Token from meta tag'); return t; }
+      } catch (_) {}
+    }
+
+    // Pattern B: token JSON key
+    const tokenM = html.match(/"token"\s*:\s*"(eyJ[A-Za-z0-9._-]{50,})"/);
+    if (tokenM) { console.log('  ✓ Token from HTML script'); return tokenM[1]; }
+
+    // Pattern C: scan JS bundle URLs found in the HTML
+    const scriptUrls = [...html.matchAll(/src="(https?:\/\/[^"]*\.js[^"]*)"/g)].map(m => m[1]);
+    const appBundles = scriptUrls.filter(u => u.includes('music.apple.com'));
+    console.log(`  Scanning ${appBundles.length} app JS bundles…`);
+    for (const url of appBundles.slice(0, 5)) {
+      const r = await fetch(url, { headers: { 'User-Agent': UA } }).catch(() => null);
+      if (!r?.ok) continue;
+      const js = await r.text();
+      const m = js.match(/["']?(eyJ[A-Za-z0-9._-]{100,})["']?/);
+      if (m) { console.log(`  ✓ Token from JS bundle ${url.split('/').pop()}`); return m[1]; }
+    }
+  } catch (e) {
+    console.log(`  Method 1 error: ${e.message}`);
+  }
+  return null;
+}
+
+// ── Token extraction: Method 2 — Playwright with fetch intercept ──────────────
+
 async function extractTokenViaBrowser() {
-  console.log('  Launching Chromium to extract Apple Music bearer token…');
+  console.log('  [Method 2] Launching Chromium with fetch intercept…');
+  const { chromium } = await import('playwright');
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ userAgent: UA, locale: 'en-US' });
-  const page = await context.newPage();
 
-  let capturedToken = null;
-  let capturedTracks = null;
+  // Inject script before any page JS runs — intercepts window.fetch
+  await context.addInitScript(() => {
+    const _fetch = window.fetch;
+    window.fetch = async function (input, init) {
+      const url = typeof input === 'string' ? input : input?.url ?? '';
+      if (url.includes('api.music.apple.com')) {
+        const auth = (init?.headers?.Authorization ?? init?.headers?.authorization ?? '');
+        if (auth.startsWith('Bearer ')) {
+          window.__amToken = auth.slice(7);
+        }
+      }
+      return _fetch.apply(this, arguments);
+    };
 
-  // Intercept outgoing requests to grab the Authorization header
-  page.on('request', request => {
-    const url = request.url();
-    if (!url.includes('api.music.apple.com')) return;
-    const auth = request.headers()['authorization'];
-    if (auth?.startsWith('Bearer ') && !capturedToken) {
-      capturedToken = auth.slice(7);
-      console.log(`  ✓ Captured bearer token via request intercept (${capturedToken.slice(0, 20)}…)`);
-    }
+    // Also intercept XMLHttpRequest
+    const _open = XMLHttpRequest.prototype.open;
+    const _setReqHeader = XMLHttpRequest.prototype.setRequestHeader;
+    const _xhrUrls = new WeakMap();
+    XMLHttpRequest.prototype.open = function (m, url) {
+      _xhrUrls.set(this, url);
+      return _open.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
+      if ((_xhrUrls.get(this) ?? '').includes('api.music.apple.com') &&
+          name.toLowerCase() === 'authorization' && value.startsWith('Bearer ')) {
+        window.__amToken = value.slice(7);
+      }
+      return _setReqHeader.apply(this, arguments);
+    };
   });
 
-  // Intercept responses to grab playlist data directly
+  const page = await context.newPage();
+  let capturedData = null;
+
+  // Also intercept response bodies for playlist data
   page.on('response', async response => {
     const url = response.url();
     if (!url.includes('api.music.apple.com') || !url.includes('playlists')) return;
     try {
       const json = await response.json();
       const tracks = json?.data?.[0]?.relationships?.tracks?.data ?? [];
-      if (tracks.length > 0 && !capturedTracks) {
-        capturedTracks = tracks;
-        console.log(`  ✓ Captured ${tracks.length} tracks from intercepted response`);
-      }
+      if (tracks.length > 0) capturedData = tracks;
     } catch (_) {}
   });
 
@@ -127,109 +164,44 @@ async function extractTokenViaBrowser() {
   } catch (e) {
     console.log(`  Navigation: ${e.message}`);
   }
-  await page.waitForTimeout(5000);
+  await page.waitForTimeout(6000);
 
-  // Try extracting token from Apple Music's embedded config meta tag
-  // Apple injects their developer token into the page for their own web player
-  if (!capturedToken) {
-    capturedToken = await page.evaluate(() => {
-      // Method 1: desktop-music-app config meta tag
-      try {
-        const meta = document.querySelector('meta[name="desktop-music-app/config/environment"]');
-        if (meta) {
-          const cfg = JSON.parse(decodeURIComponent(meta.getAttribute('content') || ''));
-          const t = cfg?.MEDIA_API?.token;
-          if (t) return t;
-        }
-      } catch (_) {}
+  // Read token from page context
+  const token = await page.evaluate(() => window.__amToken ?? null).catch(() => null);
+  if (token) console.log(`  ✓ Token captured via fetch intercept (${token.slice(0, 20)}…)`);
 
-      // Method 2: scan all inline script tags for a JWT-looking token
-      for (const s of document.querySelectorAll('script:not([src])')) {
-        const m = s.textContent.match(/"token"\s*:\s*"(eyJ[A-Za-z0-9._-]{50,})"/);
-        if (m) return m[1];
-      }
-
-      // Method 3: look for MusicKit.configure call
-      for (const s of document.querySelectorAll('script:not([src])')) {
-        const m = s.textContent.match(/developerToken\s*[=:]\s*["'](eyJ[A-Za-z0-9._-]{50,})["']/);
-        if (m) return m[1];
-      }
-
-      return null;
-    }).catch(() => null);
-
-    if (capturedToken) {
-      console.log(`  ✓ Extracted bearer token from page HTML (${capturedToken.slice(0, 20)}…)`);
-    }
-  }
-
-  // If we now have a token, call the API
-  if (capturedToken && !capturedTracks) {
-    console.log('  Trying API with captured token…');
-    capturedTracks = await fetchWithToken(capturedToken);
-  }
-
-  // Last resort: scrape visible track list from DOM
-  if (!capturedTracks) {
-    console.log('  Falling back to DOM scrape…');
-    capturedTracks = await page.evaluate(() => {
-      // Log all text on page to help debug selectors
-      const rows = Array.from(document.querySelectorAll(
-        '[data-testid="tracklist-row"], .songs-list-row, li.row, [class*="track"], [class*="song"]'
-      ));
-      console.log('DOM rows found:', rows.length);
-      return rows.map((row, i) => {
-        const title =
-          row.querySelector('[data-testid="track-title"], [class*="track-name"], [class*="song-name"], .title')?.textContent?.trim()
-          ?? row.querySelector('span:first-child')?.textContent?.trim();
-        const artist =
-          row.querySelector('[data-testid="track-artist"], [class*="artist"], .artist')?.textContent?.trim();
-        return title ? { _domScrape: true, position: i + 1, title, artist: artist ?? '' } : null;
-      }).filter(Boolean);
-    });
-    if (capturedTracks?.length) {
-      console.log(`  DOM scrape: ${capturedTracks.length} rows, sample: ${JSON.stringify(capturedTracks.slice(0,3))}`);
-    }
+  // If we have response data already, use it
+  if (!capturedData && token) {
+    capturedData = await fetchTracks(token);
   }
 
   await browser.close();
-  return { token: capturedToken, tracks: capturedTracks };
+  return { token, tracks: capturedData };
 }
 
-function parseTracks(tracks) {
-  return tracks.map((t, i) => {
-    // API response shape
-    if (t.attributes) {
-      const attr = t.attributes;
-      const artistName = attr.artistName ?? '';
-      return {
-        position: i + 1,
-        name: attr.name ?? '',
-        artists: artistName,
-        member: isBlackpink(artistName) ? identifyMember(artistName) : null,
-        releaseDate: attr.releaseDate ?? null,
-        url: attr.url ?? null,
-        artworkUrl: attr.artwork?.url
-          ? attr.artwork.url.replace('{w}', '100').replace('{h}', '100')
-          : null,
-        appleId: t.id ?? null,
-        isBlackpink: isBlackpink(artistName),
-      };
-    }
-    // DOM scrape shape
+// ── Parse raw track objects ───────────────────────────────────────────────────
+
+function parseTracks(raw) {
+  return raw.map((t, i) => {
+    const attr = t.attributes ?? {};
+    const artistName = attr.artistName ?? t.artist ?? '';
     return {
-      position: t.position,
-      name: t.title ?? '',
-      artists: t.artist ?? '',
-      member: isBlackpink(t.artist ?? '') ? identifyMember(t.artist ?? '') : null,
-      releaseDate: null,
-      url: null,
-      artworkUrl: null,
-      appleId: null,
-      isBlackpink: isBlackpink(t.artist ?? ''),
+      position: i + 1,
+      name: attr.name ?? t.title ?? '',
+      artists: artistName,
+      member: isBlackpink(artistName) ? identifyMember(artistName) : null,
+      releaseDate: attr.releaseDate ?? null,
+      url: attr.url ?? null,
+      artworkUrl: attr.artwork?.url
+        ? attr.artwork.url.replace('{w}', '100').replace('{h}', '100')
+        : null,
+      appleId: t.id ?? null,
+      isBlackpink: isBlackpink(artistName),
     };
   });
 }
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
   console.log('=== Apple Music Global Top 100 — BLACKPINK tracker ===');
@@ -237,44 +209,46 @@ async function main() {
   console.log(`  Run date: ${today}`);
   mkdirSync(DATA_DIR, { recursive: true });
 
-  // Try cached token first
   let token = null;
   let rawTracks = null;
 
+  // Step 1: try cached token
   if (existsSync(TOKEN_CACHE)) {
     token = readFileSync(TOKEN_CACHE, 'utf8').trim();
-    console.log(`  Loaded cached token (${token.slice(0, 20)}…)`);
-    rawTracks = await fetchWithToken(token);
-    if (!rawTracks) {
-      console.log('  Cached token expired or API error — refreshing via browser');
-      token = null;
-    }
+    console.log(`  Trying cached token (${token.slice(0, 20)}…)`);
+    rawTracks = await fetchTracks(token);
+    if (!rawTracks) { console.log('  Cached token invalid, refreshing…'); token = null; }
   }
 
-  if (!rawTracks) {
+  // Step 2: plain HTTP token extraction
+  if (!token) {
+    token = await extractTokenFromHttp();
+    if (token) rawTracks = await fetchTracks(token);
+  }
+
+  // Step 3: Playwright
+  if (!token || !rawTracks) {
     const result = await extractTokenViaBrowser();
-    token = result.token;
-    rawTracks = result.tracks;
-    if (token) {
-      writeFileSync(TOKEN_CACHE, token);
-      console.log('  Saved new token to cache');
-    }
+    if (result.token) token = result.token;
+    if (result.tracks) rawTracks = result.tracks;
   }
 
   if (!rawTracks || rawTracks.length === 0) {
-    console.error('  ERROR: Could not retrieve Global 100 tracks');
+    console.error('  ERROR: Could not retrieve Global 100 tracks after all methods');
     process.exit(1);
   }
+
+  // Save new token
+  if (token) writeFileSync(TOKEN_CACHE, token);
 
   const tracks = parseTracks(rawTracks);
   const bpHits = tracks.filter(t => t.isBlackpink);
 
   console.log(`\n  Total tracks: ${tracks.length}`);
-  console.log(`  BLACKPINK hits: ${bpHits.length}`);
   if (bpHits.length > 0) {
     console.log('\n=== BLACKPINK entries in Global Top 100 ===');
     for (const h of bpHits) {
-      console.log(`  #${h.position.toString().padStart(3)} ${h.member} — "${h.name}" (${h.artists})`);
+      console.log(`  #${String(h.position).padStart(3)} ${h.member} — "${h.name}" (${h.artists})`);
     }
   } else {
     console.log('  No BLACKPINK/member entries in Global Top 100 today.');
@@ -289,13 +263,9 @@ async function main() {
     summary: { bpHitCount: bpHits.length },
   };
 
-  const dated = join(DATA_DIR, `apple-global-chart-${today}.json`);
-  const latest = join(DATA_DIR, 'apple-global-chart-latest.json');
-  writeFileSync(dated, JSON.stringify(output, null, 2));
-  writeFileSync(latest, JSON.stringify(output, null, 2));
-
-  console.log(`\n  Saved: ${dated}`);
-  console.log(`  Saved: ${latest}`);
+  writeFileSync(join(DATA_DIR, `apple-global-chart-${today}.json`), JSON.stringify(output, null, 2));
+  writeFileSync(join(DATA_DIR, 'apple-global-chart-latest.json'), JSON.stringify(output, null, 2));
+  console.log('\n  Saved apple-global-chart-latest.json');
   console.log('\n=== Done ===');
   process.exit(0);
 }

@@ -26,6 +26,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Remove npm artifacts so they don't block git pull --rebase
+          rm -rf node_modules package.json package-lock.json
           git add data/
           [ -f .apple-token-cache ] && git add .apple-token-cache || true
           git diff --cached --quiet || git commit -m "chore: update Apple Music Global Top 100 $(date -u +%Y-%m-%d)"
