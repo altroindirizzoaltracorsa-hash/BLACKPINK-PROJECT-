@@ -2678,6 +2678,7 @@
     <div class="as-inner">
       <div class="ch-controls">
         <select class="ch-country-select" id="am-country-select" onchange="setAmCountry(this.value)">
+          <option value="global">🌐 Global</option>
           <option value="us">🇺🇸 United States</option>
           <option value="gb">🇬🇧 United Kingdom</option>
           <option value="kr">🇰🇷 South Korea</option>
@@ -2718,6 +2719,7 @@
           <option value="fi">🇫🇮 Finland</option>
           <option value="dk">🇩🇰 Denmark</option>
           <option value="ie">🇮🇪 Ireland</option>
+          <option value="cn">🇨🇳 China</option>
         </select>
       </div>
 
@@ -2732,7 +2734,7 @@
             <th class="as-rank-col"></th>
             <th>Track</th>
             <th>Member</th>
-            <th class="right">Days</th>
+            <th class="right" id="am-last-col-header">Days</th>
           </tr></thead>
           <tbody id="am-body"></tbody>
         </table>
@@ -3962,7 +3964,7 @@ function renderYtRegion() {
 // ── Apple Music Charts ─────────────────────────────────────────────────────
 const AM_URL = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/apple-chart-positions-latest.json';
 const AM_MEMBER_COLORS = { JENNIE: '#FF0066', 'ROSÉ': '#ff9eb5', LISA: '#ffce6e', JISOO: '#7eb8f7', BLACKPINK: '#c084fc' };
-let amCountry = 'us';
+let amCountry = 'global';
 let amData    = null;
 
 function setAmCountry(val) {
@@ -4019,19 +4021,22 @@ function renderAmRegion() {
     emptyEl.style.display = 'block';
     return;
   }
+  const isGlobal = amCountry === 'global';
+  const hdrEl = document.getElementById('am-last-col-header');
+  if (hdrEl) hdrEl.textContent = isGlobal ? 'Countries' : 'Days';
   document.getElementById('am-body').innerHTML = hits.map(h => {
     const color = AM_MEMBER_COLORS[h.member] || '#FF0066';
     const song  = h.url
       ? '<a href="' + h.url + '" target="_blank" rel="noopener" style="color:var(--white);text-decoration:none">' + h.name + '</a>'
       : h.name;
-    const days = h.releaseDate && amData.date
-      ? Math.max(1, Math.round((new Date(amData.date) - new Date(h.releaseDate)) / 86400000) + 1)
-      : null;
+    const lastCol = isGlobal
+      ? '<td class="right" style="color:var(--muted);font-size:0.75rem">' + (h.countriesCharting?.length ?? 0) + ' countries</td>'
+      : (() => { const days = h.releaseDate && amData.date ? Math.max(1, Math.round((new Date(amData.date) - new Date(h.releaseDate)) / 86400000) + 1) : null; return '<td class="right" style="color:var(--muted);font-size:0.75rem">' + (days !== null ? days + 'd' : '—') + '</td>'; })();
     return '<tr>' +
       '<td class="as-rank-col" style="font-family:var(--display);font-size:1.2rem;color:' + color + '">' + h.position + '</td>' +
       '<td style="font-size:0.88rem">' + song + '<br><span style="color:var(--muted);font-size:0.75rem">' + (h.artists || '') + '</span></td>' +
       '<td><span class="yt-member-tag" style="background:' + color + '22;color:' + color + '">' + h.member + '</span></td>' +
-      '<td class="right" style="color:var(--muted);font-size:0.75rem">' + (days !== null ? days + 'd' : '—') + '</td>' +
+      lastCol +
     '</tr>';
   }).join('');
   document.getElementById('am-table-wrap').style.display = '';

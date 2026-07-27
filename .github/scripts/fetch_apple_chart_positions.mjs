@@ -66,6 +66,7 @@ const STOREFRONTS = [
   { cc: 'fi', name: 'Finland' },
   { cc: 'dk', name: 'Denmark' },
   { cc: 'ie', name: 'Ireland' },
+  { cc: 'cn', name: 'China' },
 ];
 
 // Patterns to detect BLACKPINK/member in artistName (single string in Apple's feed)
@@ -156,6 +157,34 @@ async function main() {
     await delay(150);
   }
 
+  // Build synthetic global: aggregate all hits across storefronts.
+  // Each unique song is ranked by (1) number of countries charting, then
+  // (2) best (lowest) position seen. Position in the synthetic chart is
+  // just the sort order — we show countriesCharting instead of a raw number.
+  const songMap = new Map();
+  for (const [cc, r] of Object.entries(regions)) {
+    for (const h of (r?.hits ?? [])) {
+      const key = h.appleId || h.name;
+      if (!songMap.has(key)) {
+        songMap.set(key, { ...h, countriesCharting: [], bestPosition: h.position });
+      }
+      const entry = songMap.get(key);
+      entry.countriesCharting.push(cc);
+      if (h.position < entry.bestPosition) entry.bestPosition = h.position;
+    }
+  }
+  const globalHits = [...songMap.values()]
+    .sort((a, b) => b.countriesCharting.length - a.countriesCharting.length || a.bestPosition - b.bestPosition)
+    .map((h, i) => ({ ...h, position: i + 1 }));
+
+  regions['global'] = {
+    region: 'Global (synthetic)',
+    cc: 'global',
+    totalEntries: Object.values(regions).reduce((n, r) => n + (r?.totalEntries ?? 0), 0),
+    hits: globalHits,
+    note: 'Ranked by number of storefronts charting, then best position',
+  };
+
   const totalHits = Object.values(regions).reduce((n, r) => n + (r?.hits?.length ?? 0), 0);
   const output = {
     generatedAt: new Date().toISOString(),
@@ -163,7 +192,7 @@ async function main() {
     regions,
     summary: {
       totalHits,
-      regionsChecked: Object.keys(regions).length,
+      regionsChecked: Object.keys(regions).length - 1, // exclude synthetic global
     },
   };
 
