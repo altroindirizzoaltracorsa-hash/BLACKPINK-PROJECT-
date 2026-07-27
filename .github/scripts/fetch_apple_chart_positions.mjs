@@ -79,7 +79,7 @@ const ARTIST_PATTERNS = [
   /\blisa\b/i,
   /\blalisa\b/i,
   /\bjennie\b/i,
-  /\bros[eé]\b/i,
+  /ros[eé]/i,   // no \b — 'É' is non-ASCII so JS \b fails after it
   /\bjisoo\b/i,
   /블랙핑크/,
   /리사/,
@@ -96,7 +96,7 @@ function identifyMember(artistName = '') {
   if (/\bblackpink\b/i.test(artistName) || /블랙핑크/.test(artistName)) return 'BLACKPINK';
   if (/\blisa\b/i.test(artistName) || /\blalisa\b/i.test(artistName) || /리사/.test(artistName)) return 'LISA';
   if (/\bjennie\b/i.test(artistName) || /제니/.test(artistName)) return 'JENNIE';
-  if (/\bros[eé]\b/i.test(artistName) || /로제/.test(artistName)) return 'ROSÉ';
+  if (/ros[eé]/i.test(artistName) || /로제/.test(artistName)) return 'ROSÉ';
   if (/\bjisoo\b/i.test(artistName) || /지수/.test(artistName)) return 'JISOO';
   return 'BLACKPINK';
 }
