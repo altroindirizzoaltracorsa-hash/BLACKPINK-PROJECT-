@@ -197,7 +197,13 @@ async function main() {
   const dated = join(DATA_DIR, `apple-chart-positions-${today}.json`);
   const latest = join(DATA_DIR, 'apple-chart-positions-latest.json');
   writeFileSync(dated, JSON.stringify(output, null, 2));
-  writeFileSync(latest, JSON.stringify(output, null, 2));
+  // Only overwrite latest.json if at least one storefront responded — keeps
+  // previous day's data visible when the API is temporarily down.
+  if (output.summary.regionsChecked > 0) {
+    writeFileSync(latest, JSON.stringify(output, null, 2));
+  } else {
+    console.log('\n  All storefronts failed — keeping existing latest.json unchanged.');
+  }
 
   console.log(`\n  Saved: ${dated}`);
   console.log(`  Saved: ${latest}`);
