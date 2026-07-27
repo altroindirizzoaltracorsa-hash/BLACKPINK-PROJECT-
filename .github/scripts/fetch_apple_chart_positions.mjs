@@ -1,11 +1,15 @@
 /**
  * fetch_apple_chart_positions.mjs
  *
- * Daily script: fetches Apple Music "Most Played" chart positions for BLACKPINK
+ * Daily script: fetches Apple Music Top Songs chart positions for BLACKPINK
  * and solo members across storefronts via Apple's official RSS API v2.
  *
  * Endpoint (no auth required):
- *   GET https://rss.applemarketingtools.com/api/v2/{country}/music/most-played/100/songs.json
+ *   GET https://rss.applemarketingtools.com/api/v2/{country}/music/top-songs/100/songs.json
+ *
+ * "top-songs" matches the chart visible in the Apple Music app.
+ * Position is derived from array index (1-based) since the RSS feed returns
+ * songs in chart order and the chartPosition field is not always present.
  *
  * Commits two files:
  *   data/apple-chart-positions-YYYY-MM-DD.json
@@ -23,8 +27,8 @@ const DATA_DIR = join(REPO_ROOT, 'data');
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const BASE = 'https://rss.applemarketingtools.com/api/v2';
 
-// Apple Music storefronts to check. Apple doesn't publish a single "global"
-// chart, so we cover the largest markets where BLACKPINK is active.
+// Apple Music storefronts to check. Apple doesn't publish a single global
+// chart via RSS — positions are per-country only.
 const STOREFRONTS = [
   { cc: 'us', name: 'United States' },
   { cc: 'gb', name: 'United Kingdom' },
@@ -100,7 +104,7 @@ function identifyMember(artistName = '') {
 async function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function fetchStorefront({ cc, name }) {
-  const url = `${BASE}/${cc}/music/most-played/100/songs.json`;
+  const url = `${BASE}/${cc}/music/top-songs/100/songs.json`;
   let resp;
   try {
     resp = await fetch(url, { headers: { 'User-Agent': UA } });
@@ -117,10 +121,11 @@ async function fetchStorefront({ cc, name }) {
   const results = data?.feed?.results ?? [];
 
   const hits = [];
-  for (const entry of results) {
+  for (let i = 0; i < results.length; i++) {
+    const entry = results[i];
     if (!isBlackpinkArtist(entry.artistName ?? '')) continue;
     hits.push({
-      position: entry.chartPosition ?? (results.indexOf(entry) + 1),
+      position: i + 1, // array index is the authoritative position
       name: entry.name ?? '',
       artists: entry.artistName ?? '',
       member: identifyMember(entry.artistName ?? ''),
@@ -157,34 +162,6 @@ async function main() {
     await delay(150);
   }
 
-  // Build synthetic global: aggregate all hits across storefronts.
-  // Each unique song is ranked by (1) number of countries charting, then
-  // (2) best (lowest) position seen. Position in the synthetic chart is
-  // just the sort order — we show countriesCharting instead of a raw number.
-  const songMap = new Map();
-  for (const [cc, r] of Object.entries(regions)) {
-    for (const h of (r?.hits ?? [])) {
-      const key = h.appleId || h.name;
-      if (!songMap.has(key)) {
-        songMap.set(key, { ...h, countriesCharting: [], bestPosition: h.position });
-      }
-      const entry = songMap.get(key);
-      entry.countriesCharting.push(cc);
-      if (h.position < entry.bestPosition) entry.bestPosition = h.position;
-    }
-  }
-  const globalHits = [...songMap.values()]
-    .sort((a, b) => b.countriesCharting.length - a.countriesCharting.length || a.bestPosition - b.bestPosition)
-    .map((h, i) => ({ ...h, position: i + 1 }));
-
-  regions['global'] = {
-    region: 'Global (synthetic)',
-    cc: 'global',
-    totalEntries: Object.values(regions).reduce((n, r) => n + (r?.totalEntries ?? 0), 0),
-    hits: globalHits,
-    note: 'Ranked by number of storefronts charting, then best position',
-  };
-
   const totalHits = Object.values(regions).reduce((n, r) => n + (r?.hits?.length ?? 0), 0);
   const output = {
     generatedAt: new Date().toISOString(),
@@ -192,7 +169,7 @@ async function main() {
     regions,
     summary: {
       totalHits,
-      regionsChecked: Object.keys(regions).length - 1, // exclude synthetic global
+      regionsChecked: Object.keys(regions).length,
     },
   };
 
@@ -205,9 +182,8 @@ async function main() {
   console.log(`  Saved: ${latest}`);
   console.log(`  Total BP hits across all storefronts: ${totalHits}`);
 
-  // Highlight any charting entries
-  const allHits = Object.entries(regions).flatMap(([cc, r]) =>
-    (r?.hits ?? []).map(h => ({ ...h, cc, regionName: r.region }))
+  const allHits = Object.entries(regions).flatMap(([, r]) =>
+    (r?.hits ?? []).map(h => ({ ...h, regionName: r.region }))
   );
   if (allHits.length > 0) {
     console.log('\n=== Charting entries ===');
