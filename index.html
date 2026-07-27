@@ -980,6 +980,16 @@
   .as-table tr:last-child td { border-bottom: none; }
   .as-table tr:hover td { background: var(--card2); }
   .as-rank-col { width: 2.4rem; }
+  .am-global-section { margin: 1.5rem 0; }
+  .am-section-label { font-size: 0.6rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.8rem; }
+  .am-divider { border: none; border-top: 1px solid var(--border); margin: 1.8rem 0; }
+  .amg-hit-row { display: flex; align-items: center; gap: 0.8rem; padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .amg-hit-row:last-child { border-bottom: none; }
+  .amg-hit-pos { font-family: var(--display); font-size: 1.3rem; min-width: 2.8rem; text-align: right; flex-shrink: 0; }
+  .amg-hit-info { flex: 1; font-size: 0.88rem; display: flex; flex-direction: column; gap: 0.15rem; }
+  .amg-hit-artist { color: var(--muted); font-size: 0.75rem; }
+  .am-toggle-btn { margin-top: 1rem; background: none; border: 1px solid var(--border); color: var(--muted); font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em; padding: 0.4rem 0.9rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
+  .am-toggle-btn:hover { border-color: var(--pink); color: var(--pink); }
   .as-rank { font-family: var(--display); font-size: 1rem; color: rgba(255,0,102,0.35); }
   .as-album-row td { background: var(--card2); padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); }
   .as-album-row:hover td { background: var(--card2); }
@@ -1644,12 +1654,12 @@
     <li><a href="/leaderboard" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
     <li><a href="/streams" onclick="showPage('streams'); closeMobileNav(); return false;" id="nav-streams">Streams</a></li>
     <li class="nav-has-dropdown" id="nav-charts-dropdown">
-      <a href="/spotify-charts" class="nav-dropdown-trigger" id="nav-charts"
+      <a href="/charts" class="nav-dropdown-trigger" id="nav-charts"
          onclick="toggleChartsDropdown(event)">Charts <span class="nav-chevron">▾</span></a>
       <div class="nav-dropdown" id="charts-dropdown-panel">
         <a class="nav-dropdown-item" id="nav-spotify-charts" href="/spotify-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('spotify-charts'); return false;">Spotify Charts</a>
         <a class="nav-dropdown-item" id="nav-youtube" href="/youtube" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('youtube'); return false;">YouTube Charts</a>
-        <a class="nav-dropdown-item" id="nav-apple" href="/apple-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('apple'); return false;">Apple Music Charts</a>
+        <a class="nav-dropdown-item" id="nav-apple" href="/charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('apple'); return false;">Apple Music Charts</a>
       </div>
     </li>
     <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
@@ -3661,7 +3671,7 @@ function closeMobileNav() {
   document.getElementById('nav-hamburger').classList.remove('open');
 }
 
-const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube', apple: '/apple-charts' };
+const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube', apple: '/charts' };
 
 // Mirrors the per-route <title> the Vercel edge middleware sets on first
 // load, so client-side navigation keeps the tab title in sync too.
@@ -3679,7 +3689,8 @@ const PAGE_TITLES = {
 };
 
 function pathToPage(pathname) {
-  const clean = pathname.replace(/\/+$/, '') || '/';
+  let clean = pathname.replace(/\/+$/, '') || '/';
+  if (clean === '/apple-charts') clean = '/charts';
   const entry = Object.entries(PAGE_PATHS).find(([, p]) => p === clean);
   return entry ? entry[0] : 'home';
 }
@@ -3961,10 +3972,13 @@ function renderYtRegion() {
 }
 
 // ── Apple Music Charts ─────────────────────────────────────────────────────
-const AM_URL = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/apple-chart-positions-latest.json';
+const AM_URL        = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/apple-chart-positions-latest.json';
+const AM_GLOBAL_URL = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/apple-global-chart-latest.json';
 const AM_MEMBER_COLORS = { JENNIE: '#FF0066', 'ROSÉ': '#ff9eb5', LISA: '#ffce6e', JISOO: '#7eb8f7', BLACKPINK: '#c084fc' };
-let amCountry = 'us';
-let amData    = null;
+let amCountry    = 'us';
+let amData       = null;
+let amGlobalData = null;
+let amGlobalFullShown = false;
 
 function setAmCountry(val) {
   amCountry = val;
@@ -3985,19 +3999,26 @@ async function loadAppleCharts() {
   loadEl.style.display  = 'block';
   errorEl.style.display = 'none';
   _amClear();
-  try {
-    if (!amData) {
-      const r = await fetch(AM_URL + '?_=' + Date.now());
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      amData = await r.json();
-    }
-    loadEl.style.display = 'none';
-    renderAmRegion();
-  } catch(e) {
-    loadEl.style.display  = 'none';
+
+  const ts = '?_=' + Date.now();
+  const [perCountryResult, globalResult] = await Promise.allSettled([
+    amData       ? Promise.resolve(amData)       : fetch(AM_URL        + ts).then(r => r.ok ? r.json() : Promise.reject(r.status)),
+    amGlobalData ? Promise.resolve(amGlobalData) : fetch(AM_GLOBAL_URL + ts).then(r => r.ok ? r.json() : Promise.reject(r.status)),
+  ]);
+
+  if (perCountryResult.status === 'fulfilled') amData = perCountryResult.value;
+  if (globalResult.status === 'fulfilled')     amGlobalData = globalResult.value;
+
+  loadEl.style.display = 'none';
+
+  if (perCountryResult.status === 'rejected' && globalResult.status === 'rejected') {
     errorEl.style.display = 'block';
     errorEl.textContent   = 'Could not load Apple Music chart data.';
+    return;
   }
+
+  renderAmGlobal();
+  renderAmRegion();
 }
 
 function renderAmRegion() {
@@ -4037,6 +4058,77 @@ function renderAmRegion() {
   }).join('');
   document.getElementById('am-table-wrap').style.display = '';
 }
+
+function renderAmGlobal() {
+  const loadEl  = document.getElementById('amg-loading');
+  const errorEl = document.getElementById('amg-error');
+  const emptyEl = document.getElementById('amg-empty');
+  const hitsWrap = document.getElementById('amg-hits-wrap');
+  const toggleBtn = document.getElementById('amg-toggle-btn');
+  const fullWrap  = document.getElementById('amg-full-wrap');
+  if (!loadEl) return;
+
+  loadEl.style.display   = 'none';
+  errorEl.style.display  = 'none';
+  emptyEl.style.display  = 'none';
+  hitsWrap.style.display = 'none';
+  toggleBtn.style.display = 'none';
+
+  if (!amGlobalData) {
+    emptyEl.textContent   = 'Global Top 100 data unavailable.';
+    emptyEl.style.display = 'block';
+    return;
+  }
+
+  const bpHits = amGlobalData.bpHits || [];
+  const dateLabel = amGlobalData.date || '';
+  document.getElementById('amg-meta').textContent = dateLabel + ' · Apple Music Global Top 100';
+
+  if (!bpHits.length) {
+    emptyEl.textContent   = 'No BLACKPINK/member entries in the Global Top 100 today.';
+    emptyEl.style.display = 'block';
+  } else {
+    document.getElementById('amg-hits-list').innerHTML = bpHits.map(h => {
+      const color = AM_MEMBER_COLORS[h.member] || '#FF0066';
+      const song  = h.url
+        ? '<a href="' + h.url + '" target="_blank" rel="noopener" style="color:var(--white);text-decoration:none">' + h.name + '</a>'
+        : h.name;
+      return '<div class="amg-hit-row">' +
+        '<span class="amg-hit-pos" style="color:' + color + '">#' + h.position + '</span>' +
+        '<span class="amg-hit-info">' + song + '<span class="amg-hit-artist">' + (h.artists || '') + '</span></span>' +
+        '<span class="yt-member-tag" style="background:' + color + '22;color:' + color + '">' + h.member + '</span>' +
+      '</div>';
+    }).join('');
+    hitsWrap.style.display = 'block';
+  }
+
+  const tracks = amGlobalData.tracks || [];
+  if (tracks.length) {
+    document.getElementById('amg-full-body').innerHTML = tracks.map(t => {
+      const isBP  = t.isBlackpink;
+      const color = isBP ? (AM_MEMBER_COLORS[t.member] || '#FF0066') : '';
+      const song  = t.url
+        ? '<a href="' + t.url + '" target="_blank" rel="noopener" style="color:' + (isBP ? color : 'var(--white)') + ';text-decoration:none">' + t.name + '</a>'
+        : t.name;
+      const rowStyle = isBP ? ' style="background:' + color + '0d;"' : '';
+      return '<tr' + rowStyle + '>' +
+        '<td class="as-rank-col" style="font-family:var(--display);font-size:1.1rem;' + (isBP ? 'color:' + color + ';' : 'color:var(--muted);') + '">' + t.position + '</td>' +
+        '<td style="font-size:0.85rem">' + song + (isBP ? ' <span class="yt-member-tag" style="background:' + color + '22;color:' + color + ';font-size:0.65rem;">' + t.member + '</span>' : '') + '</td>' +
+        '<td style="font-size:0.8rem;color:var(--muted)">' + (t.artists || '') + '</td>' +
+      '</tr>';
+    }).join('');
+    toggleBtn.style.display = 'block';
+  }
+}
+
+function toggleAmGlobalFull() {
+  const wrap = document.getElementById('amg-full-wrap');
+  const btn  = document.getElementById('amg-toggle-btn');
+  amGlobalFullShown = !amGlobalFullShown;
+  wrap.style.display = amGlobalFullShown ? '' : 'none';
+  btn.textContent    = amGlobalFullShown ? 'Hide Full Top 100 ▴' : 'Show Full Top 100 ▾';
+}
+
 
 function setChartType(type, btn) {
   chartType = type;
