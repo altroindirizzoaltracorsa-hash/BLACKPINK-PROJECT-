@@ -990,6 +990,16 @@
   .amg-hit-artist { color: var(--muted); font-size: 0.75rem; }
   .am-toggle-btn { margin-top: 1rem; background: none; border: 1px solid var(--border); color: var(--muted); font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em; padding: 0.4rem 0.9rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
   .am-toggle-btn:hover { border-color: var(--pink); color: var(--pink); }
+  /* ── Charts Hub Page ── */
+  .ch-hub-page { max-width: 480px; margin: 3rem auto; padding: 0 1rem; }
+  .ch-hub-title { font-family: var(--display); font-size: 1.8rem; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 2rem; }
+  .ch-hub-list { display: flex; flex-direction: column; list-style: none; margin: 0; padding: 0; }
+  .ch-hub-item { display: flex; align-items: center; gap: 1rem; padding: 1.1rem 0.5rem; border-top: 1px solid var(--border); text-decoration: none; color: inherit; transition: background 0.15s; }
+  .ch-hub-item:last-child { border-bottom: 1px solid var(--border); }
+  .ch-hub-item:hover { background: rgba(255,255,255,0.04); padding-left: 0.9rem; }
+  .ch-hub-icon { width: 1.5rem; height: 1.5rem; flex-shrink: 0; }
+  .ch-hub-label { flex: 1; font-size: 0.95rem; letter-spacing: 0.05em; }
+  .ch-hub-arrow { color: var(--muted); font-size: 1.4rem; line-height: 1; }
   .as-rank { font-family: var(--display); font-size: 1rem; color: rgba(255,0,102,0.35); }
   .as-album-row td { background: var(--card2); padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); }
   .as-album-row:hover td { background: var(--card2); }
@@ -1659,7 +1669,7 @@
       <div class="nav-dropdown" id="charts-dropdown-panel">
         <a class="nav-dropdown-item" id="nav-spotify-charts" href="/spotify-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('spotify-charts'); return false;">Spotify Charts</a>
         <a class="nav-dropdown-item" id="nav-youtube" href="/youtube" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('youtube'); return false;">YouTube Charts</a>
-        <a class="nav-dropdown-item" id="nav-apple" href="/charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('apple'); return false;">Apple Music Charts</a>
+        <a class="nav-dropdown-item" id="nav-apple" href="/apple-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('apple'); return false;">Apple Music Charts</a>
       </div>
     </li>
     <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
@@ -2670,6 +2680,33 @@
   </div>
 </div><!-- end youtube page -->
 
+
+<!-- ══════════════════════════════════════
+     CHARTS HUB PAGE
+     ══════════════════════════════════════ -->
+<div id="page-charts" class="page">
+  <div class="ch-hub-page">
+    <h1 class="ch-hub-title">Charts</h1>
+    <nav class="ch-hub-list">
+      <a class="ch-hub-item" href="/spotify-charts" onclick="showPage('spotify-charts'); return false;">
+        <svg class="ch-hub-icon" viewBox="0 0 24 24" fill="currentColor" style="color:#1DB954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+        <span class="ch-hub-label">Spotify Charts</span>
+        <span class="ch-hub-arrow">›</span>
+      </a>
+      <a class="ch-hub-item" href="/youtube" onclick="showPage('youtube'); return false;">
+        <svg class="ch-hub-icon" viewBox="0 0 24 24" fill="currentColor" style="color:#FF0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        <span class="ch-hub-label">YouTube Charts</span>
+        <span class="ch-hub-arrow">›</span>
+      </a>
+      <a class="ch-hub-item" href="/apple-charts" onclick="showPage('apple'); return false;">
+        <svg class="ch-hub-icon" viewBox="0 0 814 1000" fill="currentColor" style="color:#fc3c44"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-42.3-150.3-109.2c-52.3-75.5-96.1-193.9-96.1-306.1 0-211.8 138.4-323.8 274.3-323.8 72.5 0 132.9 47.8 178.7 47.8 43.6 0 112.1-50.8 193.4-50.8 31.2 0 108.2 2.6 168.2 79.6zm-47.7-177.7c32.4-38.5 55.6-91.9 55.6-145.3 0-7.5-.6-15.1-1.9-21.7-51.9 1.9-112.8 34.9-149.2 80.5-28.7 34.2-56.9 88.9-56.9 143 0 8.3 1.3 16.6 1.9 19.2 3.2.6 8.4 1.3 13.6 1.3 46.5 0 103.1-31.2 136.9-77z"/></svg>
+        <span class="ch-hub-label">Apple Music Charts</span>
+        <span class="ch-hub-arrow">›</span>
+      </a>
+    </nav>
+  </div>
+</div><!-- end charts hub page -->
+
 <!-- ══════════════════════════════════════
      APPLE MUSIC CHARTS PAGE
      ══════════════════════════════════════ -->
@@ -3671,7 +3708,7 @@ function closeMobileNav() {
   document.getElementById('nav-hamburger').classList.remove('open');
 }
 
-const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube', apple: '/charts' };
+const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube', apple: '/apple-charts', charts: '/charts' };
 
 // Mirrors the per-route <title> the Vercel edge middleware sets on first
 // load, so client-side navigation keeps the tab title in sync too.
@@ -3686,11 +3723,11 @@ const PAGE_TITLES = {
   'spotify-charts': 'Spotify Charts | BLINKS UNITED',
   youtube: 'YouTube Charts | BLINKS UNITED',
   apple: 'Apple Music Charts | BLINKS UNITED',
+  charts: 'Charts | BLINKS UNITED',
 };
 
 function pathToPage(pathname) {
   let clean = pathname.replace(/\/+$/, '') || '/';
-  if (clean === '/apple-charts') clean = '/charts';
   const entry = Object.entries(PAGE_PATHS).find(([, p]) => p === clean);
   return entry ? entry[0] : 'home';
 }
@@ -3975,7 +4012,7 @@ function renderYtRegion() {
 const AM_URL        = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/apple-chart-positions-latest.json';
 const AM_GLOBAL_URL = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/apple-global-chart-latest.json';
 const AM_MEMBER_COLORS = { JENNIE: '#FF0066', 'ROSÉ': '#ff9eb5', LISA: '#ffce6e', JISOO: '#7eb8f7', BLACKPINK: '#c084fc' };
-let amCountry    = 'us';
+let amCountry    = 'kr';
 let amData       = null;
 let amGlobalData = null;
 let amGlobalFullShown = false;
@@ -4302,7 +4339,7 @@ function showPage(page, { replace = false } = {}) {
     }
   }
   if (page === 'badges') { tryAutoLoad(); renderSpecialBadges(); }
-  if (page === 'spotify-charts' || page === 'youtube' || page === 'apple') document.getElementById('nav-charts')?.classList.add('active');
+  if (page === 'spotify-charts' || page === 'youtube' || page === 'apple' || page === 'charts') document.getElementById('nav-charts')?.classList.add('active');
   if (page === 'streams') loadArtistStreamsPage();
   if (page === 'spotify-charts') loadSpotifyChartsPage();
   if (page === 'youtube') loadYouTubeCharts();
