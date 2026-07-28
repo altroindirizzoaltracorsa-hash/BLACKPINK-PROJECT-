@@ -151,8 +151,13 @@ async function fetchStorefront({ cc, name }) {
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
     const artistName = entry['im:artist']?.label ?? '';
-    if (!isBlackpinkArtist(artistName)) continue;
-    const songName    = entry['im:name']?.label ?? '';
+    const songName   = entry['im:name']?.label ?? '';
+    // Match on artist field first; fall back to song name to catch remix credits
+    // e.g. "Dracula (JENNIE Remix)" where artistName is the original artist
+    const matchField = isBlackpinkArtist(artistName) ? artistName
+                     : isBlackpinkArtist(songName)   ? songName
+                     : null;
+    if (!matchField) continue;
     const releaseDate = entry['im:releaseDate']?.label?.slice(0, 10) ?? null;
     const trackUrl    = entry.link?.attributes?.href ?? entry.id?.label ?? null;
     const artworkUrl  = entry['im:image']?.[2]?.label ?? entry['im:image']?.[0]?.label ?? null;
@@ -161,7 +166,7 @@ async function fetchStorefront({ cc, name }) {
       position: i + 1,
       name: songName,
       artists: artistName,
-      member: identifyMember(artistName),
+      member: identifyMember(matchField),
       releaseDate,
       url: trackUrl,
       artworkUrl,

@@ -144,12 +144,18 @@ async function fetchStorefront({ cc, name }) {
   const hits = [];
   for (let i = 0; i < results.length; i++) {
     const entry = results[i];
-    if (!isBlackpinkArtist(entry.artistName ?? '')) continue;
+    const artistName = entry.artistName ?? '';
+    const songName   = entry.name ?? '';
+    // Match on artist field first; fall back to song name for remix credits
+    const matchField = isBlackpinkArtist(artistName) ? artistName
+                     : isBlackpinkArtist(songName)   ? songName
+                     : null;
+    if (!matchField) continue;
     hits.push({
-      position: i + 1, // array index is the authoritative position
-      name: entry.name ?? '',
-      artists: entry.artistName ?? '',
-      member: identifyMember(entry.artistName ?? ''),
+      position: i + 1,
+      name: songName,
+      artists: artistName,
+      member: identifyMember(matchField),
       releaseDate: entry.releaseDate ?? null,
       url: entry.url ?? null,
       artworkUrl: entry.artworkUrl100 ?? null,
