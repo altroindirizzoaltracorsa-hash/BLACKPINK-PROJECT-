@@ -5,7 +5,7 @@
  * and solo members across storefronts via Apple's legacy iTunes RSS feed.
  *
  * Endpoint (no auth required):
- *   GET https://itunes.apple.com/{country}/rss/topsongs/limit=100/json
+ *   GET https://itunes.apple.com/{country}/rss/topsongs/limit=200/json
  *
  * Response uses feed.entry[] with im:* fields (different from Apple Music RSS).
  *
@@ -147,7 +147,7 @@ async function fetchWithRetry(url, opts, retries = 3) {
 }
 
 async function fetchStorefront({ cc, name }) {
-  const url = `https://itunes.apple.com/${cc}/rss/topsongs/limit=100/json`;
+  const url = `https://itunes.apple.com/${cc}/rss/topsongs/limit=200/json`;
   let resp;
   try {
     resp = await fetchWithRetry(url, { headers: { 'User-Agent': UA } });
