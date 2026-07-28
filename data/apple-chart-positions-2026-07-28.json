@@ -1,9 +1,820 @@
 {
-  "generatedAt": "2026-07-28T19:56:10.222Z",
+  "generatedAt": "2026-07-28T20:32:52.714Z",
   "date": "2026-07-28",
-  "regions": {},
+  "regions": {
+    "us": {
+      "region": "United States",
+      "cc": "us",
+      "totalEntries": 199,
+      "hits": []
+    },
+    "kr": {
+      "region": "South Korea",
+      "cc": "kr",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 39,
+          "name": "toxic till the end",
+          "artists": "로제",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 72,
+          "name": "Love Hangover",
+          "artists": "제니 & Dominic Fike",
+          "member": "JENNIE"
+        },
+        {
+          "position": 102,
+          "name": "Mantra",
+          "artists": "제니",
+          "member": "JENNIE"
+        },
+        {
+          "position": 110,
+          "name": "like JENNIE",
+          "artists": "제니",
+          "member": "JENNIE"
+        },
+        {
+          "position": 120,
+          "name": "마지막처럼",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        },
+        {
+          "position": 131,
+          "name": "뛰어(JUMP)",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        },
+        {
+          "position": 166,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & 제니",
+          "member": "JENNIE"
+        },
+        {
+          "position": 194,
+          "name": "You & Me",
+          "artists": "제니",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "jp": {
+      "region": "Japan",
+      "cc": "jp",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 124,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "au": {
+      "region": "Australia",
+      "cc": "au",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 92,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 96,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "ca": {
+      "region": "Canada",
+      "cc": "ca",
+      "totalEntries": 199,
+      "hits": []
+    },
+    "de": {
+      "region": "Germany",
+      "cc": "de",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 60,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 79,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
+    },
+    "fr": {
+      "region": "France",
+      "cc": "fr",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 36,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "it": {
+      "region": "Italy",
+      "cc": "it",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 196,
+          "name": "One Of The Girls",
+          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "es": {
+      "region": "Spain",
+      "cc": "es",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 119,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "br": {
+      "region": "Brazil",
+      "cc": "br",
+      "totalEntries": 199,
+      "hits": []
+    },
+    "mx": {
+      "region": "Mexico",
+      "cc": "mx",
+      "totalEntries": 199,
+      "hits": []
+    },
+    "tw": {
+      "region": "Taiwan",
+      "cc": "tw",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 36,
+          "name": "like JENNIE",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 51,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 61,
+          "name": "toxic till the end",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 78,
+          "name": "JUMP",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        },
+        {
+          "position": 111,
+          "name": "You & Me",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 131,
+          "name": "GO",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        },
+        {
+          "position": 163,
+          "name": "Mantra",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "hk": {
+      "region": "Hong Kong",
+      "cc": "hk",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 69,
+          "name": "like JENNIE",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 83,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 127,
+          "name": "toxic till the end",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 150,
+          "name": "JUMP",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        },
+        {
+          "position": 176,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 192,
+          "name": "You & Me",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "sg": {
+      "region": "Singapore",
+      "cc": "sg",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 2,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 19,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 32,
+          "name": "like JENNIE",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 38,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 51,
+          "name": "JUMP",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        },
+        {
+          "position": 94,
+          "name": "GO",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        },
+        {
+          "position": 135,
+          "name": "toxic till the end",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 140,
+          "name": "Handlebars",
+          "artists": "JENNIE & Dua Lipa",
+          "member": "JENNIE"
+        },
+        {
+          "position": 160,
+          "name": "One Of The Girls",
+          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
+          "member": "JENNIE"
+        },
+        {
+          "position": 169,
+          "name": "Mantra",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "ph": {
+      "region": "Philippines",
+      "cc": "ph",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 45,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 92,
+          "name": "Handlebars",
+          "artists": "JENNIE & Dua Lipa",
+          "member": "JENNIE"
+        },
+        {
+          "position": 135,
+          "name": "like JENNIE",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 190,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
+    },
+    "th": {
+      "region": "Thailand",
+      "cc": "th",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 10,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 98,
+          "name": "Handlebars",
+          "artists": "JENNIE & Dua Lipa",
+          "member": "JENNIE"
+        },
+        {
+          "position": 141,
+          "name": "One Of The Girls",
+          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
+          "member": "JENNIE"
+        },
+        {
+          "position": 190,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "id": {
+      "region": "Indonesia",
+      "cc": "id",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 22,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 118,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 186,
+          "name": "like JENNIE",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 187,
+          "name": "One Of The Girls",
+          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "my": {
+      "region": "Malaysia",
+      "cc": "my",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 4,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 33,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 40,
+          "name": "like JENNIE",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 77,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 104,
+          "name": "One Of The Girls",
+          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
+          "member": "JENNIE"
+        },
+        {
+          "position": 119,
+          "name": "JUMP",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        },
+        {
+          "position": 158,
+          "name": "GO",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        },
+        {
+          "position": 159,
+          "name": "number one girl",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 160,
+          "name": "Handlebars",
+          "artists": "JENNIE & Dua Lipa",
+          "member": "JENNIE"
+        },
+        {
+          "position": 171,
+          "name": "toxic till the end",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
+        }
+      ]
+    },
+    "vn": {
+      "region": "Vietnam",
+      "cc": "vn",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 7,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 106,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 118,
+          "name": "One Of The Girls",
+          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
+          "member": "JENNIE"
+        },
+        {
+          "position": 153,
+          "name": "like JENNIE",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "in": {
+      "region": "India",
+      "cc": "in",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 183,
+          "name": "One Of The Girls",
+          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "nz": {
+      "region": "New Zealand",
+      "cc": "nz",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 133,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
+    },
+    "nl": {
+      "region": "Netherlands",
+      "cc": "nl",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 88,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 178,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "se": {
+      "region": "Sweden",
+      "cc": "se",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 54,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 70,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 103,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
+    },
+    "no": {
+      "region": "Norway",
+      "cc": "no",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 81,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 132,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
+    },
+    "pl": {
+      "region": "Poland",
+      "cc": "pl",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 53,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "tr": {
+      "region": "Turkey",
+      "cc": "tr",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 32,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 156,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "ar": {
+      "region": "Argentina",
+      "cc": "ar",
+      "totalEntries": 199,
+      "hits": []
+    },
+    "cl": {
+      "region": "Chile",
+      "cc": "cl",
+      "totalEntries": 199,
+      "hits": []
+    },
+    "co": {
+      "region": "Colombia",
+      "cc": "co",
+      "totalEntries": 199,
+      "hits": []
+    },
+    "pe": {
+      "region": "Peru",
+      "cc": "pe",
+      "totalEntries": 199,
+      "hits": []
+    },
+    "sa": {
+      "region": "Saudi Arabia",
+      "cc": "sa",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 54,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 184,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "za": {
+      "region": "South Africa",
+      "cc": "za",
+      "totalEntries": 199,
+      "hits": []
+    },
+    "be": {
+      "region": "Belgium",
+      "cc": "be",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 93,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 147,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
+    },
+    "at": {
+      "region": "Austria",
+      "cc": "at",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 65,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 77,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
+    },
+    "ch": {
+      "region": "Switzerland",
+      "cc": "ch",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 57,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 114,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
+    },
+    "pt": {
+      "region": "Portugal",
+      "cc": "pt",
+      "totalEntries": 199,
+      "hits": []
+    },
+    "fi": {
+      "region": "Finland",
+      "cc": "fi",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 160,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "dk": {
+      "region": "Denmark",
+      "cc": "dk",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 191,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
+    },
+    "ie": {
+      "region": "Ireland",
+      "cc": "ie",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 159,
+          "name": "Dracula (JENNIE Remix)",
+          "artists": "Tame Impala & JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    },
+    "cn": {
+      "region": "China",
+      "cc": "cn",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 6,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 128,
+          "name": "like JENNIE",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        }
+      ]
+    }
+  },
   "summary": {
-    "totalHits": 0,
-    "regionsChecked": 0
+    "totalHits": 90,
+    "regionsChecked": 40
   }
 }
