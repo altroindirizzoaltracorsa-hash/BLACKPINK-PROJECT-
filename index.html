@@ -2907,6 +2907,7 @@
             <th class="as-rank-col"></th>
             <th>Track</th>
             <th>Member</th>
+            <th class="right">Peak</th>
             <th class="right">Days</th>
           </tr></thead>
           <tbody id="it-body"></tbody>
@@ -4299,10 +4300,12 @@ function toggleAmGlobalFull() {
 
 
 // ── iTunes Store Charts ──────────────────────────────────────────────────────
-const IT_URL = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/itunes-chart-positions-latest.json';
+const IT_URL       = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/itunes-chart-positions-latest.json';
+const IT_PEAKS_URL = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/itunes-chart-peaks.json';
 const IT_MEMBER_COLORS = { JENNIE: '#FF0066', 'ROSÉ': '#ff9eb5', LISA: '#ffce6e', JISOO: '#7eb8f7', BLACKPINK: '#c084fc' };
 let itunesCountry = '';
 let itunesData    = null;
+let itunesPeaks   = null;
 
 function setItunesCountry(val) {
   itunesCountry = val;
@@ -4325,9 +4328,14 @@ async function loadItunesCharts() {
   errorEl.style.display = 'none';
   _itunesClear();
   try {
-    const r = await fetch(IT_URL + '?_=' + Date.now());
+    const ts = '?_=' + Date.now();
+    const [r, rp] = await Promise.all([
+      fetch(IT_URL + ts),
+      fetch(IT_PEAKS_URL + ts),
+    ]);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     itunesData = await r.json();
+    if (rp.ok) itunesPeaks = await rp.json();
   } catch (e) {
     loadEl.style.display  = 'none';
     errorEl.textContent   = 'Could not load iTunes chart data.';
@@ -4365,10 +4373,15 @@ function renderItunesRegion() {
     const days = h.releaseDate && itunesData.date
       ? Math.max(1, Math.round((new Date(itunesData.date) - new Date(h.releaseDate)) / 86400000) + 1)
       : null;
+    const peakEntry = itunesPeaks?.byCountry?.[itunesCountry]?.[h.appleId ?? ''];
+    const peak      = peakEntry?.bestPosition;
+    const peakStyle = peak != null && peak < h.position ? 'color:#ffd700' : 'color:var(--muted)';
+    const peakStr   = peak != null ? '#' + peak : '—';
     return '<tr>' +
       '<td class="as-rank-col" style="font-family:var(--display);font-size:1.2rem;color:' + color + '">' + h.position + '</td>' +
       '<td style="font-size:0.88rem">' + song + '<br><span style="color:var(--muted);font-size:0.75rem">' + (h.artists || '') + '</span></td>' +
       '<td><span class="yt-member-tag" style="background:' + color + '22;color:' + color + '">' + h.member + '</span></td>' +
+      '<td class="right" style="font-size:0.8rem;' + peakStyle + '">' + peakStr + '</td>' +
       '<td class="right" style="color:var(--muted);font-size:0.75rem">' + (days !== null ? days + 'd' : '—') + '</td>' +
     '</tr>';
   }).join('');
