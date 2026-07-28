@@ -1,0 +1,28 @@
+name: Fetch iTunes Store Chart Positions
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 09:00 UTC daily — 1 hour after Apple Music charts run
+    - cron: '0 9 * * *'
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Fetch iTunes Store chart positions
+        run: node .github/scripts/fetch_itunes_chart_positions.mjs
+      - name: Commit chart data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "chore: update iTunes Store chart positions $(date -u +%Y-%m-%d)"
+          git pull --rebase
+          git push

@@ -1671,6 +1671,7 @@
         <a class="nav-dropdown-item" id="nav-spotify-charts" href="/spotify-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('spotify-charts'); return false;">Spotify Charts</a>
         <a class="nav-dropdown-item" id="nav-youtube" href="/youtube" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('youtube'); return false;">YouTube Charts</a>
         <a class="nav-dropdown-item" id="nav-apple" href="/apple-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('apple'); return false;">Apple Music Charts</a>
+        <a class="nav-dropdown-item" id="nav-itunes" href="/itunes-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('itunes'); return false;">iTunes Charts</a>
       </div>
     </li>
     <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
@@ -2704,6 +2705,15 @@
         <span class="ch-hub-label">Apple Music Charts</span>
         <span class="ch-hub-arrow">›</span>
       </a>
+      <a class="ch-hub-item" href="/itunes-charts" onclick="showPage('itunes'); return false;">
+        <svg class="ch-hub-icon" viewBox="0 0 100 100" fill="none" style="width:1.5rem;height:1.5rem;">
+          <rect width="100" height="100" rx="22" fill="url(#hub-itunes-grad)"/>
+          <defs><linearGradient id="hub-itunes-grad" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#f796c0"/><stop offset="100%" stop-color="#b64fc8"/></linearGradient></defs>
+          <path d="M68 28H32a4 4 0 0 0-4 4v36a4 4 0 0 0 4 4h36a4 4 0 0 0 4-4V32a4 4 0 0 0-4-4ZM50 71a11 11 0 1 1 0-22 11 11 0 0 1 0 22Zm0-18a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm0 7a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z" fill="white"/>
+        </svg>
+        <span class="ch-hub-label">iTunes Charts</span>
+        <span class="ch-hub-arrow">›</span>
+      </a>
     </nav>
   </div>
 </div><!-- end charts hub page -->
@@ -2814,6 +2824,98 @@
 
   </div>
 </div><!-- end apple music page -->
+
+
+<!-- ══════════════════════════════════════
+     ITUNES STORE CHARTS PAGE
+     ══════════════════════════════════════ -->
+<div id="page-itunes" class="page">
+  <div class="as-page">
+
+    <div class="as-header">
+      <svg class="as-gem" viewBox="0 0 100 100" fill="none" aria-hidden="true" style="width:30px;height:30px;">
+        <rect width="100" height="100" rx="22" fill="url(#itunes-grad)"/>
+        <defs>
+          <linearGradient id="itunes-grad" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#f796c0"/>
+            <stop offset="100%" stop-color="#b64fc8"/>
+          </linearGradient>
+        </defs>
+        <path d="M68 28H32a4 4 0 0 0-4 4v36a4 4 0 0 0 4 4h36a4 4 0 0 0 4-4V32a4 4 0 0 0-4-4ZM50 71a11 11 0 1 1 0-22 11 11 0 0 1 0 22Zm0-18a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm0 7a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z" fill="white"/>
+      </svg>
+      <p class="as-eyebrow">iTunes Store Charts</p>
+      <h1 class="as-title">BLACKPINK<br><span>ON ITUNES</span></h1>
+      <p class="as-sub">Real iTunes Store Top Songs purchase rankings — BLACKPINK + members</p>
+    </div>
+
+    <div class="as-inner">
+      <div class="ch-controls">
+        <select class="ch-country-select" id="it-country-select" onchange="setItunesCountry(this.value)">
+          <option value="" disabled selected>— Select a country —</option>
+          <option value="us">🇺🇸 United States</option>
+          <option value="gb">🇬🇧 United Kingdom</option>
+          <option value="kr">🇰🇷 South Korea</option>
+          <option value="jp">🇯🇵 Japan</option>
+          <option value="au">🇦🇺 Australia</option>
+          <option value="ca">🇨🇦 Canada</option>
+          <option value="de">🇩🇪 Germany</option>
+          <option value="fr">🇫🇷 France</option>
+          <option value="it">🇮🇹 Italy</option>
+          <option value="es">🇪🇸 Spain</option>
+          <option value="br">🇧🇷 Brazil</option>
+          <option value="mx">🇲🇽 Mexico</option>
+          <option value="tw">🇹🇼 Taiwan</option>
+          <option value="hk">🇭🇰 Hong Kong</option>
+          <option value="sg">🇸🇬 Singapore</option>
+          <option value="ph">🇵🇭 Philippines</option>
+          <option value="th">🇹🇭 Thailand</option>
+          <option value="id">🇮🇩 Indonesia</option>
+          <option value="my">🇲🇾 Malaysia</option>
+          <option value="vn">🇻🇳 Vietnam</option>
+          <option value="in">🇮🇳 India</option>
+          <option value="nz">🇳🇿 New Zealand</option>
+          <option value="nl">🇳🇱 Netherlands</option>
+          <option value="se">🇸🇪 Sweden</option>
+          <option value="no">🇳🇴 Norway</option>
+          <option value="pl">🇵🇱 Poland</option>
+          <option value="tr">🇹🇷 Turkey</option>
+          <option value="ar">🇦🇷 Argentina</option>
+          <option value="cl">🇨🇱 Chile</option>
+          <option value="co">🇨🇴 Colombia</option>
+          <option value="pe">🇵🇪 Peru</option>
+          <option value="sa">🇸🇦 Saudi Arabia</option>
+          <option value="za">🇿🇦 South Africa</option>
+          <option value="be">🇧🇪 Belgium</option>
+          <option value="at">🇦🇹 Austria</option>
+          <option value="ch">🇨🇭 Switzerland</option>
+          <option value="pt">🇵🇹 Portugal</option>
+          <option value="fi">🇫🇮 Finland</option>
+          <option value="dk">🇩🇰 Denmark</option>
+          <option value="ie">🇮🇪 Ireland</option>
+          <option value="cn">🇨🇳 China</option>
+        </select>
+      </div>
+
+      <div id="it-meta" class="ch-meta"></div>
+      <div id="it-loading" class="lb-loading" style="display:none;">Loading…</div>
+      <div id="it-error" class="as-error" style="display:none;"></div>
+      <div id="it-empty" class="ch-empty" style="display:none;"></div>
+
+      <div class="as-table-wrap as-tracks-wrap" id="it-table-wrap" style="display:none;">
+        <table class="as-table as-tracks-table">
+          <thead><tr>
+            <th class="as-rank-col"></th>
+            <th>Track</th>
+            <th>Member</th>
+            <th class="right">Days</th>
+          </tr></thead>
+          <tbody id="it-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div><!-- end itunes page -->
 
 <!-- ══════════════════════════════════════
      VOTE PAGE
@@ -3733,7 +3835,7 @@ function closeMobileNav() {
   document.getElementById('nav-hamburger').classList.remove('open');
 }
 
-const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube', apple: '/apple-charts', charts: '/charts' };
+const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube', apple: '/apple-charts', itunes: '/itunes-charts', charts: '/charts' };
 
 // Mirrors the per-route <title> the Vercel edge middleware sets on first
 // load, so client-side navigation keeps the tab title in sync too.
@@ -3748,6 +3850,7 @@ const PAGE_TITLES = {
   'spotify-charts': 'Spotify Charts | BLINKS UNITED',
   youtube: 'YouTube Charts | BLINKS UNITED',
   apple: 'Apple Music Charts | BLINKS UNITED',
+  itunes: 'iTunes Charts | BLINKS UNITED',
   charts: 'Charts | BLINKS UNITED',
 };
 
@@ -4195,6 +4298,83 @@ function toggleAmGlobalFull() {
 }
 
 
+// ── iTunes Store Charts ──────────────────────────────────────────────────────
+const IT_URL = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/itunes-chart-positions-latest.json';
+const IT_MEMBER_COLORS = { JENNIE: '#FF0066', 'ROSÉ': '#ff9eb5', LISA: '#ffce6e', JISOO: '#7eb8f7', BLACKPINK: '#c084fc' };
+let itunesCountry = '';
+let itunesData    = null;
+
+function setItunesCountry(val) {
+  itunesCountry = val;
+  renderItunesRegion();
+}
+
+function _itunesClear() {
+  document.getElementById('it-meta').textContent         = '';
+  document.getElementById('it-error').style.display      = 'none';
+  document.getElementById('it-empty').style.display      = 'none';
+  document.getElementById('it-table-wrap').style.display = 'none';
+}
+
+async function loadItunesCharts() {
+  if (itunesData) { if (itunesCountry) renderItunesRegion(); return; }
+  const loadEl  = document.getElementById('it-loading');
+  const errorEl = document.getElementById('it-error');
+  if (!loadEl) return;
+  loadEl.style.display  = 'block';
+  errorEl.style.display = 'none';
+  _itunesClear();
+  try {
+    const r = await fetch(IT_URL + '?_=' + Date.now());
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    itunesData = await r.json();
+  } catch (e) {
+    loadEl.style.display  = 'none';
+    errorEl.textContent   = 'Could not load iTunes chart data.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  loadEl.style.display = 'none';
+  if (itunesCountry) renderItunesRegion();
+}
+
+function renderItunesRegion() {
+  if (!itunesCountry || !itunesData) return;
+  _itunesClear();
+  const regionData = itunesData.regions?.[itunesCountry];
+  const emptyEl    = document.getElementById('it-empty');
+  if (!regionData) {
+    emptyEl.textContent   = 'No data available for this region yet.';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  const hits = (regionData.hits || []).slice().sort((a, b) => a.position - b.position);
+  const regionName = regionData.region || itunesCountry.toUpperCase();
+  const dateLabel  = itunesData.date || '';
+  document.getElementById('it-meta').textContent = [dateLabel, regionName, 'iTunes Top Songs'].filter(Boolean).join(' · ');
+  if (!hits.length) {
+    emptyEl.textContent   = 'No BLACKPINK/member entries in the top 100 for ' + regionName + '.';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  document.getElementById('it-body').innerHTML = hits.map(h => {
+    const color = IT_MEMBER_COLORS[h.member] || '#FF0066';
+    const song  = h.url
+      ? '<a href="' + h.url + '" target="_blank" rel="noopener" style="color:var(--white);text-decoration:none">' + h.name + '</a>'
+      : h.name;
+    const days = h.releaseDate && itunesData.date
+      ? Math.max(1, Math.round((new Date(itunesData.date) - new Date(h.releaseDate)) / 86400000) + 1)
+      : null;
+    return '<tr>' +
+      '<td class="as-rank-col" style="font-family:var(--display);font-size:1.2rem;color:' + color + '">' + h.position + '</td>' +
+      '<td style="font-size:0.88rem">' + song + '<br><span style="color:var(--muted);font-size:0.75rem">' + (h.artists || '') + '</span></td>' +
+      '<td><span class="yt-member-tag" style="background:' + color + '22;color:' + color + '">' + h.member + '</span></td>' +
+      '<td class="right" style="color:var(--muted);font-size:0.75rem">' + (days !== null ? days + 'd' : '—') + '</td>' +
+    '</tr>';
+  }).join('');
+  document.getElementById('it-table-wrap').style.display = '';
+}
+
 function setChartType(type, btn) {
   chartType = type;
   document.querySelectorAll('.ch-tabs .lb-tab').forEach(b => b.classList.remove('active'));
@@ -4367,11 +4547,12 @@ function showPage(page, { replace = false } = {}) {
     }
   }
   if (page === 'badges') { tryAutoLoad(); renderSpecialBadges(); }
-  if (page === 'spotify-charts' || page === 'youtube' || page === 'apple' || page === 'charts') document.getElementById('nav-charts')?.classList.add('active');
+  if (page === 'spotify-charts' || page === 'youtube' || page === 'apple' || page === 'itunes' || page === 'charts') document.getElementById('nav-charts')?.classList.add('active');
   if (page === 'streams') loadArtistStreamsPage();
   if (page === 'spotify-charts') loadSpotifyChartsPage();
   if (page === 'youtube') loadYouTubeCharts();
   if (page === 'apple') loadAppleCharts();
+  if (page === 'itunes') loadItunesCharts();
   if (page === 'leaderboard') {
     if (!acctBreakdown) tryAutoLoad(); // pre-load per-service data so own-row breakdown works
     const pending = parseLbHistoryParam();

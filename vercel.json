@@ -11,6 +11,7 @@
     { "source": "/streams", "destination": "/index.html" },
     { "source": "/charts", "destination": "/index.html" },
     { "source": "/apple-charts", "destination": "/index.html" },
+    { "source": "/itunes-charts", "destination": "/index.html" },
     { "source": "/spotify-charts", "destination": "/index.html" },
     { "source": "/youtube", "destination": "/index.html" },
     { "source": "/api/spotify-oauth-start", "destination": "/api/sync-playlist" },
