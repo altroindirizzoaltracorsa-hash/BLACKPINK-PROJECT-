@@ -72,7 +72,23 @@ function analyzeTable(html, label) {
 }
 
 async function main() {
-  console.log('=== Probing kworb iTunes URL patterns ===\n');
+  console.log('=== Probing kworb iTunes + Apple Music chart page structure ===\n');
+
+  // PHASE 0: Newly discovered URL pattern from artist page links:
+  //   /charts/itunes/{cc}.html  — iTunes per-country chart
+  //   /charts/apple_s/{cc}.html — Apple Music per-country chart
+  // Test a few countries to confirm structure.
+  console.log('=== Phase 0: /charts/itunes/ and /charts/apple_s/ pages ===');
+  const testCountries = ['us', 'tw', 'kr', 'gb', 'id'];
+  for (const cc of testCountries) {
+    const iTunesHtml = await probe(`https://kworb.net/charts/itunes/${cc}.html`);
+    if (iTunesHtml) analyzeTable(iTunesHtml, `iTunes/${cc}`);
+
+    const appleHtml = await probe(`https://kworb.net/charts/apple_s/${cc}.html`);
+    if (appleHtml) analyzeTable(appleHtml, `AppleM/${cc}`);
+  }
+
+  console.log('\n=== Probing kworb iTunes URL patterns ===\n');
 
   // Phase 1: check the kworb iTunes index page content + structure
   const indexHtml = await probe('https://kworb.net/itunes/');
