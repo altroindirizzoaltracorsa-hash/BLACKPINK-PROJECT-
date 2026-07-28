@@ -205,14 +205,6 @@ async function fetchStorefront({ cc, name }) {
   if (hits.length > 0) {
     hits.forEach(h => console.log(`    #${h.position} ${h.member} — "${h.name}" (${h.artists})`));
   }
-  // Dump all entries for US so we can verify what artist/title fields contain
-  if (cc === 'us') {
-    console.log(`  [us] Full entry dump:`);
-    for (let i = 0; i < entries.length; i++) {
-      const e = entries[i];
-      console.log(`    ${i + 1}. "${e['im:name']?.label}" — ${e['im:artist']?.label}`);
-    }
-  }
 
   return { region: name, cc, totalEntries: entries.length, hits };
 }
