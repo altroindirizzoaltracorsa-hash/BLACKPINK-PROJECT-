@@ -5,7 +5,7 @@
  * and solo members across storefronts via Apple's official RSS API v2.
  *
  * Endpoint (no auth required):
- *   GET https://rss.applemarketingtools.com/api/v2/{country}/music/top-songs/200/songs.json
+ *   GET https://rss.applemarketingtools.com/api/v2/{country}/music/top-songs/100/songs.json
  *
  * "top-songs" matches the chart visible in the Apple Music app.
  * Position is derived from array index (1-based) since the RSS feed returns
@@ -153,7 +153,7 @@ async function fetchWithRetry(url, opts, retries = 3) {
 }
 
 async function fetchStorefront({ cc, name }) {
-  const url = `${BASE}/${cc}/music/top-songs/200/songs.json`;
+  const url = `${BASE}/${cc}/music/top-songs/100/songs.json`;
   let resp;
   try {
     resp = await fetchWithRetry(url, { headers: { 'User-Agent': UA } });
