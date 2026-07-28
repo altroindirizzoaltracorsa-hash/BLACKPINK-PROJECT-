@@ -70,10 +70,10 @@ const STOREFRONTS = [
 
 const ARTIST_PATTERNS = [
   /\bblackpink\b/i,
-  /\bLISA\b/,      // case-sensitive: LISA (K-pop) is always all-caps; avoids "Lisa Gerrard" etc.
-  /\bLALISA\b/,
+  /\bLISA\b/,       // case-sensitive: K-pop LISA is all-caps; avoids "Lisa Gerrard", "LiSA" (JP singer)
+  /\blalisa\b/i,
   /\bjennie\b/i,
-  /ros[eé]/i,
+  /\bROS[Éé]/i,     // accent required: avoids "Roses" (Guns N' Roses), "The Rose", "IngaRose" etc.
   /\bjisoo\b/i,
   /블랙핑크/,
   /리사/,
@@ -88,9 +88,9 @@ function isBlackpinkArtist(artistName = '') {
 
 function identifyMember(artistName = '') {
   if (/\bblackpink\b/i.test(artistName) || /블랙핑크/.test(artistName)) return 'BLACKPINK';
-  if (/\bLISA\b/.test(artistName) || /\bLALISA\b/.test(artistName) || /리사/.test(artistName)) return 'LISA';
+  if (/\bLISA\b/.test(artistName) || /\blalisa\b/i.test(artistName) || /리사/.test(artistName)) return 'LISA';
   if (/\bjennie\b/i.test(artistName) || /제니/.test(artistName)) return 'JENNIE';
-  if (/ros[eé]/i.test(artistName) || /로제/.test(artistName)) return 'ROSÉ';
+  if (/\bROS[Éé]/i.test(artistName) || /로제/.test(artistName)) return 'ROSÉ';
   if (/\bjisoo\b/i.test(artistName) || /지수/.test(artistName)) return 'JISOO';
   return 'BLACKPINK';
 }
