@@ -2,12 +2,10 @@
  * fetch_itunes_chart_positions.mjs
  *
  * Daily script: fetches iTunes Store Top Songs chart positions for BLACKPINK
- * and solo members across storefronts via Apple's legacy iTunes RSS feed.
+ * and solo members across storefronts by scraping kworb.net chart pages.
  *
- * Endpoint (no auth required):
- *   GET https://itunes.apple.com/{country}/rss/topsongs/limit=200/json
- *
- * Response uses feed.entry[] with im:* fields (different from Apple Music RSS).
+ * Data source: https://kworb.net/charts/itunes/{cc}.html
+ * Not all country codes are available on kworb; 404s are skipped gracefully.
  *
  * Commits two files:
  *   data/itunes-chart-positions-YYYY-MM-DD.json
@@ -23,6 +21,7 @@ const REPO_ROOT = join(__dirname, '..', '..');
 const DATA_DIR = join(REPO_ROOT, 'data');
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+const BASE = 'https://kworb.net/charts/itunes';
 
 const STOREFRONTS = [
   { cc: 'us', name: 'United States' },
@@ -73,7 +72,7 @@ const ARTIST_PATTERNS = [
   /\bLISA\b/,       // case-sensitive: K-pop LISA is all-caps; avoids "Lisa Gerrard", "LiSA" (JP singer)
   /\blalisa\b/i,
   /\bjennie\b/i,
-  /\bROS[Éé]/i,     // accent required: avoids "Roses" (Guns N' Roses), "The Rose", "IngaRose" etc.
+  /\bROS[Éé]/i,     // accent required: avoids "Roses" (Guns N' Roses), "IngaRose" etc.
   /\bjisoo\b/i,
   /블랙핑크/,
   /리사/,
@@ -86,9 +85,8 @@ function isBlackpinkArtist(artistName = '') {
   return ARTIST_PATTERNS.some(p => p.test(artistName));
 }
 
-// Case-sensitive patterns for title credit matching — only scan parenthesised
-// sections like "(feat. JENNIE)" or "(JENNIE Remix)" to avoid matching common
-// first names like "Jennie" or "Jisoo" that appear in unrelated song titles.
+// Only scan parenthesised credits like "(feat. JENNIE)" to avoid matching
+// common first names in unrelated song titles.
 const TITLE_CREDIT_PATTERNS = [
   /\bBLACKPINK\b/i,
   /\bLISA\b/,
@@ -123,6 +121,16 @@ function identifyMember(artistName = '') {
   return 'BLACKPINK';
 }
 
+function decodeHtml(s) {
+  return s
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+}
+
 async function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function fetchWithRetry(url, opts, retries = 3) {
@@ -146,67 +154,84 @@ async function fetchWithRetry(url, opts, retries = 3) {
   }
 }
 
+// Parses kworb chart table rows from HTML.
+// Table structure: <tr><td>POS</td>[<td>CHANGE</td>]<td class="mp text"><div>ARTIST - TITLE</div></td></tr>
+// The P+ (change) column is present on some country pages but not all.
+function parseKworbTable(html) {
+  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  const results = [];
+  let m;
+  while ((m = rowRe.exec(html))) {
+    const inner = m[1];
+    if (inner.includes('<th')) continue;
+
+    const tdRe = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+    const tds = [];
+    let tdm;
+    while ((tdm = tdRe.exec(inner))) {
+      tds.push(decodeHtml(tdm[1].replace(/<[^>]+>/g, '').trim()));
+    }
+    if (tds.length < 2) continue;
+
+    const position = parseInt(tds[0], 10);
+    if (isNaN(position)) continue;
+
+    // Last td is always "Artist - Title"
+    const artistTitle = tds[tds.length - 1];
+    const dashIdx = artistTitle.indexOf(' - ');
+    if (dashIdx === -1) continue;
+    const artistName = artistTitle.slice(0, dashIdx).trim();
+    const songName   = artistTitle.slice(dashIdx + 3).trim();
+
+    results.push({ position, artistName, songName });
+  }
+  return results;
+}
+
 async function fetchStorefront({ cc, name }) {
-  const url = `https://itunes.apple.com/${cc}/rss/topsongs/limit=200/json`;
+  const url = `${BASE}/${cc}.html`;
   let resp;
   try {
-    resp = await fetchWithRetry(url, { headers: { 'User-Agent': UA } });
+    resp = await fetchWithRetry(url, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*' } });
   } catch (e) {
     console.error(`  [${cc}] fetch error: ${e.message}`);
     return null;
   }
   if (!resp.ok) {
-    console.error(`  [${cc}] HTTP ${resp.status}`);
+    if (resp.status === 404) {
+      console.log(`  [${cc}] not available on kworb (404)`);
+    } else {
+      console.error(`  [${cc}] HTTP ${resp.status}`);
+    }
     return null;
   }
 
-  let data;
-  try {
-    data = await resp.json();
-  } catch (e) {
-    console.error(`  [${cc}] JSON parse error: ${e.message}`);
-    return null;
-  }
-
-  // Legacy iTunes RSS uses feed.entry[] with im:* fields
-  const entries = data?.feed?.entry ?? [];
-  if (!Array.isArray(entries) || entries.length === 0) {
-    console.error(`  [${cc}] no entries in feed (keys: ${Object.keys(data?.feed ?? {}).join(', ')})`);
+  const html = await resp.text();
+  const rows = parseKworbTable(html);
+  if (rows.length === 0) {
+    console.error(`  [${cc}] no chart rows parsed`);
     return null;
   }
 
   const hits = [];
-  for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i];
-    const artistName = entry['im:artist']?.label ?? '';
-    const songName   = entry['im:name']?.label ?? '';
-    // Artist field first; fall back to parenthesised credits in title only
-    // e.g. "SPOT! (feat. JENNIE)" — avoids matching "Jennie" as a common name
+  for (const { position, artistName, songName } of rows) {
     const byArtist = isBlackpinkArtist(artistName);
     const byTitle  = !byArtist && isBlackpinkCredit(songName);
     if (!byArtist && !byTitle) continue;
-    const releaseDate = entry['im:releaseDate']?.label?.slice(0, 10) ?? null;
-    const trackUrl    = entry.link?.attributes?.href ?? entry.id?.label ?? null;
-    const artworkUrl  = entry['im:image']?.[2]?.label ?? entry['im:image']?.[0]?.label ?? null;
-    const appleId     = entry.id?.attributes?.['im:id'] ?? null;
     hits.push({
-      position: i + 1,
+      position,
       name: songName,
       artists: artistName,
       member: byArtist ? identifyMember(artistName) : identifyMemberFromCredit(songName),
-      releaseDate,
-      url: trackUrl,
-      artworkUrl,
-      appleId,
     });
   }
 
-  console.log(`  [${cc}] ${name}: ${entries.length} entries, ${hits.length} BP hits`);
+  console.log(`  [${cc}] ${name}: ${rows.length} entries, ${hits.length} BP hits`);
   if (hits.length > 0) {
     hits.forEach(h => console.log(`    #${h.position} ${h.member} — "${h.name}" (${h.artists})`));
   }
 
-  return { region: name, cc, totalEntries: entries.length, hits };
+  return { region: name, cc, totalEntries: rows.length, hits };
 }
 
 async function main() {
@@ -224,7 +249,7 @@ async function main() {
     } catch (e) {
       console.error(`  [${sf.cc}] unexpected error: ${e.message}`);
     }
-    await delay(150);
+    await delay(300);
   }
 
   const totalHits = Object.values(regions).reduce((n, r) => n + (r?.hits?.length ?? 0), 0);
