@@ -86,6 +86,34 @@ function isBlackpinkArtist(artistName = '') {
   return ARTIST_PATTERNS.some(p => p.test(artistName));
 }
 
+// Case-sensitive patterns for title credit matching — only scan parenthesised
+// sections like "(feat. JENNIE)" or "(JENNIE Remix)" to avoid matching common
+// first names like "Jennie" or "Jisoo" that appear in unrelated song titles.
+const TITLE_CREDIT_PATTERNS = [
+  /\bBLACKPINK\b/i,
+  /\bLISA\b/,
+  /\bLALISA\b/i,
+  /\bJENNIE\b/,   // case-sensitive
+  /\bROS[Éé]/i,
+  /\bJISOO\b/,    // case-sensitive
+  /블랙핑크/, /리사/, /제니/, /로제/, /지수/,
+];
+
+function isBlackpinkCredit(songName = '') {
+  const credits = (songName.match(/\([^)]+\)/g) || []).join(' ');
+  return credits && TITLE_CREDIT_PATTERNS.some(p => p.test(credits));
+}
+
+function identifyMemberFromCredit(songName = '') {
+  const credits = (songName.match(/\([^)]+\)/g) || []).join(' ');
+  if (/\bBLACKPINK\b/i.test(credits) || /블랙핑크/.test(credits)) return 'BLACKPINK';
+  if (/\bLISA\b/.test(credits) || /\bLALISA\b/i.test(credits) || /리사/.test(credits)) return 'LISA';
+  if (/\bJENNIE\b/.test(credits) || /제니/.test(credits)) return 'JENNIE';
+  if (/\bROS[Éé]/i.test(credits) || /로제/.test(credits)) return 'ROSÉ';
+  if (/\bJISOO\b/.test(credits) || /지수/.test(credits)) return 'JISOO';
+  return 'BLACKPINK';
+}
+
 function identifyMember(artistName = '') {
   if (/\bblackpink\b/i.test(artistName) || /블랙핑크/.test(artistName)) return 'BLACKPINK';
   if (/\bLISA\b/.test(artistName) || /\blalisa\b/i.test(artistName) || /리사/.test(artistName)) return 'LISA';
@@ -152,12 +180,11 @@ async function fetchStorefront({ cc, name }) {
     const entry = entries[i];
     const artistName = entry['im:artist']?.label ?? '';
     const songName   = entry['im:name']?.label ?? '';
-    // Match on artist field first; fall back to song name to catch remix credits
-    // e.g. "Dracula (JENNIE Remix)" where artistName is the original artist
-    const matchField = isBlackpinkArtist(artistName) ? artistName
-                     : isBlackpinkArtist(songName)   ? songName
-                     : null;
-    if (!matchField) continue;
+    // Artist field first; fall back to parenthesised credits in title only
+    // e.g. "SPOT! (feat. JENNIE)" — avoids matching "Jennie" as a common name
+    const byArtist = isBlackpinkArtist(artistName);
+    const byTitle  = !byArtist && isBlackpinkCredit(songName);
+    if (!byArtist && !byTitle) continue;
     const releaseDate = entry['im:releaseDate']?.label?.slice(0, 10) ?? null;
     const trackUrl    = entry.link?.attributes?.href ?? entry.id?.label ?? null;
     const artworkUrl  = entry['im:image']?.[2]?.label ?? entry['im:image']?.[0]?.label ?? null;
@@ -166,7 +193,7 @@ async function fetchStorefront({ cc, name }) {
       position: i + 1,
       name: songName,
       artists: artistName,
-      member: identifyMember(matchField),
+      member: byArtist ? identifyMember(artistName) : identifyMemberFromCredit(songName),
       releaseDate,
       url: trackUrl,
       artworkUrl,
