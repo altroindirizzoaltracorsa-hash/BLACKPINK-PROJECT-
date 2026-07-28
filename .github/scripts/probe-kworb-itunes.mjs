@@ -22,6 +22,15 @@ const CANDIDATE_URLS = [
   'https://kworb.net/apple/us_daily.html',
 ];
 
+// Artist page slugs to try for BLACKPINK members
+const ARTIST_SLUGS = [
+  { name: 'BLACKPINK', slugs: ['blackpink', 'blackpink_'] },
+  { name: 'JENNIE',    slugs: ['jennie', 'jennie_'] },
+  { name: 'ROSÉ',      slugs: ['rose', 'rose_', 'rosé', 'roze'] },
+  { name: 'LISA',      slugs: ['lisa', 'lisa_'] },
+  { name: 'JISOO',     slugs: ['jisoo', 'jisoo_'] },
+];
+
 const ARTIST_NAMES = ['blackpink', 'jennie', 'jisoo', 'rosé', 'rose', 'lisa'];
 
 async function probe(url) {
@@ -65,18 +74,26 @@ function analyzeTable(html, label) {
 async function main() {
   console.log('=== Probing kworb iTunes URL patterns ===\n');
 
-  // First: check the kworb iTunes index page for all linked pages
+  // Phase 1: check the kworb iTunes index page content + structure
   const indexHtml = await probe('https://kworb.net/itunes/');
   if (indexHtml) {
     const links = [...indexHtml.matchAll(/href="([^"]+\.html)"/gi)].map(m => m[1]);
     const uniqueLinks = [...new Set(links)].slice(0, 40);
     console.log('\n[index] linked .html pages:');
     uniqueLinks.forEach(l => console.log(`  ${l}`));
+
+    // Show the index page table structure
+    analyzeTable(indexHtml, 'index');
   }
 
+  // Phase 2: check the extended page
+  const extHtml = await probe('https://kworb.net/itunes/extended.html');
+  if (extHtml) analyzeTable(extHtml, 'extended');
+
+  // Phase 3: per-country URL patterns (all previously 404'd, but double-check)
   console.log('\n=== URL candidate probes ===');
   let workingUrl = null;
-  for (const url of CANDIDATE_URLS.slice(1)) { // skip index, already done
+  for (const url of CANDIDATE_URLS.slice(1)) {
     const html = await probe(url);
     if (html && !workingUrl) {
       workingUrl = url;
@@ -84,11 +101,26 @@ async function main() {
     }
   }
 
-  // If we found a working URL, try a few more countries
+  // Phase 4: BLACKPINK member artist pages — the key finding from the index
+  console.log('\n=== BLACKPINK member artist pages ===');
+  for (const { name, slugs } of ARTIST_SLUGS) {
+    let found = false;
+    for (const slug of slugs) {
+      const url = `https://kworb.net/itunes/artist/${slug}.html`;
+      const html = await probe(url);
+      if (html) {
+        found = true;
+        analyzeTable(html, `${name} (${slug})`);
+        break;
+      }
+    }
+    if (!found) console.log(`  ${name}: no artist page found (tried: ${slugs.join(', ')})`);
+  }
+
+  // Phase 5: if per-country pages exist, probe more regions
   if (workingUrl) {
-    const base = workingUrl.replace(/us_daily.*/, '');
     const testRegions = ['kr', 'gb', 'jp', 'tw'];
-    console.log(`\n=== Per-country tests (base: ${base}) ===`);
+    console.log(`\n=== Per-country tests (base: ${workingUrl}) ===`);
     for (const cc of testRegions) {
       const url = workingUrl.replace('/us', `/${cc}`);
       const html = await probe(url);
@@ -105,13 +137,6 @@ async function main() {
           console.log('    ' + row.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180));
         }
       }
-    }
-  } else {
-    console.log('\nNo working URL found — dumping kworb.net root links for manual inspection:');
-    const rootHtml = await probe('https://kworb.net/');
-    if (rootHtml) {
-      const links = [...rootHtml.matchAll(/href="([^"]+)"/gi)].map(m => m[1]).filter(l => l.includes('itunes') || l.includes('apple'));
-      console.log([...new Set(links)].slice(0, 30));
     }
   }
 
