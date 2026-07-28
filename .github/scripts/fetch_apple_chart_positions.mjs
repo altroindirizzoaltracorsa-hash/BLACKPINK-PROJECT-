@@ -2,14 +2,10 @@
  * fetch_apple_chart_positions.mjs
  *
  * Daily script: fetches Apple Music Top Songs chart positions for BLACKPINK
- * and solo members across storefronts via Apple's official RSS API v2.
+ * and solo members across storefronts by scraping kworb.net chart pages.
  *
- * Endpoint (no auth required):
- *   GET https://rss.applemarketingtools.com/api/v2/{country}/music/top-songs/100/songs.json
- *
- * "top-songs" matches the chart visible in the Apple Music app.
- * Position is derived from array index (1-based) since the RSS feed returns
- * songs in chart order and the chartPosition field is not always present.
+ * Data source: https://kworb.net/charts/apple_s/{cc}.html
+ * Not all country codes are available on kworb; 404s are skipped gracefully.
  *
  * Commits two files:
  *   data/apple-chart-positions-YYYY-MM-DD.json
@@ -25,10 +21,8 @@ const REPO_ROOT = join(__dirname, '..', '..');
 const DATA_DIR = join(REPO_ROOT, 'data');
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-const BASE = 'https://rss.applemarketingtools.com/api/v2';
+const BASE = 'https://kworb.net/charts/apple_s';
 
-// Apple Music storefronts to check. Apple doesn't publish a single global
-// chart via RSS — positions are per-country only.
 const STOREFRONTS = [
   { cc: 'us', name: 'United States' },
   { cc: 'gb', name: 'United Kingdom' },
@@ -73,13 +67,12 @@ const STOREFRONTS = [
   { cc: 'cn', name: 'China' },
 ];
 
-// Patterns to detect BLACKPINK/member in artistName (single string in Apple's feed)
 const ARTIST_PATTERNS = [
   /\bblackpink\b/i,
   /\bLISA\b/,       // case-sensitive: K-pop LISA is all-caps; avoids "Lisa Gerrard", "LiSA" (JP singer)
   /\blalisa\b/i,
   /\bjennie\b/i,
-  /\bROS[Éé]/i,     // accent required: avoids "Roses" (Guns N' Roses), "The Rose", "IngaRose" etc.
+  /\bROS[Éé]/i,     // accent required: avoids "Roses" (Guns N' Roses), "IngaRose" etc.
   /\bjisoo\b/i,
   /블랙핑크/,
   /리사/,
@@ -92,9 +85,8 @@ function isBlackpinkArtist(artistName = '') {
   return ARTIST_PATTERNS.some(p => p.test(artistName));
 }
 
-// Case-sensitive patterns for title credit matching — only scan parenthesised
-// sections like "(feat. JENNIE)" or "(JENNIE Remix)" to avoid matching common
-// first names like "Jennie" or "Jisoo" that appear in unrelated song titles.
+// Only scan parenthesised credits like "(feat. JENNIE)" to avoid matching
+// common first names in unrelated song titles.
 const TITLE_CREDIT_PATTERNS = [
   /\bBLACKPINK\b/i,
   /\bLISA\b/,
@@ -110,6 +102,16 @@ function isBlackpinkCredit(songName = '') {
   return credits && TITLE_CREDIT_PATTERNS.some(p => p.test(credits));
 }
 
+function identifyMemberFromCredit(songName = '') {
+  const credits = (songName.match(/\([^)]+\)/g) || []).join(' ');
+  if (/\bBLACKPINK\b/i.test(credits) || /블랙핑크/.test(credits)) return 'BLACKPINK';
+  if (/\bLISA\b/.test(credits) || /\bLALISA\b/i.test(credits) || /리사/.test(credits)) return 'LISA';
+  if (/\bJENNIE\b/.test(credits) || /제니/.test(credits)) return 'JENNIE';
+  if (/\bROS[Éé]/i.test(credits) || /로제/.test(credits)) return 'ROSÉ';
+  if (/\bJISOO\b/.test(credits) || /지수/.test(credits)) return 'JISOO';
+  return 'BLACKPINK';
+}
+
 function identifyMember(artistName = '') {
   if (/\bblackpink\b/i.test(artistName) || /블랙핑크/.test(artistName)) return 'BLACKPINK';
   if (/\bLISA\b/.test(artistName) || /\blalisa\b/i.test(artistName) || /리사/.test(artistName)) return 'LISA';
@@ -119,14 +121,14 @@ function identifyMember(artistName = '') {
   return 'BLACKPINK';
 }
 
-function identifyMemberFromCredit(songName = '') {
-  const credits = (songName.match(/\([^)]+\)/g) || []).join(' ');
-  if (/\bBLACKPINK\b/i.test(credits) || /블랙핑크/.test(credits)) return 'BLACKPINK';
-  if (/\bLISA\b/.test(credits) || /\bLALISA\b/i.test(credits) || /리사/.test(credits)) return 'LISA';
-  if (/\bJENNIE\b/.test(credits) || /제니/.test(credits)) return 'JENNIE';
-  if (/\bROS[Éé]/i.test(credits) || /로제/.test(credits)) return 'ROSÉ';
-  if (/\bJISOO\b/.test(credits) || /지수/.test(credits)) return 'JISOO';
-  return 'BLACKPINK';
+function decodeHtml(s) {
+  return s
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ');
 }
 
 async function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -152,50 +154,84 @@ async function fetchWithRetry(url, opts, retries = 3) {
   }
 }
 
+// Parses kworb chart table rows from HTML.
+// Table structure: <tr><td>POS</td>[<td>CHANGE</td>]<td class="mp text"><div>ARTIST - TITLE</div></td></tr>
+// The P+ (change) column is present on some country pages but not all.
+function parseKworbTable(html) {
+  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  const results = [];
+  let m;
+  while ((m = rowRe.exec(html))) {
+    const inner = m[1];
+    if (inner.includes('<th')) continue;
+
+    const tdRe = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+    const tds = [];
+    let tdm;
+    while ((tdm = tdRe.exec(inner))) {
+      tds.push(decodeHtml(tdm[1].replace(/<[^>]+>/g, '').trim()));
+    }
+    if (tds.length < 2) continue;
+
+    const position = parseInt(tds[0], 10);
+    if (isNaN(position)) continue;
+
+    // Last td is always "Artist - Title"
+    const artistTitle = tds[tds.length - 1];
+    const dashIdx = artistTitle.indexOf(' - ');
+    if (dashIdx === -1) continue;
+    const artistName = artistTitle.slice(0, dashIdx).trim();
+    const songName   = artistTitle.slice(dashIdx + 3).trim();
+
+    results.push({ position, artistName, songName });
+  }
+  return results;
+}
+
 async function fetchStorefront({ cc, name }) {
-  const url = `${BASE}/${cc}/music/top-songs/100/songs.json`;
+  const url = `${BASE}/${cc}.html`;
   let resp;
   try {
-    resp = await fetchWithRetry(url, { headers: { 'User-Agent': UA } });
+    resp = await fetchWithRetry(url, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*' } });
   } catch (e) {
     console.error(`  [${cc}] fetch error: ${e.message}`);
     return null;
   }
   if (!resp.ok) {
-    console.error(`  [${cc}] HTTP ${resp.status}`);
+    if (resp.status === 404) {
+      console.log(`  [${cc}] not available on kworb (404)`);
+    } else {
+      console.error(`  [${cc}] HTTP ${resp.status}`);
+    }
     return null;
   }
 
-  const data = await resp.json();
-  const results = data?.feed?.results ?? [];
+  const html = await resp.text();
+  const rows = parseKworbTable(html);
+  if (rows.length === 0) {
+    console.error(`  [${cc}] no chart rows parsed`);
+    return null;
+  }
 
   const hits = [];
-  for (let i = 0; i < results.length; i++) {
-    const entry = results[i];
-    const artistName = entry.artistName ?? '';
-    const songName   = entry.name ?? '';
-    // Artist field first; fall back to parenthesised credits in title only
+  for (const { position, artistName, songName } of rows) {
     const byArtist = isBlackpinkArtist(artistName);
     const byTitle  = !byArtist && isBlackpinkCredit(songName);
     if (!byArtist && !byTitle) continue;
     hits.push({
-      position: i + 1,
+      position,
       name: songName,
       artists: artistName,
       member: byArtist ? identifyMember(artistName) : identifyMemberFromCredit(songName),
-      releaseDate: entry.releaseDate ?? null,
-      url: entry.url ?? null,
-      artworkUrl: entry.artworkUrl100 ?? null,
-      appleId: entry.id ?? null,
     });
   }
 
-  console.log(`  [${cc}] ${name}: ${results.length} entries, ${hits.length} BP hits`);
+  console.log(`  [${cc}] ${name}: ${rows.length} entries, ${hits.length} BP hits`);
   if (hits.length > 0) {
     hits.forEach(h => console.log(`    #${h.position} ${h.member} — "${h.name}" (${h.artists})`));
   }
 
-  return { region: name, cc, totalEntries: results.length, hits };
+  return { region: name, cc, totalEntries: rows.length, hits };
 }
 
 async function main() {
@@ -213,34 +249,31 @@ async function main() {
     } catch (e) {
       console.error(`  [${sf.cc}] unexpected error: ${e.message}`);
     }
-    await delay(150);
+    await delay(300);
   }
 
   const totalHits = Object.values(regions).reduce((n, r) => n + (r?.hits?.length ?? 0), 0);
+  const regionsChecked = Object.keys(regions).length;
   const output = {
     generatedAt: new Date().toISOString(),
     date: today,
     regions,
-    summary: {
-      totalHits,
-      regionsChecked: Object.keys(regions).length,
-    },
+    summary: { totalHits, regionsChecked },
   };
 
-  const dated = join(DATA_DIR, `apple-chart-positions-${today}.json`);
+  const dated  = join(DATA_DIR, `apple-chart-positions-${today}.json`);
   const latest = join(DATA_DIR, 'apple-chart-positions-latest.json');
   writeFileSync(dated, JSON.stringify(output, null, 2));
-  // Only overwrite latest.json if at least one storefront responded — keeps
-  // previous day's data visible when the API is temporarily down.
-  if (output.summary.regionsChecked > 0) {
+  if (regionsChecked > 0) {
     writeFileSync(latest, JSON.stringify(output, null, 2));
   } else {
     console.log('\n  All storefronts failed — keeping existing latest.json unchanged.');
   }
 
   console.log(`\n  Saved: ${dated}`);
-  console.log(`  Saved: ${latest}`);
-  console.log(`  Total BP hits across all storefronts: ${totalHits}`);
+  if (regionsChecked > 0) console.log(`  Saved: ${latest}`);
+  console.log(`  Storefronts checked: ${regionsChecked}/${STOREFRONTS.length}`);
+  console.log(`  Total BP hits: ${totalHits}`);
 
   const allHits = Object.entries(regions).flatMap(([, r]) =>
     (r?.hits ?? []).map(h => ({ ...h, regionName: r.region }))
