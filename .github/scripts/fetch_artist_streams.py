@@ -374,16 +374,23 @@ def process_artist(client, artist_id, artist_name):
     total_streams = sum(c["streams"] for c in canonical)
     print(f"  {len(canonical)}/{len(track_specs)} tracks fetched, total={total_streams:,}")
 
+    prev_artist = previous_artist_stat(artist_id)
+
+    # If Spotify hasn't published new counts yet, all totals are identical to
+    # the previous snapshot. Skip writing anything so we don't record a +0 day.
+    if prev_artist and total_streams == prev_artist["total_streams"]:
+        print(f"  NOT UPDATED YET (same total as {prev_artist['date']}), skipping.")
+        return
+
     name_to_ref = upsert_artist_tracks(artist_id, canonical)
 
-    prev_artist = previous_artist_stat(artist_id)
     prev_date = prev_artist["date"] if prev_artist else None
-    prev_track_streams = previous_track_streams(artist_id, prev_date)
+    prev_track_streams_map = previous_track_streams(artist_id, prev_date)
 
     track_rows = []
     for c in canonical:
         ref = name_to_ref[c["name"]]
-        prev = prev_track_streams.get(ref)
+        prev = prev_track_streams_map.get(ref)
         track_rows.append({
             "track_ref": ref,
             "date": TODAY,
