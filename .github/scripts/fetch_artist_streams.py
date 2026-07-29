@@ -423,11 +423,8 @@ def process_artist(client, artist_id, artist_name):
            "total_streams": total_streams,
            "daily_delta": artist_delta,
            "followers": artist_data.followers,
-           "followers_delta": followers_delta,
            "monthly_listeners": artist_data.monthly_listeners,
-           "monthly_listeners_delta": monthly_delta,
            "world_rank": artist_data.world_rank,
-           "world_rank_delta": rank_delta,
            "track_count": len(canonical),
        }])
     print(f"  saved. delta={artist_delta}, followers_delta={followers_delta}, monthly_delta={monthly_delta}, rank=#{artist_data.world_rank} (delta={rank_delta})")
