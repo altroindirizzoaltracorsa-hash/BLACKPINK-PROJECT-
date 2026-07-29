@@ -21,6 +21,8 @@ const SP_TRACKS = {
   jump:     '5H1sKFMzDeMtXwND3V6hRY',
   shutdown: '6tCd8bPvYnceDG7W9M1RMk',
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
+  go_a:     '3FZPp9lBUvhsxFxKJi3VkB',
+  go_b:     '0mYa3o6tlUN5HRippmKmwH',
 };
 
 async function statsPost(body) {
@@ -165,9 +167,9 @@ async function fetchOfficialArtistChart(token, chartType, country) {
   return { ok: true, alias, data };
 }
 
-async function storeGlobalSnapshot(date, jumpTotal, shutdownTotal, ddududuTotal) {
+async function storeGlobalSnapshot(date, jumpTotal, shutdownTotal, ddududuTotal, goTotal) {
   const prevRes = await sbFetch(
-    `/global_stream_snapshots?date=lt.${date}&order=date.desc&limit=1&select=jump_total,shutdown_total,ddududu_total`,
+    `/global_stream_snapshots?date=lt.${date}&order=date.desc&limit=1&select=jump_total,shutdown_total,ddududu_total,go_total`,
     { headers: { Accept: 'application/json' } },
   );
   const prev = prevRes.ok ? (await prevRes.json())[0] ?? null : null;
@@ -175,11 +177,15 @@ async function storeGlobalSnapshot(date, jumpTotal, shutdownTotal, ddududuTotal)
   const jumpDaily     = prev ? jumpTotal     - prev.jump_total     : null;
   const shutdownDaily = prev ? shutdownTotal - prev.shutdown_total : null;
   const ddududuDaily  = prev ? ddududuTotal  - prev.ddududu_total  : null;
+  const goDaily       = (goTotal != null && prev?.go_total != null) ? goTotal - prev.go_total : null;
+
+  const payload = { date, jump_total: jumpTotal, shutdown_total: shutdownTotal, ddududu_total: ddududuTotal, jump_daily: jumpDaily, shutdown_daily: shutdownDaily, ddududu_daily: ddududuDaily };
+  if (goTotal != null) { payload.go_total = goTotal; payload.go_daily = goDaily; }
 
   const insertRes = await sbFetch('/global_stream_snapshots', {
     method:  'POST',
     headers: { Prefer: 'resolution=merge-duplicates' },
-    body: JSON.stringify({ date, jump_total: jumpTotal, shutdown_total: shutdownTotal, ddududu_total: ddududuTotal, jump_daily: jumpDaily, shutdown_daily: shutdownDaily, ddududu_daily: ddududuDaily }),
+    body: JSON.stringify(payload),
   });
   if (!insertRes.ok) {
     const errBody = await insertRes.text();
@@ -187,18 +193,20 @@ async function storeGlobalSnapshot(date, jumpTotal, shutdownTotal, ddududuTotal)
   }
 
   const nextRes = await sbFetch(
-    `/global_stream_snapshots?date=gt.${date}&order=date.asc&limit=1&select=date,jump_total,shutdown_total,ddududu_total`,
+    `/global_stream_snapshots?date=gt.${date}&order=date.asc&limit=1&select=date,jump_total,shutdown_total,ddududu_total,go_total`,
     { headers: { Accept: 'application/json' } },
   );
   const next = nextRes.ok ? (await nextRes.json())[0] ?? null : null;
   if (next) {
+    const patch = {
+      jump_daily:     next.jump_total     - jumpTotal,
+      shutdown_daily: next.shutdown_total - shutdownTotal,
+      ddududu_daily:  next.ddududu_total  - ddududuTotal,
+    };
+    if (goTotal != null && next.go_total != null) patch.go_daily = next.go_total - goTotal;
     await sbFetch(`/global_stream_snapshots?date=eq.${next.date}`, {
       method: 'PATCH',
-      body: JSON.stringify({
-        jump_daily:     next.jump_total     - jumpTotal,
-        shutdown_daily: next.shutdown_total - shutdownTotal,
-        ddududu_daily:  next.ddududu_total  - ddududuTotal,
-      }),
+      body: JSON.stringify(patch),
     });
   }
 }
@@ -444,12 +452,12 @@ export default async function handler(req, res) {
     if (!adminSecret || req.headers['x-admin-secret'] !== adminSecret) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    const { date, jump_total, shutdown_total, ddududu_total } = req.body ?? {};
+    const { date, jump_total, shutdown_total, ddududu_total, go_total } = req.body ?? {};
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || jump_total == null || shutdown_total == null || ddududu_total == null) {
       return res.status(400).json({ error: 'Required: date (YYYY-MM-DD), jump_total, shutdown_total, ddududu_total' });
     }
     try {
-      await storeGlobalSnapshot(date, Number(jump_total), Number(shutdown_total), Number(ddududu_total));
+      await storeGlobalSnapshot(date, Number(jump_total), Number(shutdown_total), Number(ddududu_total), go_total != null ? Number(go_total) : null);
       return res.status(200).json({ ok: true, date });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -737,7 +745,7 @@ export default async function handler(req, res) {
   if (req.query.global_streams === 'history') {
     const limit = Math.min(Number(req.query.limit ?? 30), 365);
     const r = await sbFetch(
-      `/global_stream_snapshots?order=date.desc&limit=${limit}&select=date,jump_total,shutdown_total,ddududu_total,jump_daily,shutdown_daily,ddududu_daily`,
+      `/global_stream_snapshots?order=date.desc&limit=${limit}&select=date,jump_total,shutdown_total,ddududu_total,go_total,jump_daily,shutdown_daily,ddududu_daily,go_daily`,
       { headers: { Accept: 'application/json' } },
     );
     return res.status(200).json({ data: r.ok ? await r.json() : [] });
@@ -756,13 +764,16 @@ export default async function handler(req, res) {
       d.setUTCDate(d.getUTCDate() - 1);
       const streamDate = d.toISOString().split('T')[0];
       const token = await getSpotifyToken();
-      const [jumpTotal, shutdownTotal, ddududuTotal] = await Promise.all([
+      const [jumpTotal, shutdownTotal, ddududuTotal, goATotal, goBTotal] = await Promise.all([
         fetchSpotifyPlayCount(token, SP_TRACKS.jump),
         fetchSpotifyPlayCount(token, SP_TRACKS.shutdown),
         fetchSpotifyPlayCount(token, SP_TRACKS.ddududu),
+        fetchSpotifyPlayCount(token, SP_TRACKS.go_a),
+        fetchSpotifyPlayCount(token, SP_TRACKS.go_b),
       ]);
-      await storeGlobalSnapshot(streamDate, jumpTotal, shutdownTotal, ddududuTotal);
-      return res.status(200).json({ ok: true, date: streamDate, jump: jumpTotal, shutdown: shutdownTotal, ddududu: ddududuTotal });
+      const goTotal = (goATotal || 0) + (goBTotal || 0);
+      await storeGlobalSnapshot(streamDate, jumpTotal, shutdownTotal, ddududuTotal, goTotal);
+      return res.status(200).json({ ok: true, date: streamDate, jump: jumpTotal, shutdown: shutdownTotal, ddududu: ddududuTotal, go: goTotal });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
