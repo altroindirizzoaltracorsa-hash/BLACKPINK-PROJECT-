@@ -79,7 +79,7 @@ FIXED_TRACKS = {
         ("Hope Not", "3eZD5DZGibwxMAOaCMBg3k"),
         ("BOOMBAYAH - Japanese Version", "5nIjOnMbC0QDMrYFLGx0yV"),
         ("DDU-DU DDU-DU - Remix", "4sz6sircK4Jn2SZSHgd96h"),
-        ("GO", "0mYa3o6tlUN5HRippmKmwH"),
+        ("GO", ("3FZPp9lBUvhsxFxKJi3VkB", "0mYa3o6tlUN5HRippmKmwH")),
         ("DDU-DU DDU-DU - Japanese Version", "4jUEHIrc443f743JbyLN0y"),
         ("WHISTLE - Acoustic Ver.", "20MOKIGONywL5xIoB7RRAR"),
         ("SO HOT - THEBLACKLABEL REMIX ARENA TOUR OSAKA", "1fMXWEkJpIH483OrKn1zFV"),
@@ -286,28 +286,43 @@ def sb(method, path, **kwargs):
 
 
 def fetch_fixed_tracks(client, track_specs):
-    """track_specs: [(name, track_id), ...]. Returns [{name, streams, source_track_ids, album, album_release_date, track_number, album_art_url}]."""
-    ids = [tid for _, tid in track_specs]
-    results = client.get_tracks(ids)
+    """track_specs: [(name, track_id_or_tuple), ...]. When track_id is a tuple/list,
+    all IDs are fetched and their play_counts summed into one row."""
+    # Normalise each entry to (name, [list_of_ids])
+    normalized = [(name, list(tid) if isinstance(tid, (list, tuple)) else [tid]) for name, tid in track_specs]
+    all_ids = [tid for _, tids in normalized for tid in tids]
+    results = client.get_tracks(all_ids)
+    id_to_result = dict(zip(all_ids, results))
+
     canonical = []
-    for (name, tid), item in zip(track_specs, results):
-        if not item.ok:
-            print(f"  track fetch failed: {name!r} [{tid}]: {item.error}", file=sys.stderr)
+    for name, tids in normalized:
+        total_streams = 0
+        first_ok = None
+        ok_ids = []
+        for tid in tids:
+            item = id_to_result[tid]
+            if not item.ok:
+                print(f"  track fetch failed: {name!r} [{tid}]: {item.error}", file=sys.stderr)
+                continue
+            if item.result.play_count is None:
+                print(f"  no play_count for: {name!r} [{tid}]", file=sys.stderr)
+                continue
+            total_streams += item.result.play_count
+            ok_ids.append(tid)
+            if first_ok is None:
+                first_ok = item.result
+        if first_ok is None:
             continue
-        if item.result.play_count is None:
-            print(f"  no play_count for: {name!r} [{tid}]", file=sys.stderr)
-            continue
-        t = item.result
         album_art_url = None
-        if t.album and t.album.images:
-            album_art_url = max(t.album.images, key=lambda im: im.width or 0).url
+        if first_ok.album and first_ok.album.images:
+            album_art_url = max(first_ok.album.images, key=lambda im: im.width or 0).url
         canonical.append({
             "name": name,
-            "streams": t.play_count,
-            "source_track_ids": [tid],
-            "album": t.album.name if t.album else None,
-            "album_release_date": t.release_date.date().isoformat() if t.release_date else None,
-            "track_number": t.track_number,
+            "streams": total_streams,
+            "source_track_ids": ok_ids,
+            "album": first_ok.album.name if first_ok.album else None,
+            "album_release_date": first_ok.release_date.date().isoformat() if first_ok.release_date else None,
+            "track_number": first_ok.track_number,
             "album_art_url": album_art_url,
         })
     return canonical
