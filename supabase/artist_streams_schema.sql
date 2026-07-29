@@ -18,9 +18,13 @@ create table if not exists artist_daily_stats (
   date              date not null,
   total_streams     bigint not null,
   daily_delta       bigint,
-  followers         bigint,
-  monthly_listeners bigint,
-  track_count       int,
+  followers                 bigint,
+  followers_delta           bigint,
+  monthly_listeners         bigint,
+  monthly_listeners_delta   bigint,
+  world_rank                int,
+  world_rank_delta          int,  -- added via add_delta_columns_to_artist_daily_stats.sql
+  track_count               int,
   created_at        timestamptz not null default now(),
   primary key (artist_id, date)
 );
