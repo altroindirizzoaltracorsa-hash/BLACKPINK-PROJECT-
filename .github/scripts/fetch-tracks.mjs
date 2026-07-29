@@ -25,7 +25,7 @@ async function main() {
     process.exit(1);
   }
 
-  for (const track of ['jump', 'shutdown', 'ddududu', 'go']) {
+  for (const track of ['jump', 'shutdown', 'ddududu']) {
     const t = body[track];
     if (!t) { console.log(`${track}: no data returned`); continue; }
     console.log(`✓ ${track}: ${t.total.toLocaleString()} total${t.stale ? ' (stale — live fetch failed, showing last known-good)' : ''}`);
