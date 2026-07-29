@@ -10026,7 +10026,7 @@ function checkMilestone(trackId, total, lastDayDate) {
 function showPendingMilestone() {
   if (_msActive || _msPending.length === 0) return;
   _msPending.sort((a, b) => b.total - a.total);
-  const { trackId, total, milestone, milestoneDate } = _msPending[0];
+  const { trackId, total, milestone, milestoneDate } = _msPending.shift();
   showMilestone(trackId, total, milestone, milestoneDate);
 }
 
@@ -10172,6 +10172,7 @@ function closeMilestone() {
   document.getElementById('ms-list-view').style.display = 'none';
   document.getElementById('ms-detail-view').style.display = 'block';
   _msActive = false;
+  if (_msPending.length > 0) setTimeout(showPendingMilestone, 400);
 }
 
 function launchConfetti() {
