@@ -1053,6 +1053,7 @@
   .ac-row-streams { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); margin-top: 0.2rem; }
   .ac-row-streams .up { color: #2ecc71; }
   .ac-row-streams .down { color: #e74c3c; }
+  .ac-row-peak { font-family: var(--mono); font-size: 0.62rem; color: var(--muted); margin-top: 0.15rem; opacity: 0.75; }
   .ac-row-right { text-align: right; flex-shrink: 0; }
   .ac-row-pos { font-family: var(--display); font-size: 1.5rem; color: var(--pink); letter-spacing: 0.02em; line-height: 1; }
   .ac-row-move { font-family: var(--mono); font-size: 0.65rem; font-weight: 600; margin-top: 0.15rem; }
@@ -2496,12 +2497,6 @@
 
     <div class="as-inner">
 
-      <!-- Chart updates (admin-entered artist + track positions) -->
-      <div class="ac-section" id="ac-section" style="display:none;">
-        <div class="ac-section-title" id="ac-section-title">Chart Updates</div>
-        <div class="ac-rows" id="ac-cards"></div>
-      </div>
-
       <div class="ch-controls">
         <div class="ch-tabs">
           <button class="lb-tab active" data-chart-type="daily" onclick="setChartType('daily', this)">Daily</button>
@@ -2585,17 +2580,15 @@
         </select>
       </div>
 
+      <div class="ac-section-title" id="ch-title" style="margin-bottom:0.5rem;"></div>
       <div id="ch-meta" class="ch-meta"></div>
 
       <div id="ch-loading" class="lb-loading">Loading…</div>
       <div id="ch-error" class="as-error" style="display:none;"></div>
       <div id="ch-empty" class="ch-empty" style="display:none;">No BLACKPINK/member tracks currently charting in this region.</div>
 
-      <div class="as-table-wrap as-tracks-wrap" id="ch-table-wrap" style="display:none;">
-        <table class="as-table as-tracks-table">
-          <thead><tr><th class="as-rank-col"></th><th>Track</th><th class="right">Streams</th><th class="right">Peak / On Chart</th><th class="right">Movement</th></tr></thead>
-          <tbody id="ch-body"></tbody>
-        </table>
+      <div id="ch-table-wrap" style="display:none;">
+        <div class="ac-rows" id="ch-cards"></div>
       </div>
     </div>
 
@@ -4436,10 +4429,12 @@ async function fetchAndRenderCharts() {
   const tableWrap = document.getElementById('ch-table-wrap');
   const meta = document.getElementById('ch-meta');
   loading.style.display = 'block';
+  const titleEl = document.getElementById('ch-title');
   errorEl.style.display = 'none';
   emptyEl.style.display = 'none';
   tableWrap.style.display = 'none';
   meta.textContent = '';
+  if (titleEl) titleEl.textContent = '';
 
   try {
     const r = await fetch(`/api/proxy-image?charts=list&chart_type=${chartType}&country=${chartCountry}&limit=50`);
@@ -4455,23 +4450,42 @@ async function fetchAndRenderCharts() {
     }
 
     const onChartLabel = chartType === 'weekly' ? 'wks' : 'days';
-    meta.textContent = data.trackingDate ? `As of ${fmtDate(data.trackingDate)} · ${rows.length} entr${rows.length === 1 ? 'y' : 'ies'} charting` : '';
+    const selEl = document.getElementById('ch-country-select');
+    const rawRegion = selEl?.selectedOptions[0]?.text || '';
+    const regionLabel = rawRegion.replace(/^\S+\s*/, '').trim() || (chartCountry === 'GLOBAL' ? 'Global' : chartCountry);
+    const chartLabel = (chartType === 'weekly' ? 'Weekly' : 'Daily') + ' Top Songs ' + regionLabel;
+    if (titleEl) titleEl.textContent = data.trackingDate ? `${chartLabel} · ${fmtDate(data.trackingDate)}` : chartLabel;
+    meta.textContent = `${rows.length} entr${rows.length === 1 ? 'y' : 'ies'} charting`;
 
-    document.getElementById('ch-body').innerHTML = rows.map(row => `
-      <tr>
-        <td class="as-rank">${row.position}</td>
-        <td>
-          <div class="as-track-name">${row.track_name}</div>
-          <div class="ch-artist">${row.primary_artist_name}${row.featured_artists && row.featured_artists.length ? ` <span class="ch-featured">· w/ ${row.featured_artists.join(', ')}</span>` : ''}</div>
-        </td>
-        <td class="right">
-          <div class="as-track-daily-num">${fmtNum(row.streams)}</div>
-          ${row.streams_change != null ? `<div class="as-track-trend">${fmtDelta(row.streams_change)} streams</div>` : ''}
-        </td>
-        <td class="right as-track-sub">Peak #${fmtNum(row.peak_position)} · ${fmtNum(row.days_on_chart)} ${onChartLabel}</td>
-        <td class="right">${fmtChartMovement(row)}</td>
-      </tr>
-    `).join('');
+    document.getElementById('ch-cards').innerHTML = rows.map(row => {
+      let moveCls, moveLabel;
+      if (row.entry_status === 'NEW' || row.entry_status === 'RE-ENTRY') {
+        moveCls = 'new-entry'; moveLabel = row.entry_status === 'RE-ENTRY' ? 'RE-ENTRY' : 'NEW';
+      } else if (row.position_change > 0) {
+        moveCls = 'up'; moveLabel = `▲ ${row.position_change} spots`;
+      } else if (row.position_change < 0) {
+        moveCls = 'down'; moveLabel = `▼ ${Math.abs(row.position_change)} spots`;
+      } else {
+        moveCls = 'same'; moveLabel = '= no change';
+      }
+      const artistText = row.primary_artist_name + (row.featured_artists?.length ? ` · w/ ${row.featured_artists.join(', ')}` : '');
+      const streamsChangeHtml = row.streams_change != null
+        ? ` <span class="${row.streams_change >= 0 ? 'up' : 'down'}">${row.streams_change >= 0 ? '+' : ''}${fmtNum(row.streams_change)}</span>`
+        : '';
+      return `<div class="ac-row">
+        <img class="ac-row-avatar" src="/api/proxy-image?spotify_art=${row.spotify_track_id}" alt="${row.track_name}" onerror="this.style.visibility='hidden'">
+        <div class="ac-row-body">
+          <div class="ac-row-name">${row.track_name}</div>
+          <div class="ac-row-meta">${artistText}</div>
+          <div class="ac-row-streams">${fmtNum(row.streams)}${streamsChangeHtml}</div>
+          <div class="ac-row-peak">Peak #${row.peak_position} · ${fmtNum(row.days_on_chart)} ${onChartLabel}</div>
+        </div>
+        <div class="ac-row-right">
+          <div class="ac-row-pos">#${row.position}</div>
+          <div class="ac-row-move ${moveCls}">${moveLabel}</div>
+        </div>
+      </div>`;
+    }).join('');
     tableWrap.style.display = 'block';
   } catch (e) {
     loading.style.display = 'none';
