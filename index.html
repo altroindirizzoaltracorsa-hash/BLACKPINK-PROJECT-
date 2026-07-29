@@ -2995,7 +2995,7 @@
     <p style="color:var(--muted,#aaa);margin:0 0 1.5rem;font-size:0.85rem;line-height:1.5;">
       We've moved to a full account system. The old method is no longer accepted — create a free account (X, Discord, Google, or email) and re-link your streaming usernames in <strong style="color:var(--text,#fff)">My Badges</strong> now, or your entry will be removed from the leaderboard.
     </p>
-    <button onclick="showPage('badges');closeLegacyMigration();" style="width:100%;padding:0.75rem;background:var(--pink,#e91e8c);color:#fff;border:none;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer;letter-spacing:0.05em;">
+    <button onclick="startAccountCreation();" style="width:100%;padding:0.75rem;background:var(--pink,#e91e8c);color:#fff;border:none;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer;letter-spacing:0.05em;">
       CREATE ACCOUNT →
     </button>
   </div>
@@ -5727,6 +5727,7 @@ function getSavedLbUsername() { try { return localStorage.getItem(LS_LB_KEY) || 
 // Auto-load on page show if username was previously saved
 let _autoLoadInProgress = false;
 let _autoLoadPromise = null;
+let _suppressMigrationModal = false;
 async function tryAutoLoad() {
   if (_autoLoadInProgress) return _autoLoadPromise; // let callers await the same in-flight load
   _autoLoadInProgress = true;
@@ -5752,6 +5753,7 @@ async function tryAutoLoad() {
 }
 
 function showLegacyMigrationNotice(username) {
+  if (_suppressMigrationModal) { _suppressMigrationModal = false; return; }
   const el = document.getElementById('legacy-migration-modal');
   if (!el) return;
   document.getElementById('legacy-migration-username').textContent = username;
@@ -5761,6 +5763,11 @@ function showLegacyMigrationNotice(username) {
 function closeLegacyMigration() {
   document.getElementById('legacy-migration-modal').style.display = 'none';
   document.body.style.overflow = '';
+}
+function startAccountCreation() {
+  _suppressMigrationModal = true;
+  closeLegacyMigration();
+  showPage('badges');
 }
 
 // Runs once on initial page load, regardless of which page the visitor
