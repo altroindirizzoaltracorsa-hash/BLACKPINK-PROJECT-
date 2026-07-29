@@ -1050,6 +1050,9 @@
   .ac-row-body { flex: 1; min-width: 0; }
   .ac-row-name { font-family: var(--display); font-size: 1.1rem; letter-spacing: 0.04em; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ac-row-meta { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.03em; margin-top: 0.15rem; }
+  .ac-row-streams { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); margin-top: 0.2rem; }
+  .ac-row-streams .up { color: #2ecc71; }
+  .ac-row-streams .down { color: #e74c3c; }
   .ac-row-right { text-align: right; flex-shrink: 0; }
   .ac-row-pos { font-family: var(--display); font-size: 1.5rem; color: var(--pink); letter-spacing: 0.02em; line-height: 1; }
   .ac-row-move { font-family: var(--mono); font-size: 0.65rem; font-weight: 600; margin-top: 0.15rem; }
@@ -2495,7 +2498,7 @@
 
       <!-- Chart updates (admin-entered artist + track positions) -->
       <div class="ac-section" id="ac-section" style="display:none;">
-        <div class="ac-section-title">Chart Updates</div>
+        <div class="ac-section-title" id="ac-section-title">Chart Updates</div>
         <div class="ac-rows" id="ac-cards"></div>
       </div>
 
@@ -8620,6 +8623,8 @@ async function renderArtistCharts() {
     region: 'Global',
     date: trackDate,
     entryStatus: r.entry_status,
+    streams: r.streams ?? null,
+    streamsChange: r.streams_change ?? null,
   }));
 
   // Auto rows first (position-ascending), then admin-entered extras (newest first)
@@ -8628,6 +8633,13 @@ async function renderArtistCharts() {
   if (!allEntries.length) { section.style.display = 'none'; return; }
   const isAdmin = !!localStorage.getItem(ADMIN_KEY_LS);
   section.style.display = '';
+
+  const titleEl = document.getElementById('ac-section-title');
+  if (titleEl) {
+    titleEl.textContent = trackDate
+      ? `Daily Top Songs Global · ${trackDate}`
+      : 'Daily Top Songs Global';
+  }
 
   rowsEl.innerHTML = allEntries.map(e => {
     let photoHtml;
@@ -8666,8 +8678,13 @@ async function renderArtistCharts() {
     const region    = e.region || 'Global';
     const metaParts = [];
     if (e._avatarArtist) metaParts.push(e._avatarArtist);
-    metaParts.push(`${region} ${chartName}`);
-    if (e.date) metaParts.push(e.date);
+    if (!e._auto) {
+      metaParts.push(`${region} ${chartName}`);
+      if (e.date) metaParts.push(e.date);
+    }
+    const streamsHtml = (e._auto && e.streams != null)
+      ? `<div class="ac-row-streams">${fmtNum(e.streams)}${e.streamsChange != null ? ` <span class="${e.streamsChange >= 0 ? 'up' : 'down'}">${e.streamsChange >= 0 ? '+' : ''}${fmtNum(e.streamsChange)}</span>` : ''}</div>`
+      : '';
 
     const n = Math.abs(Number(chg));
     let shareText;
@@ -8690,6 +8707,7 @@ async function renderArtistCharts() {
       <div class="ac-row-body">
         <div class="ac-row-name">${e.artist}</div>
         <div class="ac-row-meta">${metaParts.join(' · ')}</div>
+        ${streamsHtml}
       </div>
       <div class="ac-row-right">
         <div class="ac-row-pos">#${e.position}</div>
