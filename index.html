@@ -5000,7 +5000,7 @@ const TRACKS = [
   { id: 'shutdown', title: 'SHUT DOWN',     artist: 'BLACKPINK', track: 'Shut Down',         year: '2022', era: 'BORN PINK',      spotify: 'https://open.spotify.com/track/6tCd8bPvYnceDG7W9M1RMk' },
   { id: 'ddududu',  title: 'DDU-DU DDU-DU', artist: 'BLACKPINK', track: 'DDU-DU DDU-DU',     year: '2018', era: 'SQUARE UP',      spotify: 'https://open.spotify.com/track/69BIczdH6QMnFx7dsSssN8' },
   { id: 'ltal',     title: 'LESS THAN A LOVER', artist: 'Jennie', track: 'Less Than a Lover', year: '2026', era: 'JENNIE SOLO', spotify: 'https://open.spotify.com/track/19UnXjpLshSLobPspdyxlD' },
-  { id: 'go',       title: 'GO',            artist: 'BLACKPINK', track: 'GO',                year: '2026', era: 'DEADLINE',       spotify: 'https://open.spotify.com/track/3FZPp9lBUvhsxFxKJi3VkB' },
+  { id: 'go',       title: 'GO',            artist: 'BLACKPINK', track: 'GO',                year: '2026', era: 'DEADLINE',       spotify: 'https://open.spotify.com/track/0mYa3o6tlUN5HRippmKmwH' },
 ];
 
 // ── VOTE CAMPAIGNS ───────────────────────────────────────────
@@ -7078,7 +7078,7 @@ function renderLeaderboard() {
     if (totalEl) totalEl.textContent = '';
   } else {
     const periodLabel = lbPeriod === 'daily' ? 'streams today' : lbPeriod === 'weekly' ? 'streams this week' : 'total streams';
-    const songLabel   = lbSong === 'all' ? 'All Campaign Tracks' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : 'LESS THAN A LOVER';
+    const songLabel   = lbSong === 'all' ? 'All Campaign Tracks' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : 'LESS THAN A LOVER';
     const colHeader   = lbSong === 'all'
       ? (lbPeriod === 'daily' ? 'Streams Today' : lbPeriod === 'weekly' ? 'Streams This Week' : 'Total Streams')
       : `${songLabel} — ${lbPeriod === 'daily' ? 'Today' : lbPeriod === 'weekly' ? 'This Week' : 'All Time'}`;

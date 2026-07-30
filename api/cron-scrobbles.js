@@ -18,6 +18,7 @@ const TRACKS = [
   { id: 'shutdown', artist: 'BLACKPINK', track: 'Shut Down' },
   { id: 'ddududu',  artist: 'BLACKPINK', track: 'DDU-DU DDU-DU' },
   { id: 'ltal',     artist: 'Jennie',    track: 'Less Than a Lover' },
+  { id: 'go',       artist: 'BLACKPINK', track: 'GO' },
 ];
 
 // ── Italy 2am reset (same logic as client) ────────────────────
@@ -78,6 +79,7 @@ const DAILY_TIERS = {
   shutdown: makeDailyTiers(36, 'SHUT DOWN'),
   ddududu:  makeDailyTiers(20, 'DDU-DU'),
   ltal:     makeDailyTiers(30, 'LESS THAN A LOVER'),
+  go:       makeDailyTiers(30, 'GO'),
 };
 function getDailyBadge(trackId, count) {
   const tiers = DAILY_TIERS[trackId] || [];
@@ -193,7 +195,7 @@ async function lbFetch(path, params = {}) {
 }
 
 async function fetchLbTrackCounts(username) {
-  const counts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0 };
+  const counts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 };
   const d = await lbFetch(`stats/user/${encodeURIComponent(username)}/recordings`, { count: 100, range: 'all_time' });
   for (const rec of d?.payload?.recordings || []) {
     const name   = (rec.track_name  || '').toLowerCase().trim();
@@ -202,6 +204,7 @@ async function fetchLbTrackCounts(username) {
       if (name === 'jump')               counts.jump     += rec.listen_count || 0;
       else if (name === 'shut down')     counts.shutdown += rec.listen_count || 0;
       else if (name === 'ddu-du ddu-du') counts.ddududu  += rec.listen_count || 0;
+      else if (name === 'go')            counts.go       += rec.listen_count || 0;
     } else if (artist.includes('jennie') && name === 'less than a lover') {
       counts.ltal += rec.listen_count || 0;
     }
@@ -233,7 +236,7 @@ async function fetchLbRecentListens(username, from, to) {
 }
 
 function countLbByTrack(listens) {
-  const counts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0 };
+  const counts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 };
   for (const l of listens) {
     const name   = (l.track_metadata?.track_name  || '').toLowerCase().trim();
     const artist = (l.track_metadata?.artist_name || '').toLowerCase();
@@ -241,6 +244,7 @@ function countLbByTrack(listens) {
       if (name === 'jump')               counts.jump++;
       else if (name === 'shut down')     counts.shutdown++;
       else if (name === 'ddu-du ddu-du') counts.ddududu++;
+      else if (name === 'go')            counts.go++;
     } else if (artist.includes('jennie') && name === 'less than a lover') {
       counts.ltal++;
     }
@@ -256,10 +260,10 @@ async function refreshUser(entry, sb) {
   const { from: dayFrom, to: dayTo }   = getDayBounds();
   const { from: weekFrom, to: weekTo } = getWeekBounds();
 
-  const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0 };
+  const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 };
   let artistPlays   = 0;
-  const todayCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0 };
-  const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0 };
+  const todayCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 };
+  const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 };
   let lastScrobbleAt = entry.lastScrobbleAt || null;
 
   // Primary Last.fm account (first one, for stamps)
@@ -273,12 +277,13 @@ async function refreshUser(entry, sb) {
       // return scrobbles newest-first, so today's counts, the weekly counts,
       // and the most recent BLACKPINK scrobble can all be derived from one
       // paginated range instead of re-fetching/re-paginating once per day.
-      const [ap, jumpPlays, shutdownPlays, ddududuPlays, ltalPlays, weekSc] = await Promise.all([
+      const [ap, jumpPlays, shutdownPlays, ddududuPlays, ltalPlays, goPlays, weekSc] = await Promise.all([
         fetchArtistPlays(u, 'BLACKPINK', fetchFn),
         fetchTrackPlays(u, 'BLACKPINK', 'JUMP', fetchFn),
         fetchTrackPlays(u, 'BLACKPINK', 'Shut Down', fetchFn),
         fetchTrackPlays(u, 'BLACKPINK', 'DDU-DU DDU-DU', fetchFn),
         fetchTrackPlays(u, 'Jennie', 'Less Than a Lover', fetchFn),
+        fetchTrackPlays(u, 'BLACKPINK', 'GO', fetchFn),
         fetchRecentScrobbles(u, weekFrom, dayTo, 50, fetchFn),
       ]);
       artistPlays        += ap;
@@ -286,6 +291,7 @@ async function refreshUser(entry, sb) {
       totalPlays.shutdown += shutdownPlays;
       totalPlays.ddududu += ddududuPlays;
       totalPlays.ltal    += ltalPlays;
+      totalPlays.go      += goPlays;
 
       const todaySc = weekSc.filter(s => {
         const ts = parseInt(s.date?.uts || '0', 10);
@@ -296,12 +302,14 @@ async function refreshUser(entry, sb) {
       todayCounts.shutdown += dc.shutdown || 0;
       todayCounts.ddududu  += dc.ddududu  || 0;
       todayCounts.ltal     += dc.ltal     || 0;
+      todayCounts.go       += dc.go       || 0;
 
       const wdc = countByTrack(weekSc);
       weekCounts.jump     += wdc.jump     || 0;
       weekCounts.shutdown += wdc.shutdown || 0;
       weekCounts.ddududu  += wdc.ddududu  || 0;
       weekCounts.ltal     += wdc.ltal     || 0;
+      weekCounts.go       += wdc.go       || 0;
 
       // "blackpink" alone misses activity on Jennie's solo campaign track
       // (Less Than a Lover), which would otherwise wrongly flag an actively-
@@ -328,6 +336,7 @@ async function refreshUser(entry, sb) {
         totalPlays.shutdown += lbTotals.shutdown || 0;
         totalPlays.ddududu  += lbTotals.ddududu  || 0;
         totalPlays.ltal     += lbTotals.ltal     || 0;
+        totalPlays.go       += lbTotals.go       || 0;
 
         const todayListens = weekListens.filter(l => l.listened_at >= dayFrom && l.listened_at < dayTo);
         const lbTodayCounts = countLbByTrack(todayListens);
@@ -335,12 +344,14 @@ async function refreshUser(entry, sb) {
         todayCounts.shutdown += lbTodayCounts.shutdown || 0;
         todayCounts.ddududu  += lbTodayCounts.ddududu  || 0;
         todayCounts.ltal     += lbTodayCounts.ltal     || 0;
+        todayCounts.go       += lbTodayCounts.go       || 0;
 
         const lbWeekCounts = countLbByTrack(weekListens);
         weekCounts.jump     += lbWeekCounts.jump     || 0;
         weekCounts.shutdown += lbWeekCounts.shutdown || 0;
         weekCounts.ddududu  += lbWeekCounts.ddududu  || 0;
         weekCounts.ltal     += lbWeekCounts.ltal     || 0;
+        weekCounts.go       += lbWeekCounts.go       || 0;
 
         // ListenBrainz never fed lastScrobbleAt before -- a fan scrobbling only
         // through LB (e.g. after moving off Last.fm) would drift towards a
@@ -366,7 +377,7 @@ async function refreshUser(entry, sb) {
     } catch {}
   }
 
-  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal;
+  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal + totalPlays.go;
   const todayLabel     = ddmm(new Date(dayFrom * 1000));
   const weekStartLabel = ddmm(new Date(weekFrom * 1000));
 
@@ -383,18 +394,21 @@ async function refreshUser(entry, sb) {
       overall_shutdown: totalPlays.shutdown,
       overall_ddududu:  totalPlays.ddududu,
       overall_ltal:     totalPlays.ltal,
+      overall_go:       totalPlays.go,
       overall_artist:   artistPlays,
-      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0),
+      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0),
       daily_jump:       todayCounts.jump     || 0,
       daily_shutdown:   todayCounts.shutdown || 0,
       daily_ddududu:    todayCounts.ddududu  || 0,
       daily_ltal:       todayCounts.ltal     || 0,
+      daily_go:         todayCounts.go       || 0,
       daily_date:       todayLabel,
-      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0),
+      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0),
       weekly_jump:      weekCounts.jump     || 0,
       weekly_shutdown:  weekCounts.shutdown || 0,
       weekly_ddududu:   weekCounts.ddududu  || 0,
       weekly_ltal:      weekCounts.ltal     || 0,
+      weekly_go:        weekCounts.go       || 0,
       weekly_start:     weekStartLabel,
     },
   };
