@@ -6,8 +6,7 @@ const TRACKS = {
   jump:     '5H1sKFMzDeMtXwND3V6hRY',
   shutdown: '6tCd8bPvYnceDG7W9M1RMk',
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
-  go_a:     '3FZPp9lBUvhsxFxKJi3VkB',
-  go_b:     '0mYa3o6tlUN5HRippmKmwH',
+  go:       '0mYa3o6tlUN5HRippmKmwH',
 };
 
 // Spotify's public play count generally only jumps once a day, sometime
@@ -900,33 +899,6 @@ export default async function handler(req, res) {
     } finally {
       if (gotLock) await redis.del(lockKey);
     }
-  }
-
-  // Merge go_a + go_b into a single 'go' result
-  {
-    const a = results.go_a || { total: 0, history: [] };
-    const b = results.go_b || { total: 0, history: [] };
-    const byDate = {};
-    for (const h of (a.history || [])) {
-      if (!byDate[h.date]) byDate[h.date] = { date: h.date, streams: 0 };
-      byDate[h.date].streams += h.streams || 0;
-    }
-    for (const h of (b.history || [])) {
-      if (!byDate[h.date]) byDate[h.date] = { date: h.date, streams: 0 };
-      byDate[h.date].streams += h.streams || 0;
-    }
-    const mergedHistory = Object.values(byDate).sort((x, y) => {
-      const [xd, xm] = x.date.split('/').map(Number);
-      const [yd, ym] = y.date.split('/').map(Number);
-      return xm !== ym ? xm - ym : xd - yd;
-    });
-    results.go = {
-      total: (a.total || 0) + (b.total || 0),
-      history: mergedHistory,
-      ...(a.stale || b.stale ? { stale: true, updatedAt: a.updatedAt || b.updatedAt || null } : {}),
-    };
-    delete results.go_a;
-    delete results.go_b;
   }
 
   const prevSnaps = {};
