@@ -1,0 +1,54 @@
+name: Backfill Stream History
+
+# One-off workflow to inject missing history entries that the live fetch loop
+# skipped because Spotify's count was frozen across multiple days.
+# Trigger manually from the Actions tab; safe to run multiple times (set-entry
+# only upserts — it never double-counts an existing entry).
+# Safe to delete once all entries are confirmed in each track's history.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Backfill missing history entries
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          VERCEL_URL: https://blinksunited.com
+        run: |
+          set -e
+
+          call_set_entry() {
+            local track="$1" date_enc="$2" streams="$3" total="$4" prev_date_enc="$5"
+            echo "Setting ${track} date=${date_enc}: streams=${streams}, total=${total}"
+            local resp
+            resp=$(curl -sf \
+              "${VERCEL_URL}/api/streams" \
+              -G \
+              --data-urlencode "action=set-entry" \
+              --data-urlencode "track=${track}" \
+              --data-urlencode "date=${date_enc}" \
+              --data-urlencode "streams=${streams}" \
+              --data-urlencode "total=${total}" \
+              --data-urlencode "prevDate=${prev_date_enc}" \
+              --data-urlencode "key=${ADMIN_KEY}")
+            echo "  -> $resp"
+          }
+
+          # JUMP: missing 29/07 entry
+          call_set_entry "jump"     "29/07" "689344"  "661539295" "29/07"
+
+          # Shut Down: missing 29/07 entry
+          call_set_entry "shutdown" "29/07" "217491"  "900947003" "29/07"
+
+          # DDU-DU DDU-DU: missing 29/07 entry
+          call_set_entry "ddududu"  "29/07" "198839"  "881505378" "29/07"
+
+          # GO: missing 28/07 then 29/07 entries — set in chronological order
+          # so prevKey ends up anchored to the more recent snapshot (29/07)
+          call_set_entry "go" "28/07" "224192" "93690250" "28/07"
+          call_set_entry "go" "29/07" "229718" "93919968" "29/07"
+
+          echo "Backfill complete."

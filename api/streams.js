@@ -148,10 +148,46 @@ async function fetchSpotifyDirectPlayCount(trackId) {
 // prevTotal: if a provider returns this exact count (or lower), its scraper
 // cache is stale — we continue to the next provider instead of returning
 // immediately, since it may have already picked up the day's update.
+const SUPABASE_TRACK_NAMES = {
+  jump:     'JUMP',
+  shutdown: 'Shut Down',
+  ddududu:  'DDU-DU DDU-DU',
+  go:       'GO',
+};
+
+async function fetchTrackViaSupabase(trackKey) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+  if (!supabaseUrl || !supabaseKey) throw new Error('SUPABASE_URL / SUPABASE_SERVICE_KEY not set');
+
+  const trackName = SUPABASE_TRACK_NAMES[trackKey];
+  if (!trackName) throw new Error(`No Supabase track name for key: ${trackKey}`);
+
+  const headers = { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` };
+
+  const r1 = await fetch(
+    `${supabaseUrl}/rest/v1/artist_tracks?artist_id=eq.41MozSoPIsD1dJM0CLPjZF&name=eq.${encodeURIComponent(trackName)}&select=id&limit=1`,
+    { headers },
+  );
+  if (!r1.ok) throw new Error(`Supabase artist_tracks ${r1.status}`);
+  const tracks = await r1.json();
+  if (!tracks?.length) throw new Error(`Supabase: no row for "${trackName}"`);
+
+  const r2 = await fetch(
+    `${supabaseUrl}/rest/v1/track_daily_stats?track_ref=eq.${tracks[0].id}&order=date.desc&limit=1&select=streams,date`,
+    { headers },
+  );
+  if (!r2.ok) throw new Error(`Supabase track_daily_stats ${r2.status}`);
+  const stats = await r2.json();
+  if (!stats?.length) throw new Error(`Supabase: no stats for "${trackName}"`);
+
+  return { playCount: stats[0].streams };
+}
+
 // All keys on the same provider share the same scraper cache, so there's no
 // point trying more than one key per provider on a stale response — we break
 // out and try the next provider directly.
-async function fetchTrackMetadata(trackId, prevTotal = 0) {
+async function fetchTrackMetadata(trackId, prevTotal = 0, trackKey = null) {
   let lastError = 'No API keys configured';
   let staleResult = null; // best valid-but-unchanged result seen so far
   for (const provider of PROVIDERS) {
@@ -182,8 +218,17 @@ async function fetchTrackMetadata(trackId, prevTotal = 0) {
   } catch(e) {
     lastError = `direct: ${e.message}`;
   }
-  // Return stale RapidAPI result if we have one, otherwise throw.
+  // Return stale RapidAPI result if we have one.
   if (staleResult) return staleResult;
+  // Last resort: Supabase snapshot from the daily Python cron.
+  if (trackKey) {
+    try {
+      const sbResult = await fetchTrackViaSupabase(trackKey);
+      if (sbResult.playCount > 0) return sbResult;
+    } catch(e) {
+      lastError = `supabase: ${e.message}`;
+    }
+  }
   throw new Error(lastError);
 }
 
@@ -832,7 +877,7 @@ export default async function handler(req, res) {
       } else {
         let data;
         try {
-          data = await fetchTrackMetadata(trackId, Number(prev?.total || 0));
+          data = await fetchTrackMetadata(trackId, Number(prev?.total || 0), name);
         } catch(e) {
           errors[name] = { message: e.message, ts: new Date().toISOString() };
           await redis.set(errKey, { message: e.message, ts: Date.now() });
@@ -874,13 +919,6 @@ export default async function handler(req, res) {
           }
 
           await redis.set(prevKey, { total, date: todayLabel });
-        } else if (total > 0 && prevTotal > 0 && total <= prevTotal && prev?.date !== todayLabel) {
-          // Spotify count unchanged — slide the prev date forward to today so
-          // that when Spotify eventually does update, the daily diff is anchored
-          // to the most recent fetch, not to the last date the count moved.
-          // Without this, a 3-day freeze produces a single bar labelled day+1
-          // with 3× the expected streams.
-          await redis.set(prevKey, { ...prev, date: todayLabel });
         }
 
         if (total > 0 && !prev) {
