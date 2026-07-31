@@ -24,7 +24,7 @@ jobs:
             local track="$1" date_enc="$2" streams="$3" total="$4" prev_date_enc="$5"
             echo "Setting ${track} date=${date_enc}: streams=${streams}, total=${total}"
             local resp
-            resp=$(curl -sf \
+            resp=$(curl -sfL \
               "${VERCEL_URL}/api/streams" \
               -G \
               --data-urlencode "action=set-entry" \
@@ -35,6 +35,8 @@ jobs:
               --data-urlencode "prevDate=${prev_date_enc}" \
               --data-urlencode "key=${ADMIN_KEY}")
             echo "  -> $resp"
+            # Verify the API returned ok:true, not a redirect or error page
+            echo "$resp" | grep -q '"ok":true' || { echo "ERROR: unexpected response for ${track} ${date_enc}"; exit 1; }
           }
 
           # JUMP: missing 29/07 entry
