@@ -874,6 +874,13 @@ export default async function handler(req, res) {
           }
 
           await redis.set(prevKey, { total, date: todayLabel });
+        } else if (total > 0 && prevTotal > 0 && total <= prevTotal && prev?.date !== todayLabel) {
+          // Spotify count unchanged — slide the prev date forward to today so
+          // that when Spotify eventually does update, the daily diff is anchored
+          // to the most recent fetch, not to the last date the count moved.
+          // Without this, a 3-day freeze produces a single bar labelled day+1
+          // with 3× the expected streams.
+          await redis.set(prevKey, { ...prev, date: todayLabel });
         }
 
         if (total > 0 && !prev) {
