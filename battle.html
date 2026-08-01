@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blinks United — Streaming Battle</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:     #070407;
+    --surf:   #0F080D;
+    --blush:  #EEE6EE;
+    --dim:    #906878;
+    --faint:  #1C0D15;
+    --rose:   #8B1C4A;
+    /* team colours */
+    --c-rose:   #FF6B9D;
+    --c-jennie: #F5C842;
+    --c-lisa:   #3DD6F5;
+    --c-jisoo:  #B39DDB;
+    --c-bp:     #FF3D71;
+  }
+
+  html, body { background: var(--bg); color: var(--blush); font-family: system-ui, -apple-system, sans-serif; min-height: 100vh; }
+
+  a { color: var(--blush); text-decoration: none; }
+
+  /* ── NAV ── */
+  .nav { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid var(--faint); }
+  .nav-back { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+  .nav-title { font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--rose); }
+
+  /* ── HERO ── */
+  .hero { text-align: center; padding: 3.5rem 1.5rem 2rem; }
+  .hero-eye { font-size: 0.65rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--dim); margin-bottom: 0.8rem; }
+  .hero-title { font-family: 'Arial Black', Impact, sans-serif; font-size: clamp(2rem, 7vw, 4rem); font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; line-height: 0.95; margin-bottom: 0.6rem; }
+  .hero-title span { color: var(--rose); }
+  .hero-sub { font-size: 0.78rem; color: var(--dim); line-height: 1.65; letter-spacing: 0.03em; }
+
+  /* status badge */
+  .battle-status { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 1.2rem; padding: 0.3rem 0.9rem; border: 1px solid; font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; border-radius: 2px; }
+  .battle-status.pending { border-color: var(--dim); color: var(--dim); }
+  .battle-status.active  { border-color: var(--c-bp); color: var(--c-bp); }
+  .battle-status.active::before { content: ''; width: 6px; height: 6px; background: var(--c-bp); border-radius: 50%; animation: pulse 1.2s infinite; }
+  .battle-status.ended   { border-color: var(--dim); color: var(--dim); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* countdown */
+  .countdown { display: flex; justify-content: center; gap: 1.5rem; margin-top: 1.5rem; }
+  .cd-unit { text-align: center; }
+  .cd-num { font-family: 'Arial Black', Impact, sans-serif; font-size: clamp(1.5rem, 4vw, 2.5rem); font-weight: 900; line-height: 1; color: var(--blush); }
+  .cd-label { font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); margin-top: 0.2rem; }
+  .countdown.hidden { display: none; }
+
+  /* ── TEAM GRID ── */
+  .section { max-width: 900px; margin: 0 auto; padding: 2.5rem 1rem; }
+  .section-eye { font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); text-align: center; margin-bottom: 0.5rem; }
+  .section-title { font-family: 'Arial Black', Impact, sans-serif; font-size: clamp(1rem, 2.5vw, 1.5rem); font-weight: 900; text-transform: uppercase; text-align: center; color: var(--blush); margin-bottom: 1.8rem; }
+
+  .team-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.6rem; }
+  @media (max-width: 640px) { .team-grid { grid-template-columns: repeat(2, 1fr); } .team-card:last-child { grid-column: span 2; } }
+
+  .team-card {
+    border: 1px solid var(--faint);
+    padding: 1.2rem 0.8rem 1rem;
+    text-align: center;
+    position: relative;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    user-select: none;
+  }
+  .team-card:hover { background: var(--surf); }
+  .team-card.selected { background: var(--surf); }
+  .team-card.selected[data-team="rose"]   { border-color: var(--c-rose); }
+  .team-card.selected[data-team="jennie"] { border-color: var(--c-jennie); }
+  .team-card.selected[data-team="lisa"]   { border-color: var(--c-lisa); }
+  .team-card.selected[data-team="jisoo"]  { border-color: var(--c-jisoo); }
+  .team-card.selected[data-team="bp"]     { border-color: var(--c-bp); }
+
+  .team-check { position: absolute; top: 0.5rem; right: 0.6rem; font-size: 0.8rem; opacity: 0; transition: opacity 0.15s; }
+  .team-card.selected .team-check { opacity: 1; }
+  .team-card.selected[data-team="rose"]   .team-check { color: var(--c-rose); }
+  .team-card.selected[data-team="jennie"] .team-check { color: var(--c-jennie); }
+  .team-card.selected[data-team="lisa"]   .team-check { color: var(--c-lisa); }
+  .team-card.selected[data-team="jisoo"]  .team-check { color: var(--c-jisoo); }
+  .team-card.selected[data-team="bp"]     .team-check { color: var(--c-bp); }
+
+  .team-emoji { font-size: 1.8rem; display: block; margin-bottom: 0.5rem; }
+  .team-name { font-family: 'Arial Black', Impact, sans-serif; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; }
+  .team-card[data-team="rose"]   .team-name { color: var(--c-rose); }
+  .team-card[data-team="jennie"] .team-name { color: var(--c-jennie); }
+  .team-card[data-team="lisa"]   .team-name { color: var(--c-lisa); }
+  .team-card[data-team="jisoo"]  .team-name { color: var(--c-jisoo); }
+  .team-card[data-team="bp"]     .team-name { color: var(--c-bp); }
+
+  .team-score { font-size: 1rem; font-weight: 700; margin-top: 0.6rem; color: var(--blush); }
+  .team-score-label { font-size: 0.55rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+  .team-members { font-size: 0.6rem; color: var(--dim); margin-top: 0.3rem; }
+
+  /* progress bar under each team card */
+  .team-bar-wrap { height: 3px; background: var(--faint); margin-top: 0.8rem; }
+  .team-bar { height: 100%; width: 0%; transition: width 0.8s ease; }
+  .team-card[data-team="rose"]   .team-bar { background: var(--c-rose); }
+  .team-card[data-team="jennie"] .team-bar { background: var(--c-jennie); }
+  .team-card[data-team="lisa"]   .team-bar { background: var(--c-lisa); }
+  .team-card[data-team="jisoo"]  .team-bar { background: var(--c-jisoo); }
+  .team-card[data-team="bp"]     .team-bar { background: var(--c-bp); }
+
+  /* ── JOIN PANEL ── */
+  .join-panel { max-width: 500px; margin: 0 auto 2rem; border: 1px solid var(--faint); padding: 1.5rem; text-align: center; }
+  .join-panel.hidden { display: none; }
+  .join-title { font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); margin-bottom: 1rem; }
+  .join-hint  { font-size: 0.75rem; color: var(--dim); line-height: 1.6; margin-bottom: 1.2rem; }
+  .join-hint a { color: var(--blush); text-decoration: underline; }
+
+  .btn { display: inline-block; padding: 0.55rem 1.6rem; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; border: 1px solid var(--rose); color: var(--blush); background: transparent; cursor: pointer; transition: background 0.18s, color 0.18s; }
+  .btn:hover { background: var(--rose); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { border-color: var(--c-bp); }
+  .btn-primary:hover { background: var(--c-bp); color: #000; }
+
+  .join-msg { font-size: 0.72rem; margin-top: 0.8rem; min-height: 1.2rem; }
+  .join-msg.ok  { color: #6FE28A; }
+  .join-msg.err { color: #FF6B6B; }
+
+  /* ── INDIVIDUAL LEADERBOARD ── */
+  .ind-list { list-style: none; border: 1px solid var(--faint); }
+  .ind-row { display: grid; grid-template-columns: 2rem 2rem 1fr auto; align-items: center; gap: 0.6rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--faint); }
+  .ind-row:last-child { border-bottom: none; }
+  .ind-rank { font-size: 0.6rem; color: var(--dim); text-align: right; font-variant-numeric: tabular-nums; }
+  .ind-rank.top3 { color: var(--blush); font-weight: 700; }
+  .ind-avatar { width: 1.8rem; height: 1.8rem; border-radius: 50%; object-fit: cover; background: var(--faint); }
+  .ind-avatar-placeholder { width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--faint); display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: var(--dim); }
+  .ind-name { font-size: 0.8rem; color: var(--blush); }
+  .ind-teams { display: flex; gap: 0.2rem; margin-top: 0.15rem; }
+  .ind-badge { font-size: 0.5rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.1rem 0.35rem; border-radius: 2px; }
+  .ind-badge[data-team="rose"]   { background: rgba(255,107,157,0.15); color: var(--c-rose); }
+  .ind-badge[data-team="jennie"] { background: rgba(245,200,66,0.15);  color: var(--c-jennie); }
+  .ind-badge[data-team="lisa"]   { background: rgba(61,214,245,0.15);  color: var(--c-lisa); }
+  .ind-badge[data-team="jisoo"]  { background: rgba(179,157,219,0.15); color: var(--c-jisoo); }
+  .ind-badge[data-team="bp"]     { background: rgba(255,61,113,0.15);  color: var(--c-bp); }
+
+  .ind-score { font-size: 0.85rem; font-weight: 700; color: var(--blush); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ind-score-label { font-size: 0.5rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); text-align: right; }
+
+  .empty-state { text-align: center; padding: 2.5rem; color: var(--dim); font-size: 0.8rem; border: 1px solid var(--faint); }
+
+  /* ── SIGN-IN PROMPT ── */
+  .signin-prompt { font-size: 0.75rem; color: var(--dim); text-align: center; }
+  .signin-prompt a { color: var(--blush); text-decoration: underline; cursor: pointer; }
+
+  footer { text-align: center; padding: 2rem; font-size: 0.6rem; color: var(--dim); letter-spacing: 0.08em; border-top: 1px solid var(--faint); margin-top: 3rem; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-back" href="/leaderboard">← Leaderboard</a>
+  <span class="nav-title">Blinks United</span>
+</nav>
+
+<header class="hero">
+  <p class="hero-eye">✦ fan streaming event ✦</p>
+  <h1 class="hero-title">Streaming<br><span>Battle</span></h1>
+  <p class="hero-sub" id="battleName">Loading…</p>
+  <div class="battle-status pending" id="battleStatus">Pending</div>
+  <div class="countdown hidden" id="countdown">
+    <div class="cd-unit"><div class="cd-num" id="cdDays">00</div><div class="cd-label">days</div></div>
+    <div class="cd-unit"><div class="cd-num" id="cdHours">00</div><div class="cd-label">hours</div></div>
+    <div class="cd-unit"><div class="cd-num" id="cdMins">00</div><div class="cd-label">mins</div></div>
+    <div class="cd-unit"><div class="cd-num" id="cdSecs">00</div><div class="cd-label">secs</div></div>
+  </div>
+</header>
+
+<!-- TEAM STANDINGS + PICKER -->
+<section class="section">
+  <p class="section-eye">✦ team standings ✦</p>
+  <p class="section-title">Pick your side</p>
+
+  <div class="team-grid" id="teamGrid">
+    <div class="team-card" data-team="rose">
+      <span class="team-check">✓</span>
+      <span class="team-emoji">🌹</span>
+      <div class="team-name">Rosé</div>
+      <div class="team-score" id="score-rose">—</div>
+      <div class="team-score-label">scrobbles</div>
+      <div class="team-members" id="members-rose">— members</div>
+      <div class="team-bar-wrap"><div class="team-bar" id="bar-rose"></div></div>
+    </div>
+    <div class="team-card" data-team="jennie">
+      <span class="team-check">✓</span>
+      <span class="team-emoji">💎</span>
+      <div class="team-name">Jennie</div>
+      <div class="team-score" id="score-jennie">—</div>
+      <div class="team-score-label">scrobbles</div>
+      <div class="team-members" id="members-jennie">— members</div>
+      <div class="team-bar-wrap"><div class="team-bar" id="bar-jennie"></div></div>
+    </div>
+    <div class="team-card" data-team="lisa">
+      <span class="team-check">✓</span>
+      <span class="team-emoji">👑</span>
+      <div class="team-name">Lisa</div>
+      <div class="team-score" id="score-lisa">—</div>
+      <div class="team-score-label">scrobbles</div>
+      <div class="team-members" id="members-lisa">— members</div>
+      <div class="team-bar-wrap"><div class="team-bar" id="bar-lisa"></div></div>
+    </div>
+    <div class="team-card" data-team="jisoo">
+      <span class="team-check">✓</span>
+      <span class="team-emoji">🌸</span>
+      <div class="team-name">Jisoo</div>
+      <div class="team-score" id="score-jisoo">—</div>
+      <div class="team-score-label">scrobbles</div>
+      <div class="team-members" id="members-jisoo">— members</div>
+      <div class="team-bar-wrap"><div class="team-bar" id="bar-jisoo"></div></div>
+    </div>
+    <div class="team-card" data-team="bp">
+      <span class="team-check">✓</span>
+      <span class="team-emoji">🖤</span>
+      <div class="team-name">BLACKPINK</div>
+      <div class="team-score" id="score-bp">—</div>
+      <div class="team-score-label">scrobbles</div>
+      <div class="team-members" id="members-bp">— members</div>
+      <div class="team-bar-wrap"><div class="team-bar" id="bar-bp"></div></div>
+    </div>
+  </div>
+
+  <!-- JOIN PANEL (shown when logged in + on leaderboard) -->
+  <div class="join-panel" id="joinPanel" style="margin-top:1.6rem;">
+    <p class="join-title">✦ Join the battle ✦</p>
+    <p class="join-hint" id="joinHint">Select one or more teams above, then click join.<br>You can be on multiple teams — your scrobbles count for each.</p>
+    <button class="btn btn-primary" id="joinBtn" onclick="joinBattle()">Join selected teams →</button>
+    <p class="join-msg" id="joinMsg"></p>
+  </div>
+
+  <!-- SIGN-IN PROMPT (shown when not logged in) -->
+  <div style="margin-top:1.6rem; text-align:center;" id="signinPrompt">
+    <p class="signin-prompt">
+      <a href="/" onclick="openAccountModal(event)">Sign in</a> to join a team and appear on the individual leaderboard.
+    </p>
+  </div>
+</section>
+
+<!-- INDIVIDUAL LEADERBOARD -->
+<section class="section" style="padding-top:0;">
+  <p class="section-eye">✦ individual standings ✦</p>
+  <p class="section-title">Top contributors</p>
+  <ul class="ind-list" id="indList">
+    <li class="empty-state">Loading standings…</li>
+  </ul>
+</section>
+
+<footer>Fan site · Standings update when participants sync their scrobbler · Not affiliated with YG Entertainment or BLACKPINK</footer>
+
+<script>
+const SUPABASE_URL      = 'https://esbzlrmrdvvsrsobrzfz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzYnpscm1yZHZ2c3Jzb2JyemZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODQyNDYsImV4cCI6MjA5NTY2MDI0Nn0.P3VhWYeog5CmE67VjvHboG3rP876OPjcmmtBmz1zfck';
+const sb = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+const TEAMS = ['rose','jennie','lisa','jisoo','bp'];
+const TEAM_LABELS = { rose:'Rosé', jennie:'Jennie', lisa:'Lisa', jisoo:'Jisoo', bp:'BLACKPINK' };
+
+let selectedTeams = new Set();
+let sessionToken  = null;
+let battleData    = null;
+let countdownTimer = null;
+
+// ── Team card toggle ──────────────────────────────────────────────────────────
+document.querySelectorAll('.team-card').forEach(card => {
+  card.addEventListener('click', () => {
+    const team = card.dataset.team;
+    if (selectedTeams.has(team)) {
+      selectedTeams.delete(team);
+      card.classList.remove('selected');
+    } else {
+      selectedTeams.add(team);
+      card.classList.add('selected');
+    }
+  });
+});
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+async function initAuth() {
+  if (!sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    sessionToken = session.access_token;
+    document.getElementById('signinPrompt').style.display = 'none';
+    document.getElementById('joinPanel').classList.remove('hidden');
+  } else {
+    document.getElementById('joinPanel').classList.add('hidden');
+  }
+}
+
+function openAccountModal(e) {
+  e.preventDefault();
+  // Redirect to index.html's account section (opens modal)
+  window.location.href = '/?account=1';
+}
+
+// ── Join ─────────────────────────────────────────────────────────────────────
+async function joinBattle() {
+  const msg = document.getElementById('joinMsg');
+  const btn = document.getElementById('joinBtn');
+  if (!selectedTeams.size) { msg.textContent = 'Select at least one team first.'; msg.className = 'join-msg err'; return; }
+  if (!sessionToken) { msg.textContent = 'Sign in first.'; msg.className = 'join-msg err'; return; }
+
+  btn.disabled = true;
+  msg.textContent = '';
+
+  try {
+    const r = await fetch('/api/battle?action=battle-join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken: sessionToken, teams: [...selectedTeams] }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Unknown error');
+    msg.textContent = `Joined: ${data.teams.map(t => TEAM_LABELS[t]).join(', ')} ✓`;
+    msg.className = 'join-msg ok';
+    loadStandings();
+  } catch(e) {
+    msg.textContent = e.message;
+    msg.className = 'join-msg err';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Standings ─────────────────────────────────────────────────────────────────
+function fmt(n) { return (n ?? 0).toLocaleString(); }
+
+async function loadStandings() {
+  try {
+    const r = await fetch('/api/battle');
+    battleData = await r.json();
+  } catch { return; }
+
+  // Config / status
+  const cfg = battleData.config || {};
+  const statusEl = document.getElementById('battleStatus');
+  statusEl.textContent = cfg.status === 'active' ? '● Live' : cfg.status === 'ended' ? 'Ended' : 'Coming soon';
+  statusEl.className = `battle-status ${cfg.status || 'pending'}`;
+  document.getElementById('battleName').textContent = cfg.name || 'Blinks United Streaming Battle';
+
+  // Countdown
+  if (cfg.status === 'active' && cfg.endAt) {
+    document.getElementById('countdown').classList.remove('hidden');
+    startCountdown(new Date(cfg.endAt));
+  } else if (cfg.status === 'pending' && cfg.startAt) {
+    document.getElementById('countdown').classList.remove('hidden');
+    startCountdown(new Date(cfg.startAt));
+  } else {
+    document.getElementById('countdown').classList.add('hidden');
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+  }
+
+  // Team cards
+  const totals = battleData.teamTotals || {};
+  const counts  = battleData.teamCounts  || {};
+  const maxScore = Math.max(...TEAMS.map(t => totals[t] || 0), 1);
+  for (const team of TEAMS) {
+    const score = totals[team] || 0;
+    document.getElementById(`score-${team}`).textContent   = fmt(score);
+    document.getElementById(`members-${team}`).textContent = `${counts[team] || 0} member${counts[team] === 1 ? '' : 's'}`;
+    document.getElementById(`bar-${team}`).style.width = `${(score / maxScore) * 100}%`;
+  }
+
+  // Individual leaderboard
+  const list = document.getElementById('indList');
+  const individuals = battleData.individuals || [];
+  if (!individuals.length) {
+    list.innerHTML = '<li class="empty-state">No participants yet — be the first to join!</li>';
+    return;
+  }
+  list.innerHTML = individuals.slice(0, 30).map((u, i) => `
+    <li class="ind-row">
+      <span class="ind-rank ${i < 3 ? 'top3' : ''}">${i + 1}</span>
+      ${u.avatar
+        ? `<img class="ind-avatar" src="${u.avatar}" alt="" loading="lazy" onerror="this.style.display='none'">`
+        : `<div class="ind-avatar-placeholder">?</div>`}
+      <div>
+        <div class="ind-name">${escHtml(u.username)}</div>
+        <div class="ind-teams">
+          ${(u.teams || []).map(t => `<span class="ind-badge" data-team="${t}">${TEAM_LABELS[t] || t}</span>`).join('')}
+        </div>
+      </div>
+      <div>
+        <div class="ind-score">${fmt(u.score)}</div>
+        <div class="ind-score-label">scrobbles</div>
+      </div>
+    </li>
+  `).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Countdown ─────────────────────────────────────────────────────────────────
+function startCountdown(target) {
+  if (countdownTimer) clearInterval(countdownTimer);
+  function tick() {
+    const diff = target - Date.now();
+    if (diff <= 0) { clearInterval(countdownTimer); return; }
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    document.getElementById('cdDays').textContent  = String(d).padStart(2,'0');
+    document.getElementById('cdHours').textContent = String(h).padStart(2,'0');
+    document.getElementById('cdMins').textContent  = String(m).padStart(2,'0');
+    document.getElementById('cdSecs').textContent  = String(s).padStart(2,'0');
+  }
+  tick();
+  countdownTimer = setInterval(tick, 1000);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+initAuth();
+loadStandings();
+setInterval(loadStandings, 60000); // refresh every minute
+</script>
+</body>
+</html>
