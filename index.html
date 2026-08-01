@@ -233,21 +233,30 @@
 
   /* ── BATTLE TEASER STRIP ── */
   .battle-hero-strip {
-    display: flex; flex-direction: column; gap: 0.3rem;
-    padding: 0.95rem 1.5rem; margin-top: 1.5rem;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 0.9rem; padding: 2.2rem 1.5rem; margin-top: 1.5rem;
     max-width: 900px; width: calc(100% + 4rem);
     margin-left: -2rem; margin-right: -2rem;
-    border: 1px solid rgba(255,0,102,0.28);
-    background: rgba(255,0,102,0.04);
-    text-decoration: none; cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
+    border: 1px solid rgba(255,0,102,0.3);
+    background: rgba(6,0,5,0.7);
+    text-decoration: none; cursor: pointer; text-align: center;
+    transition: border-color 0.22s, background 0.22s;
   }
-  .battle-hero-strip:hover { border-color: rgba(255,0,102,0.55); background: rgba(255,0,102,0.08); }
-  .bhs-eye  { font-size: 0.58rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--pink); }
-  .bhs-name { font-family: var(--display); font-size: clamp(1.2rem, 3vw, 1.9rem); letter-spacing: 0.06em; color: var(--white); }
-  .bhs-teams { display: flex; align-items: center; gap: 0.3rem; font-size: 0.68rem; color: var(--muted); margin-top: 0.15rem; flex-wrap: wrap; }
-  .bhs-dot  { font-size: 0.8rem; }
-  .bhs-cta  { color: var(--pink); margin-left: 0.5rem; }
+  .battle-hero-strip:hover { border-color: rgba(255,0,102,0.65); background: rgba(14,0,10,0.85); }
+  .bhs-icon svg { display: block; }
+  .bhs-eye  { font-size: 0.58rem; letter-spacing: 0.26em; text-transform: uppercase; color: var(--pink); }
+  .bhs-name { font-family: var(--display); font-size: clamp(1.6rem, 5vw, 2.8rem); letter-spacing: 0.06em; color: var(--white); line-height: 1; }
+  .bhs-chars { display: flex; gap: 0.7rem; justify-content: center; flex-wrap: nowrap; }
+  .bhs-char { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; }
+  .bhs-char svg { display: block; width: 46px; height: 46px; }
+  .bhs-char-label { font-size: 0.52rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .bhs-char[data-team="rose"]   .bhs-char-label { color: #FF6B9D; }
+  .bhs-char[data-team="jennie"] .bhs-char-label { color: #F5C842; }
+  .bhs-char[data-team="lisa"]   .bhs-char-label { color: #3DD6F5; }
+  .bhs-char[data-team="jisoo"]  .bhs-char-label { color: #B39DDB; }
+  .bhs-char[data-team="bp"]     .bhs-char-label { color: #FF3D71; }
+  .bhs-cta  { font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pink); border: 1px solid rgba(255,0,102,0.4); padding: 0.4rem 1.4rem; }
+  .battle-hero-strip:hover .bhs-cta { border-color: rgba(255,0,102,0.8); }
 
   .ticker-wrap {
     position: relative; z-index: 2;
@@ -1781,16 +1790,132 @@
         <a href="/voting" class="btn-primary" onclick="showPage('vote'); return false;">Vote</a>
       </div>
       <a href="/battle.html" class="battle-hero-strip" id="battleHeroStrip" style="display:none;">
-        <span class="bhs-eye" id="bhsEye">⚔ Streaming Event · Coming Soon</span>
-        <span class="bhs-name" id="bhsName">Blinks Streaming Battle</span>
-        <span class="bhs-teams">
-          <span class="bhs-dot" style="color:#FF6B9D">●</span>
-          <span class="bhs-dot" style="color:#F5C842">●</span>
-          <span class="bhs-dot" style="color:#3DD6F5">●</span>
-          <span class="bhs-dot" style="color:#B39DDB">●</span>
-          <span class="bhs-dot" style="color:#FF3D71">●</span>
-          <span class="bhs-cta">Choose your side →</span>
-        </span>
+
+        <!-- Two lightsticks crossing -->
+        <div class="bhs-icon">
+          <svg viewBox="0 0 100 100" width="64" height="64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <linearGradient id="battlelsg-h" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#FF88BB"/>
+                <stop offset="100%" stop-color="#CC0055"/>
+              </linearGradient>
+              <linearGradient id="battlelsg-b" x1="0.3" y1="0" x2="0.7" y2="1">
+                <stop offset="0%" stop-color="#FF9DBF"/>
+                <stop offset="100%" stop-color="#FF2266"/>
+              </linearGradient>
+            </defs>
+            <!-- Left lightstick: ball top-left, handle bottom-right -->
+            <g transform="rotate(-40 50 50)">
+              <rect x="47.5" y="30" width="5" height="52" rx="2.5" fill="url(#battlelsg-h)"/>
+              <ellipse cx="50" cy="82" rx="3.5" ry="2.5" fill="#880033"/>
+              <circle cx="50" cy="20" r="14" fill="url(#battlelsg-b)"/>
+              <path d="M40,15 Q50,9 60,15" stroke="rgba(255,255,255,0.4)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+              <ellipse cx="44" cy="15" rx="5" ry="3.5" fill="rgba(255,255,255,0.28)" transform="rotate(-20 44 15)"/>
+            </g>
+            <!-- Right lightstick: ball top-right, handle bottom-left -->
+            <g transform="rotate(40 50 50)">
+              <rect x="47.5" y="30" width="5" height="52" rx="2.5" fill="url(#battlelsg-h)"/>
+              <ellipse cx="50" cy="82" rx="3.5" ry="2.5" fill="#880033"/>
+              <circle cx="50" cy="20" r="14" fill="url(#battlelsg-b)"/>
+              <path d="M40,15 Q50,9 60,15" stroke="rgba(255,255,255,0.4)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+              <ellipse cx="44" cy="15" rx="5" ry="3.5" fill="rgba(255,255,255,0.28)" transform="rotate(-20 44 15)"/>
+            </g>
+          </svg>
+        </div>
+
+        <p class="bhs-eye" id="bhsEye">Streaming Event · Coming Soon</p>
+        <h2 class="bhs-name" id="bhsName">Blinks Streaming Battle</h2>
+
+        <!-- Character row: Rosie · Kuki · Ppeu · Sooya · Gomdeuki -->
+        <div class="bhs-chars">
+          <div class="bhs-char" data-team="rose">
+            <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" aria-label="Rosie">
+              <ellipse cx="26" cy="26" rx="10" ry="21" fill="#DED0EE" transform="rotate(-10 26 26)"/>
+              <ellipse cx="54" cy="26" rx="10" ry="21" fill="#DED0EE" transform="rotate(10 54 26)"/>
+              <ellipse cx="26" cy="26" rx="5.5" ry="14" fill="#F0B0CC" transform="rotate(-10 26 26)"/>
+              <ellipse cx="54" cy="26" rx="5.5" ry="14" fill="#F0B0CC" transform="rotate(10 54 26)"/>
+              <path d="M17,10 L24,15 L17,20Z" fill="#9870C8"/><path d="M31,10 L24,15 L31,20Z" fill="#9870C8"/><circle cx="24" cy="15" r="2.5" fill="#B090E0"/>
+              <circle cx="40" cy="52" r="26" fill="#EEE8F6"/>
+              <circle cx="31" cy="50" r="5.5" fill="#1C0830"/><circle cx="49" cy="50" r="5.5" fill="#1C0830"/>
+              <circle cx="33" cy="47" r="1.8" fill="white"/><circle cx="51" cy="47" r="1.8" fill="white"/>
+              <ellipse cx="23" cy="58" rx="5.5" ry="3" fill="#F4A8C8" opacity="0.65"/>
+              <ellipse cx="57" cy="58" rx="5.5" ry="3" fill="#F4A8C8" opacity="0.65"/>
+              <ellipse cx="40" cy="57" rx="3.5" ry="2.2" fill="#D888B0"/>
+              <path d="M36,61 Q40,66 44,61" stroke="#C070A0" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            </svg>
+            <span class="bhs-char-label">Rosé</span>
+          </div>
+          <div class="bhs-char" data-team="jennie">
+            <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" aria-label="Kuki">
+              <polygon points="22,35 27,15 37,33" fill="#C5BDB5"/>
+              <polygon points="43,33 53,15 58,35" fill="#C5BDB5"/>
+              <polygon points="25,33 29,18 36,31" fill="#EDA0AA"/>
+              <polygon points="44,31 51,18 55,33" fill="#EDA0AA"/>
+              <circle cx="40" cy="50" r="26" fill="#D8D2CC"/>
+              <path d="M54,28 L60,32 L54,36Z" fill="#2A2025"/><path d="M66,28 L60,32 L66,36Z" fill="#2A2025"/><circle cx="60" cy="32" r="2.5" fill="#3D3040"/>
+              <ellipse cx="31" cy="49" rx="6" ry="5" fill="#1C0830"/><ellipse cx="49" cy="49" rx="6" ry="5" fill="#1C0830"/>
+              <circle cx="33" cy="46" r="1.8" fill="white"/><circle cx="51" cy="46" r="1.8" fill="white"/>
+              <ellipse cx="23" cy="57" rx="5.5" ry="3" fill="#F4A0B8" opacity="0.55"/>
+              <ellipse cx="57" cy="57" rx="5.5" ry="3" fill="#F4A0B8" opacity="0.55"/>
+              <polygon points="40,55 37,59 43,59" fill="#D08090"/>
+              <path d="M37,59 Q40,62 43,59" stroke="#B87080" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+              <line x1="20" y1="57" x2="34" y2="60" stroke="#A8A098" stroke-width="0.8" opacity="0.5"/>
+              <line x1="20" y1="62" x2="34" y2="62" stroke="#A8A098" stroke-width="0.8" opacity="0.5"/>
+              <line x1="60" y1="57" x2="46" y2="60" stroke="#A8A098" stroke-width="0.8" opacity="0.5"/>
+              <line x1="60" y1="62" x2="46" y2="62" stroke="#A8A098" stroke-width="0.8" opacity="0.5"/>
+            </svg>
+            <span class="bhs-char-label">Jennie</span>
+          </div>
+          <div class="bhs-char" data-team="lisa">
+            <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" aria-label="Ppeu">
+              <ellipse cx="35" cy="22" rx="7" ry="11" fill="#FFD840" transform="rotate(-10 35 22)"/>
+              <ellipse cx="45" cy="22" rx="7" ry="11" fill="#FFD840" transform="rotate(10 45 22)"/>
+              <path d="M29,14 L36,18 L29,22Z" fill="#FF9800"/><path d="M43,14 L36,18 L43,22Z" fill="#FF9800"/><circle cx="36" cy="18" r="2.5" fill="#FFB800"/>
+              <circle cx="40" cy="50" r="26" fill="#FFE360"/>
+              <circle cx="31" cy="47" r="5.5" fill="#1C0830"/><circle cx="49" cy="47" r="5.5" fill="#1C0830"/>
+              <circle cx="33" cy="44" r="1.8" fill="white"/><circle cx="51" cy="44" r="1.8" fill="white"/>
+              <ellipse cx="22" cy="56" rx="5.5" ry="3" fill="#FFA060" opacity="0.55"/>
+              <ellipse cx="58" cy="56" rx="5.5" ry="3" fill="#FFA060" opacity="0.55"/>
+              <ellipse cx="40" cy="60" rx="8.5" ry="5.5" fill="#FF8010"/>
+              <line x1="31.5" y1="60" x2="48.5" y2="60" stroke="#CC6000" stroke-width="1" opacity="0.5"/>
+            </svg>
+            <span class="bhs-char-label">Lisa</span>
+          </div>
+          <div class="bhs-char" data-team="jisoo">
+            <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" aria-label="Sooya">
+              <circle cx="22" cy="30" r="13" fill="#BFA088"/><circle cx="58" cy="30" r="13" fill="#BFA088"/>
+              <circle cx="22" cy="30" r="8" fill="#D4B8A0"/><circle cx="58" cy="30" r="8" fill="#D4B8A0"/>
+              <path d="M51,20 L58,25 L51,30Z" fill="#5090D8"/><path d="M65,20 L58,25 L65,30Z" fill="#5090D8"/><circle cx="58" cy="25" r="2.5" fill="#70AAEE"/>
+              <circle cx="40" cy="52" r="26" fill="#D4BAA4"/>
+              <ellipse cx="40" cy="62" rx="13" ry="9" fill="#E4CABA"/>
+              <circle cx="30" cy="50" r="5.5" fill="#1C0830"/><circle cx="50" cy="50" r="5.5" fill="#1C0830"/>
+              <circle cx="32" cy="47" r="1.8" fill="white"/><circle cx="52" cy="47" r="1.8" fill="white"/>
+              <ellipse cx="21" cy="59" rx="5.5" ry="3" fill="#F4A0B0" opacity="0.55"/>
+              <ellipse cx="59" cy="59" rx="5.5" ry="3" fill="#F4A0B0" opacity="0.55"/>
+              <ellipse cx="40" cy="60" rx="4.5" ry="3" fill="#8C6050"/>
+              <path d="M35,65 Q40,70 45,65" stroke="#7A5040" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            </svg>
+            <span class="bhs-char-label">Jisoo</span>
+          </div>
+          <div class="bhs-char" data-team="bp">
+            <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" aria-label="Gomdeuki">
+              <circle cx="22" cy="30" r="13" fill="#8C5838"/><circle cx="58" cy="30" r="13" fill="#8C5838"/>
+              <circle cx="22" cy="30" r="8" fill="#A8724A"/><circle cx="58" cy="30" r="8" fill="#A8724A"/>
+              <path d="M30,18 L40,24 L30,30Z" fill="#FF0066"/><path d="M50,18 L40,24 L50,30Z" fill="#FF0066"/><circle cx="40" cy="24" r="3" fill="#FF4488"/>
+              <circle cx="40" cy="52" r="26" fill="#A8724A"/>
+              <ellipse cx="40" cy="62" rx="13" ry="9" fill="#BE8A62"/>
+              <circle cx="30" cy="50" r="5.5" fill="#1C0830"/><circle cx="50" cy="50" r="5.5" fill="#1C0830"/>
+              <circle cx="32" cy="47" r="1.8" fill="white"/><circle cx="52" cy="47" r="1.8" fill="white"/>
+              <ellipse cx="21" cy="59" rx="5.5" ry="3" fill="#FF6090" opacity="0.5"/>
+              <ellipse cx="59" cy="59" rx="5.5" ry="3" fill="#FF6090" opacity="0.5"/>
+              <ellipse cx="40" cy="60" rx="4.5" ry="3" fill="#4A2818"/>
+              <path d="M35,65 Q40,70 45,65" stroke="#3A1808" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            </svg>
+            <span class="bhs-char-label">BLACKPINK</span>
+          </div>
+        </div>
+
+        <span class="bhs-cta">Choose your side →</span>
       </a>
 
       <div class="release-title-header" id="release-title-header" style="display:none;margin-top:1.5rem;max-width:900px;width:calc(100% + 4rem);margin-left:-2rem;margin-right:-2rem;">
