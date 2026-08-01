@@ -159,15 +159,16 @@ export default async function handler(req, res) {
   // ── POST ?action=battle-config&key=ADMIN — create / update battle ─────────
   if (req.method === 'POST' && action === 'battle-config') {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
-    const { status, name, startAt, endAt, reset } = req.body || {};
+    const { status, name, startAt, endAt, playlists, reset } = req.body || {};
 
     const battle = (await redis.get(BATTLE_KEY)) || { config: {}, participants: {} };
     battle.config = battle.config || {};
 
-    if (status  !== undefined) battle.config.status  = status;
-    if (name    !== undefined) battle.config.name    = name;
-    if (startAt !== undefined) battle.config.startAt = startAt;
-    if (endAt   !== undefined) battle.config.endAt   = endAt;
+    if (status    !== undefined) battle.config.status    = status;
+    if (name      !== undefined) battle.config.name      = name;
+    if (startAt   !== undefined) battle.config.startAt   = startAt;
+    if (endAt     !== undefined) battle.config.endAt     = endAt;
+    if (playlists !== undefined) battle.config.playlists = playlists;
 
     // reset=true wipes all participant baselines and re-snapshots from current LB
     if (reset) {

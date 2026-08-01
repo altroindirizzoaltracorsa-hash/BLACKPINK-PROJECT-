@@ -147,6 +147,27 @@
 
   .empty-state { text-align: center; padding: 2.5rem; color: var(--dim); font-size: 0.8rem; border: 1px solid var(--faint); }
 
+  /* ── PLAYLISTS ── */
+  .playlist-section { max-width: 500px; margin: 1rem auto 0; border: 1px solid var(--faint); padding: 1.2rem 1.5rem; }
+  .playlist-section.hidden { display: none; }
+  .playlist-section-title { font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); text-align: center; margin-bottom: 1rem; }
+  .playlist-links { display: flex; flex-direction: column; gap: 0.5rem; }
+  .playlist-link {
+    display: flex; align-items: center; gap: 0.7rem;
+    padding: 0.6rem 0.9rem; border: 1px solid var(--faint);
+    font-size: 0.75rem; text-decoration: none; color: var(--blush);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .playlist-link:hover { background: rgba(255,255,255,0.03); }
+  .playlist-link[data-team="rose"]   { border-left-color: var(--c-rose); }
+  .playlist-link[data-team="jennie"] { border-left-color: var(--c-jennie); }
+  .playlist-link[data-team="lisa"]   { border-left-color: var(--c-lisa); }
+  .playlist-link[data-team="jisoo"]  { border-left-color: var(--c-jisoo); }
+  .playlist-link[data-team="bp"]     { border-left-color: var(--c-bp); }
+  .playlist-link-name { flex: 1; }
+  .playlist-link-arrow { color: var(--dim); font-size: 0.7rem; }
+  .playlist-pending { font-size: 0.7rem; color: var(--dim); text-align: center; padding: 0.5rem 0; }
+
   /* ── SIGN-IN PROMPT ── */
   .signin-prompt { font-size: 0.75rem; color: var(--dim); text-align: center; }
   .signin-prompt a { color: var(--blush); text-decoration: underline; cursor: pointer; }
@@ -235,6 +256,12 @@
     <p class="join-msg" id="joinMsg"></p>
   </div>
 
+  <!-- PLAYLISTS (shown after joining) -->
+  <div class="playlist-section hidden" id="playlistSection">
+    <p class="playlist-section-title">✦ Stream with your team ✦</p>
+    <div class="playlist-links" id="playlistLinks"></div>
+  </div>
+
   <!-- SIGN-IN PROMPT (shown when not logged in) -->
   <div style="margin-top:1.6rem; text-align:center;" id="signinPrompt">
     <p class="signin-prompt">
@@ -266,6 +293,7 @@ let selectedTeams = new Set();
 let sessionToken  = null;
 let battleData    = null;
 let countdownTimer = null;
+let userTeams     = [];
 
 // ── Team card toggle ──────────────────────────────────────────────────────────
 document.querySelectorAll('.team-card').forEach(card => {
@@ -318,8 +346,10 @@ async function joinBattle() {
     });
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || 'Unknown error');
+    userTeams = data.teams;
     msg.textContent = `Joined: ${data.teams.map(t => TEAM_LABELS[t]).join(', ')} ✓`;
     msg.className = 'join-msg ok';
+    renderPlaylists(userTeams, battleData?.config?.playlists || {});
     loadStandings();
   } catch(e) {
     msg.textContent = e.message;
@@ -368,6 +398,9 @@ async function loadStandings() {
     document.getElementById(`bar-${team}`).style.width = `${(score / maxScore) * 100}%`;
   }
 
+  // Playlists — refresh if user already has teams
+  if (userTeams.length) renderPlaylists(userTeams, battleData.config?.playlists || {});
+
   // Individual leaderboard
   const list = document.getElementById('indList');
   const individuals = battleData.individuals || [];
@@ -393,6 +426,33 @@ async function loadStandings() {
       </div>
     </li>
   `).join('');
+}
+
+// ── Playlists ─────────────────────────────────────────────────────────────────
+const TEAM_EMOJI = { rose:'🌹', jennie:'💎', lisa:'👑', jisoo:'🌸', bp:'🖤' };
+
+function renderPlaylists(teams, playlists) {
+  const section = document.getElementById('playlistSection');
+  const linksEl = document.getElementById('playlistLinks');
+  if (!section || !linksEl || !teams.length) return;
+
+  const hasAny = teams.some(t => playlists[t]);
+  if (!hasAny) {
+    linksEl.innerHTML = '<p class="playlist-pending">Playlists will be announced soon — check back here!</p>';
+    section.classList.remove('hidden');
+    return;
+  }
+
+  linksEl.innerHTML = teams
+    .filter(t => playlists[t])
+    .map(t => `
+      <a class="playlist-link" data-team="${t}" href="${escHtml(playlists[t])}" target="_blank" rel="noopener">
+        <span>${TEAM_EMOJI[t] || ''}</span>
+        <span class="playlist-link-name">Team ${escHtml(TEAM_LABELS[t])} Battle Playlist</span>
+        <span class="playlist-link-arrow">→</span>
+      </a>
+    `).join('');
+  section.classList.remove('hidden');
 }
 
 function escHtml(s) {
