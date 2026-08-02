@@ -1868,7 +1868,7 @@
       <div id="community-goal-home" style="display:none;margin-top:1.5rem;max-width:900px;width:calc(100% + 4rem);margin-left:-2rem;margin-right:-2rem;">
         <div class="goal-tracker-card">
           <div class="goal-tracker-top">
-            <span class="goal-tracker-label">// Today's Community Goal — JUMP + Shut Down + DDU-DU DDU-DU</span>
+            <span class="goal-tracker-label">// Today's Community Goal — JUMP + Shut Down + DDU-DU DDU-DU + GO</span>
             <span class="goal-tracker-nums" id="community-goal-nums">0<span> / 15,000 scrobbles</span></span>
           </div>
           <div class="goal-tracker-bar"><div class="goal-tracker-fill" id="community-goal-fill" style="width:0%"></div></div>
@@ -6873,7 +6873,7 @@ function computeDailyCommunityTotal(users) {
     if (secondaryKeys.has(username.toLowerCase())) return sum;
     const s = d.scores || {};
     if (s.daily_date !== todayLabel) return sum;
-    return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0);
+    return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0);
   }, 0);
 }
 
