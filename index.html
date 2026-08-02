@@ -7424,23 +7424,19 @@ async function refreshChatAccess() {
     lockedEl.style.display = 'block';
     const rows = [
       ['BLACKPINK group (all time)', bpGroup, CHAT_THRESHOLD],
+      ['JISOO solo',  scores.overall_jisoo  || 0, CHAT_MEMBER_EACH],
+      ['LISA solo',   scores.overall_lisa   || 0, CHAT_MEMBER_EACH],
+      ['ROSÉ solo',   scores.overall_rose   || 0, CHAT_MEMBER_EACH],
+      ['JENNIE solo', scores.overall_jennie || 0, CHAT_MEMBER_EACH],
       ['JUMP',        scores.overall_jump     || 0, CHAT_MIN.jump],
       ['Shut Down',   scores.overall_shutdown || 0, CHAT_MIN.shutdown],
       ['DDU-DU DDU-DU', scores.overall_ddududu || 0, CHAT_MIN.ddududu],
     ];
-    if (memberSynced) {
-      rows.splice(1, 0,
-        ['JISOO solo',  scores.overall_jisoo  || 0, CHAT_MEMBER_EACH],
-        ['LISA solo',   scores.overall_lisa   || 0, CHAT_MEMBER_EACH],
-        ['ROSÉ solo',   scores.overall_rose   || 0, CHAT_MEMBER_EACH],
-        ['JENNIE solo', scores.overall_jennie || 0, CHAT_MEMBER_EACH],
-      );
-    }
     document.getElementById('chat-locked-progress').innerHTML =
       rows.map(([label, have, need]) =>
         `${have >= need ? '✅' : '▫️'} ${label}: ${have.toLocaleString()} / ${need.toLocaleString()}`
       ).join('<br>') +
-      (!memberSynced ? '<br><span style="opacity:0.6;font-size:0.75em">Reload My Badges to track member plays</span>' : '');
+      (!memberSynced ? '<br><span style="opacity:0.6;font-size:0.75em">Visit My Badges once to sync member plays</span>' : '');
     return;
   }
 

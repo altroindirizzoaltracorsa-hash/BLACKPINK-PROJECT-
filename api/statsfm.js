@@ -123,12 +123,12 @@ export default async function handler(request) {
     }
 
     function countRecent(list) {
-      const result = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0 };
+      const result = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 };
       for (const stream of list) {
         const name = (stream.track?.name ?? '').toLowerCase();
         const artists = stream.track?.artists ?? [];
         const t = TRACKS.find(t => name.startsWith(t.prefix) && artists.some(a => a.name === t.artist));
-        if (t) result[t.id]++;
+        if (t) result[t.id] = (result[t.id] || 0) + 1;
       }
       return result;
     }
@@ -140,7 +140,7 @@ export default async function handler(request) {
     // Prefer streams/recent (exact local-midnight timestamps) when it's well-synced.
     // Fall back to range=today when streams/recent is severely behind (< 70% of today's count).
     const tracksToday = {};
-    for (const k of ['jump', 'shutdown', 'ddududu', 'ltal']) {
+    for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go']) {
       const agg = todayRange[k] || 0;
       const rec = todayRecent[k] || 0;
       tracksToday[k] = (agg > 0 && rec >= agg * 0.7) ? rec : agg;
