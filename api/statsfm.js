@@ -19,9 +19,9 @@ function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: CORS });
 }
 
-// Returns the UTC ISO timestamp for midnight in the given IANA timezone.
-// Uses noon UTC on the local date to determine the offset reliably (avoids DST ambiguity at midnight).
-function localMidnightUTC(tz) {
+// Returns the UTC ISO for the most recent occurrence of resetHour:00 in the given timezone.
+// Used to align with the site's daily reset (2am Italy = midnight UTC in summer, 1am UTC in winter).
+function dayBoundaryUTC(tz, resetHour) {
   try {
     const now = new Date();
     const localDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(now);
@@ -29,10 +29,15 @@ function localMidnightUTC(tz) {
     const localNoonStr = new Intl.DateTimeFormat('en-US', {
       timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false,
     }).format(utcNoon);
-    const [h, m] = localNoonStr.split(':').map(Number);
-    const offsetMinutes = (h * 60 + m) - 720; // local noon minus UTC noon (720 min)
-    const utcMidnight = new Date(`${localDateStr}T00:00:00Z`);
-    return new Date(utcMidnight.getTime() - offsetMinutes * 60 * 1000).toISOString();
+    const [nh, nm] = localNoonStr.split(':').map(Number);
+    const offsetMinutes = (nh * 60 + nm) - 720;
+    const hh = String(resetHour).padStart(2, '0');
+    const todayResetUTC = new Date(new Date(`${localDateStr}T${hh}:00:00Z`).getTime() - offsetMinutes * 60 * 1000);
+    if (now >= todayResetUTC) return todayResetUTC.toISOString();
+    // Before today's reset — use yesterday's
+    const prevNoon = new Date(utcNoon.getTime() - 86400000);
+    const prevDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(prevNoon);
+    return new Date(new Date(`${prevDateStr}T${hh}:00:00Z`).getTime() - offsetMinutes * 60 * 1000).toISOString();
   } catch {
     return new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z';
   }
@@ -63,11 +68,11 @@ export default async function handler(request) {
     const user = ud.item ?? ud;
     const customId = user.customId ?? user.id ?? username;
     const displayName = user.displayName ?? customId;
-    const profileTz = user.timezone ?? 'UTC';
 
-    if (debug === '1') return json({ step: 'user_ok', customId, displayName, profileTz, raw: ud });
+    if (debug === '1') return json({ step: 'user_ok', customId, displayName, raw: ud });
 
-    const localMidnight = localMidnightUTC(profileTz);
+    // Site day resets at 2am Italy time (same boundary as the main leaderboard)
+    const localMidnight = dayBoundaryUTC('Europe/Rome', 2);
     const afterMs = new Date(localMidnight).getTime(); // Unix ms for the API
 
     const [tr, ar, trToday, recentR] = await Promise.all([
