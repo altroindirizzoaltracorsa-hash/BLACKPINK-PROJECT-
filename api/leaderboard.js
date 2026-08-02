@@ -165,6 +165,68 @@ export default async function handler(req, res) {
     return res.status(204).end();
   }
 
+  // ── POST /api/leaderboard?action=rename-user&key=ADMIN_SECRET — admin: fix username after Last.fm rename ──
+  // Renames a user across all three stores: Redis leaderboard key, Supabase user_stamps, and linked_accounts.
+  // Use when a user changes their Last.fm username and can no longer load their profile.
+  if (req.method === 'POST' && action === 'rename-user') {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const sb = supabase();
+    if (!sb) return res.status(503).json({ error: 'Supabase not configured' });
+
+    const oldName = (req.body?.oldUsername || '').trim().toLowerCase();
+    const newName = (req.body?.newUsername || '').trim().toLowerCase();
+    if (!oldName || !newName) return res.status(400).json({ error: 'oldUsername and newUsername required' });
+    if (oldName === newName) return res.status(400).json({ error: 'Names are the same' });
+
+    const results = {};
+
+    // 1. Redis leaderboard: rename key, update internal fields
+    const data = (await redis.get(LB_KEY)) || { users: {} };
+    data.users = data.users || {};
+    if (data.users[oldName]) {
+      const entry = data.users[oldName];
+      entry.username = newName;
+      if (!entry.displayName || entry.displayName.toLowerCase() === oldName) entry.displayName = newName;
+      // Update username references inside linkedAccounts
+      if (Array.isArray(entry.linkedAccounts)) {
+        entry.linkedAccounts = entry.linkedAccounts.map(a =>
+          (a.username || '').toLowerCase() === oldName ? { ...a, username: newName } : a
+        );
+      }
+      // Defensive merge: remove any existing entry for the new name so we don't duplicate
+      delete data.users[newName];
+      data.users[newName] = entry;
+      delete data.users[oldName];
+      updateLeaderStreak(data);
+      await redis.set(LB_KEY, data);
+      results.leaderboard = 'renamed';
+    } else if (data.users[newName]) {
+      results.leaderboard = 'new name already exists, old key not found — skipped';
+    } else {
+      results.leaderboard = 'old key not found';
+    }
+
+    // 2. Supabase user_stamps: rename lfm_username
+    const { error: stampsErr, count: stampsCount } = await sb
+      .from('user_stamps')
+      .update({ lfm_username: newName })
+      .ilike('lfm_username', oldName)
+      .select('*', { count: 'exact', head: true });
+    results.stamps = stampsErr ? `error: ${stampsErr.message}` : `${stampsCount ?? '?'} rows updated`;
+
+    // 3. Supabase linked_accounts: update source_username
+    const { error: laErr, count: laCount } = await sb
+      .from('linked_accounts')
+      .update({ source_username: newName })
+      .ilike('source_username', oldName)
+      .eq('source', 'lastfm')
+      .select('*', { count: 'exact', head: true });
+    results.linked_accounts = laErr ? `error: ${laErr.message}` : `${laCount ?? '?'} rows updated`;
+
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ ok: true, oldUsername: oldName, newUsername: newName, results });
+  }
+
   // ── POST /api/leaderboard?action=delete-entry&key=ADMIN_SECRET — admin: remove without banning ──
   if (req.method === 'POST' && action === 'delete-entry') {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
