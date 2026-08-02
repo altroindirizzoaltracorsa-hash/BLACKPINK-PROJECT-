@@ -75,11 +75,9 @@ export default async function handler(request) {
     const localMidnight = dayBoundaryUTC('Europe/Rome', 2);
     const afterMs = new Date(localMidnight).getTime(); // Unix ms for the API
 
-    const [tr, ar, trToday, recentR] = await Promise.all([
+    const [tr, ar] = await Promise.all([
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=100`, { headers: SFM_H }),
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`, { headers: SFM_H }),
-      fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?range=today&limit=100&orderBy=COUNT`, { headers: SFM_H }),
-      fetch(`${SFM}/users/${encodeURIComponent(customId)}/streams/recent?after=${afterMs}&limit=1000`, { headers: SFM_H }),
     ]);
 
     if (!tr.ok) return json({ error: `Stats.fm tracks blocked (HTTP ${tr.status}) — try visiting https://stats.fm/${username}` }, 502);
@@ -87,27 +85,42 @@ export default async function handler(request) {
 
     const td = await tr.json();
     const ad = await ar.json();
-    const tdToday = trToday.ok ? await trToday.json() : null;
-    const recentData = recentR.ok ? await recentR.json() : null;
 
     const items = td.items ?? [];
     const adItems = ad.items ?? [];
-    const itemsToday = tdToday?.items ?? [];
 
-    // Client-side guard: only keep streams after localMidnight in case the API
-    // doesn't honour the after param or interprets it differently.
-    const allRecentItems = recentData?.items ?? [];
-    const recentItems = allRecentItems.filter(s => {
-      const ts = s.endTime ?? s.createdAt ?? s.playedAt;
-      if (ts == null) return true; // no timestamp field — include
-      const ms = typeof ts === 'number' ? ts : new Date(ts).getTime();
-      return ms >= afterMs;
-    });
+    // Paginate streams/recent using before= until we've covered since localMidnight.
+    // Stats.fm ignores the after param and caps at 50/page, so we page manually.
+    const recentItems = [];
+    let beforeMs = null;
+    let recentOk = false;
+    for (let page = 0; page < 10; page++) {
+      const url = `${SFM}/users/${encodeURIComponent(customId)}/streams/recent?limit=50` +
+        (beforeMs ? `&before=${beforeMs}` : '');
+      const r = await fetch(url, { headers: SFM_H });
+      if (!r.ok) break;
+      recentOk = true;
+      const d = await r.json();
+      const batch = d?.items ?? [];
+      if (!batch.length) break;
+      let hitFloor = false;
+      for (const s of batch) {
+        const ts = s.endTime ?? s.createdAt ?? s.playedAt;
+        const ms = ts == null ? afterMs : (typeof ts === 'number' ? ts : new Date(ts).getTime());
+        if (ms < afterMs) { hitFloor = true; break; }
+        recentItems.push(s);
+      }
+      if (hitFloor || batch.length < 50) break;
+      // Use the oldest stream's endTime as the next page cursor
+      const oldest = batch[batch.length - 1];
+      const oldTs = oldest.endTime ?? oldest.createdAt ?? oldest.playedAt;
+      beforeMs = typeof oldTs === 'number' ? oldTs : new Date(oldTs).getTime();
+    }
 
     if (debug === '2') return json({
       step: 'recent_streams', localMidnight, afterMs,
-      total: allRecentItems.length, filtered: recentItems.length,
-      samples: allRecentItems.slice(0, 5),
+      total: recentItems.length,
+      samples: recentItems.slice(0, 5),
     });
 
     const MEMBER_MAP = { 'JISOO': 'jisoo', 'LISA': 'lisa', 'ROSÉ': 'rose', 'JENNIE': 'jennie' };
@@ -155,15 +168,11 @@ export default async function handler(request) {
     }
 
     const tracks = countTracks(items);
-    const todayRange = countTracks(itemsToday);   // Stats.fm aggregated today bucket
-    const todayRecent = countRecent(recentItems);  // individual streams from local midnight
+    const todayRecent = countRecent(recentItems);
 
-    // streams/recent counts individual play events (exact integers).
-    // range=today falls back to Math.round(playedMs/180000) which overestimates
-    // for songs longer than 3 min — always prefer the event count when available.
     const tracksToday = {};
     for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go']) {
-      tracksToday[k] = recentR.ok ? (todayRecent[k] || 0) : (todayRange[k] || 0);
+      tracksToday[k] = todayRecent[k] || 0;
     }
 
     return json({
