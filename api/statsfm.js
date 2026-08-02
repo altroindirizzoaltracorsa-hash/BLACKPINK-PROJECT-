@@ -45,7 +45,7 @@ export default async function handler(request) {
 
   const { searchParams } = new URL(request.url);
   const username = searchParams.get('user');
-  const debug = searchParams.get('debug') === '1';
+  const debug = searchParams.get('debug');
   if (!username) return json({ error: 'user required' }, 400);
 
   try {
@@ -65,15 +65,16 @@ export default async function handler(request) {
     const displayName = user.displayName ?? customId;
     const profileTz = user.timezone ?? 'UTC';
 
-    if (debug) return json({ step: 'user_ok', customId, displayName, profileTz, raw: ud });
+    if (debug === '1') return json({ step: 'user_ok', customId, displayName, profileTz, raw: ud });
 
     const localMidnight = localMidnightUTC(profileTz);
+    const afterMs = new Date(localMidnight).getTime(); // Unix ms for the API
 
     const [tr, ar, trToday, recentR] = await Promise.all([
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=100`, { headers: SFM_H }),
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`, { headers: SFM_H }),
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?range=today&limit=100&orderBy=COUNT`, { headers: SFM_H }),
-      fetch(`${SFM}/users/${encodeURIComponent(customId)}/streams/recent?after=${encodeURIComponent(localMidnight)}&limit=1000`, { headers: SFM_H }),
+      fetch(`${SFM}/users/${encodeURIComponent(customId)}/streams/recent?after=${afterMs}&limit=1000`, { headers: SFM_H }),
     ]);
 
     if (!tr.ok) return json({ error: `Stats.fm tracks blocked (HTTP ${tr.status}) — try visiting https://stats.fm/${username}` }, 502);
@@ -87,7 +88,22 @@ export default async function handler(request) {
     const items = td.items ?? [];
     const adItems = ad.items ?? [];
     const itemsToday = tdToday?.items ?? [];
-    const recentItems = recentData?.items ?? [];
+
+    // Client-side guard: only keep streams after localMidnight in case the API
+    // doesn't honour the after param or interprets it differently.
+    const allRecentItems = recentData?.items ?? [];
+    const recentItems = allRecentItems.filter(s => {
+      const ts = s.endTime ?? s.createdAt ?? s.playedAt;
+      if (ts == null) return true; // no timestamp field — include
+      const ms = typeof ts === 'number' ? ts : new Date(ts).getTime();
+      return ms >= afterMs;
+    });
+
+    if (debug === '2') return json({
+      step: 'recent_streams', localMidnight, afterMs,
+      total: allRecentItems.length, filtered: recentItems.length,
+      samples: allRecentItems.slice(0, 5),
+    });
 
     const MEMBER_MAP = { 'JISOO': 'jisoo', 'LISA': 'lisa', 'ROSÉ': 'rose', 'JENNIE': 'jennie' };
     let bpGroupPlays = 0;
