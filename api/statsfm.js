@@ -104,6 +104,7 @@ export default async function handler(request) {
       { id: 'jump',     prefix: 'jump',              artist: 'BLACKPINK' },
       { id: 'shutdown', prefix: 'shut down',          artist: 'BLACKPINK' },
       { id: 'ddududu',  prefix: 'ddu-du ddu-du',      artist: 'BLACKPINK' },
+      { id: 'go',       prefix: 'go',                 artist: 'BLACKPINK' },
       { id: 'ltal',     prefix: 'less than a lover',  artist: 'JENNIE' },
     ];
 

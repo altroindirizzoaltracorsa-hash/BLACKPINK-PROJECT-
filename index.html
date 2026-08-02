@@ -5450,9 +5450,8 @@ async function fetchLbTrackCounts(username) {
     let maxTs = nowTs;
     const minTs = doFull ? null : cached.maxListenedAt;
     for (let page = 0; page < 300; page++) {
-      const params = { max_ts: maxTs, count: 100 };
-      if (minTs) params.min_ts = minTs;
-      const d = await lbFetch(`user/${encodeURIComponent(username)}/listens`, params);
+      // LB API rejects min_ts+max_ts together — use max_ts only and break on minTs
+      const d = await lbFetch(`user/${encodeURIComponent(username)}/listens`, { max_ts: maxTs, count: 100 });
       const listens = d?.payload?.listens || [];
       if (!listens.length) break;
       if (page === 0) listens.slice(0, 5).forEach(l => _debugArtists.push(l.track_metadata?.artist_name));
@@ -5495,16 +5494,20 @@ async function fetchLbTrackCounts(username) {
   return counts;
 }
 async function fetchLbRecentListens(username, from, to) {
+  // LB API rejects requests with both min_ts and max_ts — use max_ts only
+  // and stop paging once we go past the lower bound.
   const results = [];
   let maxTs = to;
   for (let page = 0; page < 50; page++) {
-    const d = await lbFetch(`user/${encodeURIComponent(username)}/listens`, { min_ts: from, max_ts: maxTs, count: 100 });
+    const d = await lbFetch(`user/${encodeURIComponent(username)}/listens`, { max_ts: maxTs, count: 100 });
     const listens = d?.payload?.listens || [];
     if (!listens.length) break;
-    results.push(...listens);
+    const inRange = listens.filter(l => l.listened_at >= from);
+    results.push(...inRange);
     if (listens.length < 100) break;
-    maxTs = listens[listens.length - 1].listened_at - 1;
-    if (maxTs < from) break;
+    const oldest = listens[listens.length - 1].listened_at;
+    if (oldest < from) break;
+    maxTs = oldest - 1;
   }
   return results;
 }
