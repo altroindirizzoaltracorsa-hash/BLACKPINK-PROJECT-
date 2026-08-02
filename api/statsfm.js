@@ -137,13 +137,12 @@ export default async function handler(request) {
     const todayRange = countTracks(itemsToday);   // Stats.fm aggregated today bucket
     const todayRecent = countRecent(recentItems);  // individual streams from local midnight
 
-    // Prefer streams/recent (exact local-midnight timestamps) when it's well-synced.
-    // Fall back to range=today when streams/recent is severely behind (< 70% of today's count).
+    // streams/recent counts individual play events (exact integers).
+    // range=today falls back to Math.round(playedMs/180000) which overestimates
+    // for songs longer than 3 min — always prefer the event count when available.
     const tracksToday = {};
     for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go']) {
-      const agg = todayRange[k] || 0;
-      const rec = todayRecent[k] || 0;
-      tracksToday[k] = (agg > 0 && rec >= agg * 0.7) ? rec : agg;
+      tracksToday[k] = recentR.ok ? (todayRecent[k] || 0) : (todayRange[k] || 0);
     }
 
     return json({
