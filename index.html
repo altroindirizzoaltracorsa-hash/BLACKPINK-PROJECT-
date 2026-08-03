@@ -11231,13 +11231,6 @@ function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, photo,
 
   drawNoise(ctx, W, H, 0.025);
 
-  // Logo — screen composite hides the JPEG's dark background
-  if (logo) {
-    ctx.globalCompositeOperation = 'screen';
-    ctx.drawImage(logo, PX, 46, 140, 28);
-    ctx.globalCompositeOperation = 'source-over';
-  }
-
   // Date top-right
   const now = new Date();
   const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
@@ -11300,17 +11293,28 @@ function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, photo,
     ctx.fillText(`🔥 ${streak} DAY${streak === 1 ? '' : 'S'} IN A ROW`, PX, 558);
   }
 
-  // Bottom branding (over photo) — text shadow for legibility
+  // Bottom branding — circle logo + BLINKS UNITED (with shadow for photo legibility)
+  const LR = 28;
+  const logoY = H - 70;
   ctx.shadowColor = 'rgba(0,0,0,0.95)';
   ctx.shadowBlur = 14;
-  ctx.fillStyle = '#FF0066';
-  ctx.font = '500 20px "DM Mono", monospace';
-  ctx.letterSpacing = '5px';
-  ctx.fillText('BLINKS UNITED', PX, H - 68);
-  ctx.fillStyle = 'rgba(245,240,240,0.55)';
-  ctx.font = '500 16px "DM Mono", monospace';
-  ctx.letterSpacing = '3px';
-  ctx.fillText('blinksunited.com', PX, H - 44);
+  if (logo) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, PX, logoY - LR, LR * 2, LR * 2);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  const brandX = logo ? PX + LR * 2 + 10 : PX;
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = '44px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '10px';
+  ctx.fillText('BLINKS UNITED', brandX, H - 54);
+  ctx.fillStyle = 'rgba(245,240,240,0.45)';
+  ctx.font = '500 15px "DM Mono", monospace';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('blinksunited.com', brandX, H - 32);
   ctx.shadowBlur = 0;
 
   if (!_skipReady) _markCardReady(canvas);
