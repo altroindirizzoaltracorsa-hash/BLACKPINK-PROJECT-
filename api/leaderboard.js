@@ -5,6 +5,29 @@ import crypto from 'crypto';
 const redis = Redis.fromEnv();
 const LB_KEY = 'bu_leaderboard_v1';
 const ANALYTICS_KEY = 'bu_analytics_v1';
+const GOAL_HISTORY_KEY = 'bu_goal_history_v1';
+
+// Italy-aware day key, matching the client's italyDayKey(offsetDays).
+// Day boundary = 2am CET/CEST; before 2am it's still the previous calendar day.
+function serverItalyDayKey(offsetDays = 0) {
+  const now = Date.now();
+  const yr  = new Date(now).getUTCFullYear();
+  const lastSun = (y, m) => { const d = new Date(Date.UTC(y, m + 1, 0)); d.setUTCDate(d.getUTCDate() - d.getUTCDay()); return d; };
+  const offsetMs = now >= lastSun(yr, 2).getTime() && now < lastSun(yr, 9).getTime() ? 7200000 : 3600000;
+  const itDate = new Date(now + offsetMs);
+  if (itDate.getUTCHours() < 2) itDate.setUTCDate(itDate.getUTCDate() - 1);
+  itDate.setUTCDate(itDate.getUTCDate() - offsetDays);
+  return itDate.toISOString().slice(0, 10);
+}
+
+function computeGoalStreak(days) {
+  let streak = 0;
+  for (let i = 0; i < 365; i++) {
+    if (!days[serverItalyDayKey(i)]?.primary) break;
+    streak++;
+  }
+  return streak;
+}
 const TRACK_EVENTS = new Set(['pageview', 'playlist_click', 'share_click', 'vote_click']);
 
 
@@ -615,6 +638,58 @@ export default async function handler(req, res) {
 
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({ ok: true, displayName: data.users[username.toLowerCase()]?.displayName || displayName });
+  }
+
+  // ── GET /api/leaderboard?action=goal-history — community goal streak ──
+  if (req.method === 'GET' && action === 'goal-history') {
+    const gh = (await redis.get(GOAL_HISTORY_KEY)) || { days: {} };
+    const streak = computeGoalStreak(gh.days || {});
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ days: gh.days || {}, streak });
+  }
+
+  // ── POST /api/leaderboard?action=record-goal — record today's community goal status ──
+  // Anyone can call this; total is always computed server-side from live leaderboard data.
+  if (req.method === 'POST' && action === 'record-goal') {
+    const todayKey = serverItalyDayKey(0);
+    const gh = (await redis.get(GOAL_HISTORY_KEY)) || { days: {} };
+    gh.days = gh.days || {};
+
+    const lbData = (await redis.get(LB_KEY)) || { users: {} };
+    const users   = lbData.users || {};
+    const todayDDMM = (() => {
+      const d = new Date(serverItalyDayKey(0) + 'T00:00:00Z');
+      return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+    })();
+    const secondaryKeys = new Set();
+    for (const [k, d] of Object.entries(users)) {
+      if (Array.isArray(d.linkedAccounts)) {
+        for (const a of d.linkedAccounts) {
+          const ak = (a.username || '').toLowerCase();
+          if (ak && ak !== k) secondaryKeys.add(ak);
+        }
+      }
+    }
+    const total = Object.entries(users).reduce((sum, [k, d]) => {
+      if (secondaryKeys.has(k.toLowerCase())) return sum;
+      const s = d.scores || {};
+      if (s.daily_date !== todayDDMM) return sum;
+      return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0);
+    }, 0);
+
+    const GOAL_PRIMARY   = 15000;
+    const GOAL_SECONDARY = 20000;
+    const primary  = total >= GOAL_PRIMARY;
+    const stretch  = total >= GOAL_SECONDARY;
+
+    if (primary) {
+      gh.days[todayKey] = { total, primary, stretch, recordedAt: new Date().toISOString() };
+      await redis.set(GOAL_HISTORY_KEY, gh);
+    }
+
+    const streak = computeGoalStreak(gh.days);
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ ok: true, date: todayKey, total, primary, stretch, streak });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });

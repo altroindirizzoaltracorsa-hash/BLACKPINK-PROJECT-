@@ -1872,7 +1872,11 @@
             <span class="goal-tracker-nums" id="community-goal-nums">0<span> / 15,000 scrobbles</span></span>
           </div>
           <div class="goal-tracker-bar"><div class="goal-tracker-fill" id="community-goal-fill" style="width:0%"></div></div>
-          <div class="goal-tracker-status" id="community-goal-status">Loading today's progress…</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">
+            <div class="goal-tracker-status" id="community-goal-status">Loading today's progress…</div>
+            <button id="goal-share-btn" class="gen-card-btn" style="display:none;margin-top:0;width:auto;padding:0.45rem 1rem;flex-shrink:0;" onclick="openGoalHitCard()">⬡ Share</button>
+          </div>
+          <div id="goal-streak-line" style="display:none;font-size:0.6rem;letter-spacing:0.15em;color:var(--muted);margin-top:0.1rem;"></div>
         </div>
       </div>
       <div id="todays-playlist-home" style="display:none;margin-top:1.5rem;max-width:900px;width:calc(100% + 4rem);margin-left:-2rem;margin-right:-2rem;">
@@ -9012,18 +9016,51 @@ async function loadCommunityGoal() {
     document.getElementById('community-goal-nums').innerHTML = `${total.toLocaleString()}<span> / ${goal.toLocaleString()} scrobbles</span>`;
     document.getElementById('community-goal-fill').style.width = `${pct}%`;
 
-    const statusEl = document.getElementById('community-goal-status');
+    const statusEl  = document.getElementById('community-goal-status');
+    const shareBtn  = document.getElementById('goal-share-btn');
+    const streakEl  = document.getElementById('goal-streak-line');
+    const goalHit   = total >= COMMUNITY_GOAL_PRIMARY;
     if (total >= COMMUNITY_GOAL_SECONDARY) {
-      statusEl.textContent = `🎉 Secondary goal smashed — ${total.toLocaleString()} scrobbles today!`;
+      statusEl.textContent = `🎉 Stretch goal smashed — ${total.toLocaleString()} scrobbles today!`;
       statusEl.className = 'goal-tracker-status goal-tracker-done';
-    } else if (total >= COMMUNITY_GOAL_PRIMARY) {
+    } else if (goalHit) {
       statusEl.textContent = `🎉 Primary goal hit! ${(COMMUNITY_GOAL_SECONDARY - total).toLocaleString()} more to reach the stretch goal`;
       statusEl.className = 'goal-tracker-status goal-tracker-done';
     } else {
       statusEl.textContent = `${(COMMUNITY_GOAL_PRIMARY - total).toLocaleString()} more scrobbles to hit today's goal — stream now!`;
       statusEl.className = 'goal-tracker-status';
     }
+    if (shareBtn) shareBtn.style.display = goalHit ? 'block' : 'none';
     wrap.style.display = 'block';
+
+    // Record goal hit server-side and show streak (fire-and-forget for display, awaited for recording).
+    if (goalHit) {
+      fetch('/api/leaderboard?action=record-goal', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+          if (streakEl && d.streak > 0) {
+            streakEl.textContent = `🔥 ${d.streak} day${d.streak === 1 ? '' : 's'} in a row`;
+            streakEl.style.display = 'block';
+          }
+          // Cache for share card
+          window._goalCardData = { total, primary: d.primary, stretch: d.stretch, streak: d.streak || 1 };
+        })
+        .catch(() => {
+          // Fallback: fetch history for streak count without writing
+          fetch('/api/leaderboard?action=goal-history')
+            .then(r => r.json())
+            .then(d => {
+              if (streakEl && d.streak > 0) {
+                streakEl.textContent = `🔥 ${d.streak} day${d.streak === 1 ? '' : 's'} in a row`;
+                streakEl.style.display = 'block';
+              }
+              window._goalCardData = { total, primary: total >= COMMUNITY_GOAL_PRIMARY, stretch: total >= COMMUNITY_GOAL_SECONDARY, streak: d.streak || 1 };
+            })
+            .catch(() => {
+              window._goalCardData = { total, primary: true, stretch: total >= COMMUNITY_GOAL_SECONDARY, streak: 1 };
+            });
+        });
+    }
   } catch(e) {}
 }
 
@@ -9391,6 +9428,7 @@ function setCardFormat(fmt, btn) {
   else if (_cardType === 'artist') drawArtistCard(canvas, _artistCardData, _cardLogo, _cardArt, _artistCardData?.artistName);
   else if (_cardType === 'release') drawReleaseCard(canvas, _cardLogo, _cardArt, ltalWordmarkImg);
   else if (_cardType === 'goals') drawGoalsCard(canvas, _cardLogo, _cardArt, _goalsCardData);
+  else if (_cardType === 'goal-hit' && window._goalCardData) drawGoalHitCard(canvas, { ...window._goalCardData, logo: _cardLogo });
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -11059,6 +11097,135 @@ function drawArtistCard(canvas, data, logo, art, artistName) {
     ctx.letterSpacing = '2px';
     ctx.fillText('blinksunited.com', brandX, H - 42);
   }
+
+  _markCardReady(canvas);
+}
+
+// ── COMMUNITY GOAL HIT CARD ──────────────────────────────────────────────────
+
+async function openGoalHitCard() {
+  const d = window._goalCardData;
+  if (!d) return;
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none';
+  _cardType = 'goal-hit';
+  _cardFormat = 'square';
+  document.getElementById('fmt-landscape')?.classList.remove('active');
+  document.getElementById('fmt-square')?.classList.add('active');
+
+  await document.fonts.ready;
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1080; canvas.height = 1080;
+  const logo = await getBuLogo();
+  _cardLogo = logo;
+  drawGoalHitCard(canvas, { ...d, logo });
+  label.textContent = d.stretch ? 'STRETCH GOAL SMASHED 🎉' : 'COMMUNITY GOAL HIT 🎉';
+}
+
+function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo }) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // Background
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W / 2, H * 0.35, 0, W / 2, H * 0.35, 600);
+  glow.addColorStop(0, 'rgba(255,0,102,0.18)');
+  glow.addColorStop(1, 'rgba(8,8,8,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  drawNoise(ctx, W, H, 0.025);
+
+  const PX = 90;
+
+  // Logo
+  if (logo) ctx.drawImage(logo, PX, 54, 140, 28);
+
+  // Date top-right
+  const now = new Date();
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const dateStr = `${months[now.getUTCMonth()]} ${now.getUTCDate()}, ${now.getUTCFullYear()}`;
+  ctx.fillStyle = 'rgba(245,240,240,0.35)';
+  ctx.font = '500 20px "DM Mono", monospace';
+  ctx.letterSpacing = '3px';
+  ctx.textAlign = 'right';
+  ctx.fillText(dateStr, W - PX, 74);
+  ctx.textAlign = 'left';
+
+  // Thin pink rule
+  ctx.fillStyle = 'rgba(255,0,102,0.4)';
+  ctx.fillRect(PX, 104, W - PX * 2, 1);
+
+  // "COMMUNITY GOAL" label
+  ctx.fillStyle = 'rgba(245,240,240,0.4)';
+  ctx.font = '500 19px "DM Mono", monospace';
+  ctx.letterSpacing = '7px';
+  ctx.fillText('COMMUNITY GOAL', PX, 158);
+
+  // Status line (GOAL HIT / STRETCH GOAL SMASHED)
+  const statusText = stretch ? 'STRETCH GOAL SMASHED' : 'PRIMARY GOAL HIT';
+  ctx.fillStyle = '#FF0066';
+  ctx.font = '88px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '4px';
+  ctx.fillText(statusText, PX, 254);
+
+  // Big scrobble number
+  const totalStr = total.toLocaleString();
+  ctx.fillStyle = '#F5F0F0';
+  ctx.font = '180px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '2px';
+  ctx.fillText(totalStr, PX, 460);
+
+  // "/ 15,000 SCROBBLES" or "/ 20,000 SCROBBLES"
+  const goalNum = stretch ? 20000 : 15000;
+  ctx.fillStyle = 'rgba(245,240,240,0.35)';
+  ctx.font = '44px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '3px';
+  ctx.fillText(`/ ${goalNum.toLocaleString()} SCROBBLES`, PX, 526);
+
+  // Progress bar
+  const barY = 564, barH = 6, barW = W - PX * 2;
+  ctx.fillStyle = 'rgba(255,255,255,0.07)';
+  ctx.fillRect(PX, barY, barW, barH);
+  const pct = Math.min(1, total / goalNum);
+  const grad = ctx.createLinearGradient(PX, 0, PX + barW, 0);
+  grad.addColorStop(0, '#FF0066');
+  grad.addColorStop(1, '#FF6699');
+  ctx.fillStyle = grad;
+  ctx.fillRect(PX, barY, Math.round(barW * pct), barH);
+
+  // Second thin rule
+  ctx.fillStyle = 'rgba(255,0,102,0.25)';
+  ctx.fillRect(PX, 614, W - PX * 2, 1);
+
+  // Streak
+  if (streak > 0) {
+    ctx.fillStyle = '#FF0066';
+    ctx.font = '500 22px "DM Mono", monospace';
+    ctx.letterSpacing = '4px';
+    ctx.fillText(`🔥 ${streak} DAY${streak === 1 ? '' : 'S'} IN A ROW`, PX, 666);
+  }
+
+  // Songs that count
+  ctx.fillStyle = 'rgba(245,240,240,0.3)';
+  ctx.font = '500 16px "DM Mono", monospace';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('JUMP · SHUT DOWN · DDU-DU DDU-DU · GO', PX, 706);
+
+  // Bottom branding
+  ctx.fillStyle = 'rgba(255,0,102,0.3)';
+  ctx.fillRect(PX, H - 106, W - PX * 2, 1);
+  ctx.fillStyle = '#FF0066';
+  ctx.font = '500 20px "DM Mono", monospace';
+  ctx.letterSpacing = '5px';
+  ctx.fillText('BLINKS UNITED', PX, H - 68);
+  ctx.fillStyle = 'rgba(245,240,240,0.3)';
+  ctx.font = '500 16px "DM Mono", monospace';
+  ctx.letterSpacing = '3px';
+  ctx.fillText('blinksunited.com', PX, H - 44);
 
   _markCardReady(canvas);
 }
