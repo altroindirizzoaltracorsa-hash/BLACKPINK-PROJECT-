@@ -9276,6 +9276,7 @@ const KNOWN_SPOTIFY_IDS = {
 let cardCanvas = null; // current canvas for download
 let _cardShareBlob = null; // pre-generated blob for shareCard (set when drawing completes)
 let _msShareBlob   = null; // pre-generated blob for shareMilestoneCard
+let _goalCardPhoto = null; // pre-loaded BLACKPINK photo for goal hit card
 
 // Called at the end of every card draw function so the share blob is ready
 // before the user taps Share — avoids async toBlob inside the gesture handler.
@@ -9440,7 +9441,7 @@ function setCardFormat(fmt, btn) {
   else if (_cardType === 'artist') drawArtistCard(canvas, _artistCardData, _cardLogo, _cardArt, _artistCardData?.artistName);
   else if (_cardType === 'release') drawReleaseCard(canvas, _cardLogo, _cardArt, ltalWordmarkImg);
   else if (_cardType === 'goals') drawGoalsCard(canvas, _cardLogo, _cardArt, _goalsCardData);
-  else if (_cardType === 'goal-hit' && window._goalCardData) drawGoalHitCard(canvas, { ...window._goalCardData, logo: _cardLogo });
+  else if (_cardType === 'goal-hit' && window._goalCardData) drawGoalHitCard(canvas, { ...window._goalCardData, logo: _cardLogo, photo: _goalCardPhoto });
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -11144,8 +11145,15 @@ async function openGoalHitCard() {
   await document.fonts.ready;
   const canvas = document.getElementById('card-canvas');
   canvas.width = 1080; canvas.height = 1080;
-  const logo = await getBuLogo();
+  const [logo, photo] = await Promise.all([
+    getBuLogo(),
+    _goalCardPhoto
+      ? Promise.resolve(_goalCardPhoto)
+      : loadImg('/goal-card-bp.jpg').then(img => { _goalCardPhoto = img; return img; }).catch(() => null),
+  ]);
   _cardLogo = logo;
+
+  const cardData = { ...d, logo, photo };
 
   // Try to record an animated video (numbers counting up, bar filling)
   const mimeType = (typeof MediaRecorder !== 'undefined' && canvas.captureStream) &&
@@ -11168,122 +11176,142 @@ async function openGoalHitCard() {
     function animate(now) {
       const t = Math.min(1, (now - start) / duration);
       const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-      drawGoalHitCard(canvas, { ...d, logo, _animPct: eased, _skipReady: true });
+      drawGoalHitCard(canvas, { ...cardData, _animPct: eased, _skipReady: true });
       if (t < 1) requestAnimationFrame(animate);
       else setTimeout(() => recorder.stop(), holdMs);
     }
     requestAnimationFrame(animate);
   } else {
-    drawGoalHitCard(canvas, { ...d, logo });
+    drawGoalHitCard(canvas, cardData);
     label.textContent = d.stretch ? 'STRETCH GOAL SMASHED 🎉' : 'COMMUNITY GOAL HIT 🎉';
   }
 }
 
-function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, _animPct = 1, _skipReady = false }) {
+function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, photo, _animPct = 1, _skipReady = false }) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
+  const PX = 90;
+  const PHOTO_Y = 576; // text section: 0–576, photo section: 576–1080
 
-  // Background
+  // Dark background
   ctx.fillStyle = '#080808';
   ctx.fillRect(0, 0, W, H);
-  const glow = ctx.createRadialGradient(W / 2, H * 0.35, 0, W / 2, H * 0.35, 600);
-  glow.addColorStop(0, 'rgba(255,0,102,0.18)');
+
+  // BLACKPINK photo in lower section — show top portion (faces)
+  if (photo) {
+    ctx.save();
+    ctx.filter = 'brightness(0.58) contrast(1.05) saturate(1.15)';
+    // sourceH: how many source pixels map to the card's photo section height
+    const srcH = Math.round(photo.naturalWidth * (H - PHOTO_Y) / W);
+    ctx.drawImage(photo, 0, 0, photo.naturalWidth, Math.min(srcH, photo.naturalHeight), 0, PHOTO_Y, W, H - PHOTO_Y);
+    ctx.filter = 'none';
+    ctx.restore();
+
+    // Fade the photo into the dark card at the top join
+    const fade = ctx.createLinearGradient(0, PHOTO_Y - 80, 0, PHOTO_Y + 80);
+    fade.addColorStop(0, '#080808');
+    fade.addColorStop(1, 'rgba(8,8,8,0)');
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, PHOTO_Y - 80, W, 160);
+
+    // Dark vignette at very bottom for branding legibility
+    const vig = ctx.createLinearGradient(0, H - 160, 0, H);
+    vig.addColorStop(0, 'rgba(8,8,8,0)');
+    vig.addColorStop(1, 'rgba(8,8,8,0.88)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, H - 160, W, 160);
+  }
+
+  // Pink glow in the text section only
+  const glow = ctx.createRadialGradient(W / 2, 210, 0, W / 2, 210, 520);
+  glow.addColorStop(0, 'rgba(255,0,102,0.22)');
   glow.addColorStop(1, 'rgba(8,8,8,0)');
-  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, photo ? PHOTO_Y : H);
+
   drawNoise(ctx, W, H, 0.025);
 
-  const PX = 90;
-
-  // Logo — screen blend so the JPEG's dark background vanishes on the dark card
+  // Logo — screen composite hides the JPEG's dark background
   if (logo) {
     ctx.globalCompositeOperation = 'screen';
-    ctx.drawImage(logo, PX, 54, 140, 28);
+    ctx.drawImage(logo, PX, 46, 140, 28);
     ctx.globalCompositeOperation = 'source-over';
   }
 
   // Date top-right
   const now = new Date();
   const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-  const dateStr = `${months[now.getUTCMonth()]} ${now.getUTCDate()}, ${now.getUTCFullYear()}`;
   ctx.fillStyle = 'rgba(245,240,240,0.35)';
   ctx.font = '500 20px "DM Mono", monospace';
   ctx.letterSpacing = '3px';
   ctx.textAlign = 'right';
-  ctx.fillText(dateStr, W - PX, 74);
+  ctx.fillText(`${months[now.getUTCMonth()]} ${now.getUTCDate()}, ${now.getUTCFullYear()}`, W - PX, 66);
   ctx.textAlign = 'left';
 
   // Thin pink rule
   ctx.fillStyle = 'rgba(255,0,102,0.4)';
-  ctx.fillRect(PX, 104, W - PX * 2, 1);
+  ctx.fillRect(PX, 86, W - PX * 2, 1);
 
-  // "COMMUNITY GOAL" label
+  // "COMMUNITY GOAL"
   ctx.fillStyle = 'rgba(245,240,240,0.4)';
   ctx.font = '500 19px "DM Mono", monospace';
   ctx.letterSpacing = '7px';
-  ctx.fillText('COMMUNITY GOAL', PX, 158);
+  ctx.fillText('COMMUNITY GOAL', PX, 138);
 
-  // Status line (GOAL HIT / STRETCH GOAL SMASHED)
-  const statusText = stretch ? 'STRETCH GOAL SMASHED' : 'PRIMARY GOAL HIT';
+  // Status
   ctx.fillStyle = '#FF0066';
-  ctx.font = '88px "Bebas Neue", sans-serif';
+  ctx.font = '76px "Bebas Neue", sans-serif';
   ctx.letterSpacing = '4px';
-  ctx.fillText(statusText, PX, 254);
+  ctx.fillText(stretch ? 'STRETCH GOAL SMASHED' : 'PRIMARY GOAL HIT', PX, 220);
 
-  // Big scrobble number (animates from 0 → total)
-  const displayTotal = Math.round(_animPct * total);
-  const totalStr = displayTotal.toLocaleString();
+  // Big number (animated)
   ctx.fillStyle = '#F5F0F0';
-  ctx.font = '180px "Bebas Neue", sans-serif';
+  ctx.font = '158px "Bebas Neue", sans-serif';
   ctx.letterSpacing = '2px';
-  ctx.fillText(totalStr, PX, 460);
+  ctx.fillText(Math.round(_animPct * total).toLocaleString(), PX, 394);
 
-  // "/ 15,000 SCROBBLES" or "/ 20,000 SCROBBLES"
+  // Goal label
   const goalNum = stretch ? 20000 : 15000;
   ctx.fillStyle = 'rgba(245,240,240,0.35)';
-  ctx.font = '44px "Bebas Neue", sans-serif';
+  ctx.font = '40px "Bebas Neue", sans-serif';
   ctx.letterSpacing = '3px';
-  ctx.fillText(`/ ${goalNum.toLocaleString()} SCROBBLES`, PX, 526);
+  ctx.fillText(`/ ${goalNum.toLocaleString()} SCROBBLES`, PX, 440);
 
-  // Progress bar (animates from empty → final fill)
-  const barY = 564, barH = 6, barW = W - PX * 2;
+  // Progress bar (animated)
+  const barY = 478, barH = 6, barW = W - PX * 2;
   ctx.fillStyle = 'rgba(255,255,255,0.07)';
   ctx.fillRect(PX, barY, barW, barH);
   const pct = _animPct * Math.min(1, total / goalNum);
-  const grad = ctx.createLinearGradient(PX, 0, PX + barW, 0);
-  grad.addColorStop(0, '#FF0066');
-  grad.addColorStop(1, '#FF6699');
-  ctx.fillStyle = grad;
+  const barGrad = ctx.createLinearGradient(PX, 0, PX + barW, 0);
+  barGrad.addColorStop(0, '#FF0066');
+  barGrad.addColorStop(1, '#FF6699');
+  ctx.fillStyle = barGrad;
   ctx.fillRect(PX, barY, Math.round(barW * pct), barH);
 
-  // Second thin rule
+  // Second rule
   ctx.fillStyle = 'rgba(255,0,102,0.25)';
-  ctx.fillRect(PX, 614, W - PX * 2, 1);
+  ctx.fillRect(PX, 518, W - PX * 2, 1);
 
   // Streak
   if (streak > 0) {
     ctx.fillStyle = '#FF0066';
     ctx.font = '500 22px "DM Mono", monospace';
     ctx.letterSpacing = '4px';
-    ctx.fillText(`🔥 ${streak} DAY${streak === 1 ? '' : 'S'} IN A ROW`, PX, 666);
+    ctx.fillText(`🔥 ${streak} DAY${streak === 1 ? '' : 'S'} IN A ROW`, PX, 558);
   }
 
-  // Songs that count
-  ctx.fillStyle = 'rgba(245,240,240,0.3)';
-  ctx.font = '500 16px "DM Mono", monospace';
-  ctx.letterSpacing = '2px';
-  ctx.fillText('JUMP · SHUT DOWN · DDU-DU DDU-DU · GO', PX, 706);
-
-  // Bottom branding
-  ctx.fillStyle = 'rgba(255,0,102,0.3)';
-  ctx.fillRect(PX, H - 106, W - PX * 2, 1);
+  // Bottom branding (over photo) — text shadow for legibility
+  ctx.shadowColor = 'rgba(0,0,0,0.95)';
+  ctx.shadowBlur = 14;
   ctx.fillStyle = '#FF0066';
   ctx.font = '500 20px "DM Mono", monospace';
   ctx.letterSpacing = '5px';
   ctx.fillText('BLINKS UNITED', PX, H - 68);
-  ctx.fillStyle = 'rgba(245,240,240,0.3)';
+  ctx.fillStyle = 'rgba(245,240,240,0.55)';
   ctx.font = '500 16px "DM Mono", monospace';
   ctx.letterSpacing = '3px';
   ctx.fillText('blinksunited.com', PX, H - 44);
+  ctx.shadowBlur = 0;
 
   if (!_skipReady) _markCardReady(canvas);
 }
