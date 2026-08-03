@@ -9303,25 +9303,14 @@ function _showShareToast(msg) {
 
 function closeCard() {
   document.getElementById('card-overlay').style.display = 'none';
-  if (_cardShareBlob?.type?.startsWith('video/')) _cardShareBlob = null;
+  _cardShareBlob = null;
 }
 
 async function downloadCard() {
-  if (!cardCanvas && !_cardShareBlob) return;
+  if (!cardCanvas) return;
   const now = new Date();
   const stamp = `${now.getDate()}-${now.getMonth()+1}-${now.getFullYear()}`;
   const label = document.getElementById('card-box-label').textContent.replace(/[^a-z0-9]/gi,'-').toLowerCase();
-  if (_cardShareBlob?.type?.startsWith('video/')) {
-    const ext = _cardShareBlob.type.includes('mp4') ? 'mp4' : 'webm';
-    const url = URL.createObjectURL(_cardShareBlob);
-    const a = document.createElement('a');
-    a.download = `bu-${label}-${stamp}.${ext}`;
-    a.href = url;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-    return;
-  }
-  if (!cardCanvas) return;
   const blob = await new Promise(res => cardCanvas.toBlob(res, 'image/png'));
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -9862,7 +9851,7 @@ function renderLbCard(logo) {
 
 // ── SHARE TO SOCIAL ──────────────────────────────────────────────────────────
 async function shareCard() {
-  if (!cardCanvas && !_cardShareBlob) return;
+  if (!cardCanvas) return;
   const title = document.getElementById('card-box-label').textContent;
   let link = 'blinksunited.com';
   let rulesText = '';
@@ -9926,16 +9915,13 @@ async function shareCard() {
     // drawing) so navigator.share() is called immediately within the gesture,
     // with no async gap that could cause the file to be lost or X to misbehave.
     const doShare = blob => {
-      const isVideo = blob.type.startsWith('video/');
-      const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
-      const filename = isVideo ? `blinks-united-goal.${ext}` : 'blinks-united-card.jpg';
-      const file = new File([blob], filename, { type: blob.type });
+      const file = new File([blob], 'blinks-united-card.jpg', { type: 'image/jpeg' });
       navigator.clipboard?.writeText(text).catch(() => {});
       _showShareToast('Caption copied — paste it into X ✓');
       navigator.share({ files: [file] }).catch(e => { if (e.name !== 'AbortError') downloadCard(); });
     };
     if (_cardShareBlob) { doShare(_cardShareBlob); }
-    else if (cardCanvas) { cardCanvas.toBlob(blob => doShare(blob), 'image/jpeg', 0.92); }
+    else { cardCanvas.toBlob(blob => doShare(blob), 'image/jpeg', 0.92); }
   } else {
     // Desktop: open Twitter intent (user downloads + attaches image themselves)
     window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener');
@@ -11154,37 +11140,27 @@ async function openGoalHitCard() {
   _cardLogo = logo;
 
   const cardData = { ...d, logo, photo };
+  const finalLabel = d.stretch ? 'STRETCH GOAL SMASHED 🎉' : 'COMMUNITY GOAL HIT 🎉';
 
-  // Try to record an animated video (numbers counting up, bar filling)
-  const mimeType = (typeof MediaRecorder !== 'undefined' && canvas.captureStream) &&
-    ['video/webm;codecs=vp9', 'video/webm', 'video/mp4'].find(t => MediaRecorder.isTypeSupported(t));
-
-  if (mimeType) {
-    label.textContent = 'GENERATING ANIMATION…';
-    const stream = canvas.captureStream(30);
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4000000 });
-    const chunks = [];
-    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-    recorder.onstop = () => {
-      _cardShareBlob = new Blob(chunks, { type: mimeType });
-      cardCanvas = canvas;
-      label.textContent = d.stretch ? 'STRETCH GOAL SMASHED 🎉' : 'COMMUNITY GOAL HIT 🎉';
-    };
-    recorder.start(100);
-    const duration = 1800, holdMs = 700;
-    const start = performance.now();
-    function animate(now) {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-      drawGoalHitCard(canvas, { ...cardData, _animPct: eased, _skipReady: true });
-      if (t < 1) requestAnimationFrame(animate);
-      else setTimeout(() => recorder.stop(), holdMs);
+  // Animate the count-up live on screen (frame counter, no time-based drift)
+  // then snapshot the final frame as the share image.
+  const TOTAL_FRAMES = 60; // ~1 second at 60fps
+  let frame = 0;
+  function animate() {
+    frame++;
+    const t = frame / TOTAL_FRAMES;
+    const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    drawGoalHitCard(canvas, { ...cardData, _animPct: Math.min(eased, 1), _skipReady: true });
+    if (frame < TOTAL_FRAMES) {
+      requestAnimationFrame(animate);
+    } else {
+      // Draw final frame and snapshot it for sharing
+      drawGoalHitCard(canvas, { ...cardData, _animPct: 1 });
+      label.textContent = finalLabel;
     }
-    requestAnimationFrame(animate);
-  } else {
-    drawGoalHitCard(canvas, cardData);
-    label.textContent = d.stretch ? 'STRETCH GOAL SMASHED 🎉' : 'COMMUNITY GOAL HIT 🎉';
   }
+  label.textContent = 'GENERATING…';
+  requestAnimationFrame(animate);
 }
 
 function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, photo, _animPct = 1, _skipReady = false }) {
