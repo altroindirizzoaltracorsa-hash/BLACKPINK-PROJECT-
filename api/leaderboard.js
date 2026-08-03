@@ -141,11 +141,19 @@ export default async function handler(req, res) {
     return res.status(200).json({ messages: (data || []).reverse() });
   }
 
+  // ── GET /api/leaderboard?action=rename-log&key=ADMIN_SECRET — admin: view rename history ──
+  if (req.method === 'GET' && action === 'rename-log') {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const data = (await redis.get(LB_KEY)) || {};
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ renameLog: data.renameLog || [] });
+  }
+
   // ── GET: return full leaderboard ──────────────────────────────
   if (req.method === 'GET') {
     const data = (await redis.get(LB_KEY)) || { users: {}, lastUpdated: new Date().toISOString() };
     res.setHeader('Cache-Control', 'no-store');
-    const { banned, ...publicData } = data;
+    const { banned, renameLog, ...publicData } = data;
     return res.status(200).json(publicData);
   }
 
@@ -222,6 +230,13 @@ export default async function handler(req, res) {
       .eq('source', 'lastfm')
       .select('*', { count: 'exact', head: true });
     results.linked_accounts = laErr ? `error: ${laErr.message}` : `${laCount ?? '?'} rows updated`;
+
+    // Append to rename log (keep last 50 entries)
+    const freshData = (await redis.get(LB_KEY)) || {};
+    freshData.renameLog = freshData.renameLog || [];
+    freshData.renameLog.push({ oldUsername: oldName, newUsername: newName, timestamp: new Date().toISOString(), results });
+    if (freshData.renameLog.length > 50) freshData.renameLog = freshData.renameLog.slice(-50);
+    await redis.set(LB_KEY, freshData);
 
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({ ok: true, oldUsername: oldName, newUsername: newName, results });
