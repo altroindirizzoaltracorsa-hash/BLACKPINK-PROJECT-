@@ -5795,9 +5795,11 @@ async function loadProfile(usernameOverride, silent = false) {
     // Submit scores to leaderboard. Awaited (not fire-and-forget) so callers
     // that await loadProfile() -- e.g. a forced leaderboard refresh -- can
     // trust the server actually has the fresh numbers before re-fetching it.
-    // No bpGroupPlays/memberPlays — old path doesn't fetch solos, so we don't
-    // write overall_bp_group, keeping the "not yet synced" fallback threshold.
-    const serverDisplayName = await submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs).catch(()=>null);
+    // Fetch member solo plays in parallel so Group Chat badge shows real counts.
+    const _solos = await Promise.all(['JISOO', 'JENNIE', 'ROSÉ', 'LISA'].map(a => fetchArtistPlays(username, a).catch(() => 0)));
+    const [_jisooP, _jennieP, _roseP, _lisaP] = _solos;
+    const _memberPlays = { jisoo: _jisooP, lisa: _lisaP, rose: _roseP, jennie: _jennieP };
+    const serverDisplayName = await submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs, artistPlays, _memberPlays).catch(()=>null);
     if (serverDisplayName) {
       info.displayName = serverDisplayName;
       const el = document.getElementById('profile-username');
