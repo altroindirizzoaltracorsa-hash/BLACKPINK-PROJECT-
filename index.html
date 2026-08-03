@@ -5359,10 +5359,16 @@ function getNextBadge(plays) {
 // ── LAST.FM / LIBRE.FM API HELPERS ───────────────────────────
 async function lfmFetch(params) {
   const url = LASTFM_BASE + '?' + new URLSearchParams({ ...params, api_key: LASTFM_KEY, format: 'json' });
-  const r = await fetch(url, { cache: 'no-store' });
-  const data = await r.json();
-  if (data?.error) throw new Error(`Last.fm error ${data.error}: ${data.message || ''}`);
-  return data;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const r = await fetch(url, { cache: 'no-store', signal: controller.signal });
+    const data = await r.json();
+    if (data?.error) throw new Error(`Last.fm error ${data.error}: ${data.message || ''}`);
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function librefmFetch(params) {
@@ -6007,16 +6013,29 @@ async function fetchSingleAccountStats(source, username) {
   };
   if (source === 'lastfm' || source === 'librefm') {
     const fetchFn = source === 'librefm' ? librefmFetch : lfmFetch;
-    res.artistPlays = await fetchArtistPlays(username, 'BLACKPINK', fetchFn);
-    res.bpGroupPlays = res.artistPlays;
-    for (const t of TRACKS) res.totalPlays[t.id] = await fetchTrackPlays(username, t.artist, t.track, fetchFn);
-    const todaySc = await fetchRecentScrobbles(username, dayFrom, dayTo, 50, fetchFn);
+    // Artist plays, per-track plays, and today's scrobbles are all independent —
+    // run them in parallel to avoid 7+ sequential round-trips to Last.fm.
+    const staticResults = await Promise.all([
+      fetchArtistPlays(username, 'BLACKPINK', fetchFn).catch(() => 0),
+      ...TRACKS.map(t => fetchTrackPlays(username, t.artist, t.track, fetchFn).catch(() => 0)),
+      fetchRecentScrobbles(username, dayFrom, dayTo, 50, fetchFn).catch(() => []),
+    ]);
+    res.artistPlays = staticResults[0];
+    res.bpGroupPlays = staticResults[0];
+    TRACKS.forEach((t, i) => { res.totalPlays[t.id] = staticResults[i + 1]; });
+    const todaySc = staticResults[TRACKS.length + 1];
     Object.assign(res.todayCounts, countByTrack(todaySc));
+    // Fetch all 7 week days in parallel — each is independent.
+    const weekStarts = Array.from({ length: 7 }, (_, i) => weekFrom + i * 86400);
+    const weekScrobbles = await Promise.all(
+      weekStarts.map(ds => ds * 1000 > Date.now()
+        ? Promise.resolve(null)
+        : fetchRecentScrobbles(username, ds, ds + 86400, 50, fetchFn).catch(() => []))
+    );
     let _lastTs = null;
     for (let i = 0; i < 7; i++) {
-      const ds = weekFrom + i * 86400;
-      if (ds * 1000 > Date.now()) { res.weekDayCounts.push(null); continue; }
-      const sc = await fetchRecentScrobbles(username, ds, ds + 86400, 50, fetchFn);
+      if (weekScrobbles[i] === null) { res.weekDayCounts.push(null); continue; }
+      const sc = weekScrobbles[i];
       const dc = countByTrack(sc);
       res.weekDayCounts.push(dc);
       res.weekCounts.jump     += dc.jump     || 0;
