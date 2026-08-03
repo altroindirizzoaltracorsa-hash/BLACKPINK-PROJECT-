@@ -5358,14 +5358,19 @@ function getNextBadge(plays) {
 
 // ── LAST.FM / LIBRE.FM API HELPERS ───────────────────────────
 async function lfmFetch(params) {
-  const url = LASTFM_BASE + '?' + new URLSearchParams({ ...params, api_key: LASTFM_KEY, format: 'json' });
+  // Route through /api/lastfm proxy so calls go Vercel→Last.fm instead of
+  // browser→Last.fm, avoiding client-side ISP routing issues.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
-    const r = await fetch(url, { cache: 'no-store', signal: controller.signal });
+    const r = await fetch('/api/lastfm?' + new URLSearchParams(params), { cache: 'no-store', signal: controller.signal });
     const data = await r.json();
+    if (!r.ok) throw new Error(data?.message || `Last.fm unavailable (${r.status})`);
     if (data?.error) throw new Error(`Last.fm error ${data.error}: ${data.message || ''}`);
     return data;
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('Last.fm is taking too long to respond — please try again');
+    throw e;
   } finally {
     clearTimeout(timer);
   }
