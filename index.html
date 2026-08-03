@@ -5762,7 +5762,12 @@ async function loadProfile(usernameOverride, silent = false) {
     // trust the server actually has the fresh numbers before re-fetching it.
     // No bpGroupPlays/memberPlays — old path doesn't fetch solos, so we don't
     // write overall_bp_group, keeping the "not yet synced" fallback threshold.
-    await submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs).catch(()=>{});
+    const serverDisplayName = await submitToLeaderboard(info, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs).catch(()=>null);
+    if (serverDisplayName) {
+      info.displayName = serverDisplayName;
+      const el = document.getElementById('profile-username');
+      if (el) el.textContent = serverDisplayName;
+    }
     // Re-render leaderboard if visible so "YOU" highlight appears immediately after login
     if (document.getElementById('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
 
@@ -6208,7 +6213,12 @@ async function loadMultiAccountProfile(accounts) {
   // -- e.g. a forced leaderboard refresh -- can trust the server actually has
   // the fresh numbers before re-fetching it (otherwise the re-fetch can win
   // the race and return the pre-submission snapshot).
-  await submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs, combined.bpGroupPlays, combined.memberPlays).catch(()=>{});
+  const serverDisplayName = await submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs, combined.bpGroupPlays, combined.memberPlays).catch(()=>null);
+  if (serverDisplayName) {
+    combined.info.displayName = serverDisplayName;
+    const el = document.getElementById('profile-username');
+    if (el) el.textContent = serverDisplayName;
+  }
   if (document.getElementById('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
 }
 
@@ -6998,6 +7008,9 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
 
     // Invalidate cache so next leaderboard view fetches fresh data from server
     lbCacheTime = null;
+    let resBody = null;
+    try { resBody = await res.json(); } catch {}
+    return resBody?.displayName || null;
   } catch(e) {
     console.warn('Leaderboard submit failed:', e);
   }

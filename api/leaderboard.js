@@ -497,6 +497,17 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'This account is blocked from the leaderboard' });
     }
 
+    // If the existing entry already has a custom displayName (one set by admin or
+    // a prior explicit submission), keep it when the incoming submission is falling
+    // back to the raw username — so a Last.fm name never silently overwrites a
+    // human-readable alias like "Vivalalisa🌸".
+    const existingEntry = data.users[username.toLowerCase()];
+    if (existingEntry?.displayName && existingEntry.displayName !== existingEntry.username) {
+      if (!displayName || displayName === username) {
+        displayName = existingEntry.displayName;
+      }
+    }
+
     data.users[username.toLowerCase()] = {
       username,
       displayName: displayName || username,
@@ -537,7 +548,17 @@ export default async function handler(req, res) {
         if (k === selfKey || (data.banned || []).includes(k)) continue;
         const otherLinked = Array.isArray(entry.linkedAccounts) ? entry.linkedAccounts : [];
         const overlaps = otherLinked.some(a => ownedKeys.has((a.username || '').toLowerCase()));
-        if (overlaps) delete data.users[k];
+        if (overlaps) {
+          // Inherit a custom displayName from the entry being merged in, so it
+          // survives when the new submission falls back to a raw username.
+          if (entry.displayName && entry.displayName !== (entry.username || '')) {
+            const myEntry = data.users[username.toLowerCase()];
+            if (myEntry && (!myEntry.displayName || myEntry.displayName === username)) {
+              myEntry.displayName = entry.displayName;
+            }
+          }
+          delete data.users[k];
+        }
       }
     }
 
@@ -546,7 +567,7 @@ export default async function handler(req, res) {
     await redis.set(LB_KEY, data);
 
     res.setHeader('Cache-Control', 'no-store');
-    return res.status(200).json({ ok: true });
+    return res.status(200).json({ ok: true, displayName: data.users[username.toLowerCase()]?.displayName || displayName });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
