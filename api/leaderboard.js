@@ -242,6 +242,53 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, oldUsername: oldName, newUsername: newName, results });
   }
 
+  // ── POST /api/leaderboard?action=set-display-name — user: update their own display name ──
+  // Updates both the leaderboard Redis entry and (client-side) Supabase user_metadata.
+  // Matching is done via the user's linked_accounts rows so the right entry is always
+  // found even if the Redis key has drifted (e.g. an emoji suffix or a prior rename).
+  if (req.method === 'POST' && action === 'set-display-name') {
+    const { displayName, accessToken } = req.body || {};
+    if (!displayName || typeof displayName !== 'string' || !displayName.trim()) {
+      return res.status(400).json({ error: 'displayName required' });
+    }
+    const sb = supabase();
+    if (!sb) return res.status(503).json({ error: 'Server not configured' });
+    const { data: { user }, error: authErr } = await sb.auth.getUser(accessToken);
+    if (authErr || !user) return res.status(401).json({ error: 'Session expired — please sign in again' });
+
+    const { data: linked } = await sb.from('linked_accounts').select('source_username').eq('app_user_id', user.id);
+    const linkedUsernames = new Set((linked || []).map(a => (a.source_username || '').toLowerCase()));
+    if (linkedUsernames.size === 0) {
+      return res.status(400).json({ error: 'Link a scrobbling account first' });
+    }
+
+    const cleanName = displayName.trim().slice(0, 40);
+    const data = (await redis.get(LB_KEY)) || { users: {} };
+    data.users = data.users || {};
+
+    // Find and update every entry that belongs to this user (matched by any linked username).
+    // This handles the case where the Redis key has drifted from the current linked username.
+    let updated = 0;
+    for (const entry of Object.values(data.users)) {
+      const entryUsernames = new Set([
+        (entry.username || '').toLowerCase(),
+        ...(Array.isArray(entry.linkedAccounts) ? entry.linkedAccounts.map(a => (a.username || '').toLowerCase()) : []),
+      ].filter(Boolean));
+      if ([...entryUsernames].some(u => linkedUsernames.has(u))) {
+        entry.displayName = cleanName;
+        updated++;
+      }
+    }
+
+    if (updated > 0) {
+      updateLeaderStreak(data);
+      await redis.set(LB_KEY, data);
+    }
+
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ ok: true, displayName: cleanName, entriesUpdated: updated });
+  }
+
   // ── POST /api/leaderboard?action=delete-entry&key=ADMIN_SECRET — admin: remove without banning ──
   if (req.method === 'POST' && action === 'delete-entry') {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
