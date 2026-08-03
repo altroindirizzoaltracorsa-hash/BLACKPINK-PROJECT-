@@ -5679,63 +5679,55 @@ async function loadProfile(usernameOverride, silent = false) {
   }
 
   try {
-    if (!silent) setLoading('Looking up your Last.fm profile…');
-    const info = await fetchUserInfo(username);
-
-    if (!silent) setLoading('Counting total BLACKPINK scrobbles…');
-    const artistPlays = await fetchArtistPlays(username, 'BLACKPINK');
-
-    if (!silent) setLoading('Counting scrobbles for each campaign track…');
-    const totalPlays = {};
-    for (const t of TRACKS) {
-      if (!silent) setLoading(`Counting ${t.title} plays…`);
-      totalPlays[t.id] = await fetchTrackPlays(username, t.artist, t.track);
-    }
-
-    if (!silent) setLoading('Fetching today\'s streams…');
+    if (!silent) setLoading('Loading your profile…');
     const { from: dayFrom, to: dayTo } = getDayBounds();
-    const todayScrobbles = await fetchRecentScrobbles(username, dayFrom, dayTo);
+    const { from: weekFrom } = getWeekBounds();
+
+    // Fetch user info, artist plays, per-track plays, and today's scrobbles in parallel.
+    const [info, artistPlays, ...trackAndToday] = await Promise.all([
+      fetchUserInfo(username),
+      fetchArtistPlays(username, 'BLACKPINK').catch(() => 0),
+      ...TRACKS.map(t => fetchTrackPlays(username, t.artist, t.track).catch(() => 0)),
+      fetchRecentScrobbles(username, dayFrom, dayTo).catch(() => []),
+    ]);
+    const totalPlays = {};
+    TRACKS.forEach((t, i) => { totalPlays[t.id] = trackAndToday[i]; });
+    const todayScrobbles = trackAndToday[TRACKS.length];
     const todayCounts = countByTrack(todayScrobbles);
 
     if (!silent) { const dbgEl = document.getElementById('profile-debug'); if (dbgEl) dbgEl.textContent = `window ${new Date(dayFrom*1000).toISOString().slice(0,16)} UTC → ${new Date(dayTo*1000).toISOString().slice(0,16)} UTC · ${todayScrobbles.length} scrobbles · J:${todayCounts.jump||0} S:${todayCounts.shutdown||0} D:${todayCounts.ddududu||0} L:${todayCounts.ltal||0} G:${todayCounts.go||0}`; }
 
     if (!silent) setLoading('Building weekly breakdown…');
-    const { from: weekFrom } = getWeekBounds();
     const weekCacheKey = `bu_weekly_${username.toLowerCase()}_${weekFrom}`;
     let weekCache = {};
     try { weekCache = JSON.parse(localStorage.getItem(weekCacheKey) || '{}'); } catch {}
+
+    // Fetch all 7 week days in parallel — each is independent.
+    const weekDayStarts = Array.from({ length: 7 }, (_, i) => weekFrom + i * 86400);
+    const weekScrobbleResults = await Promise.all(weekDayStarts.map(async dayStart => {
+      const dayEnd = dayStart + 86400;
+      if (dayStart * 1000 > Date.now()) return null;
+      const dayKey = new Date(dayStart * 1000).toISOString().slice(0, 10);
+      const isToday = dayKey === italyDayKey(0);
+      const isPast  = !isToday && dayEnd <= Math.floor(Date.now() / 1000);
+      if (isPast && weekCache[dayKey]) return { dayKey, label: getDayLabel(dayStart), counts: weekCache[dayKey], cached: true };
+      const daySc = await fetchRecentScrobbles(username, dayStart, dayEnd).catch(() => []);
+      return { dayKey, label: getDayLabel(dayStart), counts: countByTrack(daySc), isPast, scrobbles: daySc };
+    }));
 
     const weekDays = [];
     const weekCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 };
     let lastScrobbleTs = null;
 
-    for (let i = 0; i < 7; i++) {
-      const dayStart = weekFrom + i * 86400;
-      const dayEnd   = dayStart + 86400;
-      if (dayStart * 1000 > Date.now()) { weekDays.push(null); continue; }
-
-      const dayKey = new Date(dayStart * 1000).toISOString().slice(0, 10);
-      const label  = getDayLabel(dayStart);
-      const todayKey = italyDayKey(0);
-      const isToday  = dayKey === todayKey;
-      // A day's 2am-to-2am window is closed once dayEnd has passed
-      const isPast   = !isToday && dayEnd <= Math.floor(Date.now() / 1000);
-
-      let counts;
-      if (isPast && weekCache[dayKey]) {
-        counts = weekCache[dayKey];
-      } else {
-        if (!silent) setLoading(`Fetching ${isToday ? 'today' : label}…`);
-        const daySc = await fetchRecentScrobbles(username, dayStart, dayEnd);
-        counts = countByTrack(daySc);
-        if (isPast) {
-          weekCache[dayKey] = counts;
-          try { localStorage.setItem(weekCacheKey, JSON.stringify(weekCache)); } catch {}
-        }
-        // "blackpink" alone misses activity on Jennie's solo campaign track
-        // (Less Than a Lover), which would otherwise wrongly flag an actively-
-        // streaming fan as inactive just because their recent plays are all solo.
-        const bpDay = daySc.filter(s => {
+    for (const res of weekScrobbleResults) {
+      if (res === null) { weekDays.push(null); continue; }
+      const { dayKey, label, counts, isPast, cached, scrobbles } = res;
+      if (!cached && isPast) {
+        weekCache[dayKey] = counts;
+        try { localStorage.setItem(weekCacheKey, JSON.stringify(weekCache)); } catch {}
+      }
+      if (!cached && scrobbles?.length) {
+        const bpDay = scrobbles.filter(s => {
           const a = (s.artist?.['#text'] || s.artist || '').toLowerCase();
           return (a.includes('blackpink') || a.includes('jennie')) && s.date?.uts;
         });
@@ -5744,7 +5736,6 @@ async function loadProfile(usernameOverride, silent = false) {
           if (!lastScrobbleTs || ts > lastScrobbleTs) lastScrobbleTs = ts;
         }
       }
-
       weekDays.push({ label, counts });
       weekCounts.jump     += counts.jump     || 0;
       weekCounts.shutdown += counts.shutdown || 0;
@@ -5817,7 +5808,11 @@ async function loadProfile(usernameOverride, silent = false) {
       document.getElementById('loading-panel').style.display = 'none';
       const err = document.getElementById('lfm-error');
       err.style.display = 'block';
-      err.textContent = '⚠ ' + (e.message || 'Something went wrong. Check your username.');
+      const msg = e.message || 'Something went wrong. Check your username.';
+      const hint = (msg === 'Failed to fetch' || msg === 'Load failed' || msg.includes('NetworkError'))
+        ? ' — try refreshing the page (Ctrl+Shift+R)'
+        : '';
+      err.textContent = '⚠ ' + msg + hint;
     }
   }
 }
