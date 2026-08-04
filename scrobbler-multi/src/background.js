@@ -79,6 +79,7 @@ async function dispatch(kind, account, track, timestamp) {
   const jobs = [];
 
   const track_ = () => `"${track.artist} - ${track.title}" (${account.name || account.id})`;
+  const targets = [];
   const run = (label, promise) => promise
     .then(() => true)
     .catch((e) => { console.warn(`[${label}] ${kind} failed for ${track_()}:`, e.message); return false; });
@@ -87,6 +88,7 @@ async function dispatch(kind, account, track, timestamp) {
     const conn = pick(svc);
     const cfg = settings[svc];
     if (conn && conn.sk && cfg && cfg.apiKey && cfg.secret) {
+      targets.push(`${svc}:${conn.name || '?'}`);
       jobs.push(run(svc, kind === 'nowplaying'
         ? AS.updateNowPlaying(svc, cfg.apiKey, cfg.secret, conn.sk, track)
         : AS.scrobble(svc, cfg.apiKey, cfg.secret, conn.sk, track, timestamp)));
@@ -95,6 +97,7 @@ async function dispatch(kind, account, track, timestamp) {
 
   const lb = pick('listenbrainz');
   if (lb && lb.token) {
+    targets.push(`listenbrainz:${lb.user || '?'}`);
     jobs.push(run('listenbrainz', kind === 'nowplaying'
       ? LB.updateNowPlaying(lb.token, track)
       : LB.scrobble(lb.token, track, timestamp)));
@@ -102,10 +105,11 @@ async function dispatch(kind, account, track, timestamp) {
 
   const results = await Promise.all(jobs);
   if (kind === 'scrobble') {
+    const okTargets = targets.filter((_, i) => results[i]);
     if (!jobs.length) {
       console.warn(`⚠️ No scrobble target for ${account.name || account.id} — connect a default or per-profile account.`);
-    } else if (results.some(Boolean)) {
-      console.log(`✅ Scrobbled ${track_()}`);
+    } else if (okTargets.length) {
+      console.log(`✅ Scrobbled ${track_()} → ${okTargets.join(', ')}`);
     } else {
       console.warn(`❌ Scrobble rejected for ${track_()} (see the failure line above)`);
     }
@@ -305,7 +309,21 @@ async function readState(needAccount) {
   return { account, track, position, playbackState };
 }
 
+let polling = false;
+
 async function poll() {
+  // Prevent overlapping runs: a slow poll must not race a second one on the
+  // shared pbState, which caused the same track to scrobble repeatedly.
+  if (polling) { console.log('[poll] skipped — previous run still in progress'); return; }
+  polling = true;
+  try {
+    await pollOnce();
+  } finally {
+    polling = false;
+  }
+}
+
+async function pollOnce() {
   let tabs;
   try {
     tabs = await chrome.tabs.query({ url: 'https://open.spotify.com/*' });

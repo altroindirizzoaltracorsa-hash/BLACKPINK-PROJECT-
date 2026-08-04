@@ -124,5 +124,7 @@ export async function scrobble(service, apiKey, secret, sk, track, timestamp) {
     const reason = (im && (im['#text'] || im.code)) || 'unknown reason';
     throw new Error(`ignored by ${svc.name}: ${reason}`);
   }
+  console.log(`[${svc.name}] accepted=${attr ? attr.accepted : '?'} ignored=${attr ? attr.ignored : '?'} `
+    + `(raw: ${JSON.stringify(data).slice(0, 200)})`);
   return data;
 }
