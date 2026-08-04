@@ -34,21 +34,60 @@ $('#save-settings').addEventListener('click', async () => {
 
 // ---------- profiles ----------
 
-function renderServiceButton(svcEl, profile, svc) {
+const SVC_NAMES = { lastfm: 'Last.fm', librefm: 'Libre.fm', listenbrainz: 'ListenBrainz' };
+
+// Wire one service row. All three now authenticate with credentials typed into
+// the row itself, so each profile connects its OWN account with no dependence
+// on which account the browser happens to be logged into.
+function wireService(node, profile, svc) {
+  const svcEl = $(`.svc[data-svc="${svc}"]`, node);
   const state = $('.svc-state', svcEl);
-  const btn = $('.svc-btn', svcEl);
+  const cred = $('.cred', svcEl);
+  const disconnectBtn = $('.c-disconnect', svcEl);
   const conn = profile[svc];
-  if (conn && (conn.sk || conn.token)) {
-    state.textContent = `connected${conn.name || conn.user ? ` as ${conn.name || conn.user}` : ''}`;
+  const connected = !!(conn && (conn.sk || conn.token));
+
+  if (connected) {
+    const who = conn.name || conn.user;
+    state.textContent = `connected${who ? ` as ${who}` : ''}`;
     state.classList.add('on');
-    btn.textContent = 'Disconnect';
-    btn.dataset.action = 'disconnect';
+    cred.classList.add('hidden');
+    disconnectBtn.classList.remove('hidden');
   } else {
     state.textContent = 'not connected';
     state.classList.remove('on');
-    btn.textContent = 'Connect';
-    btn.dataset.action = 'connect';
+    cred.classList.remove('hidden');
+    disconnectBtn.classList.add('hidden');
   }
+
+  disconnectBtn.addEventListener('click', async () => {
+    await send({ type: 'disconnect', profileId: profile.id, service: svc });
+    refresh();
+  });
+
+  const connectBtn = $('.c-connect', svcEl);
+  connectBtn.addEventListener('click', async () => {
+    let msg;
+    if (svc === 'listenbrainz') {
+      const token = $('.c-token', svcEl).value.trim();
+      if (!token) return;
+      msg = { type: 'saveListenBrainz', profileId: profile.id, token };
+    } else {
+      const username = $('.c-user', svcEl).value.trim();
+      const password = $('.c-pass', svcEl).value;
+      if (!username || !password) return;
+      msg = { type: 'connectPassword', service: svc, profileId: profile.id, username, password };
+    }
+    connectBtn.disabled = true;
+    const res = await send(msg);
+    connectBtn.disabled = false;
+    if (res && res.ok) {
+      toast(`${SVC_NAMES[svc]} connected as ${res.name || res.user}.`);
+      refresh();
+    } else {
+      toast(res && res.error ? res.error : 'Connect failed — check the credentials.', true);
+    }
+  });
 }
 
 function renderProfile(profile) {
@@ -66,113 +105,19 @@ function renderProfile(profile) {
     refresh();
   });
 
-  // Last.fm / Libre.fm (web auth)
-  for (const svc of ['lastfm', 'librefm']) {
-    const svcEl = $(`.svc[data-svc="${svc}"]`, node);
-    renderServiceButton(svcEl, profile, svc);
-    $('.svc-btn', svcEl).addEventListener('click', async (e) => {
-      const action = e.target.dataset.action;
-      if (action === 'disconnect') {
-        await send({ type: 'disconnect', profileId: profile.id, service: svc });
-        refresh();
-        return;
-      }
-      const res = await send({ type: 'startWebAuth', service: svc, profileId: profile.id });
-      if (!res || !res.ok) { toast(res && res.error || 'Auth failed.', true); return; }
-      showPending(profile.label, svc);
-      // Opening a tab closes this popup; the pending banner is restored from
-      // storage the next time the panel opens, so the Finish step isn't lost.
-      chrome.tabs.create({ url: res.url });
-    });
-  }
-
-  // ListenBrainz (token)
-  const lbEl = $('.svc[data-svc="listenbrainz"]', node);
-  const lb = profile.listenbrainz;
-  const lbState = $('.svc-state', lbEl);
-  const lbConnect = $('.lb-connect', lbEl);
-  const lbDisconnect = $('.lb-disconnect', lbEl);
-  if (lb && lb.token) {
-    lbState.textContent = `connected${lb.user ? ` as ${lb.user}` : ''}`;
-    lbState.classList.add('on');
-    lbConnect.classList.add('hidden');
-    lbDisconnect.classList.remove('hidden');
-  } else {
-    lbState.textContent = 'not connected';
-    lbConnect.classList.remove('hidden');
-    lbDisconnect.classList.add('hidden');
-  }
-  $('.lb-save', lbEl).addEventListener('click', async () => {
-    const token = $('.lb-token', lbEl).value.trim();
-    if (!token) return;
-    const res = await send({ type: 'saveListenBrainz', profileId: profile.id, token });
-    if (res && res.ok) { toast(`ListenBrainz connected as ${res.user}.`); refresh(); }
-    else toast(res && res.error || 'Token rejected.', true);
-  });
-  lbDisconnect.addEventListener('click', async () => {
-    await send({ type: 'disconnect', profileId: profile.id, service: 'listenbrainz' });
-    refresh();
-  });
+  for (const svc of ['lastfm', 'librefm', 'listenbrainz']) wireService(node, profile, svc);
 
   return node;
 }
 
-function showPending(label, service) {
-  const svcName = service === 'librefm' ? 'Libre.fm' : 'Last.fm';
-  const el = $('#pending');
-  el.innerHTML = '';
-  const msg = document.createElement('div');
-  msg.textContent =
-    `Approve ${svcName} access for "${label}" in the tab that opened. ` +
-    `Once you've clicked "Yes, allow access" there, come back and click Finish.`;
-  el.appendChild(msg);
-
-  const finish = document.createElement('button');
-  finish.className = 'primary';
-  finish.textContent = 'Finish connecting';
-  finish.addEventListener('click', async () => {
-    finish.disabled = true;
-    const res = await send({ type: 'finishWebAuth' });
-    finish.disabled = false;
-    if (res && res.ok) {
-      toast(`${svcName} connected as ${res.name}.`);
-      el.classList.add('hidden');
-      refresh();
-    } else {
-      // Most common: clicked before approving. Keep the banner so they can retry.
-      toast(res && res.error ? `${res.error}` : 'Could not finish — approve access first, then retry.', true);
-    }
-  });
-  el.appendChild(finish);
-
-  const cancel = document.createElement('button');
-  cancel.className = 'ghost';
-  cancel.textContent = 'Cancel';
-  cancel.addEventListener('click', async () => {
-    await send({ type: 'cancelAuth' });
-    el.classList.add('hidden');
-  });
-  el.appendChild(cancel);
-
-  el.classList.remove('hidden');
-}
-
 async function refresh() {
-  const { settings, profiles, pendingAuth } = await send({ type: 'getState' });
+  const { settings, profiles } = await send({ type: 'getState' });
   loadSettings(settings);
   const list = $('#profiles');
   list.innerHTML = '';
   const entries = Object.values(profiles);
   $('#empty').classList.toggle('hidden', entries.length > 0);
   for (const p of entries) list.appendChild(renderProfile(p));
-
-  // Restore an in-progress Last.fm / Libre.fm auth after the popup reopened.
-  if (pendingAuth) {
-    const p = profiles[pendingAuth.profileId];
-    showPending(p ? p.label : pendingAuth.profileId, pendingAuth.service);
-  } else {
-    $('#pending').classList.add('hidden');
-  }
 }
 
 $('#refresh').addEventListener('click', refresh);

@@ -74,22 +74,12 @@ button:hover { filter: brightness(1.1); }
 .p-label { font-weight: 600; }
 
 .services { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-.svc { display: flex; align-items: center; gap: 8px; }
-.svc-name { width: 110px; color: var(--muted); }
-.svc-state { flex: 1; font-size: 12px; }
+.svc { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.svc-name { width: 90px; color: var(--muted); }
+.svc-state { font-size: 12px; }
 .svc-state.on { color: var(--accent); }
-.svc .lb-connect { display: flex; gap: 6px; flex: 1; }
-.svc .lb-token { flex: 1; }
-
-.pending {
-  background: #2a2410;
-  border: 1px solid #6b5a1e;
-  border-radius: 8px;
-  padding: 10px;
-  margin-bottom: 12px;
-  font-size: 13px;
-}
-.pending button { margin-top: 8px; }
+.svc .cred { display: flex; gap: 6px; flex: 1; min-width: 0; }
+.svc .cred input { flex: 1; min-width: 0; }
 
 .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 8px; }
 

@@ -71,6 +71,20 @@ export async function getSession(service, apiKey, secret, token) {
   return { key: data.session.key, name: data.session.name };
 }
 
+// Direct username/password auth (the desktop-scrobbler method). This does NOT
+// depend on any browser login, so each profile can authenticate its OWN
+// account regardless of which account the browser is signed into.
+export async function getMobileSession(service, apiKey, secret, username, password) {
+  const svc = SERVICES[service];
+  const data = await apiCall(svc.apiRoot, {
+    method: 'auth.getMobileSession',
+    username,
+    password,
+    api_key: apiKey,
+  }, secret, { post: true });
+  return { key: data.session.key, name: data.session.name };
+}
+
 // --- Scrobbling ---
 
 export async function updateNowPlaying(service, apiKey, secret, sk, track) {

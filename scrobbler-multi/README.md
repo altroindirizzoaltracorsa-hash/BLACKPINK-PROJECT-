@@ -50,12 +50,18 @@ Spotify tab (SessionBox profile A)          Spotify tab (SessionBox profile B)
    - ListenBrainz needs nothing here.
 2. **Detect accounts**: play a track in each SessionBox Spotify tab once. Each
    account then appears under section 2. Click **Refresh** if needed.
-3. **Connect services** per profile:
-   - Last.fm / Libre.fm: click **Connect** → approve in the tab that opens →
-     click **Finish connecting**.
+3. **Connect services** per profile, using **that account's own** credentials:
+   - Last.fm / Libre.fm: type the account's username + password and click
+     **Connect**. This uses the `auth.getMobileSession` API, so it authenticates
+     that specific account directly — it does **not** depend on which account the
+     browser is logged into, which is what lets each profile reach a different
+     Last.fm account.
    - ListenBrainz: paste the user token from
      <https://listenbrainz.org/settings/> and click **Save**.
 4. Toggle a profile off to pause scrobbling for that account.
+
+> Credentials are used once to obtain a session key, which is what's stored
+> (in `chrome.storage.local`); for Last.fm the password itself is not kept.
 
 ## Caveats
 

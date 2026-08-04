@@ -230,6 +230,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
         }
 
+        case 'connectPassword': {
+          const { settings, profiles } = await getStore();
+          const cfg = settings[msg.service];
+          if (!cfg || !cfg.apiKey || !cfg.secret) {
+            throw new Error(`Set the ${msg.service} API key and secret first.`);
+          }
+          const session = await AS.getMobileSession(
+            msg.service, cfg.apiKey, cfg.secret, msg.username, msg.password,
+          );
+          const p = profiles[msg.profileId];
+          if (!p) throw new Error('Profile no longer exists.');
+          p[msg.service] = { sk: session.key, name: session.name };
+          await setProfiles(profiles);
+          sendResponse({ ok: true, name: session.name });
+          break;
+        }
+
         case 'saveListenBrainz': {
           const check = await LB.validateToken(msg.token);
           if (!check.valid) throw new Error('ListenBrainz rejected that token.');
