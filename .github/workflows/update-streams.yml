@@ -1,0 +1,31 @@
+name: Update Streams (Force Refresh)
+
+# Force-refreshes the Spotify stream counts on blinksunited.com/streams.
+# Equivalent to the nightly 11PM Italy cron, but runs immediately on demand.
+# Useful when RapidAPI keys missed the daily update window.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Force-refresh all track stream counts
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          echo "Triggering force refresh of blinksunited.com streams..."
+          resp=$(curl -sfL "https://blinksunited.com/api/streams?force=1&key=${ADMIN_KEY}")
+          echo "Response: $resp"
+          echo "$resp" | grep -q '"live":true' && echo "SUCCESS: live data fetched" || echo "WARNING: live may be false — check response above"
+          echo "$resp" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for t in ['jump','shutdown','ddududu','go']:
+  entry = d.get(t, {})
+  total = entry.get('total', 0)
+  hist  = entry.get('history', [])
+  last  = hist[-1] if hist else {}
+  print(f'{t}: total={total:,}  last_entry={last}')
+"
