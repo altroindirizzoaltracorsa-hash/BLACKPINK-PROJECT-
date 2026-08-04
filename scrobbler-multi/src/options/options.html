@@ -9,7 +9,7 @@
 <body>
   <header>
     <h1>Multi-Account Scrobbler</h1>
-    <p class="sub">Each SessionBox Spotify tab scrobbles to its own accounts.</p>
+    <p class="sub">Scrobbles every SessionBox Spotify tab, including background tabs.</p>
   </header>
 
   <section class="card">
@@ -18,7 +18,7 @@
       Register one app at
       <a href="https://www.last.fm/api/account/create" target="_blank" rel="noreferrer">last.fm/api</a>
       (and, for Libre.fm, at <a href="https://libre.fm/" target="_blank" rel="noreferrer">libre.fm</a>).
-      These are shared by every profile — only the per-account login differs.
+      Leave the callback URL blank. These are shared by every account.
       ListenBrainz needs nothing here.
     </p>
     <div class="grid">
@@ -31,21 +31,64 @@
   </section>
 
   <section class="card">
+    <h2>2. Default account — receives ALL profiles</h2>
+    <p class="hint">
+      Connect one scrobbling account here and <strong>every</strong> Spotify tab
+      scrobbles to it. This is the setup for "many Spotify accounts → one Last.fm."
+      A per-profile connection below overrides the default for that profile.
+    </p>
+    <div id="default-container"></div>
+  </section>
+
+  <section class="card">
     <div class="row space">
-      <h2>2. Spotify profiles</h2>
+      <h2>3. Per-profile overrides</h2>
       <button id="refresh" class="ghost">Refresh</button>
     </div>
     <p class="hint">
       Play a track in each SessionBox Spotify tab once — the account appears here.
-      Then type <strong>that account's own</strong> Last.fm / Libre.fm login (or
-      ListenBrainz token) into its row. Each profile connects independently, so
-      different profiles go to different scrobbling accounts.
+      Only set a connection on a profile if it should go somewhere different from
+      the default above.
     </p>
     <div id="profiles"></div>
     <p id="empty" class="empty">No Spotify accounts detected yet.</p>
   </section>
 
   <div id="toast" class="toast hidden"></div>
+
+  <template id="services-tpl">
+    <div class="services">
+      <div class="svc" data-svc="lastfm">
+        <span class="svc-name">Last.fm</span>
+        <span class="svc-state"></span>
+        <div class="cred">
+          <input type="text" class="c-user" placeholder="username" autocomplete="off" />
+          <input type="password" class="c-pass" placeholder="password" autocomplete="off" />
+          <button class="ghost c-connect">Connect</button>
+        </div>
+        <button class="ghost c-disconnect hidden">Disconnect</button>
+      </div>
+      <div class="svc" data-svc="librefm">
+        <span class="svc-name">Libre.fm</span>
+        <span class="svc-state"></span>
+        <div class="cred">
+          <input type="text" class="c-user" placeholder="username" autocomplete="off" />
+          <input type="password" class="c-pass" placeholder="password" autocomplete="off" />
+          <button class="ghost c-connect">Connect</button>
+        </div>
+        <button class="ghost c-disconnect hidden">Disconnect</button>
+      </div>
+      <div class="svc" data-svc="listenbrainz">
+        <span class="svc-name">ListenBrainz</span>
+        <span class="svc-state"></span>
+        <div class="cred">
+          <input type="text" class="c-token" placeholder="user token" autocomplete="off" />
+          <button class="ghost c-connect">Save</button>
+        </div>
+        <button class="ghost c-disconnect hidden">Disconnect</button>
+      </div>
+    </div>
+  </template>
 
   <template id="profile-tpl">
     <div class="profile">
@@ -56,37 +99,7 @@
         </label>
         <button class="ghost danger p-remove" title="Remove profile">Remove</button>
       </div>
-      <div class="services">
-        <div class="svc" data-svc="lastfm">
-          <span class="svc-name">Last.fm</span>
-          <span class="svc-state"></span>
-          <div class="cred">
-            <input type="text" class="c-user" placeholder="username" autocomplete="off" />
-            <input type="password" class="c-pass" placeholder="password" autocomplete="off" />
-            <button class="ghost c-connect">Connect</button>
-          </div>
-          <button class="ghost c-disconnect hidden">Disconnect</button>
-        </div>
-        <div class="svc" data-svc="librefm">
-          <span class="svc-name">Libre.fm</span>
-          <span class="svc-state"></span>
-          <div class="cred">
-            <input type="text" class="c-user" placeholder="username" autocomplete="off" />
-            <input type="password" class="c-pass" placeholder="password" autocomplete="off" />
-            <button class="ghost c-connect">Connect</button>
-          </div>
-          <button class="ghost c-disconnect hidden">Disconnect</button>
-        </div>
-        <div class="svc" data-svc="listenbrainz">
-          <span class="svc-name">ListenBrainz</span>
-          <span class="svc-state"></span>
-          <div class="cred">
-            <input type="text" class="c-token" placeholder="user token" autocomplete="off" />
-            <button class="ghost c-connect">Save</button>
-          </div>
-          <button class="ghost c-disconnect hidden">Disconnect</button>
-        </div>
-      </div>
+      <div class="profile-services"></div>
     </div>
   </template>
 

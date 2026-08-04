@@ -1,77 +1,75 @@
 # SessionBox Multi-Account Scrobbler
 
-A Manifest V3 browser extension that scrobbles **each SessionBox Spotify tab to
-its own Last.fm / Libre.fm / ListenBrainz account** — something the standard Web
-Scrobbler can't do, because it holds only one account connection per browser
-profile.
+A Manifest V3 browser extension that scrobbles **every SessionBox Spotify tab**
+— foreground *and* background — to Last.fm / Libre.fm / ListenBrainz. It can
+route each Spotify account to its own scrobbling account, or funnel **many
+Spotify accounts into one** scrobbling account.
 
 ## How it works
 
-SessionBox isolates each tab's Spotify **login**, but browser extensions are
-shared across all tabs. So the trick is not to look at SessionBox at all — it's
-to route by the Spotify identity the tab reveals:
+SessionBox isolates each tab's Spotify login, but extensions are shared across
+tabs, so the extension routes by the Spotify identity each tab reveals (read
+from inside the tab) rather than by SessionBox internals.
+
+The key detail is **how** tabs are read. Chrome heavily throttles and can
+suspend timers inside background tabs, so a script polling from *within* each
+tab only works for the foreground one. Instead, an **alarm in the background
+worker** fires on a schedule (~every 30s) and injects a one-shot reader into
+every Spotify tab. Because the read is driven from the worker, it isn't subject
+to the target tab's throttling — so background tabs get scrobbled too.
 
 ```
-Spotify tab (SessionBox profile A)          Spotify tab (SessionBox profile B)
-        │  content script reads:                     │
-        │  • now-playing (mediaSession)              │
-        │  • THIS tab's Spotify account              │
-        └───────────────┬────────────────────────────┘
-                       ▼
-              Background service worker
-              maps Spotify account ──▶ Last.fm / Libre.fm / ListenBrainz
-              applies scrobble timing, sends to the right accounts
+alarm (~30s) ─▶ background worker
+                  │  for each open.spotify.com tab:
+                  │    inject reader → { account, now-playing, playing? }
+                  │    advance that tab's play-time (persisted in
+                  │      chrome.storage.session so it survives worker restarts)
+                  ▼
+        map Spotify account ──▶ its scrobble targets (or the shared default)
+        apply timing rule ──▶ Last.fm / Libre.fm / ListenBrainz
 ```
 
-- `src/inject-main.js` runs in the page's **MAIN world** so it can read
-  `navigator.mediaSession` and fetch the tab's Spotify account with that tab's
-  isolated cookies.
-- `src/content.js` (isolated world) relays those payloads to the worker.
-- `src/background.js` tracks playback per tab, enforces the AudioScrobbler
-  timing rule (half the track or 4 minutes, whichever comes first; tracks under
-  30s are skipped), and dispatches to every service mapped to that account.
-- `src/scrobblers/audioscrobbler.js` handles Last.fm **and** Libre.fm (Libre.fm
-  runs GNU FM, same 2.0 API — only the URL differs). `listenbrainz.js` handles
-  the token-based ListenBrainz API.
+- `src/background.js` — the alarm, the poll/inject, per-tab play tracking, the
+  AudioScrobbler timing rule (half the track or 4 min; skip < 30s), and dispatch.
+- `src/scrobblers/audioscrobbler.js` — Last.fm **and** Libre.fm (same GNU FM 2.0
+  API). Uses `auth.getMobileSession` so each account authenticates with its own
+  username/password, independent of any browser login.
+- `src/scrobblers/listenbrainz.js` — token-based submit.
+- `src/lib/md5.js` — UTF-8-safe MD5 for `api_sig`.
 
 ## Install (unpacked)
 
-1. Go to `chrome://extensions`, enable **Developer mode**, click **Load
-   unpacked**, and select this `scrobbler-multi/` folder. (Works in any
-   Chromium browser — Chrome, Edge, Brave — where you run SessionBox.)
+1. `chrome://extensions` → enable **Developer mode** → **Load unpacked** → pick
+   this `scrobbler-multi/` folder. Works in any Chromium browser.
 2. Open the extension's options.
 
 ## Setup
 
-1. **API credentials** (options → section 1):
-   - Last.fm: create one app at <https://www.last.fm/api/account/create> and
-     paste the API key + shared secret.
-   - Libre.fm: register at <https://libre.fm/> and paste its key + secret.
-   - ListenBrainz needs nothing here.
-2. **Detect accounts**: play a track in each SessionBox Spotify tab once. Each
-   account then appears under section 2. Click **Refresh** if needed.
-3. **Connect services** per profile, using **that account's own** credentials:
-   - Last.fm / Libre.fm: type the account's username + password and click
-     **Connect**. This uses the `auth.getMobileSession` API, so it authenticates
-     that specific account directly — it does **not** depend on which account the
-     browser is logged into, which is what lets each profile reach a different
-     Last.fm account.
-   - ListenBrainz: paste the user token from
-     <https://listenbrainz.org/settings/> and click **Save**.
-4. Toggle a profile off to pause scrobbling for that account.
-
-> Credentials are used once to obtain a session key, which is what's stored
-> (in `chrome.storage.local`); for Last.fm the password itself is not kept.
+1. **API credentials** (section 1): create one app at
+   <https://www.last.fm/api/account/create> (callback URL can be blank) and paste
+   the key + secret. Same for Libre.fm if you use it. ListenBrainz needs nothing.
+2. **Many Spotify → one account** (section 2, "Default account"): connect one
+   Last.fm / Libre.fm / ListenBrainz account here, and **every** Spotify tab
+   scrobbles to it. Type that account's own username + password (or ListenBrainz
+   token) and click Connect.
+3. **Different targets per account** (section 3): play a track in a SessionBox
+   tab so its profile appears, then connect a *different* account on that
+   profile — it overrides the default for that profile only.
 
 ## Caveats
 
-- **Spotify DOM/endpoints change.** Account detection uses the web player's
-  access-token endpoint (falling back to the account widget), and duration comes
-  from a `data-testid` element. If Spotify changes these, update the selectors in
-  `src/inject-main.js`. Track title/artist come from `mediaSession`, which is
-  stable.
-- Account detection needs a non-anonymous (logged-in) Spotify session in the tab.
-- Credentials and session keys are stored in `chrome.storage.local` on this
-  machine only.
-- Running many Spotify accounts to drive play counts is against Spotify's and
-  Last.fm's terms of service; this tool only attributes plays you already make.
+- **Poll cadence ~30s**, so now-playing and scrobbles can lag up to a minute.
+  For full plays that's fine; very short skips may be missed.
+- **A tab must stay alive to be read.** Chrome does not freeze tabs that are
+  actively producing audio, so simultaneously *playing* tabs are read. But a
+  tab that is **muted and long-backgrounded can be frozen/discarded** by Chrome,
+  and then neither this extension nor any other in-browser scrobbler can see it.
+  For that scenario a server-side scrobbler is the only reliable option.
+- **Spotify DOM/endpoints change.** Track title/artist come from `mediaSession`
+  (stable); account detection and duration use Spotify endpoints/`data-testid`
+  elements that Spotify occasionally renames — update the selectors in the
+  `readState` function in `src/background.js` if detection stops working.
+- Credentials are used once to obtain a session key; only the key/token is stored
+  (in `chrome.storage.local`), on this machine.
+- Driving play counts across many accounts is against Spotify's and Last.fm's
+  terms of service; this tool only attributes plays you already make.

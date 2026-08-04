@@ -14,9 +14,12 @@ function toast(text, isErr = false) {
   toastTimer = setTimeout(() => el.classList.add('hidden'), 3500);
 }
 
+const SVC_NAMES = { lastfm: 'Last.fm', librefm: 'Libre.fm', listenbrainz: 'ListenBrainz' };
+const DEFAULT_ACCT = '__default__';
+
 // ---------- settings ----------
 
-async function loadSettings(settings) {
+function loadSettings(settings) {
   $('#lastfm-key').value = settings.lastfm.apiKey || '';
   $('#lastfm-secret').value = settings.lastfm.secret || '';
   $('#librefm-key').value = settings.librefm.apiKey || '';
@@ -32,19 +35,15 @@ $('#save-settings').addEventListener('click', async () => {
   toast(res && res.ok ? 'Credentials saved.' : 'Save failed.', !(res && res.ok));
 });
 
-// ---------- profiles ----------
+// ---------- one service row ----------
 
-const SVC_NAMES = { lastfm: 'Last.fm', librefm: 'Libre.fm', listenbrainz: 'ListenBrainz' };
-
-// Wire one service row. All three now authenticate with credentials typed into
-// the row itself, so each profile connects its OWN account with no dependence
-// on which account the browser happens to be logged into.
-function wireService(node, profile, svc) {
-  const svcEl = $(`.svc[data-svc="${svc}"]`, node);
+// targetId is a profile id, or DEFAULT_ACCT for the shared default account.
+// conn is the stored connection object for this service (or null).
+function wireService(svcEl, targetId, conn, svc) {
   const state = $('.svc-state', svcEl);
   const cred = $('.cred', svcEl);
   const disconnectBtn = $('.c-disconnect', svcEl);
-  const conn = profile[svc];
+  const connectBtn = $('.c-connect', svcEl);
   const connected = !!(conn && (conn.sk || conn.token));
 
   if (connected) {
@@ -61,22 +60,21 @@ function wireService(node, profile, svc) {
   }
 
   disconnectBtn.addEventListener('click', async () => {
-    await send({ type: 'disconnect', profileId: profile.id, service: svc });
+    await send({ type: 'disconnect', profileId: targetId, service: svc });
     refresh();
   });
 
-  const connectBtn = $('.c-connect', svcEl);
   connectBtn.addEventListener('click', async () => {
     let msg;
     if (svc === 'listenbrainz') {
       const token = $('.c-token', svcEl).value.trim();
       if (!token) return;
-      msg = { type: 'saveListenBrainz', profileId: profile.id, token };
+      msg = { type: 'saveListenBrainz', profileId: targetId, token };
     } else {
       const username = $('.c-user', svcEl).value.trim();
       const password = $('.c-pass', svcEl).value;
       if (!username || !password) return;
-      msg = { type: 'connectPassword', service: svc, profileId: profile.id, username, password };
+      msg = { type: 'connectPassword', service: svc, profileId: targetId, username, password };
     }
     connectBtn.disabled = true;
     const res = await send(msg);
@@ -88,6 +86,14 @@ function wireService(node, profile, svc) {
       toast(res && res.error ? res.error : 'Connect failed — check the credentials.', true);
     }
   });
+}
+
+function servicesNode(targetId, connSource) {
+  const node = $('#services-tpl').content.firstElementChild.cloneNode(true);
+  for (const svc of ['lastfm', 'librefm', 'listenbrainz']) {
+    wireService($(`.svc[data-svc="${svc}"]`, node), targetId, connSource[svc], svc);
+  }
+  return node;
 }
 
 function renderProfile(profile) {
@@ -105,14 +111,18 @@ function renderProfile(profile) {
     refresh();
   });
 
-  for (const svc of ['lastfm', 'librefm', 'listenbrainz']) wireService(node, profile, svc);
-
+  $('.profile-services', node).appendChild(servicesNode(profile.id, profile));
   return node;
 }
 
 async function refresh() {
   const { settings, profiles } = await send({ type: 'getState' });
   loadSettings(settings);
+
+  const def = $('#default-container');
+  def.innerHTML = '';
+  def.appendChild(servicesNode(DEFAULT_ACCT, settings.defaults || {}));
+
   const list = $('#profiles');
   list.innerHTML = '';
   const entries = Object.values(profiles);

@@ -1,42 +1,50 @@
 /*
  * Background service worker.
  *
- * Core idea: SessionBox isolates each tab's Spotify login, so every tab is a
- * different logged-in Spotify account. The content script reports which account
- * a tab belongs to (read from inside the tab), and this worker routes that tab's
- * scrobbles to whatever Last.fm / Libre.fm / ListenBrainz accounts the user has
- * mapped to that Spotify account. One extension, many accounts — routed by the
- * Spotify identity the tab reveals, never by SessionBox internals.
+ * Goal: capture what EVERY open SessionBox Spotify tab is playing — including
+ * tabs sitting in the background — and scrobble each to the account(s) mapped
+ * to that tab's Spotify identity.
+ *
+ * Why polling instead of per-tab timers: Chrome heavily throttles (and can
+ * suspend) timers running inside background tabs, so a content script's own
+ * setInterval only fires reliably in the foreground tab. Instead, an alarm in
+ * this worker fires on a schedule and injects a one-shot reader into every
+ * Spotify tab. Because the injection is driven from here, it isn't subject to
+ * the target tab's timer throttling, so background tabs get read too.
+ *
+ * State must survive the worker being unloaded between alarms, so per-tab
+ * playback progress lives in chrome.storage.session (in-memory, cleared when
+ * the browser closes) rather than a plain variable.
  */
 import * as AS from './scrobblers/audioscrobbler.js';
 import * as LB from './scrobblers/listenbrainz.js';
 
+const POLL_ALARM = 'poll';
+const POLL_MINUTES = 0.5; // 30s (Chrome clamps to its minimum if lower)
+const DEFAULT_ACCT = '__default__';
+
 const DEFAULT_SETTINGS = {
   lastfm: { apiKey: '', secret: '' },
   librefm: { apiKey: '', secret: '' },
+  // A connection here is used by any profile that has no connection of its own.
+  defaults: { lastfm: null, librefm: null, listenbrainz: null },
 };
 
-// In-memory per-tab playback state (rebuilt as messages arrive; not persisted).
-const tabs = {};
-
-// ---------- storage helpers ----------
+// ---------- storage ----------
 
 async function getStore() {
   const s = await chrome.storage.local.get(['settings', 'profiles']);
-  return {
-    settings: { ...DEFAULT_SETTINGS, ...(s.settings || {}) },
-    profiles: s.profiles || {},
-  };
+  const settings = { ...DEFAULT_SETTINGS, ...(s.settings || {}) };
+  settings.defaults = { ...DEFAULT_SETTINGS.defaults, ...(settings.defaults || {}) };
+  return { settings, profiles: s.profiles || {} };
 }
 
 async function setProfiles(profiles) {
   await chrome.storage.local.set({ profiles });
 }
 
-// Create a profile the first time we see a Spotify account, so it shows up in
-// the options page ready for the user to attach scrobbling services.
 async function ensureProfile(account) {
-  if (!account || !account.id) return null;
+  if (!account || !account.id) return;
   const { profiles } = await getStore();
   if (!profiles[account.id]) {
     profiles[account.id] = {
@@ -52,25 +60,26 @@ async function ensureProfile(account) {
     profiles[account.id].label = account.name;
     await setProfiles(profiles);
   }
-  return profiles[account.id];
 }
 
 // ---------- scrobble dispatch ----------
 
 function trackKey(t) {
-  return t ? `${(t.artist || '').toLowerCase()}${(t.title || '').toLowerCase()}` : '';
+  return t ? `${(t.artist || '').toLowerCase()}${(t.title || '').toLowerCase()}` : '';
 }
 
 async function dispatch(kind, account, track, timestamp) {
   if (!account || !account.id) return;
   const { settings, profiles } = await getStore();
   const profile = profiles[account.id];
-  if (!profile || profile.enabled === false) return;
+  if (profile && profile.enabled === false) return;
 
+  // Per-profile connection wins; otherwise fall back to the shared default.
+  const pick = (svc) => (profile && profile[svc]) || settings.defaults[svc] || null;
   const jobs = [];
 
   for (const svc of ['lastfm', 'librefm']) {
-    const conn = profile[svc];
+    const conn = pick(svc);
     const cfg = settings[svc];
     if (conn && conn.sk && cfg && cfg.apiKey && cfg.secret) {
       const fn = kind === 'nowplaying'
@@ -80,62 +89,54 @@ async function dispatch(kind, account, track, timestamp) {
     }
   }
 
-  if (profile.listenbrainz && profile.listenbrainz.token) {
-    const token = profile.listenbrainz.token;
+  const lb = pick('listenbrainz');
+  if (lb && lb.token) {
     const fn = kind === 'nowplaying'
-      ? LB.updateNowPlaying(token, track)
-      : LB.scrobble(token, track, timestamp);
+      ? LB.updateNowPlaying(lb.token, track)
+      : LB.scrobble(lb.token, track, timestamp);
     jobs.push(fn.catch((e) => console.warn(`[listenbrainz] ${kind} failed:`, e.message)));
   }
 
   await Promise.all(jobs);
-  if (kind === 'scrobble') {
-    console.log(`Scrobbled "${track.artist} - ${track.title}" for ${profile.label}`);
+  if (kind === 'scrobble' && jobs.length) {
+    console.log(`Scrobbled "${track.artist} - ${track.title}" (${account.name || account.id})`);
   }
 }
 
-// Last.fm rule: scrobble once a track has played for half its length or 4
-// minutes, whichever comes first; ignore tracks under 30s.
+// Last.fm rule: scrobble after half the track or 4 minutes, whichever is first;
+// skip tracks under 30s.
 function scrobbleThresholdMs(duration) {
   if (duration && duration > 0) {
     if (duration < 30) return Infinity;
     return Math.min(duration / 2, 240) * 1000;
   }
-  return 240 * 1000; // duration unknown: fall back to 4 minutes of play
+  return 240 * 1000;
 }
 
-// ---------- playback tracking ----------
+// ---------- per-tab progress (advances a persisted record) ----------
 
-function nowSec() {
-  return Math.floor(Date.now() / 1000);
-}
-
-async function handleUpdate(tabId, msg) {
-  const state = tabs[tabId] || (tabs[tabId] = { account: null, cur: null });
-
+function advance(prev, msg, now, jobs) {
+  const rec = prev || { account: null, cur: null };
   if (msg.account) {
-    state.account = msg.account;
-    await ensureProfile(msg.account);
+    rec.account = msg.account;
+    jobs.push(ensureProfile(msg.account));
   }
 
   const track = msg.track && msg.track.artist && msg.track.title ? msg.track : null;
   const playing = !!msg.playing && !!track;
-  const now = Date.now();
 
-  // Nothing playing / stopped.
   if (!track) {
-    if (state.cur) state.cur.playing = false;
-    return;
+    if (rec.cur) rec.cur.playing = false;
+    return rec;
   }
 
   const key = trackKey(track);
 
-  // New track.
-  if (!state.cur || state.cur.key !== key) {
-    state.cur = {
+  if (!rec.cur || rec.cur.key !== key) {
+    rec.cur = {
       key,
       track,
-      startedAt: nowSec(),
+      startedAt: Math.floor(now / 1000),
       playedMs: 0,
       lastTs: now,
       playing,
@@ -143,14 +144,13 @@ async function handleUpdate(tabId, msg) {
       scrobbled: false,
     };
     if (playing) {
-      state.cur.nowPlayingSent = true;
-      dispatch('nowplaying', state.account, track);
+      rec.cur.nowPlayingSent = true;
+      jobs.push(dispatch('nowplaying', rec.account, track));
     }
-    return;
+    return rec;
   }
 
-  // Same track: advance accumulated play time.
-  const cur = state.cur;
+  const cur = rec.cur;
   if (cur.playing) cur.playedMs += now - cur.lastTs;
   cur.lastTs = now;
   cur.playing = playing;
@@ -158,80 +158,174 @@ async function handleUpdate(tabId, msg) {
 
   if (playing && !cur.nowPlayingSent) {
     cur.nowPlayingSent = true;
-    dispatch('nowplaying', state.account, cur.track);
+    jobs.push(dispatch('nowplaying', rec.account, cur.track));
   }
-
   if (!cur.scrobbled && cur.playedMs >= scrobbleThresholdMs(cur.track.duration)) {
     cur.scrobbled = true;
-    dispatch('scrobble', state.account, cur.track, cur.startedAt);
+    jobs.push(dispatch('scrobble', rec.account, cur.track, cur.startedAt));
   }
+  return rec;
 }
 
-chrome.tabs.onRemoved.addListener((tabId) => { delete tabs[tabId]; });
+// ---------- the poll ----------
 
-// ---------- message router ----------
+// Injected into each Spotify tab's MAIN world. Self-contained (no closures):
+// reads the now-playing track from mediaSession, and — only when asked — the
+// tab's own Spotify account via its isolated cookies.
+async function readState(needAccount) {
+  function parseDuration() {
+    const el = document.querySelector('[data-testid="playback-duration"]');
+    if (!el) return 0;
+    const p = el.textContent.trim().split(':').map(Number);
+    if (p.some(isNaN)) return 0;
+    return p.reduce((a, n) => a * 60 + n, 0);
+  }
+
+  const md = navigator.mediaSession && navigator.mediaSession.metadata;
+  const track = md && md.title
+    ? { title: md.title, artist: md.artist || '', album: md.album || '', duration: parseDuration() }
+    : null;
+
+  let playing = false;
+  if (track) {
+    const st = navigator.mediaSession.playbackState;
+    if (st) {
+      playing = st === 'playing';
+    } else {
+      const b = document.querySelector('[data-testid="control-button-playpause"]');
+      playing = b ? /pause/i.test(b.getAttribute('aria-label') || '') : false;
+    }
+  }
+
+  let account = null;
+  if (needAccount) {
+    let token = null;
+    try {
+      const r = await fetch(
+        'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
+        { credentials: 'include' },
+      );
+      if (r.ok) { const j = await r.json(); if (j.accessToken && !j.isAnonymous) token = j.accessToken; }
+    } catch (e) { /* try dom */ }
+    if (!token) {
+      for (const id of ['session', 'config']) {
+        const el = document.getElementById(id);
+        if (el && el.textContent) {
+          try { const j = JSON.parse(el.textContent); if (j.accessToken) { token = j.accessToken; break; } } catch (e) { /* */ }
+        }
+      }
+    }
+    if (!token) {
+      for (const s of document.querySelectorAll('script')) {
+        const m = (s.textContent || '').match(/"accessToken"\s*:\s*"([^"]+)"/);
+        if (m) { token = m[1]; break; }
+      }
+    }
+    if (token) {
+      try {
+        const me = await fetch('https://api.spotify.com/v1/me', { headers: { Authorization: `Bearer ${token}` } });
+        if (me.ok) { const u = await me.json(); if (u && u.id) account = { id: u.id, name: u.display_name || u.id }; }
+      } catch (e) { /* dom fallback */ }
+    }
+    if (!account) {
+      const sels = [
+        '[data-testid="user-widget-name"]',
+        '[data-testid="user-widget-link"]',
+        'button[data-testid="user-widget-link"] img[alt]',
+        'img[data-testid="user-widget-avatar"][alt]',
+      ];
+      for (const sel of sels) {
+        const el = document.querySelector(sel);
+        const name = el && (el.textContent || el.getAttribute('alt'));
+        if (name && name.trim()) { const c = name.trim(); account = { id: `name:${c.toLowerCase()}`, name: c }; break; }
+      }
+    }
+  }
+
+  return { account, playing, track };
+}
+
+async function poll() {
+  let tabs;
+  try {
+    tabs = await chrome.tabs.query({ url: 'https://open.spotify.com/*' });
+  } catch (e) { return; }
+
+  const { pbState = {} } = await chrome.storage.session.get('pbState');
+  const now = Date.now();
+  const alive = new Set();
+  const jobs = [];
+
+  for (const tab of tabs) {
+    alive.add(String(tab.id));
+    const prev = pbState[tab.id] || null;
+    const needAccount = !(prev && prev.account);
+    let result = null;
+    try {
+      const inj = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        world: 'MAIN',
+        func: readState,
+        args: [needAccount],
+      });
+      result = inj && inj[0] ? inj[0].result : null;
+    } catch (e) {
+      continue; // tab still loading, discarded, or frozen — try again next poll
+    }
+    if (!result) continue;
+    pbState[tab.id] = advance(prev, result, now, jobs);
+  }
+
+  for (const id of Object.keys(pbState)) if (!alive.has(id)) delete pbState[id];
+
+  await chrome.storage.session.set({ pbState });
+  await Promise.all(jobs);
+}
+
+function ensureAlarm() {
+  chrome.alarms.create(POLL_ALARM, { periodInMinutes: POLL_MINUTES });
+}
+
+chrome.runtime.onInstalled.addListener(ensureAlarm);
+chrome.runtime.onStartup.addListener(ensureAlarm);
+ensureAlarm();
+
+chrome.alarms.onAlarm.addListener((a) => { if (a.name === POLL_ALARM) poll(); });
+
+// ---------- message router (options page) ----------
+
+async function saveConnection(profileId, svc, value) {
+  const { settings, profiles } = await getStore();
+  if (profileId === DEFAULT_ACCT) {
+    settings.defaults[svc] = value;
+    await chrome.storage.local.set({ settings });
+  } else {
+    const p = profiles[profileId];
+    if (!p) throw new Error('Profile no longer exists.');
+    p[svc] = value;
+    await setProfiles(profiles);
+  }
+}
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
     try {
       switch (msg.type) {
-        case 'update':
-          await handleUpdate(sender.tab && sender.tab.id, msg);
-          sendResponse({ ok: true });
+        case 'getState':
+          sendResponse(await getStore());
           break;
-
-        case 'getState': {
-          const store = await getStore();
-          const { pendingAuth } = await chrome.storage.local.get('pendingAuth');
-          sendResponse({ ...store, pendingAuth: pendingAuth || null });
-          break;
-        }
-
-        case 'cancelAuth': {
-          await chrome.storage.local.remove('pendingAuth');
-          sendResponse({ ok: true });
-          break;
-        }
 
         case 'saveSettings': {
-          await chrome.storage.local.set({ settings: msg.settings });
-          sendResponse({ ok: true });
-          break;
-        }
-
-        case 'startWebAuth': {
           const { settings } = await getStore();
-          const cfg = settings[msg.service];
-          if (!cfg || !cfg.apiKey || !cfg.secret) {
-            throw new Error(`Set the ${msg.service} API key and secret first.`);
-          }
-          const token = await AS.getToken(msg.service, cfg.apiKey, cfg.secret);
-          await chrome.storage.local.set({
-            pendingAuth: { service: msg.service, token, profileId: msg.profileId },
-          });
-          sendResponse({ ok: true, url: AS.authUrl(msg.service, cfg.apiKey, token) });
-          break;
-        }
-
-        case 'finishWebAuth': {
-          const { pendingAuth } = await chrome.storage.local.get('pendingAuth');
-          if (!pendingAuth) throw new Error('No auth in progress.');
-          const { settings, profiles } = await getStore();
-          const cfg = settings[pendingAuth.service];
-          const session = await AS.getSession(
-            pendingAuth.service, cfg.apiKey, cfg.secret, pendingAuth.token,
-          );
-          const p = profiles[pendingAuth.profileId];
-          if (!p) throw new Error('Profile no longer exists.');
-          p[pendingAuth.service] = { sk: session.key, name: session.name };
-          await setProfiles(profiles);
-          await chrome.storage.local.remove('pendingAuth');
-          sendResponse({ ok: true, service: pendingAuth.service, name: session.name });
+          settings.lastfm = msg.settings.lastfm;
+          settings.librefm = msg.settings.librefm;
+          await chrome.storage.local.set({ settings });
+          sendResponse({ ok: true });
           break;
         }
 
         case 'connectPassword': {
-          const { settings, profiles } = await getStore();
+          const { settings } = await getStore();
           const cfg = settings[msg.service];
           if (!cfg || !cfg.apiKey || !cfg.secret) {
             throw new Error(`Set the ${msg.service} API key and secret first.`);
@@ -239,10 +333,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const session = await AS.getMobileSession(
             msg.service, cfg.apiKey, cfg.secret, msg.username, msg.password,
           );
-          const p = profiles[msg.profileId];
-          if (!p) throw new Error('Profile no longer exists.');
-          p[msg.service] = { sk: session.key, name: session.name };
-          await setProfiles(profiles);
+          await saveConnection(msg.profileId, msg.service, { sk: session.key, name: session.name });
           sendResponse({ ok: true, name: session.name });
           break;
         }
@@ -250,22 +341,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case 'saveListenBrainz': {
           const check = await LB.validateToken(msg.token);
           if (!check.valid) throw new Error('ListenBrainz rejected that token.');
-          const { profiles } = await getStore();
-          const p = profiles[msg.profileId];
-          if (!p) throw new Error('Profile no longer exists.');
-          p.listenbrainz = { token: msg.token, user: check.user };
-          await setProfiles(profiles);
+          await saveConnection(msg.profileId, 'listenbrainz', { token: msg.token, user: check.user });
           sendResponse({ ok: true, user: check.user });
           break;
         }
 
-        case 'disconnect': {
-          const { profiles } = await getStore();
-          const p = profiles[msg.profileId];
-          if (p) { p[msg.service] = null; await setProfiles(profiles); }
+        case 'disconnect':
+          await saveConnection(msg.profileId, msg.service, null);
           sendResponse({ ok: true });
           break;
-        }
 
         case 'toggleProfile': {
           const { profiles } = await getStore();
@@ -290,5 +374,5 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: false, error: e.message });
     }
   })();
-  return true; // async response
+  return true;
 });

@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "SessionBox Multi-Account Scrobbler",
-  "version": "1.0.0",
-  "description": "Scrobble each SessionBox Spotify tab to its own Last.fm / Libre.fm / ListenBrainz account, routed by the tab's Spotify identity.",
-  "permissions": ["storage"],
+  "version": "1.1.0",
+  "description": "Scrobble every SessionBox Spotify tab (including background tabs) to Last.fm / Libre.fm / ListenBrainz, routed by each tab's Spotify identity.",
+  "permissions": ["storage", "scripting", "alarms", "tabs"],
   "host_permissions": [
     "https://open.spotify.com/*",
     "https://api.spotify.com/*",
@@ -22,18 +22,5 @@
   },
   "icons": {
     "128": "icons/icon-128.png"
-  },
-  "content_scripts": [
-    {
-      "matches": ["https://open.spotify.com/*"],
-      "js": ["src/inject-main.js"],
-      "world": "MAIN",
-      "run_at": "document_idle"
-    },
-    {
-      "matches": ["https://open.spotify.com/*"],
-      "js": ["src/content.js"],
-      "run_at": "document_idle"
-    }
-  ]
+  }
 }
