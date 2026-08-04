@@ -10,8 +10,6 @@ This updates:
 - The four campaign track cards (JUMP / Shut Down / DDU-DU DDU-DU / GO)
 - Artist member stream counts (JISOO / JENNIE / ROSÉ / LISA) via Supabase
 
-Do NOT use `update-streams.yml` (workflow ID 326700649) for this — that only refreshes campaign tracks.
-
 To trigger via GitHub Actions MCP:
 ```
 mcp__github__actions_run_trigger
@@ -20,6 +18,28 @@ mcp__github__actions_run_trigger
   workflow_id: 316054383
   ref: main
   inputs: { run_artist_fetch: "true" }
+```
+
+---
+
+### `/update-tracks`
+Triggers the **Update Streams** GitHub Actions workflow (`update-streams.yml`, workflow ID `326700649`) on `altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-`, dispatched to `main` branch.
+
+This updates **only** the four campaign track cards on blinksunited.com:
+- JUMP
+- Shut Down
+- DDU-DU DDU-DU
+- GO
+
+Does NOT update the catalog total or artist member stream counts. Use `/update-streams` for a full refresh.
+
+To trigger via GitHub Actions MCP:
+```
+mcp__github__actions_run_trigger
+  owner: altroindirizzoaltracorsa-hash
+  repo: BLACKPINK-PROJECT-
+  workflow_id: 326700649
+  ref: main
 ```
 
 ---
