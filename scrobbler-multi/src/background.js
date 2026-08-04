@@ -126,7 +126,10 @@ function advance(prev, msg, now, jobs) {
     jobs.push(ensureProfile(msg.account));
   }
 
-  const track = msg.track && (msg.track.title) ? msg.track : null;
+  // A scrobble needs both title and artist; skip ads and artist-less items.
+  const t = msg.track;
+  const isAd = t && t.title && /^(advertisement|spotify|spotify ad)$/i.test(t.title.trim());
+  const track = t && t.title && t.artist && !isAd ? t : null;
   if (!track) {
     if (rec.cur) rec.cur.playing = false;
     return rec;
@@ -201,19 +204,35 @@ async function readState(needAccount) {
   const duration = clock('[data-testid="playback-duration"]');
   const position = clock('[data-testid="playback-position"]');
 
-  // Track from mediaSession (language-independent), with a DOM fallback.
+  // Track: prefer mediaSession, but fill any missing field from the DOM. Many
+  // (free/web-player) tabs don't populate mediaSession, and Last.fm rejects a
+  // scrobble with no artist, so the artist fallback matters most.
   const md = navigator.mediaSession && navigator.mediaSession.metadata;
-  let track = md && md.title
-    ? { title: md.title, artist: md.artist || '', album: md.album || '', duration }
-    : null;
-  if (!track) {
-    const txt = (sel) => { const e = document.querySelector(sel); return e ? (e.textContent || '').trim() : ''; };
-    const title = txt('[data-testid="context-item-info-title"]') || txt('[data-testid="context-item-link"]');
-    const artist = txt('[data-testid="context-item-info-artist"]')
-      || (document.querySelector('[data-testid="now-playing-widget"] a[href*="/artist/"]') || {}).textContent
-      || '';
-    if (title) track = { title, artist: artist.trim(), album: '', duration };
+  let title = md && md.title ? md.title : '';
+  let artist = md && md.artist ? md.artist : '';
+  let album = md && md.album ? md.album : '';
+
+  const widget = document.querySelector('[data-testid="now-playing-widget"]');
+  if (!title) {
+    const t = document.querySelector('[data-testid="context-item-link"]')
+      || document.querySelector('[data-testid="context-item-info-title"]');
+    if (t) title = (t.textContent || '').trim();
   }
+  if (!artist) {
+    // Artist links are language-independent (the name text, not "by"/"di").
+    const scope = widget || document;
+    const links = Array.from(scope.querySelectorAll('a[href*="/artist/"]'))
+      .map((a) => (a.textContent || '').trim()).filter(Boolean);
+    if (links.length) {
+      artist = Array.from(new Set(links)).join(', ');
+    } else {
+      const a = document.querySelector('[data-testid="context-item-info-artist"]')
+        || document.querySelector('[data-testid="context-item-info-subtitles"]');
+      if (a) artist = (a.textContent || '').trim();
+    }
+  }
+
+  const track = title ? { title, artist, album, duration } : null;
 
   // Raw state signals; the worker decides "playing" (see advance()) so it can
   // use position-advance, which does not depend on UI language.
@@ -300,7 +319,8 @@ async function poll() {
     const acct = (result.account && result.account.name) || (prev && prev.account && prev.account.name) || '?';
     pbState[tab.id] = advance(prev, result, now, jobs);
     const c = pbState[tab.id].cur;
-    console.log(`[poll] tab ${tab.id}: acct=${acct} track="${result.track ? result.track.title : '—'}" `
+    const tr = result.track || {};
+    console.log(`[poll] tab ${tab.id}: acct=${acct} track="${tr.title || '—'}" artist="${tr.artist || '—'}" `
       + `state=${result.playbackState} pos=${result.position}s playing=${c ? c.playing : false} `
       + `played=${c ? Math.round(c.playedMs / 1000) : 0}s${c && c.scrobbled ? ' [scrobbled]' : ''}`);
   }
