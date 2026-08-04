@@ -188,6 +188,19 @@ async function fetchTrackViaSupabase(trackKey) {
 // point trying more than one key per provider on a stale response — we break
 // out and try the next provider directly.
 async function fetchTrackMetadata(trackId, prevTotal = 0, trackKey = null) {
+  // Check for a recently-cached result from the Cloudflare Worker.
+  // The worker is called when the catalog total is refreshed and stores
+  // per-track counts as a side-effect — Cloudflare IPs can get a fresh
+  // Spotify anon token, so these counts are reliable and free of RapidAPI quota.
+  if (trackKey) {
+    try {
+      const wc = await redis.get(`bp_worker_${trackKey}`);
+      if (wc?.total > 0 && Date.now() - wc.ts < 4 * 60 * 60 * 1000) {
+        return { playCount: wc.total };
+      }
+    } catch {}
+  }
+
   let lastError = 'No API keys configured';
   let staleResult = null; // best valid-but-unchanged result seen so far
   for (const provider of PROVIDERS) {
@@ -232,7 +245,7 @@ async function fetchTrackMetadata(trackId, prevTotal = 0, trackKey = null) {
   throw new Error(lastError);
 }
 
-// ── Catalog total helpers (merged from catalog-streams.js) ───────────────────
+// ── Catalog total helpers (merged from catalog-streams.js) ─────────────────────────────────
 
 const CAT_CACHE_KEY          = 'bp_catalog_total';
 const CAT_HIST_KEY           = 'bp_catalog_hist';
@@ -474,6 +487,8 @@ async function fetchCatalogViaSpotifyAPI() {
 
 // Calls the Cloudflare Worker which gets a fresh Spotify anon token (Cloudflare
 // IPs are not blocked by Spotify) and sums play counts via the partner API.
+// The worker also returns per-track counts so campaign tracks can be cached
+// as a side-effect, eliminating their dependence on RapidAPI quota.
 // Requires SPOTIFY_WORKER_URL and SPOTIFY_WORKER_KEY env vars in Vercel.
 async function fetchCatalogViaWorker() {
   const workerUrl = process.env.SPOTIFY_WORKER_URL;
@@ -488,7 +503,7 @@ async function fetchCatalogViaWorker() {
   }
   const d = await r.json();
   if (!d.total || d.total < 1_000_000_000) throw new Error(`worker bad total: ${JSON.stringify(d).slice(0, 200)}`);
-  return { total: d.total, trackCount: d.trackCount, failed: d.failed || 0, source: 'cloudflare-worker' };
+  return { total: d.total, trackCount: d.trackCount, failed: d.failed || 0, source: 'cloudflare-worker', tracks: d.tracks || {} };
 }
 
 async function fetchCatalogViaKworb() {
@@ -657,6 +672,18 @@ async function handleCatalogRequest(req, res) {
   const errors = [];
   let result   = null;
   try { result = await fetchCatalogViaWorker(); } catch(e) { errors.push(`worker: ${e.message}`); }
+
+  // If the worker returned per-track counts, cache the campaign tracks in Redis
+  // so fetchTrackMetadata() can use them directly instead of hitting RapidAPI.
+  if (result?.tracks && Object.keys(result.tracks).length > 0) {
+    const ts = Date.now();
+    Promise.all(
+      Object.entries(TRACKS)
+        .filter(([, id]) => (result.tracks[id] || 0) > 0)
+        .map(([key, id]) => redis.set(`bp_worker_${key}`, { total: result.tracks[id], ts }))
+    ).catch(() => {});
+  }
+
   if (!result) { try { result = await fetchCatalogViaRapidAPI(); } catch(e) { errors.push(`rapidapi: ${e.message}`); } }
   if (!result) { try { result = await fetchCatalogViaSpotifyAPI(); } catch(e) { errors.push(`spotify-api: ${e.message}`); } }
   if (!result) { try { result = await fetchCatalogViaKworb(); } catch(e) { errors.push(`kworb: ${e.message}`); } }
