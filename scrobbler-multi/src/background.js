@@ -201,8 +201,21 @@ async function readState(needAccount) {
     if (!p.length || p.some(isNaN)) return 0;
     return p.reduce((a, n) => a * 60 + n, 0);
   }
-  const duration = clock('[data-testid="playback-duration"]');
-  const position = clock('[data-testid="playback-position"]');
+
+  // Read the actual media element first: its currentTime/paused keep advancing
+  // even when a background tab's on-screen position counter is throttled, and
+  // paused is an unambiguous, language-independent play state.
+  let position = 0;
+  let duration = 0;
+  let mediaState = null;
+  const media = document.querySelector('video, audio');
+  if (media) {
+    position = Math.floor(media.currentTime || 0);
+    if (isFinite(media.duration) && media.duration > 0) duration = Math.floor(media.duration);
+    mediaState = media.paused ? 'paused' : 'playing';
+  }
+  if (!duration) duration = clock('[data-testid="playback-duration"]');
+  if (!position) position = clock('[data-testid="playback-position"]');
 
   // Track: prefer mediaSession, but fill any missing field from the DOM. Many
   // (free/web-player) tabs don't populate mediaSession, and Last.fm rejects a
@@ -236,7 +249,8 @@ async function readState(needAccount) {
 
   // Raw state signals; the worker decides "playing" (see advance()) so it can
   // use position-advance, which does not depend on UI language.
-  const playbackState = (navigator.mediaSession && navigator.mediaSession.playbackState) || 'none';
+  const playbackState = mediaState
+    || (navigator.mediaSession && navigator.mediaSession.playbackState) || 'none';
 
   let account = null;
   if (needAccount) {
