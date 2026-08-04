@@ -14,31 +14,30 @@
   // --- which Spotify account is this tab logged into? ---
 
   async function fetchAccount() {
-    // Preferred: grab the web player access token, then ask the API who we are.
-    try {
-      const r = await fetch(
-        'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
-        { credentials: 'include' },
-      );
-      if (r.ok) {
-        const { accessToken, isAnonymous } = await r.json();
-        if (accessToken && !isAnonymous) {
-          const me = await fetch('https://api.spotify.com/v1/me', {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-          if (me.ok) {
-            const u = await me.json();
-            if (u && u.id) return { id: u.id, name: u.display_name || u.id };
-          }
+    // Preferred: get a web-player access token, then ask the API who we are.
+    // This yields a UNIQUE Spotify user id, which is what keeps two accounts
+    // from being merged into one profile.
+    const token = await getAccessToken();
+    if (token) {
+      try {
+        const me = await fetch('https://api.spotify.com/v1/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (me.ok) {
+          const u = await me.json();
+          if (u && u.id) return { id: u.id, name: u.display_name || u.id };
         }
-      }
-    } catch (_) { /* fall through to DOM */ }
+      } catch (_) { /* fall through to DOM */ }
+    }
 
-    // Fallback: read the display name off the account widget in the top bar.
+    // Last resort: the account widget in the top bar. This is often just the
+    // avatar initial, so ids built from it are marked with a "name:" prefix and
+    // can collide — connect at least one service to force a real-id lookup.
     const sel = [
       '[data-testid="user-widget-name"]',
       '[data-testid="user-widget-link"]',
       'button[data-testid="user-widget-link"] img[alt]',
+      'img[data-testid="user-widget-avatar"][alt]',
     ];
     for (const s of sel) {
       const el = document.querySelector(s);
@@ -47,6 +46,40 @@
         const clean = name.trim();
         return { id: `name:${clean.toLowerCase()}`, name: clean };
       }
+    }
+    return null;
+  }
+
+  // Resolve a web-player access token via several routes, since Spotify has
+  // changed how it exposes this over time.
+  async function getAccessToken() {
+    // 1. The transport token endpoint (older but often still present).
+    try {
+      const r = await fetch(
+        'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
+        { credentials: 'include' },
+      );
+      if (r.ok) {
+        const j = await r.json();
+        if (j.accessToken && !j.isAnonymous) return j.accessToken;
+      }
+    } catch (_) { /* try next */ }
+
+    // 2. A token embedded in the page's bootstrap script tags.
+    for (const id of ['session', 'config']) {
+      const el = document.getElementById(id);
+      if (el && el.textContent) {
+        try {
+          const j = JSON.parse(el.textContent);
+          if (j.accessToken) return j.accessToken;
+        } catch (_) { /* not JSON */ }
+      }
+    }
+
+    // 3. Scan any inline script for an accessToken field.
+    for (const s of document.querySelectorAll('script')) {
+      const m = (s.textContent || '').match(/"accessToken"\s*:\s*"([^"]+)"/);
+      if (m) return m[1];
     }
     return null;
   }
