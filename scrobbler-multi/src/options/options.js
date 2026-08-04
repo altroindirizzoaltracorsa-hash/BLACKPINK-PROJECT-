@@ -79,8 +79,10 @@ function renderProfile(profile) {
       }
       const res = await send({ type: 'startWebAuth', service: svc, profileId: profile.id });
       if (!res || !res.ok) { toast(res && res.error || 'Auth failed.', true); return; }
-      window.open(res.url, '_blank');
       showPending(profile.label, svc);
+      // Opening a tab closes this popup; the pending banner is restored from
+      // storage the next time the panel opens, so the Finish step isn't lost.
+      chrome.tabs.create({ url: res.url });
     });
   }
 
@@ -115,31 +117,62 @@ function renderProfile(profile) {
   return node;
 }
 
-async function showPending(label, service) {
+function showPending(label, service) {
+  const svcName = service === 'librefm' ? 'Libre.fm' : 'Last.fm';
   const el = $('#pending');
   el.innerHTML = '';
-  el.append(document.createTextNode(
-    `Approve access for "${label}" in the tab that opened, then click Finish.`));
-  const btn = document.createElement('button');
-  btn.className = 'primary';
-  btn.textContent = 'Finish connecting';
-  btn.addEventListener('click', async () => {
+  const msg = document.createElement('div');
+  msg.textContent =
+    `Approve ${svcName} access for "${label}" in the tab that opened. ` +
+    `Once you've clicked "Yes, allow access" there, come back and click Finish.`;
+  el.appendChild(msg);
+
+  const finish = document.createElement('button');
+  finish.className = 'primary';
+  finish.textContent = 'Finish connecting';
+  finish.addEventListener('click', async () => {
+    finish.disabled = true;
     const res = await send({ type: 'finishWebAuth' });
-    if (res && res.ok) { toast(`${res.service} connected as ${res.name}.`); el.classList.add('hidden'); refresh(); }
-    else toast(res && res.error || 'Could not finish auth.', true);
+    finish.disabled = false;
+    if (res && res.ok) {
+      toast(`${svcName} connected as ${res.name}.`);
+      el.classList.add('hidden');
+      refresh();
+    } else {
+      // Most common: clicked before approving. Keep the banner so they can retry.
+      toast(res && res.error ? `${res.error}` : 'Could not finish — approve access first, then retry.', true);
+    }
   });
-  el.appendChild(btn);
+  el.appendChild(finish);
+
+  const cancel = document.createElement('button');
+  cancel.className = 'ghost';
+  cancel.textContent = 'Cancel';
+  cancel.addEventListener('click', async () => {
+    await send({ type: 'cancelAuth' });
+    el.classList.add('hidden');
+  });
+  el.appendChild(cancel);
+
   el.classList.remove('hidden');
 }
 
 async function refresh() {
-  const { settings, profiles } = await send({ type: 'getState' });
+  const { settings, profiles, pendingAuth } = await send({ type: 'getState' });
   loadSettings(settings);
   const list = $('#profiles');
   list.innerHTML = '';
   const entries = Object.values(profiles);
   $('#empty').classList.toggle('hidden', entries.length > 0);
   for (const p of entries) list.appendChild(renderProfile(p));
+
+  // Restore an in-progress Last.fm / Libre.fm auth after the popup reopened.
+  if (pendingAuth) {
+    const p = profiles[pendingAuth.profileId];
+    showPending(p ? p.label : pendingAuth.profileId, pendingAuth.service);
+  } else {
+    $('#pending').classList.add('hidden');
+  }
 }
 
 $('#refresh').addEventListener('click', refresh);

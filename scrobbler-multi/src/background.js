@@ -181,7 +181,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
 
         case 'getState': {
-          sendResponse(await getStore());
+          const store = await getStore();
+          const { pendingAuth } = await chrome.storage.local.get('pendingAuth');
+          sendResponse({ ...store, pendingAuth: pendingAuth || null });
+          break;
+        }
+
+        case 'cancelAuth': {
+          await chrome.storage.local.remove('pendingAuth');
+          sendResponse({ ok: true });
           break;
         }
 
