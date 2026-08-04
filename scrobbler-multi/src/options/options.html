@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Multi-Account Scrobbler</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <header>
+    <h1>Multi-Account Scrobbler</h1>
+    <p class="sub">Each SessionBox Spotify tab scrobbles to its own accounts.</p>
+  </header>
+
+  <section class="card">
+    <h2>1. API credentials</h2>
+    <p class="hint">
+      Register one app at
+      <a href="https://www.last.fm/api/account/create" target="_blank" rel="noreferrer">last.fm/api</a>
+      (and, for Libre.fm, at <a href="https://libre.fm/" target="_blank" rel="noreferrer">libre.fm</a>).
+      These are shared by every profile — only the per-account login differs.
+      ListenBrainz needs nothing here.
+    </p>
+    <div class="grid">
+      <label>Last.fm API key<input id="lastfm-key" type="text" autocomplete="off" /></label>
+      <label>Last.fm secret<input id="lastfm-secret" type="password" autocomplete="off" /></label>
+      <label>Libre.fm API key<input id="librefm-key" type="text" autocomplete="off" /></label>
+      <label>Libre.fm secret<input id="librefm-secret" type="password" autocomplete="off" /></label>
+    </div>
+    <button id="save-settings" class="primary">Save credentials</button>
+  </section>
+
+  <section class="card">
+    <div class="row space">
+      <h2>2. Spotify profiles</h2>
+      <button id="refresh" class="ghost">Refresh</button>
+    </div>
+    <p class="hint">
+      Play a track in each SessionBox Spotify tab once — the account appears here.
+      Then connect the scrobbling services you want for it.
+    </p>
+    <div id="pending" class="pending hidden"></div>
+    <div id="profiles"></div>
+    <p id="empty" class="empty">No Spotify accounts detected yet.</p>
+  </section>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <template id="profile-tpl">
+    <div class="profile">
+      <div class="row space">
+        <label class="toggle">
+          <input type="checkbox" class="p-enabled" />
+          <span class="p-label"></span>
+        </label>
+        <button class="ghost danger p-remove" title="Remove profile">Remove</button>
+      </div>
+      <div class="services">
+        <div class="svc" data-svc="lastfm"><span class="svc-name">Last.fm</span><span class="svc-state"></span><button class="ghost svc-btn"></button></div>
+        <div class="svc" data-svc="librefm"><span class="svc-name">Libre.fm</span><span class="svc-state"></span><button class="ghost svc-btn"></button></div>
+        <div class="svc lb" data-svc="listenbrainz">
+          <span class="svc-name">ListenBrainz</span><span class="svc-state"></span>
+          <div class="lb-connect">
+            <input type="text" class="lb-token" placeholder="user token" autocomplete="off" />
+            <button class="ghost lb-save">Save</button>
+          </div>
+          <button class="ghost svc-btn lb-disconnect hidden">Disconnect</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script src="options.js"></script>
+</body>
+</html>
