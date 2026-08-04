@@ -129,14 +129,20 @@ export default {
         return new Response(JSON.stringify({ error: 'No track IDs found' }), { status: 502, headers: JSON_HEADERS });
       }
 
-      // Sum play counts in batches of 20 (parallel within each batch)
+      // Fetch play counts in batches of 20 (parallel within each batch).
+      // Collect per-track counts so callers can extract individual songs
+      // (e.g. campaign tracks) without a second round of API calls.
       let total = 0, failed = 0;
+      const tracks = {};
       for (let i = 0; i < trackIds.length; i += 20) {
         const batch = trackIds.slice(i, i + 20);
         const counts = await Promise.all(
           batch.map(id => getPlayCount(id, anonToken).catch(() => { failed++; return 0; })),
         );
-        total += counts.reduce((s, c) => s + c, 0);
+        for (let j = 0; j < batch.length; j++) {
+          tracks[batch[j]] = counts[j];
+          total += counts[j];
+        }
       }
 
       if (total === 0) {
@@ -147,7 +153,7 @@ export default {
       }
 
       return new Response(
-        JSON.stringify({ total, trackCount: trackIds.length, failed, source: 'cloudflare-worker' }),
+        JSON.stringify({ total, trackCount: trackIds.length, failed, tracks, source: 'cloudflare-worker' }),
         { status: 200, headers: JSON_HEADERS },
       );
     } catch (e) {
