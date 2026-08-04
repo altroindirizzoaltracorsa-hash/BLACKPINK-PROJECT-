@@ -113,5 +113,16 @@ export async function scrobble(service, apiKey, secret, sk, track, timestamp) {
   };
   if (track.album) params.album = track.album;
   if (track.duration) params.duration = String(Math.round(track.duration));
-  return apiCall(svc.apiRoot, params, secret, { post: true });
+  const data = await apiCall(svc.apiRoot, params, secret, { post: true });
+
+  // A 200 with no top-level error can still mean the scrobble was IGNORED
+  // (duplicate, timestamp out of range, anti-spam, daily limit, …). Surface it.
+  const attr = data && data.scrobbles && data.scrobbles['@attr'];
+  if (attr && Number(attr.ignored) > 0) {
+    const sc = data.scrobbles.scrobble;
+    const im = sc && sc.ignoredMessage;
+    const reason = (im && (im['#text'] || im.code)) || 'unknown reason';
+    throw new Error(`ignored by ${svc.name}: ${reason}`);
+  }
+  return data;
 }

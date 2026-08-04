@@ -78,31 +78,36 @@ async function dispatch(kind, account, track, timestamp) {
   const pick = (svc) => (profile && profile[svc]) || settings.defaults[svc] || null;
   const jobs = [];
 
+  const track_ = () => `"${track.artist} - ${track.title}" (${account.name || account.id})`;
+  const run = (label, promise) => promise
+    .then(() => true)
+    .catch((e) => { console.warn(`[${label}] ${kind} failed for ${track_()}:`, e.message); return false; });
+
   for (const svc of ['lastfm', 'librefm']) {
     const conn = pick(svc);
     const cfg = settings[svc];
     if (conn && conn.sk && cfg && cfg.apiKey && cfg.secret) {
-      const fn = kind === 'nowplaying'
+      jobs.push(run(svc, kind === 'nowplaying'
         ? AS.updateNowPlaying(svc, cfg.apiKey, cfg.secret, conn.sk, track)
-        : AS.scrobble(svc, cfg.apiKey, cfg.secret, conn.sk, track, timestamp);
-      jobs.push(fn.catch((e) => console.warn(`[${svc}] ${kind} failed:`, e.message)));
+        : AS.scrobble(svc, cfg.apiKey, cfg.secret, conn.sk, track, timestamp)));
     }
   }
 
   const lb = pick('listenbrainz');
   if (lb && lb.token) {
-    const fn = kind === 'nowplaying'
+    jobs.push(run('listenbrainz', kind === 'nowplaying'
       ? LB.updateNowPlaying(lb.token, track)
-      : LB.scrobble(lb.token, track, timestamp);
-    jobs.push(fn.catch((e) => console.warn(`[listenbrainz] ${kind} failed:`, e.message)));
+      : LB.scrobble(lb.token, track, timestamp)));
   }
 
-  await Promise.all(jobs);
+  const results = await Promise.all(jobs);
   if (kind === 'scrobble') {
-    if (jobs.length) {
-      console.log(`✅ Scrobbled "${track.artist} - ${track.title}" (${account.name || account.id})`);
-    } else {
+    if (!jobs.length) {
       console.warn(`⚠️ No scrobble target for ${account.name || account.id} — connect a default or per-profile account.`);
+    } else if (results.some(Boolean)) {
+      console.log(`✅ Scrobbled ${track_()}`);
+    } else {
+      console.warn(`❌ Scrobble rejected for ${track_()} (see the failure line above)`);
     }
   }
 }
