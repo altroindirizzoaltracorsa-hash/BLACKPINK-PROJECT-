@@ -98,8 +98,12 @@ async function dispatch(kind, account, track, timestamp) {
   }
 
   await Promise.all(jobs);
-  if (kind === 'scrobble' && jobs.length) {
-    console.log(`Scrobbled "${track.artist} - ${track.title}" (${account.name || account.id})`);
+  if (kind === 'scrobble') {
+    if (jobs.length) {
+      console.log(`✅ Scrobbled "${track.artist} - ${track.title}" (${account.name || account.id})`);
+    } else {
+      console.warn(`⚠️ No scrobble target for ${account.name || account.id} — connect a default or per-profile account.`);
+    }
   }
 }
 
@@ -122,23 +126,36 @@ function advance(prev, msg, now, jobs) {
     jobs.push(ensureProfile(msg.account));
   }
 
-  const track = msg.track && msg.track.artist && msg.track.title ? msg.track : null;
-  const playing = !!msg.playing && !!track;
-
+  const track = msg.track && (msg.track.title) ? msg.track : null;
   if (!track) {
     if (rec.cur) rec.cur.playing = false;
     return rec;
   }
 
   const key = trackKey(track);
+  const sameTrack = rec.cur && rec.cur.key === key;
 
-  if (!rec.cur || rec.cur.key !== key) {
+  // Decide "playing" without reading any UI text (locale-independent):
+  // trust an explicit mediaSession state, else infer from position advancing.
+  let playing;
+  if (msg.playbackState === 'playing') {
+    playing = true;
+  } else if (msg.playbackState === 'paused') {
+    playing = false;
+  } else if (sameTrack && typeof rec.cur.lastPosition === 'number') {
+    playing = msg.position > rec.cur.lastPosition;
+  } else {
+    playing = true; // first sighting, unknown state — assume playing; next poll confirms
+  }
+
+  if (!sameTrack) {
     rec.cur = {
       key,
       track,
       startedAt: Math.floor(now / 1000),
       playedMs: 0,
       lastTs: now,
+      lastPosition: msg.position,
       playing,
       nowPlayingSent: false,
       scrobbled: false,
@@ -153,6 +170,7 @@ function advance(prev, msg, now, jobs) {
   const cur = rec.cur;
   if (cur.playing) cur.playedMs += now - cur.lastTs;
   cur.lastTs = now;
+  cur.lastPosition = msg.position;
   cur.playing = playing;
   if (track.duration && !cur.track.duration) cur.track.duration = track.duration;
 
@@ -173,29 +191,33 @@ function advance(prev, msg, now, jobs) {
 // reads the now-playing track from mediaSession, and — only when asked — the
 // tab's own Spotify account via its isolated cookies.
 async function readState(needAccount) {
-  function parseDuration() {
-    const el = document.querySelector('[data-testid="playback-duration"]');
+  function clock(sel) {
+    const el = document.querySelector(sel);
     if (!el) return 0;
     const p = el.textContent.trim().split(':').map(Number);
-    if (p.some(isNaN)) return 0;
+    if (!p.length || p.some(isNaN)) return 0;
     return p.reduce((a, n) => a * 60 + n, 0);
   }
+  const duration = clock('[data-testid="playback-duration"]');
+  const position = clock('[data-testid="playback-position"]');
 
+  // Track from mediaSession (language-independent), with a DOM fallback.
   const md = navigator.mediaSession && navigator.mediaSession.metadata;
-  const track = md && md.title
-    ? { title: md.title, artist: md.artist || '', album: md.album || '', duration: parseDuration() }
+  let track = md && md.title
+    ? { title: md.title, artist: md.artist || '', album: md.album || '', duration }
     : null;
-
-  let playing = false;
-  if (track) {
-    const st = navigator.mediaSession.playbackState;
-    if (st) {
-      playing = st === 'playing';
-    } else {
-      const b = document.querySelector('[data-testid="control-button-playpause"]');
-      playing = b ? /pause/i.test(b.getAttribute('aria-label') || '') : false;
-    }
+  if (!track) {
+    const txt = (sel) => { const e = document.querySelector(sel); return e ? (e.textContent || '').trim() : ''; };
+    const title = txt('[data-testid="context-item-info-title"]') || txt('[data-testid="context-item-link"]');
+    const artist = txt('[data-testid="context-item-info-artist"]')
+      || (document.querySelector('[data-testid="now-playing-widget"] a[href*="/artist/"]') || {}).textContent
+      || '';
+    if (title) track = { title, artist: artist.trim(), album: '', duration };
   }
+
+  // Raw state signals; the worker decides "playing" (see advance()) so it can
+  // use position-advance, which does not depend on UI language.
+  const playbackState = (navigator.mediaSession && navigator.mediaSession.playbackState) || 'none';
 
   let account = null;
   if (needAccount) {
@@ -242,7 +264,7 @@ async function readState(needAccount) {
     }
   }
 
-  return { account, playing, track };
+  return { account, track, position, playbackState };
 }
 
 async function poll() {
@@ -256,6 +278,7 @@ async function poll() {
   const alive = new Set();
   const jobs = [];
 
+  console.log(`[poll] ${tabs.length} Spotify tab(s)`);
   for (const tab of tabs) {
     alive.add(String(tab.id));
     const prev = pbState[tab.id] || null;
@@ -270,10 +293,16 @@ async function poll() {
       });
       result = inj && inj[0] ? inj[0].result : null;
     } catch (e) {
-      continue; // tab still loading, discarded, or frozen — try again next poll
+      console.log(`[poll] tab ${tab.id}: unreadable (${e.message}) — loading/discarded/frozen`);
+      continue;
     }
     if (!result) continue;
+    const acct = (result.account && result.account.name) || (prev && prev.account && prev.account.name) || '?';
     pbState[tab.id] = advance(prev, result, now, jobs);
+    const c = pbState[tab.id].cur;
+    console.log(`[poll] tab ${tab.id}: acct=${acct} track="${result.track ? result.track.title : '—'}" `
+      + `state=${result.playbackState} pos=${result.position}s playing=${c ? c.playing : false} `
+      + `played=${c ? Math.round(c.playedMs / 1000) : 0}s${c && c.scrobbled ? ' [scrobbled]' : ''}`);
   }
 
   for (const id of Object.keys(pbState)) if (!alive.has(id)) delete pbState[id];
