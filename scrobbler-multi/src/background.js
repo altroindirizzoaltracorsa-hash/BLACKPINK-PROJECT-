@@ -110,10 +110,43 @@ async function dispatch(kind, account, track, timestamp) {
       console.warn(`⚠️ No scrobble target for ${account.name || account.id} — connect a default or per-profile account.`);
     } else if (okTargets.length) {
       console.log(`✅ Scrobbled ${track_()} → ${okTargets.join(', ')}`);
+      recordScrobble(account, track, okTargets);
     } else {
       console.warn(`❌ Scrobble rejected for ${track_()} (see the failure line above)`);
     }
   }
+}
+
+// ---------- scrobble stats (per-account counters + recent history) ----------
+
+const EMPTY_STATS = { total: 0, counts: {}, history: [] };
+
+// Writes are serialized so concurrent scrobbles in one poll don't clobber
+// each other's read-modify-write on the stored stats.
+let statsChain = Promise.resolve();
+function recordScrobble(account, track, targets) {
+  const id = account.id;
+  const label = account.name || id;
+  statsChain = statsChain.then(async () => {
+    const { stats = EMPTY_STATS } = await chrome.storage.local.get('stats');
+    stats.total = (stats.total || 0) + 1;
+    stats.counts = stats.counts || {};
+    if (!stats.counts[id]) stats.counts[id] = { label, count: 0 };
+    stats.counts[id].count += 1;
+    stats.counts[id].label = label;
+    stats.history = stats.history || [];
+    stats.history.unshift({
+      n: stats.total,
+      t: Date.now(),
+      artist: track.artist,
+      title: track.title,
+      account: label,
+      targets,
+    });
+    if (stats.history.length > 100) stats.history.length = 100;
+    await chrome.storage.local.set({ stats });
+  }).catch((e) => console.warn('recordScrobble failed:', e.message));
+  return statsChain;
 }
 
 // Last.fm rule: scrobble after half the track or 4 minutes, whichever is first;
@@ -399,6 +432,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       switch (msg.type) {
         case 'getState':
           sendResponse(await getStore());
+          break;
+
+        case 'getStats': {
+          const { stats = EMPTY_STATS } = await chrome.storage.local.get('stats');
+          sendResponse(stats);
+          break;
+        }
+
+        case 'clearStats':
+          await chrome.storage.local.set({ stats: { total: 0, counts: {}, history: [] } });
+          sendResponse({ ok: true });
           break;
 
         case 'saveSettings': {

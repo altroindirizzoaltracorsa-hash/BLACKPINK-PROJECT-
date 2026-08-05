@@ -13,6 +13,20 @@
   </header>
 
   <section class="card">
+    <div class="row space">
+      <h2>Scrobble activity <span id="stat-total" class="badge">0</span></h2>
+      <button id="clear-stats" class="ghost">Clear</button>
+    </div>
+    <p class="hint">
+      Counts scrobbles Last.fm <strong>accepted</strong> (its API replied accepted=1).
+      Last.fm may still filter some out of your profile afterwards.
+    </p>
+    <div id="stat-counts" class="stat-counts"></div>
+    <div id="stat-history" class="stat-history"></div>
+    <p id="stat-empty" class="empty">No scrobbles yet.</p>
+  </section>
+
+  <section class="card">
     <h2>1. API credentials</h2>
     <p class="hint">
       Register one app at

@@ -130,5 +130,52 @@ async function refresh() {
   for (const p of entries) list.appendChild(renderProfile(p));
 }
 
+// ---------- scrobble activity (live) ----------
+
+function fmtTime(ms) {
+  try { return new Date(ms).toLocaleTimeString(); } catch (e) { return ''; }
+}
+
+async function renderStats() {
+  const stats = await send({ type: 'getStats' }) || { total: 0, counts: {}, history: [] };
+  $('#stat-total').textContent = stats.total || 0;
+
+  const counts = $('#stat-counts');
+  counts.innerHTML = '';
+  const entries = Object.values(stats.counts || {}).sort((a, b) => b.count - a.count);
+  for (const c of entries) {
+    const chip = document.createElement('span');
+    chip.className = 'stat-chip';
+    chip.innerHTML = `<span>${escapeHtml(c.label)}</span><b>${c.count}</b>`;
+    counts.appendChild(chip);
+  }
+
+  const hist = $('#stat-history');
+  hist.innerHTML = '';
+  const history = stats.history || [];
+  $('#stat-empty').classList.toggle('hidden', history.length > 0);
+  for (const h of history) {
+    const el = document.createElement('div');
+    el.className = 'hist';
+    el.innerHTML = `<div class="hist-top"><span class="hist-acct">${escapeHtml(h.account)}</span>`
+      + `<span>#${h.n} · ${fmtTime(h.t)}</span></div>`
+      + `<div class="hist-track">${escapeHtml(h.artist)} — ${escapeHtml(h.title)}</div>`;
+    hist.appendChild(el);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+$('#clear-stats').addEventListener('click', async () => {
+  await send({ type: 'clearStats' });
+  renderStats();
+});
+
 $('#refresh').addEventListener('click', refresh);
 refresh();
+renderStats();
+// Keep the activity panel live while the popup is open.
+setInterval(renderStats, 3000);
