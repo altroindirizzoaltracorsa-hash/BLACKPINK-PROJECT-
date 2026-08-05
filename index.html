@@ -1917,6 +1917,7 @@
           </div>
           <div class="gh-filter">
             <div class="gh-presets" id="gh-presets">
+              <button class="gh-preset" data-days="yesterday" onclick="setGoalHistoryPreset('yesterday')">Yesterday</button>
               <button class="gh-preset" data-days="7" onclick="setGoalHistoryPreset(7)">Last 7 days</button>
               <button class="gh-preset active" data-days="30" onclick="setGoalHistoryPreset(30)">Last 30 days</button>
               <button class="gh-preset" data-days="90" onclick="setGoalHistoryPreset(90)">Last 90 days</button>
@@ -9156,9 +9157,14 @@ function closeGoalHistory() {
 function setGoalHistoryPreset(days) {
   document.querySelectorAll('#gh-presets .gh-preset').forEach(b =>
     b.classList.toggle('active', b.dataset.days === String(days)));
-  const to = new Date();
+  let to = new Date();
   let from = null;
-  if (days !== 'all') { from = new Date(); from.setDate(from.getDate() - (Number(days) - 1)); }
+  if (days === 'yesterday') {
+    to = new Date(); to.setDate(to.getDate() - 1);
+    from = new Date(to);
+  } else if (days !== 'all') {
+    from = new Date(); from.setDate(from.getDate() - (Number(days) - 1));
+  }
   document.getElementById('gh-from').value = from ? _ghFmt(from) : '';
   document.getElementById('gh-to').value = _ghFmt(to);
   renderGoalHistory(from, to);
