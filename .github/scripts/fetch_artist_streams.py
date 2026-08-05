@@ -28,7 +28,7 @@ SUPABASE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
 # Spotify's public play_count always lags by a day -- whatever we fetch
 # "today" is actually yesterday's finalized count, same convention kworb
 # uses. Label the snapshot with the day it reflects, not the day we ran.
-TODAY = (date.today() - timedelta(days=1)).isoformat()
+TODAY = os.environ.get('OVERRIDE_DATE') or (date.today() - timedelta(days=1)).isoformat()
 
 BLACKPINK_ID = "41MozSoPIsD1dJM0CLPjZF"
 JISOO_ID = "6UZ0ba50XreR4TM8u322gs"
