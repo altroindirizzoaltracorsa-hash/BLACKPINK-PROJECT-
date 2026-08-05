@@ -29,9 +29,11 @@
     <p id="lead">Connecting your blinksunited profile to the Multi-Account Scrobbler extension…</p>
 
     <div id="login" class="hidden">
+      <button id="twitter">Sign in with X / Twitter</button>
+      <div style="text-align:center;color:#6a6a6a;font-size:11px;margin:12px 0 2px;">— or with email —</div>
       <label>Email<input id="email" type="email" autocomplete="email" /></label>
       <label>Password<input id="password" type="password" autocomplete="current-password" /></label>
-      <button id="signin">Sign in &amp; link</button>
+      <button id="signin" class="ghost">Sign in &amp; link</button>
       <button id="magic" class="ghost">Email me a login link instead</button>
     </div>
 
@@ -92,6 +94,15 @@
       $('login').classList.remove('hidden');
       status('');
     }
+
+    $('twitter').addEventListener('click', async () => {
+      status('Redirecting to X / Twitter…');
+      const { error } = await sb.auth.signInWithOAuth({
+        provider: 'twitter',
+        options: { redirectTo: location.href },
+      });
+      if (error) status('Twitter sign-in failed: ' + error.message, 'err');
+    });
 
     $('signin').addEventListener('click', async () => {
       const email = $('email').value.trim(); const password = $('password').value;

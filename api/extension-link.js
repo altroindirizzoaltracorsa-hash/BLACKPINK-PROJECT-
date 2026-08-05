@@ -40,7 +40,9 @@ export default async function handler(req, res) {
     .eq('app_user_id', user.id)
     .maybeSingle();
 
-  const profileLabel = user.user_metadata?.display_name || user.email || 'blink';
+  const md = user.user_metadata || {};
+  const profileLabel = md.display_name || md.user_name || md.name
+    || md.full_name || md.preferred_username || user.email || 'blink';
 
   if (existing) {
     return res.status(200).json({ ok: true, token: existing.token, profile: existing.label || profileLabel });
