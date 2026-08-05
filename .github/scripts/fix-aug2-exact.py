@@ -122,11 +122,15 @@ def process_artist(artist_id, exact):
         old3d = old3["daily_delta"] if old3 else None
 
         new3d = (aug3_streams - ex_streams) if aug3_streams is not None else None
+        # trend = did Aug 3 do more (+) or less (-) daily streams than Aug 2?
+        trend = (new3d - ex_daily) if new3d is not None else None
 
         s_old2 = f"{old2s:,}" if old2s is not None else "—"
         s_new3 = f"{new3d:,}" if new3d is not None else "—(no aug3 row)"
         s_old3 = f"{old3d:,}" if old3d is not None else "—"
-        print(f"  {tname[:37]:<38} {s_old2:>15} → {ex_streams:>14,}   {s_old3:>10} → {s_new3}")
+        s_trend = f"{trend:+,} vs Aug2" if trend is not None else "—"
+        print(f"  {tname[:37]:<38} {s_old2:>15} → {ex_streams:>14,}   "
+              f"aug3 daily {s_old3:>9} → {s_new3:>9}   trend {s_trend}")
 
         aug2_writes.append({
             "track_ref": int(ref), "date": AUG2,
