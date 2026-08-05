@@ -54,7 +54,7 @@ mcp__github__actions_run_trigger
 ## Key API / Infra Context
 
 - **`/api/streams`** — powers campaign card stream counts. Supports `?force=1&key=ADMIN_SECRET`, `?cron=1`, `?catalog=1`, `?action=set-entry`.
-- **Watch window:** 2PM–11PM Italy. After 2PM, cache TTL = 15 minutes (visitor-triggered, NOT automatic cron).
+- **Watch window:** 3PM–11PM Italy. After 3PM, cache TTL = 15 minutes (visitor-triggered, NOT automatic cron).
 - **Vercel cron:** `0 21 * * *` UTC (11PM Italy) → `/api/streams?cron=1` — campaign tracks only.
 - **`fetch-catalog.yml` schedule:** `0 22 * * *` UTC (midnight Italy) — full catalog + artist streams.
 - **RapidAPI providers:** `spotify-scraper` (14 keys) + `spotify-scraper-api` (16 keys) = 30 total. Keys rotate but can exhaust on high-traffic afternoons.
