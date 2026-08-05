@@ -1,0 +1,165 @@
+"""
+Replace the proportionally-scaled 2026-08-02 per-track baseline with the
+EXACT kworb Aug 2 values, then recompute each track's 2026-08-03 daily_delta
+against that corrected baseline.
+
+Background
+----------
+The earlier recovery (fix-aug-tracks.py) rebuilt the deleted 2026-08-02
+per-track rows by proportional scaling from artist-level deltas. That estimate
+is inaccurate, so every 2026-08-03 daily_delta (= aug3_streams - aug2_streams)
+came out wrong -- e.g. JISOO "FLOWER" showed +261,283 instead of the true
++131,542.
+
+This script fixes it with ground-truth data:
+  * 2026-08-02 row : streams + daily_delta set to the exact kworb values.
+  * 2026-08-03 row : streams left UNCHANGED (already real Aug 3 data);
+                     daily_delta recomputed = aug3_streams - exact_aug2_streams.
+
+Safe by default: prints a full before/after diff and writes NOTHING unless the
+environment variable APPLY=1 is set.
+
+Extend by adding more artists to EXACT below (same kworb "Streams"/"Daily"
+columns, keyed by the exact track name as stored in artist_tracks).
+"""
+
+import os
+import sys
+import httpx
+
+SUPABASE_URL = os.environ["SUPABASE_URL"]
+SUPABASE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
+APPLY = os.environ.get("APPLY") == "1"
+
+AUG2 = "2026-08-02"
+AUG3 = "2026-08-03"
+
+# artist_id -> { track_name : (aug2_streams, aug2_daily) }  from kworb, updated
+# 2026/08/03 (which is the finalized Aug 2 snapshot). Track names must match
+# artist_tracks.name exactly.
+EXACT = {
+    # JISOO -- sums to 1,356,134,692 total / 698,991 daily (matches artist total)
+    "6UZ0ba50XreR4TM8u322gs": {
+        "FLOWER":                              (631_066_507, 131_345),
+        "earthquake":                          (192_965_542, 154_918),
+        "All Eyes On Me":                      (188_386_985,  45_325),
+        "EYES CLOSED (with ZAYN)":             (173_104_519, 170_480),
+        "Your Love":                           ( 81_689_058,  99_656),
+        "Hugs & Kisses":                       ( 45_522_593,  53_236),
+        "TEARS":                               ( 33_047_308,  33_412),
+        "earthquake - Sam Feldt remix":        (  5_124_207,   4_312),
+        "EYES CLOSED (with ZAYN) - 2X":        (  2_003_305,   2_320),
+        "EYES CLOSED (with ZAYN) - 0.5X":      (  1_366_704,   1_386),
+        "EYES CLOSED (with ZAYN) - BARE":      (  1_273_041,   1_599),
+        "EYES CLOSED (with ZAYN) - UNVEILED":  (    584_923,   1_002),
+    },
+}
+
+ARTIST_NAMES = {
+    "41MozSoPIsD1dJM0CLPjZF": "BLACKPINK",
+    "6UZ0ba50XreR4TM8u322gs": "JISOO",
+    "250b0Wlc5Vk0CoUsaCY84M": "JENNIE",
+    "3eVa5w3URK5duf6eyVDbu9": "ROSÉ",
+    "5L1lO4eRHmJ7a0Q6csE5cT": "LISA",
+}
+
+
+def sb(method, path, **kwargs):
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "apikey": SUPABASE_KEY,
+        "Content-Type": "application/json",
+        **kwargs.pop("headers", {}),
+    }
+    r = httpx.request(method, f"{SUPABASE_URL}/rest/v1{path}",
+                      headers=headers, timeout=30, **kwargs)
+    if r.is_error:
+        print(f"  ERROR {r.status_code}: {r.text}", file=sys.stderr)
+    r.raise_for_status()
+    return r.json() if r.content else None
+
+
+def rows_by_ref(refs, date):
+    if not refs:
+        return {}
+    got = sb("GET", "/track_daily_stats", params={
+        "track_ref": f"in.({','.join(refs)})",
+        "date": f"eq.{date}",
+        "select": "track_ref,streams,daily_delta",
+    })
+    return {str(r["track_ref"]): r for r in (got or [])}
+
+
+def process_artist(artist_id, exact):
+    name = ARTIST_NAMES.get(artist_id, artist_id)
+    print(f"\n=== {name} ({artist_id}) ===")
+
+    tracks = sb("GET", "/artist_tracks", params={
+        "artist_id": f"eq.{artist_id}", "select": "id,name",
+    }) or []
+    name_to_ref = {t["name"]: str(t["id"]) for t in tracks}
+
+    missing = [n for n in exact if n not in name_to_ref]
+    if missing:
+        print(f"  WARNING: {len(missing)} kworb names not found in artist_tracks:")
+        for n in missing:
+            print(f"    - {n!r}")
+
+    refs = [name_to_ref[n] for n in exact if n in name_to_ref]
+    cur_aug2 = rows_by_ref(refs, AUG2)
+    cur_aug3 = rows_by_ref(refs, AUG3)
+
+    aug2_writes, aug3_writes = [], []
+    print(f"  {'track':<38} {'aug2 old→new streams':<34} {'aug3 daily old→new'}")
+    for tname, (ex_streams, ex_daily) in exact.items():
+        ref = name_to_ref.get(tname)
+        if not ref:
+            continue
+        old2 = cur_aug2.get(ref)
+        old3 = cur_aug3.get(ref)
+        old2s = old2["streams"] if old2 else None
+        aug3_streams = old3["streams"] if old3 else None
+        old3d = old3["daily_delta"] if old3 else None
+
+        new3d = (aug3_streams - ex_streams) if aug3_streams is not None else None
+
+        s_old2 = f"{old2s:,}" if old2s is not None else "—"
+        s_new3 = f"{new3d:,}" if new3d is not None else "—(no aug3 row)"
+        s_old3 = f"{old3d:,}" if old3d is not None else "—"
+        print(f"  {tname[:37]:<38} {s_old2:>15} → {ex_streams:>14,}   {s_old3:>10} → {s_new3}")
+
+        aug2_writes.append({
+            "track_ref": int(ref), "date": AUG2,
+            "streams": ex_streams, "daily_delta": ex_daily,
+        })
+        if aug3_streams is not None:
+            aug3_writes.append({
+                "track_ref": int(ref), "date": AUG3,
+                "streams": aug3_streams, "daily_delta": new3d,
+            })
+
+    aug2_sum = sum(w["streams"] for w in aug2_writes)
+    print(f"  aug2 exact streams sum = {aug2_sum:,}")
+
+    if not APPLY:
+        print("  DRY RUN — no writes. Set APPLY=1 to apply.")
+        return
+
+    for batch in (aug2_writes, aug3_writes):
+        for i in range(0, len(batch), 200):
+            sb("POST", "/track_daily_stats",
+               params={"on_conflict": "track_ref,date"},
+               headers={"Prefer": "resolution=merge-duplicates"},
+               json=batch[i:i + 200])
+    print(f"  ✓ Applied: {len(aug2_writes)} aug2 rows, {len(aug3_writes)} aug3 deltas")
+
+
+def main():
+    print(f"MODE: {'APPLY (writing)' if APPLY else 'DRY RUN (no writes)'}")
+    for artist_id, exact in EXACT.items():
+        process_artist(artist_id, exact)
+    print("\n✓ Done")
+
+
+if __name__ == "__main__":
+    main()
