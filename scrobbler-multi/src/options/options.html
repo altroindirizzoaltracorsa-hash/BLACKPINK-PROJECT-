@@ -45,6 +45,26 @@
   </section>
 
   <section class="card">
+    <div class="row space">
+      <h2>blinksunited (direct)</h2>
+      <label class="toggle"><input type="checkbox" id="blinks-enabled" /> <span>On</span></label>
+    </div>
+    <p class="hint">
+      Send every account's scrobbles straight to your <strong>blinksunited.com</strong>
+      profile (one token = one profile; all Spotify tabs in this browser funnel to it).
+      This bypasses Last.fm — counts are self-reported.
+    </p>
+    <div class="grid">
+      <label>Profile token<input id="blinks-token" type="password" autocomplete="off" /></label>
+      <label>Endpoint<input id="blinks-endpoint" type="text" autocomplete="off" /></label>
+    </div>
+    <div class="row">
+      <button id="save-blinks" class="primary">Save</button>
+      <span id="blinks-status" class="svc-state"></span>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>2. Default account — receives ALL profiles</h2>
     <p class="hint">
       Connect one scrobbling account here and <strong>every</strong> Spotify tab

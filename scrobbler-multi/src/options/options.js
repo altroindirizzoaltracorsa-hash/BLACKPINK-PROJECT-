@@ -24,7 +24,30 @@ function loadSettings(settings) {
   $('#lastfm-secret').value = settings.lastfm.secret || '';
   $('#librefm-key').value = settings.librefm.apiKey || '';
   $('#librefm-secret').value = settings.librefm.secret || '';
+
+  const b = settings.blinks || {};
+  $('#blinks-enabled').checked = !!b.enabled;
+  $('#blinks-token').value = b.token || '';
+  $('#blinks-endpoint').value = b.endpoint || '';
+  const status = $('#blinks-status');
+  status.textContent = b.enabled && b.token ? 'on' : 'off';
+  status.classList.toggle('on', !!(b.enabled && b.token));
 }
+
+$('#save-blinks').addEventListener('click', async () => {
+  const res = await send({
+    type: 'saveBlinks',
+    enabled: $('#blinks-enabled').checked,
+    token: $('#blinks-token').value.trim(),
+    endpoint: $('#blinks-endpoint').value.trim(),
+  });
+  if (!res || !res.ok) { toast('Save failed.', true); return; }
+  const c = res.check || {};
+  if (c.valid === true) toast(`blinksunited connected${c.profile ? ` as ${c.profile}` : ''}.`);
+  else if (c.valid === false) toast(c.error || 'Saved, but the token/endpoint check failed.', true);
+  else toast('Saved.');
+  refresh();
+});
 
 $('#save-settings').addEventListener('click', async () => {
   const settings = {

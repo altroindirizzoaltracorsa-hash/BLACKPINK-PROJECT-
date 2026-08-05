@@ -18,6 +18,7 @@
  */
 import * as AS from './scrobblers/audioscrobbler.js';
 import * as LB from './scrobblers/listenbrainz.js';
+import * as BU from './scrobblers/blinks.js';
 
 const POLL_ALARM = 'poll';
 const POLL_MINUTES = 0.5; // 30s (Chrome clamps to its minimum if lower)
@@ -28,6 +29,9 @@ const DEFAULT_SETTINGS = {
   librefm: { apiKey: '', secret: '' },
   // A connection here is used by any profile that has no connection of its own.
   defaults: { lastfm: null, librefm: null, listenbrainz: null },
+  // blinksunited direct target: one profile token for the whole browser
+  // install; every Spotify account funnels to it. Additive, off by default.
+  blinks: { endpoint: 'https://blinksunited.com/api/ingest-scrobble', token: '', enabled: false },
 };
 
 // ---------- storage ----------
@@ -36,6 +40,7 @@ async function getStore() {
   const s = await chrome.storage.local.get(['settings', 'profiles']);
   const settings = { ...DEFAULT_SETTINGS, ...(s.settings || {}) };
   settings.defaults = { ...DEFAULT_SETTINGS.defaults, ...(settings.defaults || {}) };
+  settings.blinks = { ...DEFAULT_SETTINGS.blinks, ...(settings.blinks || {}) };
   return { settings, profiles: s.profiles || {} };
 }
 
@@ -101,6 +106,13 @@ async function dispatch(kind, account, track, timestamp, meta) {
     jobs.push(run('listenbrainz', kind === 'nowplaying'
       ? LB.updateNowPlaying(lb.token, track)
       : LB.scrobble(lb.token, track, timestamp)));
+  }
+
+  // blinksunited direct — scrobble only (no now-playing), install-wide token.
+  const bu = settings.blinks;
+  if (kind === 'scrobble' && bu && bu.enabled && bu.token && bu.endpoint) {
+    targets.push('blinksunited');
+    jobs.push(run('blinks', BU.scrobble(bu.endpoint, bu.token, track, timestamp, account.name || account.id)));
   }
 
   const results = await Promise.all(jobs);
@@ -456,6 +468,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           settings.librefm = msg.settings.librefm;
           await chrome.storage.local.set({ settings });
           sendResponse({ ok: true });
+          break;
+        }
+
+        case 'saveBlinks': {
+          const { settings } = await getStore();
+          settings.blinks = {
+            endpoint: (msg.endpoint || DEFAULT_SETTINGS.blinks.endpoint).trim(),
+            token: (msg.token || '').trim(),
+            enabled: !!msg.enabled,
+          };
+          await chrome.storage.local.set({ settings });
+          let check = { valid: null };
+          if (settings.blinks.enabled && settings.blinks.token) {
+            check = await BU.validateToken(settings.blinks.endpoint, settings.blinks.token);
+          }
+          sendResponse({ ok: true, check });
           break;
         }
 
