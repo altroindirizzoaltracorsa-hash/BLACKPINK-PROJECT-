@@ -135,7 +135,10 @@ EXACT = {
         "New Woman (feat. ROSALÍA)":                                                (  415_243_371, 130_953),
         "Born Again (feat. Doja Cat & RAYE)":                                       (  382_552_728, 187_659),
         "SG (with Ozuna, Megan Thee Stallion & LISA of BLACKPINK)":                 (  350_570_741,  51_937),
-        "Shoong! (feat. LISA of BLACKPINK)":                                        (  222_152_007,  45_800),
+        # kworb ~8.5 days stale (222,152,007); Spotify/DB ahead. Real Aug 1
+        # (222,482,934) and Aug 3 (222,569,817) bracket Aug 2 -> midpoint
+        # 222,526,376 (+43,442/day). Same method as Black / Without You.
+        "Shoong! (feat. LISA of BLACKPINK)":                                        (  222_526_376,  43_442),
         "FXCK UP THE WORLD (feat. Future)":                                         (  111_434_599,  46_813),
         "Priceless (feat. LISA)":                                                   (  104_528_036,  57_272),
         "Dream":                                                                    (   99_428_466, 118_925),
