@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SessionBox Multi-Account Scrobbler",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Scrobble every SessionBox Spotify tab (including background tabs) to Last.fm / Libre.fm / ListenBrainz, routed by each tab's Spotify identity.",
   "permissions": ["storage", "scripting", "alarms", "tabs"],
   "host_permissions": [
@@ -10,7 +10,10 @@
     "https://ws.audioscrobbler.com/*",
     "https://libre.fm/*",
     "https://api.listenbrainz.org/*",
-    "https://blinksunited.com/*"
+    "https://blinksunited.com/*",
+    "https://*.vercel.app/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
   ],
   "background": {
     "service_worker": "src/background.js",
