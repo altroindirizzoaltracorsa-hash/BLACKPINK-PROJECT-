@@ -53,7 +53,8 @@ EXACT = {
         "EYES CLOSED (with ZAYN) - BARE":      (  1_273_041,   1_599),
         "EYES CLOSED (with ZAYN) - UNVEILED":  (    584_923,   1_002),
     },
-    # JENNIE -- sums to 8,200,235,274 total / 8,184,116 daily (matches artist total)
+    # JENNIE -- kworb Aug 2, verified to sum to 8,200,235,274 / 8,184,116 before
+    # the Black override below (Black switched from kworb to its frozen Spotify value).
     "250b0Wlc5Vk0CoUsaCY84M": {
         "One Of The Girls (with JENNIE, Lily Rose Depp)":                       (2_767_758_502, 1_638_368),
         "like JENNIE":                                                          (  911_742_688,   749_703),
@@ -71,7 +72,10 @@ EXACT = {
         "with the IE (way up)":                                                 (  106_282_595,   104_539),
         "Damn Right (feat. Childish Gambino & Kali Uchis)":                     (   99_734_722,    98_496),
         "start a war":                                                          (   79_783_731,    77_258),
-        "Black (Feat. JENNIE of BLACKPINK)":                                    (   71_156_105,    43_295),
+        # Spotify play count is FROZEN at 71,404,579 (same on Aug 3 fetch and
+        # Aug 5). kworb (71,156,105 / 43,295) diverges because it estimates
+        # differently; the site uses Spotify, so match the frozen value -> 0 daily.
+        "Black (Feat. JENNIE of BLACKPINK)":                                    (   71_404_579,         0),
         "Filter":                                                               (   48_981_286,    50_558),
         "One Of The Girls - Sped Up":                                           (   48_201_072,    24_667),
         "Starlight":                                                            (   47_014_870,    62_934),
