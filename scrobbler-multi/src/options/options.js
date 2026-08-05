@@ -157,9 +157,12 @@ async function renderStats() {
   for (const h of history) {
     const el = document.createElement('div');
     el.className = 'hist';
-    el.innerHTML = `<div class="hist-top"><span class="hist-acct">${escapeHtml(h.account)}</span>`
-      + `<span>#${h.n} · ${fmtTime(h.t)}</span></div>`
-      + `<div class="hist-track">${escapeHtml(h.artist)} — ${escapeHtml(h.title)}</div>`;
+    const at = h.played != null ? ` at ${h.played}s` : '';
+    const to = h.pct != null ? ` to ${h.pct}%` : '';
+    el.innerHTML = `<div class="hist-line1"><span class="hist-n">[${h.n}]</span> `
+      + `<span class="hist-verb">Scrobbled</span>${at}${to}</div>`
+      + `<div class="hist-track">${escapeHtml(h.title)} • ${escapeHtml(h.artist)}</div>`
+      + `<div class="hist-meta">${escapeHtml(h.account)} · ${fmtTime(h.t)}</div>`;
     hist.appendChild(el);
   }
 }

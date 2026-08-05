@@ -68,7 +68,7 @@ function trackKey(t) {
   return t ? `${(t.artist || '').toLowerCase()}${(t.title || '').toLowerCase()}` : '';
 }
 
-async function dispatch(kind, account, track, timestamp) {
+async function dispatch(kind, account, track, timestamp, meta) {
   if (!account || !account.id) return;
   const { settings, profiles } = await getStore();
   const profile = profiles[account.id];
@@ -110,7 +110,7 @@ async function dispatch(kind, account, track, timestamp) {
       console.warn(`⚠️ No scrobble target for ${account.name || account.id} — connect a default or per-profile account.`);
     } else if (okTargets.length) {
       console.log(`✅ Scrobbled ${track_()} → ${okTargets.join(', ')}`);
-      recordScrobble(account, track, okTargets);
+      recordScrobble(account, track, okTargets, meta);
     } else {
       console.warn(`❌ Scrobble rejected for ${track_()} (see the failure line above)`);
     }
@@ -124,7 +124,7 @@ const EMPTY_STATS = { total: 0, counts: {}, history: [] };
 // Writes are serialized so concurrent scrobbles in one poll don't clobber
 // each other's read-modify-write on the stored stats.
 let statsChain = Promise.resolve();
-function recordScrobble(account, track, targets) {
+function recordScrobble(account, track, targets, meta = {}) {
   const id = account.id;
   const label = account.name || id;
   statsChain = statsChain.then(async () => {
@@ -142,6 +142,8 @@ function recordScrobble(account, track, targets) {
       title: track.title,
       account: label,
       targets,
+      played: meta.playedS != null ? meta.playedS : null,
+      pct: meta.pct != null ? meta.pct : null,
     });
     if (stats.history.length > 100) stats.history.length = 100;
     await chrome.storage.local.set({ stats });
@@ -225,7 +227,10 @@ function advance(prev, msg, now, jobs) {
   }
   if (!cur.scrobbled && cur.playedMs >= scrobbleThresholdMs(cur.track.duration)) {
     cur.scrobbled = true;
-    jobs.push(dispatch('scrobble', rec.account, cur.track, cur.startedAt));
+    const playedS = Math.round(cur.playedMs / 1000);
+    const dur = cur.track.duration || 0;
+    const pct = dur ? Math.min(100, Math.round((playedS / dur) * 100)) : null;
+    jobs.push(dispatch('scrobble', rec.account, cur.track, cur.startedAt, { playedS, pct }));
   }
   return rec;
 }
