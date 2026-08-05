@@ -31,7 +31,8 @@ const DEFAULT_SETTINGS = {
   defaults: { lastfm: null, librefm: null, listenbrainz: null },
   // blinksunited direct target: one profile token for the whole browser
   // install; every Spotify account funnels to it. Additive, off by default.
-  blinks: { endpoint: 'https://blinksunited.com/api/ingest-scrobble', token: '', enabled: false },
+  // Endpoints are derived from `site` (so login-linking can set both at once).
+  blinks: { site: 'https://blinksunited.com', token: '', enabled: false },
 };
 
 // ---------- storage ----------
@@ -110,9 +111,10 @@ async function dispatch(kind, account, track, timestamp, meta) {
 
   // blinksunited direct — scrobble only (no now-playing), install-wide token.
   const bu = settings.blinks;
-  if (kind === 'scrobble' && bu && bu.enabled && bu.token && bu.endpoint) {
+  if (kind === 'scrobble' && bu && bu.enabled && bu.token) {
+    const endpoint = `${(bu.site || 'https://blinksunited.com').replace(/\/$/, '')}/api/ingest-scrobble`;
     targets.push('blinksunited');
-    jobs.push(run('blinks', BU.scrobble(bu.endpoint, bu.token, track, timestamp, account.name || account.id)));
+    jobs.push(run('blinks', BU.scrobble(endpoint, bu.token, track, timestamp, account.name || account.id)));
   }
 
   const results = await Promise.all(jobs);
@@ -163,14 +165,15 @@ function recordScrobble(account, track, targets, meta = {}) {
   return statsChain;
 }
 
-// Last.fm rule: scrobble after half the track or 4 minutes, whichever is first;
-// skip tracks under 30s.
+// Mirror Skipper Pro's counting rule: a play counts once it has been played for
+// ~60s (Skipper's window is ~60-86s), once per track (the per-track guard is the
+// `scrobbled` flag + trackKey, matching Skipper's lastTrackName check). Sub-30s
+// clips never count. This keeps the scrobble counter in lockstep with Skipper's
+// stream counter.
+const COUNT_THRESHOLD_S = 60;
 function scrobbleThresholdMs(duration) {
-  if (duration && duration > 0) {
-    if (duration < 30) return Infinity;
-    return Math.min(duration / 2, 240) * 1000;
-  }
-  return 240 * 1000;
+  if (duration && duration > 0 && duration < 30) return Infinity;
+  return COUNT_THRESHOLD_S * 1000;
 }
 
 // ---------- per-tab progress (advances a persisted record) ----------
@@ -473,17 +476,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         case 'saveBlinks': {
           const { settings } = await getStore();
-          settings.blinks = {
-            endpoint: (msg.endpoint || DEFAULT_SETTINGS.blinks.endpoint).trim(),
-            token: (msg.token || '').trim(),
-            enabled: !!msg.enabled,
-          };
+          const site = (msg.site || DEFAULT_SETTINGS.blinks.site).trim().replace(/\/$/, '');
+          settings.blinks = { site, token: (msg.token || '').trim(), enabled: !!msg.enabled };
           await chrome.storage.local.set({ settings });
           let check = { valid: null };
           if (settings.blinks.enabled && settings.blinks.token) {
-            check = await BU.validateToken(settings.blinks.endpoint, settings.blinks.token);
+            check = await BU.validateToken(`${site}/api/ingest-scrobble`, settings.blinks.token);
           }
-          sendResponse({ ok: true, check });
+          sendResponse({ ok: true, check, site });
           break;
         }
 

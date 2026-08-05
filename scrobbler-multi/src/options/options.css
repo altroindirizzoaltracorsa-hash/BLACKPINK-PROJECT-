@@ -132,4 +132,8 @@ button:hover { filter: brightness(1.1); }
 }
 .toast.err { border-color: var(--danger); color: var(--danger); }
 
+.adv { margin-top: 10px; }
+.adv summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.adv .grid { margin-top: 8px; }
+
 .hidden { display: none !important; }

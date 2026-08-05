@@ -28,25 +28,37 @@ function loadSettings(settings) {
   const b = settings.blinks || {};
   $('#blinks-enabled').checked = !!b.enabled;
   $('#blinks-token').value = b.token || '';
-  $('#blinks-endpoint').value = b.endpoint || '';
+  $('#blinks-site').value = b.site || '';
   const status = $('#blinks-status');
-  status.textContent = b.enabled && b.token ? 'on' : 'off';
-  status.classList.toggle('on', !!(b.enabled && b.token));
+  const linked = !!(b.enabled && b.token);
+  status.textContent = linked ? 'connected' : 'not connected';
+  status.classList.toggle('on', linked);
 }
+
+$('#connect-blinks').addEventListener('click', () => {
+  const site = ($('#blinks-site').value.trim() || 'https://blinksunited.com').replace(/\/$/, '');
+  chrome.tabs.create({ url: `${site}/extension-link.html` });
+  toast('Log in on the page that opened — it links automatically.');
+});
 
 $('#save-blinks').addEventListener('click', async () => {
   const res = await send({
     type: 'saveBlinks',
     enabled: $('#blinks-enabled').checked,
     token: $('#blinks-token').value.trim(),
-    endpoint: $('#blinks-endpoint').value.trim(),
+    site: $('#blinks-site').value.trim(),
   });
   if (!res || !res.ok) { toast('Save failed.', true); return; }
   const c = res.check || {};
   if (c.valid === true) toast(`blinksunited connected${c.profile ? ` as ${c.profile}` : ''}.`);
-  else if (c.valid === false) toast(c.error || 'Saved, but the token/endpoint check failed.', true);
+  else if (c.valid === false) toast(c.error || 'Saved, but the token/site check failed.', true);
   else toast('Saved.');
   refresh();
+});
+
+// When the link page saves the token via the content script, reflect it live.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.settings) refresh();
 });
 
 $('#save-settings').addEventListener('click', async () => {

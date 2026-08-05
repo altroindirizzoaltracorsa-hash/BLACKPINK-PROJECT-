@@ -51,17 +51,21 @@
     </div>
     <p class="hint">
       Send every account's scrobbles straight to your <strong>blinksunited.com</strong>
-      profile (one token = one profile; all Spotify tabs in this browser funnel to it).
-      This bypasses Last.fm — counts are self-reported.
+      profile. Click Connect and log in — no token to copy. All Spotify tabs in this
+      browser funnel to your profile. Bypasses Last.fm; counts are self-reported.
     </p>
-    <div class="grid">
-      <label>Profile token<input id="blinks-token" type="password" autocomplete="off" /></label>
-      <label>Endpoint<input id="blinks-endpoint" type="text" autocomplete="off" /></label>
-    </div>
     <div class="row">
-      <button id="save-blinks" class="primary">Save</button>
+      <button id="connect-blinks" class="primary">Connect blinksunited account</button>
       <span id="blinks-status" class="svc-state"></span>
     </div>
+    <details class="adv">
+      <summary>Advanced (manual / testing)</summary>
+      <div class="grid">
+        <label>Site URL<input id="blinks-site" type="text" autocomplete="off" placeholder="https://blinksunited.com" /></label>
+        <label>Profile token<input id="blinks-token" type="password" autocomplete="off" /></label>
+      </div>
+      <button id="save-blinks" class="ghost">Save manually</button>
+    </details>
   </section>
 
   <section class="card">
