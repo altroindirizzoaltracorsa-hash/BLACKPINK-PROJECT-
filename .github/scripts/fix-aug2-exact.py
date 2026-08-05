@@ -102,6 +102,27 @@ EXACT = {
         "like JENNIE - Peggy Gou Remix - EXTENDED MIX":                         (      780_438,       493),
         "Dracula - JENNIE Remix Instrumental":                                  (      498_452,     1_044),
     },
+    # ROSÉ -- sums to 5,659,564,253 total / 3,094,004 daily (matches artist total)
+    "3eVa5w3URK5duf6eyVDbu9": {
+        "APT.":                        (2_570_408_256, 1_368_113),
+        "On The Ground":               (  590_309_519,    97_253),
+        "Gone":                        (  471_129_663,   101_382),
+        "toxic till the end":          (  463_997_789,   340_851),
+        "number one girl":             (  354_264_655,   248_560),
+        "Messy (From F1® The Movie)":  (  192_298_736,   185_211),
+        "On My Mind":                  (  142_779_877,   128_928),
+        "drinks or coffee":            (  139_109_161,   100_443),
+        "stay a little longer":        (  110_880_164,   101_186),
+        "Without You (Feat. ROSE)":    (  104_764_170,    40_676),
+        "3am":                         (   95_073_458,    88_069),
+        "two years":                   (   94_032_413,    75_162),
+        "gameboy":                     (   91_473_473,    58_444),
+        "too bad for us":              (   57_877_150,    42_935),
+        "dance all night":             (   56_732_388,    48_629),
+        "call it the end":             (   47_432_814,    37_054),
+        "not the same":                (   46_395_709,    25_967),
+        "Gone - Live":                 (   30_604_858,     5_141),
+    },
 }
 
 ARTIST_NAMES = {
