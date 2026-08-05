@@ -7,6 +7,10 @@ on:
         description: "Set to 'true' to write. Leave 'false' for a dry-run diff."
         required: false
         default: "false"
+      only:
+        description: "Optional comma-separated artist_id filter (e.g. one artist). Blank = all."
+        required: false
+        default: ""
 
 jobs:
   fix:
@@ -26,4 +30,5 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           APPLY: ${{ github.event.inputs.apply == 'true' && '1' || '0' }}
+          ONLY: ${{ github.event.inputs.only }}
         run: python .github/scripts/fix-aug2-exact.py

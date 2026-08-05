@@ -53,6 +53,50 @@ EXACT = {
         "EYES CLOSED (with ZAYN) - BARE":      (  1_273_041,   1_599),
         "EYES CLOSED (with ZAYN) - UNVEILED":  (    584_923,   1_002),
     },
+    # JENNIE -- sums to 8,200,235,274 total / 8,184,116 daily (matches artist total)
+    "250b0Wlc5Vk0CoUsaCY84M": {
+        "One Of The Girls (with JENNIE, Lily Rose Depp)":                       (2_767_758_502, 1_638_368),
+        "like JENNIE":                                                          (  911_742_688,   749_703),
+        "SOLO":                                                                 (  792_898_224,   145_170),
+        "Mantra":                                                               (  569_233_672,   293_434),
+        "Dracula - JENNIE Remix":                                               (  448_502_806, 1_605_936),
+        "You & Me":                                                             (  348_983_988,   121_861),
+        "ExtraL (feat. Doechii)":                                               (  341_289_583,   203_550),
+        "SPOT!":                                                                (  301_673_411,   122_341),
+        "Love Hangover (feat. Dominic Fike)":                                   (  240_880_419,   164_894),
+        "Handlebars (feat. Dua Lipa)":                                          (  216_002_017,   226_506),
+        "Seoul City":                                                           (  201_336_505,   248_702),
+        "You & Me (Coachella ver.)":                                            (  115_589_493,    32_809),
+        "ZEN":                                                                  (  108_910_817,   106_445),
+        "with the IE (way up)":                                                 (  106_282_595,   104_539),
+        "Damn Right (feat. Childish Gambino & Kali Uchis)":                     (   99_734_722,    98_496),
+        "start a war":                                                          (   79_783_731,    77_258),
+        "Black (Feat. JENNIE of BLACKPINK)":                                    (   71_156_105,    43_295),
+        "Filter":                                                               (   48_981_286,    50_558),
+        "One Of The Girls - Sped Up":                                           (   48_201_072,    24_667),
+        "Starlight":                                                            (   47_014_870,    62_934),
+        "twin":                                                                 (   46_503_998,    39_539),
+        "SOLO - Live":                                                          (   42_529_239,    14_540),
+        "Intro : JANE with FKJ":                                                (   35_590_475,    31_834),
+        "F.T.S.":                                                               (   34_408_519,    34_450),
+        "Slow Motion":                                                          (   33_501_560,    15_967),
+        "like JENNIE - Extended Remix":                                         (   21_443_023,    72_575),
+        "Less Than a Lover":                                                    (   21_336_533, 1_673_837),
+        'SOLO - BLACKPINK ARENA TOUR 2018 "SPECIAL FINAL IN KYOCERA DOME OSAKA"': ( 14_143_103,     7_068),
+        "One Of The Girls - Slowed":                                            (   14_100_828,    10_205),
+        "like JENNIE - Peggy Gou Remix":                                        (   13_442_077,    10_262),
+        "Special":                                                              (   12_219_313,     4_901),
+        "like JENNIE - EDM Remix":                                              (   10_619_218,    21_525),
+        "One Of The Girls - Instrumental":                                      (    7_434_809,     8_268),
+        "ExtraL - Just JENNIE":                                                 (    5_808_206,    13_467),
+        "Damn Right - Just JENNIE":                                             (    5_482_095,    17_539),
+        "One Of The Girls - A Cappella":                                        (    5_099_470,     6_808),
+        "Handlebars - Just JENNIE":                                             (    3_464_086,    54_217),
+        "Dracula - JENNIE Remix - Boys Noize Disko Version":                    (    2_965_867,    14_895),
+        "Love Hangover - Just JENNIE":                                          (    2_907_459,     9_216),
+        "like JENNIE - Peggy Gou Remix - EXTENDED MIX":                         (      780_438,       493),
+        "Dracula - JENNIE Remix Instrumental":                                  (      498_452,     1_044),
+    },
 }
 
 ARTIST_NAMES = {
@@ -160,7 +204,11 @@ def process_artist(artist_id, exact):
 
 def main():
     print(f"MODE: {'APPLY (writing)' if APPLY else 'DRY RUN (no writes)'}")
+    only = os.environ.get("ONLY")  # optional comma-separated artist_id filter
+    only_ids = {s.strip() for s in only.split(",")} if only else None
     for artist_id, exact in EXACT.items():
+        if only_ids and artist_id not in only_ids:
+            continue
         process_artist(artist_id, exact)
     print("\n✓ Done")
 
