@@ -1,0 +1,30 @@
+name: Check track history
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: "Exact artist_tracks.name to inspect"
+        required: false
+        default: "Black (Feat. JENNIE of BLACKPINK)"
+      artist:
+        description: "Optional artist_id filter"
+        required: false
+        default: ""
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install httpx
+      - name: Print track history
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          TRACK: ${{ github.event.inputs.track }}
+          ARTIST: ${{ github.event.inputs.artist }}
+        run: python .github/scripts/check-track-history.py
