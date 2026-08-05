@@ -1,0 +1,20 @@
+name: Fix Aug 2/3 Catalog (Delete+Set)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Delete wrong entries, then set 02/08=17,595,602,852 and 03/08=17,600,158,856
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          VERCEL_URL: 'https://blinksunited.com'
+        run: node .github/scripts/fix-aug-catalog.mjs
