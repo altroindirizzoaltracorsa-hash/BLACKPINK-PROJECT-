@@ -113,7 +113,10 @@ EXACT = {
         "On My Mind":                  (  142_779_877,   128_928),
         "drinks or coffee":            (  139_109_161,   100_443),
         "stay a little longer":        (  110_880_164,   101_186),
-        "Without You (Feat. ROSE)":    (  104_764_170,    40_676),
+        # kworb/zonitex are ~5 days stale here (104,764,170); Spotify/DB is ahead.
+        # DB has real Aug 1 (104,909,926) and Aug 3 (104,999,022); interpolate Aug 2:
+        # 104,909,926 + 89,096/2 = 104,954,474 (+44,548/day). Same method as Black.
+        "Without You (Feat. ROSE)":    (  104_954_474,    44_548),
         "3am":                         (   95_073_458,    88_069),
         "two years":                   (   94_032_413,    75_162),
         "gameboy":                     (   91_473_473,    58_444),
