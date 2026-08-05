@@ -1,0 +1,22 @@
+name: Fix Catalog 03/08
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Overwrite 03/08 with correct value 17,600,158,856
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          VERCEL_URL: 'https://blinksunited.com'
+          CATALOG_DATE: '03/08'
+          CATALOG_TOTAL: '17600158856'
+        run: node .github/scripts/set-catalog-entry.mjs
