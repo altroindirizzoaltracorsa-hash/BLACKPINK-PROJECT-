@@ -563,6 +563,32 @@
   .ltal-goal-item.is-admin { cursor: pointer; }
   .ltal-goal-item.is-admin:hover { color: #E8110D; }
   .goal-tracker-done { color: #00ff88; }
+
+  /* ── GOAL HISTORY (chronology of past goal-hit days) ─────── */
+  #goal-history-overlay { position: fixed; inset: 0; z-index: 9990; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.72); padding: 1rem; }
+  #goal-history-overlay.active { display: flex; }
+  .gh-box { background: var(--card); border: 1px solid rgba(255,0,102,0.25); width: 100%; max-width: 460px; max-height: 86vh; display: flex; flex-direction: column; }
+  .gh-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .gh-title { font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pink); }
+  .gh-close { background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; line-height: 1; padding: 0 0.2rem; }
+  .gh-filter { padding: 0.8rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; gap: 0.6rem; }
+  .gh-presets { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .gh-preset { font-size: 0.58rem; letter-spacing: 0.05em; padding: 0.3rem 0.6rem; border: 1px solid rgba(255,255,255,0.15); background: none; color: var(--muted); cursor: pointer; }
+  .gh-preset.active, .gh-preset:hover { border-color: var(--pink); color: var(--pink); }
+  .gh-range { display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap; }
+  .gh-range label { font-size: 0.52rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); display: flex; flex-direction: column; gap: 0.2rem; }
+  .gh-range input[type=date] { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: #F5F0F0; padding: 0.35rem 0.4rem; font-family: inherit; font-size: 0.7rem; color-scheme: dark; }
+  .gh-apply { font-size: 0.58rem; letter-spacing: 0.1em; padding: 0.42rem 0.9rem; background: var(--pink); border: none; color: #fff; cursor: pointer; }
+  .gh-list { overflow-y: auto; padding: 0.4rem 0.7rem 1rem; }
+  .gh-count { font-size: 0.55rem; letter-spacing: 0.08em; color: var(--muted); padding: 0.5rem 0.5rem 0.3rem; }
+  .gh-row { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.75rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
+  .gh-row:hover { background: rgba(255,0,102,0.06); }
+  .gh-row-date { font-family: var(--display); font-size: 1rem; color: #F5F0F0; letter-spacing: 0.02em; }
+  .gh-row-sub { font-size: 0.58rem; letter-spacing: 0.05em; color: var(--muted); margin-top: 0.15rem; }
+  .gh-badge { font-size: 0.5rem; letter-spacing: 0.08em; padding: 0.22rem 0.45rem; flex-shrink: 0; }
+  .gh-badge.primary { background: rgba(255,0,102,0.15); color: var(--pink); }
+  .gh-badge.stretch { background: rgba(46,204,113,0.15); color: #2ecc71; }
+  .gh-empty { text-align: center; color: var(--muted); font-size: 0.72rem; line-height: 1.6; padding: 2rem 1rem; }
   .itunes-no1-list { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.4rem 0 0.2rem 1.4rem; }
   .itunes-no1-chip {
     font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.03em;
@@ -1874,11 +1900,40 @@
           <div class="goal-tracker-bar"><div class="goal-tracker-fill" id="community-goal-fill" style="width:0%"></div></div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">
             <div class="goal-tracker-status" id="community-goal-status">Loading today's progress…</div>
-            <button id="goal-share-btn" class="gen-card-btn" style="display:none;margin-top:0;width:auto;padding:0.45rem 1rem;flex-shrink:0;" onclick="openGoalHitCard()">⬡ Share</button>
+            <div style="display:flex;gap:0.5rem;flex-shrink:0;">
+              <button id="goal-history-btn" class="gen-card-btn" style="margin-top:0;width:auto;padding:0.45rem 1rem;" onclick="openGoalHistory()">🏆 Past Days</button>
+              <button id="goal-share-btn" class="gen-card-btn" style="display:none;margin-top:0;width:auto;padding:0.45rem 1rem;" onclick="openGoalHitCard()">⬡ Share</button>
+            </div>
           </div>
           <div id="goal-streak-line" style="display:none;font-size:0.6rem;letter-spacing:0.15em;color:var(--muted);margin-top:0.1rem;"></div>
         </div>
       </div>
+      <!-- GOAL HISTORY OVERLAY -->
+      <div id="goal-history-overlay">
+        <div class="gh-box">
+          <div class="gh-head">
+            <span class="gh-title">🏆 Community Goal — Past Days</span>
+            <button class="gh-close" onclick="closeGoalHistory()" aria-label="Close">×</button>
+          </div>
+          <div class="gh-filter">
+            <div class="gh-presets" id="gh-presets">
+              <button class="gh-preset" data-days="7" onclick="setGoalHistoryPreset(7)">Last 7 days</button>
+              <button class="gh-preset active" data-days="30" onclick="setGoalHistoryPreset(30)">Last 30 days</button>
+              <button class="gh-preset" data-days="90" onclick="setGoalHistoryPreset(90)">Last 90 days</button>
+              <button class="gh-preset" data-days="180" onclick="setGoalHistoryPreset(180)">Last 180 days</button>
+              <button class="gh-preset" data-days="365" onclick="setGoalHistoryPreset(365)">Last 365 days</button>
+              <button class="gh-preset" data-days="all" onclick="setGoalHistoryPreset('all')">All time</button>
+            </div>
+            <div class="gh-range">
+              <label>From<input type="date" id="gh-from"></label>
+              <label>To<input type="date" id="gh-to"></label>
+              <button class="gh-apply" onclick="applyGoalHistoryRange()">Apply</button>
+            </div>
+          </div>
+          <div class="gh-list" id="gh-list"><div class="gh-empty">Loading…</div></div>
+        </div>
+      </div>
+
       <div id="todays-playlist-home" style="display:none;margin-top:1.5rem;max-width:900px;width:calc(100% + 4rem);margin-left:-2rem;margin-right:-2rem;">
         <p class="stat-lbl" style="margin-bottom:0.5rem;">⬡ Today's Playlist</p>
         <div id="todays-playlist-embed-home"></div>
@@ -9066,6 +9121,108 @@ async function loadCommunityGoal() {
   } catch(e) {}
 }
 
+// ── Community goal history: chronology of past goal-hit days ──────────────
+// Data lives server-side already (record-goal writes it; goal-history reads it).
+// This just surfaces it so past days can be re-opened and shared after reset.
+let _goalHistoryDays = null; // { 'YYYY-MM-DD': { total, primary, stretch } }
+
+function _ghDate(key) { return new Date(key + 'T00:00:00'); }
+function _ghFmt(dt) {
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+function _ghMidnight(dt) { const d = new Date(dt); d.setHours(0,0,0,0); return d; }
+
+async function openGoalHistory() {
+  document.getElementById('goal-history-overlay').classList.add('active');
+  const listEl = document.getElementById('gh-list');
+  if (!_goalHistoryDays) {
+    listEl.innerHTML = '<div class="gh-empty">Loading…</div>';
+    try {
+      const r = await fetch('/api/leaderboard?action=goal-history');
+      const d = await r.json();
+      _goalHistoryDays = d.days || {};
+    } catch (e) {
+      listEl.innerHTML = '<div class="gh-empty">Couldn\'t load history — try again in a moment.</div>';
+      return;
+    }
+  }
+  setGoalHistoryPreset(30); // default view: last 30 days
+}
+
+function closeGoalHistory() {
+  document.getElementById('goal-history-overlay').classList.remove('active');
+}
+
+function setGoalHistoryPreset(days) {
+  document.querySelectorAll('#gh-presets .gh-preset').forEach(b =>
+    b.classList.toggle('active', b.dataset.days === String(days)));
+  const to = new Date();
+  let from = null;
+  if (days !== 'all') { from = new Date(); from.setDate(from.getDate() - (Number(days) - 1)); }
+  document.getElementById('gh-from').value = from ? _ghFmt(from) : '';
+  document.getElementById('gh-to').value = _ghFmt(to);
+  renderGoalHistory(from, to);
+}
+
+function applyGoalHistoryRange() {
+  const fromV = document.getElementById('gh-from').value;
+  const toV   = document.getElementById('gh-to').value;
+  document.querySelectorAll('#gh-presets .gh-preset').forEach(b => b.classList.remove('active'));
+  renderGoalHistory(fromV ? _ghDate(fromV) : null, toV ? _ghDate(toV) : new Date());
+}
+
+// Consecutive recorded goal days ending at `key` (so an old card shows the
+// streak it had at the time, not today's).
+function _ghStreakEndingAt(key) {
+  let streak = 0, d = _ghDate(key);
+  while (_goalHistoryDays && _goalHistoryDays[_ghFmt(d)]) { streak++; d.setDate(d.getDate() - 1); }
+  return streak;
+}
+
+function renderGoalHistory(from, to) {
+  const listEl = document.getElementById('gh-list');
+  const days = _goalHistoryDays || {};
+  const lo = from ? _ghMidnight(from) : null;
+  const hi = to ? _ghMidnight(to) : null;
+  const keys = Object.keys(days).filter(k => {
+    const dt = _ghMidnight(_ghDate(k));
+    if (lo && dt < lo) return false;
+    if (hi && dt > hi) return false;
+    return true;
+  }).sort().reverse();
+
+  if (!keys.length) {
+    listEl.innerHTML = '<div class="gh-empty">No goal days in this range yet.<br>Keep streaming! 🖤💗</div>';
+    return;
+  }
+  const rows = keys.map(k => {
+    const rec = days[k] || {};
+    const nice = _ghDate(k).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const badge = rec.stretch
+      ? '<span class="gh-badge stretch">STRETCH 🎉</span>'
+      : '<span class="gh-badge primary">GOAL HIT</span>';
+    return `<div class="gh-row" onclick="openGoalDayCard('${k}')">
+        <div>
+          <div class="gh-row-date">${nice}</div>
+          <div class="gh-row-sub">${(rec.total||0).toLocaleString()} scrobbles</div>
+        </div>${badge}
+      </div>`;
+  }).join('');
+  listEl.innerHTML = `<div class="gh-count">${keys.length} day${keys.length===1?'':'s'} · tap one to open &amp; share</div>${rows}`;
+}
+
+function openGoalDayCard(key) {
+  const rec = (_goalHistoryDays || {})[key];
+  if (!rec) return;
+  // openGoalHitCard() reads window._goalCardData; dateKey makes the card render
+  // that historical day instead of today.
+  window._goalCardData = {
+    total: rec.total, primary: rec.primary, stretch: rec.stretch,
+    streak: _ghStreakEndingAt(key), dateKey: key,
+  };
+  openGoalHitCard();
+}
+
 // Same dedup shape as computeDailyCommunityTotal, but sums an arbitrary
 // all-time scores field instead of today's combined total.
 function computeCommunityTotal(users, scoreKey) {
@@ -11208,7 +11365,7 @@ async function openGoalHitCard() {
   }
 }
 
-function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, photo, _animPct = 1, _skipReady = false }) {
+function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, photo, dateKey, _animPct = 1, _skipReady = false }) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   const PX = 90;
@@ -11252,8 +11409,8 @@ function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, photo,
 
   drawNoise(ctx, W, H, 0.025);
 
-  // Date top-right
-  const now = new Date();
+  // Date top-right — historical dateKey (YYYY-MM-DD) when re-opening a past day, else today
+  const now = dateKey ? new Date(dateKey + 'T00:00:00Z') : new Date();
   const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
   ctx.fillStyle = 'rgba(245,240,240,0.35)';
   ctx.font = '500 20px "DM Mono", monospace';
