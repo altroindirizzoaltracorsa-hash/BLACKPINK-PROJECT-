@@ -72,10 +72,11 @@ EXACT = {
         "with the IE (way up)":                                                 (  106_282_595,   104_539),
         "Damn Right (feat. Childish Gambino & Kali Uchis)":                     (   99_734_722,    98_496),
         "start a war":                                                          (   79_783_731,    77_258),
-        # Spotify play count is FROZEN at 71,404,579 (same on Aug 3 fetch and
-        # Aug 5). kworb (71,156,105 / 43,295) diverges because it estimates
-        # differently; the site uses Spotify, so match the frozen value -> 0 daily.
-        "Black (Feat. JENNIE of BLACKPINK)":                                    (   71_404_579,         0),
+        # kworb (71,156,105) is ~4 days stale for this track (= the DB's Jul 29
+        # value), so it's the wrong Aug 2 source. The DB has real Aug 1
+        # (71,310,393) and real Aug 3 (71,404,579, frozen since); Aug 2 is the
+        # midpoint interpolation: 71,310,393 + 94,186/2 = 71,357,486 (+47,093/day).
+        "Black (Feat. JENNIE of BLACKPINK)":                                    (   71_357_486,    47_093),
         "Filter":                                                               (   48_981_286,    50_558),
         "One Of The Girls - Sped Up":                                           (   48_201_072,    24_667),
         "Starlight":                                                            (   47_014_870,    62_934),
