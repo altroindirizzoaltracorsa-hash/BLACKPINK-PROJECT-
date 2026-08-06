@@ -884,6 +884,12 @@ export default async function handler(req, res) {
   // Set once the canary has today's entry (either it just bumped this request,
   // or an earlier poll already booked it). Gates the non-canary live fetches.
   let canaryDoneToday = false;
+  // Set only in the request where the canary FIRST catches today's bump (a real
+  // increase, not a cached "already done"). Spotify updates every track's play
+  // count together, so the moment the campaign tracks bump the whole catalog is
+  // fresh too — we use this to kick the catalog-total refresh right then instead
+  // of waiting for the 11pm cron.
+  let canaryCaughtBump = false;
 
   for (const [name, trackId] of trackEntries) {
     const liveKey = `bp_live_${name}`;
@@ -999,6 +1005,8 @@ export default async function handler(req, res) {
 
           await redis.set(prevKey, { total, date: todayLabel });
           advancedToday = true;
+          // Canary just caught a real daily increase → the catalog is fresh too.
+          if (isCanary) canaryCaughtBump = true;
         }
 
         if (total > 0 && !prev) {
@@ -1045,9 +1053,13 @@ export default async function handler(req, res) {
     keyCounts[provider.name] = getApiKeys(provider.keyEnvVars).length;
   }
 
-  // Trigger catalog total update on cron runs or manual force (fire-and-forget,
-  // no await). Skipped when tracks_only=1 — that path is campaign cards only.
-  if ((isCron || isForced) && fetchedLive && !tracksOnly) {
+  // Trigger catalog total update (fire-and-forget, no await) when:
+  //   - the canary just caught today's bump (Spotify updates all counters
+  //     together, so the whole catalog is fresh the moment the tracks move —
+  //     this is the primary path now, catching it in the small hours), OR
+  //   - a cron/force sweep ran (the 11pm floor / manual refresh).
+  // Skipped when tracks_only=1 — that path is campaign cards only.
+  if ((canaryCaughtBump || isCron || isForced) && fetchedLive && !tracksOnly) {
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'blinksunited.com';
     fetch(`https://${host}/api/streams?catalog=1&force=1&key=${process.env.ADMIN_SECRET || ''}`).catch(() => {});
   }
