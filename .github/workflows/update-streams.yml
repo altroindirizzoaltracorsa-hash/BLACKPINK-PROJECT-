@@ -12,6 +12,15 @@ jobs:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
         run: |
           echo "Calling force refresh (tracks only)..."
-          curl -sfL "https://blinksunited.com/api/streams?force=1&tracks_only=1&key=${ADMIN_KEY}" | tee /tmp/resp.json
-          echo ""
-          echo "live=$(cat /tmp/resp.json | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d[\"_debug\"][\"live\"])')"
+          curl -sfL "https://blinksunited.com/api/streams?force=1&tracks_only=1&key=${ADMIN_KEY}" -o /tmp/resp.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/resp.json'))
+          dbg = d.get('_debug', {})
+          print('live (fetched via scraper keys?):', dbg.get('live'))
+          print('errors:', dbg.get('errors') or '(none)')
+          for name in ('jump', 'shutdown', 'ddududu', 'go'):
+              b = d.get(name) or {}
+              prev = b.get('prev') or {}
+              print(f"  {name:10} total={b.get('total')!s:>12}  prev.date={prev.get('date')}")
+          PY
