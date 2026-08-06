@@ -25,10 +25,15 @@ from spotify_scraper import SpotifyClient
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
 
-# Spotify's public play_count always lags by a day -- whatever we fetch
-# "today" is actually yesterday's finalized count, same convention kworb
-# uses. Label the snapshot with the day it reflects, not the day we ran.
-TODAY = os.environ.get('OVERRIDE_DATE') or (date.today() - timedelta(days=1)).isoformat()
+# Snapshot labeling: Spotify publishes finalized daily play counts IN ORDER,
+# one day at a time, but lately LATE -- sometimes 2+ days behind. So the old
+# "today - 1" rule mislabels whenever the lag isn't exactly one day (that's what
+# stamped Aug-4's data as Aug-5). Instead we label each new snapshot as the day
+# AFTER the artist's last recorded day (see snapshot_date_for): since Spotify
+# never skips a finalized day, a freshly-changed total is always the next
+# unrecorded day, whatever the current lag -- and it self-catches-up one day per
+# run. OVERRIDE_DATE forces an explicit date for manual backfills.
+OVERRIDE_DATE = os.environ.get('OVERRIDE_DATE')
 
 BLACKPINK_ID = "41MozSoPIsD1dJM0CLPjZF"
 JISOO_ID = "6UZ0ba50XreR4TM8u322gs"
@@ -286,16 +291,23 @@ def sb(method, path, **kwargs):
 
 
 def fetch_fixed_tracks(client, track_specs):
-    """track_specs: [(name, track_id), ...]. Returns [{name, streams, source_track_ids, album, album_release_date, track_number, album_art_url}]."""
+    """track_specs: [(name, track_id), ...]. Returns (canonical, failed):
+    canonical is [{name, streams, source_track_ids, album, ...}] for tracks that
+    fetched; failed is [(name, track_id), ...] for tracks Spotify couldn't return
+    (e.g. an 'entity unavailable' live track). The caller substitutes a
+    last-known value for failed tracks so they don't silently short the total."""
     ids = [tid for _, tid in track_specs]
     results = client.get_tracks(ids)
     canonical = []
+    failed = []
     for (name, tid), item in zip(track_specs, results):
         if not item.ok:
             print(f"  track fetch failed: {name!r} [{tid}]: {item.error}", file=sys.stderr)
+            failed.append((name, tid))
             continue
         if item.result.play_count is None:
             print(f"  no play_count for: {name!r} [{tid}]", file=sys.stderr)
+            failed.append((name, tid))
             continue
         t = item.result
         album_art_url = None
@@ -310,7 +322,7 @@ def fetch_fixed_tracks(client, track_specs):
             "track_number": t.track_number,
             "album_art_url": album_art_url,
         })
-    return canonical
+    return canonical, failed
 
 
 def upsert_artist_tracks(artist_id, canonical_tracks):
@@ -352,15 +364,29 @@ def previous_track_streams(artist_id, prev_date):
     return {r["track_ref"]: r["streams"] for r in rows}
 
 
-def previous_artist_stat(artist_id):
+def latest_artist_stat(artist_id):
+    """The artist's most recent recorded snapshot -- the basis for both the next
+    day's label and the daily delta. None if the artist has never been recorded."""
     rows = sb("GET", "/artist_daily_stats", params={
         "artist_id": f"eq.{artist_id}",
-        "date": f"lt.{TODAY}",
         "order": "date.desc",
         "limit": 1,
         "select": "date,total_streams,followers,monthly_listeners,world_rank",
     })
     return rows[0] if rows else None
+
+
+def snapshot_date_for(prev_artist):
+    """Date to label this snapshot with. OVERRIDE_DATE wins (manual backfills).
+    Otherwise it's the day AFTER the artist's most recent recorded day: because
+    Spotify publishes finalized days in order, a newly-changed total is the next
+    unrecorded day regardless of how many days late Spotify is. Falls back to
+    yesterday only on the very first run, when there's no prior row."""
+    if OVERRIDE_DATE:
+        return OVERRIDE_DATE
+    if prev_artist and prev_artist.get("date"):
+        return (date.fromisoformat(prev_artist["date"]) + timedelta(days=1)).isoformat()
+    return (date.today() - timedelta(days=1)).isoformat()
 
 
 def process_artist(client, artist_id, artist_name):
@@ -370,11 +396,39 @@ def process_artist(client, artist_id, artist_name):
         print(f"  no FIXED_TRACKS entry for {artist_id}, skipping", file=sys.stderr)
         return
 
-    canonical = fetch_fixed_tracks(client, track_specs)
-    total_streams = sum(c["streams"] for c in canonical)
-    print(f"  {len(canonical)}/{len(track_specs)} tracks fetched, total={total_streams:,}")
+    prev_artist = latest_artist_stat(artist_id)
+    today = snapshot_date_for(prev_artist)
+    prev_date = prev_artist["date"] if prev_artist else None
+    prev_track_streams_map = previous_track_streams(artist_id, prev_date)
 
-    prev_artist = previous_artist_stat(artist_id)
+    canonical, failed = fetch_fixed_tracks(client, track_specs)
+
+    # Last-known-value fallback: for tracks Spotify couldn't return this run,
+    # reuse their most recent stored streams so a temporarily-unavailable track
+    # (e.g. a pulled or region-locked live track) doesn't drop out of the total
+    # and flip the daily delta negative. These rows are written straight to
+    # track_daily_stats with delta 0; their artist_tracks metadata is left as-is.
+    all_refs = {}
+    if failed:
+        rows = sb("GET", "/artist_tracks", params={"artist_id": f"eq.{artist_id}", "select": "id,name"})
+        all_refs = {r["name"]: r["id"] for r in rows}
+    fallback_rows = []
+    fallback_total = 0
+    for name, tid in failed:
+        ref = all_refs.get(name)
+        last_known = prev_track_streams_map.get(ref) if ref is not None else None
+        if last_known is not None:
+            fallback_total += last_known
+            fallback_rows.append({"track_ref": ref, "date": today, "streams": last_known, "daily_delta": 0})
+            print(f"  ⚠ {name!r} unavailable — using last-known {last_known:,} from {prev_date}")
+        else:
+            print(f"  ⚠ {name!r} unavailable and no last-known value — omitted from total", file=sys.stderr)
+
+    total_streams = sum(c["streams"] for c in canonical) + fallback_total
+    track_count = len(canonical) + len(fallback_rows)
+    print(f"  {len(canonical)}/{len(track_specs)} fetched"
+          + (f" (+{len(fallback_rows)} last-known)" if fallback_rows else "")
+          + f", total={total_streams:,}  → labeling {today}")
 
     # If Spotify hasn't published new counts yet, all totals are identical to
     # the previous snapshot. Skip writing anything so we don't record a +0 day.
@@ -384,19 +438,17 @@ def process_artist(client, artist_id, artist_name):
 
     name_to_ref = upsert_artist_tracks(artist_id, canonical)
 
-    prev_date = prev_artist["date"] if prev_artist else None
-    prev_track_streams_map = previous_track_streams(artist_id, prev_date)
-
     track_rows = []
     for c in canonical:
         ref = name_to_ref[c["name"]]
         prev = prev_track_streams_map.get(ref)
         track_rows.append({
             "track_ref": ref,
-            "date": TODAY,
+            "date": today,
             "streams": c["streams"],
             "daily_delta": (c["streams"] - prev) if prev is not None else None,
         })
+    track_rows.extend(fallback_rows)
     sb("POST", "/track_daily_stats",
        params={"on_conflict": "track_ref,date"},
        headers={"Prefer": "resolution=merge-duplicates"},
@@ -426,7 +478,7 @@ def process_artist(client, artist_id, artist_name):
        headers={"Prefer": "resolution=merge-duplicates"},
        json=[{
            "artist_id": artist_id,
-           "date": TODAY,
+           "date": today,
            "total_streams": total_streams,
            "daily_delta": artist_delta,
            "followers": artist_data.followers,
@@ -435,7 +487,7 @@ def process_artist(client, artist_id, artist_name):
            "monthly_listeners_delta": monthly_delta,
            "world_rank": artist_data.world_rank,
            "world_rank_delta": rank_delta,
-           "track_count": len(canonical),
+           "track_count": track_count,
        }])
     print(f"  saved. delta={artist_delta}, followers_delta={followers_delta}, monthly_delta={monthly_delta}, rank=#{artist_data.world_rank} (delta={rank_delta})")
 
