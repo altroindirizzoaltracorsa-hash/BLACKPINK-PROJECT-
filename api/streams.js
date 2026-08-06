@@ -9,6 +9,15 @@ const TRACKS = {
   go:       '0mYa3o6tlUN5HRippmKmwH',
 };
 
+// Canary-gate track. Spotify refreshes all four campaign tracks' play counts
+// together (verified: their daily-gap days line up exactly), so while we wait
+// for the daily bump to land we only spend RapidAPI keys on this ONE track.
+// The moment the canary shows new streams, the handler fans out and fetches
+// the other three once. Cuts waiting-phase quota ~4x, which is what lets the
+// watch window run long enough to catch late (post-midnight) Spotify updates.
+// JUMP is the highest-velocity track, so it's the most reliable bump signal.
+const CANARY = 'jump';
+
 // Spotify's public play count generally only jumps once a day, sometime
 // between midday and late evening Italy time. Outside that window (or once
 // today's jump has already landed) there's nothing new to find, so we poll
@@ -18,8 +27,16 @@ function getCacheTtlMs(needsDailyUpdate) {
   const romeHour = Number(
     new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Rome', hour: 'numeric', hour12: false }).format(new Date())
   );
-  if (romeHour < 15) return Infinity; // before 3pm Rome — Spotify never updates this early, don't call at all
-  return 15 * 60 * 1000; // in the daily watch window — poll every ~15min
+  // Active watch window: 3pm Rome straight through to 7am next morning. The
+  // extended overnight hours exist to catch Spotify's daily play-count refresh
+  // even when it lands well after midnight Italy time (the usual cause of
+  // "2-day gap" entries — the old window shut at midnight and nothing polled
+  // in the early morning to catch a late update). The quiet stretch is only
+  // 7am–3pm, when yesterday's numbers are already booked and the next refresh
+  // isn't due yet. Running the window this long is cheap because the canary
+  // gate means just ONE track is polled while we wait for the bump.
+  if (romeHour >= 7 && romeHour < 15) return Infinity; // quiet: nothing new to find
+  return 15 * 60 * 1000; // in the watch window — poll every ~15min
 }
 
 // Returns all configured RapidAPI keys for the given env vars, in priority order.
@@ -713,6 +730,20 @@ function getDateLabel(date) {
   const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
   return `${dd}/${mm}`;
 }
+// Day label in Rome time, so the "streaming day" rolls at midnight Italy rather
+// than at UTC midnight (which is 2am Rome in summer). This is what makes a
+// post-midnight Spotify update register as the NEW day and get polled/caught
+// right away instead of after the next afternoon. Safe for existing data: every
+// snapshot recorded so far was taken between 3pm–midnight Rome, where the Rome
+// date and the UTC date are identical, so no stored label shifts.
+function getRomeDateLabel(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit',
+  }).formatToParts(date);
+  const dd = parts.find(p => p.type === 'day').value;
+  const mm = parts.find(p => p.type === 'month').value;
+  return `${dd}/${mm}`;
+}
 function parseDateLabel(label) {
   const [dd, mm] = label.split('/').map(Number);
   return new Date(Date.UTC(new Date().getUTCFullYear(), mm - 1, dd));
@@ -755,6 +786,11 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
   }
+
+  // tracks_only=1 refreshes ONLY the 4 campaign-track cards via the RapidAPI
+  // scraper keys and skips the (expensive) catalog-total recompute that a normal
+  // cron/force run kicks off afterward. Powers the "campaign tracks only" command.
+  const tracksOnly = req.query.tracks_only === '1';
 
   // Manual escape hatch for directly setting/correcting a single day's history
   // entry — for when the upstream play count genuinely never moved (e.g. a
@@ -835,7 +871,7 @@ export default async function handler(req, res) {
     }
   }
 
-  const todayLabel = getDateLabel(new Date());
+  const todayLabel = getRomeDateLabel();
   const results    = {};
   const errors     = {};
   let fetchedLive  = false;
@@ -847,6 +883,13 @@ export default async function handler(req, res) {
     const j = Math.floor(Math.random() * (i + 1));
     [trackEntries[i], trackEntries[j]] = [trackEntries[j], trackEntries[i]];
   }
+  // Canary first: we decide whether to fan out to the other three based on
+  // whether the canary has booked today's bump, so it must be processed before
+  // them. (A cron/force sweep ignores the gate and fetches all four anyway.)
+  trackEntries.sort((a, b) => (a[0] === CANARY ? -1 : b[0] === CANARY ? 1 : 0));
+  // Set once the canary has today's entry (either it just bumped this request,
+  // or an earlier poll already booked it). Gates the non-canary live fetches.
+  let canaryDoneToday = false;
 
   for (const [name, trackId] of trackEntries) {
     const liveKey = `bp_live_${name}`;
@@ -865,6 +908,9 @@ export default async function handler(req, res) {
       gotLock = !!(await redis.set(lockKey, '1', { nx: true, ex: 30 }));
       if (!gotLock) {
         const [cachedOnly, histOnly, prevOnly] = await Promise.all([redis.get(liveKey), redis.get(histKey), redis.get(prevKey)]);
+        // Another request holds the canary lock — read its snapshot so we can
+        // still gate the non-canary tracks correctly this pass.
+        if (name === CANARY) canaryDoneToday = prevOnly?.date === todayLabel;
         results[name] = { total: cachedOnly?.total || 0, history: histOnly || [], prev: prevOnly ? { total: prevOnly.total, date: prevOnly.date } : null };
         continue;
       }
@@ -894,10 +940,22 @@ export default async function handler(req, res) {
       // live total is recent — otherwise a fetch that straddles midnight stays
       // cached across the day boundary and the daily diff never gets written.
       const needsDailyUpdate = !prev || prev.date !== todayLabel;
-      const cacheValid = !isCron && !isForced && cacheAge < getCacheTtlMs(needsDailyUpdate) && (cached?.total || 0) > 0;
+      const isCanary = name === CANARY;
+      // Canary gate: while waiting for today's bump, only the canary may hit the
+      // API. The other three stay on cache until the canary has booked today
+      // (canaryDoneToday) — then they fan out and fetch once to catch the same
+      // refresh. A cron/force run bypasses the gate and sweeps all four (the
+      // guaranteed daily floor). A track with no cache yet is always allowed to
+      // fetch so it can seed itself on first run.
+      const gateOpen = isCanary || isCron || isForced
+        || (canaryDoneToday && needsDailyUpdate) || !(cached?.total > 0);
+      const cacheValid = !gateOpen
+        ? (cached?.total || 0) > 0
+        : (!isCron && !isForced && cacheAge < getCacheTtlMs(needsDailyUpdate) && (cached?.total || 0) > 0);
       let total;
       let updatedAt = cached?.ts || null;
       let stale = false;
+      let advancedToday = false;
 
       if (cacheValid) {
         total = cached.total;
@@ -946,12 +1004,18 @@ export default async function handler(req, res) {
           }
 
           await redis.set(prevKey, { total, date: todayLabel });
+          advancedToday = true;
         }
 
         if (total > 0 && !prev) {
           await redis.set(prevKey, { total, date: todayLabel });
+          advancedToday = true;
         }
       }
+
+      // The canary is processed first; record whether today's bump is now booked
+      // so the remaining (non-canary) tracks know whether to fan out and fetch.
+      if (isCanary) canaryDoneToday = !needsDailyUpdate || advancedToday;
 
       results[name] = {
         total,
@@ -987,8 +1051,9 @@ export default async function handler(req, res) {
     keyCounts[provider.name] = getApiKeys(provider.keyEnvVars).length;
   }
 
-  // Trigger catalog total update on cron runs or manual force (fire-and-forget, no await)
-  if ((isCron || isForced) && fetchedLive) {
+  // Trigger catalog total update on cron runs or manual force (fire-and-forget,
+  // no await). Skipped when tracks_only=1 — that path is campaign cards only.
+  if ((isCron || isForced) && fetchedLive && !tracksOnly) {
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'blinksunited.com';
     fetch(`https://${host}/api/streams?catalog=1&force=1&key=${process.env.ADMIN_SECRET || ''}`).catch(() => {});
   }

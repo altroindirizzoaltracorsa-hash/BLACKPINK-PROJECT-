@@ -7,11 +7,11 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - name: Force-refresh stream counts
+      - name: Force-refresh the 4 campaign tracks only (RapidAPI scraper keys, no catalog)
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
         run: |
-          echo "Calling force refresh..."
-          curl -sfL "https://blinksunited.com/api/streams?force=1&key=${ADMIN_KEY}" | tee /tmp/resp.json
+          echo "Calling force refresh (tracks only)..."
+          curl -sfL "https://blinksunited.com/api/streams?force=1&tracks_only=1&key=${ADMIN_KEY}" | tee /tmp/resp.json
           echo ""
           echo "live=$(cat /tmp/resp.json | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d[\"_debug\"][\"live\"])')"
