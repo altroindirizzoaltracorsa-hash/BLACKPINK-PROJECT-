@@ -1,0 +1,25 @@
+name: Relabel Aug5 to Aug4
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Set to true to APPLY the relabel (default: dry-run)"
+        type: boolean
+        default: false
+
+jobs:
+  relabel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install httpx
+      - name: Relabel 2026-08-05 snapshot to 2026-08-04
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          APPLY: ${{ github.event.inputs.apply == 'true' && '1' || '0' }}
+        run: python .github/scripts/relabel-aug5-to-aug4.py
