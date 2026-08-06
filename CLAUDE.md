@@ -54,7 +54,8 @@ mcp__github__actions_run_trigger
 ## Key API / Infra Context
 
 - **`/api/streams`** — powers campaign card stream counts. Supports `?force=1&key=ADMIN_SECRET`, `?force=1&tracks_only=1&key=…` (campaign tracks only, skips catalog), `?cron=1`, `?catalog=1`, `?action=set-entry`.
-- **Watch window:** 3PM Italy → **7AM next morning** (extended overnight to catch Spotify's daily play-count refresh even when it lands well after midnight Italy — the old midnight cutoff was the main cause of "2-day gap" entries). Quiet 7AM–3PM. In-window cache TTL = 15 min (visitor-triggered, NOT automatic cron).
+- **Day boundary (2AM Rome):** Spotify's streaming day resets worldwide at **00:00 UTC = 2AM Rome (summer)**, and the whole site — leaderboard, badges, scrobblers — resets on that same boundary. The campaign-track day label (`getDateLabel`, `todayLabel`) is **UTC-based on purpose** to stay aligned. Do NOT switch it to Rome-local time — that desyncs the tracks from the site reset.
+- **Watch window:** 3PM Italy → **7AM next morning** (extended overnight to catch Spotify's daily refresh, which lately lands in the small hours *after* the 2AM reset — the old midnight-Rome cutoff was the main cause of "2-day gap" entries). Quiet 7AM–3PM. In-window cache TTL = 15 min (visitor-triggered, NOT automatic cron).
 - **Canary gate:** while waiting for the daily bump, only ONE campaign track (`CANARY = 'jump'` in `api/streams.js`) is polled with the scraper keys; the moment it shows new streams, the handler fans out and fetches the other 3 once. All 4 move in lockstep, so this cuts waiting-phase quota ~4×. `?cron=1` / `?force=1` bypass the gate and sweep all 4 (guaranteed daily floor). The 11PM Vercel cron is that floor.
 - **Vercel cron:** `0 21 * * *` UTC (11PM Italy) → `/api/streams?cron=1` — campaign tracks only.
 - **`fetch-catalog.yml` schedule:** `0 22 * * *` UTC (midnight Italy) — full catalog + artist streams.

@@ -27,14 +27,15 @@ function getCacheTtlMs(needsDailyUpdate) {
   const romeHour = Number(
     new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Rome', hour: 'numeric', hour12: false }).format(new Date())
   );
-  // Active watch window: 3pm Rome straight through to 7am next morning. The
-  // extended overnight hours exist to catch Spotify's daily play-count refresh
-  // even when it lands well after midnight Italy time (the usual cause of
-  // "2-day gap" entries — the old window shut at midnight and nothing polled
-  // in the early morning to catch a late update). The quiet stretch is only
-  // 7am–3pm, when yesterday's numbers are already booked and the next refresh
-  // isn't due yet. Running the window this long is cheap because the canary
-  // gate means just ONE track is polled while we wait for the bump.
+  // Active watch window: 3pm Rome straight through to 7am next morning. Spotify's
+  // streaming day resets at 00:00 UTC (= 2am Rome in summer) and lately the daily
+  // play-count refresh has been landing in the small hours AFTER that reset — the
+  // usual cause of "2-day gap" entries, since the old window shut at midnight Rome
+  // and nothing polled in the early morning to catch it. The overnight hours cover
+  // the 2am-reset-through-dawn stretch where those late refreshes appear. The quiet
+  // stretch is only 7am–3pm, when yesterday's numbers are already booked and the
+  // next refresh isn't due yet. Running the window this long is cheap because the
+  // canary gate means just ONE track is polled while we wait for the bump.
   if (romeHour >= 7 && romeHour < 15) return Infinity; // quiet: nothing new to find
   return 15 * 60 * 1000; // in the watch window — poll every ~15min
 }
@@ -725,23 +726,16 @@ async function handleCatalogRequest(req, res) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Day label is UTC-based ON PURPOSE: Spotify's streaming day resets worldwide at
+// 00:00 UTC (= 2am Rome in summer), and the whole site — leaderboard, badges,
+// scrobblers — resets on that same boundary. So `todayLabel` must roll at 00:00
+// UTC to stay aligned. Late Spotify play-count refreshes land AFTER that reset,
+// which is exactly when this label flips and needsDailyUpdate turns true, so the
+// canary starts polling right at the reset and catches them. Do NOT switch this
+// to Rome-local time — it would desync the campaign tracks from the site reset.
 function getDateLabel(date) {
   const dd = String(date.getUTCDate()).padStart(2, '0');
   const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
-  return `${dd}/${mm}`;
-}
-// Day label in Rome time, so the "streaming day" rolls at midnight Italy rather
-// than at UTC midnight (which is 2am Rome in summer). This is what makes a
-// post-midnight Spotify update register as the NEW day and get polled/caught
-// right away instead of after the next afternoon. Safe for existing data: every
-// snapshot recorded so far was taken between 3pm–midnight Rome, where the Rome
-// date and the UTC date are identical, so no stored label shifts.
-function getRomeDateLabel(date = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit',
-  }).formatToParts(date);
-  const dd = parts.find(p => p.type === 'day').value;
-  const mm = parts.find(p => p.type === 'month').value;
   return `${dd}/${mm}`;
 }
 function parseDateLabel(label) {
@@ -871,7 +865,7 @@ export default async function handler(req, res) {
     }
   }
 
-  const todayLabel = getRomeDateLabel();
+  const todayLabel = getDateLabel(new Date());
   const results    = {};
   const errors     = {};
   let fetchedLive  = false;

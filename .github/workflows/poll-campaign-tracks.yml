@@ -1,21 +1,23 @@
 name: Poll campaign tracks (overnight)
 
 # Pings /api/streams overnight so Spotify's daily play-count refresh gets caught
-# even when it lands well after midnight Italy time (when site traffic is too low
-# to trigger the visitor-driven poll on its own). This is a PLAIN GET — no force,
-# no cron flag — so it goes through the normal canary gate: while waiting for the
-# bump it only spends keys on the canary track (JUMP), and the moment the canary
-# shows new streams the handler fans out to the other 3. A cache-busting query
-# param guarantees the request reaches the function instead of the CDN edge cache.
+# even when it lands in the small hours (when site traffic is too low to trigger
+# the visitor-driven poll on its own). This is a PLAIN GET — no force, no cron
+# flag — so it goes through the normal canary gate: while waiting for the bump it
+# only spends keys on the canary track (JUMP), and the moment the canary shows new
+# streams the handler fans out to the other 3. A cache-busting query param
+# guarantees the request reaches the function instead of the CDN edge cache.
 #
-# Schedule: every 20 min from 22:00–05:59 UTC (~midnight–08:00 Rome in summer,
-# ~23:00–07:00 Rome in winter). GitHub cron timing is best-effort; ±10 min drift
-# is fine since the canary only needs to catch the bump once, then everything
-# backs off to the 4h TTL. Adjust the interval/hours to taste.
+# Schedule: every 20 min from 00:00–04:59 UTC. Spotify's streaming day resets at
+# 00:00 UTC (= 2am Rome in summer) and the late refresh lands AFTER that reset, so
+# this covers 2am–7am Rome — squarely after the reset and inside the API's active
+# watch window (which goes quiet at 7am Rome). GitHub cron timing is best-effort;
+# ±10 min drift is fine since the canary only needs to catch the bump once, then
+# everything backs off to the 4h TTL. Adjust the interval/hours to taste.
 
 on:
   schedule:
-    - cron: '*/20 22,23,0,1,2,3,4,5 * * *'
+    - cron: '*/20 0-4 * * *'
   workflow_dispatch:
 
 concurrency:
