@@ -40,8 +40,39 @@
   }
   .brand { display: flex; align-items: center; gap: 0.6rem; font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.22em; color: var(--pink); }
   .brand img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
-  .back { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); transition: color 0.2s; white-space: nowrap; }
-  .back:hover { color: var(--pink); }
+
+  /* ── nav ── */
+  .nav-links { display: flex; gap: 1.15rem; list-style: none; align-items: center; }
+  .nav-links a { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); transition: color 0.2s; white-space: nowrap; }
+  .nav-links a:hover, .nav-links a.active { color: var(--pink); }
+  .nav-links a.active { font-weight: 700; }
+  .nav-dd { position: relative; }
+  .nav-dd-panel { display: none; position: absolute; top: 170%; right: 0; min-width: 174px; flex-direction: column; gap: 2px; padding: 0.4rem; background: var(--surf); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.5); }
+  .nav-dd:hover .nav-dd-panel, .nav-dd:focus-within .nav-dd-panel { display: flex; }
+  .nav-dd-panel a { padding: 0.55rem 0.7rem; border-radius: 6px; }
+  .nav-dd-panel a:hover { background: var(--pink-soft); }
+  .nav-hamburger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 5px; }
+  .nav-hamburger span { display: block; width: 22px; height: 2px; background: var(--text); transition: transform 0.25s, opacity 0.25s; }
+  .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .nav-hamburger.open span:nth-child(2) { opacity: 0; }
+  .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+  @media (max-width: 980px) {
+    .nav-hamburger { display: flex; }
+    .nav-links {
+      display: none; position: absolute; top: 100%; left: 0; right: 0;
+      flex-direction: column; align-items: stretch; gap: 0;
+      background: rgba(8,5,9,0.98); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line); padding: 0.4rem 1.4rem 1rem;
+      max-height: calc(100svh - 60px); overflow-y: auto;
+    }
+    .nav-links.open { display: flex; }
+    .nav-links > li { width: 100%; }
+    .nav-links a { display: block; padding: 0.9rem 0; border-bottom: 1px solid var(--line); }
+    .nav-links > li:last-child a { border-bottom: none; }
+    .nav-dd-panel { display: flex; position: static; min-width: 0; border: none; box-shadow: none; background: none; padding: 0 0 0 1rem; }
+    .nav-dd-panel a { padding: 0.7rem 0; }
+  }
 
   /* ── hero ── */
   .hero { position: relative; text-align: center; padding: 5rem 1.4rem 3rem; overflow: hidden; }
@@ -93,7 +124,29 @@
 <body>
   <div class="topbar">
     <a class="brand" href="/"><img src="/blinksunited.jpg" alt="Blinks United">BLINKS UNITED</a>
-    <a class="back" href="/">← Back to site</a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="/streams">Streams</a></li>
+      <li><a href="/badges">My Badges</a></li>
+      <li><a href="/leaderboard">Leaderboard</a></li>
+      <li class="nav-dd">
+        <a href="/charts">Charts <span style="opacity:0.55">▾</span></a>
+        <div class="nav-dd-panel">
+          <a href="/spotify-charts">Spotify Charts</a>
+          <a href="/youtube">YouTube Charts</a>
+          <a href="/apple-charts">Apple Music Charts</a>
+          <a href="/itunes-charts">iTunes Charts</a>
+        </div>
+      </li>
+      <li><a href="/voting">Vote</a></li>
+      <li><a href="/feedback">Feedback</a></li>
+      <li><a href="/10years.html">10th Anniv.</a></li>
+      <li><a href="/achievements">Achievements</a></li>
+      <li><a href="/projects" class="active">Our Projects</a></li>
+    </ul>
+    <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 
   <header class="hero">
@@ -126,6 +179,12 @@
   </footer>
 
   <script>
+    // ── Mobile nav ──
+    function toggleMobileNav() {
+      document.getElementById('nav-links').classList.toggle('open');
+      document.getElementById('nav-hamburger').classList.toggle('open');
+    }
+
     // ── Project list ──────────────────────────────────────────────────────
     // Edit this array to add / move / remove projects. status: 'current' | 'past'.
     // Fields: icon (emoji), name, tag, desc, period, url (optional, '' to hide link).
