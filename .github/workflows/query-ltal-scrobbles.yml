@@ -1,0 +1,69 @@
+name: Query LTAL scrobbles
+
+# One-off: fetch the live leaderboard and total up community scrobbles for
+# "Less Than a Lover" (overall_ltal), deduping linked/secondary accounts the
+# same way the site's computeCommunityTotal() does.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  query:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Total overall_ltal across the leaderboard
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request
+
+          url = "https://blinksunited.com/api/leaderboard"
+          req = urllib.request.Request(url, headers={"User-Agent": "gh-actions-ltal-query"})
+          with urllib.request.urlopen(req, timeout=30) as r:
+              data = json.load(r)
+
+          users = data.get("users", {}) or {}
+
+          # Same dedup as computeCommunityTotal(): any username that appears as a
+          # linkedAccount of another user is a secondary account and is skipped.
+          secondary = set()
+          for k, d in users.items():
+              for a in (d.get("linkedAccounts") or []):
+                  ak = (a.get("username") or "").lower()
+                  if ak and ak != k.lower():
+                      secondary.add(ak)
+
+          def score(d, key):
+              return (d.get("scores") or {}).get(key) or 0
+
+          total_ltal = 0
+          contributors = []
+          for k, d in users.items():
+              if k.lower() in secondary:
+                  continue
+              v = score(d, "overall_ltal")
+              total_ltal += v
+              if v:
+                  contributors.append((d.get("displayName") or d.get("username") or k, v))
+
+          # Cross-check: total across ALL 5 campaign tracks, for context.
+          keys = ["overall_jump", "overall_shutdown", "overall_ddududu", "overall_ltal", "overall_go"]
+          total_all = 0
+          for k, d in users.items():
+              if k.lower() in secondary:
+                  continue
+              total_all += sum(score(d, kk) for kk in keys)
+
+          contributors.sort(key=lambda x: -x[1])
+          print("lastUpdated:", data.get("lastUpdated"))
+          print("counted users (deduped):", sum(1 for k in users if k.lower() not in secondary))
+          print("secondary (linked) accounts skipped:", len(secondary))
+          print()
+          print("=== LESS THAN A LOVER — total community scrobbles (overall_ltal) ===")
+          print("TOTAL:", f"{total_ltal:,}")
+          print()
+          print("For context — all 5 campaign tracks combined (overall):", f"{total_all:,}")
+          print()
+          print("Top 15 contributors to LTAL:")
+          for name, v in contributors[:15]:
+              print(f"  {v:>10,}  {name}")
+          PY
