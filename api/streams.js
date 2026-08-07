@@ -1016,23 +1016,25 @@ export default async function handler(req, res) {
         }
 
         if (total > 0 && prevTotal > 0 && total > prevTotal) {
-          const gap = daysBetween(prev.date, todayLabel);
-
-          if (gap >= 1) {
-            // gap=1: prev.date IS the streaming day (snapshot was yesterday, streams are for that day)
-            // gap>1: Spotify skipped days, label as the day after the last snapshot
-            const yLabel = gap === 1 ? prev.date : addDaysToLabel(prev.date, 1);
-            const dailyStreams = total - prevTotal;
-            const existing = history.find(h => h.date === yLabel);
-            if (!existing) {
-              const entry = { date: yLabel, streams: dailyStreams };
-              if (gap > 1) entry.note = `${gap}-day gap`;
-              history.push(entry);
-              if (history.length > 60) history.shift();
-              await redis.set(histKey, history);
-            }
-            // Never overwrite an existing entry — it may have been manually corrected.
+          // Label the new daily entry as the day AFTER the most recent history
+          // entry. Spotify publishes finalized streaming days IN ORDER (just
+          // sometimes late), so a freshly-caught bump is always the next
+          // unrecorded day — regardless of which UTC day we happen to catch it.
+          // This replaces the old prev.date/todayLabel gap logic, which mislabeled
+          // late catches (Aug-4-as-Aug-5 style) and left spurious "N-day gap"
+          // notes that needed the relabel band-aid above. Same lag-proof rule as
+          // the artist fetch (snapshot_date_for). prev.date still tracks todayLabel
+          // (below) purely to drive the needsDailyUpdate gate, not the labels.
+          const lastEntry = history[history.length - 1];
+          const yLabel = lastEntry ? addDaysToLabel(lastEntry.date, 1) : yesterdayLabel();
+          const dailyStreams = total - prevTotal;
+          const existing = history.find(h => h.date === yLabel);
+          if (!existing) {
+            history.push({ date: yLabel, streams: dailyStreams });
+            if (history.length > 60) history.shift();
+            await redis.set(histKey, history);
           }
+          // Never overwrite an existing entry — it may have been manually corrected.
 
           await redis.set(prevKey, { total, date: todayLabel });
           advancedToday = true;
