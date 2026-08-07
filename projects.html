@@ -115,14 +115,17 @@
 
   .empty { border: 1px dashed var(--line); border-radius: 14px; padding: 2.6rem 1.5rem; text-align: center; font-family: var(--serif); font-style: italic; color: var(--muted); font-size: 0.95rem; }
 
-  /* ── Less Than a Lover feature banner (moved from the homepage) ── */
-  .ltal-banner { max-width: 1040px; margin: 1.6rem auto 0; padding: 2.1rem 1.4rem 1.8rem; text-align: center; border: 1px solid rgba(232,17,13,0.25); border-radius: 16px; background: radial-gradient(120% 140% at 50% 0%, rgba(232,17,13,0.12), rgba(255,0,102,0.05) 45%, var(--card) 80%); }
-  .ltal-label { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--pink); }
-  .ltal-jennie { display: block; font-family: var(--serif); font-style: italic; font-size: 2rem; line-height: 1; color: #E8110D; margin-top: 0.35rem; text-shadow: 0 1px 8px rgba(0,0,0,0.55); }
-  .ltal-wordmark { display: block; width: min(260px, 72%); height: auto; margin: 0.45rem auto 0.2rem; filter: drop-shadow(0 1px 8px rgba(0,0,0,0.55)); }
-  .ltal-blurb { max-width: 54ch; margin: 0.7rem auto 0; font-size: 0.86rem; line-height: 1.55; color: var(--muted); }
-  .ltal-cta { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; margin-top: 1.2rem; }
-  .ltal-cta a { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pink); border: 1px solid rgba(255,0,102,0.4); border-radius: 999px; padding: 0.55rem 0.95rem; transition: background 0.2s, color 0.2s; }
+  /* ── Expandable card (Less Than a Lover reveals its NEW SINGLE banner) ── */
+  .card-toggle { background: none; border: none; cursor: pointer; padding: 0; }
+  .card.has-expand.open { border-color: rgba(232,17,13,0.4); background: radial-gradient(140% 120% at 50% 100%, rgba(232,17,13,0.1), var(--card) 70%); }
+  .card-expand { margin-top: 0.2rem; padding-top: 0.95rem; border-top: 1px solid var(--line); text-align: center; }
+  .card-expand[hidden] { display: none; }
+  .ltal-label { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.26em; text-transform: uppercase; color: var(--pink); }
+  .ltal-jennie { display: block; font-family: var(--serif); font-style: italic; font-size: 1.7rem; line-height: 1; color: #E8110D; margin-top: 0.3rem; text-shadow: 0 1px 8px rgba(0,0,0,0.55); }
+  .ltal-wordmark { display: block; width: min(220px, 80%); height: auto; margin: 0.4rem auto 0.15rem; filter: drop-shadow(0 1px 8px rgba(0,0,0,0.55)); }
+  .ltal-preadd { font-family: var(--serif); font-size: 0.62rem; letter-spacing: 0.03em; text-transform: uppercase; color: var(--muted); margin-top: 0.15rem; }
+  .ltal-cta { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem; }
+  .ltal-cta a { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pink); border: 1px solid rgba(255,0,102,0.4); border-radius: 999px; padding: 0.5rem 0.85rem; transition: background 0.2s, color 0.2s; }
   .ltal-cta a:hover { background: var(--pink); color: #0a0006; }
 
   footer { border-top: 1px solid var(--line); padding: 2.2rem 1.4rem; text-align: center; }
@@ -164,17 +167,6 @@
     <h1>Our <em>Projects</em></h1>
     <p class="hero-sub">Everything we've built for BLACKPINK — the campaigns, trackers and tools, past and present.</p>
   </header>
-
-  <section class="ltal-banner" aria-label="Less Than a Lover — new single">
-    <span class="ltal-label">🔔 NEW SINGLE</span>
-    <span class="ltal-jennie">Jennie</span>
-    <img class="ltal-wordmark" src="/jennie-ltal-wordmark.png" alt="Less Than a Lover">
-    <p class="ltal-blurb">Jennie's <em>Less Than a Lover</em> — the first release we ever tracked on the website. Follow its live streaming progress, goals and our milestone contributions.</p>
-    <div class="ltal-cta">
-      <a href="/streams">Track it live on Streams →</a>
-      <a href="https://open.spotify.com/track/19UnXjpLshSLobPspdyxlD" target="_blank" rel="noopener">Stream on Spotify →</a>
-    </div>
-  </section>
 
   <main class="wrap">
     <section class="section">
@@ -235,6 +227,15 @@
         status: 'current', icon: '💗', name: 'Less Than a Lover — Release', tag: 'Release · Jennie',
         desc: "Jennie's 'Less Than a Lover' — the first release we ever tracked on the website. 24-hour & 1st-week stream goals, iTunes tracking and per-Blink milestone contributions.",
         period: 'In progress →', url: '/streams',
+        expand: `
+          <span class="ltal-label">🔔 NEW SINGLE</span>
+          <span class="ltal-jennie">Jennie</span>
+          <img class="ltal-wordmark" src="/jennie-ltal-wordmark.png" alt="Less Than a Lover">
+          <p class="ltal-preadd">Pre-add / Pre-save the new single from Jennie</p>
+          <div class="ltal-cta">
+            <a href="/streams">Track it live on Streams →</a>
+            <a href="https://open.spotify.com/track/19UnXjpLshSLobPspdyxlD" target="_blank" rel="noopener">Stream on Spotify →</a>
+          </div>`,
       },
       // ── Past (completed ✓) ──
       {
@@ -265,14 +266,28 @@
     ];
 
     function card(p) {
-      const link = p.url ? `<a class="card-link" href="${p.url}">Open →</a>` : '<span></span>';
-      return `<div class="card">
+      const foot = p.expand
+        ? `<button class="card-link card-toggle" type="button" aria-expanded="false" onclick="toggleCard(this)">Details ▾</button>`
+        : (p.url ? `<a class="card-link" href="${p.url}">Open →</a>` : '<span></span>');
+      return `<div class="card${p.expand ? ' has-expand' : ''}">
         <div class="card-top"><span class="card-icon">${p.icon || '✦'}</span><span class="pill ${p.status}">${p.status === 'past' ? 'Past' : 'Current'}</span></div>
         <div class="card-name">${p.name}</div>
         ${p.tag ? `<div class="card-tag">${p.tag}</div>` : ''}
         <div class="card-desc">${p.desc || ''}</div>
-        <div class="card-foot"><span class="card-period">${p.period || ''}</span>${link}</div>
+        <div class="card-foot"><span class="card-period">${p.period || ''}</span>${foot}</div>
+        ${p.expand ? `<div class="card-expand" hidden>${p.expand}</div>` : ''}
       </div>`;
+    }
+
+    function toggleCard(btn) {
+      const card = btn.closest('.card');
+      const panel = card && card.querySelector('.card-expand');
+      if (!panel) return;
+      const opening = panel.hasAttribute('hidden');
+      if (opening) panel.removeAttribute('hidden'); else panel.setAttribute('hidden', '');
+      card.classList.toggle('open', opening);
+      btn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+      btn.textContent = opening ? 'Hide ▴' : 'Details ▾';
     }
 
     function render() {
