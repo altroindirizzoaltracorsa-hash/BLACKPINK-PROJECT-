@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-06T08:36:45.002Z",
+  "generatedAt": "2026-08-07T07:16:21.733Z",
   "chartType": "weekly",
   "weekEndingDate": "2026-07-30",
   "regions": {
@@ -13,8 +13,24 @@
         "endDate": "20260730",
         "region": "kr"
       },
-      "totalEntries": 96,
+      "totalEntries": 97,
       "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 5,
+          "name": "Less than a Lover",
+          "artists": [
+            "JENNIE"
+          ],
+          "videoId": "_IT83Y_HcAw",
+          "viewCount": 2748498,
+          "releaseDate": {
+            "year": 2026,
+            "month": 7,
+            "day": 24
+          }
+        },
         {
           "chartType": "TOP_VIDEOS",
           "member": "ROSÉ",
@@ -315,7 +331,7 @@
         "endDate": "20260730",
         "region": "ph"
       },
-      "totalEntries": 97,
+      "totalEntries": 96,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
@@ -675,7 +691,7 @@
         "endDate": "20260730",
         "region": "us"
       },
-      "totalEntries": 94,
+      "totalEntries": 95,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
@@ -858,7 +874,7 @@
         "endDate": "20260730",
         "region": "gb"
       },
-      "totalEntries": 93,
+      "totalEntries": 94,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
@@ -1285,12 +1301,12 @@
         "endDate": "20260730",
         "region": "za"
       },
-      "totalEntries": 99,
+      "totalEntries": 98,
       "hits": []
     }
   },
   "summary": {
-    "totalHits": 59,
+    "totalHits": 60,
     "regionsChecked": 33
   }
 }
