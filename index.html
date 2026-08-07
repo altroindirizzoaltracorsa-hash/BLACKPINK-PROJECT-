@@ -7288,7 +7288,70 @@ function renderLeaderboard() {
   }
 }
 
+// ── LTAL milestone contributions (frozen history, static lookup) ──────────
+// Each Blink's cumulative "Less Than a Lover" scrobbles the day the track
+// passed 10M / 20M Spotify streams, with their share of the community total
+// and rank among contributors. Baked once into ltal-milestones.json.
+let _ltalMilestones = null;
+let _lbProfileUser  = null;
+async function loadLtalMilestones() {
+  if (_ltalMilestones) return _ltalMilestones;
+  try {
+    const r = await fetch('/ltal-milestones.json');
+    _ltalMilestones = await r.json();
+  } catch (e) {
+    _ltalMilestones = { users: {}, aliases: {} };
+  }
+  return _ltalMilestones;
+}
+// Resolve a leaderboard username (or any of a Blink's linked-account names) to
+// its baked milestone entry.
+function _ltalMsEntry(ms, username) {
+  if (!ms || !ms.users) return null;
+  const key = (username || '').toLowerCase();
+  if (ms.users[key]) return ms.users[key];
+  const primary = ms.aliases && ms.aliases[key];
+  return primary ? (ms.users[primary] || null) : null;
+}
+function _ltalPct(count, total) {
+  if (!total) return '0%';
+  const p = (count / total) * 100;
+  if (p >= 10)   return p.toFixed(0) + '%';
+  if (p >= 1)    return p.toFixed(1) + '%';
+  if (p >= 0.01) return p.toFixed(2) + '%';
+  return '<0.01%';
+}
+// Appends the milestone section to the currently-open profile panel once the
+// static lookup has loaded (guarded so a fast profile-switch can't cross-fill).
+function renderLtalMilestoneSection(username) {
+  loadLtalMilestones().then(ms => {
+    if (_lbProfileUser !== username) return;
+    const e = _ltalMsEntry(ms, username);
+    if (!e || (!e.m10c && !e.m20c)) return;
+    const cont = document.getElementById('lb-user-sections');
+    if (!cont || cont.querySelector('.ltal-ms-section')) return;
+    const row = (mk) => {
+      const c = e[mk + 'c'];
+      if (!c) return '';
+      const meta = ms[mk] || {};
+      const r = e[mk + 'r'];
+      return `<div class="lb-profile-row"><span class="label">At ${meta.streams} streams · ${meta.label}</span>`
+        + `<span class="val">${Number(c).toLocaleString()} · ${_ltalPct(c, meta.total)}`
+        + (r ? ` · #${r}/${meta.contributors}` : '') + `</span></div>`;
+    };
+    const rows = [row('m10'), row('m20')].filter(Boolean).join('');
+    if (!rows) return;
+    cont.insertAdjacentHTML('beforeend',
+      `<div class="lb-profile-section ltal-ms-section">`
+      + `<div class="lb-profile-section-title">🏆 Less Than a Lover — Milestone Contribution</div>`
+      + rows
+      + `<div style="font-size:0.58rem;color:var(--muted);letter-spacing:0.04em;line-height:1.5;margin-top:0.5rem;">Your cumulative LTAL scrobbles the day the track passed each Spotify streams milestone · % of our community total · rank among contributors.</div>`
+      + `</div>`);
+  }).catch(() => {});
+}
+
 async function showLbUserProfile(username) {
+  _lbProfileUser = username;
   // For the logged-in user with multiple accounts: show per-service breakdown
   // for whatever period/song the leaderboard is currently showing.
   const myUsername = getSavedUsername();
@@ -7355,6 +7418,8 @@ async function showLbUserProfile(username) {
       <div class="lb-profile-row"><span class="label">DDU-DU DDU-DU</span><span class="val">${fmt(sec.ddududu)}</span></div>
       <div class="lb-profile-row"><span class="label">LESS THAN A LOVER</span><span class="val">${fmt(sec.ltal)}</span></div>
     </div>`).join('');
+
+  renderLtalMilestoneSection(username);
 
   document.getElementById('lb-user-overlay').style.display = 'flex';
 }
