@@ -1,0 +1,84 @@
+name: Bake LTAL milestone contributions
+
+# One-off: from the daily leaderboard_archive snapshots for the days LTAL passed
+# 10M (2026-07-28) and 20M (2026-08-02) Spotify streams, compute each Blink's
+# cumulative overall_ltal, their % of the community total, and their rank among
+# contributors. Emits a compact JSON (between markers) to commit as a static file.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build milestone JSON
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, urllib.parse
+
+          base = "https://blinksunited.com/api/leaderboard-archive"
+          MILES = [
+              ("m10", "2026-07-28", "28 Jul 2026", "10M"),
+              ("m20", "2026-08-02", "2 Aug 2026",  "20M"),
+          ]
+
+          def get(url):
+              req = urllib.request.Request(url, headers={"User-Agent": "gh-actions-ltal-bake"})
+              with urllib.request.urlopen(req, timeout=30) as r:
+                  return json.load(r)
+
+          out = {"users": {}, "aliases": {}}
+
+          for mkey, date, label, streams in MILES:
+              snap = get(f"{base}?period=daily&key={urllib.parse.quote(date)}")
+              users = snap.get("users", {}) or {}
+
+              # Dedup exactly like computeCommunityTotal(): a username listed as
+              # another user's linkedAccount is a secondary row and is skipped
+              # (the primary's score already includes that person's other accounts).
+              secondary = set()
+              for k, d in users.items():
+                  for a in (d.get("linkedAccounts") or []):
+                      ak = (a.get("username") or "").lower()
+                      if ak and ak != k.lower():
+                          secondary.add(ak)
+
+              rows = []
+              for k, d in users.items():
+                  if k.lower() in secondary:
+                      continue
+                  c = (d.get("scores") or {}).get("overall_ltal") or 0
+                  name = d.get("displayName") or d.get("username") or k
+                  rows.append((k.lower(), name, c, d.get("linkedAccounts") or []))
+
+              total = sum(c for _, _, c, _ in rows)
+              contributors = sorted([r for r in rows if r[2] > 0], key=lambda r: -r[2])
+              rank_by_key = {r[0]: i + 1 for i, r in enumerate(contributors)}
+
+              out[mkey] = {"date": date, "label": label, "streams": streams,
+                           "total": total, "contributors": len(contributors)}
+
+              for kl, name, c, linked in rows:
+                  e = out["users"].setdefault(kl, {"name": name})
+                  # keep the freshest display name we see
+                  e["name"] = name
+                  if c > 0:
+                      e[mkey + "c"] = c
+                      e[mkey + "r"] = rank_by_key[kl]
+                  for a in linked:
+                      al = (a.get("username") or "").lower()
+                      if al and al != kl:
+                          out["aliases"][al] = kl
+
+          # Drop users who contributed to neither milestone.
+          out["users"] = {k: v for k, v in out["users"].items()
+                          if ("m10c" in v) or ("m20c" in v)}
+
+          print("m10 total:", out["m10"]["total"], "contributors:", out["m10"]["contributors"])
+          print("m20 total:", out["m20"]["total"], "contributors:", out["m20"]["contributors"])
+          print("users with any milestone:", len(out["users"]), "| aliases:", len(out["aliases"]))
+          print("<<<JSON_START>>>")
+          print(json.dumps(out, separators=(",", ":"), ensure_ascii=False))
+          print("<<<JSON_END>>>")
+          PY
