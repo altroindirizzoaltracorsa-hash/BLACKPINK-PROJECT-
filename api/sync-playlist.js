@@ -219,7 +219,6 @@ export default async function handler(req, res) {
     }
 
     allMatches.sort((a, b) => b.day - a.day);
-    const best = allMatches[0];
 
     // Never let a flaky scan (stale token, privacy-toggle lag, etc.) regress the
     // live playlist to a lower day number than what's already published.
@@ -237,6 +236,31 @@ export default async function handler(req, res) {
         accountDiagnostics,
       });
     }
+
+    // The day counter only ever climbs ~1 per Italy-day, so a candidate many days
+    // beyond what's currently live is a stale / mislabeled leftover from an older
+    // count (e.g. an old "Day 56" playlist still sitting on an account after the
+    // campaign was restarted at Day 6) — NOT today's real playlist. Picking it
+    // would both show the wrong day AND, via the go-backwards guard below, lock
+    // the counter at that inflated number forever. So ignore anything more than
+    // MAX_DAY_ADVANCE past the live day. (currentDay 0 = cold start with no live
+    // pointer yet → trust the max so the "we forgot to post, let the cron seed
+    // it" fallback still works on a fresh deploy.)
+    const MAX_DAY_ADVANCE = 3;
+    const plausible = currentDay > 0
+      ? allMatches.filter(m => m.day <= currentDay + MAX_DAY_ADVANCE)
+      : allMatches;
+
+    if (!plausible.length) {
+      return res.status(200).json({
+        ok: false,
+        error: `Highest playlist found is Day ${allMatches[0].day}, more than ${MAX_DAY_ADVANCE} days past the live Day ${currentDay} — treating it as a stale leftover and refusing to jump. Publish the correct day from the admin panel to advance the counter.`,
+        candidates: allMatches,
+        accountDiagnostics,
+      });
+    }
+
+    const best = plausible[0];
 
     if (best.day < currentDay) {
       return res.status(200).json({
