@@ -865,6 +865,22 @@ export default async function handler(req, res) {
     }
   }
 
+  // Read the canary attempt log (newest first): each live canary poll's
+  // {ts, got, prev, fresh, trig}. Lets us reconstruct the waiting→catch sequence.
+  if (req.query.action === 'canary-log') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    if (!adminSecret || req.query.key !== adminSecret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const n = Math.min(Number(req.query.n) || 100, 300);
+    const raw = await redis.lrange('bp_canary_log_v1', 0, n - 1);
+    const entries = (raw || []).map(e => {
+      const o = typeof e === 'string' ? JSON.parse(e) : e;
+      return { ...o, at: new Date(o.ts).toISOString() };
+    });
+    return res.status(200).json({ count: entries.length, entries });
+  }
+
   const todayLabel = getDateLabel(new Date());
   const results    = {};
   const errors     = {};
@@ -983,6 +999,21 @@ export default async function handler(req, res) {
         }
 
         const prevTotal = Number(prev?.total || 0);
+
+        // Canary attempt log: record every live canary poll so the waiting→catch
+        // sequence is reconstructable (e.g. why a late Spotify update wasn't seen
+        // until attempt N — scraper cache still stale vs no request came in).
+        // Newest-first, capped at 300. Read via ?action=canary-log&key=ADMIN.
+        if (isCanary) {
+          await redis.lpush('bp_canary_log_v1', {
+            ts: Date.now(),
+            got: fetchedTotal,               // raw scraper result (0 = fetch failed / all keys stale-or-exhausted)
+            prev: prevTotal,                 // total we compared against
+            fresh: fetchedTotal > prevTotal, // true = new numbers caught on this attempt
+            trig: isCron ? 'cron' : isForced ? 'force' : (req.query._poll ? 'poller' : 'visitor'),
+          });
+          await redis.ltrim('bp_canary_log_v1', 0, 299);
+        }
 
         if (total > 0 && prevTotal > 0 && total > prevTotal) {
           const gap = daysBetween(prev.date, todayLabel);
