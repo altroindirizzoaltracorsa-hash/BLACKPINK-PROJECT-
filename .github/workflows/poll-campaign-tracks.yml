@@ -1,22 +1,27 @@
-name: Poll campaign tracks (overnight)
+name: Poll campaign tracks
 
-# Pings /api/streams overnight so Spotify's daily play-count refresh gets caught
-# even when it lands in the small hours (when site traffic is too low to trigger
-# the visitor-driven poll on its own). This is a PLAIN GET — no force, no cron
-# flag — so it goes through the normal canary gate: while waiting for the bump it
-# only spends keys on the canary track (JUMP), and the moment the canary shows new
-# streams the handler fans out to the other 3. A cache-busting query param
-# guarantees the request reaches the function instead of the CDN edge cache.
+# Pings /api/streams so Spotify's daily play-count refresh gets caught even when
+# site traffic is too low to trigger the visitor-driven poll on its own. This is
+# a PLAIN GET — no force, no cron flag — so it goes through the normal canary
+# gate: while waiting for the bump it only spends keys on the canary track (JUMP),
+# and the moment the canary shows new streams the handler fans out to the other 3.
+# A cache-busting query param guarantees the request reaches the function instead
+# of the CDN edge cache. Cheap (1 track while waiting), so covering more hours is fine.
 #
-# Schedule: every 30 min from 00:00–04:59 UTC. Spotify's streaming day resets at
-# 00:00 UTC (= 2am Rome in summer) and the late refresh lands AFTER that reset, so
-# this covers 2am–7am Rome — squarely after the reset and inside the API's active
-# watch window (which goes quiet at 7am Rome). GitHub cron timing is best-effort;
-# ±10 min drift is fine since the canary only needs to catch the bump once, then
-# everything backs off to the 4h TTL. Adjust the interval/hours to taste.
+# Schedules (all UTC; Rome = UTC+2 in summer). GitHub cron timing is best-effort
+# (±10 min); the canary only needs to catch the bump once, then everything backs
+# off to the 4h TTL:
+#   - hourly  13:00–21:00 UTC  = 3pm–11pm Rome  (daytime/evening: visitors likely,
+#                                                 so hourly is enough as a backstop)
+#   - 30-min  21:00–23:59 UTC  = 11pm–2am Rome  (approaching the 2am reset)
+#   - 30-min  00:00–04:59 UTC  = 2am–7am Rome   (after the reset, where late
+#                                                 refreshes actually land — tightest)
+# Quiet 7am–3pm Rome: nothing new is due, and the API is in its quiet window anyway.
 
 on:
   schedule:
+    - cron: '0 13-21 * * *'
+    - cron: '*/30 21-23 * * *'
     - cron: '*/30 0-4 * * *'
   workflow_dispatch:
 
