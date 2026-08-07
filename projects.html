@@ -115,18 +115,14 @@
 
   .empty { border: 1px dashed var(--line); border-radius: 14px; padding: 2.6rem 1.5rem; text-align: center; font-family: var(--serif); font-style: italic; color: var(--muted); font-size: 0.95rem; }
 
-  /* ── Expandable card (Less Than a Lover reveals its NEW SINGLE banner) ── */
+  /* ── Expandable card (Less Than a Lover embeds its live stats tracker) ── */
   .card-toggle { background: none; border: none; cursor: pointer; padding: 0; }
-  .card.has-expand.open { border-color: rgba(232,17,13,0.4); background: radial-gradient(140% 120% at 50% 100%, rgba(232,17,13,0.1), var(--card) 70%); }
-  .card-expand { margin-top: 0.2rem; padding-top: 0.95rem; border-top: 1px solid var(--line); text-align: center; }
+  .card.has-expand.open { border-color: rgba(232,17,13,0.4); }
+  .card-expand { margin-top: 0.2rem; padding-top: 0.95rem; border-top: 1px solid var(--line); }
   .card-expand[hidden] { display: none; }
-  .ltal-label { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.26em; text-transform: uppercase; color: var(--pink); }
-  .ltal-jennie { display: block; font-family: var(--serif); font-style: italic; font-size: 1.7rem; line-height: 1; color: #E8110D; margin-top: 0.3rem; text-shadow: 0 1px 8px rgba(0,0,0,0.55); }
-  .ltal-wordmark { display: block; width: min(220px, 80%); height: auto; margin: 0.4rem auto 0.15rem; filter: drop-shadow(0 1px 8px rgba(0,0,0,0.55)); }
-  .ltal-preadd { font-family: var(--serif); font-size: 0.62rem; letter-spacing: 0.03em; text-transform: uppercase; color: var(--muted); margin-top: 0.15rem; }
-  .ltal-cta { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem; }
-  .ltal-cta a { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pink); border: 1px solid rgba(255,0,102,0.4); border-radius: 999px; padding: 0.5rem 0.85rem; transition: background 0.2s, color 0.2s; }
-  .ltal-cta a:hover { background: var(--pink); color: #0a0006; }
+  .ltal-embed-wrap { width: 100%; }
+  .ltal-embed { width: 100%; border: 0; display: block; min-height: 300px; background: transparent; overflow: hidden; }
+  .ltal-embed-loading { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; color: var(--dim); text-align: center; padding: 1.5rem 0 0.4rem; }
 
   footer { border-top: 1px solid var(--line); padding: 2.2rem 1.4rem; text-align: center; }
   footer .flogo { font-family: var(--serif); font-size: 1.15rem; letter-spacing: 0.12em; color: var(--pink); }
@@ -227,14 +223,11 @@
         status: 'current', icon: '💗', name: 'Less Than a Lover — Release', tag: 'Release · Jennie',
         desc: "Jennie's 'Less Than a Lover' — the first release we ever tracked on the website. 24-hour & 1st-week stream goals, iTunes tracking and per-Blink milestone contributions.",
         period: 'In progress →', url: '/streams',
-        expand: `
-          <span class="ltal-label">🔔 NEW SINGLE</span>
-          <span class="ltal-jennie">Jennie</span>
-          <img class="ltal-wordmark" src="/jennie-ltal-wordmark.png" alt="Less Than a Lover">
-          <p class="ltal-preadd">Pre-add / Pre-save the new single from Jennie</p>
-          <div class="ltal-cta">
-            <a href="/streams">Track it live on Streams →</a>
-            <a href="https://open.spotify.com/track/19UnXjpLshSLobPspdyxlD" target="_blank" rel="noopener">Stream on Spotify →</a>
+        expand: `<div class="ltal-embed-wrap">
+            <div class="ltal-embed-loading">Loading live tracker…</div>
+            <iframe class="ltal-embed" title="Less Than a Lover — live tracker" loading="lazy" scrolling="no"
+                    onload="this.previousElementSibling && this.previousElementSibling.remove()"
+                    data-src="/ltal-embed?embed=ltal"></iframe>
           </div>`,
       },
       // ── Past (completed ✓) ──
@@ -288,7 +281,20 @@
       card.classList.toggle('open', opening);
       btn.setAttribute('aria-expanded', opening ? 'true' : 'false');
       btn.textContent = opening ? 'Hide ▴' : 'Details ▾';
+      // Defer loading the embedded live tracker until the card is first opened.
+      if (opening) {
+        const f = panel.querySelector('iframe.ltal-embed[data-src]');
+        if (f) { f.src = f.getAttribute('data-src'); f.removeAttribute('data-src'); }
+      }
     }
+
+    // The embedded tracker (index.html in embed mode) reports its height so the
+    // iframe can grow to fit its content instead of scrolling internally.
+    window.addEventListener('message', function(e) {
+      if (!e.data || e.data.type !== 'ltal-embed-height') return;
+      const h = Math.max(240, e.data.height || 0) + 6;
+      document.querySelectorAll('iframe.ltal-embed').forEach(function(f) { f.style.height = h + 'px'; });
+    });
 
     function render() {
       const current = PROJECTS.filter(p => p.status === 'current');

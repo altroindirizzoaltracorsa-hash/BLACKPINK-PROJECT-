@@ -1652,6 +1652,16 @@
 </style>
 </head>
 <body>
+<!-- Card-only embed mode: /ltal-embed?embed=ltal renders ONLY the Less Than a
+     Lover stats card (used inside the Our Projects page via an iframe). The card
+     is hidden on the normal homepage — it now lives on /projects. -->
+<script>if(new URLSearchParams(location.search).get('embed')==='ltal')document.documentElement.classList.add('embed-ltal');</script>
+<style>
+  html.embed-ltal, html.embed-ltal body { background: transparent !important; margin: 0 !important; padding: 0 !important; }
+  html.embed-ltal #ltal-embed-root { padding: 0; }
+  html.embed-ltal #jennie-release-card, html.embed-ltal #release-expand-panel { display: block !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
+  html:not(.embed-ltal) #jennie-release-card, html:not(.embed-ltal) #release-expand-panel { display: none !important; }
+</style>
 <div id="intro-overlay">
   <div id="intro-lines"></div>
   <img id="intro-logo" src="https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/blinksunited.jpg" alt="">
@@ -12200,5 +12210,27 @@ window.addEventListener('appinstalled', () => {
   </div>
 </div>
 
+<script>
+// Embed mode: isolate the Less Than a Lover card (+ its expand panel) as the only
+// visible content and report its height to the parent (Our Projects iframe).
+(function(){
+  if (!document.documentElement.classList.contains('embed-ltal')) return;
+  function mount(){
+    var card = document.getElementById('jennie-release-card');
+    if (!card) return;
+    var panel = document.getElementById('release-expand-panel');
+    var root = document.getElementById('ltal-embed-root');
+    if (!root){ root = document.createElement('div'); root.id = 'ltal-embed-root'; document.body.appendChild(root); }
+    if (panel) root.appendChild(panel);
+    root.appendChild(card);
+    Array.prototype.forEach.call(document.body.children, function(el){ if (el !== root) el.style.display = 'none'; });
+    var postH = function(){ try { parent.postMessage({ type: 'ltal-embed-height', height: Math.ceil(root.getBoundingClientRect().height) }, '*'); } catch(e){} };
+    postH();
+    if (window.ResizeObserver) new ResizeObserver(postH).observe(root);
+    setInterval(postH, 1200);
+  }
+  window.addEventListener('load', function(){ setTimeout(mount, 350); });
+})();
+</script>
 </body>
 </html>
