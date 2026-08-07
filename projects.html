@@ -130,49 +130,58 @@
     // Edit this array to add / move / remove projects. status: 'current' | 'past'.
     // Fields: icon (emoji), name, tag, desc, period, url (optional, '' to hide link).
     const PROJECTS = [
+      // ── Current ──
       {
-        status: 'current', icon: '🎧', name: 'Stream Tracker', tag: 'Streaming · Live',
-        desc: 'Live BLACKPINK catalog counter (17.5B+ streams) plus daily campaign-track tracking for JUMP, Shut Down, DDU-DU DDU-DU & GO.',
-        period: '2026 – now', url: '/streams',
+        status: 'current', icon: '💎', name: 'JUMP → 1B', tag: '1B Streams · In progress',
+        desc: "Driving BLACKPINK's 'JUMP' to 1 billion Spotify streams.",
+        period: 'In progress →', url: '/streams',
       },
       {
-        status: 'current', icon: '🏆', name: 'Leaderboard & Badge Challenge', tag: 'Community · Live',
-        desc: 'Connect Last.fm, ListenBrainz or Stats.fm, rack up scrobbles and earn daily badges on the community leaderboard.',
-        period: '2026 – now', url: '/badges',
+        status: 'current', icon: '💎', name: 'Shut Down → 1B', tag: '1B Streams · In progress',
+        desc: "Driving 'Shut Down' to 1 billion Spotify streams.",
+        period: 'In progress →', url: '/streams',
       },
       {
-        status: 'current', icon: '🎯', name: 'Daily Playlist & Community Goal', tag: 'Streaming · Live',
-        desc: 'A fresh daily streaming playlist with a 15,000-scrobble community goal, streak tracking and shareable goal cards.',
-        period: '2026 – now', url: '/streams',
+        status: 'current', icon: '💎', name: 'DDU-DU DDU-DU → 1B', tag: '1B Streams · In progress',
+        desc: "Driving 'DDU-DU DDU-DU' to 1 billion Spotify streams.",
+        period: 'In progress →', url: '/streams',
       },
       {
-        status: 'current', icon: '💗', name: 'Less Than a Lover Campaign', tag: 'Release · Jennie',
-        desc: "Jennie's single push: 24-hour & 1st-week stream goals, iTunes #1 tracking, per-Blink milestone contributions and share cards.",
-        period: 'Jul 2026 – now', url: '/streams',
+        status: 'current', icon: '💯', name: 'GO → 100M', tag: '100M Streams · In progress',
+        desc: "Pushing 'GO' to 100 million Spotify streams.",
+        period: 'In progress →', url: '/streams',
       },
       {
-        status: 'current', icon: '🗳️', name: 'Voting Hub', tag: 'Fan votes · Live',
-        desc: 'Coordinated fan-vote drives — Billboard Fan Army, KWDA, IdolChamp and more — with rules, live countdowns and share cards.',
-        period: '2026 – now', url: '/voting',
+        status: 'current', icon: '💗', name: 'Less Than a Lover — Release', tag: 'Release · Jennie',
+        desc: "Jennie's 'Less Than a Lover' — the first release we ever tracked on the website. 24-hour & 1st-week stream goals, iTunes tracking and per-Blink milestone contributions.",
+        period: 'In progress →', url: '/streams',
+      },
+      // ── Past (completed ✓) ──
+      {
+        status: 'past', icon: '💎', name: 'How You Like That → 1B', tag: '1B Streams · with @BPSpotifySchool',
+        desc: "Helped push 'How You Like That' to 1 billion Spotify streams — a joint campaign with @BPSpotifySchool.",
+        period: 'Reached 1B ✓', url: '',
       },
       {
-        status: 'current', icon: '📈', name: 'Charts Hub', tag: 'Charts · Live',
-        desc: 'Live BLACKPINK positions across Spotify, Apple Music, iTunes and YouTube charts, refreshed every day.',
-        period: '2026 – now', url: '/charts',
+        status: 'past', icon: '🚀', name: 'JUMP — Release', tag: 'Release Day',
+        desc: "Release-day streaming support for BLACKPINK's 'JUMP'.",
+        period: 'Released ✓', url: '',
       },
       {
-        status: 'current', icon: '🥇', name: 'Achievements & World Records', tag: 'Archive',
-        desc: 'The group’s Guinness World Records, chart firsts and streaming milestones — as a group and as soloists.',
-        period: 'Ongoing', url: '/achievements',
+        status: 'past', icon: '💎', name: 'Kill This Love → 1B', tag: '1B Streams · with @BPSpotifySchool',
+        desc: "Helped drive 'Kill This Love' to 1 billion Spotify streams, together with @BPSpotifySchool.",
+        period: 'Reached 1B ✓', url: '',
       },
       {
-        status: 'current', icon: '🖤', name: '10 Years of BLACKPINK', tag: 'Anniversary',
-        desc: 'A tribute page marking a decade of BLACKPINK — history, milestones and memories.',
-        period: '2026', url: '/10years.html',
+        status: 'past', icon: '🚀', name: 'Deadline — Release', tag: 'Release Day',
+        desc: "Launch-day streaming support for the 'Deadline' release.",
+        period: 'Released ✓', url: '',
       },
-      // ── Past projects go here, e.g.:
-      // { status: 'past', icon: '🚀', name: 'JUMP → 1B Push', tag: 'Campaign',
-      //   desc: '…', period: 'May – Jul 2026', url: '' },
+      {
+        status: 'past', icon: '💎', name: 'Pink Venom → 1B', tag: '1B Streams',
+        desc: "Pushed 'Pink Venom' to 1 billion Spotify streams.",
+        period: 'Reached 1B ✓', url: '',
+      },
     ];
 
     function card(p) {
