@@ -115,6 +115,16 @@
 
   .empty { border: 1px dashed var(--line); border-radius: 14px; padding: 2.6rem 1.5rem; text-align: center; font-family: var(--serif); font-style: italic; color: var(--muted); font-size: 0.95rem; }
 
+  /* ── Less Than a Lover feature banner (moved from the homepage) ── */
+  .ltal-banner { max-width: 1040px; margin: 1.6rem auto 0; padding: 2.1rem 1.4rem 1.8rem; text-align: center; border: 1px solid rgba(232,17,13,0.25); border-radius: 16px; background: radial-gradient(120% 140% at 50% 0%, rgba(232,17,13,0.12), rgba(255,0,102,0.05) 45%, var(--card) 80%); }
+  .ltal-label { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--pink); }
+  .ltal-jennie { display: block; font-family: var(--serif); font-style: italic; font-size: 2rem; line-height: 1; color: #E8110D; margin-top: 0.35rem; text-shadow: 0 1px 8px rgba(0,0,0,0.55); }
+  .ltal-wordmark { display: block; width: min(260px, 72%); height: auto; margin: 0.45rem auto 0.2rem; filter: drop-shadow(0 1px 8px rgba(0,0,0,0.55)); }
+  .ltal-blurb { max-width: 54ch; margin: 0.7rem auto 0; font-size: 0.86rem; line-height: 1.55; color: var(--muted); }
+  .ltal-cta { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; margin-top: 1.2rem; }
+  .ltal-cta a { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pink); border: 1px solid rgba(255,0,102,0.4); border-radius: 999px; padding: 0.55rem 0.95rem; transition: background 0.2s, color 0.2s; }
+  .ltal-cta a:hover { background: var(--pink); color: #0a0006; }
+
   footer { border-top: 1px solid var(--line); padding: 2.2rem 1.4rem; text-align: center; }
   footer .flogo { font-family: var(--serif); font-size: 1.15rem; letter-spacing: 0.12em; color: var(--pink); }
   footer p { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.14em; color: var(--dim); margin-top: 0.7rem; }
@@ -154,6 +164,17 @@
     <h1>Our <em>Projects</em></h1>
     <p class="hero-sub">Everything we've built for BLACKPINK — the campaigns, trackers and tools, past and present.</p>
   </header>
+
+  <section class="ltal-banner" aria-label="Less Than a Lover — new single">
+    <span class="ltal-label">🔔 NEW SINGLE</span>
+    <span class="ltal-jennie">Jennie</span>
+    <img class="ltal-wordmark" src="/jennie-ltal-wordmark.png" alt="Less Than a Lover">
+    <p class="ltal-blurb">Jennie's <em>Less Than a Lover</em> — the first release we ever tracked on the website. Follow its live streaming progress, goals and our milestone contributions.</p>
+    <div class="ltal-cta">
+      <a href="/streams">Track it live on Streams →</a>
+      <a href="https://open.spotify.com/track/19UnXjpLshSLobPspdyxlD" target="_blank" rel="noopener">Stream on Spotify →</a>
+    </div>
+  </section>
 
   <main class="wrap">
     <section class="section">
