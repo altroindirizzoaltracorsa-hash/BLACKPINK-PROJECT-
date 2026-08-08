@@ -15,7 +15,6 @@
     { "source": "/spotify-charts", "destination": "/index.html" },
     { "source": "/youtube", "destination": "/index.html" },
     { "source": "/projects", "destination": "/projects.html" },
-    { "source": "/instagram", "destination": "/instagram.html" },
     { "source": "/ltal-embed", "destination": "/index.html" },
     { "source": "/api/spotify-oauth-start", "destination": "/api/sync-playlist" },
     { "source": "/api/spotify-oauth-callback", "destination": "/api/sync-playlist" }

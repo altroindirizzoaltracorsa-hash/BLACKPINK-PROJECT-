@@ -1722,7 +1722,6 @@
     <li><a href="/10years.html">10th Anniv.</a></li>
     <li><a href="/achievements">Achievements</a></li>
     <li><a href="/projects">Our Projects</a></li>
-    <li><a href="/instagram">Instagram</a></li>
   </ul>
   <button id="pwa-install-btn" onclick="triggerInstall()" style="display:none;background:transparent;border:1px solid rgba(255,0,102,0.5);color:var(--pink);font-family:var(--mono);font-size:0.48rem;letter-spacing:0.14em;text-transform:uppercase;padding:0.4rem 0.8rem;cursor:pointer;white-space:nowrap;transition:border-color 0.2s,background 0.2s;" title="Install as app">⬇ Install App</button>
   <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
@@ -1801,6 +1800,13 @@
         <a href="/badges" class="btn-ghost" onclick="showPage('badges'); return false;">Badge Challenge</a>
         <a href="/voting" class="btn-primary" onclick="showPage('vote'); return false;">Vote</a>
       </div>
+
+      <!-- Featured Instagram posts (BLACKPINK & the members). Post URLs live in /ig-posts.js -->
+      <section id="home-ig" style="margin-top:2.2rem;max-width:900px;width:calc(100% + 4rem);margin-left:-2rem;margin-right:-2rem;text-align:center;">
+        <p style="font-family:'SFMono-Regular',ui-monospace,monospace;font-size:0.62rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--pink);margin-bottom:1.2rem;">◇ From Instagram</p>
+        <div id="ig-home-grid" style="display:flex;flex-wrap:wrap;gap:1.2rem;justify-content:center;align-items:flex-start;"></div>
+      </section>
+
       <!-- NEW SINGLE banner moved to the Our Projects page (/projects). The expand
            panel below stays and is opened via the iTunes badge on the stats card. -->
       <div class="release-expand-panel" id="release-expand-panel" style="display:none;margin-top:0.8rem;max-width:900px;width:calc(100% + 4rem);margin-left:-2rem;margin-right:-2rem;text-align:left;">
@@ -12235,5 +12241,7 @@ window.addEventListener('appinstalled', () => {
   window.addEventListener('load', function(){ setTimeout(mount, 350); });
 })();
 </script>
+<script src="/ig-posts.js"></script>
+<script>window.renderIgPosts && renderIgPosts('ig-home-grid');</script>
 </body>
 </html>
