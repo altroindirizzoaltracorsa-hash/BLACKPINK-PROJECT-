@@ -8,10 +8,10 @@
 //   live embed:  { url: 'https://www.instagram.com/p/XXXX/' }
 
 window.IG_LETTERS = [
-  { img: '/anniv-jisoo.jpg',  name: 'JISOO',  link: 'https://www.instagram.com/blackpinkofficial/' },
-  { img: '/anniv-jennie.jpg', name: 'JENNIE', link: 'https://www.instagram.com/blackpinkofficial/' },
-  { img: '/anniv-rose.jpg',   name: 'ROSÉ',   link: 'https://www.instagram.com/blackpinkofficial/' },
-  { img: '/anniv-lisa.jpg',   name: 'LISA',   link: 'https://www.instagram.com/blackpinkofficial/' },
+  { img: '/anniv-jisoo.jpg',  name: 'JISOO'  },
+  { img: '/anniv-jennie.jpg', name: 'JENNIE' },
+  { img: '/anniv-rose.jpg',   name: 'ROSÉ'   },
+  { img: '/anniv-lisa.jpg',   name: 'LISA'   },
 ];
 
 window.IG_POSTS = [
@@ -33,11 +33,11 @@ window.renderIgPosts = function (containerId, list) {
   grid.innerHTML = posts.map(function (p) {
     if (p.img) {
       var label = p.name
-        ? '<div style="font-family:ui-monospace,SFMono-Regular,monospace;font-size:0.6rem;letter-spacing:0.16em;text-transform:uppercase;color:#FF0066;padding:0.65rem 0.85rem;display:flex;justify-content:space-between;align-items:center;gap:0.5rem;">' +
-          '<span>' + p.name + '</span><span style="opacity:0.65;">View on Instagram →</span></div>'
+        ? '<div style="font-family:ui-monospace,SFMono-Regular,monospace;font-size:0.58rem;letter-spacing:0.16em;text-transform:uppercase;color:#FF0066;padding:0.55rem 0.6rem;text-align:center;">' + p.name + '</div>'
         : '';
-      return '<a href="' + (p.link || '#') + '" target="_blank" rel="noopener" ' +
-        'style="display:block;width:100%;max-width:340px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);background:#150c13;text-decoration:none;transition:border-color 0.2s;" ' +
+      // Not an Instagram post — just the letter image; clicking opens it full-size.
+      return '<a href="' + p.img + '" target="_blank" rel="noopener" ' +
+        'style="display:block;width:100%;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);background:#150c13;text-decoration:none;transition:border-color 0.2s;" ' +
         'onmouseover="this.style.borderColor=\'rgba(255,0,102,0.5)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.1)\'">' +
         '<img src="' + p.img + '" alt="' + (p.name || 'BLACKPINK') + ' — 10th anniversary letter to BLINK" loading="lazy" style="display:block;width:100%;height:auto;">' +
         label + '</a>';
