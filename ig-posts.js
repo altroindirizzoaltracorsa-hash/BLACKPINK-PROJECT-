@@ -160,6 +160,7 @@ window.renderIgCarousel = function (containerId, list) {
       '.ig-track{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;height:clamp(340px,58vh,540px);}' +
       '.ig-track::-webkit-scrollbar{display:none;}' +
       '.ig-slide{position:relative;flex:0 0 100%;scroll-snap-align:center;padding:0 2px;height:100%;display:flex;align-items:center;justify-content:center;}' +
+      '.ig-slide a{display:flex;align-items:center;justify-content:center;height:100%;max-width:100%;}' +
       '.ig-slide img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;border-radius:16px;border:1px solid rgba(255,255,255,0.12);}' +
       '.ig-langtoggle{position:absolute;top:10px;right:12px;z-index:3;display:flex;gap:3px;background:rgba(0,0,0,0.55);border-radius:999px;padding:3px;}' +
       '.ig-langtoggle button{border:0;border-radius:999px;background:transparent;color:#fff;cursor:pointer;font-family:ui-monospace,SFMono-Regular,monospace;font-size:0.52rem;letter-spacing:0.08em;padding:4px 9px;line-height:1;}' +
