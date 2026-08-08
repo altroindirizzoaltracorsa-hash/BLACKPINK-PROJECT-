@@ -6019,8 +6019,20 @@ async function checkLegacyMigrationGate() {
 async function refreshProfile() {
   const btn = document.getElementById('refresh-btn');
   if (btn) { btn.textContent = '↻ Refreshing…'; btn.disabled = true; }
-  await loadProfile();
-  if (btn) { btn.textContent = '↻ Refresh'; btn.disabled = false; }
+  try {
+    // If the user is signed in, re-run the account-aware loader so a combined
+    // multi-account profile refreshes AS combined. Calling loadProfile() directly
+    // would collapse it back to the legacy single-Last.fm view. Fall back to
+    // loadProfile() only for the legacy local-username (no session) flow.
+    let handled = false;
+    if (sb) {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) { await initMyBadgesFromAccount(); handled = true; }
+    }
+    if (!handled) await loadProfile();
+  } finally {
+    if (btn) { btn.textContent = '↻ Refresh'; btn.disabled = false; }
+  }
 }
 
 // Beta / OG badge
