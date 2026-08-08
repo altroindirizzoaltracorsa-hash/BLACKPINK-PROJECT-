@@ -23,11 +23,11 @@ window.IG_MESSAGES = [
 ];
 
 window.IG_POSTS = [
-  { url: 'https://www.instagram.com/p/DbxcbjyEW5k/' },
-  { url: 'https://www.instagram.com/p/Dbvju_ipzwT/' },
-  { url: 'https://www.instagram.com/p/DbvkMz_iQYc/' },
-  { url: 'https://www.instagram.com/p/DbvklikFCcR/' },
-  { url: 'https://www.instagram.com/p/Dbvj6S3z6cZ/' },
+  { url: 'https://www.instagram.com/p/Dbvju_ipzwT/' },  // Jisoo (assumed from your paste order — verify)
+  { url: 'https://www.instagram.com/p/DbvkMz_iQYc/' },  // Jennie (assumed — verify)
+  { url: 'https://www.instagram.com/p/DbvklikFCcR/' },  // Rosé (assumed — verify)
+  { url: 'https://www.instagram.com/p/DbxcbjyEW5k/' },  // Lisa (confirmed)
+  { url: 'https://www.instagram.com/p/Dbvj6S3z6cZ/' },  // BLACKPINK (assumed — verify)
 ];
 
 window.IG_LINKS = [
