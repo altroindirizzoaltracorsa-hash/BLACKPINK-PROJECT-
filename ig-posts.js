@@ -158,10 +158,10 @@ window.renderIgCarousel = function (containerId, list) {
     st.id = 'ig-carousel-css';
     st.textContent =
       '.ig-carousel{max-width:420px;margin:2rem auto 0;}' +
-      '.ig-track{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;transition:height .25s ease;}' +
+      '.ig-track{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;height:clamp(340px,58vh,540px);}' +
       '.ig-track::-webkit-scrollbar{display:none;}' +
-      '.ig-slide{flex:0 0 100%;scroll-snap-align:center;padding:0 2px;}' +
-      '.ig-slide img{display:block;width:100%;height:auto;border-radius:16px;border:1px solid rgba(255,255,255,0.12);}' +
+      '.ig-slide{flex:0 0 100%;scroll-snap-align:center;padding:0 2px;height:100%;display:flex;align-items:center;justify-content:center;}' +
+      '.ig-slide img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;border-radius:16px;border:1px solid rgba(255,255,255,0.12);}' +
       '.ig-dots{display:flex;gap:0.4rem;justify-content:center;margin-top:0.9rem;}' +
       '.ig-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.25);border:0;padding:0;cursor:pointer;transition:background .2s,transform .2s;}' +
       '.ig-dot.active{background:#FF3D8F;transform:scale(1.35);}' +
@@ -182,23 +182,17 @@ window.renderIgCarousel = function (containerId, list) {
   var track = wrap.querySelector('.ig-track');
   var dotEls = wrap.querySelectorAll('.ig-dot');
   function current() { return Math.round(track.scrollLeft / Math.max(1, track.clientWidth)); }
-  function fitHeight() { var s = track.children[current()]; if (s) track.style.height = s.offsetHeight + 'px'; }
-  function sync() {
-    var i = current();
-    dotEls.forEach(function (d, j) { d.classList.toggle('active', j === i); });
-    fitHeight();
-  }
   dotEls.forEach(function (d) {
     d.addEventListener('click', function () { track.scrollTo({ left: (+d.dataset.i) * track.clientWidth, behavior: 'smooth' }); });
   });
   var raf;
-  track.addEventListener('scroll', function () { if (raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(sync); });
-  window.addEventListener('resize', fitHeight);
-  // Images load async — fit height as each arrives.
-  wrap.querySelectorAll('.ig-slide img').forEach(function (img) {
-    if (img.complete) fitHeight(); else img.addEventListener('load', fitHeight);
+  track.addEventListener('scroll', function () {
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(function () {
+      var i = current();
+      dotEls.forEach(function (d, j) { d.classList.toggle('active', j === i); });
+    });
   });
-  fitHeight();
 };
 
 // renderIgLinks(containerId, list) — external link buttons.
