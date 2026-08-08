@@ -23,11 +23,11 @@ window.IG_MESSAGES = [
 ];
 
 window.IG_POSTS = [
+  { url: 'https://www.instagram.com/p/DbxcbjyEW5k/' },
   { url: 'https://www.instagram.com/p/Dbvju_ipzwT/' },
   { url: 'https://www.instagram.com/p/DbvkMz_iQYc/' },
   { url: 'https://www.instagram.com/p/DbvklikFCcR/' },
   { url: 'https://www.instagram.com/p/Dbvj6S3z6cZ/' },
-  { url: 'https://www.instagram.com/p/DbxcbjyEW5k/' },
 ];
 
 window.IG_LINKS = [
