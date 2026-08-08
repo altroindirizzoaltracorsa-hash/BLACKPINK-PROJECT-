@@ -18,8 +18,8 @@ window.IG_LETTERS = [
 window.IG_MESSAGES = [
   { img: '/msg-lisa.jpg' },
   { img: '/msg-jisoo-1.jpg' },
-  { img: '/msg-jisoo-2.jpg' },
-  { img: '/msg-jisoo-3.jpg' },
+  // Jisoo's letter in both languages — one slide with an ENG/KR toggle.
+  { img: '/msg-jisoo-en.jpg', alt: '/msg-jisoo-kr.jpg', langs: ['ENG', 'KR'] },
 ];
 
 window.IG_POSTS = [
@@ -159,8 +159,11 @@ window.renderIgCarousel = function (containerId, list) {
       '.ig-carousel{max-width:420px;margin:2rem auto 0;}' +
       '.ig-track{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;height:clamp(340px,58vh,540px);}' +
       '.ig-track::-webkit-scrollbar{display:none;}' +
-      '.ig-slide{flex:0 0 100%;scroll-snap-align:center;padding:0 2px;height:100%;display:flex;align-items:center;justify-content:center;}' +
+      '.ig-slide{position:relative;flex:0 0 100%;scroll-snap-align:center;padding:0 2px;height:100%;display:flex;align-items:center;justify-content:center;}' +
       '.ig-slide img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;border-radius:16px;border:1px solid rgba(255,255,255,0.12);}' +
+      '.ig-langtoggle{position:absolute;top:10px;right:12px;z-index:3;display:flex;gap:3px;background:rgba(0,0,0,0.55);border-radius:999px;padding:3px;}' +
+      '.ig-langtoggle button{border:0;border-radius:999px;background:transparent;color:#fff;cursor:pointer;font-family:ui-monospace,SFMono-Regular,monospace;font-size:0.52rem;letter-spacing:0.08em;padding:4px 9px;line-height:1;}' +
+      '.ig-langtoggle button.active{background:#FF3D8F;color:#0a0006;}' +
       '.ig-dots{display:flex;gap:0.4rem;justify-content:center;margin-top:0.9rem;}' +
       '.ig-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.25);border:0;padding:0;cursor:pointer;transition:background .2s,transform .2s;}' +
       '.ig-dot.active{background:#FF3D8F;transform:scale(1.35);}' +
@@ -169,8 +172,16 @@ window.renderIgCarousel = function (containerId, list) {
   }
   window._igGroups[containerId] = items.map(function (p) { return p.img; });
   var slides = items.map(function (p, i) {
-    return '<div class="ig-slide"><a href="#" onclick="return openIgLightbox(\'' + containerId + '\',' + i + ')" style="cursor:zoom-in;">' +
-      '<img src="' + p.img + '" alt="' + (p.name || 'BLACKPINK') + ' — 10th anniversary message to BLINK" loading="lazy"></a></div>';
+    var a = '<a href="#" onclick="return openIgLightbox(\'' + containerId + '\',' + i + ')" style="cursor:zoom-in;">' +
+      '<img src="' + p.img + '" alt="' + (p.name || 'BLACKPINK') + ' — 10th anniversary message to BLINK" loading="lazy"></a>';
+    var toggle = '';
+    if (p.alt) {
+      var la = (p.langs && p.langs[0]) || 'ENG', lb = (p.langs && p.langs[1]) || 'KR';
+      toggle = '<div class="ig-langtoggle" data-cid="' + containerId + '" data-idx="' + i + '" data-en="' + p.img + '" data-kr="' + p.alt + '">' +
+        '<button type="button" data-lang="en" class="active">' + la + '</button>' +
+        '<button type="button" data-lang="kr">' + lb + '</button></div>';
+    }
+    return '<div class="ig-slide">' + a + toggle + '</div>';
   }).join('');
   var dots = items.map(function (_, i) {
     return '<button class="ig-dot' + (i === 0 ? ' active' : '') + '" data-i="' + i + '" aria-label="Message ' + (i + 1) + '"></button>';
@@ -190,6 +201,21 @@ window.renderIgCarousel = function (containerId, list) {
     raf = requestAnimationFrame(function () {
       var i = current();
       dotEls.forEach(function (d, j) { d.classList.toggle('active', j === i); });
+    });
+  });
+  // Language toggles (e.g. Jisoo ENG/KR) — swap the slide image in place.
+  wrap.querySelectorAll('.ig-langtoggle').forEach(function (tg) {
+    var cid = tg.dataset.cid, idx = +tg.dataset.idx, en = tg.dataset.en, kr = tg.dataset.kr;
+    var img = tg.parentNode.querySelector('img');
+    tg.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var src = b.dataset.lang === 'kr' ? kr : en;
+        img.src = src;
+        if (window._igGroups[cid]) window._igGroups[cid][idx] = src;
+        tg.querySelectorAll('button').forEach(function (x) { x.classList.remove('active'); });
+        b.classList.add('active');
+      });
     });
   });
 };
