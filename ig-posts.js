@@ -33,8 +33,6 @@ window.IG_POSTS = [
 
 window.IG_LINKS = [
   { label: '🎧 Weverse Listening Party', url: 'https://listening-party.weverse.io/blackpink/wlp/3-238187356' },
-  { label: '📺 Weverse · Media', url: 'https://weverse.io/blackpink/media/3-238407383' },
-  { label: '📺 Weverse · Media', url: 'https://weverse.io/blackpink/media/4-238345927' },
   { label: '🔴 Weverse · Live', url: 'https://weverse.io/blackpink/live/2-178873994' },
   { label: '📻 Stationhead', url: 'https://www.stationhead.com/blackpink' },
 ];
