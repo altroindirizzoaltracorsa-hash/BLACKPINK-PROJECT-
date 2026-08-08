@@ -2345,8 +2345,8 @@
       </div>
 
       <div id="scrobble-warning" class="scrobble-warning" style="display:none">
-        ⚠ No scrobbles detected in the last 3 days — your Spotify→Last.fm connection may have stopped.
-        <a href="https://www.last.fm/settings/applications" target="_blank" rel="noopener">Check Last.fm settings →</a>
+        <span id="scrobble-warning-text">⚠ No scrobbles detected in the last 3 days — your Spotify→Last.fm connection may have stopped.</span>
+        <a id="scrobble-warning-link" href="https://www.last.fm/settings/applications" target="_blank" rel="noopener">Check Last.fm settings →</a>
       </div>
 
 
@@ -6432,11 +6432,26 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
         (ago ? ` · last scrobble: <span>${ago}</span>` : '') + `</div>`;
     }).join('');
     document.getElementById('profile-meta').innerHTML = metaHtml;
-    const maxDays = info.allAccounts.reduce((m, a) => {
-      if (!a.lastScrobbleTs) return m;
-      return Math.max(m, (Date.now() - a.lastScrobbleTs) / 86400000);
-    }, 0);
-    document.getElementById('scrobble-warning').style.display = maxDays > 3 ? 'flex' : 'none';
+    // Warn only about the specific account(s) that have gone quiet, and name them
+    // (accounts with no last-scrobble timestamp, e.g. Stats.fm/Musicat, are skipped).
+    const staleAccounts = info.allAccounts.filter(a =>
+      a.lastScrobbleTs && (Date.now() - a.lastScrobbleTs) / 86400000 > 3);
+    const warnEl = document.getElementById('scrobble-warning');
+    if (staleAccounts.length) {
+      const names = staleAccounts.map(a => {
+        const platform = ACCOUNT_SOURCE_LABELS[a.source] || a.source;
+        const ago = _tsAgo(a.lastScrobbleTs);
+        return `${a.username} (${platform}${ago ? `, last scrobble ${ago}` : ''})`;
+      }).join(', ');
+      const verb = staleAccounts.length > 1 ? 'haven’t' : 'hasn’t';
+      document.getElementById('scrobble-warning-text').innerHTML =
+        `⚠ ${names} ${verb} scrobbled in over 3 days — that connection may have stopped.`;
+      const link = document.getElementById('scrobble-warning-link');
+      if (link) link.style.display = staleAccounts.some(a => a.source === 'lastfm') ? '' : 'none';
+      warnEl.style.display = 'flex';
+    } else {
+      warnEl.style.display = 'none';
+    }
   } else {
     document.getElementById('profile-username').textContent = info.displayName || info.name || '';
     let scrobbleAgo = _tsAgo(lastScrobbleTs);
@@ -6444,6 +6459,12 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
     document.getElementById('profile-meta').innerHTML =
       `<span>${Number(info.playcount).toLocaleString()}</span> total scrobbles · Last.fm`
       + (scrobbleAgo ? ` · last scrobble: <span>${scrobbleAgo}</span>` : '');
+    if (showWarning) {
+      document.getElementById('scrobble-warning-text').innerHTML =
+        '⚠ No scrobbles detected in the last 3 days — your Spotify→Last.fm connection may have stopped.';
+      const link = document.getElementById('scrobble-warning-link');
+      if (link) link.style.display = '';
+    }
     document.getElementById('scrobble-warning').style.display = showWarning ? 'flex' : 'none';
   }
   document.getElementById('settings-panel').style.display = 'none'; // reset on new profile load
