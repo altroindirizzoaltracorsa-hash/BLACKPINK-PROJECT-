@@ -1,17 +1,25 @@
-// ── Featured Instagram content (BLACKPINK & the members) ─────────────────────
-// Rendered on the homepage (where the Jennie banner was) and near the top of the
-// 10th-anniversary page. TWO separate groups:
-//   IG_LETTERS — the members' handwritten anniversary letters (self-hosted images)
-//   IG_POSTS   — other Instagram posts, shown as live embeds
-// Entry shapes:
-//   image card:  { img: '/path.jpg', name: 'JISOO', link: 'https://instagram.com/…' }
-//   live embed:  { url: 'https://www.instagram.com/p/XXXX/' }
+// ── Featured 10th-anniversary content (BLACKPINK & the members) ──────────────
+// Shared across the homepage and the 10th-anniversary page. Groups:
+//   IG_LETTERS  — members' handwritten letters (self-hosted images, labelled)
+//   IG_MESSAGES — members' Weverse / app messages (self-hosted screenshots)
+//   IG_POSTS    — Instagram posts, shown as live embeds
+//   IG_LINKS    — external links (Weverse listening party, Stationhead, …)
+// Image entry: { img:'/path.jpg', name?:'JISOO', url?:'https://…' }  (name = label; url = where it links, else opens the image)
+// Embed entry: { url:'https://www.instagram.com/p/XXXX/' }
+// Link entry:  { label:'Stationhead', url:'https://…' }
 
 window.IG_LETTERS = [
   { img: '/anniv-jisoo.jpg',  name: 'JISOO'  },
   { img: '/anniv-jennie.jpg', name: 'JENNIE' },
   { img: '/anniv-rose.jpg',   name: 'ROSÉ'   },
   { img: '/anniv-lisa.jpg',   name: 'LISA'   },
+];
+
+window.IG_MESSAGES = [
+  { img: '/msg-lisa.jpg' },
+  { img: '/msg-jisoo-1.jpg' },
+  { img: '/msg-jisoo-2.jpg' },
+  { img: '/msg-jisoo-3.jpg' },
 ];
 
 window.IG_POSTS = [
@@ -23,7 +31,16 @@ window.IG_POSTS = [
   // { url: 'https://www.instagram.com/p/XXXXXXXXXXX/' },
 ];
 
-// renderIgPosts(containerId, list) — list defaults to IG_POSTS.
+window.IG_LINKS = [
+  { label: '🎧 Weverse Listening Party', url: 'https://listening-party.weverse.io/blackpink/wlp/3-238187356' },
+  { label: '📺 Weverse · Media', url: 'https://weverse.io/blackpink/media/3-238407383' },
+  { label: '📺 Weverse · Media', url: 'https://weverse.io/blackpink/media/4-238345927' },
+  { label: '🔴 Weverse · Live', url: 'https://weverse.io/blackpink/live/2-178873994' },
+  { label: '📻 Stationhead', url: 'https://www.stationhead.com/blackpink' },
+];
+
+// renderIgPosts(containerId, list) — image cards + Instagram embeds. Cards are
+// masonry-friendly (break-inside:avoid) so they fit column layouts.
 window.renderIgPosts = function (containerId, list) {
   var grid = document.getElementById(containerId);
   if (!grid) return;
@@ -35,11 +52,10 @@ window.renderIgPosts = function (containerId, list) {
       var label = p.name
         ? '<div style="font-family:ui-monospace,SFMono-Regular,monospace;font-size:0.58rem;letter-spacing:0.16em;text-transform:uppercase;color:#FF0066;padding:0.55rem 0.6rem;text-align:center;">' + p.name + '</div>'
         : '';
-      // Not an Instagram post — just the letter image; clicking opens it full-size.
-      return '<a href="' + p.img + '" target="_blank" rel="noopener" ' +
-        'style="display:block;width:100%;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);background:#150c13;text-decoration:none;transition:border-color 0.2s;" ' +
+      return '<a href="' + (p.url || p.img) + '" target="_blank" rel="noopener" ' +
+        'style="display:block;width:100%;margin:0 0 1rem;break-inside:avoid;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);background:#150c13;text-decoration:none;transition:border-color 0.2s;" ' +
         'onmouseover="this.style.borderColor=\'rgba(255,0,102,0.5)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.1)\'">' +
-        '<img src="' + p.img + '" alt="' + (p.name || 'BLACKPINK') + ' — 10th anniversary letter to BLINK" loading="lazy" style="display:block;width:100%;height:auto;">' +
+        '<img src="' + p.img + '" alt="' + (p.name || 'BLACKPINK') + ' — 10th anniversary message to BLINK" loading="lazy" style="display:block;width:100%;height:auto;">' +
         label + '</a>';
     }
     needsEmbed = true;
@@ -56,4 +72,17 @@ window.renderIgPosts = function (containerId, list) {
   s.src = 'https://www.instagram.com/embed.js';
   s.onload = function () { if (window.instgrm && window.instgrm.Embeds) window.instgrm.Embeds.process(); };
   document.body.appendChild(s);
+};
+
+// renderIgLinks(containerId, list) — external link buttons.
+window.renderIgLinks = function (containerId, list) {
+  var wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  var links = list || window.IG_LINKS || [];
+  wrap.innerHTML = links.map(function (l) {
+    return '<a href="' + l.url + '" target="_blank" rel="noopener" ' +
+      'style="font-family:ui-monospace,SFMono-Regular,monospace;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:#FF0066;border:1px solid rgba(255,0,102,0.45);border-radius:999px;padding:0.6rem 1rem;text-decoration:none;transition:background 0.2s,color 0.2s;" ' +
+      'onmouseover="this.style.background=\'#FF0066\';this.style.color=\'#0a0006\'" onmouseout="this.style.background=\'transparent\';this.style.color=\'#FF0066\'">' +
+      l.label + '</a>';
+  }).join('');
 };
