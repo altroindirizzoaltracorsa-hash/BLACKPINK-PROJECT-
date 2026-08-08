@@ -1809,6 +1809,9 @@
 
         <p style="font-family:'SFMono-Regular',ui-monospace,monospace;font-size:0.62rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--pink);margin:2.4rem 0 1.2rem;">◇ From Instagram</p>
         <div id="ig-home-posts" style="display:flex;flex-wrap:wrap;gap:1.2rem;justify-content:center;align-items:flex-start;"></div>
+
+        <p style="font-family:'SFMono-Regular',ui-monospace,monospace;font-size:0.62rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--pink);margin:2.4rem 0 1.2rem;">◇ Listen &amp; Watch</p>
+        <div id="ig-home-links" style="display:flex;flex-wrap:wrap;gap:0.6rem;justify-content:center;"></div>
       </section>
 
       <!-- NEW SINGLE banner moved to the Our Projects page (/projects). The expand
@@ -12251,6 +12254,7 @@ window.addEventListener('appinstalled', () => {
     renderIgPosts('ig-home-letters', window.IG_LETTERS);
     renderIgPosts('ig-home-posts', window.IG_POSTS);
   }
+  if (window.renderIgLinks) renderIgLinks('ig-home-links', window.IG_LINKS);
 </script>
 </body>
 </html>

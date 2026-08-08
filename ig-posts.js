@@ -27,8 +27,7 @@ window.IG_POSTS = [
   { url: 'https://www.instagram.com/p/DbvkMz_iQYc/' },
   { url: 'https://www.instagram.com/p/DbvklikFCcR/' },
   { url: 'https://www.instagram.com/p/Dbvj6S3z6cZ/' },
-  // Lisa's post — add when the link is ready:
-  // { url: 'https://www.instagram.com/p/XXXXXXXXXXX/' },
+  { url: 'https://www.instagram.com/p/DbxcbjyEW5k/' },
 ];
 
 window.IG_LINKS = [
