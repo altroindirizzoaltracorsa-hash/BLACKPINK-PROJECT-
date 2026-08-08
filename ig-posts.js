@@ -37,6 +37,74 @@ window.IG_LINKS = [
   { label: '📻 Stationhead', url: 'https://www.stationhead.com/blackpink' },
 ];
 
+// ── Lightbox ─────────────────────────────────────────────────────────────────
+// Tapping any letter/message opens a full-screen viewer you can swipe or arrow
+// through (prev/next within the same gallery), instead of opening a new tab.
+window._igGroups = window._igGroups || {};
+window.openIgLightbox = function (groupId, index) {
+  var imgs = window._igGroups[groupId];
+  if (!imgs || !imgs.length) return false;
+  var ov = document.getElementById('ig-lightbox');
+  if (!ov) {
+    var st = document.createElement('style');
+    st.textContent =
+      '#ig-lightbox{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.93);display:none;align-items:center;justify-content:center;padding:3rem 1rem;}' +
+      '#ig-lightbox.open{display:flex;}' +
+      '#ig-lightbox img.iglb-img{max-width:min(92vw,560px);max-height:84vh;width:auto;height:auto;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,0.6);}' +
+      '.iglb-btn{position:absolute;background:rgba(255,255,255,0.12);border:0;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}' +
+      '.iglb-close{top:1rem;right:1.1rem;width:40px;height:40px;border-radius:50%;font-size:1.3rem;}' +
+      '.iglb-nav{top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;font-size:1.8rem;}' +
+      '.iglb-prev{left:0.6rem;} .iglb-next{right:0.6rem;}' +
+      '.iglb-count{position:absolute;bottom:1.1rem;left:0;right:0;text-align:center;color:rgba(255,255,255,0.7);font-family:ui-monospace,SFMono-Regular,monospace;font-size:0.7rem;letter-spacing:0.14em;}';
+    document.head.appendChild(st);
+    ov = document.createElement('div');
+    ov.id = 'ig-lightbox';
+    ov.innerHTML =
+      '<button class="iglb-btn iglb-close" aria-label="Close">✕</button>' +
+      '<button class="iglb-btn iglb-nav iglb-prev" aria-label="Previous">‹</button>' +
+      '<img class="iglb-img" alt="">' +
+      '<button class="iglb-btn iglb-nav iglb-next" aria-label="Next">›</button>' +
+      '<div class="iglb-count"></div>';
+    document.body.appendChild(ov);
+    var imgEl = ov.querySelector('.iglb-img');
+    var countEl = ov.querySelector('.iglb-count');
+    function show(i) {
+      var list = window._igGroups[ov.dataset.group] || [];
+      if (!list.length) return;
+      ov._i = (i + list.length) % list.length;
+      imgEl.src = list[ov._i];
+      var multi = list.length > 1;
+      ov.querySelector('.iglb-prev').style.display = multi ? '' : 'none';
+      ov.querySelector('.iglb-next').style.display = multi ? '' : 'none';
+      countEl.textContent = multi ? (ov._i + 1) + ' / ' + list.length : '';
+    }
+    ov._show = show;
+    function close() { ov.classList.remove('open'); document.removeEventListener('keydown', onKey); }
+    ov._close = close;
+    function onKey(e) {
+      if (e.key === 'Escape') close();
+      else if (e.key === 'ArrowLeft') show(ov._i - 1);
+      else if (e.key === 'ArrowRight') show(ov._i + 1);
+    }
+    ov._onKey = onKey;
+    ov.querySelector('.iglb-close').addEventListener('click', close);
+    ov.querySelector('.iglb-prev').addEventListener('click', function (e) { e.stopPropagation(); show(ov._i - 1); });
+    ov.querySelector('.iglb-next').addEventListener('click', function (e) { e.stopPropagation(); show(ov._i + 1); });
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    var sx = 0;
+    ov.addEventListener('touchstart', function (e) { sx = e.changedTouches[0].clientX; }, { passive: true });
+    ov.addEventListener('touchend', function (e) {
+      var dx = e.changedTouches[0].clientX - sx;
+      if (Math.abs(dx) > 40) show(ov._i + (dx < 0 ? 1 : -1));
+    }, { passive: true });
+  }
+  ov.dataset.group = groupId;
+  ov.classList.add('open');
+  document.addEventListener('keydown', ov._onKey);
+  ov._show(index);
+  return false;
+};
+
 // renderIgPosts(containerId, list) — image cards + Instagram embeds. Cards are
 // masonry-friendly (break-inside:avoid) so they fit column layouts.
 window.renderIgPosts = function (containerId, list) {
@@ -45,13 +113,17 @@ window.renderIgPosts = function (containerId, list) {
   var posts = list || window.IG_POSTS || [];
   if (!posts.length) { grid.innerHTML = ''; return; }
   var needsEmbed = false;
+  var imgs = [];
   grid.innerHTML = posts.map(function (p) {
     if (p.img) {
       var label = p.name
         ? '<div style="font-family:ui-monospace,SFMono-Regular,monospace;font-size:0.58rem;letter-spacing:0.16em;text-transform:uppercase;color:#FF0066;padding:0.55rem 0.6rem;text-align:center;">' + p.name + '</div>'
         : '';
-      return '<a href="' + (p.url || p.img) + '" target="_blank" rel="noopener" ' +
-        'style="display:block;width:100%;margin:0 0 1rem;break-inside:avoid;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);background:#150c13;text-decoration:none;transition:border-color 0.2s;" ' +
+      var opener;
+      if (p.url) { opener = 'href="' + p.url + '" target="_blank" rel="noopener"'; }
+      else { var idx = imgs.length; imgs.push(p.img); opener = 'href="#" onclick="return openIgLightbox(\'' + containerId + '\',' + idx + ')"'; }
+      return '<a ' + opener + ' ' +
+        'style="display:block;width:100%;margin:0 0 1rem;break-inside:avoid;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);background:#150c13;text-decoration:none;cursor:pointer;transition:border-color 0.2s;" ' +
         'onmouseover="this.style.borderColor=\'rgba(255,0,102,0.5)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.1)\'">' +
         '<img src="' + p.img + '" alt="' + (p.name || 'BLACKPINK') + ' — 10th anniversary message to BLINK" loading="lazy" style="display:block;width:100%;height:auto;">' +
         label + '</a>';
@@ -60,6 +132,7 @@ window.renderIgPosts = function (containerId, list) {
     return '<blockquote class="instagram-media" data-instgrm-permalink="' + p.url +
       '" data-instgrm-version="14" style="margin:0;max-width:400px;width:100%;min-width:300px;"></blockquote>';
   }).join('');
+  window._igGroups[containerId] = imgs;
 
   if (!needsEmbed) return; // pure image gallery — no external script needed
   if (window.instgrm && window.instgrm.Embeds) { window.instgrm.Embeds.process(); return; }
@@ -95,8 +168,9 @@ window.renderIgCarousel = function (containerId, list) {
       '.ig-hint{font-family:ui-monospace,SFMono-Regular,monospace;font-size:0.55rem;letter-spacing:0.16em;text-transform:uppercase;color:rgba(245,240,240,0.4);text-align:center;margin-top:0.7rem;}';
     document.head.appendChild(st);
   }
-  var slides = items.map(function (p) {
-    return '<div class="ig-slide"><a href="' + (p.url || p.img) + '" target="_blank" rel="noopener">' +
+  window._igGroups[containerId] = items.map(function (p) { return p.img; });
+  var slides = items.map(function (p, i) {
+    return '<div class="ig-slide"><a href="#" onclick="return openIgLightbox(\'' + containerId + '\',' + i + ')" style="cursor:zoom-in;">' +
       '<img src="' + p.img + '" alt="' + (p.name || 'BLACKPINK') + ' — 10th anniversary message to BLINK" loading="lazy"></a></div>';
   }).join('');
   var dots = items.map(function (_, i) {
