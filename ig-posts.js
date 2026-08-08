@@ -72,6 +72,61 @@ window.renderIgPosts = function (containerId, list) {
   document.body.appendChild(s);
 };
 
+// renderIgCarousel(containerId, list) — swipeable one-at-a-time carousel of images
+// (used for the members' message screenshots, which vary in shape). Native
+// scroll-snap; dots + dynamic height so each message frames snugly.
+window.renderIgCarousel = function (containerId, list) {
+  var wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  var items = list || [];
+  if (!items.length) { wrap.innerHTML = ''; return; }
+  if (!document.getElementById('ig-carousel-css')) {
+    var st = document.createElement('style');
+    st.id = 'ig-carousel-css';
+    st.textContent =
+      '.ig-carousel{max-width:420px;margin:2rem auto 0;}' +
+      '.ig-track{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;transition:height .25s ease;}' +
+      '.ig-track::-webkit-scrollbar{display:none;}' +
+      '.ig-slide{flex:0 0 100%;scroll-snap-align:center;padding:0 2px;}' +
+      '.ig-slide img{display:block;width:100%;height:auto;border-radius:16px;border:1px solid rgba(255,255,255,0.12);}' +
+      '.ig-dots{display:flex;gap:0.4rem;justify-content:center;margin-top:0.9rem;}' +
+      '.ig-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.25);border:0;padding:0;cursor:pointer;transition:background .2s,transform .2s;}' +
+      '.ig-dot.active{background:#FF3D8F;transform:scale(1.35);}' +
+      '.ig-hint{font-family:ui-monospace,SFMono-Regular,monospace;font-size:0.55rem;letter-spacing:0.16em;text-transform:uppercase;color:rgba(245,240,240,0.4);text-align:center;margin-top:0.7rem;}';
+    document.head.appendChild(st);
+  }
+  var slides = items.map(function (p) {
+    return '<div class="ig-slide"><a href="' + (p.url || p.img) + '" target="_blank" rel="noopener">' +
+      '<img src="' + p.img + '" alt="' + (p.name || 'BLACKPINK') + ' — 10th anniversary message to BLINK" loading="lazy"></a></div>';
+  }).join('');
+  var dots = items.map(function (_, i) {
+    return '<button class="ig-dot' + (i === 0 ? ' active' : '') + '" data-i="' + i + '" aria-label="Message ' + (i + 1) + '"></button>';
+  }).join('');
+  wrap.innerHTML = '<div class="ig-carousel"><div class="ig-track">' + slides +
+    '</div><div class="ig-dots">' + dots + '</div>' +
+    (items.length > 1 ? '<div class="ig-hint">← swipe →</div>' : '') + '</div>';
+  var track = wrap.querySelector('.ig-track');
+  var dotEls = wrap.querySelectorAll('.ig-dot');
+  function current() { return Math.round(track.scrollLeft / Math.max(1, track.clientWidth)); }
+  function fitHeight() { var s = track.children[current()]; if (s) track.style.height = s.offsetHeight + 'px'; }
+  function sync() {
+    var i = current();
+    dotEls.forEach(function (d, j) { d.classList.toggle('active', j === i); });
+    fitHeight();
+  }
+  dotEls.forEach(function (d) {
+    d.addEventListener('click', function () { track.scrollTo({ left: (+d.dataset.i) * track.clientWidth, behavior: 'smooth' }); });
+  });
+  var raf;
+  track.addEventListener('scroll', function () { if (raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(sync); });
+  window.addEventListener('resize', fitHeight);
+  // Images load async — fit height as each arrives.
+  wrap.querySelectorAll('.ig-slide img').forEach(function (img) {
+    if (img.complete) fitHeight(); else img.addEventListener('load', fitHeight);
+  });
+  fitHeight();
+};
+
 // renderIgLinks(containerId, list) — external link buttons.
 window.renderIgLinks = function (containerId, list) {
   var wrap = document.getElementById(containerId);
