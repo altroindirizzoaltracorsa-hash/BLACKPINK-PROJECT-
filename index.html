@@ -1801,11 +1801,14 @@
         <a href="/voting" class="btn-primary" onclick="showPage('vote'); return false;">Vote</a>
       </div>
 
-      <!-- Featured Instagram posts (BLACKPINK & the members). Post URLs live in /ig-posts.js -->
+      <!-- Featured Instagram content (BLACKPINK & the members). Lists live in /ig-posts.js -->
       <section id="home-ig" style="margin-top:2.2rem;max-width:900px;width:calc(100% + 4rem);margin-left:-2rem;margin-right:-2rem;text-align:center;">
         <p style="font-family:'SFMono-Regular',ui-monospace,monospace;font-size:0.62rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--pink);margin-bottom:0.4rem;">◇ 10th Anniversary · Letters to BLINK</p>
         <p style="font-family:Georgia,serif;font-style:italic;font-size:0.9rem;color:rgba(245,240,240,0.55);margin-bottom:1.3rem;">Handwritten notes from each member — 10 years of BLACKPINK 🖤💗</p>
-        <div id="ig-home-grid" style="display:flex;flex-wrap:wrap;gap:1.2rem;justify-content:center;align-items:flex-start;"></div>
+        <div id="ig-home-letters" style="display:flex;flex-wrap:wrap;gap:1.2rem;justify-content:center;align-items:flex-start;"></div>
+
+        <p style="font-family:'SFMono-Regular',ui-monospace,monospace;font-size:0.62rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--pink);margin:2.4rem 0 1.2rem;">◇ From Instagram</p>
+        <div id="ig-home-posts" style="display:flex;flex-wrap:wrap;gap:1.2rem;justify-content:center;align-items:flex-start;"></div>
       </section>
 
       <!-- NEW SINGLE banner moved to the Our Projects page (/projects). The expand
@@ -12243,6 +12246,11 @@ window.addEventListener('appinstalled', () => {
 })();
 </script>
 <script src="/ig-posts.js"></script>
-<script>window.renderIgPosts && renderIgPosts('ig-home-grid');</script>
+<script>
+  if (window.renderIgPosts) {
+    renderIgPosts('ig-home-letters', window.IG_LETTERS);
+    renderIgPosts('ig-home-posts', window.IG_POSTS);
+  }
+</script>
 </body>
 </html>

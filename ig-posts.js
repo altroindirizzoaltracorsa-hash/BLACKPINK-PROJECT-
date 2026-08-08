@@ -1,27 +1,34 @@
-// ── Featured posts (BLACKPINK & the members) ─────────────────────────────────
-// ONE shared list, rendered on the homepage (where the Jennie banner was) and near
-// the top of the 10th-anniversary page. Two kinds of entries:
-//   • image card:  { img: '/path.jpg', name: 'JISOO', link: 'https://instagram.com/…' }
-//   • live embed:  { url: 'https://www.instagram.com/p/XXXX/' }
-window.IG_POSTS = [
+// ── Featured Instagram content (BLACKPINK & the members) ─────────────────────
+// Rendered on the homepage (where the Jennie banner was) and near the top of the
+// 10th-anniversary page. TWO separate groups:
+//   IG_LETTERS — the members' handwritten anniversary letters (self-hosted images)
+//   IG_POSTS   — other Instagram posts, shown as live embeds
+// Entry shapes:
+//   image card:  { img: '/path.jpg', name: 'JISOO', link: 'https://instagram.com/…' }
+//   live embed:  { url: 'https://www.instagram.com/p/XXXX/' }
+
+window.IG_LETTERS = [
   { img: '/anniv-jisoo.jpg',  name: 'JISOO',  link: 'https://www.instagram.com/blackpinkofficial/' },
   { img: '/anniv-jennie.jpg', name: 'JENNIE', link: 'https://www.instagram.com/blackpinkofficial/' },
   { img: '/anniv-rose.jpg',   name: 'ROSÉ',   link: 'https://www.instagram.com/blackpinkofficial/' },
   { img: '/anniv-lisa.jpg',   name: 'LISA',   link: 'https://www.instagram.com/blackpinkofficial/' },
-  // Live post embeds can go here too, e.g.:
+];
+
+window.IG_POSTS = [
+  { url: 'https://www.instagram.com/p/Dbvju_ipzwT/' },
+  { url: 'https://www.instagram.com/p/DbvkMz_iQYc/' },
+  { url: 'https://www.instagram.com/p/DbvklikFCcR/' },
+  { url: 'https://www.instagram.com/p/Dbvj6S3z6cZ/' },
+  // Lisa's post — add when the link is ready:
   // { url: 'https://www.instagram.com/p/XXXXXXXXXXX/' },
 ];
 
-window.renderIgPosts = function (containerId) {
+// renderIgPosts(containerId, list) — list defaults to IG_POSTS.
+window.renderIgPosts = function (containerId, list) {
   var grid = document.getElementById(containerId);
   if (!grid) return;
-  var posts = window.IG_POSTS || [];
-  if (!posts.length) {
-    grid.innerHTML =
-      '<div style="border:1px dashed rgba(255,255,255,0.16);border-radius:14px;padding:2rem 1.5rem;max-width:560px;margin:0 auto;text-align:center;font-family:Georgia,serif;font-style:italic;color:rgba(245,240,240,0.5);line-height:1.6;">' +
-      'Nothing featured yet. 🖤💗</div>';
-    return;
-  }
+  var posts = list || window.IG_POSTS || [];
+  if (!posts.length) { grid.innerHTML = ''; return; }
   var needsEmbed = false;
   grid.innerHTML = posts.map(function (p) {
     if (p.img) {
