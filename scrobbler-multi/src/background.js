@@ -145,9 +145,16 @@ function recordScrobble(account, track, targets, meta = {}) {
     const { stats = EMPTY_STATS } = await chrome.storage.local.get('stats');
     stats.total = (stats.total || 0) + 1;
     stats.counts = stats.counts || {};
-    if (!stats.counts[id]) stats.counts[id] = { label, count: 0 };
+    if (!stats.counts[id]) stats.counts[id] = { label, count: 0, tracks: {} };
     stats.counts[id].count += 1;
     stats.counts[id].label = label;
+    // Per-track tally for this account, so the options page can break each
+    // account down track-by-track (to compare against a playlist).
+    stats.counts[id].tracks = stats.counts[id].tracks || {};
+    const trackKey = `${track.artist} — ${track.title}`;
+    const tr = stats.counts[id].tracks[trackKey] || { title: track.title, artist: track.artist, count: 0 };
+    tr.count += 1;
+    stats.counts[id].tracks[trackKey] = tr;
     stats.history = stats.history || [];
     stats.history.unshift({
       n: stats.total,
@@ -155,6 +162,7 @@ function recordScrobble(account, track, targets, meta = {}) {
       artist: track.artist,
       title: track.title,
       account: label,
+      accountId: id,
       targets,
       played: meta.playedS != null ? meta.playedS : null,
       pct: meta.pct != null ? meta.pct : null,

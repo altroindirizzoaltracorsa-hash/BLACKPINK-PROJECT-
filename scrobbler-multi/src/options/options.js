@@ -171,25 +171,73 @@ function fmtTime(ms) {
   try { return new Date(ms).toLocaleTimeString(); } catch (e) { return ''; }
 }
 
+// Which account the activity panel is filtered to ('__all__' = every account).
+let selectedAccount = '__all__';
+
 async function renderStats() {
   const stats = await send({ type: 'getStats' }) || { total: 0, counts: {}, history: [] };
+  const countsMap = stats.counts || {};
+  const history = stats.history || [];
   $('#stat-total').textContent = stats.total || 0;
 
+  // If the selected account disappeared (e.g. stats cleared), fall back to All.
+  if (selectedAccount !== '__all__' && !countsMap[selectedAccount]) selectedAccount = '__all__';
+
+  const entries = Object.entries(countsMap).sort((a, b) => b[1].count - a[1].count);
+
+  // ---- account chips act as filters ----
   const counts = $('#stat-counts');
   counts.innerHTML = '';
-  const entries = Object.values(stats.counts || {}).sort((a, b) => b.count - a.count);
-  for (const c of entries) {
-    const chip = document.createElement('span');
-    chip.className = 'stat-chip';
-    chip.innerHTML = `<span>${escapeHtml(c.label)}</span><b>${c.count}</b>`;
+  const mkChip = (id, label, count) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'stat-chip' + (selectedAccount === id ? ' sel' : '');
+    chip.innerHTML = `<span>${escapeHtml(label)}</span><b>${count}</b>`;
+    chip.addEventListener('click', () => { selectedAccount = id; renderStats(); });
     counts.appendChild(chip);
+  };
+  mkChip('__all__', 'All', stats.total || 0);
+  for (const [id, c] of entries) mkChip(id, c.label, c.count);
+
+  // ---- per-track breakdown for the current selection ----
+  const bd = $('#stat-breakdown');
+  bd.innerHTML = '';
+  const relevant = selectedAccount === '__all__'
+    ? entries.map((e) => e[1])
+    : [countsMap[selectedAccount]].filter(Boolean);
+  const trackTotals = {};
+  for (const c of relevant) {
+    for (const [key, tr] of Object.entries(c.tracks || {})) {
+      const cur = trackTotals[key] || { title: tr.title, artist: tr.artist, count: 0 };
+      cur.count += tr.count;
+      trackTotals[key] = cur;
+    }
+  }
+  const trackEntries = Object.values(trackTotals).sort((a, b) => b.count - a.count);
+  if (trackEntries.length) {
+    const head = document.createElement('div');
+    head.className = 'bd-head';
+    head.textContent = selectedAccount === '__all__'
+      ? 'Per track — all accounts'
+      : `Per track — ${countsMap[selectedAccount].label}`;
+    bd.appendChild(head);
+    for (const tr of trackEntries) {
+      const row = document.createElement('div');
+      row.className = 'bd-row';
+      row.innerHTML = `<span class="bd-title">${escapeHtml(tr.title)} • ${escapeHtml(tr.artist)}</span>`
+        + `<b>${tr.count}</b>`;
+      bd.appendChild(row);
+    }
   }
 
+  // ---- chronological history, filtered to the selection ----
   const hist = $('#stat-history');
   hist.innerHTML = '';
-  const history = stats.history || [];
-  $('#stat-empty').classList.toggle('hidden', history.length > 0);
-  for (const h of history) {
+  const shown = selectedAccount === '__all__'
+    ? history
+    : history.filter((h) => h.accountId === selectedAccount);
+  $('#stat-empty').classList.toggle('hidden', shown.length > 0);
+  for (const h of shown) {
     const el = document.createElement('div');
     el.className = 'hist';
     const at = h.played != null ? ` at ${h.played}s` : '';

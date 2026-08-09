@@ -102,8 +102,25 @@ button:hover { filter: brightness(1.1); }
   border-radius: 999px;
   padding: 3px 10px;
   font-size: 12px;
+  color: inherit;
+  cursor: pointer;
 }
+.stat-chip:hover { border-color: var(--accent); }
+.stat-chip.sel { border-color: var(--accent); background: rgba(255,255,255,0.04); }
 .stat-chip b { color: var(--accent); font-size: 13px; }
+
+.stat-breakdown { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
+.stat-breakdown .bd-head {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); margin: 2px 0 4px;
+}
+.stat-breakdown .bd-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  background: #0e0e0e; border: 1px solid var(--line); border-radius: 6px;
+  padding: 4px 10px; font-size: 13px;
+}
+.stat-breakdown .bd-row b { color: var(--accent); }
+.stat-breakdown .bd-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .stat-history { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
 .hist {
