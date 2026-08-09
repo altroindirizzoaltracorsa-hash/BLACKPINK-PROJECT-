@@ -264,18 +264,26 @@ async function readState(needAccount) {
     return p.reduce((a, n) => a * 60 + n, 0);
   }
 
-  // Read the actual media element first: its currentTime/paused keep advancing
-  // even when a background tab's on-screen position counter is throttled, and
-  // paused is an unambiguous, language-independent play state.
+  // Pick the REAL track element, not the short looping "Canvas" visual.
+  // Spotify pages can have several <video>/<audio> elements; the Canvas loop is
+  // a few seconds long and often paused/stuck, which previously made played=0
+  // for songs that were actually playing. Prefer a playing element with a
+  // track-length duration (>30s), then any long element, then anything.
+  const medias = Array.from(document.querySelectorAll('video, audio'));
+  const longPlaying = medias.find((m) => !m.paused && isFinite(m.duration) && m.duration > 30);
+  const anyLong = medias.find((m) => isFinite(m.duration) && m.duration > 30);
+  const anyPlaying = medias.find((m) => !m.paused && (m.currentTime || 0) > 0);
+  const media = longPlaying || anyLong || anyPlaying || medias[0] || null;
+
   let position = 0;
   let duration = 0;
   let mediaState = null;
-  const media = document.querySelector('video, audio');
   if (media) {
     position = Math.floor(media.currentTime || 0);
     if (isFinite(media.duration) && media.duration > 0) duration = Math.floor(media.duration);
     mediaState = media.paused ? 'paused' : 'playing';
   }
+  // DOM fallbacks reflect the real player UI, useful when no usable media element.
   if (!duration) duration = clock('[data-testid="playback-duration"]');
   if (!position) position = clock('[data-testid="playback-position"]');
 
