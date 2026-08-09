@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>BLINKS UNITED — Extension Setup Guide</title>
+</head>
+<body>
+<style>
+  :root {
+    --bg: #f5f3f5;
+    --card: #ffffff;
+    --ink: #1a1620;
+    --muted: #6d6675;
+    --line: #e7e2ea;
+    --accent: #e11667;
+    --accent-soft: #fbe4ee;
+    --accent-ink: #b60e52;
+    --code-bg: #f3eef2;
+    --ok: #197a4b;
+    --shadow: 0 1px 2px rgba(26,22,32,.06), 0 8px 24px rgba(26,22,32,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d0b0f;
+      --card: #17141a;
+      --ink: #f1edf2;
+      --muted: #9b93a3;
+      --line: #2a2530;
+      --accent: #ff3d86;
+      --accent-soft: #2a141f;
+      --accent-ink: #ff7fb0;
+      --code-bg: #201b26;
+      --ok: #57d295;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d0b0f;
+    --card: #17141a;
+    --ink: #f1edf2;
+    --muted: #9b93a3;
+    --line: #2a2530;
+    --accent: #ff3d86;
+    --accent-soft: #2a141f;
+    --accent-ink: #ff7fb0;
+    --code-bg: #201b26;
+    --ok: #57d295;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 4rem 1.4rem 6rem; }
+
+  .eyebrow {
+    font-size: .72rem; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; margin: 0 0 .9rem;
+  }
+  h1 {
+    font-size: clamp(2rem, 6vw, 2.9rem); line-height: 1.05; margin: 0 0 1rem;
+    letter-spacing: -.02em; text-wrap: balance; font-weight: 800;
+  }
+  .lede { font-size: 1.12rem; color: var(--muted); margin: 0 0 1rem; max-width: 60ch; }
+  .caveat {
+    font-size: .82rem; color: var(--muted); border-left: 3px solid var(--line);
+    padding: .5rem 0 .5rem .9rem; margin: 1.6rem 0 0; max-width: 62ch;
+  }
+
+  h2 {
+    font-size: .78rem; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--muted); font-weight: 700; margin: 3.2rem 0 1rem;
+    padding-bottom: .5rem; border-bottom: 1px solid var(--line);
+  }
+
+  .prereq {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 1.1rem 1.3rem; box-shadow: var(--shadow); margin-top: 1rem;
+  }
+  .prereq ul { margin: 0; padding: 0; list-style: none; display: grid; gap: .7rem; }
+  .prereq li { display: flex; gap: .7rem; align-items: baseline; font-size: .96rem; }
+  .prereq li::before {
+    content: ""; flex: 0 0 auto; width: 7px; height: 7px; margin-top: .5rem;
+    border-radius: 50%; background: var(--accent);
+  }
+
+  .steps { display: grid; gap: 1rem; margin-top: 1rem; counter-reset: step; }
+  .step {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 1.3rem 1.4rem 1.4rem; box-shadow: var(--shadow);
+    display: grid; grid-template-columns: auto 1fr; gap: 0 1.1rem;
+  }
+  .step::before {
+    counter-increment: step; content: counter(step);
+    grid-row: 1 / span 2;
+    width: 2.4rem; height: 2.4rem; border-radius: 11px;
+    background: var(--accent-soft); color: var(--accent-ink);
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 1.15rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .step h3 { margin: .25rem 0 0; font-size: 1.15rem; letter-spacing: -.01em; align-self: center; }
+  .step .body { grid-column: 2; margin-top: .6rem; }
+  .step p { margin: 0 0 .7rem; }
+  .step ol, .step ul { margin: 0 0 .3rem; padding-left: 1.2rem; }
+  .step li { margin: .35rem 0; }
+  .step li::marker { color: var(--muted); }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg); padding: .12em .42em; border-radius: 6px;
+    font-size: .88em; word-break: break-word;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px;
+    padding: .9rem 1rem; overflow-x: auto; margin: .3rem 0 .6rem;
+  }
+  pre code { background: none; padding: 0; font-size: .86rem; line-height: 1.55; }
+
+  .tip {
+    margin-top: .8rem; font-size: .9rem; background: var(--accent-soft);
+    border-radius: 10px; padding: .7rem .9rem; color: var(--ink);
+  }
+  .tip b { color: var(--accent-ink); }
+
+  .ok-line { color: var(--ok); font-weight: 600; }
+
+  .divider-note {
+    margin-top: 1rem; font-size: .95rem; color: var(--muted);
+  }
+
+  table.counts { width: 100%; border-collapse: collapse; margin-top: .6rem; font-size: .95rem; }
+  table.counts td { padding: .4rem .2rem; border-bottom: 1px solid var(--line); }
+  table.counts td:last-child { text-align: right; color: var(--muted); }
+  table.counts tr:last-child td { border-bottom: none; }
+
+  .faq { display: grid; gap: .2rem; margin-top: 1rem; }
+  details {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: .2rem .3rem;
+  }
+  details + details { margin-top: .55rem; }
+  summary {
+    cursor: pointer; padding: .8rem 1rem; font-weight: 600; list-style: none;
+    display: flex; justify-content: space-between; gap: 1rem; align-items: center;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; color: var(--accent); font-weight: 700; font-size: 1.2rem; }
+  details[open] summary::after { content: "–"; }
+  details .answer { padding: 0 1rem 1rem; color: var(--muted); font-size: .95rem; }
+  details .answer code { color: var(--ink); }
+
+  footer { margin-top: 3.5rem; padding-top: 1.4rem; border-top: 1px solid var(--line); font-size: .82rem; color: var(--muted); }
+
+  a { color: var(--accent-ink); text-underline-offset: 2px; }
+  strong { font-weight: 700; }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">BLINKS UNITED · Team setup</p>
+  <h1>Connect the Spotify scrobbler to your profile</h1>
+  <p class="lede">A step-by-step guide to installing the SessionBox Multi-Account Scrobbler, linking it to your BLINKS UNITED account, and getting your plays to show on your profile and the leaderboard.</p>
+  <p class="lede" style="font-size:1rem;">The whole thing takes about 5 minutes. You only do the setup once.</p>
+
+  <h2>Before you start</h2>
+  <div class="prereq">
+    <ul>
+      <li>A <strong>BLINKS UNITED account</strong> — the one you normally log in with (X, Google, Discord, or email).</li>
+      <li>The <strong>admin-panel key</strong> — ask whoever runs BLINKS UNITED for it. You need it once, to connect.</li>
+      <li>A <strong>Chromium browser</strong>: Brave, Chrome, or Edge.</li>
+      <li><strong>SessionBox</strong> installed — only if you run more than one Spotify account at once.</li>
+      <li>The <strong>extension file</strong> (<code>scrobbler-multi</code>, version 1.4.0) — provided by your admin.</li>
+    </ul>
+  </div>
+
+  <h2>Setup</h2>
+  <div class="steps">
+
+    <div class="step">
+      <h3>Install the extension</h3>
+      <div class="body">
+        <ol>
+          <li>Unzip the file. You'll get a folder called <code>scrobbler-multi</code>. Open it and confirm <code>manifest.json</code> sits directly inside (not in a nested folder).</li>
+          <li>In your browser go to <code>brave://extensions</code> (or <code>chrome://extensions</code> / <code>edge://extensions</code>).</li>
+          <li>Turn on <strong>Developer mode</strong> (top-right toggle).</li>
+          <li>Click <strong>Load unpacked</strong> and select the <code>scrobbler-multi</code> folder.</li>
+          <li>Check the card reads <strong>version 1.4.0</strong>.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="step">
+      <h3>Log in to BLINKS UNITED</h3>
+      <div class="body">
+        <p>Open <strong>blinksunited.com</strong> in the same browser and sign in with your usual account. Stay logged in — the next step needs your session.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <h3>Connect from the admin panel</h3>
+      <div class="body">
+        <ol>
+          <li>On the site, open the <strong>admin panel</strong> (the <strong>⚙</strong> button) and enter the admin key.</li>
+          <li>Find the section <strong>🎧 Connect Spotify extension</strong>.</li>
+          <li>Click <strong>Connect my extension</strong>. A new tab opens and links your profile automatically — <strong>nothing to copy</strong>.</li>
+          <li>Wait for <span class="ok-line">✅ Linked!</span> Then close that tab.</li>
+        </ol>
+        <p class="tip">Every Spotify tab in this browser now scrobbles to <b>your</b> profile — no matter how many accounts you run.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <h3>Stream on Spotify</h3>
+      <div class="body">
+        <p>Open your Spotify account(s) at <code>open.spotify.com</code> — use a separate SessionBox tab per account. Play the campaign tracks and let each one run.</p>
+        <ul>
+          <li>A track <strong>counts once it has played ~60 seconds.</strong> Skips and ads don't count.</li>
+          <li>Keep the browser window <strong>visible</strong> (don't minimize it) — background tabs get paused by the browser.</li>
+        </ul>
+        <p class="tip"><b>Weak PC?</b> Set Spotify's audio quality to <b>Low</b> (Settings → Audio quality). It has zero effect on whether a play counts, and lets you keep more tabs alive at once.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <h3>Check it's counting</h3>
+      <div class="body">
+        <p>Click the extension icon to open it. You'll see <strong>Scrobble activity</strong> ticking up, a chip per Spotify account, and — when you click an account — its <strong>per-song breakdown</strong>.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <h3>See it on your profile</h3>
+      <div class="body">
+        <p>Go to your BLINKS UNITED profile. Alongside your Last.fm / ListenBrainz rows you'll now see a <strong>Blinks United · Extension</strong> row with your total and a per-song breakdown:</p>
+        <table class="counts">
+          <tr><td><strong>Blinks United · Extension</strong> — last scrobble: 3m ago</td><td>24 plays</td></tr>
+          <tr><td style="padding-left:1rem;">↳ JUMP</td><td>10</td></tr>
+          <tr><td style="padding-left:1rem;">↳ Shut Down</td><td>6</td></tr>
+          <tr><td style="padding-left:1rem;">↳ GO</td><td>5</td></tr>
+          <tr><td style="padding-left:1rem;">↳ DDU-DU DDU-DU</td><td>3</td></tr>
+        </table>
+        <p class="divider-note">Your counts also fold into your leaderboard totals. The number settles on the next refresh (on submit, and hourly).</p>
+      </div>
+    </div>
+
+  </div>
+
+  <h2>What counts</h2>
+  <div class="prereq">
+    <ul>
+      <li><strong>Campaign tracks only:</strong> JUMP · Shut Down · DDU-DU DDU-DU · GO · Less Than a Lover (Jennie).</li>
+      <li>Each play needs <strong>~60 seconds</strong> of listening. Shorter plays and skips are ignored.</li>
+      <li><strong>Ads don't count</strong> and never get sent.</li>
+      <li>Your plays land on <strong>your own</strong> profile — the extension row only ever shows your own data.</li>
+    </ul>
+  </div>
+
+  <h2>If something's off</h2>
+  <div class="faq">
+    <details>
+      <summary>The card doesn't say version 1.4.0</summary>
+      <div class="answer">The browser loaded an old copy. Remove the extension, then <strong>Load unpacked</strong> the fresh <code>scrobbler-multi</code> folder again — and make sure <code>manifest.json</code> is directly inside the folder you pick (not one level up).</div>
+    </details>
+    <details>
+      <summary>The "Connect my extension" tab doesn't say ✅ Linked!</summary>
+      <div class="answer">Make sure the extension is <strong>installed and enabled</strong> in this browser, and that you're <strong>logged into BLINKS UNITED</strong>. Then reload the tab. If it still won't link, reopen the admin panel and click <strong>Connect my extension</strong> again.</div>
+    </details>
+    <details>
+      <summary>Tracks play but the count doesn't move</summary>
+      <div class="answer">A play only counts after ~60 seconds — quick skips won't register. Also keep the browser window visible; minimized windows pause the Spotify player. Open the extension to watch the activity update live.</div>
+    </details>
+    <details>
+      <summary>The extension row isn't on my profile</summary>
+      <div class="answer">Confirm you're <strong>logged in</strong> and viewing <strong>your own</strong> profile, then hit <strong>Refresh</strong>. The row only appears once you have at least one counted play. If it still doesn't show, tell your admin.</div>
+    </details>
+  </div>
+
+  <p class="caveat">A note on fair play: driving plays across many accounts into one identity is against Spotify's and Last.fm's terms. These counts are self-reported to BLINKS UNITED's own leaderboard — they're a community tally, not an official streaming figure.</p>
+
+  <footer>
+    BLINKS UNITED · SessionBox Multi-Account Scrobbler v1.4.0 — internal team guide.
+  </footer>
+</div>
+</body>
+</html>
