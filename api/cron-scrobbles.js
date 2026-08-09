@@ -252,8 +252,36 @@ function countLbByTrack(listens) {
   return counts;
 }
 
+// ── Extension (blinksunited-direct) plays ─────────────────────
+// Self-reported plays the SessionBox extension posted to /api/ingest-scrobble,
+// stored in extension_scrobbles keyed by app_user_id. These are ADDED on top of
+// Last.fm/Libre/ListenBrainz counts. They don't double-count in the normal
+// many->one setup because those plays are sent to blinksunited precisely because
+// Last.fm filters them out — they are not also on the linked Last.fm account.
+async function extensionCountsForUsers(sb, appUserIds, dayFrom, dayTo, weekFrom, weekTo) {
+  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 });
+  const out = { total: empty(), week: empty(), today: empty() };
+  if (!sb || !appUserIds || !appUserIds.length) return out;
+  const { data, error } = await sb
+    .from('extension_scrobbles')
+    .select('track_id, listened_at')
+    .in('app_user_id', appUserIds);
+  if (error || !data) return out;
+  for (const row of data) {
+    const id = row.track_id;
+    if (!(id in out.total)) continue;
+    out.total[id]++;
+    const ts = Math.floor(new Date(row.listened_at).getTime() / 1000);
+    if (ts >= weekFrom && ts < weekTo) out.week[id]++;
+    if (ts >= dayFrom && ts < dayTo) out.today[id]++;
+  }
+  return out;
+}
+
 // ── Refresh one user's scores ─────────────────────────────────
-async function refreshUser(entry, sb) {
+// linkedMap: Map(source_username.toLowerCase() -> app_user_id), used to attach
+// this profile's extension_scrobbles rows to the right account.
+async function refreshUser(entry, sb, linkedMap) {
   const linkedAccounts = entry.linkedAccounts || [{ type: 'lastfm', username: entry.username }];
   const displayName    = entry.displayName    || entry.username;
 
@@ -370,6 +398,25 @@ async function refreshUser(entry, sb) {
     }
   }
 
+  // Add this profile's extension (blinksunited-direct) plays on top.
+  if (linkedMap) {
+    const appUserIds = new Set();
+    for (const acct of linkedAccounts) {
+      const uid = linkedMap.get((acct.username || '').toLowerCase());
+      if (uid) appUserIds.add(uid);
+    }
+    if (appUserIds.size) {
+      try {
+        const ext = await extensionCountsForUsers(sb, [...appUserIds], dayFrom, dayTo, weekFrom, weekTo);
+        for (const t of TRACKS) {
+          totalPlays[t.id]  += ext.total[t.id]  || 0;
+          weekCounts[t.id]  += ext.week[t.id]   || 0;
+          todayCounts[t.id] += ext.today[t.id]  || 0;
+        }
+      } catch (e) { console.warn('extension counts failed:', e.message); }
+    }
+  }
+
   // Keep Stamp Archive fresh (keyed by primary Last.fm username)
   if (lfmAccount) {
     try {
@@ -451,10 +498,14 @@ export default async function handler(req, res) {
   // unreachable this run) fails OPEN so a transient outage can't freeze
   // everyone.
   let verifiedUsernames = null;
+  let linkedMap = null;
   if (sb) {
     try {
-      const { data: linked, error } = await sb.from('linked_accounts').select('source_username');
-      if (!error) verifiedUsernames = new Set((linked || []).map(a => a.source_username.toLowerCase()));
+      const { data: linked, error } = await sb.from('linked_accounts').select('source_username, app_user_id');
+      if (!error) {
+        verifiedUsernames = new Set((linked || []).map(a => a.source_username.toLowerCase()));
+        linkedMap = new Map((linked || []).map(a => [a.source_username.toLowerCase(), a.app_user_id]));
+      }
     } catch (e) { console.error('Failed to fetch verified linked accounts:', e); }
   }
   function isVerified(entry) {
@@ -495,7 +546,7 @@ export default async function handler(req, res) {
     await Promise.all(users.slice(i, i + batchSize).map(async entry => {
       if (!isVerified(entry)) { unverified.push(entry.username); return; }
       try {
-        const refreshed = await refreshUser(entry, sb);
+        const refreshed = await refreshUser(entry, sb, linkedMap);
         // Key by displayName (lowercased) so linked-account rows consolidate
         data.users[refreshed.displayName.toLowerCase()] = refreshed;
         // Remove the old key if the display name differs from the raw username

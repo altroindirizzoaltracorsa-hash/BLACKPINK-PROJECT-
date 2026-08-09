@@ -61,19 +61,6 @@ export default async function handler(req, res) {
   const sb = supabase();
   if (!sb) return res.status(500).json({ ok: false, error: 'server not configured' });
 
-  // Temporary diagnostic: GET ...?debug=1 reports which Supabase this endpoint
-  // talks to and how many tokens it can see. No secrets exposed.
-  if (req.query && req.query.debug === '1') {
-    let host = null;
-    try { host = new URL(process.env.SUPABASE_URL).host; } catch (e) { host = 'unset'; }
-    let tokenCount = null;
-    try {
-      const { count, error } = await sb.from('scrobble_tokens').select('*', { count: 'exact', head: true });
-      tokenCount = error ? `error: ${error.message}` : count;
-    } catch (e) { tokenCount = `error: ${e.message}`; }
-    return res.status(200).json({ ok: true, debug: true, supabaseHost: host, tokenCount });
-  }
-
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'POST only' });
 
   const body = req.body || {};

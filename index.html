@@ -3177,6 +3177,19 @@
       <div id="admin-song-note" class="admin-song-note"></div>
 
       <div class="admin-ban-section">
+        <div class="admin-ban-title">🎧 Connect Spotify extension — admin testing (self-reported plays count on your profile + leaderboard)</div>
+        <div style="font-size:0.55rem;letter-spacing:0.04em;color:var(--muted);line-height:1.6;margin-bottom:0.5rem;">
+          Install the SessionBox Multi-Account Scrobbler extension and stay logged in with your usual blinksunited account,
+          then click below. A tab opens and links your profile to the extension <strong>automatically — no token to copy</strong>.
+          Every Spotify tab in that browser then scrobbles to your profile.
+        </div>
+        <div class="admin-input-row">
+          <button class="btn-primary" onclick="adminConnectExtension()">Connect my extension</button>
+        </div>
+        <div id="admin-ext-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
+      </div>
+
+      <div class="admin-ban-section">
         <div class="admin-ban-title">⛔ Banned users — removed from the leaderboard, can't rejoin</div>
         <div class="admin-input-row">
           <input id="admin-ban-input" class="admin-input" type="text" placeholder="Last.fm username" onkeydown="if(event.key==='Enter')banUser()">
@@ -7962,6 +7975,17 @@ function openAdminPanel() {
 
 function closeAdminPanel() {
   document.getElementById('admin-overlay').style.display = 'none';
+}
+
+// Open the login-handoff page. The admin is already signed in (same origin
+// session), so extension-link.html auto-mints their token from that session and
+// hands it straight to the extension via postMessage — nothing to copy. Gated
+// simply by living inside the admin panel; there's no connect option in the
+// public UI.
+function adminConnectExtension() {
+  window.open('/extension-link.html', '_blank');
+  const s = document.getElementById('admin-ext-status');
+  if (s) s.textContent = 'Opened the link page in a new tab — it connects automatically if the extension is installed and you’re logged in.';
 }
 
 async function submitAdminKey() {

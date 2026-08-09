@@ -72,6 +72,48 @@ function updateLeaderStreak(data) {
   }
 }
 
+// ── Italy 2am day/week bounds (unix seconds), matching cron-scrobbles.js ──
+function bpLastSunday(y, m) { const d = new Date(Date.UTC(y, m + 1, 0)); d.setUTCDate(d.getUTCDate() - d.getUTCDay()); return d; }
+function bpItalyOffset() { const n = new Date(); const y = n.getUTCFullYear(); return (n >= bpLastSunday(y, 2) && n < bpLastSunday(y, 9)) ? 2 : 1; }
+function bpDayBounds() {
+  const offset = bpItalyOffset();
+  const it = new Date(Date.now() + offset * 3600 * 1000);
+  let dayStart = new Date(Date.UTC(it.getUTCFullYear(), it.getUTCMonth(), it.getUTCDate(), 2 - offset, 0, 0));
+  if (it.getUTCHours() < 2) dayStart = new Date(dayStart.getTime() - 86400000);
+  return { from: Math.floor(dayStart / 1000), to: Math.floor((dayStart.getTime() + 86400000) / 1000) };
+}
+function bpWeekBounds() {
+  const { from: dayFrom } = bpDayBounds();
+  const dayFromDate = new Date(dayFrom * 1000);
+  const dow = dayFromDate.getUTCDay();
+  const daysToMon = dow === 0 ? 6 : dow - 1;
+  const weekStart = new Date(dayFromDate.getTime() - daysToMon * 86400000);
+  return { from: Math.floor(weekStart / 1000), to: Math.floor((weekStart.getTime() + 7 * 86400000) / 1000) };
+}
+
+// Extension (blinksunited-direct) plays for one profile, per track, by window.
+// Additive on top of Last.fm/LB scores; 0 for anyone who hasn't linked the
+// extension, so regular submissions are byte-for-byte unaffected.
+async function extensionCountsForUser(sb, appUserId, dayFrom, dayTo, weekFrom, weekTo) {
+  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 });
+  const out = { total: empty(), week: empty(), today: empty() };
+  if (!sb || !appUserId) return out;
+  const { data, error } = await sb
+    .from('extension_scrobbles')
+    .select('track_id, listened_at')
+    .eq('app_user_id', appUserId);
+  if (error || !data) return out;
+  for (const row of data) {
+    const id = row.track_id;
+    if (!(id in out.total)) continue;
+    out.total[id]++;
+    const ts = Math.floor(new Date(row.listened_at).getTime() / 1000);
+    if (ts >= weekFrom && ts < weekTo) out.week[id]++;
+    if (ts >= dayFrom && ts < dayTo) out.today[id]++;
+  }
+  return out;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -558,6 +600,29 @@ export default async function handler(req, res) {
     if (!submitted.some(u => linkedSet.has(u))) {
       return res.status(403).json({ error: 'Link your scrobbling account in settings before submitting scores' });
     }
+
+    // Add this profile's extension (blinksunited-direct) plays on top of the
+    // Last.fm/LB scores the client computed. Best-effort and additive: it never
+    // blocks a submission, and adds 0 for anyone without extension plays, so a
+    // normal submission passes through unchanged.
+    try {
+      const { from: exDayFrom, to: exDayTo }   = bpDayBounds();
+      const { from: exWeekFrom, to: exWeekTo } = bpWeekBounds();
+      const ext = await extensionCountsForUser(sb, user.id, exDayFrom, exDayTo, exWeekFrom, exWeekTo);
+      const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go'];
+      const hasAny = TIDS.some(id => ext.total[id] || ext.week[id] || ext.today[id]);
+      if (hasAny) {
+        for (const id of TIDS) {
+          if (ext.total[id]) scores[`overall_${id}`] = (scores[`overall_${id}`] || 0) + ext.total[id];
+          if (ext.week[id])  scores[`weekly_${id}`]  = (scores[`weekly_${id}`]  || 0) + ext.week[id];
+          if (ext.today[id]) scores[`daily_${id}`]   = (scores[`daily_${id}`]   || 0) + ext.today[id];
+        }
+        const sum = (pre) => TIDS.reduce((n, id) => n + (scores[`${pre}_${id}`] || 0), 0);
+        scores.overall_all = sum('overall');
+        scores.daily_all   = sum('daily');
+        scores.weekly_all  = sum('weekly');
+      }
+    } catch (e) { /* extension counts are best-effort; never block a submission */ }
 
     // Read current data, merge user entry, write back
     const data = (await redis.get(LB_KEY)) || { users: {} };
