@@ -6391,6 +6391,8 @@ async function loadMultiAccountProfile(accounts) {
     username: a.username, source: a.source,
     playcount: a.playcount || 0, lastScrobbleTs: a.lastScrobbleTs || null,
   }));
+  // Own Blinks United extension plays (self-reported, blinksunited-direct).
+  combined.info.extension = await fetchExtensionBreakdown();
   if (sb) {
     try {
       const { data: { session } } = await sb.auth.getSession();
@@ -6427,6 +6429,30 @@ function tsAgo(ts) {
   return `${Math.floor(diffDays)}d ago`;
 }
 
+// The logged-in user's own Blinks United extension plays (RLS lets a profile
+// owner read their own extension_scrobbles rows). Returns null when not signed
+// in or nothing has been scrobbled through the extension yet.
+const EXT_TRACK_LABELS = { jump: 'JUMP', shutdown: 'Shut Down', ddududu: 'DDU-DU DDU-DU', ltal: 'Less Than a Lover', go: 'GO' };
+const EXT_TRACK_ORDER = ['jump', 'shutdown', 'ddududu', 'ltal', 'go'];
+async function fetchExtensionBreakdown() {
+  if (typeof sb === 'undefined' || !sb) return null;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return null;
+    const { data, error } = await sb.from('extension_scrobbles').select('track_id, listened_at');
+    if (error || !data || !data.length) return null;
+    const tracks = {}; let total = 0; let lastTs = 0;
+    for (const row of data) {
+      if (!(row.track_id in EXT_TRACK_LABELS)) continue;
+      tracks[row.track_id] = (tracks[row.track_id] || 0) + 1;
+      total++;
+      const ts = new Date(row.listened_at).getTime();
+      if (ts > lastTs) lastTs = ts;
+    }
+    return total ? { total, tracks, lastTs } : null;
+  } catch { return null; }
+}
+
 function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs }) {
   document.getElementById('loading-panel').style.display = 'none';
   document.getElementById('profile-panel').style.display = 'block';
@@ -6444,6 +6470,20 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
         (a.playcount ? ` · <span>${a.playcount.toLocaleString()}</span> BP family plays` : '') +
         (ago ? ` · last scrobble: <span>${ago}</span>` : '') + `</div>`;
     }).join('');
+    // Blinks United extension row + per-song breakdown (owner-only).
+    if (info.extension && info.extension.total) {
+      const ex = info.extension;
+      const ago = _tsAgo(ex.lastTs);
+      metaHtml += `<div>Blinks United · Extension` +
+        ` · <span>${ex.total.toLocaleString()}</span> BP family plays` +
+        (ago ? ` · last scrobble: <span>${ago}</span>` : '') + `</div>`;
+      const parts = EXT_TRACK_ORDER
+        .filter(id => ex.tracks[id])
+        .map(id => `${EXT_TRACK_LABELS[id]}: <span>${ex.tracks[id].toLocaleString()}</span>`);
+      if (parts.length) {
+        metaHtml += `<div style="padding-left:0.8rem;opacity:0.75;">↳ ${parts.join(' · ')}</div>`;
+      }
+    }
     document.getElementById('profile-meta').innerHTML = metaHtml;
     // Warn only about the specific account(s) that have gone quiet, and name them
     // (accounts with no last-scrobble timestamp, e.g. Stats.fm/Musicat, are skipped).
