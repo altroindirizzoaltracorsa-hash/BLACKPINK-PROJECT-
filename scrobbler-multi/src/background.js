@@ -196,19 +196,8 @@ function advance(prev, msg, now, jobs) {
 
   const key = trackKey(track);
   const sameTrack = rec.cur && rec.cur.key === key;
-
-  // Decide "playing" without reading any UI text (locale-independent):
-  // trust an explicit mediaSession state, else infer from position advancing.
-  let playing;
-  if (msg.playbackState === 'playing') {
-    playing = true;
-  } else if (msg.playbackState === 'paused') {
-    playing = false;
-  } else if (sameTrack && typeof rec.cur.lastPosition === 'number') {
-    playing = msg.position > rec.cur.lastPosition;
-  } else {
-    playing = true; // first sighting, unknown state — assume playing; next poll confirms
-  }
+  const domPos = typeof msg.domPos === 'number' ? msg.domPos : 0;
+  const mediaPos = typeof msg.mediaPos === 'number' ? msg.mediaPos : 0;
 
   if (!sameTrack) {
     rec.cur = {
@@ -217,22 +206,36 @@ function advance(prev, msg, now, jobs) {
       startedAt: Math.floor(now / 1000),
       playedMs: 0,
       lastTs: now,
-      lastPosition: msg.position,
-      playing,
-      nowPlayingSent: false,
+      lastDomPos: domPos,
+      lastMediaPos: mediaPos,
+      playing: true,
+      nowPlayingSent: true,
       scrobbled: false,
     };
-    if (playing) {
-      rec.cur.nowPlayingSent = true;
-      jobs.push(dispatch('nowplaying', rec.account, track));
-    }
+    jobs.push(dispatch('nowplaying', rec.account, track));
     return rec;
   }
 
   const cur = rec.cur;
-  if (cur.playing) cur.playedMs += now - cur.lastTs;
+
+  // Credit real listened time by how far the position ADVANCED, using whichever
+  // source moved — the on-screen player timer (domPos, always the real track)
+  // or the media element (mediaPos). This avoids trusting a "paused" flag that
+  // Spotify often reports wrong, and ignores the Canvas loop (which doesn't
+  // advance the real timer). Cap to wall-clock so a seek isn't counted as play.
+  const wall = (now - cur.lastTs) / 1000;
+  let progressed = 0;
+  if (typeof cur.lastDomPos === 'number' && domPos > cur.lastDomPos) {
+    progressed = domPos - cur.lastDomPos;
+  } else if (typeof cur.lastMediaPos === 'number' && mediaPos > cur.lastMediaPos) {
+    progressed = mediaPos - cur.lastMediaPos;
+  }
+  const playing = progressed > 0;
+  if (progressed > 0) cur.playedMs += Math.min(progressed, wall + 5) * 1000;
+
   cur.lastTs = now;
-  cur.lastPosition = msg.position;
+  cur.lastDomPos = domPos;
+  cur.lastMediaPos = mediaPos;
   cur.playing = playing;
   if (track.duration && !cur.track.duration) cur.track.duration = track.duration;
 
@@ -275,17 +278,12 @@ async function readState(needAccount) {
   const anyPlaying = medias.find((m) => !m.paused && (m.currentTime || 0) > 0);
   const media = longPlaying || anyLong || anyPlaying || medias[0] || null;
 
-  let position = 0;
-  let duration = 0;
-  let mediaState = null;
-  if (media) {
-    position = Math.floor(media.currentTime || 0);
-    if (isFinite(media.duration) && media.duration > 0) duration = Math.floor(media.duration);
-    mediaState = media.paused ? 'paused' : 'playing';
-  }
-  // DOM fallbacks reflect the real player UI, useful when no usable media element.
-  if (!duration) duration = clock('[data-testid="playback-duration"]');
-  if (!position) position = clock('[data-testid="playback-position"]');
+  const mediaPos = media ? Math.floor(media.currentTime || 0) : 0;
+  const mediaDur = (media && isFinite(media.duration) && media.duration > 0) ? Math.floor(media.duration) : 0;
+  // The on-screen player timer reflects the REAL track (never the Canvas loop).
+  const domPos = clock('[data-testid="playback-position"]');
+  const domDur = clock('[data-testid="playback-duration"]');
+  const duration = domDur || mediaDur;
 
   // Track: prefer mediaSession, but fill any missing field from the DOM. Many
   // (free/web-player) tabs don't populate mediaSession, and Last.fm rejects a
@@ -316,11 +314,6 @@ async function readState(needAccount) {
   }
 
   const track = title ? { title, artist, album, duration } : null;
-
-  // Raw state signals; the worker decides "playing" (see advance()) so it can
-  // use position-advance, which does not depend on UI language.
-  const playbackState = mediaState
-    || (navigator.mediaSession && navigator.mediaSession.playbackState) || 'none';
 
   let account = null;
   if (needAccount) {
@@ -367,7 +360,7 @@ async function readState(needAccount) {
     }
   }
 
-  return { account, track, position, playbackState };
+  return { account, track, domPos, mediaPos, duration };
 }
 
 let polling = false;
@@ -419,7 +412,7 @@ async function pollOnce() {
     const c = pbState[tab.id].cur;
     const tr = result.track || {};
     console.log(`[poll] tab ${tab.id}: acct=${acct} track="${tr.title || '—'}" artist="${tr.artist || '—'}" `
-      + `state=${result.playbackState} pos=${result.position}s playing=${c ? c.playing : false} `
+      + `domPos=${result.domPos}s mediaPos=${result.mediaPos}s playing=${c ? c.playing : false} `
       + `played=${c ? Math.round(c.playedMs / 1000) : 0}s${c && c.scrobbled ? ' [scrobbled]' : ''}`);
   }
 
