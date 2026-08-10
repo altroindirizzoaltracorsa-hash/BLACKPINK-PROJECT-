@@ -6273,9 +6273,16 @@ async function fetchSingleAccountStats(source, username) {
       for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go']) {
         res.totalPlays[k]  = d.tracks?.[k] || 0;
         res.todayCounts[k] = d.today?.[k]  || 0;
+        // Musicat exposes all-time + today only, never per-day week history. Floor
+        // the week at today so today can't exceed the week — the impossible value
+        // that leaked into both the profile and the submitted leaderboard score.
+        res.weekCounts[k]  = res.todayCounts[k];
       }
-      // Musicat doesn't expose per-day history yet — weekDayCounts stay empty
+      // No per-day history: seed only today's bucket so the weekly grid and the
+      // cross-account weekDays combine include today's Musicat plays too.
+      const mTodayIdx = Math.floor((dayFrom - weekFrom) / 86400);
       for (let i = 0; i < 7; i++) res.weekDayCounts.push(null);
+      if (mTodayIdx >= 0 && mTodayIdx < 7) res.weekDayCounts[mTodayIdx] = { ...res.todayCounts };
     } catch(e) { console.warn('Musicat fetch failed for', username, e.message); }
   } else if (source === 'statsfm') {
     try {
@@ -6290,8 +6297,16 @@ async function fetchSingleAccountStats(source, username) {
       for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go']) {
         res.totalPlays[k]  = d.tracks?.[k] || 0;
         res.todayCounts[k] = d.today?.[k]  || 0;
+        // Stats.fm exposes all-time + today only, never per-day week history. Floor
+        // the week at today so today can't exceed the week — the impossible value
+        // that leaked into both the profile and the submitted leaderboard score.
+        res.weekCounts[k]  = res.todayCounts[k];
       }
+      // No per-day history: seed only today's bucket so the weekly grid and the
+      // cross-account weekDays combine include today's Stats.fm plays too.
+      const sTodayIdx = Math.floor((dayFrom - weekFrom) / 86400);
       for (let i = 0; i < 7; i++) res.weekDayCounts.push(null);
+      if (sTodayIdx >= 0 && sTodayIdx < 7) res.weekDayCounts[sTodayIdx] = { ...res.todayCounts };
     } catch(e) {
       console.warn('Stats.fm fetch failed for', username, e.message);
       res.sfmError = e.message;
