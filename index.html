@@ -2413,6 +2413,18 @@
             <p class="settings-hint" id="settings-linked-status" style="margin-top:0.35rem;"></p>
           </div>
 
+          <div style="margin-top:1rem;" id="ext-connect-block">
+            <label class="settings-label">Blinks United Extension</label>
+            <p class="settings-hint" style="margin-bottom:0.5rem;">Scrobble every Spotify tab in your browser straight to your profile with the SessionBox Multi-Account Scrobbler. <a href="/extension-guide" target="_blank" rel="noopener">Setup guide →</a></p>
+            <div class="linked-row">
+              <div class="linked-row-label">
+                <span class="linked-row-source">EXTENSION</span><span id="ext-connect-state">Not connected</span>
+              </div>
+              <button class="btn-primary" id="ext-connect-btn" onclick="connectExtensionFromSettings()">Connect</button>
+            </div>
+            <p class="settings-hint" id="ext-connect-status" style="margin-top:0.35rem;"></p>
+          </div>
+
           <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
             <button class="logout-btn" onclick="signOutAccount()" style="flex:1;min-width:120px;">← Sign Out</button>
             <button class="logout-btn" onclick="deleteAccount()" style="flex:1;min-width:120px;background:rgba(255,50,50,0.12);border-color:rgba(255,50,50,0.35);color:#ff8888;">Delete Account</button>
@@ -8028,6 +8040,34 @@ function adminConnectExtension() {
   if (s) s.textContent = 'Opened the link page in a new tab — it connects automatically if the extension is installed and you’re logged in.';
 }
 
+// Public (Settings) extension connect — same auto-handoff as the admin one,
+// surfaced in Settings → Linked Accounts so any logged-in user can connect.
+function connectExtensionFromSettings() {
+  window.open('/extension-link.html', '_blank');
+  const s = document.getElementById('ext-connect-status');
+  if (s) s.textContent = 'Opened the link page in a new tab — it connects automatically once you’re signed in and the extension is installed. Reopen Settings to see the status update.';
+}
+
+// Best-effort "connected" indicator. Reads scrobble_tokens (owner-read RLS);
+// if the grant isn't in place it just falls back to the Connect button.
+async function refreshExtensionConnectState() {
+  const stateEl = document.getElementById('ext-connect-state');
+  const btnEl = document.getElementById('ext-connect-btn');
+  if (!stateEl || typeof sb === 'undefined' || !sb) return;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { stateEl.textContent = 'Sign in to connect'; return; }
+    const { data, error } = await sb.from('scrobble_tokens').select('label').limit(1);
+    if (!error && data && data.length) {
+      stateEl.textContent = 'Connected' + (data[0].label ? ` · ${data[0].label}` : '');
+      if (btnEl) btnEl.textContent = 'Reconnect';
+    } else {
+      stateEl.textContent = 'Not connected';
+      if (btnEl) btnEl.textContent = 'Connect';
+    }
+  } catch (e) { /* leave the default "Not connected" label */ }
+}
+
 async function submitAdminKey() {
   const key = document.getElementById('admin-key-input').value.trim();
   const errEl = document.getElementById('admin-err');
@@ -10387,7 +10427,7 @@ function toggleSong(id) {
 }
 
 // Initialise settings UI when profile loads
-function initSettings() { renderSettings(); }
+function initSettings() { renderSettings(); refreshExtensionConnectState(); }
 
 // ── PERSONAL STATS CARD ──────────────────────────────────────────────────────
 async function openPersonalCard() {
