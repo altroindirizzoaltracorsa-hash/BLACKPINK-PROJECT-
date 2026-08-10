@@ -6193,13 +6193,10 @@ async function fetchSingleAccountStats(source, username) {
     const staticResults = await Promise.all([
       fetchArtistPlays(username, 'BLACKPINK', fetchFn).catch(() => 0),
       ...TRACKS.map(t => fetchTrackPlays(username, t.artist, t.track, fetchFn).catch(() => 0)),
-      fetchRecentScrobbles(username, dayFrom, dayTo, 50, fetchFn).catch(() => []),
     ]);
     res.artistPlays = staticResults[0];
     res.bpGroupPlays = staticResults[0];
     TRACKS.forEach((t, i) => { res.totalPlays[t.id] = staticResults[i + 1]; });
-    const todaySc = staticResults[TRACKS.length + 1];
-    Object.assign(res.todayCounts, countByTrack(todaySc));
     // Fetch all 7 week days in parallel — each is independent.
     const weekStarts = Array.from({ length: 7 }, (_, i) => weekFrom + i * 86400);
     const weekScrobbles = await Promise.all(
@@ -6207,6 +6204,7 @@ async function fetchSingleAccountStats(source, username) {
         ? Promise.resolve(null)
         : fetchRecentScrobbles(username, ds, ds + 86400, 50, fetchFn).catch(() => []))
     );
+    const todayIdx = Math.floor((dayFrom - weekFrom) / 86400);
     let _lastTs = null;
     for (let i = 0; i < 7; i++) {
       if (weekScrobbles[i] === null) { res.weekDayCounts.push(null); continue; }
@@ -6227,21 +6225,22 @@ async function fetchSingleAccountStats(source, username) {
       });
       if (bpSc.length) { const ts = parseInt(bpSc[0].date.uts)*1000; if (!_lastTs || ts > _lastTs) _lastTs = ts; }
     }
-    res.lastScrobbleTs = _lastTs;
+    // Today's counts ARE today's week-bucket — take them from it rather than a
+    // separate Last.fm call. This guarantees today is a subset of the week (it
+    // can never exceed it) and drops one rate-limit-prone request. The old
+    // separate fetch could disagree with the week fetch and produce today>week.
+    if (res.weekDayCounts[todayIdx]) res.todayCounts = { ...res.weekDayCounts[todayIdx] };
   } else if (source === 'listenbrainz') {
-    let lbCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, artistPlays: 0 }, lbToday = [];
+    let lbCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, artistPlays: 0 };
     try {
-      [lbCounts, lbToday] = await Promise.all([
-        fetchLbTrackCounts(username),
-        fetchLbRecentListens(username, dayFrom, dayTo),
-      ]);
+      lbCounts = await fetchLbTrackCounts(username);
     } catch(e) { console.warn('LB fetch failed for', username, e.message); }
     res.artistPlays  = lbCounts.artistPlays;
     res.bpGroupPlays = lbCounts.artistPlays;
     res.playcount    = lbCounts.artistPlays;
     if (lbCounts.memberPlays) res.memberPlays = { ...res.memberPlays, ...lbCounts.memberPlays };
     for (const k of ['jump','shutdown','ddududu','ltal','go']) res.totalPlays[k] = lbCounts[k] || 0;
-    Object.assign(res.todayCounts, countLbByTrack(lbToday));
+    const lbTodayIdx = Math.floor((dayFrom - weekFrom) / 86400);
     for (let i = 0; i < 7; i++) {
       const ds = weekFrom + i * 86400;
       if (ds * 1000 > Date.now()) { res.weekDayCounts.push(null); continue; }
@@ -6254,6 +6253,8 @@ async function fetchSingleAccountStats(source, username) {
       res.weekCounts.ltal     += dc.ltal     || 0;
       res.weekCounts.go       += dc.go       || 0;
     }
+    // Today = today's week-bucket (subset of the week), same as the Last.fm path.
+    if (res.weekDayCounts[lbTodayIdx]) res.todayCounts = { ...res.weekDayCounts[lbTodayIdx] };
     // Most recent listen timestamp
     try {
       const latest = await lbFetch(`user/${encodeURIComponent(username)}/listens`, { count: 1 });
