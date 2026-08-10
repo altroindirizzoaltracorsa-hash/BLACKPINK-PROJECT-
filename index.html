@@ -4829,7 +4829,7 @@ const sb = (typeof supabase !== 'undefined' && SUPABASE_URL.startsWith('http'))
   ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
-const ACCOUNT_SOURCE_LABELS = { lastfm: 'Last.fm', listenbrainz: 'ListenBrainz', librefm: 'Libre.fm', musicat: 'Musicat', statsfm: 'Stats.fm' };
+const ACCOUNT_SOURCE_LABELS = { lastfm: 'Last.fm', listenbrainz: 'ListenBrainz', librefm: 'Libre.fm', musicat: 'Musicat', statsfm: 'Stats.fm', extension: 'BU Extension' };
 
 async function initBadgesAuthPanel() {
   if (!sb) {
@@ -6359,6 +6359,32 @@ async function loadMultiAccountProfile(accounts) {
     } catch(e) { console.warn('Multi-account fetch failed for', acct.source_username, e); }
   }
 
+  // Snapshot the Last.fm/LB-only campaign totals BEFORE folding in the
+  // extension — the leaderboard server adds the extension itself, so submitting
+  // extension-inclusive numbers would double-count. Display uses the folded
+  // combined; submission uses this snapshot.
+  const submitTotals = {
+    totalPlays:  { ...combined.totalPlays },
+    todayCounts: { ...combined.todayCounts },
+    weekCounts:  { ...combined.weekCounts },
+    artistPlays: combined.artistPlays,
+  };
+
+  // Own Blinks United extension plays, folded in as a first-class account so it
+  // shows in the account list and every per-track breakdown popup.
+  const extAcct = await buildExtensionAccount();
+  if (extAcct) {
+    _breakdown.push(extAcct);
+    for (const k of ['jump','shutdown','ddududu','ltal','go']) {
+      combined.totalPlays[k]  += extAcct.totalPlays[k]  || 0;
+      combined.todayCounts[k] += extAcct.todayCounts[k] || 0;
+      combined.weekCounts[k]  += extAcct.weekCounts[k]  || 0;
+    }
+    if (extAcct.lastScrobbleTs && (!combined.lastScrobbleTs || extAcct.lastScrobbleTs > combined.lastScrobbleTs)) {
+      combined.lastScrobbleTs = extAcct.lastScrobbleTs;
+    }
+  }
+
   // Combine per-day counts across all accounts for weekly table
   const weekDays = [];
   for (let i = 0; i < 7; i++) {
@@ -6391,8 +6417,6 @@ async function loadMultiAccountProfile(accounts) {
     username: a.username, source: a.source,
     playcount: a.playcount || 0, lastScrobbleTs: a.lastScrobbleTs || null,
   }));
-  // Own Blinks United extension plays (self-reported, blinksunited-direct).
-  combined.info.extension = await fetchExtensionBreakdown();
   if (sb) {
     try {
       const { data: { session } } = await sb.auth.getSession();
@@ -6409,7 +6433,7 @@ async function loadMultiAccountProfile(accounts) {
   // -- e.g. a forced leaderboard refresh -- can trust the server actually has
   // the fresh numbers before re-fetching it (otherwise the re-fetch can win
   // the race and return the pre-submission snapshot).
-  const serverDisplayName = await submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs, combined.bpGroupPlays, combined.memberPlays).catch(()=>null);
+  const serverDisplayName = await submitToLeaderboard(combined.info, submitTotals.totalPlays, submitTotals.todayCounts, submitTotals.weekCounts, submitTotals.artistPlays, combined.lastScrobbleTs, combined.bpGroupPlays, combined.memberPlays).catch(()=>null);
   if (serverDisplayName) {
     combined.info.displayName = serverDisplayName;
     const el = document.getElementById('profile-username');
@@ -6429,27 +6453,54 @@ function tsAgo(ts) {
   return `${Math.floor(diffDays)}d ago`;
 }
 
-// The logged-in user's own Blinks United extension plays (RLS lets a profile
-// owner read their own extension_scrobbles rows). Returns null when not signed
-// in or nothing has been scrobbled through the extension yet.
-const EXT_TRACK_LABELS = { jump: 'JUMP', shutdown: 'Shut Down', ddududu: 'DDU-DU DDU-DU', ltal: 'Less Than a Lover', go: 'GO' };
-const EXT_TRACK_ORDER = ['jump', 'shutdown', 'ddududu', 'ltal', 'go'];
-async function fetchExtensionBreakdown() {
+// The logged-in user's own Blinks United extension plays, shaped as a synthetic
+// acctBreakdown account so it flows into the account list AND the per-track
+// breakdown popups exactly like a Last.fm/ListenBrainz account. RLS lets a
+// profile owner read their own extension_scrobbles rows. Returns null when not
+// signed in or nothing has been scrobbled through the extension yet.
+async function buildExtensionAccount() {
   if (typeof sb === 'undefined' || !sb) return null;
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return null;
     const { data, error } = await sb.from('extension_scrobbles').select('track_id, listened_at');
     if (error || !data || !data.length) return null;
-    const tracks = {}; let total = 0; let lastTs = 0;
+    const { from: dayFrom, to: dayTo }   = getDayBounds();
+    const { from: weekFrom, to: weekTo } = getWeekBounds();
+    const zero = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 });
+    const totalPlays = zero(), todayCounts = zero(), weekCounts = zero();
+    const weekDayCounts = Array.from({ length: 7 }, () => zero());
+    let lastTs = 0, total = 0;
     for (const row of data) {
-      if (!(row.track_id in EXT_TRACK_LABELS)) continue;
-      tracks[row.track_id] = (tracks[row.track_id] || 0) + 1;
-      total++;
-      const ts = new Date(row.listened_at).getTime();
-      if (ts > lastTs) lastTs = ts;
+      const id = row.track_id;
+      if (!(id in totalPlays)) continue;
+      total++; totalPlays[id]++;
+      const ms = new Date(row.listened_at).getTime();
+      const ts = Math.floor(ms / 1000);
+      if (ms > lastTs) lastTs = ms;
+      if (ts >= dayFrom && ts < dayTo) todayCounts[id]++;
+      if (ts >= weekFrom && ts < weekTo) {
+        weekCounts[id]++;
+        const d = Math.floor((ts - weekFrom) / 86400);
+        if (d >= 0 && d < 7) weekDayCounts[d][id]++;
+      }
     }
-    return total ? { total, tracks, lastTs } : null;
+    if (!total) return null;
+    const campaignTotal = Object.values(totalPlays).reduce((s, v) => s + v, 0);
+    return {
+      label: 'Blinks United (BU Extension)',
+      source: 'extension',
+      username: 'Blinks United',
+      // Extension only tracks the 5 campaign songs, not general BLACKPINK plays,
+      // so it contributes 0 to the "Total BP Scrobbles" breakdown but its real
+      // counts to every campaign-track breakdown.
+      artistPlays: 0,
+      bpGroupPlays: 0,
+      memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 },
+      totalPlays, todayCounts, weekCounts, weekDayCounts,
+      playcount: campaignTotal,
+      lastScrobbleTs: lastTs || null,
+    };
   } catch { return null; }
 }
 
@@ -6470,20 +6521,6 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
         (a.playcount ? ` · <span>${a.playcount.toLocaleString()}</span> BP family plays` : '') +
         (ago ? ` · last scrobble: <span>${ago}</span>` : '') + `</div>`;
     }).join('');
-    // Blinks United extension row + per-song breakdown (owner-only).
-    if (info.extension && info.extension.total) {
-      const ex = info.extension;
-      const ago = _tsAgo(ex.lastTs);
-      metaHtml += `<div>Blinks United · Extension` +
-        ` · <span>${ex.total.toLocaleString()}</span> BP family plays` +
-        (ago ? ` · last scrobble: <span>${ago}</span>` : '') + `</div>`;
-      const parts = EXT_TRACK_ORDER
-        .filter(id => ex.tracks[id])
-        .map(id => `${EXT_TRACK_LABELS[id]}: <span>${ex.tracks[id].toLocaleString()}</span>`);
-      if (parts.length) {
-        metaHtml += `<div style="padding-left:0.8rem;opacity:0.75;">↳ ${parts.join(' · ')}</div>`;
-      }
-    }
     document.getElementById('profile-meta').innerHTML = metaHtml;
     // Warn only about the specific account(s) that have gone quiet, and name them
     // (accounts with no last-scrobble timestamp, e.g. Stats.fm/Musicat, are skipped).
