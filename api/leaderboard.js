@@ -98,26 +98,20 @@ async function extensionCountsForUser(sb, appUserId, dayFrom, dayTo, weekFrom, w
   const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 });
   const out = { total: empty(), week: empty(), today: empty() };
   if (!sb || !appUserId) return out;
-  // Supabase caps a single select at 1000 rows, so paginate — otherwise a
-  // profile with >1000 extension plays silently undercounts (missing tracks).
-  const PAGE = 1000;
-  for (let start = 0; start < 200000; start += PAGE) {
-    const { data, error } = await sb
-      .from('extension_scrobbles')
-      .select('track_id, listened_at')
-      .eq('app_user_id', appUserId)
-      .order('id', { ascending: true })
-      .range(start, start + PAGE - 1);
-    if (error || !data || !data.length) break;
-    for (const row of data) {
-      const id = row.track_id;
-      if (!(id in out.total)) continue;
-      out.total[id]++;
-      const ts = Math.floor(new Date(row.listened_at).getTime() / 1000);
-      if (ts >= weekFrom && ts < weekTo) out.week[id]++;
-      if (ts >= dayFrom && ts < dayTo) out.today[id]++;
-    }
-    if (data.length < PAGE) break;
+  // Counted in the database (see supabase/extension_counts_fn.sql) so it scales
+  // to unlimited rows — no per-query 1000-row cap, no fetching every play.
+  const { data, error } = await sb.rpc('extension_counts', {
+    uid: appUserId,
+    day_from: new Date(dayFrom * 1000).toISOString(),
+    week_from: new Date(weekFrom * 1000).toISOString(),
+  });
+  if (error || !data) return out;
+  for (const r of data) {
+    const id = r.track_id;
+    if (!(id in out.total)) continue;
+    out.total[id] = Number(r.total) || 0;
+    out.week[id]  = Number(r.week)  || 0;
+    out.today[id] = Number(r.today) || 0;
   }
   return out;
 }

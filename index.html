@@ -6463,36 +6463,31 @@ async function buildExtensionAccount() {
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return null;
-    const { from: dayFrom, to: dayTo }   = getDayBounds();
-    const { from: weekFrom, to: weekTo } = getWeekBounds();
+    const { from: dayFrom } = getDayBounds();
+    const { from: weekFrom } = getWeekBounds();
     const zero = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 });
     const totalPlays = zero(), todayCounts = zero(), weekCounts = zero();
+    // weekDayCounts stays empty for the extension — the per-day weekly bar chart
+    // is a minor view and the DB aggregate returns only total/today/week.
     const weekDayCounts = Array.from({ length: 7 }, () => zero());
     let lastTs = 0, total = 0;
-    // Supabase caps a single select at 1000 rows, so paginate — otherwise a
-    // profile with >1000 extension plays silently undercounts (missing tracks).
-    const PAGE = 1000;
-    for (let start = 0; start < 200000; start += PAGE) {
-      const { data, error } = await sb.from('extension_scrobbles')
-        .select('track_id, listened_at')
-        .order('id', { ascending: true })
-        .range(start, start + PAGE - 1);
-      if (error || !data || !data.length) break;
-      for (const row of data) {
-        const id = row.track_id;
-        if (!(id in totalPlays)) continue;
-        total++; totalPlays[id]++;
-        const ms = new Date(row.listened_at).getTime();
-        const ts = Math.floor(ms / 1000);
-        if (ms > lastTs) lastTs = ms;
-        if (ts >= dayFrom && ts < dayTo) todayCounts[id]++;
-        if (ts >= weekFrom && ts < weekTo) {
-          weekCounts[id]++;
-          const d = Math.floor((ts - weekFrom) / 86400);
-          if (d >= 0 && d < 7) weekDayCounts[d][id]++;
-        }
-      }
-      if (data.length < PAGE) break;
+    // Counted in the database (see supabase/extension_counts_fn.sql) so it scales
+    // to unlimited rows — no per-query 1000-row cap, no fetching every play.
+    const { data, error } = await sb.rpc('extension_counts', {
+      uid: session.user.id,
+      day_from: new Date(dayFrom * 1000).toISOString(),
+      week_from: new Date(weekFrom * 1000).toISOString(),
+    });
+    if (error || !data || !data.length) return null;
+    for (const r of data) {
+      const id = r.track_id;
+      if (!(id in totalPlays)) continue;
+      totalPlays[id]  = Number(r.total) || 0;
+      todayCounts[id] = Number(r.today) || 0;
+      weekCounts[id]  = Number(r.week)  || 0;
+      total += totalPlays[id];
+      const ms = r.last_at ? new Date(r.last_at).getTime() : 0;
+      if (ms > lastTs) lastTs = ms;
     }
     if (!total) return null;
     const campaignTotal = Object.values(totalPlays).reduce((s, v) => s + v, 0);
