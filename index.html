@@ -6467,8 +6467,6 @@ async function buildExtensionAccount() {
     const { from: weekFrom } = getWeekBounds();
     const zero = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 });
     const totalPlays = zero(), todayCounts = zero(), weekCounts = zero();
-    // weekDayCounts stays empty for the extension — the per-day weekly bar chart
-    // is a minor view and the DB aggregate returns only total/today/week.
     const weekDayCounts = Array.from({ length: 7 }, () => zero());
     let lastTs = 0, total = 0;
     // Counted in the database (see supabase/extension_counts_fn.sql) so it scales
@@ -6490,6 +6488,20 @@ async function buildExtensionAccount() {
       if (ms > lastTs) lastTs = ms;
     }
     if (!total) return null;
+    // Per-day split for the current week → fills the Mon–Sun cells of the
+    // weekly-challenge grid. Best-effort: if it fails, day cells stay 0 but the
+    // totals above are still correct.
+    try {
+      const { data: wd } = await sb.rpc('extension_week_days', {
+        uid: session.user.id,
+        week_from: new Date(weekFrom * 1000).toISOString(),
+      });
+      for (const r of (wd || [])) {
+        const id = r.track_id, d = Number(r.day_index);
+        if (!(id in weekDayCounts[0]) || !(d >= 0 && d < 7)) continue;
+        weekDayCounts[d][id] = Number(r.cnt) || 0;
+      }
+    } catch (e) { /* day cells stay 0; totals unaffected */ }
     const campaignTotal = Object.values(totalPlays).reduce((s, v) => s + v, 0);
     return {
       label: 'Blinks United (BU Extension)',
