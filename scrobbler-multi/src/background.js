@@ -173,12 +173,18 @@ function recordScrobble(account, track, targets, meta = {}) {
   return statsChain;
 }
 
-// Mirror Skipper Pro's counting rule: a play counts once it has been played for
-// ~60s (Skipper's window is ~60-86s), once per track (the per-track guard is the
-// `scrobbled` flag + trackKey, matching Skipper's lastTrackName check). Sub-30s
-// clips never count. This keeps the scrobble counter in lockstep with Skipper's
-// stream counter.
-const COUNT_THRESHOLD_S = 60;
+// Count threshold = Spotify's own stream definition: 30s of playback. A play
+// counts once it has been played for 30s, once per track (the per-track guard is
+// the `scrobbled` flag + trackKey). Songs shorter than 30s never count.
+//
+// Why 30 and not 60: paired with Skipper Pro (which auto-skips every song at
+// ~64-81s), a 60s bar left only a ~6s window (60s→skip) for our 30s poll to
+// catch the song before it was skipped, so genuine streams were dropped
+// (observed: 15 Skipper skips vs 12 of ours). Skipper always skips well past
+// 30s, so every song it skips is already a real Spotify stream we should count.
+// A 30s bar widens the catch window to ~36s, which a 30s poll hits reliably —
+// and matches what Spotify itself counts as a stream.
+const COUNT_THRESHOLD_S = 30;
 function scrobbleThresholdMs(duration) {
   if (duration && duration > 0 && duration < 30) return Infinity;
   return COUNT_THRESHOLD_S * 1000;
@@ -208,6 +214,25 @@ function advance(prev, msg, now, jobs) {
   const mediaPos = typeof msg.mediaPos === 'number' ? msg.mediaPos : 0;
 
   if (!sameTrack) {
+    // Finalize the OUTGOING track before we replace it. A poll may never have
+    // observed it cross the threshold if it was skipped between polls — Skipper
+    // Pro skips every song at ~64-81s, and if our last poll for it landed early
+    // (e.g. we first saw it late, past the lead-in window) the credited counter
+    // can still be under the bar when it vanishes. Use the last REAL playhead
+    // position we saw (lastDomPos) as proof of the stream: if it was still
+    // playing and had already reached the threshold on screen, scrobble it now.
+    // Gated on `playing` so a paused-then-changed track never counts.
+    const out = rec.cur;
+    if (out && !out.scrobbled && out.playing) {
+      const outDur = out.track.duration || 0;
+      const outThr = (outDur && outDur < 30) ? Infinity : COUNT_THRESHOLD_S;
+      const reachedS = Math.max(Math.round(out.playedMs / 1000), out.lastDomPos || 0);
+      if (reachedS >= outThr) {
+        out.scrobbled = true;
+        const pct = outDur ? Math.min(100, Math.round((reachedS / outDur) * 100)) : null;
+        jobs.push(dispatch('scrobble', rec.account, out.track, out.startedAt, { playedS: reachedS, pct }));
+      }
+    }
     // Credit the lead-in. Polling latches onto a track mid-play, so the first
     // poll usually catches it a few seconds in (e.g. domPos=8). Those seconds
     // were genuinely played from the top, but the old code started the counter
