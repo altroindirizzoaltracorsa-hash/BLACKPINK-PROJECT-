@@ -938,19 +938,12 @@ export default async function handler(req, res) {
       ]);
 
       const history   = hist || [];
-      // Fix mislabeled latest entry: if the gap between the last two entries
-      // is more than 1 day, the last entry was likely mislabeled by a previous
-      // bug. Relabel it to addDaysToLabel(secondLast, 1) which is the correct
-      // first new streaming day after the gap started.
-      if (history.length >= 2) {
-        const last       = history[history.length - 1];
-        const secondLast = history[history.length - 2];
-        const expected   = addDaysToLabel(secondLast.date, 1);
-        if (last.date !== expected && daysBetween(secondLast.date, last.date) > 1) {
-          last.date = expected;
-          await redis.set(histKey, history);
-        }
-      }
+      // Recorded history days are IMMUTABLE. We deliberately do NOT auto-relabel
+      // existing entries here anymore: silently rewriting a stored day's date is
+      // what shifted the whole series and moved earlier days' numbers around.
+      // Corrections go only through the admin ?action=set-entry / delete-history-entry
+      // endpoints (key-gated) — nothing on the normal fetch path may mutate a day
+      // that was already written.
       const cacheAge  = cached?.ts ? Date.now() - cached.ts : Infinity;
       // Skip cache if we haven't recorded today's history entry yet, even if the
       // live total is recent — otherwise a fetch that straddles midnight stays
@@ -1029,12 +1022,19 @@ export default async function handler(req, res) {
           const yLabel = lastEntry ? addDaysToLabel(lastEntry.date, 1) : yesterdayLabel();
           const dailyStreams = total - prevTotal;
           const existing = history.find(h => h.date === yLabel);
-          if (!existing) {
+          // Never record a day in the FUTURE relative to the current UTC streaming
+          // day. If the day-after-last would land past today — e.g. today's entry
+          // is already booked and this is just an intraday nudge, or a forced/cron
+          // re-fetch caught the number moving again — do NOT invent tomorrow. Keep
+          // the live total fresh (already cached above) and leave history frozen.
+          const isFuture = daysBetween(todayLabel, yLabel) > 0;
+          if (!existing && !isFuture) {
             history.push({ date: yLabel, streams: dailyStreams });
             if (history.length > 60) history.shift();
             await redis.set(histKey, history);
           }
-          // Never overwrite an existing entry — it may have been manually corrected.
+          // Never overwrite an existing entry, and never create a future-dated one
+          // — recorded days are immutable on the normal fetch path.
 
           await redis.set(prevKey, { total, date: todayLabel });
           advancedToday = true;
