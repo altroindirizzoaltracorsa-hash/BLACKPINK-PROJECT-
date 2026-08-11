@@ -392,24 +392,48 @@ async function readState(needAccount) {
   return { account, track, domPos, mediaPos, duration };
 }
 
-// Injected after a stuck-tab reload to resume playback hands-free. Clicks the
-// page's main Play button (the playlist/context play), which restarts the
-// context; falls back to the bottom player's play/pause only when it's showing
-// "Play" (paused) so we never accidentally pause a track that's already going.
-// Only called on a tab we just reloaded (so it's stopped), never on a live one.
-function clickPlay() {
+// Injected after a stuck-tab reload to resume playback hands-free — this is the
+// "capture and resume" recovery. We PREFER to resume the track Spotify restored
+// in the player bar (bottom play/pause showing "Play"): pressing it continues
+// the playlist IN ORDER from where the tab froze, instead of restarting from the
+// top. Spotify restores that bar from its own (localStorage) session, so this
+// works whenever storage is healthy. Only if the bar never comes back — e.g. an
+// in-memory-storage tab that loses it on reload — do we fall back, after a
+// couple of attempts, to the playlist's top Play button (a fresh restart).
+// `attempt` is the resume-try count so early tries wait for the bar to reappear
+// before giving up on resuming. Only called on a tab we just reloaded.
+function resumePlay(attempt) {
   const q = (s) => document.querySelector(s);
-  const ctx = q('[data-testid="action-bar-row"] [data-testid="play-button"]')
-           || q('[data-testid="play-button"]');
-  if (ctx) { ctx.click(); return { clicked: 'context', label: ctx.getAttribute('aria-label') || '' }; }
+  const norm = (s) => (s || '').trim();
+  const isAdText = (s) => /advertis|pubblicit|publicidad|publicidade|anuncio|anúncio|publicit|werbung|reklam/i.test(s || '');
+
+  // What (if anything) did Spotify restore into the player bar?
+  const widget = q('[data-testid="now-playing-widget"]');
+  const titleEl = widget && (widget.querySelector('[data-testid="context-item-link"]')
+    || widget.querySelector('a[href*="/track/"]')
+    || widget.querySelector('[data-testid="nowplaying-track-link"]'));
+  const barTitle = norm(titleEl && titleEl.textContent);
   const pp = q('[data-testid="control-button-playpause"]');
-  if (pp) {
-    const lbl = (pp.getAttribute('aria-label') || '').toLowerCase();
-    // Language-agnostic-ish "play" match (en/it/pt/es/fr/de).
-    if (/play|riprod|reprodu|lectur|abspiel/.test(lbl)) { pp.click(); return { clicked: 'playpause', label: lbl }; }
-    return { clicked: null, label: lbl };
+  const ppLbl = ((pp && pp.getAttribute('aria-label')) || '').toLowerCase();
+
+  // 1) A real (non-ad) track is loaded and paused → resume it, keeping our place
+  //    in the playlist.
+  if (pp && barTitle && !isAdText(barTitle) && /play|riprod|reprodu|lectur|abspiel/.test(ppLbl)) {
+    pp.click();
+    return { clicked: 'resume', track: barTitle };
   }
-  return { clicked: null };
+  // Already playing — nothing to do (let the poll see it advance).
+  if (pp && /paus/.test(ppLbl)) return { clicked: 'already-playing', track: barTitle };
+
+  // 2) Nothing to resume yet. Give the bar a couple of polls to restore before
+  //    falling back to a top-of-playlist restart, so we don't discard a resume
+  //    that was about to appear.
+  if (attempt >= 3) {
+    const ctx = q('[data-testid="action-bar-row"] [data-testid="play-button"]')
+             || q('[data-testid="play-button"]');
+    if (ctx) { ctx.click(); return { clicked: 'context-restart', label: ctx.getAttribute('aria-label') || '' }; }
+  }
+  return { clicked: null, waiting: true, attempt };
 }
 
 // Stuck-tab watchdog: Spotify-Free ad freezes (and hung players) leave a tab
@@ -496,8 +520,8 @@ async function pollOnce() {
       } else if (now - rec.recover.reloadedAt > 4000 && rec.recover.resumeTries < RESUME_MAX) {
         rec.recover.resumeTries += 1;
         const n = rec.recover.resumeTries;
-        jobs.push(chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', func: clickPlay })
-          .then((r) => console.log(`[recover] tab ${tab.id}: resume click #${n} →`, r && r[0] && r[0].result))
+        jobs.push(chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', func: resumePlay, args: [n] })
+          .then((r) => console.log(`[recover] tab ${tab.id}: resume try #${n} →`, r && r[0] && r[0].result))
           .catch(() => {}));
       } else if (rec.recover.resumeTries >= RESUME_MAX) {
         console.warn(`[recover] tab ${tab.id}: couldn't auto-resume after reload — autoplay may be blocked; click Play once to prime it.`);
