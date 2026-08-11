@@ -1,0 +1,53 @@
+name: Audit Leaderboard Overlaps
+# One-off / on-demand read-only audit: fetches the public leaderboard JSON and
+# reports which entries share a linked-username token (the collision that let
+# the old cleanup/merge delete rows across different accounts), plus any blank
+# tokens and how many rows now carry an owner id (appUserId).
+on:
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch + analyze leaderboard
+        run: |
+          curl -sfL "https://blinksunited.com/api/leaderboard" -o /tmp/lb.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/lb.json'))
+          users = d.get('users', {})
+          print(f"total entries: {len(users)}")
+          print(f"lastUpdated: {d.get('lastUpdated')}")
+
+          # token -> list of entry keys that carry it
+          from collections import defaultdict
+          tok = defaultdict(list)
+          blank = []
+          owned = 0
+          for key, e in users.items():
+              if e.get('appUserId'):
+                  owned += 1
+              accts = e.get('linkedAccounts') or [{'username': e.get('username')}]
+              seen = set()
+              for a in accts:
+                  u = (a.get('username') or '').strip().lower()
+                  if u == '':
+                      blank.append(key)
+                      continue
+                  seen.add(u)
+              # include the entry's own key as a token too
+              seen.add((key or '').lower())
+              for u in seen:
+                  tok[u].append(key)
+
+          print(f"entries with owner id (appUserId): {owned}/{len(users)}")
+          print(f"entries with a BLANK linked username: {len(set(blank))} -> {sorted(set(blank))}")
+
+          print("\n=== linked usernames shared by 2+ entries (collision points) ===")
+          shared = {u: ks for u, ks in tok.items() if len(set(ks)) > 1}
+          if not shared:
+              print("(none — no surviving entries share a linked username)")
+          for u, ks in sorted(shared.items(), key=lambda kv: -len(set(kv[1]))):
+              print(f"  '{u}'  ->  {sorted(set(ks))}")
+          PY
