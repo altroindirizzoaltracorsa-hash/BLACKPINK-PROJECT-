@@ -24,7 +24,12 @@
     }
   }
 
-  if (usable()) return;
+  if (usable()) {
+    // Storage already works — nothing to fix. Log anyway so a reload always
+    // shows a [bu-shim] line, confirming the shim is installed and ran.
+    console.log('[bu-shim] active — localStorage healthy, nothing to do.');
+    return;
+  }
 
   // Merely FULL (has keys)? Clearing may restore the real store — prefer that,
   // since real (persistent) storage is better than an in-memory copy. Login is
