@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+
+# Extension build artifacts (zips generated for distribution)
+dist/
+*.zip
