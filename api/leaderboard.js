@@ -653,49 +653,54 @@ export default async function handler(req, res) {
       scores,
       updatedAt,
       lastScrobbleAt,
+      // Supabase account that owns this entry. Used to scope cleanup/merge so a
+      // submission can only ever remove ITS OWN other rows — never a different
+      // signed-in account that happens to share a linked username.
+      appUserId: user.id,
     };
 
     // Remove old per-account entries now merged into this combined entry.
     // Only delete entries whose username appears in the submitted linkedAccounts list
     // (so a user can only clean up accounts they claim to own).
     if (Array.isArray(cleanupKeys) && Array.isArray(linkedAccounts)) {
-      const ownedKeys = new Set(linkedAccounts.map(a => (a.username || '').toLowerCase()));
+      const ownedKeys = new Set(linkedAccounts.map(a => (a.username || '').toLowerCase()).filter(Boolean));
       for (const k of cleanupKeys) {
         const kl = (k || '').toLowerCase();
-        if (kl && kl !== username.toLowerCase() && ownedKeys.has(kl) && !(data.banned || []).includes(kl)) {
-          delete data.users[kl];
-        }
+        if (!kl || kl === username.toLowerCase() || !ownedKeys.has(kl) || (data.banned || []).includes(kl)) continue;
+        // Never delete a row owned by a DIFFERENT signed-in account, even if this
+        // user also claims that linked username (legacy rows without an owner are
+        // still cleanable — they predate appUserId).
+        const target = data.users[kl];
+        if (target && target.appUserId && target.appUserId !== user.id) continue;
+        delete data.users[kl];
       }
     }
 
-    // Defensive merge: cleanupKeys only covers keys the client itself knows
-    // to expect (its current linkedAccounts' own usernames). If this identity's
+    // Defensive merge: cleanupKeys only covers keys the client itself knows to
+    // expect (its current linkedAccounts' own usernames). If this identity's
     // "stable key" ever changed across past submissions -- e.g. an early
-    // submission fell back to a different value before a Last.fm/session
-    // fetch succeeded -- the old key is orphaned forever, since nothing the
-    // client sends would ever name it. Close that gap server-side: any other
-    // entry whose OWN linkedAccounts shares a username with what's being
-    // submitted now is provably the same person, whatever raw key it sits
-    // under, so fold it in here instead of leaving a duplicate that a later
-    // background refresh can silently resurrect and race against.
-    if (Array.isArray(linkedAccounts) && linkedAccounts.length) {
-      const ownedKeys = new Set(linkedAccounts.map(a => (a.username || '').toLowerCase()));
+    // submission fell back to a different value before a Last.fm/session fetch
+    // succeeded -- the old key is orphaned. Close that gap server-side by folding
+    // in any other row owned by the SAME Supabase account, whatever raw key it
+    // sits under. Ownership (appUserId) is the only safe signal here: a shared
+    // linked username is NOT proof of the same person and must never delete
+    // across accounts (that is how distinct users were wiping each other off the
+    // board). Legacy rows with no recorded owner are left untouched — they get an
+    // owner the next time that account submits.
+    {
       const selfKey = username.toLowerCase();
       for (const [k, entry] of Object.entries(data.users)) {
         if (k === selfKey || (data.banned || []).includes(k)) continue;
-        const otherLinked = Array.isArray(entry.linkedAccounts) ? entry.linkedAccounts : [];
-        const overlaps = otherLinked.some(a => ownedKeys.has((a.username || '').toLowerCase()));
-        if (overlaps) {
-          // Inherit a custom displayName from the entry being merged in, so it
-          // survives when the new submission falls back to a raw username.
-          if (entry.displayName && entry.displayName !== (entry.username || '')) {
-            const myEntry = data.users[username.toLowerCase()];
-            if (myEntry && (!myEntry.displayName || myEntry.displayName === username)) {
-              myEntry.displayName = entry.displayName;
-            }
+        if (!(entry.appUserId && entry.appUserId === user.id)) continue;
+        // Inherit a custom displayName from the entry being merged in, so it
+        // survives when the new submission falls back to a raw username.
+        if (entry.displayName && entry.displayName !== (entry.username || '')) {
+          const myEntry = data.users[username.toLowerCase()];
+          if (myEntry && (!myEntry.displayName || myEntry.displayName === username)) {
+            myEntry.displayName = entry.displayName;
           }
-          delete data.users[k];
         }
+        delete data.users[k];
       }
     }
 
