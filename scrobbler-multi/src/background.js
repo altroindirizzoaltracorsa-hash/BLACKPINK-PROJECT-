@@ -413,6 +413,34 @@ async function readState(needAccount) {
   return { account, track, domPos, mediaPos, duration };
 }
 
+// Injected after a stuck-tab reload to resume playback hands-free. Clicks the
+// page's main Play button (the playlist/context play), which restarts the
+// context; falls back to the bottom player's play/pause only when it's showing
+// "Play" (paused) so we never accidentally pause a track that's already going.
+// Only called on a tab we just reloaded (so it's stopped), never on a live one.
+function clickPlay() {
+  const q = (s) => document.querySelector(s);
+  const ctx = q('[data-testid="action-bar-row"] [data-testid="play-button"]')
+           || q('[data-testid="play-button"]');
+  if (ctx) { ctx.click(); return { clicked: 'context', label: ctx.getAttribute('aria-label') || '' }; }
+  const pp = q('[data-testid="control-button-playpause"]');
+  if (pp) {
+    const lbl = (pp.getAttribute('aria-label') || '').toLowerCase();
+    // Language-agnostic-ish "play" match (en/it/pt/es/fr/de).
+    if (/play|riprod|reprodu|lectur|abspiel/.test(lbl)) { pp.click(); return { clicked: 'playpause', label: lbl }; }
+    return { clicked: null, label: lbl };
+  }
+  return { clicked: null };
+}
+
+// Stuck-tab watchdog: Spotify-Free ad freezes (and hung players) leave a tab
+// where the position never advances and play/pause won't recover it — only a
+// reload does. If a tab hasn't advanced for STUCK_LIMIT consecutive polls
+// (~2 min, well past a normal 30–60s ad break so we don't reload mid-ad), we
+// reload it and then click Play to resume, self-healing unattended farming.
+const STUCK_LIMIT = 4;   // polls with no position advance before we reload
+const RESUME_MAX  = 6;   // resume-click attempts after a reload before giving up
+
 let polling = false;
 
 async function poll() {
@@ -464,6 +492,41 @@ async function pollOnce() {
     console.log(`[poll] tab ${tab.id}: acct=${acct} track="${tr.title || '—'}" artist="${tr.artist || '—'}" `
       + `domPos=${result.domPos}s mediaPos=${result.mediaPos}s playing=${c ? c.playing : false} `
       + `played=${c ? Math.round(c.playedMs / 1000) : 0}s${c && c.scrobbled ? ' [scrobbled]' : ''}`);
+
+    // ---- stuck-tab watchdog (auto-recover frozen ad / hung player) ----
+    const rec = pbState[tab.id];
+    rec.recover = rec.recover || { stuck: 0, reloadedAt: 0, resumeTries: 0 };
+    const advancing = !!(c && c.playing);
+    if (rec.recover.reloadedAt) {
+      // We recently reloaded this tab — keep clicking Play until it plays again.
+      if (advancing) {
+        rec.recover.reloadedAt = 0; rec.recover.resumeTries = 0;
+      } else if (now - rec.recover.reloadedAt > 4000 && rec.recover.resumeTries < RESUME_MAX) {
+        rec.recover.resumeTries += 1;
+        const n = rec.recover.resumeTries;
+        jobs.push(chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', func: clickPlay })
+          .then((r) => console.log(`[recover] tab ${tab.id}: resume click #${n} →`, r && r[0] && r[0].result))
+          .catch(() => {}));
+      } else if (rec.recover.resumeTries >= RESUME_MAX) {
+        console.warn(`[recover] tab ${tab.id}: couldn't auto-resume after reload — autoplay may be blocked; click Play once to prime it.`);
+        rec.recover.reloadedAt = 0;
+      }
+      rec.recover.stuck = 0;
+    } else if (c && !advancing) {
+      // Only watch tabs that have actually been playing (c exists); a truly
+      // idle/never-started tab is left alone. Normal 30–60s ad breaks won't
+      // reach STUCK_LIMIT, so we only fire on a genuine multi-minute freeze.
+      rec.recover.stuck += 1;
+      if (rec.recover.stuck >= STUCK_LIMIT) {
+        console.warn(`[recover] tab ${tab.id} (acct=${acct}) frozen ${rec.recover.stuck} polls — reloading to unstick.`);
+        rec.recover.stuck = 0;
+        rec.recover.reloadedAt = now;
+        rec.recover.resumeTries = 0;
+        jobs.push(chrome.tabs.reload(tab.id).catch(() => {}));
+      }
+    } else {
+      rec.recover.stuck = 0;
+    }
   }
 
   for (const id of Object.keys(pbState)) if (!alive.has(id)) delete pbState[id];
