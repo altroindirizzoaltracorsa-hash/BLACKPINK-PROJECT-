@@ -365,48 +365,27 @@ async function readState(needAccount) {
 
   const track = title ? { title, artist, album, duration } : null;
 
+  // Account detection is DOM-ONLY — no network. Earlier builds called
+  // open.spotify.com/get_access_token and api.spotify.com/v1/me to fetch a nice
+  // display_name, but get_access_token requests the same transport token the
+  // web player uses to authorize DRM/playback. Hitting it every poll (and
+  // indefinitely whenever the account never resolved) added token-request
+  // pressure on the account and could get Spotify to throttle license grants —
+  // showing up as 403s on /v1/audio/license and "Spotify can't play this right
+  // now" skips. We only need a stable per-tab label to scrobble, and the
+  // user-widget name gives that with zero requests.
   let account = null;
   if (needAccount) {
-    let token = null;
-    try {
-      const r = await fetch(
-        'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
-        { credentials: 'include' },
-      );
-      if (r.ok) { const j = await r.json(); if (j.accessToken && !j.isAnonymous) token = j.accessToken; }
-    } catch (e) { /* try dom */ }
-    if (!token) {
-      for (const id of ['session', 'config']) {
-        const el = document.getElementById(id);
-        if (el && el.textContent) {
-          try { const j = JSON.parse(el.textContent); if (j.accessToken) { token = j.accessToken; break; } } catch (e) { /* */ }
-        }
-      }
-    }
-    if (!token) {
-      for (const s of document.querySelectorAll('script')) {
-        const m = (s.textContent || '').match(/"accessToken"\s*:\s*"([^"]+)"/);
-        if (m) { token = m[1]; break; }
-      }
-    }
-    if (token) {
-      try {
-        const me = await fetch('https://api.spotify.com/v1/me', { headers: { Authorization: `Bearer ${token}` } });
-        if (me.ok) { const u = await me.json(); if (u && u.id) account = { id: u.id, name: u.display_name || u.id }; }
-      } catch (e) { /* dom fallback */ }
-    }
-    if (!account) {
-      const sels = [
-        '[data-testid="user-widget-name"]',
-        '[data-testid="user-widget-link"]',
-        'button[data-testid="user-widget-link"] img[alt]',
-        'img[data-testid="user-widget-avatar"][alt]',
-      ];
-      for (const sel of sels) {
-        const el = document.querySelector(sel);
-        const name = el && (el.textContent || el.getAttribute('alt'));
-        if (name && name.trim()) { const c = name.trim(); account = { id: `name:${c.toLowerCase()}`, name: c }; break; }
-      }
+    const sels = [
+      '[data-testid="user-widget-name"]',
+      '[data-testid="user-widget-link"]',
+      'button[data-testid="user-widget-link"] img[alt]',
+      'img[data-testid="user-widget-avatar"][alt]',
+    ];
+    for (const sel of sels) {
+      const el = document.querySelector(sel);
+      const name = el && (el.textContent || el.getAttribute('alt'));
+      if (name && name.trim()) { const c = name.trim(); account = { id: `name:${c.toLowerCase()}`, name: c }; break; }
     }
   }
 
