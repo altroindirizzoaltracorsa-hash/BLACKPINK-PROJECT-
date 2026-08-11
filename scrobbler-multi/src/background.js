@@ -173,18 +173,20 @@ function recordScrobble(account, track, targets, meta = {}) {
   return statsChain;
 }
 
-// Count threshold = Spotify's own stream definition: 30s of playback. A play
-// counts once it has been played for 30s, once per track (the per-track guard is
-// the `scrobbled` flag + trackKey). Songs shorter than 30s never count.
+// Count threshold: 40s of playback — a safety margin above Spotify's 30s stream
+// minimum, still well below Skipper Pro's ~64-81s skip point. A play counts once
+// it has been played for 40s, once per track (the per-track guard is the
+// `scrobbled` flag + trackKey). Songs shorter than 30s never count.
 //
-// Why 30 and not 60: paired with Skipper Pro (which auto-skips every song at
-// ~64-81s), a 60s bar left only a ~6s window (60s→skip) for our 30s poll to
-// catch the song before it was skipped, so genuine streams were dropped
-// (observed: 15 Skipper skips vs 12 of ours). Skipper always skips well past
-// 30s, so every song it skips is already a real Spotify stream we should count.
-// A 30s bar widens the catch window to ~36s, which a 30s poll hits reliably —
-// and matches what Spotify itself counts as a stream.
-const COUNT_THRESHOLD_S = 30;
+// Why not 60: paired with Skipper Pro (auto-skips every song at ~64-81s), a 60s
+// bar left only a ~6s window (60s→skip) for our 30s poll to catch the song
+// before it was skipped, so genuine streams were dropped (observed: 15 Skipper
+// skips vs 12 of ours). 40s keeps a solid margin over Spotify's 30s stream floor
+// while giving the poll a much wider window; combined with the finalize-on-skip
+// safety net below, songs skipped at 70s+ (the vast majority) are always caught.
+// The only softness is the occasional fast skip (64-69s), where an unlucky poll
+// phase can miss one — an accepted trade for the extra conservatism of 40s.
+const COUNT_THRESHOLD_S = 40;
 function scrobbleThresholdMs(duration) {
   if (duration && duration > 0 && duration < 30) return Infinity;
   return COUNT_THRESHOLD_S * 1000;
