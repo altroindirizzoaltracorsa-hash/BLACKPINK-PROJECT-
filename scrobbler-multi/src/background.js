@@ -420,6 +420,19 @@ function clickPlay() {
 const STUCK_LIMIT = 4;   // polls with no position advance before we reload
 const RESUME_MAX  = 6;   // resume-click attempts after a reload before giving up
 
+// True when a tab is showing a Spotify ad (localized). We watch ad-parked tabs
+// for freezes too, not just tabs that have played a song — a tab that opens
+// straight into a frozen ad never establishes a `cur`, so without this it would
+// be invisible to the watchdog and sit stuck forever.
+function looksLikeAd(track) {
+  const t = ((track && track.title) || '').toLowerCase();
+  const a = ((track && track.artist) || '').toLowerCase();
+  // en/it/es/pt/fr/de ad labels, plus the "N of M" / "N di M" counter Spotify
+  // puts in the artist slot during an ad break.
+  return /advertis|pubblicit|publicidad|publicidade|anuncio|anúncio|publicit|werbung|reklam/.test(t + ' ' + a)
+      || /\b\d+\s*(?:of|di|de|von)\s*\d+\b/.test(a);
+}
+
 let polling = false;
 
 async function poll() {
@@ -491,10 +504,12 @@ async function pollOnce() {
         rec.recover.reloadedAt = 0;
       }
       rec.recover.stuck = 0;
-    } else if (c && !advancing) {
-      // Only watch tabs that have actually been playing (c exists); a truly
-      // idle/never-started tab is left alone. Normal 30–60s ad breaks won't
-      // reach STUCK_LIMIT, so we only fire on a genuine multi-minute freeze.
+    } else if ((c || looksLikeAd(result.track)) && !advancing) {
+      // Watch tabs that have played a song (c exists) OR are parked on an ad —
+      // a tab that opened straight into a frozen ad has no `cur`, so the `c`-only
+      // guard used to ignore it forever. A truly idle non-ad tab is still left
+      // alone. Normal 30–60s ad breaks won't reach STUCK_LIMIT, so we only fire
+      // on a genuine multi-minute freeze.
       rec.recover.stuck += 1;
       if (rec.recover.stuck >= STUCK_LIMIT) {
         console.warn(`[recover] tab ${tab.id} (acct=${acct}) frozen ${rec.recover.stuck} polls — reloading to unstick.`);
