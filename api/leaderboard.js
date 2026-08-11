@@ -660,18 +660,37 @@ export default async function handler(req, res) {
     };
 
     // Remove old per-account entries now merged into this combined entry.
-    // Only delete entries whose username appears in the submitted linkedAccounts list
-    // (so a user can only clean up accounts they claim to own).
+    // Accounts are matched by SOURCE + username together — never username alone.
+    // Two accounts that share a username but sit on different scrobblers (e.g.
+    // "souralis" on Musicat vs. ListenBrainz) are DIFFERENT accounts and must
+    // never fold/delete each other. The synthetic `extension` source is skipped
+    // entirely: its username is a shared constant label ("Blinks United"), not an
+    // identity, so it can never be a match key.
     if (Array.isArray(cleanupKeys) && Array.isArray(linkedAccounts)) {
-      const ownedKeys = new Set(linkedAccounts.map(a => (a.username || '').toLowerCase()).filter(Boolean));
+      const src  = a => (a.type || a.source || '').toLowerCase();
+      const pair = a => `${src(a)}:${(a.username || '').toLowerCase()}`;
+      const ownedUsernames = new Set(
+        linkedAccounts.filter(a => src(a) !== 'extension')
+          .map(a => (a.username || '').toLowerCase()).filter(Boolean));
+      const ownedPairs = new Set(
+        linkedAccounts.filter(a => src(a) !== 'extension').map(pair));
       for (const k of cleanupKeys) {
         const kl = (k || '').toLowerCase();
-        if (!kl || kl === username.toLowerCase() || !ownedKeys.has(kl) || (data.banned || []).includes(kl)) continue;
-        // Never delete a row owned by a DIFFERENT signed-in account, even if this
-        // user also claims that linked username (legacy rows without an owner are
-        // still cleanable — they predate appUserId).
+        if (!kl || kl === username.toLowerCase() || !ownedUsernames.has(kl) || (data.banned || []).includes(kl)) continue;
         const target = data.users[kl];
-        if (target && target.appUserId && target.appUserId !== user.id) continue;
+        if (!target) continue;
+        // Never touch a row owned by a DIFFERENT signed-in account.
+        if (target.appUserId && target.appUserId !== user.id) continue;
+        // For a legacy row (no owner), only fold it in when EVERY account it lists
+        // is one this user owns, matched by source+username. This is what enforces
+        // "same username, different scrobbler → keep both".
+        if (!target.appUserId) {
+          const tgtAccts = Array.isArray(target.linkedAccounts) && target.linkedAccounts.length
+            ? target.linkedAccounts
+            : [{ type: 'lastfm', username: target.username }];
+          const allOwned = tgtAccts.every(a => src(a) !== 'extension' && ownedPairs.has(pair(a)));
+          if (!allOwned) continue;
+        }
         delete data.users[kl];
       }
     }
