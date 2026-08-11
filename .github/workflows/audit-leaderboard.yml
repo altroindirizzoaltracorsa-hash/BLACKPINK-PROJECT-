@@ -50,4 +50,25 @@ jobs:
               print("(none — no surviving entries share a linked username)")
           for u, ks in sorted(shared.items(), key=lambda kv: -len(set(kv[1]))):
               print(f"  '{u}'  ->  {sorted(set(ks))}")
+
+          # Full dump of entries of interest so we can decide cleanup safely.
+          INTEREST = {'alice9629', 'blinksunited', 'demibandwout', 'blackpinkshazam',
+                      'alice2996', 'souralis', 'bornpink', 'jumppink'}
+          def matches(key, e):
+              names = {(key or '').lower()}
+              for a in (e.get('linkedAccounts') or []):
+                  names.add((a.get('username') or '').lower())
+              return bool(names & INTEREST) or 'blinks united' in names
+          print("\n=== full records for entries of interest ===")
+          for key, e in users.items():
+              if not matches(key, e):
+                  continue
+              s = e.get('scores') or {}
+              print(f"\nKEY: {key!r}")
+              print(f"  username     : {e.get('username')!r}")
+              print(f"  displayName  : {e.get('displayName')!r}")
+              print(f"  appUserId    : {e.get('appUserId')!r}")
+              print(f"  linkedAccounts: {e.get('linkedAccounts')}")
+              print(f"  overall_all  : {s.get('overall_all')}   overall_artist: {s.get('overall_artist')}")
+              print(f"  updatedAt    : {e.get('updatedAt')}   lastScrobbleAt: {e.get('lastScrobbleAt')}")
           PY
