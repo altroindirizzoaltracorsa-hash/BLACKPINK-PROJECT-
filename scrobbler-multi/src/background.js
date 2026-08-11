@@ -208,11 +208,26 @@ function advance(prev, msg, now, jobs) {
   const mediaPos = typeof msg.mediaPos === 'number' ? msg.mediaPos : 0;
 
   if (!sameTrack) {
+    // Credit the lead-in. Polling latches onto a track mid-play, so the first
+    // poll usually catches it a few seconds in (e.g. domPos=8). Those seconds
+    // were genuinely played from the top, but the old code started the counter
+    // at 0 and only credited advances AFTER the first poll — silently dropping
+    // that lead-in. On a real 60s+ listen that loss pushed the play-time just
+    // under the 60s scrobble threshold: a first song caught at 0:08 reached the
+    // bar 8s "late" and could be skipped to the next track before any poll saw
+    // it cross 60s, so it never scrobbled (exactly what happened to JUMP in the
+    // wild). If we catch the track early in its runtime (within ~1.5 poll
+    // cycles of the start), seed playedMs with the seconds already on its clock.
+    // Caught later than that window we can't assume play-from-start (tab opened
+    // mid-song, a seek, or a missed poll), so start at 0 — conservative, exactly
+    // the old behaviour, never over-credits.
+    const LEAD_IN_MAX_S = 45;
+    const leadIn = (domPos > 0 && domPos <= LEAD_IN_MAX_S) ? domPos : 0;
     rec.cur = {
       key,
       track,
-      startedAt: Math.floor(now / 1000),
-      playedMs: 0,
+      startedAt: Math.floor(now / 1000) - leadIn,
+      playedMs: leadIn * 1000,
       lastTs: now,
       lastDomPos: domPos,
       lastMediaPos: mediaPos,
