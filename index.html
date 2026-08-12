@@ -5995,7 +5995,7 @@ const LS_DISPLAY_KEY = 'bu_display_name';
 // when the Supabase getSession() / leaderboard round-trip that provides it is
 // slow or times out on a flaky connection (otherwise we fall back to the ugly
 // "user1 + user2 + …" join).
-function saveDisplayName(name) {
+function cacheDisplayName(name) {
   try { if (name) localStorage.setItem(LS_DISPLAY_KEY, name); } catch(e) {}
 }
 function getSavedDisplayName() {
@@ -6558,7 +6558,7 @@ async function loadMultiAccountProfile(accounts) {
   const localMeta = getLocalAuthMetadata();
   if (!combined.info.displayName) {
     const name = localMeta?.display_name || getSavedDisplayName();
-    if (name) { combined.info.displayName = name; saveDisplayName(name); }
+    if (name) { combined.info.displayName = name; cacheDisplayName(name); }
   }
   if (!combined.info.oauthAvatar) {
     const avatar = localMeta?.avatar_url || localMeta?.picture || getSavedAvatar();
@@ -6594,7 +6594,7 @@ async function loadMultiAccountProfile(accounts) {
   const serverDisplayName = await submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs, combined.bpGroupPlays, combined.memberPlays, true).catch(()=>null);
   if (serverDisplayName) {
     combined.info.displayName = serverDisplayName;
-    saveDisplayName(serverDisplayName);
+    cacheDisplayName(serverDisplayName);
     const el = document.getElementById('profile-username');
     if (el) el.textContent = serverDisplayName;
   }
@@ -6696,7 +6696,7 @@ function refreshIdentityFromSession(combined) {
     if (!meta) return;
     if (meta.display_name && meta.display_name !== combined.info.displayName) {
       combined.info.displayName = meta.display_name;
-      saveDisplayName(meta.display_name);
+      cacheDisplayName(meta.display_name);
       const el = document.getElementById('profile-username');
       if (el && combined.info.allAccounts) el.textContent = meta.display_name;
     }
