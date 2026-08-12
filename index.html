@@ -6001,6 +6001,15 @@ function saveDisplayName(name) {
 function getSavedDisplayName() {
   try { return localStorage.getItem(LS_DISPLAY_KEY) || ''; } catch(e) { return ''; }
 }
+// Same idea for the profile picture (the avatar from the login provider / Last.fm),
+// so a slow getSession()/fetchUserInfo can't blank it back to the letter tile.
+const LS_AVATAR_KEY = 'bu_avatar_url';
+function saveAvatar(url) {
+  try { if (url) localStorage.setItem(LS_AVATAR_KEY, url); } catch(e) {}
+}
+function getSavedAvatar() {
+  try { return localStorage.getItem(LS_AVATAR_KEY) || ''; } catch(e) { return ''; }
+}
 
 function saveUsername(username) {
   try { localStorage.setItem(LS_USER_KEY, username); } catch(e) {}
@@ -6526,10 +6535,14 @@ async function loadMultiAccountProfile(accounts) {
   if (sb) {
     try {
       const { data: { session } } = await withTimeout(sb.auth.getSession(), 8000, 'auth session');
-      if (session?.user?.user_metadata?.display_name) {
-        combined.info.displayName = session.user.user_metadata.display_name;
+      const meta = session?.user?.user_metadata;
+      if (meta?.display_name) {
+        combined.info.displayName = meta.display_name;
         saveDisplayName(combined.info.displayName);
       }
+      // Profile picture from the login provider (X / Discord / Google).
+      const oauthAvatar = meta?.avatar_url || meta?.picture || '';
+      if (oauthAvatar) { combined.info.oauthAvatar = oauthAvatar; saveAvatar(oauthAvatar); }
     } catch {}
   }
 
@@ -6705,7 +6718,13 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   document.getElementById('settings-panel').style.display = 'none'; // reset on new profile load
   initSettings();
 
-  const avatarUrl = (info.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
+  // Prefer the login-provider avatar, then the Last.fm image, then the locally
+  // cached one — so a slow/timed-out session or fetchUserInfo can't blank it.
+  const avatarUrl = info.oauthAvatar
+    || (info.image || []).find(i => i.size === 'medium')?.[`#text`]
+    || getSavedAvatar()
+    || '';
+  if (avatarUrl) saveAvatar(avatarUrl);
   const wrap = document.getElementById('profile-avatar-wrap');
   wrap.innerHTML = avatarUrl
     ? `<img class="user-avatar" src="${avatarUrl}" alt="${info.name}">`
