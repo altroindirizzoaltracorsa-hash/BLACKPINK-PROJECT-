@@ -585,7 +585,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid JSON' });
     }
 
-    const { username, scores, avatar, updatedAt, lastScrobbleAt, displayName, linkedAccounts, cleanupKeys, accessToken } = body || {};
+    const { username, scores, avatar, updatedAt, lastScrobbleAt, displayName, linkedAccounts, cleanupKeys, accessToken, extensionIncluded } = body || {};
     if (!username || !scores) return res.status(400).json({ error: 'username and scores required' });
 
     // Require Supabase auth — old-method (no-token) submissions are no longer accepted.
@@ -607,7 +607,11 @@ export default async function handler(req, res) {
     // Last.fm/LB scores the client computed. Best-effort and additive: it never
     // blocks a submission, and adds 0 for anyone without extension plays, so a
     // normal submission passes through unchanged.
-    try {
+    // SKIPPED when the client already folded the extension into the submitted
+    // numbers (extensionIncluded) — the multi-account badges page does this so the
+    // leaderboard stores the exact same numbers it displays; adding again here
+    // would double-count.
+    if (!extensionIncluded) try {
       const { from: exDayFrom, to: exDayTo }   = bpDayBounds();
       const { from: exWeekFrom, to: exWeekTo } = bpWeekBounds();
       const ext = await extensionCountsForUser(sb, user.id, exDayFrom, exDayTo, exWeekFrom, exWeekTo);

@@ -5934,7 +5934,13 @@ async function loadProfile(usernameOverride, silent = false) {
       if (el) el.textContent = serverDisplayName;
     }
     // Re-render leaderboard if visible so "YOU" highlight appears immediately after login
-    if (document.getElementById('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
+    if (document.getElementById('page-leaderboard')?.classList.contains('active')) {
+    // We just submitted fresh numbers — pull the board again (bypassing the cache)
+    // so the leaderboard shows the exact values the badges page just computed,
+    // instead of a stale snapshot. No scrobble re-sync here (would recurse).
+    try { await fetchLbData(true); } catch {}
+    renderLeaderboard();
+  }
 
   } catch(e) {
     if (!silent) {
@@ -6375,17 +6381,6 @@ async function loadMultiAccountProfile(accounts) {
     } catch(e) { console.warn('Multi-account fetch failed for', acct.source_username, e); }
   }
 
-  // Snapshot the Last.fm/LB-only campaign totals BEFORE folding in the
-  // extension — the leaderboard server adds the extension itself, so submitting
-  // extension-inclusive numbers would double-count. Display uses the folded
-  // combined; submission uses this snapshot.
-  const submitTotals = {
-    totalPlays:  { ...combined.totalPlays },
-    todayCounts: { ...combined.todayCounts },
-    weekCounts:  { ...combined.weekCounts },
-    artistPlays: combined.artistPlays,
-  };
-
   // Own Blinks United extension plays, folded in as a first-class account so it
   // shows in the account list and every per-track breakdown popup.
   const extAcct = await buildExtensionAccount();
@@ -6400,6 +6395,14 @@ async function loadMultiAccountProfile(accounts) {
       combined.lastScrobbleTs = extAcct.lastScrobbleTs;
     }
   }
+
+  // Never let a partial / rate-limited fetch drop today's number below what
+  // we've already shown (and submitted) today — scrobbles only accumulate within
+  // a day. The floor is keyed to the current linked-account set, so DISCONNECTING
+  // a scrobbler (the one legitimate reason for a drop) clears it and lets the
+  // number fall. Applied to the folded counts, so the badges page AND the
+  // leaderboard submission below share the exact same floored values.
+  applyTodayFloor(combined.todayCounts, accountsFingerprint(data));
 
   // Combine per-day counts across all accounts for weekly table
   const weekDays = [];
@@ -6449,13 +6452,22 @@ async function loadMultiAccountProfile(accounts) {
   // -- e.g. a forced leaderboard refresh -- can trust the server actually has
   // the fresh numbers before re-fetching it (otherwise the re-fetch can win
   // the race and return the pre-submission snapshot).
-  const serverDisplayName = await submitToLeaderboard(combined.info, submitTotals.totalPlays, submitTotals.todayCounts, submitTotals.weekCounts, submitTotals.artistPlays, combined.lastScrobbleTs, combined.bpGroupPlays, combined.memberPlays).catch(()=>null);
+  // Submit the SAME folded numbers the badges page displays (extension included),
+  // and flag it so the server does not add the extension a second time. This is
+  // what keeps the leaderboard identical to the badges page.
+  const serverDisplayName = await submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs, combined.bpGroupPlays, combined.memberPlays, true).catch(()=>null);
   if (serverDisplayName) {
     combined.info.displayName = serverDisplayName;
     const el = document.getElementById('profile-username');
     if (el) el.textContent = serverDisplayName;
   }
-  if (document.getElementById('page-leaderboard')?.classList.contains('active')) renderLeaderboard();
+  if (document.getElementById('page-leaderboard')?.classList.contains('active')) {
+    // We just submitted fresh numbers — pull the board again (bypassing the cache)
+    // so the leaderboard shows the exact values the badges page just computed,
+    // instead of a stale snapshot. No scrobble re-sync here (would recurse).
+    try { await fetchLbData(true); } catch {}
+    renderLeaderboard();
+  }
 }
 
 function tsAgo(ts) {
@@ -7214,8 +7226,33 @@ function computeDailyCommunityTotal(users) {
   }, 0);
 }
 
+// ── Today's per-track floor ──────────────────────────────────
+// Today's counts can only grow within a day (you can't un-scrobble), so a
+// partial/rate-limited fetch that returns fewer plays must never lower the
+// number we already showed. The floor is stored per-day AND keyed to the set of
+// linked accounts, so removing a scrobbler (a real reason for a drop) resets it.
+const TODAY_FLOOR_KEY = 'bu_today_floor_v1';
+function accountsFingerprint(list) {
+  return (list || [])
+    .map(a => `${(a.source || a.type || '').toLowerCase()}:${(a.source_username || a.username || '').toLowerCase()}`)
+    .sort().join('|');
+}
+function applyTodayFloor(todayCounts, fingerprint) {
+  const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go'];
+  const dayKey = italyDayKey();
+  let stored = null;
+  try { stored = JSON.parse(localStorage.getItem(TODAY_FLOOR_KEY) || 'null'); } catch {}
+  if (stored && stored.dayKey === dayKey && stored.fingerprint === fingerprint) {
+    for (const k of TIDS) todayCounts[k] = Math.max(todayCounts[k] || 0, stored.counts?.[k] || 0);
+  }
+  const counts = {};
+  for (const k of TIDS) counts[k] = todayCounts[k] || 0;
+  try { localStorage.setItem(TODAY_FLOOR_KEY, JSON.stringify({ dayKey, fingerprint, counts })); } catch {}
+  return todayCounts;
+}
+
 // ── Write user scores to leaderboard ─────────────────────────
-async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs, bpGroupPlays, memberPlays) {
+async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs, bpGroupPlays, memberPlays, extensionIncluded = false) {
   try {
     const lfmUsername = userInfo.name || userInfo.realname || '';
     const lbUsername  = getSavedLbUsername();
@@ -7302,6 +7339,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
         cleanupKeys,
         avatar:         avatarUrl,
         scores,
+        extensionIncluded,
         updatedAt:      new Date().toISOString(),
         lastScrobbleAt: lastScrobbleTs ? new Date(lastScrobbleTs).toISOString() : null,
         accessToken: tok,
