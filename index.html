@@ -6391,6 +6391,30 @@ async function loadMultiAccountProfile(accounts) {
     _seen.add(k); return true;
   });
 
+  // Hard escape hatch: no matter which network call stalls, never leave the user
+  // staring at the spinner forever. After 30s, render whatever we've gathered so
+  // far (the per-day floor keeps the numbers honest) and drop the loading panel.
+  let _finalized = false;
+  const _finalize = () => {
+    if (_finalized) return;
+    _finalized = true;
+    if (!combined.info) {
+      const p = (_accounts[0] && _accounts[0].source_username) || 'You';
+      combined.info = { name: p, image: [{}], playcount: 0,
+        allAccounts: (acctBreakdown || _breakdown).map(a => ({
+          username: a.username, source: a.source,
+          playcount: a.playcount || 0, lastScrobbleTs: a.lastScrobbleTs || null })) };
+    }
+    if (!combined.weekDays) combined.weekDays = [];
+    currentUser = combined;
+    try { renderProfile(combined); }
+    catch (e) { console.warn('watchdog render failed', e); document.getElementById('loading-panel').style.display = 'none'; }
+  };
+  const _watchdog = setTimeout(() => {
+    console.warn('Badge load watchdog: rendering partial profile after 30s');
+    _finalize();
+  }, 30000);
+
   for (const acct of _accounts) {
     setLoading(`Loading ${acct.source_username}…`);
     try {
@@ -6482,11 +6506,14 @@ async function loadMultiAccountProfile(accounts) {
   }));
   if (sb) {
     try {
-      const { data: { session } } = await sb.auth.getSession();
+      const { data: { session } } = await withTimeout(sb.auth.getSession(), 8000, 'auth session');
       if (session?.user?.user_metadata?.display_name) combined.info.displayName = session.user.user_metadata.display_name;
     } catch {}
   }
 
+  if (_finalized) return; // watchdog already rendered a partial profile — don't fight it
+  clearTimeout(_watchdog);
+  _finalized = true;
   currentUser = combined;
   saveUsername(primaryUsername);
   // Render the profile FIRST so the loading panel is never gated on a server
