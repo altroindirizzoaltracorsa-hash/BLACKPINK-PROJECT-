@@ -389,7 +389,24 @@ async function readState(needAccount) {
     }
   }
 
-  return { account, track, domPos, mediaPos, duration };
+  // Best-effort playlist row index of the track that's currently playing, so we
+  // can resume EXACTLY there after a reload even when the playlist has duplicate
+  // tracks (title alone can't disambiguate). Spotify tags each rendered row with
+  // a true aria-rowindex even in its virtualized list. The playing row is the
+  // one whose in-row control shows "Pause" (all other rows say "Play <track>").
+  let rowIndex = 0;
+  try {
+    const pauseRe = /pause|pausa|mettre en pause|anhalten|pausar/i;
+    for (const r of document.querySelectorAll('[role="row"][aria-rowindex]')) {
+      let hit = false;
+      for (const b of r.querySelectorAll('button[aria-label]')) {
+        if (pauseRe.test(b.getAttribute('aria-label') || '')) { hit = true; break; }
+      }
+      if (hit) { rowIndex = parseInt(r.getAttribute('aria-rowindex'), 10) || 0; break; }
+    }
+  } catch (e) { /* index is best-effort; title match is the fallback */ }
+
+  return { account, track, domPos, mediaPos, duration, rowIndex };
 }
 
 // Injected after a stuck-tab reload to resume playback hands-free — this is the
@@ -402,35 +419,62 @@ async function readState(needAccount) {
 // couple of attempts, to the playlist's top Play button (a fresh restart).
 // `attempt` is the resume-try count so early tries wait for the bar to reappear
 // before giving up on resuming. Only called on a tab we just reloaded.
-function resumePlay(attempt) {
+async function resumePlay(attempt, resume) {
   const q = (s) => document.querySelector(s);
-  const norm = (s) => (s || '').trim();
-  const isAdText = (s) => /advertis|pubblicit|publicidad|publicidade|anuncio|anúncio|publicit|werbung|reklam/i.test(s || '');
+  const norm = (s) => (s || '').trim().toLowerCase();
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const adRe = /advertis|pubblicit|publicidad|publicidade|anuncio|anúncio|publicit|werbung|reklam/i;
+  const playRe = /play|riprod|reprodu|lectur|abspiel/;
+  const wantTitle = resume && resume.title ? norm(resume.title) : '';
+  const wantIndex = resume && resume.rowIndex ? resume.rowIndex : 0;
 
-  // What (if anything) did Spotify restore into the player bar?
-  const widget = q('[data-testid="now-playing-widget"]');
-  const titleEl = widget && (widget.querySelector('[data-testid="context-item-link"]')
-    || widget.querySelector('a[href*="/track/"]')
-    || widget.querySelector('[data-testid="nowplaying-track-link"]'));
-  const barTitle = norm(titleEl && titleEl.textContent);
+  // 1) If Spotify happened to restore the player bar, just resume it (fastest,
+  //    keeps our place). Often the bar is empty after an ad-freeze reload, so
+  //    this usually falls through to the row search below.
   const pp = q('[data-testid="control-button-playpause"]');
+  const widget = q('[data-testid="now-playing-widget"]');
+  const barEl = widget && (widget.querySelector('[data-testid="context-item-link"]') || widget.querySelector('a[href*="/track/"]'));
+  const barTitle = (barEl && barEl.textContent || '').trim();
   const ppLbl = ((pp && pp.getAttribute('aria-label')) || '').toLowerCase();
-
-  // 1) A real (non-ad) track is loaded and paused → resume it, keeping our place
-  //    in the playlist.
-  if (pp && barTitle && !isAdText(barTitle) && /play|riprod|reprodu|lectur|abspiel/.test(ppLbl)) {
+  if (pp && barTitle && !adRe.test(barTitle) && playRe.test(ppLbl)) {
     pp.click();
-    return { clicked: 'resume', track: barTitle };
+    return { clicked: 'resume-bar', track: barTitle };
   }
-  // Already playing — nothing to do (let the poll see it advance).
-  if (pp && /paus/.test(ppLbl)) return { clicked: 'already-playing', track: barTitle };
 
-  // 2) Nothing to resume yet. Give the bar a couple of polls to restore before
-  //    falling back to a top-of-playlist restart, so we don't discard a resume
-  //    that was about to appear.
-  if (attempt >= 3) {
-    const ctx = q('[data-testid="action-bar-row"] [data-testid="play-button"]')
-             || q('[data-testid="play-button"]');
+  // 2) Self-capture resume: click the saved track's row so the playlist keeps
+  //    going IN ORDER from where it froze. Prefer the exact aria-rowindex (so
+  //    duplicate tracks resolve correctly); fall back to the first title match.
+  //    The tracklist is virtualized, so scroll it until the row renders.
+  const rowByIndex = () => (wantIndex ? q('[role="row"][aria-rowindex="' + wantIndex + '"]') : null);
+  const rowByTitle = () => (wantTitle ? Array.from(document.querySelectorAll('[role="row"]')).find((r) => {
+    const l = r.querySelector('[data-testid="internal-track-link"], a[href*="/track/"]');
+    return l && norm(l.textContent) === wantTitle;
+  }) : null);
+
+  if (wantTitle || wantIndex) {
+    const scroller = q('[data-overlayscrollbars-viewport]') || q('.main-view-container__scroll-node') || document.scrollingElement || document.body;
+    let row = rowByIndex() || rowByTitle();
+    for (let i = 0; i < 16 && !row; i++) {
+      if (scroller && scroller.scrollBy) scroller.scrollBy(0, 900);
+      await sleep(150);
+      row = rowByIndex() || rowByTitle();
+    }
+    if (row) {
+      row.scrollIntoView({ block: 'center' });
+      await sleep(140);
+      const btn = row.querySelector('[data-testid="tracklist-play-button"]')
+        || Array.from(row.querySelectorAll('button')).find((b) => playRe.test((b.getAttribute('aria-label') || '').toLowerCase()));
+      if (btn) { btn.click(); return { clicked: 'resume-row', track: resume && resume.title, idx: wantIndex }; }
+      // No per-row button found — double-clicking a row plays from there.
+      row.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true, view: window }));
+      return { clicked: 'resume-row-dblclick', track: resume && resume.title, idx: wantIndex };
+    }
+  }
+
+  // 3) Couldn't resume in place. After a couple of tries (or if we never had a
+  //    saved position — e.g. a tab that only ever saw ads), restart from the top.
+  if (attempt >= 2 || !wantTitle) {
+    const ctx = q('[data-testid="action-bar-row"] [data-testid="play-button"]') || q('[data-testid="play-button"]');
     if (ctx) { ctx.click(); return { clicked: 'context-restart', label: ctx.getAttribute('aria-label') || '' }; }
   }
   return { clicked: null, waiting: true, attempt };
@@ -512,6 +556,12 @@ async function pollOnce() {
     // ---- stuck-tab watchdog (auto-recover frozen ad / hung player) ----
     const rec = pbState[tab.id];
     rec.recover = rec.recover || { stuck: 0, reloadedAt: 0, resumeTries: 0 };
+    // Remember the last REAL song (+ its playlist row index) this tab showed, so
+    // that after a reload we can resume from there instead of the top. Ads are
+    // skipped so we never try to "resume" an ad.
+    if (tr.title && !looksLikeAd(tr)) {
+      rec.lastSong = { title: tr.title, artist: tr.artist || '', rowIndex: result.rowIndex || 0 };
+    }
     const advancing = !!(c && c.playing);
     if (rec.recover.reloadedAt) {
       // We recently reloaded this tab — keep clicking Play until it plays again.
@@ -520,7 +570,7 @@ async function pollOnce() {
       } else if (now - rec.recover.reloadedAt > 4000 && rec.recover.resumeTries < RESUME_MAX) {
         rec.recover.resumeTries += 1;
         const n = rec.recover.resumeTries;
-        jobs.push(chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', func: resumePlay, args: [n] })
+        jobs.push(chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', func: resumePlay, args: [n, rec.recover.resume || null] })
           .then((r) => console.log(`[recover] tab ${tab.id}: resume try #${n} →`, r && r[0] && r[0].result))
           .catch(() => {}));
       } else if (rec.recover.resumeTries >= RESUME_MAX) {
@@ -536,10 +586,12 @@ async function pollOnce() {
       // on a genuine multi-minute freeze.
       rec.recover.stuck += 1;
       if (rec.recover.stuck >= STUCK_LIMIT) {
-        console.warn(`[recover] tab ${tab.id} (acct=${acct}) frozen ${rec.recover.stuck} polls — reloading to unstick.`);
+        console.warn(`[recover] tab ${tab.id} (acct=${acct}) frozen ${rec.recover.stuck} polls — reloading to unstick`
+          + `${rec.lastSong ? ` (will resume "${rec.lastSong.title}"${rec.lastSong.rowIndex ? ` @row ${rec.lastSong.rowIndex}` : ''})` : ''}.`);
         rec.recover.stuck = 0;
         rec.recover.reloadedAt = now;
         rec.recover.resumeTries = 0;
+        rec.recover.resume = rec.lastSong || null;   // snapshot position for post-reload resume
         jobs.push(chrome.tabs.reload(tab.id).catch(() => {}));
       }
     } else {
