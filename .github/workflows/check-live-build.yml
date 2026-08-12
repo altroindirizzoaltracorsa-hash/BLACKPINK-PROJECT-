@@ -13,7 +13,8 @@ jobs:
         run: |
           python3 - <<'PY'
           import subprocess
-          URL = "https://blinksunited.com/"
+          # NOTE: "/" redirects to /10years.html — the badge app lives at /index.html
+          URL = "https://blinksunited.com/index.html"
           out = subprocess.run(["curl", "-sS", "-L", "-D", "-", URL], capture_output=True, text=True)
           body = out.stdout
           # Split headers (last response) from body — curl -D - prints headers then body
