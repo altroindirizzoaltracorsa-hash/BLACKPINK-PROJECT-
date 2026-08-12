@@ -6503,8 +6503,12 @@ async function loadMultiAccountProfile(accounts) {
     _finalize();
   }, 30000);
 
-  for (const acct of _accounts) {
-    setLoading(`Loading ${acct.source_username}…`);
+  // Fetch every linked account IN PARALLEL, not one-by-one. A profile with 5+
+  // scrobblers on a slow connection was taking minutes sequentially — long enough
+  // that the load could stall past the point of ever submitting. Running them
+  // concurrently makes the whole load about as fast as the single slowest account.
+  setLoading(_accounts.length > 1 ? `Loading ${_accounts.length} accounts…` : `Loading ${_accounts[0]?.source_username || ''}…`);
+  const _perAccount = await Promise.all(_accounts.map(async (acct) => {
     try {
       const stats = await withTimeout(fetchSingleAccountStats(acct.source, acct.source_username), 20000, acct.source_username);
       // BP family plays: BLACKPINK group + all 4 solo artists (per-member tracking)
@@ -6518,21 +6522,26 @@ async function loadMultiAccountProfile(accounts) {
           stats.playcount = stats.artistPlays + solos.reduce((s, n) => s + n, 0);
         } catch {}
       }
-      if (!combined.lastScrobbleTs || (stats.lastScrobbleTs && stats.lastScrobbleTs > combined.lastScrobbleTs)) {
-        combined.lastScrobbleTs = stats.lastScrobbleTs;
-      }
-      _breakdown.push(stats);
-      combined.artistPlays  += stats.artistPlays;
-      combined.bpGroupPlays += stats.bpGroupPlays || 0;
-      for (const m of ['jisoo', 'lisa', 'rose', 'jennie']) {
-        combined.memberPlays[m] += stats.memberPlays?.[m] || 0;
-      }
-      for (const k of ['jump','shutdown','ddududu','ltal','go']) {
-        combined.totalPlays[k]  += stats.totalPlays[k]  || 0;
-        combined.todayCounts[k] += stats.todayCounts[k] || 0;
-        combined.weekCounts[k]  += stats.weekCounts[k]  || 0;
-      }
-    } catch(e) { console.warn('Multi-account fetch failed for', acct.source_username, e); }
+      return stats;
+    } catch(e) { console.warn('Multi-account fetch failed for', acct.source_username, e); return null; }
+  }));
+  // Aggregate the results (order-independent, so parallel is safe).
+  for (const stats of _perAccount) {
+    if (!stats) continue;
+    if (!combined.lastScrobbleTs || (stats.lastScrobbleTs && stats.lastScrobbleTs > combined.lastScrobbleTs)) {
+      combined.lastScrobbleTs = stats.lastScrobbleTs;
+    }
+    _breakdown.push(stats);
+    combined.artistPlays  += stats.artistPlays;
+    combined.bpGroupPlays += stats.bpGroupPlays || 0;
+    for (const m of ['jisoo', 'lisa', 'rose', 'jennie']) {
+      combined.memberPlays[m] += stats.memberPlays?.[m] || 0;
+    }
+    for (const k of ['jump','shutdown','ddududu','ltal','go']) {
+      combined.totalPlays[k]  += stats.totalPlays[k]  || 0;
+      combined.todayCounts[k] += stats.todayCounts[k] || 0;
+      combined.weekCounts[k]  += stats.weekCounts[k]  || 0;
+    }
   }
 
   // Own Blinks United extension plays, folded in as a first-class account so it
