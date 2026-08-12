@@ -6041,6 +6041,34 @@ function getLocalAuthMetadata() {
   return null;
 }
 
+// Read the current access token SYNCHRONOUSLY from the Supabase auth token in
+// localStorage, so a leaderboard submit carries a valid token on the first try
+// instead of depending on getSession()/refreshSession() network calls that stall
+// on a flaky connection (which silently 401s the submit → no leaderboard row).
+// Returns null if none found or the token is already expired (let the caller's
+// getSession/refresh path handle a refresh in that case).
+function getLocalAccessToken() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !/^sb-.*-auth-token$/.test(k)) continue;
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      let obj;
+      try { obj = JSON.parse(raw); } catch { continue; }
+      const sess = obj?.currentSession || obj?.session
+        || (Array.isArray(obj) && obj[0] && typeof obj[0] === 'object' ? obj[0] : null)
+        || obj;
+      const tok = sess?.access_token;
+      if (!tok) continue;
+      const expUnix = sess?.expires_at;
+      if (expUnix && (expUnix * 1000) < Date.now()) return null; // expired — refresh needed
+      return tok;
+    }
+  } catch (e) {}
+  return null;
+}
+
 function saveUsername(username) {
   try { localStorage.setItem(LS_USER_KEY, username); } catch(e) {}
 }
@@ -7445,12 +7473,16 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
     // Display name shown in the leaderboard UI — prefer user's configured name.
     // Always try Supabase session so single-account users also get their display name.
     let displayName = userInfo.displayName;
-    let accessToken = null;
+    // Access token: read it synchronously from localStorage FIRST (reliable, no
+    // network) so the submit isn't silently 401'd when getSession() stalls on a
+    // flaky connection. Fall back to a (timeout-guarded) getSession only if the
+    // local token is missing/expired.
+    let accessToken = getLocalAccessToken();
     if (sb) {
       try {
-        const { data: { session } } = await sb.auth.getSession();
+        const { data: { session } } = await withTimeout(sb.auth.getSession(), 8000, 'submit session');
         if (session?.user?.user_metadata?.display_name) displayName = session.user.user_metadata.display_name;
-        accessToken = session?.access_token || null;
+        if (!accessToken) accessToken = session?.access_token || null;
       } catch {}
     }
     displayName = displayName || username;
@@ -7553,8 +7585,12 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       let body = null;
       try { body = await res.json(); } catch {}
       console.warn('Leaderboard submit rejected:', res.status, body?.error || body);
+      // Surface it — on mobile the console is invisible, and a silently-rejected
+      // submit is exactly why an account can scrobble yet never appear on the board.
+      showLbSubmitWarning(`Not shown on the leaderboard yet: ${body?.error || ('error ' + res.status)}`);
       return;
     }
+    showLbSubmitWarning(null); // success — clear any prior warning
 
     // Invalidate cache so next leaderboard view fetches fresh data from server
     lbCacheTime = null;
@@ -7564,6 +7600,25 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
   } catch(e) {
     console.warn('Leaderboard submit failed:', e);
   }
+}
+
+// Small, self-contained banner on the badges profile that explains why a
+// leaderboard submission was rejected (401 = sign-in/token, 403 = link a
+// scrobbler first). Pass null to clear it on the next successful submit.
+function showLbSubmitWarning(msg) {
+  try {
+    let el = document.getElementById('lb-submit-warning');
+    if (!msg) { if (el) el.style.display = 'none'; return; }
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'lb-submit-warning';
+      el.style.cssText = 'margin:0.75rem auto 0;max-width:900px;padding:0.6rem 1rem;border:1px solid #a5556e;border-radius:8px;color:#ec9;font-size:0.78rem;line-height:1.4;background:rgba(160,50,80,0.12);text-align:center;';
+      const panel = document.getElementById('profile-panel');
+      if (panel) panel.appendChild(el); else return;
+    }
+    el.textContent = '⚠ ' + msg;
+    el.style.display = 'block';
+  } catch (e) {}
 }
 
 // ── Render leaderboard table ──────────────────────────────────
