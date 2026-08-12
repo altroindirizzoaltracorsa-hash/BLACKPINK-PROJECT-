@@ -3109,16 +3109,16 @@
      using the site any further. -->
 <div id="legacy-migration-modal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.85);align-items:flex-start;justify-content:center;padding:1.5rem;overflow-y:auto;">
   <div style="background:var(--bg-card,#1a0a0f);border:1px solid var(--pink,#e91e8c);border-radius:12px;max-width:420px;width:100%;padding:2rem;text-align:center;margin:auto;">
-    <div style="font-size:2rem;margin-bottom:0.75rem;">🔐</div>
-    <h3 style="color:var(--pink,#e91e8c);margin:0 0 0.75rem;font-size:1.1rem;letter-spacing:0.05em;text-transform:uppercase;">Action required to continue</h3>
+    <div style="font-size:2rem;margin-bottom:0.75rem;">👋</div>
+    <h3 style="color:var(--pink,#e91e8c);margin:0 0 0.75rem;font-size:1.15rem;letter-spacing:0.03em;">Welcome back<span>, </span><strong id="legacy-migration-username" style="color:var(--pink,#e91e8c)"></strong>!</h3>
     <p style="color:var(--text,#fff);margin:0 0 0.5rem;font-size:0.95rem;line-height:1.5;">
-      You were signed in as <strong id="legacy-migration-username" style="color:var(--pink,#e91e8c)"></strong> via Last.fm only.
+      We've upgraded to full accounts. Sign in — or create a free one — with <strong style="color:var(--text,#fff)">X, Discord, Google, or email</strong>, then link your scrobblers in <strong style="color:var(--text,#fff)">My Badges</strong>. It takes a few seconds and your streams pick up right where they left off.
     </p>
-    <p style="color:var(--muted,#aaa);margin:0 0 1.5rem;font-size:0.85rem;line-height:1.5;">
-      We've moved to a full account system. The old method is no longer accepted — create a free account (X, Discord, Google, or email) and re-link your streaming usernames in <strong style="color:var(--text,#fff)">My Badges</strong> now, or your entry will be removed from the leaderboard.
+    <p style="color:var(--muted,#aaa);margin:0 0 1.5rem;font-size:0.8rem;line-height:1.5;">
+      The old Last.fm-only method has been retired. If you already made an account, just sign in — nothing is lost.
     </p>
     <button onclick="startAccountCreation();" style="width:100%;padding:0.75rem;background:var(--pink,#e91e8c);color:#fff;border:none;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer;letter-spacing:0.05em;">
-      CREATE ACCOUNT →
+      Sign in / Create account →
     </button>
   </div>
 </div>
@@ -3954,10 +3954,9 @@ window.addEventListener('DOMContentLoaded', () => {
   loadJennieSaveCount();
   loadLtalStreamsGoal();
   renderItunesInlineBadge();
-  const saved = getSavedUsername();
-  if (saved && !document.getElementById('page-badges')?.classList.contains('active')) {
-    loadProfile(saved, true); // silent background submit to keep leaderboard fresh
-  }
+  // (Removed: the old Last.fm-only background submit. Identity is account-only now;
+  // signed-in users stay fresh via the badges auto-load and the leaderboard's
+  // on-open refresh, and the server rejects any account-less submission anyway.)
 });
 
 // ── PAGE ROUTING ─────────────────────────────────────────────
