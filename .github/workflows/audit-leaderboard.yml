@@ -70,5 +70,7 @@ jobs:
               print(f"  appUserId    : {e.get('appUserId')!r}")
               print(f"  linkedAccounts: {e.get('linkedAccounts')}")
               print(f"  overall_all  : {s.get('overall_all')}   overall_artist: {s.get('overall_artist')}")
+              print(f"  daily_date   : {s.get('daily_date')}")
+              print(f"  daily        : jump={s.get('daily_jump')} shutdown={s.get('daily_shutdown')} ddududu={s.get('daily_ddududu')} go={s.get('daily_go')} ltal={s.get('daily_ltal')} all={s.get('daily_all')}")
               print(f"  updatedAt    : {e.get('updatedAt')}   lastScrobbleAt: {e.get('lastScrobbleAt')}")
           PY
