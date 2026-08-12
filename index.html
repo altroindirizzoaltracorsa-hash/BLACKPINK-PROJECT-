@@ -4749,14 +4749,22 @@ function showPage(page, { replace = false } = {}) {
       loadLbHistory(pending.period, pending.key);
     } else {
       populateLbHistorySelect();
-      // Every time the leaderboard opens: if the viewer is signed in, re-sync
-      // THEIR OWN streams and re-pull the board so their row is always live —
-      // no need to visit the badges page. Guests just render the (cached) board.
+      // When the leaderboard opens: if the viewer is signed in, re-sync THEIR OWN
+      // streams and re-pull the board so their row is live — no need to visit the
+      // badges page. THROTTLED: a full re-sync fetches all the viewer's accounts,
+      // so opening the board repeatedly would hammer Last.fm and stall. If we
+      // synced within the last 90s, just render the (already-fresh) cached board.
       (async () => {
         let signedIn = false;
         try { signedIn = !!(sb && (await sb.auth.getSession()).data.session); } catch {}
         if (signedIn) {
-          refreshLeaderboard(true); // syncs the viewer's own streams, then refetches the board
+          const now = Date.now();
+          if (now - _lastLbSelfSync > 90000) {
+            _lastLbSelfSync = now;
+            refreshLeaderboard(true); // syncs the viewer's own streams, then refetches the board
+          } else {
+            refreshLeaderboard();     // synced recently — just render the board
+          }
         } else {
           if (!acctBreakdown) tryAutoLoad(); // legacy-guest migration prompt (first open)
           refreshLeaderboard();
@@ -6003,14 +6011,29 @@ async function tryAutoLoad() {
           }
         } catch {}
       }
-      // Legacy guest detected — prompt migration instead of silently loading old profile
+      // Only treat this as a legacy guest if the browser has NEVER had an account
+      // here. A signed-in user whose session merely lapsed (expired token, flaky
+      // network) still has a Supabase auth token in storage — don't nag them to
+      // "migrate"; the normal sign-in panel handles a quick re-auth.
       const saved = getSavedUsername();
-      if (saved) showLegacyMigrationNotice(saved);
+      if (saved && !hasSupabaseAuthToken()) showLegacyMigrationNotice(saved);
     } finally {
       _autoLoadInProgress = false;
     }
   })();
   return _autoLoadPromise;
+}
+
+// True if this browser holds a Supabase account token (even an expired one) —
+// i.e. the visitor has a real account here, not a legacy Last.fm-only guest.
+function hasSupabaseAuthToken() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && /^sb-.*-auth-token$/.test(k)) return true;
+    }
+  } catch (e) {}
+  return false;
 }
 
 function showLegacyMigrationNotice(username) {
@@ -6042,7 +6065,7 @@ async function checkLegacyMigrationGate() {
     } catch {}
   }
   const saved = getSavedUsername();
-  if (saved) showLegacyMigrationNotice(saved);
+  if (saved && !hasSupabaseAuthToken()) showLegacyMigrationNotice(saved);
 }
 
 async function refreshProfile() {
@@ -7183,6 +7206,7 @@ if (lbInputEl) lbInputEl.addEventListener('keydown', e => { if (e.key === 'Enter
 
 // State
 let lbData      = null;
+let _lastLbSelfSync = 0; // last time opening the leaderboard triggered a full own-streams re-sync (throttle)
 let lbPeriod    = 'daily';
 let lbSong      = 'all';
 let ogUsers     = new Set(); // lowercase usernames who are OG beta testers
