@@ -1,0 +1,35 @@
+name: Check Live Build
+# Fetches the live homepage from Vercel and reports whether the latest badge-load
+# timeout fix is actually deployed, plus caching headers — to tell a Vercel/SW
+# cache problem apart from a real code bug.
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch live index.html and check markers
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          URL = "https://blinksunited.com/"
+          out = subprocess.run(["curl", "-sS", "-L", "-D", "-", URL], capture_output=True, text=True)
+          body = out.stdout
+          # Split headers (last response) from body — curl -D - prints headers then body
+          # Find the marker strings we shipped
+          markers = {
+            "withTimeout(fetchSingleAccountStats": "per-account fetch timeout (commit 409c4ea)",
+            "stamps sync": "render-before-stamp-sync fix (commit b1f7d09)",
+            "function withTimeout": "withTimeout helper present",
+          }
+          print("=== HEADER / CACHE INFO (grep) ===")
+          for line in body.splitlines():
+              l = line.lower()
+              if l.startswith(("age:", "cache-control:", "x-vercel-cache:", "etag:", "last-modified:", "date:")):
+                  print(" ", line.strip())
+          print("\n=== BUILD MARKER CHECK ===")
+          for m, desc in markers.items():
+              print(f"  [{'PRESENT' if m in body else 'MISSING'}] {desc}")
+          print(f"\nlen(body)={len(body)}")
+          PY
