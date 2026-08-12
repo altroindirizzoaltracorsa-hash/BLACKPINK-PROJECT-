@@ -5989,6 +5989,18 @@ function withTimeout(promise, ms, label) {
 // ── PERSIST LOGIN ─────────────────────────────────────────────
 const LS_USER_KEY    = 'bu_lfm_username';
 const LS_LB_KEY      = 'bu_lb_username';
+const LS_DISPLAY_KEY = 'bu_display_name';
+
+// Cache the account display name locally so the header shows it instantly even
+// when the Supabase getSession() / leaderboard round-trip that provides it is
+// slow or times out on a flaky connection (otherwise we fall back to the ugly
+// "user1 + user2 + …" join).
+function saveDisplayName(name) {
+  try { if (name) localStorage.setItem(LS_DISPLAY_KEY, name); } catch(e) {}
+}
+function getSavedDisplayName() {
+  try { return localStorage.getItem(LS_DISPLAY_KEY) || ''; } catch(e) { return ''; }
+}
 
 function saveUsername(username) {
   try { localStorage.setItem(LS_USER_KEY, username); } catch(e) {}
@@ -6401,6 +6413,7 @@ async function loadMultiAccountProfile(accounts) {
     if (!combined.info) {
       const p = (_accounts[0] && _accounts[0].source_username) || 'You';
       combined.info = { name: p, image: [{}], playcount: 0,
+        displayName: getSavedDisplayName() || undefined,
         allAccounts: (acctBreakdown || _breakdown).map(a => ({
           username: a.username, source: a.source,
           playcount: a.playcount || 0, lastScrobbleTs: a.lastScrobbleTs || null })) };
@@ -6504,10 +6517,19 @@ async function loadMultiAccountProfile(accounts) {
     username: a.username, source: a.source,
     playcount: a.playcount || 0, lastScrobbleTs: a.lastScrobbleTs || null,
   }));
+  // Seed the display name from the local cache up front so the header shows it
+  // even if the getSession/leaderboard calls below are slow or time out.
+  if (!combined.info.displayName) {
+    const cachedName = getSavedDisplayName();
+    if (cachedName) combined.info.displayName = cachedName;
+  }
   if (sb) {
     try {
       const { data: { session } } = await withTimeout(sb.auth.getSession(), 8000, 'auth session');
-      if (session?.user?.user_metadata?.display_name) combined.info.displayName = session.user.user_metadata.display_name;
+      if (session?.user?.user_metadata?.display_name) {
+        combined.info.displayName = session.user.user_metadata.display_name;
+        saveDisplayName(combined.info.displayName);
+      }
     } catch {}
   }
 
@@ -6536,6 +6558,7 @@ async function loadMultiAccountProfile(accounts) {
   const serverDisplayName = await submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs, combined.bpGroupPlays, combined.memberPlays, true).catch(()=>null);
   if (serverDisplayName) {
     combined.info.displayName = serverDisplayName;
+    saveDisplayName(serverDisplayName);
     const el = document.getElementById('profile-username');
     if (el) el.textContent = serverDisplayName;
   }
