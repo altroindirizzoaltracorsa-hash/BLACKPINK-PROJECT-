@@ -1,0 +1,34 @@
+name: Leaderboard Submit Rejects (diagnostic)
+# Read-only: dumps the last ~50 rejected leaderboard submissions (401 token vs
+# 403 not-linked) captured server-side, so we can see exactly why an account
+# never appears on the board.
+on:
+  workflow_dispatch:
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump rejects
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          python3 - <<'PY'
+          import os, json, subprocess
+          KEY = os.environ["ADMIN_KEY"]
+          url = f"https://blinksunited.com/api/leaderboard?action=submit-rejects&key={KEY}"
+          out = subprocess.run(["curl","-sS","-L",url], capture_output=True, text=True)
+          try:
+              d = json.loads(out.stdout)
+          except Exception:
+              print("Unexpected response:", out.stdout[:500]); raise SystemExit(1)
+          rejects = d.get("rejects", [])
+          print(f"total recorded rejects: {d.get('count', 0)}\n")
+          for r in rejects:
+              print(f"[{r.get('at')}] {r.get('username')!r}  HTTP {r.get('status')}  — {r.get('reason')}")
+              extra = r.get("extra")
+              if extra:
+                  print(f"      submitted={extra.get('submitted')}")
+                  print(f"      linked   ={extra.get('linked')}")
+                  print(f"      appUserId={extra.get('appUserId')}")
+          PY

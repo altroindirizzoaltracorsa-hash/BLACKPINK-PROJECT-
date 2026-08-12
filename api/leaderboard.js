@@ -51,6 +51,17 @@ function supabase() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 }
 
+// Diagnostic: record the last ~50 rejected leaderboard submissions so we can see
+// server-side WHY an account never appears (401 token vs 403 not-linked), without
+// depending on a client-side banner. Read via GET ?action=submit-rejects&key=…
+async function logSubmitReject(username, status, reason, extra) {
+  try {
+    const rec = JSON.stringify({ username: username || null, status, reason: reason || null, extra: extra || null, at: new Date().toISOString() });
+    await redis.lpush('bu_submit_rejects', rec);
+    await redis.ltrim('bu_submit_rejects', 0, 49);
+  } catch (e) { /* never let logging break a request */ }
+}
+
 function safeMeta(meta) {
   if (typeof meta !== 'string') return '';
   return meta.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
@@ -124,6 +135,17 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const action = req.query.action;
+
+  // ── GET ?action=submit-rejects&key=ADMIN_SECRET — admin: last ~50 rejected submissions (diagnostic) ──
+  if (req.method === 'GET' && action === 'submit-rejects') {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    let rows = [];
+    try {
+      const raw = await redis.lrange('bu_submit_rejects', 0, 49);
+      rows = (raw || []).map(r => { try { return typeof r === 'string' ? JSON.parse(r) : r; } catch { return r; } });
+    } catch (e) { return res.status(500).json({ error: String(e) }); }
+    return res.status(200).json({ count: rows.length, rejects: rows });
+  }
 
   // ── GET /api/leaderboard?action=purge-unverified&key=ADMIN_SECRET[&dry=1] — admin: remove old-method users ──
   // Deletes leaderboard entries whose linked usernames have no row in Supabase linked_accounts.
@@ -595,17 +617,18 @@ export default async function handler(req, res) {
     if (!username || !scores) return res.status(400).json({ error: 'username and scores required' });
 
     // Require Supabase auth — old-method (no-token) submissions are no longer accepted.
-    if (!accessToken) return res.status(401).json({ error: 'Sign in required to appear on the leaderboard' });
+    if (!accessToken) { await logSubmitReject(username, 401, 'no accessToken'); return res.status(401).json({ error: 'Sign in required to appear on the leaderboard' }); }
     const sb = supabase();
     if (!sb) return res.status(503).json({ error: 'Server not configured' });
     const { data: { user }, error: authErr } = await sb.auth.getUser(accessToken);
-    if (authErr || !user) return res.status(401).json({ error: 'Session expired — please sign in again' });
+    if (authErr || !user) { await logSubmitReject(username, 401, 'getUser failed: ' + (authErr?.message || 'no user')); return res.status(401).json({ error: 'Session expired — please sign in again' }); }
 
     // Verify at least one submitted username is linked to this Supabase account.
     const { data: linked } = await sb.from('linked_accounts').select('source_username').eq('app_user_id', user.id);
     const linkedSet = new Set((linked || []).map(a => a.source_username.toLowerCase()));
     const submitted = [username, ...(Array.isArray(linkedAccounts) ? linkedAccounts.map(a => a.username || '') : [])].map(u => u.toLowerCase());
     if (!submitted.some(u => linkedSet.has(u))) {
+      await logSubmitReject(username, 403, 'no submitted username in linked_accounts for this user', { submitted, linked: Array.from(linkedSet), appUserId: user.id });
       return res.status(403).json({ error: 'Link your scrobbling account in settings before submitting scores' });
     }
 
