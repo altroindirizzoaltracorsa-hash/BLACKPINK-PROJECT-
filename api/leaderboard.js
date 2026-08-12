@@ -711,10 +711,33 @@ export default async function handler(req, res) {
     // board). Legacy rows with no recorded owner are left untouched — they get an
     // owner the next time that account submits.
     {
+      const src  = a => (a.type || a.source || '').toLowerCase();
+      const pair = a => `${src(a)}:${(a.username || '').toLowerCase()}`;
+      const ownedPairs = new Set(
+        (Array.isArray(linkedAccounts) ? linkedAccounts : [])
+          .filter(a => src(a) !== 'extension').map(pair));
       const selfKey = username.toLowerCase();
       for (const [k, entry] of Object.entries(data.users)) {
         if (k === selfKey || (data.banned || []).includes(k)) continue;
-        if (!(entry.appUserId && entry.appUserId === user.id)) continue;
+        // Fold in another row only when it's provably THIS person's:
+        //  - same Supabase owner id, OR
+        //  - a legacy row (no owner) whose every non-extension account is one this
+        //    user owns (by source+username) — e.g. an old duplicate keyed by the
+        //    display name ("_demibandwout") rather than a scrobbler username. A
+        //    shared username alone never qualifies (that is how distinct users used
+        //    to wipe each other); the whole account set must be owned. Respects
+        //    "same username, different scrobbler → keep both".
+        let sameOwner;
+        if (entry.appUserId) {
+          sameOwner = entry.appUserId === user.id;
+        } else {
+          const accts = Array.isArray(entry.linkedAccounts) && entry.linkedAccounts.length
+            ? entry.linkedAccounts
+            : [{ type: 'lastfm', username: entry.username }];
+          const real = accts.filter(a => src(a) !== 'extension');
+          sameOwner = real.length > 0 && real.every(a => ownedPairs.has(pair(a)));
+        }
+        if (!sameOwner) continue;
         // Inherit a custom displayName from the entry being merged in, so it
         // survives when the new submission falls back to a raw username.
         if (entry.displayName && entry.displayName !== (entry.username || '')) {
