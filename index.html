@@ -6489,9 +6489,16 @@ async function loadMultiAccountProfile(accounts) {
 
   currentUser = combined;
   saveUsername(primaryUsername);
-  await syncStampsFromServer(primaryUsername);
+  // Render the profile FIRST so the loading panel is never gated on a server
+  // round-trip. syncStampsFromServer only merges multiplier stamps into the
+  // local archive; if it's slow/hung we re-render once it lands rather than
+  // leaving the page spinning forever.
   persistTodayStamp(primaryUsername, combined.todayCounts);
   renderProfile(combined);
+  try {
+    await withTimeout(syncStampsFromServer(primaryUsername), 8000, 'stamps sync');
+    renderProfile(combined); // re-render with any server-merged multiplier stamps
+  } catch (e) { console.warn('Stamp sync slow/failed — showing profile without it', e); }
   // Awaited (not fire-and-forget) so callers that await loadMultiAccountProfile()
   // -- e.g. a forced leaderboard refresh -- can trust the server actually has
   // the fresh numbers before re-fetching it (otherwise the re-fetch can win
