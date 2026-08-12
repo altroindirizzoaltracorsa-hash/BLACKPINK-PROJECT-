@@ -136,15 +136,16 @@ export default async function handler(req, res) {
 
   const action = req.query.action;
 
-  // ── GET ?action=submit-rejects&key=ADMIN_SECRET — admin: last ~50 rejected submissions (diagnostic) ──
+  // ── GET ?action=submit-rejects&key=ADMIN_SECRET — admin: recent rejected + all submit attempts (diagnostic) ──
   if (req.method === 'GET' && action === 'submit-rejects') {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
-    let rows = [];
+    const parse = arr => (arr || []).map(r => { try { return typeof r === 'string' ? JSON.parse(r) : r; } catch { return r; } });
+    let rejects = [], attempts = [];
     try {
-      const raw = await redis.lrange('bu_submit_rejects', 0, 49);
-      rows = (raw || []).map(r => { try { return typeof r === 'string' ? JSON.parse(r) : r; } catch { return r; } });
+      rejects  = parse(await redis.lrange('bu_submit_rejects', 0, 49));
+      attempts = parse(await redis.lrange('bu_submit_attempts', 0, 79));
     } catch (e) { return res.status(500).json({ error: String(e) }); }
-    return res.status(200).json({ count: rows.length, rejects: rows });
+    return res.status(200).json({ rejectCount: rejects.length, attemptCount: attempts.length, rejects, attempts });
   }
 
   // ── GET /api/leaderboard?action=purge-unverified&key=ADMIN_SECRET[&dry=1] — admin: remove old-method users ──
@@ -614,6 +615,17 @@ export default async function handler(req, res) {
     }
 
     const { username, scores, avatar, updatedAt, lastScrobbleAt, displayName, linkedAccounts, cleanupKeys, accessToken, extensionIncluded } = body || {};
+    // Diagnostic: record EVERY submit attempt that reaches the server (capped list),
+    // so we can tell "client never sent it" (stale code / dead POST) apart from
+    // "server rejected it". Best-effort, never blocks the request.
+    try {
+      await redis.lpush('bu_submit_attempts', JSON.stringify({
+        username: username || null, hasToken: !!accessToken,
+        accounts: Array.isArray(linkedAccounts) ? linkedAccounts.map(a => `${a.type||a.source}:${a.username}`) : null,
+        at: new Date().toISOString(),
+      }));
+      await redis.ltrim('bu_submit_attempts', 0, 79);
+    } catch (e) {}
     if (!username || !scores) return res.status(400).json({ error: 'username and scores required' });
 
     // Require Supabase auth — old-method (no-token) submissions are no longer accepted.

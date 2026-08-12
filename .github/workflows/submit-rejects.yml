@@ -23,7 +23,11 @@ jobs:
           except Exception:
               print("Unexpected response:", out.stdout[:500]); raise SystemExit(1)
           rejects = d.get("rejects", [])
-          print(f"total recorded rejects: {d.get('count', 0)}\n")
+          attempts = d.get("attempts", [])
+          print(f"=== SUBMIT ATTEMPTS that reached the server: {d.get('attemptCount', 0)} ===")
+          for a in attempts:
+              print(f"[{a.get('at')}] {a.get('username')!r}  hasToken={a.get('hasToken')}  accounts={a.get('accounts')}")
+          print(f"\n=== REJECTED submits: {d.get('rejectCount', 0)} ===")
           for r in rejects:
               print(f"[{r.get('at')}] {r.get('username')!r}  HTTP {r.get('status')}  — {r.get('reason')}")
               extra = r.get("extra")
