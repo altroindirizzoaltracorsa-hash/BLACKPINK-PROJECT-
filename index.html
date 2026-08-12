@@ -12396,6 +12396,16 @@ async function shareMilestoneCard() {
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+  // When a new service worker version installs and takes control (skipWaiting +
+  // clients.claim in sw.js), reload ONCE so the page swaps to the fresh build
+  // instead of running stale cached JS until the user manually clears the cache.
+  // The _swReloaded guard prevents an infinite reload loop.
+  let _swReloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (_swReloaded) return;
+    _swReloaded = true;
+    location.reload();
+  });
 }
 
 // PWA install button logic

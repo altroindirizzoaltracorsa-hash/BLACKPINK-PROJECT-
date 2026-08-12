@@ -1,5 +1,8 @@
-const CACHE = 'bu-v6';
-const PRECACHE = ['/', '/index.html'];
+const CACHE = 'bu-v7';
+// NOTE: do NOT precache '/', it 302-redirects to /10years.html (see vercel.json)
+// and caching a redirected response under '/' poisons the fallback. Cache the
+// real app document instead.
+const PRECACHE = ['/index.html'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)));
