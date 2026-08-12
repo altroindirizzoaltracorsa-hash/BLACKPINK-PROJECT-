@@ -6607,25 +6607,35 @@ async function loadMultiAccountProfile(accounts) {
     if (avatar) { combined.info.oauthAvatar = avatar; saveAvatar(avatar); }
   }
 
-  if (_finalized) return; // watchdog already rendered a partial profile — don't fight it
+  // Finalize the on-screen render. If the 30s watchdog already rendered a partial
+  // profile (slow multi-account load), we DON'T bail out here — we still run the
+  // essential side-effects below, most importantly the leaderboard submit. Bailing
+  // early was the bug that kept slow multi-account profiles (5+ accounts on a poor
+  // connection) off the leaderboard entirely: the page showed, but nothing was
+  // ever submitted.
   clearTimeout(_watchdog);
-  _finalized = true;
   currentUser = combined;
   saveUsername(primaryUsername);
-  // Render the profile FIRST so the loading panel is never gated on a server
-  // round-trip. syncStampsFromServer only merges multiplier stamps into the
-  // local archive; if it's slow/hung we re-render once it lands rather than
-  // leaving the page spinning forever.
   persistTodayStamp(primaryUsername, combined.todayCounts);
-  renderProfile(combined);
-  // Non-blocking: pull the authoritative display name + login avatar from the
-  // auth session AFTER the page is already on screen, so a slow token refresh
-  // can never delay (or hang) the render. Update the header live when it lands.
-  refreshIdentityFromSession(combined);
-  try {
-    await withTimeout(syncStampsFromServer(primaryUsername), 8000, 'stamps sync');
-    renderProfile(combined); // re-render with any server-merged multiplier stamps
-  } catch (e) { console.warn('Stamp sync slow/failed — showing profile without it', e); }
+  if (!_finalized) {
+    _finalized = true;
+    // Render the profile FIRST so the loading panel is never gated on a server
+    // round-trip. syncStampsFromServer only merges multiplier stamps into the
+    // local archive; if it's slow/hung we re-render once it lands.
+    renderProfile(combined);
+    // Non-blocking: pull the authoritative display name + login avatar from the
+    // auth session AFTER the page is on screen, so a slow token refresh can never
+    // delay the render. Update the header live when it lands.
+    refreshIdentityFromSession(combined);
+    try {
+      await withTimeout(syncStampsFromServer(primaryUsername), 8000, 'stamps sync');
+      renderProfile(combined); // re-render with any server-merged multiplier stamps
+    } catch (e) { console.warn('Stamp sync slow/failed — showing profile without it', e); }
+  } else {
+    // Watchdog already rendered a partial view — upgrade it to the full data now
+    // that the load has finished, then fall through to the submit.
+    try { renderProfile(combined); refreshIdentityFromSession(combined); } catch (e) {}
+  }
   // Awaited (not fire-and-forget) so callers that await loadMultiAccountProfile()
   // -- e.g. a forced leaderboard refresh -- can trust the server actually has
   // the fresh numbers before re-fetching it (otherwise the re-fetch can win
