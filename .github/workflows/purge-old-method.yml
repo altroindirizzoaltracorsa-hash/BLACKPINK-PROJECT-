@@ -1,0 +1,49 @@
+name: Purge Old-Method Accounts
+# Removes leaderboard entries that signed up the OLD way (Last.fm username only,
+# no Supabase account) — i.e. entries whose linked usernames have no row in the
+# Supabase linked_accounts table. Verified accounts (yours included) are kept.
+# dry=true (default) only reports; dry=false actually purges.
+on:
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: "true = report only, false = actually purge"
+        required: true
+        default: "true"
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report / purge unverified entries
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          DRY: ${{ github.event.inputs.dry }}
+        run: |
+          python3 - <<'PY'
+          import os, json, subprocess
+          BASE = "https://blinksunited.com/api/leaderboard"
+          KEY  = os.environ["ADMIN_KEY"]
+          DRY  = os.environ.get("DRY", "true").lower() != "false"
+
+          url = f"{BASE}?action=purge-unverified&key={KEY}" + ("&dry=1" if DRY else "")
+          out = subprocess.run(["curl", "-sS", "-L", url], capture_output=True, text=True)
+          try:
+              d = json.loads(out.stdout)
+          except Exception:
+              print("Unexpected response:", out.stdout[:500] or out.stderr[:500]); raise SystemExit(1)
+
+          removed = d.get("removed", [])
+          kept    = d.get("kept", [])
+          print(f"mode: {'DRY RUN (nothing deleted)' if DRY else 'LIVE PURGE'}")
+          print(f"would remove: {len(removed)}   ·   keep (verified): {len(kept)}")
+          print("\n--- sample of entries that would be removed (most-recently-active first) ---")
+          for e in removed[:40]:
+              print(f"  {e.get('name'):<24}  lastScrobble={e.get('lastScrobbleAt')}  updated={e.get('updatedAt')}")
+          if len(removed) > 40:
+              print(f"  … and {len(removed) - 40} more")
+          if DRY:
+              print("\nDRY RUN — re-run with dry=false to actually purge the above.")
+          else:
+              print(f"\nPURGED {len(removed)} old-method entries.")
+          PY
