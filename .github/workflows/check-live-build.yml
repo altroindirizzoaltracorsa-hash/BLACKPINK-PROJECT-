@@ -20,10 +20,13 @@ jobs:
           # Split headers (last response) from body — curl -D - prints headers then body
           # Find the marker strings we shipped
           markers = {
-            "withTimeout(fetchSingleAccountStats": "per-account fetch timeout (commit 409c4ea)",
-            "Badge load watchdog": "30s load watchdog (commit 59bb31d)",
-            "auth session": "getSession timeout (commit 59bb31d)",
+            "Badge load watchdog": "30s load watchdog",
+            "getLocalAuthMetadata": "sync display-name/avatar from local auth token (latest)",
+            "refreshIdentityFromSession": "non-blocking getSession (latest)",
           }
+          sw = subprocess.run(["curl","-sS","-L","https://blinksunited.com/sw.js"], capture_output=True, text=True).stdout
+          print("=== SERVICE WORKER ===")
+          print("  sw.js cache version:", "bu-v8 PRESENT" if "bu-v8" in sw else ("stale: " + (sw.split('CACHE = ')[1].split(';')[0] if 'CACHE = ' in sw else '??')))
           print("=== HEADER / CACHE INFO (grep) ===")
           for line in body.splitlines():
               l = line.lower()
