@@ -1,0 +1,60 @@
+name: Delete Leaderboard Duplicate Row
+# One-off admin cleanup: removes a stale duplicate leaderboard row by key.
+# Used to drop the legacy display-name-keyed "_demibandwout" row that was
+# shadowing the real (fresh, extension-included) "alice9629" row.
+on:
+  workflow_dispatch:
+    inputs:
+      key:
+        description: "Leaderboard row key to delete (lowercased username/displayname)"
+        required: true
+        default: "_demibandwout"
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete row and verify
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          TARGET: ${{ github.event.inputs.key }}
+        run: |
+          python3 - <<'PY'
+          import os, json, urllib.request, urllib.parse, urllib.error
+          BASE   = "https://blinksunited.com/api/leaderboard"
+          KEY    = os.environ["ADMIN_KEY"]
+          TARGET = os.environ["TARGET"].strip().lower()
+
+          def call(url, method="GET", body=None):
+              data = json.dumps(body).encode() if body is not None else None
+              req = urllib.request.Request(url, data=data, method=method,
+                                           headers={"Content-Type": "application/json"})
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as r:
+                      return json.load(r)
+              except urllib.error.HTTPError as e:
+                  try: return json.load(e)
+                  except Exception: return {"httperror": e.code}
+              except Exception as e:
+                  return {"error": str(e)}
+
+          def daily(entry):
+              s = (entry or {}).get("scores", {})
+              return f"jump={s.get('daily_jump')} sd={s.get('daily_shutdown')} dd={s.get('daily_ddududu')} go={s.get('daily_go')} ltal={s.get('daily_ltal')}"
+
+          before = call(BASE).get("users", {})
+          print(f"BEFORE: '{TARGET}' present? {TARGET in before}")
+          if TARGET in before:
+              print(f"  {TARGET} daily: {daily(before[TARGET])}  appUserId={before[TARGET].get('appUserId')}")
+
+          url = f"{BASE}?action=delete-entry&key={urllib.parse.quote(KEY)}"
+          res = call(url, method="POST", body={"username": TARGET})
+          print(f"DELETE -> {res}")
+
+          after = call(BASE).get("users", {})
+          print(f"AFTER: '{TARGET}' present? {TARGET in after}")
+          # Show the surviving alice9629 row so we can confirm it now leads
+          for k in ("alice9629", "_demibandwout"):
+              if k in after:
+                  print(f"  survivor {k}: {daily(after[k])}  appUserId={after[k].get('appUserId')}")
+          PY
