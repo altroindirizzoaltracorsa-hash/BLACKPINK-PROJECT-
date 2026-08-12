@@ -6549,11 +6549,14 @@ async function loadMultiAccountProfile(accounts) {
     }
   }
 
+  _lb(_accounts[0] && _accounts[0].source_username, 'accounts-done');
+
   // Own Blinks United extension plays, folded in as a first-class account so it
   // shows in the account list and every per-track breakdown popup.
   let extAcct = null;
   try { extAcct = await withTimeout(buildExtensionAccount(), 15000, 'extension'); }
   catch (e) { console.warn('Extension fetch failed/timed out', e); }
+  _lb(_accounts[0] && _accounts[0].source_username, 'ext-done');
   if (extAcct) {
     _breakdown.push(extAcct);
     for (const k of ['jump','shutdown','ddududu','ltal','go']) {
@@ -6601,6 +6604,7 @@ async function loadMultiAccountProfile(accounts) {
     try { combined.info = await withTimeout(fetchUserInfo(primaryUsername, primaryFetchFn), 12000, primaryUsername + ' info'); } catch {}
   }
   if (!combined.info) combined.info = { name: primaryUsername, image: [{}], playcount: 0 };
+  _lb(primaryUsername, 'info-done');
   // Attach per-account list and display name to info for renderProfile
   combined.info.allAccounts = acctBreakdown.map(a => ({
     username: a.username, source: a.source,
