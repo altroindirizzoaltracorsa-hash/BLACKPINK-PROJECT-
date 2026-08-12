@@ -6010,6 +6010,28 @@ function saveAvatar(url) {
 function getSavedAvatar() {
   try { return localStorage.getItem(LS_AVATAR_KEY) || ''; } catch(e) { return ''; }
 }
+// Read the logged-in user's metadata (display name, avatar) SYNCHRONOUSLY straight
+// from the Supabase auth token already in localStorage — no getSession(), no
+// network, so it can't hang or time out on a flaky connection. Handles the couple
+// of shapes supabase-js has used for the stored session.
+function getLocalAuthMetadata() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !/^sb-.*-auth-token$/.test(k)) continue;
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      let obj;
+      try { obj = JSON.parse(raw); } catch { continue; }
+      const user = obj?.user
+        || obj?.currentSession?.user
+        || obj?.session?.user
+        || (Array.isArray(obj) ? obj.find(x => x?.user)?.user : null);
+      if (user?.user_metadata) return user.user_metadata;
+    }
+  } catch (e) {}
+  return null;
+}
 
 function saveUsername(username) {
   try { localStorage.setItem(LS_USER_KEY, username); } catch(e) {}
@@ -6421,8 +6443,10 @@ async function loadMultiAccountProfile(accounts) {
     _finalized = true;
     if (!combined.info) {
       const p = (_accounts[0] && _accounts[0].source_username) || 'You';
+      const m = getLocalAuthMetadata();
       combined.info = { name: p, image: [{}], playcount: 0,
-        displayName: getSavedDisplayName() || undefined,
+        displayName: m?.display_name || getSavedDisplayName() || undefined,
+        oauthAvatar: m?.avatar_url || m?.picture || getSavedAvatar() || undefined,
         allAccounts: (acctBreakdown || _breakdown).map(a => ({
           username: a.username, source: a.source,
           playcount: a.playcount || 0, lastScrobbleTs: a.lastScrobbleTs || null })) };
@@ -6526,17 +6550,19 @@ async function loadMultiAccountProfile(accounts) {
     username: a.username, source: a.source,
     playcount: a.playcount || 0, lastScrobbleTs: a.lastScrobbleTs || null,
   }));
-  // Seed the display name AND avatar from the local cache up front so the header
-  // shows them instantly. The authoritative values are refreshed from the auth
-  // session in the BACKGROUND after render (see refreshIdentityFromSession),
+  // Seed the display name AND avatar up front so the header shows them instantly.
+  // Source order (all synchronous, no network): the Supabase auth token already
+  // in localStorage → our own cached copy. The authoritative values are refreshed
+  // from the auth session in the BACKGROUND after render (refreshIdentityFromSession),
   // never blocking the page on a slow token refresh.
+  const localMeta = getLocalAuthMetadata();
   if (!combined.info.displayName) {
-    const cachedName = getSavedDisplayName();
-    if (cachedName) combined.info.displayName = cachedName;
+    const name = localMeta?.display_name || getSavedDisplayName();
+    if (name) { combined.info.displayName = name; saveDisplayName(name); }
   }
   if (!combined.info.oauthAvatar) {
-    const cachedAvatar = getSavedAvatar();
-    if (cachedAvatar) combined.info.oauthAvatar = cachedAvatar;
+    const avatar = localMeta?.avatar_url || localMeta?.picture || getSavedAvatar();
+    if (avatar) { combined.info.oauthAvatar = avatar; saveAvatar(avatar); }
   }
 
   if (_finalized) return; // watchdog already rendered a partial profile — don't fight it
