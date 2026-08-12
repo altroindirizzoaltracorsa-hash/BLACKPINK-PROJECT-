@@ -5977,6 +5977,15 @@ async function loadProfile(usernameOverride, silent = false) {
 
 function setLoading(msg) { document.getElementById('loading-text').textContent = msg; }
 
+// Reject a promise if it doesn't settle within `ms`, so one hung/rate-limited
+// account fetch can't freeze the whole profile load forever. The underlying
+// request keeps running but no longer blocks; the caller's try/catch skips it.
+function withTimeout(promise, ms, label) {
+  let t;
+  const timer = new Promise((_, rej) => { t = setTimeout(() => rej(new Error((label || 'request') + ' timed out')), ms); });
+  return Promise.race([promise, timer]).finally(() => clearTimeout(t));
+}
+
 // ── PERSIST LOGIN ─────────────────────────────────────────────
 const LS_USER_KEY    = 'bu_lfm_username';
 const LS_LB_KEY      = 'bu_lb_username';
@@ -6385,12 +6394,12 @@ async function loadMultiAccountProfile(accounts) {
   for (const acct of _accounts) {
     setLoading(`Loading ${acct.source_username}…`);
     try {
-      const stats = await fetchSingleAccountStats(acct.source, acct.source_username);
+      const stats = await withTimeout(fetchSingleAccountStats(acct.source, acct.source_username), 20000, acct.source_username);
       // BP family plays: BLACKPINK group + all 4 solo artists (per-member tracking)
       if (acct.source === 'lastfm' || acct.source === 'librefm') {
         const fetchFn = acct.source === 'librefm' ? librefmFetch : lfmFetch;
         try {
-          const solos = await Promise.all(['JISOO', 'JENNIE', 'ROSÉ', 'LISA'].map(a => fetchArtistPlays(acct.source_username, a, fetchFn)));
+          const solos = await withTimeout(Promise.all(['JISOO', 'JENNIE', 'ROSÉ', 'LISA'].map(a => fetchArtistPlays(acct.source_username, a, fetchFn))), 15000, acct.source_username + ' solos');
           const [jisooP, jennieP, roseP, lisaP] = solos;
           stats.memberPlays = { jisoo: jisooP, jennie: jennieP, rose: roseP, lisa: lisaP };
           stats.bpGroupPlays = stats.artistPlays;
@@ -6416,7 +6425,9 @@ async function loadMultiAccountProfile(accounts) {
 
   // Own Blinks United extension plays, folded in as a first-class account so it
   // shows in the account list and every per-track breakdown popup.
-  const extAcct = await buildExtensionAccount();
+  let extAcct = null;
+  try { extAcct = await withTimeout(buildExtensionAccount(), 15000, 'extension'); }
+  catch (e) { console.warn('Extension fetch failed/timed out', e); }
   if (extAcct) {
     _breakdown.push(extAcct);
     for (const k of ['jump','shutdown','ddududu','ltal','go']) {
@@ -6461,7 +6472,7 @@ async function loadMultiAccountProfile(accounts) {
   if (primaryAccount.source === 'lastfm' || primaryAccount.source === 'librefm') {
     const primaryFetchFn = primaryAccount.source === 'librefm' ? librefmFetch : lfmFetch;
     setLoading('Loading profile info…');
-    try { combined.info = await fetchUserInfo(primaryUsername, primaryFetchFn); } catch {}
+    try { combined.info = await withTimeout(fetchUserInfo(primaryUsername, primaryFetchFn), 12000, primaryUsername + ' info'); } catch {}
   }
   if (!combined.info) combined.info = { name: primaryUsername, image: [{}], playcount: 0 };
   // Attach per-account list and display name to info for renderProfile
