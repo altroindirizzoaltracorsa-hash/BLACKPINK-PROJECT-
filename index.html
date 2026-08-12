@@ -4742,7 +4742,6 @@ function showPage(page, { replace = false } = {}) {
   if (page === 'apple') loadAppleCharts();
   if (page === 'itunes') loadItunesCharts();
   if (page === 'leaderboard') {
-    if (!acctBreakdown) tryAutoLoad(); // pre-load per-service data so own-row breakdown works
     const pending = parseLbHistoryParam();
     if (pending) {
       lbPeriod = pending.period;
@@ -4750,8 +4749,20 @@ function showPage(page, { replace = false } = {}) {
       populateLbHistorySelect();
       loadLbHistory(pending.period, pending.key);
     } else {
-      refreshLeaderboard();
       populateLbHistorySelect();
+      // Every time the leaderboard opens: if the viewer is signed in, re-sync
+      // THEIR OWN streams and re-pull the board so their row is always live —
+      // no need to visit the badges page. Guests just render the (cached) board.
+      (async () => {
+        let signedIn = false;
+        try { signedIn = !!(sb && (await sb.auth.getSession()).data.session); } catch {}
+        if (signedIn) {
+          refreshLeaderboard(true); // syncs the viewer's own streams, then refetches the board
+        } else {
+          if (!acctBreakdown) tryAutoLoad(); // legacy-guest migration prompt (first open)
+          refreshLeaderboard();
+        }
+      })();
     }
   }
   if (_voteCountdownTimer) { clearInterval(_voteCountdownTimer); _voteCountdownTimer = null; }
