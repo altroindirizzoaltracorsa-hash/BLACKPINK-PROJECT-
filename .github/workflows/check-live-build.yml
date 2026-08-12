@@ -21,8 +21,8 @@ jobs:
           # Find the marker strings we shipped
           markers = {
             "withTimeout(fetchSingleAccountStats": "per-account fetch timeout (commit 409c4ea)",
-            "stamps sync": "render-before-stamp-sync fix (commit b1f7d09)",
-            "function withTimeout": "withTimeout helper present",
+            "Badge load watchdog": "30s load watchdog (commit 59bb31d)",
+            "auth session": "getSession timeout (commit 59bb31d)",
           }
           print("=== HEADER / CACHE INFO (grep) ===")
           for line in body.splitlines():
