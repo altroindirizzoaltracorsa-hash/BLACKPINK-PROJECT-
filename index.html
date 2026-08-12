@@ -6526,24 +6526,17 @@ async function loadMultiAccountProfile(accounts) {
     username: a.username, source: a.source,
     playcount: a.playcount || 0, lastScrobbleTs: a.lastScrobbleTs || null,
   }));
-  // Seed the display name from the local cache up front so the header shows it
-  // even if the getSession/leaderboard calls below are slow or time out.
+  // Seed the display name AND avatar from the local cache up front so the header
+  // shows them instantly. The authoritative values are refreshed from the auth
+  // session in the BACKGROUND after render (see refreshIdentityFromSession),
+  // never blocking the page on a slow token refresh.
   if (!combined.info.displayName) {
     const cachedName = getSavedDisplayName();
     if (cachedName) combined.info.displayName = cachedName;
   }
-  if (sb) {
-    try {
-      const { data: { session } } = await withTimeout(sb.auth.getSession(), 8000, 'auth session');
-      const meta = session?.user?.user_metadata;
-      if (meta?.display_name) {
-        combined.info.displayName = meta.display_name;
-        saveDisplayName(combined.info.displayName);
-      }
-      // Profile picture from the login provider (X / Discord / Google).
-      const oauthAvatar = meta?.avatar_url || meta?.picture || '';
-      if (oauthAvatar) { combined.info.oauthAvatar = oauthAvatar; saveAvatar(oauthAvatar); }
-    } catch {}
+  if (!combined.info.oauthAvatar) {
+    const cachedAvatar = getSavedAvatar();
+    if (cachedAvatar) combined.info.oauthAvatar = cachedAvatar;
   }
 
   if (_finalized) return; // watchdog already rendered a partial profile — don't fight it
@@ -6557,6 +6550,10 @@ async function loadMultiAccountProfile(accounts) {
   // leaving the page spinning forever.
   persistTodayStamp(primaryUsername, combined.todayCounts);
   renderProfile(combined);
+  // Non-blocking: pull the authoritative display name + login avatar from the
+  // auth session AFTER the page is already on screen, so a slow token refresh
+  // can never delay (or hang) the render. Update the header live when it lands.
+  refreshIdentityFromSession(combined);
   try {
     await withTimeout(syncStampsFromServer(primaryUsername), 8000, 'stamps sync');
     renderProfile(combined); // re-render with any server-merged multiplier stamps
@@ -6660,6 +6657,31 @@ async function buildExtensionAccount() {
       lastScrobbleTs: lastTs || null,
     };
   } catch { return null; }
+}
+
+// Fetch the display name + login avatar from the auth session WITHOUT blocking
+// the render. Called after renderProfile — when it resolves it caches the values
+// and patches the header/avatar in place (only if they actually changed), so a
+// slow or hung token refresh can never stall the page. Fire-and-forget.
+function refreshIdentityFromSession(combined) {
+  if (typeof sb === 'undefined' || !sb) return;
+  withTimeout(sb.auth.getSession(), 8000, 'auth session').then(({ data: { session } }) => {
+    const meta = session?.user?.user_metadata;
+    if (!meta) return;
+    if (meta.display_name && meta.display_name !== combined.info.displayName) {
+      combined.info.displayName = meta.display_name;
+      saveDisplayName(meta.display_name);
+      const el = document.getElementById('profile-username');
+      if (el && combined.info.allAccounts) el.textContent = meta.display_name;
+    }
+    const oa = meta.avatar_url || meta.picture || '';
+    if (oa && oa !== combined.info.oauthAvatar) {
+      combined.info.oauthAvatar = oa;
+      saveAvatar(oa);
+      const wrap = document.getElementById('profile-avatar-wrap');
+      if (wrap) wrap.innerHTML = `<img class="user-avatar" src="${oa}" alt="${combined.info.name || ''}">`;
+    }
+  }).catch(() => {});
 }
 
 function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs }) {
