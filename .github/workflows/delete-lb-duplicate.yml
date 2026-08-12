@@ -47,9 +47,16 @@ jobs:
           if TARGET in before:
               print(f"  {TARGET} daily: {daily(before[TARGET])}  appUserId={before[TARGET].get('appUserId')}")
 
+          # NOTE: use os.system(curl -L) — Vercel answers a bare POST here with a
+          # 308 redirect that urllib won't replay the POST through; curl -L does.
           url = f"{BASE}?action=delete-entry&key={urllib.parse.quote(KEY)}"
-          res = call(url, method="POST", body={"username": TARGET})
-          print(f"DELETE -> {res}")
+          import subprocess
+          out = subprocess.run(
+              ["curl", "-sS", "-L", "-X", "POST", url,
+               "-H", "Content-Type: application/json",
+               "-d", json.dumps({"username": TARGET})],
+              capture_output=True, text=True)
+          print(f"DELETE -> {out.stdout or out.stderr}")
 
           after = call(BASE).get("users", {})
           print(f"AFTER: '{TARGET}' present? {TARGET in after}")
