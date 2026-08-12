@@ -1,4 +1,4 @@
-const CACHE = 'bu-v15';
+const CACHE = 'bu-v16';
 // NOTE: do NOT precache '/', it 302-redirects to /10years.html (see vercel.json)
 // and caching a redirected response under '/' poisons the fallback. Cache the
 // real app document instead.

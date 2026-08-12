@@ -156,7 +156,7 @@ export default async function handler(req, res) {
   //    no auth — it carries no data beyond a username ping. ──
   if (action === 'submit-beacon') {
     try {
-      await redis.lpush('bu_submit_beacons', JSON.stringify({ u: req.query.u || null, at: new Date().toISOString() }));
+      await redis.lpush('bu_submit_beacons', JSON.stringify({ u: req.query.u || null, stage: req.query.stage || 'submit', at: new Date().toISOString() }));
       await redis.ltrim('bu_submit_beacons', 0, 79);
     } catch (e) {}
     return res.status(204).end();

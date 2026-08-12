@@ -27,7 +27,7 @@ jobs:
           beacons = d.get("beacons", [])
           print(f"=== CLIENT BEACONS (submit attempted on device): {d.get('beaconCount', 0)} ===")
           for b in beacons:
-              print(f"[{b.get('at')}] u={b.get('u')!r}")
+              print(f"[{b.get('at')}] u={b.get('u')!r}  stage={b.get('stage')}")
           print(f"\n=== SUBMIT ATTEMPTS that reached the server: {d.get('attemptCount', 0)} ===")
           for a in attempts:
               print(f"[{a.get('at')}] {a.get('username')!r}  hasToken={a.get('hasToken')}  accounts={a.get('accounts')}")
