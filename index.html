@@ -2371,6 +2371,14 @@
             <input id="s-goal" class="settings-input" type="number" min="1" placeholder="e.g. 150" oninput="saveSetting('goal',this.value)">
             <p class="settings-hint">Overrides default tier targets for your display</p>
           </div>
+          <div class="settings-group">
+            <label class="settings-label">Profile picture</label>
+            <div class="settings-pills" id="s-photo">
+              <button class="s-pill" data-val="login" onclick="setPhoto('login')">My login picture</button>
+              <button class="s-pill" data-val="none" onclick="setPhoto('none')">No picture</button>
+            </div>
+            <p class="settings-hint">Shown on your badges page and the leaderboard. (Uploading a custom picture is coming later.)</p>
+          </div>
         </div>
 
         <!-- Account Settings (shown when signed in) -->
@@ -6452,6 +6460,9 @@ async function loadMultiAccountProfile(accounts) {
           playcount: a.playcount || 0, lastScrobbleTs: a.lastScrobbleTs || null })) };
     }
     if (!combined.weekDays) combined.weekDays = [];
+    // Make sure the per-account breakdown (tapping the profile numbers) still
+    // works even in this partial render — it needs acctBreakdown populated.
+    if (!acctBreakdown && _breakdown.length) acctBreakdown = _breakdown;
     currentUser = combined;
     try { renderProfile(combined); }
     catch (e) { console.warn('watchdog render failed', e); document.getElementById('loading-panel').style.display = 'none'; }
@@ -6766,12 +6777,15 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   document.getElementById('settings-panel').style.display = 'none'; // reset on new profile load
   initSettings();
 
-  // Prefer the login-provider avatar, then the Last.fm image, then the locally
-  // cached one — so a slow/timed-out session or fetchUserInfo can't blank it.
-  const avatarUrl = info.oauthAvatar
+  // Profile picture. If the user chose "no picture" in settings, show the letter
+  // tile. Otherwise prefer the login-provider avatar, then the Last.fm image,
+  // then the locally cached one — so a slow/timed-out session can't blank it.
+  const _photoPref = (loadSettings().photo) || 'login';
+  const avatarUrl = _photoPref === 'none' ? '' : (
+       info.oauthAvatar
     || (info.image || []).find(i => i.size === 'medium')?.[`#text`]
     || getSavedAvatar()
-    || '';
+    || '');
   if (avatarUrl) saveAvatar(avatarUrl);
   const wrap = document.getElementById('profile-avatar-wrap');
   wrap.innerHTML = avatarUrl
@@ -7457,7 +7471,12 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       .map(a => a.username.toLowerCase())
       .filter(k => k !== username.toLowerCase());
 
-    const avatarUrl = (userInfo.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
+    // Leaderboard avatar = the same picture the badges page shows: honour the
+    // "no picture" setting, else prefer the login-provider avatar (so it matches
+    // the profile header), then the Last.fm image, then the cached copy.
+    const _photoPref = (loadSettings().photo) || 'login';
+    const _lfmImg = (userInfo.image || []).find(i => i.size === 'medium')?.[`#text`] || '';
+    const avatarUrl = _photoPref === 'none' ? '' : (userInfo.oauthAvatar || _lfmImg || getSavedAvatar() || '');
 
     const today = italyDateLabel();
     const { from: _wf } = getWeekBounds();
@@ -10585,7 +10604,7 @@ async function shareCard() {
 }
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────────
-const S_KEYS = { email: 'bu_s_email', threshold: 'bu_s_threshold', songs: 'bu_s_songs', goal: 'bu_s_goal' };
+const S_KEYS = { email: 'bu_s_email', threshold: 'bu_s_threshold', songs: 'bu_s_songs', goal: 'bu_s_goal', photo: 'bu_s_photo' };
 
 function loadSettings() {
   return {
@@ -10593,6 +10612,7 @@ function loadSettings() {
     threshold: parseInt(localStorage.getItem(S_KEYS.threshold) || '3', 10),
     songs:     JSON.parse(localStorage.getItem(S_KEYS.songs)   || '["jump","shutdown","ddududu","ltal"]'),
     goal:      localStorage.getItem(S_KEYS.goal)      || '',
+    photo:     localStorage.getItem(S_KEYS.photo)     || 'login', // 'login' | 'none'
   };
 }
 
@@ -10622,6 +10642,38 @@ function renderSettings() {
   document.querySelectorAll('#s-songs .s-pill').forEach(btn => {
     btn.classList.toggle('active', s.songs.includes(btn.dataset.id));
   });
+  // Profile-picture pills
+  document.querySelectorAll('#s-photo .s-pill').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.val === s.photo);
+  });
+}
+
+// Choose whether the profile picture comes from the login provider or is hidden.
+// Updates the badges header immediately and re-submits so the leaderboard row's
+// avatar matches (or clears) right away.
+function setPhoto(val) {
+  saveSetting('photo', val);
+  document.querySelectorAll('#s-photo .s-pill').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.val === val);
+  });
+  // Update the header avatar in place — do NOT call renderProfile(), which would
+  // close the settings panel the user is standing in.
+  const wrap = document.getElementById('profile-avatar-wrap');
+  const info = currentUser?.info;
+  if (wrap && info) {
+    const url = val === 'none' ? '' : (
+      info.oauthAvatar || (info.image || []).find(i => i.size === 'medium')?.[`#text`] || getSavedAvatar() || '');
+    wrap.innerHTML = url
+      ? `<img class="user-avatar" src="${url}" alt="${info.name || ''}">`
+      : `<div class="user-avatar-placeholder">${((info.displayName || info.name || '?')[0] || '?').toUpperCase()}</div>`;
+  }
+  // Push the change to the leaderboard so its avatar matches (or clears) too.
+  if (info) {
+    const c = currentUser;
+    submitToLeaderboard(c.info, c.totalPlays, c.todayCounts, c.weekCounts, c.artistPlays, c.lastScrobbleTs, c.bpGroupPlays, c.memberPlays, true)
+      .then(() => { if (document.getElementById('page-leaderboard')?.classList.contains('active')) fetchLbData(true).then(renderLeaderboard).catch(()=>{}); })
+      .catch(() => {});
+  }
 }
 
 function setThreshold(days) {
