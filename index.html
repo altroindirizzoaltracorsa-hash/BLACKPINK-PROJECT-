@@ -6027,8 +6027,9 @@ function getLocalAuthMetadata() {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k || !/^sb-.*-auth-token$/.test(k)) continue;
-      const raw = localStorage.getItem(k);
+      let raw = localStorage.getItem(k);
       if (!raw) continue;
+      if (raw.startsWith('base64-')) { try { raw = atob(raw.slice(7)); } catch { continue; } }
       let obj;
       try { obj = JSON.parse(raw); } catch { continue; }
       const user = obj?.user
@@ -6052,8 +6053,10 @@ function getLocalAccessToken() {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k || !/^sb-.*-auth-token$/.test(k)) continue;
-      const raw = localStorage.getItem(k);
+      let raw = localStorage.getItem(k);
       if (!raw) continue;
+      // Newer supabase-js stores the session base64-encoded ("base64-<...>").
+      if (raw.startsWith('base64-')) { try { raw = atob(raw.slice(7)); } catch { continue; } }
       let obj;
       try { obj = JSON.parse(raw); } catch { continue; }
       const sess = obj?.currentSession || obj?.session

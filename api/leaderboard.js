@@ -150,7 +150,13 @@ export default async function handler(req, res) {
         : [{ username: entry.username }];
       const hasVerified = accounts.some(a => verified.has((a.username || '').toLowerCase()));
       const info = { name: entry.displayName || entry.username, updatedAt: entry.updatedAt || null, lastScrobbleAt: entry.lastScrobbleAt || null };
-      if (hasVerified) {
+      // NEVER purge a row that belongs to a signed-in Supabase account. appUserId
+      // is set on every authenticated submit, so its presence is proof this is a
+      // real account — not an old Last.fm-only guest — even if that account's
+      // scrobbler username happens not to appear in the linked_accounts snapshot
+      // (e.g. same username under a different scrobbler service). This is what
+      // stops the purge from wiping real X/Discord/Google accounts.
+      if (entry.appUserId || hasVerified) {
         kept.push(info);
       } else {
         removed.push(info);
