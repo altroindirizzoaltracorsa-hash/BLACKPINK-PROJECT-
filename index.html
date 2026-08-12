@@ -7562,7 +7562,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       weekly_start:     weekStart,
     };
 
-    const postScores = tok => fetch('/api/leaderboard', {
+    const postScoresOnce = tok => fetch('/api/leaderboard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -7578,6 +7578,18 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
         accessToken: tok,
       })
     });
+    // Retry the POST on a NETWORK failure (fetch rejects) — on a flaky mobile
+    // connection the submission can die before it ever reaches the server, which
+    // is why a multi-account profile could load yet never appear on the board
+    // (nothing was even logged server-side). Up to 4 tries with backoff.
+    const postScores = async tok => {
+      let lastErr;
+      for (let i = 0; i < 4; i++) {
+        try { return await postScoresOnce(tok); }
+        catch (e) { lastErr = e; await new Promise(r => setTimeout(r, 800 * (i + 1))); }
+      }
+      throw lastErr;
+    };
 
     // fetch() only rejects on a network failure -- a 4xx/5xx response (e.g. an
     // expired Supabase session token) resolves normally and was previously
