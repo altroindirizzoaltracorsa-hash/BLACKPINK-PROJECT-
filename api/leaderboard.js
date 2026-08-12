@@ -145,7 +145,21 @@ export default async function handler(req, res) {
       rejects  = parse(await redis.lrange('bu_submit_rejects', 0, 49));
       attempts = parse(await redis.lrange('bu_submit_attempts', 0, 79));
     } catch (e) { return res.status(500).json({ error: String(e) }); }
-    return res.status(200).json({ rejectCount: rejects.length, attemptCount: attempts.length, rejects, attempts });
+    let beacons = [];
+    try { beacons = parse(await redis.lrange('bu_submit_beacons', 0, 79)); } catch (e) {}
+    return res.status(200).json({ rejectCount: rejects.length, attemptCount: attempts.length, beaconCount: beacons.length, rejects, attempts, beacons });
+  }
+
+  // ── ?action=submit-beacon&u=NAME — client fires this the instant it ATTEMPTS a
+  //    leaderboard submit (before the POST), via navigator.sendBeacon. Tells us the
+  //    client reached the submit even if the POST later dies on the network. Open,
+  //    no auth — it carries no data beyond a username ping. ──
+  if (action === 'submit-beacon') {
+    try {
+      await redis.lpush('bu_submit_beacons', JSON.stringify({ u: req.query.u || null, at: new Date().toISOString() }));
+      await redis.ltrim('bu_submit_beacons', 0, 79);
+    } catch (e) {}
+    return res.status(204).end();
   }
 
   // ── GET /api/leaderboard?action=purge-unverified&key=ADMIN_SECRET[&dry=1] — admin: remove old-method users ──

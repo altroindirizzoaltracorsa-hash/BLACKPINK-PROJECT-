@@ -7600,6 +7600,12 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       throw lastErr;
     };
 
+    // Diagnostic beacon: fire the instant we ATTEMPT the submit (before the POST),
+    // so we can see server-side that the client reached this point even if the POST
+    // then dies on a flaky network. sendBeacon is fire-and-forget and survives page
+    // unload. Harmless ping — just a username.
+    try { navigator.sendBeacon && navigator.sendBeacon('/api/leaderboard?action=submit-beacon&u=' + encodeURIComponent(username)); } catch (e) {}
+
     // fetch() only rejects on a network failure -- a 4xx/5xx response (e.g. an
     // expired Supabase session token) resolves normally and was previously
     // ignored entirely, so a rejected submission looked identical to a

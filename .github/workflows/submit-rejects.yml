@@ -24,7 +24,11 @@ jobs:
               print("Unexpected response:", out.stdout[:500]); raise SystemExit(1)
           rejects = d.get("rejects", [])
           attempts = d.get("attempts", [])
-          print(f"=== SUBMIT ATTEMPTS that reached the server: {d.get('attemptCount', 0)} ===")
+          beacons = d.get("beacons", [])
+          print(f"=== CLIENT BEACONS (submit attempted on device): {d.get('beaconCount', 0)} ===")
+          for b in beacons:
+              print(f"[{b.get('at')}] u={b.get('u')!r}")
+          print(f"\n=== SUBMIT ATTEMPTS that reached the server: {d.get('attemptCount', 0)} ===")
           for a in attempts:
               print(f"[{a.get('at')}] {a.get('username')!r}  hasToken={a.get('hasToken')}  accounts={a.get('accounts')}")
           print(f"\n=== REJECTED submits: {d.get('rejectCount', 0)} ===")
