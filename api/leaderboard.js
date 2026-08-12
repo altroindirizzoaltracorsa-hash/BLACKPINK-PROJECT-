@@ -177,30 +177,17 @@ export default async function handler(req, res) {
     });
   }
 
-  // ── GET ?action=submit-rejects&key=ADMIN_SECRET — admin: recent rejected + all submit attempts (diagnostic) ──
+  // ── GET ?action=submit-rejects&key=ADMIN_SECRET — admin: recent rejected submissions.
+  //    Kept as a lightweight, low-overhead diagnostic (only writes on a rejection, which
+  //    is rare) so "why isn't account X on the board" can be answered without guesswork. ──
   if (req.method === 'GET' && action === 'submit-rejects') {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
     const parse = arr => (arr || []).map(r => { try { return typeof r === 'string' ? JSON.parse(r) : r; } catch { return r; } });
-    let rejects = [], attempts = [];
+    let rejects = [];
     try {
-      rejects  = parse(await redis.lrange('bu_submit_rejects', 0, 49));
-      attempts = parse(await redis.lrange('bu_submit_attempts', 0, 79));
+      rejects = parse(await redis.lrange('bu_submit_rejects', 0, 49));
     } catch (e) { return res.status(500).json({ error: String(e) }); }
-    let beacons = [];
-    try { beacons = parse(await redis.lrange('bu_submit_beacons', 0, 79)); } catch (e) {}
-    return res.status(200).json({ rejectCount: rejects.length, attemptCount: attempts.length, beaconCount: beacons.length, rejects, attempts, beacons });
-  }
-
-  // ── ?action=submit-beacon&u=NAME — client fires this the instant it ATTEMPTS a
-  //    leaderboard submit (before the POST), via navigator.sendBeacon. Tells us the
-  //    client reached the submit even if the POST later dies on the network. Open,
-  //    no auth — it carries no data beyond a username ping. ──
-  if (action === 'submit-beacon') {
-    try {
-      await redis.lpush('bu_submit_beacons', JSON.stringify({ u: req.query.u || null, stage: req.query.stage || 'submit', at: new Date().toISOString() }));
-      await redis.ltrim('bu_submit_beacons', 0, 79);
-    } catch (e) {}
-    return res.status(204).end();
+    return res.status(200).json({ rejectCount: rejects.length, rejects });
   }
 
   // ── GET /api/leaderboard?action=purge-unverified&key=ADMIN_SECRET[&dry=1] — admin: remove old-method users ──
@@ -670,17 +657,6 @@ export default async function handler(req, res) {
     }
 
     const { username, scores, avatar, updatedAt, lastScrobbleAt, displayName, linkedAccounts, cleanupKeys, accessToken, extensionIncluded } = body || {};
-    // Diagnostic: record EVERY submit attempt that reaches the server (capped list),
-    // so we can tell "client never sent it" (stale code / dead POST) apart from
-    // "server rejected it". Best-effort, never blocks the request.
-    try {
-      await redis.lpush('bu_submit_attempts', JSON.stringify({
-        username: username || null, hasToken: !!accessToken,
-        accounts: Array.isArray(linkedAccounts) ? linkedAccounts.map(a => `${a.type||a.source}:${a.username}`) : null,
-        at: new Date().toISOString(),
-      }));
-      await redis.ltrim('bu_submit_attempts', 0, 79);
-    } catch (e) {}
     if (!username || !scores) return res.status(400).json({ error: 'username and scores required' });
 
     // Require Supabase auth — old-method (no-token) submissions are no longer accepted.

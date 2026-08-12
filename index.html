@@ -6473,11 +6473,6 @@ async function loadMultiAccountProfile(accounts) {
     _seen.add(k); return true;
   });
 
-  // Diagnostic staged beacons — report how far this load gets, so we can pinpoint
-  // where a specific multi-account profile stalls before ever submitting.
-  const _lb = (u, stage) => { try { navigator.sendBeacon && navigator.sendBeacon('/api/leaderboard?action=submit-beacon&u=' + encodeURIComponent(u || '') + '&stage=' + stage); } catch (e) {} };
-  _lb(_accounts[0] && _accounts[0].source_username, 'load-start');
-
   // Hard escape hatch: no matter which network call stalls, never leave the user
   // staring at the spinner forever. After 30s, render whatever we've gathered so
   // far (the per-day floor keeps the numbers honest) and drop the loading panel.
@@ -6549,14 +6544,11 @@ async function loadMultiAccountProfile(accounts) {
     }
   }
 
-  _lb(_accounts[0] && _accounts[0].source_username, 'accounts-done');
-
   // Own Blinks United extension plays, folded in as a first-class account so it
   // shows in the account list and every per-track breakdown popup.
   let extAcct = null;
   try { extAcct = await withTimeout(buildExtensionAccount(), 15000, 'extension'); }
   catch (e) { console.warn('Extension fetch failed/timed out', e); }
-  _lb(_accounts[0] && _accounts[0].source_username, 'ext-done');
   if (extAcct) {
     _breakdown.push(extAcct);
     for (const k of ['jump','shutdown','ddududu','ltal','go']) {
@@ -6604,7 +6596,6 @@ async function loadMultiAccountProfile(accounts) {
     try { combined.info = await withTimeout(fetchUserInfo(primaryUsername, primaryFetchFn), 12000, primaryUsername + ' info'); } catch {}
   }
   if (!combined.info) combined.info = { name: primaryUsername, image: [{}], playcount: 0 };
-  _lb(primaryUsername, 'info-done');
   // Attach per-account list and display name to info for renderProfile
   combined.info.allAccounts = acctBreakdown.map(a => ({
     username: a.username, source: a.source,
@@ -6661,7 +6652,6 @@ async function loadMultiAccountProfile(accounts) {
   // Submit the SAME folded numbers the badges page displays (extension included),
   // and flag it so the server does not add the extension a second time. This is
   // what keeps the leaderboard identical to the badges page.
-  _lb(primaryUsername, 'reached-submit');
   const serverDisplayName = await submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs, combined.bpGroupPlays, combined.memberPlays, true).catch(()=>null);
   if (serverDisplayName) {
     combined.info.displayName = serverDisplayName;
@@ -7609,12 +7599,6 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       }
       throw lastErr;
     };
-
-    // Diagnostic beacon: fire the instant we ATTEMPT the submit (before the POST),
-    // so we can see server-side that the client reached this point even if the POST
-    // then dies on a flaky network. sendBeacon is fire-and-forget and survives page
-    // unload. Harmless ping — just a username.
-    try { navigator.sendBeacon && navigator.sendBeacon('/api/leaderboard?action=submit-beacon&u=' + encodeURIComponent(username) + '&stage=submit'); } catch (e) {}
 
     // fetch() only rejects on a network failure -- a 4xx/5xx response (e.g. an
     // expired Supabase session token) resolves normally and was previously
