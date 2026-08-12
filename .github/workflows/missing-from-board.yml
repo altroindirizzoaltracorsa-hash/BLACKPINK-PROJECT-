@@ -1,0 +1,32 @@
+name: Missing From Leaderboard (impact scan)
+# Read-only: counts how many Supabase users who linked scrobblers are NOT on the
+# leaderboard — the blast radius of the fresh-session multi-account submit crash.
+on:
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          python3 - <<'PY'
+          import os, json, subprocess
+          KEY = os.environ["ADMIN_KEY"]
+          url = f"https://blinksunited.com/api/leaderboard?action=missing-from-board&key={KEY}"
+          out = subprocess.run(["curl","-sS","-L",url], capture_output=True, text=True)
+          try:
+              d = json.loads(out.stdout)
+          except Exception:
+              print("Unexpected response:", out.stdout[:500]); raise SystemExit(1)
+          print(f"linked users (have >=1 scrobbler in Supabase): {d.get('linkedUsersTotal')}")
+          print(f"multi-account users:                          {d.get('multiAccountUsers')}")
+          print(f"  ↳ multi-account MISSING from leaderboard:   {d.get('multiAccountMissing')}")
+          print(f"single-account users MISSING:                 {d.get('singleAccountMissing')}")
+          print()
+          print("--- missing multi-account users (sample) ---")
+          for m in d.get("missingMultiSample", []):
+              print(f"  {m.get('uid')}: {m.get('accounts')}")
+          PY

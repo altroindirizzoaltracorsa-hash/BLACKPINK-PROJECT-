@@ -136,6 +136,47 @@ export default async function handler(req, res) {
 
   const action = req.query.action;
 
+  // ── GET ?action=missing-from-board&key=ADMIN_SECRET — admin: how many linked
+  //    (esp. multi-account) users are NOT on the leaderboard. Quantifies the blast
+  //    radius of the fresh-session submit crash. ──
+  if (req.method === 'GET' && action === 'missing-from-board') {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const sb = supabase();
+    if (!sb) return res.status(503).json({ error: 'Supabase not configured' });
+    const { data: linked, error: le } = await sb.from('linked_accounts').select('app_user_id, source, source_username');
+    if (le) return res.status(500).json({ error: le.message });
+    const byUser = {};
+    for (const r of (linked || [])) { (byUser[r.app_user_id] ||= []).push(r); }
+    const board = (await redis.get(LB_KEY))?.users || {};
+    const onBoard = new Set();
+    const boardAppUsers = new Set();
+    for (const [k, e] of Object.entries(board)) {
+      onBoard.add(k.toLowerCase());
+      if (e.appUserId) boardAppUsers.add(e.appUserId);
+      for (const a of (e.linkedAccounts || [])) onBoard.add((a.username || '').toLowerCase());
+    }
+    let total = 0, multi = 0, missingSingle = 0;
+    const missingMulti = [];
+    for (const [uid, accts] of Object.entries(byUser)) {
+      total++;
+      const isMulti = accts.length >= 2 || (accts.length === 1 && (accts[0].source || '').toLowerCase() !== 'lastfm');
+      const present = boardAppUsers.has(uid) || accts.some(a => onBoard.has((a.source_username || '').toLowerCase()));
+      if (isMulti) {
+        multi++;
+        if (!present) missingMulti.push({ uid, accounts: accts.map(a => `${a.source}:${a.source_username}`) });
+      } else if (!present) {
+        missingSingle++;
+      }
+    }
+    return res.status(200).json({
+      linkedUsersTotal: total,
+      multiAccountUsers: multi,
+      multiAccountMissing: missingMulti.length,
+      singleAccountMissing: missingSingle,
+      missingMultiSample: missingMulti.slice(0, 60),
+    });
+  }
+
   // ── GET ?action=submit-rejects&key=ADMIN_SECRET — admin: recent rejected + all submit attempts (diagnostic) ──
   if (req.method === 'GET' && action === 'submit-rejects') {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
