@@ -6575,7 +6575,7 @@ async function loadMultiAccountProfile(accounts) {
   // a scrobbler (the one legitimate reason for a drop) clears it and lets the
   // number fall. Applied to the folded counts, so the badges page AND the
   // leaderboard submission below share the exact same floored values.
-  applyTodayFloor(combined.todayCounts, accountsFingerprint(data));
+  applyTodayFloor(combined.todayCounts, accountsFingerprint(_accounts));
 
   // Combine per-day counts across all accounts for weekly table
   const weekDays = [];
