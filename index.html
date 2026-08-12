@@ -12669,7 +12669,19 @@ async function shareMilestoneCard() {
 
 <script>
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      // Check for a new build AGGRESSIVELY so users never linger on a stale cached
+      // version (which is what stranded people on buggy builds). Check right away,
+      // every 60s, and whenever the tab regains focus. When a new sw.js is found it
+      // installs, activates (skipWaiting + clients.claim), and controllerchange
+      // below reloads the page onto it.
+      reg.update();
+      setInterval(() => { try { reg.update(); } catch (e) {} }, 60000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) { try { reg.update(); } catch (e) {} } });
+    } catch (e) {}
+  });
   // When a new service worker version installs and takes control (skipWaiting +
   // clients.claim in sw.js), reload ONCE so the page swaps to the fresh build
   // instead of running stale cached JS until the user manually clears the cache.
