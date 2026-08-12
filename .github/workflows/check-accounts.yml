@@ -1,0 +1,54 @@
+name: Check Specific Accounts (read-only)
+# Read-only: dumps the leaderboard rows for a few named accounts so we can see
+# whether they still exist, and what displayName / avatar / linkedAccounts /
+# appUserId / updatedAt each has. Used to diagnose "account disappeared" and
+# "avatar not synced to leaderboard" reports without guessing.
+on:
+  workflow_dispatch:
+    inputs:
+      names:
+        description: "comma-separated leaderboard keys to inspect"
+        required: false
+        default: "blinksunited,blackpinkshazam,_demibandwout,blinks united"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump rows
+        env:
+          NAMES: ${{ github.event.inputs.names }}
+        run: |
+          python3 - <<'PY'
+          import os, json, subprocess
+          BASE = "https://blinksunited.com/api/leaderboard"
+          want = [n.strip().lower() for n in os.environ.get("NAMES","").split(",") if n.strip()]
+          out = subprocess.run(["curl","-sS","-L",BASE], capture_output=True, text=True)
+          users = json.loads(out.stdout).get("users", {})
+          print(f"total leaderboard rows: {len(users)}\n")
+          low = { k.lower(): (k,v) for k,v in users.items() }
+          for n in want:
+              print(f"=== '{n}' ===")
+              if n not in low:
+                  # also try fuzzy contains
+                  hits = [k for k in low if n.replace(' ','') in k.replace(' ','')]
+                  if hits:
+                      print(f"  exact key not found; similar keys: {hits}")
+                  else:
+                      print("  NOT PRESENT on leaderboard")
+                  print()
+                  continue
+              k, e = low[n]
+              accts = e.get("linkedAccounts") or []
+              acc_str = ", ".join(f"{a.get('type') or a.get('source')}:{a.get('username')}" for a in accts)
+              print(f"  key:          {k}")
+              print(f"  displayName:  {e.get('displayName')}")
+              print(f"  avatar:       {e.get('avatar')}")
+              print(f"  appUserId:    {e.get('appUserId')}")
+              print(f"  linkedAccts:  {acc_str or '(none — legacy single)'}")
+              print(f"  updatedAt:    {e.get('updatedAt')}")
+              print(f"  lastScrobble: {e.get('lastScrobbleAt')}")
+              s = e.get("scores") or {}
+              print(f"  daily_all={s.get('daily_all')} weekly_all={s.get('weekly_all')} overall_all={s.get('overall_all')}")
+              print()
+          PY
