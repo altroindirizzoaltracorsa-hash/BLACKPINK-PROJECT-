@@ -220,6 +220,18 @@ async function upstashSet(key, value) {
   });
 }
 
+// SET with an expiry, for the Musicat stale-while-error cache below.
+async function upstashSetEx(key, value, ttlSeconds) {
+  if (!process.env.UPSTASH_REDIS_REST_URL) return;
+  try {
+    await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify([['SET', key, JSON.stringify(value), 'EX', String(ttlSeconds)]]),
+    });
+  } catch {}
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 'no-store');
@@ -879,9 +891,21 @@ export default async function handler(req, res) {
   // ── Musicat stats proxy ──────────────────────────────────────────────────
   const mcUser = req.query.musicat_user;
   if (mcUser) {
+    // Stale-while-error cache: Musicat fires 13 upstream stat calls per lookup and
+    // throttles under the leaderboard cron's burst. Serve fresh cache for 20 min,
+    // re-scrape when stale, and fall back to the last good payload on any upstream
+    // failure so a throttled call never zeroes a fan's Musicat contribution.
+    const mcKey = `mccache:v1:${String(mcUser).toLowerCase()}`;
+    const mcCached = await upstashGet(mcKey);
+    if (mcCached?.payload && mcCached.at && (Date.now() - mcCached.at) < 20 * 60 * 1000) {
+      return res.status(200).json(mcCached.payload);
+    }
+    const mcStale = (errObj, status) => mcCached?.payload
+      ? res.status(200).json(mcCached.payload)
+      : res.status(status).json(errObj);
     try {
       const ur = await fetch(`${MUSICAT_BASE}/users?user=${encodeURIComponent(mcUser)}`, { headers: MC_HEADERS });
-      if (!ur.ok) return res.status(400).json({ error: `User "${mcUser}" not found (${ur.status})` });
+      if (!ur.ok) return mcStale({ error: `User "${mcUser}" not found (${ur.status})` }, 400);
       const ud = await ur.json();
       const publicId = ud.publicId ?? ud.id ?? ud.uuid;
       if (!publicId) return res.status(400).json({ error: 'publicId missing' });
@@ -911,15 +935,17 @@ export default async function handler(req, res) {
       const memberPlays = { jisoo: jisooPlays, lisa: lisaPlays, rose: rosePlays, jennie: jenniePlays };
       const artistPlays = bpGroupPlays + Object.values(memberPlays).reduce((s, v) => s + v, 0);
 
-      return res.status(200).json({
+      const mcPayload = {
         publicId, displayName,
         playcount: totalScrobbles ?? artistPlays,
         artistPlays, bpGroupPlays, memberPlays,
         tracks: { jump: jumpAll, shutdown: shutdownAll, ddududu: ddududuAll, ltal: ltalAll },
         today:  { jump: jumpToday, shutdown: shutdownToday, ddududu: ddududuToday, ltal: ltalToday },
-      });
+      };
+      await upstashSetEx(mcKey, { payload: mcPayload, at: Date.now() }, 7 * 24 * 3600);
+      return res.status(200).json(mcPayload);
     } catch(err) {
-      return res.status(400).json({ error: err.message });
+      return mcStale({ error: err.message }, 400);
     }
   }
 

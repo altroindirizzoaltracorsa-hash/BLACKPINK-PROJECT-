@@ -19,6 +19,39 @@ function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: CORS });
 }
 
+// ── Stale-while-error cache (Upstash REST) ────────────────────────────────────
+// Stats.fm rate-limits bursts (HTTP 502) — the leaderboard cron refreshes dozens
+// of Stats.fm profiles per run, so a raw pass drops ~half of them. We cache the
+// last good payload for a week and:
+//   • serve it directly while fresh (fast, no upstream hit),
+//   • re-scrape when stale and refresh the cache on success,
+//   • fall back to the last good payload when the upstream errors,
+// so a throttled call never zeroes a fan's score — it just serves slightly stale
+// numbers until the next successful scrape.
+const R_URL = process.env.UPSTASH_REDIS_REST_URL;
+const R_TOK = process.env.UPSTASH_REDIS_REST_TOKEN;
+const CACHE_FRESH_MS = 20 * 60 * 1000; // serve without re-scraping for 20 min
+const CACHE_TTL_S    = 7 * 24 * 3600;  // keep last-good for a week as error fallback
+
+async function cacheGet(key) {
+  if (!R_URL) return null;
+  try {
+    const r = await fetch(`${R_URL}/get/${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${R_TOK}` } });
+    const d = await r.json();
+    return d.result ? JSON.parse(d.result) : null;
+  } catch { return null; }
+}
+async function cacheSet(key, entry) {
+  if (!R_URL) return;
+  try {
+    await fetch(`${R_URL}/pipeline`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${R_TOK}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify([['SET', key, JSON.stringify(entry), 'EX', String(CACHE_TTL_S)]]),
+    });
+  } catch {}
+}
+
 // Returns the UTC ISO for the most recent occurrence of resetHour:00 in the given timezone.
 // Used to align with the site's daily reset (2am Italy = midnight UTC in summer, 1am UTC in winter).
 function dayBoundaryUTC(tz, resetHour) {
@@ -53,16 +86,25 @@ export default async function handler(request) {
   const debug = searchParams.get('debug');
   if (!username) return json({ error: 'user required' }, 400);
 
+  const cacheKey = `sfmcache:v1:${username.toLowerCase()}`;
+  const cached = debug ? null : await cacheGet(cacheKey);
+  if (cached?.payload && cached.at && (Date.now() - cached.at) < CACHE_FRESH_MS) {
+    return json(cached.payload);
+  }
+  // On any upstream failure below, prefer serving the last good payload over an
+  // error, so a throttled scrape never drops the fan's contribution to zero.
+  const stale = (errObj, status) => (cached?.payload ? json(cached.payload) : json(errObj, status));
+
   try {
     const ur = await fetch(`${SFM}/users/${encodeURIComponent(username)}`, { headers: SFM_H });
     const urText = await ur.text();
-    if (!ur.ok) return json({ error: `Stats.fm user lookup failed (HTTP ${ur.status})`, raw: urText.substring(0, 300) }, 502);
+    if (!ur.ok) return stale({ error: `Stats.fm user lookup failed (HTTP ${ur.status})`, raw: urText.substring(0, 300) }, 502);
 
     let ud;
-    try { ud = JSON.parse(urText); } catch { return json({ error: 'Stats.fm returned non-JSON', raw: urText.substring(0, 300) }, 502); }
+    try { ud = JSON.parse(urText); } catch { return stale({ error: 'Stats.fm returned non-JSON', raw: urText.substring(0, 300) }, 502); }
 
     if (ud.status >= 400 || ud.error || ud.message === 'Forbidden') {
-      return json({ error: `Stats.fm error: ${ud.message || ud.error || ud.status}`, raw: urText.substring(0, 300) }, 502);
+      return stale({ error: `Stats.fm error: ${ud.message || ud.error || ud.status}`, raw: urText.substring(0, 300) }, 502);
     }
 
     const user = ud.item ?? ud;
@@ -80,8 +122,8 @@ export default async function handler(request) {
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`, { headers: SFM_H }),
     ]);
 
-    if (!tr.ok) return json({ error: `Stats.fm tracks blocked (HTTP ${tr.status}) — try visiting https://stats.fm/${username}` }, 502);
-    if (!ar.ok) return json({ error: `Stats.fm artists blocked (HTTP ${ar.status})` }, 502);
+    if (!tr.ok) return stale({ error: `Stats.fm tracks blocked (HTTP ${tr.status}) — try visiting https://stats.fm/${username}` }, 502);
+    if (!ar.ok) return stale({ error: `Stats.fm artists blocked (HTTP ${ar.status})` }, 502);
 
     const td = await tr.json();
     const ad = await ar.json();
@@ -175,13 +217,15 @@ export default async function handler(request) {
       tracksToday[k] = todayRecent[k] || 0;
     }
 
-    return json({
+    const payload = {
       customId, displayName,
       playcount: artistPlays || Object.values(tracks).reduce((s, v) => s + v, 0),
       artistPlays, bpGroupPlays, memberPlays, tracks,
       today: tracksToday,
-    });
+    };
+    if (!debug) await cacheSet(cacheKey, { payload, at: Date.now() });
+    return json(payload);
   } catch (e) {
-    return json({ error: e.message }, 500);
+    return stale({ error: e.message }, 500);
   }
 }
