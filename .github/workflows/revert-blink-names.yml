@@ -30,7 +30,9 @@ jobs:
           DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
           node -e '
-          const URL = process.env.SUPABASE_URL, KEY = process.env.SUPABASE_SERVICE_KEY;
+          let URL = (process.env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
+          if (URL && !/^https?:\/\//i.test(URL)) URL = "https://" + URL;
+          const KEY = (process.env.SUPABASE_SERVICE_KEY || "").trim();
           const DRY = process.env.DRY_RUN === "true";
           const CUTOFF = Date.parse("2026-08-13T12:02:30Z");
           const H = { apikey: KEY, Authorization: "Bearer " + KEY, "Content-Type": "application/json" };
