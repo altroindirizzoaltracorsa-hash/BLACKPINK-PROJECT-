@@ -403,17 +403,9 @@ async function readState(needAccount) {
         }
       }
     }
-    // 3) Last resort in embedded scripts: a "username":"..." literal.
-    if (!handle) {
-      try {
-        for (const s of document.querySelectorAll('script')) {
-          const t = s.textContent || '';
-          if (t.length > 200000) continue; // skip the big bundles
-          const m = t.match(/"username"\s*:\s*"([^"]{2,})"/);
-          if (m) { handle = m[1]; break; }
-        }
-      } catch (e) { /* */ }
-    }
+    // (No full <script> scan: it's the only expensive source and this whole
+    // block re-runs every poll until a handle is found — see needAccount. The
+    // /user/ link above is what actually resolves on the live web player.)
 
     // Visible display name (nice for the log/options UI), independent of handle.
     let name = '';
@@ -430,12 +422,14 @@ async function readState(needAccount) {
     }
 
     if (handle) {
-      // Unique id + a unique handle sent to blinksunited. Keep the pretty name
-      // for display, but never let it be the thing that dedupes accounts.
-      account = { id: `sp:${handle.toLowerCase()}`, name: name || handle, handle };
+      // Unique id + handle. If the visible name is just an avatar initial
+      // (<=2 chars), show the handle instead so accounts are distinguishable in
+      // the log/UI; a real display name is kept as-is.
+      const display = (name && name.trim().length > 2) ? name.trim() : handle;
+      account = { id: `sp:${handle.toLowerCase()}`, name: display, handle };
     } else if (name) {
-      // Couldn't find a unique handle — fall back to the old name-based key
-      // (may be an initial; this is exactly the prior behavior, so no regression).
+      // No handle yet (page still loading — we'll retry next poll). Temporary
+      // name-based key; upgraded to sp:<handle> as soon as the link appears.
       account = { id: `name:${name.toLowerCase()}`, name, handle: null };
     }
   }
@@ -581,7 +575,11 @@ async function pollOnce() {
   for (const tab of tabs) {
     alive.add(String(tab.id));
     const prev = pbState[tab.id] || null;
-    const needAccount = !(prev && prev.account);
+    // Keep re-detecting until we have a UNIQUE handle, not just any label. A
+    // freshly-opened tab is often read before its /user/ link renders, so the
+    // first detection falls back to the avatar initial; retrying each poll (all
+    // cheap DOM, no network) upgrades it to sp:<handle> once the link appears.
+    const needAccount = !(prev && prev.account && prev.account.handle);
     let result = null;
     try {
       const inj = await chrome.scripting.executeScript({
