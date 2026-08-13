@@ -40,3 +40,11 @@ create index if not exists user_daily_counts_user_day_idx
 -- routes (never queried directly from the browser), so enable RLS with no public
 -- policies — the service role bypasses RLS, everyone else is denied.
 alter table public.user_daily_counts enable row level security;
+
+-- Grant the API service role table privileges. RLS-bypass is NOT the same as a
+-- table GRANT: without this the service key hits "permission denied for table
+-- user_daily_counts" (this project doesn't auto-grant new SQL-editor tables to the
+-- API roles the way the older tables were). anon/authenticated are intentionally
+-- NOT granted — the browser never touches this table directly, only our server
+-- routes do, via the service key.
+grant all privileges on table public.user_daily_counts to service_role;
