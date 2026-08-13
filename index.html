@@ -5168,6 +5168,12 @@ let _assigningBlink = false;
 async function ensureAutoDisplayName(session) {
   if (!sb || !session?.user) return;
   if (session.user.user_metadata?.display_name) return; // already has a name
+  // ONLY brand-new signups — never a returning existing user. An established fan who
+  // simply never set a display name must keep showing their handle, not suddenly
+  // become "blinkN". A new signup's account was created seconds ago; a returning
+  // user's created_at is days/weeks old, so this window cleanly separates them.
+  const createdAt = session.user.created_at ? Date.parse(session.user.created_at) : 0;
+  if (!createdAt || (Date.now() - createdAt) > 10 * 60 * 1000) return;
   if (_assigningBlink) return;
   _assigningBlink = true;
   try {

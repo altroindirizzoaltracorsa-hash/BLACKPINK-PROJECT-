@@ -1,0 +1,66 @@
+name: Revert wrongly auto-assigned blinkN names (one-off)
+
+# One-off cleanup: an earlier build auto-assigned "blinkN" display names on EVERY
+# sign-in, so existing fans who never chose a display name got converted too (they
+# should have kept their handle). This clears the display_name from every auth
+# profile that (a) currently holds a ^blink\d+$ name AND (b) was created BEFORE the
+# feature deployed (2026-08-13T12:02:30Z) — i.e. a pre-existing user, never a real
+# new signup. The next cron run then relabels their board row back to their handle.
+# Genuinely new signups (created after the cutoff) keep their blinkN. Safe to delete
+# after it's run once.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'true = only report who WOULD be reverted, do not write'
+        required: false
+        default: 'false'
+
+jobs:
+  revert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Revert blinkN names on pre-existing accounts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          node -e '
+          const URL = process.env.SUPABASE_URL, KEY = process.env.SUPABASE_SERVICE_KEY;
+          const DRY = process.env.DRY_RUN === "true";
+          const CUTOFF = Date.parse("2026-08-13T12:02:30Z");
+          const H = { apikey: KEY, Authorization: "Bearer " + KEY, "Content-Type": "application/json" };
+          (async () => {
+            let page = 1, scanned = 0;
+            const reverted = [], keptNew = [];
+            for (; page <= 100; page++) {
+              const r = await fetch(URL + "/auth/v1/admin/users?page=" + page + "&per_page=1000", { headers: H });
+              if (!r.ok) { console.log("LIST ERROR", r.status, await r.text()); process.exit(1); }
+              const j = await r.json();
+              const users = j.users || (Array.isArray(j) ? j : []);
+              if (!users.length) break;
+              scanned += users.length;
+              for (const u of users) {
+                const dn = ((u.user_metadata && u.user_metadata.display_name) || "").trim();
+                if (!/^blink\d+$/i.test(dn)) continue;
+                const created = Date.parse(u.created_at || 0);
+                if (created >= CUTOFF) { keptNew.push(dn); continue; }
+                if (DRY) { reverted.push(dn + " (would revert)"); continue; }
+                const md = Object.assign({}, u.user_metadata || {}, { display_name: null });
+                const up = await fetch(URL + "/auth/v1/admin/users/" + u.id, {
+                  method: "PUT", headers: H, body: JSON.stringify({ user_metadata: md }),
+                });
+                if (up.ok) reverted.push(dn);
+                else console.log("UPDATE FAILED", u.id, up.status, await up.text());
+              }
+            }
+            console.log("DRY_RUN:", DRY);
+            console.log("scanned users:", scanned);
+            console.log("reverted (" + reverted.length + "):", reverted.sort((a,b)=>(parseInt(a.slice(5))||0)-(parseInt(b.slice(5))||0)).join(", "));
+            console.log("kept new signups (" + keptNew.length + "):", keptNew.join(", "));
+          })().catch(e => { console.log("FATAL", e.message); process.exit(1); });
+          '

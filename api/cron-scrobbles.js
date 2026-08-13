@@ -319,12 +319,17 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
     if (chosen) {
       displayName = chosen;
     } else if (nameInfo.complete) {
-      const oauth = nameInfo.oauth.get(appUserId);
-      if (oauth && displayName.toLowerCase() === oauth.toLowerCase()) {
-        const primary = linkedAccounts.find(a => a.type === 'lastfm' || a.type === 'librefm')
-          || linkedAccounts.find(a => a.type === 'listenbrainz')
-          || linkedAccounts[0];
-        if (primary && primary.username) displayName = primary.username;
+      // Owner set no display name → canonical is the primary scrobbler handle,
+      // exactly what the badges page renders for a name-less fan. Revert any stray
+      // label back to it: an OAuth real name, OR a "blinkN" that an earlier build
+      // wrongly auto-assigned to an existing user. Guarded by `complete`, so a
+      // partial auth fetch can never demote anyone, and a genuinely-chosen name is
+      // protected above (it lands in `chosen`).
+      const primary = linkedAccounts.find(a => a.type === 'lastfm' || a.type === 'librefm')
+        || linkedAccounts.find(a => a.type === 'listenbrainz')
+        || linkedAccounts[0];
+      if (primary && primary.username && displayName.toLowerCase() !== primary.username.toLowerCase()) {
+        displayName = primary.username;
       }
     }
   }
