@@ -23,7 +23,17 @@ as $$
 declare
   v_name text;
   v_guard int := 0;
+  v_created timestamptz;
 begin
+  -- Server-side new-account guard: ONLY a brand-new signup may be auto-named. An
+  -- established fan who never chose a display name keeps their handle. This is the
+  -- authoritative check — a stale/cached client (running the old "assign on every
+  -- sign-in" code) still gets NULL here and so never overwrites an existing name.
+  select created_at into v_created from auth.users where id = auth.uid();
+  if v_created is null or v_created < now() - interval '15 minutes' then
+    return null;
+  end if;
+
   loop
     v_name := 'blink' || nextval('public.blink_number_seq');
     -- Skip a number already used as someone's display name (manual or prior auto).
