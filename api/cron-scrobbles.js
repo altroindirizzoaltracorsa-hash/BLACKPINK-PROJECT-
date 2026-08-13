@@ -7,6 +7,13 @@ const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
 const LIBREFM_BASE = 'https://libre.fm/2.0/';
 const LB_BASE     = 'https://api.listenbrainz.org/1/';
 const LB_KEY = 'bu_leaderboard_v1';
+// Base origin for self-calling our own provider proxies (Musicat / Stats.fm),
+// the same internal endpoints the badges page uses. Musicat/Stats.fm expose
+// only all-time + today (no per-day history), so they can't be queried per
+// scrobbler from an external API the way Last.fm can — we hit our own proxy,
+// exactly like the client, so the leaderboard counts the same sources the
+// badges page does. Production domain is stable; override via SELF_ORIGIN.
+const SELF_ORIGIN = process.env.SELF_ORIGIN || 'https://blinksunited.com';
 
 function supabase() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return null;
@@ -151,6 +158,22 @@ async function librefmFetch(params) {
 async function fetchTrackPlays(username, artist, track, fetchFn = lfmFetch) {
   const d = await fetchFn({ method: 'track.getInfo', artist, track, username });
   return parseInt(d?.track?.userplaycount || '0', 10);
+}
+
+// ── Musicat / Stats.fm (via our own proxy, mirroring the badges page) ─────────
+// These providers expose all-time totals + a "today" bucket only, never per-day
+// history. We call the exact same internal endpoints index.html uses so the
+// leaderboard aggregates the identical numbers the profile shows. Returns
+// { artistPlays, tracks:{...}, today:{...} } or null on failure.
+async function fetchProviderStats(source, username) {
+  const path = source === 'musicat'
+    ? `/api/proxy-image?musicat_user=${encodeURIComponent(username)}`
+    : `/api/statsfm?user=${encodeURIComponent(username)}`;
+  const r = await fetch(`${SELF_ORIGIN}${path}`);
+  if (!r.ok) throw new Error(`${source} HTTP ${r.status}`);
+  const d = await r.json();
+  if (d?.error) throw new Error(`${source} error: ${d.error}`);
+  return d;
 }
 
 async function fetchArtistPlays(username, artist, fetchFn = lfmFetch) {
@@ -396,6 +419,34 @@ async function refreshUser(entry, sb, linkedMap) {
         } catch {}
       } catch (e) {
         console.warn(`LB fetch failed for ${u}:`, e.message);
+      }
+    } else if (acct.type === 'musicat' || acct.type === 'statsfm') {
+      // Same sources the badges page counts. Without these two branches the
+      // cron silently drops Musicat/Stats.fm scrobblers, so any fan linking one
+      // is under-counted on the leaderboard vs their own profile — the hourly
+      // refresh then overwrites the client's correct submit with the low number.
+      try {
+        const d = await fetchProviderStats(acct.type, acct.username);
+        artistPlays += d.artistPlays || 0;
+        let providerToday = 0;
+        for (const t of TRACKS) {
+          totalPlays[t.id]  += d.tracks?.[t.id] || 0;
+          const todayN = d.today?.[t.id] || 0;
+          todayCounts[t.id] += todayN;
+          // No per-day history from these providers: floor the week at today so
+          // today can't exceed the week (mirrors the client's Musicat/Stats.fm
+          // handling). A same-day scrobbler still contributes to weekly totals.
+          weekCounts[t.id]  += todayN;
+          providerToday += todayN;
+        }
+        // Keep a Musicat/Stats.fm-only fan from drifting to a false "inactive"
+        // label: today's plays through these providers count as recent activity.
+        if (providerToday > 0) {
+          const nowIso = new Date().toISOString();
+          if (!lastScrobbleAt || nowIso > lastScrobbleAt) lastScrobbleAt = nowIso;
+        }
+      } catch (e) {
+        console.warn(`${acct.type} fetch failed for ${acct.username}:`, e.message);
       }
     }
   }
