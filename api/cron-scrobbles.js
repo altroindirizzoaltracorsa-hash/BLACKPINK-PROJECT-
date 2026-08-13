@@ -841,7 +841,6 @@ export default async function handler(req, res) {
   // made durable and device-independent. Wrapped so a missing table (before the
   // one-time migration is applied) degrades to a no-op instead of failing the run.
   let dailyArchived = 0;
-  let dailyErr = null;
   if (sb && dailyByUser.size) {
     try {
       const ids = [...dailyByUser.keys()];
@@ -873,14 +872,10 @@ export default async function handler(req, res) {
       if (upErr) throw upErr;
       dailyArchived = rows.length;
     } catch (e) {
-      dailyErr = e.message || String(e);
-      console.error('user_daily_counts upsert failed (table migrated yet?):', dailyErr);
+      console.error('user_daily_counts upsert failed:', e.message || e);
     }
   }
 
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({
-    ok: true, seeded, refreshed: ok, failed, unverified, merged: [...removedKeys], dailyArchived,
-    _diag: { linkedMap: linkedMap ? linkedMap.size : null, namesChosen: nameInfo ? nameInfo.chosen.size : null, namesOauth: nameInfo ? nameInfo.oauth.size : null, authComplete: nameInfo ? nameInfo.complete : null, ownersResolved: dailyByUser.size, dailyErr },
-  });
+  res.status(200).json({ ok: true, seeded, refreshed: ok, failed, unverified, merged: [...removedKeys], dailyArchived });
 }
