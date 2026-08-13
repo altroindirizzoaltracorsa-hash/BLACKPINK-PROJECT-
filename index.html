@@ -4920,6 +4920,12 @@ async function saveDisplayName() {
     if (status) { status.textContent = 'Display name cannot be empty.'; status.style.color = '#ff4444'; }
     return;
   }
+  // Reserve the auto-assigned "blinkN" namespace so a manual pick can't collide
+  // with (and overwrite) an auto-named fan's leaderboard row.
+  if (/^blink\d+$/i.test(display_name)) {
+    if (status) { status.textContent = 'That name is reserved — please choose another.'; status.style.color = '#ff4444'; }
+    return;
+  }
   if (status) status.textContent = '';
 
   // Update Supabase auth metadata
@@ -5151,8 +5157,43 @@ async function removeLinkedAccount(id) {
   loadLinkedAccounts();
 }
 
+// If a signed-in fan has no display name, give them a clean anonymous "blinkN"
+// (blink1, blink2, …) instead of exposing their raw Last.fm handle or OAuth real
+// name. The number is issued atomically by the assign_blink_name() Postgres
+// function, so two concurrent signups can never land on the same leaderboard
+// display-name key. Once it's saved to auth metadata the hourly cron relabels the
+// fan's board row to match (the same recovery path that fixes handle-named rows).
+// Degrades to a no-op if the migration isn't applied yet.
+let _assigningBlink = false;
+async function ensureAutoDisplayName(session) {
+  if (!sb || !session?.user) return;
+  if (session.user.user_metadata?.display_name) return; // already has a name
+  if (_assigningBlink) return;
+  _assigningBlink = true;
+  try {
+    const { data: name, error } = await sb.rpc('assign_blink_name');
+    if (error || !name) return;
+    const { error: upErr } = await sb.auth.updateUser({ data: { display_name: name } });
+    if (upErr) return;
+    try { cacheDisplayName(name); } catch {}
+    // Push straight to the leaderboard rows so the board updates now, not next cron.
+    try {
+      const tok = session.access_token
+        || (await sb.auth.getSession()).data?.session?.access_token;
+      if (tok) {
+        await fetch('/api/leaderboard?action=set-display-name', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayName: name, accessToken: tok }),
+        });
+      }
+    } catch {}
+  } catch {} finally { _assigningBlink = false; }
+}
+
 if (sb) {
   sb.auth.onAuthStateChange((_event, session) => {
+    if (session?.user) ensureAutoDisplayName(session);
     if (document.getElementById('page-badges')?.classList.contains('active')) {
       renderAccountPage(session);
     }
