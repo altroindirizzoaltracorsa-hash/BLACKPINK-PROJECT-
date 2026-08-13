@@ -1,0 +1,99 @@
+name: Day JUMP Breakdown (read-only)
+# Read-only forensic: for a set of Last.fm + one ListenBrainz account and a day,
+# list every scrobble whose track name contains "jump", grouped by EXACT name,
+# so we can see what the strict name==... counter counts vs silently drops
+# (variant titles, sped-up versions, stray characters, wrong artist, etc.).
+on:
+  workflow_dispatch:
+    inputs:
+      lastfm:
+        description: 'Comma-separated Last.fm usernames'
+        required: true
+        default: 'Alice9629,Alice2996,jumppink'
+      listenbrainz:
+        description: 'ListenBrainz username (optional)'
+        required: false
+        default: 'bornpink'
+      day:
+        description: 'Day YYYY-MM-DD (2am-Rome window = 00:00 UTC..+24h in summer)'
+        required: true
+        default: '2026-08-12'
+
+jobs:
+  breakdown:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Breakdown
+        env:
+          LFM: ${{ github.event.inputs.lastfm }}
+          LB: ${{ github.event.inputs.listenbrainz }}
+          DAY: ${{ github.event.inputs.day }}
+        run: |
+          python3 - <<'PY'
+          import os, json, urllib.parse, urllib.request
+          from collections import Counter
+          from datetime import datetime, timezone
+
+          LFM_KEY = "666b8ef2f3cc360fbc20df275fba2981"
+          LBASE = "https://ws.audioscrobbler.com/2.0/"
+          y,m,d = [int(x) for x in os.environ["DAY"].split("-")]
+          frm = int(datetime(y,m,d,tzinfo=timezone.utc).timestamp()); to = frm+86400
+          print(f"=== {os.environ['DAY']}  window [{datetime.utcfromtimestamp(frm)} .. {datetime.utcfromtimestamp(to)}) UTC ===\n")
+
+          def lfm(params):
+              qs = urllib.parse.urlencode({**params,"api_key":LFM_KEY,"format":"json"})
+              with urllib.request.urlopen(LBASE+"?"+qs) as r: return json.loads(r.read())
+
+          grand_exact = 0
+          grand_jumpish = 0
+          for u in [x.strip() for x in os.environ["LFM"].split(",") if x.strip()]:
+              names = Counter(); page=1; total_scrobbles=0
+              while True:
+                  dd = lfm({"method":"user.getRecentTracks","user":u,"from":frm,"to":to,"limit":200,"page":page})
+                  rt = dd.get("recenttracks") or {}; tr = rt.get("track") or []
+                  if isinstance(tr,dict): tr=[tr]
+                  for s in tr:
+                      if (s.get("@attr") or {}).get("nowplaying")=="true": continue
+                      total_scrobbles+=1
+                      nm=(s.get("name") or ""); ar=(s.get("artist") or {}).get("#text","")
+                      if "jump" in nm.lower():
+                          names[f"{nm}  ⟨{ar}⟩"]+=1
+                  tp=int((rt.get("@attr") or {}).get("totalPages") or 1)
+                  if page>=tp or page>=50: break
+                  page+=1
+              exact = sum(c for k,c in names.items() if k.split("  ⟨")[0].strip().lower()=="jump" and "blackpink" in k.lower())
+              jumpish = sum(names.values())
+              grand_exact += exact; grand_jumpish += jumpish
+              print(f"--- Last.fm {u}: {total_scrobbles} scrobbles that day; strict-JUMP={exact}, any-'jump'={jumpish}")
+              for k,c in names.most_common():
+                  print(f"      {c:>4}  {k!r}")
+              print()
+
+          lb = os.environ.get("LB","").strip()
+          if lb:
+              def lbget(path, params):
+                  qs="?"+urllib.parse.urlencode(params)
+                  req=urllib.request.Request("https://api.listenbrainz.org/1/"+path+qs, headers={"Accept":"application/json"})
+                  with urllib.request.urlopen(req) as r: return json.loads(r.read())
+              names=Counter(); maxts=to; total=0
+              for _ in range(50):
+                  dd=lbget(f"user/{urllib.parse.quote(lb)}/listens",{"min_ts":frm,"max_ts":maxts,"count":100})
+                  ls=(dd.get("payload") or {}).get("listens") or []
+                  if not ls: break
+                  for l in ls:
+                      total+=1
+                      md=l.get("track_metadata") or {}
+                      nm=md.get("track_name") or ""; ar=md.get("artist_name") or ""
+                      if "jump" in nm.lower(): names[f"{nm}  ⟨{ar}⟩"]+=1
+                  if len(ls)<100: break
+                  maxts=ls[-1]["listened_at"]-1
+                  if maxts<frm: break
+              exact=sum(c for k,c in names.items() if k.split("  ⟨")[0].strip().lower()=="jump" and "blackpink" in k.lower())
+              grand_exact+=exact; grand_jumpish+=sum(names.values())
+              print(f"--- ListenBrainz {lb}: {total} listens that day; strict-JUMP={exact}, any-'jump'={sum(names.values())}")
+              for k,c in names.most_common(): print(f"      {c:>4}  {k!r}")
+              print()
+
+          print(f"=== TOTALS (Last.fm + ListenBrainz, NOT incl. extension): strict-JUMP={grand_exact}  any-'jump'={grand_jumpish} ===")
+          print("(Badges column also adds the extension's own JUMP plays for that day.)")
+          PY
