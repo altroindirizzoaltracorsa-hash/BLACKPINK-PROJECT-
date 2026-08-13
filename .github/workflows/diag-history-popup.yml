@@ -1,0 +1,67 @@
+name: Diagnose history popup (one-off)
+
+# One-off: for a user matched by display-name / linked-account substring, pull
+# their appUserId + scrobbler types from the live board, then hit api/user-week
+# and report whether by_source (the per-scrobbler breakdown the tap-popup needs)
+# is populated per day. Safe to delete after use.
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Substring to match (display name or any linked account)'
+        required: true
+      from:
+        description: 'from day_key YYYY-MM-DD'
+        required: true
+        default: '2026-08-01'
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Diagnose
+        env:
+          NAME: ${{ github.event.inputs.name }}
+          FROM: ${{ github.event.inputs.from }}
+          BASE: ${{ secrets.VERCEL_URL }}
+        run: |
+          python3 - <<'PY'
+          import os, json, subprocess
+          base = os.environ["BASE"].rstrip("/")
+          name = os.environ["NAME"].lower()
+          frm  = os.environ["FROM"]
+
+          def get(url):
+              out = subprocess.run(["curl","-sS","-L","--location-trusted",url],
+                                   capture_output=True, text=True)
+              try: return json.loads(out.stdout)
+              except Exception:
+                  print("NON-JSON from", url, "->", out.stdout[:300]); return {}
+
+          live = get(f"{base}/api/leaderboard")
+          users = (live.get("users") or {})
+          def match(u):
+              names = [(u.get("displayName") or ""), (u.get("username") or "")]
+              names += [a.get("username","") for a in (u.get("linkedAccounts") or [])]
+              return any(name in (n or "").lower() for n in names)
+          hits = [u for u in users.values() if match(u)]
+          if not hits:
+              print("No board entry matched", name); raise SystemExit(0)
+          for u in hits:
+              accts = [f"{a.get('type','?')}:{a.get('username')}" for a in (u.get("linkedAccounts") or [])]
+              uid = u.get("appUserId")
+              print(f"=== {u.get('displayName')!r}  appUserId={uid}")
+              print(f"    scrobblers: {accts}")
+              print(f"    providerScores present: {bool(u.get('providerScores'))}")
+              if not uid:
+                  print("    !! no appUserId -> user-week can't key this user"); continue
+              hist = get(f"{base}/api/user-week?appUserId={uid}&from={frm}")
+              days = hist.get("days") or {}
+              print(f"    user-week days returned: {len(days)}")
+              for k in sorted(days):
+                  v = days[k]
+                  tot = v.get("jump",0)+v.get("shutdown",0)+v.get("ddududu",0)+v.get("ltal",0)+v.get("go",0)
+                  bs = v.get("by_source")
+                  bskeys = ", ".join(bs.keys()) if isinstance(bs, dict) else "—"
+                  print(f"      {k}  total={tot}  by_source=[{bskeys}]")
+          PY
