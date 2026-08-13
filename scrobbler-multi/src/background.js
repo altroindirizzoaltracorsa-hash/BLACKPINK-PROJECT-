@@ -110,14 +110,11 @@ async function dispatch(kind, account, track, timestamp, meta) {
   }
 
   // blinksunited direct — scrobble only (no now-playing), install-wide token.
-  // Identify the account by its UNIQUE handle (never the display name, which can
-  // be a shared avatar initial and would merge two accounts into one on the site).
-  const buIdentity = account.handle || account.name || account.id;
   const bu = settings.blinks;
   if (kind === 'scrobble' && bu && bu.enabled && bu.token) {
     const endpoint = `${(bu.site || 'https://blinksunited.com').replace(/\/$/, '')}/api/ingest-scrobble`;
     targets.push('blinksunited');
-    jobs.push(run('blinks', BU.scrobble(endpoint, bu.token, track, timestamp, buIdentity)));
+    jobs.push(run('blinks', BU.scrobble(endpoint, bu.token, track, timestamp, account.name || account.id)));
   }
 
   const results = await Promise.all(jobs);
@@ -377,38 +374,14 @@ async function readState(needAccount) {
   // showing up as 403s on /v1/audio/license and "Spotify can't play this right
   // now" skips. We only need a stable per-tab label to scrobble, and the
   // user-widget name gives that with zero requests.
+  // Per-tab account label from the user widget. NOTE: we deliberately do NOT
+  // scrape /user/ links from the page for a "unique handle" — the only such link
+  // on a playlist page is the PLAYLIST AUTHOR, identical across every tab, which
+  // would merge all accounts into one. The current account's own id isn't exposed
+  // as a link (the widget is a button), so a correct unique id needs a one-time
+  // network lookup, which is intentionally not done here.
   let account = null;
   if (needAccount) {
-    // A UNIQUE, STABLE handle (the Spotify username / user id) so two accounts
-    // whose only visible label is an avatar initial (e.g. both "U") can never
-    // collapse into one identity locally OR on blinksunited. All DOM, no network.
-    let handle = '';
-    // 1) Any profile link on the page: .../user/<id>
-    try {
-      for (const a of document.querySelectorAll('a[href*="/user/"]')) {
-        const m = (a.getAttribute('href') || '').match(/\/user\/([^/?#]+)/);
-        if (m && m[1]) { handle = decodeURIComponent(m[1]); break; }
-      }
-    } catch (e) { /* */ }
-    // 2) Bootstrap JSON Spotify embeds in the page carries the username/id.
-    if (!handle) {
-      for (const id of ['session', 'config', 'appServerConfig']) {
-        const el = document.getElementById(id);
-        if (el && el.textContent) {
-          try {
-            const j = JSON.parse(el.textContent);
-            const u = j.username || j.userId || j.user_id || (j.user && (j.user.username || j.user.id));
-            if (u) { handle = String(u); break; }
-          } catch (e) { /* not json */ }
-        }
-      }
-    }
-    // (No full <script> scan: it's the only expensive source and this whole
-    // block re-runs every poll until a handle is found — see needAccount. The
-    // /user/ link above is what actually resolves on the live web player.)
-
-    // Visible display name (nice for the log/options UI), independent of handle.
-    let name = '';
     const sels = [
       '[data-testid="user-widget-name"]',
       '[data-testid="user-widget-link"]',
@@ -417,20 +390,8 @@ async function readState(needAccount) {
     ];
     for (const sel of sels) {
       const el = document.querySelector(sel);
-      const n = el && (el.textContent || el.getAttribute('alt'));
-      if (n && n.trim()) { name = n.trim(); break; }
-    }
-
-    if (handle) {
-      // Unique id + handle. If the visible name is just an avatar initial
-      // (<=2 chars), show the handle instead so accounts are distinguishable in
-      // the log/UI; a real display name is kept as-is.
-      const display = (name && name.trim().length > 2) ? name.trim() : handle;
-      account = { id: `sp:${handle.toLowerCase()}`, name: display, handle };
-    } else if (name) {
-      // No handle yet (page still loading — we'll retry next poll). Temporary
-      // name-based key; upgraded to sp:<handle> as soon as the link appears.
-      account = { id: `name:${name.toLowerCase()}`, name, handle: null };
+      const name = el && (el.textContent || el.getAttribute('alt'));
+      if (name && name.trim()) { const c = name.trim(); account = { id: `name:${c.toLowerCase()}`, name: c }; break; }
     }
   }
 
@@ -575,11 +536,7 @@ async function pollOnce() {
   for (const tab of tabs) {
     alive.add(String(tab.id));
     const prev = pbState[tab.id] || null;
-    // Keep re-detecting until we have a UNIQUE handle, not just any label. A
-    // freshly-opened tab is often read before its /user/ link renders, so the
-    // first detection falls back to the avatar initial; retrying each poll (all
-    // cheap DOM, no network) upgrades it to sp:<handle> once the link appears.
-    const needAccount = !(prev && prev.account && prev.account.handle);
+    const needAccount = !(prev && prev.account);
     let result = null;
     try {
       const inj = await chrome.scripting.executeScript({
