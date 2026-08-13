@@ -526,12 +526,19 @@ export default async function handler(req, res) {
   // everyone.
   let verifiedUsernames = null;
   let linkedMap = null;
+  let linkedByUser = null; // app_user_id -> [{ source, source_username }]
   if (sb) {
     try {
-      const { data: linked, error } = await sb.from('linked_accounts').select('source_username, app_user_id');
+      const { data: linked, error } = await sb.from('linked_accounts').select('source, source_username, app_user_id');
       if (!error) {
         verifiedUsernames = new Set((linked || []).map(a => a.source_username.toLowerCase()));
         linkedMap = new Map((linked || []).map(a => [a.source_username.toLowerCase(), a.app_user_id]));
+        linkedByUser = new Map();
+        for (const a of (linked || [])) {
+          if (!a.app_user_id) continue;
+          if (!linkedByUser.has(a.app_user_id)) linkedByUser.set(a.app_user_id, []);
+          linkedByUser.get(a.app_user_id).push({ source: a.source, source_username: a.source_username });
+        }
       }
     } catch (e) { console.error('Failed to fetch verified linked accounts:', e); }
   }
@@ -562,6 +569,53 @@ export default async function handler(req, res) {
   data.currentWeekLabel = `Week of ${fullDateLabel(new Date(weekFrom * 1000))}`;
 
   for (const u of data.banned || []) delete data.users[u];
+
+  // Self-heal: re-create any verified account that has fallen off the board so a
+  // user who vanishes (dropped by a past bug, or whose first submit never landed)
+  // reappears on the next refresh instead of staying gone until they happen to
+  // reopen their badges. Only seed users with a fetchable Last.fm/Libre.fm/
+  // ListenBrainz account — a Musicat/Stats.fm-only fan can't be recomputed
+  // server-side, so seeding them at 0 would misrepresent them; they still self-heal
+  // the moment they open their badges (which submits their provider breakdown).
+  const seeded = [];
+  if (linkedByUser && linkedByUser.size) {
+    const bannedSet = new Set((data.banned || []).map(b => (b || '').toLowerCase()));
+    const onBoardUsernames = new Set();
+    const boardOwners = new Set();
+    for (const e of Object.values(data.users)) {
+      if (e.appUserId) boardOwners.add(e.appUserId);
+      for (const a of (e.linkedAccounts || [])) {
+        if ((a.type || a.source || '').toLowerCase() === 'extension') continue;
+        const u = (a.username || '').toLowerCase();
+        if (u) onBoardUsernames.add(u);
+      }
+    }
+    for (const [uid, accts] of linkedByUser) {
+      if (boardOwners.has(uid)) continue; // already represented by an owned entry
+      // Skip if any of this user's scrobbler usernames is already on the board.
+      if (accts.some(a => onBoardUsernames.has((a.source_username || '').toLowerCase()))) continue;
+      const linkedAccounts = accts
+        .filter(a => a.source_username)
+        .map(a => ({ type: a.source, username: a.source_username }));
+      const seedable = linkedAccounts.some(a => ['lastfm', 'librefm', 'listenbrainz'].includes(a.type));
+      if (!seedable) continue; // provider-only: needs a client visit to be correct
+      const primary = linkedAccounts.find(a => a.type === 'lastfm' || a.type === 'librefm')
+        || linkedAccounts.find(a => a.type === 'listenbrainz')
+        || linkedAccounts[0];
+      const key = primary.username.toLowerCase();
+      if (bannedSet.has(key) || data.users[key]) continue;
+      data.users[key] = {
+        username: primary.username,
+        displayName: primary.username, // upgraded to the real display name on next visit
+        linkedAccounts,
+        avatar: '',
+        appUserId: uid,
+        scores: {},
+        updatedAt: new Date(0).toISOString(),
+      };
+      seeded.push(primary.username);
+    }
+  }
 
   const users     = Object.values(data.users);
   const ok        = [];
@@ -632,5 +686,5 @@ export default async function handler(req, res) {
   await redis.set(LB_KEY, data);
 
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({ ok: true, refreshed: ok, failed, unverified, merged: [...removedKeys] });
+  res.status(200).json({ ok: true, seeded, refreshed: ok, failed, unverified, merged: [...removedKeys] });
 }
