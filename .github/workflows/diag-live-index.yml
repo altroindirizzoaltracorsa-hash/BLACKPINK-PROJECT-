@@ -1,0 +1,24 @@
+name: Diagnose live index + cache headers (one-off)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check live index.html feature markers and cache headers
+        env:
+          BASE: ${{ secrets.VERCEL_URL }}
+        run: |
+          set -e
+          B="${BASE%/}"
+          echo "=== /badges response headers ==="
+          curl -sS -D - -o /dev/null -L --location-trusted "$B/badges" | grep -iE 'cache-control|age|x-vercel|etag' || true
+          echo
+          echo "=== feature markers in live /badges HTML ==="
+          curl -sS -L --location-trusted "$B/badges" -o idx.html
+          echo "bytes: $(wc -c < idx.html)"
+          for marker in openHistoryBreakdown "TAP A SONG TO SEE" "By scrobbler" _histByDay ensureMonthHistory; do
+            printf '  %-28s = %s\n' "$marker" "$(grep -c "$marker" idx.html || echo 0)"
+          done
