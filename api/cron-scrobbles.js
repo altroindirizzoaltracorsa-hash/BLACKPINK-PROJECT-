@@ -578,22 +578,28 @@ export default async function handler(req, res) {
   // server-side, so seeding them at 0 would misrepresent them; they still self-heal
   // the moment they open their badges (which submits their provider breakdown).
   const seeded = [];
+  const seededKeys = new Set();
   if (linkedByUser && linkedByUser.size) {
     const bannedSet = new Set((data.banned || []).map(b => (b || '').toLowerCase()));
-    const onBoardUsernames = new Set();
+    // Usernames sitting on a LEGACY entry (no signed-in owner) — probably this
+    // same fan pre-signup. We skip seeding when a scrobbler matches one of those.
+    // We deliberately do NOT skip when the scrobbler is on a DIFFERENT signed-in
+    // user's entry: two people (or two personas) can share a Musicat/Stats.fm
+    // handle and still each deserve their own row ("same username, different
+    // scrobbler / different login" are not duplicates).
+    const legacyOnBoard = new Set();
     const boardOwners = new Set();
     for (const e of Object.values(data.users)) {
-      if (e.appUserId) boardOwners.add(e.appUserId);
+      if (e.appUserId) { boardOwners.add(e.appUserId); continue; }
       for (const a of (e.linkedAccounts || [])) {
         if ((a.type || a.source || '').toLowerCase() === 'extension') continue;
         const u = (a.username || '').toLowerCase();
-        if (u) onBoardUsernames.add(u);
+        if (u) legacyOnBoard.add(u);
       }
     }
     for (const [uid, accts] of linkedByUser) {
-      if (boardOwners.has(uid)) continue; // already represented by an owned entry
-      // Skip if any of this user's scrobbler usernames is already on the board.
-      if (accts.some(a => onBoardUsernames.has((a.source_username || '').toLowerCase()))) continue;
+      if (boardOwners.has(uid)) continue; // this signed-in user already has a row
+      if (accts.some(a => legacyOnBoard.has((a.source_username || '').toLowerCase()))) continue;
       const linkedAccounts = accts
         .filter(a => a.source_username)
         .map(a => ({ type: a.source, username: a.source_username }));
@@ -614,6 +620,7 @@ export default async function handler(req, res) {
         updatedAt: new Date(0).toISOString(),
       };
       seeded.push(primary.username);
+      seededKeys.add(key);
     }
   }
 
@@ -637,6 +644,11 @@ export default async function handler(req, res) {
         ok.push(refreshed.displayName);
       } catch (e) {
         failed.push({ username: entry.username, error: e.message });
+        // A seed that can't be refreshed (e.g. Last.fm 404/403 on that account)
+        // must not linger as a 0-score skeleton — drop it so the board stays clean.
+        if (seededKeys.has(entry.username.toLowerCase())) {
+          delete data.users[entry.username.toLowerCase()];
+        }
       }
     }));
   }
