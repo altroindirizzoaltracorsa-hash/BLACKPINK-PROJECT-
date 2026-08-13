@@ -587,27 +587,39 @@ export default async function handler(req, res) {
     }));
   }
 
-  // Defensive merge: if two entries share any linked-account username, they're
-  // the same person filed under two different top-level keys -- e.g. a stale
-  // key left over from before this identity's "stable key" (derived from a
-  // Last.fm/session lookup) happened to resolve to something else on an
-  // earlier submission (see the matching fix in api/leaderboard.js's POST
-  // handler). Left alone, the cron keeps refreshing both every hour forever,
-  // and whichever one it happens to write last wins -- so a stale duplicate
-  // can silently freeze or resurrect what a user sees. Keep whichever entry
-  // was updated most recently and drop the rest.
+  // Defensive merge: collapse two entries only when they are provably the SAME
+  // person filed under two keys — e.g. a stale key left from before this
+  // identity's "stable key" resolved differently on an earlier submission.
+  // This MUST match by SOURCE+username pair, skip the extension source, and
+  // never merge two different signed-in owners — the exact rules the POST
+  // handler's cleanup uses. Matching by bare username (and counting the
+  // extension) was catastrophic: every fan who links the Blinks United
+  // extension shares that one constant username, so the cron treated them all
+  // as one person and deleted all but the most-recently-refreshed — silently
+  // dropping real, distinct accounts (blinksunited, blackpinkshazam, colxrzone…)
+  // from the board every hour. "Same username, different scrobbler" and "two
+  // different logins" are NOT duplicates.
+  const src  = a => (a.type || a.source || '').toLowerCase();
+  const acctPairs = entry => new Set(
+    (entry.linkedAccounts || [])
+      .filter(a => src(a) !== 'extension')
+      .map(a => `${src(a)}:${(a.username || '').toLowerCase()}`)
+      .filter(p => !p.endsWith(':')));
   const entries = Object.entries(data.users);
   const removedKeys = new Set();
   for (let i = 0; i < entries.length; i++) {
     const [keyA, entryA] = entries[i];
     if (removedKeys.has(keyA)) continue;
-    const linkedA = new Set((entryA.linkedAccounts || []).map(a => (a.username || '').toLowerCase()));
-    if (!linkedA.size) continue;
+    const pairsA = acctPairs(entryA);
+    if (!pairsA.size) continue;
     for (let j = i + 1; j < entries.length; j++) {
       const [keyB, entryB] = entries[j];
       if (removedKeys.has(keyB)) continue;
-      const linkedB = (entryB.linkedAccounts || []).map(a => (a.username || '').toLowerCase());
-      if (!linkedB.some(u => linkedA.has(u))) continue;
+      // Two different signed-in accounts are never the same person, even if a
+      // scrobbler username coincides.
+      if (entryA.appUserId && entryB.appUserId && entryA.appUserId !== entryB.appUserId) continue;
+      const pairsB = acctPairs(entryB);
+      if (![...pairsB].some(p => pairsA.has(p))) continue;
       const aTime = new Date(entryA.updatedAt || 0).getTime();
       const bTime = new Date(entryB.updatedAt || 0).getTime();
       if (bTime >= aTime) { delete data.users[keyA]; removedKeys.add(keyA); break; }
