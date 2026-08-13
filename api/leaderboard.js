@@ -656,7 +656,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid JSON' });
     }
 
-    const { username, scores, avatar, updatedAt, lastScrobbleAt, displayName, linkedAccounts, cleanupKeys, accessToken, extensionIncluded } = body || {};
+    const { username, scores, avatar, updatedAt, lastScrobbleAt, displayName, linkedAccounts, cleanupKeys, accessToken, extensionIncluded, providerScores } = body || {};
     if (!username || !scores) return res.status(400).json({ error: 'username and scores required' });
 
     // Require Supabase auth — old-method (no-token) submissions are no longer accepted.
@@ -729,6 +729,11 @@ export default async function handler(req, res) {
       scores,
       updatedAt,
       lastScrobbleAt,
+      // Musicat/Stats.fm breakdown the badges page computed. Stored so the hourly
+      // cron can re-add these providers without scraping them (it can't fetch them
+      // reliably under load). Preserve the last one if this submission omitted it,
+      // so a provider-less refresh path can't wipe a fan's provider contribution.
+      providerScores: providerScores || existingEntry?.providerScores || null,
       // Supabase account that owns this entry. Used to scope cleanup/merge so a
       // submission can only ever remove ITS OWN other rows — never a different
       // signed-in account that happens to share a linked username.

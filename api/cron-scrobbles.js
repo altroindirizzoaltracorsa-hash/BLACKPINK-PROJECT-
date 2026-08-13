@@ -7,13 +7,6 @@ const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
 const LIBREFM_BASE = 'https://libre.fm/2.0/';
 const LB_BASE     = 'https://api.listenbrainz.org/1/';
 const LB_KEY = 'bu_leaderboard_v1';
-// Base origin for self-calling our own provider proxies (Musicat / Stats.fm),
-// the same internal endpoints the badges page uses. Musicat/Stats.fm expose
-// only all-time + today (no per-day history), so they can't be queried per
-// scrobbler from an external API the way Last.fm can — we hit our own proxy,
-// exactly like the client, so the leaderboard counts the same sources the
-// badges page does. Production domain is stable; override via SELF_ORIGIN.
-const SELF_ORIGIN = process.env.SELF_ORIGIN || 'https://blinksunited.com';
 
 function supabase() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return null;
@@ -158,54 +151,6 @@ async function librefmFetch(params) {
 async function fetchTrackPlays(username, artist, track, fetchFn = lfmFetch) {
   const d = await fetchFn({ method: 'track.getInfo', artist, track, username });
   return parseInt(d?.track?.userplaycount || '0', 10);
-}
-
-// ── Musicat / Stats.fm (via our own proxy, mirroring the badges page) ─────────
-// These providers expose all-time totals + a "today" bucket only, never per-day
-// history. We call the exact same internal endpoints index.html uses so the
-// leaderboard aggregates the identical numbers the profile shows. Returns
-// { artistPlays, tracks:{...}, today:{...} } or null on failure.
-// Counters for one handler invocation (reset at the top of the handler), so we
-// can see how the in-loop provider fetches actually fared vs a lone self-test.
-const providerStat = { musicat: { ok: 0, fail: 0 }, statsfm: { ok: 0, fail: 0 }, sampleErr: null };
-
-const PROVIDER_FRESH_MS = 20 * 60 * 1000; // reuse a cached payload for 20 min
-const PROVIDER_CACHE_TTL_S = 7 * 24 * 3600; // keep last-good for a week as fallback
-
-// Stale-while-error provider fetch, cached in the cron's own Upstash Redis (which
-// is always available here, unlike the Edge endpoint's env). Musicat/Stats.fm
-// throttle the ~40-profile refresh burst (HTTP 502 / abort), so a raw pass drops
-// half of them and would flicker those fans' scores hourly. Instead:
-//   • serve the cached payload while fresh (no upstream hit, fast, never aborts),
-//   • otherwise do one bounded scrape and refresh the cache on success,
-//   • on any failure fall back to the last good payload.
-// So once an account has been scraped successfully even once, a later throttled
-// scrape holds its last number instead of zeroing it — the score stops flickering.
-async function fetchProviderStats(source, username) {
-  const cacheKey = `provcache:v1:${source}:${(username || '').toLowerCase()}`;
-  let cached = null;
-  try { cached = await redis.get(cacheKey); } catch {}
-  if (cached?.payload && cached.at && (Date.now() - cached.at) < PROVIDER_FRESH_MS) {
-    return cached.payload;
-  }
-  const path = source === 'musicat'
-    ? `/api/proxy-image?musicat_user=${encodeURIComponent(username)}`
-    : `/api/statsfm?user=${encodeURIComponent(username)}`;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 6000);
-  try {
-    const r = await fetch(`${SELF_ORIGIN}${path}`, { signal: ctrl.signal });
-    if (!r.ok) throw new Error(`${source} HTTP ${r.status}`);
-    const d = await r.json();
-    if (d?.error) throw new Error(`${source} error: ${d.error}`);
-    try { await redis.set(cacheKey, { payload: d, at: Date.now() }, { ex: PROVIDER_CACHE_TTL_S }); } catch {}
-    return d;
-  } catch (e) {
-    if (cached?.payload) return cached.payload; // stale fallback — never zero a fan
-    throw e;
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 async function fetchArtistPlays(username, artist, fetchFn = lfmFetch) {
@@ -452,38 +397,8 @@ async function refreshUser(entry, sb, linkedMap) {
       } catch (e) {
         console.warn(`LB fetch failed for ${u}:`, e.message);
       }
-    } else if (acct.type === 'musicat' || acct.type === 'statsfm') {
-      // Same sources the badges page counts. Without these two branches the
-      // cron silently drops Musicat/Stats.fm scrobblers, so any fan linking one
-      // is under-counted on the leaderboard vs their own profile — the hourly
-      // refresh then overwrites the client's correct submit with the low number.
-      try {
-        const d = await fetchProviderStats(acct.type, acct.username);
-        artistPlays += d.artistPlays || 0;
-        let providerToday = 0;
-        for (const t of TRACKS) {
-          totalPlays[t.id]  += d.tracks?.[t.id] || 0;
-          const todayN = d.today?.[t.id] || 0;
-          todayCounts[t.id] += todayN;
-          // No per-day history from these providers: floor the week at today so
-          // today can't exceed the week (mirrors the client's Musicat/Stats.fm
-          // handling). A same-day scrobbler still contributes to weekly totals.
-          weekCounts[t.id]  += todayN;
-          providerToday += todayN;
-        }
-        // Keep a Musicat/Stats.fm-only fan from drifting to a false "inactive"
-        // label: today's plays through these providers count as recent activity.
-        if (providerToday > 0) {
-          const nowIso = new Date().toISOString();
-          if (!lastScrobbleAt || nowIso > lastScrobbleAt) lastScrobbleAt = nowIso;
-        }
-        providerStat[acct.type].ok++;
-      } catch (e) {
-        providerStat[acct.type].fail++;
-        if (!providerStat.sampleErr) providerStat.sampleErr = `${acct.type}/${acct.username}: ${e.message}`;
-        console.warn(`${acct.type} fetch failed for ${acct.username}:`, e.message);
-      }
     }
+    // Musicat / Stats.fm are NOT scraped here — see the providerScores block below.
   }
 
   // Add this profile's extension (blinksunited-direct) plays on top.
@@ -505,6 +420,27 @@ async function refreshUser(entry, sb, linkedMap) {
     }
   }
 
+  // Musicat / Stats.fm: reuse the breakdown the badges page submitted, rather than
+  // scraping those providers here. They throttle the hourly ~40-profile burst and
+  // drop the heaviest accounts (e.g. a 250k-play Stats.fm), so scraping silently
+  // lost their streams. The client fetched them successfully one-at-a-time, so we
+  // trust that number. Overall totals always apply; the provider "today" only
+  // applies while it's still the day the client captured it — these providers
+  // expose no per-day history to re-derive it, so on a later day it's simply 0
+  // until the fan opens their badges again (same freshness as their own profile).
+  const provScores = entry.providerScores;
+  if (provScores && provScores.overall) {
+    const provTodayFresh = provScores.dailyDate === ddmm(new Date(dayFrom * 1000));
+    for (const t of TRACKS) {
+      totalPlays[t.id] += provScores.overall[t.id] || 0;
+      if (provTodayFresh) {
+        const n = provScores.today?.[t.id] || 0;
+        todayCounts[t.id] += n;
+        weekCounts[t.id]  += n;
+      }
+    }
+  }
+
   // Keep Stamp Archive fresh (keyed by primary Last.fm username)
   if (lfmAccount) {
     try {
@@ -523,6 +459,9 @@ async function refreshUser(entry, sb, linkedMap) {
     avatar:        entry.avatar,
     updatedAt:     new Date().toISOString(),
     lastScrobbleAt,
+    // Carry the badges-page Musicat/Stats.fm breakdown forward across refreshes so
+    // it survives until the fan's next visit refreshes it.
+    providerScores: entry.providerScores || null,
     scores: {
       overall_all:      campaignTotal,
       overall_jump:     totalPlays.jump,
@@ -569,10 +508,6 @@ export default async function handler(req, res) {
   if (secret && req.headers['authorization'] !== `Bearer ${secret}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-
-  providerStat.musicat = { ok: 0, fail: 0 };
-  providerStat.statsfm = { ok: 0, fail: 0 };
-  providerStat.sampleErr = null;
 
   const data = await redis.get(LB_KEY);
   if (!data?.users) return res.status(200).json({ ok: true, skipped: 'no users' });
@@ -685,5 +620,5 @@ export default async function handler(req, res) {
   await redis.set(LB_KEY, data);
 
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({ ok: true, providerStat, refreshed: ok, failed, unverified, merged: [...removedKeys] });
+  res.status(200).json({ ok: true, refreshed: ok, failed, unverified, merged: [...removedKeys] });
 }

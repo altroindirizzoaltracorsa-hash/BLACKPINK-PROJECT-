@@ -6586,6 +6586,25 @@ async function loadMultiAccountProfile(accounts) {
   // Assign to global only now — avoids race where two overlapping calls both push to the same array
   acctBreakdown = _breakdown;
 
+  // Musicat / Stats.fm contribution, captured here so the leaderboard cron can
+  // ADD it back without re-scraping those providers. The server cron can fetch
+  // Last.fm / ListenBrainz / extension reliably, but Musicat & Stats.fm throttle
+  // its hourly ~40-profile burst and drop the heaviest accounts (e.g. a 250k-play
+  // Stats.fm), so their streams silently vanished from the leaderboard. The badges
+  // page already fetched them successfully one-at-a-time above, so we send that
+  // breakdown with the submit and the cron reuses it — keeping the two in lockstep.
+  const _provScores = { overall: { jump:0, shutdown:0, ddududu:0, ltal:0, go:0 },
+                        today:   { jump:0, shutdown:0, ddududu:0, ltal:0, go:0 },
+                        dailyDate: italyDateLabel(), updatedAt: new Date().toISOString() };
+  for (const stats of _breakdown) {
+    if (!stats || (stats.source !== 'musicat' && stats.source !== 'statsfm')) continue;
+    for (const k of ['jump','shutdown','ddududu','ltal','go']) {
+      _provScores.overall[k] += stats.totalPlays[k]  || 0;
+      _provScores.today[k]   += stats.todayCounts[k] || 0;
+    }
+  }
+  combined.providerScores = _provScores;
+
   // User info for display header: use first LFM-compatible account (Last.fm or Libre.fm)
   const primaryLfm = _accounts.find(a => a.source === 'lastfm' || a.source === 'librefm');
   const primaryAccount = primaryLfm || _accounts[0];
@@ -6652,7 +6671,7 @@ async function loadMultiAccountProfile(accounts) {
   // Submit the SAME folded numbers the badges page displays (extension included),
   // and flag it so the server does not add the extension a second time. This is
   // what keeps the leaderboard identical to the badges page.
-  const serverDisplayName = await submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs, combined.bpGroupPlays, combined.memberPlays, true).catch(()=>null);
+  const serverDisplayName = await submitToLeaderboard(combined.info, combined.totalPlays, combined.todayCounts, combined.weekCounts, combined.artistPlays, combined.lastScrobbleTs, combined.bpGroupPlays, combined.memberPlays, true, combined.providerScores).catch(()=>null);
   if (serverDisplayName) {
     combined.info.displayName = serverDisplayName;
     cacheDisplayName(serverDisplayName);
@@ -7485,7 +7504,7 @@ function applyTodayFloor(todayCounts, fingerprint) {
 }
 
 // ── Write user scores to leaderboard ─────────────────────────
-async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs, bpGroupPlays, memberPlays, extensionIncluded = false) {
+async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts, artistPlays, lastScrobbleTs, bpGroupPlays, memberPlays, extensionIncluded = false, providerScores = null) {
   try {
     const lfmUsername = userInfo.name || userInfo.realname || '';
     const lbUsername  = getSavedLbUsername();
@@ -7582,6 +7601,8 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
         avatar:         avatarUrl,
         scores,
         extensionIncluded,
+        // Musicat/Stats.fm breakdown so the cron can re-add it without scraping.
+        ...(providerScores ? { providerScores } : {}),
         updatedAt:      new Date().toISOString(),
         lastScrobbleAt: lastScrobbleTs ? new Date(lastScrobbleTs).toISOString() : null,
         accessToken: tok,
@@ -10759,7 +10780,7 @@ function setPhoto(val) {
   // Push the change to the leaderboard so its avatar matches (or clears) too.
   if (info) {
     const c = currentUser;
-    submitToLeaderboard(c.info, c.totalPlays, c.todayCounts, c.weekCounts, c.artistPlays, c.lastScrobbleTs, c.bpGroupPlays, c.memberPlays, true)
+    submitToLeaderboard(c.info, c.totalPlays, c.todayCounts, c.weekCounts, c.artistPlays, c.lastScrobbleTs, c.bpGroupPlays, c.memberPlays, true, c.providerScores)
       .then(() => { if (document.getElementById('page-leaderboard')?.classList.contains('active')) fetchLbData(true).then(renderLeaderboard).catch(()=>{}); })
       .catch(() => {});
   }
