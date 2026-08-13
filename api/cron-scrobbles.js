@@ -283,9 +283,8 @@ async function extensionCountsForUsers(sb, appUserIds, dayFrom, dayTo, weekFrom,
 // ── Refresh one user's scores ─────────────────────────────────
 // linkedMap: Map(source_username.toLowerCase() -> app_user_id), used to attach
 // this profile's extension_scrobbles rows to the right account.
-async function refreshUser(entry, sb, linkedMap) {
+async function refreshUser(entry, sb, linkedMap, nameByUid) {
   const linkedAccounts = entry.linkedAccounts || [{ type: 'lastfm', username: entry.username }];
-  const displayName    = entry.displayName    || entry.username;
 
   // Resolve the stable owner id. It's often missing on the in-Redis entry — a
   // legacy row, or one written before appUserId was carried across refreshes — so
@@ -302,6 +301,19 @@ async function refreshUser(entry, sb, linkedMap) {
       const uid = linkedMap.get((a.username || '').toLowerCase());
       if (uid) { appUserId = uid; break; }
     }
+  }
+
+  // Display name. If the stored name is just a raw scrobbler handle — a self-heal
+  // seed, or an entry the flip bug relabelled (colxrzone -> the eilan3502 handle) —
+  // relabel it to the name the owner actually chose, read from their Supabase auth
+  // profile (the authoritative source the site itself writes). This RENAMES, never
+  // removes: the row keeps all its accounts and scores, it just gets the right
+  // label. A correctly-named entry is left untouched.
+  let displayName = entry.displayName || entry.username;
+  if (appUserId && nameByUid) {
+    const chosen = nameByUid.get(appUserId);
+    const isHandle = linkedAccounts.some(a => (a.username || '').toLowerCase() === displayName.toLowerCase());
+    if (chosen && isHandle) displayName = chosen;
   }
 
   const { from: dayFrom, to: dayTo }   = getDayBounds();
@@ -582,6 +594,32 @@ export default async function handler(req, res) {
       }
     } catch (e) { console.error('Failed to fetch verified linked accounts:', e); }
   }
+
+  // Authoritative display names, keyed by owner id, from the Supabase auth profiles.
+  // Used to relabel any entry that fell back to a raw scrobbler handle (a self-heal
+  // seed, or one the flip bug renamed) back to the name the owner actually chose.
+  // Best-effort: if the admin API is unavailable this run, names just stay as-is.
+  let nameByUid = null;
+  if (sb) {
+    try {
+      nameByUid = new Map();
+      for (let page = 1; page <= 20; page++) {
+        const { data: au, error } = await sb.auth.admin.listUsers({ page, perPage: 1000 });
+        if (error) throw error;
+        const list = au?.users || [];
+        for (const u of list) {
+          const md = u.user_metadata || u.raw_user_meta_data || {};
+          const dn = (md.display_name || md.name || md.full_name || '').trim();
+          if (dn) nameByUid.set(u.id, dn);
+        }
+        if (list.length < 1000) break;
+      }
+    } catch (e) {
+      console.error('listUsers for display-name recovery failed:', e.message);
+      nameByUid = null;
+    }
+  }
+
   function isVerified(entry) {
     if (!verifiedUsernames) return true;
     const accounts = Array.isArray(entry.linkedAccounts) && entry.linkedAccounts.length
@@ -682,7 +720,7 @@ export default async function handler(req, res) {
     await Promise.all(users.slice(i, i + batchSize).map(async entry => {
       if (!isVerified(entry)) { unverified.push(entry.username); return; }
       try {
-        const refreshed = await refreshUser(entry, sb, linkedMap);
+        const refreshed = await refreshUser(entry, sb, linkedMap, nameByUid);
         // Key by displayName (lowercased) so linked-account rows consolidate
         data.users[refreshed.displayName.toLowerCase()] = refreshed;
         // Remove the old key if the display name differs from the raw username
@@ -819,6 +857,6 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.status(200).json({
     ok: true, seeded, refreshed: ok, failed, unverified, merged: [...removedKeys], dailyArchived,
-    _diag: { linkedMap: linkedMap ? linkedMap.size : null, ownersResolved: dailyByUser.size, dailyErr },
+    _diag: { linkedMap: linkedMap ? linkedMap.size : null, nameMap: nameByUid ? nameByUid.size : null, ownersResolved: dailyByUser.size, dailyErr },
   });
 }
