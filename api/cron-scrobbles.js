@@ -283,7 +283,7 @@ async function extensionCountsForUsers(sb, appUserIds, dayFrom, dayTo, weekFrom,
 // ── Refresh one user's scores ─────────────────────────────────
 // linkedMap: Map(source_username.toLowerCase() -> app_user_id), used to attach
 // this profile's extension_scrobbles rows to the right account.
-async function refreshUser(entry, sb, linkedMap, nameByUid) {
+async function refreshUser(entry, sb, linkedMap, nameInfo) {
   const linkedAccounts = entry.linkedAccounts || [{ type: 'lastfm', username: entry.username }];
 
   // Resolve the stable owner id. It's often missing on the in-Redis entry — a
@@ -303,17 +303,30 @@ async function refreshUser(entry, sb, linkedMap, nameByUid) {
     }
   }
 
-  // Display name. If the stored name is just a raw scrobbler handle — a self-heal
-  // seed, or an entry the flip bug relabelled (colxrzone -> the eilan3502 handle) —
-  // relabel it to the name the owner actually chose, read from their Supabase auth
-  // profile (the authoritative source the site itself writes). This RENAMES, never
-  // removes: the row keeps all its accounts and scores, it just gets the right
-  // label. A correctly-named entry is left untouched.
+  // Display name, reconciled against the auth profile so the row shows exactly what
+  // the badges page shows the owner:
+  //  1. Owner set a display name  -> use it (authoritative; fixes handle-named rows,
+  //     e.g. the eilan3502 handle back to colxrzone).
+  //  2. No display name, and the stored name is EXACTLY the owner's OAuth real name
+  //     -> that's a row an earlier bug mislabeled; revert to the primary scrobbler
+  //     handle, which is what the badges page renders for a name-less owner. Only
+  //     when the auth list came back complete, so a partial fetch can't demote
+  //     anyone, and only on that exact-match signature, so a genuinely-chosen name
+  //     is never touched.
   let displayName = entry.displayName || entry.username;
-  if (appUserId && nameByUid) {
-    const chosen = nameByUid.get(appUserId);
-    const isHandle = linkedAccounts.some(a => (a.username || '').toLowerCase() === displayName.toLowerCase());
-    if (chosen && isHandle) displayName = chosen;
+  if (appUserId && nameInfo) {
+    const chosen = nameInfo.chosen.get(appUserId);
+    if (chosen) {
+      displayName = chosen;
+    } else if (nameInfo.complete) {
+      const oauth = nameInfo.oauth.get(appUserId);
+      if (oauth && displayName.toLowerCase() === oauth.toLowerCase()) {
+        const primary = linkedAccounts.find(a => a.type === 'lastfm' || a.type === 'librefm')
+          || linkedAccounts.find(a => a.type === 'listenbrainz')
+          || linkedAccounts[0];
+        if (primary && primary.username) displayName = primary.username;
+      }
+    }
   }
 
   const { from: dayFrom, to: dayTo }   = getDayBounds();
@@ -595,34 +608,39 @@ export default async function handler(req, res) {
     } catch (e) { console.error('Failed to fetch verified linked accounts:', e); }
   }
 
-  // Authoritative display names, keyed by owner id, from the Supabase auth profiles.
-  // Used to relabel any entry that fell back to a raw scrobbler handle (a self-heal
-  // seed, or one the flip bug renamed) back to the name the owner actually chose.
-  // Best-effort: if the admin API is unavailable this run, names just stay as-is.
-  let nameByUid = null;
+  // Names from the Supabase auth profiles, keyed by owner id, in two maps:
+  //   chosen — user_metadata.display_name, the ONLY field the badges page shows
+  //            (set explicitly by the owner via updateUser). Authoritative.
+  //   oauth  — name / full_name, the OAuth real name the site never displays. Kept
+  //            solely so we can DETECT (and undo) a row that an earlier bug relabeled
+  //            to this value, without ever showing it.
+  // `complete` is true only when we paginated all the way to an empty page (proving
+  // we saw every user even if perPage was clamped) and actually saw users — so a
+  // partial/failed fetch can never trigger a revert.
+  let nameInfo = null;
   if (sb) {
+    const chosen = new Map();
+    const oauth  = new Map();
+    let scanned = 0, reachedEnd = false;
     try {
-      nameByUid = new Map();
-      for (let page = 1; page <= 20; page++) {
+      for (let page = 1; page <= 50; page++) {
         const { data: au, error } = await sb.auth.admin.listUsers({ page, perPage: 1000 });
         if (error) throw error;
         const list = au?.users || [];
+        if (list.length === 0) { reachedEnd = true; break; }
+        scanned += list.length;
         for (const u of list) {
-          // ONLY user_metadata.display_name — the exact field the badges page uses
-          // (set explicitly by the owner via updateUser). Deliberately NOT name /
-          // full_name: those carry OAuth real names the site never shows, so using
-          // them would both break badges/leaderboard parity and expose real names
-          // for owners who never chose a display name (they stay on their handle,
-          // same as the client renders them).
           const md = u.user_metadata || u.raw_user_meta_data || {};
           const dn = (md.display_name || '').trim();
-          if (dn) nameByUid.set(u.id, dn);
+          if (dn) chosen.set(u.id, dn);
+          const on = (md.name || md.full_name || '').trim();
+          if (on) oauth.set(u.id, on);
         }
-        if (list.length < 1000) break;
       }
+      nameInfo = { chosen, oauth, complete: reachedEnd && scanned > 0 };
     } catch (e) {
       console.error('listUsers for display-name recovery failed:', e.message);
-      nameByUid = null;
+      nameInfo = null;
     }
   }
 
@@ -726,7 +744,7 @@ export default async function handler(req, res) {
     await Promise.all(users.slice(i, i + batchSize).map(async entry => {
       if (!isVerified(entry)) { unverified.push(entry.username); return; }
       try {
-        const refreshed = await refreshUser(entry, sb, linkedMap, nameByUid);
+        const refreshed = await refreshUser(entry, sb, linkedMap, nameInfo);
         // Key by displayName (lowercased) so linked-account rows consolidate
         data.users[refreshed.displayName.toLowerCase()] = refreshed;
         // Remove the old key if the display name differs from the raw username
@@ -863,6 +881,6 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.status(200).json({
     ok: true, seeded, refreshed: ok, failed, unverified, merged: [...removedKeys], dailyArchived,
-    _diag: { linkedMap: linkedMap ? linkedMap.size : null, nameMap: nameByUid ? nameByUid.size : null, ownersResolved: dailyByUser.size, dailyErr },
+    _diag: { linkedMap: linkedMap ? linkedMap.size : null, namesChosen: nameInfo ? nameInfo.chosen.size : null, namesOauth: nameInfo ? nameInfo.oauth.size : null, authComplete: nameInfo ? nameInfo.complete : null, ownersResolved: dailyByUser.size, dailyErr },
   });
 }
