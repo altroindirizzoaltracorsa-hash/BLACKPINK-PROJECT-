@@ -165,15 +165,30 @@ async function fetchTrackPlays(username, artist, track, fetchFn = lfmFetch) {
 // history. We call the exact same internal endpoints index.html uses so the
 // leaderboard aggregates the identical numbers the profile shows. Returns
 // { artistPlays, tracks:{...}, today:{...} } or null on failure.
-async function fetchProviderStats(source, username) {
+// Counters for one handler invocation (reset at the top of the handler), so we
+// can see how the in-loop provider fetches actually fared vs a lone self-test.
+const providerStat = { musicat: { ok: 0, fail: 0 }, statsfm: { ok: 0, fail: 0 }, sampleErr: null };
+
+async function fetchProviderStats(source, username, attempt = 0) {
   const path = source === 'musicat'
     ? `/api/proxy-image?musicat_user=${encodeURIComponent(username)}`
     : `/api/statsfm?user=${encodeURIComponent(username)}`;
-  const r = await fetch(`${SELF_ORIGIN}${path}`);
-  if (!r.ok) throw new Error(`${source} HTTP ${r.status}`);
-  const d = await r.json();
-  if (d?.error) throw new Error(`${source} error: ${d.error}`);
-  return d;
+  try {
+    const r = await fetch(`${SELF_ORIGIN}${path}`);
+    if (!r.ok) throw new Error(`${source} HTTP ${r.status}`);
+    const d = await r.json();
+    if (d?.error) throw new Error(`${source} error: ${d.error}`);
+    return d;
+  } catch (e) {
+    // The Musicat/Stats.fm proxies throttle under the refresh's concurrent load
+    // (they scrape upstream services that rate-limit bursts), so a single pass
+    // drops most calls. Retry with backoff, the same way lfmFetch does.
+    if (attempt < 4) {
+      await new Promise(res => setTimeout(res, 700 * 2 ** attempt));
+      return fetchProviderStats(source, username, attempt + 1);
+    }
+    throw e;
+  }
 }
 
 async function fetchArtistPlays(username, artist, fetchFn = lfmFetch) {
@@ -445,7 +460,10 @@ async function refreshUser(entry, sb, linkedMap) {
           const nowIso = new Date().toISOString();
           if (!lastScrobbleAt || nowIso > lastScrobbleAt) lastScrobbleAt = nowIso;
         }
+        providerStat[acct.type].ok++;
       } catch (e) {
+        providerStat[acct.type].fail++;
+        if (!providerStat.sampleErr) providerStat.sampleErr = `${acct.type}/${acct.username}: ${e.message}`;
         console.warn(`${acct.type} fetch failed for ${acct.username}:`, e.message);
       }
     }
@@ -534,6 +552,10 @@ export default async function handler(req, res) {
   if (secret && req.headers['authorization'] !== `Bearer ${secret}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
+
+  providerStat.musicat = { ok: 0, fail: 0 };
+  providerStat.statsfm = { ok: 0, fail: 0 };
+  providerStat.sampleErr = null;
 
   const data = await redis.get(LB_KEY);
   if (!data?.users) return res.status(200).json({ ok: true, skipped: 'no users' });
@@ -655,5 +677,5 @@ export default async function handler(req, res) {
   } catch (e) { selfTest = { origin: SELF_ORIGIN, fetchError: e.message }; }
 
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({ ok: true, codeVersion: 'pp-selftest-1', selfTest, refreshed: ok, failed, unverified, merged: [...removedKeys] });
+  res.status(200).json({ ok: true, codeVersion: 'pp-retry-1', selfTest, providerStat, refreshed: ok, failed, unverified, merged: [...removedKeys] });
 }
