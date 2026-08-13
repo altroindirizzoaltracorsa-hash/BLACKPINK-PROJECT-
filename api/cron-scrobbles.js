@@ -169,15 +169,28 @@ async function fetchTrackPlays(username, artist, track, fetchFn = lfmFetch) {
 // can see how the in-loop provider fetches actually fared vs a lone self-test.
 const providerStat = { musicat: { ok: 0, fail: 0 }, statsfm: { ok: 0, fail: 0 }, sampleErr: null };
 
+const PROVIDER_FRESH_MS = 20 * 60 * 1000; // reuse a cached payload for 20 min
+const PROVIDER_CACHE_TTL_S = 7 * 24 * 3600; // keep last-good for a week as fallback
+
+// Stale-while-error provider fetch, cached in the cron's own Upstash Redis (which
+// is always available here, unlike the Edge endpoint's env). Musicat/Stats.fm
+// throttle the ~40-profile refresh burst (HTTP 502 / abort), so a raw pass drops
+// half of them and would flicker those fans' scores hourly. Instead:
+//   • serve the cached payload while fresh (no upstream hit, fast, never aborts),
+//   • otherwise do one bounded scrape and refresh the cache on success,
+//   • on any failure fall back to the last good payload.
+// So once an account has been scraped successfully even once, a later throttled
+// scrape holds its last number instead of zeroing it — the score stops flickering.
 async function fetchProviderStats(source, username) {
+  const cacheKey = `provcache:v1:${source}:${(username || '').toLowerCase()}`;
+  let cached = null;
+  try { cached = await redis.get(cacheKey); } catch {}
+  if (cached?.payload && cached.at && (Date.now() - cached.at) < PROVIDER_FRESH_MS) {
+    return cached.payload;
+  }
   const path = source === 'musicat'
     ? `/api/proxy-image?musicat_user=${encodeURIComponent(username)}`
     : `/api/statsfm?user=${encodeURIComponent(username)}`;
-  // Hard per-call cap. These proxies scrape upstream services and can hang or
-  // throttle under the refresh's concurrent load; a bounded single attempt keeps
-  // the whole cron safely under Vercel's function timeout. Reliability comes from
-  // caching the endpoints (warm cache => fast hits), not from long in-loop retries
-  // that blow the time budget.
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 6000);
   try {
@@ -185,7 +198,11 @@ async function fetchProviderStats(source, username) {
     if (!r.ok) throw new Error(`${source} HTTP ${r.status}`);
     const d = await r.json();
     if (d?.error) throw new Error(`${source} error: ${d.error}`);
+    try { await redis.set(cacheKey, { payload: d, at: Date.now() }, { ex: PROVIDER_CACHE_TTL_S }); } catch {}
     return d;
+  } catch (e) {
+    if (cached?.payload) return cached.payload; // stale fallback — never zero a fan
+    throw e;
   } finally {
     clearTimeout(timer);
   }
