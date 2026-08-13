@@ -7321,6 +7321,11 @@ function calNext() {
   renderStampCalendar();
 }
 
+function toggleNext(el) {
+  const x = el.nextElementSibling;
+  if (x) x.style.display = (x.style.display === 'none' ? 'block' : 'none');
+}
+
 function showStampDetail(dateKey) {
   const archive = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
   const stamps = archive[dateKey] || null;
@@ -7339,14 +7344,27 @@ function showStampDetail(dateKey) {
 
   const histTotal = hist ? (hist.jump||0)+(hist.shutdown||0)+(hist.ddududu||0)+(hist.ltal||0)+(hist.go||0) : 0;
 
-  // Per-track totals for the day (server history), only tracks with plays.
+  // Per-track totals for the day (server history), only tracks with plays. Each row
+  // is tappable to expand THAT song's per-scrobbler split — same drill-down as the
+  // badges page (tap a number → see which scrobblers made it up).
+  const bySource = (hist && hist.by_source && typeof hist.by_source === 'object') ? hist.by_source : null;
   const trackRows = hist ? TRACKS.filter(t => (hist[t.id]||0) > 0).map(t => {
     const s = stamps && stamps[t.id];
-    return `<div class="stamp-detail-item">
-      <span class="stamp-detail-icon">${s ? s.icon : '🩷'}</span>
-      <span class="stamp-detail-label">${t.title}</span>
-      <span class="stamp-detail-count">${(hist[t.id]||0).toLocaleString()} streams</span>
-    </div>`;
+    const tot = hist[t.id] || 0;
+    const split = bySource
+      ? Object.entries(bySource).map(([name, c]) => [name, c[t.id] || 0]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])
+      : [];
+    const sub = split.map(([name, n]) => `<div class="stamp-detail-item" style="padding:0.15rem 0;">
+        <span class="stamp-detail-label" style="font-size:0.66rem;letter-spacing:0.03em;color:var(--muted);flex:1;">${escapeHtml(name)}</span>
+        <span class="stamp-detail-count">${n.toLocaleString()}</span>
+      </div>`).join('');
+    const clickable = sub.length > 0;
+    return `<div class="stamp-detail-item"${clickable ? ' style="cursor:pointer;" onclick="toggleNext(this)"' : ''}>
+        <span class="stamp-detail-icon">${s ? s.icon : '🩷'}</span>
+        <span class="stamp-detail-label">${t.title}</span>
+        <span class="stamp-detail-count">${tot.toLocaleString()} streams${clickable ? ' ▾' : ''}</span>
+      </div>
+      ${clickable ? `<div style="display:none;padding-left:2rem;margin:0.1rem 0 0.4rem 0.5rem;border-left:1px solid rgba(255,255,255,0.08);">${sub}</div>` : ''}`;
   }).join('') : '';
 
   // Per-scrobbler breakdown for the day, biggest contributor first.
@@ -7358,7 +7376,7 @@ function showStampDetail(dateKey) {
       .sort((a, b) => b[1] - a[1]);
     if (rows.length) {
       sourceRows = `
-        <div class="stamp-detail-date" style="margin-top:0.9rem;">Scrobblers</div>
+        <div class="stamp-detail-date" style="margin-top:0.9rem;">By scrobbler · day total</div>
         <div class="stamp-detail-badges">
           ${rows.map(([name, tot]) => `<div class="stamp-detail-item">
             <span class="stamp-detail-label" style="font-size:0.72rem;letter-spacing:0.04em;">${escapeHtml(name)}</span>
@@ -7382,8 +7400,11 @@ function showStampDetail(dateKey) {
       }).join('')}
     </div>` : '';
 
+  const hint = (trackRows && bySource) ? `<div style="font-size:0.55rem;letter-spacing:0.06em;color:var(--muted);margin:-0.2rem 0 0.5rem;">TAP A SONG TO SEE ITS SCROBBLERS</div>` : '';
+
   el.innerHTML = `
-    <div class="stamp-detail-date">${label}${histTotal ? ` · ${histTotal.toLocaleString()} streams` : ''}</div>
+    <div class="stamp-detail-date">${label}${histTotal ? ` · ${histTotal.toLocaleString()} streams total` : ''}</div>
+    ${hint}
     ${trackRows ? `<div class="stamp-detail-badges">${trackRows}</div>` : ''}
     ${sourceRows}
     ${badgeOnly}`;
