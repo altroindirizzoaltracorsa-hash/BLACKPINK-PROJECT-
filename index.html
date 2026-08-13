@@ -6682,13 +6682,23 @@ async function loadMultiAccountProfile(accounts) {
   // breakdown with the submit and the cron reuses it — keeping the two in lockstep.
   const _provScores = { overall: { jump:0, shutdown:0, ddududu:0, ltal:0, go:0 },
                         today:   { jump:0, shutdown:0, ddududu:0, ltal:0, go:0 },
-                        dailyDate: italyDateLabel(), updatedAt: new Date().toISOString() };
+                        dailyDate: italyDateLabel(), updatedAt: new Date().toISOString(),
+                        // Per-account today split (Musicat vs Stats.fm kept SEPARATE),
+                        // so the personal history calendar can show each scrobbler on
+                        // its own row exactly like the badges breakdown — the cron
+                        // can't fetch these providers itself to split them.
+                        breakdown: [] };
   for (const stats of _breakdown) {
     if (!stats || (stats.source !== 'musicat' && stats.source !== 'statsfm')) continue;
     for (const k of ['jump','shutdown','ddududu','ltal','go']) {
       _provScores.overall[k] += stats.totalPlays[k]  || 0;
       _provScores.today[k]   += stats.todayCounts[k] || 0;
     }
+    _provScores.breakdown.push({
+      source: stats.source,
+      username: stats.username,
+      today: { jump: stats.todayCounts.jump||0, shutdown: stats.todayCounts.shutdown||0, ddududu: stats.todayCounts.ddududu||0, ltal: stats.todayCounts.ltal||0, go: stats.todayCounts.go||0 },
+    });
   }
   combined.providerScores = _provScores;
 

@@ -502,7 +502,22 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         provToday[t.id]    = n;
       }
     }
-    if (provTodayFresh && Object.values(provToday).some(v => v > 0)) todayBySource['Musicat / Stats.fm'] = provToday;
+    if (provTodayFresh) {
+      // Prefer the client's per-account split (Musicat and Stats.fm kept SEPARATE,
+      // one row each, matching the badges breakdown). Fall back to a single combined
+      // row for older submits that didn't carry the breakdown.
+      const bd = Array.isArray(provScores.breakdown) ? provScores.breakdown : null;
+      if (bd && bd.length) {
+        for (const b of bd) {
+          const c = b.today || {};
+          if (!Object.values(c).some(v => v > 0)) continue;
+          const label = `${b.source === 'statsfm' ? 'Stats.fm' : 'Musicat'} · ${b.username || ''}`.trim();
+          todayBySource[label] = { jump: c.jump||0, shutdown: c.shutdown||0, ddududu: c.ddududu||0, ltal: c.ltal||0, go: c.go||0 };
+        }
+      } else if (Object.values(provToday).some(v => v > 0)) {
+        todayBySource['Musicat / Stats.fm'] = provToday;
+      }
+    }
   }
 
   const todayLabel     = ddmm(new Date(dayFrom * 1000));
