@@ -267,6 +267,48 @@ export default async function handler(req, res) {
     return res.status(200).json({ dry: req.query.dry === '1', removed, kept });
   }
 
+  // ── GET /api/leaderboard?action=revert-auto-blink&key=ADMIN_SECRET[&dry=1] ──
+  // One-off cleanup: an earlier build auto-assigned "blinkN" display names on every
+  // sign-in, so existing fans who never chose a display name got converted too. This
+  // clears display_name from every auth profile that (a) currently holds a ^blink\d+$
+  // name AND (b) was created BEFORE the feature deployed — i.e. a pre-existing user,
+  // never a genuine new signup. The next cron run relabels their board row back to
+  // their handle. New signups (created after the cutoff) keep their blinkN. dry=1
+  // previews without writing.
+  if (req.method === 'GET' && action === 'revert-auto-blink') {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const sb = supabase();
+    if (!sb) return res.status(503).json({ error: 'Supabase not configured' });
+    const CUTOFF = Date.parse('2026-08-13T12:02:30Z'); // feature deploy time (commit 8a110b1)
+    const dry = req.query.dry === '1';
+    const reverted = [], keptNew = [];
+    let scanned = 0;
+    try {
+      for (let page = 1; page <= 100; page++) {
+        const { data: au, error } = await sb.auth.admin.listUsers({ page, perPage: 1000 });
+        if (error) return res.status(500).json({ error: error.message });
+        const users = (au && au.users) || [];
+        if (!users.length) break;
+        scanned += users.length;
+        for (const u of users) {
+          const dn = ((u.user_metadata && u.user_metadata.display_name) || '').trim();
+          if (!/^blink\d+$/i.test(dn)) continue;
+          if (Date.parse(u.created_at || 0) >= CUTOFF) { keptNew.push(dn); continue; }
+          if (dry) { reverted.push(dn); continue; }
+          const md = Object.assign({}, u.user_metadata || {}, { display_name: null });
+          const { error: upErr } = await sb.auth.admin.updateUserById(u.id, { user_metadata: md });
+          if (upErr) return res.status(500).json({ error: `update ${u.id}: ${upErr.message}` });
+          reverted.push(dn);
+        }
+      }
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+    const numsort = (a, b) => (parseInt(a.slice(5)) || 0) - (parseInt(b.slice(5)) || 0);
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ dry, scanned, revertedCount: reverted.length, reverted: reverted.sort(numsort), keptNew: keptNew.sort(numsort) });
+  }
+
   // ── GET /api/leaderboard?action=banned&key=ADMIN_SECRET — admin: list bans ──
   if (req.method === 'GET' && action === 'banned') {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
