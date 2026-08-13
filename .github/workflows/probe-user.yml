@@ -1,0 +1,94 @@
+name: Probe User (read-only)
+# Read-only: for one user (matched by display name / linked-account substring) and
+# a day, show (a) what the finalized daily archive froze, (b) the live board entry,
+# and (c) a fresh Last.fm recount for that day's 2am-Italy window. Isolates whether
+# a finalized-board number is stale-snapshot, a counting-method gap, or correct.
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Substring to match (display name or any linked account)'
+        required: true
+      day:
+        description: 'Streaming day YYYY-MM-DD'
+        required: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe
+        env:
+          NAME: ${{ github.event.inputs.name }}
+          DAY: ${{ github.event.inputs.day }}
+        run: |
+          python3 - <<'PY'
+          import os, json, subprocess, urllib.parse, urllib.request
+          from datetime import datetime, timezone, timedelta
+
+          LFM_KEY = "666b8ef2f3cc360fbc20df275fba2981"
+          LBASE = "https://ws.audioscrobbler.com/2.0/"
+          TRACKS = [("jump","BLACKPINK","JUMP"),("shutdown","BLACKPINK","Shut Down"),
+                    ("ddududu","BLACKPINK","DDU-DU DDU-DU"),("ltal","Jennie","Less Than a Lover"),
+                    ("go","BLACKPINK","GO")]
+          name = os.environ["NAME"].lower()
+          y,m,d = [int(x) for x in os.environ["DAY"].split("-")]
+          day_from = int(datetime(y,m,d,tzinfo=timezone.utc).timestamp()); day_to = day_from+86400
+
+          def get(url):
+              out = subprocess.run(["curl","-sS","-L",url],capture_output=True,text=True)
+              return json.loads(out.stdout)
+          def lfm(params):
+              qs = urllib.parse.urlencode({**params,"api_key":LFM_KEY,"format":"json"})
+              with urllib.request.urlopen(LBASE+"?"+qs) as r: return json.loads(r.read())
+
+          def match(u):
+              names = [ (u.get("displayName") or ""), (u.get("username") or "") ]
+              names += [a.get("username","") for a in (u.get("linkedAccounts") or [])]
+              return any(name in (n or "").lower() for n in names)
+
+          def show_entry(tag, users):
+              hits = [u for u in users.values() if match(u)]
+              if not hits: print(f"  [{tag}] no match"); return None
+              for u in hits:
+                  s = u.get("scores",{})
+                  accts = [a.get("username") for a in (u.get("linkedAccounts") or [])]
+                  print(f"  [{tag}] {u.get('displayName')!r}  accts={accts}")
+                  print(f"        daily_date={s.get('daily_date')} daily_jump={s.get('daily_jump')} daily_all={s.get('daily_all')} updatedAt={u.get('updatedAt')}")
+              return hits[0]
+
+          arch = get(f"https://blinksunited.com/api/leaderboard-archive?period=daily&key={os.environ['DAY']}")
+          live = get("https://blinksunited.com/api/leaderboard")
+          print(f"=== Archive {os.environ['DAY']} (archived {arch.get('archivedAt')}) ===")
+          ae = show_entry("archive", arch.get("users",{}) or {})
+          print("=== Live board now ===")
+          le = show_entry("live", live.get("users",{}) or {})
+
+          entry = le or ae
+          if not entry: raise SystemExit(0)
+          accts = [(a.get("username"), a.get("type","lastfm")) for a in (entry.get("linkedAccounts") or [])]
+          print(f"\n=== Fresh Last.fm recount for {os.environ['DAY']} ===")
+          agg = {t[0]:0 for t in TRACKS}
+          for u,typ in accts:
+              if typ not in ("lastfm","librefm"): print(f"  {u} ({typ}): skipped (non-lastfm)"); continue
+              c = {t[0]:0 for t in TRACKS}; page=1
+              try:
+                  while True:
+                      dd = lfm({"method":"user.getRecentTracks","user":u,"from":day_from,"to":day_to,"limit":200,"page":page})
+                      rt = dd.get("recenttracks") or {}; tr = rt.get("track") or []
+                      if isinstance(tr,dict): tr=[tr]
+                      for s in tr:
+                          if (s.get("@attr") or {}).get("nowplaying")=="true": continue
+                          nm=(s.get("name") or "").lower(); ar=(s.get("artist") or {}).get("#text","").lower()
+                          for tid,ta,tt in TRACKS:
+                              if nm==tt.lower() and ta.lower() in ar: c[tid]+=1; break
+                      tp=int((rt.get("@attr") or {}).get("totalPages") or 1)
+                      if page>=tp or page>=50: break
+                      page+=1
+              except Exception as e:
+                  print(f"  {u}: ERROR {e}"); continue
+              for k in agg: agg[k]+=c[k]
+              print(f"  {u:20} {c}")
+          print(f"\nLast.fm COMBINED {os.environ['DAY']}: {agg}")
+          print(f"archived daily_jump was: {(ae or {}).get('scores',{}).get('daily_jump') if ae else 'n/a'}")
+          PY
