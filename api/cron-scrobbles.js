@@ -608,8 +608,14 @@ export default async function handler(req, res) {
         if (error) throw error;
         const list = au?.users || [];
         for (const u of list) {
+          // ONLY user_metadata.display_name — the exact field the badges page uses
+          // (set explicitly by the owner via updateUser). Deliberately NOT name /
+          // full_name: those carry OAuth real names the site never shows, so using
+          // them would both break badges/leaderboard parity and expose real names
+          // for owners who never chose a display name (they stay on their handle,
+          // same as the client renders them).
           const md = u.user_metadata || u.raw_user_meta_data || {};
-          const dn = (md.display_name || md.name || md.full_name || '').trim();
+          const dn = (md.display_name || '').trim();
           if (dn) nameByUid.set(u.id, dn);
         }
         if (list.length < 1000) break;
