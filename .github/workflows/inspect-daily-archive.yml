@@ -1,0 +1,82 @@
+name: Inspect Daily Archive (read-only)
+# Read-only: pulls a frozen daily leaderboard snapshot (leaderboard_archive) and
+# compares it to the current live board, to see whether the "finalized" day is
+# complete or was frozen with missing/zero entries.
+on:
+  workflow_dispatch:
+    inputs:
+      day:
+        description: 'Archive day key (YYYY-MM-DD). Blank = list available days.'
+        required: false
+        default: ''
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect
+        env:
+          DAY: ${{ github.event.inputs.day }}
+        run: |
+          python3 - <<'PY'
+          import os, json, subprocess
+
+          def get(url):
+              out = subprocess.run(["curl","-sS","-L",url], capture_output=True, text=True)
+              try:
+                  return json.loads(out.stdout)
+              except Exception:
+                  print("Unexpected response:", out.stdout[:400]); raise SystemExit(1)
+
+          day = os.environ.get("DAY","").strip()
+
+          if not day:
+              d = get("https://blinksunited.com/api/leaderboard-archive?period=daily")
+              print("=== Available daily archive snapshots ===")
+              for it in d.get("items", [])[:20]:
+                  print(f"  {it.get('key')}  ({it.get('label')})  archived {it.get('archivedAt')}")
+              raise SystemExit(0)
+
+          arch = get(f"https://blinksunited.com/api/leaderboard-archive?period=daily&key={day}")
+          users = arch.get("users", {}) or {}
+          print(f"=== Daily archive {day} ({arch.get('label')}) — archived {arch.get('archivedAt')} ===")
+          print(f"users in snapshot: {len(users)}")
+
+          rows = []
+          for k, u in users.items():
+              s = u.get("scores", {}) or {}
+              accts = ",".join(a.get("username","?") for a in (u.get("linkedAccounts") or []))
+              rows.append((s.get("daily_jump",0), s.get("daily_all",0), s.get("daily_date"),
+                           u.get("displayName") or u.get("username") or k, accts))
+          rows.sort(reverse=True)
+
+          nonzero = [r for r in rows if r[0] > 0]
+          print(f"users with daily_jump > 0: {len(nonzero)}")
+          print(f"daily_date values present: {sorted(set(r[2] for r in rows))}")
+          print()
+          print("--- top 25 by daily_jump ---")
+          for jump, allc, dd, name, accts in rows[:25]:
+              print(f"  {jump:>6}  all={allc:<6} [{dd}]  {name!r}  <{accts}>")
+
+          # Live board for comparison
+          live = get("https://blinksunited.com/api/leaderboard")
+          lu = live.get("users", {}) or {}
+          print()
+          print(f"=== Live board now: {len(lu)} users (vs {len(users)} in the {day} archive) ===")
+
+          # Which accounts of interest are present in the archive?
+          watch = ["blinksunited","blackpinkshazam","alaicekim"]
+          low = {}
+          for k, u in users.items():
+              for a in (u.get("linkedAccounts") or []):
+                  low.setdefault((a.get("username","")).lower(), []).append(u)
+          print()
+          print("--- accounts of interest in archive ---")
+          for w in watch:
+              hit = low.get(w.lower())
+              if hit:
+                  s = hit[0].get("scores",{})
+                  print(f"  {w}: PRESENT  daily_jump={s.get('daily_jump')} daily_all={s.get('daily_all')}")
+              else:
+                  print(f"  {w}: MISSING from archive")
+          PY
