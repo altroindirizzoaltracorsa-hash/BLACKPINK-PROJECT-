@@ -7,6 +7,7 @@ const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
 const LIBREFM_BASE = 'https://libre.fm/2.0/';
 const LB_BASE     = 'https://api.listenbrainz.org/1/';
 const LB_KEY = 'bu_leaderboard_v1';
+let _psDebug = null; // TEMP: capture providerScores handling for one probe user
 
 function supabase() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return null;
@@ -429,6 +430,7 @@ async function refreshUser(entry, sb, linkedMap) {
   // expose no per-day history to re-derive it, so on a later day it's simply 0
   // until the fan opens their badges again (same freshness as their own profile).
   const provScores = entry.providerScores;
+  const _jumpBefore = totalPlays.jump;
   if (provScores && provScores.overall) {
     const provTodayFresh = provScores.dailyDate === ddmm(new Date(dayFrom * 1000));
     for (const t of TRACKS) {
@@ -439,6 +441,11 @@ async function refreshUser(entry, sb, linkedMap) {
         weekCounts[t.id]  += n;
       }
     }
+  }
+  if ((displayName || '').toLowerCase().includes('demibandwout')) {
+    _psDebug = { displayName, hasPS: !!provScores, psType: typeof provScores,
+                 psJump: provScores?.overall?.jump, jumpBefore: _jumpBefore, jumpAfter: totalPlays.jump,
+                 keys: provScores ? Object.keys(provScores) : null };
   }
 
   // Keep Stamp Archive fresh (keyed by primary Last.fm username)
@@ -620,5 +627,5 @@ export default async function handler(req, res) {
   await redis.set(LB_KEY, data);
 
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({ ok: true, refreshed: ok, failed, unverified, merged: [...removedKeys] });
+  res.status(200).json({ ok: true, psDebug: _psDebug, refreshed: ok, failed, unverified, merged: [...removedKeys] });
 }
