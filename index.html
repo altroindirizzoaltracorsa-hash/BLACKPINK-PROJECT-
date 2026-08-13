@@ -7321,9 +7321,38 @@ function calNext() {
   renderStampCalendar();
 }
 
-function toggleNext(el) {
-  const x = el.nextElementSibling;
-  if (x) x.style.display = (x.style.display === 'none' ? 'block' : 'none');
+// Open the SAME breakdown popup the badges page uses, but for a past day + song from
+// the history calendar: shows that song's per-scrobbler split on that day.
+function openHistoryBreakdown(dateKey, trackId) {
+  const hist = _histByDay[dateKey];
+  if (!hist || !hist.by_source) return;
+  const t = TRACKS.find(x => x.id === trackId);
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const dayLabel = new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const titleEl = document.getElementById('breakdown-title');
+  if (titleEl) titleEl.textContent = '// ' + (t ? t.title : trackId.toUpperCase()) + ' — ' + dayLabel;
+
+  const rows = Object.entries(hist.by_source)
+    .map(([name, c]) => [name, c[trackId] || 0])
+    .sort((a, b) => b[1] - a[1]);
+  const rowsEl = document.getElementById('breakdown-rows');
+  if (rowsEl) {
+    rowsEl.innerHTML = rows.map(([name, n]) => {
+      // Labels are "Last.fm · Alice9629" — split into account + source, like the badges popup.
+      const idx = name.indexOf(' · ');
+      const src  = idx > -1 ? name.slice(0, idx) : '';
+      const acct = idx > -1 ? name.slice(idx + 3) : name;
+      return `<div class="breakdown-row">
+        <div class="breakdown-acct">${escapeHtml(acct)}${src ? `<span class="breakdown-acct-source">${escapeHtml(src)}</span>` : ''}</div>
+        <div class="breakdown-val">${n.toLocaleString()}</div>
+      </div>`;
+    }).join('');
+  }
+  const grandEl = document.getElementById('breakdown-grand-total');
+  if (grandEl) grandEl.textContent = (hist[trackId] || 0).toLocaleString();
+
+  const overlay = document.getElementById('breakdown-overlay');
+  if (overlay) { overlay.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
 }
 
 function showStampDetail(dateKey) {
@@ -7344,27 +7373,19 @@ function showStampDetail(dateKey) {
 
   const histTotal = hist ? (hist.jump||0)+(hist.shutdown||0)+(hist.ddududu||0)+(hist.ltal||0)+(hist.go||0) : 0;
 
-  // Per-track totals for the day (server history), only tracks with plays. Each row
-  // is tappable to expand THAT song's per-scrobbler split — same drill-down as the
-  // badges page (tap a number → see which scrobblers made it up).
+  // Per-track totals for the day (server history), only tracks with plays. Tapping a
+  // song opens the same breakdown popup the badges page uses, showing THAT song's
+  // per-scrobbler split for THAT day.
   const bySource = (hist && hist.by_source && typeof hist.by_source === 'object') ? hist.by_source : null;
   const trackRows = hist ? TRACKS.filter(t => (hist[t.id]||0) > 0).map(t => {
     const s = stamps && stamps[t.id];
     const tot = hist[t.id] || 0;
-    const split = bySource
-      ? Object.entries(bySource).map(([name, c]) => [name, c[t.id] || 0]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])
-      : [];
-    const sub = split.map(([name, n]) => `<div class="stamp-detail-item" style="padding:0.15rem 0;">
-        <span class="stamp-detail-label" style="font-size:0.66rem;letter-spacing:0.03em;color:var(--muted);flex:1;">${escapeHtml(name)}</span>
-        <span class="stamp-detail-count">${n.toLocaleString()}</span>
-      </div>`).join('');
-    const clickable = sub.length > 0;
-    return `<div class="stamp-detail-item"${clickable ? ' style="cursor:pointer;" onclick="toggleNext(this)"' : ''}>
+    const hasSplit = bySource && Object.values(bySource).some(c => (c[t.id]||0) > 0);
+    return `<div class="stamp-detail-item"${hasSplit ? ` style="cursor:pointer;" onclick="openHistoryBreakdown('${dateKey}','${t.id}')"` : ''}>
         <span class="stamp-detail-icon">${s ? s.icon : '🩷'}</span>
         <span class="stamp-detail-label">${t.title}</span>
-        <span class="stamp-detail-count">${tot.toLocaleString()} streams${clickable ? ' ▾' : ''}</span>
-      </div>
-      ${clickable ? `<div style="display:none;padding-left:2rem;margin:0.1rem 0 0.4rem 0.5rem;border-left:1px solid rgba(255,255,255,0.08);">${sub}</div>` : ''}`;
+        <span class="stamp-detail-count">${tot.toLocaleString()} streams${hasSplit ? ' ›' : ''}</span>
+      </div>`;
   }).join('') : '';
 
   // Per-scrobbler breakdown for the day, biggest contributor first.
