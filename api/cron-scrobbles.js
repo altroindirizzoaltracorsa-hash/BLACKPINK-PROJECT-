@@ -645,6 +645,15 @@ export default async function handler(req, res) {
   updateLeaderStreak(data);
   await redis.set(LB_KEY, data);
 
+  // TEMP diagnostic: confirm the deployed build is new (codeVersion) and that
+  // this lambda can actually reach the Musicat/Stats.fm proxies it now calls.
+  let selfTest;
+  try {
+    const rr = await fetch(`${SELF_ORIGIN}/api/statsfm?user=demibandwout`);
+    let jj = null; try { jj = await rr.json(); } catch {}
+    selfTest = { origin: SELF_ORIGIN, ok: rr.ok, status: rr.status, jump: jj?.tracks?.jump, err: jj?.error };
+  } catch (e) { selfTest = { origin: SELF_ORIGIN, fetchError: e.message }; }
+
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({ ok: true, refreshed: ok, failed, unverified, merged: [...removedKeys] });
+  res.status(200).json({ ok: true, codeVersion: 'pp-selftest-1', selfTest, refreshed: ok, failed, unverified, merged: [...removedKeys] });
 }
