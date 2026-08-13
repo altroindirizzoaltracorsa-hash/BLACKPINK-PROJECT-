@@ -441,7 +441,26 @@ async function refreshUser(entry, sb, linkedMap) {
     }
   }
 
-  // Keep Stamp Archive fresh (keyed by primary Last.fm username)
+  const todayLabel     = ddmm(new Date(dayFrom * 1000));
+  const weekStartLabel = ddmm(new Date(weekFrom * 1000));
+
+  // ── Registered-value floor (the "the site had my streams then deleted them" fix) ──
+  // A recompute must NEVER lower a count already registered for the current day or
+  // week. Last.fm, ListenBrainz and especially the Stats.fm/Musicat slice can
+  // transiently come back smaller than a moment ago; without this the hourly cron
+  // overwrites a higher registered value (e.g. a live 1039) with a lower one (920).
+  // Counts only ever climb until the 2am-Rome reset. OVERALL is intentionally left
+  // un-floored so disconnecting a scrobbler can still legitimately reduce it.
+  const _prev = entry.scores || {};
+  if (_prev.daily_date === todayLabel) {
+    for (const t of TRACKS) todayCounts[t.id] = Math.max(todayCounts[t.id] || 0, _prev[`daily_${t.id}`] || 0);
+  }
+  if (_prev.weekly_start === weekStartLabel) {
+    for (const t of TRACKS) weekCounts[t.id] = Math.max(weekCounts[t.id] || 0, _prev[`weekly_${t.id}`] || 0);
+  }
+
+  // Keep Stamp Archive fresh (keyed by primary Last.fm username), using the
+  // floored counts so a stamp/day-count can't regress either.
   if (lfmAccount) {
     try {
       await persistStamp(sb, lfmAccount.username, dayKey(dayFrom), buildTodayStamps(todayCounts));
@@ -449,8 +468,6 @@ async function refreshUser(entry, sb, linkedMap) {
   }
 
   const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal + totalPlays.go;
-  const todayLabel     = ddmm(new Date(dayFrom * 1000));
-  const weekStartLabel = ddmm(new Date(weekFrom * 1000));
 
   return {
     username:      displayName,

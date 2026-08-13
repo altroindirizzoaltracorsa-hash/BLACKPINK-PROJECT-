@@ -741,6 +741,23 @@ export default async function handler(req, res) {
       }
     }
 
+    // Registered-value floor: a submission must never lower a count already
+    // registered for the current day/week (a partial/slow load can compute less).
+    // Counts only climb until the 2am-Rome reset; overall is left alone so a
+    // disconnected scrobbler can still reduce it. Mirrors the cron's floor.
+    if (existingEntry?.scores && scores) {
+      const ex = existingEntry.scores;
+      const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go'];
+      if (ex.daily_date === scores.daily_date) {
+        for (const id of TIDS) scores[`daily_${id}`] = Math.max(scores[`daily_${id}`] || 0, ex[`daily_${id}`] || 0);
+        scores.daily_all = TIDS.reduce((n, id) => n + (scores[`daily_${id}`] || 0), 0);
+      }
+      if (ex.weekly_start === scores.weekly_start) {
+        for (const id of TIDS) scores[`weekly_${id}`] = Math.max(scores[`weekly_${id}`] || 0, ex[`weekly_${id}`] || 0);
+        scores.weekly_all = TIDS.reduce((n, id) => n + (scores[`weekly_${id}`] || 0), 0);
+      }
+    }
+
     data.users[username.toLowerCase()] = {
       username,
       displayName: displayName || username,
