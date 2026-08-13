@@ -55,6 +55,7 @@ jobs:
                   accts = [a.get("username") for a in (u.get("linkedAccounts") or [])]
                   print(f"  [{tag}] {u.get('displayName')!r}  accts={accts}")
                   print(f"        daily_date={s.get('daily_date')} daily_jump={s.get('daily_jump')} daily_all={s.get('daily_all')} updatedAt={u.get('updatedAt')}")
+                  print(f"        overall_jump={s.get('overall_jump')} overall_all={s.get('overall_all')} overall_artist={s.get('overall_artist')}")
               return hits[0]
 
           arch = get(f"https://blinksunited.com/api/leaderboard-archive?period=daily&key={os.environ['DAY']}")
