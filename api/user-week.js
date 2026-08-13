@@ -31,24 +31,35 @@ export default async function handler(req, res) {
   const sb = supabase();
   if (!sb) return res.status(200).json({ days: {} });
 
-  try {
-    let q = sb
-      .from('user_daily_counts')
-      .select('day_key,jump,shutdown,ddududu,ltal,go')
-      .eq('app_user_id', appUserId);
-    // day_key is a zero-padded YYYY-MM-DD string, so lexical >= is chronological >=.
+  const to = (req.query.to || '').trim(); // optional upper bound day key, YYYY-MM-DD
+
+  // day_key is a zero-padded YYYY-MM-DD string, so lexical >=/<= is chronological.
+  const runQuery = async (cols) => {
+    let q = sb.from('user_daily_counts').select(cols).eq('app_user_id', appUserId);
     if (from) q = q.gte('day_key', from);
-    const { data, error } = await q.order('day_key', { ascending: true }).limit(31);
-    if (error) return res.status(200).json({ days: {} });
+    if (to)   q = q.lte('day_key', to);
+    return q.order('day_key', { ascending: true }).limit(100);
+  };
+
+  try {
+    const BASE = 'day_key,jump,shutdown,ddududu,ltal,go';
+    // Prefer the per-scrobbler breakdown; fall back to totals-only if the by_source
+    // column isn't migrated yet, so the weekly-grid floor keeps working meanwhile.
+    let data, hasBySource = true;
+    let r = await runQuery(BASE + ',by_source');
+    if (r.error) { hasBySource = false; r = await runQuery(BASE); }
+    if (r.error) return res.status(200).json({ days: {} });
+    data = r.data;
 
     const days = {};
-    for (const r of (data || [])) {
-      days[r.day_key] = {
-        jump:     r.jump     || 0,
-        shutdown: r.shutdown || 0,
-        ddududu:  r.ddududu  || 0,
-        ltal:     r.ltal     || 0,
-        go:       r.go       || 0,
+    for (const row of (data || [])) {
+      days[row.day_key] = {
+        jump:     row.jump     || 0,
+        shutdown: row.shutdown || 0,
+        ddududu:  row.ddududu  || 0,
+        ltal:     row.ltal     || 0,
+        go:       row.go       || 0,
+        by_source: hasBySource ? (row.by_source || null) : null,
       };
     }
     return res.status(200).json({ days });

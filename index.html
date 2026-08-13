@@ -7167,6 +7167,32 @@ const STAMP_KEY = 'bu_stamp_archive';
 let calMonth = new Date().getMonth();
 let calYear  = new Date().getFullYear();
 
+// Personal daily history (server-stored, per-day totals + per-scrobbler breakdown),
+// keyed by day_key (YYYY-MM-DD). Filled lazily one month at a time as the fan browses
+// the streak calendar, so tapping a past day shows exactly what they streamed and
+// which scrobblers it came from.
+let _histByDay = {};
+const _histLoadedMonths = new Set();
+async function ensureMonthHistory(year, month) {
+  const mk = `${year}-${String(month + 1).padStart(2, '0')}`;
+  if (_histLoadedMonths.has(mk)) return;
+  if (typeof sb === 'undefined' || !sb) return;
+  let uid;
+  try { const { data: { session } } = await sb.auth.getSession(); uid = session?.user?.id; } catch {}
+  if (!uid) return;
+  _histLoadedMonths.add(mk); // mark before awaiting so we don't double-fetch a month
+  try {
+    const first = `${mk}-01`;
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const last = `${mk}-${String(lastDay).padStart(2, '0')}`;
+    const r = await fetch(`/api/user-week?appUserId=${encodeURIComponent(uid)}&from=${first}&to=${last}`, { cache: 'no-store' });
+    if (!r.ok) { _histLoadedMonths.delete(mk); return; }
+    const j = await r.json();
+    Object.assign(_histByDay, j.days || {});
+    renderStampCalendar();
+  } catch { _histLoadedMonths.delete(mk); }
+}
+
 async function syncStampsFromServer(username) {
   if (!username) return;
   try {
@@ -7287,8 +7313,9 @@ function calNext() {
 
 function showStampDetail(dateKey) {
   const archive = JSON.parse(localStorage.getItem(STAMP_KEY) || '{}');
-  const stamps = archive[dateKey];
-  if (!stamps) return;
+  const stamps = archive[dateKey] || null;
+  const hist = _histByDay[dateKey] || null;
+  if (!stamps && !hist) return;
   const [y, m, d] = dateKey.split('-').map(Number);
   const label = new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const el = document.getElementById('stamp-day-detail');
@@ -7299,8 +7326,41 @@ function showStampDetail(dateKey) {
   }
   el.dataset.date = dateKey;
   el.style.display = 'block';
-  el.innerHTML = `
-    <div class="stamp-detail-date">${label}</div>
+
+  const histTotal = hist ? (hist.jump||0)+(hist.shutdown||0)+(hist.ddududu||0)+(hist.ltal||0)+(hist.go||0) : 0;
+
+  // Per-track totals for the day (server history), only tracks with plays.
+  const trackRows = hist ? TRACKS.filter(t => (hist[t.id]||0) > 0).map(t => {
+    const s = stamps && stamps[t.id];
+    return `<div class="stamp-detail-item">
+      <span class="stamp-detail-icon">${s ? s.icon : '🩷'}</span>
+      <span class="stamp-detail-label">${t.title}</span>
+      <span class="stamp-detail-count">${(hist[t.id]||0).toLocaleString()} streams</span>
+    </div>`;
+  }).join('') : '';
+
+  // Per-scrobbler breakdown for the day, biggest contributor first.
+  let sourceRows = '';
+  if (hist && hist.by_source && typeof hist.by_source === 'object') {
+    const rows = Object.entries(hist.by_source)
+      .map(([name, c]) => [name, (c.jump||0)+(c.shutdown||0)+(c.ddududu||0)+(c.ltal||0)+(c.go||0)])
+      .filter(([, tot]) => tot > 0)
+      .sort((a, b) => b[1] - a[1]);
+    if (rows.length) {
+      sourceRows = `
+        <div class="stamp-detail-date" style="margin-top:0.9rem;">Scrobblers</div>
+        <div class="stamp-detail-badges">
+          ${rows.map(([name, tot]) => `<div class="stamp-detail-item">
+            <span class="stamp-detail-label" style="font-size:0.72rem;letter-spacing:0.04em;">${escapeHtml(name)}</span>
+            <span class="stamp-detail-count">${tot.toLocaleString()} streams</span>
+          </div>`).join('')}
+        </div>`;
+    }
+  }
+
+  // Fallback: no server history for this day (a day before the history feature) —
+  // show the badge stamps we do have, same as before.
+  const badgeOnly = (!hist && stamps) ? `
     <div class="stamp-detail-badges">
       ${TRACKS.filter(t => stamps[t.id]).map(t => {
         const s = stamps[t.id];
@@ -7310,7 +7370,13 @@ function showStampDetail(dateKey) {
           <span class="stamp-detail-count">${s.count} streams</span>
         </div>`;
       }).join('')}
-    </div>`;
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="stamp-detail-date">${label}${histTotal ? ` · ${histTotal.toLocaleString()} streams` : ''}</div>
+    ${trackRows ? `<div class="stamp-detail-badges">${trackRows}</div>` : ''}
+    ${sourceRows}
+    ${badgeOnly}`;
 }
 
 function renderStampCalendar() {
@@ -7365,14 +7431,18 @@ function renderStampCalendar() {
       ${days.map(({ key, num, other }) => {
         const stamps  = archive[key];
         const hasStamp = stamps && Object.keys(stamps).length > 0;
+        const hist     = _histByDay[key];
+        const histTotal = hist ? (hist.jump||0)+(hist.shutdown||0)+(hist.ddududu||0)+(hist.ltal||0)+(hist.go||0) : 0;
+        const hasData  = hasStamp || histTotal > 0;
         const isToday  = key === todayStr;
         const isFuture = key > todayStr;
         const maxMult  = hasStamp ? Math.max(...Object.values(stamps).map(s => s.mult)) : 0;
         const icons    = hasStamp ? Object.values(stamps).map(s => s.icon).join('') : '';
-        return `<div class="cal-day${hasStamp?' has-stamp':''}${isToday?' is-today':''}${other?' other-month':''}${isFuture?' is-future':''}"
-          ${hasStamp ? `onclick="showStampDetail('${key}')"` : ''}>
+        return `<div class="cal-day${hasData?' has-stamp':''}${isToday?' is-today':''}${other?' other-month':''}${isFuture?' is-future':''}"
+          ${hasData ? `onclick="showStampDetail('${key}')"` : ''}>
           <div class="cal-day-num">${num}</div>
-          ${hasStamp ? `<div class="cal-day-icons">${icons}</div>` : ''}
+          ${hasStamp ? `<div class="cal-day-icons">${icons}</div>`
+            : (histTotal > 0 ? `<div class="cal-day-icons" style="font-size:0.55rem;color:var(--pink);font-family:var(--mono);">${histTotal}</div>` : '')}
           ${hasStamp && maxMult > 1 ? `<div class="cal-day-mult">×${maxMult}</div>` : ''}
         </div>`;
       }).join('')}
@@ -7380,6 +7450,10 @@ function renderStampCalendar() {
 
     <div id="stamp-day-detail" class="stamp-detail" style="display:none"></div>
   `;
+
+  // Lazily pull this month's server history so past days become tappable with a
+  // full per-track + per-scrobbler breakdown. Returns fast once a month is cached.
+  ensureMonthHistory(calYear, calMonth);
 }
 
 function shareProfile() {

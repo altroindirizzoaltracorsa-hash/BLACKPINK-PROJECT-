@@ -342,6 +342,11 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
   const todayCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 };
   const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 };
   let lastScrobbleAt = entry.lastScrobbleAt || null;
+  // Per-scrobbler split of TODAY's counts, for the personal history calendar. Each
+  // key is a human label ("Last.fm · Alice9629", "BU Extension", "Musicat / Stats.fm")
+  // → {jump,shutdown,ddududu,ltal,go}. Frozen into the day's row at the 2am reset.
+  const todayBySource = {};
+  const srcZero = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 });
 
   // Primary Last.fm account (first one, for stamps)
   const lfmAccount = linkedAccounts.find(a => a.type === 'lastfm');
@@ -380,6 +385,9 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       todayCounts.ddududu  += dc.ddududu  || 0;
       todayCounts.ltal     += dc.ltal     || 0;
       todayCounts.go       += dc.go       || 0;
+      todayBySource[`${acct.type === 'librefm' ? 'Libre.fm' : 'Last.fm'} · ${u}`] = {
+        jump: dc.jump || 0, shutdown: dc.shutdown || 0, ddududu: dc.ddududu || 0, ltal: dc.ltal || 0, go: dc.go || 0,
+      };
 
       const wdc = countByTrack(weekSc);
       weekCounts.jump     += wdc.jump     || 0;
@@ -422,6 +430,9 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         todayCounts.ddududu  += lbTodayCounts.ddududu  || 0;
         todayCounts.ltal     += lbTodayCounts.ltal     || 0;
         todayCounts.go       += lbTodayCounts.go       || 0;
+        todayBySource[`ListenBrainz · ${u}`] = {
+          jump: lbTodayCounts.jump || 0, shutdown: lbTodayCounts.shutdown || 0, ddududu: lbTodayCounts.ddududu || 0, ltal: lbTodayCounts.ltal || 0, go: lbTodayCounts.go || 0,
+        };
 
         const lbWeekCounts = countLbByTrack(weekListens);
         weekCounts.jump     += lbWeekCounts.jump     || 0;
@@ -458,11 +469,14 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
     if (appUserIds.size) {
       try {
         const ext = await extensionCountsForUsers(sb, [...appUserIds], dayFrom, dayTo, weekFrom, weekTo);
+        const extToday = srcZero();
         for (const t of TRACKS) {
           totalPlays[t.id]  += ext.total[t.id]  || 0;
           weekCounts[t.id]  += ext.week[t.id]   || 0;
           todayCounts[t.id] += ext.today[t.id]  || 0;
+          extToday[t.id]     = ext.today[t.id]  || 0;
         }
+        if (Object.values(extToday).some(v => v > 0)) todayBySource['BU Extension'] = extToday;
       } catch (e) { console.warn('extension counts failed:', e.message); }
     }
   }
@@ -478,14 +492,17 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
   const provScores = entry.providerScores;
   if (provScores && provScores.overall) {
     const provTodayFresh = provScores.dailyDate === ddmm(new Date(dayFrom * 1000));
+    const provToday = srcZero();
     for (const t of TRACKS) {
       totalPlays[t.id] += provScores.overall[t.id] || 0;
       if (provTodayFresh) {
         const n = provScores.today?.[t.id] || 0;
         todayCounts[t.id] += n;
         weekCounts[t.id]  += n;
+        provToday[t.id]    = n;
       }
     }
+    if (provTodayFresh && Object.values(provToday).some(v => v > 0)) todayBySource['Musicat / Stats.fm'] = provToday;
   }
 
   const todayLabel     = ddmm(new Date(dayFrom * 1000));
@@ -532,6 +549,8 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
     // Carry the badges-page Musicat/Stats.fm breakdown forward across refreshes so
     // it survives until the fan's next visit refreshes it.
     providerScores: entry.providerScores || null,
+    // Per-scrobbler split of today's counts, for the personal history calendar.
+    todayBySource,
     scores: {
       overall_all:      campaignTotal,
       overall_jump:     totalPlays.jump,
@@ -758,12 +777,14 @@ export default async function handler(req, res) {
         }
         if (refreshed.appUserId) {
           const s = refreshed.scores || {};
+          const bySrc = refreshed.todayBySource || {};
           dailyByUser.set(refreshed.appUserId, {
             jump:     s.daily_jump     || 0,
             shutdown: s.daily_shutdown || 0,
             ddududu:  s.daily_ddududu  || 0,
             ltal:     s.daily_ltal     || 0,
             go:       s.daily_go       || 0,
+            by_source: Object.keys(bySrc).length ? bySrc : null,
           });
         }
         ok.push(refreshed.displayName);
@@ -876,6 +897,23 @@ export default async function handler(req, res) {
         .upsert(rows, { onConflict: 'app_user_id,day_key' });
       if (upErr) throw upErr;
       dailyArchived = rows.length;
+
+      // Per-scrobbler breakdown, written SEPARATELY so a missing by_source column
+      // (before its migration is applied) can't fail the totals write above. Only
+      // sets by_source; the counts stay whatever the main upsert just wrote.
+      const bsRows = ids
+        .filter(id => dailyByUser.get(id).by_source)
+        .map(id => ({ app_user_id: id, day_key: todayKey, by_source: dailyByUser.get(id).by_source }));
+      if (bsRows.length) {
+        try {
+          const { error: bsErr } = await sb
+            .from('user_daily_counts')
+            .upsert(bsRows, { onConflict: 'app_user_id,day_key' });
+          if (bsErr) throw bsErr;
+        } catch (e2) {
+          console.error('user_daily_counts by_source upsert failed (column migrated yet?):', e2.message || e2);
+        }
+      }
     } catch (e) {
       console.error('user_daily_counts upsert failed:', e.message || e);
     }
