@@ -1,0 +1,38 @@
+name: Extension Week Readout (admin)
+on:
+  workflow_dispatch:
+    inputs:
+      user:
+        description: 'A scrobbler username linked to the target profile'
+        required: true
+        default: 'Alice9629'
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          USER: ${{ github.event.inputs.user }}
+        run: |
+          python3 - <<'PY'
+          import os, json, subprocess
+          KEY=os.environ["ADMIN_KEY"]; U=os.environ["USER"]
+          url=f"https://blinksunited.com/api/leaderboard?action=ext-week&key={KEY}&user={U}"
+          out=subprocess.run(["curl","-sS","-L",url],capture_output=True,text=True)
+          try: d=json.loads(out.stdout)
+          except Exception: print("Bad response:", out.stdout[:400]); raise SystemExit(1)
+          print("appUserId:", d.get("appUserId"))
+          print("weekStart:", d.get("weekStart"), "(day_index 0 = that Monday, 2 = Wednesday = Aug 12)")
+          rows=d.get("days",[])
+          # pivot: {day_index: {track: cnt}}
+          piv={}
+          for r in rows:
+              piv.setdefault(r["day_index"],{})[r["track_id"]]=r["cnt"]
+          for di in sorted(piv):
+              print(f"  day_index {di}: {piv[di]}")
+          print()
+          aug12=piv.get(2,{})
+          print(f"Aug 12 (day_index 2) extension JUMP = {aug12.get('jump',0)}  (all tracks: {aug12})")
+          PY
