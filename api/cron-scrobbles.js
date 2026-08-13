@@ -474,6 +474,11 @@ async function refreshUser(entry, sb, linkedMap) {
     displayName,
     linkedAccounts,
     avatar:        entry.avatar,
+    // Carry the signed-in owner id across refreshes. It was being dropped here
+    // (the return replaced the whole entry), which both defeated the "never merge
+    // two different owners" dedup guard AND left us without a stable per-user key
+    // for the daily-counts archive below. Preserve it.
+    appUserId:     entry.appUserId || null,
     updatedAt:     new Date().toISOString(),
     lastScrobbleAt,
     // Carry the badges-page Musicat/Stats.fm breakdown forward across refreshes so
@@ -645,6 +650,14 @@ export default async function handler(req, res) {
   const ok        = [];
   const failed    = [];
   const unverified = [];
+  // Per-user floored daily counts captured this run, keyed by owner id, for the
+  // durable per-day archive (user_daily_counts). This is the store that makes
+  // badges match the leaderboard/finalized board on every device: each day is
+  // written under its own (app_user_id, day_key) row, so — unlike the whole-board
+  // snapshot — an early-bird who opens badges just after the 2am reset can never
+  // overwrite the previous day, and Musicat/Stats.fm history (which the client
+  // can't re-derive for past days) is frozen here while it was still "today".
+  const dailyByUser = new Map();
 
   const batchSize = 3;
   for (let i = 0; i < users.length; i += batchSize) {
@@ -657,6 +670,16 @@ export default async function handler(req, res) {
         // Remove the old key if the display name differs from the raw username
         if (entry.username.toLowerCase() !== refreshed.displayName.toLowerCase()) {
           delete data.users[entry.username.toLowerCase()];
+        }
+        if (refreshed.appUserId) {
+          const s = refreshed.scores || {};
+          dailyByUser.set(refreshed.appUserId, {
+            jump:     s.daily_jump     || 0,
+            shutdown: s.daily_shutdown || 0,
+            ddududu:  s.daily_ddududu  || 0,
+            ltal:     s.daily_ltal     || 0,
+            go:       s.daily_go       || 0,
+          });
         }
         ok.push(refreshed.displayName);
       } catch (e) {
@@ -714,6 +737,48 @@ export default async function handler(req, res) {
   updateLeaderStreak(data);
   await redis.set(LB_KEY, data);
 
+  // Freeze each refreshed user's floored daily counts into the durable per-day
+  // archive. Max-merged against what's already stored for the same day so a
+  // partial/rate-limited run can never LOWER a day that was previously higher —
+  // the same "counts only climb until reset" guarantee the leaderboard has, now
+  // made durable and device-independent. Wrapped so a missing table (before the
+  // one-time migration is applied) degrades to a no-op instead of failing the run.
+  let dailyArchived = 0;
+  if (sb && dailyByUser.size) {
+    try {
+      const ids = [...dailyByUser.keys()];
+      const { data: existing, error: exErr } = await sb
+        .from('user_daily_counts')
+        .select('app_user_id,jump,shutdown,ddududu,ltal,go')
+        .eq('day_key', todayKey)
+        .in('app_user_id', ids);
+      if (exErr) throw exErr;
+      const exMap = new Map((existing || []).map(r => [r.app_user_id, r]));
+      const now = new Date().toISOString();
+      const rows = ids.map(id => {
+        const n = dailyByUser.get(id);
+        const e = exMap.get(id) || {};
+        return {
+          app_user_id: id,
+          day_key:     todayKey,
+          jump:     Math.max(n.jump,     e.jump     || 0),
+          shutdown: Math.max(n.shutdown, e.shutdown || 0),
+          ddududu:  Math.max(n.ddududu,  e.ddududu  || 0),
+          ltal:     Math.max(n.ltal,     e.ltal     || 0),
+          go:       Math.max(n.go,       e.go       || 0),
+          updated_at: now,
+        };
+      });
+      const { error: upErr } = await sb
+        .from('user_daily_counts')
+        .upsert(rows, { onConflict: 'app_user_id,day_key' });
+      if (upErr) throw upErr;
+      dailyArchived = rows.length;
+    } catch (e) {
+      console.error('user_daily_counts upsert failed (table migrated yet?):', e.message);
+    }
+  }
+
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({ ok: true, seeded, refreshed: ok, failed, unverified, merged: [...removedKeys] });
+  res.status(200).json({ ok: true, seeded, refreshed: ok, failed, unverified, merged: [...removedKeys], dailyArchived });
 }

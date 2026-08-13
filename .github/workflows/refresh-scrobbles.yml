@@ -7,6 +7,15 @@ on:
     # one is that day's 2am-Italy reset. Avoids losing up to ~59 minutes of
     # streams right before reset that no later run would ever look back for.
     - cron: '55 * * * *'   # every hour, 5 min before the top of the hour
+    # Final end-of-day sweep ~2 min before the 2am-Italy reset, so the day we
+    # freeze into the archive is as complete as possible (the plain :55 run lands
+    # a whole ~7 min earlier, at 1:55am summer). Cron can't do timezones and Italy
+    # shifts with DST, so we schedule both candidates: in summer (UTC+2) the reset
+    # is 00:00 UTC and 23:58 is 1:58am Italy; in winter (UTC+1) the reset is 01:00
+    # UTC and 00:58 is 1:58am Italy. The off-season one just lands as a harmless
+    # extra refresh well after reset — the hourly :55 already runs anyway.
+    - cron: '58 23 * * *'  # 1:58am Italy in summer (UTC+2)
+    - cron: '58 0 * * *'   # 1:58am Italy in winter (UTC+1)
   workflow_dispatch:          # also runnable manually from GitHub Actions tab
 
 jobs:

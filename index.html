@@ -6569,7 +6569,36 @@ async function loadMultiAccountProfile(accounts) {
   // leaderboard submission below share the exact same floored values.
   applyTodayFloor(combined.todayCounts, accountsFingerprint(_accounts));
 
-  // Combine per-day counts across all accounts for weekly table
+  // Combine per-day counts across all accounts for the weekly table.
+  //
+  // For PAST days we prefer the server's frozen per-day value (api/user-week,
+  // written every refresh + at the 1:58am end-of-day sweep by api/cron-scrobbles).
+  // It's device-independent and includes the Musicat/Stats.fm slice that the client
+  // CANNOT re-derive for past days — those providers only expose all-time + today,
+  // so a returning visitor's own client always undercounts their past columns. This
+  // is what makes the badges weekly grid match the leaderboard/finalized board on
+  // every device. TODAY stays the live, floored client sum (it's still climbing).
+  // We take the per-track MAX(clientSum, serverValue) so no surface can ever show
+  // LESS than another, and fall back to the pure client sum whenever the server has
+  // no row (before the migration is applied, or a day we never refreshed).
+  const dayKeyOf = (secs) => {
+    const d = new Date(secs * 1000);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  };
+  const { from: _todayFrom } = getDayBounds();
+  let _serverDays = {};
+  try {
+    if (typeof sb !== 'undefined' && sb) {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.user?.id) {
+        const _wr = await withTimeout(
+          fetch(`/api/user-week?appUserId=${encodeURIComponent(session.user.id)}&from=${dayKeyOf(weekFrom)}`, { cache: 'no-store' }),
+          8000, 'user-week');
+        if (_wr.ok) { const _wj = await _wr.json(); _serverDays = _wj.days || {}; }
+      }
+    }
+  } catch (e) { /* degrade to client sums */ }
+
   const weekDays = [];
   for (let i = 0; i < 7; i++) {
     const ds = weekFrom + i * 86400;
@@ -6578,6 +6607,17 @@ async function loadMultiAccountProfile(accounts) {
     for (const a of _breakdown) {
       const dc = a.weekDayCounts[i];
       if (dc) { day.jump += dc.jump||0; day.shutdown += dc.shutdown||0; day.ddududu += dc.ddududu||0; day.ltal += dc.ltal||0; day.go += dc.go||0; }
+    }
+    // Past day → merge in the server's frozen value (per-track max). Today stays live.
+    if (ds < _todayFrom) {
+      const sv = _serverDays[dayKeyOf(ds)];
+      if (sv) {
+        day.jump     = Math.max(day.jump,     sv.jump     || 0);
+        day.shutdown = Math.max(day.shutdown, sv.shutdown || 0);
+        day.ddududu  = Math.max(day.ddududu,  sv.ddududu  || 0);
+        day.ltal     = Math.max(day.ltal,     sv.ltal     || 0);
+        day.go       = Math.max(day.go,       sv.go       || 0);
+      }
     }
     weekDays.push({ label: getDayLabel(ds), counts: day });
   }
