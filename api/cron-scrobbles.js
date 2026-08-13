@@ -287,6 +287,23 @@ async function refreshUser(entry, sb, linkedMap) {
   const linkedAccounts = entry.linkedAccounts || [{ type: 'lastfm', username: entry.username }];
   const displayName    = entry.displayName    || entry.username;
 
+  // Resolve the stable owner id. It's often missing on the in-Redis entry — a
+  // legacy row, or one written before appUserId was carried across refreshes — so
+  // recover it from the verified linked_accounts map: any of this profile's
+  // scrobbler handles points back to the same owner. Keeping this populated is
+  // what stops the self-heal from re-seeding an ALREADY-PRESENT owner under their
+  // raw Last.fm handle — the bug that flipped display names (colxrzone <-> the
+  // eilan3502 handle), wiped chosen names, and bounced rows off the finalized
+  // board. It also hardens the dedup: two DIFFERENT signed-in owners who happen to
+  // share a scrobbler handle now both carry an id, so they're never merged.
+  let appUserId = entry.appUserId || null;
+  if (!appUserId && linkedMap) {
+    for (const a of linkedAccounts) {
+      const uid = linkedMap.get((a.username || '').toLowerCase());
+      if (uid) { appUserId = uid; break; }
+    }
+  }
+
   const { from: dayFrom, to: dayTo }   = getDayBounds();
   const { from: weekFrom, to: weekTo } = getWeekBounds();
 
@@ -477,8 +494,9 @@ async function refreshUser(entry, sb, linkedMap) {
     // Carry the signed-in owner id across refreshes. It was being dropped here
     // (the return replaced the whole entry), which both defeated the "never merge
     // two different owners" dedup guard AND left us without a stable per-user key
-    // for the daily-counts archive below. Preserve it.
-    appUserId:     entry.appUserId || null,
+    // for the daily-counts archive below. Resolved above (entry value, or
+    // recovered from linked_accounts) so it stays populated.
+    appUserId:     appUserId || null,
     updatedAt:     new Date().toISOString(),
     lastScrobbleAt,
     // Carry the badges-page Musicat/Stats.fm breakdown forward across refreshes so
@@ -726,9 +744,26 @@ export default async function handler(req, res) {
       if (entryA.appUserId && entryB.appUserId && entryA.appUserId !== entryB.appUserId) continue;
       const pairsB = acctPairs(entryB);
       if (![...pairsB].some(p => pairsA.has(p))) continue;
-      const aTime = new Date(entryA.updatedAt || 0).getTime();
-      const bTime = new Date(entryB.updatedAt || 0).getTime();
-      if (bTime >= aTime) { delete data.users[keyA]; removedKeys.add(keyA); break; }
+      // Both rows are the same person. Normally the most-recently-refreshed row
+      // survives, but first prefer the one carrying a REAL chosen display name
+      // over a self-heal seed still named after its raw Last.fm handle — otherwise
+      // collapsing a colxrzone/eilan3502-style pair can freeze the handle as the
+      // visible name. Scores are identical (both just refreshed from the same
+      // accounts), so dropping the loser never loses counts.
+      const isHandleName = e => {
+        const dn = (e.displayName || '').toLowerCase();
+        return (e.linkedAccounts || []).some(a => (a.username || '').toLowerCase() === dn);
+      };
+      const aHandle = isHandleName(entryA), bHandle = isHandleName(entryB);
+      let dropA;
+      if (aHandle !== bHandle) {
+        dropA = aHandle; // keep the real-named row
+      } else {
+        const aTime = new Date(entryA.updatedAt || 0).getTime();
+        const bTime = new Date(entryB.updatedAt || 0).getTime();
+        dropA = bTime >= aTime;
+      }
+      if (dropA) { delete data.users[keyA]; removedKeys.add(keyA); break; }
       delete data.users[keyB]; removedKeys.add(keyB);
     }
   }
