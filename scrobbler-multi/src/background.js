@@ -110,11 +110,14 @@ async function dispatch(kind, account, track, timestamp, meta) {
   }
 
   // blinksunited direct — scrobble only (no now-playing), install-wide token.
+  // Identify the account by its UNIQUE handle (never the display name, which can
+  // be a shared avatar initial and would merge two accounts into one on the site).
+  const buIdentity = account.handle || account.name || account.id;
   const bu = settings.blinks;
   if (kind === 'scrobble' && bu && bu.enabled && bu.token) {
     const endpoint = `${(bu.site || 'https://blinksunited.com').replace(/\/$/, '')}/api/ingest-scrobble`;
     targets.push('blinksunited');
-    jobs.push(run('blinks', BU.scrobble(endpoint, bu.token, track, timestamp, account.name || account.id)));
+    jobs.push(run('blinks', BU.scrobble(endpoint, bu.token, track, timestamp, buIdentity)));
   }
 
   const results = await Promise.all(jobs);
@@ -376,6 +379,44 @@ async function readState(needAccount) {
   // user-widget name gives that with zero requests.
   let account = null;
   if (needAccount) {
+    // A UNIQUE, STABLE handle (the Spotify username / user id) so two accounts
+    // whose only visible label is an avatar initial (e.g. both "U") can never
+    // collapse into one identity locally OR on blinksunited. All DOM, no network.
+    let handle = '';
+    // 1) Any profile link on the page: .../user/<id>
+    try {
+      for (const a of document.querySelectorAll('a[href*="/user/"]')) {
+        const m = (a.getAttribute('href') || '').match(/\/user\/([^/?#]+)/);
+        if (m && m[1]) { handle = decodeURIComponent(m[1]); break; }
+      }
+    } catch (e) { /* */ }
+    // 2) Bootstrap JSON Spotify embeds in the page carries the username/id.
+    if (!handle) {
+      for (const id of ['session', 'config', 'appServerConfig']) {
+        const el = document.getElementById(id);
+        if (el && el.textContent) {
+          try {
+            const j = JSON.parse(el.textContent);
+            const u = j.username || j.userId || j.user_id || (j.user && (j.user.username || j.user.id));
+            if (u) { handle = String(u); break; }
+          } catch (e) { /* not json */ }
+        }
+      }
+    }
+    // 3) Last resort in embedded scripts: a "username":"..." literal.
+    if (!handle) {
+      try {
+        for (const s of document.querySelectorAll('script')) {
+          const t = s.textContent || '';
+          if (t.length > 200000) continue; // skip the big bundles
+          const m = t.match(/"username"\s*:\s*"([^"]{2,})"/);
+          if (m) { handle = m[1]; break; }
+        }
+      } catch (e) { /* */ }
+    }
+
+    // Visible display name (nice for the log/options UI), independent of handle.
+    let name = '';
     const sels = [
       '[data-testid="user-widget-name"]',
       '[data-testid="user-widget-link"]',
@@ -384,8 +425,18 @@ async function readState(needAccount) {
     ];
     for (const sel of sels) {
       const el = document.querySelector(sel);
-      const name = el && (el.textContent || el.getAttribute('alt'));
-      if (name && name.trim()) { const c = name.trim(); account = { id: `name:${c.toLowerCase()}`, name: c }; break; }
+      const n = el && (el.textContent || el.getAttribute('alt'));
+      if (n && n.trim()) { name = n.trim(); break; }
+    }
+
+    if (handle) {
+      // Unique id + a unique handle sent to blinksunited. Keep the pretty name
+      // for display, but never let it be the thing that dedupes accounts.
+      account = { id: `sp:${handle.toLowerCase()}`, name: name || handle, handle };
+    } else if (name) {
+      // Couldn't find a unique handle — fall back to the old name-based key
+      // (may be an initial; this is exactly the prior behavior, so no regression).
+      account = { id: `name:${name.toLowerCase()}`, name, handle: null };
     }
   }
 
