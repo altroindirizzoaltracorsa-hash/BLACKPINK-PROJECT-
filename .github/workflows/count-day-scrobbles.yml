@@ -1,0 +1,93 @@
+name: Count Day Scrobbles (read-only)
+# Read-only: for a set of Last.fm usernames and a calendar day, count campaign-
+# track scrobbles in that day's 2am-Italy window straight from Last.fm — exactly
+# how api/cron-scrobbles.js counts them. Used to tell whether a low archived
+# daily count is stale-timing vs a counting-method difference (e.g. extension
+# plays Last.fm never sees).
+on:
+  workflow_dispatch:
+    inputs:
+      users:
+        description: 'Comma-separated Last.fm usernames'
+        required: true
+      day:
+        description: 'Calendar day YYYY-MM-DD (the streaming day to count)'
+        required: true
+
+jobs:
+  count:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Count
+        env:
+          USERS: ${{ github.event.inputs.users }}
+          DAY: ${{ github.event.inputs.day }}
+        run: |
+          python3 - <<'PY'
+          import os, json, urllib.parse, urllib.request
+          from datetime import datetime, timezone, timedelta
+
+          LFM_KEY = "666b8ef2f3cc360fbc20df275fba2981"
+          BASE = "https://ws.audioscrobbler.com/2.0/"
+          TRACKS = [
+              ("jump","BLACKPINK","JUMP"),
+              ("shutdown","BLACKPINK","Shut Down"),
+              ("ddududu","BLACKPINK","DDU-DU DDU-DU"),
+              ("ltal","Jennie","Less Than a Lover"),
+              ("go","BLACKPINK","GO"),
+          ]
+
+          users = [u.strip() for u in os.environ["USERS"].split(",") if u.strip()]
+          y,m,d = [int(x) for x in os.environ["DAY"].split("-")]
+          # Italy summer = UTC+2, so 2am Italy = 00:00 UTC. Streaming day = [00:00 UTC, +24h)
+          day_start = datetime(y,m,d,0,0,0,tzinfo=timezone.utc)
+          day_from = int(day_start.timestamp())
+          day_to   = day_from + 86400
+          print(f"Counting {os.environ['DAY']}  window UTC [{day_start} .. {day_start+timedelta(days=1)})")
+          print(f"users: {users}")
+          print()
+
+          def lfm(params):
+              qs = urllib.parse.urlencode({**params, "api_key":LFM_KEY, "format":"json"})
+              with urllib.request.urlopen(BASE+"?"+qs) as r:
+                  return json.loads(r.read())
+
+          def track_total(user, artist, track):
+              d = lfm({"method":"track.getInfo","artist":artist,"track":track,"user":user})
+              return int((d.get("track") or {}).get("userplaycount") or 0)
+
+          def day_counts(user):
+              counts = {t[0]:0 for t in TRACKS}
+              page = 1
+              while True:
+                  d = lfm({"method":"user.getRecentTracks","user":user,
+                           "from":day_from,"to":day_to,"limit":200,"page":page})
+                  rt = d.get("recenttracks") or {}
+                  tr = rt.get("track") or []
+                  if isinstance(tr, dict): tr = [tr]
+                  for s in tr:
+                      if (s.get("@attr") or {}).get("nowplaying") == "true": continue
+                      name = (s.get("name") or "").lower()
+                      art  = (s.get("artist") or {}).get("#text","").lower()
+                      for tid,ta,tt in TRACKS:
+                          if name == tt.lower() and ta.lower() in art:
+                              counts[tid]+=1; break
+                  total = int((rt.get("@attr") or {}).get("totalPages") or 1)
+                  if page>=total or page>=50: break
+                  page+=1
+              return counts
+
+          agg = {t[0]:0 for t in TRACKS}
+          agg_total = {t[0]:0 for t in TRACKS}
+          for u in users:
+              try:
+                  c = day_counts(u)
+                  tot = {tid: track_total(u,ta,tt) for tid,ta,tt in TRACKS}
+              except Exception as e:
+                  print(f"  {u}: ERROR {e}"); continue
+              for k in agg: agg[k]+=c[k]; agg_total[k]+=tot[k]
+              print(f"  {u:20} day={c}  alltime={tot}")
+          print()
+          print(f"COMBINED day {os.environ['DAY']}: {agg}")
+          print(f"COMBINED all-time totals:        {agg_total}")
+          PY
