@@ -7388,25 +7388,6 @@ function showStampDetail(dateKey) {
       </div>`;
   }).join('') : '';
 
-  // Per-scrobbler breakdown for the day, biggest contributor first.
-  let sourceRows = '';
-  if (hist && hist.by_source && typeof hist.by_source === 'object') {
-    const rows = Object.entries(hist.by_source)
-      .map(([name, c]) => [name, (c.jump||0)+(c.shutdown||0)+(c.ddududu||0)+(c.ltal||0)+(c.go||0)])
-      .filter(([, tot]) => tot > 0)
-      .sort((a, b) => b[1] - a[1]);
-    if (rows.length) {
-      sourceRows = `
-        <div class="stamp-detail-date" style="margin-top:0.9rem;">By scrobbler · day total</div>
-        <div class="stamp-detail-badges">
-          ${rows.map(([name, tot]) => `<div class="stamp-detail-item">
-            <span class="stamp-detail-label" style="font-size:0.72rem;letter-spacing:0.04em;">${escapeHtml(name)}</span>
-            <span class="stamp-detail-count">${tot.toLocaleString()} streams</span>
-          </div>`).join('')}
-        </div>`;
-    }
-  }
-
   // Fallback: no server history for this day (a day before the history feature) —
   // show the badge stamps we do have, same as before.
   const badgeOnly = (!hist && stamps) ? `
@@ -7427,7 +7408,6 @@ function showStampDetail(dateKey) {
     <div class="stamp-detail-date">${label}${histTotal ? ` · ${histTotal.toLocaleString()} streams total` : ''}</div>
     ${hint}
     ${trackRows ? `<div class="stamp-detail-badges">${trackRows}</div>` : ''}
-    ${sourceRows}
     ${badgeOnly}`;
 }
 
