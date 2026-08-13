@@ -177,6 +177,26 @@ export default async function handler(req, res) {
     });
   }
 
+  // ── GET ?action=ext-week&key=ADMIN&user=<scrobbler> — admin diagnostic: this
+  //    week's extension per-day counts for the profile that linked <user>. Used to
+  //    verify a past day's extension contribution directly from the DB. ──
+  if (req.method === 'GET' && action === 'ext-week') {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const sb = supabase();
+    if (!sb) return res.status(503).json({ error: 'Supabase not configured' });
+    const user = (req.query.user || '').trim().toLowerCase();
+    if (!user) return res.status(400).json({ error: 'user required' });
+    const { data: la } = await sb.from('linked_accounts').select('app_user_id, source_username');
+    const row = (la || []).find(r => (r.source_username || '').toLowerCase() === user);
+    if (!row) return res.status(404).json({ error: `no linked_accounts row for ${user}` });
+    const { from: weekFrom } = bpWeekBounds();
+    const weekStartIso = new Date(weekFrom * 1000).toISOString();
+    const { data, error } = await sb.rpc('extension_week_days', { uid: row.app_user_id, week_from: weekStartIso });
+    if (error) return res.status(500).json({ error: error.message });
+    // day_index 0=Mon … 6=Sun relative to weekFrom
+    return res.status(200).json({ appUserId: row.app_user_id, weekStart: weekStartIso, days: data || [] });
+  }
+
   // ── GET ?action=submit-rejects&key=ADMIN_SECRET — admin: recent rejected submissions.
   //    Kept as a lightweight, low-overhead diagnostic (only writes on a rejection, which
   //    is rare) so "why isn't account X on the board" can be answered without guesswork. ──
