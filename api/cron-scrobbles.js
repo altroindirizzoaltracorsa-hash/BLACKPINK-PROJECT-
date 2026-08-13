@@ -169,25 +169,25 @@ async function fetchTrackPlays(username, artist, track, fetchFn = lfmFetch) {
 // can see how the in-loop provider fetches actually fared vs a lone self-test.
 const providerStat = { musicat: { ok: 0, fail: 0 }, statsfm: { ok: 0, fail: 0 }, sampleErr: null };
 
-async function fetchProviderStats(source, username, attempt = 0) {
+async function fetchProviderStats(source, username) {
   const path = source === 'musicat'
     ? `/api/proxy-image?musicat_user=${encodeURIComponent(username)}`
     : `/api/statsfm?user=${encodeURIComponent(username)}`;
+  // Hard per-call cap. These proxies scrape upstream services and can hang or
+  // throttle under the refresh's concurrent load; a bounded single attempt keeps
+  // the whole cron safely under Vercel's function timeout. Reliability comes from
+  // caching the endpoints (warm cache => fast hits), not from long in-loop retries
+  // that blow the time budget.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 6000);
   try {
-    const r = await fetch(`${SELF_ORIGIN}${path}`);
+    const r = await fetch(`${SELF_ORIGIN}${path}`, { signal: ctrl.signal });
     if (!r.ok) throw new Error(`${source} HTTP ${r.status}`);
     const d = await r.json();
     if (d?.error) throw new Error(`${source} error: ${d.error}`);
     return d;
-  } catch (e) {
-    // The Musicat/Stats.fm proxies throttle under the refresh's concurrent load
-    // (they scrape upstream services that rate-limit bursts), so a single pass
-    // drops most calls. Retry with backoff, the same way lfmFetch does.
-    if (attempt < 4) {
-      await new Promise(res => setTimeout(res, 700 * 2 ** attempt));
-      return fetchProviderStats(source, username, attempt + 1);
-    }
-    throw e;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
