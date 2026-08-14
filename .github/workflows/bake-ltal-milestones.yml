@@ -21,6 +21,7 @@ jobs:
           MILES = [
               ("m10", "2026-07-28", "28 Jul 2026", "10M"),
               ("m20", "2026-08-02", "2 Aug 2026",  "20M"),
+              ("m30", "2026-08-08", "8 Aug 2026",  "30M"),
           ]
 
           def get(url):
@@ -71,12 +72,13 @@ jobs:
                       if al and al != kl:
                           out["aliases"][al] = kl
 
-          # Drop users who contributed to neither milestone.
+          # Drop users who contributed to no milestone.
           out["users"] = {k: v for k, v in out["users"].items()
-                          if ("m10c" in v) or ("m20c" in v)}
+                          if ("m10c" in v) or ("m20c" in v) or ("m30c" in v)}
 
           print("m10 total:", out["m10"]["total"], "contributors:", out["m10"]["contributors"])
           print("m20 total:", out["m20"]["total"], "contributors:", out["m20"]["contributors"])
+          print("m30 total:", out["m30"]["total"], "contributors:", out["m30"]["contributors"])
           print("users with any milestone:", len(out["users"]), "| aliases:", len(out["aliases"]))
           print("<<<JSON_START>>>")
           print(json.dumps(out, separators=(",", ":"), ensure_ascii=False))
