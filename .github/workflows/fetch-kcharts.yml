@@ -6,7 +6,7 @@ name: Fetch K-Charts Positions
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'   # every 6 hours
+    - cron: '0 * * * *'   # hourly — matches the source's realtime (실시간) refresh cadence
 
 jobs:
   fetch:
