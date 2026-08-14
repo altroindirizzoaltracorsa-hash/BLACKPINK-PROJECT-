@@ -815,16 +815,17 @@ export default async function handler(req, res) {
         if (entry.username.toLowerCase() !== refreshed.displayName.toLowerCase()) {
           delete data.users[entry.username.toLowerCase()];
         }
-        // Durable per-day key: the signed-in owner id when we can resolve it, else
-        // a STABLE fallback from the primary scrobbler handle ("h:<handle>"). Before,
-        // an entry whose owner id didn't resolve was dropped from the per-day store
-        // entirely — which is what left accounts unrecoverable on the finalized
-        // board. Now every verified board entry is frozen each day, id or not.
-        const la = refreshed.linkedAccounts || [];
-        const primaryAcct = la.find(a => a.type === 'lastfm' || a.type === 'librefm')
-          || la.find(a => a.type === 'listenbrainz') || la[0];
+        // Durable per-day key: the signed-in owner id when we can resolve it, else a
+        // RECOVERY key from the leaderboard display name ("user_<name>"). Before, an
+        // entry whose owner id didn't resolve was dropped from the per-day store
+        // entirely — which is what left accounts unrecoverable on the finalized board.
+        // The name-keyed rows exist ONLY so those accounts can still be restored to a
+        // finalized board later; they are never read back into the live leaderboard or
+        // the badges history (both key off the owner id / UUID, never "user_<name>").
+        // Keyed by leaderboard name, NOT the Last.fm handle, to avoid the handle↔name
+        // confusion that caused earlier mislabels.
         const duKey = refreshed.appUserId
-          || (primaryAcct && primaryAcct.username ? `h:${primaryAcct.username.toLowerCase()}` : null);
+          || (refreshed.displayName ? `user_${refreshed.displayName.toLowerCase()}` : null);
         if (duKey) {
           const s = refreshed.scores || {};
           const bySrc = refreshed.todayBySource || {};
@@ -918,6 +919,14 @@ export default async function handler(req, res) {
   catch (e) { console.error('archive daily (current) failed:', e); }
   try { await archivePeriod(sb, 'weekly', thisWeekKey, data.currentWeekLabel, data.users); }
   catch (e) { console.error('archive weekly (current) failed:', e); }
+
+  // Pristine end-of-day restore point: a full-board snapshot the display and repair
+  // paths NEVER touch (repair only rewrites period 'daily'; the archive read API only
+  // serves 'daily'/'weekly', so 'daily_backup' is invisible to the site). Written
+  // every run, so the last pre-reset run — the 1:58am forced refresh — leaves the
+  // complete, untouched day here, ready to restore from if anything downstream breaks.
+  try { await archivePeriod(sb, 'daily_backup', todayKey, data.currentDayLabel, data.users); }
+  catch (e) { console.error('archive daily_backup failed:', e); }
 
   // ── Community goal backstop ───────────────────────────────────
   // Record today's community goal server-side the moment the board crosses the
