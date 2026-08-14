@@ -1,0 +1,36 @@
+name: Repair finalized daily board
+
+# Rebuilds a finalized daily board that froze early-birds' next-day counts, using
+# the accurate user_daily_counts store. Run dry=1 to preview, dry=0 to apply.
+on:
+  workflow_dispatch:
+    inputs:
+      day:
+        description: 'Day to repair, YYYY-MM-DD'
+        required: true
+        default: '2026-08-13'
+      dry:
+        description: '1 = preview only, 0 = apply'
+        required: true
+        default: '1'
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call repair endpoint
+        env:
+          BASE: ${{ secrets.VERCEL_URL }}
+          KEY:  ${{ secrets.ADMIN_KEY }}
+          DAY:  ${{ github.event.inputs.day }}
+          DRY:  ${{ github.event.inputs.dry }}
+        run: |
+          set -e
+          B="${BASE%/}"
+          code=$(curl -sS -X POST -L --location-trusted -o resp.json -w "%{http_code}" \
+            "$B/api/leaderboard?action=repair-daily-archive&key=$KEY&day=$DAY&dry=$DRY")
+          echo "HTTP $code"
+          jq -r '"dry=\(.dry)  day=\(.day)  changed=\(.changedCount)  unrecoverable=\(.unrecoverable)"' resp.json || cat resp.json
+          echo "--- changed (top 60): was -> now (wasDate) ---"
+          jq -r '.changed[]? | "  \(.name)  \(.was) -> \(.now)  (\(.wasDate))"' resp.json || true
+          if [ "$code" -ge 400 ]; then exit 1; fi
