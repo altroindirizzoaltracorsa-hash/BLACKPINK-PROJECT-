@@ -2866,6 +2866,12 @@
   .kc-card-head{display:flex;align-items:center;justify-content:space-between;gap:0.6rem;margin-bottom:0.5rem;}
   .kc-card-title{font-family:var(--display);letter-spacing:0.06em;color:var(--pink);font-size:0.95rem;}
   .kc-kr{font-family:var(--sans,inherit);letter-spacing:normal;color:var(--muted);font-size:0.72rem;font-weight:400;margin-left:0.35rem;}
+  .kc-circle-link{display:flex;align-items:center;gap:0.75rem;text-decoration:none;background:rgba(255,255,255,0.03);border:1px solid rgba(192,132,252,0.35);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.85rem;transition:border-color .15s,background .15s;}
+  .kc-circle-link:hover{border-color:rgba(192,132,252,0.7);background:rgba(192,132,252,0.08);}
+  .kc-circle-link-txt{display:flex;flex-direction:column;gap:0.15rem;flex:1;}
+  .kc-circle-link-txt strong{font-family:var(--display);letter-spacing:0.04em;color:var(--white);font-size:0.9rem;}
+  .kc-circle-link-sub{color:var(--muted);font-size:0.72rem;line-height:1.3;}
+  .kc-circle-link-arrow{font-family:var(--display);font-size:1.4rem;color:#c084fc;line-height:1;}
   .kc-live{display:inline-block;margin-left:0.4rem;font-family:var(--display);font-size:0.56rem;letter-spacing:0.1em;color:#2ecc71;vertical-align:middle;}
   .kc-live::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:#2ecc71;margin-right:0.3rem;vertical-align:middle;animation:kcpulse 1.6s ease-in-out infinite;}
   @keyframes kcpulse{0%,100%{opacity:1;}50%{opacity:0.2;}}
@@ -4454,7 +4460,16 @@ function renderKCharts() {
 
   const wrap = document.getElementById('kc-cards');
   const list = charts.filter(c => c.service === kcService);
-  wrap.innerHTML = list.map(c => {
+  // Circle publishes many more official charts than the one 가이섬 mirrors, but
+  // its site prohibits automated data mining — so we link fans out to the source
+  // rather than scrape it.
+  const circleNote = kcService === 'Circle'
+    ? '<a class="kc-circle-link" href="https://circlechart.kr" target="_blank" rel="noopener">' +
+        '<span class="kc-circle-link-txt"><strong>See every official Circle chart</strong>' +
+        '<span class="kc-circle-link-sub">Digital · Streaming · Download · BGM · Album · Global K-pop &amp; more — on circlechart.kr</span></span>' +
+        '<span class="kc-circle-link-arrow">›</span></a>'
+    : '';
+  wrap.innerHTML = circleNote + list.map(c => {
     const rows = (c.entries || []).map(e => {
       const color = AM_MEMBER_COLORS[e.member] || '#FF0066';
       const song = e.link
