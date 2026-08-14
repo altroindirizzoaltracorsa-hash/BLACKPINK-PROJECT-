@@ -735,7 +735,11 @@ export default async function handler(req, res) {
   }
 
   // ── POST: upsert a single user's scores ───────────────────────
-  if (req.method === 'POST') {
+  // Action-less POST = a leaderboard submission. Guard on !action so this generic
+  // handler doesn't swallow the action-specific POST endpoints defined below
+  // (record-goal, backfill-goal-history) — without this guard it returned 400 to
+  // every one of them, which is why community-goal days were never recorded.
+  if (req.method === 'POST' && !action) {
     let body;
     try {
       body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
