@@ -30,9 +30,9 @@ jobs:
           echo "--- raw body ---"
           cat resp.json; echo
           echo "--- summary ---"
-          jq -r '"dry=\(.dry)  archivesScanned=\(.archivesScanned)  recorded=\(.recordedCount)  skipped=\(.skippedCount)  streak=\(.streak)"' resp.json || cat resp.json
+          jq -r '"dry=\(.dry)  daysScanned=\(.daysScanned)  recorded=\(.recordedCount)  skipped=\(.skippedCount)  streak=\(.streak)"' resp.json || cat resp.json
           echo "--- recorded days ---"
           jq -r '.recorded[]? | "  \(.day)  total=\(.total)  stretch=\(.stretch)  was=\(.was)"' resp.json || true
-          echo "--- skipped (top 15) ---"
-          jq -r '.skipped[]? | "  \(.day)  total=\(.total)  alreadyHas=\(.alreadyHas)"' resp.json | head -15 || true
+          echo "--- skipped (top 20): total = 4-track goal, withLtal = incl. Less Than a Lover ---"
+          jq -r '.skipped[]? | "  \(.day)  total=\(.total)  withLtal=\(.withLtal)  alreadyHas=\(.alreadyHas)"' resp.json | head -20 || true
           if [ "$code" -ge 400 ]; then exit 1; fi

@@ -963,34 +963,47 @@ export default async function handler(req, res) {
     const sb = supabase();
     if (!sb) return res.status(503).json({ error: 'Server not configured' });
 
-    const { data: archives, error } = await sb
-      .from('leaderboard_archive')
-      .select('period_key, users')
-      .eq('period', 'daily')
-      .order('period_key', { ascending: false })
-      .limit(180);
-    if (error) return res.status(500).json({ error: error.message });
+    // Aggregate the durable per-user/per-day store (user_daily_counts), NOT the
+    // whole-board leaderboard_archive snapshot: the snapshot is frozen at the 2am
+    // rollover and loses any user who already flipped to the new day, so it badly
+    // undercounts a day's true community total. user_daily_counts is max-merged
+    // per (app_user_id, day_key) and never lowered, so it's the accurate source.
+    // One row per user per day, so no linked-account de-dup is needed.
+    const perDay4 = {}; // goal 4 tracks (JUMP+Shut Down+DDU-DU+GO)
+    const perDay5 = {}; // incl. Less Than a Lover, for reporting only
+    const PAGE = 1000;
+    for (let from = 0; ; from += PAGE) {
+      const { data: rows, error } = await sb
+        .from('user_daily_counts')
+        .select('day_key,jump,shutdown,ddududu,ltal,go')
+        .order('day_key', { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (error) return res.status(500).json({ error: error.message });
+      for (const r of (rows || [])) {
+        const four = (r.jump||0) + (r.shutdown||0) + (r.ddududu||0) + (r.go||0);
+        perDay4[r.day_key] = (perDay4[r.day_key] || 0) + four;
+        perDay5[r.day_key] = (perDay5[r.day_key] || 0) + four + (r.ltal||0);
+      }
+      if (!rows || rows.length < PAGE) break;
+    }
 
     const gh = (await redis.get(GOAL_HISTORY_KEY)) || { days: {} };
     gh.days = gh.days || {};
     const recorded = [], skipped = [];
-    for (const row of (archives || [])) {
-      const key = row.period_key;              // YYYY-MM-DD
-      const [, M, D] = key.split('-');
-      const dayDDMM  = `${D}/${M}`;
-      const total    = communityGoalTotalFromUsers(row.users || {}, dayDDMM);
+    for (const key of Object.keys(perDay4).sort().reverse()) {
+      const total    = perDay4[key];
       const existing = gh.days[key]?.total || 0;
       if (total >= GOAL_PRIMARY && total > existing) {
         if (!dry) gh.days[key] = { total, primary: true, stretch: total >= GOAL_SECONDARY, recordedAt: new Date().toISOString(), backfilled: true };
         recorded.push({ day: key, total, stretch: total >= GOAL_SECONDARY, was: existing || null });
       } else {
-        skipped.push({ day: key, total, alreadyHas: existing || null });
+        skipped.push({ day: key, total, withLtal: perDay5[key], alreadyHas: existing || null });
       }
     }
     if (!dry && recorded.length) await redis.set(GOAL_HISTORY_KEY, gh);
     const streak = computeGoalStreak(gh.days);
     res.setHeader('Cache-Control', 'no-store');
-    return res.status(200).json({ dry, archivesScanned: (archives || []).length, recordedCount: recorded.length, recorded, skippedCount: skipped.length, skipped, streak });
+    return res.status(200).json({ dry, daysScanned: Object.keys(perDay4).length, recordedCount: recorded.length, recorded, skippedCount: skipped.length, skipped, streak });
   }
 
   // ── POST /api/leaderboard?action=record-goal — record today's community goal status ──
