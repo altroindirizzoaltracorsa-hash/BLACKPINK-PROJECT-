@@ -11,8 +11,8 @@ jobs:
     steps:
       - name: Curl the live endpoint
         run: |
-          echo "GET https://blinksunited.com/api/kcharts-live"
-          code=$(curl -s -o resp.json -w '%{http_code}' https://blinksunited.com/api/kcharts-live)
+          echo "GET https://www.blinksunited.com/api/kcharts-live (follow redirects)"
+          code=$(curl -sL -o resp.json -w '%{http_code} final=%{url_effective}' https://www.blinksunited.com/api/kcharts-live)
           echo "HTTP $code"
           echo "--- body ---"
           cat resp.json
