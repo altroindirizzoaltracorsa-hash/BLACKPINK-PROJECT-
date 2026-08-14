@@ -1888,6 +1888,11 @@
               <div style="font-family:var(--display);font-size:1.5rem;font-weight:800;color:var(--pink);line-height:1.15;">48,033</div>
               <div style="font-size:0.6rem;color:var(--muted);">scrobbles · 2 Aug 2026</div>
             </div>
+            <div style="flex:1;min-width:135px;border:1px solid rgba(255,0,102,0.32);border-radius:10px;padding:0.7rem 0.9rem;background:var(--pink-muted);">
+              <div style="font-size:0.6rem;letter-spacing:0.14em;color:var(--muted);text-transform:uppercase;">At 30M streams</div>
+              <div style="font-family:var(--display);font-size:1.5rem;font-weight:800;color:var(--pink);line-height:1.15;">54,627</div>
+              <div style="font-size:0.6rem;color:var(--muted);">scrobbles · 8 Aug 2026</div>
+            </div>
           </div>
         </div>
 
@@ -8269,7 +8274,7 @@ function renderLtalMilestoneSection(username) {
   loadLtalMilestones().then(ms => {
     if (_lbProfileUser !== username) return;
     const e = _ltalMsEntry(ms, username);
-    if (!e || (!e.m10c && !e.m20c)) return;
+    if (!e || (!e.m10c && !e.m20c && !e.m30c)) return;
     const cont = document.getElementById('lb-user-sections');
     if (!cont || cont.querySelector('.ltal-ms-section')) return;
     const row = (mk) => {
@@ -8281,7 +8286,7 @@ function renderLtalMilestoneSection(username) {
         + `<span class="val">${Number(c).toLocaleString()} · ${_ltalPct(c, meta.total)}`
         + (r ? ` · #${r}/${meta.contributors}` : '') + `</span></div>`;
     };
-    const rows = [row('m10'), row('m20')].filter(Boolean).join('');
+    const rows = [row('m10'), row('m20'), row('m30')].filter(Boolean).join('');
     if (!rows) return;
     cont.insertAdjacentHTML('beforeend',
       `<div class="lb-profile-section ltal-ms-section">`

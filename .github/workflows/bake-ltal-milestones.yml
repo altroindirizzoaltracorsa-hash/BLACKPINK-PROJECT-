@@ -1,9 +1,11 @@
 name: Bake LTAL milestone contributions
 
-# One-off: from the daily leaderboard_archive snapshots for the days LTAL passed
-# 10M (2026-07-28) and 20M (2026-08-02) Spotify streams, compute each Blink's
-# cumulative overall_ltal, their % of the community total, and their rank among
-# contributors. Emits a compact JSON (between markers) to commit as a static file.
+# From the daily leaderboard_archive snapshots for the days LTAL passed 10M
+# (2026-07-28), 20M (2026-08-02) and 30M (2026-08-08) Spotify streams, compute
+# each Blink's cumulative overall_ltal, their % of the community total, and
+# their rank among contributors. Writes + commits ltal-milestones.json, which
+# the site reads for the per-Blink milestone-contribution section and the
+# release-card totals.
 
 on:
   workflow_dispatch:
@@ -11,7 +13,10 @@ on:
 jobs:
   bake:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
+      - uses: actions/checkout@v4
       - name: Build milestone JSON
         run: |
           python3 - <<'PY'
@@ -76,11 +81,19 @@ jobs:
           out["users"] = {k: v for k, v in out["users"].items()
                           if ("m10c" in v) or ("m20c" in v) or ("m30c" in v)}
 
+          with open("ltal-milestones.json", "w", encoding="utf-8") as f:
+              f.write(json.dumps(out, separators=(",", ":"), ensure_ascii=False))
+
           print("m10 total:", out["m10"]["total"], "contributors:", out["m10"]["contributors"])
           print("m20 total:", out["m20"]["total"], "contributors:", out["m20"]["contributors"])
           print("m30 total:", out["m30"]["total"], "contributors:", out["m30"]["contributors"])
           print("users with any milestone:", len(out["users"]), "| aliases:", len(out["aliases"]))
-          print("<<<JSON_START>>>")
-          print(json.dumps(out, separators=(",", ":"), ensure_ascii=False))
-          print("<<<JSON_END>>>")
           PY
+      - name: Commit milestone data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ltal-milestones.json
+          git diff --cached --quiet || git commit -m "chore: bake LTAL milestone contributions (10M/20M/30M)"
+          git pull --rebase
+          git push
