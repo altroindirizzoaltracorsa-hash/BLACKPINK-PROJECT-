@@ -13231,8 +13231,8 @@ window.addEventListener('appinstalled', () => {
 </script>
 <script src="/ig-posts.js"></script>
 <script>
+  if (window.renderIgLetterGrid) renderIgLetterGrid('ig-home-letters', window.IG_LETTERS);
   if (window.renderIgPosts) {
-    renderIgPosts('ig-home-letters', window.IG_LETTERS);
     renderIgPosts('ig-home-posts', window.IG_POSTS);
   }
   if (window.renderIgLinks) renderIgLinks('ig-home-links', window.IG_LINKS);

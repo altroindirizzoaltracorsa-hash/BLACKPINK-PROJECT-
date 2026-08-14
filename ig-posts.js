@@ -7,12 +7,17 @@
 // Image entry: { img:'/path.jpg', name?:'JISOO', url?:'https://…' }  (name = label; url = where it links, else opens the image)
 // Embed entry: { url:'https://www.instagram.com/p/XXXX/' }
 // Link entry:  { label:'Stationhead', url:'https://…' }
-
+//
+// IG_LETTERS: each member is one card. `img` is the primary (letter) image;
+// add extra slides for that member in `imgs` — plain '/path.jpg' strings, or
+// { img, alt, langs:['ENG','KR'] } for a bilingual slide. On the homepage the
+// card becomes a swipeable carousel (renderIgLetterGrid); the plain letter grid
+// on /10years still reads only `img`, so both stay in sync.
 window.IG_LETTERS = [
-  { img: '/anniv-jisoo.jpg',  name: 'JISOO'  },
+  { img: '/anniv-jisoo.jpg',  name: 'JISOO',  imgs: ['/msg-jisoo-1.jpg', { img: '/msg-jisoo-en.jpg', alt: '/msg-jisoo-kr.jpg', langs: ['ENG', 'KR'] }] },
   { img: '/anniv-jennie.jpg', name: 'JENNIE' },
   { img: '/anniv-rose.jpg',   name: 'ROSÉ'   },
-  { img: '/anniv-lisa.jpg',   name: 'LISA'   },
+  { img: '/anniv-lisa.jpg',   name: 'LISA',   imgs: ['/msg-lisa.jpg'] },
 ];
 
 window.IG_MESSAGES = [
@@ -232,4 +237,96 @@ window.renderIgLinks = function (containerId, list) {
       'onmouseover="this.style.background=\'#FF0066\';this.style.color=\'#0a0006\'" onmouseout="this.style.background=\'transparent\';this.style.color=\'#FF0066\'">' +
       l.label + '</a>';
   }).join('');
+};
+
+// renderIgLetterGrid(containerId, members) — a 2×2 grid where each member's cell
+// is its own swipeable carousel (letter + their messages). Dots appear only when
+// a member has more than one slide; tap any image to open the shared lightbox
+// (grouped per member). Members with a single slide just show a static card.
+window.renderIgLetterGrid = function (containerId, members) {
+  var host = document.getElementById(containerId);
+  if (!host) return;
+  var list = members || window.IG_LETTERS || [];
+  if (!list.length) { host.innerHTML = ''; return; }
+  if (!document.getElementById('ig-lettergrid-css')) {
+    var st = document.createElement('style');
+    st.id = 'ig-lettergrid-css';
+    st.textContent =
+      '.iglg-grid{display:grid;grid-template-columns:1fr 1fr;column-gap:1rem;row-gap:1.4rem;max-width:620px;margin:0 auto;}' +
+      '.iglg-card{min-width:0;}' +
+      '.iglg-track{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-radius:14px;border:1px solid rgba(255,255,255,0.1);background:#150c13;}' +
+      '.iglg-track::-webkit-scrollbar{display:none;}' +
+      '.iglg-slide{position:relative;flex:0 0 100%;scroll-snap-align:center;}' +
+      '.iglg-slide a{display:block;cursor:zoom-in;}' +
+      '.iglg-slide img{display:block;width:100%;height:auto;}' +
+      '.iglg-langtoggle{position:absolute;top:8px;right:8px;z-index:3;display:flex;gap:3px;background:rgba(0,0,0,0.55);border-radius:999px;padding:3px;}' +
+      '.iglg-langtoggle button{border:0;border-radius:999px;background:transparent;color:#fff;cursor:pointer;font-family:ui-monospace,SFMono-Regular,monospace;font-size:0.5rem;letter-spacing:0.06em;padding:3px 7px;line-height:1;}' +
+      '.iglg-langtoggle button.active{background:#FF3D8F;color:#0a0006;}' +
+      '.iglg-name{font-family:ui-monospace,SFMono-Regular,monospace;font-size:0.58rem;letter-spacing:0.16em;text-transform:uppercase;color:#FF0066;text-align:center;padding:0.55rem 0.4rem 0;}' +
+      '.iglg-dots{display:flex;gap:0.3rem;justify-content:center;margin-top:0.5rem;min-height:6px;}' +
+      '.iglg-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.25);border:0;padding:0;cursor:pointer;transition:background .2s,transform .2s;}' +
+      '.iglg-dot.active{background:#FF3D8F;transform:scale(1.3);}';
+    document.head.appendChild(st);
+  }
+  function slidesOf(m) {
+    var out = [];
+    if (m.img) out.push({ img: m.img });
+    (m.imgs || []).forEach(function (x) { out.push(typeof x === 'string' ? { img: x } : x); });
+    return out;
+  }
+  var cards = list.map(function (m, mi) {
+    var slides = slidesOf(m);
+    var gkey = containerId + '-' + mi;
+    window._igGroups[gkey] = slides.map(function (s) { return s.img; });
+    var slideHtml = slides.map(function (s, i) {
+      var a = '<a href="#" onclick="return openIgLightbox(\'' + gkey + '\',' + i + ')">' +
+        '<img src="' + s.img + '" alt="' + (m.name || 'BLACKPINK') + ' — 10th anniversary message to BLINK" loading="lazy"></a>';
+      var toggle = '';
+      if (s.alt) {
+        var la = (s.langs && s.langs[0]) || 'ENG', lb = (s.langs && s.langs[1]) || 'KR';
+        toggle = '<div class="iglg-langtoggle" data-gkey="' + gkey + '" data-idx="' + i + '" data-en="' + s.img + '" data-kr="' + s.alt + '">' +
+          '<button type="button" data-lang="en" class="active">' + la + '</button>' +
+          '<button type="button" data-lang="kr">' + lb + '</button></div>';
+      }
+      return '<div class="iglg-slide">' + a + toggle + '</div>';
+    }).join('');
+    var dots = slides.length > 1 ? '<div class="iglg-dots">' + slides.map(function (_, i) {
+      return '<button class="iglg-dot' + (i === 0 ? ' active' : '') + '" data-i="' + i + '" aria-label="Slide ' + (i + 1) + '"></button>';
+    }).join('') + '</div>' : '';
+    return '<div class="iglg-card">' +
+      '<div class="iglg-track">' + slideHtml + '</div>' +
+      '<div class="iglg-name">' + (m.name || '') + '</div>' + dots + '</div>';
+  }).join('');
+  host.removeAttribute('style');
+  host.innerHTML = '<div class="iglg-grid">' + cards + '</div>';
+  host.querySelectorAll('.iglg-card').forEach(function (card) {
+    var track = card.querySelector('.iglg-track');
+    var dotEls = card.querySelectorAll('.iglg-dot');
+    if (dotEls.length) {
+      dotEls.forEach(function (d) {
+        d.addEventListener('click', function () { track.scrollTo({ left: (+d.dataset.i) * track.clientWidth, behavior: 'smooth' }); });
+      });
+      var raf;
+      track.addEventListener('scroll', function () {
+        if (raf) cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(function () {
+          var i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+          dotEls.forEach(function (d, j) { d.classList.toggle('active', j === i); });
+        });
+      });
+    }
+    card.querySelectorAll('.iglg-langtoggle').forEach(function (tg) {
+      var gkey = tg.dataset.gkey, idx = +tg.dataset.idx, en = tg.dataset.en, kr = tg.dataset.kr;
+      var img = tg.parentNode.querySelector('img');
+      tg.querySelectorAll('button').forEach(function (b) {
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          img.src = b.dataset.lang === 'kr' ? kr : en;
+          if (window._igGroups[gkey]) window._igGroups[gkey][idx] = (b.dataset.lang === 'kr' ? kr : en);
+          tg.querySelectorAll('button').forEach(function (x) { x.classList.remove('active'); });
+          b.classList.add('active');
+        });
+      });
+    });
+  });
 };
