@@ -1,4 +1,4 @@
-name: Purge stray h: recovery rows
+name: Purge stray handle recovery rows
 
 # One-off cleanup of legacy "h:<handle>" recovery rows in user_daily_counts,
 # superseded by "user_<name>" rows. Run dry=1 to preview, dry=0 to delete.
