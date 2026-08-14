@@ -4893,6 +4893,29 @@ function renderAccountPage(session) {
   }
 }
 
+// New sign-up method: the old "Link your scrobbling accounts" onboarding hero
+// (#badges-auth-link) is retired and must NEVER show. A signed-in fan with no
+// linked scrobblers is taken to their profile with Settings → Account open, which
+// is now the single place linking happens. Once they add one, addLinkedAccountSettings
+// re-runs initMyBadgesFromAccount and the full profile renders.
+function showAccountLinkingView(session) {
+  document.getElementById('badges-auth-link').style.display = 'none';
+  document.getElementById('login-panel').style.display = 'none';
+  document.getElementById('loading-panel').style.display = 'none';
+  document.getElementById('profile-panel').style.display = 'block';
+
+  const nameEl = document.getElementById('profile-username');
+  if (nameEl) nameEl.textContent = session?.user?.user_metadata?.display_name || session?.user?.email || 'Your profile';
+  const metaEl = document.getElementById('profile-meta');
+  if (metaEl) metaEl.innerHTML = 'No scrobblers linked yet — add one in Settings → Account below to start earning badges.';
+
+  renderAccountPage(session); // populates the Settings → Account section (email, display name, linked list)
+  const settingsPanel = document.getElementById('settings-panel');
+  if (settingsPanel) settingsPanel.style.display = 'block';
+  const acctSection = document.getElementById('settings-account-section');
+  if (acctSection) { acctSection.style.display = 'block'; try { acctSection.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {} }
+}
+
 async function signInWithProvider(provider) {
   if (!sb) return;
   await sb.auth.signInWithOAuth({ provider, options: { redirectTo: location.origin + '/badges' } });
@@ -5032,12 +5055,9 @@ async function initMyBadgesFromAccount(_retry = 0) {
   }
 
   if (!data || data.length === 0) {
-    // Genuinely no linked accounts — show the onboarding link panel.
-    document.getElementById('loading-panel').style.display = 'none';
-    document.getElementById('login-panel').style.display = 'block';
-    document.getElementById('badges-auth-signout').style.display = 'none';
-    document.getElementById('badges-auth-link').style.display = 'block';
-    await loadLinkedAccountsInline();
+    // No linked scrobblers yet. The old onboarding hero is retired — send them to
+    // their profile with Settings → Account open, the single place linking happens.
+    showAccountLinkingView(session);
     return;
   }
 
