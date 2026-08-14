@@ -24,7 +24,7 @@ jobs:
         run: |
           set -e
           B="${BASE%/}"
-          code=$(curl -sS -X POST -o resp.json -w "%{http_code}" \
+          code=$(curl -sS -X POST -L --location-trusted -o resp.json -w "%{http_code}" \
             "$B/api/leaderboard?action=backfill-goal-history&key=$KEY&dry=$DRY")
           echo "HTTP $code"
           echo "--- summary ---"
