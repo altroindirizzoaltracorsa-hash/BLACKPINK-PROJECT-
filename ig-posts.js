@@ -239,6 +239,64 @@ window.renderIgLinks = function (containerId, list) {
   }).join('');
 };
 
+// renderIgPostsCarousel(containerId, list) — the live Instagram embeds as a
+// single swipeable carousel (one post at a time, dots + swipe), instead of a
+// wrapped row. Embeds have a fixed min-width so they don't tile; a full-width
+// carousel keeps them readable on mobile.
+window.renderIgPostsCarousel = function (containerId, list) {
+  var wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  var posts = (list || window.IG_POSTS || []).filter(function (p) { return p && p.url; });
+  if (!posts.length) { wrap.innerHTML = ''; return; }
+  if (!document.getElementById('ig-postcarousel-css')) {
+    var st = document.createElement('style');
+    st.id = 'ig-postcarousel-css';
+    st.textContent =
+      '.igpc-wrap{max-width:440px;margin:0 auto;}' +
+      '.igpc-track{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;}' +
+      '.igpc-track::-webkit-scrollbar{display:none;}' +
+      '.igpc-slide{flex:0 0 100%;scroll-snap-align:center;display:flex;justify-content:center;align-items:flex-start;padding:0 4px;}' +
+      '.igpc-slide .instagram-media{margin:0 auto !important;}' +
+      '.igpc-dots{display:flex;gap:0.4rem;justify-content:center;margin-top:0.9rem;flex-wrap:wrap;}' +
+      '.igpc-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.25);border:0;padding:0;cursor:pointer;transition:background .2s,transform .2s;}' +
+      '.igpc-dot.active{background:#FF3D8F;transform:scale(1.35);}' +
+      '.igpc-hint{font-family:ui-monospace,SFMono-Regular,monospace;font-size:0.55rem;letter-spacing:0.16em;text-transform:uppercase;color:rgba(245,240,240,0.4);text-align:center;margin-top:0.7rem;}';
+    document.head.appendChild(st);
+  }
+  var slides = posts.map(function (p) {
+    return '<div class="igpc-slide"><blockquote class="instagram-media" data-instgrm-permalink="' + p.url +
+      '" data-instgrm-version="14" style="margin:0;max-width:400px;width:100%;min-width:300px;"></blockquote></div>';
+  }).join('');
+  var dots = posts.length > 1 ? '<div class="igpc-dots">' + posts.map(function (_, i) {
+    return '<button class="igpc-dot' + (i === 0 ? ' active' : '') + '" data-i="' + i + '" aria-label="Post ' + (i + 1) + '"></button>';
+  }).join('') + '</div>' : '';
+  wrap.removeAttribute('style');
+  wrap.innerHTML = '<div class="igpc-wrap"><div class="igpc-track">' + slides + '</div>' + dots +
+    (posts.length > 1 ? '<div class="igpc-hint">← swipe →</div>' : '') + '</div>';
+  var track = wrap.querySelector('.igpc-track');
+  var dotEls = wrap.querySelectorAll('.igpc-dot');
+  dotEls.forEach(function (d) {
+    d.addEventListener('click', function () { track.scrollTo({ left: (+d.dataset.i) * track.clientWidth, behavior: 'smooth' }); });
+  });
+  var raf;
+  track.addEventListener('scroll', function () {
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(function () {
+      var i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+      dotEls.forEach(function (d, j) { d.classList.toggle('active', j === i); });
+    });
+  });
+  function proc() { if (window.instgrm && window.instgrm.Embeds) window.instgrm.Embeds.process(); }
+  if (window.instgrm && window.instgrm.Embeds) { proc(); return; }
+  if (document.getElementById('ig-embed-js')) return;
+  var s = document.createElement('script');
+  s.id = 'ig-embed-js';
+  s.async = true;
+  s.src = 'https://www.instagram.com/embed.js';
+  s.onload = proc;
+  document.body.appendChild(s);
+};
+
 // renderIgLetterGrid(containerId, members) — a 2×2 grid where each member's cell
 // is its own swipeable carousel (letter + their messages). Dots appear only when
 // a member has more than one slide; tap any image to open the shared lightbox
