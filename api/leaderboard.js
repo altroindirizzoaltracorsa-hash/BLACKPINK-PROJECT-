@@ -1082,6 +1082,31 @@ export default async function handler(req, res) {
     return res.status(200).json({ dry, day, changedCount: changed.length, unrecoverable, changed: changed.slice(0, 60) });
   }
 
+  // ── POST /api/leaderboard?action=purge-handle-keys&key=ADMIN[&dry=1] ──
+  // One-off cleanup: delete the stray "h:<handle>" recovery rows that the
+  // short-lived earlier fallback wrote to user_daily_counts, now superseded by the
+  // "user_<name>" recovery rows. ?dry=1 previews the matches without deleting.
+  if (req.method === 'POST' && action === 'purge-handle-keys') {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'unauthorized' });
+    const dry = req.query.dry === '1';
+    const sb = supabase();
+    if (!sb) return res.status(503).json({ error: 'Server not configured' });
+
+    const { data: rows, error } = await sb
+      .from('user_daily_counts')
+      .select('app_user_id,day_key')
+      .like('app_user_id', 'h:%')
+      .limit(10000);
+    if (error) return res.status(500).json({ error: error.message });
+    const sample = (rows || []).slice(0, 60).map(r => `${r.app_user_id}@${r.day_key}`);
+    if (!dry && rows && rows.length) {
+      const { error: derr } = await sb.from('user_daily_counts').delete().like('app_user_id', 'h:%');
+      if (derr) return res.status(500).json({ error: derr.message });
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ dry, matched: (rows || []).length, sample });
+  }
+
   // ── POST /api/leaderboard?action=record-goal — record today's community goal status ──
   // Anyone can call this; total is always computed server-side from live leaderboard data.
   if (req.method === 'POST' && action === 'record-goal') {
