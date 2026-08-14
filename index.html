@@ -2854,6 +2854,7 @@
       .kc-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.85rem 1rem;margin-bottom:0.85rem;}
       .kc-card-head{display:flex;align-items:center;justify-content:space-between;gap:0.6rem;margin-bottom:0.5rem;}
       .kc-card-title{font-family:var(--display);letter-spacing:0.06em;color:var(--pink);font-size:0.95rem;}
+      .kc-kr{font-family:var(--sans,inherit);letter-spacing:normal;color:var(--muted);font-size:0.72rem;font-weight:400;margin-left:0.35rem;}
       .kc-card-src{color:var(--muted);font-size:0.6rem;text-decoration:none;letter-spacing:0.06em;white-space:nowrap;}
       .kc-empty{color:var(--muted);font-size:0.78rem;font-style:italic;padding:0.25rem 0;}
       .kc-mv{font-family:var(--display);font-size:0.68rem;}
@@ -4411,7 +4412,8 @@ function renderKCharts() {
           : '<p class="kc-empty">No BLACKPINK / member entries charting right now.</p>')
       : '<p class="kc-empty">Chart unavailable this refresh.</p>';
     return '<div class="kc-card">' +
-      '<div class="kc-card-head"><span class="kc-card-title">' + escapeHtml(c.type) + '</span>' +
+      '<div class="kc-card-head"><span class="kc-card-title">' + escapeHtml(c.type) +
+        (c.kr ? ' <span class="kc-kr">' + escapeHtml(c.kr) + '</span>' : '') + '</span>' +
       '<a href="' + c.url + '" target="_blank" rel="noopener" class="kc-card-src">source ›</a></div>' +
       body + '</div>';
   }).join('');

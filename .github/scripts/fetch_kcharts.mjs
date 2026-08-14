@@ -19,24 +19,41 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR  = join(__dirname, '..', '..', 'data');
 const BASE      = 'https://xn--o39an51b2re.com';
 
-// Every streaming service on the site, primary charts. Kept even when no
-// BLACKPINK/member is charting (they may enter tomorrow).
+// Every song-ranking chart on the site (kr = 가이섬's exact menu label so it's
+// easy to cross-check). Skipped: the "그래프/추이" graph views, "5분" 5-minute
+// variants, and "이용자 수" user-count analytics — none are song rankings.
+// Charts are kept even when no BLACKPINK/member is charting (they may enter later).
 const CHARTS = [
-  { service: 'Melon',   type: 'Realtime',       path: '/chart/melon/realtime' },
-  { service: 'Melon',   type: 'Daily',          path: '/chart/melon/daily' },
-  { service: 'Melon',   type: 'Weekly',         path: '/chart/melon/weekly' },
-  { service: 'Melon',   type: 'Monthly',        path: '/chart/melon/monthly' },
-  { service: 'Melon',   type: 'TOP100',         path: '/chart/melon/top100' },
-  { service: 'Melon',   type: 'HOT100',         path: '/chart/melon/hot100-d30' },
-  { service: 'Genie',   type: 'Realtime',       path: '/chart/genie/realtime' },
-  { service: 'Genie',   type: 'Daily',          path: '/chart/genie/daily' },
-  { service: 'Bugs',    type: 'Realtime',       path: '/chart/bugs/realtime' },
-  { service: 'Bugs',    type: 'Daily',          path: '/chart/bugs/daily' },
-  { service: 'FLO',     type: '24 Hour',        path: '/chart/flo/24hour' },
-  { service: 'Vibe',    type: 'Daily',          path: '/chart/vibe/daily' },
-  { service: 'Circle',  type: 'Digital Weekly', path: '/chart/circle/digital-weekly' },
-  { service: 'YouTube', type: 'Track · Weekly', path: '/chart/youtube/track-weekly' },
-  { service: 'YouTube', type: 'Video · Weekly', path: '/chart/youtube/video-weekly' },
+  // Melon
+  { service: 'Melon',   type: 'Realtime',            kr: '실시간 차트',              path: '/chart/melon/realtime' },
+  { service: 'Melon',   type: 'Daily',               kr: '일간 차트',                path: '/chart/melon/daily' },
+  { service: 'Melon',   type: 'Weekly',              kr: '주간 차트',                path: '/chart/melon/weekly' },
+  { service: 'Melon',   type: 'Monthly',             kr: '월간 차트',                path: '/chart/melon/monthly' },
+  { service: 'Melon',   type: 'Yearly',              kr: '연간 차트',                path: '/chart/melon/yearly' },
+  { service: 'Melon',   type: 'TOP100',              kr: 'TOP100',                   path: '/chart/melon/top100' },
+  { service: 'Melon',   type: 'HOT100 (30d)',        kr: 'HOT100 (30일)',            path: '/chart/melon/hot100-d30' },
+  { service: 'Melon',   type: 'HOT100 (100d)',       kr: 'HOT100 (100일)',           path: '/chart/melon/hot100-d100' },
+  { service: 'Melon',   type: '24Hits',              kr: '24Hits',                   path: '/chart/melon/24hits' },
+  { service: 'Melon',   type: '24Hits Newest (1w)',  kr: '최신 24Hits (1주)',        path: '/chart/melon/24hits-newest-w1' },
+  { service: 'Melon',   type: '24Hits Newest (4w)',  kr: '최신 24Hits (4주)',        path: '/chart/melon/24hits-newest-w4' },
+  { service: 'Melon',   type: 'Newest (1w)',         kr: '최신차트 (1주)',           path: '/chart/melon/newest-w1' },
+  { service: 'Melon',   type: 'Newest (4w)',         kr: '최신차트 (4주)',           path: '/chart/melon/newest-w4' },
+  { service: 'Melon',   type: 'Daily Long-run',      kr: '일간 차트 연속 진입 일수', path: '/chart/melon/daily-long-run' },
+  // Genie
+  { service: 'Genie',   type: 'Realtime',            kr: '실시간 차트',              path: '/chart/genie/realtime' },
+  { service: 'Genie',   type: 'Daily',               kr: '일간 차트',                path: '/chart/genie/daily' },
+  // Bugs
+  { service: 'Bugs',    type: 'Realtime',            kr: '실시간 차트',              path: '/chart/bugs/realtime' },
+  { service: 'Bugs',    type: 'Daily',               kr: '일간 차트',                path: '/chart/bugs/daily' },
+  // FLO
+  { service: 'FLO',     type: '24 Hour',             kr: 'FLO 차트',                 path: '/chart/flo/24hour' },
+  // Vibe
+  { service: 'Vibe',    type: 'Daily',               kr: '일간 차트',                path: '/chart/vibe/daily' },
+  // Circle
+  { service: 'Circle',  type: 'Digital Weekly',      kr: '주간 디지털 차트',         path: '/chart/circle/digital-weekly' },
+  // YouTube
+  { service: 'YouTube', type: 'Track Weekly',        kr: '주간 인기곡 차트',         path: '/chart/youtube/track-weekly' },
+  { service: 'YouTube', type: 'Video Weekly',        kr: '주간 인기 뮤직비디오 차트', path: '/chart/youtube/video-weekly' },
 ];
 
 // member -> tokens; titleSafe=false tokens only match inside artist names (never
@@ -121,7 +138,7 @@ function matchMembers(song) {
 async function buildChart(def) {
   const url = BASE + def.path;
   const base = { key: (def.service + '-' + def.type).toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-                 service: def.service, type: def.type, label: def.service + ' · ' + def.type, url };
+                 service: def.service, type: def.type, kr: def.kr || '', label: def.service + ' · ' + def.type, url };
   try {
     const nd = nextData(await fetchHtml(url));
     const pp = nd?.props?.pageProps;
