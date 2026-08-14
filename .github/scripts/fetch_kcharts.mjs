@@ -20,12 +20,15 @@ const DATA_DIR  = join(__dirname, '..', '..', 'data');
 const BASE      = 'https://xn--o39an51b2re.com';
 
 // Every song-ranking chart on the site (kr = 가이섬's exact menu label so it's
-// easy to cross-check). Skipped: the "그래프/추이" graph views, "5분" 5-minute
-// variants, and "이용자 수" user-count analytics — none are song rankings.
-// Charts are kept even when no BLACKPINK/member is charting (they may enter later).
+// easy to cross-check), including Melon's "5분 차트" 5-minute snapshots — the
+// freshest ranking Melon exposes. Skipped: the "그래프" graph views, the "추이"
+// trend views (they 500), and "이용자 수" listener-count views — none are the
+// standard song rankings. Charts are kept even when no BLACKPINK/member is
+// charting (they may enter later).
 const CHARTS = [
   // Melon
   { service: 'Melon',   type: 'Realtime',            kr: '실시간 차트',              path: '/chart/melon/realtime' },
+  { service: 'Melon',   type: 'Realtime 5-min',      kr: '5분 차트',                 path: '/chart/melon/realtime-five' },
   { service: 'Melon',   type: 'Daily',               kr: '일간 차트',                path: '/chart/melon/daily' },
   { service: 'Melon',   type: 'Weekly',              kr: '주간 차트',                path: '/chart/melon/weekly' },
   { service: 'Melon',   type: 'Monthly',             kr: '월간 차트',                path: '/chart/melon/monthly' },
@@ -33,6 +36,7 @@ const CHARTS = [
   { service: 'Melon',   type: 'TOP100',              kr: 'TOP100',                   path: '/chart/melon/top100' },
   { service: 'Melon',   type: 'HOT100 (30d)',        kr: 'HOT100 (30일)',            path: '/chart/melon/hot100-d30' },
   { service: 'Melon',   type: 'HOT100 (100d)',       kr: 'HOT100 (100일)',           path: '/chart/melon/hot100-d100' },
+  { service: 'Melon',   type: 'HOT100 5-min',        kr: 'HOT100 5분 차트',          path: '/chart/melon/hot100-five' },
   { service: 'Melon',   type: '24Hits',              kr: '24Hits',                   path: '/chart/melon/24hits' },
   { service: 'Melon',   type: '24Hits Newest (1w)',  kr: '최신 24Hits (1주)',        path: '/chart/melon/24hits-newest-w1' },
   { service: 'Melon',   type: '24Hits Newest (4w)',  kr: '최신 24Hits (4주)',        path: '/chart/melon/24hits-newest-w4' },
