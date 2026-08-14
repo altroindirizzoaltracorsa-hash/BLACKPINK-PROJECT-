@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-14T13:39:00.745Z",
+  "generatedAt": "2026-08-14T13:48:21.628Z",
   "date": "2026-08-14",
   "source": "https://xn--o39an51b2re.com",
   "charts": [
@@ -54,6 +54,17 @@
           "link": "https://www.melon.com/song/detail.htm?songId=38120327"
         }
       ]
+    },
+    {
+      "key": "melon-realtime-5-min",
+      "service": "Melon",
+      "type": "Realtime 5-min",
+      "kr": "5분 차트",
+      "label": "Melon · Realtime 5-min",
+      "url": "https://xn--o39an51b2re.com/chart/melon/realtime-five",
+      "available": true,
+      "totalRows": 5,
+      "entries": []
     },
     {
       "key": "melon-daily",
@@ -474,6 +485,17 @@
           "link": "https://www.melon.com/song/detail.htm?songId=602584682"
         }
       ]
+    },
+    {
+      "key": "melon-hot100-5-min",
+      "service": "Melon",
+      "type": "HOT100 5-min",
+      "kr": "HOT100 5분 차트",
+      "label": "Melon · HOT100 5-min",
+      "url": "https://xn--o39an51b2re.com/chart/melon/hot100-five",
+      "available": true,
+      "totalRows": 6,
+      "entries": []
     },
     {
       "key": "melon-24hits",
@@ -1254,8 +1276,8 @@
     }
   ],
   "summary": {
-    "chartsChecked": 23,
-    "chartsAvailable": 23,
+    "chartsChecked": 25,
+    "chartsAvailable": 25,
     "totalEntries": 122
   }
 }
