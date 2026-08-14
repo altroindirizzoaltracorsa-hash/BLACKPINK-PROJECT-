@@ -10,8 +10,26 @@
 // script (fetch_kcharts.mjs) so the client can splice these straight over the
 // matching static cards.
 
+import { Redis } from '@upstash/redis';
+
 const BASE = 'https://xn--o39an51b2re.com';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
+
+// 가이섬's 5분 charts don't publish a previous-rank (the `previous` field is
+// always null), so ▲/▼ movement can't come from the source like it does for
+// the other charts. Instead we remember each chart's ranks in Redis and diff
+// the next fetch against a baseline that rolls over ~every 5 min — giving a
+// true 5-minute up/down for every charting song. Degrades to "NEW" (no
+// movement) if Redis is unavailable.
+let redis = null;
+try { redis = Redis.fromEnv(); } catch { redis = null; }
+const PREV_KEY = (chartKey) => 'kc5_prev:' + chartKey;
+const REBASE_MS = 270000; // 4.5 min — roll the baseline forward once this elapses
+
+// Stable per-song id for rank memory: fullId > link > name.
+function songKey(song) {
+  return String(song?.fullId || song?.link || song?.name || '').trim();
+}
 
 // The two Melon 5분 charts. `key` is computed the same way the hourly script
 // does — (service + '-' + type).toLowerCase().replace(/[^a-z0-9]+/g,'-') — so
@@ -95,13 +113,26 @@ function matchMembers(song) {
 
 async function buildChart(def) {
   const url = BASE + def.path;
-  const base = { key: (def.service + '-' + def.type).toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-                 service: def.service, type: def.type, kr: def.kr || '', label: def.service + ' · ' + def.type, url };
+  const key = (def.service + '-' + def.type).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const base = { key, service: def.service, type: def.type, kr: def.kr || '',
+                 label: def.service + ' · ' + def.type, url };
   try {
     const nd = nextData(await fetchHtml(url));
     const pp = nd?.props?.pageProps;
     const rows = pp ? findRows(pp) : null;
     if (!rows) return { ...base, available: false, totalRows: 0, entries: [] };
+
+    // Snapshot every song's current rank, and load the last baseline so we can
+    // diff for ▲/▼ (the source's own `previous` is null on these charts).
+    const curRanks = {};
+    for (const r of rows) {
+      const k = songKey(r.song || {});
+      if (k && r.ranking != null) curRanks[k] = r.ranking;
+    }
+    let baseline = null;
+    if (redis) { try { baseline = await redis.get(PREV_KEY(key)); } catch { baseline = null; } }
+    const prevRanks = baseline?.ranks || {};
+
     const entries = [];
     for (const r of rows) {
       const song = r.song || {};
@@ -109,7 +140,13 @@ async function buildChart(def) {
       if (!members.size) continue;
       const member = MEMBER_PRIORITY.find(m => members.has(m)) || [...members][0];
       const rank = r.ranking ?? null;
-      const previous = (typeof r.previous === 'number' && r.previous > 0) ? r.previous : null;
+      // Prefer the source's own previous-rank when present (other charts);
+      // fall back to our remembered baseline (the 5분 charts).
+      let previous = (typeof r.previous === 'number' && r.previous > 0) ? r.previous : null;
+      if (previous == null) {
+        const p = prevRanks[songKey(song)];
+        if (typeof p === 'number' && p > 0) previous = p;
+      }
       entries.push({
         rank,
         previous,
@@ -120,6 +157,15 @@ async function buildChart(def) {
       });
     }
     entries.sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999));
+
+    // Roll the baseline forward once it's ~5 min old (or missing), so the diff
+    // window stays a genuine 5 minutes regardless of how often visitors poll.
+    if (redis) {
+      const now = Date.now();
+      if (!baseline || typeof baseline.at !== 'number' || (now - baseline.at) >= REBASE_MS) {
+        try { await redis.set(PREV_KEY(key), { at: now, ranks: curRanks }, { ex: 86400 }); } catch { /* best-effort */ }
+      }
+    }
     return { ...base, available: true, totalRows: rows.length, entries };
   } catch (e) {
     return { ...base, available: false, totalRows: 0, entries: [], error: e.message };
