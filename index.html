@@ -4870,11 +4870,15 @@ async function initBadgesAuthPanel() {
 
 function renderAccountPage(session) {
   const signedOut = document.getElementById('badges-auth-signout');
-  const signedIn  = document.getElementById('badges-auth-link');
   const settingsSection = document.getElementById('settings-account-section');
   if (session) {
     signedOut.style.display = 'none';
-    signedIn.style.display = 'block';
+    // Do NOT show the #badges-auth-link onboarding form here. Whether a signed-in
+    // fan sees the onboarding form vs. their profile is decided SOLELY by
+    // initMyBadgesFromAccount once linked_accounts is known. Showing it here made it
+    // flash on every load AND flip back over a loaded profile whenever onAuthStateChange
+    // fired (e.g. a background token refresh) — which is why already-linked fans kept
+    // seeing the old sign-up panel.
     if (settingsSection) settingsSection.style.display = 'block';
     const emailEl = document.getElementById('settings-account-email');
     if (emailEl) emailEl.textContent = session.user.email || session.user.id;
@@ -4884,7 +4888,7 @@ function renderAccountPage(session) {
     loadLinkedAccountsInline();
   } else {
     signedOut.style.display = 'block';
-    signedIn.style.display = 'none';
+    document.getElementById('badges-auth-link').style.display = 'none';
     if (settingsSection) settingsSection.style.display = 'none';
   }
 }
