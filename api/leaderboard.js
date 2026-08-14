@@ -1044,7 +1044,16 @@ export default async function handler(req, res) {
     const changed = [];
     let unrecoverable = 0;
     for (const [k, u] of Object.entries(users)) {
-      const c = u.appUserId && udc[u.appUserId];
+      // Prefer the owner id; fall back to the stable "h:<primary handle>" key the
+      // cron now writes for entries whose owner id it can't resolve.
+      let c = u.appUserId && udc[u.appUserId];
+      if (!c) {
+        const la = u.linkedAccounts || [];
+        const primary = la.find(a => a.type === 'lastfm' || a.type === 'librefm')
+          || la.find(a => a.type === 'listenbrainz') || la[0];
+        const hk = primary && primary.username ? `h:${primary.username.toLowerCase()}` : null;
+        if (hk) c = udc[hk];
+      }
       const s = u.scores || (u.scores = {});
       const flipped = s.daily_date && s.daily_date !== dayDDMM; // archive froze a different day
       if (c) {

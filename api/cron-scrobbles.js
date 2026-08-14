@@ -815,10 +815,20 @@ export default async function handler(req, res) {
         if (entry.username.toLowerCase() !== refreshed.displayName.toLowerCase()) {
           delete data.users[entry.username.toLowerCase()];
         }
-        if (refreshed.appUserId) {
+        // Durable per-day key: the signed-in owner id when we can resolve it, else
+        // a STABLE fallback from the primary scrobbler handle ("h:<handle>"). Before,
+        // an entry whose owner id didn't resolve was dropped from the per-day store
+        // entirely — which is what left accounts unrecoverable on the finalized
+        // board. Now every verified board entry is frozen each day, id or not.
+        const la = refreshed.linkedAccounts || [];
+        const primaryAcct = la.find(a => a.type === 'lastfm' || a.type === 'librefm')
+          || la.find(a => a.type === 'listenbrainz') || la[0];
+        const duKey = refreshed.appUserId
+          || (primaryAcct && primaryAcct.username ? `h:${primaryAcct.username.toLowerCase()}` : null);
+        if (duKey) {
           const s = refreshed.scores || {};
           const bySrc = refreshed.todayBySource || {};
-          dailyByUser.set(refreshed.appUserId, {
+          dailyByUser.set(duKey, {
             jump:     s.daily_jump     || 0,
             shutdown: s.daily_shutdown || 0,
             ddududu:  s.daily_ddududu  || 0,
