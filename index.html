@@ -2866,6 +2866,9 @@
   .kc-card-head{display:flex;align-items:center;justify-content:space-between;gap:0.6rem;margin-bottom:0.5rem;}
   .kc-card-title{font-family:var(--display);letter-spacing:0.06em;color:var(--pink);font-size:0.95rem;}
   .kc-kr{font-family:var(--sans,inherit);letter-spacing:normal;color:var(--muted);font-size:0.72rem;font-weight:400;margin-left:0.35rem;}
+  .kc-live{display:inline-block;margin-left:0.4rem;font-family:var(--display);font-size:0.56rem;letter-spacing:0.1em;color:#2ecc71;vertical-align:middle;}
+  .kc-live::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:#2ecc71;margin-right:0.3rem;vertical-align:middle;animation:kcpulse 1.6s ease-in-out infinite;}
+  @keyframes kcpulse{0%,100%{opacity:1;}50%{opacity:0.2;}}
   .kc-card-src{color:var(--muted);font-size:0.6rem;text-decoration:none;letter-spacing:0.06em;white-space:nowrap;}
   .kc-empty{color:var(--muted);font-size:0.78rem;font-style:italic;padding:0.25rem 0;}
   .kc-mv{font-family:var(--display);font-size:0.68rem;}
@@ -4362,8 +4365,42 @@ let amGlobalFullShown = false;
 // Reads the committed data/kcharts-latest.json (written by fetch-kcharts.yml),
 // already filtered to BLACKPINK + members. Grouped by streaming service with tabs.
 const KCHARTS_URL = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/kcharts-latest.json';
+// Melon's 5분 (5-minute) charts refresh every 5 min on the source — far faster
+// than the hourly committed JSON — so we splice them in live from a serverless
+// endpoint and re-poll every 5 min while the page is open.
+const KCHARTS_LIVE_URL = '/api/kcharts-live';
 let kcData = null;
 let kcService = null;
+let kcLiveTimer = null;
+
+// Pull the live 5분 charts and splice them over the matching hourly cards.
+// A failed fetch is silent — the hourly snapshot stays put (never downgraded).
+async function refreshKChartsLive() {
+  if (!kcData || !Array.isArray(kcData.charts)) return;
+  try {
+    const r = await fetch(KCHARTS_LIVE_URL + '?_=' + Date.now());
+    if (!r.ok) return;
+    const live = await r.json();
+    if (!live || !Array.isArray(live.charts)) return;
+    let changed = false;
+    for (const lc of live.charts) {
+      if (!lc || !lc.key || !lc.available) continue;
+      const i = kcData.charts.findIndex(c => c.key === lc.key);
+      if (i >= 0) { kcData.charts[i] = { ...lc, live: true }; changed = true; }
+    }
+    if (changed) renderKCharts();
+  } catch (e) { /* keep the hourly data */ }
+}
+
+function startKChartsLive() {
+  refreshKChartsLive();
+  if (kcLiveTimer) clearInterval(kcLiveTimer);
+  kcLiveTimer = setInterval(refreshKChartsLive, 5 * 60 * 1000); // every 5 min
+}
+
+function stopKChartsLive() {
+  if (kcLiveTimer) { clearInterval(kcLiveTimer); kcLiveTimer = null; }
+}
 
 function kcMovement(rank, previous) {
   if (previous == null || rank == null) return '<span class="kc-mv kc-new">NEW</span>';
@@ -4376,7 +4413,7 @@ function kcMovement(rank, previous) {
 async function loadKCharts() {
   const wrap = document.getElementById('kc-cards');
   if (!wrap) return;
-  if (kcData) { renderKCharts(); return; }
+  if (kcData) { renderKCharts(); startKChartsLive(); return; }
   const loadEl = document.getElementById('kc-loading');
   const errEl  = document.getElementById('kc-error');
   if (loadEl) loadEl.style.display = 'block';
@@ -4392,6 +4429,7 @@ async function loadKCharts() {
   }
   if (loadEl) loadEl.style.display = 'none';
   renderKCharts();
+  startKChartsLive();
 }
 
 function setKCService(s) { kcService = s; renderKCharts(); }
@@ -4436,7 +4474,8 @@ function renderKCharts() {
       : '<p class="kc-empty">Chart unavailable this refresh.</p>';
     return '<div class="kc-card">' +
       '<div class="kc-card-head"><span class="kc-card-title">' + escapeHtml(c.type) +
-        (c.kr ? ' <span class="kc-kr">' + escapeHtml(c.kr) + '</span>' : '') + '</span>' +
+        (c.kr ? ' <span class="kc-kr">' + escapeHtml(c.kr) + '</span>' : '') +
+        (c.live ? ' <span class="kc-live" title="Live — refreshes every 5 minutes">LIVE</span>' : '') + '</span>' +
       '<a href="' + c.url + '" target="_blank" rel="noopener" class="kc-card-src">source ›</a></div>' +
       body + '</div>';
   }).join('');
@@ -4877,6 +4916,7 @@ function showPage(page, { replace = false } = {}) {
   if (page === 'spotify-charts' || page === 'youtube' || page === 'apple' || page === 'itunes' || page === 'kcharts' || page === 'charts') document.getElementById('nav-charts')?.classList.add('active');
   if (page === 'streams') loadArtistStreamsPage();
   if (page === 'kcharts') loadKCharts();
+  else stopKChartsLive();
   if (page === 'spotify-charts') loadSpotifyChartsPage();
   if (page === 'youtube') loadYouTubeCharts();
   if (page === 'apple') loadAppleCharts();
