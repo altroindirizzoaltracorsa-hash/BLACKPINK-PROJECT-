@@ -1714,6 +1714,7 @@
         <a class="nav-dropdown-item" id="nav-youtube" href="/youtube" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('youtube'); return false;">YouTube Charts</a>
         <a class="nav-dropdown-item" id="nav-apple" href="/apple-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('apple'); return false;">Apple Music Charts</a>
         <a class="nav-dropdown-item" id="nav-itunes" href="/itunes-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('itunes'); return false;">iTunes Charts</a>
+        <a class="nav-dropdown-item" id="nav-kcharts" href="/kcharts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('kcharts'); return false;">K-Charts</a>
       </div>
     </li>
     <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
@@ -2844,34 +2845,55 @@
         <span class="ch-hub-label">iTunes Charts</span>
         <span class="ch-hub-arrow">›</span>
       </a>
+      <a class="ch-hub-item" href="/kcharts" onclick="showPage('kcharts'); return false;">
+        <svg class="ch-hub-icon" viewBox="0 0 24 24" fill="currentColor" style="color:#c084fc"><path d="M4 13h3v7H4v-7zm6.5-9h3v16h-3V4zM17 9h3v11h-3V9z"/></svg>
+        <span class="ch-hub-label">K-Charts <span class="ch-hub-sub">Korean Streaming</span></span>
+        <span class="ch-hub-arrow">›</span>
+      </a>
     </nav>
 
-    <!-- K-Charts (Korean streaming) — filtered to BLACKPINK + members -->
-    <style>
-      .kc-section{margin-top:2.2rem;}
-      .kc-tabs{display:flex;flex-wrap:wrap;gap:0.4rem;margin:0.85rem 0 1rem;}
-      .kc-tab .kc-badge{display:inline-block;margin-left:0.35rem;background:var(--pink);color:#fff;border-radius:10px;padding:0 0.4rem;font-size:0.58rem;vertical-align:middle;}
-      .kc-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.85rem 1rem;margin-bottom:0.85rem;}
-      .kc-card-head{display:flex;align-items:center;justify-content:space-between;gap:0.6rem;margin-bottom:0.5rem;}
-      .kc-card-title{font-family:var(--display);letter-spacing:0.06em;color:var(--pink);font-size:0.95rem;}
-      .kc-kr{font-family:var(--sans,inherit);letter-spacing:normal;color:var(--muted);font-size:0.72rem;font-weight:400;margin-left:0.35rem;}
-      .kc-card-src{color:var(--muted);font-size:0.6rem;text-decoration:none;letter-spacing:0.06em;white-space:nowrap;}
-      .kc-empty{color:var(--muted);font-size:0.78rem;font-style:italic;padding:0.25rem 0;}
-      .kc-mv{font-family:var(--display);font-size:0.68rem;}
-      .kc-up{color:#2ecc71;} .kc-down{color:#ff5a76;} .kc-flat{color:var(--muted);} .kc-new{color:var(--pink);}
-    </style>
-    <section class="kc-section">
-      <div class="am-divider"></div>
-      <p class="am-section-label">K-Charts · Korean Streaming</p>
+  </div>
+</div><!-- end charts hub page -->
+
+<!-- ══════════════════════════════════════
+     K-CHARTS (KOREAN STREAMING) PAGE
+     ══════════════════════════════════════ -->
+<style>
+  .ch-hub-sub{display:block;font-family:var(--sans,inherit);font-weight:400;letter-spacing:0.02em;color:var(--muted);font-size:0.7rem;margin-top:0.1rem;}
+  .kc-tabs{display:flex;flex-wrap:wrap;gap:0.4rem;margin:0.85rem 0 1rem;}
+  .kc-tab .kc-badge{display:inline-block;margin-left:0.35rem;background:var(--pink);color:#fff;border-radius:10px;padding:0 0.4rem;font-size:0.58rem;vertical-align:middle;}
+  .kc-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.85rem 1rem;margin-bottom:0.85rem;}
+  .kc-card-head{display:flex;align-items:center;justify-content:space-between;gap:0.6rem;margin-bottom:0.5rem;}
+  .kc-card-title{font-family:var(--display);letter-spacing:0.06em;color:var(--pink);font-size:0.95rem;}
+  .kc-kr{font-family:var(--sans,inherit);letter-spacing:normal;color:var(--muted);font-size:0.72rem;font-weight:400;margin-left:0.35rem;}
+  .kc-card-src{color:var(--muted);font-size:0.6rem;text-decoration:none;letter-spacing:0.06em;white-space:nowrap;}
+  .kc-empty{color:var(--muted);font-size:0.78rem;font-style:italic;padding:0.25rem 0;}
+  .kc-mv{font-family:var(--display);font-size:0.68rem;}
+  .kc-up{color:#2ecc71;} .kc-down{color:#ff5a76;} .kc-flat{color:var(--muted);} .kc-new{color:var(--pink);}
+</style>
+<div id="page-kcharts" class="page">
+  <div class="as-page">
+
+    <div class="as-header">
+      <svg class="as-gem" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="color:#c084fc;width:30px;height:30px;">
+        <path d="M4 13h3v7H4v-7zm6.5-9h3v16h-3V4zM17 9h3v11h-3V9z"/>
+      </svg>
+      <p class="as-eyebrow">K-Charts · Korean Streaming</p>
+      <h1 class="as-title">BLACKPINK<br><span>ON KOREAN CHARTS</span></h1>
+      <p class="as-sub">Live Melon / Genie / Bugs / FLO / Vibe / Circle / YouTube positions — BLACKPINK + members</p>
+    </div>
+
+    <div class="as-inner">
       <p class="ch-meta" id="kc-updated"></p>
       <div class="ch-tabs kc-tabs" id="kc-tabs"></div>
       <div id="kc-loading" class="lb-loading" style="display:none">Loading Korean charts…</div>
       <div id="kc-error" class="as-error" style="display:none"></div>
       <div id="kc-cards"></div>
       <p class="ch-meta" style="margin-top:1rem;">Source: <a href="https://xn--o39an51b2re.com" target="_blank" rel="noopener" style="color:var(--pink)">가이섬</a> · filtered to BLACKPINK &amp; members</p>
-    </section>
+    </div>
+
   </div>
-</div><!-- end charts hub page -->
+</div><!-- end k-charts page -->
 
 <!-- ══════════════════════════════════════
      APPLE MUSIC CHARTS PAGE
@@ -4022,7 +4044,7 @@ function closeMobileNav() {
   document.getElementById('nav-hamburger').classList.remove('open');
 }
 
-const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube', apple: '/apple-charts', itunes: '/itunes-charts', charts: '/charts' };
+const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube', apple: '/apple-charts', itunes: '/itunes-charts', kcharts: '/kcharts', charts: '/charts' };
 
 // Mirrors the per-route <title> the Vercel edge middleware sets on first
 // load, so client-side navigation keeps the tab title in sync too.
@@ -4038,6 +4060,7 @@ const PAGE_TITLES = {
   youtube: 'YouTube Charts | BLINKS UNITED',
   apple: 'Apple Music Charts | BLINKS UNITED',
   itunes: 'iTunes Charts | BLINKS UNITED',
+  kcharts: 'K-Charts | BLINKS UNITED',
   charts: 'Charts | BLINKS UNITED',
 };
 
@@ -4851,9 +4874,9 @@ function showPage(page, { replace = false } = {}) {
     }
   }
   if (page === 'badges') { tryAutoLoad(); renderSpecialBadges(); }
-  if (page === 'spotify-charts' || page === 'youtube' || page === 'apple' || page === 'itunes' || page === 'charts') document.getElementById('nav-charts')?.classList.add('active');
+  if (page === 'spotify-charts' || page === 'youtube' || page === 'apple' || page === 'itunes' || page === 'kcharts' || page === 'charts') document.getElementById('nav-charts')?.classList.add('active');
   if (page === 'streams') loadArtistStreamsPage();
-  if (page === 'charts') loadKCharts();
+  if (page === 'kcharts') loadKCharts();
   if (page === 'spotify-charts') loadSpotifyChartsPage();
   if (page === 'youtube') loadYouTubeCharts();
   if (page === 'apple') loadAppleCharts();
