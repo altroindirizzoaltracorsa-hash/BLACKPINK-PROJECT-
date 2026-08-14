@@ -1,0 +1,63 @@
+name: Probe kchart source (read-only)
+
+# Inspects the kchart site to see whether its data is pullable (static HTML vs a
+# JS app with a JSON API) and whether BLACKPINK / member filtering is possible.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Base URL'
+        required: true
+        default: 'https://xn--o39an51b2re.com/'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe
+        env:
+          URL: ${{ github.event.inputs.url }}
+        run: |
+          python3 - <<'PY'
+          import os, re, json
+          import urllib.request
+          from urllib.parse import urljoin
+          UA = {'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+                'Accept-Language':'ko,en;q=0.9'}
+          base = os.environ['URL']
+          def get(u):
+              req = urllib.request.Request(u, headers=UA)
+              with urllib.request.urlopen(req, timeout=25) as r:
+                  return r.status, r.headers.get('content-type',''), r.read()
+          try:
+              st, ct, body = get(base)
+          except Exception as e:
+              print('FETCH FAILED:', e); raise SystemExit(1)
+          html = body.decode('utf-8','replace')
+          print(f'HTTP {st}  content-type={ct}  bytes={len(html)}')
+          m = re.search(r'<title[^>]*>(.*?)</title>', html, re.S|re.I)
+          print('title:', (m.group(1).strip() if m else '-'))
+          print('--- term counts ---')
+          for term in ['blackpink','블랙핑크','jisoo','지수','jennie','제니','rose','rosé','로제','lisa','리사','chart','차트','api','.json','melon','genie','circle']:
+              c = html.lower().count(term.lower())
+              if c: print(f'  {term!r}: {c}')
+          print('--- <script src> (first 20) ---')
+          for s in re.findall(r'<script[^>]+src=["\']([^"\']+)["\']', html)[:20]:
+              print('  ', s)
+          print('--- candidate data URLs in HTML/inline JS ---')
+          urls = set(re.findall(r'["\'](/[^"\'\s]*(?:api|chart|json|data)[^"\'\s]*)["\']', html, re.I))
+          urls |= set(re.findall(r'https?://[^"\'\s]*(?:api|chart|json)[^"\'\s]*', html, re.I))
+          for u in sorted(urls)[:50]: print('  ', u)
+          print('--- does the HTML already contain chart rows? (rank/artist markers) ---')
+          for pat in [r'blackpink', r'블랙핑크', r'rank', r'순위', r'streams?', r'재생']:
+              print(f'  /{pat}/ -> {len(re.findall(pat, html, re.I))}')
+          print('--- probe common endpoints ---')
+          for p in ['api/chart','api/charts','api/chart/day','chart','charts','api','api/main','data/chart.json','api/chart/blackpink','api/artist']:
+              u = urljoin(base, p)
+              try:
+                  s2, c2, b2 = get(u)
+                  head = b2[:160].decode('utf-8','replace').replace('\n',' ')
+                  print(f'  {u} -> {s2} {c2} {len(b2)}b head={head!r}')
+              except Exception as e:
+                  print(f'  {u} -> ERR {e}')
+          PY
