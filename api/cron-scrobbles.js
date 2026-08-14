@@ -7,6 +7,31 @@ const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
 const LIBREFM_BASE = 'https://libre.fm/2.0/';
 const LB_BASE     = 'https://api.listenbrainz.org/1/';
 const LB_KEY = 'bu_leaderboard_v1';
+const GOAL_HISTORY_KEY = 'bu_goal_history_v1';
+const GOAL_PRIMARY   = 15000;
+const GOAL_SECONDARY = 20000;
+
+// Community daily goal = JUMP + Shut Down + DDU-DU DDU-DU + GO (Less Than a Lover
+// is intentionally excluded), summed across all board entries for the current day,
+// de-duplicating linked-account secondary keys. Same formula the client
+// (computeDailyCommunityTotal) and the POST record-goal path use, so all three agree.
+function communityGoalTotal(users, todayDDMM) {
+  const secondaryKeys = new Set();
+  for (const [k, d] of Object.entries(users || {})) {
+    if (Array.isArray(d.linkedAccounts)) {
+      for (const a of d.linkedAccounts) {
+        const ak = (a.username || '').toLowerCase();
+        if (ak && ak !== k) secondaryKeys.add(ak);
+      }
+    }
+  }
+  return Object.entries(users || {}).reduce((sum, [k, d]) => {
+    if (secondaryKeys.has(k.toLowerCase())) return sum;
+    const s = d.scores || {};
+    if (s.daily_date !== todayDDMM) return sum;
+    return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0);
+  }, 0);
+}
 
 function supabase() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return null;
@@ -875,6 +900,28 @@ export default async function handler(req, res) {
   updateLeaderStreak(data);
   await redis.set(LB_KEY, data);
 
+  // ── Community goal backstop ───────────────────────────────────
+  // Record today's community goal server-side the moment the board crosses the
+  // threshold, instead of relying on a visitor loading the home page while the
+  // goal shows hit (the old client-only path, which silently missed whole days —
+  // e.g. a 15k+ day with no qualifying home-page visit). The cron runs hourly
+  // plus the 1:58am end-of-day sweep, so any day that hits the goal is captured.
+  // Max-merged so a partial run can never lower an already-recorded day.
+  let goalRecorded = null;
+  try {
+    const todayDDMM  = ddmm(new Date(dayFrom * 1000));
+    const goalTotal  = communityGoalTotal(data.users, todayDDMM);
+    if (goalTotal >= GOAL_PRIMARY) {
+      const gh = (await redis.get(GOAL_HISTORY_KEY)) || { days: {} };
+      gh.days = gh.days || {};
+      const prevTotal = gh.days[todayKey]?.total || 0;
+      const total = Math.max(goalTotal, prevTotal);
+      gh.days[todayKey] = { total, primary: true, stretch: total >= GOAL_SECONDARY, recordedAt: new Date().toISOString() };
+      await redis.set(GOAL_HISTORY_KEY, gh);
+      goalRecorded = { day: todayKey, total, stretch: total >= GOAL_SECONDARY };
+    }
+  } catch (e) { console.error('community goal record failed:', e.message || e); }
+
   // Freeze each refreshed user's floored daily counts into the durable per-day
   // archive. Max-merged against what's already stored for the same day so a
   // partial/rate-limited run can never LOWER a day that was previously higher —
@@ -935,5 +982,5 @@ export default async function handler(req, res) {
   }
 
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({ ok: true, seeded, refreshed: ok, failed, unverified, merged: [...removedKeys], dailyArchived });
+  res.status(200).json({ ok: true, seeded, refreshed: ok, failed, unverified, merged: [...removedKeys], dailyArchived, goalRecorded });
 }

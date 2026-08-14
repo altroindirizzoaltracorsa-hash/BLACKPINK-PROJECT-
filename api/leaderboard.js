@@ -28,6 +28,31 @@ function computeGoalStreak(days) {
   }
   return streak;
 }
+
+const GOAL_PRIMARY   = 15000;
+const GOAL_SECONDARY = 20000;
+
+// Community daily goal total = JUMP + Shut Down + DDU-DU DDU-DU + GO (Less Than a
+// Lover intentionally excluded), summed across board entries whose daily_date
+// matches `dayDDMM`, de-duplicating linked-account secondary keys. Identical to the
+// client's computeDailyCommunityTotal and the cron's communityGoalTotal.
+function communityGoalTotalFromUsers(users, dayDDMM) {
+  const secondaryKeys = new Set();
+  for (const [k, d] of Object.entries(users || {})) {
+    if (Array.isArray(d.linkedAccounts)) {
+      for (const a of d.linkedAccounts) {
+        const ak = (a.username || '').toLowerCase();
+        if (ak && ak !== k) secondaryKeys.add(ak);
+      }
+    }
+  }
+  return Object.entries(users || {}).reduce((sum, [k, d]) => {
+    if (secondaryKeys.has(k.toLowerCase())) return sum;
+    const s = d.scores || {};
+    if (s.daily_date !== dayDDMM) return sum;
+    return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0);
+  }, 0);
+}
 const TRACK_EVENTS = new Set(['pageview', 'playlist_click', 'share_click', 'vote_click']);
 
 
@@ -922,6 +947,48 @@ export default async function handler(req, res) {
     return res.status(200).json({ days: gh.days || {}, streak });
   }
 
+  // ── POST /api/leaderboard?action=backfill-goal-history&key=ADMIN[&dry=1] ──
+  // Recover community-goal days that were hit but never recorded (the old path
+  // only wrote a day if a visitor loaded the home page while the goal showed hit).
+  // Walks the finalized daily leaderboard_archive snapshots, recomputes each day's
+  // 4-track community total with the shared formula, and records any day ≥ goal
+  // that isn't already stored (or is stored lower). Idempotent; ?dry=1 previews.
+  if (req.method === 'POST' && action === 'backfill-goal-history') {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'unauthorized' });
+    const dry = req.query.dry === '1';
+    const sb = supabase();
+    if (!sb) return res.status(503).json({ error: 'Server not configured' });
+
+    const { data: archives, error } = await sb
+      .from('leaderboard_archive')
+      .select('period_key, users')
+      .eq('period', 'daily')
+      .order('period_key', { ascending: false })
+      .limit(180);
+    if (error) return res.status(500).json({ error: error.message });
+
+    const gh = (await redis.get(GOAL_HISTORY_KEY)) || { days: {} };
+    gh.days = gh.days || {};
+    const recorded = [], skipped = [];
+    for (const row of (archives || [])) {
+      const key = row.period_key;              // YYYY-MM-DD
+      const [, M, D] = key.split('-');
+      const dayDDMM  = `${D}/${M}`;
+      const total    = communityGoalTotalFromUsers(row.users || {}, dayDDMM);
+      const existing = gh.days[key]?.total || 0;
+      if (total >= GOAL_PRIMARY && total > existing) {
+        if (!dry) gh.days[key] = { total, primary: true, stretch: total >= GOAL_SECONDARY, recordedAt: new Date().toISOString(), backfilled: true };
+        recorded.push({ day: key, total, stretch: total >= GOAL_SECONDARY, was: existing || null });
+      } else {
+        skipped.push({ day: key, total, alreadyHas: existing || null });
+      }
+    }
+    if (!dry && recorded.length) await redis.set(GOAL_HISTORY_KEY, gh);
+    const streak = computeGoalStreak(gh.days);
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ dry, archivesScanned: (archives || []).length, recordedCount: recorded.length, recorded, skippedCount: skipped.length, skipped, streak });
+  }
+
   // ── POST /api/leaderboard?action=record-goal — record today's community goal status ──
   // Anyone can call this; total is always computed server-side from live leaderboard data.
   if (req.method === 'POST' && action === 'record-goal') {
@@ -935,29 +1002,15 @@ export default async function handler(req, res) {
       const d = new Date(serverItalyDayKey(0) + 'T00:00:00Z');
       return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}`;
     })();
-    const secondaryKeys = new Set();
-    for (const [k, d] of Object.entries(users)) {
-      if (Array.isArray(d.linkedAccounts)) {
-        for (const a of d.linkedAccounts) {
-          const ak = (a.username || '').toLowerCase();
-          if (ak && ak !== k) secondaryKeys.add(ak);
-        }
-      }
-    }
-    const total = Object.entries(users).reduce((sum, [k, d]) => {
-      if (secondaryKeys.has(k.toLowerCase())) return sum;
-      const s = d.scores || {};
-      if (s.daily_date !== todayDDMM) return sum;
-      return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0);
-    }, 0);
+    const total = communityGoalTotalFromUsers(users, todayDDMM);
 
-    const GOAL_PRIMARY   = 15000;
-    const GOAL_SECONDARY = 20000;
     const primary  = total >= GOAL_PRIMARY;
     const stretch  = total >= GOAL_SECONDARY;
 
     if (primary) {
-      gh.days[todayKey] = { total, primary, stretch, recordedAt: new Date().toISOString() };
+      // Never lower an already-recorded day (counts only climb until the 2am reset).
+      const merged = Math.max(total, gh.days[todayKey]?.total || 0);
+      gh.days[todayKey] = { total: merged, primary: true, stretch: merged >= GOAL_SECONDARY, recordedAt: new Date().toISOString() };
       await redis.set(GOAL_HISTORY_KEY, gh);
     }
 
