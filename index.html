@@ -4996,19 +4996,40 @@ function goToMyBadges() {
 }
 
 // Load linked accounts from Supabase and populate the badges page.
-async function initMyBadgesFromAccount() {
+async function initMyBadgesFromAccount(_retry = 0) {
   if (!sb) return;
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return;
 
   renderAccountPage(session);
 
-  const { data } = await sb.from('linked_accounts')
+  // Hide the onboarding link form and show the spinner BEFORE we know this user's
+  // linked accounts, so an already-linked fan never flashes (or gets stuck) on the
+  // "Link your scrobbling accounts" panel while the query is in flight.
+  document.getElementById('badges-auth-link').style.display = 'none';
+  document.getElementById('login-panel').style.display = 'none';
+  document.getElementById('loading-panel').style.display = 'block';
+
+  const { data, error } = await sb.from('linked_accounts')
     .select('source, source_username')
     .order('created_at', { ascending: true });
 
+  // A transient read failure must NOT be treated as "no accounts" — that bug is
+  // what dropped already-linked fans back onto the onboarding form (and kept them
+  // there until reload). Retry a couple of times, then stop WITHOUT ever showing
+  // them the link panel.
+  if (error) {
+    console.warn('linked_accounts fetch failed:', error.message);
+    if (_retry < 2) { setTimeout(() => initMyBadgesFromAccount(_retry + 1), 1500); return; }
+    document.getElementById('loading-panel').style.display = 'none';
+    const errEl = document.getElementById('lfm-error');
+    if (errEl) { errEl.textContent = "Couldn't reach the server — pull down to refresh."; errEl.style.display = 'block'; }
+    return;
+  }
+
   if (!data || data.length === 0) {
-    // No linked accounts yet — show the link panel
+    // Genuinely no linked accounts — show the onboarding link panel.
+    document.getElementById('loading-panel').style.display = 'none';
     document.getElementById('login-panel').style.display = 'block';
     document.getElementById('badges-auth-signout').style.display = 'none';
     document.getElementById('badges-auth-link').style.display = 'block';
