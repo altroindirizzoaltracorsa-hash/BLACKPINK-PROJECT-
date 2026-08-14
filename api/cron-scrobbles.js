@@ -721,14 +721,14 @@ export default async function handler(req, res) {
   const todayKey            = dayKey(dayFrom);
   const thisWeekKey         = dayKey(weekFrom);
 
-  if (data.currentDayKey && data.currentDayKey !== todayKey) {
-    try { await archivePeriod(sb, 'daily', data.currentDayKey, data.currentDayLabel || data.currentDayKey, data.users); }
-    catch (e) { console.error('archivePeriod(daily) failed:', e); }
-  }
-  if (data.currentWeekKey && data.currentWeekKey !== thisWeekKey) {
-    try { await archivePeriod(sb, 'weekly', data.currentWeekKey, data.currentWeekLabel || data.currentWeekKey, data.users); }
-    catch (e) { console.error('archivePeriod(weekly) failed:', e); }
-  }
+  // NOTE: the finalized daily/weekly board is archived AFTER the refresh below
+  // (every run, keyed to the CURRENT period) — NOT here on rollover. Archiving on
+  // rollover snapshotted data.users at the FIRST cron after the 2am reset, by which
+  // point early-bird visitors had already submitted NEXT-day scores, so the day's
+  // "finalized" board froze their tiny new-day counts (e.g. a real 1,609 archived
+  // as 124). Archiving the current period every run means the last pre-reset cron
+  // (the 1:58am sweep) freezes the COMPLETE day, and post-reset runs archive the
+  // new day instead of clobbering yesterday.
   data.currentDayKey    = todayKey;
   data.currentDayLabel  = fullDateLabel(new Date(dayFrom * 1000));
   data.currentWeekKey   = thisWeekKey;
@@ -899,6 +899,15 @@ export default async function handler(req, res) {
   data.lastUpdated = new Date().toISOString();
   updateLeaderStreak(data);
   await redis.set(LB_KEY, data);
+
+  // Freeze the finalized daily/weekly board for the CURRENT period from the fresh,
+  // floored board. Overwrites each run; the last run before the 2am reset (the
+  // 1:58am sweep) is the one that sticks for the day, so the archived board holds
+  // everyone's complete day instead of the racy post-reset snapshot (see note above).
+  try { await archivePeriod(sb, 'daily', todayKey, data.currentDayLabel, data.users); }
+  catch (e) { console.error('archive daily (current) failed:', e); }
+  try { await archivePeriod(sb, 'weekly', thisWeekKey, data.currentWeekLabel, data.users); }
+  catch (e) { console.error('archive weekly (current) failed:', e); }
 
   // ── Community goal backstop ───────────────────────────────────
   // Record today's community goal server-side the moment the board crosses the

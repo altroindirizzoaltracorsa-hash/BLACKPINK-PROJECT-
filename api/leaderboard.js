@@ -1006,6 +1006,69 @@ export default async function handler(req, res) {
     return res.status(200).json({ dry, daysScanned: Object.keys(perDay4).length, recordedCount: recorded.length, recorded, skippedCount: skipped.length, skipped, streak });
   }
 
+  // ── POST /api/leaderboard?action=repair-daily-archive&key=ADMIN&day=YYYY-MM-DD[&dry=1] ──
+  // Repair a finalized daily board that froze early-bird visitors' NEXT-day counts
+  // (the rollover-archive race). Overrides each user's daily_* in the archived
+  // snapshot with the accurate, max-merged user_daily_counts for that day, matched
+  // by appUserId. Idempotent; ?dry=1 previews.
+  if (req.method === 'POST' && action === 'repair-daily-archive') {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'unauthorized' });
+    const day = (req.query.day || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return res.status(400).json({ error: 'day=YYYY-MM-DD required' });
+    const dry = req.query.dry === '1';
+    const sb = supabase();
+    if (!sb) return res.status(503).json({ error: 'Server not configured' });
+
+    const { data: arch, error: aerr } = await sb
+      .from('leaderboard_archive')
+      .select('period_key, users')
+      .eq('period', 'daily').eq('period_key', day).maybeSingle();
+    if (aerr) return res.status(500).json({ error: aerr.message });
+    if (!arch) return res.status(404).json({ error: 'No archive for that day' });
+
+    const udc = {};
+    for (let from = 0; ; from += 1000) {
+      const { data: rows, error } = await sb
+        .from('user_daily_counts')
+        .select('app_user_id,jump,shutdown,ddududu,ltal,go')
+        .eq('day_key', day)
+        .range(from, from + 999);
+      if (error) return res.status(500).json({ error: error.message });
+      for (const r of (rows || [])) udc[r.app_user_id] = r;
+      if (!rows || rows.length < 1000) break;
+    }
+
+    const [, M, D] = day.split('-');
+    const dayDDMM = `${D}/${M}`;
+    const users = arch.users || {};
+    const changed = [];
+    let unrecoverable = 0;
+    for (const [k, u] of Object.entries(users)) {
+      const c = u.appUserId && udc[u.appUserId];
+      const s = u.scores || (u.scores = {});
+      if (c) {
+        const newAll = (c.jump||0)+(c.shutdown||0)+(c.ddududu||0)+(c.ltal||0)+(c.go||0);
+        if (newAll !== (s.daily_all || 0) || s.daily_date !== dayDDMM) {
+          changed.push({ name: u.displayName || k, was: s.daily_all || 0, now: newAll, wasDate: s.daily_date });
+          if (!dry) {
+            s.daily_jump = c.jump||0; s.daily_shutdown = c.shutdown||0; s.daily_ddududu = c.ddududu||0;
+            s.daily_ltal = c.ltal||0; s.daily_go = c.go||0; s.daily_all = newAll; s.daily_date = dayDDMM;
+          }
+        }
+      } else if (s.daily_date && s.daily_date !== dayDDMM) {
+        unrecoverable++; // flipped to another day, no durable counts to recover from
+      }
+    }
+    changed.sort((a, b) => b.now - a.now);
+    if (!dry && changed.length) {
+      const { error: uerr } = await sb.from('leaderboard_archive')
+        .update({ users }).eq('period', 'daily').eq('period_key', day);
+      if (uerr) return res.status(500).json({ error: uerr.message });
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ dry, day, changedCount: changed.length, unrecoverable, changed: changed.slice(0, 60) });
+  }
+
   // ── POST /api/leaderboard?action=record-goal — record today's community goal status ──
   // Anyone can call this; total is always computed server-side from live leaderboard data.
   if (req.method === 'POST' && action === 'record-goal') {
