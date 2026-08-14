@@ -312,11 +312,15 @@ window.renderIgLetterGrid = function (containerId, members) {
     st.textContent =
       '.iglg-grid{display:grid;grid-template-columns:1fr 1fr;column-gap:1rem;row-gap:1.4rem;max-width:620px;margin:0 auto;}' +
       '.iglg-card{min-width:0;}' +
-      '.iglg-track{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-radius:14px;border:1px solid rgba(255,255,255,0.1);background:#150c13;}' +
+      // Lock every card to the letter's aspect ratio (1440×1551) so the grid
+      // stays uniform no matter each member's slide count/shapes. The letter
+      // fills it exactly; taller/wider message slides are contained (letterboxed)
+      // within the same box — only those slides "change format", not the card.
+      '.iglg-track{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-radius:14px;border:1px solid rgba(255,255,255,0.1);background:#150c13;aspect-ratio:1440/1551;}' +
       '.iglg-track::-webkit-scrollbar{display:none;}' +
-      '.iglg-slide{position:relative;flex:0 0 100%;scroll-snap-align:center;}' +
-      '.iglg-slide a{display:block;cursor:zoom-in;}' +
-      '.iglg-slide img{display:block;width:100%;height:auto;}' +
+      '.iglg-slide{position:relative;flex:0 0 100%;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;}' +
+      '.iglg-slide a{display:flex;align-items:center;justify-content:center;width:100%;height:100%;cursor:zoom-in;}' +
+      '.iglg-slide img{display:block;width:100%;height:100%;object-fit:contain;}' +
       '.iglg-langtoggle{position:absolute;top:8px;right:8px;z-index:3;display:flex;gap:3px;background:rgba(0,0,0,0.55);border-radius:999px;padding:3px;}' +
       '.iglg-langtoggle button{border:0;border-radius:999px;background:transparent;color:#fff;cursor:pointer;font-family:ui-monospace,SFMono-Regular,monospace;font-size:0.5rem;letter-spacing:0.06em;padding:3px 7px;line-height:1;}' +
       '.iglg-langtoggle button.active{background:#FF3D8F;color:#0a0006;}' +
