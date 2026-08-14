@@ -2845,6 +2845,30 @@
         <span class="ch-hub-arrow">›</span>
       </a>
     </nav>
+
+    <!-- K-Charts (Korean streaming) — filtered to BLACKPINK + members -->
+    <style>
+      .kc-section{margin-top:2.2rem;}
+      .kc-tabs{display:flex;flex-wrap:wrap;gap:0.4rem;margin:0.85rem 0 1rem;}
+      .kc-tab .kc-badge{display:inline-block;margin-left:0.35rem;background:var(--pink);color:#fff;border-radius:10px;padding:0 0.4rem;font-size:0.58rem;vertical-align:middle;}
+      .kc-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.85rem 1rem;margin-bottom:0.85rem;}
+      .kc-card-head{display:flex;align-items:center;justify-content:space-between;gap:0.6rem;margin-bottom:0.5rem;}
+      .kc-card-title{font-family:var(--display);letter-spacing:0.06em;color:var(--pink);font-size:0.95rem;}
+      .kc-card-src{color:var(--muted);font-size:0.6rem;text-decoration:none;letter-spacing:0.06em;white-space:nowrap;}
+      .kc-empty{color:var(--muted);font-size:0.78rem;font-style:italic;padding:0.25rem 0;}
+      .kc-mv{font-family:var(--display);font-size:0.68rem;}
+      .kc-up{color:#2ecc71;} .kc-down{color:#ff5a76;} .kc-flat{color:var(--muted);} .kc-new{color:var(--pink);}
+    </style>
+    <section class="kc-section">
+      <div class="am-divider"></div>
+      <p class="am-section-label">K-Charts · Korean Streaming</p>
+      <p class="ch-meta" id="kc-updated"></p>
+      <div class="ch-tabs kc-tabs" id="kc-tabs"></div>
+      <div id="kc-loading" class="lb-loading" style="display:none">Loading Korean charts…</div>
+      <div id="kc-error" class="as-error" style="display:none"></div>
+      <div id="kc-cards"></div>
+      <p class="ch-meta" style="margin-top:1rem;">Source: <a href="https://xn--o39an51b2re.com" target="_blank" rel="noopener" style="color:var(--pink)">가이섬</a> · filtered to BLACKPINK &amp; members</p>
+    </section>
   </div>
 </div><!-- end charts hub page -->
 
@@ -4310,6 +4334,89 @@ let amData       = null;
 let amGlobalData = null;
 let amGlobalFullShown = false;
 
+// ── K-Charts (Korean streaming) — inside the /charts hub ─────────────────────
+// Reads the committed data/kcharts-latest.json (written by fetch-kcharts.yml),
+// already filtered to BLACKPINK + members. Grouped by streaming service with tabs.
+const KCHARTS_URL = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/kcharts-latest.json';
+let kcData = null;
+let kcService = null;
+
+function kcMovement(rank, previous) {
+  if (previous == null || rank == null) return '<span class="kc-mv kc-new">NEW</span>';
+  const d = previous - rank;
+  if (d > 0) return '<span class="kc-mv kc-up">▲' + d + '</span>';
+  if (d < 0) return '<span class="kc-mv kc-down">▼' + (-d) + '</span>';
+  return '<span class="kc-mv kc-flat">–</span>';
+}
+
+async function loadKCharts() {
+  const wrap = document.getElementById('kc-cards');
+  if (!wrap) return;
+  if (kcData) { renderKCharts(); return; }
+  const loadEl = document.getElementById('kc-loading');
+  const errEl  = document.getElementById('kc-error');
+  if (loadEl) loadEl.style.display = 'block';
+  if (errEl)  errEl.style.display  = 'none';
+  try {
+    const r = await fetch(KCHARTS_URL + '?_=' + Date.now());
+    if (!r.ok) throw new Error(r.status);
+    kcData = await r.json();
+  } catch (e) {
+    if (loadEl) loadEl.style.display = 'none';
+    if (errEl) { errEl.style.display = 'block'; errEl.textContent = 'Could not load K-Charts data yet — check back after the next refresh.'; }
+    return;
+  }
+  if (loadEl) loadEl.style.display = 'none';
+  renderKCharts();
+}
+
+function setKCService(s) { kcService = s; renderKCharts(); }
+
+function renderKCharts() {
+  if (!kcData) return;
+  const charts = kcData.charts || [];
+  const services = [...new Set(charts.map(c => c.service))];
+  if (!kcService || !services.includes(kcService)) kcService = services[0] || null;
+
+  const upd = document.getElementById('kc-updated');
+  if (upd) upd.textContent = kcData.date
+    ? ('Updated ' + kcData.date + ' · ' + (kcData.summary?.totalEntries || 0) + ' entries across ' + (kcData.summary?.chartsAvailable || 0) + ' charts')
+    : '';
+
+  const tabsEl = document.getElementById('kc-tabs');
+  if (tabsEl) tabsEl.innerHTML = services.map(s => {
+    const n = charts.filter(c => c.service === s).reduce((a, c) => a + c.entries.length, 0);
+    return '<button class="lb-tab kc-tab' + (s === kcService ? ' active' : '') + '" onclick="setKCService(\'' + s + '\')">' +
+           s + (n ? ' <span class="kc-badge">' + n + '</span>' : '') + '</button>';
+  }).join('');
+
+  const wrap = document.getElementById('kc-cards');
+  const list = charts.filter(c => c.service === kcService);
+  wrap.innerHTML = list.map(c => {
+    const rows = (c.entries || []).map(e => {
+      const color = AM_MEMBER_COLORS[e.member] || '#FF0066';
+      const song = e.link
+        ? '<a href="' + e.link + '" target="_blank" rel="noopener" style="color:var(--white);text-decoration:none">' + escapeHtml(e.song) + '</a>'
+        : escapeHtml(e.song);
+      return '<tr>' +
+        '<td class="as-rank-col" style="font-family:var(--display);font-size:1.15rem;color:' + color + '">' + (e.rank ?? '—') + '</td>' +
+        '<td style="width:1%;white-space:nowrap;padding-right:0.6rem;">' + kcMovement(e.rank, e.previous) + '</td>' +
+        '<td style="font-size:0.86rem">' + song + '<br><span style="color:var(--muted);font-size:0.72rem">' + escapeHtml(e.artists || '') + '</span></td>' +
+        '<td><span class="yt-member-tag" style="background:' + color + '22;color:' + color + '">' + e.member + '</span></td>' +
+      '</tr>';
+    }).join('');
+    const body = c.available
+      ? ((c.entries && c.entries.length)
+          ? '<div class="as-table-wrap"><table class="as-table"><tbody>' + rows + '</tbody></table></div>'
+          : '<p class="kc-empty">No BLACKPINK / member entries charting right now.</p>')
+      : '<p class="kc-empty">Chart unavailable this refresh.</p>';
+    return '<div class="kc-card">' +
+      '<div class="kc-card-head"><span class="kc-card-title">' + escapeHtml(c.type) + '</span>' +
+      '<a href="' + c.url + '" target="_blank" rel="noopener" class="kc-card-src">source ›</a></div>' +
+      body + '</div>';
+  }).join('');
+}
+
 function setAmCountry(val) {
   amCountry = val;
   renderAmRegion();
@@ -4744,6 +4851,7 @@ function showPage(page, { replace = false } = {}) {
   if (page === 'badges') { tryAutoLoad(); renderSpecialBadges(); }
   if (page === 'spotify-charts' || page === 'youtube' || page === 'apple' || page === 'itunes' || page === 'charts') document.getElementById('nav-charts')?.classList.add('active');
   if (page === 'streams') loadArtistStreamsPage();
+  if (page === 'charts') loadKCharts();
   if (page === 'spotify-charts') loadSpotifyChartsPage();
   if (page === 'youtube') loadYouTubeCharts();
   if (page === 'apple') loadAppleCharts();

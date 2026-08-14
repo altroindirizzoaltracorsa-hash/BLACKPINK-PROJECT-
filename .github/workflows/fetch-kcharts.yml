@@ -1,0 +1,30 @@
+name: Fetch K-Charts Positions
+
+# Pulls Korean streaming charts (Melon/Genie/Bugs/FLO/Vibe/Circle/YouTube) from
+# the 가이섬 aggregator, filters to BLACKPINK + members, and commits
+# data/kcharts-latest.json. Same JSON-file pattern as the Apple/iTunes trackers.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'   # every 6 hours
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Fetch K-Charts
+        run: node .github/scripts/fetch_kcharts.mjs
+      - name: Commit chart data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "chore: update K-Charts $(date -u +%Y-%m-%dT%H:%M)"
+          git pull --rebase
+          git push

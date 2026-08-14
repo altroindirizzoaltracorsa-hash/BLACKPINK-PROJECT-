@@ -1,0 +1,184 @@
+// Fetch Korean music charts from 가이섬 (xn--o39an51b2re.com), a Next.js chart
+// aggregator, filter each chart to BLACKPINK + members (Jisoo/Jennie/Rosé/Lisa),
+// and write data/kcharts-latest.json (+ a dated copy). Same JSON-file pattern as
+// the Apple/iTunes/YouTube trackers — committed by .github/workflows/fetch-kcharts.yml.
+//
+// Read side: the chart page embeds the whole chart as JSON in
+//   <script id="__NEXT_DATA__">…</script>  -> props.pageProps -> a list of rows
+//   { ranking, previous, like, song{ name, link, artists:[{name,nameEn}], … } }
+// We match on the ARTIST field (not the song title) so a song merely *titled*
+// "ROSE" by another act is never mistaken for ROSÉ. Distinctive member tokens
+// (jennie/jisoo/lisa/blackpink + Korean) are also honoured inside a title so
+// featured credits like "SPOT! (Feat. JENNIE)" are caught.
+
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const DATA_DIR  = join(__dirname, '..', '..', 'data');
+const BASE      = 'https://xn--o39an51b2re.com';
+
+// Every streaming service on the site, primary charts. Kept even when no
+// BLACKPINK/member is charting (they may enter tomorrow).
+const CHARTS = [
+  { service: 'Melon',   type: 'Realtime',       path: '/chart/melon/realtime' },
+  { service: 'Melon',   type: 'Daily',          path: '/chart/melon/daily' },
+  { service: 'Melon',   type: 'Weekly',         path: '/chart/melon/weekly' },
+  { service: 'Melon',   type: 'Monthly',        path: '/chart/melon/monthly' },
+  { service: 'Melon',   type: 'TOP100',         path: '/chart/melon/top100' },
+  { service: 'Melon',   type: 'HOT100',         path: '/chart/melon/hot100-d30' },
+  { service: 'Genie',   type: 'Realtime',       path: '/chart/genie/realtime' },
+  { service: 'Genie',   type: 'Daily',          path: '/chart/genie/daily' },
+  { service: 'Bugs',    type: 'Realtime',       path: '/chart/bugs/realtime' },
+  { service: 'Bugs',    type: 'Daily',          path: '/chart/bugs/daily' },
+  { service: 'FLO',     type: '24 Hour',        path: '/chart/flo/24hour' },
+  { service: 'Vibe',    type: 'Daily',          path: '/chart/vibe/daily' },
+  { service: 'Circle',  type: 'Digital Weekly', path: '/chart/circle/digital-weekly' },
+  { service: 'YouTube', type: 'Track · Weekly', path: '/chart/youtube/track-weekly' },
+  { service: 'YouTube', type: 'Video · Weekly', path: '/chart/youtube/video-weekly' },
+];
+
+// member -> tokens; titleSafe=false tokens only match inside artist names (never
+// the song title), so a bare "rose" in a title can't false-match ROSÉ.
+const RULES = [
+  { member: 'JISOO',     tokens: ['jisoo', '지수'],         titleSafe: true },
+  { member: 'JENNIE',    tokens: ['jennie', '제니'],        titleSafe: true },
+  { member: 'ROSÉ',      tokens: ['rosé', '로제'],          titleSafe: true },
+  { member: 'ROSÉ',      tokens: ['rose'],                  titleSafe: false },
+  { member: 'LISA',      tokens: ['lisa', '리사'],          titleSafe: true },
+  { member: 'BLACKPINK', tokens: ['blackpink', '블랙핑크'], titleSafe: true },
+];
+// Tag priority: a member solo/collab wins over the group label.
+const MEMBER_PRIORITY = ['JISOO', 'JENNIE', 'ROSÉ', 'LISA', 'BLACKPINK'];
+
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
+
+async function fetchHtml(url) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 25000);
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': UA, 'Accept-Language': 'ko,en;q=0.9' }, signal: ctrl.signal });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.text();
+  } finally { clearTimeout(t); }
+}
+
+function nextData(html) {
+  const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (!m) return null;
+  try { return JSON.parse(m[1]); } catch { return null; }
+}
+
+// Deep-find the chart rows: the first array whose items look like chart rows.
+function findRows(o) {
+  if (Array.isArray(o)) {
+    if (o.length && o[0] && typeof o[0] === 'object' && ('ranking' in o[0]) && ('song' in o[0])) return o;
+    return null;
+  }
+  if (o && typeof o === 'object') {
+    for (const v of Object.values(o)) { const r = findRows(v); if (r) return r; }
+  }
+  return null;
+}
+
+function artistNames(song) {
+  const out = [];
+  const push = (a) => {
+    if (!a) return;
+    if (typeof a === 'string') { out.push(a); return; }
+    for (const k of ['name', 'nameEn', 'fullName', 'krName', 'enName']) if (a[k]) out.push(String(a[k]));
+  };
+  for (const key of ['artists', 'artist', 'artistList', 'singers']) {
+    const v = song?.[key];
+    if (Array.isArray(v)) v.forEach(push);
+    else if (v) push(v);
+  }
+  return out;
+}
+
+function displayArtists(names) {
+  // de-dupe while preserving order, prefer readable (skip pure-duplicate KR/EN pairs)
+  const seen = new Set(); const out = [];
+  for (const n of names) { const k = n.toLowerCase().trim(); if (k && !seen.has(k)) { seen.add(k); out.push(n); } }
+  return out.join(', ');
+}
+
+function matchMembers(song) {
+  const names = artistNames(song);
+  const artistBlob = names.join(' ').toLowerCase();
+  const title = String(song?.name || '').toLowerCase();
+  const found = new Set();
+  for (const rule of RULES) {
+    for (const tok of rule.tokens) {
+      if (artistBlob.includes(tok)) { found.add(rule.member); break; }
+      if (rule.titleSafe && title.includes(tok)) { found.add(rule.member); break; }
+    }
+  }
+  return found;
+}
+
+async function buildChart(def) {
+  const url = BASE + def.path;
+  const base = { key: (def.service + '-' + def.type).toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                 service: def.service, type: def.type, label: def.service + ' · ' + def.type, url };
+  try {
+    const nd = nextData(await fetchHtml(url));
+    const pp = nd?.props?.pageProps;
+    const rows = pp ? findRows(pp) : null;
+    if (!rows) return { ...base, available: false, totalRows: 0, entries: [] };
+    const entries = [];
+    for (const r of rows) {
+      const song = r.song || {};
+      const members = matchMembers(song);
+      if (!members.size) continue;
+      const member = MEMBER_PRIORITY.find(m => members.has(m)) || [...members][0];
+      const rank = r.ranking ?? null;
+      const previous = (typeof r.previous === 'number' && r.previous > 0) ? r.previous : null;
+      entries.push({
+        rank,
+        previous,
+        song: song.name || '',
+        artists: displayArtists(artistNames(song)),
+        member,
+        link: song.link || null,
+      });
+    }
+    entries.sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999));
+    return { ...base, available: true, totalRows: rows.length, entries };
+  } catch (e) {
+    console.error('  !', def.path, '->', e.message);
+    return { ...base, available: false, totalRows: 0, entries: [] };
+  }
+}
+
+async function main() {
+  mkdirSync(DATA_DIR, { recursive: true });
+  const charts = [];
+  for (const def of CHARTS) {
+    const c = await buildChart(def);
+    charts.push(c);
+    console.log(`${c.available ? 'ok ' : 'NA '} ${c.label}: ${c.entries.length} BP entr${c.entries.length === 1 ? 'y' : 'ies'} / ${c.totalRows} rows`);
+    await new Promise(res => setTimeout(res, 400)); // be polite
+  }
+  const now = new Date();
+  const date = now.toISOString().slice(0, 10);
+  const output = {
+    generatedAt: now.toISOString(),
+    date,
+    source: BASE,
+    charts,
+    summary: {
+      chartsChecked: charts.length,
+      chartsAvailable: charts.filter(c => c.available).length,
+      totalEntries: charts.reduce((n, c) => n + c.entries.length, 0),
+    },
+  };
+  const json = JSON.stringify(output, null, 2);
+  writeFileSync(join(DATA_DIR, `kcharts-${date}.json`), json);
+  // Only overwrite latest if at least one chart came back (never blank the page on a bad run).
+  if (output.summary.chartsAvailable > 0) writeFileSync(join(DATA_DIR, 'kcharts-latest.json'), json);
+  console.log(`\nDone: ${output.summary.chartsAvailable}/${output.summary.chartsChecked} charts, ${output.summary.totalEntries} total BP/member entries.`);
+}
+
+main().catch(e => { console.error(e); process.exit(1); });
