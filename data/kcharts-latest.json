@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-14T12:25:50.275Z",
+  "generatedAt": "2026-08-14T12:45:44.620Z",
   "date": "2026-08-14",
   "source": "https://xn--o39an51b2re.com",
   "charts": [
@@ -7,6 +7,7 @@
       "key": "melon-realtime",
       "service": "Melon",
       "type": "Realtime",
+      "kr": "실시간 차트",
       "label": "Melon · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/melon/realtime",
       "available": true,
@@ -58,6 +59,7 @@
       "key": "melon-daily",
       "service": "Melon",
       "type": "Daily",
+      "kr": "일간 차트",
       "label": "Melon · Daily",
       "url": "https://xn--o39an51b2re.com/chart/melon/daily",
       "available": true,
@@ -229,6 +231,7 @@
       "key": "melon-weekly",
       "service": "Melon",
       "type": "Weekly",
+      "kr": "주간 차트",
       "label": "Melon · Weekly",
       "url": "https://xn--o39an51b2re.com/chart/melon/weekly",
       "available": true,
@@ -280,6 +283,7 @@
       "key": "melon-monthly",
       "service": "Melon",
       "type": "Monthly",
+      "kr": "월간 차트",
       "label": "Melon · Monthly",
       "url": "https://xn--o39an51b2re.com/chart/melon/monthly",
       "available": true,
@@ -320,9 +324,70 @@
       ]
     },
     {
+      "key": "melon-yearly",
+      "service": "Melon",
+      "type": "Yearly",
+      "kr": "연간 차트",
+      "label": "Melon · Yearly",
+      "url": "https://xn--o39an51b2re.com/chart/melon/yearly",
+      "available": true,
+      "totalRows": 100,
+      "entries": [
+        {
+          "rank": 7,
+          "previous": 46,
+          "song": "APT.",
+          "artists": "로제 (ROSÉ), Bruno Mars",
+          "member": "ROSÉ",
+          "link": "https://www.melon.com/song/detail.htm?songId=38120327"
+        },
+        {
+          "rank": 12,
+          "previous": null,
+          "song": "like JENNIE",
+          "artists": "제니 (JENNIE)",
+          "member": "JENNIE",
+          "link": "https://www.melon.com/song/detail.htm?songId=38629386"
+        },
+        {
+          "rank": 14,
+          "previous": null,
+          "song": "toxic till the end",
+          "artists": "로제 (ROSÉ)",
+          "member": "ROSÉ",
+          "link": "https://www.melon.com/song/detail.htm?songId=38300904"
+        },
+        {
+          "rank": 29,
+          "previous": null,
+          "song": "뛰어(JUMP)",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=39298775"
+        },
+        {
+          "rank": 68,
+          "previous": null,
+          "song": "Mantra",
+          "artists": "제니 (JENNIE)",
+          "member": "JENNIE",
+          "link": "https://www.melon.com/song/detail.htm?songId=38087937"
+        },
+        {
+          "rank": 100,
+          "previous": null,
+          "song": "number one girl",
+          "artists": "로제 (ROSÉ)",
+          "member": "ROSÉ",
+          "link": "https://www.melon.com/song/detail.htm?songId=38244575"
+        }
+      ]
+    },
+    {
       "key": "melon-top100",
       "service": "Melon",
       "type": "TOP100",
+      "kr": "TOP100",
       "label": "Melon · TOP100",
       "url": "https://xn--o39an51b2re.com/chart/melon/top100",
       "available": true,
@@ -371,10 +436,11 @@
       ]
     },
     {
-      "key": "melon-hot100",
+      "key": "melon-hot100-30d-",
       "service": "Melon",
-      "type": "HOT100",
-      "label": "Melon · HOT100",
+      "type": "HOT100 (30d)",
+      "kr": "HOT100 (30일)",
+      "label": "Melon · HOT100 (30d)",
       "url": "https://xn--o39an51b2re.com/chart/melon/hot100-d30",
       "available": true,
       "totalRows": 100,
@@ -390,9 +456,315 @@
       ]
     },
     {
+      "key": "melon-hot100-100d-",
+      "service": "Melon",
+      "type": "HOT100 (100d)",
+      "kr": "HOT100 (100일)",
+      "label": "Melon · HOT100 (100d)",
+      "url": "https://xn--o39an51b2re.com/chart/melon/hot100-d100",
+      "available": true,
+      "totalRows": 100,
+      "entries": [
+        {
+          "rank": 12,
+          "previous": 11,
+          "song": "Less than a Lover",
+          "artists": "제니 (JENNIE)",
+          "member": "JENNIE",
+          "link": "https://www.melon.com/song/detail.htm?songId=602584682"
+        }
+      ]
+    },
+    {
+      "key": "melon-24hits",
+      "service": "Melon",
+      "type": "24Hits",
+      "kr": "24Hits",
+      "label": "Melon · 24Hits",
+      "url": "https://xn--o39an51b2re.com/chart/melon/24hits",
+      "available": true,
+      "totalRows": 100,
+      "entries": [
+        {
+          "rank": 43,
+          "previous": 43,
+          "song": "Lovesick Girls",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=32961718"
+        },
+        {
+          "rank": 81,
+          "previous": 80,
+          "song": "On The Ground",
+          "artists": "로제 (ROSÉ)",
+          "member": "ROSÉ",
+          "link": "https://www.melon.com/song/detail.htm?songId=33346446"
+        },
+        {
+          "rank": 93,
+          "previous": 92,
+          "song": "How You Like That",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=32720013"
+        }
+      ]
+    },
+    {
+      "key": "melon-24hits-newest-1w-",
+      "service": "Melon",
+      "type": "24Hits Newest (1w)",
+      "kr": "최신 24Hits (1주)",
+      "label": "Melon · 24Hits Newest (1w)",
+      "url": "https://xn--o39an51b2re.com/chart/melon/24hits-newest-w1",
+      "available": true,
+      "totalRows": 100,
+      "entries": []
+    },
+    {
+      "key": "melon-24hits-newest-4w-",
+      "service": "Melon",
+      "type": "24Hits Newest (4w)",
+      "kr": "최신 24Hits (4주)",
+      "label": "Melon · 24Hits Newest (4w)",
+      "url": "https://xn--o39an51b2re.com/chart/melon/24hits-newest-w4",
+      "available": true,
+      "totalRows": 100,
+      "entries": []
+    },
+    {
+      "key": "melon-newest-1w-",
+      "service": "Melon",
+      "type": "Newest (1w)",
+      "kr": "최신차트 (1주)",
+      "label": "Melon · Newest (1w)",
+      "url": "https://xn--o39an51b2re.com/chart/melon/newest-w1",
+      "available": true,
+      "totalRows": 55,
+      "entries": []
+    },
+    {
+      "key": "melon-newest-4w-",
+      "service": "Melon",
+      "type": "Newest (4w)",
+      "kr": "최신차트 (4주)",
+      "label": "Melon · Newest (4w)",
+      "url": "https://xn--o39an51b2re.com/chart/melon/newest-w4",
+      "available": true,
+      "totalRows": 100,
+      "entries": [
+        {
+          "rank": 3,
+          "previous": 3,
+          "song": "Less than a Lover",
+          "artists": "제니 (JENNIE)",
+          "member": "JENNIE",
+          "link": "https://www.melon.com/song/detail.htm?songId=602584682"
+        }
+      ]
+    },
+    {
+      "key": "melon-daily-long-run",
+      "service": "Melon",
+      "type": "Daily Long-run",
+      "kr": "일간 차트 연속 진입 일수",
+      "label": "Melon · Daily Long-run",
+      "url": "https://xn--o39an51b2re.com/chart/melon/daily-long-run",
+      "available": true,
+      "totalRows": 1205,
+      "entries": [
+        {
+          "rank": 57,
+          "previous": null,
+          "song": "APT.",
+          "artists": "로제 (ROSÉ), Bruno Mars",
+          "member": "ROSÉ",
+          "link": "https://www.melon.com/song/detail.htm?songId=38120327"
+        },
+        {
+          "rank": 72,
+          "previous": null,
+          "song": "toxic till the end",
+          "artists": "로제 (ROSÉ)",
+          "member": "ROSÉ",
+          "link": "https://www.melon.com/song/detail.htm?songId=38300904"
+        },
+        {
+          "rank": 113,
+          "previous": null,
+          "song": "like JENNIE",
+          "artists": "제니 (JENNIE)",
+          "member": "JENNIE",
+          "link": "https://www.melon.com/song/detail.htm?songId=38629386"
+        },
+        {
+          "rank": 153,
+          "previous": null,
+          "song": "마지막처럼",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=30481578"
+        },
+        {
+          "rank": 157,
+          "previous": null,
+          "song": "Lovesick Girls",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=32961718"
+        },
+        {
+          "rank": 167,
+          "previous": null,
+          "song": "How You Like That",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=32720013"
+        },
+        {
+          "rank": 197,
+          "previous": null,
+          "song": "뛰어(JUMP)",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=39298775"
+        },
+        {
+          "rank": 233,
+          "previous": null,
+          "song": "불장난",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=30069773"
+        },
+        {
+          "rank": 246,
+          "previous": null,
+          "song": "SPOT! (feat. JENNIE)",
+          "artists": "지코 (ZICO)",
+          "member": "JENNIE",
+          "link": "https://www.melon.com/song/detail.htm?songId=37460832"
+        },
+        {
+          "rank": 264,
+          "previous": null,
+          "song": "Pink Venom",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=35542908"
+        },
+        {
+          "rank": 264,
+          "previous": null,
+          "song": "Shut Down",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=35640077"
+        },
+        {
+          "rank": 269,
+          "previous": null,
+          "song": "뚜두뚜두 (DDU-DU DDU-DU)",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=31131273"
+        },
+        {
+          "rank": 302,
+          "previous": null,
+          "song": "Mantra",
+          "artists": "제니 (JENNIE)",
+          "member": "JENNIE",
+          "link": "https://www.melon.com/song/detail.htm?songId=38087937"
+        },
+        {
+          "rank": 360,
+          "previous": null,
+          "song": "You & Me",
+          "artists": "제니 (JENNIE)",
+          "member": "JENNIE",
+          "link": "https://www.melon.com/song/detail.htm?songId=36852553"
+        },
+        {
+          "rank": 373,
+          "previous": null,
+          "song": "꽃",
+          "artists": "지수 (JISOO)",
+          "member": "JISOO",
+          "link": "https://www.melon.com/song/detail.htm?songId=36331121"
+        },
+        {
+          "rank": 439,
+          "previous": null,
+          "song": "휘파람",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=8304594"
+        },
+        {
+          "rank": 453,
+          "previous": null,
+          "song": "SOLO",
+          "artists": "제니 (JENNIE)",
+          "member": "JENNIE",
+          "link": "https://www.melon.com/song/detail.htm?songId=31417871"
+        },
+        {
+          "rank": 546,
+          "previous": null,
+          "song": "On The Ground",
+          "artists": "로제 (ROSÉ)",
+          "member": "ROSÉ",
+          "link": "https://www.melon.com/song/detail.htm?songId=33346446"
+        },
+        {
+          "rank": 623,
+          "previous": null,
+          "song": "number one girl",
+          "artists": "로제 (ROSÉ)",
+          "member": "ROSÉ",
+          "link": "https://www.melon.com/song/detail.htm?songId=38244575"
+        },
+        {
+          "rank": 647,
+          "previous": null,
+          "song": "Forever Young",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=31131274"
+        },
+        {
+          "rank": 647,
+          "previous": null,
+          "song": "Kill This Love",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=31717822"
+        },
+        {
+          "rank": 882,
+          "previous": null,
+          "song": "붐바야",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=8304595"
+        },
+        {
+          "rank": 1178,
+          "previous": null,
+          "song": "Ice Cream (with Selena Gomez)",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.melon.com/song/detail.htm?songId=32889003"
+        }
+      ]
+    },
+    {
       "key": "genie-realtime",
       "service": "Genie",
       "type": "Realtime",
+      "kr": "실시간 차트",
       "label": "Genie · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/genie/realtime",
       "available": true,
@@ -460,6 +832,7 @@
       "key": "genie-daily",
       "service": "Genie",
       "type": "Daily",
+      "kr": "일간 차트",
       "label": "Genie · Daily",
       "url": "https://xn--o39an51b2re.com/chart/genie/daily",
       "available": true,
@@ -527,6 +900,7 @@
       "key": "bugs-realtime",
       "service": "Bugs",
       "type": "Realtime",
+      "kr": "실시간 차트",
       "label": "Bugs · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/bugs/realtime",
       "available": true,
@@ -578,6 +952,7 @@
       "key": "bugs-daily",
       "service": "Bugs",
       "type": "Daily",
+      "kr": "일간 차트",
       "label": "Bugs · Daily",
       "url": "https://xn--o39an51b2re.com/chart/bugs/daily",
       "available": true,
@@ -629,6 +1004,7 @@
       "key": "flo-24-hour",
       "service": "FLO",
       "type": "24 Hour",
+      "kr": "FLO 차트",
       "label": "FLO · 24 Hour",
       "url": "https://xn--o39an51b2re.com/chart/flo/24hour",
       "available": true,
@@ -680,6 +1056,7 @@
       "key": "vibe-daily",
       "service": "Vibe",
       "type": "Daily",
+      "kr": "일간 차트",
       "label": "Vibe · Daily",
       "url": "https://xn--o39an51b2re.com/chart/vibe/daily",
       "available": true,
@@ -747,6 +1124,7 @@
       "key": "circle-digital-weekly",
       "service": "Circle",
       "type": "Digital Weekly",
+      "kr": "주간 디지털 차트",
       "label": "Circle · Digital Weekly",
       "url": "https://xn--o39an51b2re.com/chart/circle/digital-weekly",
       "available": true,
@@ -805,8 +1183,9 @@
     {
       "key": "youtube-track-weekly",
       "service": "YouTube",
-      "type": "Track · Weekly",
-      "label": "YouTube · Track · Weekly",
+      "type": "Track Weekly",
+      "kr": "주간 인기곡 차트",
+      "label": "YouTube · Track Weekly",
       "url": "https://xn--o39an51b2re.com/chart/youtube/track-weekly",
       "available": true,
       "totalRows": 100,
@@ -832,8 +1211,9 @@
     {
       "key": "youtube-video-weekly",
       "service": "YouTube",
-      "type": "Video · Weekly",
-      "label": "YouTube · Video · Weekly",
+      "type": "Video Weekly",
+      "kr": "주간 인기 뮤직비디오 차트",
+      "label": "YouTube · Video Weekly",
       "url": "https://xn--o39an51b2re.com/chart/youtube/video-weekly",
       "available": true,
       "totalRows": 100,
@@ -866,8 +1246,8 @@
     }
   ],
   "summary": {
-    "chartsChecked": 15,
-    "chartsAvailable": 15,
-    "totalEntries": 87
+    "chartsChecked": 23,
+    "chartsAvailable": 23,
+    "totalEntries": 121
   }
 }
