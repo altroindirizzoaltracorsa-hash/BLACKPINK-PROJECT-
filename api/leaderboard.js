@@ -1046,16 +1046,25 @@ export default async function handler(req, res) {
     for (const [k, u] of Object.entries(users)) {
       const c = u.appUserId && udc[u.appUserId];
       const s = u.scores || (u.scores = {});
+      const flipped = s.daily_date && s.daily_date !== dayDDMM; // archive froze a different day
       if (c) {
-        const newAll = (c.jump||0)+(c.shutdown||0)+(c.ddududu||0)+(c.ltal||0)+(c.go||0);
+        // Flipped entries hold the WRONG day's counts → replace outright with the
+        // durable day counts. Same-day entries → take the max so a repair can never
+        // LOWER a value the finalized board legitimately floored higher.
+        const nj  = flipped ? (c.jump||0)     : Math.max(s.daily_jump||0,     c.jump||0);
+        const nsd = flipped ? (c.shutdown||0) : Math.max(s.daily_shutdown||0, c.shutdown||0);
+        const nd  = flipped ? (c.ddududu||0)  : Math.max(s.daily_ddududu||0,  c.ddududu||0);
+        const nl  = flipped ? (c.ltal||0)     : Math.max(s.daily_ltal||0,     c.ltal||0);
+        const ng  = flipped ? (c.go||0)       : Math.max(s.daily_go||0,       c.go||0);
+        const newAll = nj + nsd + nd + nl + ng;
         if (newAll !== (s.daily_all || 0) || s.daily_date !== dayDDMM) {
-          changed.push({ name: u.displayName || k, was: s.daily_all || 0, now: newAll, wasDate: s.daily_date });
+          changed.push({ name: u.displayName || k, was: s.daily_all || 0, now: newAll, wasDate: s.daily_date, flipped });
           if (!dry) {
-            s.daily_jump = c.jump||0; s.daily_shutdown = c.shutdown||0; s.daily_ddududu = c.ddududu||0;
-            s.daily_ltal = c.ltal||0; s.daily_go = c.go||0; s.daily_all = newAll; s.daily_date = dayDDMM;
+            s.daily_jump = nj; s.daily_shutdown = nsd; s.daily_ddududu = nd;
+            s.daily_ltal = nl; s.daily_go = ng; s.daily_all = newAll; s.daily_date = dayDDMM;
           }
         }
-      } else if (s.daily_date && s.daily_date !== dayDDMM) {
+      } else if (flipped) {
         unrecoverable++; // flipped to another day, no durable counts to recover from
       }
     }
