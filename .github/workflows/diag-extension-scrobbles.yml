@@ -11,6 +11,11 @@ on:
       - '.github/workflows/diag-extension-scrobbles.yml'
       - '.github/scripts/diag-extension-scrobbles.mjs'
   workflow_dispatch:
+    inputs:
+      acct:  { description: 'spotify_account label to scope (e.g. D)', required: false }
+      from:  { description: 'window start ISO (e.g. 2026-08-15T14:00:00Z)', required: false }
+      to:    { description: 'window end ISO (optional)', required: false }
+      track: { description: 'track id (jump|shutdown|ddududu|ltal|go)', required: false, default: 'jump' }
 
 jobs:
   audit:
@@ -24,4 +29,8 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          DIAG_ACCT: ${{ inputs.acct }}
+          DIAG_FROM: ${{ inputs.from }}
+          DIAG_TO: ${{ inputs.to }}
+          DIAG_TRACK: ${{ inputs.track }}
         run: node .github/scripts/diag-extension-scrobbles.mjs

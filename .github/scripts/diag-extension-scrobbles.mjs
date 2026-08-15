@@ -22,6 +22,13 @@ const headers = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
 
 const TRACKS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go'];
 
+// Optional scoping for a manual ground-truth check: set these to compare a hand
+// count against the server for ONE account over an exact window. All optional.
+const SCOPE_ACCT = (process.env.DIAG_ACCT || '').trim();          // exact spotify_account label, e.g. "D"
+const SCOPE_FROM = (process.env.DIAG_FROM || '').trim();          // ISO, e.g. 2026-08-15T14:00:00Z
+const SCOPE_TO   = (process.env.DIAG_TO || '').trim();            // ISO, e.g. 2026-08-15T14:30:00Z
+const SCOPE_TRACK = (process.env.DIAG_TRACK || '').trim().toLowerCase(); // e.g. "jump"
+
 function fail(m) { console.error('❌ ' + m); process.exit(1); }
 
 async function totalCount(query) {
@@ -99,9 +106,32 @@ async function main() {
     console.log('');
   }
 
+  // ---- Optional: exact scoped slice for a manual ground-truth comparison ----
+  if (SCOPE_ACCT && SCOPE_FROM) {
+    const track = SCOPE_TRACK || 'jump';
+    let q = `select=listened_at,created_at&track_id=eq.${track}`
+          + `&spotify_account=eq.${encodeURIComponent(SCOPE_ACCT)}`
+          + `&listened_at=gte.${encodeURIComponent(SCOPE_FROM)}`;
+    if (SCOPE_TO) q += `&listened_at=lt.${encodeURIComponent(SCOPE_TO)}`;
+    q += '&order=listened_at';
+    const rows = await fetchAll(q);
+    const distinct = new Set(rows.map((r) => r.listened_at));
+    console.log('');
+    console.log('================ MANUAL GROUND-TRUTH SLICE ================');
+    console.log(`account=${SCOPE_ACCT}  track=${track}`);
+    console.log(`window: ${SCOPE_FROM} .. ${SCOPE_TO || '(now)'}`);
+    console.log(`raw rows stored:   ${rows.length}   <- what a naive count would show`);
+    console.log(`distinct plays:    ${distinct.size}   <- deduped (count this against your hand count)`);
+    console.log(`duplicate surplus: ${rows.length - distinct.size}`);
+    console.log('each distinct play (listened_at) — line these up with what you watched:');
+    for (const la of [...distinct].sort()) console.log(`   ${la}`);
+  }
+
+  console.log('');
   console.log('================ how to read this ================');
   console.log('duplicate surplus = 0  →  the extension recorded each play once; the server record is NOT inflated.');
   console.log('duplicate surplus > 0  →  the same play was ingested multiple times (double-write). insert-gaps show how far apart.');
+  console.log('To scope one account+window for a manual check, set DIAG_ACCT, DIAG_FROM, DIAG_TO (ISO), DIAG_TRACK.');
 }
 
 main().catch((e) => fail(e.stack || e.message));
