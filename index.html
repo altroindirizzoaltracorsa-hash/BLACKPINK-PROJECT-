@@ -2218,7 +2218,7 @@
   <footer>
     <p>© 2025 Blinks United · Fan-made · Not affiliated with YG Entertainment · Made with 💗</p>
     <div class="footer-logo">BLINKS UNITED</div>
-    <p>Stream data by <a href="https://last.fm" target="_blank" onclick=\"window.open('https://last.fm','_blank','noopener')\">Last.fm</a> · Goals are fan estimates</p>
+    <p>Stream data from <a href="https://last.fm" target="_blank" rel="noopener">Last.fm</a>, ListenBrainz, Libre.fm, Musicat &amp; Stats.fm · Goals are fan estimates</p>
     <div style="display:flex;gap:0.5rem;align-items:center;">
       <button class="admin-unlock" onclick="openAdminPanel()" title="Admin panel">⚙</button>
       <button class="admin-unlock" onclick="openMilestoneAdminPanel()" title="Milestone admin">🎉</button>
@@ -2272,7 +2272,7 @@
     <div class="badge-header">
       <p class="badge-header-eyebrow">✦ Blinks United — Streaming Challenge ✦</p>
       <h1 class="badge-header-title">BADGE<br><span>CHALLENGE</span></h1>
-      <p class="badge-header-sub">Connect Last.fm · Track your scrobbles · Earn your badges</p>
+      <p class="badge-header-sub">Connect your scrobblers · Track your scrobbles · Earn your badges</p>
       <button class="tutorial-help-btn" onclick="openTutorial()">? How it works</button>
     </div>
 
@@ -2282,7 +2282,7 @@
       <div id="badges-auth-signout">
         <div class="login-card">
           <p class="login-label">Sign in to track your badges</p>
-          <p class="login-desc">Create a free account to link your Last.fm and ListenBrainz usernames, earn badges, and appear on the leaderboard.</p>
+          <p class="login-desc">Create a free account to link your scrobbler accounts, earn badges, and appear on the leaderboard.</p>
           <button class="oauth-btn" onclick="signInWithProvider('google')">Continue with Google</button>
           <button class="oauth-btn" onclick="signInWithProvider('x')">Continue with X</button>
           <button class="oauth-btn" onclick="signInWithProvider('discord')">Continue with Discord</button>
@@ -2355,7 +2355,7 @@
       </div>
 
       <div id="scrobble-warning" class="scrobble-warning" style="display:none">
-        <span id="scrobble-warning-text">⚠ No scrobbles detected in the last 3 days — your Spotify→Last.fm connection may have stopped.</span>
+        <span id="scrobble-warning-text">⚠ No scrobbles detected in the last 3 days — your scrobbler connection may have stopped.</span>
         <a id="scrobble-warning-link" href="https://www.last.fm/settings/applications" target="_blank" rel="noopener">Check Last.fm settings →</a>
       </div>
 
@@ -2470,7 +2470,7 @@
       </div>
 
       <p class="badge-footer-note" style="margin-top:2rem;">
-        Data powered by <a href="https://www.last.fm" target="_blank" onclick=\"window.open('https://www.last.fm','_blank','noopener')\">Last.fm</a> · Resets at 2am Italy time daily ·
+        Data from <a href="https://www.last.fm" target="_blank" rel="noopener">Last.fm</a>, ListenBrainz, Libre.fm, Musicat &amp; Stats.fm · Resets at 2am Italy time daily ·
         Fan-made by Blinks United · Not affiliated with YG Entertainment · Made with 💗
       </p>
     </div>
@@ -2491,7 +2491,7 @@
       <p class="lb-header-eyebrow">✦ Blinks United — Global Rankings ✦</p>
       <h1 class="lb-header-title">BLINKS<br><span>LEADERBOARD</span></h1>
       <p class="lb-header-sub">The top streamers in our community — updated every hour</p>
-      <p class="lb-update-note">Rankings update every 60 minutes · Log into My Badges to join · Your scores are fetched live from Last.fm</p>
+      <p class="lb-update-note">Rankings update every 60 minutes · Log into My Badges to join · Your scores are fetched live from your linked scrobblers</p>
     </div>
 
     <div class="lb-inner">
@@ -2545,7 +2545,7 @@
     </div>
 
     <p class="badge-footer-note" style="margin-top:2rem;">
-      Rankings are based on Last.fm scrobble data fetched when you log into My Badges.<br>
+      Rankings are based on scrobble data from your linked accounts — Last.fm, ListenBrainz, Libre.fm, Musicat &amp; Stats.fm — fetched when you log into My Badges.<br>
       Scores update automatically every hour. Fan-made by Blinks United · Made with 💗<br>
       <button class="admin-unlock" onclick="openAdminPanel()">· · ·</button>
     </p>
@@ -8420,7 +8420,7 @@ const TUTORIAL_STEPS = [
   {
     eyebrow: 'Step 4 of 5',
     title: 'LINK YOUR<br><span>MUSIC TRACKER</span>',
-    body: 'Connect your Last.fm and/or ListenBrainz usernames. All linked accounts count together — giving you one combined scrobble total on the leaderboard.',
+    body: 'Connect your scrobbler accounts — Last.fm, ListenBrainz, Libre.fm, Musicat or Stats.fm. All linked accounts count together — giving you one combined scrobble total on the leaderboard.',
   },
   {
     eyebrow: 'Step 5 of 5',
@@ -11330,7 +11330,7 @@ function drawPersonalCard(canvas, { info, todayCounts, totalPlays, avatarImg, lo
   ctx.fillStyle = 'rgba(245,240,240,0.3)';
   ctx.font = `500 ${landscape ? 12 : 16}px "DM Mono", monospace`;
   ctx.letterSpacing = '3px';
-  ctx.fillText('LAST.FM · BLINKS UNITED', tx + 2, landscape ? 112 : 162);
+  ctx.fillText('SCROBBLES · BLINKS UNITED', tx + 2, landscape ? 112 : 162);
 
   // Divider
   ctx.fillStyle = 'rgba(255,0,102,0.3)';
