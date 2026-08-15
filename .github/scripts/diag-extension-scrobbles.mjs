@@ -127,6 +127,28 @@ async function main() {
     for (const la of [...distinct].sort()) console.log(`   ${la}`);
   }
 
+  // ---- Per-day duplicate timeline (all-time) — does dup-rate spike on the
+  //      days two extension versions overlapped, or is it constant? ----
+  console.log('');
+  console.log('================ PER-DAY DUPLICATE TIMELINE (all-time) ================');
+  const allRows = await fetchAll('select=track_id,spotify_account,listened_at');
+  const perDay = {};
+  for (const r of allRows) {
+    const day = (r.listened_at || '').slice(0, 10); // UTC date
+    if (!day) continue;
+    const d = (perDay[day] = perDay[day] || { rows: 0, keys: new Set() });
+    d.rows += 1;
+    d.keys.add(`${r.spotify_account || ''}|${r.track_id}|${r.listened_at}`);
+  }
+  console.log('day         rows   uniquePlays   dupSurplus   dup%');
+  for (const day of Object.keys(perDay).sort()) {
+    const d = perDay[day];
+    const uniq = d.keys.size;
+    const surplus = d.rows - uniq;
+    const pct = d.rows ? ((surplus / d.rows) * 100).toFixed(1) : '0.0';
+    console.log(`${day}  ${String(d.rows).padStart(5)}   ${String(uniq).padStart(11)}   ${String(surplus).padStart(10)}   ${pct.padStart(4)}%`);
+  }
+
   console.log('');
   console.log('================ how to read this ================');
   console.log('duplicate surplus = 0  →  the extension recorded each play once; the server record is NOT inflated.');
