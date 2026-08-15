@@ -106,39 +106,48 @@ async function main() {
     console.log('');
   }
 
-  // ---- Optional: exact scoped slice for a manual ground-truth comparison ----
-  // Scopes to one account + window. If DIAG_TRACK is set, only that track;
-  // otherwise ALL campaign tracks (matches watching the whole playlist rotation).
-  if (SCOPE_ACCT && SCOPE_FROM) {
-    let q = `select=track_id,listened_at,created_at`
-          + `&spotify_account=eq.${encodeURIComponent(SCOPE_ACCT)}`
+  // ---- Optional: scoped slice for a manual ground-truth comparison ----
+  // Requires a window (DIAG_FROM). DIAG_ACCT may be blank (= ALL accounts) or a
+  // comma-separated list (e.g. "S,M,D") for a multi-account test. DIAG_TRACK
+  // optional (blank = all campaign tracks).
+  if (SCOPE_FROM) {
+    const acctList = SCOPE_ACCT.split(',').map((s) => s.trim()).filter(Boolean);
+    let q = `select=spotify_account,track_id,listened_at,created_at`
           + `&listened_at=gte.${encodeURIComponent(SCOPE_FROM)}`;
+    if (acctList.length === 1) q += `&spotify_account=eq.${encodeURIComponent(acctList[0])}`;
+    else if (acctList.length > 1) q += `&spotify_account=in.(${acctList.map((a) => `"${a}"`).join(',')})`;
     if (SCOPE_TRACK) q += `&track_id=eq.${SCOPE_TRACK}`;
     if (SCOPE_TO) q += `&listened_at=lt.${encodeURIComponent(SCOPE_TO)}`;
-    q += '&order=listened_at';
+    q += '&order=spotify_account,listened_at';
     const rows = await fetchAll(q);
-    // Distinct play = (track_id, listened_at) — a real play is one tuple.
-    const distinct = new Set(rows.map((r) => `${r.track_id}|${r.listened_at}`));
+
     console.log('');
     console.log('================ MANUAL GROUND-TRUTH SLICE ================');
-    console.log(`account=${SCOPE_ACCT}  track=${SCOPE_TRACK || '(all campaign tracks)'}`);
+    console.log(`accounts=${acctList.length ? acctList.join(', ') : '(all)'}  track=${SCOPE_TRACK || '(all campaign tracks)'}`);
     console.log(`window: ${SCOPE_FROM} .. ${SCOPE_TO || '(now)'}`);
-    console.log(`raw rows stored:   ${rows.length}   <- what a naive count would show`);
-    console.log(`distinct plays:    ${distinct.size}   <- deduped (count this against your hand count)`);
-    console.log(`duplicate surplus: ${rows.length - distinct.size}`);
-    // Per-track tally so a whole-playlist hand count lines up song by song.
-    const byTrack = {};
+
+    // Group by account -> per-track rows/distinct. Distinct play = (track,listened_at).
+    const byAcct = {};
     for (const r of rows) {
-      const t = (byTrack[r.track_id] = byTrack[r.track_id] || { rows: 0, keys: new Set() });
+      const a = r.spotify_account || '(none)';
+      const acc = (byAcct[a] = byAcct[a] || { rows: 0, keys: new Set(), byTrack: {} });
+      acc.rows += 1;
+      acc.keys.add(`${r.track_id}|${r.listened_at}`);
+      const t = (acc.byTrack[r.track_id] = acc.byTrack[r.track_id] || { rows: 0, keys: new Set() });
       t.rows += 1;
       t.keys.add(r.listened_at);
     }
-    console.log('per track (rows / distinct plays):');
-    for (const [t, v] of Object.entries(byTrack).sort((a, b) => b[1].rows - a[1].rows)) {
-      console.log(`   ${t.padEnd(10)} rows=${v.rows}  distinct=${v.keys.size}`);
+    for (const a of Object.keys(byAcct).sort()) {
+      const acc = byAcct[a];
+      console.log('');
+      console.log(`── ${a}:  raw rows=${acc.rows}  distinct plays=${acc.keys.size}  duplicate surplus=${acc.rows - acc.keys.size}`);
+      for (const [t, v] of Object.entries(acc.byTrack).sort((x, y) => y[1].rows - x[1].rows)) {
+        const flag = v.rows !== v.keys.size ? '  ⚠️ dup' : '';
+        console.log(`     ${t.padEnd(10)} rows=${v.rows}  distinct=${v.keys.size}${flag}`);
+      }
     }
-    console.log('every row (track  listened_at  inserted_at) — line these up with what you watched:');
-    for (const r of rows) console.log(`   ${(r.track_id || '?').padEnd(10)} ${r.listened_at}   ins=${r.created_at}`);
+    console.log('');
+    console.log('(compare "distinct plays" per account to your hand count. surplus>0 = a duplicate slipped in.)');
   }
 
   // ---- Per-day duplicate timeline (all-time) — does dup-rate spike on the
