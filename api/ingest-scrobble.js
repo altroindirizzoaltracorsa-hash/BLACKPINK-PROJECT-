@@ -84,15 +84,35 @@ export default async function handler(req, res) {
     ? new Date(Number(body.timestamp) * 1000).toISOString()
     : new Date().toISOString();
 
-  const { error } = await sb.from('extension_scrobbles').insert({
+  const row = {
     app_user_id: profile.app_user_id,
     track_id: trackId,
     artist: String(body.artist || '').slice(0, 200),
     title: String(body.title || '').slice(0, 200),
     spotify_account: String(body.account || '').slice(0, 200),
     listened_at: listenedAt,
+  };
+
+  // Idempotent write. The unique index on
+  // (app_user_id, spotify_account, track_id, listened_at) makes one real play =
+  // one row, so a re-sent scrobble (a second extension, a poll-overlap race, or
+  // a reload/resume) hits the conflict and is skipped instead of duplicated.
+  const up = await sb.from('extension_scrobbles').upsert(row, {
+    onConflict: 'app_user_id,spotify_account,track_id,listened_at',
+    ignoreDuplicates: true,
   });
-  if (error) return res.status(500).json({ ok: false, error: error.message });
+  if (up.error) {
+    // Safety fallback: if the unique index isn't in place yet (code deployed
+    // before the migration), upsert's ON CONFLICT target is missing and errors
+    // (Postgres 42P10). Never drop a real play over deploy ordering — insert
+    // plainly. Any duplicates from that window are removable later; a lost
+    // scrobble is not. Other errors are surfaced as-is.
+    const missingConstraint =
+      up.error.code === '42P10' || /on conflict/i.test(up.error.message || '');
+    if (!missingConstraint) return res.status(500).json({ ok: false, error: up.error.message });
+    const ins = await sb.from('extension_scrobbles').insert(row);
+    if (ins.error) return res.status(500).json({ ok: false, error: ins.error.message });
+  }
 
   return res.status(200).json({ ok: true, counted: true, trackId });
 }
