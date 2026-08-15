@@ -494,6 +494,8 @@
   .goal-tracker-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pink); }
   .goal-tracker-nums { font-family: var(--display); font-size: 2rem; color: var(--pink); line-height: 1; }
   .goal-tracker-nums span { font-size: 1rem; color: var(--muted); }
+  .goal-tracker-right { display: flex; align-items: baseline; gap: 0.9rem; flex-wrap: wrap; justify-content: flex-end; }
+  .goal-pct { font-family: var(--display); font-size: 2.6rem; line-height: 1; color: var(--pink); font-variant-numeric: tabular-nums; }
   .goal-tracker-bar { height: 3px; background: rgba(255,255,255,0.06); }
   .goal-tracker-fill { height: 100%; background: var(--pink); transition: width 1s ease; }
   /* Runway-style community goal bar with walking members */
@@ -1960,7 +1962,10 @@
         <div class="goal-tracker-card">
           <div class="goal-tracker-top">
             <span class="goal-tracker-label">// Today's Community Goal — JUMP + Shut Down + DDU-DU DDU-DU + GO</span>
-            <span class="goal-tracker-nums" id="community-goal-nums">0<span> / 15,000 scrobbles</span></span>
+            <span class="goal-tracker-right">
+              <span class="goal-tracker-nums" id="community-goal-nums">0<span> / 15,000 scrobbles</span></span>
+              <span class="goal-pct" id="community-goal-pct">0%</span>
+            </span>
           </div>
           <div class="goal-runway">
             <div class="goal-stage">
@@ -10166,6 +10171,10 @@ async function loadCommunityGoal() {
 
     document.getElementById('community-goal-nums').innerHTML = `${total.toLocaleString()}<span> / ${goal.toLocaleString()} scrobbles</span>`;
     document.getElementById('community-goal-fill').style.width = `${pct}%`;
+    const pctEl = document.getElementById('community-goal-pct');
+    if (pctEl) pctEl.textContent = `${Math.round(pct * 10) / 10}%`;
+    const tickGoalEl = document.getElementById('community-goal-tick-goal');
+    if (tickGoalEl) tickGoalEl.textContent = goal.toLocaleString();
 
     const statusEl  = document.getElementById('community-goal-status');
     const shareBtn  = document.getElementById('goal-share-btn');
