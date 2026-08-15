@@ -107,24 +107,38 @@ async function main() {
   }
 
   // ---- Optional: exact scoped slice for a manual ground-truth comparison ----
+  // Scopes to one account + window. If DIAG_TRACK is set, only that track;
+  // otherwise ALL campaign tracks (matches watching the whole playlist rotation).
   if (SCOPE_ACCT && SCOPE_FROM) {
-    const track = SCOPE_TRACK || 'jump';
-    let q = `select=listened_at,created_at&track_id=eq.${track}`
+    let q = `select=track_id,listened_at,created_at`
           + `&spotify_account=eq.${encodeURIComponent(SCOPE_ACCT)}`
           + `&listened_at=gte.${encodeURIComponent(SCOPE_FROM)}`;
+    if (SCOPE_TRACK) q += `&track_id=eq.${SCOPE_TRACK}`;
     if (SCOPE_TO) q += `&listened_at=lt.${encodeURIComponent(SCOPE_TO)}`;
     q += '&order=listened_at';
     const rows = await fetchAll(q);
-    const distinct = new Set(rows.map((r) => r.listened_at));
+    // Distinct play = (track_id, listened_at) — a real play is one tuple.
+    const distinct = new Set(rows.map((r) => `${r.track_id}|${r.listened_at}`));
     console.log('');
     console.log('================ MANUAL GROUND-TRUTH SLICE ================');
-    console.log(`account=${SCOPE_ACCT}  track=${track}`);
+    console.log(`account=${SCOPE_ACCT}  track=${SCOPE_TRACK || '(all campaign tracks)'}`);
     console.log(`window: ${SCOPE_FROM} .. ${SCOPE_TO || '(now)'}`);
     console.log(`raw rows stored:   ${rows.length}   <- what a naive count would show`);
     console.log(`distinct plays:    ${distinct.size}   <- deduped (count this against your hand count)`);
     console.log(`duplicate surplus: ${rows.length - distinct.size}`);
-    console.log('each distinct play (listened_at) — line these up with what you watched:');
-    for (const la of [...distinct].sort()) console.log(`   ${la}`);
+    // Per-track tally so a whole-playlist hand count lines up song by song.
+    const byTrack = {};
+    for (const r of rows) {
+      const t = (byTrack[r.track_id] = byTrack[r.track_id] || { rows: 0, keys: new Set() });
+      t.rows += 1;
+      t.keys.add(r.listened_at);
+    }
+    console.log('per track (rows / distinct plays):');
+    for (const [t, v] of Object.entries(byTrack).sort((a, b) => b[1].rows - a[1].rows)) {
+      console.log(`   ${t.padEnd(10)} rows=${v.rows}  distinct=${v.keys.size}`);
+    }
+    console.log('every row (track  listened_at  inserted_at) — line these up with what you watched:');
+    for (const r of rows) console.log(`   ${(r.track_id || '?').padEnd(10)} ${r.listened_at}   ins=${r.created_at}`);
   }
 
   // ---- Per-day duplicate timeline (all-time) — does dup-rate spike on the

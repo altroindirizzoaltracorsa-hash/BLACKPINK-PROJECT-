@@ -1,0 +1,28 @@
+name: Dedupe extension scrobbles
+
+# Removes duplicate rows from extension_scrobbles (keeps the earliest of each
+# real play). DRY-RUN by default — it only deletes when DRY_RUN is set to
+# 'false' below. Runs when its own files are pushed to the scrobbler branch.
+on:
+  push:
+    branches: [ claude/webscrobbler-per-profile-6vhgdf ]
+    paths:
+      - '.github/workflows/dedupe-extension-scrobbles.yml'
+      - '.github/scripts/dedupe-extension-scrobbles.mjs'
+
+jobs:
+  dedupe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Dedupe extension_scrobbles
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          # Flip to 'false' and push to actually delete. Keep 'true' for a
+          # read-only dry-run that only reports what would be removed.
+          DRY_RUN: 'true'
+        run: node .github/scripts/dedupe-extension-scrobbles.mjs
