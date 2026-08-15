@@ -1,0 +1,27 @@
+name: Diag extension scrobbles
+
+# One-off, read-only diagnostic: audits the extension_scrobbles table for
+# duplicate/inflated ingests. Runs automatically when its own files are pushed
+# to the scrobbler branch (so it works without living on the default branch),
+# and can also be run manually. Safe to delete once used.
+on:
+  push:
+    branches: [ claude/webscrobbler-per-profile-6vhgdf ]
+    paths:
+      - '.github/workflows/diag-extension-scrobbles.yml'
+      - '.github/scripts/diag-extension-scrobbles.mjs'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Audit extension_scrobbles
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node .github/scripts/diag-extension-scrobbles.mjs
