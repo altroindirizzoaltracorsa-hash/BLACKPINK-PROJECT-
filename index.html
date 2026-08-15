@@ -496,14 +496,19 @@
   .goal-tracker-nums span { font-size: 1rem; color: var(--muted); }
   .goal-tracker-bar { height: 3px; background: rgba(255,255,255,0.06); }
   .goal-tracker-fill { height: 100%; background: var(--pink); transition: width 1s ease; }
-  /* Walking-members overlay on the community goal bar */
-  .goal-walk-track { position: relative; padding-top: 64px; }
-  .goal-walk-track .goal-tracker-bar { height: 4px; border-radius: 3px; }
-  .goal-walkers { position: absolute; bottom: 2px; left: 0; height: 62px; width: auto; pointer-events: none; filter: drop-shadow(0 5px 6px rgba(0,0,0,0.55)); transition: left 1.1s cubic-bezier(.4,0,.2,1); }
-  .goal-walk-glow { position: absolute; bottom: -3px; left: 0; width: 88px; height: 20px; margin-left: -44px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255,116,172,0.5), transparent); pointer-events: none; transition: left 1.1s cubic-bezier(.4,0,.2,1); }
+  /* Runway-style community goal bar with walking members */
+  .goal-runway { position: relative; margin: 0.2rem 0 0.1rem; }
+  .goal-stage { position: relative; height: 104px; }
+  .goal-strip { position: absolute; left: 0; right: 0; bottom: 0; height: 44px; border-radius: 22px; background: rgba(255,255,255,0.05); overflow: hidden; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }
+  .goal-strip::after { content: ""; position: absolute; left: 16px; right: 16px; top: 50%; height: 2px; transform: translateY(-50%); background: repeating-linear-gradient(90deg, rgba(255,255,255,0.16) 0 10px, transparent 10px 26px); opacity: 0.5; }
+  .goal-strip-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; border-radius: 22px 4px 4px 22px; background: linear-gradient(90deg, #ff1f6f, var(--pink) 60%, #ff74ac); box-shadow: 0 0 22px rgba(255,45,126,0.55); transition: width 1s ease; }
+  .goal-edge { position: absolute; bottom: 0; left: 0; width: 3px; height: 48px; border-radius: 3px; background: #fff; box-shadow: 0 0 16px 4px rgba(255,116,172,0.9); transform: translateX(-1.5px); transition: left 1.1s cubic-bezier(.4,0,.2,1); pointer-events: none; }
+  .goal-walkers { position: absolute; bottom: 38px; left: 0; height: 64px; width: auto; pointer-events: none; filter: drop-shadow(0 6px 7px rgba(0,0,0,0.55)); transition: left 1.1s cubic-bezier(.4,0,.2,1); }
+  .goal-walk-glow { position: absolute; bottom: 34px; left: 0; width: 92px; height: 22px; margin-left: -46px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255,116,172,0.55), transparent); filter: blur(2px); pointer-events: none; transition: left 1.1s cubic-bezier(.4,0,.2,1); }
   .goal-walkers.walking { animation: goalStep 0.5s ease-in-out infinite; }
   @keyframes goalStep { 0%,100% { transform: translateY(0) rotate(-0.6deg); } 50% { transform: translateY(-3px) rotate(0.6deg); } }
-  @media (prefers-reduced-motion: reduce) { .goal-walkers, .goal-walk-glow { transition: none; } .goal-walkers.walking { animation: none; } }
+  .goal-ticks { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.6rem; letter-spacing: 0.08em; color: var(--muted); font-variant-numeric: tabular-nums; }
+  @media (prefers-reduced-motion: reduce) { .goal-walkers, .goal-walk-glow, .goal-edge, .goal-strip-fill { transition: none; } .goal-walkers.walking { animation: none; } }
   .goal-tracker-status { font-size: 0.65rem; letter-spacing: 0.08em; color: var(--muted); }
 
   .release-title-header { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; }
@@ -1957,10 +1962,14 @@
             <span class="goal-tracker-label">// Today's Community Goal — JUMP + Shut Down + DDU-DU DDU-DU + GO</span>
             <span class="goal-tracker-nums" id="community-goal-nums">0<span> / 15,000 scrobbles</span></span>
           </div>
-          <div class="goal-walk-track">
-            <img class="goal-walkers" id="community-goal-walkers" src="/goal-walkers.png" alt="BLACKPINK walking toward today's goal" />
-            <div class="goal-walk-glow" id="community-goal-glow"></div>
-            <div class="goal-tracker-bar"><div class="goal-tracker-fill" id="community-goal-fill" style="width:0%"></div></div>
+          <div class="goal-runway">
+            <div class="goal-stage">
+              <img class="goal-walkers" id="community-goal-walkers" src="/goal-walkers.png" alt="BLACKPINK walking toward today's goal" />
+              <div class="goal-walk-glow" id="community-goal-glow"></div>
+              <div class="goal-strip"><div class="goal-strip-fill" id="community-goal-fill" style="width:0%"></div></div>
+              <div class="goal-edge" id="community-goal-edge"></div>
+            </div>
+            <div class="goal-ticks"><span>0</span><span id="community-goal-tick-goal">15,000</span></div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">
             <div class="goal-tracker-status" id="community-goal-status">Loading today's progress…</div>
@@ -10117,18 +10126,20 @@ const COMMUNITY_GOAL_SECONDARY = 20000;
 // as the leaderboard page's own "combined" total, so the two numbers always agree.
 // Slide the walking members to the leading edge of the community goal fill.
 function positionGoalWalkers(pct) {
-  const track = document.querySelector('#community-goal-home .goal-walk-track');
+  const stage = document.querySelector('#community-goal-home .goal-stage');
   const img   = document.getElementById('community-goal-walkers');
   const glow  = document.getElementById('community-goal-glow');
-  if (!track || !img) return;
+  const edge  = document.getElementById('community-goal-edge');
+  if (!stage || !img) return;
   const apply = () => {
-    const W  = track.clientWidth;
+    const W  = stage.clientWidth;
     if (!W) return;
     const gw   = img.offsetWidth || 100;
     const lead = W * Math.max(0, Math.min(100, pct)) / 100;
     const cx   = Math.max(gw * 0.42, Math.min(W - gw * 0.42, lead));
     img.style.left  = (cx - gw / 2) + 'px';
     if (glow) glow.style.left = cx + 'px';
+    if (edge) edge.style.left = lead + 'px';
   };
   requestAnimationFrame(() => {
     if (!img.complete) img.addEventListener('load', apply, { once: true });
