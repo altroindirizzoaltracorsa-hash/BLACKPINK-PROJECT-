@@ -48,7 +48,7 @@ jobs:
               accts = ",".join(a.get("username","?") for a in (u.get("linkedAccounts") or []))
               rows.append((s.get("daily_jump",0), s.get("daily_all",0), s.get("daily_date"),
                            u.get("displayName") or u.get("username") or k, accts))
-          rows.sort(reverse=True)
+          rows.sort(key=lambda r: (r[0], r[1]), reverse=True)  # sort by jump then all; avoid comparing None dates
 
           nonzero = [r for r in rows if r[0] > 0]
           print(f"users with daily_jump > 0: {len(nonzero)}")
