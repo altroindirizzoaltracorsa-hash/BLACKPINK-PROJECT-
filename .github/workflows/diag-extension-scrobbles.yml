@@ -29,8 +29,8 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          DIAG_ACCT: ${{ inputs.acct || 'D,M,S' }}
-          DIAG_FROM: ${{ inputs.from || '2026-08-15T15:42:00Z' }}
-          DIAG_TO: ${{ inputs.to || '2026-08-15T16:15:00Z' }}
+          DIAG_ACCT: ${{ inputs.acct }}
+          DIAG_FROM: ${{ inputs.from }}
+          DIAG_TO: ${{ inputs.to }}
           DIAG_TRACK: ${{ inputs.track }}
         run: node .github/scripts/diag-extension-scrobbles.mjs
