@@ -1,0 +1,49 @@
+name: Verify Aug14 finalize (read-only)
+
+# One-off: dump the Aug 14 archive's date breakdown + the entries flagged
+# unrecoverable (daily_date != 14/08), and confirm the Aug 15 archive started
+# fresh (keyed 2026-08-15, its own day). Removed after.
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+          from collections import Counter
+          def get(u):
+              out = subprocess.run(["curl","-sS","-L",u], capture_output=True, text=True)
+              return json.loads(out.stdout)
+          def dump(day):
+              a = get(f"https://blinksunited.com/api/leaderboard-archive?period=daily&key={day}")
+              users = a.get("users",{}) or {}
+              print(f"\n=== {day} ({a.get('label')}) archived {a.get('archivedAt')} — {len(users)} users ===")
+              dd = Counter((u.get('scores',{}) or {}).get('daily_date') for u in users.values())
+              print("daily_date breakdown:", dict(dd))
+              tgt = f"{day[8:10]}/{day[5:7]}"
+              off = [(u.get('displayName') or k,
+                      (u.get('scores',{}) or {}).get('daily_date'),
+                      (u.get('scores',{}) or {}).get('daily_all',0),
+                      bool(u.get('appUserId')))
+                     for k,u in users.items()
+                     if (u.get('scores',{}) or {}).get('daily_date') not in (tgt, None)]
+              print(f"entries NOT on {tgt} (would be 'unrecoverable' if no durable counts): {len(off)}")
+              for name, date, allc, hasId in sorted(off, key=lambda r: -(r[2] or 0)):
+                  print(f"    {name!r:24} date={date}  daily_all={allc}  hasOwnerId={hasId}")
+              # top 5 real contributors on the target day
+              top = sorted(((u.get('scores',{}) or {}).get('daily_all',0), u.get('displayName') or k)
+                           for k,u in users.items()
+                           if (u.get('scores',{}) or {}).get('daily_date')==tgt)
+              print(f"  top {tgt} entries:", [(n,c) for c,n in sorted(top, reverse=True)[:5]])
+          # list recent daily snapshots
+          idx = get("https://blinksunited.com/api/leaderboard-archive?period=daily")
+          print("=== recent daily snapshots ===")
+          for it in idx.get("items",[])[:6]:
+              print(f"  {it.get('key')}  archived {it.get('archivedAt')}")
+          dump("2026-08-14")
+          dump("2026-08-15")
+          PY
