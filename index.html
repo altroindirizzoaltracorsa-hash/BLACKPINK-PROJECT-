@@ -5287,18 +5287,42 @@ async function syncLtalToggle(totalLtal) {
   const card = document.getElementById('ltal-toggle-home');
   if (!card) return;
   const numEl = document.getElementById('ltal-toggle-count-num');
-  if (numEl && Number.isFinite(totalLtal)) numEl.textContent = Number(totalLtal).toLocaleString();
   let session = null;
   try { session = (await sb?.auth.getSession())?.data?.session || null; } catch {}
-  if (!session) { card.style.display = 'none'; return; }
+  if (!session) { card.style.display = 'none'; return; }   // switch needs an account
   card.style.display = 'block';
-  reflectLtalPref(session.user?.user_metadata?.count_ltal === true);
+  const meta = session.user?.user_metadata || {};
+  const on   = meta.count_ltal === true;
+  reflectLtalPref(on);
+
+  // Count shown: opted-in (or pre-cutoff) → live total; opted-out after the cutoff
+  // → a one-time frozen snapshot captured the moment counting stopped for them.
+  const live = Number.isFinite(totalLtal) ? Number(totalLtal) : null;
+  let shown = live;
+  if (Date.now() >= LTAL_STOP_MS && !on) {
+    if (Number.isFinite(meta.ltal_frozen)) {
+      shown = Number(meta.ltal_frozen);
+    } else if (live != null && !syncLtalToggle._freezing) {
+      shown = live;
+      syncLtalToggle._freezing = true;
+      try { await sb.auth.updateUser({ data: { ltal_frozen: live } }); } catch {} finally { syncLtalToggle._freezing = false; }
+    }
+  } else if (on && Number.isFinite(meta.ltal_frozen) && !syncLtalToggle._freezing) {
+    // Opted back in — clear the stale snapshot so a later opt-out re-freezes fresh.
+    syncLtalToggle._freezing = true;
+    try { await sb.auth.updateUser({ data: { ltal_frozen: null } }); } catch {} finally { syncLtalToggle._freezing = false; }
+  }
+  if (numEl && shown != null) numEl.textContent = Number(shown).toLocaleString();
 }
 
 // Pre-reset reminder popup: nudges fans to opt in before Less Than a Lover leaves
 // the campaign at the 2 AM cutoff. Shows once (until dismissed) and never after
 // the cutoff has passed.
 const LTAL_STOP_MS = Date.UTC(2026, 7, 17, 0, 0, 0); // 2026-08-17 00:00 UTC = 2 AM Rome
+// Before the cutoff, Less Than a Lover counts everywhere as usual. After it, LTAL
+// leaves the campaign: its challenge card, the personal goal, and the leaderboard
+// ranking all drop it. (Per-user profile tracking is handled separately.)
+function ltalCampaignActive() { return Date.now() < LTAL_STOP_MS; }
 function closeLtalReminder(goProfile) {
   const ov = document.getElementById('ltal-reminder-overlay');
   if (ov) ov.classList.remove('active');
@@ -6711,7 +6735,7 @@ function showBreakdown(type, key) {
 
   let getVal;
   if (type === 'artistPlays')     getVal = a => a.artistPlays;
-  else if (type === 'campaignTotal') getVal = a => Object.values(a.totalPlays).reduce((s,v)=>s+v,0);
+  else if (type === 'campaignTotal') getVal = a => Object.values(a.totalPlays).reduce((s,v)=>s+v,0) - (ltalCampaignActive() ? 0 : (a.totalPlays.ltal || 0));
   else if (type === 'overall')    getVal = a => a.totalPlays[key] || 0;
   else if (type === 'daily')      getVal = key ? (a => a.todayCounts[key] || 0) : (a => Object.values(a.todayCounts).reduce((s,v)=>s+v,0));
   else if (type === 'weekly')     getVal = key ? (a => a.weekCounts[key]  || 0) : (a => Object.values(a.weekCounts).reduce((s,v)=>s+v,0));
@@ -7388,7 +7412,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   const goalTrackerEl = document.getElementById('daily-goal-tracker');
   const goalTarget = parseInt(_s.goal);
   if (goalTarget > 0) {
-    const todayTotal = (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0);
+    const todayTotal = (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (ltalCampaignActive() ? (todayCounts.ltal || 0) : 0) + (todayCounts.go || 0);
     const pct       = Math.min(100, (todayTotal / goalTarget) * 100);
     const remaining = Math.max(0, goalTarget - todayTotal);
     const done      = todayTotal >= goalTarget;
@@ -7410,9 +7434,10 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
 
   // Daily challenge
   const dailyGrid = document.getElementById('daily-challenge-grid');
+  const gridTracks = ltalCampaignActive() ? TRACKS : TRACKS.filter(t => t.id !== 'ltal');
   dailyGrid.innerHTML = `
     <div class="daily-grid">
-      ${TRACKS.map(t => {
+      ${gridTracks.map(t => {
         const count = todayCounts[t.id] || 0;
         const tiers = DAILY_TIERS[t.id] || [];
         const currentBadge = getDailyBadge(t.id, count);
@@ -7441,7 +7466,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
       }).join('')}
     </div>
     ${(() => {
-      const mults = TRACKS.map(t => getDailyBadge(t.id, todayCounts[t.id] || 0)?.mult || 0);
+      const mults = gridTracks.map(t => getDailyBadge(t.id, todayCounts[t.id] || 0)?.mult || 0);
       const minMult = Math.min(...mults);
       if (minMult >= 3) return `<div class="complete-banner">🌟 ×${minMult} MULTI-ACCOUNT STAMP — ${minMult} accounts' worth on all 3 tracks!</div>`;
       if (minMult >= 1) return '<div class="complete-banner">🏅 DAILY STAMP EARNED — Full playlist run on all 3 tracks! 💗</div>';
@@ -8165,14 +8190,14 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
         overall_rose:     memberPlays?.rose   || 0,
         overall_jennie:   memberPlays?.jennie || 0,
       } : {}),
-      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0),
+      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (ltalCampaignActive() ? (todayCounts.ltal || 0) : 0) + (todayCounts.go || 0),
       daily_jump:       todayCounts.jump     || 0,
       daily_shutdown:   todayCounts.shutdown || 0,
       daily_ddududu:    todayCounts.ddududu  || 0,
       daily_ltal:       todayCounts.ltal     || 0,
       daily_go:         todayCounts.go       || 0,
       daily_date:       today,
-      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0),
+      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (ltalCampaignActive() ? (weekCounts.ltal || 0) : 0) + (weekCounts.go || 0),
       weekly_jump:      weekCounts.jump     || 0,
       weekly_shutdown:  weekCounts.shutdown || 0,
       weekly_ddududu:   weekCounts.ddududu  || 0,
