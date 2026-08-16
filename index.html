@@ -441,6 +441,21 @@
   .settings-pills { display:flex;gap:0.4rem;flex-wrap:wrap; }
   .s-pill { padding:0.4rem 0.9rem;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:0.58rem;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;transition:all .15s; }
   .s-pill.active { background:var(--pink);border-color:var(--pink);color:#000; }
+  /* Sliding toggle switch (Less Than a Lover opt-in) */
+  .ltal-switch-row { display:flex;align-items:center;justify-content:space-between;gap:1rem; }
+  .ltal-switch-text { font-size:0.72rem;color:var(--muted);letter-spacing:0.04em; }
+  .ltal-switch { position:relative;width:52px;height:30px;flex:0 0 auto;border-radius:15px;border:1px solid var(--border);background:rgba(255,255,255,0.08);cursor:pointer;padding:0;transition:background .2s,border-color .2s; }
+  .ltal-switch.on { background:var(--pink);border-color:var(--pink); }
+  .ltal-switch-knob { position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .2s ease;box-shadow:0 1px 3px rgba(0,0,0,0.4); }
+  .ltal-switch.on .ltal-switch-knob { left:24px; }
+  .ltal-switch:focus-visible { outline:2px solid var(--pink);outline-offset:2px; }
+  .ltal-toggle-card { max-width:900px;margin:1rem auto 0;padding:1.3rem 1.5rem;border:1px solid rgba(255,0,102,0.18);background:#141018; }
+  .ltal-toggle-row { display:flex;align-items:center;justify-content:space-between;gap:1rem; }
+  .ltal-toggle-title { font-family:var(--display);font-size:1.1rem;letter-spacing:0.02em;color:var(--white); }
+  .ltal-toggle-count { font-size:0.58rem;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-top:0.2rem; }
+  .ltal-toggle-count #ltal-toggle-count-num { color:var(--pink);font-family:var(--display);font-size:0.95rem; }
+  .ltal-toggle-hint { font-size:0.6rem;letter-spacing:0.04em;color:rgba(245,240,240,0.4);line-height:1.5;margin-top:0.75rem; }
+  .ltal-toggle-status { font-size:0.6rem;letter-spacing:0.04em;margin-top:0.45rem; }
 
   .login-wrap { max-width: 520px; margin: 3rem auto; padding: 0 1.5rem; }
   .login-card { background: var(--card); border: 1px solid var(--border); padding: 2.5rem; position: relative; overflow: hidden; }
@@ -582,6 +597,22 @@
   /* ── GOAL HISTORY (chronology of past goal-hit days) ─────── */
   #goal-history-overlay { position: fixed; inset: 0; z-index: 9990; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.72); padding: 1rem; }
   #goal-history-overlay.active { display: flex; }
+  /* Less Than a Lover pre-reset reminder */
+  #ltal-reminder-overlay { position:fixed; inset:0; z-index:9996; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.82); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); padding:1.1rem; }
+  #ltal-reminder-overlay.active { display:flex; }
+  .ltal-reminder-box { max-width:440px; width:100%; background:#141018; border:1px solid rgba(255,0,102,0.3); padding:1.9rem 1.7rem; text-align:center; box-shadow:0 30px 90px -30px rgba(255,0,102,0.55); }
+  .ltal-reminder-badge { display:inline-block; font-family:var(--mono); font-size:0.62rem; font-weight:700; letter-spacing:0.28em; text-transform:uppercase; color:var(--pink); border:1px solid rgba(255,0,102,0.5); padding:0.4rem 0.9rem; }
+  .ltal-reminder-title { font-family:var(--display); font-size:1.35rem; letter-spacing:0.01em; margin:0.55rem 0 0; color:var(--white); }
+  .ltal-reminder-body { font-size:0.82rem; line-height:1.6; color:var(--muted); margin:0.7rem 0 0; }
+  .ltal-reminder-body strong { color:var(--white); }
+  .ltal-reminder-actions { display:flex; flex-direction:column; gap:0.55rem; margin-top:1.4rem; }
+  .ltal-reminder-actions .btn-primary { width:100%; margin-top:0; }
+  .ltal-reminder-dismiss { background:transparent; border:none; color:var(--muted); font-family:var(--mono); font-size:0.6rem; letter-spacing:0.14em; text-transform:uppercase; cursor:pointer; padding:0.45rem; }
+  .ltal-reminder-dismiss:hover { color:var(--pink); }
+  .ltal-reminder-steps { text-align:left; margin:1.1rem auto 0; padding-left:1.4rem; max-width:330px; display:flex; flex-direction:column; gap:0.55rem; font-size:0.8rem; line-height:1.45; color:var(--muted); }
+  .ltal-reminder-steps li::marker { color:var(--pink); font-family:var(--display); }
+  .ltal-reminder-steps strong { color:var(--white); }
+  .ltal-reminder-foot { font-size:0.72rem; color:rgba(245,240,240,0.4); margin:1.1rem 0 0; }
   .gh-box { background: var(--card); border: 1px solid rgba(255,0,102,0.25); width: 100%; max-width: 460px; max-height: 86vh; display: flex; flex-direction: column; }
   .gh-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.08); }
   .gh-title { font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pink); }
@@ -1803,6 +1834,25 @@
 </div>
 
 <!-- HOME PAGE -->
+<!-- Less Than a Lover pre-reset reminder (auto-hides after the reset cutoff) -->
+<div id="ltal-reminder-overlay" role="dialog" aria-modal="true" aria-labelledby="ltal-reminder-title">
+  <div class="ltal-reminder-box">
+    <div class="ltal-reminder-badge">Disclaimer</div>
+    <h2 class="ltal-reminder-title" id="ltal-reminder-title">Less Than a Lover is leaving the campaign</h2>
+    <p class="ltal-reminder-body">When the day resets, <em>Less Than a Lover</em> stops counting toward the leaderboard and its card leaves Today&rsquo;s Challenge. Want to keep building your LTAL scrobbles on your profile? Here&rsquo;s how:</p>
+    <ol class="ltal-reminder-steps">
+      <li>Open <strong>My Badges</strong> (your profile)</li>
+      <li>Scroll to the bottom of <strong>Today&rsquo;s Challenge</strong></li>
+      <li>Under the <em>Less Than a Lover</em> card, flip the <strong>switch on</strong></li>
+    </ol>
+    <p class="ltal-reminder-foot">Leave it off and your LTAL total simply freezes where it is.</p>
+    <div class="ltal-reminder-actions">
+      <button class="btn-primary" onclick="closeLtalReminder(true)">Take me to my profile</button>
+      <button class="ltal-reminder-dismiss" onclick="closeLtalReminder(false)">Not now</button>
+    </div>
+  </div>
+</div>
+
 <div id="page-home" class="page active">
 
   <section class="hero" id="home">
@@ -2473,6 +2523,19 @@
       <div class="tracks-section" style="margin-top:2rem;">
         <p class="section-label">// Today's Challenge</p>
         <div id="daily-challenge-grid"></div>
+        <div id="ltal-toggle-home" class="ltal-toggle-card" style="display:none;">
+          <div class="ltal-toggle-row">
+            <div class="ltal-toggle-info">
+              <div class="ltal-toggle-title">Less Than a Lover</div>
+              <div class="ltal-toggle-count"><span id="ltal-toggle-count-num">0</span> <span class="ltal-toggle-count-lbl">scrobbles tracked</span></div>
+            </div>
+            <button type="button" id="s-ltal-switch" class="ltal-switch" role="switch" aria-checked="false" aria-label="Keep counting Less Than a Lover on my profile" onclick="setLtalPref(!this.classList.contains('on'))">
+              <span class="ltal-switch-knob"></span>
+            </button>
+          </div>
+          <p class="ltal-toggle-hint">When the day resets, Less Than a Lover leaves the leaderboard. Turn this on to keep tracking your LTAL scrobbles here — otherwise your total freezes at its current number.</p>
+          <p class="ltal-toggle-status" id="settings-ltal-status"></p>
+        </div>
       </div>
 
       <div class="tracks-section" style="margin-top:2rem;">
@@ -5211,6 +5274,96 @@ async function saveDisplayName() {
   if (status) { status.textContent = 'Display name updated!'; status.style.color = '#4caf50'; }
 }
 
+// Reflect the LTAL opt-in pills without touching the server (used on load + after save).
+function reflectLtalPref(on) {
+  const sw = document.getElementById('s-ltal-switch');
+  if (sw) { sw.classList.toggle('on', !!on); sw.setAttribute('aria-checked', on ? 'true' : 'false'); }
+}
+
+// Populate + show the profile's Less Than a Lover opt-in card: fills the running
+// scrobble count and reflects the switch state. Session-gated — the switch only
+// shows for Supabase-authed users, since the pref saves to their account.
+async function syncLtalToggle(totalLtal) {
+  const card = document.getElementById('ltal-toggle-home');
+  if (!card) return;
+  const numEl = document.getElementById('ltal-toggle-count-num');
+  let session = null;
+  try { session = (await sb?.auth.getSession())?.data?.session || null; } catch {}
+  if (!session) { card.style.display = 'none'; return; }   // switch needs an account
+  card.style.display = 'block';
+  const meta = session.user?.user_metadata || {};
+  const on   = meta.count_ltal === true;
+  reflectLtalPref(on);
+
+  // Count shown: opted-in (or pre-cutoff) → live total; opted-out after the cutoff
+  // → a one-time frozen snapshot captured the moment counting stopped for them.
+  const live = Number.isFinite(totalLtal) ? Number(totalLtal) : null;
+  let shown = live;
+  if (Date.now() >= LTAL_STOP_MS && !on) {
+    if (Number.isFinite(meta.ltal_frozen)) {
+      shown = Number(meta.ltal_frozen);
+    } else if (live != null && !syncLtalToggle._freezing) {
+      shown = live;
+      syncLtalToggle._freezing = true;
+      try { await sb.auth.updateUser({ data: { ltal_frozen: live } }); } catch {} finally { syncLtalToggle._freezing = false; }
+    }
+  } else if (on && Number.isFinite(meta.ltal_frozen) && !syncLtalToggle._freezing) {
+    // Opted back in — clear the stale snapshot so a later opt-out re-freezes fresh.
+    syncLtalToggle._freezing = true;
+    try { await sb.auth.updateUser({ data: { ltal_frozen: null } }); } catch {} finally { syncLtalToggle._freezing = false; }
+  }
+  if (numEl && shown != null) numEl.textContent = Number(shown).toLocaleString();
+}
+
+// Pre-reset reminder popup: nudges fans to opt in before Less Than a Lover leaves
+// the campaign at the 2 AM cutoff. Shows once (until dismissed) and never after
+// the cutoff has passed.
+const LTAL_STOP_MS = Date.UTC(2026, 7, 17, 0, 0, 0); // 2026-08-17 00:00 UTC = 2 AM Rome
+// Before the cutoff, Less Than a Lover counts everywhere as usual. After it, LTAL
+// leaves the campaign: its challenge card, the personal goal, and the leaderboard
+// ranking all drop it. (Per-user profile tracking is handled separately.)
+function ltalCampaignActive() { return Date.now() < LTAL_STOP_MS; }
+function closeLtalReminder(goProfile) {
+  const ov = document.getElementById('ltal-reminder-overlay');
+  if (ov) ov.classList.remove('active');
+  try { localStorage.setItem('ltal_reminder_dismissed_v1', '1'); } catch {}
+  if (goProfile) {
+    try { goToMyBadges(); } catch (e) { try { showPage('badges'); } catch (e2) {} }
+    setTimeout(() => document.getElementById('ltal-toggle-home')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 800);
+  }
+}
+function maybeShowLtalReminder() {
+  if (Date.now() >= LTAL_STOP_MS) return;              // campaign cutoff already passed
+  let dismissed = false;
+  try { dismissed = localStorage.getItem('ltal_reminder_dismissed_v1') === '1'; } catch (e) {}
+  if (dismissed) return;
+  const ov = document.getElementById('ltal-reminder-overlay');
+  if (ov) setTimeout(() => ov.classList.add('active'), 1400);
+}
+window.addEventListener('DOMContentLoaded', maybeShowLtalReminder);
+
+// Per-user opt-in: keep counting Less Than a Lover on your own profile past the
+// campaign cutoff. Stored in Supabase user_metadata.count_ltal so the server-side
+// cron aggregation can read it per user. Purely a profile-level flag — it never
+// affects the leaderboard, rankings, or community goal for anyone.
+async function setLtalPref(on) {
+  const status = document.getElementById('settings-ltal-status');
+  reflectLtalPref(on); // optimistic
+  if (!sb) { if (status) { status.textContent = 'Sign in to change this.'; status.style.color = '#ff9800'; } return; }
+  if (status) { status.textContent = 'Saving…'; status.style.color = 'var(--muted)'; }
+  const { error } = await sb.auth.updateUser({ data: { count_ltal: !!on } });
+  if (error) {
+    if (status) { status.textContent = error.message; status.style.color = '#ff4444'; }
+    return;
+  }
+  if (status) {
+    status.textContent = on
+      ? 'On — your Less Than a Lover scrobbles keep counting on your profile.'
+      : 'Off — your Less Than a Lover total freezes at the next reset.';
+    status.style.color = '#4caf50';
+  }
+}
+
 async function signOutAccount() {
   if (!sb) return;
   await sb.auth.signOut();
@@ -6582,7 +6735,7 @@ function showBreakdown(type, key) {
 
   let getVal;
   if (type === 'artistPlays')     getVal = a => a.artistPlays;
-  else if (type === 'campaignTotal') getVal = a => Object.values(a.totalPlays).reduce((s,v)=>s+v,0);
+  else if (type === 'campaignTotal') getVal = a => Object.values(a.totalPlays).reduce((s,v)=>s+v,0) - (ltalCampaignActive() ? 0 : (a.totalPlays.ltal || 0));
   else if (type === 'overall')    getVal = a => a.totalPlays[key] || 0;
   else if (type === 'daily')      getVal = key ? (a => a.todayCounts[key] || 0) : (a => Object.values(a.todayCounts).reduce((s,v)=>s+v,0));
   else if (type === 'weekly')     getVal = key ? (a => a.weekCounts[key]  || 0) : (a => Object.values(a.weekCounts).reduce((s,v)=>s+v,0));
@@ -7259,7 +7412,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   const goalTrackerEl = document.getElementById('daily-goal-tracker');
   const goalTarget = parseInt(_s.goal);
   if (goalTarget > 0) {
-    const todayTotal = (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0);
+    const todayTotal = (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (ltalCampaignActive() ? (todayCounts.ltal || 0) : 0) + (todayCounts.go || 0);
     const pct       = Math.min(100, (todayTotal / goalTarget) * 100);
     const remaining = Math.max(0, goalTarget - todayTotal);
     const done      = todayTotal >= goalTarget;
@@ -7281,9 +7434,10 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
 
   // Daily challenge
   const dailyGrid = document.getElementById('daily-challenge-grid');
+  const gridTracks = ltalCampaignActive() ? TRACKS : TRACKS.filter(t => t.id !== 'ltal');
   dailyGrid.innerHTML = `
     <div class="daily-grid">
-      ${TRACKS.map(t => {
+      ${gridTracks.map(t => {
         const count = todayCounts[t.id] || 0;
         const tiers = DAILY_TIERS[t.id] || [];
         const currentBadge = getDailyBadge(t.id, count);
@@ -7312,13 +7466,14 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
       }).join('')}
     </div>
     ${(() => {
-      const mults = TRACKS.map(t => getDailyBadge(t.id, todayCounts[t.id] || 0)?.mult || 0);
+      const mults = gridTracks.map(t => getDailyBadge(t.id, todayCounts[t.id] || 0)?.mult || 0);
       const minMult = Math.min(...mults);
       if (minMult >= 3) return `<div class="complete-banner">🌟 ×${minMult} MULTI-ACCOUNT STAMP — ${minMult} accounts' worth on all 3 tracks!</div>`;
       if (minMult >= 1) return '<div class="complete-banner">🏅 DAILY STAMP EARNED — Full playlist run on all 3 tracks! 💗</div>';
       return '';
     })()}
   `;
+  syncLtalToggle(totalPlays?.ltal);
 
   // Weekly challenge table
   const dayLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -8035,14 +8190,14 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
         overall_rose:     memberPlays?.rose   || 0,
         overall_jennie:   memberPlays?.jennie || 0,
       } : {}),
-      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0),
+      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (ltalCampaignActive() ? (todayCounts.ltal || 0) : 0) + (todayCounts.go || 0),
       daily_jump:       todayCounts.jump     || 0,
       daily_shutdown:   todayCounts.shutdown || 0,
       daily_ddududu:    todayCounts.ddududu  || 0,
       daily_ltal:       todayCounts.ltal     || 0,
       daily_go:         todayCounts.go       || 0,
       daily_date:       today,
-      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0),
+      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (ltalCampaignActive() ? (weekCounts.ltal || 0) : 0) + (weekCounts.go || 0),
       weekly_jump:      weekCounts.jump     || 0,
       weekly_shutdown:  weekCounts.shutdown || 0,
       weekly_ddududu:   weekCounts.ddududu  || 0,

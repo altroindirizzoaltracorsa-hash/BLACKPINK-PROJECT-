@@ -46,6 +46,12 @@ const TRACKS = [
   { id: 'go',       artist: 'BLACKPINK', track: 'GO' },
 ];
 
+// Less Than a Lover leaves the campaign at the reset cutoff. Per-track ltal values
+// are still stored (each fan's profile keeps them), but the *_all ranking sums drop
+// ltal from that moment so it no longer affects leaderboard placement.
+const LTAL_STOP_MS = Date.UTC(2026, 7, 17, 0, 0, 0); // 2026-08-17 00:00 UTC = 2 AM Rome
+const ltalInRank = () => Date.now() < LTAL_STOP_MS;
+
 // ── Italy 2am reset (same logic as client) ────────────────────
 function lastSunday(year, month) {
   const d = new Date(Date.UTC(year, month + 1, 0));
@@ -571,7 +577,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
     } catch {}
   }
 
-  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal + totalPlays.go;
+  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + (ltalInRank() ? totalPlays.ltal : 0) + totalPlays.go;
 
   return {
     username:      displayName,
@@ -599,14 +605,14 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       overall_ltal:     totalPlays.ltal,
       overall_go:       totalPlays.go,
       overall_artist:   artistPlays,
-      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0),
+      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (ltalInRank() ? (todayCounts.ltal || 0) : 0) + (todayCounts.go || 0),
       daily_jump:       todayCounts.jump     || 0,
       daily_shutdown:   todayCounts.shutdown || 0,
       daily_ddududu:    todayCounts.ddududu  || 0,
       daily_ltal:       todayCounts.ltal     || 0,
       daily_go:         todayCounts.go       || 0,
       daily_date:       todayLabel,
-      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0),
+      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (ltalInRank() ? (weekCounts.ltal || 0) : 0) + (weekCounts.go || 0),
       weekly_jump:      weekCounts.jump     || 0,
       weekly_shutdown:  weekCounts.shutdown || 0,
       weekly_ddududu:   weekCounts.ddududu  || 0,

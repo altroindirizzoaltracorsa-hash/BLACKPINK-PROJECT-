@@ -55,6 +55,14 @@ function communityGoalTotalFromUsers(users, dayDDMM) {
 }
 const TRACK_EVENTS = new Set(['pageview', 'playlist_click', 'share_click', 'vote_click']);
 
+// Less Than a Lover leaves the campaign at the reset cutoff. Per-track ltal values
+// are still stored (for each fan's profile), but the *_all ranking sums drop it
+// from that moment on so it no longer affects leaderboard placement.
+const LTAL_STOP_MS = Date.UTC(2026, 7, 17, 0, 0, 0); // 2026-08-17 00:00 UTC = 2 AM Rome
+const rankTids = () => Date.now() < LTAL_STOP_MS
+  ? ['jump', 'shutdown', 'ddududu', 'ltal', 'go']
+  : ['jump', 'shutdown', 'ddududu', 'go'];
+
 
 // Chat shares this file (instead of its own /api/chat.js) to stay under
 // Vercel Hobby's 12-serverless-function cap.
@@ -786,7 +794,7 @@ export default async function handler(req, res) {
           if (ext.week[id])  scores[`weekly_${id}`]  = (scores[`weekly_${id}`]  || 0) + ext.week[id];
           if (ext.today[id]) scores[`daily_${id}`]   = (scores[`daily_${id}`]   || 0) + ext.today[id];
         }
-        const sum = (pre) => TIDS.reduce((n, id) => n + (scores[`${pre}_${id}`] || 0), 0);
+        const sum = (pre) => rankTids().reduce((n, id) => n + (scores[`${pre}_${id}`] || 0), 0);
         scores.overall_all = sum('overall');
         scores.daily_all   = sum('daily');
         scores.weekly_all  = sum('weekly');
@@ -821,11 +829,11 @@ export default async function handler(req, res) {
       const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go'];
       if (ex.daily_date === scores.daily_date) {
         for (const id of TIDS) scores[`daily_${id}`] = Math.max(scores[`daily_${id}`] || 0, ex[`daily_${id}`] || 0);
-        scores.daily_all = TIDS.reduce((n, id) => n + (scores[`daily_${id}`] || 0), 0);
+        scores.daily_all = rankTids().reduce((n, id) => n + (scores[`daily_${id}`] || 0), 0);
       }
       if (ex.weekly_start === scores.weekly_start) {
         for (const id of TIDS) scores[`weekly_${id}`] = Math.max(scores[`weekly_${id}`] || 0, ex[`weekly_${id}`] || 0);
-        scores.weekly_all = TIDS.reduce((n, id) => n + (scores[`weekly_${id}`] || 0), 0);
+        scores.weekly_all = rankTids().reduce((n, id) => n + (scores[`weekly_${id}`] || 0), 0);
       }
     }
 
