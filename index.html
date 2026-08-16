@@ -609,6 +609,10 @@
   .ltal-reminder-actions .btn-primary { width:100%; margin-top:0; }
   .ltal-reminder-dismiss { background:transparent; border:none; color:var(--muted); font-family:var(--mono); font-size:0.6rem; letter-spacing:0.14em; text-transform:uppercase; cursor:pointer; padding:0.45rem; }
   .ltal-reminder-dismiss:hover { color:var(--pink); }
+  .ltal-reminder-steps { text-align:left; margin:1.1rem auto 0; padding-left:1.4rem; max-width:330px; display:flex; flex-direction:column; gap:0.55rem; font-size:0.8rem; line-height:1.45; color:var(--muted); }
+  .ltal-reminder-steps li::marker { color:var(--pink); font-family:var(--display); }
+  .ltal-reminder-steps strong { color:var(--white); }
+  .ltal-reminder-foot { font-size:0.72rem; color:rgba(245,240,240,0.4); margin:1.1rem 0 0; }
   .gh-box { background: var(--card); border: 1px solid rgba(255,0,102,0.25); width: 100%; max-width: 460px; max-height: 86vh; display: flex; flex-direction: column; }
   .gh-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.08); }
   .gh-title { font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pink); }
@@ -1830,12 +1834,18 @@
 </div>
 
 <!-- HOME PAGE -->
-<!-- Less Than a Lover pre-reset reminder (auto-hides after the 2 AM cutoff) -->
+<!-- Less Than a Lover pre-reset reminder (auto-hides after the reset cutoff) -->
 <div id="ltal-reminder-overlay" role="dialog" aria-modal="true" aria-labelledby="ltal-reminder-title">
   <div class="ltal-reminder-box">
     <div class="ltal-reminder-emoji">💗🖤</div>
     <h2 class="ltal-reminder-title" id="ltal-reminder-title">Less Than a Lover is leaving the campaign</h2>
-    <p class="ltal-reminder-body">At the <strong>2 AM reset</strong>, <em>Less Than a Lover</em> stops counting toward the leaderboard and community goal. If you want to keep tracking your own LTAL scrobbles on your profile, turn <strong>Less Than a Lover tracking</strong> on before then — otherwise your total simply freezes where it is.</p>
+    <p class="ltal-reminder-body">When the day resets, <em>Less Than a Lover</em> stops counting toward the leaderboard and its card leaves Today&rsquo;s Challenge. Want to keep building your LTAL scrobbles on your profile? Here&rsquo;s how:</p>
+    <ol class="ltal-reminder-steps">
+      <li>Open <strong>My Badges</strong> (your profile)</li>
+      <li>Scroll to the bottom of <strong>Today&rsquo;s Challenge</strong></li>
+      <li>Under the <em>Less Than a Lover</em> card, flip the <strong>switch on</strong></li>
+    </ol>
+    <p class="ltal-reminder-foot">Leave it off and your LTAL total simply freezes where it is.</p>
     <div class="ltal-reminder-actions">
       <button class="btn-primary" onclick="closeLtalReminder(true)">Take me to my profile</button>
       <button class="ltal-reminder-dismiss" onclick="closeLtalReminder(false)">Not now</button>
@@ -2523,7 +2533,7 @@
               <span class="ltal-switch-knob"></span>
             </button>
           </div>
-          <p class="ltal-toggle-hint">From the <strong>2 AM reset</strong>, Less Than a Lover leaves the leaderboard &amp; community goal. Turn this on to keep tracking your LTAL scrobbles here — otherwise your total freezes at its current number.</p>
+          <p class="ltal-toggle-hint">When the day resets, Less Than a Lover leaves the leaderboard. Turn this on to keep tracking your LTAL scrobbles here — otherwise your total freezes at its current number.</p>
           <p class="ltal-toggle-status" id="settings-ltal-status"></p>
         </div>
       </div>
@@ -5325,7 +5335,7 @@ async function setLtalPref(on) {
   if (status) {
     status.textContent = on
       ? 'On — your Less Than a Lover scrobbles keep counting on your profile.'
-      : 'Off — your Less Than a Lover total freezes at the 2 AM reset.';
+      : 'Off — your Less Than a Lover total freezes at the next reset.';
     status.style.color = '#4caf50';
   }
 }
