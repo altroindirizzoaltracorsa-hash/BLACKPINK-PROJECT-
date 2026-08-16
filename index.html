@@ -2435,6 +2435,16 @@
             </div>
           </div>
 
+          <div class="settings-group" id="ltal-pref-group" style="margin-top:1rem;">
+            <label class="settings-label">Less Than a Lover tracking</label>
+            <div class="settings-pills" id="s-ltal">
+              <button class="s-pill" data-val="on" onclick="setLtalPref(true)">Keep counting</button>
+              <button class="s-pill active" data-val="off" onclick="setLtalPref(false)">Stop counting</button>
+            </div>
+            <p class="settings-hint">From the <strong>2 AM reset</strong>, <em>Less Than a Lover</em> leaves the leaderboard &amp; community goal for everyone. Choose <strong>Keep counting</strong> before then to keep tracking your own LTAL scrobbles on your profile. If you leave it on <strong>Stop</strong>, your LTAL total simply freezes at its current number.</p>
+            <p class="settings-hint" id="settings-ltal-status"></p>
+          </div>
+
           <div style="margin-top:1rem;">
             <label class="settings-label">Linked Accounts</label>
             <p class="settings-hint" style="margin-bottom:0.5rem;">Last.fm, ListenBrainz, Libre.fm, Musicat, and/or Stats.fm usernames — all streams count toward one leaderboard row.</p>
@@ -5107,6 +5117,7 @@ function renderAccountPage(session) {
     if (emailEl) emailEl.textContent = session.user.email || session.user.id;
     const dnInput = document.getElementById('linked-displayname-input-settings');
     if (dnInput) dnInput.value = session.user.user_metadata?.display_name || '';
+    reflectLtalPref(session.user.user_metadata?.count_ltal === true);
     loadLinkedAccounts();
     loadLinkedAccountsInline();
   } else {
@@ -5209,6 +5220,35 @@ async function saveDisplayName() {
   if (profileNameEl && profileNameEl.textContent) profileNameEl.textContent = display_name;
 
   if (status) { status.textContent = 'Display name updated!'; status.style.color = '#4caf50'; }
+}
+
+// Reflect the LTAL opt-in pills without touching the server (used on load + after save).
+function reflectLtalPref(on) {
+  document.querySelectorAll('#s-ltal .s-pill').forEach(btn => {
+    btn.classList.toggle('active', (btn.dataset.val === 'on') === !!on);
+  });
+}
+
+// Per-user opt-in: keep counting Less Than a Lover on your own profile past the
+// campaign cutoff. Stored in Supabase user_metadata.count_ltal so the server-side
+// cron aggregation can read it per user. Purely a profile-level flag — it never
+// affects the leaderboard, rankings, or community goal for anyone.
+async function setLtalPref(on) {
+  const status = document.getElementById('settings-ltal-status');
+  reflectLtalPref(on); // optimistic
+  if (!sb) { if (status) { status.textContent = 'Sign in to change this.'; status.style.color = '#ff9800'; } return; }
+  if (status) { status.textContent = 'Saving…'; status.style.color = 'var(--muted)'; }
+  const { error } = await sb.auth.updateUser({ data: { count_ltal: !!on } });
+  if (error) {
+    if (status) { status.textContent = error.message; status.style.color = '#ff4444'; }
+    return;
+  }
+  if (status) {
+    status.textContent = on
+      ? 'On — your Less Than a Lover scrobbles keep counting on your profile.'
+      : 'Off — your Less Than a Lover total freezes at the 2 AM reset.';
+    status.style.color = '#4caf50';
+  }
 }
 
 async function signOutAccount() {
