@@ -601,7 +601,7 @@
   #ltal-reminder-overlay { position:fixed; inset:0; z-index:9996; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.82); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); padding:1.1rem; }
   #ltal-reminder-overlay.active { display:flex; }
   .ltal-reminder-box { max-width:440px; width:100%; background:#141018; border:1px solid rgba(255,0,102,0.3); padding:1.9rem 1.7rem; text-align:center; box-shadow:0 30px 90px -30px rgba(255,0,102,0.55); }
-  .ltal-reminder-emoji { font-size:1.9rem; line-height:1; }
+  .ltal-reminder-badge { display:inline-block; font-family:var(--mono); font-size:0.62rem; font-weight:700; letter-spacing:0.28em; text-transform:uppercase; color:var(--pink); border:1px solid rgba(255,0,102,0.5); padding:0.4rem 0.9rem; }
   .ltal-reminder-title { font-family:var(--display); font-size:1.35rem; letter-spacing:0.01em; margin:0.55rem 0 0; color:var(--white); }
   .ltal-reminder-body { font-size:0.82rem; line-height:1.6; color:var(--muted); margin:0.7rem 0 0; }
   .ltal-reminder-body strong { color:var(--white); }
@@ -1837,7 +1837,7 @@
 <!-- Less Than a Lover pre-reset reminder (auto-hides after the reset cutoff) -->
 <div id="ltal-reminder-overlay" role="dialog" aria-modal="true" aria-labelledby="ltal-reminder-title">
   <div class="ltal-reminder-box">
-    <div class="ltal-reminder-emoji">💗🖤</div>
+    <div class="ltal-reminder-badge">Disclaimer</div>
     <h2 class="ltal-reminder-title" id="ltal-reminder-title">Less Than a Lover is leaving the campaign</h2>
     <p class="ltal-reminder-body">When the day resets, <em>Less Than a Lover</em> stops counting toward the leaderboard and its card leaves Today&rsquo;s Challenge. Want to keep building your LTAL scrobbles on your profile? Here&rsquo;s how:</p>
     <ol class="ltal-reminder-steps">
