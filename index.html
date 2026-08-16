@@ -441,6 +441,14 @@
   .settings-pills { display:flex;gap:0.4rem;flex-wrap:wrap; }
   .s-pill { padding:0.4rem 0.9rem;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:0.58rem;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;transition:all .15s; }
   .s-pill.active { background:var(--pink);border-color:var(--pink);color:#000; }
+  /* Sliding toggle switch (Less Than a Lover opt-in) */
+  .ltal-switch-row { display:flex;align-items:center;justify-content:space-between;gap:1rem; }
+  .ltal-switch-text { font-size:0.72rem;color:var(--muted);letter-spacing:0.04em; }
+  .ltal-switch { position:relative;width:52px;height:30px;flex:0 0 auto;border-radius:15px;border:1px solid var(--border);background:rgba(255,255,255,0.08);cursor:pointer;padding:0;transition:background .2s,border-color .2s; }
+  .ltal-switch.on { background:var(--pink);border-color:var(--pink); }
+  .ltal-switch-knob { position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .2s ease;box-shadow:0 1px 3px rgba(0,0,0,0.4); }
+  .ltal-switch.on .ltal-switch-knob { left:24px; }
+  .ltal-switch:focus-visible { outline:2px solid var(--pink);outline-offset:2px; }
 
   .login-wrap { max-width: 520px; margin: 3rem auto; padding: 0 1.5rem; }
   .login-card { background: var(--card); border: 1px solid var(--border); padding: 2.5rem; position: relative; overflow: hidden; }
@@ -2437,11 +2445,13 @@
 
           <div class="settings-group" id="ltal-pref-group" style="margin-top:1rem;">
             <label class="settings-label">Less Than a Lover tracking</label>
-            <div class="settings-pills" id="s-ltal">
-              <button class="s-pill" data-val="on" onclick="setLtalPref(true)">Keep counting</button>
-              <button class="s-pill active" data-val="off" onclick="setLtalPref(false)">Stop counting</button>
+            <div class="ltal-switch-row">
+              <span class="ltal-switch-text">Keep counting on my profile</span>
+              <button type="button" id="s-ltal-switch" class="ltal-switch" role="switch" aria-checked="false" aria-label="Keep counting Less Than a Lover on my profile" onclick="setLtalPref(!this.classList.contains('on'))">
+                <span class="ltal-switch-knob"></span>
+              </button>
             </div>
-            <p class="settings-hint">From the <strong>2 AM reset</strong>, <em>Less Than a Lover</em> leaves the leaderboard &amp; community goal for everyone. Choose <strong>Keep counting</strong> before then to keep tracking your own LTAL scrobbles on your profile. If you leave it on <strong>Stop</strong>, your LTAL total simply freezes at its current number.</p>
+            <p class="settings-hint">From the <strong>2 AM reset</strong>, <em>Less Than a Lover</em> leaves the leaderboard &amp; community goal for everyone. Turn this on before then to keep tracking your own LTAL scrobbles on your profile. Left off, your LTAL total simply freezes at its current number.</p>
             <p class="settings-hint" id="settings-ltal-status"></p>
           </div>
 
@@ -5224,9 +5234,8 @@ async function saveDisplayName() {
 
 // Reflect the LTAL opt-in pills without touching the server (used on load + after save).
 function reflectLtalPref(on) {
-  document.querySelectorAll('#s-ltal .s-pill').forEach(btn => {
-    btn.classList.toggle('active', (btn.dataset.val === 'on') === !!on);
-  });
+  const sw = document.getElementById('s-ltal-switch');
+  if (sw) { sw.classList.toggle('on', !!on); sw.setAttribute('aria-checked', on ? 'true' : 'false'); }
 }
 
 // Per-user opt-in: keep counting Less Than a Lover on your own profile past the
