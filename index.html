@@ -456,6 +456,12 @@
   .ltal-toggle-count #ltal-toggle-count-num { color:var(--pink);font-family:var(--display);font-size:0.95rem; }
   .ltal-toggle-hint { font-size:0.6rem;letter-spacing:0.04em;color:rgba(245,240,240,0.4);line-height:1.5;margin-top:0.75rem; }
   .ltal-toggle-status { font-size:0.6rem;letter-spacing:0.04em;margin-top:0.45rem; }
+  .ltal-milestones { margin-top:1rem;padding-top:0.9rem;border-top:1px solid rgba(255,255,255,0.07); }
+  .ltal-ms-label { font-size:0.55rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem; }
+  .ltal-ms-row { display:flex;align-items:center;justify-content:space-between;gap:0.6rem;padding:0.3rem 0; }
+  .ltal-ms-row .ms-name { font-size:0.72rem;color:rgba(245,240,240,0.62); }
+  .ltal-ms-sub { color:rgba(245,240,240,0.3); }
+  .ltal-ms-row .ms-pct { font-family:var(--display);font-size:1.05rem;color:var(--pink);font-variant-numeric:tabular-nums; }
 
   .login-wrap { max-width: 520px; margin: 3rem auto; padding: 0 1.5rem; }
   .login-card { background: var(--card); border: 1px solid var(--border); padding: 2.5rem; position: relative; overflow: hidden; }
@@ -2535,6 +2541,10 @@
           </div>
           <p class="ltal-toggle-hint">When the day resets, Less Than a Lover leaves the leaderboard. Turn this on to keep tracking your LTAL scrobbles here — otherwise your total freezes at its current number.</p>
           <p class="ltal-toggle-status" id="settings-ltal-status"></p>
+          <div class="ltal-milestones" id="ltal-milestones" style="display:none;">
+            <div class="ltal-ms-label">Your share of our Less Than a Lover milestones</div>
+            <div id="ltal-ms-rows"></div>
+          </div>
         </div>
       </div>
 
@@ -5313,6 +5323,10 @@ async function syncLtalToggle(totalLtal) {
     try { await sb.auth.updateUser({ data: { ltal_frozen: null } }); } catch {} finally { syncLtalToggle._freezing = false; }
   }
   if (numEl && shown != null) numEl.textContent = Number(shown).toLocaleString();
+
+  // Milestone-contribution % is a perk for opted-in profiles (uses the live total).
+  if (on && live != null) renderLtalMilestones(live);
+  else { const msBox = document.getElementById('ltal-milestones'); if (msBox) msBox.style.display = 'none'; }
 }
 
 // Pre-reset reminder popup: nudges fans to opt in before Less Than a Lover leaves
@@ -5323,6 +5337,28 @@ const LTAL_STOP_MS = Date.UTC(2026, 7, 17, 0, 0, 0); // 2026-08-17 00:00 UTC = 2
 // leaves the campaign: its challenge card, the personal goal, and the leaderboard
 // ranking all drop it. (Per-user profile tracking is handled separately.)
 function ltalCampaignActive() { return Date.now() < LTAL_STOP_MS; }
+
+// Blinks United's community scrobble totals captured the day Less Than a Lover
+// passed each Spotify streams milestone (locked figures — mirror of the release
+// card's milestone history). A fan's contribution % = their LTAL scrobbles ÷ the
+// community total at that milestone. Shown only for opted-in profiles.
+const LTAL_MILESTONES = [
+  { streams: '10M', community: 31305 },
+  { streams: '20M', community: 48033 },
+  { streams: '30M', community: 54627 },
+];
+function renderLtalMilestones(userLtal) {
+  const box  = document.getElementById('ltal-milestones');
+  const rows = document.getElementById('ltal-ms-rows');
+  if (!box || !rows) return;
+  if (!Number.isFinite(userLtal) || userLtal <= 0) { box.style.display = 'none'; return; }
+  rows.innerHTML = LTAL_MILESTONES.map(m => {
+    const pct = Math.min(100, (userLtal / m.community) * 100);
+    const pctStr = pct >= 10 ? pct.toFixed(1) : pct.toFixed(2);
+    return `<div class="ltal-ms-row"><span class="ms-name">At ${m.streams} streams <span class="ltal-ms-sub">· ${m.community.toLocaleString()} scrobbles</span></span><span class="ms-pct">${pctStr}%</span></div>`;
+  }).join('');
+  box.style.display = 'block';
+}
 function closeLtalReminder(goProfile) {
   const ov = document.getElementById('ltal-reminder-overlay');
   if (ov) ov.classList.remove('active');
