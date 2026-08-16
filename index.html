@@ -597,6 +597,18 @@
   /* ── GOAL HISTORY (chronology of past goal-hit days) ─────── */
   #goal-history-overlay { position: fixed; inset: 0; z-index: 9990; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.72); padding: 1rem; }
   #goal-history-overlay.active { display: flex; }
+  /* Less Than a Lover pre-reset reminder */
+  #ltal-reminder-overlay { position:fixed; inset:0; z-index:9996; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.82); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); padding:1.1rem; }
+  #ltal-reminder-overlay.active { display:flex; }
+  .ltal-reminder-box { max-width:440px; width:100%; background:#141018; border:1px solid rgba(255,0,102,0.3); padding:1.9rem 1.7rem; text-align:center; box-shadow:0 30px 90px -30px rgba(255,0,102,0.55); }
+  .ltal-reminder-emoji { font-size:1.9rem; line-height:1; }
+  .ltal-reminder-title { font-family:var(--display); font-size:1.35rem; letter-spacing:0.01em; margin:0.55rem 0 0; color:var(--white); }
+  .ltal-reminder-body { font-size:0.82rem; line-height:1.6; color:var(--muted); margin:0.7rem 0 0; }
+  .ltal-reminder-body strong { color:var(--white); }
+  .ltal-reminder-actions { display:flex; flex-direction:column; gap:0.55rem; margin-top:1.4rem; }
+  .ltal-reminder-actions .btn-primary { width:100%; margin-top:0; }
+  .ltal-reminder-dismiss { background:transparent; border:none; color:var(--muted); font-family:var(--mono); font-size:0.6rem; letter-spacing:0.14em; text-transform:uppercase; cursor:pointer; padding:0.45rem; }
+  .ltal-reminder-dismiss:hover { color:var(--pink); }
   .gh-box { background: var(--card); border: 1px solid rgba(255,0,102,0.25); width: 100%; max-width: 460px; max-height: 86vh; display: flex; flex-direction: column; }
   .gh-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.08); }
   .gh-title { font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pink); }
@@ -1818,6 +1830,19 @@
 </div>
 
 <!-- HOME PAGE -->
+<!-- Less Than a Lover pre-reset reminder (auto-hides after the 2 AM cutoff) -->
+<div id="ltal-reminder-overlay" role="dialog" aria-modal="true" aria-labelledby="ltal-reminder-title">
+  <div class="ltal-reminder-box">
+    <div class="ltal-reminder-emoji">💗🖤</div>
+    <h2 class="ltal-reminder-title" id="ltal-reminder-title">Less Than a Lover is leaving the campaign</h2>
+    <p class="ltal-reminder-body">At the <strong>2 AM reset</strong>, <em>Less Than a Lover</em> stops counting toward the leaderboard and community goal. If you want to keep tracking your own LTAL scrobbles on your profile, turn <strong>Less Than a Lover tracking</strong> on before then — otherwise your total simply freezes where it is.</p>
+    <div class="ltal-reminder-actions">
+      <button class="btn-primary" onclick="closeLtalReminder(true)">Take me to my profile</button>
+      <button class="ltal-reminder-dismiss" onclick="closeLtalReminder(false)">Not now</button>
+    </div>
+  </div>
+</div>
+
 <div id="page-home" class="page active">
 
   <section class="hero" id="home">
@@ -5259,6 +5284,29 @@ async function syncLtalToggle(totalLtal) {
   card.style.display = 'block';
   reflectLtalPref(session.user?.user_metadata?.count_ltal === true);
 }
+
+// Pre-reset reminder popup: nudges fans to opt in before Less Than a Lover leaves
+// the campaign at the 2 AM cutoff. Shows once (until dismissed) and never after
+// the cutoff has passed.
+const LTAL_STOP_MS = Date.UTC(2026, 7, 17, 0, 0, 0); // 2026-08-17 00:00 UTC = 2 AM Rome
+function closeLtalReminder(goProfile) {
+  const ov = document.getElementById('ltal-reminder-overlay');
+  if (ov) ov.classList.remove('active');
+  try { localStorage.setItem('ltal_reminder_dismissed_v1', '1'); } catch {}
+  if (goProfile) {
+    try { goToMyBadges(); } catch (e) { try { showPage('badges'); } catch (e2) {} }
+    setTimeout(() => document.getElementById('ltal-toggle-home')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 800);
+  }
+}
+function maybeShowLtalReminder() {
+  if (Date.now() >= LTAL_STOP_MS) return;              // campaign cutoff already passed
+  let dismissed = false;
+  try { dismissed = localStorage.getItem('ltal_reminder_dismissed_v1') === '1'; } catch (e) {}
+  if (dismissed) return;
+  const ov = document.getElementById('ltal-reminder-overlay');
+  if (ov) setTimeout(() => ov.classList.add('active'), 1400);
+}
+window.addEventListener('DOMContentLoaded', maybeShowLtalReminder);
 
 // Per-user opt-in: keep counting Less Than a Lover on your own profile past the
 // campaign cutoff. Stored in Supabase user_metadata.count_ltal so the server-side
