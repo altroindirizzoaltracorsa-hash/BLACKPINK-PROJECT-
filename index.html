@@ -449,6 +449,13 @@
   .ltal-switch-knob { position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .2s ease;box-shadow:0 1px 3px rgba(0,0,0,0.4); }
   .ltal-switch.on .ltal-switch-knob { left:24px; }
   .ltal-switch:focus-visible { outline:2px solid var(--pink);outline-offset:2px; }
+  .ltal-toggle-card { max-width:900px;margin:1rem auto 0;padding:1.3rem 1.5rem;border:1px solid rgba(255,0,102,0.18);background:#141018; }
+  .ltal-toggle-row { display:flex;align-items:center;justify-content:space-between;gap:1rem; }
+  .ltal-toggle-title { font-family:var(--display);font-size:1.1rem;letter-spacing:0.02em;color:var(--white); }
+  .ltal-toggle-count { font-size:0.58rem;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-top:0.2rem; }
+  .ltal-toggle-count #ltal-toggle-count-num { color:var(--pink);font-family:var(--display);font-size:0.95rem; }
+  .ltal-toggle-hint { font-size:0.6rem;letter-spacing:0.04em;color:rgba(245,240,240,0.4);line-height:1.5;margin-top:0.75rem; }
+  .ltal-toggle-status { font-size:0.6rem;letter-spacing:0.04em;margin-top:0.45rem; }
 
   .login-wrap { max-width: 520px; margin: 3rem auto; padding: 0 1.5rem; }
   .login-card { background: var(--card); border: 1px solid var(--border); padding: 2.5rem; position: relative; overflow: hidden; }
@@ -2443,18 +2450,6 @@
             </div>
           </div>
 
-          <div class="settings-group" id="ltal-pref-group" style="margin-top:1rem;">
-            <label class="settings-label">Less Than a Lover tracking</label>
-            <div class="ltal-switch-row">
-              <span class="ltal-switch-text">Keep counting on my profile</span>
-              <button type="button" id="s-ltal-switch" class="ltal-switch" role="switch" aria-checked="false" aria-label="Keep counting Less Than a Lover on my profile" onclick="setLtalPref(!this.classList.contains('on'))">
-                <span class="ltal-switch-knob"></span>
-              </button>
-            </div>
-            <p class="settings-hint">From the <strong>2 AM reset</strong>, <em>Less Than a Lover</em> leaves the leaderboard &amp; community goal for everyone. Turn this on before then to keep tracking your own LTAL scrobbles on your profile. Left off, your LTAL total simply freezes at its current number.</p>
-            <p class="settings-hint" id="settings-ltal-status"></p>
-          </div>
-
           <div style="margin-top:1rem;">
             <label class="settings-label">Linked Accounts</label>
             <p class="settings-hint" style="margin-bottom:0.5rem;">Last.fm, ListenBrainz, Libre.fm, Musicat, and/or Stats.fm usernames — all streams count toward one leaderboard row.</p>
@@ -2493,6 +2488,19 @@
       <div class="tracks-section" style="margin-top:2rem;">
         <p class="section-label">// Today's Challenge</p>
         <div id="daily-challenge-grid"></div>
+        <div id="ltal-toggle-home" class="ltal-toggle-card" style="display:none;">
+          <div class="ltal-toggle-row">
+            <div class="ltal-toggle-info">
+              <div class="ltal-toggle-title">Less Than a Lover</div>
+              <div class="ltal-toggle-count"><span id="ltal-toggle-count-num">0</span> <span class="ltal-toggle-count-lbl">scrobbles tracked</span></div>
+            </div>
+            <button type="button" id="s-ltal-switch" class="ltal-switch" role="switch" aria-checked="false" aria-label="Keep counting Less Than a Lover on my profile" onclick="setLtalPref(!this.classList.contains('on'))">
+              <span class="ltal-switch-knob"></span>
+            </button>
+          </div>
+          <p class="ltal-toggle-hint">From the <strong>2 AM reset</strong>, Less Than a Lover leaves the leaderboard &amp; community goal. Turn this on to keep tracking your LTAL scrobbles here — otherwise your total freezes at its current number.</p>
+          <p class="ltal-toggle-status" id="settings-ltal-status"></p>
+        </div>
       </div>
 
       <div class="tracks-section" style="margin-top:2rem;">
@@ -5127,7 +5135,6 @@ function renderAccountPage(session) {
     if (emailEl) emailEl.textContent = session.user.email || session.user.id;
     const dnInput = document.getElementById('linked-displayname-input-settings');
     if (dnInput) dnInput.value = session.user.user_metadata?.display_name || '';
-    reflectLtalPref(session.user.user_metadata?.count_ltal === true);
     loadLinkedAccounts();
     loadLinkedAccountsInline();
   } else {
@@ -5236,6 +5243,21 @@ async function saveDisplayName() {
 function reflectLtalPref(on) {
   const sw = document.getElementById('s-ltal-switch');
   if (sw) { sw.classList.toggle('on', !!on); sw.setAttribute('aria-checked', on ? 'true' : 'false'); }
+}
+
+// Populate + show the profile's Less Than a Lover opt-in card: fills the running
+// scrobble count and reflects the switch state. Session-gated — the switch only
+// shows for Supabase-authed users, since the pref saves to their account.
+async function syncLtalToggle(totalLtal) {
+  const card = document.getElementById('ltal-toggle-home');
+  if (!card) return;
+  const numEl = document.getElementById('ltal-toggle-count-num');
+  if (numEl && Number.isFinite(totalLtal)) numEl.textContent = Number(totalLtal).toLocaleString();
+  let session = null;
+  try { session = (await sb?.auth.getSession())?.data?.session || null; } catch {}
+  if (!session) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  reflectLtalPref(session.user?.user_metadata?.count_ltal === true);
 }
 
 // Per-user opt-in: keep counting Less Than a Lover on your own profile past the
@@ -7368,6 +7390,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
       return '';
     })()}
   `;
+  syncLtalToggle(totalPlays?.ltal);
 
   // Weekly challenge table
   const dayLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
