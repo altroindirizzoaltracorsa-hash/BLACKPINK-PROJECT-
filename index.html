@@ -7545,7 +7545,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
         <th>Total</th>
       </tr></thead>
       <tbody>
-        ${TRACKS.map(t => {
+        ${gridTracks.map(t => {
           const wc = weekCounts[t.id] || 0;
           const wBadge = getWeeklyBadge(t.id, wc);
           const wNext  = WEEKLY_TIERS[t.id].find(tier => wc < tier.min);
