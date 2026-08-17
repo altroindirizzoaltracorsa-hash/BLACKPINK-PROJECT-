@@ -2619,7 +2619,7 @@
         <button class="lb-subtab" onclick="switchLbSong('jump', this)">JUMP</button>
         <button class="lb-subtab" onclick="switchLbSong('shutdown', this)">SHUT DOWN</button>
         <button class="lb-subtab" onclick="switchLbSong('ddududu', this)">DDU-DU DDU-DU</button>
-        <button class="lb-subtab" onclick="switchLbSong('ltal', this)">LESS THAN A LOVER</button>
+        <button class="lb-subtab" id="lb-subtab-ltal" onclick="switchLbSong('ltal', this)">LESS THAN A LOVER</button>
         <button class="lb-subtab" onclick="switchLbSong('go', this)">GO</button>
       </div>
 
@@ -5390,6 +5390,16 @@ function maybeShowLtalReminder() {
   if (ov) setTimeout(() => ov.classList.add('active'), 1400);
 }
 window.addEventListener('DOMContentLoaded', maybeShowLtalReminder);
+
+// After the reset cutoff, remove the Less Than a Lover filter tab from the
+// leaderboard — it has left the campaign rankings.
+function hideLtalLeaderboardTab() {
+  if (ltalCampaignActive()) return;
+  const tab = document.getElementById('lb-subtab-ltal');
+  if (tab) tab.style.display = 'none';
+  if (typeof lbSong !== 'undefined' && lbSong === 'ltal') lbSong = 'all';
+}
+window.addEventListener('DOMContentLoaded', hideLtalLeaderboardTab);
 
 // Per-user opt-in: keep counting Less Than a Lover on your own profile past the
 // campaign cutoff. Stored in Supabase user_metadata.count_ltal so the server-side
@@ -9044,9 +9054,11 @@ function parseLbHistoryParam() {
 }
 
 function switchLbSong(song, btn) {
+  // Less Than a Lover left the campaign at the reset — never select it afterwards.
+  if (song === 'ltal' && !ltalCampaignActive()) { song = 'all'; btn = document.querySelector(".lb-subtab[onclick*=\"'all'\"]") || btn; }
   lbSong = song;
   document.querySelectorAll('.lb-subtab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
   renderLeaderboard();
 }
 
