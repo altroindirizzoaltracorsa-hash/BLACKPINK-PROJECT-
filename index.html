@@ -376,6 +376,12 @@
   .daily-progress-bar { height: 2px; background: rgba(255,255,255,0.06); margin-top: 0.5rem; }
   .daily-progress-fill { height: 100%; background: var(--pink); transition: width 1s ease; }
   .complete-banner { background: rgba(255,0,102,0.1); border: 1px solid rgba(255,0,102,0.3); padding: 1rem 1.5rem; text-align: center; margin-top: 1.5px; font-family: var(--display); font-size: 1.2rem; letter-spacing: 0.1em; color: var(--pink); }
+  /* Overall combined prestige badge (1k/day · 10k/week) */
+  .prestige-banner { background: rgba(255,0,102,0.05); border: 1px solid rgba(255,0,102,0.18); padding: 0.85rem 1.5rem; text-align: center; margin-top: 1.5px; font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .prestige-banner.earned { background: rgba(255,0,102,0.12); border-color: rgba(255,0,102,0.4); color: var(--pink); font-family: var(--display); font-size: 1rem; text-transform: none; letter-spacing: 0.06em; }
+  .prestige-banner .prestige-num { color: var(--pink); font-family: var(--display); font-size: 0.85rem; }
+  .prestige-bar { max-width: 320px; margin: 0.5rem auto 0; height: 4px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+  .prestige-fill { height: 100%; background: var(--pink); transition: width 0.6s ease; }
 
   .weekly-table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); }
   .weekly-table th { font-size: 0.58rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); padding: 0.6rem 0.8rem; text-align: center; border-bottom: 1px solid var(--border); font-weight: normal; }
@@ -6092,6 +6098,16 @@ function toggleTierAcc(btn) {
   const open = item.classList.toggle('open');
   btn.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
+// Overall combined prestige badge — 1,000 in a day / 10,000 in a week across all
+// campaign tracks. Rendered under the daily and weekly challenges.
+function overallPrestigeBanner(combined, goal, period) {
+  const label = period === 'day' ? 'today' : 'this week';
+  if (combined >= goal) {
+    return `<div class="prestige-banner earned">💎 ${goal.toLocaleString()}-in-a-${period} club — ${combined.toLocaleString()} combined ${label}! 💗</div>`;
+  }
+  const pct = Math.min(100, (combined / goal) * 100);
+  return `<div class="prestige-banner">💎 ${goal.toLocaleString()} in a ${period} — <span class="prestige-num">${combined.toLocaleString()}</span> / ${goal.toLocaleString()} ${label}<div class="prestige-bar"><div class="prestige-fill" style="width:${pct}%"></div></div></div>`;
+}
 
 // ── LAST.FM / LIBRE.FM API HELPERS ───────────────────────────
 async function lfmFetch(params) {
@@ -7517,6 +7533,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   // Daily challenge
   const dailyGrid = document.getElementById('daily-challenge-grid');
   const gridTracks = ltalCampaignActive() ? TRACKS : TRACKS.filter(t => t.id !== 'ltal');
+  const todayCombined = (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.go || 0);
   dailyGrid.innerHTML = `
     <div class="daily-grid">
       ${gridTracks.map(t => {
@@ -7554,12 +7571,14 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
       if (minMult >= 1) return '<div class="complete-banner">🏅 DAILY STAMP EARNED — Full playlist run on all 3 tracks! 💗</div>';
       return '';
     })()}
+    ${overallPrestigeBanner(todayCombined, 1000, 'day')}
   `;
   syncLtalToggle(totalPlays?.ltal);
 
   // Weekly challenge table
   const dayLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const weekGrid = document.getElementById('weekly-challenge-grid');
+  const weekCombined = (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.go || 0);
   weekGrid.innerHTML = `
     <table class="weekly-table">
       <thead><tr>
@@ -7588,6 +7607,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
         </tr>`;}).join('')}
       </tbody>
     </table>
+    ${overallPrestigeBanner(weekCombined, 10000, 'week')}
   `;
 
   // Today's stamp is persisted in loadProfile() (runs even in silent mode); just render the calendar.
