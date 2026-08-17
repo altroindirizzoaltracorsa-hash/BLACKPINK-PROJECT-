@@ -394,6 +394,9 @@
   .badge-history-date { font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
   .badge-history-song { font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,240,240,0.3); }
   .badge-history-empty { background: var(--card); padding: 2rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); font-size: 0.9rem; }
+  .badge-history-head { cursor: pointer; }
+  .badge-history-head:hover { background: var(--card2); }
+  .badge-history-desc { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--light-serif); font-style: italic; font-size: 0.65rem; color: var(--muted); }
 
   .badge-page {
     min-height: 100vh;
@@ -2572,7 +2575,7 @@
       </div>
 
       <div class="tracks-section" style="margin-top:2rem;">
-        <p class="section-label">// Badge History</p>
+        <p class="section-label">// Badge History <span style="color:var(--muted);text-transform:none;letter-spacing:0.04em;">— tap a song for its tiers</span></p>
         <div id="badge-history-grid"></div>
       </div>
 
@@ -7605,32 +7608,20 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   } else {
     badgeHistGrid.innerHTML = `
       <div class="badge-history-list">
-        ${earnedItems.map(item => `
-          <div class="badge-history-item">
-            <div class="badge-history-icon">${item.badge.icon}</div>
-            <div>
-              <div class="badge-history-label">${item.track.id === 'ltal' ? LTAL_TIER_LABELS[item.badge.id] : item.badge.label}</div>
-              <div class="badge-history-song">${item.track.title}</div>
-              <div class="badge-history-date">${item.plays.toLocaleString()} scrobbles</div>
-            </div>
-            <div style="margin-left:auto;font-family:var(--light-serif);font-style:italic;font-size:0.65rem;color:var(--muted);">${item.badge.desc}</div>
-          </div>
-        `).join('')}
-      </div>
-      <!-- Per-song badge tiers (collapsible) -->
-      <p style="margin:1.2rem 0 0.5rem;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);">// Badge Tiers — tap a song</p>
-      <div class="tiers-accordion">
-        ${TRACKS.map(t => {
-          const plays  = totalPlays[t.id] || 0;
+        ${earnedItems.map(item => {
+          const t = item.track, plays = item.plays;
           const labels = t.id === 'ltal' ? LTAL_TIER_LABELS : null;
-          const cur    = getBadge(plays);
-          const curName = cur ? (labels ? labels[cur.id] : cur.label) : 'No badge yet';
           return `<div class="tier-acc-item" data-song="${t.id}">
-            <button class="tier-acc-head" onclick="toggleTierAcc(this)" aria-expanded="false">
-              <span class="tier-acc-title">${t.title}</span>
-              <span class="tier-acc-cur">${cur ? cur.icon + ' ' : ''}${curName}</span>
+            <div class="badge-history-item badge-history-head" onclick="toggleTierAcc(this)" role="button" tabindex="0" aria-expanded="false">
+              <div class="badge-history-icon">${item.badge.icon}</div>
+              <div>
+                <div class="badge-history-label">${labels ? labels[item.badge.id] : item.badge.label}</div>
+                <div class="badge-history-song">${t.title}</div>
+                <div class="badge-history-date">${plays.toLocaleString()} scrobbles</div>
+              </div>
+              <div class="badge-history-desc">${item.badge.desc}</div>
               <span class="tier-acc-chev">▾</span>
-            </button>
+            </div>
             <div class="tier-acc-body"><div class="tiers-grid">
               ${BADGE_TIERS.map(tier => {
                 const earned = plays >= tier.min;
