@@ -458,10 +458,11 @@
   .ltal-toggle-status { font-size:0.6rem;letter-spacing:0.04em;margin-top:0.45rem; }
   .ltal-milestones { margin-top:1rem;padding-top:0.9rem;border-top:1px solid rgba(255,255,255,0.07); }
   .ltal-ms-label { font-size:0.55rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem; }
-  .ltal-ms-row { display:flex;align-items:center;justify-content:space-between;gap:0.6rem;padding:0.3rem 0; }
-  .ltal-ms-row .ms-name { font-size:0.72rem;color:rgba(245,240,240,0.62); }
+  .ltal-ms-row { display:flex;align-items:baseline;justify-content:space-between;gap:0.6rem;padding:0.35rem 0;flex-wrap:wrap; }
+  .ltal-ms-row .ms-name { font-size:0.68rem;color:rgba(245,240,240,0.62); }
   .ltal-ms-sub { color:rgba(245,240,240,0.3); }
-  .ltal-ms-row .ms-pct { font-family:var(--display);font-size:1.05rem;color:var(--pink);font-variant-numeric:tabular-nums; }
+  .ltal-ms-row .ms-pct { font-family:var(--display);font-size:0.82rem;color:var(--pink);white-space:nowrap;font-variant-numeric:tabular-nums; }
+  .ltal-ms-foot { font-size:0.55rem;color:rgba(245,240,240,0.3);letter-spacing:0.04em;line-height:1.5;margin-top:0.6rem; }
 
   .login-wrap { max-width: 520px; margin: 3rem auto; padding: 0 1.5rem; }
   .login-card { background: var(--card); border: 1px solid var(--border); padding: 2.5rem; position: relative; overflow: hidden; }
@@ -2542,8 +2543,9 @@
           <p class="ltal-toggle-hint">When the day resets, Less Than a Lover leaves the leaderboard. Turn this on to keep tracking your LTAL scrobbles here — otherwise your total freezes at its current number.</p>
           <p class="ltal-toggle-status" id="settings-ltal-status"></p>
           <div class="ltal-milestones" id="ltal-milestones" style="display:none;">
-            <div class="ltal-ms-label">Your % toward each Less Than a Lover streams milestone</div>
+            <div class="ltal-ms-label">🏆 Less Than a Lover — Milestone Contribution</div>
             <div id="ltal-ms-rows"></div>
+            <div class="ltal-ms-foot">Your cumulative LTAL scrobbles the day the track passed each Spotify streams milestone · % of our community total · rank among contributors.</div>
           </div>
         </div>
       </div>
@@ -5324,9 +5326,17 @@ async function syncLtalToggle(totalLtal) {
   }
   if (numEl && shown != null) numEl.textContent = Number(shown).toLocaleString();
 
-  // Milestone-contribution % is a perk for opted-in profiles (uses the live total).
-  if (on && live != null) renderLtalMilestones(live);
-  else { const msBox = document.getElementById('ltal-milestones'); if (msBox) msBox.style.display = 'none'; }
+  // Milestone contribution is a perk for opted-in profiles (baked history lookup).
+  if (on) {
+    const names = [];
+    try { const u = (typeof getSavedUsername === 'function') && getSavedUsername(); if (u) names.push(u); } catch (e) {}
+    if (Array.isArray(acctBreakdown)) for (const a of acctBreakdown) if (a && a.username) names.push(a.username);
+    if (currentUser && currentUser.info) {
+      if (currentUser.info.username)    names.push(currentUser.info.username);
+      if (currentUser.info.displayName) names.push(currentUser.info.displayName);
+    }
+    renderLtalMilestones(names);
+  } else { const msBox = document.getElementById('ltal-milestones'); if (msBox) msBox.style.display = 'none'; }
 }
 
 // Pre-reset reminder popup: nudges fans to opt in before Less Than a Lover leaves
@@ -5338,25 +5348,29 @@ const LTAL_STOP_MS = Date.UTC(2026, 7, 17, 0, 0, 0); // 2026-08-17 00:00 UTC = 2
 // ranking all drop it. (Per-user profile tracking is handled separately.)
 function ltalCampaignActive() { return Date.now() < LTAL_STOP_MS; }
 
-// Less Than a Lover's Spotify streams milestones. A fan's "percentage to reach"
-// each milestone = their LTAL scrobbles (plays) as a share of that milestone's
-// stream count. Shown only for opted-in profiles.
-const LTAL_MILESTONES = [
-  { streams: '10M', target: 10000000 },
-  { streams: '20M', target: 20000000 },
-  { streams: '30M', target: 30000000 },
-];
-function renderLtalMilestones(userLtal) {
+// Milestone contribution for the profile card — reuses the baked ltal-milestones
+// lookup (each Blink's cumulative LTAL scrobbles the day the track passed each
+// Spotify streams milestone, their % of the community total, and rank). Same data
+// and logic as the leaderboard's Milestone Contribution section.
+function renderLtalMilestones(candidateNames) {
   const box  = document.getElementById('ltal-milestones');
   const rows = document.getElementById('ltal-ms-rows');
   if (!box || !rows) return;
-  if (!Number.isFinite(userLtal) || userLtal <= 0) { box.style.display = 'none'; return; }
-  rows.innerHTML = LTAL_MILESTONES.map(m => {
-    const pct = Math.min(100, (userLtal / m.target) * 100);
-    const pctStr = pct >= 1 ? pct.toFixed(2) : pct.toFixed(4);
-    return `<div class="ltal-ms-row"><span class="ms-name">${m.streams} streams</span><span class="ms-pct">${pctStr}%</span></div>`;
-  }).join('');
-  box.style.display = 'block';
+  loadLtalMilestones().then(ms => {
+    let e = null;
+    for (const name of (candidateNames || [])) { e = _ltalMsEntry(ms, name); if (e) break; }
+    if (!e || (!e.m10c && !e.m20c && !e.m30c)) { box.style.display = 'none'; return; }
+    const row = (mk) => {
+      const c = e[mk + 'c']; if (!c) return '';
+      const meta = ms[mk] || {}; const r = e[mk + 'r'];
+      return `<div class="ltal-ms-row"><span class="ms-name">${meta.streams} streams <span class="ltal-ms-sub">· ${meta.label}</span></span>`
+        + `<span class="ms-pct">${Number(c).toLocaleString()} · ${_ltalPct(c, meta.total)}${r ? ` · #${r}/${meta.contributors}` : ''}</span></div>`;
+    };
+    const html = [row('m10'), row('m20'), row('m30')].filter(Boolean).join('');
+    if (!html) { box.style.display = 'none'; return; }
+    rows.innerHTML = html;
+    box.style.display = 'block';
+  }).catch(() => { box.style.display = 'none'; });
 }
 function closeLtalReminder(goProfile) {
   const ov = document.getElementById('ltal-reminder-overlay');
