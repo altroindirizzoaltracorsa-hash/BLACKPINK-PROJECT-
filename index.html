@@ -2542,7 +2542,7 @@
           <p class="ltal-toggle-hint">When the day resets, Less Than a Lover leaves the leaderboard. Turn this on to keep tracking your LTAL scrobbles here — otherwise your total freezes at its current number.</p>
           <p class="ltal-toggle-status" id="settings-ltal-status"></p>
           <div class="ltal-milestones" id="ltal-milestones" style="display:none;">
-            <div class="ltal-ms-label">Your share of our Less Than a Lover milestones</div>
+            <div class="ltal-ms-label">Your % toward each Less Than a Lover streams milestone</div>
             <div id="ltal-ms-rows"></div>
           </div>
         </div>
@@ -5338,14 +5338,13 @@ const LTAL_STOP_MS = Date.UTC(2026, 7, 17, 0, 0, 0); // 2026-08-17 00:00 UTC = 2
 // ranking all drop it. (Per-user profile tracking is handled separately.)
 function ltalCampaignActive() { return Date.now() < LTAL_STOP_MS; }
 
-// Blinks United's community scrobble totals captured the day Less Than a Lover
-// passed each Spotify streams milestone (locked figures — mirror of the release
-// card's milestone history). A fan's contribution % = their LTAL scrobbles ÷ the
-// community total at that milestone. Shown only for opted-in profiles.
+// Less Than a Lover's Spotify streams milestones. A fan's "percentage to reach"
+// each milestone = their LTAL scrobbles (plays) as a share of that milestone's
+// stream count. Shown only for opted-in profiles.
 const LTAL_MILESTONES = [
-  { streams: '10M', community: 31305 },
-  { streams: '20M', community: 48033 },
-  { streams: '30M', community: 54627 },
+  { streams: '10M', target: 10000000 },
+  { streams: '20M', target: 20000000 },
+  { streams: '30M', target: 30000000 },
 ];
 function renderLtalMilestones(userLtal) {
   const box  = document.getElementById('ltal-milestones');
@@ -5353,9 +5352,9 @@ function renderLtalMilestones(userLtal) {
   if (!box || !rows) return;
   if (!Number.isFinite(userLtal) || userLtal <= 0) { box.style.display = 'none'; return; }
   rows.innerHTML = LTAL_MILESTONES.map(m => {
-    const pct = Math.min(100, (userLtal / m.community) * 100);
-    const pctStr = pct >= 10 ? pct.toFixed(1) : pct.toFixed(2);
-    return `<div class="ltal-ms-row"><span class="ms-name">At ${m.streams} streams <span class="ltal-ms-sub">· ${m.community.toLocaleString()} scrobbles</span></span><span class="ms-pct">${pctStr}%</span></div>`;
+    const pct = Math.min(100, (userLtal / m.target) * 100);
+    const pctStr = pct >= 1 ? pct.toFixed(2) : pct.toFixed(4);
+    return `<div class="ltal-ms-row"><span class="ms-name">${m.streams} streams</span><span class="ms-pct">${pctStr}%</span></div>`;
   }).join('');
   box.style.display = 'block';
 }
