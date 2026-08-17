@@ -690,7 +690,7 @@
   .badge-locked-text { font-size: 0.58rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(245,240,240,0.2); }
 
   .tiers-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem 1rem; }
-  .tiers-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 1px; background: var(--border); }
+  .tiers-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 1px; background: var(--border); }
   .tier-cell { background: var(--card); padding: 1.2rem 0.8rem; text-align: center; transition: background 0.2s; }
   .tier-cell.earned { background: rgba(255,0,102,0.07); }
   .tier-cell:hover { background: var(--card2); }
@@ -6008,6 +6008,7 @@ const LTAL_TIER_LABELS = {
   soldier: 'Lover',
   queen:   'More than a lover',
   legend:  'A little bit more than a lover',
+  icon:    'So much more than a lover',
 };
 
 const BADGE_TIERS = [
@@ -6016,6 +6017,7 @@ const BADGE_TIERS = [
   { id: 'soldier', label: 'SOLDIER', min: 50,  icon: '🎀', desc: 'Streaming warrior.' },
   { id: 'queen',   label: 'QUEEN',   min: 100, icon: '👑', desc: 'Royalty in the fandom.' },
   { id: 'legend',  label: 'LEGEND',  min: 500, icon: '⚡', desc: 'You ARE BLACKPINK.' },
+  { id: 'icon',    label: 'ICON',    min: 10000, icon: '💎', desc: 'One in ten thousand.' },
 ];
 
 // ── DAILY BADGE TIERS ────────────────────────────────────────────────────────
@@ -7629,7 +7631,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
                 return `<div class="tier-cell ${earned ? 'earned' : ''}">
                   <div class="tier-cell-icon" style="opacity:${earned ? 1 : 0.2}">${tier.icon}</div>
                   <div class="tier-cell-name" style="color:${earned ? 'var(--pink)' : 'var(--white)'}">${name}</div>
-                  <div class="tier-cell-req">${tier.min}+ plays</div>
+                  <div class="tier-cell-req">${tier.min.toLocaleString()}+ plays</div>
                   ${earned ? '<div class="tier-earned-tag">✓ EARNED</div>' : '<div class="tier-locked-tag">locked</div>'}
                 </div>`;
               }).join('')}
