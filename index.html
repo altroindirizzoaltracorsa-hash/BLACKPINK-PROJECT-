@@ -696,6 +696,17 @@
   .tier-cell-req { font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; }
   .tier-earned-tag { font-size: 0.62rem; color: var(--pink); letter-spacing: 0.08em; }
   .tier-locked-tag { font-size: 0.62rem; color: rgba(245,240,240,0.15); }
+  /* Per-song collapsible badge tiers */
+  .tiers-accordion { max-width: 900px; margin: 0.4rem auto 0; display: flex; flex-direction: column; gap: 1px; background: var(--border); }
+  .tier-acc-item { background: var(--card); }
+  .tier-acc-head { width: 100%; display: flex; align-items: center; gap: 0.7rem; padding: 0.95rem 1.1rem; background: transparent; border: none; cursor: pointer; text-align: left; color: var(--white); font: inherit; }
+  .tier-acc-head:hover { background: var(--card2); }
+  .tier-acc-title { font-family: var(--display); font-size: 1rem; letter-spacing: 0.05em; flex-shrink: 0; }
+  .tier-acc-cur { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.6rem; letter-spacing: 0.06em; color: var(--pink); text-transform: uppercase; }
+  .tier-acc-chev { flex-shrink: 0; font-size: 0.7rem; color: var(--muted); transition: transform 0.25s ease; }
+  .tier-acc-item.open .tier-acc-chev { transform: rotate(180deg); }
+  .tier-acc-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+  .tier-acc-item.open .tier-acc-body { max-height: 720px; }
 
   .badge-footer-note { max-width: 900px; margin: 2rem auto 0; padding: 0 1.5rem; font-size: 0.62rem; letter-spacing: 0.1em; color: rgba(245,240,240,0.2); text-align: center; line-height: 1.8; }
   .badge-footer-note a { color: var(--pink); text-decoration: none; }
@@ -6069,6 +6080,13 @@ function getNextBadge(plays) {
   for (const t of BADGE_TIERS) { if (plays < t.min) return t; }
   return null;
 }
+// Expand/collapse a per-song badge-tier accordion row.
+function toggleTierAcc(btn) {
+  const item = btn.closest('.tier-acc-item');
+  if (!item) return;
+  const open = item.classList.toggle('open');
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
 
 // ── LAST.FM / LIBRE.FM API HELPERS ───────────────────────────
 async function lfmFetch(params) {
@@ -7599,21 +7617,34 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
           </div>
         `).join('')}
       </div>
-      <!-- Less Than a Lover tiers -->
-      <p style="margin:1.2rem 0 0.5rem;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);">// Less Than a Lover Tiers</p>
-      <div style="background:var(--border);">
-        <div class="tiers-grid">
-          ${BADGE_TIERS.map(tier => {
-            const ltalPlays = totalPlays.ltal || 0;
-            const earned = ltalPlays >= tier.min;
-            return `<div class="tier-cell ${earned ? 'earned' : ''}">
-              <div class="tier-cell-icon" style="opacity:${earned ? 1 : 0.2}">${tier.icon}</div>
-              <div class="tier-cell-name" style="color:${earned ? 'var(--pink)' : 'var(--white)'}">${LTAL_TIER_LABELS[tier.id]}</div>
-              <div class="tier-cell-req">${tier.min}+ plays</div>
-              ${earned ? '<div class="tier-earned-tag">✓ EARNED</div>' : '<div class="tier-locked-tag">locked</div>'}
-            </div>`;
-          }).join('')}
-        </div>
+      <!-- Per-song badge tiers (collapsible) -->
+      <p style="margin:1.2rem 0 0.5rem;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);">// Badge Tiers — tap a song</p>
+      <div class="tiers-accordion">
+        ${TRACKS.map(t => {
+          const plays  = totalPlays[t.id] || 0;
+          const labels = t.id === 'ltal' ? LTAL_TIER_LABELS : null;
+          const cur    = getBadge(plays);
+          const curName = cur ? (labels ? labels[cur.id] : cur.label) : 'No badge yet';
+          return `<div class="tier-acc-item" data-song="${t.id}">
+            <button class="tier-acc-head" onclick="toggleTierAcc(this)" aria-expanded="false">
+              <span class="tier-acc-title">${t.title}</span>
+              <span class="tier-acc-cur">${cur ? cur.icon + ' ' : ''}${curName}</span>
+              <span class="tier-acc-chev">▾</span>
+            </button>
+            <div class="tier-acc-body"><div class="tiers-grid">
+              ${BADGE_TIERS.map(tier => {
+                const earned = plays >= tier.min;
+                const name = labels ? labels[tier.id] : tier.label;
+                return `<div class="tier-cell ${earned ? 'earned' : ''}">
+                  <div class="tier-cell-icon" style="opacity:${earned ? 1 : 0.2}">${tier.icon}</div>
+                  <div class="tier-cell-name" style="color:${earned ? 'var(--pink)' : 'var(--white)'}">${name}</div>
+                  <div class="tier-cell-req">${tier.min}+ plays</div>
+                  ${earned ? '<div class="tier-earned-tag">✓ EARNED</div>' : '<div class="tier-locked-tag">locked</div>'}
+                </div>`;
+              }).join('')}
+            </div></div>
+          </div>`;
+        }).join('')}
       </div>
     `;
   }
