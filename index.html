@@ -2545,7 +2545,7 @@
           <div class="ltal-milestones" id="ltal-milestones" style="display:none;">
             <div class="ltal-ms-label">🏆 Less Than a Lover — Milestone Contribution</div>
             <div id="ltal-ms-rows"></div>
-            <div class="ltal-ms-foot">Your cumulative LTAL scrobbles the day the track passed each Spotify streams milestone · % of our community total · rank among contributors.</div>
+            <div class="ltal-ms-foot">Your cumulative LTAL scrobbles the day the track passed each Spotify streams milestone · % of those streams · rank among contributors.</div>
           </div>
         </div>
       </div>
@@ -5364,7 +5364,7 @@ function renderLtalMilestones(candidateNames) {
       const c = e[mk + 'c']; if (!c) return '';
       const meta = ms[mk] || {}; const r = e[mk + 'r'];
       return `<div class="ltal-ms-row"><span class="ms-name">${meta.streams} streams <span class="ltal-ms-sub">· ${meta.label}</span></span>`
-        + `<span class="ms-pct">${Number(c).toLocaleString()} · ${_ltalPct(c, meta.total)}${r ? ` · #${r}/${meta.contributors}` : ''}</span></div>`;
+        + `<span class="ms-pct">${Number(c).toLocaleString()} · ${_ltalPctOfStreams(c, meta.streams)}${r ? ` · #${r}/${meta.contributors}` : ''}</span></div>`;
     };
     const html = [row('m10'), row('m20'), row('m30')].filter(Boolean).join('');
     if (!html) { box.style.display = 'none'; return; }
@@ -8502,6 +8502,21 @@ function _ltalPct(count, total) {
   if (p >= 0.01) return p.toFixed(2) + '%';
   return '<0.01%';
 }
+// Parse a milestone label like "10M" / "1.5B" / "500K" into its numeric stream count.
+function _ltalStreamValue(s) {
+  const m = String(s || '').trim().match(/^([\d.]+)\s*([KMB]?)$/i);
+  if (!m) return 0;
+  return parseFloat(m[1]) * ({ '': 1, K: 1e3, M: 1e6, B: 1e9 }[m[2].toUpperCase()] || 1);
+}
+// A fan's scrobbles that day as a % of the milestone's actual Spotify streams.
+function _ltalPctOfStreams(count, streamsStr) {
+  const denom = _ltalStreamValue(streamsStr);
+  if (!denom) return '0%';
+  const p = (count / denom) * 100;
+  if (p >= 1)    return p.toFixed(2) + '%';
+  if (p >= 0.01) return p.toFixed(3) + '%';
+  return p.toFixed(4) + '%';
+}
 // Appends the milestone section to the currently-open profile panel once the
 // static lookup has loaded (guarded so a fast profile-switch can't cross-fill).
 function renderLtalMilestoneSection(username) {
@@ -8517,7 +8532,7 @@ function renderLtalMilestoneSection(username) {
       const meta = ms[mk] || {};
       const r = e[mk + 'r'];
       return `<div class="lb-profile-row"><span class="label">At ${meta.streams} streams · ${meta.label}</span>`
-        + `<span class="val">${Number(c).toLocaleString()} · ${_ltalPct(c, meta.total)}`
+        + `<span class="val">${Number(c).toLocaleString()} · ${_ltalPctOfStreams(c, meta.streams)}`
         + (r ? ` · #${r}/${meta.contributors}` : '') + `</span></div>`;
     };
     const rows = [row('m10'), row('m20'), row('m30')].filter(Boolean).join('');
@@ -8526,7 +8541,7 @@ function renderLtalMilestoneSection(username) {
       `<div class="lb-profile-section ltal-ms-section">`
       + `<div class="lb-profile-section-title">🏆 Less Than a Lover — Milestone Contribution</div>`
       + rows
-      + `<div style="font-size:0.58rem;color:var(--muted);letter-spacing:0.04em;line-height:1.5;margin-top:0.5rem;">Your cumulative LTAL scrobbles the day the track passed each Spotify streams milestone · % of our community total · rank among contributors.</div>`
+      + `<div style="font-size:0.58rem;color:var(--muted);letter-spacing:0.04em;line-height:1.5;margin-top:0.5rem;">Your cumulative LTAL scrobbles the day the track passed each Spotify streams milestone · % of those streams · rank among contributors.</div>`
       + `</div>`);
   }).catch(() => {});
 }
