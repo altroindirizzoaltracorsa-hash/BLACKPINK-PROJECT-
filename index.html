@@ -2057,7 +2057,7 @@
             <div class="goal-tracker-status" id="community-goal-status">Loading today's progress…</div>
             <div style="display:flex;gap:0.5rem;flex-shrink:0;">
               <button id="goal-history-btn" class="gen-card-btn" style="margin-top:0;width:auto;padding:0.45rem 1rem;" onclick="openGoalHistory()">🏆 Past Days</button>
-              <button id="goal-share-btn" class="gen-card-btn" style="display:none;margin-top:0;width:auto;padding:0.45rem 1rem;" onclick="openGoalHitCard()">⬡ Share</button>
+              <button id="goal-share-btn" class="gen-card-btn" style="display:none;margin-top:0;width:auto;padding:0.45rem 1rem;" onclick="openGoalHitCard()">⬡ Share progress</button>
             </div>
           </div>
           <div id="goal-streak-line" style="display:none;font-size:0.6rem;letter-spacing:0.15em;color:var(--muted);margin-top:0.1rem;"></div>
@@ -10823,6 +10823,7 @@ let cardCanvas = null; // current canvas for download
 let _cardShareBlob = null; // pre-generated blob for shareCard (set when drawing completes)
 let _msShareBlob   = null; // pre-generated blob for shareMilestoneCard
 let _goalCardPhoto = null; // pre-loaded BLACKPINK photo for goal hit card
+let _goalWalkersImg = null; // pre-loaded walking-members cutout for the goal card
 
 // Called at the end of every card draw function so the share blob is ready
 // before the user taps Share — avoids async toBlob inside the gesture handler.
@@ -10986,7 +10987,7 @@ function setCardFormat(fmt, btn) {
   else if (_cardType === 'artist') drawArtistCard(canvas, _artistCardData, _cardLogo, _cardArt, _artistCardData?.artistName);
   else if (_cardType === 'release') drawReleaseCard(canvas, _cardLogo, _cardArt, ltalWordmarkImg);
   else if (_cardType === 'goals') drawGoalsCard(canvas, _cardLogo, _cardArt, _goalsCardData);
-  else if (_cardType === 'goal-hit' && window._goalCardData) drawGoalHitCard(canvas, { ...window._goalCardData, logo: _cardLogo, photo: _goalCardPhoto });
+  else if (_cardType === 'goal-hit' && window._goalCardData) drawGoalHitCard(canvas, { ...window._goalCardData, logo: _cardLogo, walkers: _goalWalkersImg });
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -12723,15 +12724,15 @@ async function openGoalHitCard() {
   await document.fonts.ready;
   const canvas = document.getElementById('card-canvas');
   canvas.width = 1080; canvas.height = 1080;
-  const [logo, photo] = await Promise.all([
+  const [logo, walkers] = await Promise.all([
     getBuLogo(),
-    _goalCardPhoto
-      ? Promise.resolve(_goalCardPhoto)
-      : loadImg('/goal-card-bp.jpg').then(img => { _goalCardPhoto = img; return img; }).catch(() => null),
+    _goalWalkersImg
+      ? Promise.resolve(_goalWalkersImg)
+      : loadImg('/goal-walkers.png').then(img => { _goalWalkersImg = img; return img; }).catch(() => null),
   ]);
   _cardLogo = logo;
 
-  const cardData = { ...d, logo, photo };
+  const cardData = { ...d, logo, walkers };
   const _hit = d.primary || d.stretch || d.total >= 15000;
   const finalLabel = _hit
     ? (d.stretch ? 'STRETCH GOAL SMASHED 🎉' : 'COMMUNITY GOAL HIT 🎉')
@@ -12788,49 +12789,32 @@ async function openGoalHitCard() {
   }
 }
 
-function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, photo, dateKey, _animPct = 1, _skipReady = false }) {
+// Rounded-rect path helper for the goal card runway.
+function _cardRR(ctx, x, y, w, h, r) {
+  r = Math.min(r, h / 2, w / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, walkers, dateKey, _animPct = 1, _skipReady = false }) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   const PX = 90;
-  const PHOTO_Y = 576; // text section: 0–576, photo section: 576–1080
 
-  // Dark background
+  // Dark background + pink glow
   ctx.fillStyle = '#080808';
   ctx.fillRect(0, 0, W, H);
-
-  // BLACKPINK photo in lower section — show top portion (faces)
-  if (photo) {
-    ctx.save();
-    ctx.filter = 'brightness(0.58) contrast(1.05) saturate(1.15)';
-    // sourceH: how many source pixels map to the card's photo section height
-    const srcH = Math.round(photo.naturalWidth * (H - PHOTO_Y) / W);
-    ctx.drawImage(photo, 0, 0, photo.naturalWidth, Math.min(srcH, photo.naturalHeight), 0, PHOTO_Y, W, H - PHOTO_Y);
-    ctx.filter = 'none';
-    ctx.restore();
-
-    // Fade the photo into the dark card at the top join
-    const fade = ctx.createLinearGradient(0, PHOTO_Y - 80, 0, PHOTO_Y + 80);
-    fade.addColorStop(0, '#080808');
-    fade.addColorStop(1, 'rgba(8,8,8,0)');
-    ctx.fillStyle = fade;
-    ctx.fillRect(0, PHOTO_Y - 80, W, 160);
-
-    // Dark vignette at very bottom for branding legibility
-    const vig = ctx.createLinearGradient(0, H - 160, 0, H);
-    vig.addColorStop(0, 'rgba(8,8,8,0)');
-    vig.addColorStop(1, 'rgba(8,8,8,0.88)');
-    ctx.fillStyle = vig;
-    ctx.fillRect(0, H - 160, W, 160);
-  }
-
-  // Pink glow in the text section only
-  const glow = ctx.createRadialGradient(W / 2, 210, 0, W / 2, 210, 520);
-  glow.addColorStop(0, 'rgba(255,0,102,0.22)');
+  const glow = ctx.createRadialGradient(W / 2, 210, 0, W / 2, 210, 560);
+  glow.addColorStop(0, 'rgba(255,0,102,0.20)');
   glow.addColorStop(1, 'rgba(8,8,8,0)');
   ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, photo ? PHOTO_Y : H);
-
-  drawNoise(ctx, W, H, 0.025);
+  ctx.fillRect(0, 0, W, H);
+  drawNoise(ctx, W, H, 0.02);
 
   // Date top-right — historical dateKey (YYYY-MM-DD) when re-opening a past day, else today
   const now = dateKey ? new Date(dateKey + 'T00:00:00Z') : new Date();
@@ -12842,25 +12826,30 @@ function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, photo,
   ctx.fillText(`${months[now.getUTCMonth()]} ${now.getUTCDate()}, ${now.getUTCFullYear()}`, W - PX, 66);
   ctx.textAlign = 'left';
 
-  // Thin pink rule
+  // Rule + eyebrow
   ctx.fillStyle = 'rgba(255,0,102,0.4)';
   ctx.fillRect(PX, 86, W - PX * 2, 1);
-
-  // "COMMUNITY GOAL"
   ctx.fillStyle = 'rgba(245,240,240,0.4)';
   ctx.font = '500 19px "DM Mono", monospace';
   ctx.letterSpacing = '7px';
-  ctx.fillText('COMMUNITY GOAL', PX, 138);
+  ctx.fillText('COMMUNITY GOAL · TODAY', PX, 138);
 
   // Status — goal hit, or in-progress percentage
+  const goalNum = stretch ? 20000 : 15000;
   const _isHit = primary || stretch || total >= 15000;
-  const _statusTxt = _isHit
+  const statusTxt = _isHit
     ? (stretch ? 'STRETCH GOAL SMASHED' : 'PRIMARY GOAL HIT')
-    : `${Math.round((total / (stretch ? 20000 : 15000)) * 1000) / 10}% OF TODAY'S GOAL`;
+    : `${Math.round((total / goalNum) * 1000) / 10}% OF TODAY'S GOAL`;
   ctx.fillStyle = '#FF0066';
-  ctx.font = '76px "Bebas Neue", sans-serif';
   ctx.letterSpacing = '4px';
-  ctx.fillText(_statusTxt, PX, 220);
+  let statusSize = 76;
+  const statusMaxW = W - PX * 2;
+  do {
+    ctx.font = `${statusSize}px "Bebas Neue", sans-serif`;
+    if (ctx.measureText(statusTxt).width <= statusMaxW) break;
+    statusSize -= 2;
+  } while (statusSize > 40);
+  ctx.fillText(statusTxt, PX, 220);
 
   // Big number (animated)
   ctx.fillStyle = '#F5F0F0';
@@ -12869,40 +12858,79 @@ function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, photo,
   ctx.fillText(Math.round(_animPct * total).toLocaleString(), PX, 394);
 
   // Goal label
-  const goalNum = stretch ? 20000 : 15000;
-  ctx.fillStyle = 'rgba(245,240,240,0.35)';
+  ctx.fillStyle = 'rgba(245,240,240,0.4)';
   ctx.font = '40px "Bebas Neue", sans-serif';
   ctx.letterSpacing = '3px';
   ctx.fillText(`/ ${goalNum.toLocaleString()} SCROBBLES`, PX, 440);
 
-  // Progress bar (animated)
-  const barY = 478, barH = 6, barW = W - PX * 2;
-  ctx.fillStyle = 'rgba(255,255,255,0.07)';
-  ctx.fillRect(PX, barY, barW, barH);
-  const pct = _animPct * Math.min(1, total / goalNum);
-  const barGrad = ctx.createLinearGradient(PX, 0, PX + barW, 0);
-  barGrad.addColorStop(0, '#FF0066');
-  barGrad.addColorStop(1, '#FF6699');
-  ctx.fillStyle = barGrad;
-  ctx.fillRect(PX, barY, Math.round(barW * pct), barH);
-
-  // Second rule
-  ctx.fillStyle = 'rgba(255,0,102,0.25)';
-  ctx.fillRect(PX, 518, W - PX * 2, 1);
-
-  // Streak
+  // Streak (when present)
   if (streak > 0) {
     ctx.fillStyle = '#FF0066';
     ctx.font = '500 22px "DM Mono", monospace';
     ctx.letterSpacing = '4px';
-    ctx.fillText(`🔥 ${streak} DAY${streak === 1 ? '' : 'S'} IN A ROW`, PX, 558);
+    ctx.fillText(`🔥 ${streak} DAY${streak === 1 ? '' : 'S'} IN A ROW`, PX, 486);
   }
 
-  // Bottom branding — circle logo + BLINKS UNITED (with shadow for photo legibility)
-  const LR = 28;
-  const logoY = H - 70;
-  ctx.shadowColor = 'rgba(0,0,0,0.95)';
-  ctx.shadowBlur = 14;
+  // ── Walking runway (the on-page walking bar, drawn onto the card) ──
+  const barY = 772, barH = 50, barX = PX, barW = W - PX * 2, radius = 25;
+  _cardRR(ctx, barX, barY, barW, barH, radius);
+  ctx.fillStyle = '#191320';
+  ctx.fill();
+  ctx.save();
+  _cardRR(ctx, barX, barY, barW, barH, radius);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([12, 22]);
+  ctx.beginPath();
+  ctx.moveTo(barX + 18, barY + barH / 2);
+  ctx.lineTo(barX + barW - 18, barY + barH / 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  const lead = barW * Math.min(1, (_animPct * total) / goalNum);
+  const fg = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+  fg.addColorStop(0, '#FF1F6F');
+  fg.addColorStop(1, '#FF74AC');
+  ctx.fillStyle = fg;
+  _cardRR(ctx, barX, barY, Math.max(barH, lead), barH, radius);
+  ctx.fill();
+  ctx.restore();
+  const edgeX = barX + lead;
+
+  // Walking members standing at the leading edge
+  if (walkers && walkers.naturalWidth) {
+    const wH = 248, wW = walkers.naturalWidth * wH / walkers.naturalHeight;
+    const cx = Math.max(barX + wW * 0.42, Math.min(barX + barW - wW * 0.42, edgeX));
+    const g = ctx.createRadialGradient(cx, barY + 12, 0, cx, barY + 12, wW * 0.45);
+    g.addColorStop(0, 'rgba(255,116,172,0.55)');
+    g.addColorStop(1, 'rgba(255,116,172,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(cx, barY + 12, wW * 0.42, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.drawImage(walkers, cx - wW / 2, barY + 12 - wH, wW, wH);
+  }
+
+  // Wavefront line at the leading edge
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = 'rgba(255,116,172,0.9)';
+  ctx.shadowBlur = 22;
+  ctx.fillRect(edgeX - 2, barY - 8, 4, barH + 16);
+  ctx.shadowBlur = 0;
+
+  // Ticks
+  ctx.fillStyle = 'rgba(245,240,240,0.4)';
+  ctx.font = '500 22px "DM Mono", monospace';
+  ctx.letterSpacing = '1px';
+  ctx.fillText('0', barX, barY + barH + 40);
+  ctx.textAlign = 'right';
+  ctx.fillText(goalNum.toLocaleString(), barX + barW, barY + barH + 40);
+  ctx.textAlign = 'left';
+
+  // Bottom branding — circle logo + BLINKS UNITED
+  const LR = 28, logoY = H - 78;
+  ctx.shadowColor = 'rgba(0,0,0,0.9)';
+  ctx.shadowBlur = 12;
   if (logo) {
     ctx.save();
     ctx.beginPath(); ctx.arc(PX + LR, logoY, LR, 0, Math.PI * 2); ctx.clip();
@@ -12911,15 +12939,15 @@ function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, photo,
     ctx.beginPath(); ctx.arc(PX + LR, logoY, LR + 1, 0, Math.PI * 2);
     ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
   }
-  const brandX = logo ? PX + LR * 2 + 10 : PX;
+  const brandX = logo ? PX + LR * 2 + 12 : PX;
   ctx.fillStyle = '#F5F0F0';
   ctx.font = '44px "Bebas Neue", sans-serif';
   ctx.letterSpacing = '10px';
-  ctx.fillText('BLINKS UNITED', brandX, H - 54);
+  ctx.fillText('BLINKS UNITED', brandX, H - 66);
   ctx.fillStyle = 'rgba(245,240,240,0.45)';
   ctx.font = '500 15px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
-  ctx.fillText('blinksunited.com', brandX, H - 32);
+  ctx.fillText('blinksunited.com', brandX, H - 42);
   ctx.shadowBlur = 0;
 
   if (!_skipReady) _markCardReady(canvas);
