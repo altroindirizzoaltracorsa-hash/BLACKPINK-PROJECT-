@@ -1443,6 +1443,8 @@
   .vote-nominees { display: flex; flex-wrap: wrap; gap: 0.5rem; }
   .vote-chip { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.05em; padding: 0.4rem 0.8rem; border: 1px solid var(--border); color: var(--muted); }
   .vote-chip.us { color: var(--pink); border-color: var(--pink); background: var(--pink-muted); }
+  .vote-cat-link { display: inline-block; font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em; color: var(--pink); text-decoration: none; border: 1px solid rgba(255,0,102,0.45); padding: 0.15rem 0.5rem; margin-left: 0.55rem; vertical-align: middle; text-transform: none; transition: background 0.2s, color 0.2s; }
+  .vote-cat-link:hover { background: var(--pink); color: #000; }
 
   .vote-rules {
     background: rgba(255,0,102,0.04); border: 1px solid var(--border);
@@ -5723,6 +5725,35 @@ const TRACKS = [
 // ── VOTE CAMPAIGNS ───────────────────────────────────────────
 const VOTE_CAMPAIGNS = [
   {
+    id: 'vma-2026',
+    platform: 'MTV VMAs',
+    title: '2026 MTV Video Music Awards',
+    url: 'https://vote.mtv.com/',
+    image: '/vote-blackpink-ot4.jpg',
+    // deadline: TBD — set once MTV confirms the fan-voting close date
+    rules: [
+      'Vote at vote.mtv.com — up to 20 times per day, in every category',
+      'Each category has its own page — tap the “Vote ↗” link on each below',
+      'Daily votes reset — come back and vote every day until voting closes',
+      'These are fan-voted categories: our votes decide the winners',
+    ],
+    categories: [
+      { name: 'Best Pop', url: 'https://vote.mtv.com/best-pop',
+        nominees: [{ name: 'LISA — “Dream”', us: true }] },
+      { name: 'Best K-Pop', url: 'https://vote.mtv.com/best-k-pop',
+        nominees: [
+          { name: 'BLACKPINK — “JUMP”', us: true },
+          { name: 'LISA — “Dream”', us: true },
+        ] },
+      { name: 'Best Cinematography', url: 'https://vote.mtv.com/best-cinematography',
+        nominees: [{ name: 'LISA — “Dream”', us: true }] },
+      { name: 'Best Editing', url: 'https://vote.mtv.com/best-editing',
+        nominees: [{ name: 'LISA — “Dream”', us: true }] },
+      { name: 'Best Visual Effects', url: 'https://vote.mtv.com/best-visual-effects',
+        nominees: [{ name: 'JISOO × ZAYN — “Eyes Closed”', us: true }] },
+    ],
+  },
+  {
     id: 'kwda-2026-female-solo-popularity',
     platform: 'FANTHEONE',
     title: 'KWDA — Female Solo Popularity Award',
@@ -5960,7 +5991,7 @@ function renderVoteCampaigns() {
     }
     const categoriesHtml = c.categories.map(cat => `
         <div>
-          <div class="vote-category-name">${cat.name}</div>
+          <div class="vote-category-name">${cat.name}${cat.url && !ended ? ` <a class="vote-cat-link" href="${cat.url}" target="_blank" rel="noopener noreferrer">Vote ↗</a>` : ''}</div>
           <div class="vote-nominees">
             ${cat.nominees.map(n => `<span class="vote-chip ${n.us ? 'us' : ''}">${n.name}</span>`).join('')}
           </div>
@@ -12272,17 +12303,24 @@ function drawVoteCard(canvas, campaign, logo, art) {
   ctx.fillStyle = '#FF0066';
   ctx.fillRect(PX, ruleY, 70, landscape ? 2 : 3);
 
-  // Categories + nominees
+  // Categories + nominees — the row height shrinks when a campaign has many
+  // categories (e.g. the VMAs' 5) so everything stays on the card; single- or
+  // few-category cards keep the original full-size rows.
   let y = ruleY + (landscape ? 47 : 60);
-  const rowH = landscape ? 64 : 140;
+  const maxRowH = landscape ? 64 : 140;
+  const reserve = landscape ? 130 : 210; // space kept below for the footnote + deadline block
+  const avail = H - y - reserve;
+  const rowH = Math.max(landscape ? 40 : 74,
+    Math.min(maxRowH, campaign.categories.length ? avail / campaign.categories.length : maxRowH));
+  const k = Math.min(1, rowH / maxRowH); // scale fonts down with the row height
   for (const cat of campaign.categories) {
     ctx.fillStyle = 'rgba(255,0,102,0.65)';
-    ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
+    ctx.font = `500 ${Math.round((landscape ? 13 : 20) * Math.min(1, k + 0.15))}px "DM Mono", monospace`;
     ctx.letterSpacing = '3px';
     ctx.fillText(cat.name.toUpperCase(), PX, y);
     ctx.fillStyle = '#FF0066';
     ctx.letterSpacing = '2px';
-    fillTextFit(ctx, cat.nominees.map(n => n.name).join('  ·  '), PX, y + (landscape ? 40 : 64), landscape ? 44 : 68, textW, '"Bebas Neue", sans-serif');
+    fillTextFit(ctx, cat.nominees.map(n => n.name).join('  ·  '), PX, y + rowH * (landscape ? 0.62 : 0.46), Math.round((landscape ? 44 : 68) * Math.min(1, k + 0.1)), textW, '"Bebas Neue", sans-serif');
     y += rowH;
   }
 
