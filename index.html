@@ -12745,25 +12745,52 @@ async function openGoalHitCard() {
   const TOTAL_FRAMES = 60; // ~1 s at 60 fps — frame counter avoids timestamp drift
   let frame = 0;
 
-  // Animate on screen for flair, then share a static PNG-quality still of the
-  // final frame. We deliberately do NOT export a webm/mp4 video: X (Twitter)
-  // and most social composers can't decode a webm upload and render it as a
-  // black play-button box, so the shared "pic" never showed. A JPEG still —
-  // the same path every other card on the site uses — always previews.
-  label.textContent = 'GENERATING…';
-  function animate() {
-    frame++;
-    const t = frame / TOTAL_FRAMES;
-    const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-    drawGoalHitCard(canvas, { ...cardData, _animPct: Math.min(eased, 1), _skipReady: true });
-    if (frame < TOTAL_FRAMES) {
-      requestAnimationFrame(animate);
-    } else {
-      drawGoalHitCard(canvas, { ...cardData, _animPct: 1 }); // _markCardReady fires here → JPEG blob
+  // Try recording the animation as a video (animated, shareable on socials)
+  const mimeType = (typeof MediaRecorder !== 'undefined' && typeof canvas.captureStream === 'function') &&
+    ['video/webm;codecs=vp9', 'video/webm', 'video/mp4'].find(t => MediaRecorder.isTypeSupported(t));
+
+  if (mimeType) {
+    label.textContent = 'GENERATING ANIMATION…';
+    const stream = canvas.captureStream(60);
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 6000000 });
+    const chunks = [];
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    recorder.onstop = () => {
+      _cardShareBlob = new Blob(chunks, { type: mimeType });
+      cardCanvas = canvas;
       label.textContent = finalLabel;
+    };
+    recorder.start();
+    function animate() {
+      frame++;
+      const t = frame / TOTAL_FRAMES;
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      drawGoalHitCard(canvas, { ...cardData, _animPct: Math.min(eased, 1), _skipReady: true });
+      if (frame < TOTAL_FRAMES) {
+        requestAnimationFrame(animate);
+      } else {
+        drawGoalHitCard(canvas, { ...cardData, _animPct: 1, _skipReady: true });
+        setTimeout(() => recorder.stop(), 800); // hold final frame 0.8 s then finish
+      }
     }
+    requestAnimationFrame(animate);
+  } else {
+    // No MediaRecorder (e.g. iOS Safari) — animate on screen, share static frame
+    label.textContent = 'GENERATING…';
+    function animate() {
+      frame++;
+      const t = frame / TOTAL_FRAMES;
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      drawGoalHitCard(canvas, { ...cardData, _animPct: Math.min(eased, 1), _skipReady: true });
+      if (frame < TOTAL_FRAMES) {
+        requestAnimationFrame(animate);
+      } else {
+        drawGoalHitCard(canvas, { ...cardData, _animPct: 1 }); // _markCardReady fires here
+        label.textContent = finalLabel;
+      }
+    }
+    requestAnimationFrame(animate);
   }
-  requestAnimationFrame(animate);
 }
 
 // Rounded-rect path helper for the goal card runway.
