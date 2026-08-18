@@ -5730,12 +5730,14 @@ const VOTE_CAMPAIGNS = [
     title: '2026 MTV Video Music Awards',
     url: 'https://vote.mtv.com/',
     image: '/vote-blackpink-ot4.jpg',
-    // deadline: TBD — set once MTV confirms the fan-voting close date
+    deadline: '2026-09-25T22:00:00Z', // Sep 25 2026, 6:00 PM ET (EDT, UTC-4)
+    resetOffset: -4, // daily votes reset at midnight ET (EDT)
     rules: [
-      'Vote at vote.mtv.com — up to 20 times per day, in every category',
+      'Vote up to 20 times per day, in every category',
       'Each category has its own page — tap the “Vote ↗” link on each below',
-      'Daily votes reset — come back and vote every day until voting closes',
-      'These are fan-voted categories: our votes decide the winners',
+      'Hit submit to lock in your ballot, then come back and vote every day',
+      'Voting closes Sept 25, 6PM ET',
+      'Winners revealed live Sun Sept 27, 7:30 ET / 4:30 PT on CBS & Paramount+',
     ],
     categories: [
       { name: 'Best Pop', url: 'https://vote.mtv.com/best-pop',
