@@ -10465,7 +10465,10 @@ async function loadCommunityGoal() {
       statusEl.textContent = `${(COMMUNITY_GOAL_PRIMARY - total).toLocaleString()} more scrobbles to hit today's goal — stream now!`;
       statusEl.className = 'goal-tracker-status';
     }
-    if (shareBtn) shareBtn.style.display = goalHit ? 'block' : 'none';
+    if (shareBtn) shareBtn.style.display = 'block';
+    // Always cache current progress so the card is shareable any time (the goal-hit
+    // block below refines this with the streak once the goal is reached).
+    window._goalCardData = { total, primary: goalHit, stretch: total >= COMMUNITY_GOAL_SECONDARY, streak: 0 };
     wrap.style.display = 'block';
     positionGoalWalkers(pct);
 
@@ -12729,7 +12732,10 @@ async function openGoalHitCard() {
   _cardLogo = logo;
 
   const cardData = { ...d, logo, photo };
-  const finalLabel = d.stretch ? 'STRETCH GOAL SMASHED 🎉' : 'COMMUNITY GOAL HIT 🎉';
+  const _hit = d.primary || d.stretch || d.total >= 15000;
+  const finalLabel = _hit
+    ? (d.stretch ? 'STRETCH GOAL SMASHED 🎉' : 'COMMUNITY GOAL HIT 🎉')
+    : "TODAY'S PROGRESS 💗";
 
   const TOTAL_FRAMES = 60; // ~1 s at 60 fps — frame counter avoids timestamp drift
   let frame = 0;
@@ -12846,11 +12852,15 @@ function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, photo,
   ctx.letterSpacing = '7px';
   ctx.fillText('COMMUNITY GOAL', PX, 138);
 
-  // Status
+  // Status — goal hit, or in-progress percentage
+  const _isHit = primary || stretch || total >= 15000;
+  const _statusTxt = _isHit
+    ? (stretch ? 'STRETCH GOAL SMASHED' : 'PRIMARY GOAL HIT')
+    : `${Math.round((total / (stretch ? 20000 : 15000)) * 1000) / 10}% OF TODAY'S GOAL`;
   ctx.fillStyle = '#FF0066';
   ctx.font = '76px "Bebas Neue", sans-serif';
   ctx.letterSpacing = '4px';
-  ctx.fillText(stretch ? 'STRETCH GOAL SMASHED' : 'PRIMARY GOAL HIT', PX, 220);
+  ctx.fillText(_statusTxt, PX, 220);
 
   // Big number (animated)
   ctx.fillStyle = '#F5F0F0';
