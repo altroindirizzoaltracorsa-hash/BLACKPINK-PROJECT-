@@ -1442,6 +1442,16 @@
   .vote-cat-row { display: flex; align-items: center; gap: 0.85rem; }
   .vote-cat-thumb { width: 56px; height: 56px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; }
   .vote-cat-text { min-width: 0; }
+  /* Nominee gallery — a horizontal row of the videos, each with the categories it's up for */
+  .vote-videos { display: flex; gap: 0.8rem; margin-bottom: 1.4rem; }
+  .vote-video { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+  .vote-video-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border: 1px solid var(--border); display: block; }
+  .vote-video-name { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); margin: 0.6rem 0 0.45rem; line-height: 1.35; }
+  .vote-video-noms { display: flex; flex-direction: column; gap: 0.32rem; }
+  .vote-video-nom { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.03em; text-transform: uppercase; color: var(--pink); text-decoration: none; border: 1px solid rgba(255,0,102,0.4); padding: 0.3rem 0.4rem; text-align: center; line-height: 1.2; transition: background 0.2s, color 0.2s; }
+  .vote-video-nom:hover { background: var(--pink); color: #000; }
+  .vote-video-nom.nolink { color: var(--muted); border-color: var(--border); pointer-events: none; }
+  @media (max-width: 460px) { .vote-video-name { font-size: 0.54rem; } .vote-video-nom { font-size: 0.5rem; padding: 0.28rem 0.25rem; } }
   .vote-category-name { font-size: 0.65rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,0,102,0.7); margin-bottom: 0.5rem; }
   .vote-nominees { display: flex; flex-wrap: wrap; gap: 0.5rem; }
   .vote-chip { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.05em; padding: 0.4rem 0.8rem; border: 1px solid var(--border); color: var(--muted); }
@@ -5742,19 +5752,35 @@ const VOTE_CAMPAIGNS = [
       'Voting closes Sept 25, 6PM ET',
       'Winners revealed live Sun Sept 27, 7:30 ET / 4:30 PT on CBS & Paramount+',
     ],
+    // On-page layout: a horizontal row of the 3 videos, each with the
+    // categories it's up for. (categories[] below still feeds the share card.)
+    videos: [
+      { name: 'LISA — “Dream”', img: '/vote-vma-dream.jpg', noms: [
+        { cat: 'Best Pop',            url: 'https://vote.mtv.com/best-pop' },
+        { cat: 'Best K-Pop',          url: 'https://vote.mtv.com/best-k-pop' },
+        { cat: 'Best Cinematography', url: 'https://vote.mtv.com/best-cinematography' },
+        { cat: 'Best Editing',        url: 'https://vote.mtv.com/best-editing' },
+      ] },
+      { name: 'BLACKPINK — “JUMP”', img: '/vote-vma-jump.jpeg', noms: [
+        { cat: 'Best K-Pop', url: 'https://vote.mtv.com/best-k-pop' },
+      ] },
+      { name: 'JISOO × ZAYN — “Eyes Closed”', img: '/vote-vma-eyesclosed.jpeg', noms: [
+        { cat: 'Best Visual Effects', url: 'https://vote.mtv.com/best-visual-effects' },
+      ] },
+    ],
     categories: [
-      { name: 'Best Pop', url: 'https://vote.mtv.com/best-pop', thumb: '/vote-vma-dream.jpg',
+      { name: 'Best Pop', url: 'https://vote.mtv.com/best-pop',
         nominees: [{ name: 'LISA — “Dream”', us: true }] },
-      { name: 'Best K-Pop', url: 'https://vote.mtv.com/best-k-pop', thumb: '/vote-vma-jump.jpeg',
+      { name: 'Best K-Pop', url: 'https://vote.mtv.com/best-k-pop',
         nominees: [
           { name: 'BLACKPINK — “JUMP”', us: true },
           { name: 'LISA — “Dream”', us: true },
         ] },
-      { name: 'Best Cinematography', url: 'https://vote.mtv.com/best-cinematography', thumb: '/vote-vma-dream.jpg',
+      { name: 'Best Cinematography', url: 'https://vote.mtv.com/best-cinematography',
         nominees: [{ name: 'LISA — “Dream”', us: true }] },
-      { name: 'Best Editing', url: 'https://vote.mtv.com/best-editing', thumb: '/vote-vma-dream.jpg',
+      { name: 'Best Editing', url: 'https://vote.mtv.com/best-editing',
         nominees: [{ name: 'LISA — “Dream”', us: true }] },
-      { name: 'Best Visual Effects', url: 'https://vote.mtv.com/best-visual-effects', thumb: '/vote-vma-eyesclosed.jpeg',
+      { name: 'Best Visual Effects', url: 'https://vote.mtv.com/best-visual-effects',
         nominees: [{ name: 'JISOO × ZAYN — “Eyes Closed”', us: true }] },
     ],
   },
@@ -6004,6 +6030,18 @@ function renderVoteCampaigns() {
             </div>
           </div>
         </div>`).join('');
+    // Optional nominee gallery: a horizontal row of videos, each with the
+    // categories it's nominated in listed underneath (used by the VMAs card).
+    const videosHtml = (c.videos || []).map(v => `
+        <div class="vote-video">
+          <img class="vote-video-img" src="${v.img}" alt="${v.name}" loading="lazy">
+          <div class="vote-video-name">${v.name}</div>
+          <div class="vote-video-noms">
+            ${v.noms.map(n => (n.url && !ended)
+              ? `<a class="vote-video-nom" href="${n.url}" target="_blank" rel="noopener noreferrer">${n.cat} ↗</a>`
+              : `<span class="vote-video-nom nolink">${n.cat}</span>`).join('')}
+          </div>
+        </div>`).join('');
     const wonBadge = c.winner ? `<div class="vote-winner-badge">🏆 WE WON — ${c.winner.name}</div>` : '';
     return `
       <div class="vote-card${c.winner ? ' won' : ''}">
@@ -6017,7 +6055,7 @@ function renderVoteCampaigns() {
           ${deadlineHtml}
         </div>
         ${c.resetOffset && !ended ? `<div class="vote-reset">🔄 Daily votes reset in <span class="vote-reset-time" data-reset-offset="${c.resetOffset}"></span></div>` : ''}
-        <div class="vote-categories">${categoriesHtml}</div>
+        ${c.videos ? `<div class="vote-videos">${videosHtml}</div>` : `<div class="vote-categories">${categoriesHtml}</div>`}
         ${c.rules?.length ? `<div class="vote-rules">
           <div class="vote-rules-label">📋 Rules</div>
           <ul>${c.rules.map(r => `<li>${r}</li>`).join('')}</ul>
