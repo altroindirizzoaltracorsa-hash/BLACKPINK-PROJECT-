@@ -406,7 +406,9 @@ export default async function handler(req, res) {
   }
 
   // ── GET: return full leaderboard ──────────────────────────────
-  if (req.method === 'GET') {
+  // Default board fetch — only when no action is given, so GET handlers defined
+  // AFTER this point (e.g. ?action=goal-history) aren't shadowed by this catch-all.
+  if (req.method === 'GET' && !action) {
     const data = (await redis.get(LB_KEY)) || { users: {}, lastUpdated: new Date().toISOString() };
     res.setHeader('Cache-Control', 'no-store');
     const { banned, renameLog, ...publicData } = data;
