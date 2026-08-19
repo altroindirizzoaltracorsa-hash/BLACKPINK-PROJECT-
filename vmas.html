@@ -108,26 +108,8 @@
   .vb-stat { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
   .vb-num { font-family: var(--display); font-size: 2rem; line-height: 0.85; color: var(--pink); font-variant-numeric: tabular-nums; }
   .vb-lbl { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); line-height: 1.25; }
-  .vb-btn { flex: 0 0 auto; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); border: none; padding: 0.7rem 1rem; cursor: pointer; white-space: nowrap; transition: filter .15s; }
+  .vb-btn { flex: 0 0 auto; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); border: none; padding: 0.7rem 1rem; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-block; transition: filter .15s; }
   .vb-btn:hover { filter: brightness(1.07); }
-  .vb-btn.done { background: transparent; color: var(--pink-lo); border: 1px solid rgba(255,0,102,0.45); cursor: default; }
-
-  /* Log sheet (opens from the bar) */
-  .vb-modal { position: fixed; inset: 0; z-index: 80; display: none; align-items: center; justify-content: center; padding: 1.2rem; background: rgba(0,0,0,0.72); }
-  .vb-modal.open { display: flex; }
-  .vb-sheet { width: 100%; max-width: 22rem; background: var(--card); border: 1px solid rgba(255,0,102,0.4); padding: 1.7rem 1.5rem 1.5rem; text-align: center; position: relative; }
-  .vb-close { position: absolute; top: 0.5rem; right: 0.7rem; background: none; border: none; color: var(--muted); font-size: 1.3rem; line-height: 1; cursor: pointer; }
-  .vb-sheet-total { font-family: var(--display); font-size: 2.6rem; line-height: 0.9; color: var(--pink); }
-  .vb-sheet-sub { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.04em; color: var(--muted); margin: 0.4rem 0 1.3rem; }
-  .vb-sheet-sub span { color: var(--white); }
-  .tally-q { display: block; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.03em; color: var(--muted); margin-bottom: 0.7rem; }
-  .tally-input-row { display: flex; gap: 0.4rem; align-items: stretch; }
-  .tally-step { width: 2.5rem; font-family: var(--display); font-size: 1.5rem; color: var(--white); background: transparent; border: 1px solid var(--border); cursor: pointer; }
-  .tally-step:hover { border-color: var(--pink); color: var(--pink); }
-  .tally-input { flex: 1; min-width: 0; text-align: center; font-family: var(--display); font-size: 1.6rem; color: var(--white); background: #0f0a0f; border: 1px solid var(--border); }
-  .tally-log { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: #12000a; background: var(--pink); border: none; padding: 0 1.2rem; cursor: pointer; }
-  .tally-log:disabled { opacity: 0.6; cursor: default; }
-  .tally-msg { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.03em; color: var(--pink-lo); margin-top: 0.8rem; min-height: 1em; }
 
   /* ── Section headers ── */
   .section { padding: 2.6rem 0 0.5rem; }
@@ -427,103 +409,27 @@
   setInterval(tick, 1000);
 </script>
 
-<!-- Community vote tally — sticky bottom bar + log sheet -->
+<!-- Community vote total — sticky bottom bar (logging happens in the app) -->
 <div class="votebar" id="votebar" hidden>
   <div class="vb-stat">
     <span class="vb-num" id="vb-total">—</span>
-    <span class="vb-lbl">Votes logged<br>by BLINKs</span>
+    <span class="vb-lbl">votes logged<br><span id="vb-blinks">—</span> blinks in</span>
   </div>
-  <button class="vb-btn" id="vb-btn" type="button" onclick="tallyOpen()">🗳️ I voted today</button>
-</div>
-<div class="vb-modal" id="vb-modal" onclick="if(event.target===this)tallyClose()">
-  <div class="vb-sheet">
-    <button class="vb-close" type="button" onclick="tallyClose()" aria-label="close">×</button>
-    <div class="vb-sheet-total" id="vb-sheet-total">—</div>
-    <div class="vb-sheet-sub"><span id="vb-blinks">—</span> BLINKs in · <span id="vb-today">—</span> logged today</div>
-    <label class="tally-q" for="tally-count">How many votes did you cast today?</label>
-    <div class="tally-input-row">
-      <button class="tally-step" type="button" onclick="tallyStep(-1)" aria-label="minus">–</button>
-      <input class="tally-input" id="tally-count" type="number" min="1" max="40" value="20" inputmode="numeric">
-      <button class="tally-step" type="button" onclick="tallyStep(1)" aria-label="plus">+</button>
-      <button class="tally-log" id="tally-log" type="button" onclick="tallyLog()">Log it</button>
-    </div>
-    <div class="tally-msg" id="tally-msg"></div>
-  </div>
+  <a class="vb-btn" href="/voting">🗳️ Log yours ↗</a>
 </div>
 
 <script>
-  // ── Community vote tally (self-reported, honor-system) ──
+  // ── Community vote total (rally counter; logging happens in the app) ──
   (function () {
-    var API = '/api/vma-votes';
-    var bar = document.getElementById('votebar');
-    var modal = document.getElementById('vb-modal');
-    var $ = function (id) { return document.getElementById(id); };
     var fmt = function (n) { return Number(n || 0).toLocaleString('en-US'); };
-    var dayKey = function () { return new Date().toISOString().slice(0, 10); };
-
-    function clientId() {
-      var k = 'bu_vma_cid', v = localStorage.getItem(k);
-      if (!v) {
-        v = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
-            : String(Date.now()) + Math.random().toString(36).slice(2);
-        localStorage.setItem(k, v);
-      }
-      return v;
-    }
-    var loggedToday = function () { return localStorage.getItem('bu_vma_logged_' + dayKey()) === '1'; };
-    var markLogged = function () { localStorage.setItem('bu_vma_logged_' + dayKey(), '1'); };
-
-    function render(s) {
-      $('vb-total').textContent = fmt(s.total);
-      $('vb-sheet-total').textContent = fmt(s.total);
-      $('vb-blinks').textContent = fmt(s.blinksTotal);
-      $('vb-today').textContent = fmt(s.today);
-      bar.hidden = false;
-    }
-    function showDone() {
-      var b = $('vb-btn');
-      b.textContent = '✓ Logged today';
-      b.disabled = true;
-      b.classList.add('done');
-      b.setAttribute('onclick', '');
-    }
-
-    // Only reveal the bar once the backend answers, so there's no broken UI
-    // in the window before the table/endpoint exist.
-    fetch(API, { cache: 'no-store' })
+    fetch('/api/vma-votes', { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
-      .then(function (s) { render(s); if (loggedToday()) showDone(); })
-      .catch(function () { /* backend not ready — leave the bar hidden */ });
-
-    window.tallyOpen = function () {
-      if (loggedToday()) return;
-      modal.classList.add('open');
-    };
-    window.tallyClose = function () { modal.classList.remove('open'); };
-    window.tallyStep = function (d) {
-      var i = $('tally-count');
-      i.value = Math.max(1, Math.min(40, (parseInt(i.value, 10) || 0) + d));
-    };
-    window.tallyLog = function () {
-      var v = Math.max(1, Math.min(40, parseInt($('tally-count').value, 10) || 0));
-      var btn = $('tally-log');
-      btn.disabled = true; btn.textContent = 'Saving…';
-      fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ votes: v, clientId: clientId() }),
+      .then(function (s) {
+        document.getElementById('vb-total').textContent = fmt(s.total);
+        document.getElementById('vb-blinks').textContent = fmt(s.blinksTotal);
+        document.getElementById('votebar').hidden = false;
       })
-        .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
-        .then(function (s) {
-          render(s); markLogged();
-          $('tally-msg').textContent = 'Thank you! 💗';
-          setTimeout(function () { tallyClose(); showDone(); }, 900);
-        })
-        .catch(function () {
-          btn.disabled = false; btn.textContent = 'Log it';
-          $('tally-msg').textContent = 'Couldn’t save — try again in a moment.';
-        });
-    };
+      .catch(function () { /* backend not ready — leave the bar hidden */ });
   })();
 </script>
 </body>

@@ -1,12 +1,14 @@
-// GET  /api/vma-votes            → { total, today, blinksTotal, blinksToday }
-// POST /api/vma-votes  { votes, clientId }
+// VMA voting leaderboard — account-gated, self-reported vote counts.
 //
-// Community "votes logged" tally for the VMAs page. Self-reported, honor
-// system: a device says how many votes it cast today and we add it to the
-// running community total. One row per device per day (unique index), value
-// capped 1..40, so a device can't stack submissions to inflate the count.
+//   GET  /api/vma-votes              → community totals { total, today, blinksTotal, blinksToday }
+//   GET  /api/vma-votes?board=1      → { board: [{ name, total, today, week, month }, ...] }
+//   GET  /api/vma-votes?me=1         → caller's status (Authorization: Bearer <token>)
+//   POST /api/vma-votes { accessToken, votes }  → add `votes` to today (uncapped)
 //
-// Env: SUPABASE_URL, SUPABASE_SERVICE_KEY.  Schema: supabase/vma_vote_tally.sql
+// To submit you must be signed in AND have a linked scrobbler (>=1 row in
+// linked_accounts) — i.e. an actual streaming blink. Enforced below.
+//
+// Env: SUPABASE_URL, SUPABASE_SERVICE_KEY.  Schema: supabase/vma_user_votes.sql
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -15,47 +17,100 @@ function supabase() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 }
 
-function todayUTC() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD, 00:00 UTC boundary
+const todayUTC = () => new Date().toISOString().slice(0, 10);
+
+function bearer(req) {
+  const h = req.headers.authorization || '';
+  const m = /^Bearer\s+(.+)$/i.exec(h);
+  return m ? m[1] : null;
 }
 
-async function stats(sb) {
-  const { data, error } = await sb.rpc('vma_vote_stats');
-  if (error) throw error;
-  return data || { total: 0, today: 0, blinksTotal: 0, blinksToday: 0 };
+async function isLinked(sb, uid) {
+  const { data } = await sb.from('linked_accounts').select('app_user_id').eq('app_user_id', uid).limit(1);
+  return !!(data && data.length);
+}
+
+// Sum a user's rows into today / week (Mon-start) / month / all-time, in UTC.
+async function myTotals(sb, uid) {
+  const { data } = await sb.from('vma_user_votes').select('day, votes').eq('app_user_id', uid);
+  const rows = data || [];
+  const now = new Date();
+  const t = now.toISOString().slice(0, 10);
+  const dow = (now.getUTCDay() + 6) % 7; // 0 = Monday
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - dow)).toISOString().slice(0, 10);
+  const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+  let today = 0, week = 0, month = 0, total = 0;
+  for (const r of rows) {
+    const v = r.votes || 0;
+    total += v;
+    if (r.day === t) today += v;
+    if (r.day >= monday) week += v;
+    if (r.day >= first) month += v;
+  }
+  return { today, week, month, total };
 }
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const sb = supabase();
-  if (!sb) return res.status(503).json({ error: 'Vote tally not configured' });
+  if (!sb) return res.status(503).json({ error: 'Voting not configured' });
 
   try {
     if (req.method === 'GET') {
-      return res.status(200).json(await stats(sb));
+      if (req.query.board) {
+        const { data, error } = await sb.rpc('vma_vote_board');
+        if (error) throw error;
+        return res.status(200).json({ board: data || [] });
+      }
+      if (req.query.me) {
+        const token = bearer(req);
+        if (!token) return res.status(401).json({ error: 'not signed in' });
+        const { data: { user } = {}, error: authErr } = await sb.auth.getUser(token);
+        if (authErr || !user) return res.status(401).json({ error: 'not signed in' });
+        const linked = await isLinked(sb, user.id);
+        return res.status(200).json({ linked, ...(await myTotals(sb, user.id)) });
+      }
+      const { data, error } = await sb.rpc('vma_vote_totals');
+      if (error) throw error;
+      return res.status(200).json(data || { total: 0, today: 0, blinksTotal: 0, blinksToday: 0 });
     }
 
     if (req.method === 'POST') {
       const body = req.body || {};
-      const clientId = String(body.clientId || '').trim().slice(0, 64);
+      const token = String(body.accessToken || '').trim();
       let votes = parseInt(body.votes, 10);
-      if (!clientId) return res.status(400).json({ error: 'clientId required' });
-      if (!Number.isFinite(votes)) return res.status(400).json({ error: 'votes required' });
-      votes = Math.max(1, Math.min(40, votes)); // clamp to a real daily ceiling
+      if (!token) return res.status(401).json({ error: 'Sign in to log your votes' });
+      if (!Number.isFinite(votes) || votes <= 0) return res.status(400).json({ error: 'votes required' });
+      votes = Math.min(votes, 10000); // sanity bound only (no daily cap)
 
-      // Overwrite this device's number for today (not additive) so re-submits
-      // can only correct, never stack.
-      const { error } = await sb
-        .from('vma_vote_tally')
-        .upsert({ client_id: clientId, day: todayUTC(), votes }, { onConflict: 'client_id,day' });
-      if (error) return res.status(500).json({ error: error.message });
+      const { data: { user } = {}, error: authErr } = await sb.auth.getUser(token);
+      if (authErr || !user) return res.status(401).json({ error: 'Sign in to log your votes' });
 
-      return res.status(200).json(await stats(sb));
+      if (!(await isLinked(sb, user.id))) {
+        return res.status(403).json({ error: 'Link a scrobbler first — the voting board is for streaming blinks.' });
+      }
+
+      const name = (user.user_metadata && user.user_metadata.display_name) || null;
+      const day = todayUTC();
+
+      // Additive: add to today's tally (self-reported, uncapped).
+      const { data: existing } = await sb
+        .from('vma_user_votes').select('votes').eq('app_user_id', user.id).eq('day', day).maybeSingle();
+      const next = (existing?.votes || 0) + votes;
+
+      const { error: upErr } = await sb.from('vma_user_votes').upsert(
+        { app_user_id: user.id, day, votes: next, display_name: name, updated_at: new Date().toISOString() },
+        { onConflict: 'app_user_id,day' },
+      );
+      if (upErr) return res.status(500).json({ error: upErr.message });
+
+      const [my, totals] = await Promise.all([myTotals(sb, user.id), sb.rpc('vma_vote_totals')]);
+      return res.status(200).json({ ok: true, my, totals: totals.data || {} });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
