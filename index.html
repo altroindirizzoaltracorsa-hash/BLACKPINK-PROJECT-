@@ -13179,14 +13179,17 @@ function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, walker
   // Only when the goal is actually hit. revealStart = the animation progress point at
   // which the fill bar reaches the goal edge (goalNum/total), capped so there's always
   // a visible fade at the end of the run.
-  if (_isHit && photo && photo.naturalWidth) {
-    const revealStart = Math.min(goalNum / Math.max(total, 1), 0.7);
-    const rawT = (_animPct - revealStart) / (1 - revealStart);
-    const revealT = Math.max(0, Math.min(1, rawT));
-    if (revealT > 0) {
+  const _revealStart = Math.min(goalNum / Math.max(total, 1), 0.7);
+  const _revealT = (_isHit && photo && photo.naturalWidth)
+    ? Math.max(0, Math.min(1, (_animPct - _revealStart) / (1 - _revealStart)))
+    : 0;
+  // Ease-out for a soft fade + gentle settle. Reused below to fade the
+  // walking figures OUT as the photo fades IN (they cross-dissolve).
+  const _photoE = 1 - Math.pow(1 - _revealT, 3);
+  if (_revealT > 0) {
+    {
       const bandX = PX, bandW = W - PX * 2, bandY = 506, bandH = 246, bandR = 22;
-      // Ease-out for a soft fade + gentle settle
-      const e = 1 - Math.pow(1 - revealT, 3);
+      const e = _photoE;
       ctx.save();
       _cardRR(ctx, bandX, bandY, bandW, bandH, bandR);
       ctx.clip();
@@ -13246,8 +13249,11 @@ function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, walker
   ctx.restore();
   const edgeX = barX + lead;
 
-  // Walking members standing at the leading edge
-  if (walkers && walkers.naturalWidth) {
+  // Walking members standing at the leading edge — fade OUT as the photo fades IN
+  const _walkerAlpha = 1 - _photoE;
+  if (walkers && walkers.naturalWidth && _walkerAlpha > 0.01) {
+    ctx.save();
+    ctx.globalAlpha = _walkerAlpha;
     const wH = 248, wW = walkers.naturalWidth * wH / walkers.naturalHeight;
     const cx = Math.max(barX + wW * 0.42, Math.min(barX + barW - wW * 0.42, edgeX));
     const g = ctx.createRadialGradient(cx, barY + 12, 0, cx, barY + 12, wW * 0.45);
@@ -13258,6 +13264,7 @@ function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, walker
     ctx.ellipse(cx, barY + 12, wW * 0.42, 20, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.drawImage(walkers, cx - wW / 2, barY + 12 - wH, wW, wH);
+    ctx.restore();
   }
 
   // Wavefront line at the leading edge
