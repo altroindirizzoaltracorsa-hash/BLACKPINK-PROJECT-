@@ -4277,6 +4277,7 @@ const PAGE_TITLES = {
 
 function pathToPage(pathname) {
   let clean = pathname.replace(/\/+$/, '') || '/';
+  if (clean === '/vote') return 'vote'; // alias for the canonical /voting
   const entry = Object.entries(PAGE_PATHS).find(([, p]) => p === clean);
   return entry ? entry[0] : 'home';
 }
@@ -5173,7 +5174,15 @@ function showPage(page, { replace = false } = {}) {
   if (_voteCountdownTimer) { clearInterval(_voteCountdownTimer); _voteCountdownTimer = null; }
   if (page === 'vote') {
     renderVoteCampaigns();
-    renderVmaVoting();
+    // Deep link from /vmas "Join the board" — land straight on the vote-logging panel.
+    const jumpToLog = location.hash === '#log-votes' || /[?&]log=1(?:&|$)/.test(location.search);
+    if (jumpToLog) { try { history.replaceState(history.state, '', PAGE_PATHS.vote); } catch {} }
+    renderVmaVoting().then(() => {
+      if (jumpToLog) {
+        const el = document.getElementById('vma-vote-panel');
+        if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+      }
+    });
     _voteCountdownTimer = setInterval(tickVoteCountdowns, 1000);
     const wonCampaign = VOTE_CAMPAIGNS.find(c => c.winner);
     if (wonCampaign && !sessionStorage.getItem('winner-seen-' + wonCampaign.id)) {
