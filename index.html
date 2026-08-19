@@ -1487,6 +1487,39 @@
   .vote-share-btn:hover { border-color: var(--pink); color: var(--pink); }
   .vote-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
 
+  /* VMA voting leaderboard (account-gated) */
+  .vv-wrap { background: var(--card); border: 1px solid var(--border); padding: 1.4rem 1.3rem; margin-bottom: 1.8rem; position: relative; }
+  .vv-wrap::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--pink); }
+  .vv-head { margin-bottom: 1.1rem; }
+  .vv-title { font-family: var(--display); font-size: 1.6rem; letter-spacing: 0.04em; color: var(--white); }
+  .vv-note { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.03em; color: var(--muted); margin-top: 0.35rem; }
+  .vv-note a { color: var(--pink); text-decoration: none; }
+  .vv-me { background: rgba(255,0,102,0.05); border: 1px solid var(--border); padding: 1rem 1.1rem; margin-bottom: 1.1rem; }
+  .vv-me.vv-gate { font-size: 0.8rem; color: var(--muted); line-height: 1.55; }
+  .vv-me.vv-gate a { color: var(--pink); }
+  .vv-me-head { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: #ff74ac; margin-bottom: 0.8rem; }
+  .vv-me-stats { display: flex; gap: 1.4rem; margin-bottom: 1.1rem; flex-wrap: wrap; }
+  .vv-me-stats div { display: flex; flex-direction: column; }
+  .vv-me-stats span { font-family: var(--display); font-size: 1.8rem; line-height: 0.85; color: var(--pink); }
+  .vv-me-stats small { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-top: 0.35rem; }
+  .vv-form-q { font-family: var(--mono); font-size: 0.62rem; color: var(--muted); }
+  .vv-input-row { display: flex; gap: 0.5rem; margin-top: 0.55rem; max-width: 17rem; }
+  .vv-input-row input { flex: 1; min-width: 0; background: #0f0a0f; border: 1px solid var(--border); color: var(--white); font-family: var(--display); font-size: 1.35rem; text-align: center; }
+  .vv-input-row button { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); border: none; padding: 0 1.1rem; cursor: pointer; }
+  .vv-input-row button:disabled { opacity: 0.6; cursor: default; }
+  .vv-msg { font-family: var(--mono); font-size: 0.58rem; color: #ff74ac; margin-top: 0.55rem; min-height: 1em; }
+  .vv-tabs { display: flex; gap: 0.4rem; margin-bottom: 0.9rem; }
+  .vv-tab { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--border); padding: 0.42rem 0.75rem; cursor: pointer; }
+  .vv-tab.active { color: var(--pink); border-color: var(--pink); background: rgba(255,0,102,0.08); }
+  .vv-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.74rem; }
+  .vv-table th { text-align: left; font-size: 0.54rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--border); font-weight: 400; }
+  .vv-table th:last-child, .vv-table td:last-child { text-align: right; }
+  .vv-table td { padding: 0.55rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--white); }
+  .vv-table td:first-child { color: var(--muted); width: 2rem; }
+  .vv-table .vv-v { color: var(--pink); font-family: var(--display); font-size: 1.05rem; }
+  .vv-mine { background: rgba(255,0,102,0.08); }
+  .vv-empty { font-family: var(--mono); font-size: 0.74rem; color: var(--muted); padding: 1.2rem 0; }
+
 /* ── BETA PAGE ── */
 .beta-page { max-width: 700px; margin: 0 auto; padding: 5rem 1.5rem 4rem; }
 .beta-header { text-align: center; margin-bottom: 3rem; }
@@ -3263,6 +3296,8 @@
       <p class="vote-header-sub">Award show campaigns where BLACKPINK & the members are nominated</p>
       <p class="vote-update-note">We don't host the vote — tap through to the official page and vote there</p>
     </div>
+
+    <div id="vma-vote-panel"><!-- populated by renderVmaVoting() --></div>
 
     <div class="vote-inner" id="vote-list">
       <!-- populated by renderVoteCampaigns() -->
@@ -5118,6 +5153,7 @@ function showPage(page, { replace = false } = {}) {
   if (_voteCountdownTimer) { clearInterval(_voteCountdownTimer); _voteCountdownTimer = null; }
   if (page === 'vote') {
     renderVoteCampaigns();
+    renderVmaVoting();
     _voteCountdownTimer = setInterval(tickVoteCountdowns, 1000);
     const wonCampaign = VOTE_CAMPAIGNS.find(c => c.winner);
     if (wonCampaign && !sessionStorage.getItem('winner-seen-' + wonCampaign.id)) {
@@ -6085,6 +6121,134 @@ function renderVoteCampaigns() {
   }
   el.innerHTML = html;
   tickVoteCountdowns();
+}
+
+// ── VMA voting leaderboard (account-gated, self-reported) ───────────────────
+let _vvBoard = [], _vvMe = null, _vvSession = null, _vvToken = null, _vvPeriod = 'today';
+function _vvEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+const _vvFmt = n => Number(n || 0).toLocaleString('en-US');
+
+async function renderVmaVoting() {
+  const panel = document.getElementById('vma-vote-panel');
+  if (!panel) return;
+  try { _vvSession = (await sb?.auth.getSession())?.data?.session || null; } catch { _vvSession = null; }
+  _vvToken = _vvSession?.access_token || null;
+  const [board, me] = await Promise.all([
+    fetch('/api/vma-votes?board=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : { board: [] }).catch(() => ({ board: [] })),
+    _vvToken
+      ? fetch('/api/vma-votes?me=1', { headers: { Authorization: 'Bearer ' + _vvToken }, cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)
+      : Promise.resolve(null),
+  ]);
+  _vvBoard = board.board || [];
+  _vvMe = me;
+  drawVmaVoting();
+}
+
+function drawVmaVoting() {
+  const panel = document.getElementById('vma-vote-panel');
+  if (!panel) return;
+
+  // streams per blink (by display name) from the loaded streaming leaderboard
+  const lbUsers = (typeof getActiveLbUsers === 'function') ? (getActiveLbUsers() || {}) : {};
+  const streamsByName = {};
+  for (const d of Object.values(lbUsers)) {
+    const nm = (d.displayName || '').toLowerCase();
+    if (nm) streamsByName[nm] = d.scores?.overall_all || 0;
+  }
+
+  const P = _vvPeriod;
+  const periodLbl = { today: 'today', week: 'this week', month: 'this month', total: 'all time' }[P];
+  const displayName = _vvSession?.user?.user_metadata?.display_name || null;
+
+  // personal card / gate
+  let me;
+  if (!_vvSession) {
+    me = `<div class="vv-me vv-gate">Sign in on <a href="/badges">My&nbsp;Badges</a> and link a scrobbler to log your votes and join the board.</div>`;
+  } else if (_vvMe && _vvMe.linked === false) {
+    me = `<div class="vv-me vv-gate">Link a scrobbler on <a href="/badges">My&nbsp;Badges</a> to log votes — the board is for streaming blinks. 💗</div>`;
+  } else if (_vvMe) {
+    me = `<div class="vv-me">
+      <div class="vv-me-head">Your VMA votes${displayName ? ' · ' + _vvEsc(displayName) : ''}</div>
+      <div class="vv-me-stats">
+        <div><span>${_vvFmt(_vvMe.today)}</span><small>today</small></div>
+        <div><span>${_vvFmt(_vvMe.week)}</span><small>this week</small></div>
+        <div><span>${_vvFmt(_vvMe.month)}</span><small>this month</small></div>
+        <div><span>${_vvFmt(_vvMe.total)}</span><small>all time</small></div>
+      </div>
+      <div class="vv-form">
+        <span class="vv-form-q">Just voted? Add how many:</span>
+        <div class="vv-input-row">
+          <input id="vv-count" type="number" min="1" value="20" inputmode="numeric">
+          <button id="vv-add" onclick="vmaAddVotes()">Add votes</button>
+        </div>
+        <div class="vv-msg" id="vv-msg"></div>
+      </div>
+    </div>`;
+  } else {
+    me = `<div class="vv-me vv-gate">Loading your votes…</div>`;
+  }
+
+  // board (ranked by selected period)
+  const rows = _vvBoard.slice().sort((a, b) => (b[P] || 0) - (a[P] || 0) || (b.total || 0) - (a.total || 0));
+  let table;
+  if (!rows.length) {
+    table = `<div class="vv-empty">No votes logged yet — be the first! 🗳️</div>`;
+  } else {
+    table = `<table class="vv-table"><thead><tr><th>#</th><th>Blink</th><th>Streams</th><th>Votes ${periodLbl}</th></tr></thead><tbody>`;
+    rows.forEach((r, i) => {
+      const s = streamsByName[(r.name || '').toLowerCase()];
+      const mine = displayName && (r.name || '').toLowerCase() === displayName.toLowerCase();
+      table += `<tr class="${mine ? 'vv-mine' : ''}"><td>${i + 1}</td><td>${_vvEsc(r.name || 'a blink')}</td><td>${s != null ? _vvFmt(s) : '—'}</td><td class="vv-v">${_vvFmt(r[P] || 0)}</td></tr>`;
+    });
+    table += `</tbody></table>`;
+  }
+
+  const labels = { today: 'Today', week: 'Week', month: 'Month', total: 'All' };
+  const toggle = ['today', 'week', 'month', 'total']
+    .map(p => `<button class="vv-tab ${p === P ? 'active' : ''}" onclick="vmaSetPeriod('${p}')">${labels[p]}</button>`).join('');
+
+  panel.innerHTML = `<div class="vv-wrap">
+    <div class="vv-head">
+      <div class="vv-title">🗳️ VMA Voting Leaderboard</div>
+      <div class="vv-note">Logged by streaming blinks · <a href="/vmas">how &amp; where to vote →</a></div>
+    </div>
+    ${me}
+    <div class="vv-tabs">${toggle}</div>
+    ${table}
+  </div>`;
+}
+
+function vmaSetPeriod(p) { _vvPeriod = p; drawVmaVoting(); }
+
+async function vmaAddVotes() {
+  const input = document.getElementById('vv-count');
+  const btn = document.getElementById('vv-add');
+  const msg = document.getElementById('vv-msg');
+  const v = Math.max(1, parseInt(input && input.value, 10) || 0);
+  if (!_vvToken) { if (msg) msg.textContent = 'Sign in first.'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+  try {
+    const r = await fetch('/api/vma-votes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken: _vvToken, votes: v }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      if (msg) msg.textContent = d.error || 'Couldn’t save — try again.';
+      if (btn) { btn.disabled = false; btn.textContent = 'Add votes'; }
+      return;
+    }
+    _vvMe = Object.assign({ linked: true }, d.my);
+    const b = await fetch('/api/vma-votes?board=1', { cache: 'no-store' }).then(x => x.json()).catch(() => null);
+    if (b && b.board) _vvBoard = b.board;
+    drawVmaVoting();
+    const m2 = document.getElementById('vv-msg');
+    if (m2) m2.textContent = `Added ${v} — thank you! 💗`;
+  } catch {
+    if (msg) msg.textContent = 'Network error — try again.';
+    if (btn) { btn.disabled = false; btn.textContent = 'Add votes'; }
+  }
 }
 
 // Less Than a Lover-themed tier names, same thresholds/icons as BADGE_TIERS,
