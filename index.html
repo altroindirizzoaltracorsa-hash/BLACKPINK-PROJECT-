@@ -1498,8 +1498,21 @@
   .vv-me.vv-gate { font-size: 0.8rem; color: var(--muted); line-height: 1.55; }
   .vv-me.vv-gate a { color: var(--pink); }
   .vv-me-head { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: #ff74ac; margin-bottom: 0.5rem; }
-  .vv-rank { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.02em; color: var(--white); margin-bottom: 0.9rem; }
+  .vv-rank { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.02em; color: var(--white); margin-bottom: 0.7rem; }
   .vv-rank b { color: var(--pink); font-weight: 500; }
+  .vv-badge { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+  .vv-badge-cur { font-family: var(--display); font-size: 1.15rem; letter-spacing: 0.05em; color: var(--pink); }
+  .vv-badge-cur.none { color: var(--muted); font-size: 0.9rem; }
+  .vv-badge-next { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.03em; color: var(--muted); }
+  .vv-badge-next b { color: #ff74ac; font-weight: 500; }
+  .vv-ladder { display: flex; gap: 0.4rem; margin-bottom: 1.1rem; }
+  .vv-tier { flex: 1; text-align: center; padding: 0.5rem 0.2rem; border: 1px solid var(--border); opacity: 0.4; }
+  .vv-tier.got { opacity: 1; border-color: rgba(255,0,102,0.5); background: rgba(255,0,102,0.08); }
+  .vv-tier span { display: block; font-size: 1.05rem; line-height: 1; filter: grayscale(1); }
+  .vv-tier.got span { filter: none; }
+  .vv-tier small { display: block; font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.04em; color: var(--muted); margin-top: 0.25rem; }
+  .vv-tier.got small { color: var(--pink); }
+  .vv-rowbadge { font-size: 0.85rem; }
   .vv-me-stats { display: flex; gap: 1.4rem; margin-bottom: 1.1rem; flex-wrap: wrap; }
   .vv-me-stats div { display: flex; flex-direction: column; }
   .vv-me-stats span { font-family: var(--display); font-size: 1.8rem; line-height: 0.85; color: var(--pink); }
@@ -6127,6 +6140,18 @@ function renderVoteCampaigns() {
 
 // ── VMA voting leaderboard (account-gated, self-reported) ───────────────────
 let _vvBoard = [], _vvMe = null, _vvSession = null, _vvToken = null, _vvPeriod = 'today';
+
+// Personal vote-badge tiers (by all-time votes logged).
+const VMA_VOTE_TIERS = [
+  { min: 200,  label: 'VOTER',      icon: '🗳️' },
+  { min: 400,  label: 'CAMPAIGNER', icon: '📣' },
+  { min: 600,  label: 'MOBILIZER',  icon: '⚡' },
+  { min: 800,  label: 'VANGUARD',   icon: '🛡️' },
+  { min: 1000, label: 'POWERHOUSE', icon: '🔥' },
+  { min: 1200, label: 'MVP',        icon: '👑' },
+];
+function voteTier(total) { let t = null; for (const x of VMA_VOTE_TIERS) if ((total || 0) >= x.min) t = x; return t; }
+function nextVoteTier(total) { for (const x of VMA_VOTE_TIERS) if ((total || 0) < x.min) return x; return null; }
 function _vvEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 const _vvFmt = n => Number(n || 0).toLocaleString('en-US');
 
@@ -6177,9 +6202,17 @@ function drawVmaVoting() {
     const rankLine = myRank
       ? `<div class="vv-rank">🏆 You're <b>#${myRank}</b> of ${_vvFmt(rows.length)} ${periodLbl}</div>`
       : `<div class="vv-rank">Add your first votes to get on the board 🗳️</div>`;
+    const myTotal = _vvMe.total || 0;
+    const tier = voteTier(myTotal), next = nextVoteTier(myTotal);
+    const badgeLine = `<div class="vv-badge">
+      ${tier ? `<span class="vv-badge-cur">${tier.icon} ${tier.label}</span>` : `<span class="vv-badge-cur none">No badge yet</span>`}
+      ${next ? `<span class="vv-badge-next"><b>${_vvFmt(next.min - myTotal)}</b> more → ${next.icon} ${next.label}</span>` : `<span class="vv-badge-next">Top tier reached 👑</span>`}
+    </div>
+    <div class="vv-ladder">${VMA_VOTE_TIERS.map(x => `<div class="vv-tier ${myTotal >= x.min ? 'got' : ''}"><span>${x.icon}</span><small>${x.min}</small></div>`).join('')}</div>`;
     me = `<div class="vv-me">
       <div class="vv-me-head">Your VMA votes${displayName ? ' · ' + _vvEsc(displayName) : ''}</div>
       ${rankLine}
+      ${badgeLine}
       <div class="vv-me-stats">
         <div><span>${_vvFmt(_vvMe.today)}</span><small>today</small></div>
         <div><span>${_vvFmt(_vvMe.week)}</span><small>this week</small></div>
@@ -6208,7 +6241,8 @@ function drawVmaVoting() {
     rows.forEach((r, i) => {
       const s = streamsByName[(r.name || '').toLowerCase()];
       const mine = displayName && (r.name || '').toLowerCase() === displayName.toLowerCase();
-      table += `<tr class="${mine ? 'vv-mine' : ''}"><td>${i + 1}</td><td>${_vvEsc(r.name || 'a blink')}</td><td>${s != null ? _vvFmt(s) : '—'}</td><td class="vv-v">${_vvFmt(r[P] || 0)}</td></tr>`;
+      const bt = voteTier(r.total);
+      table += `<tr class="${mine ? 'vv-mine' : ''}"><td>${i + 1}</td><td>${bt ? `<span class="vv-rowbadge" title="${bt.label}">${bt.icon}</span> ` : ''}${_vvEsc(r.name || 'a blink')}</td><td>${s != null ? _vvFmt(s) : '—'}</td><td class="vv-v">${_vvFmt(r[P] || 0)}</td></tr>`;
     });
     table += `</tbody></table>`;
   }
