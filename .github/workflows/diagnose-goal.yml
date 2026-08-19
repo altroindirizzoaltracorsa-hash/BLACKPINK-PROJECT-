@@ -14,7 +14,7 @@ jobs:
       - name: goal-history (merged / derived)
         run: |
           echo "=== GET goal-history ==="
-          curl -sS "https://blinksunited.com/api/leaderboard?action=goal-history" | head -c 6000
+          curl -sSL "https://blinksunited.com/api/leaderboard?action=goal-history" | head -c 6000
           echo
 
       - name: backfill dry-run (per-day 4-track totals from user_daily_counts)
@@ -22,5 +22,7 @@ jobs:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
         run: |
           echo "=== POST backfill-goal-history?dry=1 ==="
-          curl -sS -X POST "https://blinksunited.com/api/leaderboard?action=backfill-goal-history&dry=1&key=${ADMIN_KEY}" | head -c 12000
+          curl -sSL -X POST --post301 --post302 --post307 \
+            "https://blinksunited.com/api/leaderboard?action=backfill-goal-history&dry=1&key=${ADMIN_KEY}" \
+            | head -c 14000
           echo
