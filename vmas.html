@@ -102,6 +102,25 @@
   .cta-btn:active { transform: translateY(1px); }
   .cta-note { text-align: center; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; color: var(--muted); margin-top: 0.7rem; }
 
+  /* ── Community vote tally (in hero) ── */
+  .tally { margin: 2.2rem auto 0; max-width: 23rem; border: 1px solid rgba(255,0,102,0.35); background: rgba(255,0,102,0.06); padding: 1.3rem 1.4rem; text-align: center; }
+  .tally-eyebrow { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pink-lo); margin-bottom: 0.5rem; }
+  .tally-num { font-family: var(--display); font-size: 3.2rem; line-height: 0.9; color: var(--pink); font-variant-numeric: tabular-nums; }
+  .tally-sub { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.03em; color: var(--muted); margin-top: 0.55rem; }
+  .tally-sub span { color: var(--white); }
+  .tally-btn { margin-top: 1.1rem; width: 100%; font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase; color: #12000a; background: var(--pink); border: none; padding: 0.8rem 1rem; cursor: pointer; transition: filter .15s; }
+  .tally-btn:hover { filter: brightness(1.07); }
+  .tally-btn.done { background: transparent; color: var(--pink-lo); border: 1px solid rgba(255,0,102,0.4); cursor: default; }
+  .tally-form { margin-top: 1.1rem; }
+  .tally-q { display: block; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.03em; color: var(--muted); margin-bottom: 0.6rem; }
+  .tally-input-row { display: flex; gap: 0.4rem; align-items: stretch; }
+  .tally-step { width: 2.5rem; font-family: var(--display); font-size: 1.5rem; color: var(--white); background: transparent; border: 1px solid var(--border); cursor: pointer; }
+  .tally-step:hover { border-color: var(--pink); color: var(--pink); }
+  .tally-input { flex: 1; min-width: 0; text-align: center; font-family: var(--display); font-size: 1.6rem; color: var(--white); background: #0f0a0f; border: 1px solid var(--border); }
+  .tally-log { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: #12000a; background: var(--pink); border: none; padding: 0 1.2rem; cursor: pointer; }
+  .tally-log:disabled { opacity: 0.6; cursor: default; }
+  .tally-msg { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.03em; color: var(--pink-lo); margin-top: 0.7rem; min-height: 1em; }
+
   /* ── Section headers ── */
   .section { padding: 2.6rem 0 0.5rem; }
   .section-head { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--pink); margin-bottom: 1.3rem; }
@@ -195,6 +214,23 @@
       <a class="cta-btn" href="https://vote.mtv.com/" target="_blank" rel="noopener noreferrer">Vote Now ↗</a>
     </div>
     <div class="cta-note">Opens vote.mtv.com — tap a category below to go straight to its ballot</div>
+
+    <div class="tally" id="tally" hidden>
+      <div class="tally-eyebrow">Votes logged by BLINKs</div>
+      <div class="tally-num" id="tally-total">—</div>
+      <div class="tally-sub"><span id="tally-blinks">—</span> BLINKs in · <span id="tally-today">—</span> logged today</div>
+      <button class="tally-btn" id="tally-btn" type="button" onclick="tallyOpen()">🗳️ I voted today</button>
+      <div class="tally-form" id="tally-form" hidden>
+        <label class="tally-q" for="tally-count">How many votes did you cast today?</label>
+        <div class="tally-input-row">
+          <button class="tally-step" type="button" onclick="tallyStep(-1)" aria-label="minus">–</button>
+          <input class="tally-input" id="tally-count" type="number" min="1" max="40" value="20" inputmode="numeric">
+          <button class="tally-step" type="button" onclick="tallyStep(1)" aria-label="plus">+</button>
+          <button class="tally-log" id="tally-log" type="button" onclick="tallyLog()">Log it</button>
+        </div>
+        <div class="tally-msg" id="tally-msg"></div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -398,6 +434,77 @@
 
   tick();
   setInterval(tick, 1000);
+</script>
+
+<script>
+  // ── Community vote tally (self-reported, honor-system) ──
+  (function () {
+    var API = '/api/vma-votes';
+    var card = document.getElementById('tally');
+    var $ = function (id) { return document.getElementById(id); };
+    var fmt = function (n) { return Number(n || 0).toLocaleString('en-US'); };
+    var dayKey = function () { return new Date().toISOString().slice(0, 10); };
+
+    function clientId() {
+      var k = 'bu_vma_cid', v = localStorage.getItem(k);
+      if (!v) {
+        v = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+            : String(Date.now()) + Math.random().toString(36).slice(2);
+        localStorage.setItem(k, v);
+      }
+      return v;
+    }
+    var loggedToday = function () { return localStorage.getItem('bu_vma_logged_' + dayKey()) === '1'; };
+    var markLogged = function () { localStorage.setItem('bu_vma_logged_' + dayKey(), '1'); };
+
+    function render(s) {
+      $('tally-total').textContent = fmt(s.total);
+      $('tally-blinks').textContent = fmt(s.blinksTotal);
+      $('tally-today').textContent = fmt(s.today);
+      card.hidden = false;
+    }
+    function showDone() {
+      $('tally-form').hidden = true;
+      var b = $('tally-btn');
+      b.hidden = false;
+      b.textContent = '✓ Logged today — come back tomorrow';
+      b.disabled = true;
+      b.classList.add('done');
+    }
+
+    // Only reveal the card once the backend answers, so there's no broken UI
+    // in the window before the table/endpoint exist.
+    fetch(API, { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+      .then(function (s) { render(s); if (loggedToday()) showDone(); })
+      .catch(function () { /* backend not ready — leave the card hidden */ });
+
+    window.tallyOpen = function () {
+      if (loggedToday()) return;
+      $('tally-form').hidden = false;
+      $('tally-btn').hidden = true;
+    };
+    window.tallyStep = function (d) {
+      var i = $('tally-count');
+      i.value = Math.max(1, Math.min(40, (parseInt(i.value, 10) || 0) + d));
+    };
+    window.tallyLog = function () {
+      var v = Math.max(1, Math.min(40, parseInt($('tally-count').value, 10) || 0));
+      var btn = $('tally-log');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ votes: v, clientId: clientId() }),
+      })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+        .then(function (s) { render(s); markLogged(); showDone(); $('tally-msg').textContent = 'Thank you! 💗'; })
+        .catch(function () {
+          btn.disabled = false; btn.textContent = 'Log it';
+          $('tally-msg').textContent = 'Couldn’t save — try again in a moment.';
+        });
+    };
+  })();
 </script>
 </body>
 </html>
