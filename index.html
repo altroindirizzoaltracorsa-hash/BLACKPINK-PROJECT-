@@ -11277,7 +11277,7 @@ function setCardFormat(fmt, btn) {
   else if (_cardType === 'artist') drawArtistCard(canvas, _artistCardData, _cardLogo, _cardArt, _artistCardData?.artistName);
   else if (_cardType === 'release') drawReleaseCard(canvas, _cardLogo, _cardArt, ltalWordmarkImg);
   else if (_cardType === 'goals') drawGoalsCard(canvas, _cardLogo, _cardArt, _goalsCardData);
-  else if (_cardType === 'goal-hit' && window._goalCardData) drawGoalHitCard(canvas, { ...window._goalCardData, logo: _cardLogo, walkers: _goalWalkersImg });
+  else if (_cardType === 'goal-hit' && window._goalCardData) drawGoalHitCard(canvas, { ...window._goalCardData, logo: _cardLogo, walkers: _goalWalkersImg, photo: _goalCardPhoto });
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -13025,15 +13025,18 @@ async function openGoalHitCard() {
   await document.fonts.ready;
   const canvas = document.getElementById('card-canvas');
   canvas.width = 1080; canvas.height = 1080;
-  const [logo, walkers] = await Promise.all([
+  const [logo, walkers, photo] = await Promise.all([
     getBuLogo(),
     _goalWalkersImg
       ? Promise.resolve(_goalWalkersImg)
       : loadImg('/goal-walkers.png').then(img => { _goalWalkersImg = img; return img; }).catch(() => null),
+    _goalCardPhoto
+      ? Promise.resolve(_goalCardPhoto)
+      : loadImg('/goal-card-bp.jpg').then(img => { _goalCardPhoto = img; return img; }).catch(() => null),
   ]);
   _cardLogo = logo;
 
-  const cardData = { ...d, logo, walkers };
+  const cardData = { ...d, logo, walkers, photo };
   const _hit = d.primary || d.stretch || d.total >= 15000;
   const finalLabel = _hit
     ? (d.stretch ? 'STRETCH GOAL SMASHED 🎉' : 'COMMUNITY GOAL HIT 🎉')
@@ -13102,7 +13105,7 @@ function _cardRR(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, walkers, dateKey, _animPct = 1, _skipReady = false }) {
+function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, walkers, photo, dateKey, _animPct = 1, _skipReady = false }) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   const PX = 90;
@@ -13170,6 +13173,51 @@ function drawGoalHitCard(canvas, { total, primary, stretch, streak, logo, walker
     ctx.font = '500 22px "DM Mono", monospace';
     ctx.letterSpacing = '4px';
     ctx.fillText(`🔥 ${streak} DAY${streak === 1 ? '' : 'S'} IN A ROW`, PX, 486);
+  }
+
+  // ── Photo reveal — once the bar reaches 100%, the BLACKPINK group photo fades in ──
+  // Only when the goal is actually hit. revealStart = the animation progress point at
+  // which the fill bar reaches the goal edge (goalNum/total), capped so there's always
+  // a visible fade at the end of the run.
+  if (_isHit && photo && photo.naturalWidth) {
+    const revealStart = Math.min(goalNum / Math.max(total, 1), 0.7);
+    const rawT = (_animPct - revealStart) / (1 - revealStart);
+    const revealT = Math.max(0, Math.min(1, rawT));
+    if (revealT > 0) {
+      const bandX = PX, bandW = W - PX * 2, bandY = 506, bandH = 246, bandR = 22;
+      // Ease-out for a soft fade + gentle settle
+      const e = 1 - Math.pow(1 - revealT, 3);
+      ctx.save();
+      _cardRR(ctx, bandX, bandY, bandW, bandH, bandR);
+      ctx.clip();
+      ctx.globalAlpha = e;
+      // Cover-fit, anchored to the top so the members' faces stay in frame
+      const scale = Math.max(bandW / photo.naturalWidth, bandH / photo.naturalHeight);
+      // Gentle zoom-out as it settles (1.05 → 1.0)
+      const zoom = 1.05 - 0.05 * e;
+      const dw = photo.naturalWidth * scale * zoom;
+      const dh = photo.naturalHeight * scale * zoom;
+      const dx = bandX + (bandW - dw) / 2;
+      const dy = bandY - (dh - bandH) * 0.12; // bias toward top → faces visible
+      ctx.drawImage(photo, dx, dy, dw, dh);
+      // Dark gradient at the bottom edge so it reads into the runway below
+      const shade = ctx.createLinearGradient(0, bandY + bandH - 70, 0, bandY + bandH);
+      shade.addColorStop(0, 'rgba(8,8,8,0)');
+      shade.addColorStop(1, 'rgba(8,8,8,0.55)');
+      ctx.fillStyle = shade;
+      ctx.fillRect(bandX, bandY + bandH - 70, bandW, 70);
+      ctx.restore();
+      // Pink glow border
+      ctx.save();
+      ctx.globalAlpha = e;
+      _cardRR(ctx, bandX, bandY, bandW, bandH, bandR);
+      ctx.strokeStyle = 'rgba(255,0,102,0.85)';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = 'rgba(255,31,111,0.7)';
+      ctx.shadowBlur = 26;
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   // ── Walking runway (the on-page walking bar, drawn onto the card) ──
