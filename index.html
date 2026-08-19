@@ -1512,6 +1512,11 @@
   .vv-tier.got span { filter: none; }
   .vv-tier small { display: block; font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.04em; color: var(--muted); margin-top: 0.25rem; }
   .vv-tier.got small { color: var(--pink); }
+  /* Monster Blink — the dual-requirement ultimate badge */
+  .vv-tier-mb { border-color: rgba(255,0,102,0.35); }
+  .vv-tier-mb.got { border-color: #ff74ac; background: rgba(255,0,102,0.16); box-shadow: 0 0 14px rgba(255,31,111,0.45); }
+  .vv-tier-mb.got small { color: #ff74ac; }
+  .vv-badge-cur.mb { color: #ff74ac; text-shadow: 0 0 12px rgba(255,31,111,0.55); }
   .vv-rowbadge { font-size: 0.85rem; }
   .vv-me-stats { display: flex; gap: 1.4rem; margin-bottom: 1.1rem; flex-wrap: wrap; }
   .vv-me-stats div { display: flex; flex-direction: column; }
@@ -6150,8 +6155,12 @@ const VMA_VOTE_TIERS = [
   { min: 1000, label: 'POWERHOUSE', icon: '🔥' },
   { min: 1200, label: 'MVP',        icon: '👑' },
 ];
+// Ultimate badge — needs BOTH heavy voting AND streaming (dual requirement,
+// so it lives outside the pure-votes ladder above).
+const MONSTER_BLINK = { votes: 2500, streams: 1500, label: 'MONSTER BLINK', icon: '👹' };
 function voteTier(total) { let t = null; for (const x of VMA_VOTE_TIERS) if ((total || 0) >= x.min) t = x; return t; }
 function nextVoteTier(total) { for (const x of VMA_VOTE_TIERS) if ((total || 0) < x.min) return x; return null; }
+function isMonsterBlink(votes, streams) { return (votes || 0) >= MONSTER_BLINK.votes && (streams || 0) >= MONSTER_BLINK.streams; }
 function _vvEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 const _vvFmt = n => Number(n || 0).toLocaleString('en-US');
 
@@ -6203,12 +6212,30 @@ function drawVmaVoting() {
       ? `<div class="vv-rank">🏆 You're <b>#${myRank}</b> of ${_vvFmt(rows.length)} ${periodLbl}</div>`
       : `<div class="vv-rank">Add your first votes to get on the board 🗳️</div>`;
     const myTotal = _vvMe.total || 0;
-    const tier = voteTier(myTotal), next = nextVoteTier(myTotal);
+    const myStreams = streamsByName[(displayName || '').toLowerCase()] || 0;
+    const MB = MONSTER_BLINK;
+    const hasMonster = isMonsterBlink(myTotal, myStreams);
+    const tier = hasMonster ? MB : voteTier(myTotal);
+    const next = nextVoteTier(myTotal);
+    let nextHtml;
+    if (hasMonster) {
+      nextHtml = `<span class="vv-badge-next">${MB.icon} the ultimate blink — top tier reached</span>`;
+    } else if (next) {
+      nextHtml = `<span class="vv-badge-next"><b>${_vvFmt(next.min - myTotal)}</b> more → ${next.icon} ${next.label}</span>`;
+    } else {
+      // Past MVP (1,200) — the only thing left is MONSTER BLINK, which also needs streams
+      const needV = Math.max(0, MB.votes - myTotal);
+      const needS = Math.max(0, MB.streams - myStreams);
+      const parts = [];
+      if (needV > 0) parts.push(`<b>${_vvFmt(needV)}</b> votes`);
+      if (needS > 0) parts.push(`<b>${_vvFmt(needS)}</b> streams`);
+      nextHtml = `<span class="vv-badge-next">${parts.join(' + ')} → ${MB.icon} ${MB.label}</span>`;
+    }
     const badgeLine = `<div class="vv-badge">
-      ${tier ? `<span class="vv-badge-cur">${tier.icon} ${tier.label}</span>` : `<span class="vv-badge-cur none">No badge yet</span>`}
-      ${next ? `<span class="vv-badge-next"><b>${_vvFmt(next.min - myTotal)}</b> more → ${next.icon} ${next.label}</span>` : `<span class="vv-badge-next">Top tier reached 👑</span>`}
+      ${tier ? `<span class="vv-badge-cur${hasMonster ? ' mb' : ''}">${tier.icon} ${tier.label}</span>` : `<span class="vv-badge-cur none">No badge yet</span>`}
+      ${nextHtml}
     </div>
-    <div class="vv-ladder">${VMA_VOTE_TIERS.map(x => `<div class="vv-tier ${myTotal >= x.min ? 'got' : ''}"><span>${x.icon}</span><small>${x.min}</small></div>`).join('')}</div>`;
+    <div class="vv-ladder">${VMA_VOTE_TIERS.map(x => `<div class="vv-tier ${myTotal >= x.min ? 'got' : ''}"><span>${x.icon}</span><small>${x.min}</small></div>`).join('')}<div class="vv-tier vv-tier-mb ${hasMonster ? 'got' : ''}" title="${MB.votes.toLocaleString()} votes + ${MB.streams.toLocaleString()} streams"><span>${MB.icon}</span><small>MB</small></div></div>`;
     me = `<div class="vv-me">
       <div class="vv-me-head">Your VMA votes${displayName ? ' · ' + _vvEsc(displayName) : ''}</div>
       ${rankLine}
@@ -6241,7 +6268,7 @@ function drawVmaVoting() {
     rows.forEach((r, i) => {
       const s = streamsByName[(r.name || '').toLowerCase()];
       const mine = displayName && (r.name || '').toLowerCase() === displayName.toLowerCase();
-      const bt = voteTier(r.total);
+      const bt = isMonsterBlink(r.total, s) ? MONSTER_BLINK : voteTier(r.total);
       table += `<tr class="${mine ? 'vv-mine' : ''}"><td>${i + 1}</td><td>${bt ? `<span class="vv-rowbadge" title="${bt.label}">${bt.icon}</span> ` : ''}${_vvEsc(r.name || 'a blink')}</td><td>${s != null ? _vvFmt(s) : '—'}</td><td class="vv-v">${_vvFmt(r[P] || 0)}</td></tr>`;
     });
     table += `</tbody></table>`;
