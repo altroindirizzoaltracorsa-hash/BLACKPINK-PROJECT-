@@ -1497,7 +1497,9 @@
   .vv-me { background: rgba(255,0,102,0.05); border: 1px solid var(--border); padding: 1rem 1.1rem; margin-bottom: 1.1rem; }
   .vv-me.vv-gate { font-size: 0.8rem; color: var(--muted); line-height: 1.55; }
   .vv-me.vv-gate a { color: var(--pink); }
-  .vv-me-head { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: #ff74ac; margin-bottom: 0.8rem; }
+  .vv-me-head { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: #ff74ac; margin-bottom: 0.5rem; }
+  .vv-rank { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.02em; color: var(--white); margin-bottom: 0.9rem; }
+  .vv-rank b { color: var(--pink); font-weight: 500; }
   .vv-me-stats { display: flex; gap: 1.4rem; margin-bottom: 1.1rem; flex-wrap: wrap; }
   .vv-me-stats div { display: flex; flex-direction: column; }
   .vv-me-stats span { font-family: var(--display); font-size: 1.8rem; line-height: 0.85; color: var(--pink); }
@@ -6160,15 +6162,24 @@ function drawVmaVoting() {
   const periodLbl = { today: 'today', week: 'this week', month: 'this month', total: 'all time' }[P];
   const displayName = _vvSession?.user?.user_metadata?.display_name || null;
 
+  // ranked board (also used to compute the caller's rank in the selected period)
+  const rows = _vvBoard.slice().sort((a, b) => (b[P] || 0) - (a[P] || 0) || (b.total || 0) - (a.total || 0));
+  const myIdx = displayName ? rows.findIndex(r => (r.name || '').toLowerCase() === displayName.toLowerCase()) : -1;
+  const myRank = myIdx >= 0 ? myIdx + 1 : null;
+
   // personal card / gate
   let me;
   if (!_vvSession) {
-    me = `<div class="vv-me vv-gate">Sign in on <a href="/badges">My&nbsp;Badges</a> and link a scrobbler to log your votes and join the board.</div>`;
+    me = `<div class="vv-me vv-gate">Sign in on <a href="/badges">My&nbsp;Badges</a> and link a scrobbler to <b>register your votes and climb the board</b> against other blinks. 🏆</div>`;
   } else if (_vvMe && _vvMe.linked === false) {
-    me = `<div class="vv-me vv-gate">Link a scrobbler on <a href="/badges">My&nbsp;Badges</a> to log votes — the board is for streaming blinks. 💗</div>`;
+    me = `<div class="vv-me vv-gate">Link a scrobbler on <a href="/badges">My&nbsp;Badges</a> to get on the board — it's for blinks who <b>stream and vote</b>. 💗</div>`;
   } else if (_vvMe) {
+    const rankLine = myRank
+      ? `<div class="vv-rank">🏆 You're <b>#${myRank}</b> of ${_vvFmt(rows.length)} ${periodLbl}</div>`
+      : `<div class="vv-rank">Add your first votes to get on the board 🗳️</div>`;
     me = `<div class="vv-me">
       <div class="vv-me-head">Your VMA votes${displayName ? ' · ' + _vvEsc(displayName) : ''}</div>
+      ${rankLine}
       <div class="vv-me-stats">
         <div><span>${_vvFmt(_vvMe.today)}</span><small>today</small></div>
         <div><span>${_vvFmt(_vvMe.week)}</span><small>this week</small></div>
@@ -6188,8 +6199,7 @@ function drawVmaVoting() {
     me = `<div class="vv-me vv-gate">Loading your votes…</div>`;
   }
 
-  // board (ranked by selected period)
-  const rows = _vvBoard.slice().sort((a, b) => (b[P] || 0) - (a[P] || 0) || (b.total || 0) - (a.total || 0));
+  // board (ranked by selected period; `rows` computed above for the rank line)
   let table;
   if (!rows.length) {
     table = `<div class="vv-empty">No votes logged yet — be the first! 🗳️</div>`;
@@ -6210,7 +6220,7 @@ function drawVmaVoting() {
   panel.innerHTML = `<div class="vv-wrap">
     <div class="vv-head">
       <div class="vv-title">🗳️ VMA Voting Leaderboard</div>
-      <div class="vv-note">Logged by streaming blinks · <a href="/vmas">how &amp; where to vote →</a></div>
+      <div class="vv-note">Register the votes you cast and race other blinks up the board — streaming blinks only. <a href="/vmas">how &amp; where to vote →</a></div>
     </div>
     ${me}
     <div class="vv-tabs">${toggle}</div>
