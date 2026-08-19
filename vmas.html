@@ -129,6 +129,25 @@
   .rules li { font-size: 0.85rem; color: rgba(245,240,240,0.75); line-height: 1.5; padding-left: 1.1rem; position: relative; }
   .rules li::before { content: '·'; position: absolute; left: 0; color: var(--pink); font-weight: 700; }
 
+  /* ── Timeline ── */
+  .timeline { display: flex; flex-direction: column; }
+  .tl-row { display: grid; grid-template-columns: 5rem 1fr; gap: 1.1rem; padding: 1.15rem 0; border-top: 1px solid var(--border); }
+  .tl-row:first-child { border-top: none; }
+  .tl-year { font-family: var(--display); font-size: 2rem; line-height: 1; color: var(--pink); }
+  .tl-wins { display: flex; flex-direction: column; gap: 0.7rem; }
+  .tl-win-title { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.02em; color: var(--white); line-height: 1.45; }
+  .tl-win-title .cat { color: var(--white); }
+  .tl-win-title .who { color: var(--pink-lo); }
+  .tl-win-title .song { color: var(--muted); }
+  .tl-note { font-size: 0.76rem; color: var(--muted); line-height: 1.45; margin-top: 0.25rem; }
+  .tl-row.now { border-top-color: rgba(255,0,102,0.5); }
+  .tl-row.now .tl-year { color: var(--white); }
+  .tl-badge { display: inline-block; font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pink); border: 1px solid rgba(255,0,102,0.5); padding: 0.15rem 0.45rem; margin-bottom: 0.5rem; }
+  .tl-nom { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.02em; color: var(--white); line-height: 1.6; }
+  .tl-nom .song { color: var(--muted); }
+  .tl-vote-up { display: inline-block; margin-top: 0.6rem; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pink); text-decoration: none; border-bottom: 1px solid rgba(255,0,102,0.5); }
+  .tl-vote-up:hover { color: var(--pink-lo); }
+
   /* ── Footer ── */
   footer { text-align: center; padding: 3rem 1.2rem 2.5rem; margin-top: 2rem; border-top: 1px solid var(--border); }
   .foot-link { font-family: var(--display); font-size: 1.6rem; letter-spacing: 0.1em; color: var(--pink); text-decoration: none; }
@@ -208,6 +227,81 @@
         <li>Voting closes <b>September 25, 6PM ET</b>.</li>
         <li>Winners revealed live <b>Sunday, September 27 · 7:30 ET / 4:30 PT</b> on CBS &amp; Paramount+.</li>
       </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">BLACKPINK &amp; the VMAs · through the years</div>
+    <div class="timeline">
+      <div class="tl-row">
+        <div class="tl-year">2020</div>
+        <div class="tl-wins">
+          <div>
+            <div class="tl-win-title">🏆 <span class="cat">Song of Summer</span> · <span class="who">BLACKPINK</span> — <span class="song">“How You Like That”</span></div>
+            <div class="tl-note">Their first-ever VMA win — and the first Asian girl group to take the category.</div>
+          </div>
+        </div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-year">2022</div>
+        <div class="tl-wins">
+          <div>
+            <div class="tl-win-title">🏆 <span class="cat">Best Metaverse Performance</span> · <span class="who">BLACKPINK</span> — <span class="song">“The Virtual” (PUBGM)</span></div>
+            <div class="tl-note">Winners of the inaugural award in the category.</div>
+          </div>
+          <div>
+            <div class="tl-win-title">🏆 <span class="cat">Best K-Pop</span> · <span class="who">LISA</span> — <span class="song">“LALISA”</span></div>
+            <div class="tl-note">The first solo K-pop artist to win a Moon Person.</div>
+          </div>
+        </div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-year">2023</div>
+        <div class="tl-wins">
+          <div>
+            <div class="tl-win-title">🏆 <span class="cat">Group of the Year</span> · <span class="who">BLACKPINK</span></div>
+            <div class="tl-note">The first girl group in 24 years to win the award.</div>
+          </div>
+          <div>
+            <div class="tl-win-title">🏆 <span class="cat">Best Choreography</span> · <span class="who">BLACKPINK</span> — <span class="song">“Pink Venom”</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-year">2024</div>
+        <div class="tl-wins">
+          <div>
+            <div class="tl-win-title">🏆 <span class="cat">Best K-Pop</span> · <span class="who">LISA</span> — <span class="song">“Rockstar”</span></div>
+            <div class="tl-note">The first artist ever to win Best K-Pop twice.</div>
+          </div>
+        </div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-year">2025</div>
+        <div class="tl-wins">
+          <div>
+            <div class="tl-win-title">🏆 <span class="cat">Song of the Year</span> · <span class="who">ROSÉ</span> — <span class="song">“APT.” with Bruno Mars</span></div>
+            <div class="tl-note">The first K-pop artist ever to win Song of the Year.</div>
+          </div>
+          <div>
+            <div class="tl-win-title">🏆 <span class="cat">Best K-Pop</span> · <span class="who">LISA</span> — <span class="song">“Born Again” with Doja Cat &amp; RAYE</span></div>
+            <div class="tl-note">Back-to-back — her second Best K-Pop in a row.</div>
+          </div>
+        </div>
+      </div>
+      <div class="tl-row now">
+        <div class="tl-year">2026</div>
+        <div class="tl-wins">
+          <div>
+            <span class="tl-badge">You are here</span>
+            <div class="tl-nom">Nominated: <span class="who">BLACKPINK</span> <span class="song">“JUMP”</span> · <span class="who">LISA</span> <span class="song">“Dream”</span> · <span class="who">JISOO × ZAYN</span> <span class="song">“Eyes Closed”</span></div>
+            <div class="tl-note">LISA is now the most-nominated K-pop soloist in VMA history. This one's on us — the fans.</div>
+            <a class="tl-vote-up" href="#hero">↑ Vote now</a>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
