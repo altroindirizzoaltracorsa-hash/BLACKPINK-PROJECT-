@@ -115,7 +115,8 @@
   .hl-num span { font-family: var(--display); font-size: 3.8rem; line-height: 0.85; color: var(--pink); }
   .hl-num.rec span { color: var(--white); }
   .hl-num small { font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--muted); margin-top: 0.5rem; }
-  .hl-vs { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); align-self: flex-start; margin-top: 1rem; }
+  .hl-vs { font-family: var(--display); font-size: 2.4rem; color: var(--muted); align-self: flex-start; margin-top: 0.55rem; }
+  .hl-tied { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--pink); margin-bottom: 1.1rem; }
   .hl-body { font-size: 0.9rem; color: var(--muted); line-height: 1.6; max-width: 34rem; margin: 0 auto; }
   .hl-body b { color: var(--pink-lo); font-weight: 400; }
 
@@ -232,15 +233,16 @@
 
 <section class="section">
   <div class="wrap">
-    <div class="section-head">One win from history</div>
+    <div class="section-head">One win from the record</div>
     <div class="highlight">
       <div class="hl-eyebrow">Most VMA wins · girl groups, all-time</div>
       <div class="hl-stat">
-        <div class="hl-num"><span>4</span><small>BLACKPINK</small></div>
-        <div class="hl-vs">vs</div>
-        <div class="hl-num rec"><span>5</span><small>TLC · the record</small></div>
+        <div class="hl-num"><span>5</span><small>BLACKPINK</small></div>
+        <div class="hl-vs">=</div>
+        <div class="hl-num rec"><span>5</span><small>TLC</small></div>
       </div>
-      <p class="hl-body">BLACKPINK have <b>4 VMA wins</b> — one behind TLC, the most by any girl group in history. <b>“JUMP” is up for Best K-Pop</b>, a category the group has never won — a win would be their 5th, tying the all-time girl-group record. It's on us.</p>
+      <div class="hl-tied">Tied for the all-time record</div>
+      <p class="hl-body">BLACKPINK have <b>5 VMA wins</b> — level with TLC for the most by any girl group in history. <b>“JUMP” is up for Best K-Pop</b>, a category the group has never won: a 6th win would make them the outright record-holder. It's on us.</p>
     </div>
   </div>
 </section>
@@ -311,6 +313,10 @@
       <div class="tl-row">
         <div class="tl-year">2025</div>
         <div class="tl-wins">
+          <div>
+            <div class="tl-win-title">🏆 <span class="cat">Best Group</span> · <span class="who">BLACKPINK</span></div>
+            <div class="tl-note">Their second win in the group category, after 2023.</div>
+          </div>
           <div>
             <div class="tl-win-title">🏆 <span class="cat">Song of the Year</span> · <span class="who">ROSÉ</span> — <span class="song">“APT.” with Bruno Mars</span></div>
             <div class="tl-note">The first K-pop artist ever to win Song of the Year.</div>
