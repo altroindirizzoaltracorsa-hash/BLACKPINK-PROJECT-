@@ -53,6 +53,29 @@ function communityGoalTotalFromUsers(users, dayDDMM) {
     return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0);
   }, 0);
 }
+
+// Aggregate the durable per-user/per-day store (user_daily_counts) into a
+// { day_key: 4-track total } map — the accurate source the goal backfill uses
+// (the leaderboard_archive snapshot undercounts days near the 2am rollover).
+// Lets goal-history derive hit-days directly, so a day that was hit but never
+// captured by a live record can't go missing.
+async function aggregateGoalDaysFromCounts(sb) {
+  const perDay = {};
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data: rows, error } = await sb
+      .from('user_daily_counts')
+      .select('day_key,jump,shutdown,ddududu,go')
+      .order('day_key', { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    for (const r of (rows || [])) {
+      perDay[r.day_key] = (perDay[r.day_key] || 0) + (r.jump || 0) + (r.shutdown || 0) + (r.ddududu || 0) + (r.go || 0);
+    }
+    if (!rows || rows.length < PAGE) break;
+  }
+  return perDay;
+}
 const TRACK_EVENTS = new Set(['pageview', 'playlist_click', 'share_click', 'vote_click']);
 
 // Less Than a Lover leaves the campaign at the reset cutoff. Per-track ltal values
@@ -952,11 +975,38 @@ export default async function handler(req, res) {
   }
 
   // ── GET /api/leaderboard?action=goal-history — community goal streak ──
+  // Self-healing: merges any explicitly-recorded days with days DERIVED from the
+  // durable per-day store, so a goal that was hit but never captured live (no
+  // visitor / cron at the right moment) still shows up. Derivation is cached
+  // ~10 min since past-day rows are immutable.
   if (req.method === 'GET' && action === 'goal-history') {
     const gh = (await redis.get(GOAL_HISTORY_KEY)) || { days: {} };
-    const streak = computeGoalStreak(gh.days || {});
+    const merged = {};
+    for (const [k, v] of Object.entries(gh.days || {})) merged[k] = { ...v };
+
+    try {
+      const sb = supabase();
+      if (sb) {
+        const CACHE_KEY = 'bu_goal_days_derived_v1';
+        let derived;
+        const cached = await redis.get(CACHE_KEY);
+        if (cached && cached.computedAt && (Date.now() - cached.computedAt) < 10 * 60 * 1000) {
+          derived = cached.days || {};
+        } else {
+          derived = await aggregateGoalDaysFromCounts(sb);
+          await redis.set(CACHE_KEY, { days: derived, computedAt: Date.now() });
+        }
+        for (const [k, total] of Object.entries(derived)) {
+          if (total >= GOAL_PRIMARY && total >= (merged[k]?.total || 0)) {
+            merged[k] = { total, primary: true, stretch: total >= GOAL_SECONDARY, derived: true };
+          }
+        }
+      }
+    } catch (_) { /* fall back to recorded days only */ }
+
+    const streak = computeGoalStreak(merged);
     res.setHeader('Cache-Control', 'no-store');
-    return res.status(200).json({ days: gh.days || {}, streak });
+    return res.status(200).json({ days: merged, streak });
   }
 
   // ── POST /api/leaderboard?action=backfill-goal-history&key=ADMIN[&dry=1] ──
