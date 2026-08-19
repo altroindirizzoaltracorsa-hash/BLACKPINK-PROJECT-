@@ -107,6 +107,18 @@
   .section-head { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--pink); margin-bottom: 1.3rem; }
   .section-head::before { content: '// '; color: var(--muted); }
 
+  /* ── Highlight / the stake ── */
+  .highlight { border: 1px solid rgba(255,0,102,0.4); background: rgba(255,0,102,0.05); padding: 1.9rem 1.6rem; text-align: center; box-shadow: 0 0 40px -18px rgba(255,0,102,0.6) inset; }
+  .hl-eyebrow { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--pink-lo); margin-bottom: 1.2rem; }
+  .hl-stat { display: flex; align-items: center; justify-content: center; gap: 1.6rem; margin-bottom: 1.2rem; }
+  .hl-num { display: flex; flex-direction: column; align-items: center; }
+  .hl-num span { font-family: var(--display); font-size: 3.8rem; line-height: 0.85; color: var(--pink); }
+  .hl-num.rec span { color: var(--white); }
+  .hl-num small { font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--muted); margin-top: 0.5rem; }
+  .hl-vs { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); align-self: flex-start; margin-top: 1rem; }
+  .hl-body { font-size: 0.9rem; color: var(--muted); line-height: 1.6; max-width: 34rem; margin: 0 auto; }
+  .hl-body b { color: var(--pink-lo); font-weight: 400; }
+
   /* ── Video gallery ── */
   .videos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; }
   .video { display: flex; flex-direction: column; }
@@ -215,6 +227,21 @@
       </div>
     </div>
     <div class="videos-note">🔒 Chosen by an industry panel — not a fan vote</div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">One win from history</div>
+    <div class="highlight">
+      <div class="hl-eyebrow">Most VMA wins · girl groups, all-time</div>
+      <div class="hl-stat">
+        <div class="hl-num"><span>4</span><small>BLACKPINK</small></div>
+        <div class="hl-vs">vs</div>
+        <div class="hl-num rec"><span>5</span><small>TLC · the record</small></div>
+      </div>
+      <p class="hl-body">BLACKPINK have <b>4 VMA wins</b> — one behind TLC, the most by any girl group in history. <b>“JUMP” is up for Best K-Pop</b>, a category the group has never won — a win would be their 5th, tying the all-time girl-group record. It's on us.</p>
+    </div>
   </div>
 </section>
 
