@@ -1,0 +1,26 @@
+name: Diagnose Goal History
+
+# One-off: read the live goal-history output and the backfill dry-run so we can
+# see, per day, what the durable per-day store actually sums to for the 4-track
+# community total. Read-only (dry=1 writes nothing). Trigger from the Actions tab.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: goal-history (merged / derived)
+        run: |
+          echo "=== GET goal-history ==="
+          curl -sS "https://blinksunited.com/api/leaderboard?action=goal-history" | head -c 6000
+          echo
+
+      - name: backfill dry-run (per-day 4-track totals from user_daily_counts)
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          echo "=== POST backfill-goal-history?dry=1 ==="
+          curl -sS -X POST "https://blinksunited.com/api/leaderboard?action=backfill-goal-history&dry=1&key=${ADMIN_KEY}" | head -c 12000
+          echo
