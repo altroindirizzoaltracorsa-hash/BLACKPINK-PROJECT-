@@ -70,3 +70,17 @@ as $$
   from per_user u
   left join latest_name n using (app_user_id);
 $$;
+
+-- ── Privileges ──────────────────────────────────────────────────────────────
+-- This table is written ONLY by the /api/vma-votes serverless function, which
+-- connects with the service_role key and does its own auth + linked-scrobbler
+-- check. Lock everyone else out and make sure the server can write:
+--   • RLS on, with NO policies → anon/authenticated can't touch it directly
+--     (they must go through the API).
+--   • service_role bypasses RLS but still needs table GRANTs — a freshly
+--     created table doesn't always inherit them, which is what caused
+--     "permission denied for table vma_user_votes" on the first write.
+alter table vma_user_votes enable row level security;
+grant all privileges on table vma_user_votes to service_role;
+grant execute on function vma_vote_totals() to service_role;
+grant execute on function vma_vote_board()  to service_role;
