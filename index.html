@@ -465,6 +465,19 @@
   .ltal-toggle-count #ltal-toggle-count-num { color:var(--pink);font-family:var(--display);font-size:0.95rem; }
   .ltal-toggle-hint { font-size:0.6rem;letter-spacing:0.04em;color:rgba(245,240,240,0.4);line-height:1.5;margin-top:0.75rem; }
   .ltal-toggle-status { font-size:0.6rem;letter-spacing:0.04em;margin-top:0.45rem; }
+  /* Tappable LTAL scrobble count → day/week breakdown */
+  .ltal-count-tap { cursor:pointer; display:inline-flex; align-items:center; gap:0.3rem; }
+  .ltal-count-caret { color:var(--pink); font-size:0.7rem; transition:transform .2s ease; }
+  .ltal-count-tap.open .ltal-count-caret { transform:rotate(180deg); }
+  .ltal-breakdown { margin-top:1rem; padding-top:0.9rem; border-top:1px solid rgba(255,255,255,0.07); }
+  .ltal-bd-tabs { display:flex; gap:0.4rem; margin-bottom:0.7rem; }
+  .ltal-bd-tab { font-family:var(--mono); font-size:0.55rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); background:transparent; border:1px solid var(--border); padding:0.35rem 0.7rem; cursor:pointer; }
+  .ltal-bd-tab.active { color:#12000a; background:var(--pink); border-color:var(--pink); }
+  .ltal-bd-row { display:flex; align-items:center; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+  .ltal-bd-row.today .ltal-bd-lbl, .ltal-bd-row.today .ltal-bd-val { color:var(--pink); }
+  .ltal-bd-lbl { font-size:0.68rem; color:rgba(245,240,240,0.62); font-family:var(--mono); letter-spacing:0.02em; }
+  .ltal-bd-val { font-family:var(--display); font-size:1rem; color:var(--white); font-variant-numeric:tabular-nums; }
+  .ltal-bd-empty { font-family:var(--mono); font-size:0.6rem; color:var(--muted); padding:0.6rem 0; }
   .ltal-milestones { margin-top:1rem;padding-top:0.9rem;border-top:1px solid rgba(255,255,255,0.07); }
   .ltal-ms-label { font-size:0.55rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem; }
   .ltal-ms-row { display:flex;align-items:baseline;justify-content:space-between;gap:0.6rem;padding:0.35rem 0;flex-wrap:wrap; }
@@ -2625,7 +2638,7 @@
           <div class="ltal-toggle-row">
             <div class="ltal-toggle-info">
               <div class="ltal-toggle-title">Less Than a Lover</div>
-              <div class="ltal-toggle-count"><span id="ltal-toggle-count-num">0</span> <span class="ltal-toggle-count-lbl">scrobbles tracked</span></div>
+              <div class="ltal-toggle-count ltal-count-tap" id="ltal-count-tap" role="button" tabindex="0" title="Tap to break down by day / week" onclick="toggleLtalBreakdown()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLtalBreakdown();}"><span id="ltal-toggle-count-num">0</span> <span class="ltal-toggle-count-lbl">scrobbles tracked</span> <span class="ltal-count-caret">▾</span></div>
             </div>
             <button type="button" id="s-ltal-switch" class="ltal-switch" role="switch" aria-checked="false" aria-label="Keep counting Less Than a Lover on my profile" onclick="setLtalPref(!this.classList.contains('on'))">
               <span class="ltal-switch-knob"></span>
@@ -2637,6 +2650,13 @@
             <div class="ltal-ms-label">🏆 Less Than a Lover — Milestone Contribution</div>
             <div id="ltal-ms-rows"></div>
             <div class="ltal-ms-foot">Your cumulative LTAL scrobbles the day the track passed each Spotify streams milestone · % of those streams · rank among contributors.</div>
+          </div>
+          <div class="ltal-breakdown" id="ltal-breakdown" style="display:none;">
+            <div class="ltal-bd-tabs">
+              <button type="button" class="ltal-bd-tab active" id="ltal-bd-day" onclick="setLtalBreakdownView('day')">By day</button>
+              <button type="button" class="ltal-bd-tab" id="ltal-bd-week" onclick="setLtalBreakdownView('week')">By week</button>
+            </div>
+            <div id="ltal-bd-rows"></div>
           </div>
         </div>
       </div>
@@ -5440,6 +5460,90 @@ async function syncLtalToggle(totalLtal) {
     }
     renderLtalMilestones(names);
   } else { const msBox = document.getElementById('ltal-milestones'); if (msBox) msBox.style.display = 'none'; }
+}
+
+// ── LTAL scrobble breakdown ─────────────────────────────────────────────────
+// Tapping the "scrobbles tracked" number on the profile opens a per-day / per-week
+// breakdown of the blink's Less Than a Lover scrobbles, read from the durable
+// per-day store (/api/user-week → user_daily_counts, which carries an `ltal` column).
+let _ltalBdDays = null;      // { 'YYYY-MM-DD': ltalCount }
+let _ltalBdView = 'day';
+let _ltalBdLoading = false;
+
+async function toggleLtalBreakdown() {
+  const box = document.getElementById('ltal-breakdown');
+  const tap = document.getElementById('ltal-count-tap');
+  if (!box) return;
+  const open = box.style.display !== 'none';
+  if (open) { box.style.display = 'none'; tap?.classList.remove('open'); return; }
+  box.style.display = 'block';
+  tap?.classList.add('open');
+  if (!_ltalBdDays && !_ltalBdLoading) await loadLtalBreakdown();
+  renderLtalBreakdown();
+}
+
+async function loadLtalBreakdown() {
+  const rows = document.getElementById('ltal-bd-rows');
+  _ltalBdLoading = true;
+  if (rows) rows.innerHTML = '<div class="ltal-bd-empty">Loading…</div>';
+  try {
+    let session = null;
+    try { session = (await sb?.auth.getSession())?.data?.session || null; } catch {}
+    const uid = session?.user?.id;
+    if (!uid) { _ltalBdDays = {}; return; }
+    const from = italyDayKey(41); // ~6 weeks back — covers the week view
+    const res = await fetch(`/api/user-week?appUserId=${encodeURIComponent(uid)}&from=${from}`, { cache: 'no-store' });
+    const data = res.ok ? await res.json() : { days: {} };
+    const map = {};
+    for (const [k, v] of Object.entries(data.days || {})) map[k] = (v && v.ltal) || 0;
+    _ltalBdDays = map;
+  } catch { _ltalBdDays = _ltalBdDays || {}; }
+  finally { _ltalBdLoading = false; }
+}
+
+function setLtalBreakdownView(v) {
+  _ltalBdView = v;
+  document.getElementById('ltal-bd-day')?.classList.toggle('active', v === 'day');
+  document.getElementById('ltal-bd-week')?.classList.toggle('active', v === 'week');
+  renderLtalBreakdown();
+}
+
+function _ltalKeyOf(secs) {
+  const d = new Date(secs * 1000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
+function renderLtalBreakdown() {
+  const rows = document.getElementById('ltal-bd-rows');
+  if (!rows) return;
+  const map = _ltalBdDays || {};
+  const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const fmtDM = secs => { const d = new Date(secs * 1000); return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`; };
+  let html = '';
+  if (_ltalBdView === 'day') {
+    // This week's days (Mon → today), newest first
+    const { from: weekFrom } = getWeekBounds();
+    const { from: today } = getDayBounds();
+    const items = [];
+    for (let s = weekFrom; s <= today; s += 86400) {
+      items.push({ label: `${DOW[new Date(s * 1000).getUTCDay()]} ${fmtDM(s)}`, n: map[_ltalKeyOf(s)] || 0, cur: s === today });
+    }
+    items.reverse();
+    html = items.map(it => `<div class="ltal-bd-row${it.cur ? ' today' : ''}"><span class="ltal-bd-lbl">${it.label}${it.cur ? ' · today' : ''}</span><span class="ltal-bd-val">${it.n.toLocaleString()}</span></div>`).join('');
+  } else {
+    // Recent weeks (Mon-start), each week's ltal summed; trim trailing empties
+    const { from: weekFrom } = getWeekBounds();
+    const out = [];
+    for (let w = 0; w < 6; w++) {
+      const monday = weekFrom - w * 7 * 86400;
+      let sum = 0;
+      for (let i = 0; i < 7; i++) sum += map[_ltalKeyOf(monday + i * 86400)] || 0;
+      out.push({ label: `Week of ${fmtDM(monday)}`, n: sum, cur: w === 0 });
+    }
+    while (out.length > 1 && out[out.length - 1].n === 0) out.pop();
+    html = out.map(it => `<div class="ltal-bd-row${it.cur ? ' today' : ''}"><span class="ltal-bd-lbl">${it.label}${it.cur ? ' · this week' : ''}</span><span class="ltal-bd-val">${it.n.toLocaleString()}</span></div>`).join('');
+  }
+  rows.innerHTML = html || '<div class="ltal-bd-empty">No LTAL scrobbles tracked yet.</div>';
 }
 
 // Pre-reset reminder popup: nudges fans to opt in before Less Than a Lover leaves
