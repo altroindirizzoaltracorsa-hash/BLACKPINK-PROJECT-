@@ -9021,10 +9021,13 @@ async function showLbUserProfile(username) {
       ${accounts && isMe ? `<div class="lb-user-meta">${accounts}</div>` : ''}
     </div>`;
 
+  // Campaign tracks only. LESS THAN A LOVER is NOT part of the leaderboard —
+  // its breakdown lives on My Badges (tap your LTAL scrobble count there), so
+  // it's intentionally left out of this leaderboard popup.
   const sections = [
-    { title: 'Campaign Total (All Time)', all: s.overall_all, jump: s.overall_jump, shutdown: s.overall_shutdown, ddududu: s.overall_ddududu, go: s.overall_go, ltal: s.overall_ltal },
-    { title: 'This Week', all: s.weekly_all, jump: s.weekly_jump, shutdown: s.weekly_shutdown, ddududu: s.weekly_ddududu, go: s.weekly_go, ltal: s.weekly_ltal },
-    { title: 'Today', all: s.daily_all, jump: s.daily_jump, shutdown: s.daily_shutdown, ddududu: s.daily_ddududu, go: s.daily_go, ltal: s.daily_ltal },
+    { title: 'Campaign Total (All Time)', all: s.overall_all, jump: s.overall_jump, shutdown: s.overall_shutdown, ddududu: s.overall_ddududu, go: s.overall_go },
+    { title: 'This Week', all: s.weekly_all, jump: s.weekly_jump, shutdown: s.weekly_shutdown, ddududu: s.weekly_ddududu, go: s.weekly_go },
+    { title: 'Today', all: s.daily_all, jump: s.daily_jump, shutdown: s.daily_shutdown, ddududu: s.daily_ddududu, go: s.daily_go },
   ];
 
   document.getElementById('lb-user-sections').innerHTML = sections.map(sec => `
@@ -9035,10 +9038,7 @@ async function showLbUserProfile(username) {
       <div class="lb-profile-row"><span class="label">SHUT DOWN</span><span class="val">${fmt(sec.shutdown)}</span></div>
       <div class="lb-profile-row"><span class="label">DDU-DU DDU-DU</span><span class="val">${fmt(sec.ddududu)}</span></div>
       <div class="lb-profile-row"><span class="label">GO</span><span class="val">${fmt(sec.go)}</span></div>
-      <div class="lb-profile-row"><span class="label">LESS THAN A LOVER</span><span class="val">${fmt(sec.ltal)}</span></div>
     </div>`).join('');
-
-  renderLtalMilestoneSection(username);
 
   document.getElementById('lb-user-overlay').style.display = 'flex';
 }
