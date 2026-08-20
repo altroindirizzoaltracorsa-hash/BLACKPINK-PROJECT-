@@ -12576,30 +12576,15 @@ function checkMilestone(trackId, total, lastDayDate) {
   const milestone = getMilestone(total);
   if (!milestone) return;
   const key = `bu_ms_${trackId}_${milestone}`;
-  const seenKey = `bu_ms_seen_${trackId}_${milestone}`; // once per browsing session
-  const now = Date.now();
-  const storedRaw = localStorage.getItem(key);
-  if (!storedRaw) {
-    // First time this browser detects the milestone — record it (with a timestamp)
-    // and queue the popup once for this session.
+  // RECORD the milestone locally (used by the milestones list / history), but do NOT
+  // trigger the popup from here. A fresh browser (e.g. incognito) has empty
+  // localStorage, so local detection can't tell an old milestone from a just-crossed
+  // one — it would treat every milestone as "new" and pop on every visit. Popups are
+  // driven solely by the server-timestamped global system (checkGlobalMilestonesOnLoad),
+  // which gates on the real savedAt + a 24h window, so an old milestone never re-pops.
+  if (!localStorage.getItem(key)) {
     const year = new Date().getUTCFullYear();
-    localStorage.setItem(key, JSON.stringify({ date: lastDayDate || null, year, ts: now }));
-    if (lastDayDate && !sessionStorage.getItem(seenKey)) {
-      _msPending.push({ trackId, total, milestone, milestoneDate: `${lastDayDate}/${year}` });
-      sessionStorage.setItem(seenKey, '1');
-    }
-  } else {
-    // Already recorded — auto-pop again ONLY inside the 24h window since it was
-    // reached, and only once per session (no nagging on every login/refresh).
-    try {
-      const data = JSON.parse(storedRaw);
-      const reached = _msReachedMs(data);
-      if (reached != null && (now - reached) < _MS_WINDOW_MS && !sessionStorage.getItem(seenKey)) {
-        const year = data.year || new Date().getUTCFullYear();
-        _msPending.push({ trackId, total, milestone, milestoneDate: data.date ? `${data.date}/${year}` : null });
-        sessionStorage.setItem(seenKey, '1');
-      }
-    } catch { /* legacy '1' value — already seen, treated as historical */ }
+    try { localStorage.setItem(key, JSON.stringify({ date: lastDayDate || null, year, ts: Date.now() })); } catch {}
   }
 }
 
