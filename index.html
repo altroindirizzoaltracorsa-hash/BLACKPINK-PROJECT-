@@ -8030,6 +8030,30 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
 // Unlike BADGE_TIERS above, these aren't Last.fm scrobble tiers -- just a
 // browser-local flag set the moment a fan completes a one-off action, so they
 // don't require being logged in / having Last.fm linked.
+// Early Supporter is earned by pre-saving LTAL. It used to live ONLY in this
+// browser's localStorage, so it vanished on a new device or after clearing data.
+// Now it's mirrored to the signed-in account (user_metadata.ltal_early_supporter)
+// so it follows the blink everywhere, with a two-way back-fill:
+//   • earned on this device but signed in elsewhere  → push the flag to the account
+//   • earned on the account, fresh device            → mirror it back to localStorage
+async function ltalEarlySupporterEarned() {
+  const localFlag = !!localStorage.getItem(JENNIE_SAVE_LS);
+  let metaFlag = false;
+  try {
+    const user = (await sb?.auth.getUser())?.data?.user || null;
+    if (user) {
+      metaFlag = !!user.user_metadata?.ltal_early_supporter;
+      if (localFlag && !metaFlag) {              // back-fill account from this device
+        await sb.auth.updateUser({ data: { ltal_early_supporter: true } });
+        metaFlag = true;
+      } else if (metaFlag && !localFlag) {        // mirror account → this device
+        localStorage.setItem(JENNIE_SAVE_LS, '1');
+      }
+    }
+  } catch {}
+  return localFlag || metaFlag;
+}
+
 const SPECIAL_BADGES = [
   {
     id: 'jennie-ltal-presave',
@@ -8037,14 +8061,15 @@ const SPECIAL_BADGES = [
     label: 'EARLY SUPPORTER',
     song: 'Less Than a Lover — JENNIE',
     desc: 'Pre-saved before release',
-    check: () => !!localStorage.getItem('bu_jennie_ltal_saved'),
+    check: () => ltalEarlySupporterEarned(),
   },
 ];
 
-function renderSpecialBadges() {
+async function renderSpecialBadges() {
   const el = document.getElementById('special-badges-grid');
   if (!el) return;
-  const earned = SPECIAL_BADGES.filter(b => b.check());
+  const flags = await Promise.all(SPECIAL_BADGES.map(b => Promise.resolve(b.check())));
+  const earned = SPECIAL_BADGES.filter((b, i) => flags[i]);
   el.innerHTML = earned.length
     ? `<div class="badge-history-list">
         ${earned.map(b => `
@@ -10735,6 +10760,8 @@ function saveJennieCountdown() {
   localStorage.setItem(JENNIE_SAVE_LS, '1');
   renderJennieBadge();
   _showShareToast('🏆 Badge unlocked: Early Supporter!');
+  // Persist to the signed-in account so the badge follows the blink across devices.
+  try { sb?.auth.updateUser({ data: { ltal_early_supporter: true } }); } catch {}
   fetch('/api/proxy-image?jennie_save=increment').then(r => r.json()).then(d => renderJennieSaveCount(d.count || 0)).catch(() => {});
 }
 
