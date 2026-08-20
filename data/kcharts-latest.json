@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-20T16:18:21.782Z",
+  "generatedAt": "2026-08-20T17:17:23.766Z",
   "date": "2026-08-20",
   "source": "https://xn--o39an51b2re.com",
   "charts": [
@@ -10,8 +10,8 @@
       "kr": "실시간 차트",
       "label": "Melon · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/melon/realtime",
-      "available": true,
-      "totalRows": 100,
+      "available": false,
+      "totalRows": 0,
       "entries": []
     },
     {
@@ -412,7 +412,7 @@
           "link": "https://www.melon.com/song/detail.htm?songId=38629386"
         },
         {
-          "rank": 58,
+          "rank": 57,
           "previous": 58,
           "song": "APT.",
           "artists": "로제 (ROSÉ), Bruno Mars",
@@ -577,7 +577,7 @@
           "link": "https://www.melon.com/song/detail.htm?songId=602584682"
         },
         {
-          "rank": 49,
+          "rank": 48,
           "previous": 49,
           "song": "I Got Your Back (Feat. JISOO, MOMOKA of HANA) (Korean Ver.)",
           "artists": "아일릿(ILLIT), HANA",
@@ -797,50 +797,9 @@
       "kr": "실시간 차트",
       "label": "Genie · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/genie/realtime",
-      "available": true,
-      "totalRows": 250,
-      "entries": [
-        {
-          "rank": 59,
-          "previous": 46,
-          "song": "뛰어(JUMP)",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=110931419"
-        },
-        {
-          "rank": 75,
-          "previous": 70,
-          "song": "toxic till the end",
-          "artists": "로제 (ROSÉ)",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108575614"
-        },
-        {
-          "rank": 93,
-          "previous": 75,
-          "song": "Less than a Lover",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=116078119"
-        },
-        {
-          "rank": 107,
-          "previous": 83,
-          "song": "like JENNIE",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=109342665"
-        },
-        {
-          "rank": 116,
-          "previous": 87,
-          "song": "APT.",
-          "artists": "로제 (ROSÉ), Bruno Mars",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108107291"
-        }
-      ]
+      "available": false,
+      "totalRows": 0,
+      "entries": []
     },
     {
       "key": "genie-daily",
@@ -1025,8 +984,8 @@
       "totalRows": 100,
       "entries": [
         {
-          "rank": 57,
-          "previous": 52,
+          "rank": 59,
+          "previous": 57,
           "song": "Less than a Lover",
           "artists": "제니 (JENNIE)",
           "member": "JENNIE",
@@ -1034,7 +993,7 @@
         },
         {
           "rank": 61,
-          "previous": 53,
+          "previous": 61,
           "song": "뛰어(JUMP)",
           "artists": "BLACKPINK",
           "member": "BLACKPINK",
@@ -1042,7 +1001,7 @@
         },
         {
           "rank": 62,
-          "previous": 55,
+          "previous": 62,
           "song": "APT.",
           "artists": "로제 (ROSÉ), Bruno Mars",
           "member": "ROSÉ",
@@ -1050,7 +1009,7 @@
         },
         {
           "rank": 76,
-          "previous": 75,
+          "previous": 76,
           "song": "toxic till the end",
           "artists": "로제 (ROSÉ)",
           "member": "ROSÉ",
@@ -1058,7 +1017,7 @@
         },
         {
           "rank": 80,
-          "previous": 79,
+          "previous": 80,
           "song": "like JENNIE",
           "artists": "제니 (JENNIE)",
           "member": "JENNIE",
@@ -1245,7 +1204,7 @@
   ],
   "summary": {
     "chartsChecked": 25,
-    "chartsAvailable": 25,
-    "totalEntries": 118
+    "chartsAvailable": 23,
+    "totalEntries": 113
   }
 }
