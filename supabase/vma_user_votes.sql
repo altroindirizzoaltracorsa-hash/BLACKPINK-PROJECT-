@@ -85,7 +85,8 @@ as $$
       coalesce(s.today_streams, 0) as streams
     from per_user u
     left join latest_name n using (app_user_id)
-    join streams s on s.app_user_id = u.app_user_id and s.all_streams >= 1  -- streamed → ranked
+    -- user_daily_counts.app_user_id is text; vma_user_votes.app_user_id is uuid → cast
+    join streams s on s.app_user_id = u.app_user_id::text and s.all_streams >= 1  -- streamed → ranked
   ),
   numbered as (
     select e.*,
