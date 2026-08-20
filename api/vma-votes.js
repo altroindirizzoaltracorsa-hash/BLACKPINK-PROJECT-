@@ -66,13 +66,13 @@ async function myStreams(sb, uid) {
     .select('day_key, jump, shutdown, ddududu, go').eq('app_user_id', uid);
   const rows = data || [];
   const t = etDay();
-  let streams = 0, allStreams = 0;
+  let streams = 0;
   for (const r of rows) {
-    const s = (r.jump || 0) + (r.shutdown || 0) + (r.ddududu || 0) + (r.go || 0);
-    allStreams += s;
-    if (r.day_key === t) streams += s;
+    if (r.day_key === t) streams += (r.jump || 0) + (r.shutdown || 0) + (r.ddududu || 0) + (r.go || 0);
   }
-  return { streams, ranked: allStreams >= 1 };
+  // Ranked/badged only while actually streaming TODAY — not merely having linked
+  // a scrobbler or streamed on some past day.
+  return { streams, ranked: streams >= 1 };
 }
 
 export default async function handler(req, res) {

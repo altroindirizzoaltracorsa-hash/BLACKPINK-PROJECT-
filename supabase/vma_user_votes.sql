@@ -85,8 +85,10 @@ as $$
       coalesce(s.today_streams, 0) as streams
     from per_user u
     left join latest_name n using (app_user_id)
-    -- user_daily_counts.app_user_id is text; vma_user_votes.app_user_id is uuid → cast
-    join streams s on s.app_user_id = u.app_user_id::text and s.all_streams >= 1  -- streamed → ranked
+    -- Ranked only if actually STREAMING on the current voting day (>=1 campaign
+    -- scrobble today) — connecting a scrobbler or having only old streams is not
+    -- enough. user_daily_counts.app_user_id is text; vma_user_votes is uuid → cast.
+    join streams s on s.app_user_id = u.app_user_id::text and coalesce(s.today_streams, 0) >= 1
   ),
   numbered as (
     select e.*,
