@@ -5329,6 +5329,9 @@ function routeInitial() {
   else history.replaceState({ page: 'home' }, '', '/');
   maybeShowTutorial();
   checkLegacyMigrationGate();
+  // Fallback (onAuthStateChange is the primary trigger): resume the guide if the
+  // user is returning from the sign-in redirect mid-tour.
+  setTimeout(() => { try { _maybeResumeGuide(); } catch {} }, 1400);
 }
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', routeInitial);
@@ -5985,6 +5988,8 @@ if (sb) {
     if (document.getElementById('page-badges')?.classList.contains('active')) {
       renderAccountPage(session);
     }
+    // Resume the step-by-step guide if the user just signed in mid-tour.
+    if (session?.user && typeof _maybeResumeGuide === 'function') setTimeout(_maybeResumeGuide, 500);
   });
 }
 
@@ -9363,21 +9368,58 @@ function maybeShowTutorial() {
 // pages and highlighting the real buttons. Next-driven; falls back to a centered
 // callout when a step's target isn't on screen (e.g. the link-scrobbler card,
 // which only appears once signed in).
-const GUIDE_STEPS = [
-  { title: 'How to get on the board', body: 'Three steps: <b>sign up</b>, <b>stream</b>, then <b>vote &amp; log it</b>. I\'ll walk you to each spot — tap <b>Next</b>.' },
-  { page: 'badges', sel: '#badges-auth-signout', title: '1 · Create your account', body: 'On <b>My Badges</b>, sign in with Google, X, Discord, or email. It\'s free and takes seconds.' },
-  { title: '2 · Link a scrobbler', body: 'Right after you sign in, a <b>Link your scrobbler</b> card appears here — add your Last.fm / ListenBrainz / Stats.fm username so your <b>streams</b> count.' },
-  { page: 'vote', sel: '#vote-list', title: '3 · Vote at MTV', body: 'Tap a category\'s <b>Vote ↗</b> link — it opens MTV\'s official site. You can vote up to <b>20× a day</b>, in every category.' },
-  { page: 'vote', sel: '#vma-vote-panel', title: 'Stream + get ranked', body: 'This is the VMA board. Only blinks <b>streaming today</b> get ranked — keep the campaign tracks playing to appear here.' },
-  { page: 'vote', sel: '#vma-votebar', title: 'Log your votes', body: 'After voting at MTV, tap <b>Log your votes</b> (this bar sits on every page) to record them and climb the board.' },
-  { title: 'That\'s it! 🎉', body: '<b>Sign up → stream → vote → log.</b> Tap <b>Start</b> to open My Badges and sign in.', cta: 'Start →' },
-];
+// Steps are built dynamically from auth state so signed-in / linked users skip
+// what they've already done. Signing in is a full-page OAuth redirect, so the
+// tour drops a resume marker (sessionStorage) and picks back up right after the
+// user returns signed in (_maybeResumeGuide, fired from onAuthStateChange).
+const _GUIDE_RESUME_KEY = 'bu_guide_resume';
+let _guideSteps = [];
 let _guideIdx = 0;
+let _guideResumed = false;
 
-function startGuide() {
-  _guideIdx = 0;
-  const o = document.getElementById('guide-overlay');
-  if (!o) return;
+function _guideBuild(state, fresh) {
+  const steps = [];
+  if (fresh) steps.push({ key: 'intro', title: 'How to get on the board',
+    body: 'Three steps: <b>sign up</b>, <b>stream</b>, then <b>vote &amp; log it</b>. I\'ll walk you to each spot — tap <b>Next</b>.' });
+  if (!state.signedIn) steps.push({ key: 'signup', page: 'badges', sel: '#badges-auth-signout',
+    title: 'Create your account', body: 'Sign in with Google, X, Discord, or email — free, a few seconds. <b>Tap a button below</b>; I\'ll pick the guide back up right here when you come back. 💗' });
+  if (!state.linked) steps.push({ key: 'link', page: 'badges', sel: '#badges-auth-link',
+    title: 'Link a scrobbler', body: 'Add your Last.fm / ListenBrainz / Stats.fm username here so your <b>streams</b> count toward the board.' });
+  steps.push({ key: 'vote', page: 'vote', sel: '#vote-list',
+    title: 'Vote at MTV', body: 'Tap a category\'s <b>Vote ↗</b> link — it opens MTV\'s official site. You can vote up to <b>20× a day</b>, in every category.' });
+  steps.push({ key: 'stream', page: 'vote', sel: '#vma-vote-panel',
+    title: 'Stream to get ranked', body: 'Only blinks <b>streaming today</b> get ranked — keep the campaign tracks playing to appear on this board.' });
+  steps.push({ key: 'log', page: 'vote', sel: '#vma-votebar',
+    title: 'Log your votes', body: 'Back from MTV? Tap <b>Log your votes</b> (this bar sits on every page) to record them and climb the board.' });
+  steps.push({ key: 'done', title: 'You\'re all set! 🎉',
+    body: state.signedIn ? 'That\'s the whole loop: <b>stream → vote → log</b>. Happy climbing! 💗'
+                         : '<b>Sign up → stream → vote → log.</b> Tap <b>Start</b> to open My Badges.',
+    cta: state.signedIn ? 'Done' : 'Start →', finishBadges: !state.signedIn });
+  return steps;
+}
+
+async function _guideCheckState() {
+  let signedIn = false, linked = false, token = null;
+  try {
+    const sess = (await sb?.auth.getSession())?.data?.session || null;
+    signedIn = !!sess; token = sess?.access_token || null;
+  } catch {}
+  if (signedIn) {
+    if (_vvMe && typeof _vvMe.linked === 'boolean') linked = _vvMe.linked;
+    else if (token) {
+      try { const r = await fetch('/api/vma-votes?me=1', { headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' }); if (r.ok) linked = !!(await r.json()).linked; } catch {}
+    }
+  }
+  return { signedIn, linked };
+}
+
+async function startGuide(fromKey) {
+  const o = document.getElementById('guide-overlay'); if (!o) return;
+  const state = await _guideCheckState();
+  _guideSteps = _guideBuild(state, !fromKey);
+  let idx = 0;
+  if (fromKey) { const i = _guideSteps.findIndex(s => s.key === fromKey); idx = i >= 0 ? i : 0; }
+  _guideIdx = idx;
   o.style.display = 'block';
   window.addEventListener('resize', _guideReposition);
   window.addEventListener('scroll', _guideReposition, true);
@@ -9386,7 +9428,7 @@ function startGuide() {
 function guideGo(dir) {
   const n = _guideIdx + dir;
   if (n < 0) return;
-  if (n >= GUIDE_STEPS.length) { guideEnd(true); return; }
+  if (n >= _guideSteps.length) { guideEnd(true); return; }
   _guideIdx = n; _guideRender();
 }
 function guideEnd(finished) {
@@ -9394,10 +9436,24 @@ function guideEnd(finished) {
   if (o) o.style.display = 'none';
   window.removeEventListener('resize', _guideReposition);
   window.removeEventListener('scroll', _guideReposition, true);
-  if (finished) { try { goToMyBadges(); } catch {} }
+  try { sessionStorage.removeItem(_GUIDE_RESUME_KEY); } catch {}
+  const s = _guideSteps[_guideIdx];
+  if (finished && s && s.finishBadges) { try { goToMyBadges(); } catch {} }
+}
+// After the sign-in redirect brings the user back, resume the tour where it left off.
+async function _maybeResumeGuide() {
+  if (_guideResumed) return;
+  let want = null;
+  try { want = sessionStorage.getItem(_GUIDE_RESUME_KEY); } catch {}
+  if (!want) return;
+  const state = await _guideCheckState();
+  if (!state.signedIn) return; // came back not signed in — wait for a real sign-in
+  _guideResumed = true;
+  try { sessionStorage.removeItem(_GUIDE_RESUME_KEY); } catch {}
+  startGuide(state.linked ? 'vote' : 'link');
 }
 function _guideTarget() {
-  const s = GUIDE_STEPS[_guideIdx];
+  const s = _guideSteps[_guideIdx];
   let el = s && s.sel ? document.querySelector(s.sel) : null;
   if (el && el.getClientRects().length === 0) el = null; // hidden / not rendered
   return el;
@@ -9431,18 +9487,21 @@ function _guidePlace(el) {
 }
 function _guideReposition() { _guidePlace(_guideTarget()); }
 async function _guideRender() {
-  const s = GUIDE_STEPS[_guideIdx];
+  const s = _guideSteps[_guideIdx];
+  if (!s) return;
+  // Drop a resume marker before the sign-in step, so the tour survives the OAuth redirect.
+  if (s.key === 'signup') { try { sessionStorage.setItem(_GUIDE_RESUME_KEY, '1'); } catch {} }
   if (s.page) { try { showPage(s.page); } catch {} }
   const eb = document.getElementById('guide-eyebrow');
   const ti = document.getElementById('guide-title');
   const bd = document.getElementById('guide-body');
   const back = document.getElementById('guide-back');
   const next = document.getElementById('guide-next');
-  if (eb) eb.textContent = `Step ${_guideIdx + 1} of ${GUIDE_STEPS.length}`;
+  if (eb) eb.textContent = `Step ${_guideIdx + 1} of ${_guideSteps.length}`;
   if (ti) ti.innerHTML = s.title;
   if (bd) bd.innerHTML = s.body;
   if (back) back.style.visibility = _guideIdx === 0 ? 'hidden' : 'visible';
-  if (next) next.textContent = s.cta || (_guideIdx === GUIDE_STEPS.length - 1 ? 'Done' : 'Next →');
+  if (next) next.textContent = s.cta || (_guideIdx === _guideSteps.length - 1 ? 'Done' : 'Next →');
   // Let the page render/route, then scroll the target into view and place the callout.
   await new Promise(r => setTimeout(r, s.page ? 400 : 60));
   const el = _guideTarget();
