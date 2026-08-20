@@ -5284,6 +5284,15 @@ function showPage(page, { replace = false } = {}) {
       if (jumpToLog) {
         const el = document.getElementById('vma-vote-panel');
         if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+      } else {
+        // First time on the vote page → auto-offer the step-by-step guide (once).
+        // The intro step + Skip make it a soft offer, not a forced tour.
+        try {
+          if (!localStorage.getItem('bu_vma_guide_seen')) {
+            localStorage.setItem('bu_vma_guide_seen', '1');
+            setTimeout(() => { if (typeof startGuide === 'function' && document.getElementById('guide-overlay')?.style.display !== 'block') startGuide(); }, 800);
+          }
+        } catch {}
       }
     });
     _voteCountdownTimer = setInterval(tickVoteCountdowns, 1000);
