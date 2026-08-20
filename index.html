@@ -1530,7 +1530,9 @@
   .vv-note a { color: var(--pink); text-decoration: none; }
   .vv-me { background: rgba(255,0,102,0.05); border: 1px solid var(--border); padding: 1rem 1.1rem; margin-bottom: 1.1rem; }
   .vv-me.vv-gate { font-size: 0.8rem; color: var(--muted); line-height: 1.55; }
-  .vv-me.vv-gate a { color: var(--pink); }
+  .vv-me.vv-gate a:not(.vv-gate-btn) { color: var(--pink); }
+  .vv-gate-btn { display: inline-block; margin-top: 0.9rem; font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); padding: 0.7rem 1.1rem; text-decoration: none; box-shadow: 0 4px 16px -6px rgba(255,0,102,0.9); transition: filter .15s; }
+  .vv-gate-btn:hover { filter: brightness(1.08); }
   .vv-me-head { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: #ff74ac; margin-bottom: 0.5rem; }
   .vv-rank { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.02em; color: var(--white); margin-bottom: 0.7rem; }
   .vv-rank b { color: var(--pink); font-weight: 500; }
@@ -6357,9 +6359,15 @@ function drawVmaVoting() {
   // personal card / gate
   let me;
   if (!_vvSession) {
-    me = `<div class="vv-me vv-gate">Sign in on <a href="/badges">My&nbsp;Badges</a> and link a scrobbler to <b>register your votes and climb the board</b> against other blinks. 🏆</div>`;
+    me = `<div class="vv-me vv-gate">
+      <div>Sign in and link a scrobbler to <b>register your votes and climb the board</b> against other blinks. 🏆</div>
+      <a class="vv-gate-btn" href="/badges" onclick="goToMyBadges(); return false;">🔑 Sign in on My Badges →</a>
+    </div>`;
   } else if (_vvMe && _vvMe.linked === false) {
-    me = `<div class="vv-me vv-gate">Link a scrobbler on <a href="/badges">My&nbsp;Badges</a> to get on the board — it's for blinks who <b>stream and vote</b>. 💗</div>`;
+    me = `<div class="vv-me vv-gate">
+      <div>Link a scrobbler to get on the board — it's for blinks who <b>stream and vote</b>. 💗</div>
+      <a class="vv-gate-btn" href="/badges" onclick="goToMyBadges(); return false;">🎧 Link a scrobbler →</a>
+    </div>`;
   } else if (_vvMe) {
     const myTotal = _vvMe.total || 0;
     const myStreams = _vvMe.streams || 0;
