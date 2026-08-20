@@ -20,6 +20,7 @@ create table if not exists vma_user_votes (
 create index if not exists vma_user_votes_day_idx on vma_user_votes (day);
 
 -- Community rally total (sum of everyone's submitted votes) for the /vmas bar.
+-- Day boundaries are US Eastern (midnight ET) to match MTV's VMA voting reset.
 create or replace function vma_vote_totals()
 returns json
 language sql
@@ -27,9 +28,9 @@ stable
 as $$
   select json_build_object(
     'total',       coalesce(sum(votes), 0),
-    'today',       coalesce(sum(votes) filter (where day = (now() at time zone 'utc')::date), 0),
+    'today',       coalesce(sum(votes) filter (where day = (now() at time zone 'America/New_York')::date), 0),
     'blinksTotal', count(distinct app_user_id),
-    'blinksToday', count(distinct app_user_id) filter (where day = (now() at time zone 'utc')::date)
+    'blinksToday', count(distinct app_user_id) filter (where day = (now() at time zone 'America/New_York')::date)
   )
   from vma_user_votes;
 $$;
@@ -45,10 +46,10 @@ as $$
   with per_user as (
     select
       app_user_id,
-      sum(votes)                                                                             as total,
-      sum(votes) filter (where day = (now() at time zone 'utc')::date)                       as today,
-      sum(votes) filter (where day >= date_trunc('week',  now() at time zone 'utc')::date)   as week,
-      sum(votes) filter (where day >= date_trunc('month', now() at time zone 'utc')::date)   as month
+      sum(votes)                                                                                        as total,
+      sum(votes) filter (where day = (now() at time zone 'America/New_York')::date)                      as today,
+      sum(votes) filter (where day >= date_trunc('week',  now() at time zone 'America/New_York')::date)  as week,
+      sum(votes) filter (where day >= date_trunc('month', now() at time zone 'America/New_York')::date)  as month
     from vma_user_votes
     group by app_user_id
   ),

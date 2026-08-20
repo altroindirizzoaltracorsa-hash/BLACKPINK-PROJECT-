@@ -17,7 +17,12 @@ function supabase() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 }
 
-const todayUTC = () => new Date().toISOString().slice(0, 10);
+// MTV's VMA voting day resets at MIDNIGHT ET, so we bucket votes by the US
+// Eastern calendar date (not UTC). Intl handles EDT/EST automatically.
+// en-CA formats as YYYY-MM-DD.
+const etDay = (d = new Date()) => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(d);
 
 function bearer(req) {
   const h = req.headers.authorization || '';
@@ -30,15 +35,18 @@ async function isLinked(sb, uid) {
   return !!(data && data.length);
 }
 
-// Sum a user's rows into today / week (Mon-start) / month / all-time, in UTC.
+// Sum a user's rows into today / week (Mon-start) / month / all-time, in US
+// Eastern (midnight-ET day boundary — matches the /vmas countdown).
 async function myTotals(sb, uid) {
   const { data } = await sb.from('vma_user_votes').select('day, votes').eq('app_user_id', uid);
   const rows = data || [];
-  const now = new Date();
-  const t = now.toISOString().slice(0, 10);
-  const dow = (now.getUTCDay() + 6) % 7; // 0 = Monday
-  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - dow)).toISOString().slice(0, 10);
-  const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+  const t = etDay();                              // 'YYYY-MM-DD' — today in ET
+  const [y, m, dd] = t.split('-').map(Number);
+  // Treat the ET wall-clock date as a UTC date purely for weekday arithmetic.
+  const base = new Date(Date.UTC(y, m - 1, dd));
+  const dow = (base.getUTCDay() + 6) % 7;         // 0 = Monday
+  const monday = new Date(Date.UTC(y, m - 1, dd - dow)).toISOString().slice(0, 10);
+  const first = `${t.slice(0, 7)}-01`;
   let today = 0, week = 0, month = 0, total = 0;
   for (const r of rows) {
     const v = r.votes || 0;
@@ -96,7 +104,7 @@ export default async function handler(req, res) {
       }
 
       const name = (user.user_metadata && user.user_metadata.display_name) || null;
-      const day = todayUTC();
+      const day = etDay();
 
       // Additive: add to today's tally (self-reported, uncapped).
       const { data: existing } = await sb
