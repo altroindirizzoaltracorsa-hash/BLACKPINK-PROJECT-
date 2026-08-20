@@ -1534,6 +1534,7 @@
   .vv-me-head { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: #ff74ac; margin-bottom: 0.5rem; }
   .vv-rank { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.02em; color: var(--white); margin-bottom: 0.7rem; }
   .vv-rank b { color: var(--pink); font-weight: 500; }
+  .vv-rank-hint { color: var(--muted); font-size: 0.66rem; line-height: 1.5; }
   .vv-badge { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
   .vv-badge-cur { font-family: var(--display); font-size: 1.15rem; letter-spacing: 0.05em; color: var(--pink); }
   .vv-badge-cur.none { color: var(--muted); font-size: 0.9rem; }
@@ -6397,6 +6398,9 @@ function drawVmaVoting() {
       ${nextHtml}
     </div>
     <div class="vv-ladder">${VMA_VOTE_TIERS.map(x => `<div class="vv-tier ${myTotal >= x.min ? 'got' : ''}"><span>${x.icon}</span><small>${x.min}</small></div>`).join('')}<div class="vv-tier vv-tier-mb ${hasMonster ? 'got' : ''}" title="${MB.votes.toLocaleString()} votes + ${MB.streams.toLocaleString()} streams"><span>${MB.icon}</span><small>MB</small></div></div>`;
+    } else {
+      // Voting but not streaming yet — a gentle nudge (no exact threshold given).
+      rankBadge = `<div class="vv-rank vv-rank-hint">🎧 <b>Stream and vote</b> to get on the leaderboard.</div>`;
     }
     me = `<div class="vv-me">
       <div class="vv-me-head">Your VMA votes${displayName ? ' · ' + _vvEsc(displayName) : ''}</div>
