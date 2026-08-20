@@ -5205,8 +5205,12 @@ function showPage(page, { replace = false } = {}) {
       }
     });
     _voteCountdownTimer = setInterval(tickVoteCountdowns, 1000);
+    // Auto-celebrate a win only within 24h of the announcement (same gate as the
+    // home page) so it stops nagging afterwards — the "See Announcement" button on
+    // the card keeps it available on demand.
+    const WINNER_ANNOUNCED_MS = 1752573600000; // Jul 15 2026 10:00 UTC
     const wonCampaign = VOTE_CAMPAIGNS.find(c => c.winner);
-    if (wonCampaign && !sessionStorage.getItem('winner-seen-' + wonCampaign.id)) {
+    if (wonCampaign && Date.now() < WINNER_ANNOUNCED_MS + 86400000 && !sessionStorage.getItem('winner-seen-' + wonCampaign.id)) {
       sessionStorage.setItem('winner-seen-' + wonCampaign.id, '1');
       setTimeout(() => showWinnerAnnouncement(wonCampaign.id), 700);
     }
@@ -12289,24 +12293,47 @@ const _msPending = [];
 let _msActive = false;
 let _msRenderGen = 0;
 
+// When was a stored milestone reached? Prefer the exact detection timestamp; fall
+// back to the streaming-day start (00:00 UTC = 2am Rome) parsed from its DD/MM date.
+function _msReachedMs(data) {
+  if (data && Number.isFinite(Number(data.ts))) return Number(data.ts);
+  if (data && data.date) {
+    const [dd, mm] = String(data.date).split('/').map(Number);
+    const yr = Number(data.year) || new Date().getUTCFullYear();
+    if (dd && mm) return Date.UTC(yr, mm - 1, dd, 0, 0, 0);
+  }
+  return null;
+}
+
+const _MS_WINDOW_MS = 24 * 60 * 60 * 1000; // auto-pop only within 24h of being reached
+
 function checkMilestone(trackId, total, lastDayDate) {
   if (!total) return;
   const milestone = getMilestone(total);
   if (!milestone) return;
   const key = `bu_ms_${trackId}_${milestone}`;
+  const seenKey = `bu_ms_seen_${trackId}_${milestone}`; // once per browsing session
+  const now = Date.now();
   const storedRaw = localStorage.getItem(key);
   if (!storedRaw) {
-    // First detection — store streaming day date + year
+    // First time this browser detects the milestone — record it (with a timestamp)
+    // and queue the popup once for this session.
     const year = new Date().getUTCFullYear();
-    localStorage.setItem(key, JSON.stringify({ date: lastDayDate || null, year }));
-    if (lastDayDate) _msPending.push({ trackId, total, milestone, milestoneDate: `${lastDayDate}/${year}` });
+    localStorage.setItem(key, JSON.stringify({ date: lastDayDate || null, year, ts: now }));
+    if (lastDayDate && !sessionStorage.getItem(seenKey)) {
+      _msPending.push({ trackId, total, milestone, milestoneDate: `${lastDayDate}/${year}` });
+      sessionStorage.setItem(seenKey, '1');
+    }
   } else {
-    // Already recorded — only re-show card while still on the same streaming day
+    // Already recorded — auto-pop again ONLY inside the 24h window since it was
+    // reached, and only once per session (no nagging on every login/refresh).
     try {
       const data = JSON.parse(storedRaw);
-      if (data.date && data.date === lastDayDate) {
+      const reached = _msReachedMs(data);
+      if (reached != null && (now - reached) < _MS_WINDOW_MS && !sessionStorage.getItem(seenKey)) {
         const year = data.year || new Date().getUTCFullYear();
-        _msPending.push({ trackId, total, milestone, milestoneDate: `${data.date}/${year}` });
+        _msPending.push({ trackId, total, milestone, milestoneDate: data.date ? `${data.date}/${year}` : null });
+        sessionStorage.setItem(seenKey, '1');
       }
     } catch { /* legacy '1' value — already seen, treated as historical */ }
   }
