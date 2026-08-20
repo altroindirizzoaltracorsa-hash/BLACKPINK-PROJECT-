@@ -78,39 +78,45 @@ as $$
     from user_daily_counts
     group by app_user_id
   ),
-  eligible as (
+  -- Every voter (streamer or not). LEFT join streams so non-streamers are kept;
+  -- app_user_id is text in user_daily_counts vs uuid here → cast.
+  joined as (
     select
       u.total, u.today, u.week, u.month, u.first_day, u.app_user_id,
       n.display_name,
       coalesce(s.today_streams, 0) as streams
     from per_user u
     left join latest_name n using (app_user_id)
-    -- Ranked only if actually STREAMING on the current voting day (>=1 campaign
-    -- scrobble today) — connecting a scrobbler or having only old streams is not
-    -- enough. user_daily_counts.app_user_id is text; vma_user_votes is uuid → cast.
-    join streams s on s.app_user_id = u.app_user_id::text and coalesce(s.today_streams, 0) >= 1
+    left join streams s on s.app_user_id = u.app_user_id::text
   ),
+  -- Number the nameless GLOBALLY (across streamers and non-streamers) by when they
+  -- first voted, so blinkN is stable for an account whether or not it's ranked.
   numbered as (
-    select e.*,
+    select j.*,
       case
-        when e.display_name is null or e.display_name = ''
+        when j.display_name is null or j.display_name = ''
           then 'blink' || row_number() over (
-                 partition by (e.display_name is null or e.display_name = '')
-                 order by e.first_day, e.app_user_id)
-        else e.display_name
+                 partition by (j.display_name is null or j.display_name = '')
+                 order by j.first_day, j.app_user_id)
+        else j.display_name
       end as name
-    from eligible e
+    from joined j
   )
-  select coalesce(
-    json_agg(
-      json_build_object(
+  -- Ranked = streaming on the current voting day (>=1 campaign scrobble today).
+  -- Unranked = voted but not streaming today — shown separately, still counted in
+  -- the community total (vma_vote_totals is unchanged).
+  select json_build_object(
+    'ranked', coalesce((
+      select json_agg(json_build_object(
         'name', name, 'total', total, 'today', today, 'week', week, 'month', month, 'streams', streams
-      )
-      order by total desc
-    ),
-    '[]'::json
-  )
-  from numbered;
+      ) order by total desc)
+      from numbered where streams >= 1), '[]'::json),
+    'unranked', coalesce((
+      select json_agg(json_build_object(
+        'name', name, 'total', total, 'today', today, 'week', week, 'month', month, 'streams', streams
+      ) order by total desc)
+      from numbered where streams < 1), '[]'::json)
+  );
 $$;
 
 -- ── Privileges ──────────────────────────────────────────────────────────────
