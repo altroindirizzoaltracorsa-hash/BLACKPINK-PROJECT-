@@ -1427,6 +1427,28 @@
   }
   .tutorial-help-btn:hover { border-color: var(--pink); color: var(--pink); }
 
+  /* ── GUIDED SPOTLIGHT TOUR (navigates pages, highlights the real buttons) ── */
+  .guide-overlay { position: fixed; inset: 0; z-index: 9995; pointer-events: none; }
+  .guide-ring { position: fixed; border: 2px solid var(--pink); border-radius: 8px;
+    box-shadow: 0 0 0 9999px rgba(6,4,8,0.80), 0 0 22px rgba(255,31,111,0.75);
+    transition: left .25s ease, top .25s ease, width .25s ease, height .25s ease; pointer-events: none; }
+  .guide-ring.pulse { animation: guide-pulse 1.4s ease-in-out infinite; }
+  @keyframes guide-pulse { 0%,100% { box-shadow: 0 0 0 9999px rgba(6,4,8,0.80), 0 0 18px rgba(255,31,111,0.55); } 50% { box-shadow: 0 0 0 9999px rgba(6,4,8,0.80), 0 0 30px rgba(255,31,111,0.95); } }
+  .guide-pop { position: fixed; width: min(340px, calc(100vw - 24px)); background: var(--card);
+    border: 1px solid var(--pink); box-shadow: 0 12px 40px rgba(0,0,0,0.7); padding: 1rem 1.1rem;
+    pointer-events: auto; z-index: 9996; }
+  .guide-eyebrow { font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.18em; text-transform: uppercase; color: #ff74ac; margin-bottom: 0.4rem; }
+  .guide-title { font-family: var(--display); font-size: 1.35rem; letter-spacing: 0.02em; color: var(--white); margin-bottom: 0.4rem; line-height: 1.05; }
+  .guide-body { font-family: var(--mono); font-size: 0.66rem; line-height: 1.6; color: rgba(245,240,240,0.78); margin-bottom: 1rem; }
+  .guide-body b { color: var(--pink); font-weight: 500; }
+  .guide-nav { display: flex; align-items: center; justify-content: space-between; }
+  .guide-navr { display: flex; gap: 0.5rem; }
+  .guide-skip { background: none; border: none; color: var(--muted); font-family: var(--mono); font-size: 0.58rem; cursor: pointer; letter-spacing: 0.06em; }
+  .guide-back { background: none; border: 1px solid var(--border); color: rgba(245,240,240,0.7); font-family: var(--mono); font-size: 0.58rem; padding: 0.5rem 0.8rem; cursor: pointer; text-transform: uppercase; letter-spacing: 0.06em; }
+  .guide-next { background: var(--pink); border: none; color: #12000a; font-family: var(--mono); font-size: 0.58rem; padding: 0.5rem 0.95rem; cursor: pointer; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+  .vv-guide-btn { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.8rem; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pink); background: rgba(255,0,102,0.08); border: 1px solid rgba(255,0,102,0.4); padding: 0.55rem 0.9rem; cursor: pointer; }
+  .vv-guide-btn:hover { background: rgba(255,0,102,0.16); }
+
   /* ── VOTE PAGE ── */
   .vote-page {
     min-height: 100vh;
@@ -3484,6 +3506,23 @@
     <div class="tutorial-nav">
       <button class="tutorial-btn-back" id="tutorial-back" onclick="tutorialNav(-1)">← Back</button>
       <button class="tutorial-btn-next" id="tutorial-next" onclick="tutorialNav(1)">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Guided spotlight tour: navigates pages and highlights the real buttons -->
+<div id="guide-overlay" class="guide-overlay" style="display:none;">
+  <div id="guide-ring" class="guide-ring pulse"></div>
+  <div id="guide-pop" class="guide-pop">
+    <div class="guide-eyebrow" id="guide-eyebrow"></div>
+    <div class="guide-title" id="guide-title"></div>
+    <div class="guide-body" id="guide-body"></div>
+    <div class="guide-nav">
+      <button class="guide-skip" onclick="guideEnd(false)">Skip</button>
+      <div class="guide-navr">
+        <button class="guide-back" id="guide-back" onclick="guideGo(-1)">Back</button>
+        <button class="guide-next" id="guide-next" onclick="guideGo(1)">Next →</button>
+      </div>
     </div>
   </div>
 </div>
@@ -6479,6 +6518,7 @@ function drawVmaVoting() {
     <div class="vv-head">
       <div class="vv-title">🗳️ VMA Voting Leaderboard</div>
       <div class="vv-note">Register the votes you cast and race other blinks up the board — streaming blinks only. <a href="/vmas">how &amp; where to vote →</a></div>
+      <button class="vv-guide-btn" onclick="startGuide()">🧭 New here? Step-by-step guide</button>
     </div>
     ${me}
     <div class="vv-tabs">${toggle}</div>
@@ -9307,6 +9347,98 @@ function renderTutorialStep() {
 
 function maybeShowTutorial() {
   try { if (!localStorage.getItem(TUTORIAL_SEEN_KEY)) openTutorial(); } catch {}
+}
+
+// ── Guided spotlight tour ───────────────────────────────────────────────────
+// Walks a first-timer through sign-up → stream → vote → log, navigating the SPA
+// pages and highlighting the real buttons. Next-driven; falls back to a centered
+// callout when a step's target isn't on screen (e.g. the link-scrobbler card,
+// which only appears once signed in).
+const GUIDE_STEPS = [
+  { title: 'How to get on the board', body: 'Three steps: <b>sign up</b>, <b>stream</b>, then <b>vote &amp; log it</b>. I\'ll walk you to each spot — tap <b>Next</b>.' },
+  { page: 'badges', sel: '#badges-auth-signout', title: '1 · Create your account', body: 'On <b>My Badges</b>, sign in with Google, X, Discord, or email. It\'s free and takes seconds.' },
+  { title: '2 · Link a scrobbler', body: 'Right after you sign in, a <b>Link your scrobbler</b> card appears here — add your Last.fm / ListenBrainz / Stats.fm username so your <b>streams</b> count.' },
+  { page: 'vote', sel: '#vote-list', title: '3 · Vote at MTV', body: 'Tap a category\'s <b>Vote ↗</b> link — it opens MTV\'s official site. You can vote up to <b>20× a day</b>, in every category.' },
+  { page: 'vote', sel: '#vma-vote-panel', title: 'Stream + get ranked', body: 'This is the VMA board. Only blinks <b>streaming today</b> get ranked — keep the campaign tracks playing to appear here.' },
+  { page: 'vote', sel: '#vma-votebar', title: 'Log your votes', body: 'After voting at MTV, tap <b>Log your votes</b> (this bar sits on every page) to record them and climb the board.' },
+  { title: 'That\'s it! 🎉', body: '<b>Sign up → stream → vote → log.</b> Tap <b>Start</b> to open My Badges and sign in.', cta: 'Start →' },
+];
+let _guideIdx = 0;
+
+function startGuide() {
+  _guideIdx = 0;
+  const o = document.getElementById('guide-overlay');
+  if (!o) return;
+  o.style.display = 'block';
+  window.addEventListener('resize', _guideReposition);
+  window.addEventListener('scroll', _guideReposition, true);
+  _guideRender();
+}
+function guideGo(dir) {
+  const n = _guideIdx + dir;
+  if (n < 0) return;
+  if (n >= GUIDE_STEPS.length) { guideEnd(true); return; }
+  _guideIdx = n; _guideRender();
+}
+function guideEnd(finished) {
+  const o = document.getElementById('guide-overlay');
+  if (o) o.style.display = 'none';
+  window.removeEventListener('resize', _guideReposition);
+  window.removeEventListener('scroll', _guideReposition, true);
+  if (finished) { try { goToMyBadges(); } catch {} }
+}
+function _guideTarget() {
+  const s = GUIDE_STEPS[_guideIdx];
+  let el = s && s.sel ? document.querySelector(s.sel) : null;
+  if (el && el.getClientRects().length === 0) el = null; // hidden / not rendered
+  return el;
+}
+function _guidePlace(el) {
+  const ring = document.getElementById('guide-ring');
+  const pop  = document.getElementById('guide-pop');
+  if (!ring || !pop) return;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  if (!el) {
+    ring.style.display = 'none';
+    pop.style.left = Math.max(12, (vw - pop.offsetWidth) / 2) + 'px';
+    pop.style.top  = Math.max(12, (vh - pop.offsetHeight) / 2) + 'px';
+    return;
+  }
+  const r = el.getBoundingClientRect();
+  const pad = 8;
+  ring.style.display = 'block';
+  ring.style.left = (r.left - pad) + 'px';
+  ring.style.top = (r.top - pad) + 'px';
+  ring.style.width = (r.width + pad * 2) + 'px';
+  ring.style.height = (r.height + pad * 2) + 'px';
+  const popW = pop.offsetWidth || 320, popH = pop.offsetHeight || 170;
+  let left = Math.max(12, Math.min(vw - popW - 12, r.left));
+  let top;
+  if (r.bottom + 12 + popH < vh) top = r.bottom + 12;          // below
+  else if (r.top - 12 - popH > 0) top = r.top - 12 - popH;      // above
+  else top = Math.max(12, (vh - popH) / 2);                     // fallback center-y
+  pop.style.left = left + 'px';
+  pop.style.top = top + 'px';
+}
+function _guideReposition() { _guidePlace(_guideTarget()); }
+async function _guideRender() {
+  const s = GUIDE_STEPS[_guideIdx];
+  if (s.page) { try { showPage(s.page); } catch {} }
+  const eb = document.getElementById('guide-eyebrow');
+  const ti = document.getElementById('guide-title');
+  const bd = document.getElementById('guide-body');
+  const back = document.getElementById('guide-back');
+  const next = document.getElementById('guide-next');
+  if (eb) eb.textContent = `Step ${_guideIdx + 1} of ${GUIDE_STEPS.length}`;
+  if (ti) ti.innerHTML = s.title;
+  if (bd) bd.innerHTML = s.body;
+  if (back) back.style.visibility = _guideIdx === 0 ? 'hidden' : 'visible';
+  if (next) next.textContent = s.cta || (_guideIdx === GUIDE_STEPS.length - 1 ? 'Done' : 'Next →');
+  // Let the page render/route, then scroll the target into view and place the callout.
+  await new Promise(r => setTimeout(r, s.page ? 400 : 60));
+  const el = _guideTarget();
+  if (el) { try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {} await new Promise(r => setTimeout(r, 340)); }
+  _guidePlace(_guideTarget());
 }
 
 function toggleChatWidget() {
