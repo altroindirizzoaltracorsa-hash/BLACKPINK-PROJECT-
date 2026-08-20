@@ -6171,6 +6171,16 @@ const MONSTER_BLINK = { votes: 2500, streams: 1500, label: 'MONSTER BLINK', icon
 function voteTier(total) { let t = null; for (const x of VMA_VOTE_TIERS) if ((total || 0) >= x.min) t = x; return t; }
 function nextVoteTier(total) { for (const x of VMA_VOTE_TIERS) if ((total || 0) < x.min) return x; return null; }
 function isMonsterBlink(votes, streams) { return (votes || 0) >= MONSTER_BLINK.votes && (streams || 0) >= MONSTER_BLINK.streams; }
+// The current VMA voting day as a DD/MM label — the US-Eastern (midnight-ET)
+// calendar date, matching how votes bucket and how the /vmas countdown resets.
+// The leaderboard's daily streams carry the same DD/MM label (2am-Italy / 00:00-UTC
+// day), so matching against this freezes streams at yesterday's final during the
+// 2–6am gap (votes still on yesterday) and tracks the live day again after 6am.
+function vmaVotingDayLabel() {
+  const et = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const [, mm, dd] = et.split('-');
+  return `${dd}/${mm}`;
+}
 function _vvEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 const _vvFmt = n => Number(n || 0).toLocaleString('en-US');
 
@@ -6184,6 +6194,9 @@ async function renderVmaVoting() {
     _vvToken
       ? fetch('/api/vma-votes?me=1', { headers: { Authorization: 'Bearer ' + _vvToken }, cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)
       : Promise.resolve(null),
+    // Ensure the streaming leaderboard is loaded (cached read, no sync) so we can
+    // show streams next to votes even when the leaderboard page wasn't visited.
+    (typeof fetchLbData === 'function' && !lbData) ? fetchLbData().catch(() => null) : Promise.resolve(null),
   ]);
   _vvBoard = board.board || [];
   _vvMe = me;
@@ -6194,13 +6207,35 @@ function drawVmaVoting() {
   const panel = document.getElementById('vma-vote-panel');
   if (!panel) return;
 
-  // streams per blink (by display name) from the loaded streaming leaderboard
+  // Streams per blink — DAILY streams aligned to the current VOTING day (midnight-ET
+  // boundary), from the streaming leaderboard. Votes reset at 6am Italy but the streams
+  // day resets at 2am, so we key each user's daily total to the voting-day label: during
+  // the 2–6am gap the voting day is still "yesterday", so the leaderboard's retained
+  // daily_all stays frozen at yesterday's final; at 6am the voting day rolls and the
+  // number tracks today's live count again (syncing until 1:59am).
   const lbUsers = (typeof getActiveLbUsers === 'function') ? (getActiveLbUsers() || {}) : {};
+  const votingLabel = vmaVotingDayLabel();
+  const _meName = (_vvSession?.user?.user_metadata?.display_name || '').toLowerCase();
   const streamsByName = {};
+  let _myRawDaily = null, _myRawLabel = null;
   for (const d of Object.values(lbUsers)) {
     const nm = (d.displayName || '').toLowerCase();
-    if (nm) streamsByName[nm] = d.scores?.overall_all || 0;
+    if (!nm) continue;
+    const sc = d.scores || {};
+    streamsByName[nm] = (sc.daily_date === votingLabel) ? (sc.daily_all || 0) : 0;
+    if (_meName && nm === _meName) { _myRawDaily = sc.daily_all || 0; _myRawLabel = sc.daily_date || null; }
   }
+  // Keep the VIEWER's own number solid across the 2am rollover: remember each streams-day's
+  // total locally, and fall back to the cached voting-day value if their live data has
+  // already rolled to the new streams day (e.g. they opened the app between 2–6am).
+  try {
+    const CK = 'bu_vma_streams_freeze_v1';
+    const cache = JSON.parse(localStorage.getItem(CK) || '{}');
+    if (_myRawLabel) { cache[_myRawLabel] = _myRawDaily; localStorage.setItem(CK, JSON.stringify(cache)); }
+    if (_meName && !(streamsByName[_meName] > 0) && cache[votingLabel] != null) {
+      streamsByName[_meName] = cache[votingLabel];
+    }
+  } catch {}
 
   const P = _vvPeriod;
   const periodLbl = { today: 'today', week: 'this week', month: 'this month', total: 'all time' }[P];
