@@ -1528,6 +1528,7 @@
   .vv-input-row button { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); border: none; padding: 0 1.1rem; cursor: pointer; }
   .vv-input-row button:disabled { opacity: 0.6; cursor: default; }
   .vv-msg { font-family: var(--mono); font-size: 0.58rem; color: #ff74ac; margin-top: 0.55rem; min-height: 1em; }
+  .vv-honest { font-family: var(--mono); font-size: 0.56rem; line-height: 1.5; color: var(--muted); margin-top: 0.7rem; padding-top: 0.6rem; border-top: 1px dashed var(--border); }
   .vv-tabs { display: flex; gap: 0.4rem; margin-bottom: 0.9rem; }
   .vv-tab { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--border); padding: 0.42rem 0.75rem; cursor: pointer; }
   .vv-tab.active { color: var(--pink); border-color: var(--pink); background: rgba(255,0,102,0.08); }
@@ -6262,6 +6263,7 @@ function drawVmaVoting() {
           <button id="vv-add" onclick="vmaAddVotes()">Add votes</button>
         </div>
         <div class="vv-msg" id="vv-msg"></div>
+        <div class="vv-honest">🤝 Honour system — please only log votes you've actually cast. Inflated counts just throw off the board for every blink. 💗</div>
       </div>
     </div>`;
   } else {
