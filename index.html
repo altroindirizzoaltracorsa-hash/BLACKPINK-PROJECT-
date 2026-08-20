@@ -6334,9 +6334,6 @@ async function renderVmaVoting() {
     _vvToken
       ? fetch('/api/vma-votes?me=1', { headers: { Authorization: 'Bearer ' + _vvToken }, cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)
       : Promise.resolve(null),
-    // Ensure the streaming leaderboard is loaded (cached read, no sync) so we can
-    // show streams next to votes even when the leaderboard page wasn't visited.
-    (typeof fetchLbData === 'function' && !lbData) ? fetchLbData().catch(() => null) : Promise.resolve(null),
   ]);
   _vvBoard = board.board || [];
   _vvMe = me;
@@ -6347,41 +6344,11 @@ function drawVmaVoting() {
   const panel = document.getElementById('vma-vote-panel');
   if (!panel) return;
 
-  // Streams per blink — DAILY streams aligned to the current VOTING day (midnight-ET
-  // boundary), from the streaming leaderboard. Votes reset at 6am Italy but the streams
-  // day resets at 2am, so we key each user's daily total to the voting-day label: during
-  // the 2–6am gap the voting day is still "yesterday", so the leaderboard's retained
-  // daily_all stays frozen at yesterday's final; at 6am the voting day rolls and the
-  // number tracks today's live count again (syncing until 1:59am).
-  const lbUsers = (typeof getActiveLbUsers === 'function') ? (getActiveLbUsers() || {}) : {};
-  const votingLabel = vmaVotingDayLabel();
-  const _meName = (_vvSession?.user?.user_metadata?.display_name || '').toLowerCase();
-  const streamsByName = {};
-  let _myRawDaily = null, _myRawLabel = null;
-  for (const d of Object.values(lbUsers)) {
-    const nm = (d.displayName || '').toLowerCase();
-    if (!nm) continue;
-    const sc = d.scores || {};
-    streamsByName[nm] = (sc.daily_date === votingLabel) ? (sc.daily_all || 0) : 0;
-    if (_meName && nm === _meName) { _myRawDaily = sc.daily_all || 0; _myRawLabel = sc.daily_date || null; }
-  }
-  // Keep the VIEWER's own number solid across the 2am rollover: remember each streams-day's
-  // total locally, and fall back to the cached voting-day value if their live data has
-  // already rolled to the new streams day (e.g. they opened the app between 2–6am).
-  try {
-    const CK = 'bu_vma_streams_freeze_v1';
-    const cache = JSON.parse(localStorage.getItem(CK) || '{}');
-    if (_myRawLabel) { cache[_myRawLabel] = _myRawDaily; localStorage.setItem(CK, JSON.stringify(cache)); }
-    if (_meName && !(streamsByName[_meName] > 0) && cache[votingLabel] != null) {
-      streamsByName[_meName] = cache[votingLabel];
-    }
-  } catch {}
-
   const P = _vvPeriod;
   const periodLbl = { today: 'today', week: 'this week', month: 'this month', total: 'all time' }[P];
   const displayName = _vvSession?.user?.user_metadata?.display_name || null;
 
-  // ranked board (also used to compute the caller's rank in the selected period)
+  // The board is already server-ranked (streamers only) with streams baked in.
   const rows = _vvBoard.slice().sort((a, b) => (b[P] || 0) - (a[P] || 0) || (b.total || 0) - (a.total || 0));
   const myIdx = displayName ? rows.findIndex(r => (r.name || '').toLowerCase() === displayName.toLowerCase()) : -1;
   const myRank = myIdx >= 0 ? myIdx + 1 : null;
@@ -6393,38 +6360,47 @@ function drawVmaVoting() {
   } else if (_vvMe && _vvMe.linked === false) {
     me = `<div class="vv-me vv-gate">Link a scrobbler on <a href="/badges">My&nbsp;Badges</a> to get on the board — it's for blinks who <b>stream and vote</b>. 💗</div>`;
   } else if (_vvMe) {
-    const rankLine = myRank
-      ? `<div class="vv-rank">🏆 You're <b>#${myRank}</b> of ${_vvFmt(rows.length)} ${periodLbl}</div>`
-      : `<div class="vv-rank">Add your first votes to get on the board 🗳️</div>`;
     const myTotal = _vvMe.total || 0;
-    const myStreams = streamsByName[(displayName || '').toLowerCase()] || 0;
-    const MB = MONSTER_BLINK;
-    const hasMonster = isMonsterBlink(myTotal, myStreams);
-    const tier = hasMonster ? MB : voteTier(myTotal);
-    const next = nextVoteTier(myTotal);
-    let nextHtml;
-    if (hasMonster) {
-      nextHtml = `<span class="vv-badge-next">${MB.icon} the ultimate blink — top tier reached</span>`;
-    } else if (next) {
-      nextHtml = `<span class="vv-badge-next"><b>${_vvFmt(next.min - myTotal)}</b> more → ${next.icon} ${next.label}</span>`;
-    } else {
-      // Past MVP (1,200) — the only thing left is MONSTER BLINK, which also needs streams
-      const needV = Math.max(0, MB.votes - myTotal);
-      const needS = Math.max(0, MB.streams - myStreams);
-      const parts = [];
-      if (needV > 0) parts.push(`<b>${_vvFmt(needV)}</b> votes`);
-      if (needS > 0) parts.push(`<b>${_vvFmt(needS)}</b> streams`);
-      nextHtml = `<span class="vv-badge-next">${parts.join(' + ')} → ${MB.icon} ${MB.label}</span>`;
-    }
-    const badgeLine = `<div class="vv-badge">
+    const myStreams = _vvMe.streams || 0;
+    // Ranking + badges are silently gated on having streamed (server `ranked`).
+    // Non-streamers still see their registered votes — just no rank or badge, and
+    // no explanation of why.
+    const isRanked = !!_vvMe.ranked;
+    let rankBadge = '';
+    if (isRanked) {
+      const rankLine = myTotal === 0
+        ? `<div class="vv-rank">Add your first votes to climb the board 🗳️</div>`
+        : (myRank
+            ? `<div class="vv-rank">🏆 You're <b>#${myRank}</b> of ${_vvFmt(rows.length)} ${periodLbl}</div>`
+            : `<div class="vv-rank">🏆 You're on the board</div>`);
+      const MB = MONSTER_BLINK;
+      const hasMonster = isMonsterBlink(myTotal, myStreams);
+      const tier = hasMonster ? MB : voteTier(myTotal);
+      const next = nextVoteTier(myTotal);
+      let nextHtml;
+      if (hasMonster) {
+        nextHtml = `<span class="vv-badge-next">${MB.icon} the ultimate blink — top tier reached</span>`;
+      } else if (next) {
+        nextHtml = `<span class="vv-badge-next"><b>${_vvFmt(next.min - myTotal)}</b> more → ${next.icon} ${next.label}</span>`;
+      } else {
+        // Past MVP (1,200) — the only thing left is MONSTER BLINK, which also needs streams
+        const needV = Math.max(0, MB.votes - myTotal);
+        const needS = Math.max(0, MB.streams - myStreams);
+        const parts = [];
+        if (needV > 0) parts.push(`<b>${_vvFmt(needV)}</b> votes`);
+        if (needS > 0) parts.push(`<b>${_vvFmt(needS)}</b> streams`);
+        nextHtml = `<span class="vv-badge-next">${parts.join(' + ')} → ${MB.icon} ${MB.label}</span>`;
+      }
+      rankBadge = `${rankLine}
+    <div class="vv-badge">
       ${tier ? `<span class="vv-badge-cur${hasMonster ? ' mb' : ''}">${tier.icon} ${tier.label}</span>` : `<span class="vv-badge-cur none">No badge yet</span>`}
       ${nextHtml}
     </div>
     <div class="vv-ladder">${VMA_VOTE_TIERS.map(x => `<div class="vv-tier ${myTotal >= x.min ? 'got' : ''}"><span>${x.icon}</span><small>${x.min}</small></div>`).join('')}<div class="vv-tier vv-tier-mb ${hasMonster ? 'got' : ''}" title="${MB.votes.toLocaleString()} votes + ${MB.streams.toLocaleString()} streams"><span>${MB.icon}</span><small>MB</small></div></div>`;
+    }
     me = `<div class="vv-me">
       <div class="vv-me-head">Your VMA votes${displayName ? ' · ' + _vvEsc(displayName) : ''}</div>
-      ${rankLine}
-      ${badgeLine}
+      ${rankBadge}
       <div class="vv-me-stats">
         <div><span>${_vvFmt(_vvMe.today)}</span><small>today</small></div>
         <div><span>${_vvFmt(_vvMe.week)}</span><small>this week</small></div>
@@ -6452,10 +6428,10 @@ function drawVmaVoting() {
   } else {
     table = `<table class="vv-table"><thead><tr><th>#</th><th>Blink</th><th>Streams</th><th>Votes ${periodLbl}</th></tr></thead><tbody>`;
     rows.forEach((r, i) => {
-      const s = streamsByName[(r.name || '').toLowerCase()];
+      const s = r.streams || 0; // server-provided (voting-day aligned)
       const mine = displayName && (r.name || '').toLowerCase() === displayName.toLowerCase();
       const bt = isMonsterBlink(r.total, s) ? MONSTER_BLINK : voteTier(r.total);
-      table += `<tr class="${mine ? 'vv-mine' : ''}"><td>${i + 1}</td><td>${bt ? `<span class="vv-rowbadge" title="${bt.label}">${bt.icon}</span> ` : ''}${_vvEsc(r.name || 'a blink')}</td><td>${s != null ? _vvFmt(s) : '—'}</td><td class="vv-v">${_vvFmt(r[P] || 0)}</td></tr>`;
+      table += `<tr class="${mine ? 'vv-mine' : ''}"><td>${i + 1}</td><td>${bt ? `<span class="vv-rowbadge" title="${bt.label}">${bt.icon}</span> ` : ''}${_vvEsc(r.name || 'a blink')}</td><td>${_vvFmt(s)}</td><td class="vv-v">${_vvFmt(r[P] || 0)}</td></tr>`;
     });
     table += `</tbody></table>`;
   }

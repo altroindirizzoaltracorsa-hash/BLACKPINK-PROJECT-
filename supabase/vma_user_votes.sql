@@ -36,8 +36,18 @@ as $$
 $$;
 
 -- Ranked voting board: one entry per account, votes summed for today / this
--- (Mon-start) week / this month / all-time. Name is taken from the most recent
--- row for that account.
+-- (Mon-start) week / this month / all-time (all US-Eastern).
+--
+-- Two rules baked in here (intentionally NOT surfaced to users):
+--   • Only accounts that have actually STREAMED (>=1 campaign scrobble ever, from
+--     user_daily_counts) are ranked. You can still register votes without
+--     streaming — they count in the community total (vma_vote_totals) — you just
+--     don't appear on this board or earn badges until you've streamed.
+--   • Accounts with no display name are shown as blink1, blink2, … numbered by
+--     when they first voted (stable), instead of a generic "a blink".
+-- Each row also carries `streams` = that account's campaign streams for the
+-- current voting day (ET-aligned, so it naturally holds yesterday's total during
+-- the 2–6am gap and tracks today's after 6am).
 create or replace function vma_vote_board()
 returns json
 language sql
@@ -49,7 +59,8 @@ as $$
       sum(votes)                                                                                        as total,
       sum(votes) filter (where day = (now() at time zone 'America/New_York')::date)                      as today,
       sum(votes) filter (where day >= date_trunc('week',  now() at time zone 'America/New_York')::date)  as week,
-      sum(votes) filter (where day >= date_trunc('month', now() at time zone 'America/New_York')::date)  as month
+      sum(votes) filter (where day >= date_trunc('month', now() at time zone 'America/New_York')::date)  as month,
+      min(day)                                                                                           as first_day
     from vma_user_votes
     group by app_user_id
   ),
@@ -57,19 +68,46 @@ as $$
     select distinct on (app_user_id) app_user_id, display_name
     from vma_user_votes
     order by app_user_id, day desc, updated_at desc
+  ),
+  streams as (
+    select
+      app_user_id,
+      sum(coalesce(jump,0)+coalesce(shutdown,0)+coalesce(ddududu,0)+coalesce(go,0))                     as all_streams,
+      sum((coalesce(jump,0)+coalesce(shutdown,0)+coalesce(ddududu,0)+coalesce(go,0)))
+        filter (where day_key::date = (now() at time zone 'America/New_York')::date)                    as today_streams
+    from user_daily_counts
+    group by app_user_id
+  ),
+  eligible as (
+    select
+      u.total, u.today, u.week, u.month, u.first_day, u.app_user_id,
+      n.display_name,
+      coalesce(s.today_streams, 0) as streams
+    from per_user u
+    left join latest_name n using (app_user_id)
+    join streams s on s.app_user_id = u.app_user_id and s.all_streams >= 1  -- streamed → ranked
+  ),
+  numbered as (
+    select e.*,
+      case
+        when e.display_name is null or e.display_name = ''
+          then 'blink' || row_number() over (
+                 partition by (e.display_name is null or e.display_name = '')
+                 order by e.first_day, e.app_user_id)
+        else e.display_name
+      end as name
+    from eligible e
   )
   select coalesce(
     json_agg(
       json_build_object(
-        'name',  coalesce(n.display_name, 'a blink'),
-        'total', u.total, 'today', u.today, 'week', u.week, 'month', u.month
+        'name', name, 'total', total, 'today', today, 'week', week, 'month', month, 'streams', streams
       )
-      order by u.total desc
+      order by total desc
     ),
     '[]'::json
   )
-  from per_user u
-  left join latest_name n using (app_user_id);
+  from numbered;
 $$;
 
 -- ── Privileges ──────────────────────────────────────────────────────────────

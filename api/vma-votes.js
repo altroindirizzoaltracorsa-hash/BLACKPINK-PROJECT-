@@ -58,6 +58,23 @@ async function myTotals(sb, uid) {
   return { today, week, month, total };
 }
 
+// The caller's campaign streams: today's (ET-day aligned) for display + Monster
+// Blink, and whether they've EVER streamed (the silent gate for ranking/badges —
+// you can register votes without streaming, but you only rank if you've streamed).
+async function myStreams(sb, uid) {
+  const { data } = await sb.from('user_daily_counts')
+    .select('day_key, jump, shutdown, ddududu, go').eq('app_user_id', uid);
+  const rows = data || [];
+  const t = etDay();
+  let streams = 0, allStreams = 0;
+  for (const r of rows) {
+    const s = (r.jump || 0) + (r.shutdown || 0) + (r.ddududu || 0) + (r.go || 0);
+    allStreams += s;
+    if (r.day_key === t) streams += s;
+  }
+  return { streams, ranked: allStreams >= 1 };
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -81,7 +98,8 @@ export default async function handler(req, res) {
         const { data: { user } = {}, error: authErr } = await sb.auth.getUser(token);
         if (authErr || !user) return res.status(401).json({ error: 'not signed in' });
         const linked = await isLinked(sb, user.id);
-        return res.status(200).json({ linked, ...(await myTotals(sb, user.id)) });
+        const [totals, streams] = await Promise.all([myTotals(sb, user.id), myStreams(sb, user.id)]);
+        return res.status(200).json({ linked, ...totals, ...streams });
       }
       const { data, error } = await sb.rpc('vma_vote_totals');
       if (error) throw error;
@@ -103,17 +121,9 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'Link a scrobbler first — the voting board is for streaming blinks.' });
       }
 
-      // Prefer the BU display name; if the account never set one (e.g. an OAuth
-      // sign-in), fall back to the linked scrobbler handle — the same public name
-      // the streaming leaderboard shows — so the row isn't a nameless "a blink".
-      let name = (user.user_metadata && user.user_metadata.display_name) || null;
-      if (!name) {
-        try {
-          const { data: la } = await sb.from('linked_accounts')
-            .select('source_username').eq('app_user_id', user.id).limit(1);
-          name = (la && la[0] && la[0].source_username) || null;
-        } catch {}
-      }
+      // Store the BU display name if set, else null — the board numbers nameless
+      // accounts as blink1, blink2, … (see vma_vote_board).
+      const name = (user.user_metadata && user.user_metadata.display_name) || null;
       const day = etDay();
 
       // Additive: add to today's tally (self-reported, uncapped).
