@@ -103,7 +103,17 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'Link a scrobbler first — the voting board is for streaming blinks.' });
       }
 
-      const name = (user.user_metadata && user.user_metadata.display_name) || null;
+      // Prefer the BU display name; if the account never set one (e.g. an OAuth
+      // sign-in), fall back to the linked scrobbler handle — the same public name
+      // the streaming leaderboard shows — so the row isn't a nameless "a blink".
+      let name = (user.user_metadata && user.user_metadata.display_name) || null;
+      if (!name) {
+        try {
+          const { data: la } = await sb.from('linked_accounts')
+            .select('source_username').eq('app_user_id', user.id).limit(1);
+          name = (la && la[0] && la[0].source_username) || null;
+        } catch {}
+      }
       const day = etDay();
 
       // Additive: add to today's tally (self-reported, uncapped).
