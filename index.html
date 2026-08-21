@@ -4455,6 +4455,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadJennieSaveCount();
   loadFaSaveCount();
   loadLisaSaveCount();
+  refreshSupporterChips();
   loadLtalStreamsGoal();
   renderItunesInlineBadge();
   // (Removed: the old Last.fm-only background submit. Identity is account-only now;
@@ -6128,12 +6129,10 @@ if (sb) {
     if (document.getElementById('page-badges')?.classList.contains('active')) {
       renderAccountPage(session);
     }
-    // Reflect account-linked Early Supporter chips as soon as the session loads,
-    // so a signed-in blink sees them on any browser (not just where they clicked).
-    if (session?.user) {
-      faEarlySupporterEarned().then(v => { if (v) renderFaBadge(); }).catch(() => {});
-      lisaEarlySupporterEarned().then(v => { if (v) renderLisaBadge(); }).catch(() => {});
-    }
+    // Early Supporter chips are account-gated — refresh them on every auth change
+    // (sign-in reveals them across browsers; sign-out hides them).
+    _buSignedIn = !!session?.user;
+    if (typeof refreshSupporterChips === 'function') refreshSupporterChips();
     // Resume the step-by-step guide if the user just signed in mid-tour.
     if (session?.user && typeof _maybeResumeGuide === 'function') setTimeout(_maybeResumeGuide, 500);
   });
@@ -10672,9 +10671,26 @@ const FA_SAVE_LS   = 'bu_jennie_fa_saved';
 const FA_SAVE_GOAL = 50;
 const FA_RELEASE_AT = '2026-08-28T04:00:00Z'; // 1PM KST / 12AM EDT
 
+// Early Supporter is an ACCOUNT badge: only show the chip when the blink is
+// signed in AND has earned it. A leftover localStorage flag alone (e.g. logged
+// out, or a shared browser) must not display it. _buSignedIn is kept current by
+// refreshSupporterChips() / onAuthStateChange.
+let _buSignedIn = false;
 function renderFaBadge() {
   const el = document.getElementById('fa-badge');
-  if (el) el.style.display = localStorage.getItem(FA_SAVE_LS) ? 'inline-flex' : 'none';
+  if (el) el.style.display = (_buSignedIn && localStorage.getItem(FA_SAVE_LS)) ? 'inline-flex' : 'none';
+}
+
+// Single source of truth for the home Early Supporter chips. Checks the current
+// session once, backfills localStorage from the account flag when signed in, and
+// shows/hides both chips accordingly (hidden whenever logged out).
+async function refreshSupporterChips() {
+  let user = null;
+  try { user = (await sb?.auth.getUser())?.data?.user || null; } catch {}
+  _buSignedIn = !!user;
+  if (user) { try { await Promise.all([faEarlySupporterEarned(), lisaEarlySupporterEarned()]); } catch {} }
+  renderFaBadge();
+  renderLisaBadge();
 }
 
 function renderFaSaveCount(count) {
@@ -10703,9 +10719,9 @@ function renderFaSaveCount(count) {
 function saveFallenAngel() {
   if (localStorage.getItem(FA_SAVE_LS)) return;
   localStorage.setItem(FA_SAVE_LS, '1');
-  renderFaBadge();
-  _showShareToast('🏆 Badge unlocked: Early Supporter!');
+  _showShareToast(_buSignedIn ? '🏆 Badge unlocked: Early Supporter!' : '✅ Pre-saved! Sign in on My Badges to claim your Early Supporter badge.');
   try { sb?.auth.updateUser({ data: { fa_early_supporter: true } }); } catch {}
+  refreshSupporterChips();   // show the chip now if signed in (account-gated)
   fetch('/api/proxy-image?fa_save=increment').then(r => r.json()).then(d => renderFaSaveCount(d.count || 0)).catch(() => {});
 }
 
@@ -10716,9 +10732,6 @@ async function loadFaSaveCount() {
     const d = await r.json();
     renderFaSaveCount(d.count || 0);
   } catch {}
-  // Account-sync the Early Supporter chip across browsers/devices: if this blink
-  // pre-saved on any device (mirrored to user_metadata.fa_early_supporter), show it.
-  try { if (await faEarlySupporterEarned()) renderFaBadge(); } catch {}
 }
 
 // ── LISA "hellosawadika" reveal — Join counter + Early Supporter
@@ -10730,7 +10743,7 @@ const LISA_REVEAL_AT = '2026-08-24T13:00:00Z'; // 10PM KST / 9AM EDT / 8PM ICT
 
 function renderLisaBadge() {
   const el = document.getElementById('lisa-badge');
-  if (el) el.style.display = localStorage.getItem(LISA_SAVE_LS) ? 'inline-flex' : 'none';
+  if (el) el.style.display = (_buSignedIn && localStorage.getItem(LISA_SAVE_LS)) ? 'inline-flex' : 'none';
 }
 
 function renderLisaSaveCount(count) {
@@ -10755,9 +10768,9 @@ function renderLisaSaveCount(count) {
 function saveLisaSawadika() {
   if (localStorage.getItem(LISA_SAVE_LS)) return;
   localStorage.setItem(LISA_SAVE_LS, '1');
-  renderLisaBadge();
-  _showShareToast('🏆 Badge unlocked: Early Supporter!');
+  _showShareToast(_buSignedIn ? '🏆 Badge unlocked: Early Supporter!' : '✅ Joined! Sign in on My Badges to claim your Early Supporter badge.');
   try { sb?.auth.updateUser({ data: { lisa_early_supporter: true } }); } catch {}
+  refreshSupporterChips();   // show the chip now if signed in (account-gated)
   fetch('/api/proxy-image?lisa_save=increment').then(r => r.json()).then(d => renderLisaSaveCount(d.count || 0)).catch(() => {});
 }
 
@@ -10768,9 +10781,6 @@ async function loadLisaSaveCount() {
     const d = await r.json();
     renderLisaSaveCount(d.count || 0);
   } catch {}
-  // Account-sync the Early Supporter chip across browsers/devices: if this blink
-  // joined on any device (mirrored to user_metadata.lisa_early_supporter), show it.
-  try { if (await lisaEarlySupporterEarned()) renderLisaBadge(); } catch {}
 }
 
 // ── Release card expand panel: global release times, goals, links ─────────
@@ -13989,7 +13999,8 @@ async function openPresaveCard(campaign = 'fa') {
   ]);
   await document.fonts.ready;
 
-  const earned = !!localStorage.getItem(FA_SAVE_LS);
+  await refreshSupporterChips();   // sync sign-in state + account flag first
+  const earned = _buSignedIn && !!localStorage.getItem(FA_SAVE_LS);
   _presaveCardData = {
     campaign, earned,
     act: 'JENNIE', release: 'Fallen Angel',
@@ -14136,7 +14147,8 @@ async function openLisaCard() {
   ]);
   await document.fonts.ready;
 
-  const earned = !!localStorage.getItem(LISA_SAVE_LS);
+  await refreshSupporterChips();   // sync sign-in state + account flag first
+  const earned = _buSignedIn && !!localStorage.getItem(LISA_SAVE_LS);
   _lisaCardData = {
     earned, helloImg, sawImg,
     revealAt: LISA_REVEAL_AT,
