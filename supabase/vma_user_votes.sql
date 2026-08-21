@@ -69,6 +69,17 @@ as $$
     from vma_user_votes
     order by app_user_id, day desc, updated_at desc
   ),
+  -- Fallback handle from the linked scrobbler (prefer Last.fm, else most recent),
+  -- so a voter who never set a BU display name shows their handle — same as the
+  -- streaming leaderboard — instead of a generic blinkN. (Voting requires a linked
+  -- scrobbler, so nearly every account here has one.)
+  handles as (
+    select distinct on (la.app_user_id)
+      la.app_user_id::text as app_user_id, la.source_username
+    from linked_accounts la
+    where la.source_username is not null and la.source_username <> ''
+    order by la.app_user_id, (la.source = 'lastfm') desc, la.created_at desc
+  ),
   streams as (
     select
       app_user_id,
@@ -84,21 +95,23 @@ as $$
     select
       u.total, u.today, u.week, u.month, u.first_day, u.app_user_id,
       n.display_name,
+      h.source_username as handle,
       coalesce(s.today_streams, 0) as streams
     from per_user u
     left join latest_name n using (app_user_id)
+    left join handles h on h.app_user_id = u.app_user_id::text
     left join streams s on s.app_user_id = u.app_user_id::text
   ),
-  -- Number the nameless GLOBALLY (across streamers and non-streamers) by when they
-  -- first voted, so blinkN is stable for an account whether or not it's ranked.
+  -- Name = BU display name → linked scrobbler handle → blinkN (numbered by first
+  -- vote, stable). Only accounts with neither a name nor a handle get numbered.
   numbered as (
     select j.*,
       case
-        when j.display_name is null or j.display_name = ''
-          then 'blink' || row_number() over (
-                 partition by (j.display_name is null or j.display_name = '')
-                 order by j.first_day, j.app_user_id)
-        else j.display_name
+        when j.display_name is not null and j.display_name <> '' then j.display_name
+        when j.handle is not null then j.handle
+        else 'blink' || row_number() over (
+               partition by ((j.display_name is null or j.display_name = '') and j.handle is null)
+               order by j.first_day, j.app_user_id)
       end as name
     from joined j
   )
