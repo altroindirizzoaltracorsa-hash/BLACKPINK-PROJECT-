@@ -1465,8 +1465,13 @@
   .cd-tracklist b { color: var(--white); font-weight: 500; }
   .cd-btn { display: inline-block; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); padding: 0.65rem 1.1rem; text-decoration: none; transition: filter .15s; }
   .cd-btn:hover { filter: brightness(1.07); }
-  /* Hero card (JENNIE Fallen Angel): photo + pre-save challenge + early-supporter chip */
-  .cd-photo { display: block; width: calc(100% + 2.8rem); margin: -1.5rem -1.4rem 1.1rem; height: 190px; object-fit: cover; object-position: center 32%; }
+  /* Hero card (JENNIE Fallen Angel): photo + overlaid wordmarks + pre-save challenge */
+  .cd-hero { position: relative; width: calc(100% + 2.8rem); margin: -1.5rem -1.4rem 1rem; aspect-ratio: 16 / 10; overflow: hidden; background: #0a0608; }
+  .cd-hero-bg { width: 100%; height: 100%; object-fit: cover; object-position: center 28%; display: block; }
+  .cd-hero-scrim { position: absolute; inset: 0; background: linear-gradient(to top, rgba(10,6,8,0.94) 0%, rgba(10,6,8,0.35) 44%, rgba(10,6,8,0) 74%); }
+  .cd-hero-inner { position: absolute; left: 1.4rem; right: 1.4rem; bottom: 1.05rem; display: flex; flex-direction: column; align-items: flex-start; gap: 0.4rem; }
+  .cd-hero-logo { height: 26px; width: auto; max-width: 45%; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.65)); }
+  .cd-hero-title { width: min(76%, 300px); height: auto; filter: drop-shadow(0 2px 10px rgba(0,0,0,0.65)); }
   .cd-badge-chip { display: inline-flex; align-items: center; gap: 0.35rem; font-family: var(--mono); font-size: 0.56rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pink); border: 1px solid rgba(255,0,102,0.5); background: rgba(255,0,102,0.08); padding: 0.35rem 0.7rem; margin-bottom: 1rem; }
   .cd-goal { margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 0.4rem; }
   .cd-goal-top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
@@ -2081,9 +2086,15 @@
         <p class="cd-section-label">◇ Countdowns</p>
         <div class="cd-wrap">
           <div class="cd-card cd-card-hero" data-target="2026-08-28T04:00:00Z" data-live="OUT NOW ✨">
-            <img class="cd-photo" src="/jennie-fallen-angel.jpg" alt="JENNIE — Fallen Angel" loading="lazy" onerror="this.style.display='none'">
+            <div class="cd-hero">
+              <img class="cd-hero-bg" src="/fallenangel00.jpg" alt="JENNIE — Fallen Angel" loading="lazy" onerror="this.style.display='none'">
+              <div class="cd-hero-scrim"></div>
+              <div class="cd-hero-inner">
+                <img class="cd-hero-logo" src="/fallenangel-logo.png" alt="JENNIE" onerror="this.style.display='none'">
+                <img class="cd-hero-title" src="/fallenangel-title.png" alt="Fallen Angel" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cd-title',textContent:'FALLEN ANGEL'}))">
+              </div>
+            </div>
             <div class="cd-eyebrow">JENNIE · Digital EP</div>
-            <div class="cd-title">FALLEN ANGEL</div>
             <div class="cd-sub">Fri, Aug 28, 2026 · 1PM KST / 12AM EDT</div>
             <div class="cd-badge-chip" id="fa-badge" style="display:none;">🏆 Early Supporter</div>
             <div class="cd-timer" data-timer></div>
