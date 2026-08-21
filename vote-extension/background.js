@@ -59,7 +59,7 @@ async function fetchLive() {
 // "counted today" tracks the same boundary as the /voting board.
 function rolledOver(store, today) {
   if (store.buDay === today) return store;
-  return { buDay: today, buCount: 0, bpCount: 0, lisaCount: 0, buLog: [],
+  return { buDay: today, buCount: 0, bpCount: 0, lisaCount: 0, buLog: [], buAccounts: [],
            buPending: store.buPending || 0, buToken: store.buToken, buProfile: store.buProfile };
 }
 
@@ -71,7 +71,7 @@ chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
   }
 
   if (!msg || msg.type !== 'bu-vote' || !msg.detail) return;
-  const { category, slots, timestamp } = msg.detail;
+  const { category, slots, timestamp, account, method } = msg.detail;
 
   // Dedupe identical retried submissions.
   if (timestamp) {
@@ -98,24 +98,39 @@ chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
   postVotes(n).then(function (res) {
     const today = etDay();
     chrome.storage.local.get(
-      ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buPending', 'buDay', 'buToken', 'buProfile'],
+      ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buPending', 'buDay', 'buToken', 'buProfile'],
       function (raw) {
         const r = rolledOver(raw, today);
+        const cat = CATEGORY_NAMES[category] || category;
         const upd = { buDay: today };
         if (res.ok) {
           upd.buCount = (r.buCount || 0) + n;
           upd.bpCount = (r.bpCount || 0) + (perMember.BLACKPINK || 0);
           upd.lisaCount = (r.lisaCount || 0) + (perMember.LISA || 0);
-          // Newest-first activity log (keep the last 20).
-          const who = Object.keys(perMember).map((k) => (k === 'BLACKPINK' ? 'BP' : k)).join(' + ');
+          // Newest-first activity log, ONE entry per member so a split submission shows
+          // its real breakdown (e.g. 9 BLACKPINK + 1 LISA → two rows). Keep the last 20.
           const log = Array.isArray(r.buLog) ? r.buLog.slice() : [];
-          log.unshift({ n, cat: CATEGORY_NAMES[category] || category, who, ts: Date.now() });
+          const now = Date.now();
+          // unshift LISA first, then BLACKPINK, so BLACKPINK sits on top of the pair.
+          ['LISA', 'BLACKPINK'].forEach((who) => {
+            if (perMember[who]) log.unshift({ n: perMember[who], cat, who, ts: now });
+          });
           upd.buLog = log.slice(0, 20);
           // Flush any previously-pending votes now that we're linked/online.
           if (r.buPending) { postVotes(r.buPending); upd.buPending = 0; }
         } else {
           // Not linked yet or offline — remember so the panel/popup can nudge, retry later.
           upd.buPending = (r.buPending || 0) + n;
+        }
+        // Track which account cast this vote — the user's OWN roster of emails/logins
+        // used today, so they know which to rotate. Stored locally only, never sent
+        // to our server (the POST body carries only extToken + a vote count).
+        if (account) {
+          const accts = Array.isArray(r.buAccounts) ? r.buAccounts.slice() : [];
+          const i = accts.findIndex((a) => a.id === account);
+          if (i >= 0) { accts[i].votes += n; accts[i].lastTs = Date.now(); }
+          else accts.push({ id: account, method: method || 'email', votes: n, lastTs: Date.now() });
+          upd.buAccounts = accts;
         }
         chrome.storage.local.set(upd);
       }

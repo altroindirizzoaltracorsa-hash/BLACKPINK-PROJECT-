@@ -71,6 +71,19 @@
       .cat{ color:#fff2f6; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
       .time{ color:#8a5c6c; font-size:10px; }
 
+      .accts{ margin:0 12px 12px; }
+      .acctToggle{ all:unset; display:flex; align-items:center; gap:6px; width:100%; cursor:pointer;
+        font-size:11px; color:#d38aa4; padding:2px 2px 6px; }
+      .acctToggle:hover{ color:#ff8fb4; }
+      .acctToggle .caret{ margin-left:auto; color:#8a5c6c; }
+      .acctList{ background:#0a0407; border:1px solid #ff2e7722; border-radius:11px; padding:6px 8px; }
+      .acctRow{ display:flex; align-items:center; gap:8px; font-size:11px; padding:4px 2px; border-bottom:1px dashed #ff2e7714; }
+      .acctRow:last-child{ border-bottom:0; }
+      .aid{ flex:1; color:#fff2f6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .am{ font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:#12000a; background:#ff8fb4; border-radius:5px; padding:2px 5px; }
+      .av{ color:#ff8fb4; font-variant-numeric:tabular-nums; }
+      .acctNote{ font-size:9px; color:#8a5c6c; text-align:center; padding:6px 2px 2px; }
+
       .foot{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 14px; border-top:1px solid #ff2e7722; background:#0a0407; }
       .status{ display:flex; align-items:center; gap:6px; font-size:10.5px; color:#d38aa4; }
       .status .d{ width:7px; height:7px; border-radius:50%; }
@@ -117,6 +130,8 @@
 
         <div class="log" id="log"></div>
 
+        <div class="accts" id="accts"></div>
+
         <div class="foot">
           <span class="status off" id="status"><span class="d"></span><span id="statusTxt">Not linked</span></span>
           <span class="brand">blinksunited.com</span>
@@ -131,8 +146,12 @@
   const elPanel = $('panel'), elBody = $('body'), elHead = $('head');
   const elTotal = $('total'), elBP = $('bp'), elLisa = $('lisa'), elLog = $('log');
   const elLive = $('live'), elStatus = $('status'), elStatusTxt = $('statusTxt'), elMin = $('min');
+  const elAccts = $('accts');
+  let acctOpen = false;
 
   const fmt = (n) => (n || 0).toLocaleString('en-US');
+  const esc = (x) => String(x).replace(/[&<>"]/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const ago = (ts) => {
     const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
     if (s < 5) return 'now'; if (s < 60) return s + 's'; const m = Math.round(s / 60);
@@ -167,9 +186,28 @@
       const lb = root.getElementById('linkBtn');
       if (lb) lb.onclick = () => window.open('https://blinksunited.com/extension-link.html', '_blank');
     }
+
+    // Accounts you've voted with today (local to this browser — never sent anywhere).
+    const accts = Array.isArray(s.buAccounts) ? s.buAccounts : [];
+    let ah = '<button class="acctToggle" id="acctToggle">🔑 Accounts used today · ' + accts.length
+      + '<span class="caret">' + (acctOpen ? '▾' : '▸') + '</span></button>';
+    if (acctOpen) {
+      if (accts.length) {
+        ah += '<div class="acctList">' + accts.slice().sort((a, b) => b.lastTs - a.lastTs).map((a) =>
+          '<div class="acctRow"><span class="aid" title="' + esc(a.id) + '">' + esc(a.id) + '</span>'
+          + '<span class="am">' + esc(a.method || 'email') + '</span>'
+          + '<span class="av">' + fmt(a.votes) + '</span></div>').join('')
+          + '<div class="acctNote">Stored on this device only</div></div>';
+      } else {
+        ah += '<div class="acctList"><div class="acctNote">No accounts yet — vote and the emails/logins you use will appear here.</div></div>';
+      }
+    }
+    elAccts.innerHTML = ah;
+    const at = root.getElementById('acctToggle');
+    if (at) at.onclick = () => { acctOpen = !acctOpen; refresh(); };
   }
 
-  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buToken', 'buProfile', 'buPanelPos', 'buPanelMin'];
+  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buPanelPos', 'buPanelMin'];
   function refresh() { chrome.storage.local.get(KEYS, (s) => { applyLayout(s); render(s); }); }
 
   // React to background updates immediately.

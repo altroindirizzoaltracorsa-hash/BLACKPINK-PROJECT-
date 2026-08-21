@@ -31,6 +31,10 @@
         slots,
         total: parseInt(p.get('total'), 10) || 0,
         timestamp: p.get('timestamp') || null,
+        // Which account cast it (email / google id) + method — for the user's OWN
+        // "accounts I've used" list. Stays in their browser; never sent to our server.
+        account: p.get('user_id') || null,
+        method: p.get('method') || null,
       };
     } catch (_) { return null; }
   }
