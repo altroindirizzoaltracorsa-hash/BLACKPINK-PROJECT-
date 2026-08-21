@@ -137,8 +137,15 @@ export default async function handler(req, res) {
       );
       if (upErr) return res.status(500).json({ error: upErr.message });
 
-      const [my, totals] = await Promise.all([myTotals(sb, user.id), sb.rpc('vma_vote_totals')]);
-      return res.status(200).json({ ok: true, my, totals: totals.data || {} });
+      // The vote is saved. Compute fresh totals for the response, but never fail
+      // the request if that read hiccups — the write already succeeded, so a 500
+      // here would wrongly tell the client to "try again" (and double-count).
+      let my = null, totals = {};
+      try {
+        const [m, t] = await Promise.all([myTotals(sb, user.id), sb.rpc('vma_vote_totals')]);
+        my = m; totals = t.data || {};
+      } catch { /* ignore — client will refetch */ }
+      return res.status(200).json({ ok: true, my, totals });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

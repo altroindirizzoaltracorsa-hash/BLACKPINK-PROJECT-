@@ -6724,6 +6724,14 @@ async function vmaAddVotes() {
   const v = Math.max(1, parseInt(input && input.value, 10) || 0);
   if (!_vvToken) { if (msg) msg.textContent = 'Sign in first.'; return; }
   if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+  const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = 'Add votes'; } };
+  const prevTotal = Number(_vvMe && _vvMe.total) || 0;   // baseline, to verify a dropped write
+
+  // Step 1: the write. Isolate it so ONLY a genuine POST failure is treated as an
+  // error — the votes are additive, so a stray render/refetch error afterwards
+  // must never look like "the save failed" (that invites a double-submit).
+  let saved = null;     // response body when the POST returns ok
+  let networkDrop = false;
   try {
     const r = await fetch('/api/vma-votes', {
       method: 'POST',
@@ -6731,21 +6739,44 @@ async function vmaAddVotes() {
       body: JSON.stringify({ accessToken: _vvToken, votes: v }),
     });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      if (msg) msg.textContent = d.error || 'Couldn’t save — try again.';
-      if (btn) { btn.disabled = false; btn.textContent = 'Add votes'; }
-      return;
-    }
-    _vvMe = Object.assign({ linked: true }, d.my);
+    if (!r.ok) { if (msg) msg.textContent = d.error || 'Couldn’t save — try again.'; resetBtn(); return; }
+    saved = d;
+  } catch {
+    // The request never completed (common on flaky mobile networks). The server
+    // may still have saved it, so don't say "try again" — verify below.
+    networkDrop = true;
+  }
+
+  // Step 2: on a dropped connection, re-fetch the caller's totals and check
+  // whether THIS add actually landed (total went up by ~v) instead of guessing.
+  let landed = true;
+  if (networkDrop) {
+    const me = await fetch('/api/vma-votes?me=1', { headers: { Authorization: 'Bearer ' + _vvToken }, cache: 'no-store' })
+      .then(x => x.ok ? x.json() : null).catch(() => null);
+    if (me == null) { if (msg) msg.textContent = 'Network error — reload to check before re-adding.'; resetBtn(); return; }
+    landed = (Number(me.total) || 0) >= prevTotal + v;
+    _vvMe = Object.assign({}, _vvMe, me, { linked: true });
+  } else if (saved.my) {
+    _vvMe = Object.assign({}, _vvMe, saved.my, { linked: true });
+  } else {
+    // Saved, but the server couldn't return fresh totals — reflect the add locally.
+    const bump = k => (Number(_vvMe && _vvMe[k]) || 0) + v;
+    _vvMe = Object.assign({}, _vvMe, { linked: true, today: bump('today'), week: bump('week'), month: bump('month'), total: bump('total') });
+  }
+
+  // Step 3: refresh the board + repaint. Errors here are cosmetic only — the
+  // vote is already saved, so they must not surface as a save failure.
+  try {
     const b = await fetch('/api/vma-votes?board=1', { cache: 'no-store' }).then(x => x.json()).catch(() => null);
     if (b && b.board) _vvBoard = b.board;
     drawVmaVoting();
-    const m2 = document.getElementById('vv-msg');
-    if (m2) m2.textContent = `Added ${v} — thank you! 💗`;
-  } catch {
-    if (msg) msg.textContent = 'Network error — try again.';
-    if (btn) { btn.disabled = false; btn.textContent = 'Add votes'; }
-  }
+  } catch {}
+
+  const m2 = document.getElementById('vv-msg');
+  if (m2) m2.textContent = !networkDrop ? `Added ${v} — thank you! 💗`
+    : landed ? 'Saved ✓ (connection was flaky — your total updated below).'
+             : 'Didn’t go through — the connection dropped. Add them again.';
+  resetBtn();
 }
 
 // Less Than a Lover-themed tier names, same thresholds/icons as BADGE_TIERS,
