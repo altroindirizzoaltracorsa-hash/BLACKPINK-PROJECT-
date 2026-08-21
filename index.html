@@ -1483,6 +1483,24 @@
   .cd-links { display: flex; flex-wrap: wrap; gap: 0.55rem; }
   .cd-btn-ghost { color: var(--pink); background: transparent; border: 1px solid rgba(255,0,102,0.45); }
   .cd-btn-ghost:hover { background: rgba(255,0,102,0.1); filter: none; }
+  /* LISA "hellosawadika" card — deep-red teaser theme with a rotating HELLO */
+  .cd-card-sawadika { background: radial-gradient(120% 110% at 50% -10%, #6f2020 0%, #491414 68%); border-color: rgba(255,140,140,0.28); text-align: center; box-shadow: 0 18px 50px -30px rgba(180,40,40,0.8); }
+  .sw-hello { font-family: var(--display); font-size: clamp(2rem, 8vw, 2.6rem); line-height: 1; color: #f4ddd8; letter-spacing: 0.03em; min-height: 1.15em; }
+  .sw-hello-word { display: inline-block; transition: opacity .35s ease; }
+  .sw-thai { font-size: clamp(1.7rem, 7vw, 2.15rem); line-height: 1.05; color: #e9b8b1; margin: 0.15rem 0 1rem; }
+  .cd-card-sawadika .cd-eyebrow.sw-eyebrow { color: #f0aaa2; }
+  .cd-card-sawadika .cd-sub { color: rgba(244,221,216,0.68); }
+  .cd-card-sawadika .cd-timer { justify-content: center; }
+  .cd-card-sawadika .cd-unit { background: rgba(255,255,255,0.05); border-color: rgba(255,150,150,0.22); }
+  .cd-card-sawadika .cd-num { color: #ffd8d1; }
+  .cd-card-sawadika .cd-out { color: #ffd8d1; }
+  .cd-card-sawadika .cd-links { justify-content: center; }
+  .cd-card-sawadika .cd-badge-chip { color: #ffd8d1; border-color: rgba(255,150,150,0.5); background: rgba(255,255,255,0.06); }
+  .cd-card-sawadika .cd-goal-label { color: rgba(244,221,216,0.82); }
+  .cd-card-sawadika .cd-goal-nums { color: #ffd8d1; }
+  .cd-card-sawadika .cd-goal-fill { background: linear-gradient(90deg, #e9b8b1, #ffd8d1); }
+  .sw-btn { background: #f4ddd8; color: #491414; }
+  .sw-btn:hover { filter: brightness(1.04); }
 
   /* ── VOTE PAGE ── */
   .vote-page {
@@ -2111,12 +2129,23 @@
               <a class="cd-btn cd-btn-ghost" href="https://youtu.be/CNQujRtii44" target="_blank" rel="noopener">▶ MV Teaser</a>
             </div>
           </div>
-          <div class="cd-card" data-target="2026-08-24T13:00:00Z" data-live="IT'S HERE ✨">
-            <div class="cd-eyebrow">LISA</div>
-            <div class="cd-title">hellosawadika.com</div>
+          <div class="cd-card cd-card-sawadika" data-target="2026-08-24T13:00:00Z" data-live="IT'S HERE ✨">
+            <div class="sw-hello"><span class="sw-hello-word" id="sw-hello-word">Hello</span></div>
+            <div class="sw-thai" aria-label="Sawadika">สวัสดีค่ะ</div>
+            <div class="cd-eyebrow sw-eyebrow">LISA · hellosawadika.com</div>
             <div class="cd-sub">Reveal · Mon, Aug 24, 2026 · 10PM KST / 9AM EDT / 8PM ICT</div>
+            <div class="cd-badge-chip" id="lisa-badge" style="display:none;">🏆 Early Supporter</div>
             <div class="cd-timer" data-timer></div>
-            <a class="cd-btn" href="https://hellosawadika.com" target="_blank" rel="noopener">Visit site ↗</a>
+            <div class="cd-goal" id="lisa-goal" style="display:none;">
+              <div class="cd-goal-top">
+                <span class="cd-goal-label">🎯 Blinks Joined</span>
+                <span class="cd-goal-nums" id="lisa-goal-nums"></span>
+              </div>
+              <div class="cd-goal-bar"><div class="cd-goal-fill" id="lisa-goal-fill" style="width:0%"></div></div>
+            </div>
+            <div class="cd-links">
+              <a class="cd-btn sw-btn" href="https://hellosawadika.com" target="_blank" rel="noopener" onclick="saveLisaSawadika()">Join the reveal ↗</a>
+            </div>
           </div>
         </div>
       </section>
@@ -4389,6 +4418,8 @@ window.addEventListener('DOMContentLoaded', () => {
   setInterval(renderHomeCountdowns, 1000);
   loadJennieSaveCount();
   loadFaSaveCount();
+  loadLisaSaveCount();
+  setInterval(rotateSawadikaHello, 2200);
   loadLtalStreamsGoal();
   renderItunesInlineBadge();
   // (Removed: the old Last.fm-only background submit. Identity is account-only now;
@@ -8355,7 +8386,34 @@ async function faEarlySupporterEarned() {
   return localFlag || metaFlag;
 }
 
+// Mirror of the pre-save Early-Supporter checks for LISA's "hellosawadika" reveal.
+async function lisaEarlySupporterEarned() {
+  const localFlag = !!localStorage.getItem(LISA_SAVE_LS);
+  let metaFlag = false;
+  try {
+    const user = (await sb?.auth.getUser())?.data?.user || null;
+    if (user) {
+      metaFlag = !!user.user_metadata?.lisa_early_supporter;
+      if (localFlag && !metaFlag) {
+        await sb.auth.updateUser({ data: { lisa_early_supporter: true } });
+        metaFlag = true;
+      } else if (metaFlag && !localFlag) {
+        localStorage.setItem(LISA_SAVE_LS, '1');
+      }
+    }
+  } catch {}
+  return localFlag || metaFlag;
+}
+
 const SPECIAL_BADGES = [
+  {
+    id: 'lisa-sawadika-join',
+    icon: '🏆',
+    label: 'EARLY SUPPORTER',
+    song: 'hellosawadika — LISA',
+    desc: 'Joined before the reveal',
+    check: () => lisaEarlySupporterEarned(),
+  },
   {
     id: 'jennie-fa-presave',
     icon: '🏆',
@@ -10610,6 +10668,68 @@ async function loadFaSaveCount() {
     const r = await fetch('/api/proxy-image?fa_save=count');
     const d = await r.json();
     renderFaSaveCount(d.count || 0);
+  } catch {}
+}
+
+// ── LISA "hellosawadika" reveal — rotating HELLO + Join counter + Early Supporter
+// Mirrors hellosawadika.com's teaser: "HELLO" cycles through languages while the
+// Thai "สวัสดีค่ะ" stays put. Same server-counter/badge mechanism as the EP cards.
+const SW_HELLOS = ['Hello', 'Hola', 'Ciao', 'Bonjour', 'Hallo', 'Olá', '안녕하세요', 'こんにちは', '你好', 'مرحبا'];
+let _swHelloIdx = 0;
+function rotateSawadikaHello() {
+  const el = document.getElementById('sw-hello-word');
+  if (!el) return;
+  el.style.opacity = '0';
+  setTimeout(() => {
+    _swHelloIdx = (_swHelloIdx + 1) % SW_HELLOS.length;
+    el.textContent = SW_HELLOS[_swHelloIdx];
+    el.style.opacity = '1';
+  }, 350);
+}
+
+const LISA_SAVE_LS   = 'bu_lisa_sawadika_saved';
+const LISA_SAVE_GOAL = 50;
+const LISA_REVEAL_AT = '2026-08-24T13:00:00Z'; // 10PM KST / 9AM EDT / 8PM ICT
+
+function renderLisaBadge() {
+  const el = document.getElementById('lisa-badge');
+  if (el) el.style.display = localStorage.getItem(LISA_SAVE_LS) ? 'inline-flex' : 'none';
+}
+
+function renderLisaSaveCount(count) {
+  const wrap = document.getElementById('lisa-goal');
+  const numsEl = document.getElementById('lisa-goal-nums');
+  const fillEl = document.getElementById('lisa-goal-fill');
+  if (!wrap || !numsEl || !fillEl || count <= 0) return;
+  if (Date.now() >= new Date(LISA_REVEAL_AT).getTime()) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  const milestonesPassed = Math.floor(count / LISA_SAVE_GOAL);
+  const currentMilestone = milestonesPassed * LISA_SAVE_GOAL;
+  const nextMilestone = currentMilestone + LISA_SAVE_GOAL;
+  const pct = milestonesPassed > 0
+    ? ((count - currentMilestone) / LISA_SAVE_GOAL) * 100
+    : (count / LISA_SAVE_GOAL) * 100;
+  fillEl.style.width = Math.min(100, pct) + '%';
+  numsEl.innerHTML = milestonesPassed > 0
+    ? `🎉 ${currentMilestone.toLocaleString()} reached — ${count.toLocaleString()}<span> / ${nextMilestone.toLocaleString()} joined</span>`
+    : `${count.toLocaleString()}<span> / ${LISA_SAVE_GOAL.toLocaleString()} joined</span>`;
+}
+
+function saveLisaSawadika() {
+  if (localStorage.getItem(LISA_SAVE_LS)) return;
+  localStorage.setItem(LISA_SAVE_LS, '1');
+  renderLisaBadge();
+  _showShareToast('🏆 Badge unlocked: Early Supporter!');
+  try { sb?.auth.updateUser({ data: { lisa_early_supporter: true } }); } catch {}
+  fetch('/api/proxy-image?lisa_save=increment').then(r => r.json()).then(d => renderLisaSaveCount(d.count || 0)).catch(() => {});
+}
+
+async function loadLisaSaveCount() {
+  renderLisaBadge();
+  try {
+    const r = await fetch('/api/proxy-image?lisa_save=count');
+    const d = await r.json();
+    renderLisaSaveCount(d.count || 0);
   } catch {}
 }
 
