@@ -108,22 +108,36 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = req.body || {};
-      const token = String(body.accessToken || '').trim();
       let votes = parseInt(body.votes, 10);
-      if (!token) return res.status(401).json({ error: 'Sign in to log your votes' });
       if (!Number.isFinite(votes) || votes <= 0) return res.status(400).json({ error: 'votes required' });
       votes = Math.min(votes, 10000); // sanity bound only (no daily cap)
 
-      const { data: { user } = {}, error: authErr } = await sb.auth.getUser(token);
-      if (authErr || !user) return res.status(401).json({ error: 'Sign in to log your votes' });
-
-      if (!(await isLinked(sb, user.id))) {
-        return res.status(403).json({ error: 'Link a scrobbler first — the voting board is for streaming blinks.' });
+      // Two ways to authenticate a vote submission:
+      //   • accessToken — a Supabase session (the website "Add votes" button).
+      //   • extToken    — a scrobble_token (the BU vote-counter browser extension,
+      //     linked once via /extension-link.html). Resolve it to the same account.
+      let uid = null, name = null;
+      const extToken = String(body.extToken || '').trim();
+      const token = String(body.accessToken || '').trim();
+      if (extToken) {
+        const { data: tok } = await sb
+          .from('scrobble_tokens').select('app_user_id, label').eq('token', extToken).maybeSingle();
+        if (!tok) return res.status(401).json({ error: 'Link your blinksunited account in the extension first.' });
+        uid = tok.app_user_id;
+        name = null; // let the board resolve the name (display_name → handle → blinkN)
+      } else {
+        if (!token) return res.status(401).json({ error: 'Sign in to log your votes' });
+        const { data: { user } = {}, error: authErr } = await sb.auth.getUser(token);
+        if (authErr || !user) return res.status(401).json({ error: 'Sign in to log your votes' });
+        if (!(await isLinked(sb, user.id))) {
+          return res.status(403).json({ error: 'Link a scrobbler first — the voting board is for streaming blinks.' });
+        }
+        uid = user.id;
+        // Store the BU display name if set, else null — the board resolves nameless
+        // accounts to their handle / blinkN (see vma_vote_board).
+        name = (user.user_metadata && user.user_metadata.display_name) || null;
       }
-
-      // Store the BU display name if set, else null — the board numbers nameless
-      // accounts as blink1, blink2, … (see vma_vote_board).
-      const name = (user.user_metadata && user.user_metadata.display_name) || null;
+      const user = { id: uid };
       const day = etDay();
 
       // Additive: add to today's tally (self-reported, uncapped).

@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { width: 264px; margin: 0; padding: 14px; background: #12000a; color: #f5f0f0;
+           font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    h1 { font-size: 14px; margin: 0 0 10px; color: #ff2e77; letter-spacing: .04em; }
+    .row { margin: 6px 0; }
+    .big { font-size: 28px; font-weight: 700; color: #ff2e77; vertical-align: -2px; }
+    .muted { color: #9a8f95; font-size: 11px; }
+    .status-ok { color: #2ecc71; }
+    .status-no { color: #ff8fb0; }
+    button { width: 100%; margin-top: 8px; padding: 9px; border: 1px solid #ff2e77;
+             background: #ff2e77; color: #12000a; font-weight: 700; border-radius: 6px; cursor: pointer; }
+    button.ghost { background: transparent; color: #ff8fb0; }
+  </style>
+</head>
+<body>
+  <h1>♥ BU Vote Counter</h1>
+  <div class="row" id="status"></div>
+  <div class="row"><span class="big" id="count">0</span> <span class="muted">BLACKPINK votes counted</span></div>
+  <div class="row muted" id="pending"></div>
+  <button id="link">Link my blinksunited account</button>
+  <button id="reset" class="ghost">Reset session count</button>
+  <div class="row muted" style="margin-top: 10px;">
+    Counts the votes you cast on vote.mtv.com for BLACKPINK &amp; members and logs them
+    to your <b>/voting</b> board automatically. Desktop Chrome only.
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
