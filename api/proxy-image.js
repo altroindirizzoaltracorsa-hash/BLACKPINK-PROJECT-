@@ -434,11 +434,16 @@ export default async function handler(req, res) {
   }
 
   // ── GET ?jennie_save=count|increment — "Less Than a Lover" save counter ────
-  if (req.query.jennie_save === 'count' || req.query.jennie_save === 'increment') {
+  // ── GET ?fa_save=count|increment    — "Fallen Angel" (EP) save counter ─────
+  // Same simple Upstash INCR counter, one distinct key per campaign.
+  if (req.query.jennie_save === 'count' || req.query.jennie_save === 'increment' ||
+      req.query.fa_save === 'count'     || req.query.fa_save === 'increment') {
     if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ count: 0 });
-    const KEY = 'bu_jennie_ltal_saves';
+    const isFa = req.query.fa_save != null;
+    const action = isFa ? req.query.fa_save : req.query.jennie_save;
+    const KEY = isFa ? 'bu_jennie_fallenangel_saves' : 'bu_jennie_ltal_saves';
     try {
-      if (req.query.jennie_save === 'increment') {
+      if (action === 'increment') {
         const r = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/incr/${KEY}`, {
           headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}` },
         });

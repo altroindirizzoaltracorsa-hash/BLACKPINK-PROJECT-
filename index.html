@@ -1465,6 +1465,19 @@
   .cd-tracklist b { color: var(--white); font-weight: 500; }
   .cd-btn { display: inline-block; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); padding: 0.65rem 1.1rem; text-decoration: none; transition: filter .15s; }
   .cd-btn:hover { filter: brightness(1.07); }
+  /* Hero card (JENNIE Fallen Angel): photo + pre-save challenge + early-supporter chip */
+  .cd-photo { display: block; width: calc(100% + 2.8rem); margin: -1.5rem -1.4rem 1.1rem; height: 190px; object-fit: cover; object-position: center 32%; }
+  .cd-badge-chip { display: inline-flex; align-items: center; gap: 0.35rem; font-family: var(--mono); font-size: 0.56rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pink); border: 1px solid rgba(255,0,102,0.5); background: rgba(255,0,102,0.08); padding: 0.35rem 0.7rem; margin-bottom: 1rem; }
+  .cd-goal { margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 0.4rem; }
+  .cd-goal-top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+  .cd-goal-label { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,240,240,0.75); }
+  .cd-goal-nums { font-family: var(--display); font-size: 1rem; color: var(--pink); letter-spacing: 0.02em; white-space: nowrap; }
+  .cd-goal-nums span { font-size: 0.62rem; color: rgba(245,240,240,0.55); }
+  .cd-goal-bar { height: 5px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; }
+  .cd-goal-fill { height: 100%; background: linear-gradient(90deg, var(--pink), #ff74ac); border-radius: 3px; transition: width 0.8s ease; }
+  .cd-links { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+  .cd-btn-ghost { color: var(--pink); background: transparent; border: 1px solid rgba(255,0,102,0.45); }
+  .cd-btn-ghost:hover { background: rgba(255,0,102,0.1); filter: none; }
 
   /* ── VOTE PAGE ── */
   .vote-page {
@@ -2067,13 +2080,25 @@
       <section id="home-countdowns" style="margin-top:2.2rem;max-width:900px;width:100%;text-align:center;">
         <p class="cd-section-label">◇ Countdowns</p>
         <div class="cd-wrap">
-          <div class="cd-card" data-target="2026-08-28T04:00:00Z" data-live="OUT NOW ✨">
+          <div class="cd-card cd-card-hero" data-target="2026-08-28T04:00:00Z" data-live="OUT NOW ✨">
+            <img class="cd-photo" src="/jennie-fallen-angel.jpg" alt="JENNIE — Fallen Angel" loading="lazy" onerror="this.style.display='none'">
             <div class="cd-eyebrow">JENNIE · Digital EP</div>
             <div class="cd-title">FALLEN ANGEL</div>
             <div class="cd-sub">Fri, Aug 28, 2026 · 1PM KST / 12AM EDT</div>
+            <div class="cd-badge-chip" id="fa-badge" style="display:none;">🏆 Early Supporter</div>
             <div class="cd-timer" data-timer></div>
             <div class="cd-tracklist">1. <b>Fallen Angel</b><br>2. <b>Heaven</b><br>3. <b>Less Than a Lover</b></div>
-            <a class="cd-btn" href="https://www.jenn.ie/" target="_blank" rel="noopener">Pre-save ↗</a>
+            <div class="cd-goal" id="fa-goal" style="display:none;">
+              <div class="cd-goal-top">
+                <span class="cd-goal-label">🎯 Blinks Pre-Save Challenge</span>
+                <span class="cd-goal-nums" id="fa-goal-nums"></span>
+              </div>
+              <div class="cd-goal-bar"><div class="cd-goal-fill" id="fa-goal-fill" style="width:0%"></div></div>
+            </div>
+            <div class="cd-links">
+              <a class="cd-btn" href="https://www.jenn.ie/" target="_blank" rel="noopener" onclick="saveFallenAngel()">Pre-save ↗</a>
+              <a class="cd-btn cd-btn-ghost" href="https://youtu.be/CNQujRtii44" target="_blank" rel="noopener">▶ MV Teaser</a>
+            </div>
           </div>
           <div class="cd-card" data-target="2026-08-24T13:00:00Z" data-live="IT'S HERE ✨">
             <div class="cd-eyebrow">LISA</div>
@@ -4352,6 +4377,7 @@ window.addEventListener('DOMContentLoaded', () => {
   renderHomeCountdowns();
   setInterval(renderHomeCountdowns, 1000);
   loadJennieSaveCount();
+  loadFaSaveCount();
   loadLtalStreamsGoal();
   renderItunesInlineBadge();
   // (Removed: the old Last.fm-only background submit. Identity is account-only now;
@@ -8297,7 +8323,36 @@ async function ltalEarlySupporterEarned() {
   return localFlag || metaFlag;
 }
 
+// Mirror of ltalEarlySupporterEarned for the "Fallen Angel" EP campaign — its own
+// localStorage flag + account meta flag, with the same two-way back-fill so the
+// badge follows the blink across devices.
+async function faEarlySupporterEarned() {
+  const localFlag = !!localStorage.getItem(FA_SAVE_LS);
+  let metaFlag = false;
+  try {
+    const user = (await sb?.auth.getUser())?.data?.user || null;
+    if (user) {
+      metaFlag = !!user.user_metadata?.fa_early_supporter;
+      if (localFlag && !metaFlag) {
+        await sb.auth.updateUser({ data: { fa_early_supporter: true } });
+        metaFlag = true;
+      } else if (metaFlag && !localFlag) {
+        localStorage.setItem(FA_SAVE_LS, '1');
+      }
+    }
+  } catch {}
+  return localFlag || metaFlag;
+}
+
 const SPECIAL_BADGES = [
+  {
+    id: 'jennie-fa-presave',
+    icon: '🏆',
+    label: 'EARLY SUPPORTER',
+    song: 'Fallen Angel (EP) — JENNIE',
+    desc: 'Pre-saved before release',
+    check: () => faEarlySupporterEarned(),
+  },
   {
     id: 'jennie-ltal-presave',
     icon: '🏆',
@@ -10491,6 +10546,59 @@ async function loadJennieSaveCount() {
     const r = await fetch('/api/proxy-image?jennie_save=count');
     const d = await r.json();
     renderJennieSaveCount(d.count || 0);
+  } catch {}
+}
+
+// ── JENNIE "Fallen Angel" (Digital EP) pre-save counter + Early Supporter ──
+// Same mechanism as the LTAL pre-save above, but its own server counter, its own
+// localStorage flag and its own account meta flag, so the two campaigns don't mix.
+const FA_SAVE_LS   = 'bu_jennie_fa_saved';
+const FA_SAVE_GOAL = 50;
+const FA_RELEASE_AT = '2026-08-28T04:00:00Z'; // 1PM KST / 12AM EDT
+
+function renderFaBadge() {
+  const el = document.getElementById('fa-badge');
+  if (el) el.style.display = localStorage.getItem(FA_SAVE_LS) ? 'inline-flex' : 'none';
+}
+
+function renderFaSaveCount(count) {
+  const wrap = document.getElementById('fa-goal');
+  const numsEl = document.getElementById('fa-goal-nums');
+  const fillEl = document.getElementById('fa-goal-fill');
+  if (!wrap || !numsEl || !fillEl || count <= 0) return;
+  // Pre-save window closes when the EP is out — hide the challenge afterwards.
+  if (Date.now() >= new Date(FA_RELEASE_AT).getTime()) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  // Keep raising the bar in same-size steps once a goal is passed (never freezes).
+  const milestonesPassed = Math.floor(count / FA_SAVE_GOAL);
+  const currentMilestone = milestonesPassed * FA_SAVE_GOAL;
+  const nextMilestone = currentMilestone + FA_SAVE_GOAL;
+  const pct = milestonesPassed > 0
+    ? ((count - currentMilestone) / FA_SAVE_GOAL) * 100
+    : (count / FA_SAVE_GOAL) * 100;
+  fillEl.style.width = Math.min(100, pct) + '%';
+  numsEl.innerHTML = milestonesPassed > 0
+    ? `🎉 ${currentMilestone.toLocaleString()} reached — ${count.toLocaleString()}<span> / ${nextMilestone.toLocaleString()} pre-saves</span>`
+    : `${count.toLocaleString()}<span> / ${FA_SAVE_GOAL.toLocaleString()} pre-saves</span>`;
+}
+
+// Fires once per browser when a fan clicks the EP pre-save link — doesn't block
+// the outbound navigation. Unlocks the "Early Supporter" badge and bumps the bar.
+function saveFallenAngel() {
+  if (localStorage.getItem(FA_SAVE_LS)) return;
+  localStorage.setItem(FA_SAVE_LS, '1');
+  renderFaBadge();
+  _showShareToast('🏆 Badge unlocked: Early Supporter!');
+  try { sb?.auth.updateUser({ data: { fa_early_supporter: true } }); } catch {}
+  fetch('/api/proxy-image?fa_save=increment').then(r => r.json()).then(d => renderFaSaveCount(d.count || 0)).catch(() => {});
+}
+
+async function loadFaSaveCount() {
+  renderFaBadge();
+  try {
+    const r = await fetch('/api/proxy-image?fa_save=count');
+    const d = await r.json();
+    renderFaSaveCount(d.count || 0);
   } catch {}
 }
 
