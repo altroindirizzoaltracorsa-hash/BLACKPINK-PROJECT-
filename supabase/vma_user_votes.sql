@@ -80,6 +80,12 @@ as $$
     where la.source_username is not null and la.source_username <> ''
     order by la.app_user_id, (la.source = 'lastfm') desc, la.created_at desc
   ),
+  -- Account age, to grandfather everyone who signed up before the cutoff: those
+  -- keep the handle fallback; accounts created AFTER it show blinkN when they have
+  -- no display name (the privacy-net default for new signups).
+  accounts as (
+    select id::text as app_user_id, created_at from auth.users
+  ),
   streams as (
     select
       app_user_id,
@@ -96,21 +102,31 @@ as $$
       u.total, u.today, u.week, u.month, u.first_day, u.app_user_id,
       n.display_name,
       h.source_username as handle,
+      a.created_at,
       coalesce(s.today_streams, 0) as streams
     from per_user u
     left join latest_name n using (app_user_id)
     left join handles h on h.app_user_id = u.app_user_id::text
+    left join accounts a on a.app_user_id = u.app_user_id::text
     left join streams s on s.app_user_id = u.app_user_id::text
   ),
-  -- Name = BU display name → linked scrobbler handle → blinkN (numbered by first
-  -- vote, stable). Only accounts with neither a name nor a handle get numbered.
+  -- Name resolution:
+  --   1) their BU display name, if set;
+  --   2) else, for accounts that existed BEFORE the cutoff, their scrobbler handle
+  --      (grandfathered — matches the streaming leaderboard);
+  --   3) else blinkN — the privacy-net default for new signups who never set a
+  --      display name (numbered by first vote, stable).
   numbered as (
     select j.*,
       case
         when j.display_name is not null and j.display_name <> '' then j.display_name
-        when j.handle is not null then j.handle
+        when j.handle is not null and coalesce(j.created_at, 'epoch'::timestamptz) < timestamptz '2026-08-21 18:00:00+00'
+          then j.handle
         else 'blink' || row_number() over (
-               partition by ((j.display_name is null or j.display_name = '') and j.handle is null)
+               partition by (
+                 (j.display_name is null or j.display_name = '')
+                 and not (j.handle is not null and coalesce(j.created_at, 'epoch'::timestamptz) < timestamptz '2026-08-21 18:00:00+00')
+               )
                order by j.first_day, j.app_user_id)
       end as name
     from joined j
