@@ -6128,6 +6128,12 @@ if (sb) {
     if (document.getElementById('page-badges')?.classList.contains('active')) {
       renderAccountPage(session);
     }
+    // Reflect account-linked Early Supporter chips as soon as the session loads,
+    // so a signed-in blink sees them on any browser (not just where they clicked).
+    if (session?.user) {
+      faEarlySupporterEarned().then(v => { if (v) renderFaBadge(); }).catch(() => {});
+      lisaEarlySupporterEarned().then(v => { if (v) renderLisaBadge(); }).catch(() => {});
+    }
     // Resume the step-by-step guide if the user just signed in mid-tour.
     if (session?.user && typeof _maybeResumeGuide === 'function') setTimeout(_maybeResumeGuide, 500);
   });
@@ -10710,6 +10716,9 @@ async function loadFaSaveCount() {
     const d = await r.json();
     renderFaSaveCount(d.count || 0);
   } catch {}
+  // Account-sync the Early Supporter chip across browsers/devices: if this blink
+  // pre-saved on any device (mirrored to user_metadata.fa_early_supporter), show it.
+  try { if (await faEarlySupporterEarned()) renderFaBadge(); } catch {}
 }
 
 // ── LISA "hellosawadika" reveal — Join counter + Early Supporter
@@ -10759,6 +10768,9 @@ async function loadLisaSaveCount() {
     const d = await r.json();
     renderLisaSaveCount(d.count || 0);
   } catch {}
+  // Account-sync the Early Supporter chip across browsers/devices: if this blink
+  // joined on any device (mirrored to user_metadata.lisa_early_supporter), show it.
+  try { if (await lisaEarlySupporterEarned()) renderLisaBadge(); } catch {}
 }
 
 // ── Release card expand panel: global release times, goals, links ─────────
