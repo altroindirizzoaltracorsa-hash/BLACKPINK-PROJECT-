@@ -548,7 +548,7 @@
   .scrobble-warning { max-width: 900px; margin: 1rem auto 0; padding: 0.75rem 1.5rem; background: rgba(255,160,0,0.08); border: 1px solid rgba(255,160,0,0.3); color: rgba(255,180,0,0.9); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
   .scrobble-warning a { color: rgba(255,180,0,0.9); text-decoration: underline; white-space: nowrap; }
 
-  .summary-strip { max-width: 900px; margin: 1.5rem auto 0; padding: 0 1.5rem; display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); }
+  .summary-strip { max-width: 900px; margin: 1.5rem auto 0; padding: 0 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 1px; background: var(--border); }
   .summary-cell { background: var(--card); padding: 1.2rem 1.5rem; text-align: center; }
   .summary-num { font-family: var(--display); font-size: 2rem; color: var(--pink); line-height: 1; }
   .summary-lbl { font-size: 0.58rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-top: 0.25rem; }
@@ -8187,7 +8187,7 @@ function refreshIdentityFromSession(combined) {
   }).catch(() => {});
 }
 
-function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs }) {
+function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts, weekDays, lastScrobbleTs, memberPlays }) {
   document.getElementById('loading-panel').style.display = 'none';
   document.getElementById('profile-panel').style.display = 'block';
 
@@ -8267,11 +8267,23 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   const challengeLabel = dailyDone ? 'Daily Complete!' : (weeklyDone ? 'Weekly Done' : 'Challenges Active');
   const _tap = acctBreakdown && acctBreakdown.length > 1;
   const _tc = (type, key) => _tap ? `class="summary-num tappable" onclick="showBreakdown('${type}'${key?`,'${key}'`:''})"` : 'class="summary-num"';
+  // Combined solo-member scrobbles (JISOO + JENNIE + ROSÉ + LISA), summed across
+  // all linked accounts. Shown as a single non-tappable total on purpose — the
+  // per-member split is intentionally not exposed. null when solo data wasn't
+  // fetched (legacy single-username path), in which case the box is omitted.
+  const soloTotal = memberPlays
+    ? Object.values(memberPlays).reduce((a, b) => a + (Number(b) || 0), 0)
+    : null;
+  const soloCell = soloTotal != null ? `
+    <div class="summary-cell">
+      <div class="summary-num">${soloTotal.toLocaleString()}</div>
+      <div class="summary-lbl">Solo Scrobbles (all time)</div>
+    </div>` : '';
   document.getElementById('profile-summary').innerHTML = `
     <div class="summary-cell">
       <div ${_tc('artistPlays')}>${artistPlays.toLocaleString()}</div>
       <div class="summary-lbl">Total BP Scrobbles (all time)</div>
-    </div>
+    </div>${soloCell}
     <div class="summary-cell">
       <div ${_tc('campaignTotal')}>${campaignTotal.toLocaleString()}</div>
       <div class="summary-lbl">Campaign Tracks (5 songs)</div>
