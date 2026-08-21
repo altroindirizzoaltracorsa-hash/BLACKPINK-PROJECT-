@@ -4115,11 +4115,18 @@ async function loadCatalogStreams() {
     // Recent daily breakdown list (last 7 days, newest first)
     if (histEl && dailyRows.length > 0) {
       const rows = [...dailyRows].reverse().slice(0, 7);
-      const max  = Math.max(...rows.map(r => r.streams));
+      // Scale the bars against the biggest PLAUSIBLE day, not the raw max — a
+      // source-switch/version-merge spike (e.g. a +6.3B "day") would otherwise
+      // flatten every real ~4M day to no bar at all. Ignore values >20× the
+      // median when picking the scale, and clamp any outlier's own bar to 100%.
+      const nums   = rows.map(r => r.streams);
+      const sorted = [...nums].sort((a, b) => a - b);
+      const median = sorted[Math.floor(sorted.length / 2)] || 1;
+      const max    = Math.max(1, ...nums.filter(v => v <= median * 20));
       histEl.innerHTML = rows.map(row => `
         <div class="cat-daily-row">
           <span class="cat-daily-date">${row.date}</span>
-          <div class="cat-daily-bar-wrap"><div class="cat-daily-bar" style="width:${Math.round(row.streams/max*100)}%"></div></div>
+          <div class="cat-daily-bar-wrap"><div class="cat-daily-bar" style="width:${Math.min(100, Math.round(row.streams / max * 100))}%"></div></div>
           <span class="cat-daily-num">+${row.streams.toLocaleString('en-US')}</span>
         </div>`).join('');
       histEl.style.display = '';
