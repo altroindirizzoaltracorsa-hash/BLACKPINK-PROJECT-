@@ -1517,8 +1517,8 @@
   .cd-card-sawadika .cd-sub { color: var(--sw-text); opacity: 0.9; font-weight: 600; }
   .cd-card-sawadika .cd-timer { justify-content: center; }
   .cd-timer-plain { align-items: baseline; gap: 0.5rem; font-family: var(--display); }
-  .cd-timer-plain span { font-size: clamp(2.4rem, 11vw, 3.6rem); color: var(--sw-text); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 2px 12px rgba(40,4,6,0.45); }
-  .cd-timer-plain i { font-style: normal; font-size: clamp(1.7rem, 8vw, 2.6rem); color: var(--sw-text); opacity: 0.7; }
+  .cd-timer-plain span { font-size: clamp(2.4rem, 11vw, 3.6rem); color: #fff; font-weight: 400; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 2px 14px rgba(40,4,6,0.5); }
+  .cd-timer-plain i { font-style: normal; font-size: clamp(1.7rem, 8vw, 2.6rem); color: #fff; opacity: 0.6; }
   .cd-card-sawadika .cd-out { color: var(--sw-text); }
   .cd-card-sawadika .cd-links { justify-content: center; }
   .cd-card-sawadika .cd-badge-chip { color: var(--sw-text); border-color: rgba(247,228,224,0.6); background: rgba(40,4,6,0.28); }
@@ -14075,10 +14075,14 @@ function drawLisaCard(canvas, d) {
     ctx.font = '500 18px "DM Mono", monospace'; ctx.letterSpacing = '5px';
     ctx.fillText(isOut ? 'THE REVEAL IS LIVE' : 'COUNTDOWN TO REVEAL', W / 2, y);
     y += cdEyebrowH + gXS;
-    ctx.fillStyle = INK;
+    // Original hellosawadika serif countdown, but white so it reads on the red.
+    ctx.save();
+    ctx.shadowColor = 'rgba(40,4,6,0.5)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 3;
+    ctx.fillStyle = '#ffffff';
     _fitFont(ctx, cdBig, '', 'Georgia, "Times New Roman", serif', cdBigSize, W - PX * 2, 30);
     ctx.letterSpacing = '2px';
     ctx.fillText(cdBig, W / 2, y);
+    ctx.restore();
     y += cdBigSize + g3;
   }
 
