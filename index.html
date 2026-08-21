@@ -13869,23 +13869,36 @@ function drawPresaveCard(canvas, d) {
   ctx.fillText('BLINKS UNITED', PX, topY);
   ctx.textAlign = 'right';
   ctx.fillStyle = d.earned ? '#ff5b8a' : 'rgba(245,240,240,0.7)';
-  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : 'PRE-SAVE OPEN', W - PX, topY);
+  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : 'COUNTDOWN', W - PX, topY);
   ctx.textAlign = 'left';
   ctx.letterSpacing = '0px';
 
-  // ── Bottom content block (logo → wordmark → headline → date → CTA) ──
+  // Live countdown to release (snapshot at generation time)
+  let diff = Date.parse(d.releaseAt) - Date.now();
+  const isOut = !(diff > 0);
+  let cdd = 0, cdh = 0, cdm = 0;
+  if (!isOut) { cdd = Math.floor(diff / 86400000); diff %= 86400000; cdh = Math.floor(diff / 3600000); diff %= 3600000; cdm = Math.floor(diff / 60000); }
+  const p2 = n => String(n).padStart(2, '0');
+  const cdCompact = isOut ? 'OUT NOW ✨' : `OUT IN ${cdd}D ${p2(cdh)}H ${p2(cdm)}M`;
+  const cdBig     = isOut ? 'OUT NOW'    : `${cdd}D ${p2(cdh)}H ${p2(cdm)}M`;
+
+  // ── Bottom content block ──
   const BP = Math.round(H * 0.085);
   const titleImg = d.titleImg, logoImg = d.logoImg;
   const titleW = Math.min(W * 0.62, W - PX * 2);
   const titleH = (titleImg && titleImg.naturalWidth) ? titleW * (titleImg.naturalHeight / titleImg.naturalWidth) : 0;
   const logoH  = Math.round(H * 0.062);
   const logoW  = (logoImg && logoImg.naturalHeight) ? logoH * (logoImg.naturalWidth / logoImg.naturalHeight) : 0;
-  const gapS = Math.round(H * 0.016), gapM = Math.round(H * 0.03);
-  const headSize = Math.round(H * 0.085);
+  const gapXS = Math.round(H * 0.01), gapS = Math.round(H * 0.016), gapM = Math.round(H * 0.03);
   const dateH = Math.round(H * 0.03), ctaH = Math.round(H * 0.03);
-  const headline = d.earned ? "I PRE-SAVED" : "PRE-SAVE NOW";
+  const headSize   = Math.round(H * 0.082);  // earned "I PRE-SAVED"
+  const cdLineH    = Math.round(H * 0.032);  // earned countdown sub-line
+  const cdEyebrowH = Math.round(H * 0.024);  // not-earned eyebrow
+  const cdBigSize  = Math.round(H * 0.11);   // not-earned big countdown
 
-  const blockH = logoH + gapS + titleH + gapM + headSize + gapS + dateH + gapM + ctaH;
+  const blockH = d.earned
+    ? logoH + gapS + titleH + gapM + headSize + gapXS + cdLineH + gapS + dateH + gapM + ctaH
+    : logoH + gapS + titleH + gapM + cdEyebrowH + gapXS + cdBigSize + gapS + dateH + gapM + ctaH;
   let y = H - BP - blockH;
 
   ctx.textBaseline = 'top';
@@ -13894,18 +13907,40 @@ function drawPresaveCard(canvas, d) {
   if (titleH) ctx.drawImage(titleImg, PX, y, titleW, titleH);
   y += titleH + gapM;
 
-  ctx.fillStyle = d.earned ? '#ff2e77' : '#F5F0F0';
-  ctx.font = `${headSize}px "Bebas Neue", sans-serif`;
-  ctx.letterSpacing = '2px';
-  ctx.fillText(headline, PX, y);
-  y += headSize + gapS;
+  if (d.earned) {
+    // Only the pre-saver gets the "I PRE-SAVED" claim + a compact countdown.
+    ctx.fillStyle = '#ff2e77';
+    ctx.font = `${headSize}px "Bebas Neue", sans-serif`;
+    ctx.letterSpacing = '2px';
+    ctx.fillText('I PRE-SAVED', PX, y);
+    y += headSize + gapXS;
+    ctx.font = '600 22px "DM Mono", monospace';
+    ctx.letterSpacing = '3px';
+    ctx.fillStyle = 'rgba(245,240,240,0.9)';
+    ctx.fillText('⏳ ' + cdCompact, PX, y);
+    y += cdLineH + gapS;
+  } else {
+    // Anyone else shares a neutral countdown card — no pre-save claim.
+    ctx.font = '500 18px "DM Mono", monospace';
+    ctx.letterSpacing = '5px';
+    ctx.fillStyle = 'rgba(245,240,240,0.6)';
+    ctx.fillText(isOut ? 'JUST RELEASED' : 'COUNTDOWN TO RELEASE', PX, y);
+    y += cdEyebrowH + gapXS;
+    ctx.fillStyle = '#F5F0F0';
+    _fitFont(ctx, cdBig, '', '"Bebas Neue", sans-serif', cdBigSize, W - PX * 2, 40);
+    ctx.letterSpacing = '2px';
+    ctx.fillText(cdBig, PX, y);
+    y += cdBigSize + gapS;
+  }
 
+  // date line
   ctx.font = '500 22px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
   ctx.fillStyle = 'rgba(245,240,240,0.72)';
   ctx.fillText(d.dateLine, PX, y);
   y += dateH + gapM;
 
+  // CTA row
   ctx.font = '600 22px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
   ctx.fillStyle = '#ff5b8a';
@@ -13947,12 +13982,13 @@ async function openPresaveCard(campaign = 'fa') {
     campaign, earned,
     act: 'JENNIE', release: 'Fallen Angel',
     photo, titleImg, logoImg,
+    releaseAt: FA_RELEASE_AT,
     dateLine: 'OUT AUG 28, 2026 · 1PM KST / 12AM EDT',
     dateShort: 'out Aug 28, 2026',
     cta: '▶ PRE-SAVE · JENN.IE',
     verb: 'drops', verbCta: 'Pre-save it',
   };
-  label.textContent = earned ? "I'M AN EARLY SUPPORTER" : 'PRE-SAVE · FALLEN ANGEL';
+  label.textContent = earned ? "I'M AN EARLY SUPPORTER" : 'FALLEN ANGEL · COUNTDOWN';
   drawPresaveCard(canvas, _presaveCardData);
   _markCardReady(canvas);
 }
@@ -13986,18 +14022,32 @@ function drawLisaCard(canvas, d) {
   ctx.fillText('BLINKS UNITED', PX, topY);
   ctx.textAlign = 'right';
   ctx.fillStyle = d.earned ? '#3a0c0c' : 'rgba(42,7,8,0.68)';
-  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : 'JOIN OPEN', W - PX, topY);
+  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : 'COUNTDOWN', W - PX, topY);
   ctx.letterSpacing = '0px';
 
-  // Centered hero: HELLO + สวัสดีค่ะ (SVGs; aspect from their viewBoxes), then
-  // a serif headline + reveal date.
+  // Live countdown to the reveal (snapshot at generation time)
+  let diff = Date.parse(d.revealAt) - Date.now();
+  const isOut = !(diff > 0);
+  let cdd = 0, cdh = 0, cdm = 0;
+  if (!isOut) { cdd = Math.floor(diff / 86400000); diff %= 86400000; cdh = Math.floor(diff / 3600000); diff %= 3600000; cdm = Math.floor(diff / 60000); }
+  const p2 = n => String(n).padStart(2, '0');
+  // hellosawadika-style plain serif "dd : hh : mm" for the neutral card
+  const cdBig     = isOut ? "IT'S HERE" : `${p2(cdd)} : ${p2(cdh)} : ${p2(cdm)}`;
+  const cdCompact = isOut ? "IT'S HERE ✨" : `⏳ REVEAL IN ${cdd}D ${p2(cdh)}H ${p2(cdm)}M`;
+
+  // Centered hero: HELLO + สวัสดีค่ะ (SVGs; aspect from their viewBoxes)
   const helloAsp = 326 / 102, sawAsp = 5999 / 1579;
   const helloW = W * 0.24, helloH = helloW / helloAsp;
   const sawW = W * 0.60,  sawH = sawW / sawAsp;
-  const headSize = Math.round(H * 0.072);
+  const headSize   = Math.round(H * 0.068);  // earned serif headline
+  const cdLineH    = Math.round(H * 0.032);  // earned compact countdown
+  const cdEyebrowH = Math.round(H * 0.024);  // neutral eyebrow
+  const cdBigSize  = Math.round(H * 0.095);  // neutral big serif countdown
   const dateSize = Math.round(H * 0.03);
-  const g1 = Math.round(H * 0.03), g2 = Math.round(H * 0.052), g3 = Math.round(H * 0.03);
-  const blockH = helloH + g1 + sawH + g2 + headSize + g3 + dateSize;
+  const g1 = Math.round(H * 0.028), g2 = Math.round(H * 0.05), g3 = Math.round(H * 0.026), gXS = Math.round(H * 0.012);
+  const blockH = d.earned
+    ? helloH + g1 + sawH + g2 + headSize + gXS + cdLineH + g3 + dateSize
+    : helloH + g1 + sawH + g2 + cdEyebrowH + gXS + cdBigSize + g3 + dateSize;
   let y = (H - blockH) / 2 - H * 0.015;
 
   ctx.textBaseline = 'top';
@@ -14007,12 +14057,30 @@ function drawLisaCard(canvas, d) {
   y += sawH + g2;
 
   ctx.textAlign = 'center';
-  ctx.fillStyle = INK;
-  const headline = d.earned ? "I'M IN FOR THE REVEAL" : 'JOIN THE REVEAL';
-  _fitFont(ctx, headline, '', 'Georgia, "Times New Roman", serif', headSize, W - PX * 2, 22);
-  ctx.letterSpacing = '1px';
-  ctx.fillText(headline, W / 2, y);
-  y += headSize + g3;
+  if (d.earned) {
+    // Only the joiner gets the "I'M IN" claim + a compact countdown.
+    ctx.fillStyle = INK;
+    _fitFont(ctx, "I'M IN FOR THE REVEAL", '', 'Georgia, "Times New Roman", serif', headSize, W - PX * 2, 22);
+    ctx.letterSpacing = '1px';
+    ctx.fillText("I'M IN FOR THE REVEAL", W / 2, y);
+    y += headSize + gXS;
+    ctx.fillStyle = 'rgba(42,7,8,0.82)';
+    _fitFont(ctx, cdCompact, '600', '"DM Mono", monospace', 22, W - PX * 2, 12);
+    ctx.letterSpacing = '2px';
+    ctx.fillText(cdCompact, W / 2, y);
+    y += cdLineH + g3;
+  } else {
+    // Anyone else shares a neutral countdown card — no join claim.
+    ctx.fillStyle = 'rgba(42,7,8,0.62)';
+    ctx.font = '500 18px "DM Mono", monospace'; ctx.letterSpacing = '5px';
+    ctx.fillText(isOut ? 'THE REVEAL IS LIVE' : 'COUNTDOWN TO REVEAL', W / 2, y);
+    y += cdEyebrowH + gXS;
+    ctx.fillStyle = INK;
+    _fitFont(ctx, cdBig, '', 'Georgia, "Times New Roman", serif', cdBigSize, W - PX * 2, 30);
+    ctx.letterSpacing = '2px';
+    ctx.fillText(cdBig, W / 2, y);
+    y += cdBigSize + g3;
+  }
 
   ctx.fillStyle = 'rgba(42,7,8,0.72)';
   _fitFont(ctx, d.dateLine, '500', '"DM Mono", monospace', dateSize, W - PX * 2, 12);
@@ -14055,11 +14123,12 @@ async function openLisaCard() {
   const earned = !!localStorage.getItem(LISA_SAVE_LS);
   _lisaCardData = {
     earned, helloImg, sawImg,
+    revealAt: LISA_REVEAL_AT,
     dateLine: 'REVEAL · AUG 24, 2026 · 10PM KST / 9AM EDT / 8PM ICT',
     dateShort: 'reveal Aug 24, 2026',
     cta: 'JOIN · HELLOSAWADIKA.COM',
   };
-  label.textContent = earned ? "I'M IN — SAWADIKA" : 'JOIN · HELLOSAWADIKA';
+  label.textContent = earned ? "I'M IN — SAWADIKA" : 'SAWADIKA · COUNTDOWN';
   drawLisaCard(canvas, _lisaCardData);
   _markCardReady(canvas);
 }
