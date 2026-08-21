@@ -6767,8 +6767,15 @@ async function vmaAddVotes() {
   // Step 3: refresh the board + repaint. Errors here are cosmetic only — the
   // vote is already saved, so they must not surface as a save failure.
   try {
-    const b = await fetch('/api/vma-votes?board=1', { cache: 'no-store' }).then(x => x.json()).catch(() => null);
-    if (b && b.board) _vvBoard = b.board;
+    const b = await fetch('/api/vma-votes?board=1', { cache: 'no-store' }).then(x => x.ok ? x.json() : null).catch(() => null);
+    if (b && b.board != null) {
+      // Same shape-handling as renderVmaVoting: the RPC returns {ranked, unranked}
+      // (or a bare array). Setting _vvBoard to the object made drawVmaVoting's
+      // _vvBoard.slice() throw — which is why the totals only updated on reload.
+      const bd = b.board;
+      _vvBoard = Array.isArray(bd) ? bd : (bd?.ranked || []);
+      _vvUnranked = (bd && !Array.isArray(bd)) ? (bd.unranked || []) : [];
+    }
     drawVmaVoting();
   } catch {}
 
