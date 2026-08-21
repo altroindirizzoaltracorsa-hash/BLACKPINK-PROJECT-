@@ -1463,7 +1463,7 @@
   .cd-out { font-family: var(--display); font-size: 1.6rem; letter-spacing: 0.05em; color: var(--pink); margin-bottom: 1.1rem; }
   .cd-tracklist { font-family: var(--mono); font-size: 0.62rem; color: rgba(245,240,240,0.62); line-height: 1.85; margin-bottom: 1.1rem; }
   .cd-tracklist b { color: var(--white); font-weight: 500; }
-  .cd-btn { display: inline-block; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); padding: 0.65rem 1.1rem; text-decoration: none; transition: filter .15s; }
+  .cd-btn { display: inline-block; font-family: var(--mono); font-size: 0.6rem; line-height: 1.1; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); padding: 0.65rem 1.1rem; text-decoration: none; border: none; cursor: pointer; transition: filter .15s; }
   .cd-btn:hover { filter: brightness(1.07); }
   /* Hero card (JENNIE Fallen Angel): photo + overlaid wordmarks + pre-save challenge */
   .cd-hero { position: relative; width: calc(100% + 2.8rem); margin: -1.5rem -1.4rem 1rem; aspect-ratio: 16 / 10; overflow: hidden; background: #0a0608; }
@@ -2155,6 +2155,7 @@
             <div class="cd-links">
               <a class="cd-btn" href="https://www.jenn.ie/" target="_blank" rel="noopener" onclick="saveFallenAngel()">Pre-save ↗</a>
               <a class="cd-btn cd-btn-ghost" href="https://youtu.be/CNQujRtii44" target="_blank" rel="noopener">▶ MV Teaser</a>
+              <button class="cd-btn cd-btn-ghost" onclick="openPresaveCard('fa')">📸 Share</button>
             </div>
           </div>
           <div class="cd-card cd-card-sawadika" data-target="2026-08-24T13:00:00Z" data-live="IT'S HERE ✨" data-plain="1">
@@ -11904,6 +11905,8 @@ let _cardShareBlob = null; // pre-generated blob for shareCard (set when drawing
 let _msShareBlob   = null; // pre-generated blob for shareMilestoneCard
 let _goalCardPhoto = null; // pre-loaded BLACKPINK photo for goal hit card
 let _goalWalkersImg = null; // pre-loaded walking-members cutout for the goal card
+let _presaveCardData = null;      // { campaign, earned, ... } for the pre-save share card
+let _faPhotoImg = null, _faTitleImg = null, _faLogoImg = null; // Fallen Angel assets (cached)
 
 // Called at the end of every card draw function so the share blob is ready
 // before the user taps Share — avoids async toBlob inside the gesture handler.
@@ -12068,6 +12071,7 @@ function setCardFormat(fmt, btn) {
   else if (_cardType === 'release') drawReleaseCard(canvas, _cardLogo, _cardArt, ltalWordmarkImg);
   else if (_cardType === 'goals') drawGoalsCard(canvas, _cardLogo, _cardArt, _goalsCardData);
   else if (_cardType === 'goal-hit' && window._goalCardData) drawGoalHitCard(canvas, { ...window._goalCardData, logo: _cardLogo, walkers: _goalWalkersImg, photo: _goalCardPhoto });
+  else if (_cardType === 'presave' && _presaveCardData) { drawPresaveCard(canvas, _presaveCardData); _markCardReady(canvas); }
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -12534,6 +12538,15 @@ async function shareCard() {
       const lines = [`🎵 iTunes #1 in ${d.count} countries!`, d.countries.join(', ')];
       if (d.extraGoals?.length) lines.push(...d.extraGoals.map(g => `✔ ${g}`));
       statsText = '\n' + lines.join('\n') + '\n';
+    }
+  } else if (_cardType === 'presave') {
+    // Keep the link on our own site — clicking through here is what earns the
+    // Early Supporter badge and moves the pre-save challenge bar.
+    const d = _presaveCardData;
+    if (d) {
+      statsText = d.earned
+        ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n⏰ ${d.dateShort}\n👉 Pre-save it too on blinksunited.com — don't forget to share!\n`
+        : `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n👉 ${d.verbCta} on blinksunited.com — every one counts. Share it!\n`;
     }
   } else if (_cardType === 'goal-hit') {
     const d = window._goalCardData;
@@ -13801,6 +13814,133 @@ function drawArtistCard(canvas, data, logo, art, artistName) {
     ctx.fillText('blinksunited.com', brandX, H - 42);
   }
 
+  _markCardReady(canvas);
+}
+
+// ── PRE-SAVE SHARE CARD (JENNIE — Fallen Angel) ──────────────────────────────
+// A shareable card a fan gets after pre-saving: photo hero + wordmarks + their
+// Early Supporter status + the release date + a pre-save CTA. Reuses the card
+// modal (shareCard/downloadCard/copyCard) like every other card type.
+function drawPresaveCard(canvas, d) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const PX = Math.round(W * 0.075);
+
+  ctx.fillStyle = '#0a0608';
+  ctx.fillRect(0, 0, W, H);
+
+  // Full-bleed photo (cover, biased toward the top so JENNIE's face stays framed)
+  const photo = d.photo;
+  if (photo && photo.naturalWidth) {
+    const scale = Math.max(W / photo.naturalWidth, H / photo.naturalHeight);
+    const dw = photo.naturalWidth * scale, dh = photo.naturalHeight * scale;
+    ctx.drawImage(photo, (W - dw) / 2, -(dh - H) * 0.12, dw, dh);
+  }
+  // Scrims — subtle at top, strong at the bottom for text legibility
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0,    'rgba(10,6,8,0.55)');
+  g.addColorStop(0.32, 'rgba(10,6,8,0.06)');
+  g.addColorStop(0.60, 'rgba(10,6,8,0.32)');
+  g.addColorStop(1,    'rgba(10,6,8,0.95)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  drawNoise(ctx, W, H, 0.018);
+
+  // Top row: BU wordmark (left) · status (right)
+  const topY = Math.round(H * 0.085);
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = '500 20px "DM Mono", monospace';
+  ctx.letterSpacing = '4px';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(245,240,240,0.85)';
+  ctx.fillText('BLINKS UNITED', PX, topY);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = d.earned ? '#ff5b8a' : 'rgba(245,240,240,0.7)';
+  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : 'PRE-SAVE OPEN', W - PX, topY);
+  ctx.textAlign = 'left';
+  ctx.letterSpacing = '0px';
+
+  // ── Bottom content block (logo → wordmark → headline → date → CTA) ──
+  const BP = Math.round(H * 0.085);
+  const titleImg = d.titleImg, logoImg = d.logoImg;
+  const titleW = Math.min(W * 0.62, W - PX * 2);
+  const titleH = (titleImg && titleImg.naturalWidth) ? titleW * (titleImg.naturalHeight / titleImg.naturalWidth) : 0;
+  const logoH  = Math.round(H * 0.062);
+  const logoW  = (logoImg && logoImg.naturalHeight) ? logoH * (logoImg.naturalWidth / logoImg.naturalHeight) : 0;
+  const gapS = Math.round(H * 0.016), gapM = Math.round(H * 0.03);
+  const headSize = Math.round(H * 0.085);
+  const dateH = Math.round(H * 0.03), ctaH = Math.round(H * 0.03);
+  const headline = d.earned ? "I PRE-SAVED" : "PRE-SAVE NOW";
+
+  const blockH = logoH + gapS + titleH + gapM + headSize + gapS + dateH + gapM + ctaH;
+  let y = H - BP - blockH;
+
+  ctx.textBaseline = 'top';
+  if (logoW)  ctx.drawImage(logoImg, PX, y, logoW, logoH);
+  y += logoH + gapS;
+  if (titleH) ctx.drawImage(titleImg, PX, y, titleW, titleH);
+  y += titleH + gapM;
+
+  ctx.fillStyle = d.earned ? '#ff2e77' : '#F5F0F0';
+  ctx.font = `${headSize}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = '2px';
+  ctx.fillText(headline, PX, y);
+  y += headSize + gapS;
+
+  ctx.font = '500 22px "DM Mono", monospace';
+  ctx.letterSpacing = '2px';
+  ctx.fillStyle = 'rgba(245,240,240,0.72)';
+  ctx.fillText(d.dateLine, PX, y);
+  y += dateH + gapM;
+
+  ctx.font = '600 22px "DM Mono", monospace';
+  ctx.letterSpacing = '2px';
+  ctx.fillStyle = '#ff5b8a';
+  ctx.fillText(d.cta, PX, y);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(245,240,240,0.6)';
+  ctx.fillText('blinksunited.com', W - PX, y);
+
+  // reset
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.letterSpacing = '0px';
+}
+
+async function openPresaveCard(campaign = 'fa') {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none';
+  _cardType = 'presave';
+  _cardTrackId = null;
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+
+  const [photo, titleImg, logoImg] = await Promise.all([
+    _faPhotoImg ? Promise.resolve(_faPhotoImg) : loadImg('/fallenangel00.jpg').then(i => (_faPhotoImg = i)).catch(() => null),
+    _faTitleImg ? Promise.resolve(_faTitleImg) : loadImg('/fallenangel-title.png').then(i => (_faTitleImg = i)).catch(() => null),
+    _faLogoImg  ? Promise.resolve(_faLogoImg)  : loadImg('/fallenangel-logo.png').then(i => (_faLogoImg = i)).catch(() => null),
+  ]);
+  await document.fonts.ready;
+
+  const earned = !!localStorage.getItem(FA_SAVE_LS);
+  _presaveCardData = {
+    campaign, earned,
+    act: 'JENNIE', release: 'Fallen Angel',
+    photo, titleImg, logoImg,
+    dateLine: 'OUT AUG 28, 2026 · 1PM KST / 12AM EDT',
+    dateShort: 'out Aug 28, 2026',
+    cta: '▶ PRE-SAVE · JENN.IE',
+    verb: 'drops', verbCta: 'Pre-save it',
+  };
+  label.textContent = earned ? "I'M AN EARLY SUPPORTER" : 'PRE-SAVE · FALLEN ANGEL';
+  drawPresaveCard(canvas, _presaveCardData);
   _markCardReady(canvas);
 }
 
