@@ -1529,6 +1529,8 @@
   .cd-card-sawadika .cd-goal-fill { background: linear-gradient(90deg, var(--sw-dark), var(--sw-hover)); }
   .sw-btn { background: var(--sw-dark); color: var(--sw-light); border: 1px solid var(--sw-light); border-radius: 99px; }
   .sw-btn:hover { background: var(--sw-light); color: var(--sw-dark); filter: none; }
+  .sw-btn-ghost { background: transparent; color: var(--sw-light); }
+  .sw-btn-ghost:hover { background: rgba(203,158,159,0.15); color: var(--sw-light); }
 
   /* ── VOTE PAGE ── */
   .vote-page {
@@ -2178,6 +2180,7 @@
             </div>
             <div class="cd-links">
               <a class="cd-btn sw-btn" href="https://hellosawadika.com" target="_blank" rel="noopener" onclick="saveLisaSawadika()">Join the reveal ↗</a>
+              <button class="cd-btn sw-btn sw-btn-ghost" onclick="openLisaCard()">📸 Share</button>
             </div>
           </div>
         </div>
@@ -11907,6 +11910,8 @@ let _goalCardPhoto = null; // pre-loaded BLACKPINK photo for goal hit card
 let _goalWalkersImg = null; // pre-loaded walking-members cutout for the goal card
 let _presaveCardData = null;      // { campaign, earned, ... } for the pre-save share card
 let _faPhotoImg = null, _faTitleImg = null, _faLogoImg = null; // Fallen Angel assets (cached)
+let _lisaCardData = null;         // data for the LISA hellosawadika share card
+let _lisaHelloImg = null, _lisaSawImg = null; // cached HELLO + สวัสดีค่ะ SVGs
 
 // Called at the end of every card draw function so the share blob is ready
 // before the user taps Share — avoids async toBlob inside the gesture handler.
@@ -12072,6 +12077,7 @@ function setCardFormat(fmt, btn) {
   else if (_cardType === 'goals') drawGoalsCard(canvas, _cardLogo, _cardArt, _goalsCardData);
   else if (_cardType === 'goal-hit' && window._goalCardData) drawGoalHitCard(canvas, { ...window._goalCardData, logo: _cardLogo, walkers: _goalWalkersImg, photo: _goalCardPhoto });
   else if (_cardType === 'presave' && _presaveCardData) { drawPresaveCard(canvas, _presaveCardData); _markCardReady(canvas); }
+  else if (_cardType === 'lisa' && _lisaCardData) { drawLisaCard(canvas, _lisaCardData); _markCardReady(canvas); }
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -12547,6 +12553,13 @@ async function shareCard() {
       statsText = d.earned
         ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n⏰ ${d.dateShort}\n👉 Pre-save it too on blinksunited.com — don't forget to share!\n`
         : `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n👉 ${d.verbCta} on blinksunited.com — every one counts. Share it!\n`;
+    }
+  } else if (_cardType === 'lisa') {
+    const d = _lisaCardData;
+    if (d) {
+      statsText = d.earned
+        ? `\n🕊️ สวัสดีค่ะ — I'm in for LISA's reveal\n⏰ ${d.dateShort}\n👉 Join at hellosawadika.com — count yourself in on blinksunited.com!\n`
+        : `\n🕊️ LISA — hellosawadika.com reveal ${d.dateShort}\n👉 Join the reveal — every blink counts. Share it!\n`;
     }
   } else if (_cardType === 'goal-hit') {
     const d = window._goalCardData;
@@ -13941,6 +13954,113 @@ async function openPresaveCard(campaign = 'fa') {
   };
   label.textContent = earned ? "I'M AN EARLY SUPPORTER" : 'PRE-SAVE · FALLEN ANGEL';
   drawPresaveCard(canvas, _presaveCardData);
+  _markCardReady(canvas);
+}
+
+// ── LISA "hellosawadika" REVEAL SHARE CARD ───────────────────────────────────
+// Red teaser card matching hellosawadika.com: the HELLO + สวัสดีค่ะ SVGs on the
+// site's deep red, the fan's join status, the reveal date, and a join CTA.
+function _fitFont(ctx, text, weight, family, startPx, maxW, minPx) {
+  let px = startPx;
+  do { ctx.font = `${weight ? weight + ' ' : ''}${px}px ${family}`; if (ctx.measureText(text).width <= maxW) break; px -= 1; } while (px > minPx);
+  return px;
+}
+
+function drawLisaCard(canvas, d) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const INK = '#2a0708';
+  const PX = Math.round(W * 0.075);
+
+  ctx.fillStyle = 'hsl(358, 74%, 29%)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(20,4,5,0.10)';   // the site's clr-bg-33 overlay, softened
+  ctx.fillRect(0, 0, W, H);
+  drawNoise(ctx, W, H, 0.02);
+
+  // Top row: BU wordmark (left) · status (right)
+  const topY = Math.round(H * 0.085);
+  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  ctx.font = '500 20px "DM Mono", monospace'; ctx.letterSpacing = '4px';
+  ctx.fillStyle = 'rgba(42,7,8,0.85)';
+  ctx.fillText('BLINKS UNITED', PX, topY);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = d.earned ? '#3a0c0c' : 'rgba(42,7,8,0.68)';
+  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : 'JOIN OPEN', W - PX, topY);
+  ctx.letterSpacing = '0px';
+
+  // Centered hero: HELLO + สวัสดีค่ะ (SVGs; aspect from their viewBoxes), then
+  // a serif headline + reveal date.
+  const helloAsp = 326 / 102, sawAsp = 5999 / 1579;
+  const helloW = W * 0.24, helloH = helloW / helloAsp;
+  const sawW = W * 0.60,  sawH = sawW / sawAsp;
+  const headSize = Math.round(H * 0.072);
+  const dateSize = Math.round(H * 0.03);
+  const g1 = Math.round(H * 0.03), g2 = Math.round(H * 0.052), g3 = Math.round(H * 0.03);
+  const blockH = helloH + g1 + sawH + g2 + headSize + g3 + dateSize;
+  let y = (H - blockH) / 2 - H * 0.015;
+
+  ctx.textBaseline = 'top';
+  if (d.helloImg) ctx.drawImage(d.helloImg, (W - helloW) / 2, y, helloW, helloH);
+  y += helloH + g1;
+  if (d.sawImg)   ctx.drawImage(d.sawImg, (W - sawW) / 2, y, sawW, sawH);
+  y += sawH + g2;
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = INK;
+  const headline = d.earned ? "I'M IN FOR THE REVEAL" : 'JOIN THE REVEAL';
+  _fitFont(ctx, headline, '', 'Georgia, "Times New Roman", serif', headSize, W - PX * 2, 22);
+  ctx.letterSpacing = '1px';
+  ctx.fillText(headline, W / 2, y);
+  y += headSize + g3;
+
+  ctx.fillStyle = 'rgba(42,7,8,0.72)';
+  _fitFont(ctx, d.dateLine, '500', '"DM Mono", monospace', dateSize, W - PX * 2, 12);
+  ctx.letterSpacing = '2px';
+  ctx.fillText(d.dateLine, W / 2, y);
+
+  // Bottom CTA (centered)
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = INK;
+  ctx.font = '600 22px "DM Mono", monospace'; ctx.letterSpacing = '2px';
+  ctx.fillText(d.cta, W / 2, H - Math.round(H * 0.072));
+  ctx.font = '500 16px "DM Mono", monospace'; ctx.letterSpacing = '2px';
+  ctx.fillStyle = 'rgba(42,7,8,0.55)';
+  ctx.fillText('shared via blinksunited.com', W / 2, H - Math.round(H * 0.038));
+
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.letterSpacing = '0px';
+}
+
+async function openLisaCard() {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none';
+  _cardType = 'lisa';
+  _cardTrackId = null;
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+
+  const [helloImg, sawImg] = await Promise.all([
+    _lisaHelloImg ? Promise.resolve(_lisaHelloImg) : loadImg('/sawadika/english.svg').then(i => (_lisaHelloImg = i)).catch(() => null),
+    _lisaSawImg   ? Promise.resolve(_lisaSawImg)   : loadImg('/sawadika/sawadika.svg').then(i => (_lisaSawImg = i)).catch(() => null),
+  ]);
+  await document.fonts.ready;
+
+  const earned = !!localStorage.getItem(LISA_SAVE_LS);
+  _lisaCardData = {
+    earned, helloImg, sawImg,
+    dateLine: 'REVEAL · AUG 24, 2026 · 10PM KST / 9AM EDT / 8PM ICT',
+    dateShort: 'reveal Aug 24, 2026',
+    cta: 'JOIN · HELLOSAWADIKA.COM',
+  };
+  label.textContent = earned ? "I'M IN — SAWADIKA" : 'JOIN · HELLOSAWADIKA';
+  drawLisaCard(canvas, _lisaCardData);
   _markCardReady(canvas);
 }
 
