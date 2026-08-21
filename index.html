@@ -1485,8 +1485,8 @@
   .cd-btn-ghost:hover { background: rgba(255,0,102,0.1); filter: none; }
   /* LISA "hellosawadika" card — faithful to hellosawadika.com: clr-bg hsl(358,74%,29%),
      near-black maroon ink, dark form pill, and the site's own cycle-hi CSS animation. */
-  .cd-card-sawadika { --sw-bg: hsl(358, 74%, 29%); --sw-ink: #2a0708; --sw-light: #CB9E9F; --sw-dark: #350909; --sw-hover: #970A01;
-    background: var(--sw-bg); border-color: rgba(203,158,159,0.35); color: var(--sw-ink); text-align: center; box-shadow: 0 18px 50px -30px rgba(90,12,15,0.9); }
+  .cd-card-sawadika { --sw-bg: hsl(358, 74%, 29%); --sw-ink: #2a0708; --sw-text: #f7e4e0; --sw-light: #CB9E9F; --sw-dark: #350909; --sw-hover: #970A01;
+    background: var(--sw-bg); border-color: rgba(203,158,159,0.35); color: var(--sw-text); text-align: center; box-shadow: 0 18px 50px -30px rgba(90,12,15,0.9); }
   .sw-cycle { margin-bottom: 1.2rem; }
   /* HELLO cycles through the site's own language SVGs (black Garamond); one visible
      ~2s over a 20s loop via the site's keyframes. */
@@ -1513,20 +1513,20 @@
   @media (prefers-reduced-motion: reduce) { .sw-hi > * { animation: none; transform: translate(-50%, -50%); } .sw-hi > *:nth-child(1) { opacity: 1; } }
   .sw-thai { margin-top: 0.5rem; line-height: 0; }
   .sw-thai img { height: clamp(2.2rem, 9vw, 3.2rem); width: auto; max-width: 80%; }
-  .cd-card-sawadika .cd-eyebrow.sw-eyebrow { color: var(--sw-ink); opacity: 0.82; }
-  .cd-card-sawadika .cd-sub { color: rgba(42,7,8,0.68); }
+  .cd-card-sawadika .cd-eyebrow.sw-eyebrow { color: var(--sw-text); opacity: 0.95; font-weight: 700; }
+  .cd-card-sawadika .cd-sub { color: var(--sw-text); opacity: 0.9; font-weight: 600; }
   .cd-card-sawadika .cd-timer { justify-content: center; }
   .cd-timer-plain { align-items: baseline; gap: 0.5rem; font-family: var(--display); }
-  .cd-timer-plain span { font-size: clamp(2.4rem, 11vw, 3.6rem); color: var(--sw-ink); line-height: 1; font-variant-numeric: tabular-nums; }
-  .cd-timer-plain i { font-style: normal; font-size: clamp(1.7rem, 8vw, 2.6rem); color: var(--sw-ink); opacity: 0.55; }
-  .cd-card-sawadika .cd-out { color: var(--sw-ink); }
+  .cd-timer-plain span { font-size: clamp(2.4rem, 11vw, 3.6rem); color: var(--sw-text); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 2px 12px rgba(40,4,6,0.45); }
+  .cd-timer-plain i { font-style: normal; font-size: clamp(1.7rem, 8vw, 2.6rem); color: var(--sw-text); opacity: 0.7; }
+  .cd-card-sawadika .cd-out { color: var(--sw-text); }
   .cd-card-sawadika .cd-links { justify-content: center; }
-  .cd-card-sawadika .cd-badge-chip { color: var(--sw-ink); border-color: rgba(42,7,8,0.45); background: rgba(255,255,255,0.12); }
-  .cd-card-sawadika .cd-goal-label { color: rgba(42,7,8,0.82); }
-  .cd-card-sawadika .cd-goal-nums { color: var(--sw-ink); }
-  .cd-card-sawadika .cd-goal-nums span { color: rgba(42,7,8,0.6); }
-  .cd-card-sawadika .cd-goal-bar { background: rgba(42,7,8,0.18); }
-  .cd-card-sawadika .cd-goal-fill { background: linear-gradient(90deg, var(--sw-dark), var(--sw-hover)); }
+  .cd-card-sawadika .cd-badge-chip { color: var(--sw-text); border-color: rgba(247,228,224,0.6); background: rgba(40,4,6,0.28); }
+  .cd-card-sawadika .cd-goal-label { color: var(--sw-text); opacity: 0.92; }
+  .cd-card-sawadika .cd-goal-nums { color: var(--sw-text); }
+  .cd-card-sawadika .cd-goal-nums span { color: rgba(247,228,224,0.72); }
+  .cd-card-sawadika .cd-goal-bar { background: rgba(40,4,6,0.32); }
+  .cd-card-sawadika .cd-goal-fill { background: linear-gradient(90deg, #e9b8b1, #f7e4e0); }
   .sw-btn { background: var(--sw-dark); color: var(--sw-light); border: 1px solid var(--sw-light); border-radius: 99px; }
   .sw-btn:hover { background: var(--sw-light); color: var(--sw-dark); filter: none; }
   .sw-btn-ghost { background: transparent; color: var(--sw-light); }
