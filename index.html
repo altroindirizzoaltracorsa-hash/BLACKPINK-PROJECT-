@@ -1483,24 +1483,50 @@
   .cd-links { display: flex; flex-wrap: wrap; gap: 0.55rem; }
   .cd-btn-ghost { color: var(--pink); background: transparent; border: 1px solid rgba(255,0,102,0.45); }
   .cd-btn-ghost:hover { background: rgba(255,0,102,0.1); filter: none; }
-  /* LISA "hellosawadika" card — deep-red teaser theme with a rotating HELLO */
-  .cd-card-sawadika { background: radial-gradient(120% 110% at 50% -10%, #6f2020 0%, #491414 68%); border-color: rgba(255,140,140,0.28); text-align: center; box-shadow: 0 18px 50px -30px rgba(180,40,40,0.8); }
-  .sw-hello { font-family: var(--display); font-size: clamp(2rem, 8vw, 2.6rem); line-height: 1; color: #f4ddd8; letter-spacing: 0.03em; min-height: 1.15em; }
-  .sw-hello-word { display: inline-block; transition: opacity .35s ease; }
-  .sw-thai { font-size: clamp(1.7rem, 7vw, 2.15rem); line-height: 1.05; color: #e9b8b1; margin: 0.15rem 0 1rem; }
-  .cd-card-sawadika .cd-eyebrow.sw-eyebrow { color: #f0aaa2; }
-  .cd-card-sawadika .cd-sub { color: rgba(244,221,216,0.68); }
+  /* LISA "hellosawadika" card — faithful to hellosawadika.com: clr-bg hsl(358,74%,29%),
+     near-black maroon ink, dark form pill, and the site's own cycle-hi CSS animation. */
+  .cd-card-sawadika { --sw-bg: hsl(358, 74%, 29%); --sw-ink: #2a0708; --sw-light: #CB9E9F; --sw-dark: #350909; --sw-hover: #970A01;
+    background: var(--sw-bg); border-color: rgba(203,158,159,0.35); color: var(--sw-ink); text-align: center; box-shadow: 0 18px 50px -30px rgba(90,12,15,0.9); }
+  .sw-cycle { margin-bottom: 1.2rem; }
+  /* HELLO cycles through languages; one visible ~2s over a 20s loop (site's keyframes) */
+  .sw-hi { position: relative; height: clamp(2.6rem, 9vw, 3.4rem); }
+  .sw-hi > * { position: absolute; left: 0; right: 0; top: 0; text-align: center; opacity: 0; font-family: var(--display); font-size: clamp(2rem, 8vw, 2.7rem); line-height: 1.15; color: var(--sw-ink); animation: sw-cycle-hi 20s infinite both; }
+  .sw-hi > img { height: clamp(2rem, 7vw, 2.6rem); width: auto; margin: 0 auto; display: block; }
+  @keyframes sw-cycle-hi {
+    0%   { opacity: 0; transform: translateY(16px); }
+    2%   { opacity: 1; transform: translateY(0); }
+    9%   { opacity: 1; transform: translateY(0); }
+    11%  { opacity: 0; transform: translateY(-16px); }
+    100% { opacity: 0; transform: translateY(-16px); }
+  }
+  .sw-hi > *:nth-child(1) { animation-delay: 0s; }
+  .sw-hi > *:nth-child(2) { animation-delay: 2s; }
+  .sw-hi > *:nth-child(3) { animation-delay: 4s; }
+  .sw-hi > *:nth-child(4) { animation-delay: 6s; }
+  .sw-hi > *:nth-child(5) { animation-delay: 8s; }
+  .sw-hi > *:nth-child(6) { animation-delay: 10s; }
+  .sw-hi > *:nth-child(7) { animation-delay: 12s; }
+  .sw-hi > *:nth-child(8) { animation-delay: 14s; }
+  .sw-hi > *:nth-child(9) { animation-delay: 16s; }
+  .sw-hi > *:nth-child(10) { animation-delay: 18s; }
+  @media (prefers-reduced-motion: reduce) { .sw-hi > * { animation: none; } .sw-hi > *:nth-child(1) { opacity: 1; } }
+  .sw-thai { font-family: var(--display); font-size: clamp(1.8rem, 7vw, 2.4rem); line-height: 1.1; color: var(--sw-ink); margin-top: 0.35rem; }
+  .cd-card-sawadika .cd-eyebrow.sw-eyebrow { color: var(--sw-ink); opacity: 0.82; }
+  .cd-card-sawadika .cd-sub { color: rgba(42,7,8,0.68); }
   .cd-card-sawadika .cd-timer { justify-content: center; }
-  .cd-card-sawadika .cd-unit { background: rgba(255,255,255,0.05); border-color: rgba(255,150,150,0.22); }
-  .cd-card-sawadika .cd-num { color: #ffd8d1; }
-  .cd-card-sawadika .cd-out { color: #ffd8d1; }
+  .cd-timer-plain { align-items: baseline; gap: 0.5rem; font-family: var(--display); }
+  .cd-timer-plain span { font-size: clamp(2.4rem, 11vw, 3.6rem); color: var(--sw-ink); line-height: 1; font-variant-numeric: tabular-nums; }
+  .cd-timer-plain i { font-style: normal; font-size: clamp(1.7rem, 8vw, 2.6rem); color: var(--sw-ink); opacity: 0.55; }
+  .cd-card-sawadika .cd-out { color: var(--sw-ink); }
   .cd-card-sawadika .cd-links { justify-content: center; }
-  .cd-card-sawadika .cd-badge-chip { color: #ffd8d1; border-color: rgba(255,150,150,0.5); background: rgba(255,255,255,0.06); }
-  .cd-card-sawadika .cd-goal-label { color: rgba(244,221,216,0.82); }
-  .cd-card-sawadika .cd-goal-nums { color: #ffd8d1; }
-  .cd-card-sawadika .cd-goal-fill { background: linear-gradient(90deg, #e9b8b1, #ffd8d1); }
-  .sw-btn { background: #f4ddd8; color: #491414; }
-  .sw-btn:hover { filter: brightness(1.04); }
+  .cd-card-sawadika .cd-badge-chip { color: var(--sw-ink); border-color: rgba(42,7,8,0.45); background: rgba(255,255,255,0.12); }
+  .cd-card-sawadika .cd-goal-label { color: rgba(42,7,8,0.82); }
+  .cd-card-sawadika .cd-goal-nums { color: var(--sw-ink); }
+  .cd-card-sawadika .cd-goal-nums span { color: rgba(42,7,8,0.6); }
+  .cd-card-sawadika .cd-goal-bar { background: rgba(42,7,8,0.18); }
+  .cd-card-sawadika .cd-goal-fill { background: linear-gradient(90deg, var(--sw-dark), var(--sw-hover)); }
+  .sw-btn { background: var(--sw-dark); color: var(--sw-light); border: 1px solid var(--sw-light); border-radius: 99px; }
+  .sw-btn:hover { background: var(--sw-light); color: var(--sw-dark); filter: none; }
 
   /* ── VOTE PAGE ── */
   .vote-page {
@@ -2129,13 +2155,17 @@
               <a class="cd-btn cd-btn-ghost" href="https://youtu.be/CNQujRtii44" target="_blank" rel="noopener">▶ MV Teaser</a>
             </div>
           </div>
-          <div class="cd-card cd-card-sawadika" data-target="2026-08-24T13:00:00Z" data-live="IT'S HERE ✨">
-            <div class="sw-hello"><span class="sw-hello-word" id="sw-hello-word">Hello</span></div>
-            <div class="sw-thai" aria-label="Sawadika">สวัสดีค่ะ</div>
+          <div class="cd-card cd-card-sawadika" data-target="2026-08-24T13:00:00Z" data-live="IT'S HERE ✨" data-plain="1">
+            <div class="sw-cycle">
+              <div class="sw-hi" aria-label="Hello">
+                <span>Hello</span><span>Bonjour</span><span>Ciao</span><span>Hola</span><span>Olá</span><span>Hallo</span><span>안녕하세요</span><span>こんにちは</span><span>你好</span><span>مرحبا</span>
+              </div>
+              <div class="sw-thai" aria-label="Sawadika">สวัสดีค่ะ</div>
+            </div>
             <div class="cd-eyebrow sw-eyebrow">LISA · hellosawadika.com</div>
             <div class="cd-sub">Reveal · Mon, Aug 24, 2026 · 10PM KST / 9AM EDT / 8PM ICT</div>
             <div class="cd-badge-chip" id="lisa-badge" style="display:none;">🏆 Early Supporter</div>
-            <div class="cd-timer" data-timer></div>
+            <div class="cd-timer cd-timer-plain" data-timer></div>
             <div class="cd-goal" id="lisa-goal" style="display:none;">
               <div class="cd-goal-top">
                 <span class="cd-goal-label">🎯 Blinks Joined</span>
@@ -4419,7 +4449,6 @@ window.addEventListener('DOMContentLoaded', () => {
   loadJennieSaveCount();
   loadFaSaveCount();
   loadLisaSaveCount();
-  setInterval(rotateSawadikaHello, 2200);
   loadLtalStreamsGoal();
   renderItunesInlineBadge();
   // (Removed: the old Last.fm-only background submit. Identity is account-only now;
@@ -10533,8 +10562,14 @@ function renderHomeCountdowns() {
     const h = Math.floor(diff / 3600000);  diff %= 3600000;
     const m = Math.floor(diff / 60000);    diff %= 60000;
     const s = Math.floor(diff / 1000);
-    const u = (n, l) => `<div class="cd-unit"><div class="cd-num">${String(n).padStart(2, '0')}</div><div class="cd-lbl">${l}</div></div>`;
-    timer.innerHTML = u(d, 'Days') + u(h, 'Hrs') + u(m, 'Min') + u(s, 'Sec');
+    const p = n => String(n).padStart(2, '0');
+    if (card.dataset.plain) {
+      // hellosawadika-style plain "dd : hh : mm : ss"
+      timer.innerHTML = `<span>${p(d)}</span><i>:</i><span>${p(h)}</span><i>:</i><span>${p(m)}</span><i>:</i><span>${p(s)}</span>`;
+    } else {
+      const u = (n, l) => `<div class="cd-unit"><div class="cd-num">${p(n)}</div><div class="cd-lbl">${l}</div></div>`;
+      timer.innerHTML = u(d, 'Days') + u(h, 'Hrs') + u(m, 'Min') + u(s, 'Sec');
+    }
   });
 }
 
@@ -10671,22 +10706,9 @@ async function loadFaSaveCount() {
   } catch {}
 }
 
-// ── LISA "hellosawadika" reveal — rotating HELLO + Join counter + Early Supporter
-// Mirrors hellosawadika.com's teaser: "HELLO" cycles through languages while the
-// Thai "สวัสดีค่ะ" stays put. Same server-counter/badge mechanism as the EP cards.
-const SW_HELLOS = ['Hello', 'Hola', 'Ciao', 'Bonjour', 'Hallo', 'Olá', '안녕하세요', 'こんにちは', '你好', 'مرحبا'];
-let _swHelloIdx = 0;
-function rotateSawadikaHello() {
-  const el = document.getElementById('sw-hello-word');
-  if (!el) return;
-  el.style.opacity = '0';
-  setTimeout(() => {
-    _swHelloIdx = (_swHelloIdx + 1) % SW_HELLOS.length;
-    el.textContent = SW_HELLOS[_swHelloIdx];
-    el.style.opacity = '1';
-  }, 350);
-}
-
+// ── LISA "hellosawadika" reveal — Join counter + Early Supporter
+// Mirrors hellosawadika.com's teaser (the rotating HELLO is pure CSS — see the
+// .sw-hi cycle-hi animation). Same server-counter/badge mechanism as the EP cards.
 const LISA_SAVE_LS   = 'bu_lisa_sawadika_saved';
 const LISA_SAVE_GOAL = 50;
 const LISA_REVEAL_AT = '2026-08-24T13:00:00Z'; // 10PM KST / 9AM EDT / 8PM ICT
