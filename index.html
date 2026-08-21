@@ -1506,6 +1506,12 @@
   .cd-card-jennie .cd-btn:hover { filter: none; background: rgba(255,255,255,0.86); }
   .cd-card-jennie .cd-btn-ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.5); }
   .cd-card-jennie .cd-btn-ghost:hover { background: rgba(255,255,255,0.1); }
+  /* Phones/tablets: the card width is limited by the hero's 2rem side padding, not
+     the max-width caps — so break the countdowns out of that padding to read
+     near full-width (leaves a ~0.7rem gutter each side). Desktop keeps the cap. */
+  @media (max-width: 720px) {
+    #home-countdowns { width: calc(100% + 2.6rem) !important; margin-left: -1.3rem; margin-right: -1.3rem; }
+  }
   /* LISA "hellosawadika" card — faithful to hellosawadika.com: clr-bg hsl(358,74%,29%),
      near-black maroon ink, dark form pill, and the site's own cycle-hi CSS animation. */
   .cd-card-sawadika { --sw-bg: hsl(358, 74%, 29%); --sw-ink: #2a0708; --sw-text: #f7e4e0; --sw-light: #CB9E9F; --sw-dark: #350909; --sw-hover: #970A01;
