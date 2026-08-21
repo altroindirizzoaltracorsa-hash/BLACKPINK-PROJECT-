@@ -1483,6 +1483,29 @@
   .cd-links { display: flex; flex-wrap: wrap; gap: 0.55rem; }
   .cd-btn-ghost { color: var(--pink); background: transparent; border: 1px solid rgba(255,0,102,0.45); }
   .cd-btn-ghost:hover { background: rgba(255,0,102,0.1); filter: none; }
+  /* JENNIE "Fallen Angel" — jenn.ie theme: near-black #020a0b, white elegant serif
+     (Cormorant ~ their Apoc italic), ruby/wine/lover-yellow accents, white buttons. */
+  .cd-card-jennie { --jn-bg: #020a0b; --jn-wine: #663847; --jn-ruby: #c8102e; --jn-yellow: #ffe051;
+    background: var(--jn-bg); border-color: rgba(255,255,255,0.16); box-shadow: 0 20px 55px -30px rgba(0,0,0,0.95); }
+  .cd-card-jennie .cd-eyebrow { color: rgba(255,255,255,0.72); font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.06em; text-transform: none; }
+  .cd-card-jennie .cd-sub { color: rgba(255,255,255,0.85); font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1rem; letter-spacing: 0.01em; }
+  .cd-card-jennie .cd-tracklist { color: rgba(255,255,255,0.72); font-family: 'Cormorant Garamond', serif; font-size: 1rem; line-height: 1.7; }
+  .cd-card-jennie .cd-tracklist b { color: #fff; font-weight: 600; }
+  .cd-card-jennie .cd-unit { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.18); }
+  .cd-card-jennie .cd-num { color: #fff; }
+  .cd-card-jennie .cd-lbl { color: rgba(255,255,255,0.5); }
+  .cd-card-jennie .cd-out { color: #fff; }
+  .cd-card-jennie .cd-badge-chip { color: #020a0b; background: var(--jn-yellow); border-color: var(--jn-yellow); }
+  .cd-card-jennie .cd-goal-label { color: rgba(255,255,255,0.82); font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.86rem; text-transform: none; letter-spacing: 0.02em; }
+  .cd-card-jennie .cd-goal-nums { color: #fff; }
+  .cd-card-jennie .cd-goal-nums span { color: rgba(255,255,255,0.6); }
+  .cd-card-jennie .cd-goal-bar { background: rgba(255,255,255,0.14); }
+  .cd-card-jennie .cd-goal-fill { background: linear-gradient(90deg, var(--jn-ruby), #ff5a7a); }
+  /* jenn.ie buttons: primary = white filled (dark text), secondary = outlined white */
+  .cd-card-jennie .cd-btn { background: #fff; color: #020a0b; font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 700; font-size: 0.86rem; letter-spacing: 0.05em; border: 1px solid #fff; }
+  .cd-card-jennie .cd-btn:hover { filter: none; background: rgba(255,255,255,0.86); }
+  .cd-card-jennie .cd-btn-ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.5); }
+  .cd-card-jennie .cd-btn-ghost:hover { background: rgba(255,255,255,0.1); }
   /* LISA "hellosawadika" card — faithful to hellosawadika.com: clr-bg hsl(358,74%,29%),
      near-black maroon ink, dark form pill, and the site's own cycle-hi CSS animation. */
   .cd-card-sawadika { --sw-bg: hsl(358, 74%, 29%); --sw-ink: #2a0708; --sw-text: #f7e4e0; --sw-light: #CB9E9F; --sw-dark: #350909; --sw-hover: #970A01;
@@ -2133,7 +2156,7 @@
       <section id="home-countdowns" style="margin-top:2.2rem;max-width:900px;width:100%;text-align:center;">
         <p class="cd-section-label">◇ Countdowns</p>
         <div class="cd-wrap">
-          <div class="cd-card cd-card-hero" data-target="2026-08-28T04:00:00Z" data-live="OUT NOW ✨">
+          <div class="cd-card cd-card-hero cd-card-jennie" data-target="2026-08-28T04:00:00Z" data-live="OUT NOW ✨">
             <div class="cd-hero">
               <img class="cd-hero-bg" src="/fallenangel00.jpg" alt="JENNIE — Fallen Angel" loading="lazy" onerror="this.style.display='none'">
               <div class="cd-hero-scrim"></div>
@@ -13861,7 +13884,7 @@ function drawPresaveCard(canvas, d) {
   const W = canvas.width, H = canvas.height;
   const PX = Math.round(W * 0.075);
 
-  ctx.fillStyle = '#0a0608';
+  ctx.fillStyle = '#020a0b';   // jenn.ie base
   ctx.fillRect(0, 0, W, H);
 
   // Full-bleed photo (cover, biased toward the top so JENNIE's face stays framed)
@@ -13873,10 +13896,10 @@ function drawPresaveCard(canvas, d) {
   }
   // Scrims — subtle at top, strong at the bottom for text legibility
   const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0,    'rgba(10,6,8,0.55)');
-  g.addColorStop(0.32, 'rgba(10,6,8,0.06)');
-  g.addColorStop(0.60, 'rgba(10,6,8,0.32)');
-  g.addColorStop(1,    'rgba(10,6,8,0.95)');
+  g.addColorStop(0,    'rgba(2,10,11,0.55)');
+  g.addColorStop(0.32, 'rgba(2,10,11,0.06)');
+  g.addColorStop(0.60, 'rgba(2,10,11,0.34)');
+  g.addColorStop(1,    'rgba(2,10,11,0.96)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
   drawNoise(ctx, W, H, 0.018);
@@ -13890,7 +13913,7 @@ function drawPresaveCard(canvas, d) {
   ctx.fillStyle = 'rgba(245,240,240,0.85)';
   ctx.fillText('BLINKS UNITED', PX, topY);
   ctx.textAlign = 'right';
-  ctx.fillStyle = d.earned ? '#ff5b8a' : 'rgba(245,240,240,0.7)';
+  ctx.fillStyle = d.earned ? '#ffe051' : 'rgba(245,240,240,0.7)';   // jenn.ie loverYellow
   ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : 'COUNTDOWN', W - PX, topY);
   ctx.textAlign = 'left';
   ctx.letterSpacing = '0px';
@@ -13931,10 +13954,10 @@ function drawPresaveCard(canvas, d) {
 
   if (d.earned) {
     // Only the pre-saver gets the "I PRE-SAVED" claim + a compact countdown.
-    ctx.fillStyle = '#ff2e77';
-    ctx.font = `${headSize}px "Bebas Neue", sans-serif`;
-    ctx.letterSpacing = '2px';
-    ctx.fillText('I PRE-SAVED', PX, y);
+    ctx.fillStyle = '#ffe051';   // jenn.ie loverYellow
+    ctx.font = `italic 700 ${Math.round(headSize * 1.05)}px "Cormorant Garamond", serif`;
+    ctx.letterSpacing = '1px';
+    ctx.fillText('I pre-saved', PX, y);
     y += headSize + gapXS;
     ctx.font = '600 22px "DM Mono", monospace';
     ctx.letterSpacing = '3px';
@@ -13955,17 +13978,17 @@ function drawPresaveCard(canvas, d) {
     y += cdBigSize + gapS;
   }
 
-  // date line
-  ctx.font = '500 22px "DM Mono", monospace';
-  ctx.letterSpacing = '2px';
-  ctx.fillStyle = 'rgba(245,240,240,0.72)';
+  // date line — jenn.ie elegant italic serif
+  ctx.font = `italic 28px "Cormorant Garamond", serif`;
+  ctx.letterSpacing = '1px';
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.fillText(d.dateLine, PX, y);
   y += dateH + gapM;
 
   // CTA row
   ctx.font = '600 22px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
-  ctx.fillStyle = '#ff5b8a';
+  ctx.fillStyle = '#ffe051';   // jenn.ie loverYellow
   ctx.fillText(d.cta, PX, y);
   ctx.textAlign = 'right';
   ctx.fillStyle = 'rgba(245,240,240,0.6)';
@@ -14006,7 +14029,7 @@ async function openPresaveCard(campaign = 'fa') {
     act: 'JENNIE', release: 'Fallen Angel',
     photo, titleImg, logoImg,
     releaseAt: FA_RELEASE_AT,
-    dateLine: 'OUT AUG 28, 2026 · 1PM KST / 12AM EDT',
+    dateLine: 'Out Aug 28, 2026 · 1PM KST / 12AM EDT',
     dateShort: 'out Aug 28, 2026',
     cta: '▶ PRE-SAVE · JENN.IE',
     verb: 'drops', verbCta: 'Pre-save it',
