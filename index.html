@@ -1449,6 +1449,23 @@
   .vv-guide-btn { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.8rem; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pink); background: rgba(255,0,102,0.08); border: 1px solid rgba(255,0,102,0.4); padding: 0.55rem 0.9rem; cursor: pointer; }
   .vv-guide-btn:hover { background: rgba(255,0,102,0.16); }
 
+  /* ── Home countdown cards (release / reveal timers) ── */
+  .cd-section-label { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--pink); margin-bottom: 1.2rem; }
+  .cd-wrap { display: flex; flex-direction: column; gap: 1.1rem; max-width: 560px; margin: 0 auto; }
+  .cd-card { background: var(--card); border: 1px solid rgba(255,0,102,0.32); padding: 1.5rem 1.4rem; text-align: left; box-shadow: 0 18px 50px -30px rgba(255,0,102,0.7); }
+  .cd-eyebrow { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.2em; text-transform: uppercase; color: #ff74ac; margin-bottom: 0.45rem; }
+  .cd-title { font-family: var(--display); font-size: 2rem; letter-spacing: 0.02em; color: var(--white); line-height: 0.98; margin-bottom: 0.35rem; word-break: break-word; }
+  .cd-sub { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 1.1rem; line-height: 1.5; }
+  .cd-timer { display: flex; gap: 0.55rem; margin-bottom: 1.1rem; }
+  .cd-unit { min-width: 3rem; text-align: center; background: rgba(255,0,102,0.06); border: 1px solid var(--border); padding: 0.55rem 0.2rem; }
+  .cd-num { font-family: var(--display); font-size: 1.9rem; color: var(--pink); line-height: 1; font-variant-numeric: tabular-nums; }
+  .cd-lbl { font-family: var(--mono); font-size: 0.46rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: 0.35rem; }
+  .cd-out { font-family: var(--display); font-size: 1.6rem; letter-spacing: 0.05em; color: var(--pink); margin-bottom: 1.1rem; }
+  .cd-tracklist { font-family: var(--mono); font-size: 0.62rem; color: rgba(245,240,240,0.62); line-height: 1.85; margin-bottom: 1.1rem; }
+  .cd-tracklist b { color: var(--white); font-weight: 500; }
+  .cd-btn { display: inline-block; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); padding: 0.65rem 1.1rem; text-decoration: none; transition: filter .15s; }
+  .cd-btn:hover { filter: brightness(1.07); }
+
   /* ── VOTE PAGE ── */
   .vote-page {
     min-height: 100vh;
@@ -2046,21 +2063,26 @@
         <a href="/voting" class="btn-primary" onclick="showPage('vote'); return false;">Vote</a>
       </div>
 
-      <!-- Featured Instagram content (BLACKPINK & the members). Lists live in /ig-posts.js -->
-      <section id="home-ig" style="margin-top:2.2rem;max-width:900px;width:calc(100% + 4rem);margin-left:-2rem;margin-right:-2rem;text-align:center;">
-        <p style="font-family:'SFMono-Regular',ui-monospace,monospace;font-size:0.62rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--pink);margin-bottom:0.4rem;">◇ 10th Anniversary · Letters to BLINK</p>
-        <p style="font-family:Georgia,serif;font-style:italic;font-size:0.9rem;color:rgba(245,240,240,0.55);margin-bottom:1.3rem;">Handwritten notes from each member — 10 years of BLACKPINK 🖤💗</p>
-        <div id="ig-home-letters" style="display:grid;grid-template-columns:1fr 1fr;column-gap:1rem;row-gap:0;max-width:620px;margin:0 auto;"></div>
-
-        <p style="font-family:'SFMono-Regular',ui-monospace,monospace;font-size:0.62rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--pink);margin:2.4rem 0 1.2rem;">◇ From Instagram</p>
-        <div id="ig-home-posts" style="display:flex;flex-wrap:wrap;gap:1.2rem;justify-content:center;align-items:flex-start;"></div>
-
-        <p style="font-family:'SFMono-Regular',ui-monospace,monospace;font-size:0.62rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--pink);margin:2.4rem 0 1.2rem;">◇ Listen &amp; Watch</p>
-        <div style="max-width:600px;margin:0 auto 1.6rem;aspect-ratio:16/9;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.12);">
-          <iframe src="https://www.youtube.com/embed/k--lCrP69hg" title="BLACKPINK — 10th anniversary" style="width:100%;height:100%;border:0;display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy"></iframe>
+      <!-- Upcoming release / reveal countdowns -->
+      <section id="home-countdowns" style="margin-top:2.2rem;max-width:900px;width:100%;text-align:center;">
+        <p class="cd-section-label">◇ Countdowns</p>
+        <div class="cd-wrap">
+          <div class="cd-card" data-target="2026-08-28T04:00:00Z" data-live="OUT NOW ✨">
+            <div class="cd-eyebrow">JENNIE · Digital EP</div>
+            <div class="cd-title">FALLEN ANGEL</div>
+            <div class="cd-sub">Fri, Aug 28, 2026 · 1PM KST / 12AM EDT</div>
+            <div class="cd-timer" data-timer></div>
+            <div class="cd-tracklist">1. <b>Fallen Angel</b><br>2. <b>Heaven</b><br>3. <b>Less Than a Lover</b></div>
+            <a class="cd-btn" href="https://www.jenn.ie/" target="_blank" rel="noopener">Pre-save ↗</a>
+          </div>
+          <div class="cd-card" data-target="2026-08-24T13:00:00Z" data-live="IT'S HERE ✨">
+            <div class="cd-eyebrow">LISA</div>
+            <div class="cd-title">hellosawadika.com</div>
+            <div class="cd-sub">Reveal · Mon, Aug 24, 2026</div>
+            <div class="cd-timer" data-timer></div>
+            <a class="cd-btn" href="https://hellosawadika.com" target="_blank" rel="noopener">Visit site ↗</a>
+          </div>
         </div>
-        <a href="https://www.stationhead.com/blackpink" target="_blank" rel="noopener" style="display:inline-block;max-width:440px;width:100%;margin:0 auto 1.4rem;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.12);"><img src="/stationhead-schedule.jpg" alt="BLACKPINK 10th anniversary listening party schedule — hosted on Stationhead" loading="lazy" style="display:block;width:100%;height:auto;"></a>
-        <div id="ig-home-links" style="display:flex;flex-wrap:wrap;gap:0.6rem;justify-content:center;"></div>
       </section>
 
       <!-- NEW SINGLE banner moved to the Our Projects page (/projects). The expand
@@ -4327,6 +4349,8 @@ window.addEventListener('DOMContentLoaded', () => {
   loadCommunityGoal();
   renderReleaseCountdown();
   setInterval(renderReleaseCountdown, 1000);
+  renderHomeCountdowns();
+  setInterval(renderHomeCountdowns, 1000);
   loadJennieSaveCount();
   loadLtalStreamsGoal();
   renderItunesInlineBadge();
@@ -10372,6 +10396,24 @@ const JENNIE_RELEASE = {
   link: 'https://jennie.lnk.to/LessthanaLover',
 };
 
+// Home-page release/reveal countdown cards (#home-countdowns). Each card carries a
+// data-target ISO timestamp; on reach, it flips to the card's data-live label.
+function renderHomeCountdowns() {
+  const now = Date.now();
+  document.querySelectorAll('#home-countdowns .cd-card[data-target]').forEach(card => {
+    const timer = card.querySelector('[data-timer]');
+    if (!timer) return;
+    let diff = Date.parse(card.dataset.target) - now;
+    if (!(diff > 0)) { timer.innerHTML = `<div class="cd-out">${card.dataset.live || 'OUT NOW ✨'}</div>`; return; }
+    const d = Math.floor(diff / 86400000); diff %= 86400000;
+    const h = Math.floor(diff / 3600000);  diff %= 3600000;
+    const m = Math.floor(diff / 60000);    diff %= 60000;
+    const s = Math.floor(diff / 1000);
+    const u = (n, l) => `<div class="cd-unit"><div class="cd-num">${String(n).padStart(2, '0')}</div><div class="cd-lbl">${l}</div></div>`;
+    timer.innerHTML = u(d, 'Days') + u(h, 'Hrs') + u(m, 'Min') + u(s, 'Sec');
+  });
+}
+
 function renderReleaseCountdown() {
   const card = document.getElementById('jennie-release-card');
   const titleHeader = document.getElementById('release-title-header');
@@ -14451,12 +14493,6 @@ window.addEventListener('appinstalled', () => {
   else if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
   else mount();
 })();
-</script>
-<script src="/ig-posts.js"></script>
-<script>
-  if (window.renderIgLetterGrid) renderIgLetterGrid('ig-home-letters', window.IG_LETTERS);
-  if (window.renderIgPostsCarousel) renderIgPostsCarousel('ig-home-posts', window.IG_POSTS);
-  if (window.renderIgLinks) renderIgLinks('ig-home-links', window.IG_LINKS);
 </script>
 </body>
 </html>
