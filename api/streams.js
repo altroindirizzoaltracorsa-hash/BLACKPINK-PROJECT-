@@ -708,7 +708,10 @@ async function handleCatalogRequest(req, res) {
 
   if (!result) {
     if (cached?.total) {
-      const hist = (await redis.get(CAT_HIST_KEY)) || [];
+      // Never skip a day: even when every live source fails this run, stamp today's
+      // history entry by carrying the last known total forward (no daily delta), so
+      // the daily catalog list always advances instead of leaving a gap.
+      const hist = await updateCatalogHistory(cached.total, null);
       return res.status(200).json({ ...cached, history: hist, stale: true, errors });
     }
     return res.status(503).json({ error: 'All methods failed. Use ?action=set&total=X&key=<admin> to seed.', errors });
