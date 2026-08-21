@@ -14,12 +14,15 @@ const BU_ENDPOINT = 'https://blinksunited.com/api/vma-votes';
 // request, and note its `category` and which slot (A1, C1, …) got the votes. Un-mapped
 // categories are logged to the service-worker console (chrome://extensions → “service
 // worker”) so you can discover them.
+// A single submission can split votes across slots — e.g. cat11 came back as
+// {"cat11":{"total":10,"A1":9,"F1":1}} (9 to BLACKPINK, 1 to LISA); we sum both.
 //   cat06 (Best Pop)   → C1 = LISA
-//   cat11 (Best K-pop) → A1 = LISA or BLACKPINK (confirmed slot; add the 2nd nominee's
-//                        slot once captured — both should count)
+//   cat11 (Best K-pop) → A1 = BLACKPINK, F1 = LISA
+// These are the only two fan-voted categories BLACKPINK/members are in, so this map
+// is complete.
 const BP_SLOTS = {
   cat06: ['C1'],
-  cat11: ['A1'],
+  cat11: ['A1', 'F1'],
 };
 
 const seenTimestamps = []; // dedupe retried submissions

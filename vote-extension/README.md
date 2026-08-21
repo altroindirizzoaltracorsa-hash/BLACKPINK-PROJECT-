@@ -32,14 +32,16 @@ we've confirmed:
 
 ```js
 const BP_SLOTS = {
-  cat06: ['C1'],   // Best Pop   → LISA
-  cat11: ['A1'],   // Best K-pop → LISA / BLACKPINK
+  cat06: ['C1'],         // Best Pop   → C1 = LISA
+  cat11: ['A1', 'F1'],   // Best K-pop → A1 = BLACKPINK, F1 = LISA
 };
 ```
 
-**The slot key is not fixed** — it varies per category (Best Pop uses `C1`, Best K-pop
-uses `A1`, …), and a category can have more than one of our nominees (Best K-pop has
-both BLACKPINK and LISA). So each entry lists the exact slot(s) for *that* category.
+These are the only two **fan-voted** categories BLACKPINK/members appear in, so this map
+is complete. **The slot key is not fixed** — it varies per category and even per nominee
+(Best Pop LISA is `C1`; Best K-pop is `A1` for BLACKPINK and `F1` for LISA), and one
+submission can split votes across slots (`{"cat11":{"total":10,"A1":9,"F1":1}}` — we sum
+every slot we list). So each entry lists the exact slot(s) for *that* category.
 
 To add the rest: cast one vote for BLACKPINK/a member in a category, open DevTools →
 Network → the `vote?...` request → note its **`category`** and which slot (`A1`, `C1`,
