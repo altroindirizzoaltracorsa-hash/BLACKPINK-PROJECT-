@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-21T16:16:38.542Z",
+  "generatedAt": "2026-08-21T17:16:58.236Z",
   "date": "2026-08-21",
   "source": "https://xn--o39an51b2re.com",
   "charts": [
@@ -10,34 +10,9 @@
       "kr": "실시간 차트",
       "label": "Melon · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/melon/realtime",
-      "available": true,
-      "totalRows": 100,
-      "entries": [
-        {
-          "rank": 90,
-          "previous": 64,
-          "song": "toxic till the end",
-          "artists": "로제 (ROSÉ)",
-          "member": "ROSÉ",
-          "link": "https://www.melon.com/song/detail.htm?songId=38300904"
-        },
-        {
-          "rank": 93,
-          "previous": 78,
-          "song": "뛰어(JUMP)",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK",
-          "link": "https://www.melon.com/song/detail.htm?songId=39298775"
-        },
-        {
-          "rank": 100,
-          "previous": 73,
-          "song": "Less than a Lover",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.melon.com/song/detail.htm?songId=602584682"
-        }
-      ]
+      "available": false,
+      "totalRows": 0,
+      "entries": []
     },
     {
       "key": "melon-realtime-5-min",
@@ -806,50 +781,9 @@
       "kr": "실시간 차트",
       "label": "Genie · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/genie/realtime",
-      "available": true,
-      "totalRows": 250,
-      "entries": [
-        {
-          "rank": 47,
-          "previous": 41,
-          "song": "뛰어(JUMP)",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=110931419"
-        },
-        {
-          "rank": 71,
-          "previous": 60,
-          "song": "toxic till the end",
-          "artists": "로제 (ROSÉ)",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108575614"
-        },
-        {
-          "rank": 93,
-          "previous": 67,
-          "song": "like JENNIE",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=109342665"
-        },
-        {
-          "rank": 95,
-          "previous": 86,
-          "song": "Less than a Lover",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=116078119"
-        },
-        {
-          "rank": 106,
-          "previous": 89,
-          "song": "APT.",
-          "artists": "로제 (ROSÉ), Bruno Mars",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108107291"
-        }
-      ]
+      "available": false,
+      "totalRows": 0,
+      "entries": []
     },
     {
       "key": "genie-daily",
@@ -1034,7 +968,7 @@
       "totalRows": 100,
       "entries": [
         {
-          "rank": 52,
+          "rank": 59,
           "previous": 52,
           "song": "APT.",
           "artists": "로제 (ROSÉ), Bruno Mars",
@@ -1043,23 +977,23 @@
         },
         {
           "rank": 61,
-          "previous": 55,
-          "song": "Less than a Lover",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.music-flo.com/detail/track/599366447/details"
-        },
-        {
-          "rank": 62,
-          "previous": 54,
+          "previous": 62,
           "song": "뛰어(JUMP)",
           "artists": "BLACKPINK",
           "member": "BLACKPINK",
           "link": "https://www.music-flo.com/detail/track/547505427/details"
         },
         {
+          "rank": 62,
+          "previous": 61,
+          "song": "Less than a Lover",
+          "artists": "제니 (JENNIE)",
+          "member": "JENNIE",
+          "link": "https://www.music-flo.com/detail/track/599366447/details"
+        },
+        {
           "rank": 76,
-          "previous": 75,
+          "previous": 76,
           "song": "toxic till the end",
           "artists": "로제 (ROSÉ)",
           "member": "ROSÉ",
@@ -1254,7 +1188,7 @@
   ],
   "summary": {
     "chartsChecked": 25,
-    "chartsAvailable": 25,
-    "totalEntries": 119
+    "chartsAvailable": 23,
+    "totalEntries": 111
   }
 }
