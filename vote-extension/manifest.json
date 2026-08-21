@@ -25,9 +25,20 @@
       "all_frames": true
     },
     {
+      "matches": ["https://vote.mtv.com/*"],
+      "js": ["panel.js"],
+      "run_at": "document_idle"
+    },
+    {
       "matches": ["https://blinksunited.com/*"],
       "js": ["bu-link.js"],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/heart.png", "assets/lightstick.png"],
+      "matches": ["https://vote.mtv.com/*"]
     }
   ]
 }

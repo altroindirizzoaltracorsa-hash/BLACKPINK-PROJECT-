@@ -3,6 +3,8 @@
 //   GET  /api/vma-votes              → community totals { total, today, blinksTotal, blinksToday }
 //   GET  /api/vma-votes?board=1      → { board: [{ name, total, today, week, month }, ...] }
 //   GET  /api/vma-votes?me=1         → caller's status (Authorization: Bearer <token>)
+//   GET  /api/vma-votes?live=1       → { liveVoters } — distinct accounts that logged a
+//                                       vote in the last 90s (the "blinks voting now" pulse)
 //   POST /api/vma-votes { accessToken, votes }  → add `votes` to today (uncapped)
 //
 // To submit you must be signed in AND have a linked scrobbler (>=1 row in
@@ -91,6 +93,16 @@ export default async function handler(req, res) {
         const { data, error } = await sb.rpc('vma_vote_board');
         if (error) throw error;
         return res.status(200).json({ board: data || [] });
+      }
+      if (req.query.live) {
+        // "Blinks voting now": distinct accounts whose tally was touched in the last
+        // 90s (via the site OR the extension). Community-scoped, not a global MTV count.
+        const cutoff = new Date(Date.now() - 90 * 1000).toISOString();
+        const { data, error } = await sb.from('vma_user_votes')
+          .select('app_user_id').gte('updated_at', cutoff);
+        if (error) throw error;
+        const liveVoters = data ? new Set(data.map((r) => r.app_user_id)).size : 0;
+        return res.status(200).json({ liveVoters });
       }
       if (req.query.me) {
         const token = bearer(req);

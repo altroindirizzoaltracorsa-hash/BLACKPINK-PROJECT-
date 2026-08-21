@@ -1,31 +1,34 @@
 // Background service worker. Receives detected votes, keeps only the ones cast for
-// BLACKPINK / a member, and logs them to the blinksunited.com voting board using the
-// account link token (minted by /extension-link.html → /api/extension-link).
+// BLACKPINK / a member, logs them to the blinksunited.com voting board using the
+// account link token, and maintains the counters + activity log the on-page panel
+// (panel.js) reads from chrome.storage. Also serves the "blinks voting now" count.
 
 const BU_ENDPOINT = 'https://blinksunited.com/api/vma-votes';
 
 // ── WHICH VOTES COUNT ────────────────────────────────────────────────────────
-// Map each VMA category (the `category=` value in the vote request) to the nominee
-// slot(s) that are BLACKPINK / a member. NOTE: the slot key is NOT fixed — it varies
-// per category (Best Pop uses C1, Best K-pop uses A1, …), so each entry lists the exact
-// slot letter+number for THAT category. A category may have more than one of our
-// nominees (e.g. Best K-pop has both BLACKPINK and LISA) — list every slot we count.
-// Add entries as you confirm them: cast one vote for BLACKPINK/a member, look at the
-// request, and note its `category` and which slot (A1, C1, …) got the votes. Un-mapped
-// categories are logged to the service-worker console (chrome://extensions → “service
-// worker”) so you can discover them.
-// A single submission can split votes across slots — e.g. cat11 came back as
-// {"cat11":{"total":10,"A1":9,"F1":1}} (9 to BLACKPINK, 1 to LISA); we sum both.
+// Each VMA category (the `category=` value in the vote request) maps its nominee
+// slot(s) → the member they belong to. The slot key is NOT fixed — it varies per
+// category and per nominee (Best Pop LISA is C1; Best K-pop is A1 for BLACKPINK and
+// F1 for LISA), and one submission can split across slots
+// ({"cat11":{"total":10,"A1":9,"F1":1}}). Add entries as you confirm them; un-mapped
+// categories are logged to the service-worker console.
 //   cat06 (Best Pop)   → C1 = LISA
 //   cat11 (Best K-pop) → A1 = BLACKPINK, F1 = LISA
-// These are the only two fan-voted categories BLACKPINK/members are in, so this map
-// is complete.
+// These are the only two fan-voted categories BLACKPINK/members are in.
 const BP_SLOTS = {
-  cat06: ['C1'],
-  cat11: ['A1', 'F1'],
+  cat06: { C1: 'LISA' },
+  cat11: { A1: 'BLACKPINK', F1: 'LISA' },
 };
+const CATEGORY_NAMES = { cat06: 'Best Pop', cat11: 'Best K-Pop' };
 
 const seenTimestamps = []; // dedupe retried submissions
+
+// MTV's voting day resets at midnight ET — align the panel's "today" counters to it.
+function etDay() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+}
 
 async function postVotes(n) {
   const { buToken } = await chrome.storage.local.get('buToken');
@@ -42,7 +45,31 @@ async function postVotes(n) {
   }
 }
 
-chrome.runtime.onMessage.addListener(function (msg) {
+// Fetch the community "voting now" pulse for the panel.
+async function fetchLive() {
+  try {
+    const r = await fetch(BU_ENDPOINT + '?live=1', { cache: 'no-store' });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return typeof j.liveVoters === 'number' ? j.liveVoters : null;
+  } catch (_) { return null; }
+}
+
+// Reset the day's counters/log when the ET date rolls over, so the panel's
+// "counted today" tracks the same boundary as the /voting board.
+function rolledOver(store, today) {
+  if (store.buDay === today) return store;
+  return { buDay: today, buCount: 0, bpCount: 0, lisaCount: 0, buLog: [],
+           buPending: store.buPending || 0, buToken: store.buToken, buProfile: store.buProfile };
+}
+
+chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
+  // Panel asks for the live "voting now" number.
+  if (msg && msg.type === 'bu-live') {
+    fetchLive().then((liveVoters) => sendResponse({ liveVoters }));
+    return true; // async response
+  }
+
   if (!msg || msg.type !== 'bu-vote' || !msg.detail) return;
   const { category, slots, timestamp } = msg.detail;
 
@@ -53,29 +80,45 @@ chrome.runtime.onMessage.addListener(function (msg) {
     if (seenTimestamps.length > 60) seenTimestamps.shift();
   }
 
-  const ourSlots = BP_SLOTS[category];
-  if (!ourSlots) {
+  const map = BP_SLOTS[category];
+  if (!map) {
     console.log('[BU Vote Counter] vote in un-mapped category:', category, 'slots:', slots,
       '\n→ if this was a BLACKPINK/member vote, add it to BP_SLOTS in background.js');
     return;
   }
 
-  let n = 0;
-  for (const s of ourSlots) n += (slots[s] || 0);
+  // Sum our slots, split by member.
+  let n = 0; const perMember = {};
+  for (const slot in map) {
+    const c = slots[slot] || 0;
+    if (c > 0) { n += c; const who = map[slot]; perMember[who] = (perMember[who] || 0) + c; }
+  }
   if (n <= 0) return;
 
   postVotes(n).then(function (res) {
-    chrome.storage.local.get(['buCount', 'buPending'], function (r) {
-      const upd = {};
-      if (res.ok) {
-        upd.buCount = (r.buCount || 0) + n;
-        // Flush any previously-pending votes now that we're linked/online.
-        if (r.buPending) { postVotes(r.buPending); upd.buPending = 0; }
-      } else {
-        // Not linked yet or offline — remember so the popup can nudge, and retry later.
-        upd.buPending = (r.buPending || 0) + n;
+    const today = etDay();
+    chrome.storage.local.get(
+      ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buPending', 'buDay', 'buToken', 'buProfile'],
+      function (raw) {
+        const r = rolledOver(raw, today);
+        const upd = { buDay: today };
+        if (res.ok) {
+          upd.buCount = (r.buCount || 0) + n;
+          upd.bpCount = (r.bpCount || 0) + (perMember.BLACKPINK || 0);
+          upd.lisaCount = (r.lisaCount || 0) + (perMember.LISA || 0);
+          // Newest-first activity log (keep the last 20).
+          const who = Object.keys(perMember).map((k) => (k === 'BLACKPINK' ? 'BP' : k)).join(' + ');
+          const log = Array.isArray(r.buLog) ? r.buLog.slice() : [];
+          log.unshift({ n, cat: CATEGORY_NAMES[category] || category, who, ts: Date.now() });
+          upd.buLog = log.slice(0, 20);
+          // Flush any previously-pending votes now that we're linked/online.
+          if (r.buPending) { postVotes(r.buPending); upd.buPending = 0; }
+        } else {
+          // Not linked yet or offline — remember so the panel/popup can nudge, retry later.
+          upd.buPending = (r.buPending || 0) + n;
+        }
+        chrome.storage.local.set(upd);
       }
-      chrome.storage.local.set(upd);
-    });
+    );
   });
 });
