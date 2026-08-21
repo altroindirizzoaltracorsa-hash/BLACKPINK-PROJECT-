@@ -6,16 +6,20 @@ const BU_ENDPOINT = 'https://blinksunited.com/api/vma-votes';
 
 // ── WHICH VOTES COUNT ────────────────────────────────────────────────────────
 // Map each VMA category (the `category=` value in the vote request) to the nominee
-// slot(s) that are BLACKPINK / a member (the `C1`, `C2`, … keys). Add entries as you
-// confirm them: cast one vote for BLACKPINK in a category, look at the request, and
-// note its `category` and which `CX` got the votes. Un-mapped categories are logged
-// to the service-worker console (chrome://extensions → “service worker”) so you can
-// discover them.
-//   cat06 (Best Pop) → C1 = LISA
+// slot(s) that are BLACKPINK / a member. NOTE: the slot key is NOT fixed — it varies
+// per category (Best Pop uses C1, Best K-pop uses A1, …), so each entry lists the exact
+// slot letter+number for THAT category. A category may have more than one of our
+// nominees (e.g. Best K-pop has both BLACKPINK and LISA) — list every slot we count.
+// Add entries as you confirm them: cast one vote for BLACKPINK/a member, look at the
+// request, and note its `category` and which slot (A1, C1, …) got the votes. Un-mapped
+// categories are logged to the service-worker console (chrome://extensions → “service
+// worker”) so you can discover them.
+//   cat06 (Best Pop)   → C1 = LISA
+//   cat11 (Best K-pop) → A1 = LISA or BLACKPINK (confirmed slot; add the 2nd nominee's
+//                        slot once captured — both should count)
 const BP_SLOTS = {
   cat06: ['C1'],
-  // 'cat01': ['C1'],   // e.g. Video of the Year — BLACKPINK
-  // 'cat12': ['C3'],   // e.g. another category / member
+  cat11: ['A1'],
 };
 
 const seenTimestamps = []; // dedupe retried submissions

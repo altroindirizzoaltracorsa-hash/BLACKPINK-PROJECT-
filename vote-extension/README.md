@@ -27,20 +27,26 @@ votes for you.
    on `/voting`.
 
 ## Adding categories (important)
-`background.js` only counts categories listed in **`BP_SLOTS`**. It ships with the one
+`background.js` only counts categories listed in **`BP_SLOTS`**. It ships with the ones
 we've confirmed:
 
 ```js
 const BP_SLOTS = {
-  cat06: ['C1'],   // Best Pop → LISA
+  cat06: ['C1'],   // Best Pop   → LISA
+  cat11: ['A1'],   // Best K-pop → LISA / BLACKPINK
 };
 ```
 
+**The slot key is not fixed** — it varies per category (Best Pop uses `C1`, Best K-pop
+uses `A1`, …), and a category can have more than one of our nominees (Best K-pop has
+both BLACKPINK and LISA). So each entry lists the exact slot(s) for *that* category.
+
 To add the rest: cast one vote for BLACKPINK/a member in a category, open DevTools →
-Network → the `vote?...` request → note its **`category`** and which **`CX`** got the
-votes, then add `'<category>': ['<CX>']`. Votes in **un-mapped** categories are logged
-to the service-worker console (`chrome://extensions` → the extension's "service
-worker" link) so you can discover them as you go.
+Network → the `vote?...` request → note its **`category`** and which slot (`A1`, `C1`,
+…) got the votes, then add `'<category>': ['<slot>']` (list every slot you want counted).
+Votes in **un-mapped** categories are logged to the service-worker console
+(`chrome://extensions` → the extension's "service worker" link) so you can discover them
+as you go.
 
 ## Notes / limits
 - **Desktop Chrome only** — Chrome extensions don't run on mobile.

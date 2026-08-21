@@ -1,11 +1,17 @@
 // Runs in the PAGE (MAIN) world on vote.mtv.com, at document_start.
 // The VMA site submits each vote as an XHR/fetch POST to
 //   https://vote.mtv.com/api/prod/vote/s2/vote?...&category=cat06&total=10&C1=10
+//   https://vote.mtv.com/api/prod/vote/s2/vote?...&category=cat11&total=10&A1=10
+// The nominee-slot key is NOT fixed — it varies per category (Best Pop uses C1,
+// Best K-pop uses A1, …), so we capture ANY <letter><number> param as a slot and
+// let background.js decide which slots are BLACKPINK/a member (see BP_SLOTS).
 // We wrap fetch + XMLHttpRequest so we can read those params on a *successful*
 // submission and hand them to the isolated bridge (vote-bridge.js) via postMessage.
 // We never modify or send any request — only observe the ones the user makes.
 (function () {
   const VOTE_RE = /\/api\/prod\/vote\/s2\/vote/i;
+  // Reserved query params that are never nominee slots.
+  const RESERVED = new Set(['apikey', 'timestamp', 'action_type', 'user_id', 'method', 'category', 'total']);
 
   function parseVote(url) {
     try {
@@ -15,7 +21,10 @@
       if ((p.get('action_type') || '') !== 'vote') return null;
       const slots = {};
       for (const [k, v] of p.entries()) {
-        if (/^C\d+$/i.test(k)) slots[k.toUpperCase()] = parseInt(v, 10) || 0;
+        // A nominee slot is a single letter + digits (A1, B2, C1, …), not a reserved key.
+        if (!RESERVED.has(k.toLowerCase()) && /^[A-Z]\d+$/i.test(k)) {
+          slots[k.toUpperCase()] = parseInt(v, 10) || 0;
+        }
       }
       return {
         category: p.get('category') || null,
