@@ -54,12 +54,19 @@
     const $ = (id) => document.getElementById(id);
     const status = (html, cls) => { $('status').className = 'msg ' + (cls || ''); $('status').innerHTML = html; };
     let extensionSeen = false;
+    let pending = null; // minted token waiting to be handed over
 
-    // The extension's content script announces itself and acks the save. Same
-    // handshake the scrobbler uses, so bu-link.js needs no change.
+    function deliver() {
+      if (!pending) return;
+      window.postMessage({ source: 'bu-ext-link', token: pending.token, profile: pending.profile }, '*');
+    }
+
+    // The extension's content script announces itself and acks the save. It may
+    // announce AFTER we've already minted (older engines inject late), so we (re)send
+    // the token whenever we hear "ready" — no ordering assumptions.
     window.addEventListener('message', (e) => {
       if (e.source !== window || !e.data) return;
-      if (e.data.source === 'bu-ext-link-ready') extensionSeen = true;
+      if (e.data.source === 'bu-ext-link-ready') { extensionSeen = true; deliver(); }
       if (e.data.source === 'bu-ext-link-ack') {
         if (e.data.ok) status('✅ Linked! Your BLACKPINK & LISA votes on vote.mtv.com will now log to your profile. You can close this tab.', 'ok');
         else status('Could not save to the extension. Make sure it is installed and enabled, then reload.', 'err');
@@ -78,7 +85,8 @@
         });
         const d = await r.json();
         if (!r.ok || !d.ok) throw new Error(d.error || ('HTTP ' + r.status));
-        window.postMessage({ source: 'bu-ext-link', token: d.token, profile: d.profile }, '*');
+        pending = { token: d.token, profile: d.profile };
+        deliver(); // send now; if the extension announces later, we resend on "ready"
         $('login').classList.add('hidden');
         $('lead').textContent = `Signed in as ${d.profile}.`;
         status('Handing the token to the extension…');
