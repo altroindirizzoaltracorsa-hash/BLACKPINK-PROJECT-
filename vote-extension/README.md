@@ -25,6 +25,13 @@ votes for you.
    accounts that logged a vote in the last 90s, i.e. **our community**, NOT a global MTV
    count (which MTV doesn't expose).
 
+## Two builds: MV3 (desktop Chrome) vs MV2 (Kiwi / Android)
+`manifest.json` is Manifest V3 for desktop Chrome. **Kiwi Browser doesn't reliably
+inject MV3 content scripts**, so there's also `manifest-mv2.json` (Manifest V2, Kiwi's
+native mode). All the JS is identical and works under both — only the manifest differs.
+To make the Kiwi build, package the folder with `manifest-mv2.json` copied in as
+`manifest.json` (and omit the MV3 one). Kiwi can install the resulting `.zip` directly.
+
 ## Install (unpacked, for testing)
 1. Desktop **Chrome → `chrome://extensions`**.
 2. Turn on **Developer mode** (top-right).
