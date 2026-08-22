@@ -125,7 +125,7 @@ chrome.webRequest.onCompleted.addListener(
     const detail = parseVoteUrl(details.url);
     if (detail) processVote(detail);
   },
-  { urls: ['https://vote.mtv.com/api/prod/vote/s2/vote*'] }
+  { urls: ['https://vote.mtv.com/*'] } // broad match; parseVoteUrl() filters to the vote path
 );
 
 function processVote(detail) {

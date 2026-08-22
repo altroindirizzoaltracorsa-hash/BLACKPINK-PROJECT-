@@ -29,7 +29,7 @@
         box-shadow:0 18px 50px -12px #000, 0 0 0 1px #ff2e7733, inset 0 0 46px #ff2e7718;
         overflow:hidden; user-select:none;
       }
-      .head{ position:relative; padding:14px 16px 11px; text-align:center; border-bottom:1px solid #ff2e7722; cursor:grab; }
+      .head{ position:relative; padding:14px 16px 11px; text-align:center; border-bottom:1px solid #ff2e7722; cursor:grab; touch-action:none; }
       .head.dragging{ cursor:grabbing; }
       .titlerow{ display:flex; align-items:center; justify-content:center; gap:11px; }
       .stick{ height:40px; width:auto; filter:drop-shadow(0 2px 5px #000a) drop-shadow(0 0 7px #ff2e7755); }
@@ -37,9 +37,11 @@
       .title{ font-weight:800; font-size:15px; letter-spacing:.16em;
         background:linear-gradient(90deg,#ff8fb4,#ff2e77 55%,#ff8fb4); -webkit-background-clip:text; background-clip:text; color:transparent; }
       .sub{ font-size:9px; letter-spacing:.24em; color:#d38aa4; text-transform:uppercase; margin-top:5px; }
-      .btns{ position:absolute; top:11px; right:12px; display:flex; gap:8px; }
-      .btns button{ all:unset; color:#8a5c6c; font-size:13px; cursor:pointer; line-height:1; }
-      .btns button:hover{ color:#ff8fb4; }
+      .btns{ position:absolute; top:7px; right:8px; display:flex; gap:6px; z-index:2; }
+      .btns button{ all:unset; color:#ffb0cb; font-size:22px; font-weight:700; cursor:pointer; line-height:1;
+        width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:9px;
+        background:#ff2e7722; }
+      .btns button:active{ background:#ff2e7744; }
 
       .live{ display:flex; align-items:center; justify-content:center; gap:7px; padding:9px 12px 2px; font-size:11px; color:#ff8fb4; }
       .live .dot{ width:7px; height:7px; border-radius:50%; background:#ff2e77; box-shadow:0 0 0 0 #ff2e7799; animation:pulse 1.8s infinite; }
@@ -102,11 +104,23 @@
       .link{ all:unset; color:#ff8fb4; font-size:10.5px; cursor:pointer; text-decoration:underline; }
       .brand{ font-size:9px; letter-spacing:.1em; color:#8a5c6c; text-transform:uppercase; }
 
+      /* Collapsed "pill" — a small draggable chip that never blocks the vote UI. */
+      .pill{ display:none; align-items:center; gap:8px; padding:11px 15px; cursor:grab; touch-action:none; }
+      .pill img{ height:20px; filter:drop-shadow(0 0 5px #ff2e7788); }
+      .pill .pk{ font-weight:800; letter-spacing:.1em; font-size:12px;
+        background:linear-gradient(90deg,#ff8fb4,#ff2e77 55%,#ff8fb4); -webkit-background-clip:text; background-clip:text; color:transparent; }
+      .pill .pn{ font-variant-numeric:tabular-nums; font-weight:800; font-size:16px; color:#fff; }
+      .pill .pex{ margin-left:2px; color:#ffb0cb; font-size:15px; }
       .body.collapsed{ display:none; }
       .panel.min{ width:auto; }
+      .panel.min .head, .panel.min .body{ display:none; }
+      .panel.min .pill{ display:flex; }
     </style>
 
     <div class="panel" id="panel">
+      <div class="pill" id="pill">
+        <img src="${HEART}" alt=""><span class="pk">BU</span><span class="pn" id="pillnum">0</span><span class="pex">▸</span>
+      </div>
       <div class="head" id="head">
         <div class="btns">
           <button id="min" title="Collapse">–</button>
@@ -165,6 +179,7 @@
   const elLive = $('live'), elStatus = $('status'), elStatusTxt = $('statusTxt'), elMin = $('min');
   const elAccts = $('accts');
   const elSyncToggle = $('syncToggle'), elSyncSub = $('syncSub');
+  const elPill = $('pill'), elPillNum = $('pillnum');
   let acctOpen = false;
   let syncView = null; // last server-merged { bp, lisa, total, accounts } when sync is on
 
@@ -187,6 +202,7 @@
     const total = view ? (view.total || 0) : (s.buCount || 0);
     if (total !== lastTotal) { elTotal.classList.add('bump'); setTimeout(() => elTotal.classList.remove('bump'), 200); lastTotal = total; }
     elTotal.textContent = fmt(total);
+    elPillNum.textContent = fmt(total);
     elBP.textContent = fmt(view ? view.bp : s.bpCount);
     elLisa.textContent = fmt(view ? view.lisa : s.lisaCount);
 
@@ -288,44 +304,53 @@
   setInterval(pollLive, 20000);
 
   // ── collapse / expand ──
+  // On phones the panel starts collapsed as a small pill so it never covers the vote
+  // button; on desktop it starts open. Once the user toggles, their choice sticks.
+  function isMin(s) {
+    return s.buPanelMin === undefined ? (window.innerWidth < 560) : !!s.buPanelMin;
+  }
   function applyLayout(s) {
-    const min = !!s.buPanelMin;
+    const min = isMin(s);
     elBody.classList.toggle('collapsed', min);
     elPanel.classList.toggle('min', min);
-    elMin.textContent = min ? '+' : '–';
-    elMin.title = min ? 'Expand' : 'Collapse';
     const pos = s.buPanelPos;
     if (pos && typeof pos.left === 'number') {
-      elPanel.style.left = pos.left + 'px'; elPanel.style.top = pos.top + 'px';
-      elPanel.style.right = 'auto';
+      elPanel.style.left = pos.left + 'px'; elPanel.style.top = pos.top + 'px'; elPanel.style.right = 'auto';
     }
   }
-  elMin.onclick = (e) => {
-    e.stopPropagation();
-    chrome.storage.local.get('buPanelMin', (s) => chrome.storage.local.set({ buPanelMin: !s.buPanelMin }));
-  };
+  let justDragged = false;
+  const setMin = (v) => chrome.storage.local.set({ buPanelMin: v });
+  elMin.onclick = (e) => { e.stopPropagation(); if (!justDragged) setMin(true); };
+  elPill.addEventListener('click', () => { if (!justDragged) setMin(false); });
 
-  // ── drag ──
+  // ── drag (pointer events → works with touch on Kiwi/mobile) ──
   let drag = null;
-  elHead.addEventListener('mousedown', (e) => {
-    if (e.target.closest('.btns')) return;
+  function onDown(e) {
+    if (e.target.closest('.btns')) return; // let the collapse button work
     const r = elPanel.getBoundingClientRect();
-    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, sx: e.clientX, sy: e.clientY, moved: false };
     elHead.classList.add('dragging');
-    e.preventDefault();
-  });
-  window.addEventListener('mousemove', (e) => {
+  }
+  function onMove(e) {
     if (!drag) return;
-    const left = Math.max(4, Math.min(window.innerWidth - 60, e.clientX - drag.dx));
-    const top = Math.max(4, Math.min(window.innerHeight - 40, e.clientY - drag.dy));
+    if (Math.abs(e.clientX - drag.sx) > 4 || Math.abs(e.clientY - drag.sy) > 4) drag.moved = true;
+    const left = Math.max(4, Math.min(window.innerWidth - 48, e.clientX - drag.dx));
+    const top = Math.max(4, Math.min(window.innerHeight - 32, e.clientY - drag.dy));
     elPanel.style.left = left + 'px'; elPanel.style.top = top + 'px'; elPanel.style.right = 'auto';
-  });
-  window.addEventListener('mouseup', () => {
+    if (drag.moved) e.preventDefault();
+  }
+  function onUp() {
     if (!drag) return;
-    drag = null; elHead.classList.remove('dragging');
+    const moved = drag.moved; drag = null; elHead.classList.remove('dragging');
     const r = elPanel.getBoundingClientRect();
     chrome.storage.local.set({ buPanelPos: { left: r.left, top: r.top } });
-  });
+    if (moved) { justDragged = true; setTimeout(() => { justDragged = false; }, 250); }
+  }
+  elHead.addEventListener('pointerdown', onDown);
+  elPill.addEventListener('pointerdown', onDown);
+  window.addEventListener('pointermove', onMove, { passive: false });
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onUp);
 
   refresh();
 })();
