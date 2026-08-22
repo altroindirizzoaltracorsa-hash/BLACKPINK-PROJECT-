@@ -5,6 +5,12 @@
 
 const BU_ENDPOINT = 'https://blinksunited.com/api/vma-votes';
 
+// Promisified storage.get — MV2 / older Chromium (Kiwi) doesn't support the
+// promise-returning form of chrome.storage.local.get, only the callback form.
+function getLocal(keys) {
+  return new Promise((resolve) => chrome.storage.local.get(keys, resolve));
+}
+
 // ── WHICH VOTES COUNT ────────────────────────────────────────────────────────
 // Each VMA category (the `category=` value in the vote request) maps its nominee
 // slot(s) → the member they belong to. The slot key is NOT fixed — it varies per
@@ -31,7 +37,7 @@ function etDay() {
 }
 
 async function postVotes(n, extra) {
-  const { buToken } = await chrome.storage.local.get('buToken');
+  const { buToken } = await getLocal('buToken');
   if (!buToken || n <= 0) return { ok: false, reason: 'not-linked' };
   try {
     const r = await fetch(BU_ENDPOINT, {
@@ -48,7 +54,7 @@ async function postVotes(n, extra) {
 // Pull this account's cross-device merged view (opt-in sync). Returns
 // { bp, lisa, total, accounts } or null.
 async function fetchSync() {
-  const { buToken } = await chrome.storage.local.get('buToken');
+  const { buToken } = await getLocal('buToken');
   if (!buToken) return null;
   try {
     const r = await fetch(BU_ENDPOINT + '?sync=1', { headers: { 'X-Ext-Token': buToken }, cache: 'no-store' });
