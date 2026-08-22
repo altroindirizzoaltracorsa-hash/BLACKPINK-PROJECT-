@@ -30,19 +30,31 @@ function etDay() {
   }).format(new Date());
 }
 
-async function postVotes(n) {
+async function postVotes(n, extra) {
   const { buToken } = await chrome.storage.local.get('buToken');
   if (!buToken || n <= 0) return { ok: false, reason: 'not-linked' };
   try {
     const r = await fetch(BU_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ extToken: buToken, votes: n }),
+      body: JSON.stringify(Object.assign({ extToken: buToken, votes: n }, extra || {})),
     });
     return { ok: r.ok };
   } catch (_) {
     return { ok: false, reason: 'network' };
   }
+}
+
+// Pull this account's cross-device merged view (opt-in sync). Returns
+// { bp, lisa, total, accounts } or null.
+async function fetchSync() {
+  const { buToken } = await chrome.storage.local.get('buToken');
+  if (!buToken) return null;
+  try {
+    const r = await fetch(BU_ENDPOINT + '?sync=1', { headers: { 'X-Ext-Token': buToken }, cache: 'no-store' });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (_) { return null; }
 }
 
 // Fetch the community "voting now" pulse for the panel.
@@ -67,6 +79,12 @@ chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
   // Panel asks for the live "voting now" number.
   if (msg && msg.type === 'bu-live') {
     fetchLive().then((liveVoters) => sendResponse({ liveVoters }));
+    return true; // async response
+  }
+
+  // Panel asks for the cross-device merged view (opt-in sync).
+  if (msg && msg.type === 'bu-sync-pull') {
+    fetchSync().then((data) => sendResponse({ data }));
     return true; // async response
   }
 
@@ -95,7 +113,16 @@ chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
   }
   if (n <= 0) return;
 
-  postVotes(n).then(function (res) {
+  // When cross-device sync is on, also send the per-member split + the voting
+  // account so the server can merge this device's activity into the account view.
+  chrome.storage.local.get(['buSyncOn'], function (cfg) {
+    const extra = cfg.buSyncOn ? {
+      sync: true,
+      breakdown: perMember,
+      account: account ? { id: account, method: method || 'email' } : undefined,
+    } : undefined;
+
+  postVotes(n, extra).then(function (res) {
     const today = etDay();
     chrome.storage.local.get(
       ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buPending', 'buDay', 'buToken', 'buProfile'],
@@ -135,5 +162,6 @@ chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
         chrome.storage.local.set(upd);
       }
     );
+  });
   });
 });

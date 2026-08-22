@@ -56,6 +56,16 @@ Votes in **un-mapped** categories are logged to the service-worker console
 (`chrome://extensions` → the extension's "service worker" link) so you can discover them
 as you go.
 
+## Cross-device sync (opt-in)
+By default everything the panel shows — counts, the activity log, and the accounts
+list — is **local to that browser/device** and never leaves it; only the votes
+themselves are logged to your `/voting` account. Flip **⇄ Sync my devices** on (needs
+the account linked) and each counted vote also records today's BLACKPINK/LISA split +
+the voting account under your BU account, so the counts and accounts-used list **merge
+across every device you enable it on**. It's read back only by you (auth'd by your link
+token). Turning it off returns to local-only. Requires running `supabase/vma_ext_sync.sql`
+once. The `/voting` board total is account-wide either way.
+
 ## Notes / limits
 - **Desktop Chrome only** — Chrome extensions don't run on mobile.
 - **Count, never auto-vote** — safe under VMA rules; it only reads your own votes.

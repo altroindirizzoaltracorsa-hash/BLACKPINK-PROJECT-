@@ -84,6 +84,16 @@
       .av{ color:#ff8fb4; font-variant-numeric:tabular-nums; }
       .acctNote{ font-size:9px; color:#8a5c6c; text-align:center; padding:6px 2px 2px; }
 
+      .sync{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 12px 12px; padding:8px 10px; background:#ff2e770a; border:1px solid #ff2e7722; border-radius:11px; }
+      .sync .lab{ font-size:11px; color:#d38aa4; }
+      .sync .lab b{ color:#ff8fb4; font-weight:700; }
+      .sync .lab .sub{ display:block; font-size:9px; color:#8a5c6c; margin-top:2px; }
+      .toggle{ all:unset; cursor:pointer; flex:none; width:36px; height:20px; border-radius:11px; background:#3a1622; position:relative; transition:background .15s; }
+      .toggle[aria-checked="true"]{ background:#ff2e77; }
+      .toggle .knob{ position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:left .15s; }
+      .toggle[aria-checked="true"] .knob{ left:18px; }
+      .syncedTag{ font-size:8.5px; letter-spacing:.06em; text-transform:uppercase; color:#12000a; background:#ff8fb4; border-radius:5px; padding:1px 5px; margin-left:6px; }
+
       .foot{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 14px; border-top:1px solid #ff2e7722; background:#0a0407; }
       .status{ display:flex; align-items:center; gap:6px; font-size:10.5px; color:#d38aa4; }
       .status .d{ width:7px; height:7px; border-radius:50%; }
@@ -132,6 +142,13 @@
 
         <div class="accts" id="accts"></div>
 
+        <div class="sync">
+          <span class="lab"><b>⇄ Sync my devices</b>
+            <span class="sub" id="syncSub">Off — counts &amp; accounts stay on this device</span></span>
+          <button class="toggle" id="syncToggle" role="switch" aria-checked="false"
+            title="Merge your counts and accounts-used list across every device you enable this on. Stores your voting emails to your BU account (only you can see them)."><span class="knob"></span></button>
+        </div>
+
         <div class="foot">
           <span class="status off" id="status"><span class="d"></span><span id="statusTxt">Not linked</span></span>
           <span class="brand">blinksunited.com</span>
@@ -147,7 +164,9 @@
   const elTotal = $('total'), elBP = $('bp'), elLisa = $('lisa'), elLog = $('log');
   const elLive = $('live'), elStatus = $('status'), elStatusTxt = $('statusTxt'), elMin = $('min');
   const elAccts = $('accts');
+  const elSyncToggle = $('syncToggle'), elSyncSub = $('syncSub');
   let acctOpen = false;
+  let syncView = null; // last server-merged { bp, lisa, total, accounts } when sync is on
 
   const fmt = (n) => (n || 0).toLocaleString('en-US');
   const esc = (x) => String(x).replace(/[&<>"]/g, (c) => (
@@ -160,11 +179,22 @@
 
   let lastTotal = 0;
   function render(s) {
-    const total = s.buCount || 0;
+    // When cross-device sync is on and we have a server view, show the merged
+    // numbers/accounts; otherwise show this device's local ones.
+    const synced = !!s.buSyncOn && !!s.buToken;
+    const view = synced && syncView ? syncView : null;
+
+    const total = view ? (view.total || 0) : (s.buCount || 0);
     if (total !== lastTotal) { elTotal.classList.add('bump'); setTimeout(() => elTotal.classList.remove('bump'), 200); lastTotal = total; }
     elTotal.textContent = fmt(total);
-    elBP.textContent = fmt(s.bpCount);
-    elLisa.textContent = fmt(s.lisaCount);
+    elBP.textContent = fmt(view ? view.bp : s.bpCount);
+    elLisa.textContent = fmt(view ? view.lisa : s.lisaCount);
+
+    // Sync toggle + caption.
+    elSyncToggle.setAttribute('aria-checked', s.buSyncOn ? 'true' : 'false');
+    elSyncSub.textContent = s.buSyncOn
+      ? 'On — merging across your devices'
+      : 'Off — counts & accounts stay on this device';
 
     const log = Array.isArray(s.buLog) ? s.buLog : [];
     if (!log.length) {
@@ -187,17 +217,20 @@
       if (lb) lb.onclick = () => window.open('https://blinksunited.com/extension-link.html', '_blank');
     }
 
-    // Accounts you've voted with today (local to this browser — never sent anywhere).
-    const accts = Array.isArray(s.buAccounts) ? s.buAccounts : [];
+    // Accounts you've voted with today. Local to this browser unless sync is on, in
+    // which case it's the merged list across your devices.
+    const accts = view ? (view.accounts || []) : (Array.isArray(s.buAccounts) ? s.buAccounts : []);
     let ah = '<button class="acctToggle" id="acctToggle">🔑 Accounts used today · ' + accts.length
+      + (synced ? '<span class="syncedTag">synced</span>' : '')
       + '<span class="caret">' + (acctOpen ? '▾' : '▸') + '</span></button>';
     if (acctOpen) {
       if (accts.length) {
-        ah += '<div class="acctList">' + accts.slice().sort((a, b) => b.lastTs - a.lastTs).map((a) =>
+        const sorted = accts.slice().sort((a, b) => (b.lastTs || 0) - (a.lastTs || 0) || (b.votes || 0) - (a.votes || 0));
+        ah += '<div class="acctList">' + sorted.map((a) =>
           '<div class="acctRow"><span class="aid" title="' + esc(a.id) + '">' + esc(a.id) + '</span>'
           + '<span class="am">' + esc(a.method || 'email') + '</span>'
           + '<span class="av">' + fmt(a.votes) + '</span></div>').join('')
-          + '<div class="acctNote">Stored on this device only</div></div>';
+          + '<div class="acctNote">' + (synced ? 'Synced to your BU account — only you can see this' : 'Stored on this device only') + '</div></div>';
       } else {
         ah += '<div class="acctList"><div class="acctNote">No accounts yet — vote and the emails/logins you use will appear here.</div></div>';
       }
@@ -207,16 +240,40 @@
     if (at) at.onclick = () => { acctOpen = !acctOpen; refresh(); };
   }
 
-  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buPanelPos', 'buPanelMin'];
+  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin'];
   function refresh() { chrome.storage.local.get(KEYS, (s) => { applyLayout(s); render(s); }); }
 
   // React to background updates immediately.
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
     if (Object.keys(changes).some((k) => KEYS.includes(k))) refresh();
+    // A vote just landed — pull the merged view too if sync is on.
+    if (changes.buCount) pollSync();
   });
   // Keep the relative timestamps fresh.
   setInterval(refresh, 15000);
+
+  // ── cross-device sync (opt-in) ──
+  function pollSync() {
+    chrome.storage.local.get(['buSyncOn', 'buToken'], (s) => {
+      if (!s.buSyncOn || !s.buToken) { if (syncView) { syncView = null; refresh(); } return; }
+      try {
+        chrome.runtime.sendMessage({ type: 'bu-sync-pull' }, (resp) => {
+          if (chrome.runtime.lastError) return;
+          if (resp && resp.data) { syncView = resp.data; refresh(); }
+        });
+      } catch (_) {}
+    });
+  }
+  elSyncToggle.onclick = () => {
+    chrome.storage.local.get(['buToken', 'buSyncOn'], (s) => {
+      if (!s.buToken) { window.open('https://blinksunited.com/extension-link.html', '_blank'); return; }
+      const next = !s.buSyncOn;
+      chrome.storage.local.set({ buSyncOn: next }, () => { if (next) pollSync(); else { syncView = null; refresh(); } });
+    });
+  };
+  pollSync();
+  setInterval(pollSync, 20000);
 
   // ── live "voting now" poll ──
   function pollLive() {

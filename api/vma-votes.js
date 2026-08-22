@@ -5,7 +5,10 @@
 //   GET  /api/vma-votes?me=1         → caller's status (Authorization: Bearer <token>)
 //   GET  /api/vma-votes?live=1       → { liveVoters } — distinct accounts that logged a
 //                                       vote in the last 90s (the "blinks voting now" pulse)
+//   GET  /api/vma-votes?sync=1       → { bp, lisa, total, accounts } — this account's
+//                                       cross-device merged view (X-Ext-Token header; opt-in)
 //   POST /api/vma-votes { accessToken, votes }  → add `votes` to today (uncapped)
+//        extra (extension, sync mode): { extToken, votes, sync, breakdown:{BLACKPINK,LISA}, account:{id,method} }
 //
 // To submit you must be signed in AND have a linked scrobbler (>=1 row in
 // linked_accounts) — i.e. an actual streaming blink. Enforced below.
@@ -80,7 +83,7 @@ async function myStreams(sb, uid) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Ext-Token');
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -93,6 +96,22 @@ export default async function handler(req, res) {
         const { data, error } = await sb.rpc('vma_vote_board');
         if (error) throw error;
         return res.status(200).json({ board: data || [] });
+      }
+      if (req.query.sync) {
+        // Cross-device merged view for the extension (opt-in). Auth via the link
+        // token in the x-ext-token header; returns ONLY this account's own data.
+        const extToken = String(req.headers['x-ext-token'] || '').trim();
+        if (!extToken) return res.status(401).json({ error: 'link required' });
+        const { data: tok } = await sb.from('scrobble_tokens')
+          .select('app_user_id').eq('token', extToken).maybeSingle();
+        if (!tok) return res.status(401).json({ error: 'link required' });
+        const { data } = await sb.from('vma_ext_sync')
+          .select('bp, lisa, accounts').eq('app_user_id', tok.app_user_id).eq('day', etDay()).maybeSingle();
+        const bp = data?.bp || 0, lisa = data?.lisa || 0;
+        const accounts = Object.entries(data?.accounts || {}).map(([id, v]) => ({
+          id, method: (v && v.method) || 'email', votes: (v && v.votes) || 0,
+        }));
+        return res.status(200).json({ bp, lisa, total: bp + lisa, accounts });
       }
       if (req.query.live) {
         // "Blinks voting now": distinct accounts whose tally was touched in the last
@@ -162,6 +181,25 @@ export default async function handler(req, res) {
         { onConflict: 'app_user_id,day' },
       );
       if (upErr) return res.status(500).json({ error: upErr.message });
+
+      // Opt-in cross-device sync: when the extension is in sync mode it sends the
+      // per-member breakdown + the voting account, and we record them under this BU
+      // account so the user's other devices see a merged view. Best-effort — never
+      // fail the vote if the sync write hiccups. Only via extToken (the extension).
+      if (extToken && body.sync) {
+        try {
+          const bd = body.breakdown || {};
+          const acct = body.account || {};
+          await sb.rpc('vma_ext_sync_add', {
+            p_uid: user.id, p_day: day,
+            p_bp: parseInt(bd.BLACKPINK, 10) || 0,
+            p_lisa: parseInt(bd.LISA, 10) || 0,
+            p_email: (acct.id ? String(acct.id).slice(0, 320) : null),
+            p_method: (acct.method ? String(acct.method).slice(0, 32) : null),
+            p_n: votes,
+          });
+        } catch { /* ignore — sync is a convenience, the vote already saved */ }
+      }
 
       // The vote is saved. Compute fresh totals for the response, but never fail
       // the request if that read hiccups — the write already succeeded, so a 500
