@@ -14,8 +14,9 @@ votes for you.
 3. `background.js` keeps only the slots that are BLACKPINK/a member (see `BP_SLOTS`)
    and POSTs those votes to `blinksunited.com/api/vma-votes` using your account
    **link token**.
-4. You link once at **blinksunited.com/extension-link.html** (same login link the
-   scrobbler uses) — `bu-link.js` stores the token; the popup shows your live count.
+4. You link once at **blinksunited.com/vote-link.html** (sign in with Google / X /
+   Discord / magic link — same account as the site) — `bu-link.js` stores the token;
+   the popup shows your live count.
 5. `panel.js` draws an on-page **BLINKS UNITED panel** right on `vote.mtv.com` (in a
    shadow root so MTV's styles can't touch it): the running "counted today" total, a
    BLACKPINK / LISA split, a live activity log, and a **"blinks voting now"** pulse. It's

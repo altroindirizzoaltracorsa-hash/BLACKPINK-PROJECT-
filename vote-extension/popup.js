@@ -21,7 +21,7 @@ function escapeHtml(x) {
 }
 
 document.getElementById('link').onclick = function () {
-  chrome.tabs.create({ url: 'https://blinksunited.com/extension-link.html' });
+  chrome.tabs.create({ url: 'https://blinksunited.com/vote-link.html' });
 };
 document.getElementById('reset').onclick = function () {
   chrome.storage.local.set({ buCount: 0, buPending: 0 }, render);

@@ -214,7 +214,7 @@
       elStatus.className = 'status off';
       elStatusTxt.innerHTML = '<button class="link" id="linkBtn">Link your account</button>';
       const lb = root.getElementById('linkBtn');
-      if (lb) lb.onclick = () => window.open('https://blinksunited.com/extension-link.html', '_blank');
+      if (lb) lb.onclick = () => window.open('https://blinksunited.com/vote-link.html', '_blank');
     }
 
     // Accounts you've voted with today. Local to this browser unless sync is on, in
@@ -267,7 +267,7 @@
   }
   elSyncToggle.onclick = () => {
     chrome.storage.local.get(['buToken', 'buSyncOn'], (s) => {
-      if (!s.buToken) { window.open('https://blinksunited.com/extension-link.html', '_blank'); return; }
+      if (!s.buToken) { window.open('https://blinksunited.com/vote-link.html', '_blank'); return; }
       const next = !s.buSyncOn;
       chrome.storage.local.set({ buSyncOn: next }, () => { if (next) pollSync(); else { syncView = null; refresh(); } });
     });
