@@ -155,7 +155,13 @@ export default async function handler(req, res) {
           .from('scrobble_tokens').select('app_user_id, label').eq('token', extToken).maybeSingle();
         if (!tok) return res.status(401).json({ error: 'Link your blinksunited account in the extension first.' });
         uid = tok.app_user_id;
-        name = null; // let the board resolve the name (display_name → handle → blinkN)
+        // Use the account's real display name (same source as the website path) so the
+        // board shows it — not a linked scrobbler handle like "jumppink". Falls back to
+        // null (→ board resolves handle/blinkN) only if the lookup fails or none is set.
+        try {
+          const { data: got } = await sb.auth.admin.getUserById(uid);
+          name = (got && got.user && got.user.user_metadata && got.user.user_metadata.display_name) || null;
+        } catch (_) { name = null; }
       } else {
         if (!token) return res.status(401).json({ error: 'Sign in to log your votes' });
         const { data: { user } = {}, error: authErr } = await sb.auth.getUser(token);

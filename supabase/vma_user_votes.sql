@@ -65,8 +65,12 @@ as $$
     group by app_user_id
   ),
   latest_name as (
+    -- Most recent NON-NULL display name. Votes logged by the extension may carry a
+    -- null name; ignoring nulls here means such a row can't wipe out the real name
+    -- (otherwise the board would fall through to a scrobbler handle like "jumppink").
     select distinct on (app_user_id) app_user_id, display_name
     from vma_user_votes
+    where display_name is not null and display_name <> ''
     order by app_user_id, day desc, updated_at desc
   ),
   -- Fallback handle from the linked scrobbler (prefer Last.fm, else most recent),
