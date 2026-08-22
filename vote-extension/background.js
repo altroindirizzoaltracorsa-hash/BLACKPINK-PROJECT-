@@ -87,9 +87,49 @@ chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
     fetchSync().then((data) => sendResponse({ data }));
     return true; // async response
   }
+});
 
-  if (!msg || msg.type !== 'bu-vote' || !msg.detail) return;
-  const { category, slots, timestamp, account, method } = msg.detail;
+// Query params on the vote request that are never nominee slots.
+const RESERVED = new Set(['apikey', 'timestamp', 'action_type', 'user_id', 'method', 'category', 'total']);
+
+// Read a vote submission straight off its URL — everything we need (category, the
+// nominee slots, total, timestamp, and the voting account) is in the query string:
+//   .../api/prod/vote/s2/vote?...&category=cat11&total=10&A1=9&F1=1&user_id=…&method=…
+// We watch this with chrome.webRequest instead of hooking page-world fetch/XHR, so
+// there's no `world:"MAIN"` content script — which keeps it working on older
+// Chromium (e.g. Kiwi) as well as current Chrome.
+function parseVoteUrl(url) {
+  try {
+    const u = new URL(url);
+    if (!/\/api\/prod\/vote\/s2\/vote/i.test(u.pathname)) return null;
+    const p = u.searchParams;
+    if ((p.get('action_type') || '') !== 'vote') return null;
+    const slots = {};
+    for (const [k, v] of p.entries()) {
+      if (!RESERVED.has(k.toLowerCase()) && /^[A-Z]\d+$/i.test(k)) slots[k.toUpperCase()] = parseInt(v, 10) || 0;
+    }
+    return {
+      category: p.get('category') || null,
+      slots,
+      total: parseInt(p.get('total'), 10) || 0,
+      timestamp: p.get('timestamp') || null,
+      account: p.get('user_id') || null,
+      method: p.get('method') || null,
+    };
+  } catch (_) { return null; }
+}
+
+chrome.webRequest.onCompleted.addListener(
+  function (details) {
+    if (details.statusCode < 200 || details.statusCode >= 300) return;
+    const detail = parseVoteUrl(details.url);
+    if (detail) processVote(detail);
+  },
+  { urls: ['https://vote.mtv.com/api/prod/vote/s2/vote*'] }
+);
+
+function processVote(detail) {
+  const { category, slots, timestamp, account, method } = detail;
 
   // Dedupe identical retried submissions.
   if (timestamp) {
@@ -164,4 +204,4 @@ chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
     );
   });
   });
-});
+}

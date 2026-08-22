@@ -3,7 +3,7 @@
   "name": "Blinks United — VMA Vote Counter",
   "version": "1.0.0",
   "description": "Counts the BLACKPINK & members votes you cast on the MTV VMA site and logs them to your blinksunited.com voting board.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "webRequest"],
   "host_permissions": [
     "https://vote.mtv.com/*",
     "https://blinksunited.com/*"
@@ -11,19 +11,6 @@
   "background": { "service_worker": "background.js" },
   "action": { "default_popup": "popup.html", "default_title": "BU Vote Counter" },
   "content_scripts": [
-    {
-      "matches": ["https://vote.mtv.com/*"],
-      "js": ["interceptor.js"],
-      "run_at": "document_start",
-      "world": "MAIN",
-      "all_frames": true
-    },
-    {
-      "matches": ["https://vote.mtv.com/*"],
-      "js": ["vote-bridge.js"],
-      "run_at": "document_start",
-      "all_frames": true
-    },
     {
       "matches": ["https://vote.mtv.com/*"],
       "js": ["panel.js"],

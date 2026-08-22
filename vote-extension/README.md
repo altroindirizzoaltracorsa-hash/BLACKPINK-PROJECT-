@@ -6,14 +6,15 @@ numbers into "Add votes". It only *observes* the votes you cast yourself; it nev
 votes for you.
 
 ## How it works
-1. On `vote.mtv.com`, `interceptor.js` (page world) watches the site's own vote
-   request:
-   `POST /api/prod/vote/s2/vote?...&category=cat06&total=10&C1=10` → response
-   `{"votestring":"{\"cat06\":{\"total\":10,\"C1\":10}}","response_code":"20"}`.
-2. On a **successful** submission it reads `category` + the nominee slots (`C1`, `C2`…).
-3. `background.js` keeps only the slots that are BLACKPINK/a member (see `BP_SLOTS`)
-   and POSTs those votes to `blinksunited.com/api/vma-votes` using your account
-   **link token**.
+1. `background.js` watches the site's own vote request with **`chrome.webRequest`**:
+   `POST /api/prod/vote/s2/vote?...&category=cat11&total=10&A1=9&F1=1` (everything —
+   category, nominee slots, the voting account — is in the URL). Using webRequest
+   instead of a page-world (`world:"MAIN"`) hook keeps it working on older Chromium
+   like **Kiwi**, not just Chrome 111+.
+2. On a **successful** submission (HTTP 200) it reads `category` + the nominee slots
+   (`A1`, `C1`, `F1`…).
+3. It keeps only the slots that are BLACKPINK/a member (see `BP_SLOTS`) and POSTs those
+   votes to `blinksunited.com/api/vma-votes` using your account **link token**.
 4. You link once at **blinksunited.com/vote-link.html** (sign in with Google / X /
    Discord / magic link — same account as the site) — `bu-link.js` stores the token;
    the popup shows your live count.
@@ -68,13 +69,14 @@ token). Turning it off returns to local-only. Requires running `supabase/vma_ext
 once. The `/voting` board total is account-wide either way.
 
 ## Notes / limits
-- **Desktop Chrome only** — Chrome extensions don't run on mobile.
+- **Desktop Chrome, or mobile Kiwi Browser** — regular mobile Chrome can't run
+  extensions, but Kiwi (Android, Chromium-based) can, and this build avoids the
+  modern-only features (`world:"MAIN"`) that used to break it there.
 - **Count, never auto-vote** — safe under VMA rules; it only reads your own votes.
 - **Not tamper-proof**, but far harder to inflate than typing a number — a real
   honour-system upgrade.
 - **Brittle to MTV changes** — if MTV changes the vote endpoint/params next cycle,
-  `interceptor.js` / `BP_SLOTS` need a small update.
-- **Requires Chrome 111+** (uses a `world: "MAIN"` content script).
+  `parseVoteUrl` / `BP_SLOTS` in `background.js` need a small update.
 
 ## Publishing (optional)
 To share it beyond "load unpacked", publish to the **Chrome Web Store** (one-time $5
