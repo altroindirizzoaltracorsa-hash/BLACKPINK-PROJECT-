@@ -19,23 +19,4 @@
       );
     }
   });
-
-  // Diagnostic (link page only): a visible marker proves the content script actually
-  // injected in this browser. If you see it, injection works and any remaining problem
-  // is the handshake; if you never see it, this browser isn't injecting content scripts.
-  if (location.pathname.indexOf('vote-link') !== -1) {
-    function badge() {
-      try {
-        if (document.getElementById('bu-cs-badge')) return;
-        var d = document.createElement('div');
-        d.id = 'bu-cs-badge';
-        d.textContent = '🩷 vote-counter script active (v1.1.0)';
-        d.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:2147483647;background:#ff2e77;'
-          + 'color:#12000a;font:12px/1.3 -apple-system,sans-serif;padding:6px 10px;border-radius:8px;'
-          + 'box-shadow:0 4px 14px #0008;';
-        (document.body || document.documentElement).appendChild(d);
-      } catch (_) {}
-    }
-    if (document.body) badge(); else document.addEventListener('DOMContentLoaded', badge);
-  }
 })();
