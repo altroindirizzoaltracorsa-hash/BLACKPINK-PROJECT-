@@ -111,6 +111,7 @@ export default async function handler(req, res) {
         const accounts = Object.entries(data?.accounts || {}).map(([id, v]) => ({
           id, method: (v && v.method) || 'email', votes: (v && v.votes) || 0,
           cats: (v && Array.isArray(v.cats)) ? v.cats : [],
+          lastTs: (v && v.ts) || 0, // so the panel sorts synced accounts chronologically too
         }));
         return res.status(200).json({ bp, lisa, total: bp + lisa, accounts });
       }

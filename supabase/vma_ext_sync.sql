@@ -44,7 +44,8 @@ as $$
          else jsonb_build_object(p_email, jsonb_build_object(
                 'method', coalesce(p_method, 'email'),
                 'votes',  coalesce(p_n, 0),
-                'cats',   case when coalesce(p_cat, '') = '' then '[]'::jsonb else jsonb_build_array(p_cat) end))
+                'cats',   case when coalesce(p_cat, '') = '' then '[]'::jsonb else jsonb_build_array(p_cat) end,
+                'ts',     (extract(epoch from now()) * 1000)::bigint))
     end,
     now()
   )
@@ -65,7 +66,8 @@ as $$
                    union
                    select p_cat where coalesce(p_cat, '') <> ''
                  ) s
-               )
+               ),
+               'ts',     (extract(epoch from now()) * 1000)::bigint
              )
            )
     end,
