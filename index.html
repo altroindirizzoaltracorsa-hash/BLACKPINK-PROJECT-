@@ -7643,13 +7643,16 @@ function showBreakdown(type, key) {
 }
 
 // Composition popup — tapping "Total BP Scrobbles" or "Solo Scrobbles" breaks
-// the all-time total down by SONG/MEMBER (not by account). kind: 'bp' | 'solo'.
-//   bp   → the 4 campaign group tracks + "Other BLACKPINK songs" (= the rest of
-//          the group total). LTAL is excluded here — it's a JENNIE solo, so it
-//          shows under the solo breakdown instead.
-//   solo → one row per member (JISOO / JENNIE / ROSÉ / LISA).
-// Each also lists the per-account split below, so nothing the old per-account
-// view showed is lost.
+// the all-time total down by SONG (not by member/account). kind: 'bp' | 'solo'.
+//   bp   → each BLACKPINK-GROUP campaign track + "Other BLACKPINK songs" (the
+//          rest of the group total). Solo campaign tracks (e.g. LTAL) are excluded
+//          here — they belong to the solo breakdown.
+//   solo → each SOLO campaign track individually (Less Than A Lover now; future
+//          member releases once added to TRACKS) + "Other solo songs" — one
+//          member-agnostic remainder, NO per-member split.
+// Both rows are derived from TRACKS by artist, so adding a campaign track later
+// makes it appear in the right popup automatically. Each also lists the
+// per-account split below (no member distinction), preserving the old view.
 function showComposition(kind) {
   if (!acctBreakdown || !acctBreakdown.length) return;
   const sum = (fn) => acctBreakdown.reduce((s, a) => s + (Number(fn(a)) || 0), 0);
@@ -7659,20 +7662,18 @@ function showComposition(kind) {
       <div class="breakdown-val">${(Number(val) || 0).toLocaleString()}</div>
     </div>`;
   const hdr = (t) => `<div class="breakdown-section-hdr">${t}</div>`;
+  const isSolo = (t) => String(t.artist || '').toLowerCase() !== 'blackpink';
 
   let title, grand, html = '';
   if (kind === 'solo') {
-    title = 'Solo Scrobbles — by member';
-    const m = {
-      JISOO:  sum(a => a.memberPlays?.jisoo),
-      JENNIE: sum(a => a.memberPlays?.jennie),
-      'ROSÉ': sum(a => a.memberPlays?.rose),
-      LISA:   sum(a => a.memberPlays?.lisa),
-    };
-    grand = Object.values(m).reduce((s, v) => s + v, 0);
-    html += hdr('By member');
-    for (const [name, v] of Object.entries(m)) html += row(name, v);
-    // Per-account split (each account's combined solo total)
+    title = 'Solo Scrobbles — by song';
+    grand = ['jisoo','jennie','rose','lisa'].reduce((s, k) => s + sum(a => a.memberPlays?.[k]), 0);
+    const soloTracks = TRACKS.filter(isSolo);
+    let named = 0;
+    html += hdr('Solo campaign songs');
+    for (const t of soloTracks) { const v = sum(a => a.totalPlays?.[t.id]); named += v; html += row(t.title, v); }
+    // Everything else solo, all members combined (no per-member distinction).
+    html += row('Other solo songs', Math.max(0, grand - named));
     const perAcct = acctBreakdown
       .map(a => ({ a, v: ['jisoo','jennie','rose','lisa'].reduce((s,k)=>s+(a.memberPlays?.[k]||0),0) }))
       .filter(x => x.v > 0);
@@ -7682,16 +7683,12 @@ function showComposition(kind) {
     }
   } else {
     title = 'Total BP Scrobbles — by song';
-    const jump = sum(a => a.totalPlays?.jump), shutdown = sum(a => a.totalPlays?.shutdown),
-          ddududu = sum(a => a.totalPlays?.ddududu), go = sum(a => a.totalPlays?.go);
     grand = sum(a => a.artistPlays);
-    const other = Math.max(0, grand - (jump + shutdown + ddududu + go));
+    const groupTracks = TRACKS.filter(t => !isSolo(t));
+    let named = 0;
     html += hdr('By song');
-    html += row('JUMP', jump);
-    html += row('Shut Down', shutdown);
-    html += row('DDU-DU DDU-DU', ddududu);
-    html += row('GO', go);
-    html += row('Other BLACKPINK songs', other);
+    for (const t of groupTracks) { const v = sum(a => a.totalPlays?.[t.id]); named += v; html += row(t.title, v); }
+    html += row('Other BLACKPINK songs', Math.max(0, grand - named));
     const perAcct = acctBreakdown.filter(a => (a.artistPlays || 0) > 0);
     if (perAcct.length) {
       html += hdr('By account');
