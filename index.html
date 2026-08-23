@@ -7642,6 +7642,71 @@ function showBreakdown(type, key) {
   document.body.style.overflow = 'hidden';
 }
 
+// Composition popup — tapping "Total BP Scrobbles" or "Solo Scrobbles" breaks
+// the all-time total down by SONG/MEMBER (not by account). kind: 'bp' | 'solo'.
+//   bp   → the 4 campaign group tracks + "Other BLACKPINK songs" (= the rest of
+//          the group total). LTAL is excluded here — it's a JENNIE solo, so it
+//          shows under the solo breakdown instead.
+//   solo → one row per member (JISOO / JENNIE / ROSÉ / LISA).
+// Each also lists the per-account split below, so nothing the old per-account
+// view showed is lost.
+function showComposition(kind) {
+  if (!acctBreakdown || !acctBreakdown.length) return;
+  const sum = (fn) => acctBreakdown.reduce((s, a) => s + (Number(fn(a)) || 0), 0);
+  const row = (label, val, sub) => `
+    <div class="breakdown-row">
+      <div class="breakdown-acct">${label}${sub ? `<span class="breakdown-acct-source">${sub}</span>` : ''}</div>
+      <div class="breakdown-val">${(Number(val) || 0).toLocaleString()}</div>
+    </div>`;
+  const hdr = (t) => `<div class="breakdown-section-hdr">${t}</div>`;
+
+  let title, grand, html = '';
+  if (kind === 'solo') {
+    title = 'Solo Scrobbles — by member';
+    const m = {
+      JISOO:  sum(a => a.memberPlays?.jisoo),
+      JENNIE: sum(a => a.memberPlays?.jennie),
+      'ROSÉ': sum(a => a.memberPlays?.rose),
+      LISA:   sum(a => a.memberPlays?.lisa),
+    };
+    grand = Object.values(m).reduce((s, v) => s + v, 0);
+    html += hdr('By member');
+    for (const [name, v] of Object.entries(m)) html += row(name, v);
+    // Per-account split (each account's combined solo total)
+    const perAcct = acctBreakdown
+      .map(a => ({ a, v: ['jisoo','jennie','rose','lisa'].reduce((s,k)=>s+(a.memberPlays?.[k]||0),0) }))
+      .filter(x => x.v > 0);
+    if (perAcct.length) {
+      html += hdr('By account');
+      for (const { a, v } of perAcct) html += row(a.username, v, ACCOUNT_SOURCE_LABELS[a.source] || a.source);
+    }
+  } else {
+    title = 'Total BP Scrobbles — by song';
+    const jump = sum(a => a.totalPlays?.jump), shutdown = sum(a => a.totalPlays?.shutdown),
+          ddududu = sum(a => a.totalPlays?.ddududu), go = sum(a => a.totalPlays?.go);
+    grand = sum(a => a.artistPlays);
+    const other = Math.max(0, grand - (jump + shutdown + ddududu + go));
+    html += hdr('By song');
+    html += row('JUMP', jump);
+    html += row('Shut Down', shutdown);
+    html += row('DDU-DU DDU-DU', ddududu);
+    html += row('GO', go);
+    html += row('Other BLACKPINK songs', other);
+    const perAcct = acctBreakdown.filter(a => (a.artistPlays || 0) > 0);
+    if (perAcct.length) {
+      html += hdr('By account');
+      for (const a of perAcct) html += row(a.username, a.artistPlays, ACCOUNT_SOURCE_LABELS[a.source] || a.source);
+    }
+  }
+
+  document.getElementById('breakdown-title').textContent = '// ' + title;
+  document.getElementById('breakdown-rows').innerHTML = html;
+  document.getElementById('breakdown-grand-total').textContent = grand.toLocaleString();
+  const overlay = document.getElementById('breakdown-overlay');
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
 function closeBreakdown() {
   document.getElementById('breakdown-overlay').style.display = 'none';
   document.body.style.overflow = '';
@@ -8301,21 +8366,23 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   const challengeLabel = dailyDone ? 'Daily Complete!' : (weeklyDone ? 'Weekly Done' : 'Challenges Active');
   const _tap = acctBreakdown && acctBreakdown.length > 1;
   const _tc = (type, key) => _tap ? `class="summary-num tappable" onclick="showBreakdown('${type}'${key?`,'${key}'`:''})"` : 'class="summary-num"';
+  // Tapping a total opens its composition popup (Total BP → by song, Solo → by
+  // member). Only made tappable when there's something to break down.
+  const _cc = (kind, val) => (val > 0) ? `class="summary-num tappable" onclick="showComposition('${kind}')"` : 'class="summary-num"';
   // Combined solo-member scrobbles (JISOO + JENNIE + ROSÉ + LISA), summed across
-  // all linked accounts. Shown as a single non-tappable total on purpose — the
-  // per-member split is intentionally not exposed. null when solo data wasn't
-  // fetched (legacy single-username path), in which case the box is omitted.
+  // all linked accounts. Tap it to see the per-member split. null when solo data
+  // wasn't fetched (legacy single-username path), in which case the box is omitted.
   const soloTotal = memberPlays
     ? Object.values(memberPlays).reduce((a, b) => a + (Number(b) || 0), 0)
     : null;
   const soloCell = soloTotal != null ? `
     <div class="summary-cell">
-      <div class="summary-num">${soloTotal.toLocaleString()}</div>
+      <div ${_cc('solo', soloTotal)}>${soloTotal.toLocaleString()}</div>
       <div class="summary-lbl">Solo Scrobbles (all time)</div>
     </div>` : '';
   document.getElementById('profile-summary').innerHTML = `
     <div class="summary-cell">
-      <div ${_tc('artistPlays')}>${artistPlays.toLocaleString()}</div>
+      <div ${_cc('bp', artistPlays)}>${artistPlays.toLocaleString()}</div>
       <div class="summary-lbl">Total BP Scrobbles (all time)</div>
     </div>${soloCell}
     <div class="summary-cell">
@@ -9020,6 +9087,11 @@ if (lbInputEl) lbInputEl.addEventListener('keydown', e => { if (e.key === 'Enter
   .breakdown-acct-source { font-size: .65rem; color: var(--muted); display: block; }
   .breakdown-acct-ago { font-size: .6rem; color: var(--muted); display: block; font-style: italic; }
   .breakdown-val { color: var(--pink); font-size: 1.1rem; font-weight: 700; flex-shrink: 0; }
+  .breakdown-section-hdr {
+    font-family: var(--mono); font-size: .58rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--muted); margin: 1rem 0 .1rem; padding-top: .6rem; border-top: 1px solid rgba(255,255,255,.06);
+  }
+  .breakdown-section-hdr:first-child { margin-top: 0; padding-top: 0; border-top: none; }
   .breakdown-total-row {
     display: flex; justify-content: space-between;
     align-items: center; margin-top: .75rem;
