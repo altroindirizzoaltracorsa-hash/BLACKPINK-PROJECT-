@@ -7903,6 +7903,15 @@ async function loadMultiAccountProfile(accounts) {
       combined.todayCounts[k] += extAcct.todayCounts[k] || 0;
       combined.weekCounts[k]  += extAcct.weekCounts[k]  || 0;
     }
+    // Fold the extension's own BP-group and solo plays into the combined totals
+    // so they show in the "Total BP Scrobbles" / "Solo Scrobbles" boxes and count
+    // on the leaderboard. Submitted with extensionIncluded=true, so the server
+    // does NOT re-add extension counts — no double count.
+    combined.artistPlays  += extAcct.artistPlays  || 0;
+    combined.bpGroupPlays += extAcct.bpGroupPlays || 0;
+    for (const m of ['jisoo','jennie','rose','lisa']) {
+      combined.memberPlays[m] += extAcct.memberPlays?.[m] || 0;
+    }
     if (extAcct.lastScrobbleTs && (!combined.lastScrobbleTs || extAcct.lastScrobbleTs > combined.lastScrobbleTs)) {
       combined.lastScrobbleTs = extAcct.lastScrobbleTs;
     }
@@ -8111,6 +8120,11 @@ async function buildExtensionAccount() {
     const totalPlays = zero(), todayCounts = zero(), weekCounts = zero();
     const weekDayCounts = Array.from({ length: 7 }, () => zero());
     let lastTs = 0, total = 0;
+    // Non-campaign category buckets (all-time), written by api/ingest-scrobble.js:
+    //   bp_group    → BLACKPINK-group songs that aren't campaign tracks
+    //   solo_<name> → each member's solo songs that aren't campaign tracks
+    let bpGroupExtra = 0;
+    const memberExtra = { jisoo: 0, jennie: 0, rose: 0, lisa: 0 };
     // Counted in the database (see supabase/extension_counts_fn.sql) so it scales
     // to unlimited rows — no per-query 1000-row cap, no fetching every play.
     const { data, error } = await sb.rpc('extension_counts', {
@@ -8121,15 +8135,34 @@ async function buildExtensionAccount() {
     if (error || !data || !data.length) return null;
     for (const r of data) {
       const id = r.track_id;
-      if (!(id in totalPlays)) continue;
-      totalPlays[id]  = Number(r.total) || 0;
-      todayCounts[id] = Number(r.today) || 0;
-      weekCounts[id]  = Number(r.week)  || 0;
-      total += totalPlays[id];
+      const totalN = Number(r.total) || 0;
       const ms = r.last_at ? new Date(r.last_at).getTime() : 0;
       if (ms > lastTs) lastTs = ms;
+      if (id in totalPlays) {
+        totalPlays[id]  = totalN;
+        todayCounts[id] = Number(r.today) || 0;
+        weekCounts[id]  = Number(r.week)  || 0;
+        total += totalN;
+      } else if (id === 'bp_group') {
+        bpGroupExtra += totalN;
+      } else if (id.startsWith('solo_')) {
+        const m = id.slice(5);
+        if (m in memberExtra) memberExtra[m] += totalN;
+      }
     }
-    if (!total) return null;
+    const memberExtraSum = Object.values(memberExtra).reduce((s, v) => s + v, 0);
+    if (!(total + bpGroupExtra + memberExtraSum)) return null;
+    // Total BP group (all time) = non-campaign group + the 4 campaign GROUP tracks
+    // (JUMP/Shut Down/DDU-DU/GO). LTAL is a JENNIE solo, so it's excluded here and
+    // folded into the member total below — mirroring how a linked Last.fm splits
+    // group vs. member artist plays.
+    const artistPlays = bpGroupExtra + totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.go;
+    const memberPlays = {
+      jisoo:  memberExtra.jisoo,
+      jennie: memberExtra.jennie + (totalPlays.ltal || 0),
+      rose:   memberExtra.rose,
+      lisa:   memberExtra.lisa,
+    };
     // Per-day split for the current week → fills the Mon–Sun cells of the
     // weekly-challenge grid. Best-effort: if it fails, day cells stay 0 but the
     // totals above are still correct.
@@ -8149,14 +8182,15 @@ async function buildExtensionAccount() {
       label: 'Blinks United (BU Extension)',
       source: 'extension',
       username: 'Blinks United',
-      // Extension only tracks the 5 campaign songs, not general BLACKPINK plays,
-      // so it contributes 0 to the "Total BP Scrobbles" breakdown but its real
-      // counts to every campaign-track breakdown.
-      artistPlays: 0,
-      bpGroupPlays: 0,
-      memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 },
+      // The extension now records all BLACKPINK-group and member solo plays too
+      // (not just the 5 campaign songs), so it contributes real numbers to the
+      // "Total BP Scrobbles" and "Solo Scrobbles" totals as well as every
+      // campaign-track breakdown.
+      artistPlays,
+      bpGroupPlays: artistPlays,
+      memberPlays,
       totalPlays, todayCounts, weekCounts, weekDayCounts,
-      playcount: campaignTotal,
+      playcount: artistPlays + memberExtraSum + (totalPlays.ltal || 0),
       lastScrobbleTs: lastTs || null,
     };
   } catch { return null; }

@@ -36,6 +36,41 @@ function matchTrack(artist, title) {
   return null;
 }
 
+// Non-campaign classification. The extension sends every play it sees; beyond
+// the 5 campaign tracks we also want to record ALL other BLACKPINK-group songs
+// and ALL four members' solo songs, so the profile's "Total BP Scrobbles" and
+// "Solo Scrobbles" totals accumulate from the extension too (not just from a
+// linked Last.fm). Everything else (non-BP artists) is still dropped.
+//
+// These land in category buckets rather than per-song ids:
+//   'bp_group'    → any BLACKPINK-group song that isn't a campaign track
+//   'solo_<name>' → any JISOO/JENNIE/ROSÉ/LISA solo song that isn't a campaign track
+// The real song is still preserved in the artist/title columns. Bucketing keeps
+// extension_counts small and needs no schema/RPC change; dedup stays correct
+// because one Spotify account plays one song per second, so (account, second)
+// already identifies a single play regardless of the bucket.
+const MEMBER_MAP = {
+  'jisoo': 'jisoo', 'kim jisoo': 'jisoo', 'kim ji-soo': 'jisoo', '지수': 'jisoo',
+  'lisa': 'lisa', 'lalisa': 'lisa', 'lalisa manobal': 'lisa',
+  'rosé': 'rose', 'rose': 'rose', 'roseanne park': 'rose', 'roseanne': 'rose',
+  'jennie': 'jennie', 'kim jennie': 'jennie', '제니': 'jennie',
+};
+
+// Resolve an artist string to a category bucket, or null if not BP/member.
+// BLACKPINK-group wins first; otherwise the primary/credited artist parts are
+// checked against the member map (so "ROSÉ, Bruno Mars" → solo_rose).
+function classifyArtist(artist) {
+  const a = norm(artist);
+  if (!a) return null;
+  if (a.includes('blackpink')) return 'bp_group';
+  const parts = a.split(/,|&|\/|feat\.?|featuring|with/).map((s) => s.trim()).filter(Boolean);
+  for (const p of parts) {
+    if (MEMBER_MAP[p]) return 'solo_' + MEMBER_MAP[p];
+  }
+  if (MEMBER_MAP[a]) return 'solo_' + MEMBER_MAP[a];
+  return null;
+}
+
 function supabase() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return null;
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
@@ -74,10 +109,13 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, valid: true, profile: profile.label || null });
   }
 
-  const trackId = matchTrack(body.artist, body.title);
+  // Campaign track first (keeps its stable id → cards/badges/leaderboard);
+  // otherwise fall back to a BP-group / solo-member category bucket.
+  let trackId = matchTrack(body.artist, body.title);
+  if (!trackId) trackId = classifyArtist(body.artist);
   if (!trackId) {
-    // Not a campaign track — accept but don't store, so the extension doesn't error.
-    return res.status(200).json({ ok: true, counted: false, reason: 'not a tracked song' });
+    // Not BLACKPINK or a member — accept but don't store, so the extension doesn't error.
+    return res.status(200).json({ ok: true, counted: false, reason: 'not a tracked artist' });
   }
 
   const listenedAt = body.timestamp
