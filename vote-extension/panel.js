@@ -64,8 +64,8 @@
       .chip .who{ font-size:10px; letter-spacing:.1em; color:#ff8fb4; text-transform:uppercase; }
       .chip .v{ font-variant-numeric:tabular-nums; font-weight:800; font-size:20px; margin-top:3px; }
 
-      .log{ margin:2px 12px 12px; background:#0a0407; border:1px solid #ff2e7722; border-radius:11px; padding:8px 8px 4px; max-height:240px; overflow-y:auto; overflow-x:hidden; }
-      .log::-webkit-scrollbar{ width:6px; } .log::-webkit-scrollbar-thumb{ background:#ff2e7744; border-radius:3px; }
+      .log{ margin:2px 12px 12px; background:#0a0407; border:1px solid #ff2e7722; border-radius:11px; padding:8px 8px 4px; max-height:168px; overflow-y:auto; overflow-x:hidden; }
+      .log::-webkit-scrollbar,.acctList::-webkit-scrollbar{ width:6px; } .log::-webkit-scrollbar-thumb,.acctList::-webkit-scrollbar-thumb{ background:#ff2e7744; border-radius:3px; }
       .loghd{ font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:#8a5c6c; padding:2px 4px 6px; position:sticky; top:0; background:#0a0407; }
       .log .empty{ color:#8a5c6c; font-size:11px; text-align:center; padding:10px 4px; }
       .row{ display:flex; align-items:center; gap:7px; font-size:11.5px; padding:5px 4px; border-bottom:1px dashed #ff2e7718; }
@@ -80,7 +80,7 @@
         font-size:11px; color:#d38aa4; padding:2px 2px 6px; }
       .acctToggle:hover{ color:#ff8fb4; }
       .acctToggle .caret{ margin-left:auto; color:#8a5c6c; }
-      .acctList{ background:#0a0407; border:1px solid #ff2e7722; border-radius:11px; padding:6px 8px; }
+      .acctList{ background:#0a0407; border:1px solid #ff2e7722; border-radius:11px; padding:6px 8px; max-height:168px; overflow-y:auto; overflow-x:hidden; }
       .acctRow{ display:flex; align-items:center; gap:8px; font-size:11px; padding:4px 2px; border-bottom:1px dashed #ff2e7714; }
       .acctRow:last-child{ border-bottom:0; }
       .aid{ flex:1; color:#fff2f6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
