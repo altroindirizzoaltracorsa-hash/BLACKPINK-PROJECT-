@@ -110,6 +110,7 @@ export default async function handler(req, res) {
         const bp = data?.bp || 0, lisa = data?.lisa || 0;
         const accounts = Object.entries(data?.accounts || {}).map(([id, v]) => ({
           id, method: (v && v.method) || 'email', votes: (v && v.votes) || 0,
+          cats: (v && Array.isArray(v.cats)) ? v.cats : [],
         }));
         return res.status(200).json({ bp, lisa, total: bp + lisa, accounts });
       }
@@ -202,6 +203,7 @@ export default async function handler(req, res) {
             p_lisa: parseInt(bd.LISA, 10) || 0,
             p_email: (acct.id ? String(acct.id).slice(0, 320) : null),
             p_method: (acct.method ? String(acct.method).slice(0, 32) : null),
+            p_cat: (acct.cat ? String(acct.cat).slice(0, 16) : null),
             p_n: votes,
           });
         } catch { /* ignore — sync is a convenience, the vote already saved */ }

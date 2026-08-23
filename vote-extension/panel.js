@@ -64,7 +64,9 @@
       .chip .who{ font-size:10px; letter-spacing:.1em; color:#ff8fb4; text-transform:uppercase; }
       .chip .v{ font-variant-numeric:tabular-nums; font-weight:800; font-size:20px; margin-top:3px; }
 
-      .log{ margin:2px 12px 12px; background:#0a0407; border:1px solid #ff2e7722; border-radius:11px; padding:8px; max-height:120px; overflow:hidden; }
+      .log{ margin:2px 12px 12px; background:#0a0407; border:1px solid #ff2e7722; border-radius:11px; padding:8px 8px 4px; max-height:240px; overflow-y:auto; overflow-x:hidden; }
+      .log::-webkit-scrollbar{ width:6px; } .log::-webkit-scrollbar-thumb{ background:#ff2e7744; border-radius:3px; }
+      .loghd{ font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:#8a5c6c; padding:2px 4px 6px; position:sticky; top:0; background:#0a0407; }
       .log .empty{ color:#8a5c6c; font-size:11px; text-align:center; padding:10px 4px; }
       .row{ display:flex; align-items:center; gap:7px; font-size:11.5px; padding:5px 4px; border-bottom:1px dashed #ff2e7718; }
       .row:last-child{ border-bottom:0; }
@@ -83,7 +85,10 @@
       .acctRow:last-child{ border-bottom:0; }
       .aid{ flex:1; color:#fff2f6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
       .am{ font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:#12000a; background:#ff8fb4; border-radius:5px; padding:2px 5px; }
-      .av{ color:#ff8fb4; font-variant-numeric:tabular-nums; }
+      .av{ color:#ff8fb4; font-variant-numeric:tabular-nums; min-width:26px; text-align:right; }
+      .cov{ font-size:9px; font-weight:800; letter-spacing:.02em; border-radius:5px; padding:2px 5px; flex:none; }
+      .cov1{ color:#ffb0cb; background:#ff2e7722; }
+      .cov2{ color:#12000a; background:#ff8fb4; }
       .acctNote{ font-size:9px; color:#8a5c6c; text-align:center; padding:6px 2px 2px; }
 
       .sync{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 12px 12px; padding:8px 10px; background:#ff2e770a; border:1px solid #ff2e7722; border-radius:11px; }
@@ -186,6 +191,7 @@
   const fmt = (n) => (n || 0).toLocaleString('en-US');
   const esc = (x) => String(x).replace(/[&<>"]/g, (c) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const hm = (ts) => { try { return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (_) { return ''; } };
   const ago = (ts) => {
     const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
     if (s < 5) return 'now'; if (s < 60) return s + 's'; const m = Math.round(s / 60);
@@ -216,11 +222,13 @@
     if (!log.length) {
       elLog.innerHTML = '<div class="empty">No votes counted yet — vote on this page and they’ll appear here.</div>';
     } else {
-      elLog.innerHTML = log.slice(0, 5).map((e) =>
-        '<div class="row"><img src="' + HEART + '" alt=""><span class="plus">+' + e.n + '</span>'
-        + '<span class="cat">' + e.cat + ' · ' + e.who + '</span>'
-        + '<span class="time">' + ago(e.ts) + '</span></div>'
-      ).join('');
+      // Full chronology for today (newest first), with the time each was cast.
+      elLog.innerHTML = '<div class="loghd">Today’s votes · ' + log.length + '</div>'
+        + log.map((e) =>
+          '<div class="row"><img src="' + HEART + '" alt=""><span class="plus">+' + e.n + '</span>'
+          + '<span class="cat">' + e.cat + ' · ' + e.who + '</span>'
+          + '<span class="time">' + hm(e.ts) + '</span></div>'
+        ).join('');
     }
 
     if (s.buToken) {
@@ -242,10 +250,13 @@
     if (acctOpen) {
       if (accts.length) {
         const sorted = accts.slice().sort((a, b) => (b.lastTs || 0) - (a.lastTs || 0) || (b.votes || 0) - (a.votes || 0));
-        ah += '<div class="acctList">' + sorted.map((a) =>
-          '<div class="acctRow"><span class="aid" title="' + esc(a.id) + '">' + esc(a.id) + '</span>'
+        ah += '<div class="acctList">' + sorted.map((a) => {
+          const cov = Math.min(2, Array.isArray(a.cats) ? a.cats.length : 0);
+          return '<div class="acctRow"><span class="aid" title="' + esc(a.id) + '">' + esc(a.id) + '</span>'
           + '<span class="am">' + esc(a.method || 'email') + '</span>'
-          + '<span class="av">' + fmt(a.votes) + '</span></div>').join('')
+          + (cov ? '<span class="cov cov' + cov + '" title="voted ' + cov + ' of 2 categories">' + cov + '/2</span>' : '')
+          + '<span class="av">' + fmt(a.votes) + '</span></div>';
+        }).join('')
           + '<div class="acctNote">' + (synced ? 'Synced to your BU account — only you can see this' : 'Stored on this device only') + '</div></div>';
       } else {
         ah += '<div class="acctList"><div class="acctNote">No accounts yet — vote and the emails/logins you use will appear here.</div></div>';

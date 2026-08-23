@@ -28,9 +28,12 @@ create table if not exists vma_ext_sync (
 -- Add one counted submission: bumps today's split and folds the account into the
 -- jsonb map (accumulating that account's votes). Idempotency matches the vote write
 -- itself — the extension already de-dupes retried submissions by timestamp.
+-- Drop the previous 7-arg overload so the new p_cat signature isn't ambiguous.
+drop function if exists vma_ext_sync_add(uuid, date, int, int, text, text, int);
+
 create or replace function vma_ext_sync_add(
   p_uid uuid, p_day date, p_bp int, p_lisa int,
-  p_email text, p_method text, p_n int
+  p_email text, p_method text, p_n int, p_cat text default null
 ) returns void
 language sql
 as $$
@@ -38,8 +41,10 @@ as $$
   values (
     p_uid, p_day, coalesce(p_bp, 0), coalesce(p_lisa, 0),
     case when coalesce(p_email, '') = '' then '{}'::jsonb
-         else jsonb_build_object(p_email,
-                jsonb_build_object('method', coalesce(p_method, 'email'), 'votes', coalesce(p_n, 0)))
+         else jsonb_build_object(p_email, jsonb_build_object(
+                'method', coalesce(p_method, 'email'),
+                'votes',  coalesce(p_n, 0),
+                'cats',   case when coalesce(p_cat, '') = '' then '[]'::jsonb else jsonb_build_array(p_cat) end))
     end,
     now()
   )
@@ -51,7 +56,16 @@ as $$
              p_email,
              jsonb_build_object(
                'method', coalesce(p_method, 'email'),
-               'votes',  coalesce((v.accounts -> p_email ->> 'votes')::int, 0) + coalesce(p_n, 0)
+               'votes',  coalesce((v.accounts -> p_email ->> 'votes')::int, 0) + coalesce(p_n, 0),
+               -- union of the categories this account has covered (distinct)
+               'cats',   (
+                 select coalesce(jsonb_agg(distinct c), '[]'::jsonb)
+                 from (
+                   select jsonb_array_elements_text(coalesce(v.accounts -> p_email -> 'cats', '[]'::jsonb)) as c
+                   union
+                   select p_cat where coalesce(p_cat, '') <> ''
+                 ) s
+               )
              )
            )
     end,
@@ -62,4 +76,4 @@ $$;
 -- Same lockdown as vma_user_votes: RLS on, no policies, service_role gets grants.
 alter table vma_ext_sync enable row level security;
 grant all privileges on table vma_ext_sync to service_role;
-grant execute on function vma_ext_sync_add(uuid, date, int, int, text, text, int) to service_role;
+grant execute on function vma_ext_sync_add(uuid, date, int, int, text, text, int, text) to service_role;

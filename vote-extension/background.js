@@ -165,7 +165,7 @@ function processVote(detail) {
     const extra = cfg.buSyncOn ? {
       sync: true,
       breakdown: perMember,
-      account: account ? { id: account, method: method || 'email' } : undefined,
+      account: account ? { id: account, method: method || 'email', cat: category } : undefined,
     } : undefined;
 
   postVotes(n, extra).then(function (res) {
@@ -188,7 +188,7 @@ function processVote(detail) {
           ['LISA', 'BLACKPINK'].forEach((who) => {
             if (perMember[who]) log.unshift({ n: perMember[who], cat, who, ts: now });
           });
-          upd.buLog = log.slice(0, 20);
+          upd.buLog = log.slice(0, 500); // keep the full day's chronology (resets at ET midnight)
           // Flush any previously-pending votes now that we're linked/online.
           if (r.buPending) { postVotes(r.buPending); upd.buPending = 0; }
         } else {
@@ -201,8 +201,15 @@ function processVote(detail) {
         if (account) {
           const accts = Array.isArray(r.buAccounts) ? r.buAccounts.slice() : [];
           const i = accts.findIndex((a) => a.id === account);
-          if (i >= 0) { accts[i].votes += n; accts[i].lastTs = Date.now(); }
-          else accts.push({ id: account, method: method || 'email', votes: n, lastTs: Date.now() });
+          if (i >= 0) {
+            accts[i].votes += n; accts[i].lastTs = Date.now();
+            // Track which of the 2 fan-voted categories this account has covered (→ x/2).
+            const cats = Array.isArray(accts[i].cats) ? accts[i].cats.slice() : [];
+            if (cats.indexOf(category) === -1) cats.push(category);
+            accts[i].cats = cats;
+          } else {
+            accts.push({ id: account, method: method || 'email', votes: n, lastTs: Date.now(), cats: [category] });
+          }
           upd.buAccounts = accts;
         }
         chrome.storage.local.set(upd);
