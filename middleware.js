@@ -40,6 +40,11 @@ const COUNTDOWNS = {
     description: "Counting down to LISA's hellosawadika reveal — Aug 24, 2026 (10PM KST).",
     image: '/og-countdown-lisa.jpg',
   },
+  'vmas': {
+    title: '2026 VMAs — voting closes Sep 25 | Countdown · BLINKS UNITED',
+    description: 'BLACKPINK, LISA and JISOO x ZAYN are nominated at the 2026 VMAs. Fan voting closes Sep 25, 6PM ET.',
+    image: '/og-countdown-vmas.jpg',
+  },
 };
 const COUNTDOWNS_HUB = {
   title: 'Countdowns | BLINKS UNITED',
