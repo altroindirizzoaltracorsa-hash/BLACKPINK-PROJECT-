@@ -1712,6 +1712,17 @@
   .cd-card-lisa .cd-btn-ghost { background: rgba(255,255,255,0.06); color: var(--la-cream);
     border: 1px solid rgba(242,233,226,0.5); }
   .cd-card-lisa .cd-btn-ghost:hover { background: rgba(242,233,226,0.14); filter: none; }
+  /* PRESS PLAY pre-save challenge — Early Supporter chip + progress bar */
+  .cd-card-lisa .cd-badge-chip { margin: 0; color: #fff; border: 1px solid var(--la-red);
+    background: rgba(225,29,42,0.22); backdrop-filter: blur(2px); }
+  .cd-card-lisa .cd-goal { width: min(84%, 320px); margin: 0.1rem auto 0; gap: 0.32rem; }
+  .cd-card-lisa .cd-goal-label { color: rgba(242,233,226,0.82); font-family: 'DM Mono', monospace;
+    font-size: 0.54rem; letter-spacing: 0.12em; }
+  .cd-card-lisa .cd-goal-nums { font-family: 'GaramondPremierPro', 'Cormorant Garamond', Georgia, serif;
+    color: var(--la-cream); font-size: 0.95rem; }
+  .cd-card-lisa .cd-goal-nums span { color: rgba(242,233,226,0.6); }
+  .cd-card-lisa .cd-goal-bar { background: rgba(255,255,255,0.14); }
+  .cd-card-lisa .cd-goal-fill { background: linear-gradient(90deg, #e11d2a, #ff6f78); }
   /* PRESS PLAY share chooser (Picture / Video / Link) */
   #pp-share-sheet .pp-sheet { background: #1a0406; border: 1px solid rgba(225,29,42,0.4);
     border-radius: 20px 20px 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
@@ -2384,36 +2395,10 @@
             </div>
             <div class="cd-eyebrow sw-eyebrow">LISA · New Single · lalisaofficial.com</div>
             <div class="cd-sub">Single · Thu, Sep 3, 2026 · 1PM KST / 12AM EDT</div>
-            <div class="cd-badge-chip" id="lisa-badge" style="display:none;">🏆 Early Supporter</div>
             <div class="cd-timer cd-timer-plain" data-timer></div>
-            <div class="cd-goal" id="lisa-goal" style="display:none;">
-              <div class="cd-goal-top">
-                <span class="cd-goal-label">🎯 Blinks Joined</span>
-                <span class="cd-goal-nums" id="lisa-goal-nums"></span>
-              </div>
-              <div class="cd-goal-bar"><div class="cd-goal-fill" id="lisa-goal-fill" style="width:0%"></div></div>
-            </div>
             <div class="cd-links">
-              <a class="cd-btn sw-btn" href="https://www.lalisaofficial.com/" target="_blank" rel="noopener" onclick="saveLisaSawadika()">Pre-save ↗</a>
+              <a class="cd-btn sw-btn" href="https://www.lalisaofficial.com/" target="_blank" rel="noopener">Pre-save ↗</a>
               <button class="cd-btn sw-btn sw-btn-ghost" onclick="openLisaCard()">📸 Share</button>
-            </div>
-          </div>
-          <div class="cd-card cd-card-lisa" data-slug="lalisaofficial.com" data-target="2026-10-23T04:00:00Z" data-live="OUT NOW ✨">
-            <video class="lisa-hero" autoplay muted loop playsinline preload="metadata" poster="/lisa-mona.webp">
-              <source src="/lisa-preview.mp4" type="video/mp4">
-            </video>
-            <div class="lisa-scrim"></div>
-            <div class="lisa-content">
-              <div class="lisa-eyebrow">New EP · lalisaofficial.com</div>
-              <img class="lisa-word" src="/lisa-word.webp" alt="LISA" loading="lazy">
-              <img class="lisa-pp" src="/lisa-pressplay.webp" alt="PRESS PLAY" loading="lazy">
-              <div class="cd-sub">Fri, Oct 23, 2026 · <b>1PM KST / 12AM EDT</b></div>
-              <div class="cd-timer" data-timer></div>
-              <div class="cd-links">
-                <a class="cd-btn" href="https://lisa.lnk.to/PressPlay" target="_blank" rel="noopener">Pre-save ↗</a>
-                <a class="cd-btn cd-btn-ghost" href="https://lalisaofficial.com" target="_blank" rel="noopener">Store ↗</a>
-                <button class="cd-btn cd-btn-ghost" onclick="openLisaPressPlayCard()">📸 Share</button>
-              </div>
             </div>
           </div>
           <div class="cd-card cd-card-jisoo" data-slug="jisoo.io" data-target="2026-09-04T04:00:00Z" data-live="OUT NOW ✨" data-stars="1">
@@ -2427,6 +2412,32 @@
             <div class="cd-links">
               <a class="cd-btn js-click" href="https://www.jisoo.io" target="_blank" rel="noopener"><img src="/jisoo-word-click.webp" alt="CLICK">jisoo.io&nbsp;↗</a>
               <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
+            </div>
+          </div>
+          <div class="cd-card cd-card-lisa" data-slug="lalisaofficial.com" data-target="2026-10-23T04:00:00Z" data-live="OUT NOW ✨">
+            <video class="lisa-hero" autoplay muted loop playsinline preload="metadata" poster="/lisa-mona.webp">
+              <source src="/lisa-preview.mp4" type="video/mp4">
+            </video>
+            <div class="lisa-scrim"></div>
+            <div class="lisa-content">
+              <div class="lisa-eyebrow">New EP · lalisaofficial.com</div>
+              <img class="lisa-word" src="/lisa-word.webp" alt="LISA" loading="lazy">
+              <img class="lisa-pp" src="/lisa-pressplay.webp" alt="PRESS PLAY" loading="lazy">
+              <div class="cd-badge-chip lisa-locket" id="lisa-badge" style="display:none;">🏆 Early Supporter</div>
+              <div class="cd-sub">Fri, Oct 23, 2026 · <b>1PM KST / 12AM EDT</b></div>
+              <div class="cd-timer" data-timer></div>
+              <div class="cd-goal" id="lisa-goal" style="display:none;">
+                <div class="cd-goal-top">
+                  <span class="cd-goal-label">🎯 Blinks pre-saved</span>
+                  <span class="cd-goal-nums" id="lisa-goal-nums"></span>
+                </div>
+                <div class="cd-goal-bar"><div class="cd-goal-fill" id="lisa-goal-fill" style="width:0%"></div></div>
+              </div>
+              <div class="cd-links">
+                <a class="cd-btn" href="https://lisa.lnk.to/PressPlay" target="_blank" rel="noopener" onclick="saveLisaSawadika()">Pre-save ↗</a>
+                <a class="cd-btn cd-btn-ghost" href="https://lalisaofficial.com" target="_blank" rel="noopener">Store ↗</a>
+                <button class="cd-btn cd-btn-ghost" onclick="openLisaPressPlayCard()">📸 Share</button>
+              </div>
             </div>
           </div>
           <div class="cd-card cd-card-vma" data-slug="vmas" data-target="2026-09-25T22:00:00Z" data-live="VOTING CLOSED">
@@ -11274,12 +11285,13 @@ async function loadFaSaveCount() {
   } catch {}
 }
 
-// ── LISA "hellosawadika" reveal — Join counter + Early Supporter
-// Mirrors hellosawadika.com's teaser (the rotating HELLO is pure CSS — see the
-// .sw-hi cycle-hi animation). Same server-counter/badge mechanism as the EP cards.
+// ── LISA "PRESS PLAY" EP — Pre-save counter + Early Supporter badge.
+// The pre-save challenge lives on the PRESS PLAY EP card (the Sep 3 single is a
+// plain link, no challenge). Reuses the existing `lisa_save` server counter
+// (bu_lisa_sawadika_joins) so earlier joiners carry over as pre-savers.
 const LISA_SAVE_LS   = 'bu_lisa_sawadika_saved';
 const LISA_SAVE_GOAL = 50;
-const LISA_REVEAL_AT = '2026-08-24T13:00:00Z'; // 10PM KST / 9AM EDT / 8PM ICT
+const LISA_REVEAL_AT = '2026-10-23T04:00:00Z'; // PRESS PLAY EP · 1PM KST / 12AM EDT
 
 function renderLisaBadge() {
   const el = document.getElementById('lisa-badge');
@@ -11301,14 +11313,14 @@ function renderLisaSaveCount(count) {
     : (count / LISA_SAVE_GOAL) * 100;
   fillEl.style.width = Math.min(100, pct) + '%';
   numsEl.innerHTML = milestonesPassed > 0
-    ? `🎉 ${currentMilestone.toLocaleString()} reached — ${count.toLocaleString()}<span> / ${nextMilestone.toLocaleString()} joined</span>`
-    : `${count.toLocaleString()}<span> / ${LISA_SAVE_GOAL.toLocaleString()} joined</span>`;
+    ? `🎉 ${currentMilestone.toLocaleString()} reached — ${count.toLocaleString()}<span> / ${nextMilestone.toLocaleString()} pre-saved</span>`
+    : `${count.toLocaleString()}<span> / ${LISA_SAVE_GOAL.toLocaleString()} pre-saved</span>`;
 }
 
 function saveLisaSawadika() {
   if (localStorage.getItem(LISA_SAVE_LS)) return;
   localStorage.setItem(LISA_SAVE_LS, '1');
-  _showShareToast(_buSignedIn ? '🏆 Badge unlocked: Early Supporter!' : '✅ Joined! Sign in on My Badges to claim your Early Supporter badge.');
+  _showShareToast(_buSignedIn ? '🏆 Badge unlocked: Early Supporter!' : '✅ Pre-saved! Sign in on My Badges to claim your Early Supporter badge.');
   try { sb?.auth.updateUser({ data: { lisa_early_supporter: true } }); } catch {}
   refreshSupporterChips();   // show the chip now if signed in (account-gated)
   fetch('/api/proxy-image?lisa_save=increment').then(r => r.json()).then(d => renderLisaSaveCount(d.count || 0)).catch(() => {});
@@ -14819,10 +14831,10 @@ async function openLisaCard() {
   const earned = _buSignedIn && !!localStorage.getItem(LISA_SAVE_LS);
   _lisaCardData = {
     earned, helloImg, sawImg,
-    revealAt: LISA_REVEAL_AT,
-    dateLine: 'REVEAL · AUG 24, 2026 · 10PM KST / 9AM EDT / 8PM ICT',
-    dateShort: 'reveal Aug 24, 2026',
-    cta: 'JOIN · HELLOSAWADIKA.COM',
+    revealAt: '2026-09-03T04:00:00Z',   // LISA's new single — Sep 3 (decoupled from the EP challenge date)
+    dateLine: 'NEW SINGLE · SEP 3, 2026 · 1PM KST / 12AM EDT',
+    dateShort: 'single Sep 3, 2026',
+    cta: 'PRE-SAVE · LALISAOFFICIAL.COM',
   };
   label.textContent = earned ? "I'M IN — SAWADIKA" : 'SAWADIKA · COUNTDOWN';
   drawLisaCard(canvas, _lisaCardData);
