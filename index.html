@@ -2408,7 +2408,7 @@
             <!-- DORMANT: JISOO Early Supporter badge — re-enable when jisoo.io adds a save/join.
                  <div class="cd-badge-chip js-locket" id="jisoo-badge" style="display:none;"><img src="/jisoo-heart.webp" alt="">Early Supporter</div> -->
             <div class="cd-timer" data-timer></div>
-            <img class="js-park" src="/Jisoopark.webp" alt="" loading="lazy">
+            <img class="js-park" src="/Jisoopark2.webp" alt="" loading="lazy">
             <div class="cd-links">
               <a class="cd-btn js-click" href="https://www.jisoo.io" target="_blank" rel="noopener"><img src="/jisoo-word-click.webp" alt="CLICK">jisoo.io&nbsp;↗</a>
               <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
@@ -14993,7 +14993,7 @@ async function _openJisooShareCard() {
 
   const [bg, park, title, click, heart] = await Promise.all([
     _jisooBgImg    ? Promise.resolve(_jisooBgImg)    : loadImg('/Jisoobackground.webp').then(i => (_jisooBgImg = i)).catch(() => null),
-    _jisooParkImg  ? Promise.resolve(_jisooParkImg)  : loadImg('/Jisoopark.webp').then(i => (_jisooParkImg = i)).catch(() => null),
+    _jisooParkImg  ? Promise.resolve(_jisooParkImg)  : loadImg('/Jisoopark2.webp').then(i => (_jisooParkImg = i)).catch(() => null),
     _jisooTitleImg ? Promise.resolve(_jisooTitleImg) : loadImg('/jisoo-word-jisoo.webp').then(i => (_jisooTitleImg = i)).catch(() => null),
     _jisooClickImg ? Promise.resolve(_jisooClickImg) : loadImg('/jisoo-word-click.webp').then(i => (_jisooClickImg = i)).catch(() => null),
     _jisooHeartImg ? Promise.resolve(_jisooHeartImg) : loadImg('/jisoo-heart.webp').then(i => (_jisooHeartImg = i)).catch(() => null),
