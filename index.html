@@ -2293,11 +2293,10 @@
           <div class="cd-card cd-card-jisoo" data-slug="jisoo.io" data-target="2026-09-04T04:00:00Z" data-live="OUT NOW ✨" data-stars="1">
             <img class="js-title" src="/jisoo-word-jisoo.webp" alt="JISOO" loading="lazy">
             <div class="cd-sub">Thu, Sep 4, 2026 · 1PM KST / 12AM EDT</div>
-            <div class="cd-badge-chip js-locket" id="jisoo-badge" style="display:none;"><img src="/jisoo-heart.webp" alt="">Early Supporter</div>
             <div class="cd-timer" data-timer></div>
             <img class="js-park" src="/Jisoopark.webp" alt="" loading="lazy">
             <div class="cd-links">
-              <a class="cd-btn js-click" href="https://www.jisoo.io" target="_blank" rel="noopener" onclick="saveJisooClick()"><img src="/jisoo-word-click.webp" alt="CLICK">jisoo.io&nbsp;↗</a>
+              <a class="cd-btn js-click" href="https://www.jisoo.io" target="_blank" rel="noopener"><img src="/jisoo-word-click.webp" alt="CLICK">jisoo.io&nbsp;↗</a>
               <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
             </div>
           </div>
@@ -8782,14 +8781,17 @@ const SPECIAL_BADGES = [
     desc: 'Joined before the reveal',
     check: () => lisaEarlySupporterEarned(),
   },
-  {
-    id: 'jisoo-click',
-    icon: '<img src="/jisoo-heart.webp" alt="" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;">',
-    label: 'EARLY SUPPORTER',
-    song: 'jisoo.io — JISOO',
-    desc: 'Clicked in before release',
-    check: () => jisooEarlySupporterEarned(),
-  },
+  // JISOO Early Supporter — dormant until jisoo.io adds a save/join action.
+  // Re-enable by restoring this entry (heart-locket icon) + the card badge chip
+  // + renderJisooBadge()/jisooEarlySupporterEarned() in refreshSupporterChips.
+  // {
+  //   id: 'jisoo-click',
+  //   icon: '<img src="/jisoo-heart.webp" alt="" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;">',
+  //   label: 'EARLY SUPPORTER',
+  //   song: 'jisoo.io — JISOO',
+  //   desc: 'Clicked in before release',
+  //   check: () => jisooEarlySupporterEarned(),
+  // },
   {
     id: 'jennie-fa-presave',
     icon: '🏆',
@@ -11034,10 +11036,11 @@ async function refreshSupporterChips() {
   let user = null;
   try { user = (await sb?.auth.getUser())?.data?.user || null; } catch {}
   _buSignedIn = !!user;
-  if (user) { try { await Promise.all([faEarlySupporterEarned(), lisaEarlySupporterEarned(), jisooEarlySupporterEarned()]); } catch {} }
+  if (user) { try { await Promise.all([faEarlySupporterEarned(), lisaEarlySupporterEarned()]); } catch {} }
   renderFaBadge();
   renderLisaBadge();
-  renderJisooBadge();
+  // JISOO Early Supporter is dormant until jisoo.io adds a save/join action
+  // (renderJisooBadge / jisooEarlySupporterEarned stay defined below for re-enable).
 }
 
 function renderFaSaveCount(count) {
@@ -11130,10 +11133,13 @@ async function loadLisaSaveCount() {
   } catch {}
 }
 
-// ── JISOO countdown (jisoo.io) — Early Supporter on "CLICK jisoo.io" ──────────
-// No pre-save/join API for jisoo.io — the badge is unlocked by clicking through to
-// the site (mirrors the LISA "join" flow: localStorage flag + account meta flag,
-// shown only when signed in). The heart-locket icon is jisoo.io's own CLICK art.
+// ── JISOO countdown (jisoo.io) ────────────────────────────────────────────────
+// NOTE: the Early Supporter badge is DORMANT for now — jisoo.io has no save/join
+// action to gate it on, so the badge chip, the My Badges entry and the
+// refreshSupporterChips wiring are all disabled. The helpers below stay defined so
+// re-enabling (once a save/join exists) is just restoring those three call sites
+// and wiring saveJisooClick() back onto the CLICK button.
+// The heart-locket icon is jisoo.io's own CLICK art.
 const JISOO_SAVE_LS    = 'bu_jisoo_click_saved';
 const JISOO_RELEASE_AT = '2026-09-04T04:00:00Z'; // Sep 4, 2026 · 1PM KST / 12AM EDT
 
