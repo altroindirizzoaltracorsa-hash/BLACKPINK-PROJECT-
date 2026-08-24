@@ -36,9 +36,14 @@ const COUNTDOWNS = {
     image: '/og-countdown-jennie.jpg',
   },
   'hellosawadika.com': {
-    title: 'LISA — hellosawadika reveal, Aug 24, 2026 | Countdown · BLINKS UNITED',
-    description: "Counting down to LISA's hellosawadika reveal — Aug 24, 2026 (10PM KST).",
+    title: 'LISA — New Single, Sep 3, 2026 | Countdown · BLINKS UNITED',
+    description: "Counting down to LISA's new single — Sep 3, 2026 (1PM KST / 12AM EDT). hellosawadika.com.",
     image: '/og-countdown-lisa.jpg',
+  },
+  'lalisaofficial.com': {
+    title: 'LISA — PRESS PLAY EP, Oct 23, 2026 | Countdown · BLINKS UNITED',
+    description: "Counting down to LISA's PRESS PLAY EP — Oct 23, 2026 (1PM KST / 12AM EDT). lalisaofficial.com.",
+    image: '/og-countdown-pressplay.jpg',
   },
   'vmas': {
     title: '2026 VMAs — voting closes Sep 25 | Countdown · BLINKS UNITED',
@@ -58,7 +63,8 @@ export const config = {
   matcher: [
     '/voting', '/leaderboard', '/badges', '/feedback', '/account',
     '/countdowns',
-    '/countdowns/jisoo.io', '/countdowns/jenn.ie', '/countdowns/hellosawadika.com', '/countdowns/vmas',
+    '/countdowns/jisoo.io', '/countdowns/jenn.ie', '/countdowns/hellosawadika.com',
+    '/countdowns/lalisaofficial.com', '/countdowns/vmas',
   ],
 };
 
