@@ -53,7 +53,13 @@ const COUNTDOWNS_HUB = {
 };
 
 export const config = {
-  matcher: ['/voting', '/leaderboard', '/badges', '/feedback', '/account', '/countdowns', '/countdowns/:slug*'],
+  // Explicit paths — the dotted deep-link slugs (jisoo.io, jenn.ie, …) don't
+  // reliably match a `:slug*` wildcard, so list each one so middleware runs.
+  matcher: [
+    '/voting', '/leaderboard', '/badges', '/feedback', '/account',
+    '/countdowns',
+    '/countdowns/jisoo.io', '/countdowns/jenn.ie', '/countdowns/hellosawadika.com', '/countdowns/vmas',
+  ],
 };
 
 // Lets the request fall through to the normal Vercel routing (the
