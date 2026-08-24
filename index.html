@@ -1561,6 +1561,83 @@
   .sw-btn-ghost { background: transparent; color: var(--sw-light); }
   .sw-btn-ghost:hover { background: rgba(203,158,159,0.15); color: var(--sw-light); }
 
+  /* ── JISOO carnival countdown (mirrors jisoo.io: Angkor numerals + star
+       separators over dusty-mauve paper, carnival ink anchored to the bottom) ── */
+  @font-face {
+    font-family: 'AngkorDigits';
+    src: url('/fonts/angkor-digits.woff2') format('woff2');
+    font-weight: 400; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: 'PretendardVariable';
+    src: url('/fonts/pretendard-variable-latin-v1.3.9.woff2') format('woff2-variations');
+    font-weight: 45 920; font-style: normal; font-display: swap;
+  }
+  .cd-card-jisoo {
+    --js-ink: #68493a;
+    --num: clamp(2.1rem, 9.2vw, 2.7rem);
+    --label: calc(var(--num) * 0.25);
+    --star-w: calc(var(--num) * 0.34);
+    --gap: calc(var(--num) * 0.30);
+    position: relative; overflow: hidden; padding: 0; text-align: center;
+    aspect-ratio: 400 / 400;
+    background: #463740 url('/Jisoobackground.webp') center/cover no-repeat;
+    border: 1px solid rgba(104,73,58,0.35);
+    box-shadow: 0 22px 60px -30px rgba(70,55,64,0.95);
+    color: var(--js-ink);
+  }
+  .cd-card-jisoo .js-title { position: absolute; top: 5%; left: 50%; transform: translateX(-50%);
+    z-index: 3; height: 2rem; width: auto; }
+  .cd-card-jisoo .cd-sub { position: absolute; top: calc(5% + 2.35rem); left: 0; right: 0; z-index: 3;
+    font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.88rem;
+    letter-spacing: 0.02em; color: rgba(104,73,58,0.82); text-align: center; }
+  .cd-card-jisoo .cd-badge-chip { position: absolute; top: calc(5% + 3.95rem); left: 50%;
+    transform: translateX(-50%); z-index: 4; }
+  .cd-card-jisoo .cd-timer { position: absolute; top: 36%; left: 50%; transform: translate(-50%,-50%);
+    z-index: 3; display: flex; align-items: flex-start; justify-content: center; gap: var(--gap); }
+  .cd-card-jisoo .cd-unit { display: flex; flex-direction: column; align-items: center; gap: 0.18rem;
+    background: none; border: none; padding: 0; }
+  .cd-card-jisoo .cd-num { font-family: 'AngkorDigits','Cormorant Garamond',serif; font-weight: 400;
+    font-size: var(--num); line-height: 1; color: var(--js-ink); }
+  .cd-card-jisoo .cd-lbl { font-family: 'PretendardVariable', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 500; font-size: var(--label); line-height: 1; opacity: 0.8; letter-spacing: 0.04em;
+    color: var(--js-ink); text-transform: uppercase; }
+  .cd-card-jisoo .cd-star { flex: 0 0 auto; width: var(--star-w); height: auto; color: var(--js-ink);
+    margin-top: calc((var(--num) - var(--star-w) / 1.05) / 2); }
+  .cd-card-jisoo .cd-out { position: absolute; top: 37%; left: 50%; transform: translate(-50%,-50%);
+    z-index: 3; font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 700;
+    font-size: 1.6rem; color: var(--js-ink); }
+  .cd-card-jisoo .cd-links { position: absolute; top: 57%; left: 0; right: 0; transform: translateY(-50%);
+    z-index: 4; display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin: 0; }
+  .cd-card-jisoo .cd-btn.js-share img { height: 1.15rem; width: auto; display: block; }
+  .cd-card-jisoo .cd-btn { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.4rem 1rem;
+    border-radius: 3px; color: #43301f; text-decoration: none; cursor: pointer;
+    background: rgba(255,251,250,0.16); border: 1.5px solid rgba(104,73,58,0.55);
+    font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 700; font-size: 0.96rem;
+    letter-spacing: 0.03em; box-shadow: 0 8px 20px -14px rgba(70,55,64,0.9); }
+  .cd-card-jisoo .cd-btn:hover { filter: none; background: rgba(255,251,250,0.3); transform: translateY(-1px); }
+  .cd-card-jisoo .cd-btn.js-click img { height: 1.15rem; width: auto; display: block; margin-bottom: 1px; }
+  .cd-card-jisoo .cd-btn-ghost { background: transparent; }
+  .cd-card-jisoo .js-park { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; height: auto; opacity: 0.9; mix-blend-mode: multiply; pointer-events: none; z-index: 2; }
+  .cd-badge-chip.js-locket { color: var(--js-ink); background: rgba(255,251,250,0.28);
+    border-color: rgba(104,73,58,0.5); display: inline-flex; align-items: center; gap: 0.32rem; }
+  .cd-badge-chip.js-locket img { height: 1.05rem; width: auto; display: block; }
+
+  /* /countdowns hub page */
+  .cd-hub { max-width: 960px; margin: 0 auto; padding: 2.4rem 1.2rem 3rem; text-align: center; }
+  .cd-hub-title { font-family: var(--display, 'Space Grotesk', sans-serif); font-size: clamp(1.7rem, 6vw, 2.6rem);
+    margin: 0.3rem 0 0.5rem; }
+  .cd-hub-sub { color: var(--muted, #9aa); font-size: 0.95rem; max-width: 640px; margin: 0 auto 1.4rem; line-height: 1.6; }
+  .cd-hub-sub code { font-family: 'DM Mono', monospace; font-size: 0.85em; background: rgba(255,0,102,0.12);
+    padding: 0.08em 0.4em; border-radius: 4px; }
+  #cd-back-all { display: none; align-items: center; gap: 0.35rem; margin: 0 auto 1.2rem; padding: 0.4rem 1rem;
+    border: 1px solid rgba(255,0,102,0.4); border-radius: 99px; color: var(--accent, #ff0066); text-decoration: none;
+    font-size: 0.85rem; width: fit-content; }
+  #cd-back-all:hover { background: rgba(255,0,102,0.12); }
+  #countdowns-mount .cd-section-label { display: none; } /* page already has its own heading */
+  #countdowns-mount #home-countdowns { margin-top: 0.5rem; }
+
   /* ── VOTE PAGE ── */
   .vote-page {
     min-height: 100vh;
@@ -2028,6 +2105,7 @@
   </span>
   <ul class="nav-links" id="mobile-nav">
     <li><a href="/" onclick="showPage('home'); closeMobileNav(); return false;" id="nav-home" class="active">Home</a></li>
+    <li><a href="/countdowns" onclick="goCountdowns(); closeMobileNav(); return false;" id="nav-countdowns">Countdowns</a></li>
     <li><a href="#songs" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100); return false;">Songs</a></li>
     <li><a href="/badges" onclick="goToMyBadges(); closeMobileNav(); return false;" id="nav-badges">My Badges</a></li>
     <li><a href="/leaderboard" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
@@ -2162,7 +2240,7 @@
       <section id="home-countdowns" style="margin-top:2.2rem;max-width:900px;width:100%;text-align:center;">
         <p class="cd-section-label">◇ Countdowns</p>
         <div class="cd-wrap">
-          <div class="cd-card cd-card-hero cd-card-jennie" data-target="2026-08-28T04:00:00Z" data-live="OUT NOW ✨">
+          <div class="cd-card cd-card-hero cd-card-jennie" data-slug="jenn.ie" data-target="2026-08-28T04:00:00Z" data-live="OUT NOW ✨">
             <div class="cd-hero">
               <img class="cd-hero-bg" src="/fallenangel00.jpg" alt="JENNIE — Fallen Angel" loading="lazy" onerror="this.style.display='none'">
               <div class="cd-hero-scrim"></div>
@@ -2189,7 +2267,7 @@
               <button class="cd-btn cd-btn-ghost" onclick="openPresaveCard('fa')">📸 Share</button>
             </div>
           </div>
-          <div class="cd-card cd-card-sawadika" data-target="2026-08-24T13:00:00Z" data-live="IT'S HERE ✨" data-plain="1">
+          <div class="cd-card cd-card-sawadika" data-slug="hellosawadika.com" data-target="2026-08-24T13:00:00Z" data-live="IT'S HERE ✨" data-plain="1">
             <div class="sw-cycle">
               <div class="sw-hi" aria-label="Hello">
                 <img src="/sawadika/english.svg" alt="Hello"><img src="/sawadika/french.svg" alt="Bonjour"><img src="/sawadika/italian.svg" alt="Ciao"><img src="/sawadika/spanish.svg" alt="Hola"><img src="/sawadika/portuguese.svg" alt="Olá"><img src="/sawadika/german.svg" alt="Hallo"><img src="/sawadika/korean.svg" alt="안녕하세요"><img src="/sawadika/japanese.svg" alt="こんにちは"><img src="/sawadika/chinese.svg" alt="你好"><img src="/sawadika/arabic.svg" alt="مرحبا">
@@ -2212,8 +2290,21 @@
               <button class="cd-btn sw-btn sw-btn-ghost" onclick="openLisaCard()">📸 Share</button>
             </div>
           </div>
+          <div class="cd-card cd-card-jisoo" data-slug="jisoo.io" data-target="2026-09-04T04:00:00Z" data-live="OUT NOW ✨" data-stars="1">
+            <img class="js-title" src="/jisoo-word-jisoo.webp" alt="JISOO" loading="lazy">
+            <div class="cd-sub">Thu, Sep 4, 2026 · 1PM KST / 12AM EDT</div>
+            <!-- DORMANT: JISOO Early Supporter badge — re-enable when jisoo.io adds a save/join.
+                 <div class="cd-badge-chip js-locket" id="jisoo-badge" style="display:none;"><img src="/jisoo-heart.webp" alt="">Early Supporter</div> -->
+            <div class="cd-timer" data-timer></div>
+            <img class="js-park" src="/Jisoopark.webp" alt="" loading="lazy">
+            <div class="cd-links">
+              <a class="cd-btn js-click" href="https://www.jisoo.io" target="_blank" rel="noopener"><img src="/jisoo-word-click.webp" alt="CLICK">jisoo.io&nbsp;↗</a>
+              <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
+            </div>
+          </div>
         </div>
       </section>
+      <span id="home-countdowns-anchor" hidden></span>
 
       <!-- NEW SINGLE banner moved to the Our Projects page (/projects). The expand
            panel below stays and is opened via the iTunes badge on the stats card. -->
@@ -2670,6 +2761,16 @@
 </div><!-- end home page -->
 
 <!-- BADGE CHALLENGE PAGE -->
+<div id="page-countdowns" class="page">
+  <section class="cd-hub">
+    <p class="cd-section-label">◇ Countdowns</p>
+    <h1 class="cd-hub-title">Every countdown, one place</h1>
+    <p class="cd-hub-sub">BLACKPINK &amp; members releases and reveals. Share a single one directly — e.g. <code>/countdowns/jisoo.io</code>, <code>/countdowns/jenn.ie</code>, <code>/countdowns/hellosawadika.com</code>.</p>
+    <a id="cd-back-all" href="/countdowns" onclick="goCountdowns(); return false;">← All countdowns</a>
+    <div id="countdowns-mount"></div>
+  </section>
+</div>
+
 <div id="page-badges" class="page">
   <div class="badge-page">
     <div class="badge-header">
@@ -4522,12 +4623,13 @@ function closeMobileNav() {
   document.getElementById('nav-hamburger').classList.remove('open');
 }
 
-const PAGE_PATHS = { home: '/', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube', apple: '/apple-charts', itunes: '/itunes-charts', kcharts: '/kcharts', charts: '/charts' };
+const PAGE_PATHS = { home: '/', countdowns: '/countdowns', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube', apple: '/apple-charts', itunes: '/itunes-charts', kcharts: '/kcharts', charts: '/charts' };
 
 // Mirrors the per-route <title> the Vercel edge middleware sets on first
 // load, so client-side navigation keeps the tab title in sync too.
 const PAGE_TITLES = {
   home: 'BLINKS UNITED | BLACKPINK Streaming Hub',
+  countdowns: 'Countdowns | BLINKS UNITED',
   badges: 'Badges | BLINKS UNITED',
   leaderboard: 'Leaderboard | BLINKS UNITED',
   vote: 'Vote Now | BLINKS UNITED',
@@ -4545,8 +4647,56 @@ const PAGE_TITLES = {
 function pathToPage(pathname) {
   let clean = pathname.replace(/\/+$/, '') || '/';
   if (clean === '/vote') return 'vote'; // alias for the canonical /voting
+  // /countdowns and its per-project deep links (/countdowns/jisoo.io, …)
+  if (clean === '/countdowns' || clean.startsWith('/countdowns/')) return 'countdowns';
   const entry = Object.entries(PAGE_PATHS).find(([, p]) => p === clean);
   return entry ? entry[0] : 'home';
+}
+
+// Slug (after /countdowns/) → the card's data-slug, for deep-linking one countdown.
+function currentCountdownSlug() {
+  const m = location.pathname.match(/^\/countdowns\/([^/]+)/);
+  return m ? decodeURIComponent(m[1]).toLowerCase().replace(/\/+$/, '') : '';
+}
+
+// The /countdowns hub reuses the SAME cards as the home row (no duplicate ids):
+// the #home-countdowns section is relocated into the countdowns page while it's
+// open and moved back to its home slot on leave. A slug filters to one card.
+let _cdMountedInHub = false;
+function setupCountdownsPage() {
+  const slug = currentCountdownSlug();
+  if (slug === 'vmas') { location.href = '/vmas'; return; } // VMA countdown lives on /vmas
+  const sec = document.getElementById('home-countdowns');
+  const mount = document.getElementById('countdowns-mount');
+  if (sec && mount && sec.parentElement !== mount) { mount.appendChild(sec); _cdMountedInHub = true; }
+  applyCountdownFilter(slug);
+  renderHomeCountdowns();
+}
+function restoreHomeCountdowns() {
+  if (!_cdMountedInHub) return;
+  const sec = document.getElementById('home-countdowns');
+  const anchor = document.getElementById('home-countdowns-anchor');
+  if (sec && anchor && anchor.parentNode) anchor.parentNode.insertBefore(sec, anchor);
+  applyCountdownFilter('');
+  _cdMountedInHub = false;
+}
+function applyCountdownFilter(slug) {
+  const cards = document.querySelectorAll('#home-countdowns .cd-card');
+  let matched = 0;
+  cards.forEach(c => {
+    const s = (c.dataset.slug || '').toLowerCase();
+    const show = !slug || s === slug;
+    c.style.display = show ? '' : 'none';
+    if (show && slug) matched++;
+  });
+  if (slug && !matched) cards.forEach(c => { c.style.display = ''; }); // unknown slug → show all
+  const back = document.getElementById('cd-back-all');
+  if (back) back.style.display = (slug && matched) ? 'inline-flex' : 'none';
+}
+function goCountdowns(slug) {
+  const path = slug ? '/countdowns/' + slug : '/countdowns';
+  try { history.pushState({ page: 'countdowns' }, '', path); } catch {}
+  showPage('countdowns');
 }
 
 // ── Artist Streams page ──────────────────────────────────────────────────
@@ -5389,6 +5539,8 @@ function renderArtistTracks() {
 function showPage(page, { replace = false } = {}) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
+  // The /countdowns hub borrows the home countdown cards; move them in/out.
+  if (page === 'countdowns') setupCountdownsPage(); else restoreHomeCountdowns();
   document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
   document.getElementById('nav-' + page)?.classList.add('active');
   document.title = PAGE_TITLES[page] || PAGE_TITLES.home;
@@ -8631,6 +8783,17 @@ const SPECIAL_BADGES = [
     desc: 'Joined before the reveal',
     check: () => lisaEarlySupporterEarned(),
   },
+  // JISOO Early Supporter — dormant until jisoo.io adds a save/join action.
+  // Re-enable by restoring this entry (heart-locket icon) + the card badge chip
+  // + renderJisooBadge()/jisooEarlySupporterEarned() in refreshSupporterChips.
+  // {
+  //   id: 'jisoo-click',
+  //   icon: '<img src="/jisoo-heart.webp" alt="" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;">',
+  //   label: 'EARLY SUPPORTER',
+  //   song: 'jisoo.io — JISOO',
+  //   desc: 'Clicked in before release',
+  //   check: () => jisooEarlySupporterEarned(),
+  // },
   {
     id: 'jennie-fa-presave',
     icon: '🏆',
@@ -10756,7 +10919,12 @@ function renderHomeCountdowns() {
     const m = Math.floor(diff / 60000);    diff %= 60000;
     const s = Math.floor(diff / 1000);
     const p = n => String(n).padStart(2, '0');
-    if (card.dataset.plain) {
+    if (card.dataset.stars) {
+      // jisoo.io-style "10 ★ 22 ★ 31 ★ 58" with DAYS/HOURS/MINUTES/SECONDS labels
+      const star = '<svg class="cd-star" viewBox="0.880983 32 34.238017 32.5623" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M18 32L22.0413 44.4377H35.119L24.5389 52.1246L28.5801 64.5623L18 56.8754L7.41987 64.5623L11.4611 52.1246L0.880983 44.4377H13.9587L18 32Z"/></svg>';
+      const u = (n, l) => `<div class="cd-unit"><div class="cd-num">${p(n)}</div><div class="cd-lbl">${l}</div></div>`;
+      timer.innerHTML = u(d, 'Days') + star + u(h, 'Hours') + star + u(m, 'Minutes') + star + u(s, 'Seconds');
+    } else if (card.dataset.plain) {
       // hellosawadika-style plain "dd : hh : mm : ss"
       timer.innerHTML = `<span>${p(d)}</span><i>:</i><span>${p(h)}</span><i>:</i><span>${p(m)}</span><i>:</i><span>${p(s)}</span>`;
     } else {
@@ -10873,6 +11041,8 @@ async function refreshSupporterChips() {
   if (user) { try { await Promise.all([faEarlySupporterEarned(), lisaEarlySupporterEarned()]); } catch {} }
   renderFaBadge();
   renderLisaBadge();
+  // JISOO Early Supporter is dormant until jisoo.io adds a save/join action
+  // (renderJisooBadge / jisooEarlySupporterEarned stay defined below for re-enable).
 }
 
 function renderFaSaveCount(count) {
@@ -10963,6 +11133,59 @@ async function loadLisaSaveCount() {
     const d = await r.json();
     renderLisaSaveCount(d.count || 0);
   } catch {}
+}
+
+// ── JISOO countdown (jisoo.io) ────────────────────────────────────────────────
+// NOTE: the Early Supporter badge is DORMANT for now — jisoo.io has no save/join
+// action to gate it on, so the badge chip, the My Badges entry and the
+// refreshSupporterChips wiring are all disabled. The helpers below stay defined so
+// re-enabling (once a save/join exists) is just restoring those three call sites
+// and wiring saveJisooClick() back onto the CLICK button.
+// The heart-locket icon is jisoo.io's own CLICK art.
+const JISOO_SAVE_LS    = 'bu_jisoo_click_saved';
+const JISOO_RELEASE_AT = '2026-09-04T04:00:00Z'; // Sep 4, 2026 · 1PM KST / 12AM EDT
+
+function renderJisooBadge() {
+  const el = document.getElementById('jisoo-badge');
+  if (el) el.style.display = (_buSignedIn && localStorage.getItem(JISOO_SAVE_LS)) ? 'inline-flex' : 'none';
+}
+
+async function jisooEarlySupporterEarned() {
+  const localFlag = !!localStorage.getItem(JISOO_SAVE_LS);
+  let metaFlag = false;
+  try {
+    const user = (await sb?.auth.getUser())?.data?.user || null;
+    if (user) {
+      metaFlag = !!user.user_metadata?.jisoo_early_supporter;
+      if (localFlag && !metaFlag) {
+        await sb.auth.updateUser({ data: { jisoo_early_supporter: true } });
+        metaFlag = true;
+      } else if (metaFlag && !localFlag) {
+        localStorage.setItem(JISOO_SAVE_LS, '1');
+      }
+    }
+  } catch {}
+  return localFlag || metaFlag;
+}
+
+// Fires once per browser when a fan clicks through to jisoo.io — doesn't block the
+// outbound navigation. Unlocks the JISOO "Early Supporter" heart-locket badge.
+function saveJisooClick() {
+  if (localStorage.getItem(JISOO_SAVE_LS)) return;
+  localStorage.setItem(JISOO_SAVE_LS, '1');
+  _showShareToast(_buSignedIn ? '🏆 Badge unlocked: JISOO Early Supporter!' : '✅ Clicked in! Sign in on My Badges to claim your JISOO Early Supporter badge.');
+  try { sb?.auth.updateUser({ data: { jisoo_early_supporter: true } }); } catch {}
+  refreshSupporterChips();
+}
+
+// Share the JISOO countdown. The full generated share card (drawJisooCard) is wired
+// in just below; this is the entry point the card's 📸 button calls.
+function openJisooCard() {
+  if (typeof _openJisooShareCard === 'function') return _openJisooShareCard();
+  const url = 'https://www.jisoo.io';
+  const txt = 'JISOO — Sep 4, 2026 · CLICK jisoo.io ↗';
+  if (navigator.share) navigator.share({ title: 'JISOO', text: txt, url }).catch(() => {});
+  else { try { navigator.clipboard?.writeText(txt + ' ' + url); _showShareToast('Link copied ✨'); } catch {} }
 }
 
 // ── Release card expand panel: global release times, goals, links ─────────
@@ -12282,6 +12505,7 @@ function setCardFormat(fmt, btn) {
   else if (_cardType === 'goal-hit' && window._goalCardData) drawGoalHitCard(canvas, { ...window._goalCardData, logo: _cardLogo, walkers: _goalWalkersImg, photo: _goalCardPhoto });
   else if (_cardType === 'presave' && _presaveCardData) { drawPresaveCard(canvas, _presaveCardData); _markCardReady(canvas); }
   else if (_cardType === 'lisa' && _lisaCardData) { drawLisaCard(canvas, _lisaCardData); _markCardReady(canvas); }
+  else if (_cardType === 'jisoo' && _jisooCardData) { drawJisooCard(canvas, _jisooCardData); _markCardReady(canvas); }
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -12764,6 +12988,13 @@ async function shareCard() {
       statsText = d.earned
         ? `\n🕊️ สวัสดีค่ะ — I'm in for LISA's reveal\n⏰ ${d.dateShort}\n👉 Join at hellosawadika.com — count yourself in on blinksunited.com!\n`
         : `\n🕊️ LISA — hellosawadika.com reveal ${d.dateShort}\n👉 Join the reveal — every blink counts. Share it!\n`;
+    }
+  } else if (_cardType === 'jisoo') {
+    const d = _jisooCardData;
+    if (d) {
+      statsText = d.earned
+        ? `\n🖤 I'm an Early Supporter — JISOO, ${d.dateShort}\n👉 CLICK jisoo.io — count yourself in on blinksunited.com!\n`
+        : `\n🖤 JISOO — jisoo.io · ${d.dateShort}\n👉 CLICK jisoo.io — every blink counts. Share it!\n`;
     }
   } else if (_cardType === 'goal-hit') {
     const d = window._goalCardData;
@@ -14340,6 +14571,181 @@ async function openLisaCard() {
   };
   label.textContent = earned ? "I'M IN — SAWADIKA" : 'SAWADIKA · COUNTDOWN';
   drawLisaCard(canvas, _lisaCardData);
+  _markCardReady(canvas);
+}
+
+// ── JISOO share card (jisoo.io carnival theme) ────────────────────────────────
+// Same pipeline as the LISA/JENNIE cards: same overlay + format toggle + share/
+// download, drawn on the shared #card-canvas. Uses the self-hosted Angkor numerals
+// and the JISOO/CLICK wordmark + park artwork.
+let _jisooCardData = null;
+let _jisooBgImg = null, _jisooParkImg = null, _jisooTitleImg = null, _jisooClickImg = null, _jisooHeartImg = null;
+
+function _drawStar(ctx, cx, cy, r, color) {
+  ctx.save(); ctx.fillStyle = color; ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const ang = -Math.PI / 2 + i * Math.PI / 5;
+    const rad = (i % 2) ? r * 0.42 : r;
+    ctx.lineTo(cx + Math.cos(ang) * rad, cy + Math.sin(ang) * rad);
+  }
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+// Draw a "10 ★ 22 ★ 31 ★ 58" row (Angkor numerals + Pretendard labels), centered.
+function _drawJisooCountRow(ctx, units, cx, top, H, INK) {
+  const numSize = Math.round(H * 0.135);
+  const lblSize = Math.round(H * 0.027);
+  const starR = numSize * 0.16;
+  const sep = Math.round(H * 0.052);
+  ctx.font = `400 ${numSize}px "AngkorDigits", Georgia, serif`;
+  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  const nums = units.map(u => u[0]);
+  const nw = nums.map(n => ctx.measureText(n).width);
+  const total = nw.reduce((a, b) => a + b, 0) + sep * (units.length - 1);
+  let x = cx - total / 2;
+  const numBase = top + numSize * 0.82;
+  units.forEach((u, i) => {
+    ctx.fillStyle = INK;
+    ctx.font = `400 ${numSize}px "AngkorDigits", Georgia, serif`;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(u[0], x, numBase);
+    ctx.save();
+    ctx.globalAlpha = 0.8;
+    ctx.font = `500 ${lblSize}px "PretendardVariable", -apple-system, sans-serif`;
+    ctx.textAlign = 'center'; ctx.letterSpacing = '1px';
+    ctx.fillStyle = INK;
+    ctx.fillText(u[1], x + nw[i] / 2, numBase + lblSize * 1.7);
+    ctx.restore();
+    x += nw[i];
+    if (i < units.length - 1) { _drawStar(ctx, x + sep / 2, top + numSize * 0.42, starR, INK); x += sep; }
+  });
+  ctx.letterSpacing = '0px';
+}
+
+function drawJisooCard(canvas, d) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const INK = '#68493a';
+  const PX = Math.round(W * 0.075);
+
+  // dusty-mauve paper (cover-fit the bg texture, fallback flat)
+  if (d.bgImg) {
+    const s = Math.max(W / d.bgImg.width, H / d.bgImg.height);
+    const bw = d.bgImg.width * s, bh = d.bgImg.height * s;
+    ctx.drawImage(d.bgImg, (W - bw) / 2, (H - bh) / 2, bw, bh);
+  } else { ctx.fillStyle = '#c7b2b6'; ctx.fillRect(0, 0, W, H); }
+  ctx.fillStyle = 'rgba(199,178,182,0.22)'; ctx.fillRect(0, 0, W, H);
+
+  // carnival ink as a bottom backdrop — kept small + centered so the countdown
+  // and CTA sit in the clear paper above it (multiply drops its white).
+  let parkTop = H;
+  if (d.parkImg) {
+    const pw = Math.round(W * 0.8), ph = pw * (d.parkImg.height / d.parkImg.width);
+    parkTop = H - ph;
+    ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.9;
+    ctx.drawImage(d.parkImg, (W - pw) / 2, parkTop, pw, ph); ctx.restore();
+  }
+
+  // top brand row
+  const topY = Math.round(H * 0.08);
+  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  ctx.font = '500 20px "DM Mono", monospace'; ctx.letterSpacing = '4px';
+  ctx.fillStyle = 'rgba(104,73,58,0.85)';
+  ctx.fillText('BLINKS UNITED', PX, topY);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = d.earned ? '#4a3226' : 'rgba(104,73,58,0.68)';
+  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : 'COUNTDOWN', W - PX, topY);
+  ctx.letterSpacing = '0px';
+
+  // countdown snapshot at generation time
+  let diff = Date.parse(d.target) - Date.now();
+  const isOut = !(diff > 0);
+  let dd = 0, hh = 0, mm = 0, ss = 0;
+  if (!isOut) { dd = Math.floor(diff / 86400000); diff %= 86400000; hh = Math.floor(diff / 3600000); diff %= 3600000; mm = Math.floor(diff / 60000); diff %= 60000; ss = Math.floor(diff / 1000); }
+  const p2 = n => String(n).padStart(2, '0');
+
+  // JISOO wordmark title (upper, clear zone)
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  if (d.titleImg) {
+    const asp = d.titleImg.width / d.titleImg.height;
+    const th = Math.round(H * 0.1), tw = th * asp;
+    ctx.drawImage(d.titleImg, (W - tw) / 2, Math.round(H * 0.115), tw, th);
+  }
+  // date line
+  ctx.fillStyle = 'rgba(104,73,58,0.82)';
+  ctx.font = `italic 500 ${Math.round(H * 0.032)}px Georgia, "Times New Roman", serif`;
+  ctx.letterSpacing = '1px';
+  ctx.fillText(d.dateLine, W / 2, Math.round(H * 0.235));
+
+  // countdown (above the park)
+  const cdTop = Math.round(H * 0.30);
+  if (isOut) {
+    ctx.fillStyle = INK;
+    ctx.font = `400 ${Math.round(H * 0.12)}px "AngkorDigits", Georgia, serif`;
+    ctx.textBaseline = 'top';
+    ctx.fillText(d.liveLabel || 'OUT NOW', W / 2, cdTop);
+  } else {
+    _drawJisooCountRow(ctx, [[p2(dd), 'DAYS'], [p2(hh), 'HOURS'], [p2(mm), 'MINUTES'], [p2(ss), 'SECONDS']], W / 2, cdTop, H, INK);
+  }
+
+  // CTA: heart locket + CLICK jisoo.io — placed above the park so it stays legible
+  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'center';
+  const ctaY = Math.round(Math.min(H * 0.52, parkTop - H * 0.02));
+  const heartH = Math.round(H * 0.052);
+  ctx.font = `italic 700 ${Math.round(H * 0.038)}px Georgia, "Times New Roman", serif`;
+  const ctaTxt = 'CLICK  jisoo.io ↗';
+  const tW = ctx.measureText(ctaTxt).width;
+  const heartW = d.heartImg ? heartH * (d.heartImg.width / d.heartImg.height) : 0;
+  const gap = heartW ? Math.round(W * 0.012) : 0;
+  const startX = W / 2 - (tW + heartW + gap) / 2;
+  if (d.heartImg) ctx.drawImage(d.heartImg, startX, ctaY - heartH * 0.82, heartW, heartH);
+  ctx.fillStyle = '#43301f'; ctx.textAlign = 'left';
+  ctx.fillText(ctaTxt, startX + heartW + gap, ctaY);
+  // footer (light so it stays readable over the dark park below)
+  ctx.textAlign = 'center';
+  ctx.font = '500 15px "DM Mono", monospace'; ctx.letterSpacing = '2px';
+  ctx.fillStyle = 'rgba(255,249,247,0.72)';
+  ctx.fillText('shared via blinksunited.com', W / 2, H - Math.round(H * 0.03));
+  ctx.textAlign = 'left'; ctx.letterSpacing = '0px';
+}
+
+async function _openJisooShareCard() {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none';
+  _cardType = 'jisoo';
+  _cardTrackId = null;
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+
+  const [bg, park, title, click, heart] = await Promise.all([
+    _jisooBgImg    ? Promise.resolve(_jisooBgImg)    : loadImg('/Jisoobackground.webp').then(i => (_jisooBgImg = i)).catch(() => null),
+    _jisooParkImg  ? Promise.resolve(_jisooParkImg)  : loadImg('/Jisoopark.webp').then(i => (_jisooParkImg = i)).catch(() => null),
+    _jisooTitleImg ? Promise.resolve(_jisooTitleImg) : loadImg('/jisoo-word-jisoo.webp').then(i => (_jisooTitleImg = i)).catch(() => null),
+    _jisooClickImg ? Promise.resolve(_jisooClickImg) : loadImg('/jisoo-word-click.webp').then(i => (_jisooClickImg = i)).catch(() => null),
+    _jisooHeartImg ? Promise.resolve(_jisooHeartImg) : loadImg('/jisoo-heart.webp').then(i => (_jisooHeartImg = i)).catch(() => null),
+  ]);
+  await document.fonts.ready;
+  // make sure the Angkor + Pretendard faces are actually rasterized before drawing
+  try { await Promise.all([document.fonts.load('400 90px "AngkorDigits"'), document.fonts.load('500 20px "PretendardVariable"')]); } catch {}
+
+  await refreshSupporterChips();
+  const earned = _buSignedIn && !!localStorage.getItem(JISOO_SAVE_LS);
+  _jisooCardData = {
+    earned, bgImg: bg, parkImg: park, titleImg: title, clickImg: click, heartImg: heart,
+    target: JISOO_RELEASE_AT,
+    dateLine: 'Sep 4, 2026 · 1PM KST / 12AM EDT',
+    dateShort: 'Sep 4, 2026',
+    liveLabel: 'OUT NOW',
+  };
+  label.textContent = earned ? "I'M IN — JISOO" : 'JISOO · COUNTDOWN';
+  drawJisooCard(canvas, _jisooCardData);
   _markCardReady(canvas);
 }
 

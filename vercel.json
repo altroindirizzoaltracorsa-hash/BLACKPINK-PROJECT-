@@ -3,6 +3,8 @@
     { "source": "/", "destination": "/vmas.html", "permanent": false }
   ],
   "rewrites": [
+    { "source": "/countdowns", "destination": "/index.html" },
+    { "source": "/countdowns/:slug*", "destination": "/index.html" },
     { "source": "/badges", "destination": "/index.html" },
     { "source": "/leaderboard", "destination": "/index.html" },
     { "source": "/voting", "destination": "/index.html" },
@@ -44,7 +46,7 @@
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     },
     {
-      "source": "/(badges|leaderboard|voting|vote|feedback|account|streams|charts|apple-charts|itunes-charts|spotify-charts|youtube|kcharts|projects|ltal-embed|vmas)",
+      "source": "/(countdowns|badges|leaderboard|voting|vote|feedback|account|streams|charts|apple-charts|itunes-charts|spotify-charts|youtube|kcharts|projects|ltal-embed|vmas)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     }
   ],
