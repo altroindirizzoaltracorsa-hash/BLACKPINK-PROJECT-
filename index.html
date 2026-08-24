@@ -1611,8 +1611,9 @@
   .cd-card-jisoo .cd-out { position: absolute; top: 37%; left: 50%; transform: translate(-50%,-50%);
     z-index: 3; font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 700;
     font-size: 1.6rem; color: var(--js-ink); }
-  .cd-card-jisoo .cd-links { position: absolute; top: 57%; left: 0; right: 0; transform: translateY(-50%);
-    z-index: 4; display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin: 0; }
+  .cd-card-jisoo .cd-links { position: absolute; top: 56%; left: 0; right: 0; transform: translateY(-50%);
+    z-index: 4; display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+    gap: 0.4rem 0.45rem; margin: 0; padding: 0 0.6rem; }
   .cd-card-jisoo .cd-btn.js-share img { height: 1.15rem; width: auto; display: block; }
   .cd-card-jisoo .cd-btn { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.4rem 1rem;
     border-radius: 3px; color: #43301f; text-decoration: none; cursor: pointer;
@@ -2337,6 +2338,7 @@
             <img class="js-park" src="/Jisoopark.webp" alt="" loading="lazy">
             <div class="cd-links">
               <a class="cd-btn js-click" href="https://www.jisoo.io" target="_blank" rel="noopener"><img src="/jisoo-word-click.webp" alt="CLICK">jisoo.io&nbsp;↗</a>
+              <a class="cd-btn cd-btn-ghost" href="https://youtube.com/shorts/FM3wA3-GjdE" target="_blank" rel="noopener">▶ Teaser</a>
               <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
             </div>
           </div>
