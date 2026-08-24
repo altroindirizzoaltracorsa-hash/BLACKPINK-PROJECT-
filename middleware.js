@@ -37,7 +37,7 @@ const COUNTDOWNS = {
   },
   'hellosawadika.com': {
     title: 'LISA — New Single, Sep 3, 2026 | Countdown · BLINKS UNITED',
-    description: "Counting down to LISA's new single — Sep 3, 2026 (1PM KST / 12AM EDT). hellosawadika.com.",
+    description: "Counting down to LISA's new single — Sep 3, 2026 (1PM KST / 12AM EDT). Pre-save at lalisaofficial.com.",
     image: '/og-countdown-lisa.jpg',
   },
   'lalisaofficial.com': {

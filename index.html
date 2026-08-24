@@ -1712,6 +1712,24 @@
   .cd-card-lisa .cd-btn-ghost { background: rgba(255,255,255,0.06); color: var(--la-cream);
     border: 1px solid rgba(242,233,226,0.5); }
   .cd-card-lisa .cd-btn-ghost:hover { background: rgba(242,233,226,0.14); filter: none; }
+  /* PRESS PLAY share chooser (Picture / Video / Link) */
+  #pp-share-sheet .pp-sheet { background: #1a0406; border: 1px solid rgba(225,29,42,0.4);
+    border-radius: 20px 20px 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+    width: 100%; max-width: 440px; transform: translateY(24px); transition: transform 0.25s ease; }
+  #pp-share-sheet .pp-sheet-title { font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 0.18em;
+    text-transform: uppercase; color: #f2e9e2; opacity: 0.7; text-align: center; margin-bottom: 14px; }
+  #pp-share-sheet .pp-opt { display: flex; align-items: center; gap: 0.7rem; width: 100%; text-align: left;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(242,233,226,0.14); color: #f2e9e2;
+    border-radius: 12px; padding: 0.75rem 0.95rem; margin-bottom: 0.55rem; font-size: 1.35rem; cursor: pointer;
+    transition: background 0.15s ease; }
+  #pp-share-sheet .pp-opt:hover { background: rgba(225,29,42,0.16); }
+  #pp-share-sheet .pp-opt span { font-family: 'DM Mono', monospace; font-size: 0.9rem; font-weight: 500; letter-spacing: 0.02em; }
+  #pp-share-sheet .pp-opt small { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 0.62rem;
+    opacity: 0.55; letter-spacing: 0.02em; }
+  #pp-share-sheet .pp-cancel { width: 100%; background: transparent; border: 1px solid rgba(242,233,226,0.22);
+    color: rgba(242,233,226,0.75); border-radius: 99px; padding: 0.6rem; margin-top: 0.3rem;
+    font-family: 'DM Mono', monospace; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; }
+  #pp-share-sheet .pp-cancel:hover { background: rgba(242,233,226,0.08); }
 
   /* /countdowns hub page */
   .cd-hub { max-width: 960px; margin: 0 auto; padding: 80px 1.2rem 3rem; text-align: center; }
@@ -2364,7 +2382,7 @@
               </div>
               <div class="sw-thai"><img src="/sawadika/sawadika.svg" alt="สวัสดีค่ะ — Sawadika"></div>
             </div>
-            <div class="cd-eyebrow sw-eyebrow">LISA · New Single · hellosawadika.com</div>
+            <div class="cd-eyebrow sw-eyebrow">LISA · New Single · lalisaofficial.com</div>
             <div class="cd-sub">Single · Thu, Sep 3, 2026 · 1PM KST / 12AM EDT</div>
             <div class="cd-badge-chip" id="lisa-badge" style="display:none;">🏆 Early Supporter</div>
             <div class="cd-timer cd-timer-plain" data-timer></div>
@@ -2376,7 +2394,7 @@
               <div class="cd-goal-bar"><div class="cd-goal-fill" id="lisa-goal-fill" style="width:0%"></div></div>
             </div>
             <div class="cd-links">
-              <a class="cd-btn sw-btn" href="https://hellosawadika.com" target="_blank" rel="noopener" onclick="saveLisaSawadika()">Join the reveal ↗</a>
+              <a class="cd-btn sw-btn" href="https://www.lalisaofficial.com/" target="_blank" rel="noopener" onclick="saveLisaSawadika()">Pre-save ↗</a>
               <button class="cd-btn sw-btn sw-btn-ghost" onclick="openLisaCard()">📸 Share</button>
             </div>
           </div>
@@ -11358,13 +11376,66 @@ function openJisooCard() {
   else { try { navigator.clipboard?.writeText(txt + ' ' + url); _showShareToast('Link copied ✨'); } catch {} }
 }
 
-// Share LISA's PRESS PLAY EP countdown — shares the /countdowns deep link so the
-// preview card (middleware OG) shows on socials.
+// Share LISA's PRESS PLAY EP countdown. Opens a small sheet so the fan can pick
+// what to post: the countdown-card Picture, LISA's teaser Video, or the Link
+// (whose /countdowns deep link renders the preview card on socials).
+const PP_SHARE_TEXT = 'LISA — PRESS PLAY EP · Oct 23, 2026 🎬';
+const PP_SHARE_URL = 'https://www.blinksunited.com/countdowns/lalisaofficial.com';
 function openLisaPressPlayCard() {
-  const url = 'https://www.blinksunited.com/countdowns/lalisaofficial.com';
-  const txt = 'LISA — PRESS PLAY EP · Oct 23, 2026 🎬';
-  if (navigator.share) navigator.share({ title: 'LISA — PRESS PLAY', text: txt, url }).catch(() => {});
-  else { try { navigator.clipboard?.writeText(txt + ' ' + url); _showShareToast('Link copied ✨'); } catch {} }
+  let ov = document.getElementById('pp-share-sheet');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'pp-share-sheet';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:10001;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.55);opacity:0;transition:opacity .2s';
+    ov.onclick = (e) => { if (e.target === ov) closePressPlayShare(); };
+    ov.innerHTML =
+      '<div class="pp-sheet">' +
+        '<div class="pp-sheet-title">Share PRESS PLAY</div>' +
+        '<button class="pp-opt" onclick="_sharePressPlay(\'image\')">🖼<span>Picture</span><small>Countdown card</small></button>' +
+        '<button class="pp-opt" onclick="_sharePressPlay(\'video\')">🎬<span>Video</span><small>LISA teaser clip</small></button>' +
+        '<button class="pp-opt" onclick="_sharePressPlay(\'link\')">🔗<span>Link</span><small>Preview link</small></button>' +
+        '<button class="pp-cancel" onclick="closePressPlayShare()">Cancel</button>' +
+      '</div>';
+    document.body.appendChild(ov);
+  }
+  ov.style.display = 'flex';
+  requestAnimationFrame(() => { ov.style.opacity = '1'; ov.querySelector('.pp-sheet').style.transform = 'translateY(0)'; });
+}
+function closePressPlayShare() {
+  const ov = document.getElementById('pp-share-sheet');
+  if (!ov) return;
+  ov.style.opacity = '0';
+  const s = ov.querySelector('.pp-sheet'); if (s) s.style.transform = 'translateY(24px)';
+  setTimeout(() => { ov.style.display = 'none'; }, 200);
+}
+async function _sharePressPlay(kind) {
+  closePressPlayShare();
+  if (kind === 'link') {
+    if (navigator.share) navigator.share({ title: 'LISA — PRESS PLAY', text: PP_SHARE_TEXT, url: PP_SHARE_URL }).catch(() => {});
+    else { try { navigator.clipboard?.writeText(PP_SHARE_TEXT + ' ' + PP_SHARE_URL); _showShareToast('Link copied ✨'); } catch {} }
+    return;
+  }
+  const asset = kind === 'video'
+    ? { src: '/lisa-preview.mp4', type: 'video/mp4', name: 'LISA-PRESS-PLAY.mp4' }
+    : { src: '/og-countdown-pressplay.jpg', type: 'image/jpeg', name: 'LISA-PRESS-PLAY.jpg' };
+  let blob;
+  try { blob = await (await fetch(asset.src)).blob(); }
+  catch { _showShareToast('Could not load — try again'); return; }
+  const file = new File([blob], asset.name, { type: asset.type });
+  // Web Share level 2 (files) — best on mobile. Some targets reject a url alongside
+  // files, so share the file with just the caption text.
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], text: PP_SHARE_TEXT }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; /* else fall through to download */ }
+  }
+  // Fallback (desktop / unsupported): download the asset.
+  try {
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = u; a.download = asset.name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 1000);
+    _showShareToast(kind === 'video' ? 'Video saved ✓' : 'Picture saved ✓');
+  } catch { _showShareToast('Could not share — try again'); }
 }
 
 // ── Release card expand panel: global release times, goals, links ─────────
