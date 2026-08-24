@@ -1615,6 +1615,10 @@
     z-index: 4; display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
     gap: 0.4rem 0.45rem; margin: 0; padding: 0 0.6rem; }
   .cd-card-jisoo .cd-btn.js-share img { height: 1.15rem; width: auto; display: block; }
+  .cd-card-jisoo .js-teaser { position: absolute; top: 0.6rem; right: 0.7rem; width: 46px; z-index: 6;
+    line-height: 0; filter: drop-shadow(0 3px 8px rgba(60,40,30,0.4)); transition: transform 0.16s ease; }
+  .cd-card-jisoo .js-teaser:hover { transform: scale(1.08); }
+  .cd-card-jisoo .js-teaser img { width: 100%; height: auto; display: block; }
   .cd-card-jisoo .cd-btn { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.4rem 1rem;
     border-radius: 3px; color: #43301f; text-decoration: none; cursor: pointer;
     background: rgba(255,251,250,0.16); border: 1.5px solid rgba(104,73,58,0.55);
@@ -2330,6 +2334,7 @@
             </div>
           </div>
           <div class="cd-card cd-card-jisoo" data-slug="jisoo.io" data-target="2026-09-04T04:00:00Z" data-live="OUT NOW ✨" data-stars="1">
+            <a class="js-teaser" href="https://youtube.com/shorts/FM3wA3-GjdE" target="_blank" rel="noopener" title="Watch the JISOO teaser"><img src="/jisoo-teaser.webp" alt="Watch the JISOO teaser"></a>
             <img class="js-title" src="/jisoo-word-jisoo.webp" alt="JISOO" loading="lazy">
             <div class="cd-sub"><span class="js-date">Thu, Sep 4, 2026</span><span class="js-tz">1PM KST / 12AM EDT</span></div>
             <!-- DORMANT: JISOO Early Supporter badge — re-enable when jisoo.io adds a save/join.
@@ -2338,7 +2343,6 @@
             <img class="js-park" src="/Jisoopark.webp" alt="" loading="lazy">
             <div class="cd-links">
               <a class="cd-btn js-click" href="https://www.jisoo.io" target="_blank" rel="noopener"><img src="/jisoo-word-click.webp" alt="CLICK">jisoo.io&nbsp;↗</a>
-              <a class="cd-btn cd-btn-ghost" href="https://youtube.com/shorts/FM3wA3-GjdE" target="_blank" rel="noopener">▶ Teaser</a>
               <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
             </div>
           </div>
