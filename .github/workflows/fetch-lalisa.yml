@@ -1,0 +1,32 @@
+name: Fetch lalisaofficial assets
+on: { workflow_dispatch: {} }
+permissions: { contents: write }
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Fetch page + css (print) and images (commit to branch)
+        run: |
+          base=https://www.lalisaofficial.com
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36"
+          echo "############ INDEX.HTML (filtered) ############"
+          curl -sSL --max-time 30 -A "$UA" "$base/" | tr -d '\r' | sed 's/></>\n</g' \
+            | grep -iE 'og:|twitter:|<title|<h1|<h2|out now|listen|pre.?save|apple|spotify|youtube|track|mona|press.?play|href="http' \
+            | sed -E 's/^ +//' | head -160
+          echo
+          echo "############ STYLE.CSS colors ############"
+          curl -sSL --max-time 30 -A "$UA" "$base/css/style.css" \
+            | grep -oiE '(background(-color)?|color)\s*:\s*#[0-9a-f]{3,8}' | sort | uniq -c | sort -rn | head -30
+          echo
+          echo "############ download assets ############"
+          mkdir -p lalisa
+          for f in mona-bg.webp lisa-logo.webp press-play.webp rca.svg; do
+            curl -sSL --max-time 40 -A "$UA" -o "lalisa/$f" "$base/assets/img/$f" && echo "got $f -> $(wc -c <lalisa/$f) bytes ($(file -b lalisa/$f 2>/dev/null))"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add lalisa && git commit -m "Fetch lalisaofficial promo assets (mona/lisa-logo/press-play/rca)" || echo "nothing to commit"
+          git push origin main || echo "push failed"
