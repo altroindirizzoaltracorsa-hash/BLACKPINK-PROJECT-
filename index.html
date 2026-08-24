@@ -14628,15 +14628,18 @@ function drawJisooCard(canvas, d) {
   } else { ctx.fillStyle = '#c7b2b6'; ctx.fillRect(0, 0, W, H); }
   ctx.fillStyle = 'rgba(199,178,182,0.22)'; ctx.fillRect(0, 0, W, H);
 
-  // carnival ink anchored to the bottom (multiply drops its white onto the paper)
+  // carnival ink as a bottom backdrop — kept small + centered so the countdown
+  // and CTA sit in the clear paper above it (multiply drops its white).
+  let parkTop = H;
   if (d.parkImg) {
-    const pw = W, ph = pw * (d.parkImg.height / d.parkImg.width);
+    const pw = Math.round(W * 0.8), ph = pw * (d.parkImg.height / d.parkImg.width);
+    parkTop = H - ph;
     ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.9;
-    ctx.drawImage(d.parkImg, 0, H - ph, pw, ph); ctx.restore();
+    ctx.drawImage(d.parkImg, (W - pw) / 2, parkTop, pw, ph); ctx.restore();
   }
 
   // top brand row
-  const topY = Math.round(H * 0.085);
+  const topY = Math.round(H * 0.08);
   ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
   ctx.font = '500 20px "DM Mono", monospace'; ctx.letterSpacing = '4px';
   ctx.fillStyle = 'rgba(104,73,58,0.85)';
@@ -14653,37 +14656,35 @@ function drawJisooCard(canvas, d) {
   if (!isOut) { dd = Math.floor(diff / 86400000); diff %= 86400000; hh = Math.floor(diff / 3600000); diff %= 3600000; mm = Math.floor(diff / 60000); diff %= 60000; ss = Math.floor(diff / 1000); }
   const p2 = n => String(n).padStart(2, '0');
 
-  // JISOO wordmark title
+  // JISOO wordmark title (upper, clear zone)
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  let y = Math.round(H * 0.15);
   if (d.titleImg) {
     const asp = d.titleImg.width / d.titleImg.height;
-    const th = Math.round(H * 0.115), tw = th * asp;
-    ctx.drawImage(d.titleImg, (W - tw) / 2, y, tw, th);
-    y += th + Math.round(H * 0.028);
+    const th = Math.round(H * 0.1), tw = th * asp;
+    ctx.drawImage(d.titleImg, (W - tw) / 2, Math.round(H * 0.115), tw, th);
   }
   // date line
   ctx.fillStyle = 'rgba(104,73,58,0.82)';
-  ctx.font = `italic 500 ${Math.round(H * 0.033)}px Georgia, "Times New Roman", serif`;
+  ctx.font = `italic 500 ${Math.round(H * 0.032)}px Georgia, "Times New Roman", serif`;
   ctx.letterSpacing = '1px';
-  ctx.fillText(d.dateLine, W / 2, y);
-  y += Math.round(H * 0.08);
+  ctx.fillText(d.dateLine, W / 2, Math.round(H * 0.235));
 
-  // countdown
+  // countdown (above the park)
+  const cdTop = Math.round(H * 0.30);
   if (isOut) {
     ctx.fillStyle = INK;
     ctx.font = `400 ${Math.round(H * 0.12)}px "AngkorDigits", Georgia, serif`;
     ctx.textBaseline = 'top';
-    ctx.fillText(d.liveLabel || 'OUT NOW', W / 2, y);
+    ctx.fillText(d.liveLabel || 'OUT NOW', W / 2, cdTop);
   } else {
-    _drawJisooCountRow(ctx, [[p2(dd), 'DAYS'], [p2(hh), 'HOURS'], [p2(mm), 'MINUTES'], [p2(ss), 'SECONDS']], W / 2, y, H, INK);
+    _drawJisooCountRow(ctx, [[p2(dd), 'DAYS'], [p2(hh), 'HOURS'], [p2(mm), 'MINUTES'], [p2(ss), 'SECONDS']], W / 2, cdTop, H, INK);
   }
 
-  // bottom CTA: heart locket + CLICK JISOO.IO
+  // CTA: heart locket + CLICK jisoo.io — placed above the park so it stays legible
   ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'center';
-  const ctaY = H - Math.round(H * 0.085);
-  const heartH = Math.round(H * 0.05);
-  ctx.font = `italic 700 ${Math.round(H * 0.036)}px Georgia, "Times New Roman", serif`;
+  const ctaY = Math.round(Math.min(H * 0.52, parkTop - H * 0.02));
+  const heartH = Math.round(H * 0.052);
+  ctx.font = `italic 700 ${Math.round(H * 0.038)}px Georgia, "Times New Roman", serif`;
   const ctaTxt = 'CLICK  jisoo.io ↗';
   const tW = ctx.measureText(ctaTxt).width;
   const heartW = d.heartImg ? heartH * (d.heartImg.width / d.heartImg.height) : 0;
@@ -14692,10 +14693,11 @@ function drawJisooCard(canvas, d) {
   if (d.heartImg) ctx.drawImage(d.heartImg, startX, ctaY - heartH * 0.82, heartW, heartH);
   ctx.fillStyle = '#43301f'; ctx.textAlign = 'left';
   ctx.fillText(ctaTxt, startX + heartW + gap, ctaY);
+  // footer (light so it stays readable over the dark park below)
   ctx.textAlign = 'center';
-  ctx.font = '500 16px "DM Mono", monospace'; ctx.letterSpacing = '2px';
-  ctx.fillStyle = 'rgba(104,73,58,0.55)';
-  ctx.fillText('shared via blinksunited.com', W / 2, H - Math.round(H * 0.036));
+  ctx.font = '500 15px "DM Mono", monospace'; ctx.letterSpacing = '2px';
+  ctx.fillStyle = 'rgba(255,249,247,0.72)';
+  ctx.fillText('shared via blinksunited.com', W / 2, H - Math.round(H * 0.03));
   ctx.textAlign = 'left'; ctx.letterSpacing = '0px';
 }
 
