@@ -1,29 +1,14 @@
--- VMA voting leaderboard — manually-submitted vote counts per BU account, per day.
+-- Split the VMA vote leaderboard into LISA (Best Pop / Best K-Pop) vs BLACKPINK
+-- (JUMP, Best K-Pop). The `votes` column stays the authoritative TOTAL used for
+-- ranking; `bp` + `lisa` hold the attributed breakdown (legacy rows logged before
+-- this migration keep their votes total with bp = lisa = 0, i.e. "unattributed").
 --
--- Only a signed-in blink who has linked a scrobbler (>=1 row in linked_accounts)
--- may submit; that's enforced in /api/vma-votes. Votes are self-reported and
--- uncapped. Weekly/monthly totals are just sums over date ranges. The display
--- name is denormalised onto each row so the board can rank without touching the
--- auth schema.
---
--- Run once in the Supabase SQL editor before deploying /api/vma-votes.
+-- Run once in the Supabase SQL editor. Safe to re-run (idempotent).
 
-create table if not exists vma_user_votes (
-  app_user_id  uuid        not null references auth.users(id) on delete cascade,
-  day          date        not null default (now() at time zone 'utc')::date,
-  votes        int         not null default 0 check (votes >= 0),  -- authoritative TOTAL (ranking)
-  bp           int         not null default 0 check (bp   >= 0),   -- attributed: BLACKPINK (JUMP, Best K-Pop)
-  lisa         int         not null default 0 check (lisa >= 0),   -- attributed: LISA (Best Pop / Best K-Pop)
-  display_name text,
-  updated_at   timestamptz not null default now(),
-  primary key (app_user_id, day)
-);
--- Existing installs: see supabase/migrations/add_bp_lisa_to_vma_user_votes.sql
+alter table vma_user_votes add column if not exists bp   int not null default 0 check (bp   >= 0);
+alter table vma_user_votes add column if not exists lisa int not null default 0 check (lisa >= 0);
 
-create index if not exists vma_user_votes_day_idx on vma_user_votes (day);
-
--- Community rally total (sum of everyone's submitted votes) for the /vmas bar.
--- Day boundaries are US Eastern (midnight ET) to match MTV's VMA voting reset.
+-- Community totals now also carry the LISA / BP split (all-time + today, ET day).
 create or replace function vma_vote_totals()
 returns json
 language sql
@@ -42,19 +27,8 @@ as $$
   from vma_user_votes;
 $$;
 
--- Ranked voting board: one entry per account, votes summed for today / this
--- (Mon-start) week / this month / all-time (all US-Eastern).
---
--- Two rules baked in here (intentionally NOT surfaced to users):
---   • Only accounts that have actually STREAMED (>=1 campaign scrobble ever, from
---     user_daily_counts) are ranked. You can still register votes without
---     streaming — they count in the community total (vma_vote_totals) — you just
---     don't appear on this board or earn badges until you've streamed.
---   • Accounts with no display name are shown as blink1, blink2, … numbered by
---     when they first voted (stable), instead of a generic "a blink".
--- Each row also carries `streams` = that account's campaign streams for the
--- current voting day (ET-aligned, so it naturally holds yesterday's total during
--- the 2–6am gap and tracks today's after 6am).
+-- Ranked board — unchanged ranking (by combined `total`), now also returning each
+-- account's LISA / BP split per period so the board can show them as columns.
 create or replace function vma_vote_board()
 returns json
 language sql
@@ -80,18 +54,11 @@ as $$
     group by app_user_id
   ),
   latest_name as (
-    -- Most recent NON-NULL display name. Votes logged by the extension may carry a
-    -- null name; ignoring nulls here means such a row can't wipe out the real name
-    -- (otherwise the board would fall through to a scrobbler handle like "jumppink").
     select distinct on (app_user_id) app_user_id, display_name
     from vma_user_votes
     where display_name is not null and display_name <> ''
     order by app_user_id, day desc, updated_at desc
   ),
-  -- Fallback handle from the linked scrobbler (prefer Last.fm, else most recent),
-  -- so a voter who never set a BU display name shows their handle — same as the
-  -- streaming leaderboard — instead of a generic blinkN. (Voting requires a linked
-  -- scrobbler, so nearly every account here has one.)
   handles as (
     select distinct on (la.app_user_id)
       la.app_user_id::text as app_user_id, la.source_username
@@ -108,8 +75,6 @@ as $$
     from user_daily_counts
     group by app_user_id
   ),
-  -- Every voter (streamer or not). LEFT join streams so non-streamers are kept;
-  -- app_user_id is text in user_daily_counts vs uuid here → cast.
   joined as (
     select
       u.total, u.today, u.week, u.month,
@@ -124,11 +89,6 @@ as $$
     left join handles h on h.app_user_id = u.app_user_id::text
     left join streams s on s.app_user_id = u.app_user_id::text
   ),
-  -- Name = BU display name → linked scrobbler handle → blinkN, mirroring the
-  -- streaming leaderboard's `displayName || handle`. The blinkN privacy default for
-  -- new signups is handled at sign-up (ensureAutoDisplayName assigns a real blinkN
-  -- display name), so it flows through the display_name branch to BOTH boards; only
-  -- an account with no name AND no handle would ever fall through to numbering here.
   numbered as (
     select j.*,
       case
@@ -140,9 +100,6 @@ as $$
       end as name
     from joined j
   )
-  -- Ranked = streaming on the current voting day (>=1 campaign scrobble today).
-  -- Unranked = voted but not streaming today — shown separately, still counted in
-  -- the community total (vma_vote_totals is unchanged).
   select json_build_object(
     'ranked', coalesce((
       select json_agg(json_build_object(
@@ -161,16 +118,5 @@ as $$
   );
 $$;
 
--- ── Privileges ──────────────────────────────────────────────────────────────
--- This table is written ONLY by the /api/vma-votes serverless function, which
--- connects with the service_role key and does its own auth + linked-scrobbler
--- check. Lock everyone else out and make sure the server can write:
---   • RLS on, with NO policies → anon/authenticated can't touch it directly
---     (they must go through the API).
---   • service_role bypasses RLS but still needs table GRANTs — a freshly
---     created table doesn't always inherit them, which is what caused
---     "permission denied for table vma_user_votes" on the first write.
-alter table vma_user_votes enable row level security;
-grant all privileges on table vma_user_votes to service_role;
 grant execute on function vma_vote_totals() to service_role;
 grant execute on function vma_vote_board()  to service_role;

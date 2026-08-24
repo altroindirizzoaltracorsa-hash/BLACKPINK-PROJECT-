@@ -1,13 +1,14 @@
 // VMA voting leaderboard — account-gated, self-reported vote counts.
 //
-//   GET  /api/vma-votes              → community totals { total, today, blinksTotal, blinksToday }
-//   GET  /api/vma-votes?board=1      → { board: [{ name, total, today, week, month }, ...] }
+//   GET  /api/vma-votes              → community totals { total, today, lisaTotal, bpTotal, lisaToday, bpToday, blinksTotal, blinksToday }
+//   GET  /api/vma-votes?board=1      → { board: [{ name, total/today/week/month, lisa_*, bp_*, streams }, ...] }
 //   GET  /api/vma-votes?me=1         → caller's status (Authorization: Bearer <token>)
 //   GET  /api/vma-votes?live=1       → { liveVoters } — distinct accounts that logged a
 //                                       vote in the last 90s (the "blinks voting now" pulse)
 //   GET  /api/vma-votes?sync=1       → { bp, lisa, total, accounts } — this account's
 //                                       cross-device merged view (X-Ext-Token header; opt-in)
-//   POST /api/vma-votes { accessToken, votes }  → add `votes` to today (uncapped)
+//   POST /api/vma-votes { accessToken, bp, lisa } → add the LISA/BP split to today
+//        (votes total = bp + lisa). Legacy { accessToken, votes } still accepted (unattributed).
 //        extra (extension, sync mode): { extToken, votes, sync, breakdown:{BLACKPINK,LISA}, account:{id,method} }
 //
 // To submit you must be signed in AND have a linked scrobbler (>=1 row in
@@ -43,7 +44,7 @@ async function isLinked(sb, uid) {
 // Sum a user's rows into today / week (Mon-start) / month / all-time, in US
 // Eastern (midnight-ET day boundary — matches the /vmas countdown).
 async function myTotals(sb, uid) {
-  const { data } = await sb.from('vma_user_votes').select('day, votes').eq('app_user_id', uid);
+  const { data } = await sb.from('vma_user_votes').select('day, votes, bp, lisa').eq('app_user_id', uid);
   const rows = data || [];
   const t = etDay();                              // 'YYYY-MM-DD' — today in ET
   const [y, m, dd] = t.split('-').map(Number);
@@ -53,14 +54,16 @@ async function myTotals(sb, uid) {
   const monday = new Date(Date.UTC(y, m - 1, dd - dow)).toISOString().slice(0, 10);
   const first = `${t.slice(0, 7)}-01`;
   let today = 0, week = 0, month = 0, total = 0;
+  const bp = { today: 0, week: 0, month: 0, total: 0 };
+  const lisa = { today: 0, week: 0, month: 0, total: 0 };
   for (const r of rows) {
-    const v = r.votes || 0;
-    total += v;
-    if (r.day === t) today += v;
-    if (r.day >= monday) week += v;
-    if (r.day >= first) month += v;
+    const v = r.votes || 0, b = r.bp || 0, l = r.lisa || 0;
+    total += v; bp.total += b; lisa.total += l;
+    if (r.day === t)     { today += v; bp.today += b; lisa.today += l; }
+    if (r.day >= monday) { week  += v; bp.week  += b; lisa.week  += l; }
+    if (r.day >= first)  { month += v; bp.month += b; lisa.month += l; }
   }
-  return { today, week, month, total };
+  return { today, week, month, total, bp, lisa };
 }
 
 // The caller's campaign streams: today's (ET-day aligned) for display + Monster
@@ -141,7 +144,17 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = req.body || {};
-      let votes = parseInt(body.votes, 10);
+      // Per-artist split: the website sends {bp, lisa}; the extension sends
+      // breakdown:{BLACKPINK, LISA}. When a split is given it is authoritative for
+      // the total; otherwise fall back to a lump {votes} (unattributed, legacy).
+      const bd = body.breakdown || {};
+      let bp   = parseInt(body.bp, 10);
+      let lisa = parseInt(body.lisa, 10);
+      if (!Number.isFinite(bp)   || bp   < 0) bp   = parseInt(bd.BLACKPINK, 10) || 0;
+      if (!Number.isFinite(lisa) || lisa < 0) lisa = parseInt(bd.LISA, 10) || 0;
+      bp   = Math.max(0, Math.min(bp,   10000));
+      lisa = Math.max(0, Math.min(lisa, 10000));
+      let votes = (bp + lisa) > 0 ? bp + lisa : parseInt(body.votes, 10);
       if (!Number.isFinite(votes) || votes <= 0) return res.status(400).json({ error: 'votes required' });
       votes = Math.min(votes, 10000); // sanity bound only (no daily cap)
 
@@ -179,13 +192,16 @@ export default async function handler(req, res) {
       const user = { id: uid };
       const day = etDay();
 
-      // Additive: add to today's tally (self-reported, uncapped).
+      // Additive: add to today's tally (self-reported, uncapped). `votes` is the
+      // ranking total; `bp`/`lisa` accumulate the attributed split alongside it.
       const { data: existing } = await sb
-        .from('vma_user_votes').select('votes').eq('app_user_id', user.id).eq('day', day).maybeSingle();
-      const next = (existing?.votes || 0) + votes;
+        .from('vma_user_votes').select('votes, bp, lisa').eq('app_user_id', user.id).eq('day', day).maybeSingle();
+      const next     = (existing?.votes || 0) + votes;
+      const nextBp   = (existing?.bp    || 0) + bp;
+      const nextLisa = (existing?.lisa  || 0) + lisa;
 
       const { error: upErr } = await sb.from('vma_user_votes').upsert(
-        { app_user_id: user.id, day, votes: next, display_name: name, updated_at: new Date().toISOString() },
+        { app_user_id: user.id, day, votes: next, bp: nextBp, lisa: nextLisa, display_name: name, updated_at: new Date().toISOString() },
         { onConflict: 'app_user_id,day' },
       );
       if (upErr) return res.status(500).json({ error: upErr.message });

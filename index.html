@@ -1914,6 +1914,22 @@
   .vv-table td { padding: 0.55rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--white); }
   .vv-table td:first-child { color: var(--muted); width: 2rem; }
   .vv-table .vv-v { color: var(--pink); font-family: var(--display); font-size: 1.05rem; }
+  /* LISA / BLACKPINK vote split — shared accent colours */
+  .vv-lisa { color: #ff8fc7; }
+  .vv-bp   { color: #8be0b0; }
+  .vv-tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .vv-table th.vv-c-lisa, .vv-table th.vv-c-bp { text-align: right; white-space: nowrap; }
+  .vv-table td.vv-c-lisa { color: #ff8fc7; font-family: var(--display); font-size: 0.98rem; text-align: right; white-space: nowrap; }
+  .vv-table td.vv-c-bp   { color: #8be0b0; font-family: var(--display); font-size: 0.98rem; text-align: right; white-space: nowrap; }
+  .vv-split-mine { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: -0.4rem 0 1rem; }
+  .vv-chip { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.04em; padding: 0.3rem 0.62rem; border: 1px solid var(--border); border-radius: 999px; background: rgba(255,255,255,0.03); white-space: nowrap; }
+  .vv-chip b { font-family: var(--display); font-size: 0.9rem; margin-left: 0.3rem; }
+  .vv-split-inputs { display: flex; gap: 0.6rem; margin-top: 0.55rem; flex-wrap: wrap; }
+  .vv-split-in { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 8.5rem; }
+  .vv-split-in > span { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.06em; text-transform: uppercase; }
+  .vv-split-in input { background: #0f0a0f; border: 1px solid var(--border); color: var(--white); font-family: var(--display); font-size: 1.35rem; text-align: center; padding: 0.4rem 0.3rem; min-width: 0; }
+  #vv-add { margin-top: 0.7rem; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); border: none; padding: 0.62rem 1.5rem; cursor: pointer; }
+  #vv-add:disabled { opacity: 0.6; cursor: default; }
   .vv-mine { background: rgba(255,0,102,0.08); }
   .vv-empty { font-family: var(--mono); font-size: 0.74rem; color: var(--muted); padding: 1.2rem 0; }
   /* Voted-but-not-streaming list (unranked) */
@@ -2274,7 +2290,7 @@
 <div class="site-votebar" id="vma-votebar" hidden>
   <div class="vb-stat">
     <span class="vb-num" id="vma-vb-total">—</span>
-    <span class="vb-lbl">VMA votes logged<br><span id="vma-vb-blinks">—</span> blinks in</span>
+    <span class="vb-lbl">VMA votes · <b class="vv-lisa">🎀 LISA <span id="vma-vb-lisa">—</span></b> · <b class="vv-bp">🖤 BP <span id="vma-vb-bp">—</span></b><br><span id="vma-vb-blinks">—</span> blinks in</span>
   </div>
   <a class="vb-btn" href="/voting#log-votes" onclick="showPage('vote'); setTimeout(function(){ var el = document.getElementById('vma-vote-panel'); if (el) el.scrollIntoView({ behavior:'smooth', block:'start' }); }, 420); return false;">🗳️ Log your votes ↗</a>
 </div>
@@ -6999,12 +7015,17 @@ function drawVmaVoting() {
         <div><span>${_vvFmt(_vvMe.month)}</span><small>this month</small></div>
         <div><span>${_vvFmt(_vvMe.total)}</span><small>all time</small></div>
       </div>
+      <div class="vv-split-mine">
+        <span class="vv-chip vv-lisa">🎀 LISA <b>${_vvFmt((_vvMe.lisa && _vvMe.lisa.total) || 0)}</b></span>
+        <span class="vv-chip vv-bp">🖤 BLACKPINK <b>${_vvFmt((_vvMe.bp && _vvMe.bp.total) || 0)}</b></span>
+      </div>
       <div class="vv-form">
-        <span class="vv-form-q">Just voted? Add how many:</span>
-        <div class="vv-input-row">
-          <input id="vv-count" type="number" min="1" value="20" inputmode="numeric">
-          <button id="vv-add" onclick="vmaAddVotes()">Add votes</button>
+        <span class="vv-form-q">Just voted? Add how many — split by who you voted for:</span>
+        <div class="vv-split-inputs">
+          <label class="vv-split-in"><span class="vv-lisa">🎀 LISA · Pop / K-Pop</span><input id="vv-lisa" type="number" min="0" value="0" inputmode="numeric"></label>
+          <label class="vv-split-in"><span class="vv-bp">🖤 BLACKPINK · JUMP</span><input id="vv-bp" type="number" min="0" value="0" inputmode="numeric"></label>
         </div>
+        <button id="vv-add" onclick="vmaAddVotes()">Add votes</button>
         <div class="vv-msg" id="vv-msg"></div>
         <div class="vv-honest">🤝 Honour system — please only log votes you've actually cast. Inflated counts just throw off the board for every blink. 💗</div>
       </div>
@@ -7018,14 +7039,14 @@ function drawVmaVoting() {
   if (!rows.length) {
     table = `<div class="vv-empty">No votes logged yet — be the first! 🗳️</div>`;
   } else {
-    table = `<table class="vv-table"><thead><tr><th>#</th><th>Blink</th><th>Streams</th><th>Votes ${periodLbl}</th></tr></thead><tbody>`;
+    table = `<div class="vv-tablewrap"><table class="vv-table"><thead><tr><th>#</th><th>Blink</th><th>Streams</th><th class="vv-c-lisa">🎀 LISA</th><th class="vv-c-bp">🖤 BP</th><th>Votes ${periodLbl}</th></tr></thead><tbody>`;
     rows.forEach((r, i) => {
       const s = r.streams || 0; // server-provided (voting-day aligned)
       const mine = displayName && (r.name || '').toLowerCase() === displayName.toLowerCase();
       const bt = isMonsterBlink(r.total, s) ? MONSTER_BLINK : voteTier(r.total);
-      table += `<tr class="${mine ? 'vv-mine' : ''}"><td>${i + 1}</td><td>${bt ? `<span class="vv-rowbadge" title="${bt.label}">${bt.icon}</span> ` : ''}${_vvEsc(r.name || 'a blink')}</td><td>${_vvFmt(s)}</td><td class="vv-v">${_vvFmt(r[P] || 0)}</td></tr>`;
+      table += `<tr class="${mine ? 'vv-mine' : ''}"><td>${i + 1}</td><td>${bt ? `<span class="vv-rowbadge" title="${bt.label}">${bt.icon}</span> ` : ''}${_vvEsc(r.name || 'a blink')}</td><td>${_vvFmt(s)}</td><td class="vv-c-lisa">${_vvFmt(r['lisa_' + P] || 0)}</td><td class="vv-c-bp">${_vvFmt(r['bp_' + P] || 0)}</td><td class="vv-v">${_vvFmt(r[P] || 0)}</td></tr>`;
     });
-    table += `</tbody></table>`;
+    table += `</tbody></table></div>`;
   }
 
   const labels = { today: 'Today', week: 'Week', month: 'Month', total: 'All' };
@@ -7061,11 +7082,13 @@ function drawVmaVoting() {
 function vmaSetPeriod(p) { _vvPeriod = p; drawVmaVoting(); }
 
 async function vmaAddVotes() {
-  const input = document.getElementById('vv-count');
   const btn = document.getElementById('vv-add');
   const msg = document.getElementById('vv-msg');
-  const v = Math.max(1, parseInt(input && input.value, 10) || 0);
+  const lisa = Math.max(0, parseInt((document.getElementById('vv-lisa') || {}).value, 10) || 0);
+  const bp   = Math.max(0, parseInt((document.getElementById('vv-bp')   || {}).value, 10) || 0);
+  const v = lisa + bp;   // combined total (ranking)
   if (!_vvToken) { if (msg) msg.textContent = 'Sign in first.'; return; }
+  if (v <= 0) { if (msg) msg.textContent = 'Enter how many you voted — for LISA and/or BLACKPINK.'; return; }
   if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
   const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = 'Add votes'; } };
   const prevTotal = Number(_vvMe && _vvMe.total) || 0;   // baseline, to verify a dropped write
@@ -7079,7 +7102,7 @@ async function vmaAddVotes() {
     const r = await fetch('/api/vma-votes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accessToken: _vvToken, votes: v }),
+      body: JSON.stringify({ accessToken: _vvToken, bp, lisa }),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { if (msg) msg.textContent = d.error || 'Couldn’t save — try again.'; resetBtn(); return; }
@@ -7104,7 +7127,8 @@ async function vmaAddVotes() {
   } else {
     // Saved, but the server couldn't return fresh totals — reflect the add locally.
     const bump = k => (Number(_vvMe && _vvMe[k]) || 0) + v;
-    _vvMe = Object.assign({}, _vvMe, { linked: true, today: bump('today'), week: bump('week'), month: bump('month'), total: bump('total') });
+    const bumpSplit = (obj, amt) => { const o = Object.assign({ today: 0, week: 0, month: 0, total: 0 }, obj); return { today: o.today + amt, week: o.week + amt, month: o.month + amt, total: o.total + amt }; };
+    _vvMe = Object.assign({}, _vvMe, { linked: true, today: bump('today'), week: bump('week'), month: bump('month'), total: bump('total'), bp: bumpSplit(_vvMe && _vvMe.bp, bp), lisa: bumpSplit(_vvMe && _vvMe.lisa, lisa) });
   }
 
   // Step 3: refresh the board + repaint. Errors here are cosmetic only — the
@@ -12211,6 +12235,8 @@ function loadVmaVotebar() {
     .then(s => {
       document.getElementById('vma-vb-total').textContent = fmt(s.total);
       document.getElementById('vma-vb-blinks').textContent = fmt(s.blinksTotal);
+      const lisaEl = document.getElementById('vma-vb-lisa'); if (lisaEl) lisaEl.textContent = fmt(s.lisaTotal);
+      const bpEl = document.getElementById('vma-vb-bp'); if (bpEl) bpEl.textContent = fmt(s.bpTotal);
       bar.hidden = false;
       document.body.classList.add('has-votebar');
     })
