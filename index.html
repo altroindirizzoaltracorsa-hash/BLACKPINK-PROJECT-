@@ -1632,8 +1632,15 @@
   .cd-card-vma { position: relative; overflow: hidden; text-align: center; color: #fff;
     background: #08080d; border-color: rgba(184,245,208,0.28);
     box-shadow: 0 18px 50px -30px rgba(184,245,208,0.5); }
+  .cd-card-vma .vma-slides { position: absolute; inset: 0; z-index: 0; touch-action: pan-y; }
   .cd-card-vma .vma-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
-    object-position: center 28%; opacity: 0.5; z-index: 0; }
+    object-position: center 28%; opacity: 0; transition: opacity 0.8s ease; z-index: 0; -webkit-user-drag: none; }
+  .cd-card-vma .vma-bg.is-on { opacity: 0.5; }
+  .cd-card-vma .vma-dots { position: absolute; top: 0.6rem; left: 0; right: 0; z-index: 3;
+    display: flex; justify-content: center; gap: 5px; pointer-events: none; }
+  .cd-card-vma .vma-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.4);
+    transition: background 0.3s ease; }
+  .cd-card-vma .vma-dot.is-on { background: #b8f5d0; }
   .cd-card-vma .vma-scrim { position: absolute; inset: 0; z-index: 1;
     background: linear-gradient(180deg, rgba(8,8,13,0.55) 0%, rgba(8,8,13,0.6) 45%, rgba(8,8,13,0.86) 100%); }
   .cd-card-vma > *:not(.vma-bg):not(.vma-scrim) { position: relative; z-index: 2; }
@@ -2334,8 +2341,13 @@
             </div>
           </div>
           <div class="cd-card cd-card-vma" data-slug="vmas" data-target="2026-09-25T22:00:00Z" data-live="VOTING CLOSED">
-            <img class="vma-bg" src="/vote-vma-eyesclosed.jpeg" alt="" loading="lazy" onerror="this.style.display='none'">
+            <div class="vma-slides" data-vma-carousel>
+              <img class="vma-bg is-on" src="/vote-vma-jump.jpeg" alt="" loading="lazy" onerror="this.style.display='none'">
+              <img class="vma-bg" src="/vote-vma-dream.jpg" alt="" loading="lazy" onerror="this.style.display='none'">
+              <img class="vma-bg" src="/vote-vma-eyesclosed.jpeg" alt="" loading="lazy" onerror="this.style.display='none'">
+            </div>
             <div class="vma-scrim"></div>
+            <div class="vma-dots" aria-hidden="true"><span class="vma-dot is-on"></span><span class="vma-dot"></span><span class="vma-dot"></span></div>
             <img class="vma-logo" src="/vmas.png" alt="MTV Video Music Awards" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cd-title',textContent:'MTV VMAs'}))">
             <div class="cd-eyebrow">2026 · Fan Voting Closes</div>
             <div class="cd-timer" data-timer></div>
@@ -4625,6 +4637,7 @@ window.addEventListener('DOMContentLoaded', () => {
   setInterval(renderReleaseCountdown, 1000);
   renderHomeCountdowns();
   setInterval(renderHomeCountdowns, 1000);
+  initVmaCarousels();
   loadJennieSaveCount();
   loadFaSaveCount();
   loadLisaSaveCount();
@@ -10967,6 +10980,32 @@ const JENNIE_RELEASE = {
 
 // Home-page release/reveal countdown cards (#home-countdowns). Each card carries a
 // data-target ISO timestamp; on reach, it flips to the card's data-live label.
+// VMA card background: auto-rotating + swipeable carousel (jump → dream → eyes closed).
+function initVmaCarousels() {
+  document.querySelectorAll('[data-vma-carousel]').forEach(box => {
+    if (box._vmaInit) return; box._vmaInit = true;
+    const slides = [...box.querySelectorAll('.vma-bg')];
+    const dots = [...(box.parentElement?.querySelectorAll('.vma-dot') || [])];
+    if (slides.length < 2) return;
+    let i = 0, timer = null;
+    const show = (n) => {
+      i = (n % slides.length + slides.length) % slides.length;
+      slides.forEach((s, k) => s.classList.toggle('is-on', k === i));
+      dots.forEach((d, k) => d.classList.toggle('is-on', k === i));
+    };
+    const start = () => { stop(); timer = setInterval(() => show(i + 1), 4500); };
+    const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+    start();
+    let x0 = null;
+    box.addEventListener('pointerdown', (e) => { x0 = e.clientX; }, { passive: true });
+    box.addEventListener('pointerup', (e) => {
+      if (x0 == null) return;
+      const dx = e.clientX - x0; x0 = null;
+      if (Math.abs(dx) > 40) { show(i + (dx < 0 ? 1 : -1)); start(); }
+    }, { passive: true });
+  });
+}
+
 function renderHomeCountdowns() {
   const now = Date.now();
   document.querySelectorAll('#home-countdowns .cd-card[data-target]').forEach(card => {
