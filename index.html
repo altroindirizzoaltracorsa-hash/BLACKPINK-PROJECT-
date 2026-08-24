@@ -1632,6 +1632,13 @@
   .cd-card-jisoo .cd-btn.js-click img { height: 1.15rem; width: auto; display: block; margin-bottom: 1px; }
   .cd-card-jisoo .cd-btn.js-presave { background: var(--js-ink); color: #f7efe9; border-color: var(--js-ink); }
   .cd-card-jisoo .cd-btn.js-presave:hover { background: #55392c; color: #fff; }
+  .cd-card-jisoo .cd-goal { position: relative; z-index: 4; width: min(88%, 340px); margin: 0.75rem auto 0; gap: 0.32rem; }
+  .cd-card-jisoo .cd-goal-label { color: #5c4030; font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 0.86rem; text-transform: none; letter-spacing: 0.01em; }
+  .cd-card-jisoo .cd-goal-nums { font-family: 'Cormorant Garamond', serif; font-weight: 700; color: var(--js-ink); font-size: 1rem; }
+  .cd-card-jisoo .cd-goal-nums span { color: rgba(104,73,58,0.6); }
+  .cd-card-jisoo .cd-goal-bar { background: rgba(104,73,58,0.22); }
+  .cd-card-jisoo .cd-goal-fill { background: linear-gradient(90deg, #9a7358, var(--js-ink)); }
   .cd-card-jisoo .cd-btn-ghost { background: transparent; }
   .cd-card-jisoo .js-park { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
     width: 100%; height: auto; opacity: 0.9; mix-blend-mode: multiply; pointer-events: none; z-index: 2; }
@@ -2408,6 +2415,13 @@
             <div class="cd-sub"><span class="js-date">Thu, Sep 4, 2026</span><span class="js-tz">1PM KST / 12AM EDT</span></div>
             <div class="cd-badge-chip js-locket" id="jisoo-badge" style="display:none;"><img src="/jisoo-heart.webp" alt="">Early Supporter</div>
             <div class="cd-timer" data-timer></div>
+            <div class="cd-goal" id="jisoo-goal" style="display:none;">
+              <div class="cd-goal-top">
+                <span class="cd-goal-label">🎯 Blinks pre-saved</span>
+                <span class="cd-goal-nums" id="jisoo-goal-nums"></span>
+              </div>
+              <div class="cd-goal-bar"><div class="cd-goal-fill" id="jisoo-goal-fill" style="width:0%"></div></div>
+            </div>
             <img class="js-park" src="/Jisoopark2.webp" alt="" loading="lazy">
             <div class="cd-links">
               <a class="cd-btn js-presave" href="https://jisoo.lnk.to/CLICK" target="_blank" rel="noopener" onclick="saveJisooClick()">Pre-save ↗</a>
@@ -4743,6 +4757,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadJennieSaveCount();
   loadFaSaveCount();
   loadLisaSaveCount();
+  loadJisooSaveCount();
   refreshSupporterChips();
   loadLtalStreamsGoal();
   renderItunesInlineBadge();
@@ -11339,11 +11354,44 @@ async function loadLisaSaveCount() {
 // refreshSupporterChips wiring are all active, and saveJisooClick() fires from
 // the Pre-save button. The heart-locket icon is jisoo.io's own CLICK art.
 const JISOO_SAVE_LS    = 'bu_jisoo_click_saved';
+const JISOO_SAVE_GOAL  = 50;
 const JISOO_RELEASE_AT = '2026-09-04T04:00:00Z'; // Sep 4, 2026 · 1PM KST / 12AM EDT
 
 function renderJisooBadge() {
   const el = document.getElementById('jisoo-badge');
   if (el) el.style.display = (_buSignedIn && localStorage.getItem(JISOO_SAVE_LS)) ? 'inline-flex' : 'none';
+}
+
+// "X / 50 pre-saved" progress bar on the JISOO card. Shown to everyone (from 0)
+// until the release, so the community pre-save momentum is visible. Milestones
+// roll over the goal in fixed steps, same as the other member cards.
+function renderJisooSaveCount(count) {
+  const wrap = document.getElementById('jisoo-goal');
+  const numsEl = document.getElementById('jisoo-goal-nums');
+  const fillEl = document.getElementById('jisoo-goal-fill');
+  if (!wrap || !numsEl || !fillEl) return;
+  if (Date.now() >= new Date(JISOO_RELEASE_AT).getTime()) { wrap.style.display = 'none'; return; }
+  count = Math.max(0, Number(count) || 0);
+  wrap.style.display = 'flex';
+  const milestonesPassed = Math.floor(count / JISOO_SAVE_GOAL);
+  const currentMilestone = milestonesPassed * JISOO_SAVE_GOAL;
+  const nextMilestone = currentMilestone + JISOO_SAVE_GOAL;
+  const pct = milestonesPassed > 0
+    ? ((count - currentMilestone) / JISOO_SAVE_GOAL) * 100
+    : (count / JISOO_SAVE_GOAL) * 100;
+  fillEl.style.width = Math.min(100, pct) + '%';
+  numsEl.innerHTML = milestonesPassed > 0
+    ? `🎉 ${currentMilestone.toLocaleString()} reached — ${count.toLocaleString()}<span> / ${nextMilestone.toLocaleString()} pre-saved</span>`
+    : `${count.toLocaleString()}<span> / ${JISOO_SAVE_GOAL.toLocaleString()} pre-saved</span>`;
+}
+
+async function loadJisooSaveCount() {
+  renderJisooBadge();
+  try {
+    const r = await fetch('/api/proxy-image?jisoo_save=count');
+    const d = await r.json();
+    renderJisooSaveCount(d.count || 0);
+  } catch {}
 }
 
 async function jisooEarlySupporterEarned() {
@@ -11372,6 +11420,7 @@ function saveJisooClick() {
   _showShareToast(_buSignedIn ? '🏆 Badge unlocked: JISOO Early Supporter!' : '✅ Pre-saved! Sign in on My Badges to claim your JISOO Early Supporter badge.');
   try { sb?.auth.updateUser({ data: { jisoo_early_supporter: true } }); } catch {}
   refreshSupporterChips();
+  fetch('/api/proxy-image?jisoo_save=increment').then(r => r.json()).then(d => renderJisooSaveCount(d.count || 0)).catch(() => {});
 }
 
 // Share the JISOO countdown. The full generated share card (drawJisooCard) is wired
