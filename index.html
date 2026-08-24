@@ -1589,8 +1589,11 @@
   .cd-card-jisoo .js-title { position: absolute; top: 5%; left: 50%; transform: translateX(-50%);
     z-index: 3; height: 2rem; width: auto; }
   .cd-card-jisoo .cd-sub { position: absolute; top: calc(5% + 2.35rem); left: 0; right: 0; z-index: 3;
-    font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.88rem;
-    letter-spacing: 0.02em; color: rgba(104,73,58,0.82); text-align: center; }
+    font-family: 'Cormorant Garamond', serif; color: #5c4030; text-align: center; line-height: 1.16; }
+  .cd-card-jisoo .cd-sub .js-date { display: block; font-style: italic; font-weight: 700;
+    font-size: 1.16rem; letter-spacing: 0.01em; }
+  .cd-card-jisoo .cd-sub .js-tz { display: block; font-style: italic; font-weight: 600;
+    font-size: 0.82rem; opacity: 0.82; margin-top: 0.06rem; }
   .cd-card-jisoo .cd-badge-chip { position: absolute; top: calc(5% + 3.95rem); left: 50%;
     transform: translateX(-50%); z-index: 4; }
   .cd-card-jisoo .cd-timer { position: absolute; top: 36%; left: 50%; transform: translate(-50%,-50%);
@@ -2292,7 +2295,7 @@
           </div>
           <div class="cd-card cd-card-jisoo" data-slug="jisoo.io" data-target="2026-09-04T04:00:00Z" data-live="OUT NOW ✨" data-stars="1">
             <img class="js-title" src="/jisoo-word-jisoo.webp" alt="JISOO" loading="lazy">
-            <div class="cd-sub">Thu, Sep 4, 2026 · 1PM KST / 12AM EDT</div>
+            <div class="cd-sub"><span class="js-date">Thu, Sep 4, 2026</span><span class="js-tz">1PM KST / 12AM EDT</span></div>
             <!-- DORMANT: JISOO Early Supporter badge — re-enable when jisoo.io adds a save/join.
                  <div class="cd-badge-chip js-locket" id="jisoo-badge" style="display:none;"><img src="/jisoo-heart.webp" alt="">Early Supporter</div> -->
             <div class="cd-timer" data-timer></div>
@@ -12931,6 +12934,11 @@ async function shareCard() {
   let link = 'blinksunited.com';
   let rulesText = '';
   let statsText = '';
+  // Countdown cards share their direct /countdowns deep link so recipients land
+  // straight on that countdown.
+  if (_cardType === 'jisoo') link = 'https://www.blinksunited.com/countdowns/jisoo.io';
+  else if (_cardType === 'lisa') link = 'https://www.blinksunited.com/countdowns/hellosawadika.com';
+  else if (_cardType === 'presave') link = 'https://www.blinksunited.com/countdowns/jenn.ie';
   if (_cardType === 'vote') {
     const campaign = VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId);
     if (campaign) {
