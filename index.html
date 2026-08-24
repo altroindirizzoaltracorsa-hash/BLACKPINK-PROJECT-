@@ -1585,25 +1585,24 @@
     --label: calc(var(--num) * 0.25);
     --star-w: calc(var(--num) * 0.34);
     --gap: calc(var(--num) * 0.30);
-    position: relative; overflow: hidden; padding: 0; text-align: center;
-    aspect-ratio: 400 / 400;
+    position: relative; overflow: hidden; text-align: center;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 6% 0.7rem 33%;   /* bottom 33% (of width) reserves the carnival-park art zone */
     background: #463740 url('/Jisoobackground.webp') center/cover no-repeat;
     border: 1px solid rgba(104,73,58,0.35);
     box-shadow: 0 22px 60px -30px rgba(70,55,64,0.95);
     color: var(--js-ink);
   }
-  .cd-card-jisoo .js-title { position: absolute; top: 5%; left: 50%; transform: translateX(-50%);
-    z-index: 3; height: 2rem; width: auto; }
-  .cd-card-jisoo .cd-sub { position: absolute; top: calc(5% + 2.35rem); left: 0; right: 0; z-index: 3;
+  .cd-card-jisoo .js-title { position: relative; z-index: 3; height: 2rem; width: auto; }
+  .cd-card-jisoo .cd-sub { position: relative; z-index: 3; margin-top: 0.5rem;
     font-family: 'Cormorant Garamond', serif; color: #5c4030; text-align: center; line-height: 1.16; }
   .cd-card-jisoo .cd-sub .js-date { display: block; font-style: italic; font-weight: 700;
     font-size: 1.16rem; letter-spacing: 0.01em; }
   .cd-card-jisoo .cd-sub .js-tz { display: block; font-style: italic; font-weight: 600;
     font-size: 0.82rem; opacity: 0.82; margin-top: 0.06rem; }
-  .cd-card-jisoo .cd-badge-chip { position: absolute; top: calc(5% + 3.95rem); left: 50%;
-    transform: translateX(-50%); z-index: 4; }
-  .cd-card-jisoo .cd-timer { position: absolute; top: 36%; left: 50%; transform: translate(-50%,-50%);
-    z-index: 3; display: flex; align-items: flex-start; justify-content: center; gap: var(--gap); }
+  .cd-card-jisoo .cd-badge-chip { position: relative; z-index: 4; margin: 0.55rem 0 0; }
+  .cd-card-jisoo .cd-timer { position: relative; z-index: 3; margin: 0.7rem 0 0;
+    display: flex; align-items: flex-start; justify-content: center; gap: var(--gap); }
   .cd-card-jisoo .cd-unit { display: flex; flex-direction: column; align-items: center; gap: 0.18rem;
     background: none; border: none; padding: 0; }
   .cd-card-jisoo .cd-num { font-family: 'AngkorDigits','Cormorant Garamond',serif; font-weight: 400;
@@ -1613,12 +1612,12 @@
     color: var(--js-ink); text-transform: uppercase; }
   .cd-card-jisoo .cd-star { flex: 0 0 auto; width: var(--star-w); height: auto; color: var(--js-ink);
     margin-top: calc((var(--num) - var(--star-w) / 1.05) / 2); }
-  .cd-card-jisoo .cd-out { position: absolute; top: 37%; left: 50%; transform: translate(-50%,-50%);
-    z-index: 3; font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 700;
+  .cd-card-jisoo .cd-out { position: relative; z-index: 3; margin: 0.9rem 0 0;
+    font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 700;
     font-size: 1.6rem; color: var(--js-ink); }
-  .cd-card-jisoo .cd-links { position: absolute; top: 56%; left: 0; right: 0; transform: translateY(-50%);
-    z-index: 4; display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
-    gap: 0.4rem 0.45rem; margin: 0; padding: 0 0.6rem; }
+  .cd-card-jisoo .cd-links { position: relative; z-index: 4; margin: 0.85rem 0 0;
+    display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+    gap: 0.4rem 0.45rem; padding: 0; }
   .cd-card-jisoo .cd-btn.js-share img { height: 1.15rem; width: auto; display: block; }
   .cd-card-jisoo .js-teaser { position: absolute; top: 0.6rem; right: 0.7rem; width: 46px; z-index: 6;
     line-height: 0; filter: drop-shadow(0 3px 8px rgba(60,40,30,0.4)); transition: transform 0.16s ease; }
@@ -1631,6 +1630,8 @@
     letter-spacing: 0.03em; box-shadow: 0 8px 20px -14px rgba(70,55,64,0.9); }
   .cd-card-jisoo .cd-btn:hover { filter: none; background: rgba(255,251,250,0.3); transform: translateY(-1px); }
   .cd-card-jisoo .cd-btn.js-click img { height: 1.15rem; width: auto; display: block; margin-bottom: 1px; }
+  .cd-card-jisoo .cd-btn.js-presave { background: var(--js-ink); color: #f7efe9; border-color: var(--js-ink); }
+  .cd-card-jisoo .cd-btn.js-presave:hover { background: #55392c; color: #fff; }
   .cd-card-jisoo .cd-btn-ghost { background: transparent; }
   .cd-card-jisoo .js-park { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
     width: 100%; height: auto; opacity: 0.9; mix-blend-mode: multiply; pointer-events: none; z-index: 2; }
@@ -2405,11 +2406,11 @@
             <a class="js-teaser" href="https://youtube.com/shorts/FM3wA3-GjdE" target="_blank" rel="noopener" title="Watch the JISOO teaser"><img src="/jisoo-teaser.webp" alt="Watch the JISOO teaser"></a>
             <img class="js-title" src="/jisoo-word-jisoo.webp" alt="JISOO" loading="lazy">
             <div class="cd-sub"><span class="js-date">Thu, Sep 4, 2026</span><span class="js-tz">1PM KST / 12AM EDT</span></div>
-            <!-- DORMANT: JISOO Early Supporter badge — re-enable when jisoo.io adds a save/join.
-                 <div class="cd-badge-chip js-locket" id="jisoo-badge" style="display:none;"><img src="/jisoo-heart.webp" alt="">Early Supporter</div> -->
+            <div class="cd-badge-chip js-locket" id="jisoo-badge" style="display:none;"><img src="/jisoo-heart.webp" alt="">Early Supporter</div>
             <div class="cd-timer" data-timer></div>
             <img class="js-park" src="/Jisoopark2.webp" alt="" loading="lazy">
             <div class="cd-links">
+              <a class="cd-btn js-presave" href="https://jisoo.lnk.to/CLICK" target="_blank" rel="noopener" onclick="saveJisooClick()">Pre-save ↗</a>
               <a class="cd-btn js-click" href="https://www.jisoo.io" target="_blank" rel="noopener"><img src="/jisoo-word-click.webp" alt="CLICK">jisoo.io&nbsp;↗</a>
               <a class="cd-btn cd-btn-ghost js-teaser-btn" href="https://youtube.com/shorts/FM3wA3-GjdE" target="_blank" rel="noopener">▶ Teaser</a>
               <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
@@ -8957,17 +8958,14 @@ const SPECIAL_BADGES = [
     desc: 'Joined before the reveal',
     check: () => lisaEarlySupporterEarned(),
   },
-  // JISOO Early Supporter — dormant until jisoo.io adds a save/join action.
-  // Re-enable by restoring this entry (heart-locket icon) + the card badge chip
-  // + renderJisooBadge()/jisooEarlySupporterEarned() in refreshSupporterChips.
-  // {
-  //   id: 'jisoo-click',
-  //   icon: '<img src="/jisoo-heart.webp" alt="" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;">',
-  //   label: 'EARLY SUPPORTER',
-  //   song: 'jisoo.io — JISOO',
-  //   desc: 'Clicked in before release',
-  //   check: () => jisooEarlySupporterEarned(),
-  // },
+  {
+    id: 'jisoo-click',
+    icon: '<img src="/jisoo-heart.webp" alt="" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;">',
+    label: 'EARLY SUPPORTER',
+    song: 'CLICK — JISOO',
+    desc: 'Pre-saved before release',
+    check: () => jisooEarlySupporterEarned(),
+  },
   {
     id: 'jennie-fa-presave',
     icon: '🏆',
@@ -11238,11 +11236,10 @@ async function refreshSupporterChips() {
   let user = null;
   try { user = (await sb?.auth.getUser())?.data?.user || null; } catch {}
   _buSignedIn = !!user;
-  if (user) { try { await Promise.all([faEarlySupporterEarned(), lisaEarlySupporterEarned()]); } catch {} }
+  if (user) { try { await Promise.all([faEarlySupporterEarned(), lisaEarlySupporterEarned(), jisooEarlySupporterEarned()]); } catch {} }
   renderFaBadge();
   renderLisaBadge();
-  // JISOO Early Supporter is dormant until jisoo.io adds a save/join action
-  // (renderJisooBadge / jisooEarlySupporterEarned stay defined below for re-enable).
+  renderJisooBadge();
 }
 
 function renderFaSaveCount(count) {
@@ -11337,12 +11334,10 @@ async function loadLisaSaveCount() {
 }
 
 // ── JISOO countdown (jisoo.io) ────────────────────────────────────────────────
-// NOTE: the Early Supporter badge is DORMANT for now — jisoo.io has no save/join
-// action to gate it on, so the badge chip, the My Badges entry and the
-// refreshSupporterChips wiring are all disabled. The helpers below stay defined so
-// re-enabling (once a save/join exists) is just restoring those three call sites
-// and wiring saveJisooClick() back onto the CLICK button.
-// The heart-locket icon is jisoo.io's own CLICK art.
+// The Early Supporter badge is LIVE now that CLICK has a pre-save
+// (jisoo.lnk.to/CLICK): the card badge chip, the My Badges entry and the
+// refreshSupporterChips wiring are all active, and saveJisooClick() fires from
+// the Pre-save button. The heart-locket icon is jisoo.io's own CLICK art.
 const JISOO_SAVE_LS    = 'bu_jisoo_click_saved';
 const JISOO_RELEASE_AT = '2026-09-04T04:00:00Z'; // Sep 4, 2026 · 1PM KST / 12AM EDT
 
@@ -11369,12 +11364,12 @@ async function jisooEarlySupporterEarned() {
   return localFlag || metaFlag;
 }
 
-// Fires once per browser when a fan clicks through to jisoo.io — doesn't block the
-// outbound navigation. Unlocks the JISOO "Early Supporter" heart-locket badge.
+// Fires once per browser when a fan pre-saves CLICK (jisoo.lnk.to/CLICK) — doesn't
+// block the outbound navigation. Unlocks the JISOO "Early Supporter" heart-locket badge.
 function saveJisooClick() {
   if (localStorage.getItem(JISOO_SAVE_LS)) return;
   localStorage.setItem(JISOO_SAVE_LS, '1');
-  _showShareToast(_buSignedIn ? '🏆 Badge unlocked: JISOO Early Supporter!' : '✅ Clicked in! Sign in on My Badges to claim your JISOO Early Supporter badge.');
+  _showShareToast(_buSignedIn ? '🏆 Badge unlocked: JISOO Early Supporter!' : '✅ Pre-saved! Sign in on My Badges to claim your JISOO Early Supporter badge.');
   try { sb?.auth.updateUser({ data: { jisoo_early_supporter: true } }); } catch {}
   refreshSupporterChips();
 }
