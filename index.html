@@ -1586,12 +1586,14 @@
     box-shadow: 0 22px 60px -30px rgba(70,55,64,0.95);
     color: var(--js-ink);
   }
-  .cd-card-jisoo .cd-sub { position: absolute; top: 9.5%; left: 0; right: 0; z-index: 3;
-    font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.9rem;
+  .cd-card-jisoo .js-title { position: absolute; top: 5%; left: 50%; transform: translateX(-50%);
+    z-index: 3; height: 2rem; width: auto; }
+  .cd-card-jisoo .cd-sub { position: absolute; top: calc(5% + 2.35rem); left: 0; right: 0; z-index: 3;
+    font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.88rem;
     letter-spacing: 0.02em; color: rgba(104,73,58,0.82); text-align: center; }
-  .cd-card-jisoo .cd-badge-chip { position: absolute; top: calc(9.5% + 1.7rem); left: 50%;
+  .cd-card-jisoo .cd-badge-chip { position: absolute; top: calc(5% + 3.95rem); left: 50%;
     transform: translateX(-50%); z-index: 4; }
-  .cd-card-jisoo .cd-timer { position: absolute; top: 33%; left: 50%; transform: translate(-50%,-50%);
+  .cd-card-jisoo .cd-timer { position: absolute; top: 36%; left: 50%; transform: translate(-50%,-50%);
     z-index: 3; display: flex; align-items: flex-start; justify-content: center; gap: var(--gap); }
   .cd-card-jisoo .cd-unit { display: flex; flex-direction: column; align-items: center; gap: 0.18rem;
     background: none; border: none; padding: 0; }
@@ -1605,8 +1607,9 @@
   .cd-card-jisoo .cd-out { position: absolute; top: 37%; left: 50%; transform: translate(-50%,-50%);
     z-index: 3; font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 700;
     font-size: 1.6rem; color: var(--js-ink); }
-  .cd-card-jisoo .cd-links { position: absolute; top: 55%; left: 0; right: 0; transform: translateY(-50%);
+  .cd-card-jisoo .cd-links { position: absolute; top: 57%; left: 0; right: 0; transform: translateY(-50%);
     z-index: 4; display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin: 0; }
+  .cd-card-jisoo .cd-btn.js-share img { height: 1.15rem; width: auto; display: block; }
   .cd-card-jisoo .cd-btn { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.4rem 1rem;
     border-radius: 3px; color: #43301f; text-decoration: none; cursor: pointer;
     background: rgba(255,251,250,0.16); border: 1.5px solid rgba(104,73,58,0.55);
@@ -2288,13 +2291,14 @@
             </div>
           </div>
           <div class="cd-card cd-card-jisoo" data-slug="jisoo.io" data-target="2026-09-04T04:00:00Z" data-live="OUT NOW ✨" data-stars="1">
+            <img class="js-title" src="/jisoo-word-jisoo.webp" alt="JISOO" loading="lazy">
             <div class="cd-sub">Thu, Sep 4, 2026 · 1PM KST / 12AM EDT</div>
             <div class="cd-badge-chip js-locket" id="jisoo-badge" style="display:none;"><img src="/jisoo-heart.webp" alt="">Early Supporter</div>
             <div class="cd-timer" data-timer></div>
             <img class="js-park" src="/Jisoopark.webp" alt="" loading="lazy">
             <div class="cd-links">
               <a class="cd-btn js-click" href="https://www.jisoo.io" target="_blank" rel="noopener" onclick="saveJisooClick()"><img src="/jisoo-word-click.webp" alt="CLICK">jisoo.io&nbsp;↗</a>
-              <button class="cd-btn cd-btn-ghost" onclick="openJisooCard()">📸 Share</button>
+              <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
             </div>
           </div>
         </div>
