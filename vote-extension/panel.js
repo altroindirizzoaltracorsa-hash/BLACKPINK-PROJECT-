@@ -173,8 +173,8 @@
         <div class="accts" id="accts"></div>
 
         <div class="sync">
-          <span class="lab"><b>⇄ Sync my devices</b>
-            <span class="sub" id="syncSub">Off — counts &amp; accounts stay on this device</span></span>
+          <span class="lab"><b>⇄ Share voting accounts</b>
+            <span class="sub" id="syncSub">Off — today’s voting accounts stay on this device</span></span>
           <button class="toggle" id="syncToggle" role="switch" aria-checked="false"
             title="Merge your counts and accounts-used list across every device you enable this on. Stores your voting emails to your BU account (only you can see them)."><span class="knob"></span></button>
         </div>
@@ -234,8 +234,12 @@
 
     // When cross-device sync is on and we have a server view, show the merged
     // numbers/accounts; otherwise show this device's local ones.
-    const synced = !!s.buSyncOn && !!s.buToken;
-    const view = synced && syncView ? syncView : null;
+    // COUNTS: whenever linked, show this account's SERVER total for today — the exact
+    // same data as the /voting leaderboard, already merged across every browser /
+    // profile / device. Local counts are only a fallback before the first server pull
+    // or when not linked. (Device-sync no longer affects the counts — they always merge.)
+    const view = (s.buToken && syncView) ? syncView : null;
+    const acctSynced = !!s.buSyncOn && !!view;   // only the accounts-used list is sync-gated
 
     const total = view ? (view.total || 0) : (s.buCount || 0);
     if (total !== lastTotal) { elTotal.classList.add('bump'); setTimeout(() => elTotal.classList.remove('bump'), 200); lastTotal = total; }
@@ -245,10 +249,12 @@
     elLisa.textContent = fmt(view ? view.lisa : s.lisaCount);
 
     // Sync toggle + caption.
+    // Your vote counts merge across devices automatically once linked; this toggle
+    // only shares the *voting accounts* (emails) you've used today across your devices.
     elSyncToggle.setAttribute('aria-checked', s.buSyncOn ? 'true' : 'false');
     elSyncSub.textContent = s.buSyncOn
-      ? 'On — merging across your devices'
-      : 'Off — counts & accounts stay on this device';
+      ? 'On — sharing today’s voting accounts across your devices'
+      : 'Off — today’s voting accounts stay on this device';
 
     const log = Array.isArray(s.buLog) ? s.buLog : [];
     if (!log.length) {
@@ -275,9 +281,9 @@
 
     // Accounts you've voted with today. Local to this browser unless sync is on, in
     // which case it's the merged list across your devices.
-    const accts = view ? (view.accounts || []) : (Array.isArray(s.buAccounts) ? s.buAccounts : []);
+    const accts = acctSynced ? (view.accounts || []) : (Array.isArray(s.buAccounts) ? s.buAccounts : []);
     let ah = '<button class="acctToggle" id="acctToggle">🔑 Accounts used today · ' + accts.length
-      + (synced ? '<span class="syncedTag">synced</span>' : '')
+      + (acctSynced ? '<span class="syncedTag">synced</span>' : '')
       + '<span class="caret">' + (acctOpen ? '▾' : '▸') + '</span></button>';
     if (acctOpen) {
       if (accts.length) {
@@ -289,7 +295,7 @@
           + (cov ? '<span class="cov cov' + cov + '" title="voted ' + cov + ' of 2 categories">' + cov + '/2</span>' : '')
           + '<span class="av">' + fmt(a.votes) + '</span></div>';
         }).join('')
-          + '<div class="acctNote">' + (synced ? 'Synced to your BU account — only you can see this' : 'Stored on this device only') + '</div></div>';
+          + '<div class="acctNote">' + (acctSynced ? 'Synced to your BU account — only you can see this' : 'Stored on this device only') + '</div></div>';
       } else {
         ah += '<div class="acctList"><div class="acctNote">No accounts yet — vote and the emails/logins you use will appear here.</div></div>';
       }
@@ -314,8 +320,10 @@
 
   // ── cross-device sync (opt-in) ──
   function pollSync() {
-    chrome.storage.local.get(['buSyncOn', 'buToken'], (s) => {
-      if (!s.buSyncOn || !s.buToken) { if (syncView) { syncView = null; refresh(); } return; }
+    chrome.storage.local.get(['buToken'], (s) => {
+      // Pull the account's server total whenever linked — counts always merge across
+      // devices now, independent of the device-sync toggle.
+      if (!s.buToken) { if (syncView) { syncView = null; refresh(); } return; }
       try {
         chrome.runtime.sendMessage({ type: 'bu-sync-pull' }, (resp) => {
           if (chrome.runtime.lastError) return;
@@ -328,7 +336,8 @@
     chrome.storage.local.get(['buToken', 'buSyncOn'], (s) => {
       if (!s.buToken) { window.open('https://blinksunited.com/vote-link.html', '_blank'); return; }
       const next = !s.buSyncOn;
-      chrome.storage.local.set({ buSyncOn: next }, () => { if (next) pollSync(); else { syncView = null; refresh(); } });
+      // Keep the merged server counts regardless; just re-pull so the accounts list updates.
+      chrome.storage.local.set({ buSyncOn: next }, () => { pollSync(); refresh(); });
     });
   };
   pollSync();

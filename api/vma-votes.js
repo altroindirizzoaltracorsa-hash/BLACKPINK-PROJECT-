@@ -101,22 +101,32 @@ export default async function handler(req, res) {
         return res.status(200).json({ board: data || [] });
       }
       if (req.query.sync) {
-        // Cross-device merged view for the extension (opt-in). Auth via the link
-        // token in the x-ext-token header; returns ONLY this account's own data.
+        // The extension's authoritative counts for TODAY. Auth via the link token
+        // in the x-ext-token header; returns ONLY this account's own data.
+        //
+        // Counts come from vma_user_votes — the SAME table the leaderboard uses — so
+        // the panel always matches the board and merges every vote for this account
+        // across all browsers/profiles/devices (that's what "sync" means here), no
+        // matter which device cast them or whether device-sync was toggled on. The
+        // accounts-used-today list still comes from vma_ext_sync (opt-in, written only
+        // when device sync is on) since it carries the voting emails.
         const extToken = String(req.headers['x-ext-token'] || '').trim();
         if (!extToken) return res.status(401).json({ error: 'link required' });
         const { data: tok } = await sb.from('scrobble_tokens')
           .select('app_user_id').eq('token', extToken).maybeSingle();
         if (!tok) return res.status(401).json({ error: 'link required' });
-        const { data } = await sb.from('vma_ext_sync')
-          .select('bp, lisa, accounts').eq('app_user_id', tok.app_user_id).eq('day', etDay()).maybeSingle();
-        const bp = data?.bp || 0, lisa = data?.lisa || 0;
-        const accounts = Object.entries(data?.accounts || {}).map(([id, v]) => ({
-          id, method: (v && v.method) || 'email', votes: (v && v.votes) || 0,
-          cats: (v && Array.isArray(v.cats)) ? v.cats : [],
-          lastTs: (v && v.ts) || 0, // so the panel sorts synced accounts chronologically too
+        const day = etDay();
+        const { data: v } = await sb.from('vma_user_votes')
+          .select('votes, bp, lisa').eq('app_user_id', tok.app_user_id).eq('day', day).maybeSingle();
+        const bp = v?.bp || 0, lisa = v?.lisa || 0, total = v?.votes || 0;
+        const { data: sy } = await sb.from('vma_ext_sync')
+          .select('accounts').eq('app_user_id', tok.app_user_id).eq('day', day).maybeSingle();
+        const accounts = Object.entries(sy?.accounts || {}).map(([id, a]) => ({
+          id, method: (a && a.method) || 'email', votes: (a && a.votes) || 0,
+          cats: (a && Array.isArray(a.cats)) ? a.cats : [],
+          lastTs: (a && a.ts) || 0, // so the panel sorts synced accounts chronologically too
         }));
-        return res.status(200).json({ bp, lisa, total: bp + lisa, accounts });
+        return res.status(200).json({ bp, lisa, total, accounts });
       }
       if (req.query.live) {
         // "Blinks voting now": distinct accounts whose tally was touched in the last
