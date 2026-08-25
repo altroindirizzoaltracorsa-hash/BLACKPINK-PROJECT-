@@ -152,7 +152,7 @@
 
       <div class="body" id="body">
         <div class="live"><span class="dot"></span><b id="live">–</b> blinks voting now</div>
-        <div class="powerband">⚡ Power hour / double day — 2× votes now</div>
+        <div class="powerband" id="powerband">⚡ Power hour — 2× votes now</div>
 
         <div class="total">
           <img class="wm" src="${HEART}" alt="">
@@ -219,15 +219,18 @@
       .formatToParts(d).reduce((o, x) => (o[x.type] = x.value, o), {});
     return { date: `${p.year}-${p.month}-${p.day}`, hour: parseInt(p.hour, 10) % 24 };
   }
-  function vmaScheduledPower() {
+  function vmaPowerLabel() {
     const { date, hour } = vmaEtParts(new Date());
-    if (VMA_POWER.doubleDays.indexOf(date) !== -1) return true;
-    return date >= VMA_POWER.hourFrom && date <= VMA_POWER.hourTo && hour >= VMA_POWER.hourStart && hour < VMA_POWER.hourEnd;
+    if (VMA_POWER.doubleDays.indexOf(date) !== -1) return 'Double day';
+    if (date >= VMA_POWER.hourFrom && date <= VMA_POWER.hourTo && hour >= VMA_POWER.hourStart && hour < VMA_POWER.hourEnd) return 'Power hour';
+    return '';
   }
 
   function render(s) {
     // Power hour / double day → gold glow + banner (schedule-driven, refreshes on each render).
-    $('panel').classList.toggle('power', vmaScheduledPower());
+    const plabel = vmaPowerLabel();
+    $('panel').classList.toggle('power', !!plabel);
+    if (plabel) $('powerband').textContent = '⚡ ' + plabel + ' — 2× votes now';
 
     // When cross-device sync is on and we have a server view, show the merged
     // numbers/accounts; otherwise show this device's local ones.

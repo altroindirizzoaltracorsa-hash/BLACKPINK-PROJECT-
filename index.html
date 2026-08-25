@@ -7049,7 +7049,7 @@ function drawVmaVoting() {
           <label class="vv-split-in"><span class="vv-lisa">🎀 LISA · Pop / K-Pop</span><input id="vv-lisa" type="number" min="0" value="${_vvPerCat()}" inputmode="numeric"></label>
         </div>
         ${vmaScheduledPower()
-          ? `<div class="vv-power vv-power-live">⚡ <b>Power hour / double day is LIVE</b> — 2× votes, 20 per category</div>`
+          ? `<div class="vv-power vv-power-live">⚡ <b>${vmaPowerLabel()} is LIVE</b> — 2× votes, 20 per category</div>`
           : `<label class="vv-power"><input type="checkbox" id="vv-power" ${vmaPowerActive() ? 'checked' : ''} onchange="vmaTogglePower(this.checked)"> ⚡ Power hour on now? — fill <b>2× per category</b> (20)</label>`}
         <button id="vv-add" onclick="vmaAddVotes()">Add votes</button>
         <div class="vv-msg" id="vv-msg"></div>
@@ -7128,12 +7128,15 @@ function _vvEtParts(d = new Date()) {
   }).formatToParts(d).reduce((o, p) => (o[p.type] = p.value, o), {});
   return { date: `${parts.year}-${parts.month}-${parts.day}`, hour: parseInt(parts.hour, 10) % 24 };
 }
-function vmaScheduledPower(d = new Date()) {
+// Returns which 2× window is live right now: 'Double Day', 'Power Hour', or '' (none).
+function vmaPowerLabel(d = new Date()) {
   const { date, hour } = _vvEtParts(d);
-  if (VMA_POWER.doubleDays.includes(date)) return true;                                  // Double Day → all day
-  return date >= VMA_POWER.hourFrom && date <= VMA_POWER.hourTo                           // Power Hour window
-      && hour >= VMA_POWER.hourStart && hour < VMA_POWER.hourEnd;
+  if (VMA_POWER.doubleDays.includes(date)) return 'Double Day';                           // all day
+  if (date >= VMA_POWER.hourFrom && date <= VMA_POWER.hourTo
+      && hour >= VMA_POWER.hourStart && hour < VMA_POWER.hourEnd) return 'Power Hour';     // 1–1:59 PM ET
+  return '';
 }
+function vmaScheduledPower(d = new Date()) { return !!vmaPowerLabel(d); }
 function vmaPowerActive() {
   if (vmaScheduledPower()) return true;                                                  // auto (schedule)
   try { return localStorage.getItem(VMA_POWER_LS) === '1'; } catch { return false; }     // manual override
