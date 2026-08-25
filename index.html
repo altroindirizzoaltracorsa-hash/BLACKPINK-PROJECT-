@@ -7048,9 +7048,7 @@ function drawVmaVoting() {
           <label class="vv-split-in"><span class="vv-bp">🖤 BLACKPINK · JUMP</span><input id="vv-bp" type="number" min="0" value="${_vvPerCat()}" inputmode="numeric"></label>
           <label class="vv-split-in"><span class="vv-lisa">🎀 LISA · Pop / K-Pop</span><input id="vv-lisa" type="number" min="0" value="${_vvPerCat()}" inputmode="numeric"></label>
         </div>
-        ${vmaScheduledPower()
-          ? `<div class="vv-power vv-power-live">⚡ <b>${vmaPowerLabel()} is LIVE</b> — 2× votes, 20 per category</div>`
-          : `<label class="vv-power"><input type="checkbox" id="vv-power" ${vmaPowerActive() ? 'checked' : ''} onchange="vmaTogglePower(this.checked)"> ⚡ Power hour on now? — fill <b>2× per category</b> (20)</label>`}
+        ${vmaScheduledPower() ? `<div class="vv-power vv-power-live">⚡ <b>${vmaPowerLabel()} is LIVE</b> — 2× votes, 20 per category</div>` : ''}
         <button id="vv-add" onclick="vmaAddVotes()">Add votes</button>
         <div class="vv-msg" id="vv-msg"></div>
         <div class="vv-honest">🤝 Honour system — please only log votes you've actually cast. Inflated counts just throw off the board for every blink. Default fills the per-category max (10, or 20 in a power hour) — tweak to what you actually cast. 💗</div>
@@ -7110,12 +7108,10 @@ function vmaSetPeriod(p) { _vvPeriod = p; drawVmaVoting(); }
 // Per-category vote allowance for the quick-fill defaults: 10 normally, 20 during a
 // Power Hour / Double Day, when MTV doubles the per-category cap. This flips on
 // AUTOMATICALLY from the official 2026 VMA schedule below (all times US Eastern —
-// Intl handles EDT/EST), and a blink can also force it on with the ⚡ toggle. The
-// numbers stay editable before submitting.
+// Intl handles EDT/EST); no manual toggle. The numbers stay editable before submitting.
 //   • Power Hour: 1:00–1:59 PM ET every day, Aug 20 → Sep 24, 2026.
 //   • Double Days: all day Aug 18, Aug 19, Sep 25, 2026.
 // Source: MTV 2026 VMA official voting rules.
-const VMA_POWER_LS = 'bu_vma_power';
 const VMA_POWER = {
   hourStart: 13, hourEnd: 14,              // 1:00–1:59 PM ET (13:00–14:00)
   hourFrom: '2026-08-20', hourTo: '2026-09-24',
@@ -7137,17 +7133,9 @@ function vmaPowerLabel(d = new Date()) {
   return '';
 }
 function vmaScheduledPower(d = new Date()) { return !!vmaPowerLabel(d); }
-function vmaPowerActive() {
-  if (vmaScheduledPower()) return true;                                                  // auto (schedule)
-  try { return localStorage.getItem(VMA_POWER_LS) === '1'; } catch { return false; }     // manual override
-}
-function _vvPerCat() { return vmaPowerActive() ? 20 : 10; }
-function vmaTogglePower(on) {
-  try { if (on) localStorage.setItem(VMA_POWER_LS, '1'); else localStorage.removeItem(VMA_POWER_LS); } catch {}
-  const per = on ? 20 : 10;
-  ['vv-bp', 'vv-lisa'].forEach(id => { const el = document.getElementById(id); if (el) el.value = per; });
-  drawVmaVoting();   // repaint so the label/(10|20) hint tracks the toggle
-}
+// Quick-fill default: the per-category max — 20 during a Power Hour / Double Day
+// (schedule-driven, fully automatic), 10 otherwise. The inputs stay editable.
+function _vvPerCat() { return vmaScheduledPower() ? 20 : 10; }
 
 async function vmaAddVotes() {
   const btn = document.getElementById('vv-add');
