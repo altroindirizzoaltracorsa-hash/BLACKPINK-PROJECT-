@@ -159,14 +159,16 @@ function processVote(detail) {
   }
   if (n <= 0) return;
 
-  // When cross-device sync is on, also send the per-member split + the voting
-  // account so the server can merge this device's activity into the account view.
+  // ALWAYS send the anonymous BLACKPINK/LISA split so the board's per-artist
+  // columns fill for every extension voter (it's just two counts, same as the
+  // website form). The account email/method — used only for the opt-in
+  // cross-device view — stays gated behind the sync toggle.
   chrome.storage.local.get(['buSyncOn'], function (cfg) {
-    const extra = cfg.buSyncOn ? {
-      sync: true,
-      breakdown: perMember,
-      account: account ? { id: account, method: method || 'email', cat: category } : undefined,
-    } : undefined;
+    const extra = { breakdown: perMember };
+    if (cfg.buSyncOn) {
+      extra.sync = true;
+      extra.account = account ? { id: account, method: method || 'email', cat: category } : undefined;
+    }
 
   postVotes(n, extra).then(function (res) {
     const today = etDay();
