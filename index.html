@@ -3047,6 +3047,9 @@
           </p>
           <div id="linked-accounts-status" class="error-msg" style="display:none"></div>
           <p class="lastfm-tip" style="margin-top:1rem;">Don't have Last.fm? <a href="https://www.last.fm/join" target="_blank" rel="noopener">Sign up free</a> and connect Spotify at <a href="https://www.last.fm/settings/applications" target="_blank" rel="noopener">last.fm/settings/applications</a>.</p>
+          <div style="text-align:center;color:var(--muted);font-size:11px;margin:1rem 0 0.5rem;">— or scrobble from your browser —</div>
+          <button class="btn-primary" style="width:100%;" onclick="connectExtension('inline-ext-status')">🎧 Connect browser extension</button>
+          <p class="lastfm-tip" id="inline-ext-status" style="margin-top:0.5rem;">Links every Spotify tab in your browser (SessionBox Multi-Account Scrobbler) to your profile — no username needed.</p>
           <button id="badges-done-btn" class="btn-primary" style="display:none;width:100%;margin-top:1.25rem;font-size:1rem;" onclick="initMyBadgesFromAccount()">Done — View My Profile →</button>
         </div>
       </div>
@@ -3158,6 +3161,13 @@
               &nbsp;·&nbsp; 💻 PC: <a href="https://web-scrobbler.com/" target="_blank" rel="noopener">Web Scrobbler</a> or <a href="https://app.owline.io/" target="_blank" rel="noopener">Owline Scrobbler</a>
             </p>
             <p class="settings-hint" id="settings-linked-status" style="margin-top:0.35rem;"></p>
+          </div>
+
+          <div style="margin-top:1rem;">
+            <label class="settings-label">Browser extension</label>
+            <p class="settings-hint" style="margin-bottom:0.5rem;">Scrobble every Spotify tab in your browser (SessionBox Multi-Account Scrobbler) straight to your profile — no username, no token to copy.</p>
+            <button class="btn-primary" onclick="connectExtension('settings-ext-status')">🎧 Connect browser extension</button>
+            <p class="settings-hint" id="settings-ext-status" style="margin-top:0.35rem;"></p>
           </div>
 
           <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
@@ -4021,19 +4031,6 @@
         <div class="admin-loading">Loading…</div>
       </div>
       <div id="admin-song-note" class="admin-song-note"></div>
-
-      <div class="admin-ban-section">
-        <div class="admin-ban-title">🎧 Connect Spotify extension — admin testing (self-reported plays count on your profile + leaderboard)</div>
-        <div style="font-size:0.55rem;letter-spacing:0.04em;color:var(--muted);line-height:1.6;margin-bottom:0.5rem;">
-          Install the SessionBox Multi-Account Scrobbler extension and stay logged in with your usual blinksunited account,
-          then click below. A tab opens and links your profile to the extension <strong>automatically — no token to copy</strong>.
-          Every Spotify tab in that browser then scrobbles to your profile.
-        </div>
-        <div class="admin-input-row">
-          <button class="btn-primary" onclick="adminConnectExtension()">Connect my extension</button>
-        </div>
-        <div id="admin-ext-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
-      </div>
 
       <div class="admin-ban-section">
         <div class="admin-ban-title">⛔ Banned users — removed from the leaderboard, can't rejoin</div>
@@ -10722,15 +10719,15 @@ function closeAdminPanel() {
   document.getElementById('admin-overlay').style.display = 'none';
 }
 
-// Open the login-handoff page. The admin is already signed in (same origin
-// session), so extension-link.html auto-mints their token from that session and
-// hands it straight to the extension via postMessage — nothing to copy. Gated
-// simply by living inside the admin panel; there's no connect option in the
-// public UI.
-function adminConnectExtension() {
+// Public "Connect browser extension" action (My Badges → linked accounts). Opens
+// the /extension-link.html login-handoff page in a new tab; the user signs in
+// there (same-origin session), which auto-mints their token and hands it to the
+// extension via postMessage — nothing to copy. statusId is the id of an optional
+// status line to update next to the button.
+function connectExtension(statusId) {
   window.open('/extension-link.html', '_blank');
-  const s = document.getElementById('admin-ext-status');
-  if (s) s.textContent = 'Opened the link page in a new tab — it connects automatically if the extension is installed and you’re logged in.';
+  const s = statusId && document.getElementById(statusId);
+  if (s) s.textContent = 'Opened the link page in a new tab — it connects automatically if the extension is installed and you’re signed in there.';
 }
 
 async function submitAdminKey() {
