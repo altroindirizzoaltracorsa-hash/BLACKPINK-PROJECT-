@@ -1928,6 +1928,9 @@
   .vv-split-in { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 8.5rem; }
   .vv-split-in > span { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.06em; text-transform: uppercase; }
   .vv-split-in input { background: #0f0a0f; border: 1px solid var(--border); color: var(--white); font-family: var(--display); font-size: 1.35rem; text-align: center; padding: 0.4rem 0.3rem; min-width: 0; }
+  .vv-power { display: flex; align-items: center; gap: 0.45rem; margin-top: 0.7rem; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.02em; color: var(--muted); cursor: pointer; user-select: none; }
+  .vv-power input { accent-color: #f5c542; width: 0.95rem; height: 0.95rem; cursor: pointer; }
+  .vv-power b { color: #f5c542; font-weight: 500; }
   #vv-add { margin-top: 0.7rem; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); border: none; padding: 0.62rem 1.5rem; cursor: pointer; }
   #vv-add:disabled { opacity: 0.6; cursor: default; }
   .vv-mine { background: rgba(255,0,102,0.08); }
@@ -2290,7 +2293,7 @@
 <div class="site-votebar" id="vma-votebar" hidden>
   <div class="vb-stat">
     <span class="vb-num" id="vma-vb-total">—</span>
-    <span class="vb-lbl">VMA votes · <b class="vv-lisa">🎀 LISA <span id="vma-vb-lisa">—</span></b> · <b class="vv-bp">🖤 BP <span id="vma-vb-bp">—</span></b><br><span id="vma-vb-blinks">—</span> blinks in</span>
+    <span class="vb-lbl">VMA votes · <b class="vv-bp">🖤 BP <span id="vma-vb-bp">—</span></b> · <b class="vv-lisa">🎀 LISA <span id="vma-vb-lisa">—</span></b><br><span id="vma-vb-blinks">—</span> blinks in</span>
   </div>
   <a class="vb-btn" href="/voting#log-votes" onclick="showPage('vote'); setTimeout(function(){ var el = document.getElementById('vma-vote-panel'); if (el) el.scrollIntoView({ behavior:'smooth', block:'start' }); }, 420); return false;">🗳️ Log your votes ↗</a>
 </div>
@@ -7016,18 +7019,19 @@ function drawVmaVoting() {
         <div><span>${_vvFmt(_vvMe.total)}</span><small>all time</small></div>
       </div>
       <div class="vv-split-mine">
-        <span class="vv-chip vv-lisa">🎀 LISA <b>${_vvFmt((_vvMe.lisa && _vvMe.lisa.total) || 0)}</b></span>
         <span class="vv-chip vv-bp">🖤 BLACKPINK <b>${_vvFmt((_vvMe.bp && _vvMe.bp.total) || 0)}</b></span>
+        <span class="vv-chip vv-lisa">🎀 LISA <b>${_vvFmt((_vvMe.lisa && _vvMe.lisa.total) || 0)}</b></span>
       </div>
       <div class="vv-form">
         <span class="vv-form-q">Just voted? Add how many — split by who you voted for:</span>
         <div class="vv-split-inputs">
-          <label class="vv-split-in"><span class="vv-lisa">🎀 LISA · Pop / K-Pop</span><input id="vv-lisa" type="number" min="0" value="0" inputmode="numeric"></label>
-          <label class="vv-split-in"><span class="vv-bp">🖤 BLACKPINK · JUMP</span><input id="vv-bp" type="number" min="0" value="0" inputmode="numeric"></label>
+          <label class="vv-split-in"><span class="vv-bp">🖤 BLACKPINK · JUMP</span><input id="vv-bp" type="number" min="0" value="${_vvPerCat()}" inputmode="numeric"></label>
+          <label class="vv-split-in"><span class="vv-lisa">🎀 LISA · Pop / K-Pop</span><input id="vv-lisa" type="number" min="0" value="${_vvPerCat()}" inputmode="numeric"></label>
         </div>
+        <label class="vv-power"><input type="checkbox" id="vv-power" ${vmaPowerActive() ? 'checked' : ''} onchange="vmaTogglePower(this.checked)"> ⚡ Power hour / double day — <b>2× per category</b> (${vmaPowerActive() ? '20' : '10'})</label>
         <button id="vv-add" onclick="vmaAddVotes()">Add votes</button>
         <div class="vv-msg" id="vv-msg"></div>
-        <div class="vv-honest">🤝 Honour system — please only log votes you've actually cast. Inflated counts just throw off the board for every blink. 💗</div>
+        <div class="vv-honest">🤝 Honour system — please only log votes you've actually cast. Inflated counts just throw off the board for every blink. Default fills the per-category max (10, or 20 in a power hour) — tweak to what you actually cast. 💗</div>
       </div>
     </div>`;
   } else {
@@ -7039,12 +7043,12 @@ function drawVmaVoting() {
   if (!rows.length) {
     table = `<div class="vv-empty">No votes logged yet — be the first! 🗳️</div>`;
   } else {
-    table = `<div class="vv-tablewrap"><table class="vv-table"><thead><tr><th>#</th><th>Blink</th><th>Streams</th><th class="vv-c-lisa">🎀 LISA</th><th class="vv-c-bp">🖤 BP</th><th>Votes ${periodLbl}</th></tr></thead><tbody>`;
+    table = `<div class="vv-tablewrap"><table class="vv-table"><thead><tr><th>#</th><th>Blink</th><th>Streams</th><th class="vv-c-bp">🖤 BP</th><th class="vv-c-lisa">🎀 LISA</th><th>Votes ${periodLbl}</th></tr></thead><tbody>`;
     rows.forEach((r, i) => {
       const s = r.streams || 0; // server-provided (voting-day aligned)
       const mine = displayName && (r.name || '').toLowerCase() === displayName.toLowerCase();
       const bt = isMonsterBlink(r.total, s) ? MONSTER_BLINK : voteTier(r.total);
-      table += `<tr class="${mine ? 'vv-mine' : ''}"><td>${i + 1}</td><td>${bt ? `<span class="vv-rowbadge" title="${bt.label}">${bt.icon}</span> ` : ''}${_vvEsc(r.name || 'a blink')}</td><td>${_vvFmt(s)}</td><td class="vv-c-lisa">${_vvFmt(r['lisa_' + P] || 0)}</td><td class="vv-c-bp">${_vvFmt(r['bp_' + P] || 0)}</td><td class="vv-v">${_vvFmt(r[P] || 0)}</td></tr>`;
+      table += `<tr class="${mine ? 'vv-mine' : ''}"><td>${i + 1}</td><td>${bt ? `<span class="vv-rowbadge" title="${bt.label}">${bt.icon}</span> ` : ''}${_vvEsc(r.name || 'a blink')}</td><td>${_vvFmt(s)}</td><td class="vv-c-bp">${_vvFmt(r['bp_' + P] || 0)}</td><td class="vv-c-lisa">${_vvFmt(r['lisa_' + P] || 0)}</td><td class="vv-v">${_vvFmt(r[P] || 0)}</td></tr>`;
     });
     table += `</tbody></table></div>`;
   }
@@ -7080,6 +7084,28 @@ function drawVmaVoting() {
 }
 
 function vmaSetPeriod(p) { _vvPeriod = p; drawVmaVoting(); }
+
+// Per-category vote allowance for the quick-fill defaults: 10 normally, 20 during a
+// power hour / double day (MTV doubles the per-category cap then). It flips on either
+// automatically when now falls inside a scheduled window (VMA_POWER_WINDOWS, times in
+// UTC — add power hours / double days here as MTV announces them) or when a blink ticks
+// the ⚡ toggle themselves. The blink can always edit the numbers before submitting.
+const VMA_POWER_LS = 'bu_vma_power';
+const VMA_POWER_WINDOWS = [
+  // { start: '2026-09-24T16:00:00Z', end: '2026-09-24T17:00:00Z' },  // example power hour
+];
+function vmaPowerActive() {
+  const now = Date.now();
+  if (VMA_POWER_WINDOWS.some(w => now >= Date.parse(w.start) && now < Date.parse(w.end))) return true;
+  try { return localStorage.getItem(VMA_POWER_LS) === '1'; } catch { return false; }
+}
+function _vvPerCat() { return vmaPowerActive() ? 20 : 10; }
+function vmaTogglePower(on) {
+  try { if (on) localStorage.setItem(VMA_POWER_LS, '1'); else localStorage.removeItem(VMA_POWER_LS); } catch {}
+  const per = on ? 20 : 10;
+  ['vv-bp', 'vv-lisa'].forEach(id => { const el = document.getElementById(id); if (el) el.value = per; });
+  drawVmaVoting();   // repaint so the label/(10|20) hint tracks the toggle
+}
 
 async function vmaAddVotes() {
   const btn = document.getElementById('vv-add');
