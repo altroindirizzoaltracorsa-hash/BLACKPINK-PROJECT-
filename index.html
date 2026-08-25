@@ -1931,6 +1931,10 @@
   .vv-power { display: flex; align-items: center; gap: 0.45rem; margin-top: 0.7rem; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.02em; color: var(--muted); cursor: pointer; user-select: none; }
   .vv-power input { accent-color: #f5c542; width: 0.95rem; height: 0.95rem; cursor: pointer; }
   .vv-power b { color: #f5c542; font-weight: 500; }
+  .vv-power-live { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.7rem; padding: 0.5rem 0.7rem; border-radius: 6px;
+    font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.03em; color: #f5e6b0;
+    background: rgba(245,197,66,0.12); border: 1px solid rgba(245,197,66,0.5); }
+  .vv-power-live b { color: #f5c542; font-weight: 500; }
   #vv-add { margin-top: 0.7rem; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); border: none; padding: 0.62rem 1.5rem; cursor: pointer; }
   #vv-add:disabled { opacity: 0.6; cursor: default; }
   .vv-mine { background: rgba(255,0,102,0.08); }
@@ -7028,7 +7032,9 @@ function drawVmaVoting() {
           <label class="vv-split-in"><span class="vv-bp">🖤 BLACKPINK · JUMP</span><input id="vv-bp" type="number" min="0" value="${_vvPerCat()}" inputmode="numeric"></label>
           <label class="vv-split-in"><span class="vv-lisa">🎀 LISA · Pop / K-Pop</span><input id="vv-lisa" type="number" min="0" value="${_vvPerCat()}" inputmode="numeric"></label>
         </div>
-        <label class="vv-power"><input type="checkbox" id="vv-power" ${vmaPowerActive() ? 'checked' : ''} onchange="vmaTogglePower(this.checked)"> ⚡ Power hour / double day — <b>2× per category</b> (${vmaPowerActive() ? '20' : '10'})</label>
+        ${vmaScheduledPower()
+          ? `<div class="vv-power vv-power-live">⚡ <b>Power hour / double day is LIVE</b> — 2× votes, 20 per category</div>`
+          : `<label class="vv-power"><input type="checkbox" id="vv-power" ${vmaPowerActive() ? 'checked' : ''} onchange="vmaTogglePower(this.checked)"> ⚡ Power hour on now? — fill <b>2× per category</b> (20)</label>`}
         <button id="vv-add" onclick="vmaAddVotes()">Add votes</button>
         <div class="vv-msg" id="vv-msg"></div>
         <div class="vv-honest">🤝 Honour system — please only log votes you've actually cast. Inflated counts just throw off the board for every blink. Default fills the per-category max (10, or 20 in a power hour) — tweak to what you actually cast. 💗</div>
@@ -7086,18 +7092,35 @@ function drawVmaVoting() {
 function vmaSetPeriod(p) { _vvPeriod = p; drawVmaVoting(); }
 
 // Per-category vote allowance for the quick-fill defaults: 10 normally, 20 during a
-// power hour / double day (MTV doubles the per-category cap then). It flips on either
-// automatically when now falls inside a scheduled window (VMA_POWER_WINDOWS, times in
-// UTC — add power hours / double days here as MTV announces them) or when a blink ticks
-// the ⚡ toggle themselves. The blink can always edit the numbers before submitting.
+// Power Hour / Double Day, when MTV doubles the per-category cap. This flips on
+// AUTOMATICALLY from the official 2026 VMA schedule below (all times US Eastern —
+// Intl handles EDT/EST), and a blink can also force it on with the ⚡ toggle. The
+// numbers stay editable before submitting.
+//   • Power Hour: 1:00–1:59 PM ET every day, Aug 20 → Sep 24, 2026.
+//   • Double Days: all day Aug 18, Aug 19, Sep 25, 2026.
+// Source: MTV 2026 VMA official voting rules.
 const VMA_POWER_LS = 'bu_vma_power';
-const VMA_POWER_WINDOWS = [
-  // { start: '2026-09-24T16:00:00Z', end: '2026-09-24T17:00:00Z' },  // example power hour
-];
+const VMA_POWER = {
+  hourStart: 13, hourEnd: 14,              // 1:00–1:59 PM ET (13:00–14:00)
+  hourFrom: '2026-08-20', hourTo: '2026-09-24',
+  doubleDays: ['2026-08-18', '2026-08-19', '2026-09-25'],
+};
+// Current wall-clock DATE (YYYY-MM-DD) + HOUR in US Eastern.
+function _vvEtParts(d = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false,
+  }).formatToParts(d).reduce((o, p) => (o[p.type] = p.value, o), {});
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, hour: parseInt(parts.hour, 10) % 24 };
+}
+function vmaScheduledPower(d = new Date()) {
+  const { date, hour } = _vvEtParts(d);
+  if (VMA_POWER.doubleDays.includes(date)) return true;                                  // Double Day → all day
+  return date >= VMA_POWER.hourFrom && date <= VMA_POWER.hourTo                           // Power Hour window
+      && hour >= VMA_POWER.hourStart && hour < VMA_POWER.hourEnd;
+}
 function vmaPowerActive() {
-  const now = Date.now();
-  if (VMA_POWER_WINDOWS.some(w => now >= Date.parse(w.start) && now < Date.parse(w.end))) return true;
-  try { return localStorage.getItem(VMA_POWER_LS) === '1'; } catch { return false; }
+  if (vmaScheduledPower()) return true;                                                  // auto (schedule)
+  try { return localStorage.getItem(VMA_POWER_LS) === '1'; } catch { return false; }     // manual override
 }
 function _vvPerCat() { return vmaPowerActive() ? 20 : 10; }
 function vmaTogglePower(on) {
