@@ -1,4 +1,16 @@
+// 2026 VMA power schedule (US Eastern) — mirrors the site & panel.
+var VMA_POWER = { hourStart: 13, hourEnd: 14, hourFrom: '2026-08-20', hourTo: '2026-09-24',
+  doubleDays: ['2026-08-18', '2026-08-19', '2026-09-25'] };
+function vmaScheduledPower() {
+  var p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false })
+    .formatToParts(new Date()).reduce(function (o, x) { o[x.type] = x.value; return o; }, {});
+  var date = p.year + '-' + p.month + '-' + p.day, hour = parseInt(p.hour, 10) % 24;
+  if (VMA_POWER.doubleDays.indexOf(date) !== -1) return true;
+  return date >= VMA_POWER.hourFrom && date <= VMA_POWER.hourTo && hour >= VMA_POWER.hourStart && hour < VMA_POWER.hourEnd;
+}
+
 function render() {
+  document.body.classList.toggle('power', vmaScheduledPower());
   chrome.storage.local.get(['buToken', 'buProfile', 'buCount', 'buPending'], function (r) {
     const s = document.getElementById('status');
     if (r.buToken) {

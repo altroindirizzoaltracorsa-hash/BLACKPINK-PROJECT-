@@ -29,6 +29,16 @@
         box-shadow:0 18px 50px -12px #000, 0 0 0 1px #ff2e7733, inset 0 0 46px #ff2e7718;
         overflow:hidden; user-select:none;
       }
+      /* Power hour / double day — gold glow + pulse while 2x votes are live */
+      .panel.power{ border-color:#f5c54288; animation:powerGlow 1.8s ease-in-out infinite; }
+      @keyframes powerGlow{
+        0%,100%{ box-shadow:0 18px 50px -12px #000, 0 0 0 1px #f5c54288, 0 0 22px -6px #f5c54255, inset 0 0 46px #ff2e7718; }
+        50%    { box-shadow:0 18px 50px -12px #000, 0 0 0 1px #f5c542ff, 0 0 46px 0 #f5c542aa, inset 0 0 46px #f5c54222; }
+      }
+      .powerband{ display:none; margin:0 12px 10px; padding:7px 10px; border-radius:11px; text-align:center;
+        font-size:10.5px; font-weight:700; letter-spacing:.03em; color:#f7e6b0; background:#f5c5421c; border:1px solid #f5c54266; }
+      .panel.power .powerband{ display:block; }
+      @media (prefers-reduced-motion: reduce){ .panel.power{ animation:none; } }
       .head{ position:relative; padding:14px 16px 11px; text-align:center; border-bottom:1px solid #ff2e7722; cursor:grab; touch-action:none; }
       .head.dragging{ cursor:grabbing; }
       .titlerow{ display:flex; align-items:center; justify-content:center; gap:11px; }
@@ -142,6 +152,7 @@
 
       <div class="body" id="body">
         <div class="live"><span class="dot"></span><b id="live">–</b> blinks voting now</div>
+        <div class="powerband">⚡ Power hour / double day — 2× votes now</div>
 
         <div class="total">
           <img class="wm" src="${HEART}" alt="">
@@ -199,7 +210,25 @@
   };
 
   let lastTotal = 0;
+  // 2026 VMA power schedule (US Eastern), mirrors blinksunited.com/voting:
+  //   Power Hour 1:00–1:59 PM ET daily Aug 20 → Sep 24; Double Days Aug 18/19, Sep 25.
+  const VMA_POWER = { hourStart: 13, hourEnd: 14, hourFrom: '2026-08-20', hourTo: '2026-09-24',
+    doubleDays: ['2026-08-18', '2026-08-19', '2026-09-25'] };
+  function vmaEtParts(d) {
+    const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false })
+      .formatToParts(d).reduce((o, x) => (o[x.type] = x.value, o), {});
+    return { date: `${p.year}-${p.month}-${p.day}`, hour: parseInt(p.hour, 10) % 24 };
+  }
+  function vmaScheduledPower() {
+    const { date, hour } = vmaEtParts(new Date());
+    if (VMA_POWER.doubleDays.indexOf(date) !== -1) return true;
+    return date >= VMA_POWER.hourFrom && date <= VMA_POWER.hourTo && hour >= VMA_POWER.hourStart && hour < VMA_POWER.hourEnd;
+  }
+
   function render(s) {
+    // Power hour / double day → gold glow + banner (schedule-driven, refreshes on each render).
+    $('panel').classList.toggle('power', vmaScheduledPower());
+
     // When cross-device sync is on and we have a server view, show the merged
     // numbers/accounts; otherwise show this device's local ones.
     const synced = !!s.buSyncOn && !!s.buToken;
