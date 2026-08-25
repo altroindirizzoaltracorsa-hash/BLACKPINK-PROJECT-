@@ -29,7 +29,9 @@
     <p id="lead">Connecting your blinksunited profile to the Multi-Account Scrobbler extension…</p>
 
     <div id="login" class="hidden">
-      <button id="twitter">Sign in with X / Twitter</button>
+      <button id="google">Continue with Google</button>
+      <button id="twitter" class="ghost">Continue with X</button>
+      <button id="discord" class="ghost">Continue with Discord</button>
       <div style="text-align:center;color:#6a6a6a;font-size:11px;margin:12px 0 2px;">— or with email —</div>
       <label>Email<input id="email" type="email" autocomplete="email" /></label>
       <label>Password<input id="password" type="password" autocomplete="current-password" /></label>
@@ -95,14 +97,24 @@
       status('');
     }
 
-    $('twitter').addEventListener('click', async () => {
-      status('Redirecting to X / Twitter…');
+    // OAuth providers — same set and same provider strings the main site
+    // (index.html signInWithProvider) uses, so this page links with whatever
+    // provider your blinksunited account was created with. redirectTo stays on
+    // THIS page so the OAuth round-trip returns here and mints/hands off the
+    // token (onAuthStateChange → mintAndSend below). Note the X provider id is
+    // 'x' (matching the main site) — the old 'twitter' id is what Supabase was
+    // rejecting as "provider is not enabled".
+    async function oauth(provider, label) {
+      status('Redirecting to ' + label + '…');
       const { error } = await sb.auth.signInWithOAuth({
-        provider: 'twitter',
+        provider,
         options: { redirectTo: location.href },
       });
-      if (error) status('Twitter sign-in failed: ' + error.message, 'err');
-    });
+      if (error) status(label + ' sign-in failed: ' + error.message, 'err');
+    }
+    $('google').addEventListener('click', () => oauth('google', 'Google'));
+    $('twitter').addEventListener('click', () => oauth('x', 'X'));
+    $('discord').addEventListener('click', () => oauth('discord', 'Discord'));
 
     $('signin').addEventListener('click', async () => {
       const email = $('email').value.trim(); const password = $('password').value;
