@@ -145,7 +145,16 @@ export default async function handler(req, res) {
         if (authErr || !user) return res.status(401).json({ error: 'not signed in' });
         const linked = await isLinked(sb, user.id);
         const [totals, streams] = await Promise.all([myTotals(sb, user.id), myStreams(sb, user.id)]);
-        return res.status(200).json({ linked, ...totals, ...streams });
+        // Has the counter (extension or Android app) logged a vote for THIS account
+        // TODAY? If so, the site hides the manual "Add votes" form to avoid double
+        // counting. Best-effort: if the ext_at column isn't there yet, treat as false.
+        let extToday = false;
+        try {
+          const { data: row } = await sb.from('vma_user_votes')
+            .select('ext_at').eq('app_user_id', user.id).eq('day', etDay()).maybeSingle();
+          extToday = !!(row && row.ext_at);
+        } catch (_) { extToday = false; }
+        return res.status(200).json({ linked, extToday, ...totals, ...streams });
       }
       const { data, error } = await sb.rpc('vma_vote_totals');
       if (error) throw error;
@@ -215,6 +224,19 @@ export default async function handler(req, res) {
         { onConflict: 'app_user_id,day' },
       );
       if (upErr) return res.status(500).json({ error: upErr.message });
+
+      // Mark this day's row as counter-logged when the vote came via a link token
+      // (the browser extension or the Android app). The site reads this (?me=1 →
+      // extToday) to hide the manual "Add votes" form, so an auto-counted account
+      // can't double-count by also typing votes in. Best-effort: silently no-ops if
+      // the ext_at column hasn't been added yet (supabase/migrations).
+      if (extToken) {
+        try {
+          await sb.from('vma_user_votes')
+            .update({ ext_at: new Date().toISOString() })
+            .eq('app_user_id', user.id).eq('day', day);
+        } catch (_) { /* column not present yet — feature just stays dormant */ }
+      }
 
       // Opt-in cross-device sync: when the extension is in sync mode it sends the
       // per-member breakdown + the voting account, and we record them under this BU

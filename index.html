@@ -2010,6 +2010,10 @@
   .vv-input-row button:disabled { opacity: 0.6; cursor: default; }
   .vv-msg { font-family: var(--mono); font-size: 0.58rem; color: #ff74ac; margin-top: 0.55rem; min-height: 1em; }
   .vv-honest { font-family: var(--mono); font-size: 0.56rem; line-height: 1.5; color: var(--muted); margin-top: 0.7rem; padding-top: 0.6rem; border-top: 1px dashed var(--border); }
+  .vv-auto-note { font-family: var(--mono); font-size: 0.66rem; line-height: 1.55; color: rgba(245,240,240,0.9); background: rgba(63,217,130,0.1); border: 1px solid rgba(63,217,130,0.4); border-radius: 8px; padding: 0.7rem 0.85rem; }
+  .vv-auto-note b { color: #7ee0a0; }
+  .vv-auto-more { display: inline-block; margin-top: 0.7rem; font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.04em; color: var(--muted); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; }
+  .vv-auto-more:hover { color: var(--pink); }
   .vv-tabs { display: flex; gap: 0.4rem; margin-bottom: 0.9rem; }
   .vv-tab { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--border); padding: 0.42rem 0.75rem; cursor: pointer; }
   .vv-tab.active { color: var(--pink); border-color: var(--pink); background: rgba(255,0,102,0.08); }
@@ -7253,17 +7257,13 @@ function drawVmaVoting() {
         <span class="vv-chip vv-bp">🖤 BLACKPINK <b>${_vvFmt((_vvMe.bp && _vvMe.bp.total) || 0)}</b></span>
         <span class="vv-chip vv-lisa">🎀 LISA <b>${_vvFmt((_vvMe.lisa && _vvMe.lisa.total) || 0)}</b></span>
       </div>
-      <div class="vv-form">
-        <span class="vv-form-q">Just voted? Add how many — split by who you voted for:</span>
-        <div class="vv-split-inputs">
-          <label class="vv-split-in"><span class="vv-bp">🖤 BLACKPINK · JUMP</span><input id="vv-bp" type="number" min="0" value="${_vvPerCat()}" inputmode="numeric"></label>
-          <label class="vv-split-in"><span class="vv-lisa">🎀 LISA · Pop / K-Pop</span><input id="vv-lisa" type="number" min="0" value="${_vvPerCat()}" inputmode="numeric"></label>
-        </div>
-        ${vmaScheduledPower() ? `<div class="vv-power vv-power-live">⚡ <b>${vmaPowerLabel()} is LIVE</b> — 2× votes, 20 per category</div>` : ''}
-        <button id="vv-add" onclick="vmaAddVotes()">Add votes</button>
-        <div class="vv-msg" id="vv-msg"></div>
-        <div class="vv-honest">🤝 Honour system — please only log votes you've actually cast. Inflated counts just throw off the board for every blink. Default fills the per-category max (10, or 20 in a power hour) — tweak to what you actually cast. 💗</div>
-      </div>
+      ${_vvMe.extToday ? `
+      <div class="vv-form vv-form-auto">
+        <div class="vv-auto-note">✅ <b>Counted automatically today</b> — your vote counter (browser extension or the app) is logging this account's votes. No need to add them here; doing so would double-count.</div>
+        <button class="vv-auto-more" onclick="var m=document.getElementById('vv-manual');if(m){m.style.display='block';this.style.display='none';}">Not using the counter right now? Add votes manually ▾</button>
+        <div id="vv-manual" style="display:none;margin-top:0.7rem;">${_vvFormInner()}</div>
+      </div>` : `
+      <div class="vv-form">${_vvFormInner()}</div>`}
     </div>`;
   } else {
     me = `<div class="vv-me vv-gate">Loading your votes…</div>`;
@@ -7364,6 +7364,21 @@ function vmaExtensionHtml() {
     </details>
     <div class="vv-ext-note">🤝 <b>Count, never auto-vote</b> — it only observes the votes you cast. Works on any desktop <b>Chromium browser</b>, or on Android via a browser that still supports extensions (<b>Edge Canary</b> / <b>Quetta</b>) — regular mobile Chrome and Firefox can't run it.</div>
   </div>`;
+}
+
+// The manual "Add votes" inputs — factored out so it can render either normally or,
+// for accounts already counted by the extension/app, behind an "add manually anyway"
+// toggle (see the extToday branch in drawVmaVoting).
+function _vvFormInner() {
+  return `<span class="vv-form-q">Just voted? Add how many — split by who you voted for:</span>
+        <div class="vv-split-inputs">
+          <label class="vv-split-in"><span class="vv-bp">🖤 BLACKPINK · JUMP</span><input id="vv-bp" type="number" min="0" value="${_vvPerCat()}" inputmode="numeric"></label>
+          <label class="vv-split-in"><span class="vv-lisa">🎀 LISA · Pop / K-Pop</span><input id="vv-lisa" type="number" min="0" value="${_vvPerCat()}" inputmode="numeric"></label>
+        </div>
+        ${vmaScheduledPower() ? `<div class="vv-power vv-power-live">⚡ <b>${vmaPowerLabel()} is LIVE</b> — 2× votes, 20 per category</div>` : ''}
+        <button id="vv-add" onclick="vmaAddVotes()">Add votes</button>
+        <div class="vv-msg" id="vv-msg"></div>
+        <div class="vv-honest">🤝 Honour system — please only log votes you've actually cast. Inflated counts just throw off the board for every blink. Default fills the per-category max (10, or 20 in a power hour) — tweak to what you actually cast. 💗</div>`;
 }
 
 function vmaSetPeriod(p) { _vvPeriod = p; drawVmaVoting(); }
