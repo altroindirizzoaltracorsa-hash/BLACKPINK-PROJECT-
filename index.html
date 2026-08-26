@@ -5093,24 +5093,34 @@ function renderArtistStreamsPage() {
   document.getElementById('as-total-streams').textContent = fmtNum(latest.total_streams);
   document.getElementById('as-track-count').textContent = fmtNum(latest.track_count);
   renderMergeNote(d.merges);
-  // A daily change beyond ±100M isn't a real day — it's Spotify re-counting the
-  // catalog (a version merge), which shifts the whole total to a new base. Flag
-  // those rows instead of showing a bogus +/-billions, and keep them out of the avg.
+  const historyBody = document.getElementById('as-history-body');
+  // API returns newest-first with ONE extra lookback day beyond what we display,
+  // so the oldest visible row can still be tested against the day before it.
+  const hist = d.history || [];
+  const shown = hist.slice(0, 7);
+  // Two kinds of day carry a fake daily_delta and must be kept out of the average:
+  //  1. A change beyond ±100M — Spotify re-counting the catalog to a new base.
+  //  2. A day whose track_count differs from the day before — a Spotify merge/split
+  //     transition, where versions combining (or splitting + re-counting) lump an
+  //     arbitrary amount into that day. The 2-day total is right, the split isn't.
   const _AS_ANOM = 100_000_000;
   const _asAnom = v => v != null && Math.abs(v) > _AS_ANOM;
-  const deltas = (d.history || []).map(h => h.daily_delta).filter(v => v != null && !_asAnom(v));
+  const _isShift = i => {
+    const h = hist[i], prev = hist[i + 1];   // prev = the day before (older)
+    return !!(h && prev && h.track_count != null && prev.track_count != null && h.track_count !== prev.track_count);
+  };
+  const _bad = i => _asAnom(hist[i]?.daily_delta) || _isShift(i);
+  const deltas = shown.map((h, i) => (h.daily_delta != null && !_bad(i)) ? h.daily_delta : null).filter(v => v != null);
   const dailyAvg = deltas.length ? Math.round(deltas.reduce((s, v) => s + v, 0) / deltas.length) : null;
   document.getElementById('as-daily-avg').textContent = fmtNum(dailyAvg);
 
-  const historyBody = document.getElementById('as-history-body');
-  const hist = d.history || [];
-  const _adj = '<span style="color:rgba(255,180,80,0.9);font-family:var(--mono);font-size:0.82em;letter-spacing:0.03em;" title="Spotify re-counted the catalog (version merge) — the total shifted to a new base, so this isn\'t a real daily change">⚠ recount</span>';
-  historyBody.innerHTML = hist.map((h, i) => `
+  const _adj = '<span style="color:rgba(255,180,80,0.9);font-family:var(--mono);font-size:0.82em;letter-spacing:0.03em;" title="Spotify merged/split song versions this day and re-counted them — the daily change is an artifact of that, not real streams, so it is left out of the average">⚠ recount</span>';
+  historyBody.innerHTML = shown.map((h, i) => `
     <tr>
       <td>${fmtDate(h.date)}</td>
       <td class="right">${fmtNum(h.total_streams)}</td>
-      <td class="right">${_asAnom(h.daily_delta) ? _adj : fmtDelta(h.daily_delta)}</td>
-      <td class="right">${(_asAnom(h.daily_delta) || _asAnom(hist[i + 1]?.daily_delta)) ? '—' : fmtTrend(h.daily_delta, hist[i + 1]?.daily_delta)}</td>
+      <td class="right">${_bad(i) ? _adj : fmtDelta(h.daily_delta)}</td>
+      <td class="right">${(_bad(i) || _bad(i + 1)) ? '—' : fmtTrend(h.daily_delta, hist[i + 1]?.daily_delta)}</td>
     </tr>
   `).join('') || '<tr><td colspan="4">No history yet</td></tr>';
 
