@@ -276,6 +276,52 @@ FIXED_TRACKS = {
 }
 
 
+# Substrings that mark a track as an alternate VERSION of an original (JP / live
+# / remix / instrumental / tour recordings). Used only to pick which entry
+# survives when Spotify has merged a group — the non-version "original" is kept
+# so the deduped catalog keeps clean names. Matching is a display preference, not
+# the merge test itself (that's exact play_count equality below).
+_VERSION_HINTS = (
+    "japanese version", "jp ver", "- live", "live (", "(remix", "- remix",
+    "remix version", "acoustic", "tokyo dome", "arena tour", "osaka", "seoul",
+    "- 0.5x", "- 2x", "- bare", "- unveiled", "instrumental", "a cappella",
+    "slowed", "sped up", "extended", "sam feldt", "special final",
+)
+
+
+def _is_version_name(name):
+    n = (name or "").lower()
+    return any(h in n for h in _VERSION_HINTS)
+
+
+def collapse_merged(counted, merge_min=1_000_000):
+    """Spotify periodically "combines" alternate versions (Japanese / live / remix)
+    into their original track. After a merge, every track ID in the group returns
+    the SAME combined play_count, so summing them all double-counts those streams —
+    that's what inflated the catalog total and produced the fake
+    +hundreds-of-millions one-day spikes. This collapses tracks that share an
+    identical (large) play_count into a single entity so each merged group is
+    counted ONCE, preferring the non-version "original" as the survivor.
+
+    Self-healing: if Spotify later re-splits a pair, their counts diverge again and
+    nothing collapses — no track list to maintain. merge_min guards against
+    coincidental equality among tiny counts (real merges involve large numbers).
+
+    Returns (kept, merged_away)."""
+    groups = {}
+    for c in counted:
+        groups.setdefault(c["streams"], []).append(c)
+    kept, merged_away = [], []
+    for streams, grp in groups.items():
+        if len(grp) > 1 and streams >= merge_min:
+            grp = sorted(grp, key=lambda c: (_is_version_name(c["name"]), len(c["name"]), c["name"]))
+            kept.append(grp[0])
+            merged_away.extend(grp[1:])
+        else:
+            kept.extend(grp)
+    return kept, merged_away
+
+
 def sb(method, path, **kwargs):
     headers = {
         "Authorization": f"Bearer {SUPABASE_KEY}",
@@ -413,22 +459,32 @@ def process_artist(client, artist_id, artist_name):
         rows = sb("GET", "/artist_tracks", params={"artist_id": f"eq.{artist_id}", "select": "id,name"})
         all_refs = {r["name"]: r["id"] for r in rows}
     fallback_rows = []
-    fallback_total = 0
+    fallback_named = []
     for name, tid in failed:
         ref = all_refs.get(name)
         last_known = prev_track_streams_map.get(ref) if ref is not None else None
         if last_known is not None:
-            fallback_total += last_known
             fallback_rows.append({"track_ref": ref, "date": today, "streams": last_known, "daily_delta": 0})
+            fallback_named.append({"name": name, "streams": last_known})
             print(f"  ⚠ {name!r} unavailable — using last-known {last_known:,} from {prev_date}")
         else:
             print(f"  ⚠ {name!r} unavailable and no last-known value — omitted from total", file=sys.stderr)
 
-    total_streams = sum(c["streams"] for c in canonical) + fallback_total
-    track_count = len(canonical) + len(fallback_rows)
+    # Count each Spotify-merged group once (see collapse_merged). Every track's
+    # own daily row is still written below at its live count, so merged versions
+    # keep moving in lockstep with their original — the dedup only governs the
+    # artist TOTAL and track_count, and self-corrects the day Spotify splits them.
+    counted = [{"name": c["name"], "streams": c["streams"]} for c in canonical] + fallback_named
+    kept, merged_away = collapse_merged(counted)
+    for m in merged_away:
+        print(f"  ⤷ merged: {m['name']!r} shares {m['streams']:,} with its original — counted once")
+
+    total_streams = sum(k["streams"] for k in kept)
+    track_count = len(kept)
     print(f"  {len(canonical)}/{len(track_specs)} fetched"
           + (f" (+{len(fallback_rows)} last-known)" if fallback_rows else "")
-          + f", total={total_streams:,}  → labeling {today}")
+          + (f" (−{len(merged_away)} merged)" if merged_away else "")
+          + f", total={total_streams:,} across {track_count}  → labeling {today}")
 
     # If Spotify hasn't published new counts yet, all totals are identical to
     # the previous snapshot. Skip writing anything so we don't record a +0 day.

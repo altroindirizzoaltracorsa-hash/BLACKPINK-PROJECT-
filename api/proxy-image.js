@@ -23,6 +23,39 @@ const SP_TRACKS = {
   ddududu:  '69BIczdH6QMnFx7dsSssN8',
 };
 
+// Substrings marking a track as an alternate VERSION (JP / live / remix / etc.).
+// Only used to choose which entry survives a merge collapse — the non-version
+// "original" is kept so the deduped list keeps clean names.
+const _VERSION_HINTS = [
+  'japanese version', 'jp ver', '- live', 'live (', '(remix', '- remix',
+  'remix version', 'acoustic', 'tokyo dome', 'arena tour', 'osaka', 'seoul',
+  '- 0.5x', '- 2x', '- bare', '- unveiled', 'instrumental', 'a cappella',
+  'slowed', 'sped up', 'extended', 'sam feldt', 'special final',
+];
+const _isVersionName = n => { n = (n || '').toLowerCase(); return _VERSION_HINTS.some(h => n.includes(h)); };
+
+// Spotify periodically "combines" alternate versions into their original: every
+// merged track ID then returns the SAME combined play count. Collapse tracks
+// that share an identical (large) latest stream count into one row so the list
+// shows each merged group once (mirrors kworb / the deduped catalog total)
+// instead of a duplicate. Self-heals if Spotify re-splits them (counts diverge →
+// shown separately again). Keeps the non-version "original" as the survivor.
+function collapseMergedTracks(tracks, mergeMin = 1_000_000) {
+  const groups = new Map();
+  for (const t of tracks) {
+    const key = (t.streams != null && t.streams >= mergeMin) ? t.streams : `solo:${t.name}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(t);
+  }
+  const out = [];
+  for (const grp of groups.values()) {
+    if (grp.length === 1) { out.push(grp[0]); continue; }
+    grp.sort((a, b) => (_isVersionName(a.name) - _isVersionName(b.name)) || (a.name.length - b.name.length) || a.name.localeCompare(b.name));
+    out.push(grp[0]); // drop the merged duplicates
+  }
+  return out.sort((a, b) => (b.streams || 0) - (a.streams || 0));
+}
+
 async function statsPost(body) {
   const r = await fetch(`${MUSICAT_BASE}/history/stats`, {
     method: 'POST', headers: MC_HEADERS,
@@ -537,7 +570,9 @@ export default async function handler(req, res) {
       }))
       .sort((a, b) => (b.streams || 0) - (a.streams || 0));
 
-    return res.status(200).json({ ...artistRows[0], history, tracks });
+    // Collapse Spotify-merged version groups so the list shows each once, matching
+    // the deduped catalog total written by fetch_artist_streams.py.
+    return res.status(200).json({ ...artistRows[0], history, tracks: collapseMergedTracks(tracks) });
   }
 
   // ── GET ?charts=list&chart_type=daily|weekly&country=GLOBAL&limit=50 ───────
