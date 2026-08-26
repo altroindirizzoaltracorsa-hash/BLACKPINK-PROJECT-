@@ -48,7 +48,10 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
 
         findViewById<Button>(R.id.voteBtn).setOnClickListener { web.loadUrl("https://vote.mtv.com/") }
         findViewById<Button>(R.id.linkBtn).setOnClickListener { startLinkFlow() }
-        findViewById<Button>(R.id.boardBtn).setOnClickListener { web.loadUrl("https://blinksunited.com/voting") }
+        // Open the board in the real browser: blinksunited.com sign-in uses X/Google
+        // OAuth, which is refused inside an embedded WebView. The browser also carries
+        // the user's existing site session, so they see their signed-in board directly.
+        findViewById<Button>(R.id.boardBtn).setOnClickListener { openExternal("https://blinksunited.com/voting") }
 
         counterJs = readAsset("counter.js")
         linkJs = readAsset("link.js")
@@ -92,16 +95,22 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
     /** Open the account-link page in the REAL browser (so OAuth works), tagged so it
      *  returns the token to us via the buvotecounter:// deep link. */
     private fun startLinkFlow() {
-        try {
-            startActivity(
-                android.content.Intent(
-                    android.content.Intent.ACTION_VIEW,
-                    android.net.Uri.parse("https://blinksunited.com/extension-link.html?app=android")
-                )
-            )
-        } catch (e: Exception) {
+        if (!openExternal("https://blinksunited.com/extension-link.html?app=android")) {
             // No browser? Fall back to linking inside the WebView (email/password only).
             web.loadUrl("https://blinksunited.com/extension-link.html")
+        }
+    }
+
+    /** Open a URL in the user's default browser (outside the WebView). Returns false
+     *  if no browser could handle it. */
+    private fun openExternal(url: String): Boolean {
+        return try {
+            startActivity(
+                android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+            )
+            true
+        } catch (e: Exception) {
+            false
         }
     }
 
