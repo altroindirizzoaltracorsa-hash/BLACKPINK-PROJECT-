@@ -1689,6 +1689,18 @@
   .cd-card-jisoo .cd-goal-bar { background: rgba(104,73,58,0.22); }
   .cd-card-jisoo .cd-goal-fill { background: linear-gradient(90deg, #9a7358, var(--js-ink)); }
   .cd-card-jisoo .cd-btn-ghost { background: transparent; }
+  /* Expandable worldwide release times (countdown cards) */
+  .cd-times { margin: 0.8rem auto 0; width: min(92%, 380px); text-align: left; position: relative; z-index: 5; }
+  .cd-times summary { cursor: pointer; list-style: none; font-size: 0.64rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.8); padding: 0.55rem 0.8rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; }
+  .cd-times[open] summary { border-radius: 10px 10px 0 0; }
+  .cd-times summary::-webkit-details-marker { display: none; }
+  .cd-times summary::after { content: '▸'; font-size: 0.6rem; opacity: 0.8; }
+  .cd-times[open] summary::after { content: '▾'; }
+  .cd-times-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; padding: 0.7rem 0.85rem; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.2); border-top: none; border-radius: 0 0 10px 10px; }
+  .cd-times-row { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.64rem; line-height: 1.5; padding: 0.22rem 0; border-bottom: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.62); }
+  .cd-times-row span:first-child { color: rgba(255,255,255,0.9); font-weight: 600; white-space: nowrap; }
+  .cd-times-row span:last-child { text-align: right; white-space: nowrap; }
+  @media (max-width: 520px) { .cd-times-body { grid-template-columns: 1fr; } }
   .cd-card-jisoo .js-park { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
     width: 100%; height: auto; opacity: 0.9; mix-blend-mode: multiply; pointer-events: none; z-index: 2; }
   .cd-badge-chip.js-locket { color: var(--js-ink); background: rgba(255,251,250,0.28);
@@ -2526,6 +2538,10 @@
               <a class="cd-btn cd-btn-ghost js-teaser-btn" href="https://youtube.com/shorts/FM3wA3-GjdE" target="_blank" rel="noopener">▶ Teaser</a>
               <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
             </div>
+            <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
+              <summary>Release times worldwide</summary>
+              <div class="cd-times-body" data-times-for="2026-09-04T04:00:00Z"></div>
+            </details>
           </div>
           <div class="cd-card cd-card-lisa" data-slug="lalisaofficial.com" data-target="2026-10-23T04:00:00Z" data-live="OUT NOW ✨">
             <video class="lisa-hero" autoplay muted loop playsinline preload="metadata" poster="/lisa-mona.webp">
@@ -11777,6 +11793,23 @@ const RELEASE_TIMEZONES = [
   { city: 'Sydney',       tz: 'Australia/Sydney' },
   { city: 'Auckland',     tz: 'Pacific/Auckland' },
 ];
+
+// Generic worldwide release-times filler for a countdown card <details> panel.
+// Reads the release instant from the element's data-times-for and lists each
+// RELEASE_TIMEZONES city's local date/time, sorted earliest → latest.
+function fillReleaseTimesInto(el) {
+  if (!el || el.dataset.filled) return;
+  const d = new Date(el.dataset.timesFor);
+  if (isNaN(d.getTime())) return;
+  const rows = RELEASE_TIMEZONES.map(({ city, tz }) => ({
+    city,
+    label: new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(d),
+    sortKey: new Intl.DateTimeFormat('en-CA', { timeZone: tz, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(d),
+  })).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  el.innerHTML = rows.map(({ city, label }) =>
+    `<div class="cd-times-row"><span>${city}</span><span>${label}</span></div>`).join('');
+  el.dataset.filled = '1';
+}
 
 function renderReleaseGlobalTimes() {
   const el = document.getElementById('release-expand-times');
