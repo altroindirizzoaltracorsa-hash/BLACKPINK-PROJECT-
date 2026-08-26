@@ -1164,6 +1164,9 @@
   .as-track-sub { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; margin-top: 0.25rem; }
   .as-track-daily-num { font-family: var(--display); font-size: 1.35rem; letter-spacing: 0.02em; }
   .as-track-trend { font-size: 0.68rem; color: var(--muted); margin-top: 0.15rem; }
+  .as-track-merged { opacity: 0.62; }
+  .as-track-mergednote { color: rgba(255,180,80,0.9); font-style: italic; font-size: 0.72rem; letter-spacing: 0.02em; }
+  .as-track-daily-num.as-track-mergednote { font-family: var(--mono, monospace); font-size: 0.8rem; text-transform: uppercase; }
   .as-tracks-table .as-album-row td {
     border-radius: 14px; border: 1px solid rgba(255,0,102,0.16); border-bottom: 1px solid rgba(255,0,102,0.16);
     padding: 0.9rem 1.2rem;
@@ -5713,6 +5716,21 @@ async function fetchAndRenderCharts() {
 }
 
 function trackRowHtml(t, showRank) {
+  // Spotify has "combined" this version into another track — every merged ID
+  // reports the same count, so we don't count it again. Keep it visible but show
+  // a disclaimer instead of the repeated number.
+  if (t.merged_into) {
+    return `
+    <tr class="as-track-merged">
+      <td class="as-rank">${showRank ? t.rank : ''}</td>
+      <td>
+        <div class="as-track-name">${t.name}</div>
+        <div class="as-track-sub as-track-mergednote">↳ currently merged into “${t.merged_into}” on Spotify — counted there</div>
+      </td>
+      <td class="right"><div class="as-track-daily-num as-track-mergednote">merged</div></td>
+    </tr>
+  `;
+  }
   const trend = fmtTrend(t.daily_delta, t.prev_daily_delta);
   return `
     <tr>
@@ -5756,9 +5774,12 @@ function renderArtistTracks() {
   });
 
   body.innerHTML = sortedGroups.map(g => {
-    const totalStreams = g.tracks.reduce((s, t) => s + (t.streams || 0), 0);
-    const hasDaily = g.tracks.some(t => t.daily_delta != null);
-    const totalDaily = hasDaily ? g.tracks.reduce((s, t) => s + (t.daily_delta || 0), 0) : null;
+    // Exclude Spotify-merged duplicates from album subtotals — their streams are
+    // already counted under the survivor track, so adding them would double-count.
+    const counted = g.tracks.filter(t => !t.merged_into);
+    const totalStreams = counted.reduce((s, t) => s + (t.streams || 0), 0);
+    const hasDaily = counted.some(t => t.daily_delta != null);
+    const totalDaily = hasDaily ? counted.reduce((s, t) => s + (t.daily_delta || 0), 0) : null;
     const art = g.art
       ? `<img class="as-album-art" src="${g.art}" alt="">`
       : `<div class="as-album-art-fallback"><svg viewBox="-1 -1 52 45" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M25,8 C25,3 21,0 16,0 C8,0 2,6 2,14 C2,26 14,34 25,42 C36,34 48,26 48,14 C48,6 42,0 34,0 C29,0 25,3 25,8Z"/></svg></div>`;

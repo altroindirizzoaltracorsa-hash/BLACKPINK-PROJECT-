@@ -35,25 +35,31 @@ const _VERSION_HINTS = [
 const _isVersionName = n => { n = (n || '').toLowerCase(); return _VERSION_HINTS.some(h => n.includes(h)); };
 
 // Spotify periodically "combines" alternate versions into their original: every
-// merged track ID then returns the SAME combined play count. Collapse tracks
-// that share an identical (large) latest stream count into one row so the list
-// shows each merged group once (mirrors kworb / the deduped catalog total)
-// instead of a duplicate. Self-heals if Spotify re-splits them (counts diverge →
-// shown separately again). Keeps the non-version "original" as the survivor.
-function collapseMergedTracks(tracks, mergeMin = 1_000_000) {
+// merged track ID then returns the SAME combined play count. Counting all of them
+// triples the same streams. This keeps EVERY version visible in the list (for
+// transparency) but tags the duplicates with `merged_into` so the UI shows a
+// "currently merged into …" disclaimer instead of the repeated number, and the
+// stream figure counts only once. The non-version "original" is the survivor and
+// keeps the real count. Self-heals if Spotify re-splits them (counts diverge → no
+// group → tags cleared).
+function annotateMergedTracks(tracks, mergeMin = 1_000_000) {
   const groups = new Map();
   for (const t of tracks) {
-    const key = (t.streams != null && t.streams >= mergeMin) ? t.streams : `solo:${t.name}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(t);
+    delete t.merged_into;
+    if (t.streams == null || t.streams < mergeMin) continue;
+    if (!groups.has(t.streams)) groups.set(t.streams, []);
+    groups.get(t.streams).push(t);
   }
-  const out = [];
   for (const grp of groups.values()) {
-    if (grp.length === 1) { out.push(grp[0]); continue; }
+    if (grp.length < 2) continue;
     grp.sort((a, b) => (_isVersionName(a.name) - _isVersionName(b.name)) || (a.name.length - b.name.length) || a.name.localeCompare(b.name));
-    out.push(grp[0]); // drop the merged duplicates
+    const survivor = grp[0];
+    for (let i = 1; i < grp.length; i++) {
+      grp[i].merged_into = survivor.name;         // duplicate — shown with disclaimer, not counted
+      grp[i].combined_streams = grp[i].streams;   // keep the raw number for reference/tooltip
+    }
   }
-  return out.sort((a, b) => (b.streams || 0) - (a.streams || 0));
+  return tracks;
 }
 
 async function statsPost(body) {
@@ -570,9 +576,9 @@ export default async function handler(req, res) {
       }))
       .sort((a, b) => (b.streams || 0) - (a.streams || 0));
 
-    // Collapse Spotify-merged version groups so the list shows each once, matching
-    // the deduped catalog total written by fetch_artist_streams.py.
-    return res.status(200).json({ ...artistRows[0], history, tracks: collapseMergedTracks(tracks) });
+    // Tag Spotify-merged version duplicates so the UI shows a disclaimer instead
+    // of the repeated count (matching the deduped total in fetch_artist_streams.py).
+    return res.status(200).json({ ...artistRows[0], history, tracks: annotateMergedTracks(tracks) });
   }
 
   // ── GET ?charts=list&chart_type=daily|weekly&country=GLOBAL&limit=50 ───────
