@@ -4,17 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       from:
-        description: "Window start (YYYY-MM-DD)"
+        description: "Only recompute days on/after this date (YYYY-MM-DD, blank = all)"
         required: false
         default: "2026-08-14"
-      to:
-        description: "Window end (YYYY-MM-DD)"
+      artist:
+        description: "Limit to one artist_id (blank = all tracked)"
         required: false
-        default: "2026-08-21"
-      name:
-        description: "Focus track-family name substring"
-        required: false
-        default: "as if it's your last"
+        default: ""
 
 jobs:
   check:
@@ -25,11 +21,10 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install httpx
-      - name: Inspect merge window + reconstruct merged days (read-only)
+      - name: DRY-RUN — stored vs corrected catalog totals (no writes)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           FROM: ${{ github.event.inputs.from }}
-          TO: ${{ github.event.inputs.to }}
-          NAME: ${{ github.event.inputs.name }}
-        run: python .github/scripts/check_merge_window.py
+          ARTIST: ${{ github.event.inputs.artist }}
+        run: python .github/scripts/fix_merged_double_count.py

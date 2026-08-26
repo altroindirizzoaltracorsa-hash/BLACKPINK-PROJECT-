@@ -322,6 +322,18 @@ def collapse_merged(counted, merge_min=1_000_000):
     return kept, merged_away
 
 
+def merged_name_groups(named, merge_min=1_000_000):
+    """named: [{name, streams}] -> {frozenset(names): value} for each equal-count
+    group with >1 member (a Spotify-merged set). Used to detect merge/split
+    transitions between two days."""
+    by = {}
+    for c in named:
+        if c["streams"] is None or c["streams"] < merge_min:
+            continue
+        by.setdefault(c["streams"], []).append(c["name"])
+    return {frozenset(names): v for v, names in by.items() if len(names) > 1}
+
+
 def sb(method, path, **kwargs):
     headers = {
         "Authorization": f"Bearer {SUPABASE_KEY}",
@@ -454,10 +466,9 @@ def process_artist(client, artist_id, artist_name):
     # (e.g. a pulled or region-locked live track) doesn't drop out of the total
     # and flip the daily delta negative. These rows are written straight to
     # track_daily_stats with delta 0; their artist_tracks metadata is left as-is.
-    all_refs = {}
-    if failed:
-        rows = sb("GET", "/artist_tracks", params={"artist_id": f"eq.{artist_id}", "select": "id,name"})
-        all_refs = {r["name"]: r["id"] for r in rows}
+    at_rows = sb("GET", "/artist_tracks", params={"artist_id": f"eq.{artist_id}", "select": "id,name"})
+    all_refs = {r["name"]: r["id"] for r in at_rows}
+    ref_to_name = {r["id"]: r["name"] for r in at_rows}
     fallback_rows = []
     fallback_named = []
     for name, tid in failed:
@@ -485,6 +496,19 @@ def process_artist(client, artist_id, artist_name):
           + (f" (+{len(fallback_rows)} last-known)" if fallback_rows else "")
           + (f" (−{len(merged_away)} merged)" if merged_away else "")
           + f", total={total_streams:,} across {track_count}  → labeling {today}")
+
+    # Merge/split change-detection (logs): compare today's equal-count groups to
+    # the previous recorded day's and announce any Spotify merge or split.
+    prev_named = [{"name": ref_to_name.get(ref), "streams": s}
+                  for ref, s in prev_track_streams_map.items() if ref_to_name.get(ref)]
+    prev_groups = merged_name_groups(prev_named)
+    today_groups = merged_name_groups(counted)
+    for names, v in sorted(today_groups.items(), key=lambda kv: -kv[1]):
+        if names not in prev_groups:
+            print(f"  🔗 NEW MERGE: {' = '.join(sorted(names))}  @ {v:,}")
+    for names, v in sorted(prev_groups.items(), key=lambda kv: -kv[1]):
+        if names not in today_groups:
+            print(f"  🔓 SPLIT: {' / '.join(sorted(names))}  (was {v:,})")
 
     # If Spotify hasn't published new counts yet, all totals are identical to
     # the previous snapshot. Skip writing anything so we don't record a +0 day.

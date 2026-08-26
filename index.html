@@ -1167,6 +1167,13 @@
   .as-track-merged { opacity: 0.62; }
   .as-track-mergednote { color: rgba(255,180,80,0.9); font-style: italic; font-size: 0.72rem; letter-spacing: 0.02em; }
   .as-track-daily-num.as-track-mergednote { font-family: var(--mono, monospace); font-size: 0.8rem; text-transform: uppercase; }
+  .as-merge-note { margin: 0.2rem 0 0.9rem; padding: 0.7rem 0.95rem; border-radius: 12px; background: rgba(255,180,80,0.08); border: 1px solid rgba(255,180,80,0.28); font-size: 0.8rem; line-height: 1.4; }
+  .as-merge-note .as-mn-head { color: rgba(255,196,110,0.95); font-weight: 600; }
+  .as-merge-note .as-mn-groups { color: var(--muted); margin-top: 0.35rem; }
+  .as-merge-note .as-mn-dim { color: rgba(255,255,255,0.4); }
+  .as-merge-note .as-mn-event { margin-top: 0.4rem; font-weight: 600; }
+  .as-merge-note .as-mn-merge { color: rgba(255,150,90,0.95); }
+  .as-merge-note .as-mn-split { color: rgba(120,220,150,0.95); }
   .as-tracks-table .as-album-row td {
     border-radius: 14px; border: 1px solid rgba(255,0,102,0.16); border-bottom: 1px solid rgba(255,0,102,0.16);
     padding: 0.9rem 1.2rem;
@@ -3381,6 +3388,7 @@
             <button class="lb-tab active" id="as-album-toggle" onclick="toggleArtistTrackGrouping(this)">📀 By Album</button>
           </div>
         </div>
+        <div id="as-merge-note" class="as-merge-note" style="display:none;"></div>
         <div class="as-table-wrap as-tracks-wrap">
           <table class="as-table as-tracks-table">
             <thead><tr><th class="as-rank-col"></th><th>Track</th><th class="right">Daily Streams</th></tr></thead>
@@ -5084,6 +5092,7 @@ function renderArtistStreamsPage() {
 
   document.getElementById('as-total-streams').textContent = fmtNum(latest.total_streams);
   document.getElementById('as-track-count').textContent = fmtNum(latest.track_count);
+  renderMergeNote(d.merges);
   // A daily change beyond ±100M isn't a real day — it's Spotify re-counting the
   // catalog (a version merge), which shifts the whole total to a new base. Flag
   // those rows instead of showing a bogus +/-billions, and keep them out of the avg.
@@ -5713,6 +5722,30 @@ async function fetchAndRenderCharts() {
     errorEl.textContent = `Couldn't load charts (${e.message}).`;
     errorEl.style.display = 'block';
   }
+}
+
+function renderMergeNote(merges) {
+  const el = document.getElementById('as-merge-note');
+  if (!el) return;
+  if (!merges || (!merges.merged_count && !(merges.newly_split || []).length)) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const bits = [];
+  if (merges.merged_count) {
+    const groups = (merges.groups || [])
+      .map(g => `“${g.survivor}” <span class="as-mn-dim">(+ ${g.versions.filter(v => v !== g.survivor).join(', ')})</span>`)
+      .join(' · ');
+    bits.push(`<div class="as-mn-head">⚠ ${merges.merged_count} version${merges.merged_count === 1 ? '' : 's'} currently merged by Spotify — counted once, not repeated.</div>`
+      + (groups ? `<div class="as-mn-groups">${groups}</div>` : ''));
+  }
+  (merges.newly_merged || []).forEach(g =>
+    bits.push(`<div class="as-mn-event as-mn-merge">🔗 Just merged: ${g.versions.join(' = ')}</div>`));
+  (merges.newly_split || []).forEach(g =>
+    bits.push(`<div class="as-mn-event as-mn-split">🔓 Just split back: ${g.versions.join(' / ')}</div>`));
+  el.innerHTML = bits.join('');
+  el.style.display = 'block';
 }
 
 function trackRowHtml(t, showRank) {

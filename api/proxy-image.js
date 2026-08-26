@@ -62,6 +62,41 @@ function annotateMergedTracks(tracks, mergeMin = 1_000_000) {
   return tracks;
 }
 
+// Group tracks that share an identical (large) value in `field` — an equal-count
+// group is a Spotify-merged set. Returns [{ value, names:[...], survivor }].
+function _mergeGroups(tracks, field, mergeMin = 1_000_000) {
+  const by = new Map();
+  for (const t of tracks) {
+    const v = t[field];
+    if (v == null || v < mergeMin) continue;
+    if (!by.has(v)) by.set(v, []);
+    by.get(v).push(t.name);
+  }
+  const out = [];
+  for (const [value, names] of by) {
+    if (names.length < 2) continue;
+    const sorted = names.slice().sort((a, b) => (_isVersionName(a) - _isVersionName(b)) || (a.length - b.length) || a.localeCompare(b));
+    out.push({ value, names: sorted.slice().sort(), survivor: sorted[0] });
+  }
+  return out;
+}
+
+// Compare today's merged groups (by latest streams) against yesterday's (by the
+// previous day's streams) to surface merge/split transitions for the on-page note.
+function detectMergeChanges(tracks) {
+  const cur = _mergeGroups(tracks, 'streams');
+  const prev = _mergeGroups(tracks, 'prev_streams');
+  const keyOf = g => g.names.join(' | ');
+  const prevKeys = new Set(prev.map(keyOf));
+  const curKeys = new Set(cur.map(keyOf));
+  return {
+    merged_count: tracks.filter(t => t.merged_into).length,
+    groups: cur.map(g => ({ survivor: g.survivor, versions: g.names })),
+    newly_merged: cur.filter(g => !prevKeys.has(keyOf(g))).map(g => ({ survivor: g.survivor, versions: g.names })),
+    newly_split: prev.filter(g => !curKeys.has(keyOf(g))).map(g => ({ versions: g.names })),
+  };
+}
+
 async function statsPost(body) {
   const r = await fetch(`${MUSICAT_BASE}/history/stats`, {
     method: 'POST', headers: MC_HEADERS,
@@ -573,12 +608,17 @@ export default async function handler(req, res) {
         album_art_url: t.album_art_url,
         ...(t.track_daily_stats[0] || {}),
         prev_daily_delta: t.track_daily_stats[1]?.daily_delta ?? null,
+        prev_streams: t.track_daily_stats[1]?.streams ?? null,
       }))
       .sort((a, b) => (b.streams || 0) - (a.streams || 0));
 
     // Tag Spotify-merged version duplicates so the UI shows a disclaimer instead
     // of the repeated count (matching the deduped total in fetch_artist_streams.py).
-    return res.status(200).json({ ...artistRows[0], history, tracks: annotateMergedTracks(tracks) });
+    annotateMergedTracks(tracks);
+    // Merge/split change-detection: compare today's equal-count groups to
+    // yesterday's so the page can announce the moment Spotify merges or splits.
+    const merges = detectMergeChanges(tracks);
+    return res.status(200).json({ ...artistRows[0], history, tracks, merges });
   }
 
   // ── GET ?charts=list&chart_type=daily|weekly&country=GLOBAL&limit=50 ───────
