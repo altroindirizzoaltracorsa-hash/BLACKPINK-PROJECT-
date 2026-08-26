@@ -14,7 +14,11 @@ import java.net.URL
  * 3xx ourselves, re-POSTing the body to the Location. Native HTTP has no CORS.
  */
 object VoteApi {
-    private const val ENDPOINT = "https://blinksunited.com/api/vma-votes"
+    // Post to the CANONICAL www host directly: blinksunited.com 308-redirects to
+    // www, and Android's HttpURLConnection is unreliable at re-POSTing across that
+    // redirect. Going straight to www avoids the hop entirely. (postJson still
+    // follows any redirect as a safety net.)
+    private const val ENDPOINT = "https://www.blinksunited.com/api/vma-votes"
 
     // Last transport result, for the in-app diagnostic toast: the final HTTP status,
     // 0 before any call, -1 on a transport exception.
