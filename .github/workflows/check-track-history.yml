@@ -1,35 +1,28 @@
 name: Check track history
 
+# Repurposed as a small admin utility runner. Currently: seed the 2026
+# Streams-Gained baselines (computes baseline = current total − BPx gained).
 on:
   workflow_dispatch:
     inputs:
-      name:
-        description: "Focus track-family name substring"
+      task:
+        description: "seed-year-gained"
         required: false
-        default: "how you like that"
-      from:
-        description: "Window start (YYYY-MM-DD)"
-        required: false
-        default: "2026-08-14"
-      to:
-        description: "Window end (YYYY-MM-DD)"
-        required: false
-        default: "2026-08-19"
+        default: "seed-year-gained"
 
 jobs:
-  check:
+  run:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - run: pip install httpx
-      - name: Inspect merge window (read-only)
+      - name: Seed 2026 streams-gained baselines
+        if: ${{ github.event.inputs.task == 'seed-year-gained' }}
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          NAME: ${{ github.event.inputs.name }}
-          FROM: ${{ github.event.inputs.from }}
-          TO: ${{ github.event.inputs.to }}
-        run: python .github/scripts/check_merge_window.py
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          echo "Seeding year-gained baselines…"
+          code=$(curl -sS -o /tmp/seed.json -w '%{http_code}' \
+            "https://blinksunited.com/api/proxy-image?year_gained=seed&key=${ADMIN_KEY}")
+          echo "HTTP $code"; cat /tmp/seed.json; echo
+          echo "--- verify list ---"
+          curl -sS "https://blinksunited.com/api/proxy-image?year_gained=list" | head -c 2000; echo
+          test "$code" = "200"
