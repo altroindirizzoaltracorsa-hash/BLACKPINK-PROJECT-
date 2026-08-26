@@ -28,6 +28,15 @@ APPLY = os.environ.get("APPLY") == "1"
 TRACK = "ddududu"
 SPIKE_MIN = 15_000_000   # DDU-DU gains ~200k-1M/day; anything above this is a merge glitch
 
+# Accurate daily deltas for the frozen gap, from kworb / the Supabase catalog
+# export (main "DDU-DU DDU-DU"): real cumulative 885,183,825 (16/08) -> 886,576,127
+# (24/08). Only 17/08 was glitched (966M merge), so 17+18 evenly split the 16->18
+# span; 19-24 are exact. Sum = 1,392,302 = the real gain. Overrides even spread.
+ACCURATE_DELTAS = {
+    "17/08": 188_423, "18/08": 188_423, "19/08": 77_015, "20/08": 135_694,
+    "21/08": 199_204, "22/08": 206_527, "23/08": 199_029, "24/08": 197_987,
+}
+
 
 def _next_day(ddmm):
     d, m = [int(x) for x in ddmm.split("/")]
@@ -105,34 +114,44 @@ def main():
                 d, m = 1, m + 1
         return out
 
-    total_last_good = (prev.get("total") - sum(e["streams"] for e in spikes)) if (prev and spikes) else None
-    gap_dates = date_range(_next_day(last_good["date"]), GAP_END) if last_good else []
-    gap_gain = (total - total_last_good) if (isinstance(total, int) and total_last_good) else None
-    if gap_gain is not None and gap_dates:
-        per = max(0, gap_gain // len(gap_dates))
-        print(f"  recovered 16/08 cumulative = {total_last_good:,}; gap gain = {gap_gain:,} "
-              f"over {len(gap_dates)} days (~{per:,}/day) → backfill {gap_dates[0]}..{gap_dates[-1]}")
+    # Gap dates: use the explicit accurate-delta dates when provided (robust on a
+    # re-run when the spike is already gone), else compute from the last good day.
+    if ACCURATE_DELTAS:
+        gap_dates = sorted(ACCURATE_DELTAS, key=lambda s: (int(s.split("/")[1]), int(s.split("/")[0])))
+    else:
+        gap_dates = date_range(_next_day(last_good["date"]), GAP_END) if last_good else []
+
+    use_accurate = bool(ACCURATE_DELTAS) and all(gd in ACCURATE_DELTAS for gd in gap_dates)
+    if use_accurate:
+        gap_gain = sum(ACCURATE_DELTAS[gd] for gd in gap_dates)
+    else:
+        total_last_good = (prev.get("total") - sum(e["streams"] for e in spikes)) if (prev and spikes) else None
+        gap_gain = (total - total_last_good) if (isinstance(total, int) and total_last_good) else None
+    if gap_dates:
+        src = "accurate (kworb/catalog)" if use_accurate else "even spread"
+        print(f"  backfill {gap_dates[0]}..{gap_dates[-1]} ({len(gap_dates)} days), gain={gap_gain:,} [{src}]"
+              if gap_gain is not None else f"  backfill {gap_dates[0]}..{gap_dates[-1]} [{src}]")
 
     if not APPLY:
         print("\nDRY-RUN — no writes. Set APPLY=1 to apply.")
         return
 
-    if not isinstance(total, int) or total <= 0 or gap_gain is None or not gap_dates:
+    if not isinstance(total, int) or total <= 0 or not gap_dates or gap_gain is None:
         print("ERROR: could not compute a safe backfill; aborting write.", file=sys.stderr)
         sys.exit(1)
 
-    # 1) delete spikes
+    # 1) delete any spikes still present
     for e in spikes:
         u = f"{BASE}?action=delete-history-entry&track={TRACK}&date={urllib.parse.quote(e['date'])}&key={urllib.parse.quote(KEY)}"
         res = call(u)
         print(f"  deleted {e['date']}: ok={res.get('ok')} removed={res.get('removed')}")
 
-    # 2) backfill the gap with the real gain spread evenly; anchor prev/live on the last day
+    # 2) backfill the gap (accurate deltas when available); anchor prev/live on the last day
     per = max(0, gap_gain // len(gap_dates))
     remainder = gap_gain - per * (len(gap_dates) - 1)
     for i, gd in enumerate(gap_dates):
         last = i == len(gap_dates) - 1
-        streams = remainder if last else per
+        streams = ACCURATE_DELTAS[gd] if use_accurate else (remainder if last else per)
         u = (f"{BASE}?action=set-entry&track={TRACK}"
              f"&date={urllib.parse.quote(gd)}&streams={streams}")
         if last:
