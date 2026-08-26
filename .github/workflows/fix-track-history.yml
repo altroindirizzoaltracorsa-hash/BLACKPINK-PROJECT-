@@ -1,66 +1,23 @@
-name: Fix Track History (remove ghost 11/08)
-# One-off, on-demand correction: prints each campaign track's daily history,
-# then removes the bogus future-dated 11/08 entry created before the freeze fix.
-# - If a real 10/08 entry still exists, 11/08 is a duplicate ghost  -> delete it.
-# - If only 11/08 exists (10/08 was overwritten), relabel it to 10/08 -> keep the number.
+name: Fix Track History
+
+# On-demand correction of the DDU-DU DDU-DU campaign card after the Aug-17
+# version-merge spike froze its only-up counter. Dry-run by default.
+
 on:
   workflow_dispatch:
+    inputs:
+      apply:
+        description: "Set to 'true' to WRITE the fix. Blank/false = dry-run (read-only)."
+        required: false
+        default: ""
 
 jobs:
   fix:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect and correct
+      - uses: actions/checkout@v4
+      - name: Diagnose / fix DDU-DU campaign card (dry-run unless apply=true)
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
-        run: |
-          python3 - <<'PY'
-          import os, json, time, urllib.request, urllib.parse, urllib.error
-          BASE  = "https://blinksunited.com/api/streams"
-          KEY   = os.environ["ADMIN_KEY"]
-          GHOST = "11/08"
-          REAL  = "10/08"
-
-          def call(url):
-              try:
-                  with urllib.request.urlopen(url, timeout=30) as r:
-                      return json.load(r)
-              except urllib.error.HTTPError as e:
-                  try: return json.load(e)
-                  except Exception: return {"httperror": e.code}
-              except Exception as e:
-                  return {"error": str(e)}
-
-          def snapshot(label):
-              d = call(BASE)
-              tracks = [k for k in d if not k.startswith("_")]
-              print(f"\n===== {label} =====")
-              for t in tracks:
-                  h = d.get(t, {}).get("history", []) or []
-                  tail = h[-8:]
-                  print(f"  {t:9}: " + ", ".join(f"{e['date']}={e['streams']:,}" for e in tail))
-              return d, tracks
-
-          before, tracks = snapshot("BEFORE")
-          print("\n----- corrections -----")
-          for t in tracks:
-              h = before.get(t, {}).get("history", []) or []
-              dates = {e["date"]: e for e in h}
-              if GHOST not in dates:
-                  print(f"  {t}: no {GHOST} entry — nothing to do")
-                  continue
-              if REAL in dates:
-                  u = f"{BASE}?action=delete-history-entry&track={t}&date={urllib.parse.quote(GHOST)}&key={urllib.parse.quote(KEY)}"
-                  res = call(u)
-                  print(f"  {t}: {GHOST} duplicate of existing {REAL} -> DELETE -> ok={res.get('ok')} removed={res.get('removed')}")
-              else:
-                  s = dates[GHOST]["streams"]
-                  u1 = f"{BASE}?action=set-entry&track={t}&date={urllib.parse.quote(REAL)}&streams={s}&key={urllib.parse.quote(KEY)}"
-                  r1 = call(u1)
-                  u2 = f"{BASE}?action=delete-history-entry&track={t}&date={urllib.parse.quote(GHOST)}&key={urllib.parse.quote(KEY)}"
-                  r2 = call(u2)
-                  print(f"  {t}: only {GHOST} existed -> RELABEL to {REAL} (streams={s:,}) set.ok={r1.get('ok')} del.ok={r2.get('ok')}")
-              time.sleep(1)
-
-          snapshot("AFTER")
-          PY
+          APPLY: ${{ github.event.inputs.apply == 'true' && '1' || '' }}
+        run: python3 .github/scripts/fix_campaign_ddududu.py
