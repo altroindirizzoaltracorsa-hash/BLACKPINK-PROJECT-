@@ -18,6 +18,7 @@ the `ddududu` track.
 import os
 import sys
 import json
+import time
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -60,7 +61,10 @@ def call(url):
 
 
 def snapshot(label):
-    d = call(BASE)
+    # Cache-buster: /api/streams sets s-maxage=60 + stale-while-revalidate=120, so
+    # a plain GET can serve a stale snapshot for minutes. A unique query param makes
+    # the CDN miss and read live Redis.
+    d = call(f"{BASE}?nocache={int(time.time())}")
     tr = d.get(TRACK, {}) or {}
     hist = tr.get("history", []) or []
     prev = tr.get("prev")
