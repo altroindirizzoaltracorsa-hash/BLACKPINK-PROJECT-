@@ -9247,7 +9247,7 @@ const SPECIAL_BADGES = [
   },
   {
     id: 'jennie-fa-presave',
-    icon: '🏆',
+    icon: '<img src="/jennie-fallenangel.png" alt="" style="height:22px;width:auto;max-width:82px;object-fit:contain;vertical-align:middle;">',
     label: 'EARLY SUPPORTER',
     song: 'Fallen Angel (EP) — JENNIE',
     desc: 'Pre-saved before release',
@@ -14928,6 +14928,66 @@ function drawArtistCard(canvas, data, logo, art, artistName) {
   _markCardReady(canvas);
 }
 
+// Rounded-rect path helper (uses native ctx.roundRect when available).
+function _roundRectPath(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; }
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// Recolor a white/transparent PNG to a solid fill, returning an offscreen canvas.
+function _tintImage(img, color) {
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth || img.width;
+  c.height = img.naturalHeight || img.height;
+  const x = c.getContext('2d');
+  x.drawImage(img, 0, 0, c.width, c.height);
+  x.globalCompositeOperation = 'source-in';
+  x.fillStyle = color;
+  x.fillRect(0, 0, c.width, c.height);
+  return c;
+}
+
+// "Early Supporter" certification stamp for the earned Fallen Angel share card:
+// a loverYellow pill with JENNIE's Fallen Angel script (recolored dark) + label,
+// mirroring the on-page badge chip. Right-aligned to end at W - PX.
+function _drawFaSupporterBadge(ctx, W, PX, baselineY, emblemImg) {
+  const emblem = (emblemImg && (emblemImg.naturalWidth || emblemImg.width))
+    ? _tintImage(emblemImg, '#020a0b') : null;
+  const emH = Math.round(W * 0.030);
+  const emW = emblem ? Math.round(emH * (emblem.width / emblem.height)) : 0;
+  const label = 'EARLY SUPPORTER';
+  const fontPx = Math.round(W * 0.024);
+  ctx.font = `700 ${fontPx}px "DM Mono", monospace`;
+  ctx.letterSpacing = '2px';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  const textW = ctx.measureText(label).width;
+  const gap = emblem ? Math.round(W * 0.016) : 0;
+  const padX = Math.round(W * 0.024);
+  const pillH = Math.round(W * 0.058);
+  const pillW = padX * 2 + emW + gap + textW;
+  const pillX = W - PX - pillW;
+  const pillY = Math.round(baselineY - pillH * 0.74);
+  const cy = pillY + pillH / 2;
+  _roundRectPath(ctx, pillX, pillY, pillW, pillH, pillH / 2);
+  ctx.fillStyle = '#ffe051';
+  ctx.fill();
+  let cx = pillX + padX;
+  if (emblem) { ctx.drawImage(emblem, cx, Math.round(cy - emH / 2), emW, emH); cx += emW + gap; }
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#020a0b';
+  ctx.fillText(label, cx, cy);
+  ctx.textBaseline = 'alphabetic';
+  ctx.letterSpacing = '0px';
+}
+
 // ── PRE-SAVE SHARE CARD (JENNIE — Fallen Angel) ──────────────────────────────
 // A shareable card a fan gets after pre-saving: photo hero + wordmarks + their
 // Early Supporter status + the release date + a pre-save CTA. Reuses the card
@@ -14965,11 +15025,16 @@ function drawPresaveCard(canvas, d) {
   ctx.textAlign = 'left';
   ctx.fillStyle = 'rgba(245,240,240,0.85)';
   ctx.fillText('BLINKS UNITED', PX, topY);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = d.earned ? '#ffe051' : 'rgba(245,240,240,0.7)';   // jenn.ie loverYellow
-  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : 'COUNTDOWN', W - PX, topY);
-  ctx.textAlign = 'left';
-  ctx.letterSpacing = '0px';
+  if (d.earned) {
+    // Early Supporter stamp: the real Fallen Angel emblem in a loverYellow pill.
+    _drawFaSupporterBadge(ctx, W, PX, topY, d.titleImg);
+  } else {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(245,240,240,0.7)';
+    ctx.fillText('COUNTDOWN', W - PX, topY);
+    ctx.textAlign = 'left';
+    ctx.letterSpacing = '0px';
+  }
 
   // Live countdown to release (snapshot at generation time)
   let diff = Date.parse(d.releaseAt) - Date.now();
