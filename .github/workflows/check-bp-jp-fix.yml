@@ -2,6 +2,19 @@ name: Check BP JP fix
 
 on:
   workflow_dispatch:
+    inputs:
+      from:
+        description: "Only recompute days on/after this date (YYYY-MM-DD, blank = all)"
+        required: false
+        default: "2026-08-14"
+      artist:
+        description: "Limit to one artist_id (blank = all tracked)"
+        required: false
+        default: ""
+      apply:
+        description: "Set to 'true' to WRITE the corrections. Blank/false = dry-run (read-only)."
+        required: false
+        default: ""
 
 jobs:
   check:
@@ -12,8 +25,11 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install httpx
-      - name: Dump BLACKPINK total + JP track history
+      - name: Correct Spotify-merge double-counted catalog totals (dry-run unless apply=true)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python .github/scripts/check-bp-jp-fix.py
+          FROM: ${{ github.event.inputs.from }}
+          ARTIST: ${{ github.event.inputs.artist }}
+          APPLY: ${{ github.event.inputs.apply == 'true' && '1' || '' }}
+        run: python .github/scripts/fix_merged_double_count.py
