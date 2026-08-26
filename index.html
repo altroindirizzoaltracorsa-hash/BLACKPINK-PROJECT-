@@ -4597,6 +4597,7 @@ async function renderYearGained(elId) {
     const d = await r.json();
     const items = (d && d.items) || [];
     if (!items.length) { el.style.display = 'none'; return; }
+    _yearGainedCardData = { items };
     el.innerHTML = `<div class="yg-title">Streams Gained <span class="yg-sub">2026 so far</span></div>`
       + `<p class="yg-cap">BLACKPINK &amp; members · Spotify</p>`
       + items.map((it, i) => `
@@ -4605,7 +4606,8 @@ async function renderYearGained(elId) {
           <img class="yg-av" src="${it.avatar_url || ''}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
           <span class="yg-name">${it.name}</span>
           <span class="yg-num">+${fmtNum(it.gained)}</span>
-        </div>`).join('');
+        </div>`).join('')
+      + `<button class="gen-card-btn" style="max-width:260px;margin:1rem auto 0;" onclick="openYearGainedCard()">⬡ Generate Share Card</button>`;
     el.style.display = 'block';
   } catch { el.style.display = 'none'; }
 }
@@ -13044,6 +13046,7 @@ let _personalCardData = null;
 let _catalogCardData = null;
 let _artistCardData = null;
 let _goalsCardData = null;
+let _yearGainedCardData = null, _cardYgAvatars = null;
 
 function setCardFormat(fmt, btn) {
   _cardFormat = fmt;
@@ -13059,6 +13062,7 @@ function setCardFormat(fmt, btn) {
   else if (_cardType === 'vote') drawVoteCard(canvas, VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId), _cardLogo, _cardArt);
   else if (_cardType === 'personal') drawPersonalCard(canvas, _personalCardData);
   else if (_cardType === 'catalog') drawCatalogCard(canvas, _catalogCardData, _cardLogo, _cardArt);
+  else if (_cardType === 'yeargained' && _yearGainedCardData) { drawYearGainedCard(canvas, _yearGainedCardData, _cardLogo, _cardYgAvatars || []); _markCardReady(canvas); }
   else if (_cardType === 'artist') drawArtistCard(canvas, _artistCardData, _cardLogo, _cardArt, _artistCardData?.artistName);
   else if (_cardType === 'release') drawReleaseCard(canvas, _cardLogo, _cardArt, ltalWordmarkImg);
   else if (_cardType === 'goals') drawGoalsCard(canvas, _cardLogo, _cardArt, _goalsCardData);
@@ -15694,6 +15698,134 @@ async function openCatalogCard() {
   _cardArt = art; _cardLogo = logo;
   drawCatalogCard(canvas, _catalogCardData, logo, art);
   label.textContent = 'BLACKPINK CATALOG · STREAM UPDATE CARD';
+}
+
+function drawYearGainedCard(canvas, data, logo, avatars) {
+  if (!data || !data.items?.length) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const items = data.items.slice(0, 5);
+  avatars = avatars || [];
+
+  ctx.fillStyle = '#0a0509'; ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W * 0.5, H * 0.14, 0, W * 0.5, H * 0.14, W * 0.95);
+  glow.addColorStop(0, 'rgba(255,0,102,0.22)');
+  glow.addColorStop(0.5, 'rgba(255,0,102,0.05)');
+  glow.addColorStop(1, 'rgba(10,5,9,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  drawNoise(ctx, W, H, 0.03);
+
+  const PX = Math.round(W * 0.085);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+
+  let y = Math.round(H * 0.11);
+  ctx.fillStyle = '#ff2e77';
+  ctx.font = `500 ${Math.round(W * 0.019)}px "DM Mono", monospace`;
+  ctx.letterSpacing = `${Math.round(W * 0.006)}px`;
+  ctx.fillText('// 2026 SO FAR', PX, y);
+
+  y += Math.round(W * 0.078);
+  ctx.fillStyle = '#F5F0F0';
+  ctx.letterSpacing = `${Math.round(W * 0.002)}px`;
+  ctx.font = `${Math.round(W * 0.088)}px "Bebas Neue", sans-serif`;
+  ctx.fillText('STREAMS GAINED', PX, y);
+
+  y += Math.round(W * 0.032);
+  ctx.fillStyle = 'rgba(245,240,240,0.5)';
+  ctx.font = `500 ${Math.round(W * 0.0175)}px "DM Mono", monospace`;
+  ctx.letterSpacing = `${Math.round(W * 0.004)}px`;
+  ctx.fillText('BLACKPINK & MEMBERS · SPOTIFY', PX, y);
+  ctx.letterSpacing = '0px';
+
+  const rowsTop = y + Math.round(W * 0.045);
+  const footerH = Math.round(H * 0.11);
+  const rowH = (H - footerH - rowsTop) / items.length;
+  ctx.textBaseline = 'middle';
+
+  items.forEach((it, i) => {
+    const top = rowsTop + rowH * i;
+    const cy = top + rowH / 2;
+    const big = i === 0;
+    if (i > 0) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(PX, top); ctx.lineTo(W - PX, top); ctx.stroke();
+    }
+    ctx.fillStyle = big ? '#ff2e77' : 'rgba(255,111,168,0.6)';
+    ctx.font = `500 ${Math.round(W * (big ? 0.032 : 0.026))}px "DM Mono", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(String(i + 1), PX + Math.round(W * 0.012), cy);
+    ctx.textAlign = 'left';
+
+    const avR = Math.round(rowH * (big ? 0.40 : 0.34));
+    const avX = PX + Math.round(W * 0.055) + avR;
+    const av = avatars[i];
+    ctx.save(); ctx.beginPath(); ctx.arc(avX, cy, avR, 0, Math.PI * 2); ctx.clip();
+    if (av) {
+      const s = Math.max(avR * 2 / av.naturalWidth, avR * 2 / av.naturalHeight);
+      ctx.drawImage(av, avX - av.naturalWidth * s / 2, cy - av.naturalHeight * s / 2, av.naturalWidth * s, av.naturalHeight * s);
+    } else { ctx.fillStyle = '#1a1013'; ctx.fillRect(avX - avR, cy - avR, avR * 2, avR * 2); }
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(avX, cy, avR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = big ? '#ff2e77' : 'rgba(255,0,102,0.35)'; ctx.lineWidth = big ? 3 : 1.5; ctx.stroke();
+
+    const nameX = avX + avR + Math.round(W * 0.03);
+    ctx.fillStyle = '#F5F0F0';
+    ctx.font = `${Math.round(W * (big ? 0.052 : 0.042))}px "Bebas Neue", sans-serif`;
+    ctx.fillText(it.name, nameX, cy + Math.round(W * 0.004));
+
+    ctx.fillStyle = '#2ecc71';
+    ctx.font = `500 ${Math.round(W * (big ? 0.032 : 0.026))}px "DM Mono", monospace`;
+    ctx.textAlign = 'right';
+    ctx.fillText('+' + formatFull(it.gained), W - PX, cy);
+    ctx.textAlign = 'left';
+  });
+
+  ctx.textBaseline = 'alphabetic';
+  const fy = H - Math.round(footerH * 0.42);
+  ctx.strokeStyle = 'rgba(255,0,102,0.2)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PX, H - footerH); ctx.lineTo(W - PX, H - footerH); ctx.stroke();
+  const LR = Math.round(H * 0.026);
+  if (logo) {
+    ctx.save(); ctx.beginPath(); ctx.arc(PX + LR, fy, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, PX, fy - LR, LR * 2, LR * 2); ctx.restore();
+    ctx.beginPath(); ctx.arc(PX + LR, fy, LR + 1, 0, Math.PI * 2); ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  const bx = logo ? PX + LR * 2 + Math.round(W * 0.02) : PX;
+  ctx.fillStyle = '#F5F0F0'; ctx.font = `${Math.round(W * 0.028)}px "Bebas Neue", sans-serif`;
+  ctx.letterSpacing = `${Math.round(W * 0.006)}px`;
+  ctx.fillText('BLINKS UNITED', bx, fy - Math.round(W * 0.001));
+  ctx.font = `500 ${Math.round(W * 0.015)}px "DM Mono", monospace`;
+  ctx.fillStyle = 'rgba(245,240,240,0.5)';
+  ctx.fillText('blinksunited.com', bx, fy + Math.round(W * 0.024));
+  ctx.letterSpacing = '0px';
+}
+
+async function openYearGainedCard() {
+  if (!_yearGainedCardData?.items?.length) return;
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none';
+  _cardType = 'yeargained';
+  _cardFormat = 'square';
+  document.getElementById('fmt-square')?.classList.add('active');
+  document.getElementById('fmt-landscape')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1080; canvas.height = 1080;
+  await document.fonts.ready;
+  const items = _yearGainedCardData.items.slice(0, 5);
+  const [logo, ...avatars] = await Promise.all([
+    getBuLogo(),
+    ...items.map(it => it.avatar_url
+      ? loadImg(`/api/proxy-image?url=${encodeURIComponent(it.avatar_url)}`).catch(() => null)
+      : Promise.resolve(null)),
+  ]);
+  _cardLogo = logo; _cardYgAvatars = avatars;
+  drawYearGainedCard(canvas, _yearGainedCardData, logo, avatars);
+  _markCardReady(canvas);
+  label.textContent = '2026 STREAMS GAINED · SHARE CARD';
 }
 
 async function openArtistCard() {
