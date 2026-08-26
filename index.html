@@ -7401,6 +7401,20 @@ function _vvFormInner() {
 
 function vmaSetPeriod(p) { _vvPeriod = p; drawVmaVoting(); }
 
+// Re-check the voting state when the fan returns to the tab, so the manual "Add
+// votes" form hides as soon as the extension/app has logged a vote for them —
+// no manual reload needed. Debounced, and only while the voting panel is on-screen.
+let _vvLastFocusFetch = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  const panel = document.getElementById('vma-vote-panel');
+  if (!panel || panel.offsetParent === null) return;   // not on the voting page
+  const now = Date.now();
+  if (now - _vvLastFocusFetch < 8000) return;           // debounce rapid switches
+  _vvLastFocusFetch = now;
+  renderVmaVoting();
+});
+
 // Per-category vote allowance for the quick-fill defaults: 10 normally, 20 during a
 // Power Hour / Double Day, when MTV doubles the per-category cap. This flips on
 // AUTOMATICALLY from the official 2026 VMA schedule below (all times US Eastern —
