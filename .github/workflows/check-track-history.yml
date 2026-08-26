@@ -3,14 +3,18 @@ name: Check track history
 on:
   workflow_dispatch:
     inputs:
-      track:
-        description: "Exact artist_tracks.name to inspect"
+      name:
+        description: "Focus track-family name substring"
         required: false
-        default: "Black (Feat. JENNIE of BLACKPINK)"
-      artist:
-        description: "Optional artist_id filter"
+        default: "how you like that"
+      from:
+        description: "Window start (YYYY-MM-DD)"
         required: false
-        default: ""
+        default: "2026-08-14"
+      to:
+        description: "Window end (YYYY-MM-DD)"
+        required: false
+        default: "2026-08-19"
 
 jobs:
   check:
@@ -21,10 +25,11 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install httpx
-      - name: Print track history
+      - name: Inspect merge window (read-only)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          TRACK: ${{ github.event.inputs.track }}
-          ARTIST: ${{ github.event.inputs.artist }}
-        run: python .github/scripts/check-track-history.py
+          NAME: ${{ github.event.inputs.name }}
+          FROM: ${{ github.event.inputs.from }}
+          TO: ${{ github.event.inputs.to }}
+        run: python .github/scripts/check_merge_window.py
