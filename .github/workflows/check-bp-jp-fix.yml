@@ -11,6 +11,10 @@ on:
         description: "Limit to one artist_id (blank = all tracked)"
         required: false
         default: ""
+      apply:
+        description: "Set to 'true' to WRITE the corrections. Blank/false = dry-run (read-only)."
+        required: false
+        default: ""
 
 jobs:
   check:
@@ -21,10 +25,11 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install httpx
-      - name: DRY-RUN — stored vs corrected catalog totals (no writes)
+      - name: Correct Spotify-merge double-counted catalog totals (dry-run unless apply=true)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           FROM: ${{ github.event.inputs.from }}
           ARTIST: ${{ github.event.inputs.artist }}
+          APPLY: ${{ github.event.inputs.apply == 'true' && '1' || '' }}
         run: python .github/scripts/fix_merged_double_count.py
