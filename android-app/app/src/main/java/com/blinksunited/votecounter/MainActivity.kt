@@ -164,13 +164,18 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
             io.execute {
                 val ok = VoteApi.postVotes(token, res.total, res.breakdown)
                 if (!ok) addPending(res.total) else flushPending(token)
-                runOnUiThread { updateHeader() }
+                val msg = if (ok) "✅ Synced ${res.total} → HTTP ${VoteApi.lastStatus}"
+                          else "⚠ Sync failed (${VoteApi.lastStatus}) ${VoteApi.lastError} — queued"
+                runOnUiThread { updateHeader(); toast(msg) }
             }
         } else {
             addPending(res.total)
-            runOnUiThread { updateHeader() }
+            runOnUiThread { updateHeader(); toast("⚠ Not linked — vote queued") }
         }
     }
+
+    private fun toast(m: String) =
+        android.widget.Toast.makeText(this, m, android.widget.Toast.LENGTH_LONG).show()
 
     override fun onToken(token: String, profile: String?) {
         prefs.edit().apply {

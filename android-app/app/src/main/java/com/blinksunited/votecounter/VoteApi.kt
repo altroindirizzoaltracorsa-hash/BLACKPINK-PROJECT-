@@ -16,6 +16,11 @@ import java.net.URL
 object VoteApi {
     private const val ENDPOINT = "https://blinksunited.com/api/vma-votes"
 
+    // Last transport result, for the in-app diagnostic toast: the final HTTP status,
+    // 0 before any call, -1 on a transport exception.
+    @Volatile var lastStatus: Int = 0
+    @Volatile var lastError: String = ""
+
     fun postVotes(token: String, votes: Int, breakdown: Map<String, Int>): Boolean {
         if (votes <= 0) return false
         return try {
@@ -29,8 +34,12 @@ object VoteApi {
                 }
             }.toString()
             val code = postJson(ENDPOINT, body, 3)
+            lastStatus = code
+            lastError = ""
             code in 200..299
         } catch (e: Exception) {
+            lastStatus = -1
+            lastError = e.javaClass.simpleName + ": " + (e.message ?: "")
             false
         }
     }
