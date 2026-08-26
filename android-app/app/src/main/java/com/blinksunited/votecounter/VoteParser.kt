@@ -7,7 +7,8 @@ data class VoteResult(
     val category: String,
     val total: Int,
     val breakdown: Map<String, Int>,
-    val timestamp: String?
+    val timestamp: String?,
+    val account: String?
 )
 
 /**
@@ -50,7 +51,11 @@ object VoteParser {
                 }
             }
             if (n <= 0) null
-            else VoteResult(category, n, breakdown, u.getQueryParameter("timestamp"))
+            else VoteResult(
+                category, n, breakdown,
+                u.getQueryParameter("timestamp"),
+                u.getQueryParameter("user_id")
+            )
         } catch (e: Exception) {
             null
         }

@@ -30,6 +30,9 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
     private lateinit var web: WebView
     private lateinit var countView: TextView
     private lateinit var statusView: TextView
+    private lateinit var acctToggle: TextView
+    private lateinit var acctScroll: android.widget.ScrollView
+    private lateinit var acctList: android.widget.LinearLayout
     private val io = Executors.newSingleThreadExecutor()
     private val seenTs = ArrayDeque<String>()
     private var counterJs = ""
@@ -52,6 +55,15 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         // OAuth, which is refused inside an embedded WebView. The browser also carries
         // the user's existing site session, so they see their signed-in board directly.
         findViewById<Button>(R.id.boardBtn).setOnClickListener { openExternal("https://blinksunited.com/voting") }
+
+        acctToggle = findViewById(R.id.acctToggle)
+        acctScroll = findViewById(R.id.acctScroll)
+        acctList = findViewById(R.id.acctList)
+        acctToggle.setOnClickListener {
+            val show = acctScroll.visibility != android.view.View.VISIBLE
+            acctScroll.visibility = if (show) android.view.View.VISIBLE else android.view.View.GONE
+            renderAccounts()
+        }
 
         counterJs = readAsset("counter.js")
         linkJs = readAsset("link.js")
@@ -80,6 +92,7 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         web.webChromeClient = WebChromeClient()
 
         updateHeader()
+        renderAccounts()
         // A deep link (buvotecounter://link?token=…) may have launched us.
         if (!handleLinkIntent(intent) && savedInstanceState == null) {
             web.loadUrl("https://vote.mtv.com/")
@@ -143,7 +156,8 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
             .putInt("bp", prefs.getInt("bp", 0) + (res.breakdown["BLACKPINK"] ?: 0))
             .putInt("lisa", prefs.getInt("lisa", 0) + (res.breakdown["LISA"] ?: 0))
             .apply()
-        runOnUiThread { updateHeader() }
+        recordAccount(res.account, res.category, res.total)
+        runOnUiThread { updateHeader(); renderAccounts() }
 
         val token = prefs.getString("token", null)
         if (token != null) {
@@ -207,9 +221,102 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
     private fun rollDayIfNeeded() {
         val today = etDay()
         if (prefs.getString("day", "") != today) {
-            prefs.edit().putString("day", today).putInt("count", 0).putInt("bp", 0).putInt("lisa", 0).apply()
+            // New MTV voting day — reset the day's counters and the accounts roster.
+            prefs.edit()
+                .putString("day", today)
+                .putInt("count", 0).putInt("bp", 0).putInt("lisa", 0)
+                .putString("accounts", "[]")
+                .apply()
         }
     }
+
+    // ── Voting-accounts roster ────────────────────────────────────────────────
+    // Tracks each account (the vote's user_id, usually the email) used today and which
+    // of the 2 fan-voted categories it has covered → 2/2 or 1/2. Reset daily. Stored
+    // locally only — never sent to our server (the POST carries just extToken + a count).
+    private val FAN_CATS = listOf("cat06", "cat11")
+
+    private fun recordAccount(account: String?, category: String, votes: Int) {
+        if (account.isNullOrBlank()) return
+        synchronized(prefs) {
+            val arr = try { org.json.JSONArray(prefs.getString("accounts", "[]")) } catch (e: Exception) { org.json.JSONArray() }
+            var obj: org.json.JSONObject? = null
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                if (o.optString("id") == account) { obj = o; break }
+            }
+            if (obj == null) {
+                obj = org.json.JSONObject().put("id", account).put("cats", org.json.JSONArray()).put("votes", 0)
+                arr.put(obj)
+            }
+            val cats = obj.optJSONArray("cats") ?: org.json.JSONArray()
+            var has = false
+            for (i in 0 until cats.length()) if (cats.getString(i) == category) { has = true; break }
+            if (!has) cats.put(category)
+            obj.put("cats", cats)
+            obj.put("votes", obj.optInt("votes", 0) + votes)
+            obj.put("ts", System.currentTimeMillis())
+            prefs.edit().putString("accounts", arr.toString()).apply()
+        }
+    }
+
+    private fun renderAccounts() {
+        if (!::acctList.isInitialized) return
+        val arr = try { org.json.JSONArray(prefs.getString("accounts", "[]")) } catch (e: Exception) { org.json.JSONArray() }
+        acctToggle.text = if (acctScroll.visibility == android.view.View.VISIBLE)
+            "👤 Accounts used today — ${arr.length()} (tap to hide)"
+        else
+            "👤 Accounts used today — ${arr.length()} (tap to show)"
+        if (acctScroll.visibility != android.view.View.VISIBLE) return
+
+        acctList.removeAllViews()
+        if (arr.length() == 0) {
+            acctList.addView(makeAcctText("No votes logged yet today.", "#9A8F95", 12f))
+            return
+        }
+        // newest activity first
+        val items = (0 until arr.length()).map { arr.getJSONObject(it) }
+            .sortedByDescending { it.optLong("ts", 0) }
+        for (o in items) {
+            val id = o.optString("id")
+            val cats = o.optJSONArray("cats") ?: org.json.JSONArray()
+            val covered = FAN_CATS.count { c -> (0 until cats.length()).any { cats.getString(it) == c } }
+            val full = covered >= FAN_CATS.size
+
+            val row = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(dp(4), dp(7), dp(4), dp(7))
+            }
+            val name = makeAcctText(id, "#F5F0F0", 13f).apply {
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
+                layoutParams = android.widget.LinearLayout.LayoutParams(0, -2, 1f)
+            }
+            val badge = makeAcctText("$covered/${FAN_CATS.size}", if (full) "#3FD982" else "#F5C542", 13f).apply {
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+            }
+            row.addView(name)
+            row.addView(badge)
+            acctList.addView(row)
+
+            val div = android.view.View(this).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(-1, 1)
+                setBackgroundColor(android.graphics.Color.parseColor("#22FF2E77"))
+            }
+            acctList.addView(div)
+        }
+    }
+
+    private fun makeAcctText(text: String, color: String, size: Float): TextView =
+        TextView(this).apply {
+            this.text = text
+            setTextColor(android.graphics.Color.parseColor(color))
+            textSize = size
+            typeface = android.graphics.Typeface.MONOSPACE
+        }
+
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     private fun etDay(): String {
         val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)

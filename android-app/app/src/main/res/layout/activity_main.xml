@@ -94,6 +94,35 @@
             android:background="@drawable/btn_ghost" />
     </LinearLayout>
 
+    <!-- Voting accounts roster (email used + how many of the 2 categories it covered) -->
+    <TextView
+        android:id="@+id/acctToggle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="8dp"
+        android:background="#1A0A12"
+        android:textColor="@color/bu_pink_soft"
+        android:textSize="12sp"
+        android:text="@string/accounts_collapsed" />
+
+    <ScrollView
+        android:id="@+id/acctScroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxHeight="180dp"
+        android:visibility="gone"
+        android:background="#12000A">
+
+        <LinearLayout
+            android:id="@+id/acctList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="12dp"
+            android:paddingBottom="8dp" />
+    </ScrollView>
+
     <WebView
         android:id="@+id/web"
         android:layout_width="match_parent"
