@@ -1968,6 +1968,11 @@
   .vv-ext-steps code { font-family: var(--mono); font-size: 0.72em; background: rgba(255,255,255,0.08); padding: 0.08rem 0.34rem; border-radius: 4px; color: #ffd9e7; }
   .vv-ext-note { margin-top: 0.9rem; font-family: var(--mono); font-size: 0.58rem; line-height: 1.5; color: var(--muted); }
   .vv-ext-note b { color: #7ee0a0; }
+  .vv-ext-app { margin-top: 1rem; padding: 0.95rem 1.05rem; border: 1px dashed var(--border); border-radius: 10px; background: rgba(0,0,0,0.18); }
+  .vv-ext-app-head { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.02em; color: #fff; }
+  .vv-ext-app-head b { color: #ff9cc2; }
+  .vv-ext-app-sub { font-family: var(--mono); font-size: 0.58rem; line-height: 1.5; color: var(--muted); margin: 0.35rem 0 0.8rem; }
+  .vv-ext-app-sub i { color: #ffb27a; font-style: normal; }
   .vv-ext-fns { margin: 0.85rem 0 0; padding: 0.75rem 0.9rem; background: rgba(0,0,0,0.22); border-radius: 8px; }
   .vv-ext-fns summary { cursor: pointer; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; color: #ff9cc2; }
   .vv-ext-fns ul { margin: 0.6rem 0 0; padding-left: 1.1rem; }
@@ -7337,6 +7342,15 @@ function vmaExtensionHtml() {
       <li>Click the extension → <b>Link my Blinks United account</b> → sign in on the page that opens (the same account you use here). It should then read <b>● Linked</b>.</li>
       <li>Go to <b>vote.mtv.com</b> and vote for BLACKPINK / LISA — your votes show up here automatically, and a live BLINKS UNITED panel appears on the MTV page.</li>
     </ol>
+    <div class="vv-ext-app">
+      <div class="vv-ext-app-head">📱 On a phone with no extension support? Get the <b>Android app</b></div>
+      <div class="vv-ext-app-sub">Same counter, wrapped in an app — you vote inside it and it logs to your board. No browser extension needed. <i>Android only; iPhone can't sideload apps.</i></div>
+      <a class="vv-ext-btn" href="/blinks-united-vote-counter.apk" download>⬇ Download Android app <small>.apk</small></a>
+      <ol class="vv-ext-steps" style="margin-top:0.9rem;">
+        <li>Tap <b>Download</b>, then open the <code>.apk</code>. Allow <b>Install unknown apps</b> for your browser if asked (Chrome shows a routine &ldquo;this file could harm your device&rdquo; notice — tap <b>Download anyway</b>).</li>
+        <li>Open the app → <b>Link</b> → sign in with the same account. Then vote on <b>vote.mtv.com</b> <i>inside the app</i> — it counts automatically.</li>
+      </ol>
+    </div>
     <details class="vv-ext-fns">
       <summary>▸ What the extension does</summary>
       <ul>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.BUVoteCounter" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/bu_pink</item>
+        <item name="colorPrimaryDark">@color/bu_bg</item>
+        <item name="colorAccent">@color/bu_pink</item>
+        <item name="android:statusBarColor">@color/bu_bg</item>
+        <item name="android:windowBackground">@color/bu_bg</item>
+    </style>
+</resources>
