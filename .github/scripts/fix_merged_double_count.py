@@ -42,7 +42,10 @@ APPLY = os.environ.get("APPLY") == "1"
 ONLY_ARTIST = os.environ.get("ARTIST")
 FROM_DATE = os.environ.get("FROM")
 MERGE_MIN = 1_000_000
-MIN_TRACK_ROWS = 100  # only rewrite days with an near-complete track snapshot
+# Only rewrite a day whose per-track snapshot is near-complete for THAT artist
+# (guards against partial days). Relative to the artist's own track count.
+MIN_ROWS_FRACTION = 0.8
+MIN_ROWS_FLOOR = 8
 
 HEADERS = {"Authorization": f"Bearer {SUPABASE_KEY}", "apikey": SUPABASE_KEY,
            "Content-Type": "application/json"}
@@ -129,11 +132,12 @@ def process(artist_id, name):
         new_total = sum(k["streams"] for k in kept)
         new_count = len(kept)
 
-        complete = n_rows >= MIN_TRACK_ROWS
+        min_rows = max(MIN_ROWS_FLOOR, int(len(ref_ids) * MIN_ROWS_FRACTION))
+        complete = n_rows >= min_rows
         drift = row["total_streams"] - new_total if new_total else 0
         flag = ""
         if not complete:
-            flag = f"  (only {n_rows} track rows — SKIP, left as-is)"
+            flag = f"  (only {n_rows}/{len(ref_ids)} track rows — SKIP, left as-is)"
         elif merged_away:
             flag = f"  ⤷ {len(merged_away)} merged dup(s), −{drift:,}"
 
