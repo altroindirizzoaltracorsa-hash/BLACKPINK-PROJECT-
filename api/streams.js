@@ -18,6 +18,15 @@ const TRACKS = {
 // JUMP is the highest-velocity track, so it's the most reliable bump signal.
 const CANARY = 'jump';
 
+// Version-merge / split guard. These campaign tracks gain at most ~1M streams a
+// day, so a single-day change beyond this is almost certainly Spotify combining
+// versions (a huge up-spike) or correcting a merge (a big down-drop) — NOT real
+// streams. Adopting such a value corrupts the daily history and, when it later
+// falls back, FREEZES the only-up counter (what happened to DDU-DU on Aug 17).
+// Instead we HOLD an anomaly for admin confirmation (see the fetch loop below and
+// ?action=anomalies / ?action=resolve-anomaly).
+const MERGE_SPIKE_ABS = 15_000_000;
+
 // Spotify's public play count generally only jumps once a day, sometime
 // between midday and late evening Italy time. Outside that window (or once
 // today's jump has already landed) there's nothing new to find, so we poll
@@ -884,6 +893,53 @@ export default async function handler(req, res) {
     return res.status(200).json({ count: entries.length, entries });
   }
 
+  // List pending merge/split anomalies awaiting admin confirmation (public read —
+  // it only reports that a big jump was held; resolving it still needs the admin key).
+  if (req.query.action === 'anomalies') {
+    const out = {};
+    for (const t of Object.keys(TRACKS)) {
+      const a = await redis.get(`bp_anomaly_${t}`);
+      if (a) out[t] = { ...a, at: a.ts ? new Date(a.ts).toISOString() : null };
+    }
+    return res.status(200).json({ anomalies: out });
+  }
+
+  // Confirm a held anomaly: accept = adopt the new value as the baseline (no fake
+  // history bar), reject = ignore that value from now on. Either way counting
+  // resumes cleanly. ?action=resolve-anomaly&track=ddududu&decision=accept|reject&key=ADMIN
+  if (req.query.action === 'resolve-anomaly') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    if (!adminSecret || req.query.key !== adminSecret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const { track, decision } = req.query;
+    if (!TRACKS[track] || (decision !== 'accept' && decision !== 'reject')) {
+      return res.status(400).json({ error: 'Requires track and decision=accept|reject' });
+    }
+    const anomaly = await redis.get(`bp_anomaly_${track}`);
+    if (!anomaly) return res.status(404).json({ error: 'No pending anomaly for that track' });
+
+    const lockKey = `bp_lock_${track}`;
+    const gotLock = !!(await redis.set(lockKey, '1', { nx: true, ex: 30 }));
+    if (!gotLock) return res.status(409).json({ error: 'Track is busy updating, try again in a few seconds' });
+    try {
+      if (decision === 'accept') {
+        // Re-baseline to the merged/corrected value (streams "combined", not a real
+        // daily gain) — no history entry, just a new floor so daily recording resumes.
+        await redis.set(`bp_prev_${track}`, { total: anomaly.fetched, date: getDateLabel(new Date()) });
+        await redis.set(`bp_live_${track}`, { total: anomaly.fetched, ts: Date.now() });
+        await redis.del(`bp_ignore_${track}`);
+      } else {
+        // Ignore this value going forward so it stops re-flagging every fetch.
+        await redis.set(`bp_ignore_${track}`, anomaly.fetched);
+      }
+      await redis.del(`bp_anomaly_${track}`);
+      return res.status(200).json({ ok: true, track, decision, anomaly });
+    } finally {
+      await redis.del(lockKey);
+    }
+  }
+
   const todayLabel = getDateLabel(new Date());
   const results    = {};
   const errors     = {};
@@ -982,11 +1038,32 @@ export default async function handler(req, res) {
         }
         const fetchedTotal = data?.playCount || 0;
         fetchedLive = true;
-        if (fetchedTotal > 0) {
+        const prevT = Number(prev?.total || 0);
+        // Merge/split guard: hold an abnormally large single-day change instead of
+        // adopting it. Keep the last-good total + prev so the card neither shows a
+        // phantom spike nor freezes; stash a pending anomaly for admin confirmation.
+        // A value the admin explicitly rejected (bp_ignore_<track>) stops flagging.
+        const ignoredVal = Number((await redis.get(`bp_ignore_${name}`)) || 0);
+        const isAnomaly = fetchedTotal > 0 && prevT > 0
+          && Math.abs(fetchedTotal - prevT) > MERGE_SPIKE_ABS
+          && fetchedTotal !== ignoredVal;
+        if (isAnomaly) {
+          await redis.set(`bp_anomaly_${name}`, {
+            kind:    fetchedTotal > prevT ? 'spike' : 'drop',
+            fetched: fetchedTotal,
+            prev:    prevT,
+            delta:   fetchedTotal - prevT,
+            date:    todayLabel,
+            ts:      Date.now(),
+          });
+          total = cached?.total || prevT;  // keep last-good; do NOT adopt or advance
+          stale = total > 0;
+        } else if (fetchedTotal > 0) {
           total = fetchedTotal;
           updatedAt = Date.now();
           await redis.set(liveKey, { total, ts: updatedAt });
           await redis.del(errKey);
+          await redis.del(`bp_anomaly_${name}`);  // value looks normal again — clear any hold
         } else {
           // Live fetch failed (e.g. all RapidAPI keys exhausted) — fall back to
           // the last known-good cached total instead of showing 0.
@@ -1089,6 +1166,13 @@ export default async function handler(req, res) {
     keyCounts[provider.name] = getApiKeys(provider.keyEnvVars).length;
   }
 
+  // Surface any held merge/split anomalies so the admin banner can prompt to confirm.
+  const anomalies = {};
+  for (const name of Object.keys(TRACKS)) {
+    const a = await redis.get(`bp_anomaly_${name}`);
+    if (a) anomalies[name] = a;
+  }
+
   // Trigger catalog total update (fire-and-forget, no await) when:
   //   - the canary just caught today's bump (Spotify updates all counters
   //     together, so the whole catalog is fresh the moment the tracks move —
@@ -1103,6 +1187,6 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
   res.status(200).json({
     ...results,
-    _debug: { keyCounts, errors, live: fetchedLive, prev: prevSnaps, ts: new Date().toISOString() },
+    _debug: { keyCounts, errors, live: fetchedLive, prev: prevSnaps, anomalies, ts: new Date().toISOString() },
   });
 }
