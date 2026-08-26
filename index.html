@@ -1302,6 +1302,22 @@
   .catalog-total-eyebrow { font-size: 0.6rem; letter-spacing: 0.25em; text-transform: uppercase; color: rgba(245,240,240,0.4); }
   .catalog-total-num { font-family: var(--display); font-size: clamp(2.6rem, 9vw, 5.5rem); color: var(--pink); line-height: 1; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
   .catalog-total-label { font-size: 0.58rem; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(245,240,240,0.45); }
+  .ct-primary { display: flex; flex-direction: column; align-items: center; gap: 0.7rem; flex: 1 1 auto; }
+  @media (min-width: 900px) {
+    .catalog-total-inner { flex-direction: row; align-items: center; justify-content: center; gap: 2.5rem; }
+    .ct-secondary { flex: 0 0 360px; }
+  }
+  /* 2026 Streams Gained board */
+  .yg-board { width: 100%; max-width: 420px; margin: 0 auto; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,0,102,0.18); border-radius: 16px; padding: 1.1rem 1.2rem; }
+  .yg-title { font-family: var(--display); font-size: 0.95rem; letter-spacing: 0.06em; color: var(--white); text-align: left; margin-bottom: 0.15rem; }
+  .yg-sub { font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(245,240,240,0.4); }
+  .yg-cap { font-size: 0.52rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,240,240,0.35); margin: 0 0 0.7rem; text-align: left; }
+  .yg-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.42rem 0; border-top: 1px solid rgba(255,255,255,0.06); }
+  .yg-row:first-of-type { border-top: none; }
+  .yg-rank { font-family: var(--mono); font-size: 0.7rem; color: rgba(255,111,168,0.6); width: 1.1rem; text-align: center; flex-shrink: 0; }
+  .yg-av { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: #1a1013; }
+  .yg-name { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.03em; color: var(--white); flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .yg-num { font-family: var(--mono); font-size: 0.82rem; color: #2ecc71; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .catalog-daily { font-size: 0.7rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.55); margin-top: 0.2rem; }
   .catalog-daily strong { color: var(--white); }
   .catalog-source { font-size: 0.52rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(245,240,240,0.28); margin-top: 0.3rem; }
@@ -2856,13 +2872,16 @@
 
   <section class="catalog-total-section" id="catalog-total-section" style="display:none">
     <div class="catalog-total-inner">
-      <p class="catalog-total-eyebrow">// Full BLACKPINK Catalog · Spotify</p>
-      <div class="catalog-total-num" id="catalog-total-count">—</div>
-      <p class="catalog-total-label">Total Streams Across All Releases</p>
-      <p class="catalog-daily" id="catalog-daily-info"></p>
-      <div class="catalog-daily-list" id="catalog-daily-list" style="display:none"></div>
-      <p class="catalog-source" id="catalog-source-info"></p>
-      <button class="gen-card-btn" style="max-width:260px;margin-top:0.4rem" onclick="openCatalogCard()">⬡ Generate Share Card</button>
+      <div class="ct-primary">
+        <p class="catalog-total-eyebrow">// Full BLACKPINK Catalog · Spotify</p>
+        <div class="catalog-total-num" id="catalog-total-count">—</div>
+        <p class="catalog-total-label">Total Streams Across All Releases</p>
+        <p class="catalog-daily" id="catalog-daily-info"></p>
+        <div class="catalog-daily-list" id="catalog-daily-list" style="display:none"></div>
+        <p class="catalog-source" id="catalog-source-info"></p>
+        <button class="gen-card-btn" style="max-width:260px;margin-top:0.4rem" onclick="openCatalogCard()">⬡ Generate Share Card</button>
+      </div>
+      <div class="ct-secondary yg-board" id="year-gained-home" style="display:none"></div>
     </div>
   </section>
 
@@ -3343,6 +3362,8 @@
     <div class="as-inner">
       <div id="as-loading" class="lb-loading">Loading…</div>
       <div id="as-error" class="as-error" style="display:none;"></div>
+
+      <div id="year-gained-streams" class="yg-board" style="display:none;max-width:480px;margin:0 auto 1.6rem;"></div>
 
       <div id="as-list" style="display:none;">
         <div class="as-list-grid" id="as-list-body"></div>
@@ -4552,6 +4573,30 @@ function diffColor(diff) {
   return '#ff3333';                       // red     (big drop ≥ −15k)
 }
 
+// 2026 Streams Gained board (BLACKPINK + members), ranked by streams gained this
+// year. Baselines are seeded server-side to match the community count, then track
+// forward from our own daily totals. Renders into any container id given.
+async function renderYearGained(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  try {
+    const r = await fetch('/api/proxy-image?year_gained=list');
+    const d = await r.json();
+    const items = (d && d.items) || [];
+    if (!items.length) { el.style.display = 'none'; return; }
+    el.innerHTML = `<div class="yg-title">Streams Gained <span class="yg-sub">2026 so far</span></div>`
+      + `<p class="yg-cap">BLACKPINK &amp; members · Spotify</p>`
+      + items.map((it, i) => `
+        <div class="yg-row">
+          <span class="yg-rank">${i + 1}</span>
+          <img class="yg-av" src="${it.avatar_url || ''}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+          <span class="yg-name">${it.name}</span>
+          <span class="yg-num">+${fmtNum(it.gained)}</span>
+        </div>`).join('');
+    el.style.display = 'block';
+  } catch { el.style.display = 'none'; }
+}
+
 async function loadCatalogStreams() {
   try {
     const r = await fetch('/api/proxy-image?artist_streams=detail&artist=41MozSoPIsD1dJM0CLPjZF');
@@ -4809,6 +4854,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   fetchSpotifyStreams();
   loadCatalogStreams();
+  renderYearGained('year-gained-home');
   loadTodaysPlaylist();
   loadVmaVotebar();
   loadCommunityGoal();
@@ -4985,8 +5031,14 @@ function fmtTrend(curDelta, prevDelta) {
 
 function loadArtistStreamsPage() {
   const artistId = new URLSearchParams(location.search).get('artist');
-  if (artistId) loadArtistStreamsDetail(artistId);
-  else loadArtistStreamsList();
+  const yg = document.getElementById('year-gained-streams');
+  if (artistId) {
+    if (yg) yg.style.display = 'none';          // board shows on the list view only
+    loadArtistStreamsDetail(artistId);
+  } else {
+    renderYearGained('year-gained-streams');
+    loadArtistStreamsList();
+  }
 }
 
 function goToArtistList(e) {
