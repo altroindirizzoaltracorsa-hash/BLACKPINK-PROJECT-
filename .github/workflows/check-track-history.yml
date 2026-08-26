@@ -1,16 +1,17 @@
 name: Check track history
 
-# Repurposed as a small admin utility runner. Currently: fetch JENNIE
-# "Fallen Angel" brand assets from her Shopify store (open internet on the
-# runner) and commit them into fa-assets/ on the dispatched branch, so they
-# can be inspected and used same-origin for the Early Supporter badge.
+# Repurposed as a small admin utility runner. Currently: build the Blinks United
+# VMA Vote Counter Android app (android-app/) into a signed release APK and commit
+# it to the repo root as blinks-united-vote-counter.apk on the dispatched branch,
+# so the site can offer it as a direct download. (Push-triggered builds via
+# build-android.yml take over once that workflow lands on the default branch.)
 on:
   workflow_dispatch:
     inputs:
       task:
-        description: "fetch-fa-assets"
+        description: "build-android-apk"
         required: false
-        default: "fetch-fa-assets"
+        default: "build-android-apk"
 
 permissions:
   contents: write
@@ -24,31 +25,51 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
-      - name: Fetch JENNIE Fallen Angel assets
-        if: ${{ github.event.inputs.task == 'fetch-fa-assets' }}
+      - name: Set up JDK 17
+        if: ${{ github.event.inputs.task == 'build-android-apk' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        if: ${{ github.event.inputs.task == 'build-android-apk' }}
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle 8.9
+        if: ${{ github.event.inputs.task == 'build-android-apk' }}
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Prepare signing keystore
+        if: ${{ github.event.inputs.task == 'build-android-apk' }}
+        working-directory: android-app
+        run: |
+          if [ ! -f release.keystore ]; then
+            keytool -genkeypair -v -keystore release.keystore -alias bu \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass blinksunited -keypass blinksunited \
+              -dname "CN=Blinks United, OU=Fans, O=Blinks United, L=Seoul, ST=NA, C=KR"
+          fi
+          printf 'storeFile=release.keystore\nstorePassword=blinksunited\nkeyAlias=bu\nkeyPassword=blinksunited\n' > keystore.properties
+
+      - name: Build release APK
+        if: ${{ github.event.inputs.task == 'build-android-apk' }}
+        working-directory: android-app
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Publish APK to site root
+        if: ${{ github.event.inputs.task == 'build-android-apk' }}
         run: |
           set -e
-          mkdir -p fa-assets
-          base="https://shopeu.jenn.ie/cdn/shop/files"
-          for f in J-FA-Presave_FA.png J-FA-Presave_LOGO.png J-FA-Presave.png WideFAEPCDJewelCase2000x2000.png; do
-            echo "=== $f ==="
-            code=$(curl -sSL -A "Mozilla/5.0" -o "fa-assets/$f" -w '%{http_code}' "$base/$f" || echo 000)
-            echo "HTTP $code"
-            file "fa-assets/$f" || true
-            ls -la "fa-assets/$f" || true
-          done
-          echo "--- listing ---"
-          ls -la fa-assets/
-
-      - name: Commit assets
-        if: ${{ github.event.inputs.task == 'fetch-fa-assets' }}
-        run: |
+          cp android-app/app/build/outputs/apk/release/app-release.apk blinks-united-vote-counter.apk
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add fa-assets/
+          git add blinks-united-vote-counter.apk android-app/release.keystore
           if git diff --cached --quiet; then
-            echo "No changes to commit."
+            echo "No APK change to commit."
           else
-            git commit -m "Fetch JENNIE Fallen Angel brand assets into fa-assets/ [skip ci]"
+            git commit -m "Build Android vote-counter APK v1.0.0 [skip ci]"
             git push origin HEAD:${{ github.ref_name }}
           fi
