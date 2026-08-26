@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vote Counter Setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg:#faf6f8; --panel:#ffffff; --panel-2:#fbeef3; --ink:#1a0c13; --ink-soft:#5b4750;
+    --line:rgba(255,0,102,0.16); --pink:#e60060; --pink-soft:#ff4d90; --gold:#c98a00; --green:#128a4a;
+    --mtv:#12000a; --mtv-ink:#f5f0f0;
+    --shadow:0 18px 50px -24px rgba(255,0,102,0.35);
+    --mono:'DM Mono',ui-monospace,monospace; --body:'DM Sans',system-ui,sans-serif; --display:'Bebas Neue','Arial Narrow',sans-serif;
+  }
+  :root:not([data-theme="light"]){ color-scheme: dark; }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0d0a0d; --panel:#160f14; --panel-2:#1e131a; --ink:#f5f0f0; --ink-soft:#b39aa6;
+      --line:rgba(255,0,102,0.22); --pink:#ff2e77; --pink-soft:#ff74ac; --gold:#f5c542; --green:#3fd982;
+      --shadow:0 24px 60px -28px rgba(255,0,102,0.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:#0d0a0d; --panel:#160f14; --panel-2:#1e131a; --ink:#f5f0f0; --ink-soft:#b39aa6;
+    --line:rgba(255,0,102,0.22); --pink:#ff2e77; --pink-soft:#ff74ac; --gold:#f5c542; --green:#3fd982;
+    --shadow:0 24px 60px -28px rgba(255,0,102,0.5);
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6;
+    -webkit-font-smoothing:antialiased; }
+  .wrap{ max-width:760px; margin:0 auto; padding:clamp(1.4rem,4vw,3rem) clamp(1.1rem,4vw,2rem) 4rem; }
+
+  /* ── Hero ── */
+  .hero{ position:relative; border:1px solid var(--line); border-radius:20px; overflow:hidden;
+    background:
+      radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--pink) 18%, transparent), transparent 60%),
+      linear-gradient(180deg, var(--panel-2), var(--panel));
+    padding:clamp(1.6rem,4vw,2.5rem); box-shadow:var(--shadow); }
+  .kicker{ font-family:var(--mono); font-size:0.7rem; letter-spacing:0.24em; text-transform:uppercase;
+    color:var(--pink); display:flex; align-items:center; gap:0.55rem; }
+  .kicker .dot{ width:7px; height:7px; border-radius:50%; background:var(--pink); box-shadow:0 0 0 4px color-mix(in srgb,var(--pink) 22%, transparent); }
+  h1{ font-family:var(--display); font-weight:400; letter-spacing:0.01em; line-height:0.94;
+    font-size:clamp(2.9rem,10vw,5rem); margin:0.5rem 0 0; text-wrap:balance; }
+  h1 em{ font-style:normal; color:var(--pink); }
+  .lede{ margin:0.9rem 0 0; max-width:56ch; color:var(--ink-soft); font-size:1.02rem; }
+  .badges{ display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:1.3rem; }
+  .pill{ font-family:var(--mono); font-size:0.66rem; letter-spacing:0.06em; text-transform:uppercase;
+    padding:0.42rem 0.7rem; border-radius:999px; border:1px solid var(--line); color:var(--ink-soft);
+    background:color-mix(in srgb, var(--panel) 60%, transparent); display:inline-flex; gap:0.4rem; align-items:center; }
+  .pill b{ color:var(--ink); }
+  .pill.hi{ color:var(--mtv); background:var(--pink); border-color:transparent; }
+  .pill.hi b{ color:var(--mtv); }
+
+  /* ── Section titles ── */
+  .sec-label{ font-family:var(--mono); font-size:0.7rem; letter-spacing:0.2em; text-transform:uppercase;
+    color:var(--pink-soft); margin:2.8rem 0 0.4rem; }
+  .sec-h{ font-family:var(--display); font-weight:400; font-size:clamp(1.7rem,5vw,2.3rem); letter-spacing:0.02em;
+    margin:0 0 1.3rem; text-wrap:balance; }
+
+  /* ── Steps ── */
+  .step{ display:grid; grid-template-columns:2.4rem 1fr; gap:0.2rem 1rem; padding:1.4rem 0; border-top:1px solid var(--line); }
+  .step:first-of-type{ border-top:none; }
+  .step-n{ grid-row:1 / span 2; font-family:var(--display); font-size:1.5rem; color:var(--mtv);
+    background:var(--pink); width:2.4rem; height:2.4rem; border-radius:12px; display:grid; place-items:center; line-height:1; }
+  .step-h{ font-family:var(--body); font-weight:700; font-size:1.12rem; margin:0.1rem 0 0; align-self:center; }
+  .step-b{ grid-column:2; color:var(--ink-soft); margin:0.5rem 0 0; }
+  .step-b b{ color:var(--ink); font-weight:600; }
+  .step-b .split{ display:block; margin-top:0.5rem; padding-top:0.5rem; border-top:1px dashed var(--line); }
+  code, kbd{ font-family:var(--mono); font-size:0.85em; background:color-mix(in srgb, var(--pink) 12%, transparent);
+    color:var(--pink); padding:0.1rem 0.4rem; border-radius:5px; white-space:nowrap; }
+  kbd{ background:var(--panel-2); color:var(--ink); border:1px solid var(--line); }
+
+  /* ── Mockups ── */
+  .mock{ grid-column:2; margin-top:0.9rem; border:1px solid var(--line); border-radius:12px; overflow:hidden;
+    background:var(--panel); box-shadow:var(--shadow); font-family:var(--body); }
+  .mock-bar{ display:flex; align-items:center; gap:0.5rem; padding:0.55rem 0.8rem; background:var(--panel-2);
+    border-bottom:1px solid var(--line); font-family:var(--mono); font-size:0.72rem; color:var(--ink-soft); }
+  .mock-bar .tl{ display:flex; gap:0.34rem; }
+  .mock-bar .tl i{ width:9px; height:9px; border-radius:50%; background:var(--line); display:block; }
+  .mock-url{ margin-left:0.3rem; padding:0.16rem 0.55rem; border-radius:6px; background:var(--panel);
+    border:1px solid var(--line); color:var(--ink); }
+  .mock-body{ padding:1rem; }
+  .devrow{ display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+  .devrow .lbl{ font-weight:600; }
+  .toggle{ width:44px; height:24px; border-radius:999px; background:var(--green); position:relative; flex:none;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15); }
+  .toggle::after{ content:""; position:absolute; top:3px; right:3px; width:18px; height:18px; border-radius:50%; background:#fff; }
+  .toggle .on{ position:absolute; left:8px; top:5px; font-family:var(--mono); font-size:0.56rem; color:#fff; letter-spacing:0.06em; }
+  .btn-ghost{ display:inline-flex; align-items:center; gap:0.4rem; margin-top:0.85rem; font-family:var(--mono);
+    font-size:0.72rem; letter-spacing:0.04em; padding:0.5rem 0.85rem; border-radius:8px; border:1px dashed var(--pink);
+    color:var(--pink); background:color-mix(in srgb, var(--pink) 8%, transparent); }
+  .hint{ font-family:var(--mono); font-size:0.66rem; color:var(--ink-soft); margin-top:0.6rem; }
+
+  /* extension popup mock (its own dark identity, on brand) */
+  .popup{ width:230px; background:var(--mtv); color:var(--mtv-ink); border-radius:12px; padding:14px;
+    font-family:var(--body); border:1px solid rgba(255,46,119,0.4); }
+  .popup h4{ margin:0 0 10px; font-size:0.85rem; color:#ff2e77; letter-spacing:0.03em; }
+  .popup .status{ font-family:var(--mono); font-size:0.72rem; }
+  .popup .status.ok{ color:#2ecc71; }
+  .popup .count{ font-size:1.9rem; font-weight:700; color:#ff2e77; line-height:1; }
+  .popup .count small{ font-size:0.66rem; color:#9a8f95; font-weight:400; }
+  .popup .link{ margin-top:11px; text-align:center; font-family:var(--mono); font-size:0.68rem; font-weight:700;
+    padding:8px; border-radius:7px; background:#ff2e77; color:var(--mtv); }
+  .popup .arrow{ text-align:center; color:#9a8f95; margin:6px 0; font-family:var(--mono); font-size:0.9rem; }
+  .popcols{ display:flex; gap:0.9rem; flex-wrap:wrap; align-items:flex-start; }
+  .popcaption{ font-family:var(--mono); font-size:0.62rem; color:var(--ink-soft); letter-spacing:0.04em;
+    text-transform:uppercase; margin-bottom:0.4rem; }
+
+  /* MTV live panel mock */
+  .bupanel{ width:250px; background:var(--mtv); color:var(--mtv-ink); border-radius:12px; overflow:hidden;
+    border:1px solid rgba(255,46,119,0.4); font-family:var(--body); }
+  .bupanel .top{ background:linear-gradient(90deg,#ff2e77,#ff6f78); color:#12000a; font-family:var(--mono);
+    font-size:0.62rem; font-weight:700; letter-spacing:0.14em; padding:6px 10px; text-transform:uppercase; }
+  .bupanel .in{ padding:11px 12px; }
+  .bupanel .tot{ font-size:1.7rem; font-weight:700; color:#ff2e77; line-height:1; }
+  .bupanel .tot small{ font-size:0.6rem; color:#9a8f95; font-weight:400; text-transform:uppercase; letter-spacing:0.1em; }
+  .bupanel .sp{ display:flex; gap:0.4rem; margin:9px 0; }
+  .bupanel .sp span{ flex:1; font-family:var(--mono); font-size:0.62rem; padding:5px 7px; border-radius:6px;
+    background:rgba(255,255,255,0.06); }
+  .bupanel .sp b{ color:#ff8fb0; }
+  .bupanel .pulse{ display:flex; align-items:center; gap:0.45rem; font-family:var(--mono); font-size:0.62rem; color:#9a8f95; }
+  .bupanel .pulse i{ width:7px; height:7px; border-radius:50%; background:#2ecc71; box-shadow:0 0 0 0 rgba(46,204,113,0.7);
+    animation:pp 1.8s ease-out infinite; }
+  @keyframes pp{ 0%{ box-shadow:0 0 0 0 rgba(46,204,113,0.6);} 70%{ box-shadow:0 0 0 7px rgba(46,204,113,0);} 100%{ box-shadow:0 0 0 0 rgba(46,204,113,0);} }
+  @media (prefers-reduced-motion: reduce){ .bupanel .pulse i{ animation:none; } }
+
+  /* ── Function grid ── */
+  .fns{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:0.8rem; }
+  .fn{ border:1px solid var(--line); border-radius:12px; padding:1rem 1.05rem; background:var(--panel); }
+  .fn .ic{ font-size:1.2rem; }
+  .fn h5{ margin:0.5rem 0 0.3rem; font-size:0.98rem; font-weight:700; }
+  .fn p{ margin:0; color:var(--ink-soft); font-size:0.86rem; }
+
+  /* ── Safety / footer ── */
+  .safe{ margin-top:2.6rem; border:1px solid var(--line); border-radius:14px; padding:1.2rem 1.3rem;
+    background:linear-gradient(180deg, color-mix(in srgb, var(--green) 10%, transparent), transparent);
+    display:flex; gap:0.9rem; align-items:flex-start; }
+  .safe .big{ font-size:1.5rem; line-height:1; }
+  .safe h4{ margin:0 0 0.3rem; font-size:1rem; }
+  .safe p{ margin:0; color:var(--ink-soft); font-size:0.9rem; }
+  .foot{ margin-top:2.4rem; font-family:var(--mono); font-size:0.66rem; color:var(--ink-soft); text-align:center;
+    letter-spacing:0.04em; }
+  .foot b{ color:var(--pink); }
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker"><span class="dot"></span> Blinks United · Extension v1.6.0</div>
+    <h1>VMA Vote<br><em>Counter</em> setup</h1>
+    <p class="lede">A five-minute setup. Once it's linked, every BLACKPINK &amp; LISA vote you cast on
+      <b>vote.mtv.com</b> is counted for you and logged straight to your <b>/voting</b> board — no more typing
+      numbers into &ldquo;Add votes.&rdquo;</p>
+    <div class="badges">
+      <span class="pill hi">🧩 <b>Desktop</b> · any Chromium browser</span>
+      <span class="pill">📱 <b>Android</b> · Edge Canary / Quetta</span>
+      <span class="pill">🤝 Counts your votes — <b>never auto-votes</b></span>
+    </div>
+  </header>
+
+  <div class="sec-label">The setup · 5 steps</div>
+  <h2 class="sec-h">From download to counting</h2>
+
+  <div class="step">
+    <div class="step-n">1</div>
+    <h3 class="step-h">Download it from the voting page</h3>
+    <p class="step-b">On <b>blinksunited.com/voting</b> (signed in, with a scrobbler linked) you'll see the
+      <b>VMA Vote Counter</b> block. Tap <b>Desktop</b> for a computer, or <b>Android</b> for a phone. Then
+      <b>unzip</b> the file you get.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-n">2</div>
+    <h3 class="step-h">Load it into your browser</h3>
+    <p class="step-b"><b>Desktop</b> — any Chromium browser (Chrome, Edge, Brave, Opera, Vivaldi): open
+      <code>chrome://extensions</code>, switch on <b>Developer mode</b> in the top-right, then click
+      <b>Load unpacked</b> and choose the unzipped folder.
+      <span class="split"><b>Android</b> — since Kiwi shut down, use a Chromium browser that still supports
+      extensions: <b>Microsoft Edge Canary</b> (it inherited Kiwi's extension engine) or <b>Quetta</b>. Open its
+      Extensions menu and load the <code>.zip</code> directly. Plain Chrome and Firefox for Android can't run it.</span></p>
+    <div class="mock">
+      <div class="mock-bar"><span class="tl"><i></i><i></i><i></i></span>
+        <span class="mock-url">chrome://extensions</span></div>
+      <div class="mock-body">
+        <div class="devrow">
+          <span class="lbl">Developer mode</span>
+          <span class="toggle"><span class="on">ON</span></span>
+        </div>
+        <a class="btn-ghost">＋ Load unpacked</a>
+        <div class="hint">↑ appears only once Developer mode is on — pick the unzipped folder.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-n">3</div>
+    <h3 class="step-h">Link your Blinks United account</h3>
+    <p class="step-b">Click the extension's icon, then <b>Link my Blinks United account</b>. Sign in on the page
+      that opens — the <b>same account</b> you use on the site (Google / X / Discord / magic link). The popup
+      flips to <b>● Linked</b> and shows your live count.</p>
+    <div class="mock" style="background:transparent;border:none;box-shadow:none;padding-top:0.3rem;">
+      <div class="popcols">
+        <div>
+          <div class="popcaption">Before</div>
+          <div class="popup">
+            <h4>♥ BU Vote Counter</h4>
+            <div class="status">○ Not linked</div>
+            <div style="margin-top:8px"><span class="count">0</span> <small>votes counted</small></div>
+            <div class="link">Link my blinksunited account</div>
+          </div>
+        </div>
+        <div>
+          <div class="popcaption">After sign-in</div>
+          <div class="popup">
+            <h4>♥ BU Vote Counter</h4>
+            <div class="status ok">● Linked</div>
+            <div style="margin-top:8px"><span class="count">128</span> <small>votes counted</small></div>
+            <div class="link" style="background:transparent;color:#ff8fb0;border:1px solid #ff2e7755">Reset session count</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-n">4</div>
+    <h3 class="step-h">Vote on vote.mtv.com</h3>
+    <p class="step-b">Head to <b>vote.mtv.com</b> and vote for <b>BLACKPINK</b> (Best K-Pop) and <b>LISA</b>
+      (Best Pop / Best K-Pop) as you normally would. The extension quietly reads each successful vote — a live
+      <b>BLINKS UNITED</b> panel appears right on the MTV page.</p>
+    <div class="mock" style="background:transparent;border:none;box-shadow:none;padding-top:0.3rem;">
+      <div class="bupanel">
+        <div class="top">★ Blinks United — counted today</div>
+        <div class="in">
+          <div class="tot">142 <small>votes today</small></div>
+          <div class="sp">
+            <span>🖤 BLACKPINK <b>96</b></span>
+            <span>🎀 LISA <b>46</b></span>
+          </div>
+          <div class="pulse"><i></i> 37 blinks voting now</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-n">5</div>
+    <h3 class="step-h">Watch your board climb</h3>
+    <p class="step-b">Back on <b>/voting</b>, your counted votes are already there — no manual entry. Keep the
+      tab logic simple: <b>stream + vote</b> to rank on the leaderboard. During an MTV <b>Power Hour</b> or
+      <b>Double Day</b>, the panel and popup glow gold to remind you votes count <b>2×</b>.</p>
+  </div>
+
+  <div class="sec-label">Under the hood</div>
+  <h2 class="sec-h">What the extension does</h2>
+  <div class="fns">
+    <div class="fn"><div class="ic">🗳️</div><h5>Auto-counts your votes</h5>
+      <p>Reads each successful vote you cast on vote.mtv.com and logs the BLACKPINK/LISA ones to your board.</p></div>
+    <div class="fn"><div class="ic">📊</div><h5>Live on-page panel</h5>
+      <p>A draggable, collapsible panel on the MTV site: today's total, a BLACKPINK / LISA split, and an activity log.</p></div>
+    <div class="fn"><div class="ic">💗</div><h5>&ldquo;Blinks voting now&rdquo;</h5>
+      <p>A live pulse of how many blinks logged a vote in the last 90 seconds — our community, in real time.</p></div>
+    <div class="fn"><div class="ic">⚡</div><h5>Power-hour glow</h5>
+      <p>Panel and popup light up gold during MTV Power Hours &amp; Double Days, when votes count double.</p></div>
+    <div class="fn"><div class="ic">⇄</div><h5>Cross-device sync</h5>
+      <p>Opt-in: merge your counts and the voting accounts you've used across every device you enable.</p></div>
+    <div class="fn"><div class="ic">🛡️</div><h5>Count-only, by design</h5>
+      <p>It only observes votes you cast yourself — it never votes for you, so it stays within VMA rules.</p></div>
+  </div>
+
+  <div class="safe">
+    <div class="big">🤝</div>
+    <div>
+      <h4>Honour system, always</h4>
+      <p>The counter reads only your own votes — it never casts one for you. Works on any desktop <b>Chromium
+        browser</b>, or on Android through one that still supports extensions (<b>Edge Canary</b> / <b>Quetta</b>) —
+        plain mobile Chrome and Firefox can't run it. If MTV changes its vote page for a future cycle, the extension
+        may need a small update.</p>
+    </div>
+  </div>
+
+  <div class="foot">Made for blinks · <b>blinksunited.com/voting</b> · VMA Vote Counter v1.6.0</div>
+</div>
+
+</body>
+</html>

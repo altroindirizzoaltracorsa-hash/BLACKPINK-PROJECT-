@@ -1961,6 +1961,8 @@
   .vv-ext-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
   .vv-ext-btn.ghost { color: var(--white); background: rgba(255,255,255,0.06); border: 1px solid var(--border); box-shadow: none; }
   .vv-ext-btn small { font-family: var(--mono); font-size: 0.52rem; opacity: 0.7; text-transform: none; letter-spacing: 0; }
+  .vv-ext-guide { display: inline-block; font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.04em; color: var(--pink); text-decoration: none; border-bottom: 1px dashed rgba(255,0,102,0.5); padding-bottom: 1px; margin-bottom: 0.9rem; }
+  .vv-ext-guide:hover { filter: brightness(1.15); }
   .vv-ext-steps { list-style: none; counter-reset: xs; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
   .vv-ext-steps li { counter-increment: xs; position: relative; padding-left: 2.1rem; font-size: 0.75rem; line-height: 1.5; color: rgba(245,240,240,0.9); }
   .vv-ext-steps li::before { content: counter(xs); position: absolute; left: 0; top: -0.05rem; width: 1.5rem; height: 1.5rem; display: grid; place-items: center; border-radius: 50%; background: var(--pink); color: #12000a; font-family: var(--mono); font-size: 0.72rem; font-weight: 700; }
@@ -7336,6 +7338,7 @@ function vmaExtensionHtml() {
       <a class="vv-ext-btn ghost" href="/vote-extension-v1.6.0-android.zip" download>⬇ Android <small>Edge Canary / Quetta</small></a>
       <button class="vv-ext-btn ghost" onclick="connectExtension()">🔗 Link my account</button>
     </div>
+    <a class="vv-ext-guide" href="/vote-counter-guide.html" target="_blank" rel="noopener">📖 Illustrated step-by-step guide ↗</a>
     <ol class="vv-ext-steps">
       <li><b>Download &amp; unzip</b> the file above.</li>
       <li><b>Desktop</b> — works in any Chromium browser (<b>Chrome, Edge, Brave, Opera, Vivaldi</b>): open <code>chrome://extensions</code> (or <code>edge://extensions</code>…), turn on <b>Developer mode</b> (top-right), click <b>Load unpacked</b> and pick the unzipped folder.<br><b>Android</b> — needs a Chromium browser that still supports extensions since Kiwi shut down: <b>Microsoft Edge Canary</b> (it inherited Kiwi's extension engine) or <b>Quetta</b>. Open its Extensions menu and load the <code>.zip</code> directly. <i>Regular Chrome and Firefox for Android can't run it.</i></li>
@@ -7346,6 +7349,7 @@ function vmaExtensionHtml() {
       <div class="vv-ext-app-head">📱 On a phone with no extension support? Get the <b>Android app</b></div>
       <div class="vv-ext-app-sub">Same counter, wrapped in an app — you vote inside it and it logs to your board. No browser extension needed. <i>Android only; iPhone can't sideload apps.</i></div>
       <a class="vv-ext-btn" href="/blinks-united-vote-counter.apk" download>⬇ Download Android app <small>.apk</small></a>
+      <a class="vv-ext-guide" href="/vote-app-guide.html" target="_blank" rel="noopener" style="margin-left:0.6rem;">📖 App setup guide ↗</a>
       <ol class="vv-ext-steps" style="margin-top:0.9rem;">
         <li>Tap <b>Download</b>, then open the <code>.apk</code>. Allow <b>Install unknown apps</b> for your browser if asked (Chrome shows a routine &ldquo;this file could harm your device&rdquo; notice — tap <b>Download anyway</b>).</li>
         <li>Open the app → <b>Link</b> → sign in with the same account. Then vote on <b>vote.mtv.com</b> <i>inside the app</i> — it counts automatically.</li>
