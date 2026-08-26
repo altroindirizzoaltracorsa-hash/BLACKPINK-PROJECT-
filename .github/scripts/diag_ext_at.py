@@ -27,6 +27,21 @@ r = httpx.get(
 print("HTTP", r.status_code)
 print(r.text[:4000])
 
+# 1b) What does a POST to the vote endpoint actually do? (redirect? 401 direct?)
+# This mirrors exactly what the Android app faces. A dummy token → expect 401 if
+# the app reaches the handler directly, or 3xx + Location if it must follow a redirect.
+print("\n--- POST endpoint behavior (dummy token, no redirect-follow) ---")
+try:
+    pr = httpx.post(
+        "https://blinksunited.com/api/vma-votes",
+        json={"extToken": "diagnostic-dummy", "votes": 1, "breakdown": {"BLACKPINK": 1}},
+        follow_redirects=False, timeout=20,
+    )
+    print("POST status:", pr.status_code, "| Location:", pr.headers.get("location"))
+    print("body:", pr.text[:300])
+except Exception as e:
+    print("POST error:", type(e).__name__, e)
+
 if r.status_code == 200:
     rows = r.json()
     with_ext = [x for x in rows if x.get("ext_at")]
