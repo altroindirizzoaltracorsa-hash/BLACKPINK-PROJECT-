@@ -47,7 +47,7 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         web = findViewById(R.id.web)
 
         findViewById<Button>(R.id.voteBtn).setOnClickListener { web.loadUrl("https://vote.mtv.com/") }
-        findViewById<Button>(R.id.linkBtn).setOnClickListener { web.loadUrl("https://blinksunited.com/extension-link.html") }
+        findViewById<Button>(R.id.linkBtn).setOnClickListener { startLinkFlow() }
         findViewById<Button>(R.id.boardBtn).setOnClickListener { web.loadUrl("https://blinksunited.com/voting") }
 
         counterJs = readAsset("counter.js")
@@ -77,7 +77,45 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         web.webChromeClient = WebChromeClient()
 
         updateHeader()
-        if (savedInstanceState == null) web.loadUrl("https://vote.mtv.com/")
+        // A deep link (buvotecounter://link?token=…) may have launched us.
+        if (!handleLinkIntent(intent) && savedInstanceState == null) {
+            web.loadUrl("https://vote.mtv.com/")
+        }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleLinkIntent(intent)
+    }
+
+    /** Open the account-link page in the REAL browser (so OAuth works), tagged so it
+     *  returns the token to us via the buvotecounter:// deep link. */
+    private fun startLinkFlow() {
+        try {
+            startActivity(
+                android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://blinksunited.com/extension-link.html?app=android")
+                )
+            )
+        } catch (e: Exception) {
+            // No browser? Fall back to linking inside the WebView (email/password only).
+            web.loadUrl("https://blinksunited.com/extension-link.html")
+        }
+    }
+
+    /** If this intent is our token deep link, store the token. Returns true if handled. */
+    private fun handleLinkIntent(intent: android.content.Intent?): Boolean {
+        val data = intent?.data ?: return false
+        if (data.scheme != "buvotecounter") return false
+        val token = data.getQueryParameter("token") ?: return false
+        onToken(token, data.getQueryParameter("profile"))
+        runOnUiThread {
+            web.loadUrl("https://vote.mtv.com/")
+            android.widget.Toast.makeText(this, "✅ Linked — you can vote now", android.widget.Toast.LENGTH_LONG).show()
+        }
+        return true
     }
 
     // ── Bridge callbacks ─────────────────────────────────────────────────────

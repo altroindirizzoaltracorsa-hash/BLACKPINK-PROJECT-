@@ -79,6 +79,22 @@
         window.postMessage({ source: 'bu-ext-link', token: d.token, profile: d.profile }, '*');
         $('login').classList.add('hidden');
         $('lead').textContent = `Signed in as ${d.profile}.`;
+
+        // Native Android app handoff: when this page is opened from the BU Vote
+        // Counter app (?app=android) — in the user's real browser, so OAuth works —
+        // bounce the token back into the app via its custom-scheme deep link. This
+        // avoids embedded-WebView logins, which X/Google refuse.
+        if (new URLSearchParams(location.search).get('app') === 'android') {
+          status('✅ Signed in — opening the app…', 'ok');
+          const deep = 'buvotecounter://link?token=' + encodeURIComponent(d.token)
+            + '&profile=' + encodeURIComponent(d.profile || '');
+          location.href = deep;
+          setTimeout(() => {
+            status('If the app didn\'t reopen, tap here: <a href="' + deep + '">return to BU Vote Counter</a>', 'ok');
+          }, 1500);
+          return;
+        }
+
         status('Handing the token to the extension…');
         // If no ack shortly, the extension probably isn't installed here.
         setTimeout(() => {
