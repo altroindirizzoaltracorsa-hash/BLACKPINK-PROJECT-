@@ -240,14 +240,16 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         if (account.isNullOrBlank()) return
         synchronized(prefs) {
             val arr = try { org.json.JSONArray(prefs.getString("accounts", "[]")) } catch (e: Exception) { org.json.JSONArray() }
-            var obj: org.json.JSONObject? = null
-            for (i in 0 until arr.length()) {
-                val o = arr.getJSONObject(i)
-                if (o.optString("id") == account) { obj = o; break }
-            }
-            if (obj == null) {
-                obj = org.json.JSONObject().put("id", account).put("cats", org.json.JSONArray()).put("votes", 0)
-                arr.put(obj)
+            // Find this account's record, or create and append a fresh one — as a
+            // guaranteed non-null value so member calls below type-check.
+            val obj: org.json.JSONObject = run {
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    if (o.optString("id") == account) return@run o
+                }
+                org.json.JSONObject()
+                    .put("id", account).put("cats", org.json.JSONArray()).put("votes", 0)
+                    .also { arr.put(it) }
             }
             val cats = obj.optJSONArray("cats") ?: org.json.JSONArray()
             var has = false
