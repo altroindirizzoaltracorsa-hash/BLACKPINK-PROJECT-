@@ -145,6 +145,18 @@
   .foot{ margin-top:2.4rem; font-family:var(--mono); font-size:0.66rem; color:var(--ink-soft); text-align:center;
     letter-spacing:0.04em; }
   .foot b{ color:var(--pink); }
+
+  .gv-privacy{ margin-top:2rem; border:1px solid rgba(63,217,130,0.4); border-radius:14px; background:color-mix(in srgb, #3fd982 9%, transparent); overflow:hidden; }
+  .gv-privacy summary{ cursor:pointer; list-style:none; padding:1rem 1.25rem; font-family:var(--mono); font-size:0.82rem; letter-spacing:0.03em; color:#159a5b; }
+  :root:not([data-theme="light"]) .gv-privacy summary{ color:#7ee0a0; }
+  :root[data-theme="dark"] .gv-privacy summary{ color:#7ee0a0; }
+  .gv-privacy summary::-webkit-details-marker{ display:none; }
+  .gv-privacy summary::after{ content:" ▾"; opacity:0.7; }
+  .gv-privacy[open] summary::after{ content:" ▴"; }
+  .gv-privacy-body{ padding:0 1.25rem 1.15rem; }
+  .gv-privacy-body p{ margin:0.55rem 0; color:var(--ink-soft); font-size:0.92rem; line-height:1.55; }
+  .gv-privacy-body b{ color:var(--ink); }
+  .gv-privacy-body .gv-fine{ margin-top:0.8rem; font-size:0.84rem; font-style:italic; }
 </style>
 </head>
 <body>
@@ -293,6 +305,19 @@
     <div class="fn"><div class="ic">🛡️</div><h5>Count-only, by design</h5>
       <p>It only observes votes you cast yourself — it never votes for you, so it stays within VMA rules.</p></div>
   </div>
+
+
+  <details class="gv-privacy">
+    <summary>🔒 Your privacy — does it take any private data? (tap to expand)</summary>
+    <div class="gv-privacy-body">
+      <p><b>Sent to your board:</b> your vote count + the BLACKPINK/LISA split, tied to your account by a random link token.</p>
+      <p><b>Never sent:</b> your email, password, MTV login, or browsing data.</p>
+      <p><b>Kept on your device only:</b> the accounts/emails you've voted with (for the 2/2 · 1/2 badges), your token, and the activity log.</p>
+      <p><b>Permissions</b> — App: <b>Internet</b> only. Extension: <b>storage</b> + <b>webRequest</b>, restricted to <b>vote.mtv.com</b> and <b>blinksunited.com</b> (it can't see any other site).</p>
+      <p>It only reads the votes <b>you</b> cast — it never votes for you — and you sign in through your own browser, so the tool only ever receives a token, never your password.</p>
+      <p class="gv-fine">It's open-source and installed outside the app stores, so it hasn't been through store review — the code is public to inspect, and you're trusting Blinks United.</p>
+    </div>
+  </details>
 
   <div class="safe">
     <div class="big">🍎</div>

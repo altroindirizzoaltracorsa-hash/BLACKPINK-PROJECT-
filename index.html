@@ -1977,6 +1977,9 @@
   .vv-ext-app-sub i { color: #ffb27a; font-style: normal; }
   .vv-ext-fns { margin: 0.85rem 0 0; padding: 0.75rem 0.9rem; background: rgba(0,0,0,0.22); border-radius: 8px; }
   .vv-ext-fns summary { cursor: pointer; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; color: #ff9cc2; }
+  .vv-ext-privacy { margin-top: 0.6rem; border: 1px solid rgba(63,217,130,0.3); }
+  .vv-ext-privacy summary { color: #7ee0a0; }
+  .vv-ext-privacy b { color: #cfeede; }
   .vv-ext-fns ul { margin: 0.6rem 0 0; padding-left: 1.1rem; }
   .vv-ext-fns li { font-size: 0.72rem; line-height: 1.55; color: rgba(245,240,240,0.88); margin-bottom: 0.3rem; }
   .vv-me-head { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: #ff74ac; margin-bottom: 0.5rem; }
@@ -7364,6 +7367,17 @@ function vmaExtensionHtml() {
         <li><b>Power-hour glow</b> — the panel &amp; toolbar popup light up during MTV Power Hours / Double Days (2× votes).</li>
         <li><b>Cross-device sync</b> (opt-in) — merges your counts and voting-accounts list across every device you turn it on.</li>
         <li><b>Count-only, never auto-vote</b> — it only reads votes you cast yourself, so it stays within VMA rules.</li>
+      </ul>
+    </details>
+    <details class="vv-ext-fns vv-ext-privacy">
+      <summary>🔒 Your privacy — what it does &amp; doesn't send</summary>
+      <ul>
+        <li><b>Only sends</b> your vote count + the BLACKPINK/LISA split to your own board — nothing else.</li>
+        <li><b>Never sends</b> your email, password or MTV login. You sign in in your own browser; the tool only gets a link token back.</li>
+        <li>The <b>accounts/emails you vote with stay on your device</b> — used only for the 2/2 · 1/2 tracker, never uploaded.</li>
+        <li><b>Counts only the votes you cast — never votes for you.</b></li>
+        <li>Extension access is locked to <b>vote.mtv.com</b> and <b>blinksunited.com</b> only; the app asks for <b>Internet</b> and nothing else.</li>
+        <li>Open-source &amp; sideloaded (not store-reviewed) — the code is there to inspect; you're trusting Blinks United.</li>
       </ul>
     </details>
     <div class="vv-ext-note">🤝 <b>Count, never auto-vote</b> — it only observes the votes you cast. Works on any desktop <b>Chromium browser</b>, or on Android via a browser that still supports extensions (<b>Edge Canary</b> / <b>Quetta</b>) — regular mobile Chrome and Firefox can't run it.</div>
