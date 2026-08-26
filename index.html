@@ -1321,12 +1321,16 @@
   .catalog-daily { font-size: 0.7rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.55); margin-top: 0.2rem; }
   .catalog-daily strong { color: var(--white); }
   .catalog-source { font-size: 0.52rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(245,240,240,0.28); margin-top: 0.3rem; }
-  .catalog-daily-list { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 0.45rem; margin-top: 0.6rem; }
-  .cat-daily-row { display: grid; grid-template-columns: 3.2rem 1fr 5.8rem; align-items: center; gap: 0.6rem; }
-  .cat-daily-date { font-size: 0.58rem; letter-spacing: 0.1em; color: rgba(245,240,240,0.45); text-align: right; white-space: nowrap; }
-  .cat-daily-bar-wrap { height: 4px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
-  .cat-daily-bar { height: 100%; background: var(--pink); border-radius: 2px; transition: width 0.4s ease; }
-  .cat-daily-num { font-size: 0.6rem; letter-spacing: 0.08em; color: rgba(245,240,240,0.65); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* Daily-streams card — matches the .yg-board style, keeps the pink bars */
+  .catalog-daily-list { width: 100%; max-width: 420px; margin: 0.4rem auto 0; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,0,102,0.18); border-radius: 16px; padding: 1.1rem 1.2rem; text-align: left; }
+  .cat-daily-title { font-family: var(--display); font-size: 0.95rem; letter-spacing: 0.06em; color: var(--white); margin-bottom: 0.15rem; }
+  .cat-daily-caption { font-size: 0.52rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,240,240,0.35); margin: 0 0 0.7rem; }
+  .cat-daily-row { display: grid; grid-template-columns: 3rem 1fr 6rem; align-items: center; gap: 0.6rem; padding: 0.5rem 0; border-top: 1px solid rgba(255,255,255,0.06); }
+  .cat-daily-row:first-of-type { border-top: none; }
+  .cat-daily-date { font-size: 0.62rem; letter-spacing: 0.1em; color: rgba(245,240,240,0.5); text-align: left; white-space: nowrap; }
+  .cat-daily-bar-wrap { height: 6px; background: rgba(255,255,255,0.07); border-radius: 3px; overflow: hidden; }
+  .cat-daily-bar { height: 100%; background: var(--pink); border-radius: 3px; transition: width 0.4s ease; box-shadow: 0 0 8px rgba(255,0,102,0.35); }
+  .cat-daily-num { font-size: 0.72rem; letter-spacing: 0.02em; color: var(--pink); font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 
   /* ── GROUP CHAT (floating widget, lives outside .page so it persists across all pages) ── */
   .chat-fab {
@@ -4654,7 +4658,9 @@ async function loadCatalogStreams() {
       const sorted = [...nums].sort((a, b) => a - b);
       const median = sorted[Math.floor(sorted.length / 2)] || 1;
       const max    = Math.max(1, ...nums.filter(v => v <= median * 20));
-      histEl.innerHTML = rows.map(row => `
+      histEl.innerHTML = `<div class="cat-daily-title">Daily Streams <span class="yg-sub">last 7 days</span></div>`
+        + `<p class="cat-daily-caption">Full BLACKPINK Catalog · Spotify</p>`
+        + rows.map(row => `
         <div class="cat-daily-row">
           <span class="cat-daily-date">${row.date}</span>
           <div class="cat-daily-bar-wrap"><div class="cat-daily-bar" style="width:${Math.min(100, Math.round(row.streams / max * 100))}%"></div></div>
