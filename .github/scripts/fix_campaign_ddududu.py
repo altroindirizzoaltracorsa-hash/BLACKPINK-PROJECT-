@@ -29,6 +29,14 @@ TRACK = "ddududu"
 SPIKE_MIN = 15_000_000   # DDU-DU gains ~200k-1M/day; anything above this is a merge glitch
 
 
+def _next_day(ddmm):
+    d, m = [int(x) for x in ddmm.split("/")]
+    d += 1
+    if d > 31:
+        d, m = 1, m + 1
+    return f"{d:02d}/{m:02d}"
+
+
 def call(url):
     try:
         with urllib.request.urlopen(url, timeout=30) as r:
@@ -78,12 +86,39 @@ def main():
     if prev:
         print(f"  (current prev.total={prev.get('total'):,} on {prev.get('date')} is what's blocking new days)")
 
+    # Backfill plan: the frozen gap really did gain streams. Recover the true
+    # cumulative at the last good day from the spike (merged prev.total minus the
+    # spike delta), spread the real gain (live - that) evenly across the gap days,
+    # and re-anchor prev/live on the final gap day so counting resumes current.
+    GAP_END = os.environ.get("GAP_END", "24/08")   # last day to backfill (labels resume the day after)
+
+    def date_range(start_ddmm, end_ddmm):
+        (sd, sm), (ed, em) = ([int(x) for x in start_ddmm.split("/")],
+                              [int(x) for x in end_ddmm.split("/")])
+        out, d, m = [], sd, sm
+        for _ in range(400):
+            out.append(f"{d:02d}/{m:02d}")
+            if (d, m) == (ed, em):
+                break
+            d += 1
+            if d > 31:
+                d, m = 1, m + 1
+        return out
+
+    total_last_good = (prev.get("total") - sum(e["streams"] for e in spikes)) if (prev and spikes) else None
+    gap_dates = date_range(_next_day(last_good["date"]), GAP_END) if last_good else []
+    gap_gain = (total - total_last_good) if (isinstance(total, int) and total_last_good) else None
+    if gap_gain is not None and gap_dates:
+        per = max(0, gap_gain // len(gap_dates))
+        print(f"  recovered 16/08 cumulative = {total_last_good:,}; gap gain = {gap_gain:,} "
+              f"over {len(gap_dates)} days (~{per:,}/day) → backfill {gap_dates[0]}..{gap_dates[-1]}")
+
     if not APPLY:
         print("\nDRY-RUN — no writes. Set APPLY=1 to apply.")
         return
 
-    if not isinstance(total, int) or total <= 0:
-        print("ERROR: no usable live total; aborting write.", file=sys.stderr)
+    if not isinstance(total, int) or total <= 0 or gap_gain is None or not gap_dates:
+        print("ERROR: could not compute a safe backfill; aborting write.", file=sys.stderr)
         sys.exit(1)
 
     # 1) delete spikes
@@ -92,18 +127,19 @@ def main():
         res = call(u)
         print(f"  deleted {e['date']}: ok={res.get('ok')} removed={res.get('removed')}")
 
-    # 2) re-anchor prev/live to the real live total on the last good date (rewriting
-    #    that entry unchanged), so the only-up gate reopens and labels stay correct.
-    if last_good:
-        anchor_date = last_good["date"]
-        anchor_streams = last_good["streams"]
+    # 2) backfill the gap with the real gain spread evenly; anchor prev/live on the last day
+    per = max(0, gap_gain // len(gap_dates))
+    remainder = gap_gain - per * (len(gap_dates) - 1)
+    for i, gd in enumerate(gap_dates):
+        last = i == len(gap_dates) - 1
+        streams = remainder if last else per
         u = (f"{BASE}?action=set-entry&track={TRACK}"
-             f"&date={urllib.parse.quote(anchor_date)}&streams={anchor_streams}"
-             f"&total={total}&prevDate={urllib.parse.quote(anchor_date)}&key={urllib.parse.quote(KEY)}")
+             f"&date={urllib.parse.quote(gd)}&streams={streams}")
+        if last:
+            u += f"&total={total}&prevDate={urllib.parse.quote(gd)}"
+        u += f"&key={urllib.parse.quote(KEY)}"
         res = call(u)
-        print(f"  re-anchored prev/live to {total:,} on {anchor_date}: ok={res.get('ok')}")
-    else:
-        print("  no good entry to anchor on — skipped re-anchor", file=sys.stderr)
+        print(f"  backfilled {gd} = {streams:,}{' (+anchor prev/live)' if last else ''}: ok={res.get('ok')}")
 
     snapshot("AFTER")
 
