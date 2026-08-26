@@ -164,8 +164,8 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
             io.execute {
                 val ok = VoteApi.postVotes(token, res.total, res.breakdown)
                 if (!ok) addPending(res.total) else flushPending(token)
-                val msg = if (ok) "✅ Synced ${res.total} → HTTP ${VoteApi.lastStatus}"
-                          else "⚠ Sync failed (${VoteApi.lastStatus}) ${VoteApi.lastError} — queued"
+                val msg = if (ok) "✅ Synced ${res.total} vote${if (res.total == 1) "" else "s"}"
+                          else "⚠ Couldn't sync — will retry"
                 runOnUiThread { updateHeader(); toast(msg) }
             }
         } else {
