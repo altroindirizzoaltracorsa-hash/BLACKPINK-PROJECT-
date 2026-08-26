@@ -20,9 +20,9 @@ jobs:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
         run: |
           echo "Seeding year-gained baselines…"
-          code=$(curl -sS -o /tmp/seed.json -w '%{http_code}' \
+          code=$(curl -sSL -o /tmp/seed.json -w '%{http_code}' \
             "https://blinksunited.com/api/proxy-image?year_gained=seed&key=${ADMIN_KEY}")
           echo "HTTP $code"; cat /tmp/seed.json; echo
           echo "--- verify list ---"
-          curl -sS "https://blinksunited.com/api/proxy-image?year_gained=list" | head -c 2000; echo
+          curl -sSL "https://blinksunited.com/api/proxy-image?year_gained=list" | head -c 2000; echo
           test "$code" = "200"
