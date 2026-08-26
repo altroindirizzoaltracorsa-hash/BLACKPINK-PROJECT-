@@ -2,6 +2,19 @@ name: Check BP JP fix
 
 on:
   workflow_dispatch:
+    inputs:
+      from:
+        description: "Window start (YYYY-MM-DD)"
+        required: false
+        default: "2026-08-14"
+      to:
+        description: "Window end (YYYY-MM-DD)"
+        required: false
+        default: "2026-08-21"
+      name:
+        description: "Focus track-family name substring"
+        required: false
+        default: "as if it's your last"
 
 jobs:
   check:
@@ -12,8 +25,11 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install httpx
-      - name: Dump BLACKPINK total + JP track history
+      - name: Inspect merge window + reconstruct merged days (read-only)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python .github/scripts/check-bp-jp-fix.py
+          FROM: ${{ github.event.inputs.from }}
+          TO: ${{ github.event.inputs.to }}
+          NAME: ${{ github.event.inputs.name }}
+        run: python .github/scripts/check_merge_window.py
