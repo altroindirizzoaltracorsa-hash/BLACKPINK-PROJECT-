@@ -25,11 +25,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install httpx
-      - name: Correct Spotify-merge double-counted catalog totals (dry-run unless apply=true)
+      - name: Diagnose vma_user_votes.ext_at (read-only)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          FROM: ${{ github.event.inputs.from }}
-          ARTIST: ${{ github.event.inputs.artist }}
-          APPLY: ${{ github.event.inputs.apply == 'true' && '1' || '' }}
-        run: python .github/scripts/fix_merged_double_count.py
+        run: python .github/scripts/diag_ext_at.py
