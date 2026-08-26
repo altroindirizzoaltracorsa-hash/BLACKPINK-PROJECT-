@@ -97,6 +97,35 @@ function detectMergeChanges(tracks) {
   };
 }
 
+// ── 2026 Streams Gained board ──────────────────────────────────────────────
+// We only began tracking in July 2026, so there is no real Jan-1 total. Instead
+// we store a per-artist baseline (implied Jan-1 total) seeded so that "gained" on
+// seed day equals the BPxSpotify community post, then it advances daily from our
+// own artist_daily_stats totals. Baseline = (our current total) − (BPx gained).
+const YEAR_BASELINE_KEY = 'bu_year_baseline_2026';
+// BPxSpotify "Streams gained in 2026 (so far)", 25 Aug 2026.
+const YEAR_SEED_GAINED = {
+  '250b0Wlc5Vk0CoUsaCY84M': 1_932_681_024, // JENNIE
+  '41MozSoPIsD1dJM0CLPjZF': 1_353_380_104, // BLACKPINK
+  '3eVa5w3URK5duf6eyVDbu9':   859_280_327, // ROSÉ
+  '5L1lO4eRHmJ7a0Q6csE5cT':   651_610_230, // LISA
+  '6UZ0ba50XreR4TM8u322gs':   202_825_379, // JISOO
+};
+
+async function fetchArtistTotals() {
+  const r = await sbFetch(
+    '/tracked_artists?active=eq.true&select=spotify_artist_id,name,avatar_url,' +
+    'artist_daily_stats(date,total_streams)&artist_daily_stats.order=date.desc&artist_daily_stats.limit=1',
+    { headers: { Accept: 'application/json' } },
+  );
+  if (!r.ok) return [];
+  const rows = await r.json();
+  return rows.map(a => ({
+    id: a.spotify_artist_id, name: a.name, avatar_url: a.avatar_url,
+    total: a.artist_daily_stats?.[0]?.total_streams ?? null,
+  }));
+}
+
 async function statsPost(body) {
   const r = await fetch(`${MUSICAT_BASE}/history/stats`, {
     method: 'POST', headers: MC_HEADERS,
@@ -555,6 +584,43 @@ export default async function handler(req, res) {
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
+  }
+
+  // ── GET ?year_gained=list (public) — 2026 streams-gained board ─────────────
+  if (req.query.year_gained === 'list') {
+    try {
+      const baselines = (await upstashGet(YEAR_BASELINE_KEY)) || {};
+      const totals = await fetchArtistTotals();
+      const items = totals
+        .filter(t => t.total != null && baselines[t.id] != null)
+        .map(t => ({ id: t.id, name: t.name, avatar_url: t.avatar_url,
+                     total: t.total, gained: Math.max(0, t.total - baselines[t.id]) }))
+        .sort((a, b) => b.gained - a.gained);
+      res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+      return res.status(200).json({ year: 2026, items });
+    } catch (e) {
+      return res.status(200).json({ year: 2026, items: [] });
+    }
+  }
+
+  // ── GET ?year_gained=seed (admin) — seed Jan-1 baselines from current totals ─
+  // baseline = current total − BPx "gained so far", so today's board matches the
+  // community post, then advances on its own. Re-runnable (re-anchors to latest).
+  if (req.query.year_gained === 'seed') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    const key = req.headers['x-admin-secret'] || req.query.key;
+    if (!adminSecret || key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
+    const totals = await fetchArtistTotals();
+    const baselines = {}, preview = [];
+    for (const t of totals) {
+      const gained = YEAR_SEED_GAINED[t.id];
+      if (gained == null || t.total == null) continue;
+      baselines[t.id] = t.total - gained;
+      preview.push({ name: t.name, total: t.total, gained, baseline: baselines[t.id] });
+    }
+    if (!Object.keys(baselines).length) return res.status(400).json({ error: 'No artist totals found to seed' });
+    await upstashSet(YEAR_BASELINE_KEY, baselines);
+    return res.status(200).json({ ok: true, preview });
   }
 
   // ── GET ?artist_streams=list — every tracked artist's latest snapshot ──────
