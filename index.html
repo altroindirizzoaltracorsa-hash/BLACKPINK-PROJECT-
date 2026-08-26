@@ -4646,6 +4646,7 @@ async function fetchSpotifyStreams() {
     const utcDate = new Date().toISOString().slice(0, 10); // daily CDN cache bust
     const res = await fetch(`/api/streams?d=${utcDate}`);
     const counts = await res.json();
+    renderStreamAnomalyBanner(counts?._debug?.anomalies);
 
     for (const t of SPOTIFY_TRACKS) {
       const entry = counts[t.id];
@@ -13847,8 +13848,63 @@ function _msReachedMs(data) {
 
 const _MS_WINDOW_MS = 24 * 60 * 60 * 1000; // auto-pop only within 24h of being reached
 
+// Admin-only banner prompting to confirm a Spotify merge/split the server held
+// (see MERGE_SPIKE_ABS in api/streams.js). Non-admins never see it.
+function renderStreamAnomalyBanner(anomalies) {
+  const isAdmin = !!localStorage.getItem('bu_admin_key');
+  let el = document.getElementById('stream-anomaly-banner');
+  const list = anomalies ? Object.entries(anomalies) : [];
+  if (!isAdmin || list.length === 0) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'stream-anomaly-banner';
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#2a0d16;'
+      + 'border-bottom:2px solid #f5c542;color:#f7e6b0;font:12px/1.45 -apple-system,BlinkMacSystemFont,sans-serif;'
+      + 'padding:10px 14px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.5);';
+    document.body.appendChild(el);
+  }
+  const NAMES = { jump: 'JUMP', shutdown: 'Shut Down', ddududu: 'DDU-DU DDU-DU', go: 'GO' };
+  el.innerHTML = list.map(([k, a]) => {
+    const sign = a.delta >= 0 ? '+' : '';
+    const what = a.kind === 'spike' ? 'possible merge (streams combined)' : 'possible merge-correction (streams dropped)';
+    return `<div style="margin:4px 0;max-width:820px;margin-inline:auto;">⚠ <b>${NAMES[k] || k}</b>: ${what} — `
+      + `${sign}${formatFull(a.delta)} (Spotify now ${formatFull(a.fetched)} vs held ${formatFull(a.prev)}) on ${a.date}. `
+      + `<b>Held — not counted.</b>`
+      + `<button onclick="resolveStreamAnomaly('${k}','accept')" style="margin-left:8px;padding:3px 9px;border:1px solid #2ecc71;background:#2ecc71;color:#08110a;border-radius:5px;cursor:pointer;font-weight:700;">Accept — new baseline</button>`
+      + `<button onclick="resolveStreamAnomaly('${k}','reject')" style="margin-left:5px;padding:3px 9px;border:1px solid #ff6f88;background:transparent;color:#ff9db0;border-radius:5px;cursor:pointer;">Reject — ignore</button></div>`;
+  }).join('');
+}
+
+async function resolveStreamAnomaly(track, decision) {
+  const key = localStorage.getItem('bu_admin_key');
+  if (!key) { alert('Admin key required (unlock admin first).'); return; }
+  const msg = decision === 'accept'
+    ? `Accept ${track}? Spotify's new (merged) value becomes the baseline going forward — no fake daily spike is recorded.`
+    : `Reject ${track}? The flagged value is ignored from now on; the card keeps its last good total.`;
+  if (!confirm(msg)) return;
+  try {
+    const r = await fetch(`/api/streams?action=resolve-anomaly&track=${encodeURIComponent(track)}&decision=${decision}&key=${encodeURIComponent(key)}`);
+    const d = await r.json();
+    if (d.ok) { fetchSpotifyStreams(); }
+    else alert(`Failed: ${d.error || r.status}`);
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
 function checkMilestone(trackId, total, lastDayDate) {
   if (!total) return;
+  // Self-heal: drop any locally-stored milestone ABOVE the current real total.
+  // Streams only go up, so the only way a saved milestone can exceed the live
+  // count is if it was stamped during a Spotify version-merge spike that later
+  // fell back (e.g. DDU-DU's phantom 960M). Prune it so the card stops showing it.
+  try {
+    const prefix = `bu_ms_${trackId}_`;
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (!k || k.indexOf(prefix) !== 0) continue;
+      const m = Number(k.slice(prefix.length));
+      if (Number.isFinite(m) && m > total) localStorage.removeItem(k);
+    }
+  } catch {}
   const milestone = getMilestone(total);
   if (!milestone) return;
   const key = `bu_ms_${trackId}_${milestone}`;
