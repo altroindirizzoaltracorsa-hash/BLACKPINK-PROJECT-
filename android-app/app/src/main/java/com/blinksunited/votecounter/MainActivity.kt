@@ -147,9 +147,14 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
 
         val token = prefs.getString("token", null)
         if (token != null) {
-            io.execute { VoteApi.postVotes(token, res.total, res.breakdown) }
+            io.execute {
+                val ok = VoteApi.postVotes(token, res.total, res.breakdown)
+                if (!ok) addPending(res.total) else flushPending(token)
+                runOnUiThread { updateHeader() }
+            }
         } else {
-            prefs.edit().putInt("pending", prefs.getInt("pending", 0) + res.total).apply()
+            addPending(res.total)
+            runOnUiThread { updateHeader() }
         }
     }
 
@@ -158,27 +163,45 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
             putString("token", token)
             if (!profile.isNullOrBlank()) putString("profile", profile)
         }.apply()
+        io.execute { flushPending(token); runOnUiThread { updateHeader() } }
+        runOnUiThread { updateHeader() }
+    }
 
+    override fun onResume() {
+        super.onResume()
+        val token = prefs.getString("token", null)
+        if (token != null && prefs.getInt("pending", 0) > 0) {
+            io.execute { flushPending(token); runOnUiThread { updateHeader() } }
+        }
+    }
+
+    private fun addPending(n: Int) = synchronized(prefs) {
+        prefs.edit().putInt("pending", prefs.getInt("pending", 0) + n).apply()
+    }
+
+    /** Retry votes that failed to post, oldest-first. The BP/LISA split is lost for
+     *  these (they count toward the total only), but no vote is dropped. */
+    private fun flushPending(token: String) {
         val pending = prefs.getInt("pending", 0)
-        if (pending > 0) {
-            io.execute {
-                if (VoteApi.postVotes(token, pending, emptyMap())) {
-                    prefs.edit().putInt("pending", 0).apply()
-                }
+        if (pending <= 0) return
+        if (VoteApi.postVotes(token, pending, emptyMap())) {
+            synchronized(prefs) {
+                prefs.edit().putInt("pending", (prefs.getInt("pending", 0) - pending).coerceAtLeast(0)).apply()
             }
         }
-        runOnUiThread { updateHeader() }
     }
 
     // ── UI ───────────────────────────────────────────────────────────────────
     private fun updateHeader() {
         countView.text = prefs.getInt("count", 0).toString()
         val linked = prefs.getString("token", null) != null
-        statusView.text = if (linked) {
+        val base = if (linked) {
             "● Linked" + (prefs.getString("profile", null)?.let { " · $it" } ?: "")
         } else {
             "○ Not linked — tap Link"
         }
+        val pending = prefs.getInt("pending", 0)
+        statusView.text = if (pending > 0) "$base · ⏳ $pending syncing" else base
     }
 
     private fun rollDayIfNeeded() {
