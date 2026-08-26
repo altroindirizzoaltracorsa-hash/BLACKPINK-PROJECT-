@@ -1308,29 +1308,38 @@
     .ct-secondary { flex: 0 0 360px; }
   }
   /* 2026 Streams Gained board */
-  .yg-board { width: 100%; max-width: 420px; margin: 0 auto; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,0,102,0.18); border-radius: 16px; padding: 1.1rem 1.2rem; }
-  .yg-title { font-family: var(--display); font-size: 0.95rem; letter-spacing: 0.06em; color: var(--white); text-align: left; margin-bottom: 0.15rem; }
-  .yg-sub { font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(245,240,240,0.4); }
-  .yg-cap { font-size: 0.52rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,240,240,0.35); margin: 0 0 0.7rem; text-align: left; }
-  .yg-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.42rem 0; border-top: 1px solid rgba(255,255,255,0.06); }
-  .yg-row:first-of-type { border-top: none; }
-  .yg-rank { font-family: var(--mono); font-size: 0.7rem; color: rgba(255,111,168,0.6); width: 1.1rem; text-align: center; flex-shrink: 0; }
-  .yg-av { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: #1a1013; }
-  .yg-name { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.03em; color: var(--white); flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .yg-num { font-family: var(--mono); font-size: 0.82rem; color: #2ecc71; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .yg-board { width: 100%; max-width: 480px; margin: 0 auto; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,0,102,0.18); border-radius: 18px; padding: 1.4rem 1.5rem; }
+  .yg-title { font-family: var(--display); font-size: 1.25rem; letter-spacing: 0.06em; color: var(--white); text-align: left; margin-bottom: 0.2rem; }
+  .yg-sub { font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(245,240,240,0.4); }
+  .yg-cap { font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(245,240,240,0.4); margin: 0 0 0.8rem; text-align: left; }
+  .yg-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0; border-top: 1px solid rgba(255,255,255,0.06); }
+  .yg-row:first-of-type { border-top: none; padding-top: 0.3rem; padding-bottom: 0.75rem; }
+  .yg-rank { font-family: var(--mono); font-size: 0.82rem; color: rgba(255,111,168,0.6); width: 1.3rem; text-align: center; flex-shrink: 0; }
+  .yg-av { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: #1a1013; }
+  .yg-name { font-family: var(--display); font-size: 1.05rem; letter-spacing: 0.03em; color: var(--white); flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .yg-num { font-family: var(--mono); font-size: 0.98rem; color: #2ecc71; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* Emphasize the #1 artist (first row) */
+  .yg-row:first-of-type .yg-rank { font-size: 1rem; color: var(--pink); }
+  .yg-row:first-of-type .yg-av { width: 52px; height: 52px; }
+  .yg-row:first-of-type .yg-name { font-size: 1.32rem; }
+  .yg-row:first-of-type .yg-num { font-size: 1.18rem; }
   .catalog-daily { font-size: 0.7rem; letter-spacing: 0.12em; color: rgba(245,240,240,0.55); margin-top: 0.2rem; }
   .catalog-daily strong { color: var(--white); }
   .catalog-source { font-size: 0.52rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(245,240,240,0.28); margin-top: 0.3rem; }
   /* Daily-streams card — matches the .yg-board style, keeps the pink bars */
-  .catalog-daily-list { width: 100%; max-width: 420px; margin: 0.4rem auto 0; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,0,102,0.18); border-radius: 16px; padding: 1.1rem 1.2rem; text-align: left; }
-  .cat-daily-title { font-family: var(--display); font-size: 0.95rem; letter-spacing: 0.06em; color: var(--white); margin-bottom: 0.15rem; }
-  .cat-daily-caption { font-size: 0.52rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,240,240,0.35); margin: 0 0 0.7rem; }
-  .cat-daily-row { display: grid; grid-template-columns: 3rem 1fr 6rem; align-items: center; gap: 0.6rem; padding: 0.5rem 0; border-top: 1px solid rgba(255,255,255,0.06); }
-  .cat-daily-row:first-of-type { border-top: none; }
-  .cat-daily-date { font-size: 0.62rem; letter-spacing: 0.1em; color: rgba(245,240,240,0.5); text-align: left; white-space: nowrap; }
-  .cat-daily-bar-wrap { height: 6px; background: rgba(255,255,255,0.07); border-radius: 3px; overflow: hidden; }
-  .cat-daily-bar { height: 100%; background: var(--pink); border-radius: 3px; transition: width 0.4s ease; box-shadow: 0 0 8px rgba(255,0,102,0.35); }
-  .cat-daily-num { font-size: 0.72rem; letter-spacing: 0.02em; color: var(--pink); font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+  .catalog-daily-list { width: 100%; max-width: 480px; margin: 0.4rem auto 0; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,0,102,0.18); border-radius: 18px; padding: 1.4rem 1.5rem; text-align: left; }
+  .cat-daily-title { font-family: var(--display); font-size: 1.25rem; letter-spacing: 0.06em; color: var(--white); margin-bottom: 0.2rem; }
+  .cat-daily-caption { font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(245,240,240,0.4); margin: 0 0 0.8rem; }
+  .cat-daily-row { display: grid; grid-template-columns: 3.4rem 1fr 6.8rem; align-items: center; gap: 0.7rem; padding: 0.6rem 0; border-top: 1px solid rgba(255,255,255,0.06); }
+  .cat-daily-row:first-of-type { border-top: none; padding-top: 0.3rem; padding-bottom: 0.85rem; }
+  .cat-daily-date { font-size: 0.78rem; letter-spacing: 0.1em; color: rgba(245,240,240,0.55); text-align: left; white-space: nowrap; }
+  .cat-daily-bar-wrap { height: 7px; background: rgba(255,255,255,0.07); border-radius: 4px; overflow: hidden; }
+  .cat-daily-bar { height: 100%; background: var(--pink); border-radius: 4px; transition: width 0.4s ease; box-shadow: 0 0 8px rgba(255,0,102,0.35); }
+  .cat-daily-num { font-size: 0.92rem; letter-spacing: 0.02em; color: var(--pink); font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+  /* Emphasize the most recent day (first row) */
+  .cat-daily-row:first-of-type .cat-daily-date { font-size: 0.95rem; color: var(--white); }
+  .cat-daily-row:first-of-type .cat-daily-bar-wrap { height: 10px; }
+  .cat-daily-row:first-of-type .cat-daily-num { font-size: 1.15rem; }
 
   /* ── GROUP CHAT (floating widget, lives outside .page so it persists across all pages) ── */
   .chat-fab {
