@@ -1949,6 +1949,29 @@
   .vv-me.vv-gate a:not(.vv-gate-btn) { color: var(--pink); }
   .vv-gate-btn { display: inline-block; margin-top: 0.9rem; font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); padding: 0.7rem 1.1rem; text-decoration: none; box-shadow: 0 4px 16px -6px rgba(255,0,102,0.9); transition: filter .15s; }
   .vv-gate-btn:hover { filter: brightness(1.08); }
+  /* VMA Vote Counter extension — download + setup, shown only to signed-in blinks with a scrobbler linked */
+  .vv-ext { background: linear-gradient(180deg, rgba(255,0,102,0.08), rgba(255,0,102,0.03)); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.15rem; margin-bottom: 1.1rem; }
+  .vv-ext-head { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; }
+  .vv-ext-title { font-family: var(--display); font-size: 1.12rem; letter-spacing: 0.02em; color: var(--white); }
+  .vv-ext-ver { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.08em; color: #12000a; background: var(--pink); padding: 0.14rem 0.44rem; border-radius: 999px; }
+  .vv-ext-sub { font-family: var(--mono); font-size: 0.62rem; line-height: 1.5; color: var(--muted); margin: 0.5rem 0 0.9rem; }
+  .vv-ext-sub b { color: #ff9cc2; font-weight: 700; }
+  .vv-ext-dl { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem; }
+  .vv-ext-btn { display: inline-flex; align-items: center; gap: 0.45rem; font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; color: #12000a; background: var(--pink); padding: 0.7rem 1rem; border-radius: 8px; text-decoration: none; box-shadow: 0 4px 16px -6px rgba(255,0,102,0.9); transition: filter .15s, transform .15s; }
+  .vv-ext-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .vv-ext-btn.ghost { color: var(--white); background: rgba(255,255,255,0.06); border: 1px solid var(--border); box-shadow: none; }
+  .vv-ext-btn small { font-family: var(--mono); font-size: 0.52rem; opacity: 0.7; text-transform: none; letter-spacing: 0; }
+  .vv-ext-steps { list-style: none; counter-reset: xs; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+  .vv-ext-steps li { counter-increment: xs; position: relative; padding-left: 2.1rem; font-size: 0.75rem; line-height: 1.5; color: rgba(245,240,240,0.9); }
+  .vv-ext-steps li::before { content: counter(xs); position: absolute; left: 0; top: -0.05rem; width: 1.5rem; height: 1.5rem; display: grid; place-items: center; border-radius: 50%; background: var(--pink); color: #12000a; font-family: var(--mono); font-size: 0.72rem; font-weight: 700; }
+  .vv-ext-steps li b { color: #fff; }
+  .vv-ext-steps code { font-family: var(--mono); font-size: 0.72em; background: rgba(255,255,255,0.08); padding: 0.08rem 0.34rem; border-radius: 4px; color: #ffd9e7; }
+  .vv-ext-note { margin-top: 0.9rem; font-family: var(--mono); font-size: 0.58rem; line-height: 1.5; color: var(--muted); }
+  .vv-ext-note b { color: #7ee0a0; }
+  .vv-ext-fns { margin: 0.85rem 0 0; padding: 0.75rem 0.9rem; background: rgba(0,0,0,0.22); border-radius: 8px; }
+  .vv-ext-fns summary { cursor: pointer; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; color: #ff9cc2; }
+  .vv-ext-fns ul { margin: 0.6rem 0 0; padding-left: 1.1rem; }
+  .vv-ext-fns li { font-size: 0.72rem; line-height: 1.55; color: rgba(245,240,240,0.88); margin-bottom: 0.3rem; }
   .vv-me-head { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: #ff74ac; margin-bottom: 0.5rem; }
   .vv-rank { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.02em; color: var(--white); margin-bottom: 0.7rem; }
   .vv-rank b { color: var(--pink); font-weight: 500; }
@@ -7273,6 +7296,11 @@ function drawVmaVoting() {
       <div class="vv-unranked-foot">🎧 Stream today to climb onto the board — these votes still count for BLACKPINK. 💗</div>
     </div>` : '';
 
+  // The vote-counter extension is offered only to blinks who are signed in AND
+  // have a scrobbler linked — i.e. the same bar the board itself uses. That's
+  // exactly the state where `_vvMe` exists with `linked !== false`.
+  const qualified = !!(_vvSession && _vvMe && _vvMe.linked !== false);
+
   panel.innerHTML = `<div class="vv-wrap${vmaScheduledPower() ? ' vv-live' : ''}">
     <div class="vv-head">
       <div class="vv-title">🗳️ VMA Voting Leaderboard</div>
@@ -7280,9 +7308,47 @@ function drawVmaVoting() {
       <button class="vv-guide-btn" onclick="startGuide()">🧭 New here? Step-by-step guide</button>
     </div>
     ${me}
+    ${qualified ? vmaExtensionHtml() : ''}
     <div class="vv-tabs">${toggle}</div>
     ${table}
     ${unrankedHtml}
+  </div>`;
+}
+
+// The VMA Vote Counter browser extension (v1.6.0) download + setup block, shown on
+// the /voting panel to signed-in blinks with a scrobbler linked. The extension
+// auto-counts the votes a fan casts on vote.mtv.com and logs the BLACKPINK/LISA
+// ones to their board — it never votes for them.
+function vmaExtensionHtml() {
+  return `<div class="vv-ext">
+    <div class="vv-ext-head">
+      <span class="vv-ext-title">🧩 VMA Vote Counter — browser extension</span>
+      <span class="vv-ext-ver">v1.6.0</span>
+    </div>
+    <div class="vv-ext-sub">Auto-counts the <b>BLACKPINK &amp; LISA</b> votes you cast on <b>vote.mtv.com</b> and logs them straight to this board — no more typing numbers into &ldquo;Add votes&rdquo;. It only reads your own votes; it <b>never votes for you</b>.</div>
+    <div class="vv-ext-dl">
+      <a class="vv-ext-btn" href="/vote-extension-v1.6.0-chrome.zip" download>⬇ Chrome <small>desktop</small></a>
+      <a class="vv-ext-btn ghost" href="/vote-extension-v1.6.0-kiwi.zip" download>⬇ Kiwi <small>Android</small></a>
+      <button class="vv-ext-btn ghost" onclick="connectExtension()">🔗 Link my account</button>
+    </div>
+    <ol class="vv-ext-steps">
+      <li><b>Download &amp; unzip</b> the file above — Chrome on desktop, or Kiwi Browser on Android.</li>
+      <li><b>Chrome:</b> open <code>chrome://extensions</code>, turn on <b>Developer mode</b> (top-right), click <b>Load unpacked</b> and pick the unzipped folder.<br><b>Kiwi (Android):</b> ⋮ menu → <b>Extensions</b> → load the <code>.zip</code> directly.</li>
+      <li>Click the extension → <b>Link my Blinks United account</b> → sign in on the page that opens (the same account you use here). It should then read <b>● Linked</b>.</li>
+      <li>Go to <b>vote.mtv.com</b> and vote for BLACKPINK / LISA — your votes show up here automatically, and a live BLINKS UNITED panel appears on the MTV page.</li>
+    </ol>
+    <details class="vv-ext-fns">
+      <summary>▸ What the extension does</summary>
+      <ul>
+        <li><b>Auto-counts your votes</b> — watches each successful vote you cast on vote.mtv.com and logs the BLACKPINK/LISA ones to your /voting board, no manual typing.</li>
+        <li><b>On-page panel</b> on vote.mtv.com — running &ldquo;counted today&rdquo; total, a BLACKPINK / LISA split, and a live activity log; draggable &amp; collapsible.</li>
+        <li><b>&ldquo;Blinks voting now&rdquo; pulse</b> — how many blinks logged a vote in the last 90 seconds (our community, live).</li>
+        <li><b>Power-hour glow</b> — the panel &amp; toolbar popup light up during MTV Power Hours / Double Days (2× votes).</li>
+        <li><b>Cross-device sync</b> (opt-in) — merges your counts and voting-accounts list across every device you turn it on.</li>
+        <li><b>Count-only, never auto-vote</b> — it only reads votes you cast yourself, so it stays within VMA rules.</li>
+      </ul>
+    </details>
+    <div class="vv-ext-note">🤝 <b>Count, never auto-vote</b> — it only observes the votes you cast. Works on desktop <b>Chrome</b> or Android <b>Kiwi Browser</b> (regular mobile Chrome can't run extensions).</div>
   </div>`;
 }
 
