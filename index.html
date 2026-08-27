@@ -1093,6 +1093,8 @@
     -webkit-background-clip: text; background-clip: text; color: transparent;
     line-height: 1.05;
   }
+  .as-hero-year { font-size: 0.92rem; font-weight: 700; color: #5be08a; letter-spacing: 0.01em; margin-top: 0.1rem; }
+  .as-hero-year small { color: var(--muted); font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.7rem; }
   .as-stat-row { display: flex; gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 2rem; }
   .as-stat { flex: 1; min-width: 140px; background: var(--card); padding: 1rem 1.2rem; display: flex; flex-direction: column; gap: 0.3rem; }
   .as-stat-label { font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
@@ -3535,6 +3537,7 @@
         <div class="as-hero-stat">
           <span class="as-stat-label">Total Streams Across All Releases</span>
           <span class="as-hero-stat-value" id="as-total-streams"></span>
+          <span class="as-hero-year" id="as-year-gained" style="display:none;"></span>
         </div>
         <button class="gen-card-btn" style="max-width:260px;margin-top:0.4rem" onclick="openArtistCard()">⬡ Generate Share Card</button>
         <div class="as-stat-row">
@@ -5306,6 +5309,15 @@ function renderArtistStreamsPage() {
     `${fmtNum(latest.followers)} followers${followersDelta} · ${fmtNum(latest.monthly_listeners)} monthly listeners${monthlyDelta}${rankStr}`;
 
   document.getElementById('as-total-streams').textContent = fmtNum(latest.total_streams);
+  const yearEl = document.getElementById('as-year-gained');
+  if (yearEl) {
+    if (d.year_gained != null) {
+      yearEl.innerHTML = `+${fmtNum(d.year_gained)} <small>in 2026</small>`;
+      yearEl.style.display = '';
+    } else {
+      yearEl.style.display = 'none';
+    }
+  }
   document.getElementById('as-track-count').textContent = fmtNum(latest.track_count);
   renderMergeNote(d.merges);
   const historyBody = document.getElementById('as-history-body');

@@ -686,7 +686,7 @@ export default async function handler(req, res) {
     const artistId = req.query.artist;
     if (!artistId) return res.status(400).json({ error: 'artist required' });
 
-    const [artistRes, historyRes, tracksRes] = await Promise.all([
+    const [artistRes, historyRes, tracksRes, baselines, anchors] = await Promise.all([
       sbFetch(`/tracked_artists?spotify_artist_id=eq.${artistId}&select=name,avatar_url`, { headers: { Accept: 'application/json' } }),
       sbFetch(`/artist_daily_stats?artist_id=eq.${artistId}&order=date.desc&limit=8&select=date,total_streams,daily_delta,followers,followers_delta,monthly_listeners,monthly_listeners_delta,world_rank,world_rank_delta,track_count`, { headers: { Accept: 'application/json' } }),
       sbFetch(
@@ -694,6 +694,8 @@ export default async function handler(req, res) {
         '&track_daily_stats.order=date.desc&track_daily_stats.limit=2',
         { headers: { Accept: 'application/json' } },
       ),
+      upstashGet(YEAR_BASELINE_KEY).then(b => b || {}).catch(() => ({})),
+      fetchAnchorTotals(),
     ]);
     if (!artistRes.ok || !historyRes.ok || !tracksRes.ok) {
       return res.status(502).json({ error: 'Supabase query failed' });
@@ -720,7 +722,8 @@ export default async function handler(req, res) {
     // Merge/split change-detection: compare today's equal-count groups to
     // yesterday's so the page can announce the moment Spotify merges or splits.
     const merges = detectMergeChanges(tracks);
-    return res.status(200).json({ ...artistRows[0], history, tracks, merges });
+    const year_gained = computeYearGained(artistId, history[0]?.total_streams ?? null, anchors, baselines);
+    return res.status(200).json({ ...artistRows[0], year_gained, history, tracks, merges });
   }
 
   // ── GET ?charts=list&chart_type=daily|weekly&country=GLOBAL&limit=50 ───────
