@@ -15721,7 +15721,7 @@ async function openLisaCard() {
 // download, drawn on the shared #card-canvas. Uses the self-hosted Angkor numerals
 // and the JISOO/CLICK wordmark + park artwork.
 let _jisooCardData = null;
-let _jisooBgImg = null, _jisooParkImg = null, _jisooTitleImg = null, _jisooClickImg = null, _jisooHeartImg = null;
+let _jisooBgImg = null, _jisooParkImg = null, _jisooTitleImg = null, _jisooClickImg = null, _jisooHeartImg = null, _jisooTeaserImg = null;
 
 function _drawStar(ctx, cx, cy, r, color) {
   ctx.save(); ctx.fillStyle = color; ctx.beginPath();
@@ -15734,7 +15734,8 @@ function _drawStar(ctx, cx, cy, r, color) {
 }
 
 // Draw a "10 ★ 22 ★ 31 ★ 58" row (Angkor numerals + Pretendard labels), centered.
-function _drawJisooCountRow(ctx, units, cx, top, H, INK) {
+function _drawJisooCountRow(ctx, units, cx, top, H, INK, starColor) {
+  starColor = starColor || INK;
   const numSize = Math.round(H * 0.135);
   const lblSize = Math.round(H * 0.027);
   const starR = numSize * 0.16;
@@ -15759,12 +15760,87 @@ function _drawJisooCountRow(ctx, units, cx, top, H, INK) {
     ctx.fillText(u[1], x + nw[i] / 2, numBase + lblSize * 1.7);
     ctx.restore();
     x += nw[i];
-    if (i < units.length - 1) { _drawStar(ctx, x + sep / 2, top + numSize * 0.42, starR, INK); x += sep; }
+    if (i < units.length - 1) { _drawStar(ctx, x + sep / 2, top + numSize * 0.42, starR, starColor); x += sep; }
   });
   ctx.letterSpacing = '0px';
 }
 
+// Teaser-look share card: the CLICK marquee photo full-bleed with the live
+// countdown + Early-Supporter row + CTA overlaid on a bottom scrim. Mirrors the
+// on-page "teaser" look so shares match whichever card the fan is viewing.
+function drawJisooTeaserCard(canvas, d) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const PX = Math.round(W * 0.075);
+  const CREAM = '#f2ddb8', GOLD = '#c9a06a';
+
+  ctx.fillStyle = '#0b0810'; ctx.fillRect(0, 0, W, H);
+  const img = d.teaserImg;
+  if (img && img.width) {
+    const s = Math.max(W / img.width, H / img.height);
+    const iw = img.width * s, ih = img.height * s;
+    ctx.drawImage(img, (W - iw) / 2, (H - ih) * 0.14, iw, ih); // bias up: keep marquee + head, crop baked CLICK/date
+  }
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0,    'rgba(8,5,10,0.34)');
+  g.addColorStop(0.32, 'rgba(8,5,10,0.03)');
+  g.addColorStop(0.52, 'rgba(8,5,10,0.55)');
+  g.addColorStop(0.78, 'rgba(7,4,9,0.92)');
+  g.addColorStop(1,    'rgba(5,3,7,1)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  const topY = Math.round(H * 0.08);
+  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  ctx.font = '500 20px "DM Mono", monospace'; ctx.letterSpacing = '4px';
+  ctx.fillStyle = 'rgba(242,221,184,0.9)';
+  ctx.fillText('BLINKS UNITED', PX, topY);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = d.earned ? GOLD : 'rgba(242,221,184,0.72)';
+  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : 'COUNTDOWN · NEW SINGLE', W - PX, topY);
+  ctx.letterSpacing = '0px';
+
+  let diff = Date.parse(d.target) - Date.now();
+  const isOut = !(diff > 0);
+  let dd = 0, hh = 0, mm = 0, ss = 0;
+  if (!isOut) { dd = Math.floor(diff / 86400000); diff %= 86400000; hh = Math.floor(diff / 3600000); diff %= 3600000; mm = Math.floor(diff / 60000); diff %= 60000; ss = Math.floor(diff / 1000); }
+  const p2 = n => String(n).padStart(2, '0');
+
+  const cdTop = Math.round(H * 0.585);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.font = '600 15px "PretendardVariable", -apple-system, sans-serif'; ctx.letterSpacing = '5px';
+  ctx.fillStyle = 'rgba(201,160,106,0.92)';
+  ctx.fillText(d.earned ? "I'M IN — JISOO · CLICK" : 'JISOO · CLICK · OUT IN', W / 2, cdTop - Math.round(H * 0.032));
+  ctx.letterSpacing = '0px';
+  if (isOut) {
+    ctx.fillStyle = CREAM; ctx.textBaseline = 'top';
+    ctx.font = `400 ${Math.round(H * 0.12)}px "AngkorDigits", Georgia, serif`;
+    ctx.fillText(d.liveLabel || 'OUT NOW', W / 2, cdTop);
+  } else {
+    _drawJisooCountRow(ctx, [[p2(dd), 'DAYS'], [p2(hh), 'HOURS'], [p2(mm), 'MINUTES'], [p2(ss), 'SECONDS']], W / 2, cdTop, H, CREAM, GOLD);
+  }
+
+  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'center';
+  const ctaY = Math.round(H * 0.87);
+  const heartH = Math.round(H * 0.05);
+  ctx.font = `italic 700 ${Math.round(H * 0.038)}px Georgia, "Times New Roman", serif`;
+  const ctaTxt = 'CLICK  jisoo.io ↗';
+  const tW = ctx.measureText(ctaTxt).width;
+  const heartW = d.heartImg ? heartH * (d.heartImg.width / d.heartImg.height) : 0;
+  const gap = heartW ? Math.round(W * 0.012) : 0;
+  const startX = W / 2 - (tW + heartW + gap) / 2;
+  if (d.heartImg) ctx.drawImage(d.heartImg, startX, ctaY - heartH * 0.82, heartW, heartH);
+  ctx.fillStyle = CREAM; ctx.textAlign = 'left';
+  ctx.fillText(ctaTxt, startX + heartW + gap, ctaY);
+
+  ctx.textAlign = 'center';
+  ctx.font = '500 15px "DM Mono", monospace'; ctx.letterSpacing = '2px';
+  ctx.fillStyle = 'rgba(242,221,184,0.62)';
+  ctx.fillText('shared via blinksunited.com', W / 2, H - Math.round(H * 0.03));
+  ctx.textAlign = 'left'; ctx.letterSpacing = '0px';
+}
+
 function drawJisooCard(canvas, d) {
+  if (d.teaser) return drawJisooTeaserCard(canvas, d);
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   const INK = '#68493a';
@@ -15866,12 +15942,16 @@ async function _openJisooShareCard() {
   const canvas = document.getElementById('card-canvas');
   canvas.width = 1200; canvas.height = 675;
 
-  const [bg, park, title, click, heart] = await Promise.all([
+  const jcard = document.getElementById('jisoo-card');
+  const teaser = jcard ? jcard.classList.contains('is-teaser') : (localStorage.getItem(JISOO_LOOK_LS) !== 'carnival');
+
+  const [bg, park, title, click, heart, teaserImg] = await Promise.all([
     _jisooBgImg    ? Promise.resolve(_jisooBgImg)    : loadImg('/Jisoobackground.webp').then(i => (_jisooBgImg = i)).catch(() => null),
     _jisooParkImg  ? Promise.resolve(_jisooParkImg)  : loadImg('/Jisoopark2.webp').then(i => (_jisooParkImg = i)).catch(() => null),
     _jisooTitleImg ? Promise.resolve(_jisooTitleImg) : loadImg('/jisoo-word-jisoo.webp').then(i => (_jisooTitleImg = i)).catch(() => null),
     _jisooClickImg ? Promise.resolve(_jisooClickImg) : loadImg('/jisoo-word-click.webp').then(i => (_jisooClickImg = i)).catch(() => null),
     _jisooHeartImg ? Promise.resolve(_jisooHeartImg) : loadImg('/jisoo-heart.webp').then(i => (_jisooHeartImg = i)).catch(() => null),
+    _jisooTeaserImg ? Promise.resolve(_jisooTeaserImg) : loadImg('/jisoo-click-teaser.webp').then(i => (_jisooTeaserImg = i)).catch(() => null),
   ]);
   await document.fonts.ready;
   // make sure the Angkor + Pretendard faces are actually rasterized before drawing
@@ -15880,7 +15960,7 @@ async function _openJisooShareCard() {
   await refreshSupporterChips();
   const earned = _buSignedIn && !!localStorage.getItem(JISOO_SAVE_LS);
   _jisooCardData = {
-    earned, bgImg: bg, parkImg: park, titleImg: title, clickImg: click, heartImg: heart,
+    earned, teaser, teaserImg, bgImg: bg, parkImg: park, titleImg: title, clickImg: click, heartImg: heart,
     target: JISOO_RELEASE_AT,
     dateLine: 'Sep 4, 2026 · 1PM KST / 12AM EDT',
     dateShort: 'Sep 4, 2026',
