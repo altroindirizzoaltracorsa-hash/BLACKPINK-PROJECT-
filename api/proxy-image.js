@@ -99,11 +99,15 @@ function detectMergeChanges(tracks) {
 
 // ── 2026 Streams Gained board ──────────────────────────────────────────────
 // We only began tracking in July 2026, so there is no real Jan-1 total. Instead
-// we store a per-artist baseline (implied Jan-1 total) seeded so that "gained" on
-// seed day equals the BPxSpotify community post, then it advances daily from our
-// own artist_daily_stats totals. Baseline = (our current total) − (BPx gained).
-const YEAR_BASELINE_KEY = 'bu_year_baseline_2026';
-// BPxSpotify "Streams gained in 2026 (so far)", 25 Aug 2026.
+// we anchor each artist to the BPxSpotify community post — their "gained in 2026
+// so far" as of YEAR_SEED_DATE — and then advance it purely by our own daily
+// deltas: gained = seed + (latest total − the total on YEAR_SEED_DATE). That sums
+// every day after the seed date onto the seed automatically, so a new daily row
+// (e.g. Aug 26) lifts the 2026 figure by exactly that day's delta. Self-correcting
+// vs. the absolute total, and it can't silently drift out of the anchor date.
+const YEAR_BASELINE_KEY = 'bu_year_baseline_2026'; // legacy Redis anchor — fallback only
+// BPxSpotify "Streams gained in 2026 (so far)", as of YEAR_SEED_DATE.
+const YEAR_SEED_DATE = '2026-08-23';
 const YEAR_SEED_GAINED = {
   '250b0Wlc5Vk0CoUsaCY84M': 1_932_681_024, // JENNIE
   '41MozSoPIsD1dJM0CLPjZF': 1_353_380_104, // BLACKPINK
@@ -124,6 +128,32 @@ async function fetchArtistTotals() {
     id: a.spotify_artist_id, name: a.name, avatar_url: a.avatar_url,
     total: a.artist_daily_stats?.[0]?.total_streams ?? null,
   }));
+}
+
+// Each artist's total_streams on YEAR_SEED_DATE (the anchor day), keyed by Spotify id.
+async function fetchAnchorTotals() {
+  const r = await sbFetch(
+    `/artist_daily_stats?date=eq.${YEAR_SEED_DATE}&select=artist_id,total_streams`,
+    { headers: { Accept: 'application/json' } },
+  );
+  if (!r.ok) return {};
+  const rows = await r.json();
+  const map = {};
+  for (const row of rows) map[row.artist_id] = row.total_streams;
+  return map;
+}
+
+// gained = seed + (latest total − anchor-day total). Falls back to the legacy
+// Redis baseline only if the anchor-day row is missing.
+function computeYearGained(spotifyId, latestTotal, anchors, baselines) {
+  const seed = YEAR_SEED_GAINED[spotifyId];
+  const anchor = anchors ? anchors[spotifyId] : null;
+  if (seed != null && latestTotal != null && anchor != null) {
+    return Math.max(0, seed + (latestTotal - anchor));
+  }
+  const base = baselines ? baselines[spotifyId] : null;
+  if (base != null && latestTotal != null) return Math.max(0, latestTotal - base);
+  return null;
 }
 
 async function statsPost(body) {
@@ -589,12 +619,15 @@ export default async function handler(req, res) {
   // ── GET ?year_gained=list (public) — 2026 streams-gained board ─────────────
   if (req.query.year_gained === 'list') {
     try {
-      const baselines = (await upstashGet(YEAR_BASELINE_KEY)) || {};
-      const totals = await fetchArtistTotals();
+      const [baselines, anchors, totals] = await Promise.all([
+        upstashGet(YEAR_BASELINE_KEY).then(b => b || {}).catch(() => ({})),
+        fetchAnchorTotals(),
+        fetchArtistTotals(),
+      ]);
       const items = totals
-        .filter(t => t.total != null && baselines[t.id] != null)
-        .map(t => ({ id: t.id, name: t.name, avatar_url: t.avatar_url,
-                     total: t.total, gained: Math.max(0, t.total - baselines[t.id]) }))
+        .map(t => ({ id: t.id, name: t.name, avatar_url: t.avatar_url, total: t.total,
+                     gained: computeYearGained(t.id, t.total, anchors, baselines) }))
+        .filter(t => t.gained != null)
         .sort((a, b) => b.gained - a.gained);
       res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
       return res.status(200).json({ year: 2026, items });
@@ -625,7 +658,7 @@ export default async function handler(req, res) {
 
   // ── GET ?artist_streams=list — every tracked artist's latest snapshot ──────
   if (req.query.artist_streams === 'list') {
-    const [r, baselines] = await Promise.all([
+    const [r, baselines, anchors] = await Promise.all([
       sbFetch(
         '/tracked_artists?active=eq.true&select=spotify_artist_id,name,avatar_url,' +
         'artist_daily_stats(date,total_streams,daily_delta,followers,followers_delta,monthly_listeners,monthly_listeners_delta,world_rank,world_rank_delta,track_count)' +
@@ -633,6 +666,7 @@ export default async function handler(req, res) {
         { headers: { Accept: 'application/json' } },
       ),
       upstashGet(YEAR_BASELINE_KEY).then(b => b || {}).catch(() => ({})),
+      fetchAnchorTotals(),
     ]);
     if (!r.ok) return res.status(200).json({ artists: [] });
     const rows = await r.json();
@@ -640,9 +674,7 @@ export default async function handler(req, res) {
     const artists = rows
       .map(a => {
         const stat = a.artist_daily_stats[0] || {};
-        const base = baselines[a.spotify_artist_id];
-        const year_gained = (base != null && stat.total_streams != null)
-          ? Math.max(0, stat.total_streams - base) : null;
+        const year_gained = computeYearGained(a.spotify_artist_id, stat.total_streams, anchors, baselines);
         return { id: a.spotify_artist_id, name: a.name, avatarUrl: a.avatar_url, ...stat, year_gained };
       })
       .sort((a, b) => ARTIST_ORDER.indexOf(a.name) - ARTIST_ORDER.indexOf(b.name));
