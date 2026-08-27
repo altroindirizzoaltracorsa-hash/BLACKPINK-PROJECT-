@@ -119,7 +119,7 @@ const YEAR_SEED_GAINED = {
 async function fetchArtistTotals() {
   const r = await sbFetch(
     '/tracked_artists?active=eq.true&select=spotify_artist_id,name,avatar_url,' +
-    'artist_daily_stats(date,total_streams)&artist_daily_stats.order=date.desc&artist_daily_stats.limit=1',
+    'artist_daily_stats(date,total_streams,daily_delta)&artist_daily_stats.order=date.desc&artist_daily_stats.limit=1',
     { headers: { Accept: 'application/json' } },
   );
   if (!r.ok) return [];
@@ -127,6 +127,8 @@ async function fetchArtistTotals() {
   return rows.map(a => ({
     id: a.spotify_artist_id, name: a.name, avatar_url: a.avatar_url,
     total: a.artist_daily_stats?.[0]?.total_streams ?? null,
+    delta: a.artist_daily_stats?.[0]?.daily_delta ?? null,
+    date:  a.artist_daily_stats?.[0]?.date ?? null,
   }));
 }
 
@@ -626,6 +628,7 @@ export default async function handler(req, res) {
       ]);
       const items = totals
         .map(t => ({ id: t.id, name: t.name, avatar_url: t.avatar_url, total: t.total,
+                     delta: t.delta, date: t.date,
                      gained: computeYearGained(t.id, t.total, anchors, baselines) }))
         .filter(t => t.gained != null)
         .sort((a, b) => b.gained - a.gained);

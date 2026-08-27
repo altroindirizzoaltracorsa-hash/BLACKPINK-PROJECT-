@@ -1327,6 +1327,8 @@
   .yg-av { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: #1a1013; }
   .yg-name { font-family: var(--display); font-size: 1.05rem; letter-spacing: 0.03em; color: var(--white); flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .yg-num { font-family: var(--mono); font-size: 0.98rem; color: #2ecc71; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .yg-nums { display: flex; flex-direction: column; align-items: flex-end; gap: 0.1rem; flex-shrink: 0; }
+  .yg-delta { font-family: var(--mono); font-size: 0.68rem; color: rgba(46,204,113,0.8); font-variant-numeric: tabular-nums; white-space: nowrap; }
   /* Emphasize the #1 artist (first row) */
   .yg-row:first-of-type .yg-rank { font-size: 1rem; color: var(--pink); }
   .yg-row:first-of-type .yg-av { width: 52px; height: 52px; }
@@ -4744,7 +4746,10 @@ async function renderYearGained(elId) {
           <span class="yg-rank">${i + 1}</span>
           <img class="yg-av" src="${it.avatar_url || ''}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
           <span class="yg-name">${it.name}</span>
-          <span class="yg-num">+${fmtNum(it.gained)}</span>
+          <span class="yg-nums">
+            <span class="yg-num">+${fmtNum(it.gained)}</span>
+            ${it.delta != null ? `<span class="yg-delta">${it.date ? fmtDayMon(it.date) + ' ' : ''}+${fmtNum(it.delta)}</span>` : ''}
+          </span>
         </div>`).join('')
       + `<button class="gen-card-btn" style="max-width:260px;margin:1rem auto 0;" onclick="openYearGainedCard()">⬡ Generate Share Card</button>`;
     el.style.display = 'block';
@@ -6059,7 +6064,7 @@ function renderArtistTracks() {
         ${art}
         <div>
           <div class="as-album-name">${g.album || 'Other'}</div>
-          <div class="as-album-stats">${g.tracks.length} track${g.tracks.length === 1 ? '' : 's'} · ${fmtNum(totalStreams)} streams · ${fmtDelta(totalDaily)} today</div>
+          <div class="as-album-stats">${g.tracks.length} track${g.tracks.length === 1 ? '' : 's'} · ${fmtNum(totalStreams)} streams · ${fmtDelta(totalDaily)}</div>
         </div>
       </div>
     </td></tr>
