@@ -1724,6 +1724,28 @@
     border-color: rgba(104,73,58,0.5); display: inline-flex; align-items: center; gap: 0.32rem; }
   .cd-badge-chip.js-locket img { height: 1.05rem; width: auto; display: block; }
 
+  /* ── JISOO "CLICK" teaser-hero card variant (dark) ───────────────────────── */
+  .cd-card-jt { --js-ink: #f2ddb8; padding: 0 0 1rem; background: #0b0810; overflow: hidden; }
+  .cd-card-jt .jt-hero { display: block; width: 100%; height: auto; }
+  .cd-card-jt .jt-panel { position: relative; z-index: 3; padding: 0.95rem 1.1rem 0.2rem; text-align: center;
+    background: linear-gradient(180deg, #140e17 0%, #0b0810 62%); }
+  .cd-card-jt .cd-eyebrow { color: #c9a06a; font-family: 'PretendardVariable', -apple-system, sans-serif;
+    font-weight: 600; font-size: 0.58rem; letter-spacing: 0.22em; text-transform: uppercase; margin-bottom: 0.55rem; }
+  .cd-card-jt .cd-star { color: #c9a06a; }
+  .cd-card-jt .cd-lbl { color: #b98e63; opacity: 1; }
+  .cd-card-jt .cd-badge-chip.js-locket { color: #e9cfa0; background: rgba(60,32,14,0.42);
+    border-color: rgba(201,160,106,0.55); margin: 0.15rem 0 0.1rem; }
+  .cd-card-jt .cd-timer { margin-top: 0.4rem; }
+  .cd-card-jt .cd-links { margin-top: 0.75rem; }
+  .cd-card-jt .cd-btn { color: #f2ddb8; background: rgba(242,221,184,0.10); border-color: rgba(201,160,106,0.5);
+    box-shadow: none; }
+  .cd-card-jt .cd-btn:hover { background: rgba(242,221,184,0.22); }
+  .cd-card-jt .cd-btn.js-presave { background: #7a2a2e; color: #fbeee9; border-color: #7a2a2e; }
+  .cd-card-jt .cd-btn.js-presave:hover { background: #92373b; color: #fff; }
+  .cd-card-jt .js-teaser { top: 0.7rem; right: 0.75rem; filter: drop-shadow(0 3px 10px rgba(0,0,0,0.6)); }
+  .cd-card-jt .cd-times { margin-top: 0.7rem; }
+  .cd-card-jt .cd-out { color: #f2ddb8; }
+
   /* ── VMAs voting-deadline countdown ──────────────────────────────────────── */
   .cd-card-vma { position: relative; overflow: hidden; text-align: center; color: #fff;
     background: #08080d; border-color: rgba(184,245,208,0.28);
@@ -2581,30 +2603,31 @@
               <div class="cd-times-body" data-times-for="2026-09-04T00:00:00Z"></div>
             </details>
           </div>
-          <div class="cd-card cd-card-jisoo" data-slug="jisoo.io" data-target="2026-09-04T04:00:00Z" data-live="OUT NOW ✨" data-stars="1">
+          <div class="cd-card cd-card-jisoo cd-card-jt" data-slug="jisoo.io" data-target="2026-09-04T04:00:00Z" data-live="OUT NOW ✨" data-stars="1">
+            <img class="jt-hero" src="/jisoo-click-teaser.webp" alt="JISOO — CLICK · out Sep 4, 2026 · 1PM KST" loading="lazy">
             <a class="js-teaser" href="https://youtube.com/shorts/FM3wA3-GjdE" target="_blank" rel="noopener" title="Watch the JISOO teaser"><img src="/jisoo-teaser.webp" alt="Watch the JISOO teaser"></a>
-            <img class="js-title" src="/jisoo-word-jisoo.webp" alt="JISOO" loading="lazy">
-            <div class="cd-sub"><span class="js-date">Thu, Sep 4, 2026</span><span class="js-tz">1PM KST / 12AM EDT</span></div>
-            <div class="cd-badge-chip js-locket" id="jisoo-badge" style="display:none;"><img src="/jisoo-heart.webp" alt="">Early Supporter</div>
-            <div class="cd-timer" data-timer></div>
-            <div class="cd-goal" id="jisoo-goal" style="display:none;">
-              <div class="cd-goal-top">
-                <span class="cd-goal-label">🎯 Blinks pre-saved</span>
-                <span class="cd-goal-nums" id="jisoo-goal-nums"></span>
+            <div class="jt-panel">
+              <div class="cd-eyebrow">JISOO · 1st Single · jisoo.io</div>
+              <div class="cd-badge-chip js-locket" id="jisoo-badge" style="display:none;"><img src="/jisoo-heart.webp" alt="">Early Supporter</div>
+              <div class="cd-timer" data-timer></div>
+              <div class="cd-goal" id="jisoo-goal" style="display:none;">
+                <div class="cd-goal-top">
+                  <span class="cd-goal-label">🎯 Blinks pre-saved</span>
+                  <span class="cd-goal-nums" id="jisoo-goal-nums"></span>
+                </div>
+                <div class="cd-goal-bar"><div class="cd-goal-fill" id="jisoo-goal-fill" style="width:0%"></div></div>
               </div>
-              <div class="cd-goal-bar"><div class="cd-goal-fill" id="jisoo-goal-fill" style="width:0%"></div></div>
+              <div class="cd-links">
+                <a class="cd-btn js-presave" href="https://jisoo.lnk.to/CLICK" target="_blank" rel="noopener" onclick="saveJisooClick()">Pre-save ↗</a>
+                <a class="cd-btn js-click" href="https://www.jisoo.io" target="_blank" rel="noopener"><img src="/jisoo-word-click.webp" alt="CLICK">jisoo.io&nbsp;↗</a>
+                <a class="cd-btn cd-btn-ghost js-teaser-btn" href="https://youtube.com/shorts/FM3wA3-GjdE" target="_blank" rel="noopener">▶ Teaser</a>
+                <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
+              </div>
+              <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
+                <summary>Release times worldwide</summary>
+                <div class="cd-times-body" data-times-for="2026-09-04T04:00:00Z"></div>
+              </details>
             </div>
-            <img class="js-park" src="/Jisoopark2.webp" alt="" loading="lazy">
-            <div class="cd-links">
-              <a class="cd-btn js-presave" href="https://jisoo.lnk.to/CLICK" target="_blank" rel="noopener" onclick="saveJisooClick()">Pre-save ↗</a>
-              <a class="cd-btn js-click" href="https://www.jisoo.io" target="_blank" rel="noopener"><img src="/jisoo-word-click.webp" alt="CLICK">jisoo.io&nbsp;↗</a>
-              <a class="cd-btn cd-btn-ghost js-teaser-btn" href="https://youtube.com/shorts/FM3wA3-GjdE" target="_blank" rel="noopener">▶ Teaser</a>
-              <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
-            </div>
-            <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
-              <summary>Release times worldwide</summary>
-              <div class="cd-times-body" data-times-for="2026-09-04T04:00:00Z"></div>
-            </details>
           </div>
           <div class="cd-card cd-card-lisa" data-slug="lalisaofficial.com" data-target="2026-10-23T04:00:00Z" data-live="OUT NOW ✨">
             <video class="lisa-hero" autoplay muted loop playsinline preload="metadata" poster="/lisa-mona.webp">
