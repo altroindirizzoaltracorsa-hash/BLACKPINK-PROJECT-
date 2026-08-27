@@ -1533,6 +1533,18 @@
   /* Hero card (JENNIE Fallen Angel): photo + overlaid wordmarks + pre-save challenge */
   .cd-hero { position: relative; width: calc(100% + 2.8rem); margin: -1.5rem -1.4rem 1rem; aspect-ratio: 16 / 9; overflow: hidden; background: #0a0608; }
   .cd-hero-bg { width: 100%; height: 100%; object-fit: cover; object-position: center 28%; display: block; }
+  /* Fallen Angel cover toggle: white-dress (default) ↔ red-dress alternate */
+  .cd-card-jennie .fa-hero-red { display: none; object-position: center 22%; }
+  .cd-card-jennie.is-alt .fa-hero-white { display: none; }
+  .cd-card-jennie.is-alt .fa-hero-red { display: block; }
+  .fa-look-toggle { position: absolute; top: 0.6rem; left: 0.6rem; z-index: 7;
+    display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px;
+    background: rgba(12,8,16,0.62); border: 1px solid rgba(255,255,255,0.16); backdrop-filter: blur(3px); }
+  .fa-look-toggle button { font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 700;
+    font-size: 0.66rem; letter-spacing: 0.04em; color: rgba(255,255,255,0.78); background: none; border: none;
+    border-radius: 999px; padding: 0.24rem 0.7rem; cursor: pointer; transition: background 0.14s, color 0.14s; }
+  .cd-card-jennie.is-alt .fa-look-toggle [data-look="red"],
+  .cd-card-jennie:not(.is-alt) .fa-look-toggle [data-look="white"] { background: rgba(255,255,255,0.92); color: #1a1016; }
   .cd-hero-scrim { position: absolute; inset: 0; background: linear-gradient(to top, rgba(10,6,8,0.94) 0%, rgba(10,6,8,0.35) 44%, rgba(10,6,8,0) 74%); }
   .cd-hero-inner { position: absolute; left: 1.4rem; right: 1.4rem; bottom: 1.05rem; display: flex; flex-direction: column; align-items: flex-start; gap: 0.4rem; }
   .cd-hero-logo { height: 26px; width: auto; max-width: 45%; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.65)); }
@@ -2570,9 +2582,14 @@
       <section id="home-countdowns" style="margin-top:2.2rem;max-width:900px;width:100%;text-align:center;">
         <p class="cd-section-label">◇ Countdowns</p>
         <div class="cd-wrap">
-          <div class="cd-card cd-card-hero cd-card-jennie" data-slug="jenn.ie" data-target="2026-08-28T04:00:00Z" data-live="OUT NOW ✨">
+          <div class="cd-card cd-card-hero cd-card-jennie" id="fa-card" data-slug="jenn.ie" data-target="2026-08-28T04:00:00Z" data-live="OUT NOW ✨">
             <div class="cd-hero">
-              <img class="cd-hero-bg" src="/fallenangel00.jpg" alt="JENNIE — Fallen Angel" loading="lazy" onerror="this.style.display='none'">
+              <div class="fa-look-toggle" role="group" aria-label="Cover style">
+                <button type="button" data-look="white" onclick="setFaLook('white')">White</button>
+                <button type="button" data-look="red" onclick="setFaLook('red')">Red</button>
+              </div>
+              <img class="cd-hero-bg fa-hero-white" src="/fallenangel00.jpg" alt="JENNIE — Fallen Angel" loading="lazy" onerror="this.style.display='none'">
+              <img class="cd-hero-bg fa-hero-red" src="/fallenangel-red.webp" alt="JENNIE — Fallen Angel" loading="lazy">
               <div class="cd-hero-scrim"></div>
               <div class="cd-hero-inner">
                 <img class="cd-hero-logo" src="/fallenangel-logo.png" alt="JENNIE" onerror="this.style.display='none'">
@@ -11963,6 +11980,19 @@ function setJisooLook(look, save = true) {
 try {
   const _jl = localStorage.getItem(JISOO_LOOK_LS);
   if (_jl === 'carnival') document.addEventListener('DOMContentLoaded', () => setJisooLook('carnival', false));
+} catch {}
+
+// Fallen Angel cover toggle — white-dress (default) vs red-dress alternate.
+const FA_LOOK_LS = 'bu_fa_look';
+function setFaLook(look, save = true) {
+  const card = document.getElementById('fa-card');
+  if (!card) return;
+  card.classList.toggle('is-alt', look === 'red');
+  if (save) { try { localStorage.setItem(FA_LOOK_LS, look); } catch {} }
+}
+try {
+  const _fl = localStorage.getItem(FA_LOOK_LS);
+  if (_fl === 'red') document.addEventListener('DOMContentLoaded', () => setFaLook('red', false));
 } catch {}
 
 function saveJisooClick() {
