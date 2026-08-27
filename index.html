@@ -1825,6 +1825,9 @@
     color: rgba(242,233,226,0.75); border-radius: 99px; padding: 0.6rem; margin-top: 0.3rem;
     font-family: 'DM Mono', monospace; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; }
   #pp-share-sheet .pp-cancel:hover { background: rgba(242,233,226,0.08); }
+  #pp-share-sheet .pp-note { margin: 0.55rem 0 0.15rem; padding: 0 0.2rem; text-align: center;
+    font-family: 'DM Mono', monospace; font-size: 0.66rem; line-height: 1.5; letter-spacing: 0.03em;
+    color: rgba(242,233,226,0.5); }
 
   /* /countdowns hub page */
   .cd-hub { max-width: 960px; margin: 0 auto; padding: 80px 1.2rem 3rem; text-align: center; }
@@ -11865,7 +11868,7 @@ function openJisooCard() {
 // Share LISA's PRESS PLAY EP countdown. Opens a small sheet so the fan can pick
 // what to post: the countdown-card Picture, LISA's teaser Video, or the Link
 // (whose /countdowns deep link renders the preview card on socials).
-const PP_SHARE_TEXT = 'LISA — PRESS PLAY EP · Oct 23, 2026 🎬';
+const PP_SHARE_TEXT = '🎬 LISA — PRESS PLAY (New EP) · Fri, Oct 23, 2026 · 1PM KST\nCountdown & pre-save:';
 const PP_SHARE_URL = 'https://www.blinksunited.com/countdowns/lalisaofficial.com';
 function openLisaPressPlayCard() {
   let ov = document.getElementById('pp-share-sheet');
@@ -11878,8 +11881,9 @@ function openLisaPressPlayCard() {
       '<div class="pp-sheet">' +
         '<div class="pp-sheet-title">Share PRESS PLAY</div>' +
         '<button class="pp-opt" onclick="_sharePressPlay(\'image\')">🖼<span>Picture</span><small>Countdown card</small></button>' +
-        '<button class="pp-opt" onclick="_sharePressPlay(\'video\')">🎬<span>Video</span><small>LISA teaser clip</small></button>' +
+        '<button class="pp-opt" onclick="_sharePressPlay(\'video\')">🎬<span>Video</span><small>Teaser + countdown card</small></button>' +
         '<button class="pp-opt" onclick="_sharePressPlay(\'link\')">🔗<span>Link</span><small>Preview link</small></button>' +
+        '<div class="pp-note">The caption &amp; link are copied automatically — just paste them with your post. 📋</div>' +
         '<button class="pp-cancel" onclick="closePressPlayShare()">Cancel</button>' +
       '</div>';
     document.body.appendChild(ov);
@@ -11894,33 +11898,44 @@ function closePressPlayShare() {
   const s = ov.querySelector('.pp-sheet'); if (s) s.style.transform = 'translateY(24px)';
   setTimeout(() => { ov.style.display = 'none'; }, 200);
 }
+const PP_SHARE_CAPTION = PP_SHARE_TEXT + ' ' + PP_SHARE_URL;
 async function _sharePressPlay(kind) {
   closePressPlayShare();
+  // ALWAYS put the caption + link on the clipboard first (within the tap gesture).
+  // Instagram / X / TikTok etc. silently drop the share `text` when a file is
+  // attached, so the countdown details + link would otherwise never travel with
+  // the picture or video. Copying it means the fan can just paste the caption.
+  let copied = false;
+  try { await navigator.clipboard?.writeText(PP_SHARE_CAPTION); copied = true; } catch {}
+
   if (kind === 'link') {
     if (navigator.share) navigator.share({ title: 'LISA — PRESS PLAY', text: PP_SHARE_TEXT, url: PP_SHARE_URL }).catch(() => {});
-    else { try { navigator.clipboard?.writeText(PP_SHARE_TEXT + ' ' + PP_SHARE_URL); _showShareToast('Link copied ✨'); } catch {} }
+    else _showShareToast(copied ? 'Caption + link copied ✨' : 'Copy failed — try again');
     return;
   }
   const asset = kind === 'video'
-    ? { src: '/lisa-preview.mp4', type: 'video/mp4', name: 'LISA-PRESS-PLAY.mp4' }
+    ? { src: '/lisa-preview-share.mp4', type: 'video/mp4', name: 'LISA-PRESS-PLAY.mp4' }
     : { src: '/og-countdown-pressplay.jpg', type: 'image/jpeg', name: 'LISA-PRESS-PLAY.jpg' };
   let blob;
   try { blob = await (await fetch(asset.src)).blob(); }
   catch { _showShareToast('Could not load — try again'); return; }
   const file = new File([blob], asset.name, { type: asset.type });
-  // Web Share level 2 (files) — best on mobile. Some targets reject a url alongside
-  // files, so share the file with just the caption text.
+  // Web Share level 2 (files) — best on mobile. Send the caption as `text` too (in
+  // case the target keeps it); the clipboard copy above is the reliable fallback.
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], text: PP_SHARE_TEXT }); return; }
+    if (copied) _showShareToast('📋 Caption + link copied — paste it with your post!');
+    try { await navigator.share({ files: [file], text: PP_SHARE_CAPTION }); return; }
     catch (e) { if (e && e.name === 'AbortError') return; /* else fall through to download */ }
   }
-  // Fallback (desktop / unsupported): download the asset.
+  // Fallback (desktop / unsupported): download the asset. Caption is already copied.
   try {
     const u = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = u; a.download = asset.name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(u), 1000);
-    _showShareToast(kind === 'video' ? 'Video saved ✓' : 'Picture saved ✓');
+    _showShareToast(kind === 'video'
+      ? (copied ? '🎬 Video saved + caption copied ✓' : '🎬 Video saved ✓')
+      : (copied ? '🖼 Picture saved + caption copied ✓' : '🖼 Picture saved ✓'));
   } catch { _showShareToast('Could not share — try again'); }
 }
 
