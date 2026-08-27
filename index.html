@@ -13269,7 +13269,7 @@ let _msShareBlob   = null; // pre-generated blob for shareMilestoneCard
 let _goalCardPhoto = null; // pre-loaded BLACKPINK photo for goal hit card
 let _goalWalkersImg = null; // pre-loaded walking-members cutout for the goal card
 let _presaveCardData = null;      // { campaign, earned, ... } for the pre-save share card
-let _faPhotoImg = null, _faTitleImg = null, _faLogoImg = null; // Fallen Angel assets (cached)
+let _faPhotoImg = null, _faPhotoRedImg = null, _faTitleImg = null, _faLogoImg = null; // Fallen Angel assets (cached)
 let _lisaCardData = null;         // data for the LISA hellosawadika share card
 let _lisaHelloImg = null, _lisaSawImg = null; // cached HELLO + สวัสดีค่ะ SVGs
 
@@ -15474,8 +15474,14 @@ async function openPresaveCard(campaign = 'fa') {
   const canvas = document.getElementById('card-canvas');
   canvas.width = 1200; canvas.height = 675;
 
+  // Match the cover the fan is viewing (white default / red alternate).
+  const faCard = document.getElementById('fa-card');
+  const isRed = faCard ? faCard.classList.contains('is-alt') : (localStorage.getItem(FA_LOOK_LS) === 'red');
+  const photoP = isRed
+    ? (_faPhotoRedImg ? Promise.resolve(_faPhotoRedImg) : loadImg('/fallenangel-red.webp').then(i => (_faPhotoRedImg = i)).catch(() => null))
+    : (_faPhotoImg    ? Promise.resolve(_faPhotoImg)    : loadImg('/fallenangel00.jpg').then(i => (_faPhotoImg = i)).catch(() => null));
   const [photo, titleImg, logoImg] = await Promise.all([
-    _faPhotoImg ? Promise.resolve(_faPhotoImg) : loadImg('/fallenangel00.jpg').then(i => (_faPhotoImg = i)).catch(() => null),
+    photoP,
     _faTitleImg ? Promise.resolve(_faTitleImg) : loadImg('/fallenangel-title.png').then(i => (_faTitleImg = i)).catch(() => null),
     _faLogoImg  ? Promise.resolve(_faLogoImg)  : loadImg('/fallenangel-logo.png').then(i => (_faLogoImg = i)).catch(() => null),
   ]);
