@@ -1067,7 +1067,10 @@
   .as-list-meta { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.04em; margin-top: 0.15rem; }
   .as-list-figures { margin-left: auto; text-align: right; flex-shrink: 0; }
   .as-list-total { font-family: var(--display); font-size: 1.5rem; color: var(--pink); letter-spacing: 0.02em; }
-  .as-list-delta { font-size: 0.75rem; margin-top: 0.15rem; }
+  .as-list-year { font-size: 0.72rem; color: #5be08a; margin-top: 0.2rem; font-weight: 600; letter-spacing: 0.02em; }
+  .as-list-year small { color: var(--muted); font-weight: 400; letter-spacing: 0.06em; }
+  .as-list-delta { font-size: 0.75rem; margin-top: 0.12rem; }
+  .as-list-delta-lbl { color: var(--muted); font-size: 0.62rem; letter-spacing: 0.06em; }
   .as-list-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
 
   /* Artist detail */
@@ -3510,7 +3513,6 @@
       <div id="as-loading" class="lb-loading">Loading…</div>
       <div id="as-error" class="as-error" style="display:none;"></div>
 
-      <div id="year-gained-streams" class="yg-board" style="display:none;max-width:480px;margin:0 auto 1.6rem;"></div>
 
       <div id="as-list" style="display:none;">
         <div class="as-list-grid" id="as-list-body"></div>
@@ -5182,12 +5184,11 @@ function fmtTrend(curDelta, prevDelta) {
 
 function loadArtistStreamsPage() {
   const artistId = new URLSearchParams(location.search).get('artist');
-  const yg = document.getElementById('year-gained-streams');
+  // The 2026 streams-gained figures now live inside each artist's all-time card
+  // (loadArtistStreamsList), so the standalone board here is retired.
   if (artistId) {
-    if (yg) yg.style.display = 'none';          // board shows on the list view only
     loadArtistStreamsDetail(artistId);
   } else {
-    renderYearGained('year-gained-streams');
     loadArtistStreamsList();
   }
 }
@@ -5232,7 +5233,8 @@ async function loadArtistStreamsList() {
         </div>
         <div class="as-list-figures">
           <div class="as-list-total">${fmtNum(a.total_streams)}</div>
-          <div class="as-list-delta">${fmtDelta(a.daily_delta)}</div>
+          ${a.year_gained != null ? `<div class="as-list-year">+${fmtNum(a.year_gained)} <small>in 2026</small></div>` : ''}
+          <div class="as-list-delta"><span class="as-list-delta-lbl">today</span> ${fmtDelta(a.daily_delta)}</div>
         </div>
       </div>
     `).join('') || '<div class="as-list-empty">No artists tracked yet</div>';

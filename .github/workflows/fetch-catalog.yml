@@ -56,11 +56,12 @@ jobs:
       - name: Run test fetch
         run: python .github/scripts/test-spotifyscraper.py
 
-  # Manual-only for now, until fetch-artist-streams.yml exists on main and
-  # can run on its own daily schedule -- same registration limitation as
-  # test-spotifyscraper above.
+  # Runs on the daily schedule (the canonical midnight-Rome / 22:00 UTC window)
+  # AND on manual dispatch unless run_artist_fetch=false. Previously manual-only,
+  # which silently froze per-member/per-artist streams (and the 2026 streams-gained
+  # board) between hand-triggered /update-streams runs.
   fetch-artist-streams:
-    if: github.event_name == 'workflow_dispatch' && inputs.run_artist_fetch != 'false'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_artist_fetch != 'false')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

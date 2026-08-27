@@ -625,22 +625,26 @@ export default async function handler(req, res) {
 
   // ── GET ?artist_streams=list — every tracked artist's latest snapshot ──────
   if (req.query.artist_streams === 'list') {
-    const r = await sbFetch(
-      '/tracked_artists?active=eq.true&select=spotify_artist_id,name,avatar_url,' +
-      'artist_daily_stats(date,total_streams,daily_delta,followers,followers_delta,monthly_listeners,monthly_listeners_delta,world_rank,world_rank_delta,track_count)' +
-      '&artist_daily_stats.order=date.desc&artist_daily_stats.limit=1',
-      { headers: { Accept: 'application/json' } },
-    );
+    const [r, baselines] = await Promise.all([
+      sbFetch(
+        '/tracked_artists?active=eq.true&select=spotify_artist_id,name,avatar_url,' +
+        'artist_daily_stats(date,total_streams,daily_delta,followers,followers_delta,monthly_listeners,monthly_listeners_delta,world_rank,world_rank_delta,track_count)' +
+        '&artist_daily_stats.order=date.desc&artist_daily_stats.limit=1',
+        { headers: { Accept: 'application/json' } },
+      ),
+      upstashGet(YEAR_BASELINE_KEY).then(b => b || {}).catch(() => ({})),
+    ]);
     if (!r.ok) return res.status(200).json({ artists: [] });
     const rows = await r.json();
     const ARTIST_ORDER = ['BLACKPINK', 'JISOO', 'JENNIE', 'ROSÉ', 'LISA'];
     const artists = rows
-      .map(a => ({
-        id: a.spotify_artist_id,
-        name: a.name,
-        avatarUrl: a.avatar_url,
-        ...(a.artist_daily_stats[0] || {}),
-      }))
+      .map(a => {
+        const stat = a.artist_daily_stats[0] || {};
+        const base = baselines[a.spotify_artist_id];
+        const year_gained = (base != null && stat.total_streams != null)
+          ? Math.max(0, stat.total_streams - base) : null;
+        return { id: a.spotify_artist_id, name: a.name, avatarUrl: a.avatar_url, ...stat, year_gained };
+      })
       .sort((a, b) => ARTIST_ORDER.indexOf(a.name) - ARTIST_ORDER.indexOf(b.name));
     return res.status(200).json({ artists });
   }
