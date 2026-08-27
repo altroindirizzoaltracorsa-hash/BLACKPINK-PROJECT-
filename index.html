@@ -1492,6 +1492,20 @@
   .guide-next { background: var(--pink); border: none; color: #12000a; font-family: var(--mono); font-size: 0.58rem; padding: 0.5rem 0.95rem; cursor: pointer; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
   .vv-guide-btn { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.8rem; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pink); background: rgba(255,0,102,0.08); border: 1px solid rgba(255,0,102,0.4); padding: 0.55rem 0.9rem; cursor: pointer; }
   .vv-guide-btn:hover { background: rgba(255,0,102,0.16); }
+  /* Video guides (collapsible) on the /voting panel */
+  .vv-videos { margin: 0.9rem 0 0.4rem; border: 1px solid rgba(255,0,102,0.28); background: rgba(255,0,102,0.04); border-radius: 4px; }
+  .vv-videos > summary { list-style: none; cursor: pointer; padding: 0.75rem 0.95rem; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.05em; color: var(--white); display: flex; align-items: center; gap: 0.5rem; }
+  .vv-videos > summary::-webkit-details-marker { display: none; }
+  .vv-videos > summary .vv-videos-caret { margin-left: auto; color: var(--pink); transition: transform 0.2s; }
+  .vv-videos[open] > summary .vv-videos-caret { transform: rotate(90deg); }
+  .vv-videos > summary b { color: var(--pink); }
+  .vv-videos-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.7rem; padding: 0 0.85rem 0.95rem; }
+  .vv-vid { display: flex; flex-direction: column; gap: 0.4rem; }
+  .vv-vid video { width: 100%; aspect-ratio: 430 / 932; max-height: 320px; background: #0a0006; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; object-fit: cover; }
+  .vv-vid-label { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.04em; line-height: 1.4; color: rgba(245,240,240,0.7); }
+  .vv-vid-label b { color: var(--white); display: block; font-size: 0.62rem; margin-bottom: 0.1rem; }
+  .vv-videos-tip { padding: 0 0.95rem 0.9rem; font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.04em; color: rgba(245,240,240,0.4); line-height: 1.5; }
+  @media (max-width: 520px) { .vv-videos-grid { grid-template-columns: 1fr 1fr; } }
 
   /* ── Home countdown cards (release / reveal timers) ── */
   .cd-section-label { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--pink); margin-bottom: 1.2rem; }
@@ -7317,12 +7331,36 @@ function drawVmaVoting() {
       <div class="vv-note">Register the votes you cast and race other blinks up the board — streaming blinks only. <a href="/vmas">how &amp; where to vote →</a></div>
       <button class="vv-guide-btn" onclick="startGuide()">🧭 New here? Step-by-step guide</button>
     </div>
+    ${vmaVideoGuidesHtml()}
     ${me}
     ${qualified ? vmaExtensionHtml() : ''}
     <div class="vv-tabs">${toggle}</div>
     ${table}
     ${unrankedHtml}
   </div>`;
+}
+
+// Short screen-recorded video guides, shown to everyone on the /voting panel (open
+// by default for first-timers). Recorded off the real site; leaderboard handles are
+// anonymised placeholders. preload="none" so the clips only load when a fan hits play.
+function vmaVideoGuidesHtml() {
+  const vids = [
+    { src: '/videos/guide-setup.mp4',     poster: '/videos/guide-setup.jpg',     head: 'First-time setup', sub: 'Sign up · display name · link a scrobbler' },
+    { src: '/videos/guide-extension.mp4', poster: '/videos/guide-extension.jpg', head: 'Browser extension', sub: 'Auto-counts your votes on desktop' },
+    { src: '/videos/guide-app.mp4',       poster: '/videos/guide-app.jpg',       head: 'Phone app (Android)', sub: 'Vote inside the app — it syncs' },
+  ];
+  const cells = vids.map(v => `
+    <div class="vv-vid">
+      <video controls playsinline preload="none" poster="${v.poster}">
+        <source src="${v.src}" type="video/mp4">
+      </video>
+      <div class="vv-vid-label"><b>${_vvEsc(v.head)}</b>${_vvEsc(v.sub)}</div>
+    </div>`).join('');
+  return `<details class="vv-videos">
+    <summary>📺 <span><b>Watch</b> the 60-second guides</span> <span class="vv-videos-caret">›</span></summary>
+    <div class="vv-videos-grid">${cells}</div>
+    <div class="vv-videos-tip">Tap any clip to play. The two steps that happen off the site — loading the extension in your browser, installing the app on your phone — are shown as on-screen instructions inside the clips.</div>
+  </details>`;
 }
 
 // The VMA Vote Counter browser extension (v1.6.0) download + setup block, shown on
