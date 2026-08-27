@@ -11,8 +11,9 @@
 //        (votes total = bp + lisa). Legacy { accessToken, votes } still accepted (unattributed).
 //        extra (extension, sync mode): { extToken, votes, sync, breakdown:{BLACKPINK,LISA}, account:{id,method} }
 //
-// To submit you must be signed in AND have a linked scrobbler (>=1 row in
-// linked_accounts) — i.e. an actual streaming blink. Enforced below.
+// To submit you must be signed in. A linked scrobbler is OPTIONAL: streaming
+// blinks get ranked on the board; vote-only blinks stay unranked and earn a
+// "Voter" badge at 1000 votes/day (no stream = no rank).
 //
 // Env: SUPABASE_URL, SUPABASE_SERVICE_KEY.  Schema: supabase/vma_user_votes.sql
 
@@ -200,9 +201,8 @@ export default async function handler(req, res) {
         if (!token) return res.status(401).json({ error: 'Sign in to log your votes' });
         const { data: { user } = {}, error: authErr } = await sb.auth.getUser(token);
         if (authErr || !user) return res.status(401).json({ error: 'Sign in to log your votes' });
-        if (!(await isLinked(sb, user.id))) {
-          return res.status(403).json({ error: 'Link a scrobbler first — the voting board is for streaming blinks.' });
-        }
+        // Streaming is optional: anyone signed in can log votes. Non-streamers just
+        // aren't ranked (no stream = no rank) — they earn a "Voter" badge at 1000/day.
         uid = user.id;
         // Store the BU display name if set, else null — the board resolves nameless
         // accounts to their handle / blinkN (see vma_vote_board).

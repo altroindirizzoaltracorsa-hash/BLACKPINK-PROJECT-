@@ -7232,6 +7232,9 @@ const VMA_VOTE_TIERS = [
 // Ultimate badge — needs BOTH heavy voting AND streaming (dual requirement,
 // so it lives outside the pure-votes ladder above).
 const MONSTER_BLINK = { votes: 2500, streams: 1500, label: 'MONSTER BLINK', icon: '👹' };
+// Vote-only (no scrobbler) blinks aren't ranked, but earn a simple "Voter" badge
+// once they log this many votes in a single day.
+const VMA_VOTER_DAILY = 1000;
 function voteTier(total) { let t = null; for (const x of VMA_VOTE_TIERS) if ((total || 0) >= x.min) t = x; return t; }
 function nextVoteTier(total) { for (const x of VMA_VOTE_TIERS) if ((total || 0) < x.min) return x; return null; }
 function isMonsterBlink(votes, streams) { return (votes || 0) >= MONSTER_BLINK.votes && (streams || 0) >= MONSTER_BLINK.streams; }
@@ -7283,13 +7286,8 @@ function drawVmaVoting() {
   let me;
   if (!_vvSession) {
     me = `<div class="vv-me vv-gate">
-      <div>Sign in and link a scrobbler to <b>register your votes and climb the board</b> against other blinks. 🏆</div>
+      <div>Sign in to <b>register your votes</b> — vote-only blinks earn a 🗳️ Voter badge at ${_vvFmt(VMA_VOTER_DAILY)}/day; <b>stream too to climb the ranked board</b>. 🏆</div>
       <a class="vv-gate-btn" href="/badges" onclick="goToMyBadges(); return false;">🔑 Sign in on My Badges →</a>
-    </div>`;
-  } else if (_vvMe && _vvMe.linked === false) {
-    me = `<div class="vv-me vv-gate">
-      <div>Link a scrobbler to get on the board — it's for blinks who <b>stream and vote</b>. 💗</div>
-      <a class="vv-gate-btn" href="/badges" onclick="goToMyBadges(); return false;">🎧 Link a scrobbler →</a>
     </div>`;
   } else if (_vvMe) {
     const myTotal = _vvMe.total || 0;
@@ -7330,8 +7328,15 @@ function drawVmaVoting() {
     </div>
     <div class="vv-ladder">${VMA_VOTE_TIERS.map(x => `<div class="vv-tier ${myTotal >= x.min ? 'got' : ''}"><span>${x.icon}</span><small>${x.min}</small></div>`).join('')}<div class="vv-tier vv-tier-mb ${hasMonster ? 'got' : ''}" title="${MB.votes.toLocaleString()} votes + ${MB.streams.toLocaleString()} streams"><span>${MB.icon}</span><small>MB</small></div></div>`;
     } else {
-      // Voting but not streaming yet — a gentle nudge (no exact threshold given).
-      rankBadge = `<div class="vv-rank vv-rank-hint">🎧 <b>Stream and vote</b> to get on the leaderboard.</div>`;
+      // Not streaming today → not ranked (no stream = no rank). Vote-only blinks
+      // still earn a simple "Voter" badge once they hit VMA_VOTER_DAILY in a day.
+      const myToday = _vvMe.today || 0;
+      if (myToday >= VMA_VOTER_DAILY) {
+        rankBadge = `<div class="vv-badge"><span class="vv-badge-cur">🗳️ Voter</span></div>
+    <div class="vv-rank vv-rank-hint">🎧 <b>Stream too</b> and you'll climb onto the ranked board. 🏆</div>`;
+      } else {
+        rankBadge = `<div class="vv-rank vv-rank-hint"><b>${_vvFmt(VMA_VOTER_DAILY - myToday)}</b> more votes today → 🗳️ <b>Voter</b> badge · 🎧 stream too to get ranked.</div>`;
+      }
     }
     me = `<div class="vv-me">
       <div class="vv-me-head">Your VMA votes${displayName ? ' · ' + _vvEsc(displayName) : ''}</div>
@@ -7382,12 +7387,13 @@ function drawVmaVoting() {
   const unranked = _vvUnranked.slice().sort((a, b) => (b[P] || 0) - (a[P] || 0) || (b.total || 0) - (a.total || 0));
   const unrankedHtml = unranked.length ? `
     <div class="vv-unranked">
-      <div class="vv-unranked-head">Voted · not streaming today — not ranked</div>
+      <div class="vv-unranked-head">Voters · not streaming — not ranked · 🗳️ Voter badge at ${_vvFmt(VMA_VOTER_DAILY)} votes/day</div>
       ${unranked.map(r => {
         const mine = displayName && (r.name || '').toLowerCase() === displayName.toLowerCase();
-        return `<div class="vv-unranked-row${mine ? ' vv-mine' : ''}"><span class="vv-unranked-name">${_vvEsc(r.name || 'a blink')}</span><span class="vv-unranked-v">${_vvFmt(r[P] || 0)} vote${(r[P] || 0) === 1 ? '' : 's'}</span></div>`;
+        const voter = (r.today || 0) >= VMA_VOTER_DAILY;
+        return `<div class="vv-unranked-row${mine ? ' vv-mine' : ''}"><span class="vv-unranked-name">${voter ? '<span class="vv-rowbadge" title="Voter — 1,000+ votes today">🗳️</span> ' : ''}${_vvEsc(r.name || 'a blink')}</span><span class="vv-unranked-v">${_vvFmt(r[P] || 0)} vote${(r[P] || 0) === 1 ? '' : 's'}</span></div>`;
       }).join('')}
-      <div class="vv-unranked-foot">🎧 Stream today to climb onto the board — these votes still count for BLACKPINK. 💗</div>
+      <div class="vv-unranked-foot">🎧 Stream today too and you'll climb onto the ranked board — these votes still count for BLACKPINK. 💗</div>
     </div>` : '';
 
   // The vote-counter extension is offered only to blinks who are signed in AND
@@ -7398,7 +7404,7 @@ function drawVmaVoting() {
   panel.innerHTML = `<div class="vv-wrap${vmaScheduledPower() ? ' vv-live' : ''}">
     <div class="vv-head">
       <div class="vv-title">🗳️ VMA Voting Leaderboard</div>
-      <div class="vv-note">Register the votes you cast and race other blinks up the board — streaming blinks only. <a href="/vmas">how &amp; where to vote →</a></div>
+      <div class="vv-note">Register the votes you cast and race other blinks up the board. Vote-only blinks earn a 🗳️ Voter badge; streaming blinks get ranked. <a href="/vmas">how &amp; where to vote →</a></div>
       <button class="vv-guide-btn" onclick="startGuide()">🧭 New here? Step-by-step guide</button>
     </div>
     ${vmaVideoGuidesHtml()}
