@@ -5164,6 +5164,15 @@ function fmtDate(isoDate) {
   return `${d}/${m}/${y}`;
 }
 
+// Compact "25 Aug" for the per-snapshot label (Spotify data lags ~2 days, so the
+// latest daily figure is dated — never "today").
+function fmtDayMon(isoDate) {
+  if (!isoDate) return '';
+  const [, m, d] = isoDate.split('-');
+  const mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][(+m || 1) - 1];
+  return `${+d} ${mon}`;
+}
+
 function fmtDelta(n) {
   if (n == null) return '—';
   const cls = n >= 0 ? 'as-delta-up' : 'as-delta-down';
@@ -5234,7 +5243,7 @@ async function loadArtistStreamsList() {
         <div class="as-list-figures">
           <div class="as-list-total">${fmtNum(a.total_streams)}</div>
           ${a.year_gained != null ? `<div class="as-list-year">+${fmtNum(a.year_gained)} <small>in 2026</small></div>` : ''}
-          <div class="as-list-delta"><span class="as-list-delta-lbl">today</span> ${fmtDelta(a.daily_delta)}</div>
+          <div class="as-list-delta"><span class="as-list-delta-lbl">${a.date ? fmtDayMon(a.date) : 'latest'}</span> ${fmtDelta(a.daily_delta)}</div>
         </div>
       </div>
     `).join('') || '<div class="as-list-empty">No artists tracked yet</div>';
