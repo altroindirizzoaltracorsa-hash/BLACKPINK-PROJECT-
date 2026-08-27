@@ -2450,6 +2450,7 @@
     <li><a href="/10years.html">10th Anniv.</a></li>
     <li><a href="/achievements">Achievements</a></li>
     <li><a href="/projects">Our Projects</a></li>
+    <li id="nav-signout-item" style="display:none;"><a href="#" onclick="navSignOut(); return false;" id="nav-signout">Sign out</a></li>
   </ul>
   <button id="pwa-install-btn" onclick="triggerInstall()" style="display:none;background:transparent;border:1px solid rgba(255,0,102,0.5);color:var(--pink);font-family:var(--mono);font-size:0.48rem;letter-spacing:0.14em;text-transform:uppercase;padding:0.4rem 0.8rem;cursor:pointer;white-space:nowrap;transition:border-color 0.2s,background 0.2s;" title="Install as app">⬇ Install App</button>
   <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
@@ -6563,6 +6564,17 @@ async function signOutAccount() {
   document.getElementById('profile-panel').style.display = 'none';
 }
 
+// Sign out straight from the nav (any page) — so a fan can log out without first
+// loading My Badges. Clears the cached display name (a name change is the main
+// reason to re-login) and reloads for a clean signed-out state.
+async function navSignOut() {
+  closeMobileNav();
+  if (!sb) { return; }
+  try { await sb.auth.signOut(); } catch (e) {}
+  try { localStorage.removeItem(LS_DISPLAY_KEY); } catch (e) {}
+  location.reload();
+}
+
 
 async function deleteAccount() {
   if (!sb) return;
@@ -6817,6 +6829,8 @@ if (sb) {
     // Early Supporter chips are account-gated — refresh them on every auth change
     // (sign-in reveals them across browsers; sign-out hides them).
     _buSignedIn = !!session?.user;
+    const _navSo = document.getElementById('nav-signout-item');
+    if (_navSo) _navSo.style.display = session?.user ? '' : 'none';
     if (typeof refreshSupporterChips === 'function') refreshSupporterChips();
     // Resume the step-by-step guide if the user just signed in mid-tour.
     if (session?.user && typeof _maybeResumeGuide === 'function') setTimeout(_maybeResumeGuide, 500);
