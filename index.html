@@ -11880,8 +11880,8 @@ function openLisaPressPlayCard() {
     ov.innerHTML =
       '<div class="pp-sheet">' +
         '<div class="pp-sheet-title">Share PRESS PLAY</div>' +
-        '<button class="pp-opt" onclick="_sharePressPlay(\'image\')">🖼<span>Picture</span><small>Countdown card</small></button>' +
-        '<button class="pp-opt" onclick="_sharePressPlay(\'video\')">🎬<span>Video</span><small>Teaser + countdown card</small></button>' +
+        '<button class="pp-opt" onclick="_ppPicture()">🖼<span>Picture</span><small>Countdown card · square or landscape</small></button>' +
+        '<button class="pp-opt" onclick="_sharePressPlay(\'video\')">🎬<span>Video</span><small>Teaser clip + details</small></button>' +
         '<button class="pp-opt" onclick="_sharePressPlay(\'link\')">🔗<span>Link</span><small>Preview link</small></button>' +
         '<div class="pp-note">The caption &amp; link are copied automatically — just paste them with your post. 📋</div>' +
         '<button class="pp-cancel" onclick="closePressPlayShare()">Cancel</button>' +
@@ -11899,6 +11899,9 @@ function closePressPlayShare() {
   setTimeout(() => { ov.style.display = 'none'; }, 200);
 }
 const PP_SHARE_CAPTION = PP_SHARE_TEXT + ' ' + PP_SHARE_URL;
+// Picture → the full canvas card (live countdown + Early Supporter stamp + the
+// landscape/square toggle + share/download/copy), the same pipeline as JENNIE.
+function _ppPicture() { closePressPlayShare(); openPressPlayCard(); }
 async function _sharePressPlay(kind) {
   closePressPlayShare();
   // ALWAYS put the caption + link on the clipboard first (within the tap gesture).
@@ -13288,6 +13291,7 @@ function setCardFormat(fmt, btn) {
   else if (_cardType === 'goal-hit' && window._goalCardData) drawGoalHitCard(canvas, { ...window._goalCardData, logo: _cardLogo, walkers: _goalWalkersImg, photo: _goalCardPhoto });
   else if (_cardType === 'presave' && _presaveCardData) { drawPresaveCard(canvas, _presaveCardData); _markCardReady(canvas); }
   else if (_cardType === 'lisa' && _lisaCardData) { drawLisaCard(canvas, _lisaCardData); _markCardReady(canvas); }
+  else if (_cardType === 'pressplay' && _ppCardData) { drawPressPlayCard(canvas, _ppCardData); _markCardReady(canvas); }
   else if (_cardType === 'jisoo' && _jisooCardData) { drawJisooCard(canvas, _jisooCardData); _markCardReady(canvas); }
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
@@ -13718,6 +13722,7 @@ async function shareCard() {
   // straight on that countdown.
   if (_cardType === 'jisoo') link = 'https://www.blinksunited.com/countdowns/jisoo.io';
   else if (_cardType === 'lisa') link = 'https://www.blinksunited.com/countdowns/hellosawadika.com';
+  else if (_cardType === 'pressplay') link = 'https://www.blinksunited.com/countdowns/lalisaofficial.com';
   else if (_cardType === 'presave') link = 'https://www.blinksunited.com/countdowns/jenn.ie';
   if (_cardType === 'vote') {
     const campaign = VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId);
@@ -13783,6 +13788,13 @@ async function shareCard() {
       statsText = d.earned
         ? `\n🖤 I'm an Early Supporter — JISOO, ${d.dateShort}\n👉 CLICK jisoo.io — count yourself in on blinksunited.com!\n`
         : `\n🖤 JISOO — jisoo.io · ${d.dateShort}\n👉 CLICK jisoo.io — every blink counts. Share it!\n`;
+    }
+  } else if (_cardType === 'pressplay') {
+    const d = _ppCardData;
+    if (d) {
+      statsText = d.earned
+        ? `\n🎬 I'm an Early Supporter — LISA "PRESS PLAY"\n⏰ ${d.dateShort}\n👉 Pre-save it too on blinksunited.com — don't forget to share!\n`
+        : `\n🎬 LISA — PRESS PLAY (New EP) · ${d.dateShort}\n👉 Pre-save it on blinksunited.com — every one counts. Share it!\n`;
     }
   } else if (_cardType === 'goal-hit') {
     const d = window._goalCardData;
@@ -15334,6 +15346,161 @@ async function openPresaveCard(campaign = 'fa') {
   };
   label.textContent = earned ? "I'M AN EARLY SUPPORTER" : 'FALLEN ANGEL · COUNTDOWN';
   drawPresaveCard(canvas, _presaveCardData);
+  _markCardReady(canvas);
+}
+
+// ── LISA "PRESS PLAY" EP share card (lalisaofficial.com — Alter Ego red) ──────
+// Same pipeline as JENNIE's Fallen Angel card: full-bleed photo, live countdown,
+// Early Supporter stamp for pre-savers, drawn on the shared #card-canvas so it
+// gets the landscape/square toggle + share/download/copy for free.
+let _ppCardData = null;
+let _ppPhotoImg = null, _ppWordImg = null, _ppTitleImg = null;
+function drawPressPlayCard(canvas, d) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const PX = Math.round(W * 0.075);
+  const RED = '#e6202f';
+
+  ctx.fillStyle = '#160410';
+  ctx.fillRect(0, 0, W, H);
+  const photo = d.photo;
+  if (photo && photo.naturalWidth) {
+    const scale = Math.max(W / photo.naturalWidth, H / photo.naturalHeight);
+    const dw = photo.naturalWidth * scale, dh = photo.naturalHeight * scale;
+    ctx.drawImage(photo, (W - dw) / 2, -(dh - H) * 0.06, dw, dh);
+  }
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0,    'rgba(18,3,8,0.55)');
+  g.addColorStop(0.32, 'rgba(18,3,8,0.05)');
+  g.addColorStop(0.60, 'rgba(18,3,8,0.36)');
+  g.addColorStop(1,    'rgba(12,2,6,0.97)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  drawNoise(ctx, W, H, 0.018);
+
+  const topY = Math.round(H * 0.085);
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = '500 20px "DM Mono", monospace';
+  ctx.letterSpacing = '4px';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(245,240,240,0.85)';
+  ctx.fillText('BLINKS UNITED', PX, topY);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = d.earned ? RED : 'rgba(245,240,240,0.7)';
+  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : 'COUNTDOWN · NEW EP', W - PX, topY);
+  ctx.textAlign = 'left';
+  ctx.letterSpacing = '0px';
+
+  // Live countdown to release (snapshot at generation time)
+  let diff = Date.parse(d.releaseAt) - Date.now();
+  const isOut = !(diff > 0);
+  let cdd = 0, cdh = 0, cdm = 0;
+  if (!isOut) { cdd = Math.floor(diff / 86400000); diff %= 86400000; cdh = Math.floor(diff / 3600000); diff %= 3600000; cdm = Math.floor(diff / 60000); }
+  const p2 = n => String(n).padStart(2, '0');
+  const cdCompact = isOut ? 'OUT NOW ✨' : `OUT IN ${cdd}D ${p2(cdh)}H ${p2(cdm)}M`;
+  const cdBig     = isOut ? 'OUT NOW'    : `${cdd}D ${p2(cdh)}H ${p2(cdm)}M`;
+
+  const BP = Math.round(H * 0.085);
+  const wordImg = d.logoImg, titleImg = d.titleImg;
+  const wordW = Math.round(W * 0.30);
+  const wordH = (wordImg && wordImg.naturalWidth) ? wordW * (wordImg.naturalHeight / wordImg.naturalWidth) : 0;
+  const titleW = Math.min(W * 0.66, W - PX * 2);
+  const titleH = (titleImg && titleImg.naturalWidth) ? titleW * (titleImg.naturalHeight / titleImg.naturalWidth) : 0;
+  const gapXS = Math.round(H * 0.012), gapS = Math.round(H * 0.016), gapM = Math.round(H * 0.03);
+  const dateH = Math.round(H * 0.03), ctaH = Math.round(H * 0.03);
+  const headSize   = Math.round(H * 0.075);
+  const cdLineH    = Math.round(H * 0.032);
+  const cdEyebrowH = Math.round(H * 0.024);
+  const cdBigSize  = Math.round(H * 0.11);
+
+  const blockH = d.earned
+    ? wordH + gapXS + titleH + gapM + headSize + gapXS + cdLineH + gapS + dateH + gapM + ctaH
+    : wordH + gapXS + titleH + gapM + cdEyebrowH + gapXS + cdBigSize + gapS + dateH + gapM + ctaH;
+  let y = H - BP - blockH;
+
+  ctx.textBaseline = 'top';
+  if (wordH)  ctx.drawImage(wordImg, PX, y, wordW, wordH);
+  y += wordH + gapXS;
+  if (titleH) ctx.drawImage(titleImg, PX, y, titleW, titleH);
+  y += titleH + gapM;
+
+  if (d.earned) {
+    ctx.fillStyle = RED;
+    ctx.font = `italic 700 ${Math.round(headSize * 1.05)}px "Cormorant Garamond", serif`;
+    ctx.letterSpacing = '1px';
+    ctx.fillText('I pre-saved', PX, y);
+    y += headSize + gapXS;
+    ctx.font = '600 22px "DM Mono", monospace';
+    ctx.letterSpacing = '3px';
+    ctx.fillStyle = 'rgba(245,240,240,0.9)';
+    ctx.fillText('⏳ ' + cdCompact, PX, y);
+    y += cdLineH + gapS;
+  } else {
+    ctx.font = '500 18px "DM Mono", monospace';
+    ctx.letterSpacing = '5px';
+    ctx.fillStyle = 'rgba(245,240,240,0.6)';
+    ctx.fillText(isOut ? 'OUT NOW' : 'COUNTDOWN TO RELEASE', PX, y);
+    y += cdEyebrowH + gapXS;
+    ctx.fillStyle = '#F5F0F0';
+    _fitFont(ctx, cdBig, '', '"Bebas Neue", sans-serif', cdBigSize, W - PX * 2, 40);
+    ctx.letterSpacing = '2px';
+    ctx.fillText(cdBig, PX, y);
+    y += cdBigSize + gapS;
+  }
+
+  ctx.font = `italic 28px "Cormorant Garamond", serif`;
+  ctx.letterSpacing = '1px';
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.fillText(d.dateLine, PX, y);
+  y += dateH + gapM;
+
+  ctx.font = '600 22px "DM Mono", monospace';
+  ctx.letterSpacing = '2px';
+  ctx.fillStyle = RED;
+  ctx.fillText(d.cta, PX, y);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(245,240,240,0.6)';
+  ctx.fillText('blinksunited.com', W - PX, y);
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.letterSpacing = '0px';
+}
+
+async function openPressPlayCard() {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none';
+  _cardType = 'pressplay';
+  _cardTrackId = null;
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+
+  const [photo, wordImg, titleImg] = await Promise.all([
+    _ppPhotoImg ? Promise.resolve(_ppPhotoImg) : loadImg('/lisa-mona.webp').then(i => (_ppPhotoImg = i)).catch(() => null),
+    _ppWordImg  ? Promise.resolve(_ppWordImg)  : loadImg('/lisa-word.webp').then(i => (_ppWordImg = i)).catch(() => null),
+    _ppTitleImg ? Promise.resolve(_ppTitleImg) : loadImg('/lisa-pressplay.webp').then(i => (_ppTitleImg = i)).catch(() => null),
+  ]);
+  await document.fonts.ready;
+
+  await refreshSupporterChips();
+  const earned = _buSignedIn && !!localStorage.getItem(LISA_SAVE_LS);
+  _ppCardData = {
+    earned, photo, logoImg: wordImg, titleImg,
+    releaseAt: '2026-10-23T04:00:00Z',
+    dateLine: 'Fri, Oct 23, 2026 · 1PM KST / 12AM EDT',
+    dateShort: 'out Oct 23, 2026',
+    cta: '▶ PRE-SAVE · LALISAOFFICIAL.COM',
+    act: 'LISA', release: 'PRESS PLAY',
+  };
+  label.textContent = earned ? "I'M AN EARLY SUPPORTER" : 'LISA · PRESS PLAY';
+  drawPressPlayCard(canvas, _ppCardData);
   _markCardReady(canvas);
 }
 
