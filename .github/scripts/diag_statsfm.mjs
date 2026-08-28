@@ -49,31 +49,35 @@ async function main() {
   // 3. Raw stats.fm streams/recent — resolve customId first
   const ur = await getJson(`${SFM}/users/${encodeURIComponent(USER)}`, SFM_H);
   const customId = ur.j.item?.customId ?? ur.j.item?.id ?? ur.j.customId ?? ur.j.id ?? USER;
-  console.log('── raw stats.fm streams/recent pagination test ──  customId:', customId);
-  const p1 = await getJson(`${SFM}/users/${encodeURIComponent(customId)}/streams/recent?limit=50`, SFM_H);
-  const items = p1.j.items ?? [];
-  const first = items[0], last = items[items.length - 1];
-  console.log('page1: items', items.length, '| newest', first?.endTime, '| oldest', last?.endTime);
-  const oldMs = new Date(last.endTime).getTime();
-  const oldSec = Math.floor(oldMs / 1000);
-
-  // Try several cursor variants and report the newest endTime each returns.
-  // If a variant advances, its newest endTime should be <= page1's oldest.
-  const variants = {
-    'before=ms':     `before=${oldMs}`,
-    'before=sec':    `before=${oldSec}`,
-    'to=ms':         `to=${oldMs}`,
-    'before=iso':    `before=${encodeURIComponent(last.endTime)}`,
-    'offset=50':     `offset=50`,
-    'page=2':        `page=2`,
-    'after=ms':      `after=${oldMs}`,
+  console.log('── stats.fm today per-track via top/tracks (target: JUMP 19, HEAVEN 16, LTAL 19, FA 15, GO 11, SD 8, DDU 7) ──');
+  const nowMs = Date.now();
+  const midnightMs = new Date(new Date().toISOString().slice(0,10) + 'T00:00:00.000Z').getTime(); // 00:00 UTC today
+  const wanted = ['jump','heaven','less than a lover','fallen angel','go','shut down','ddu-du ddu-du'];
+  const showTop = (label, items) => {
+    const rows = (items||[]).map(i => {
+      const nm = (i.track?.name ?? i.name ?? '').toLowerCase();
+      const streams = i.streams ?? i.count ?? i.playCount ?? '?';
+      return { nm, streams, raw: (i.track?.name ?? i.name) };
+    }).filter(r => wanted.some(w => r.nm.startsWith(w)));
+    console.log(`  ${label}: ${rows.length ? rows.map(r => `${r.raw}=${r.streams}`).join(' · ') : '(no matching tracks)'}`);
   };
-  for (const [label, qs] of Object.entries(variants)) {
-    const r = await getJson(`${SFM}/users/${encodeURIComponent(customId)}/streams/recent?limit=50&${qs}`, SFM_H);
-    const it = r.j.items ?? [];
-    const advanced = it[0] && new Date(it[0].endTime).getTime() < oldMs;
-    console.log(`  ${label.padEnd(12)} status ${r.status} | items ${it.length} | newest ${it[0]?.endTime} | ADVANCED=${advanced}`);
+
+  const tries = {
+    'range=today':                 `top/tracks?range=today&limit=50`,
+    'range=days':                  `top/tracks?range=days&limit=50`,
+    'after+before(ms)':            `top/tracks?after=${midnightMs}&before=${nowMs}&limit=50`,
+    'after(ms)only':               `top/tracks?after=${midnightMs}&limit=50`,
+    'after+before(sec)':           `top/tracks?after=${Math.floor(midnightMs/1000)}&before=${Math.floor(nowMs/1000)}&limit=50`,
+  };
+  for (const [label, path] of Object.entries(tries)) {
+    const r = await getJson(`${SFM}/users/${encodeURIComponent(customId)}/${path}`, SFM_H);
+    console.log(`  [${label}] status ${r.status} items ${(r.j.items||[]).length}`);
+    showTop(label, r.j.items);
   }
+  // Also test whether streams/recent honors a bigger limit (to widen the window)
+  const big = await getJson(`${SFM}/users/${encodeURIComponent(customId)}/streams/recent?limit=1000`, SFM_H);
+  const bi = big.j.items ?? [];
+  console.log(`  streams/recent?limit=1000 -> items ${bi.length} | newest ${bi[0]?.endTime} | oldest ${bi[bi.length-1]?.endTime}`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
