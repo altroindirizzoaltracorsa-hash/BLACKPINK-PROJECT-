@@ -6948,9 +6948,21 @@ const TRACKS = [
   { id: 'jump',     title: 'JUMP',          artist: 'BLACKPINK', track: 'JUMP',              year: '2025', era: 'DEADLINE',       spotify: 'https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY' },
   { id: 'shutdown', title: 'SHUT DOWN',     artist: 'BLACKPINK', track: 'Shut Down',         year: '2022', era: 'BORN PINK',      spotify: 'https://open.spotify.com/track/6tCd8bPvYnceDG7W9M1RMk' },
   { id: 'ddududu',  title: 'DDU-DU DDU-DU', artist: 'BLACKPINK', track: 'DDU-DU DDU-DU',     year: '2018', era: 'SQUARE UP',      spotify: 'https://open.spotify.com/track/69BIczdH6QMnFx7dsSssN8' },
-  { id: 'ltal',     title: 'LESS THAN A LOVER', artist: 'Jennie', track: 'Less Than a Lover', year: '2026', era: 'JENNIE SOLO', spotify: 'https://open.spotify.com/track/19UnXjpLshSLobPspdyxlD' },
   { id: 'go',       title: 'GO',            artist: 'BLACKPINK', track: 'GO',                year: '2026', era: 'DEADLINE',       spotify: 'https://open.spotify.com/track/0mYa3o6tlUN5HRippmKmwH' },
+  // Fallen Angel EP (JENNIE) — shown in the challenge as their own group once the EP
+  // is out. Kept OUT of the campaign totals + daily stamp (see EP_TRACK_IDS below).
+  { id: 'ltal',        title: 'LESS THAN A LOVER', artist: 'Jennie', track: 'Less Than a Lover', year: '2026', era: 'FALLEN ANGEL', spotify: 'https://open.spotify.com/track/19UnXjpLshSLobPspdyxlD' },
+  { id: 'fallenangel', title: 'FALLEN ANGEL',      artist: 'Jennie', track: 'Fallen Angel',       year: '2026', era: 'FALLEN ANGEL', spotify: 'https://jennie.lnk.to/FallenAngel' },
+  { id: 'heaven',      title: 'HEAVEN',            artist: 'Jennie', track: 'Heaven',             year: '2026', era: 'FALLEN ANGEL', spotify: 'https://jennie.lnk.to/FallenAngel' },
 ];
+// Campaign tracks (drive the campaign totals + daily stamp). The Fallen Angel EP
+// songs are tracked and shown, but never counted into these.
+const CAMPAIGN_TRACK_IDS = ['jump', 'shutdown', 'ddududu', 'go'];
+const EP_TRACK_IDS = ['ltal', 'fallenangel', 'heaven'];
+// Sum only the tracks that count toward the campaign totals (keeps Less Than a
+// Lover's long-standing inclusion; excludes Fallen Angel & Heaven).
+const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go'];
+function campaignTotalOf(tp) { return CAMPAIGN_TOTAL_IDS.reduce((s, id) => s + (tp?.[id] || 0), 0); }
 
 // ── VOTE CAMPAIGNS ───────────────────────────────────────────
 const VOTE_CAMPAIGNS = [
@@ -7776,6 +7788,8 @@ const DAILY_TIERS = {
   ddududu:  makeTiers(20, 'DDU-DU'),
   ltal:     makeTiers(30, 'LESS THAN A LOVER'),
   go:       makeTiers(40, 'GO'),
+  fallenangel: makeTiers(30, 'FALLEN ANGEL'),
+  heaven:      makeTiers(30, 'HEAVEN'),
 };
 
 const WEEKLY_TIERS = {
@@ -7784,6 +7798,8 @@ const WEEKLY_TIERS = {
   ddududu:  makeTiers(20 * 7, 'DDU-DU',    '/wk'),
   ltal:     makeTiers(30 * 7, 'LESS THAN A LOVER', '/wk'),
   go:       makeTiers(40 * 7, 'GO',        '/wk'),
+  fallenangel: makeTiers(30 * 7, 'FALLEN ANGEL', '/wk'),
+  heaven:      makeTiers(30 * 7, 'HEAVEN',       '/wk'),
 };
 
 function getDailyBadge(trackId, count) {
@@ -7894,7 +7910,7 @@ function _lbMemberKey(artist) {
 }
 
 async function fetchLbTrackCounts(username) {
-  const counts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } };
+  const counts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } };
 
   // 1. Try LB stats API first — fast when stats exist and include BLACKPINK
   try {
@@ -7910,8 +7926,10 @@ async function fetchLbTrackCounts(username) {
           else if (name === 'shut down')     counts.shutdown += rec.listen_count || 0;
           else if (name === 'ddu-du ddu-du') counts.ddududu  += rec.listen_count || 0;
           else if (name === 'go')            counts.go       += rec.listen_count || 0;
-        } else if (_lbMemberKey(rec.artist_name) === 'jennie' && name === 'less than a lover') {
-          counts.ltal += rec.listen_count || 0;
+        } else if (_lbMemberKey(rec.artist_name) === 'jennie') {
+          if (name === 'less than a lover') counts.ltal += rec.listen_count || 0;
+          else if (name === 'fallen angel') counts.fallenangel += rec.listen_count || 0;
+          else if (name === 'heaven')       counts.heaven += rec.listen_count || 0;
         }
       }
       for (const a of artStats?.payload?.artists || []) {
@@ -7933,9 +7951,9 @@ async function fetchLbTrackCounts(username) {
   const cacheAge = cached ? Date.now() - (cached.savedAt || 0) : Infinity;
   const doFull = !cached || cacheAge > 24 * 3600 * 1000;
   const base = doFull
-    ? { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } }
+    ? { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } }
     : { ...cached.counts, go: cached.counts?.go || 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0, ...(cached.counts?.memberPlays || {}) } };
-  const delta = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } };
+  const delta = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } };
   const _debugArtists = [];
   let maxListenedAt = doFull ? 0 : (cached.maxListenedAt || 0);
 
@@ -7957,6 +7975,8 @@ async function fetchLbTrackCounts(username) {
           if (mk === 'jennie') {
             const name = (l.track_metadata?.track_name || '').toLowerCase().trim();
             if (name === 'less than a lover') delta.ltal++;
+            else if (name === 'fallen angel') delta.fallenangel++;
+            else if (name === 'heaven')       delta.heaven++;
           }
           continue;
         }
@@ -7974,7 +7994,7 @@ async function fetchLbTrackCounts(username) {
     }
   } catch (e2) { console.warn('LB listen scan:', e2.message); }
 
-  for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'artistPlays']) counts[k] = (base[k] || 0) + (delta[k] || 0);
+  for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven', 'artistPlays']) counts[k] = (base[k] || 0) + (delta[k] || 0);
   for (const m of ['jisoo', 'lisa', 'rose', 'jennie']) counts.memberPlays[m] = base.memberPlays[m] + delta.memberPlays[m];
 
   if (!counts.artistPlays && doFull) {
@@ -8005,7 +8025,7 @@ async function fetchLbRecentListens(username, from, to) {
   return results;
 }
 function countLbByTrack(listens) {
-  const counts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 };
+  const counts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 };
   for (const l of listens) {
     const name   = (l.track_metadata?.track_name   || '').toLowerCase().trim();
     const artist = (l.track_metadata?.artist_name  || '').toLowerCase();
@@ -8014,8 +8034,10 @@ function countLbByTrack(listens) {
       else if (name === 'shut down')     counts.shutdown++;
       else if (name === 'ddu-du ddu-du') counts.ddududu++;
       else if (name === 'go')            counts.go++;
-    } else if (_lbMemberKey(l.track_metadata?.artist_name) === 'jennie' && name === 'less than a lover') {
-      counts.ltal++;
+    } else if (_lbMemberKey(l.track_metadata?.artist_name) === 'jennie') {
+      if (name === 'less than a lover') counts.ltal++;
+      else if (name === 'fallen angel') counts.fallenangel++;
+      else if (name === 'heaven')       counts.heaven++;
     }
   }
   return counts;
@@ -8169,7 +8191,7 @@ async function loadProfile(usernameOverride, silent = false) {
     }));
 
     const weekDays = [];
-    const weekCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 };
+    const weekCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 };
     let lastScrobbleTs = null;
 
     for (const res of weekScrobbleResults) {
@@ -8195,6 +8217,8 @@ async function loadProfile(usernameOverride, silent = false) {
       weekCounts.ddududu  += counts.ddududu  || 0;
       weekCounts.ltal     += counts.ltal     || 0;
       weekCounts.go       += counts.go       || 0;
+      weekCounts.fallenangel += counts.fallenangel || 0;
+      weekCounts.heaven      += counts.heaven      || 0;
     }
 
     // Merge ListenBrainz scores if a LB username is linked
@@ -8207,7 +8231,7 @@ async function loadProfile(usernameOverride, silent = false) {
           fetchLbRecentListens(lbUsername, dayFrom, dayTo),
         ]);
         const lbTodayCounts = countLbByTrack(lbToday);
-        for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go']) {
+        for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven']) {
           totalPlays[k]  += lbCounts[k]      || 0;
           todayCounts[k] += lbTodayCounts[k] || 0;
         }
@@ -8222,6 +8246,8 @@ async function loadProfile(usernameOverride, silent = false) {
           weekCounts.ddududu  += dc.ddududu  || 0;
           weekCounts.ltal     += dc.ltal     || 0;
           weekCounts.go       += dc.go       || 0;
+          weekCounts.fallenangel += dc.fallenangel || 0;
+          weekCounts.heaven      += dc.heaven      || 0;
         }
       } catch (e) { console.warn('LB fetch failed:', e.message); }
     }
@@ -8668,9 +8694,9 @@ async function fetchSingleAccountStats(source, username) {
     artistPlays: 0,
     bpGroupPlays: 0,
     memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 },
-    totalPlays:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 },
-    todayCounts: { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 },
-    weekCounts:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 },
+    totalPlays:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 },
+    todayCounts: { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 },
+    weekCounts:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 },
     weekDayCounts: [],
   };
   if (source === 'lastfm' || source === 'librefm') {
@@ -8703,6 +8729,8 @@ async function fetchSingleAccountStats(source, username) {
       res.weekCounts.ddududu  += dc.ddududu  || 0;
       res.weekCounts.ltal     += dc.ltal     || 0;
       res.weekCounts.go       += dc.go       || 0;
+      res.weekCounts.fallenangel += dc.fallenangel || 0;
+      res.weekCounts.heaven      += dc.heaven      || 0;
       // "blackpink" alone misses activity on Jennie's solo campaign track
       // (Less Than a Lover), which would otherwise wrongly flag an actively-
       // streaming fan as inactive just because their recent plays are all solo.
@@ -8718,7 +8746,7 @@ async function fetchSingleAccountStats(source, username) {
     // separate fetch could disagree with the week fetch and produce today>week.
     if (res.weekDayCounts[todayIdx]) res.todayCounts = { ...res.weekDayCounts[todayIdx] };
   } else if (source === 'listenbrainz') {
-    let lbCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, artistPlays: 0 };
+    let lbCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0, artistPlays: 0 };
     try {
       lbCounts = await fetchLbTrackCounts(username);
     } catch(e) { console.warn('LB fetch failed for', username, e.message); }
@@ -8726,12 +8754,12 @@ async function fetchSingleAccountStats(source, username) {
     res.bpGroupPlays = lbCounts.artistPlays;
     res.playcount    = lbCounts.artistPlays;
     if (lbCounts.memberPlays) res.memberPlays = { ...res.memberPlays, ...lbCounts.memberPlays };
-    for (const k of ['jump','shutdown','ddududu','ltal','go']) res.totalPlays[k] = lbCounts[k] || 0;
+    for (const k of ['jump','shutdown','ddududu','ltal','go','fallenangel','heaven']) res.totalPlays[k] = lbCounts[k] || 0;
     const lbTodayIdx = Math.floor((dayFrom - weekFrom) / 86400);
     for (let i = 0; i < 7; i++) {
       const ds = weekFrom + i * 86400;
       if (ds * 1000 > Date.now()) { res.weekDayCounts.push(null); continue; }
-      let dc = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 };
+      let dc = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 };
       try { dc = countLbByTrack(await fetchLbRecentListens(username, ds, ds + 86400)); } catch {}
       res.weekDayCounts.push(dc);
       res.weekCounts.jump     += dc.jump     || 0;
@@ -8739,6 +8767,8 @@ async function fetchSingleAccountStats(source, username) {
       res.weekCounts.ddududu  += dc.ddududu  || 0;
       res.weekCounts.ltal     += dc.ltal     || 0;
       res.weekCounts.go       += dc.go       || 0;
+      res.weekCounts.fallenangel += dc.fallenangel || 0;
+      res.weekCounts.heaven      += dc.heaven      || 0;
     }
     // Today = today's week-bucket (subset of the week), same as the Last.fm path.
     if (res.weekDayCounts[lbTodayIdx]) res.todayCounts = { ...res.weekDayCounts[lbTodayIdx] };
@@ -8814,9 +8844,9 @@ async function loadMultiAccountProfile(accounts) {
     artistPlays: 0,
     bpGroupPlays: 0,
     memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 },
-    totalPlays:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 },
-    todayCounts: { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 },
-    weekCounts:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 },
+    totalPlays:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 },
+    todayCounts: { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 },
+    weekCounts:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 },
     weekDays: null, info: null, lastScrobbleTs: null,
   };
   // Use a local array to avoid race conditions when two loads overlap
@@ -8894,7 +8924,7 @@ async function loadMultiAccountProfile(accounts) {
     for (const m of ['jisoo', 'lisa', 'rose', 'jennie']) {
       combined.memberPlays[m] += stats.memberPlays?.[m] || 0;
     }
-    for (const k of ['jump','shutdown','ddududu','ltal','go']) {
+    for (const k of ['jump','shutdown','ddududu','ltal','go','fallenangel','heaven']) {
       combined.totalPlays[k]  += stats.totalPlays[k]  || 0;
       combined.todayCounts[k] += stats.todayCounts[k] || 0;
       combined.weekCounts[k]  += stats.weekCounts[k]  || 0;
@@ -8908,7 +8938,7 @@ async function loadMultiAccountProfile(accounts) {
   catch (e) { console.warn('Extension fetch failed/timed out', e); }
   if (extAcct) {
     _breakdown.push(extAcct);
-    for (const k of ['jump','shutdown','ddududu','ltal','go']) {
+    for (const k of ['jump','shutdown','ddududu','ltal','go','fallenangel','heaven']) {
       combined.totalPlays[k]  += extAcct.totalPlays[k]  || 0;
       combined.todayCounts[k] += extAcct.todayCounts[k] || 0;
       combined.weekCounts[k]  += extAcct.weekCounts[k]  || 0;
@@ -8969,10 +8999,10 @@ async function loadMultiAccountProfile(accounts) {
   for (let i = 0; i < 7; i++) {
     const ds = weekFrom + i * 86400;
     if (ds * 1000 > Date.now()) { weekDays.push(null); continue; }
-    const day = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 };
+    const day = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 };
     for (const a of _breakdown) {
       const dc = a.weekDayCounts[i];
-      if (dc) { day.jump += dc.jump||0; day.shutdown += dc.shutdown||0; day.ddududu += dc.ddududu||0; day.ltal += dc.ltal||0; day.go += dc.go||0; }
+      if (dc) { day.jump += dc.jump||0; day.shutdown += dc.shutdown||0; day.ddududu += dc.ddududu||0; day.ltal += dc.ltal||0; day.go += dc.go||0; day.fallenangel += dc.fallenangel||0; day.heaven += dc.heaven||0; }
     }
     // Past day → merge in the server's frozen value (per-track max). Today stays live.
     if (ds < _todayFrom) {
@@ -9126,7 +9156,7 @@ async function buildExtensionAccount() {
     if (!session) return null;
     const { from: dayFrom } = getDayBounds();
     const { from: weekFrom } = getWeekBounds();
-    const zero = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 });
+    const zero = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 });
     const totalPlays = zero(), todayCounts = zero(), weekCounts = zero();
     const weekDayCounts = Array.from({ length: 7 }, () => zero());
     let lastTs = 0, total = 0;
@@ -9187,7 +9217,7 @@ async function buildExtensionAccount() {
         weekDayCounts[d][id] = Number(r.cnt) || 0;
       }
     } catch (e) { /* day cells stay 0; totals unaffected */ }
-    const campaignTotal = Object.values(totalPlays).reduce((s, v) => s + v, 0);
+    const campaignTotal = campaignTotalOf(totalPlays);
     return {
       label: 'Blinks United (BU Extension)',
       source: 'extension',
@@ -9303,10 +9333,10 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
     : `<div class="user-avatar-placeholder">${(info.name||'?')[0].toUpperCase()}</div>`;
 
   // Summary strip
-  const campaignTotal = Object.values(totalPlays).reduce((a,b) => a+b, 0);
+  const campaignTotal = campaignTotalOf(totalPlays);
   const earnedBadges = TRACKS.filter(t => getBadge(totalPlays[t.id] || 0)).length;
-  const dailyDone  = TRACKS.every(t => (todayCounts[t.id] || 0) >= dailyTier1(t.id));
-  const weeklyDone = TRACKS.every(t => (weekCounts[t.id]  || 0) >= weeklyTier1(t.id));
+  const dailyDone  = CAMPAIGN_TRACK_IDS.every(id => (todayCounts[id] || 0) >= dailyTier1(id));
+  const weeklyDone = CAMPAIGN_TRACK_IDS.every(id => (weekCounts[id]  || 0) >= weeklyTier1(id));
   const challengeIcon  = dailyDone ? '✓' : (weeklyDone ? '~' : '…');
   const challengeLabel = dailyDone ? 'Daily Complete!' : (weeklyDone ? 'Weekly Done' : 'Challenges Active');
   const _tap = acctBreakdown && acctBreakdown.length > 1;
@@ -9371,7 +9401,9 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
 
   // Daily challenge
   const dailyGrid = document.getElementById('daily-challenge-grid');
-  const gridTracks = ltalCampaignActive() ? TRACKS : TRACKS.filter(t => t.id !== 'ltal');
+  // Campaign tracks always; the Fallen Angel EP songs join once the EP is out.
+  const epOut = Date.now() >= FAEP_RELEASE_MS;
+  const gridTracks = TRACKS.filter(t => !EP_TRACK_IDS.includes(t.id) || epOut);
   const todayCombined = (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.go || 0);
   dailyGrid.innerHTML = `
     <div class="daily-grid">
@@ -9404,10 +9436,12 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
       }).join('')}
     </div>
     ${(() => {
-      const mults = gridTracks.map(t => getDailyBadge(t.id, todayCounts[t.id] || 0)?.mult || 0);
+      // The daily stamp is earned across the CAMPAIGN tracks only — the Fallen Angel
+      // EP songs are shown and tracked but never gate the stamp.
+      const mults = CAMPAIGN_TRACK_IDS.map(id => getDailyBadge(id, todayCounts[id] || 0)?.mult || 0);
       const minMult = Math.min(...mults);
-      if (minMult >= 3) return `<div class="complete-banner">🌟 ×${minMult} MULTI-ACCOUNT STAMP — ${minMult} accounts' worth on all 3 tracks!</div>`;
-      if (minMult >= 1) return '<div class="complete-banner">🏅 DAILY STAMP EARNED — Full playlist run on all 3 tracks! 💗</div>';
+      if (minMult >= 3) return `<div class="complete-banner">🌟 ×${minMult} MULTI-ACCOUNT STAMP — ${minMult} accounts' worth on all campaign tracks!</div>`;
+      if (minMult >= 1) return '<div class="complete-banner">🏅 DAILY STAMP EARNED — Full playlist run on all campaign tracks! 💗</div>';
       return '';
     })()}
     ${overallPrestigeBanner(todayCombined, 1000, 'day')}
@@ -10208,7 +10242,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
     const _wd = new Date(_wf * 1000);
     const weekStart = `${String(_wd.getUTCDate()).padStart(2,'0')}/${String(_wd.getUTCMonth()+1).padStart(2,'0')}`;
 
-    const campaignTotal = Object.values(totalPlays).reduce((a,b) => a+b, 0);
+    const campaignTotal = campaignTotalOf(totalPlays);
     const scores = {
       overall_all:      campaignTotal,
       overall_jump:     totalPlays.jump     || 0,
@@ -14305,7 +14339,7 @@ function drawPersonalCard(canvas, { info, todayCounts, totalPlays, avatarImg, lo
   }
 
   // Username + badge
-  const badge = getBadge(Object.values(totalPlays).reduce((a,b)=>a+b,0));
+  const badge = getBadge(campaignTotalOf(totalPlays));
   const tx = PX + AV + (landscape ? 24 : 30);
   ctx.fillStyle = '#F5F0F0';
   ctx.font = `${landscape ? 44 : 64}px "Bebas Neue", sans-serif`;
@@ -14364,7 +14398,7 @@ function drawPersonalCard(canvas, { info, todayCounts, totalPlays, avatarImg, lo
   }
 
   // Total campaign plays
-  const campTotal = Object.values(totalPlays).reduce((a,b) => a+b, 0);
+  const campTotal = campaignTotalOf(totalPlays);
   rowY += landscape ? 12 : 20;
   ctx.fillStyle = 'rgba(255,0,102,0.25)';
   ctx.fillRect(PX, rowY, W - PX*2, 1);
