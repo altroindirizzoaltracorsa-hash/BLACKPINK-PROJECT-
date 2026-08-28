@@ -862,6 +862,21 @@ export default async function handler(req, res) {
       }
     }
 
+    // Fallen Angel EP tracks (Fallen Angel / Heaven) are computed only by the hourly
+    // cron, never by the client submit — and they're intentionally kept OUT of the
+    // campaign *_all sums. A client submit replaces the whole scores object, so carry
+    // the cron's EP values forward here or a badges visit would zero those boards
+    // until the next cron run. Overall is cumulative (always preserved); daily/weekly
+    // only when the submit is for the same day/week the cron last wrote.
+    if (existingEntry?.scores && scores) {
+      const ex = existingEntry.scores;
+      for (const id of ['fallenangel', 'heaven']) {
+        if (scores[`overall_${id}`] == null && ex[`overall_${id}`] != null) scores[`overall_${id}`] = ex[`overall_${id}`];
+        if (ex.daily_date === scores.daily_date && scores[`daily_${id}`] == null && ex[`daily_${id}`] != null) scores[`daily_${id}`] = ex[`daily_${id}`];
+        if (ex.weekly_start === scores.weekly_start && scores[`weekly_${id}`] == null && ex[`weekly_${id}`] != null) scores[`weekly_${id}`] = ex[`weekly_${id}`];
+      }
+    }
+
     data.users[username.toLowerCase()] = {
       username,
       displayName: displayName || username,

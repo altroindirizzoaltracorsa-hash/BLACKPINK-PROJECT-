@@ -1008,6 +1008,9 @@
   }
   .lb-subtab:hover { color: var(--white); }
   .lb-subtab.active { color: var(--pink); border-bottom: 1px solid var(--pink); }
+  /* Nested per-track row under the Fallen Angel EP tab */
+  .lb-ep-subtabs { box-shadow: inset 3px 0 0 var(--pink); margin-bottom: 1.5px; }
+  .lb-ep-subtabs .lb-subtab { background: var(--card); font-size: 0.56rem; padding: 0.5rem 0.6rem; }
 
   .lb-panel { display: none; }
   .lb-panel.active { display: block; }
@@ -3455,8 +3458,14 @@
         <button class="lb-subtab" onclick="switchLbSong('jump', this)">JUMP</button>
         <button class="lb-subtab" onclick="switchLbSong('shutdown', this)">SHUT DOWN</button>
         <button class="lb-subtab" onclick="switchLbSong('ddududu', this)">DDU-DU DDU-DU</button>
-        <button class="lb-subtab" id="lb-subtab-ltal" onclick="switchLbSong('ltal', this)">LESS THAN A LOVER</button>
+        <button class="lb-subtab" id="lb-subtab-faep" style="display:none" onclick="openFaEpLeaderboard(this)">FALLEN ANGEL EP ▾</button>
         <button class="lb-subtab" onclick="switchLbSong('go', this)">GO</button>
+      </div>
+      <!-- Nested per-track row for the Fallen Angel EP — shown only when that tab is open -->
+      <div class="lb-subtabs lb-ep-subtabs" id="lb-ep-subtabs" style="display:none">
+        <button class="lb-subtab active" onclick="switchLbSong('fallenangel', this)">FALLEN ANGEL</button>
+        <button class="lb-subtab" onclick="switchLbSong('heaven', this)">HEAVEN</button>
+        <button class="lb-subtab" onclick="switchLbSong('ltal', this)">LESS THAN A LOVER</button>
       </div>
 
       <!-- Community total -->
@@ -6589,13 +6598,16 @@ window.addEventListener('DOMContentLoaded', maybeShowLtalReminder);
 
 // After the reset cutoff, remove the Less Than a Lover filter tab from the
 // leaderboard — it has left the campaign rankings.
-function hideLtalLeaderboardTab() {
-  if (ltalCampaignActive()) return;
-  const tab = document.getElementById('lb-subtab-ltal');
-  if (tab) tab.style.display = 'none';
-  if (typeof lbSong !== 'undefined' && lbSong === 'ltal') lbSong = 'all';
+// The "Fallen Angel EP" leaderboard group (Fallen Angel · Heaven · Less Than a
+// Lover) reveals itself the moment the EP is out — 2026-08-28 04:00 UTC (12AM EDT
+// / 1PM KST). Before that the parent tab stays hidden; after, it appears and Less
+// Than a Lover comes back inside it.
+const FAEP_RELEASE_MS = Date.parse('2026-08-28T04:00:00Z');
+function revealFaEpTab() {
+  const tab = document.getElementById('lb-subtab-faep');
+  if (tab && Date.now() >= FAEP_RELEASE_MS) tab.style.display = '';
 }
-window.addEventListener('DOMContentLoaded', hideLtalLeaderboardTab);
+window.addEventListener('DOMContentLoaded', revealFaEpTab);
 
 // Per-user opt-in: keep counting Less Than a Lover on your own profile past the
 // campaign cutoff. Stored in Supabase user_metadata.count_ltal so the server-side
@@ -10369,7 +10381,7 @@ function renderLeaderboard() {
     if (totalEl) totalEl.textContent = '';
   } else {
     const periodLabel = lbPeriod === 'daily' ? 'streams today' : lbPeriod === 'weekly' ? 'streams this week' : 'total streams';
-    const songLabel   = lbSong === 'all' ? 'All Campaign Tracks' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : 'LESS THAN A LOVER';
+    const songLabel   = lbSong === 'all' ? 'All Campaign Tracks' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : 'LESS THAN A LOVER';
     const colHeader   = lbSong === 'all'
       ? (lbPeriod === 'daily' ? 'Streams Today' : lbPeriod === 'weekly' ? 'Streams This Week' : 'Total Streams')
       : `${songLabel} — ${lbPeriod === 'daily' ? 'Today' : lbPeriod === 'weekly' ? 'This Week' : 'All Time'}`;
@@ -11139,13 +11151,30 @@ function parseLbHistoryParam() {
   return { period, key };
 }
 
+// The three Fallen Angel EP tracks live under the nested "Fallen Angel EP" tab.
+const EP_SONGS = ['fallenangel', 'heaven', 'ltal'];
+
 function switchLbSong(song, btn) {
-  // Less Than a Lover left the campaign at the reset — never select it afterwards.
-  if (song === 'ltal' && !ltalCampaignActive()) { song = 'all'; btn = document.querySelector(".lb-subtab[onclick*=\"'all'\"]") || btn; }
   lbSong = song;
-  document.querySelectorAll('.lb-subtab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.lb-subtabs .lb-subtab').forEach(b => b.classList.remove('active'));
+  const epRow = document.getElementById('lb-ep-subtabs');
+  const epTab = document.getElementById('lb-subtab-faep');
+  if (EP_SONGS.includes(song)) {
+    // Keep the EP group open: reveal the nested row and keep the parent tab lit.
+    if (epRow) epRow.style.display = 'flex';
+    if (epTab) epTab.classList.add('active');
+  } else if (epRow) {
+    epRow.style.display = 'none';
+  }
   if (btn) btn.classList.add('active');
   renderLeaderboard();
+}
+
+// The "Fallen Angel EP" parent tab — opens the nested track row, defaulting to the
+// title track. Brought Less Than a Lover back inside this group.
+function openFaEpLeaderboard() {
+  const first = document.querySelector('#lb-ep-subtabs .lb-subtab');
+  switchLbSong('fallenangel', first);
 }
 
 // ── ADMIN PANEL ──────────────────────────────────────────────────────────────
@@ -13741,7 +13770,7 @@ async function shareLbCard() {
   _cardLogo = await getBuLogo();
   renderLbCard(_cardLogo);
   const periodLabel = lbCardPeriodLabel();
-  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : 'LESS THAN A LOVER';
+  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : 'LESS THAN A LOVER';
   label.textContent = `LEADERBOARD · ${periodLabel} · ${songLabel}`;
 }
 
@@ -13799,7 +13828,7 @@ function shiftLbCardRange(dir) {
   _lbCardRangeStart = next;
   renderLbCard(_cardLogo);
   const periodLabel = lbCardPeriodLabel();
-  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : 'LESS THAN A LOVER';
+  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : 'LESS THAN A LOVER';
   document.getElementById('card-box-label').textContent = `LEADERBOARD · ${periodLabel} · ${songLabel}`;
 }
 
@@ -13836,7 +13865,7 @@ function renderLbCard(logo) {
 
   // Period + song subtitle
   const periodLabel = lbCardPeriodLabel();
-  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : 'LESS THAN A LOVER';
+  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : 'LESS THAN A LOVER';
   const rangeLabel  = allEntries.length > LB_CARD_PAGE_SIZE
     ? ` · RANK ${_lbCardRangeStart + 1}–${Math.min(_lbCardRangeStart + LB_CARD_PAGE_SIZE, allEntries.length)}`
     : '';
