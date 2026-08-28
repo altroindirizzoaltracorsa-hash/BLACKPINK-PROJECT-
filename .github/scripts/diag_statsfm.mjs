@@ -49,35 +49,24 @@ async function main() {
   // 3. Raw stats.fm streams/recent — resolve customId first
   const ur = await getJson(`${SFM}/users/${encodeURIComponent(USER)}`, SFM_H);
   const customId = ur.j.item?.customId ?? ur.j.item?.id ?? ur.j.customId ?? ur.j.id ?? USER;
-  console.log('── stats.fm today per-track via top/tracks (target: JUMP 19, HEAVEN 16, LTAL 19, FA 15, GO 11, SD 8, DDU 7) ──');
+  // Ground truth: per-track counts for [2am-Rome boundary, now] straight from
+  // top/tracks after/before (Unix MS) — the source the fixed endpoint now uses.
   const nowMs = Date.now();
-  const midnightMs = new Date(new Date().toISOString().slice(0,10) + 'T00:00:00.000Z').getTime(); // 00:00 UTC today
-  const wanted = ['jump','heaven','less than a lover','fallen angel','go','shut down','ddu-du ddu-du'];
-  const showTop = (label, items) => {
-    const rows = (items||[]).map(i => {
-      const nm = (i.track?.name ?? i.name ?? '').toLowerCase();
-      const streams = i.streams ?? i.count ?? i.playCount ?? '?';
-      return { nm, streams, raw: (i.track?.name ?? i.name) };
-    }).filter(r => wanted.some(w => r.nm.startsWith(w)));
-    console.log(`  ${label}: ${rows.length ? rows.map(r => `${r.raw}=${r.streams}`).join(' · ') : '(no matching tracks)'}`);
-  };
-
-  const tries = {
-    'range=today':                 `top/tracks?range=today&limit=50`,
-    'range=days':                  `top/tracks?range=days&limit=50`,
-    'after+before(ms)':            `top/tracks?after=${midnightMs}&before=${nowMs}&limit=50`,
-    'after(ms)only':               `top/tracks?after=${midnightMs}&limit=50`,
-    'after+before(sec)':           `top/tracks?after=${Math.floor(midnightMs/1000)}&before=${Math.floor(nowMs/1000)}&limit=50`,
-  };
-  for (const [label, path] of Object.entries(tries)) {
-    const r = await getJson(`${SFM}/users/${encodeURIComponent(customId)}/${path}`, SFM_H);
-    console.log(`  [${label}] status ${r.status} items ${(r.j.items||[]).length}`);
-    showTop(label, r.j.items);
+  const midnightMs = new Date(dbg.j.afterMs || (new Date().toISOString().slice(0,10) + 'T00:00:00.000Z')).getTime();
+  const PREFIX = [
+    ['jump','jump','BLACKPINK'],['shutdown','shut down','BLACKPINK'],['ddududu','ddu-du ddu-du','BLACKPINK'],
+    ['go','go','BLACKPINK'],['ltal','less than a lover','JENNIE'],['fallenangel','fallen angel','JENNIE'],['heaven','heaven','JENNIE'],
+  ];
+  const gt = await getJson(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?after=${midnightMs}&before=${nowMs}&limit=100`, SFM_H);
+  const truth = {};
+  for (const [id, pfx, art] of PREFIX) {
+    truth[id] = (gt.j.items||[]).filter(i => {
+      const nm = (i.track?.name ?? '').toLowerCase();
+      return nm.startsWith(pfx) && (i.track?.artists||[]).some(a => a.name === art);
+    }).reduce((s,i)=>s+(i.streams||0),0);
   }
-  // Also test whether streams/recent honors a bigger limit (to widen the window)
-  const big = await getJson(`${SFM}/users/${encodeURIComponent(customId)}/streams/recent?limit=1000`, SFM_H);
-  const bi = big.j.items ?? [];
-  console.log(`  streams/recent?limit=1000 -> items ${bi.length} | newest ${bi[0]?.endTime} | oldest ${bi[bi.length-1]?.endTime}`);
+  console.log('── ground-truth today (top/tracks after/before) ──');
+  console.log('  ', JSON.stringify(truth));
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
