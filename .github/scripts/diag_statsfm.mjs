@@ -49,16 +49,30 @@ async function main() {
   // 3. Raw stats.fm streams/recent — resolve customId first
   const ur = await getJson(`${SFM}/users/${encodeURIComponent(USER)}`, SFM_H);
   const customId = ur.j.item?.customId ?? ur.j.item?.id ?? ur.j.customId ?? ur.j.id ?? USER;
-  console.log('── raw stats.fm streams/recent (first page) ──  customId:', customId);
-  const rec = await getJson(`${SFM}/users/${encodeURIComponent(customId)}/streams/recent?limit=50`, SFM_H);
-  const items = rec.j.items ?? [];
-  console.log('status:', rec.status, 'items:', items.length);
-  if (items[0]) {
-    console.log('item[0] keys:', Object.keys(items[0]));
-    console.log('item[0]:', JSON.stringify(items[0]).slice(0, 700));
-    // Timestamp candidates on the newest item
-    const s = items[0];
-    console.log('endTime:', s.endTime, '| createdAt:', s.createdAt, '| playedAt:', s.playedAt);
+  console.log('── raw stats.fm streams/recent pagination test ──  customId:', customId);
+  const p1 = await getJson(`${SFM}/users/${encodeURIComponent(customId)}/streams/recent?limit=50`, SFM_H);
+  const items = p1.j.items ?? [];
+  const first = items[0], last = items[items.length - 1];
+  console.log('page1: items', items.length, '| newest', first?.endTime, '| oldest', last?.endTime);
+  const oldMs = new Date(last.endTime).getTime();
+  const oldSec = Math.floor(oldMs / 1000);
+
+  // Try several cursor variants and report the newest endTime each returns.
+  // If a variant advances, its newest endTime should be <= page1's oldest.
+  const variants = {
+    'before=ms':     `before=${oldMs}`,
+    'before=sec':    `before=${oldSec}`,
+    'to=ms':         `to=${oldMs}`,
+    'before=iso':    `before=${encodeURIComponent(last.endTime)}`,
+    'offset=50':     `offset=50`,
+    'page=2':        `page=2`,
+    'after=ms':      `after=${oldMs}`,
+  };
+  for (const [label, qs] of Object.entries(variants)) {
+    const r = await getJson(`${SFM}/users/${encodeURIComponent(customId)}/streams/recent?limit=50&${qs}`, SFM_H);
+    const it = r.j.items ?? [];
+    const advanced = it[0] && new Date(it[0].endTime).getTime() < oldMs;
+    console.log(`  ${label.padEnd(12)} status ${r.status} | items ${it.length} | newest ${it[0]?.endTime} | ADVANCED=${advanced}`);
   }
 }
 
