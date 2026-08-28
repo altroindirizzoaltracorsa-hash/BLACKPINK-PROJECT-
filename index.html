@@ -1688,6 +1688,11 @@
   .sw-btn:hover { background: var(--sw-light); color: var(--sw-dark); filter: none; }
   .sw-btn-ghost { background: transparent; color: var(--sw-light); }
   .sw-btn-ghost:hover { background: rgba(203,158,159,0.15); color: var(--sw-light); }
+  /* SawaDika artwork: single cover (hero) + LISA promo photo */
+  .sw-hero { border-radius: 14px; overflow: hidden; margin-bottom: 1.1rem; line-height: 0; box-shadow: 0 8px 26px rgba(40,4,6,0.4); }
+  .sw-hero img { width: 100%; height: auto; display: block; }
+  .sw-photo { border-radius: 12px; overflow: hidden; margin: 0.9rem 0 0.2rem; line-height: 0; box-shadow: 0 6px 20px rgba(40,4,6,0.35); }
+  .sw-photo img { width: 100%; height: auto; display: block; }
 
   /* ── JISOO carnival countdown (mirrors jisoo.io: Angkor numerals + star
        separators over dusty-mauve paper, carnival ink anchored to the bottom) ── */
@@ -2692,6 +2697,7 @@
             </details>
           </div>
           <div class="cd-card cd-card-sawadika" data-slug="hellosawadika.com" data-target="2026-09-04T00:00:00Z" data-live="OUT NOW ✨" data-plain="1">
+            <div class="sw-hero"><img src="/sawadika/sawadika-cover.jpg" alt="LISA — SaWaDiKa (single cover)" loading="lazy"></div>
             <div class="sw-cycle">
               <div class="sw-latin-wrap"><img src="/sawadika/sawadika-latin.webp" alt="SawaDika" loading="lazy"></div>
               <div class="sw-hi" aria-label="Hello">
@@ -2702,8 +2708,10 @@
             <div class="cd-eyebrow sw-eyebrow">LISA · New Single · lalisaofficial.com</div>
             <div class="cd-sub">World Premiere · Fri, Sep 4, 2026 · 9AM KST / Thu, Sep 3 · 8PM EDT</div>
             <div class="cd-timer cd-timer-plain" data-timer></div>
+            <div class="sw-photo"><img src="/sawadika/sawadika-lisa.jpg" alt="LISA — SaWaDiKa" loading="lazy"></div>
             <div class="cd-links">
               <a class="cd-btn sw-btn" href="https://www.lalisaofficial.com/" target="_blank" rel="noopener">Pre-save ↗</a>
+              <a class="cd-btn sw-btn sw-btn-ghost" href="https://youtu.be/aTA3YaYmz3M" target="_blank" rel="noopener">▶ Watch ↗</a>
               <button class="cd-btn sw-btn sw-btn-ghost" onclick="openLisaCard()">📸 Share</button>
             </div>
             <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
@@ -12456,7 +12464,7 @@ const CAMPAIGN_GOALS = [
       { id: 'fa_sp_ep_d1_s', label: 'Spotify · 1st Day: 6M streams (Secondary)' },
       { id: 'fa_sp_ep_w1_p', label: 'Spotify · 1st Week: 15M streams (Primary)' },
       { id: 'fa_sp_ep_w1_s', label: 'Spotify · 1st Week: 18M streams (Secondary)' },
-      { id: 'fa_sp_ep_debut_all', label: 'Spotify · Debut ALL tracks' },
+      { id: 'fa_sp_ep_debut_all', label: 'Spotify · Both new tracks debut (Fallen Angel + Heaven)' },
       { id: 'fa_it_primary',   label: 'iTunes · #1 in 10 countries (Primary)' },
       { id: 'fa_it_secondary', label: 'iTunes · #1 in 15 countries (Secondary)' },
       { id: 'fa_it_week1',     label: 'iTunes · 1st Week: #1 in 20 countries' },
@@ -12484,11 +12492,11 @@ const CAMPAIGN_GOALS = [
       { id: 'fa_hv_sz',      label: 'Shazam (→)' },
       { id: 'fa_hv_chart',   label: 'Chart entry (→)' },
     ]},
-    { category: '🤍 Less Than a Lover', items: [
-      { id: 'fa_ltl_sp',     label: 'Spotify · debut / streams (→)' },
+    { category: '🤍 Less Than a Lover (catalog · not a new release)', items: [
+      { id: 'fa_ltl_sp',     label: 'Spotify · streams boost (→)' },
       { id: 'fa_it_ltal_markets', label: 'iTunes · charting markets (→)' },
       { id: 'fa_ltl_sz',     label: 'Shazam (→)' },
-      { id: 'fa_ltl_chart',  label: 'Chart entry (→)' },
+      { id: 'fa_ltl_chart',  label: 'Chart re-entry / boost (→)' },
     ]},
   ] },
   { slug: 'click',        name: 'CLICK — JISOO',              releaseAt: '2026-09-04T04:00:00Z', mount: 'jisoo-goals-list', categories: [] },
