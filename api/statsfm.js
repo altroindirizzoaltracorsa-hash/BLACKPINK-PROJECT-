@@ -86,7 +86,8 @@ export default async function handler(request) {
   const debug = searchParams.get('debug');
   if (!username) return json({ error: 'user required' }, 400);
 
-  const cacheKey = `sfmcache:v1:${username.toLowerCase()}`;
+  // v2: bumped to flush caches that hold the old inflated (streams/recent) "today".
+  const cacheKey = `sfmcache:v2:${username.toLowerCase()}`;
   const cached = debug ? null : await cacheGet(cacheKey);
   if (cached?.payload && cached.at && (Date.now() - cached.at) < CACHE_FRESH_MS) {
     return json(cached.payload);
