@@ -792,6 +792,19 @@
   .admin-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:20000; display:flex; align-items:flex-start; justify-content:center; padding:1rem; overflow-y:auto; }
   .admin-box { background:var(--card); border:1px solid var(--border); max-width:500px; width:100%; padding:1.8rem; margin:auto 0; }
   .admin-box h2 { font-family:var(--display); font-size:1.4rem; letter-spacing:0.12em; color:var(--pink); margin-bottom:1.2rem; }
+  /* Unified admin menu + in-place panels */
+  .admin-menu { display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; }
+  .admin-menu-tile { display:flex; flex-direction:column; align-items:flex-start; gap:0.15rem; text-align:left; background:rgba(255,0,102,0.05); border:1px solid rgba(255,0,102,0.18); color:var(--white); padding:0.9rem 0.9rem; cursor:pointer; transition:border-color 0.15s, background 0.15s; }
+  .admin-menu-tile:hover { background:rgba(255,0,102,0.1); border-color:var(--pink); }
+  .admin-menu-tile .amt-ico { font-size:1.15rem; line-height:1; }
+  .admin-menu-tile .amt-lbl { font-family:var(--display); font-size:0.9rem; letter-spacing:0.06em; margin-top:0.25rem; }
+  .admin-menu-tile .amt-sub { font-family:var(--mono); font-size:0.44rem; letter-spacing:0.08em; color:var(--muted); text-transform:uppercase; }
+  .admin-back { background:none; border:1px solid var(--border); color:var(--muted); font-family:var(--mono); font-size:0.55rem; letter-spacing:0.15em; text-transform:uppercase; cursor:pointer; padding:0.35rem 0.7rem; margin-bottom:0.4rem; }
+  .admin-back:hover { color:var(--pink); border-color:var(--pink); }
+  .admin-panel > .admin-ban-section:first-of-type { margin-top:0.8rem; padding-top:0; border-top:none; }
+  .admin-goals-editor .ltal-goals-category-label:first-child { margin-top:0; }
+  .admin-goals-editor .ltal-goal-item { padding:0.4rem 0; }
+  @media (max-width:420px) { .admin-menu { grid-template-columns:1fr; } }
   .admin-input-row { display:flex; gap:0.5rem; margin-bottom:0.4rem; }
   .admin-input { flex:1; background:var(--charcoal); border:1px solid var(--border); color:var(--white); padding:0.6rem 0.8rem; font-family:var(--mono); font-size:0.65rem; }
   .admin-input:focus { outline:none; border-color:var(--pink); }
@@ -3139,49 +3152,9 @@
     <div class="footer-logo">BLINKS UNITED</div>
     <p>Stream data from various scrobblers · Goals are fan estimates</p>
     <div style="display:flex;gap:0.5rem;align-items:center;">
-      <button class="admin-unlock" onclick="openAdminPanel()" title="Admin panel">⚙</button>
-      <button class="admin-unlock" onclick="openMilestoneAdminPanel()" title="Milestone admin">🎉</button>
-      <button class="admin-unlock" onclick="openPlaylistPanel()">· · ·</button>
+      <button class="admin-unlock" onclick="openAdminPanel()" title="Admin">· · ·</button>
     </div>
   </footer>
-
-  <!-- MILESTONE ADMIN PANEL -->
-  <div id="milestone-admin-overlay" class="admin-overlay" style="display:none" onclick="if(event.target===this)closeMilestoneAdminPanel()">
-    <div class="admin-box">
-      <h2>🎉 MILESTONE</h2>
-      <div id="ms-admin-auth">
-        <div class="admin-input-row">
-          <input id="ms-admin-key-input" class="admin-input" type="password" placeholder="Admin key" onkeydown="if(event.key==='Enter')submitMsAdminKey()">
-          <button class="btn-primary" onclick="submitMsAdminKey()">Unlock →</button>
-        </div>
-        <div id="ms-admin-auth-err" class="admin-err"></div>
-      </div>
-      <div id="ms-admin-content" style="display:none">
-        <div class="admin-input-row">
-          <input id="ms-admin-track" class="admin-input" type="text" placeholder="Track name (e.g. AS IF IT'S YOUR LAST)" style="text-transform:uppercase">
-        </div>
-        <div class="admin-input-row">
-          <input id="ms-admin-milestone" class="admin-input" type="text" placeholder="Milestone (e.g. 800M)">
-          <input id="ms-admin-total" class="admin-input" type="text" placeholder="Current total streams">
-        </div>
-        <div class="admin-input-row">
-          <input id="ms-admin-date" class="admin-input" type="text" placeholder="Date reached dd/mm/yyyy (optional)">
-        </div>
-        <div class="admin-input-row">
-          <input id="ms-admin-art" class="admin-input" type="text" placeholder="Artwork URL or Spotify Track ID (optional)">
-        </div>
-        <div class="admin-input-row" style="gap:0.4rem;">
-          <button class="btn-primary" style="flex:1" onclick="saveMilestoneOnly()">💾 Save</button>
-          <button class="btn-primary" style="flex:1" onclick="triggerMilestoneFromPanel()">🎉 Save & Show</button>
-        </div>
-        <div id="ms-admin-err" class="admin-err"></div>
-        <div class="admin-song-note">Tip: for artwork use <code style="font-size:0.6rem;color:var(--pink)">/api/proxy-image?spotify_art=TRACK_ID</code></div>
-      </div>
-      <div style="margin-top:1rem;text-align:right;">
-        <button class="card-cl-btn" onclick="closeMilestoneAdminPanel()">Close</button>
-      </div>
-    </div>
-  </div>
 
 </div><!-- end home page -->
 
@@ -4218,10 +4191,10 @@
   </div>
 </div>
 
-<!-- Admin panel overlay -->
+<!-- Admin panel overlay — unified menu (one key, one place) -->
 <div id="admin-overlay" class="admin-overlay" style="display:none" onclick="if(event.target===this)closeAdminPanel()">
   <div class="admin-box">
-    <h2>⬡ CONTROL RANKING</h2>
+    <h2 id="admin-h2">⬡ ADMIN</h2>
     <div id="admin-auth" >
       <div class="admin-input-row">
         <input id="admin-key-input" class="admin-input" type="password" placeholder="Admin key" onkeydown="if(event.key==='Enter')submitAdminKey()">
@@ -4230,134 +4203,176 @@
       <div id="admin-err" class="admin-err"></div>
     </div>
     <div id="admin-content" style="display:none">
-      <div id="admin-table-wrap" class="admin-table-wrap">
-        <div class="admin-loading">Loading…</div>
-      </div>
-      <div id="admin-song-note" class="admin-song-note"></div>
 
-      <div class="admin-ban-section">
-        <div class="admin-ban-title">⛔ Banned users — removed from the leaderboard, can't rejoin</div>
-        <div class="admin-input-row">
-          <input id="admin-ban-input" class="admin-input" type="text" placeholder="Last.fm username" onkeydown="if(event.key==='Enter')banUser()">
-          <button class="btn-primary" onclick="banUser()">Ban</button>
-        </div>
-        <div id="admin-ban-err" class="admin-err"></div>
-        <div id="admin-ban-list" class="admin-ban-list"></div>
+      <!-- ── MENU ───────────────────────────────────────────── -->
+      <div id="admin-menu" class="admin-menu">
+        <button class="admin-menu-tile" onclick="adminShowPanel('ranking')"><span class="amt-ico">🏆</span><span class="amt-lbl">Leaderboard</span><span class="amt-sub">Ranking · bans · remove entry</span></button>
+        <button class="admin-menu-tile" onclick="adminShowPanel('goals')"><span class="amt-ico">🎯</span><span class="amt-lbl">Campaign Goals</span><span class="amt-sub">Per-release checklists</span></button>
+        <button class="admin-menu-tile" onclick="adminShowPanel('stats')"><span class="amt-ico">📊</span><span class="amt-lbl">Stats</span><span class="amt-sub">YouTube · 24H streams</span></button>
+        <button class="admin-menu-tile" onclick="adminShowPanel('charts')"><span class="amt-ico">📈</span><span class="amt-lbl">Charts &amp; Countries</span><span class="amt-sub">Positions · iTunes #1</span></button>
+        <button class="admin-menu-tile" onclick="adminShowPanel('milestones')"><span class="amt-ico">🎉</span><span class="amt-lbl">Milestones</span><span class="amt-sub">Stream milestones</span></button>
+        <button class="admin-menu-tile" onclick="adminShowPanel('data')"><span class="amt-ico">🎵</span><span class="amt-lbl">Playlist &amp; Data</span><span class="amt-sub">Playlist · catalog · CSV</span></button>
       </div>
 
-      <div class="admin-ban-section">
-        <div class="admin-ban-title">🧹 Remove a leaderboard entry — e.g. duplicate rows from a display-name edit</div>
-        <div class="admin-input-row">
-          <input id="admin-entry-search" class="admin-input" type="text" placeholder="Search display name or username…" oninput="renderAdminEntrySearch()">
+      <!-- ── LEADERBOARD PANEL ──────────────────────────────── -->
+      <section class="admin-panel" data-panel="ranking" style="display:none">
+        <button class="admin-back" onclick="adminShowMenu()">‹ Menu</button>
+        <div id="admin-table-wrap" class="admin-table-wrap">
+          <div class="admin-loading">Loading…</div>
         </div>
-        <div id="admin-entry-results" class="admin-entry-results"></div>
-      </div>
+        <div id="admin-song-note" class="admin-song-note"></div>
 
-      <div class="admin-ban-section">
-        <div class="admin-ban-title">🎯 LTAL Campaign Goals — mark reached / not reached</div>
-        <div class="admin-input-row">
-          <select id="admin-goal-select" class="admin-input" style="flex:1;cursor:pointer;"></select>
-          <button class="btn-primary" onclick="adminToggleGoal()">Toggle ✓/○</button>
+        <div class="admin-ban-section">
+          <div class="admin-ban-title">⛔ Banned users — removed from the leaderboard, can't rejoin</div>
+          <div class="admin-input-row">
+            <input id="admin-ban-input" class="admin-input" type="text" placeholder="Last.fm username" onkeydown="if(event.key==='Enter')banUser()">
+            <button class="btn-primary" onclick="banUser()">Ban</button>
+          </div>
+          <div id="admin-ban-err" class="admin-err"></div>
+          <div id="admin-ban-list" class="admin-ban-list"></div>
         </div>
-        <div id="admin-goal-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
-      </div>
 
-      <div class="admin-ban-section">
-        <div class="admin-ban-title">📺 YouTube MV views — shown as "(X after 24h · Y now)"</div>
-        <div class="admin-input-row">
-          <input id="admin-yt-24h-views" class="admin-input" type="text" placeholder="Views at 24H mark (e.g. 5.1M)" style="flex:1;">
-          <button class="btn-primary" onclick="adminSetYt24hViews()">Save 24H</button>
+        <div class="admin-ban-section">
+          <div class="admin-ban-title">🧹 Remove a leaderboard entry — e.g. duplicate rows from a display-name edit</div>
+          <div class="admin-input-row">
+            <input id="admin-entry-search" class="admin-input" type="text" placeholder="Search display name or username…" oninput="renderAdminEntrySearch()">
+          </div>
+          <div id="admin-entry-results" class="admin-entry-results"></div>
         </div>
-        <div class="admin-input-row" style="margin-top:0.4rem;">
-          <input id="admin-yt-views" class="admin-input" type="text" placeholder="Current views (e.g. 5.3M)" style="flex:1;">
-          <button class="btn-primary" onclick="adminSetYtViews()">Save Now</button>
-        </div>
-        <div id="admin-yt-views-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
-      </div>
+      </section>
 
-      <div class="admin-ban-section">
-        <div class="admin-ban-title">📊 Official 24H Spotify streams — total fandom streams (to show ratio once numbers drop)</div>
-        <div class="admin-input-row">
-          <input id="admin-24h-official" class="admin-input" type="text" placeholder="e.g. 89232" style="flex:1;">
-          <button class="btn-primary" onclick="adminSet24hOfficial()">Save</button>
+      <!-- ── CAMPAIGN GOALS PANEL (per-release) ──────────────── -->
+      <section class="admin-panel" data-panel="goals" style="display:none">
+        <button class="admin-back" onclick="adminShowMenu()">‹ Menu</button>
+        <div class="admin-ban-section">
+          <div class="admin-ban-title">🎯 Campaign Goals — pick a release, tap a goal to mark it reached / not reached</div>
+          <div class="admin-input-row">
+            <select id="admin-goal-release" class="admin-input" style="flex:1;cursor:pointer;" onchange="renderAdminGoalsEditor()"></select>
+          </div>
+          <div id="admin-goals-editor" class="admin-goals-editor" style="margin-top:0.7rem;"></div>
         </div>
-        <div id="admin-24h-official-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
-      </div>
+      </section>
 
-      <div class="admin-ban-section">
-        <div class="admin-ban-title">📈 Chart Updates — artist or track positions (Spotify, iTunes, etc.)</div>
-        <div class="admin-input-row" style="gap:0.4rem;flex-wrap:wrap;">
-          <input id="admin-ac-artist" class="admin-input" type="text" placeholder="Name (e.g. JENNIE or JUMP)" style="flex:1;min-width:80px;text-transform:uppercase;">
-          <input id="admin-ac-pos" class="admin-input" type="number" min="1" placeholder="#" style="width:54px;flex:none;">
-          <input id="admin-ac-change" class="admin-input" type="number" placeholder="±spots" style="width:60px;flex:none;" title="Positive = up, negative = down, 0 = same, blank = NEW">
+      <!-- ── STATS PANEL ────────────────────────────────────── -->
+      <section class="admin-panel" data-panel="stats" style="display:none">
+        <button class="admin-back" onclick="adminShowMenu()">‹ Menu</button>
+        <div class="admin-ban-section">
+          <div class="admin-ban-title">📺 YouTube MV views — shown as "(X after 24h · Y now)"</div>
+          <div class="admin-input-row">
+            <input id="admin-yt-24h-views" class="admin-input" type="text" placeholder="Views at 24H mark (e.g. 5.1M)" style="flex:1;">
+            <button class="btn-primary" onclick="adminSetYt24hViews()">Save 24H</button>
+          </div>
+          <div class="admin-input-row" style="margin-top:0.4rem;">
+            <input id="admin-yt-views" class="admin-input" type="text" placeholder="Current views (e.g. 5.3M)" style="flex:1;">
+            <button class="btn-primary" onclick="adminSetYtViews()">Save Now</button>
+          </div>
+          <div id="admin-yt-views-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
         </div>
-        <div class="admin-input-row" style="gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">
-          <input id="admin-ac-chart" class="admin-input" type="text" placeholder="Chart (e.g. Top Artists, Top 200)" style="flex:1;min-width:100px;">
-          <input id="admin-ac-region" class="admin-input" type="text" placeholder="Region (e.g. Global, US)" style="flex:1;min-width:70px;">
-        </div>
-        <div class="admin-input-row" style="gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">
-          <input id="admin-ac-art" class="admin-input" type="text" placeholder="Artwork: Spotify Track ID or URL (optional)" style="flex:1;min-width:120px;">
-          <input id="admin-ac-date" class="admin-input" type="text" placeholder="Date dd/mm/yyyy" style="width:100px;flex:none;">
-          <button class="btn-primary" onclick="adminSaveArtistChart()">Save</button>
-        </div>
-        <div id="admin-ac-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
-      </div>
 
-      <div class="admin-ban-section">
-        <div class="admin-ban-title">🌍 iTunes #1 Countries — add or remove from the list</div>
-        <div class="admin-input-row" style="gap:0.4rem;flex-wrap:wrap;">
-          <input id="admin-country-flag" class="admin-input" type="text" placeholder="🇺🇸 flag emoji" style="width:70px;flex:none;">
-          <input id="admin-country-name" class="admin-input" type="text" placeholder="Country name" style="flex:1;">
-          <button class="btn-primary" onclick="adminAddCountry()">Add</button>
-          <button class="btn-secondary" onclick="adminRestoreDefaultCountries()" style="font-size:0.62rem;padding:0.25rem 0.5rem;opacity:0.7;" title="Merge the 14 default countries back into the list">Restore defaults</button>
+        <div class="admin-ban-section">
+          <div class="admin-ban-title">📊 Official 24H Spotify streams — total fandom streams (to show ratio once numbers drop)</div>
+          <div class="admin-input-row">
+            <input id="admin-24h-official" class="admin-input" type="text" placeholder="e.g. 89232" style="flex:1;">
+            <button class="btn-primary" onclick="adminSet24hOfficial()">Save</button>
+          </div>
+          <div id="admin-24h-official-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
         </div>
-        <div id="admin-country-list" style="margin-top:0.5rem;display:flex;flex-wrap:wrap;gap:0.35rem;"></div>
-        <div id="admin-country-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
-      </div>
+      </section>
+
+      <!-- ── CHARTS & COUNTRIES PANEL ───────────────────────── -->
+      <section class="admin-panel" data-panel="charts" style="display:none">
+        <button class="admin-back" onclick="adminShowMenu()">‹ Menu</button>
+        <div class="admin-ban-section">
+          <div class="admin-ban-title">📈 Chart Updates — artist or track positions (Spotify, iTunes, etc.)</div>
+          <div class="admin-input-row" style="gap:0.4rem;flex-wrap:wrap;">
+            <input id="admin-ac-artist" class="admin-input" type="text" placeholder="Name (e.g. JENNIE or JUMP)" style="flex:1;min-width:80px;text-transform:uppercase;">
+            <input id="admin-ac-pos" class="admin-input" type="number" min="1" placeholder="#" style="width:54px;flex:none;">
+            <input id="admin-ac-change" class="admin-input" type="number" placeholder="±spots" style="width:60px;flex:none;" title="Positive = up, negative = down, 0 = same, blank = NEW">
+          </div>
+          <div class="admin-input-row" style="gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">
+            <input id="admin-ac-chart" class="admin-input" type="text" placeholder="Chart (e.g. Top Artists, Top 200)" style="flex:1;min-width:100px;">
+            <input id="admin-ac-region" class="admin-input" type="text" placeholder="Region (e.g. Global, US)" style="flex:1;min-width:70px;">
+          </div>
+          <div class="admin-input-row" style="gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">
+            <input id="admin-ac-art" class="admin-input" type="text" placeholder="Artwork: Spotify Track ID or URL (optional)" style="flex:1;min-width:120px;">
+            <input id="admin-ac-date" class="admin-input" type="text" placeholder="Date dd/mm/yyyy" style="width:100px;flex:none;">
+            <button class="btn-primary" onclick="adminSaveArtistChart()">Save</button>
+          </div>
+          <div id="admin-ac-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
+        </div>
+
+        <div class="admin-ban-section">
+          <div class="admin-ban-title">🌍 iTunes #1 Countries — add or remove from the list</div>
+          <div class="admin-input-row" style="gap:0.4rem;flex-wrap:wrap;">
+            <input id="admin-country-flag" class="admin-input" type="text" placeholder="🇺🇸 flag emoji" style="width:70px;flex:none;">
+            <input id="admin-country-name" class="admin-input" type="text" placeholder="Country name" style="flex:1;">
+            <button class="btn-primary" onclick="adminAddCountry()">Add</button>
+            <button class="btn-secondary" onclick="adminRestoreDefaultCountries()" style="font-size:0.62rem;padding:0.25rem 0.5rem;opacity:0.7;" title="Merge the 14 default countries back into the list">Restore defaults</button>
+          </div>
+          <div id="admin-country-list" style="margin-top:0.5rem;display:flex;flex-wrap:wrap;gap:0.35rem;"></div>
+          <div id="admin-country-status" style="font-size:0.62rem;letter-spacing:0.1em;margin-top:0.4rem;min-height:1.2em;"></div>
+        </div>
+      </section>
+
+      <!-- ── MILESTONES PANEL ───────────────────────────────── -->
+      <section class="admin-panel" data-panel="milestones" style="display:none">
+        <button class="admin-back" onclick="adminShowMenu()">‹ Menu</button>
+        <div class="admin-ban-section">
+          <div class="admin-ban-title">🎉 Stream milestone — announce & log a track milestone</div>
+          <div class="admin-input-row">
+            <input id="ms-admin-track" class="admin-input" type="text" placeholder="Track name (e.g. AS IF IT'S YOUR LAST)" style="text-transform:uppercase">
+          </div>
+          <div class="admin-input-row">
+            <input id="ms-admin-milestone" class="admin-input" type="text" placeholder="Milestone (e.g. 800M)">
+            <input id="ms-admin-total" class="admin-input" type="text" placeholder="Current total streams">
+          </div>
+          <div class="admin-input-row">
+            <input id="ms-admin-date" class="admin-input" type="text" placeholder="Date reached dd/mm/yyyy (optional)">
+          </div>
+          <div class="admin-input-row">
+            <input id="ms-admin-art" class="admin-input" type="text" placeholder="Artwork URL or Spotify Track ID (optional)">
+          </div>
+          <div class="admin-input-row" style="gap:0.4rem;">
+            <button class="btn-primary" style="flex:1" onclick="saveMilestoneOnly()">💾 Save</button>
+            <button class="btn-primary" style="flex:1" onclick="triggerMilestoneFromPanel()">🎉 Save &amp; Show</button>
+          </div>
+          <div id="ms-admin-err" class="admin-err"></div>
+          <div class="admin-song-note">Tip: for artwork use <code style="font-size:0.6rem;color:var(--pink)">/api/proxy-image?spotify_art=TRACK_ID</code></div>
+        </div>
+      </section>
+
+      <!-- ── PLAYLIST & DATA PANEL ──────────────────────────── -->
+      <section class="admin-panel" data-panel="data" style="display:none">
+        <button class="admin-back" onclick="adminShowMenu()">‹ Menu</button>
+        <div class="admin-ban-section">
+          <div class="admin-ban-title">🎵 Today's Playlist — pin the Spotify playlist link</div>
+          <div id="admin-playlist-pending" class="admin-song-note" style="display:none"></div>
+          <input id="admin-playlist-input" class="beta-input" type="text" placeholder="Paste the Spotify playlist link…">
+          <input id="admin-playlist-day" class="beta-input" type="number" min="1" placeholder="Day # (optional)" style="margin-top:0.5rem;max-width:140px;">
+          <button class="beta-btn" onclick="savePlaylistLink()">Save Playlist</button>
+          <label style="display:block;margin-top:0.5rem;font-size:0.75rem;color:var(--muted);cursor:pointer;">
+            <input id="admin-playlist-now" type="checkbox" style="margin-right:0.4rem;">Publish immediately instead of waiting for the 2am reset
+          </label>
+          <div id="admin-playlist-msg" class="admin-err"></div>
+        </div>
+
+        <div class="admin-ban-section">
+          <div class="admin-ban-title">📊 Catalog total — fetches all BLACKPINK track streams directly from your browser (free, no API quota)</div>
+          <div id="admin-catalog-status" class="admin-song-note" style="margin-bottom:0.6rem;min-height:1.2rem;"></div>
+          <button class="btn-primary" id="admin-catalog-btn" onclick="refreshCatalogTotal()">↻ Refresh catalog total</button>
+        </div>
+
+        <div class="admin-ban-section">
+          <div class="admin-ban-title">📄 Artist streams CSV — full daily history for BLACKPINK + all 4 members, always current</div>
+          <button class="btn-primary" onclick="downloadArtistStreamsCsv()">⬇ Download Artist CSV</button>
+          <button class="btn-primary" style="margin-left:0.5rem" onclick="downloadTrackStreamsCsv()">⬇ Download Track CSV</button>
+        </div>
+      </section>
 
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
       <button class="card-cl-btn" onclick="closeAdminPanel()">Close</button>
       <button id="admin-refresh-btn" class="lb-refresh-btn" onclick="loadAdminRanking()" style="display:none">↻ Refresh</button>
-    </div>
-  </div>
-</div>
-
-<!-- Today's Playlist panel (separate from the control-ranking admin panel) -->
-<div id="playlist-overlay" class="admin-overlay" style="display:none" onclick="if(event.target===this)closePlaylistPanel()">
-  <div class="admin-box">
-    <h2>⬡ TODAY'S PLAYLIST</h2>
-    <div id="playlist-auth">
-      <div class="admin-input-row">
-        <input id="playlist-key-input" class="admin-input" type="password" placeholder="Admin key" onkeydown="if(event.key==='Enter')submitPlaylistKey()">
-        <button class="btn-primary" onclick="submitPlaylistKey()">Unlock →</button>
-      </div>
-      <div id="playlist-auth-err" class="admin-err"></div>
-    </div>
-    <div id="playlist-content" style="display:none">
-      <div id="admin-playlist-pending" class="admin-song-note" style="display:none"></div>
-      <input id="admin-playlist-input" class="beta-input" type="text" placeholder="Paste the Spotify playlist link…">
-      <input id="admin-playlist-day" class="beta-input" type="number" min="1" placeholder="Day # (optional)" style="margin-top:0.5rem;max-width:140px;">
-      <button class="beta-btn" onclick="savePlaylistLink()">Save Playlist</button>
-      <label style="display:block;margin-top:0.5rem;font-size:0.75rem;color:var(--muted);cursor:pointer;">
-        <input id="admin-playlist-now" type="checkbox" style="margin-right:0.4rem;">Publish immediately instead of waiting for the 2am reset
-      </label>
-      <div id="admin-playlist-msg" class="admin-err"></div>
-
-      <div class="admin-ban-section">
-        <div class="admin-ban-title">📊 Catalog total — fetches all BLACKPINK track streams directly from your browser (free, no API quota)</div>
-        <div id="admin-catalog-status" class="admin-song-note" style="margin-bottom:0.6rem;min-height:1.2rem;"></div>
-        <button class="btn-primary" id="admin-catalog-btn" onclick="refreshCatalogTotal()">↻ Refresh catalog total</button>
-      </div>
-
-      <div class="admin-ban-section">
-        <div class="admin-ban-title">📄 Artist streams CSV — full daily history for BLACKPINK + all 4 members, always current</div>
-        <button class="btn-primary" onclick="downloadArtistStreamsCsv()">⬇ Download Artist CSV</button>
-        <button class="btn-primary" style="margin-left:0.5rem" onclick="downloadTrackStreamsCsv()">⬇ Download Track CSV</button>
-      </div>
-    </div>
-    <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
-      <button class="card-cl-btn" onclick="closePlaylistPanel()">Close</button>
     </div>
   </div>
 </div>
@@ -11136,23 +11151,16 @@ function switchLbSong(song, btn) {
 // ── ADMIN PANEL ──────────────────────────────────────────────────────────────
 const ADMIN_KEY_LS = 'bu_admin_key';
 
-function openAdminPanel() {
+// Unified admin panel. Optional `panel` jumps straight to a section (used by the
+// legacy openMilestoneAdminPanel / openPlaylistPanel entry points); otherwise the
+// menu is shown. One key unlocks everything — all sections share ADMIN_KEY_LS.
+function openAdminPanel(panel) {
   document.getElementById('admin-overlay').style.display = 'flex';
   const saved = localStorage.getItem(ADMIN_KEY_LS);
   if (saved) {
     document.getElementById('admin-auth').style.display = 'none';
     document.getElementById('admin-content').style.display = 'block';
-    document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
-    loadAdminRanking(saved);
-    loadBannedUsers(saved);
-    populateAdminGoalSelect();
-    loadAdminCountryList();
-    // Pre-fill today's date in the artist chart form
-    const acDate = document.getElementById('admin-ac-date');
-    if (acDate && !acDate.value) {
-      const now = new Date();
-      acDate.value = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
-    }
+    if (panel) adminShowPanel(panel); else adminShowMenu();
   } else {
     document.getElementById('admin-auth').style.display = 'block';
     document.getElementById('admin-content').style.display = 'none';
@@ -11163,6 +11171,49 @@ function openAdminPanel() {
 
 function closeAdminPanel() {
   document.getElementById('admin-overlay').style.display = 'none';
+}
+
+const ADMIN_PANEL_TITLES = {
+  ranking: '🏆 LEADERBOARD', goals: '🎯 CAMPAIGN GOALS', stats: '📊 STATS',
+  charts: '📈 CHARTS & COUNTRIES', milestones: '🎉 MILESTONES', data: '🎵 PLAYLIST & DATA',
+};
+
+// Return to the tile menu.
+function adminShowMenu() {
+  const menu = document.getElementById('admin-menu');
+  if (menu) menu.style.display = 'grid';
+  document.querySelectorAll('#admin-content .admin-panel').forEach(p => p.style.display = 'none');
+  const h = document.getElementById('admin-h2'); if (h) h.textContent = '⬡ ADMIN';
+  const rb = document.getElementById('admin-refresh-btn'); if (rb) rb.style.display = 'none';
+}
+
+// Open one section in place and lazy-load whatever it needs.
+function adminShowPanel(name) {
+  const menu = document.getElementById('admin-menu');
+  if (menu) menu.style.display = 'none';
+  document.querySelectorAll('#admin-content .admin-panel').forEach(p => {
+    p.style.display = (p.dataset.panel === name) ? 'block' : 'none';
+  });
+  const h = document.getElementById('admin-h2'); if (h) h.textContent = ADMIN_PANEL_TITLES[name] || '⬡ ADMIN';
+  const rb = document.getElementById('admin-refresh-btn'); if (rb) rb.style.display = (name === 'ranking') ? 'inline-flex' : 'none';
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  if (name === 'ranking') {
+    if (key) loadAdminRanking(key);
+    loadBannedUsers(key);
+  } else if (name === 'goals') {
+    renderAdminGoalsEditor();
+  } else if (name === 'stats' || name === 'charts') {
+    loadAdminCountryList();
+    if (name === 'charts') {
+      const acDate = document.getElementById('admin-ac-date');
+      if (acDate && !acDate.value) {
+        const now = new Date();
+        acDate.value = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+      }
+    }
+  } else if (name === 'data') {
+    if (key) loadPlaylistData(key);
+  }
 }
 
 // Public "Connect browser extension" action (My Badges → linked accounts). Opens
@@ -11187,16 +11238,12 @@ async function submitAdminKey() {
     const r = await fetch(`/api/control-ranking?key=${encodeURIComponent(key)}&users=${users.join(',')}`);
     if (r.status === 401) { errEl.textContent = 'Wrong key.'; return; }
     if (!r.ok) { errEl.textContent = `Server error (${r.status}).`; return; }
-    const d = await r.json();
+    await r.json();
     localStorage.setItem(ADMIN_KEY_LS, key);
     errEl.textContent = '';
     document.getElementById('admin-auth').style.display = 'none';
     document.getElementById('admin-content').style.display = 'block';
-    document.getElementById('admin-refresh-btn').style.display = 'inline-flex';
-    renderAdminTable(d);
-    loadBannedUsers(key);
-    populateAdminGoalSelect();
-    loadAdminCountryList();
+    adminShowMenu();
   } catch(e) {
     errEl.textContent = 'Request failed — check your connection.';
   }
@@ -11250,33 +11297,9 @@ function triggerCustomMilestone() {
 
 // ── MILESTONE ADMIN PANEL (main page footer 🎉 button) ──────────────────────
 
-function openMilestoneAdminPanel() {
-  const overlay = document.getElementById('milestone-admin-overlay');
-  overlay.style.display = 'flex';
-  const saved = localStorage.getItem(ADMIN_KEY_LS);
-  if (saved) {
-    document.getElementById('ms-admin-auth').style.display = 'none';
-    document.getElementById('ms-admin-content').style.display = 'block';
-  } else {
-    document.getElementById('ms-admin-auth').style.display = 'block';
-    document.getElementById('ms-admin-content').style.display = 'none';
-    setTimeout(() => document.getElementById('ms-admin-key-input')?.focus(), 100);
-  }
-}
-
-function closeMilestoneAdminPanel() {
-  document.getElementById('milestone-admin-overlay').style.display = 'none';
-}
-
-async function submitMsAdminKey() {
-  const key = document.getElementById('ms-admin-key-input').value.trim();
-  const errEl = document.getElementById('ms-admin-auth-err');
-  if (!key) return;
-  localStorage.setItem(ADMIN_KEY_LS, key);
-  document.getElementById('ms-admin-auth').style.display = 'none';
-  document.getElementById('ms-admin-content').style.display = 'block';
-  errEl.textContent = '';
-}
+// Milestones now live inside the unified admin panel.
+function openMilestoneAdminPanel() { openAdminPanel('milestones'); }
+function closeMilestoneAdminPanel() { closeAdminPanel(); }
 
 function _readMilestoneForm() {
   const trackInput = document.getElementById('ms-admin-track').value.trim().toUpperCase();
@@ -11309,8 +11332,7 @@ async function _saveMilestoneToServer({ trackInput, msNum, total, dateInput, art
 
   const key = localStorage.getItem(ADMIN_KEY_LS);
   if (!key) {
-    document.getElementById('ms-admin-content').style.display = 'none';
-    document.getElementById('ms-admin-auth').style.display = 'block';
+    errEl.textContent = 'Session expired — re-open the admin panel and enter the key.';
     return false;
   }
 
@@ -11323,10 +11345,8 @@ async function _saveMilestoneToServer({ trackInput, msNum, total, dateInput, art
     const r = await fetch(`/api/proxy-image?global_milestones=save&${params}`, { method: 'POST' });
     if (r.status === 401) {
       localStorage.removeItem(ADMIN_KEY_LS);
-      document.getElementById('ms-admin-content').style.display = 'none';
-      document.getElementById('ms-admin-auth').style.display = 'block';
-      document.getElementById('ms-admin-auth-err').textContent = 'Wrong key — please re-authenticate.';
-      errEl.textContent = '';
+      errEl.textContent = 'Wrong key — re-open the admin panel and re-authenticate.';
+      closeAdminPanel();
       return false;
     }
     if (!r.ok) { errEl.textContent = `Server error (${r.status}).`; return false; }
@@ -12222,6 +12242,22 @@ const LTAL_GOALS = [
   ]},
 ];
 
+// ── Per-release campaign goals ────────────────────────────────────────────────
+// Three releases land close together, so each carries its own checklist. Reached
+// state is stored server-side in the shared bu_ltal_goals._reached hash, keyed by
+// each goal's globally-unique `id` — so new releases use a per-release id prefix
+// (e.g. fa_spotify_24h). "Less Than a Lover" keeps its original un-prefixed ids so
+// its live checkmarks carry over untouched. Fill `categories` as goals are decided;
+// `mount` is the public list container id (rendered by renderReleaseGoalsList once
+// the release card has a goals block).
+const CAMPAIGN_GOALS = [
+  { slug: 'fallen-angel', name: 'Fallen Angel — JENNIE (EP)', releaseAt: '2026-08-28T04:00:00Z', mount: 'fa-goals-list',    categories: [] },
+  { slug: 'click',        name: 'CLICK — JISOO',              releaseAt: '2026-09-04T04:00:00Z', mount: 'jisoo-goals-list', categories: [] },
+  { slug: 'press-play',   name: 'Press Play — LISA (EP)',     releaseAt: '2026-10-23T04:00:00Z', mount: 'lisa-goals-list',  categories: [] },
+  { slug: 'ltal',         name: 'Less Than a Lover — JENNIE', releaseAt: null,                   mount: 'ltal-goals-list',  categories: LTAL_GOALS },
+];
+function getCampaign(slug) { return CAMPAIGN_GOALS.find(c => c.slug === slug) || CAMPAIGN_GOALS[0]; }
+
 async function renderLtalGoalsList() {
   const el = document.getElementById('ltal-goals-list');
   if (!el) return;
@@ -12278,32 +12314,78 @@ async function toggleLtalGoal(id) {
   } catch {}
 }
 
-function populateAdminGoalSelect() {
-  const sel = document.getElementById('admin-goal-select');
-  if (!sel || sel.options.length > 0) return;
-  sel.innerHTML = LTAL_GOALS.flatMap(cat =>
-    cat.items.map(g => `<option value="${g.id}">[${cat.category}] ${g.label.replace(/ — ACHIEVED!.*/, '')}</option>`)
+// ── Admin: per-release goals editor (Campaign Goals panel) ────────────────────
+function populateAdminGoalReleaseSelect() {
+  const sel = document.getElementById('admin-goal-release');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = CAMPAIGN_GOALS.map(c =>
+    `<option value="${c.slug}">${c.name}${c.categories.length ? '' : ' — no goals yet'}</option>`
   ).join('');
+  if (cur) sel.value = cur;
 }
 
-async function adminToggleGoal() {
-  const sel = document.getElementById('admin-goal-select');
-  const statusEl = document.getElementById('admin-goal-status');
-  if (!sel || !statusEl) return;
-  const id = sel.value;
-  if (!id) return;
-  statusEl.textContent = 'Toggling…';
-  statusEl.style.color = 'var(--muted)';
-  await toggleLtalGoal(id);
+async function renderAdminGoalsEditor() {
+  const sel = document.getElementById('admin-goal-release');
+  const wrap = document.getElementById('admin-goals-editor');
+  if (!sel || !wrap) return;
+  if (!sel.options.length) populateAdminGoalReleaseSelect();
+  const camp = getCampaign(sel.value || CAMPAIGN_GOALS[0].slug);
+  let reached = {};
   try {
     const r = await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' });
-    const reached = (await r.json()).reached || {};
-    const isReached = !!reached[id];
-    statusEl.textContent = isReached ? `✔ Marked as reached: ${id}` : `○ Marked as not reached: ${id}`;
-    statusEl.style.color = isReached ? '#2ecc71' : 'rgba(245,240,240,0.45)';
-  } catch {
-    statusEl.textContent = 'Toggled — refresh the goals panel to confirm.';
+    reached = (await r.json()).reached || {};
+  } catch {}
+  if (!camp.categories.length) {
+    wrap.innerHTML = `<div style="color:var(--muted);font-size:0.6rem;letter-spacing:0.08em;line-height:1.6;">No goals set for <b>${camp.name}</b> yet.<br>Send the goal list for this release and it drops straight in here.</div>`;
+    return;
   }
+  wrap.innerHTML = camp.categories.map(cat => `
+    <p class="ltal-goals-category-label">${cat.category}</p>
+    ${cat.items.map(g => {
+      const on = !!reached[g.id];
+      return `<div class="ltal-goal-item is-admin${on ? ' is-reached' : ''}" onclick="adminToggleGoalId('${g.id}')">
+        <span class="ltal-goal-check">${on ? '✔️' : '○'}</span><span>${g.label}</span>
+      </div>`;
+    }).join('')}
+  `).join('');
+}
+
+async function adminToggleGoalId(id) {
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  if (!key) return;
+  try {
+    await fetch(`/api/proxy-image?ltal_goals=toggle&id=${encodeURIComponent(id)}&key=${encodeURIComponent(key)}`, { method: 'POST' });
+  } catch {}
+  renderAdminGoalsEditor();
+  // Keep any mounted public displays in sync.
+  renderLtalGoalsList();
+  CAMPAIGN_GOALS.forEach(c => { if (c.slug !== 'ltal') renderReleaseGoalsList(c.slug); });
+}
+
+// Public per-release goal checklist. Renders into the release's `mount` container
+// if it exists on the page (the LTAL campaign uses its own richer renderLtalGoalsList).
+async function renderReleaseGoalsList(slug) {
+  const camp = getCampaign(slug);
+  const el = camp.mount && document.getElementById(camp.mount);
+  if (!el || !camp.categories.length) return;
+  const isAdmin = !!localStorage.getItem(ADMIN_KEY_LS);
+  let reached = {};
+  try {
+    const r = await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' });
+    reached = (await r.json()).reached || {};
+  } catch {}
+  el.innerHTML = camp.categories.map(cat => `
+    <div>
+      <p class="ltal-goals-category-label">${cat.category}</p>
+      ${cat.items.map(g => {
+        const on = !!reached[g.id];
+        return `<div class="ltal-goal-item${on ? ' is-reached' : ''}${isAdmin ? ' is-admin' : ''}"${isAdmin ? ` onclick="adminToggleGoalId('${g.id}')"` : ''}>
+          <span class="ltal-goal-check">${on ? '✔️' : '○'}</span><span>${g.label}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  `).join('');
 }
 
 async function adminSetYt24hViews() {
@@ -13153,54 +13235,23 @@ document.addEventListener('visibilitychange', () => {
   } catch {}
 })();
 
-function openPlaylistPanel() {
-  document.getElementById('playlist-overlay').style.display = 'flex';
-  const saved = localStorage.getItem(ADMIN_KEY_LS);
-  if (saved) {
-    unlockPlaylistPanel(saved);
-  } else {
-    document.getElementById('playlist-auth').style.display = 'block';
-    document.getElementById('playlist-content').style.display = 'none';
-    setTimeout(() => document.getElementById('playlist-key-input')?.focus(), 100);
-  }
-}
+// Playlist & data now live inside the unified admin panel.
+function openPlaylistPanel() { openAdminPanel('data'); }
+function closePlaylistPanel() { closeAdminPanel(); }
 
-function closePlaylistPanel() {
-  document.getElementById('playlist-overlay').style.display = 'none';
-}
-
-async function submitPlaylistKey() {
-  const key = document.getElementById('playlist-key-input').value.trim();
-  const errEl = document.getElementById('playlist-auth-err');
-  if (!key) { errEl.textContent = 'Enter the admin key.'; return; }
-  errEl.textContent = 'Checking…';
-  const ok = await unlockPlaylistPanel(key);
-  if (ok) localStorage.setItem(ADMIN_KEY_LS, key);
-}
-
-// Shared by the initial unlock and by re-opening the panel with a cached key.
-// /api/playlist's GET returns 401 for a wrong ?key=, so it doubles as the auth check.
-async function unlockPlaylistPanel(key) {
-  const errEl = document.getElementById('playlist-auth-err');
+// Loads the pending-playlist queue for the Playlist & Data panel. /api/playlist's
+// GET returns 401 for a wrong ?key=, so it doubles as a re-auth check.
+async function loadPlaylistData(key) {
   try {
     const r = await fetch(`/api/playlist?key=${encodeURIComponent(key)}`, { cache: 'no-store' });
     if (r.status === 401) {
       localStorage.removeItem(ADMIN_KEY_LS);
-      document.getElementById('playlist-auth').style.display = 'block';
-      document.getElementById('playlist-content').style.display = 'none';
-      errEl.textContent = 'Wrong key.';
-      return false;
+      closeAdminPanel();
+      return;
     }
     const d = await r.json();
-    errEl.textContent = '';
-    document.getElementById('playlist-auth').style.display = 'none';
-    document.getElementById('playlist-content').style.display = 'block';
     showQueueStatus(d.queue);
-    return true;
-  } catch(e) {
-    errEl.textContent = 'Request failed — check your connection.';
-    return false;
-  }
+  } catch(e) {}
 }
 
 function showQueueStatus(queue) {
