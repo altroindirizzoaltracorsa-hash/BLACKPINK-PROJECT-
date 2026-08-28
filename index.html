@@ -643,6 +643,21 @@
   .ltal-goal-item.is-reached .ltal-goal-check { color: #2ecc71; }
   .ltal-goal-item.is-admin { cursor: pointer; }
   .ltal-goal-item.is-admin:hover { color: #E8110D; }
+  /* Achieved-value badge shown next to a goal (e.g. "6.7M", "US · UK · JP") */
+  .ltal-goal-value {
+    flex-shrink: 0; margin-left: auto; font-weight: 700; font-size: 0.68rem;
+    letter-spacing: 0.02em; color: #2ecc71; white-space: nowrap;
+  }
+  .ltal-goal-item .ltal-goal-label { flex: 1; }
+  /* Admin per-goal value text field */
+  .admin-goal-value-input {
+    flex-shrink: 0; width: 6.5rem; margin-left: auto; padding: 0.18rem 0.4rem;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 5px; color: #F5F0F0; font-size: 0.66rem; font-family: inherit;
+    letter-spacing: 0.02em;
+  }
+  .admin-goal-value-input:focus { outline: none; border-color: #2ecc71; background: rgba(46,204,113,0.08); }
+  .admin-goal-value-input::placeholder { color: rgba(245,240,240,0.28); }
   .goal-tracker-done { color: #00ff88; }
 
   /* ── GOAL HISTORY (chronology of past goal-hit days) ─────── */
@@ -2503,6 +2518,7 @@
     <li><a href="/achievements">Achievements</a></li>
     <li><a href="/projects">Our Projects</a></li>
     <li id="nav-signout-item" style="display:none;"><a href="#" onclick="navSignOut(); return false;" id="nav-signout">Sign out</a></li>
+    <li><a href="#" onclick="openAdminPanel(); closeMobileNav(); return false;" id="nav-admin" title="Admin" style="opacity:0.35;letter-spacing:0.4em;">· · ·</a></li>
   </ul>
   <button id="pwa-install-btn" onclick="triggerInstall()" style="display:none;background:transparent;border:1px solid rgba(255,0,102,0.5);color:var(--pink);font-family:var(--mono);font-size:0.48rem;letter-spacing:0.14em;text-transform:uppercase;padding:0.4rem 0.8rem;cursor:pointer;white-space:nowrap;transition:border-color 0.2s,background 0.2s;" title="Install as app">⬇ Install App</button>
   <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
@@ -12471,11 +12487,12 @@ async function renderLtalGoalsList() {
   const el = document.getElementById('ltal-goals-list');
   if (!el) return;
   const isAdmin = !!localStorage.getItem(ADMIN_KEY_LS);
-  let reached = {}, ytViews = null, yt24hViews = null, backendCountries = null;
+  let reached = {}, values = {}, ytViews = null, yt24hViews = null, backendCountries = null;
   try {
     const r = await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' });
     const d = await r.json();
     reached = d.reached || {};
+    values = d.values || {};
     ytViews = d.yt_mv_views || null;
     yt24hViews = d.yt_24h_views || null;
     backendCountries = Array.isArray(d.countries) ? d.countries : null;
@@ -12505,8 +12522,9 @@ async function renderLtalGoalsList() {
       <p class="ltal-goals-category-label">${cat.category}</p>
       ${cat.items.map(g => {
         const isReached = !!reached[g.id];
+        const val = values[g.id];
         return `<div class="ltal-goal-item${isReached ? ' is-reached' : ''}${isAdmin ? ' is-admin' : ''}"${isAdmin ? ` onclick="toggleLtalGoal('${g.id}')"` : ''}>
-          <span class="ltal-goal-check">${isReached ? '✔️' : '○'}</span><span>${g.label}</span>
+          <span class="ltal-goal-check">${isReached ? '✔️' : '○'}</span><span class="ltal-goal-label">${g.label}</span>${val ? `<span class="ltal-goal-value">${escapeHtml(val)}</span>` : ''}
         </div>`;
       }).join('')}
       ${cat.category === 'iTunes' ? `<div class="itunes-no1-list">${countries.map(c => `<span class="itunes-no1-chip">${c.flag} #1 ${c.name}</span>`).join('')}</div>` : ''}
@@ -12540,10 +12558,11 @@ async function renderAdminGoalsEditor() {
   if (!sel || !wrap) return;
   if (!sel.options.length) populateAdminGoalReleaseSelect();
   const camp = getCampaign(sel.value || CAMPAIGN_GOALS[0].slug);
-  let reached = {};
+  let reached = {}, values = {};
   try {
-    const r = await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' });
-    reached = (await r.json()).reached || {};
+    const d = await (await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' })).json();
+    reached = d.reached || {};
+    values  = d.values  || {};
   } catch {}
   if (!camp.categories.length) {
     wrap.innerHTML = `<div style="color:var(--muted);font-size:0.6rem;letter-spacing:0.08em;line-height:1.6;">No goals set for <b>${camp.name}</b> yet.<br>Send the goal list for this release and it drops straight in here.</div>`;
@@ -12553,11 +12572,30 @@ async function renderAdminGoalsEditor() {
     <p class="ltal-goals-category-label">${cat.category}</p>
     ${cat.items.map(g => {
       const on = !!reached[g.id];
-      return `<div class="ltal-goal-item is-admin${on ? ' is-reached' : ''}" onclick="adminToggleGoalId('${g.id}')">
-        <span class="ltal-goal-check">${on ? '✔️' : '○'}</span><span>${g.label}</span>
+      const val = values[g.id] || '';
+      // Check + label toggle the reached state; the value field records the
+      // achieved detail (e.g. "6.7M", "US · UK · JP") and stops the toggle click.
+      return `<div class="ltal-goal-item is-admin${on ? ' is-reached' : ''}">
+        <span class="ltal-goal-check" onclick="adminToggleGoalId('${g.id}')">${on ? '✔️' : '○'}</span>
+        <span class="ltal-goal-label" onclick="adminToggleGoalId('${g.id}')">${g.label}</span>
+        <input type="text" class="admin-goal-value-input" value="${escapeHtml(val)}" placeholder="value…"
+          onclick="event.stopPropagation()"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+          onchange="adminSetGoalValue('${g.id}', this.value)">
       </div>`;
     }).join('')}
   `).join('');
+}
+
+async function adminSetGoalValue(id, value) {
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  if (!key) return;
+  try {
+    await fetch(`/api/proxy-image?ltal_goals=set_value&id=${encodeURIComponent(id)}&value=${encodeURIComponent((value || '').trim())}&key=${encodeURIComponent(key)}`, { method: 'POST' });
+  } catch {}
+  // Keep any mounted public displays in sync.
+  renderLtalGoalsList();
+  CAMPAIGN_GOALS.forEach(c => { if (c.slug !== 'ltal') renderReleaseGoalsList(c.slug); });
 }
 
 async function adminToggleGoalId(id) {
@@ -12579,18 +12617,20 @@ async function renderReleaseGoalsList(slug) {
   const el = camp.mount && document.getElementById(camp.mount);
   if (!el || !camp.categories.length) return;
   const isAdmin = !!localStorage.getItem(ADMIN_KEY_LS);
-  let reached = {};
+  let reached = {}, values = {};
   try {
-    const r = await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' });
-    reached = (await r.json()).reached || {};
+    const d = await (await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' })).json();
+    reached = d.reached || {};
+    values  = d.values  || {};
   } catch {}
   el.innerHTML = camp.categories.map(cat => `
     <div>
       <p class="ltal-goals-category-label">${cat.category}</p>
       ${cat.items.map(g => {
         const on = !!reached[g.id];
+        const val = values[g.id];
         return `<div class="ltal-goal-item${on ? ' is-reached' : ''}${isAdmin ? ' is-admin' : ''}"${isAdmin ? ` onclick="adminToggleGoalId('${g.id}')"` : ''}>
-          <span class="ltal-goal-check">${on ? '✔️' : '○'}</span><span>${g.label}</span>
+          <span class="ltal-goal-check">${on ? '✔️' : '○'}</span><span class="ltal-goal-label">${g.label}</span>${val ? `<span class="ltal-goal-value">${escapeHtml(val)}</span>` : ''}
         </div>`;
       }).join('')}
     </div>

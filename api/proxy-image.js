@@ -476,6 +476,7 @@ export default async function handler(req, res) {
       const obj = (stored && typeof stored === 'object') ? stored : {};
       return res.status(200).json({
         reached:           obj._reached && typeof obj._reached === 'object' ? obj._reached : obj,
+        values:            obj._values && typeof obj._values === 'object' ? obj._values : {},
         yt_mv_views:       obj._yt_mv_views       || null,
         yt_24h_views:      obj._yt_24h_views       || null,
         countries:         Array.isArray(obj._countries) ? obj._countries : null,
@@ -568,6 +569,17 @@ export default async function handler(req, res) {
       stored._countries = countries.filter(c => c && typeof c.name === 'string');
       await upstashSet('bu_ltal_goals', stored);
       return res.status(200).json({ ok: true, countries: stored._countries });
+    }
+
+    // set_value — record the achieved value/detail for a goal (e.g. "6.7M", "US, UK, JP")
+    if (req.query.ltal_goals === 'set_value') {
+      const id = req.query.id;
+      if (!id) return res.status(400).json({ error: 'id required' });
+      if (!stored._values || typeof stored._values !== 'object') stored._values = {};
+      const value = (req.query.value || '').trim();
+      if (value) stored._values[id] = value; else delete stored._values[id];
+      await upstashSet('bu_ltal_goals', stored);
+      return res.status(200).json({ ok: true, id, value, values: stored._values });
     }
 
     return res.status(400).json({ error: 'unknown ltal_goals action' });
