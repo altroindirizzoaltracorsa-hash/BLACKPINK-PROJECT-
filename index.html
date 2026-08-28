@@ -12446,38 +12446,48 @@ const LTAL_GOALS = [
 // the release card has a goals block).
 const CAMPAIGN_GOALS = [
   { slug: 'fallen-angel', name: 'Fallen Angel — JENNIE (EP)', releaseAt: '2026-08-28T04:00:00Z', mount: 'fa-goals-list', categories: [
-    { category: 'Spotify — Fallen Angel', items: [
-      { id: 'fa_sp_fa_d1_p', label: '1st Day: 3M streams (Primary)' },
-      { id: 'fa_sp_fa_d1_s', label: '1st Day: 3.5M streams (Secondary)' },
-      { id: 'fa_sp_fa_w1_p', label: '1st Week: 11M streams (Primary)' },
-      { id: 'fa_sp_fa_w1_s', label: '1st Week: 13M streams (Secondary)' },
-    ]},
-    { category: 'Spotify — EP', items: [
-      { id: 'fa_sp_ep_d1_p', label: '1st Day: 5M streams (Primary)' },
-      { id: 'fa_sp_ep_d1_s', label: '1st Day: 6M streams (Secondary)' },
-      { id: 'fa_sp_ep_w1_p', label: '1st Week: 15M streams (Primary)' },
-      { id: 'fa_sp_ep_w1_s', label: '1st Week: 18M streams (Secondary)' },
-      { id: 'fa_sp_ep_debut_all', label: 'Debut ALL tracks' },
-    ]},
-    { category: 'YouTube', items: [
-      { id: 'fa_yt_24h', label: '24 Hours: 4M views' },
-      { id: 'fa_yt_w1',  label: '1st Week: 8M views' },
-    ]},
-    { category: 'iTunes', items: [
-      { id: 'fa_it_primary',   label: 'Primary Goal: #1 in 10 countries' },
-      { id: 'fa_it_secondary', label: 'Secondary Goal: #1 in 15 countries' },
-      { id: 'fa_it_week1',     label: '1st Week: #1 in 20 countries' },
-      { id: 'fa_it_majors',    label: 'Chart in all major markets: US, UK, JP, FR, DE, AU, BR, CA' },
-    ]},
-    { category: 'Shazam', items: [
-      { id: 'fa_sz_24h', label: '24 Hours: 5K Shazams' },
-      { id: 'fa_sz_w1',  label: '1st Week: 20K Shazams' },
-    ]},
-    { category: 'Chart Goals', items: [
-      { id: 'fa_ch_hot100',        label: 'Billboard Hot 100 debut' },
+    // Per-song mini-checklists + an EP-overall block. Each row's achieved value
+    // (e.g. "30 markets", the #1-country list) goes in its value field. Existing
+    // goal ids are preserved so live checkmarks carry over; song-specific rows use
+    // fa_hv_ (Heaven) / fa_ltl_ (Less Than a Lover) / *_markets prefixes.
+    { category: '💿 EP — Overall', items: [
+      { id: 'fa_sp_ep_d1_p', label: 'Spotify · 1st Day: 5M streams (Primary)' },
+      { id: 'fa_sp_ep_d1_s', label: 'Spotify · 1st Day: 6M streams (Secondary)' },
+      { id: 'fa_sp_ep_w1_p', label: 'Spotify · 1st Week: 15M streams (Primary)' },
+      { id: 'fa_sp_ep_w1_s', label: 'Spotify · 1st Week: 18M streams (Secondary)' },
+      { id: 'fa_sp_ep_debut_all', label: 'Spotify · Debut ALL tracks' },
+      { id: 'fa_it_primary',   label: 'iTunes · #1 in 10 countries (Primary)' },
+      { id: 'fa_it_secondary', label: 'iTunes · #1 in 15 countries (Secondary)' },
+      { id: 'fa_it_week1',     label: 'iTunes · 1st Week: #1 in 20 countries' },
+      { id: 'fa_it_majors',    label: 'iTunes · Chart in all majors: US, UK, JP, FR, DE, AU, BR, CA' },
+      { id: 'fa_it_ep_no1',    label: 'iTunes · EP #1 countries (list →)' },
       { id: 'fa_ch_global200',     label: 'Billboard Global 200 Top 30' },
       { id: 'fa_ch_global_ex_us',  label: 'Billboard Global Excl. U.S. Top 20' },
-      { id: 'fa_ch_uk',            label: 'UK Singles Chart debut' },
+    ]},
+    { category: '🪽 Fallen Angel — title track (MV)', items: [
+      { id: 'fa_sp_fa_d1_p', label: 'Spotify · 1st Day: 3M streams (Primary)' },
+      { id: 'fa_sp_fa_d1_s', label: 'Spotify · 1st Day: 3.5M streams (Secondary)' },
+      { id: 'fa_sp_fa_w1_p', label: 'Spotify · 1st Week: 11M streams (Primary)' },
+      { id: 'fa_sp_fa_w1_s', label: 'Spotify · 1st Week: 13M streams (Secondary)' },
+      { id: 'fa_yt_24h', label: 'YouTube MV · 24 Hours: 4M views' },
+      { id: 'fa_yt_w1',  label: 'YouTube MV · 1st Week: 8M views' },
+      { id: 'fa_it_fa_markets', label: 'iTunes · charting markets (→)' },
+      { id: 'fa_sz_24h', label: 'Shazam · 24 Hours: 5K' },
+      { id: 'fa_sz_w1',  label: 'Shazam · 1st Week: 20K' },
+      { id: 'fa_ch_hot100', label: 'Billboard Hot 100 debut' },
+      { id: 'fa_ch_uk',     label: 'UK Singles Chart debut' },
+    ]},
+    { category: '☁️ Heaven', items: [
+      { id: 'fa_hv_sp',      label: 'Spotify · debut / streams (→)' },
+      { id: 'fa_it_heaven_markets', label: 'iTunes · charting markets (→)' },
+      { id: 'fa_hv_sz',      label: 'Shazam (→)' },
+      { id: 'fa_hv_chart',   label: 'Chart entry (→)' },
+    ]},
+    { category: '🤍 Less Than a Lover', items: [
+      { id: 'fa_ltl_sp',     label: 'Spotify · debut / streams (→)' },
+      { id: 'fa_it_ltal_markets', label: 'iTunes · charting markets (→)' },
+      { id: 'fa_ltl_sz',     label: 'Shazam (→)' },
+      { id: 'fa_ltl_chart',  label: 'Chart entry (→)' },
     ]},
   ] },
   { slug: 'click',        name: 'CLICK — JISOO',              releaseAt: '2026-09-04T04:00:00Z', mount: 'jisoo-goals-list', categories: [] },
