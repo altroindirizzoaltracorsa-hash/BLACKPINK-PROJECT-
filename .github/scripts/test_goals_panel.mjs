@@ -27,7 +27,9 @@ async function main() {
   console.log(`Testing goals panel against: ${VERCEL_URL}\n`);
 
   // ── 1. Deployed HTML ───────────────────────────────────────────────
-  const html = await (await fetch(`${VERCEL_URL}/?_cb=${Date.now()}`)).text();
+  // NB: vercel.json redirects "/" → /vmas.html, so fetch the app document
+  // directly. /index.html serves the single-file SPA that hosts the admin panel.
+  const html = await (await fetch(`${VERCEL_URL}/index.html?_cb=${Date.now()}`)).text();
   assert(html.includes('admin-menu-tile'),          'Unified admin menu tiles present in deployed HTML');
   assert(html.includes("adminShowPanel('goals')"),  'Campaign Goals menu entry present');
   assert(html.includes('const CAMPAIGN_GOALS'),     'Per-release CAMPAIGN_GOALS model present');
