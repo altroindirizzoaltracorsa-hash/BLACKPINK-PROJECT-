@@ -1,0 +1,22 @@
+name: Diag Stats.fm
+
+on:
+  workflow_dispatch:
+    inputs:
+      sfm_user:
+        description: 'Stats.fm username to diagnose'
+        required: false
+        default: 'demibandwout'
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Diagnose Stats.fm today counts
+        env:
+          SFM_USER: ${{ inputs.sfm_user }}
+        run: node .github/scripts/diag_statsfm.mjs
