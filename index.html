@@ -1596,6 +1596,11 @@
     background: rgba(200,16,46,0.1); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; }
   .cd-card-jennie .fa-cs-num { font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 1.8rem; color: #fff; letter-spacing: 0.02em; line-height: 1; }
   .cd-card-jennie .fa-cs-lbl { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.82rem; color: rgba(255,255,255,0.72); letter-spacing: 0.03em; text-align: center; }
+  .cd-card-jennie .fa-cs-rows { width: 100%; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0; }
+  .cd-card-jennie .fa-cs-row { display: flex; justify-content: space-between; gap: 1rem; padding: 0.3rem 0.1rem; border-top: 1px solid rgba(255,255,255,0.1);
+    font-family: 'Cormorant Garamond', serif; font-size: 0.9rem; }
+  .cd-card-jennie .fa-cs-row span:first-child { color: rgba(255,255,255,0.7); font-style: italic; }
+  .cd-card-jennie .fa-cs-row span:last-child { color: #fff; font-weight: 700; }
   .cd-card-jennie .cd-lbl { color: rgba(255,255,255,0.5); }
   .cd-card-jennie .cd-out { color: #fff; }
   .cd-card-jennie .cd-badge-chip { color: #020a0b; background: var(--jn-yellow); border-color: var(--jn-yellow); display: inline-flex; align-items: center; gap: 0.42em; }
@@ -2652,7 +2657,8 @@
             </div>
             <div class="fa-community-scrobbles" id="fa-community-scrobbles" style="display:none;">
               <span class="fa-cs-num" id="fa-cs-num">—</span>
-              <span class="fa-cs-lbl">Fallen&nbsp;Angel scrobbles by our community</span>
+              <span class="fa-cs-lbl">EP scrobbles by our community</span>
+              <div class="fa-cs-rows" id="fa-cs-rows"></div>
             </div>
             <!-- Release is out — worldwide release times kept here (hidden) for reference. -->
             <details class="cd-times" style="display:none;" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
@@ -10250,6 +10256,11 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       overall_ddududu:  totalPlays.ddududu  || 0,
       overall_ltal:     totalPlays.ltal     || 0,
       overall_go:       totalPlays.go       || 0,
+      // Fallen Angel EP tracks — submitted so the per-track boards fill live from
+      // badges visits (the daily cron only recomputes them once at 01:15 UTC). Kept
+      // out of overall_all/daily_all/weekly_all so they never inflate campaign totals.
+      overall_fallenangel: totalPlays.fallenangel || 0,
+      overall_heaven:      totalPlays.heaven      || 0,
       overall_artist:   artistPlays         || 0,
       // Only written when per-member data was fetched (multi-account path).
       // Absence of overall_bp_group signals "not yet synced" → old threshold applies.
@@ -10266,6 +10277,8 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       daily_ddududu:    todayCounts.ddududu  || 0,
       daily_ltal:       todayCounts.ltal     || 0,
       daily_go:         todayCounts.go       || 0,
+      daily_fallenangel: todayCounts.fallenangel || 0,
+      daily_heaven:      todayCounts.heaven      || 0,
       daily_date:       today,
       weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (ltalCampaignActive() ? (weekCounts.ltal || 0) : 0) + (weekCounts.go || 0),
       weekly_jump:      weekCounts.jump     || 0,
@@ -10273,6 +10286,8 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       weekly_ddududu:   weekCounts.ddududu  || 0,
       weekly_ltal:      weekCounts.ltal     || 0,
       weekly_go:        weekCounts.go       || 0,
+      weekly_fallenangel: weekCounts.fallenangel || 0,
+      weekly_heaven:      weekCounts.heaven      || 0,
       weekly_start:     weekStart,
     };
 
@@ -11966,14 +11981,22 @@ async function loadFaSaveCount() {
 async function loadFaCommunityScrobbles() {
   const el = document.getElementById('fa-community-scrobbles');
   const numEl = document.getElementById('fa-cs-num');
-  if (!el || !numEl) return;
+  const rowsEl = document.getElementById('fa-cs-rows');
+  if (!el || !numEl || !rowsEl) return;
   try {
-    const d = await fetchLbData();
-    const total = computeCommunityTotal(d?.users || {}, 'overall_fallenangel');
-    if (total > 0) {
-      numEl.textContent = total.toLocaleString();
-      el.style.display = 'flex';
-    }
+    const users = (await fetchLbData())?.users || {};
+    const songs = [
+      { key: 'overall_fallenangel', label: 'Fallen Angel' },
+      { key: 'overall_heaven',      label: 'Heaven' },
+      { key: 'overall_ltal',        label: 'Less Than a Lover' },
+    ].map(s => ({ ...s, n: computeCommunityTotal(users, s.key) }));
+    const total = songs.reduce((a, s) => a + s.n, 0);
+    if (total <= 0) return;
+    numEl.textContent = total.toLocaleString();
+    rowsEl.innerHTML = songs.map(s =>
+      `<div class="fa-cs-row"><span>${s.label}</span><span>${s.n.toLocaleString()}</span></div>`
+    ).join('');
+    el.style.display = 'flex';
   } catch {}
 }
 
