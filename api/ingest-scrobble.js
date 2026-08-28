@@ -15,12 +15,17 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Campaign tracks the leaderboard cares about (mirror of cron-scrobbles.js).
+// Fallen Angel EP tracks (fallenangel, heaven) get their OWN ids here so the
+// extension attributes plays per-song (instead of the generic solo_jennie
+// bucket). matchTrack runs before classifyArtist, so these win.
 const TRACKS = [
-  { id: 'jump',     artist: 'blackpink', track: 'jump' },
-  { id: 'shutdown', artist: 'blackpink', track: 'shut down' },
-  { id: 'ddududu',  artist: 'blackpink', track: 'ddu-du ddu-du' },
-  { id: 'ltal',     artist: 'jennie',    track: 'less than a lover' },
-  { id: 'go',       artist: 'blackpink', track: 'go' },
+  { id: 'jump',        artist: 'blackpink', track: 'jump' },
+  { id: 'shutdown',    artist: 'blackpink', track: 'shut down' },
+  { id: 'ddududu',     artist: 'blackpink', track: 'ddu-du ddu-du' },
+  { id: 'ltal',        artist: 'jennie',    track: 'less than a lover' },
+  { id: 'go',          artist: 'blackpink', track: 'go' },
+  { id: 'fallenangel', artist: 'jennie',    track: 'fallen angel' },
+  { id: 'heaven',      artist: 'jennie',    track: 'heaven' },
 ];
 
 function norm(s) {

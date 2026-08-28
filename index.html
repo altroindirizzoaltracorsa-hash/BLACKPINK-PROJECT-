@@ -7024,8 +7024,8 @@ const TRACKS = [
   // Fallen Angel EP (JENNIE) — shown in the challenge as their own group once the EP
   // is out. Kept OUT of the campaign totals + daily stamp (see EP_TRACK_IDS below).
   { id: 'ltal',        title: 'LESS THAN A LOVER', artist: 'Jennie', track: 'Less Than a Lover', year: '2026', era: 'FALLEN ANGEL', spotify: 'https://open.spotify.com/track/19UnXjpLshSLobPspdyxlD' },
-  { id: 'fallenangel', title: 'FALLEN ANGEL',      artist: 'Jennie', track: 'Fallen Angel',       year: '2026', era: 'FALLEN ANGEL', spotify: 'https://jennie.lnk.to/FallenAngel' },
-  { id: 'heaven',      title: 'HEAVEN',            artist: 'Jennie', track: 'Heaven',             year: '2026', era: 'FALLEN ANGEL', spotify: 'https://jennie.lnk.to/FallenAngel' },
+  { id: 'fallenangel', title: 'FALLEN ANGEL',      artist: 'Jennie', track: 'Fallen Angel',       year: '2026', era: 'FALLEN ANGEL', spotify: 'https://open.spotify.com/track/75QkBCdRc5DGgcyPiVSg4b' },
+  { id: 'heaven',      title: 'HEAVEN',            artist: 'Jennie', track: 'Heaven',             year: '2026', era: 'FALLEN ANGEL', spotify: 'https://open.spotify.com/track/6uhCnqc4Tncn1vqkuGubPO' },
 ];
 // Campaign tracks (drive the campaign totals + daily stamp). The Fallen Angel EP
 // songs are tracked and shown, but never counted into these.
@@ -9265,13 +9265,14 @@ async function buildExtensionAccount() {
     const memberExtraSum = Object.values(memberExtra).reduce((s, v) => s + v, 0);
     if (!(total + bpGroupExtra + memberExtraSum)) return null;
     // Total BP group (all time) = non-campaign group + the 4 campaign GROUP tracks
-    // (JUMP/Shut Down/DDU-DU/GO). LTAL is a JENNIE solo, so it's excluded here and
-    // folded into the member total below — mirroring how a linked Last.fm splits
-    // group vs. member artist plays.
+    // (JUMP/Shut Down/DDU-DU/GO). The JENNIE solo tracks (LTAL + the Fallen Angel
+    // EP: Fallen Angel, Heaven) are excluded here and folded into her member total
+    // below — mirroring how a linked Last.fm splits group vs. member artist plays,
+    // where all of a member's songs count toward that member, not the group.
     const artistPlays = bpGroupExtra + totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.go;
     const memberPlays = {
       jisoo:  memberExtra.jisoo,
-      jennie: memberExtra.jennie + (totalPlays.ltal || 0),
+      jennie: memberExtra.jennie + (totalPlays.ltal || 0) + (totalPlays.fallenangel || 0) + (totalPlays.heaven || 0),
       rose:   memberExtra.rose,
       lisa:   memberExtra.lisa,
     };

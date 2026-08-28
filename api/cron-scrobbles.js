@@ -286,7 +286,10 @@ function countLbByTrack(listens) {
 // many->one setup because those plays are sent to blinksunited precisely because
 // Last.fm filters them out — they are not also on the linked Last.fm account.
 async function extensionCountsForUsers(sb, appUserIds, dayFrom, dayTo, weekFrom, weekTo) {
-  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 });
+  // Includes the Fallen Angel EP ids so the extension's per-song plays fold into
+  // overall_fallenangel / overall_heaven (the EP boards). They're excluded from
+  // campaignTotal / *_all above, so this never inflates the campaign totals.
+  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 });
   const out = { total: empty(), week: empty(), today: empty() };
   if (!sb || !appUserIds || !appUserIds.length) return out;
   // Counted in the database (see supabase/extension_counts_fn.sql) so it scales
