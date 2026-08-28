@@ -64,12 +64,14 @@ async function main() {
     // Some APIs want epoch ms/sec instead of ISO
     await post('wide start/end ms', { start: Date.parse(wideStart), end: Date.parse(wideEnd) });
     await post('startDate/endDate ISO', { startDate: wideStart, endDate: wideEnd });
-    // Try startTime/endTime, and a bare from/to at the body root (not nested in range)
-    const rootRange = await get(`${MC}/history/stats`, {
-      method: 'POST', headers: MC_HEADERS,
-      body: JSON.stringify({ publicUserId: publicId, publicTrackId: JUMP_TRACK, start: wideStart, end: wideEnd, metrics: ['total_streams'], withDeltas: false }),
-    });
-    console.log(`  [root start/end (no range obj)  ] status ${rootRange.status} | body: ${rootRange.text.slice(0, 200)}`);
+    // THE FIX candidate: both bounds as zero-time exact dates.
+    const tomorrowStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString();
+    const sevenAgo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 7)).toISOString();
+    console.log('── FIX candidate: start + exact-date end ──');
+    await post('today->tomorrow (JUMP)',  { start: todayStart, end: tomorrowStart });
+    await post('7d->tomorrow (JUMP)',      { start: sevenAgo,   end: tomorrowStart });
+    await post('today->tomorrow BLACKPINK',{ start: todayStart, end: tomorrowStart }, { publicArtistId: BLACKPINK_ARTIST });
+    await post('7d->tomorrow BLACKPINK',   { start: sevenAgo,   end: tomorrowStart }, { publicArtistId: BLACKPINK_ARTIST });
   }
 }
 
