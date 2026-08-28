@@ -10,11 +10,16 @@ const MEMBER_ARTIST_IDS = {
   jisoo:  '0a098f13-dab1-496f-b84b-de036e57791c',
 };
 const TRACK_IDS = {
-  jump:     '502a16cf-fa8a-4fd3-a184-dbd49c10ce5f',
-  shutdown: '3420a915-4654-4251-9c5b-43039ca74b66',
-  ddududu:  '736f62c7-066c-4dd1-853c-c5cf5934b642',
-  ltal:     '8b627a61-8507-4f65-9d21-987679d35cc3',
+  jump:        '502a16cf-fa8a-4fd3-a184-dbd49c10ce5f',
+  shutdown:    '3420a915-4654-4251-9c5b-43039ca74b66',
+  ddududu:     '736f62c7-066c-4dd1-853c-c5cf5934b642',
+  go:          'c7a5de0d-211d-473b-a85d-024accb1e092',
+  ltal:        '8b627a61-8507-4f65-9d21-987679d35cc3',
+  fallenangel: '989c9b5e-748f-4551-bc2d-71605097fc38',
+  heaven:      '1acde8de-f00c-433e-acd5-7a1269eb5399',
 };
+// Musicat per-track ids fetched for every profile (all-time + today).
+const MC_TRACKS = ['jump', 'shutdown', 'ddududu', 'go', 'ltal', 'fallenangel', 'heaven'];
 const MC_HEADERS = { 'Authorization': 'Bearer empty', 'Content-Type': 'application/json' };
 
 const SP_TRACKS = {
@@ -1099,7 +1104,8 @@ export default async function handler(req, res) {
     // throttles under the leaderboard cron's burst. Serve fresh cache for 20 min,
     // re-scrape when stale, and fall back to the last good payload on any upstream
     // failure so a throttled call never zeroes a fan's Musicat contribution.
-    const mcKey = `mccache:v1:${String(mcUser).toLowerCase()}`;
+    // v2: bumped when GO + Fallen Angel + Heaven were added to the per-track set.
+    const mcKey = `mccache:v2:${String(mcUser).toLowerCase()}`;
     const mcCached = await upstashGet(mcKey);
     if (mcCached?.payload && mcCached.at && (Date.now() - mcCached.at) < 20 * 60 * 1000) {
       return res.status(200).json(mcCached.payload);
@@ -1121,21 +1127,21 @@ export default async function handler(req, res) {
       const allTime    = { start: null, end: null };
       const today      = { start: todayStart, end: null };
 
-      const [bpGroupPlays, jisooPlays, lisaPlays, rosePlays, jenniePlays, jumpAll, shutdownAll, ddududuAll, ltalAll, jumpToday, shutdownToday, ddududuToday, ltalToday] = await Promise.all([
+      const [bpGroupPlays, jisooPlays, lisaPlays, rosePlays, jenniePlays] = await Promise.all([
         statsPost({ range: allTime, publicUserId: publicId, publicArtistId: BLACKPINK_ARTIST }),
         statsPost({ range: allTime, publicUserId: publicId, publicArtistId: MEMBER_ARTIST_IDS.jisoo }),
         statsPost({ range: allTime, publicUserId: publicId, publicArtistId: MEMBER_ARTIST_IDS.lisa }),
         statsPost({ range: allTime, publicUserId: publicId, publicArtistId: MEMBER_ARTIST_IDS.rose }),
         statsPost({ range: allTime, publicUserId: publicId, publicArtistId: MEMBER_ARTIST_IDS.jennie }),
-        statsPost({ range: allTime, publicUserId: publicId, publicTrackId: TRACK_IDS.jump }),
-        statsPost({ range: allTime, publicUserId: publicId, publicTrackId: TRACK_IDS.shutdown }),
-        statsPost({ range: allTime, publicUserId: publicId, publicTrackId: TRACK_IDS.ddududu }),
-        statsPost({ range: allTime, publicUserId: publicId, publicTrackId: TRACK_IDS.ltal }),
-        statsPost({ range: today,   publicUserId: publicId, publicTrackId: TRACK_IDS.jump }),
-        statsPost({ range: today,   publicUserId: publicId, publicTrackId: TRACK_IDS.shutdown }),
-        statsPost({ range: today,   publicUserId: publicId, publicTrackId: TRACK_IDS.ddududu }),
-        statsPost({ range: today,   publicUserId: publicId, publicTrackId: TRACK_IDS.ltal }),
       ]);
+      // Per-track all-time + today, one query each, for the full campaign + EP set.
+      const [allTimeVals, todayVals] = await Promise.all([
+        Promise.all(MC_TRACKS.map(id => statsPost({ range: allTime, publicUserId: publicId, publicTrackId: TRACK_IDS[id] }))),
+        Promise.all(MC_TRACKS.map(id => statsPost({ range: today,   publicUserId: publicId, publicTrackId: TRACK_IDS[id] }))),
+      ]);
+      const tracks = {}, tracksToday = {};
+      MC_TRACKS.forEach((id, i) => { tracks[id] = allTimeVals[i]; tracksToday[id] = todayVals[i]; });
+
       const memberPlays = { jisoo: jisooPlays, lisa: lisaPlays, rose: rosePlays, jennie: jenniePlays };
       const artistPlays = bpGroupPlays + Object.values(memberPlays).reduce((s, v) => s + v, 0);
 
@@ -1143,8 +1149,8 @@ export default async function handler(req, res) {
         publicId, displayName,
         playcount: totalScrobbles ?? artistPlays,
         artistPlays, bpGroupPlays, memberPlays,
-        tracks: { jump: jumpAll, shutdown: shutdownAll, ddududu: ddududuAll, ltal: ltalAll },
-        today:  { jump: jumpToday, shutdown: shutdownToday, ddududu: ddududuToday, ltal: ltalToday },
+        tracks,
+        today: tracksToday,
       };
       await upstashSetEx(mcKey, { payload: mcPayload, at: Date.now() }, 7 * 24 * 3600);
       return res.status(200).json(mcPayload);

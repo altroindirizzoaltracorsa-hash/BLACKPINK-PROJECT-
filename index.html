@@ -8829,7 +8829,7 @@ async function fetchSingleAccountStats(source, username) {
       res.bpGroupPlays = d.bpGroupPlays || d.artistPlays || 0;
       if (d.memberPlays) res.memberPlays = { ...res.memberPlays, ...d.memberPlays };
       res.playcount    = d.playcount  || d.artistPlays || 0;
-      for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go']) {
+      for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven']) {
         res.totalPlays[k]  = d.tracks?.[k] || 0;
         res.todayCounts[k] = d.today?.[k]  || 0;
         // Musicat exposes all-time + today only, never per-day week history. Floor
