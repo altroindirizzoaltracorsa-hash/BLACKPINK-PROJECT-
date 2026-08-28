@@ -1601,6 +1601,7 @@
     font-family: 'Cormorant Garamond', serif; font-size: 0.9rem; }
   .cd-card-jennie .fa-cs-row span:first-child { color: rgba(255,255,255,0.7); font-style: italic; }
   .cd-card-jennie .fa-cs-row span:last-child { color: #fff; font-weight: 700; }
+  .cd-card-jennie .fa-cs-today { color: var(--jn-ruby, #c8102e); font-weight: 700; }
   .cd-card-jennie .cd-lbl { color: rgba(255,255,255,0.5); }
   .cd-card-jennie .cd-out { color: #fff; }
   .cd-card-jennie .cd-badge-chip { color: #020a0b; background: var(--jn-yellow); border-color: var(--jn-yellow); display: inline-flex; align-items: center; gap: 0.42em; }
@@ -11985,17 +11986,26 @@ async function loadFaCommunityScrobbles() {
   if (!el || !numEl || !rowsEl) return;
   try {
     const users = (await fetchLbData())?.users || {};
+    // Less Than a Lover carries a big all-time total from its own campaign, so it
+    // shows today + overall; the brand-new tracks just show their (all-new) total.
     const songs = [
-      { key: 'overall_fallenangel', label: 'Fallen Angel' },
-      { key: 'overall_heaven',      label: 'Heaven' },
-      { key: 'overall_ltal',        label: 'Less Than a Lover' },
-    ].map(s => ({ ...s, n: computeCommunityTotal(users, s.key) }));
-    const total = songs.reduce((a, s) => a + s.n, 0);
+      { key: 'fallenangel', label: 'Fallen Angel' },
+      { key: 'heaven',      label: 'Heaven' },
+      { key: 'ltal',        label: 'Less Than a Lover', showToday: true },
+    ].map(s => ({
+      ...s,
+      overall: computeCommunityTotal(users, `overall_${s.key}`),
+      today:   computeCommunityTotal(users, `daily_${s.key}`),
+    }));
+    const total = songs.reduce((a, s) => a + s.overall, 0);
     if (total <= 0) return;
     numEl.textContent = total.toLocaleString();
-    rowsEl.innerHTML = songs.map(s =>
-      `<div class="fa-cs-row"><span>${s.label}</span><span>${s.n.toLocaleString()}</span></div>`
-    ).join('');
+    rowsEl.innerHTML = songs.map(s => {
+      const val = s.showToday
+        ? `<span class="fa-cs-today">${s.today.toLocaleString()} today</span> · ${s.overall.toLocaleString()}`
+        : s.overall.toLocaleString();
+      return `<div class="fa-cs-row"><span>${s.label}</span><span>${val}</span></div>`;
+    }).join('');
     el.style.display = 'flex';
   } catch {}
 }
