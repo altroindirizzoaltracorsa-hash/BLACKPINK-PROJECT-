@@ -16063,7 +16063,13 @@ function drawLisaCard(canvas, d) {
     ctx.restore();
     ctx.save();
     rr(coverX, coverY, coverSide, coverSide, r); ctx.clip();
-    ctx.drawImage(d.coverImg, coverX, coverY, coverSide, coverSide);
+    // object-fit: cover — center-crop so both the square cover and the tall
+    // LISA photo fill the frame without distortion.
+    const iw0 = d.coverImg.naturalWidth || d.coverImg.width;
+    const ih0 = d.coverImg.naturalHeight || d.coverImg.height;
+    const sc = Math.max(coverSide / iw0, coverSide / ih0);
+    const dw = iw0 * sc, dh = ih0 * sc;
+    ctx.drawImage(d.coverImg, coverX + (coverSide - dw) / 2, coverY + (coverSide - dh) / 2, dw, dh);
     ctx.restore();
   }
 
@@ -16115,7 +16121,7 @@ async function openLisaCard() {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
-  document.getElementById('release-pic-picker').style.display = 'none';
+  buildPicPicker(LISA_CARD_PICS, 'selectLisaCardArt');   // cover ↔ LISA photo
   _cardType = 'lisa';
   _cardTrackId = null;
   _cardFormat = 'landscape';
@@ -16141,6 +16147,22 @@ async function openLisaCard() {
   label.textContent = earned ? "I'M IN — SAWADIKA" : 'LISA · SAWADIKA';
   drawLisaCard(canvas, _lisaCardData);
   _markCardReady(canvas);
+}
+
+// Swap the SawaDika card's artwork between the single cover and the LISA photo.
+async function selectLisaCardArt(url, thumbEl) {
+  document.querySelectorAll('.release-pic-thumb').forEach(t => t.classList.remove('active'));
+  if (thumbEl) thumbEl.classList.add('active');
+  const canvas = document.getElementById('card-canvas');
+  const label  = document.getElementById('card-box-label');
+  label.textContent = 'GENERATING…';
+  const img = await loadImg(url).catch(() => null);
+  if (_lisaCardData) {
+    _lisaCardData.coverImg = img;
+    drawLisaCard(canvas, _lisaCardData);
+    _markCardReady(canvas);
+  }
+  label.textContent = _lisaCardData?.earned ? "I'M IN — SAWADIKA" : 'LISA · SAWADIKA';
 }
 
 // ── JISOO share card (jisoo.io carnival theme) ────────────────────────────────
@@ -17075,7 +17097,20 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   _markCardReady(canvas);
 }
 
-const RELEASE_CARD_PICS = ['/jennie-ltal-photo.jpg', '/jennie-ltal-poster1.jpg', '/jennie-ltal-poster2.jpg'];
+const RELEASE_CARD_PICS = ['/jennie-ltal-photo.jpg', '/jennie-ltal-poster1.jpg', '/jennie-ltal-poster2.jpg', '/jennie-ltal-poster3.jpg', '/jennie-ltal-poster4.jpg'];
+const LISA_CARD_PICS = ['/sawadika/sawadika-cover.jpg', '/sawadika/sawadika-lisa.jpg'];
+
+// Rebuild the shared #release-pic-picker with a given set of images. Each card
+// opener that wants a picture chooser calls this with its own pics + select fn,
+// so the picker never leaks one release's thumbnails into another's.
+function buildPicPicker(pics, fnName) {
+  const picker = document.getElementById('release-pic-picker');
+  if (!picker) return;
+  picker.innerHTML = pics.map((url, i) =>
+    `<img class="release-pic-thumb${i === 0 ? ' active' : ''}" src="${url}" alt="" onclick="${fnName}('${url}', this)">`
+  ).join('');
+  picker.style.display = 'flex';
+}
 
 async function openReleaseCard() {
   const overlay = document.getElementById('card-overlay');
@@ -17083,9 +17118,7 @@ async function openReleaseCard() {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
-  const picker = document.getElementById('release-pic-picker');
-  picker.style.display = 'flex';
-  picker.querySelectorAll('.release-pic-thumb').forEach((t, i) => t.classList.toggle('active', i === 0));
+  buildPicPicker(RELEASE_CARD_PICS, 'selectReleaseCardArt');
   _cardType = 'release';
   _cardFormat = 'landscape';
   document.getElementById('fmt-landscape')?.classList.add('active');
@@ -17266,9 +17299,7 @@ async function openGoalsCard() {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
-  const picker = document.getElementById('release-pic-picker');
-  picker.style.display = 'flex';
-  picker.querySelectorAll('.release-pic-thumb').forEach((t, i) => t.classList.toggle('active', i === 0));
+  buildPicPicker(RELEASE_CARD_PICS, 'selectReleaseCardArt');
   _cardType = 'goals';
   _cardFormat = 'landscape';
   document.getElementById('fmt-landscape')?.classList.add('active');
