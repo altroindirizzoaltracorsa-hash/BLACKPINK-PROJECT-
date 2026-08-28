@@ -6819,8 +6819,10 @@ async function validateScrobblerUsername(source, username) {
     let d = {}; try { d = await r.json(); } catch {}
     const err = d.error || '';
     if (/not found/i.test(err) && /\(40[0-9]\)/.test(err)) {
-      const label = source === 'musicat' ? 'Musicat' : 'Stats.fm';
-      return `${label} couldn't find "${username}". Double-check the exact username on your ${label} profile, then try again.`;
+      if (source === 'musicat') {
+        return `Musicat couldn't find "${username}". Use your profile-URL name — the part after musicat.fm/ on your profile (open Musicat → tap your avatar → Share/Copy link), NOT your display name. If yours is a long random ID, tap Edit profile on Musicat and set a username first, then link that.`;
+      }
+      return `Stats.fm couldn't find "${username}". Use your profile name — the part after stats.fm/ on your profile (open Stats.fm → Profile → Share), NOT your display name.`;
     }
   } catch { /* network hiccup — don't block linking on a transient error */ }
   return null;
