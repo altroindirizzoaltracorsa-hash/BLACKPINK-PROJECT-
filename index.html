@@ -1753,6 +1753,12 @@
   .cd-times-row span:first-child { color: rgba(255,255,255,0.9); font-weight: 600; white-space: nowrap; }
   .cd-times-row span:last-child { text-align: right; white-space: nowrap; }
   @media (max-width: 520px) { .cd-times-body { grid-template-columns: 1fr; } }
+  /* Community Playlists variant of the collapsible cd-times block */
+  .cd-playlists .cd-times-body { display: flex; flex-direction: column; gap: 0; }
+  .cd-playlists .cd-times-body a { display: block; font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: rgba(255,255,255,0.82); text-decoration: none; padding: 0.5rem 0.2rem; border-bottom: 1px solid rgba(255,255,255,0.08); transition: color 0.15s; }
+  .cd-playlists .cd-times-body a:last-child { border-bottom: none; }
+  .cd-playlists .cd-times-body a:hover { color: #1DB954; }
   .cd-card-jisoo .js-park { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
     width: 100%; height: auto; opacity: 0.9; mix-blend-mode: multiply; pointer-events: none; z-index: 2; }
   .cd-badge-chip.js-locket { color: var(--js-ink); background: rgba(255,251,250,0.28);
@@ -2642,6 +2648,14 @@
             <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
               <summary>Release times worldwide</summary>
               <div class="cd-times-body" data-times-for="2026-08-28T04:00:00Z"></div>
+            </details>
+            <details class="cd-times cd-playlists">
+              <summary>🎧 Community Playlists</summary>
+              <div class="cd-times-body">
+                <a href="https://open.spotify.com/playlist/21iEiSSHip8paUsMbgrw6L" target="_blank" rel="noopener">FALLEN ANGEL FOCUSED →</a>
+                <a href="https://open.spotify.com/playlist/4rDVx9PpaIev55RYmvvEpx" target="_blank" rel="noopener">FALLEN ANGEL x PINKS →</a>
+                <a href="https://open.spotify.com/playlist/1DuecZYsDYRh69AfVxt56F" target="_blank" rel="noopener">FALLEN ANGEL x BP →</a>
+              </div>
             </details>
           </div>
           <div class="cd-card cd-card-sawadika" data-slug="hellosawadika.com" data-target="2026-09-04T00:00:00Z" data-live="OUT NOW ✨" data-plain="1">
