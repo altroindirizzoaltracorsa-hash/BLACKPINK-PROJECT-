@@ -41,17 +41,35 @@ async function main() {
   console.log('resolved publicId:', publicId);
   console.log('');
 
-  // 3. Raw Musicat history/stats POST (all-time, BLACKPINK artist), and a track one
+  // 3. Test whether BOUNDED date-range queries work at all (JUMP track = 247 all-time).
   if (publicId) {
-    const bodyArtist = { range: { start: null, end: null }, publicUserId: publicId, publicArtistId: BLACKPINK_ARTIST, metrics: ['total_streams'], withDeltas: false };
-    const sa = await get(`${MC}/history/stats`, { method: 'POST', headers: MC_HEADERS, body: JSON.stringify(bodyArtist) });
-    console.log('── raw musicat /history/stats (BLACKPINK all-time) ──');
-    console.log('status', sa.status, '| body:', sa.text.slice(0, 400));
-
-    const bodyTrack = { range: { start: null, end: null }, publicUserId: publicId, publicTrackId: JUMP_TRACK, metrics: ['total_streams'], withDeltas: false };
-    const st = await get(`${MC}/history/stats`, { method: 'POST', headers: MC_HEADERS, body: JSON.stringify(bodyTrack) });
-    console.log('── raw musicat /history/stats (JUMP all-time) ──');
-    console.log('status', st.status, '| body:', st.text.slice(0, 400));
+    const now = new Date();
+    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+    const nowIso = now.toISOString();
+    const wideStart = '2026-01-01T00:00:00.000Z';
+    const wideEnd   = '2027-01-01T00:00:00.000Z';
+    const post = async (label, range, extra = { publicTrackId: JUMP_TRACK }) => {
+      const r = await get(`${MC}/history/stats`, {
+        method: 'POST', headers: MC_HEADERS,
+        body: JSON.stringify({ range, publicUserId: publicId, ...extra, metrics: ['total_streams'], withDeltas: false }),
+      });
+      console.log(`  [${label.padEnd(28)}] status ${r.status} | body: ${r.text.slice(0, 200)}`);
+    };
+    console.log('── JUMP track (247 all-time) across range variants ──');
+    await post('all-time null/null', { start: null, end: null });
+    await post('wide start/end ISO', { start: wideStart, end: wideEnd });
+    await post('today start / null', { start: todayStart, end: null });
+    await post('today start / now ISO', { start: todayStart, end: nowIso });
+    await post('from/to keys ISO', { from: wideStart, to: wideEnd });
+    // Some APIs want epoch ms/sec instead of ISO
+    await post('wide start/end ms', { start: Date.parse(wideStart), end: Date.parse(wideEnd) });
+    await post('startDate/endDate ISO', { startDate: wideStart, endDate: wideEnd });
+    // Try startTime/endTime, and a bare from/to at the body root (not nested in range)
+    const rootRange = await get(`${MC}/history/stats`, {
+      method: 'POST', headers: MC_HEADERS,
+      body: JSON.stringify({ publicUserId: publicId, publicTrackId: JUMP_TRACK, start: wideStart, end: wideEnd, metrics: ['total_streams'], withDeltas: false }),
+    });
+    console.log(`  [root start/end (no range obj)  ] status ${rootRange.status} | body: ${rootRange.text.slice(0, 200)}`);
   }
 }
 
