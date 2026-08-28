@@ -1591,6 +1591,11 @@
   .cd-card-jennie .cd-tl-head.cd-tl-phys { color: var(--jn-yellow); }
   .cd-card-jennie .cd-unit { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.18); }
   .cd-card-jennie .cd-num { color: #fff; }
+  .cd-card-jennie .fa-community-scrobbles { display: none; flex-direction: column; align-items: center; gap: 0.15rem;
+    margin: 0.8rem auto 0; padding: 0.75rem 1rem; width: min(92%, 380px);
+    background: rgba(200,16,46,0.1); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; }
+  .cd-card-jennie .fa-cs-num { font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 1.8rem; color: #fff; letter-spacing: 0.02em; line-height: 1; }
+  .cd-card-jennie .fa-cs-lbl { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.82rem; color: rgba(255,255,255,0.72); letter-spacing: 0.03em; text-align: center; }
   .cd-card-jennie .cd-lbl { color: rgba(255,255,255,0.5); }
   .cd-card-jennie .cd-out { color: #fff; }
   .cd-card-jennie .cd-badge-chip { color: #020a0b; background: var(--jn-yellow); border-color: var(--jn-yellow); display: inline-flex; align-items: center; gap: 0.42em; }
@@ -2640,12 +2645,17 @@
               <div class="cd-goal-bar"><div class="cd-goal-fill" id="fa-goal-fill" style="width:0%"></div></div>
             </div>
             <div class="cd-links">
-              <a class="cd-btn" href="https://www.jenn.ie/" target="_blank" rel="noopener" onclick="saveFallenAngel()">Pre-save ↗</a>
+              <a class="cd-btn" href="https://jennie.lnk.to/FallenAngel" target="_blank" rel="noopener" onclick="saveFallenAngel()">▶ Listen ↗</a>
               <a class="cd-btn cd-btn-ghost" href="https://jennie.lnk.to/shop" target="_blank" rel="noopener">💿 Pre-order CD ↗</a>
               <a class="cd-btn cd-btn-ghost" href="https://youtu.be/s466YCiHfKw" target="_blank" rel="noopener">▶ Watch MV</a>
               <button class="cd-btn cd-btn-ghost" onclick="openPresaveCard('fa')">📸 Share</button>
             </div>
-            <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
+            <div class="fa-community-scrobbles" id="fa-community-scrobbles" style="display:none;">
+              <span class="fa-cs-num" id="fa-cs-num">—</span>
+              <span class="fa-cs-lbl">Fallen&nbsp;Angel scrobbles by our community</span>
+            </div>
+            <!-- Release is out — worldwide release times kept here (hidden) for reference. -->
+            <details class="cd-times" style="display:none;" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
               <summary>Release times worldwide</summary>
               <div class="cd-times-body" data-times-for="2026-08-28T04:00:00Z"></div>
             </details>
@@ -5081,6 +5091,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initVmaCarousels();
   loadJennieSaveCount();
   loadFaSaveCount();
+  loadFaCommunityScrobbles();
   loadLisaSaveCount();
   loadJisooSaveCount();
   refreshSupporterChips();
@@ -11912,6 +11923,23 @@ async function loadFaSaveCount() {
     const r = await fetch('/api/proxy-image?fa_save=count');
     const d = await r.json();
     renderFaSaveCount(d.count || 0);
+  } catch {}
+}
+
+// Fallen Angel card: our community's tracked "Fallen Angel" scrobbles (all-time,
+// from the leaderboard's per-track overall_fallenangel). Replaces the release-times
+// dropdown now that the EP is out. Appears once the community has any tracked plays.
+async function loadFaCommunityScrobbles() {
+  const el = document.getElementById('fa-community-scrobbles');
+  const numEl = document.getElementById('fa-cs-num');
+  if (!el || !numEl) return;
+  try {
+    const d = await fetchLbData();
+    const total = computeCommunityTotal(d?.users || {}, 'overall_fallenangel');
+    if (total > 0) {
+      numEl.textContent = total.toLocaleString();
+      el.style.display = 'flex';
+    }
   } catch {}
 }
 
