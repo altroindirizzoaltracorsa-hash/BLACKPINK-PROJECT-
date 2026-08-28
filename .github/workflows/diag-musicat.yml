@@ -1,0 +1,22 @@
+name: Diag Musicat
+
+on:
+  workflow_dispatch:
+    inputs:
+      mc_user:
+        description: 'Musicat username to diagnose'
+        required: false
+        default: 'souralis'
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Diagnose Musicat
+        env:
+          MC_USER: ${{ inputs.mc_user }}
+        run: node .github/scripts/diag_musicat.mjs
