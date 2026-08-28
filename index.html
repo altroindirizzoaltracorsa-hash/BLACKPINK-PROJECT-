@@ -6804,6 +6804,28 @@ async function loadLinkedAccounts() {
   if (lb)  saveLbUsername(lb.source_username);
 }
 
+// Validate a Musicat / Stats.fm username at link time. These providers silently
+// contribute 0 for a handle they can't resolve, so an unchecked typo looks like
+// "my scrobbles aren't being recorded" forever. Returns an error string to show,
+// or null when the username is fine — a transient throttle (429/5xx) must never
+// block a valid link, so only a definitive provider "not found" is rejected.
+async function validateScrobblerUsername(source, username) {
+  const url = source === 'musicat' ? `/api/proxy-image?musicat_user=${encodeURIComponent(username)}`
+            : source === 'statsfm' ? `/api/proxy-image?statsfm_user=${encodeURIComponent(username)}`
+            : null;
+  if (!url) return null;
+  try {
+    const r = await fetch(url);
+    let d = {}; try { d = await r.json(); } catch {}
+    const err = d.error || '';
+    if (/not found/i.test(err) && /\(40[0-9]\)/.test(err)) {
+      const label = source === 'musicat' ? 'Musicat' : 'Stats.fm';
+      return `${label} couldn't find "${username}". Double-check the exact username on your ${label} profile, then try again.`;
+    }
+  } catch { /* network hiccup — don't block linking on a transient error */ }
+  return null;
+}
+
 async function addLinkedAccountSettings() {
   const sourceSelect  = document.getElementById('linked-source-select-settings');
   const usernameInput = document.getElementById('linked-username-input-settings');
@@ -6814,6 +6836,12 @@ async function addLinkedAccountSettings() {
   if (!username) { status.textContent = 'Enter a username first.'; status.style.display = 'block'; return; }
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return;
+  if (source === 'musicat' || source === 'statsfm') {
+    status.textContent = `Checking your ${source === 'musicat' ? 'Musicat' : 'Stats.fm'} username…`;
+    status.style.display = 'block';
+    const invalid = await validateScrobblerUsername(source, username);
+    if (invalid) { status.textContent = invalid; status.style.display = 'block'; return; }
+  }
   const { error } = await sb.from('linked_accounts').insert({ app_user_id: session.user.id, source, source_username: username });
   if (error) {
     status.textContent = error.code === '23505' ? "That account is already linked to a profile." : error.message;
@@ -6864,6 +6892,13 @@ async function addLinkedAccount() {
 
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return;
+
+  if (source === 'musicat' || source === 'statsfm') {
+    status.textContent = `Checking your ${source === 'musicat' ? 'Musicat' : 'Stats.fm'} username…`;
+    status.style.display = 'block';
+    const invalid = await validateScrobblerUsername(source, username);
+    if (invalid) { status.textContent = invalid; status.style.display = 'block'; return; }
+  }
 
   const { error } = await sb.from('linked_accounts').insert({
     app_user_id: session.user.id,
