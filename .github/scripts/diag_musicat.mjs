@@ -72,6 +72,10 @@ async function main() {
     await post('7d->tomorrow (JUMP)',      { start: sevenAgo,   end: tomorrowStart });
     await post('today->tomorrow BLACKPINK',{ start: todayStart, end: tomorrowStart }, { publicArtistId: BLACKPINK_ARTIST });
     await post('7d->tomorrow BLACKPINK',   { start: sevenAgo,   end: tomorrowStart }, { publicArtistId: BLACKPINK_ARTIST });
+    // DECISIVE: same 7d range that returned 306, but with end:null (what the code sends).
+    // If this is 0, end:null silently breaks EVERY bounded (daily/weekly) query.
+    await post('7d / NULL end BLACKPINK',  { start: sevenAgo,   end: null }, { publicArtistId: BLACKPINK_ARTIST });
+    await post('7d / NULL end (JUMP)',     { start: sevenAgo,   end: null });
   }
 }
 
