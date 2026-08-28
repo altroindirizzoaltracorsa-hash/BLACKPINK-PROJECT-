@@ -117,9 +117,17 @@ export default async function handler(request) {
     const localMidnight = dayBoundaryUTC('Europe/Rome', 2);
     const afterMs = new Date(localMidnight).getTime(); // Unix ms for the API
 
-    const [tr, ar] = await Promise.all([
+    // "today" = per-track streams since the site's 2am-Rome boundary. stats.fm's
+    // streams/recent endpoint has NO working pagination — every page returns the
+    // same newest 50 regardless of before/after/offset/page — so the old manual
+    // pager re-counted that one page ~10x and massively inflated "today" (e.g. a
+    // real 19 showed as 110). top/tracks with after/before (Unix MS) returns an
+    // accurate per-track total for the exact window in a single call.
+    const nowMs = Date.now();
+    const [tr, ar, ttr] = await Promise.all([
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=100`, { headers: SFM_H }),
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`, { headers: SFM_H }),
+      fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?after=${afterMs}&before=${nowMs}&limit=100`, { headers: SFM_H }),
     ]);
 
     if (!tr.ok) return stale({ error: `Stats.fm tracks blocked (HTTP ${tr.status}) — try visiting https://stats.fm/${username}` }, 502);
@@ -127,42 +135,17 @@ export default async function handler(request) {
 
     const td = await tr.json();
     const ad = await ar.json();
+    // If the today-window call is throttled, fall back to an empty window (0 today)
+    // rather than failing — all-time still updates.
+    const todayItems = ttr.ok ? ((await ttr.json()).items ?? []) : [];
 
     const items = td.items ?? [];
     const adItems = ad.items ?? [];
 
-    // Paginate streams/recent using before= until we've covered since localMidnight.
-    // Stats.fm ignores the after param and caps at 50/page, so we page manually.
-    const recentItems = [];
-    let beforeMs = null;
-    let recentOk = false;
-    for (let page = 0; page < 10; page++) {
-      const url = `${SFM}/users/${encodeURIComponent(customId)}/streams/recent?limit=50` +
-        (beforeMs ? `&before=${beforeMs}` : '');
-      const r = await fetch(url, { headers: SFM_H });
-      if (!r.ok) break;
-      recentOk = true;
-      const d = await r.json();
-      const batch = d?.items ?? [];
-      if (!batch.length) break;
-      let hitFloor = false;
-      for (const s of batch) {
-        const ts = s.endTime ?? s.createdAt ?? s.playedAt;
-        const ms = ts == null ? afterMs : (typeof ts === 'number' ? ts : new Date(ts).getTime());
-        if (ms < afterMs) { hitFloor = true; break; }
-        recentItems.push(s);
-      }
-      if (hitFloor || batch.length < 50) break;
-      // Use the oldest stream's endTime as the next page cursor
-      const oldest = batch[batch.length - 1];
-      const oldTs = oldest.endTime ?? oldest.createdAt ?? oldest.playedAt;
-      beforeMs = typeof oldTs === 'number' ? oldTs : new Date(oldTs).getTime();
-    }
-
     if (debug === '2') return json({
-      step: 'recent_streams', localMidnight, afterMs,
-      total: recentItems.length,
-      samples: recentItems.slice(0, 5),
+      step: 'today_top_tracks', localMidnight, afterMs, nowMs,
+      todayCount: todayItems.length,
+      samples: todayItems.slice(0, 10).map(i => ({ name: i.track?.name, artists: (i.track?.artists || []).map(a => a.name), streams: i.streams })),
     });
 
     const MEMBER_MAP = { 'JISOO': 'jisoo', 'LISA': 'lisa', 'ROSÉ': 'rose', 'JENNIE': 'jennie' };
@@ -177,11 +160,13 @@ export default async function handler(request) {
     const artistPlays = bpGroupPlays + Object.values(memberPlays).reduce((s, v) => s + v, 0);
 
     const TRACKS = [
-      { id: 'jump',     prefix: 'jump',              artist: 'BLACKPINK' },
-      { id: 'shutdown', prefix: 'shut down',          artist: 'BLACKPINK' },
-      { id: 'ddududu',  prefix: 'ddu-du ddu-du',      artist: 'BLACKPINK' },
-      { id: 'go',       prefix: 'go',                 artist: 'BLACKPINK' },
-      { id: 'ltal',     prefix: 'less than a lover',  artist: 'JENNIE' },
+      { id: 'jump',        prefix: 'jump',              artist: 'BLACKPINK' },
+      { id: 'shutdown',    prefix: 'shut down',         artist: 'BLACKPINK' },
+      { id: 'ddududu',     prefix: 'ddu-du ddu-du',     artist: 'BLACKPINK' },
+      { id: 'go',          prefix: 'go',                artist: 'BLACKPINK' },
+      { id: 'ltal',        prefix: 'less than a lover', artist: 'JENNIE' },
+      { id: 'fallenangel', prefix: 'fallen angel',      artist: 'JENNIE' },
+      { id: 'heaven',      prefix: 'heaven',            artist: 'JENNIE' },
     ];
 
     function countTracks(list) {
@@ -198,24 +183,8 @@ export default async function handler(request) {
       return result;
     }
 
-    function countRecent(list) {
-      const result = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 };
-      for (const stream of list) {
-        const name = (stream.track?.name ?? '').toLowerCase();
-        const artists = stream.track?.artists ?? [];
-        const t = TRACKS.find(t => name.startsWith(t.prefix) && artists.some(a => a.name === t.artist));
-        if (t) result[t.id] = (result[t.id] || 0) + 1;
-      }
-      return result;
-    }
-
     const tracks = countTracks(items);
-    const todayRecent = countRecent(recentItems);
-
-    const tracksToday = {};
-    for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go']) {
-      tracksToday[k] = todayRecent[k] || 0;
-    }
+    const tracksToday = countTracks(todayItems);
 
     const payload = {
       customId, displayName,
