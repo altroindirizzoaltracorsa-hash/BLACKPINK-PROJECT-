@@ -13594,6 +13594,7 @@ let _presaveCardData = null;      // { campaign, earned, ... } for the pre-save 
 let _faPhotoImg = null, _faPhotoRedImg = null, _faTitleImg = null, _faLogoImg = null, _faEmblemImg = null; // Fallen Angel assets (cached)
 let _lisaCardData = null;         // data for the LISA hellosawadika share card
 let _lisaHelloImg = null, _lisaSawImg = null; // cached HELLO + สวัสดีค่ะ SVGs
+let _lisaCoverImg = null;                     // cached SaWaDiKa single cover
 
 // Called at the end of every card draw function so the share blob is ready
 // before the user taps Share — avoids async toBlob inside the gesture handler.
@@ -14250,8 +14251,8 @@ async function shareCard() {
     const d = _lisaCardData;
     if (d) {
       statsText = d.earned
-        ? `\n🕊️ สวัสดีค่ะ — I'm in for LISA's reveal\n⏰ ${d.dateShort}\n👉 Join at hellosawadika.com — count yourself in on blinksunited.com!\n`
-        : `\n🕊️ LISA — hellosawadika.com reveal ${d.dateShort}\n👉 Join the reveal — every blink counts. Share it!\n`;
+        ? `\n🕊️ สวัสดีค่ะ — I'm an Early Supporter of LISA's "SaWaDiKa"\n⏰ ${d.dateShort}\n👉 Pre-save it too at lalisaofficial.com — count yourself in on blinksunited.com!\n`
+        : `\n🕊️ LISA — "SaWaDiKa" (new single) · ${d.dateShort}\n👉 Pre-save it on blinksunited.com — every blink counts. Share it!\n`;
     }
   } else if (_cardType === 'jisoo') {
     const d = _jisooCardData;
@@ -15996,99 +15997,112 @@ function _fitFont(ctx, text, weight, family, startPx, maxW, minPx) {
 function drawLisaCard(canvas, d) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
-  const INK = '#2a0708';
-  const PX = Math.round(W * 0.075);
+  const landscape = W > H;
+  const CREAM = '#f7e4e0';
+  const M = Math.round(W * (landscape ? 0.055 : 0.075));
 
-  ctx.fillStyle = 'hsl(358, 74%, 29%)';
-  ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = 'rgba(20,4,5,0.10)';   // the site's clr-bg-33 overlay, softened
-  ctx.fillRect(0, 0, W, H);
+  // Deep-red ground + softened overlay + film grain (hellosawadika.com palette)
+  ctx.fillStyle = 'hsl(358, 74%, 29%)'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(20,4,5,0.12)';  ctx.fillRect(0, 0, W, H);
   drawNoise(ctx, W, H, 0.02);
 
-  // Top row: BU wordmark (left) · status (right)
-  const topY = Math.round(H * 0.085);
-  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-  ctx.font = '500 20px "DM Mono", monospace'; ctx.letterSpacing = '4px';
-  ctx.fillStyle = 'rgba(42,7,8,0.85)';
-  ctx.fillText('BLINKS UNITED', PX, topY);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = d.earned ? '#3a0c0c' : 'rgba(42,7,8,0.68)';
-  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : 'COUNTDOWN', W - PX, topY);
-  ctx.letterSpacing = '0px';
-
-  // Live countdown to the reveal (snapshot at generation time)
+  // Live countdown to premiere (snapshot at generation time)
   let diff = Date.parse(d.revealAt) - Date.now();
   const isOut = !(diff > 0);
   let cdd = 0, cdh = 0, cdm = 0;
   if (!isOut) { cdd = Math.floor(diff / 86400000); diff %= 86400000; cdh = Math.floor(diff / 3600000); diff %= 3600000; cdm = Math.floor(diff / 60000); }
   const p2 = n => String(n).padStart(2, '0');
-  // hellosawadika-style plain serif "dd : hh : mm" for the neutral card
-  const cdBig     = isOut ? "IT'S HERE" : `${p2(cdd)} : ${p2(cdh)} : ${p2(cdm)}`;
-  const cdCompact = isOut ? "IT'S HERE ✨" : `⏳ REVEAL IN ${cdd}D ${p2(cdh)}H ${p2(cdm)}M`;
+  const cdBig = isOut ? 'OUT NOW' : `${p2(cdd)} : ${p2(cdh)} : ${p2(cdm)}`;
 
-  // Centered hero: HELLO + สวัสดีค่ะ (SVGs; aspect from their viewBoxes)
-  const helloAsp = 326 / 102, sawAsp = 5999 / 1579;
-  const helloW = W * 0.24, helloH = helloW / helloAsp;
-  const sawW = W * 0.60,  sawH = sawW / sawAsp;
-  const headSize   = Math.round(H * 0.068);  // earned serif headline
-  const cdLineH    = Math.round(H * 0.032);  // earned compact countdown
-  const cdEyebrowH = Math.round(H * 0.024);  // neutral eyebrow
-  const cdBigSize  = Math.round(H * 0.095);  // neutral big serif countdown
-  const dateSize = Math.round(H * 0.03);
-  const g1 = Math.round(H * 0.028), g2 = Math.round(H * 0.05), g3 = Math.round(H * 0.026), gXS = Math.round(H * 0.012);
-  const blockH = d.earned
-    ? helloH + g1 + sawH + g2 + headSize + gXS + cdLineH + g3 + dateSize
-    : helloH + g1 + sawH + g2 + cdEyebrowH + gXS + cdBigSize + g3 + dateSize;
-  let y = (H - blockH) / 2 - H * 0.015;
+  // Rounded-rect path helper (native roundRect where available)
+  const rr = (x, y, w, h, r) => {
+    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);         ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  };
 
-  ctx.textBaseline = 'top';
-  if (d.helloImg) ctx.drawImage(d.helloImg, (W - helloW) / 2, y, helloW, helloH);
-  y += helloH + g1;
-  if (d.sawImg)   ctx.drawImage(d.sawImg, (W - sawW) / 2, y, sawW, sawH);
-  y += sawH + g2;
+  // Top row: BU wordmark (left) · status (right)
+  const topY = Math.round(H * (landscape ? 0.088 : 0.058));
+  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  ctx.font = '500 20px "DM Mono", monospace'; ctx.letterSpacing = '4px';
+  ctx.fillStyle = 'rgba(247,228,224,0.85)';
+  ctx.fillText('BLINKS UNITED', M, topY);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = d.earned ? CREAM : 'rgba(247,228,224,0.6)';
+  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : (isOut ? 'OUT NOW' : 'COUNTDOWN'), W - M, topY);
+  ctx.letterSpacing = '0px';
 
-  ctx.textAlign = 'center';
-  if (d.earned) {
-    // Only the joiner gets the "I'M IN" claim + a compact countdown.
-    ctx.fillStyle = INK;
-    _fitFont(ctx, "I'M IN FOR THE REVEAL", '', 'Georgia, "Times New Roman", serif', headSize, W - PX * 2, 22);
-    ctx.letterSpacing = '1px';
-    ctx.fillText("I'M IN FOR THE REVEAL", W / 2, y);
-    y += headSize + gXS;
-    ctx.fillStyle = 'rgba(42,7,8,0.82)';
-    _fitFont(ctx, cdCompact, '600', '"DM Mono", monospace', 22, W - PX * 2, 12);
-    ctx.letterSpacing = '2px';
-    ctx.fillText(cdCompact, W / 2, y);
-    y += cdLineH + g3;
+  // Cover geometry + per-format type scale
+  let coverX, coverY, coverSide, anchor, tw, ty, S;
+  if (landscape) {
+    coverSide = Math.min(Math.round(H * 0.72), H - topY - Math.round(H * 0.14));
+    coverX = M;
+    coverY = Math.round((H - coverSide) / 2 + H * 0.03);
+    anchor = coverX + coverSide + Math.round(W * 0.05);
+    tw = W - anchor - M;
+    ty = coverY + Math.round(coverSide * 0.05);
+    S = { eyebrow: 0.026, eyeGap: 0.05, title: 0.11, titleGap: 0.03, cd: 0.075, cdGap: 0.028, date: 0.026 };
   } else {
-    // Anyone else shares a neutral countdown card — no join claim.
-    ctx.fillStyle = 'rgba(42,7,8,0.62)';
-    ctx.font = '500 18px "DM Mono", monospace'; ctx.letterSpacing = '5px';
-    ctx.fillText(isOut ? 'THE REVEAL IS LIVE' : 'COUNTDOWN TO REVEAL', W / 2, y);
-    y += cdEyebrowH + gXS;
-    // Original hellosawadika serif countdown, but white so it reads on the red.
-    ctx.save();
-    ctx.shadowColor = 'rgba(40,4,6,0.5)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 3;
-    ctx.fillStyle = '#ffffff';
-    _fitFont(ctx, cdBig, '', 'Georgia, "Times New Roman", serif', cdBigSize, W - PX * 2, 30);
-    ctx.letterSpacing = '2px';
-    ctx.fillText(cdBig, W / 2, y);
-    ctx.restore();
-    y += cdBigSize + g3;
+    coverSide = Math.round(W * 0.5);
+    coverX = Math.round((W - coverSide) / 2);
+    coverY = Math.round(topY + H * 0.03);
+    anchor = W / 2;
+    tw = W - 2 * M;
+    ty = coverY + coverSide + Math.round(H * 0.055);
+    S = { eyebrow: 0.024, eyeGap: 0.045, title: 0.068, titleGap: 0.025, cd: 0.055, cdGap: 0.025, date: 0.024 };
   }
 
-  ctx.fillStyle = 'rgba(42,7,8,0.72)';
-  _fitFont(ctx, d.dateLine, '500', '"DM Mono", monospace', dateSize, W - PX * 2, 12);
-  ctx.letterSpacing = '2px';
-  ctx.fillText(d.dateLine, W / 2, y);
+  // Cover art — rounded square with a soft drop shadow
+  if (d.coverImg) {
+    const r = Math.round(coverSide * 0.05);
+    ctx.save();
+    ctx.shadowColor = 'rgba(20,2,3,0.5)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 10;
+    rr(coverX, coverY, coverSide, coverSide, r); ctx.fillStyle = '#3a0c0c'; ctx.fill();
+    ctx.restore();
+    ctx.save();
+    rr(coverX, coverY, coverSide, coverSide, r); ctx.clip();
+    ctx.drawImage(d.coverImg, coverX, coverY, coverSide, coverSide);
+    ctx.restore();
+  }
 
-  // Bottom CTA (centered)
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = INK;
+  // Text column (right in landscape, centered below cover in square)
+  ctx.textAlign = landscape ? 'left' : 'center';
+  ctx.textBaseline = 'top';
+
+  ctx.fillStyle = 'rgba(247,228,224,0.7)';
+  ctx.font = `500 ${Math.round(H * S.eyebrow)}px "DM Mono", monospace`; ctx.letterSpacing = '4px';
+  ctx.fillText('LISA · NEW SINGLE', anchor, ty);
+  ty += Math.round(H * S.eyeGap);
+
+  ctx.fillStyle = CREAM;
+  const titleSize = Math.round(H * S.title);
+  ctx.letterSpacing = '1px';
+  _fitFont(ctx, 'SaWaDiKa', '700', 'Georgia, "Times New Roman", serif', titleSize, tw, 28);
+  ctx.fillText('SaWaDiKa', anchor, ty);
+  ty += titleSize + Math.round(H * S.titleGap);
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(40,4,6,0.5)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 3;
+  ctx.fillStyle = '#ffffff';
+  _fitFont(ctx, cdBig, '', 'Georgia, "Times New Roman", serif', Math.round(H * S.cd), tw, 24);
+  ctx.letterSpacing = '2px';
+  ctx.fillText(cdBig, anchor, ty);
+  ctx.restore();
+  ty += Math.round(H * S.cd) + Math.round(H * S.cdGap);
+
+  ctx.fillStyle = 'rgba(247,228,224,0.75)';
+  _fitFont(ctx, d.dateLine, '500', '"DM Mono", monospace', Math.round(H * S.date), tw, 12);
+  ctx.letterSpacing = '2px';
+  ctx.fillText(d.dateLine, anchor, ty);
+
+  // Bottom CTA (always centered)
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = CREAM;
   ctx.font = '600 22px "DM Mono", monospace'; ctx.letterSpacing = '2px';
   ctx.fillText(d.cta, W / 2, H - Math.round(H * 0.072));
   ctx.font = '500 16px "DM Mono", monospace'; ctx.letterSpacing = '2px';
-  ctx.fillStyle = 'rgba(42,7,8,0.55)';
+  ctx.fillStyle = 'rgba(247,228,224,0.55)';
   ctx.fillText('shared via blinksunited.com', W / 2, H - Math.round(H * 0.038));
 
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.letterSpacing = '0px';
@@ -16109,22 +16123,21 @@ async function openLisaCard() {
   const canvas = document.getElementById('card-canvas');
   canvas.width = 1200; canvas.height = 675;
 
-  const [helloImg, sawImg] = await Promise.all([
-    _lisaHelloImg ? Promise.resolve(_lisaHelloImg) : loadImg('/sawadika/english.svg').then(i => (_lisaHelloImg = i)).catch(() => null),
-    _lisaSawImg   ? Promise.resolve(_lisaSawImg)   : loadImg('/sawadika/sawadika.svg').then(i => (_lisaSawImg = i)).catch(() => null),
-  ]);
+  const coverImg = _lisaCoverImg
+    ? _lisaCoverImg
+    : await loadImg('/sawadika/sawadika-cover.jpg').then(i => (_lisaCoverImg = i)).catch(() => null);
   await document.fonts.ready;
 
   await refreshSupporterChips();   // sync sign-in state + account flag first
   const earned = _buSignedIn && !!localStorage.getItem(LISA_SAVE_LS);
   _lisaCardData = {
-    earned, helloImg, sawImg,
-    revealAt: '2026-09-03T04:00:00Z',   // LISA's new single — Sep 3 (decoupled from the EP challenge date)
-    dateLine: 'NEW SINGLE · SEP 3, 2026 · 1PM KST / 12AM EDT',
-    dateShort: 'single Sep 3, 2026',
+    earned, coverImg,
+    revealAt: '2026-09-04T00:00:00Z',   // World premiere — Sep 4, 9AM KST = 00:00 UTC
+    dateLine: 'NEW SINGLE · SEP 4 · 9AM KST / SEP 3 · 8PM EDT',
+    dateShort: 'out Sep 4, 2026',
     cta: 'PRE-SAVE · LALISAOFFICIAL.COM',
   };
-  label.textContent = earned ? "I'M IN — SAWADIKA" : 'SAWADIKA · COUNTDOWN';
+  label.textContent = earned ? "I'M IN — SAWADIKA" : 'LISA · SAWADIKA';
   drawLisaCard(canvas, _lisaCardData);
   _markCardReady(canvas);
 }
