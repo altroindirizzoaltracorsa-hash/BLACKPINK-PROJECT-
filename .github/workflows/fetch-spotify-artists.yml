@@ -11,7 +11,8 @@ name: Fetch Spotify Top Artists
 # fresh budget. A manual dispatch can target one via `type`.
 on:
   schedule:
-    - cron: '45 22 * * *'   # Top Artists — daily
+    - cron: '0 */2 * * *'   # canary — every 2h: full daily refresh only if the chart changed
+    - cron: '45 22 * * *'   # Top Artists — daily  (guaranteed floor)
     - cron: '20 23 * * *'   # Top Artists — weekly
     - cron: '55 23 * * *'   # Top Albums  — weekly
   workflow_dispatch:
@@ -49,6 +50,17 @@ jobs:
 
           if [ -n "$PROBE" ]; then
             echo "── probing album chart shape ──"; hit "charts=probe-albums"; test "$code" = "200"; exit $?
+          fi
+
+          # Canary schedule: cheap check; only do the full daily refresh if the
+          # global daily artist chart actually changed since last poll.
+          if [ "$SCHED" = "0 */2 * * *" ] || [ "$INPUT_TYPE" = "canary" ]; then
+            echo "── canary (daily artists) ──"; hit "charts=artist-canary"
+            if grep -q '"changed":true' /tmp/out.json; then
+              echo "chart changed → full daily refresh"
+              hit "charts=fetch-artists&type=daily"; test "$code" = "200"; exit $?
+            fi
+            echo "no change — skipping full fetch"; exit 0
           fi
 
           # Resolve what to fetch from the schedule or the manual `type` input.

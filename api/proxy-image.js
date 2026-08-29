@@ -917,6 +917,33 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // ── GET ?charts=artist-canary (cron/admin) — cheap freshness check ─────────
+  // Spotify's daily chart updates once a day at an uncertain time. Rather than
+  // guess it with a fixed cron, poll this often: it fetches ONLY the global daily
+  // artist chart (1 request), fingerprints the top entries, and reports whether
+  // the chart changed since last check — so the caller runs the full fetch only
+  // when there's genuinely a new chart.
+  if (req.query.charts === 'artist-canary') {
+    const cronSecret = process.env.CRON_SECRET;
+    const adminSecret = process.env.ADMIN_SECRET;
+    const bearer = req.headers.authorization === `Bearer ${cronSecret}` && cronSecret;
+    const adminKey = (req.headers['x-admin-secret'] || req.query.key) === adminSecret && adminSecret;
+    if (!bearer && !adminKey) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+      const token = await getChartsAuthToken();
+      const result = await fetchOfficialChart(token, 'artist', 'daily', 'global');
+      if (!result.ok) return res.status(200).json({ ok: false, status: result.status });
+      const entries = result.data?.entries ?? result.data?.displayChart?.entries ?? [];
+      const fp = entries.slice(0, 50).map(e => `${e.chartEntryData?.currentRank}:${e.artistMetadata?.artistUri}`).join('|');
+      const hash = crypto.createHash('sha1').update(fp).digest('hex');
+      let prev = null;
+      try { prev = await upstashGet('bu_chart_fp_artist_daily'); } catch {}
+      const changed = prev !== hash;
+      if (changed) { try { await upstashSet('bu_chart_fp_artist_daily', hash); } catch {} }
+      return res.status(200).json({ ok: true, changed, entries: entries.length });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   if (req.query.charts === 'fetch-artists') {
     const cronSecret = process.env.CRON_SECRET;
     const adminSecret = process.env.ADMIN_SECRET;
