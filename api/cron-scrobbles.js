@@ -945,7 +945,14 @@ export default async function handler(req, res) {
     const FAEP_RESET_MS   = Date.parse('2026-08-29T00:00:00Z'); // first 2am-Rome reset after drop
     const FAEP_H24_MS     = FAEP_RELEASE_MS + 86400000;         // 6am Rome next day
     const now = Date.now();
-    if (now >= FAEP_RESET_MS) {
+    // Capture ONLY inside a tight window around each mark, so a cron run long after
+    // the moment (e.g. this feature deploying after the window already closed) can
+    // never record a wrong, much-later value. reset: between 2am and 6am; 24h: the
+    // 2h after 6am. Outside those windows nothing is recorded (the card then just
+    // shows the running First-week count).
+    const inResetWin = now >= FAEP_RESET_MS && now < FAEP_H24_MS;               // 2am → 6am
+    const inH24Win   = now >= FAEP_H24_MS   && now < FAEP_H24_MS + 2 * 3600000; // 6am → 8am
+    if (inResetWin || inH24Win) {
       // Exclude secondary (merged) usernames — mirrors computeCommunityTotal client-side.
       const secondary = new Set();
       for (const [k, d] of Object.entries(data.users)) {
@@ -959,10 +966,10 @@ export default async function handler(req, res) {
         if (secondary.has(k.toLowerCase())) continue;
         newDrop += (d.scores?.overall_fallenangel || 0) + (d.scores?.overall_heaven || 0);
       }
-      const snap = data._faepSnapshots || {};
-      if (snap.reset == null) snap.reset = newDrop;                    // first run past the 2am reset
-      if (now >= FAEP_H24_MS && snap.h24 == null) snap.h24 = newDrop;  // first run past 24h
-      data._faepSnapshots = snap;
+      const snap = data._faepSnap || {};
+      if (inResetWin && snap.reset == null) snap.reset = newDrop;
+      if (inH24Win   && snap.h24   == null) snap.h24   = newDrop;
+      data._faepSnap = snap;
     }
   } catch (e) { console.warn('FAEP snapshot failed:', e.message); }
 

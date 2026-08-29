@@ -12090,15 +12090,19 @@ async function loadFaCommunityScrobbles() {
       const newDrop = (songs.find(s => s.key === 'fallenangel')?.overall || 0)
                     + (songs.find(s => s.key === 'heaven')?.overall || 0);
       const H24_MS = FAEP_RELEASE_MS + 86400000;
-      const snap = lbData._faepSnapshots || null;
+      const snap = lbData._faepSnap || null;
       const msRow = (lbl, val) => `<div class="fa-cs-ms-row"><span class="lbl">${lbl}</span><span class="val">${val.toLocaleString()}</span></div>`;
-      let html;
-      if (Date.now() >= H24_MS && snap && snap.h24 != null) {
-        html = msRow('First 24 hours', Number(snap.h24))
-          + (snap.reset != null ? `<div class="fa-cs-ms-sub">at Spotify reset ${Number(snap.reset).toLocaleString()} · at 24h ${Number(snap.h24).toLocaleString()}</div>` : '');
-      } else {
-        html = msRow('First 24 hours · so far', newDrop);
+      let html = '';
+      if (Date.now() < H24_MS) {
+        // Still inside the first 24h — live running count.
+        html += msRow('First 24 hours · so far', newDrop);
+      } else if (snap && snap.h24 != null) {
+        // Window closed and the cron captured the checkpoints.
+        html += msRow('First 24 hours', Number(snap.h24));
+        if (snap.reset != null) html += `<div class="fa-cs-ms-sub">at Spotify reset ${Number(snap.reset).toLocaleString()} · at 24h ${Number(snap.h24).toLocaleString()}</div>`;
       }
+      // else: window closed with no captured snapshot → omit the 24h line entirely
+      // (never show a stale "so far"); the running First-week total below still shows.
       html += msRow('First week', newDrop);
       msEl.innerHTML = html;
     }
