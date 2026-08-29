@@ -1,6 +1,11 @@
 name: Per-user scrobble diagnostic (read-only)
 
 on:
+  push:
+    branches: [claude/webscrobbler-per-profile-6vhgdf]
+    paths:
+      - '.github/scripts/diag-user-scrobbles.mjs'
+      - '.github/workflows/diag-user-scrobbles.yml'
   workflow_dispatch:
     inputs:
       username:
@@ -21,5 +26,5 @@ jobs:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          USERNAME: ${{ github.event.inputs.username }}
+          USERNAME: ${{ github.event.inputs.username || '_demibandwout' }}
         run: node .github/scripts/diag-user-scrobbles.mjs
