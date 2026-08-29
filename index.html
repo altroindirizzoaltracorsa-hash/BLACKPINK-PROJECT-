@@ -1619,6 +1619,8 @@
   .cd-card-jennie .fa-cs-row span:last-child { color: #fff; font-weight: 700; }
   .cd-card-jennie .fa-cs-today { color: var(--jn-ruby, #c8102e); font-weight: 700; }
   .cd-card-jennie .fa-cs-since { color: rgba(255,255,255,0.45); font-weight: 400; font-style: italic; font-size: 0.82em; }
+  .cd-card-jennie .fa-cs-note { width: 100%; margin-top: 0.45rem; color: rgba(255,255,255,0.4); font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.76rem; line-height: 1.4; text-align: center; }
+  .cd-card-jennie .fa-cs-note:empty { display: none; }
   .cd-card-jennie .fa-cs-milestones { width: 100%; margin-top: 0.55rem; display: flex; flex-direction: column; gap: 0.1rem; }
   .cd-card-jennie .fa-cs-ms-row { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline;
     font-family: 'Cormorant Garamond', serif; }
@@ -2690,6 +2692,7 @@
               <span class="fa-cs-lbl">EP scrobbles by our community</span>
               <div class="fa-cs-milestones" id="fa-cs-milestones"></div>
               <div class="fa-cs-rows" id="fa-cs-rows"></div>
+              <div class="fa-cs-note" id="fa-cs-note"></div>
             </div>
             <!-- Release is out — worldwide release times kept here (hidden) for reference. -->
             <details class="cd-times" style="display:none;" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
@@ -6672,6 +6675,12 @@ window.addEventListener('DOMContentLoaded', maybeShowLtalReminder);
 // / 1PM KST). Before that the parent tab stays hidden; after, it appears and Less
 // Than a Lover comes back inside it.
 const FAEP_RELEASE_MS = Date.parse('2026-08-28T04:00:00Z');
+const FAEP_WEEK_MS = FAEP_RELEASE_MS + 7 * 86400000; // first-week close — 6am Rome, Sep 4
+// Deduped community overall_ltal as of the last 2am-Rome reset before the EP drop
+// (archived 27/08 snapshot). "LTAL since EP" = current overall_ltal − this baseline,
+// so the EP card can show Less Than a Lover on the same since-EP footing as the new
+// tracks while still surfacing its all-time total.
+const LTAL_SCROBBLES_AT_EP_RELEASE = 90780;
 function revealFaEpTab() {
   const tab = document.getElementById('lb-subtab-faep');
   if (tab && Date.now() >= FAEP_RELEASE_MS) tab.style.display = '';
@@ -12083,9 +12092,9 @@ async function loadFaCommunityScrobbles() {
     numEl.textContent = total.toLocaleString();
 
     // First 24h + First week of the NEW drop (Fallen Angel + Heaven). Live count
-    // during the window; once past the 24h mark, show the cron-captured 2am-reset
-    // and 6am-24h checkpoints (data._faepSnapshots). LTAL isn't in this figure —
-    // it had its own first 24h weeks ago; it shows as a plain total in the rows.
+    // during each window; once past the 24h / 7-day marks, show the cron-captured
+    // checkpoints (lbData._faepSnap.reset/.h24/.week). LTAL isn't in these figures —
+    // it had its own first 24h weeks ago; it shows as a since-EP + all-time row below.
     const msEl = document.getElementById('fa-cs-milestones');
     if (msEl) {
       const newDrop = (songs.find(s => s.key === 'fallenangel')?.overall || 0)
@@ -12104,19 +12113,36 @@ async function loadFaCommunityScrobbles() {
       }
       // else: window closed with no captured snapshot → omit the 24h line entirely
       // (never show a stale "so far"); the running First-week total below still shows.
-      html += msRow('First week', newDrop);
+
+      // First week: live running total until the 7-day mark, then frozen at the
+      // cron-captured snap.week so it stops moving once the first week closes.
+      if (Date.now() < FAEP_WEEK_MS) {
+        html += msRow('First week · so far', newDrop);
+      } else if (snap && snap.week != null) {
+        html += msRow('First week', Number(snap.week));
+      } else {
+        // Snapshot missed (cron didn't run near the mark) → fall back to live total.
+        html += msRow('First week', newDrop);
+      }
       msEl.innerHTML = html;
     }
 
+    // Every row is framed as scrobbles since the EP dropped. Fallen Angel / Heaven
+    // are brand-new so their all-time total IS their since-EP total. LTAL is older,
+    // so its since-EP figure = overall_ltal − the pre-drop baseline, and we surface
+    // its all-time total alongside as a dim annotation.
     rowsEl.innerHTML = songs.map(s => {
-      // LTAL isn't a new drop — its total is cumulative since it released back in
-      // its own campaign, so tag it "since release" to stop the big number reading
-      // as a first-24h figure alongside Fallen Angel / Heaven.
-      const val = s.showToday
-        ? `<span class="fa-cs-today">${s.today.toLocaleString()} today</span> · ${s.overall.toLocaleString()} <span class="fa-cs-since">since release</span>`
-        : s.overall.toLocaleString();
+      let val;
+      if (s.key === 'ltal') {
+        const sinceEp = Math.max(0, s.overall - LTAL_SCROBBLES_AT_EP_RELEASE);
+        val = `${sinceEp.toLocaleString()} <span class="fa-cs-since">· ${s.overall.toLocaleString()} all-time</span>`;
+      } else {
+        val = s.overall.toLocaleString();
+      }
       return `<div class="fa-cs-row"><span>${s.label}</span><span>${val}</span></div>`;
     }).join('');
+    const noteEl = document.getElementById('fa-cs-note');
+    if (noteEl) noteEl.textContent = 'Scrobbles since the EP dropped · Less Than a Lover also shows its all-time total';
     el.style.display = 'flex';
   } catch {}
 }

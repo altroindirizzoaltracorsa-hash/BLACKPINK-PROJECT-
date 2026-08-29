@@ -947,6 +947,7 @@ export default async function handler(req, res) {
     const FAEP_RELEASE_MS = Date.parse('2026-08-28T04:00:00Z'); // 6am Rome — EP drop
     const FAEP_RESET_MS   = Date.parse('2026-08-29T00:00:00Z'); // first 2am-Rome reset after drop
     const FAEP_H24_MS     = FAEP_RELEASE_MS + 86400000;         // 6am Rome next day
+    const FAEP_WEEK_MS    = FAEP_RELEASE_MS + 7 * 86400000;     // first-week close — 6am Rome, Sep 4
     const now = Date.now();
     // Capture ONLY inside a tight window around each mark, so a cron run long after
     // the moment (e.g. this feature deploying after the window already closed) can
@@ -955,7 +956,11 @@ export default async function handler(req, res) {
     // shows the running First-week count).
     const inResetWin = now >= FAEP_RESET_MS && now < FAEP_H24_MS;               // 2am → 6am
     const inH24Win   = now >= FAEP_H24_MS   && now < FAEP_H24_MS + 2 * 3600000; // 6am → 8am
-    if (inResetWin || inH24Win) {
+    // First-week freeze: capture the new-drop total once the 7-day mark passes, on
+    // the first cron run in the 12h window after it (6am → 6pm Sep 4). The card then
+    // stops the running "First week" number and shows this frozen value instead.
+    const inWeekWin  = now >= FAEP_WEEK_MS  && now < FAEP_WEEK_MS + 12 * 3600000;
+    if (inResetWin || inH24Win || inWeekWin) {
       // Exclude secondary (merged) usernames — mirrors computeCommunityTotal client-side.
       const secondary = new Set();
       for (const [k, d] of Object.entries(data.users)) {
@@ -972,6 +977,7 @@ export default async function handler(req, res) {
       const snap = data._faepSnap || {};
       if (inResetWin && snap.reset == null) snap.reset = newDrop;
       if (inH24Win   && snap.h24   == null) snap.h24   = newDrop;
+      if (inWeekWin  && snap.week  == null) snap.week  = newDrop;
       data._faepSnap = snap;
     }
   } catch (e) { console.warn('FAEP snapshot failed:', e.message); }
