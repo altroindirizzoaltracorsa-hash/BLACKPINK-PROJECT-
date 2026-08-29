@@ -943,8 +943,11 @@ export default async function handler(req, res) {
         return failed;
       };
 
+      // ?type=daily|weekly fetches just that chart type (the caller can space the
+      // two invocations apart to stay under Spotify's rate limit); default is both.
+      const wantTypes = (req.query.type === 'daily' || req.query.type === 'weekly') ? [req.query.type] : ['daily', 'weekly'];
       const jobs = [];
-      for (const chartType of ['daily', 'weekly']) for (const country of CHART_COUNTRIES) jobs.push({ chartType, country });
+      for (const chartType of wantTypes) for (const country of CHART_COUNTRIES) jobs.push({ chartType, country });
       // Main pass at moderate concurrency, then retry whatever failed after a short
       // cooldown — the charts service 429s a rapid ~150-request burst, but the rate
       // window resets within a couple of seconds. Genuine "no such chart" aliases,

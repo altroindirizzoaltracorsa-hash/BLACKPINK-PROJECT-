@@ -25,9 +25,17 @@ jobs:
           BASE: ${{ inputs.base_url != '' && inputs.base_url || 'https://www.blinksunited.com' }}
         run: |
           echo "Fetching official Spotify Top Artists → $BASE"
-          code=$(curl -sS -L --max-time 120 -o /tmp/out.json -w '%{http_code}' \
-            -H "x-admin-secret: $ADMIN_KEY" \
-            "$BASE/api/proxy-image?charts=fetch-artists")
-          echo "HTTP $code"
-          cat /tmp/out.json; echo
-          test "$code" = "200"
+          # Fetch daily then weekly as separate invocations, spaced apart, so each
+          # burst (74 requests) stays under Spotify's charts rate limit.
+          rc=0
+          for T in daily weekly; do
+            echo "── $T ──"
+            code=$(curl -sS -L --max-time 120 -o /tmp/out.json -w '%{http_code}' \
+              -H "x-admin-secret: $ADMIN_KEY" \
+              "$BASE/api/proxy-image?charts=fetch-artists&type=$T")
+            echo "HTTP $code"
+            cat /tmp/out.json; echo
+            [ "$code" = "200" ] || rc=1
+            [ "$T" = "daily" ] && sleep 20
+          done
+          exit $rc
