@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 const SUPABASE_URL         = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -279,20 +281,86 @@ const CHARTS_TRACKED_ARTISTS = {
   '5L1lO4eRHmJ7a0Q6csE5cT': 'LISA',
 };
 
+// Spotify deprecated open.spotify.com/get_access_token; the web player now mints
+// tokens from open.spotify.com/api/token signed with a rotating 6-digit TOTP.
+// We compute the TOTP ourselves. The signing secret rotates, so we pull the
+// current secret+version from a community-maintained list and keep a hardcoded
+// fallback. Fragile by nature (Spotify actively rotates/blocks) — the fetch
+// handler surfaces the exact failure so the secret can be refreshed when it breaks.
+const SPOTIFY_SECRETS_URL = 'https://raw.githubusercontent.com/Thereallo1026/spotify-secrets/main/secrets/secretBytes.json';
+const FALLBACK_TOTP_SECRET = { version: 12, secret: [12, 56, 76, 33, 88, 44, 88, 33, 78, 78, 11, 66, 22, 22, 55, 69, 54] };
+
+async function fetchCommunityTotpSecret() {
+  try {
+    const r = await fetch(SPOTIFY_SECRETS_URL, { headers: { 'User-Agent': CHARTS_UA } });
+    if (!r.ok) return null;
+    const list = await r.json();
+    if (!Array.isArray(list) || !list.length) return null;
+    const latest = list.reduce((a, b) => (Number(b.version) > Number(a.version) ? b : a));
+    if (Array.isArray(latest.secret) && latest.secret.length) return { version: Number(latest.version), secret: latest.secret };
+  } catch { /* fall back below */ }
+  return null;
+}
+
+function computeSpotifyTotp(secretBytes, timeSeconds) {
+  const transformed = secretBytes.map((b, i) => b ^ ((i % 33) + 9));
+  const key = Buffer.from(transformed.join(''), 'utf8');
+  const counter = Math.floor(timeSeconds / 30);
+  const buf = Buffer.alloc(8);
+  buf.writeBigUInt64BE(BigInt(counter));
+  const hmac = crypto.createHmac('sha1', key).update(buf).digest();
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const bin = ((hmac[offset] & 0x7f) << 24) | ((hmac[offset + 1] & 0xff) << 16) | ((hmac[offset + 2] & 0xff) << 8) | (hmac[offset + 3] & 0xff);
+  return (bin % 1_000_000).toString().padStart(6, '0');
+}
+
+async function getSpotifyServerTimeSeconds(spDc) {
+  try {
+    const r = await fetch('https://open.spotify.com/api/server-time', {
+      headers: { 'User-Agent': CHARTS_UA, Cookie: `sp_dc=${spDc}` },
+    });
+    if (r.ok) {
+      const d = await r.json();
+      const t = d.serverTime ?? d.server_time;
+      if (t) return Number(t);
+    }
+  } catch { /* fall back to local clock */ }
+  return Math.floor(Date.now() / 1000);
+}
+
 async function getChartsAuthToken() {
   const spDc = process.env.SPOTIFY_SP_DC;
   if (!spDc) throw new Error('SPOTIFY_SP_DC not set');
-  const r = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', {
-    headers: { 'User-Agent': CHARTS_UA, Cookie: `sp_dc=${spDc}` },
-  });
-  if (!r.ok) {
-    const body = await r.text();
-    throw new Error(`token mint failed: HTTP ${r.status} -- ${body.slice(0, 200)}`);
+
+  const serverTime = await getSpotifyServerTimeSeconds(spDc);
+  const nowMs = Date.now();
+  const headers = {
+    'User-Agent': CHARTS_UA, Cookie: `sp_dc=${spDc}`, 'App-Platform': 'WebPlayer',
+    Origin: 'https://open.spotify.com', Referer: 'https://open.spotify.com/', Accept: 'application/json',
+  };
+
+  const candidates = [];
+  const community = await fetchCommunityTotpSecret();
+  if (community) candidates.push(community);
+  candidates.push(FALLBACK_TOTP_SECRET);
+
+  let lastErr = 'no attempts';
+  for (const { version, secret } of candidates) {
+    const otp = computeSpotifyTotp(secret, serverTime);
+    const urls = [
+      `https://open.spotify.com/api/token?reason=init&productType=web-player&totp=${otp}&totpServer=${otp}&totpVer=${version}&ts=${nowMs}`,
+      `https://open.spotify.com/api/token?reason=transport&productType=web_player&totp=${otp}&totpVer=${version}&ts=${nowMs}`,
+    ];
+    for (const url of urls) {
+      let r;
+      try { r = await fetch(url, { headers }); } catch (e) { lastErr = `fetch error: ${e.message}`; continue; }
+      if (!r.ok) { lastErr = `HTTP ${r.status} (v${version}) -- ${(await r.text()).slice(0, 120)}`; continue; }
+      const d = await r.json().catch(() => null);
+      if (d && d.accessToken && d.isAnonymous === false) return d.accessToken;
+      lastErr = `unexpected token body (v${version}): ${JSON.stringify(d).slice(0, 160)}`;
+    }
   }
-  const d = await r.json();
-  if (d.isAnonymous !== false) throw new Error('sp_dc cookie did not authenticate a real account (isAnonymous truthy)');
-  if (!d.accessToken) throw new Error('no accessToken in token response');
-  return d.accessToken;
+  throw new Error(`token mint failed: ${lastErr}`);
 }
 
 async function fetchOfficialArtistChart(token, chartType, country) {
