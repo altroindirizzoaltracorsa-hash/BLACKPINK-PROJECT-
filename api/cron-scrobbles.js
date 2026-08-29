@@ -935,6 +935,37 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Fallen Angel EP first-24h auto-snapshots ───────────────────────────────
+  // Capture the community scrobble total of the NEW drop (Fallen Angel + Heaven)
+  // at the 2am-Rome Spotify reset and again at the 24h mark, so the release card
+  // can show "at Spotify reset: X · at 24h: Y" once the first day closes. Stored on
+  // the board object (persisted below) and read client-side in loadLtalStreamsGoal.
+  try {
+    const FAEP_RELEASE_MS = Date.parse('2026-08-28T04:00:00Z'); // 6am Rome — EP drop
+    const FAEP_RESET_MS   = Date.parse('2026-08-29T00:00:00Z'); // first 2am-Rome reset after drop
+    const FAEP_H24_MS     = FAEP_RELEASE_MS + 86400000;         // 6am Rome next day
+    const now = Date.now();
+    if (now >= FAEP_RESET_MS) {
+      // Exclude secondary (merged) usernames — mirrors computeCommunityTotal client-side.
+      const secondary = new Set();
+      for (const [k, d] of Object.entries(data.users)) {
+        for (const a of (d.linkedAccounts || [])) {
+          const ak = (a.username || '').toLowerCase();
+          if (ak && ak !== k) secondary.add(ak);
+        }
+      }
+      let newDrop = 0;
+      for (const [k, d] of Object.entries(data.users)) {
+        if (secondary.has(k.toLowerCase())) continue;
+        newDrop += (d.scores?.overall_fallenangel || 0) + (d.scores?.overall_heaven || 0);
+      }
+      const snap = data._faepSnapshots || {};
+      if (snap.reset == null) snap.reset = newDrop;                    // first run past the 2am reset
+      if (now >= FAEP_H24_MS && snap.h24 == null) snap.h24 = newDrop;  // first run past 24h
+      data._faepSnapshots = snap;
+    }
+  } catch (e) { console.warn('FAEP snapshot failed:', e.message); }
+
   data.lastUpdated = new Date().toISOString();
   updateLeaderStreak(data);
   await redis.set(LB_KEY, data);
