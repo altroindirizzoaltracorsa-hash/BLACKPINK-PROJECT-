@@ -1618,6 +1618,13 @@
   .cd-card-jennie .fa-cs-row span:first-child { color: rgba(255,255,255,0.7); font-style: italic; }
   .cd-card-jennie .fa-cs-row span:last-child { color: #fff; font-weight: 700; }
   .cd-card-jennie .fa-cs-today { color: var(--jn-ruby, #c8102e); font-weight: 700; }
+  .cd-card-jennie .fa-cs-milestones { width: 100%; margin-top: 0.55rem; display: flex; flex-direction: column; gap: 0.1rem; }
+  .cd-card-jennie .fa-cs-ms-row { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline;
+    font-family: 'Cormorant Garamond', serif; }
+  .cd-card-jennie .fa-cs-ms-row .lbl { font-style: italic; font-size: 0.85rem; color: rgba(255,255,255,0.72); }
+  .cd-card-jennie .fa-cs-ms-row .val { font-weight: 700; font-size: 1.1rem; color: #fff; font-variant-numeric: tabular-nums; }
+  .cd-card-jennie .fa-cs-ms-sub { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.74rem;
+    color: var(--jn-ruby, #c8102e); text-align: right; margin-top: -0.05rem; }
   .cd-card-jennie .cd-lbl { color: rgba(255,255,255,0.5); }
   .cd-card-jennie .cd-out { color: #fff; }
   .cd-card-jennie .cd-badge-chip { color: #020a0b; background: var(--jn-yellow); border-color: var(--jn-yellow); display: inline-flex; align-items: center; gap: 0.42em; }
@@ -2680,6 +2687,7 @@
             <div class="fa-community-scrobbles" id="fa-community-scrobbles" style="display:none;">
               <span class="fa-cs-num" id="fa-cs-num">—</span>
               <span class="fa-cs-lbl">EP scrobbles by our community</span>
+              <div class="fa-cs-milestones" id="fa-cs-milestones"></div>
               <div class="fa-cs-rows" id="fa-cs-rows"></div>
             </div>
             <!-- Release is out — worldwide release times kept here (hidden) for reference. -->
@@ -2847,11 +2855,11 @@
         <button class="itunes-inline-badge" id="itunes-inline-badge" onclick="openReleaseGoalsFromCard()">🎵 iTunes #1: <span id="itunes-inline-count">0/10 countries</span> — tap to view →</button>
 
         <div class="stream-target" id="release-stream-goal" style="display:none;">
-          <p class="target-label">🎯 Fallen Angel EP — First 24 Hours</p>
-          <div class="progress-nums" style="margin-bottom:0.9rem;"><span><strong id="release-24h-nums">—</strong></span><span id="release-24h-pct" style="color:var(--muted);font-size:0.72rem;"></span></div>
-          <p class="target-label">📈 First Week</p>
-          <div class="progress-nums" style="margin-bottom:0.6rem;"><span><strong id="release-stream-goal-nums">—</strong></span><span id="release-stream-goal-pct"></span></div>
-          <div id="release-ep-songs" style="display:flex;flex-direction:column;gap:0.3rem;margin-top:0.2rem;"></div>
+          <p class="target-label">🎯 Blinks United — First 24 Hours</p>
+          <div class="progress-nums" style="margin-bottom:0.9rem;"><span><strong id="release-24h-nums">7,802 streams</strong></span><span id="release-24h-pct"></span></div>
+          <p class="target-label">📈 1st Week — Toward 10M Filtered Streams</p>
+          <div class="progress-bar"><div class="progress-fill" id="release-stream-goal-fill" style="width:0%"></div></div>
+          <div class="progress-nums"><span><strong id="release-stream-goal-nums">0 / 10,000,000</strong></span><span id="release-stream-goal-pct"></span></div>
         </div>
 
         <!-- Blinks United's community scrobble contribution captured the day the track passed each Spotify streams milestone (static history — locked figures). -->
@@ -11837,7 +11845,7 @@ function renderAdminTable(data) {
 const JENNIE_RELEASE = {
   title: 'Less Than a Lover',
   releaseAt: '2026-07-24T04:00:00Z', // 12:00 AM EDT / 1:00 PM KST
-  hideAfter: '2026-09-07T04:00:00Z', // keep the card through the Fallen Angel EP's first week (EP dropped 28 Aug)
+  hideAfter: '2026-08-31T04:00:00Z', // stop showing the banner ~5 weeks after release
   link: 'https://jennie.lnk.to/LessthanaLover',
 };
 
@@ -12056,7 +12064,8 @@ async function loadFaCommunityScrobbles() {
   const rowsEl = document.getElementById('fa-cs-rows');
   if (!el || !numEl || !rowsEl) return;
   try {
-    const users = (await fetchLbData())?.users || {};
+    const lbData = (await fetchLbData()) || {};
+    const users = lbData.users || {};
     // Less Than a Lover carries a big all-time total from its own campaign, so it
     // shows today + overall; the brand-new tracks just show their (all-new) total.
     const songs = [
@@ -12071,6 +12080,29 @@ async function loadFaCommunityScrobbles() {
     const total = songs.reduce((a, s) => a + s.overall, 0);
     if (total <= 0) return;
     numEl.textContent = total.toLocaleString();
+
+    // First 24h + First week of the NEW drop (Fallen Angel + Heaven). Live count
+    // during the window; once past the 24h mark, show the cron-captured 2am-reset
+    // and 6am-24h checkpoints (data._faepSnapshots). LTAL isn't in this figure —
+    // it had its own first 24h weeks ago; it shows as a plain total in the rows.
+    const msEl = document.getElementById('fa-cs-milestones');
+    if (msEl) {
+      const newDrop = (songs.find(s => s.key === 'fallenangel')?.overall || 0)
+                    + (songs.find(s => s.key === 'heaven')?.overall || 0);
+      const H24_MS = FAEP_RELEASE_MS + 86400000;
+      const snap = lbData._faepSnapshots || null;
+      const msRow = (lbl, val) => `<div class="fa-cs-ms-row"><span class="lbl">${lbl}</span><span class="val">${val.toLocaleString()}</span></div>`;
+      let html;
+      if (Date.now() >= H24_MS && snap && snap.h24 != null) {
+        html = msRow('First 24 hours', Number(snap.h24))
+          + (snap.reset != null ? `<div class="fa-cs-ms-sub">at Spotify reset ${Number(snap.reset).toLocaleString()} · at 24h ${Number(snap.h24).toLocaleString()}</div>` : '');
+      } else {
+        html = msRow('First 24 hours · so far', newDrop);
+      }
+      html += msRow('First week', newDrop);
+      msEl.innerHTML = html;
+    }
+
     rowsEl.innerHTML = songs.map(s => {
       const val = s.showToday
         ? `<span class="fa-cs-today">${s.today.toLocaleString()} today</span> · ${s.overall.toLocaleString()}`
@@ -13438,54 +13470,45 @@ const LTAL_24H_CONTRIBUTION = 7802; // frozen 24h snapshot shown on share card
 // 1st-week goal. overall_ltal accumulates all-time since the track released.
 // Lives inside the release card itself, replacing the pre-save challenge box
 // once the single is out (see renderReleaseCountdown/renderJennieSaveCount).
-// Fallen Angel EP release tracker. Shows plain community-scrobble counts (no
-// "/ X streams" ratio). The FIRST 24H + FIRST WEEK numbers track the NEW drop
-// (Fallen Angel + Heaven) — LTAL already had its own first-24h weeks ago, so it's
-// shown as a simple ongoing-progress line alongside them. The 2am-Spotify-reset
-// and 6am-24h checkpoints are auto-snapshotted by the cron (data._faepSnapshots).
 async function loadLtalStreamsGoal() {
   const wrap = document.getElementById('release-stream-goal');
   if (!wrap) return;
-  if (Date.now() < FAEP_RELEASE_MS) { wrap.style.display = 'none'; return; }
+  if (Date.now() < new Date(JENNIE_RELEASE.releaseAt).getTime()) { wrap.style.display = 'none'; return; }
 
-  let data = {};
-  try { data = await fetchLbData(); } catch {}
-  const users = data.users || {};
-  const faTotal     = computeCommunityTotal(users, 'overall_fallenangel');
-  const heavenTotal = computeCommunityTotal(users, 'overall_heaven');
-  const ltalTotal   = computeCommunityTotal(users, 'overall_ltal');
-  const newDrop     = faTotal + heavenTotal; // the new release = Fallen Angel + Heaven
+  // Fetch official 24H count from backend (admin-settable once Spotify releases numbers)
+  let official24h = null;
+  try {
+    const r = await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' });
+    const d = await r.json();
+    official24h = d.ltal_24h_official || null;
+  } catch {}
 
-  // First 24 hours (new drop). Within the window: live running count. Once the 24h
-  // mark passes and the cron has captured the checkpoints, show them instead.
-  const H24_MS  = FAEP_RELEASE_MS + 86400000;
-  const snap    = data._faepSnapshots || null;
+  // Render frozen 24H contribution section
   const nums24h = document.getElementById('release-24h-nums');
   const pct24h  = document.getElementById('release-24h-pct');
   if (nums24h) {
-    if (Date.now() >= H24_MS && snap && snap.h24 != null) {
-      nums24h.textContent = `${Number(snap.h24).toLocaleString()} scrobbles`;
-      if (pct24h) pct24h.textContent = snap.reset != null
-        ? `at Spotify reset: ${Number(snap.reset).toLocaleString()} · at 24h: ${Number(snap.h24).toLocaleString()}`
-        : '';
+    if (official24h) {
+      const off = Number(official24h);
+      const ratio = off > 0 ? ((LTAL_24H_CONTRIBUTION / off) * 100).toFixed(2) : null;
+      nums24h.textContent = `${LTAL_24H_CONTRIBUTION.toLocaleString()} / ${off.toLocaleString()} streams`;
+      if (pct24h && ratio) pct24h.textContent = `${ratio}% of fandom`;
     } else {
-      nums24h.textContent = `${newDrop.toLocaleString()} scrobbles`;
-      if (pct24h) pct24h.textContent = 'so far';
+      nums24h.textContent = `${LTAL_24H_CONTRIBUTION.toLocaleString()} streams`;
+      if (pct24h) pct24h.textContent = '';
     }
   }
 
-  // First week (new drop) — just the running number, keeps climbing after the 24h.
-  const weekNums = document.getElementById('release-stream-goal-nums');
-  if (weekNums) weekNums.textContent = `${newDrop.toLocaleString()} scrobbles`;
-  const weekPct = document.getElementById('release-stream-goal-pct');
-  if (weekPct) weekPct.textContent = '';
-
-  // Per-song progress — all three EP tracks; Less Than a Lover is a plain total.
-  const songsEl = document.getElementById('release-ep-songs');
-  if (songsEl) {
-    const row = (name, n) => `<div style="display:flex;justify-content:space-between;font-size:0.8rem;"><span style="color:var(--muted);">${name}</span><strong>${n.toLocaleString()}</strong></div>`;
-    songsEl.innerHTML = row('Fallen Angel', faTotal) + row('Heaven', heavenTotal) + row('Less Than a Lover', ltalTotal);
-  }
+  // Render live 1st-week progress bar
+  try {
+    const data = await fetchLbData();
+    const total = computeCommunityTotal(data.users || {}, 'overall_ltal');
+    const pct = (total / LTAL_STREAMS_GOAL_INDUSTRY) * 100;
+    const pctLabel = pct >= 0.1 ? pct.toFixed(2) : pct.toFixed(4);
+    document.getElementById('release-stream-goal-fill').style.width = Math.min(100, pct) + '%';
+    document.getElementById('release-stream-goal-nums').textContent =
+      `${total.toLocaleString()} / ${LTAL_STREAMS_GOAL_INDUSTRY.toLocaleString()}`;
+    document.getElementById('release-stream-goal-pct').textContent = `${pctLabel}%`;
+  } catch(e) {}
 
   wrap.style.display = 'block';
 }
