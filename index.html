@@ -5568,6 +5568,17 @@ let chartCountry = 'GLOBAL';
 function loadSpotifyChartsPage() {
   showChartHub();
   renderArtistCharts();   // the separate home "Daily Top Songs" module (if present)
+  // Visitor-triggered refresh: nudge the server to re-pull the daily artist chart
+  // if it has gone stale (throttled server-side to once / 20 min). If a refresh
+  // actually happened, re-render whichever chart view is currently open.
+  fetch('/api/proxy-image?charts=visit-refresh', { cache: 'no-store' })
+    .then(r => r.json())
+    .then(d => {
+      if (!d || !d.refreshed) return;
+      const artistsOpen = document.getElementById('ch-view-artists')?.style.display !== 'none';
+      if (artistsOpen) fetchAndRenderArtistCharts();
+    })
+    .catch(() => {});
 }
 
 // Chart hub navigation: a card grid (Top Songs / Artists / Albums) → each view.

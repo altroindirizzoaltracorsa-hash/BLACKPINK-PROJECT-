@@ -944,6 +944,34 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // ── GET ?charts=visit-refresh (PUBLIC) — visitor-triggered refresh ─────────
+  // The /spotify-charts page pings this on load. It's throttled to once per 20
+  // min via a Redis timestamp so a public endpoint can't be spammed into
+  // hammering Spotify: only the first visitor in each window does any work, and
+  // even then it runs the cheap canary first and the full daily refresh only if
+  // the chart actually changed. Between the 2-hourly cron and live traffic this
+  // keeps the daily chart fresh within ~20 min of whenever Spotify updates.
+  if (req.query.charts === 'visit-refresh') {
+    if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.ADMIN_SECRET) return res.status(200).json({ ok: false });
+    const TTL_MS = 20 * 60 * 1000;
+    const now = Date.now();
+    let last = 0;
+    try { last = Number(await upstashGet('bu_chart_visit_ts')) || 0; } catch {}
+    if (now - last < TTL_MS) return res.status(200).json({ ok: true, throttled: true });
+    try { await upstashSet('bu_chart_visit_ts', now); } catch {}   // claim the window up-front
+
+    const base = 'https://' + (req.headers['x-forwarded-host'] || req.headers.host || 'www.blinksunited.com');
+    const hdr = { headers: { 'x-admin-secret': process.env.ADMIN_SECRET } };
+    try {
+      const can = await (await fetch(`${base}/api/proxy-image?charts=artist-canary`, hdr)).json().catch(() => ({}));
+      if (can && can.changed) {
+        await fetch(`${base}/api/proxy-image?charts=fetch-artists&type=daily`, hdr);
+        return res.status(200).json({ ok: true, refreshed: true });
+      }
+      return res.status(200).json({ ok: true, refreshed: false });
+    } catch (e) { return res.status(200).json({ ok: false, error: e.message }); }
+  }
+
   if (req.query.charts === 'fetch-artists') {
     const cronSecret = process.env.CRON_SECRET;
     const adminSecret = process.env.ADMIN_SECRET;
