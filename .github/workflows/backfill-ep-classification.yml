@@ -1,0 +1,33 @@
+name: Backfill EP classification
+
+# Re-files pre-fix Fallen Angel / Heaven plays sitting in solo_jennie into their
+# own track_ids. DRY RUN on push (APPLY=0); set apply=true via manual dispatch to
+# actually write.
+
+on:
+  push:
+    branches: [claude/webscrobbler-per-profile-6vhgdf]
+    paths:
+      - '.github/scripts/backfill-ep-classification.mjs'
+      - '.github/workflows/backfill-ep-classification.yml'
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Set true to actually write (otherwise dry run)'
+        required: false
+        default: 'false'
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Backfill
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          APPLY: ${{ github.event.inputs.apply == 'true' && '1' || '0' }}
+        run: node .github/scripts/backfill-ep-classification.mjs
