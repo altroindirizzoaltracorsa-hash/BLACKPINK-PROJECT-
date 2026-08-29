@@ -14,10 +14,6 @@ on:
         description: 'Base URL (blank = production).'
         required: false
         default: ''
-      debug:
-        description: 'Set to 1 to return diagnostics instead of writing.'
-        required: false
-        default: ''
 
 jobs:
   fetch:
@@ -27,14 +23,11 @@ jobs:
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           BASE: ${{ inputs.base_url != '' && inputs.base_url || 'https://www.blinksunited.com' }}
-          DEBUG: ${{ inputs.debug }}
         run: |
           echo "Fetching official Spotify Top Artists → $BASE"
-          URL="$BASE/api/proxy-image?charts=fetch-artists"
-          [ -n "$DEBUG" ] && URL="$URL&debug=1"
           code=$(curl -sS -L --max-time 120 -o /tmp/out.json -w '%{http_code}' \
             -H "x-admin-secret: $ADMIN_KEY" \
-            "$URL")
+            "$BASE/api/proxy-image?charts=fetch-artists")
           echo "HTTP $code"
           cat /tmp/out.json; echo
           test "$code" = "200"

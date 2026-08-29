@@ -897,7 +897,6 @@ export default async function handler(req, res) {
     const CHART_COUNTRIES = ['global', 'us', 'gb', 'kr', 'fr', 'de', 'br', 'mx', 'jp', 'au', 'ca'];
     const today = new Date().toISOString().slice(0, 10);
 
-    const debug = req.query.debug ? { aliases: [], sampleGlobalDaily: [] } : null;
     try {
       const token = await getChartsAuthToken();
       const upsertRows = [];
@@ -908,17 +907,8 @@ export default async function handler(req, res) {
           const result = await fetchOfficialArtistChart(token, chartType, country);
           if (!result.ok) { skipped.push({ chartType, country, status: result.status }); continue; }
 
+          // The charts service returns the ranked list at the top-level `entries`.
           const entries = result.data?.entries ?? result.data?.displayChart?.entries ?? [];
-          if (debug) {
-            debug.aliases.push({ alias: `artist-${country}-${chartType}`, entries: entries.length });
-            if (country === 'global' && chartType === 'daily') {
-              debug.entryKeys = entries[0] ? Object.keys(entries[0]) : [];
-              debug.sampleGlobalDaily = entries.slice(0, 6).map(e => ({
-                rank: e.chartEntryData?.currentRank, name: e.artistMetadata?.artistName, uri: e.artistMetadata?.artistUri,
-              }));
-              debug.rawEntry0 = JSON.stringify(entries[0] || {}).slice(0, 600);
-            }
-          }
           for (const entry of entries) {
             const uri = entry.artistMetadata?.artistUri || '';
             const artistId = uri.startsWith('spotify:artist:') ? uri.slice('spotify:artist:'.length) : null;
@@ -953,7 +943,7 @@ export default async function handler(req, res) {
         if (!upsertRes.ok) return res.status(502).json({ error: `Supabase upsert failed: ${await upsertRes.text()}` });
       }
 
-      return res.status(200).json({ ok: true, date: today, upserted: upsertRows.length, skipped, ...(debug ? { debug, matched: upsertRows.map(r => `${r.artist_name}/${r.country}/${r.chart_type}#${r.current_rank}`) } : {}) });
+      return res.status(200).json({ ok: true, date: today, upserted: upsertRows.length, skipped });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
