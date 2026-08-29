@@ -1,0 +1,33 @@
+name: Scrobble health check (read-only)
+
+# Read-only: pulls recent extension_scrobbles and reports whether every track is
+# being ingested and correctly classified across all scrobblers. Runs on push to
+# the scrobbler branch (Supabase secrets live there) and via manual dispatch.
+
+on:
+  push:
+    branches: [claude/webscrobbler-per-profile-6vhgdf]
+    paths:
+      - '.github/scripts/check-scrobble-health.mjs'
+      - '.github/workflows/check-scrobble-health.yml'
+  workflow_dispatch:
+    inputs:
+      window_h:
+        description: 'Look-back window in hours'
+        required: false
+        default: '24'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check scrobble health
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          WINDOW_H: ${{ github.event.inputs.window_h || '24' }}
+        run: node .github/scripts/check-scrobble-health.mjs
