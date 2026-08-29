@@ -1618,6 +1618,7 @@
   .cd-card-jennie .fa-cs-row span:first-child { color: rgba(255,255,255,0.7); font-style: italic; }
   .cd-card-jennie .fa-cs-row span:last-child { color: #fff; font-weight: 700; }
   .cd-card-jennie .fa-cs-today { color: var(--jn-ruby, #c8102e); font-weight: 700; }
+  .cd-card-jennie .fa-cs-since { color: rgba(255,255,255,0.45); font-weight: 400; font-style: italic; font-size: 0.82em; }
   .cd-card-jennie .fa-cs-milestones { width: 100%; margin-top: 0.55rem; display: flex; flex-direction: column; gap: 0.1rem; }
   .cd-card-jennie .fa-cs-ms-row { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline;
     font-family: 'Cormorant Garamond', serif; }
@@ -12108,8 +12109,11 @@ async function loadFaCommunityScrobbles() {
     }
 
     rowsEl.innerHTML = songs.map(s => {
+      // LTAL isn't a new drop — its total is cumulative since it released back in
+      // its own campaign, so tag it "since release" to stop the big number reading
+      // as a first-24h figure alongside Fallen Angel / Heaven.
       const val = s.showToday
-        ? `<span class="fa-cs-today">${s.today.toLocaleString()} today</span> · ${s.overall.toLocaleString()}`
+        ? `<span class="fa-cs-today">${s.today.toLocaleString()} today</span> · ${s.overall.toLocaleString()} <span class="fa-cs-since">since release</span>`
         : s.overall.toLocaleString();
       return `<div class="fa-cs-row"><span>${s.label}</span><span>${val}</span></div>`;
     }).join('');
