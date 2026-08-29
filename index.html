@@ -3742,12 +3742,12 @@
         <div class="ac-rows" id="ch-cards"></div>
       </div>
 
-      <!-- Official Spotify Top Artists (BLACKPINK + members' positions on the
-           global artist chart). Global-only; follows the Daily/Weekly toggle. -->
+      <!-- Official Spotify Top Artists — every country/region BLACKPINK + the
+           members chart in. Grouped by country; follows the Daily/Weekly toggle. -->
       <div id="ch-artists-section" class="ch-artists-section" style="display:none;">
-        <div class="ac-section-title" id="ch-artists-title" style="margin:1.8rem 0 0.4rem;">Top Artists · Global</div>
+        <div class="ac-section-title" id="ch-artists-title" style="margin:1.8rem 0 0.4rem;">Top Artists</div>
         <div id="ch-artists-meta" class="ch-meta"></div>
-        <div id="ch-artists-empty" class="ch-empty" style="display:none;">No BLACKPINK/member on the Global Top Artists chart right now.</div>
+        <div id="ch-artists-empty" class="ch-empty" style="display:none;">No BLACKPINK/member on the Spotify artist charts right now.</div>
         <div class="ac-rows" id="ch-artists-cards"></div>
       </div>
     </div>
@@ -6089,8 +6089,48 @@ async function fetchAndRenderCharts() {
   fetchAndRenderArtistCharts();
 }
 
-// Official Spotify Top Artists — BLACKPINK & members' positions on the global
-// artist chart (charts.spotify.com). Global-only; follows the Daily/Weekly tab.
+// Official Spotify Top Artists — every country/region BLACKPINK & the members
+// currently chart in (charts.spotify.com). Follows the Daily/Weekly tab.
+const ARTIST_CHART_COUNTRIES = {
+  GLOBAL: { flag: '🌐', name: 'Global' }, US: { flag: '🇺🇸', name: 'United States' },
+  GB: { flag: '🇬🇧', name: 'United Kingdom' }, KR: { flag: '🇰🇷', name: 'South Korea' },
+  JP: { flag: '🇯🇵', name: 'Japan' }, FR: { flag: '🇫🇷', name: 'France' },
+  DE: { flag: '🇩🇪', name: 'Germany' }, BR: { flag: '🇧🇷', name: 'Brazil' },
+  MX: { flag: '🇲🇽', name: 'Mexico' }, AU: { flag: '🇦🇺', name: 'Australia' },
+  CA: { flag: '🇨🇦', name: 'Canada' },
+};
+
+function _artistChartCardHtml(row, onChartLabel) {
+  let moveCls, moveLabel;
+  if (row.entry_status === 'NEW' || row.entry_status === 'RE-ENTRY') {
+    moveCls = 'new-entry'; moveLabel = row.entry_status === 'RE-ENTRY' ? 'RE-ENTRY' : 'NEW';
+  } else if (row.previous_rank != null && row.previous_rank > row.current_rank) {
+    moveCls = 'up';   moveLabel = `▲ ${row.previous_rank - row.current_rank} spots`;
+  } else if (row.previous_rank != null && row.previous_rank < row.current_rank) {
+    moveCls = 'down'; moveLabel = `▼ ${row.current_rank - row.previous_rank} spots`;
+  } else {
+    moveCls = 'same'; moveLabel = '= no change';
+  }
+  const rawImg = row.image_url || '';
+  const imgUrl = rawImg.startsWith('spotify:image:') ? 'https://i.scdn.co/image/' + rawImg.slice('spotify:image:'.length) : rawImg;
+  const imgHtml = imgUrl
+    ? `<img class="ac-row-avatar" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(row.artist_name)}" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">`
+    : `<div class="ac-row-avatar"></div>`;
+  const peakHtml = row.peak_rank != null ? `Peak #${row.peak_rank}` : '';
+  const streakHtml = row.streak != null ? `${peakHtml ? ' · ' : ''}${fmtNum(row.streak)} ${onChartLabel}` : '';
+  return `<div class="ac-row">
+    ${imgHtml}
+    <div class="ac-row-body">
+      <div class="ac-row-name">${escapeHtml(row.artist_name)}</div>
+      <div class="ac-row-peak">${peakHtml}${streakHtml}</div>
+    </div>
+    <div class="ac-row-right">
+      <div class="ac-row-pos">#${row.current_rank}</div>
+      <div class="ac-row-move ${moveCls}">${moveLabel}</div>
+    </div>
+  </div>`;
+}
+
 async function fetchAndRenderArtistCharts() {
   const section = document.getElementById('ch-artists-section');
   const cards   = document.getElementById('ch-artists-cards');
@@ -6098,10 +6138,10 @@ async function fetchAndRenderArtistCharts() {
   const titleEl = document.getElementById('ch-artists-title');
   const metaEl  = document.getElementById('ch-artists-meta');
   if (!section || !cards) return;
-  const chartLabel = (chartType === 'weekly' ? 'Weekly' : 'Daily') + ' Top Artists · Global';
+  const chartLabel = (chartType === 'weekly' ? 'Weekly' : 'Daily') + ' Top Artists';
   const onChartLabel = chartType === 'weekly' ? 'wks' : 'days';
   try {
-    const r = await fetch(`/api/proxy-image?charts=list-artists&chart_type=${chartType}&country=GLOBAL`, { cache: 'no-store' });
+    const r = await fetch(`/api/proxy-image?charts=list-artists&chart_type=${chartType}&country=ALL`, { cache: 'no-store' });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
     const rows = data.rows || [];
@@ -6109,35 +6149,27 @@ async function fetchAndRenderArtistCharts() {
     section.style.display = '';
     if (!rows.length) { emptyEl.style.display = 'block'; cards.innerHTML = ''; metaEl.textContent = ''; return; }
     emptyEl.style.display = 'none';
-    metaEl.textContent = `${rows.length} on the chart`;
-    cards.innerHTML = rows.map(row => {
-      let moveCls, moveLabel;
-      if (row.entry_status === 'NEW' || row.entry_status === 'RE-ENTRY') {
-        moveCls = 'new-entry'; moveLabel = row.entry_status === 'RE-ENTRY' ? 'RE-ENTRY' : 'NEW';
-      } else if (row.previous_rank != null && row.previous_rank > row.current_rank) {
-        moveCls = 'up';   moveLabel = `▲ ${row.previous_rank - row.current_rank} spots`;
-      } else if (row.previous_rank != null && row.previous_rank < row.current_rank) {
-        moveCls = 'down'; moveLabel = `▼ ${row.current_rank - row.previous_rank} spots`;
-      } else {
-        moveCls = 'same'; moveLabel = '= no change';
-      }
-      const rawImg = row.image_url || '';
-      const imgUrl = rawImg.startsWith('spotify:image:') ? 'https://i.scdn.co/image/' + rawImg.slice('spotify:image:'.length) : rawImg;
-      const imgHtml = imgUrl
-        ? `<img class="ac-row-avatar" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(row.artist_name)}" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">`
-        : `<div class="ac-row-avatar"></div>`;
-      const peakHtml = row.peak_rank != null ? `Peak #${row.peak_rank}` : '';
-      const streakHtml = row.streak != null ? `${peakHtml ? ' · ' : ''}${fmtNum(row.streak)} ${onChartLabel}` : '';
-      return `<div class="ac-row">
-        ${imgHtml}
-        <div class="ac-row-body">
-          <div class="ac-row-name">${escapeHtml(row.artist_name)}</div>
-          <div class="ac-row-peak">${peakHtml}${streakHtml}</div>
-        </div>
-        <div class="ac-row-right">
-          <div class="ac-row-pos">#${row.current_rank}</div>
-          <div class="ac-row-move ${moveCls}">${moveLabel}</div>
-        </div>
+
+    // Group by country, order Global first then by each country's best (lowest) rank.
+    const byCountry = {};
+    for (const row of rows) {
+      const c = (row.country || 'GLOBAL').toUpperCase();
+      (byCountry[c] = byCountry[c] || []).push(row);
+    }
+    const bestRank = c => Math.min(...byCountry[c].map(r => r.current_rank ?? 999));
+    const order = Object.keys(byCountry).sort((a, b) => {
+      if (a === 'GLOBAL') return -1;
+      if (b === 'GLOBAL') return 1;
+      return bestRank(a) - bestRank(b);
+    });
+    metaEl.textContent = `${rows.length} placement${rows.length === 1 ? '' : 's'} across ${order.length} chart${order.length === 1 ? '' : 's'}`;
+
+    cards.innerHTML = order.map(c => {
+      const meta = ARTIST_CHART_COUNTRIES[c] || { flag: '🏳️', name: c };
+      const list = byCountry[c].slice().sort((a, b) => (a.current_rank ?? 999) - (b.current_rank ?? 999));
+      return `<div class="ac-country-group">
+        <p class="ltal-goals-category-label" style="margin:1.1rem 0 0.4rem;">${meta.flag} ${meta.name}</p>
+        ${list.map(row => _artistChartCardHtml(row, onChartLabel)).join('')}
       </div>`;
     }).join('');
   } catch (e) {

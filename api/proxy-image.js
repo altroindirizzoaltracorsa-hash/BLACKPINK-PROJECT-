@@ -956,6 +956,26 @@ export default async function handler(req, res) {
     const chartType = req.query.chart_type === 'weekly' ? 'weekly' : 'daily';
     const country = (req.query.country || 'GLOBAL').toUpperCase();
 
+    // country=ALL — every country/region the members currently chart in, at the
+    // latest tracking date, ordered by country then rank (rows carry `country`).
+    if (country === 'ALL') {
+      const latRes = await sbFetch(
+        `/artist_chart_positions?chart_type=eq.${chartType}&select=tracking_date&order=tracking_date.desc&limit=1`,
+        { headers: { Accept: 'application/json' } },
+      );
+      if (!latRes.ok) return res.status(502).json({ error: 'Supabase query failed' });
+      const [lat] = await latRes.json();
+      if (!lat) return res.status(200).json({ chartType, country: 'ALL', trackingDate: null, rows: [] });
+      const allRes = await sbFetch(
+        `/artist_chart_positions?chart_type=eq.${chartType}&tracking_date=eq.${lat.tracking_date}` +
+        `&select=country,artist_spotify_id,artist_name,current_rank,previous_rank,peak_rank,streak,entry_status,entry_date,peak_date,image_url` +
+        `&order=country.asc,current_rank.asc`,
+        { headers: { Accept: 'application/json' } },
+      );
+      if (!allRes.ok) return res.status(502).json({ error: 'Supabase query failed' });
+      return res.status(200).json({ chartType, country: 'ALL', trackingDate: lat.tracking_date, rows: await allRes.json() });
+    }
+
     const latestRes = await sbFetch(
       `/artist_chart_positions?chart_type=eq.${chartType}&country=eq.${country}&select=tracking_date&order=tracking_date.desc&limit=1`,
       { headers: { Accept: 'application/json' } },
