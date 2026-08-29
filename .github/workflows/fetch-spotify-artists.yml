@@ -36,6 +36,8 @@ jobs:
             echo "HTTP $code"
             cat /tmp/out.json; echo
             [ "$code" = "200" ] || rc=1
-            [ "$T" = "daily" ] && sleep 20
+            # Spotify's charts rate limit is a rolling window > 20s; let it fully
+            # clear before the weekly burst so both types get near-complete coverage.
+            [ "$T" = "daily" ] && sleep 75
           done
           exit $rc
