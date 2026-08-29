@@ -287,17 +287,31 @@ const CHARTS_TRACKED_ARTISTS = {
 // current secret+version from a community-maintained list and keep a hardcoded
 // fallback. Fragile by nature (Spotify actively rotates/blocks) — the fetch
 // handler surfaces the exact failure so the secret can be refreshed when it breaks.
-const SPOTIFY_SECRETS_URL = 'https://raw.githubusercontent.com/Thereallo1026/spotify-secrets/main/secrets/secretBytes.json';
-const FALLBACK_TOTP_SECRET = { version: 12, secret: [12, 56, 76, 33, 88, 44, 88, 33, 78, 78, 11, 66, 22, 22, 55, 69, 54] };
+// Community-maintained mirror of Spotify's rotating TOTP secrets, shape
+// { "<version>": [bytes...] }. The hardcoded fallback is the latest known at
+// the time of writing; the runtime fetch self-heals to newer versions.
+const SPOTIFY_SECRETS_URL = 'https://raw.githubusercontent.com/xyloflake/spot-secrets-go/main/secrets/secretDict.json';
+const FALLBACK_TOTP_SECRET = { version: 61, secret: [44, 55, 47, 42, 70, 40, 34, 114, 76, 74, 50, 111, 120, 97, 75, 76, 94, 102, 43, 69, 49, 120, 118, 80, 64, 78] };
 
 async function fetchCommunityTotpSecret() {
   try {
     const r = await fetch(SPOTIFY_SECRETS_URL, { headers: { 'User-Agent': CHARTS_UA } });
     if (!r.ok) return null;
-    const list = await r.json();
-    if (!Array.isArray(list) || !list.length) return null;
-    const latest = list.reduce((a, b) => (Number(b.version) > Number(a.version) ? b : a));
-    if (Array.isArray(latest.secret) && latest.secret.length) return { version: Number(latest.version), secret: latest.secret };
+    const data = await r.json();
+    // Object shape: { "<version>": [bytes...] } — pick the highest version.
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      const versions = Object.keys(data).map(Number).filter(Number.isFinite);
+      if (versions.length) {
+        const version = Math.max(...versions);
+        const secret = data[String(version)];
+        if (Array.isArray(secret) && secret.length) return { version, secret };
+      }
+    }
+    // Array shape: [{version, secret:[...]}] — pick the highest version.
+    if (Array.isArray(data) && data.length) {
+      const latest = data.reduce((a, b) => (Number(b.version) > Number(a.version) ? b : a));
+      if (Array.isArray(latest.secret) && latest.secret.length) return { version: Number(latest.version), secret: latest.secret };
+    }
   } catch { /* fall back below */ }
   return null;
 }
