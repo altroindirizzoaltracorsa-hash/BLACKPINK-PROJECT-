@@ -1,0 +1,29 @@
+name: Linking diagnostic (read-only)
+
+on:
+  push:
+    branches: [claude/webscrobbler-per-profile-6vhgdf]
+    paths:
+      - '.github/scripts/diag-linking.mjs'
+      - '.github/workflows/diag-linking.yml'
+  workflow_dispatch:
+    inputs:
+      username:
+        description: 'Username to trace'
+        required: false
+        default: '_demibandwout'
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Linking trace
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          USERNAME: ${{ github.event.inputs.username || '_demibandwout' }}
+        run: node .github/scripts/diag-linking.mjs
