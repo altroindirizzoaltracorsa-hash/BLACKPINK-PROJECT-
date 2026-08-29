@@ -5,15 +5,25 @@ name: Fetch Spotify Top Artists
 # runs server-side on Vercel — Spotify blocks GitHub Actions IPs, so this job
 # only *triggers* the Vercel handler (charts=fetch-artists), which mints a token
 # from the SPOTIFY_SP_DC cookie and upserts into Supabase (artist_chart_positions).
+#
+# Spotify rate-limits the charts service on a long rolling window, so the daily
+# and weekly passes (74 requests each) run on SEPARATE schedules 35 min apart —
+# each starts with a fresh budget and gets near-complete coverage. A manual
+# dispatch runs both, spaced 75s apart.
 on:
   schedule:
-    - cron: '45 22 * * *'   # daily, just after the Top Songs fetch (30 22 * * *)
+    - cron: '45 22 * * *'   # daily charts  (just after the Top Songs fetch, 30 22)
+    - cron: '20 23 * * *'   # weekly charts (35 min later — fresh rate budget)
   workflow_dispatch:
     inputs:
       base_url:
         description: 'Base URL (blank = production).'
         required: false
         default: ''
+      type:
+        description: 'daily | weekly | both (default: both).'
+        required: false
+        default: 'both'
 
 jobs:
   fetch:
@@ -23,12 +33,19 @@ jobs:
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           BASE: ${{ inputs.base_url != '' && inputs.base_url || 'https://www.blinksunited.com' }}
+          SCHED: ${{ github.event.schedule }}
+          INPUT_TYPE: ${{ inputs.type }}
         run: |
-          echo "Fetching official Spotify Top Artists → $BASE"
-          # Fetch daily then weekly as separate invocations, spaced apart, so each
-          # burst (74 requests) stays under Spotify's charts rate limit.
+          # Pick which chart type(s) this invocation fetches:
+          #  - the 22:45 schedule → daily; the 23:20 schedule → weekly
+          #  - manual dispatch → whatever `type` was chosen (default both)
+          if [ "$SCHED" = "45 22 * * *" ]; then TYPES="daily";
+          elif [ "$SCHED" = "20 23 * * *" ]; then TYPES="weekly";
+          elif [ "$INPUT_TYPE" = "daily" ] || [ "$INPUT_TYPE" = "weekly" ]; then TYPES="$INPUT_TYPE";
+          else TYPES="daily weekly"; fi
+          echo "Fetching official Spotify Top Artists ($TYPES) → $BASE"
           rc=0
-          for T in daily weekly; do
+          for T in $TYPES; do
             echo "── $T ──"
             code=$(curl -sS -L --max-time 120 -o /tmp/out.json -w '%{http_code}' \
               -H "x-admin-secret: $ADMIN_KEY" \
@@ -36,8 +53,8 @@ jobs:
             echo "HTTP $code"
             cat /tmp/out.json; echo
             [ "$code" = "200" ] || rc=1
-            # Spotify's charts rate limit is a rolling window > 20s; let it fully
-            # clear before the weekly burst so both types get near-complete coverage.
-            [ "$T" = "daily" ] && sleep 75
+            # If a single dispatch is doing both types, space them so the second
+            # burst starts with a fresh-ish rate budget.
+            [ "$T" = "daily" ] && [ "$TYPES" = "daily weekly" ] && sleep 75
           done
           exit $rc
