@@ -912,6 +912,8 @@ export default async function handler(req, res) {
           if (debug) {
             debug.aliases.push({ alias: `artist-${country}-${chartType}`, entries: entries.length });
             if (country === 'global' && chartType === 'daily') {
+              debug.rawKeys = result.data && typeof result.data === 'object' ? Object.keys(result.data) : typeof result.data;
+              debug.rawSnippet = JSON.stringify(result.data).slice(0, 500);
               debug.sampleGlobalDaily = entries.slice(0, 6).map(e => ({
                 rank: e.chartEntryData?.currentRank, name: e.artistMetadata?.artistName, uri: e.artistMetadata?.artistUri,
               }));
