@@ -7031,9 +7031,11 @@ const TRACKS = [
 // songs are tracked and shown, but never counted into these.
 const CAMPAIGN_TRACK_IDS = ['jump', 'shutdown', 'ddududu', 'go'];
 const EP_TRACK_IDS = ['ltal', 'fallenangel', 'heaven'];
-// Sum only the tracks that count toward the campaign totals (keeps Less Than a
-// Lover's long-standing inclusion; excludes Fallen Angel & Heaven).
-const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go'];
+// Tracks that count toward the campaign totals + the leaderboard "all" sums and
+// the community goal. The whole Fallen Angel EP (LTAL + Fallen Angel + Heaven) is
+// now included so a new release lifts the community goal and the board (the daily
+// STAMP stays campaign-only — see CAMPAIGN_TRACK_IDS above).
+const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven'];
 function campaignTotalOf(tp) { return CAMPAIGN_TOTAL_IDS.reduce((s, id) => s + (tp?.[id] || 0), 0); }
 
 // ── VOTE CAMPAIGNS ───────────────────────────────────────────
@@ -10233,7 +10235,10 @@ function computeDailyCommunityTotal(users) {
     if (secondaryKeys.has(username.toLowerCase())) return sum;
     const s = d.scores || {};
     if (s.daily_date !== todayLabel) return sum;
-    return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0);
+    // Whole campaign incl. the Fallen Angel EP (LTAL + Fallen Angel + Heaven), so a
+    // release lifts the community goal — mirrors CAMPAIGN_TOTAL_IDS / daily_all.
+    return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0);
   }, 0);
 }
 
@@ -10338,7 +10343,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
         overall_rose:     memberPlays?.rose   || 0,
         overall_jennie:   memberPlays?.jennie || 0,
       } : {}),
-      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (ltalCampaignActive() ? (todayCounts.ltal || 0) : 0) + (todayCounts.go || 0),
+      daily_all:        campaignTotalOf(todayCounts),
       daily_jump:       todayCounts.jump     || 0,
       daily_shutdown:   todayCounts.shutdown || 0,
       daily_ddududu:    todayCounts.ddududu  || 0,
@@ -10347,7 +10352,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       daily_fallenangel: todayCounts.fallenangel || 0,
       daily_heaven:      todayCounts.heaven      || 0,
       daily_date:       today,
-      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (ltalCampaignActive() ? (weekCounts.ltal || 0) : 0) + (weekCounts.go || 0),
+      weekly_all:       campaignTotalOf(weekCounts),
       weekly_jump:      weekCounts.jump     || 0,
       weekly_shutdown:  weekCounts.shutdown || 0,
       weekly_ddududu:   weekCounts.ddududu  || 0,

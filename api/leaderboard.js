@@ -78,13 +78,12 @@ async function aggregateGoalDaysFromCounts(sb) {
 }
 const TRACK_EVENTS = new Set(['pageview', 'playlist_click', 'share_click', 'vote_click']);
 
-// Less Than a Lover leaves the campaign at the reset cutoff. Per-track ltal values
-// are still stored (for each fan's profile), but the *_all ranking sums drop it
-// from that moment on so it no longer affects leaderboard placement.
+// The Fallen Angel EP (Less Than a Lover + Fallen Angel + Heaven) counts toward the
+// *_all ranking sums along with the four group tracks, so a new release lifts the
+// leaderboard. LTAL's old reset cutoff no longer drops it — it's back as part of
+// the EP. (Client mirror: CAMPAIGN_TOTAL_IDS in index.html.)
 const LTAL_STOP_MS = Date.UTC(2026, 7, 17, 0, 0, 0); // 2026-08-17 00:00 UTC = 2 AM Rome
-const rankTids = () => Date.now() < LTAL_STOP_MS
-  ? ['jump', 'shutdown', 'ddududu', 'ltal', 'go']
-  : ['jump', 'shutdown', 'ddududu', 'go'];
+const rankTids = () => ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven'];
 
 
 // Chat shares this file (instead of its own /api/chat.js) to stay under
@@ -162,7 +161,7 @@ function bpWeekBounds() {
 // Additive on top of Last.fm/LB scores; 0 for anyone who hasn't linked the
 // extension, so regular submissions are byte-for-byte unaffected.
 async function extensionCountsForUser(sb, appUserId, dayFrom, dayTo, weekFrom, weekTo) {
-  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 });
+  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 });
   const out = { total: empty(), week: empty(), today: empty() };
   if (!sb || !appUserId) return out;
   // Counted in the database (see supabase/extension_counts_fn.sql) so it scales
@@ -811,7 +810,7 @@ export default async function handler(req, res) {
       const { from: exDayFrom, to: exDayTo }   = bpDayBounds();
       const { from: exWeekFrom, to: exWeekTo } = bpWeekBounds();
       const ext = await extensionCountsForUser(sb, user.id, exDayFrom, exDayTo, exWeekFrom, exWeekTo);
-      const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go'];
+      const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven'];
       const hasAny = TIDS.some(id => ext.total[id] || ext.week[id] || ext.today[id]);
       if (hasAny) {
         for (const id of TIDS) {
@@ -851,7 +850,7 @@ export default async function handler(req, res) {
     // disconnected scrobbler can still reduce it. Mirrors the cron's floor.
     if (existingEntry?.scores && scores) {
       const ex = existingEntry.scores;
-      const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go'];
+      const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven'];
       if (ex.daily_date === scores.daily_date) {
         for (const id of TIDS) scores[`daily_${id}`] = Math.max(scores[`daily_${id}`] || 0, ex[`daily_${id}`] || 0);
         scores.daily_all = rankTids().reduce((n, id) => n + (scores[`daily_${id}`] || 0), 0);

@@ -590,7 +590,10 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
     } catch {}
   }
 
-  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + (ltalInRank() ? totalPlays.ltal : 0) + totalPlays.go;
+  // Whole campaign incl. the Fallen Angel EP (LTAL + Fallen Angel + Heaven) so a
+  // new release lifts the board. Mirrors CAMPAIGN_TOTAL_IDS / rankTids on the client
+  // + leaderboard.js. (Per-track EP boards stay separate via overall_fallenangel/heaven.)
+  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal + totalPlays.go + totalPlays.fallenangel + totalPlays.heaven;
 
   return {
     username:      displayName,
@@ -620,7 +623,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       overall_fallenangel: totalPlays.fallenangel,
       overall_heaven:      totalPlays.heaven,
       overall_artist:   artistPlays,
-      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (ltalInRank() ? (todayCounts.ltal || 0) : 0) + (todayCounts.go || 0),
+      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0) + (todayCounts.fallenangel || 0) + (todayCounts.heaven || 0),
       daily_jump:       todayCounts.jump     || 0,
       daily_shutdown:   todayCounts.shutdown || 0,
       daily_ddududu:    todayCounts.ddududu  || 0,
@@ -629,7 +632,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       daily_fallenangel: todayCounts.fallenangel || 0,
       daily_heaven:      todayCounts.heaven      || 0,
       daily_date:       todayLabel,
-      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (ltalInRank() ? (weekCounts.ltal || 0) : 0) + (weekCounts.go || 0),
+      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0) + (weekCounts.fallenangel || 0) + (weekCounts.heaven || 0),
       weekly_jump:      weekCounts.jump     || 0,
       weekly_shutdown:  weekCounts.shutdown || 0,
       weekly_ddududu:   weekCounts.ddududu  || 0,
