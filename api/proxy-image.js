@@ -907,47 +907,48 @@ export default async function handler(req, res) {
     try {
       const token = await getChartsAuthToken();
       const upsertRows = [];
-      const skipped = [];
       let countryFilters = null;
 
-      // Fan out all (chartType × country) fetches in bounded-concurrency batches so
-      // ~150 requests finish well within the Vercel function timeout.
-      const jobs = [];
-      for (const chartType of ['daily', 'weekly']) for (const country of CHART_COUNTRIES) jobs.push({ chartType, country });
-      const CONCURRENCY = 10;
-      for (let i = 0; i < jobs.length; i += CONCURRENCY) {
-        const batch = jobs.slice(i, i + CONCURRENCY);
-        const results = await Promise.all(batch.map(async (j) => ({ ...j, result: await fetchOfficialArtistChart(token, j.chartType, j.country) })));
-        for (const { chartType, country, result } of results) {
-          if (!result.ok) { skipped.push({ chartType, country, status: result.status }); continue; }
-          if (debug && !countryFilters && Array.isArray(result.data?.countryFilters)) {
-            countryFilters = result.data.countryFilters.map(c => c.code || c);
-          }
-          const entries = result.data?.entries ?? result.data?.displayChart?.entries ?? [];
-          for (const entry of entries) {
-            const uri = entry.artistMetadata?.artistUri || '';
-            const artistId = uri.startsWith('spotify:artist:') ? uri.slice('spotify:artist:'.length) : null;
-            if (!artistId || !CHARTS_TRACKED_ARTISTS[artistId]) continue;
+      const collectEntries = (country, chartType, data) => {
+        if (debug && !countryFilters && Array.isArray(data?.countryFilters)) countryFilters = data.countryFilters.map(c => c.code || c);
+        const entries = data?.entries ?? data?.displayChart?.entries ?? [];
+        for (const entry of entries) {
+          const uri = entry.artistMetadata?.artistUri || '';
+          const artistId = uri.startsWith('spotify:artist:') ? uri.slice('spotify:artist:'.length) : null;
+          if (!artistId || !CHARTS_TRACKED_ARTISTS[artistId]) continue;
+          const d = entry.chartEntryData;
+          upsertRows.push({
+            artist_spotify_id: artistId, artist_name: CHARTS_TRACKED_ARTISTS[artistId],
+            country: country.toUpperCase(), chart_type: chartType, tracking_date: today,
+            current_rank: d.currentRank, previous_rank: d.previousRank ?? null, peak_rank: d.peakRank ?? null,
+            streak: d.appearancesOnChart ?? null, entry_status: d.entryStatus ?? null,
+            entry_date: d.entryDate ?? null, peak_date: d.peakDate ?? null,
+            image_url: entry.artistMetadata?.displayImageUri ?? null,
+          });
+        }
+      };
 
-            const d = entry.chartEntryData;
-            upsertRows.push({
-              artist_spotify_id: artistId,
-              artist_name: CHARTS_TRACKED_ARTISTS[artistId],
-              country: country.toUpperCase(),
-              chart_type: chartType,
-              tracking_date: today,
-              current_rank: d.currentRank,
-              previous_rank: d.previousRank ?? null,
-              peak_rank: d.peakRank ?? null,
-              streak: d.appearancesOnChart ?? null,
-              entry_status: d.entryStatus ?? null,
-              entry_date: d.entryDate ?? null,
-              peak_date: d.peakDate ?? null,
-              image_url: entry.artistMetadata?.displayImageUri ?? null,
-            });
+      // Run a job list in bounded-concurrency batches; return the ones that failed
+      // (non-200), so a later pass can retry transient rate-limits.
+      const runJobs = async (jobList, concurrency) => {
+        const failed = [];
+        for (let i = 0; i < jobList.length; i += concurrency) {
+          const batch = jobList.slice(i, i + concurrency);
+          const results = await Promise.all(batch.map(async (j) => ({ ...j, result: await fetchOfficialArtistChart(token, j.chartType, j.country) })));
+          for (const { chartType, country, result } of results) {
+            if (!result.ok) failed.push({ chartType, country, status: result.status });
+            else collectEntries(country, chartType, result.data);
           }
         }
-      }
+        return failed;
+      };
+
+      const jobs = [];
+      for (const chartType of ['daily', 'weekly']) for (const country of CHART_COUNTRIES) jobs.push({ chartType, country });
+      // Main pass at moderate concurrency, then one retry pass for whatever failed
+      // (recovers transient 429s; genuine "no such chart" aliases stay failed).
+      let skipped = await runJobs(jobs, 8);
+      if (skipped.length) skipped = await runJobs(skipped.map(({ chartType, country }) => ({ chartType, country })), 4);
 
       if (upsertRows.length) {
         const upsertRes = await sbFetch('/artist_chart_positions?on_conflict=artist_spotify_id,country,chart_type,tracking_date', {
@@ -959,8 +960,10 @@ export default async function handler(req, res) {
       }
 
       return res.status(200).json({
-        ok: true, date: today, upserted: upsertRows.length, countries: CHART_COUNTRIES.length, skipped: skipped.length,
-        ...(debug ? { countryFilters, skippedDetail: skipped, matched: [...new Set(upsertRows.map(r => r.country))].sort() } : {}),
+        ok: true, date: today, upserted: upsertRows.length, countries: CHART_COUNTRIES.length,
+        skipped: skipped.length, skippedList: skipped.map(s => `artist-${s.country}-${s.chartType}(${s.status})`),
+        matchedCountries: [...new Set(upsertRows.map(r => r.country))].sort(),
+        ...(debug ? { countryFilters } : {}),
       });
     } catch (err) {
       return res.status(500).json({ error: err.message });
