@@ -12087,9 +12087,13 @@ async function loadFaCommunityScrobbles() {
       overall: computeCommunityTotal(users, `overall_${s.key}`),
       today:   computeCommunityTotal(users, `daily_${s.key}`),
     }));
-    const total = songs.reduce((a, s) => a + s.overall, 0);
-    if (total <= 0) return;
-    numEl.textContent = total.toLocaleString();
+    // Headline = total EP scrobbles counted since the EP dropped. New tracks
+    // contribute their whole total; LTAL contributes only its since-EP portion
+    // (overall_ltal − the pre-drop baseline), so the big number is EP-era only.
+    const epTotal = songs.reduce((a, s) =>
+      a + (s.key === 'ltal' ? Math.max(0, s.overall - LTAL_SCROBBLES_AT_EP_RELEASE) : s.overall), 0);
+    if (epTotal <= 0) return;
+    numEl.textContent = epTotal.toLocaleString();
 
     // First 24h + First week of the NEW drop (Fallen Angel + Heaven). Live count
     // during each window; once past the 24h / 7-day marks, show the cron-captured
