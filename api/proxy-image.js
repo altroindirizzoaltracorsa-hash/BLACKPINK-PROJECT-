@@ -377,8 +377,10 @@ async function getChartsAuthToken() {
   throw new Error(`token mint failed: ${lastErr}`);
 }
 
-async function fetchOfficialArtistChart(token, chartType, country) {
-  const alias = `artist-${country.toLowerCase()}-${chartType}`;
+// kind = 'artist' | 'album'. Alias: `${kind}-${country}-${chartType}` (albums are
+// weekly-only on Spotify's charts service).
+async function fetchOfficialChart(token, kind, chartType, country) {
+  const alias = `${kind}-${country.toLowerCase()}-${chartType}`;
   const r = await fetch(`https://charts-spotify-com-service.spotify.com/auth/v0/charts/${alias}/latest`, {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'App-Platform': 'Browser', 'User-Agent': CHARTS_UA },
   });
@@ -386,6 +388,7 @@ async function fetchOfficialArtistChart(token, chartType, country) {
   const data = await r.json();
   return { ok: true, alias, data };
 }
+function fetchOfficialArtistChart(token, chartType, country) { return fetchOfficialChart(token, 'artist', chartType, country); }
 
 async function storeGlobalSnapshot(date, jumpTotal, shutdownTotal, ddududuTotal) {
   const prevRes = await sbFetch(
@@ -887,6 +890,26 @@ export default async function handler(req, res) {
   // (official charts.spotify.com data) for BLACKPINK + members and stores them.
   // Runs here (Vercel), not GitHub Actions, because Spotify's anti-bot layer
   // blocks GitHub Actions' IP ranges but not Vercel's.
+  // ── GET ?charts=probe-albums (admin) — one-shot: inspect the album chart shape ─
+  if (req.query.charts === 'probe-albums') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    if ((req.headers['x-admin-secret'] || req.query.key) !== adminSecret || !adminSecret) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+      const token = await getChartsAuthToken();
+      const country = (req.query.country || 'global').toLowerCase();
+      const chartType = req.query.chart_type || 'weekly';
+      const result = await fetchOfficialChart(token, 'album', chartType, country);
+      if (!result.ok) return res.status(200).json({ ok: false, alias: result.alias, status: result.status });
+      const entries = result.data?.entries ?? result.data?.displayChart?.entries ?? [];
+      return res.status(200).json({
+        ok: true, alias: result.alias, topKeys: Object.keys(result.data || {}), entryCount: entries.length,
+        entry0Keys: entries[0] ? Object.keys(entries[0]) : [],
+        entry0: JSON.stringify(entries[0] || {}).slice(0, 900),
+        sample: entries.slice(0, 5).map(e => ({ rank: e.chartEntryData?.currentRank, ...(e.albumMetadata || e.artistMetadata || {}) })),
+      });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   if (req.query.charts === 'fetch-artists') {
     const cronSecret = process.env.CRON_SECRET;
     const adminSecret = process.env.ADMIN_SECRET;

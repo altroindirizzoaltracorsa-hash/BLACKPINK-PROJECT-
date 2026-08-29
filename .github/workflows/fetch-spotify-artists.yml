@@ -24,6 +24,10 @@ on:
         description: 'daily | weekly | both (default: both).'
         required: false
         default: 'both'
+      probe:
+        description: 'Set to 1 to probe the album chart shape and exit.'
+        required: false
+        default: ''
 
 jobs:
   fetch:
@@ -35,7 +39,16 @@ jobs:
           BASE: ${{ inputs.base_url != '' && inputs.base_url || 'https://www.blinksunited.com' }}
           SCHED: ${{ github.event.schedule }}
           INPUT_TYPE: ${{ inputs.type }}
+          PROBE: ${{ inputs.probe }}
         run: |
+          if [ -n "$PROBE" ]; then
+            echo "── probing album chart shape ──"
+            code=$(curl -sS -L --max-time 120 -o /tmp/out.json -w '%{http_code}' \
+              -H "x-admin-secret: $ADMIN_KEY" \
+              "$BASE/api/proxy-image?charts=probe-albums")
+            echo "HTTP $code"; cat /tmp/out.json; echo
+            test "$code" = "200"; exit $?
+          fi
           # Pick which chart type(s) this invocation fetches:
           #  - the 22:45 schedule → daily; the 23:20 schedule → weekly
           #  - manual dispatch → whatever `type` was chosen (default both)
