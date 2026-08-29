@@ -29,7 +29,10 @@ function communityGoalTotal(users, todayDDMM) {
     if (secondaryKeys.has(k.toLowerCase())) return sum;
     const s = d.scores || {};
     if (s.daily_date !== todayDDMM) return sum;
-    return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0);
+    // Whole campaign incl. the Fallen Angel EP — matches computeDailyCommunityTotal
+    // (client) and the record-goal path in leaderboard.js so all three agree.
+    return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0);
   }, 0);
 }
 
