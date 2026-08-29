@@ -894,20 +894,35 @@ export default async function handler(req, res) {
     const adminKey = (req.headers['x-admin-secret'] || req.query.key) === adminSecret && adminSecret;
     if (!bearer && !adminKey) return res.status(401).json({ error: 'Unauthorized' });
 
-    const CHART_COUNTRIES = ['global', 'us', 'gb', 'kr', 'fr', 'de', 'br', 'mx', 'jp', 'au', 'ca'];
+    // Every Spotify Charts country/region (their full countryFilters set) + Global.
+    const CHART_COUNTRIES = ['global',
+      'ae', 'ar', 'at', 'au', 'be', 'bg', 'bo', 'br', 'by', 'ca', 'ch', 'cl', 'co', 'cr', 'cy', 'cz',
+      'de', 'dk', 'do', 'ec', 'ee', 'eg', 'es', 'fi', 'fr', 'gb', 'gr', 'gt', 'hk', 'hn', 'hu', 'id',
+      'ie', 'il', 'in', 'is', 'it', 'jp', 'kr', 'kz', 'lt', 'lu', 'lv', 'ma', 'mx', 'my', 'ng', 'ni',
+      'nl', 'no', 'nz', 'pa', 'pe', 'ph', 'pk', 'pl', 'pt', 'py', 'ro', 'sa', 'se', 'sg', 'sk', 'sv',
+      'th', 'tr', 'tw', 'ua', 'us', 'uy', 've', 'vn', 'za'];
     const today = new Date().toISOString().slice(0, 10);
+    const debug = req.query.debug ? {} : null;
 
     try {
       const token = await getChartsAuthToken();
       const upsertRows = [];
       const skipped = [];
+      let countryFilters = null;
 
-      for (const chartType of ['daily', 'weekly']) {
-        for (const country of CHART_COUNTRIES) {
-          const result = await fetchOfficialArtistChart(token, chartType, country);
+      // Fan out all (chartType × country) fetches in bounded-concurrency batches so
+      // ~150 requests finish well within the Vercel function timeout.
+      const jobs = [];
+      for (const chartType of ['daily', 'weekly']) for (const country of CHART_COUNTRIES) jobs.push({ chartType, country });
+      const CONCURRENCY = 10;
+      for (let i = 0; i < jobs.length; i += CONCURRENCY) {
+        const batch = jobs.slice(i, i + CONCURRENCY);
+        const results = await Promise.all(batch.map(async (j) => ({ ...j, result: await fetchOfficialArtistChart(token, j.chartType, j.country) })));
+        for (const { chartType, country, result } of results) {
           if (!result.ok) { skipped.push({ chartType, country, status: result.status }); continue; }
-
-          // The charts service returns the ranked list at the top-level `entries`.
+          if (debug && !countryFilters && Array.isArray(result.data?.countryFilters)) {
+            countryFilters = result.data.countryFilters.map(c => c.code || c);
+          }
           const entries = result.data?.entries ?? result.data?.displayChart?.entries ?? [];
           for (const entry of entries) {
             const uri = entry.artistMetadata?.artistUri || '';
@@ -943,7 +958,10 @@ export default async function handler(req, res) {
         if (!upsertRes.ok) return res.status(502).json({ error: `Supabase upsert failed: ${await upsertRes.text()}` });
       }
 
-      return res.status(200).json({ ok: true, date: today, upserted: upsertRows.length, skipped });
+      return res.status(200).json({
+        ok: true, date: today, upserted: upsertRows.length, countries: CHART_COUNTRIES.length, skipped: skipped.length,
+        ...(debug ? { countryFilters, skippedDetail: skipped, matched: [...new Set(upsertRows.map(r => r.country))].sort() } : {}),
+      });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
