@@ -1,0 +1,30 @@
+name: EP 24h scrobble count (read-only)
+
+# One-off read-only: count extension_scrobbles for the Fallen Angel EP in its
+# first 24h window (6 AM Rome 28 Aug -> 5:59 AM Rome 29 Aug) plus the 2 AM Rome
+# Spotify-reset checkpoint. Counts by TITLE because for most of this window the
+# per-song ingest fix wasn't live yet (plays were bucketed under solo_jennie).
+# Runs on push to the scrobbler branch (where the Supabase secrets are set) and
+# via manual dispatch.
+
+on:
+  push:
+    branches: [claude/webscrobbler-per-profile-6vhgdf]
+    paths:
+      - '.github/scripts/ep-24h-count.mjs'
+      - '.github/workflows/ep-24h-count.yml'
+  workflow_dispatch:
+
+jobs:
+  count:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Count EP first-24h scrobbles
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node .github/scripts/ep-24h-count.mjs
