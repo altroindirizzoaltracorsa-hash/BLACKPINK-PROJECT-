@@ -1,0 +1,21 @@
+name: LB freshness check (read-only)
+
+# Read-only: is the community leaderboard aggregation updating, or frozen?
+on:
+  push:
+    branches: [claude/webscrobbler-per-profile-6vhgdf]
+    paths:
+      - '.github/scripts/check-lb-freshness.mjs'
+      - '.github/workflows/check-lb-freshness.yml'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check leaderboard freshness
+        run: node .github/scripts/check-lb-freshness.mjs
