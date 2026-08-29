@@ -1,91 +1,117 @@
 /*
- * Read-only per-user diagnostic. For USERNAME:
- *   1. resolve appUserId via the ext-week admin endpoint
- *   2. pull that profile's leaderboard scores + linkedAccounts
- *   3. group their extension_scrobbles by spotify_account — count, per-track,
- *      latest listen — so we can see which of their many accounts are actually
- *      attributed and writing, vs silently dropping off their profile
+ * Read-only per-user diagnostic (v2, resilient to missing links). For USERNAME:
+ *   A. leaderboard entry (method/source, appUserId, extensionIncluded, linkedAccounts, scores)
+ *   B. linked_accounts rows that reference the username or its app_user_id
+ *   C. scrobble_tokens rows for the username / app_user_id
+ *   D. if an appUserId is found, group its extension_scrobbles by spotify_account
+ *   E. recent distinct spotify_account values across ALL users (last 48h) so we can
+ *      eyeball whether the person's accounts are landing under some OTHER profile
  *
- * Needs ADMIN_KEY + SUPABASE_URL + SUPABASE_SERVICE_KEY.
+ * Needs SUPABASE_URL + SUPABASE_SERVICE_KEY (ADMIN_KEY optional).
  */
-const BASE  = process.env.LB_BASE || 'https://blinksunited.com';
-const ADMIN = process.env.ADMIN_KEY;
-const URL   = process.env.SUPABASE_URL;
-const KEY   = process.env.SUPABASE_SERVICE_KEY;
-const USER  = process.env.USERNAME;
-if (!ADMIN || !URL || !KEY || !USER) { console.error('Missing ADMIN_KEY / SUPABASE_* / USERNAME'); process.exit(1); }
+const BASE = process.env.LB_BASE || 'https://blinksunited.com';
+const URL  = process.env.SUPABASE_URL;
+const KEY  = process.env.SUPABASE_SERVICE_KEY;
+const USER = process.env.USERNAME;
+if (!URL || !KEY || !USER) { console.error('Missing SUPABASE_* / USERNAME'); process.exit(1); }
 
 const TIDS = ['jump','shutdown','ddududu','go','ltal','fallenangel','heaven'];
 const H = { apikey: KEY, Authorization: `Bearer ${KEY}` };
 
-async function getJSON(url, opts) {
-  const r = await fetch(url, opts);
-  if (!r.ok && r.status !== 206) { console.error(`HTTP ${r.status} for ${url.split('?')[0]}: ${await r.text()}`); process.exit(1); }
-  return r.json();
+async function j(url, opts) {
+  try {
+    const r = await fetch(url, opts);
+    const text = await r.text();
+    let body; try { body = JSON.parse(text); } catch { body = text; }
+    return { ok: r.ok || r.status === 206, status: r.status, body };
+  } catch (e) { return { ok: false, status: 0, body: String(e) }; }
 }
+const sb = (path) => j(`${URL}/rest/v1/${path}`, { headers: H });
 
-async function extRows(appUserId) {
+async function extRowsBy(col, val) {
   const rows = [];
-  const LIMIT = 1000;
-  for (let off = 0; off < 100000; off += LIMIT) {
-    const qs = `select=spotify_account,track_id,listened_at&app_user_id=eq.${encodeURIComponent(appUserId)}&order=listened_at.desc`;
-    const batch = await getJSON(`${URL}/rest/v1/extension_scrobbles?${qs}`, { headers: { ...H, Range: `${off}-${off + LIMIT - 1}` } });
-    rows.push(...batch);
-    if (batch.length < LIMIT) break;
+  for (let off = 0; off < 100000; off += 1000) {
+    const r = await j(`${URL}/rest/v1/extension_scrobbles?select=spotify_account,track_id,listened_at&${col}=eq.${encodeURIComponent(val)}&order=listened_at.desc`, { headers: { ...H, Range: `${off}-${off + 999}` } });
+    if (!r.ok || !Array.isArray(r.body)) break;
+    rows.push(...r.body);
+    if (r.body.length < 1000) break;
   }
   return rows;
 }
 
-(async () => {
-  console.log(`Per-user scrobble diagnostic — ${USER}\n`);
-
-  // 1. appUserId via ext-week
-  const ew = await getJSON(`${BASE}/api/leaderboard?action=ext-week&key=${encodeURIComponent(ADMIN)}&user=${encodeURIComponent(USER)}`);
-  const appUserId = ew.appUserId;
-  console.log(`  appUserId: ${appUserId || '(NOT RESOLVED — username not linked to a profile?)'}`);
-  if (!appUserId) return;
-
-  // 2. leaderboard scores + linked accounts
-  const lb = await getJSON(`${BASE}/api/leaderboard`);
-  const key = Object.keys(lb.users || {}).find(k => k.toLowerCase() === USER.toLowerCase());
-  const u = key ? lb.users[key] : null;
-  console.log(`\n── Leaderboard credits this profile with ──`);
-  if (!u) { console.log('  (no leaderboard entry under this username)'); }
-  else {
-    const s = u.scores || {};
-    console.log(`  extensionIncluded: ${u.extensionIncluded}`);
-    console.log(`  linkedAccounts   : ${(u.linkedAccounts || []).map(a => a.username).join(', ') || '(none)'}`);
-    for (const t of TIDS) console.log(`    ${t.padEnd(12)} overall ${String((s['overall_'+t]||0).toLocaleString()).padEnd(12)} today ${(s['daily_'+t]||0).toLocaleString()}`);
-  }
-
-  // 3. extension_scrobbles grouped by spotify_account
-  const rows = await extRows(appUserId);
-  console.log(`\n── extension_scrobbles under this appUserId : ${rows.length.toLocaleString()} total ──`);
-  if (!rows.length) { console.log('  NONE — no raw scrobbles are attributed to this profile.'); return; }
-  const now = Date.now();
-  const byAcct = {};
+function groupByAcct(rows) {
+  const now = Date.now(), by = {};
   for (const r of rows) {
     const a = r.spotify_account || '(blank)';
-    (byAcct[a] ||= { n: 0, latest: r.listened_at, tracks: {} });
-    byAcct[a].n++;
-    if (r.listened_at > byAcct[a].latest) byAcct[a].latest = r.listened_at;
-    byAcct[a].tracks[r.track_id] = (byAcct[a].tracks[r.track_id] || 0) + 1;
+    (by[a] ||= { n: 0, latest: r.listened_at });
+    by[a].n++;
+    if (r.listened_at > by[a].latest) by[a].latest = r.listened_at;
   }
-  const accts = Object.entries(byAcct).sort((a, b) => b[1].n - a[1].n);
-  console.log(`  distinct spotify accounts attributed: ${accts.length}\n`);
-  console.log(`  ${'spotify_account'.padEnd(26)} ${'scrobbles'.padEnd(11)} ${'last seen'.padEnd(14)} top tracks`);
-  for (const [a, d] of accts) {
+  for (const [a, d] of Object.entries(by).sort((x, y) => y[1].n - x[1].n)) {
     const mins = Math.round((now - Date.parse(d.latest)) / 60000);
-    const ago = mins < 120 ? `${mins}m ago` : `${Math.round(mins/60)}h ago`;
-    const top = Object.entries(d.tracks).sort((x,y)=>y[1]-x[1]).slice(0,4).map(([t,n])=>`${t}:${n}`).join(' ');
-    console.log(`  ${a.padEnd(26)} ${String(d.n.toLocaleString()).padEnd(11)} ${ago.padEnd(14)} ${top}`);
+    const ago = mins < 120 ? `${mins}m` : `${Math.round(mins/60)}h`;
+    console.log(`      ${a.padEnd(28)} ${String(d.n.toLocaleString()).padEnd(9)} last ${ago} ago`);
+  }
+}
+
+(async () => {
+  console.log(`Per-user diagnostic v2 — ${USER}\n`);
+
+  // A. leaderboard entry
+  const lb = await j(`${BASE}/api/leaderboard`);
+  let appUserId = null;
+  if (lb.ok && lb.body?.users) {
+    const key = Object.keys(lb.body.users).find(k => k.toLowerCase() === USER.toLowerCase());
+    const u = key ? lb.body.users[key] : null;
+    console.log('── A. Leaderboard entry ──');
+    if (!u) console.log('  (no leaderboard entry under this exact username)');
+    else {
+      appUserId = u.appUserId || u.app_user_id || null;
+      console.log(`  method/source   : ${u.method || u.source || '(unset)'}`);
+      console.log(`  appUserId       : ${appUserId || '(none on entry)'}`);
+      console.log(`  extensionIncluded: ${u.extensionIncluded}`);
+      console.log(`  linkedAccounts  : ${(u.linkedAccounts || []).map(a => a.username || a).join(', ') || '(none)'}`);
+      console.log(`  scores          : ` + TIDS.map(t => `${t}=${(u.scores?.['overall_'+t]||0)}`).join(' '));
+    }
+  } else console.log(`── A. leaderboard fetch failed: ${lb.status}`);
+
+  // B. linked_accounts by username
+  console.log('\n── B. linked_accounts rows matching this username ──');
+  const la = await sb(`linked_accounts?or=(username.ilike.${encodeURIComponent(USER)},display_name.ilike.${encodeURIComponent(USER)})&limit=50`);
+  if (!la.ok) console.log(`  query failed (${la.status}): ${JSON.stringify(la.body).slice(0,200)}`);
+  else if (!la.body.length) console.log('  NONE — no linked_accounts row references this username.');
+  else { for (const row of la.body) { console.log(`  ${JSON.stringify(row)}`); if (!appUserId) appUserId = row.app_user_id || row.appUserId; } }
+
+  // C. scrobble_tokens by username
+  console.log('\n── C. scrobble_tokens rows matching this username ──');
+  const st = await sb(`scrobble_tokens?username=ilike.${encodeURIComponent(USER)}&limit=50`);
+  if (!st.ok) console.log(`  query failed (${st.status}): ${JSON.stringify(st.body).slice(0,200)}`);
+  else if (!st.body.length) console.log('  NONE — no scrobble_tokens row for this username.');
+  else for (const row of st.body) { const red = { ...row }; if (red.token) red.token = '***'; console.log(`  ${JSON.stringify(red)}`); if (!appUserId) appUserId = row.app_user_id || row.appUserId; }
+
+  // D. extension_scrobbles under the resolved appUserId
+  console.log('\n── D. extension_scrobbles under resolved appUserId ──');
+  if (!appUserId) console.log('  no appUserId resolved from A/B/C → cannot attribute raw scrobbles to this profile.');
+  else {
+    console.log(`  appUserId = ${appUserId}`);
+    const rows = await extRowsBy('app_user_id', appUserId);
+    console.log(`  ${rows.length.toLocaleString()} rows, by spotify_account:`);
+    groupByAcct(rows);
+    const tot = Object.fromEntries(TIDS.map(t => [t, 0]));
+    for (const r of rows) if (tot[r.track_id] != null) tot[r.track_id]++;
+    console.log('  per track: ' + TIDS.map(t => `${t}=${tot[t]}`).join(' '));
   }
 
-  // per-track grand total from raw rows, to compare with leaderboard overall_*
-  const tot = {}; for (const t of TIDS) tot[t] = 0;
-  for (const r of rows) if (tot[r.track_id] != null) tot[r.track_id]++;
-  console.log(`\n── raw extension total per track (this appUserId) ──`);
-  for (const t of TIDS) console.log(`    ${t.padEnd(12)} ${tot[t].toLocaleString()}`);
-  console.log('\nIf leaderboard "overall" >> raw here, the rest comes from Last.fm/LB/statsfm.');
-  console.log('If an account you use is missing above, its plays are NOT on this profile.');
+  // E. recent account pool (last 48h) — who is scrobbling under what app_user_id
+  console.log('\n── E. recent spotify_account → app_user_id pool (last 48h) ──');
+  const since = new Date(Date.now() - 48 * 3600000).toISOString();
+  const recent = await j(`${URL}/rest/v1/extension_scrobbles?select=spotify_account,app_user_id,listened_at&listened_at=gte.${since}&order=listened_at.desc`, { headers: { ...H, Range: '0-4999' } });
+  if (recent.ok && Array.isArray(recent.body)) {
+    const map = {};
+    for (const r of recent.body) { const a = r.spotify_account || '(blank)'; (map[a] ||= { n: 0, users: new Set() }); map[a].n++; map[a].users.add(r.app_user_id); }
+    console.log(`  ${Object.keys(map).length} distinct accounts active:`);
+    for (const [a, d] of Object.entries(map).sort((x, y) => y[1].n - x[1].n)) {
+      console.log(`      ${a.padEnd(28)} ${String(d.n).padEnd(6)} under app_user_id(s): ${[...d.users].join(', ')}`);
+    }
+  } else console.log(`  query failed: ${recent.status}`);
 })();
