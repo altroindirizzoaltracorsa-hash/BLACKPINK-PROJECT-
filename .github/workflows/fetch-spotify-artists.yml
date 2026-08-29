@@ -49,7 +49,10 @@ jobs:
           }
 
           if [ -n "$PROBE" ]; then
-            echo "── probing album chart shape ──"; hit "charts=probe-albums"; test "$code" = "200"; exit $?
+            for A in song-global-daily regional-global-daily track-global-daily songs-global-daily; do
+              echo "── probe alias: $A ──"; hit "charts=probe-albums&alias=$A"
+            done
+            exit 0
           fi
 
           # Canary schedule: cheap check; only do the full daily refresh if the

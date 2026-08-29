@@ -897,7 +897,8 @@ export default async function handler(req, res) {
   // (official charts.spotify.com data) for BLACKPINK + members and stores them.
   // Runs here (Vercel), not GitHub Actions, because Spotify's anti-bot layer
   // blocks GitHub Actions' IP ranges but not Vercel's.
-  // ── GET ?charts=probe-albums (admin) — one-shot: inspect the album chart shape ─
+  // ── GET ?charts=probe-albums (admin) — one-shot: inspect any chart's shape ────
+  // ?kind=album|artist|song  ?alias=<raw>  ?country=global  ?chart_type=daily
   if (req.query.charts === 'probe-albums') {
     const adminSecret = process.env.ADMIN_SECRET;
     if ((req.headers['x-admin-secret'] || req.query.key) !== adminSecret || !adminSecret) return res.status(401).json({ error: 'Unauthorized' });
@@ -905,14 +906,23 @@ export default async function handler(req, res) {
       const token = await getChartsAuthToken();
       const country = (req.query.country || 'global').toLowerCase();
       const chartType = req.query.chart_type || 'weekly';
-      const result = await fetchOfficialChart(token, 'album', chartType, country);
+      let result;
+      if (req.query.alias) {
+        const alias = req.query.alias;
+        const r = await fetch(`https://charts-spotify-com-service.spotify.com/auth/v0/charts/${alias}/latest`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'App-Platform': 'Browser', 'User-Agent': CHARTS_UA },
+        });
+        result = r.ok ? { ok: true, alias, data: await r.json() } : { ok: false, status: r.status, alias };
+      } else {
+        result = await fetchOfficialChart(token, req.query.kind || 'album', chartType, country);
+      }
       if (!result.ok) return res.status(200).json({ ok: false, alias: result.alias, status: result.status });
       const entries = result.data?.entries ?? result.data?.displayChart?.entries ?? [];
       return res.status(200).json({
         ok: true, alias: result.alias, topKeys: Object.keys(result.data || {}), entryCount: entries.length,
         entry0Keys: entries[0] ? Object.keys(entries[0]) : [],
-        entry0: JSON.stringify(entries[0] || {}).slice(0, 900),
-        sample: entries.slice(0, 5).map(e => ({ rank: e.chartEntryData?.currentRank, ...(e.albumMetadata || e.artistMetadata || {}) })),
+        entry0: JSON.stringify(entries[0] || {}).slice(0, 1100),
+        sample: entries.slice(0, 3).map(e => ({ rank: e.chartEntryData?.currentRank, ...(e.trackMetadata || e.albumMetadata || e.artistMetadata || {}) })),
       });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
