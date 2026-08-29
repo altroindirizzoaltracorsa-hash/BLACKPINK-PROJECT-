@@ -280,6 +280,13 @@ const CHARTS_TRACKED_ARTISTS = {
   '3eVa5w3URK5duf6eyVDbu9': 'ROSÉ',
   '5L1lO4eRHmJ7a0Q6csE5cT': 'LISA',
 };
+// Every Spotify Charts country/region (their full countryFilters set) + Global.
+const CHART_COUNTRIES = ['global',
+  'ae', 'ar', 'at', 'au', 'be', 'bg', 'bo', 'br', 'by', 'ca', 'ch', 'cl', 'co', 'cr', 'cy', 'cz',
+  'de', 'dk', 'do', 'ec', 'ee', 'eg', 'es', 'fi', 'fr', 'gb', 'gr', 'gt', 'hk', 'hn', 'hu', 'id',
+  'ie', 'il', 'in', 'is', 'it', 'jp', 'kr', 'kz', 'lt', 'lu', 'lv', 'ma', 'mx', 'my', 'ng', 'ni',
+  'nl', 'no', 'nz', 'pa', 'pe', 'ph', 'pk', 'pl', 'pt', 'py', 'ro', 'sa', 'se', 'sg', 'sk', 'sv',
+  'th', 'tr', 'tw', 'ua', 'us', 'uy', 've', 'vn', 'za'];
 
 // Spotify deprecated open.spotify.com/get_access_token; the web player now mints
 // tokens from open.spotify.com/api/token signed with a rotating 6-digit TOTP.
@@ -917,13 +924,6 @@ export default async function handler(req, res) {
     const adminKey = (req.headers['x-admin-secret'] || req.query.key) === adminSecret && adminSecret;
     if (!bearer && !adminKey) return res.status(401).json({ error: 'Unauthorized' });
 
-    // Every Spotify Charts country/region (their full countryFilters set) + Global.
-    const CHART_COUNTRIES = ['global',
-      'ae', 'ar', 'at', 'au', 'be', 'bg', 'bo', 'br', 'by', 'ca', 'ch', 'cl', 'co', 'cr', 'cy', 'cz',
-      'de', 'dk', 'do', 'ec', 'ee', 'eg', 'es', 'fi', 'fr', 'gb', 'gr', 'gt', 'hk', 'hn', 'hu', 'id',
-      'ie', 'il', 'in', 'is', 'it', 'jp', 'kr', 'kz', 'lt', 'lu', 'lv', 'ma', 'mx', 'my', 'ng', 'ni',
-      'nl', 'no', 'nz', 'pa', 'pe', 'ph', 'pk', 'pl', 'pt', 'py', 'ro', 'sa', 'se', 'sg', 'sk', 'sv',
-      'th', 'tr', 'tw', 'ua', 'us', 'uy', 've', 'vn', 'za'];
     const today = new Date().toISOString().slice(0, 10);
     const debug = req.query.debug ? {} : null;
 
@@ -1000,6 +1000,79 @@ export default async function handler(req, res) {
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
+  }
+
+  // ── GET ?charts=fetch-albums (cron/admin) — official weekly Top Albums for the
+  // members across every country. Stored in Redis (bu_album_charts) — small,
+  // members-only, weekly — so no new Supabase table is needed. Albums are
+  // weekly-only on Spotify's charts service.
+  if (req.query.charts === 'fetch-albums') {
+    const cronSecret = process.env.CRON_SECRET;
+    const adminSecret = process.env.ADMIN_SECRET;
+    const bearer = req.headers.authorization === `Bearer ${cronSecret}` && cronSecret;
+    const adminKey = (req.headers['x-admin-secret'] || req.query.key) === adminSecret && adminSecret;
+    if (!bearer && !adminKey) return res.status(401).json({ error: 'Unauthorized' });
+    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(500).json({ error: 'Redis not configured' });
+
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      const token = await getChartsAuthToken();
+      const rows = [];
+      const trackedName = uri => {
+        const id = (uri || '').startsWith('spotify:artist:') ? uri.slice('spotify:artist:'.length) : null;
+        return id && CHARTS_TRACKED_ARTISTS[id] ? CHARTS_TRACKED_ARTISTS[id] : null;
+      };
+      const runAlbumJobs = async (countryList, concurrency) => {
+        const failed = [];
+        for (let i = 0; i < countryList.length; i += concurrency) {
+          const batch = countryList.slice(i, i + concurrency);
+          const results = await Promise.all(batch.map(async (country) => ({ country, result: await fetchOfficialChart(token, 'album', 'weekly', country) })));
+          for (const { country, result } of results) {
+            if (!result.ok) { failed.push(country); continue; }
+            const entries = result.data?.entries ?? result.data?.displayChart?.entries ?? [];
+            for (const entry of entries) {
+              const meta = entry.albumMetadata || {};
+              const member = (meta.artists || []).map(a => trackedName(a.spotifyUri)).find(Boolean);
+              if (!member) continue;
+              const d = entry.chartEntryData || {};
+              rows.push({
+                album_id: (meta.albumUri || '').split(':').pop() || null,
+                album_name: meta.albumName || '',
+                member,                                            // the tracked member on the album
+                artists: (meta.artists || []).map(a => a.name).join(', '),
+                country: country.toUpperCase(), current_rank: d.currentRank,
+                previous_rank: d.previousRank ?? null, peak_rank: d.peakRank ?? null,
+                streak: d.appearancesOnChart ?? null, entry_status: d.entryStatus ?? null,
+                entry_date: d.entryDate ?? null, peak_date: d.peakDate ?? null,
+                image_url: meta.displayImageUri ?? null,
+              });
+            }
+          }
+        }
+        return failed;
+      };
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+      let failed = await runAlbumJobs(CHART_COUNTRIES, 8);
+      for (let attempt = 0; attempt < 2 && failed.length; attempt++) { await sleep(2000); failed = await runAlbumJobs(failed, 6); }
+
+      await upstashSet('bu_album_charts', { date: today, rows });
+      return res.status(200).json({
+        ok: true, date: today, matched: rows.length, countries: CHART_COUNTRIES.length,
+        skipped: failed.length, matchedCountries: [...new Set(rows.map(r => r.country))].sort(),
+      });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // ── GET ?charts=list-albums&country=ALL|XX — members' weekly Top Albums ────
+  if (req.query.charts === 'list-albums') {
+    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ chartType: 'weekly', country: 'ALL', trackingDate: null, rows: [] });
+    let stored = {};
+    try { stored = (await upstashGet('bu_album_charts')) || {}; } catch {}
+    const all = Array.isArray(stored.rows) ? stored.rows : [];
+    const country = (req.query.country || 'ALL').toUpperCase();
+    const rows = country === 'ALL' ? all : all.filter(r => (r.country || '').toUpperCase() === country);
+    rows.sort((a, b) => (a.current_rank ?? 999) - (b.current_rank ?? 999));
+    return res.status(200).json({ chartType: 'weekly', country, trackingDate: stored.date || null, rows });
   }
 
   // ── GET ?charts=list-artists&chart_type=daily|weekly&country=GLOBAL ────────

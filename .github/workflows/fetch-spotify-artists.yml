@@ -1,19 +1,19 @@
 name: Fetch Spotify Top Artists
 
-# Populates the official Spotify Top Artists chart positions (BLACKPINK +
-# members) for the /spotify-charts page. The actual charts.spotify.com fetch
-# runs server-side on Vercel — Spotify blocks GitHub Actions IPs, so this job
-# only *triggers* the Vercel handler (charts=fetch-artists), which mints a token
-# from the SPOTIFY_SP_DC cookie and upserts into Supabase (artist_chart_positions).
+# Populates the official Spotify Top Artists (daily+weekly) and Top Albums
+# (weekly) chart positions for BLACKPINK + members on the /spotify-charts page.
+# The actual charts.spotify.com fetch runs server-side on Vercel — Spotify blocks
+# GitHub Actions IPs — so this job only *triggers* the Vercel handlers, which mint
+# a token from SPOTIFY_SP_DC and store into Supabase (artists) / Redis (albums).
 #
-# Spotify rate-limits the charts service on a long rolling window, so the daily
-# and weekly passes (74 requests each) run on SEPARATE schedules 35 min apart —
-# each starts with a fresh budget and gets near-complete coverage. A manual
-# dispatch runs both, spaced 75s apart.
+# Spotify rate-limits the charts service on a long rolling window, so the three
+# passes (74 requests each) run on SEPARATE schedules ~35 min apart, each with a
+# fresh budget. A manual dispatch can target one via `type`.
 on:
   schedule:
-    - cron: '45 22 * * *'   # daily charts  (just after the Top Songs fetch, 30 22)
-    - cron: '20 23 * * *'   # weekly charts (35 min later — fresh rate budget)
+    - cron: '45 22 * * *'   # Top Artists — daily
+    - cron: '20 23 * * *'   # Top Artists — weekly
+    - cron: '55 23 * * *'   # Top Albums  — weekly
   workflow_dispatch:
     inputs:
       base_url:
@@ -21,7 +21,7 @@ on:
         required: false
         default: ''
       type:
-        description: 'daily | weekly | both (default: both).'
+        description: 'daily | weekly | albums | both (artists daily+weekly). Default: both.'
         required: false
         default: 'both'
       probe:
@@ -33,7 +33,7 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger official artist-chart fetch on Vercel
+      - name: Trigger official chart fetch on Vercel
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           BASE: ${{ inputs.base_url != '' && inputs.base_url || 'https://www.blinksunited.com' }}
@@ -41,33 +41,34 @@ jobs:
           INPUT_TYPE: ${{ inputs.type }}
           PROBE: ${{ inputs.probe }}
         run: |
-          if [ -n "$PROBE" ]; then
-            echo "── probing album chart shape ──"
+          hit() { # hit <query>  → sets global `code`, prints body
             code=$(curl -sS -L --max-time 120 -o /tmp/out.json -w '%{http_code}' \
-              -H "x-admin-secret: $ADMIN_KEY" \
-              "$BASE/api/proxy-image?charts=probe-albums")
+              -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/proxy-image?$1")
             echo "HTTP $code"; cat /tmp/out.json; echo
-            test "$code" = "200"; exit $?
+          }
+
+          if [ -n "$PROBE" ]; then
+            echo "── probing album chart shape ──"; hit "charts=probe-albums"; test "$code" = "200"; exit $?
           fi
-          # Pick which chart type(s) this invocation fetches:
-          #  - the 22:45 schedule → daily; the 23:20 schedule → weekly
-          #  - manual dispatch → whatever `type` was chosen (default both)
-          if [ "$SCHED" = "45 22 * * *" ]; then TYPES="daily";
-          elif [ "$SCHED" = "20 23 * * *" ]; then TYPES="weekly";
-          elif [ "$INPUT_TYPE" = "daily" ] || [ "$INPUT_TYPE" = "weekly" ]; then TYPES="$INPUT_TYPE";
-          else TYPES="daily weekly"; fi
-          echo "Fetching official Spotify Top Artists ($TYPES) → $BASE"
+
+          # Resolve what to fetch from the schedule or the manual `type` input.
+          if   [ "$SCHED" = "45 22 * * *" ]; then TARGET="daily";
+          elif [ "$SCHED" = "20 23 * * *" ]; then TARGET="weekly";
+          elif [ "$SCHED" = "55 23 * * *" ]; then TARGET="albums";
+          else TARGET="$INPUT_TYPE"; fi
+
           rc=0
-          for T in $TYPES; do
-            echo "── $T ──"
-            code=$(curl -sS -L --max-time 120 -o /tmp/out.json -w '%{http_code}' \
-              -H "x-admin-secret: $ADMIN_KEY" \
-              "$BASE/api/proxy-image?charts=fetch-artists&type=$T")
-            echo "HTTP $code"
-            cat /tmp/out.json; echo
-            [ "$code" = "200" ] || rc=1
-            # If a single dispatch is doing both types, space them so the second
-            # burst starts with a fresh-ish rate budget.
-            [ "$T" = "daily" ] && [ "$TYPES" = "daily weekly" ] && sleep 75
-          done
+          if [ "$TARGET" = "albums" ]; then
+            echo "── Top Albums (weekly) ──"; hit "charts=fetch-albums"; [ "$code" = "200" ] || rc=1
+          elif [ "$TARGET" = "daily" ] || [ "$TARGET" = "weekly" ]; then
+            echo "── Top Artists ($TARGET) ──"; hit "charts=fetch-artists&type=$TARGET"; [ "$code" = "200" ] || rc=1
+          else
+            # "both" (manual): artists daily, then weekly, then albums — spaced so
+            # each 74-request burst starts with a fresh-ish rate budget.
+            echo "── Top Artists (daily) ──";  hit "charts=fetch-artists&type=daily";  [ "$code" = "200" ] || rc=1
+            sleep 75
+            echo "── Top Artists (weekly) ──"; hit "charts=fetch-artists&type=weekly"; [ "$code" = "200" ] || rc=1
+            sleep 75
+            echo "── Top Albums (weekly) ──";  hit "charts=fetch-albums";              [ "$code" = "200" ] || rc=1
+          fi
           exit $rc
