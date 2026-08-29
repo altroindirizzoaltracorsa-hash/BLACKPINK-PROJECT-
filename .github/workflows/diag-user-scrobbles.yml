@@ -1,0 +1,25 @@
+name: Per-user scrobble diagnostic (read-only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      username:
+        description: 'Profile username to trace'
+        required: true
+        default: '_demibandwout'
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Trace user
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          USERNAME: ${{ github.event.inputs.username }}
+        run: node .github/scripts/diag-user-scrobbles.mjs
