@@ -22,10 +22,10 @@ jobs:
       - name: Trigger official artist-chart fetch on Vercel
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
-          BASE: ${{ inputs.base_url != '' && inputs.base_url || 'https://blinksunited.com' }}
+          BASE: ${{ inputs.base_url != '' && inputs.base_url || 'https://www.blinksunited.com' }}
         run: |
           echo "Fetching official Spotify Top Artists → $BASE"
-          code=$(curl -sS --max-time 120 -o /tmp/out.json -w '%{http_code}' \
+          code=$(curl -sS -L --max-time 120 -o /tmp/out.json -w '%{http_code}' \
             -H "x-admin-secret: $ADMIN_KEY" \
             "$BASE/api/proxy-image?charts=fetch-artists")
           echo "HTTP $code"
