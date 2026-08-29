@@ -27,4 +27,5 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           USERNAME: ${{ github.event.inputs.username || '_demibandwout' }}
+          APP_USER_ID: 'be1c2f49-be30-4444-88d5-e95425cba01e'
         run: node .github/scripts/diag-user-scrobbles.mjs

@@ -59,7 +59,8 @@ function groupByAcct(rows) {
 
   // A. leaderboard entry
   const lb = await j(`${BASE}/api/leaderboard`);
-  let appUserId = null;
+  let appUserId = process.env.APP_USER_ID || null;
+  if (appUserId) console.log(`(appUserId forced from env: ${appUserId})`);
   if (lb.ok && lb.body?.users) {
     const key = Object.keys(lb.body.users).find(k => k.toLowerCase() === USER.toLowerCase());
     const u = key ? lb.body.users[key] : null;
