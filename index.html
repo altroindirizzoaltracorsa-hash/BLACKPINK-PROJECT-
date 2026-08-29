@@ -1250,6 +1250,27 @@
   /* Charts page */
   .ch-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.8rem; margin-bottom: 1.4rem; }
   .ch-tabs { display: flex; gap: 0.5rem; }
+  /* Chart hub: category cards (Songs / Artists / Albums) */
+  .ch-hub { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin: 0.5rem 0 1rem; }
+  .ch-hub-card {
+    display: flex; flex-direction: column; gap: 0.35rem; text-align: left; cursor: pointer;
+    padding: 1.5rem 1.4rem; border-radius: 16px; border: 1px solid var(--border); color: var(--white);
+    background: var(--card2); transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  .ch-hub-card:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,0.35); border-color: rgba(255,255,255,0.25); }
+  .ch-hub-eyebrow { font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.75; }
+  .ch-hub-title { font-size: 1.5rem; font-weight: 800; line-height: 1.1; }
+  .ch-hub-sub { font-size: 0.72rem; line-height: 1.4; opacity: 0.82; }
+  .ch-hub-songs   { background: linear-gradient(150deg, #7b3ff2 0%, #4b1fae 100%); border-color: transparent; }
+  .ch-hub-artists { background: linear-gradient(150deg, #2b5cff 0%, #1436b8 100%); border-color: transparent; }
+  .ch-hub-albums  { background: linear-gradient(150deg, #1f9d6b 0%, #10603f 100%); border-color: transparent; }
+  .ch-back {
+    background: none; border: 1px solid var(--border); color: var(--white); border-radius: 99px;
+    padding: 0.4rem 0.9rem; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em;
+    text-transform: uppercase; cursor: pointer; margin-bottom: 1.1rem; transition: background 0.15s, border-color 0.15s;
+  }
+  .ch-back:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.3); }
+  .ac-row-cover { border-radius: 8px; }  /* albums show a square cover, not a round avatar */
   .ch-country-select {
     background: var(--card2); color: var(--white); border: 1px solid var(--border);
     border-radius: 8px; padding: 0.55rem 0.9rem; font-family: var(--mono); font-size: 0.8rem;
@@ -3643,10 +3664,33 @@
       <svg class="as-gem" viewBox="-1 -1 52 45" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M25,8 C25,3 21,0 16,0 C8,0 2,6 2,14 C2,26 14,34 25,42 C36,34 48,26 48,14 C48,6 42,0 34,0 C29,0 25,3 25,8Z"/><line x1="25" y1="8" x2="25" y2="42"/><line x1="3" y1="22" x2="25" y2="22"/></svg>
       <p class="as-eyebrow">Spotify Charts</p>
       <h1 class="as-title">BLACKPINK<br><span>ON THE CHARTS</span></h1>
-      <p class="as-sub">Real Spotify Top 200 chart positions — BLACKPINK, JISOO, JENNIE, ROSÉ &amp; LISA</p>
+      <p class="as-sub">Real Spotify chart positions — songs, artists &amp; albums for BLACKPINK, JISOO, JENNIE, ROSÉ &amp; LISA</p>
     </div>
 
     <div class="as-inner">
+
+      <!-- Hub of chart categories (mirrors charts.spotify.com). Each card opens
+           its own view; a back link returns here. -->
+      <div id="ch-hub" class="ch-hub">
+        <button class="ch-hub-card ch-hub-songs" onclick="showChartView('songs')">
+          <span class="ch-hub-eyebrow">Daily · Weekly · by country</span>
+          <span class="ch-hub-title">Top Songs</span>
+          <span class="ch-hub-sub">The members' tracks on Spotify's Top 200</span>
+        </button>
+        <button class="ch-hub-card ch-hub-artists" onclick="showChartView('artists')">
+          <span class="ch-hub-eyebrow">Daily · Weekly · every country</span>
+          <span class="ch-hub-title">Top Artists</span>
+          <span class="ch-hub-sub">BLACKPINK &amp; members on the artist charts, worldwide</span>
+        </button>
+        <button class="ch-hub-card ch-hub-albums" onclick="showChartView('albums')">
+          <span class="ch-hub-eyebrow">Weekly · every country</span>
+          <span class="ch-hub-title">Top Albums</span>
+          <span class="ch-hub-sub">The members' albums &amp; EPs on the album charts</span>
+        </button>
+      </div>
+
+      <div id="ch-view-songs" class="ch-view" style="display:none;">
+      <button class="ch-back" onclick="showChartHub()">← All charts</button>
 
       <div class="ch-controls">
         <div class="ch-tabs">
@@ -3741,14 +3785,34 @@
       <div id="ch-table-wrap" style="display:none;">
         <div class="ac-rows" id="ch-cards"></div>
       </div>
+      </div><!-- end #ch-view-songs -->
 
-      <!-- Official Spotify Top Artists — every country/region BLACKPINK + the
-           members chart in. Grouped by country; follows the Daily/Weekly toggle. -->
-      <div id="ch-artists-section" class="ch-artists-section" style="display:none;">
-        <div class="ac-section-title" id="ch-artists-title" style="margin:1.8rem 0 0.4rem;">Top Artists</div>
+      <!-- Top Artists view — every country/region BLACKPINK + the members chart
+           in. Grouped by country; own Daily/Weekly toggle. -->
+      <div id="ch-view-artists" class="ch-view" style="display:none;">
+        <button class="ch-back" onclick="showChartHub()">← All charts</button>
+        <div class="ch-controls">
+          <div class="ch-tabs">
+            <button class="lb-tab active" data-artist-type="daily" onclick="setArtistChartType('daily', this)">Daily</button>
+            <button class="lb-tab" data-artist-type="weekly" onclick="setArtistChartType('weekly', this)">Weekly</button>
+          </div>
+        </div>
+        <div class="ac-section-title" id="ch-artists-title" style="margin:0.4rem 0;">Top Artists</div>
         <div id="ch-artists-meta" class="ch-meta"></div>
+        <div id="ch-artists-loading" class="lb-loading">Loading…</div>
         <div id="ch-artists-empty" class="ch-empty" style="display:none;">No BLACKPINK/member on the Spotify artist charts right now.</div>
         <div class="ac-rows" id="ch-artists-cards"></div>
+      </div>
+
+      <!-- Top Albums view — members' albums/EPs on the weekly album charts,
+           grouped by country. Weekly only (Spotify has no daily album chart). -->
+      <div id="ch-view-albums" class="ch-view" style="display:none;">
+        <button class="ch-back" onclick="showChartHub()">← All charts</button>
+        <div class="ac-section-title" id="ch-albums-title" style="margin:0.4rem 0;">Top Albums · Weekly</div>
+        <div id="ch-albums-meta" class="ch-meta"></div>
+        <div id="ch-albums-loading" class="lb-loading">Loading…</div>
+        <div id="ch-albums-empty" class="ch-empty" style="display:none;">No BLACKPINK/member album on the Spotify album charts right now.</div>
+        <div class="ac-rows" id="ch-albums-cards"></div>
       </div>
     </div>
 
@@ -5502,9 +5566,26 @@ let chartType = 'daily';
 let chartCountry = 'GLOBAL';
 
 function loadSpotifyChartsPage() {
-  fetchAndRenderCharts();
-  refreshChartCountryHighlights();
-  renderArtistCharts();
+  showChartHub();
+  renderArtistCharts();   // the separate home "Daily Top Songs" module (if present)
+}
+
+// Chart hub navigation: a card grid (Top Songs / Artists / Albums) → each view.
+function showChartHub() {
+  const hub = document.getElementById('ch-hub');
+  if (hub) hub.style.display = '';
+  document.querySelectorAll('#page-spotify-charts .ch-view').forEach(v => v.style.display = 'none');
+}
+function showChartView(which) {
+  const hub = document.getElementById('ch-hub');
+  if (hub) hub.style.display = 'none';
+  document.querySelectorAll('#page-spotify-charts .ch-view').forEach(v => v.style.display = 'none');
+  const el = document.getElementById('ch-view-' + which);
+  if (el) el.style.display = '';
+  if (which === 'songs') { fetchAndRenderCharts(); refreshChartCountryHighlights(); }
+  else if (which === 'artists') fetchAndRenderArtistCharts();
+  else if (which === 'albums') fetchAndRenderAlbumCharts();
+  try { document.getElementById('page-spotify-charts').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {}
 }
 
 const YT_DAILY_URL  = 'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/youtube-chart-positions-daily-latest.json';
@@ -6086,18 +6167,45 @@ async function fetchAndRenderCharts() {
     errorEl.textContent = `Couldn't load charts (${e.message}).`;
     errorEl.style.display = 'block';
   }
+}
+
+// ── Top Artists view — its own Daily/Weekly state (independent of Top Songs) ──
+let artistChartType = 'daily';
+function setArtistChartType(type, btn) {
+  artistChartType = type;
+  document.querySelectorAll('#ch-view-artists .ch-tabs .lb-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
   fetchAndRenderArtistCharts();
 }
 
 // Official Spotify Top Artists — every country/region BLACKPINK & the members
-// currently chart in (charts.spotify.com). Follows the Daily/Weekly tab.
+// currently chart in (charts.spotify.com). Follows the view's Daily/Weekly tab.
 const ARTIST_CHART_COUNTRIES = {
-  GLOBAL: { flag: '🌐', name: 'Global' }, US: { flag: '🇺🇸', name: 'United States' },
-  GB: { flag: '🇬🇧', name: 'United Kingdom' }, KR: { flag: '🇰🇷', name: 'South Korea' },
-  JP: { flag: '🇯🇵', name: 'Japan' }, FR: { flag: '🇫🇷', name: 'France' },
-  DE: { flag: '🇩🇪', name: 'Germany' }, BR: { flag: '🇧🇷', name: 'Brazil' },
-  MX: { flag: '🇲🇽', name: 'Mexico' }, AU: { flag: '🇦🇺', name: 'Australia' },
-  CA: { flag: '🇨🇦', name: 'Canada' },
+  GLOBAL:{flag:'🌐',name:'Global'}, AE:{flag:'🇦🇪',name:'UAE'}, AR:{flag:'🇦🇷',name:'Argentina'},
+  AT:{flag:'🇦🇹',name:'Austria'}, AU:{flag:'🇦🇺',name:'Australia'}, BE:{flag:'🇧🇪',name:'Belgium'},
+  BG:{flag:'🇧🇬',name:'Bulgaria'}, BO:{flag:'🇧🇴',name:'Bolivia'}, BR:{flag:'🇧🇷',name:'Brazil'},
+  BY:{flag:'🇧🇾',name:'Belarus'}, CA:{flag:'🇨🇦',name:'Canada'}, CH:{flag:'🇨🇭',name:'Switzerland'},
+  CL:{flag:'🇨🇱',name:'Chile'}, CO:{flag:'🇨🇴',name:'Colombia'}, CR:{flag:'🇨🇷',name:'Costa Rica'},
+  CY:{flag:'🇨🇾',name:'Cyprus'}, CZ:{flag:'🇨🇿',name:'Czechia'}, DE:{flag:'🇩🇪',name:'Germany'},
+  DK:{flag:'🇩🇰',name:'Denmark'}, DO:{flag:'🇩🇴',name:'Dominican Rep.'}, EC:{flag:'🇪🇨',name:'Ecuador'},
+  EE:{flag:'🇪🇪',name:'Estonia'}, EG:{flag:'🇪🇬',name:'Egypt'}, ES:{flag:'🇪🇸',name:'Spain'},
+  FI:{flag:'🇫🇮',name:'Finland'}, FR:{flag:'🇫🇷',name:'France'}, GB:{flag:'🇬🇧',name:'United Kingdom'},
+  GR:{flag:'🇬🇷',name:'Greece'}, GT:{flag:'🇬🇹',name:'Guatemala'}, HK:{flag:'🇭🇰',name:'Hong Kong'},
+  HN:{flag:'🇭🇳',name:'Honduras'}, HU:{flag:'🇭🇺',name:'Hungary'}, ID:{flag:'🇮🇩',name:'Indonesia'},
+  IE:{flag:'🇮🇪',name:'Ireland'}, IL:{flag:'🇮🇱',name:'Israel'}, IN:{flag:'🇮🇳',name:'India'},
+  IS:{flag:'🇮🇸',name:'Iceland'}, IT:{flag:'🇮🇹',name:'Italy'}, JP:{flag:'🇯🇵',name:'Japan'},
+  KR:{flag:'🇰🇷',name:'South Korea'}, KZ:{flag:'🇰🇿',name:'Kazakhstan'}, LT:{flag:'🇱🇹',name:'Lithuania'},
+  LU:{flag:'🇱🇺',name:'Luxembourg'}, LV:{flag:'🇱🇻',name:'Latvia'}, MA:{flag:'🇲🇦',name:'Morocco'},
+  MX:{flag:'🇲🇽',name:'Mexico'}, MY:{flag:'🇲🇾',name:'Malaysia'}, NG:{flag:'🇳🇬',name:'Nigeria'},
+  NI:{flag:'🇳🇮',name:'Nicaragua'}, NL:{flag:'🇳🇱',name:'Netherlands'}, NO:{flag:'🇳🇴',name:'Norway'},
+  NZ:{flag:'🇳🇿',name:'New Zealand'}, PA:{flag:'🇵🇦',name:'Panama'}, PE:{flag:'🇵🇪',name:'Peru'},
+  PH:{flag:'🇵🇭',name:'Philippines'}, PK:{flag:'🇵🇰',name:'Pakistan'}, PL:{flag:'🇵🇱',name:'Poland'},
+  PT:{flag:'🇵🇹',name:'Portugal'}, PY:{flag:'🇵🇾',name:'Paraguay'}, RO:{flag:'🇷🇴',name:'Romania'},
+  SA:{flag:'🇸🇦',name:'Saudi Arabia'}, SE:{flag:'🇸🇪',name:'Sweden'}, SG:{flag:'🇸🇬',name:'Singapore'},
+  SK:{flag:'🇸🇰',name:'Slovakia'}, SV:{flag:'🇸🇻',name:'El Salvador'}, TH:{flag:'🇹🇭',name:'Thailand'},
+  TR:{flag:'🇹🇷',name:'Turkey'}, TW:{flag:'🇹🇼',name:'Taiwan'}, UA:{flag:'🇺🇦',name:'Ukraine'},
+  US:{flag:'🇺🇸',name:'United States'}, UY:{flag:'🇺🇾',name:'Uruguay'}, VE:{flag:'🇻🇪',name:'Venezuela'},
+  VN:{flag:'🇻🇳',name:'Vietnam'}, ZA:{flag:'🇿🇦',name:'South Africa'},
 };
 
 function _artistChartCardHtml(row, onChartLabel) {
@@ -6131,49 +6239,115 @@ function _artistChartCardHtml(row, onChartLabel) {
   </div>`;
 }
 
+// Group rows by country, order Global first then by each country's best rank,
+// and render a flagged sub-header per country. Shared by artists + albums.
+function _renderCountryGroups(cardsEl, metaEl, rows, rowHtml, onChartLabel) {
+  const byCountry = {};
+  for (const row of rows) {
+    const c = (row.country || 'GLOBAL').toUpperCase();
+    (byCountry[c] = byCountry[c] || []).push(row);
+  }
+  const bestRank = c => Math.min(...byCountry[c].map(r => r.current_rank ?? 999));
+  const order = Object.keys(byCountry).sort((a, b) => {
+    if (a === 'GLOBAL') return -1;
+    if (b === 'GLOBAL') return 1;
+    return bestRank(a) - bestRank(b);
+  });
+  if (metaEl) metaEl.textContent = `${rows.length} placement${rows.length === 1 ? '' : 's'} across ${order.length} chart${order.length === 1 ? '' : 's'}`;
+  cardsEl.innerHTML = order.map(c => {
+    const meta = ARTIST_CHART_COUNTRIES[c] || { flag: '🏳️', name: c };
+    const list = byCountry[c].slice().sort((a, b) => (a.current_rank ?? 999) - (b.current_rank ?? 999));
+    return `<div class="ac-country-group">
+      <p class="ltal-goals-category-label" style="margin:1.1rem 0 0.4rem;">${meta.flag} ${meta.name}</p>
+      ${list.map(row => rowHtml(row, onChartLabel)).join('')}
+    </div>`;
+  }).join('');
+}
+
 async function fetchAndRenderArtistCharts() {
-  const section = document.getElementById('ch-artists-section');
   const cards   = document.getElementById('ch-artists-cards');
   const emptyEl = document.getElementById('ch-artists-empty');
   const titleEl = document.getElementById('ch-artists-title');
   const metaEl  = document.getElementById('ch-artists-meta');
-  if (!section || !cards) return;
-  const chartLabel = (chartType === 'weekly' ? 'Weekly' : 'Daily') + ' Top Artists';
-  const onChartLabel = chartType === 'weekly' ? 'wks' : 'days';
+  const loading = document.getElementById('ch-artists-loading');
+  if (!cards) return;
+  const chartLabel = (artistChartType === 'weekly' ? 'Weekly' : 'Daily') + ' Top Artists';
+  const onChartLabel = artistChartType === 'weekly' ? 'wks' : 'days';
+  if (loading) loading.style.display = 'block';
+  emptyEl.style.display = 'none';
   try {
-    const r = await fetch(`/api/proxy-image?charts=list-artists&chart_type=${chartType}&country=ALL`, { cache: 'no-store' });
+    const r = await fetch(`/api/proxy-image?charts=list-artists&chart_type=${artistChartType}&country=ALL`, { cache: 'no-store' });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
     const rows = data.rows || [];
+    if (loading) loading.style.display = 'none';
     titleEl.textContent = data.trackingDate ? `${chartLabel} · ${fmtDate(data.trackingDate)}` : chartLabel;
-    section.style.display = '';
     if (!rows.length) { emptyEl.style.display = 'block'; cards.innerHTML = ''; metaEl.textContent = ''; return; }
-    emptyEl.style.display = 'none';
-
-    // Group by country, order Global first then by each country's best (lowest) rank.
-    const byCountry = {};
-    for (const row of rows) {
-      const c = (row.country || 'GLOBAL').toUpperCase();
-      (byCountry[c] = byCountry[c] || []).push(row);
-    }
-    const bestRank = c => Math.min(...byCountry[c].map(r => r.current_rank ?? 999));
-    const order = Object.keys(byCountry).sort((a, b) => {
-      if (a === 'GLOBAL') return -1;
-      if (b === 'GLOBAL') return 1;
-      return bestRank(a) - bestRank(b);
-    });
-    metaEl.textContent = `${rows.length} placement${rows.length === 1 ? '' : 's'} across ${order.length} chart${order.length === 1 ? '' : 's'}`;
-
-    cards.innerHTML = order.map(c => {
-      const meta = ARTIST_CHART_COUNTRIES[c] || { flag: '🏳️', name: c };
-      const list = byCountry[c].slice().sort((a, b) => (a.current_rank ?? 999) - (b.current_rank ?? 999));
-      return `<div class="ac-country-group">
-        <p class="ltal-goals-category-label" style="margin:1.1rem 0 0.4rem;">${meta.flag} ${meta.name}</p>
-        ${list.map(row => _artistChartCardHtml(row, onChartLabel)).join('')}
-      </div>`;
-    }).join('');
+    _renderCountryGroups(cards, metaEl, rows, _artistChartCardHtml, onChartLabel);
   } catch (e) {
-    section.style.display = 'none';   // non-critical — hide if the feed isn't ready
+    if (loading) loading.style.display = 'none';
+    cards.innerHTML = ''; metaEl.textContent = '';
+    emptyEl.textContent = `Couldn't load the artist charts (${e.message}).`;
+    emptyEl.style.display = 'block';
+  }
+}
+
+// Album card: cover + name + the members on it, rank + movement.
+function _albumChartCardHtml(row) {
+  let moveCls, moveLabel;
+  if (row.entry_status === 'NEW' || row.entry_status === 'RE-ENTRY') {
+    moveCls = 'new-entry'; moveLabel = row.entry_status === 'RE-ENTRY' ? 'RE-ENTRY' : 'NEW';
+  } else if (row.previous_rank != null && row.previous_rank > row.current_rank) {
+    moveCls = 'up';   moveLabel = `▲ ${row.previous_rank - row.current_rank} spots`;
+  } else if (row.previous_rank != null && row.previous_rank < row.current_rank) {
+    moveCls = 'down'; moveLabel = `▼ ${row.current_rank - row.previous_rank} spots`;
+  } else {
+    moveCls = 'same'; moveLabel = '= no change';
+  }
+  const rawImg = row.image_url || '';
+  const imgUrl = rawImg.startsWith('spotify:image:') ? 'https://i.scdn.co/image/' + rawImg.slice('spotify:image:'.length) : rawImg;
+  const imgHtml = imgUrl
+    ? `<img class="ac-row-avatar ac-row-cover" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(row.album_name)}" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">`
+    : `<div class="ac-row-avatar"></div>`;
+  const peakHtml = row.peak_rank != null ? `Peak #${row.peak_rank}` : '';
+  const streakHtml = row.streak != null ? `${peakHtml ? ' · ' : ''}${fmtNum(row.streak)} wks` : '';
+  return `<div class="ac-row">
+    ${imgHtml}
+    <div class="ac-row-body">
+      <div class="ac-row-name">${escapeHtml(row.album_name)}</div>
+      <div class="ac-row-meta">${escapeHtml(row.artists || row.member || '')}</div>
+      <div class="ac-row-peak">${peakHtml}${streakHtml}</div>
+    </div>
+    <div class="ac-row-right">
+      <div class="ac-row-pos">#${row.current_rank}</div>
+      <div class="ac-row-move ${moveCls}">${moveLabel}</div>
+    </div>
+  </div>`;
+}
+
+async function fetchAndRenderAlbumCharts() {
+  const cards   = document.getElementById('ch-albums-cards');
+  const emptyEl = document.getElementById('ch-albums-empty');
+  const titleEl = document.getElementById('ch-albums-title');
+  const metaEl  = document.getElementById('ch-albums-meta');
+  const loading = document.getElementById('ch-albums-loading');
+  if (!cards) return;
+  if (loading) loading.style.display = 'block';
+  emptyEl.style.display = 'none';
+  try {
+    const r = await fetch('/api/proxy-image?charts=list-albums&country=ALL', { cache: 'no-store' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    const rows = data.rows || [];
+    if (loading) loading.style.display = 'none';
+    titleEl.textContent = data.trackingDate ? `Top Albums · Weekly · ${fmtDate(data.trackingDate)}` : 'Top Albums · Weekly';
+    if (!rows.length) { emptyEl.style.display = 'block'; cards.innerHTML = ''; metaEl.textContent = ''; return; }
+    _renderCountryGroups(cards, metaEl, rows, _albumChartCardHtml, 'wks');
+  } catch (e) {
+    if (loading) loading.style.display = 'none';
+    cards.innerHTML = ''; metaEl.textContent = '';
+    emptyEl.textContent = `Couldn't load the album charts (${e.message}).`;
+    emptyEl.style.display = 'block';
   }
 }
 
