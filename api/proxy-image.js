@@ -945,10 +945,16 @@ export default async function handler(req, res) {
 
       const jobs = [];
       for (const chartType of ['daily', 'weekly']) for (const country of CHART_COUNTRIES) jobs.push({ chartType, country });
-      // Main pass at moderate concurrency, then one retry pass for whatever failed
-      // (recovers transient 429s; genuine "no such chart" aliases stay failed).
+      // Main pass at moderate concurrency, then retry whatever failed after a short
+      // cooldown — the charts service 429s a rapid ~150-request burst, but the rate
+      // window resets within a couple of seconds. Genuine "no such chart" aliases,
+      // if any, keep failing and are reported in skippedList.
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
       let skipped = await runJobs(jobs, 8);
-      if (skipped.length) skipped = await runJobs(skipped.map(({ chartType, country }) => ({ chartType, country })), 4);
+      for (let attempt = 0; attempt < 2 && skipped.length; attempt++) {
+        await sleep(2000);
+        skipped = await runJobs(skipped.map(({ chartType, country }) => ({ chartType, country })), 6);
+      }
 
       if (upsertRows.length) {
         const upsertRes = await sbFetch('/artist_chart_positions?on_conflict=artist_spotify_id,country,chart_type,tracking_date', {

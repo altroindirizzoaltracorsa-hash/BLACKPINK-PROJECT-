@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "api/proxy-image.js": { "maxDuration": 30 }
+  },
   "redirects": [
     { "source": "/", "destination": "/vmas.html", "permanent": false }
   ],
