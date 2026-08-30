@@ -7344,6 +7344,18 @@ const EP_TRACK_IDS = ['ltal', 'fallenangel', 'heaven'];
 const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven'];
 function campaignTotalOf(tp) { return CAMPAIGN_TOTAL_IDS.reduce((s, id) => s + (tp?.[id] || 0), 0); }
 
+// ── MOMENTARY: Fallen Angel EP push ──────────────────────────
+// The fandom is focused on the Fallen Angel EP right now, so its tracks count
+// toward the daily 1k / weekly 10k milestone totals alongside the 4 campaign
+// tracks. Flip EP_IN_MILESTONES back to false to snap the milestones back to
+// campaign-only. NOTE: this only affects the 1k/10k combined totals — the daily
+// STAMP stays campaign-only (see CAMPAIGN_TRACK_IDS / the stamp block).
+const EP_IN_MILESTONES = true;
+const MILESTONE_TRACK_IDS = EP_IN_MILESTONES
+  ? [...CAMPAIGN_TRACK_IDS, ...EP_TRACK_IDS]
+  : CAMPAIGN_TRACK_IDS;
+function milestoneTotalOf(tp) { return MILESTONE_TRACK_IDS.reduce((s, id) => s + (tp?.[id] || 0), 0); }
+
 // ── VOTE CAMPAIGNS ───────────────────────────────────────────
 const VOTE_CAMPAIGNS = [
   {
@@ -9785,7 +9797,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   // Campaign tracks always; the Fallen Angel EP songs join once the EP is out.
   const epOut = Date.now() >= FAEP_RELEASE_MS;
   const gridTracks = TRACKS.filter(t => !EP_TRACK_IDS.includes(t.id) || epOut);
-  const todayCombined = (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.go || 0);
+  const todayCombined = milestoneTotalOf(todayCounts);
   dailyGrid.innerHTML = `
     <div class="daily-grid">
       ${gridTracks.map(t => {
@@ -9832,7 +9844,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   // Weekly challenge table
   const dayLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const weekGrid = document.getElementById('weekly-challenge-grid');
-  const weekCombined = (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.go || 0);
+  const weekCombined = milestoneTotalOf(weekCounts);
   weekGrid.innerHTML = `
     <table class="weekly-table">
       <thead><tr>
