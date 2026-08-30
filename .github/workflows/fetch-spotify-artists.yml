@@ -1,20 +1,18 @@
-name: Fetch Spotify Top Artists
+name: Fetch Spotify Charts
 
-# Populates the official Spotify Top Artists (daily+weekly) and Top Albums
-# (weekly) chart positions for BLACKPINK + members on the /spotify-charts page.
-# The actual charts.spotify.com fetch runs server-side on Vercel — Spotify blocks
-# GitHub Actions IPs — so this job only *triggers* the Vercel handlers, which mint
-# a token from SPOTIFY_SP_DC and store into Supabase (artists) / Redis (albums).
+# Populates the official Spotify Top Songs (daily+weekly), Top Artists
+# (daily+weekly) and Top Albums (weekly) for BLACKPINK + members on the
+# /spotify-charts page. The charts.spotify.com fetch runs server-side on Vercel
+# (Spotify blocks GitHub IPs); this job only *triggers* the Vercel handlers.
 #
-# Spotify rate-limits the charts service on a long rolling window, so the three
-# passes (74 requests each) run on SEPARATE schedules ~35 min apart, each with a
-# fresh budget. A manual dispatch can target one via `type`.
+# Spotify rate-limits the charts service on a long rolling window, so each 74-req
+# pass is spaced apart. Freshness is driven by a 2-hourly canary that does the
+# full daily refresh only when the chart actually changes; a nightly floor
+# guarantees a full sweep of everything.
 on:
   schedule:
-    - cron: '0 */2 * * *'   # canary — every 2h: full daily refresh only if the chart changed
-    - cron: '45 22 * * *'   # Top Artists — daily  (guaranteed floor)
-    - cron: '20 23 * * *'   # Top Artists — weekly
-    - cron: '55 23 * * *'   # Top Albums  — weekly
+    - cron: '0 */2 * * *'   # canary — every 2h: refresh daily songs+artists only if changed
+    - cron: '30 23 * * *'   # nightly floor — full sweep of all charts (spaced)
   workflow_dispatch:
     inputs:
       base_url:
@@ -22,11 +20,11 @@ on:
         required: false
         default: ''
       type:
-        description: 'daily | weekly | albums | both (artists daily+weekly). Default: both.'
+        description: 'songs | daily | weekly | albums | floor | both | canary. Default: both (artists daily+weekly).'
         required: false
         default: 'both'
       probe:
-        description: 'Set to 1 to probe the album chart shape and exit.'
+        description: 'Set to 1 to probe chart aliases and exit.'
         required: false
         default: ''
 
@@ -42,48 +40,53 @@ jobs:
           INPUT_TYPE: ${{ inputs.type }}
           PROBE: ${{ inputs.probe }}
         run: |
-          hit() { # hit <query>  → sets global `code`, prints body
+          hit() { # hit <query> → sets global `code`, prints body
             code=$(curl -sS -L --max-time 120 -o /tmp/out.json -w '%{http_code}' \
               -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/proxy-image?$1")
             echo "HTTP $code"; cat /tmp/out.json; echo
           }
+          rc=0; need200() { [ "$code" = "200" ] || rc=1; }
 
           if [ -n "$PROBE" ]; then
-            for A in song-global-daily regional-global-daily track-global-daily songs-global-daily; do
+            for A in song-global-daily regional-global-daily track-global-daily; do
               echo "── probe alias: $A ──"; hit "charts=probe-albums&alias=$A"
             done
             exit 0
           fi
 
-          # Canary schedule: cheap check; only do the full daily refresh if the
-          # global daily artist chart actually changed since last poll.
+          # ── Canary (every 2h): songs+artists move together on Spotify, so one
+          #    change check gates both. Refresh the daily charts only on change. ──
           if [ "$SCHED" = "0 */2 * * *" ] || [ "$INPUT_TYPE" = "canary" ]; then
-            echo "── canary (daily artists) ──"; hit "charts=artist-canary"
+            echo "── canary ──"; hit "charts=artist-canary"
             if grep -q '"changed":true' /tmp/out.json; then
-              echo "chart changed → full daily refresh"
-              hit "charts=fetch-artists&type=daily"; test "$code" = "200"; exit $?
+              echo "changed → refresh daily songs + artists"
+              echo "── Top Songs (daily) ──";   hit "charts=fetch-songs&type=daily";    need200
+              sleep 75
+              echo "── Top Artists (daily) ──"; hit "charts=fetch-artists&type=daily";  need200
+            else
+              echo "no change"
             fi
-            echo "no change — skipping full fetch"; exit 0
+            exit $rc
           fi
 
-          # Resolve what to fetch from the schedule or the manual `type` input.
-          if   [ "$SCHED" = "45 22 * * *" ]; then TARGET="daily";
-          elif [ "$SCHED" = "20 23 * * *" ]; then TARGET="weekly";
-          elif [ "$SCHED" = "55 23 * * *" ]; then TARGET="albums";
-          else TARGET="$INPUT_TYPE"; fi
-
-          rc=0
-          if [ "$TARGET" = "albums" ]; then
-            echo "── Top Albums (weekly) ──"; hit "charts=fetch-albums"; [ "$code" = "200" ] || rc=1
-          elif [ "$TARGET" = "daily" ] || [ "$TARGET" = "weekly" ]; then
-            echo "── Top Artists ($TARGET) ──"; hit "charts=fetch-artists&type=$TARGET"; [ "$code" = "200" ] || rc=1
-          else
-            # "both" (manual): artists daily, then weekly, then albums — spaced so
-            # each 74-request burst starts with a fresh-ish rate budget.
-            echo "── Top Artists (daily) ──";  hit "charts=fetch-artists&type=daily";  [ "$code" = "200" ] || rc=1
-            sleep 75
-            echo "── Top Artists (weekly) ──"; hit "charts=fetch-artists&type=weekly"; [ "$code" = "200" ] || rc=1
-            sleep 75
-            echo "── Top Albums (weekly) ──";  hit "charts=fetch-albums";              [ "$code" = "200" ] || rc=1
+          # ── Nightly floor / manual floor: full spaced sweep of everything ──
+          if [ "$SCHED" = "30 23 * * *" ] || [ "$INPUT_TYPE" = "floor" ]; then
+            for Q in "charts=fetch-songs&type=daily" "charts=fetch-songs&type=weekly" \
+                     "charts=fetch-artists&type=daily" "charts=fetch-artists&type=weekly" \
+                     "charts=fetch-albums"; do
+              echo "── $Q ──"; hit "$Q"; need200; sleep 75
+            done
+            exit $rc
           fi
+
+          # ── Targeted manual dispatch ──
+          case "$INPUT_TYPE" in
+            songs)  echo "── Top Songs (daily) ──";  hit "charts=fetch-songs&type=daily";  need200; sleep 75
+                    echo "── Top Songs (weekly) ──"; hit "charts=fetch-songs&type=weekly"; need200 ;;
+            daily)  echo "── Top Artists (daily) ──";  hit "charts=fetch-artists&type=daily";  need200 ;;
+            weekly) echo "── Top Artists (weekly) ──"; hit "charts=fetch-artists&type=weekly"; need200 ;;
+            albums) echo "── Top Albums (weekly) ──";  hit "charts=fetch-albums";              need200 ;;
+            *)      echo "── Top Artists (daily) ──";  hit "charts=fetch-artists&type=daily";  need200; sleep 75
+                    echo "── Top Artists (weekly) ──"; hit "charts=fetch-artists&type=weekly"; need200 ;;
+          esac
           exit $rc

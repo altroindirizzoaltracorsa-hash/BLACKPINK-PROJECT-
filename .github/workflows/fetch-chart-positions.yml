@@ -8,8 +8,11 @@ name: Chart Positions Tracker
 # both the daily and weekly refresh needs.
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '30 22 * * *'
+  # Scheduled run retired: Top Songs now comes from the official charts.spotify.com
+  # feed (charts=fetch-songs in api/proxy-image.js), which is fresher than kworb's
+  # extra-lagged mirror. Kept as a manual fallback only.
+  # schedule:
+  #   - cron: '30 22 * * *'
 
 jobs:
   fetch:

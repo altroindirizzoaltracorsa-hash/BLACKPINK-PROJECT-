@@ -954,31 +954,45 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
-  // ── GET ?charts=visit-refresh (PUBLIC) — visitor-triggered refresh ─────────
-  // The /spotify-charts page pings this on load. It's throttled to once per 20
-  // min via a Redis timestamp so a public endpoint can't be spammed into
-  // hammering Spotify: only the first visitor in each window does any work, and
-  // even then it runs the cheap canary first and the full daily refresh only if
-  // the chart actually changed. Between the 2-hourly cron and live traffic this
-  // keeps the daily chart fresh within ~20 min of whenever Spotify updates.
+  // ── GET ?charts=visit-refresh&view=songs|artists|albums (PUBLIC) ──────────
+  // Each /spotify-charts view pings this when opened. Throttled per view to once
+  // per 20 min via a Redis timestamp so a public endpoint can't be spammed into
+  // hammering Spotify: only the first visitor in each window does work, and even
+  // then it runs the cheap 1-request canary and does the full refresh of THAT
+  // view's chart only if it actually changed. One heavy fetch max per view per
+  // window keeps us well under Spotify's rate limit and the function timeout.
   if (req.query.charts === 'visit-refresh') {
     if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.ADMIN_SECRET) return res.status(200).json({ ok: false });
+    const view = ['songs', 'artists', 'albums'].includes(req.query.view) ? req.query.view : 'songs';
+    const CFG = {
+      songs:   { fpKey: 'bu_chart_fp_song_daily',   kind: 'regional', type: 'daily',  fetch: 'fetch-songs&type=daily'   },
+      artists: { fpKey: 'bu_chart_fp_artist_daily', kind: 'artist',   type: 'daily',  fetch: 'fetch-artists&type=daily' },
+      albums:  { fpKey: 'bu_chart_fp_album_weekly', kind: 'album',    type: 'weekly', fetch: 'fetch-albums'             },
+    }[view];
     const TTL_MS = 20 * 60 * 1000;
     const now = Date.now();
+    const tsKey = `bu_chart_visit_ts_${view}`;
     let last = 0;
-    try { last = Number(await upstashGet('bu_chart_visit_ts')) || 0; } catch {}
-    if (now - last < TTL_MS) return res.status(200).json({ ok: true, throttled: true });
-    try { await upstashSet('bu_chart_visit_ts', now); } catch {}   // claim the window up-front
+    try { last = Number(await upstashGet(tsKey)) || 0; } catch {}
+    if (now - last < TTL_MS) return res.status(200).json({ ok: true, view, throttled: true });
+    try { await upstashSet(tsKey, now); } catch {}   // claim the window up-front
 
     const base = 'https://' + (req.headers['x-forwarded-host'] || req.headers.host || 'www.blinksunited.com');
     const hdr = { headers: { 'x-admin-secret': process.env.ADMIN_SECRET } };
     try {
-      const can = await (await fetch(`${base}/api/proxy-image?charts=artist-canary`, hdr)).json().catch(() => ({}));
-      if (can && can.changed) {
-        await fetch(`${base}/api/proxy-image?charts=fetch-artists&type=daily`, hdr);
-        return res.status(200).json({ ok: true, refreshed: true });
+      const token = await getChartsAuthToken();
+      const result = await fetchOfficialChart(token, CFG.kind, CFG.type, 'global');
+      const entries = result.ok ? (result.data?.entries ?? result.data?.displayChart?.entries ?? []) : [];
+      const fp = entries.slice(0, 50).map(e => `${e.chartEntryData?.currentRank}:${e.trackMetadata?.trackUri || e.artistMetadata?.artistUri || e.albumMetadata?.albumUri}`).join('|');
+      const hash = crypto.createHash('sha1').update(fp).digest('hex');
+      let prev = null;
+      try { prev = await upstashGet(CFG.fpKey); } catch {}
+      if (entries.length && prev !== hash) {
+        try { await upstashSet(CFG.fpKey, hash); } catch {}
+        await fetch(`${base}/api/proxy-image?charts=${CFG.fetch}`, hdr);   // full refresh, server-side
+        return res.status(200).json({ ok: true, view, refreshed: true });
       }
-      return res.status(200).json({ ok: true, refreshed: false });
+      return res.status(200).json({ ok: true, view, refreshed: false });
     } catch (e) { return res.status(200).json({ ok: false, error: e.message }); }
   }
 
@@ -1124,6 +1138,115 @@ export default async function handler(req, res) {
       return res.status(200).json({
         ok: true, date: today, matched: rows.length, countries: CHART_COUNTRIES.length,
         skipped: failed.length, matchedCountries: [...new Set(rows.map(r => r.country))].sort(),
+      });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // ── GET ?charts=fetch-songs (cron/admin) — official Spotify Top Songs ──────
+  // Replaces the kworb scrape as the source for the Top Songs view: pulls the
+  // official charts.spotify.com song chart (alias regional-{country}-{daily|weekly})
+  // for the members and upserts into the SAME chart_positions table the page
+  // already reads, so nothing downstream changes. Fresher than kworb (no extra
+  // mirror lag) — same-day releases like a new single show as soon as Spotify
+  // charts them. Movement + streams-change are computed from our stored history.
+  if (req.query.charts === 'fetch-songs') {
+    const cronSecret = process.env.CRON_SECRET;
+    const adminSecret = process.env.ADMIN_SECRET;
+    const bearer = req.headers.authorization === `Bearer ${cronSecret}` && cronSecret;
+    const adminKey = (req.headers['x-admin-secret'] || req.query.key) === adminSecret && adminSecret;
+    if (!bearer && !adminKey) return res.status(401).json({ error: 'Unauthorized' });
+
+    const today = new Date().toISOString().slice(0, 10);
+    const wantTypes = (req.query.type === 'daily' || req.query.type === 'weekly') ? [req.query.type] : ['daily', 'weekly'];
+    try {
+      const token = await getChartsAuthToken();
+      const rows = [];
+      const collect = (country, chartType, data) => {
+        const entries = data?.entries ?? data?.displayChart?.entries ?? [];
+        for (const entry of entries) {
+          const meta = entry.trackMetadata || {};
+          const artists = meta.artists || [];
+          const tracked = artists.map(a => {
+            const id = (a.spotifyUri || '').startsWith('spotify:artist:') ? a.spotifyUri.slice('spotify:artist:'.length) : null;
+            return id && CHARTS_TRACKED_ARTISTS[id] ? { id, name: CHARTS_TRACKED_ARTISTS[id] } : null;
+          }).find(Boolean);
+          if (!tracked) continue;
+          const d = entry.chartEntryData || {};
+          const streams = d.rankingMetric && d.rankingMetric.type === 'STREAMS' ? parseInt(d.rankingMetric.value, 10) : null;
+          const prevRank = d.previousRank > 0 ? d.previousRank : null;
+          const es = (d.entryStatus || '').toUpperCase();
+          rows.push({
+            spotify_track_id: (meta.trackUri || '').split(':').pop() || null,
+            track_name: meta.trackName || '',
+            primary_artist_id: tracked.id, primary_artist_name: tracked.name,
+            featured_artists: artists.filter(a => a.spotifyUri !== `spotify:artist:${tracked.id}`).map(a => a.name),
+            country: country.toUpperCase(), chart_type: chartType, position: d.currentRank,
+            previous_position: prevRank, position_change: prevRank != null ? prevRank - d.currentRank : null,
+            peak_position: d.peakRank ?? null, days_on_chart: d.appearancesOnChart ?? null,
+            streams, total_streams: null, _es: es,
+          });
+        }
+      };
+      const runJobs = async (jobList, concurrency) => {
+        const failed = [];
+        for (let i = 0; i < jobList.length; i += concurrency) {
+          const batch = jobList.slice(i, i + concurrency);
+          const results = await Promise.all(batch.map(async (j) => ({ ...j, result: await fetchOfficialChart(token, 'regional', j.chartType, j.country) })));
+          for (const { chartType, country, result } of results) {
+            if (!result.ok) failed.push({ chartType, country }); else collect(country, chartType, result.data);
+          }
+        }
+        return failed;
+      };
+      const jobs = [];
+      for (const chartType of wantTypes) for (const country of CHART_COUNTRIES) jobs.push({ chartType, country });
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+      let skipped = await runJobs(jobs, 8);
+      for (let attempt = 0; attempt < 2 && skipped.length; attempt++) { await sleep(2000); skipped = await runJobs(skipped, 6); }
+
+      // Compute streams_change + NEW/RE-ENTRY from our own stored history.
+      let priorRows = [];
+      if (rows.length) {
+        const trackIds = [...new Set(rows.map(r => r.spotify_track_id).filter(Boolean))];
+        const countries = [...new Set(rows.map(r => r.country))];
+        if (trackIds.length) {
+          const pr = await sbFetch(
+            `/chart_positions?spotify_track_id=in.(${trackIds.join(',')})&country=in.(${countries.join(',')})&tracking_date=lt.${today}` +
+            `&select=spotify_track_id,country,chart_type,position,streams,tracking_date&order=tracking_date.desc`,
+            { headers: { Accept: 'application/json' } },
+          );
+          if (pr.ok) priorRows = await pr.json();
+        }
+      }
+      const priorByKey = {}, lastRunByGroup = {};
+      for (const r of priorRows) {
+        const key = `${r.spotify_track_id}::${r.country}::${r.chart_type}`;
+        if (!(key in priorByKey)) priorByKey[key] = r;
+        const g = `${r.country}::${r.chart_type}`;
+        if (!lastRunByGroup[g] || r.tracking_date > lastRunByGroup[g]) lastRunByGroup[g] = r.tracking_date;
+      }
+      const upsertRows = rows.map(r => {
+        const key = `${r.spotify_track_id}::${r.country}::${r.chart_type}`;
+        const prior = priorByKey[key];
+        const consecutive = prior && prior.tracking_date === lastRunByGroup[`${r.country}::${r.chart_type}`];
+        let entry_status;
+        if (r._es.includes('NEW') || !prior) entry_status = 'NEW';
+        else if (r._es.includes('RE') || !consecutive) entry_status = 'RE-ENTRY';
+        else entry_status = r.position_change > 0 ? 'MOVED_UP' : r.position_change < 0 ? 'MOVED_DOWN' : 'NO_CHANGE';
+        const streams_change = (consecutive && r.streams != null && prior.streams != null) ? r.streams - prior.streams : null;
+        const { _es, ...clean } = r;
+        return { ...clean, tracking_date: today, entry_status, streams_change };
+      });
+
+      if (upsertRows.length) {
+        const up = await sbFetch('/chart_positions?on_conflict=spotify_track_id,country,tracking_date,chart_type', {
+          method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify(upsertRows),
+        });
+        if (!up.ok) return res.status(502).json({ error: `Supabase upsert failed: ${await up.text()}` });
+      }
+      return res.status(200).json({
+        ok: true, date: today, upserted: upsertRows.length, skipped: skipped.length,
+        matchedCountries: [...new Set(upsertRows.map(r => r.country))].sort(),
       });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
