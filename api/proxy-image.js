@@ -855,6 +855,23 @@ export default async function handler(req, res) {
     const [latest] = await latestRes.json();
     if (!latest) return res.status(200).json({ chartType, country, trackingDate: null, rows: [] });
 
+    // "Songs left the chart" guard. We only ever ADD rows, so if a member's song
+    // drops off a country's chart, no new row is written and this country's newest
+    // rows freeze at the last day it charted — leaving departed songs on display as
+    // if current. If the most recent fetch actually CHECKED this country (came back
+    // OK, per the run marker) on a date newer than its newest stored rows, the
+    // members are gone from that chart → serve empty, not the stale last-known rows.
+    // Countries merely SKIPPED on the latest run aren't in the marker, so they keep
+    // showing their last-known data instead of being wrongly blanked.
+    if (process.env.UPSTASH_REDIS_REST_URL) {
+      try {
+        const run = await upstashGet(`bu_songchart_run_${chartType}`);
+        if (run && run.date > latest.tracking_date && Array.isArray(run.countries) && run.countries.includes(country)) {
+          return res.status(200).json({ chartType, country, trackingDate: run.date, rows: [], departed: true });
+        }
+      } catch {}
+    }
+
     const rowsRes = await sbFetch(
       `/chart_positions?chart_type=eq.${chartType}&country=eq.${country}&tracking_date=eq.${latest.tracking_date}` +
       `&select=spotify_track_id,track_name,primary_artist_name,featured_artists,position,peak_position,` +
@@ -1243,6 +1260,20 @@ export default async function handler(req, res) {
           method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify(upsertRows),
         });
         if (!up.ok) return res.status(502).json({ error: `Supabase upsert failed: ${await up.text()}` });
+      }
+      // Per-run marker: which countries we successfully CHECKED this run (whether or
+      // not a tracked member charted there). The list handler uses this to tell a
+      // genuine drop-off ("checked, members no longer here") apart from a transient
+      // skip ("didn't manage to check this run") — so departed songs stop lingering
+      // as stale rows without blanking countries that were merely rate-limited.
+      if (process.env.UPSTASH_REDIS_REST_URL) {
+        try {
+          for (const ct of wantTypes) {
+            const failedForType = new Set(skipped.filter(s => s.chartType === ct).map(s => s.country.toUpperCase()));
+            const checkedOk = CHART_COUNTRIES.map(c => c.toUpperCase()).filter(c => !failedForType.has(c));
+            await upstashSet(`bu_songchart_run_${ct}`, { date: today, countries: checkedOk });
+          }
+        } catch {}
       }
       return res.status(200).json({
         ok: true, date: today, upserted: upsertRows.length, skipped: skipped.length,
