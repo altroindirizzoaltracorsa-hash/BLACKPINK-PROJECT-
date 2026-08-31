@@ -5,8 +5,31 @@ traffic to `vote.mtv.com` and no real votes cast. Two files:
 
 | File | Role |
 |------|------|
-| `mock-voting-page.html` | Stand-in for the voting page — Best Pop / Best K-Pop, LISA, a login, a submit gate, and a fake server. |
+| `mock-voting-page.html` | Stand-in for the voting page — Best Pop / Best K-Pop, a login, a submit gate, and a fake server. |
 | `bpvma-test.user.js` | The event-driven automation under test (Tampermonkey userscript). |
+
+## Who gets voted for
+
+Mirrors the real slot map in `vote-extension/README.md`:
+
+| Category | Target | Real slot |
+|---|---|---|
+| Best Pop | **LISA** | `cat06` → `C1` |
+| Best K-Pop | **BLACKPINK** | `cat11` → `A1` |
+
+Best K-Pop lists **both** BLACKPINK and LISA (`A1` and `F1` on the real site), so the target
+is not just "the BLACKPINK-ish button" — the run has to hit the right one of the two. Every
+nominee on the page is votable and separately tallied, so clicking the wrong one shows up
+rather than being silently swallowed.
+
+Change the targets at the top of the userscript:
+
+```js
+const CATEGORIES = [
+    { name: 'Best Pop',   candidate: 'LISA' },
+    { name: 'Best K-Pop', candidate: 'BLACKPINK' }
+];
+```
 
 ## Running it
 
@@ -55,12 +78,14 @@ It is event-driven end to end — no `setTimeout` guesses anywhere in the flow. 
 waits on real evidence via a `MutationObserver`, with a 5 s timeout:
 
 - **Login** — waits for `"Logged in as …"` in the status line, not for the click.
-- **Selection** — clicks LISA until `.vote-count` *itself* reports the required number,
-  confirming each click individually rather than assuming it landed.
+- **Selection** — clicks the category's target nominee until *that nominee's own*
+  `.vote-count` reports the required number, confirming each click individually rather than
+  assuming it landed.
 - **Submit gate** — waits for the button to actually become enabled and visible.
 - **Network** — registers its `mock-vote-completed` listener *before* clicking submit, then
-  requires `statusCode` 2xx **and** `candidate === 'LISA'` **and**
-  `total === REQUIRED_VOTES`.
+  requires `statusCode` 2xx **and** `candidate` === this category's target **and**
+  `votes[target] === REQUIRED_VOTES` **and** `total === REQUIRED_VOTES`. The page reports
+  `candidate: "MIXED"` when votes were split across nominees, which fails.
 - **UI** — after the 2xx, still requires `"We got your vote today"` on screen. A network
   success with no UI confirmation fails the category.
 
@@ -82,12 +107,20 @@ interaction** — exactly what a real Tampermonkey install does:
 | Scenario | Result |
 |---|---|
 | `#10/success` | `ACCOUNT_COMPLETE`, 2/2 — **8/8 runs, no flake** |
+| Nominees actually tallied | Best Pop `{LISA:10}`, Best K-Pop `{BLACKPINK:10, LISA:0}` |
 | `#10/failure` | `RUN_STOPPED: Best Pop`, reason `server_failure` |
+| `#20/success` + `REQUIRED_VOTES=20` | `ACCOUNT_COMPLETE`, 2/2 |
 | `#20/success`, script still at 10 | `MODE MISMATCH` warning, then `SUBMIT_TIMEOUT` |
 | No hash (defaults) | `10/random`, completes or stops on a real mock 500 |
 | Click `Force Success` → reload → run | hash applied, `ACCOUNT_COMPLETE` |
-| Click `Force Failure` → reload → run | hash applied, `RUN_STOPPED` |
 | Duplicate event | 4 dispatched, counted once, 2/2 |
+
+Negative tests — the harness must **refuse** these, and does:
+
+| Sabotage | Result |
+|---|---|
+| Script clicks LISA in K-Pop while expecting BLACKPINK | `RUN_STOPPED: Best K-Pop` |
+| A stray LISA vote contaminates K-Pop before the run | `RUN_STOPPED`, `wrong_vote_total` — event showed `candidate=MIXED total=11 votes={BLACKPINK:10, LISA:1}` |
 
 ## Fixed in v2.1
 

@@ -30,9 +30,21 @@
      */
     const REQUIRED_VOTES = 10;
 
+    /*
+     * Who to vote for, per category — mirrors the real
+     * slot map in vote-extension/README.md:
+     *
+     *     Best Pop    → C1 = LISA
+     *     Best K-pop  → A1 = BLACKPINK
+     *
+     * Best K-pop lists LISA too (F1), so the target here
+     * is not simply "the BLACKPINK-ish button" — the run
+     * must hit the right one of the two.
+     */
+
     const CATEGORIES = [
-        'Best Pop',
-        'Best K-Pop'
+        { name: 'Best Pop',   candidate: 'LISA' },
+        { name: 'Best K-Pop', candidate: 'BLACKPINK' }
     ];
 
     const TIMEOUT = 5000;
@@ -526,8 +538,9 @@
     }
 
 
-    function findLisaButton(
-        categoryName
+    function findCandidateButton(
+        categoryName,
+        candidate
     ) {
 
         const category =
@@ -541,7 +554,9 @@
 
 
         return category.querySelector(
-            '.plus[data-candidate="LISA"]'
+            '.plus[data-candidate="' +
+            candidate +
+            '"]'
         );
 
     }
@@ -568,8 +583,15 @@
     }
 
 
+    /*
+     * The count for ONE nominee — not the category's
+     * first .vote-count, which would now silently read
+     * whichever nominee happens to be listed first.
+     */
+
     function getVoteCount(
-        categoryName
+        categoryName,
+        candidate
     ) {
 
         const category =
@@ -584,7 +606,9 @@
 
         const count =
             category.querySelector(
-                '.vote-count'
+                '[data-count-for="' +
+                candidate +
+                '"]'
             );
 
 
@@ -795,7 +819,8 @@
        ========================================================= */
 
     function waitForMockVote(
-        categoryName
+        categoryName,
+        expectedCandidate
     ) {
 
         return new Promise(
@@ -924,18 +949,52 @@
 
 
                     /*
-                     * Verify candidate.
+                     * Verify candidate — the votes must
+                     * have gone to THIS category's target
+                     * nominee, and to nobody else.
+                     *
+                     * detail.candidate is "MIXED" when the
+                     * page tallied a split, which fails here.
                      */
 
                     if (
                         detail.candidate !==
-                        'LISA'
+                        expectedCandidate
                     ) {
 
                         finish({
                             success:false,
                             reason:
-                                'wrong_candidate'
+                                `wrong_candidate (voted ${detail.candidate}, wanted ${expectedCandidate})`
+                        });
+
+                        return;
+
+                    }
+
+
+                    /*
+                     * And the target's own tally must be
+                     * the full required amount.
+                     */
+
+                    const candidateVotes =
+                        Number(
+                            (detail.votes || {})[
+                                expectedCandidate
+                            ] || 0
+                        );
+
+
+                    if (
+                        candidateVotes !==
+                        REQUIRED_VOTES
+                    ) {
+
+                        finish({
+                            success:false,
+                            reason:
+                                `wrong_candidate_total (${expectedCandidate} got ${candidateVotes}, wanted ${REQUIRED_VOTES})`
                         });
 
                         return;
@@ -1005,11 +1064,12 @@
        ========================================================= */
 
     async function processCategory(
-        categoryName
+        categoryName,
+        candidateName
     ) {
 
         setState(
-            `CATEGORY_START: ${categoryName}`
+            `CATEGORY_START: ${categoryName} → ${candidateName}`
         );
 
 
@@ -1095,20 +1155,21 @@
          */
 
         setState(
-            `SELECTING_LISA: ${categoryName}`
+            `SELECTING: ${categoryName} → ${candidateName}`
         );
 
 
-        const lisa =
-            findLisaButton(
-                categoryName
+        const target =
+            findCandidateButton(
+                categoryName,
+                candidateName
             );
 
 
-        if (!lisa) {
+        if (!target) {
 
             log(
-                `${categoryName}: LISA button not found.`,
+                `${categoryName}: ${candidateName} button not found.`,
                 'error'
             );
 
@@ -1131,7 +1192,8 @@
 
         while (
             getVoteCount(
-                categoryName
+                categoryName,
+                candidateName
             ) <
             REQUIRED_VOTES
         ) {
@@ -1165,12 +1227,13 @@
 
             const before =
                 getVoteCount(
-                    categoryName
+                    categoryName,
+                    candidateName
                 );
 
 
             clickElement(
-                lisa
+                target
             );
 
 
@@ -1183,7 +1246,8 @@
                 await waitForDOMCondition(
                     () =>
                         getVoteCount(
-                            categoryName
+                            categoryName,
+                            candidateName
                         ) >=
                         before + 1
                 );
@@ -1207,7 +1271,8 @@
 
         const finalCount =
             getVoteCount(
-                categoryName
+                categoryName,
+                candidateName
             );
 
 
@@ -1217,7 +1282,7 @@
         ) {
 
             log(
-                `${categoryName}: expected ${REQUIRED_VOTES}, got ${finalCount}.`,
+                `${categoryName}: expected ${REQUIRED_VOTES} for ${candidateName}, got ${finalCount}.`,
                 'error'
             );
 
@@ -1227,7 +1292,7 @@
 
 
         log(
-            `${categoryName}: ${finalCount}/${REQUIRED_VOTES} selections confirmed.`,
+            `${categoryName}: ${finalCount}/${REQUIRED_VOTES} selections confirmed for ${candidateName}.`,
             'success'
         );
 
@@ -1302,7 +1367,8 @@
 
         const confirmationPromise =
             waitForMockVote(
-                categoryName
+                categoryName,
+                candidateName
             );
 
 
@@ -1415,7 +1481,7 @@
 
 
         log(
-            `${categoryName}: COMPLETE.`,
+            `${categoryName}: COMPLETE — ${REQUIRED_VOTES} votes to ${candidateName}.`,
             'success'
         );
 
@@ -1480,25 +1546,26 @@
 
 
         for (
-            const category
+            const entry
             of CATEGORIES
         ) {
 
             const success =
                 await processCategory(
-                    category
+                    entry.name,
+                    entry.candidate
                 );
 
 
             if (!success) {
 
                 setState(
-                    `RUN_STOPPED: ${category}`
+                    `RUN_STOPPED: ${entry.name}`
                 );
 
 
                 log(
-                    `Run stopped because ${category} was not confirmed.`,
+                    `Run stopped because ${entry.name} was not confirmed.`,
                     'error'
                 );
 
@@ -1524,7 +1591,7 @@
              */
 
             log(
-                `${category}: confirmed. Moving to next category.`,
+                `${entry.name}: confirmed. Moving to next category.`,
                 'success'
             );
 
@@ -1588,7 +1655,11 @@
 
 
     log(
-        `Configured for ${REQUIRED_VOTES} selections per category.`
+        `Configured for ${REQUIRED_VOTES} selections per category: ` +
+        CATEGORIES.map(
+            entry =>
+                `${entry.name} → ${entry.candidate}`
+        ).join(', ')
     );
 
 

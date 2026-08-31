@@ -191,6 +191,18 @@
 
     <div id="categories">
 
+        <!--
+            Nominees mirror the real slot map in
+            vote-extension/README.md:
+
+                Best Pop    → C1 = LISA
+                Best K-pop  → A1 = BLACKPINK, F1 = LISA
+
+            Best K-pop deliberately carries BOTH BLACKPINK and
+            LISA, so voting the wrong one of the two is a
+            failure the harness can actually catch.
+        -->
+
         <div
             class="category"
             data-category="Best Pop"
@@ -202,7 +214,10 @@
 
             <div class="category-content">
 
-                <div class="candidate">
+                <div
+                    class="candidate"
+                    data-candidate="LISA"
+                >
 
                     <span>LISA</span>
 
@@ -214,23 +229,38 @@
                             +
                         </button>
 
-                        <span class="vote-count">
+                        <span
+                            class="vote-count"
+                            data-count-for="LISA"
+                        >
                             0
                         </span>
                     </div>
 
                 </div>
 
-                <div class="candidate">
+                <div
+                    class="candidate"
+                    data-candidate="OTHER"
+                >
 
                     <span>Other Artist</span>
 
-                    <button
-                        class="plus"
-                        data-candidate="OTHER"
-                    >
-                        +
-                    </button>
+                    <div>
+                        <button
+                            class="plus"
+                            data-candidate="OTHER"
+                        >
+                            +
+                        </button>
+
+                        <span
+                            class="vote-count"
+                            data-count-for="OTHER"
+                        >
+                            0
+                        </span>
+                    </div>
 
                 </div>
 
@@ -257,7 +287,35 @@
 
             <div class="category-content">
 
-                <div class="candidate">
+                <div
+                    class="candidate"
+                    data-candidate="BLACKPINK"
+                >
+
+                    <span>BLACKPINK</span>
+
+                    <div>
+                        <button
+                            class="plus"
+                            data-candidate="BLACKPINK"
+                        >
+                            +
+                        </button>
+
+                        <span
+                            class="vote-count"
+                            data-count-for="BLACKPINK"
+                        >
+                            0
+                        </span>
+                    </div>
+
+                </div>
+
+                <div
+                    class="candidate"
+                    data-candidate="LISA"
+                >
 
                     <span>LISA</span>
 
@@ -270,7 +328,10 @@
                             +
                         </button>
 
-                        <span class="vote-count">
+                        <span
+                            class="vote-count"
+                            data-count-for="LISA"
+                        >
                             0
                         </span>
 
@@ -278,16 +339,28 @@
 
                 </div>
 
-                <div class="candidate">
+                <div
+                    class="candidate"
+                    data-candidate="OTHER"
+                >
 
                     <span>Other Artist</span>
 
-                    <button
-                        class="plus"
-                        data-candidate="OTHER"
-                    >
-                        +
-                    </button>
+                    <div>
+                        <button
+                            class="plus"
+                            data-candidate="OTHER"
+                        >
+                            +
+                        </button>
+
+                        <span
+                            class="vote-count"
+                            data-count-for="OTHER"
+                        >
+                            0
+                        </span>
+                    </div>
 
                 </div>
 
@@ -323,10 +396,99 @@ let requiredVotes = 10;
 let serverMode = "random";
 
 
+/*
+ * Votes are tracked PER CANDIDATE, the way the real
+ * submission splits a category total across nominee
+ * slots (total=10&A1=9&F1=1).
+ */
+
 const state = {
-    "Best Pop": 0,
-    "Best K-Pop": 0
+    "Best Pop":   { LISA: 0, OTHER: 0 },
+    "Best K-Pop": { BLACKPINK: 0, LISA: 0, OTHER: 0 }
 };
+
+
+function categoryTotal(category) {
+
+    return Object.values(
+        state[category]
+    ).reduce(
+        (sum, n) => sum + n,
+        0
+    );
+
+}
+
+
+/*
+ * The nominee that received the votes, or "MIXED" when
+ * they were split — so a run that spreads votes across
+ * nominees cannot pass a single-candidate assertion.
+ */
+
+function votedCandidate(category) {
+
+    const voted =
+        Object.keys(
+            state[category]
+        ).filter(
+            name => state[category][name] > 0
+        );
+
+
+    if (voted.length === 0)
+        return null;
+
+
+    if (voted.length > 1)
+        return "MIXED";
+
+
+    return voted[0];
+
+}
+
+
+/*
+ * The payload the userscript verifies. It reports what
+ * was ACTUALLY tallied — the real total and the real
+ * per-nominee split — so a wrong-nominee run is visible
+ * in the event rather than hidden behind a hard-coded
+ * candidate name.
+ */
+
+function voteDetail(
+    category,
+    statusCode,
+    timestamp
+) {
+
+    return {
+
+        category:
+            category,
+
+        statusCode:
+            statusCode,
+
+        timestamp:
+            timestamp,
+
+        total:
+            categoryTotal(category),
+
+        votes:
+            Object.assign(
+                {},
+                state[category]
+            ),
+
+        candidate:
+            votedCandidate(category)
+
+    };
+
+}
 
 
 /* ============================================================
@@ -568,43 +730,51 @@ document
                 }
 
 
-                if (
-                    button.dataset.candidate !==
-                    "LISA"
-                ) {
-                    return;
-                }
+                /*
+                 * EVERY nominee is votable — clicking the
+                 * wrong one is a mistake the harness must be
+                 * able to observe, not something the page
+                 * silently swallows.
+                 */
+
+                const candidate =
+                    button.dataset.candidate;
+
+
+                const categoryElement =
+                    button.closest(".category");
 
 
                 const category =
-                    button
-                        .closest(".category")
+                    categoryElement
                         .dataset
                         .category;
 
 
-                state[category]++;
+                state[category][candidate]++;
 
 
                 const count =
-                    button
-                        .parentElement
-                        .querySelector(
-                            ".vote-count"
-                        );
+                    categoryElement.querySelector(
+                        '[data-count-for="' +
+                        candidate +
+                        '"]'
+                    );
 
 
                 count.textContent =
-                    state[category];
+                    state[category][candidate];
 
 
                 setStatus(
                     category +
                     ": " +
-                    state[category] +
+                    categoryTotal(category) +
                     "/" +
                     requiredVotes +
-                    " selected.",
+                    " selected (" +
+                    candidate +
+                    ").",
                     null
                 );
 
@@ -616,15 +786,13 @@ document
                  */
 
                 const submit =
-                    button
-                        .closest(".category")
-                        .querySelector(
-                            ".submit"
-                        );
+                    categoryElement.querySelector(
+                        ".submit"
+                    );
 
 
                 if (
-                    state[category] >=
+                    categoryTotal(category) >=
                     requiredVotes
                 ) {
 
@@ -664,7 +832,7 @@ document
 
 
                 if (
-                    state[category] <
+                    categoryTotal(category) <
                     requiredVotes
                 ) {
 
@@ -740,24 +908,12 @@ document
                                 new CustomEvent(
                                     "mock-vote-completed",
                                     {
-                                        detail: {
-
-                                            category:
+                                        detail:
+                                            voteDetail(
                                                 category,
-
-                                            statusCode:
                                                 200,
-
-                                            timestamp:
-                                                timestamp,
-
-                                            total:
-                                                requiredVotes,
-
-                                            candidate:
-                                                "LISA"
-
-                                        }
+                                                timestamp
+                                            )
                                     }
                                 )
                             );
@@ -777,24 +933,12 @@ document
                                         new CustomEvent(
                                             "mock-vote-completed",
                                             {
-                                                detail: {
-
-                                                    category:
+                                                detail:
+                                                    voteDetail(
                                                         category,
-
-                                                    statusCode:
                                                         200,
-
-                                                    timestamp:
-                                                        timestamp,
-
-                                                    total:
-                                                        requiredVotes,
-
-                                                    candidate:
-                                                        "LISA"
-
-                                                }
+                                                        timestamp
+                                                    )
                                             }
                                         )
                                     );
@@ -816,24 +960,12 @@ document
                                 new CustomEvent(
                                     "mock-vote-completed",
                                     {
-                                        detail: {
-
-                                            category:
+                                        detail:
+                                            voteDetail(
                                                 category,
-
-                                            statusCode:
                                                 500,
-
-                                            timestamp:
-                                                timestamp,
-
-                                            total:
-                                                requiredVotes,
-
-                                            candidate:
-                                                "LISA"
-
-                                        }
+                                                timestamp
+                                            )
                                     }
                                 )
                             );
