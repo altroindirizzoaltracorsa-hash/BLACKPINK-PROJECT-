@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         BPVMA Event-Driven Test
 // @namespace    local-test
-// @version      2.1
-// @description  Event-driven automation test — LOCAL MOCK PAGE ONLY
+// @version      2.2
+// @description  Event-driven automation test — LOCAL MOCK PAGE ONLY (Best Pop → LISA, Best K-Pop → BLACKPINK)
 // @match        file:///C:/Users/Alice/Desktop/mock-voting-page.html
 // @match        file:///*/mock-voting-page.html
 // @grant        none
