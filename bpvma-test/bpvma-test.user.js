@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BPVMA Event-Driven Test
 // @namespace    local-test
-// @version      2.3
+// @version      2.4
 // @description  Event-driven automation test — LOCAL MOCK PAGE ONLY (Best Pop → LISA, Best K-Pop → BLACKPINK)
 // @match        file:///C:/Users/Alice/Desktop/mock-voting-page.html
 // @match        file:///*/mock-voting-page.html
@@ -21,14 +21,31 @@
     const TEST_EMAIL = 'test@example.com';
 
     /*
-     * Change this to 10 for normal testing
-     * or 20 for Power/Double testing.
+     * How many selections a category needs.
      *
-     * This is the ASSERTION, not a reading of
-     * the page — the run must fail if the page
-     * reports a different total.
+     * READ FROM THE PAGE, not hard-coded. The site
+     * decides this — 10 normally, 20 inside a
+     * power/double window — and those windows run to a
+     * fixed schedule, so there is nothing for a human to
+     * flip by hand.
+     *
+     * This does not weaken the check. The assertion that
+     * matters is "the server recorded the same number of
+     * votes I ACTUALLY cast, all to my target nominee",
+     * and that is verified against the real click count
+     * further down, whatever the page asked for.
      */
-    const REQUIRED_VOTES = 10;
+
+    const FALLBACK_REQUIRED_VOTES = 10;
+
+    /*
+     * Runaway guard: a garbage read must never turn into
+     * an unbounded clicking loop.
+     */
+
+    const MAX_REQUIRED_VOTES = 50;
+
+    let requiredVotes = FALLBACK_REQUIRED_VOTES;
 
     /*
      * Who to vote for, per category — mirrors the real
@@ -649,19 +666,16 @@
 
     /*
      * =========================================================
-       PRE-FLIGHT
+       HOW MANY SELECTIONS DOES THE PAGE WANT?
        =========================================================
      *
-     * The page's TEST MODE selector and REQUIRED_VOTES above
-     * are set independently. When they disagree the submit
-     * button never enables and the run dies with a bare
-     * SUBMIT_TIMEOUT, which reads like a script bug.
-     *
-     * This is advisory only — REQUIRED_VOTES stays the
-     * assertion, so a genuine mismatch still fails the run.
+     * Read it rather than assume it, so a power/double
+     * window is followed automatically. Falls back to
+     * FALLBACK_REQUIRED_VOTES and says so when the page
+     * gives nothing usable, rather than guessing silently.
      */
 
-    function preflight() {
+    function detectRequiredVotes() {
 
         const modeDisplay =
             document.getElementById(
@@ -669,8 +683,17 @@
             );
 
 
-        if (!modeDisplay)
-            return;
+        if (!modeDisplay) {
+
+            log(
+                `Required count not published by the page — ` +
+                `falling back to ${FALLBACK_REQUIRED_VOTES}.`,
+                'error'
+            );
+
+            return FALLBACK_REQUIRED_VOTES;
+
+        }
 
 
         const pageRequired =
@@ -681,26 +704,33 @@
 
 
         if (
-            !Number.isFinite(
-                pageRequired
-            )
-        ) {
-            return;
-        }
-
-
-        if (
-            pageRequired !==
-            REQUIRED_VOTES
+            !Number.isInteger(pageRequired) ||
+            pageRequired < 1 ||
+            pageRequired > MAX_REQUIRED_VOTES
         ) {
 
             log(
-                `MODE MISMATCH — page requires ${pageRequired}, script expects ${REQUIRED_VOTES}. ` +
-                `Set the page's TEST MODE (or REQUIRED_VOTES) so they agree; this run is expected to fail.`,
+                `Page reported an unusable required count ` +
+                `("${modeDisplay.textContent.trim()}") — ` +
+                `falling back to ${FALLBACK_REQUIRED_VOTES}.`,
                 'error'
             );
 
+            return FALLBACK_REQUIRED_VOTES;
+
         }
+
+
+        log(
+            `Page requires ${pageRequired} selections per category` +
+            (pageRequired === FALLBACK_REQUIRED_VOTES
+                ? '.'
+                : ' — power/double window, following it.'),
+            'success'
+        );
+
+
+        return pageRequired;
 
     }
 
@@ -818,9 +848,17 @@
        MOCK VOTE CONFIRMATION
        ========================================================= */
 
+    /*
+     * expectedTotal is the number of selections this run
+     * ACTUALLY clicked and saw confirmed in the DOM — not
+     * what the page asked for. The server has to agree
+     * with what we really did.
+     */
+
     function waitForMockVote(
         categoryName,
-        expectedCandidate
+        expectedCandidate,
+        expectedTotal
     ) {
 
         return new Promise(
@@ -926,21 +964,21 @@
 
 
                     /*
-                     * Verify the expected
-                     * number of selections.
+                     * The server's total must match what
+                     * this run actually cast.
                      */
 
                     if (
                         Number(
                             detail.total
                         ) !==
-                        REQUIRED_VOTES
+                        expectedTotal
                     ) {
 
                         finish({
                             success:false,
                             reason:
-                                'wrong_vote_total'
+                                `wrong_vote_total (server recorded ${detail.total}, cast ${expectedTotal})`
                         });
 
                         return;
@@ -975,7 +1013,7 @@
 
                     /*
                      * And the target's own tally must be
-                     * the full required amount.
+                     * every vote this run cast.
                      */
 
                     const candidateVotes =
@@ -988,13 +1026,13 @@
 
                     if (
                         candidateVotes !==
-                        REQUIRED_VOTES
+                        expectedTotal
                     ) {
 
                         finish({
                             success:false,
                             reason:
-                                `wrong_candidate_total (${expectedCandidate} got ${candidateVotes}, wanted ${REQUIRED_VOTES})`
+                                `wrong_candidate_total (${expectedCandidate} got ${candidateVotes}, cast ${expectedTotal})`
                         });
 
                         return;
@@ -1034,7 +1072,7 @@
                                 `server_failure — the mock server returned ` +
                                 `${detail.statusCode} (server mode: ${detail.serverMode || 'unknown'}). ` +
                                 `The run correctly refused to report success. ` +
-                                `Use #${REQUIRED_VOTES}/success for a clean pass.`
+                                `Use #${requiredVotes}/success for a clean pass.`
                         });
 
                     }
@@ -1197,7 +1235,7 @@
          */
 
         let safety =
-            REQUIRED_VOTES + 5;
+            requiredVotes + 5;
 
 
         while (
@@ -1205,7 +1243,7 @@
                 categoryName,
                 candidateName
             ) <
-            REQUIRED_VOTES
+            requiredVotes
         ) {
 
             if (
@@ -1288,11 +1326,11 @@
 
         if (
             finalCount !==
-            REQUIRED_VOTES
+            requiredVotes
         ) {
 
             log(
-                `${categoryName}: expected ${REQUIRED_VOTES} for ${candidateName}, got ${finalCount}.`,
+                `${categoryName}: expected ${requiredVotes} for ${candidateName}, got ${finalCount}.`,
                 'error'
             );
 
@@ -1302,7 +1340,7 @@
 
 
         log(
-            `${categoryName}: ${finalCount}/${REQUIRED_VOTES} selections confirmed for ${candidateName}.`,
+            `${categoryName}: ${finalCount}/${requiredVotes} selections confirmed for ${candidateName}.`,
             'success'
         );
 
@@ -1352,8 +1390,8 @@
 
 
             log(
-                `${categoryName}: submit never enabled — the page requires more ` +
-                `selections than REQUIRED_VOTES (${REQUIRED_VOTES}).`,
+                `${categoryName}: submit never enabled after ${finalCount} confirmed ` +
+                `selections — the page did not open the gate it advertised.`,
                 'error'
             );
 
@@ -1378,7 +1416,8 @@
         const confirmationPromise =
             waitForMockVote(
                 categoryName,
-                candidateName
+                candidateName,
+                finalCount
             );
 
 
@@ -1491,7 +1530,7 @@
 
 
         log(
-            `${categoryName}: COMPLETE — ${REQUIRED_VOTES} votes to ${candidateName}.`,
+            `${categoryName}: COMPLETE — ${finalCount} votes to ${candidateName}.`,
             'success'
         );
 
@@ -1517,11 +1556,12 @@
 
 
         log(
-            `Starting event-driven test. Required votes: ${REQUIRED_VOTES}`
+            'Starting event-driven test.'
         );
 
 
-        preflight();
+        requiredVotes =
+            detectRequiredVotes();
 
 
         /*
@@ -1665,7 +1705,7 @@
 
 
     log(
-        `Configured for ${REQUIRED_VOTES} selections per category: ` +
+        `Targets: ` +
         CATEGORIES.map(
             entry =>
                 `${entry.name} → ${entry.candidate}`

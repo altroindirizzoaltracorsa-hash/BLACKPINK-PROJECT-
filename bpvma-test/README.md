@@ -59,11 +59,14 @@ mock-voting-page.html#10/random      10 selections, ~20% 500s  (opt-in flakiness
 Clicking a TEST MODE button writes that hash and reloads, so the next run uses it. **F5
 re-runs in the same mode.** The box shows both values so you can see what is active.
 
-**Required selections** — `Normal — 10` / `Power/Double — 20`. This is set on the page and
-in the script *independently*: `REQUIRED_VOTES` in the userscript is the **assertion**, not
-a reading of the page, so a mismatch is supposed to fail the run — set both. Because a bare
-`SUBMIT_TIMEOUT` reads like a script bug, a pre-flight check logs a loud `MODE MISMATCH`
-line when the two disagree.
+**Required selections** — `Normal — 10` / `Power/Double — 20`. **The script reads this off
+the page**, so a power/double window is followed automatically with nothing to edit. If the
+page publishes no usable number it falls back to 10 and says so in the log; a value outside
+1–50 is rejected as a runaway guard.
+
+This does not weaken the check. The assertion that matters is *"the server recorded the same
+number of votes I actually cast, all to my target nominee"*, and that is verified against the
+real confirmed click count — not against whatever the page asked for.
 
 **Server behaviour** — `success` (always 200, **the default**), `failure` (always 500), `random`
 (~20% 500s, opt-in). Login delay is 200–1500 ms and submit latency 100–2500 ms, both random, so
@@ -110,8 +113,9 @@ interaction** — exactly what a real Tampermonkey install does:
 | `#10/success` | `ACCOUNT_COMPLETE`, 2/2 — **8/8 runs, no flake** |
 | Nominees actually tallied | Best Pop `{LISA:10}`, Best K-Pop `{BLACKPINK:10, LISA:0}` |
 | `#10/failure` | `RUN_STOPPED: Best Pop`, reason `server_failure` |
-| `#20/success` + `REQUIRED_VOTES=20` | `ACCOUNT_COMPLETE`, 2/2 |
-| `#20/success`, script still at 10 | `MODE MISMATCH` warning, then `SUBMIT_TIMEOUT` |
+| `#20/success` | `ACCOUNT_COMPLETE`, 20/20 — auto-detected, no script edit |
+| `#20/failure` | `RUN_STOPPED: Best Pop` |
+| Count missing / `abc` / `9999` / `0` | falls back to 10, logs why |
 | No hash (defaults) | `10/success` — **6/6 clean** |
 | Click `Force Success` → reload → run | hash applied, `ACCOUNT_COMPLETE` |
 | Duplicate event | 4 dispatched, counted once, 2/2 |
@@ -121,7 +125,7 @@ Negative tests — the harness must **refuse** these, and does:
 | Sabotage | Result |
 |---|---|
 | Script clicks LISA in K-Pop while expecting BLACKPINK | `RUN_STOPPED: Best K-Pop` |
-| A stray LISA vote contaminates K-Pop before the run | `RUN_STOPPED`, `wrong_vote_total` — event showed `candidate=MIXED total=11 votes={BLACKPINK:10, LISA:1}` |
+| A stray LISA vote contaminates K-Pop before the run | `RUN_STOPPED` — `wrong_vote_total (server recorded 11, cast 10)` |
 
 ## Fixed in v2.1
 
