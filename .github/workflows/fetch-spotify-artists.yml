@@ -11,8 +11,10 @@ name: Fetch Spotify Charts
 # guarantees a full sweep of everything.
 on:
   schedule:
-    - cron: '0 */2 * * *'   # canary — every 2h: refresh daily songs+artists only if changed
-    - cron: '30 23 * * *'   # nightly floor — full sweep of all charts (spaced)
+    - cron: '0 */2 * * *'    # canary — every 2h: refresh daily songs+artists only if changed
+    - cron: '30 23 * * *'    # nightly DAILY floor — daily songs+artists sweep
+    - cron: '30 19 * * 5,6'  # WEEKLY floor (Fri+Sat) — weekly songs+artists+albums,
+                             #   its own slot so it starts with a fresh rate budget
   workflow_dispatch:
     inputs:
       base_url:
@@ -20,7 +22,7 @@ on:
         required: false
         default: ''
       type:
-        description: 'songs | daily | weekly | albums | floor | both | canary. Default: both (artists daily+weekly).'
+        description: 'songs | daily | weekly | albums | dailyfloor | weeklyfloor | floor | both | canary. Default: both (artists daily+weekly).'
         required: false
         default: 'both'
       probe:
@@ -69,20 +71,26 @@ jobs:
             exit $rc
           fi
 
-          # ── Nightly floor: daily songs+artists sweep EVERY night. Spotify's
-          #    WEEKLY charts only publish on Fridays, so sweeping the weekly songs/
-          #    artists/albums nightly just re-fetches identical data and burns the
-          #    rolling rate budget (which was causing the daily-pass skips). Refresh
-          #    the weekly charts only Fri+Sat — two passes to ride out rate-limit
-          #    skips, since a miss would otherwise leave stale data for a whole week.
-          #    A manual `floor` dispatch always sweeps everything. ──
-          if [ "$SCHED" = "30 23 * * *" ] || [ "$INPUT_TYPE" = "floor" ]; then
-            QS=( "charts=fetch-songs&type=daily" "charts=fetch-artists&type=daily" )
-            dow=$(date -u +%u)   # 1=Mon … 5=Fri 6=Sat 7=Sun
-            if [ "$INPUT_TYPE" = "floor" ] || [ "$dow" = "5" ] || [ "$dow" = "6" ]; then
-              QS+=( "charts=fetch-songs&type=weekly" "charts=fetch-artists&type=weekly" "charts=fetch-albums" )
-            fi
-            for Q in "${QS[@]}"; do
+          # ── Nightly DAILY floor: daily songs+artists, every night. Spotify's
+          #    weekly charts only publish on Fridays, so weekly gets its own slot
+          #    (below) instead of re-fetching identical data nightly and burning
+          #    the rolling rate budget. ──
+          if [ "$SCHED" = "30 23 * * *" ] || [ "$INPUT_TYPE" = "dailyfloor" ] || [ "$INPUT_TYPE" = "floor" ]; then
+            for Q in "charts=fetch-songs&type=daily" "charts=fetch-artists&type=daily"; do
+              echo "── $Q ──"; hit "$Q"; need200; sleep 75
+            done
+            # A manual `floor` sweeps everything: fall through into the weekly block.
+            [ "$INPUT_TYPE" = "floor" ] || exit $rc
+          fi
+
+          # ── WEEKLY floor (Fri+Sat, or manual): weekly songs+artists+albums. Runs
+          #    in its own schedule slot (19:30 UTC), clear of the daily floor and the
+          #    canaries, so these 3 passes start with a fresh Spotify rate budget —
+          #    the shared-budget contention was the cause of the weekly country
+          #    skips. Fri AND Sat so a rate-limited miss gets a second shot before a
+          #    week-long-stale window. ──
+          if [ "$SCHED" = "30 19 * * 5,6" ] || [ "$INPUT_TYPE" = "weeklyfloor" ] || [ "$INPUT_TYPE" = "floor" ]; then
+            for Q in "charts=fetch-songs&type=weekly" "charts=fetch-artists&type=weekly" "charts=fetch-albums"; do
               echo "── $Q ──"; hit "$Q"; need200; sleep 75
             done
             exit $rc
