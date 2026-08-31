@@ -13,8 +13,12 @@ on:
   schedule:
     - cron: '0 */2 * * *'    # canary — every 2h: refresh daily songs+artists only if changed
     - cron: '30 23 * * *'    # nightly DAILY floor — daily songs+artists sweep
-    - cron: '30 19 * * 5,6'  # WEEKLY floor (Fri+Sat) — weekly songs+artists+albums,
-                             #   its own slot so it starts with a fresh rate budget
+    # WEEKLY charts publish Fridays. Each type gets its OWN Fri+Sat slot, an hour
+    # apart, so every 74-country pass starts with a fresh Spotify rate budget
+    # (back-to-back passes starve the later one — the cause of the ~50 skips).
+    - cron: '30 19 * * 5,6'  # WEEKLY Top Songs   (Fri+Sat)
+    - cron: '30 20 * * 5,6'  # WEEKLY Top Artists (Fri+Sat)
+    - cron: '30 21 * * 5,6'  # WEEKLY Top Albums  (Fri+Sat)
   workflow_dispatch:
     inputs:
       base_url:
@@ -22,7 +26,7 @@ on:
         required: false
         default: ''
       type:
-        description: 'songs | daily | weekly | albums | dailyfloor | weeklyfloor | floor | both | canary. Default: both (artists daily+weekly).'
+        description: 'songs | daily | weekly | albums | dailyfloor | weekly-songs | weekly-artists | weekly-albums | weeklyfloor | floor | both | canary. Default: both (artists daily+weekly).'
         required: false
         default: 'both'
       probe:
@@ -83,16 +87,27 @@ jobs:
             [ "$INPUT_TYPE" = "floor" ] || exit $rc
           fi
 
-          # ── WEEKLY floor (Fri+Sat, or manual): weekly songs+artists+albums. Runs
-          #    in its own schedule slot (19:30 UTC), clear of the daily floor and the
-          #    canaries, so these 3 passes start with a fresh Spotify rate budget —
-          #    the shared-budget contention was the cause of the weekly country
-          #    skips. Fri AND Sat so a rate-limited miss gets a second shot before a
-          #    week-long-stale window. ──
-          if [ "$SCHED" = "30 19 * * 5,6" ] || [ "$INPUT_TYPE" = "weeklyfloor" ] || [ "$INPUT_TYPE" = "floor" ]; then
-            for Q in "charts=fetch-songs&type=weekly" "charts=fetch-artists&type=weekly" "charts=fetch-albums"; do
-              echo "── $Q ──"; hit "$Q"; need200; sleep 75
-            done
+          # ── WEEKLY sweeps. Spotify rate-limits the charts service on a rolling
+          #    window longer than our inter-pass gap, so two 74-country passes close
+          #    together starve the second (the ~50-country skips). Each weekly type
+          #    therefore has its OWN Fri+Sat slot (19:30 / 20:30 / 21:30), an hour
+          #    apart, so every pass starts fresh. A manual `weeklyfloor` (or `floor`)
+          #    runs all three in one job, spaced 5 min apart for the same reason. ──
+          wf_all=""
+          if [ "$INPUT_TYPE" = "weeklyfloor" ] || [ "$INPUT_TYPE" = "floor" ]; then wf_all=1; fi
+
+          if [ "$SCHED" = "30 19 * * 5,6" ] || [ "$INPUT_TYPE" = "weekly-songs" ] || [ -n "$wf_all" ]; then
+            echo "── Top Songs (weekly) ──"; hit "charts=fetch-songs&type=weekly"; need200
+            if [ -z "$wf_all" ]; then exit $rc; fi
+            sleep 300
+          fi
+          if [ "$SCHED" = "30 20 * * 5,6" ] || [ "$INPUT_TYPE" = "weekly-artists" ] || [ -n "$wf_all" ]; then
+            echo "── Top Artists (weekly) ──"; hit "charts=fetch-artists&type=weekly"; need200
+            if [ -z "$wf_all" ]; then exit $rc; fi
+            sleep 300
+          fi
+          if [ "$SCHED" = "30 21 * * 5,6" ] || [ "$INPUT_TYPE" = "weekly-albums" ] || [ -n "$wf_all" ]; then
+            echo "── Top Albums (weekly) ──"; hit "charts=fetch-albums"; need200
             exit $rc
           fi
 
