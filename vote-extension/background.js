@@ -27,7 +27,39 @@ const BP_SLOTS = {
 };
 const CATEGORY_NAMES = { cat06: 'Best Pop', cat11: 'Best K-Pop' };
 
-const seenTimestamps = []; // dedupe retried submissions
+// ── DEDUPE RETRIED SUBMISSIONS ───────────────────────────────────────────────
+// This list has to OUTLIVE the background script. Under MV3 (manifest.json)
+// background.js is a service worker Chrome shuts down after ~30s idle, which
+// wiped an in-memory list and let the next retry count a second time; under
+// MV2/Kiwi (manifest-mv2.json) the page is "persistent": true, so it survived.
+// The same retry was counted differently depending on the build. It's mirrored
+// into chrome.storage now, with the in-memory copy kept as the synchronous
+// race guard.
+const SEEN_KEY = 'buSeenVotes';
+const SEEN_MAX = 60;
+let seenVotes = null;    // null until loaded back from storage
+let seenLoading = null;
+
+function loadSeen() {
+  if (seenVotes) return Promise.resolve(seenVotes);
+  if (!seenLoading) {
+    seenLoading = getLocal(SEEN_KEY).then(function (cfg) {
+      if (!seenVotes) {
+        const saved = cfg && cfg[SEEN_KEY];
+        seenVotes = Array.isArray(saved) ? saved.slice(-SEEN_MAX) : [];
+      }
+      return seenVotes;
+    });
+  }
+  return seenLoading;
+}
+
+// Identify a submission by WHICH one it was, not merely when. Keying on the
+// timestamp alone meant two categories submitted in the same second collided
+// and the second — a real vote — was dropped instead of counted.
+function voteKey(detail) {
+  return [detail.category || '?', detail.timestamp || '', detail.account || ''].join('|');
+}
 
 // MTV's voting day resets at midnight ET — align the panel's "today" counters to it.
 function etDay() {
@@ -129,20 +161,17 @@ chrome.webRequest.onCompleted.addListener(
   function (details) {
     if (details.statusCode < 200 || details.statusCode >= 300) return;
     const detail = parseVoteUrl(details.url);
-    if (detail) processVote(detail);
+    if (detail) {
+      processVote(detail).catch(function (e) {
+        console.log('[BU Vote Counter] processVote failed:', e);
+      });
+    }
   },
   { urls: ['https://vote.mtv.com/*'] } // broad match; parseVoteUrl() filters to the vote path
 );
 
-function processVote(detail) {
+async function processVote(detail) {
   const { category, slots, timestamp, account, method } = detail;
-
-  // Dedupe identical retried submissions.
-  if (timestamp) {
-    if (seenTimestamps.indexOf(timestamp) !== -1) return;
-    seenTimestamps.push(timestamp);
-    if (seenTimestamps.length > 60) seenTimestamps.shift();
-  }
 
   const map = BP_SLOTS[category];
   if (!map) {
@@ -158,6 +187,22 @@ function processVote(detail) {
     if (c > 0) { n += c; const who = map[slot]; perMember[who] = (perMember[who] || 0) + c; }
   }
   if (n <= 0) return;
+
+  // Dedupe AFTER the slot maths, so the window holds only submissions we
+  // actually count — un-mapped categories and votes where no BLACKPINK slot
+  // scored used to evict real entries out of the 60 we keep.
+  if (timestamp) {
+    const seen = await loadSeen();
+    const key = voteKey(detail);
+    // Check and insert with no await in between: two retries arriving in the
+    // same tick would both pass an interleaved check.
+    if (seen.indexOf(key) !== -1) return;
+    seen.push(key);
+    if (seen.length > SEEN_MAX) seen.splice(0, seen.length - SEEN_MAX);
+    chrome.storage.local.set({ [SEEN_KEY]: seen });
+  } else {
+    console.log('[BU Vote Counter] vote carried no timestamp — cannot dedupe:', category, slots);
+  }
 
   // ALWAYS send the anonymous BLACKPINK/LISA split so the board's per-artist
   // columns fill for every extension voter (it's just two counts, same as the
