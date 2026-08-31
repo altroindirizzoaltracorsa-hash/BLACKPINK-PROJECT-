@@ -545,13 +545,49 @@ function applyConfig(
     mode
 ) {
 
-    location.hash =
+    const next =
         votes + "/" + mode;
 
 
-    location.reload();
+    /*
+     * Re-picking the mode already active changes no
+     * hash, so nothing would fire — reload directly.
+     */
+
+    if (
+        (location.hash || "").replace(/^#/, "") ===
+        next
+    ) {
+
+        location.reload();
+
+        return;
+
+    }
+
+
+    location.hash = next;
 
 }
+
+
+/*
+ * Changing only the fragment is a SAME-DOCUMENT
+ * navigation: the page is not re-parsed, so
+ * readHashConfig() never re-runs and the userscript
+ * never re-injects. Without this, editing the hash in
+ * the address bar silently does nothing — the URL says
+ * one mode while the page still runs the old one.
+ */
+
+window.addEventListener(
+    "hashchange",
+    () => {
+
+        location.reload();
+
+    }
+);
 
 
 function updateModeDisplay() {
