@@ -10,27 +10,44 @@ traffic to `vote.mtv.com` and no real votes cast. Two files:
 
 ## Running it
 
-1. Open `mock-voting-page.html` from disk (`file://…`).
-2. Install `bpvma-test.user.js` in Tampermonkey. It matches
-   `file:///*/mock-voting-page.html`, so it runs wherever you keep the page — Tampermonkey
-   needs **"Allow access to file URLs"** enabled for the extension in `chrome://extensions`.
-3. Pick a **TEST MODE** on the page, then reload. The panel bottom-right shows live state,
-   a `n / 2` category counter, and a log.
+1. Save `mock-voting-page.html` anywhere on disk (Desktop is fine).
+2. Install `bpvma-test.user.js` in Tampermonkey — dashboard → **Utilities** → **Install from
+   URL**. It matches `file:///*/mock-voting-page.html`, so it runs wherever you keep the page.
+3. Enable **"Allow access to file URLs"** for Tampermonkey in `chrome://extensions` →
+   Details. Without this the script never injects and no panel appears.
+4. Open the page (`Ctrl+O`, or drag it into Chrome). The run starts on its own.
 
-A run ends in exactly one terminal state: `ACCOUNT_COMPLETE`, `RUN_STOPPED: <category>`,
-`RUN_FAILED`, `ACCOUNT_NOT_COMPLETE`, or `UNEXPECTED_ERROR`.
+The panel bottom-right shows live state, a `n / 2` category counter, and a log. A run ends
+in exactly one terminal state: `ACCOUNT_COMPLETE`, `RUN_STOPPED: <category>`, `RUN_FAILED`,
+`ACCOUNT_NOT_COMPLETE`, or `UNEXPECTED_ERROR`.
 
 ## Test modes
 
+The script auto-starts ~500 ms after load, so there is no window in which you can click a
+mode button and have it reach the run — and a plain variable would be wiped by the reload
+anyway. **The mode lives in the URL hash**, which survives a reload:
+
+```
+mock-voting-page.html#10/success     10 selections, server always 200
+mock-voting-page.html#20/failure     20 selections, server always 500
+mock-voting-page.html#10/random      10 selections, ~20% 500s  (also the no-hash default)
+```
+
+Clicking a TEST MODE button writes that hash and reloads, so the next run uses it. **F5
+re-runs in the same mode.** The box shows both values so you can see what is active.
+
 **Required selections** — `Normal — 10` / `Power/Double — 20`. This is set on the page and
 in the script *independently*: `REQUIRED_VOTES` in the userscript is the **assertion**, not
-a reading of the page, so a mismatch is supposed to fail the run. Because a bare
+a reading of the page, so a mismatch is supposed to fail the run — set both. Because a bare
 `SUBMIT_TIMEOUT` reads like a script bug, a pre-flight check logs a loud `MODE MISMATCH`
 line when the two disagree.
 
-**Server behaviour** — `Force Success` (always 200), `Force Failure` (always 500), `Random`
-(~20% 500s, the default). Login delay is 200–1500 ms and submit latency 100–2500 ms, both
-random, so nothing in the script may assume a fixed wait.
+**Server behaviour** — `success` (always 200), `failure` (always 500), `random` (~20% 500s,
+the default). Login delay is 200–1500 ms and submit latency 100–2500 ms, both random, so
+nothing in the script may assume a fixed wait.
+
+Use `#10/success` when you want a clean pass; on the default `random` roughly a third of
+runs stop on a genuine mock 500, which is the fixture working, not a script fault.
 
 ## What the script proves
 
@@ -59,15 +76,17 @@ second line of defence for a duplicate that beats the resolve, not the mechanism
 
 ## Verification
 
-Run against Chromium via Playwright, driving the page and injecting the script:
+Run against Chromium via Playwright, injecting the script at `document-end` with **no UI
+interaction** — exactly what a real Tampermonkey install does:
 
 | Scenario | Result |
 |---|---|
-| Force Success + Normal (10) | `ACCOUNT_COMPLETE`, 2/2 — **8/8 runs, no flake** |
-| Force Success + Power/Double (20), script set to 20 | `ACCOUNT_COMPLETE`, 2/2 |
-| Force Failure | `RUN_STOPPED: Best Pop`, reason `server_failure` |
-| Mode mismatch (page 20, script 10) | `MODE MISMATCH` warning, then `SUBMIT_TIMEOUT` |
-| Random ×6 | 5 complete, 1 stopped on a genuine mock 500 |
+| `#10/success` | `ACCOUNT_COMPLETE`, 2/2 — **8/8 runs, no flake** |
+| `#10/failure` | `RUN_STOPPED: Best Pop`, reason `server_failure` |
+| `#20/success`, script still at 10 | `MODE MISMATCH` warning, then `SUBMIT_TIMEOUT` |
+| No hash (defaults) | `10/random`, completes or stops on a real mock 500 |
+| Click `Force Success` → reload → run | hash applied, `ACCOUNT_COMPLETE` |
+| Click `Force Failure` → reload → run | hash applied, `RUN_STOPPED` |
 | Duplicate event | 4 dispatched, counted once, 2/2 |
 
 ## Fixed in v2.1

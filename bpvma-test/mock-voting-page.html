@@ -155,6 +155,16 @@
         <p>
             Required selections:
             <span id="mode-display">10</span>
+            &nbsp;·&nbsp;
+            Server:
+            <span id="server-mode-display">random</span>
+        </p>
+
+        <p id="mode-hint">
+            The userscript starts ~500ms after load, so there is no time to
+            click these once the page is up. Each button stores the mode in
+            the URL hash and reloads — the run then uses it. Press F5 to
+            re-run in the same mode.
         </p>
 
         <button id="normalMode">Normal — 10</button>
@@ -321,13 +331,67 @@ const state = {
 
 /* ============================================================
    CONFIGURATION
-   ============================================================ */
+   ============================================================
+ *
+ * The userscript auto-starts ~500ms after load, so a mode
+ * picked by clicking would never apply to a run — and a plain
+ * variable would be reset by the reload anyway.
+ *
+ * The mode therefore lives in the URL hash (#10/success),
+ * which survives a reload. Each button writes the hash and
+ * reloads, so the very next run uses it.
+ */
+
+const MODE_HASH =
+    /^#?(10|20)\/(success|failure|random)$/;
+
+
+function readHashConfig() {
+
+    const match =
+        MODE_HASH.exec(
+            location.hash || ""
+        );
+
+
+    if (!match)
+        return;
+
+
+    requiredVotes =
+        parseInt(match[1], 10);
+
+
+    serverMode =
+        match[2];
+
+}
+
+
+function applyConfig(
+    votes,
+    mode
+) {
+
+    location.hash =
+        votes + "/" + mode;
+
+
+    location.reload();
+
+}
+
 
 function updateModeDisplay() {
 
     document.getElementById(
         "mode-display"
     ).textContent = requiredVotes;
+
+
+    document.getElementById(
+        "server-mode-display"
+    ).textContent = serverMode;
 
 }
 
@@ -338,13 +402,9 @@ document.getElementById(
     "click",
     () => {
 
-        requiredVotes = 10;
-
-        updateModeDisplay();
-
-        setStatus(
-            "Normal mode: 10 selections required.",
-            null
+        applyConfig(
+            10,
+            serverMode
         );
     }
 );
@@ -356,13 +416,9 @@ document.getElementById(
     "click",
     () => {
 
-        requiredVotes = 20;
-
-        updateModeDisplay();
-
-        setStatus(
-            "Power/Double mode: 20 selections required.",
-            null
+        applyConfig(
+            20,
+            serverMode
         );
     }
 );
@@ -374,11 +430,9 @@ document.getElementById(
     "click",
     () => {
 
-        serverMode = "success";
-
-        setStatus(
-            "Server mode: forced success.",
-            null
+        applyConfig(
+            requiredVotes,
+            "success"
         );
     }
 );
@@ -390,11 +444,9 @@ document.getElementById(
     "click",
     () => {
 
-        serverMode = "failure";
-
-        setStatus(
-            "Server mode: forced failure.",
-            null
+        applyConfig(
+            requiredVotes,
+            "failure"
         );
     }
 );
@@ -406,11 +458,9 @@ document.getElementById(
     "click",
     () => {
 
-        serverMode = "random";
-
-        setStatus(
-            "Server mode: random.",
-            null
+        applyConfig(
+            requiredVotes,
+            "random"
         );
     }
 );
@@ -862,6 +912,8 @@ function randomDelay(
 
 }
 
+
+readHashConfig();
 
 updateModeDisplay();
 
