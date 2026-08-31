@@ -34,6 +34,20 @@
         padding: 8px 15px;
         margin-left: 5px;
         cursor: pointer;
+        border: 2px solid transparent;
+    }
+
+    /*
+     * The two axes (required selections, server mode) are
+     * set independently, so without this it is not visible
+     * which is active — and you click the wrong one.
+     */
+
+    #test-config button.active {
+        background: #00e5ff;
+        color: #000;
+        font-weight: bold;
+        border-color: #fff;
     }
 
     #mode-display {
@@ -600,6 +614,32 @@ function updateModeDisplay() {
     document.getElementById(
         "server-mode-display"
     ).textContent = serverMode;
+
+
+    /*
+     * Light up the active button on each axis.
+     */
+
+    const active = {
+        10:        "normalMode",
+        20:        "powerMode",
+        success:   "successMode",
+        failure:   "failureMode",
+        random:    "randomMode"
+    };
+
+
+    document
+        .querySelectorAll("#test-config button")
+        .forEach(button => {
+
+            button.classList.toggle(
+                "active",
+                button.id === active[requiredVotes] ||
+                button.id === active[serverMode]
+            );
+
+        });
 
 }
 
