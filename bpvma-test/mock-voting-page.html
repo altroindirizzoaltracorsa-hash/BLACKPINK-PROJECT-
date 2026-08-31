@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BPVMA — Local Test Environment</title>
+
+<style>
+    body {
+        margin: 0;
+        padding: 40px;
+        background: #111;
+        color: #eee;
+        font-family: Arial, sans-serif;
+    }
+
+    .container {
+        max-width: 800px;
+        margin: auto;
+    }
+
+    h1 {
+        color: #00e5ff;
+    }
+
+    #test-config {
+        background: #181818;
+        border: 1px solid #444;
+        padding: 15px;
+        margin-bottom: 25px;
+    }
+
+    #test-config button {
+        padding: 8px 15px;
+        margin-left: 5px;
+        cursor: pointer;
+    }
+
+    #mode-display {
+        color: #00e5ff;
+        font-weight: bold;
+    }
+
+    #login {
+        padding: 20px;
+        background: #181818;
+        margin-bottom: 30px;
+    }
+
+    #email {
+        padding: 10px;
+        width: 300px;
+    }
+
+    #loginBtn {
+        padding: 10px 20px;
+    }
+
+    .category {
+        border: 1px solid #444;
+        margin: 20px 0;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .category-header {
+        width: 100%;
+        padding: 16px;
+        background: #222;
+        color: white;
+        border: 0;
+        text-align: left;
+        font-size: 18px;
+        cursor: pointer;
+    }
+
+    .category-header:hover {
+        background: #333;
+    }
+
+    .category-content {
+        display: none;
+        padding: 20px;
+    }
+
+    .category.open .category-content {
+        display: block;
+    }
+
+    .candidate {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        margin: 8px 0;
+        background: #1d1d1d;
+        border-radius: 4px;
+    }
+
+    .plus {
+        width: 55px;
+        height: 40px;
+        font-size: 16px;
+    }
+
+    .vote-count {
+        margin-left: 15px;
+        color: #00e5ff;
+    }
+
+    .submit {
+        margin-top: 20px;
+        padding: 12px 30px;
+        background: #00e5ff;
+        border: 0;
+        font-weight: bold;
+    }
+
+    .submit:disabled {
+        opacity: .35;
+        cursor: not-allowed;
+    }
+
+    .status {
+        margin-top: 20px;
+        padding: 15px;
+        background: #181818;
+        border: 1px solid #444;
+        min-height: 30px;
+    }
+
+    .success {
+        color: #00ff88;
+    }
+
+    .failure {
+        color: #ff5555;
+    }
+
+    .info {
+        color: #80f2ff;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>BPVMA — LOCAL TEST PAGE</h1>
+
+    <div id="test-config">
+        <strong>TEST MODE</strong>
+
+        <p>
+            Required selections:
+            <span id="mode-display">10</span>
+        </p>
+
+        <button id="normalMode">Normal — 10</button>
+        <button id="powerMode">Power/Double — 20</button>
+
+        <button id="successMode">Force Success</button>
+        <button id="failureMode">Force Failure</button>
+        <button id="randomMode">Random</button>
+    </div>
+
+    <div id="login">
+
+        <input
+            id="email"
+            type="email"
+            placeholder="test@example.com"
+        >
+
+        <button id="loginBtn">
+            Log In
+        </button>
+
+    </div>
+
+    <div id="categories">
+
+        <div
+            class="category"
+            data-category="Best Pop"
+        >
+
+            <button class="category-header">
+                Best Pop
+            </button>
+
+            <div class="category-content">
+
+                <div class="candidate">
+
+                    <span>LISA</span>
+
+                    <div>
+                        <button
+                            class="plus"
+                            data-candidate="LISA"
+                        >
+                            +
+                        </button>
+
+                        <span class="vote-count">
+                            0
+                        </span>
+                    </div>
+
+                </div>
+
+                <div class="candidate">
+
+                    <span>Other Artist</span>
+
+                    <button
+                        class="plus"
+                        data-candidate="OTHER"
+                    >
+                        +
+                    </button>
+
+                </div>
+
+                <button
+                    class="submit"
+                    disabled
+                >
+                    Submit
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <div
+            class="category"
+            data-category="Best K-Pop"
+        >
+
+            <button class="category-header">
+                Best K-Pop
+            </button>
+
+            <div class="category-content">
+
+                <div class="candidate">
+
+                    <span>LISA</span>
+
+                    <div>
+
+                        <button
+                            class="plus"
+                            data-candidate="LISA"
+                        >
+                            +
+                        </button>
+
+                        <span class="vote-count">
+                            0
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div class="candidate">
+
+                    <span>Other Artist</span>
+
+                    <button
+                        class="plus"
+                        data-candidate="OTHER"
+                    >
+                        +
+                    </button>
+
+                </div>
+
+                <button
+                    class="submit"
+                    disabled
+                >
+                    Submit
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div
+        id="status"
+        class="status"
+    >
+        Not logged in.
+    </div>
+
+</div>
+
+
+<script>
+
+let loggedIn = false;
+
+let requiredVotes = 10;
+
+let serverMode = "random";
+
+
+const state = {
+    "Best Pop": 0,
+    "Best K-Pop": 0
+};
+
+
+/* ============================================================
+   CONFIGURATION
+   ============================================================ */
+
+function updateModeDisplay() {
+
+    document.getElementById(
+        "mode-display"
+    ).textContent = requiredVotes;
+
+}
+
+
+document.getElementById(
+    "normalMode"
+).addEventListener(
+    "click",
+    () => {
+
+        requiredVotes = 10;
+
+        updateModeDisplay();
+
+        setStatus(
+            "Normal mode: 10 selections required.",
+            null
+        );
+    }
+);
+
+
+document.getElementById(
+    "powerMode"
+).addEventListener(
+    "click",
+    () => {
+
+        requiredVotes = 20;
+
+        updateModeDisplay();
+
+        setStatus(
+            "Power/Double mode: 20 selections required.",
+            null
+        );
+    }
+);
+
+
+document.getElementById(
+    "successMode"
+).addEventListener(
+    "click",
+    () => {
+
+        serverMode = "success";
+
+        setStatus(
+            "Server mode: forced success.",
+            null
+        );
+    }
+);
+
+
+document.getElementById(
+    "failureMode"
+).addEventListener(
+    "click",
+    () => {
+
+        serverMode = "failure";
+
+        setStatus(
+            "Server mode: forced failure.",
+            null
+        );
+    }
+);
+
+
+document.getElementById(
+    "randomMode"
+).addEventListener(
+    "click",
+    () => {
+
+        serverMode = "random";
+
+        setStatus(
+            "Server mode: random.",
+            null
+        );
+    }
+);
+
+
+/* ============================================================
+   LOGIN
+   ============================================================ */
+
+document.getElementById(
+    "loginBtn"
+).addEventListener(
+    "click",
+    () => {
+
+        const email =
+            document
+                .getElementById("email")
+                .value
+                .trim();
+
+        if (!email) {
+
+            setStatus(
+                "Please enter an email.",
+                false
+            );
+
+            return;
+        }
+
+        setStatus(
+            "Logging in...",
+            null
+        );
+
+
+        const delay =
+            randomDelay(200, 1500);
+
+
+        setTimeout(
+            () => {
+
+                loggedIn = true;
+
+                setStatus(
+                    "Logged in as " + email,
+                    true
+                );
+
+            },
+            delay
+        );
+
+    }
+);
+
+
+/* ============================================================
+   CATEGORY OPEN / CLOSE
+   ============================================================ */
+
+document
+    .querySelectorAll(".category-header")
+    .forEach(header => {
+
+        header.addEventListener(
+            "click",
+            () => {
+
+                const category =
+                    header.closest(".category");
+
+                category.classList.toggle(
+                    "open"
+                );
+
+            }
+        );
+
+    });
+
+
+/* ============================================================
+   LISA SELECTION
+   ============================================================ */
+
+document
+    .querySelectorAll(".plus")
+    .forEach(button => {
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                if (!loggedIn) {
+
+                    setStatus(
+                        "You must log in first.",
+                        false
+                    );
+
+                    return;
+                }
+
+
+                if (
+                    button.dataset.candidate !==
+                    "LISA"
+                ) {
+                    return;
+                }
+
+
+                const category =
+                    button
+                        .closest(".category")
+                        .dataset
+                        .category;
+
+
+                state[category]++;
+
+
+                const count =
+                    button
+                        .parentElement
+                        .querySelector(
+                            ".vote-count"
+                        );
+
+
+                count.textContent =
+                    state[category];
+
+
+                setStatus(
+                    category +
+                    ": " +
+                    state[category] +
+                    "/" +
+                    requiredVotes +
+                    " selected.",
+                    null
+                );
+
+
+                /*
+                 * Submit only becomes enabled when
+                 * the required number of selections
+                 * has actually been reached.
+                 */
+
+                const submit =
+                    button
+                        .closest(".category")
+                        .querySelector(
+                            ".submit"
+                        );
+
+
+                if (
+                    state[category] >=
+                    requiredVotes
+                ) {
+
+                    submit.disabled = false;
+
+                    setStatus(
+                        category +
+                        ": required count reached. Submit enabled.",
+                        true
+                    );
+
+                }
+
+            }
+        );
+
+    });
+
+
+/* ============================================================
+   SUBMISSION
+   ============================================================ */
+
+document
+    .querySelectorAll(".submit")
+    .forEach(button => {
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                const category =
+                    button
+                        .closest(".category")
+                        .dataset
+                        .category;
+
+
+                if (
+                    state[category] <
+                    requiredVotes
+                ) {
+
+                    setStatus(
+                        "Not enough selections in " +
+                        category,
+                        false
+                    );
+
+                    return;
+                }
+
+
+                button.disabled = true;
+
+
+                setStatus(
+                    "Submitting " +
+                    category +
+                    "...",
+                    null
+                );
+
+
+                const delay =
+                    randomDelay(
+                        100,
+                        2500
+                    );
+
+
+                let succeeds;
+
+
+                if (
+                    serverMode ===
+                    "success"
+                ) {
+
+                    succeeds = true;
+
+                } else if (
+                    serverMode ===
+                    "failure"
+                ) {
+
+                    succeeds = false;
+
+                } else {
+
+                    succeeds =
+                        Math.random() >= 0.20;
+
+                }
+
+
+                setTimeout(
+                    () => {
+
+                        const timestamp =
+                            Date.now();
+
+
+                        if (succeeds) {
+
+                            setStatus(
+                                "We got your vote today. Come back tomorrow to vote again.",
+                                true
+                            );
+
+
+                            window.dispatchEvent(
+                                new CustomEvent(
+                                    "mock-vote-completed",
+                                    {
+                                        detail: {
+
+                                            category:
+                                                category,
+
+                                            statusCode:
+                                                200,
+
+                                            timestamp:
+                                                timestamp,
+
+                                            total:
+                                                requiredVotes,
+
+                                            candidate:
+                                                "LISA"
+
+                                        }
+                                    }
+                                )
+                            );
+
+
+                            /*
+                             * Send a duplicate event.
+                             *
+                             * The userscript should NOT
+                             * count this twice.
+                             */
+
+                            setTimeout(
+                                () => {
+
+                                    window.dispatchEvent(
+                                        new CustomEvent(
+                                            "mock-vote-completed",
+                                            {
+                                                detail: {
+
+                                                    category:
+                                                        category,
+
+                                                    statusCode:
+                                                        200,
+
+                                                    timestamp:
+                                                        timestamp,
+
+                                                    total:
+                                                        requiredVotes,
+
+                                                    candidate:
+                                                        "LISA"
+
+                                                }
+                                            }
+                                        )
+                                    );
+
+                                },
+                                50
+                            );
+
+
+                        } else {
+
+                            setStatus(
+                                "The vote could not be registered.",
+                                false
+                            );
+
+
+                            window.dispatchEvent(
+                                new CustomEvent(
+                                    "mock-vote-completed",
+                                    {
+                                        detail: {
+
+                                            category:
+                                                category,
+
+                                            statusCode:
+                                                500,
+
+                                            timestamp:
+                                                timestamp,
+
+                                            total:
+                                                requiredVotes,
+
+                                            candidate:
+                                                "LISA"
+
+                                        }
+                                    }
+                                )
+                            );
+
+                        }
+
+
+                        button.disabled = false;
+
+                    },
+                    delay
+                );
+
+            }
+        );
+
+    });
+
+
+/* ============================================================
+   STATUS
+   ============================================================ */
+
+function setStatus(
+    message,
+    success
+) {
+
+    const status =
+        document.getElementById(
+            "status"
+        );
+
+
+    status.textContent =
+        message;
+
+
+    status.className =
+        "status";
+
+
+    if (success === true) {
+
+        status.classList.add(
+            "success"
+        );
+
+    }
+
+
+    if (success === false) {
+
+        status.classList.add(
+            "failure"
+        );
+
+    }
+
+}
+
+
+/* ============================================================
+   RANDOM DELAY
+   ============================================================ */
+
+function randomDelay(
+    min,
+    max
+) {
+
+    return Math.floor(
+        Math.random() *
+        (max - min + 1)
+    ) + min;
+
+}
+
+
+updateModeDisplay();
+
+</script>
+
+</body>
+</html>
