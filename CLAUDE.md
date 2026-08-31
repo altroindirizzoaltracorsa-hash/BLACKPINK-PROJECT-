@@ -44,6 +44,30 @@ mcp__github__actions_run_trigger
 
 ---
 
+### `/update-charts`
+Triggers the **Fetch Spotify Charts** GitHub Actions workflow (`fetch-spotify-artists.yml`, workflow ID `345354131`) on `altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-`, dispatched to `main` branch with `type: "floor"`.
+
+Full manual refresh of the **/spotify-charts** page (official charts.spotify.com data for BLACKPINK + members, all countries):
+- **Top Songs** — daily + weekly
+- **Top Artists** — daily + weekly
+- **Top Albums** — weekly
+
+Under the hood the job triggers the Vercel `charts=fetch-songs` / `charts=fetch-artists` / `charts=fetch-albums` handlers (the fetch must run on Vercel — Spotify blocks GitHub IPs). `type=floor` sweeps everything, spacing each 74-country pass apart so each starts with a fresh Spotify rate budget (avoids the 429 country-skips) — so the run takes **~13 min**. Charts already refresh automatically (daily songs+artists nightly + a 2-hourly canary; weekly songs/artists/albums each on their own Fri+Sat slot), so this is only for an on-demand "refresh now."
+
+Lighter variants (same workflow, different `type` input): `daily` (daily songs+artists only, ~2½ min), `weeklyfloor` (weekly songs+artists+albums only), or per-type `weekly-songs` / `weekly-artists` / `weekly-albums`.
+
+To trigger via GitHub Actions MCP:
+```
+mcp__github__actions_run_trigger
+  owner: altroindirizzoaltracorsa-hash
+  repo: BLACKPINK-PROJECT-
+  workflow_id: 345354131
+  ref: main
+  inputs: { type: "floor" }
+```
+
+---
+
 ## Branch Rules (CRITICAL)
 
 - **Shazam work** → branch `claude/shazam-import-setup-8zdbzs` ONLY. Never push Shazam code to `main`.
