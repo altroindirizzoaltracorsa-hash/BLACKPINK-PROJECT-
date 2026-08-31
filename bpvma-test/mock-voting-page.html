@@ -393,7 +393,14 @@ let loggedIn = false;
 
 let requiredVotes = 10;
 
-let serverMode = "random";
+/*
+ * Defaults to "success" on purpose. A random default
+ * manufactures 500s on a plain open, and a refused vote
+ * reads like a broken script rather than the fixture
+ * working. Opt into flakiness with #10/random.
+ */
+
+let serverMode = "success";
 
 
 /*
@@ -476,6 +483,9 @@ function voteDetail(
 
         total:
             categoryTotal(category),
+
+        serverMode:
+            serverMode,
 
         votes:
             Object.assign(

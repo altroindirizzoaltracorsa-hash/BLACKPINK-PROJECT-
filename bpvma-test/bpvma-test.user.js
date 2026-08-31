@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BPVMA Event-Driven Test
 // @namespace    local-test
-// @version      2.2
+// @version      2.3
 // @description  Event-driven automation test — LOCAL MOCK PAGE ONLY (Best Pop → LISA, Best K-Pop → BLACKPINK)
 // @match        file:///C:/Users/Alice/Desktop/mock-voting-page.html
 // @match        file:///*/mock-voting-page.html
@@ -1021,10 +1021,20 @@
 
                     } else {
 
+                        /*
+                         * Name the mock's server mode. A 500
+                         * here is the FIXTURE rejecting the
+                         * vote, not a fault in the run — say
+                         * so, so it is not read as a bug.
+                         */
+
                         finish({
                             success:false,
                             reason:
-                                'server_failure'
+                                `server_failure — the mock server returned ` +
+                                `${detail.statusCode} (server mode: ${detail.serverMode || 'unknown'}). ` +
+                                `The run correctly refused to report success. ` +
+                                `Use #${REQUIRED_VOTES}/success for a clean pass.`
                         });
 
                     }
