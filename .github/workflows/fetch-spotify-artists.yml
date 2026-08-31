@@ -69,11 +69,20 @@ jobs:
             exit $rc
           fi
 
-          # ── Nightly floor / manual floor: full spaced sweep of everything ──
+          # ── Nightly floor: daily songs+artists sweep EVERY night. Spotify's
+          #    WEEKLY charts only publish on Fridays, so sweeping the weekly songs/
+          #    artists/albums nightly just re-fetches identical data and burns the
+          #    rolling rate budget (which was causing the daily-pass skips). Refresh
+          #    the weekly charts only Fri+Sat — two passes to ride out rate-limit
+          #    skips, since a miss would otherwise leave stale data for a whole week.
+          #    A manual `floor` dispatch always sweeps everything. ──
           if [ "$SCHED" = "30 23 * * *" ] || [ "$INPUT_TYPE" = "floor" ]; then
-            for Q in "charts=fetch-songs&type=daily" "charts=fetch-songs&type=weekly" \
-                     "charts=fetch-artists&type=daily" "charts=fetch-artists&type=weekly" \
-                     "charts=fetch-albums"; do
+            QS=( "charts=fetch-songs&type=daily" "charts=fetch-artists&type=daily" )
+            dow=$(date -u +%u)   # 1=Mon … 5=Fri 6=Sat 7=Sun
+            if [ "$INPUT_TYPE" = "floor" ] || [ "$dow" = "5" ] || [ "$dow" = "6" ]; then
+              QS+=( "charts=fetch-songs&type=weekly" "charts=fetch-artists&type=weekly" "charts=fetch-albums" )
+            fi
+            for Q in "${QS[@]}"; do
               echo "── $Q ──"; hit "$Q"; need200; sleep 75
             done
             exit $rc
