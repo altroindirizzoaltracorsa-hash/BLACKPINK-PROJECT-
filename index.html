@@ -15996,6 +15996,30 @@ function _tintImage(img, color) {
   return c;
 }
 
+// Opaque bounding box of an image (trims transparent margins), cached per image,
+// so a wordmark centres on its actual glyphs instead of its padded canvas.
+const _boundsCache = new WeakMap();
+function _opaqueBounds(img) {
+  if (_boundsCache.has(img)) return _boundsCache.get(img);
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  let res = { x: 0, y: 0, w, h };
+  try {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const cx = c.getContext('2d'); cx.drawImage(img, 0, 0);
+    const data = cx.getImageData(0, 0, w, h).data;
+    let minX = w, minY = h, maxX = -1, maxY = -1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (data[(y * w + x) * 4 + 3] > 12) {
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+    }
+    if (maxX >= minX && maxY >= minY) res = { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+  } catch (_) {}
+  _boundsCache.set(img, res);
+  return res;
+}
+
 // Generic "Early Supporter" chip for the share cards — a rounded pill with the
 // release emblem (optionally tinted) + label, ending at rightX. Mirrors the
 // on-page cd-badge-chip / My-Badges shape so every countdown card matches.
@@ -16010,9 +16034,11 @@ function _drawSupporterBadge(ctx, W, rightX, baselineY, opts) {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
   const textW = ctx.measureText(label).width;
-  // Size the emblem off the TEXT (not the card) so the two share one even row.
+  // Size the emblem off the TEXT (not the card) so the two share one even row,
+  // and trim its transparent margins so a wordmark centres on its real glyphs.
+  const eb = emblem ? _opaqueBounds(emblemImg) : null;
   const emH = emblem ? Math.round(fontPx * 1.2) : 0;
-  const emW = emblem ? Math.round(emH * (emblem.width / emblem.height)) : 0;
+  const emW = emblem ? Math.round(emH * (eb.w / eb.h)) : 0;
   const gap = emblem ? Math.round(fontPx * 0.55) : 0;
   const padX = Math.round(fontPx * 0.85);
   const padY = Math.round(fontPx * 0.55);
@@ -16031,7 +16057,7 @@ function _drawSupporterBadge(ctx, W, rightX, baselineY, opts) {
   ctx.fill();
   if (border) { ctx.lineWidth = Math.max(1, Math.round(W * 0.0016)); ctx.strokeStyle = border; ctx.stroke(); }
   let cx = pillX + padX;
-  if (emblem) { ctx.drawImage(emblem, cx, Math.round(cy - emH / 2), emW, emH); cx += emW + gap; }
+  if (emblem) { ctx.drawImage(emblem, eb.x, eb.y, eb.w, eb.h, cx, Math.round(cy - emH / 2), emW, emH); cx += emW + gap; }
   ctx.textBaseline = 'middle';
   ctx.fillStyle = ink;
   ctx.fillText(label, cx, cy);
@@ -16440,7 +16466,7 @@ function drawLisaCardFull(ctx, canvas, d) {
   ctx.fillStyle = 'rgba(247,228,224,0.9)';
   ctx.fillText('BLINKS UNITED', M, topY);
   if (d.earned) {
-    _drawSupporterBadge(ctx, W, W - M, topY, { pill: '#f7e4e0', ink: '#350909', border: 'rgba(53,9,9,0.25)' });
+    _drawSupporterBadge(ctx, W, W - M, topY, { emblem: d.logoImg, tint: '#350909', pill: '#f7e4e0', ink: '#350909', border: 'rgba(53,9,9,0.25)' });
   } else {
     ctx.textAlign = 'right';
     ctx.fillStyle = 'rgba(247,228,224,0.72)';
@@ -16542,7 +16568,7 @@ function drawLisaCard(canvas, d) {
   ctx.fillStyle = 'rgba(247,228,224,0.85)';
   ctx.fillText('BLINKS UNITED', M, topY);
   if (d.earned) {
-    _drawSupporterBadge(ctx, W, W - M, topY, { pill: '#f7e4e0', ink: '#350909', border: 'rgba(53,9,9,0.25)' });
+    _drawSupporterBadge(ctx, W, W - M, topY, { emblem: d.logoImg, tint: '#350909', pill: '#f7e4e0', ink: '#350909', border: 'rgba(53,9,9,0.25)' });
   } else {
     ctx.textAlign = 'right';
     ctx.fillStyle = 'rgba(247,228,224,0.6)';
