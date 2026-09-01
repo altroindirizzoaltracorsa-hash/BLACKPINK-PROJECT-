@@ -10000,7 +10000,7 @@ async function lisaEarlySupporterEarned() {
 const SPECIAL_BADGES = [
   {
     id: 'lisa-sawadika-join',
-    icon: '🏆',
+    icon: '<img src="/sawadika/sawadika-latin.webp" alt="" style="height:20px;width:auto;max-width:96px;object-fit:contain;vertical-align:middle;">',
     label: 'EARLY SUPPORTER',
     song: 'hellosawadika — LISA',
     desc: 'Joined before the reveal',
@@ -13971,6 +13971,7 @@ let _faPhotoImg = null, _faPhotoRedImg = null, _faTitleImg = null, _faLogoImg = 
 let _lisaCardData = null;         // data for the LISA hellosawadika share card
 let _lisaHelloImg = null, _lisaSawImg = null; // cached HELLO + สวัสดีค่ะ SVGs
 let _lisaCoverImg = null;                     // cached SaWaDiKa single cover
+let _lisaLogoImg = null;                      // cached SaWaDiKa wordmark logo
 
 // Called at the end of every card draw function so the share blob is ready
 // before the user taps Share — avoids async toBlob inside the gesture handler.
@@ -16457,12 +16458,26 @@ function drawLisaCard(canvas, d) {
   ctx.fillText('LISA · NEW SINGLE', anchor, ty);
   ty += Math.round(H * S.eyeGap);
 
-  ctx.fillStyle = CREAM;
+  // Title — the real SaWaDiKa wordmark logo (falls back to serif text if it
+  // hasn't loaded), sized to the title slot and clamped to the text column.
   const titleSize = Math.round(H * S.title);
-  ctx.letterSpacing = '1px';
-  _fitFont(ctx, 'SaWaDiKa', '700', 'Georgia, "Times New Roman", serif', titleSize, tw, 28);
-  ctx.fillText('SaWaDiKa', anchor, ty);
-  ty += titleSize + Math.round(H * S.titleGap);
+  if (d.logoImg && (d.logoImg.naturalWidth || d.logoImg.width)) {
+    const lw0 = d.logoImg.naturalWidth || d.logoImg.width;
+    const lh0 = d.logoImg.naturalHeight || d.logoImg.height;
+    let lh = Math.round(titleSize * 1.15);     // wordmark reads a touch smaller than caps
+    let lw = Math.round(lw0 * (lh / lh0));
+    if (lw > tw) { lw = tw; lh = Math.round(lh0 * (lw / lw0)); }
+    const lx = landscape ? anchor : Math.round(anchor - lw / 2);
+    ctx.drawImage(d.logoImg, lx, ty, lw, lh);
+    ty += lh + Math.round(H * S.titleGap);
+  } else {
+    ctx.fillStyle = CREAM;
+    ctx.letterSpacing = '1px';
+    _fitFont(ctx, 'SaWaDiKa', '700', 'Georgia, "Times New Roman", serif', titleSize, tw, 28);
+    ctx.fillText('SaWaDiKa', anchor, ty);
+    ctx.letterSpacing = '0px';
+    ty += titleSize + Math.round(H * S.titleGap);
+  }
 
   ctx.save();
   ctx.shadowColor = 'rgba(40,4,6,0.5)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 3;
@@ -16508,12 +16523,15 @@ async function openLisaCard() {
   const coverImg = _lisaCoverImg
     ? _lisaCoverImg
     : await loadImg('/sawadika/sawadika-cover.jpg').then(i => (_lisaCoverImg = i)).catch(() => null);
+  const logoImg = _lisaLogoImg
+    ? _lisaLogoImg
+    : await loadImg('/sawadika/sawadika-latin.webp').then(i => (_lisaLogoImg = i)).catch(() => null);
   await document.fonts.ready;
 
   await refreshSupporterChips();   // sync sign-in state + account flag first
   const earned = _buSignedIn && !!localStorage.getItem(LISA_SAVE_LS);
   _lisaCardData = {
-    earned, coverImg,
+    earned, coverImg, logoImg,
     revealAt: '2026-09-04T00:00:00Z',   // World premiere — Sep 4, 9AM KST = 00:00 UTC
     dateLine: 'NEW SINGLE · SEP 4 · 9AM KST / SEP 3 · 8PM EDT',
     dateShort: 'out Sep 4, 2026',
