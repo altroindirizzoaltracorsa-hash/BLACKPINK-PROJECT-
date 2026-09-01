@@ -1943,6 +1943,7 @@
   /* PRESS PLAY pre-save challenge — Early Supporter chip + progress bar */
   .cd-card-lisa .cd-badge-chip { margin: 0; color: #fff; border: 1px solid var(--la-red);
     background: rgba(225,29,42,0.22); backdrop-filter: blur(2px); }
+  .cd-card-lisa .cd-badge-chip img { height: 0.8rem; width: auto; display: block; }
   .cd-card-lisa .cd-goal { width: min(84%, 320px); margin: 0.1rem auto 0; gap: 0.32rem; }
   .cd-card-lisa .cd-goal-label { color: rgba(242,233,226,0.82); font-family: 'DM Mono', monospace;
     font-size: 0.54rem; letter-spacing: 0.12em; }
@@ -2794,7 +2795,7 @@
               <div class="lisa-eyebrow">New EP · lalisaofficial.com</div>
               <img class="lisa-word" src="/lisa-word.webp" alt="LISA" loading="lazy">
               <img class="lisa-pp" src="/lisa-pressplay.webp" alt="PRESS PLAY" loading="lazy">
-              <div class="cd-badge-chip lisa-locket" id="lisa-badge" style="display:none;">🏆 Early Supporter</div>
+              <div class="cd-badge-chip lisa-locket" id="lisa-badge" style="display:none;"><img src="/lisa-pressplay.webp" alt="" aria-hidden="true">Early Supporter</div>
               <div class="cd-sub">Fri, Oct 23, 2026 · <b>1PM KST / 12AM EDT</b></div>
               <div class="cd-timer" data-timer></div>
               <div class="cd-goal" id="lisa-goal" style="display:none;">
@@ -15995,15 +15996,15 @@ function _tintImage(img, color) {
   return c;
 }
 
-// "Early Supporter" certification stamp for the earned Fallen Angel share card:
-// a loverYellow pill with JENNIE's Fallen Angel script (recolored dark) + label,
-// mirroring the on-page badge chip. Right-aligned to end at W - PX.
-function _drawFaSupporterBadge(ctx, W, PX, baselineY, emblemImg) {
+// Generic "Early Supporter" chip for the share cards — a rounded pill with the
+// release emblem (optionally tinted) + label, ending at rightX. Mirrors the
+// on-page cd-badge-chip / My-Badges shape so every countdown card matches.
+function _drawSupporterBadge(ctx, W, rightX, baselineY, opts) {
+  const { emblem: emblemImg, tint, pill, ink, border, label = 'EARLY SUPPORTER' } = opts;
   const emblem = (emblemImg && (emblemImg.naturalWidth || emblemImg.width))
-    ? _tintImage(emblemImg, '#020a0b') : null;
+    ? (tint ? _tintImage(emblemImg, tint) : emblemImg) : null;
   const emH = Math.round(W * 0.030);
   const emW = emblem ? Math.round(emH * (emblem.width / emblem.height)) : 0;
-  const label = 'EARLY SUPPORTER';
   const fontPx = Math.round(W * 0.024);
   ctx.font = `700 ${fontPx}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
@@ -16014,21 +16015,28 @@ function _drawFaSupporterBadge(ctx, W, PX, baselineY, emblemImg) {
   const padX = Math.round(W * 0.024);
   const pillH = Math.round(W * 0.058);
   const pillW = padX * 2 + emW + gap + textW;
-  // Sit closer to the right edge than the PX margin so the pill clears JENNIE's
-  // head (which is roughly centred in the Fallen Angel photos).
-  const pillX = W - Math.round(W * 0.03) - pillW;
+  const pillX = rightX - pillW;
   const pillY = Math.round(baselineY - pillH * 0.74);
   const cy = pillY + pillH / 2;
   _roundRectPath(ctx, pillX, pillY, pillW, pillH, pillH / 2);
-  ctx.fillStyle = '#ffe051';
+  ctx.fillStyle = pill;
   ctx.fill();
+  if (border) { ctx.lineWidth = Math.max(1, Math.round(W * 0.0016)); ctx.strokeStyle = border; ctx.stroke(); }
   let cx = pillX + padX;
   if (emblem) { ctx.drawImage(emblem, cx, Math.round(cy - emH / 2), emW, emH); cx += emW + gap; }
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#020a0b';
+  ctx.fillStyle = ink;
   ctx.fillText(label, cx, cy);
   ctx.textBaseline = 'alphabetic';
   ctx.letterSpacing = '0px';
+  ctx.textAlign = 'left';
+}
+
+// Fallen Angel share card badge — loverYellow pill with JENNIE's Fallen Angel
+// script (recolored dark). Sits closer to the right edge so it clears her head.
+function _drawFaSupporterBadge(ctx, W, PX, baselineY, emblemImg) {
+  _drawSupporterBadge(ctx, W, W - Math.round(W * 0.03), baselineY,
+    { emblem: emblemImg, tint: '#020a0b', pill: '#ffe051', ink: '#020a0b' });
 }
 
 // ── PRE-SAVE SHARE CARD (JENNIE — Fallen Angel) ──────────────────────────────
@@ -16243,9 +16251,13 @@ function drawPressPlayCard(canvas, d) {
   ctx.textAlign = 'left';
   ctx.fillStyle = 'rgba(245,240,240,0.85)';
   ctx.fillText('BLINKS UNITED', PX, topY);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = d.earned ? RED : 'rgba(245,240,240,0.7)';
-  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : 'COUNTDOWN · NEW EP', W - PX, topY);
+  if (d.earned) {
+    _drawSupporterBadge(ctx, W, W - PX, topY, { emblem: d.titleImg, tint: '#f5f0f0', pill: 'rgba(20,4,10,0.62)', ink: '#f5f0f0', border: RED });
+  } else {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(245,240,240,0.7)';
+    ctx.fillText('COUNTDOWN · NEW EP', W - PX, topY);
+  }
   ctx.textAlign = 'left';
   ctx.letterSpacing = '0px';
 
@@ -16419,9 +16431,13 @@ function drawLisaCardFull(ctx, canvas, d) {
   ctx.font = '500 20px "DM Mono", monospace'; ctx.letterSpacing = '4px';
   ctx.fillStyle = 'rgba(247,228,224,0.9)';
   ctx.fillText('BLINKS UNITED', M, topY);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = d.earned ? CREAM : 'rgba(247,228,224,0.72)';
-  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : (isOut ? 'OUT NOW' : 'COUNTDOWN'), W - M, topY);
+  if (d.earned) {
+    _drawSupporterBadge(ctx, W, W - M, topY, { emblem: d.logoImg, tint: '#f7e4e0', pill: 'rgba(20,4,6,0.5)', ink: '#f7e4e0', border: 'rgba(247,228,224,0.55)' });
+  } else {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(247,228,224,0.72)';
+    ctx.fillText(isOut ? 'OUT NOW' : 'COUNTDOWN', W - M, topY);
+  }
   ctx.letterSpacing = '0px';
 
   // Bottom text stack (left-anchored), anchored just above the centered CTA.
@@ -16517,9 +16533,13 @@ function drawLisaCard(canvas, d) {
   ctx.font = '500 20px "DM Mono", monospace'; ctx.letterSpacing = '4px';
   ctx.fillStyle = 'rgba(247,228,224,0.85)';
   ctx.fillText('BLINKS UNITED', M, topY);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = d.earned ? CREAM : 'rgba(247,228,224,0.6)';
-  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : (isOut ? 'OUT NOW' : 'COUNTDOWN'), W - M, topY);
+  if (d.earned) {
+    _drawSupporterBadge(ctx, W, W - M, topY, { emblem: d.logoImg, tint: '#f7e4e0', pill: 'rgba(20,4,6,0.5)', ink: '#f7e4e0', border: 'rgba(247,228,224,0.55)' });
+  } else {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(247,228,224,0.6)';
+    ctx.fillText(isOut ? 'OUT NOW' : 'COUNTDOWN', W - M, topY);
+  }
   ctx.letterSpacing = '0px';
 
   // Cover geometry + per-format type scale
@@ -16756,9 +16776,13 @@ function drawJisooTeaserCard(canvas, d) {
   ctx.font = '500 20px "DM Mono", monospace'; ctx.letterSpacing = '4px';
   ctx.fillStyle = 'rgba(242,221,184,0.9)';
   ctx.fillText('BLINKS UNITED', PX, topY);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = d.earned ? GOLD : 'rgba(242,221,184,0.72)';
-  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : 'COUNTDOWN · NEW SINGLE', W - PX, topY);
+  if (d.earned) {
+    _drawSupporterBadge(ctx, W, W - PX, topY, { emblem: d.heartImg, pill: 'rgba(30,16,6,0.55)', ink: GOLD, border: 'rgba(242,221,184,0.5)' });
+  } else {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(242,221,184,0.72)';
+    ctx.fillText('COUNTDOWN · NEW SINGLE', W - PX, topY);
+  }
   ctx.letterSpacing = '0px';
 
   let diff = Date.parse(d.target) - Date.now();
@@ -16839,9 +16863,13 @@ function drawJisooFull(ctx, canvas, d) {
   ctx.font = '500 20px "DM Mono", monospace'; ctx.letterSpacing = '4px';
   ctx.fillStyle = 'rgba(246,239,233,0.9)';
   ctx.fillText('BLINKS UNITED', M, topY);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = d.earned ? CREAM : 'rgba(246,239,233,0.72)';
-  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : (isOut ? 'OUT NOW' : 'COUNTDOWN'), W - M, topY);
+  if (d.earned) {
+    _drawSupporterBadge(ctx, W, W - M, topY, { emblem: d.heartImg, pill: 'rgba(20,10,14,0.6)', ink: '#f6efe9', border: 'rgba(246,239,233,0.4)' });
+  } else {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(246,239,233,0.72)';
+    ctx.fillText(isOut ? 'OUT NOW' : 'COUNTDOWN', W - M, topY);
+  }
   ctx.letterSpacing = '0px';
 
   ctx.textAlign = 'center';
@@ -16890,9 +16918,13 @@ function drawJisooCard(canvas, d) {
   ctx.font = '500 20px "DM Mono", monospace'; ctx.letterSpacing = '4px';
   ctx.fillStyle = 'rgba(104,73,58,0.85)';
   ctx.fillText('BLINKS UNITED', PX, topY);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = d.earned ? '#4a3226' : 'rgba(104,73,58,0.68)';
-  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : 'COUNTDOWN', W - PX, topY);
+  if (d.earned) {
+    _drawSupporterBadge(ctx, W, W - PX, topY, { emblem: d.heartImg, pill: 'rgba(255,251,250,0.9)', ink: '#4a3226', border: 'rgba(104,73,58,0.3)' });
+  } else {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(104,73,58,0.68)';
+    ctx.fillText('COUNTDOWN', W - PX, topY);
+  }
   ctx.letterSpacing = '0px';
 
   // countdown snapshot at generation time
