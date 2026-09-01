@@ -16036,8 +16036,13 @@ function _drawSupporterBadge(ctx, W, rightX, baselineY, opts) {
   const textW = ctx.measureText(label).width;
   // Size the emblem off the TEXT (not the card) so the two share one even row,
   // and trim its transparent margins so a wordmark centres on its real glyphs.
+  // emAlign 'center' (icons, default) centres on the row; 'baseline' (wordmarks)
+  // sits it on the text baseline. emScale sizes it; emBaseline says where in the
+  // trimmed glyphs the baseline is (fraction from top).
+  const emAlign = opts.emAlign || 'center';
+  const emScale = opts.emScale || 1;
   const eb = emblem ? _opaqueBounds(emblemImg) : null;
-  const emH = emblem ? Math.round(fontPx * 1.2) : 0;
+  const emH = emblem ? Math.round(fontPx * 1.2 * emScale) : 0;
   const emW = emblem ? Math.round(emH * (eb.w / eb.h)) : 0;
   const gap = emblem ? Math.round(fontPx * 0.55) : 0;
   const padX = Math.round(fontPx * 0.85);
@@ -16057,7 +16062,17 @@ function _drawSupporterBadge(ctx, W, rightX, baselineY, opts) {
   ctx.fill();
   if (border) { ctx.lineWidth = Math.max(1, Math.round(W * 0.0016)); ctx.strokeStyle = border; ctx.stroke(); }
   let cx = pillX + padX;
-  if (emblem) { ctx.drawImage(emblem, eb.x, eb.y, eb.w, eb.h, cx, Math.round(cy - emH / 2), emW, emH); cx += emW + gap; }
+  if (emblem) {
+    let emY;
+    if (emAlign === 'baseline') {
+      const blY = cy + fontPx * 0.34;                                   // caps baseline
+      const bf = (typeof opts.emBaseline === 'number') ? opts.emBaseline : 0.82;
+      emY = Math.round(blY - bf * emH);
+    } else {
+      emY = Math.round(cy - emH / 2);
+    }
+    ctx.drawImage(emblem, eb.x, eb.y, eb.w, eb.h, cx, emY, emW, emH); cx += emW + gap;
+  }
   ctx.textBaseline = 'middle';
   ctx.fillStyle = ink;
   ctx.fillText(label, cx, cy);
@@ -16466,7 +16481,7 @@ function drawLisaCardFull(ctx, canvas, d) {
   ctx.fillStyle = 'rgba(247,228,224,0.9)';
   ctx.fillText('BLINKS UNITED', M, topY);
   if (d.earned) {
-    _drawSupporterBadge(ctx, W, W - M, topY, { emblem: d.logoImg, tint: '#350909', pill: '#f7e4e0', ink: '#350909', border: 'rgba(53,9,9,0.25)' });
+    _drawSupporterBadge(ctx, W, W - M, topY, { emblem: d.logoImg, tint: '#350909', pill: '#f7e4e0', ink: '#350909', border: 'rgba(53,9,9,0.25)', emAlign: 'baseline', emScale: 1.4, emBaseline: 0.8 });
   } else {
     ctx.textAlign = 'right';
     ctx.fillStyle = 'rgba(247,228,224,0.72)';
@@ -16568,7 +16583,7 @@ function drawLisaCard(canvas, d) {
   ctx.fillStyle = 'rgba(247,228,224,0.85)';
   ctx.fillText('BLINKS UNITED', M, topY);
   if (d.earned) {
-    _drawSupporterBadge(ctx, W, W - M, topY, { emblem: d.logoImg, tint: '#350909', pill: '#f7e4e0', ink: '#350909', border: 'rgba(53,9,9,0.25)' });
+    _drawSupporterBadge(ctx, W, W - M, topY, { emblem: d.logoImg, tint: '#350909', pill: '#f7e4e0', ink: '#350909', border: 'rgba(53,9,9,0.25)', emAlign: 'baseline', emScale: 1.4, emBaseline: 0.8 });
   } else {
     ctx.textAlign = 'right';
     ctx.fillStyle = 'rgba(247,228,224,0.6)';
