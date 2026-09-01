@@ -452,7 +452,7 @@
   .card-fmt { background:transparent;border:1px solid rgba(255,0,102,0.2);color:var(--muted);font-family:var(--mono);font-size:0.54rem;letter-spacing:0.12em;text-transform:uppercase;padding:0.3rem 0.7rem;cursor:pointer;transition:all 0.2s; }
   .card-fmt.active { background:var(--pink-muted);border-color:var(--pink);color:var(--pink); }
   .card-range-toggle { display:flex;align-items:center;gap:6px; }
-  .release-pic-picker { display:flex; gap:0.5rem; margin-bottom:0.8rem; }
+  .release-pic-picker { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.8rem; }
   .release-pic-thumb { width:56px; height:56px; object-fit:cover; border-radius:6px; border:2px solid transparent; opacity:0.55; cursor:pointer; transition:opacity 0.2s, border-color 0.2s; }
   .release-pic-thumb:hover { opacity:0.85; }
   .release-pic-thumb.active { opacity:1; border-color:var(--pink); }
@@ -17491,7 +17491,14 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
 }
 
 const RELEASE_CARD_PICS = ['/jennie-ltal-photo.jpg', '/jennie-ltal-poster1.jpg', '/jennie-ltal-poster2.jpg', '/jennie-ltal-poster3.jpg', '/jennie-ltal-poster4.jpg'];
-const LISA_CARD_PICS = ['/sawadika/sawadika-cover.jpg', '/sawadika/sawadika-lisa.jpg'];
+const LISA_CARD_PICS = [
+  '/sawadika/sawadika-cover.jpg',       // single cover (default)
+  '/sawadika/sawadika-lisa.jpg',        // LISA promo portrait
+  '/sawadika/sawadika-ring.jpg',        // boxing-ring concept
+  '/sawadika/sawadika-tuktuk-drive.jpg',// tuk-tuk (driving)
+  '/sawadika/sawadika-tuktuk-seat.jpg', // tuk-tuk (seated)
+  '/sawadika/sawadika-tuktuk-lean.jpg', // tuk-tuk (reclining)
+];
 
 // Rebuild the shared #release-pic-picker with a given set of images. Each card
 // opener that wants a picture chooser calls this with its own pics + select fn,
