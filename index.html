@@ -16383,13 +16383,18 @@ function drawLisaCardFull(ctx, canvas, d) {
   // Photo — object-fit cover, biased toward the top so full-body shots keep the face.
   const img = d.coverImg;
   const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
-  const sc = Math.max(W / iw, H / ih);
+  const zoom = (typeof d.zoom === 'number') ? d.zoom : 1;
+  const sc = Math.max(W / iw, H / ih) * zoom;
   const dw = iw * sc, dh = ih * sc;
   ctx.fillStyle = 'hsl(358,74%,29%)'; ctx.fillRect(0, 0, W, H);
-  // Vertical crop bias: 0 = align to the top of the photo (keeps the face), 0.5 =
-  // centered. Per-image via LISA_FOCAL so full-body shots don't crop LISA's head.
-  const bias = (typeof d.focal === 'number') ? d.focal : 0.15;
-  ctx.drawImage(img, (W - dw) / 2, Math.min(0, (H - dh) * bias), dw, dh);
+  // Crop focals position the visible slice: focalY 0 = top of the photo (keeps the
+  // face); focalX 0 = left, 1 = right. `zoom` (>1) crops in so a subject can be
+  // nudged sideways clear of the text. Per-image via LISA_FRAME.
+  const fx = (typeof d.focalX === 'number') ? d.focalX : 0.5;
+  const fy = (typeof d.focal === 'number') ? d.focal : 0.15;
+  const dx = Math.min(0, (W - dw) * fx);
+  const dy = Math.min(0, (H - dh) * fy);
+  ctx.drawImage(img, dx, dy, dw, dh);
 
   // Scrims: strong bottom (for text) + soft top (for the wordmark row).
   let g = ctx.createLinearGradient(0, H * 0.40, 0, H);
@@ -16655,7 +16660,10 @@ async function selectLisaCardArt(url, thumbEl) {
     // The square single cover uses the framed layout; the full-body promo shots
     // fill the whole card (full-bleed) so they aren't shrunk into a small square.
     _lisaCardData.artMode = LISA_FULLBLEED.has(url) ? 'full' : 'square';
-    _lisaCardData.focal = LISA_FOCAL[url];
+    const fr = LISA_FRAME[url] || {};
+    _lisaCardData.focal = fr.y;
+    _lisaCardData.focalX = fr.x;
+    _lisaCardData.zoom = fr.zoom;
     drawLisaCard(canvas, _lisaCardData);
     _markCardReady(canvas);
   }
@@ -17612,14 +17620,15 @@ const LISA_FULLBLEED = new Set([
   '/sawadika/sawadika-tuktuk-seat.jpg',
   '/sawadika/sawadika-tuktuk-lean.jpg',
 ]);
-// Vertical crop focal for the full-bleed layout (0 = top-aligned → keeps the face;
-// larger = shift the crop down). Tuned per photo so full-body shots keep LISA's head.
-const LISA_FOCAL = {
-  '/sawadika/sawadika-lisa.jpg':         0.08,
-  '/sawadika/sawadika-ring.jpg':         0.06,
-  '/sawadika/sawadika-tuktuk-drive.jpg': 0.30,
-  '/sawadika/sawadika-tuktuk-seat.jpg':  0.04,
-  '/sawadika/sawadika-tuktuk-lean.jpg':  0.06,
+// Per-photo framing for the full-bleed layout. y = vertical focal (0 = top → keep
+// the face); x = horizontal focal (0 = left, 1 = right); zoom (>1) crops in so a
+// subject can be shifted sideways off the text.
+const LISA_FRAME = {
+  '/sawadika/sawadika-lisa.jpg':         { y: 0.08 },
+  '/sawadika/sawadika-ring.jpg':         { y: 0.06, x: 0, zoom: 1.2 },
+  '/sawadika/sawadika-tuktuk-drive.jpg': { y: 0.30 },
+  '/sawadika/sawadika-tuktuk-seat.jpg':  { y: 0.04 },
+  '/sawadika/sawadika-tuktuk-lean.jpg':  { y: 0.06 },
 };
 
 // Rebuild the shared #release-pic-picker with a given set of images. Each card
