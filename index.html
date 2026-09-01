@@ -16371,8 +16371,105 @@ function _fitFont(ctx, text, weight, family, startPx, maxW, minPx) {
   return px;
 }
 
+// Full-bleed variant — the promo photo covers the whole card with the text
+// overlaid on a bottom scrim. Used for the full-body promo shots; the square
+// single cover keeps the framed layout in drawLisaCard below.
+function drawLisaCardFull(ctx, canvas, d) {
+  const W = canvas.width, H = canvas.height;
+  const landscape = W > H;
+  const CREAM = '#f7e4e0';
+  const M = Math.round(W * (landscape ? 0.055 : 0.06));
+
+  // Photo — object-fit cover, biased toward the top so full-body shots keep the face.
+  const img = d.coverImg;
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const sc = Math.max(W / iw, H / ih);
+  const dw = iw * sc, dh = ih * sc;
+  ctx.fillStyle = 'hsl(358,74%,29%)'; ctx.fillRect(0, 0, W, H);
+  ctx.drawImage(img, (W - dw) / 2, Math.min(0, (H - dh) * 0.22), dw, dh);
+
+  // Scrims: strong bottom (for text) + soft top (for the wordmark row).
+  let g = ctx.createLinearGradient(0, H * 0.40, 0, H);
+  g.addColorStop(0, 'rgba(11,3,5,0)'); g.addColorStop(0.5, 'rgba(11,3,5,0.5)'); g.addColorStop(1, 'rgba(9,2,4,0.94)');
+  ctx.fillStyle = g; ctx.fillRect(0, H * 0.40, W, H * 0.60);
+  g = ctx.createLinearGradient(0, 0, 0, H * 0.2);
+  g.addColorStop(0, 'rgba(9,2,4,0.55)'); g.addColorStop(1, 'rgba(9,2,4,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.2);
+  drawNoise(ctx, W, H, 0.015);
+
+  // Countdown snapshot
+  let diff = Date.parse(d.revealAt) - Date.now();
+  const isOut = !(diff > 0);
+  let cdd = 0, cdh = 0, cdm = 0;
+  if (!isOut) { cdd = Math.floor(diff / 86400000); diff %= 86400000; cdh = Math.floor(diff / 3600000); diff %= 3600000; cdm = Math.floor(diff / 60000); }
+  const p2 = n => String(n).padStart(2, '0');
+  const cdBig = isOut ? 'OUT NOW' : `${p2(cdd)} : ${p2(cdh)} : ${p2(cdm)}`;
+
+  // Top row: BU wordmark · status
+  const topY = Math.round(H * 0.066);
+  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  ctx.font = '500 20px "DM Mono", monospace'; ctx.letterSpacing = '4px';
+  ctx.fillStyle = 'rgba(247,228,224,0.9)';
+  ctx.fillText('BLINKS UNITED', M, topY);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = d.earned ? CREAM : 'rgba(247,228,224,0.72)';
+  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : (isOut ? 'OUT NOW' : 'COUNTDOWN'), W - M, topY);
+  ctx.letterSpacing = '0px';
+
+  // Bottom text stack (left-anchored), anchored just above the centered CTA.
+  const tw = W - 2 * M;
+  const S = landscape
+    ? { eyebrow: 0.03, eyeGap: 0.05, title: 0.14, titleGap: 0.028, cd: 0.08, cdGap: 0.028, date: 0.028 }
+    : { eyebrow: 0.024, eyeGap: 0.04, title: 0.10, titleGap: 0.022, cd: 0.058, cdGap: 0.022, date: 0.022 };
+  const eyeH = Math.round(H * S.eyebrow), titleH = Math.round(H * S.title), cdH = Math.round(H * S.cd), dateH = Math.round(H * S.date);
+  let logoW = 0, logoH = titleH;
+  if (d.logoImg && (d.logoImg.naturalWidth || d.logoImg.width)) {
+    const lw0 = d.logoImg.naturalWidth || d.logoImg.width, lh0 = d.logoImg.naturalHeight || d.logoImg.height;
+    logoH = Math.round(titleH * 1.05); logoW = Math.round(lw0 * (logoH / lh0));
+    if (logoW > tw * 0.92) { logoW = Math.round(tw * 0.92); logoH = Math.round(lh0 * (logoW / lw0)); }
+  }
+  const stackH = eyeH + Math.round(H * S.eyeGap) + logoH + Math.round(H * S.titleGap) + cdH + Math.round(H * S.cdGap) + dateH;
+  const ctaTop = H - Math.round(H * (landscape ? 0.12 : 0.11));
+  let y = ctaTop - Math.round(H * 0.03) - stackH;
+
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillStyle = 'rgba(247,228,224,0.8)';
+  ctx.font = `500 ${eyeH}px "DM Mono", monospace`; ctx.letterSpacing = '4px';
+  ctx.fillText('LISA · NEW SINGLE', M, y); ctx.letterSpacing = '0px';
+  y += eyeH + Math.round(H * S.eyeGap);
+
+  if (logoW) {
+    ctx.save(); ctx.shadowColor = 'rgba(9,2,4,0.6)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 3;
+    ctx.drawImage(d.logoImg, M, y, logoW, logoH); ctx.restore();
+  } else {
+    ctx.fillStyle = CREAM; ctx.letterSpacing = '1px';
+    _fitFont(ctx, 'SaWaDiKa', '700', 'Georgia, "Times New Roman", serif', titleH, tw, 28);
+    ctx.fillText('SaWaDiKa', M, y); ctx.letterSpacing = '0px';
+  }
+  y += logoH + Math.round(H * S.titleGap);
+
+  ctx.save(); ctx.shadowColor = 'rgba(9,2,4,0.6)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 2;
+  ctx.fillStyle = '#fff';
+  _fitFont(ctx, cdBig, '', 'Georgia, "Times New Roman", serif', cdH, tw, 24);
+  ctx.letterSpacing = '2px'; ctx.fillText(cdBig, M, y); ctx.restore(); ctx.letterSpacing = '0px';
+  y += cdH + Math.round(H * S.cdGap);
+
+  ctx.fillStyle = 'rgba(247,228,224,0.8)';
+  _fitFont(ctx, d.dateLine, '500', '"DM Mono", monospace', dateH, tw, 12);
+  ctx.letterSpacing = '2px'; ctx.fillText(d.dateLine, M, y); ctx.letterSpacing = '0px';
+
+  // CTA centered at the very bottom.
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = CREAM; ctx.font = '600 22px "DM Mono", monospace'; ctx.letterSpacing = '2px';
+  ctx.fillText(d.cta, W / 2, H - Math.round(H * 0.066));
+  ctx.font = '500 16px "DM Mono", monospace'; ctx.fillStyle = 'rgba(247,228,224,0.55)';
+  ctx.fillText('shared via blinksunited.com', W / 2, H - Math.round(H * 0.032));
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.letterSpacing = '0px';
+}
+
 function drawLisaCard(canvas, d) {
   const ctx = canvas.getContext('2d');
+  if (d.artMode === 'full' && d.coverImg) return drawLisaCardFull(ctx, canvas, d);
   const W = canvas.width, H = canvas.height;
   const landscape = W > H;
   const CREAM = '#f7e4e0';
@@ -16531,7 +16628,7 @@ async function openLisaCard() {
   await refreshSupporterChips();   // sync sign-in state + account flag first
   const earned = _buSignedIn && !!localStorage.getItem(LISA_SAVE_LS);
   _lisaCardData = {
-    earned, coverImg, logoImg,
+    earned, coverImg, logoImg, artMode: 'square',
     revealAt: '2026-09-04T00:00:00Z',   // World premiere — Sep 4, 9AM KST = 00:00 UTC
     dateLine: 'NEW SINGLE · SEP 4 · 9AM KST / SEP 3 · 8PM EDT',
     dateShort: 'out Sep 4, 2026',
@@ -16552,6 +16649,9 @@ async function selectLisaCardArt(url, thumbEl) {
   const img = await loadImg(url).catch(() => null);
   if (_lisaCardData) {
     _lisaCardData.coverImg = img;
+    // The square single cover uses the framed layout; the full-body promo shots
+    // fill the whole card (full-bleed) so they aren't shrunk into a small square.
+    _lisaCardData.artMode = LISA_FULLBLEED.has(url) ? 'full' : 'square';
     drawLisaCard(canvas, _lisaCardData);
     _markCardReady(canvas);
   }
@@ -17492,13 +17592,22 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
 
 const RELEASE_CARD_PICS = ['/jennie-ltal-photo.jpg', '/jennie-ltal-poster1.jpg', '/jennie-ltal-poster2.jpg', '/jennie-ltal-poster3.jpg', '/jennie-ltal-poster4.jpg'];
 const LISA_CARD_PICS = [
-  '/sawadika/sawadika-cover.jpg',       // single cover (default)
+  '/sawadika/sawadika-cover.jpg',       // single cover (default) — framed square
   '/sawadika/sawadika-lisa.jpg',        // LISA promo portrait
   '/sawadika/sawadika-ring.jpg',        // boxing-ring concept
   '/sawadika/sawadika-tuktuk-drive.jpg',// tuk-tuk (driving)
   '/sawadika/sawadika-tuktuk-seat.jpg', // tuk-tuk (seated)
   '/sawadika/sawadika-tuktuk-lean.jpg', // tuk-tuk (reclining)
 ];
+// These fill the whole card (full-bleed) instead of the framed square — the
+// single cover (album art) stays framed; every full-body promo shot goes edge to edge.
+const LISA_FULLBLEED = new Set([
+  '/sawadika/sawadika-lisa.jpg',
+  '/sawadika/sawadika-ring.jpg',
+  '/sawadika/sawadika-tuktuk-drive.jpg',
+  '/sawadika/sawadika-tuktuk-seat.jpg',
+  '/sawadika/sawadika-tuktuk-lean.jpg',
+]);
 
 // Rebuild the shared #release-pic-picker with a given set of images. Each card
 // opener that wants a picture chooser calls this with its own pics + select fn,
