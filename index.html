@@ -16001,22 +16001,30 @@ function _tintImage(img, color) {
 // on-page cd-badge-chip / My-Badges shape so every countdown card matches.
 function _drawSupporterBadge(ctx, W, rightX, baselineY, opts) {
   const { emblem: emblemImg, tint, pill, ink, border, label = 'EARLY SUPPORTER' } = opts;
+  const H = ctx.canvas.height;
   const emblem = (emblemImg && (emblemImg.naturalWidth || emblemImg.width))
     ? (tint ? _tintImage(emblemImg, tint) : emblemImg) : null;
-  const emH = Math.round(W * 0.030);
-  const emW = emblem ? Math.round(emH * (emblem.width / emblem.height)) : 0;
-  const fontPx = Math.round(W * 0.024);
+  const fontPx = Math.round(W * 0.022);
   ctx.font = `700 ${fontPx}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
   const textW = ctx.measureText(label).width;
-  const gap = emblem ? Math.round(W * 0.016) : 0;
-  const padX = Math.round(W * 0.024);
-  const pillH = Math.round(W * 0.058);
+  // Size the emblem off the TEXT (not the card) so the two share one even row.
+  const emH = emblem ? Math.round(fontPx * 1.2) : 0;
+  const emW = emblem ? Math.round(emH * (emblem.width / emblem.height)) : 0;
+  const gap = emblem ? Math.round(fontPx * 0.55) : 0;
+  const padX = Math.round(fontPx * 0.85);
+  const padY = Math.round(fontPx * 0.55);
+  const pillH = Math.max(emH, fontPx) + padY * 2;   // pill hugs its contents
   const pillW = padX * 2 + emW + gap + textW;
-  const pillX = rightX - pillW;
-  const pillY = Math.round(baselineY - pillH * 0.74);
+  // Right-align within the margin, but keep the whole pill on-card (never clipped
+  // by the top / left / right edges).
+  const pad = Math.round(W * 0.02);
+  const pillX = Math.max(pad, rightX - pillW);
+  let pillY = Math.round(baselineY - fontPx * 0.32 - pillH / 2);   // centre on the text row
+  const topMargin = Math.round(H * 0.028);
+  if (pillY < topMargin) pillY = topMargin;
   const cy = pillY + pillH / 2;
   _roundRectPath(ctx, pillX, pillY, pillW, pillH, pillH / 2);
   ctx.fillStyle = pill;
