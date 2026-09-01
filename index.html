@@ -16440,31 +16440,38 @@ function drawLisaCardFull(ctx, canvas, d) {
   const ctaTop = H - Math.round(H * (landscape ? 0.12 : 0.11));
   let y = ctaTop - Math.round(H * 0.03) - stackH;
 
-  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  // Text can hug the left (default) or the right — used to keep the block off the
+  // subject when they're composed to one side (per-image via LISA_FRAME.textSide).
+  const rightText = d.textSide === 'right';
+  const tAlign = rightText ? 'right' : 'left';
+  const tx = rightText ? (W - M) : M;
+  const lx = rightText ? (W - M - logoW) : M;
+
+  ctx.textAlign = tAlign; ctx.textBaseline = 'top';
   ctx.fillStyle = 'rgba(247,228,224,0.8)';
   ctx.font = `500 ${eyeH}px "DM Mono", monospace`; ctx.letterSpacing = '4px';
-  ctx.fillText('LISA · NEW SINGLE', M, y); ctx.letterSpacing = '0px';
+  ctx.fillText('LISA · NEW SINGLE', tx, y); ctx.letterSpacing = '0px';
   y += eyeH + Math.round(H * S.eyeGap);
 
   if (logoW) {
     ctx.save(); ctx.shadowColor = 'rgba(9,2,4,0.6)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 3;
-    ctx.drawImage(d.logoImg, M, y, logoW, logoH); ctx.restore();
+    ctx.drawImage(d.logoImg, lx, y, logoW, logoH); ctx.restore();
   } else {
     ctx.fillStyle = CREAM; ctx.letterSpacing = '1px';
     _fitFont(ctx, 'SaWaDiKa', '700', 'Georgia, "Times New Roman", serif', titleH, tw, 28);
-    ctx.fillText('SaWaDiKa', M, y); ctx.letterSpacing = '0px';
+    ctx.fillText('SaWaDiKa', tx, y); ctx.letterSpacing = '0px';
   }
   y += logoH + Math.round(H * S.titleGap);
 
   ctx.save(); ctx.shadowColor = 'rgba(9,2,4,0.6)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 2;
   ctx.fillStyle = '#fff';
   _fitFont(ctx, cdBig, '', 'Georgia, "Times New Roman", serif', cdH, tw, 24);
-  ctx.letterSpacing = '2px'; ctx.fillText(cdBig, M, y); ctx.restore(); ctx.letterSpacing = '0px';
+  ctx.letterSpacing = '2px'; ctx.fillText(cdBig, tx, y); ctx.restore(); ctx.letterSpacing = '0px';
   y += cdH + Math.round(H * S.cdGap);
 
   ctx.fillStyle = 'rgba(247,228,224,0.8)';
   _fitFont(ctx, d.dateLine, '500', '"DM Mono", monospace', dateH, tw, 12);
-  ctx.letterSpacing = '2px'; ctx.fillText(d.dateLine, M, y); ctx.letterSpacing = '0px';
+  ctx.letterSpacing = '2px'; ctx.fillText(d.dateLine, tx, y); ctx.letterSpacing = '0px';
 
   // CTA centered at the very bottom.
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
@@ -16664,6 +16671,7 @@ async function selectLisaCardArt(url, thumbEl) {
     _lisaCardData.focal = fr.y;
     _lisaCardData.focalX = fr.x;
     _lisaCardData.zoom = fr.zoom;
+    _lisaCardData.textSide = fr.textSide;
     drawLisaCard(canvas, _lisaCardData);
     _markCardReady(canvas);
   }
@@ -17625,7 +17633,7 @@ const LISA_FULLBLEED = new Set([
 // subject can be shifted sideways off the text.
 const LISA_FRAME = {
   '/sawadika/sawadika-lisa.jpg':         { y: 0.08 },
-  '/sawadika/sawadika-ring.jpg':         { y: 0.06, x: 0, zoom: 1.2 },
+  '/sawadika/sawadika-ring.jpg':         { y: 0.06, textSide: 'right' },
   '/sawadika/sawadika-tuktuk-drive.jpg': { y: 0.30 },
   '/sawadika/sawadika-tuktuk-seat.jpg':  { y: 0.04 },
   '/sawadika/sawadika-tuktuk-lean.jpg':  { y: 0.06 },
