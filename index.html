@@ -16801,9 +16801,67 @@ function drawJisooTeaserCard(canvas, d) {
   ctx.textAlign = 'left'; ctx.letterSpacing = '0px';
 }
 
+// Full-bleed "poster" variant — a CLICK promo photo covers the whole card. These
+// teaser images already carry the CLICK/JISOO title + date, so we overlay ONLY the
+// BU frame (wordmark, supporter status, live countdown, pre-save CTA) — no title.
+function drawJisooFull(ctx, canvas, d) {
+  const W = canvas.width, H = canvas.height;
+  const CREAM = '#f6efe9';
+  const M = Math.round(W * 0.05);
+
+  const img = d.photoImg;
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const zoom = (typeof d.zoom === 'number') ? d.zoom : 1;
+  const sc = Math.max(W / iw, H / ih) * zoom;
+  const dw = iw * sc, dh = ih * sc;
+  const fx = (typeof d.focalX === 'number') ? d.focalX : 0.5;
+  const fy = (typeof d.focalY === 'number') ? d.focalY : 0.5;
+  ctx.fillStyle = '#0c0a0b'; ctx.fillRect(0, 0, W, H);
+  ctx.drawImage(img, Math.min(0, (W - dw) * fx), Math.min(0, (H - dh) * fy), dw, dh);
+
+  // Scrims — bottom (countdown/CTA) + soft top (wordmark row).
+  let g = ctx.createLinearGradient(0, H * 0.5, 0, H);
+  g.addColorStop(0, 'rgba(6,4,6,0)'); g.addColorStop(1, 'rgba(4,2,4,0.92)');
+  ctx.fillStyle = g; ctx.fillRect(0, H * 0.5, W, H * 0.5);
+  g = ctx.createLinearGradient(0, 0, 0, H * 0.18);
+  g.addColorStop(0, 'rgba(4,2,4,0.5)'); g.addColorStop(1, 'rgba(4,2,4,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.18);
+
+  let diff = Date.parse(d.target) - Date.now();
+  const isOut = !(diff > 0);
+  let dd = 0, hh = 0, mm = 0;
+  if (!isOut) { dd = Math.floor(diff / 86400000); diff %= 86400000; hh = Math.floor(diff / 3600000); diff %= 3600000; mm = Math.floor(diff / 60000); }
+  const p2 = n => String(n).padStart(2, '0');
+  const cdBig = isOut ? (d.liveLabel || 'OUT NOW') : `${p2(dd)} : ${p2(hh)} : ${p2(mm)}`;
+
+  const topY = Math.round(H * 0.07);
+  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  ctx.font = '500 20px "DM Mono", monospace'; ctx.letterSpacing = '4px';
+  ctx.fillStyle = 'rgba(246,239,233,0.9)';
+  ctx.fillText('BLINKS UNITED', M, topY);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = d.earned ? CREAM : 'rgba(246,239,233,0.72)';
+  ctx.fillText(d.earned ? '★ EARLY SUPPORTER' : (isOut ? 'OUT NOW' : 'COUNTDOWN'), W - M, topY);
+  ctx.letterSpacing = '0px';
+
+  ctx.textAlign = 'center';
+  ctx.save(); ctx.shadowColor = 'rgba(4,2,4,0.7)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 2;
+  ctx.fillStyle = '#fff';
+  ctx.font = `700 ${Math.round(H * 0.085)}px Georgia, "Times New Roman", serif`; ctx.letterSpacing = '3px';
+  ctx.fillText(cdBig, W / 2, H - Math.round(H * 0.16));
+  ctx.restore(); ctx.letterSpacing = '0px';
+
+  ctx.fillStyle = CREAM; ctx.font = '600 22px "DM Mono", monospace'; ctx.letterSpacing = '2px';
+  ctx.fillText('CLICK · JISOO.IO ↗', W / 2, H - Math.round(H * 0.075));
+  ctx.font = '500 15px "DM Mono", monospace'; ctx.fillStyle = 'rgba(246,239,233,0.6)';
+  ctx.fillText('shared via blinksunited.com', W / 2, H - Math.round(H * 0.033));
+  ctx.textAlign = 'left'; ctx.letterSpacing = '0px';
+}
+
 function drawJisooCard(canvas, d) {
-  if (d.teaser) return drawJisooTeaserCard(canvas, d);
   const ctx = canvas.getContext('2d');
+  if (d.artMode === 'full' && d.photoImg) return drawJisooFull(ctx, canvas, d);
+  if (d.teaser) return drawJisooTeaserCard(canvas, d);
   const W = canvas.width, H = canvas.height;
   const INK = '#68493a';
   const PX = Math.round(W * 0.075);
@@ -16895,7 +16953,7 @@ async function _openJisooShareCard() {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
-  document.getElementById('release-pic-picker').style.display = 'none';
+  buildPicPicker(JISOO_CARD_PICS, 'selectJisooCardArt');   // carnival card + CLICK promo shots
   _cardType = 'jisoo';
   _cardTrackId = null;
   _cardFormat = 'landscape';
@@ -16923,6 +16981,7 @@ async function _openJisooShareCard() {
   const earned = _buSignedIn && !!localStorage.getItem(JISOO_SAVE_LS);
   _jisooCardData = {
     earned, teaser, teaserImg, bgImg: bg, parkImg: park, titleImg: title, clickImg: click, heartImg: heart,
+    artMode: null, photoImg: null,   // default = carnival/teaser card; the picker can switch to a full-bleed promo shot
     target: JISOO_RELEASE_AT,
     dateLine: 'Sep 4, 2026 · 1PM KST / 12AM EDT',
     dateShort: 'Sep 4, 2026',
@@ -16931,6 +16990,39 @@ async function _openJisooShareCard() {
   label.textContent = earned ? "I'M IN — JISOO" : 'JISOO · COUNTDOWN';
   drawJisooCard(canvas, _jisooCardData);
   _markCardReady(canvas);
+}
+
+// Picker: the carnival/teaser card (default, thumb 0) + the CLICK promo shots.
+// The promo images already carry the title/date, so they render full-bleed with
+// only the BU frame overlaid (drawJisooFull).
+const JISOO_CARD_PICS = ['/jisoo-click-teaser.webp', '/jisoo-click-bear.jpg', '/jisoo-click-panel.jpg'];
+const JISOO_FULLBLEED = new Set(['/jisoo-click-bear.jpg', '/jisoo-click-panel.jpg']);
+// Per-photo framing (both are 16:9 → fit landscape as-is; only matters on the
+// square format, where focalX/Y pick which side to keep). {x,y}=0..1, zoom>1 crops in.
+const JISOO_FRAME = {
+  '/jisoo-click-bear.jpg':  { x: 0.5, y: 0.3 },   // JISOO centre-right; keep the top on square
+  '/jisoo-click-panel.jpg': { x: 0.7, y: 0.4 },   // JISOO on the right; favour her side on square
+};
+
+async function selectJisooCardArt(url, thumbEl) {
+  document.querySelectorAll('.release-pic-thumb').forEach(t => t.classList.remove('active'));
+  if (thumbEl) thumbEl.classList.add('active');
+  const canvas = document.getElementById('card-canvas');
+  const label  = document.getElementById('card-box-label');
+  if (!_jisooCardData) return;
+  label.textContent = 'GENERATING…';
+  if (JISOO_FULLBLEED.has(url)) {
+    const img = await loadImg(url).catch(() => null);
+    const fr = JISOO_FRAME[url] || {};
+    _jisooCardData.artMode = 'full';
+    _jisooCardData.photoImg = img;
+    _jisooCardData.focalX = fr.x; _jisooCardData.focalY = fr.y; _jisooCardData.zoom = fr.zoom;
+  } else {
+    _jisooCardData.artMode = null;   // back to the carnival/teaser card
+  }
+  drawJisooCard(canvas, _jisooCardData);
+  _markCardReady(canvas);
+  label.textContent = _jisooCardData.earned ? "I'M IN — JISOO" : 'JISOO · COUNTDOWN';
 }
 
 // ── COMMUNITY GOAL HIT CARD ──────────────────────────────────────────────────
