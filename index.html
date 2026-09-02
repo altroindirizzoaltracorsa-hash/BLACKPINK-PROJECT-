@@ -8824,7 +8824,7 @@ async function tryAutoLoad() {
       // network) still has a Supabase auth token in storage — don't nag them to
       // "migrate"; the normal sign-in panel handles a quick re-auth.
       const saved = getSavedUsername();
-      if (saved && !hasSupabaseAuthToken()) showLegacyMigrationNotice(saved);
+      if (saved && !hasSupabaseAuthToken()) maybeShowLegacyMigration(saved);
     } finally {
       _autoLoadInProgress = false;
     }
@@ -8869,6 +8869,22 @@ function dismissLegacyMigration() {
   try { localStorage.setItem('bu_migration_snooze', String(Date.now() + 7 * 864e5)); } catch {}
   closeLegacyMigration();
 }
+// Show the migration nudge only if this legacy Last.fm name ISN'T already linked
+// to a full account. Someone who migrated on another device/browser (linked their
+// old name to a new X/Google/Discord/email account) shouldn't be nagged here.
+// The result is cached locally so we only ask the server once.
+async function maybeShowLegacyMigration(username) {
+  try {
+    if (localStorage.getItem('bu_migration_linked') === username.toLowerCase()) return;
+    const r = await fetch(`/api/legacy-linked?source=lastfm&username=${encodeURIComponent(username)}`, { cache: 'no-store' });
+    const j = await r.json();
+    if (j && j.linked) {
+      try { localStorage.setItem('bu_migration_linked', username.toLowerCase()); } catch {}
+      return;   // already migrated — never nag for this name again
+    }
+  } catch {}
+  showLegacyMigrationNotice(username);
+}
 function startAccountCreation() {
   _suppressMigrationModal = true;
   closeLegacyMigration();
@@ -8886,7 +8902,7 @@ async function checkLegacyMigrationGate() {
     } catch {}
   }
   const saved = getSavedUsername();
-  if (saved && !hasSupabaseAuthToken()) showLegacyMigrationNotice(saved);
+  if (saved && !hasSupabaseAuthToken()) maybeShowLegacyMigration(saved);
 }
 
 async function refreshProfile() {
