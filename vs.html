@@ -98,24 +98,28 @@
     border:1px solid #f5c54255;border-radius:5px;padding:1px 5px;margin-right:5px;vertical-align:1px;}
   .m24.done{color:var(--muted);}
   .m24.done b{color:var(--gold);}
-  .gstats{margin-top:12px;background:rgba(0,0,0,0.35);border:1px solid #ffffff1a;border-radius:10px;padding:9px 11px;}
-  .ghead{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px 8px;margin-bottom:7px;
-    font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);}
-  .ghead .gavg{font-size:10px;font-weight:700;letter-spacing:.02em;text-transform:none;color:var(--pink-soft);}
-  .glist{max-height:300px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
+  .gstats{margin-top:14px;background:rgba(0,0,0,0.3);border:1px solid #ffffff1a;border-radius:12px;padding:13px 13px 6px;}
+  .gpanelhead{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px 10px;}
+  .gtitle{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--pink-soft);}
+  .gpanelhead .gavg{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;letter-spacing:.02em;}
+  .gsub{font-size:10px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin:8px 0 2px;}
+  .glist{max-height:340px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
   .glist::-webkit-scrollbar{width:5px;}
   .glist::-webkit-scrollbar-thumb{background:#ffffff26;border-radius:3px;}
-  .gday{border-top:1px solid #ffffff12;}
+  .gday{border-top:1px solid #ffffff14;}
   .gday:first-child{border-top:none;}
-  .gdayhead{display:flex;align-items:center;gap:8px;padding:7px 2px;cursor:pointer;font-size:11.5px;color:var(--text);font-variant-numeric:tabular-nums;}
-  .gdaycar{color:var(--dim);font-size:9px;transition:transform .12s;display:inline-block;width:9px;}
+  .gdayrow{display:flex;align-items:center;gap:11px;padding:12px 2px;cursor:pointer;}
+  .gdaycar{color:var(--dim);font-size:10px;width:10px;flex:none;transition:transform .12s;}
   .gday.open .gdaycar{transform:rotate(90deg);}
-  .gdayname{flex:1;letter-spacing:.02em;}
-  .gdaybody{padding:2px 0 8px 17px;}
-  .grow{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:var(--muted);
-    padding:2.5px 0;font-variant-numeric:tabular-nums;}
-  .grow .gplus{color:#4ade80;font-weight:700;}
-  .gdayhead .gplus{font-size:11px;}
+  .gdayleft{flex:1;min-width:0;}
+  .gdaydate{font-size:14px;font-weight:700;letter-spacing:.04em;color:var(--text);}
+  .gdaysub{font-size:10px;color:var(--dim);margin-top:3px;letter-spacing:.02em;font-variant-numeric:tabular-nums;}
+  .gdaytot{font-size:14px;font-weight:800;color:#4ade80;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .gdaybody{padding:0 2px 10px 23px;}
+  .grow{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);
+    padding:3px 0;border-top:1px solid #ffffff0a;font-variant-numeric:tabular-nums;}
+  .grow:first-child{border-top:none;}
+  .grow .gplus{color:#4ade80;font-weight:600;}
   .gempty{padding:16px 12px;text-align:center;color:var(--dim);font-size:11px;line-height:1.5;}
   .hchart{position:relative;touch-action:pan-y;}
   .hsvg{width:100%;height:auto;display:block;}
@@ -420,23 +424,29 @@
     const s = gainStats(id, mk);
     if (!s) return `<div class="gstats"><div class="gempty">Collecting — hourly ${label} gains fill in as snapshots build up.</div></div>`;
     const sgn = n => (n < 0 ? '−' : '+') + full(Math.abs(n));
+    const sabbr = n => (n < 0 ? '−' : '+') + abbr(Math.abs(n));
     const hourLbl = t => new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', hour:'numeric'}).format(new Date(t));
-    const dayLbl  = t => new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', weekday:'short', month:'short', day:'numeric'}).format(new Date(t));
+    const dayDate = t => new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Seoul', day:'numeric', month:'short', year:'numeric'}).format(new Date(t)).toUpperCase();
+    const dayWk   = t => new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', weekday:'long'}).format(new Date(t));
     const days = Object.keys(s.hoursByDay).map(Number).sort((a,b) => b - a);   // newest first
     if (days.length && !_daysSeen.has(id)) { _openDays.add(id+'|'+days[0]); _daysSeen.add(id); }  // open the latest day once
     const rows = days.map(day => {
       const hrs = s.hoursByDay[day];
       const total = hrs.reduce((n,h) => n + h.gain, 0);
+      const perHr = Math.round(total / hrs.length);
       const key = id+'|'+day, open = _openDays.has(key);
       const body = open ? `<div class="gdaybody">${hrs.slice().reverse().map(h =>
-        `<div class="grow"><span>→ ${hourLbl(h.t)} KST</span><span class="gplus">${sgn(h.gain)}</span></div>`).join('')}</div>` : '';
-      return `<div class="gday${open?' open':''}"><div class="gdayhead" onclick="toggleGDay('${key}')">`
-        + `<span class="gdaycar">▸</span><span class="gdayname">${dayLbl(hrs[0].t)}</span>`
-        + `<span class="gplus">${sgn(total)}</span></div>${body}</div>`;
+        `<div class="grow"><span>${hourLbl(h.t)} KST</span><span class="gplus">${sgn(h.gain)}</span></div>`).join('')}</div>` : '';
+      return `<div class="gday${open?' open':''}"><div class="gdayrow" onclick="toggleGDay('${key}')">`
+        + `<span class="gdaycar">▸</span>`
+        + `<div class="gdayleft"><div class="gdaydate">${dayDate(hrs[0].t)}</div>`
+        + `<div class="gdaysub">${dayWk(hrs[0].t)} · ${hrs.length}h · avg ${sabbr(perHr)}/hr</div></div>`
+        + `<div class="gdaytot">${sgn(total)}</div></div>${body}</div>`;
     }).join('');
     return `<div class="gstats">
-      <div class="ghead">${label} gains · by day → tap a day for its hours
-        <span class="gavg">avg ${s.avgHour!=null?sgn(s.avgHour):'—'}/hr · ${s.avgDay!=null?sgn(s.avgDay):'—'}/day</span></div>
+      <div class="gpanelhead"><span class="gtitle">${label} gains — by day</span>
+        <span class="gavg">avg ${s.avgHour!=null?sabbr(s.avgHour):'—'}/hr · ${s.avgDay!=null?sabbr(s.avgDay):'—'}/day</span></div>
+      <div class="gsub">${days.length} day${days.length>1?'s':''} · tap one for its hours</div>
       <div class="glist">${rows}</div></div>`;
   }
 
