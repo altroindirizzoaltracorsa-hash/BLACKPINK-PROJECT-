@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>YouTube Face-Off — Blinks United</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Live head-to-head YouTube views & likes.">
+<meta name="theme-color" content="#0c0509">
+<style>
+  :root{
+    --bg:#0c0509; --card:#15070c; --line:#3a1526; --pink:#ff2e77; --pink-soft:#ff8fb4;
+    --text:#fff2f6; --muted:#c48aa0; --dim:#8a5c6c; --gold:#f5c542;
+    --a:#ff2e77; --b:#3aa0ff;
+  }
+  *{box-sizing:border-box;margin:0;font-family:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;}
+  body{background:
+      radial-gradient(120% 60% at 50% -10%, #3a0c22 0%, transparent 55%),
+      linear-gradient(180deg,#15070c 0%, #0c0509 100%);
+    color:var(--text); min-height:100vh; padding:22px 16px 48px;}
+  .wrap{max-width:820px;margin:0 auto;}
+  .top{text-align:center;margin-bottom:20px;}
+  .live{display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.24em;color:var(--pink-soft);text-transform:uppercase;}
+  .live .dot{width:8px;height:8px;border-radius:50%;background:var(--pink);box-shadow:0 0 0 0 #ff2e7799;animation:pulse 1.7s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 #ff2e7766}70%{box-shadow:0 0 0 9px #ff2e7700}100%{box-shadow:0 0 0 0 #ff2e7700}}
+  h1{font-size:23px;font-weight:800;letter-spacing:.04em;margin:10px 0 4px;
+     background:linear-gradient(90deg,#ff8fb4,#ff2e77 55%,#ff8fb4);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .sub{font-size:11px;color:var(--dim);letter-spacing:.06em;}
+
+  .lead{text-align:center;font-size:13px;color:var(--text);margin:14px 0 10px;min-height:18px;}
+  .lead b{color:var(--pink);}
+
+  .bar{display:flex;height:14px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#0a0407;margin-bottom:22px;}
+  .bar .segA{background:linear-gradient(90deg,#ff2e77,#ff8fb4);}
+  .bar .segB{background:linear-gradient(90deg,#3aa0ff,#8fd0ff);}
+  .bar>div{transition:width .8s cubic-bezier(.4,0,.2,1);}
+
+  .grid{display:grid;grid-template-columns:1fr 54px 1fr;gap:10px;align-items:stretch;}
+  @media(max-width:560px){.grid{grid-template-columns:1fr;}.vs{order:-1;margin:0 auto;}}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;position:relative;overflow:hidden;}
+  .card.leadA{border-color:#ff2e7788;box-shadow:0 0 0 1px #ff2e7733,0 12px 30px -14px #000;}
+  .card.leadB{border-color:#3aa0ff88;box-shadow:0 0 0 1px #3aa0ff33,0 12px 30px -14px #000;}
+  .thumb{width:100%;aspect-ratio:16/9;border-radius:10px;object-fit:cover;background:#000;display:block;border:1px solid #ffffff10;}
+  .vtitle{font-size:12.5px;font-weight:700;line-height:1.35;margin:10px 0 2px;color:var(--text);
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.7em;}
+  .vchan{font-size:10.5px;color:var(--muted);margin-bottom:10px;}
+  .stat{display:flex;align-items:baseline;justify-content:space-between;padding:7px 0;border-top:1px dashed #ffffff12;}
+  .stat .lbl{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);}
+  .stat .num{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text);}
+  .stat.likes .num{font-size:17px;color:var(--pink-soft);}
+  .delta{font-size:10px;color:#2fd07a;font-variant-numeric:tabular-nums;margin-left:8px;white-space:nowrap;}
+  .delta.zero{color:var(--dim);}
+  .watch{display:inline-block;margin-top:10px;font-size:10.5px;color:var(--pink-soft);text-decoration:none;border:1px solid #ff2e7744;border-radius:99px;padding:5px 12px;}
+  .watch:hover{background:#ff2e7714;}
+
+  .vs{align-self:center;justify-self:center;font-weight:900;font-size:16px;letter-spacing:.06em;color:#12000a;
+    background:linear-gradient(180deg,#ffd0e0,#ff8fb4);border-radius:50%;width:46px;height:46px;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px -6px #ff2e77aa;}
+
+  .foot{text-align:center;margin-top:22px;font-size:10.5px;color:var(--dim);letter-spacing:.06em;}
+  .foot a{color:var(--muted);text-decoration:underline;}
+  .msg{text-align:center;padding:34px 16px;color:var(--muted);font-size:13px;line-height:1.6;
+    border:1px dashed var(--line);border-radius:14px;background:#0a0407;}
+  .msg code{color:var(--pink-soft);background:#ff2e7714;padding:1px 6px;border-radius:5px;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="live"><span class="dot"></span> Live · YouTube</div>
+      <h1>FACE-OFF</h1>
+      <div class="sub" id="sub">views &amp; likes · head to head</div>
+    </div>
+
+    <div id="app">
+      <div class="msg">Loading the face-off…</div>
+    </div>
+
+    <div class="foot" id="foot"></div>
+  </div>
+
+<script>
+  // The two videos being compared. Swap these ids to change the matchup.
+  const VIDEOS = ['LzgE8ift2Uw', 'h-7_04c_hVc'];
+  const POLL_MS = 30000;
+
+  const $ = s => document.querySelector(s);
+  const fmt = n => (n == null ? '—' : Number(n).toLocaleString('en-US'));
+  const abbr = n => {
+    if (n == null) return '';
+    if (n >= 1e9) return (n/1e9).toFixed(2)+'B';
+    if (n >= 1e6) return (n/1e6).toFixed(2)+'M';
+    if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+    return String(n);
+  };
+  const prev = {};   // id -> { views, likes, ts }
+  let lastUpdate = 0, builtFor = '';
+
+  function cardHtml(v, side, leading){
+    const cls = 'card' + (leading ? (side===0?' leadA':' leadB') : '');
+    return `<div class="${cls}" id="card-${v.id}">
+      <img class="thumb" src="${v.thumb||''}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="vtitle">${escapeHtml(v.title||'—')}</div>
+      <div class="vchan">${escapeHtml(v.channel||'')}</div>
+      <div class="stat views"><span class="lbl">Views</span>
+        <span><span class="num" id="views-${v.id}">${fmt(v.views)}</span><span class="delta zero" id="dv-${v.id}"></span></span></div>
+      <div class="stat likes"><span class="lbl">Likes</span>
+        <span><span class="num" id="likes-${v.id}">${v.likes==null?'hidden':fmt(v.likes)}</span><span class="delta zero" id="dl-${v.id}"></span></span></div>
+      <a class="watch" href="https://youtu.be/${v.id}" target="_blank" rel="noopener">Watch ↗</a>
+    </div>`;
+  }
+  function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+  function render(data){
+    const vids = data.videos || [];
+    if (vids.length < 2){
+      $('#app').innerHTML = '<div class="msg">Couldn’t load both videos. Check the video IDs.</div>';
+      return;
+    }
+    const [a,b] = vids;
+    const aLead = a.views >= b.views;
+
+    // (Re)build the shell only when the set of videos changes; otherwise just update numbers.
+    const sig = vids.map(v=>v.id).join('|');
+    if (sig !== builtFor){
+      builtFor = sig;
+      $('#app').innerHTML = `
+        <div class="lead" id="lead"></div>
+        <div class="bar"><div class="segA" id="segA"></div><div class="segB" id="segB"></div></div>
+        <div class="grid">
+          ${cardHtml(a,0,aLead)}
+          <div class="vs">VS</div>
+          ${cardHtml(b,1,!aLead)}
+        </div>`;
+    }
+
+    // Leader line + battle bar
+    const total = Math.max(1, a.views + b.views);
+    $('#segA').style.width = (a.views/total*100)+'%';
+    $('#segB').style.width = (b.views/total*100)+'%';
+    const gap = Math.abs(a.views - b.views);
+    const leaderName = aLead ? a : b;
+    $('#lead').innerHTML = gap === 0
+      ? `Dead even at <b>${fmt(a.views)}</b> views`
+      : `<b>${escapeHtml(shortTitle(leaderName))}</b> leads by <b>${fmt(gap)}</b> views <span style="color:var(--dim)">(${abbr(gap)})</span>`;
+
+    // Update numbers + per-poll deltas
+    for (const v of vids){
+      setNum('views-'+v.id, v.views);
+      setNum('likes-'+v.id, v.likes==null?null:v.likes, 'hidden');
+      const p = prev[v.id];
+      if (p){
+        showDelta('dv-'+v.id, v.views - p.views, v.ts - p.ts);
+        if (v.likes!=null && p.likes!=null) showDelta('dl-'+v.id, v.likes - p.likes, v.ts - p.ts);
+      }
+      prev[v.id] = { views:v.views, likes:v.likes, ts:data.ts };
+    }
+    // toggle leader glow
+    document.getElementById('card-'+a.id)?.classList.toggle('leadA', aLead);
+    document.getElementById('card-'+a.id)?.classList.toggle('leadB', false);
+    document.getElementById('card-'+b.id)?.classList.toggle('leadB', !aLead);
+    document.getElementById('card-'+b.id)?.classList.toggle('leadA', false);
+
+    lastUpdate = Date.now();
+    tickFoot();
+  }
+  function shortTitle(v){ return (v.title||'').split(/[\(\[|—-]/)[0].trim().slice(0,28) || v.channel || 'A'; }
+  function setNum(id, val, placeholder){ const el=document.getElementById(id); if(el) el.textContent = (val==null?(placeholder||'—'):fmt(val)); }
+  function showDelta(id, d, dtMs){
+    const el = document.getElementById(id); if(!el) return;
+    if (!d){ el.textContent=''; el.className='delta zero'; return; }
+    const perMin = dtMs>0 ? Math.round(d / (dtMs/60000)) : 0;
+    el.textContent = `▲ ${fmt(d)}${perMin?` · ${abbr(perMin)}/min`:''}`;
+    el.className = 'delta';
+  }
+
+  function tickFoot(){
+    if (!lastUpdate){ $('#foot').textContent=''; return; }
+    const s = Math.round((Date.now()-lastUpdate)/1000);
+    $('#foot').innerHTML = `updated ${s<3?'just now':s+'s ago'} · auto-refreshes every ${POLL_MS/1000}s · YouTube view counts refresh every few minutes`;
+  }
+  setInterval(tickFoot, 1000);
+
+  async function poll(){
+    try{
+      const r = await fetch('/api/youtube-stats?ids='+VIDEOS.join(','), {cache:'no-store'});
+      const d = await r.json();
+      if (d.error === 'not-configured'){
+        $('#app').innerHTML = `<div class="msg">The live counter isn’t switched on yet.<br><br>Add a <code>YOUTUBE_API_KEY</code> (YouTube Data API v3) in the site settings and it’ll start counting.</div>`;
+        return;
+      }
+      if (d.error){ $('#sub').textContent = 'error: '+d.error; return; }
+      render(d);
+    }catch(e){ /* keep last render */ }
+  }
+  poll();
+  setInterval(poll, POLL_MS);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) poll(); });
+</script>
+</body>
+</html>
