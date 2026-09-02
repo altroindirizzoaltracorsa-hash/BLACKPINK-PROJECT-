@@ -16,6 +16,19 @@ const DEFAULT_IDS = ['LzgE8ift2Uw', 'h-7_04c_hVc'];
 const MAX_POINTS = 800;               // ~33 days at hourly
 const MIN_GAP_MS = 55 * 60 * 1000;    // don't store more than ~once an hour
 const key = id => `bu_yt_hist_${id}`;
+const liveKey = id => `bu_yt_live_${id}`;
+const pinKey = id => `bu_yt_24h_${id}`;
+
+// 24-hour milestone: freeze each video's exact view/like count at release + 24h.
+// Release times are Europe/Rome local (LISA 02:00, JISOO 06:00 on Sep 2), stored
+// here in UTC (Rome = UTC+2 in summer). Edit if a drop time is off.
+const RELEASE = {
+  'LzgE8ift2Uw': '2026-09-02T04:00:00Z', // JISOO — 06:00 Rome → 24h mark Sep 3, 06:00 Rome
+  'h-7_04c_hVc': '2026-09-02T00:00:00Z', // LISA  — 02:00 Rome → 24h mark Sep 3, 02:00 Rome
+};
+const DAY_MS = 24 * 60 * 60 * 1000;
+const PIN_TOL_MS = 95 * 60 * 1000;    // accept a stored point within ~95 min of the exact mark
+const markOf = id => (RELEASE[id] ? Date.parse(RELEASE[id]) + DAY_MS : null);
 
 async function upstash(cmds) {
   const r = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
@@ -76,7 +89,30 @@ export default async function handler(req, res) {
         await upstash([['RPUSH', key(id), point], ['LTRIM', key(id), String(-MAX_POINTS), '-1']]);
         written.push(id);
       }
-      return res.status(200).json({ ok: true, written, ts: now });
+
+      // Pin the 24-hour value once the mark has passed (frozen forever). Pick the
+      // stored point (hourly snapshot or fine live series) closest to the exact
+      // mark; skip until one lands within tolerance so we never pin a stale value.
+      const pinned = [];
+      for (const id of ids) {
+        const mark = markOf(id);
+        if (mark == null || now < mark) continue;
+        const have = await upstash([['GET', pinKey(id)]]);
+        if (have[0]?.result) continue;                                  // already pinned
+        const lists = await upstash([['LRANGE', key(id), '0', '-1'], ['LRANGE', liveKey(id), '-1200', '-1']]);
+        let best = null;
+        for (const arr of [lists[0]?.result || [], lists[1]?.result || []]) {
+          for (const str of arr) {
+            let p; try { p = JSON.parse(str); } catch { continue; }
+            if (!p || !p.t) continue;
+            if (!best || Math.abs(p.t - mark) < Math.abs(best.t - mark)) best = p;
+          }
+        }
+        if (!best || Math.abs(best.t - mark) > PIN_TOL_MS) continue;    // no point near the mark yet
+        await upstash([['SET', pinKey(id), JSON.stringify({ t: best.t, v: best.v, l: best.l, c: best.c, mark })]]);
+        pinned.push(id);
+      }
+      return res.status(200).json({ ok: true, written, pinned, ts: now });
     } catch (e) { return res.status(500).json({ error: e.message }); }
   }
 
@@ -84,15 +120,20 @@ export default async function handler(req, res) {
   //    points ≈ a few hours) for the live-growing chart; otherwise the hourly
   //    long-term series (bu_yt_hist_*). Both are [{t,v,l,c}] newest-last.
   try {
-    const listKey = req.query.live ? (id => `bu_yt_live_${id}`) : key;
+    const listKey = req.query.live ? liveKey : key;
     const lo = req.query.live ? '-1200' : '0';
-    const results = await upstash(ids.map(id => ['LRANGE', listKey(id), lo, '-1']));
-    const videos = {};
+    // One pipeline: the series for each id, then the pinned 24h value for each id.
+    const cmds = ids.map(id => ['LRANGE', listKey(id), lo, '-1'])
+      .concat(ids.map(id => ['GET', pinKey(id)]));
+    const results = await upstash(cmds);
+    const videos = {}, milestones = {};
     ids.forEach((id, i) => {
       videos[id] = (results[i]?.result || [])
         .map(s => { try { return JSON.parse(s); } catch { return null; } })
         .filter(Boolean);
+      const m = results[ids.length + i]?.result;
+      if (m) { try { milestones[id] = JSON.parse(m); } catch {} }
     });
-    return res.status(200).json({ videos });
+    return res.status(200).json({ videos, milestones });
   } catch (e) { return res.status(500).json({ error: e.message }); }
 }

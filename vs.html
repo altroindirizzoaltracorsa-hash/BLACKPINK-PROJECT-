@@ -65,12 +65,22 @@
 
   .hcard{margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 12px 10px;}
   .hhead{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin:0 2px 10px;}
-  .hleggroup{display:flex;gap:12px;margin-left:auto;text-transform:none;letter-spacing:0;}
-  .hleg{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
+  .hleggroup{display:flex;gap:8px;margin-left:auto;text-transform:none;letter-spacing:0;}
+  .hleg{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:11px;color:var(--muted);
+    background:transparent;border:1px solid transparent;border-radius:99px;padding:4px 9px;cursor:pointer;transition:.12s;}
+  .hleg:hover{border-color:#ffffff22;}
+  .hleg.on{background:#ffffff12;border-color:#ffffff33;color:var(--text);font-weight:700;}
+  .hleg.off{opacity:.42;}
   .hdot{width:9px;height:9px;border-radius:50%;flex:none;}
   .htabs{display:flex;gap:6px;margin:0 2px 8px;}
   .htab{flex:1;padding:7px;border-radius:9px;border:1px solid #ffffff14;background:transparent;color:var(--dim);font:inherit;font-size:11px;letter-spacing:.06em;cursor:pointer;}
   .htab.on{background:#ff2e7718;border-color:#ff2e7755;color:var(--pink-soft);font-weight:700;}
+  .m24{margin-top:9px;font-size:10.5px;color:var(--dim);letter-spacing:.02em;line-height:1.5;}
+  .m24 b{color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums;}
+  .m24 .m24tag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.12em;color:var(--gold);
+    border:1px solid #f5c54255;border-radius:5px;padding:1px 5px;margin-right:5px;vertical-align:1px;}
+  .m24.done{color:var(--muted);}
+  .m24.done b{color:var(--gold);}
   .hchart{position:relative;touch-action:pan-y;}
   .hsvg{width:100%;height:auto;display:block;}
   .htip{position:absolute;pointer-events:none;z-index:5;opacity:0;transform:translate(-50%,-100%);
@@ -106,6 +116,22 @@
   const VIDEOS = ['LzgE8ift2Uw', 'h-7_04c_hVc'];
   const POLL_MS = 15000;
 
+  // Release moments (for the "24-hour numbers" milestone). Times are Europe/Rome
+  // local — LISA dropped 02:00, JISOO 06:00 on Sep 2 — expressed here in UTC
+  // (Rome = UTC+2 in summer). The 24h mark is release + 24h; the server freezes
+  // the exact view/like count at that moment. Edit these if a drop time is off.
+  const RELEASE = {
+    'LzgE8ift2Uw': '2026-09-02T04:00:00Z', // JISOO — 06:00 Rome → 24h mark Sep 3, 06:00 Rome
+    'h-7_04c_hVc': '2026-09-02T00:00:00Z', // LISA  — 02:00 Rome → 24h mark Sep 3, 02:00 Rome
+  };
+  const H24_MS = 24*60*60*1000;
+  const markOf = id => (RELEASE[id] ? Date.parse(RELEASE[id]) + H24_MS : null);
+  let milestoneData = {};
+
+  // Legend focus: null = comparison (both), else a single video id.
+  let focus = null;
+  window.setFocus = function(id){ focus = (focus===id ? null : id); drawHistory(); };
+
   const $ = s => document.querySelector(s);
   const fmt = n => (n == null ? '—' : Number(n).toLocaleString('en-US'));
   const abbr = n => {
@@ -128,6 +154,7 @@
         <span><span class="num" id="views-${v.id}">${fmt(v.views)}</span><span class="delta zero" id="dv-${v.id}"></span></span></div>
       <div class="stat likes"><span class="lbl">Likes</span>
         <span><span class="num" id="likes-${v.id}">${v.likes==null?'hidden':fmt(v.likes)}</span><span class="delta zero" id="dl-${v.id}"></span></span></div>
+      <div class="m24" id="m24-${v.id}"></div>
       <a class="watch" href="https://youtu.be/${v.id}" target="_blank" rel="noopener">Watch ↗</a>
     </div>`;
   }
@@ -197,7 +224,29 @@
     el.className = 'delta';
   }
 
+  // ── 24-hour milestone (the number each video hit exactly 24h after release) ──
+  function fmtMark(t){ const d=new Date(t); return d.toLocaleDateString([], {month:'short',day:'numeric'})+', '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+  function fmtCountdown(ms){ ms=Math.max(0,ms); const h=Math.floor(ms/3600000), m=Math.floor(ms%3600000/60000); return (h?h+'h ':'')+m+'m'; }
+  function updateMilestones(){
+    for (const id of VIDEOS){
+      const el = document.getElementById('m24-'+id); if (!el) continue;
+      const mark = markOf(id); if (mark==null){ el.innerHTML=''; el.className='m24'; continue; }
+      const ms = milestoneData[id];
+      if (ms && ms.v!=null){
+        el.className = 'm24 done';
+        el.innerHTML = `<span class="m24tag">24H</span> <b>${fmt(ms.v)}</b> views · <b>${ms.l==null?'—':fmt(ms.l)}</b> likes`;
+      } else if (Date.now() >= mark){
+        el.className = 'm24 wait';
+        el.innerHTML = `<span class="m24tag">24H</span> reached — capturing the exact count…`;
+      } else {
+        el.className = 'm24';
+        el.innerHTML = `<span class="m24tag">24H</span> at ${fmtMark(mark)} · in ${fmtCountdown(mark-Date.now())}`;
+      }
+    }
+  }
+
   function tickFoot(){
+    updateMilestones();
     if (!lastUpdate){ $('#foot').textContent=''; return; }
     const s = Math.round((Date.now()-lastUpdate)/1000);
     $('#foot').innerHTML = `updated ${s<3?'just now':s+'s ago'} · auto-refreshes every ${POLL_MS/1000}s · YouTube view counts refresh every few minutes`;
@@ -229,8 +278,16 @@
       const v=(window._vids||[])[i]; const nm=v?shortTitle(v):('Video '+(i+1));
       return { id, name:nm, color:i===0?'var(--a)':'var(--b)', pts };
     });
-    const legend = series.map(s=>`<span class="hleg"><span class="hdot" style="background:${s.color}"></span>${escapeHtml(s.name)}</span>`).join('');
-    const all = series.flatMap(s=>s.pts);
+    // The legend doubles as a focus switch: tap a name to see just that video's
+    // chart (its own zoomed Y-axis, so the line climbs); tap again — or with
+    // neither selected — you get the comparison (default).
+    const legend = series.map(s=>{
+      const st = focus===s.id ? ' on' : (focus ? ' off' : '');
+      return `<button class="hleg${st}" onclick="setFocus('${s.id}')"><span class="hdot" style="background:${s.color}"></span>${escapeHtml(s.name)}</button>`;
+    }).join('');
+    // What actually gets plotted: one video when focused, else both.
+    const shown = focus ? series.filter(s=>s.id===focus) : series;
+    const all = shown.flatMap(s=>s.pts);
     if (all.length < 2){
       host.innerHTML = `<div class="hcard"><div class="hhead">Live<span class="hleggroup">${legend}</span></div>${tabs}<div class="hempty">Charting live — the line starts drawing within a few seconds and keeps growing (and it stays saved across reloads). Tap the chart to read any point.</div></div>`;
       chartGeom = null; return;
@@ -245,20 +302,31 @@
     for(let i=0;i<=3;i++){ const gv=yLo+(yHi-yLo)*i/3, gy=Y(gv);
       grid+=`<line x1="${PL}" x2="${W-PR}" y1="${gy.toFixed(1)}" y2="${gy.toFixed(1)}" stroke="#ffffff10"/>`
           + `<text x="${PL-8}" y="${(gy+3).toFixed(1)}" text-anchor="end" fill="#8a5c6c" font-size="9">${abbr(Math.round(gv))}</text>`; }
-    const lines = series.map(s=>{ if(!s.pts.length) return '';
+    // 24-hour marks: a gold guide line at each shown video's release+24h, plus a
+    // gold dot at the pinned value once it's captured (both only if in-range).
+    let marks='';
+    for (const s of shown){
+      const mk24 = markOf(s.id); if (mk24==null || mk24<tMin || mk24>tMax) continue;
+      const mx = X(mk24);
+      marks += `<line x1="${mx.toFixed(1)}" x2="${mx.toFixed(1)}" y1="${PT}" y2="${H-PB}" stroke="var(--gold)" stroke-opacity="0.5" stroke-dasharray="4 3"/>`
+             + `<text x="${mx.toFixed(1)}" y="${PT-4}" text-anchor="middle" fill="var(--gold)" font-size="8.5">24h</text>`;
+      const ms = milestoneData[s.id];
+      if (ms && ms[mk]!=null) marks += `<circle cx="${mx.toFixed(1)}" cy="${Y(ms[mk]).toFixed(1)}" r="4" fill="var(--gold)" stroke="#0c0509" stroke-width="1.5"/>`;
+    }
+    const lines = shown.map(s=>{ if(!s.pts.length) return '';
       const d=s.pts.map((p,i)=>`${i?'L':'M'}${X(p.t).toFixed(1)} ${Y(p.y).toFixed(1)}`).join(' ');
       const last=s.pts[s.pts.length-1];
       return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`
            + `<circle cx="${X(last.t).toFixed(1)}" cy="${Y(last.y).toFixed(1)}" r="3.5" fill="${s.color}"/>`; }).join('');
     const crosshair = `<line class="hxl" x1="0" x2="0" y1="${PT}" y2="${H-PB}" stroke="#ffffff55" stroke-dasharray="3 3" style="opacity:0"/>`
-      + series.map((s,j)=>`<circle class="hxc" data-j="${j}" r="4" fill="${s.color}" stroke="#0c0509" stroke-width="1.5" style="opacity:0"/>`).join('');
+      + shown.map((s,j)=>`<circle class="hxc" data-j="${j}" r="4" fill="${s.color}" stroke="#0c0509" stroke-width="1.5" style="opacity:0"/>`).join('');
     const xlab=`<text x="${PL}" y="${H-8}" fill="#8a5c6c" font-size="9">${fmtTime(tMin)}</text>`
              + `<text x="${W-PR}" y="${H-8}" text-anchor="end" fill="#8a5c6c" font-size="9">${fmtTime(tMax)}</text>`;
     host.innerHTML = `<div class="hcard"><div class="hhead">Live<span class="hleggroup">${legend}</span></div>${tabs}`
-      + `<div class="hchart"><svg viewBox="0 0 ${W} ${H}" class="hsvg">${grid}${lines}${crosshair}${xlab}</svg><div class="htip"></div></div></div>`;
+      + `<div class="hchart"><svg viewBox="0 0 ${W} ${H}" class="hsvg">${grid}${marks}${lines}${crosshair}${xlab}</svg><div class="htip"></div></div></div>`;
 
     const times = [...new Set(all.map(p=>p.t))].sort((a,b)=>a-b);
-    chartGeom = { W, series, times, X, Y };
+    chartGeom = { W, series: shown, times, X, Y };
     wireHover(host);
   }
 
@@ -308,6 +376,7 @@
     try{
       const r = await fetch('/api/youtube-history?live=1&ids='+VIDEOS.join(','), {cache:'no-store'});
       const d = await r.json();
+      if (d && d.milestones){ milestoneData = d.milestones; updateMilestones(); }
       if (d && d.videos){ histData = d.videos; drawHistory(); }
     }catch(e){}
   }
