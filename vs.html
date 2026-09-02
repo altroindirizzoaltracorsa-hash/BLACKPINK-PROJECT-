@@ -174,7 +174,7 @@
     const d = new Date(t);
     return RELEASE_TIMEZONES.map(({city,tz})=>({
       city,
-      label: new Intl.DateTimeFormat([], {timeZone:tz, weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}).format(d),
+      label: new Intl.DateTimeFormat('en-US', {timeZone:tz, weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}).format(d),
       sortKey: new Intl.DateTimeFormat('en-CA', {timeZone:tz, hour12:false, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}).format(d),
     })).sort((a,b)=>a.sortKey.localeCompare(b.sortKey));
   }
@@ -285,7 +285,15 @@
   }
 
   // ── 24-hour milestone (the number each video hit exactly 24h after release) ──
-  function fmtMark(t){ return new Intl.DateTimeFormat([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(new Date(t)); }
+  // Shared reference times, KST / EDT — same convention as the /countdowns cards
+  // (NOT the viewer's local zone). Everyone sees the same numbers; the 🌍 expander
+  // covers every other timezone.
+  function fmtKE(t){
+    const d = new Date(t);
+    const f = tz => new Intl.DateTimeFormat('en-US', {timeZone:tz, month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}).format(d);
+    const etAb = new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York', timeZoneName:'short'}).formatToParts(d).find(p=>p.type==='timeZoneName')?.value || 'ET';
+    return `${f('Asia/Seoul')} KST / ${f('America/New_York')} ${etAb}`;
+  }
   function fmtCountdown(ms){ ms=Math.max(0,ms); const h=Math.floor(ms/3600000), m=Math.floor(ms%3600000/60000); return (h?h+'h ':'')+m+'m'; }
   // Duration like "12h 04m" (or "1d 03h 04m" once past a day).
   function fmtDur(ms){ ms=Math.max(0,ms); const d=Math.floor(ms/86400000), h=Math.floor(ms%86400000/3600000), m=Math.floor(ms%3600000/60000);
@@ -293,7 +301,6 @@
   // A moment in the viewer's own timezone + locale — same format the /countdowns
   // release-time rows use (weekday, month day, hour:minute). No fixed zone, so
   // everyone sees it in their local time.
-  function fmtWhen(t){ return new Intl.DateTimeFormat([], {weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short'}).format(new Date(t)); }
   // Clean round-milestone label: 1000000 → "1M", 25000000 → "25M", 1e9 → "1B".
   function msLabel(n){ if(n>=1e9) return (n/1e9)+'B'; if(n>=1e6) return (n/1e6)+'M'; if(n>=1e3) return (n/1e3)+'K'; return String(n); }
 
@@ -322,7 +329,7 @@
       _mslSig[id] = sig;
       el.innerHTML = items.map(it=>{
         const dur = it.since!=null ? ` · <span class="msdur">in ${fmtDur(it.since)}</span>` : '';
-        const summary = `<span class="mstag">${msLabel(it.v)}</span> reached ${fmtWhen(it.t)}${dur}`;
+        const summary = `<span class="mstag">${msLabel(it.v)}</span> reached ${fmtKE(it.t)}${dur}`;
         const rows = worldRows(it.t).map(r=>`<div class="wtrow"><span>${escapeHtml(r.city)}</span><span>${r.label}</span></div>`).join('');
         return `<details class="wtimes msrow"><summary>${summary}</summary><div class="wtbody">${rows}</div></details>`;
       }).join('');
@@ -341,7 +348,7 @@
         el.innerHTML = `<span class="m24tag">24H</span> reached — capturing the exact count…`;
       } else {
         el.className = 'm24';
-        el.innerHTML = `<span class="m24tag">24H</span> at ${fmtMark(mark)} · in ${fmtCountdown(mark-Date.now())}`;
+        el.innerHTML = `<span class="m24tag">24H</span> at ${fmtKE(mark)} · in ${fmtCountdown(mark-Date.now())}`;
       }
     }
   }
