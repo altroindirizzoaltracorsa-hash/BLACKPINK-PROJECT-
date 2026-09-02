@@ -20,11 +20,12 @@ const liveKey = id => `bu_yt_live_${id}`;
 const pinKey = id => `bu_yt_24h_${id}`;
 
 // 24-hour milestone: freeze each video's exact view/like count at release + 24h.
-// Release times are Europe/Rome local (LISA 02:00, JISOO 06:00 on Sep 2), stored
-// here in UTC (Rome = UTC+2 in summer). Edit if a drop time is off.
+// Same clock times as the /countdowns cards — SawaDika/LISA = 02:00 Rome
+// (00:00 UTC), JISOO = 06:00 Rome (04:00 UTC) — dated to when the teasers dropped
+// (Sep 2), so the 24h marks land Sep 3. Keep in sync with vs.html's RELEASE map.
 const RELEASE = {
-  'LzgE8ift2Uw': '2026-09-02T04:00:00Z', // JISOO — 06:00 Rome → 24h mark Sep 3, 06:00 Rome
-  'h-7_04c_hVc': '2026-09-02T00:00:00Z', // LISA  — 02:00 Rome → 24h mark Sep 3, 02:00 Rome
+  'LzgE8ift2Uw': '2026-09-02T04:00:00Z', // JISOO — 06:00 Rome (jisoo.io countdown time) → 24h mark Sep 3, 06:00
+  'h-7_04c_hVc': '2026-09-02T00:00:00Z', // LISA  — 02:00 Rome (hellosawadika countdown time) → 24h mark Sep 3, 02:00
 };
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PIN_TOL_MS = 95 * 60 * 1000;    // accept a stored point within ~95 min of the exact mark

@@ -116,13 +116,14 @@
   const VIDEOS = ['LzgE8ift2Uw', 'h-7_04c_hVc'];
   const POLL_MS = 15000;
 
-  // Release moments (for the "24-hour numbers" milestone). Times are Europe/Rome
-  // local — LISA dropped 02:00, JISOO 06:00 on Sep 2 — expressed here in UTC
-  // (Rome = UTC+2 in summer). The 24h mark is release + 24h; the server freezes
-  // the exact view/like count at that moment. Edit these if a drop time is off.
+  // Release moments (for the "24-hour numbers" milestone). Same clock times as
+  // the /countdowns cards — SawaDika/LISA = 02:00 Rome (00:00 UTC), JISOO = 06:00
+  // Rome (04:00 UTC) — but dated to when the *teasers* tracked here dropped
+  // (Sep 2), so the 24h marks land Sep 3. The 24h mark is release + 24h; the
+  // server freezes the exact view/like count at that moment.
   const RELEASE = {
-    'LzgE8ift2Uw': '2026-09-02T04:00:00Z', // JISOO — 06:00 Rome → 24h mark Sep 3, 06:00 Rome
-    'h-7_04c_hVc': '2026-09-02T00:00:00Z', // LISA  — 02:00 Rome → 24h mark Sep 3, 02:00 Rome
+    'LzgE8ift2Uw': '2026-09-02T04:00:00Z', // JISOO — 06:00 Rome (jisoo.io countdown time) → 24h mark Sep 3, 06:00
+    'h-7_04c_hVc': '2026-09-02T00:00:00Z', // LISA  — 02:00 Rome (hellosawadika countdown time) → 24h mark Sep 3, 02:00
   };
   const H24_MS = 24*60*60*1000;
   const markOf = id => (RELEASE[id] ? Date.parse(RELEASE[id]) + H24_MS : null);
