@@ -98,6 +98,18 @@
     border:1px solid #f5c54255;border-radius:5px;padding:1px 5px;margin-right:5px;vertical-align:1px;}
   .m24.done{color:var(--muted);}
   .m24.done b{color:var(--gold);}
+  .gstats{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  @media(max-width:520px){ .gstats{grid-template-columns:1fr;} }
+  .gsec{background:rgba(0,0,0,0.35);border:1px solid #ffffff1a;border-radius:10px;padding:9px 11px;}
+  .ghead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:7px;
+    font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);}
+  .ghead .gavg{font-size:10px;font-weight:700;letter-spacing:.02em;text-transform:none;color:var(--pink-soft);}
+  .grow{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:var(--muted);
+    padding:2.5px 0;border-top:1px solid #ffffff0e;font-variant-numeric:tabular-nums;}
+  .grow:first-of-type{border-top:none;}
+  .grow .gplus{color:#4ade80;font-weight:700;}
+  .grow.gdim{color:var(--dim);justify-content:flex-start;}
+  .gempty{padding:16px 12px;text-align:center;color:var(--dim);font-size:11px;line-height:1.5;}
   .hchart{position:relative;touch-action:pan-y;}
   .hsvg{width:100%;height:auto;display:block;}
   .htip{position:absolute;pointer-events:none;z-index:5;opacity:0;transform:translate(-50%,-100%);
@@ -364,10 +376,45 @@
 
   // ── history chart (hourly snapshots) ──
   let metric = 'views';
-  let histData = null;
+  let histData = null;      // fine live series (last ~24h at 15s) per id — feeds the chart
+  let hourlyData = {};      // hourly snapshot series (full life) per id — feeds the gain stats
   let chartGeom = null;     // { series, X domain, PL.. } captured each draw for the hover tooltip
   const METRIC = { views:{k:'v',label:'Views'}, likes:{k:'l',label:'Likes'}, comments:{k:'c',label:'Comments'} };
   window.setMetric = function(m){ metric = m; drawHistory(); };
+
+  // ── gain stats (shown when one video is focused) ──
+  // Korea has no DST, so KST hour/day buckets are exact integer offsets (+9h).
+  const KST_OFF = 9 * 3600000;
+  function gainStats(id, mk){
+    // Merge hourly (long history) + fine (recent) points, ascending, deduped by t.
+    const merged = [...(hourlyData[id]||[]), ...(histData[id]||[])]
+      .filter(p => p[mk] != null)
+      .sort((a,b) => a.t - b.t)
+      .filter((p,i,a) => i === 0 || p.t !== a[i-1].t);
+    if (merged.length < 2) return null;
+    const bucket = idxFn => { const m = new Map(); for (const p of merged) m.set(idxFn(p.t), {t:p.t, v:p[mk]}); return [...m.values()].sort((a,b)=>a.t-b.t); };
+    const hb = bucket(t => Math.floor((t + KST_OFF) / 3600000));   // per KST clock-hour (last value in each)
+    const db = bucket(t => Math.floor((t + KST_OFF) / 86400000));  // per KST calendar day
+    const gains = b => b.slice(1).map((p,i) => ({ t:p.t, gain:p.v - b[i].v }));
+    const avg = b => b.length >= 2 ? Math.round((b[b.length-1].v - b[0].v) / (b.length-1)) : null;
+    return { hg: gains(hb), dg: gains(db), avgHour: avg(hb), avgDay: avg(db) };
+  }
+  function statsPanelHtml(id){
+    const mk = METRIC[metric].k, label = METRIC[metric].label.toLowerCase();
+    const s = gainStats(id, mk);
+    if (!s) return `<div class="gstats"><div class="gempty">Collecting — hourly ${label} gains fill in as snapshots build up.</div></div>`;
+    const sgn = n => (n < 0 ? '−' : '+') + full(Math.abs(n));
+    const hourLbl = t => new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', month:'short', day:'numeric', hour:'numeric'}).format(new Date(t));
+    const dayLbl  = t => new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', weekday:'short', month:'short', day:'numeric'}).format(new Date(t));
+    const hrows = s.hg.slice(-8).reverse().map(g => `<div class="grow"><span>→ ${hourLbl(g.t)} KST</span><span class="gplus">${sgn(g.gain)}</span></div>`).join('')
+      || '<div class="grow gdim">need two hourly points</div>';
+    const drows = s.dg.slice(-7).reverse().map(g => `<div class="grow"><span>${dayLbl(g.t)}</span><span class="gplus">${sgn(g.gain)}</span></div>`).join('')
+      || '<div class="grow gdim">first full day pending</div>';
+    return `<div class="gstats">
+      <div class="gsec"><div class="ghead">Hourly ${label}<span class="gavg">avg ${s.avgHour!=null?sgn(s.avgHour):'—'}/hr</span></div>${hrows}</div>
+      <div class="gsec"><div class="ghead">Daily ${label}<span class="gavg">avg ${s.avgDay!=null?sgn(s.avgDay):'—'}/day</span></div>${drows}</div>
+    </div>`;
+  }
 
   function fmtTime(t){ const d=new Date(t); return d.toLocaleDateString([], {month:'short',day:'numeric'})+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
   function fmtTipTime(t){ const d=new Date(t); return d.toLocaleDateString([], {weekday:'short'})+', '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
@@ -431,8 +478,9 @@
       + shown.map((s,j)=>`<circle class="hxc" data-j="${j}" r="4" fill="${s.color}" stroke="#0c0509" stroke-width="1.5" style="opacity:0"/>`).join('');
     const xlab=`<text x="${PL}" y="${H-8}" fill="#8a5c6c" font-size="9">${fmtTime(tMin)}</text>`
              + `<text x="${W-PR}" y="${H-8}" text-anchor="end" fill="#8a5c6c" font-size="9">${fmtTime(tMax)}</text>`;
+    const stats = focus ? statsPanelHtml(focus) : '';
     host.innerHTML = `<div class="hcard"><div class="hhead">Live<span class="hleggroup">${legend}</span></div>${tabs}`
-      + `<div class="hchart"><svg viewBox="0 0 ${W} ${H}" class="hsvg">${grid}${marks}${lines}${crosshair}${xlab}</svg><div class="htip"></div></div></div>`;
+      + `<div class="hchart"><svg viewBox="0 0 ${W} ${H}" class="hsvg">${grid}${marks}${lines}${crosshair}${xlab}</svg><div class="htip"></div></div>${stats}</div>`;
 
     const times = [...new Set(all.map(p=>p.t))].sort((a,b)=>a-b);
     chartGeom = { W, series: shown, times, X, Y };
@@ -491,6 +539,15 @@
     }catch(e){}
   }
 
+  // Hourly snapshot series (full life) — powers the focus-view gain stats.
+  async function pollHourly(){
+    try{
+      const r = await fetch('/api/youtube-history?ids='+VIDEOS.join(','), {cache:'no-store'});
+      const d = await r.json();
+      if (d && d.videos){ hourlyData = d.videos; if (focus) drawHistory(); }
+    }catch(e){}
+  }
+
   // Grow the live chart in real time with each 15s poll (the server stores the
   // same points, so it persists across reloads — that's the socialcounts twist).
   function appendLive(d){
@@ -525,7 +582,9 @@
   setInterval(poll, POLL_MS);
   pollHistory();
   setInterval(pollHistory, 45 * 1000);   // re-read history/milestones/24h pins often
-  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ poll(); pollHistory(); } });
+  pollHourly();
+  setInterval(pollHourly, 5 * 60 * 1000);   // hourly snapshots change slowly
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ poll(); pollHistory(); pollHourly(); } });
 </script>
 </body>
 </html>
