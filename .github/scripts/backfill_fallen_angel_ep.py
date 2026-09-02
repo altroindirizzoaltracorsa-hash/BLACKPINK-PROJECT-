@@ -105,7 +105,14 @@ def main():
                 "daily_delta": fa["streams"] - totals[LAST_HIST_DATE],
             }
 
+        existing = sb("GET", "/track_daily_stats", params={
+            "track_ref": f"eq.{ref}", "select": "date,streams,daily_delta", "order": "date.asc",
+        }) or []
         print(f"\n{name} ({tid}) track_ref={ref}:")
+        print(f"  EXISTING rows in DB ({len(existing)}):")
+        for e in existing:
+            print(f"    {e['date']}  total={e['streams']:>12,}  delta={e['daily_delta']}")
+        print("  BACKFILL rows:")
         for row in rows:
             print(f"  {row['date']}  total={row['streams']:>12,}  delta={row['daily_delta']}")
         if patch:
