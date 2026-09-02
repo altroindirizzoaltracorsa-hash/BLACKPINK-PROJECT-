@@ -13,7 +13,7 @@
 
 const YT_API = 'https://www.googleapis.com/youtube/v3/videos';
 const DEFAULT_IDS = ['LzgE8ift2Uw', 'h-7_04c_hVc'];
-const MAX_POINTS = 800;               // ~33 days at hourly
+const MAX_POINTS = 2400;              // ~100 days at hourly — keep the full-life gain list
 const MIN_GAP_MS = 55 * 60 * 1000;    // don't store more than ~once an hour
 const key = id => `bu_yt_hist_${id}`;
 const liveKey = id => `bu_yt_live_${id}`;
