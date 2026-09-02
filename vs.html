@@ -242,8 +242,10 @@
   // Duration like "12h 04m" (or "1d 03h 04m" once past a day).
   function fmtDur(ms){ ms=Math.max(0,ms); const d=Math.floor(ms/86400000), h=Math.floor(ms%86400000/3600000), m=Math.floor(ms%3600000/60000);
     return (d?d+'d ':'')+h+'h '+String(m).padStart(2,'0')+'m'; }
-  // A moment shown in Italy time regardless of the viewer's timezone.
-  function fmtRome(t){ return new Date(t).toLocaleString('it-IT', {timeZone:'Europe/Rome', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}); }
+  // A moment in the viewer's own timezone + locale — same format the /countdowns
+  // release-time rows use (weekday, month day, hour:minute). No fixed zone, so
+  // everyone sees it in their local time.
+  function fmtWhen(t){ return new Intl.DateTimeFormat([], {weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}).format(new Date(t)); }
   // Clean round-milestone label: 1000000 → "1M", 25000000 → "25M", 1e9 → "1B".
   function msLabel(n){ if(n>=1e9) return (n/1e9)+'B'; if(n>=1e6) return (n/1e6)+'M'; if(n>=1e3) return (n/1e3)+'K'; return String(n); }
 
@@ -266,7 +268,7 @@
       if (!items.length){ el.innerHTML=''; continue; }
       el.innerHTML = items.map(it=>{
         const dur = it.since!=null ? ` · <span class="msdur">in ${fmtDur(it.since)}</span>` : '';
-        return `<div class="msrow"><span class="mstag">${msLabel(it.v)}</span> reached ${fmtRome(it.t)}${dur}</div>`;
+        return `<div class="msrow"><span class="mstag">${msLabel(it.v)}</span> reached ${fmtWhen(it.t)}${dur}</div>`;
       }).join('');
     }
   }
