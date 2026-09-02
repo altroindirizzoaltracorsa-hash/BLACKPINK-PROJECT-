@@ -205,6 +205,8 @@ FIXED_TRACKS = {
         ("SPOT!", "1SS0WlKhJewviwEDZ6dWj0"),
         ("Seoul City", "3Rb70FTNnpmhDjTIWNlkww"),
         ("Less Than a Lover", "19UnXjpLshSLobPspdyxlD"),
+        ("Fallen Angel", "75QkBCdRc5DGgcyPiVSg4b"),
+        ("Heaven", "6uhCnqc4Tncn1vqkuGubPO"),
         ("Slow Motion", "5Y1JLn2xFudNJolHkvoTXk"),
         ("Special", "4MwT3qzF3tfMtSFr9b2nKa"),
         ("Starlight", "2qgS0EKSu94srT6vmj7Ig9"),
