@@ -133,7 +133,8 @@
   .grow:first-child{border-top:none;}
   .grow .gplus{color:#4ade80;font-weight:600;}
   .gempty{padding:16px 12px;text-align:center;color:var(--dim);font-size:11px;line-height:1.5;}
-  .hchart{position:relative;touch-action:pan-y;}
+  .hchart{position:relative;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+  .hchart svg text{-webkit-user-select:none;user-select:none;}
   .hsvg{width:100%;height:auto;display:block;}
   .htip{position:absolute;pointer-events:none;z-index:5;opacity:0;transform:translate(-50%,-100%);
     background:#1b0b12f2;border:1px solid #ffffff26;border-radius:10px;padding:7px 9px;
@@ -635,6 +636,7 @@
     svg.addEventListener('pointermove', e=>move(e.clientX));
     svg.addEventListener('pointerdown', e=>move(e.clientX));
     svg.addEventListener('pointerleave', hide);
+    svg.addEventListener('contextmenu', e=>e.preventDefault());   // don't pop the long-press menu while reading the tooltip
   }
 
   async function pollHistory(){
