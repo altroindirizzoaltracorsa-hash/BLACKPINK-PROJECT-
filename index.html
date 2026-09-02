@@ -4289,6 +4289,9 @@
     <button onclick="startAccountCreation();" style="width:100%;padding:0.75rem;background:var(--pink,#e91e8c);color:#fff;border:none;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer;letter-spacing:0.05em;">
       Sign in / Create account →
     </button>
+    <button onclick="dismissLegacyMigration();" style="width:100%;margin-top:0.55rem;padding:0.5rem;background:none;color:var(--muted,#aaa);border:none;font-size:0.82rem;cursor:pointer;">
+      Maybe later
+    </button>
   </div>
 </div>
 
@@ -8843,6 +8846,14 @@ function hasSupabaseAuthToken() {
 
 function showLegacyMigrationNotice(username) {
   if (_suppressMigrationModal) { _suppressMigrationModal = false; return; }
+  // Don't nag on every load: skip if it was dismissed recently (snoozed) or has
+  // already been shown once in this browser session.
+  try {
+    const snooze = Number(localStorage.getItem('bu_migration_snooze') || 0);
+    if (snooze && Date.now() < snooze) return;
+    if (sessionStorage.getItem('bu_migration_seen')) return;
+    sessionStorage.setItem('bu_migration_seen', '1');
+  } catch {}
   const el = document.getElementById('legacy-migration-modal');
   if (!el) return;
   document.getElementById('legacy-migration-username').textContent = username;
@@ -8852,6 +8863,11 @@ function showLegacyMigrationNotice(username) {
 function closeLegacyMigration() {
   document.getElementById('legacy-migration-modal').style.display = 'none';
   document.body.style.overflow = '';
+}
+// "Maybe later" — dismiss and stay quiet for a week so it doesn't nag on reload.
+function dismissLegacyMigration() {
+  try { localStorage.setItem('bu_migration_snooze', String(Date.now() + 7 * 864e5)); } catch {}
+  closeLegacyMigration();
 }
 function startAccountCreation() {
   _suppressMigrationModal = true;
