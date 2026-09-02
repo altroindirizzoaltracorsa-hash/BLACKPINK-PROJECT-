@@ -40,6 +40,18 @@ async function upstash(cmds) {
   return await r.json(); // [{ result }, ...] in order
 }
 
+// Upstash REST returns HGETALL as a flat [field, value, field, value, …] array
+// (older) or a plain object (newer). Parse either into { field: parsedJSON }.
+function parseHash(result) {
+  const out = {};
+  if (Array.isArray(result)) {
+    for (let i = 0; i < result.length; i += 2) { try { out[result[i]] = JSON.parse(result[i + 1]); } catch {} }
+  } else if (result && typeof result === 'object') {
+    for (const k of Object.keys(result)) { try { out[k] = JSON.parse(result[k]); } catch {} }
+  }
+  return out;
+}
+
 async function fetchYt(ids, apiKey) {
   const url = `${YT_API}?part=statistics&id=${encodeURIComponent(ids.join(','))}&key=${encodeURIComponent(apiKey)}`;
   const r = await fetch(url);
@@ -123,18 +135,22 @@ export default async function handler(req, res) {
   try {
     const listKey = req.query.live ? liveKey : key;
     const lo = req.query.live ? '-1200' : '0';
-    // One pipeline: the series for each id, then the pinned 24h value for each id.
+    // One pipeline: the series, the pinned 24h value, and the view-milestone hash,
+    // for each id — laid out in three id-length blocks.
+    const n = ids.length;
     const cmds = ids.map(id => ['LRANGE', listKey(id), lo, '-1'])
-      .concat(ids.map(id => ['GET', pinKey(id)]));
+      .concat(ids.map(id => ['GET', pinKey(id)]))
+      .concat(ids.map(id => ['HGETALL', `bu_yt_ms_${id}`]));
     const results = await upstash(cmds);
-    const videos = {}, milestones = {};
+    const videos = {}, milestones = {}, viewMilestones = {};
     ids.forEach((id, i) => {
       videos[id] = (results[i]?.result || [])
         .map(s => { try { return JSON.parse(s); } catch { return null; } })
         .filter(Boolean);
-      const m = results[ids.length + i]?.result;
+      const m = results[n + i]?.result;
       if (m) { try { milestones[id] = JSON.parse(m); } catch {} }
+      viewMilestones[id] = parseHash(results[2 * n + i]?.result);
     });
-    return res.status(200).json({ videos, milestones });
+    return res.status(200).json({ videos, milestones, viewMilestones });
   } catch (e) { return res.status(500).json({ error: e.message }); }
 }

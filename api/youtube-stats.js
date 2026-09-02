@@ -13,6 +13,20 @@ const YT_API = 'https://www.googleapis.com/youtube/v3/videos';
 const CACHE_TTL = 14; // seconds — just under the 15s client poll so points stay fresh
 const LIVE_MAX = 5760; // fine points kept per video (~24h at ~15s)
 
+// Release times (for "time since release") + the view thresholds we timestamp the
+// moment a video first crosses them. Keep RELEASE in sync with youtube-history.js
+// and vs.html. Detection runs on this frequent path so crossings are caught within
+// ~one 15s sample; the exact crossing time is interpolated between the two samples.
+const RELEASE = {
+  'LzgE8ift2Uw': '2026-09-02T04:00:00Z', // JISOO teaser — 06:00 Rome
+  'h-7_04c_hVc': '2026-09-02T00:00:00Z', // LISA teaser  — 02:00 Rome
+};
+const releaseMs = id => (RELEASE[id] ? Date.parse(RELEASE[id]) : null);
+const VIEW_MILESTONES = [
+  1e6, 2e6, 3e6, 4e6, 5e6, 10e6, 20e6, 25e6, 30e6, 40e6, 50e6, 75e6,
+  100e6, 150e6, 200e6, 250e6, 300e6, 400e6, 500e6, 750e6, 1e9,
+];
+
 async function upstashPipe(cmds) {
   if (!process.env.UPSTASH_REDIS_REST_URL) return;
   try {
@@ -22,6 +36,18 @@ async function upstashPipe(cmds) {
       body: JSON.stringify(cmds),
     });
   } catch {}
+}
+
+async function upstashRead(cmds) {
+  if (!process.env.UPSTASH_REDIS_REST_URL) return [];
+  try {
+    const r = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(cmds),
+    });
+    return await r.json();
+  } catch { return []; }
 }
 
 async function upstashGet(k) {
@@ -87,11 +113,28 @@ export default async function handler(req, res) {
     // Persist a fine-grained point per video on this fresh fetch (cache means ~1
     // write per ~14s regardless of traffic). Powers the live-growing, PERSISTENT
     // chart on /vs.html — unlike socialcounts, which starts empty every visit.
+    // Read the previous fine point per video so we can catch view-milestone
+    // crossings (1M, 2M, …) between the last sample and this one, then append this
+    // sample. The crossing time is interpolated between the two samples; HSETNX
+    // makes each milestone record write-once, so concurrent invocations can't dupe.
+    const prevIdx = await upstashRead(videos.map(v => ['LINDEX', 'bu_yt_live_' + v.id, '-1']));
     const cmds = [];
-    for (const v of videos) {
+    videos.forEach((v, i) => {
+      let prev = null; try { prev = JSON.parse(prevIdx[i]?.result); } catch {}
       cmds.push(['RPUSH', 'bu_yt_live_' + v.id, JSON.stringify({ t: payload.ts, v: v.views, l: v.likes, c: v.comments })]);
       cmds.push(['LTRIM', 'bu_yt_live_' + v.id, String(-LIVE_MAX), '-1']);
-    }
+      if (prev && prev.v != null && v.views > prev.v) {
+        const rel = releaseMs(v.id);
+        for (const th of VIEW_MILESTONES) {
+          if (prev.v < th && th <= v.views) {
+            const frac = (th - prev.v) / (v.views - prev.v);
+            const tCross = Math.round(prev.t + frac * (payload.ts - prev.t));
+            const rec = JSON.stringify({ v: th, t: tCross, since: rel != null ? tCross - rel : null });
+            cmds.push(['HSETNX', 'bu_yt_ms_' + v.id, String(th), rec]);
+          }
+        }
+      }
+    });
     if (cmds.length) await upstashPipe(cmds);
     res.setHeader('X-Cache', 'MISS');
     return res.status(200).json(payload);
