@@ -102,7 +102,19 @@
   .gpanelhead{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px 10px;}
   .gtitle{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--pink-soft);}
   .gpanelhead .gavg{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;letter-spacing:.02em;}
-  .gsub{font-size:10px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin:8px 0 2px;}
+  .gchips{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0 8px;}
+  .gchip{padding:6px 11px;border-radius:99px;border:1px solid #ffffff1f;background:transparent;color:var(--muted);
+    font:inherit;font-size:10.5px;letter-spacing:.02em;cursor:pointer;transition:.12s;}
+  .gchip:hover{border-color:#ffffff3a;}
+  .gchip.on{background:#ff2e7718;border-color:#ff2e7766;color:var(--pink-soft);font-weight:700;}
+  .grange{display:flex;flex-wrap:wrap;align-items:end;gap:8px;margin-bottom:6px;}
+  .grange label{display:flex;flex-direction:column;gap:3px;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);}
+  .grange input[type=date]{background:#0a0407;border:1px solid #ffffff26;border-radius:8px;color:var(--text);
+    font:inherit;font-size:11px;padding:6px 8px;color-scheme:dark;}
+  .gapply{padding:7px 14px;border-radius:8px;border:none;background:var(--pink);color:#12040a;
+    font:inherit;font-size:11px;font-weight:800;letter-spacing:.04em;cursor:pointer;}
+  .gsub{font-size:10px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;margin:8px 0 2px;}
+  .gsub .gavg{color:var(--pink-soft);letter-spacing:.02em;font-variant-numeric:tabular-nums;}
   .glist{max-height:340px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
   .glist::-webkit-scrollbar{width:5px;}
   .glist::-webkit-scrollbar-thumb{background:#ffffff26;border-radius:3px;}
@@ -147,6 +159,7 @@
     </div>
 
     <div id="history"></div>
+    <div id="vsstats"></div>
 
     <div class="foot" id="foot"></div>
   </div>
@@ -398,7 +411,7 @@
   const KST_OFF = 9 * 3600000;
   const _openDays = new Set();   // "id|dayIdx" expanded in the day→hours drill-down
   const _daysSeen = new Set();   // ids whose newest day we've auto-opened once
-  window.toggleGDay = function(key){ if (_openDays.has(key)) _openDays.delete(key); else _openDays.add(key); drawHistory(); };
+  window.toggleGDay = function(key){ if (_openDays.has(key)) _openDays.delete(key); else _openDays.add(key); renderStatsList(focus); };
 
   function gainStats(id, mk){
     // Merge hourly (long history) + fine (recent) points, ascending, deduped by t.
@@ -419,17 +432,67 @@
     const avg = b => b.length >= 2 ? Math.round((b[b.length-1].v - b[0].v) / (b.length-1)) : null;
     return { hoursByDay, avgHour: avg(hb), avgDay: avg(db) };
   }
-  function statsPanelHtml(id){
+  // ── past-days filter (chips + FROM/TO date range), like Community Goal ──
+  const DAY_MS_ = 86400000;
+  let _gfilter = { mode:'all', from:null, to:null };   // mode: 'all' | 7 | 30 | 90 | 'custom'
+  let _statsBuiltFor = null;                            // rebuild controls only on focus/metric/data-arrival change
+  const kstDateStr = t => new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date(t)); // YYYY-MM-DD
+  const dayIdxOfDate = s => Math.floor((Date.parse(s+'T12:00:00+09:00') + KST_OFF) / DAY_MS_);
+  function paintStats(){ const mount = document.getElementById('vsstats'); if (mount && focus){ mount.innerHTML = statsControlsHtml(focus); renderStatsList(focus); } }
+  window.setGRange = function(mode){ _gfilter = { mode: (mode==='all'?'all':Number(mode)), from:null, to:null }; paintStats(); };
+  window.applyGCustom = function(){
+    const f = document.getElementById('gfrom')?.value, t = document.getElementById('gto')?.value;
+    if (f && t) _gfilter = { mode:'custom', from:f, to:t };
+    paintStats();
+  };
+
+  const RANGE_CHIPS = [['all','All'],[7,'7 days'],[30,'30 days'],[90,'90 days']];
+  function statsControlsHtml(id){
+    const label = METRIC[metric].label.toLowerCase();
+    const s = gainStats(id, METRIC[metric].k);
+    // Default the date inputs to the data's own KST span.
+    let lo = '', hi = '';
+    if (s){
+      const days = Object.keys(s.hoursByDay).map(Number);
+      const minT = s.hoursByDay[Math.min(...days)][0].t, maxT = s.hoursByDay[Math.max(...days)][0].t;
+      lo = _gfilter.from || kstDateStr(minT); hi = _gfilter.to || kstDateStr(maxT);
+    }
+    const chips = RANGE_CHIPS.map(([m,txt]) => `<button class="gchip${_gfilter.mode===(m==='all'?'all':m)?' on':''}" onclick="setGRange('${m}')">${txt}</button>`).join('');
+    return `<div class="gstats" id="gstatsbox">
+      <div class="gpanelhead"><span class="gtitle">${label} gains — past days</span></div>
+      <div class="gchips">${chips}</div>
+      <div class="grange">
+        <label>From<input type="date" id="gfrom" value="${lo}"></label>
+        <label>To<input type="date" id="gto" value="${hi}"></label>
+        <button class="gapply" onclick="applyGCustom()">Apply</button>
+      </div>
+      <div class="gsub" id="gsublbl"></div>
+      <div class="glist" id="glist"></div>
+    </div>`;
+  }
+  function renderStatsList(id){
+    const box = document.getElementById('gstatsbox'); if (!box || !id) return;
     const mk = METRIC[metric].k, label = METRIC[metric].label.toLowerCase();
     const s = gainStats(id, mk);
-    if (!s) return `<div class="gstats"><div class="gempty">Collecting — hourly ${label} gains fill in as snapshots build up.</div></div>`;
+    const list = document.getElementById('glist'), sub = document.getElementById('gsublbl');
+    if (!s){ if(list) list.innerHTML = `<div class="gempty">Collecting — gains fill in as snapshots build up.</div>`; if(sub) sub.textContent=''; return; }
     const sgn = n => (n < 0 ? '−' : '+') + full(Math.abs(n));
     const sabbr = n => (n < 0 ? '−' : '+') + abbr(Math.abs(n));
     const hourLbl = t => new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', hour:'numeric'}).format(new Date(t));
     const dayDate = t => new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Seoul', day:'numeric', month:'short', year:'numeric'}).format(new Date(t)).toUpperCase();
     const dayWk   = t => new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', weekday:'long'}).format(new Date(t));
-    const days = Object.keys(s.hoursByDay).map(Number).sort((a,b) => b - a);   // newest first
+    let days = Object.keys(s.hoursByDay).map(Number).sort((a,b) => b - a);   // newest first
+    // Apply the range filter.
+    const todayIdx = Math.floor((Date.now() + KST_OFF) / DAY_MS_);
+    if (typeof _gfilter.mode === 'number') days = days.filter(d => d > todayIdx - _gfilter.mode);
+    else if (_gfilter.mode === 'custom' && _gfilter.from && _gfilter.to){
+      const a = dayIdxOfDate(_gfilter.from), b = dayIdxOfDate(_gfilter.to);
+      days = days.filter(d => d >= Math.min(a,b) && d <= Math.max(a,b));
+    }
     if (days.length && !_daysSeen.has(id)) { _openDays.add(id+'|'+days[0]); _daysSeen.add(id); }  // open the latest day once
+    if (sub) sub.innerHTML = days.length
+      ? `${days.length} day${days.length>1?'s':''} · tap one for its hours <span class="gavg">· avg ${s.avgHour!=null?sabbr(s.avgHour):'—'}/hr · ${s.avgDay!=null?sabbr(s.avgDay):'—'}/day</span>`
+      : 'no days in this range';
     const rows = days.map(day => {
       const hrs = s.hoursByDay[day];
       const total = hrs.reduce((n,h) => n + h.gain, 0);
@@ -442,12 +505,16 @@
         + `<div class="gdayleft"><div class="gdaydate">${dayDate(hrs[0].t)}</div>`
         + `<div class="gdaysub">${dayWk(hrs[0].t)} · ${hrs.length}h · avg ${sabbr(perHr)}/hr</div></div>`
         + `<div class="gdaytot">${sgn(total)}</div></div>${body}</div>`;
-    }).join('');
-    return `<div class="gstats">
-      <div class="gpanelhead"><span class="gtitle">${label} gains — by day</span>
-        <span class="gavg">avg ${s.avgHour!=null?sabbr(s.avgHour):'—'}/hr · ${s.avgDay!=null?sabbr(s.avgDay):'—'}/day</span></div>
-      <div class="gsub">${days.length} day${days.length>1?'s':''} · tap one for its hours</div>
-      <div class="glist">${rows}</div></div>`;
+    }).join('') || '<div class="gempty">no days in this range</div>';
+    if (list){ const sc = list.scrollTop; list.innerHTML = rows; list.scrollTop = sc; }
+  }
+  // Build controls once per focus/metric/data-arrival; refresh the list on every data tick.
+  function updateStats(){
+    const mount = document.getElementById('vsstats'); if (!mount) return;
+    if (!focus){ mount.innerHTML = ''; _statsBuiltFor = null; return; }
+    const dataKey = focus + '|' + metric + '|' + (gainStats(focus, METRIC[metric].k) ? '1' : '0');
+    if (_statsBuiltFor !== dataKey){ _statsBuiltFor = dataKey; mount.innerHTML = statsControlsHtml(focus); }
+    renderStatsList(focus);
   }
 
   function fmtTime(t){ const d=new Date(t); return d.toLocaleDateString([], {month:'short',day:'numeric'})+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
@@ -480,7 +547,7 @@
     const all = shown.flatMap(s=>s.pts);
     if (all.length < 2){
       host.innerHTML = `<div class="hcard"><div class="hhead">Live<span class="hleggroup">${legend}</span></div>${tabs}<div class="hempty">Charting live — the line starts drawing within a few seconds and keeps growing (and it stays saved across reloads). Tap the chart to read any point.</div></div>`;
-      chartGeom = null; return;
+      chartGeom = null; updateStats(); return;
     }
     const W=640,H=220,PL=54,PR=14,PT=16,PB=26;
     const tMin=Math.min(...all.map(p=>p.t)), tMax=Math.max(...all.map(p=>p.t));
@@ -512,15 +579,13 @@
       + shown.map((s,j)=>`<circle class="hxc" data-j="${j}" r="4" fill="${s.color}" stroke="#0c0509" stroke-width="1.5" style="opacity:0"/>`).join('');
     const xlab=`<text x="${PL}" y="${H-8}" fill="#8a5c6c" font-size="9">${fmtTime(tMin)}</text>`
              + `<text x="${W-PR}" y="${H-8}" text-anchor="end" fill="#8a5c6c" font-size="9">${fmtTime(tMax)}</text>`;
-    const stats = focus ? statsPanelHtml(focus) : '';
-    const prevScroll = [...host.querySelectorAll('.glist')].map(e => e.scrollTop);  // keep scroll across the 15s rebuild
     host.innerHTML = `<div class="hcard"><div class="hhead">Live<span class="hleggroup">${legend}</span></div>${tabs}`
-      + `<div class="hchart"><svg viewBox="0 0 ${W} ${H}" class="hsvg">${grid}${marks}${lines}${crosshair}${xlab}</svg><div class="htip"></div></div>${stats}</div>`;
-    host.querySelectorAll('.glist').forEach((e, i) => { if (prevScroll[i] != null) e.scrollTop = prevScroll[i]; });
+      + `<div class="hchart"><svg viewBox="0 0 ${W} ${H}" class="hsvg">${grid}${marks}${lines}${crosshair}${xlab}</svg><div class="htip"></div></div></div>`;
 
     const times = [...new Set(all.map(p=>p.t))].sort((a,b)=>a-b);
     chartGeom = { W, series: shown, times, X, Y };
     wireHover(host);
+    updateStats();
   }
 
   // socialcounts-style read-out: hover / drag / tap the chart to see the exact
