@@ -80,9 +80,13 @@ export default async function handler(req, res) {
     } catch (e) { return res.status(500).json({ error: e.message }); }
   }
 
-  // ── HISTORY (read) ─────────────────────────────────────────────────────────
+  // ── HISTORY (read) ── ?live=1 → dense fine series (bu_yt_live_*, last ~1200
+  //    points ≈ a few hours) for the live-growing chart; otherwise the hourly
+  //    long-term series (bu_yt_hist_*). Both are [{t,v,l,c}] newest-last.
   try {
-    const results = await upstash(ids.map(id => ['LRANGE', key(id), '0', '-1']));
+    const listKey = req.query.live ? (id => `bu_yt_live_${id}`) : key;
+    const lo = req.query.live ? '-1200' : '0';
+    const results = await upstash(ids.map(id => ['LRANGE', listKey(id), lo, '-1']));
     const videos = {};
     ids.forEach((id, i) => {
       videos[id] = (results[i]?.result || [])

@@ -10,7 +10,19 @@
 // Env: YOUTUBE_API_KEY (required); UPSTASH_REDIS_REST_URL / _TOKEN (optional cache).
 
 const YT_API = 'https://www.googleapis.com/youtube/v3/videos';
-const CACHE_TTL = 20; // seconds
+const CACHE_TTL = 14; // seconds — just under the 15s client poll so points stay fresh
+const LIVE_MAX = 5760; // fine points kept per video (~24h at ~15s)
+
+async function upstashPipe(cmds) {
+  if (!process.env.UPSTASH_REDIS_REST_URL) return;
+  try {
+    await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(cmds),
+    });
+  } catch {}
+}
 
 async function upstashGet(k) {
   if (!process.env.UPSTASH_REDIS_REST_URL) return null;
@@ -65,12 +77,22 @@ export default async function handler(req, res) {
         thumb: it.snippet?.thumbnails?.medium?.url || it.snippet?.thumbnails?.default?.url || '',
         views: Number(it.statistics?.viewCount ?? 0),
         likes: it.statistics?.likeCount != null ? Number(it.statistics.likeCount) : null,
+        comments: it.statistics?.commentCount != null ? Number(it.statistics.commentCount) : null,
         publishedAt: it.snippet?.publishedAt || null,
       };
     }
     const videos = ids.map(id => byId[id]).filter(Boolean); // preserve request order
     const payload = { ts: Date.now(), videos };
     await upstashSetEx(cacheKey, payload, CACHE_TTL);
+    // Persist a fine-grained point per video on this fresh fetch (cache means ~1
+    // write per ~14s regardless of traffic). Powers the live-growing, PERSISTENT
+    // chart on /vs.html — unlike socialcounts, which starts empty every visit.
+    const cmds = [];
+    for (const v of videos) {
+      cmds.push(['RPUSH', 'bu_yt_live_' + v.id, JSON.stringify({ t: payload.ts, v: v.views, l: v.likes, c: v.comments })]);
+      cmds.push(['LTRIM', 'bu_yt_live_' + v.id, String(-LIVE_MAX), '-1']);
+    }
+    if (cmds.length) await upstashPipe(cmds);
     res.setHeader('X-Cache', 'MISS');
     return res.status(200).json(payload);
   } catch (e) {

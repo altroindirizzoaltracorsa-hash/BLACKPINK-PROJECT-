@@ -95,7 +95,7 @@
 <script>
   // The two videos being compared. Swap these ids to change the matchup.
   const VIDEOS = ['LzgE8ift2Uw', 'h-7_04c_hVc'];
-  const POLL_MS = 30000;
+  const POLL_MS = 15000;
 
   const $ = s => document.querySelector(s);
   const fmt = n => (n == null ? '—' : Number(n).toLocaleString('en-US'));
@@ -131,8 +131,7 @@
       return;
     }
     const [a,b] = vids;
-    window._vids = vids;           // let the history legend label the lines
-    if (histData) drawHistory();
+    window._vids = vids;           // let the live-chart legend label the lines
     const aLead = a.views >= b.views;
 
     // (Re)build the shell only when the set of videos changes; otherwise just update numbers.
@@ -215,7 +214,7 @@
       return `<span class="hleg"><span class="hdot" style="background:${s.color}"></span>${escapeHtml(nm)}</span>`; }).join('');
     const all = series.flatMap(s=>s.pts);
     if (all.length < 2){
-      host.innerHTML = `<div class="hcard"><div class="hhead">History<span class="hleggroup">${legend}</span></div>${tabs}<div class="hempty">Collecting hourly snapshots — the chart fills in as points arrive (first one lands within the hour).</div></div>`;
+      host.innerHTML = `<div class="hcard"><div class="hhead">Live<span class="hleggroup">${legend}</span></div>${tabs}<div class="hempty">Charting live — the line starts drawing within a few seconds and keeps growing (and it stays saved across reloads).</div></div>`;
       return;
     }
     const W=640,H=220,PL=54,PR=14,PT=16,PB=26;
@@ -235,16 +234,32 @@
            + `<circle cx="${X(last.t).toFixed(1)}" cy="${Y(last.y).toFixed(1)}" r="3.5" fill="${s.color}"/>`; }).join('');
     const xlab=`<text x="${PL}" y="${H-8}" fill="#8a5c6c" font-size="9">${fmtTime(tMin)}</text>`
              + `<text x="${W-PR}" y="${H-8}" text-anchor="end" fill="#8a5c6c" font-size="9">${fmtTime(tMax)}</text>`;
-    host.innerHTML = `<div class="hcard"><div class="hhead">History<span class="hleggroup">${legend}</span></div>${tabs}`
+    host.innerHTML = `<div class="hcard"><div class="hhead">Live<span class="hleggroup">${legend}</span></div>${tabs}`
       + `<svg viewBox="0 0 ${W} ${H}" class="hsvg">${grid}${lines}${xlab}</svg></div>`;
   }
 
   async function pollHistory(){
     try{
-      const r = await fetch('/api/youtube-history?ids='+VIDEOS.join(','), {cache:'no-store'});
+      const r = await fetch('/api/youtube-history?live=1&ids='+VIDEOS.join(','), {cache:'no-store'});
       const d = await r.json();
       if (d && d.videos){ histData = d.videos; drawHistory(); }
     }catch(e){}
+  }
+
+  // Grow the live chart in real time with each 15s poll (the server stores the
+  // same points, so it persists across reloads — that's the socialcounts twist).
+  function appendLive(d){
+    const vids = d.videos || [];
+    if (!vids.length) return;
+    if (!histData) histData = {};
+    for (const v of vids){
+      const arr = (histData[v.id] = histData[v.id] || []);
+      if (!arr.length || d.ts - arr[arr.length-1].t > 3000){
+        arr.push({ t:d.ts, v:v.views, l:v.likes, c:v.comments });
+        if (arr.length > 1600) arr.shift();
+      }
+    }
+    drawHistory();
   }
 
   async function poll(){
@@ -257,6 +272,7 @@
       }
       if (d.error){ $('#sub').textContent = 'error: '+d.error; return; }
       render(d);
+      appendLive(d);
     }catch(e){ /* keep last render */ }
   }
   poll();
