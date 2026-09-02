@@ -38,6 +38,30 @@ async function upstashPipe(cmds) {
   } catch {}
 }
 
+// fetch with a hard timeout so a slow third-party never stalls the response.
+async function fetchT(url, ms = 4000) {
+  const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+  try { return await fetch(url, { signal: c.signal, headers: { accept: 'application/json' } }); }
+  finally { clearTimeout(t); }
+}
+// Live (ticking, estimated) subscriber count for one channel. YouTube only exposes
+// a rounded count; these hobby counters interpolate a finer estimate. socialcounts
+// first (same source as socialcounts.org), mixerno as backup. Returns null on fail.
+async function liveSubCount(channelId) {
+  try {
+    const r = await fetchT(`https://api.socialcounts.org/youtube-live-subscriber-count/${channelId}`);
+    if (r && r.ok) { const d = await r.json(); const est = d?.est?.count ?? d?.est?.subscriberCount ?? d?.api?.count;
+      if (est != null && Number.isFinite(Number(est))) return Math.round(Number(est)); }
+  } catch {}
+  try {
+    const r = await fetchT(`https://mixerno.space/api/youtube-channel-counter/user/${channelId}`);
+    if (r && r.ok) { const d = await r.json();
+      const c = Array.isArray(d?.counts) ? d.counts.find(x => /subscrib/i.test(x?.value || x?.name || '')) : null;
+      if (c?.count != null && Number.isFinite(Number(c.count))) return Math.round(Number(c.count)); }
+  } catch {}
+  return null;
+}
+
 // Upstash REST returns HGETALL as a flat [field,value,…] array (older) or a plain
 // object (newer). Parse either into { field: parsedJSON }.
 function parseHash(result) {
@@ -123,21 +147,26 @@ export default async function handler(req, res) {
     }
     const videos = ids.map(id => byId[id]).filter(Boolean); // preserve request order
 
-    // Channel followers (subscribers). Rounded by YouTube (~3 sig figs), null when
-    // hidden. Cached ~5 min in Upstash so the extra channels.list call runs ~once
-    // per 5 min (not every ~14s), keeping well under the daily quota.
+    // Channel followers. Primary: a live ticking ESTIMATE from a counter API;
+    // fallback: YouTube's rounded count. Cached ~20s in Upstash so the value keeps
+    // moving without hammering the third-party service.
     const chIds = [...new Set(videos.map(v => v.channelId).filter(Boolean))].sort();
     if (chIds.length) {
       const subsKey = 'bu_yt_subs_' + chIds.join('_');
       let subs = await upstashGet(subsKey);
       if (!subs) {
         subs = {};
-        try {
-          const cr = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${encodeURIComponent(chIds.join(','))}&key=${encodeURIComponent(key)}`);
-          const cj = await cr.json();
-          for (const ch of (cj.items || [])) subs[ch.id] = ch.statistics?.hiddenSubscriberCount ? null : (ch.statistics?.subscriberCount != null ? Number(ch.statistics.subscriberCount) : null);
-          await upstashSetEx(subsKey, subs, 300);
-        } catch {}
+        const live = await Promise.all(chIds.map(async id => [id, await liveSubCount(id)]));
+        for (const [id, n] of live) if (n != null) subs[id] = n;
+        const missing = chIds.filter(id => subs[id] == null);
+        if (missing.length) {
+          try {
+            const cr = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${encodeURIComponent(missing.join(','))}&key=${encodeURIComponent(key)}`);
+            const cj = await cr.json();
+            for (const ch of (cj.items || [])) subs[ch.id] = ch.statistics?.hiddenSubscriberCount ? null : (ch.statistics?.subscriberCount != null ? Number(ch.statistics.subscriberCount) : null);
+          } catch {}
+        }
+        await upstashSetEx(subsKey, subs, 20);
       }
       for (const v of videos) v.subscribers = v.channelId ? (subs[v.channelId] ?? null) : null;
     }

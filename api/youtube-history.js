@@ -57,6 +57,27 @@ function deriveMilestones(series, relMs) {
   return out;
 }
 
+async function fetchT(url, ms = 4000) {
+  const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+  try { return await fetch(url, { signal: c.signal, headers: { accept: 'application/json' } }); }
+  finally { clearTimeout(t); }
+}
+// Live estimated subscriber count (socialcounts → mixerno); null on failure.
+async function liveSubCount(channelId) {
+  try {
+    const r = await fetchT(`https://api.socialcounts.org/youtube-live-subscriber-count/${channelId}`);
+    if (r && r.ok) { const d = await r.json(); const est = d?.est?.count ?? d?.est?.subscriberCount ?? d?.api?.count;
+      if (est != null && Number.isFinite(Number(est))) return Math.round(Number(est)); }
+  } catch {}
+  try {
+    const r = await fetchT(`https://mixerno.space/api/youtube-channel-counter/user/${channelId}`);
+    if (r && r.ok) { const d = await r.json();
+      const c = Array.isArray(d?.counts) ? d.counts.find(x => /subscrib/i.test(x?.value || x?.name || '')) : null;
+      if (c?.count != null && Number.isFinite(Number(c.count))) return Math.round(Number(c.count)); }
+  } catch {}
+  return null;
+}
+
 async function upstash(cmds) {
   const r = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
     method: 'POST',
@@ -94,16 +115,21 @@ async function fetchYt(ids, apiKey) {
       channelId: it.snippet?.channelId || null,
     };
   }
-  // Channel followers (subscribers), rounded by YouTube; null when hidden.
+  // Channel followers: live estimate primary, YouTube's rounded count as fallback.
   const chIds = [...new Set(Object.values(out).map(o => o.channelId).filter(Boolean))];
   if (chIds.length) {
-    try {
-      const cr = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${encodeURIComponent(chIds.join(','))}&key=${encodeURIComponent(apiKey)}`);
-      const cj = await cr.json();
-      const subs = {};
-      for (const ch of (cj.items || [])) subs[ch.id] = ch.statistics?.hiddenSubscriberCount ? null : (ch.statistics?.subscriberCount != null ? Number(ch.statistics.subscriberCount) : null);
-      for (const o of Object.values(out)) o.s = o.channelId ? (subs[o.channelId] ?? null) : null;
-    } catch {}
+    const subs = {};
+    const live = await Promise.all(chIds.map(async id => [id, await liveSubCount(id)]));
+    for (const [id, n] of live) if (n != null) subs[id] = n;
+    const missing = chIds.filter(id => subs[id] == null);
+    if (missing.length) {
+      try {
+        const cr = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${encodeURIComponent(missing.join(','))}&key=${encodeURIComponent(apiKey)}`);
+        const cj = await cr.json();
+        for (const ch of (cj.items || [])) subs[ch.id] = ch.statistics?.hiddenSubscriberCount ? null : (ch.statistics?.subscriberCount != null ? Number(ch.statistics.subscriberCount) : null);
+      } catch {}
+    }
+    for (const o of Object.values(out)) o.s = o.channelId ? (subs[o.channelId] ?? null) : null;
   }
   return out;
 }
