@@ -1,0 +1,28 @@
+name: YouTube Snapshots
+
+# Captures an hourly views/likes/comments snapshot for the /vs.html face-off.
+# The YouTube fetch + Upstash write run on Vercel (/api/youtube-history?snapshot=1,
+# which needs YOUTUBE_API_KEY there); this job just triggers it each hour.
+on:
+  schedule:
+    - cron: '5 * * * *'   # hourly at :05 (GitHub crons drift; off the busy top-of-hour)
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL (blank = production).'
+        required: false
+        default: ''
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Capture snapshot
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          BASE: ${{ inputs.base_url != '' && inputs.base_url || 'https://www.blinksunited.com' }}
+        run: |
+          code=$(curl -sS -L --max-time 60 -o /tmp/out.json -w '%{http_code}' \
+            -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/youtube-history?snapshot=1")
+          echo "HTTP $code"; cat /tmp/out.json; echo
+          [ "$code" = "200" ] || exit 1

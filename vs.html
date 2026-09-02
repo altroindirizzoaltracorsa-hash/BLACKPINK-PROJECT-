@@ -62,6 +62,17 @@
   .msg{text-align:center;padding:34px 16px;color:var(--muted);font-size:13px;line-height:1.6;
     border:1px dashed var(--line);border-radius:14px;background:#0a0407;}
   .msg code{color:var(--pink-soft);background:#ff2e7714;padding:1px 6px;border-radius:5px;}
+
+  .hcard{margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 12px 10px;}
+  .hhead{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin:0 2px 10px;}
+  .hleggroup{display:flex;gap:12px;margin-left:auto;text-transform:none;letter-spacing:0;}
+  .hleg{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
+  .hdot{width:9px;height:9px;border-radius:50%;flex:none;}
+  .htabs{display:flex;gap:6px;margin:0 2px 8px;}
+  .htab{flex:1;padding:7px;border-radius:9px;border:1px solid #ffffff14;background:transparent;color:var(--dim);font:inherit;font-size:11px;letter-spacing:.06em;cursor:pointer;}
+  .htab.on{background:#ff2e7718;border-color:#ff2e7755;color:var(--pink-soft);font-weight:700;}
+  .hsvg{width:100%;height:auto;display:block;}
+  .hempty{padding:26px 12px;text-align:center;color:var(--dim);font-size:12px;line-height:1.6;}
 </style>
 </head>
 <body>
@@ -75,6 +86,8 @@
     <div id="app">
       <div class="msg">Loading the face-off…</div>
     </div>
+
+    <div id="history"></div>
 
     <div class="foot" id="foot"></div>
   </div>
@@ -118,6 +131,8 @@
       return;
     }
     const [a,b] = vids;
+    window._vids = vids;           // let the history legend label the lines
+    if (histData) drawHistory();
     const aLead = a.views >= b.views;
 
     // (Re)build the shell only when the set of videos changes; otherwise just update numbers.
@@ -181,6 +196,57 @@
   }
   setInterval(tickFoot, 1000);
 
+  // ── history chart (hourly snapshots) ──
+  let metric = 'views';
+  let histData = null;
+  const METRIC = { views:{k:'v',label:'Views'}, likes:{k:'l',label:'Likes'}, comments:{k:'c',label:'Comments'} };
+  window.setMetric = function(m){ metric = m; drawHistory(); };
+
+  function fmtTime(t){ const d=new Date(t); return d.toLocaleDateString([], {month:'short',day:'numeric'})+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+
+  function drawHistory(){
+    const host = document.getElementById('history');
+    if (!host || !histData) return;
+    const mk = METRIC[metric].k;
+    const tabs = `<div class="htabs">${Object.keys(METRIC).map(m=>`<button class="htab${m===metric?' on':''}" onclick="setMetric('${m}')">${METRIC[m].label}</button>`).join('')}</div>`;
+    const series = VIDEOS.map((id,i)=>({ id, color:i===0?'var(--a)':'var(--b)',
+      pts:(histData[id]||[]).filter(p=>p[mk]!=null).map(p=>({t:p.t,y:p[mk]})) }));
+    const legend = series.map((s,i)=>{ const v=(window._vids||[])[i]; const nm=v?shortTitle(v):('Video '+(i+1));
+      return `<span class="hleg"><span class="hdot" style="background:${s.color}"></span>${escapeHtml(nm)}</span>`; }).join('');
+    const all = series.flatMap(s=>s.pts);
+    if (all.length < 2){
+      host.innerHTML = `<div class="hcard"><div class="hhead">History<span class="hleggroup">${legend}</span></div>${tabs}<div class="hempty">Collecting hourly snapshots — the chart fills in as points arrive (first one lands within the hour).</div></div>`;
+      return;
+    }
+    const W=640,H=220,PL=54,PR=14,PT=16,PB=26;
+    const tMin=Math.min(...all.map(p=>p.t)), tMax=Math.max(...all.map(p=>p.t));
+    const yLoR=Math.min(...all.map(p=>p.y)), yHiR=Math.max(...all.map(p=>p.y));
+    const pad=(yHiR-yLoR)*0.08||1, yLo=Math.max(0,yLoR-pad), yHi=yHiR+pad;
+    const X=t=> PL+(tMax===tMin?0.5:(t-tMin)/(tMax-tMin))*(W-PL-PR);
+    const Y=v=> H-PB-(yHi===yLo?0.5:(v-yLo)/(yHi-yLo))*(H-PT-PB);
+    let grid='';
+    for(let i=0;i<=3;i++){ const gv=yLo+(yHi-yLo)*i/3, gy=Y(gv);
+      grid+=`<line x1="${PL}" x2="${W-PR}" y1="${gy.toFixed(1)}" y2="${gy.toFixed(1)}" stroke="#ffffff10"/>`
+          + `<text x="${PL-8}" y="${(gy+3).toFixed(1)}" text-anchor="end" fill="#8a5c6c" font-size="9">${abbr(Math.round(gv))}</text>`; }
+    const lines = series.map(s=>{ if(!s.pts.length) return '';
+      const d=s.pts.map((p,i)=>`${i?'L':'M'}${X(p.t).toFixed(1)} ${Y(p.y).toFixed(1)}`).join(' ');
+      const last=s.pts[s.pts.length-1];
+      return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`
+           + `<circle cx="${X(last.t).toFixed(1)}" cy="${Y(last.y).toFixed(1)}" r="3.5" fill="${s.color}"/>`; }).join('');
+    const xlab=`<text x="${PL}" y="${H-8}" fill="#8a5c6c" font-size="9">${fmtTime(tMin)}</text>`
+             + `<text x="${W-PR}" y="${H-8}" text-anchor="end" fill="#8a5c6c" font-size="9">${fmtTime(tMax)}</text>`;
+    host.innerHTML = `<div class="hcard"><div class="hhead">History<span class="hleggroup">${legend}</span></div>${tabs}`
+      + `<svg viewBox="0 0 ${W} ${H}" class="hsvg">${grid}${lines}${xlab}</svg></div>`;
+  }
+
+  async function pollHistory(){
+    try{
+      const r = await fetch('/api/youtube-history?ids='+VIDEOS.join(','), {cache:'no-store'});
+      const d = await r.json();
+      if (d && d.videos){ histData = d.videos; drawHistory(); }
+    }catch(e){}
+  }
+
   async function poll(){
     try{
       const r = await fetch('/api/youtube-stats?ids='+VIDEOS.join(','), {cache:'no-store'});
@@ -195,7 +261,9 @@
   }
   poll();
   setInterval(poll, POLL_MS);
-  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) poll(); });
+  pollHistory();
+  setInterval(pollHistory, 5 * 60 * 1000);   // snapshots land hourly; re-read every 5 min
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ poll(); pollHistory(); } });
 </script>
 </body>
 </html>
