@@ -241,6 +241,8 @@
         <span><span class="num" id="views-${v.id}">${fmt(v.views)}</span><span class="delta zero" id="dv-${v.id}"></span></span></div>
       <div class="stat likes"><span class="lbl">Likes</span>
         <span><span class="num" id="likes-${v.id}">${v.likes==null?'hidden':fmt(v.likes)}</span><span class="delta zero" id="dl-${v.id}"></span></span></div>
+      <div class="stat subs"><span class="lbl">Followers</span>
+        <span><span class="num" id="subs-${v.id}">${v.subscribers==null?'—':fmt(v.subscribers)}</span><span class="delta zero" id="ds-${v.id}"></span></span></div>
       <div class="since" id="since-${v.id}"></div>
       <div class="mslist" id="msl-${v.id}"></div>
       <div class="m24" id="m24-${v.id}"></div>
@@ -294,12 +296,15 @@
     for (const v of vids){
       setNum('views-'+v.id, v.views);
       setNum('likes-'+v.id, v.likes==null?null:v.likes, 'hidden');
+      setNum('subs-'+v.id, v.subscribers==null?null:v.subscribers, '—');
       const p = prev[v.id];
       if (p){
         showDelta('dv-'+v.id, v.views - p.views, v.ts - p.ts);
         if (v.likes!=null && p.likes!=null) showDelta('dl-'+v.id, v.likes - p.likes, v.ts - p.ts);
+        // Followers are rounded by YouTube, so show the raw step (no per-minute rate).
+        if (v.subscribers!=null && p.subs!=null){ const el=document.getElementById('ds-'+v.id); const d=v.subscribers-p.subs; if(el){ el.textContent=d?`▲ ${fmt(d)}`:''; el.className=d?'delta':'delta zero'; } }
       }
-      prev[v.id] = { views:v.views, likes:v.likes, ts:data.ts };
+      prev[v.id] = { views:v.views, likes:v.likes, subs:v.subscribers, ts:data.ts };
     }
     // toggle leader glow
     document.getElementById('card-'+a.id)?.classList.toggle('leadA', aLead);
@@ -403,7 +408,7 @@
   let histData = null;      // fine live series (last ~24h at 15s) per id — feeds the chart
   let hourlyData = {};      // hourly snapshot series (full life) per id — feeds the gain stats
   let chartGeom = null;     // { series, X domain, PL.. } captured each draw for the hover tooltip
-  const METRIC = { views:{k:'v',label:'Views'}, likes:{k:'l',label:'Likes'}, comments:{k:'c',label:'Comments'} };
+  const METRIC = { views:{k:'v',label:'Views'}, likes:{k:'l',label:'Likes'}, comments:{k:'c',label:'Comments'}, followers:{k:'s',label:'Followers'} };
   window.setMetric = function(m){ metric = m; drawHistory(); };
 
   // ── gain stats (shown when one video is focused) ──
@@ -660,7 +665,7 @@
     for (const v of vids){
       const arr = (histData[v.id] = histData[v.id] || []);
       if (!arr.length || d.ts - arr[arr.length-1].t > 3000){
-        arr.push({ t:d.ts, v:v.views, l:v.likes, c:v.comments });
+        arr.push({ t:d.ts, v:v.views, l:v.likes, c:v.comments, s:v.subscribers });
         if (arr.length > 1600) arr.shift();
       }
     }

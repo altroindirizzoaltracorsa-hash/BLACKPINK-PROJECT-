@@ -79,7 +79,7 @@ function parseHash(result) {
 }
 
 async function fetchYt(ids, apiKey) {
-  const url = `${YT_API}?part=statistics&id=${encodeURIComponent(ids.join(','))}&key=${encodeURIComponent(apiKey)}`;
+  const url = `${YT_API}?part=statistics,snippet&id=${encodeURIComponent(ids.join(','))}&key=${encodeURIComponent(apiKey)}`;
   const r = await fetch(url);
   const j = await r.json();
   if (!r.ok) throw new Error(j?.error?.message || `YouTube API ${r.status}`);
@@ -90,7 +90,20 @@ async function fetchYt(ids, apiKey) {
       v: Number(s.viewCount ?? 0),
       l: s.likeCount != null ? Number(s.likeCount) : null,
       c: s.commentCount != null ? Number(s.commentCount) : null,
+      s: null,
+      channelId: it.snippet?.channelId || null,
     };
+  }
+  // Channel followers (subscribers), rounded by YouTube; null when hidden.
+  const chIds = [...new Set(Object.values(out).map(o => o.channelId).filter(Boolean))];
+  if (chIds.length) {
+    try {
+      const cr = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${encodeURIComponent(chIds.join(','))}&key=${encodeURIComponent(apiKey)}`);
+      const cj = await cr.json();
+      const subs = {};
+      for (const ch of (cj.items || [])) subs[ch.id] = ch.statistics?.hiddenSubscriberCount ? null : (ch.statistics?.subscriberCount != null ? Number(ch.statistics.subscriberCount) : null);
+      for (const o of Object.values(out)) o.s = o.channelId ? (subs[o.channelId] ?? null) : null;
+    } catch {}
   }
   return out;
 }
@@ -124,7 +137,7 @@ export default async function handler(req, res) {
         let lastT = 0;
         try { lastT = JSON.parse(last[0]?.result)?.t || 0; } catch {}
         if (!req.query.force && now - lastT < MIN_GAP_MS) continue;   // already have this hour
-        const point = JSON.stringify({ t: now, v: s.v, l: s.l, c: s.c });
+        const point = JSON.stringify({ t: now, v: s.v, l: s.l, c: s.c, s: s.s });
         await upstash([['RPUSH', key(id), point], ['LTRIM', key(id), String(-MAX_POINTS), '-1']]);
         written.push(id);
       }

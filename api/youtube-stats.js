@@ -112,14 +112,35 @@ export default async function handler(req, res) {
         id: it.id,
         title: it.snippet?.title || '',
         channel: it.snippet?.channelTitle || '',
+        channelId: it.snippet?.channelId || null,
         thumb: it.snippet?.thumbnails?.medium?.url || it.snippet?.thumbnails?.default?.url || '',
         views: Number(it.statistics?.viewCount ?? 0),
         likes: it.statistics?.likeCount != null ? Number(it.statistics.likeCount) : null,
         comments: it.statistics?.commentCount != null ? Number(it.statistics.commentCount) : null,
+        subscribers: null,
         publishedAt: it.snippet?.publishedAt || null,
       };
     }
     const videos = ids.map(id => byId[id]).filter(Boolean); // preserve request order
+
+    // Channel followers (subscribers). Rounded by YouTube (~3 sig figs), null when
+    // hidden. Cached ~5 min in Upstash so the extra channels.list call runs ~once
+    // per 5 min (not every ~14s), keeping well under the daily quota.
+    const chIds = [...new Set(videos.map(v => v.channelId).filter(Boolean))].sort();
+    if (chIds.length) {
+      const subsKey = 'bu_yt_subs_' + chIds.join('_');
+      let subs = await upstashGet(subsKey);
+      if (!subs) {
+        subs = {};
+        try {
+          const cr = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${encodeURIComponent(chIds.join(','))}&key=${encodeURIComponent(key)}`);
+          const cj = await cr.json();
+          for (const ch of (cj.items || [])) subs[ch.id] = ch.statistics?.hiddenSubscriberCount ? null : (ch.statistics?.subscriberCount != null ? Number(ch.statistics.subscriberCount) : null);
+          await upstashSetEx(subsKey, subs, 300);
+        } catch {}
+      }
+      for (const v of videos) v.subscribers = v.channelId ? (subs[v.channelId] ?? null) : null;
+    }
     const payload = { ts: Date.now(), videos };
     // Persist a fine-grained point per video on this fresh fetch (cache means ~1
     // write per ~14s regardless of traffic). Powers the live-growing, PERSISTENT
@@ -132,7 +153,7 @@ export default async function handler(req, res) {
     const cmds = [];
     videos.forEach((v, i) => {
       let prev = null; try { prev = JSON.parse(prevIdx[i]?.result); } catch {}
-      cmds.push(['RPUSH', 'bu_yt_live_' + v.id, JSON.stringify({ t: payload.ts, v: v.views, l: v.likes, c: v.comments })]);
+      cmds.push(['RPUSH', 'bu_yt_live_' + v.id, JSON.stringify({ t: payload.ts, v: v.views, l: v.likes, c: v.comments, s: v.subscribers })]);
       cmds.push(['LTRIM', 'bu_yt_live_' + v.id, String(-LIVE_MAX), '-1']);
       if (prev && prev.v != null && v.views > prev.v) {
         const rel = releaseMs(v.id);
