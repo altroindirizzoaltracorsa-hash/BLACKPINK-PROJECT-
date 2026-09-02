@@ -82,6 +82,16 @@
   .msrow .mstag{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.04em;color:var(--pink-soft);
     border:1px solid #ff2e7744;border-radius:5px;padding:1px 6px;margin-right:6px;vertical-align:1px;font-variant-numeric:tabular-nums;}
   .msrow .msdur{color:var(--muted);}
+  .wtimes{margin-top:7px;}
+  .wtimes>summary{cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim);letter-spacing:.02em;line-height:1.5;}
+  .wtimes>summary::-webkit-details-marker{display:none;}
+  .wtimes[open]>summary{color:var(--muted);}
+  .wt24>.wtimes>summary{color:var(--gold);opacity:.85;}
+  .wtbody{margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;padding:8px 10px;
+    background:rgba(0,0,0,0.4);border:1px solid #ffffff1f;border-radius:8px;}
+  .wtrow{display:flex;justify-content:space-between;gap:8px;font-size:9.5px;color:var(--dim);}
+  .wtrow span:last-child{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  @media(max-width:520px){ .wtbody{grid-template-columns:1fr;} }
   .m24{margin-top:9px;font-size:10.5px;color:var(--dim);letter-spacing:.02em;line-height:1.5;}
   .m24 b{color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums;}
   .m24 .m24tag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.12em;color:var(--gold);
@@ -142,6 +152,37 @@
   let focus = null;
   window.setFocus = function(id){ focus = (focus===id ? null : id); drawHistory(); };
 
+  // Worldwide clock — same city list + format as the /countdowns release-time rows,
+  // so any moment (a 24h mark, a milestone) can be shown across the world, not just
+  // the viewer's own zone. Rows are sorted earliest → latest.
+  const RELEASE_TIMEZONES = [
+    { city:'Los Angeles', tz:'America/Los_Angeles' }, { city:'Mexico City', tz:'America/Mexico_City' },
+    { city:'Bogotá', tz:'America/Bogota' }, { city:'New York', tz:'America/New_York' },
+    { city:'São Paulo', tz:'America/Sao_Paulo' }, { city:'Buenos Aires', tz:'America/Argentina/Buenos_Aires' },
+    { city:'London', tz:'Europe/London' }, { city:'Madrid', tz:'Europe/Madrid' },
+    { city:'Paris', tz:'Europe/Paris' }, { city:'Berlin', tz:'Europe/Berlin' },
+    { city:'Rome', tz:'Europe/Rome' }, { city:'Warsaw', tz:'Europe/Warsaw' },
+    { city:'Istanbul', tz:'Europe/Istanbul' }, { city:'Moscow', tz:'Europe/Moscow' },
+    { city:'Riyadh', tz:'Asia/Riyadh' }, { city:'Dubai', tz:'Asia/Dubai' },
+    { city:'Mumbai', tz:'Asia/Kolkata' }, { city:'Bangkok', tz:'Asia/Bangkok' },
+    { city:'Jakarta', tz:'Asia/Jakarta' }, { city:'Singapore', tz:'Asia/Singapore' },
+    { city:'Manila', tz:'Asia/Manila' }, { city:'Taipei', tz:'Asia/Taipei' },
+    { city:'Seoul', tz:'Asia/Seoul' }, { city:'Tokyo', tz:'Asia/Tokyo' },
+    { city:'Sydney', tz:'Australia/Sydney' }, { city:'Auckland', tz:'Pacific/Auckland' },
+  ];
+  function worldRows(t){
+    const d = new Date(t);
+    return RELEASE_TIMEZONES.map(({city,tz})=>({
+      city,
+      label: new Intl.DateTimeFormat([], {timeZone:tz, weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}).format(d),
+      sortKey: new Intl.DateTimeFormat('en-CA', {timeZone:tz, hour12:false, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}).format(d),
+    })).sort((a,b)=>a.sortKey.localeCompare(b.sortKey));
+  }
+  function worldTimesHtml(t, label){
+    const rows = worldRows(t).map(r=>`<div class="wtrow"><span>${escapeHtml(r.city)}</span><span>${r.label}</span></div>`).join('');
+    return `<details class="wtimes"><summary>🌍 ${label||'Times around the world'}</summary><div class="wtbody">${rows}</div></details>`;
+  }
+
   const $ = s => document.querySelector(s);
   const fmt = n => (n == null ? '—' : Number(n).toLocaleString('en-US'));
   const abbr = n => {
@@ -167,6 +208,7 @@
       <div class="since" id="since-${v.id}"></div>
       <div class="mslist" id="msl-${v.id}"></div>
       <div class="m24" id="m24-${v.id}"></div>
+      <div class="wt24" id="wt24-${v.id}"></div>
       <a class="watch" href="https://youtu.be/${v.id}" target="_blank" rel="noopener">Watch ↗</a>
     </div>`;
   }
@@ -194,6 +236,12 @@
           <div class="vs">VS</div>
           ${cardHtml(b,1,!aLead)}
         </div>`;
+      // The 24h-mark worldwide clock is static, so render it once per shell build
+      // (not on the per-second tick, which would collapse an open <details>).
+      for (const v of vids){
+        const w = document.getElementById('wt24-'+v.id), mk = markOf(v.id);
+        if (w) w.innerHTML = mk!=null ? worldTimesHtml(mk, '24h mark worldwide') : '';
+      }
     }
 
     // Leader line + battle bar
@@ -237,7 +285,7 @@
   }
 
   // ── 24-hour milestone (the number each video hit exactly 24h after release) ──
-  function fmtMark(t){ const d=new Date(t); return d.toLocaleDateString([], {month:'short',day:'numeric'})+', '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+  function fmtMark(t){ return new Intl.DateTimeFormat([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(new Date(t)); }
   function fmtCountdown(ms){ ms=Math.max(0,ms); const h=Math.floor(ms/3600000), m=Math.floor(ms%3600000/60000); return (h?h+'h ':'')+m+'m'; }
   // Duration like "12h 04m" (or "1d 03h 04m" once past a day).
   function fmtDur(ms){ ms=Math.max(0,ms); const d=Math.floor(ms/86400000), h=Math.floor(ms%86400000/3600000), m=Math.floor(ms%3600000/60000);
@@ -245,7 +293,7 @@
   // A moment in the viewer's own timezone + locale — same format the /countdowns
   // release-time rows use (weekday, month day, hour:minute). No fixed zone, so
   // everyone sees it in their local time.
-  function fmtWhen(t){ return new Intl.DateTimeFormat([], {weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}).format(new Date(t)); }
+  function fmtWhen(t){ return new Intl.DateTimeFormat([], {weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short'}).format(new Date(t)); }
   // Clean round-milestone label: 1000000 → "1M", 25000000 → "25M", 1e9 → "1B".
   function msLabel(n){ if(n>=1e9) return (n/1e9)+'B'; if(n>=1e6) return (n/1e6)+'M'; if(n>=1e3) return (n/1e3)+'K'; return String(n); }
 
@@ -260,15 +308,23 @@
         : `<span class="slbl">Since release</span> ${fmtDur(ms)}`;
     }
   }
-  // Reached view-milestones: "1M · reached 2 set 13:17 · in 12h 04m" (Italy time).
+  // Reached view-milestones, most recent first. Each row shows the moment in the
+  // viewer's own zone and expands (🌍) to the same worldwide list /countdowns uses.
+  // A signature guard skips the rebuild when nothing changed, so an open row stays
+  // open across polls.
+  const _mslSig = {};
   function updateViewMs(){
     for (const id of VIDEOS){
       const el = document.getElementById('msl-'+id); if (!el) continue;
-      const items = Object.values(viewMsData[id]||{}).sort((a,b)=>b.v-a.v).slice(0,4);
-      if (!items.length){ el.innerHTML=''; continue; }
+      const items = Object.values(viewMsData[id]||{}).sort((a,b)=>b.v-a.v).slice(0,6);
+      const sig = items.map(i=>i.v+'@'+i.t).join(',');
+      if (_mslSig[id] === sig) continue;
+      _mslSig[id] = sig;
       el.innerHTML = items.map(it=>{
         const dur = it.since!=null ? ` · <span class="msdur">in ${fmtDur(it.since)}</span>` : '';
-        return `<div class="msrow"><span class="mstag">${msLabel(it.v)}</span> reached ${fmtWhen(it.t)}${dur}</div>`;
+        const summary = `<span class="mstag">${msLabel(it.v)}</span> reached ${fmtWhen(it.t)}${dur}`;
+        const rows = worldRows(it.t).map(r=>`<div class="wtrow"><span>${escapeHtml(r.city)}</span><span>${r.label}</span></div>`).join('');
+        return `<details class="wtimes msrow"><summary>${summary}</summary><div class="wtbody">${rows}</div></details>`;
       }).join('');
     }
   }
@@ -455,12 +511,13 @@
       if (d.error){ $('#sub').textContent = 'error: '+d.error; return; }
       render(d);
       appendLive(d);
+      if (d.viewMilestones){ viewMsData = d.viewMilestones; updateViewMs(); }  // show new milestones within one 15s tick
     }catch(e){ /* keep last render */ }
   }
   poll();
   setInterval(poll, POLL_MS);
   pollHistory();
-  setInterval(pollHistory, 5 * 60 * 1000);   // snapshots land hourly; re-read every 5 min
+  setInterval(pollHistory, 45 * 1000);   // re-read history/milestones/24h pins often
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ poll(); pollHistory(); } });
 </script>
 </body>

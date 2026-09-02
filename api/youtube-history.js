@@ -30,6 +30,32 @@ const RELEASE = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PIN_TOL_MS = 95 * 60 * 1000;    // accept a stored point within ~95 min of the exact mark
 const markOf = id => (RELEASE[id] ? Date.parse(RELEASE[id]) + DAY_MS : null);
+const releaseMs = id => (RELEASE[id] ? Date.parse(RELEASE[id]) : null);
+
+// View thresholds we timestamp (kept in sync with youtube-stats.js). On read we
+// ALSO derive crossings straight from the stored series — so a crossing the live
+// path missed (deploy gap, quiet moment) is recovered and frozen.
+const VIEW_MILESTONES = [
+  1e6, 2e6, 3e6, 4e6, 5e6, 10e6, 20e6, 25e6, 30e6, 40e6, 50e6, 75e6,
+  100e6, 150e6, 200e6, 250e6, 300e6, 400e6, 500e6, 750e6, 1e9,
+];
+// First-crossing time for each threshold, interpolated between the bracketing
+// samples of a time-ascending [{t,v}] series.
+function deriveMilestones(series, relMs) {
+  const out = {};
+  for (const th of VIEW_MILESTONES) {
+    for (let i = 1; i < series.length; i++) {
+      const a = series[i - 1], b = series[i];
+      if (a.v != null && b.v != null && a.v < th && th <= b.v) {
+        const frac = (b.v - a.v) > 0 ? (th - a.v) / (b.v - a.v) : 0;
+        const tCross = Math.round(a.t + frac * (b.t - a.t));
+        out[String(th)] = { v: th, t: tCross, since: relMs != null ? tCross - relMs : null };
+        break;
+      }
+    }
+  }
+  return out;
+}
 
 async function upstash(cmds) {
   const r = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
@@ -135,22 +161,33 @@ export default async function handler(req, res) {
   try {
     const listKey = req.query.live ? liveKey : key;
     const lo = req.query.live ? '-1200' : '0';
-    // One pipeline: the series, the pinned 24h value, and the view-milestone hash,
-    // for each id — laid out in three id-length blocks.
+    // One pipeline, five id-length blocks: [display series][24h pin][ms hash]
+    // [hourly hist series][fine live series]. The last two feed milestone derivation.
     const n = ids.length;
+    const parseList = arr => (arr || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
     const cmds = ids.map(id => ['LRANGE', listKey(id), lo, '-1'])
       .concat(ids.map(id => ['GET', pinKey(id)]))
-      .concat(ids.map(id => ['HGETALL', `bu_yt_ms_${id}`]));
+      .concat(ids.map(id => ['HGETALL', `bu_yt_ms_${id}`]))
+      .concat(ids.map(id => ['LRANGE', key(id), '0', '-1']))
+      .concat(ids.map(id => ['LRANGE', liveKey(id), '-1200', '-1']));
     const results = await upstash(cmds);
     const videos = {}, milestones = {}, viewMilestones = {};
+    const heal = []; // HSETNX writes to freeze any newly-derived crossing
     ids.forEach((id, i) => {
-      videos[id] = (results[i]?.result || [])
-        .map(s => { try { return JSON.parse(s); } catch { return null; } })
-        .filter(Boolean);
+      videos[id] = parseList(results[i]?.result);
       const m = results[n + i]?.result;
       if (m) { try { milestones[id] = JSON.parse(m); } catch {} }
-      viewMilestones[id] = parseHash(results[2 * n + i]?.result);
+      const existing = parseHash(results[2 * n + i]?.result);
+      // Merge hourly + fine series (time-ascending, deduped) and derive crossings.
+      const merged = [...parseList(results[3 * n + i]?.result), ...parseList(results[4 * n + i]?.result)]
+        .sort((a, b) => a.t - b.t).filter((p, k, a) => k === 0 || p.t !== a[k - 1].t);
+      const derived = deriveMilestones(merged, releaseMs(id));
+      for (const th of Object.keys(derived)) {
+        if (!(th in existing)) heal.push(['HSETNX', `bu_yt_ms_${id}`, th, JSON.stringify(derived[th])]);
+      }
+      viewMilestones[id] = { ...derived, ...existing }; // frozen values win over recomputed
     });
+    if (heal.length) { try { await upstash(heal); } catch {} }
     return res.status(200).json({ videos, milestones, viewMilestones });
   } catch (e) { return res.status(500).json({ error: e.message }); }
 }

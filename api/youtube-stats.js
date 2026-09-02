@@ -38,6 +38,18 @@ async function upstashPipe(cmds) {
   } catch {}
 }
 
+// Upstash REST returns HGETALL as a flat [field,value,…] array (older) or a plain
+// object (newer). Parse either into { field: parsedJSON }.
+function parseHash(result) {
+  const out = {};
+  if (Array.isArray(result)) {
+    for (let i = 0; i < result.length; i += 2) { try { out[result[i]] = JSON.parse(result[i + 1]); } catch {} }
+  } else if (result && typeof result === 'object') {
+    for (const k of Object.keys(result)) { try { out[k] = JSON.parse(result[k]); } catch {} }
+  }
+  return out;
+}
+
 async function upstashRead(cmds) {
   if (!process.env.UPSTASH_REDIS_REST_URL) return [];
   try {
@@ -109,7 +121,6 @@ export default async function handler(req, res) {
     }
     const videos = ids.map(id => byId[id]).filter(Boolean); // preserve request order
     const payload = { ts: Date.now(), videos };
-    await upstashSetEx(cacheKey, payload, CACHE_TTL);
     // Persist a fine-grained point per video on this fresh fetch (cache means ~1
     // write per ~14s regardless of traffic). Powers the live-growing, PERSISTENT
     // chart on /vs.html — unlike socialcounts, which starts empty every visit.
@@ -136,6 +147,15 @@ export default async function handler(req, res) {
       }
     });
     if (cmds.length) await upstashPipe(cmds);
+    // Attach the current milestone stamps so the fast 15s poll shows them promptly
+    // (the history endpoint also backfills any the live path missed).
+    try {
+      const hashes = await upstashRead(videos.map(v => ['HGETALL', 'bu_yt_ms_' + v.id]));
+      const vm = {};
+      videos.forEach((v, i) => { vm[v.id] = parseHash(hashes[i]?.result); });
+      payload.viewMilestones = vm;
+    } catch {}
+    await upstashSetEx(cacheKey, payload, CACHE_TTL);
     res.setHeader('X-Cache', 'MISS');
     return res.status(200).json(payload);
   } catch (e) {
