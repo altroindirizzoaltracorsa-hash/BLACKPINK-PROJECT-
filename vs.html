@@ -439,14 +439,14 @@
   const kstDateStr = t => new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date(t)); // YYYY-MM-DD
   const dayIdxOfDate = s => Math.floor((Date.parse(s+'T12:00:00+09:00') + KST_OFF) / DAY_MS_);
   function paintStats(){ const mount = document.getElementById('vsstats'); if (mount && focus){ mount.innerHTML = statsControlsHtml(focus); renderStatsList(focus); } }
-  window.setGRange = function(mode){ const m = (mode==='all'||mode==='yesterday') ? mode : Number(mode); _gfilter = { mode:m, from:null, to:null }; paintStats(); };
+  window.setGRange = function(mode){ const m = /^\d+$/.test(mode) ? Number(mode) : mode; _gfilter = { mode:m, from:null, to:null }; paintStats(); };
   window.applyGCustom = function(){
     const f = document.getElementById('gfrom')?.value, t = document.getElementById('gto')?.value;
     if (f && t) _gfilter = { mode:'custom', from:f, to:t };
     paintStats();
   };
 
-  const RANGE_CHIPS = [['yesterday','Yesterday'],[7,'Last 7 days'],[30,'Last 30 days'],[90,'Last 90 days'],['all','All time']];
+  const RANGE_CHIPS = [['today','Today'],['yesterday','Yesterday'],[7,'Last 7 days'],[30,'Last 30 days'],[90,'Last 90 days'],['all','All time']];
   function statsControlsHtml(id){
     const label = METRIC[metric].label.toLowerCase();
     const s = gainStats(id, METRIC[metric].k);
@@ -484,7 +484,8 @@
     let days = Object.keys(s.hoursByDay).map(Number).sort((a,b) => b - a);   // newest first
     // Apply the range filter.
     const todayIdx = Math.floor((Date.now() + KST_OFF) / DAY_MS_);
-    if (_gfilter.mode === 'yesterday') days = days.filter(d => d === todayIdx - 1);
+    if (_gfilter.mode === 'today') days = days.filter(d => d === todayIdx);
+    else if (_gfilter.mode === 'yesterday') days = days.filter(d => d === todayIdx - 1);
     else if (typeof _gfilter.mode === 'number') days = days.filter(d => d > todayIdx - _gfilter.mode);
     else if (_gfilter.mode === 'custom' && _gfilter.from && _gfilter.to){
       const a = dayIdxOfDate(_gfilter.from), b = dayIdxOfDate(_gfilter.to);
