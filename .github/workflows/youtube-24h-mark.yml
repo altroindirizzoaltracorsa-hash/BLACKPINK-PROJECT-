@@ -10,22 +10,29 @@ name: YouTube 24h Mark Capture
 # snapshots and the pin lands 5-25 min late. This job samples with ?force=1
 # (bypassing MIN_GAP_MS) from just before the mark until just after it.
 #
-# MARK_UTC is the next mark to capture. Retarget it after each one; runs outside
-# the window around it exit in seconds, so a stale value is harmless.
-#   captured 2026-09-03T04:00Z  JISOO CLICK teaser  (pinned +14s)
+# MARK_UTC is a comma-separated list of marks. Each run picks the soonest one
+# inside its window and ignores the rest, so several marks can be pending at once
+# — the two MVs premiere 4h apart, so their marks are 4h apart too. A mark that
+# has passed is simply never selected again; a stale list is harmless.
 #   captured 2026-09-03T00:00Z  SaWaDiKa teaser     (pinned by hand)
-#   next     2026-09-05T00:00Z  SaWaDiKa MV
+#   captured 2026-09-03T04:00Z  JISOO CLICK teaser  (pinned +14s)
+#   pending  2026-09-05T00:00Z  SaWaDiKa MV
+#   pending  2026-09-05T04:00Z  JISOO CLICK MV
 on:
   schedule:
     # Three chances well before the mark; GitHub sheds scheduled runs, and each
     # run waits for the mark itself, so any one surviving is enough.
+    # One set per pending mark's hour: 23:xx covers a 00:00 mark, 03:xx a 04:00 one.
     - cron: '35 23 * * *'
     - cron: '45 23 * * *'
     - cron: '55 23 * * *'
+    - cron: '35 3 * * *'
+    - cron: '45 3 * * *'
+    - cron: '55 3 * * *'
   workflow_dispatch:
     inputs:
       mark_utc:
-        description: 'Mark instant, RFC3339 UTC (blank = the built-in default).'
+        description: 'Mark instant(s), comma-separated RFC3339 UTC (blank = the built-in list).'
         required: false
         default: ''
 
@@ -41,27 +48,28 @@ jobs:
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           BASE: https://www.blinksunited.com
-          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-09-05T00:00:00Z' }}
+          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-09-05T00:00:00Z,2026-09-05T04:00:00Z' }}
         run: |
           set -u
-          mark=$(date -u -d "$MARK_UTC" +%s)
           now=$(date -u +%s)
-          echo "mark  $(date -u -d @$mark +%FT%TZ)"
           echo "now   $(date -u -d @$now +%FT%TZ)"
 
-          # Already well past it — nothing useful left to sample.
-          if [ $(( now - mark )) -gt 900 ]; then
-            echo "More than 15 min past the mark; the pin is either set or will use a stored point. Exiting."
+          # Pick the soonest mark this run can actually serve. A mark is in window
+          # from 3h before it (any earlier and a scheduled run on some other night
+          # would sleep for a day and die on the job timeout) until 15 min after it
+          # (past that the pin is either set or will use a stored point anyway).
+          mark=""
+          for m in ${MARK_UTC//,/ }; do
+            t=$(date -u -d "$m" +%s) || { echo "skipping unparseable mark: $m"; continue; }
+            if [ $(( now - t )) -le 900 ] && [ $(( t - now )) -le 10800 ]; then
+              if [ -z "$mark" ] || [ "$t" -lt "$mark" ]; then mark=$t; fi
+            fi
+          done
+          if [ -z "$mark" ]; then
+            echo "No mark within the window (MARK_UTC=$MARK_UTC). Exiting."
             exit 0
           fi
-
-          # Not tonight's mark — a scheduled run on any other night would otherwise
-          # sleep for a day and die on the job timeout. A hand dispatch that really
-          # wants a long wait passes mark_utc and starts within the window.
-          if [ $(( mark - now )) -gt 10800 ]; then
-            echo "Mark is more than 3h away; not tonight. Exiting."
-            exit 0
-          fi
+          echo "mark  $(date -u -d @$mark +%FT%TZ)"
 
           # Wait until 30s before the mark (a late-started run skips straight through).
           target=$(( mark - 30 ))
