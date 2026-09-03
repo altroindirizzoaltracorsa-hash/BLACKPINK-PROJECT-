@@ -158,30 +158,22 @@
       <div class="sub" id="sub">views &amp; likes · head to head</div>
     </div>
 
-    <div class="rowlbl">Music videos</div>
-    <div id="mvapp">
-      <div class="msg">Loading…</div>
-    </div>
-    <div id="mvhistory"></div>
-    <div id="mvstats"></div>
-
-    <div class="rowlbl">Teasers · head to head</div>
-    <div id="app">
-      <div class="msg">Loading the face-off…</div>
-    </div>
-    <div id="history"></div>
-    <div id="vsstats"></div>
+    <div id="rows"><div class="msg">Loading…</div></div>
 
     <div class="foot" id="foot"></div>
   </div>
 
 <script>
-  // One list per row. The MV row is its own chart, deliberately not compared
-  // against the teasers — add JISOO's MV ('sf02ugzPFE4') to MV_VIDEOS once it is
-  // out and that row becomes a head-to-head on its own, with no other change.
-  const MV_VIDEOS     = ['FyS5dAywkEo'];
-  const TEASER_VIDEOS = ['LzgE8ift2Uw', 'h-7_04c_hVc'];
-  const VIDEOS = [...MV_VIDEOS, ...TEASER_VIDEOS];   // everything we fetch
+  // The page is a list of rows. Each row gets its own cards, its own chart and
+  // its own gain stats, and never shares an axis with another — a row with two
+  // ids renders as a head-to-head, one id as a single card. Adding a row, or a
+  // second video to an existing one, is an edit to this list and nothing else.
+  const ROWS = [
+    { key:'mv', label:'Music videos',           ids:['FyS5dAywkEo'] },
+    { key:'ts', label:'Teasers · head to head', ids:['LzgE8ift2Uw', 'h-7_04c_hVc'] },
+    { key:'fa', label:'JENNIE · Fallen Angel',  ids:['s466YCiHfKw'] },
+  ];
+  const VIDEOS = ROWS.flatMap(r => r.ids);   // everything we fetch
   const POLL_MS = 15000;
 
   // Release moments (for the "24-hour numbers" milestone). Same clock times as
@@ -266,8 +258,8 @@
   function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
   // Render one row. Two videos → the head-to-head layout (leader line, split bar,
-  // VS); one → a single card. The MV row starts as one and becomes a head-to-head
-  // the moment a second id joins MV_VIDEOS, with nothing else to change.
+  // VS); one → a single card. A row starts as one and becomes a head-to-head the
+  // moment a second id joins its `ids` in ROWS, with nothing else to change.
   function renderSection(key, mountId, ids, data){
     const mount = document.getElementById(mountId); if (!mount) return;
     const byId = Object.fromEntries((data.videos||[]).map(v=>[v.id,v]));
@@ -336,8 +328,7 @@
 
   function render(data){
     window._vids = data.videos || [];   // let the chart legends label their lines
-    renderSection('mv', 'mvapp', MV_VIDEOS, data);
-    renderSection('ts', 'app', TEASER_VIDEOS, data);
+    for (const r of ROWS) renderSection(r.key, 'app-'+r.key, r.ids, data);
     lastUpdate = Date.now();
     tickFoot();
   }
@@ -704,11 +695,15 @@
     return { draw, ids };
   }
 
-  // One chart per row. Same component, different ids and different state.
-  const CHARTS = [
-    makeChart({ key:'mv', chartId:'mvhistory', statsId:'mvstats', ids:MV_VIDEOS }),
-    makeChart({ key:'ts', chartId:'history',   statsId:'vsstats', ids:TEASER_VIDEOS }),
-  ];
+  // Lay the rows out once, then give each one its own chart instance. Same
+  // component every time — only the ids and the state behind it differ.
+  document.getElementById('rows').innerHTML = ROWS.map(r =>
+    `<div class="rowlbl">${escapeHtml(r.label)}</div>`
+    + `<div id="app-${r.key}"><div class="msg">Loading…</div></div>`
+    + `<div id="hist-${r.key}"></div>`
+    + `<div id="stats-${r.key}"></div>`).join('');
+  const CHARTS = ROWS.map(r =>
+    makeChart({ key:r.key, chartId:'hist-'+r.key, statsId:'stats-'+r.key, ids:r.ids }));
   const drawAll = () => { for (const c of CHARTS) c.draw(); };
 
   async function pollHistory(){
@@ -751,7 +746,7 @@
       const r = await fetch('/api/youtube-stats?ids='+VIDEOS.join(','), {cache:'no-store'});
       const d = await r.json();
       if (d.error === 'not-configured'){
-        $('#app').innerHTML = `<div class="msg">The live counter isn’t switched on yet.<br><br>Add a <code>YOUTUBE_API_KEY</code> (YouTube Data API v3) in the site settings and it’ll start counting.</div>`;
+        $('#rows').innerHTML = `<div class="msg">The live counter isn’t switched on yet.<br><br>Add a <code>YOUTUBE_API_KEY</code> (YouTube Data API v3) in the site settings and it’ll start counting.</div>`;
         return;
       }
       if (d.error){ $('#sub').textContent = 'error: '+d.error; return; }
