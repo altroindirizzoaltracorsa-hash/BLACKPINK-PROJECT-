@@ -660,6 +660,13 @@
   .admin-goal-value-input:focus { outline: none; border-color: #2ecc71; background: rgba(46,204,113,0.08); }
   .admin-goal-value-input::placeholder { color: rgba(245,240,240,0.28); }
   .goal-tracker-done { color: #00ff88; }
+  /* Per-release goals shown on a countdown card (reached wins for visitors, full
+     checklist for admins). Dark translucent panel so it reads on any card theme. */
+  .cd-goals-block { margin: 0.7rem 0 0.2rem; padding: 0.6rem 0.85rem; background: rgba(0,0,0,0.34); border: 1px solid rgba(255,255,255,0.09); border-radius: 12px; text-align: left; }
+  .cd-goals-block .ltal-goals-category-label { margin: 0.5rem 0 0.2rem; }
+  .cd-goals-block > div:first-of-type .ltal-goals-category-label { margin-top: 0; }
+  .cd-goals-head { font-family: var(--display); font-size: 0.95rem; letter-spacing: 0.05em; color: #E8110D; margin: 0 0 0.35rem; display: flex; align-items: center; gap: 0.45rem; }
+  .cd-goals-head span { font-size: 0.7rem; font-family: var(--body, inherit); background: rgba(232,17,13,0.16); color: #E8110D; border-radius: 999px; padding: 0.05rem 0.5rem; letter-spacing: 0; }
 
   /* ── GOAL HISTORY (chronology of past goal-hit days) ─────── */
   #goal-history-overlay { position: fixed; inset: 0; z-index: 9990; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.72); padding: 1rem; }
@@ -2709,6 +2716,7 @@
               <a class="cd-btn cd-btn-ghost" href="https://youtu.be/s466YCiHfKw" target="_blank" rel="noopener">▶ Watch MV</a>
               <button class="cd-btn cd-btn-ghost" onclick="openPresaveCard('fa')">📸 Share</button>
             </div>
+            <div class="cd-goals-block" id="fa-goals-list" style="display:none;"></div>
             <div class="fa-community-scrobbles" id="fa-community-scrobbles" style="display:none;">
               <span class="fa-cs-num" id="fa-cs-num">—</span>
               <span class="fa-cs-lbl">EP scrobbles by our community</span>
@@ -2748,6 +2756,7 @@
               <a class="cd-btn sw-btn sw-btn-ghost" href="https://youtu.be/h-7_04c_hVc" target="_blank" rel="noopener">▶ MV Teaser ↗</a>
               <button class="cd-btn sw-btn sw-btn-ghost" onclick="openLisaCard()">📸 Share</button>
             </div>
+            <div class="cd-goals-block" id="sawadika-goals-list" style="display:none;"></div>
             <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
               <summary>Release times worldwide</summary>
               <div class="cd-times-body" data-times-for="2026-09-04T00:00:00Z"></div>
@@ -2780,6 +2789,7 @@
                 <a class="cd-btn cd-btn-ghost js-teaser-btn" href="https://youtu.be/LzgE8ift2Uw" target="_blank" rel="noopener">▶ MV Teaser ↗</a>
                 <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
               </div>
+              <div class="cd-goals-block" id="jisoo-goals-list" style="display:none;"></div>
               <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
                 <summary>Release times worldwide</summary>
                 <div class="cd-times-body" data-times-for="2026-09-04T04:00:00Z"></div>
@@ -5212,6 +5222,7 @@ window.addEventListener('DOMContentLoaded', () => {
   setInterval(renderReleaseCountdown, 1000);
   renderHomeCountdowns();
   setInterval(renderHomeCountdowns, 1000);
+  renderAllReleaseGoals();
   initVmaCarousels();
   loadJennieSaveCount();
   loadFaSaveCount();
@@ -13105,8 +13116,10 @@ async function adminToggleGoalId(id) {
   CAMPAIGN_GOALS.forEach(c => { if (c.slug !== 'ltal') renderReleaseGoalsList(c.slug); });
 }
 
-// Public per-release goal checklist. Renders into the release's `mount` container
-// if it exists on the page (the LTAL campaign uses its own richer renderLtalGoalsList).
+// Per-release goals ON THE CARD. Visitors see only the goals that are REACHED or
+// carry a value (the wins, as they're ticked); the block stays hidden until there
+// is at least one. Admins see the full checklist so they can tick items off from
+// the card itself. Renders into the release's `mount` container if present.
 async function renderReleaseGoalsList(slug) {
   const camp = getCampaign(slug);
   const el = camp.mount && document.getElementById(camp.mount);
@@ -13118,7 +13131,14 @@ async function renderReleaseGoalsList(slug) {
     reached = d.reached || {};
     values  = d.values  || {};
   } catch {}
-  el.innerHTML = camp.categories.map(cat => `
+  // Visitors: keep only reached / valued items. Admin: keep everything.
+  const cats = camp.categories
+    .map(cat => ({ category: cat.category, items: cat.items.filter(g => isAdmin || reached[g.id] || values[g.id]) }))
+    .filter(cat => cat.items.length);
+  if (!cats.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const wins = camp.categories.reduce((n, cat) => n + cat.items.filter(g => reached[g.id] || values[g.id]).length, 0);
+  el.style.display = '';
+  el.innerHTML = `<p class="cd-goals-head">🎯 ${isAdmin ? 'Streaming goals' : 'Goals reached'}${wins ? ` <span>${wins}</span>` : ''}</p>` + cats.map(cat => `
     <div>
       <p class="ltal-goals-category-label">${cat.category}</p>
       ${cat.items.map(g => {
@@ -13130,6 +13150,11 @@ async function renderReleaseGoalsList(slug) {
       }).join('')}
     </div>
   `).join('');
+}
+
+// Render every per-release card checklist once (public wins / admin full list).
+function renderAllReleaseGoals() {
+  CAMPAIGN_GOALS.forEach(c => { if (c.slug !== 'ltal') renderReleaseGoalsList(c.slug); });
 }
 
 async function adminSetYt24hViews() {
