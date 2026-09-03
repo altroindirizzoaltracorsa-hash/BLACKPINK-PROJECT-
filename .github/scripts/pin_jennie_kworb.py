@@ -21,8 +21,11 @@ APPLY = bool(os.environ.get("APPLY"))
 
 JENNIE_ID = "250b0Wlc5Vk0CoUsaCY84M"
 DATE = "2026-09-01"
+PREV_DATE = "2026-08-31"
 KWORB_TOTAL = 8_441_429_322
-KWORB_DAILY = 7_973_242
+# daily_delta must equal total - previous-day total, or the streams page flags
+# the row as "recount". We keep the total pinned to kworb and make the daily the
+# consistent value (computed from our Aug 31 total) so the row adds up.
 
 
 def sb(method, path, **kwargs):
@@ -44,20 +47,26 @@ def main():
         "artist_id": f"eq.{JENNIE_ID}", "date": f"eq.{DATE}",
         "select": "date,total_streams,daily_delta",
     })
-    if not cur:
-        print(f"FATAL: no artist_daily_stats row for JENNIE on {DATE}", file=sys.stderr)
+    prev = sb("GET", "/artist_daily_stats", params={
+        "artist_id": f"eq.{JENNIE_ID}", "date": f"eq.{PREV_DATE}",
+        "select": "total_streams",
+    })
+    if not cur or not prev:
+        print(f"FATAL: missing artist_daily_stats row for {DATE} or {PREV_DATE}", file=sys.stderr)
         sys.exit(1)
     c = cur[0]
-    print(f"JENNIE {DATE}:")
+    prev_total = prev[0]["total_streams"]
+    new_daily = KWORB_TOTAL - prev_total     # consistent with the Aug 31 total -> no "recount"
+
+    print(f"JENNIE {DATE} (prev {PREV_DATE} total = {prev_total:,}):")
     print(f"  current : total={c['total_streams']:>15,}  daily={c['daily_delta']:>12,}")
-    print(f"  kworb   : total={KWORB_TOTAL:>15,}  daily={KWORB_DAILY:>12,}")
-    print(f"  Δtotal={KWORB_TOTAL - c['total_streams']:>+,}   Δdaily={KWORB_DAILY - c['daily_delta']:>+,}")
+    print(f"  target  : total={KWORB_TOTAL:>15,}  daily={new_daily:>12,}  (= total - prev, consistent)")
 
     if APPLY:
         sb("PATCH", "/artist_daily_stats",
            params={"artist_id": f"eq.{JENNIE_ID}", "date": f"eq.{DATE}"},
-           json={"total_streams": KWORB_TOTAL, "daily_delta": KWORB_DAILY})
-        print("  -> pinned to kworb.")
+           json={"total_streams": KWORB_TOTAL, "daily_delta": new_daily})
+        print("  -> pinned total to kworb, daily set to the consistent value.")
     else:
         print("  -> dry-run (set APPLY=1 to write).")
 
