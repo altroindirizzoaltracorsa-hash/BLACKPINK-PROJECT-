@@ -1,60 +1,78 @@
-// One-off: the Global-K Chart page (Astro) loads rankings client-side. Find the
-// JSON API it calls. Dump script srcs, astro-island props, and any URL/endpoint
-// strings, then fetch the JS bundles and grep them for the data endpoint.
-// Read-only. Delete after use.
+// One-off: find the JSON API the Global-K Chart Preact islands call. BFS the
+// island component bundles + their imported chunks (one-ish level), grep every
+// JS for endpoint-looking strings and `fetch(` / chartType context. Read-only.
 
 const PAGE = 'https://www.melon.com/en/global-k-chart/?chartType=D';
+const ORIGIN = 'https://www.melon.com';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
 
-async function get(url, accept = 'text/html,*/*') {
+async function get(url, accept = '*/*') {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 25000);
   try {
-    const r = await fetch(url, {
-      redirect: 'follow',
-      headers: { 'User-Agent': UA, 'Accept': accept, 'Accept-Language': 'en,ko;q=0.9', 'Referer': 'https://www.melon.com/' },
-      signal: ctrl.signal,
-    });
-    return { status: r.status, ct: r.headers.get('content-type') || '', url: r.url, body: await r.text() };
-  } finally { clearTimeout(t); }
+    const r = await fetch(url, { redirect: 'follow', headers: { 'User-Agent': UA, 'Accept': accept, 'Referer': PAGE }, signal: ctrl.signal });
+    return { status: r.status, body: await r.text() };
+  } finally { clearTimeout(t); } }
+
+const uniq = a => [...new Set(a)];
+const abs = u => (u.startsWith('http') ? u : new URL(u, ORIGIN).href);
+
+function jsChunkRefs(js) {
+  // import "..."; from "..."; import("..."); plus any "/fe-public/....js" literal
+  const refs = [];
+  for (const m of js.matchAll(/(?:from|import)\s*\(?\s*["'`](\/[^"'`]+?\.m?js)["'`]/g)) refs.push(m[1]);
+  for (const m of js.matchAll(/["'`](\/fe-public\/[^"'`]+?\.m?js)["'`]/g)) refs.push(m[1]);
+  return uniq(refs);
 }
 
-function uniq(a) { return [...new Set(a)]; }
+function endpoints(js) {
+  const out = [];
+  for (const m of js.matchAll(/["'`](https?:\/\/[^"'`]+|\/[a-z0-9._\-\/]*(?:api|chart|rank|global|globalk|list|data|v[0-9])[a-z0-9._\-\/]*)["'`]/gi)) {
+    const s = m[1];
+    if (/\.(png|jpe?g|svg|gif|webp|css|ico|woff2?)$/i.test(s)) continue;
+    if (/googletag|kakao|facebook|twitter|m2\.melon\.com\/fe-public\/images/i.test(s)) continue;
+    out.push(s);
+  }
+  return uniq(out);
+}
 
 async function main() {
-  const page = await get(PAGE);
-  console.log(`PAGE status=${page.status} ct=${page.ct} bytes=${page.body.length}`);
+  const page = await get(PAGE, 'text/html');
   const html = page.body;
+  const seeds = uniq([
+    ...[...html.matchAll(/component-url=["']([^"']+)["']/g)].map(m => m[1]),
+    ...[...html.matchAll(/renderer-url=["']([^"']+)["']/g)].map(m => m[1]),
+    ...[...html.matchAll(/<script[^>]+src=["'](\/fe-public\/[^"']+)["']/g)].map(m => m[1]),
+  ]).map(abs);
 
-  // 1) script + module srcs
-  const srcs = uniq([...html.matchAll(/<script[^>]+src=["']([^"']+)["']/g)].map(m => m[1]));
-  console.log(`\n[scripts] ${srcs.length}`);
-  srcs.forEach(s => console.log('   ' + s));
+  console.log(`seeds (${seeds.length}):`); seeds.forEach(s => console.log('  ' + s));
 
-  // 2) astro-island tags (props may hold data or an endpoint)
-  const islands = [...html.matchAll(/<astro-island[^>]*>/g)].map(m => m[0]);
-  console.log(`\n[astro-islands] ${islands.length}`);
-  islands.slice(0, 4).forEach(t => console.log('   ' + t.slice(0, 1200)));
-
-  // 3) endpoint-looking strings in the HTML itself
-  const urlRe = /https?:\/\/[^\s"'<>()]+|\/[a-z0-9._\-\/]*(?:api|chart|global|rank|json)[a-z0-9._\-\/?=&]*/gi;
-  const hits = uniq((html.match(urlRe) || []).filter(u => /api|chart|global|rank|\.json/i.test(u)));
-  console.log(`\n[endpoint-ish strings in HTML] ${hits.length}`);
-  hits.slice(0, 40).forEach(u => console.log('   ' + u));
-
-  // 4) fetch JS bundles and grep them for endpoints
-  const jsUrls = srcs.map(s => s.startsWith('http') ? s : new URL(s, PAGE).href).filter(u => /\.m?js(\?|$)/.test(u));
-  for (const ju of jsUrls.slice(0, 6)) {
-    try {
-      const js = await get(ju, '*/*');
-      const eps = uniq((js.body.match(/["'`](\/[^"'`]*?(?:api|chart|rank|global)[^"'`]*|https?:\/\/[^"'`]*?(?:api|chart|rank|global)[^"'`]*)["'`]/gi) || [])
-        .map(s => s.replace(/^["'`]|["'`]$/g, '')));
-      console.log(`\n[bundle ${ju.split('/').pop()}] status=${js.status} bytes=${js.body.length} endpoints=${eps.length}`);
-      eps.slice(0, 30).forEach(e => console.log('   ' + e));
-    } catch (e) {
-      console.log(`\n[bundle ${ju}] ERROR ${e.message}`);
+  const seen = new Set(), queue = [...seeds];
+  const allEndpoints = new Set();
+  let fetched = 0;
+  while (queue.length && fetched < 40) {
+    const url = queue.shift();
+    if (seen.has(url)) continue; seen.add(url);
+    let js;
+    try { js = await get(url); } catch (e) { console.log(`  ! ${url} ${e.message}`); continue; }
+    if (js.status !== 200) { console.log(`  ! ${url} status ${js.status}`); continue; }
+    fetched++;
+    const eps = endpoints(js.body);
+    eps.forEach(e => allEndpoints.add(e));
+    // context around chartType / fetch
+    const ctx = [];
+    for (const m of js.body.matchAll(/.{0,60}chartType.{0,80}/g)) ctx.push(m[0]);
+    if (eps.length || ctx.length) {
+      console.log(`\n[${url.split('/').pop()}] bytes=${js.body.length}`);
+      eps.forEach(e => console.log('   ep: ' + e));
+      uniq(ctx).slice(0, 3).forEach(c => console.log('   ctx: ' + c.replace(/\s+/g, ' ')));
     }
-    await new Promise(r => setTimeout(r, 400));
+    for (const ref of jsChunkRefs(js.body)) { const a = abs(ref); if (!seen.has(a)) queue.push(a); }
+    await new Promise(r => setTimeout(r, 250));
   }
+
+  console.log(`\n==== fetched ${fetched} JS files ====`);
+  console.log(`\nALL endpoint-ish strings:`);
+  [...allEndpoints].sort().forEach(e => console.log('   ' + e));
 }
 main().catch(e => { console.error(e); process.exit(1); });
