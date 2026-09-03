@@ -522,24 +522,29 @@ def process_artist(client, artist_id, artist_name):
     # this run. Deduped by track ID and by normalized name. Set AUTO_DISCOVER=0
     # to fall back to the pinned list only.
     track_specs = list(base_specs)
-    seen_ids = {tid for _, tid in track_specs}
-    known_names = {_norm_track_name(n) for n, _ in track_specs}
+    try:
+        seen_ids = {tid for _, tid in track_specs}
+        known_names = {_norm_track_name(n) for n, _ in track_specs}
 
-    persisted = sb("GET", "/artist_tracks", params={
-        "artist_id": f"eq.{artist_id}", "select": "name,source_track_ids"}) or []
-    for row in persisted:
-        known_names.add(_norm_track_name(row.get("name")))
-        for sid in (row.get("source_track_ids") or []):
-            if sid not in seen_ids:
-                track_specs.append((row["name"], sid))
-                seen_ids.add(sid)
+        persisted = sb("GET", "/artist_tracks", params={
+            "artist_id": f"eq.{artist_id}", "select": "name,source_track_ids"}) or []
+        for row in persisted:
+            known_names.add(_norm_track_name(row.get("name")))
+            for sid in (row.get("source_track_ids") or []):
+                if sid not in seen_ids:
+                    track_specs.append((row["name"], sid))
+                    seen_ids.add(sid)
 
-    if os.environ.get("AUTO_DISCOVER", "1") != "0":
-        for name, tid, rd in discover_new_tracks(client, artist_id, seen_ids, known_names):
-            print(f"  🆕 auto-discovered new release: {name!r} [{tid}] (released {rd})")
-            track_specs.append((name, tid))
-            seen_ids.add(tid)
-            known_names.add(_norm_track_name(name))
+        if os.environ.get("AUTO_DISCOVER", "1") != "0":
+            for name, tid, rd in discover_new_tracks(client, artist_id, seen_ids, known_names):
+                print(f"  🆕 auto-discovered new release: {name!r} [{tid}] (released {rd})")
+                track_specs.append((name, tid))
+                seen_ids.add(tid)
+                known_names.add(_norm_track_name(name))
+    except Exception as e:
+        # Never let discovery break the daily total — fall back to the pinned list.
+        print(f"  ⚠ discovery/persist step failed, using FIXED_TRACKS only: {e}", file=sys.stderr)
+        track_specs = list(base_specs)
 
     prev_artist = latest_artist_stat(artist_id)
     today = snapshot_date_for(prev_artist)
