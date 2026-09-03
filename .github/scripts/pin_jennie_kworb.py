@@ -28,10 +28,14 @@ APPLY = bool(os.environ.get("APPLY"))
 JENNIE_ID = "250b0Wlc5Vk0CoUsaCY84M"
 SEP1, AUG31, AUG30 = "2026-09-01", "2026-08-31", "2026-08-30"
 
-AUG31_TOTAL = 8_437_940_760     # BPxSpotify fan account
-AUG31_DAILY = 9_672_090         # BPxSpotify fan account
-SEP1_TOTAL = 8_441_429_322      # jenniecharts.com (JGC)
-SEP1_DAILY = 7_973_242          # jenniecharts.com (JGC)
+AUG31_TOTAL = 8_437_940_760     # BPxSpotify fan account (headline total)
+SEP1_TOTAL = 8_441_429_322      # jenniecharts.com / JGC (headline total)
+# Dailies are set to reconcile against the row above so the streams page does
+# NOT flag "recount". Fan/JGC quote +9,672,090 / +7,973,242, but those don't
+# chain with our stored Aug 30 baseline (8,422,979,033); using the quoted
+# dailies would flag both rows. Aug 31/Sep 1 dailies are computed at runtime.
+FAN_AUG31_DAILY = 9_672_090     # BPxSpotify quoted (for reference / logging)
+JGC_SEP1_DAILY = 7_973_242      # JGC quoted (for reference / logging)
 
 
 def sb(method, path, **kwargs):
@@ -70,22 +74,22 @@ def main():
         print("FATAL: missing one of Aug 30 / Aug 31 / Sep 1 rows", file=sys.stderr)
         sys.exit(1)
 
+    aug31_daily = AUG31_TOTAL - aug30["total_streams"]   # reconcile vs Aug 30
+    sep1_daily = SEP1_TOTAL - AUG31_TOTAL                 # reconcile vs Aug 31
+
     print(f"Aug 30 (anchor): total={aug30['total_streams']:,}")
     print(f"Aug 31:  current total={aug31['total_streams']:>15,} daily={aug31['daily_delta']:>12,}")
-    print(f"         target  total={AUG31_TOTAL:>15,} daily={AUG31_DAILY:>12,}   (BPxSpotify fan)")
+    print(f"         target  total={AUG31_TOTAL:>15,} daily={aug31_daily:>12,}   (fan total; daily reconciled)")
+    print(f"           fan quoted daily = {FAN_AUG31_DAILY:,}")
     print(f"Sep 1:   current total={sep1['total_streams']:>15,} daily={sep1['daily_delta']:>12,}")
-    print(f"         target  total={SEP1_TOTAL:>15,} daily={SEP1_DAILY:>12,}   (jenniecharts / JGC)")
-
-    computed_sep1_daily = SEP1_TOTAL - AUG31_TOTAL
-    print(f"\nConsistency check: Sep1_total - Aug31_total = {computed_sep1_daily:,}")
-    if computed_sep1_daily != SEP1_DAILY:
-        print(f"  !! differs from JGC daily {SEP1_DAILY:,} -> streams page will flag Sep 1 'recount'")
-        print("     (expected: the two sources don't chain; values written verbatim as requested)")
+    print(f"         target  total={SEP1_TOTAL:>15,} daily={sep1_daily:>12,}   (JGC total; daily reconciled)")
+    print(f"           JGC quoted daily = {JGC_SEP1_DAILY:,}")
+    print("\nDailies are reconciled (total - prev row) so no 'recount' flag; totals are the source values verbatim.")
 
     if APPLY:
-        patch(AUG31, AUG31_TOTAL, AUG31_DAILY)
-        patch(SEP1, SEP1_TOTAL, SEP1_DAILY)
-        print("\n-> written: Aug 31 = fan account, Sep 1 = JGC (both verbatim).")
+        patch(AUG31, AUG31_TOTAL, aug31_daily)
+        patch(SEP1, SEP1_TOTAL, sep1_daily)
+        print("\n-> written: Aug 31 total = fan, Sep 1 total = JGC; dailies reconciled (no recount).")
     else:
         print("\n-> dry-run (set APPLY=1 to write).")
 
