@@ -16,7 +16,11 @@
 // ADMIN_SECRET / CRON_SECRET to authorize snapshot writes.
 
 const YT_API = 'https://www.googleapis.com/youtube/v3/videos';
-const DEFAULT_IDS = ['LzgE8ift2Uw', 'h-7_04c_hVc', 'FyS5dAywkEo', 'sf02ugzPFE4'];
+// s466YCiHfKw is collected for its 7-day figure. It has no RELEASE entry: RELEASE
+// drives the release+24h pin, and a 7-day mark is a different thing the pin logic
+// doesn't model yet. Collecting it now is what matters — the 7-day value is
+// recoverable from the stored series afterwards, a missed sample is not.
+const DEFAULT_IDS = ['LzgE8ift2Uw', 'h-7_04c_hVc', 'FyS5dAywkEo', 'sf02ugzPFE4', 's466YCiHfKw'];
 const MAX_POINTS = 2400;              // ~100 days at hourly — keep the full-life gain list
 const MIN_GAP_MS = 55 * 60 * 1000;    // don't store more than ~once an hour
 const key = id => `bu_yt_hist_${id}`;

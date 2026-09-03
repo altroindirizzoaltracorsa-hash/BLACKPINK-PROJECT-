@@ -18,6 +18,9 @@ name: YouTube 24h Mark Capture
 #   captured 2026-09-03T04:00Z  JISOO CLICK teaser  (pinned +14s)
 #   pending  2026-09-05T00:00Z  SaWaDiKa MV
 #   pending  2026-09-05T04:00Z  JISOO CLICK MV
+#   pending  2026-09-04T04:00Z  s466YCiHfKw 7-day figure — a sampling-only mark:
+#            nothing pins at 7 days yet, so the burst just plants dense points at
+#            the instant and the value is read back from the series later.
 on:
   schedule:
     # Three chances well before the mark; GitHub sheds scheduled runs, and each
@@ -48,7 +51,7 @@ jobs:
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           BASE: https://www.blinksunited.com
-          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-09-05T00:00:00Z,2026-09-05T04:00:00Z' }}
+          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-09-04T04:00:00Z,2026-09-05T00:00:00Z,2026-09-05T04:00:00Z' }}
         run: |
           set -u
           now=$(date -u +%s)
