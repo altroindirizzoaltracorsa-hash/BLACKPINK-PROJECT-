@@ -35,11 +35,7 @@ const RELEASE = {
   // DEFAULT_IDS, not the page. Before the premiere YouTube omits it from the
   // videos.list response and the snapshot loop skips it.
   'FyS5dAywkEo': '2026-09-04T00:00:00Z', // LISA MV — premieres 02:00 Rome Sep 4 → 24h mark Sep 5, 02:00
-  // JISOO's MV (sf02ugzPFE4) is in DEFAULT_IDS but deliberately NOT here yet: its
-  // premiere time isn't known, and the teasers used different clocks (JISOO 06:00
-  // Rome, LISA 02:00), so it can't be inferred. Collection and view-milestone
-  // crossings work without it — only the 24h mark needs it, and both pin paths
-  // skip an id whose markOf() is null. Add the entry once the premiere is set.
+  'sf02ugzPFE4': '2026-09-04T04:00:00Z', // JISOO MV — premieres 06:00 Rome Sep 4 → 24h mark Sep 5, 06:00
 };
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PIN_TOL_MS = 95 * 60 * 1000;    // accept a stored point within ~95 min of the exact mark
