@@ -173,6 +173,75 @@ async function buildChart(def) {
   }
 }
 
+// Melon Global-K Chart: unlike the others this ranks ARTISTS (not songs) by
+// global popularity, aggregating Korea/China/Japan. It's an Astro SPA whose
+// rankings come from a JSON API on the mobile host (www 500s, m2 serves it).
+// Rows: { ARTISTID, ARTISTNAME, CURRANK, RANKTYPE, RANKGAP, RANK_KR/CN/JP }.
+// We match members on ARTISTNAME and reuse the song/artists entry shape so the
+// /kcharts renderer needs no change (artist name -> song, country ranks ->
+// the sub-line, RANKTYPE/RANKGAP -> the movement arrow).
+const GLOBALK = {
+  service: 'Melon', type: 'Global-K (Daily)', kr: '글로벌 K 차트',
+  api: 'https://m2.melon.com/m6/chart/globalk.json?chartType=D',
+  page: 'https://www.melon.com/en/global-k-chart/?chartType=D',
+};
+
+async function fetchJson(url) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 25000);
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json,*/*', 'Accept-Language': 'en,ko;q=0.9', 'Referer': 'https://www.melon.com/en/global-k-chart/' }, signal: ctrl.signal });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return JSON.parse(await r.text());
+  } finally { clearTimeout(t); }
+}
+
+function matchMembersByName(name) {
+  const blob = String(name || '').toLowerCase();
+  const found = new Set();
+  for (const rule of RULES) for (const tok of rule.tokens) { if (blob.includes(tok)) { found.add(rule.member); break; } }
+  return found;
+}
+
+async function buildGlobalKChart(def) {
+  const base = { key: 'melon-global-k-daily', service: def.service, type: def.type, kr: def.kr, label: def.service + ' · ' + def.type, url: def.page };
+  try {
+    const data = await fetchJson(def.api);
+    const rows = data?.response;
+    if (!Array.isArray(rows) || !rows.length) return { ...base, available: false, totalRows: 0, entries: [] };
+    const entries = [];
+    for (const r of rows) {
+      const members = matchMembersByName(r.ARTISTNAME);
+      if (!members.size) continue;
+      const member = MEMBER_PRIORITY.find(m => members.has(m)) || [...members][0];
+      const rank = parseInt(r.CURRANK, 10);
+      const gap = parseInt(r.RANKGAP, 10) || 0;
+      const type = String(r.RANKTYPE || '').toUpperCase();
+      // previous rank so kcMovement() renders the arrow; NEW -> null
+      let previous = rank;
+      if (type === 'UP') previous = rank + gap;
+      else if (type === 'DOWN') previous = rank - gap;
+      else if (type === 'NEW') previous = null;
+      const countries = [['KR', r.RANK_KR], ['CN', r.RANK_CN], ['JP', r.RANK_JP]]
+        .filter(([, v]) => parseInt(v, 10) > 0)
+        .map(([c, v]) => c + ' #' + parseInt(v, 10)).join(' · ');
+      entries.push({
+        rank: Number.isFinite(rank) ? rank : null,
+        previous,
+        song: r.ARTISTNAME || '',
+        artists: countries,
+        member,
+        link: r.ARTISTID ? ('https://www.melon.com/artist/detail.htm?artistId=' + r.ARTISTID) : null,
+      });
+    }
+    entries.sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999));
+    return { ...base, available: true, totalRows: rows.length, entries };
+  } catch (e) {
+    console.error('  !', def.api, '->', e.message);
+    return { ...base, available: false, totalRows: 0, entries: [] };
+  }
+}
+
 async function main() {
   mkdirSync(DATA_DIR, { recursive: true });
   const charts = [];
@@ -182,6 +251,10 @@ async function main() {
     console.log(`${c.available ? 'ok ' : 'NA '} ${c.label}: ${c.entries.length} BP entr${c.entries.length === 1 ? 'y' : 'ies'} / ${c.totalRows} rows`);
     await new Promise(res => setTimeout(res, 400)); // be polite
   }
+  // Global-K artist chart (JSON API) — surfaced first under the Melon tab.
+  const gk = await buildGlobalKChart(GLOBALK);
+  charts.unshift(gk);
+  console.log(`${gk.available ? 'ok ' : 'NA '} ${gk.label}: ${gk.entries.length} BP entries / ${gk.totalRows} rows`);
   const now = new Date();
   const date = now.toISOString().slice(0, 10);
   const output = {
