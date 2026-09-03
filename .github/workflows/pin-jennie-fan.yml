@@ -1,0 +1,30 @@
+name: Pin JENNIE to fan totals
+
+# One-off: pin JENNIE's Aug 28 - Sep 1 artist totals to the BPxSpotify fan
+# account's figures (chain-consistent). Dry-run by default; apply=true writes.
+# Safe to delete once run.
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Set to 'true' to WRITE. Blank/false = dry-run (read-only)."
+        required: false
+        default: ""
+
+jobs:
+  pin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install httpx
+        run: pip install httpx
+      - name: Pin JENNIE to fan totals (dry-run unless apply=true)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          APPLY: ${{ github.event.inputs.apply == 'true' && '1' || '' }}
+        run: python .github/scripts/pin_jennie_fan.py
