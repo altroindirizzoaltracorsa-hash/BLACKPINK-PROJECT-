@@ -3,6 +3,10 @@
 //   ?history=1&ids=<id>,<id>         → read stored hourly snapshots per video
 //   ?snapshot=1  (x-admin-secret / Bearer CRON_SECRET)  → capture one snapshot now
 //
+// Reads are not purely read-only: they freeze newly-derived view-milestone
+// crossings and the 24h pin with NX writes, so a milestone the cron missed is
+// recovered by the next visitor instead of being lost.
+//
 // Snapshots (views / likes / comments) are appended to a per-video Redis list in
 // Upstash (RPUSH + LTRIM), so there's no SQL table to create. An hourly cron
 // (youtube-snapshots.yml) calls snapshot mode; the read mode feeds the chart on
@@ -30,6 +34,18 @@ const RELEASE = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PIN_TOL_MS = 95 * 60 * 1000;    // accept a stored point within ~95 min of the exact mark
 const markOf = id => (RELEASE[id] ? Date.parse(RELEASE[id]) + DAY_MS : null);
+// The frozen 24h record. `s` (followers) is carried too, so the chart's gold dot
+// can be drawn on every metric tab and not just views/likes/comments.
+const pinFrom = (p, mark) => ({ t: p.t, v: p.v, l: p.l, c: p.c, s: p.s ?? null, mark });
+// Stored point nearest the mark, or null if nothing lands within tolerance.
+const nearestToMark = (points, mark) => {
+  let best = null;
+  for (const p of points) {
+    if (!p || !p.t) continue;
+    if (!best || Math.abs(p.t - mark) < Math.abs(best.t - mark)) best = p;
+  }
+  return best && Math.abs(best.t - mark) <= PIN_TOL_MS ? best : null;
+};
 const releaseMs = id => (RELEASE[id] ? Date.parse(RELEASE[id]) : null);
 
 // View thresholds we timestamp (kept in sync with youtube-stats.js). On read we
@@ -178,16 +194,11 @@ export default async function handler(req, res) {
         const have = await upstash([['GET', pinKey(id)]]);
         if (have[0]?.result) continue;                                  // already pinned
         const lists = await upstash([['LRANGE', key(id), '0', '-1'], ['LRANGE', liveKey(id), '-1200', '-1']]);
-        let best = null;
-        for (const arr of [lists[0]?.result || [], lists[1]?.result || []]) {
-          for (const str of arr) {
-            let p; try { p = JSON.parse(str); } catch { continue; }
-            if (!p || !p.t) continue;
-            if (!best || Math.abs(p.t - mark) < Math.abs(best.t - mark)) best = p;
-          }
-        }
-        if (!best || Math.abs(best.t - mark) > PIN_TOL_MS) continue;    // no point near the mark yet
-        await upstash([['SET', pinKey(id), JSON.stringify({ t: best.t, v: best.v, l: best.l, c: best.c, mark })]]);
+        const stored = [...(lists[0]?.result || []), ...(lists[1]?.result || [])]
+          .map(str => { try { return JSON.parse(str); } catch { return null; } }).filter(Boolean);
+        const best = nearestToMark(stored, mark);
+        if (!best) continue;                                            // no point near the mark yet
+        await upstash([['SET', pinKey(id), JSON.stringify(pinFrom(best, mark))]]);
         pinned.push(id);
       }
       return res.status(200).json({ ok: true, written, pinned, ts: now });
@@ -211,7 +222,7 @@ export default async function handler(req, res) {
       .concat(ids.map(id => ['LRANGE', liveKey(id), '-1200', '-1']));
     const results = await upstash(cmds);
     const videos = {}, milestones = {}, viewMilestones = {};
-    const heal = []; // HSETNX writes to freeze any newly-derived crossing
+    const heal = []; // NX writes to freeze any newly-derived crossing / 24h pin
     ids.forEach((id, i) => {
       videos[id] = parseList(results[i]?.result);
       const m = results[n + i]?.result;
@@ -225,6 +236,27 @@ export default async function handler(req, res) {
         if (!(th in existing)) heal.push(['HSETNX', `bu_yt_ms_${id}`, th, JSON.stringify(derived[th])]);
       }
       viewMilestones[id] = { ...derived, ...existing }; // frozen values win over recomputed
+
+      // 24h pin, self-healing. The hourly snapshot job is the primary writer, but
+      // GitHub drops scheduled runs (seen: 4-5h gaps against an hourly cron), so a
+      // mark can sit uncaptured for hours while the points that would pin it are
+      // already sitting in `merged`. Pin it here too — SETNX, so an existing pin
+      // always wins and this can never revise a frozen number.
+      const mark = markOf(id);
+      if (!milestones[id] && mark != null && Date.now() >= mark) {
+        const best = nearestToMark(merged, mark);
+        if (best) {
+          const pin = pinFrom(best, mark);
+          heal.push(['SET', pinKey(id), JSON.stringify(pin), 'NX']);
+          milestones[id] = pin;   // serve it on this response, not 45s from now
+        }
+      }
+      // Pins frozen before `s` was carried have no followers value; fill it from
+      // the stored point at the pinned instant (in-memory only — never rewrites).
+      if (milestones[id] && milestones[id].s == null) {
+        const at = merged.find(p => p.t === milestones[id].t);
+        if (at && at.s != null) milestones[id] = { ...milestones[id], s: at.s };
+      }
     });
     if (heal.length) { try { await upstash(heal); } catch {} }
     return res.status(200).json({ videos, milestones, viewMilestones });

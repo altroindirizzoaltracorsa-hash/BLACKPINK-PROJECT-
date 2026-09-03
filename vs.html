@@ -409,6 +409,7 @@
   let histData = null;      // fine live series (last ~24h at 15s) per id — feeds the chart
   let hourlyData = {};      // hourly snapshot series (full life) per id — feeds the gain stats
   let chartGeom = null;     // { series, X domain, PL.. } captured each draw for the hover tooltip
+  let hoverX = null;        // last pointer x — the 15s redraw rebuilds the SVG, so re-apply it
   const METRIC = { views:{k:'v',label:'Views'}, likes:{k:'l',label:'Likes'}, comments:{k:'c',label:'Comments'}, followers:{k:'s',label:'Followers'} };
   window.setMetric = function(m){ metric = m; drawHistory(); };
 
@@ -603,9 +604,10 @@
     const svg = host.querySelector('.hsvg'), tip = host.querySelector('.htip'), chartEl = host.querySelector('.hchart');
     if (!svg || !tip || !chartEl) return;
     const xl = svg.querySelector('.hxl'), dots = [...svg.querySelectorAll('.hxc')];
-    const hide = () => { tip.style.opacity=0; if(xl) xl.style.opacity=0; dots.forEach(d=>d.style.opacity=0); };
+    const hide = () => { hoverX=null; tip.style.opacity=0; if(xl) xl.style.opacity=0; dots.forEach(d=>d.style.opacity=0); };
     const move = clientX => {
       if (!g.times.length) return;
+      hoverX = clientX;
       const rect = svg.getBoundingClientRect();
       const vbx = (clientX-rect.left)/rect.width*g.W;
       let ti=0, best=Infinity;
@@ -637,6 +639,11 @@
     svg.addEventListener('pointerdown', e=>move(e.clientX));
     svg.addEventListener('pointerleave', hide);
     svg.addEventListener('contextmenu', e=>e.preventDefault());   // don't pop the long-press menu while reading the tooltip
+    // drawHistory() replaces host.innerHTML every 15s poll, throwing away this
+    // SVG and tooltip and building fresh (hidden) ones. A pointer resting on the
+    // chart fires no event, so nothing would re-show the tooltip until you moved
+    // again — it just vanished mid-read. Re-apply the last x on every rewire.
+    if (hoverX != null) move(hoverX);
   }
 
   async function pollHistory(){
