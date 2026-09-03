@@ -511,10 +511,35 @@ def snapshot_date_for(prev_artist):
 
 def process_artist(client, artist_id, artist_name):
     print(f"=== {artist_name} ({artist_id}) ===")
-    track_specs = FIXED_TRACKS.get(artist_id)
-    if not track_specs:
+    base_specs = FIXED_TRACKS.get(artist_id)
+    if not base_specs:
         print(f"  no FIXED_TRACKS entry for {artist_id}, skipping", file=sys.stderr)
         return
+
+    # Track set = pinned FIXED_TRACKS, plus tracks a previous discovery run
+    # persisted into artist_tracks (so a discovered release keeps being counted
+    # once it ages out of the discovery window), plus brand-new releases found
+    # this run. Deduped by track ID and by normalized name. Set AUTO_DISCOVER=0
+    # to fall back to the pinned list only.
+    track_specs = list(base_specs)
+    seen_ids = {tid for _, tid in track_specs}
+    known_names = {_norm_track_name(n) for n, _ in track_specs}
+
+    persisted = sb("GET", "/artist_tracks", params={
+        "artist_id": f"eq.{artist_id}", "select": "name,source_track_ids"}) or []
+    for row in persisted:
+        known_names.add(_norm_track_name(row.get("name")))
+        for sid in (row.get("source_track_ids") or []):
+            if sid not in seen_ids:
+                track_specs.append((row["name"], sid))
+                seen_ids.add(sid)
+
+    if os.environ.get("AUTO_DISCOVER", "1") != "0":
+        for name, tid, rd in discover_new_tracks(client, artist_id, seen_ids, known_names):
+            print(f"  🆕 auto-discovered new release: {name!r} [{tid}] (released {rd})")
+            track_specs.append((name, tid))
+            seen_ids.add(tid)
+            known_names.add(_norm_track_name(name))
 
     prev_artist = latest_artist_stat(artist_id)
     today = snapshot_date_for(prev_artist)
