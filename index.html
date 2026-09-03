@@ -13116,36 +13116,33 @@ async function adminToggleGoalId(id) {
   CAMPAIGN_GOALS.forEach(c => { if (c.slug !== 'ltal') renderReleaseGoalsList(c.slug); });
 }
 
-// Per-release goals ON THE CARD. Visitors see only the goals that are REACHED or
-// carry a value (the wins, as they're ticked); the block stays hidden until there
-// is at least one. Admins see the full checklist so they can tick items off from
-// the card itself. Renders into the release's `mount` container if present.
+// Per-release goals ON THE CARD. Shows ONLY the goals marked reached or given a
+// value (the wins) — for everyone, admin included. The block stays hidden until
+// there is at least one. Goals are managed/ticked in the Campaign Goals editor;
+// the card is display-only. Renders into the release's `mount` container if present.
 async function renderReleaseGoalsList(slug) {
   const camp = getCampaign(slug);
   const el = camp.mount && document.getElementById(camp.mount);
   if (!el || !camp.categories.length) return;
-  const isAdmin = !!localStorage.getItem(ADMIN_KEY_LS);
   let reached = {}, values = {};
   try {
     const d = await (await fetch('/api/proxy-image?ltal_goals=list', { cache: 'no-store' })).json();
     reached = d.reached || {};
     values  = d.values  || {};
   } catch {}
-  // Visitors: keep only reached / valued items. Admin: keep everything.
   const cats = camp.categories
-    .map(cat => ({ category: cat.category, items: cat.items.filter(g => isAdmin || reached[g.id] || values[g.id]) }))
+    .map(cat => ({ category: cat.category, items: cat.items.filter(g => reached[g.id] || values[g.id]) }))
     .filter(cat => cat.items.length);
   if (!cats.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
-  const wins = camp.categories.reduce((n, cat) => n + cat.items.filter(g => reached[g.id] || values[g.id]).length, 0);
+  const wins = cats.reduce((n, cat) => n + cat.items.length, 0);
   el.style.display = '';
-  el.innerHTML = `<p class="cd-goals-head">🎯 ${isAdmin ? 'Streaming goals' : 'Goals reached'}${wins ? ` <span>${wins}</span>` : ''}</p>` + cats.map(cat => `
+  el.innerHTML = `<p class="cd-goals-head">🎯 Goals reached <span>${wins}</span></p>` + cats.map(cat => `
     <div>
       <p class="ltal-goals-category-label">${cat.category}</p>
       ${cat.items.map(g => {
-        const on = !!reached[g.id];
         const val = values[g.id];
-        return `<div class="ltal-goal-item${on ? ' is-reached' : ''}${isAdmin ? ' is-admin' : ''}"${isAdmin ? ` onclick="adminToggleGoalId('${g.id}')"` : ''}>
-          <span class="ltal-goal-check">${on ? '✔️' : '○'}</span><span class="ltal-goal-label">${g.label}</span>${val ? `<span class="ltal-goal-value">${escapeHtml(val)}</span>` : ''}
+        return `<div class="ltal-goal-item is-reached">
+          <span class="ltal-goal-check">✔️</span><span class="ltal-goal-label">${g.label}</span>${val ? `<span class="ltal-goal-value">${escapeHtml(val)}</span>` : ''}
         </div>`;
       }).join('')}
     </div>
