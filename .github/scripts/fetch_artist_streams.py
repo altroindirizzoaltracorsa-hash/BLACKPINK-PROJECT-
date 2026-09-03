@@ -385,6 +385,54 @@ def fetch_fixed_tracks(client, track_specs):
     return canonical, failed
 
 
+def discover_new_tracks(client, artist_id, known_ids, within_days=75, max_releases=12):
+    """Auto-detect brand-new releases so a fresh single/EP is counted from day one
+    without a manual FIXED_TRACKS edit.
+
+    Walks only the newest `max_releases` entries of the artist's discography and
+    keeps tracks from releases dated within `within_days`. That recency guard is
+    deliberate: the established back-catalog is pinned in FIXED_TRACKS to match
+    kworb's tracking scope, and re-walking the whole discography would re-introduce
+    the scope drift that pinning was meant to avoid. So this only ever ADDS recent,
+    not-yet-tracked tracks the member is credited on; it never re-scopes old ones.
+
+    Returns [(name, track_id, release_date_iso), ...] for tracks not in known_ids.
+    Any failure is swallowed (returns what it has) so discovery can never break the
+    daily total."""
+    from datetime import datetime, timezone
+    cutoff = datetime.now(timezone.utc).date() - timedelta(days=within_days)
+    try:
+        releases = client.get_discography(artist_id, max_releases=max_releases)
+    except Exception as e:
+        print(f"  ⚠ discography fetch failed for {artist_id}: {e}", file=sys.stderr)
+        return []
+
+    found, seen = [], set()
+    for rel in releases:
+        alb_id = getattr(rel, "id", None)
+        if not alb_id:
+            continue
+        try:
+            album = client.get_album(alb_id)
+        except Exception as e:
+            print(f"  ⚠ album fetch failed [{alb_id}]: {e}", file=sys.stderr)
+            continue
+        rd = getattr(album, "release_date", None)
+        rd_date = rd.date() if hasattr(rd, "date") else None
+        if rd_date and rd_date < cutoff:
+            continue  # established release — leave scope to FIXED_TRACKS
+        for t in (album.tracks or []):
+            tid = getattr(t, "id", None)
+            if not tid or tid in known_ids or tid in seen:
+                continue
+            aids = [a.id for a in (t.artists or []) if getattr(a, "id", None)]
+            if aids and artist_id not in aids:
+                continue  # member not credited on this track
+            seen.add(tid)
+            found.append((t.name, tid, rd_date.isoformat() if rd_date else "?"))
+    return found
+
+
 def upsert_artist_tracks(artist_id, canonical_tracks):
     """Upserts artist_tracks rows, returns {name: track_ref_id}."""
     rows = [

@@ -1,0 +1,30 @@
+name: Preview new-release discovery
+
+# Read-only: prints the recent, not-yet-tracked releases auto-discovery would
+# add for each member. Use to verify a new drop (SaWaDiKa / CLICK) is caught and
+# that nothing unexpected would be added. Writes nothing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      within_days:
+        description: "Recency window in days (default 75)."
+        required: false
+        default: "75"
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: pip install spotifyscraper httpx
+      - name: Preview discovery
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          WITHIN_DAYS: ${{ github.event.inputs.within_days }}
+        run: python .github/scripts/discover_tracks.py
