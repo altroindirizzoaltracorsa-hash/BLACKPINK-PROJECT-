@@ -1,0 +1,72 @@
+name: YouTube 24h Mark Capture
+
+# Takes a tight burst of samples across a video's 24h mark, so the pinned number
+# comes from seconds after the mark instead of whenever the hourly job happened
+# to run.
+#
+# Why this exists: the dense 15s series (bu_yt_live_*) is written by
+# /api/youtube-stats, which only runs in a visitor's browser. A mark that falls
+# at 06:00 Rome has nobody on the page, so the only candidates are the hourly
+# snapshots and the pin lands 5-25 min late. This job samples with ?force=1
+# (bypassing MIN_GAP_MS) from just before the mark until just after it.
+#
+# MARK_UTC is JISOO's mark (LzgE8ift2Uw, release + 24h). Past it, every run
+# exits in seconds — retarget MARK_UTC for the next release, or delete this file.
+on:
+  schedule:
+    # Three chances well before the mark; GitHub sheds scheduled runs, and each
+    # run waits for the mark itself, so any one surviving is enough.
+    - cron: '35 3 * * *'
+    - cron: '45 3 * * *'
+    - cron: '55 3 * * *'
+  workflow_dispatch:
+    inputs:
+      mark_utc:
+        description: 'Mark instant, RFC3339 UTC (blank = the built-in default).'
+        required: false
+        default: ''
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Sample across the mark
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          BASE: https://www.blinksunited.com
+          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-09-03T04:00:00Z' }}
+        run: |
+          set -u
+          mark=$(date -u -d "$MARK_UTC" +%s)
+          now=$(date -u +%s)
+          echo "mark  $(date -u -d @$mark +%FT%TZ)"
+          echo "now   $(date -u -d @$now +%FT%TZ)"
+
+          # Already well past it — nothing useful left to sample.
+          if [ $(( now - mark )) -gt 900 ]; then
+            echo "More than 15 min past the mark; the pin is either set or will use a stored point. Exiting."
+            exit 0
+          fi
+
+          # Wait until 30s before the mark (a late-started run skips straight through).
+          target=$(( mark - 30 ))
+          if [ "$now" -lt "$target" ]; then
+            echo "Sleeping $(( target - now ))s until 30s before the mark…"
+            sleep $(( target - now ))
+          fi
+
+          # Force a sample every 20s until 2 min past the mark, stopping as soon as
+          # the endpoint reports it pinned something.
+          deadline=$(( mark + 120 ))
+          while [ "$(date -u +%s)" -le "$deadline" ]; do
+            code=$(curl -sS -L --max-time 30 -o /tmp/out.json -w '%{http_code}' \
+              -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/youtube-history?snapshot=1&force=1") || code=000
+            echo "$(date -u +%T) HTTP $code $(cat /tmp/out.json 2>/dev/null)"
+            if grep -q '"pinned":\[".' /tmp/out.json 2>/dev/null; then
+              echo "Pinned — done."
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "Window closed. The pin will be captured by the next snapshot or page visit."
