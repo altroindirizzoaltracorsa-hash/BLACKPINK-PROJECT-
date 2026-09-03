@@ -99,3 +99,16 @@ mcp__github__actions_run_trigger
 | Shut Down | `6tCd8bPvYnceDG7W9M1RMk` |
 | DDU-DU DDU-DU | `69BIczdH6QMnFx7dsSssN8` |
 | GO | `0mYa3o6tlUN5HRippmKmwH` |
+
+---
+
+## Auto-discovery of new releases
+
+`fetch_artist_streams.py` (the daily `fetch-catalog.yml` job) **auto-detects brand-new releases** so a fresh single/EP is counted from day one — no manual `FIXED_TRACKS` edit needed. This is what fixes the old failure mode where a drop (e.g. Jennie's *Fallen Angel* EP) went uncounted until someone noticed.
+
+- **How:** `discover_new_tracks()` walks the newest ~12 discography entries per artist and keeps tracks from releases dated within the last **75 days** (`within_days`) that the member is credited on. The recency gate is deliberate — the established back-catalog stays pinned to `FIXED_TRACKS` (kworb scope); discovery only ever **adds** recent drops, never re-walks/re-scopes the catalog.
+- **Dedup:** skips a track whose ID is already tracked **or** whose normalized title already matches a tracked track — so a song re-released under a new track ID (a single later folded into an EP, e.g. the EP reissue of "Less than a Lover") is **not** double-counted.
+- **Sticky:** a discovered track is persisted to `artist_tracks` and keeps being counted after it ages out of the 75-day window (`process_artist` unions `FIXED_TRACKS` + persisted `artist_tracks` + this-run discoveries, deduped by id and name).
+- **Fail-safe:** the whole discovery/persist step is wrapped so any error falls back to the pinned `FIXED_TRACKS` list — the daily total can never be broken by it.
+- **Kill switch:** set env `AUTO_DISCOVER=0` to run the pinned list only.
+- **Preview (read-only):** the **`Preview new-release discovery`** workflow (`discover-tracks.yml` → `discover_tracks.py`) prints, per member, what discovery would add — writes nothing. Run it the morning after a drop to confirm it was caught, or any time to confirm nothing spurious is about to be added. Optional `within_days` input overrides the window.
