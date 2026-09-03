@@ -29,7 +29,10 @@ on:
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    # Long enough to be dispatched hours ahead and sleep until the mark. A run
+    # dispatched by hand is already allocated, so it cannot be dropped the way a
+    # scheduled run can — this is the reliable path; the crons above are backup.
+    timeout-minutes: 300
     steps:
       - name: Sample across the mark
         env:
