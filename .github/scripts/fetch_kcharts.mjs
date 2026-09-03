@@ -73,6 +73,12 @@ const RULES = [
 // Tag priority: a member solo/collab wins over the group label.
 const MEMBER_PRIORITY = ['JISOO', 'JENNIE', 'ROSÉ', 'LISA', 'BLACKPINK'];
 
+// Same-name idols in OTHER groups that collide when their name appears in a
+// title (a title-only credit). If the disqualifier matches the title, that
+// member is NOT tagged from a title credit — e.g. HANA's JISOO, featured on
+// ILLIT's "I Got Your Back (Feat. JISOO, MOMOKA of HANA)", is not our JISOO.
+const TITLE_NAMESAKES = { JISOO: /\bof\s*hana\b/i };
+
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
 
 async function fetchHtml(url) {
@@ -131,9 +137,13 @@ function matchMembers(song) {
   const title = String(song?.name || '').toLowerCase();
   const found = new Set();
   for (const rule of RULES) {
-    for (const tok of rule.tokens) {
-      if (artistBlob.includes(tok)) { found.add(rule.member); break; }
-      if (rule.titleSafe && title.includes(tok)) { found.add(rule.member); break; }
+    // An artist-field credit is always trusted.
+    if (rule.tokens.some(tok => artistBlob.includes(tok))) { found.add(rule.member); continue; }
+    // A title-only credit is trusted unless a namesake disqualifier vetoes it.
+    if (rule.titleSafe) {
+      const dq = TITLE_NAMESAKES[rule.member];
+      if (dq && dq.test(title)) continue;
+      if (rule.tokens.some(tok => title.includes(tok))) found.add(rule.member);
     }
   }
   return found;
@@ -190,6 +200,16 @@ const GLOBALK = {
   page: 'https://www.melon.com/en/global-k-chart/?chartType=D',
 };
 
+// This is an artist chart with a stable Melon ARTISTID per row, so match on the
+// ID (exact) rather than the name — no namesake can slip in (e.g. HANA's JISOO).
+const GLOBALK_ARTIST_IDS = {
+  '995169': 'BLACKPINK',
+  '995174': 'JISOO',
+  '995173': 'JENNIE',
+  '995171': 'ROSÉ',
+  '995172': 'LISA',
+};
+
 async function fetchJsonOnce(url) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 25000);
@@ -220,13 +240,6 @@ async function fetchGlobalK(def, tries = 2) {
   throw lastErr;
 }
 
-function matchMembersByName(name) {
-  const blob = String(name || '').toLowerCase();
-  const found = new Set();
-  for (const rule of RULES) for (const tok of rule.tokens) { if (blob.includes(tok)) { found.add(rule.member); break; } }
-  return found;
-}
-
 async function buildGlobalKChart(def) {
   const base = { key: 'melon-global-k-daily', service: def.service, type: def.type, kr: def.kr, label: def.service + ' · ' + def.type, url: def.page };
   try {
@@ -235,9 +248,8 @@ async function buildGlobalKChart(def) {
     if (!Array.isArray(rows) || !rows.length) return { ...base, available: false, totalRows: 0, entries: [] };
     const entries = [];
     for (const r of rows) {
-      const members = matchMembersByName(r.ARTISTNAME);
-      if (!members.size) continue;
-      const member = MEMBER_PRIORITY.find(m => members.has(m)) || [...members][0];
+      const member = GLOBALK_ARTIST_IDS[String(r.ARTISTID)];
+      if (!member) continue;
       const rank = parseInt(r.CURRANK, 10);
       const gap = parseInt(r.RANKGAP, 10) || 0;
       const type = String(r.RANKTYPE || '').toUpperCase();
