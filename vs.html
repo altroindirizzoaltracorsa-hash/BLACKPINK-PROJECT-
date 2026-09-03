@@ -36,6 +36,9 @@
 
   .grid{display:grid;grid-template-columns:1fr 54px 1fr;gap:10px;align-items:stretch;}
   @media(max-width:560px){.grid{grid-template-columns:1fr;}.vs{order:-1;margin:0 auto;}}
+  .grid.solo{grid-template-columns:minmax(0,1fr);max-width:360px;margin-inline:auto;}
+  .rowlbl{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:22px 2px 9px;display:flex;align-items:center;gap:9px;}
+  .rowlbl::after{content:"";flex:1;height:1px;background:var(--line);}
 
   .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;position:relative;overflow:hidden;}
   .card.leadA{border-color:#ff2e7788;box-shadow:0 0 0 1px #ff2e7733,0 12px 30px -14px #000;}
@@ -155,10 +158,17 @@
       <div class="sub" id="sub">views &amp; likes · head to head</div>
     </div>
 
+    <div class="rowlbl">Music videos</div>
+    <div id="mvapp">
+      <div class="msg">Loading…</div>
+    </div>
+    <div id="mvhistory"></div>
+    <div id="mvstats"></div>
+
+    <div class="rowlbl">Teasers · head to head</div>
     <div id="app">
       <div class="msg">Loading the face-off…</div>
     </div>
-
     <div id="history"></div>
     <div id="vsstats"></div>
 
@@ -166,8 +176,12 @@
   </div>
 
 <script>
-  // The two videos being compared. Swap these ids to change the matchup.
-  const VIDEOS = ['LzgE8ift2Uw', 'h-7_04c_hVc'];
+  // One list per row. The MV row is its own chart, deliberately not compared
+  // against the teasers — add JISOO's MV ('sf02ugzPFE4') to MV_VIDEOS once it is
+  // out and that row becomes a head-to-head on its own, with no other change.
+  const MV_VIDEOS     = ['FyS5dAywkEo'];
+  const TEASER_VIDEOS = ['LzgE8ift2Uw', 'h-7_04c_hVc'];
+  const VIDEOS = [...MV_VIDEOS, ...TEASER_VIDEOS];   // everything we fetch
   const POLL_MS = 15000;
 
   // Release moments (for the "24-hour numbers" milestone). Same clock times as
@@ -185,9 +199,6 @@
   let milestoneData = {};   // 24h pins:  { id: {t,v,l,c,mark} }
   let viewMsData = {};      // view milestones reached: { id: { "1000000": {v,t,since} } }
 
-  // Legend focus: null = comparison (both), else a single video id.
-  let focus = null;
-  window.setFocus = function(id){ focus = (focus===id ? null : id); drawHistory(); };
 
   // Worldwide clock — same city list + format as the /countdowns release-time rows,
   // so any moment (a 24h mark, a milestone) can be shown across the world, not just
@@ -230,7 +241,8 @@
     return String(n);
   };
   const prev = {};   // id -> { views, likes, ts }
-  let lastUpdate = 0, builtFor = '';
+  let lastUpdate = 0;
+  const builtFor = {};   // shell signature per row, so one row rebuilding doesn't churn the other
 
   function cardHtml(v, side, leading){
     const cls = 'card' + (leading ? (side===0?' leadA':' leadB') : '');
@@ -253,28 +265,30 @@
   }
   function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
-  function render(data){
-    const vids = data.videos || [];
-    if (vids.length < 2){
-      $('#app').innerHTML = '<div class="msg">Couldn’t load both videos. Check the video IDs.</div>';
-      return;
+  // Render one row. Two videos → the head-to-head layout (leader line, split bar,
+  // VS); one → a single card. The MV row starts as one and becomes a head-to-head
+  // the moment a second id joins MV_VIDEOS, with nothing else to change.
+  function renderSection(key, mountId, ids, data){
+    const mount = document.getElementById(mountId); if (!mount) return;
+    const byId = Object.fromEntries((data.videos||[]).map(v=>[v.id,v]));
+    const vids = ids.map(i=>byId[i]).filter(Boolean);
+    if (!vids.length){
+      mount.innerHTML = '<div class="msg">Waiting on YouTube for this one — it fills in once the video is public.</div>';
+      builtFor[key] = ''; return;
     }
+    const two = vids.length >= 2;
     const [a,b] = vids;
-    window._vids = vids;           // let the live-chart legend label the lines
-    const aLead = a.views >= b.views;
+    const aLead = two ? a.views >= b.views : true;
 
     // (Re)build the shell only when the set of videos changes; otherwise just update numbers.
     const sig = vids.map(v=>v.id).join('|');
-    if (sig !== builtFor){
-      builtFor = sig;
-      $('#app').innerHTML = `
-        <div class="lead" id="lead"></div>
-        <div class="bar"><div class="segA" id="segA"></div><div class="segB" id="segB"></div></div>
-        <div class="grid">
-          ${cardHtml(a,0,aLead)}
-          <div class="vs">VS</div>
-          ${cardHtml(b,1,!aLead)}
-        </div>`;
+    if (sig !== builtFor[key]){
+      builtFor[key] = sig;
+      mount.innerHTML = two
+        ? `<div class="lead" id="lead-${key}"></div>
+           <div class="bar"><div class="segA" id="segA-${key}"></div><div class="segB" id="segB-${key}"></div></div>
+           <div class="grid">${cardHtml(a,0,aLead)}<div class="vs">VS</div>${cardHtml(b,1,!aLead)}</div>`
+        : `<div class="grid solo">${cardHtml(a,0,false)}</div>`;
       // The 24h-mark worldwide clock is static, so render it once per shell build
       // (not on the per-second tick, which would collapse an open <details>).
       for (const v of vids){
@@ -283,15 +297,19 @@
       }
     }
 
-    // Leader line + battle bar
-    const total = Math.max(1, a.views + b.views);
-    $('#segA').style.width = (a.views/total*100)+'%';
-    $('#segB').style.width = (b.views/total*100)+'%';
-    const gap = Math.abs(a.views - b.views);
-    const leaderName = aLead ? a : b;
-    $('#lead').innerHTML = gap === 0
-      ? `Dead even at <b>${fmt(a.views)}</b> views`
-      : `<b>${escapeHtml(shortTitle(leaderName))}</b> leads by <b>${fmt(gap)}</b> views <span style="color:var(--dim)">(${abbr(gap)})</span>`;
+    // Leader line + battle bar (head-to-head rows only)
+    if (two){
+      const total = Math.max(1, a.views + b.views);
+      const sa = document.getElementById('segA-'+key), sb = document.getElementById('segB-'+key);
+      if (sa) sa.style.width = (a.views/total*100)+'%';
+      if (sb) sb.style.width = (b.views/total*100)+'%';
+      const gap = Math.abs(a.views - b.views);
+      const leaderName = aLead ? a : b;
+      const ld = document.getElementById('lead-'+key);
+      if (ld) ld.innerHTML = gap === 0
+        ? `Dead even at <b>${fmt(a.views)}</b> views`
+        : `<b>${escapeHtml(shortTitle(leaderName))}</b> leads by <b>${fmt(gap)}</b> views <span style="color:var(--dim)">(${abbr(gap)})</span>`;
+    }
 
     // Update numbers + per-poll deltas
     for (const v of vids){
@@ -308,11 +326,18 @@
       prev[v.id] = { views:v.views, likes:v.likes, subs:v.subscribers, ts:data.ts };
     }
     // toggle leader glow
-    document.getElementById('card-'+a.id)?.classList.toggle('leadA', aLead);
-    document.getElementById('card-'+a.id)?.classList.toggle('leadB', false);
-    document.getElementById('card-'+b.id)?.classList.toggle('leadB', !aLead);
-    document.getElementById('card-'+b.id)?.classList.toggle('leadA', false);
+    if (two){
+      document.getElementById('card-'+a.id)?.classList.toggle('leadA', aLead);
+      document.getElementById('card-'+a.id)?.classList.toggle('leadB', false);
+      document.getElementById('card-'+b.id)?.classList.toggle('leadB', !aLead);
+      document.getElementById('card-'+b.id)?.classList.toggle('leadA', false);
+    }
+  }
 
+  function render(data){
+    window._vids = data.videos || [];   // let the chart legends label their lines
+    renderSection('mv', 'mvapp', MV_VIDEOS, data);
+    renderSection('ts', 'app', TEASER_VIDEOS, data);
     lastUpdate = Date.now();
     tickFoot();
   }
@@ -404,21 +429,21 @@
   }
   setInterval(tickFoot, 1000);
 
-  // ── history chart (hourly snapshots) ──
-  let metric = 'views';
-  let histData = null;      // fine live series (last ~24h at 15s) per id — feeds the chart
-  let hourlyData = {};      // hourly snapshot series (full life) per id — feeds the gain stats
-  let chartGeom = null;     // { series, X domain, PL.. } captured each draw for the hover tooltip
-  let hoverX = null;        // last pointer x — the 15s redraw rebuilds the SVG, so re-apply it
+  // ── shared chart data ──────────────────────────────────────────────────────
+  // The numbers themselves are page-wide and keyed by video id, so every chart
+  // reads the same series. Only the *view* state (metric, focus, hover, filters)
+  // is per-chart — see makeChart below.
+  let histData = null;      // fine live series (last ~24h at 15s) per id
+  let hourlyData = {};      // hourly snapshot series (full life) per id
   const METRIC = { views:{k:'v',label:'Views'}, likes:{k:'l',label:'Likes'}, comments:{k:'c',label:'Comments'}, followers:{k:'s',label:'Followers'} };
-  window.setMetric = function(m){ metric = m; drawHistory(); };
 
-  // ── gain stats (shown when one video is focused) ──
+  // ── gain stats helpers (pure: take an id + metric key, read the shared data) ──
   // Korea has no DST, so KST hour/day buckets are exact integer offsets (+9h).
   const KST_OFF = 9 * 3600000;
-  const _openDays = new Set();   // "id|dayIdx" expanded in the day→hours drill-down
-  const _daysSeen = new Set();   // ids whose newest day we've auto-opened once
-  window.toggleGDay = function(key){ if (_openDays.has(key)) _openDays.delete(key); else _openDays.add(key); renderStatsList(focus); };
+  const DAY_MS_ = 86400000;
+  const kstDateStr = t => new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date(t)); // YYYY-MM-DD
+  const dayIdxOfDate = s => Math.floor((Date.parse(s+'T12:00:00+09:00') + KST_OFF) / DAY_MS_);
+  const RANGE_CHIPS = [['today','Today'],['yesterday','Yesterday'],[7,'Last 7 days'],[30,'Last 30 days'],[90,'Last 90 days'],['all','All time']];
 
   function gainStats(id, mk){
     // Merge hourly (long history) + fine (recent) points, ascending, deduped by t.
@@ -439,212 +464,252 @@
     const avg = b => b.length >= 2 ? Math.round((b[b.length-1].v - b[0].v) / (b.length-1)) : null;
     return { hoursByDay, avgHour: avg(hb), avgDay: avg(db) };
   }
-  // ── past-days filter (chips + FROM/TO date range), like Community Goal ──
-  const DAY_MS_ = 86400000;
-  let _gfilter = { mode:'all', from:null, to:null };   // mode: 'all' | 7 | 30 | 90 | 'custom'
-  let _statsBuiltFor = null;                            // rebuild controls only on focus/metric/data-arrival change
-  const kstDateStr = t => new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date(t)); // YYYY-MM-DD
-  const dayIdxOfDate = s => Math.floor((Date.parse(s+'T12:00:00+09:00') + KST_OFF) / DAY_MS_);
-  function paintStats(){ const mount = document.getElementById('vsstats'); if (mount && focus){ mount.innerHTML = statsControlsHtml(focus); renderStatsList(focus); } }
-  window.setGRange = function(mode){ const m = /^\d+$/.test(mode) ? Number(mode) : mode; _gfilter = { mode:m, from:null, to:null }; paintStats(); };
-  window.applyGCustom = function(){
-    const f = document.getElementById('gfrom')?.value, t = document.getElementById('gto')?.value;
-    if (f && t) _gfilter = { mode:'custom', from:f, to:t };
-    paintStats();
-  };
-
-  const RANGE_CHIPS = [['today','Today'],['yesterday','Yesterday'],[7,'Last 7 days'],[30,'Last 30 days'],[90,'Last 90 days'],['all','All time']];
-  function statsControlsHtml(id){
-    const label = METRIC[metric].label.toLowerCase();
-    const s = gainStats(id, METRIC[metric].k);
-    // Default the date inputs to the data's own KST span.
-    let lo = '', hi = '';
-    if (s){
-      const days = Object.keys(s.hoursByDay).map(Number);
-      const minT = s.hoursByDay[Math.min(...days)][0].t, maxT = s.hoursByDay[Math.max(...days)][0].t;
-      lo = _gfilter.from || kstDateStr(minT); hi = _gfilter.to || kstDateStr(maxT);
-    }
-    const chips = RANGE_CHIPS.map(([m,txt]) => `<button class="gchip${_gfilter.mode===m?' on':''}" onclick="setGRange('${m}')">${txt}</button>`).join('');
-    return `<div class="gstats" id="gstatsbox">
-      <div class="gpanelhead"><span class="gtitle">${label} gains — past days</span></div>
-      <div class="gchips">${chips}</div>
-      <div class="grange">
-        <label>From<input type="date" id="gfrom" value="${lo}"></label>
-        <label>To<input type="date" id="gto" value="${hi}"></label>
-        <button class="gapply" onclick="applyGCustom()">Apply</button>
-      </div>
-      <div class="gsub" id="gsublbl"></div>
-      <div class="glist" id="glist"></div>
-    </div>`;
-  }
-  function renderStatsList(id){
-    const box = document.getElementById('gstatsbox'); if (!box || !id) return;
-    const mk = METRIC[metric].k, label = METRIC[metric].label.toLowerCase();
-    const s = gainStats(id, mk);
-    const list = document.getElementById('glist'), sub = document.getElementById('gsublbl');
-    if (!s){ if(list) list.innerHTML = `<div class="gempty">Collecting — gains fill in as snapshots build up.</div>`; if(sub) sub.textContent=''; return; }
-    const sgn = n => (n < 0 ? '−' : '+') + full(Math.abs(n));
-    const sabbr = n => (n < 0 ? '−' : '+') + abbr(Math.abs(n));
-    const hourLbl = t => new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', hour:'numeric'}).format(new Date(t));
-    const dayDate = t => new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Seoul', day:'numeric', month:'short', year:'numeric'}).format(new Date(t)).toUpperCase();
-    const dayWk   = t => new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', weekday:'long'}).format(new Date(t));
-    let days = Object.keys(s.hoursByDay).map(Number).sort((a,b) => b - a);   // newest first
-    // Apply the range filter.
-    const todayIdx = Math.floor((Date.now() + KST_OFF) / DAY_MS_);
-    if (_gfilter.mode === 'today') days = days.filter(d => d === todayIdx);
-    else if (_gfilter.mode === 'yesterday') days = days.filter(d => d === todayIdx - 1);
-    else if (typeof _gfilter.mode === 'number') days = days.filter(d => d > todayIdx - _gfilter.mode);
-    else if (_gfilter.mode === 'custom' && _gfilter.from && _gfilter.to){
-      const a = dayIdxOfDate(_gfilter.from), b = dayIdxOfDate(_gfilter.to);
-      days = days.filter(d => d >= Math.min(a,b) && d <= Math.max(a,b));
-    }
-    if (days.length && !_daysSeen.has(id)) { _openDays.add(id+'|'+days[0]); _daysSeen.add(id); }  // open the latest day once
-    if (sub) sub.innerHTML = days.length
-      ? `${days.length} day${days.length>1?'s':''} · tap one for its hours <span class="gavg">· avg ${s.avgHour!=null?sabbr(s.avgHour):'—'}/hr · ${s.avgDay!=null?sabbr(s.avgDay):'—'}/day</span>`
-      : 'no days in this range';
-    const rows = days.map(day => {
-      const hrs = s.hoursByDay[day];
-      const total = hrs.reduce((n,h) => n + h.gain, 0);
-      const perHr = Math.round(total / hrs.length);
-      const key = id+'|'+day, open = _openDays.has(key);
-      const body = open ? `<div class="gdaybody">${hrs.slice().reverse().map(h =>
-        `<div class="grow"><span>${hourLbl(h.t)} KST</span><span class="gplus">${sgn(h.gain)}</span></div>`).join('')}</div>` : '';
-      return `<div class="gday${open?' open':''}"><div class="gdayrow" onclick="toggleGDay('${key}')">`
-        + `<span class="gdaycar">▸</span>`
-        + `<div class="gdayleft"><div class="gdaydate">${dayDate(hrs[0].t)}</div>`
-        + `<div class="gdaysub">${dayWk(hrs[0].t)} · ${hrs.length}h · avg ${sabbr(perHr)}/hr</div></div>`
-        + `<div class="gdaytot">${sgn(total)}</div></div>${body}</div>`;
-    }).join('') || '<div class="gempty">no days in this range</div>';
-    if (list){ const sc = list.scrollTop; list.innerHTML = rows; list.scrollTop = sc; }
-  }
-  // Build controls once per focus/metric/data-arrival; refresh the list on every data tick.
-  function updateStats(){
-    const mount = document.getElementById('vsstats'); if (!mount) return;
-    if (!focus){ mount.innerHTML = ''; _statsBuiltFor = null; return; }
-    const dataKey = focus + '|' + metric + '|' + (gainStats(focus, METRIC[metric].k) ? '1' : '0');
-    if (_statsBuiltFor !== dataKey){ _statsBuiltFor = dataKey; mount.innerHTML = statsControlsHtml(focus); }
-    renderStatsList(focus);
-  }
 
   function fmtTime(t){ const d=new Date(t); return d.toLocaleDateString([], {month:'short',day:'numeric'})+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
   function fmtTipTime(t){ const d=new Date(t); return d.toLocaleDateString([], {weekday:'short'})+', '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
   const full = n => (n==null ? '' : Number(n).toLocaleString());
 
-  function drawHistory(){
-    const host = document.getElementById('history');
-    if (!host || !histData) return;
-    const mk = METRIC[metric].k;
-    const tabs = `<div class="htabs">${Object.keys(METRIC).map(m=>`<button class="htab${m===metric?' on':''}" onclick="setMetric('${m}')">${METRIC[m].label}</button>`).join('')}</div>`;
-    // Single "Total" graph: absolute counts, Y-axis auto-zoomed to the window.
-    // Growth is registered per point as a delta shown in the hover tooltip (+N),
-    // socialcounts-style — no separate mode needed.
-    const series = VIDEOS.map((id,i)=>{
-      const raw = (histData[id]||[]).filter(p=>p[mk]!=null).map(p=>({t:p.t,y:p[mk]}));
-      const pts = raw.map((p,idx)=>({ t:p.t, y:p.y, delta: idx ? p.y-raw[idx-1].y : null }));
-      const v=(window._vids||[])[i]; const nm=v?shortTitle(v):('Video '+(i+1));
-      return { id, name:nm, color:i===0?'var(--a)':'var(--b)', pts };
-    });
-    // The legend doubles as a focus switch: tap a name to see just that video's
-    // chart (its own zoomed Y-axis, so the line climbs); tap again — or with
-    // neither selected — you get the comparison (default).
-    const legend = series.map(s=>{
-      const st = focus===s.id ? ' on' : (focus ? ' off' : '');
-      return `<button class="hleg${st}" onclick="setFocus('${s.id}')"><span class="hdot" style="background:${s.color}"></span>${escapeHtml(s.name)}</button>`;
-    }).join('');
-    // What actually gets plotted: one video when focused, else both.
-    const shown = focus ? series.filter(s=>s.id===focus) : series;
-    const all = shown.flatMap(s=>s.pts);
-    if (all.length < 2){
-      host.innerHTML = `<div class="hcard"><div class="hhead">Live<span class="hleggroup">${legend}</span></div>${tabs}<div class="hempty">Charting live — the line starts drawing within a few seconds and keeps growing (and it stays saved across reloads). Tap the chart to read any point.</div></div>`;
-      chartGeom = null; updateStats(); return;
-    }
-    const W=640,H=220,PL=54,PR=14,PT=16,PB=26;
-    const tMin=Math.min(...all.map(p=>p.t)), tMax=Math.max(...all.map(p=>p.t));
-    const yLoR=Math.min(...all.map(p=>p.y)), yHiR=Math.max(...all.map(p=>p.y));
-    const pad=(yHiR-yLoR)*0.08||1, yLo=Math.max(0,yLoR-pad), yHi=yHiR+pad;
-    const X=t=> PL+(tMax===tMin?0.5:(t-tMin)/(tMax-tMin))*(W-PL-PR);
-    const Y=v=> H-PB-(yHi===yLo?0.5:(v-yLo)/(yHi-yLo))*(H-PT-PB);
-    let grid='';
-    for(let i=0;i<=3;i++){ const gv=yLo+(yHi-yLo)*i/3, gy=Y(gv);
-      grid+=`<line x1="${PL}" x2="${W-PR}" y1="${gy.toFixed(1)}" y2="${gy.toFixed(1)}" stroke="#ffffff10"/>`
-          + `<text x="${PL-8}" y="${(gy+3).toFixed(1)}" text-anchor="end" fill="#8a5c6c" font-size="9">${abbr(Math.round(gv))}</text>`; }
-    // 24-hour marks: a gold guide line at each shown video's release+24h, plus a
-    // gold dot at the pinned value once it's captured (both only if in-range).
-    let marks='';
-    for (const s of shown){
-      const mk24 = markOf(s.id); if (mk24==null || mk24<tMin || mk24>tMax) continue;
-      const mx = X(mk24);
-      marks += `<line x1="${mx.toFixed(1)}" x2="${mx.toFixed(1)}" y1="${PT}" y2="${H-PB}" stroke="var(--gold)" stroke-opacity="0.5" stroke-dasharray="4 3"/>`
-             + `<text x="${mx.toFixed(1)}" y="${PT-4}" text-anchor="middle" fill="var(--gold)" font-size="8.5">24h</text>`;
-      const ms = milestoneData[s.id];
-      if (ms && ms[mk]!=null) marks += `<circle cx="${mx.toFixed(1)}" cy="${Y(ms[mk]).toFixed(1)}" r="4" fill="var(--gold)" stroke="#0c0509" stroke-width="1.5"/>`;
-    }
-    const lines = shown.map(s=>{ if(!s.pts.length) return '';
-      const d=s.pts.map((p,i)=>`${i?'L':'M'}${X(p.t).toFixed(1)} ${Y(p.y).toFixed(1)}`).join(' ');
-      const last=s.pts[s.pts.length-1];
-      return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`
-           + `<circle cx="${X(last.t).toFixed(1)}" cy="${Y(last.y).toFixed(1)}" r="3.5" fill="${s.color}"/>`; }).join('');
-    const crosshair = `<line class="hxl" x1="0" x2="0" y1="${PT}" y2="${H-PB}" stroke="#ffffff55" stroke-dasharray="3 3" style="opacity:0"/>`
-      + shown.map((s,j)=>`<circle class="hxc" data-j="${j}" r="4" fill="${s.color}" stroke="#0c0509" stroke-width="1.5" style="opacity:0"/>`).join('');
-    const xlab=`<text x="${PL}" y="${H-8}" fill="#8a5c6c" font-size="9">${fmtTime(tMin)}</text>`
-             + `<text x="${W-PR}" y="${H-8}" text-anchor="end" fill="#8a5c6c" font-size="9">${fmtTime(tMax)}</text>`;
-    host.innerHTML = `<div class="hcard"><div class="hhead">Live<span class="hleggroup">${legend}</span></div>${tabs}`
-      + `<div class="hchart"><svg viewBox="0 0 ${W} ${H}" class="hsvg">${grid}${marks}${lines}${crosshair}${xlab}</svg><div class="htip"></div></div></div>`;
+  // ── a chart ────────────────────────────────────────────────────────────────
+  // One instance per row. Everything the row can change on its own — which
+  // metric tab is active, which video is focused, the hover position, the gain
+  // filter, which day rows are open — lives in this closure, so two rows on the
+  // same page never fight over it. Element ids are suffixed with `key` for the
+  // same reason, and clicks are delegated rather than inline onclick, which
+  // would need page-global handlers.
+  function makeChart({ key, chartId, statsId, ids }){
+    let metric = 'views';
+    let focus = ids.length === 1 ? ids[0] : null;   // a lone video is inherently focused
+    let geom = null;          // { series, times, X, Y } captured each draw, for the tooltip
+    let hoverX = null;        // last pointer x — the 15s redraw rebuilds the SVG, so re-apply it
+    let gfilter = { mode:'all', from:null, to:null };
+    let statsBuiltFor = null;
+    const openDays = new Set(), daysSeen = new Set();
+    const sid = base => base + '-' + key;
+    const el = base => document.getElementById(sid(base));
 
-    const times = [...new Set(all.map(p=>p.t))].sort((a,b)=>a-b);
-    chartGeom = { W, series: shown, times, X, Y };
-    wireHover(host);
-    updateStats();
-  }
-
-  // socialcounts-style read-out: hover / drag / tap the chart to see the exact
-  // time, the total at that moment, and the growth since the previous point.
-  function wireHover(host){
-    const g = chartGeom; if (!g) return;
-    const svg = host.querySelector('.hsvg'), tip = host.querySelector('.htip'), chartEl = host.querySelector('.hchart');
-    if (!svg || !tip || !chartEl) return;
-    const xl = svg.querySelector('.hxl'), dots = [...svg.querySelectorAll('.hxc')];
-    const hide = () => { hoverX=null; tip.style.opacity=0; if(xl) xl.style.opacity=0; dots.forEach(d=>d.style.opacity=0); };
-    const move = clientX => {
-      if (!g.times.length) return;
-      hoverX = clientX;
-      const rect = svg.getBoundingClientRect();
-      const vbx = (clientX-rect.left)/rect.width*g.W;
-      let ti=0, best=Infinity;
-      g.times.forEach((t,i)=>{ const dx=Math.abs(g.X(t)-vbx); if(dx<best){best=dx;ti=i;} });
-      const t = g.times[ti], px = g.X(t);
-      if (xl){ xl.setAttribute('x1',px.toFixed(1)); xl.setAttribute('x2',px.toFixed(1)); xl.style.opacity=1; }
-      let topPy = Infinity; const rows=[];
-      g.series.forEach((s,j)=>{
-        const p = s.pts.find(pp=>pp.t===t); const dot=dots[j];
-        if (!p){ if(dot) dot.style.opacity=0; return; }
-        const py = g.Y(p.y);
-        if (dot){ dot.setAttribute('cx',px.toFixed(1)); dot.setAttribute('cy',py.toFixed(1)); dot.style.opacity=1; }
-        topPy = Math.min(topPy, py);
-        rows.push({ name:s.name, color:s.color, y:p.y, delta:p.delta });
+    function draw(){
+      const host = document.getElementById(chartId);
+      if (!host || !histData) return;
+      const mk = METRIC[metric].k;
+      const tabs = `<div class="htabs">${Object.keys(METRIC).map(m=>`<button class="htab${m===metric?' on':''}" data-metric="${m}">${METRIC[m].label}</button>`).join('')}</div>`;
+      const series = ids.map((id,i)=>{
+        const raw = (histData[id]||[]).filter(p=>p[mk]!=null).map(p=>({t:p.t,y:p[mk]}));
+        const pts = raw.map((p,idx)=>({ t:p.t, y:p.y, delta: idx ? p.y-raw[idx-1].y : null }));
+        // Look the title up by id, not by position: each row plots its own subset
+        // of the fetched videos, so an index into the global list is meaningless.
+        const v=(window._vids||[]).find(x=>x.id===id); const nm=v?shortTitle(v):('Video '+(i+1));
+        return { id, name:nm, color:i===0?'var(--a)':'var(--b)', pts };
       });
-      if (!rows.length){ hide(); return; }
-      tip.innerHTML = `<div class="htt">${fmtTipTime(t)}</div>` + rows.map(r=>{
-        const dl = r.delta==null ? '' : `<span class="htd${r.delta===0?' zero':''}">${r.delta>0?'+':''}${full(r.delta)}</span>`;
-        return `<div class="htr"><span class="hdot" style="width:8px;height:8px;background:${r.color}"></span><span class="htv">${full(r.y)}</span>${dl}</div>`;
+      const legend = series.map(s=>{
+        const st = focus===s.id ? ' on' : (focus ? ' off' : '');
+        return `<button class="hleg${st}" data-focus="${s.id}"><span class="hdot" style="background:${s.color}"></span>${escapeHtml(s.name)}</button>`;
       }).join('');
-      const m = svg.getScreenCTM();
-      const sp = svg.createSVGPoint(); sp.x=px; sp.y=topPy; const scr = sp.matrixTransform(m);
-      const crect = chartEl.getBoundingClientRect();
-      let left = scr.x-crect.left; const top = scr.y-crect.top-10;
-      left = Math.max(48, Math.min(crect.width-48, left));
-      tip.style.left = left+'px'; tip.style.top = top+'px'; tip.style.opacity=1;
-    };
-    svg.addEventListener('pointermove', e=>move(e.clientX));
-    svg.addEventListener('pointerdown', e=>move(e.clientX));
-    svg.addEventListener('pointerleave', hide);
-    svg.addEventListener('contextmenu', e=>e.preventDefault());   // don't pop the long-press menu while reading the tooltip
-    // drawHistory() replaces host.innerHTML every 15s poll, throwing away this
-    // SVG and tooltip and building fresh (hidden) ones. A pointer resting on the
-    // chart fires no event, so nothing would re-show the tooltip until you moved
-    // again — it just vanished mid-read. Re-apply the last x on every rewire.
-    if (hoverX != null) move(hoverX);
+      const shown = focus ? series.filter(s=>s.id===focus) : series;
+      const all = shown.flatMap(s=>s.pts);
+      if (all.length < 2){
+        host.innerHTML = `<div class="hcard"><div class="hhead">Live<span class="hleggroup">${legend}</span></div>${tabs}<div class="hempty">Charting live — the line starts drawing within a few seconds and keeps growing (and it stays saved across reloads). Tap the chart to read any point.</div></div>`;
+        geom = null; wireControls(host); updateStats(); return;
+      }
+      const W=640,H=220,PL=54,PR=14,PT=16,PB=26;
+      const tMin=Math.min(...all.map(p=>p.t)), tMax=Math.max(...all.map(p=>p.t));
+      const yLoR=Math.min(...all.map(p=>p.y)), yHiR=Math.max(...all.map(p=>p.y));
+      const pad=(yHiR-yLoR)*0.08||1, yLo=Math.max(0,yLoR-pad), yHi=yHiR+pad;
+      const X=t=> PL+(tMax===tMin?0.5:(t-tMin)/(tMax-tMin))*(W-PL-PR);
+      const Y=v=> H-PB-(yHi===yLo?0.5:(v-yLo)/(yHi-yLo))*(H-PT-PB);
+      let grid='';
+      for(let i=0;i<=3;i++){ const gv=yLo+(yHi-yLo)*i/3, gy=Y(gv);
+        grid+=`<line x1="${PL}" x2="${W-PR}" y1="${gy.toFixed(1)}" y2="${gy.toFixed(1)}" stroke="#ffffff10"/>`
+            + `<text x="${PL-8}" y="${(gy+3).toFixed(1)}" text-anchor="end" fill="#8a5c6c" font-size="9">${abbr(Math.round(gv))}</text>`; }
+      // 24-hour marks: a gold guide line at each shown video's release+24h, plus a
+      // gold dot at the pinned value once it's captured (both only if in-range).
+      let marks='';
+      for (const s of shown){
+        const mk24 = markOf(s.id); if (mk24==null || mk24<tMin || mk24>tMax) continue;
+        const mx = X(mk24);
+        marks += `<line x1="${mx.toFixed(1)}" x2="${mx.toFixed(1)}" y1="${PT}" y2="${H-PB}" stroke="var(--gold)" stroke-opacity="0.5" stroke-dasharray="4 3"/>`
+               + `<text x="${mx.toFixed(1)}" y="${PT-4}" text-anchor="middle" fill="var(--gold)" font-size="8.5">24h</text>`;
+        const ms = milestoneData[s.id];
+        if (ms && ms[mk]!=null) marks += `<circle cx="${mx.toFixed(1)}" cy="${Y(ms[mk]).toFixed(1)}" r="4" fill="var(--gold)" stroke="#0c0509" stroke-width="1.5"/>`;
+      }
+      const lines = shown.map(s=>{ if(!s.pts.length) return '';
+        const d=s.pts.map((p,i)=>`${i?'L':'M'}${X(p.t).toFixed(1)} ${Y(p.y).toFixed(1)}`).join(' ');
+        const last=s.pts[s.pts.length-1];
+        return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`
+             + `<circle cx="${X(last.t).toFixed(1)}" cy="${Y(last.y).toFixed(1)}" r="3.5" fill="${s.color}"/>`; }).join('');
+      const crosshair = `<line class="hxl" x1="0" x2="0" y1="${PT}" y2="${H-PB}" stroke="#ffffff55" stroke-dasharray="3 3" style="opacity:0"/>`
+        + shown.map((s,j)=>`<circle class="hxc" data-j="${j}" r="4" fill="${s.color}" stroke="#0c0509" stroke-width="1.5" style="opacity:0"/>`).join('');
+      const xlab=`<text x="${PL}" y="${H-8}" fill="#8a5c6c" font-size="9">${fmtTime(tMin)}</text>`
+               + `<text x="${W-PR}" y="${H-8}" text-anchor="end" fill="#8a5c6c" font-size="9">${fmtTime(tMax)}</text>`;
+      host.innerHTML = `<div class="hcard"><div class="hhead">Live<span class="hleggroup">${legend}</span></div>${tabs}`
+        + `<div class="hchart"><svg viewBox="0 0 ${W} ${H}" class="hsvg">${grid}${marks}${lines}${crosshair}${xlab}</svg><div class="htip"></div></div></div>`;
+
+      const times = [...new Set(all.map(p=>p.t))].sort((a,b)=>a-b);
+      geom = { W, series: shown, times, X, Y };
+      wireControls(host);
+      wireHover(host);
+      updateStats();
+    }
+
+    // Tabs and legend, delegated. Inline onclick would need page-global handlers,
+    // which is exactly what stops two charts coexisting.
+    function wireControls(host){
+      host.onclick = e => {
+        const t = e.target.closest('[data-metric]');
+        if (t){ metric = t.dataset.metric; statsBuiltFor = null; draw(); return; }
+        const f = e.target.closest('[data-focus]');
+        if (f){ const id = f.dataset.focus; focus = (focus===id ? null : id); draw(); }
+      };
+    }
+
+    // socialcounts-style read-out: hover / drag / tap the chart to see the exact
+    // time, the total at that moment, and the growth since the previous point.
+    function wireHover(host){
+      const g = geom; if (!g) return;
+      const svg = host.querySelector('.hsvg'), tip = host.querySelector('.htip'), chartEl = host.querySelector('.hchart');
+      if (!svg || !tip || !chartEl) return;
+      const xl = svg.querySelector('.hxl'), dots = [...svg.querySelectorAll('.hxc')];
+      const hide = () => { hoverX=null; tip.style.opacity=0; if(xl) xl.style.opacity=0; dots.forEach(d=>d.style.opacity=0); };
+      const move = clientX => {
+        if (!g.times.length) return;
+        hoverX = clientX;
+        const rect = svg.getBoundingClientRect();
+        const vbx = (clientX-rect.left)/rect.width*g.W;
+        let ti=0, best=Infinity;
+        g.times.forEach((t,i)=>{ const dx=Math.abs(g.X(t)-vbx); if(dx<best){best=dx;ti=i;} });
+        const t = g.times[ti], px = g.X(t);
+        if (xl){ xl.setAttribute('x1',px.toFixed(1)); xl.setAttribute('x2',px.toFixed(1)); xl.style.opacity=1; }
+        let topPy = Infinity; const rows=[];
+        g.series.forEach((s,j)=>{
+          const p = s.pts.find(pp=>pp.t===t); const dot=dots[j];
+          if (!p){ if(dot) dot.style.opacity=0; return; }
+          const py = g.Y(p.y);
+          if (dot){ dot.setAttribute('cx',px.toFixed(1)); dot.setAttribute('cy',py.toFixed(1)); dot.style.opacity=1; }
+          topPy = Math.min(topPy, py);
+          rows.push({ name:s.name, color:s.color, y:p.y, delta:p.delta });
+        });
+        if (!rows.length){ hide(); return; }
+        tip.innerHTML = `<div class="htt">${fmtTipTime(t)}</div>` + rows.map(r=>{
+          const dl = r.delta==null ? '' : `<span class="htd${r.delta===0?' zero':''}">${r.delta>0?'+':''}${full(r.delta)}</span>`;
+          return `<div class="htr"><span class="hdot" style="width:8px;height:8px;background:${r.color}"></span><span class="htv">${full(r.y)}</span>${dl}</div>`;
+        }).join('');
+        const m = svg.getScreenCTM();
+        const sp = svg.createSVGPoint(); sp.x=px; sp.y=topPy; const scr = sp.matrixTransform(m);
+        const crect = chartEl.getBoundingClientRect();
+        let left = scr.x-crect.left; const top = scr.y-crect.top-10;
+        left = Math.max(48, Math.min(crect.width-48, left));
+        tip.style.left = left+'px'; tip.style.top = top+'px'; tip.style.opacity=1;
+      };
+      svg.addEventListener('pointermove', e=>move(e.clientX));
+      svg.addEventListener('pointerdown', e=>move(e.clientX));
+      svg.addEventListener('pointerleave', hide);
+      svg.addEventListener('contextmenu', e=>e.preventDefault());   // don't pop the long-press menu while reading the tooltip
+      // draw() replaces the host's innerHTML every 15s poll, throwing away this
+      // SVG and tooltip and building fresh (hidden) ones. A pointer resting on the
+      // chart fires no event, so nothing would re-show the tooltip until you moved
+      // again — it just vanished mid-read. Re-apply the last x on every rewire.
+      if (hoverX != null) move(hoverX);
+    }
+
+    // ── gain stats for this row ──
+    function statsControlsHtml(id){
+      const label = METRIC[metric].label.toLowerCase();
+      const s = gainStats(id, METRIC[metric].k);
+      // Default the date inputs to the data's own KST span.
+      let lo = '', hi = '';
+      if (s){
+        const days = Object.keys(s.hoursByDay).map(Number);
+        const minT = s.hoursByDay[Math.min(...days)][0].t, maxT = s.hoursByDay[Math.max(...days)][0].t;
+        lo = gfilter.from || kstDateStr(minT); hi = gfilter.to || kstDateStr(maxT);
+      }
+      const chips = RANGE_CHIPS.map(([m,txt]) => `<button class="gchip${gfilter.mode===m?' on':''}" data-grange="${m}">${txt}</button>`).join('');
+      return `<div class="gstats" id="${sid('gstatsbox')}">
+        <div class="gpanelhead"><span class="gtitle">${label} gains — past days</span></div>
+        <div class="gchips">${chips}</div>
+        <div class="grange">
+          <label>From<input type="date" id="${sid('gfrom')}" value="${lo}"></label>
+          <label>To<input type="date" id="${sid('gto')}" value="${hi}"></label>
+          <button class="gapply" data-gapply="1">Apply</button>
+        </div>
+        <div class="gsub" id="${sid('gsublbl')}"></div>
+        <div class="glist" id="${sid('glist')}"></div>
+      </div>`;
+    }
+    function renderStatsList(id){
+      const box = el('gstatsbox'); if (!box || !id) return;
+      const mk = METRIC[metric].k, label = METRIC[metric].label.toLowerCase();
+      const s = gainStats(id, mk);
+      const list = el('glist'), sub = el('gsublbl');
+      if (!s){ if(list) list.innerHTML = `<div class="gempty">Collecting — gains fill in as snapshots build up.</div>`; if(sub) sub.textContent=''; return; }
+      const sgn = n => (n < 0 ? '−' : '+') + full(Math.abs(n));
+      const sabbr = n => (n < 0 ? '−' : '+') + abbr(Math.abs(n));
+      const hourLbl = t => new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', hour:'numeric'}).format(new Date(t));
+      const dayDate = t => new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Seoul', day:'numeric', month:'short', year:'numeric'}).format(new Date(t)).toUpperCase();
+      const dayWk   = t => new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', weekday:'long'}).format(new Date(t));
+      let days = Object.keys(s.hoursByDay).map(Number).sort((a,b) => b - a);   // newest first
+      // Apply the range filter.
+      const todayIdx = Math.floor((Date.now() + KST_OFF) / DAY_MS_);
+      if (gfilter.mode === 'today') days = days.filter(d => d === todayIdx);
+      else if (gfilter.mode === 'yesterday') days = days.filter(d => d === todayIdx - 1);
+      else if (typeof gfilter.mode === 'number') days = days.filter(d => d > todayIdx - gfilter.mode);
+      else if (gfilter.mode === 'custom' && gfilter.from && gfilter.to){
+        const a = dayIdxOfDate(gfilter.from), b = dayIdxOfDate(gfilter.to);
+        days = days.filter(d => d >= Math.min(a,b) && d <= Math.max(a,b));
+      }
+      if (days.length && !daysSeen.has(id)) { openDays.add(id+'|'+days[0]); daysSeen.add(id); }  // open the latest day once
+      if (sub) sub.innerHTML = days.length
+        ? `${days.length} day${days.length>1?'s':''} · tap one for its hours <span class="gavg">· avg ${s.avgHour!=null?sabbr(s.avgHour):'—'}/hr · ${s.avgDay!=null?sabbr(s.avgDay):'—'}/day</span>`
+        : 'no days in this range';
+      const rows = days.map(day => {
+        const hrs = s.hoursByDay[day];
+        const total = hrs.reduce((n,h) => n + h.gain, 0);
+        const perHr = Math.round(total / hrs.length);
+        const dkey = id+'|'+day, open = openDays.has(dkey);
+        const body = open ? `<div class="gdaybody">${hrs.slice().reverse().map(h =>
+          `<div class="grow"><span>${hourLbl(h.t)} KST</span><span class="gplus">${sgn(h.gain)}</span></div>`).join('')}</div>` : '';
+        return `<div class="gday${open?' open':''}"><div class="gdayrow" data-gday="${escapeHtml(dkey)}">`
+          + `<span class="gdaycar">▸</span>`
+          + `<div class="gdayleft"><div class="gdaydate">${dayDate(hrs[0].t)}</div>`
+          + `<div class="gdaysub">${dayWk(hrs[0].t)} · ${hrs.length}h · avg ${sabbr(perHr)}/hr</div></div>`
+          + `<div class="gdaytot">${sgn(total)}</div></div>${body}</div>`;
+      }).join('') || '<div class="gempty">no days in this range</div>';
+      if (list){ const sc = list.scrollTop; list.innerHTML = rows; list.scrollTop = sc; }
+    }
+    function paintStats(){
+      const mount = document.getElementById(statsId);
+      if (mount && focus){ mount.innerHTML = statsControlsHtml(focus); wireStats(mount); renderStatsList(focus); }
+    }
+    function wireStats(mount){
+      mount.onclick = e => {
+        const c = e.target.closest('[data-grange]');
+        if (c){ const m = /^\d+$/.test(c.dataset.grange) ? Number(c.dataset.grange) : c.dataset.grange;
+                gfilter = { mode:m, from:null, to:null }; paintStats(); return; }
+        if (e.target.closest('[data-gapply]')){
+          const f = el('gfrom')?.value, t = el('gto')?.value;
+          if (f && t) gfilter = { mode:'custom', from:f, to:t };
+          paintStats(); return;
+        }
+        const d = e.target.closest('[data-gday]');
+        if (d){ const k = d.dataset.gday; if (openDays.has(k)) openDays.delete(k); else openDays.add(k); renderStatsList(focus); }
+      };
+    }
+    // Build controls once per focus/metric/data-arrival; refresh the list on every data tick.
+    function updateStats(){
+      const mount = document.getElementById(statsId); if (!mount) return;
+      if (!focus){ mount.innerHTML = ''; statsBuiltFor = null; return; }
+      const dataKey = focus + '|' + metric + '|' + (gainStats(focus, METRIC[metric].k) ? '1' : '0');
+      if (statsBuiltFor !== dataKey){ statsBuiltFor = dataKey; mount.innerHTML = statsControlsHtml(focus); wireStats(mount); }
+      renderStatsList(focus);
+    }
+
+    return { draw, ids };
   }
+
+  // One chart per row. Same component, different ids and different state.
+  const CHARTS = [
+    makeChart({ key:'mv', chartId:'mvhistory', statsId:'mvstats', ids:MV_VIDEOS }),
+    makeChart({ key:'ts', chartId:'history',   statsId:'vsstats', ids:TEASER_VIDEOS }),
+  ];
+  const drawAll = () => { for (const c of CHARTS) c.draw(); };
 
   async function pollHistory(){
     try{
@@ -652,7 +717,7 @@
       const d = await r.json();
       if (d && d.milestones){ milestoneData = d.milestones; updateMilestones(); }
       if (d && d.viewMilestones){ viewMsData = d.viewMilestones; updateViewMs(); }
-      if (d && d.videos){ histData = d.videos; drawHistory(); }
+      if (d && d.videos){ histData = d.videos; drawAll(); }
     }catch(e){}
   }
 
@@ -661,7 +726,7 @@
     try{
       const r = await fetch('/api/youtube-history?ids='+VIDEOS.join(','), {cache:'no-store'});
       const d = await r.json();
-      if (d && d.videos){ hourlyData = d.videos; if (focus) drawHistory(); }
+      if (d && d.videos){ hourlyData = d.videos; drawAll(); }
     }catch(e){}
   }
 
@@ -678,7 +743,7 @@
         if (arr.length > 1600) arr.shift();
       }
     }
-    drawHistory();
+    drawAll();
   }
 
   async function poll(){
