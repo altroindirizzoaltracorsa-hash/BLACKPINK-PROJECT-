@@ -1,0 +1,18 @@
+name: Discover kcharts paths
+
+# One-off, read-only: list every chart path the 가이섬 aggregator exposes so we can
+# find charts we don't track yet (e.g. Melon Global Top 100 K-Pop). Safe to delete.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Discover chart paths
+        run: node .github/scripts/discover_kcharts.mjs
