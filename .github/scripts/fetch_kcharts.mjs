@@ -182,18 +182,40 @@ async function buildChart(def) {
 // the sub-line, RANKTYPE/RANKGAP -> the movement arrow).
 const GLOBALK = {
   service: 'Melon', type: 'Global-K (Daily)', kr: '글로벌 K 차트',
-  api: 'https://m2.melon.com/m6/chart/globalk.json?chartType=D',
+  // The endpoint is flaky: it intermittently answers a soft HTTP 500
+  // ("잠시 후 다시 시도" / try again later) on both hosts, so we retry with
+  // backoff and fall back m2 -> www.
+  path: '/m6/chart/globalk.json?chartType=D',
+  hosts: ['https://m2.melon.com', 'https://www.melon.com'],
   page: 'https://www.melon.com/en/global-k-chart/?chartType=D',
 };
 
-async function fetchJson(url) {
+async function fetchJsonOnce(url) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 25000);
   try {
     const r = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json,*/*', 'Accept-Language': 'en,ko;q=0.9', 'Referer': 'https://www.melon.com/en/global-k-chart/' }, signal: ctrl.signal });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    return JSON.parse(await r.text());
+    const data = JSON.parse(await r.text());
+    if (!Array.isArray(data?.response) || !data.response.length) throw new Error('empty response');
+    return data;
   } finally { clearTimeout(t); }
+}
+
+// Try each host, up to `tries` attempts each, with exponential backoff — the
+// endpoint's soft 500s clear on a retry.
+async function fetchGlobalK(def, tries = 4) {
+  let lastErr;
+  for (const host of def.hosts) {
+    for (let i = 0; i < tries; i++) {
+      try { return await fetchJsonOnce(host + def.path); }
+      catch (e) {
+        lastErr = e;
+        if (i < tries - 1) await new Promise(r => setTimeout(r, 800 * Math.pow(2, i)));
+      }
+    }
+  }
+  throw lastErr;
 }
 
 function matchMembersByName(name) {
@@ -206,7 +228,7 @@ function matchMembersByName(name) {
 async function buildGlobalKChart(def) {
   const base = { key: 'melon-global-k-daily', service: def.service, type: def.type, kr: def.kr, label: def.service + ' · ' + def.type, url: def.page };
   try {
-    const data = await fetchJson(def.api);
+    const data = await fetchGlobalK(def);
     const rows = data?.response;
     if (!Array.isArray(rows) || !rows.length) return { ...base, available: false, totalRows: 0, entries: [] };
     const entries = [];
@@ -237,7 +259,7 @@ async function buildGlobalKChart(def) {
     entries.sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999));
     return { ...base, available: true, totalRows: rows.length, entries };
   } catch (e) {
-    console.error('  !', def.api, '->', e.message);
+    console.error('  !', def.path, '->', e.message);
     return { ...base, available: false, totalRows: 0, entries: [] };
   }
 }
