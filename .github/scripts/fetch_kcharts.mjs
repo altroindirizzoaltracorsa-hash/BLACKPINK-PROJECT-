@@ -202,16 +202,18 @@ async function fetchJsonOnce(url) {
   } finally { clearTimeout(t); }
 }
 
-// Try each host, up to `tries` attempts each, with exponential backoff — the
-// endpoint's soft 500s clear on a retry.
-async function fetchGlobalK(def, tries = 4) {
+// Try each host up to `tries` times with backoff. Kept deliberately gentle
+// (few requests per run): the endpoint rate-limits bursts, and the hourly job
+// cadence is itself the real retry — a transient failure just self-heals next
+// hour rather than us hammering the host now.
+async function fetchGlobalK(def, tries = 2) {
   let lastErr;
   for (const host of def.hosts) {
     for (let i = 0; i < tries; i++) {
       try { return await fetchJsonOnce(host + def.path); }
       catch (e) {
         lastErr = e;
-        if (i < tries - 1) await new Promise(r => setTimeout(r, 800 * Math.pow(2, i)));
+        if (i < tries - 1) await new Promise(r => setTimeout(r, 1500));
       }
     }
   }
