@@ -1,12 +1,17 @@
 """
-One-off: align JENNIE's Sep 1 artist_daily_stats to jenniecharts.com / kworb
-(they agree): total 8,441,429,322, daily +7,973,242.
+One-off: pin JENNIE's Aug 31 + Sep 1 artist_daily_stats to the two sources the
+user chose, verbatim:
 
-For Sep 1 to *display* +7,973,242 without the streams page flagging "recount",
-the previous day's total must equal total - daily = 8,433,456,080. Our stored
-Aug 31 sits ~808K below that (scrape drift), so we also set Aug 31 to that
-self-consistent value; its own daily is then recomputed against Aug 30. This
-makes Sep 1 match jenniecharts exactly and the rows reconcile.
+  Aug 31  ->  BPxSpotify fan account:  total 8,437,940,760, daily +9,672,090
+  Sep 1   ->  jenniecharts.com (JGC):  total 8,441,429,322, daily +7,973,242
+
+NOTE / caveat: these two sources do not chain. Sep 1 total - Aug 31 total
+= 8,441,429,322 - 8,437,940,760 = 3,488,562, which is NOT JGC's stated Sep 1
+daily of +7,973,242. So with the values written verbatim the streams page's
+consistency check (daily_delta == total - prev_total) will flag Sep 1 as a
+"recount" mismatch. That is expected and is what the user asked for; the
+alternative would be to override Sep 1's displayed daily to 3,488,562, which
+would contradict JGC.
 
 Only total_streams + daily_delta are PATCHed. Dry-run unless APPLY=1.
 """
@@ -22,9 +27,11 @@ APPLY = bool(os.environ.get("APPLY"))
 
 JENNIE_ID = "250b0Wlc5Vk0CoUsaCY84M"
 SEP1, AUG31, AUG30 = "2026-09-01", "2026-08-31", "2026-08-30"
-SEP1_TOTAL = 8_441_429_322      # jenniecharts.com / kworb
-SEP1_DAILY = 7_973_242          # jenniecharts.com / kworb
-AUG31_TOTAL = SEP1_TOTAL - SEP1_DAILY   # 8,433,456,080 (implied so Sep 1 reconciles)
+
+AUG31_TOTAL = 8_437_940_760     # BPxSpotify fan account
+AUG31_DAILY = 9_672_090         # BPxSpotify fan account
+SEP1_TOTAL = 8_441_429_322      # jenniecharts.com (JGC)
+SEP1_DAILY = 7_973_242          # jenniecharts.com (JGC)
 
 
 def sb(method, path, **kwargs):
@@ -63,18 +70,22 @@ def main():
         print("FATAL: missing one of Aug 30 / Aug 31 / Sep 1 rows", file=sys.stderr)
         sys.exit(1)
 
-    aug31_daily = AUG31_TOTAL - aug30["total_streams"]
-
     print(f"Aug 30 (anchor): total={aug30['total_streams']:,}")
     print(f"Aug 31:  current total={aug31['total_streams']:>15,} daily={aug31['daily_delta']:>12,}")
-    print(f"         target  total={AUG31_TOTAL:>15,} daily={aug31_daily:>12,}")
+    print(f"         target  total={AUG31_TOTAL:>15,} daily={AUG31_DAILY:>12,}   (BPxSpotify fan)")
     print(f"Sep 1:   current total={sep1['total_streams']:>15,} daily={sep1['daily_delta']:>12,}")
-    print(f"         target  total={SEP1_TOTAL:>15,} daily={SEP1_DAILY:>12,}   (jenniecharts / kworb)")
+    print(f"         target  total={SEP1_TOTAL:>15,} daily={SEP1_DAILY:>12,}   (jenniecharts / JGC)")
+
+    computed_sep1_daily = SEP1_TOTAL - AUG31_TOTAL
+    print(f"\nConsistency check: Sep1_total - Aug31_total = {computed_sep1_daily:,}")
+    if computed_sep1_daily != SEP1_DAILY:
+        print(f"  !! differs from JGC daily {SEP1_DAILY:,} -> streams page will flag Sep 1 'recount'")
+        print("     (expected: the two sources don't chain; values written verbatim as requested)")
 
     if APPLY:
-        patch(AUG31, AUG31_TOTAL, aug31_daily)
+        patch(AUG31, AUG31_TOTAL, AUG31_DAILY)
         patch(SEP1, SEP1_TOTAL, SEP1_DAILY)
-        print("\n-> written: Sep 1 now matches jenniecharts exactly; Aug 31 set to the reconciling value.")
+        print("\n-> written: Aug 31 = fan account, Sep 1 = JGC (both verbatim).")
     else:
         print("\n-> dry-run (set APPLY=1 to write).")
 
