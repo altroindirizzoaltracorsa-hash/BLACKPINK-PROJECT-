@@ -16,7 +16,7 @@
 // ADMIN_SECRET / CRON_SECRET to authorize snapshot writes.
 
 const YT_API = 'https://www.googleapis.com/youtube/v3/videos';
-const DEFAULT_IDS = ['LzgE8ift2Uw', 'h-7_04c_hVc'];
+const DEFAULT_IDS = ['LzgE8ift2Uw', 'h-7_04c_hVc', 'FyS5dAywkEo'];
 const MAX_POINTS = 2400;              // ~100 days at hourly — keep the full-life gain list
 const MIN_GAP_MS = 55 * 60 * 1000;    // don't store more than ~once an hour
 const key = id => `bu_yt_hist_${id}`;
@@ -30,6 +30,11 @@ const pinKey = id => `bu_yt_24h_${id}`;
 const RELEASE = {
   'LzgE8ift2Uw': '2026-09-02T04:00:00Z', // JISOO — 06:00 Rome (jisoo.io countdown time) → 24h mark Sep 3, 06:00
   'h-7_04c_hVc': '2026-09-02T00:00:00Z', // LISA  — 02:00 Rome (hellosawadika countdown time) → 24h mark Sep 3, 02:00
+  // SaWaDiKa full MV. Tracked from here so collection starts the instant it
+  // premieres — the /vs.html row for it comes later, and the snapshot job reads
+  // DEFAULT_IDS, not the page. Before the premiere YouTube omits it from the
+  // videos.list response and the snapshot loop skips it.
+  'FyS5dAywkEo': '2026-09-04T00:00:00Z', // LISA MV — premieres 02:00 Rome Sep 4 → 24h mark Sep 5, 02:00
 };
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PIN_TOL_MS = 95 * 60 * 1000;    // accept a stored point within ~95 min of the exact mark

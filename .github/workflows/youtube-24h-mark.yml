@@ -10,15 +10,18 @@ name: YouTube 24h Mark Capture
 # snapshots and the pin lands 5-25 min late. This job samples with ?force=1
 # (bypassing MIN_GAP_MS) from just before the mark until just after it.
 #
-# MARK_UTC is JISOO's mark (LzgE8ift2Uw, release + 24h). Past it, every run
-# exits in seconds — retarget MARK_UTC for the next release, or delete this file.
+# MARK_UTC is the next mark to capture. Retarget it after each one; runs outside
+# the window around it exit in seconds, so a stale value is harmless.
+#   captured 2026-09-03T04:00Z  JISOO CLICK teaser  (pinned +14s)
+#   captured 2026-09-03T00:00Z  SaWaDiKa teaser     (pinned by hand)
+#   next     2026-09-05T00:00Z  SaWaDiKa MV
 on:
   schedule:
     # Three chances well before the mark; GitHub sheds scheduled runs, and each
     # run waits for the mark itself, so any one surviving is enough.
-    - cron: '35 3 * * *'
-    - cron: '45 3 * * *'
-    - cron: '55 3 * * *'
+    - cron: '35 23 * * *'
+    - cron: '45 23 * * *'
+    - cron: '55 23 * * *'
   workflow_dispatch:
     inputs:
       mark_utc:
@@ -38,7 +41,7 @@ jobs:
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           BASE: https://www.blinksunited.com
-          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-09-03T04:00:00Z' }}
+          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-09-05T00:00:00Z' }}
         run: |
           set -u
           mark=$(date -u -d "$MARK_UTC" +%s)
@@ -49,6 +52,14 @@ jobs:
           # Already well past it — nothing useful left to sample.
           if [ $(( now - mark )) -gt 900 ]; then
             echo "More than 15 min past the mark; the pin is either set or will use a stored point. Exiting."
+            exit 0
+          fi
+
+          # Not tonight's mark — a scheduled run on any other night would otherwise
+          # sleep for a day and die on the job timeout. A hand dispatch that really
+          # wants a long wait passes mark_utc and starts within the window.
+          if [ $(( mark - now )) -gt 10800 ]; then
+            echo "Mark is more than 3h away; not tonight. Exiting."
             exit 0
           fi
 
