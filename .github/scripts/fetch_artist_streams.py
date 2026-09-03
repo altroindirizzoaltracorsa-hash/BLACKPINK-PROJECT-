@@ -385,7 +385,15 @@ def fetch_fixed_tracks(client, track_specs):
     return canonical, failed
 
 
-def discover_new_tracks(client, artist_id, known_ids, within_days=75, max_releases=12):
+def _norm_track_name(name):
+    """Normalize a track title for duplicate detection: lowercase, collapse
+    whitespace. Catches the same song re-released under a new album/track ID
+    (e.g. a single later folded into an EP) so it isn't tracked twice."""
+    return " ".join((name or "").lower().split())
+
+
+def discover_new_tracks(client, artist_id, known_ids, known_names=frozenset(),
+                        within_days=75, max_releases=12):
     """Auto-detect brand-new releases so a fresh single/EP is counted from day one
     without a manual FIXED_TRACKS edit.
 
@@ -396,9 +404,12 @@ def discover_new_tracks(client, artist_id, known_ids, within_days=75, max_releas
     the scope drift that pinning was meant to avoid. So this only ever ADDS recent,
     not-yet-tracked tracks the member is credited on; it never re-scopes old ones.
 
-    Returns [(name, track_id, release_date_iso), ...] for tracks not in known_ids.
-    Any failure is swallowed (returns what it has) so discovery can never break the
-    daily total."""
+    Skips tracks whose ID is in `known_ids` OR whose normalized title is in
+    `known_names` -- the latter blocks a song re-released under a new track ID
+    (single folded into an album) from being double-counted.
+
+    Returns [(name, track_id, release_date_iso), ...]. Any failure is swallowed
+    (returns what it has) so discovery can never break the daily total."""
     from datetime import datetime, timezone
     cutoff = datetime.now(timezone.utc).date() - timedelta(days=within_days)
     try:
@@ -423,7 +434,8 @@ def discover_new_tracks(client, artist_id, known_ids, within_days=75, max_releas
             continue  # established release — leave scope to FIXED_TRACKS
         for t in (album.tracks or []):
             tid = getattr(t, "id", None)
-            if not tid or tid in known_ids or tid in seen:
+            nm = _norm_track_name(getattr(t, "name", ""))
+            if not tid or tid in known_ids or tid in seen or nm in known_names:
                 continue
             aids = [a.id for a in (t.artists or []) if getattr(a, "id", None)]
             if aids and artist_id not in aids:
