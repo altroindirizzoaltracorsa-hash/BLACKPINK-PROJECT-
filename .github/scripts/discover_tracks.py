@@ -38,13 +38,21 @@ def main():
         for a in artists:
             aid, name = a["spotify_artist_id"], a["name"]
             known_ids, known_names = known_for(aid)
-            found = F.discover_new_tracks(client, aid, known_ids, known_names, within_days=within)
+            recent = list(F.scan_recent_tracks(client, aid, within_days=within))
+            new_count = 0
             print(f"=== {name} ({aid}) — already tracking {len(known_ids)} ===")
-            if not found:
-                print("   (nothing new in window)")
-            for n, tid, rd in found:
-                print(f"   + {n!r}  [{tid}]  released {rd}")
-            print()
+            if not recent:
+                print("   (no releases in window)")
+            for n, tid, rd in recent:
+                if tid in known_ids:
+                    label = "already in catalogue"
+                elif F._norm_track_name(n) in known_names:
+                    label = "already in catalogue (reissue under new ID — not re-counted)"
+                else:
+                    label = "🆕 NEW — will be added"
+                    new_count += 1
+                print(f"   [{label}]  {n!r}  [{tid}]  released {rd}")
+            print(f"   → {new_count} new to add\n")
 
 
 if __name__ == "__main__":

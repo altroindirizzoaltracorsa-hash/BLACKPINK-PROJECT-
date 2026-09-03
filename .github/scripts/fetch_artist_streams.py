@@ -392,33 +392,20 @@ def _norm_track_name(name):
     return " ".join((name or "").lower().split())
 
 
-def discover_new_tracks(client, artist_id, known_ids, known_names=frozenset(),
-                        within_days=75, max_releases=12):
-    """Auto-detect brand-new releases so a fresh single/EP is counted from day one
-    without a manual FIXED_TRACKS edit.
-
-    Walks only the newest `max_releases` entries of the artist's discography and
-    keeps tracks from releases dated within `within_days`. That recency guard is
-    deliberate: the established back-catalog is pinned in FIXED_TRACKS to match
-    kworb's tracking scope, and re-walking the whole discography would re-introduce
-    the scope drift that pinning was meant to avoid. So this only ever ADDS recent,
-    not-yet-tracked tracks the member is credited on; it never re-scopes old ones.
-
-    Skips tracks whose ID is in `known_ids` OR whose normalized title is in
-    `known_names` -- the latter blocks a song re-released under a new track ID
-    (single folded into an album) from being double-counted.
-
-    Returns [(name, track_id, release_date_iso), ...]. Any failure is swallowed
-    (returns what it has) so discovery can never break the daily total."""
+def scan_recent_tracks(client, artist_id, within_days=75, max_releases=12):
+    """Yield (name, track_id, release_date_iso) for every track the member is
+    credited on across releases dated within `within_days` (newest `max_releases`
+    discography entries). No known/duplicate filtering — callers classify. Any
+    failure is swallowed so discovery can never break the daily total."""
     from datetime import datetime, timezone
     cutoff = datetime.now(timezone.utc).date() - timedelta(days=within_days)
     try:
         releases = client.get_discography(artist_id, max_releases=max_releases)
     except Exception as e:
         print(f"  ⚠ discography fetch failed for {artist_id}: {e}", file=sys.stderr)
-        return []
+        return
 
-    found, seen = [], set()
+    seen = set()
     for rel in releases:
         alb_id = getattr(rel, "id", None)
         if not alb_id:
@@ -434,14 +421,36 @@ def discover_new_tracks(client, artist_id, known_ids, known_names=frozenset(),
             continue  # established release — leave scope to FIXED_TRACKS
         for t in (album.tracks or []):
             tid = getattr(t, "id", None)
-            nm = _norm_track_name(getattr(t, "name", ""))
-            if not tid or tid in known_ids or tid in seen or nm in known_names:
+            if not tid or tid in seen:
                 continue
             aids = [a.id for a in (t.artists or []) if getattr(a, "id", None)]
             if aids and artist_id not in aids:
                 continue  # member not credited on this track
             seen.add(tid)
-            found.append((t.name, tid, rd_date.isoformat() if rd_date else "?"))
+            yield (getattr(t, "name", ""), tid, rd_date.isoformat() if rd_date else "?")
+
+
+def discover_new_tracks(client, artist_id, known_ids, known_names=frozenset(),
+                        within_days=75, max_releases=12):
+    """Auto-detect brand-new releases so a fresh single/EP is counted from day one
+    without a manual FIXED_TRACKS edit.
+
+    Considers only releases dated within `within_days` (newest `max_releases`
+    discography entries). That recency guard is deliberate: the established
+    back-catalog is pinned in FIXED_TRACKS to match kworb's scope, and re-walking
+    the whole discography would re-introduce the scope drift that pinning was meant
+    to avoid. So this only ever ADDS recent, not-yet-tracked tracks; never re-scopes.
+
+    Skips tracks whose ID is in `known_ids` OR whose normalized title is in
+    `known_names` — the latter blocks a song re-released under a new track ID
+    (single folded into an album) from being double-counted.
+
+    Returns [(name, track_id, release_date_iso), ...]."""
+    found = []
+    for name, tid, rd in scan_recent_tracks(client, artist_id, within_days, max_releases):
+        if tid in known_ids or _norm_track_name(name) in known_names:
+            continue
+        found.append((name, tid, rd))
     return found
 
 
