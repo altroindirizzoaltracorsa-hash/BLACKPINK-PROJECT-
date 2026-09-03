@@ -2,10 +2,16 @@ name: YouTube Snapshots
 
 # Captures an hourly views/likes/comments snapshot for the /vs.html face-off.
 # The YouTube fetch + Upstash write run on Vercel (/api/youtube-history?snapshot=1,
-# which needs YOUTUBE_API_KEY there); this job just triggers it each hour.
+# which needs YOUTUBE_API_KEY there); this job just triggers it.
+#
+# Fires every 20 min, not hourly, because GitHub drops scheduled runs: against an
+# hourly cron this workflow actually ran 6 times in 24h (4-5h gaps), and one of
+# those gaps straddled a 24h mark. The endpoint self-limits — MIN_GAP_MS keeps the
+# stored series to ~one point/hour — so the extra runs only cost a YouTube call and
+# give the 24h pin three chances an hour instead of one.
 on:
   schedule:
-    - cron: '5 * * * *'   # hourly at :05 (GitHub crons drift; off the busy top-of-hour)
+    - cron: '5,25,45 * * * *'   # :05/:25/:45 — off the busy top-of-hour, which GitHub sheds first
   workflow_dispatch:
     inputs:
       base_url:
