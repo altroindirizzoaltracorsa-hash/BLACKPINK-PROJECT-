@@ -39,6 +39,9 @@ jobs:
               end' /tmp/r.json
             echo "  24h pins:  $(jq -c '.milestones // {} | keys' /tmp/r.json)"
             echo "  releases:  $(jq -c '.releases // {} | keys' /tmp/r.json)"
+            echo "  other marks (7d etc.):"
+            jq -r '.marks // {} | to_entries[] | .key as $id | .value[] |
+              "    \($id): \(.label // .key) = \(.v) views, \(.l // "—") likes  @\(.t)"' /tmp/r.json
             echo "  view milestones recorded:"
             jq -r '.viewMilestones // {} | to_entries[] |
               .key as $id |
