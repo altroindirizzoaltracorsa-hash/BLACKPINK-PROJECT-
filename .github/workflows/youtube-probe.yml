@@ -14,6 +14,10 @@ on:
         description: 'Comma-separated video ids (blank = the tracked set).'
         required: false
         default: ''
+      analyze:
+        description: 'One video id: show the sample bracket behind every crossing.'
+        required: false
+        default: ''
 
 jobs:
   probe:
@@ -50,3 +54,54 @@ jobs:
           }
           probe "live=1&" "FINE (live series — what the chart plots)"
           probe ""         "HOURLY (long series — what the gains use)"
+
+  brackets:
+    # Why a crossing landed where it did. The read path does not observe a
+    # milestone being crossed, it interpolates between the two stored samples
+    # that bracket it — so a wide gap between samples turns into a confident but
+    # invented timestamp, and several thresholds falling inside one gap come out
+    # evenly spaced minutes apart. This job rebuilds the exact merged series the
+    # API derives from (hourly + last 1200 fine points, same as the read path)
+    # and prints, per crossing, the bracket it came from and how wide it was.
+    if: inputs.analyze != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show the bracket behind every crossing
+        env:
+          BASE: https://www.blinksunited.com
+          ID: ${{ inputs.analyze }}
+        run: |
+          set -eu
+          curl -sS --max-time 45 "$BASE/api/youtube-history?ids=$ID"        -o /tmp/hourly.json
+          curl -sS --max-time 45 "$BASE/api/youtube-history?live=1&ids=$ID" -o /tmp/live.json
+          node - <<'JS'
+          const fs = require('fs');
+          const id = process.env.ID;
+          const rd = f => { const d = JSON.parse(fs.readFileSync(f, 'utf8')); return d.videos?.[id] || []; };
+          const hourly = rd('/tmp/hourly.json'), live = rd('/tmp/live.json');
+          const merged = [...hourly, ...live].sort((a,b)=>a.t-b.t).filter((p,k,a)=>k===0||p.t!==a[k-1].t);
+          const rel = Date.parse(JSON.parse(fs.readFileSync('/tmp/hourly.json','utf8')).releases?.[id] || '');
+          const TH = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,25,30,40,50,75,100].map(x=>x*1e6);
+          const iso = t => new Date(t).toISOString().replace('T',' ').slice(0,19);
+          const mins = ms => (ms/60000).toFixed(1);
+          console.log(`series: hourly ${hourly.length} + live ${live.length} = ${merged.length} merged points`);
+          console.log(`span:   ${iso(merged[0].t)} -> ${iso(merged[merged.length-1].t)}   v ${merged[0].v} -> ${merged[merged.length-1].v}`);
+          console.log('');
+          console.log('gaps wider than 5 min in the merged series:');
+          for (let i=1;i<merged.length;i++) {
+            const g = merged[i].t - merged[i-1].t;
+            if (g > 5*60000) console.log(`  ${iso(merged[i-1].t)} -> ${iso(merged[i].t)}  ${mins(g)} min   v ${merged[i-1].v} -> ${merged[i].v}  (+${merged[i].v-merged[i-1].v})`);
+          }
+          console.log('');
+          console.log('crossings, with the bracket each was interpolated inside:');
+          for (const th of TH) {
+            for (let i=1;i<merged.length;i++) {
+              const a = merged[i-1], b = merged[i];
+              if (a.v==null||b.v==null||!(a.v<th&&th<=b.v)) continue;
+              const frac = (b.v-a.v)>0 ? (th-a.v)/(b.v-a.v) : 0;
+              const t = Math.round(a.t + frac*(b.t-a.t));
+              const since = Number.isFinite(rel) ? `${Math.floor((t-rel)/3600000)}h ${Math.round(((t-rel)%3600000)/60000)}m` : '—';
+              console.log(`  ${(th/1e6).toString().padStart(4)}M  ${iso(t)}  (+${since})  bracket ${mins(b.t-a.t)} min wide, v ${a.v} -> ${b.v} (+${b.v-a.v})`);
+            }
+          }
+          JS
