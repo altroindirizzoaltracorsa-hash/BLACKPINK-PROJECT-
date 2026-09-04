@@ -405,11 +405,17 @@
       const ms = milestoneData[id];
       if (ms && ms.v!=null){
         el.className = 'm24 done';
-        // The pinned figure is what the counter read at the mark. YouTube audits
-        // views afterwards, so also show what it has taken back off since —
+        // The pinned figure is what the counter read at the mark. YouTube keeps
+        // recounting afterwards and can take views back off, so also show that —
         // derived from drops in the series, not a second frozen number.
+        //
+        // It is a LOWER BOUND, and the "≥" says so. A removal is only visible as
+        // a negative step between two samples; when one lands during normal
+        // growth (+30k organic, −20k removed in the same window) the delta is net
+        // positive and the recount leaves no trace. So this is what we can prove
+        // was removed, not everything that was.
         const audited = ms.audit && ms.audit.drop
-          ? ` <span class="m24audit" title="Views YouTube has removed since the 24h mark, across ${ms.audit.steps} adjustment${ms.audit.steps>1?'s':''}">· −${fmt(ms.audit.drop)} audited since</span>`
+          ? ` <span class="m24audit" title="At least ${fmt(ms.audit.drop)} views removed since the 24h mark, across ${ms.audit.steps} observed drop${ms.audit.steps>1?'s':''}. A removal that coincides with normal growth nets out between samples and leaves no trace, so the real figure can only be higher.">· ≥${fmt(ms.audit.drop)} audited since</span>`
           : '';
         const manual = ms.manual ? ` <span class="m24audit">· re-pinned</span>` : '';
         el.innerHTML = `<span class="m24tag">24H</span> <b>${fmt(ms.v)}</b> views · <b>${ms.l==null?'—':fmt(ms.l)}</b> likes${audited}${manual}`;
