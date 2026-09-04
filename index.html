@@ -8321,6 +8321,14 @@ function _lbMemberKey(artist) {
   return LB_MEMBER_MAP[(artist || '').toLowerCase().trim()] || null;
 }
 
+// Title key for campaign matching: drop (feat…)/[remix] parentheticals, then all
+// spacing + punctuation, so a stylized or re-spaced scrobble still matches —
+// "SaWaDiKa" / "Sa Wa Di Ka" / "SaWaDiKa (Thai Ver.)" all → "sawadika". Full-title
+// match (not prefix), so "GO" never catches "Good". Mirrors the server matchers.
+function _trackKey(s) {
+  return String(s || '').toLowerCase().replace(/\(.*?\)|\[.*?\]/g, '').replace(/[^a-z0-9]/g, '');
+}
+
 async function fetchLbTrackCounts(username) {
   const counts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, fallenangel: 0, heaven: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } };
 
@@ -8332,18 +8340,18 @@ async function fetchLbTrackCounts(username) {
     ]);
     if (recStats !== null && artStats !== null) {
       for (const rec of recStats?.payload?.recordings || []) {
-        const name = (rec.track_name || '').toLowerCase().trim();
+        const k = _trackKey(rec.track_name);
         if (_lbIsBp(rec.artist_name)) {
-          if (name === 'jump')               counts.jump     += rec.listen_count || 0;
-          else if (name === 'shut down')     counts.shutdown += rec.listen_count || 0;
-          else if (name === 'ddu-du ddu-du') counts.ddududu  += rec.listen_count || 0;
-          else if (name === 'go')            counts.go       += rec.listen_count || 0;
+          if (k === 'jump')            counts.jump     += rec.listen_count || 0;
+          else if (k === 'shutdown')   counts.shutdown += rec.listen_count || 0;
+          else if (k === 'ddududdudu') counts.ddududu  += rec.listen_count || 0;
+          else if (k === 'go')         counts.go       += rec.listen_count || 0;
         } else if (_lbMemberKey(rec.artist_name) === 'jennie') {
-          if (name === 'less than a lover') counts.ltal += rec.listen_count || 0;
-          else if (name === 'fallen angel') counts.fallenangel += rec.listen_count || 0;
-          else if (name === 'heaven')       counts.heaven += rec.listen_count || 0;
+          if (k === 'lessthanalover') counts.ltal += rec.listen_count || 0;
+          else if (k === 'fallenangel') counts.fallenangel += rec.listen_count || 0;
+          else if (k === 'heaven')      counts.heaven += rec.listen_count || 0;
         } else if (_lbMemberKey(rec.artist_name) === 'lisa') {
-          if (name === 'sawadika') counts.sawadika += rec.listen_count || 0;
+          if (k === 'sawadika') counts.sawadika += rec.listen_count || 0;
         }
       }
       for (const a of artStats?.payload?.artists || []) {
@@ -8387,23 +8395,23 @@ async function fetchLbTrackCounts(username) {
         if (mk) {
           delta.memberPlays[mk]++;
           if (mk === 'jennie') {
-            const name = (l.track_metadata?.track_name || '').toLowerCase().trim();
-            if (name === 'less than a lover') delta.ltal++;
-            else if (name === 'fallen angel') delta.fallenangel++;
-            else if (name === 'heaven')       delta.heaven++;
+            const k = _trackKey(l.track_metadata?.track_name);
+            if (k === 'lessthanalover') delta.ltal++;
+            else if (k === 'fallenangel') delta.fallenangel++;
+            else if (k === 'heaven')      delta.heaven++;
           } else if (mk === 'lisa') {
-            const name = (l.track_metadata?.track_name || '').toLowerCase().trim();
-            if (name === 'sawadika') delta.sawadika++;
+            const k = _trackKey(l.track_metadata?.track_name);
+            if (k === 'sawadika') delta.sawadika++;
           }
           continue;
         }
         if (!_lbIsBp(artistName)) continue;
         delta.artistPlays++;
-        const name = (l.track_metadata?.track_name || '').toLowerCase().trim();
-        if (name === 'jump')               delta.jump++;
-        else if (name === 'shut down')     delta.shutdown++;
-        else if (name === 'ddu-du ddu-du') delta.ddududu++;
-        else if (name === 'go')            delta.go++;
+        const k = _trackKey(l.track_metadata?.track_name);
+        if (k === 'jump')            delta.jump++;
+        else if (k === 'shutdown')   delta.shutdown++;
+        else if (k === 'ddududdudu') delta.ddududu++;
+        else if (k === 'go')         delta.go++;
       }
       if (listens.length < 100) break;
       maxTs = listens[listens.length - 1].listened_at - 1;
@@ -8444,19 +8452,19 @@ async function fetchLbRecentListens(username, from, to) {
 function countLbByTrack(listens) {
   const counts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, fallenangel: 0, heaven: 0 };
   for (const l of listens) {
-    const name   = (l.track_metadata?.track_name   || '').toLowerCase().trim();
+    const k      = _trackKey(l.track_metadata?.track_name);
     const artist = (l.track_metadata?.artist_name  || '').toLowerCase();
     if (artist.includes('blackpink')) {
-      if (name === 'jump')               counts.jump++;
-      else if (name === 'shut down')     counts.shutdown++;
-      else if (name === 'ddu-du ddu-du') counts.ddududu++;
-      else if (name === 'go')            counts.go++;
+      if (k === 'jump')            counts.jump++;
+      else if (k === 'shutdown')   counts.shutdown++;
+      else if (k === 'ddududdudu') counts.ddududu++;
+      else if (k === 'go')         counts.go++;
     } else if (_lbMemberKey(l.track_metadata?.artist_name) === 'jennie') {
-      if (name === 'less than a lover') counts.ltal++;
-      else if (name === 'fallen angel') counts.fallenangel++;
-      else if (name === 'heaven')       counts.heaven++;
+      if (k === 'lessthanalover') counts.ltal++;
+      else if (k === 'fallenangel') counts.fallenangel++;
+      else if (k === 'heaven')      counts.heaven++;
     } else if (_lbMemberKey(l.track_metadata?.artist_name) === 'lisa') {
-      if (name === 'sawadika') counts.sawadika++;
+      if (k === 'sawadika') counts.sawadika++;
     }
   }
   return counts;
@@ -8550,7 +8558,7 @@ function countByTrack(scrobbles) {
     const name = (s.name || '').toLowerCase();
     const artist = (s.artist?.['#text'] || s.artist || '').toLowerCase();
     for (const t of TRACKS) {
-      if (name === t.track.toLowerCase() && artist.includes(t.artist.toLowerCase())) { counts[t.id]++; break; }
+      if (_trackKey(name) === _trackKey(t.track) && artist.includes(t.artist.toLowerCase())) { counts[t.id]++; break; }
     }
   }
   return counts;

@@ -216,6 +216,18 @@ async function fetchRecentScrobbles(username, from, to, maxPages = 50, fetchFn =
   return results;
 }
 
+// Title key for campaign matching: drop (feat…)/[remix] parentheticals, then all
+// spacing + punctuation, so a stylized or re-spaced scrobble still matches the
+// campaign entry — "SaWaDiKa" / "Sa Wa Di Ka" / "SaWaDiKa (Thai Ver.)" all → key
+// "sawadika". Still a FULL-title match (not a prefix), so "GO" never catches
+// "Good". Mirrors the extension ingest matcher so every source counts alike.
+function trackKey(s) {
+  return String(s || '').toLowerCase().replace(/\(.*?\)|\[.*?\]/g, '').replace(/[^a-z0-9]/g, '');
+}
+function trackMatches(name, artist, t) {
+  return trackKey(name) === trackKey(t.track) && artist.includes(t.artist.toLowerCase());
+}
+
 function countByTrack(scrobbles) {
   const counts = {};
   for (const t of TRACKS) counts[t.id] = 0;
@@ -223,7 +235,7 @@ function countByTrack(scrobbles) {
     const name   = (s.name || '').toLowerCase();
     const artist = (s.artist?.['#text'] || s.artist || '').toLowerCase();
     for (const t of TRACKS) {
-      if (name === t.track.toLowerCase() && artist.includes(t.artist.toLowerCase())) { counts[t.id]++; break; }
+      if (trackMatches(name, artist, t)) { counts[t.id]++; break; }
     }
   }
   return counts;
@@ -244,7 +256,7 @@ async function fetchLbTrackCounts(username) {
     const name   = (rec.track_name  || '').toLowerCase().trim();
     const artist = (rec.artist_name || '').toLowerCase();
     for (const t of TRACKS) {
-      if (name === t.track.toLowerCase() && artist.includes(t.artist.toLowerCase())) { counts[t.id] += rec.listen_count || 0; break; }
+      if (trackMatches(name, artist, t)) { counts[t.id] += rec.listen_count || 0; break; }
     }
   }
   return counts;
@@ -279,7 +291,7 @@ function countLbByTrack(listens) {
     const name   = (l.track_metadata?.track_name  || '').toLowerCase().trim();
     const artist = (l.track_metadata?.artist_name || '').toLowerCase();
     for (const t of TRACKS) {
-      if (name === t.track.toLowerCase() && artist.includes(t.artist.toLowerCase())) { counts[t.id]++; break; }
+      if (trackMatches(name, artist, t)) { counts[t.id]++; break; }
     }
   }
   return counts;
