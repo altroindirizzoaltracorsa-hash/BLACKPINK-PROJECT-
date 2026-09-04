@@ -13758,8 +13758,18 @@ function loadVmaVotebar() {
   }
 }
 
-const COMMUNITY_GOAL_PRIMARY   = 15000;
-const COMMUNITY_GOAL_SECONDARY = 20000;
+// Community-goal milestone ladder. The bar targets the lowest tier not yet
+// reached, so once one is smashed the next becomes the goal (15k → 20k → 25k → …).
+// Now that the daily total also counts the Fallen Angel EP, SaWaDiKa and CLICK,
+// the higher tiers give the community room to keep climbing past the old 20k cap.
+const COMMUNITY_GOAL_TIERS = [15000, 20000, 25000, 30000, 40000, 50000];
+const COMMUNITY_GOAL_PRIMARY   = COMMUNITY_GOAL_TIERS[0];   // daily goal + streak threshold
+const COMMUNITY_GOAL_SECONDARY = COMMUNITY_GOAL_TIERS[1];   // first stretch (kept for the share card + history)
+// Active target = the lowest tier still above the total; pins to the top once all are beaten.
+function currentGoalTier(total) {
+  for (const t of COMMUNITY_GOAL_TIERS) if (total < t) return t;
+  return COMMUNITY_GOAL_TIERS[COMMUNITY_GOAL_TIERS.length - 1];
+}
 
 // Sitewide daily scrobble total across all campaign tracks. Shares the same
 // cached fetch (fetchLbData) and the same dedup formula (computeDailyCommunityTotal)
@@ -13801,7 +13811,8 @@ async function loadCommunityGoal() {
     const data = await fetchLbData();
     const total = computeDailyCommunityTotal(data.users || {});
 
-    const goal = total < COMMUNITY_GOAL_PRIMARY ? COMMUNITY_GOAL_PRIMARY : COMMUNITY_GOAL_SECONDARY;
+    const topTier = COMMUNITY_GOAL_TIERS[COMMUNITY_GOAL_TIERS.length - 1];
+    const goal = currentGoalTier(total);
     const pct  = Math.min(100, (total / goal) * 100);
 
     document.getElementById('community-goal-nums').innerHTML = `${total.toLocaleString()}<span> / ${goal.toLocaleString()} scrobbles</span>`;
@@ -13815,11 +13826,12 @@ async function loadCommunityGoal() {
     const shareBtn  = document.getElementById('goal-share-btn');
     const streakEl  = document.getElementById('goal-streak-line');
     const goalHit   = total >= COMMUNITY_GOAL_PRIMARY;
-    if (total >= COMMUNITY_GOAL_SECONDARY) {
-      statusEl.textContent = `🎉 Stretch goal smashed — ${total.toLocaleString()} scrobbles today!`;
+    if (total >= topTier) {
+      statusEl.textContent = `🎉 Every goal smashed — ${total.toLocaleString()} scrobbles today!`;
       statusEl.className = 'goal-tracker-status goal-tracker-done';
     } else if (goalHit) {
-      statusEl.textContent = `🎉 Primary goal hit! ${(COMMUNITY_GOAL_SECONDARY - total).toLocaleString()} more to reach the stretch goal`;
+      // A tier was cleared and there's a higher one to chase — celebrate + point at the next.
+      statusEl.textContent = `🎉 ${total.toLocaleString()} today! ${(goal - total).toLocaleString()} more to reach ${goal.toLocaleString()}`;
       statusEl.className = 'goal-tracker-status goal-tracker-done';
     } else {
       statusEl.textContent = `${(COMMUNITY_GOAL_PRIMARY - total).toLocaleString()} more scrobbles to hit today's goal — stream now!`;
