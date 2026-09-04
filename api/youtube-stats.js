@@ -14,14 +14,10 @@ const CACHE_TTL = 14; // seconds — just under the 15s client poll so points st
 const LIVE_MAX = 5760; // fine points kept per video (~24h at ~15s)
 
 // Release times (for "time since release") + the view thresholds we timestamp the
-// moment a video first crosses them. Keep RELEASE in sync with youtube-history.js
-// and vs.html. Detection runs on this frequent path so crossings are caught within
-// ~one 15s sample; the exact crossing time is interpolated between the two samples.
-const RELEASE = {
-  'LzgE8ift2Uw': '2026-09-02T04:00:00Z', // JISOO teaser — 06:00 Rome
-  'h-7_04c_hVc': '2026-09-02T00:00:00Z', // LISA teaser  — 02:00 Rome
-};
-const releaseMs = id => (RELEASE[id] ? Date.parse(RELEASE[id]) : null);
+// moment a video first crosses them. Release times come from api/_releases.js —
+// this file used to keep its own copy, which never learned about the MVs and so
+// stamped `since: null` on their milestones, permanently (HSETNX).
+import { releaseMs } from './_releases.js';
 const VIEW_MILESTONES = [
   1e6, 2e6, 3e6, 4e6, 5e6, 10e6, 20e6, 25e6, 30e6, 40e6, 50e6, 75e6,
   100e6, 150e6, 200e6, 250e6, 300e6, 400e6, 500e6, 750e6, 1e9,
