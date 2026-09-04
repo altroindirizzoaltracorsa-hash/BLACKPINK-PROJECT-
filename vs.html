@@ -53,6 +53,7 @@
   .stat.likes .num{font-size:17px;color:var(--pink-soft);}
   .delta{font-size:10px;color:#2fd07a;font-variant-numeric:tabular-nums;margin-left:8px;white-space:nowrap;}
   .delta.zero{color:var(--dim);}
+  .delta.down{color:#ff5c7a;}
   .watch{display:inline-block;margin-top:10px;font-size:10.5px;color:var(--pink-soft);text-decoration:none;border:1px solid #ff2e7744;border-radius:99px;padding:5px 12px;}
   .watch:hover{background:#ff2e7714;}
 
@@ -313,7 +314,7 @@
         showDelta('dv-'+v.id, v.views - p.views, v.ts - p.ts);
         if (v.likes!=null && p.likes!=null) showDelta('dl-'+v.id, v.likes - p.likes, v.ts - p.ts);
         // Followers are rounded by YouTube, so show the raw step (no per-minute rate).
-        if (v.subscribers!=null && p.subs!=null){ const el=document.getElementById('ds-'+v.id); const d=v.subscribers-p.subs; if(el){ el.textContent=d?`▲ ${fmt(d)}`:''; el.className=d?'delta':'delta zero'; } }
+        if (v.subscribers!=null && p.subs!=null){ const el=document.getElementById('ds-'+v.id); const d=v.subscribers-p.subs; if(el){ el.textContent=d?`${d<0?'▼':'▲'} ${fmt(Math.abs(d))}`:''; el.className=d?(d<0?'delta down':'delta'):'delta zero'; } }
       }
       prev[v.id] = { views:v.views, likes:v.likes, subs:v.subscribers, ts:data.ts };
     }
@@ -337,9 +338,15 @@
   function showDelta(id, d, dtMs){
     const el = document.getElementById(id); if(!el) return;
     if (!d){ el.textContent=''; el.className='delta zero'; return; }
-    const perMin = dtMs>0 ? Math.round(d / (dtMs/60000)) : 0;
-    el.textContent = `▲ ${fmt(d)}${perMin?` · ${abbr(perMin)}/min`:''}`;
-    el.className = 'delta';
+    // Counts go DOWN as well as up — YouTube audits views and removes ones it
+    // decides don't count, especially in a release's first hours. Show a drop as
+    // a drop, and drop the per-minute rate with it: a correction isn't a rate,
+    // and "−544/min" would read as an ongoing decline rather than a one-off
+    // adjustment. (abbr() doesn't take negatives either.)
+    const down = d < 0;
+    const perMin = (!down && dtMs>0) ? Math.round(d / (dtMs/60000)) : 0;
+    el.textContent = `${down?'▼':'▲'} ${fmt(Math.abs(d))}${perMin?` · ${abbr(perMin)}/min`:''}`;
+    el.className = down ? 'delta down' : 'delta';
   }
 
   // ── 24-hour milestone (the number each video hit exactly 24h after release) ──
