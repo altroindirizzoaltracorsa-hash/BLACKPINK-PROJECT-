@@ -27,8 +27,9 @@ jobs:
           set -u
           probe () {
             echo "── $2 ─────────────────────────────────"
-            curl -sS --max-time 45 "$BASE/api/youtube-history?$1ids=$IDS" -o /tmp/r.json \
-              -w 'HTTP %{http_code}  %{size_download} bytes\n'
+            code=$(curl -sS --max-time 45 "$BASE/api/youtube-history?$1ids=$IDS" -o /tmp/r.json -w '%{http_code}')
+            echo "HTTP $code"
+            if [ "$code" != "200" ]; then echo "  body: $(head -c 400 /tmp/r.json)"; return; fi
             jq -r '.videos | to_entries[] |
               .key as $id | (.value|length) as $n |
               if $n == 0 then "  \($id): 0 points"

@@ -38,7 +38,7 @@ const PREV_PIN_MAX = 20;
 // 24-hour milestone: freeze each video's exact view/like count at release + 24h.
 // Release times live in api/_releases.js — one copy, imported by both endpoints
 // and served to vs.html on the read response, after three separate copies drifted.
-import { RELEASE, DAY_MS, releaseMs, markOf } from './_releases.js';
+import { RELEASE, DAY_MS, releaseMs, markOf } from './_releases.mjs';
 const PIN_TOL_MS = 95 * 60 * 1000;    // accept a stored point within ~95 min of the exact mark
 const AUDIT_WINDOW_MS = 7 * DAY_MS;   // how long after a mark we keep attributing drops to its audit
 
@@ -46,7 +46,7 @@ const AUDIT_WINDOW_MS = 7 * DAY_MS;   // how long after a mark we keep attributi
 // imported by both endpoints. On read we ALSO derive crossings straight from the
 // stored series, so a crossing the live path missed (deploy gap, quiet moment)
 // is recovered and frozen.
-import { VIEW_MILESTONES, crossingField, groupCrossings, mergeCrossings } from './_milestones.js';
+import { VIEW_MILESTONES, crossingField, groupCrossings, mergeCrossings } from './_milestones.mjs';
 // First-crossing time for each threshold, interpolated between the bracketing
 // samples of a time-ascending [{t,v}] series.
 // Every crossing of every threshold, oldest first — not just the first. A total

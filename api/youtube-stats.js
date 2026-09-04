@@ -17,8 +17,8 @@ const LIVE_MAX = 5760; // fine points kept per video (~24h at ~15s)
 // moment a video first crosses them. Release times come from api/_releases.js —
 // this file used to keep its own copy, which never learned about the MVs and so
 // stamped `since: null` on their milestones, permanently (HSETNX).
-import { releaseMs } from './_releases.js';
-import { VIEW_MILESTONES, crossingField, groupCrossings } from './_milestones.js';
+import { releaseMs } from './_releases.mjs';
+import { VIEW_MILESTONES, crossingField, groupCrossings } from './_milestones.mjs';
 
 async function upstashPipe(cmds) {
   if (!process.env.UPSTASH_REDIS_REST_URL) return;
