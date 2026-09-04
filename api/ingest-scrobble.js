@@ -33,11 +33,19 @@ function norm(s) {
   return String(s || '').toLowerCase().replace(/\(.*?\)|\[.*?\]/g, '').replace(/\s+/g, ' ').trim();
 }
 
+// Tighter key for title equality: drop ALL spaces and punctuation so stylized /
+// re-spaced titles still match the campaign entry. "SaWaDiKa", "SAWADIKA" and
+// "Sa Wa Di Ka" all collapse to "sawadika"; "DDU-DU DDU-DU" → "dududududu".
+// Still a FULL-title match (not a prefix), so "GO" never catches "Good", etc.
+function keyName(s) {
+  return norm(s).replace(/[^a-z0-9]/g, '');
+}
+
 function matchTrack(artist, title) {
   const a = norm(artist);
-  const t = norm(title);
+  const tk = keyName(title);
   for (const x of TRACKS) {
-    if (t === x.track && a.includes(x.artist)) return x.id;
+    if (tk === keyName(x.track) && a.includes(x.artist)) return x.id;
   }
   return null;
 }
