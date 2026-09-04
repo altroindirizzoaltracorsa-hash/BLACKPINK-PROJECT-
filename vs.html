@@ -189,6 +189,7 @@
   const releaseMs = id => (RELEASE[id] ? Date.parse(RELEASE[id]) : null);
   const markOf = id => { const r = releaseMs(id); return r==null ? null : r + H24_MS; };
   let milestoneData = {};   // 24h pins:  { id: {t,v,l,c,mark} }
+  let markData = {};        // other frozen marks: { id: [{key,label,at,v,l,…}] } — e.g. a 7-day figure
   let viewMsData = {};      // view milestones reached: { id: { "1000000": {v,t,since} } }
 
 
@@ -251,6 +252,7 @@
       <div class="since" id="since-${v.id}"></div>
       <div class="mslist" id="msl-${v.id}"></div>
       <div class="m24" id="m24-${v.id}"></div>
+      <div class="m24" id="mk-${v.id}"></div>
       <div class="wt24" id="wt24-${v.id}"></div>
       <a class="watch" href="https://youtu.be/${v.id}" target="_blank" rel="noopener">Watch ↗</a>
     </div>`;
@@ -410,6 +412,19 @@
     }
   }
   function updateMilestones(){
+    // Marks that aren't release+24h — a 7-day figure, say. Same treatment: the
+    // frozen number, and what has been taken back off the counter since.
+    for (const id of VIDEOS){
+      const mk = document.getElementById('mk-'+id); if (!mk) continue;
+      const list = markData[id] || [];
+      mk.innerHTML = list.map(m => {
+        const audited = m.audit && m.audit.drop
+          ? ` <span class="m24audit" title="At least ${fmt(m.audit.drop)} views removed since this mark, so the settled figure is no more than ${fmt(m.v - m.audit.drop)}.">· ≥${fmt(m.audit.drop)} audited → ≤${fmt(m.v - m.audit.drop)}</span>`
+          : '';
+        return `<span class="m24tag">${escapeHtml(m.label || m.key)}</span> <b>${fmt(m.v)}</b> views · <b>${m.l==null?'—':fmt(m.l)}</b> likes${audited}`;
+      }).join('<br>');
+      mk.className = list.length ? 'm24 done' : 'm24';
+    }
     for (const id of VIDEOS){
       const el = document.getElementById('m24-'+id); if (!el) continue;
       const mark = markOf(id); if (mark==null){ el.innerHTML=''; el.className='m24'; continue; }
@@ -747,6 +762,7 @@
       const r = await fetch('/api/youtube-history?live=1&ids='+VIDEOS.join(','), {cache:'no-store'});
       const d = await r.json();
       if (d && d.releases){ RELEASE = d.releases; }   // before the milestones, which read it
+      if (d && d.marks){ markData = d.marks; }        // before updateMilestones, which renders them
       if (d && d.milestones){ milestoneData = d.milestones; updateMilestones(); }
       if (d && d.viewMilestones){ viewMsData = d.viewMilestones; updateViewMs(); }
       if (d && d.videos){ histData = d.videos; drawAll(); }
