@@ -19,9 +19,15 @@ const TRACK_IDS = {
   ltal:        '8b627a61-8507-4f65-9d21-987679d35cc3',
   fallenangel: '989c9b5e-748f-4551-bc2d-71605097fc38',
   heaven:      '1acde8de-f00c-433e-acd5-7a1269eb5399',
+  // LISA "SaWaDiKa" (Spotify 1VWiDyYTrqQhhmnWANWkFa). Musicat keys tracks by its
+  // OWN UUID, not the Spotify id — fill this in with the SaWaDiKa track's
+  // musicat.fm UUID once known. Null → the per-track fetch below skips it and
+  // returns 0, so the leaderboard already carries a `sawadika` slot (never a
+  // spurious query) and lights up the instant the UUID is added.
+  sawadika:    null,
 };
 // Musicat per-track ids fetched for every profile (all-time + today).
-const MC_TRACKS = ['jump', 'shutdown', 'ddududu', 'go', 'ltal', 'fallenangel', 'heaven'];
+const MC_TRACKS = ['jump', 'shutdown', 'ddududu', 'go', 'ltal', 'fallenangel', 'heaven', 'sawadika'];
 const MC_HEADERS = { 'Authorization': 'Bearer empty', 'Content-Type': 'application/json' };
 
 const SP_TRACKS = {
@@ -1565,7 +1571,8 @@ export default async function handler(req, res) {
     // re-scrape when stale, and fall back to the last good payload on any upstream
     // failure so a throttled call never zeroes a fan's Musicat contribution.
     // v2: bumped when GO + Fallen Angel + Heaven were added to the per-track set.
-    const mcKey = `mccache:v2:${String(mcUser).toLowerCase()}`;
+    // v3: bumped when SaWaDiKa was added to the per-track set.
+    const mcKey = `mccache:v3:${String(mcUser).toLowerCase()}`;
     const mcCached = await upstashGet(mcKey);
     if (mcCached?.payload && mcCached.at && (Date.now() - mcCached.at) < 20 * 60 * 1000) {
       return res.status(200).json(mcCached.payload);
@@ -1595,9 +1602,11 @@ export default async function handler(req, res) {
         statsPost({ range: allTime, publicUserId: publicId, publicArtistId: MEMBER_ARTIST_IDS.jennie }),
       ]);
       // Per-track all-time + today, one query each, for the full campaign + EP set.
+      // Skip any track whose Musicat UUID isn't known yet (→ 0) so an unset id
+      // never fires a track-less query that would return a bogus count.
       const [allTimeVals, todayVals] = await Promise.all([
-        Promise.all(MC_TRACKS.map(id => statsPost({ range: allTime, publicUserId: publicId, publicTrackId: TRACK_IDS[id] }))),
-        Promise.all(MC_TRACKS.map(id => statsPost({ range: today,   publicUserId: publicId, publicTrackId: TRACK_IDS[id] }))),
+        Promise.all(MC_TRACKS.map(id => TRACK_IDS[id] ? statsPost({ range: allTime, publicUserId: publicId, publicTrackId: TRACK_IDS[id] }) : 0)),
+        Promise.all(MC_TRACKS.map(id => TRACK_IDS[id] ? statsPost({ range: today,   publicUserId: publicId, publicTrackId: TRACK_IDS[id] }) : 0)),
       ]);
       const tracks = {}, tracksToday = {};
       MC_TRACKS.forEach((id, i) => { tracks[id] = allTimeVals[i]; tracksToday[id] = todayVals[i]; });
