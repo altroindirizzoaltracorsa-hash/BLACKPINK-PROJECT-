@@ -35,15 +35,16 @@ import { RELEASE, DAY_MS, releaseMs, markOf } from './_releases.js';
 const PIN_TOL_MS = 95 * 60 * 1000;    // accept a stored point within ~95 min of the exact mark
 const AUDIT_WINDOW_MS = 7 * DAY_MS;   // how long after a mark we keep attributing drops to its audit
 
-// View thresholds we timestamp (kept in sync with youtube-stats.js). On read we
-// ALSO derive crossings straight from the stored series — so a crossing the live
-// path missed (deploy gap, quiet moment) is recovered and frozen.
-const VIEW_MILESTONES = [
-  1e6, 2e6, 3e6, 4e6, 5e6, 10e6, 20e6, 25e6, 30e6, 40e6, 50e6, 75e6,
-  100e6, 150e6, 200e6, 250e6, 300e6, 400e6, 500e6, 750e6, 1e9,
-];
+// View thresholds and crossing storage live in api/_milestones.js — one copy,
+// imported by both endpoints. On read we ALSO derive crossings straight from the
+// stored series, so a crossing the live path missed (deploy gap, quiet moment)
+// is recovered and frozen.
+import { VIEW_MILESTONES, crossingField, groupCrossings, mergeCrossings } from './_milestones.js';
 // First-crossing time for each threshold, interpolated between the bracketing
 // samples of a time-ascending [{t,v}] series.
+// Every crossing of every threshold, oldest first — not just the first. A total
+// that is recounted below a milestone and climbs back over it has crossed twice,
+// and both are real events worth keeping.
 function deriveMilestones(series, relMs) {
   const out = {};
   for (const th of VIEW_MILESTONES) {
@@ -52,8 +53,7 @@ function deriveMilestones(series, relMs) {
       if (a.v != null && b.v != null && a.v < th && th <= b.v) {
         const frac = (b.v - a.v) > 0 ? (th - a.v) / (b.v - a.v) : 0;
         const tCross = Math.round(a.t + frac * (b.t - a.t));
-        out[String(th)] = { v: th, t: tCross, since: relMs != null ? tCross - relMs : null };
-        break;
+        (out[String(th)] = out[String(th)] || []).push({ v: th, t: tCross, since: relMs != null ? tCross - relMs : null });
       }
     }
   }
@@ -263,9 +263,17 @@ export default async function handler(req, res) {
         .sort((a, b) => a.t - b.t).filter((p, k, a) => k === 0 || p.t !== a[k - 1].t);
       const derived = deriveMilestones(merged, releaseMs(id));
       for (const th of Object.keys(derived)) {
-        if (!(th in existing)) heal.push(['HSETNX', `bu_yt_ms_${id}`, th, JSON.stringify(derived[th])]);
+        for (const c of derived[th]) {
+          const f = crossingField(th, c.t);
+          if (!(f in existing)) heal.push(['HSETNX', `bu_yt_ms_${id}`, f, JSON.stringify(c)]);
+        }
+        // the plain field stays the first crossing, so records written before
+        // crossings were kept as a list still read correctly
+        if (!(th in existing)) heal.push(['HSETNX', `bu_yt_ms_${id}`, th, JSON.stringify(derived[th][0])]);
       }
-      viewMilestones[id] = { ...derived, ...existing }; // frozen values win over recomputed
+      // Frozen crossings win their slot — never restated — but they no longer
+      // hide the later ones: every crossing is returned, oldest first.
+      viewMilestones[id] = mergeCrossings(groupCrossings(existing), derived);
 
       // 24h pin, self-healing. The hourly snapshot job is the primary writer, but
       // GitHub drops scheduled runs (seen: 4-5h gaps against an hourly cron), so a

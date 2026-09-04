@@ -18,10 +18,7 @@ const LIVE_MAX = 5760; // fine points kept per video (~24h at ~15s)
 // this file used to keep its own copy, which never learned about the MVs and so
 // stamped `since: null` on their milestones, permanently (HSETNX).
 import { releaseMs } from './_releases.js';
-const VIEW_MILESTONES = [
-  1e6, 2e6, 3e6, 4e6, 5e6, 10e6, 20e6, 25e6, 30e6, 40e6, 50e6, 75e6,
-  100e6, 150e6, 200e6, 250e6, 300e6, 400e6, 500e6, 750e6, 1e9,
-];
+import { VIEW_MILESTONES, crossingField, groupCrossings } from './_milestones.js';
 
 async function upstashPipe(cmds) {
   if (!process.env.UPSTASH_REDIS_REST_URL) return;
@@ -187,6 +184,10 @@ export default async function handler(req, res) {
             const frac = (th - prev.v) / (v.views - prev.v);
             const tCross = Math.round(prev.t + frac * (payload.ts - prev.t));
             const rec = JSON.stringify({ v: th, t: tCross, since: rel != null ? tCross - rel : null });
+            // One field per crossing. A threshold can be crossed again after a
+            // recount takes the total back under it, and both are kept — the
+            // plain field holds the first, so older records still read.
+            cmds.push(['HSETNX', 'bu_yt_ms_' + v.id, crossingField(th, tCross), rec]);
             cmds.push(['HSETNX', 'bu_yt_ms_' + v.id, String(th), rec]);
           }
         }
@@ -198,7 +199,7 @@ export default async function handler(req, res) {
     try {
       const hashes = await upstashRead(videos.map(v => ['HGETALL', 'bu_yt_ms_' + v.id]));
       const vm = {};
-      videos.forEach((v, i) => { vm[v.id] = parseHash(hashes[i]?.result); });
+      videos.forEach((v, i) => { vm[v.id] = groupCrossings(parseHash(hashes[i]?.result)); });
       payload.viewMilestones = vm;
     } catch {}
     await upstashSetEx(cacheKey, payload, CACHE_TTL);

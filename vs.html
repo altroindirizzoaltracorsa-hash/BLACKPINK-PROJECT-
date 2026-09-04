@@ -55,6 +55,7 @@
   .delta.zero{color:var(--dim);}
   .delta.down{color:#ff5c7a;}
   .m24audit{color:#ff5c7a;font-size:10px;white-space:nowrap;}
+  .msrow .mstag.again{color:#ff5c7a;border-color:#ff5c7a55;}   /* .msrow .mstag sets the colour, so match its specificity */
   .watch{display:inline-block;margin-top:10px;font-size:10.5px;color:var(--pink-soft);text-decoration:none;border:1px solid #ff2e7744;border-radius:99px;padding:5px 12px;}
   .watch:hover{background:#ff2e7714;}
 
@@ -386,13 +387,23 @@
   function updateViewMs(){
     for (const id of VIDEOS){
       const el = document.getElementById('msl-'+id); if (!el) continue;
-      const items = Object.values(viewMsData[id]||{}).sort((a,b)=>b.v-a.v).slice(0,6);
-      const sig = items.map(i=>i.v+'@'+i.t).join(',');
+      // One row per crossing, biggest milestone first. A threshold can be crossed
+      // more than once — YouTube recounts the total back under it and it is
+      // crossed again — and every crossing is shown rather than only the first,
+      // so the first reach and the settle sit side by side.
+      const data = viewMsData[id] || {};
+      const items = [];
+      for (const th of Object.keys(data).map(Number).sort((a,b)=>b-a)){
+        const list = Array.isArray(data[th]) ? data[th] : [data[th]];   // tolerate the older single-record shape
+        list.forEach((it,i)=> items.push({ ...it, v: it.v!=null?it.v:th, again: i>0 }));
+      }
+      const shown = items.slice(0,8);
+      const sig = shown.map(i=>i.v+'@'+i.t+(i.again?'r':'')).join(',');
       if (_mslSig[id] === sig) continue;
       _mslSig[id] = sig;
-      el.innerHTML = items.map(it=>{
+      el.innerHTML = shown.map(it=>{
         const dur = it.since!=null ? ` · <span class="msdur">in ${fmtDur(it.since)}</span>` : '';
-        const summary = `<span class="mstag">${msLabel(it.v)}</span> reached ${fmtKE(it.t)}${dur}`;
+        const summary = `<span class="mstag${it.again?' again':''}">${msLabel(it.v)}</span> ${it.again?'crossed again':'reached'} ${fmtKE(it.t)}${dur}`;
         const rows = worldRows(it.t).map(r=>`<div class="wtrow"><span>${escapeHtml(r.city)}</span><span>${r.label}</span></div>`).join('');
         return `<details class="wtimes msrow"><summary>${summary}</summary><div class="wtbody">${rows}</div></details>`;
       }).join('');
