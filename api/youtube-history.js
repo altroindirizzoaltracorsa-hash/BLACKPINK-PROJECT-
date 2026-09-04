@@ -42,6 +42,46 @@ import { RELEASE, DAY_MS, releaseMs, markOf } from './_releases.mjs';
 const PIN_TOL_MS = 95 * 60 * 1000;    // accept a stored point within ~95 min of the exact mark
 const AUDIT_WINDOW_MS = 7 * DAY_MS;   // how long after a mark we keep attributing drops to its audit
 
+// The frozen 24h record. `s` (followers) is carried too, so the chart's gold dot
+// can be drawn on every metric tab and not just views/likes/comments.
+const pinFrom = (p, mark) => ({ t: p.t, v: p.v, l: p.l, c: p.c, s: p.s ?? null, mark });
+// Views go DOWN as well as up: YouTube audits a release and removes views it
+// decides don't count, and that correction lands *after* the 24h mark. The
+// pinned figure and the number people end up quoting can therefore differ.
+//
+// It can't be re-read. There is no endpoint for "the count as of timestamp X,
+// restated" — the total is one live number that both grows and gets corrected —
+// so a historical figure has to be reconstructed from tracked deltas rather than
+// fetched. Summing the drops after the mark does that, and keeps updating as
+// further recounts land, without touching the frozen pin.
+//
+// The result is a LOWER BOUND. A removal is only visible as a negative step
+// between two samples; one that lands during normal growth (+30k organic, −20k
+// removed in the same window) nets out and leaves no trace. Finer sampling
+// catches more of them, which is a reason the 15s live series earns its keep
+// beyond the mark itself — but no cadence catches all of them.
+function auditAfter(series, mark, windowMs = AUDIT_WINDOW_MS) {
+  let drop = 0, steps = 0, last = null, at = null;
+  for (const p of series) {
+    if (!p || p.t == null || p.v == null) continue;
+    if (p.t < mark) { last = p; continue; }     // keep the last pre-mark point, so the first comparison spans the mark
+    if (p.t > mark + windowMs) break;
+    if (last && p.v < last.v) { drop += last.v - p.v; steps++; at = p.t; }
+    last = p;
+  }
+  return steps ? { drop, steps, at } : null;
+}
+
+// Stored point nearest the mark, or null if nothing lands within tolerance.
+const nearestToMark = (points, mark) => {
+  let best = null;
+  for (const p of points) {
+    if (!p || !p.t) continue;
+    if (!best || Math.abs(p.t - mark) < Math.abs(best.t - mark)) best = p;
+  }
+  return best && Math.abs(best.t - mark) <= PIN_TOL_MS ? best : null;
+};
+
 // View thresholds and crossing storage live in api/_milestones.js — one copy,
 // imported by both endpoints. On read we ALSO derive crossings straight from the
 // stored series, so a crossing the live path missed (deploy gap, quiet moment)
