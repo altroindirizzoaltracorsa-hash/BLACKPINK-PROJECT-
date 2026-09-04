@@ -22,9 +22,12 @@ const TRACK_IDS = {
   // LISA "SaWaDiKa" (Spotify 1VWiDyYTrqQhhmnWANWkFa; musicat.fm/tracks/<this>).
   // Musicat keys tracks by its own UUID, not the Spotify id.
   sawadika:    '7159ce4c-2ad9-49aa-b11b-48cadf2c71d8',
+  // JISOO "CLICK" — Musicat UUID not known yet; null-guarded below so the
+  // per-track fetch skips it until the id is filled in.
+  click:       null,
 };
 // Musicat per-track ids fetched for every profile (all-time + today).
-const MC_TRACKS = ['jump', 'shutdown', 'ddududu', 'go', 'ltal', 'fallenangel', 'heaven', 'sawadika'];
+const MC_TRACKS = ['jump', 'shutdown', 'ddududu', 'go', 'ltal', 'fallenangel', 'heaven', 'sawadika', 'click'];
 const MC_HEADERS = { 'Authorization': 'Bearer empty', 'Content-Type': 'application/json' };
 
 const SP_TRACKS = {
@@ -1569,7 +1572,8 @@ export default async function handler(req, res) {
     // failure so a throttled call never zeroes a fan's Musicat contribution.
     // v2: bumped when GO + Fallen Angel + Heaven were added to the per-track set.
     // v3: bumped when SaWaDiKa was added to the per-track set.
-    const mcKey = `mccache:v3:${String(mcUser).toLowerCase()}`;
+    // v4: bumped when CLICK was added to the per-track set.
+    const mcKey = `mccache:v4:${String(mcUser).toLowerCase()}`;
     const mcCached = await upstashGet(mcKey);
     if (mcCached?.payload && mcCached.at && (Date.now() - mcCached.at) < 20 * 60 * 1000) {
       return res.status(200).json(mcCached.payload);

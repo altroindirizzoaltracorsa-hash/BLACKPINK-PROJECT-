@@ -167,6 +167,7 @@ export default async function handler(request) {
       { id: 'go',          prefix: 'go',                artist: 'BLACKPINK' },
       { id: 'ltal',        prefix: 'less than a lover', artist: 'JENNIE' },
       { id: 'sawadika',    prefix: 'sawadika',          artist: 'LISA' },
+      { id: 'click',       prefix: 'click',             artist: 'JISOO' },
       { id: 'fallenangel', prefix: 'fallen angel',      artist: 'JENNIE' },
       { id: 'heaven',      prefix: 'heaven',            artist: 'JENNIE' },
     ];

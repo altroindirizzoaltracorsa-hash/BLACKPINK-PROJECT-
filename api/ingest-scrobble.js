@@ -25,6 +25,7 @@ const TRACKS = [
   { id: 'ltal',        artist: 'jennie',    track: 'less than a lover' },
   { id: 'go',          artist: 'blackpink', track: 'go' },
   { id: 'sawadika',    artist: 'lisa',      track: 'sawadika' },
+  { id: 'click',       artist: 'jisoo',     track: 'click' },
   { id: 'fallenangel', artist: 'jennie',    track: 'fallen angel' },
   { id: 'heaven',      artist: 'jennie',    track: 'heaven' },
 ];
