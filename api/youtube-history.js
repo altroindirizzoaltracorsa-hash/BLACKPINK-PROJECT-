@@ -134,9 +134,16 @@ const nearestToMark = (points, mark) => {
 // that idempotent: the interpolated crossing time can shift slightly when the
 // fine live series is trimmed and a coarser pair of samples takes over, and
 // bucketing absorbs that instead of inventing a second crossing from it.
+// Kept in sync between youtube-history.js and youtube-stats.js — see the NOTE above.
+// The single-digit millions are dense on purpose: that is the range a big MV
+// sprints through on release day, and the old list jumped 5M straight to 10M, so
+// LISA's SaWaDiKa passed 6M and 7M with no threshold to record them against.
+// Adding one here backfills retroactively — the read path re-derives crossings
+// from the whole stored series, so any already inside it are recovered on the
+// next read rather than lost for good.
 const VIEW_MILESTONES = [
-  1e6, 2e6, 3e6, 4e6, 5e6, 10e6, 20e6, 25e6, 30e6, 40e6, 50e6, 75e6,
-  100e6, 150e6, 200e6, 250e6, 300e6, 400e6, 500e6, 750e6, 1e9,
+  1e6, 2e6, 3e6, 4e6, 5e6, 6e6, 7e6, 8e6, 9e6, 10e6, 15e6, 20e6, 25e6, 30e6,
+  40e6, 50e6, 75e6, 100e6, 150e6, 200e6, 250e6, 300e6, 400e6, 500e6, 750e6, 1e9,
 ];
 
 const HOUR = 3600000;
