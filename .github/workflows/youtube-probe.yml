@@ -37,8 +37,13 @@ jobs:
                 ((.value[-1].t - .value[0].t) / 60000 | floor) as $span |
                 "  \($id): \($n) pts over \($span) min   v \(.value[0].v) -> \(.value[-1].v)"
               end' /tmp/r.json
-            echo "  milestones: $(jq -c '.milestones // {} | keys' /tmp/r.json)"
-            echo "  releases:   $(jq -c '.releases // {} | keys' /tmp/r.json)"
+            echo "  24h pins:  $(jq -c '.milestones // {} | keys' /tmp/r.json)"
+            echo "  releases:  $(jq -c '.releases // {} | keys' /tmp/r.json)"
+            echo "  view milestones recorded:"
+            jq -r '.viewMilestones // {} | to_entries[] |
+              .key as $id |
+              ((.value // {}) | to_entries | map("\(.key|tonumber/1000000)M x\(.value|if type=="array" then length else 1 end)") | join(", ")) as $list |
+              "    \($id): \(if $list == "" then "none" else $list end)"' /tmp/r.json
           }
           probe "live=1&" "FINE (live series — what the chart plots)"
           probe ""         "HOURLY (long series — what the gains use)"
