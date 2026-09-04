@@ -16,19 +16,24 @@ name: YouTube 24h Mark Capture
 # has passed is simply never selected again; a stale list is harmless.
 #   captured 2026-09-03T00:00Z  SaWaDiKa teaser     (pinned by hand)
 #   captured 2026-09-03T04:00Z  JISOO CLICK teaser  (pinned +14s)
+#   captured 2026-09-04T04:00Z  s466YCiHfKw 7-day   (read back from the series, -8s)
 #   pending  2026-09-05T00:00Z  SaWaDiKa MV
 #   pending  2026-09-05T04:00Z  JISOO CLICK MV
-#   pending  2026-09-04T04:00Z  s466YCiHfKw 7-day figure — a sampling-only mark:
-#            nothing pins at 7 days yet, so the burst just plants dense points at
-#            the instant and the value is read back from the series later.
 on:
   schedule:
-    # Three chances well before the mark; GitHub sheds scheduled runs, and each
-    # run waits for the mark itself, so any one surviving is enough.
-    # One set per pending mark's hour: 23:xx covers a 00:00 mark, 03:xx a 04:00 one.
+    # Six chances spread over the two hours before the mark; GitHub sheds
+    # scheduled runs, and each run waits for the mark itself, so any one
+    # surviving is enough. One set per pending mark's hour: 22:xx-23:xx covers a
+    # 00:00 mark, 02:xx-03:xx a 04:00 one.
+    - cron: '35 22 * * *'
+    - cron: '55 22 * * *'
+    - cron: '15 23 * * *'
     - cron: '35 23 * * *'
     - cron: '45 23 * * *'
     - cron: '55 23 * * *'
+    - cron: '35 2 * * *'
+    - cron: '55 2 * * *'
+    - cron: '15 3 * * *'
     - cron: '35 3 * * *'
     - cron: '45 3 * * *'
     - cron: '55 3 * * *'
@@ -45,26 +50,29 @@ jobs:
     # Long enough to be dispatched hours ahead and sleep until the mark. A run
     # dispatched by hand is already allocated, so it cannot be dropped the way a
     # scheduled run can — this is the reliable path; the crons above are backup.
-    timeout-minutes: 300
+    timeout-minutes: 350
     steps:
       - name: Sample across the mark
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           BASE: https://www.blinksunited.com
-          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-09-04T04:00:00Z,2026-09-05T00:00:00Z,2026-09-05T04:00:00Z' }}
+          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-09-05T00:00:00Z,2026-09-05T04:00:00Z' }}
         run: |
           set -u
           now=$(date -u +%s)
           echo "now   $(date -u -d @$now +%FT%TZ)"
 
           # Pick the soonest mark this run can actually serve. A mark is in window
-          # from 3h before it (any earlier and a scheduled run on some other night
+          # from 5h before it (any earlier and a scheduled run on some other night
           # would sleep for a day and die on the job timeout) until 15 min after it
           # (past that the pin is either set or will use a stored point anyway).
+          # 5h rather than 3h so a hand-dispatched run — the only kind GitHub
+          # cannot shed — can be started early in the evening rather than in a
+          # narrow slot, while staying under the 6h ceiling on a job.
           mark=""
           for m in ${MARK_UTC//,/ }; do
             t=$(date -u -d "$m" +%s) || { echo "skipping unparseable mark: $m"; continue; }
-            if [ $(( now - t )) -le 900 ] && [ $(( t - now )) -le 10800 ]; then
+            if [ $(( now - t )) -le 900 ] && [ $(( t - now )) -le 18000 ]; then
               if [ -z "$mark" ] || [ "$t" -lt "$mark" ]; then mark=$t; fi
             fi
           done
@@ -74,16 +82,16 @@ jobs:
           fi
           echo "mark  $(date -u -d @$mark +%FT%TZ)"
 
-          # Wait until 30s before the mark (a late-started run skips straight through).
-          target=$(( mark - 30 ))
+          # Wait until 45s before the mark (a late-started run skips straight through).
+          target=$(( mark - 45 ))
           if [ "$now" -lt "$target" ]; then
             echo "Sleeping $(( target - now ))s until 30s before the mark…"
             sleep $(( target - now ))
           fi
 
-          # Force a sample every 20s until 2 min past the mark, stopping as soon as
+          # Force a sample every 15s until 3 min past the mark, stopping as soon as
           # the endpoint reports it pinned something.
-          deadline=$(( mark + 120 ))
+          deadline=$(( mark + 180 ))
           while [ "$(date -u +%s)" -le "$deadline" ]; do
             code=$(curl -sS -L --max-time 30 -o /tmp/out.json -w '%{http_code}' \
               -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/youtube-history?snapshot=1&force=1") || code=000
@@ -92,6 +100,6 @@ jobs:
               echo "Pinned — done."
               exit 0
             fi
-            sleep 20
+            sleep 15
           done
           echo "Window closed. The pin will be captured by the next snapshot or page visit."
