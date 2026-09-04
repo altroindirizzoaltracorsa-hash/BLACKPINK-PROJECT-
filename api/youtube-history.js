@@ -152,25 +152,21 @@ const nearestToMark = (points, mark) => {
 // fine live series is trimmed and a coarser pair of samples takes over, and
 // bucketing absorbs that instead of inventing a second crossing from it.
 // Kept in sync between youtube-history.js and youtube-stats.js — see the NOTE above.
-// The single-digit millions are dense on purpose: that is the range a big MV
-// sprints through on release day, and the old list jumped 5M straight to 10M, so
-// LISA's SaWaDiKa passed 6M and 7M with no threshold to record them against.
-// Adding one here backfills retroactively — the read path re-derives crossings
-// from the whole stored series, so any already inside it are recovered on the
-// next read rather than lost for good.
+// Generated, not typed out. Three hand-written versions of this list each shipped
+// with a hole in it — 5M→10M lost SaWaDiKa's 6M through 9M, 10M→15M lost its 11M,
+// and 20M→25M lost 21M, 22M and 23M — because a threshold that isn't in the list
+// isn't merely unshown, it is never recorded. A range with a step can't have a
+// gap, so the list is built from ranges.
+// Adding a threshold backfills: the read path re-derives crossings from the whole
+// stored series, so any already inside it are recovered on the next read rather
+// than lost for good. That is why every one of those holes was recoverable.
 // Kept in sync between youtube-history.js and youtube-stats.js — see the NOTE above.
-// Every million up to 20M, because that is the range a big MV runs through in its
-// first day or two and every one of them is a moment worth stamping. The list
-// used to jump 5M→10M→15M, so SaWaDiKa passed 6M, 7M, 8M, 9M and then 11M with
-// nothing to record them against. Above 20M the pace slows and coarser steps are
-// enough. Adding a threshold backfills: the read path re-derives crossings from
-// the whole stored series, so any already inside it are recovered on the next
-// read rather than lost.
+const msRange = (from, to, step) => { const a = []; for (let v = from; v <= to; v += step) a.push(v); return a; };
 const VIEW_MILESTONES = [
-  1e6, 2e6, 3e6, 4e6, 5e6, 6e6, 7e6, 8e6, 9e6, 10e6,
-  11e6, 12e6, 13e6, 14e6, 15e6, 16e6, 17e6, 18e6, 19e6, 20e6,
-  25e6, 30e6, 40e6, 50e6, 75e6, 100e6, 150e6, 200e6, 250e6, 300e6,
-  400e6, 500e6, 750e6, 1e9,
+  ...msRange(1e6, 100e6, 1e6),      // every million to 100M — first-week territory
+  ...msRange(105e6, 300e6, 5e6),    // every 5M to 300M
+  ...msRange(310e6, 1e9, 10e6),     // every 10M to a billion
+  ...msRange(1.05e9, 5e9, 50e6),    // every 50M past it
 ];
 
 const HOUR = 3600000;
@@ -216,25 +212,35 @@ function mergeCrossings(stored, derived) {
 // Every crossing of every threshold, oldest first — not just the first. A total
 // that is recounted below a milestone and climbs back over it has crossed twice,
 // and both are real events worth keeping.
+// Index of the first threshold above v. The list is ascending, so a step between
+// two samples only looks at the thresholds that actually fall between its ends
+// instead of all of them — which matters now that there are a few hundred and
+// this runs over the whole stored series on every read.
+function firstThresholdAbove(v) {
+  let lo = 0, hi = VIEW_MILESTONES.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (VIEW_MILESTONES[mid] > v) hi = mid; else lo = mid + 1; }
+  return lo;
+}
 function deriveMilestones(series, relMs) {
   const out = {};
-  for (const th of VIEW_MILESTONES) {
-    for (let i = 1; i < series.length; i++) {
-      const a = series[i - 1], b = series[i];
-      if (a.v != null && b.v != null && a.v < th && th <= b.v) {
-        const frac = (b.v - a.v) > 0 ? (th - a.v) / (b.v - a.v) : 0;
-        const tCross = Math.round(a.t + frac * (b.t - a.t));
-        // Carry the bracket the time was interpolated inside. A crossing is never
-        // observed — it is placed on the straight line between two samples — so
-        // how far apart those samples were, and how many views the counter moved
-        // between them, is what says whether the time means anything. Five
-        // thresholds sharing one bracket were passed in one counter update, not
-        // five minutes apart.
-        (out[String(th)] = out[String(th)] || []).push({
-          v: th, t: tCross, since: relMs != null ? tCross - relMs : null,
-          t0: a.t, t1: b.t, v0: a.v, v1: b.v,
-        });
-      }
+  for (let i = 1; i < series.length; i++) {
+    const a = series[i - 1], b = series[i];
+    if (a.v == null || b.v == null || b.v <= a.v) continue;
+    for (let k = firstThresholdAbove(a.v); k < VIEW_MILESTONES.length; k++) {
+      const th = VIEW_MILESTONES[k];
+      if (th > b.v) break;
+      const frac = (th - a.v) / (b.v - a.v);
+      const tCross = Math.round(a.t + frac * (b.t - a.t));
+      // Carry the bracket the time was interpolated inside. A crossing is never
+      // observed — it is placed on the straight line between two samples — so how
+      // far apart those samples were, and how many views the counter moved between
+      // them, is what says whether the time means anything. Five thresholds
+      // sharing one bracket were passed in one counter update, not five minutes
+      // apart.
+      (out[String(th)] = out[String(th)] || []).push({
+        v: th, t: tCross, since: relMs != null ? tCross - relMs : null,
+        t0: a.t, t1: b.t, v0: a.v, v1: b.v,
+      });
     }
   }
   return out;

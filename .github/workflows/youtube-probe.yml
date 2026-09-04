@@ -93,6 +93,15 @@ jobs:
             if (g > 5*60000) console.log(`  ${iso(merged[i-1].t)} -> ${iso(merged[i].t)}  ${mins(g)} min   v ${merged[i-1].v} -> ${merged[i].v}  (+${merged[i].v-merged[i-1].v})`);
           }
           console.log('');
+          console.log('what the API actually serves for this id (first 6 records):');
+          const served = JSON.parse(fs.readFileSync('/tmp/hourly.json','utf8')).viewMilestones?.[id] || {};
+          for (const th of Object.keys(served).map(Number).sort((a,b)=>b-a).slice(0,6)) {
+            for (const r of [].concat(served[th])) {
+              const w = r.t1 != null ? `bracket ${mins(r.t1-r.t0)} min` : 'NO BRACKET (legacy record)';
+              console.log(`  ${(th/1e6).toString().padStart(4)}M  t=${iso(r.t)}  ${w}`);
+            }
+          }
+          console.log('');
           console.log('crossings, with the bracket each was interpolated inside:');
           for (const th of TH) {
             for (let i=1;i<merged.length;i++) {
