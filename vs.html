@@ -88,6 +88,9 @@
   .msrow .mstag{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.04em;color:var(--pink-soft);
     border:1px solid #ff2e7744;border-radius:5px;padding:1px 6px;margin-right:6px;vertical-align:1px;font-variant-numeric:tabular-nums;}
   .msrow .msdur{color:var(--muted);}
+  /* An interpolated time, flagged as one. */
+  .msrow .msest{color:var(--muted);font-weight:700;}
+  .msnote{font-size:10px;line-height:1.45;color:var(--muted);padding:4px 0 2px;}
   .wtimes{margin-top:7px;}
   .wtimes>summary{cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim);letter-spacing:.02em;line-height:1.5;}
   .wtimes>summary::-webkit-details-marker{display:none;}
@@ -360,6 +363,11 @@
     const etAb = new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York', timeZoneName:'short'}).formatToParts(d).find(p=>p.type==='timeZoneName')?.value || 'ET';
     return `${f('Asia/Seoul')} KST / ${f('America/New_York')} ${etAb}`;
   }
+  // Compact "4:20 – 4:57 PM KST" for the window a crossing was interpolated inside.
+  function fmtWinKE(t0, t1){
+    const f = t => new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', hour:'numeric', minute:'2-digit'}).format(new Date(t));
+    return `${f(t0)} – ${f(t1)} KST`;
+  }
   function fmtCountdown(ms){ ms=Math.max(0,ms); const h=Math.floor(ms/3600000), m=Math.floor(ms%3600000/60000); return (h?h+'h ':'')+m+'m'; }
   // Duration like "12h 04m" (or "1d 03h 04m" once past a day).
   function fmtDur(ms){ ms=Math.max(0,ms); const d=Math.floor(ms/86400000), h=Math.floor(ms%86400000/3600000), m=Math.floor(ms%3600000/60000);
@@ -399,15 +407,40 @@
         const list = Array.isArray(data[th]) ? data[th] : [data[th]];   // tolerate the older single-record shape
         list.forEach((it,i)=> items.push({ ...it, v: it.v!=null?it.v:th, again: i>0 }));
       }
+      // A crossing time is interpolated between the two samples that bracket it,
+      // never observed. When those samples are minutes or an hour apart — the
+      // live series is only written when someone is on the page, and YouTube
+      // releases counted views in batches rather than a smooth climb — the
+      // interpolation invents the precision. SaWaDiKa went 15,794,616 →
+      // 22,380,752 inside one 37-minute bracket, and 16M through 20M came out
+      // looking like five separate moments five minutes apart. Anything wider
+      // than a few minutes is shown as an estimate, with the window it sits in
+      // and the thresholds that share it.
+      const EXACT_MS = 3 * 60 * 1000;
+      const brk = {};   // bracket key → thresholds passed inside it
+      for (const it of items){
+        if (it.t1 == null || it.t1 - it.t0 <= EXACT_MS) continue;
+        (brk[it.t0+'@'+it.t1] = brk[it.t0+'@'+it.t1] || []).push(it.v);
+      }
       const shown = items.slice(0,8);
-      const sig = shown.map(i=>i.v+'@'+i.t+(i.again?'r':'')).join(',');
+      const sig = shown.map(i=>i.v+'@'+i.t+(i.again?'r':'')+'/'+(i.t1==null?'':i.t0+'-'+i.t1)).join(',');
       if (_mslSig[id] === sig) continue;
       _mslSig[id] = sig;
       el.innerHTML = shown.map(it=>{
-        const dur = it.since!=null ? ` · <span class="msdur">in ${fmtDur(it.since)}</span>` : '';
-        const summary = `<span class="mstag${it.again?' again':''}">${msLabel(it.v)}</span> ${it.again?'crossed again':'reached'} ${fmtKE(it.t)}${dur}`;
+        const est = it.t1 != null && it.t1 - it.t0 > EXACT_MS;
+        const dur = it.since!=null ? ` · <span class="msdur">${est?'~':'in '}${fmtDur(it.since)}</span>` : '';
+        const when = est ? `<span class="msest">≈</span> ${fmtKE(it.t)}` : fmtKE(it.t);
+        const summary = `<span class="mstag${it.again?' again':''}">${msLabel(it.v)}</span> ${it.again?'crossed again':'reached'} ${when}${dur}`;
+        let note = '';
+        if (est){
+          const shared = (brk[it.t0+'@'+it.t1] || []).slice().sort((a,b)=>a-b);
+          const together = shared.length > 1
+            ? ` ${shared.map(msLabel).join(' · ')} were all passed in that one update.`
+            : '';
+          note = `<div class="msnote">Estimated. The counter moved ${fmt(it.v0)} → ${fmt(it.v1)} between ${fmtWinKE(it.t0, it.t1)} — the time above is placed inside that window, not a moment we watched.${together}</div>`;
+        }
         const rows = worldRows(it.t).map(r=>`<div class="wtrow"><span>${escapeHtml(r.city)}</span><span>${r.label}</span></div>`).join('');
-        return `<details class="wtimes msrow"><summary>${summary}</summary><div class="wtbody">${rows}</div></details>`;
+        return `<details class="wtimes msrow"><summary>${summary}</summary><div class="wtbody">${note}${rows}</div></details>`;
       }).join('');
     }
   }

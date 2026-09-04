@@ -114,7 +114,10 @@ function mergeCrossings(stored, derived) {
   for (const th of new Set([...Object.keys(stored || {}), ...Object.keys(derived || {})])) {
     const m = new Map();
     for (const c of (derived?.[th] || [])) m.set(bucketOf(c.t), c);
-    for (const c of (stored?.[th] || [])) m.set(bucketOf(c.t), c);
+    for (const c of (stored?.[th] || [])) {
+      const bk = bucketOf(c.t), d = m.get(bk);
+      m.set(bk, (c.t0 == null && d && d.t0 != null) ? { ...c, t0: d.t0, t1: d.t1, v0: d.v0, v1: d.v1 } : c);
+    }
     out[th] = [...m.values()].sort((a, b) => a.t - b.t);
   }
   return out;
@@ -283,7 +286,11 @@ export default async function handler(req, res) {
           if (prev.v < th && th <= v.views) {
             const frac = (th - prev.v) / (v.views - prev.v);
             const tCross = Math.round(prev.t + frac * (payload.ts - prev.t));
-            const rec = JSON.stringify({ v: th, t: tCross, since: rel != null ? tCross - rel : null });
+            // Bracket bounds travel with the record — see deriveMilestones in
+            // youtube-history.js. Here they are ~15s apart, so the time is as
+            // good as observed; the read path's brackets can be an hour wide.
+            const rec = JSON.stringify({ v: th, t: tCross, since: rel != null ? tCross - rel : null,
+                                         t0: prev.t, t1: payload.ts, v0: prev.v, v1: v.views });
             // One field per crossing. A threshold can be crossed again after a
             // recount takes the total back under it, and both are kept — the
             // plain field holds the first, so older records still read.
