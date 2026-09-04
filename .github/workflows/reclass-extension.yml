@@ -12,10 +12,12 @@ name: Reclassify Extension Scrobbles
 on:
   workflow_dispatch:
     inputs:
-      apply:
-        description: 'Set true to APPLY the reclassification (default: dry-run preview only)'
+      mode:
+        description: 'peek = inspect what the extension is recording; dry = preview move; apply = perform move'
         required: false
-        default: 'false'
+        default: 'peek'
+        type: choice
+        options: ['peek', 'dry', 'apply']
 
 jobs:
   reclass:
@@ -24,25 +26,19 @@ jobs:
       - name: Reclassify mis-bucketed extension plays
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
-          APPLY: ${{ github.event.inputs.apply }}
+          MODE: ${{ github.event.inputs.mode }}
         run: |
-          if [ "$APPLY" = "true" ]; then
-            echo "APPLYING reclassification…"
-            URL="https://blinksunited.com/api/ingest-scrobble?reclass=1&key=${ADMIN_KEY}"
-          else
-            echo "DRY RUN (preview only — writes nothing). Set apply=true to move rows."
-            URL="https://blinksunited.com/api/ingest-scrobble?reclass=1&dry=1&key=${ADMIN_KEY}"
-          fi
+          case "$MODE" in
+            apply)
+              echo "APPLYING reclassification…"
+              URL="https://blinksunited.com/api/ingest-scrobble?reclass=1&key=${ADMIN_KEY}" ;;
+            dry)
+              echo "DRY RUN (preview only — writes nothing)."
+              URL="https://blinksunited.com/api/ingest-scrobble?reclass=1&dry=1&key=${ADMIN_KEY}" ;;
+            *)
+              echo "PEEK (inspect what the extension is recording)."
+              URL="https://blinksunited.com/api/ingest-scrobble?reclass=peek&key=${ADMIN_KEY}" ;;
+          esac
           curl -sfL -X POST "$URL" -o /tmp/resp.json
           echo "--- response ---"
-          cat /tmp/resp.json
-          echo
-          python3 - <<'PY'
-          import json
-          d = json.load(open('/tmp/resp.json'))
-          print('ok:', d.get('ok'), '| dry:', d.get('dry', False))
-          print('scanned:', d.get('scanned'))
-          print('per-track:', d.get('wouldMove') or d.get('byTrack') or {})
-          print('total moved:', d.get('total') if d.get('dry') else d.get('moved'))
-          if d.get('errors'): print('errors:', d['errors'])
-          PY
+          python3 -m json.tool /tmp/resp.json || cat /tmp/resp.json

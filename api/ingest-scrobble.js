@@ -122,6 +122,41 @@ export default async function handler(req, res) {
     const adminSecret = process.env.ADMIN_SECRET;
     const key = req.headers['x-admin-secret'] || req.query.key;
     if (!adminSecret || key !== adminSecret) return res.status(401).json({ ok: false, error: 'Unauthorized' });
+
+    // peek — diagnostic: what is the extension actually recording? Returns the
+    // most recent rows, the per-track_id row counts, and a sample of the LISA /
+    // "sawadika"-looking titles seen, so we can tell whether SaWaDiKa plays are
+    // arriving at all (and under what artist/title) vs never reaching ingest.
+    if (req.query.reclass === 'peek') {
+      const { data: recent } = await sb
+        .from('extension_scrobbles')
+        .select('artist, title, track_id, listened_at')
+        .order('listened_at', { ascending: false })
+        .limit(40);
+      // Any row whose title looks like SaWaDiKa, whatever bucket it's in.
+      const { data: swLike } = await sb
+        .from('extension_scrobbles')
+        .select('artist, title, track_id, listened_at')
+        .ilike('title', '%sawa%')
+        .order('listened_at', { ascending: false })
+        .limit(40);
+      // Distinct LISA-bucket titles (what LISA songs ARE being captured).
+      const { data: lisaRows } = await sb
+        .from('extension_scrobbles')
+        .select('title')
+        .eq('track_id', 'solo_lisa')
+        .limit(1000);
+      const lisaTitles = {};
+      for (const r of (lisaRows || [])) lisaTitles[r.title] = (lisaTitles[r.title] || 0) + 1;
+      const lisaTop = Object.entries(lisaTitles).sort((a, b) => b[1] - a[1]).slice(0, 30);
+      return res.status(200).json({
+        ok: true, peek: true,
+        recent: recent || [],
+        sawadika_like: swLike || [],
+        solo_lisa_distinct_titles: lisaTop,
+      });
+    }
+
     const dry = req.query.dry === '1' || req.query.dry === 'true';
     const BUCKETS = ['bp_group', 'solo_jisoo', 'solo_jennie', 'solo_rose', 'solo_lisa'];
 
