@@ -110,6 +110,64 @@ export default async function handler(req, res) {
   const sb = supabase();
   if (!sb) return res.status(500).json({ ok: false, error: 'server not configured' });
 
+  // ── Admin: reclassify mis-bucketed plays (POST ?reclass=1&key=ADMIN[&dry=1]) ──
+  // A campaign track added AFTER plays already accumulated leaves those earlier
+  // plays in the generic solo_<member> / bp_group bucket (they still counted
+  // toward the member's Solo total, but not toward that track's board / community
+  // goal). This re-runs matchTrack over the generic buckets and moves any row
+  // that NOW matches a campaign track to its real track_id — recovering e.g.
+  // SaWaDiKa plays sitting in solo_lisa. Idempotent: rows already on a campaign
+  // id aren't scanned, so re-running is a no-op. dry=1 previews without writing.
+  if (req.query.reclass) {
+    const adminSecret = process.env.ADMIN_SECRET;
+    const key = req.headers['x-admin-secret'] || req.query.key;
+    if (!adminSecret || key !== adminSecret) return res.status(401).json({ ok: false, error: 'Unauthorized' });
+    const dry = req.query.dry === '1' || req.query.dry === 'true';
+    const BUCKETS = ['bp_group', 'solo_jisoo', 'solo_jennie', 'solo_rose', 'solo_lisa'];
+
+    // Paginate the generic buckets, remapping each row through matchTrack.
+    const moves = {};                 // newId -> [row id, …]
+    let scanned = 0, from = 0;
+    const PAGE = 1000;
+    try {
+      for (;;) {
+        const { data, error } = await sb
+          .from('extension_scrobbles')
+          .select('id, artist, title, track_id')
+          .in('track_id', BUCKETS)
+          .order('id', { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (error) return res.status(500).json({ ok: false, error: error.message });
+        if (!data || !data.length) break;
+        scanned += data.length;
+        for (const r of data) {
+          const newId = matchTrack(r.artist, r.title);
+          if (newId) (moves[newId] ||= []).push(r.id);
+        }
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+    } catch (e) { return res.status(500).json({ ok: false, error: e.message }); }
+
+    const summary = Object.fromEntries(Object.entries(moves).map(([k, v]) => [k, v.length]));
+    const totalMoved = Object.values(moves).reduce((s, v) => s + v.length, 0);
+    if (dry) return res.status(200).json({ ok: true, dry: true, scanned, wouldMove: summary, total: totalMoved });
+
+    // Apply, chunked so the id list per request stays small. A moved row could in
+    // theory collide with the unique index (same play already on the target id) —
+    // impossible in practice (one play is stored once), but tolerate per-chunk
+    // errors so one bad row can't abort the whole recovery.
+    let moved = 0; const errors = [];
+    for (const [newId, ids] of Object.entries(moves)) {
+      for (let i = 0; i < ids.length; i += 200) {
+        const chunk = ids.slice(i, i + 200);
+        const { error } = await sb.from('extension_scrobbles').update({ track_id: newId }).in('id', chunk);
+        if (error) errors.push(`${newId}[${i}]: ${error.message}`); else moved += chunk.length;
+      }
+    }
+    return res.status(200).json({ ok: true, scanned, moved, byTrack: summary, errors: errors.slice(0, 10) });
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'POST only' });
 
   const body = req.body || {};

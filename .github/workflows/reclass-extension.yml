@@ -1,0 +1,48 @@
+name: Reclassify Extension Scrobbles
+
+# One-off recovery: move extension plays that landed in a generic
+# solo_<member> / bp_group bucket into their real campaign track_id when a
+# campaign track was added AFTER those plays were recorded (e.g. SaWaDiKa plays
+# sitting in solo_lisa). Re-runs api/ingest-scrobble.js's matchTrack over the
+# generic buckets. Idempotent — rows already on a campaign id aren't scanned.
+#
+# Defaults to a DRY RUN (previews the counts, writes nothing). Set apply=true to
+# actually move the rows.
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Set true to APPLY the reclassification (default: dry-run preview only)'
+        required: false
+        default: 'false'
+
+jobs:
+  reclass:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reclassify mis-bucketed extension plays
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          APPLY: ${{ github.event.inputs.apply }}
+        run: |
+          if [ "$APPLY" = "true" ]; then
+            echo "APPLYING reclassification…"
+            URL="https://blinksunited.com/api/ingest-scrobble?reclass=1&key=${ADMIN_KEY}"
+          else
+            echo "DRY RUN (preview only — writes nothing). Set apply=true to move rows."
+            URL="https://blinksunited.com/api/ingest-scrobble?reclass=1&dry=1&key=${ADMIN_KEY}"
+          fi
+          curl -sfL -X POST "$URL" -o /tmp/resp.json
+          echo "--- response ---"
+          cat /tmp/resp.json
+          echo
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/resp.json'))
+          print('ok:', d.get('ok'), '| dry:', d.get('dry', False))
+          print('scanned:', d.get('scanned'))
+          print('per-track:', d.get('wouldMove') or d.get('byTrack') or {})
+          print('total moved:', d.get('total') if d.get('dry') else d.get('moved'))
+          if d.get('errors'): print('errors:', d['errors'])
+          PY
