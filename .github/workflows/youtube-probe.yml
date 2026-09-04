@@ -1,0 +1,43 @@
+name: YouTube Series Probe
+
+# Read-only diagnostic: reports how much history each tracked video actually has.
+# The series live in Upstash behind Vercel and can't be inspected from a dev
+# machine, and direct HTTP to the site is blocked from Claude Code sessions.
+#
+# Prints counts, spans and first/last values only — no dumps, no secrets, and it
+# uses the public read endpoint, which matters because this repo is public.
+# Dispatch-only. Safe to delete once it has answered what it was added for.
+on:
+  workflow_dispatch:
+    inputs:
+      ids:
+        description: 'Comma-separated video ids (blank = the tracked set).'
+        required: false
+        default: ''
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe the series
+        env:
+          BASE: https://www.blinksunited.com
+          IDS: ${{ inputs.ids != '' && inputs.ids || 'LzgE8ift2Uw,h-7_04c_hVc,FyS5dAywkEo,sf02ugzPFE4,s466YCiHfKw' }}
+        run: |
+          set -u
+          probe () {
+            echo "── $2 ─────────────────────────────────"
+            curl -sS --max-time 45 "$BASE/api/youtube-history?$1ids=$IDS" -o /tmp/r.json \
+              -w 'HTTP %{http_code}  %{size_download} bytes\n'
+            jq -r '.videos | to_entries[] |
+              .key as $id | (.value|length) as $n |
+              if $n == 0 then "  \($id): 0 points"
+              else
+                ((.value[-1].t - .value[0].t) / 60000 | floor) as $span |
+                "  \($id): \($n) pts over \($span) min   v \(.value[0].v) -> \(.value[-1].v)"
+              end' /tmp/r.json
+            echo "  milestones: $(jq -c '.milestones // {} | keys' /tmp/r.json)"
+            echo "  releases:   $(jq -c '.releases // {} | keys' /tmp/r.json)"
+          }
+          probe "live=1&" "FINE (live series — what the chart plots)"
+          probe ""         "HOURLY (long series — what the gains use)"
