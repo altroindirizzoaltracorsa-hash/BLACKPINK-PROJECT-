@@ -54,6 +54,7 @@
   .delta{font-size:10px;color:#2fd07a;font-variant-numeric:tabular-nums;margin-left:8px;white-space:nowrap;}
   .delta.zero{color:var(--dim);}
   .delta.down{color:#ff5c7a;}
+  .m24audit{color:#ff5c7a;font-size:10px;white-space:nowrap;}
   .watch{display:inline-block;margin-top:10px;font-size:10.5px;color:var(--pink-soft);text-decoration:none;border:1px solid #ff2e7744;border-radius:99px;padding:5px 12px;}
   .watch:hover{background:#ff2e7714;}
 
@@ -177,15 +178,12 @@
   const VIDEOS = ROWS.flatMap(r => r.ids);   // everything we fetch
   const POLL_MS = 15000;
 
-  // Release moments (for the "24-hour numbers" milestone). Same clock times as
-  // the /countdowns cards — SawaDika/LISA = 02:00 Rome (00:00 UTC), JISOO = 06:00
-  // Rome (04:00 UTC) — but dated to when the *teasers* tracked here dropped
-  // (Sep 2), so the 24h marks land Sep 3. The 24h mark is release + 24h; the
-  // server freezes the exact view/like count at that moment.
-  const RELEASE = {
-    'LzgE8ift2Uw': '2026-09-02T04:00:00Z', // JISOO — 06:00 Rome (jisoo.io countdown time) → 24h mark Sep 3, 06:00
-    'h-7_04c_hVc': '2026-09-02T00:00:00Z', // LISA  — 02:00 Rome (hellosawadika countdown time) → 24h mark Sep 3, 02:00
-  };
+  // Release moments, served by /api/youtube-history alongside the data. The page
+  // used to hard-code its own copy of these, which drifted the moment new videos
+  // were registered API-side: the MV cards silently lost their countdown, their
+  // 24h line and the chart's 24h guide, because this map had never heard of them.
+  // One source of truth now — a video listed in the API's RELEASE just works here.
+  let RELEASE = {};
   const H24_MS = 24*60*60*1000;
   const releaseMs = id => (RELEASE[id] ? Date.parse(RELEASE[id]) : null);
   const markOf = id => { const r = releaseMs(id); return r==null ? null : r + H24_MS; };
@@ -407,7 +405,14 @@
       const ms = milestoneData[id];
       if (ms && ms.v!=null){
         el.className = 'm24 done';
-        el.innerHTML = `<span class="m24tag">24H</span> <b>${fmt(ms.v)}</b> views · <b>${ms.l==null?'—':fmt(ms.l)}</b> likes`;
+        // The pinned figure is what the counter read at the mark. YouTube audits
+        // views afterwards, so also show what it has taken back off since —
+        // derived from drops in the series, not a second frozen number.
+        const audited = ms.audit && ms.audit.drop
+          ? ` <span class="m24audit" title="Views YouTube has removed since the 24h mark, across ${ms.audit.steps} adjustment${ms.audit.steps>1?'s':''}">· −${fmt(ms.audit.drop)} audited since</span>`
+          : '';
+        const manual = ms.manual ? ` <span class="m24audit">· re-pinned</span>` : '';
+        el.innerHTML = `<span class="m24tag">24H</span> <b>${fmt(ms.v)}</b> views · <b>${ms.l==null?'—':fmt(ms.l)}</b> likes${audited}${manual}`;
       } else if (Date.now() >= mark){
         el.className = 'm24 wait';
         el.innerHTML = `<span class="m24tag">24H</span> reached — capturing the exact count…`;
@@ -717,6 +722,7 @@
     try{
       const r = await fetch('/api/youtube-history?live=1&ids='+VIDEOS.join(','), {cache:'no-store'});
       const d = await r.json();
+      if (d && d.releases){ RELEASE = d.releases; }   // before the milestones, which read it
       if (d && d.milestones){ milestoneData = d.milestones; updateMilestones(); }
       if (d && d.viewMilestones){ viewMsData = d.viewMilestones; updateViewMs(); }
       if (d && d.videos){ histData = d.videos; drawAll(); }
