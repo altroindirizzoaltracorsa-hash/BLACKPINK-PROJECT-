@@ -90,6 +90,36 @@ function supabase() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 }
 
+// ── Ingest debug ring buffer ──────────────────────────────────────────────
+// Diagnoses under/over-counting: records the last 200 *campaign-relevant* ingest
+// attempts — every campaign-track play (whether stored fresh or skipped as a
+// duplicate) plus any play we couldn't match to a campaign track. This is what
+// tells us, when a fan says "I played it 5× but it counted once", whether the
+// extension sent 5 POSTs (and 4 hit the dedup) or only ever sent 1. Best-effort
+// and capped, so it can't slow or break ingest. Read via ?reclass=peek.
+const DEBUG_KEY = 'bu_ingest_debug';
+const CAMPAIGN_IDS = new Set(TRACKS.map(t => t.id));
+async function debugLog(entry) {
+  const url = process.env.UPSTASH_REDIS_REST_URL, tok = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !tok) return;
+  try {
+    await fetch(`${url}/pipeline`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify([['LPUSH', DEBUG_KEY, JSON.stringify(entry)], ['LTRIM', DEBUG_KEY, '0', '199']]),
+    });
+  } catch { /* never break ingest over a debug write */ }
+}
+async function debugRead(n = 80) {
+  const url = process.env.UPSTASH_REDIS_REST_URL, tok = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !tok) return [];
+  try {
+    const r = await fetch(`${url}/lrange/${DEBUG_KEY}/0/${n - 1}`, { headers: { Authorization: `Bearer ${tok}` } });
+    const d = await r.json();
+    return (d.result || []).map(s => { try { return JSON.parse(s); } catch { return s; } });
+  } catch { return []; }
+}
+
 async function resolveToken(sb, token) {
   if (!token) return null;
   const { data, error } = await sb
@@ -154,6 +184,7 @@ export default async function handler(req, res) {
         recent: recent || [],
         sawadika_like: swLike || [],
         solo_lisa_distinct_titles: lisaTop,
+        ingest_log: await debugRead(80),   // live: what the extension is POSTing (insert vs dup vs no-match)
       });
     }
 
@@ -221,7 +252,10 @@ export default async function handler(req, res) {
   let trackId = matchTrack(body.artist, body.title);
   if (!trackId) trackId = classifyArtist(body.artist);
   if (!trackId) {
-    // Not BLACKPINK or a member — accept but don't store, so the extension doesn't error.
+    // Not BLACKPINK or a member — accept but don't store, so the extension doesn't
+    // error. Logged so a campaign play arriving under an unrecognized artist string
+    // (which would otherwise vanish here) is still visible in the peek.
+    await debugLog({ t: Date.now(), a: body.artist, ti: body.title, ts: body.timestamp ?? null, r: 'no-match' });
     return res.status(200).json({ ok: true, counted: false, reason: 'not a tracked artist' });
   }
 
@@ -242,10 +276,13 @@ export default async function handler(req, res) {
   // (app_user_id, spotify_account, track_id, listened_at) makes one real play =
   // one row, so a re-sent scrobble (a second extension, a poll-overlap race, or
   // a reload/resume) hits the conflict and is skipped instead of duplicated.
+  // .select() so we can tell an INSERT (row returned) from a deduped no-op
+  // (ON CONFLICT DO NOTHING returns nothing) — the signal the debug log needs.
   const up = await sb.from('extension_scrobbles').upsert(row, {
     onConflict: 'app_user_id,spotify_account,track_id,listened_at',
     ignoreDuplicates: true,
-  });
+  }).select('id');
+  let inserted = !up.error && Array.isArray(up.data) && up.data.length > 0;
   if (up.error) {
     // Safety fallback: if the unique index isn't in place yet (code deployed
     // before the migration), upsert's ON CONFLICT target is missing and errors
@@ -257,9 +294,16 @@ export default async function handler(req, res) {
     if (!missingConstraint) return res.status(500).json({ ok: false, error: up.error.message });
     const ins = await sb.from('extension_scrobbles').insert(row);
     if (ins.error) return res.status(500).json({ ok: false, error: ins.error.message });
+    inserted = true;
   }
 
-  return res.status(200).json({ ok: true, counted: true, trackId });
+  // Log campaign-track plays only (skip the high-volume generic solo_/bp_group
+  // buckets) so the ring buffer stays focused on what we're diagnosing.
+  if (CAMPAIGN_IDS.has(trackId)) {
+    await debugLog({ t: Date.now(), id: trackId, a: row.artist, ti: row.title, acct: row.spotify_account, la: listenedAt, r: inserted ? 'insert' : 'dup' });
+  }
+
+  return res.status(200).json({ ok: true, counted: true, trackId, deduped: !inserted });
 }
 
 // NOTE — leaderboard wiring (do this deliberately, it touches production):
