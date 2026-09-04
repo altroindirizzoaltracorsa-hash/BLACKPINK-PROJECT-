@@ -27,6 +27,13 @@ const MIN_GAP_MS = 55 * 60 * 1000;    // don't store more than ~once an hour
 const key = id => `bu_yt_hist_${id}`;
 const liveKey = id => `bu_yt_live_${id}`;
 const pinKey = id => `bu_yt_24h_${id}`;
+// Superseded 24h records, oldest first. A recount can land on the 24h figure the
+// same way it lands on a milestone, so a re-pin must not erase what was there:
+// the previous record is pushed here before the new one replaces it, and reads
+// return the whole chain. Only the re-pin path writes it — the original capture
+// is the current record, and it is the one thing here that never moves.
+const prevPinKey = id => `bu_yt_24h_prev_${id}`;
+const PREV_PIN_MAX = 20;
 
 // 24-hour milestone: freeze each video's exact view/like count at release + 24h.
 // Release times live in api/_releases.js — one copy, imported by both endpoints
@@ -228,7 +235,13 @@ export default async function handler(req, res) {
           if (!best) { repinned[id] = { skipped: 'no stored point within tolerance of the mark' }; continue; }
           pin = pinFrom(best, mark);
         }
-        await upstash([['SET', pinKey(id), JSON.stringify(pin)]]);
+        // Keep the record being replaced, so the chain shows what the 24h figure
+        // has been said to be and when — not just its latest value.
+        const writes = [];
+        if (was) writes.push(['RPUSH', prevPinKey(id), JSON.stringify({ ...was, supersededAt: Date.now() })],
+                             ['LTRIM', prevPinKey(id), String(-PREV_PIN_MAX), '-1']);
+        writes.push(['SET', pinKey(id), JSON.stringify(pin)]);
+        await upstash(writes);
         repinned[id] = { was, now: pin };
       }
       return res.status(200).json({ ok: true, repinned });
@@ -241,15 +254,17 @@ export default async function handler(req, res) {
   try {
     const listKey = req.query.live ? liveKey : key;
     const lo = req.query.live ? '-1200' : '0';
-    // One pipeline, five id-length blocks: [display series][24h pin][ms hash]
-    // [hourly hist series][fine live series]. The last two feed milestone derivation.
+    // One pipeline, six id-length blocks: [display series][24h pin][ms hash]
+    // [hourly hist series][fine live series][superseded 24h pins]. Blocks 4 and 5
+    // feed milestone derivation; block 6 is the chain of replaced 24h records.
     const n = ids.length;
     const parseList = arr => (arr || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
     const cmds = ids.map(id => ['LRANGE', listKey(id), lo, '-1'])
       .concat(ids.map(id => ['GET', pinKey(id)]))
       .concat(ids.map(id => ['HGETALL', `bu_yt_ms_${id}`]))
       .concat(ids.map(id => ['LRANGE', key(id), '0', '-1']))
-      .concat(ids.map(id => ['LRANGE', liveKey(id), '-1200', '-1']));
+      .concat(ids.map(id => ['LRANGE', liveKey(id), '-1200', '-1']))
+      .concat(ids.map(id => ['LRANGE', prevPinKey(id), '0', '-1']));
     const results = await upstash(cmds);
     const videos = {}, milestones = {}, viewMilestones = {};
     const heal = []; // NX writes to freeze any newly-derived crossing / 24h pin
@@ -301,6 +316,12 @@ export default async function handler(req, res) {
       if (milestones[id] && mark != null) {
         const a = auditAfter(merged, mark);
         if (a) milestones[id] = { ...milestones[id], audit: a };
+      }
+      // Everything this 24h record has previously been, oldest first. Nothing is
+      // overwritten in place — a re-pin moves the old record here.
+      if (milestones[id]) {
+        const prev = parseList(results[5 * n + i]?.result);
+        if (prev.length) milestones[id] = { ...milestones[id], superseded: prev };
       }
     });
     if (heal.length) { try { await upstash(heal); } catch {} }

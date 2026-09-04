@@ -425,10 +425,17 @@
         // growth (+30k organic, −20k removed in the same window) the delta is net
         // positive and the recount leaves no trace. So this is what we can prove
         // was removed, not everything that was.
+        // ≥ removed, so ≤ what the 24h figure settles at. Both bounds point the
+        // same way: we can prove at least this much went, so the settled number
+        // is at most the pinned one minus it.
         const audited = ms.audit && ms.audit.drop
-          ? ` <span class="m24audit" title="At least ${fmt(ms.audit.drop)} views removed since the 24h mark, across ${ms.audit.steps} observed drop${ms.audit.steps>1?'s':''}. A removal that coincides with normal growth nets out between samples and leaves no trace, so the real figure can only be higher.">· ≥${fmt(ms.audit.drop)} audited since</span>`
+          ? ` <span class="m24audit" title="At least ${fmt(ms.audit.drop)} views removed since the 24h mark, across ${ms.audit.steps} observed drop${ms.audit.steps>1?'s':''}. A removal that coincides with normal growth nets out between samples and leaves no trace, so at least this much went — which puts the settled 24h figure at no more than ${fmt(ms.v - ms.audit.drop)}.">· ≥${fmt(ms.audit.drop)} audited → ≤${fmt(ms.v - ms.audit.drop)}</span>`
           : '';
-        const manual = ms.manual ? ` <span class="m24audit">· re-pinned</span>` : '';
+        // Every value this record has been, not just the current one.
+        const prev = Array.isArray(ms.superseded) ? ms.superseded : [];
+        const manual = (ms.manual || prev.length)
+          ? ` <span class="m24audit" title="${prev.length ? 'Previously recorded as ' + prev.map(p=>fmt(p.v)+' views').join(', then ') + '.' : 'This figure was set by hand rather than captured at the mark.'}">· re-pinned${prev.length ? ` (was ${fmt(prev[prev.length-1].v)})` : ''}</span>`
+          : '';
         el.innerHTML = `<span class="m24tag">24H</span> <b>${fmt(ms.v)}</b> views · <b>${ms.l==null?'—':fmt(ms.l)}</b> likes${audited}${manual}`;
       } else if (Date.now() >= mark){
         el.className = 'm24 wait';
