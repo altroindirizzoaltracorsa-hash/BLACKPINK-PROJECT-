@@ -199,7 +199,14 @@ function mergeCrossings(stored, derived) {
   for (const th of new Set([...Object.keys(stored || {}), ...Object.keys(derived || {})])) {
     const m = new Map();
     for (const c of (derived?.[th] || [])) m.set(bucketOf(c.t), c);
-    for (const c of (stored?.[th] || [])) m.set(bucketOf(c.t), c);
+    for (const c of (stored?.[th] || [])) {
+      const bk = bucketOf(c.t), d = m.get(bk);
+      // A record frozen before crossings carried their bracket still borrows it
+      // from the re-derived one. The stamped time is never restated — but how
+      // precise that time is isn't the time, and without it a guess interpolated
+      // across a 37-minute gap reads exactly like a number we watched happen.
+      m.set(bk, (c.t0 == null && d && d.t0 != null) ? { ...c, t0: d.t0, t1: d.t1, v0: d.v0, v1: d.v1 } : c);
+    }
     out[th] = [...m.values()].sort((a, b) => a.t - b.t);
   }
   return out;
@@ -217,7 +224,16 @@ function deriveMilestones(series, relMs) {
       if (a.v != null && b.v != null && a.v < th && th <= b.v) {
         const frac = (b.v - a.v) > 0 ? (th - a.v) / (b.v - a.v) : 0;
         const tCross = Math.round(a.t + frac * (b.t - a.t));
-        (out[String(th)] = out[String(th)] || []).push({ v: th, t: tCross, since: relMs != null ? tCross - relMs : null });
+        // Carry the bracket the time was interpolated inside. A crossing is never
+        // observed — it is placed on the straight line between two samples — so
+        // how far apart those samples were, and how many views the counter moved
+        // between them, is what says whether the time means anything. Five
+        // thresholds sharing one bracket were passed in one counter update, not
+        // five minutes apart.
+        (out[String(th)] = out[String(th)] || []).push({
+          v: th, t: tCross, since: relMs != null ? tCross - relMs : null,
+          t0: a.t, t1: b.t, v0: a.v, v1: b.v,
+        });
       }
     }
   }
