@@ -2,6 +2,7 @@
 //
 //   ?history=1&ids=<id>,<id>         → read stored hourly snapshots per video
 //   ?snapshot=1  (x-admin-secret / Bearer CRON_SECRET)  → capture one snapshot now
+//   ?repin=1&ids=… (same auth)       → overwrite a frozen 24h pin (see RE-PIN below)
 //
 // Reads are not purely read-only: they freeze newly-derived view-milestone
 // crossings and the 24h pin with NX writes, so a milestone the cron missed is
@@ -30,7 +31,11 @@ const pinKey = id => `bu_yt_24h_${id}`;
 // 24-hour milestone: freeze each video's exact view/like count at release + 24h.
 // Same clock times as the /countdowns cards — SawaDika/LISA = 02:00 Rome
 // (00:00 UTC), JISOO = 06:00 Rome (04:00 UTC) — dated to when the teasers dropped
-// (Sep 2), so the 24h marks land Sep 3. Keep in sync with vs.html's RELEASE map.
+// (Sep 2), so the 24h marks land Sep 3. This is the single source of truth for
+// release times: the read response carries them as `releases`, so vs.html shows
+// countdowns and 24h marks for whatever is listed here without needing its own
+// copy. (It used to keep one, and it silently drifted the moment the MVs were
+// added here — the MV cards lost their countdown and their 24h line.)
 const RELEASE = {
   'LzgE8ift2Uw': '2026-09-02T04:00:00Z', // JISOO — 06:00 Rome (jisoo.io countdown time) → 24h mark Sep 3, 06:00
   'h-7_04c_hVc': '2026-09-02T00:00:00Z', // LISA  — 02:00 Rome (hellosawadika countdown time) → 24h mark Sep 3, 02:00
@@ -43,10 +48,32 @@ const RELEASE = {
 };
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PIN_TOL_MS = 95 * 60 * 1000;    // accept a stored point within ~95 min of the exact mark
+const AUDIT_WINDOW_MS = 7 * DAY_MS;   // how long after a mark we keep attributing drops to its audit
 const markOf = id => (RELEASE[id] ? Date.parse(RELEASE[id]) + DAY_MS : null);
 // The frozen 24h record. `s` (followers) is carried too, so the chart's gold dot
 // can be drawn on every metric tab and not just views/likes/comments.
 const pinFrom = (p, mark) => ({ t: p.t, v: p.v, l: p.l, c: p.c, s: p.s ?? null, mark });
+// Views go DOWN as well as up: YouTube audits a release and removes views it
+// decides don't count, and that correction lands *after* the 24h mark. The
+// pinned figure and the number people end up quoting can therefore differ.
+//
+// It can't be re-read. YouTube only exposes the current total, which keeps
+// climbing, so there is no way to ask what 24h reads after an audit. But every
+// audit shows up as a negative step in the stored series, so summing the drops
+// after the mark gives the correction that applies to the pinned number — and it
+// keeps updating as further audits land, without touching the frozen pin.
+function auditAfter(series, mark, windowMs = AUDIT_WINDOW_MS) {
+  let drop = 0, steps = 0, last = null, at = null;
+  for (const p of series) {
+    if (!p || p.t == null || p.v == null) continue;
+    if (p.t < mark) { last = p; continue; }     // keep the last pre-mark point, so the first comparison spans the mark
+    if (p.t > mark + windowMs) break;
+    if (last && p.v < last.v) { drop += last.v - p.v; steps++; at = p.t; }
+    last = p;
+  }
+  return steps ? { drop, steps, at } : null;
+}
+
 // Stored point nearest the mark, or null if nothing lands within tolerance.
 const nearestToMark = (points, mark) => {
   let best = null;
@@ -215,6 +242,49 @@ export default async function handler(req, res) {
     } catch (e) { return res.status(500).json({ error: e.message }); }
   }
 
+  // ── RE-PIN (write; admin only) ─────────────────────────────────────────────
+  // The pin is immutable by design — every other path writes it with NX — but an
+  // audit can land after the mark and leave the frozen figure above the number
+  // that ends up being quoted. This is the one deliberate way to overwrite it,
+  // and it is admin-gated and explicit about what it changed.
+  //   ?repin=1&ids=<id>                 → recompute from the stored point nearest the mark
+  //   ?repin=1&ids=<id>&v=…&l=…&c=…     → set an exact figure (single id only)
+  if (req.query.repin) {
+    const cronSecret = process.env.CRON_SECRET, adminSecret = process.env.ADMIN_SECRET;
+    const given = req.headers['x-admin-secret'] || req.query.key;
+    const ok = (cronSecret && req.headers.authorization === `Bearer ${cronSecret}`) || (adminSecret && given === adminSecret);
+    if (!ok) return res.status(401).json({ error: 'unauthorized' });
+    const manual = req.query.v != null;
+    if (manual && ids.length !== 1) return res.status(400).json({ error: 'an explicit value needs exactly one id' });
+    const repinned = {};
+    try {
+      for (const id of ids) {
+        const mark = markOf(id);
+        if (mark == null) { repinned[id] = { skipped: 'no release date, so no mark' }; continue; }
+        const had = await upstash([['GET', pinKey(id)]]);
+        let was = null; try { was = JSON.parse(had[0]?.result); } catch {}
+        let pin;
+        if (manual) {
+          const num = q => (q == null ? null : (Number.isFinite(Number(q)) ? Number(q) : null));
+          const v = num(req.query.v);
+          if (v == null) { repinned[id] = { skipped: 'v is not a number' }; continue; }
+          pin = { t: num(req.query.t) ?? mark, v, l: num(req.query.l) ?? was?.l ?? null,
+                  c: num(req.query.c) ?? was?.c ?? null, s: was?.s ?? null, mark, manual: true };
+        } else {
+          const lists = await upstash([['LRANGE', key(id), '0', '-1'], ['LRANGE', liveKey(id), '-1200', '-1']]);
+          const stored = [...(lists[0]?.result || []), ...(lists[1]?.result || [])]
+            .map(str => { try { return JSON.parse(str); } catch { return null; } }).filter(Boolean);
+          const best = nearestToMark(stored, mark);
+          if (!best) { repinned[id] = { skipped: 'no stored point within tolerance of the mark' }; continue; }
+          pin = pinFrom(best, mark);
+        }
+        await upstash([['SET', pinKey(id), JSON.stringify(pin)]]);
+        repinned[id] = { was, now: pin };
+      }
+      return res.status(200).json({ ok: true, repinned });
+    } catch (e) { return res.status(500).json({ error: e.message }); }
+  }
+
   // ── HISTORY (read) ── ?live=1 → dense fine series (bu_yt_live_*, last ~1200
   //    points ≈ a few hours) for the live-growing chart; otherwise the hourly
   //    long-term series (bu_yt_hist_*). Both are [{t,v,l,c}] newest-last.
@@ -267,8 +337,16 @@ export default async function handler(req, res) {
         const at = merged.find(p => p.t === milestones[id].t);
         if (at && at.s != null) milestones[id] = { ...milestones[id], s: at.s };
       }
+      // What YouTube has taken back off the counter since the mark. Derived on
+      // every read rather than stored, so it keeps up with later audits and the
+      // frozen pin is never touched.
+      if (milestones[id] && mark != null) {
+        const a = auditAfter(merged, mark);
+        if (a) milestones[id] = { ...milestones[id], audit: a };
+      }
     });
     if (heal.length) { try { await upstash(heal); } catch {} }
-    return res.status(200).json({ videos, milestones, viewMilestones });
+    const releases = Object.fromEntries(ids.filter(i => RELEASE[i]).map(i => [i, RELEASE[i]]));
+    return res.status(200).json({ videos, milestones, viewMilestones, releases });
   } catch (e) { return res.status(500).json({ error: e.message }); }
 }
