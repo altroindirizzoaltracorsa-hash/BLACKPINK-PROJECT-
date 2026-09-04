@@ -72,6 +72,23 @@ const RELEASE = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const releaseMs = id => (RELEASE[id] ? Date.parse(RELEASE[id]) : null);
 const markOf = id => (RELEASE[id] ? Date.parse(RELEASE[id]) + DAY_MS : null);
+
+// Marks are moments we freeze a figure at. Release + 24h is the common one, but
+// it is not the only one: JENNIE's Fallen Angel is tracked for its SEVEN-day
+// number, which release+24h cannot express — it was added to the page for that
+// figure alone and had no way to record it.
+//
+// A mark carries its own instant rather than an offset, so anything can be
+// pinned: 7 days, a chart cutoff, whatever comes next. The 24h mark keeps its
+// original storage key so every pin already frozen still reads.
+const EXTRA_MARKS = {
+  's466YCiHfKw': [{ key: '7d', label: '7 DAYS', at: '2026-09-04T04:00:00Z' }], // JENNIE — Fallen Angel
+};
+const marksOf = id => [
+  ...(RELEASE[id] ? [{ key: '24h', label: '24H', at: Date.parse(RELEASE[id]) + DAY_MS }] : []),
+  ...((EXTRA_MARKS[id] || []).map(m => ({ ...m, at: Date.parse(m.at) }))),
+].filter(m => Number.isFinite(m.at));
+const markKeyFor = (id, key) => (key === '24h' ? pinKey(id) : `bu_yt_mark_${id}_${key}`);
 const PIN_TOL_MS = 95 * 60 * 1000;    // accept a stored point within ~95 min of the exact mark
 const AUDIT_WINDOW_MS = 7 * DAY_MS;   // how long after a mark we keep attributing drops to its audit
 
@@ -406,7 +423,7 @@ export default async function handler(req, res) {
       .concat(ids.map(id => ['LRANGE', liveKey(id), '-1200', '-1']))
       .concat(ids.map(id => ['LRANGE', prevPinKey(id), '0', '-1']));
     const results = await upstash(cmds);
-    const videos = {}, milestones = {}, viewMilestones = {};
+    const videos = {}, milestones = {}, viewMilestones = {}, mergedById = {};
     const heal = []; // NX writes to freeze any newly-derived crossing / 24h pin
     ids.forEach((id, i) => {
       videos[id] = parseList(results[i]?.result);
@@ -416,6 +433,7 @@ export default async function handler(req, res) {
       // Merge hourly + fine series (time-ascending, deduped) and derive crossings.
       const merged = [...parseList(results[3 * n + i]?.result), ...parseList(results[4 * n + i]?.result)]
         .sort((a, b) => a.t - b.t).filter((p, k, a) => k === 0 || p.t !== a[k - 1].t);
+      mergedById[id] = merged;
       const derived = deriveMilestones(merged, releaseMs(id));
       for (const th of Object.keys(derived)) {
         for (const c of derived[th]) {
@@ -464,8 +482,38 @@ export default async function handler(req, res) {
         if (prev.length) milestones[id] = { ...milestones[id], superseded: prev };
       }
     });
+    // Extra marks (anything that isn't release+24h). Done as a separate pass on
+    // purpose: the pipeline above is fixed-width blocks indexed by position, and
+    // a per-id variable number of extra reads is exactly how that gets miscounted.
+    const marks = {};
+    try {
+      const wanted = [];
+      for (const id of ids) for (const m of marksOf(id)) {
+        if (m.key === '24h') continue;                 // already handled above
+        if (Date.now() < m.at) continue;               // not yet
+        wanted.push({ id, m });
+      }
+      if (wanted.length) {
+        const got = await upstash(wanted.map(w => ['GET', markKeyFor(w.id, w.m.key)]));
+        wanted.forEach((w, k) => {
+          let pin = null;
+          try { pin = JSON.parse(got[k]?.result); } catch {}
+          if (!pin) {
+            // Same self-heal as the 24h pin: the value is in the stored series
+            // even if whatever was supposed to capture it at the time failed.
+            const best = nearestToMark(mergedById[w.id] || [], w.m.at);
+            if (best) {
+              pin = { ...pinFrom(best, w.m.at), key: w.m.key, label: w.m.label };
+              heal.push(['SET', markKeyFor(w.id, w.m.key), JSON.stringify(pin), 'NX']);
+            }
+          }
+          if (pin) (marks[w.id] = marks[w.id] || []).push({ ...pin, key: w.m.key, label: w.m.label, at: w.m.at });
+        });
+      }
+    } catch {}
+
     if (heal.length) { try { await upstash(heal); } catch {} }
     const releases = Object.fromEntries(ids.filter(i => RELEASE[i]).map(i => [i, RELEASE[i]]));
-    return res.status(200).json({ videos, milestones, viewMilestones, releases });
+    return res.status(200).json({ videos, milestones, viewMilestones, releases, marks });
   } catch (e) { return res.status(500).json({ error: e.message }); }
 }
