@@ -38,7 +38,40 @@ const PREV_PIN_MAX = 20;
 // 24-hour milestone: freeze each video's exact view/like count at release + 24h.
 // Release times live in api/_releases.js — one copy, imported by both endpoints
 // and served to vs.html on the read response, after three separate copies drifted.
-import { RELEASE, DAY_MS, releaseMs, markOf } from './_releases.mjs';
+// NOTE: these are duplicated in youtube-history.js and youtube-stats.js on
+// purpose. They lived in a shared api/_*.mjs module, and Vercel would not load
+// it — the function crashed at import with FUNCTION_INVOCATION_FAILED and both
+// endpoints 500'd. Until that is solved on a preview deploy rather than against
+// production, the copies stay and MUST be kept in sync: a stale RELEASE here is
+// what silently stamped `since: null` on the MVs' milestones.
+// Release moments for the videos tracked on /vs.html — the single source of truth.
+//
+// .mjs, not .js, and that matters: package.json has no "type": "module", so Node
+// loads a .js sibling as CommonJS and `const` is a syntax error there.
+// Vercel special-cases the route file itself, so youtube-history.js can use ESM,
+// but an imported .js sibling is resolved by Node — which threw on every request
+// and took the whole read endpoint to a 500. .mjs is always ESM.
+//
+// This lived as three separate copies: youtube-history.js, youtube-stats.js and
+// vs.html. They drifted the moment the MVs were registered, twice over. vs.html
+// lost its countdowns and 24h lines (fixed by serving `releases` on the read
+// response), and youtube-stats.js — which stamps a milestone the instant it is
+// crossed — silently wrote `since: null` for anything it hadn't heard of. Those
+// records are written with HSETNX, so a null stamped by the live path could
+// never be corrected by the history path afterwards.
+//
+// Same clock times as the /countdowns cards: LISA 02:00 Rome (00:00 UTC),
+// JISOO 06:00 Rome (04:00 UTC).
+const RELEASE = {
+  'LzgE8ift2Uw': '2026-09-02T04:00:00Z', // JISOO teaser — 06:00 Rome Sep 2 → 24h mark Sep 3, 06:00
+  'h-7_04c_hVc': '2026-09-02T00:00:00Z', // LISA teaser  — 02:00 Rome Sep 2 → 24h mark Sep 3, 02:00
+  'FyS5dAywkEo': '2026-09-04T00:00:00Z', // LISA MV      — 02:00 Rome Sep 4 → 24h mark Sep 5, 02:00
+  'sf02ugzPFE4': '2026-09-04T04:00:00Z', // JISOO MV     — 06:00 Rome Sep 4 → 24h mark Sep 5, 06:00
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const releaseMs = id => (RELEASE[id] ? Date.parse(RELEASE[id]) : null);
+const markOf = id => (RELEASE[id] ? Date.parse(RELEASE[id]) + DAY_MS : null);
 const PIN_TOL_MS = 95 * 60 * 1000;    // accept a stored point within ~95 min of the exact mark
 const AUDIT_WINDOW_MS = 7 * DAY_MS;   // how long after a mark we keep attributing drops to its audit
 
@@ -86,7 +119,57 @@ const nearestToMark = (points, mark) => {
 // imported by both endpoints. On read we ALSO derive crossings straight from the
 // stored series, so a crossing the live path missed (deploy gap, quiet moment)
 // is recovered and frozen.
-import { VIEW_MILESTONES, crossingField, groupCrossings, mergeCrossings } from './_milestones.mjs';
+// View thresholds we timestamp, and how crossings are stored.
+//
+// A threshold can be crossed more than ONCE. YouTube recounts continuously and
+// can take the total back below a milestone, after which it is crossed again.
+// Every crossing is kept: a later one never replaces an earlier one, they sit
+// side by side, so the record shows both when it was first reached and when it
+// settled back above. Nothing here overwrites anything.
+//
+// Storage is one hash per video, bu_yt_ms_<id>:
+//
+// Every write is HSETNX, so a crossing is written once and re-deriving it on a
+// later read can neither duplicate nor restate it. The hour bucket is what makes
+// that idempotent: the interpolated crossing time can shift slightly when the
+// fine live series is trimmed and a coarser pair of samples takes over, and
+// bucketing absorbs that instead of inventing a second crossing from it.
+const VIEW_MILESTONES = [
+  1e6, 2e6, 3e6, 4e6, 5e6, 10e6, 20e6, 25e6, 30e6, 40e6, 50e6, 75e6,
+  100e6, 150e6, 200e6, 250e6, 300e6, 400e6, 500e6, 750e6, 1e9,
+];
+
+const HOUR = 3600000;
+const bucketOf = t => Math.floor(t / HOUR);
+const crossingField = (th, t) => `${th}@${bucketOf(t)}`;
+
+// { field: record } → { threshold: [record, …] }, oldest crossing first.
+// Two records in the same hour bucket are the same crossing, so the later write
+// simply lands on the same slot rather than appearing twice.
+function groupCrossings(hash) {
+  const byTh = {};
+  for (const [field, rec] of Object.entries(hash || {})) {
+    if (!rec || rec.t == null) continue;
+    const th = String(field).split('@')[0];
+    (byTh[th] = byTh[th] || new Map()).set(bucketOf(rec.t), rec);
+  }
+  const out = {};
+  for (const th of Object.keys(byTh)) out[th] = [...byTh[th].values()].sort((a, b) => a.t - b.t);
+  return out;
+}
+
+// Union of what's frozen and what we just recomputed. Frozen wins its bucket —
+// a stored crossing is never restated — but it no longer hides the others.
+function mergeCrossings(stored, derived) {
+  const out = {};
+  for (const th of new Set([...Object.keys(stored || {}), ...Object.keys(derived || {})])) {
+    const m = new Map();
+    for (const c of (derived?.[th] || [])) m.set(bucketOf(c.t), c);
+    for (const c of (stored?.[th] || [])) m.set(bucketOf(c.t), c);
+    out[th] = [...m.values()].sort((a, b) => a.t - b.t);
+  }
+  return out;
+}
 // First-crossing time for each threshold, interpolated between the bracketing
 // samples of a time-ascending [{t,v}] series.
 // Every crossing of every threshold, oldest first — not just the first. A total
