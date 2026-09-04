@@ -22,9 +22,8 @@ const TRACK_IDS = {
   // LISA "SaWaDiKa" (Spotify 1VWiDyYTrqQhhmnWANWkFa; musicat.fm/tracks/<this>).
   // Musicat keys tracks by its own UUID, not the Spotify id.
   sawadika:    '7159ce4c-2ad9-49aa-b11b-48cadf2c71d8',
-  // JISOO "CLICK" — Musicat UUID not known yet; null-guarded below so the
-  // per-track fetch skips it until the id is filled in.
-  click:       null,
+  // JISOO "CLICK" (Spotify 1zyNO73bPNPC6KBi3raNmZ; musicat.fm/tracks/<this>).
+  click:       'fd005bcf-f785-48de-ab0c-82ae1e028885',
 };
 // Musicat per-track ids fetched for every profile (all-time + today).
 const MC_TRACKS = ['jump', 'shutdown', 'ddududu', 'go', 'ltal', 'fallenangel', 'heaven', 'sawadika', 'click'];
