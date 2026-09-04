@@ -73,9 +73,19 @@ const markOf = id => (RELEASE[id] ? Date.parse(RELEASE[id]) + DAY_MS : null);
 // Adding one here backfills retroactively — the read path re-derives crossings
 // from the whole stored series, so any already inside it are recovered on the
 // next read rather than lost for good.
+// Kept in sync between youtube-history.js and youtube-stats.js — see the NOTE above.
+// Every million up to 20M, because that is the range a big MV runs through in its
+// first day or two and every one of them is a moment worth stamping. The list
+// used to jump 5M→10M→15M, so SaWaDiKa passed 6M, 7M, 8M, 9M and then 11M with
+// nothing to record them against. Above 20M the pace slows and coarser steps are
+// enough. Adding a threshold backfills: the read path re-derives crossings from
+// the whole stored series, so any already inside it are recovered on the next
+// read rather than lost.
 const VIEW_MILESTONES = [
-  1e6, 2e6, 3e6, 4e6, 5e6, 6e6, 7e6, 8e6, 9e6, 10e6, 15e6, 20e6, 25e6, 30e6,
-  40e6, 50e6, 75e6, 100e6, 150e6, 200e6, 250e6, 300e6, 400e6, 500e6, 750e6, 1e9,
+  1e6, 2e6, 3e6, 4e6, 5e6, 6e6, 7e6, 8e6, 9e6, 10e6,
+  11e6, 12e6, 13e6, 14e6, 15e6, 16e6, 17e6, 18e6, 19e6, 20e6,
+  25e6, 30e6, 40e6, 50e6, 75e6, 100e6, 150e6, 200e6, 250e6, 300e6,
+  400e6, 500e6, 750e6, 1e9,
 ];
 
 const HOUR = 3600000;
