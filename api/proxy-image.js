@@ -19,12 +19,9 @@ const TRACK_IDS = {
   ltal:        '8b627a61-8507-4f65-9d21-987679d35cc3',
   fallenangel: '989c9b5e-748f-4551-bc2d-71605097fc38',
   heaven:      '1acde8de-f00c-433e-acd5-7a1269eb5399',
-  // LISA "SaWaDiKa" (Spotify 1VWiDyYTrqQhhmnWANWkFa). Musicat keys tracks by its
-  // OWN UUID, not the Spotify id — fill this in with the SaWaDiKa track's
-  // musicat.fm UUID once known. Null → the per-track fetch below skips it and
-  // returns 0, so the leaderboard already carries a `sawadika` slot (never a
-  // spurious query) and lights up the instant the UUID is added.
-  sawadika:    null,
+  // LISA "SaWaDiKa" (Spotify 1VWiDyYTrqQhhmnWANWkFa; musicat.fm/tracks/<this>).
+  // Musicat keys tracks by its own UUID, not the Spotify id.
+  sawadika:    '7159ce4c-2ad9-49aa-b11b-48cadf2c71d8',
 };
 // Musicat per-track ids fetched for every profile (all-time + today).
 const MC_TRACKS = ['jump', 'shutdown', 'ddududu', 'go', 'ltal', 'fallenangel', 'heaven', 'sawadika'];
