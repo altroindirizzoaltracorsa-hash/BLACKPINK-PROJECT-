@@ -32,7 +32,7 @@ function communityGoalTotal(users, todayDDMM) {
     // Whole campaign incl. the Fallen Angel EP — matches computeDailyCommunityTotal
     // (client) and the record-goal path in leaderboard.js so all three agree.
     return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
-      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0);
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0);
   }, 0);
 }
 
@@ -47,6 +47,9 @@ const TRACKS = [
   { id: 'ddududu',  artist: 'BLACKPINK', track: 'DDU-DU DDU-DU' },
   { id: 'ltal',     artist: 'Jennie',    track: 'Less Than a Lover' },
   { id: 'go',       artist: 'BLACKPINK', track: 'GO' },
+  // LISA solo single (2026). Matched by name+artist like the others; counts toward
+  // the campaign *_all sums + community goal and drives its own SAWADIKA board.
+  { id: 'sawadika', artist: 'LISA',      track: 'SaWaDiKa' },
   // Fallen Angel EP (JENNIE) — grouped under the "Fallen Angel EP" leaderboard tab.
   // Tracked for their own per-track boards only; deliberately kept OUT of the
   // campaign *_all ranking sums and the durable user_daily_counts columns (those
@@ -292,7 +295,7 @@ async function extensionCountsForUsers(sb, appUserIds, dayFrom, dayTo, weekFrom,
   // Includes the Fallen Angel EP ids so the extension's per-song plays fold into
   // overall_fallenangel / overall_heaven (the EP boards). They're excluded from
   // campaignTotal / *_all above, so this never inflates the campaign totals.
-  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 });
+  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, fallenangel: 0, heaven: 0 });
   const out = { total: empty(), week: empty(), today: empty() };
   if (!sb || !appUserIds || !appUserIds.length) return out;
   // Counted in the database (see supabase/extension_counts_fn.sql) so it scales
@@ -370,10 +373,10 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
   const { from: dayFrom, to: dayTo }   = getDayBounds();
   const { from: weekFrom, to: weekTo } = getWeekBounds();
 
-  const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 };
+  const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, fallenangel: 0, heaven: 0 };
   let artistPlays   = 0;
-  const todayCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 };
-  const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, fallenangel: 0, heaven: 0 };
+  const todayCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, fallenangel: 0, heaven: 0 };
+  const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, fallenangel: 0, heaven: 0 };
   let lastScrobbleAt = entry.lastScrobbleAt || null;
   // Per-scrobbler split of TODAY's counts, for the personal history calendar. Each
   // key is a human label ("Last.fm · Alice9629", "BU Extension", "Musicat / Stats.fm")
@@ -392,13 +395,14 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       // return scrobbles newest-first, so today's counts, the weekly counts,
       // and the most recent BLACKPINK scrobble can all be derived from one
       // paginated range instead of re-fetching/re-paginating once per day.
-      const [ap, jumpPlays, shutdownPlays, ddududuPlays, ltalPlays, goPlays, faPlays, heavenPlays, weekSc] = await Promise.all([
+      const [ap, jumpPlays, shutdownPlays, ddududuPlays, ltalPlays, goPlays, swPlays, faPlays, heavenPlays, weekSc] = await Promise.all([
         fetchArtistPlays(u, 'BLACKPINK', fetchFn),
         fetchTrackPlays(u, 'BLACKPINK', 'JUMP', fetchFn),
         fetchTrackPlays(u, 'BLACKPINK', 'Shut Down', fetchFn),
         fetchTrackPlays(u, 'BLACKPINK', 'DDU-DU DDU-DU', fetchFn),
         fetchTrackPlays(u, 'Jennie', 'Less Than a Lover', fetchFn),
         fetchTrackPlays(u, 'BLACKPINK', 'GO', fetchFn),
+        fetchTrackPlays(u, 'LISA', 'SaWaDiKa', fetchFn),
         fetchTrackPlays(u, 'Jennie', 'Fallen Angel', fetchFn),
         fetchTrackPlays(u, 'Jennie', 'Heaven', fetchFn),
         fetchRecentScrobbles(u, weekFrom, dayTo, 50, fetchFn),
@@ -409,6 +413,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       totalPlays.ddududu += ddududuPlays;
       totalPlays.ltal    += ltalPlays;
       totalPlays.go      += goPlays;
+      totalPlays.sawadika += swPlays;
       totalPlays.fallenangel += faPlays;
       totalPlays.heaven      += heavenPlays;
 
@@ -422,6 +427,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       todayCounts.ddududu  += dc.ddududu  || 0;
       todayCounts.ltal     += dc.ltal     || 0;
       todayCounts.go       += dc.go       || 0;
+      todayCounts.sawadika += dc.sawadika || 0;
       todayCounts.fallenangel += dc.fallenangel || 0;
       todayCounts.heaven      += dc.heaven      || 0;
       todayBySource[`${acct.type === 'librefm' ? 'Libre.fm' : 'Last.fm'} · ${u}`] = {
@@ -434,6 +440,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       weekCounts.ddududu  += wdc.ddududu  || 0;
       weekCounts.ltal     += wdc.ltal     || 0;
       weekCounts.go       += wdc.go       || 0;
+      weekCounts.sawadika += wdc.sawadika || 0;
       weekCounts.fallenangel += wdc.fallenangel || 0;
       weekCounts.heaven      += wdc.heaven      || 0;
 
@@ -463,6 +470,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         totalPlays.ddududu  += lbTotals.ddududu  || 0;
         totalPlays.ltal     += lbTotals.ltal     || 0;
         totalPlays.go       += lbTotals.go       || 0;
+        totalPlays.sawadika += lbTotals.sawadika || 0;
         totalPlays.fallenangel += lbTotals.fallenangel || 0;
         totalPlays.heaven      += lbTotals.heaven      || 0;
 
@@ -473,6 +481,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         todayCounts.ddududu  += lbTodayCounts.ddududu  || 0;
         todayCounts.ltal     += lbTodayCounts.ltal     || 0;
         todayCounts.go       += lbTodayCounts.go       || 0;
+        todayCounts.sawadika += lbTodayCounts.sawadika || 0;
         todayCounts.fallenangel += lbTodayCounts.fallenangel || 0;
         todayCounts.heaven      += lbTodayCounts.heaven      || 0;
         todayBySource[`ListenBrainz · ${u}`] = {
@@ -485,6 +494,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         weekCounts.ddududu  += lbWeekCounts.ddududu  || 0;
         weekCounts.ltal     += lbWeekCounts.ltal     || 0;
         weekCounts.go       += lbWeekCounts.go       || 0;
+        weekCounts.sawadika += lbWeekCounts.sawadika || 0;
         weekCounts.fallenangel += lbWeekCounts.fallenangel || 0;
         weekCounts.heaven      += lbWeekCounts.heaven      || 0;
 
@@ -596,7 +606,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
   // Whole campaign incl. the Fallen Angel EP (LTAL + Fallen Angel + Heaven) so a
   // new release lifts the board. Mirrors CAMPAIGN_TOTAL_IDS / rankTids on the client
   // + leaderboard.js. (Per-track EP boards stay separate via overall_fallenangel/heaven.)
-  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal + totalPlays.go + totalPlays.fallenangel + totalPlays.heaven;
+  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal + totalPlays.go + totalPlays.sawadika + totalPlays.fallenangel + totalPlays.heaven;
 
   return {
     username:      displayName,
@@ -623,24 +633,27 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       overall_ddududu:  totalPlays.ddududu,
       overall_ltal:     totalPlays.ltal,
       overall_go:       totalPlays.go,
+      overall_sawadika: totalPlays.sawadika,
       overall_fallenangel: totalPlays.fallenangel,
       overall_heaven:      totalPlays.heaven,
       overall_artist:   artistPlays,
-      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0) + (todayCounts.fallenangel || 0) + (todayCounts.heaven || 0),
+      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0) + (todayCounts.sawadika || 0) + (todayCounts.fallenangel || 0) + (todayCounts.heaven || 0),
       daily_jump:       todayCounts.jump     || 0,
       daily_shutdown:   todayCounts.shutdown || 0,
       daily_ddududu:    todayCounts.ddududu  || 0,
       daily_ltal:       todayCounts.ltal     || 0,
       daily_go:         todayCounts.go       || 0,
+      daily_sawadika:   todayCounts.sawadika || 0,
       daily_fallenangel: todayCounts.fallenangel || 0,
       daily_heaven:      todayCounts.heaven      || 0,
       daily_date:       todayLabel,
-      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0) + (weekCounts.fallenangel || 0) + (weekCounts.heaven || 0),
+      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0) + (weekCounts.sawadika || 0) + (weekCounts.fallenangel || 0) + (weekCounts.heaven || 0),
       weekly_jump:      weekCounts.jump     || 0,
       weekly_shutdown:  weekCounts.shutdown || 0,
       weekly_ddududu:   weekCounts.ddududu  || 0,
       weekly_ltal:      weekCounts.ltal     || 0,
       weekly_go:        weekCounts.go       || 0,
+      weekly_sawadika:  weekCounts.sawadika || 0,
       weekly_fallenangel: weekCounts.fallenangel || 0,
       weekly_heaven:      weekCounts.heaven      || 0,
       weekly_start:     weekStartLabel,
