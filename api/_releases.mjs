@@ -1,5 +1,11 @@
 // Release moments for the videos tracked on /vs.html — the single source of truth.
 //
+// .mjs, not .js, and that matters: package.json has no "type": "module", so Node
+// loads a .js sibling as CommonJS and `export const` is a syntax error there.
+// Vercel special-cases the route file itself, so youtube-history.js can use ESM,
+// but an imported .js sibling is resolved by Node — which threw on every request
+// and took the whole read endpoint to a 500. .mjs is always ESM.
+//
 // This lived as three separate copies: youtube-history.js, youtube-stats.js and
 // vs.html. They drifted the moment the MVs were registered, twice over. vs.html
 // lost its countdowns and 24h lines (fixed by serving `releases` on the read
