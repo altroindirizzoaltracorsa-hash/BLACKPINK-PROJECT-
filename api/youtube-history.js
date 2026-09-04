@@ -57,11 +57,17 @@ const pinFrom = (p, mark) => ({ t: p.t, v: p.v, l: p.l, c: p.c, s: p.s ?? null, 
 // decides don't count, and that correction lands *after* the 24h mark. The
 // pinned figure and the number people end up quoting can therefore differ.
 //
-// It can't be re-read. YouTube only exposes the current total, which keeps
-// climbing, so there is no way to ask what 24h reads after an audit. But every
-// audit shows up as a negative step in the stored series, so summing the drops
-// after the mark gives the correction that applies to the pinned number — and it
-// keeps updating as further audits land, without touching the frozen pin.
+// It can't be re-read. There is no endpoint for "the count as of timestamp X,
+// restated" — the total is one live number that both grows and gets corrected —
+// so a historical figure has to be reconstructed from tracked deltas rather than
+// fetched. Summing the drops after the mark does that, and keeps updating as
+// further recounts land, without touching the frozen pin.
+//
+// The result is a LOWER BOUND. A removal is only visible as a negative step
+// between two samples; one that lands during normal growth (+30k organic, −20k
+// removed in the same window) nets out and leaves no trace. Finer sampling
+// catches more of them, which is a reason the 15s live series earns its keep
+// beyond the mark itself — but no cadence catches all of them.
 function auditAfter(series, mark, windowMs = AUDIT_WINDOW_MS) {
   let drop = 0, steps = 0, last = null, at = null;
   for (const p of series) {
