@@ -1,0 +1,38 @@
+name: Probe kworb girl-group totals
+
+# Read-only feasibility check for a "most-streamed K-pop girl groups this year"
+# page. The published figures are year-to-date, but no source publishes YTD
+# directly — the standard derivation is (artist total today) − (artist total on
+# 1 Jan). kworb carries the running total per artist, so the question is whether
+# its index page gives us a total and an id for each of the seven groups in one
+# fetch, without having to guess Spotify artist ids.
+#
+# Prints matched rows only. Dispatch-only, no secrets. Safe to delete.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Look for the seven groups on kworb's artist index
+        run: |
+          set -u
+          for url in "https://kworb.net/spotify/artists.html" "https://kworb.net/spotify/artist/41MozSoPIsD1dJM0CLPjZF.html"; do
+            echo "── $url"
+            code=$(curl -sS -L --max-time 60 -A 'Mozilla/5.0' -o /tmp/p.html -w '%{http_code}' "$url") || code=000
+            echo "   HTTP $code   bytes $(wc -c < /tmp/p.html 2>/dev/null || echo 0)"
+            [ "$code" = "200" ] || { echo "   (skipping)"; continue; }
+            if [ "$url" = "https://kworb.net/spotify/artists.html" ]; then
+              echo "   matched rows:"
+              grep -oiE "<tr>.*(BLACKPINK|TWICE|LE SSERAFIM|ILLIT|aespa|NewJeans|BABYMONSTER).*</tr>" /tmp/p.html \
+                | sed -e 's/<[^>]*>/ | /g' -e 's/  */ /g' | cut -c1-200 | head -20
+              echo "   artist ids on those rows:"
+              grep -oiE "artist/[A-Za-z0-9]+\.html[^>]*>[^<]*(BLACKPINK|TWICE|LE SSERAFIM|ILLIT|aespa|NewJeans|BABYMONSTER)[^<]*" /tmp/p.html | head -20
+            else
+              echo "   first table rows (format of a per-artist page):"
+              grep -oE "<tr>.*</tr>" /tmp/p.html | sed -e 's/<[^>]*>/ | /g' -e 's/  */ /g' | cut -c1-160 | head -4
+              echo "   any 'Total' figure:"
+              grep -oiE "total[^<]{0,60}" /tmp/p.html | head -5
+            fi
+          done
