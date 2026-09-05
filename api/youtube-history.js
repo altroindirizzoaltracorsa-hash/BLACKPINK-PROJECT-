@@ -323,8 +323,17 @@ async function fetchYt(ids, apiKey) {
   return out;
 }
 
+// Admin-only, like the rest of this working view. The page sends the key as a
+// header rather than ?key= so the secret stays out of URLs, referrers and access
+// logs; ?key= and Bearer CRON_SECRET still work for jobs.
+const authed = req => {
+  const cronSecret = process.env.CRON_SECRET, adminSecret = process.env.ADMIN_SECRET;
+  const given = req.headers['x-admin-secret'] || req.query.key;
+  return (cronSecret && req.headers.authorization === `Bearer ${cronSecret}`)
+      || (adminSecret && given === adminSecret);
+};
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
@@ -332,6 +341,9 @@ export default async function handler(req, res) {
   const ids = (idsParam.length ? idsParam : DEFAULT_IDS).slice(0, 10);
   if (!ids.every(id => /^[A-Za-z0-9_-]{11}$/.test(id))) return res.status(400).json({ error: 'invalid video id' });
   if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ error: 'no-store', videos: {} });
+  // Every path, reads included. The read is not passive — it freezes newly
+  // derived crossings and 24h pins — so it is not something to leave open.
+  if (!authed(req)) return res.status(401).json({ error: 'unauthorized' });
 
   // ── SNAPSHOT (write; cron/admin only) ──────────────────────────────────────
   if (req.query.snapshot) {

@@ -790,9 +790,41 @@
     makeChart({ key:r.key, chartId:'hist-'+r.key, statsId:'stats-'+r.key, ids:r.ids }));
   const drawAll = () => { for (const c of CHARTS) c.draw(); };
 
+  // Admin-only. Reuses the same bu_admin_key the site stores after the admin
+  // unlock on the home page, sent as a header rather than ?key= so the secret
+  // stays out of URLs, referrers and access logs. A 401 clears the stored key
+  // and stops the polling loops rather than hammering a closed door every 15s.
+  const ADMIN_KEY_LS = 'bu_admin_key';
+  let adminKey = (() => { try { return localStorage.getItem(ADMIN_KEY_LS); } catch { return null; } })();
+  let lockedOut = false;
+
+  function lockPage(msg){
+    lockedOut = true;
+    const el = $('#rows');
+    if (el) el.innerHTML = `<div class="msg">${msg}</div>`;
+    const sub = $('#sub'); if (sub) sub.textContent = '';
+  }
+
+  async function apiGet(url){
+    if (lockedOut) return null;
+    if (!adminKey){
+      lockPage('Admin only.<br><br>Unlock on the <a href="/" style="color:var(--pink-soft)">home page</a>, then come back.');
+      return null;
+    }
+    const r = await fetch(url, { cache:'no-store', headers:{ 'x-admin-secret': adminKey } });
+    if (r.status === 401){
+      try { localStorage.removeItem(ADMIN_KEY_LS); } catch {}
+      adminKey = null;
+      lockPage('That admin key was rejected.<br><br>Unlock again on the <a href="/" style="color:var(--pink-soft)">home page</a>.');
+      return null;
+    }
+    return r;
+  }
+
   async function pollHistory(){
     try{
-      const r = await fetch('/api/youtube-history?live=1&ids='+VIDEOS.join(','), {cache:'no-store'});
+      const r = await apiGet('/api/youtube-history?live=1&ids='+VIDEOS.join(','));
+      if (!r) return;
       const d = await r.json();
       if (d && d.releases){ RELEASE = d.releases; }   // before the milestones, which read it
       if (d && d.marks){ markData = d.marks; }        // before updateMilestones, which renders them
@@ -805,7 +837,8 @@
   // Hourly snapshot series (full life) — powers the focus-view gain stats.
   async function pollHourly(){
     try{
-      const r = await fetch('/api/youtube-history?ids='+VIDEOS.join(','), {cache:'no-store'});
+      const r = await apiGet('/api/youtube-history?ids='+VIDEOS.join(','));
+      if (!r) return;
       const d = await r.json();
       if (d && d.videos){ hourlyData = d.videos; drawAll(); }
     }catch(e){}
@@ -829,7 +862,8 @@
 
   async function poll(){
     try{
-      const r = await fetch('/api/youtube-stats?ids='+VIDEOS.join(','), {cache:'no-store'});
+      const r = await apiGet('/api/youtube-stats?ids='+VIDEOS.join(','));
+      if (!r) return;
       const d = await r.json();
       if (d.error === 'not-configured'){
         $('#rows').innerHTML = `<div class="msg">The live counter isn’t switched on yet.<br><br>Add a <code>YOUTUBE_API_KEY</code> (YouTube Data API v3) in the site settings and it’ll start counting.</div>`;

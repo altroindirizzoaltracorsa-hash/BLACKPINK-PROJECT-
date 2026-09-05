@@ -1,4 +1,4 @@
-name: Girl Group Smoke Test
+name: API Smoke Tests
 
 # Invokes the handler with fetch and Upstash stubbed, because `node --check` is
 # not enough: it happily accepted `const parseList = arr = (...)` — a one-character
@@ -7,7 +7,12 @@ name: Girl Group Smoke Test
 # before it ships rather than by the daily job afterwards.
 on:
   push:
-    paths: ['api/girlgroups.js', '.github/scripts/girlgroups-smoke.mjs', '.github/workflows/girlgroups-test.yml']
+    paths:
+      - 'api/girlgroups.js'
+      - 'api/youtube-history.js'
+      - 'api/youtube-stats.js'
+      - '.github/scripts/*.mjs'
+      - '.github/workflows/girlgroups-test.yml'
   workflow_dispatch:
 
 jobs:
@@ -18,3 +23,4 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - run: node .github/scripts/girlgroups-smoke.mjs
+      - run: node .github/scripts/api-gates-smoke.mjs
