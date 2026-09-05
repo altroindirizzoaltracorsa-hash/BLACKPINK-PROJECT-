@@ -43,12 +43,12 @@ jobs:
           rcode=$(curl -sS -L --max-time 60 -o /tmp/ggr.json -w '%{http_code}' "$BASE/api/girlgroups") || rcode=000
           echo "HTTP $rcode"
           if [ "$rcode" != "200" ]; then head -c 2000 /tmp/ggr.json; echo; exit 1; fi
-          python3 -c "
+          python3 - <<'PY'
           import json
           d = json.load(open('/tmp/ggr.json'))
           print('as of streaming day', d.get('asOf'))
           for i, g in enumerate(d.get('groups', []), 1):
-              ytd = g.get('ytd')
-              print('  %d. %-12s %s  (%d pts)' % (i, g['name'],
-                    ('%.3fB' % (ytd/1e9)) if ytd else '—', len(g.get('series') or [])))
-          "'
+              ytd, n = g.get('ytd'), len(g.get('series') or [])
+              print('  %d. %-12s %10s  (%d pt%s)' % (
+                  i, g['name'], ('%.3fB' % (ytd / 1e9)) if ytd else '-', n, '' if n == 1 else 's'))
+          PY
