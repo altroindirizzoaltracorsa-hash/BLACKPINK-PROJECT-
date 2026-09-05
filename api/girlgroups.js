@@ -34,23 +34,59 @@ const GROUPS = [
   { id: '1SIocsqdEefUTE6XKGUiVS', name: 'BABYMONSTER' },
 ];
 
-// Total streams as of 31 Dec 2025, so that (today − baseline) is this year's.
-// Seeded from kworb's totals for the streaming day of 2026-09-03 minus a
-// published ranking for that same day. The published figures were rounded to
-// ~1M, so each baseline carries up to ±500k of FIXED error: it never grows, and
-// it applies to every group alike, so gaps and ordering stay exact. Re-seed from
-// a full-precision source and even that goes away — SEED_DAY records what these
-// were derived against.
-const SEED_DAY = '2026-09-03';
-const BASELINE_2026 = {
-  '41MozSoPIsD1dJM0CLPjZF': 16341883583, // BLACKPINK    17,743,883,583 − 1.402B
-  '7n2Ycct7Beij7Dj7meI4X0': 11656636861, // TWICE        12,926,636,861 − 1.270B
-  '6HvZYsbFfjnjFrWF950C9d':  7146590959, // NewJeans      8,075,860,959 − 929.27M
-  '4SpbR6yFEvexJuaBpgAU5p':  5292667823, // LE SSERAFIM   6,561,667,823 − 1.269B
-  '6YVMFz59CuY7ngCxTxjpxE':  4876154818, // aespa         5,810,414,818 − 934.26M
-  '36cgvBn0aadzOijnjjwqMN':  1752208418, // ILLIT         2,983,208,418 − 1.231B
-  '1SIocsqdEefUTE6XKGUiVS':  1596689721, // BABYMONSTER   2,374,869,721 − 778.18M
+// The published rankings this page is anchored to, kept verbatim and keyed by
+// the STREAMING DAY each list describes — not the day it was posted, and not the
+// day we happened to read it. Storing the source rather than a derived constant
+// means a baseline can always be recomputed, audited, or corrected later.
+//
+// Add a day here as you get one. Nothing else needs changing: baselineFor()
+// picks it up on the next read.
+const REFERENCE_YTD = {
+  // "Most Streamed K-pop Girl Groups in 2026 on Spotify so far (as of Sep. 3)".
+  // Figures rounded to ~1M in the source, which is the whole error budget.
+  '2026-09-03': {
+    '41MozSoPIsD1dJM0CLPjZF': 1402000000, // BLACKPINK
+    '7n2Ycct7Beij7Dj7meI4X0': 1270000000, // TWICE
+    '4SpbR6yFEvexJuaBpgAU5p': 1269000000, // LE SSERAFIM
+    '36cgvBn0aadzOijnjjwqMN': 1231000000, // ILLIT
+    '6YVMFz59CuY7ngCxTxjpxE':  934260000, // aespa
+    '6HvZYsbFfjnjFrWF950C9d':  929270000, // NewJeans
+    '1SIocsqdEefUTE6XKGUiVS':  778180000, // BABYMONSTER
+  },
 };
+
+// Fallback only, and deliberately labelled as approximate. These were seeded by
+// pairing each group's kworb total with the Sep 3 list WITHOUT checking that the
+// group's page was actually reporting Sep 3 — NewJeans was a day behind, so its
+// constant is one day of streams too low and its YTD reads ~3.7M high. A group
+// keeps using its constant only until a stored point lines up with a reference
+// day, at which point baselineFor() computes the exact figure and this is
+// ignored. Nothing here is ever silently trusted: `exact` says which was used.
+const BASELINE_2026 = {
+  '41MozSoPIsD1dJM0CLPjZF': 16341883583, // BLACKPINK
+  '7n2Ycct7Beij7Dj7meI4X0': 11656636861, // TWICE
+  '6HvZYsbFfjnjFrWF950C9d':  7146590959, // NewJeans   ← approximate, see above
+  '4SpbR6yFEvexJuaBpgAU5p':  5292667823, // LE SSERAFIM
+  '6YVMFz59CuY7ngCxTxjpxE':  4876154818, // aespa
+  '36cgvBn0aadzOijnjjwqMN':  1752208418, // ILLIT
+  '1SIocsqdEefUTE6XKGUiVS':  1596689721, // BABYMONSTER
+};
+
+// A baseline is only exact when a stored total and a published figure describe
+// the SAME streaming day. Pair them that way and the arithmetic is airtight;
+// pair them across days and the gap is silently baked in forever. So this looks
+// for a day we have both for, newest first, and falls back to the approximate
+// constant otherwise — self-correcting, because a lagging group seeds itself the
+// moment its page catches up to a day we hold a reference for.
+function baselineFor(id, series) {
+  for (const day of Object.keys(REFERENCE_YTD).sort().reverse()) {
+    const ytd = REFERENCE_YTD[day][id];
+    const point = series.find(p => p.d === day);
+    if (ytd != null && point) return { baseline: point.v - ytd, seededOn: day, exact: true };
+  }
+  const b = BASELINE_2026[id];
+  return { baseline: b ?? null, seededOn: null, exact: false };
+}
 
 const key = id => `bu_gg_hist_${id}`;
 const MAX_POINTS = 800;               // >2 years of daily points
@@ -155,7 +191,7 @@ export default async function handler(req, res) {
       const series = parseList(results[i]?.result);
       const last = series[series.length - 1] || null;
       const prev = series.length > 1 ? series[series.length - 2] : null;
-      const base = BASELINE_2026[g.id] ?? null;
+      const { baseline: base, seededOn, exact } = baselineFor(g.id, series);
       // Gain since the previous stored day, and how many days that spans —
       // kworb skips days, so "+9.1M over 2 days" beats a wrong daily figure.
       const gain = last && prev ? last.v - prev.v : null;
@@ -169,7 +205,7 @@ export default async function handler(req, res) {
         daily: last?.dv ?? null,      // kworb's own figure for that day
         gain, spanDays,               // and what our own series says it moved
         tracks: last?.t ?? null,
-        baseline: base,
+        baseline: base, seededOn, exact,
         series: series.map(p => ({ d: p.d, v: p.v, dv: p.dv, ytd: base != null ? p.v - base : null })),
       };
     }).sort((a, b) => (b.ytd ?? -1) - (a.ytd ?? -1));
@@ -180,8 +216,7 @@ export default async function handler(req, res) {
     const days = groups.map(g => g.day).filter(Boolean).sort();
     return res.status(200).json({
       asOf: days[days.length - 1] || null,
-      seedDay: SEED_DAY,
-      note: 'Year-to-date is derived: kworb running total minus a 1 Jan baseline. Dates are kworb streaming days.',
+      note: 'Year-to-date is derived: kworb running total minus a 1 Jan baseline, seeded per group against a published list for the same streaming day. Dates are kworb streaming days.',
       groups,
     });
   } catch (e) {

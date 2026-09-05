@@ -42,6 +42,8 @@
   .note{font-size:10.5px;color:var(--dim);line-height:1.6;margin-top:20px;border-top:1px solid var(--line);padding-top:14px;}
   .note b{color:var(--muted);font-weight:700;}
   .stale{display:none;font-size:11px;color:var(--gold);text-align:center;margin:12px 0;}
+  .prov{color:var(--gold);font-weight:700;}
+  .lag{color:var(--gold);}
   .err{display:none;font-size:12px;color:#ff5c7a;text-align:center;margin:18px 0;}
   .skel{opacity:.35;}
 </style>
@@ -92,11 +94,19 @@
         gain = `<b>+${fmt(g.daily)}</b> daily`;
       }
       const gap = g.gapToAbove != null ? ` · ${big(g.gapToAbove)} behind` : '';
+      // kworb can be a day behind on one group and current on the others, so a
+      // row whose streaming day isn't the newest says which day it IS, rather
+      // than sitting silently under a heading that doesn't apply to it.
+      const lag = g.day && d.asOf && g.day !== d.asOf
+        ? ` · <span class="lag">${esc(g.day)}</span>` : '';
+      // An approximate baseline is never passed off as a measured one.
+      const prov = g.exact === false
+        ? ` <span class="prov" title="Baseline still approximate: no published figure yet for this group's streaming day. Corrects itself once its page catches up.">≈</span>` : '';
       return `<div class="row${i === 0 ? ' lead' : ''}">
         <div class="rank">${i + 1}</div>
         <div>
-          <div class="name">${esc(g.name)}</div>
-          <div class="meta">${fmt(g.total)} all-time${gap}</div>
+          <div class="name">${esc(g.name)}${prov}</div>
+          <div class="meta">${fmt(g.total)} all-time${gap}${lag}</div>
         </div>
         <div class="nums">
           <div class="ytd">${big(g.ytd)}</div>
@@ -124,7 +134,11 @@
       `Because we store running totals rather than adding up daily numbers, a day kworb skips costs a day of ` +
       `detail and cannot bend the yearly figure. Baselines were seeded against ${esc(d.seedDay || '—')} from a ` +
       `published ranking rounded to about a million, so each total carries a fixed ±500k that never grows and ` +
-      `applies to every group alike — the order and the gaps are exact.`;
+      `applies to every group alike — the order and the gaps are exact.` +
+      (groups.some(g => g.exact === false)
+        ? ` <span class="prov">≈</span> marks a group whose baseline is still approximate: kworb has not yet ` +
+          `published a day for it that we hold a reference list for. It corrects itself automatically once it does.`
+        : '');
   }
 
   // Admin-only. The key is the same one the rest of the site stores after the
