@@ -127,15 +127,41 @@
       `applies to every group alike — the order and the gaps are exact.`;
   }
 
-  fetch('/api/girlgroups')
-    .then(r => r.json())
-    .then(d => { if (d.error) throw new Error(d.error); render(d); })
-    .catch(e => {
-      const el = document.getElementById('err');
-      el.style.display = 'block';
-      el.textContent = 'Could not load: ' + e.message;
-      document.getElementById('asof').textContent = '';
-    });
+  // Admin-only. The key is the same one the rest of the site stores after the
+  // admin unlock on the home page, so there is one login, not two. Sent as a
+  // header rather than ?key= to keep it out of URLs, referrers and access logs.
+  const ADMIN_KEY_LS = 'bu_admin_key';
+  const key = (() => { try { return localStorage.getItem(ADMIN_KEY_LS); } catch { return null; } })();
+
+  function locked(msg) {
+    document.getElementById('asof').textContent = '';
+    const el = document.getElementById('err');
+    el.style.display = 'block';
+    el.innerHTML = msg;
+  }
+
+  if (!key) {
+    locked('Admin only. Unlock on the <a href="/" style="color:var(--pink-soft)">home page</a>, then come back.');
+  } else {
+    fetch('/api/girlgroups', { headers: { 'x-admin-secret': key } })
+      .then(r => {
+        if (r.status === 401) {
+          // Stale or wrong key — drop it so the next unlock starts clean, the
+          // same way the admin panels on the home page treat a 401.
+          try { localStorage.removeItem(ADMIN_KEY_LS); } catch {}
+          throw new Error('__401__');
+        }
+        return r.json();
+      })
+      .then(d => { if (d.error) throw new Error(d.error); render(d); })
+      .catch(e => {
+        if (e.message === '__401__') {
+          locked('That admin key was rejected. Unlock again on the <a href="/" style="color:var(--pink-soft)">home page</a>.');
+        } else {
+          locked('Could not load: ' + e.message);
+        }
+      });
+  }
 </script>
 </body>
 </html>
