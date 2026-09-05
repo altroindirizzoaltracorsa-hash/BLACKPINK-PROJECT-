@@ -1,0 +1,30 @@
+name: Snapshot Girl Group Race
+
+# Captures today's kworb totals for the Girl Group Race page
+# (/api/girlgroups?snapshot=1). A Vercel cron already runs this daily; this is a
+# manual/on-demand trigger (and to seed the first point immediately). Idempotent —
+# a day kworb hasn't advanced is a "hold", never a double-count.
+on:
+  workflow_dispatch:
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Capture snapshot
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          code=$(curl -s -L --location-trusted -o /tmp/gg.json -w "%{http_code}" -X GET \
+            -H "x-admin-secret: ${ADMIN_KEY}" \
+            "https://www.blinksunited.com/api/girlgroups?snapshot=1")
+          echo "HTTP $code"
+          cat /tmp/gg.json; echo
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/gg.json'))
+          print("written:", d.get('written'))
+          print("held:   ", d.get('held'))
+          print("errors: ", d.get('errors'))
+          PY
+          if [ "$code" -ge 400 ]; then exit 1; fi
