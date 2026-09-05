@@ -106,17 +106,23 @@ async function fetchGroup(id) {
   return parseKworb(await r.text());
 }
 
-const parseList = arr => (arr || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
+// Both paths are admin-only: this is an internal working view, so a reader that
+// simply knows the URL is not enough. The page sends the key as a header rather
+// than ?key= so the secret stays out of URLs, referrers and access logs; ?key=
+// and Bearer CRON_SECRET still work for jobs.
+const authed = req => {
+  const cronSecret = process.env.CRON_SECRET, adminSecret = process.env.ADMIN_SECRET;
+  const given = req.headers['x-admin-secret'] || req.query.key;
+  return (cronSecret && req.headers.authorization === `Bearer ${cronSecret}`)
+      || (adminSecret && given === adminSecret);
+};
+
+const parseList = arr = (arr || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
 
   if (req.query.snapshot) {
-    const cronSecret = process.env.CRON_SECRET, adminSecret = process.env.ADMIN_SECRET;
-    const given = req.headers['x-admin-secret'] || req.query.key;
-    const ok = (cronSecret && req.headers.authorization === `Bearer ${cronSecret}`)
-            || (adminSecret && given === adminSecret);
-    if (!ok) return res.status(401).json({ error: 'unauthorized' });
+    if (!authed(req)) return res.status(401).json({ error: 'unauthorized' });
 
     const written = [], held = [], errors = [];
     for (const g of GROUPS) {
@@ -141,7 +147,8 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, written, held, errors });
   }
 
-  // ── read ────────────────────────────────────────────────────────────────
+  // ── read (admin only) ───────────────────────────────────────────────────
+  if (!authed(req)) return res.status(401).json({ error: 'unauthorized' });
   try {
     const results = await upstash(GROUPS.map(g => ['LRANGE', key(g.id), '0', '-1']));
     const groups = GROUPS.map((g, i) => {

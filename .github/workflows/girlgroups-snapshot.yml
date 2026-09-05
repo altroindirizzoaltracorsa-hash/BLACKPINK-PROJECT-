@@ -39,8 +39,18 @@ jobs:
           # job: a read-path failure would leave the page broken with the data
           # sitting fine in Redis, which is exactly the outage that went unseen
           # for 90 minutes on /api/youtube-history.
+          # The read is admin-only. Assert that from outside, every run: a gate
+          # that quietly stops gating looks exactly like one that works.
+          ucode=$(curl -sS -L --max-time 60 -o /dev/null -w '%{http_code}' "$BASE/api/girlgroups") || ucode=000
+          if [ "$ucode" = "401" ]; then
+            echo "gate: unauthenticated read refused (401) ✓"
+          else
+            echo "gate: FAILED — unauthenticated read returned $ucode, expected 401"; exit 1
+          fi
+
           echo "── what the page will show ──"
-          rcode=$(curl -sS -L --max-time 60 -o /tmp/ggr.json -w '%{http_code}' "$BASE/api/girlgroups") || rcode=000
+          rcode=$(curl -sS -L --max-time 60 -o /tmp/ggr.json -w '%{http_code}' \
+            -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/girlgroups") || rcode=000
           echo "HTTP $rcode"
           if [ "$rcode" != "200" ]; then head -c 2000 /tmp/ggr.json; echo; exit 1; fi
           python3 - <<'PY'
