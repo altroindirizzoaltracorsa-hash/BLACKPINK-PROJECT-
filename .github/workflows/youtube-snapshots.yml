@@ -32,3 +32,18 @@ jobs:
             -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/youtube-history?snapshot=1")
           echo "HTTP $code"; cat /tmp/out.json; echo
           [ "$code" = "200" ] || exit 1
+
+          # Hit the READ path too. It is not passive — it re-derives and freezes
+          # milestone crossings and 24h pins that the write path missed. That
+          # self-heal used to be driven by whoever happened to open /vs.html;
+          # now the page is admin-only, so this job drives it on a schedule
+          # instead, which is more reliable than depending on a visitor.
+          rcode=$(curl -sS -L --max-time 60 -o /dev/null -w '%{http_code}' \
+            -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/youtube-history") || rcode=000
+          echo "self-heal read: HTTP $rcode"
+          [ "$rcode" = "200" ] || exit 1
+
+          # And confirm the gate still holds from outside.
+          ucode=$(curl -sS -L --max-time 60 -o /dev/null -w '%{http_code}' "$BASE/api/youtube-history") || ucode=000
+          [ "$ucode" = "401" ] && echo "gate: unauthenticated read refused (401)" \
+            || { echo "gate: FAILED — got $ucode, expected 401"; exit 1; }

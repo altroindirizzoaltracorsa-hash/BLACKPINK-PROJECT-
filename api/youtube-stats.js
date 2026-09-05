@@ -200,14 +200,25 @@ async function upstashSetEx(k, v, ttl) {
   } catch {}
 }
 
+// Admin-only, like the rest of this working view. The page sends the key as a
+// header rather than ?key= so the secret stays out of URLs, referrers and access
+// logs; ?key= and Bearer CRON_SECRET still work for jobs.
+const authed = req => {
+  const cronSecret = process.env.CRON_SECRET, adminSecret = process.env.ADMIN_SECRET;
+  const given = req.headers['x-admin-secret'] || req.query.key;
+  return (cronSecret && req.headers.authorization === `Bearer ${cronSecret}`)
+      || (adminSecret && given === adminSecret);
+};
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   const ids = String(req.query.ids || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 10);
   if (!ids.length) return res.status(400).json({ error: 'ids required' });
   if (!ids.every(id => /^[A-Za-z0-9_-]{11}$/.test(id))) return res.status(400).json({ error: 'invalid video id' });
+
+  if (!authed(req)) return res.status(401).json({ error: 'unauthorized' });
 
   const key = process.env.YOUTUBE_API_KEY;
   if (!key) return res.status(200).json({ error: 'not-configured', videos: [] });

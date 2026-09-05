@@ -4,8 +4,9 @@ name: YouTube Series Probe
 # The series live in Upstash behind Vercel and can't be inspected from a dev
 # machine, and direct HTTP to the site is blocked from Claude Code sessions.
 #
-# Prints counts, spans and first/last values only — no dumps, no secrets, and it
-# uses the public read endpoint, which matters because this repo is public.
+# Prints counts, spans and first/last values only — no dumps. The read endpoint
+# is admin-only now, so this passes the key as a header; GitHub masks the secret
+# in logs, which matters because this repo is public.
 # Dispatch-only. Safe to delete once it has answered what it was added for.
 on:
   workflow_dispatch:
@@ -25,13 +26,14 @@ jobs:
     steps:
       - name: Probe the series
         env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           BASE: https://www.blinksunited.com
           IDS: ${{ inputs.ids != '' && inputs.ids || 'LzgE8ift2Uw,h-7_04c_hVc,FyS5dAywkEo,sf02ugzPFE4,s466YCiHfKw' }}
         run: |
           set -u
           probe () {
             echo "── $2 ─────────────────────────────────"
-            code=$(curl -sS --max-time 45 "$BASE/api/youtube-history?$1ids=$IDS" -o /tmp/r.json -w '%{http_code}')
+            code=$(curl -sS --max-time 45 -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/youtube-history?$1ids=$IDS" -o /tmp/r.json -w '%{http_code}')
             echo "HTTP $code"
             if [ "$code" != "200" ]; then echo "  body: $(head -c 400 /tmp/r.json)"; return; fi
             jq -r '.videos | to_entries[] |
@@ -68,12 +70,13 @@ jobs:
     steps:
       - name: Show the bracket behind every crossing
         env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           BASE: https://www.blinksunited.com
           ID: ${{ inputs.analyze }}
         run: |
           set -eu
-          curl -sS --max-time 45 "$BASE/api/youtube-history?ids=$ID"        -o /tmp/hourly.json
-          curl -sS --max-time 45 "$BASE/api/youtube-history?live=1&ids=$ID" -o /tmp/live.json
+          curl -sS --max-time 45 -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/youtube-history?ids=$ID" -o /tmp/hourly.json
+          curl -sS --max-time 45 -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/youtube-history?live=1&ids=$ID" -o /tmp/live.json
           node - <<'JS'
           const fs = require('fs');
           const id = process.env.ID;
