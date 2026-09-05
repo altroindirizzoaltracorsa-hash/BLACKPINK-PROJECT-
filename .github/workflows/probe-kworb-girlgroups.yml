@@ -10,10 +10,10 @@ name: Probe kworb girl-group totals
 on:
   workflow_dispatch:
     inputs:
-      url:
-        description: 'kworb page to inspect'
+      ids:
+        description: 'Comma-separated Spotify artist ids (blank = the seven groups).'
         required: false
-        default: 'https://kworb.net/spotify/artist/6RHTUrRF63xao58xh9FXYJ_songs.html'
+        default: ''
 
 jobs:
   probe:
@@ -21,33 +21,29 @@ jobs:
     steps:
       - name: Inspect the page structure
         env:
-          URL: ${{ inputs.url != '' && inputs.url || 'https://kworb.net/spotify/artist/6RHTUrRF63xao58xh9FXYJ_songs.html' }}
+          IDS: ${{ inputs.ids != '' && inputs.ids || '41MozSoPIsD1dJM0CLPjZF,7n2Ycct7Beij7Dj7meI4X0,4SpbR6yFEvexJuaBpgAU5p,36cgvBn0aadzOijnjjwqMN,630wzNP2OL7fl4Xl0GnMWq,6HvZYsbFfjnjFrWF950C9d,6YVMFz59CuY7ngCxTxjpxE' }}
         run: |
           set -u
-          code=$(curl -sS -L --max-time 60 -A 'Mozilla/5.0' -o /tmp/p.html -w '%{http_code}' "$URL") || code=000
-          echo "HTTP $code   bytes $(wc -c < /tmp/p.html 2>/dev/null || echo 0)"
-          [ "$code" = "200" ] || { head -c 300 /tmp/p.html; exit 1; }
-
-          echo; echo "── who is this? ──"
-          grep -oiE "<title>[^<]*</title>|<h1[^>]*>[^<]*</h1>" /tmp/p.html | head -3
-
-          echo; echo "── table headers ──"
-          grep -oiE "<th[^>]*>[^<]*</th>" /tmp/p.html | sed 's/<[^>]*>//g' | head -12
-
-          echo; echo "── first 5 data rows (tags stripped) ──"
-          python3 - <<'PY'
-          import re
+          printf '%-24s %-14s %16s %14s %8s\n' ID ARTIST 'STREAMS(total)' 'DAILY(total)' TRACKS
+          for id in ${IDS//,/ }; do
+            url="https://kworb.net/spotify/artist/${id}_songs.html"
+            code=$(curl -sS -L --max-time 60 -A 'Mozilla/5.0' -o /tmp/p.html -w '%{http_code}' "$url") || code=000
+            if [ "$code" != "200" ]; then printf '%-24s HTTP %s\n' "$id" "$code"; continue; fi
+            ID="$id" python3 - <<'PY'
+          import os, re
           h = open('/tmp/p.html', encoding='utf-8', errors='replace').read()
-          rows = re.findall(r'<tr[^>]*>(.*?)</tr>', h, re.S | re.I)
-          print(f'   {len(rows)} <tr> rows found')
+          title = re.search(r'<title>(.*?)</title>', h, re.S | re.I)
+          name = title.group(1).replace(' - Spotify Top Songs', '').strip() if title else '?'
           def cells(r):
               return [re.sub(r'\s+', ' ', re.sub(r'<[^>]*>', '', c)).strip()
                       for c in re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', r, re.S | re.I)]
-          for r in rows[:5]:
-              print('   ', cells(r))
-          print('   … last 3 rows (a Total row would live here):')
-          for r in rows[-3:]:
-              print('   ', cells(r))
+          rows = [cells(r) for r in re.findall(r'<tr[^>]*>(.*?)</tr>', h, re.S | re.I)]
+          def summary(label):
+              for c in rows:
+                  if c and c[0] == label and len(c) > 1:
+                      return c[1]
+              return '—'
+          print('%-24s %-14s %16s %14s %8s' % (os.environ['ID'], name[:14],
+                summary('Streams'), summary('Daily'), summary('Tracks')))
           PY
-          echo; echo "── any explicit Total/Sum label ──"
-          grep -oiE "(total|sum)[^<]{0,50}" /tmp/p.html | head -6
+          done
