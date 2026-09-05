@@ -12,7 +12,21 @@ jobs:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
         run: |
           echo "Calling force refresh (tracks only)..."
-          curl -sfL "https://blinksunited.com/api/streams?force=1&tracks_only=1&key=${ADMIN_KEY}" -o /tmp/resp.json
+          # Capture the status and, on failure, the body. `curl -sf` used to swallow
+          # both: a non-2xx exited the step with nothing but a curl code, no status
+          # and no message, and the summary below never ran — so the one case where
+          # you most need to know what /api/streams said was the case that told you
+          # nothing. The body is provider names, HTTP statuses and exception text
+          # (RapidAPI keys travel in request headers and are never echoed back), and
+          # the URL is never printed, so this stays safe in a public repo's logs.
+          code=$(curl -sS -L --max-time 120 -o /tmp/resp.json -w '%{http_code}' \
+            "https://blinksunited.com/api/streams?force=1&tracks_only=1&key=${ADMIN_KEY}") || code=000
+          echo "HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "--- response body (first 2000 chars) ---"
+            head -c 2000 /tmp/resp.json; echo
+            exit 1
+          fi
           python3 - <<'PY'
           import json
           d = json.load(open('/tmp/resp.json'))
