@@ -1,0 +1,36 @@
+name: Girl Group Snapshot
+
+# Captures each group's running Spotify total once per kworb streaming day, for
+# /girlgroups.html. The fetch and the Upstash write happen on Vercel
+# (/api/girlgroups?snapshot=1); this job only triggers it.
+#
+# Four attempts spread through the morning rather than one, because GitHub sheds
+# scheduled runs — the youtube-snapshots job saw 4-5h gaps against an hourly
+# cron. Extra runs are free: the endpoint files points by kworb's own streaming
+# day and holds when that day has not advanced, so re-running cannot double-count
+# or overwrite. kworb publishes once a day, some days not at all.
+on:
+  schedule:
+    - cron: '20 6 * * *'
+    - cron: '20 9 * * *'
+    - cron: '20 13 * * *'
+    - cron: '20 18 * * *'
+  workflow_dispatch:
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Capture the seven totals
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          BASE: https://www.blinksunited.com
+        run: |
+          set -u
+          code=$(curl -sS -L --max-time 120 -o /tmp/gg.json -w '%{http_code}' \
+            -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/girlgroups?snapshot=1") || code=000
+          echo "HTTP $code"
+          # Always print the body: `written` / `held` / `errors` is the whole
+          # diagnosis, and holding is the normal case for three runs out of four.
+          head -c 2000 /tmp/gg.json; echo
+          [ "$code" = "200" ] || exit 1
