@@ -34,18 +34,25 @@ jobs:
             ID="$id" python3 - <<'PY'
           import os, re
           h = open('/tmp/p.html', encoding='utf-8', errors='replace').read()
-          title = re.search(r'<title>(.*?)</title>', h, re.S | re.I)
-          name = title.group(1).replace(' - Spotify Top Songs', '').strip() if title else '?'
+          t = re.search(r'<title>(.*?)</title>', h, re.S | re.I)
+          name = (t.group(1).replace(' - Spotify Top Songs','').strip() if t else '?')
           def cells(r):
-              return [re.sub(r'\s+', ' ', re.sub(r'<[^>]*>', '', c)).strip()
-                      for c in re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', r, re.S | re.I)]
-          rows = [cells(r) for r in re.findall(r'<tr[^>]*>(.*?)</tr>', h, re.S | re.I)]
-          def summary(label):
+              return [re.sub(r'\s+',' ', re.sub(r'<[^>]*>','',c)).strip()
+                      for c in re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', r, re.S|re.I)]
+          rows = [cells(r) for r in re.findall(r'<tr[^>]*>(.*?)</tr>', h, re.S|re.I)]
+          def row(label):
               for c in rows:
-                  if c and c[0] == label and len(c) > 1:
-                      return c[1]
-              return '—'
-          print('%-24s %-14s %16s %14s %8s' % (os.environ['ID'], name[:14],
-                summary('Streams'), summary('Daily'), summary('Tracks')))
+                  if c and c[0].lower() == label: return c[1:5]
+              return []
+          n = lambda x: int(re.sub(r'[^0-9]','',x)) if x and re.search(r'\d',x) else 0
+          st, tr = row('streams'), row('tracks')
+          if len(st) >= 4:
+              total, lead, solo, feat = (n(v) for v in st[:4])
+              tt = (n(tr[0]) if tr else 0); tf = (n(tr[3]) if len(tr)>3 else 0)
+              print('%-13s %16s %16s %16s %6.2f%%   tracks %4d total / %3d feat' % (
+                  name[:13], f'{total:,}', f'{lead:,}', f'{feat:,}',
+                  (100.0*feat/total if total else 0), tt, tf))
+          else:
+              print('%-13s  could not read the summary block' % name[:13])
           PY
           done
