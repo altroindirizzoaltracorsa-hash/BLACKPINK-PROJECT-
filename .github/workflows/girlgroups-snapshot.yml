@@ -34,3 +34,21 @@ jobs:
           # diagnosis, and holding is the normal case for three runs out of four.
           head -c 2000 /tmp/gg.json; echo
           [ "$code" = "200" ] || exit 1
+
+          # Read back what the page will actually show. Writing is only half the
+          # job: a read-path failure would leave the page broken with the data
+          # sitting fine in Redis, which is exactly the outage that went unseen
+          # for 90 minutes on /api/youtube-history.
+          echo "── what the page will show ──"
+          rcode=$(curl -sS -L --max-time 60 -o /tmp/ggr.json -w '%{http_code}' "$BASE/api/girlgroups") || rcode=000
+          echo "HTTP $rcode"
+          if [ "$rcode" != "200" ]; then head -c 2000 /tmp/ggr.json; echo; exit 1; fi
+          python3 -c "
+          import json
+          d = json.load(open('/tmp/ggr.json'))
+          print('as of streaming day', d.get('asOf'))
+          for i, g in enumerate(d.get('groups', []), 1):
+              ytd = g.get('ytd')
+              print('  %d. %-12s %s  (%d pts)' % (i, g['name'],
+                    ('%.3fB' % (ytd/1e9)) if ytd else '—', len(g.get('series') or [])))
+          "'
