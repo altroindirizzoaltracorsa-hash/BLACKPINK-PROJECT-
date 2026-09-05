@@ -667,6 +667,18 @@
   .cd-goals-block > div:first-of-type .ltal-goals-category-label { margin-top: 0; }
   .cd-goals-head { font-family: var(--display); font-size: 0.95rem; letter-spacing: 0.05em; color: #E8110D; margin: 0 0 0.35rem; display: flex; align-items: center; gap: 0.45rem; }
   .cd-goals-head span { font-size: 0.7rem; font-family: var(--body, inherit); background: rgba(232,17,13,0.16); color: #E8110D; border-radius: 999px; padding: 0.05rem 0.5rem; letter-spacing: 0; }
+  /* Community-scrobbles panel on single-release cards (SaWaDiKa / CLICK): our
+     community's tracked plays for that song. Dark panel like .cd-goals-block so
+     it reads on any card theme. */
+  .cd-cs { margin: 0.7rem 0 0.2rem; padding: 0.7rem 0.85rem; background: rgba(0,0,0,0.34); border: 1px solid rgba(255,255,255,0.09); border-radius: 12px; text-align: center; }
+  .cd-cs-head { display: block; font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.6); }
+  .cd-cs-num { display: block; font-family: var(--display, inherit); font-weight: 700; font-size: 1.9rem; color: #fff; line-height: 1.15; margin-top: 0.1rem; }
+  .cd-cs-sub { display: block; font-size: 0.6rem; letter-spacing: 0.02em; color: rgba(255,255,255,0.42); margin-top: 0.05rem; }
+  .cd-cs-rows { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0; text-align: left; }
+  .cd-cs-row { display: flex; justify-content: space-between; gap: 1rem; padding: 0.3rem 0.1rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem; }
+  .cd-cs-row span:first-child { color: rgba(255,255,255,0.7); font-style: italic; }
+  .cd-cs-row span:last-child { color: #fff; font-weight: 700; }
+  .cd-cs-today { color: var(--pink, #ff2d78) !important; }
 
   /* ── GOAL HISTORY (chronology of past goal-hit days) ─────── */
   #goal-history-overlay { position: fixed; inset: 0; z-index: 9990; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.72); padding: 1rem; }
@@ -2703,6 +2715,12 @@
                 <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
               </div>
               <div class="cd-goals-block" id="jisoo-goals-list" style="display:none;"></div>
+              <div class="cd-cs" id="jisoo-cs" style="display:none;">
+                <span class="cd-cs-head">◇ Blinks United scrobbles</span>
+                <span class="cd-cs-num" id="jisoo-cs-num">—</span>
+                <span class="cd-cs-sub">CLICK plays counted from our community</span>
+                <div class="cd-cs-rows" id="jisoo-cs-rows"></div>
+              </div>
               <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
                 <summary>Release times worldwide</summary>
                 <div class="cd-times-body" data-times-for="2026-09-04T04:00:00Z"></div>
@@ -2736,6 +2754,12 @@
               <button class="cd-btn sw-btn sw-btn-ghost" onclick="openLisaCard()">📸 Share</button>
             </div>
             <div class="cd-goals-block" id="sawadika-goals-list" style="display:none;"></div>
+            <div class="cd-cs" id="sawadika-cs" style="display:none;">
+              <span class="cd-cs-head">◇ Blinks United scrobbles</span>
+              <span class="cd-cs-num" id="sawadika-cs-num">—</span>
+              <span class="cd-cs-sub">SaWaDiKa plays counted from our community</span>
+              <div class="cd-cs-rows" id="sawadika-cs-rows"></div>
+            </div>
             <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
               <summary>Release times worldwide</summary>
               <div class="cd-times-body" data-times-for="2026-09-04T00:00:00Z"></div>
@@ -5249,6 +5273,8 @@ window.addEventListener('DOMContentLoaded', () => {
   loadJennieSaveCount();
   loadFaSaveCount();
   loadFaCommunityScrobbles();
+  loadReleaseCommunityScrobbles('sawadika', 'sawadika');
+  loadReleaseCommunityScrobbles('jisoo', 'click');
   loadLisaSaveCount();
   loadJisooSaveCount();
   refreshSupporterChips();
@@ -12483,6 +12509,31 @@ async function loadFaSaveCount() {
     const r = await fetch('/api/proxy-image?fa_save=count');
     const d = await r.json();
     renderFaSaveCount(d.count || 0);
+  } catch {}
+}
+
+// Single-release card (SaWaDiKa / CLICK): our community's tracked scrobbles for
+// that one song, from the leaderboard's per-track overall_/daily_ scores (same
+// numbers driving its leaderboard board + the community goal). Shows the all-time
+// total headline + a today row; hidden until the community has any tracked plays.
+async function loadReleaseCommunityScrobbles(cardId, songKey) {
+  const el = document.getElementById(`${cardId}-cs`);
+  const numEl = document.getElementById(`${cardId}-cs-num`);
+  const rowsEl = document.getElementById(`${cardId}-cs-rows`);
+  if (!el || !numEl) return;
+  try {
+    const lbData = (await fetchLbData()) || {};
+    const users = lbData.users || {};
+    const overall = computeCommunityTotal(users, `overall_${songKey}`);
+    const today   = computeCommunityTotal(users, `daily_${songKey}`);
+    if (overall <= 0 && today <= 0) return;   // nothing tracked yet — stay hidden
+    numEl.textContent = overall.toLocaleString();
+    if (rowsEl) {
+      rowsEl.innerHTML =
+        `<div class="cd-cs-row"><span>Today</span><span class="cd-cs-today">${today.toLocaleString()}</span></div>` +
+        `<div class="cd-cs-row"><span>All-time</span><span>${overall.toLocaleString()}</span></div>`;
+    }
+    el.style.display = 'block';
   } catch {}
 }
 
