@@ -1,0 +1,20 @@
+name: Girl Group Smoke Test
+
+# Invokes the handler with fetch and Upstash stubbed, because `node --check` is
+# not enough: it happily accepted `const parseList = arr = (...)` — a one-character
+# slip that turned a function into an array and 500'd the live endpoint. This
+# calls every path and asserts the admin gate, so that class of break is caught
+# before it ships rather than by the daily job afterwards.
+on:
+  push:
+    paths: ['api/girlgroups.js', '.github/scripts/girlgroups-smoke.mjs', '.github/workflows/girlgroups-test.yml']
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: node .github/scripts/girlgroups-smoke.mjs

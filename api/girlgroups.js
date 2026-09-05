@@ -117,7 +117,7 @@ const authed = req => {
       || (adminSecret && given === adminSecret);
 };
 
-const parseList = arr = (arr || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
+const parseList = arr => (arr || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
 
 export default async function handler(req, res) {
 
