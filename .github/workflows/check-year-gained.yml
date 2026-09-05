@@ -1,0 +1,21 @@
+name: Check 2026 streams gained
+
+# Read-only: fetch the public "Streams gained in 2026" board so we can confirm it
+# reflects the latest artist totals (it's computed live: seed + latest - anchor).
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch year_gained board
+        run: |
+          curl -sfL "https://blinksunited.com/api/proxy-image?year_gained=list" -o /tmp/yg.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/yg.json'))
+          print("year:", d.get('year'))
+          for it in d.get('items', []):
+              print(f"  {it['name']:>10}: gained={it['gained']:>14,}  (latest total={it.get('total'):,} on {it.get('date')}, +{it.get('delta')}/day)")
+          PY
