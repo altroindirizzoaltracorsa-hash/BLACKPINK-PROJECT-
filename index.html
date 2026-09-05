@@ -5555,14 +5555,19 @@ function renderArtistStreamsPage() {
   const shown = hist.slice(0, 7);
   // Two kinds of day carry a fake daily_delta and must be kept out of the average:
   //  1. A change beyond ±100M — Spotify re-counting the catalog to a new base.
-  //  2. A day whose track_count differs from the day before — a Spotify merge/split
-  //     transition, where versions combining (or splitting + re-counting) lump an
-  //     arbitrary amount into that day. The 2-day total is right, the split isn't.
+  //  2. A day whose track_count DROPPED from the day before — a Spotify merge/
+  //     re-count where versions combine and the removed versions' streams get
+  //     lumped into that day. The 2-day total is right, the day's delta isn't.
+  // A track_count RISE is NOT flagged: new releases are pre-added at 0 via
+  // auto-discovery, so a rise just means a song began counting on its release day
+  // — a real day. (The old track_count-≠ rule only fired because a late-added
+  // release, e.g. the forgotten Fallen Angel EP, dumped its back-catalog at once;
+  // pre-adding removes that case.)
   const _AS_ANOM = 100_000_000;
   const _asAnom = v => v != null && Math.abs(v) > _AS_ANOM;
   const _isShift = i => {
     const h = hist[i], prev = hist[i + 1];   // prev = the day before (older)
-    return !!(h && prev && h.track_count != null && prev.track_count != null && h.track_count !== prev.track_count);
+    return !!(h && prev && h.track_count != null && prev.track_count != null && h.track_count < prev.track_count);
   };
   const _bad = i => _asAnom(hist[i]?.daily_delta) || _isShift(i);
   const deltas = shown.map((h, i) => (h.daily_delta != null && !_bad(i)) ? h.daily_delta : null).filter(v => v != null);
