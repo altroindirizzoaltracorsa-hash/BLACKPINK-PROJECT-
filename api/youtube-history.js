@@ -110,14 +110,34 @@ const pinFrom = (p, mark) => ({ t: p.t, v: p.v, l: p.l, c: p.c, s: p.s ?? null, 
 // removed in the same window) nets out and leaves no trace. Finer sampling
 // catches more of them, which is a reason the 15s live series earns its keep
 // beyond the mark itself — but no cadence catches all of them.
+//
+// NOT every negative step is a removal. YouTube serves the count from replicas
+// that are seconds out of sync, so two requests landing close together can read
+// two different totals and the later one can be lower. Every drop in the stored
+// series so far has been exactly that: SaWaDiKa fell 1,590 and then 11 between
+// samples in the SAME SECOND, Fallen Angel 928 across 26s, and each was back to
+// normal on the next sample. Counting those would put "≥1,601 views removed" on
+// a card when nothing was removed — a number invented from a measurement
+// artefact, which is worse than saying nothing.
+//
+// Two rules separate the two. A recount does not happen between reads 200ms
+// apart, a replica disagreement does — so a step whose samples are closer than
+// MIN_DROP_GAP_MS is jitter. And a real removal PERSISTS: the total has to climb
+// back from the lower number, whereas bounce is undone by the very next sample.
+// A drop must clear both to count.
+const MIN_DROP_GAP_MS = 5000;         // closer than this is replica disagreement, not a recount
 function auditAfter(series, mark, windowMs = AUDIT_WINDOW_MS) {
-  let drop = 0, steps = 0, last = null, at = null;
-  for (const p of series) {
-    if (!p || p.t == null || p.v == null) continue;
-    if (p.t < mark) { last = p; continue; }     // keep the last pre-mark point, so the first comparison spans the mark
-    if (p.t > mark + windowMs) break;
-    if (last && p.v < last.v) { drop += last.v - p.v; steps++; at = p.t; }
-    last = p;
+  // Window first, so "the next sample" means the next one actually considered.
+  const pts = series.filter(p => p && p.t != null && p.v != null && p.t <= mark + windowMs);
+  let drop = 0, steps = 0, at = null;
+  for (let i = 1; i < pts.length; i++) {
+    const prev = pts[i - 1], cur = pts[i];
+    if (cur.t < mark) continue;                 // prev may sit before the mark: that step spans it, and counts
+    if (cur.v >= prev.v) continue;
+    if (cur.t - prev.t < MIN_DROP_GAP_MS) continue;              // too close together to be a recount
+    const next = pts[i + 1];
+    if (next && next.v >= prev.v) continue;     // undone immediately — a bounce, not a removal
+    drop += prev.v - cur.v; steps++; at = cur.t;
   }
   return steps ? { drop, steps, at } : null;
 }
