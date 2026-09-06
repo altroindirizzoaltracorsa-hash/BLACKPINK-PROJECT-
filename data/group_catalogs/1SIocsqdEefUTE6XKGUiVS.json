@@ -3,8 +3,13 @@
   "name": "BABYMONSTER",
   "seeded_from": "https://kworb.net/spotify/artist/1SIocsqdEefUTE6XKGUiVS_songs.html",
   "seeded_kworb_day": "2026/09/04",
-  "track_count": 42,
+  "track_count": 43,
   "tracks": [
+    {
+      "id": "3VBj0lzjmhTzVFPEDOjNCG",
+      "name": "BATTER UP",
+      "feature": false
+    },
     {
       "id": "1njlnn8ZKHI77Pe9szIONR",
       "name": "SHEESH",
@@ -215,5 +220,6 @@
       "name": "Love, Maybe - Live Version",
       "feature": false
     }
-  ]
+  ],
+  "_note": "BATTER UP restored by hand, and NOT re-seeded from kworb. kworb dropped it from this artist's page between its 2026/08/01 and 2026/09/04 updates — worth 268,471,521 at the time, under no other id, so not a merge — while the track is plainly still on Spotify and still counting (272,167,855 on 2026-09-06). This catalog was seeded from kworb AFTER the drop, so it inherited the hole. Re-seeding from kworb would silently reopen it."
 }
