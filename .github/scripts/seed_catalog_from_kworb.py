@@ -168,8 +168,14 @@ def seed(name, aid, client):
 
 
 def main():
+    # "all" rather than "" for every group: GitHub substitutes a workflow input's
+    # DEFAULT when you pass an empty string, so a blank filter silently ran only
+    # the default group instead of the whole set.
     only = os.environ.get("ONLY", "").strip()
-    targets = [g for g in GROUPS if not only or g[0].lower() in only.lower()]
+    if only.lower() in ("", "all", "*"):
+        targets = list(GROUPS)
+    else:
+        targets = [g for g in GROUPS if g[0].lower() in only.lower()]
     if not targets:
         print(f"no group matched ONLY={only!r}", file=sys.stderr)
         sys.exit(1)
