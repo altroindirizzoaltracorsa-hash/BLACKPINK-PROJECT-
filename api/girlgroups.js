@@ -42,6 +42,19 @@ const GROUPS = [
 // Add a day here as you get one. Nothing else needs changing: baselineFor()
 // picks it up on the next read.
 const REFERENCE_YTD = {
+  // BLACKPINK only, from our own "Streams gained in 2026" board
+  // (/api/proxy-image?year_gained=list), which reports to the exact stream rather
+  // than rounded to a million — so once a 2026-09-04 point is stored this seeds
+  // BLACKPINK with no error budget at all, superseding the Sep 3 entry below.
+  //
+  // Usable because it is the same quantity kworb reports, which was checked
+  // rather than assumed: the board's total of 17,748,512,294 on 2026-09-04 minus
+  // its own daily of 4,628,711 is 17,743,883,583 — kworb's 2026-09-03 total to
+  // the digit. Had the two scopes differed, seeding a kworb-derived series from
+  // this would have baked the difference in permanently.
+  '2026-09-04': {
+    '41MozSoPIsD1dJM0CLPjZF': 1406786129, // BLACKPINK
+  },
   // "Most Streamed K-pop Girl Groups in 2026 on Spotify so far (as of Sep. 3)".
   // Figures rounded to ~1M in the source, which is the whole error budget.
   '2026-09-03': {
