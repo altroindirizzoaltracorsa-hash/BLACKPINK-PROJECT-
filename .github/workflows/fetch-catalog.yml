@@ -14,6 +14,14 @@ on:
         description: 'Run fetch-artist-streams. Set to false when manually triggering for an unrelated job (e.g. a one-off backfill) outside Spotify''s usual update window (midday-evening Rome time), to avoid writing a premature/duplicate day.'
         required: false
         default: 'true'
+      group_dry_run:
+        description: 'Girl groups: report what would be recorded without writing (1)'
+        required: false
+        default: '0'
+      group_override_date:
+        description: 'Girl groups: force a streaming-day label (backfills only)'
+        required: false
+        default: ''
 
 jobs:
   fetch:
@@ -78,6 +86,55 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python .github/scripts/fetch_artist_streams.py
+
+  # The seven K-pop girl groups, fetched straight from Spotify off the seeded
+  # track lists in data/group_catalogs/. Runs AFTER fetch-artist-streams (needs:)
+  # so the two never fetch at once, and so a day is only ever recorded when the
+  # BLACKPINK job judged Spotify had published one.
+  #
+  # Summing those exact track IDs was verified to reproduce kworb's published
+  # total to the digit for BLACKPINK and ILLIT, and to within 0.005% elsewhere —
+  # so this is the same measurement kworb reports, on our own schedule rather
+  # than its. Writes data/group_streams/{history.json,history.csv}.
+  fetch-group-streams:
+    needs: fetch-artist-streams
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_artist_fetch != 'false')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper
+
+      - name: Fetch the seven group totals
+        env:
+          OVERRIDE_DATE: ${{ inputs.group_override_date }}
+          DRY_RUN: ${{ inputs.group_dry_run }}
+        run: python .github/scripts/fetch_group_streams.py
+
+      - name: Commit the day
+        if: inputs.group_dry_run != '1'
+        run: |
+          if [ -z "$(git status --porcelain data/group_streams)" ]; then
+            echo "nothing new recorded"; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/group_streams
+          git commit -m "data: girl group streams $(date -u +%Y-%m-%d)"
+          # Another data job may have pushed while this one ran; rebase rather
+          # than fail, since these files are only ever appended to.
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "push failed after 3 attempts"; exit 1
 
   # One-time, manual-only: artist_tracks didn't originally store album
   # metadata. Backfills album/album_release_date/track_number for every
