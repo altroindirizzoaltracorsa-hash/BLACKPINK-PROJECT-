@@ -35,11 +35,11 @@ for uid, label in ids.items():
     print("  vma_user_votes (recent):")
     for v in votes:
         print(f"     {v['day']}  votes={v['votes']}  bp={v['bp']} lisa={v['lisa']}  name={v.get('display_name')!r}")
-    udc = sb("/user_daily_counts", {"app_user_id": f"eq.{uid}", "order": "day_key.desc", "select": "day_key,jump,shutdown,ddududu,ltal,go", "limit": "6"})
+    udc = sb("/user_daily_counts", {"app_user_id": f"eq.{uid}", "order": "day_key.desc", "select": "day_key,jump,shutdown,ddududu,ltal,go,sawadika,click,fallenangel,heaven", "limit": "6"})
     print("  user_daily_counts (recent):")
     for r in udc:
-        core = (r['jump'] or 0)+(r['shutdown'] or 0)+(r['ddududu'] or 0)+(r['go'] or 0)
-        print(f"     {r['day_key']}  jump={r['jump']} sd={r['shutdown']} ddu={r['ddududu']} go={r['go']} ltal={r['ltal']}  | 4-core={core}")
+        allc = sum((r.get(k) or 0) for k in ('jump','shutdown','ddududu','ltal','go','sawadika','click','fallenangel','heaven'))
+        print(f"     {r['day_key']}  jump={r['jump']} sd={r['shutdown']} ddu={r['ddududu']} go={r['go']} ltal={r['ltal']} sawa={r.get('sawadika')} click={r.get('click')} fa={r.get('fallenangel')} hvn={r.get('heaven')}  | all={allc}")
     links = sb("/linked_accounts", {"app_user_id": f"eq.{uid}", "select": "source,source_username"})
     print(f"  linked_accounts: {[(l['source'], l['source_username']) for l in links]}")
     # what the board's rank gate sees:
