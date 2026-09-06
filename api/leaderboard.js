@@ -989,6 +989,55 @@ export default async function handler(req, res) {
     updateLeaderStreak(data);
     await redis.set(LB_KEY, data);
 
+    // ── Durable per-day persist (user_daily_counts) ──────────────────────────
+    // The submit above only updates the Redis board (the streaming leaderboard).
+    // Mirror this account's daily campaign counts into user_daily_counts too — the
+    // durable store the VOTING board (vma_vote_board) and badges history read. Only
+    // the server-side cron used to write it, so any account whose streams the cron
+    // can't re-pull (extension / Musicat / Stats.fm / a private Last.fm profile)
+    // showed real numbers on the streaming board but 0 on the voting board. Persist
+    // it live here, keyed on the SAME (app_user_id, day_key) the cron uses, and
+    // max-merged so a late/low submit can never lower the day.
+    try {
+      const dk = serverItalyDayKey(0);              // streaming-day UTC date, == cron's day_key
+      const [, mm, dd] = dk.split('-');
+      const todayLabel = `${dd}/${mm}`;             // DD/MM, matches scores.daily_date
+      const sc = data.users[username.toLowerCase()]?.scores || scores || {};
+      // Only persist counts that belong to the current streaming day (a stale
+      // submit carrying yesterday's daily_* must not inflate today's row).
+      if (!sc.daily_date || sc.daily_date === todayLabel) {
+        const CORE = ['jump', 'shutdown', 'ddududu', 'ltal', 'go'];
+        const NR   = ['sawadika', 'click', 'fallenangel', 'heaven'];
+        const val  = id => Math.max(0, Number(sc[`daily_${id}`]) || 0);
+        // Read only the always-present core columns here so this can't throw on a
+        // deploy that predates the new-release migration.
+        const { data: exRows } = await sb
+          .from('user_daily_counts')
+          .select('jump,shutdown,ddududu,ltal,go')
+          .eq('app_user_id', user.id).eq('day_key', dk).limit(1);
+        const ex = (exRows && exRows[0]) || {};
+        const core = { app_user_id: user.id, day_key: dk, updated_at: new Date().toISOString() };
+        for (const id of CORE) core[id] = Math.max(val(id), Number(ex[id]) || 0);
+        await sb.from('user_daily_counts').upsert(core, { onConflict: 'app_user_id,day_key' });
+        // New-release columns in a SEPARATE guarded upsert (same pattern as the
+        // cron): a deploy before those columns are migrated just no-ops here
+        // instead of failing the core write above. Reads its own existing values so
+        // the max-merge can't lower a count another writer already persisted.
+        try {
+          const { data: nrEx } = await sb
+            .from('user_daily_counts')
+            .select('sawadika,click,fallenangel,heaven')
+            .eq('app_user_id', user.id).eq('day_key', dk).limit(1);
+          const pe = (nrEx && nrEx[0]) || {};
+          const nr = { app_user_id: user.id, day_key: dk };
+          for (const id of NR) nr[id] = Math.max(val(id), Number(pe[id]) || 0);
+          await sb.from('user_daily_counts').upsert(nr, { onConflict: 'app_user_id,day_key' });
+        } catch (_) { /* new-release columns not migrated yet */ }
+      }
+    } catch (e) {
+      console.error('user_daily_counts live persist failed:', e?.message || e);
+    }
+
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({ ok: true, displayName: data.users[username.toLowerCase()]?.displayName || displayName });
   }
@@ -1081,6 +1130,95 @@ export default async function handler(req, res) {
     const streak = computeGoalStreak(gh.days);
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({ dry, daysScanned: Object.keys(perDay4).length, recordedCount: recorded.length, recorded, skippedCount: skipped.length, skipped, streak });
+  }
+
+  // ── POST /api/leaderboard?action=sync-daily-counts&key=ADMIN[&dry=1][&name=] ──
+  // Sync TODAY's Redis board (the streaming leaderboard, which updates live on every
+  // client/extension submit) into the durable user_daily_counts table (which the
+  // VOTING board + badges read, and which otherwise only the server-side cron pull
+  // writes). Fixes the same-day gap for any account whose streams the cron can't
+  // re-pull (extension / Musicat / Stats.fm / private Last.fm): they show real
+  // numbers on the streaming board but 0 on the voting board until this runs.
+  // Max-merged per (app_user_id, day_key) so it can only ever RAISE a count.
+  // Idempotent; ?dry=1 previews; ?name= filters the report to one display name.
+  if (req.method === 'POST' && action === 'sync-daily-counts') {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'unauthorized' });
+    const dry  = req.query.dry === '1';
+    const only = (req.query.name || '').trim().toLowerCase();
+    const sb = supabase();
+    if (!sb) return res.status(503).json({ error: 'Server not configured' });
+
+    const dk = serverItalyDayKey(0);
+    const [, mm, dd] = dk.split('-');
+    const todayLabel = `${dd}/${mm}`;
+    const CORE = ['jump', 'shutdown', 'ddududu', 'ltal', 'go'];
+    const NR   = ['sawadika', 'click', 'fallenangel', 'heaven'];
+
+    const data = (await redis.get(LB_KEY)) || { users: {} };
+    // One candidate row per signed-in owner (appUserId). If two linked-account
+    // entries share an owner, keep the max of each daily_* so we never undercount.
+    const cand = new Map(); // appUserId -> { name, vals:{id:count} }
+    for (const [, u] of Object.entries(data.users || {})) {
+      const uid = u?.appUserId;
+      const s = u?.scores || {};
+      if (!uid || s.daily_date !== todayLabel) continue;
+      const name = u.displayName || u.username || '';
+      const prev = cand.get(uid) || { name, vals: {} };
+      for (const id of [...CORE, ...NR]) {
+        prev.vals[id] = Math.max(prev.vals[id] || 0, Math.max(0, Number(s[`daily_${id}`]) || 0));
+      }
+      if (u.displayName) prev.name = u.displayName;
+      cand.set(uid, prev);
+    }
+
+    const ids = [...cand.keys()];
+    // Existing rows for today, so the upsert only ever raises a value.
+    const exMap = new Map();
+    for (let from = 0; from < ids.length; from += 500) {
+      const slice = ids.slice(from, from + 500);
+      const { data: rows, error } = await sb
+        .from('user_daily_counts')
+        .select('app_user_id,jump,shutdown,ddududu,ltal,go,sawadika,click,fallenangel,heaven')
+        .eq('day_key', dk).in('app_user_id', slice);
+      if (error) return res.status(500).json({ error: error.message });
+      for (const r of (rows || [])) exMap.set(r.app_user_id, r);
+    }
+
+    const now = new Date().toISOString();
+    const coreRows = [], nrRows = [], changed = [];
+    for (const [uid, c] of cand) {
+      const ex = exMap.get(uid) || {};
+      const core = { app_user_id: uid, day_key: dk, updated_at: now };
+      const nr   = { app_user_id: uid, day_key: dk };
+      let raised = false;
+      for (const id of CORE) { const v = Math.max(c.vals[id] || 0, Number(ex[id]) || 0); core[id] = v; if (v > (Number(ex[id]) || 0)) raised = true; }
+      for (const id of NR)   { const v = Math.max(c.vals[id] || 0, Number(ex[id]) || 0); nr[id]   = v; if (v > (Number(ex[id]) || 0)) raised = true; }
+      coreRows.push(core); nrRows.push(nr);
+      if (raised) changed.push({ name: c.name, appUserId: uid, ...CORE.reduce((o,id)=>(o[id]=core[id],o),{}), ...NR.reduce((o,id)=>(o[id]=nr[id],o),{}) });
+    }
+
+    if (!dry && coreRows.length) {
+      for (let from = 0; from < coreRows.length; from += 500) {
+        const { error } = await sb.from('user_daily_counts')
+          .upsert(coreRows.slice(from, from + 500), { onConflict: 'app_user_id,day_key' });
+        if (error) return res.status(500).json({ error: error.message });
+      }
+      try {
+        for (let from = 0; from < nrRows.length; from += 500) {
+          const { error } = await sb.from('user_daily_counts')
+            .upsert(nrRows.slice(from, from + 500), { onConflict: 'app_user_id,day_key' });
+          if (error) throw error;
+        }
+      } catch (e) { console.error('sync-daily-counts new-release upsert failed (columns migrated yet?):', e?.message || e); }
+    }
+
+    const report = only ? changed.filter(c => (c.name || '').toLowerCase().includes(only)) : changed;
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({
+      dry, day_key: dk, todayLabel,
+      candidates: cand.size, raisedCount: changed.length,
+      changed: report.slice(0, 200),
+    });
   }
 
   // ── POST /api/leaderboard?action=repair-daily-archive&key=ADMIN&day=YYYY-MM-DD[&dry=1] ──

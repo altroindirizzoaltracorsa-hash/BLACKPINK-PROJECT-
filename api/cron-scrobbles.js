@@ -1082,7 +1082,13 @@ export default async function handler(req, res) {
       const ids = [...dailyByUser.keys()];
       const { data: existing, error: exErr } = await sb
         .from('user_daily_counts')
-        .select('app_user_id,jump,shutdown,ddududu,ltal,go')
+        // Include the new-release columns so the max-merge below can't LOWER a
+        // value the live submit path (api/leaderboard POST) already persisted for
+        // a source this server-side pull can't reproduce (extension / Musicat /
+        // Stats.fm / private Last.fm). Core columns were always selected; without
+        // the new-release ones here a cron run that computed 0 for them would wipe
+        // a real live-persisted sawadika/click/fallenangel/heaven back to 0.
+        .select('app_user_id,jump,shutdown,ddududu,ltal,go,sawadika,click,fallenangel,heaven')
         .eq('day_key', todayKey)
         .in('app_user_id', ids);
       if (exErr) throw exErr;
