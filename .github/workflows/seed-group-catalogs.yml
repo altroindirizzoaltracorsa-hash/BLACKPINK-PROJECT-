@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: 'Substring filter, e.g. "BLACKPINK". Blank = all seven.'
+        description: 'Group name, or "all" for every group. (Blank falls back to this default.)'
         required: false
         default: 'BLACKPINK'
       write:
