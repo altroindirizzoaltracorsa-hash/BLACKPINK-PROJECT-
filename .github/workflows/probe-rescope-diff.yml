@@ -1,0 +1,32 @@
+name: Probe what left a kworb page
+
+# Read-only: diff an archived capture's track list against the live page, to
+# identify the track behind a fall in an artist's total. Defaults to
+# BABYMONSTER's August drop (165,427,908 across 43 -> 42 tracks).
+on:
+  workflow_dispatch:
+    inputs:
+      artist:
+        description: 'Spotify artist id'
+        required: false
+        default: '1SIocsqdEefUTE6XKGUiVS'
+      capture:
+        description: 'Wayback timestamp of the BEFORE capture'
+        required: false
+        default: '20260803023516'
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install httpx
+      - name: Diff the two track lists
+        env:
+          ARTIST: ${{ inputs.artist }}
+          CAPTURE: ${{ inputs.capture }}
+        run: python .github/scripts/probe_rescope_diff.py
