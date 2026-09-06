@@ -1,0 +1,35 @@
+name: Apply SQL
+
+# Applies a repo SQL file to Supabase over a direct Postgres connection, so
+# function/migration changes (DDL) can be deployed from CI instead of pasted by
+# hand. Requires a SUPABASE_DB_URL secret:
+#   Supabase → Project Settings → Database → Connection string → URI
+#   (use the connection-pooler / "Session" URI; include the password).
+# Files here are idempotent (create table if not exists / create or replace
+# function / add column if not exists), so re-applying is safe.
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: 'SQL file path in the repo to apply'
+        required: true
+        default: 'supabase/vma_user_votes.sql'
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply SQL via psql
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          FILE: ${{ github.event.inputs.file }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret is not set. Add it in the repo Settings → Secrets."
+            exit 1
+          fi
+          if [ ! -f "$FILE" ]; then echo "::error::file not found: $FILE"; exit 1; fi
+          echo "Applying $FILE …"
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f "$FILE"
+          echo "done."
