@@ -41,10 +41,37 @@ GROUPS = [
 FROM = os.environ.get("FROM", "20251220")
 TO = os.environ.get("TO", "20260120")
 UA = {"User-Agent": "Mozilla/5.0 (blinksunited catalog probe)"}
+PACE = float(os.environ.get("PACE", "6"))   # seconds between groups
 
 
 def strip_tags(s):
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", s)).strip()
+
+
+def get(url, tries=5):
+    """The Archive answers 503 under load, and seven back-to-back lookups is
+    load. A 503 here means "later", not "never" — the first run of this probe
+    lost six of seven groups to it and reported "no captures" for pages that
+    almost certainly have them. So back off and retry rather than treating a
+    transient refusal as an answer."""
+    delay = 4
+    last = None
+    for attempt in range(tries):
+        try:
+            r = httpx.get(url, timeout=90, headers=UA, follow_redirects=True)
+            if r.status_code in (429, 503, 504):
+                last = f"{r.status_code} on attempt {attempt + 1}"
+                print(f"    {r.status_code}; waiting {delay}s", flush=True)
+                time.sleep(delay)
+                delay *= 2
+                continue
+            r.raise_for_status()
+            return r
+        except httpx.HTTPError as e:
+            last = str(e)
+            time.sleep(delay)
+            delay *= 2
+    raise RuntimeError(f"gave up after {tries} attempts ({last})")
 
 
 def snapshots(artist_id):
@@ -54,9 +81,7 @@ def snapshots(artist_id):
         f"?url=kworb.net/spotify/artist/{artist_id}_songs.html"
         f"&from={FROM}&to={TO}&output=json&fl=timestamp,statuscode&collapse=timestamp:8"
     )
-    r = httpx.get(url, timeout=90, headers=UA, follow_redirects=True)
-    r.raise_for_status()
-    rows = r.json()
+    rows = get(url).json()
     if not rows or len(rows) < 2:
         return []
     return [t for t, code in rows[1:] if code in ("200", "-")]
@@ -67,9 +92,7 @@ def parse_snapshot(artist_id, ts):
     without its own toolbar injected, which otherwise lands inside the markup we
     are parsing."""
     url = f"https://web.archive.org/web/{ts}id_/https://kworb.net/spotify/artist/{artist_id}_songs.html"
-    r = httpx.get(url, timeout=90, headers=UA, follow_redirects=True)
-    r.raise_for_status()
-    html = r.text
+    html = get(url).text
 
     label = None
     m = re.search(r"Last updated:\s*(\d{4}/\d{2}/\d{2})", html)
@@ -119,7 +142,7 @@ def main():
             print(f"  {ts}: label {label}   total {total:,}   ({n} tracks listed)")
             break
         print(flush=True)
-        time.sleep(1)   # the Archive rate-limits; this probe is not in a hurry
+        time.sleep(PACE)   # the Archive rate-limits; this probe is not in a hurry
 
 
 if __name__ == "__main__":

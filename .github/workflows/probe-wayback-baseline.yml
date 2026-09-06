@@ -16,6 +16,10 @@ on:
         description: 'Window end (YYYYMMDD)'
         required: false
         default: '20260120'
+      pace:
+        description: 'Seconds between groups (the Archive rate-limits)'
+        required: false
+        default: '6'
 
 jobs:
   probe:
@@ -31,4 +35,5 @@ jobs:
         env:
           FROM: ${{ inputs.from }}
           TO: ${{ inputs.to }}
+          PACE: ${{ inputs.pace }}
         run: python .github/scripts/probe_wayback_baseline.py
