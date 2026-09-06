@@ -1,13 +1,19 @@
 name: Probe Wayback for 2026 baselines
 
-# Read-only: does the Internet Archive hold kworb artist pages from around
-# 1 Jan 2026? If so, each group's real starting total is recoverable and
-# "gained in 2026" stops depending on a published list we can't verify.
+# Read-only. Two modes:
+#   baseline (default) — find each group's total at the 2026 boundary, selecting
+#     the capture by its "Last updated" LABEL rather than its capture date.
+#   timeline           — every capture across a window for one group, so a
+#     sudden jump (a kworb re-scope) can be told apart from ordinary growth.
 #
 # Writes nothing.
 on:
   workflow_dispatch:
     inputs:
+      only:
+        description: 'Group name, or "all" for every group'
+        required: false
+        default: 'all'
       from:
         description: 'Window start (YYYYMMDD)'
         required: false
@@ -16,24 +22,40 @@ on:
         description: 'Window end (YYYYMMDD)'
         required: false
         default: '20260120'
+      target_label:
+        description: 'kworb label to select (2026/01/01 = total through 2025-12-31)'
+        required: false
+        default: '2026/01/01'
+      timeline:
+        description: 'Walk every capture in the window instead (1)'
+        required: false
+        default: '0'
+      collapse:
+        description: 'CDX collapse: 8 = one capture per day, 6 = per month'
+        required: false
+        default: '8'
       pace:
-        description: 'Seconds between groups (the Archive rate-limits)'
+        description: 'Seconds between requests (the Archive rate-limits)'
         required: false
         default: '6'
 
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: pip install httpx
-      - name: Look for New Year captures
+      - name: Query the Archive
         env:
+          ONLY: ${{ inputs.only }}
           FROM: ${{ inputs.from }}
           TO: ${{ inputs.to }}
+          TARGET_LABEL: ${{ inputs.target_label }}
+          TIMELINE: ${{ inputs.timeline }}
+          COLLAPSE: ${{ inputs.collapse }}
           PACE: ${{ inputs.pace }}
         run: python .github/scripts/probe_wayback_baseline.py

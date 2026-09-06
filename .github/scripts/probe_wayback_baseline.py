@@ -42,6 +42,15 @@ FROM = os.environ.get("FROM", "20251220")
 TO = os.environ.get("TO", "20260120")
 UA = {"User-Agent": "Mozilla/5.0 (blinksunited catalog probe)"}
 PACE = float(os.environ.get("PACE", "6"))   # seconds between groups
+ONLY = os.environ.get("ONLY", "").strip()
+# The label we actually want, not the capture date. kworb's label runs one day
+# ahead of the streaming day, so 2026/01/01 is the total through 2025-12-31 —
+# the year boundary. Selecting by capture date instead left three groups a day
+# early, because the nearest capture was taken before kworb had published.
+TARGET_LABEL = os.environ.get("TARGET_LABEL", "2026/01/01")
+TIMELINE = os.environ.get("TIMELINE", "0") == "1"
+COLLAPSE = os.environ.get("COLLAPSE", "8")   # 8 = one capture per day, 6 = per month
+CANDIDATES = int(os.environ.get("CANDIDATES", "6"))
 
 
 def strip_tags(s):
@@ -79,7 +88,7 @@ def snapshots(artist_id):
     url = (
         "https://web.archive.org/cdx/search/cdx"
         f"?url=kworb.net/spotify/artist/{artist_id}_songs.html"
-        f"&from={FROM}&to={TO}&output=json&fl=timestamp,statuscode&collapse=timestamp:8"
+        f"&from={FROM}&to={TO}&output=json&fl=timestamp,statuscode&collapse=timestamp:{COLLAPSE}"
     )
     rows = get(url).json()
     if not rows or len(rows) < 2:
@@ -116,7 +125,8 @@ def parse_snapshot(artist_id, ts):
 
 def main():
     print(f"searching archived captures between {FROM} and {TO}\n")
-    for name, aid in GROUPS:
+    targets = [g for g in GROUPS if not ONLY or ONLY.lower() in ("all", "*") or g[0].lower() in ONLY.lower()]
+    for name, aid in targets:
         print(f"=== {name} [{aid}]", flush=True)
         try:
             snaps = snapshots(aid)
@@ -128,9 +138,31 @@ def main():
             continue
         print(f"  {len(snaps)} captures: {', '.join(snaps[:12])}{' …' if len(snaps) > 12 else ''}")
 
-        # Try the captures nearest the New Year boundary first.
+        if TIMELINE:
+            # Every capture in the window, in order — a jump between consecutive
+            # labels is a re-scope; a smooth curve is just streaming.
+            prev = None
+            for ts in sorted(snaps):
+                try:
+                    total, n, label = parse_snapshot(aid, ts)
+                except Exception as e:
+                    print(f"  {ts}: fetch failed: {e}")
+                    continue
+                if total is None:
+                    print(f"  {ts}: no Streams row")
+                    continue
+                delta = f"{total - prev:>+15,}" if prev is not None else " " * 15
+                print(f"  {ts}  label {label}  total {total:>15,}  {delta}  ({n} tracks)", flush=True)
+                prev = total
+                time.sleep(PACE)
+            print(flush=True)
+            continue
+
+        # Select by LABEL, not by capture date: fetch candidates nearest the
+        # boundary and keep the one actually reporting the day we want.
         ordered = sorted(snaps, key=lambda t: abs(int(t[:8]) - 20260101))
-        for ts in ordered[:3]:
+        best = None
+        for ts in ordered[:CANDIDATES]:
             try:
                 total, n, label = parse_snapshot(aid, ts)
             except Exception as e:
@@ -140,7 +172,19 @@ def main():
                 print(f"  {ts}: page fetched but no Streams row (layout differed then?)")
                 continue
             print(f"  {ts}: label {label}   total {total:,}   ({n} tracks listed)")
-            break
+            if label == TARGET_LABEL:
+                best = (ts, total, n, label)
+                break
+            # Keep the closest-but-wrong one as a fallback, preferring a label
+            # that is EARLIER than the target: an early baseline overstates the
+            # gain by a known amount, a late one understates it invisibly.
+            if best is None:
+                best = (ts, total, n, label)
+            time.sleep(PACE / 2)
+        if best:
+            ts, total, n, label = best
+            flag = "" if label == TARGET_LABEL else f"   ⚠ not {TARGET_LABEL}"
+            print(f"  → using {ts}: label {label}   total {total:,}{flag}")
         print(flush=True)
         time.sleep(PACE)   # the Archive rate-limits; this probe is not in a hurry
 
