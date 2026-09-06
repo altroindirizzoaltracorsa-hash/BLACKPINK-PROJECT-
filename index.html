@@ -7230,6 +7230,23 @@ async function validateScrobblerUsername(source, username) {
   return null;
 }
 
+// Pull a clean handle out of whatever gets pasted into the link field — a bare
+// username, a profile URL, or a whole "handle's Music Profile | Last.fm https://…"
+// page title. Without this, a pasted title is stored verbatim and later becomes a
+// board display name (the LALALAMESAA nickname-mismatch bug). Only reshapes the
+// name-based scrobblers; musicat/statsfm ids pass through untouched.
+function sanitizeScrobblerUsername(source, raw) {
+  let u = String(raw || '').trim();
+  if (!(source === 'lastfm' || source === 'librefm' || source === 'listenbrainz')) return u;
+  // 1) A pasted profile URL/title → take the /user/<name> segment.
+  const m = u.match(/(?:last\.fm|libre\.fm|listenbrainz\.org)\/user\/([^/\s?#|]+)/i);
+  if (m) return m[1];
+  // 2) "handle's Music Profile | Last.fm" and similar → the leading token,
+  //    minus any possessive/apostrophe tail.
+  if (/[\s|]/.test(u)) u = u.split(/[\s|]/)[0];
+  return u.replace(/[’'`].*$/, '').trim();
+}
+
 async function addLinkedAccountSettings() {
   const sourceSelect  = document.getElementById('linked-source-select-settings');
   const usernameInput = document.getElementById('linked-username-input-settings');
@@ -7246,7 +7263,7 @@ async function addLinkedAccountSettings() {
     const invalid = await validateScrobblerUsername(source, username);
     if (invalid) { status.textContent = invalid; status.style.display = 'block'; return; }
   }
-  const { error } = await sb.from('linked_accounts').insert({ app_user_id: session.user.id, source, source_username: username });
+  const { error } = await sb.from('linked_accounts').insert({ app_user_id: session.user.id, source, source_username: sanitizeScrobblerUsername(source, username) });
   if (error) {
     status.textContent = error.code === '23505' ? "That account is already linked to a profile." : error.message;
     status.style.display = 'block';
@@ -7307,7 +7324,7 @@ async function addLinkedAccount() {
   const { error } = await sb.from('linked_accounts').insert({
     app_user_id: session.user.id,
     source,
-    source_username: username,
+    source_username: sanitizeScrobblerUsername(source, username),
   });
 
   if (error) {

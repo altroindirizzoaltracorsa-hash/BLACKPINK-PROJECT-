@@ -904,6 +904,13 @@ export default async function handler(req, res) {
             ddududu:  s.daily_ddududu  || 0,
             ltal:     s.daily_ltal     || 0,
             go:       s.daily_go       || 0,
+            // New releases — persisted per-user so the voting board (and badges) can
+            // see them too. Written via a SEPARATE guarded upsert below, so a run
+            // before the column migration lands just no-ops on these.
+            sawadika:    s.daily_sawadika    || 0,
+            click:       s.daily_click       || 0,
+            fallenangel: s.daily_fallenangel || 0,
+            heaven:      s.daily_heaven      || 0,
             by_source: Object.keys(bySrc).length ? bySrc : null,
           });
         }
@@ -1115,6 +1122,31 @@ export default async function handler(req, res) {
           if (bsErr) throw bsErr;
         } catch (e2) {
           console.error('user_daily_counts by_source upsert failed (column migrated yet?):', e2.message || e2);
+        }
+      }
+
+      // New-release per-day counts, written SEPARATELY (same reason as by_source):
+      // a run before the sawadika/click/fallenangel/heaven columns exist no-ops here
+      // instead of failing the totals write above. Re-fetched live each run, so
+      // today's plays fill in on the next run once the columns are present.
+      const nrRows = ids.map(id => {
+        const n = dailyByUser.get(id);
+        return {
+          app_user_id: id, day_key: todayKey,
+          sawadika:    Math.max(n.sawadika    || 0, exMap.get(id)?.sawadika    || 0),
+          click:       Math.max(n.click       || 0, exMap.get(id)?.click       || 0),
+          fallenangel: Math.max(n.fallenangel || 0, exMap.get(id)?.fallenangel || 0),
+          heaven:      Math.max(n.heaven      || 0, exMap.get(id)?.heaven      || 0),
+        };
+      });
+      if (nrRows.length) {
+        try {
+          const { error: nrErr } = await sb
+            .from('user_daily_counts')
+            .upsert(nrRows, { onConflict: 'app_user_id,day_key' });
+          if (nrErr) throw nrErr;
+        } catch (e3) {
+          console.error('user_daily_counts new-release upsert failed (columns migrated yet?):', e3.message || e3);
         }
       }
     } catch (e) {

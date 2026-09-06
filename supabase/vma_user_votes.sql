@@ -100,6 +100,13 @@ as $$
       la.app_user_id::text as app_user_id, la.source_username
     from linked_accounts la
     where la.source_username is not null and la.source_username <> ''
+      -- Ignore malformed handles (a pasted profile title / URL, e.g.
+      -- "lalalamesaa's Music Profile | Last.fm https://…") so a clean handle
+      -- wins and the voting board name matches the streaming board.
+      and la.source_username !~ '\s'          -- no spaces
+      and la.source_username not ilike '%http%'
+      and position('|' in la.source_username) = 0
+      and length(la.source_username) <= 30
     order by la.app_user_id, (la.source = 'lastfm') desc, la.created_at desc
   ),
   streams as (
@@ -109,8 +116,10 @@ as $$
       -- today_streams is display only. New releases (SaWaDiKa/CLICK/EP) have no
       -- columns here, so they can't lift today_streams — which is exactly why the
       -- gate must be "ever", not "today".
-      sum(coalesce(jump,0)+coalesce(shutdown,0)+coalesce(ddududu,0)+coalesce(ltal,0)+coalesce(go,0))     as all_streams,
-      sum((coalesce(jump,0)+coalesce(shutdown,0)+coalesce(ddududu,0)+coalesce(ltal,0)+coalesce(go,0)))
+      sum(coalesce(jump,0)+coalesce(shutdown,0)+coalesce(ddududu,0)+coalesce(ltal,0)+coalesce(go,0)
+          +coalesce(sawadika,0)+coalesce(click,0)+coalesce(fallenangel,0)+coalesce(heaven,0))            as all_streams,
+      sum((coalesce(jump,0)+coalesce(shutdown,0)+coalesce(ddududu,0)+coalesce(ltal,0)+coalesce(go,0)
+           +coalesce(sawadika,0)+coalesce(click,0)+coalesce(fallenangel,0)+coalesce(heaven,0)))
         filter (where day_key::date = (now() at time zone 'America/New_York')::date)                    as today_streams
     from user_daily_counts
     group by app_user_id
