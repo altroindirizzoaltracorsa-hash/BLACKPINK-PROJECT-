@@ -67,14 +67,23 @@
   .tab:hover{color:var(--pink-soft);}
   .tab[aria-selected="true"]{background:#ff2e7718;border-color:#ff2e7788;color:var(--pink-soft);font-weight:700;}
   .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card);}
-  table.log{border-collapse:collapse;width:100%;font-size:11.5px;}
-  table.log th,table.log td{padding:8px 11px;text-align:right;white-space:nowrap;
+  table.log{border-collapse:collapse;width:100%;font-size:11px;}
+  table.log th,table.log td{padding:8px 7px;text-align:right;white-space:nowrap;
        border-bottom:1px solid #2a0f1b;}
-  table.log th{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);
+  table.log th{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);
        font-weight:700;position:sticky;top:0;background:#1b0810;}
+  /* The day column stays put while the rest scrolls, but an opaque sticky column
+     hides what slides under it — and a total losing its leading digits still
+     reads as a valid number (2,989,440,060 becoming 989,440,060). The shadow
+     makes the occlusion visible so a cut number looks cut. */
   table.log td:first-child,table.log th:first-child{text-align:left;color:var(--muted);
-       position:sticky;left:0;background:var(--card);}
+       position:sticky;left:0;background:var(--card);padding-left:11px;
+       box-shadow:7px 0 7px -7px #000c;}
   table.log th:first-child{background:#1b0810;z-index:1;}
+  @media (max-width:360px){
+    table.log{font-size:10.5px;}
+    table.log th,table.log td{padding:7px 5px;}
+  }
   table.log tr:last-child td{border-bottom:none;}
   table.log td.up{color:var(--pink-soft);}
   table.log td.none{color:var(--dim);}
@@ -248,9 +257,14 @@
           if (!r) return '<td class="none">—</td>';
           const dd = num(r.daily_delta);
           // A blank delta is the group's first stored day, not a zero day.
+          // Gains are abbreviated here: seven full-width numbers cannot fit a
+          // phone, so this column scrolls under the sticky day column, and
+          // "+4.55M" losing its head reads as broken where "+4,550,901" losing
+          // its head reads as a smaller but perfectly plausible number. Exact
+          // figures stay one tap away in the tooltip and in the per-group tabs.
           return dd == null
             ? `<td class="none" title="first recorded day · total ${fmt(num(r.total_streams))}">·</td>`
-            : `<td class="up" title="total ${fmt(num(r.total_streams))}">+${fmt(dd)}</td>`;
+            : `<td class="up" title="+${fmt(dd)} · total ${fmt(num(r.total_streams))}">+${big(dd)}</td>`;
         }).join('') + '</tr>').join('') +
         '</tbody></table></div>';
       return;
