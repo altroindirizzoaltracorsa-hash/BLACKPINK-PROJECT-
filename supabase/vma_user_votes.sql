@@ -46,10 +46,13 @@ $$;
 -- (Mon-start) week / this month / all-time (all US-Eastern).
 --
 -- Two rules baked in here (intentionally NOT surfaced to users):
---   • Only accounts that have actually STREAMED (>=1 campaign scrobble ever, from
---     user_daily_counts) are ranked. You can still register votes without
---     streaming — they count in the community total (vma_vote_totals) — you just
---     don't appear on this board or earn badges until you've streamed.
+--   • Only accounts that have actually STREAMED (>=1 tracked scrobble EVER, across
+--     all campaign columns of user_daily_counts) are ranked. You can still register
+--     votes without ever streaming — they count in the community total
+--     (vma_vote_totals) — you just don't appear on this board or earn badges until
+--     you've streamed at least once. NOTE: the gate is "ever", not "today" — a
+--     daily voter who streamed on earlier days (or streams the newer releases,
+--     which don't have their own user_daily_counts columns) must still rank.
 --   • Accounts with no display name are shown as blink1, blink2, … numbered by
 --     when they first voted (stable), instead of a generic "a blink".
 -- Each row also carries `streams` = that account's campaign streams for the
@@ -102,8 +105,12 @@ as $$
   streams as (
     select
       app_user_id,
-      sum(coalesce(jump,0)+coalesce(shutdown,0)+coalesce(ddududu,0)+coalesce(go,0))                     as all_streams,
-      sum((coalesce(jump,0)+coalesce(shutdown,0)+coalesce(ddududu,0)+coalesce(go,0)))
+      -- All tracked campaign columns (incl. ltal). ever_streams is the rank gate;
+      -- today_streams is display only. New releases (SaWaDiKa/CLICK/EP) have no
+      -- columns here, so they can't lift today_streams — which is exactly why the
+      -- gate must be "ever", not "today".
+      sum(coalesce(jump,0)+coalesce(shutdown,0)+coalesce(ddududu,0)+coalesce(ltal,0)+coalesce(go,0))     as all_streams,
+      sum((coalesce(jump,0)+coalesce(shutdown,0)+coalesce(ddududu,0)+coalesce(ltal,0)+coalesce(go,0)))
         filter (where day_key::date = (now() at time zone 'America/New_York')::date)                    as today_streams
     from user_daily_counts
     group by app_user_id
@@ -118,7 +125,8 @@ as $$
       u.first_day, u.app_user_id,
       n.display_name,
       h.source_username as handle,
-      coalesce(s.today_streams, 0) as streams
+      coalesce(s.today_streams, 0) as streams,        -- display: streams on the voting day
+      coalesce(s.all_streams, 0)   as ever_streams    -- rank gate: has this account ever streamed?
     from per_user u
     left join latest_name n using (app_user_id)
     left join handles h on h.app_user_id = u.app_user_id::text
@@ -140,9 +148,10 @@ as $$
       end as name
     from joined j
   )
-  -- Ranked = streaming on the current voting day (>=1 campaign scrobble today).
-  -- Unranked = voted but not streaming today — shown separately, still counted in
-  -- the community total (vma_vote_totals is unchanged).
+  -- Ranked = has streamed at least once EVER (any tracked campaign column).
+  -- Unranked = voted but never streamed — shown separately, still counted in the
+  -- community total (vma_vote_totals is unchanged). `streams` (today) is still
+  -- reported on each row for display, but no longer decides the ranking.
   select json_build_object(
     'ranked', coalesce((
       select json_agg(json_build_object(
@@ -150,14 +159,14 @@ as $$
         'lisa_total', lisa_total, 'lisa_today', lisa_today, 'lisa_week', lisa_week, 'lisa_month', lisa_month,
         'bp_total', bp_total, 'bp_today', bp_today, 'bp_week', bp_week, 'bp_month', bp_month
       ) order by total desc)
-      from numbered where streams >= 1), '[]'::json),
+      from numbered where ever_streams >= 1), '[]'::json),
     'unranked', coalesce((
       select json_agg(json_build_object(
         'name', name, 'total', total, 'today', today, 'week', week, 'month', month, 'streams', streams,
         'lisa_total', lisa_total, 'lisa_today', lisa_today, 'lisa_week', lisa_week, 'lisa_month', lisa_month,
         'bp_total', bp_total, 'bp_today', bp_today, 'bp_week', bp_week, 'bp_month', bp_month
       ) order by total desc)
-      from numbered where streams < 1), '[]'::json)
+      from numbered where ever_streams < 1), '[]'::json)
   );
 $$;
 
