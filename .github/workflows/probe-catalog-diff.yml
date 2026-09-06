@@ -1,0 +1,45 @@
+name: Probe catalog diff vs kworb
+
+# Resolves the catalog probe's single percentage into an actual list of titles:
+# which tracks kworb counts that our discography walk misses, which we count that
+# it doesn't, and which we both count but value differently.
+#
+# Writes nothing.
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Substring filter, e.g. "BLACKPINK". Blank = all seven.'
+        required: false
+        default: 'BLACKPINK'
+      dedupe_titles:
+        description: 'Drop same-title tracks (1) or keep every track ID (0)'
+        required: false
+        default: '0'
+      max_releases:
+        description: 'Discography depth per artist'
+        required: false
+        default: '400'
+      show:
+        description: 'Rows to print per list'
+        required: false
+        default: '40'
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper httpx
+      - name: Diff our catalog against kworb's
+        env:
+          ONLY: ${{ inputs.only }}
+          DEDUPE_TITLES: ${{ inputs.dedupe_titles }}
+          MAX_RELEASES: ${{ inputs.max_releases }}
+          SHOW: ${{ inputs.show }}
+        run: python .github/scripts/probe_catalog_diff.py
