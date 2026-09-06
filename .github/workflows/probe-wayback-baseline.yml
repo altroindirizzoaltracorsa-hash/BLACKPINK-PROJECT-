@@ -1,0 +1,34 @@
+name: Probe Wayback for 2026 baselines
+
+# Read-only: does the Internet Archive hold kworb artist pages from around
+# 1 Jan 2026? If so, each group's real starting total is recoverable and
+# "gained in 2026" stops depending on a published list we can't verify.
+#
+# Writes nothing.
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: 'Window start (YYYYMMDD)'
+        required: false
+        default: '20251220'
+      to:
+        description: 'Window end (YYYYMMDD)'
+        required: false
+        default: '20260120'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install httpx
+      - name: Look for New Year captures
+        env:
+          FROM: ${{ inputs.from }}
+          TO: ${{ inputs.to }}
+        run: python .github/scripts/probe_wayback_baseline.py
