@@ -1,0 +1,56 @@
+name: Seed group catalogs from kworb
+
+# One-time-ish: read the track IDs behind kworb's total for each group, re-fetch
+# every one of them ourselves, and check the two sums agree. BLACKPINK is the
+# control — we already know its catalog is right, so its row must land exactly.
+#
+# With write=1 it commits data/group_catalogs/<artist_id>.json: the list of what
+# is monitored, in the repo, readable. Default is a dry run that writes nothing.
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Substring filter, e.g. "BLACKPINK". Blank = all seven.'
+        required: false
+        default: 'BLACKPINK'
+      write:
+        description: 'Write and commit the JSON lists (1) or dry run (0)'
+        required: false
+        default: '0'
+      list_tracks:
+        description: 'Print every monitored track (1)'
+        required: false
+        default: '0'
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper httpx
+
+      - name: Seed and verify
+        env:
+          ONLY: ${{ inputs.only }}
+          WRITE: ${{ inputs.write }}
+          LIST_TRACKS: ${{ inputs.list_tracks }}
+        run: python .github/scripts/seed_catalog_from_kworb.py
+
+      - name: Commit the lists
+        if: inputs.write == '1'
+        run: |
+          if [ -z "$(git status --porcelain data/group_catalogs)" ]; then
+            echo "nothing changed"; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/group_catalogs
+          git commit -m "data: seed monitored track lists from kworb"
+          git push
