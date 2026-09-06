@@ -1,0 +1,42 @@
+name: Probe group catalogs
+
+# Read-only experiment: build each girl group's Spotify catalog ourselves via
+# spotifyscraper (the same free, keyless path the daily BLACKPINK job uses) and
+# compare the total against kworb's.
+#
+# The point is BLACKPINK's row: we already know that catalog is scoped correctly,
+# so the gap it shows is the probe's own error, and every other group's gap has
+# to be read against it.
+#
+# Writes nothing — no Supabase, no Redis, no commit.
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Substring filter, e.g. "TWICE". Blank = all seven.'
+        required: false
+        default: ''
+      max_releases:
+        description: 'Discography depth per artist'
+        required: false
+        default: '400'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper httpx
+
+      - name: Build catalogs and compare
+        env:
+          ONLY: ${{ inputs.only }}
+          MAX_RELEASES: ${{ inputs.max_releases }}
+        run: python .github/scripts/probe_group_catalog.py
