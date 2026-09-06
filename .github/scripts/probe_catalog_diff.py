@@ -66,6 +66,7 @@ def kworb_songs(artist_id):
 
     total = None
     rows = []
+    sample = [l for l in re.findall(r"<tr[^>]*>.*?</tr>", html, re.S)[:4]]
     for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", html, re.S):
         cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", tr, re.S)
         if not cells:
@@ -79,7 +80,12 @@ def kworb_songs(artist_id):
                 total = int(digits)
             continue
 
-        tm = re.search(r'/track/([0-9A-Za-z]{22})\.html', cells[0])
+        # kworb has used several href shapes for a track over time
+        # (../track/ID.html, /spotify/track/ID.html, an open.spotify.com link).
+        # Match the ID wherever it sits rather than pinning one path, because a
+        # parser that silently yields zero rows reads exactly like "kworb and we
+        # agree on nothing" — which is what the first run of this reported.
+        tm = re.search(r'track/([0-9A-Za-z]{22})', cells[0])
         if not tm:
             continue
         nums = []
@@ -90,7 +96,7 @@ def kworb_songs(artist_id):
         if streams is None:
             continue
         rows.append({"id": tm.group(1), "name": texts[0].lstrip("*").strip(), "streams": streams})
-    return rows, total, day
+    return rows, total, day, sample
 
 
 def build_catalog(client, artist_id):
@@ -149,7 +155,12 @@ def playcounts(client, tracks):
 def report(name, aid, client):
     print(f"\n{'=' * 70}\n=== {name} [{aid}]\n{'=' * 70}", flush=True)
 
-    krows, ktotal, kday = kworb_songs(aid)
+    krows, ktotal, kday, sample = kworb_songs(aid)
+    if not krows:
+        print("PARSE FAILED — no per-track rows matched. Raw sample of the page:")
+        for line in sample:
+            print("   ", line[:300])
+        return
     ksum = sum(r["streams"] for r in krows)
     print(f"kworb: {len(krows)} tracks, rows sum to {ksum:,}, summary says {ktotal:,} (updated {kday})")
     if ktotal and abs(ksum - ktotal) > 1000:
@@ -159,6 +170,23 @@ def report(name, aid, client):
     ours, failed = playcounts(client, tracks)
     osum = sum(v["streams"] for v in ours.values())
     print(f"ours : {len(ours)} tracks from {n_rel} releases, summing {osum:,} (failed {failed}, title-dedupe {'ON' if DEDUPE_TITLES else 'OFF'})")
+
+    # Spotify merges alternate versions: "How You Like That - Live" and "How You
+    # Like That" return the SAME play_count, so summing both counts the song
+    # twice. Group by identical value and keep one per group — the live catalog
+    # job's rule. Report it alongside the raw sum, since the difference between
+    # them IS the double-counting.
+    groups = {}
+    for tid, v in ours.items():
+        groups.setdefault(v["streams"], []).append(v["name"])
+    dup_cost = sum(val * (len(names) - 1) for val, names in groups.items()
+                   if len(names) > 1 and val >= 1_000_000)
+    print(f"       merge-collapsed: {osum - dup_cost:,}   (double-counting removed: {dup_cost:,})")
+    multi = sorted(((v, n) for v, n in groups.items() if len(n) > 1 and v >= 1_000_000),
+                   key=lambda x: -x[0] * (len(x[1]) - 1))
+    print(f"       {len(multi)} merged groups, e.g.:")
+    for val, names in multi[:6]:
+        print(f"         {val:>14,} x{len(names)}  {' | '.join(n[:34] for n in names)}")
 
     kby = {r["id"]: r for r in krows}
     only_k = [r for tid, r in kby.items() if tid not in ours]
