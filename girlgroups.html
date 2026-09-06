@@ -46,6 +46,39 @@
   .lag{color:var(--gold);}
   .err{display:none;font-size:12px;color:#ff5c7a;text-align:center;margin:18px 0;}
   .skel{opacity:.35;}
+
+  /* ---- daily log ---- */
+  .logsec{margin-top:26px;border-top:1px solid var(--line);padding-top:18px;}
+  .loghead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px;}
+  .logtitle{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--pink-soft);}
+  .dl{font:inherit;font-size:10.5px;letter-spacing:.08em;cursor:pointer;white-space:nowrap;
+      background:transparent;color:var(--pink-soft);border:1px solid var(--line);
+      border-radius:8px;padding:6px 11px;transition:border-color .2s,color .2s;}
+  .dl:hover:not(:disabled){border-color:var(--pink);color:var(--pink);}
+  .dl:disabled{opacity:.4;cursor:default;}
+  /* The tab strip scrolls sideways rather than wrapping: eight tabs wrap to two
+     ragged lines on a phone, which reads as a broken layout rather than a list. */
+  .tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;
+        scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{font:inherit;font-size:11px;letter-spacing:.04em;cursor:pointer;white-space:nowrap;
+       background:var(--card);color:var(--muted);border:1px solid var(--line);
+       border-radius:999px;padding:6px 13px;transition:all .18s;}
+  .tab:hover{color:var(--pink-soft);}
+  .tab[aria-selected="true"]{background:#ff2e7718;border-color:#ff2e7788;color:var(--pink-soft);font-weight:700;}
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card);}
+  table.log{border-collapse:collapse;width:100%;font-size:11.5px;}
+  table.log th,table.log td{padding:8px 11px;text-align:right;white-space:nowrap;
+       border-bottom:1px solid #2a0f1b;}
+  table.log th{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);
+       font-weight:700;position:sticky;top:0;background:#1b0810;}
+  table.log td:first-child,table.log th:first-child{text-align:left;color:var(--muted);
+       position:sticky;left:0;background:var(--card);}
+  table.log th:first-child{background:#1b0810;z-index:1;}
+  table.log tr:last-child td{border-bottom:none;}
+  table.log td.up{color:var(--pink-soft);}
+  table.log td.none{color:var(--dim);}
+  .logempty{padding:18px 14px;font-size:11px;color:var(--dim);line-height:1.6;}
 </style>
 </head>
 <body>
@@ -61,6 +94,16 @@
   <div id="list"></div>
 
   <div class="note" id="note"></div>
+
+  <div class="logsec" id="logsec" hidden>
+    <div class="loghead">
+      <div class="logtitle">Daily log</div>
+      <button class="dl" id="dl" disabled>↓ CSV</button>
+    </div>
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <div id="logbody"></div>
+    <div class="note" id="lognote"></div>
+  </div>
 </div>
 
 <script>
@@ -141,6 +184,161 @@
         : '');
   }
 
+  // ---------------------------------------------------------------------------
+  // Daily log. Reads the CSV the nightly job appends to, straight from the repo
+  // — the same raw.githubusercontent path the chart pages already use for data,
+  // so the log needs no endpoint of its own and cannot go stale against the file.
+  // ---------------------------------------------------------------------------
+  const HISTORY_CSV =
+    'https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/group_streams/history.csv';
+
+  // A real parser rather than split(','): the `note` column is written by
+  // csv.DictWriter and gets quoted when it contains a comma, which it does
+  // ("1 track(s) from last-known; 2 merged-value group(s)"). Splitting naively
+  // would shift every column after it.
+  function parseCSV(text) {
+    const rows = [];
+    let row = [], field = '', quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (quoted) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; } else quoted = false;
+        } else field += c;
+      } else if (c === '"') quoted = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c !== '\r') field += c;
+    }
+    if (field !== '' || row.length) { row.push(field); rows.push(row); }
+    if (!rows.length) return [];
+    const head = rows.shift();
+    return rows.filter(r => r.length === head.length && r.some(v => v !== ''))
+               .map(r => Object.fromEntries(head.map((h, i) => [h, r[i]])));
+  }
+
+  let logRows = [], logCsvText = '', logGroups = [], activeTab = 'ALL';
+
+  function num(v) { return v === '' || v == null ? null : Number(v); }
+
+  function renderLog() {
+    const body = document.getElementById('logbody');
+
+    if (!logRows.length) {
+      body.innerHTML = '<div class="tablewrap"><div class="logempty">' +
+        'No days recorded yet. The first row appears after tonight\u2019s fetch.' +
+        '</div></div>';
+      return;
+    }
+
+    const days = [...new Set(logRows.map(r => r.date))].sort().reverse();
+
+    if (activeTab === 'ALL') {
+      // One row per day, one column per group, showing that day's gain. Totals
+      // live on the per-group tabs: seven 11-digit numbers side by side is a
+      // wall, and the gain is what actually differs day to day.
+      const by = {};
+      logRows.forEach(r => { (by[r.date] = by[r.date] || {})[r.group] = r; });
+      body.innerHTML =
+        '<div class="tablewrap"><table class="log"><thead><tr><th>Day</th>' +
+        logGroups.map(g => `<th>${esc(g)}</th>`).join('') +
+        '</tr></thead><tbody>' +
+        days.map(d => '<tr><td>' + esc(d) + '</td>' + logGroups.map(g => {
+          const r = by[d] && by[d][g];
+          if (!r) return '<td class="none">—</td>';
+          const dd = num(r.daily_delta);
+          // A blank delta is the group's first stored day, not a zero day.
+          return dd == null
+            ? `<td class="none" title="first recorded day · total ${fmt(num(r.total_streams))}">·</td>`
+            : `<td class="up" title="total ${fmt(num(r.total_streams))}">+${fmt(dd)}</td>`;
+        }).join('') + '</tr>').join('') +
+        '</tbody></table></div>';
+      return;
+    }
+
+    const mine = logRows.filter(r => r.group === activeTab)
+                        .sort((a, b) => b.date.localeCompare(a.date));
+    body.innerHTML =
+      '<div class="tablewrap"><table class="log"><thead><tr>' +
+      '<th>Day</th><th>Total</th><th>Gained</th><th>Tracks</th>' +
+      '</tr></thead><tbody>' +
+      mine.map(r => {
+        const dd = num(r.daily_delta);
+        return '<tr>' +
+          `<td>${esc(r.date)}</td>` +
+          `<td>${fmt(num(r.total_streams))}</td>` +
+          (dd == null ? '<td class="none">first day</td>' : `<td class="up">+${fmt(dd)}</td>`) +
+          `<td class="none">${esc(r.tracks)}${r.note ? ' <span title="' + esc(r.note) + '">*</span>' : ''}</td>` +
+        '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
+  }
+
+  function renderTabs() {
+    const tabs = document.getElementById('tabs');
+    tabs.innerHTML = ['ALL', ...logGroups].map(t =>
+      `<button class="tab" role="tab" data-tab="${esc(t)}" aria-selected="${t === activeTab}">` +
+      `${t === 'ALL' ? 'All groups' : esc(t)}</button>`).join('');
+    tabs.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+      activeTab = b.dataset.tab;
+      renderTabs();
+      renderLog();
+    }));
+  }
+
+  function loadLog() {
+    document.getElementById('logsec').hidden = false;
+    fetch(HISTORY_CSV, { cache: 'no-store' })
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(text => {
+        logCsvText = text;
+        logRows = parseCSV(text);
+        // Order the columns the way the race above orders the rows, by the most
+        // recent total, so the two halves of the page read the same way.
+        const latest = {};
+        logRows.forEach(r => {
+          const prev = latest[r.group];
+          if (!prev || r.date > prev.date) latest[r.group] = r;
+        });
+        logGroups = Object.keys(latest)
+          .sort((a, b) => num(latest[b].total_streams) - num(latest[a].total_streams));
+
+        const dl = document.getElementById('dl');
+        dl.disabled = false;
+        dl.addEventListener('click', () => {
+          // Built from the text already fetched rather than linking the raw URL:
+          // the download attribute is ignored cross-origin, so a plain link would
+          // navigate away from the page instead of saving the file.
+          const url = URL.createObjectURL(new Blob([logCsvText], { type: 'text/csv;charset=utf-8' }));
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `girlgroup-streams-${new Date().toISOString().slice(0, 10)}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        });
+
+        const dayCount = new Set(logRows.map(r => r.date)).size;
+        document.getElementById('lognote').innerHTML =
+          `<b>What this is.</b> Every group's running Spotify total, fetched by us each night ` +
+          `directly from Spotify off a fixed track list — not read from kworb, so a day kworb ` +
+          `skips or a track it stops listing cannot affect it. A day is recorded only when ` +
+          `Spotify publishes a new one, so a missing row means Spotify had not moved, not that ` +
+          `the job failed. <b>·</b> marks a group's first stored day, which has nothing to ` +
+          `subtract from. A total that FALLS is refused outright rather than stored. ` +
+          `Currently ${dayCount} day${dayCount === 1 ? '' : 's'} across ${logGroups.length} groups.`;
+
+        renderTabs();
+        renderLog();
+      })
+      .catch(e => {
+        document.getElementById('logbody').innerHTML =
+          '<div class="tablewrap"><div class="logempty">Could not load the log (' +
+          esc(e.message) + '). The file appears once the nightly job has run at least once.</div></div>';
+      });
+  }
+
   // Admin-only. The key is the same one the rest of the site stores after the
   // admin unlock on the home page, so there is one login, not two. Sent as a
   // header rather than ?key= to keep it out of URLs, referrers and access logs.
@@ -167,7 +365,7 @@
         }
         return r.json();
       })
-      .then(d => { if (d.error) throw new Error(d.error); render(d); })
+      .then(d => { if (d.error) throw new Error(d.error); render(d); loadLog(); })
       .catch(e => {
         if (e.message === '__401__') {
           locked('That admin key was rejected. Unlock again on the <a href="/" style="color:var(--pink-soft)">home page</a>.');
