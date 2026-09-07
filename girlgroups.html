@@ -88,6 +88,25 @@
   table.log td.up{color:var(--pink-soft);}
   table.log td.none{color:var(--dim);}
   .logempty{padding:18px 14px;font-size:11px;color:var(--dim);line-height:1.6;}
+  /* The all-groups view is a stack of days rather than a day x group matrix.
+     Seven columns of nine-digit numbers cannot fit a phone, so the matrix
+     scrolled sideways — which hid BABYMONSTER off the right edge entirely and
+     pushed me into abbreviating the figures to make truncation look broken.
+     Stacking removes the cause: nothing scrolls, so nothing needs shortening. */
+  .dayblock{border:1px solid var(--line);border-radius:12px;background:var(--card);
+       margin-bottom:8px;overflow:hidden;}
+  .dayhead{padding:8px 12px;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+       color:var(--dim);background:#1b0810;border-bottom:1px solid #2a0f1b;
+       display:flex;justify-content:space-between;gap:10px;}
+  .dayrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+       padding:8px 12px;border-bottom:1px solid #2a0f1b;}
+  .dayrow:last-child{border-bottom:none;}
+  .dayrow .g{font-size:11.5px;color:var(--text);font-weight:700;letter-spacing:.02em;}
+  .dayrow .v{text-align:right;white-space:nowrap;}
+  .dayrow .v b{font-size:12px;color:var(--pink-soft);font-weight:800;}
+  .dayrow .v i{display:block;font-style:normal;font-size:9.5px;color:var(--dim);margin-top:2px;}
+  .dayrow.absent .g{color:var(--dim);font-weight:400;}
+  .dayrow.absent .v b{color:var(--dim);font-weight:400;font-size:11px;}
 </style>
 </head>
 <body>
@@ -243,30 +262,37 @@
     const days = [...new Set(logRows.map(r => r.date))].sort().reverse();
 
     if (activeTab === 'ALL') {
-      // One row per day, one column per group, showing that day's gain. Totals
-      // live on the per-group tabs: seven 11-digit numbers side by side is a
-      // wall, and the gain is what actually differs day to day.
+      // A block per day listing every group down the page. Full figures, no
+      // horizontal scroll, and no group can end up off-screen the way
+      // BABYMONSTER did in the matrix this replaced.
       const by = {};
       logRows.forEach(r => { (by[r.date] = by[r.date] || {})[r.group] = r; });
-      body.innerHTML =
-        '<div class="tablewrap"><table class="log"><thead><tr><th>Day</th>' +
-        logGroups.map(g => `<th>${esc(g)}</th>`).join('') +
-        '</tr></thead><tbody>' +
-        days.map(d => '<tr><td>' + esc(d) + '</td>' + logGroups.map(g => {
-          const r = by[d] && by[d][g];
-          if (!r) return '<td class="none">—</td>';
-          const dd = num(r.daily_delta);
-          // A blank delta is the group's first stored day, not a zero day.
-          // Gains are abbreviated here: seven full-width numbers cannot fit a
-          // phone, so this column scrolls under the sticky day column, and
-          // "+4.55M" losing its head reads as broken where "+4,550,901" losing
-          // its head reads as a smaller but perfectly plausible number. Exact
-          // figures stay one tap away in the tooltip and in the per-group tabs.
-          return dd == null
-            ? `<td class="none" title="first recorded day · total ${fmt(num(r.total_streams))}">·</td>`
-            : `<td class="up" title="+${fmt(dd)} · total ${fmt(num(r.total_streams))}">+${big(dd)}</td>`;
-        }).join('') + '</tr>').join('') +
-        '</tbody></table></div>';
+      body.innerHTML = days.map(d => {
+        const present = logGroups.filter(g => by[d] && by[d][g]);
+        const sum = present.reduce((a, g) => a + (num(by[d][g].daily_delta) || 0), 0);
+        return `<div class="dayblock">
+          <div class="dayhead"><span>${esc(d)}</span>` +
+          (sum ? `<span>+${fmt(sum)} combined</span>` : '<span>first day</span>') +
+          `</div>` +
+          logGroups.map(g => {
+            const r = by[d] && by[d][g];
+            if (!r) {
+              // Deliberately does not name a cause. A group can be missing because
+              // Spotify had not published a new day, because the fetch held, or
+              // because a row was removed as unsound — and the file does not
+              // record which. Asserting one would be a guess wearing a fact's
+              // clothes, which is the failure this whole page keeps hitting.
+              return `<div class="dayrow absent"><div class="g">${esc(g)}</div>` +
+                     `<div class="v"><b>—</b><i>no reading stored</i></div></div>`;
+            }
+            const dd = num(r.daily_delta);
+            // A blank delta is the group's FIRST stored day, not a zero day.
+            return `<div class="dayrow"><div class="g">${esc(g)}</div><div class="v">` +
+              (dd == null ? '<b>first day</b>' : `<b>+${fmt(dd)}</b>`) +
+              `<i>${fmt(num(r.total_streams))} total</i></div></div>`;
+          }).join('') +
+        `</div>`;
+      }).join('');
       return;
     }
 
@@ -339,7 +365,7 @@
           `directly from Spotify off a fixed track list — not read from kworb, so a day kworb ` +
           `skips or a track it stops listing cannot affect it. A day is recorded only when ` +
           `Spotify publishes a new one, so a missing row means Spotify had not moved, not that ` +
-          `the job failed. <b>·</b> marks a group's first stored day, which has nothing to ` +
+          `the job failed. A group's first stored day is labelled as such, having nothing to ` +
           `subtract from. A total that FALLS is refused outright rather than stored. ` +
           `Currently ${dayCount} day${dayCount === 1 ? '' : 's'} across ${logGroups.length} groups.`;
 
