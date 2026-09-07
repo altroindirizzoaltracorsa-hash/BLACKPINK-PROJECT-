@@ -1,0 +1,29 @@
+name: Check track history (query)
+
+# Read-only: print track_daily_stats history for one artist_tracks.name.
+# (The old check-track-history.yml was repurposed to build the Android APK, so
+# this restores the query capability.) Writes nothing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Exact artist_tracks.name to look up'
+        required: true
+        default: 'EYES CLOSED (with ZAYN)'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install httpx
+      - name: Dump track_daily_stats for the requested track
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          TRACK: ${{ inputs.track }}
+        run: python .github/scripts/check-track-history.py
