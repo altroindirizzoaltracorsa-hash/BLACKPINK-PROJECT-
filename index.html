@@ -699,6 +699,10 @@
   .ltal-reminder-steps li::marker { color:var(--pink); font-family:var(--display); }
   .ltal-reminder-steps strong { color:var(--white); }
   .ltal-reminder-foot { font-size:0.72rem; color:rgba(245,240,240,0.4); margin:1.1rem 0 0; }
+  /* VMA Vote Counter update nudge — reuses the .ltal-reminder-* inner styles */
+  #ext-update-overlay { position:fixed; inset:0; z-index:9997; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.82); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); padding:1.1rem; }
+  #ext-update-overlay.active { display:flex; }
+  .ext-update-foot { font-size:0.68rem; color:rgba(245,240,240,0.42); margin:1.15rem 0 0; line-height:1.5; }
   .gh-box { background: var(--card); border: 1px solid rgba(255,0,102,0.25); width: 100%; max-width: 460px; max-height: 86vh; display: flex; flex-direction: column; }
   .gh-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.08); }
   .gh-title { font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pink); }
@@ -2661,6 +2665,24 @@
     <div class="ltal-reminder-actions">
       <button class="btn-primary" onclick="closeLtalReminder(true)">Take me to my profile</button>
       <button class="ltal-reminder-dismiss" onclick="closeLtalReminder(false)">Not now</button>
+    </div>
+  </div>
+</div>
+
+<div id="ext-update-overlay" role="dialog" aria-modal="true" aria-labelledby="ext-update-title">
+  <div class="ltal-reminder-box">
+    <div class="ltal-reminder-badge">Update</div>
+    <h2 class="ltal-reminder-title" id="ext-update-title">New Vote Counter — v1.6.2</h2>
+    <p class="ltal-reminder-body">A new version of the <strong>VMA Vote Counter</strong> browser extension is out. Please download <strong>v1.6.2</strong> and reload it so your votes keep being counted correctly on <strong>vote.mtv.com</strong>.</p>
+    <ol class="ltal-reminder-steps">
+      <li>On the <strong>voting page</strong>, download <strong>v1.6.2</strong> (Desktop or Android).</li>
+      <li>In your browser&rsquo;s <strong>Extensions</strong>, remove the old Vote Counter, then <strong>Load unpacked</strong> the newly unzipped folder.</li>
+      <li>Open the extension &rarr; <strong>Link my account</strong> if it isn&rsquo;t already showing &ldquo;&#9679; Linked&rdquo;.</li>
+    </ol>
+    <p class="ext-update-foot">Already on v1.6.2? You&rsquo;re all set — just close this.</p>
+    <div class="ltal-reminder-actions">
+      <button class="btn-primary" onclick="closeExtUpdate(true)">Get v1.6.2</button>
+      <button class="ltal-reminder-dismiss" onclick="closeExtUpdate(false)">Not now</button>
     </div>
   </div>
 </div>
@@ -7024,6 +7046,30 @@ function maybeShowLtalReminder() {
 }
 window.addEventListener('DOMContentLoaded', maybeShowLtalReminder);
 
+// ── VMA Vote Counter — "new version out" popup ──────────────────────────────
+// One-time nudge telling blinks to download the latest extension. The dismiss
+// key is versioned (EXT_LATEST_VERSION), so the next time we bump the extension
+// and update this constant, the popup automatically re-appears once per user —
+// no need to reset anyone's storage.
+const EXT_LATEST_VERSION = '1.6.2';
+function closeExtUpdate(goVoting) {
+  const ov = document.getElementById('ext-update-overlay');
+  if (ov) ov.classList.remove('active');
+  try { localStorage.setItem('ext_update_dismissed_' + EXT_LATEST_VERSION, '1'); } catch {}
+  if (goVoting) {
+    try { showPage('vote'); } catch (e) {}
+    setTimeout(() => document.getElementById('vv-ext')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 500);
+  }
+}
+function maybeShowExtUpdate() {
+  let dismissed = false;
+  try { dismissed = localStorage.getItem('ext_update_dismissed_' + EXT_LATEST_VERSION) === '1'; } catch (e) {}
+  if (dismissed) return;
+  const ov = document.getElementById('ext-update-overlay');
+  if (ov) setTimeout(() => ov.classList.add('active'), 1600);
+}
+window.addEventListener('DOMContentLoaded', maybeShowExtUpdate);
+
 // After the reset cutoff, remove the Less Than a Lover filter tab from the
 // leaderboard — it has left the campaign rankings.
 // The "Fallen Angel EP" leaderboard group (Fallen Angel · Heaven · Less Than a
@@ -8033,20 +8079,20 @@ function vmaVideoGuidesHtml() {
   </details>`;
 }
 
-// The VMA Vote Counter browser extension (v1.6.0) download + setup block, shown on
+// The VMA Vote Counter browser extension (v1.6.2) download + setup block, shown on
 // the /voting panel to signed-in blinks with a scrobbler linked. The extension
 // auto-counts the votes a fan casts on vote.mtv.com and logs the BLACKPINK/LISA
 // ones to their board — it never votes for them.
 function vmaExtensionHtml() {
-  return `<div class="vv-ext">
+  return `<div class="vv-ext" id="vv-ext">
     <div class="vv-ext-head">
       <span class="vv-ext-title">🧩 VMA Vote Counter — browser extension</span>
-      <span class="vv-ext-ver">v1.6.0</span>
+      <span class="vv-ext-ver">v1.6.2</span>
     </div>
     <div class="vv-ext-sub">Auto-counts the <b>BLACKPINK &amp; LISA</b> votes you cast on <b>vote.mtv.com</b> and logs them straight to this board — no more typing numbers into &ldquo;Add votes&rdquo;. It only reads your own votes; it <b>never votes for you</b>.</div>
     <div class="vv-ext-dl">
-      <a class="vv-ext-btn" href="/vote-extension-v1.6.0-chrome.zip" download>⬇ Desktop <small>Chrome / Chromium</small></a>
-      <a class="vv-ext-btn ghost" href="/vote-extension-v1.6.0-android.zip" download>⬇ Android <small>Edge Canary / Quetta</small></a>
+      <a class="vv-ext-btn" href="/vote-extension-v1.6.2-chrome.zip" download>⬇ Desktop <small>Chrome / Chromium</small></a>
+      <a class="vv-ext-btn ghost" href="/vote-extension-v1.6.2-android.zip" download>⬇ Android <small>Edge Canary / Quetta</small></a>
       <button class="vv-ext-btn ghost" onclick="connectExtension()">🔗 Link my account</button>
     </div>
     <a class="vv-ext-guide" href="/vote-counter-guide.html" target="_blank" rel="noopener">📖 Illustrated step-by-step guide ↗</a>

@@ -130,6 +130,29 @@
       .panel.min{ width:auto; }
       .panel.min .head, .panel.min .body{ display:none; }
       .panel.min .pill{ display:flex; }
+
+      /* ── Resizing ──────────────────────────────────────────────────────────
+         .sized is only set once the grip has been dragged; until then the
+         panel keeps its content-driven height exactly as before. */
+      .panel.sized{ display:flex; flex-direction:column; }
+      .panel.sized .head{ flex:none; }
+      .panel.sized .body{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
+        overflow-y:auto; overflow-x:hidden; }
+      /* Everything keeps its natural height and the activity log absorbs the
+         slack — seeing more of the log is the reason to make this bigger. */
+      .panel.sized .body > *{ flex:0 0 auto; }
+      .panel.sized .log{ flex:1 1 auto; max-height:none; min-height:54px; }
+
+      .grip{ position:absolute; right:0; bottom:0; width:24px; height:24px; z-index:3;
+        display:none; cursor:nwse-resize; touch-action:none; }
+      /* Two nested corner marks — the conventional resize affordance. It has to
+         read without a hover, since on the phone build there isn't one. */
+      .grip::before{ content:""; position:absolute; right:5px; bottom:5px; width:11px; height:11px;
+        border-right:2px solid #ff2e77cc; border-bottom:2px solid #ff2e77cc; border-radius:0 0 4px 0; }
+      .grip::after{ content:""; position:absolute; right:5px; bottom:5px; width:5px; height:5px;
+        border-right:2px solid #ff2e7788; border-bottom:2px solid #ff2e7788; }
+      .grip:hover::before,.grip:hover::after{ border-color:#ff8fb4; }
+      .panel:not(.min) .grip{ display:block; }
     </style>
 
     <div class="panel" id="panel">
@@ -184,6 +207,8 @@
           <span class="brand">blinksunited.com</span>
         </div>
       </div>
+
+      <div class="grip" id="grip" title="Drag to resize · double-click to reset"></div>
     </div>
   `;
 
@@ -195,7 +220,7 @@
   const elLive = $('live'), elStatus = $('status'), elStatusTxt = $('statusTxt'), elMin = $('min');
   const elAccts = $('accts');
   const elSyncToggle = $('syncToggle'), elSyncSub = $('syncSub');
-  const elPill = $('pill'), elPillNum = $('pillnum');
+  const elPill = $('pill'), elPillNum = $('pillnum'), elGrip = $('grip');
   let acctOpen = false;
   let syncView = null; // last server-merged { bp, lisa, total, accounts } when sync is on
 
@@ -305,7 +330,7 @@
     if (at) at.onclick = () => { acctOpen = !acctOpen; refresh(); };
   }
 
-  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin'];
+  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize'];
   function refresh() { chrome.storage.local.get(KEYS, (s) => { applyLayout(s); render(s); }); }
 
   // React to background updates immediately.
@@ -369,11 +394,77 @@
     if (pos && typeof pos.left === 'number') {
       elPanel.style.left = pos.left + 'px'; elPanel.style.top = pos.top + 'px'; elPanel.style.right = 'auto';
     }
+    // The pill is never sized — collapsing drops back to its natural chip size,
+    // and expanding restores whatever the panel was resized to.
+    const size = s.buPanelSize;
+    if (!min && size && typeof size.w === 'number') applySize(size.w, size.h);
+    else clearSizeStyles();
   }
   let justDragged = false;
   const setMin = (v) => chrome.storage.local.set({ buPanelMin: v });
   elMin.onclick = (e) => { e.stopPropagation(); if (!justDragged) setMin(true); };
   elPill.addEventListener('click', () => { if (!justDragged) setMin(false); });
+
+  // ── resize (drag the corner grip; double-click it to go back to default) ──
+  // Pointer events, like the drag handler below, so it works with touch on Kiwi.
+  const MIN_W = 232, MIN_H = 200;  // below this the splits/log layout breaks up
+  const maxW = () => Math.max(MIN_W, window.innerWidth - 8);
+  const maxH = () => Math.max(MIN_H, window.innerHeight - 8);
+
+  function applySize(w, h) {
+    const cw = Math.round(Math.max(MIN_W, Math.min(maxW(), w)));
+    const ch = Math.round(Math.max(MIN_H, Math.min(maxH(), h)));
+    elPanel.style.width = cw + 'px';
+    elPanel.style.height = ch + 'px';
+    elPanel.classList.add('sized');
+    return { w: cw, h: ch };
+  }
+  function clearSizeStyles() {
+    elPanel.style.width = ''; elPanel.style.height = '';
+    elPanel.classList.remove('sized');
+  }
+
+  let rs = null;
+  elGrip.addEventListener('pointerdown', (e) => {
+    const r = elPanel.getBoundingClientRect();
+    // The panel is anchored by `right` until it has been moved. Resizing from a
+    // right-anchored edge grows it leftwards and the grip stays put under your
+    // finger, so pin it to left/top first and the corner follows the pointer.
+    if (!elPanel.style.left) {
+      elPanel.style.left = r.left + 'px'; elPanel.style.top = r.top + 'px'; elPanel.style.right = 'auto';
+    }
+    rs = { sx: e.clientX, sy: e.clientY, w: r.width, h: r.height };
+    e.preventDefault(); e.stopPropagation();
+    if (elGrip.setPointerCapture) { try { elGrip.setPointerCapture(e.pointerId); } catch (_) {} }
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!rs) return;
+    applySize(rs.w + (e.clientX - rs.sx), rs.h + (e.clientY - rs.sy));
+    e.preventDefault();
+  }, { passive: false });
+  function endResize() {
+    if (!rs) return;
+    rs = null;
+    const r = elPanel.getBoundingClientRect();
+    chrome.storage.local.set({
+      buPanelSize: { w: Math.round(r.width), h: Math.round(r.height) },
+      buPanelPos: { left: Math.round(r.left), top: Math.round(r.top) },
+    });
+  }
+  window.addEventListener('pointerup', endResize);
+  window.addEventListener('pointercancel', endResize);
+  elGrip.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    clearSizeStyles();
+    chrome.storage.local.remove('buPanelSize');
+  });
+  // Re-clamp after a rotate or window resize, so a size saved on a big screen
+  // can't leave the panel taller than the phone it's opened on next.
+  window.addEventListener('resize', () => {
+    if (!elPanel.classList.contains('sized')) return;
+    const r = elPanel.getBoundingClientRect();
+    chrome.storage.local.set({ buPanelSize: applySize(r.width, r.height) });
+  });
 
   // ── drag (pointer events → works with touch on Kiwi/mobile) ──
   let drag = null;
