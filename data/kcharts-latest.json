@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-07T16:07:26.063Z",
+  "generatedAt": "2026-09-07T20:12:39.508Z",
   "date": "2026-09-07",
   "source": "https://xn--o39an51b2re.com",
   "charts": [
@@ -21,18 +21,9 @@
       "kr": "실시간 차트",
       "label": "Melon · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/melon/realtime",
-      "available": true,
-      "totalRows": 100,
-      "entries": [
-        {
-          "rank": 94,
-          "previous": 72,
-          "song": "toxic till the end",
-          "artists": "로제 (ROSÉ)",
-          "member": "ROSÉ",
-          "link": "https://www.melon.com/song/detail.htm?songId=38300904"
-        }
-      ]
+      "available": false,
+      "totalRows": 0,
+      "entries": []
     },
     {
       "key": "melon-realtime-5-min",
@@ -614,7 +605,7 @@
       "label": "Melon · Newest (1w)",
       "url": "https://xn--o39an51b2re.com/chart/melon/newest-w1",
       "available": true,
-      "totalRows": 64,
+      "totalRows": 65,
       "entries": [
         {
           "rank": 1,
@@ -661,8 +652,8 @@
           "link": "https://www.melon.com/song/detail.htm?songId=602993117"
         },
         {
-          "rank": 17,
-          "previous": 17,
+          "rank": 18,
+          "previous": 18,
           "song": "HEAVEN",
           "artists": "제니 (JENNIE)",
           "member": "JENNIE",
@@ -881,58 +872,9 @@
       "kr": "실시간 차트",
       "label": "Genie · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/genie/realtime",
-      "available": true,
-      "totalRows": 250,
-      "entries": [
-        {
-          "rank": 71,
-          "previous": 45,
-          "song": "뛰어(JUMP)",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=110931419"
-        },
-        {
-          "rank": 79,
-          "previous": 71,
-          "song": "toxic till the end",
-          "artists": "로제 (ROSÉ)",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108575614"
-        },
-        {
-          "rank": 107,
-          "previous": 91,
-          "song": "like JENNIE",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=109342665"
-        },
-        {
-          "rank": 127,
-          "previous": 110,
-          "song": "APT.",
-          "artists": "로제 (ROSÉ), 로제 (ROSÉ) & Bruno Mars, Bruno Mars",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108107291"
-        },
-        {
-          "rank": 131,
-          "previous": 92,
-          "song": "Less than a Lover",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=116078119"
-        },
-        {
-          "rank": 180,
-          "previous": 164,
-          "song": "FALLEN ANGEL",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=116605149"
-        }
-      ]
+      "available": false,
+      "totalRows": 0,
+      "entries": []
     },
     {
       "key": "genie-daily",
@@ -1157,24 +1099,24 @@
       "totalRows": 100,
       "entries": [
         {
-          "rank": 59,
-          "previous": 52,
+          "rank": 61,
+          "previous": 61,
           "song": "APT.",
           "artists": "로제 (ROSÉ), Bruno Mars",
           "member": "ROSÉ",
           "link": "https://www.music-flo.com/detail/track/517125479/details"
         },
         {
-          "rank": 66,
-          "previous": 66,
+          "rank": 69,
+          "previous": 69,
           "song": "뛰어(JUMP)",
           "artists": "BLACKPINK",
           "member": "BLACKPINK",
           "link": "https://www.music-flo.com/detail/track/547505427/details"
         },
         {
-          "rank": 76,
-          "previous": 74,
+          "rank": 77,
+          "previous": 77,
           "song": "like JENNIE",
           "artists": "제니 (JENNIE)",
           "member": "JENNIE",
@@ -1189,8 +1131,8 @@
           "link": "https://www.music-flo.com/detail/track/522311944/details"
         },
         {
-          "rank": 81,
-          "previous": 81,
+          "rank": 84,
+          "previous": 82,
           "song": "Less than a Lover",
           "artists": "제니 (JENNIE)",
           "member": "JENNIE",
@@ -1417,7 +1359,7 @@
   ],
   "summary": {
     "chartsChecked": 26,
-    "chartsAvailable": 25,
-    "totalEntries": 138
+    "chartsAvailable": 23,
+    "totalEntries": 131
   }
 }
