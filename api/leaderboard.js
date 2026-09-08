@@ -1221,6 +1221,106 @@ export default async function handler(req, res) {
     });
   }
 
+  // ── POST /api/leaderboard?action=backfill-newrelease&key=ADMIN[&from=YYYY-MM-DD][&to=YYYY-MM-DD][&dry=1] ──
+  // Backfill the per-user SaWaDiKa / CLICK / Fallen Angel / Heaven daily counts into
+  // user_daily_counts for PAST days, recovered from the finalized daily
+  // leaderboard_archive snapshots (each froze every user's scores.daily_* while it
+  // was that day). This lets the badges "Today's Challenge" breakdown show those
+  // songs for days before user_daily_counts had columns for them. Max-merge — only
+  // ever raises a value; writes ONLY the new-release columns (same guarded upsert
+  // the cron uses, so core counts are never touched). Keyed on the archive entry's
+  // signed-in owner id, and only when the frozen daily_date matches the archive day
+  // (a flipped early-bird row is skipped). from defaults to the Fallen Angel EP
+  // release day. ?dry=1 previews per-day what is recoverable without writing.
+  if (req.method === 'POST' && action === 'backfill-newrelease') {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'unauthorized' });
+    const dry = req.query.dry === '1';
+    const sb = supabase();
+    if (!sb) return res.status(503).json({ error: 'Server not configured' });
+    const from = (req.query.from || '2026-08-28').trim();
+    const to   = (req.query.to || serverItalyDayKey(0)).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to))
+      return res.status(400).json({ error: 'from/to must be YYYY-MM-DD' });
+
+    const NR = ['sawadika', 'click', 'fallenangel', 'heaven'];
+
+    const { data: archives, error: aerr } = await sb
+      .from('leaderboard_archive')
+      .select('period_key, users')
+      .eq('period', 'daily').gte('period_key', from).lte('period_key', to)
+      .order('period_key', { ascending: true });
+    if (aerr) return res.status(500).json({ error: aerr.message });
+
+    // Desired (owner id, day) -> new-release values, recovered from the archives.
+    const want = new Map();
+    for (const a of (archives || [])) {
+      const day = a.period_key;
+      const [, M, D] = day.split('-');
+      const dayDDMM = `${D}/${M}`;
+      for (const u of Object.values(a.users || {})) {
+        const uid = u && u.appUserId;
+        const s = u && u.scores;
+        if (!uid || !s) continue;
+        if (s.daily_date && s.daily_date !== dayDDMM) continue; // flipped to another day
+        let any = 0; const vals = {};
+        for (const id of NR) { const v = Math.max(0, Number(s['daily_' + id]) || 0); vals[id] = v; any += v; }
+        if (any <= 0) continue;
+        const key = uid + '|' + day;
+        const prev = want.get(key);
+        if (prev) { for (const id of NR) prev[id] = Math.max(prev[id], vals[id]); }
+        else want.set(key, { uid, day, ...vals });
+      }
+    }
+
+    // Per-day recoverability report.
+    const perDay = {};
+    for (const w of want.values()) {
+      const p = perDay[w.day] || (perDay[w.day] = { day: w.day, users: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 });
+      p.users++;
+      for (const id of NR) p[id] += w[id];
+    }
+    const report = Object.keys(perDay).sort().map(d => perDay[d]);
+
+    let written = 0;
+    if (!dry && want.size) {
+      const byDay = new Map();
+      for (const w of want.values()) { if (!byDay.has(w.day)) byDay.set(w.day, []); byDay.get(w.day).push(w); }
+      for (const [day, list] of byDay) {
+        const ids = list.map(w => w.uid);
+        const exMap = new Map();
+        for (let i = 0; i < ids.length; i += 300) {
+          const { data: ex, error: exErr } = await sb.from('user_daily_counts')
+            .select('app_user_id,sawadika,click,fallenangel,heaven')
+            .eq('day_key', day).in('app_user_id', ids.slice(i, i + 300));
+          if (exErr) return res.status(500).json({ error: exErr.message });
+          for (const r of (ex || [])) exMap.set(r.app_user_id, r);
+        }
+        const rows = list.map(w => {
+          const ex = exMap.get(w.uid) || {};
+          const row = { app_user_id: w.uid, day_key: day };
+          for (const id of NR) row[id] = Math.max(w[id], Number(ex[id]) || 0);
+          return row;
+        });
+        for (let i = 0; i < rows.length; i += 500) {
+          const { error } = await sb.from('user_daily_counts')
+            .upsert(rows.slice(i, i + 500), { onConflict: 'app_user_id,day_key' });
+          if (error) return res.status(500).json({ error: error.message });
+          written += Math.min(500, rows.length - i);
+        }
+      }
+    }
+
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({
+      dry, from, to,
+      archivesScanned: (archives || []).length,
+      daysWithData: report.length,
+      rowsWanted: want.size,
+      written,
+      perDay: report,
+    });
+  }
+
   // ── POST /api/leaderboard?action=repair-daily-archive&key=ADMIN&day=YYYY-MM-DD[&dry=1] ──
   // Repair a finalized daily board that froze early-bird visitors' NEXT-day counts
   // (the rollover-archive race). Overrides each user's daily_* in the archived
