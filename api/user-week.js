@@ -43,13 +43,18 @@ export default async function handler(req, res) {
 
   try {
     const BASE = 'day_key,jump,shutdown,ddududu,ltal,go';
-    // Prefer the per-scrobbler breakdown; fall back to totals-only if the by_source
-    // column isn't migrated yet, so the weekly-grid floor keeps working meanwhile.
-    let data, hasBySource = true;
-    let r = await runQuery(BASE + ',by_source');
-    if (r.error) { hasBySource = false; r = await runQuery(BASE); }
+    // The newer releases (LISA SaWaDiKa, JISOO CLICK, JENNIE's Fallen Angel EP) are
+    // stored in their own columns; include them so the badges "Today's Challenge"
+    // breakdown counts them like the campaign tracks. Both the new-release columns
+    // and by_source were added after this table's first migration, so degrade in
+    // tiers: full → totals+new → totals-only, keeping the grid working meanwhile.
+    const NEW = 'sawadika,click,fallenangel,heaven';
+    let hasBySource = true, hasNew = true;
+    let r = await runQuery(`${BASE},${NEW},by_source`);
+    if (r.error) { hasBySource = false; r = await runQuery(`${BASE},${NEW}`); }
+    if (r.error) { hasNew = false;      r = await runQuery(BASE); }
     if (r.error) return res.status(200).json({ days: {} });
-    data = r.data;
+    const data = r.data;
 
     const days = {};
     for (const row of (data || [])) {
@@ -59,6 +64,10 @@ export default async function handler(req, res) {
         ddududu:  row.ddududu  || 0,
         ltal:     row.ltal     || 0,
         go:       row.go       || 0,
+        sawadika:    hasNew ? (row.sawadika    || 0) : 0,
+        click:       hasNew ? (row.click       || 0) : 0,
+        fallenangel: hasNew ? (row.fallenangel || 0) : 0,
+        heaven:      hasNew ? (row.heaven      || 0) : 0,
         by_source: hasBySource ? (row.by_source || null) : null,
       };
     }

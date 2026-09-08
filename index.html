@@ -10450,7 +10450,9 @@ function showStampDetail(dateKey) {
   el.dataset.date = dateKey;
   el.style.display = 'block';
 
-  const histTotal = hist ? (hist.jump||0)+(hist.shutdown||0)+(hist.ddududu||0)+(hist.ltal||0)+(hist.go||0) : 0;
+  // Sum every tracked song (campaign + SaWaDiKa/CLICK/Fallen Angel EP), so the
+  // day total matches the per-track rows below.
+  const histTotal = hist ? TRACKS.reduce((n, t) => n + (hist[t.id] || 0), 0) : 0;
 
   // Per-track totals for the day (server history), only tracks with plays. Tapping a
   // song opens the same breakdown popup the badges page uses, showing THAT song's
@@ -10543,7 +10545,7 @@ function renderStampCalendar() {
         const stamps  = archive[key];
         const hasStamp = stamps && Object.keys(stamps).length > 0;
         const hist     = _histByDay[key];
-        const histTotal = hist ? (hist.jump||0)+(hist.shutdown||0)+(hist.ddududu||0)+(hist.ltal||0)+(hist.go||0) : 0;
+        const histTotal = hist ? TRACKS.reduce((n, t) => n + (hist[t.id] || 0), 0) : 0;
         const hasData  = hasStamp || histTotal > 0;
         const isToday  = key === todayStr;
         const isFuture = key > todayStr;
