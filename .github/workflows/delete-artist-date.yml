@@ -1,0 +1,35 @@
+name: Delete artist date rows
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Set to 'true' to delete. Leave 'false' for a dry-run."
+        required: false
+        default: "false"
+      artist:
+        description: "artist_id to target"
+        required: false
+        default: "250b0Wlc5Vk0CoUsaCY84M"
+      date:
+        description: "date (YYYY-MM-DD) to delete"
+        required: false
+        default: "2026-08-04"
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install httpx
+      - name: Delete artist/date rows
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          APPLY: ${{ github.event.inputs.apply == 'true' && '1' || '0' }}
+          DELETE_ARTIST: ${{ github.event.inputs.artist }}
+          DELETE_DATE: ${{ github.event.inputs.date }}
+        run: python .github/scripts/delete-artist-date.py

@@ -1,0 +1,27 @@
+name: Probe track play_count
+
+# Read-only: print the CURRENT Spotify play_count for the given track IDs via the
+# same spotifyscraper the catalog fetch uses. Writes nothing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      track_ids:
+        description: 'Comma-separated Spotify track IDs'
+        required: true
+        default: '0CC8DrwncRXH6MqAL5A90O,0eOpWsum2W5l1KLxJ4QVcM,0IHmXRAKcRd00l50QW5pQU,4tPfvkQAA3q6PF6bkBhvB0,4HB3f71StsELKzgk2iV9mM'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper
+      - name: Fetch current play_count
+        env:
+          TRACK_IDS: ${{ inputs.track_ids }}
+        run: python .github/scripts/probe_track_playcount.py

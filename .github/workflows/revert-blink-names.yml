@@ -1,0 +1,40 @@
+name: Revert wrongly auto-assigned blinkN names (one-off)
+
+# One-off cleanup: an earlier build auto-assigned "blinkN" display names on EVERY
+# sign-in, so existing fans who never chose a display name got converted too (they
+# should have kept their handle). This calls the admin revert endpoint on the Vercel
+# app (which has working Supabase credentials), clearing display_name from every auth
+# profile that holds a ^blink\d+$ name created BEFORE the feature deployed. The next
+# cron run relabels their board row back to their handle. Genuine new signups keep
+# their blinkN. Runs a preview by default — set dry_run=false to actually write.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'true = preview only (default); false = actually clear the names'
+        required: false
+        default: 'true'
+
+jobs:
+  revert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call admin revert endpoint
+        run: |
+          set -e
+          DRY="${{ github.event.inputs.dry_run }}"
+          if [ "$DRY" = "false" ]; then DRYVAL=0; else DRYVAL=1; fi
+          code=$(curl -s -L --location-trusted -o resp.json -w "%{http_code}" -G \
+            --data-urlencode "action=revert-auto-blink" \
+            --data-urlencode "key=${{ secrets.ADMIN_KEY }}" \
+            --data-urlencode "dry=$DRYVAL" \
+            "${{ secrets.VERCEL_URL }}/api/leaderboard")
+          echo "HTTP $code"
+          echo "--- response ---"
+          cat resp.json
+          echo ""
+          echo "--- summary ---"
+          jq -r '"dry: \(.dry) · scanned: \(.scanned) · reverted: \(.revertedCount) · kept new signups: \(.keptNew | length)"' resp.json || true
+          jq -r '"reverted: \(.reverted | join(", "))"' resp.json || true
+          jq -r '"kept: \(.keptNew | join(", "))"' resp.json || true
+          if [ "$code" -ge 400 ]; then exit 1; fi

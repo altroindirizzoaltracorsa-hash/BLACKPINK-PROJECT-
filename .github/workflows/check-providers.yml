@@ -1,0 +1,30 @@
+name: Check Providers (read-only)
+# Read-only: curl the Musicat + Stats.fm proxy endpoints the leaderboard cron
+# now calls, to confirm they actually return track/today data server-side.
+on:
+  workflow_dispatch:
+    inputs:
+      musicat:
+        description: 'Musicat username'
+        required: false
+        default: 'souralis'
+      statsfm:
+        description: 'Stats.fm username'
+        required: false
+        default: 'demibandwout'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check
+        env:
+          M: ${{ github.event.inputs.musicat }}
+          S: ${{ github.event.inputs.statsfm }}
+        run: |
+          echo "=== Musicat: $M ==="
+          curl -sS -L "https://blinksunited.com/api/proxy-image?musicat_user=$M" | head -c 2000
+          echo ""
+          echo "=== Stats.fm: $S ==="
+          curl -sS -L "https://blinksunited.com/api/statsfm?user=$S" | head -c 2000
+          echo ""

@@ -1,0 +1,61 @@
+name: Verify CLICK on leaderboard
+
+# On-demand check that CLICK is being counted on the leaderboard: forces a
+# scrobble refresh (same endpoint the hourly job hits), then reads the public
+# leaderboard JSON and reports the CLICK totals + top contributors. Safe /
+# read-only apart from the refresh it triggers (which is the normal hourly job).
+
+on:
+  workflow_dispatch:
+    inputs:
+      refresh:
+        description: 'Force a refresh first (true) or just read the current board (false)'
+        required: false
+        default: 'true'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refresh scrobbles (optional)
+        if: ${{ github.event.inputs.refresh != 'false' }}
+        run: |
+          set -e
+          code=$(curl -s -L --location-trusted -o /tmp/refresh.json -w "%{http_code}" -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.VERCEL_URL }}/api/cron-scrobbles")
+          echo "refresh HTTP $code"
+          jq -r '"refreshed: \(.refreshed | length) · failed: \(.failed | length)"' /tmp/refresh.json || true
+          if [ "$code" -ge 400 ]; then echo "refresh failed"; cat /tmp/refresh.json; exit 1; fi
+
+      - name: Read leaderboard + report CLICK
+        run: |
+          curl -sfL "https://blinksunited.com/api/leaderboard" -o /tmp/lb.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/lb.json'))
+          users = d.get('users', {})
+          print("lastUpdated:", d.get('lastUpdated'))
+          print("total entries:", len(users))
+          rows = []
+          tot_daily = tot_overall = tot_weekly = 0
+          for key, e in users.items():
+              s = e.get('scores') or {}
+              dc = s.get('daily_click', 0) or 0
+              oc = s.get('overall_click', 0) or 0
+              wc = s.get('weekly_click', 0) or 0
+              tot_daily += dc; tot_overall += oc; tot_weekly += wc
+              if oc or dc or wc:
+                  rows.append((oc, dc, wc, key))
+          print(f"\nCLICK totals across board — overall: {tot_overall} · today: {tot_daily} · week: {tot_weekly}")
+          print(f"contributors with any CLICK: {len(rows)}")
+          rows.sort(reverse=True)
+          print("\ntop CLICK contributors (overall / today / week — key):")
+          for oc, dc, wc, key in rows[:15]:
+              print(f"  {oc:>6} / {dc:>5} / {wc:>5}  —  {key}")
+          if not rows:
+              print("  (none yet — no linked scrobbler has reported a counted CLICK play in this refresh)")
+          # Sanity: confirm the field exists at all in the stored scores schema.
+          any_scores = next((e.get('scores') for e in users.values() if e.get('scores')), {})
+          print("\nscore keys present include 'daily_click':", 'daily_click' in (any_scores or {}))
+          PY

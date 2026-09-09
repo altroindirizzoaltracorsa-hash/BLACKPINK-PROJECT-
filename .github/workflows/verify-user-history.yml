@@ -1,0 +1,31 @@
+name: Verify user history endpoint (one-off)
+
+# One-off check: fetch a user's daily history (api/user-week) and show whether the
+# per-scrobbler by_source breakdown is populated. Safe to delete after use.
+on:
+  workflow_dispatch:
+    inputs:
+      appUserId:
+        description: 'app_user_id to inspect'
+        required: true
+      from:
+        description: 'from day_key YYYY-MM-DD (e.g. month start)'
+        required: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch history
+        run: |
+          set -e
+          code=$(curl -s -L --location-trusted -o resp.json -w "%{http_code}" -G \
+            --data-urlencode "appUserId=${{ github.event.inputs.appUserId }}" \
+            --data-urlencode "from=${{ github.event.inputs.from }}" \
+            "${{ secrets.VERCEL_URL }}/api/user-week")
+          echo "HTTP $code"
+          echo "--- days (day → total → has by_source) ---"
+          jq -r '.days | to_entries[] | "\(.key)  total=\((.value.jump+.value.shutdown+.value.ddududu+.value.ltal+.value.go))  by_source=\(if .value.by_source then (.value.by_source|keys|join(", ")) else "—" end)"' resp.json || cat resp.json
+          echo "--- newest day by_source detail ---"
+          jq -r '.days | to_entries | sort_by(.key) | last | .value.by_source' resp.json || true
+          if [ "$code" -ge 400 ]; then exit 1; fi

@@ -1,0 +1,33 @@
+name: Fix JENNIE EP Aggregate
+
+# One-off: fold the Fallen Angel EP into JENNIE's artist-level daily totals/deltas
+# for Aug 28 - Sep 1 (recompute from her per-track sums). Dry-run by default.
+# Safe to delete once run.
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Set to 'true' to WRITE the fix. Blank/false = dry-run (read-only)."
+        required: false
+        default: ""
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install httpx
+        run: pip install httpx
+
+      - name: Fix JENNIE EP aggregate (dry-run unless apply=true)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          APPLY: ${{ github.event.inputs.apply == 'true' && '1' || '' }}
+        run: python .github/scripts/fix_jennie_ep_aggregate.py

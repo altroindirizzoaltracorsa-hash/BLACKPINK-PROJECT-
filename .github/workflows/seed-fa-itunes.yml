@@ -1,0 +1,26 @@
+name: Seed Fallen Angel iTunes results
+
+# One-shot: writes the Fallen Angel EP iTunes results (EP #1 in 15 countries;
+# Fallen Angel 30 / Heaven 34 charting markets) into the Campaign Goals backend.
+# Admin-only panel. Idempotent — safe to re-run.
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL (leave blank for production).'
+        required: false
+        default: ''
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Seed FA iTunes results
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          VERCEL_URL: ${{ inputs.base_url != '' && inputs.base_url || 'https://blinksunited.com' }}
+        run: node .github/scripts/seed_fa_itunes.mjs

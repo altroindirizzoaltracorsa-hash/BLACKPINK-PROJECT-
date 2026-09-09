@@ -1,0 +1,23 @@
+name: Fix Track History
+
+# On-demand correction of the DDU-DU DDU-DU campaign card after the Aug-17
+# version-merge spike froze its only-up counter. Dry-run by default.
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Set to 'true' to WRITE the fix. Blank/false = dry-run (read-only)."
+        required: false
+        default: ""
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Diagnose / fix DDU-DU campaign card (dry-run unless apply=true)
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          APPLY: ${{ github.event.inputs.apply == 'true' && '1' || '' }}
+        run: python3 .github/scripts/fix_campaign_ddududu.py

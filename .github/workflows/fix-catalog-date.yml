@@ -1,0 +1,30 @@
+name: Fix Catalog Date
+on:
+  workflow_dispatch:
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete wrong 03/08 entry
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          curl -sfL "https://blinksunited.com/api/streams" \
+            -G \
+            --data-urlencode "catalog=1" \
+            --data-urlencode "action=delete" \
+            --data-urlencode "date=03/08" \
+            --data-urlencode "key=${ADMIN_KEY}"
+          echo ""
+      - name: Add correct 02/08 entry
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          curl -sfL "https://blinksunited.com/api/streams" \
+            -G \
+            --data-urlencode "catalog=1" \
+            --data-urlencode "action=set" \
+            --data-urlencode "total=17595602852" \
+            --data-urlencode "date=02/08" \
+            --data-urlencode "key=${ADMIN_KEY}"
+          echo ""

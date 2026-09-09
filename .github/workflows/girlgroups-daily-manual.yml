@@ -1,0 +1,59 @@
+name: Girl group streams (manual)
+
+# The daily recorder runs inside fetch-catalog.yml behind
+# `needs: fetch-artist-streams`, which is right for production — the two must
+# never fetch at once — but it also means the group job cannot be exercised
+# without triggering a real Supabase write outside Spotify's update window.
+#
+# This is that missing path: the same script, on demand, defaulting to a dry run
+# that reports what it WOULD record and writes nothing. Also the way to seed the
+# first day, or to backfill one with an explicit label.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report without writing (1) or actually record (0)'
+        required: false
+        default: '1'
+      override_date:
+        description: 'Force the streaming-day label, e.g. 2026-09-04 (seeding/backfill only)'
+        required: false
+        default: ''
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper
+
+      - name: Fetch the seven group totals
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          OVERRIDE_DATE: ${{ inputs.override_date }}
+        run: python .github/scripts/fetch_group_streams.py
+
+      - name: Commit the day
+        if: inputs.dry_run != '1'
+        run: |
+          if [ -z "$(git status --porcelain data/group_streams)" ]; then
+            echo "nothing new recorded"; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/group_streams
+          git commit -m "data: girl group streams $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "push failed after 3 attempts"; exit 1

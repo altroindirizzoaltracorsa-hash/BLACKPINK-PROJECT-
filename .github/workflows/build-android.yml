@@ -1,0 +1,73 @@
+name: Build Android APK
+
+# Builds the Blinks United VMA Vote Counter Android app (android-app/) into a signed
+# release APK and commits it to the repo root as blinks-united-vote-counter.apk, so the
+# site can offer it as a direct download. Triggered by pushes that touch the app.
+on:
+  push:
+    branches: [ "claude/output-token-limit-i4syae" ]
+    paths:
+      - "android-app/**"
+      - ".github/workflows/build-android.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-android
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Prepare signing keystore
+        working-directory: android-app
+        run: |
+          # A stable, committed keystore so sideloaded updates install over old ones.
+          # This key only identifies the publisher; it does not protect user data.
+          if [ ! -f release.keystore ]; then
+            keytool -genkeypair -v -keystore release.keystore -alias bu \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass blinksunited -keypass blinksunited \
+              -dname "CN=Blinks United, OU=Fans, O=Blinks United, L=Seoul, ST=NA, C=KR"
+          fi
+          printf 'storeFile=release.keystore\nstorePassword=blinksunited\nkeyAlias=bu\nkeyPassword=blinksunited\n' > keystore.properties
+
+      - name: Build release APK
+        working-directory: android-app
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Publish APK to site root
+        run: |
+          set -e
+          cp android-app/app/build/outputs/apk/release/app-release.apk blinks-united-vote-counter.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add blinks-united-vote-counter.apk android-app/release.keystore
+          if git diff --cached --quiet; then
+            echo "No APK change to commit."
+          else
+            git commit -m "Build Android vote-counter APK v1.0.0 [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+          fi

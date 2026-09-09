@@ -1,0 +1,19 @@
+name: Probe YouTube Charts v3
+
+# Dig into entity mutations and formData country selection.
+# Run manually; remove once fetch_youtube_chart_positions.mjs ships.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Probe YouTube Charts v3
+        run: node .github/scripts/probe-youtube-charts-v3.mjs

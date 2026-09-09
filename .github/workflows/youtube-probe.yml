@@ -1,0 +1,119 @@
+name: YouTube Series Probe
+
+# Read-only diagnostic: reports how much history each tracked video actually has.
+# The series live in Upstash behind Vercel and can't be inspected from a dev
+# machine, and direct HTTP to the site is blocked from Claude Code sessions.
+#
+# Prints counts, spans and first/last values only — no dumps. The read endpoint
+# is admin-only now, so this passes the key as a header; GitHub masks the secret
+# in logs, which matters because this repo is public.
+# Dispatch-only. Safe to delete once it has answered what it was added for.
+on:
+  workflow_dispatch:
+    inputs:
+      ids:
+        description: 'Comma-separated video ids (blank = the tracked set).'
+        required: false
+        default: ''
+      analyze:
+        description: 'One video id: show the sample bracket behind every crossing.'
+        required: false
+        default: ''
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe the series
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          BASE: https://www.blinksunited.com
+          IDS: ${{ inputs.ids != '' && inputs.ids || 'LzgE8ift2Uw,h-7_04c_hVc,FyS5dAywkEo,sf02ugzPFE4,s466YCiHfKw' }}
+        run: |
+          set -u
+          probe () {
+            echo "── $2 ─────────────────────────────────"
+            code=$(curl -sS --max-time 45 -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/youtube-history?$1ids=$IDS" -o /tmp/r.json -w '%{http_code}')
+            echo "HTTP $code"
+            if [ "$code" != "200" ]; then echo "  body: $(head -c 400 /tmp/r.json)"; return; fi
+            jq -r '.videos | to_entries[] |
+              .key as $id | (.value|length) as $n |
+              if $n == 0 then "  \($id): 0 points"
+              else
+                ((.value[-1].t - .value[0].t) / 60000 | floor) as $span |
+                "  \($id): \($n) pts over \($span) min   v \(.value[0].v) -> \(.value[-1].v)"
+              end' /tmp/r.json
+            echo "  24h pins:  $(jq -c '.milestones // {} | keys' /tmp/r.json)"
+            echo "  releases:  $(jq -c '.releases // {} | keys' /tmp/r.json)"
+            echo "  other marks (7d etc.):"
+            jq -r '.marks // {} | to_entries[] | .key as $id | .value[] |
+              "    \($id): \(.label // .key) = \(.v) views, \(.l // "—") likes  @\(.t)"' /tmp/r.json
+            echo "  view milestones recorded:"
+            jq -r '.viewMilestones // {} | to_entries[] |
+              .key as $id |
+              ((.value // {}) | to_entries | map("\(.key|tonumber/1000000)M x\(.value|if type=="array" then length else 1 end)") | join(", ")) as $list |
+              "    \($id): \(if $list == "" then "none" else $list end)"' /tmp/r.json
+          }
+          probe "live=1&" "FINE (live series — what the chart plots)"
+          probe ""         "HOURLY (long series — what the gains use)"
+
+  brackets:
+    # Why a crossing landed where it did. The read path does not observe a
+    # milestone being crossed, it interpolates between the two stored samples
+    # that bracket it — so a wide gap between samples turns into a confident but
+    # invented timestamp, and several thresholds falling inside one gap come out
+    # evenly spaced minutes apart. This job rebuilds the exact merged series the
+    # API derives from (hourly + last 1200 fine points, same as the read path)
+    # and prints, per crossing, the bracket it came from and how wide it was.
+    if: inputs.analyze != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show the bracket behind every crossing
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          BASE: https://www.blinksunited.com
+          ID: ${{ inputs.analyze }}
+        run: |
+          set -eu
+          curl -sS --max-time 45 -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/youtube-history?ids=$ID" -o /tmp/hourly.json
+          curl -sS --max-time 45 -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/youtube-history?live=1&ids=$ID" -o /tmp/live.json
+          node - <<'JS'
+          const fs = require('fs');
+          const id = process.env.ID;
+          const rd = f => { const d = JSON.parse(fs.readFileSync(f, 'utf8')); return d.videos?.[id] || []; };
+          const hourly = rd('/tmp/hourly.json'), live = rd('/tmp/live.json');
+          const merged = [...hourly, ...live].sort((a,b)=>a.t-b.t).filter((p,k,a)=>k===0||p.t!==a[k-1].t);
+          const rel = Date.parse(JSON.parse(fs.readFileSync('/tmp/hourly.json','utf8')).releases?.[id] || '');
+          const TH = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,25,30,40,50,75,100].map(x=>x*1e6);
+          const iso = t => new Date(t).toISOString().replace('T',' ').slice(0,19);
+          const mins = ms => (ms/60000).toFixed(1);
+          console.log(`series: hourly ${hourly.length} + live ${live.length} = ${merged.length} merged points`);
+          console.log(`span:   ${iso(merged[0].t)} -> ${iso(merged[merged.length-1].t)}   v ${merged[0].v} -> ${merged[merged.length-1].v}`);
+          console.log('');
+          console.log('gaps wider than 5 min in the merged series:');
+          for (let i=1;i<merged.length;i++) {
+            const g = merged[i].t - merged[i-1].t;
+            if (g > 5*60000) console.log(`  ${iso(merged[i-1].t)} -> ${iso(merged[i].t)}  ${mins(g)} min   v ${merged[i-1].v} -> ${merged[i].v}  (+${merged[i].v-merged[i-1].v})`);
+          }
+          console.log('');
+          console.log('what the API actually serves for this id (first 6 records):');
+          const served = JSON.parse(fs.readFileSync('/tmp/hourly.json','utf8')).viewMilestones?.[id] || {};
+          for (const th of Object.keys(served).map(Number).sort((a,b)=>b-a).slice(0,6)) {
+            for (const r of [].concat(served[th])) {
+              const w = r.t1 != null ? `bracket ${mins(r.t1-r.t0)} min` : 'NO BRACKET (legacy record)';
+              console.log(`  ${(th/1e6).toString().padStart(4)}M  t=${iso(r.t)}  ${w}`);
+            }
+          }
+          console.log('');
+          console.log('crossings, with the bracket each was interpolated inside:');
+          for (const th of TH) {
+            for (let i=1;i<merged.length;i++) {
+              const a = merged[i-1], b = merged[i];
+              if (a.v==null||b.v==null||!(a.v<th&&th<=b.v)) continue;
+              const frac = (b.v-a.v)>0 ? (th-a.v)/(b.v-a.v) : 0;
+              const t = Math.round(a.t + frac*(b.t-a.t));
+              const since = Number.isFinite(rel) ? `${Math.floor((t-rel)/3600000)}h ${Math.round(((t-rel)%3600000)/60000)}m` : '—';
+              console.log(`  ${(th/1e6).toString().padStart(4)}M  ${iso(t)}  (+${since})  bracket ${mins(b.t-a.t)} min wide, v ${a.v} -> ${b.v} (+${b.v-a.v})`);
+            }
+          }
+          JS

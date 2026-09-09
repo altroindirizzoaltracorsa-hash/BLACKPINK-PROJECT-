@@ -1,21 +1,69 @@
 {
+  "functions": {
+    "api/proxy-image.js": { "maxDuration": 30 }
+  },
+  "redirects": [
+    { "source": "/", "destination": "/vmas.html", "permanent": false }
+  ],
   "rewrites": [
+    { "source": "/countdowns", "destination": "/index.html" },
+    { "source": "/countdowns/:slug*", "destination": "/index.html" },
     { "source": "/badges", "destination": "/index.html" },
     { "source": "/leaderboard", "destination": "/index.html" },
     { "source": "/voting", "destination": "/index.html" },
+    { "source": "/vote", "destination": "/index.html" },
     { "source": "/feedback", "destination": "/index.html" },
+    { "source": "/account", "destination": "/index.html" },
     { "source": "/streams", "destination": "/index.html" },
-    { "source": "/spotify-charts", "destination": "/index.html" },
-    { "source": "/youtube", "destination": "/index.html" },
     { "source": "/charts", "destination": "/index.html" },
     { "source": "/apple-charts", "destination": "/index.html" },
+    { "source": "/itunes-charts", "destination": "/index.html" },
+    { "source": "/spotify-charts", "destination": "/index.html" },
+    { "source": "/youtube", "destination": "/index.html" },
+    { "source": "/kcharts", "destination": "/index.html" },
+    { "source": "/projects", "destination": "/projects.html" },
+    { "source": "/vmas", "destination": "/vmas.html" },
+    { "source": "/ltal-embed", "destination": "/index.html" },
     { "source": "/api/spotify-oauth-start", "destination": "/api/sync-playlist" },
     { "source": "/api/spotify-oauth-callback", "destination": "/api/sync-playlist" }
+  ],
+  "headers": [
+    {
+      "source": "/",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
+    {
+      "source": "/index.html",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
+    {
+      "source": "/vmas.html",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
+    {
+      "source": "/projects.html",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
+    {
+      "source": "/(countdowns|badges|leaderboard|voting|vote|feedback|account|streams|charts|apple-charts|itunes-charts|spotify-charts|youtube|kcharts|projects|ltal-embed|vmas)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
+    {
+      "source": "/blinks-united-vote-counter.apk",
+      "headers": [
+        { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"blinks-united-vote-counter.apk\"" }
+      ]
+    }
   ],
   "crons": [
     {
       "path": "/api/streams?cron=1",
-      "schedule": "0 0 * * *"
+      "schedule": "0 21 * * *"
     },
     {
       "path": "/api/cron-scrobbles",
@@ -24,6 +72,14 @@
     {
       "path": "/api/sync-playlist",
       "schedule": "30 1 * * *"
+    },
+    {
+      "path": "/api/proxy-image?global_streams=cron",
+      "schedule": "5 2 * * *"
+    },
+    {
+      "path": "/api/girlgroups?snapshot=1",
+      "schedule": "0 12 * * *"
     }
   ]
 }

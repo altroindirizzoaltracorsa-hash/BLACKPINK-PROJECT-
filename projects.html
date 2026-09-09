@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blinks United — Our Projects</title>
+<meta name="description" content="Everything Blinks United has built for BLACKPINK — our past and current projects, campaigns and tools.">
+<meta property="og:title" content="Blinks United — Our Projects">
+<meta property="og:description" content="Everything Blinks United has built for BLACKPINK — past and current projects, campaigns and tools.">
+<meta name="theme-color" content="#080509">
+<link rel="icon" href="/blinksunited.jpg">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #080509;
+    --surf:    #100910;
+    --card:    #150c13;
+    --card-hi: #1c1019;
+    --line:    rgba(255,255,255,0.08);
+    --pink:    #FF0066;
+    --pink-soft: rgba(255,0,102,0.12);
+    --gold:    #C8A84B;
+    --text:    #F5F0F0;
+    --muted:   rgba(245,240,240,0.5);
+    --dim:     rgba(245,240,240,0.3);
+    --mono:    ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --serif:   Georgia, "Times New Roman", serif;
+  }
+
+  html, body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+
+  /* ── top bar ── */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.4rem; background: rgba(8,5,9,0.82); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 0.6rem; font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.22em; color: var(--pink); }
+  .brand img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+
+  /* ── nav ── */
+  .nav-links { display: flex; gap: 1.15rem; list-style: none; align-items: center; }
+  .nav-links a { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); transition: color 0.2s; white-space: nowrap; }
+  .nav-links a:hover, .nav-links a.active { color: var(--pink); }
+  .nav-links a.active { font-weight: 700; }
+  .nav-dd { position: relative; }
+  .nav-dd-panel { display: none; position: absolute; top: 170%; right: 0; min-width: 174px; flex-direction: column; gap: 2px; padding: 0.4rem; background: var(--surf); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.5); }
+  .nav-dd:hover .nav-dd-panel, .nav-dd:focus-within .nav-dd-panel { display: flex; }
+  .nav-dd-panel a { padding: 0.55rem 0.7rem; border-radius: 6px; }
+  .nav-dd-panel a:hover { background: var(--pink-soft); }
+  .nav-hamburger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 5px; }
+  .nav-hamburger span { display: block; width: 22px; height: 2px; background: var(--text); transition: transform 0.25s, opacity 0.25s; }
+  .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .nav-hamburger.open span:nth-child(2) { opacity: 0; }
+  .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+  @media (max-width: 980px) {
+    .nav-hamburger { display: flex; }
+    .nav-links {
+      display: none; position: absolute; top: 100%; left: 0; right: 0;
+      flex-direction: column; align-items: stretch; gap: 0;
+      background: rgba(8,5,9,0.98); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line); padding: 0.4rem 1.4rem 1rem;
+      max-height: calc(100svh - 60px); overflow-y: auto;
+    }
+    .nav-links.open { display: flex; }
+    .nav-links > li { width: 100%; }
+    .nav-links a { display: block; padding: 0.9rem 0; border-bottom: 1px solid var(--line); }
+    .nav-links > li:last-child a { border-bottom: none; }
+    .nav-dd-panel { display: flex; position: static; min-width: 0; border: none; box-shadow: none; background: none; padding: 0 0 0 1rem; }
+    .nav-dd-panel a { padding: 0.7rem 0; }
+  }
+
+  /* ── hero ── */
+  .hero { position: relative; text-align: center; padding: 5rem 1.4rem 3rem; overflow: hidden; }
+  .hero::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--pink) 40%, var(--gold) 70%, transparent);
+  }
+  .hero-eyebrow { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.34em; text-transform: uppercase; color: var(--pink); margin-bottom: 1.1rem; }
+  .hero h1 { font-family: var(--serif); font-weight: 700; font-size: clamp(2.8rem, 11vw, 5.5rem); line-height: 0.92; letter-spacing: 0.01em; }
+  .hero h1 em { font-style: italic; color: var(--pink); }
+  .hero-sub { font-family: var(--serif); font-style: italic; font-size: clamp(0.95rem, 3.4vw, 1.15rem); color: var(--muted); margin-top: 1.1rem; max-width: 40ch; margin-left: auto; margin-right: auto; }
+
+  /* ── sections ── */
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 1rem 1.2rem 4rem; }
+  .section { margin-top: 3rem; }
+  .section-head { display: flex; align-items: baseline; gap: 0.8rem; padding-bottom: 1rem; border-bottom: 1px solid var(--line); margin-bottom: 1.6rem; }
+  .section-title { font-family: var(--mono); font-size: 0.82rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--text); }
+  .section-count { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.14em; color: var(--dim); }
+
+  /* ── project grid ── */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+  .card {
+    position: relative; display: flex; flex-direction: column; gap: 0.7rem;
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 1.4rem 1.4rem 1.2rem; transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  }
+  .card:hover { transform: translateY(-3px); border-color: rgba(255,0,102,0.4); background: var(--card-hi); }
+  .card-top { display: flex; align-items: center; justify-content: space-between; }
+  .card-icon { font-size: 1.9rem; line-height: 1; }
+  .pill { font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.18em; text-transform: uppercase; padding: 0.25rem 0.55rem; border-radius: 999px; white-space: nowrap; }
+  .pill.current { color: var(--pink); background: var(--pink-soft); border: 1px solid rgba(255,0,102,0.35); }
+  .pill.past { color: var(--gold); background: rgba(200,168,75,0.1); border: 1px solid rgba(200,168,75,0.3); }
+  .card-name { font-family: var(--serif); font-size: 1.28rem; font-weight: 700; line-height: 1.15; }
+  .card-tag { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pink); }
+  .card-desc { font-size: 0.86rem; line-height: 1.5; color: var(--muted); flex: 1; }
+  .card-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin-top: 0.3rem; padding-top: 0.8rem; border-top: 1px solid var(--line); }
+  .card-period { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; color: var(--dim); }
+  .card-link { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pink); transition: opacity 0.2s; }
+  .card-link:hover { opacity: 0.7; }
+
+  .empty { border: 1px dashed var(--line); border-radius: 14px; padding: 2.6rem 1.5rem; text-align: center; font-family: var(--serif); font-style: italic; color: var(--muted); font-size: 0.95rem; }
+
+  /* ── Expandable card (Less Than a Lover embeds its live stats tracker) ── */
+  .card-toggle { background: none; border: none; cursor: pointer; padding: 0; }
+  .card.has-expand.open { border-color: rgba(232,17,13,0.4); }
+  .card-expand { margin-top: 0.2rem; padding-top: 0.95rem; border-top: 1px solid var(--line); }
+  .card-expand[hidden] { display: none; }
+  /* Full-bleed the tracker to the card edges so it isn't boxed in by the card padding. */
+  .ltal-embed-wrap { margin: 0 -1.4rem -1.2rem; }
+  .ltal-embed { width: 100%; border: 0; display: block; min-height: 300px; background: transparent; overflow: hidden; }
+  .ltal-embed-loading { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; color: var(--dim); text-align: center; padding: 1.5rem 0 0.4rem; }
+
+  footer { border-top: 1px solid var(--line); padding: 2.2rem 1.4rem; text-align: center; }
+  footer .flogo { font-family: var(--serif); font-size: 1.15rem; letter-spacing: 0.12em; color: var(--pink); }
+  footer p { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.14em; color: var(--dim); margin-top: 0.7rem; }
+  footer a { color: var(--pink); }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="brand" href="/"><img src="/blinksunited.jpg" alt="Blinks United">BLINKS UNITED</a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="/streams">Streams</a></li>
+      <li><a href="/badges">My Badges</a></li>
+      <li><a href="/leaderboard">Leaderboard</a></li>
+      <li class="nav-dd">
+        <a href="/charts">Charts <span style="opacity:0.55">▾</span></a>
+        <div class="nav-dd-panel">
+          <a href="/spotify-charts">Spotify Charts</a>
+          <a href="/youtube">YouTube Charts</a>
+          <a href="/apple-charts">Apple Music Charts</a>
+          <a href="/itunes-charts">iTunes Charts</a>
+        </div>
+      </li>
+      <li><a href="/voting">Vote</a></li>
+      <li><a href="/feedback">Feedback</a></li>
+      <li><a href="/10years.html">10th Anniv.</a></li>
+      <li><a href="/achievements">Achievements</a></li>
+      <li><a href="/projects" class="active">Our Projects</a></li>
+    </ul>
+    <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+
+  <header class="hero">
+    <p class="hero-eyebrow">✦ Blinks United ✦</p>
+    <h1>Our <em>Projects</em></h1>
+    <p class="hero-sub">Everything we've built for BLACKPINK — the campaigns, trackers and tools, past and present.</p>
+  </header>
+
+  <main class="wrap">
+    <section class="section">
+      <div class="section-head">
+        <span class="section-title">● Current</span>
+        <span class="section-count" id="current-count"></span>
+      </div>
+      <div class="grid" id="current-grid"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <span class="section-title">◍ Past</span>
+        <span class="section-count" id="past-count"></span>
+      </div>
+      <div class="grid" id="past-grid"></div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="flogo">BLINKS UNITED</div>
+    <p>Built by fans, for BLACKPINK · <a href="/">blinksunited.com</a></p>
+  </footer>
+
+  <script>
+    // ── Mobile nav ──
+    function toggleMobileNav() {
+      document.getElementById('nav-links').classList.toggle('open');
+      document.getElementById('nav-hamburger').classList.toggle('open');
+    }
+
+    // ── Project list ──────────────────────────────────────────────────────
+    // Edit this array to add / move / remove projects. status: 'current' | 'past'.
+    // Fields: icon (emoji), name, tag, desc, period, url (optional, '' to hide link).
+    const PROJECTS = [
+      // ── Current ──
+      {
+        status: 'current', icon: '💎', name: 'JUMP → 1B', tag: '1B Streams · In progress',
+        desc: "Driving BLACKPINK's 'JUMP' to 1 billion Spotify streams.",
+        period: 'In progress →', url: '/streams',
+      },
+      {
+        status: 'current', icon: '💎', name: 'Shut Down → 1B', tag: '1B Streams · In progress',
+        desc: "Driving 'Shut Down' to 1 billion Spotify streams.",
+        period: 'In progress →', url: '/streams',
+      },
+      {
+        status: 'current', icon: '💎', name: 'DDU-DU DDU-DU → 1B', tag: '1B Streams · In progress',
+        desc: "Driving 'DDU-DU DDU-DU' to 1 billion Spotify streams.",
+        period: 'In progress →', url: '/streams',
+      },
+      {
+        status: 'current', icon: '💯', name: 'GO → 100M', tag: '100M Streams · In progress',
+        desc: "Pushing 'GO' to 100 million Spotify streams.",
+        period: 'In progress →', url: '/streams',
+      },
+      {
+        status: 'current', icon: '💗', name: 'Less Than a Lover — Release', tag: 'Release · Jennie',
+        desc: "Jennie's 'Less Than a Lover' — the first release we ever tracked on the website. 24-hour & 1st-week stream goals, iTunes tracking and per-Blink milestone contributions.",
+        period: 'In progress →', url: '/streams',
+        expand: `<div class="ltal-embed-wrap">
+            <div class="ltal-embed-loading">Loading live tracker…</div>
+            <iframe class="ltal-embed" title="Less Than a Lover — live tracker" loading="lazy" scrolling="no"
+                    onload="this.previousElementSibling && this.previousElementSibling.remove()"
+                    data-src="/ltal-embed?embed=ltal"></iframe>
+          </div>`,
+      },
+      // ── Past (completed ✓) ──
+      {
+        status: 'past', icon: '💎', name: 'How You Like That → 1B', tag: '1B Streams · with @BPSpotifySchool',
+        desc: "Helped push 'How You Like That' to 1 billion Spotify streams — a joint campaign with @BPSpotifySchool.",
+        period: 'Reached 1B ✓', url: '',
+      },
+      {
+        status: 'past', icon: '🚀', name: 'JUMP — Release', tag: 'Release',
+        desc: "Streaming support for BLACKPINK's 'JUMP' release.",
+        period: 'Completed ✓', url: '',
+      },
+      {
+        status: 'past', icon: '💎', name: 'Kill This Love → 1B', tag: '1B Streams · with @BPSpotifySchool',
+        desc: "Helped drive 'Kill This Love' to 1 billion Spotify streams, together with @BPSpotifySchool.",
+        period: 'Reached 1B ✓', url: '',
+      },
+      {
+        status: 'past', icon: '🚀', name: 'DEADLINE — EP Release', tag: 'EP · BLACKPINK',
+        desc: "Streaming support for BLACKPINK's DEADLINE EP, released in February.",
+        period: 'Completed ✓', url: '',
+      },
+      {
+        status: 'past', icon: '💎', name: 'Pink Venom → 1B', tag: '1B Streams · with @BPSpotifySchool',
+        desc: "Helped push 'Pink Venom' to 1 billion Spotify streams — a joint campaign with @BPSpotifySchool.",
+        period: 'Reached 1B ✓', url: '',
+      },
+    ];
+
+    function card(p) {
+      const foot = p.expand
+        ? `<button class="card-link card-toggle" type="button" aria-expanded="false" onclick="toggleCard(this)">Details ▾</button>`
+        : (p.url ? `<a class="card-link" href="${p.url}">Open →</a>` : '<span></span>');
+      return `<div class="card${p.expand ? ' has-expand' : ''}">
+        <div class="card-top"><span class="card-icon">${p.icon || '✦'}</span><span class="pill ${p.status}">${p.status === 'past' ? 'Past' : 'Current'}</span></div>
+        <div class="card-name">${p.name}</div>
+        ${p.tag ? `<div class="card-tag">${p.tag}</div>` : ''}
+        <div class="card-desc">${p.desc || ''}</div>
+        <div class="card-foot"><span class="card-period">${p.period || ''}</span>${foot}</div>
+        ${p.expand ? `<div class="card-expand" hidden>${p.expand}</div>` : ''}
+      </div>`;
+    }
+
+    function toggleCard(btn) {
+      const card = btn.closest('.card');
+      const panel = card && card.querySelector('.card-expand');
+      if (!panel) return;
+      const opening = panel.hasAttribute('hidden');
+      if (opening) panel.removeAttribute('hidden'); else panel.setAttribute('hidden', '');
+      card.classList.toggle('open', opening);
+      btn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+      btn.textContent = opening ? 'Hide ▴' : 'Details ▾';
+      // Defer loading the embedded live tracker until the card is first opened.
+      if (opening) {
+        const f = panel.querySelector('iframe.ltal-embed[data-src]');
+        if (f) { f.src = f.getAttribute('data-src'); f.removeAttribute('data-src'); }
+      }
+    }
+
+    // The embedded tracker (index.html in embed mode) reports its height so the
+    // iframe can grow to fit its content instead of scrolling internally.
+    window.addEventListener('message', function(e) {
+      if (!e.data || e.data.type !== 'ltal-embed-height') return;
+      const h = Math.max(240, e.data.height || 0) + 6;
+      document.querySelectorAll('iframe.ltal-embed').forEach(function(f) { f.style.height = h + 'px'; });
+    });
+
+    function render() {
+      const current = PROJECTS.filter(p => p.status === 'current');
+      const past    = PROJECTS.filter(p => p.status === 'past');
+      document.getElementById('current-grid').innerHTML = current.map(card).join('');
+      document.getElementById('past-grid').innerHTML = past.length
+        ? past.map(card).join('')
+        : '<div class="empty">Our archive is being compiled — past projects will land here soon. 🖤💗</div>';
+      document.getElementById('current-count').textContent = current.length + (current.length === 1 ? ' project' : ' projects');
+      document.getElementById('past-count').textContent = past.length ? past.length + (past.length === 1 ? ' project' : ' projects') : '';
+    }
+    render();
+  </script>
+</body>
+</html>

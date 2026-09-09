@@ -1,0 +1,34 @@
+name: Backfill Fallen Angel EP
+
+# One-off: inject the Fallen Angel EP release-week daily history (Fallen Angel +
+# Heaven) into track_daily_stats so their daily deltas are real instead of a
+# single "new track" jump. Dry-run by default; set apply=true to write.
+# Safe to delete once run.
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Set to 'true' to WRITE the backfill. Blank/false = dry-run (read-only)."
+        required: false
+        default: ""
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install httpx
+        run: pip install httpx
+
+      - name: Backfill Fallen Angel EP history (dry-run unless apply=true)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          APPLY: ${{ github.event.inputs.apply == 'true' && '1' || '' }}
+        run: python .github/scripts/backfill_fallen_angel_ep.py

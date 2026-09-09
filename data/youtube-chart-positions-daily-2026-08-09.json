@@ -1,0 +1,505 @@
+{
+  "generatedAt": "2026-08-09T06:57:30.367Z",
+  "chartType": "daily",
+  "date": "2026-08-09",
+  "regions": {
+    "global": {
+      "region": "Global",
+      "gl": "US",
+      "period": {
+        "entityId": "daily:20260809:global",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "global"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "kr": {
+      "region": "South Korea",
+      "gl": "KR",
+      "period": {
+        "entityId": "daily:20260809:kr",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "kr"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 38,
+          "name": "Less than a Lover",
+          "artists": [
+            "JENNIE"
+          ],
+          "videoId": "_IT83Y_HcAw",
+          "viewCount": 46011,
+          "releaseDate": "2026-07-23"
+        }
+      ]
+    },
+    "jp": {
+      "region": "Japan",
+      "gl": "JP",
+      "period": {
+        "entityId": "daily:20260809:jp",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "jp"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "tw": {
+      "region": "Taiwan",
+      "gl": "TW",
+      "period": {
+        "entityId": "daily:20260809:tw",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "tw"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 41,
+          "name": "Less than a Lover",
+          "artists": [
+            "JENNIE"
+          ],
+          "videoId": "_IT83Y_HcAw",
+          "viewCount": 27547,
+          "releaseDate": "2026-07-23"
+        }
+      ]
+    },
+    "hk": {
+      "region": "Hong Kong",
+      "gl": "HK",
+      "period": {
+        "entityId": "daily:20260809:hk",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "hk"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 23,
+          "name": "Less than a Lover",
+          "artists": [
+            "JENNIE"
+          ],
+          "videoId": "_IT83Y_HcAw",
+          "viewCount": 6373,
+          "releaseDate": "2026-07-23"
+        }
+      ]
+    },
+    "id": {
+      "region": "Indonesia",
+      "gl": "ID",
+      "period": {
+        "entityId": "daily:20260809:id",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "id"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "th": {
+      "region": "Thailand",
+      "gl": "TH",
+      "period": {
+        "entityId": "daily:20260809:th",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "th"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "ph": {
+      "region": "Philippines",
+      "gl": "PH",
+      "period": {
+        "entityId": "daily:20260809:ph",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "ph"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "my": {
+      "region": "Malaysia",
+      "gl": "MY",
+      "period": {
+        "entityId": "daily:20260809:my",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "my"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "vn": {
+      "region": "Vietnam",
+      "gl": "VN",
+      "period": {
+        "entityId": "daily:20260809:vn",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "vn"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "sg": {
+      "region": "Singapore",
+      "gl": "SG",
+      "period": {
+        "entityId": "daily:20260809:sg",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "sg"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 24,
+          "name": "Less than a Lover",
+          "artists": [
+            "JENNIE"
+          ],
+          "videoId": "_IT83Y_HcAw",
+          "viewCount": 5342,
+          "releaseDate": "2026-07-23"
+        }
+      ]
+    },
+    "in": {
+      "region": "India",
+      "gl": "IN",
+      "period": {
+        "entityId": "daily:20260809:in",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "in"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "au": {
+      "region": "Australia",
+      "gl": "AU",
+      "period": {
+        "entityId": "daily:20260809:au",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "au"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "nz": {
+      "region": "New Zealand",
+      "gl": "NZ",
+      "period": {
+        "entityId": "daily:20260809:nz",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "nz"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "us": {
+      "region": "United States",
+      "gl": "US",
+      "period": {
+        "entityId": "daily:20260809:us",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "us"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "ca": {
+      "region": "Canada",
+      "gl": "CA",
+      "period": {
+        "entityId": "daily:20260809:ca",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "ca"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "mx": {
+      "region": "Mexico",
+      "gl": "MX",
+      "period": {
+        "entityId": "daily:20260809:mx",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "mx"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "br": {
+      "region": "Brazil",
+      "gl": "BR",
+      "period": {
+        "entityId": "daily:20260809:br",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "br"
+      },
+      "totalEntries": 99,
+      "hits": []
+    },
+    "ar": {
+      "region": "Argentina",
+      "gl": "AR",
+      "period": {
+        "entityId": "daily:20260809:ar",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "ar"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "cl": {
+      "region": "Chile",
+      "gl": "CL",
+      "period": {
+        "entityId": "daily:20260809:cl",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "cl"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "co": {
+      "region": "Colombia",
+      "gl": "CO",
+      "period": {
+        "entityId": "daily:20260809:co",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "co"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "pe": {
+      "region": "Peru",
+      "gl": "PE",
+      "period": {
+        "entityId": "daily:20260809:pe",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "pe"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "gb": {
+      "region": "United Kingdom",
+      "gl": "GB",
+      "period": {
+        "entityId": "daily:20260809:gb",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "gb"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "fr": {
+      "region": "France",
+      "gl": "FR",
+      "period": {
+        "entityId": "daily:20260809:fr",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "fr"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "de": {
+      "region": "Germany",
+      "gl": "DE",
+      "period": {
+        "entityId": "daily:20260809:de",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "de"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "es": {
+      "region": "Spain",
+      "gl": "ES",
+      "period": {
+        "entityId": "daily:20260809:es",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "es"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "it": {
+      "region": "Italy",
+      "gl": "IT",
+      "period": {
+        "entityId": "daily:20260809:it",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "it"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "nl": {
+      "region": "Netherlands",
+      "gl": "NL",
+      "period": {
+        "entityId": "daily:20260809:nl",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "nl"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "se": {
+      "region": "Sweden",
+      "gl": "SE",
+      "period": {
+        "entityId": "daily:20260809:se",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "se"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "no": {
+      "region": "Norway",
+      "gl": "NO",
+      "period": {
+        "entityId": "daily:20260809:no",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "no"
+      },
+      "totalEntries": 98,
+      "hits": []
+    },
+    "pl": {
+      "region": "Poland",
+      "gl": "PL",
+      "period": {
+        "entityId": "daily:20260809:pl",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "pl"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "tr": {
+      "region": "Turkey",
+      "gl": "TR",
+      "period": {
+        "entityId": "daily:20260809:tr",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "tr"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "sa": {
+      "region": "Saudi Arabia",
+      "gl": "SA",
+      "period": {
+        "entityId": "daily:20260809:sa",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "sa"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "za": {
+      "region": "South Africa",
+      "gl": "ZA",
+      "period": {
+        "entityId": "daily:20260809:za",
+        "periodType": "daily",
+        "startDate": "20260809",
+        "endDate": "20260809",
+        "region": "za"
+      },
+      "totalEntries": 100,
+      "hits": []
+    }
+  },
+  "summary": {
+    "totalHits": 4,
+    "regionsChecked": 34
+  }
+}

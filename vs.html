@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>YouTube Face-Off — Blinks United</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Live head-to-head YouTube views & likes.">
+<meta name="theme-color" content="#0c0509">
+<style>
+  :root{
+    --bg:#0c0509; --card:#15070c; --line:#3a1526; --pink:#ff2e77; --pink-soft:#ff8fb4;
+    --text:#fff2f6; --muted:#c48aa0; --dim:#8a5c6c; --gold:#f5c542;
+    --a:#ff2e77; --b:#3aa0ff;
+  }
+  *{box-sizing:border-box;margin:0;font-family:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;}
+  body{background:
+      radial-gradient(120% 60% at 50% -10%, #3a0c22 0%, transparent 55%),
+      linear-gradient(180deg,#15070c 0%, #0c0509 100%);
+    color:var(--text); min-height:100vh; padding:22px 16px 48px;}
+  .wrap{max-width:820px;margin:0 auto;}
+  .top{text-align:center;margin-bottom:20px;}
+  .live{display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.24em;color:var(--pink-soft);text-transform:uppercase;}
+  .live .dot{width:8px;height:8px;border-radius:50%;background:var(--pink);box-shadow:0 0 0 0 #ff2e7799;animation:pulse 1.7s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 #ff2e7766}70%{box-shadow:0 0 0 9px #ff2e7700}100%{box-shadow:0 0 0 0 #ff2e7700}}
+  h1{font-size:23px;font-weight:800;letter-spacing:.04em;margin:10px 0 4px;
+     background:linear-gradient(90deg,#ff8fb4,#ff2e77 55%,#ff8fb4);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .sub{font-size:11px;color:var(--dim);letter-spacing:.06em;}
+
+  .lead{text-align:center;font-size:13px;color:var(--text);margin:14px 0 10px;min-height:18px;}
+  .lead b{color:var(--pink);}
+
+  .bar{display:flex;height:14px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#0a0407;margin-bottom:22px;}
+  .bar .segA{background:linear-gradient(90deg,#ff2e77,#ff8fb4);}
+  .bar .segB{background:linear-gradient(90deg,#3aa0ff,#8fd0ff);}
+  .bar>div{transition:width .8s cubic-bezier(.4,0,.2,1);}
+
+  .grid{display:grid;grid-template-columns:1fr 54px 1fr;gap:10px;align-items:stretch;}
+  @media(max-width:560px){.grid{grid-template-columns:1fr;}.vs{order:-1;margin:0 auto;}}
+  .grid.solo{grid-template-columns:minmax(0,1fr);max-width:360px;margin-inline:auto;}
+  .rowlbl{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:22px 2px 9px;display:flex;align-items:center;gap:9px;}
+  .rowlbl::after{content:"";flex:1;height:1px;background:var(--line);}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;position:relative;overflow:hidden;}
+  .card.leadA{border-color:#ff2e7788;box-shadow:0 0 0 1px #ff2e7733,0 12px 30px -14px #000;}
+  .card.leadB{border-color:#3aa0ff88;box-shadow:0 0 0 1px #3aa0ff33,0 12px 30px -14px #000;}
+  .thumb{width:100%;aspect-ratio:16/9;border-radius:10px;object-fit:cover;background:#000;display:block;border:1px solid #ffffff10;}
+  .vtitle{font-size:12.5px;font-weight:700;line-height:1.35;margin:10px 0 2px;color:var(--text);
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.7em;}
+  .vchan{font-size:10.5px;color:var(--muted);margin-bottom:10px;}
+  .stat{display:flex;align-items:baseline;justify-content:space-between;padding:7px 0;border-top:1px dashed #ffffff12;}
+  .stat .lbl{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);}
+  .stat .num{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text);}
+  .stat.likes .num{font-size:17px;color:var(--pink-soft);}
+  .delta{font-size:10px;color:#2fd07a;font-variant-numeric:tabular-nums;margin-left:8px;white-space:nowrap;}
+  .delta.zero{color:var(--dim);}
+  .delta.down{color:#ff5c7a;}
+  .m24audit{color:#ff5c7a;font-size:10px;white-space:nowrap;}
+  .msrow .mstag.again{color:#ff5c7a;border-color:#ff5c7a55;}   /* .msrow .mstag sets the colour, so match its specificity */
+  .watch{display:inline-block;margin-top:10px;font-size:10.5px;color:var(--pink-soft);text-decoration:none;border:1px solid #ff2e7744;border-radius:99px;padding:5px 12px;}
+  .watch:hover{background:#ff2e7714;}
+
+  .vs{align-self:center;justify-self:center;font-weight:900;font-size:16px;letter-spacing:.06em;color:#12000a;
+    background:linear-gradient(180deg,#ffd0e0,#ff8fb4);border-radius:50%;width:46px;height:46px;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px -6px #ff2e77aa;}
+
+  .foot{text-align:center;margin-top:22px;font-size:10.5px;color:var(--dim);letter-spacing:.06em;}
+  .foot a{color:var(--muted);text-decoration:underline;}
+  .msg{text-align:center;padding:34px 16px;color:var(--muted);font-size:13px;line-height:1.6;
+    border:1px dashed var(--line);border-radius:14px;background:#0a0407;}
+  .msg code{color:var(--pink-soft);background:#ff2e7714;padding:1px 6px;border-radius:5px;}
+
+  .hcard{margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 12px 10px;}
+  .hhead{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin:0 2px 10px;}
+  .hleggroup{display:flex;gap:8px;margin-left:auto;text-transform:none;letter-spacing:0;}
+  .hleg{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:11px;color:var(--muted);
+    background:transparent;border:1px solid transparent;border-radius:99px;padding:4px 9px;cursor:pointer;transition:.12s;}
+  .hleg:hover{border-color:#ffffff22;}
+  .hleg.on{background:#ffffff12;border-color:#ffffff33;color:var(--text);font-weight:700;}
+  .hleg.off{opacity:.42;}
+  .hdot{width:9px;height:9px;border-radius:50%;flex:none;}
+  .htabs{display:flex;gap:6px;margin:0 2px 8px;}
+  .htab{flex:1;padding:7px;border-radius:9px;border:1px solid #ffffff14;background:transparent;color:var(--dim);font:inherit;font-size:11px;letter-spacing:.06em;cursor:pointer;}
+  .htab.on{background:#ff2e7718;border-color:#ff2e7755;color:var(--pink-soft);font-weight:700;}
+  .since{margin-top:10px;font-size:11px;color:var(--muted);letter-spacing:.02em;font-variant-numeric:tabular-nums;}
+  .since .slbl{font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-right:6px;}
+  .mslist{margin-top:7px;display:flex;flex-direction:column;gap:3px;}
+  .msrow{font-size:10.5px;color:var(--dim);letter-spacing:.02em;line-height:1.5;}
+  .msrow .mstag{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.04em;color:var(--pink-soft);
+    border:1px solid #ff2e7744;border-radius:5px;padding:1px 6px;margin-right:6px;vertical-align:1px;font-variant-numeric:tabular-nums;}
+  .msrow .msdur{color:var(--muted);}
+  /* An interpolated time, flagged as one. */
+  .msrow .msest{color:var(--muted);font-weight:700;}
+  .msnote{font-size:10px;line-height:1.45;color:var(--muted);padding:4px 0 2px;}
+  .wtimes{margin-top:7px;}
+  .wtimes>summary{cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim);letter-spacing:.02em;line-height:1.5;}
+  .wtimes>summary::-webkit-details-marker{display:none;}
+  .wtimes[open]>summary{color:var(--muted);}
+  .wt24>.wtimes>summary{color:var(--gold);opacity:.85;}
+  .wtbody{margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;padding:8px 10px;
+    background:rgba(0,0,0,0.4);border:1px solid #ffffff1f;border-radius:8px;}
+  .wtrow{display:flex;justify-content:space-between;gap:8px;font-size:9.5px;color:var(--dim);}
+  .wtrow span:last-child{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  @media(max-width:520px){ .wtbody{grid-template-columns:1fr;} }
+  .m24{margin-top:9px;font-size:10.5px;color:var(--dim);letter-spacing:.02em;line-height:1.5;}
+  .m24 b{color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums;}
+  .m24 .m24tag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.12em;color:var(--gold);
+    border:1px solid #f5c54255;border-radius:5px;padding:1px 5px;margin-right:5px;vertical-align:1px;}
+  .m24.done{color:var(--muted);}
+  .m24.done b{color:var(--gold);}
+  .gstats{margin-top:14px;background:rgba(0,0,0,0.3);border:1px solid #ffffff1a;border-radius:12px;padding:13px 13px 6px;}
+  .gpanelhead{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px 10px;}
+  .gtitle{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--pink-soft);}
+  .gpanelhead .gavg{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;letter-spacing:.02em;}
+  .gchips{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0 8px;}
+  .gchip{padding:6px 11px;border-radius:99px;border:1px solid #ffffff1f;background:transparent;color:var(--muted);
+    font:inherit;font-size:10.5px;letter-spacing:.02em;cursor:pointer;transition:.12s;}
+  .gchip:hover{border-color:#ffffff3a;}
+  .gchip.on{background:#ff2e7718;border-color:#ff2e7766;color:var(--pink-soft);font-weight:700;}
+  .grange{display:flex;flex-wrap:wrap;align-items:end;gap:8px;margin-bottom:6px;}
+  .grange label{display:flex;flex-direction:column;gap:3px;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);}
+  .grange input[type=date]{background:#0a0407;border:1px solid #ffffff26;border-radius:8px;color:var(--text);
+    font:inherit;font-size:11px;padding:6px 8px;color-scheme:dark;}
+  .gapply{padding:7px 14px;border-radius:8px;border:none;background:var(--pink);color:#12040a;
+    font:inherit;font-size:11px;font-weight:800;letter-spacing:.04em;cursor:pointer;}
+  .gsub{font-size:10px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;margin:8px 0 2px;}
+  .gsub .gavg{color:var(--pink-soft);letter-spacing:.02em;font-variant-numeric:tabular-nums;}
+  .glist{max-height:340px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
+  .glist::-webkit-scrollbar{width:5px;}
+  .glist::-webkit-scrollbar-thumb{background:#ffffff26;border-radius:3px;}
+  .gday{border-top:1px solid #ffffff14;}
+  .gday:first-child{border-top:none;}
+  .gdayrow{display:flex;align-items:center;gap:11px;padding:12px 2px;cursor:pointer;}
+  .gdaycar{color:var(--dim);font-size:10px;width:10px;flex:none;transition:transform .12s;}
+  .gday.open .gdaycar{transform:rotate(90deg);}
+  .gdayleft{flex:1;min-width:0;}
+  .gdaydate{font-size:14px;font-weight:700;letter-spacing:.04em;color:var(--text);}
+  .gdaysub{font-size:10px;color:var(--dim);margin-top:3px;letter-spacing:.02em;font-variant-numeric:tabular-nums;}
+  .gdaytot{font-size:14px;font-weight:800;color:#4ade80;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .gdaybody{padding:0 2px 10px 23px;}
+  .grow{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);
+    padding:3px 0;border-top:1px solid #ffffff0a;font-variant-numeric:tabular-nums;}
+  .grow:first-child{border-top:none;}
+  .grow .gplus{color:#4ade80;font-weight:600;}
+  .gempty{padding:16px 12px;text-align:center;color:var(--dim);font-size:11px;line-height:1.5;}
+  .hchart{position:relative;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+  .hchart svg text{-webkit-user-select:none;user-select:none;}
+  .hsvg{width:100%;height:auto;display:block;}
+  .htip{position:absolute;pointer-events:none;z-index:5;opacity:0;transform:translate(-50%,-100%);
+    background:#1b0b12f2;border:1px solid #ffffff26;border-radius:10px;padding:7px 9px;
+    font-size:11px;line-height:1.5;white-space:nowrap;box-shadow:0 6px 18px #0009;transition:opacity .08s;}
+  .htip .htt{color:var(--dim);font-size:10px;margin-bottom:3px;letter-spacing:.04em;}
+  .htip .htr{display:flex;align-items:center;gap:6px;}
+  .htip .htv{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums;}
+  .htip .htd{color:#4ade80;font-size:10px;}
+  .htip .htd.zero{color:var(--dim);}
+  .hempty{padding:26px 12px;text-align:center;color:var(--dim);font-size:12px;line-height:1.6;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="live"><span class="dot"></span> Live · YouTube</div>
+      <h1>FACE-OFF</h1>
+      <div class="sub" id="sub">views &amp; likes · head to head</div>
+    </div>
+
+    <div id="rows"><div class="msg">Loading…</div></div>
+
+    <div class="foot" id="foot"></div>
+  </div>
+
+<script>
+  // The page is a list of rows. Each row gets its own cards, its own chart and
+  // its own gain stats, and never shares an axis with another — a row with two
+  // ids renders as a head-to-head, one id as a single card. Adding a row, or a
+  // second video to an existing one, is an edit to this list and nothing else.
+  const ROWS = [
+    { key:'mv', label:'Music videos',           ids:['FyS5dAywkEo', 'sf02ugzPFE4'] },
+    { key:'ts', label:'Teasers · head to head', ids:['LzgE8ift2Uw', 'h-7_04c_hVc'] },
+    { key:'fa', label:'JENNIE · Fallen Angel',  ids:['s466YCiHfKw'] },
+  ];
+  const VIDEOS = ROWS.flatMap(r => r.ids);   // everything we fetch
+  const POLL_MS = 15000;
+
+  // Release moments, served by /api/youtube-history alongside the data. The page
+  // used to hard-code its own copy of these, which drifted the moment new videos
+  // were registered API-side: the MV cards silently lost their countdown, their
+  // 24h line and the chart's 24h guide, because this map had never heard of them.
+  // One source of truth now — a video listed in the API's RELEASE just works here.
+  let RELEASE = {};
+  const H24_MS = 24*60*60*1000;
+  const releaseMs = id => (RELEASE[id] ? Date.parse(RELEASE[id]) : null);
+  const markOf = id => { const r = releaseMs(id); return r==null ? null : r + H24_MS; };
+  let milestoneData = {};   // 24h pins:  { id: {t,v,l,c,mark} }
+  let markData = {};        // other frozen marks: { id: [{key,label,at,v,l,…}] } — e.g. a 7-day figure
+  let viewMsData = {};      // view milestones reached: { id: { "1000000": {v,t,since} } }
+
+
+  // Worldwide clock — same city list + format as the /countdowns release-time rows,
+  // so any moment (a 24h mark, a milestone) can be shown across the world, not just
+  // the viewer's own zone. Rows are sorted earliest → latest.
+  const RELEASE_TIMEZONES = [
+    { city:'Los Angeles', tz:'America/Los_Angeles' }, { city:'Mexico City', tz:'America/Mexico_City' },
+    { city:'Bogotá', tz:'America/Bogota' }, { city:'New York', tz:'America/New_York' },
+    { city:'São Paulo', tz:'America/Sao_Paulo' }, { city:'Buenos Aires', tz:'America/Argentina/Buenos_Aires' },
+    { city:'London', tz:'Europe/London' }, { city:'Madrid', tz:'Europe/Madrid' },
+    { city:'Paris', tz:'Europe/Paris' }, { city:'Berlin', tz:'Europe/Berlin' },
+    { city:'Rome', tz:'Europe/Rome' }, { city:'Warsaw', tz:'Europe/Warsaw' },
+    { city:'Istanbul', tz:'Europe/Istanbul' }, { city:'Moscow', tz:'Europe/Moscow' },
+    { city:'Riyadh', tz:'Asia/Riyadh' }, { city:'Dubai', tz:'Asia/Dubai' },
+    { city:'Mumbai', tz:'Asia/Kolkata' }, { city:'Bangkok', tz:'Asia/Bangkok' },
+    { city:'Jakarta', tz:'Asia/Jakarta' }, { city:'Singapore', tz:'Asia/Singapore' },
+    { city:'Manila', tz:'Asia/Manila' }, { city:'Taipei', tz:'Asia/Taipei' },
+    { city:'Seoul', tz:'Asia/Seoul' }, { city:'Tokyo', tz:'Asia/Tokyo' },
+    { city:'Sydney', tz:'Australia/Sydney' }, { city:'Auckland', tz:'Pacific/Auckland' },
+  ];
+  function worldRows(t){
+    const d = new Date(t);
+    return RELEASE_TIMEZONES.map(({city,tz})=>({
+      city,
+      label: new Intl.DateTimeFormat('en-US', {timeZone:tz, weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}).format(d),
+      sortKey: new Intl.DateTimeFormat('en-CA', {timeZone:tz, hour12:false, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}).format(d),
+    })).sort((a,b)=>a.sortKey.localeCompare(b.sortKey));
+  }
+  function worldTimesHtml(t, label){
+    const rows = worldRows(t).map(r=>`<div class="wtrow"><span>${escapeHtml(r.city)}</span><span>${r.label}</span></div>`).join('');
+    return `<details class="wtimes"><summary>🌍 ${label||'Times around the world'}</summary><div class="wtbody">${rows}</div></details>`;
+  }
+
+  const $ = s => document.querySelector(s);
+  const fmt = n => (n == null ? '—' : Number(n).toLocaleString('en-US'));
+  const abbr = n => {
+    if (n == null) return '';
+    if (n >= 1e9) return (n/1e9).toFixed(2)+'B';
+    if (n >= 1e6) return (n/1e6).toFixed(2)+'M';
+    if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+    return String(n);
+  };
+  const prev = {};   // id -> { views, likes, ts }
+  let lastUpdate = 0;
+  const builtFor = {};   // shell signature per row, so one row rebuilding doesn't churn the other
+
+  function cardHtml(v, side, leading){
+    const cls = 'card' + (leading ? (side===0?' leadA':' leadB') : '');
+    return `<div class="${cls}" id="card-${v.id}">
+      <img class="thumb" src="${v.thumb||''}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="vtitle">${escapeHtml(v.title||'—')}</div>
+      <div class="vchan">${escapeHtml(v.channel||'')}</div>
+      <div class="stat views"><span class="lbl">Views</span>
+        <span><span class="num" id="views-${v.id}">${fmt(v.views)}</span><span class="delta zero" id="dv-${v.id}"></span></span></div>
+      <div class="stat likes"><span class="lbl">Likes</span>
+        <span><span class="num" id="likes-${v.id}">${v.likes==null?'hidden':fmt(v.likes)}</span><span class="delta zero" id="dl-${v.id}"></span></span></div>
+      <div class="stat subs"><span class="lbl">Followers</span>
+        <span><span class="num" id="subs-${v.id}">${v.subscribers==null?'—':fmt(v.subscribers)}</span><span class="delta zero" id="ds-${v.id}"></span></span></div>
+      <div class="since" id="since-${v.id}"></div>
+      <div class="mslist" id="msl-${v.id}"></div>
+      <div class="m24" id="m24-${v.id}"></div>
+      <div class="m24" id="mk-${v.id}"></div>
+      <div class="wt24" id="wt24-${v.id}"></div>
+      <a class="watch" href="https://youtu.be/${v.id}" target="_blank" rel="noopener">Watch ↗</a>
+    </div>`;
+  }
+  function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+  // Render one row. Two videos → the head-to-head layout (leader line, split bar,
+  // VS); one → a single card. A row starts as one and becomes a head-to-head the
+  // moment a second id joins its `ids` in ROWS, with nothing else to change.
+  function renderSection(key, mountId, ids, data){
+    const mount = document.getElementById(mountId); if (!mount) return;
+    const byId = Object.fromEntries((data.videos||[]).map(v=>[v.id,v]));
+    const vids = ids.map(i=>byId[i]).filter(Boolean);
+    if (!vids.length){
+      mount.innerHTML = '<div class="msg">Waiting on YouTube for this one — it fills in once the video is public.</div>';
+      builtFor[key] = ''; return;
+    }
+    const two = vids.length >= 2;
+    const [a,b] = vids;
+    const aLead = two ? a.views >= b.views : true;
+
+    // (Re)build the shell only when the set of videos changes; otherwise just update numbers.
+    const sig = vids.map(v=>v.id).join('|');
+    if (sig !== builtFor[key]){
+      builtFor[key] = sig;
+      mount.innerHTML = two
+        ? `<div class="lead" id="lead-${key}"></div>
+           <div class="bar"><div class="segA" id="segA-${key}"></div><div class="segB" id="segB-${key}"></div></div>
+           <div class="grid">${cardHtml(a,0,aLead)}<div class="vs">VS</div>${cardHtml(b,1,!aLead)}</div>`
+        : `<div class="grid solo">${cardHtml(a,0,false)}</div>`;
+      // The 24h-mark worldwide clock is static, so render it once per shell build
+      // (not on the per-second tick, which would collapse an open <details>).
+      for (const v of vids){
+        const w = document.getElementById('wt24-'+v.id), mk = markOf(v.id);
+        if (w) w.innerHTML = mk!=null ? worldTimesHtml(mk, '24h mark worldwide') : '';
+      }
+    }
+
+    // Leader line + battle bar (head-to-head rows only)
+    if (two){
+      const total = Math.max(1, a.views + b.views);
+      const sa = document.getElementById('segA-'+key), sb = document.getElementById('segB-'+key);
+      if (sa) sa.style.width = (a.views/total*100)+'%';
+      if (sb) sb.style.width = (b.views/total*100)+'%';
+      const gap = Math.abs(a.views - b.views);
+      const leaderName = aLead ? a : b;
+      const ld = document.getElementById('lead-'+key);
+      if (ld) ld.innerHTML = gap === 0
+        ? `Dead even at <b>${fmt(a.views)}</b> views`
+        : `<b>${escapeHtml(shortTitle(leaderName))}</b> leads by <b>${fmt(gap)}</b> views <span style="color:var(--dim)">(${abbr(gap)})</span>`;
+    }
+
+    // Update numbers + per-poll deltas
+    for (const v of vids){
+      setNum('views-'+v.id, v.views);
+      setNum('likes-'+v.id, v.likes==null?null:v.likes, 'hidden');
+      setNum('subs-'+v.id, v.subscribers==null?null:v.subscribers, '—');
+      const p = prev[v.id];
+      if (p){
+        showDelta('dv-'+v.id, v.views - p.views, v.ts - p.ts);
+        if (v.likes!=null && p.likes!=null) showDelta('dl-'+v.id, v.likes - p.likes, v.ts - p.ts);
+        // Followers are rounded by YouTube, so show the raw step (no per-minute rate).
+        if (v.subscribers!=null && p.subs!=null){ const el=document.getElementById('ds-'+v.id); const d=v.subscribers-p.subs; if(el){ el.textContent=d?`${d<0?'▼':'▲'} ${fmt(Math.abs(d))}`:''; el.className=d?(d<0?'delta down':'delta'):'delta zero'; } }
+      }
+      prev[v.id] = { views:v.views, likes:v.likes, subs:v.subscribers, ts:data.ts };
+    }
+    // toggle leader glow
+    if (two){
+      document.getElementById('card-'+a.id)?.classList.toggle('leadA', aLead);
+      document.getElementById('card-'+a.id)?.classList.toggle('leadB', false);
+      document.getElementById('card-'+b.id)?.classList.toggle('leadB', !aLead);
+      document.getElementById('card-'+b.id)?.classList.toggle('leadA', false);
+    }
+  }
+
+  function render(data){
+    window._vids = data.videos || [];   // let the chart legends label their lines
+    for (const r of ROWS) renderSection(r.key, 'app-'+r.key, r.ids, data);
+    lastUpdate = Date.now();
+    tickFoot();
+  }
+  function shortTitle(v){ return (v.title||'').split(/[\(\[|—-]/)[0].trim().slice(0,28) || v.channel || 'A'; }
+  function setNum(id, val, placeholder){ const el=document.getElementById(id); if(el) el.textContent = (val==null?(placeholder||'—'):fmt(val)); }
+  function showDelta(id, d, dtMs){
+    const el = document.getElementById(id); if(!el) return;
+    if (!d){ el.textContent=''; el.className='delta zero'; return; }
+    // Counts go DOWN as well as up — YouTube audits views and removes ones it
+    // decides don't count, especially in a release's first hours. Show a drop as
+    // a drop, and drop the per-minute rate with it: a correction isn't a rate,
+    // and "−544/min" would read as an ongoing decline rather than a one-off
+    // adjustment. (abbr() doesn't take negatives either.)
+    const down = d < 0;
+    const perMin = (!down && dtMs>0) ? Math.round(d / (dtMs/60000)) : 0;
+    el.textContent = `${down?'▼':'▲'} ${fmt(Math.abs(d))}${perMin?` · ${abbr(perMin)}/min`:''}`;
+    el.className = down ? 'delta down' : 'delta';
+  }
+
+  // ── 24-hour milestone (the number each video hit exactly 24h after release) ──
+  // Shared reference times, KST / EDT — same convention as the /countdowns cards
+  // (NOT the viewer's local zone). Everyone sees the same numbers; the 🌍 expander
+  // covers every other timezone.
+  function fmtKE(t){
+    const d = new Date(t);
+    const f = tz => new Intl.DateTimeFormat('en-US', {timeZone:tz, month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}).format(d);
+    const etAb = new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York', timeZoneName:'short'}).formatToParts(d).find(p=>p.type==='timeZoneName')?.value || 'ET';
+    return `${f('Asia/Seoul')} KST / ${f('America/New_York')} ${etAb}`;
+  }
+  // Compact "4:20 – 4:57 PM KST" for the window a crossing was interpolated inside.
+  function fmtWinKE(t0, t1){
+    const f = t => new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', hour:'numeric', minute:'2-digit'}).format(new Date(t));
+    return `${f(t0)} – ${f(t1)} KST`;
+  }
+  function fmtCountdown(ms){ ms=Math.max(0,ms); const h=Math.floor(ms/3600000), m=Math.floor(ms%3600000/60000); return (h?h+'h ':'')+m+'m'; }
+  // Duration like "12h 04m" (or "1d 03h 04m" once past a day).
+  function fmtDur(ms){ ms=Math.max(0,ms); const d=Math.floor(ms/86400000), h=Math.floor(ms%86400000/3600000), m=Math.floor(ms%3600000/60000);
+    return (d?d+'d ':'')+h+'h '+String(m).padStart(2,'0')+'m'; }
+  // A moment in the viewer's own timezone + locale — same format the /countdowns
+  // release-time rows use (weekday, month day, hour:minute). No fixed zone, so
+  // everyone sees it in their local time.
+  // Clean round-milestone label: 1000000 → "1M", 25000000 → "25M", 1e9 → "1B".
+  function msLabel(n){ if(n>=1e9) return (n/1e9)+'B'; if(n>=1e6) return (n/1e6)+'M'; if(n>=1e3) return (n/1e3)+'K'; return String(n); }
+
+  // Live "time since release" line, ticks every second.
+  function updateElapsed(){
+    for (const id of VIDEOS){
+      const el = document.getElementById('since-'+id); if (!el) continue;
+      const rel = releaseMs(id); if (rel==null){ el.innerHTML=''; continue; }
+      const ms = Date.now()-rel;
+      el.innerHTML = ms<0
+        ? `<span class="slbl">Releases in</span> ${fmtDur(-ms)}`
+        : `<span class="slbl">Since release</span> ${fmtDur(ms)}`;
+    }
+  }
+  // Reached view-milestones, most recent first. Each row shows the moment in the
+  // viewer's own zone and expands (🌍) to the same worldwide list /countdowns uses.
+  // A signature guard skips the rebuild when nothing changed, so an open row stays
+  // open across polls.
+  const _mslSig = {};
+  function updateViewMs(){
+    for (const id of VIDEOS){
+      const el = document.getElementById('msl-'+id); if (!el) continue;
+      // One row per crossing, biggest milestone first. A threshold can be crossed
+      // more than once — YouTube recounts the total back under it and it is
+      // crossed again — and every crossing is shown rather than only the first,
+      // so the first reach and the settle sit side by side.
+      const data = viewMsData[id] || {};
+      const items = [];
+      for (const th of Object.keys(data).map(Number).sort((a,b)=>b-a)){
+        const list = Array.isArray(data[th]) ? data[th] : [data[th]];   // tolerate the older single-record shape
+        list.forEach((it,i)=> items.push({ ...it, v: it.v!=null?it.v:th, again: i>0 }));
+      }
+      // A crossing time is interpolated between the two samples that bracket it,
+      // never observed. When those samples are minutes or an hour apart — the
+      // live series is only written when someone is on the page, and YouTube
+      // releases counted views in batches rather than a smooth climb — the
+      // interpolation invents the precision. SaWaDiKa went 15,794,616 →
+      // 22,380,752 inside one 37-minute bracket, and 16M through 20M came out
+      // looking like five separate moments five minutes apart. Anything wider
+      // than a few minutes is shown as an estimate, with the window it sits in
+      // and the thresholds that share it.
+      const EXACT_MS = 3 * 60 * 1000;
+      const brk = {};   // bracket key → thresholds passed inside it
+      for (const it of items){
+        if (it.t1 == null || it.t1 - it.t0 <= EXACT_MS) continue;
+        (brk[it.t0+'@'+it.t1] = brk[it.t0+'@'+it.t1] || []).push(it.v);
+      }
+      const shown = items.slice(0,8);
+      const sig = shown.map(i=>i.v+'@'+i.t+(i.again?'r':'')+'/'+(i.t1==null?'':i.t0+'-'+i.t1)).join(',');
+      if (_mslSig[id] === sig) continue;
+      _mslSig[id] = sig;
+      el.innerHTML = shown.map(it=>{
+        const est = it.t1 != null && it.t1 - it.t0 > EXACT_MS;
+        const dur = it.since!=null ? ` · <span class="msdur">${est?'~':'in '}${fmtDur(it.since)}</span>` : '';
+        const when = est ? `<span class="msest">≈</span> ${fmtKE(it.t)}` : fmtKE(it.t);
+        const summary = `<span class="mstag${it.again?' again':''}">${msLabel(it.v)}</span> ${it.again?'crossed again':'reached'} ${when}${dur}`;
+        let note = '';
+        if (est){
+          const shared = (brk[it.t0+'@'+it.t1] || []).slice().sort((a,b)=>a-b);
+          const together = shared.length > 1
+            ? ` ${shared.map(msLabel).join(' · ')} were all passed in that one update.`
+            : '';
+          note = `<div class="msnote">Estimated. The counter moved ${fmt(it.v0)} → ${fmt(it.v1)} between ${fmtWinKE(it.t0, it.t1)} — the time above is placed inside that window, not a moment we watched.${together}</div>`;
+        }
+        const rows = worldRows(it.t).map(r=>`<div class="wtrow"><span>${escapeHtml(r.city)}</span><span>${r.label}</span></div>`).join('');
+        return `<details class="wtimes msrow"><summary>${summary}</summary><div class="wtbody">${note}${rows}</div></details>`;
+      }).join('');
+    }
+  }
+  function updateMilestones(){
+    // Marks that aren't release+24h — a 7-day figure, say. Same treatment: the
+    // frozen number, and what has been taken back off the counter since.
+    for (const id of VIDEOS){
+      const mk = document.getElementById('mk-'+id); if (!mk) continue;
+      const list = markData[id] || [];
+      mk.innerHTML = list.map(m => {
+        const audited = m.audit && m.audit.drop
+          ? ` <span class="m24audit" title="At least ${fmt(m.audit.drop)} views removed since this mark, so the settled figure is no more than ${fmt(m.v - m.audit.drop)}.">· ≥${fmt(m.audit.drop)} audited → ≤${fmt(m.v - m.audit.drop)}</span>`
+          : '';
+        return `<span class="m24tag">${escapeHtml(m.label || m.key)}</span> <b>${fmt(m.v)}</b> views · <b>${m.l==null?'—':fmt(m.l)}</b> likes${audited}`;
+      }).join('<br>');
+      mk.className = list.length ? 'm24 done' : 'm24';
+    }
+    for (const id of VIDEOS){
+      const el = document.getElementById('m24-'+id); if (!el) continue;
+      const mark = markOf(id); if (mark==null){ el.innerHTML=''; el.className='m24'; continue; }
+      const ms = milestoneData[id];
+      if (ms && ms.v!=null){
+        el.className = 'm24 done';
+        // The pinned figure is what the counter read at the mark. YouTube keeps
+        // recounting afterwards and can take views back off, so also show that —
+        // derived from drops in the series, not a second frozen number.
+        //
+        // It is a LOWER BOUND, and the "≥" says so. A removal is only visible as
+        // a negative step between two samples; when one lands during normal
+        // growth (+30k organic, −20k removed in the same window) the delta is net
+        // positive and the recount leaves no trace. So this is what we can prove
+        // was removed, not everything that was.
+        // ≥ removed, so ≤ what the 24h figure settles at. Both bounds point the
+        // same way: we can prove at least this much went, so the settled number
+        // is at most the pinned one minus it.
+        const audited = ms.audit && ms.audit.drop
+          ? ` <span class="m24audit" title="At least ${fmt(ms.audit.drop)} views removed since the 24h mark, across ${ms.audit.steps} observed drop${ms.audit.steps>1?'s':''}. A removal that coincides with normal growth nets out between samples and leaves no trace, so at least this much went — which puts the settled 24h figure at no more than ${fmt(ms.v - ms.audit.drop)}.">· ≥${fmt(ms.audit.drop)} audited → ≤${fmt(ms.v - ms.audit.drop)}</span>`
+          : '';
+        // Every value this record has been, not just the current one.
+        const prev = Array.isArray(ms.superseded) ? ms.superseded : [];
+        const manual = (ms.manual || prev.length)
+          ? ` <span class="m24audit" title="${prev.length ? 'Previously recorded as ' + prev.map(p=>fmt(p.v)+' views').join(', then ') + '.' : 'This figure was set by hand rather than captured at the mark.'}">· re-pinned${prev.length ? ` (was ${fmt(prev[prev.length-1].v)})` : ''}</span>`
+          : '';
+        el.innerHTML = `<span class="m24tag">24H</span> <b>${fmt(ms.v)}</b> views · <b>${ms.l==null?'—':fmt(ms.l)}</b> likes${audited}${manual}`;
+      } else if (Date.now() >= mark){
+        el.className = 'm24 wait';
+        el.innerHTML = `<span class="m24tag">24H</span> reached — capturing the exact count…`;
+      } else {
+        el.className = 'm24';
+        el.innerHTML = `<span class="m24tag">24H</span> at ${fmtKE(mark)} · in ${fmtCountdown(mark-Date.now())}`;
+      }
+    }
+  }
+
+  function tickFoot(){
+    updateMilestones();
+    updateElapsed();
+    if (!lastUpdate){ $('#foot').textContent=''; return; }
+    const s = Math.round((Date.now()-lastUpdate)/1000);
+    $('#foot').innerHTML = `updated ${s<3?'just now':s+'s ago'} · auto-refreshes every ${POLL_MS/1000}s · YouTube view counts refresh every few minutes`;
+  }
+  setInterval(tickFoot, 1000);
+
+  // ── shared chart data ──────────────────────────────────────────────────────
+  // The numbers themselves are page-wide and keyed by video id, so every chart
+  // reads the same series. Only the *view* state (metric, focus, hover, filters)
+  // is per-chart — see makeChart below.
+  let histData = null;      // fine live series (last ~24h at 15s) per id
+  let hourlyData = {};      // hourly snapshot series (full life) per id
+  const METRIC = { views:{k:'v',label:'Views'}, likes:{k:'l',label:'Likes'}, comments:{k:'c',label:'Comments'}, followers:{k:'s',label:'Followers'} };
+
+  // ── gain stats helpers (pure: take an id + metric key, read the shared data) ──
+  // Korea has no DST, so KST hour/day buckets are exact integer offsets (+9h).
+  const KST_OFF = 9 * 3600000;
+  const DAY_MS_ = 86400000;
+  const kstDateStr = t => new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date(t)); // YYYY-MM-DD
+  const dayIdxOfDate = s => Math.floor((Date.parse(s+'T12:00:00+09:00') + KST_OFF) / DAY_MS_);
+  const RANGE_CHIPS = [['today','Today'],['yesterday','Yesterday'],[7,'Last 7 days'],[30,'Last 30 days'],[90,'Last 90 days'],['all','All time']];
+
+  function gainStats(id, mk){
+    // Merge hourly (long history) + fine (recent) points, ascending, deduped by t.
+    const merged = [...(hourlyData[id]||[]), ...(histData[id]||[])]
+      .filter(p => p[mk] != null)
+      .sort((a,b) => a.t - b.t)
+      .filter((p,i,a) => i === 0 || p.t !== a[i-1].t);
+    if (merged.length < 2) return null;
+    const dayIdx = t => Math.floor((t + KST_OFF) / 86400000);
+    const bucket = idxFn => { const m = new Map(); for (const p of merged) m.set(idxFn(p.t), {t:p.t, v:p[mk]}); return [...m.values()].sort((a,b)=>a.t-b.t); };
+    const hb = bucket(t => Math.floor((t + KST_OFF) / 3600000));  // per KST clock-hour (last value in each)
+    const db = bucket(t => dayIdx(t));                            // per KST calendar day
+    // Hour-to-hour gains; each carries the day it belongs to. Summing a day's
+    // hourly gains telescopes to that day's total.
+    const hg = hb.slice(1).map((p,i) => ({ t:p.t, gain:p.v - hb[i].v, day:dayIdx(p.t) }));
+    const hoursByDay = {};
+    for (const h of hg) (hoursByDay[h.day] = hoursByDay[h.day] || []).push(h);
+    const avg = b => b.length >= 2 ? Math.round((b[b.length-1].v - b[0].v) / (b.length-1)) : null;
+    return { hoursByDay, avgHour: avg(hb), avgDay: avg(db) };
+  }
+
+  function fmtTime(t){ const d=new Date(t); return d.toLocaleDateString([], {month:'short',day:'numeric'})+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+  function fmtTipTime(t){ const d=new Date(t); return d.toLocaleDateString([], {weekday:'short'})+', '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+  const full = n => (n==null ? '' : Number(n).toLocaleString());
+
+  // ── a chart ────────────────────────────────────────────────────────────────
+  // One instance per row. Everything the row can change on its own — which
+  // metric tab is active, which video is focused, the hover position, the gain
+  // filter, which day rows are open — lives in this closure, so two rows on the
+  // same page never fight over it. Element ids are suffixed with `key` for the
+  // same reason, and clicks are delegated rather than inline onclick, which
+  // would need page-global handlers.
+  function makeChart({ key, chartId, statsId, ids }){
+    let metric = 'views';
+    let focus = ids.length === 1 ? ids[0] : null;   // a lone video is inherently focused
+    let geom = null;          // { series, times, X, Y } captured each draw, for the tooltip
+    let hoverX = null;        // last pointer x — the 15s redraw rebuilds the SVG, so re-apply it
+    let gfilter = { mode:'all', from:null, to:null };
+    let statsBuiltFor = null;
+    const openDays = new Set(), daysSeen = new Set();
+    const sid = base => base + '-' + key;
+    const el = base => document.getElementById(sid(base));
+
+    function draw(){
+      const host = document.getElementById(chartId);
+      if (!host || !histData) return;
+      const mk = METRIC[metric].k;
+      const tabs = `<div class="htabs">${Object.keys(METRIC).map(m=>`<button class="htab${m===metric?' on':''}" data-metric="${m}">${METRIC[m].label}</button>`).join('')}</div>`;
+      const series = ids.map((id,i)=>{
+        const raw = (histData[id]||[]).filter(p=>p[mk]!=null).map(p=>({t:p.t,y:p[mk]}));
+        const pts = raw.map((p,idx)=>({ t:p.t, y:p.y, delta: idx ? p.y-raw[idx-1].y : null }));
+        // Look the title up by id, not by position: each row plots its own subset
+        // of the fetched videos, so an index into the global list is meaningless.
+        const v=(window._vids||[]).find(x=>x.id===id); const nm=v?shortTitle(v):('Video '+(i+1));
+        return { id, name:nm, color:i===0?'var(--a)':'var(--b)', pts };
+      });
+      const legend = series.map(s=>{
+        const st = focus===s.id ? ' on' : (focus ? ' off' : '');
+        return `<button class="hleg${st}" data-focus="${s.id}"><span class="hdot" style="background:${s.color}"></span>${escapeHtml(s.name)}</button>`;
+      }).join('');
+      const shown = focus ? series.filter(s=>s.id===focus) : series;
+      const all = shown.flatMap(s=>s.pts);
+      if (all.length < 2){
+        host.innerHTML = `<div class="hcard"><div class="hhead">Live<span class="hleggroup">${legend}</span></div>${tabs}<div class="hempty">Charting live — the line starts drawing within a few seconds and keeps growing (and it stays saved across reloads). Tap the chart to read any point.</div></div>`;
+        geom = null; wireControls(host); updateStats(); return;
+      }
+      const W=640,H=220,PL=54,PR=14,PT=16,PB=26;
+      const tMin=Math.min(...all.map(p=>p.t)), tMax=Math.max(...all.map(p=>p.t));
+      const yLoR=Math.min(...all.map(p=>p.y)), yHiR=Math.max(...all.map(p=>p.y));
+      const pad=(yHiR-yLoR)*0.08||1, yLo=Math.max(0,yLoR-pad), yHi=yHiR+pad;
+      const X=t=> PL+(tMax===tMin?0.5:(t-tMin)/(tMax-tMin))*(W-PL-PR);
+      const Y=v=> H-PB-(yHi===yLo?0.5:(v-yLo)/(yHi-yLo))*(H-PT-PB);
+      let grid='';
+      for(let i=0;i<=3;i++){ const gv=yLo+(yHi-yLo)*i/3, gy=Y(gv);
+        grid+=`<line x1="${PL}" x2="${W-PR}" y1="${gy.toFixed(1)}" y2="${gy.toFixed(1)}" stroke="#ffffff10"/>`
+            + `<text x="${PL-8}" y="${(gy+3).toFixed(1)}" text-anchor="end" fill="#8a5c6c" font-size="9">${abbr(Math.round(gv))}</text>`; }
+      // 24-hour marks: a gold guide line at each shown video's release+24h, plus a
+      // gold dot at the pinned value once it's captured (both only if in-range).
+      let marks='';
+      for (const s of shown){
+        const mk24 = markOf(s.id); if (mk24==null || mk24<tMin || mk24>tMax) continue;
+        const mx = X(mk24);
+        marks += `<line x1="${mx.toFixed(1)}" x2="${mx.toFixed(1)}" y1="${PT}" y2="${H-PB}" stroke="var(--gold)" stroke-opacity="0.5" stroke-dasharray="4 3"/>`
+               + `<text x="${mx.toFixed(1)}" y="${PT-4}" text-anchor="middle" fill="var(--gold)" font-size="8.5">24h</text>`;
+        const ms = milestoneData[s.id];
+        if (ms && ms[mk]!=null) marks += `<circle cx="${mx.toFixed(1)}" cy="${Y(ms[mk]).toFixed(1)}" r="4" fill="var(--gold)" stroke="#0c0509" stroke-width="1.5"/>`;
+      }
+      const lines = shown.map(s=>{ if(!s.pts.length) return '';
+        const d=s.pts.map((p,i)=>`${i?'L':'M'}${X(p.t).toFixed(1)} ${Y(p.y).toFixed(1)}`).join(' ');
+        const last=s.pts[s.pts.length-1];
+        return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`
+             + `<circle cx="${X(last.t).toFixed(1)}" cy="${Y(last.y).toFixed(1)}" r="3.5" fill="${s.color}"/>`; }).join('');
+      const crosshair = `<line class="hxl" x1="0" x2="0" y1="${PT}" y2="${H-PB}" stroke="#ffffff55" stroke-dasharray="3 3" style="opacity:0"/>`
+        + shown.map((s,j)=>`<circle class="hxc" data-j="${j}" r="4" fill="${s.color}" stroke="#0c0509" stroke-width="1.5" style="opacity:0"/>`).join('');
+      const xlab=`<text x="${PL}" y="${H-8}" fill="#8a5c6c" font-size="9">${fmtTime(tMin)}</text>`
+               + `<text x="${W-PR}" y="${H-8}" text-anchor="end" fill="#8a5c6c" font-size="9">${fmtTime(tMax)}</text>`;
+      host.innerHTML = `<div class="hcard"><div class="hhead">Live<span class="hleggroup">${legend}</span></div>${tabs}`
+        + `<div class="hchart"><svg viewBox="0 0 ${W} ${H}" class="hsvg">${grid}${marks}${lines}${crosshair}${xlab}</svg><div class="htip"></div></div></div>`;
+
+      const times = [...new Set(all.map(p=>p.t))].sort((a,b)=>a-b);
+      geom = { W, series: shown, times, X, Y };
+      wireControls(host);
+      wireHover(host);
+      updateStats();
+    }
+
+    // Tabs and legend, delegated. Inline onclick would need page-global handlers,
+    // which is exactly what stops two charts coexisting.
+    function wireControls(host){
+      host.onclick = e => {
+        const t = e.target.closest('[data-metric]');
+        if (t){ metric = t.dataset.metric; statsBuiltFor = null; draw(); return; }
+        const f = e.target.closest('[data-focus]');
+        if (f){ const id = f.dataset.focus; focus = (focus===id ? null : id); draw(); }
+      };
+    }
+
+    // socialcounts-style read-out: hover / drag / tap the chart to see the exact
+    // time, the total at that moment, and the growth since the previous point.
+    function wireHover(host){
+      const g = geom; if (!g) return;
+      const svg = host.querySelector('.hsvg'), tip = host.querySelector('.htip'), chartEl = host.querySelector('.hchart');
+      if (!svg || !tip || !chartEl) return;
+      const xl = svg.querySelector('.hxl'), dots = [...svg.querySelectorAll('.hxc')];
+      const hide = () => { hoverX=null; tip.style.opacity=0; if(xl) xl.style.opacity=0; dots.forEach(d=>d.style.opacity=0); };
+      const move = clientX => {
+        if (!g.times.length) return;
+        hoverX = clientX;
+        const rect = svg.getBoundingClientRect();
+        const vbx = (clientX-rect.left)/rect.width*g.W;
+        let ti=0, best=Infinity;
+        g.times.forEach((t,i)=>{ const dx=Math.abs(g.X(t)-vbx); if(dx<best){best=dx;ti=i;} });
+        const t = g.times[ti], px = g.X(t);
+        if (xl){ xl.setAttribute('x1',px.toFixed(1)); xl.setAttribute('x2',px.toFixed(1)); xl.style.opacity=1; }
+        let topPy = Infinity; const rows=[];
+        g.series.forEach((s,j)=>{
+          const p = s.pts.find(pp=>pp.t===t); const dot=dots[j];
+          if (!p){ if(dot) dot.style.opacity=0; return; }
+          const py = g.Y(p.y);
+          if (dot){ dot.setAttribute('cx',px.toFixed(1)); dot.setAttribute('cy',py.toFixed(1)); dot.style.opacity=1; }
+          topPy = Math.min(topPy, py);
+          rows.push({ name:s.name, color:s.color, y:p.y, delta:p.delta });
+        });
+        if (!rows.length){ hide(); return; }
+        tip.innerHTML = `<div class="htt">${fmtTipTime(t)}</div>` + rows.map(r=>{
+          const dl = r.delta==null ? '' : `<span class="htd${r.delta===0?' zero':''}">${r.delta>0?'+':''}${full(r.delta)}</span>`;
+          return `<div class="htr"><span class="hdot" style="width:8px;height:8px;background:${r.color}"></span><span class="htv">${full(r.y)}</span>${dl}</div>`;
+        }).join('');
+        const m = svg.getScreenCTM();
+        const sp = svg.createSVGPoint(); sp.x=px; sp.y=topPy; const scr = sp.matrixTransform(m);
+        const crect = chartEl.getBoundingClientRect();
+        let left = scr.x-crect.left; const top = scr.y-crect.top-10;
+        left = Math.max(48, Math.min(crect.width-48, left));
+        tip.style.left = left+'px'; tip.style.top = top+'px'; tip.style.opacity=1;
+      };
+      svg.addEventListener('pointermove', e=>move(e.clientX));
+      svg.addEventListener('pointerdown', e=>move(e.clientX));
+      svg.addEventListener('pointerleave', hide);
+      svg.addEventListener('contextmenu', e=>e.preventDefault());   // don't pop the long-press menu while reading the tooltip
+      // draw() replaces the host's innerHTML every 15s poll, throwing away this
+      // SVG and tooltip and building fresh (hidden) ones. A pointer resting on the
+      // chart fires no event, so nothing would re-show the tooltip until you moved
+      // again — it just vanished mid-read. Re-apply the last x on every rewire.
+      if (hoverX != null) move(hoverX);
+    }
+
+    // ── gain stats for this row ──
+    function statsControlsHtml(id){
+      const label = METRIC[metric].label.toLowerCase();
+      const s = gainStats(id, METRIC[metric].k);
+      // Default the date inputs to the data's own KST span.
+      let lo = '', hi = '';
+      if (s){
+        const days = Object.keys(s.hoursByDay).map(Number);
+        const minT = s.hoursByDay[Math.min(...days)][0].t, maxT = s.hoursByDay[Math.max(...days)][0].t;
+        lo = gfilter.from || kstDateStr(minT); hi = gfilter.to || kstDateStr(maxT);
+      }
+      const chips = RANGE_CHIPS.map(([m,txt]) => `<button class="gchip${gfilter.mode===m?' on':''}" data-grange="${m}">${txt}</button>`).join('');
+      return `<div class="gstats" id="${sid('gstatsbox')}">
+        <div class="gpanelhead"><span class="gtitle">${label} gains — past days</span></div>
+        <div class="gchips">${chips}</div>
+        <div class="grange">
+          <label>From<input type="date" id="${sid('gfrom')}" value="${lo}"></label>
+          <label>To<input type="date" id="${sid('gto')}" value="${hi}"></label>
+          <button class="gapply" data-gapply="1">Apply</button>
+        </div>
+        <div class="gsub" id="${sid('gsublbl')}"></div>
+        <div class="glist" id="${sid('glist')}"></div>
+      </div>`;
+    }
+    function renderStatsList(id){
+      const box = el('gstatsbox'); if (!box || !id) return;
+      const mk = METRIC[metric].k, label = METRIC[metric].label.toLowerCase();
+      const s = gainStats(id, mk);
+      const list = el('glist'), sub = el('gsublbl');
+      if (!s){ if(list) list.innerHTML = `<div class="gempty">Collecting — gains fill in as snapshots build up.</div>`; if(sub) sub.textContent=''; return; }
+      const sgn = n => (n < 0 ? '−' : '+') + full(Math.abs(n));
+      const sabbr = n => (n < 0 ? '−' : '+') + abbr(Math.abs(n));
+      const hourLbl = t => new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', hour:'numeric'}).format(new Date(t));
+      const dayDate = t => new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Seoul', day:'numeric', month:'short', year:'numeric'}).format(new Date(t)).toUpperCase();
+      const dayWk   = t => new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', weekday:'long'}).format(new Date(t));
+      let days = Object.keys(s.hoursByDay).map(Number).sort((a,b) => b - a);   // newest first
+      // Apply the range filter.
+      const todayIdx = Math.floor((Date.now() + KST_OFF) / DAY_MS_);
+      if (gfilter.mode === 'today') days = days.filter(d => d === todayIdx);
+      else if (gfilter.mode === 'yesterday') days = days.filter(d => d === todayIdx - 1);
+      else if (typeof gfilter.mode === 'number') days = days.filter(d => d > todayIdx - gfilter.mode);
+      else if (gfilter.mode === 'custom' && gfilter.from && gfilter.to){
+        const a = dayIdxOfDate(gfilter.from), b = dayIdxOfDate(gfilter.to);
+        days = days.filter(d => d >= Math.min(a,b) && d <= Math.max(a,b));
+      }
+      if (days.length && !daysSeen.has(id)) { openDays.add(id+'|'+days[0]); daysSeen.add(id); }  // open the latest day once
+      if (sub) sub.innerHTML = days.length
+        ? `${days.length} day${days.length>1?'s':''} · tap one for its hours <span class="gavg">· avg ${s.avgHour!=null?sabbr(s.avgHour):'—'}/hr · ${s.avgDay!=null?sabbr(s.avgDay):'—'}/day</span>`
+        : 'no days in this range';
+      const rows = days.map(day => {
+        const hrs = s.hoursByDay[day];
+        const total = hrs.reduce((n,h) => n + h.gain, 0);
+        const perHr = Math.round(total / hrs.length);
+        const dkey = id+'|'+day, open = openDays.has(dkey);
+        const body = open ? `<div class="gdaybody">${hrs.slice().reverse().map(h =>
+          `<div class="grow"><span>${hourLbl(h.t)} KST</span><span class="gplus">${sgn(h.gain)}</span></div>`).join('')}</div>` : '';
+        return `<div class="gday${open?' open':''}"><div class="gdayrow" data-gday="${escapeHtml(dkey)}">`
+          + `<span class="gdaycar">▸</span>`
+          + `<div class="gdayleft"><div class="gdaydate">${dayDate(hrs[0].t)}</div>`
+          + `<div class="gdaysub">${dayWk(hrs[0].t)} · ${hrs.length}h · avg ${sabbr(perHr)}/hr</div></div>`
+          + `<div class="gdaytot">${sgn(total)}</div></div>${body}</div>`;
+      }).join('') || '<div class="gempty">no days in this range</div>';
+      if (list){ const sc = list.scrollTop; list.innerHTML = rows; list.scrollTop = sc; }
+    }
+    function paintStats(){
+      const mount = document.getElementById(statsId);
+      if (mount && focus){ mount.innerHTML = statsControlsHtml(focus); wireStats(mount); renderStatsList(focus); }
+    }
+    function wireStats(mount){
+      mount.onclick = e => {
+        const c = e.target.closest('[data-grange]');
+        if (c){ const m = /^\d+$/.test(c.dataset.grange) ? Number(c.dataset.grange) : c.dataset.grange;
+                gfilter = { mode:m, from:null, to:null }; paintStats(); return; }
+        if (e.target.closest('[data-gapply]')){
+          const f = el('gfrom')?.value, t = el('gto')?.value;
+          if (f && t) gfilter = { mode:'custom', from:f, to:t };
+          paintStats(); return;
+        }
+        const d = e.target.closest('[data-gday]');
+        if (d){ const k = d.dataset.gday; if (openDays.has(k)) openDays.delete(k); else openDays.add(k); renderStatsList(focus); }
+      };
+    }
+    // Build controls once per focus/metric/data-arrival; refresh the list on every data tick.
+    function updateStats(){
+      const mount = document.getElementById(statsId); if (!mount) return;
+      if (!focus){ mount.innerHTML = ''; statsBuiltFor = null; return; }
+      const dataKey = focus + '|' + metric + '|' + (gainStats(focus, METRIC[metric].k) ? '1' : '0');
+      if (statsBuiltFor !== dataKey){ statsBuiltFor = dataKey; mount.innerHTML = statsControlsHtml(focus); wireStats(mount); }
+      renderStatsList(focus);
+    }
+
+    return { draw, ids };
+  }
+
+  // Lay the rows out once, then give each one its own chart instance. Same
+  // component every time — only the ids and the state behind it differ.
+  document.getElementById('rows').innerHTML = ROWS.map(r =>
+    `<div class="rowlbl">${escapeHtml(r.label)}</div>`
+    + `<div id="app-${r.key}"><div class="msg">Loading…</div></div>`
+    + `<div id="hist-${r.key}"></div>`
+    + `<div id="stats-${r.key}"></div>`).join('');
+  const CHARTS = ROWS.map(r =>
+    makeChart({ key:r.key, chartId:'hist-'+r.key, statsId:'stats-'+r.key, ids:r.ids }));
+  const drawAll = () => { for (const c of CHARTS) c.draw(); };
+
+  // Admin-only. Reuses the same bu_admin_key the site stores after the admin
+  // unlock on the home page, sent as a header rather than ?key= so the secret
+  // stays out of URLs, referrers and access logs. A 401 clears the stored key
+  // and stops the polling loops rather than hammering a closed door every 15s.
+  const ADMIN_KEY_LS = 'bu_admin_key';
+  let adminKey = (() => { try { return localStorage.getItem(ADMIN_KEY_LS); } catch { return null; } })();
+  let lockedOut = false;
+
+  function lockPage(msg){
+    lockedOut = true;
+    const el = $('#rows');
+    if (el) el.innerHTML = `<div class="msg">${msg}</div>`;
+    const sub = $('#sub'); if (sub) sub.textContent = '';
+  }
+
+  async function apiGet(url){
+    if (lockedOut) return null;
+    if (!adminKey){
+      lockPage('Admin only.<br><br>Unlock on the <a href="/" style="color:var(--pink-soft)">home page</a>, then come back.');
+      return null;
+    }
+    const r = await fetch(url, { cache:'no-store', headers:{ 'x-admin-secret': adminKey } });
+    if (r.status === 401){
+      try { localStorage.removeItem(ADMIN_KEY_LS); } catch {}
+      adminKey = null;
+      lockPage('That admin key was rejected.<br><br>Unlock again on the <a href="/" style="color:var(--pink-soft)">home page</a>.');
+      return null;
+    }
+    return r;
+  }
+
+  async function pollHistory(){
+    try{
+      const r = await apiGet('/api/youtube-history?live=1&ids='+VIDEOS.join(','));
+      if (!r) return;
+      const d = await r.json();
+      if (d && d.releases){ RELEASE = d.releases; }   // before the milestones, which read it
+      if (d && d.marks){ markData = d.marks; }        // before updateMilestones, which renders them
+      if (d && d.milestones){ milestoneData = d.milestones; updateMilestones(); }
+      if (d && d.viewMilestones){ viewMsData = d.viewMilestones; updateViewMs(); }
+      if (d && d.videos){ histData = d.videos; drawAll(); }
+    }catch(e){}
+  }
+
+  // Hourly snapshot series (full life) — powers the focus-view gain stats.
+  async function pollHourly(){
+    try{
+      const r = await apiGet('/api/youtube-history?ids='+VIDEOS.join(','));
+      if (!r) return;
+      const d = await r.json();
+      if (d && d.videos){ hourlyData = d.videos; drawAll(); }
+    }catch(e){}
+  }
+
+  // Grow the live chart in real time with each 15s poll (the server stores the
+  // same points, so it persists across reloads — that's the socialcounts twist).
+  function appendLive(d){
+    const vids = d.videos || [];
+    if (!vids.length) return;
+    if (!histData) histData = {};
+    for (const v of vids){
+      const arr = (histData[v.id] = histData[v.id] || []);
+      if (!arr.length || d.ts - arr[arr.length-1].t > 3000){
+        arr.push({ t:d.ts, v:v.views, l:v.likes, c:v.comments, s:v.subscribers });
+        if (arr.length > 1600) arr.shift();
+      }
+    }
+    drawAll();
+  }
+
+  async function poll(){
+    try{
+      const r = await apiGet('/api/youtube-stats?ids='+VIDEOS.join(','));
+      if (!r) return;
+      const d = await r.json();
+      if (d.error === 'not-configured'){
+        $('#rows').innerHTML = `<div class="msg">The live counter isn’t switched on yet.<br><br>Add a <code>YOUTUBE_API_KEY</code> (YouTube Data API v3) in the site settings and it’ll start counting.</div>`;
+        return;
+      }
+      if (d.error){ $('#sub').textContent = 'error: '+d.error; return; }
+      render(d);
+      appendLive(d);
+      if (d.viewMilestones){ viewMsData = d.viewMilestones; updateViewMs(); }  // show new milestones within one 15s tick
+    }catch(e){ /* keep last render */ }
+  }
+  poll();
+  setInterval(poll, POLL_MS);
+  pollHistory();
+  setInterval(pollHistory, 45 * 1000);   // re-read history/milestones/24h pins often
+  pollHourly();
+  setInterval(pollHourly, 5 * 60 * 1000);   // hourly snapshots change slowly
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ poll(); pollHistory(); pollHourly(); } });
+</script>
+</body>
+</html>

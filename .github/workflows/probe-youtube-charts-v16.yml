@@ -1,0 +1,15 @@
+name: Probe YouTube Charts v16
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Probe YouTube Charts v16
+        run: node .github/scripts/probe-youtube-charts-v16.mjs

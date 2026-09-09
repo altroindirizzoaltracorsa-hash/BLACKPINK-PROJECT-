@@ -1,0 +1,31 @@
+name: Chart Positions Tracker
+
+# Fetches real per-country Spotify chart positions for BLACKPINK + members
+# from kworb.net's daily Top 200 mirror. Runs daily -- Spotify's official
+# Daily Top charts publish with a ~1-day lag, out by ~22:00 UTC, so this runs
+# a bit after that. The same run also fetches weekly chart data, which only
+# meaningfully changes once a week (Fridays), so one daily schedule covers
+# both the daily and weekly refresh needs.
+on:
+  workflow_dispatch:
+  # Scheduled run retired: Top Songs now comes from the official charts.spotify.com
+  # feed (charts=fetch-songs in api/proxy-image.js), which is fresher than kworb's
+  # extra-lagged mirror. Kept as a manual fallback only.
+  # schedule:
+  #   - cron: '30 22 * * *'
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch and store chart positions
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node .github/scripts/fetch_chart_positions.mjs

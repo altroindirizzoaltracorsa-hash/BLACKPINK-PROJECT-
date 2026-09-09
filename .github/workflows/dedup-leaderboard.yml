@@ -1,0 +1,79 @@
+name: Dedup Leaderboard (find/remove stale duplicate rows)
+# Finds legacy rows (no appUserId) whose entire real account set (source+username,
+# extension label excluded) is ALSO owned by another row that DOES have an
+# appUserId — i.e. the same person's stale orphan shadowing their live row.
+# dry=true (default) only reports; dry=false deletes the reported rows.
+on:
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: "true = report only, false = actually delete"
+        required: true
+        default: "true"
+
+jobs:
+  dedup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan and (optionally) delete
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          DRY: ${{ github.event.inputs.dry }}
+        run: |
+          python3 - <<'PY'
+          import os, json, subprocess, urllib.request, urllib.error
+          BASE = "https://blinksunited.com/api/leaderboard"
+          KEY  = os.environ["ADMIN_KEY"]
+          DRY  = os.environ.get("DRY", "true").lower() != "false"
+
+          def get(url):
+              try:
+                  with urllib.request.urlopen(url, timeout=30) as r:
+                      return json.load(r)
+              except Exception as e:
+                  return {"error": str(e)}
+
+          def pairs_of(entry):
+              out = set()
+              accts = entry.get("linkedAccounts") or [{"type": "lastfm", "username": entry.get("username")}]
+              for a in accts:
+                  src = (a.get("type") or a.get("source") or "").lower()
+                  if src == "extension":
+                      continue
+                  out.add(f"{src}:{(a.get('username') or '').lower()}")
+              return out
+
+          users = get(BASE).get("users", {})
+          owners = [(k, e.get("appUserId"), pairs_of(e)) for k, e in users.items() if e.get("appUserId")]
+
+          candidates = []
+          for k, e in users.items():
+              if e.get("appUserId"):
+                  continue  # only legacy rows can be stale orphans
+              real = pairs_of(e)
+              if not real:
+                  continue
+              for ok, oid, opairs in owners:
+                  if ok == k:
+                      continue
+                  if real <= opairs:  # every account of the legacy row is owned by this live row
+                      candidates.append((k, ok))
+                      break
+
+          print(f"total rows: {len(users)}  ·  owner rows (appUserId): {len(owners)}")
+          print(f"stale-duplicate candidates: {len(candidates)}")
+          for k, ok in candidates:
+              s = (users[k].get("scores") or {})
+              print(f"  DELETE '{k}'  (shadow of live row '{ok}')  daily_all={s.get('daily_all')} updatedAt={users[k].get('updatedAt')}")
+
+          if DRY:
+              print("\nDRY RUN — nothing deleted. Re-run with dry=false to remove the above.")
+          else:
+              for k, ok in candidates:
+                  out = subprocess.run(
+                      ["curl", "-sS", "-L", "-X", "POST", f"{BASE}?action=delete-entry&key={KEY}",
+                       "-H", "Content-Type: application/json", "-d", json.dumps({"username": k})],
+                      capture_output=True, text=True)
+                  print(f"  deleted '{k}' -> {out.stdout or out.stderr}")
+              print(f"\nDeleted {len(candidates)} stale duplicate row(s).")
+          PY

@@ -1,0 +1,23 @@
+name: Cleanup leaderboard entries
+
+# One-time, manual-only: removes the handful of leaderboard entries with
+# garbage usernames (pasted URLs, an email address) that fail every Last.fm
+# refresh with a 404. Safe to delete this workflow once it's been run.
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Remove garbage leaderboard entries
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          VERCEL_URL: https://blinksunited.com
+        run: node .github/scripts/cleanup-leaderboard-entries.mjs

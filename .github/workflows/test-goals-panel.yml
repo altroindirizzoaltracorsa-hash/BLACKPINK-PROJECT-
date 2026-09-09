@@ -1,0 +1,28 @@
+name: Test Goals Panel (live)
+
+# Manual smoke test for the consolidated admin panel + per-release Campaign
+# Goals against the live Vercel deployment. Non-destructive: the toggle
+# round-trip restores the goal to its original state.
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL to test (leave blank for production).'
+        required: false
+        default: ''
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Test goals panel against live deployment
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          VERCEL_URL: ${{ inputs.base_url != '' && inputs.base_url || 'https://blinksunited.com' }}
+        run: node .github/scripts/test_goals_panel.mjs

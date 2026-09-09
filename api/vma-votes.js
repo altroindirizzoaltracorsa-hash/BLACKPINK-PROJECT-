@@ -1,0 +1,276 @@
+// VMA voting leaderboard — account-gated, self-reported vote counts.
+//
+//   GET  /api/vma-votes              → community totals { total, today, lisaTotal, bpTotal, lisaToday, bpToday, blinksTotal, blinksToday }
+//   GET  /api/vma-votes?board=1      → { board: [{ name, total/today/week/month, lisa_*, bp_*, streams }, ...] }
+//   GET  /api/vma-votes?me=1         → caller's status (Authorization: Bearer <token>)
+//   GET  /api/vma-votes?live=1       → { liveVoters } — distinct accounts that logged a
+//                                       vote in the last 90s (the "blinks voting now" pulse)
+//   GET  /api/vma-votes?sync=1       → { bp, lisa, total, accounts } — this account's
+//                                       cross-device merged view (X-Ext-Token header; opt-in)
+//   POST /api/vma-votes { accessToken, bp, lisa } → add the LISA/BP split to today
+//        (votes total = bp + lisa). Legacy { accessToken, votes } still accepted (unattributed).
+//        extra (extension, sync mode): { extToken, votes, sync, breakdown:{BLACKPINK,LISA}, account:{id,method} }
+//
+// To submit you must be signed in. A linked scrobbler is OPTIONAL: streaming
+// blinks get ranked on the board; vote-only blinks stay unranked and earn a
+// "Voter" badge at 1000 votes/day (no stream = no rank).
+//
+// Env: SUPABASE_URL, SUPABASE_SERVICE_KEY.  Schema: supabase/vma_user_votes.sql
+
+import { createClient } from '@supabase/supabase-js';
+
+function supabase() {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return null;
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+}
+
+// MTV's VMA voting day resets at MIDNIGHT ET, so we bucket votes by the US
+// Eastern calendar date (not UTC). Intl handles EDT/EST automatically.
+// en-CA formats as YYYY-MM-DD.
+const etDay = (d = new Date()) => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(d);
+
+function bearer(req) {
+  const h = req.headers.authorization || '';
+  const m = /^Bearer\s+(.+)$/i.exec(h);
+  return m ? m[1] : null;
+}
+
+async function isLinked(sb, uid) {
+  const { data } = await sb.from('linked_accounts').select('app_user_id').eq('app_user_id', uid).limit(1);
+  return !!(data && data.length);
+}
+
+// Sum a user's rows into today / week (Mon-start) / month / all-time, in US
+// Eastern (midnight-ET day boundary — matches the /vmas countdown).
+async function myTotals(sb, uid) {
+  const { data } = await sb.from('vma_user_votes').select('day, votes, bp, lisa').eq('app_user_id', uid);
+  const rows = data || [];
+  const t = etDay();                              // 'YYYY-MM-DD' — today in ET
+  const [y, m, dd] = t.split('-').map(Number);
+  // Treat the ET wall-clock date as a UTC date purely for weekday arithmetic.
+  const base = new Date(Date.UTC(y, m - 1, dd));
+  const dow = (base.getUTCDay() + 6) % 7;         // 0 = Monday
+  const monday = new Date(Date.UTC(y, m - 1, dd - dow)).toISOString().slice(0, 10);
+  const first = `${t.slice(0, 7)}-01`;
+  let today = 0, week = 0, month = 0, total = 0;
+  const bp = { today: 0, week: 0, month: 0, total: 0 };
+  const lisa = { today: 0, week: 0, month: 0, total: 0 };
+  for (const r of rows) {
+    const v = r.votes || 0, b = r.bp || 0, l = r.lisa || 0;
+    total += v; bp.total += b; lisa.total += l;
+    if (r.day === t)     { today += v; bp.today += b; lisa.today += l; }
+    if (r.day >= monday) { week  += v; bp.week  += b; lisa.week  += l; }
+    if (r.day >= first)  { month += v; bp.month += b; lisa.month += l; }
+  }
+  return { today, week, month, total, bp, lisa };
+}
+
+// The caller's campaign streams: today's (ET-day aligned) for display + Monster
+// Blink, and whether they've EVER streamed (the silent gate for ranking/badges —
+// you can register votes without streaming, but you only rank if you've streamed).
+async function myStreams(sb, uid) {
+  const { data } = await sb.from('user_daily_counts')
+    .select('day_key, jump, shutdown, ddududu, go').eq('app_user_id', uid);
+  const rows = data || [];
+  const t = etDay();
+  let streams = 0;
+  for (const r of rows) {
+    if (r.day_key === t) streams += (r.jump || 0) + (r.shutdown || 0) + (r.ddududu || 0) + (r.go || 0);
+  }
+  // Ranked/badged only while actually streaming TODAY — not merely having linked
+  // a scrobbler or streamed on some past day.
+  return { streams, ranked: streams >= 1 };
+}
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Ext-Token');
+  res.setHeader('Cache-Control', 'no-store');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const sb = supabase();
+  if (!sb) return res.status(503).json({ error: 'Voting not configured' });
+
+  try {
+    if (req.method === 'GET') {
+      if (req.query.board) {
+        const { data, error } = await sb.rpc('vma_vote_board');
+        if (error) throw error;
+        return res.status(200).json({ board: data || [] });
+      }
+      if (req.query.sync) {
+        // The extension's authoritative counts for TODAY. Auth via the link token
+        // in the x-ext-token header; returns ONLY this account's own data.
+        //
+        // Counts come from vma_user_votes — the SAME table the leaderboard uses — so
+        // the panel always matches the board and merges every vote for this account
+        // across all browsers/profiles/devices (that's what "sync" means here), no
+        // matter which device cast them or whether device-sync was toggled on. The
+        // accounts-used-today list still comes from vma_ext_sync (opt-in, written only
+        // when device sync is on) since it carries the voting emails.
+        const extToken = String(req.headers['x-ext-token'] || '').trim();
+        if (!extToken) return res.status(401).json({ error: 'link required' });
+        const { data: tok } = await sb.from('scrobble_tokens')
+          .select('app_user_id').eq('token', extToken).maybeSingle();
+        if (!tok) return res.status(401).json({ error: 'link required' });
+        const day = etDay();
+        const { data: v } = await sb.from('vma_user_votes')
+          .select('votes, bp, lisa').eq('app_user_id', tok.app_user_id).eq('day', day).maybeSingle();
+        const bp = v?.bp || 0, lisa = v?.lisa || 0, total = v?.votes || 0;
+        const { data: sy } = await sb.from('vma_ext_sync')
+          .select('accounts').eq('app_user_id', tok.app_user_id).eq('day', day).maybeSingle();
+        const accounts = Object.entries(sy?.accounts || {}).map(([id, a]) => ({
+          id, method: (a && a.method) || 'email', votes: (a && a.votes) || 0,
+          cats: (a && Array.isArray(a.cats)) ? a.cats : [],
+          lastTs: (a && a.ts) || 0, // so the panel sorts synced accounts chronologically too
+        }));
+        return res.status(200).json({ bp, lisa, total, accounts });
+      }
+      if (req.query.live) {
+        // "Blinks voting now": distinct accounts whose tally was touched in the last
+        // 90s (via the site OR the extension). Community-scoped, not a global MTV count.
+        const cutoff = new Date(Date.now() - 90 * 1000).toISOString();
+        const { data, error } = await sb.from('vma_user_votes')
+          .select('app_user_id').gte('updated_at', cutoff);
+        if (error) throw error;
+        const liveVoters = data ? new Set(data.map((r) => r.app_user_id)).size : 0;
+        return res.status(200).json({ liveVoters });
+      }
+      if (req.query.me) {
+        const token = bearer(req);
+        if (!token) return res.status(401).json({ error: 'not signed in' });
+        const { data: { user } = {}, error: authErr } = await sb.auth.getUser(token);
+        if (authErr || !user) return res.status(401).json({ error: 'not signed in' });
+        const linked = await isLinked(sb, user.id);
+        const [totals, streams] = await Promise.all([myTotals(sb, user.id), myStreams(sb, user.id)]);
+        // Has the counter (extension or Android app) logged a vote for THIS account
+        // TODAY? If so, the site hides the manual "Add votes" form to avoid double
+        // counting. Best-effort: if the ext_at column isn't there yet, treat as false.
+        let extToday = false;
+        try {
+          const { data: row } = await sb.from('vma_user_votes')
+            .select('ext_at').eq('app_user_id', user.id).eq('day', etDay()).maybeSingle();
+          extToday = !!(row && row.ext_at);
+        } catch (_) { extToday = false; }
+        return res.status(200).json({ linked, extToday, ...totals, ...streams });
+      }
+      const { data, error } = await sb.rpc('vma_vote_totals');
+      if (error) throw error;
+      return res.status(200).json(data || { total: 0, today: 0, blinksTotal: 0, blinksToday: 0 });
+    }
+
+    if (req.method === 'POST') {
+      const body = req.body || {};
+      // Per-artist split: the website sends {bp, lisa}; the extension sends
+      // breakdown:{BLACKPINK, LISA}. When a split is given it is authoritative for
+      // the total; otherwise fall back to a lump {votes} (unattributed, legacy).
+      const bd = body.breakdown || {};
+      let bp   = parseInt(body.bp, 10);
+      let lisa = parseInt(body.lisa, 10);
+      if (!Number.isFinite(bp)   || bp   < 0) bp   = parseInt(bd.BLACKPINK, 10) || 0;
+      if (!Number.isFinite(lisa) || lisa < 0) lisa = parseInt(bd.LISA, 10) || 0;
+      bp   = Math.max(0, Math.min(bp,   10000));
+      lisa = Math.max(0, Math.min(lisa, 10000));
+      let votes = (bp + lisa) > 0 ? bp + lisa : parseInt(body.votes, 10);
+      if (!Number.isFinite(votes) || votes <= 0) return res.status(400).json({ error: 'votes required' });
+      votes = Math.min(votes, 10000); // sanity bound only (no daily cap)
+
+      // Two ways to authenticate a vote submission:
+      //   • accessToken — a Supabase session (the website "Add votes" button).
+      //   • extToken    — a scrobble_token (the BU vote-counter browser extension,
+      //     linked once via /extension-link.html). Resolve it to the same account.
+      let uid = null, name = null;
+      const extToken = String(body.extToken || '').trim();
+      const token = String(body.accessToken || '').trim();
+      if (extToken) {
+        const { data: tok } = await sb
+          .from('scrobble_tokens').select('app_user_id, label').eq('token', extToken).maybeSingle();
+        if (!tok) return res.status(401).json({ error: 'Link your blinksunited account in the extension first.' });
+        uid = tok.app_user_id;
+        // Use the account's real display name (same source as the website path) so the
+        // board shows it — not a linked scrobbler handle like "jumppink". Falls back to
+        // null (→ board resolves handle/blinkN) only if the lookup fails or none is set.
+        try {
+          const { data: got } = await sb.auth.admin.getUserById(uid);
+          name = (got && got.user && got.user.user_metadata && got.user.user_metadata.display_name) || null;
+        } catch (_) { name = null; }
+      } else {
+        if (!token) return res.status(401).json({ error: 'Sign in to log your votes' });
+        const { data: { user } = {}, error: authErr } = await sb.auth.getUser(token);
+        if (authErr || !user) return res.status(401).json({ error: 'Sign in to log your votes' });
+        // Streaming is optional: anyone signed in can log votes. Non-streamers just
+        // aren't ranked (no stream = no rank) — they earn a "Voter" badge at 1000/day.
+        uid = user.id;
+        // Store the BU display name if set, else null — the board resolves nameless
+        // accounts to their handle / blinkN (see vma_vote_board).
+        name = (user.user_metadata && user.user_metadata.display_name) || null;
+      }
+      const user = { id: uid };
+      const day = etDay();
+
+      // Additive: add to today's tally (self-reported, uncapped). `votes` is the
+      // ranking total; `bp`/`lisa` accumulate the attributed split alongside it.
+      const { data: existing } = await sb
+        .from('vma_user_votes').select('votes, bp, lisa').eq('app_user_id', user.id).eq('day', day).maybeSingle();
+      const next     = (existing?.votes || 0) + votes;
+      const nextBp   = (existing?.bp    || 0) + bp;
+      const nextLisa = (existing?.lisa  || 0) + lisa;
+
+      const { error: upErr } = await sb.from('vma_user_votes').upsert(
+        { app_user_id: user.id, day, votes: next, bp: nextBp, lisa: nextLisa, display_name: name, updated_at: new Date().toISOString() },
+        { onConflict: 'app_user_id,day' },
+      );
+      if (upErr) return res.status(500).json({ error: upErr.message });
+
+      // Mark this day's row as counter-logged when the vote came via a link token
+      // (the browser extension or the Android app). The site reads this (?me=1 →
+      // extToday) to hide the manual "Add votes" form, so an auto-counted account
+      // can't double-count by also typing votes in. Best-effort: silently no-ops if
+      // the ext_at column hasn't been added yet (supabase/migrations).
+      if (extToken) {
+        try {
+          await sb.from('vma_user_votes')
+            .update({ ext_at: new Date().toISOString() })
+            .eq('app_user_id', user.id).eq('day', day);
+        } catch (_) { /* column not present yet — feature just stays dormant */ }
+      }
+
+      // Opt-in cross-device sync: when the extension is in sync mode it sends the
+      // per-member breakdown + the voting account, and we record them under this BU
+      // account so the user's other devices see a merged view. Best-effort — never
+      // fail the vote if the sync write hiccups. Only via extToken (the extension).
+      if (extToken && body.sync) {
+        try {
+          const bd = body.breakdown || {};
+          const acct = body.account || {};
+          await sb.rpc('vma_ext_sync_add', {
+            p_uid: user.id, p_day: day,
+            p_bp: parseInt(bd.BLACKPINK, 10) || 0,
+            p_lisa: parseInt(bd.LISA, 10) || 0,
+            p_email: (acct.id ? String(acct.id).slice(0, 320) : null),
+            p_method: (acct.method ? String(acct.method).slice(0, 32) : null),
+            p_cat: (acct.cat ? String(acct.cat).slice(0, 16) : null),
+            p_n: votes,
+          });
+        } catch { /* ignore — sync is a convenience, the vote already saved */ }
+      }
+
+      // The vote is saved. Compute fresh totals for the response, but never fail
+      // the request if that read hiccups — the write already succeeded, so a 500
+      // here would wrongly tell the client to "try again" (and double-count).
+      let my = null, totals = {};
+      try {
+        const [m, t] = await Promise.all([myTotals(sb, user.id), sb.rpc('vma_vote_totals')]);
+        my = m; totals = t.data || {};
+      } catch { /* ignore — client will refetch */ }
+      return res.status(200).json({ ok: true, my, totals });
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
+  } catch (e) {
+    return res.status(500).json({ error: e.message || 'error' });
+  }
+}

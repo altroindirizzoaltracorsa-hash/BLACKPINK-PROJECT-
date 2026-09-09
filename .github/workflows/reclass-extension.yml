@@ -1,0 +1,44 @@
+name: Reclassify Extension Scrobbles
+
+# One-off recovery: move extension plays that landed in a generic
+# solo_<member> / bp_group bucket into their real campaign track_id when a
+# campaign track was added AFTER those plays were recorded (e.g. SaWaDiKa plays
+# sitting in solo_lisa). Re-runs api/ingest-scrobble.js's matchTrack over the
+# generic buckets. Idempotent — rows already on a campaign id aren't scanned.
+#
+# Defaults to a DRY RUN (previews the counts, writes nothing). Set apply=true to
+# actually move the rows.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'peek = inspect what the extension is recording; dry = preview move; apply = perform move'
+        required: false
+        default: 'peek'
+        type: choice
+        options: ['peek', 'dry', 'apply']
+
+jobs:
+  reclass:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reclassify mis-bucketed extension plays
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          MODE: ${{ github.event.inputs.mode }}
+        run: |
+          case "$MODE" in
+            apply)
+              echo "APPLYING reclassification…"
+              URL="https://blinksunited.com/api/ingest-scrobble?reclass=1&key=${ADMIN_KEY}" ;;
+            dry)
+              echo "DRY RUN (preview only — writes nothing)."
+              URL="https://blinksunited.com/api/ingest-scrobble?reclass=1&dry=1&key=${ADMIN_KEY}" ;;
+            *)
+              echo "PEEK (inspect what the extension is recording)."
+              URL="https://blinksunited.com/api/ingest-scrobble?reclass=peek&key=${ADMIN_KEY}" ;;
+          esac
+          curl -sfL -X POST "$URL" -o /tmp/resp.json
+          echo "--- response ---"
+          python3 -m json.tool /tmp/resp.json || cat /tmp/resp.json

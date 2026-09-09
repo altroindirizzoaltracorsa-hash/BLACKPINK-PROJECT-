@@ -1,0 +1,162 @@
+name: BLACKPINK Spotify Catalog
+
+on:
+  schedule:
+    # 10 PM UTC daily — Spotify usually updates earlier in the evening
+    - cron: '0 22 * * *'
+  workflow_dispatch:   # also allows manual trigger from the GitHub Actions tab
+    inputs:
+      base_url:
+        description: 'Base URL to test against (leave blank for production). Use a Vercel preview URL to validate api/streams.js changes before they reach main.'
+        required: false
+        default: ''
+      run_artist_fetch:
+        description: 'Run fetch-artist-streams. Set to false when manually triggering for an unrelated job (e.g. a one-off backfill) outside Spotify''s usual update window (midday-evening Rome time), to avoid writing a premature/duplicate day.'
+        required: false
+        default: 'true'
+      group_dry_run:
+        description: 'Girl groups: report what would be recorded without writing (1)'
+        required: false
+        default: '0'
+      group_override_date:
+        description: 'Girl groups: force a streaming-day label (backfills only)'
+        required: false
+        default: ''
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Force-refresh campaign tracks (JUMP / Shut Down / DDU-DU DDU-DU) on Vercel
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          VERCEL_URL: ${{ inputs.base_url != '' && inputs.base_url || 'https://blinksunited.com' }}
+        run: node .github/scripts/fetch-tracks.mjs
+
+      - name: Force-refresh BLACKPINK catalog total on Vercel
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          VERCEL_URL: ${{ inputs.base_url != '' && inputs.base_url || 'https://blinksunited.com' }}
+        run: node .github/scripts/fetch-catalog.mjs
+
+  # Experimental, manual-only: test whether spotifyscraper's embed-page-bootstrapped
+  # anon token survives GitHub Actions' network, unlike open.spotify.com/get_access_token
+  # which is blocked here. Prints diagnostics only, does not touch production data.
+  test-spotifyscraper:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper
+
+      - name: Run test fetch
+        run: python .github/scripts/test-spotifyscraper.py
+
+  # Runs on the daily schedule (the canonical midnight-Rome / 22:00 UTC window)
+  # AND on manual dispatch unless run_artist_fetch=false. Previously manual-only,
+  # which silently froze per-member/per-artist streams (and the 2026 streams-gained
+  # board) between hand-triggered /update-streams runs.
+  fetch-artist-streams:
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_artist_fetch != 'false')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper
+
+      - name: Fetch and store artist streams
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python .github/scripts/fetch_artist_streams.py
+
+  # The seven K-pop girl groups, fetched straight from Spotify off the seeded
+  # track lists in data/group_catalogs/. Runs AFTER fetch-artist-streams (needs:)
+  # so the two never fetch at once, and so a day is only ever recorded when the
+  # BLACKPINK job judged Spotify had published one.
+  #
+  # Summing those exact track IDs was verified to reproduce kworb's published
+  # total to the digit for BLACKPINK and ILLIT, and to within 0.005% elsewhere —
+  # so this is the same measurement kworb reports, on our own schedule rather
+  # than its. Writes data/group_streams/{history.json,history.csv}.
+  fetch-group-streams:
+    needs: fetch-artist-streams
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_artist_fetch != 'false')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper
+
+      - name: Fetch the seven group totals
+        env:
+          OVERRIDE_DATE: ${{ inputs.group_override_date }}
+          DRY_RUN: ${{ inputs.group_dry_run }}
+        run: python .github/scripts/fetch_group_streams.py
+
+      - name: Commit the day
+        if: inputs.group_dry_run != '1'
+        run: |
+          if [ -z "$(git status --porcelain data/group_streams)" ]; then
+            echo "nothing new recorded"; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/group_streams
+          git commit -m "data: girl group streams $(date -u +%Y-%m-%d)"
+          # Another data job may have pushed while this one ran; rebase rather
+          # than fail, since these files are only ever appended to.
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "push failed after 3 attempts"; exit 1
+
+  # One-time, manual-only: artist_tracks didn't originally store album
+  # metadata. Backfills album/album_release_date/track_number for every
+  # existing track by re-fetching each one via spotifyscraper and PATCHing
+  # artist_tracks only -- doesn't touch daily-stats tables, so unlike
+  # fetch-artist-streams it's safe to run outside Spotify's update window.
+  # Safe to remove once it's been run.
+  backfill-track-albums:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper
+
+      - name: Backfill track album metadata
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python .github/scripts/backfill_track_albums.py

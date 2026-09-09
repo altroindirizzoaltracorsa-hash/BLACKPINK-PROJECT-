@@ -4,6 +4,7 @@ const TRACKS = {
   jump:     { spotify: '5H1sKFMzDeMtXwND3V6hRY', artist: 'BLACKPINK', track: 'JUMP',          album: 'DEADLINE' },
   shutdown: { spotify: '6tCd8bPvYnceDG7W9M1RMk', artist: 'BLACKPINK', track: 'Shut Down',     album: 'BORN PINK' },
   ddududu:  { spotify: '69BIczdH6QMnFx7dsSssN8', artist: 'BLACKPINK', track: 'DDU-DU DDU-DU', album: 'SQUARE UP' },
+  go:       { spotify: '0mYa3o6tlUN5HRippmKmwH', artist: 'BLACKPINK', track: 'GO',             album: 'DEADLINE' },
 };
 
 export default async function handler(req, res) {

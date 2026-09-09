@@ -1,0 +1,264 @@
+// Background service worker. Receives detected votes, keeps only the ones cast for
+// BLACKPINK / a member, logs them to the blinksunited.com voting board using the
+// account link token, and maintains the counters + activity log the on-page panel
+// (panel.js) reads from chrome.storage. Also serves the "blinks voting now" count.
+
+const BU_ENDPOINT = 'https://blinksunited.com/api/vma-votes';
+
+// Promisified storage.get — MV2 / older Chromium (Kiwi) doesn't support the
+// promise-returning form of chrome.storage.local.get, only the callback form.
+function getLocal(keys) {
+  return new Promise((resolve) => chrome.storage.local.get(keys, resolve));
+}
+
+// ── WHICH VOTES COUNT ────────────────────────────────────────────────────────
+// Each VMA category (the `category=` value in the vote request) maps its nominee
+// slot(s) → the member they belong to. The slot key is NOT fixed — it varies per
+// category and per nominee (Best Pop LISA is C1; Best K-pop is A1 for BLACKPINK and
+// F1 for LISA), and one submission can split across slots
+// ({"cat11":{"total":10,"A1":9,"F1":1}}). Add entries as you confirm them; un-mapped
+// categories are logged to the service-worker console.
+//   cat06 (Best Pop)   → C1 = LISA
+//   cat11 (Best K-pop) → A1 = BLACKPINK, F1 = LISA
+// These are the only two fan-voted categories BLACKPINK/members are in.
+const BP_SLOTS = {
+  cat06: { C1: 'LISA' },
+  cat11: { A1: 'BLACKPINK', F1: 'LISA' },
+};
+const CATEGORY_NAMES = { cat06: 'Best Pop', cat11: 'Best K-Pop' };
+
+// ── DEDUPE RETRIED SUBMISSIONS ───────────────────────────────────────────────
+// This list has to OUTLIVE the background script. Under MV3 (manifest.json)
+// background.js is a service worker Chrome shuts down after ~30s idle, which
+// wiped an in-memory list and let the next retry count a second time; under
+// MV2/Kiwi (manifest-mv2.json) the page is "persistent": true, so it survived.
+// The same retry was counted differently depending on the build. It's mirrored
+// into chrome.storage now, with the in-memory copy kept as the synchronous
+// race guard.
+const SEEN_KEY = 'buSeenVotes';
+const SEEN_MAX = 1000;
+let seenVotes = null;    // null until loaded back from storage
+let seenLoading = null;
+
+function loadSeen() {
+  if (seenVotes) return Promise.resolve(seenVotes);
+  if (!seenLoading) {
+    seenLoading = getLocal(SEEN_KEY).then(function (cfg) {
+      if (!seenVotes) {
+        const saved = cfg && cfg[SEEN_KEY];
+        seenVotes = Array.isArray(saved) ? saved.slice(-SEEN_MAX) : [];
+      }
+      return seenVotes;
+    });
+  }
+  return seenLoading;
+}
+
+// Identify a submission by WHICH one it was, not merely when. An account can submit
+// once per category per voting day, so the key is the day + category + account.
+// timestamp is deliberately NOT part of the key: a retried submission is re-signed
+// with a fresh timestamp, so keying on timestamp let retries count a second time.
+function voteKey(detail) {
+  return [etDay(), detail.category || '?', detail.account || '<anon>'].join('|');
+}
+
+// MTV's voting day resets at midnight ET — align the panel's "today" counters to it.
+function etDay() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+}
+
+async function postVotes(n, extra) {
+  const { buToken } = await getLocal('buToken');
+  if (!buToken || n <= 0) return { ok: false, reason: 'not-linked' };
+  try {
+    const r = await fetch(BU_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ extToken: buToken, votes: n }, extra || {})),
+    });
+    return { ok: r.ok };
+  } catch (_) {
+    return { ok: false, reason: 'network' };
+  }
+}
+
+// Pull this account's cross-device merged view (opt-in sync). Returns
+// { bp, lisa, total, accounts } or null.
+async function fetchSync() {
+  const { buToken } = await getLocal('buToken');
+  if (!buToken) return null;
+  try {
+    const r = await fetch(BU_ENDPOINT + '?sync=1', { headers: { 'X-Ext-Token': buToken }, cache: 'no-store' });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (_) { return null; }
+}
+
+// Fetch the community "voting now" pulse for the panel.
+async function fetchLive() {
+  try {
+    const r = await fetch(BU_ENDPOINT + '?live=1', { cache: 'no-store' });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return typeof j.liveVoters === 'number' ? j.liveVoters : null;
+  } catch (_) { return null; }
+}
+
+// Reset the day's counters/log when the ET date rolls over, so the panel's
+// "counted today" tracks the same boundary as the /voting board.
+function rolledOver(store, today) {
+  if (store.buDay === today) return store;
+  return { buDay: today, buCount: 0, bpCount: 0, lisaCount: 0, buLog: [], buAccounts: [],
+           buPending: store.buPending || 0, buToken: store.buToken, buProfile: store.buProfile };
+}
+
+chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
+  // Panel asks for the live "voting now" number.
+  if (msg && msg.type === 'bu-live') {
+    fetchLive().then((liveVoters) => sendResponse({ liveVoters }));
+    return true; // async response
+  }
+
+  // Panel asks for the cross-device merged view (opt-in sync).
+  if (msg && msg.type === 'bu-sync-pull') {
+    fetchSync().then((data) => sendResponse({ data }));
+    return true; // async response
+  }
+});
+
+// Query params on the vote request that are never nominee slots.
+const RESERVED = new Set(['apikey', 'timestamp', 'action_type', 'user_id', 'method', 'category', 'total']);
+
+// Read a vote submission straight off its URL — everything we need (category, the
+// nominee slots, total, timestamp, and the voting account) is in the query string:
+//   .../api/prod/vote/s2/vote?...&category=cat11&total=10&A1=9&F1=1&user_id=…&method=…
+// We watch this with chrome.webRequest instead of hooking page-world fetch/XHR, so
+// there's no `world:"MAIN"` content script — which keeps it working on older
+// Chromium (e.g. Kiwi) as well as current Chrome.
+function parseVoteUrl(url) {
+  try {
+    const u = new URL(url);
+    if (!/\/api\/prod\/vote\/s2\/vote/i.test(u.pathname)) return null;
+    const p = u.searchParams;
+    if ((p.get('action_type') || '') !== 'vote') return null;
+    const slots = {};
+    for (const [k, v] of p.entries()) {
+      if (!RESERVED.has(k.toLowerCase()) && /^[A-Z]\d+$/i.test(k)) slots[k.toUpperCase()] = parseInt(v, 10) || 0;
+    }
+    return {
+      category: p.get('category') || null,
+      slots,
+      total: parseInt(p.get('total'), 10) || 0,
+      timestamp: p.get('timestamp') || null,
+      account: p.get('user_id') || null,
+      method: p.get('method') || null,
+    };
+  } catch (_) { return null; }
+}
+
+chrome.webRequest.onCompleted.addListener(
+  function (details) {
+    if (details.statusCode < 200 || details.statusCode >= 300) return;
+    const detail = parseVoteUrl(details.url);
+    if (detail) {
+      processVote(detail).catch(function (e) {
+        console.log('[BU Vote Counter] processVote failed:', e);
+      });
+    }
+  },
+  { urls: ['https://vote.mtv.com/*'] } // broad match; parseVoteUrl() filters to the vote path
+);
+
+async function processVote(detail) {
+  const { category, slots, timestamp, account, method } = detail;
+
+  const map = BP_SLOTS[category];
+  if (!map) {
+    console.log('[BU Vote Counter] vote in un-mapped category:', category, 'slots:', slots,
+      '\n→ if this was a BLACKPINK/member vote, add it to BP_SLOTS in background.js');
+    return;
+  }
+
+  // Sum our slots, split by member.
+  let n = 0; const perMember = {};
+  for (const slot in map) {
+    const c = slots[slot] || 0;
+    if (c > 0) { n += c; const who = map[slot]; perMember[who] = (perMember[who] || 0) + c; }
+  }
+  if (n <= 0) return;
+
+  // Dedupe AFTER the slot maths, so the window holds only submissions we
+  // actually count — un-mapped categories and votes where no BLACKPINK slot
+  // scored used to evict real entries out of the window we keep.
+  const seen = await loadSeen();
+  const key = voteKey(detail);
+  // Check and insert with no await in between: two retries arriving in the
+  // same tick would both pass an interleaved check.
+  if (seen.indexOf(key) !== -1) return;
+  seen.push(key);
+  if (seen.length > SEEN_MAX) seen.splice(0, seen.length - SEEN_MAX);
+  chrome.storage.local.set({ [SEEN_KEY]: seen });
+
+  // ALWAYS send the anonymous BLACKPINK/LISA split so the board's per-artist
+  // columns fill for every extension voter (it's just two counts, same as the
+  // website form). The account email/method — used only for the opt-in
+  // cross-device view — stays gated behind the sync toggle.
+  chrome.storage.local.get(['buSyncOn'], function (cfg) {
+    const extra = { breakdown: perMember };
+    if (cfg.buSyncOn) {
+      extra.sync = true;
+      extra.account = account ? { id: account, method: method || 'email', cat: category } : undefined;
+    }
+
+  postVotes(n, extra).then(function (res) {
+    const today = etDay();
+    chrome.storage.local.get(
+      ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buPending', 'buDay', 'buToken', 'buProfile'],
+      function (raw) {
+        const r = rolledOver(raw, today);
+        const cat = CATEGORY_NAMES[category] || category;
+        const upd = { buDay: today };
+        if (res.ok) {
+          upd.buCount = (r.buCount || 0) + n;
+          upd.bpCount = (r.bpCount || 0) + (perMember.BLACKPINK || 0);
+          upd.lisaCount = (r.lisaCount || 0) + (perMember.LISA || 0);
+          // Newest-first activity log, ONE entry per member so a split submission shows
+          // its real breakdown (e.g. 9 BLACKPINK + 1 LISA → two rows). Keep the last 20.
+          const log = Array.isArray(r.buLog) ? r.buLog.slice() : [];
+          const now = Date.now();
+          // unshift LISA first, then BLACKPINK, so BLACKPINK sits on top of the pair.
+          ['LISA', 'BLACKPINK'].forEach((who) => {
+            if (perMember[who]) log.unshift({ n: perMember[who], cat, who, ts: now });
+          });
+          upd.buLog = log.slice(0, 500); // keep the full day's chronology (resets at ET midnight)
+          // Flush any previously-pending votes now that we're linked/online.
+          if (r.buPending) { postVotes(r.buPending); upd.buPending = 0; }
+        } else {
+          // Not linked yet or offline — remember so the panel/popup can nudge, retry later.
+          upd.buPending = (r.buPending || 0) + n;
+        }
+        // Track which account cast this vote — the user's OWN roster of emails/logins
+        // used today, so they know which to rotate. Stored locally only, never sent
+        // to our server (the POST body carries only extToken + a vote count).
+        if (account) {
+          const accts = Array.isArray(r.buAccounts) ? r.buAccounts.slice() : [];
+          const i = accts.findIndex((a) => a.id === account);
+          if (i >= 0) {
+            accts[i].votes += n; accts[i].lastTs = Date.now();
+            // Track which of the 2 fan-voted categories this account has covered (→ x/2).
+            const cats = Array.isArray(accts[i].cats) ? accts[i].cats.slice() : [];
+            if (cats.indexOf(category) === -1) cats.push(category);
+            accts[i].cats = cats;
+          } else {
+            accts.push({ id: account, method: method || 'email', votes: n, lastTs: Date.now(), cats: [category] });
+          }
+          upd.buAccounts = accts;
+        }
+        chrome.storage.local.set(upd);
+      }
+    );
+  });
+  });
+}

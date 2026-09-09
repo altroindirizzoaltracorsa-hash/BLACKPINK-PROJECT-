@@ -1,0 +1,55 @@
+name: Fix Aug 2/3 Dates
+
+on:
+  workflow_dispatch:
+
+jobs:
+  # Adds the missing 02/08 entry to the BLACKPINK catalog Redis history.
+  # The Aug 4 04:30 UTC manual trigger fetched 17,595,602,852 but mislabeled
+  # it 03/08; the midnight cron later wrote the real 03/08 (17,600,158,856),
+  # leaving 02/08 missing entirely.
+  fix-catalog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Add 02/08 = 17,595,602,852 to catalog history
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          VERCEL_URL: 'https://blinksunited.com'
+          CATALOG_DATE: '02/08'
+          CATALOG_TOTAL: '17595602852'
+        run: node .github/scripts/set-catalog-entry.mjs
+
+  # Relabels artist data in Supabase from 2026-08-03 → 2026-08-02,
+  # then fetches fresh streams labeled as 2026-08-03.
+  fix-artist-dates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install spotifyscraper httpx
+
+      - name: Relabel Supabase artist data 2026-08-03 → 2026-08-02
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          FROM_DATE: '2026-08-03'
+          TO_DATE: '2026-08-02'
+        run: python .github/scripts/relabel_artist_dates.py
+
+      - name: Fetch Aug 3 artist streams (OVERRIDE_DATE=2026-08-03)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          OVERRIDE_DATE: '2026-08-03'
+        run: python .github/scripts/fetch_artist_streams.py

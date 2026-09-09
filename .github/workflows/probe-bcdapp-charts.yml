@@ -1,0 +1,20 @@
+name: Probe b-cd.app charts
+
+# One-off, manual-only: inspects b-cd.app's real charts API/data source
+# ahead of designing our own Charts feature.
+# Safe to remove once the Charts feature is built.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Probe b-cd.app charts endpoint
+        run: node .github/scripts/probe-bcdapp-charts.mjs

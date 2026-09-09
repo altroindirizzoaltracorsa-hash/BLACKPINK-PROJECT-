@@ -1,0 +1,21 @@
+name: Probe official Spotify charts
+
+# One-off, manual-only: checks whether charts.spotify.com's Daily/Weekly Top
+# Artists Global pages (Spotify's own official artist chart) are fetchable
+# server-side, ahead of building an artist-charts feature on top of it.
+# Safe to remove once the feature (if built) ships.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Probe official Spotify charts
+        run: node .github/scripts/probe-spotify-charts-official.mjs

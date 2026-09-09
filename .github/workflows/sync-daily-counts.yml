@@ -1,0 +1,54 @@
+name: Sync Daily Counts
+
+# Syncs TODAY's live Redis board (streaming leaderboard) into the durable
+# user_daily_counts table (voting board + badges). Repairs the same-day gap for
+# accounts whose streams the server-side cron can't re-pull. Max-merge only —
+# it can only ever RAISE a count, never lower one.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: 'Dry run (preview only, write nothing)'
+        type: boolean
+        default: false
+      name:
+        description: 'Filter the printed report to one display name (optional)'
+        type: string
+        default: ''
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync Redis board -> user_daily_counts (max-merge)
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          DRY: ${{ inputs.dry }}
+          NAME: ${{ inputs.name }}
+        run: |
+          url="https://blinksunited.com/api/leaderboard?action=sync-daily-counts&key=${ADMIN_KEY}"
+          [ "$DRY" = "true" ] && url="${url}&dry=1"
+          if [ -n "$NAME" ]; then
+            enc=$(python3 -c "import urllib.parse,os;print(urllib.parse.quote(os.environ['NAME']))")
+            url="${url}&name=${enc}"
+          fi
+          # URL carries the admin key, so never echo it. Body has no secrets.
+          code=$(curl -sS -L -X POST --max-time 120 -o /tmp/resp.json -w '%{http_code}' "$url") || code=000
+          echo "HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "--- response body (first 2000 chars) ---"
+            head -c 2000 /tmp/resp.json; echo
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/resp.json'))
+          print('dry:', d.get('dry'), ' day_key:', d.get('day_key'), ' todayLabel:', d.get('todayLabel'))
+          print('candidates (board entries for today):', d.get('candidates'))
+          print('raised (rows that go up):', d.get('raisedCount'))
+          for c in (d.get('changed') or [])[:60]:
+              core = ' '.join(f"{k}={c.get(k)}" for k in ('jump','shutdown','ddududu','ltal','go'))
+              nr   = ' '.join(f"{k}={c.get(k)}" for k in ('sawadika','click','fallenangel','heaven'))
+              print(f"  {c.get('name'):<24} {core} | {nr}")
+          PY
