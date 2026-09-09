@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-08T10:44:04.258Z",
+  "generatedAt": "2026-09-09T10:52:19.766Z",
   "chartType": "weekly",
   "weekEndingDate": "2026-09-03",
   "regions": {
@@ -108,7 +108,7 @@
         "endDate": "20260903",
         "region": "jp"
       },
-      "totalEntries": 89,
+      "totalEntries": 90,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
@@ -358,7 +358,7 @@
         "endDate": "20260903",
         "region": "th"
       },
-      "totalEntries": 95,
+      "totalEntries": 94,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
@@ -415,7 +415,7 @@
         "endDate": "20260903",
         "region": "ph"
       },
-      "totalEntries": 97,
+      "totalEntries": 98,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
@@ -456,7 +456,7 @@
         "endDate": "20260903",
         "region": "my"
       },
-      "totalEntries": 93,
+      "totalEntries": 94,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
@@ -524,7 +524,7 @@
         "endDate": "20260903",
         "region": "vn"
       },
-      "totalEntries": 83,
+      "totalEntries": 84,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
@@ -565,7 +565,7 @@
         "endDate": "20260903",
         "region": "sg"
       },
-      "totalEntries": 96,
+      "totalEntries": 97,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
@@ -660,7 +660,7 @@
         "endDate": "20260903",
         "region": "in"
       },
-      "totalEntries": 93,
+      "totalEntries": 95,
       "hits": []
     },
     "au": {
@@ -760,8 +760,24 @@
         "endDate": "20260903",
         "region": "us"
       },
-      "totalEntries": 94,
+      "totalEntries": 95,
       "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 20,
+          "name": "SaWaDiKa",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 2174208,
+          "releaseDate": {
+            "year": 2026,
+            "month": 8,
+            "day": 27
+          }
+        },
         {
           "chartType": "TOP_VIDEOS",
           "member": "JENNIE",
@@ -790,8 +806,24 @@
         "endDate": "20260903",
         "region": "ca"
       },
-      "totalEntries": 94,
+      "totalEntries": 95,
       "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 6,
+          "name": "SaWaDiKa",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 410918,
+          "releaseDate": {
+            "year": 2026,
+            "month": 8,
+            "day": 27
+          }
+        },
         {
           "chartType": "TOP_VIDEOS",
           "member": "JENNIE",
@@ -833,8 +865,25 @@
         "endDate": "20260903",
         "region": "br"
       },
-      "totalEntries": 94,
-      "hits": []
+      "totalEntries": 95,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 86,
+          "name": "SaWaDiKa",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 1306178,
+          "releaseDate": {
+            "year": 2026,
+            "month": 8,
+            "day": 27
+          }
+        }
+      ]
     },
     "ar": {
       "region": "Argentina",
@@ -898,7 +947,7 @@
         "endDate": "20260903",
         "region": "gb"
       },
-      "totalEntries": 91,
+      "totalEntries": 92,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
@@ -928,7 +977,7 @@
         "endDate": "20260903",
         "region": "fr"
       },
-      "totalEntries": 97,
+      "totalEntries": 99,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
@@ -958,7 +1007,7 @@
         "endDate": "20260903",
         "region": "de"
       },
-      "totalEntries": 94,
+      "totalEntries": 95,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
@@ -988,7 +1037,7 @@
         "endDate": "20260903",
         "region": "es"
       },
-      "totalEntries": 96,
+      "totalEntries": 97,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
@@ -1018,7 +1067,7 @@
         "endDate": "20260903",
         "region": "it"
       },
-      "totalEntries": 96,
+      "totalEntries": 97,
       "hits": []
     },
     "nl": {
@@ -1031,7 +1080,7 @@
         "endDate": "20260903",
         "region": "nl"
       },
-      "totalEntries": 94,
+      "totalEntries": 95,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
@@ -1204,7 +1253,7 @@
     }
   },
   "summary": {
-    "totalHits": 53,
+    "totalHits": 56,
     "regionsChecked": 33
   }
 }
