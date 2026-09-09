@@ -1748,6 +1748,21 @@
   .sw-photo { border-radius: 12px; overflow: hidden; margin: 0.9rem 0 0.2rem; line-height: 0; box-shadow: 0 6px 20px rgba(40,4,6,0.35); }
   .sw-photo img { width: 100%; height: auto; display: block; }
 
+  /* ROSÉ "new trick" card — plum candy-wrapper look pulled from the single cover */
+  .cd-card-newtrick { --nt-bg: #491a41; --nt-text: #f5e7f0; --nt-light: #dcaed0; --nt-dark: #2b0d26;
+    background: radial-gradient(120% 140% at 50% 0%, #5c2352 0%, var(--nt-bg) 58%, #340f2d 100%);
+    border-color: rgba(220,174,208,0.35); color: var(--nt-text); text-align: center; box-shadow: 0 18px 50px -30px rgba(43,13,38,0.9); }
+  .nt-hero { border-radius: 14px; overflow: hidden; margin: 0 auto 1.1rem; max-width: 300px; line-height: 0; box-shadow: 0 8px 26px rgba(43,13,38,0.5); }
+  .nt-hero img { width: 100%; height: auto; display: block; }
+  .nt-title { font-family: var(--display); font-size: clamp(2.1rem, 10vw, 3rem); font-weight: 700; letter-spacing: 0.01em; color: #fff; line-height: 0.95; margin-bottom: 0.5rem; text-shadow: 0 2px 18px rgba(43,13,38,0.6); }
+  .cd-card-newtrick .cd-eyebrow.nt-eyebrow { color: var(--nt-text); opacity: 0.95; font-weight: 700; }
+  .cd-card-newtrick .cd-sub { color: var(--nt-text); opacity: 0.9; font-weight: 600; }
+  .cd-card-newtrick .cd-timer { justify-content: center; }
+  .cd-card-newtrick .cd-out { color: var(--nt-text); }
+  .cd-card-newtrick .cd-links { justify-content: center; }
+  .nt-btn { background: var(--nt-dark); color: var(--nt-light); border: 1px solid var(--nt-light); border-radius: 99px; }
+  .nt-btn:hover { background: var(--nt-light); color: var(--nt-dark); filter: none; }
+
   /* ── JISOO carnival countdown (mirrors jisoo.io: Angkor numerals + star
        separators over dusty-mauve paper, carnival ink anchored to the bottom) ── */
   @font-face {
@@ -2711,6 +2726,20 @@
       <section id="home-countdowns" style="margin-top:2.2rem;max-width:900px;width:100%;text-align:center;">
         <p class="cd-section-label">◇ Countdowns</p>
         <div class="cd-wrap">
+          <div class="cd-card cd-card-newtrick" data-slug="newtrick" data-target="2026-09-17T23:00:00Z" data-live="OUT NOW ✨" data-plain="1">
+            <div class="nt-hero"><img src="/newtrick/newtrick-cover.jpg" alt="ROSÉ — new trick (single cover)" loading="lazy"></div>
+            <div class="nt-title">new trick</div>
+            <div class="cd-eyebrow nt-eyebrow">ROSÉ · New Single · rosesarerosie.lnk.to</div>
+            <div class="cd-sub">World Premiere · Wed, Sep 17, 2026 · 7PM EDT / Thu, Sep 18 · 8AM KST</div>
+            <div class="cd-timer cd-timer-plain" data-timer></div>
+            <div class="cd-links">
+              <a class="cd-btn nt-btn" href="https://rosesarerosie.lnk.to/newtrick" target="_blank" rel="noopener">Pre-save ↗</a>
+            </div>
+            <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
+              <summary>Release times worldwide</summary>
+              <div class="cd-times-body" data-times-for="2026-09-17T23:00:00Z"></div>
+            </details>
+          </div>
           <div class="cd-card cd-card-jisoo is-teaser" id="jisoo-card" data-slug="jisoo.io" data-target="2026-09-04T04:00:00Z" data-live="OUT NOW ✨" data-stars="1">
             <div class="js-look-toggle" role="group" aria-label="Card style">
               <button type="button" data-look="teaser" onclick="setJisooLook('teaser')">Teaser</button>
@@ -3320,7 +3349,7 @@
   <section class="cd-hub">
     <p class="cd-section-label">◇ Countdowns</p>
     <h1 class="cd-hub-title">Every countdown, one place</h1>
-    <p class="cd-hub-sub">BLACKPINK &amp; members releases, reveals and the VMAs. Share a single one directly — e.g. <code>/countdowns/jisoo.io</code>, <code>/countdowns/jenn.ie</code>, <code>/countdowns/hellosawadika.com</code>, <code>/countdowns/lalisaofficial.com</code>, <code>/countdowns/vmas</code>.</p>
+    <p class="cd-hub-sub">BLACKPINK &amp; members releases, reveals and the VMAs. Share a single one directly — e.g. <code>/countdowns/newtrick</code>, <code>/countdowns/jisoo.io</code>, <code>/countdowns/jenn.ie</code>, <code>/countdowns/hellosawadika.com</code>, <code>/countdowns/lalisaofficial.com</code>, <code>/countdowns/vmas</code>.</p>
     <a id="cd-back-all" href="/countdowns" onclick="goCountdowns(); return false;">← All countdowns</a>
     <div id="countdowns-mount"></div>
   </section>
