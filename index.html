@@ -15615,6 +15615,10 @@ function drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milesto
   const W = canvas.width, H = canvas.height;
   const landscape = W > H;
   const track = TRACKS.find(t => t.id === trackId);
+  // Was this milestone an actual community GOAL (reached)? If so the card says
+  // "GOAL REACHED" / "STREAMS GOAL" instead of the generic milestone wording.
+  const spTrack = (typeof SPOTIFY_TRACKS !== 'undefined') ? SPOTIFY_TRACKS.find(t => t.id === trackId) : null;
+  const isGoal = !!(spTrack && Array.isArray(spTrack.reachedGoals) && spTrack.reachedGoals.includes(milestone));
 
   ctx.fillStyle = '#080808';
   ctx.fillRect(0, 0, W, H);
@@ -15648,10 +15652,10 @@ function drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milesto
   const textW = W - PX - (landscape ? 50 : 60);
   ctx.textAlign = 'left';
 
-  // "MILESTONE REACHED" header
+  // Header — "GOAL REACHED" for a reached community goal, else "MILESTONE REACHED"
   ctx.fillStyle = '#FF0066';
   ctx.letterSpacing = '6px';
-  fillTextFit(ctx, 'MILESTONE REACHED', PX, landscape ? 80 : 140, landscape ? 55 : 68, textW, '"Bebas Neue", sans-serif');
+  fillTextFit(ctx, isGoal ? 'GOAL REACHED' : 'MILESTONE REACHED', PX, landscape ? 80 : 140, landscape ? 55 : 68, textW, '"Bebas Neue", sans-serif');
 
   // Track title (falls back to raw trackId string for non-tracked tracks)
   const trackTitle = track?.title ?? trackId;
@@ -15673,7 +15677,7 @@ function drawMilestoneCard(canvas, trackId, art, logo, total, milestone, milesto
   ctx.fillStyle = 'rgba(245,240,240,0.55)';
   ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
   ctx.letterSpacing = '4px';
-  ctx.fillText('STREAMS MILESTONE', PX, landscape ? 357 : 518);
+  ctx.fillText(isGoal ? 'STREAMS GOAL' : 'STREAMS MILESTONE', PX, landscape ? 357 : 518);
 
   // Total (with today's date to distinguish from the milestone total)
   const todayDs = (() => { const n = new Date(); return String(n.getDate()).padStart(2,'0') + '/' + String(n.getMonth()+1).padStart(2,'0') + '/' + n.getFullYear(); })();
