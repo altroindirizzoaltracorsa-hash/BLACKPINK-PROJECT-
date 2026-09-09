@@ -27,7 +27,7 @@
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/blinksunited.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,300&family=Pinyon+Script&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,300&family=IBM+Plex+Sans:wght@400;500;600;700&family=Pinyon+Script&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
@@ -1754,9 +1754,11 @@
     border-color: rgba(220,174,208,0.35); color: var(--nt-text); text-align: center; box-shadow: 0 18px 50px -30px rgba(43,13,38,0.9); }
   .nt-hero { border-radius: 14px; overflow: hidden; margin: 0 auto 1.1rem; max-width: 300px; line-height: 0; box-shadow: 0 8px 26px rgba(43,13,38,0.5); }
   .nt-hero img { width: 100%; height: auto; display: block; }
-  .nt-title { font-family: var(--display); font-size: clamp(2.1rem, 10vw, 3rem); font-weight: 700; letter-spacing: 0.01em; color: #fff; line-height: 0.95; margin-bottom: 0.5rem; text-shadow: 0 2px 18px rgba(43,13,38,0.6); }
-  .cd-card-newtrick .cd-eyebrow.nt-eyebrow { color: var(--nt-text); opacity: 0.95; font-weight: 700; }
-  .cd-card-newtrick .cd-sub { color: var(--nt-text); opacity: 0.9; font-weight: 600; }
+  /* rosesarerosie.lnk.to uses IBM Plex Sans — match it on the card text */
+  .nt-title { font-family: 'IBM Plex Sans', var(--display), sans-serif; font-size: clamp(2.1rem, 10vw, 3rem); font-weight: 700; letter-spacing: 0.005em; color: #fff; line-height: 0.95; margin-bottom: 0.5rem; text-shadow: 0 2px 18px rgba(43,13,38,0.6); }
+  .cd-card-newtrick .cd-eyebrow.nt-eyebrow { font-family: 'IBM Plex Sans', var(--mono), sans-serif; color: var(--nt-text); opacity: 0.95; font-weight: 600; }
+  .cd-card-newtrick .cd-sub { font-family: 'IBM Plex Sans', var(--mono), sans-serif; color: var(--nt-text); opacity: 0.9; font-weight: 500; }
+  .cd-card-newtrick .cd-badge-chip { color: var(--nt-text); border-color: rgba(220,174,208,0.6); background: rgba(43,13,38,0.35); }
   .cd-card-newtrick .cd-timer { justify-content: center; }
   .cd-card-newtrick .cd-out { color: var(--nt-text); }
   .cd-card-newtrick .cd-links { justify-content: center; }
@@ -2732,6 +2734,7 @@
             <div class="cd-eyebrow nt-eyebrow">ROSÉ · New Single · rosesarerosie.lnk.to</div>
             <div class="cd-sub">World Premiere · Wed, Sep 17, 2026 · 7PM EDT / Thu, Sep 18 · 8AM KST</div>
             <div class="cd-timer cd-timer-plain" data-timer></div>
+            <div class="cd-badge-chip" id="newtrick-badge" style="display:none;">🍭 Early Supporter</div>
             <div class="cd-goal" id="newtrick-goal" style="display:none;">
               <div class="cd-goal-top">
                 <span class="cd-goal-label">🎯 Blinks pre-saved</span>
@@ -12573,10 +12576,11 @@ async function refreshSupporterChips() {
   let user = null;
   try { user = (await sb?.auth.getUser())?.data?.user || null; } catch {}
   _buSignedIn = !!user;
-  if (user) { try { await Promise.all([faEarlySupporterEarned(), lisaEarlySupporterEarned(), jisooEarlySupporterEarned()]); } catch {} }
+  if (user) { try { await Promise.all([faEarlySupporterEarned(), lisaEarlySupporterEarned(), jisooEarlySupporterEarned(), newtrickEarlySupporterEarned()]); } catch {} }
   renderFaBadge();
   renderLisaBadge();
   renderJisooBadge();
+  renderNewTrickBadge();
 }
 
 function renderFaSaveCount(count) {
@@ -12907,16 +12911,43 @@ function renderNewTrickSaveCount(count) {
     : `${count.toLocaleString()}<span> / ${NEWTRICK_SAVE_GOAL.toLocaleString()} pre-saved</span>`;
 }
 async function loadNewTrickSaveCount() {
+  renderNewTrickBadge();
   try {
     const r = await fetch('/api/proxy-image?newtrick_save=count');
     const d = await r.json();
     renderNewTrickSaveCount(d.count || 0);
   } catch {}
 }
+// Early Supporter chip is account-gated: only show it to a signed-in blink who has
+// pre-saved. Mirrored to user_metadata.rose_newtrick_early_supporter so it follows
+// the account across devices, same as the JISOO/LISA badges.
+function renderNewTrickBadge() {
+  const el = document.getElementById('newtrick-badge');
+  if (el) el.style.display = (_buSignedIn && localStorage.getItem(NEWTRICK_SAVE_LS)) ? 'inline-flex' : 'none';
+}
+async function newtrickEarlySupporterEarned() {
+  const localFlag = !!localStorage.getItem(NEWTRICK_SAVE_LS);
+  let metaFlag = false;
+  try {
+    const user = (await sb?.auth.getUser())?.data?.user || null;
+    if (user) {
+      metaFlag = !!user.user_metadata?.rose_newtrick_early_supporter;
+      if (localFlag && !metaFlag) {
+        await sb.auth.updateUser({ data: { rose_newtrick_early_supporter: true } });
+        metaFlag = true;
+      } else if (metaFlag && !localFlag) {
+        localStorage.setItem(NEWTRICK_SAVE_LS, '1');
+      }
+    }
+  } catch {}
+  return localFlag || metaFlag;
+}
 function saveNewTrick() {
   if (localStorage.getItem(NEWTRICK_SAVE_LS)) return;
   localStorage.setItem(NEWTRICK_SAVE_LS, '1');
-  _showShareToast('✅ Pre-saved “new trick”! Thanks for supporting ROSÉ 🖤');
+  _showShareToast(_buSignedIn ? '🏆 Badge unlocked: ROSÉ Early Supporter!' : '✅ Pre-saved “new trick”! Sign in on My Badges to claim your ROSÉ Early Supporter badge.');
+  try { sb?.auth.updateUser({ data: { rose_newtrick_early_supporter: true } }); } catch {}
+  refreshSupporterChips();
   fetch('/api/proxy-image?newtrick_save=increment').then(r => r.json()).then(d => renderNewTrickSaveCount(d.count || 0)).catch(() => {});
 }
 
@@ -17577,7 +17608,7 @@ function drawNewTrickCard(canvas, d) {
     let ty = startY;
     // title
     ctx.fillStyle = WHITE;
-    ctx.font = `700 ${Math.round(H * (landscape ? 0.135 : 0.1))}px "Space Grotesk", "Trebuchet MS", sans-serif`;
+    ctx.font = `700 ${Math.round(H * (landscape ? 0.135 : 0.1))}px "IBM Plex Sans", "Space Grotesk", sans-serif`;
     ctx.fillText('new trick', ax, ty);
     ty += Math.round(H * (landscape ? 0.075 : 0.058));
     // artist
@@ -17594,7 +17625,7 @@ function drawNewTrickCard(canvas, d) {
     // countdown or OUT NOW
     ctx.fillStyle = WHITE;
     if (isOut) {
-      ctx.font = `700 ${Math.round(H * 0.09)}px "Space Grotesk", sans-serif`;
+      ctx.font = `700 ${Math.round(H * 0.09)}px "IBM Plex Sans", "Space Grotesk", sans-serif`;
       ctx.fillText(d.liveLabel || 'OUT NOW ✨', ax, ty);
     } else {
       ctx.font = `400 ${Math.round(H * 0.088)}px Georgia, "Times New Roman", serif`;
@@ -17652,6 +17683,7 @@ async function openNewTrickCard() {
     ? _newtrickCoverImg
     : await loadImg('/newtrick/newtrick-cover.jpg').then(i => (_newtrickCoverImg = i)).catch(() => null);
   await document.fonts.ready;
+  try { await Promise.all([document.fonts.load('700 90px "IBM Plex Sans"'), document.fonts.load('500 20px "IBM Plex Sans"')]); } catch {}
 
   _newtrickCardData = {
     coverImg,
