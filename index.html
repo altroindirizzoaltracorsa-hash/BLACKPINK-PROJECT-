@@ -2732,8 +2732,16 @@
             <div class="cd-eyebrow nt-eyebrow">ROSÉ · New Single · rosesarerosie.lnk.to</div>
             <div class="cd-sub">World Premiere · Wed, Sep 17, 2026 · 7PM EDT / Thu, Sep 18 · 8AM KST</div>
             <div class="cd-timer cd-timer-plain" data-timer></div>
+            <div class="cd-goal" id="newtrick-goal" style="display:none;">
+              <div class="cd-goal-top">
+                <span class="cd-goal-label">🎯 Blinks pre-saved</span>
+                <span class="cd-goal-nums" id="newtrick-goal-nums"></span>
+              </div>
+              <div class="cd-goal-bar"><div class="cd-goal-fill" id="newtrick-goal-fill" style="width:0%"></div></div>
+            </div>
             <div class="cd-links">
-              <a class="cd-btn nt-btn" href="https://rosesarerosie.lnk.to/newtrick" target="_blank" rel="noopener">Pre-save ↗</a>
+              <a class="cd-btn nt-btn" href="https://rosesarerosie.lnk.to/newtrick" target="_blank" rel="noopener" onclick="saveNewTrick()">Pre-save ↗</a>
+              <button class="cd-btn nt-btn" onclick="openNewTrickCard()">📸 Share</button>
             </div>
             <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
               <summary>Release times worldwide</summary>
@@ -5333,6 +5341,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadReleaseCommunityScrobbles('jisoo', 'click');
   loadLisaSaveCount();
   loadJisooSaveCount();
+  loadNewTrickSaveCount();
   refreshSupporterChips();
   loadLtalStreamsGoal();
   renderItunesInlineBadge();
@@ -12874,6 +12883,43 @@ function saveJisooClick() {
   fetch('/api/proxy-image?jisoo_save=increment').then(r => r.json()).then(d => renderJisooSaveCount(d.count || 0)).catch(() => {});
 }
 
+// ── ROSÉ "new trick" pre-save counter (same simple Upstash INCR pattern) ──────
+const NEWTRICK_SAVE_LS   = 'bu_rose_newtrick_saved';
+const NEWTRICK_SAVE_GOAL = 50;
+const NEWTRICK_RELEASE_AT = '2026-09-17T23:00:00Z'; // Wed Sep 17, 7PM EDT
+function renderNewTrickSaveCount(count) {
+  const wrap = document.getElementById('newtrick-goal');
+  const numsEl = document.getElementById('newtrick-goal-nums');
+  const fillEl = document.getElementById('newtrick-goal-fill');
+  if (!wrap || !numsEl || !fillEl) return;
+  if (Date.now() >= new Date(NEWTRICK_RELEASE_AT).getTime()) { wrap.style.display = 'none'; return; }
+  count = Math.max(0, Number(count) || 0);
+  wrap.style.display = 'flex';
+  const milestonesPassed = Math.floor(count / NEWTRICK_SAVE_GOAL);
+  const currentMilestone = milestonesPassed * NEWTRICK_SAVE_GOAL;
+  const nextMilestone = currentMilestone + NEWTRICK_SAVE_GOAL;
+  const pct = milestonesPassed > 0
+    ? ((count - currentMilestone) / NEWTRICK_SAVE_GOAL) * 100
+    : (count / NEWTRICK_SAVE_GOAL) * 100;
+  fillEl.style.width = Math.min(100, pct) + '%';
+  numsEl.innerHTML = milestonesPassed > 0
+    ? `🎉 ${currentMilestone.toLocaleString()} reached — ${count.toLocaleString()}<span> / ${nextMilestone.toLocaleString()} pre-saved</span>`
+    : `${count.toLocaleString()}<span> / ${NEWTRICK_SAVE_GOAL.toLocaleString()} pre-saved</span>`;
+}
+async function loadNewTrickSaveCount() {
+  try {
+    const r = await fetch('/api/proxy-image?newtrick_save=count');
+    const d = await r.json();
+    renderNewTrickSaveCount(d.count || 0);
+  } catch {}
+}
+function saveNewTrick() {
+  if (localStorage.getItem(NEWTRICK_SAVE_LS)) return;
+  localStorage.setItem(NEWTRICK_SAVE_LS, '1');
+  _showShareToast('✅ Pre-saved “new trick”! Thanks for supporting ROSÉ 🖤');
+  fetch('/api/proxy-image?newtrick_save=increment').then(r => r.json()).then(d => renderNewTrickSaveCount(d.count || 0)).catch(() => {});
+}
+
 // Share the JISOO countdown. The full generated share card (drawJisooCard) is wired
 // in just below; this is the entry point the card's 📸 button calls.
 function openJisooCard() {
@@ -14500,6 +14546,7 @@ function setCardFormat(fmt, btn) {
   else if (_cardType === 'lisa' && _lisaCardData) { drawLisaCard(canvas, _lisaCardData); _markCardReady(canvas); }
   else if (_cardType === 'pressplay' && _ppCardData) { drawPressPlayCard(canvas, _ppCardData); _markCardReady(canvas); }
   else if (_cardType === 'jisoo' && _jisooCardData) { drawJisooCard(canvas, _jisooCardData); _markCardReady(canvas); }
+  else if (_cardType === 'newtrick' && _newtrickCardData) { drawNewTrickCard(canvas, _newtrickCardData); _markCardReady(canvas); }
   else if (_cardTrackId) renderSongCard(_cardTrackId, _cardArt, _cardLogo);
 }
 
@@ -14931,6 +14978,7 @@ async function shareCard() {
   else if (_cardType === 'lisa') link = 'https://www.blinksunited.com/countdowns/hellosawadika.com';
   else if (_cardType === 'pressplay') link = 'https://www.blinksunited.com/countdowns/lalisaofficial.com';
   else if (_cardType === 'presave') link = 'https://www.blinksunited.com/countdowns/jenn.ie';
+  else if (_cardType === 'newtrick') link = 'https://www.blinksunited.com/countdowns/newtrick';
   if (_cardType === 'vote') {
     const campaign = VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId);
     if (campaign) {
@@ -14996,6 +15044,11 @@ async function shareCard() {
         ? `\n🖤 I'm an Early Supporter — JISOO, ${d.dateShort}\n👉 CLICK jisoo.io — count yourself in on blinksunited.com!\n`
         : `\n🖤 JISOO — jisoo.io · ${d.dateShort}\n👉 CLICK jisoo.io — every blink counts. Share it!\n`;
     }
+  } else if (_cardType === 'newtrick') {
+    const d = _newtrickCardData;
+    statsText = (d && d.earned)
+      ? `\n🍭 I pre-saved ROSÉ's "new trick"\n⏰ out Sep 17, 2026 · 7PM EDT\n👉 Pre-save it too on blinksunited.com — every blink counts. Share it!\n`
+      : `\n🍭 ROSÉ — "new trick" (new single) · Sep 17, 2026 · 7PM EDT\n👉 Pre-save it on blinksunited.com — every blink counts. Share it!\n`;
   } else if (_cardType === 'pressplay') {
     const d = _ppCardData;
     if (d) {
@@ -17465,6 +17518,151 @@ async function selectJisooCardArt(url, thumbEl) {
   drawJisooCard(canvas, _jisooCardData);
   _markCardReady(canvas);
   label.textContent = _jisooCardData.earned ? "I'M IN — JISOO" : 'JISOO · COUNTDOWN';
+}
+
+// ── ROSÉ "new trick" share card ──────────────────────────────────────────────
+let _newtrickCoverImg = null;
+let _newtrickCardData = null;
+function drawNewTrickCard(canvas, d) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const landscape = W > H;
+  const WHITE = '#ffffff', TEXT = '#f5e7f0', DIM = 'rgba(245,231,240,0.72)', ACCENT = '#f0b8dc';
+
+  // plum candy-wrapper background
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#5c2352'); g.addColorStop(0.6, '#491a41'); g.addColorStop(1, '#2b0d26');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const rg = ctx.createRadialGradient(W / 2, H * 0.42, 0, W / 2, H * 0.42, Math.max(W, H) * 0.72);
+  rg.addColorStop(0, 'rgba(150,66,128,0.28)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+
+  // countdown snapshot at generation time
+  let diff = Date.parse(d.target) - Date.now();
+  const isOut = !(diff > 0);
+  let dd = 0, hh = 0, mm = 0, ss = 0;
+  if (!isOut) { dd = Math.floor(diff / 86400000); diff %= 86400000; hh = Math.floor(diff / 3600000); diff %= 3600000; mm = Math.floor(diff / 60000); diff %= 60000; ss = Math.floor(diff / 1000); }
+  const p2 = n => String(n).padStart(2, '0');
+  const PX = Math.round(W * (landscape ? 0.055 : 0.075));
+
+  function roundedCover(img, x, y, size) {
+    const s = Math.max(size / img.width, size / img.height);
+    const iw = img.width * s, ih = img.height * s;
+    ctx.save();
+    ctx.shadowColor = 'rgba(20,4,18,0.55)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 10;
+    ctx.fillStyle = '#2b0d26';
+    const r = Math.round(size * 0.06);
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, size, size, r); else ctx.rect(x, y, size, size);
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.clip();
+    ctx.drawImage(img, x + (size - iw) / 2, y + (size - ih) / 2, iw, ih);
+    ctx.restore();
+  }
+
+  // top brand row
+  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  ctx.font = '500 20px "DM Mono", monospace'; ctx.letterSpacing = '4px';
+  ctx.fillStyle = 'rgba(245,231,240,0.85)';
+  ctx.fillText('BLINKS UNITED', PX, Math.round(H * 0.08));
+  ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(245,231,240,0.6)';
+  ctx.fillText(d.earned ? 'PRE-SAVED' : (isOut ? 'OUT NOW' : 'COUNTDOWN'), W - PX, Math.round(H * 0.08));
+  ctx.letterSpacing = '0px';
+
+  // Text block — title, artist, date, countdown, CTA — placed to the right (landscape)
+  // or below the cover (square).
+  function drawInfo(ax, align, startY, colW) {
+    ctx.textAlign = align;
+    let ty = startY;
+    // title
+    ctx.fillStyle = WHITE;
+    ctx.font = `700 ${Math.round(H * (landscape ? 0.135 : 0.1))}px "Space Grotesk", "Trebuchet MS", sans-serif`;
+    ctx.fillText('new trick', ax, ty);
+    ty += Math.round(H * (landscape ? 0.075 : 0.058));
+    // artist
+    ctx.fillStyle = ACCENT;
+    ctx.font = `500 ${Math.round(H * 0.026)}px "DM Mono", monospace`; ctx.letterSpacing = '3px';
+    ctx.fillText('ROSÉ · NEW SINGLE', ax, ty);
+    ctx.letterSpacing = '0px';
+    ty += Math.round(H * 0.05);
+    // date
+    ctx.fillStyle = DIM;
+    ctx.font = `italic 500 ${Math.round(H * 0.03)}px Georgia, "Times New Roman", serif`;
+    ctx.fillText(d.dateLine, ax, ty);
+    ty += Math.round(H * (landscape ? 0.11 : 0.09));
+    // countdown or OUT NOW
+    ctx.fillStyle = WHITE;
+    if (isOut) {
+      ctx.font = `700 ${Math.round(H * 0.09)}px "Space Grotesk", sans-serif`;
+      ctx.fillText(d.liveLabel || 'OUT NOW ✨', ax, ty);
+    } else {
+      ctx.font = `400 ${Math.round(H * 0.088)}px Georgia, "Times New Roman", serif`;
+      ctx.letterSpacing = '2px';
+      ctx.fillText(`${p2(dd)} : ${p2(hh)} : ${p2(mm)} : ${p2(ss)}`, ax, ty);
+      ctx.letterSpacing = '0px';
+      ctx.fillStyle = 'rgba(245,231,240,0.5)';
+      ctx.font = `500 ${Math.round(H * 0.018)}px "DM Mono", monospace`; ctx.letterSpacing = '3px';
+      ctx.fillText('DAYS   HRS   MIN   SEC', ax, ty + Math.round(H * 0.03));
+      ctx.letterSpacing = '0px';
+    }
+    ty += Math.round(H * (landscape ? 0.1 : 0.085));
+    // CTA
+    ctx.fillStyle = ACCENT;
+    ctx.font = `700 ${Math.round(H * 0.03)}px "DM Mono", monospace`; ctx.letterSpacing = '2px';
+    ctx.fillText('PRE-SAVE · ROSESAREROSIE.LNK.TO ↗', ax, ty);
+    ctx.letterSpacing = '0px';
+  }
+
+  if (landscape) {
+    const coverSize = Math.round(H * 0.64);
+    const cy = Math.round((H - coverSize) / 2);
+    if (d.coverImg) roundedCover(d.coverImg, PX, cy, coverSize);
+    const tx = PX + coverSize + Math.round(W * 0.05);
+    drawInfo(tx, 'left', Math.round(H * 0.3), W - tx - PX);
+  } else {
+    const coverSize = Math.round(W * 0.56);
+    if (d.coverImg) roundedCover(d.coverImg, Math.round((W - coverSize) / 2), Math.round(H * 0.13), coverSize);
+    drawInfo(W / 2, 'center', Math.round(H * 0.75), W - PX * 2);
+  }
+
+  // footer
+  ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(245,231,240,0.5)';
+  ctx.font = '500 15px "DM Mono", monospace'; ctx.letterSpacing = '2px';
+  ctx.fillText('shared via blinksunited.com', W / 2, H - Math.round(H * 0.035));
+  ctx.textAlign = 'left'; ctx.letterSpacing = '0px';
+}
+
+async function openNewTrickCard() {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none'; // single cover, no picker
+  _cardType = 'newtrick';
+  _cardTrackId = null;
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+
+  const coverImg = _newtrickCoverImg
+    ? _newtrickCoverImg
+    : await loadImg('/newtrick/newtrick-cover.jpg').then(i => (_newtrickCoverImg = i)).catch(() => null);
+  await document.fonts.ready;
+
+  _newtrickCardData = {
+    coverImg,
+    earned: !!localStorage.getItem(NEWTRICK_SAVE_LS),
+    target: NEWTRICK_RELEASE_AT,
+    dateLine: 'Sep 17, 2026 · 7PM EDT / Sep 18 · 8AM KST',
+    liveLabel: 'OUT NOW ✨',
+  };
+  label.textContent = 'ROSÉ · new trick';
+  drawNewTrickCard(canvas, _newtrickCardData);
+  _markCardReady(canvas);
 }
 
 // ── COMMUNITY GOAL HIT CARD ──────────────────────────────────────────────────

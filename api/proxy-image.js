@@ -687,19 +687,23 @@ export default async function handler(req, res) {
   // ── GET ?lisa_save=count|increment  — LISA "hellosawadika" join counter ────
   // ── GET ?jisoo_save=count|increment — JISOO "CLICK" pre-save counter ───────
   // Same simple Upstash INCR counter, one distinct key per campaign.
+  // ── GET ?newtrick_save=count|increment — ROSÉ "new trick" pre-save counter ──
   if (req.query.jennie_save === 'count' || req.query.jennie_save === 'increment' ||
       req.query.fa_save === 'count'     || req.query.fa_save === 'increment' ||
       req.query.lisa_save === 'count'   || req.query.lisa_save === 'increment' ||
-      req.query.jisoo_save === 'count'  || req.query.jisoo_save === 'increment') {
+      req.query.jisoo_save === 'count'  || req.query.jisoo_save === 'increment' ||
+      req.query.newtrick_save === 'count' || req.query.newtrick_save === 'increment') {
     if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ count: 0 });
     const campaign = req.query.jisoo_save != null ? 'jisoo'
                    : req.query.lisa_save != null ? 'lisa'
                    : req.query.fa_save   != null ? 'fa'
+                   : req.query.newtrick_save != null ? 'newtrick'
                    : 'ltal';
-    const action = req.query.jisoo_save ?? req.query.lisa_save ?? req.query.fa_save ?? req.query.jennie_save;
+    const action = req.query.jisoo_save ?? req.query.lisa_save ?? req.query.fa_save ?? req.query.newtrick_save ?? req.query.jennie_save;
     const KEY = campaign === 'jisoo' ? 'bu_jisoo_click_saves'
               : campaign === 'lisa' ? 'bu_lisa_sawadika_joins'
               : campaign === 'fa'   ? 'bu_jennie_fallenangel_saves'
+              : campaign === 'newtrick' ? 'bu_rose_newtrick_saves'
               : 'bu_jennie_ltal_saves';
     try {
       if (action === 'increment') {
