@@ -2307,6 +2307,8 @@
 .ms-history-item { font-size:0.62rem; letter-spacing:0.07em; color:var(--muted); padding:0.2rem 0; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
 .ms-history-item:hover { color:var(--pink); }
 .ms-history-item .ms-share-hint { font-size:0.5rem; letter-spacing:0.1em; opacity:0.4; }
+.ms-history-item.is-goal { color:var(--pink); font-weight:600; }
+.ms-history-item.is-goal .ms-goal-tag { font-family:var(--mono); font-size:0.42rem; font-weight:700; letter-spacing:0.16em; background:var(--pink); color:#12040a; padding:0.14rem 0.42rem; margin-left:0.4rem; vertical-align:middle; white-space:nowrap; }
 .ms-btn { font-family:var(--mono); font-size:0.48rem; letter-spacing:0.14em; text-transform:uppercase; padding:0.55rem 1rem; cursor:pointer; border:none; }
 .ms-btn-primary { background:var(--pink); color:#fff; }
 .ms-btn-secondary { background:transparent; border:1px solid rgba(255,255,255,0.2); color:var(--muted); }
@@ -4650,7 +4652,10 @@ const SPOTIFY_TRACKS = [
   { id: 'jump',     trackId: '5H1sKFMzDeMtXwND3V6hRY', goal: 1_000_000_000 },
   { id: 'shutdown', trackId: '6tCd8bPvYnceDG7W9M1RMk', goal: 1_000_000_000 },
   { id: 'ddududu',  trackId: '69BIczdH6QMnFx7dsSssN8', goal: 1_000_000_000 },
-  { id: 'go',       trackId: '0mYa3o6tlUN5HRippmKmwH', goal: 100_000_000 },
+  // GO hit its 100M community goal on 28/08/2026 — next target is 200M. reachedGoals
+  // marks past community targets so the milestone list can flag them (not just a
+  // passing round-number milestone).
+  { id: 'go',       trackId: '0mYa3o6tlUN5HRippmKmwH', goal: 200_000_000, reachedGoals: [100_000_000] },
 ];
 
 // ── STREAM HISTORY (daily stream counts) ── Last updated: 18/07/2026
@@ -5272,6 +5277,7 @@ window.addEventListener('DOMContentLoaded', () => {
       { key: 'bu_ms_jump_650000000',     date: '12/07', year: 2026 },
       { key: 'bu_ms_shutdown_890000000', date: '12/06', year: 2026 },
       { key: 'bu_ms_ddududu_870000000',  date: '05/06', year: 2026 },
+      { key: 'bu_ms_go_100000000',       date: '28/08', year: 2026 }, // GO's community goal
     ];
     for (const { key, date, year } of known) {
       try {
@@ -18372,6 +18378,10 @@ async function openGoalsCard() {
 function renderMilestoneHistory(trackId) {
   const el = document.getElementById(`ms-history-${trackId}`);
   if (!el) return;
+  // Milestones that were an actual community GOAL (reached), so we can flag them as
+  // more than a passing round-number — e.g. GO's 100M.
+  const track = SPOTIFY_TRACKS.find(t => t.id === trackId);
+  const reachedGoals = new Set((track && track.reachedGoals) || []);
   const milestones = [];
   for (let m = 10_000_000; m <= 1_000_000_000; m += 10_000_000) {
     const raw = localStorage.getItem(`bu_ms_${trackId}_${m}`);
@@ -18385,8 +18395,9 @@ function renderMilestoneHistory(trackId) {
   el.innerHTML = `<div class="ms-history-label">🏆 Milestones</div>` +
     toShow.map(m => {
       const dateArg = m.date ? `'${m.date}'` : 'null';
-      return `<div class="ms-history-item" onclick="openMilestoneCard('${trackId}', ${m.milestone}, ${dateArg})">
-        <span>${formatMilestone(m.milestone)}${m.date ? ' · ' + m.date : ''}</span>
+      const isGoal = reachedGoals.has(m.milestone);
+      return `<div class="ms-history-item${isGoal ? ' is-goal' : ''}" onclick="openMilestoneCard('${trackId}', ${m.milestone}, ${dateArg})">
+        <span>${isGoal ? '🎯 ' : ''}${formatMilestone(m.milestone)}${m.date ? ' · ' + m.date : ''}${isGoal ? ' <span class="ms-goal-tag">GOAL REACHED</span>' : ''}</span>
         <span class="ms-share-hint">↑ SHARE</span>
       </div>`;
     }).join('');
