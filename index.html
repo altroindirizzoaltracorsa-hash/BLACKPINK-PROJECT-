@@ -15283,7 +15283,7 @@ function drawPersonalCard(canvas, { info, todayCounts, totalPlays, avatarImg, lo
 </script>
 <script>
 // ── MILESTONE CELEBRATION ─────────────────────────────────
-const TRACK_LABELS = { jump: 'JUMP', shutdown: 'SHUT DOWN', ddududu: 'DDU-DU DDU-DU' };
+const TRACK_LABELS = { jump: 'JUMP', shutdown: 'SHUT DOWN', ddududu: 'DDU-DU DDU-DU', go: 'GO' };
 
 function getMilestone(total) {
   const steps = [];
@@ -15751,7 +15751,7 @@ async function openMilestoneCard(trackId, milestone, milestoneDate) {
   _cardArt = art; _cardLogo = logo;
   drawMilestoneCard(canvas, trackId, art, logo, _msMilestoneTotal, milestone, milestoneDate);
   canvas.toBlob(blob => { _cardShareBlob = blob; }, 'image/jpeg', 0.92);
-  label.textContent = `${TRACK_LABELS[trackId]} · ${formatMilestone(milestone)} MILESTONE`;
+  label.textContent = `${TRACK_LABELS[trackId] || (trackId || '').toUpperCase()} · ${formatMilestone(milestone)} MILESTONE`;
 }
 
 // ── VOTE CAMPAIGN CARD ────────────────────────────────────────
