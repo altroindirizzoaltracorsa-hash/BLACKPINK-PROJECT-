@@ -5,6 +5,41 @@ const HOST = 'shazam-core.p.rapidapi.com';
 const APIDOJO_HOST = 'shazam.p.rapidapi.com';
 const STATS_TTL = 6 * 3600; // 6-hour cache
 
+// Attempt to fetch Shazam count by scraping shazam.com directly from Vercel.
+// Vercel IPs may not be blocked the way GitHub Actions datacenter IPs are.
+// If this works, it costs 0 RapidAPI requests per refresh.
+async function scrapeShazamCount(shazamKey) {
+  const url = `https://www.shazam.com/track/${shazamKey}`;
+  let r;
+  try {
+    r = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+    });
+  } catch { return null; }
+  if (!r.ok) return null;
+  const html = await r.text().catch(() => null);
+  if (!html) return null;
+  // Extract __NEXT_DATA__ JSON embedded in the page
+  const m = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+  if (!m) return null;
+  try {
+    const nd = JSON.parse(m[1]);
+    // Common paths Shazam embeds total count in __NEXT_DATA__
+    const props = nd?.props?.pageProps;
+    const count =
+      props?.track?.attributes?.extended?.shazamCount ??
+      props?.track?.shazamCount ??
+      props?.pageData?.track?.shazamCount ??
+      nd?.props?.initialState?.track?.shazamCount ??
+      null;
+    return typeof count === 'number' ? count : null;
+  } catch { return null; }
+}
+
 function apiKeys() {
   return (process.env.RAPIDAPI_SHAZAM_KEY || '').split(',').map(k => k.trim()).filter(Boolean);
 }
@@ -200,12 +235,16 @@ async function fetchChartMap() {
   return new Map();
 }
 
-// Fetch numShazams via /v1/tracks/total-shazams.
+// Fetch numShazams — tries direct Shazam page scraping first (free, no API quota),
+// falls back to RapidAPI shazam-core endpoint if scraping fails or returns null.
 async function fetchNumShazams(shazamKey) {
+  const scraped = await scrapeShazamCount(shazamKey).catch(() => null);
+  if (scraped !== null) return scraped;
+
+  // Fallback: RapidAPI shazam-core
   const r = await shazamFetch(`/v1/tracks/total-shazams?track_id=${shazamKey}`);
-  if (!r.ok) return null;
+  if (!r?.ok) return null;
   const data = await r.json().catch(() => null);
-  // Response is either a plain number or { count: N } or { result: N }
   if (typeof data === 'number') return data;
   const n = data?.count ?? data?.result ?? data?.total ?? data?.shazams ?? null;
   return typeof n === 'number' ? n : null;
@@ -315,6 +354,50 @@ export default async function handler(req, res) {
     if (which === 'status') {
       const idKeys = await redis.keys('shazam:id:*');
       return res.json({ cachedIds: idKeys.length, keys: idKeys });
+    }
+    // Probe: can Vercel reach shazam.com directly? Tests with BOOMBAYAH (known ID 40333609).
+    // If count is non-null, scraping works and we never need RapidAPI for count fetches.
+    if (which === 'scrape') {
+      const trackId = req.query.id ?? '40333609';
+      const url = `https://www.shazam.com/track/${trackId}`;
+      try {
+        const r = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+        });
+        const html = await r.text().catch(() => '');
+        const hasNextData = html.includes('__NEXT_DATA__');
+        const m = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+        let nd = null, count = null, parseErr = null;
+        if (m) {
+          try {
+            nd = JSON.parse(m[1]);
+            const props = nd?.props?.pageProps;
+            count =
+              props?.track?.attributes?.extended?.shazamCount ??
+              props?.track?.shazamCount ??
+              props?.pageData?.track?.shazamCount ??
+              nd?.props?.initialState?.track?.shazamCount ??
+              null;
+          } catch(e) { parseErr = e.message; }
+        }
+        const pagePropsKeys = nd?.props?.pageProps ? Object.keys(nd.props.pageProps) : null;
+        const trackKeys = nd?.props?.pageProps?.track ? Object.keys(nd.props.pageProps.track) : null;
+        return res.json({
+          status: r.status,
+          url,
+          hasNextData,
+          count,
+          parseErr,
+          pagePropsKeys,
+          trackKeys,
+          trackSample: nd?.props?.pageProps?.track ? JSON.stringify(nd.props.pageProps.track).slice(0, 500) : null,
+        });
+      } catch(e) {
+        return res.json({ error: e.message, url });
+      }
     }
     const q = encodeURIComponent(req.query.q ?? 'BOOMBAYAH BLACKPINK');
     const st = req.query.st ?? 'SONGS';
