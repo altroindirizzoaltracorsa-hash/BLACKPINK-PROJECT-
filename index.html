@@ -702,6 +702,12 @@
   /* VMA Vote Counter update nudge — reuses the .ltal-reminder-* inner styles */
   #ext-update-overlay { position:fixed; inset:0; z-index:9997; display:none; align-items:center; justify-content:center; overflow-y:auto; background:rgba(0,0,0,0.82); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); padding:1.1rem; }
   #ext-update-overlay.active { display:flex; }
+  /* Always-visible close, pinned to the overlay corner so it never scrolls away */
+  #ext-update-overlay .modal-x, #ltal-reminder-overlay .modal-x {
+    position:absolute; top:0.7rem; right:0.7rem; z-index:3; width:2.2rem; height:2.2rem; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:1.4rem; line-height:1; cursor:pointer;
+    background:rgba(20,16,24,0.92); color:var(--muted); border:1px solid rgba(255,255,255,0.2); padding:0; }
+  #ext-update-overlay .modal-x:hover, #ltal-reminder-overlay .modal-x:hover { color:var(--pink); border-color:var(--pink); }
   .ext-update-foot { font-size:0.68rem; color:rgba(245,240,240,0.42); margin:1.15rem 0 0; line-height:1.5; }
   .gh-box { background: var(--card); border: 1px solid rgba(255,0,102,0.25); width: 100%; max-width: 460px; max-height: 86vh; display: flex; flex-direction: column; }
   .gh-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.08); }
@@ -2672,6 +2678,7 @@
 <!-- HOME PAGE -->
 <!-- Less Than a Lover pre-reset reminder (auto-hides after the reset cutoff) -->
 <div id="ltal-reminder-overlay" role="dialog" aria-modal="true" aria-labelledby="ltal-reminder-title">
+  <button type="button" class="modal-x" aria-label="Close" onclick="closeLtalReminder(false)">×</button>
   <div class="ltal-reminder-box">
     <div class="ltal-reminder-badge">Disclaimer</div>
     <h2 class="ltal-reminder-title" id="ltal-reminder-title">Less Than a Lover is leaving the campaign</h2>
@@ -2690,6 +2697,7 @@
 </div>
 
 <div id="ext-update-overlay" role="dialog" aria-modal="true" aria-labelledby="ext-update-title">
+  <button type="button" class="modal-x" aria-label="Close" onclick="closeExtUpdate(false)">×</button>
   <div class="ltal-reminder-box">
     <div class="ltal-reminder-badge">Update</div>
     <h2 class="ltal-reminder-title" id="ext-update-title">New Vote Counter — v1.6.2</h2>
