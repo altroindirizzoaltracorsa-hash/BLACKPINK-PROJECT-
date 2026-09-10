@@ -578,6 +578,7 @@ export default async function handler(req, res) {
         yt_24h_views:      obj._yt_24h_views       || null,
         countries:         Array.isArray(obj._countries) ? obj._countries : null,
         ltal_24h_official: obj._ltal_24h_official  || null,
+        prerelease_horizon_days: obj._prerelease_horizon_days || null,
       });
     } catch { return res.status(200).json({ reached: {}, yt_mv_views: null, countries: null }); }
   }
@@ -634,6 +635,16 @@ export default async function handler(req, res) {
       stored._ltal_24h_official = count;
       await upstashSet('bu_ltal_goals', stored);
       return res.status(200).json({ ok: true, ltal_24h_official: count });
+    }
+
+    // set_prerelease_horizon — how many days out an auto pre-release countdown
+    // card is allowed to show on the homepage (far-off drops stay hidden).
+    if (req.query.ltal_goals === 'set_prerelease_horizon') {
+      const days = parseInt((req.query.days || '').replace(/[^0-9]/g, ''), 10);
+      if (!days || days < 1 || days > 3650) return res.status(400).json({ error: 'valid days (1-3650) required' });
+      stored._prerelease_horizon_days = days;
+      await upstashSet('bu_ltal_goals', stored);
+      return res.status(200).json({ ok: true, prerelease_horizon_days: days });
     }
 
     // add_country — append a country to the iTunes #1 list

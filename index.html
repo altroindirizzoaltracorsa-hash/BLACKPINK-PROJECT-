@@ -4664,6 +4664,16 @@
           <button class="btn-primary" onclick="downloadArtistStreamsCsv()">⬇ Download Artist CSV</button>
           <button class="btn-primary" style="margin-left:0.5rem" onclick="downloadTrackStreamsCsv()">⬇ Download Track CSV</button>
         </div>
+
+        <div class="admin-ban-section">
+          <div class="admin-ban-title">⏳ Auto pre-release countdowns — hide drops further out than this many days</div>
+          <div class="admin-song-note" style="margin-bottom:0.5rem;">Spotify pre-releases (auto-detected) only show a countdown card once they're within this window. Hand-made cards are never affected. Default 60.</div>
+          <div class="admin-input-row">
+            <input id="admin-prerelease-horizon" class="admin-input" type="number" min="1" max="3650" placeholder="Days (default 60)">
+            <button class="beta-btn" onclick="adminSetPrereleaseHorizon()">Save</button>
+          </div>
+          <div id="admin-prerelease-horizon-status" class="admin-err"></div>
+        </div>
       </section>
 
     </div>
@@ -11986,6 +11996,48 @@ function adminShowPanel(name) {
     }
   } else if (name === 'data') {
     if (key) loadPlaylistData(key);
+    loadAdminPrereleaseHorizon();
+  }
+}
+
+// Populate the auto pre-release horizon field with the current stored value.
+async function loadAdminPrereleaseHorizon() {
+  const input = document.getElementById('admin-prerelease-horizon');
+  if (!input) return;
+  try {
+    const r = await fetch('/api/proxy-image?ltal_goals=list');
+    if (!r.ok) return;
+    const d = await r.json();
+    const h = parseInt(d && d.prerelease_horizon_days, 10);
+    input.placeholder = (h >= 1) ? `Current: ${h} days` : `Days (default ${PRERELEASE_HORIZON_DEFAULT})`;
+  } catch {}
+}
+
+async function adminSetPrereleaseHorizon() {
+  const input = document.getElementById('admin-prerelease-horizon');
+  const statusEl = document.getElementById('admin-prerelease-horizon-status');
+  if (!input || !statusEl) return;
+  const days = (input.value || '').trim();
+  if (!days) return;
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  if (!key) return;
+  statusEl.textContent = 'Saving…';
+  statusEl.style.color = 'var(--muted)';
+  try {
+    const r = await fetch(`/api/proxy-image?ltal_goals=set_prerelease_horizon&days=${encodeURIComponent(days)}&key=${encodeURIComponent(key)}`, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      statusEl.textContent = `✔ Auto cards now show drops within ${d.prerelease_horizon_days} days`;
+      statusEl.style.color = '#2ecc71';
+      input.value = '';
+      input.placeholder = `Current: ${d.prerelease_horizon_days} days`;
+    } else {
+      statusEl.textContent = d.error || 'Failed';
+      statusEl.style.color = '#ff3333';
+    }
+  } catch {
+    statusEl.textContent = 'Error saving';
+    statusEl.style.color = '#ff3333';
   }
 }
 
@@ -12503,6 +12555,9 @@ function renderHomeCountdowns() {
 function normPrereleaseName(s) {
   return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
+// How many days out an auto pre-release card may show. Admin-overridable via
+// the "days" field in the admin Countdowns panel (stored in bu_ltal_goals).
+const PRERELEASE_HORIZON_DEFAULT = 60;
 async function loadAutoPrereleases() {
   const wrap = document.querySelector('#home-countdowns .cd-wrap');
   if (!wrap) return;
@@ -12514,6 +12569,20 @@ async function loadAutoPrereleases() {
   } catch (e) { return; }
   const releases = (data && Array.isArray(data.releases)) ? data.releases : [];
   if (!releases.length) return;
+
+  // Horizon cap: hide auto cards for releases further out than N days (admin-set,
+  // default 60). Bespoke hand-authored cards are unaffected — this only gates the
+  // auto safety-net cards.
+  let horizonDays = PRERELEASE_HORIZON_DEFAULT;
+  try {
+    const gr = await fetch('/api/proxy-image?ltal_goals=list');
+    if (gr.ok) {
+      const g = await gr.json();
+      const h = parseInt(g && g.prerelease_horizon_days, 10);
+      if (h >= 1) horizonDays = h;
+    }
+  } catch (e) {}
+  const horizonMs = horizonDays * 86400000;
 
   // What's already carded by hand (so we never duplicate a bespoke card).
   const haveIds = new Set(), haveNames = new Set();
@@ -12537,7 +12606,8 @@ async function loadAutoPrereleases() {
     if (haveNames.has(normPrereleaseName(rel.name))) return false;
     if (wrap.querySelector(`.cd-card-auto[data-prerelease-id="${rel.prereleaseId}"]`)) return false;
     const t = Date.parse(rel.releaseDate);
-    if (t && t < Date.now()) return false;   // already released
+    if (t && t < Date.now()) return false;             // already released
+    if (t && (t - Date.now()) > horizonMs) return false; // too far out
     return true;
   });
   if (!toAdd.length) return;
