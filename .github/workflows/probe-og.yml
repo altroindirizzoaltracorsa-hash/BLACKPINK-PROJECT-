@@ -1,0 +1,33 @@
+name: Probe OG preview
+
+# Diagnostic: fetch a countdown share URL as Twitterbot and check the rewritten
+# og:image, plus the image URL's own HTTP status/content-type. Read-only.
+on:
+  workflow_dispatch:
+    inputs:
+      path:
+        description: 'Path to probe'
+        required: true
+        default: '/countdowns/lalisaofficial.com'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch page as Twitterbot + inspect og:image
+        run: |
+          BASE="https://blinksunited.com"
+          P="${{ github.event.inputs.path }}"
+          echo "===== PAGE $BASE$P (as Twitterbot) ====="
+          curl -sS -A "Twitterbot/1.0" -D - "$BASE$P" -o /tmp/page.html | head -20
+          echo "----- og:image / twitter:image / og:title in served HTML -----"
+          grep -oE '<meta property="og:image" content="[^"]*"' /tmp/page.html || echo "(no og:image)"
+          grep -oE '<meta name="twitter:image" content="[^"]*"' /tmp/page.html || echo "(no twitter:image)"
+          grep -oE '<meta property="og:title" content="[^"]*"' /tmp/page.html || echo "(no og:title)"
+          grep -oE '<meta name="twitter:card" content="[^"]*"' /tmp/page.html || echo "(no twitter:card)"
+          echo
+          echo "===== IMAGE $BASE/og-countdown-pressplay.jpg (as Twitterbot) ====="
+          curl -sS -A "Twitterbot/1.0" -D - -o /dev/null "$BASE/og-countdown-pressplay.jpg" | grep -iE "^HTTP/|^content-type|^content-length|^cache-control|^location|^x-vercel|^x-robots"
+          echo
+          echo "===== IMAGE (normal UA) ====="
+          curl -sS -D - -o /dev/null "$BASE/og-countdown-pressplay.jpg" | grep -iE "^HTTP/|^content-type|^content-length|^location"
