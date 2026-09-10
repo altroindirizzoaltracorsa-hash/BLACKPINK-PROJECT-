@@ -684,9 +684,9 @@
   #goal-history-overlay { position: fixed; inset: 0; z-index: 9990; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.72); padding: 1rem; }
   #goal-history-overlay.active { display: flex; }
   /* Less Than a Lover pre-reset reminder */
-  #ltal-reminder-overlay { position:fixed; inset:0; z-index:9996; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.82); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); padding:1.1rem; }
+  #ltal-reminder-overlay { position:fixed; inset:0; z-index:9996; display:none; align-items:center; justify-content:center; overflow-y:auto; background:rgba(0,0,0,0.82); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); padding:1.1rem; }
   #ltal-reminder-overlay.active { display:flex; }
-  .ltal-reminder-box { max-width:440px; width:100%; background:#141018; border:1px solid rgba(255,0,102,0.3); padding:1.9rem 1.7rem; text-align:center; box-shadow:0 30px 90px -30px rgba(255,0,102,0.55); }
+  .ltal-reminder-box { max-width:440px; width:100%; background:#141018; border:1px solid rgba(255,0,102,0.3); padding:1.9rem 1.7rem; text-align:center; box-shadow:0 30px 90px -30px rgba(255,0,102,0.55); max-height:calc(100vh - 2.2rem); max-height:calc(100dvh - 2.2rem); overflow-y:auto; overscroll-behavior:contain; }
   .ltal-reminder-badge { display:inline-block; font-family:var(--mono); font-size:0.62rem; font-weight:700; letter-spacing:0.28em; text-transform:uppercase; color:var(--pink); border:1px solid rgba(255,0,102,0.5); padding:0.4rem 0.9rem; }
   .ltal-reminder-title { font-family:var(--display); font-size:1.35rem; letter-spacing:0.01em; margin:0.55rem 0 0; color:var(--white); }
   .ltal-reminder-body { font-size:0.82rem; line-height:1.6; color:var(--muted); margin:0.7rem 0 0; }
@@ -700,7 +700,7 @@
   .ltal-reminder-steps strong { color:var(--white); }
   .ltal-reminder-foot { font-size:0.72rem; color:rgba(245,240,240,0.4); margin:1.1rem 0 0; }
   /* VMA Vote Counter update nudge — reuses the .ltal-reminder-* inner styles */
-  #ext-update-overlay { position:fixed; inset:0; z-index:9997; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.82); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); padding:1.1rem; }
+  #ext-update-overlay { position:fixed; inset:0; z-index:9997; display:none; align-items:center; justify-content:center; overflow-y:auto; background:rgba(0,0,0,0.82); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); padding:1.1rem; }
   #ext-update-overlay.active { display:flex; }
   .ext-update-foot { font-size:0.68rem; color:rgba(245,240,240,0.42); margin:1.15rem 0 0; line-height:1.5; }
   .gh-box { background: var(--card); border: 1px solid rgba(255,0,102,0.25); width: 100%; max-width: 460px; max-height: 86vh; display: flex; flex-direction: column; }
