@@ -1,0 +1,39 @@
+name: Fetch Pre-releases
+
+# Auto-detects upcoming Spotify releases (EPs/singles) for BLACKPINK + members via
+# the anonymous artist-overview pathfinder query and commits data/prereleases-latest.json.
+# The site renders a simple countdown card for any pre-release not already covered by
+# a hand-authored card — so a fresh drop is never missed. Read-only against Spotify.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'   # 3 AM UTC daily — independent of the streams jobs
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: pip install spotifyscraper requests
+      - name: Detect pre-releases
+        run: python .github/scripts/fetch_prereleases.py
+      - name: Commit pre-release data
+        run: |
+          if [ -z "$(git status --porcelain data/prereleases-latest.json)" ]; then
+            echo "no change"; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/prereleases-latest.json
+          git commit -m "data: update Spotify pre-releases $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "push failed after 3 attempts"; exit 1

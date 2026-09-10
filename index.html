@@ -1771,6 +1771,18 @@
   .cd-card-newtrick .cd-links { justify-content: center; }
   .nt-btn { background: var(--nt-dark); color: var(--nt-light); border: 1px solid var(--nt-light); border-radius: 99px; }
   .nt-btn:hover { background: var(--nt-light); color: var(--nt-dark); filter: none; }
+  /* Auto-detected pre-release card (built by loadAutoPrereleases from Spotify).
+     Deliberately plain — it's the safety-net card for a drop no one has hand-made
+     a bespoke card for yet. Neutral pink so it reads as "system-generated". */
+  .cd-card-auto { background: radial-gradient(120% 140% at 50% 0%, #3a1230 0%, #2a0d24 60%, #1c0819 100%);
+    border-color: rgba(255,116,172,0.4); text-align: center; box-shadow: 0 18px 50px -30px rgba(255,0,102,0.8); }
+  .apr-hero { border-radius: 14px; overflow: hidden; margin: 0 auto 1.1rem; max-width: 260px; line-height: 0; box-shadow: 0 8px 26px rgba(20,6,18,0.6); }
+  .apr-hero img { width: 100%; height: auto; display: block; }
+  .apr-title { font-family: var(--display), sans-serif; font-size: clamp(1.8rem, 8vw, 2.6rem); font-weight: 800; letter-spacing: 0.01em; color: #fff; line-height: 1; margin-bottom: 0.5rem; text-shadow: 0 2px 18px rgba(20,6,18,0.6); }
+  .cd-card-auto .cd-eyebrow { color: #ff9cc4; }
+  .cd-card-auto .cd-sub { color: rgba(255,255,255,0.82); }
+  .cd-card-auto .cd-timer, .cd-card-auto .cd-links { justify-content: center; }
+  .cd-card-auto .cd-out { color: #ff9cc4; }
 
   /* ── JISOO carnival countdown (mirrors jisoo.io: Angkor numerals + star
        separators over dusty-mauve paper, carnival ink anchored to the bottom) ── */
@@ -2737,7 +2749,7 @@
       <section id="home-countdowns" style="margin-top:2.2rem;max-width:900px;width:100%;text-align:center;">
         <p class="cd-section-label">◇ Countdowns</p>
         <div class="cd-wrap">
-          <div class="cd-card cd-card-newtrick" data-slug="newtrick" data-target="2026-09-17T23:00:00Z" data-live="OUT NOW ✨" data-plain="1">
+          <div class="cd-card cd-card-newtrick" data-slug="newtrick" data-target="2026-09-17T23:00:00Z" data-live="OUT NOW ✨" data-plain="1" data-prerelease-name="new trick">
             <div class="nt-hero"><img src="/newtrick/newtrick-cover.jpg" alt="ROSÉ — new trick (single cover)" loading="lazy"></div>
             <div class="nt-title">new trick</div>
             <div class="cd-eyebrow nt-eyebrow">ROSÉ · New Single · rosesarerosie.lnk.to</div>
@@ -2908,7 +2920,7 @@
               </div>
             </details>
           </div>
-          <div class="cd-card cd-card-lisa" data-slug="lalisaofficial.com" data-target="2026-10-23T04:00:00Z" data-live="OUT NOW ✨">
+          <div class="cd-card cd-card-lisa" data-slug="lalisaofficial.com" data-target="2026-10-23T04:00:00Z" data-live="OUT NOW ✨" data-prerelease-id="5jAv4CUEptHKQj6HSTMosH" data-prerelease-name="press play">
             <video class="lisa-hero" autoplay muted loop playsinline preload="metadata" poster="/lisa-mona.webp">
               <source src="/lisa-preview.mp4" type="video/mp4">
             </video>
@@ -5342,6 +5354,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadCommunityGoal();
   renderReleaseCountdown();
   setInterval(renderReleaseCountdown, 1000);
+  loadAutoPrereleases();
   renderHomeCountdowns();
   setInterval(renderHomeCountdowns, 1000);
   renderAllReleaseGoals();
@@ -12479,6 +12492,86 @@ function renderHomeCountdowns() {
       timer.innerHTML = u(d, 'Days') + u(h, 'Hrs') + u(m, 'Min') + u(s, 'Sec');
     }
   });
+}
+
+// Auto-detected Spotify pre-releases. The nightly Fetch Pre-releases job writes
+// data/prereleases-latest.json from Spotify's anonymous artist-overview query; we
+// render a simple countdown card for any upcoming member drop NOT already covered
+// by a hand-authored bespoke card above. That way a fresh release is never missed,
+// and once the team builds a real card for it (tagged data-prerelease-id / -name)
+// the auto card for it disappears. Fully fail-safe: any error just renders nothing.
+function normPrereleaseName(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+async function loadAutoPrereleases() {
+  const wrap = document.querySelector('#home-countdowns .cd-wrap');
+  if (!wrap) return;
+  let data;
+  try {
+    const r = await fetch('https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/data/prereleases-latest.json');
+    if (!r.ok) return;
+    data = await r.json();
+  } catch (e) { return; }
+  const releases = (data && Array.isArray(data.releases)) ? data.releases : [];
+  if (!releases.length) return;
+
+  // What's already carded by hand (so we never duplicate a bespoke card).
+  const haveIds = new Set(), haveNames = new Set();
+  wrap.querySelectorAll('.cd-card[data-prerelease-id]').forEach(c =>
+    haveIds.add(c.dataset.prereleaseId));
+  wrap.querySelectorAll('.cd-card[data-prerelease-name]').forEach(c =>
+    haveNames.add(normPrereleaseName(c.dataset.prereleaseName)));
+
+  const fmtDate = (iso) => {
+    const t = Date.parse(iso);
+    if (!t) return '';
+    return new Date(t).toLocaleDateString(undefined,
+      { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  // Insert soonest-first at the top of the section (a fresh un-carded drop should
+  // be the first thing you see). Skip anything already hand-carded or already out.
+  const toAdd = releases.filter(rel => {
+    if (!rel || !rel.name) return false;
+    if (rel.prereleaseId && haveIds.has(rel.prereleaseId)) return false;
+    if (haveNames.has(normPrereleaseName(rel.name))) return false;
+    if (wrap.querySelector(`.cd-card-auto[data-prerelease-id="${rel.prereleaseId}"]`)) return false;
+    const t = Date.parse(rel.releaseDate);
+    if (t && t < Date.now()) return false;   // already released
+    return true;
+  });
+  if (!toAdd.length) return;
+
+  // Newest target inserted last so the final DOM order is soonest-first at top.
+  toAdd.sort((a, b) => (Date.parse(b.releaseDate) || 0) - (Date.parse(a.releaseDate) || 0));
+  toAdd.forEach(rel => {
+    const card = document.createElement('div');
+    card.className = 'cd-card cd-card-auto';
+    if (rel.prereleaseId) card.dataset.prereleaseId = rel.prereleaseId;
+    card.dataset.slug = 'prerelease-' + (rel.prereleaseId || normPrereleaseName(rel.name).replace(/ /g, '-'));
+    card.dataset.target = rel.releaseDate || '';
+    card.dataset.live = 'OUT NOW ✨';
+    card.dataset.plain = '1';
+    const typeLabel = rel.type === 'EP' ? 'New EP'
+      : rel.type === 'ALBUM' ? 'New Album'
+      : rel.type === 'SINGLE' ? 'New Single' : 'Upcoming Release';
+    const cover = rel.cover
+      ? `<div class="apr-hero"><img src="${rel.cover}" alt="${rel.name} cover" loading="lazy"></div>`
+      : '';
+    const dateSub = rel.releaseDate
+      ? `<div class="cd-sub">Out ${fmtDate(rel.releaseDate)}</div>` : '';
+    card.innerHTML =
+      cover +
+      `<div class="apr-title">${rel.name}</div>` +
+      `<div class="cd-eyebrow">${rel.member} · ${typeLabel} · via Spotify</div>` +
+      dateSub +
+      `<div class="cd-timer cd-timer-plain" data-timer></div>` +
+      `<div class="cd-links">` +
+        `<a class="cd-btn" href="${rel.spotifyUrl}" target="_blank" rel="noopener">Pre-save on Spotify ↗</a>` +
+      `</div>`;
+    wrap.insertBefore(card, wrap.firstElementChild);
+  });
+  renderHomeCountdowns();
 }
 
 function renderReleaseCountdown() {
