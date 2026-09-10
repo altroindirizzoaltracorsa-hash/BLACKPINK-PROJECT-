@@ -1,0 +1,30 @@
+name: Probe pre-release data
+
+# Prototype: can we read Spotify pre-release (upcoming) pre-save/countdown data
+# via the anonymous pathfinder API? Read-only. Uploads the raw JSON so it can be
+# inspected if the printed scan is promising.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: pip install spotifyscraper requests
+      - name: Probe
+        run: python .github/scripts/probe_prerelease.py
+      - name: Upload raw JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prerelease-json
+          path: |
+            artist_overview.json
+            search.json
+          if-no-files-found: ignore
