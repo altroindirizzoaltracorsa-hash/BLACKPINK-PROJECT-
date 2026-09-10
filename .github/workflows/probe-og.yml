@@ -14,20 +14,21 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch page as Twitterbot + inspect og:image
+      - name: Fetch canonical www page as Twitterbot + inspect og:image
         run: |
-          BASE="https://blinksunited.com"
+          BASE="https://www.blinksunited.com"
           P="${{ github.event.inputs.path }}"
-          echo "===== PAGE $BASE$P (as Twitterbot) ====="
-          curl -sS -A "Twitterbot/1.0" -D - "$BASE$P" -o /tmp/page.html | head -20
-          echo "----- og:image / twitter:image / og:title in served HTML -----"
+          echo "===== PAGE $BASE$P (www, as Twitterbot, follow redirects) ====="
+          curl -sSL -A "Twitterbot/1.0" -D - "$BASE$P" -o /tmp/page.html | grep -iE "^HTTP/|^location" || true
+          echo "----- meta the crawler actually gets -----"
           grep -oE '<meta property="og:image" content="[^"]*"' /tmp/page.html || echo "(no og:image)"
           grep -oE '<meta name="twitter:image" content="[^"]*"' /tmp/page.html || echo "(no twitter:image)"
           grep -oE '<meta property="og:title" content="[^"]*"' /tmp/page.html || echo "(no og:title)"
           grep -oE '<meta name="twitter:card" content="[^"]*"' /tmp/page.html || echo "(no twitter:card)"
           echo
-          echo "===== IMAGE $BASE/og-countdown-pressplay.jpg (as Twitterbot) ====="
-          curl -sS -A "Twitterbot/1.0" -D - -o /dev/null "$BASE/og-countdown-pressplay.jpg" | grep -iE "^HTTP/|^content-type|^content-length|^cache-control|^location|^x-vercel|^x-robots"
-          echo
-          echo "===== IMAGE (normal UA) ====="
-          curl -sS -D - -o /dev/null "$BASE/og-countdown-pressplay.jpg" | grep -iE "^HTTP/|^content-type|^content-length|^location"
+          IMG=$(grep -oE '<meta property="og:image" content="[^"]*"' /tmp/page.html | sed -E 's/.*content="([^"]*)".*/\1/')
+          echo "===== the exact og:image URL the page advertises: $IMG ====="
+          echo "--- fetch it WITHOUT following redirects (what a naive crawler does) ---"
+          curl -sS -A "Twitterbot/1.0" -D - -o /dev/null "$IMG" | grep -iE "^HTTP/|^content-type|^content-length|^location"
+          echo "--- same but following redirects ---"
+          curl -sSL -A "Twitterbot/1.0" -D - -o /dev/null "$IMG" | grep -iE "^HTTP/|^content-type|^content-length"
