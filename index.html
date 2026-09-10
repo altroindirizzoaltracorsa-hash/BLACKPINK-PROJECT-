@@ -12684,6 +12684,29 @@ function renderReleaseCountdown() {
 const JENNIE_SAVE_LS = 'bu_jennie_ltal_saved';
 const JENNIE_SAVE_GOAL = 50;
 
+// Pre-save COUNT guards, deliberately SEPARATE from the *_SAVE_LS badge flags.
+// The Early Supporter badge flag (*_SAVE_LS) gets force-set on every device by the
+// account-metadata badge sync (see *EarlySupporterEarned()), so a blink who earned
+// the badge on one device would otherwise be blocked from ever contributing their
+// pre-save count on another. Counting is guarded by its own per-browser key here,
+// so having the badge never blocks the count. countPresaveOnce increments once per
+// browser via that key, independent of badge state.
+const JENNIE_COUNTED_LS   = 'bu_jennie_ltal_counted';
+const FA_COUNTED_LS       = 'bu_jennie_fa_counted';
+const LISA_COUNTED_LS     = 'bu_lisa_sawadika_counted';
+const JISOO_COUNTED_LS    = 'bu_jisoo_click_counted';
+const NEWTRICK_COUNTED_LS = 'bu_rose_newtrick_counted';
+function countPresaveOnce(countedKey, endpoint, onCount) {
+  try {
+    if (localStorage.getItem(countedKey)) return;   // already counted in this browser
+    localStorage.setItem(countedKey, '1');
+  } catch (e) {}
+  fetch(`/api/proxy-image?${endpoint}=increment`)
+    .then(r => r.json())
+    .then(d => { try { onCount(d.count || 0); } catch (e) {} })
+    .catch(() => {});
+}
+
 function renderJennieSaveCount(count) {
   const wrap = document.getElementById('jennie-release-goal');
   const numsEl = document.getElementById('jennie-release-goal-nums');
@@ -12779,12 +12802,15 @@ function renderFaSaveCount(count) {
 // Fires once per browser when a fan clicks the EP pre-save link — doesn't block
 // the outbound navigation. Unlocks the "Early Supporter" badge and bumps the bar.
 function saveFallenAngel() {
-  if (localStorage.getItem(FA_SAVE_LS)) return;
-  localStorage.setItem(FA_SAVE_LS, '1');
-  _showShareToast(_buSignedIn ? '🏆 Badge unlocked: Early Supporter!' : '✅ Pre-saved! Sign in on My Badges to claim your Early Supporter badge.');
-  try { sb?.auth.updateUser({ data: { fa_early_supporter: true } }); } catch {}
-  refreshSupporterChips();   // show the chip now if signed in (account-gated)
-  fetch('/api/proxy-image?fa_save=increment').then(r => r.json()).then(d => renderFaSaveCount(d.count || 0)).catch(() => {});
+  // Award the badge once; count the pre-save on its own separate guard (see
+  // countPresaveOnce) so an already-badged blink's click still counts.
+  if (!localStorage.getItem(FA_SAVE_LS)) {
+    localStorage.setItem(FA_SAVE_LS, '1');
+    _showShareToast(_buSignedIn ? '🏆 Badge unlocked: Early Supporter!' : '✅ Pre-saved! Sign in on My Badges to claim your Early Supporter badge.');
+    try { sb?.auth.updateUser({ data: { fa_early_supporter: true } }); } catch {}
+    refreshSupporterChips();   // show the chip now if signed in (account-gated)
+  }
+  countPresaveOnce(FA_COUNTED_LS, 'fa_save', renderFaSaveCount);
 }
 
 async function loadFaSaveCount() {
@@ -12940,12 +12966,13 @@ function renderLisaSaveCount(count) {
 }
 
 function saveLisaSawadika() {
-  if (localStorage.getItem(LISA_SAVE_LS)) return;
-  localStorage.setItem(LISA_SAVE_LS, '1');
-  _showShareToast(_buSignedIn ? '🏆 Badge unlocked: Early Supporter!' : '✅ Pre-saved! Sign in on My Badges to claim your Early Supporter badge.');
-  try { sb?.auth.updateUser({ data: { lisa_early_supporter: true } }); } catch {}
-  refreshSupporterChips();   // show the chip now if signed in (account-gated)
-  fetch('/api/proxy-image?lisa_save=increment').then(r => r.json()).then(d => renderLisaSaveCount(d.count || 0)).catch(() => {});
+  if (!localStorage.getItem(LISA_SAVE_LS)) {
+    localStorage.setItem(LISA_SAVE_LS, '1');
+    _showShareToast(_buSignedIn ? '🏆 Badge unlocked: Early Supporter!' : '✅ Pre-saved! Sign in on My Badges to claim your Early Supporter badge.');
+    try { sb?.auth.updateUser({ data: { lisa_early_supporter: true } }); } catch {}
+    refreshSupporterChips();   // show the chip now if signed in (account-gated)
+  }
+  countPresaveOnce(LISA_COUNTED_LS, 'lisa_save', renderLisaSaveCount);
 }
 
 async function loadLisaSaveCount() {
@@ -13051,12 +13078,13 @@ try {
 } catch {}
 
 function saveJisooClick() {
-  if (localStorage.getItem(JISOO_SAVE_LS)) return;
-  localStorage.setItem(JISOO_SAVE_LS, '1');
-  _showShareToast(_buSignedIn ? '🏆 Badge unlocked: JISOO Early Supporter!' : '✅ Pre-saved! Sign in on My Badges to claim your JISOO Early Supporter badge.');
-  try { sb?.auth.updateUser({ data: { jisoo_early_supporter: true } }); } catch {}
-  refreshSupporterChips();
-  fetch('/api/proxy-image?jisoo_save=increment').then(r => r.json()).then(d => renderJisooSaveCount(d.count || 0)).catch(() => {});
+  if (!localStorage.getItem(JISOO_SAVE_LS)) {
+    localStorage.setItem(JISOO_SAVE_LS, '1');
+    _showShareToast(_buSignedIn ? '🏆 Badge unlocked: JISOO Early Supporter!' : '✅ Pre-saved! Sign in on My Badges to claim your JISOO Early Supporter badge.');
+    try { sb?.auth.updateUser({ data: { jisoo_early_supporter: true } }); } catch {}
+    refreshSupporterChips();
+  }
+  countPresaveOnce(JISOO_COUNTED_LS, 'jisoo_save', renderJisooSaveCount);
 }
 
 // ── ROSÉ "new trick" pre-save counter (same simple Upstash INCR pattern) ──────
@@ -13115,12 +13143,13 @@ async function newtrickEarlySupporterEarned() {
   return localFlag || metaFlag;
 }
 function saveNewTrick() {
-  if (localStorage.getItem(NEWTRICK_SAVE_LS)) return;
-  localStorage.setItem(NEWTRICK_SAVE_LS, '1');
-  _showShareToast(_buSignedIn ? '🏆 Badge unlocked: ROSÉ Early Supporter!' : '✅ Pre-saved “new trick”! Sign in on My Badges to claim your ROSÉ Early Supporter badge.');
-  try { sb?.auth.updateUser({ data: { rose_newtrick_early_supporter: true } }); } catch {}
-  refreshSupporterChips();
-  fetch('/api/proxy-image?newtrick_save=increment').then(r => r.json()).then(d => renderNewTrickSaveCount(d.count || 0)).catch(() => {});
+  if (!localStorage.getItem(NEWTRICK_SAVE_LS)) {
+    localStorage.setItem(NEWTRICK_SAVE_LS, '1');
+    _showShareToast(_buSignedIn ? '🏆 Badge unlocked: ROSÉ Early Supporter!' : '✅ Pre-saved “new trick”! Sign in on My Badges to claim your ROSÉ Early Supporter badge.');
+    try { sb?.auth.updateUser({ data: { rose_newtrick_early_supporter: true } }); } catch {}
+    refreshSupporterChips();
+  }
+  countPresaveOnce(NEWTRICK_COUNTED_LS, 'newtrick_save', renderNewTrickSaveCount);
 }
 
 // Share the JISOO countdown. The full generated share card (drawJisooCard) is wired
@@ -14101,13 +14130,14 @@ function openReleaseGoalsFromCard() {
 // the outbound navigation, just fires the increment alongside it. Unlocks the
 // "Early Supporter" badge and pushes the community goal bar forward.
 function saveJennieCountdown() {
-  if (localStorage.getItem(JENNIE_SAVE_LS)) return;
-  localStorage.setItem(JENNIE_SAVE_LS, '1');
-  renderJennieBadge();
-  _showShareToast('🏆 Badge unlocked: Early Supporter!');
-  // Persist to the signed-in account so the badge follows the blink across devices.
-  try { sb?.auth.updateUser({ data: { ltal_early_supporter: true } }); } catch {}
-  fetch('/api/proxy-image?jennie_save=increment').then(r => r.json()).then(d => renderJennieSaveCount(d.count || 0)).catch(() => {});
+  if (!localStorage.getItem(JENNIE_SAVE_LS)) {
+    localStorage.setItem(JENNIE_SAVE_LS, '1');
+    renderJennieBadge();
+    _showShareToast('🏆 Badge unlocked: Early Supporter!');
+    // Persist to the signed-in account so the badge follows the blink across devices.
+    try { sb?.auth.updateUser({ data: { ltal_early_supporter: true } }); } catch {}
+  }
+  countPresaveOnce(JENNIE_COUNTED_LS, 'jennie_save', renderJennieSaveCount);
 }
 
 async function loadTodaysPlaylist() {
