@@ -112,14 +112,13 @@ as $$
   streams as (
     select
       app_user_id,
-      -- All tracked campaign columns (incl. ltal). ever_streams is the rank gate;
-      -- today_streams is display only. New releases (SaWaDiKa/CLICK/EP) have no
-      -- columns here, so they can't lift today_streams — which is exactly why the
-      -- gate must be "ever", not "today".
+      -- All tracked campaign columns (incl. ltal + the newer solo releases). The
+      -- ever_streams sum is the rank gate; today_streams is display only. newtrick
+      -- (ROSÉ) is included so a blink streaming it counts toward voting eligibility.
       sum(coalesce(jump,0)+coalesce(shutdown,0)+coalesce(ddududu,0)+coalesce(ltal,0)+coalesce(go,0)
-          +coalesce(sawadika,0)+coalesce(click,0)+coalesce(fallenangel,0)+coalesce(heaven,0))            as all_streams,
+          +coalesce(sawadika,0)+coalesce(click,0)+coalesce(fallenangel,0)+coalesce(heaven,0)+coalesce(newtrick,0))  as all_streams,
       sum((coalesce(jump,0)+coalesce(shutdown,0)+coalesce(ddududu,0)+coalesce(ltal,0)+coalesce(go,0)
-           +coalesce(sawadika,0)+coalesce(click,0)+coalesce(fallenangel,0)+coalesce(heaven,0)))
+           +coalesce(sawadika,0)+coalesce(click,0)+coalesce(fallenangel,0)+coalesce(heaven,0)+coalesce(newtrick,0)))
         filter (where day_key::date = (now() at time zone 'America/New_York')::date)                    as today_streams
     from user_daily_counts
     group by app_user_id

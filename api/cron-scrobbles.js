@@ -32,7 +32,7 @@ function communityGoalTotal(users, todayDDMM) {
     // Whole campaign incl. the Fallen Angel EP — matches computeDailyCommunityTotal
     // (client) and the record-goal path in leaderboard.js so all three agree.
     return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
-      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0);
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_newtrick || 0);
   }, 0);
 }
 
@@ -59,6 +59,10 @@ const TRACKS = [
   // stay campaign-scoped; EP history is a follow-up once the columns are migrated).
   { id: 'fallenangel', artist: 'Jennie', track: 'Fallen Angel' },
   { id: 'heaven',      artist: 'Jennie', track: 'Heaven' },
+  // ROSÉ solo single (2026-09-17). Matched by name+artist like the others; counts
+  // toward the campaign *_all sums + community goal and drives its own NEW TRICK
+  // board. No plays exist until release, so it contributes 0 until then.
+  { id: 'newtrick',    artist: 'ROSÉ',   track: 'new trick' },
 ];
 
 // Less Than a Lover leaves the campaign at the reset cutoff. Per-track ltal values
@@ -310,7 +314,7 @@ async function extensionCountsForUsers(sb, appUserIds, dayFrom, dayTo, weekFrom,
   // Includes the Fallen Angel EP ids so the extension's per-song plays fold into
   // overall_fallenangel / overall_heaven (the EP boards). They're excluded from
   // campaignTotal / *_all above, so this never inflates the campaign totals.
-  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 });
+  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 });
   const out = { total: empty(), week: empty(), today: empty() };
   if (!sb || !appUserIds || !appUserIds.length) return out;
   // Counted in the database (see supabase/extension_counts_fn.sql) so it scales
@@ -388,10 +392,10 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
   const { from: dayFrom, to: dayTo }   = getDayBounds();
   const { from: weekFrom, to: weekTo } = getWeekBounds();
 
-  const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 };
+  const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 };
   let artistPlays   = 0;
-  const todayCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 };
-  const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 };
+  const todayCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 };
+  const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 };
   let lastScrobbleAt = entry.lastScrobbleAt || null;
   // Per-scrobbler split of TODAY's counts, for the personal history calendar. Each
   // key is a human label ("Last.fm · Alice9629", "BU Extension", "Musicat / Stats.fm")
@@ -410,7 +414,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       // return scrobbles newest-first, so today's counts, the weekly counts,
       // and the most recent BLACKPINK scrobble can all be derived from one
       // paginated range instead of re-fetching/re-paginating once per day.
-      const [ap, jumpPlays, shutdownPlays, ddududuPlays, ltalPlays, goPlays, swPlays, clPlays, faPlays, heavenPlays, weekSc] = await Promise.all([
+      const [ap, jumpPlays, shutdownPlays, ddududuPlays, ltalPlays, goPlays, swPlays, clPlays, faPlays, heavenPlays, ntPlays, weekSc] = await Promise.all([
         fetchArtistPlays(u, 'BLACKPINK', fetchFn),
         fetchTrackPlays(u, 'BLACKPINK', 'JUMP', fetchFn),
         fetchTrackPlays(u, 'BLACKPINK', 'Shut Down', fetchFn),
@@ -421,6 +425,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         fetchTrackPlays(u, 'JISOO', 'CLICK', fetchFn),
         fetchTrackPlays(u, 'Jennie', 'Fallen Angel', fetchFn),
         fetchTrackPlays(u, 'Jennie', 'Heaven', fetchFn),
+        fetchTrackPlays(u, 'ROSÉ', 'new trick', fetchFn),
         fetchRecentScrobbles(u, weekFrom, dayTo, 50, fetchFn),
       ]);
       artistPlays        += ap;
@@ -433,6 +438,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       totalPlays.click    += clPlays;
       totalPlays.fallenangel += faPlays;
       totalPlays.heaven      += heavenPlays;
+      totalPlays.newtrick    += ntPlays;
 
       const todaySc = weekSc.filter(s => {
         const ts = parseInt(s.date?.uts || '0', 10);
@@ -448,6 +454,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       todayCounts.click    += dc.click    || 0;
       todayCounts.fallenangel += dc.fallenangel || 0;
       todayCounts.heaven      += dc.heaven      || 0;
+      todayCounts.newtrick    += dc.newtrick    || 0;
       todayBySource[`${acct.type === 'librefm' ? 'Libre.fm' : 'Last.fm'} · ${u}`] = {
         jump: dc.jump || 0, shutdown: dc.shutdown || 0, ddududu: dc.ddududu || 0, ltal: dc.ltal || 0, go: dc.go || 0,
       };
@@ -462,6 +469,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       weekCounts.click    += wdc.click    || 0;
       weekCounts.fallenangel += wdc.fallenangel || 0;
       weekCounts.heaven      += wdc.heaven      || 0;
+      weekCounts.newtrick    += wdc.newtrick    || 0;
 
       // "blackpink" alone misses activity on Jennie's solo campaign track
       // (Less Than a Lover), which would otherwise wrongly flag an actively-
@@ -493,6 +501,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         totalPlays.click    += lbTotals.click    || 0;
         totalPlays.fallenangel += lbTotals.fallenangel || 0;
         totalPlays.heaven      += lbTotals.heaven      || 0;
+        totalPlays.newtrick    += lbTotals.newtrick    || 0;
 
         const todayListens = weekListens.filter(l => l.listened_at >= dayFrom && l.listened_at < dayTo);
         const lbTodayCounts = countLbByTrack(todayListens);
@@ -505,6 +514,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         todayCounts.click    += lbTodayCounts.click    || 0;
         todayCounts.fallenangel += lbTodayCounts.fallenangel || 0;
         todayCounts.heaven      += lbTodayCounts.heaven      || 0;
+        todayCounts.newtrick    += lbTodayCounts.newtrick    || 0;
         todayBySource[`ListenBrainz · ${u}`] = {
           jump: lbTodayCounts.jump || 0, shutdown: lbTodayCounts.shutdown || 0, ddududu: lbTodayCounts.ddududu || 0, ltal: lbTodayCounts.ltal || 0, go: lbTodayCounts.go || 0,
         };
@@ -519,6 +529,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         weekCounts.click    += lbWeekCounts.click    || 0;
         weekCounts.fallenangel += lbWeekCounts.fallenangel || 0;
         weekCounts.heaven      += lbWeekCounts.heaven      || 0;
+        weekCounts.newtrick    += lbWeekCounts.newtrick    || 0;
 
         // ListenBrainz never fed lastScrobbleAt before -- a fan scrobbling only
         // through LB (e.g. after moving off Last.fm) would drift towards a
@@ -628,7 +639,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
   // Whole campaign incl. the Fallen Angel EP (LTAL + Fallen Angel + Heaven) so a
   // new release lifts the board. Mirrors CAMPAIGN_TOTAL_IDS / rankTids on the client
   // + leaderboard.js. (Per-track EP boards stay separate via overall_fallenangel/heaven.)
-  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal + totalPlays.go + totalPlays.sawadika + totalPlays.click + totalPlays.fallenangel + totalPlays.heaven;
+  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal + totalPlays.go + totalPlays.sawadika + totalPlays.click + totalPlays.fallenangel + totalPlays.heaven + totalPlays.newtrick;
 
   return {
     username:      displayName,
@@ -659,8 +670,9 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       overall_click:    totalPlays.click,
       overall_fallenangel: totalPlays.fallenangel,
       overall_heaven:      totalPlays.heaven,
+      overall_newtrick:    totalPlays.newtrick,
       overall_artist:   artistPlays,
-      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0) + (todayCounts.sawadika || 0) + (todayCounts.click || 0) + (todayCounts.fallenangel || 0) + (todayCounts.heaven || 0),
+      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0) + (todayCounts.sawadika || 0) + (todayCounts.click || 0) + (todayCounts.fallenangel || 0) + (todayCounts.heaven || 0) + (todayCounts.newtrick || 0),
       daily_jump:       todayCounts.jump     || 0,
       daily_shutdown:   todayCounts.shutdown || 0,
       daily_ddududu:    todayCounts.ddududu  || 0,
@@ -670,8 +682,9 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       daily_click:      todayCounts.click    || 0,
       daily_fallenangel: todayCounts.fallenangel || 0,
       daily_heaven:      todayCounts.heaven      || 0,
+      daily_newtrick:    todayCounts.newtrick    || 0,
       daily_date:       todayLabel,
-      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0) + (weekCounts.sawadika || 0) + (weekCounts.click || 0) + (weekCounts.fallenangel || 0) + (weekCounts.heaven || 0),
+      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0) + (weekCounts.sawadika || 0) + (weekCounts.click || 0) + (weekCounts.fallenangel || 0) + (weekCounts.heaven || 0) + (weekCounts.newtrick || 0),
       weekly_jump:      weekCounts.jump     || 0,
       weekly_shutdown:  weekCounts.shutdown || 0,
       weekly_ddududu:   weekCounts.ddududu  || 0,
@@ -681,6 +694,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       weekly_click:     weekCounts.click    || 0,
       weekly_fallenangel: weekCounts.fallenangel || 0,
       weekly_heaven:      weekCounts.heaven      || 0,
+      weekly_newtrick:    weekCounts.newtrick    || 0,
       weekly_start:     weekStartLabel,
     },
   };
@@ -911,6 +925,7 @@ export default async function handler(req, res) {
             click:       s.daily_click       || 0,
             fallenangel: s.daily_fallenangel || 0,
             heaven:      s.daily_heaven      || 0,
+            newtrick:    s.daily_newtrick    || 0,
             by_source: Object.keys(bySrc).length ? bySrc : null,
           });
         }
@@ -1154,6 +1169,34 @@ export default async function handler(req, res) {
         } catch (e3) {
           console.error('user_daily_counts new-release upsert failed (columns migrated yet?):', e3.message || e3);
         }
+      }
+
+      // "new trick" (ROSÉ, 2026-09-17) per-day count — written in its OWN fully
+      // isolated guarded block that reads its own existing value, so a run before
+      // the `newtrick` column is migrated no-ops here WITHOUT disturbing any column
+      // above (it is deliberately kept out of the shared select on line ~1106 for
+      // exactly that reason). No plays exist until release, so this is a 0-write
+      // until then; add the column with:
+      //   ALTER TABLE user_daily_counts ADD COLUMN IF NOT EXISTS newtrick integer NOT NULL DEFAULT 0;
+      try {
+        const { data: ntEx } = await sb
+          .from('user_daily_counts')
+          .select('app_user_id,newtrick')
+          .eq('day_key', todayKey)
+          .in('app_user_id', ids);
+        const ntMap = new Map((ntEx || []).map(r => [r.app_user_id, r]));
+        const ntRows = ids.map(id => ({
+          app_user_id: id, day_key: todayKey,
+          newtrick: Math.max(dailyByUser.get(id).newtrick || 0, ntMap.get(id)?.newtrick || 0),
+        }));
+        if (ntRows.length) {
+          const { error: ntErr } = await sb
+            .from('user_daily_counts')
+            .upsert(ntRows, { onConflict: 'app_user_id,day_key' });
+          if (ntErr) throw ntErr;
+        }
+      } catch (eNt) {
+        console.error('user_daily_counts newtrick upsert skipped (column migrated yet?):', eNt.message || eNt);
       }
     } catch (e) {
       console.error('user_daily_counts upsert failed:', e.message || e);

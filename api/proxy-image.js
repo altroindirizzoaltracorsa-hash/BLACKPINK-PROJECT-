@@ -24,9 +24,14 @@ const TRACK_IDS = {
   sawadika:    '7159ce4c-2ad9-49aa-b11b-48cadf2c71d8',
   // JISOO "CLICK" (Spotify 1zyNO73bPNPC6KBi3raNmZ; musicat.fm/tracks/<this>).
   click:       'fd005bcf-f785-48de-ab0c-82ae1e028885',
+  // ROSÉ "new trick" (2026-09-17). RELEASE-DAY: fill in the Musicat track UUID
+  // (musicat.fm/tracks/<uuid>). Until then it's absent, so the guarded map below
+  // returns 0 for newtrick instead of firing a track-less query — no error.
+  // newtrick: '<musicat-uuid>',
 };
-// Musicat per-track ids fetched for every profile (all-time + today).
-const MC_TRACKS = ['jump', 'shutdown', 'ddududu', 'go', 'ltal', 'fallenangel', 'heaven', 'sawadika', 'click'];
+// Musicat per-track ids fetched for every profile (all-time + today). newtrick has
+// no UUID yet, so MC_TRACKS includes it but the guarded query returns 0 until set.
+const MC_TRACKS = ['jump', 'shutdown', 'ddududu', 'go', 'ltal', 'fallenangel', 'heaven', 'sawadika', 'click', 'newtrick'];
 const MC_HEADERS = { 'Authorization': 'Bearer empty', 'Content-Type': 'application/json' };
 
 const SP_TRACKS = {
@@ -1587,7 +1592,8 @@ export default async function handler(req, res) {
     // v2: bumped when GO + Fallen Angel + Heaven were added to the per-track set.
     // v3: bumped when SaWaDiKa was added to the per-track set.
     // v4: bumped when CLICK was added to the per-track set.
-    const mcKey = `mccache:v4:${String(mcUser).toLowerCase()}`;
+    // v5: bumped when "new trick" (ROSÉ) was added to the per-track set.
+    const mcKey = `mccache:v5:${String(mcUser).toLowerCase()}`;
     const mcCached = await upstashGet(mcKey);
     if (mcCached?.payload && mcCached.at && (Date.now() - mcCached.at) < 20 * 60 * 1000) {
       return res.status(200).json(mcCached.payload);

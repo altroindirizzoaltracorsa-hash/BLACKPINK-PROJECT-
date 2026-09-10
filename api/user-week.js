@@ -56,6 +56,16 @@ export default async function handler(req, res) {
     if (r.error) return res.status(200).json({ days: {} });
     const data = r.data;
 
+    // "new trick" (ROSÉ) fetched in its OWN tolerant query — kept out of the NEW
+    // group so a missing `newtrick` column can't collapse the ladder above (which
+    // would drop sawadika/click/fallenangel/heaven from badges). No-ops to {} until
+    // the column is migrated.
+    const ntByDay = {};
+    try {
+      const nr = await runQuery('day_key,newtrick');
+      if (!nr.error) for (const row of (nr.data || [])) ntByDay[row.day_key] = row.newtrick || 0;
+    } catch {}
+
     const days = {};
     for (const row of (data || [])) {
       days[row.day_key] = {
@@ -68,6 +78,7 @@ export default async function handler(req, res) {
         click:       hasNew ? (row.click       || 0) : 0,
         fallenangel: hasNew ? (row.fallenangel || 0) : 0,
         heaven:      hasNew ? (row.heaven      || 0) : 0,
+        newtrick:    ntByDay[row.day_key] || 0,
         by_source: hasBySource ? (row.by_source || null) : null,
       };
     }

@@ -28,6 +28,7 @@ const TRACKS = [
   { id: 'click',       artist: 'jisoo',     track: 'click' },
   { id: 'fallenangel', artist: 'jennie',    track: 'fallen angel' },
   { id: 'heaven',      artist: 'jennie',    track: 'heaven' },
+  { id: 'newtrick',    artist: 'rosé',      track: 'new trick' },
 ];
 
 function norm(s) {

@@ -3677,6 +3677,7 @@
         <button class="lb-subtab" onclick="switchLbSong('go', this)">GO</button>
         <button class="lb-subtab" onclick="switchLbSong('sawadika', this)">SAWADIKA</button>
         <button class="lb-subtab" onclick="switchLbSong('click', this)">CLICK</button>
+        <button class="lb-subtab" id="lb-subtab-newtrick" style="display:none" onclick="switchLbSong('newtrick', this)">NEW TRICK</button>
       </div>
       <!-- Nested per-track row for the Fallen Angel EP — shown only when that tab is open -->
       <div class="lb-subtabs lb-ep-subtabs" id="lb-ep-subtabs" style="display:none">
@@ -5374,6 +5375,8 @@ window.addEventListener('DOMContentLoaded', () => {
   loadFaCommunityScrobbles();
   loadReleaseCommunityScrobbles('sawadika', 'sawadika');
   loadReleaseCommunityScrobbles('jisoo', 'click');
+  // Reveal the NEW TRICK leaderboard sub-tab once the single is out (auto-flips).
+  if (newtrickLive()) { const _nt = document.getElementById('lb-subtab-newtrick'); if (_nt) _nt.style.display = ''; }
   loadLisaSaveCount();
   loadJisooSaveCount();
   loadNewTrickSaveCount();
@@ -7531,6 +7534,17 @@ const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
 const LIBREFM_BASE = 'https://libre.fm/2.0/';
 const LB_BASE     = 'https://api.listenbrainz.org/1/';
 
+// ── "new trick" (ROSÉ) release-day scaffolding ───────────────
+// Everything (scrobble matching, leaderboard, badges, community goal, VMA
+// eligibility) already counts 'newtrick' — plays just don't exist until release,
+// so it contributes 0 until then. RELEASE-DAY: set NEWTRICK_TRACK_ID to the real
+// Spotify track id (for the "listen" link). newtrickLive() gates the visible
+// board tab / badges row so nothing empty shows before the drop; it flips on its
+// own at NEWTRICK_RELEASE_MS, no code change needed.
+const NEWTRICK_TRACK_ID = 'PLACEHOLDER_NEWTRICK_ID';
+const NEWTRICK_RELEASE_MS = Date.parse('2026-09-17T23:00:00Z');
+function newtrickLive() { return Date.now() >= NEWTRICK_RELEASE_MS; }
+
 const TRACKS = [
   { id: 'jump',     title: 'JUMP',          artist: 'BLACKPINK', track: 'JUMP',              year: '2025', era: 'DEADLINE',       spotify: 'https://open.spotify.com/track/5H1sKFMzDeMtXwND3V6hRY' },
   { id: 'shutdown', title: 'SHUT DOWN',     artist: 'BLACKPINK', track: 'Shut Down',         year: '2022', era: 'BORN PINK',      spotify: 'https://open.spotify.com/track/6tCd8bPvYnceDG7W9M1RMk' },
@@ -7545,6 +7559,9 @@ const TRACKS = [
   { id: 'ltal',        title: 'LESS THAN A LOVER', artist: 'Jennie', track: 'Less Than a Lover', year: '2026', era: 'FALLEN ANGEL', spotify: 'https://open.spotify.com/track/19UnXjpLshSLobPspdyxlD' },
   { id: 'fallenangel', title: 'FALLEN ANGEL',      artist: 'Jennie', track: 'Fallen Angel',       year: '2026', era: 'FALLEN ANGEL', spotify: 'https://open.spotify.com/track/75QkBCdRc5DGgcyPiVSg4b' },
   { id: 'heaven',      title: 'HEAVEN',            artist: 'Jennie', track: 'Heaven',             year: '2026', era: 'FALLEN ANGEL', spotify: 'https://open.spotify.com/track/6uhCnqc4Tncn1vqkuGubPO' },
+  // ROSÉ solo single (2026-09-17). Matched under the ROSÉ member branch. RELEASE-DAY
+  // TODO: swap NEWTRICK_TRACK_ID below for the real Spotify track id once it's live.
+  { id: 'newtrick',    title: 'NEW TRICK',         artist: 'ROSÉ',   track: 'new trick',          year: '2026', era: 'new trick',    spotify: `https://open.spotify.com/track/${NEWTRICK_TRACK_ID}` },
 ];
 // Campaign tracks (drive the campaign totals + daily stamp). The Fallen Angel EP
 // songs are tracked and shown, but never counted into these.
@@ -7554,7 +7571,7 @@ const EP_TRACK_IDS = ['ltal', 'fallenangel', 'heaven'];
 // the community goal. The whole Fallen Angel EP (LTAL + Fallen Angel + Heaven) is
 // now included so a new release lifts the community goal and the board (the daily
 // STAMP stays campaign-only — see CAMPAIGN_TRACK_IDS above).
-const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven', 'sawadika', 'click'];
+const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven', 'sawadika', 'click', 'newtrick'];
 function campaignTotalOf(tp) { return CAMPAIGN_TOTAL_IDS.reduce((s, id) => s + (tp?.[id] || 0), 0); }
 
 // ── MOMENTARY: Fallen Angel EP push ──────────────────────────
@@ -7566,7 +7583,7 @@ function campaignTotalOf(tp) { return CAMPAIGN_TOTAL_IDS.reduce((s, id) => s + (
 const EP_IN_MILESTONES = true;
 const MILESTONE_TRACK_IDS = (EP_IN_MILESTONES
   ? [...CAMPAIGN_TRACK_IDS, ...EP_TRACK_IDS]
-  : [...CAMPAIGN_TRACK_IDS]).concat('sawadika', 'click');
+  : [...CAMPAIGN_TRACK_IDS]).concat('sawadika', 'click', 'newtrick');
 function milestoneTotalOf(tp) { return MILESTONE_TRACK_IDS.reduce((s, id) => s + (tp?.[id] || 0), 0); }
 
 // ── VOTE CAMPAIGNS ───────────────────────────────────────────
@@ -8527,7 +8544,7 @@ function _trackKey(s) {
 }
 
 async function fetchLbTrackCounts(username) {
-  const counts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } };
+  const counts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } };
 
   // 1. Try LB stats API first — fast when stats exist and include BLACKPINK
   try {
@@ -8551,6 +8568,8 @@ async function fetchLbTrackCounts(username) {
           if (k === 'sawadika') counts.sawadika += rec.listen_count || 0;
         } else if (_lbMemberKey(rec.artist_name) === 'jisoo') {
           if (k === 'click') counts.click += rec.listen_count || 0;
+        } else if (_lbMemberKey(rec.artist_name) === 'rose') {
+          if (k === 'newtrick') counts.newtrick += rec.listen_count || 0;
         }
       }
       for (const a of artStats?.payload?.artists || []) {
@@ -8572,9 +8591,9 @@ async function fetchLbTrackCounts(username) {
   const cacheAge = cached ? Date.now() - (cached.savedAt || 0) : Infinity;
   const doFull = !cached || cacheAge > 24 * 3600 * 1000;
   const base = doFull
-    ? { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } }
+    ? { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } }
     : { ...cached.counts, go: cached.counts?.go || 0, sawadika: cached.counts?.sawadika || 0, click: cached.counts?.click || 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0, ...(cached.counts?.memberPlays || {}) } };
-  const delta = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } };
+  const delta = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } };
   const _debugArtists = [];
   let maxListenedAt = doFull ? 0 : (cached.maxListenedAt || 0);
 
@@ -8604,6 +8623,9 @@ async function fetchLbTrackCounts(username) {
           } else if (mk === 'jisoo') {
             const k = _trackKey(l.track_metadata?.track_name);
             if (k === 'click') delta.click++;
+          } else if (mk === 'rose') {
+            const k = _trackKey(l.track_metadata?.track_name);
+            if (k === 'newtrick') delta.newtrick++;
           }
           continue;
         }
@@ -8621,7 +8643,7 @@ async function fetchLbTrackCounts(username) {
     }
   } catch (e2) { console.warn('LB listen scan:', e2.message); }
 
-  for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'artistPlays']) counts[k] = (base[k] || 0) + (delta[k] || 0);
+  for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick', 'artistPlays']) counts[k] = (base[k] || 0) + (delta[k] || 0);
   for (const m of ['jisoo', 'lisa', 'rose', 'jennie']) counts.memberPlays[m] = base.memberPlays[m] + delta.memberPlays[m];
 
   if (!counts.artistPlays && doFull) {
@@ -8652,7 +8674,7 @@ async function fetchLbRecentListens(username, from, to) {
   return results;
 }
 function countLbByTrack(listens) {
-  const counts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 };
+  const counts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 };
   for (const l of listens) {
     const k      = _trackKey(l.track_metadata?.track_name);
     const artist = (l.track_metadata?.artist_name  || '').toLowerCase();
@@ -8669,6 +8691,8 @@ function countLbByTrack(listens) {
       if (k === 'sawadika') counts.sawadika++;
     } else if (_lbMemberKey(l.track_metadata?.artist_name) === 'jisoo') {
       if (k === 'click') counts.click++;
+    } else if (_lbMemberKey(l.track_metadata?.artist_name) === 'rose') {
+      if (k === 'newtrick') counts.newtrick++;
     }
   }
   return counts;
@@ -8822,7 +8846,7 @@ async function loadProfile(usernameOverride, silent = false) {
     }));
 
     const weekDays = [];
-    const weekCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 };
+    const weekCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 };
     let lastScrobbleTs = null;
 
     for (const res of weekScrobbleResults) {
@@ -8864,7 +8888,7 @@ async function loadProfile(usernameOverride, silent = false) {
           fetchLbRecentListens(lbUsername, dayFrom, dayTo),
         ]);
         const lbTodayCounts = countLbByTrack(lbToday);
-        for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven']) {
+        for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick']) {
           totalPlays[k]  += lbCounts[k]      || 0;
           todayCounts[k] += lbTodayCounts[k] || 0;
         }
@@ -9358,9 +9382,9 @@ async function fetchSingleAccountStats(source, username) {
     artistPlays: 0,
     bpGroupPlays: 0,
     memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 },
-    totalPlays:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 },
-    todayCounts: { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 },
-    weekCounts:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 },
+    totalPlays:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 },
+    todayCounts: { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 },
+    weekCounts:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 },
     weekDayCounts: [],
   };
   if (source === 'lastfm' || source === 'librefm') {
@@ -9412,7 +9436,7 @@ async function fetchSingleAccountStats(source, username) {
     // separate fetch could disagree with the week fetch and produce today>week.
     if (res.weekDayCounts[todayIdx]) res.todayCounts = { ...res.weekDayCounts[todayIdx] };
   } else if (source === 'listenbrainz') {
-    let lbCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, artistPlays: 0 };
+    let lbCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, artistPlays: 0 };
     try {
       lbCounts = await fetchLbTrackCounts(username);
     } catch(e) { console.warn('LB fetch failed for', username, e.message); }
@@ -9420,12 +9444,12 @@ async function fetchSingleAccountStats(source, username) {
     res.bpGroupPlays = lbCounts.artistPlays;
     res.playcount    = lbCounts.artistPlays;
     if (lbCounts.memberPlays) res.memberPlays = { ...res.memberPlays, ...lbCounts.memberPlays };
-    for (const k of ['jump','shutdown','ddududu','ltal','go','sawadika','click','fallenangel','heaven']) res.totalPlays[k] = lbCounts[k] || 0;
+    for (const k of ['jump','shutdown','ddududu','ltal','go','sawadika','click','fallenangel','heaven','newtrick']) res.totalPlays[k] = lbCounts[k] || 0;
     const lbTodayIdx = Math.floor((dayFrom - weekFrom) / 86400);
     for (let i = 0; i < 7; i++) {
       const ds = weekFrom + i * 86400;
       if (ds * 1000 > Date.now()) { res.weekDayCounts.push(null); continue; }
-      let dc = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 };
+      let dc = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 };
       try { dc = countLbByTrack(await fetchLbRecentListens(username, ds, ds + 86400)); } catch {}
       res.weekDayCounts.push(dc);
       res.weekCounts.jump     += dc.jump     || 0;
@@ -9455,7 +9479,7 @@ async function fetchSingleAccountStats(source, username) {
       res.bpGroupPlays = d.bpGroupPlays || d.artistPlays || 0;
       if (d.memberPlays) res.memberPlays = { ...res.memberPlays, ...d.memberPlays };
       res.playcount    = d.playcount  || d.artistPlays || 0;
-      for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven']) {
+      for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick']) {
         res.totalPlays[k]  = d.tracks?.[k] || 0;
         res.todayCounts[k] = d.today?.[k]  || 0;
         // Musicat exposes all-time + today only, never per-day week history. Floor
@@ -9479,7 +9503,7 @@ async function fetchSingleAccountStats(source, username) {
       res.bpGroupPlays = d.bpGroupPlays || 0;
       if (d.memberPlays) res.memberPlays = { ...res.memberPlays, ...d.memberPlays };
       res.playcount    = d.playcount    || d.artistPlays || 0;
-      for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven']) {
+      for (const k of ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick']) {
         res.totalPlays[k]  = d.tracks?.[k] || 0;
         res.todayCounts[k] = d.today?.[k]  || 0;
         // Stats.fm exposes all-time + today only, never per-day week history. Floor
@@ -9512,9 +9536,9 @@ async function loadMultiAccountProfile(accounts) {
     artistPlays: 0,
     bpGroupPlays: 0,
     memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 },
-    totalPlays:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 },
-    todayCounts: { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 },
-    weekCounts:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 },
+    totalPlays:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 },
+    todayCounts: { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 },
+    weekCounts:  { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 },
     weekDays: null, info: null, lastScrobbleTs: null,
   };
   // Use a local array to avoid race conditions when two loads overlap
@@ -9592,7 +9616,7 @@ async function loadMultiAccountProfile(accounts) {
     for (const m of ['jisoo', 'lisa', 'rose', 'jennie']) {
       combined.memberPlays[m] += stats.memberPlays?.[m] || 0;
     }
-    for (const k of ['jump','shutdown','ddududu','ltal','go','sawadika','click','fallenangel','heaven']) {
+    for (const k of ['jump','shutdown','ddududu','ltal','go','sawadika','click','fallenangel','heaven','newtrick']) {
       combined.totalPlays[k]  += stats.totalPlays[k]  || 0;
       combined.todayCounts[k] += stats.todayCounts[k] || 0;
       combined.weekCounts[k]  += stats.weekCounts[k]  || 0;
@@ -9606,7 +9630,7 @@ async function loadMultiAccountProfile(accounts) {
   catch (e) { console.warn('Extension fetch failed/timed out', e); }
   if (extAcct) {
     _breakdown.push(extAcct);
-    for (const k of ['jump','shutdown','ddududu','ltal','go','sawadika','click','fallenangel','heaven']) {
+    for (const k of ['jump','shutdown','ddududu','ltal','go','sawadika','click','fallenangel','heaven','newtrick']) {
       combined.totalPlays[k]  += extAcct.totalPlays[k]  || 0;
       combined.todayCounts[k] += extAcct.todayCounts[k] || 0;
       combined.weekCounts[k]  += extAcct.weekCounts[k]  || 0;
@@ -9667,7 +9691,7 @@ async function loadMultiAccountProfile(accounts) {
   for (let i = 0; i < 7; i++) {
     const ds = weekFrom + i * 86400;
     if (ds * 1000 > Date.now()) { weekDays.push(null); continue; }
-    const day = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 };
+    const day = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 };
     for (const a of _breakdown) {
       const dc = a.weekDayCounts[i];
       if (dc) { day.jump += dc.jump||0; day.shutdown += dc.shutdown||0; day.ddududu += dc.ddududu||0; day.ltal += dc.ltal||0; day.go += dc.go||0; day.sawadika += dc.sawadika||0; day.click += dc.click||0; day.fallenangel += dc.fallenangel||0; day.heaven += dc.heaven||0; }
@@ -9824,7 +9848,7 @@ async function buildExtensionAccount() {
     if (!session) return null;
     const { from: dayFrom } = getDayBounds();
     const { from: weekFrom } = getWeekBounds();
-    const zero = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0 });
+    const zero = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 });
     const totalPlays = zero(), todayCounts = zero(), weekCounts = zero();
     const weekDayCounts = Array.from({ length: 7 }, () => zero());
     let lastTs = 0, total = 0;
@@ -10072,7 +10096,10 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
   const dailyGrid = document.getElementById('daily-challenge-grid');
   // Campaign tracks always; the Fallen Angel EP songs join once the EP is out.
   const epOut = Date.now() >= FAEP_RELEASE_MS;
-  const gridTracks = TRACKS.filter(t => !EP_TRACK_IDS.includes(t.id) || epOut);
+  // "new trick" joins the grid only once it's out (like the EP), so no empty row
+  // shows pre-release. Flips on its own at NEWTRICK_RELEASE_MS.
+  const gridTracks = TRACKS.filter(t =>
+    t.id === 'newtrick' ? newtrickLive() : (!EP_TRACK_IDS.includes(t.id) || epOut));
   const todayCombined = milestoneTotalOf(todayCounts);
   dailyGrid.innerHTML = `
     <div class="daily-grid">
@@ -10834,7 +10861,7 @@ function computeDailyCommunityTotal(users) {
     // Whole campaign incl. the Fallen Angel EP (LTAL + Fallen Angel + Heaven), so a
     // release lifts the community goal — mirrors CAMPAIGN_TOTAL_IDS / daily_all.
     return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
-      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0);
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_newtrick || 0);
   }, 0);
 }
 
@@ -11135,7 +11162,7 @@ function renderLeaderboard() {
     if (totalEl) totalEl.textContent = '';
   } else {
     const periodLabel = lbPeriod === 'daily' ? 'streams today' : lbPeriod === 'weekly' ? 'streams this week' : 'total streams';
-    const songLabel   = lbSong === 'all' ? 'All Campaign Tracks' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : lbSong === 'sawadika' ? 'SAWADIKA' : lbSong === 'click' ? 'CLICK' : 'LESS THAN A LOVER';
+    const songLabel   = lbSong === 'all' ? 'All Campaign Tracks' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : lbSong === 'sawadika' ? 'SAWADIKA' : lbSong === 'click' ? 'CLICK' : lbSong === 'newtrick' ? 'NEW TRICK' : 'LESS THAN A LOVER';
     const colHeader   = lbSong === 'all'
       ? (lbPeriod === 'daily' ? 'Streams Today' : lbPeriod === 'weekly' ? 'Streams This Week' : 'Total Streams')
       : `${songLabel} — ${lbPeriod === 'daily' ? 'Today' : lbPeriod === 'weekly' ? 'This Week' : 'All Time'}`;
@@ -14994,7 +15021,7 @@ async function shareLbCard() {
   _cardLogo = await getBuLogo();
   renderLbCard(_cardLogo);
   const periodLabel = lbCardPeriodLabel();
-  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : lbSong === 'sawadika' ? 'SAWADIKA' : lbSong === 'click' ? 'CLICK' : 'LESS THAN A LOVER';
+  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : lbSong === 'sawadika' ? 'SAWADIKA' : lbSong === 'click' ? 'CLICK' : lbSong === 'newtrick' ? 'NEW TRICK' : 'LESS THAN A LOVER';
   label.textContent = `LEADERBOARD · ${periodLabel} · ${songLabel}`;
 }
 
@@ -15052,7 +15079,7 @@ function shiftLbCardRange(dir) {
   _lbCardRangeStart = next;
   renderLbCard(_cardLogo);
   const periodLabel = lbCardPeriodLabel();
-  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : lbSong === 'sawadika' ? 'SAWADIKA' : lbSong === 'click' ? 'CLICK' : 'LESS THAN A LOVER';
+  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : lbSong === 'sawadika' ? 'SAWADIKA' : lbSong === 'click' ? 'CLICK' : lbSong === 'newtrick' ? 'NEW TRICK' : 'LESS THAN A LOVER';
   document.getElementById('card-box-label').textContent = `LEADERBOARD · ${periodLabel} · ${songLabel}`;
 }
 
@@ -15089,7 +15116,7 @@ function renderLbCard(logo) {
 
   // Period + song subtitle
   const periodLabel = lbCardPeriodLabel();
-  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : lbSong === 'sawadika' ? 'SAWADIKA' : lbSong === 'click' ? 'CLICK' : 'LESS THAN A LOVER';
+  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : lbSong === 'sawadika' ? 'SAWADIKA' : lbSong === 'click' ? 'CLICK' : lbSong === 'newtrick' ? 'NEW TRICK' : 'LESS THAN A LOVER';
   const rangeLabel  = allEntries.length > LB_CARD_PAGE_SIZE
     ? ` · RANK ${_lbCardRangeStart + 1}–${Math.min(_lbCardRangeStart + LB_CARD_PAGE_SIZE, allEntries.length)}`
     : '';

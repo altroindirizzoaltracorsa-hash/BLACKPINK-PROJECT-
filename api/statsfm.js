@@ -170,6 +170,7 @@ export default async function handler(request) {
       { id: 'click',       prefix: 'click',             artist: 'JISOO' },
       { id: 'fallenangel', prefix: 'fallen angel',      artist: 'JENNIE' },
       { id: 'heaven',      prefix: 'heaven',            artist: 'JENNIE' },
+      { id: 'newtrick',    prefix: 'new trick',         artist: 'ROSÉ' },
     ];
 
     function countTracks(list) {
