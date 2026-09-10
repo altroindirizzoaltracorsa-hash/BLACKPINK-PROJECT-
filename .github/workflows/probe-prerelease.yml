@@ -27,4 +27,5 @@ jobs:
           path: |
             artist_overview.json
             search.json
+            prerelease_page.html
           if-no-files-found: ignore
