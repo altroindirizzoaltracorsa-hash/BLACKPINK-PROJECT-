@@ -1,0 +1,42 @@
+name: Probe stream history
+
+# Diagnostic (read-only): dump the live JUMP daily history + prev/live so we can
+# see duplicate/mislabeled day entries. GETs the public /api/streams (no force,
+# no writes beyond a normal visitor read).
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump JUMP history
+        run: |
+          curl -sS "https://www.blinksunited.com/api/streams" -o /tmp/s.json
+          echo "=== top-level keys ==="; python3 -c "import json;d=json.load(open('/tmp/s.json'));print(list(d.keys()))"
+          echo "=== JUMP: total / prev / last 8 history entries ==="
+          python3 - <<'PY'
+          import json
+          d=json.load(open('/tmp/s.json'))
+          # tolerate a couple of shapes: d['jump'] or d['results']['jump'] or d['tracks']['jump']
+          j=None
+          for path in (('jump',),('results','jump'),('tracks','jump')):
+              x=d
+              try:
+                  for k in path: x=x[k]
+                  j=x; break
+              except Exception: pass
+          if j is None:
+              print("could not find jump; dumping keys:", list(d.keys())); raise SystemExit
+          print("total:", j.get('total'))
+          print("prev :", j.get('prev'))
+          h=j.get('history') or []
+          print("history length:", len(h))
+          for e in h[-8:]:
+              print("  ", e)
+          # flag consecutive-identical daily values
+          print("=== consecutive-identical daily deltas ===")
+          for a,b in zip(h,h[1:]):
+              if a.get('streams')==b.get('streams'):
+                  print("  DUP:", a, b)
+          PY
