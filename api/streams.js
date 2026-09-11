@@ -1102,13 +1102,19 @@ export default async function handler(req, res) {
           const yLabel = lastEntry ? addDaysToLabel(lastEntry.date, 1) : yesterdayLabel();
           const dailyStreams = total - prevTotal;
           const existing = history.find(h => h.date === yLabel);
-          // Never record a day in the FUTURE relative to the current UTC streaming
-          // day. If the day-after-last would land past today — e.g. today's entry
-          // is already booked and this is just an intraday nudge, or a forced/cron
-          // re-fetch caught the number moving again — do NOT invent tomorrow. Keep
-          // the live total fresh (already cached above) and leave history frozen.
-          const isFuture = daysBetween(todayLabel, yLabel) > 0;
-          if (!existing && !isFuture) {
+          // A day is only recorded once it's a FINALIZED PAST day (yesterday or
+          // earlier). Spotify publishes a day's finalized play count only AFTER that
+          // day ends — in the small hours of the NEXT UTC day — so the newest real
+          // day is always yesterday, never today. The old rule blocked only FUTURE
+          // labels (> 0), which still allowed booking `todayLabel`: that's how an
+          // intraday / not-yet-finalized value — or the previous day's finalized
+          // number arriving late — got stamped as a brand-new day, producing the
+          // duplicate "next day = exactly yesterday's number" bar. Blocking today too
+          // means each day is booked once, when it's actually over and published.
+          // prev.total still advances below (the live count keeps moving); only the
+          // immutable history entry waits for the day to finalize.
+          const notFinalizedYet = daysBetween(todayLabel, yLabel) >= 0;
+          if (!existing && !notFinalizedYet) {
             history.push({ date: yLabel, streams: dailyStreams });
             if (history.length > 60) history.shift();
             await redis.set(histKey, history);
