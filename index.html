@@ -8348,6 +8348,46 @@ const LTAL_TIER_LABELS = {
   icon:    'So much more than a lover',
 };
 
+// Per-song themed tier labels (same thresholds/icons as BADGE_TIERS, keyed by tier
+// id). Used only for each song's OWN tier progress on the badges page — the combined
+// all-songs grid keeps the generic BLINK/STAN/… names. Each ladder is a spectrum
+// built from the song's own words/theme, like the Lover set above.
+const SONG_TIER_LABELS = {
+  ltal: LTAL_TIER_LABELS,
+  fallenangel: {
+    blink:   'Clipped wings',
+    stan:    'Spread your wings',
+    soldier: 'A fallen angel',
+    queen:   'Out on her own',
+    legend:  'Wherever we land',
+    icon:    'Turn into a home',
+  },
+  sawadika: {
+    blink:   'Sawadika 👋',
+    stan:    'Who let this bitch out the cage?',
+    soldier: 'That bitch on your TV',
+    queen:   'No ceiling in my mind',
+    legend:  'They call me the one',
+    icon:    'La Lalisa, la diva',
+  },
+  click: {
+    blink:   "This isn't gonna work, I know",
+    stan:    'The way our bodies click',
+    soldier: 'Your lips, my lips, click',
+    queen:   'Kiss away our differences',
+    legend:  'We were made to fit',
+    icon:    'Click bear',
+  },
+  heaven: {
+    blink:   'Down bad',
+    stan:    'Crash and burn',
+    soldier: 'My favorite part',
+    queen:   'Kinda fucked up',
+    legend:  "But it's heaven",
+    icon:    'Heaven to me',
+  },
+};
+
 const BADGE_TIERS = [
   { id: 'blink',   label: 'BLINK',   min: 1,   icon: '💗', desc: 'Welcome to the fandom!' },
   { id: 'stan',    label: 'STAN',    min: 10,  icon: '🖤', desc: "You're a real one." },
@@ -10169,7 +10209,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
       <div class="badge-history-list">
         ${earnedItems.map(item => {
           const t = item.track, plays = item.plays;
-          const labels = t.id === 'ltal' ? LTAL_TIER_LABELS : null;
+          const labels = SONG_TIER_LABELS[t.id] || null;
           return `<div class="tier-acc-item" data-song="${t.id}">
             <div class="badge-history-item badge-history-head" onclick="toggleTierAcc(this)" role="button" tabindex="0" aria-expanded="false">
               <div class="badge-history-icon">${item.badge.icon}</div>
