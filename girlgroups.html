@@ -169,9 +169,43 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
   // ── Catch-up projection ─────────────────────────────────────
-  // Trailing-average daily rate from the group's own YTD series (kworb skips
-  // days, so span by real dates, not row count); fall back to kworb's last daily.
+  // Daily rates come from OUR OWN daily log (data/group_streams/history.csv) — a
+  // current, granular measurement summed from the same track IDs kworb uses. The
+  // API's kworb series is a coarse multi-week average that lags several days, so it
+  // understates a group's recent acceleration (it had LE SSERAFIM ≈ BLACKPINK when
+  // the daily log clearly shows LE SSERAFIM pulling ahead). We fall back to the
+  // kworb series only when the log has nothing for a group.
+  let _logRates = null; // { groupName: streams/day } from the daily log
+  function _parseLogRates(text) {
+    const lines = String(text || '').trim().split(/\r?\n/);
+    if (lines.length < 2) return {};
+    lines.shift(); // header: date,group,artist_id,total_streams,daily_delta,tracks,note
+    const byGroup = {};
+    for (const ln of lines) {
+      const c = ln.split(',');
+      const date = c[0], group = c[1], total = Number(c[3]);
+      if (!date || !group || !Number.isFinite(total)) continue;
+      (byGroup[group] = byGroup[group] || []).push({ date, total });
+    }
+    const rates = {};
+    for (const g of Object.keys(byGroup)) {
+      const arr = byGroup[g].sort((a, b) => a.date < b.date ? -1 : 1).slice(-14); // trailing ~2 weeks
+      if (arr.length >= 2) {
+        const first = arr[0], last = arr[arr.length - 1];
+        const days = (Date.parse(last.date) - Date.parse(first.date)) / 86400000;
+        if (days > 0) rates[g] = (last.total - first.total) / days;
+      }
+    }
+    return rates;
+  }
+  function ensureLogRates() {
+    if (_logRates) return Promise.resolve(_logRates);
+    return fetch(HISTORY_CSV, { cache: 'no-store' }).then(r => r.text())
+      .then(t => (_logRates = _parseLogRates(t)))
+      .catch(() => (_logRates = {}));
+  }
   function _rateOf(g) {
+    if (_logRates && _logRates[g.name] != null) return _logRates[g.name];
     const s = (g.series || []).filter(p => p && p.v != null && p.d);
     if (s.length >= 2) {
       const first = s[0], last = s[s.length - 1];
@@ -197,6 +231,9 @@
     target.value = (prevT !== '' && _cuGroups[prevT]) ? prevT : '0';
     chaser.onchange = () => drawCatchup(asOf);
     target.onchange = () => drawCatchup(asOf);
+    // Draw immediately (kworb-series fallback), then re-draw with our daily-log
+    // rates the moment the CSV loads — usually within the same second.
+    ensureLogRates().then(() => drawCatchup(asOf));
     drawCatchup(asOf);
   }
   function drawCatchup(asOf) {
