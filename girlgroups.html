@@ -110,6 +110,10 @@
   /* Catch-up projection widget */
   .catchup{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin:14px 0 8px;}
   .cu-title{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--pink-soft);margin-bottom:10px;}
+  .cu-modes{display:flex;gap:6px;margin-bottom:11px;}
+  .cu-mode{flex:1;background:var(--card);color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-family:inherit;font-size:11px;letter-spacing:.04em;cursor:pointer;}
+  .cu-mode:hover{color:var(--pink-soft);}
+  .cu-mode[aria-selected="true"]{background:#ff2e7718;border-color:#ff2e7788;color:var(--pink-soft);font-weight:700;}
   .cu-picks{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:11px;}
   .cu-sel{background:#0a0407;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-family:inherit;font-size:12px;flex:1;min-width:130px;}
   .cu-sel:focus{outline:none;border-color:var(--pink);}
@@ -135,7 +139,11 @@
   <div id="list"></div>
 
   <div id="catchup" class="catchup" hidden>
-    <div class="cu-title">Catch-up projection · 2026</div>
+    <div class="cu-title">Catch-up projection</div>
+    <div class="cu-modes" id="cu-modes" role="tablist">
+      <button class="cu-mode" data-mode="year" aria-selected="true">This year · 2026</button>
+      <button class="cu-mode" data-mode="overall" aria-selected="false">All-time</button>
+    </div>
     <div class="cu-picks">
       <select id="cu-chaser" class="cu-sel" aria-label="Chasing group"></select>
       <span class="cu-arrow">chasing</span>
@@ -215,6 +223,7 @@
     return g.daily != null ? g.daily : null;
   }
   let _cuGroups = [];
+  let _cuMode = 'year'; // 'year' = 2026 streams gained · 'overall' = all-time total
   function renderCatchup(groups, asOf) {
     _cuGroups = (groups || []).filter(g => g.ytd != null);
     const box = document.getElementById('catchup');
@@ -231,6 +240,15 @@
     target.value = (prevT !== '' && _cuGroups[prevT]) ? prevT : '0';
     chaser.onchange = () => drawCatchup(asOf);
     target.onchange = () => drawCatchup(asOf);
+    document.querySelectorAll('#cu-modes .cu-mode').forEach(b => {
+      b.setAttribute('aria-selected', b.dataset.mode === _cuMode ? 'true' : 'false');
+      b.onclick = () => {
+        _cuMode = b.dataset.mode;
+        document.querySelectorAll('#cu-modes .cu-mode').forEach(x =>
+          x.setAttribute('aria-selected', x === b ? 'true' : 'false'));
+        drawCatchup(asOf);
+      };
+    });
     // Draw immediately (kworb-series fallback), then re-draw with our daily-log
     // rates the moment the CSV loads — usually within the same second.
     ensureLogRates().then(() => drawCatchup(asOf));
@@ -244,19 +262,24 @@
     if (c === t) { out.innerHTML = '<span class="cu-note">Pick two different groups.</span>'; return; }
     const cr = _rateOf(c), tr = _rateOf(t);
     if (cr == null || tr == null) { out.innerHTML = '<span class="cu-note">Not enough history yet to project a rate.</span>'; return; }
-    const gap = (t.ytd || 0) - (c.ytd || 0);
+    // Mode picks WHICH totals we compare; the daily rates are the same either way.
+    const yearMode = _cuMode !== 'overall';
+    const cVal = yearMode ? (c.ytd || 0) : (c.total || 0);
+    const tVal = yearMode ? (t.ytd || 0) : (t.total || 0);
+    const scope = yearMode ? 'this year' : 'all-time';
+    const gap = tVal - cVal;
     const rateLine = `<b>${esc(c.name)}</b> +${big(cr)}/day vs <b>${esc(t.name)}</b> +${big(tr)}/day`;
-    // Anchor "now" to the data's streaming day (ytd is as-of that day).
+    // Anchor "now" to the data's streaming day (the totals are as-of that day).
     const now = asOf ? Date.parse(asOf + 'T00:00:00Z') : Date.now();
     const year = new Date(now).getUTCFullYear();
     const daysLeft = Math.max(0, Math.round((Date.UTC(year, 11, 31) - now) / 86400000));
     let verdict;
     if (gap < 0) {
-      verdict = `<div class="cu-eta">${esc(c.name)} is already ahead by ${big(-gap)} this year ✅</div>`;
+      verdict = `<div class="cu-eta">${esc(c.name)} is already ahead by ${big(-gap)} ${scope} ✅</div>`;
     } else {
       const close = cr - tr;
       if (close <= 0) {
-        verdict = `<div class="cu-eta">Not catching up — ${esc(t.name)} is gaining just as fast or faster, so the gap isn't closing.</div>`
+        verdict = `<div class="cu-eta">Not catching up — ${esc(t.name)} is gaining just as fast or faster, so the ${scope} gap isn't closing.</div>`
                 + `<div>Gap now: <b>${big(gap)}</b></div>`;
       } else {
         const days = gap / close;
@@ -266,14 +289,15 @@
         const dur = months < 12 ? `~${months.toFixed(1)} months` : `~${(days / 365.25).toFixed(1)} years`;
         verdict = `<div class="cu-eta">Overtakes around <span>${etaStr}</span></div>`
                 + `<div>Gap now: <b>${big(gap)}</b> · closing <b>${big(close)}/day</b> · ${Math.round(days).toLocaleString()} days (${dur})</div>`;
-        if (days > daysLeft) {
+        if (yearMode && days > daysLeft) {
           const needExtra = gap / Math.max(1, daysLeft) - close;
           verdict += `<div class="cu-note cu-win">↺ That lands after Dec 31 — the year-to-date board resets on Jan 1, so ${esc(t.name)} takes ${year}. `
                    + `To pass within the year, ${esc(c.name)} would need to gain ~${big(needExtra)}/day <i>more</i> than it does now (${daysLeft} days left).</div>`;
         }
       }
     }
-    out.innerHTML = `<div>${rateLine}</div>` + verdict;
+    const scopeTag = `<div class="cu-note">Comparing <b>${yearMode ? year + ' streams gained' : 'all-time totals'}</b>.</div>`;
+    out.innerHTML = scopeTag + `<div>${rateLine}</div>` + verdict;
   }
 
   function render(d) {
