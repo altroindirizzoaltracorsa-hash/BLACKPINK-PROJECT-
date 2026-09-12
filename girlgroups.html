@@ -107,6 +107,19 @@
   .dayrow .v i{display:block;font-style:normal;font-size:9.5px;color:var(--dim);margin-top:2px;}
   .dayrow.absent .g{color:var(--dim);font-weight:400;}
   .dayrow.absent .v b{color:var(--dim);font-weight:400;font-size:11px;}
+  /* Catch-up projection widget */
+  .catchup{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin:14px 0 8px;}
+  .cu-title{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--pink-soft);margin-bottom:10px;}
+  .cu-picks{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:11px;}
+  .cu-sel{background:#0a0407;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-family:inherit;font-size:12px;flex:1;min-width:130px;}
+  .cu-sel:focus{outline:none;border-color:var(--pink);}
+  .cu-arrow{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);}
+  .cu-out{font-size:12.5px;line-height:1.65;color:var(--muted);}
+  .cu-out b{color:var(--pink-soft);font-weight:700;}
+  .cu-eta{color:var(--text);font-weight:700;font-size:14px;margin-bottom:3px;}
+  .cu-eta span{color:var(--pink);}
+  .cu-note{font-size:10.5px;line-height:1.5;color:var(--dim);margin-top:8px;}
+  .cu-win{color:var(--gold);}
 </style>
 </head>
 <body>
@@ -120,6 +133,16 @@
   <div id="stale" class="stale"></div>
   <div id="err" class="err"></div>
   <div id="list"></div>
+
+  <div id="catchup" class="catchup" hidden>
+    <div class="cu-title">Catch-up projection · 2026</div>
+    <div class="cu-picks">
+      <select id="cu-chaser" class="cu-sel" aria-label="Chasing group"></select>
+      <span class="cu-arrow">chasing</span>
+      <select id="cu-target" class="cu-sel" aria-label="Target group"></select>
+    </div>
+    <div id="cu-out" class="cu-out"></div>
+  </div>
 
   <div class="note" id="note"></div>
 
@@ -144,6 +167,77 @@
     return String(Math.round(n));
   };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  // ── Catch-up projection ─────────────────────────────────────
+  // Trailing-average daily rate from the group's own YTD series (kworb skips
+  // days, so span by real dates, not row count); fall back to kworb's last daily.
+  function _rateOf(g) {
+    const s = (g.series || []).filter(p => p && p.v != null && p.d);
+    if (s.length >= 2) {
+      const first = s[0], last = s[s.length - 1];
+      const days = (Date.parse(last.d) - Date.parse(first.d)) / 86400000;
+      if (days > 0) return (last.v - first.v) / days;
+    }
+    return g.daily != null ? g.daily : null;
+  }
+  let _cuGroups = [];
+  function renderCatchup(groups, asOf) {
+    _cuGroups = (groups || []).filter(g => g.ytd != null);
+    const box = document.getElementById('catchup');
+    if (!box) return;
+    if (_cuGroups.length < 2) { box.hidden = true; return; }
+    box.hidden = false;
+    const chaser = document.getElementById('cu-chaser');
+    const target = document.getElementById('cu-target');
+    const opts = _cuGroups.map((g, i) => `<option value="${i}">${esc(g.name)}</option>`).join('');
+    const prevC = chaser.value, prevT = target.value;
+    chaser.innerHTML = opts; target.innerHTML = opts;
+    // Default: 2nd place chasing the leader; keep the user's picks across refreshes.
+    chaser.value = (prevC !== '' && _cuGroups[prevC]) ? prevC : String(Math.min(1, _cuGroups.length - 1));
+    target.value = (prevT !== '' && _cuGroups[prevT]) ? prevT : '0';
+    chaser.onchange = () => drawCatchup(asOf);
+    target.onchange = () => drawCatchup(asOf);
+    drawCatchup(asOf);
+  }
+  function drawCatchup(asOf) {
+    const out = document.getElementById('cu-out');
+    const c = _cuGroups[+document.getElementById('cu-chaser').value];
+    const t = _cuGroups[+document.getElementById('cu-target').value];
+    if (!out || !c || !t) return;
+    if (c === t) { out.innerHTML = '<span class="cu-note">Pick two different groups.</span>'; return; }
+    const cr = _rateOf(c), tr = _rateOf(t);
+    if (cr == null || tr == null) { out.innerHTML = '<span class="cu-note">Not enough history yet to project a rate.</span>'; return; }
+    const gap = (t.ytd || 0) - (c.ytd || 0);
+    const rateLine = `<b>${esc(c.name)}</b> +${big(cr)}/day vs <b>${esc(t.name)}</b> +${big(tr)}/day`;
+    // Anchor "now" to the data's streaming day (ytd is as-of that day).
+    const now = asOf ? Date.parse(asOf + 'T00:00:00Z') : Date.now();
+    const year = new Date(now).getUTCFullYear();
+    const daysLeft = Math.max(0, Math.round((Date.UTC(year, 11, 31) - now) / 86400000));
+    let verdict;
+    if (gap < 0) {
+      verdict = `<div class="cu-eta">${esc(c.name)} is already ahead by ${big(-gap)} this year ✅</div>`;
+    } else {
+      const close = cr - tr;
+      if (close <= 0) {
+        verdict = `<div class="cu-eta">Not catching up — ${esc(t.name)} is gaining just as fast or faster, so the gap isn't closing.</div>`
+                + `<div>Gap now: <b>${big(gap)}</b></div>`;
+      } else {
+        const days = gap / close;
+        const eta = new Date(now + days * 86400000);
+        const etaStr = eta.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const months = days / 30.44;
+        const dur = months < 12 ? `~${months.toFixed(1)} months` : `~${(days / 365.25).toFixed(1)} years`;
+        verdict = `<div class="cu-eta">Overtakes around <span>${etaStr}</span></div>`
+                + `<div>Gap now: <b>${big(gap)}</b> · closing <b>${big(close)}/day</b> · ${Math.round(days).toLocaleString()} days (${dur})</div>`;
+        if (days > daysLeft) {
+          const needExtra = gap / Math.max(1, daysLeft) - close;
+          verdict += `<div class="cu-note cu-win">↺ That lands after Dec 31 — the year-to-date board resets on Jan 1, so ${esc(t.name)} takes ${year}. `
+                   + `To pass within the year, ${esc(c.name)} would need to gain ~${big(needExtra)}/day <i>more</i> than it does now (${daysLeft} days left).</div>`;
+        }
+      }
+    }
+    out.innerHTML = `<div>${rateLine}</div>` + verdict;
+  }
 
   function render(d) {
     const groups = d.groups || [];
@@ -197,6 +291,8 @@
         s.textContent = `⚠ kworb has not published a newer day in ${age} days — figures below are for ${d.asOf}.`;
       }
     }
+
+    renderCatchup(groups, d.asOf);
 
     document.getElementById('note').innerHTML =
       `<b>How this is worked out.</b> Nobody publishes a year-to-date figure, so it is derived: ` +
