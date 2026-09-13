@@ -16270,14 +16270,23 @@ function drawVoteCard(canvas, campaign, logo, art) {
   ctx.fillStyle = '#FF0066';
   ctx.fillRect(PX, ruleY, 70, landscape ? 2 : 3);
 
+  // The footnote ("VOTE AT …") + deadline countdown are anchored ABOVE the
+  // branding footer (which is pinned to the bottom of the card). Previously they
+  // were placed relative to the category block's running y, so a card with many
+  // category rows pushed them down into the footer and the text overlapped.
+  const footerRuleY = H - (landscape ? 90 : 135);
+  const subY   = footerRuleY - (landscape ? 24 : 32);   // deadline sub-label baseline
+  const bigY   = subY - (landscape ? 20 : 28);          // deadline big number baseline
+  const bigAsc = landscape ? 56 : 84;                   // big-number cap height
+  const footY  = bigY - bigAsc - (landscape ? 12 : 20); // "VOTE AT …" footnote baseline
+
   // Categories + nominees — the row height shrinks when a campaign has many
-  // categories (e.g. the VMAs' 5) so everything stays on the card; single- or
-  // few-category cards keep the original full-size rows.
+  // categories (e.g. the VMAs' 5) so everything stays clear of the footnote
+  // above; single- or few-category cards keep the original full-size rows.
   let y = ruleY + (landscape ? 47 : 60);
   const maxRowH = landscape ? 64 : 140;
-  const reserve = landscape ? 130 : 210; // space kept below for the footnote + deadline block
-  const avail = H - y - reserve;
-  const rowH = Math.max(landscape ? 40 : 74,
+  const avail = (footY - (landscape ? 18 : 28)) - y; // keep a gap below the last row
+  const rowH = Math.max(landscape ? 26 : 56,
     Math.min(maxRowH, campaign.categories.length ? avail / campaign.categories.length : maxRowH));
   const k = Math.min(1, rowH / maxRowH); // scale fonts down with the row height
   for (const cat of campaign.categories) {
@@ -16285,9 +16294,11 @@ function drawVoteCard(canvas, campaign, logo, art) {
     ctx.font = `500 ${Math.round((landscape ? 13 : 20) * Math.min(1, k + 0.15))}px "DM Mono", monospace`;
     ctx.letterSpacing = '3px';
     ctx.fillText(cat.name.toUpperCase(), PX, y);
-    ctx.fillStyle = '#FF0066';
-    ctx.letterSpacing = '2px';
-    fillTextFit(ctx, cat.nominees.map(n => n.name).join('  ·  '), PX, y + rowH * (landscape ? 0.62 : 0.46), Math.round((landscape ? 44 : 68) * Math.min(1, k + 0.1)), textW, '"Bebas Neue", sans-serif');
+    if (cat.nominees.length) {
+      ctx.fillStyle = '#FF0066';
+      ctx.letterSpacing = '2px';
+      fillTextFit(ctx, cat.nominees.map(n => n.name).join('  ·  '), PX, y + rowH * (landscape ? 0.62 : 0.46), Math.round((landscape ? 44 : 68) * Math.min(1, k + 0.1)), textW, '"Bebas Neue", sans-serif');
+    }
     y += rowH;
   }
 
@@ -16297,18 +16308,17 @@ function drawVoteCard(canvas, campaign, logo, art) {
   ctx.fillStyle = 'rgba(255,0,102,0.55)';
   ctx.font = `500 ${landscape ? 13 : 16}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText('VOTE AT ' + urlShort, PX, y + (landscape ? 16 : 30));
+  ctx.fillText('VOTE AT ' + urlShort, PX, footY);
 
   // Deadline countdown — bumped up to match the weight of the song cards' stat numbers
   const { big, sub } = formatVoteDeadline(campaign);
-  const dlY = y + (landscape ? 78 : 110);
   ctx.fillStyle = '#F5F0F0';
   ctx.letterSpacing = '2px';
-  fillTextFit(ctx, big, PX, dlY, landscape ? 56 : 84, textW, '"Bebas Neue", sans-serif');
+  fillTextFit(ctx, big, PX, bigY, landscape ? 56 : 84, textW, '"Bebas Neue", sans-serif');
   ctx.fillStyle = 'rgba(245,240,240,0.5)';
   ctx.font = `500 ${landscape ? 13 : 20}px "DM Mono", monospace`;
   ctx.letterSpacing = '2px';
-  ctx.fillText(sub, PX, dlY + (landscape ? 26 : 30));
+  ctx.fillText(sub, PX, subY);
 
   // Bottom rule + BU branding
   const LR = landscape ? 22 : 28;
