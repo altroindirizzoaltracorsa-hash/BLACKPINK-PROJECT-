@@ -7566,17 +7566,16 @@ const VOTE_CAMPAIGNS = [
     rules: [
       'Vote for ALWAYS LALISA — LISA’s documentary, an Official Selection at TIFF 2026',
       'On the TIFF vote page, type the film name (“Always Lalisa”) and submit',
-      'One vote per film counts toward every eligible category — People’s Choice (sponsored by Rogers), People’s Choice Documentary, and International People’s Choice',
-      'Only one vote per film per email — extra votes for the same film aren’t counted (you can vote for as many different films as you like)',
+      'You only vote ONCE for the film — that single vote automatically counts toward every category it’s eligible for (listed below). No separate per-category voting.',
+      'One vote per film per email — extra votes for the same film aren’t counted (you can vote for as many different films as you like)',
       'Voting closes Sept 20, 4AM ET (Toronto)',
     ],
     categories: [
-      { name: 'People’s Choice Award · sponsored by Rogers', url: 'https://tiff.net/vote', thumb: '/vote-always-lalisa.jpg',
+      { name: 'Your one vote auto-counts toward:', thumb: '/vote-always-lalisa.jpg',
         nominees: [{ name: 'ALWAYS LALISA — LISA', us: true }] },
-      { name: 'People’s Choice Documentary Award', url: 'https://tiff.net/vote',
-        nominees: [{ name: 'ALWAYS LALISA — LISA', us: true }] },
-      { name: 'International People’s Choice Award', url: 'https://tiff.net/vote',
-        nominees: [{ name: 'ALWAYS LALISA — LISA', us: true }] },
+      { name: '🏆 People’s Choice Award · sponsored by Rogers', nominees: [] },
+      { name: '🎬 People’s Choice Documentary Award', nominees: [] },
+      { name: '🌍 International People’s Choice Award', nominees: [] },
     ],
   },
   {
