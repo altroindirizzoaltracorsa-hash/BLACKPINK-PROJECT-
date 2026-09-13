@@ -1,0 +1,38 @@
+name: Discover group tracks
+
+# Read-only: list a girl group's live Spotify discography tracks that are NOT in
+# our pinned catalog (comeback / new releases). Prints them + play counts and
+# uploads group_new_tracks.json. Writes nothing to the catalog.
+on:
+  workflow_dispatch:
+    inputs:
+      artist_id:
+        description: 'Spotify artist id (default LE SSERAFIM)'
+        required: false
+        default: '4SpbR6yFEvexJuaBpgAU5p'
+      max_releases:
+        description: 'How many newest discography entries to scan'
+        required: false
+        default: '20'
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: pip install spotifyscraper
+      - name: Discover new tracks
+        env:
+          ARTIST_ID: ${{ github.event.inputs.artist_id }}
+          MAX_RELEASES: ${{ github.event.inputs.max_releases }}
+        run: python .github/scripts/discover_group_tracks.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: group-new-tracks
+          path: group_new_tracks.json
+          if-no-files-found: ignore
