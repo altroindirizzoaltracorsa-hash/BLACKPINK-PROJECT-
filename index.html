@@ -10373,6 +10373,14 @@ const SPECIAL_BADGES = [
     desc: 'Pre-saved before release',
     check: () => ltalEarlySupporterEarned(),
   },
+  {
+    id: 'rose-newtrick-presave',
+    icon: '<img src="/newtrick/newtrick-wordmark.png" alt="" style="height:20px;width:auto;max-width:96px;object-fit:contain;vertical-align:middle;">',
+    label: 'EARLY SUPPORTER',
+    song: 'new trick — ROSÉ',
+    desc: 'Pre-saved before release',
+    check: () => newtrickEarlySupporterEarned(),
+  },
 ];
 
 async function renderSpecialBadges() {
