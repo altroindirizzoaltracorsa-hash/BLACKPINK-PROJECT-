@@ -7557,6 +7557,29 @@ function milestoneTotalOf(tp) { return MILESTONE_TRACK_IDS.reduce((s, id) => s +
 // ── VOTE CAMPAIGNS ───────────────────────────────────────────
 const VOTE_CAMPAIGNS = [
   {
+    id: 'tiff-peoples-choice-2026',
+    platform: 'TIFF · Toronto Int’l Film Festival',
+    title: 'People’s Choice Award 2026',
+    url: 'https://tiff.net/vote',
+    image: '/vote-always-lalisa.jpg',
+    deadline: '2026-09-20T08:00:00Z', // Sep 20 2026, 4:00 AM EDT (Toronto local)
+    rules: [
+      'Vote for ALWAYS LALISA — LISA’s documentary, an Official Selection at TIFF 2026',
+      'On the TIFF vote page, type the film name (“Always Lalisa”) and submit',
+      'One vote per film counts toward every eligible category — People’s Choice (sponsored by Rogers), People’s Choice Documentary, and International People’s Choice',
+      'Only one vote per film per email — extra votes for the same film aren’t counted (you can vote for as many different films as you like)',
+      'Voting closes Sept 20, 4AM ET (Toronto)',
+    ],
+    categories: [
+      { name: 'People’s Choice Award · sponsored by Rogers', url: 'https://tiff.net/vote', thumb: '/vote-always-lalisa.jpg',
+        nominees: [{ name: 'ALWAYS LALISA — LISA', us: true }] },
+      { name: 'People’s Choice Documentary Award', url: 'https://tiff.net/vote',
+        nominees: [{ name: 'ALWAYS LALISA — LISA', us: true }] },
+      { name: 'International People’s Choice Award', url: 'https://tiff.net/vote',
+        nominees: [{ name: 'ALWAYS LALISA — LISA', us: true }] },
+    ],
+  },
+  {
     id: 'vma-2026',
     platform: 'MTV VMAs',
     title: '2026 MTV Video Music Awards',
