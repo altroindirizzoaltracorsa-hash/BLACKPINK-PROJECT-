@@ -13605,6 +13605,39 @@ const CAMPAIGN_GOALS = [
       { id: 'sw_ch_five', label: 'At least 5 official charts entries' },
     ]},
   ] },
+  // NEW TRICK — ROSÉ. mount:null on purpose → shows in the ADMIN goals editor
+  // only; renderReleaseGoalsList() no-ops without a mount, so nothing renders on
+  // the public card yet. To reveal publicly later: add a goals-list element to
+  // the new trick card and set mount to its id. Goals per Rosé Global Union.
+  { slug: 'new-trick',    name: 'new trick — ROSÉ',           releaseAt: '2026-09-17T23:00:00Z', mount: null, categories: [
+    { category: '🟢 Spotify (filtered)', items: [
+      { id: 'nt_sp_24h', label: '24 Hours: 2M streams' },
+      { id: 'nt_sp_w1',  label: '1st Week: 10M streams' },
+    ]},
+    { category: '▶️ YouTube', items: [
+      { id: 'nt_yt_24h_p', label: '24 Hours: 5M views (Primary)' },
+      { id: 'nt_yt_24h_s', label: '24 Hours: 10M views (Secondary)' },
+      { id: 'nt_yt_w1',    label: '1st Week: 30M views' },
+    ]},
+    { category: '💠 Shazam', items: [
+      { id: 'nt_sz_24h', label: '24 Hours: 20K' },
+      { id: 'nt_sz_w1',  label: '1st Week: 40K' },
+    ]},
+    { category: '🎵 iTunes', items: [
+      { id: 'nt_it_24h', label: '24 Hours: 25 #1s' },
+      { id: 'nt_it_w1',  label: '1st Week: 40 #1s' },
+    ]},
+    { category: '🍎 Apple Music', items: [
+      { id: 'nt_am_debut', label: 'Global debut chart' },
+    ]},
+    { category: '📊 Billboard', items: [
+      { id: 'nt_bb_hot100',  label: 'Hot 100 (Debut)' },
+      { id: 'nt_bb_g200',    label: 'Global 200 (Debut)' },
+      { id: 'nt_bb_gexus',   label: 'Global Excl. US (Top 50)' },
+      { id: 'nt_bb_digital', label: 'Digital Song (Top 20)' },
+      { id: 'nt_bb_digsales',label: 'Digital Song Sales (Top 10)' },
+    ]},
+  ] },
   { slug: 'press-play',   name: 'Press Play — LISA (EP)',     releaseAt: '2026-10-23T04:00:00Z', mount: 'lisa-goals-list',  categories: [] },
   { slug: 'ltal',         name: 'Less Than a Lover — JENNIE', releaseAt: null,                   mount: 'ltal-goals-list',  categories: LTAL_GOALS },
 ];
