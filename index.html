@@ -1771,6 +1771,16 @@
   .cd-card-newtrick .cd-links { justify-content: center; }
   .nt-btn { background: var(--nt-dark); color: var(--nt-light); border: 1px solid var(--nt-light); border-radius: 99px; }
   .nt-btn:hover { background: var(--nt-light); color: var(--nt-dark); filter: none; }
+  /* "pre-save these playlists" block — they auto-update when new trick drops */
+  .nt-playlists { margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid rgba(220,174,208,0.28); text-align: center; }
+  .nt-pl-head { font-family: 'IBM Plex Sans', var(--mono), sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; color: var(--nt-text); opacity: 0.95; }
+  .nt-pl-note { font-family: 'IBM Plex Sans', var(--mono), sans-serif; font-size: 0.66rem; font-weight: 500; color: var(--nt-light); opacity: 0.85; margin-top: 0.25rem; }
+  .nt-pl-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.8rem; }
+  .nt-pl-link { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.6rem 0.9rem; border-radius: 99px;
+    background: var(--nt-dark); border: 1px solid var(--nt-light); color: var(--nt-light);
+    font-family: 'IBM Plex Sans', var(--mono), sans-serif; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.01em; text-decoration: none; transition: background .15s, color .15s; }
+  .nt-pl-link:hover { background: var(--nt-light); color: var(--nt-dark); }
+  .nt-pl-link svg { flex: 0 0 auto; }
   /* Auto-detected pre-release card (built by loadAutoPrereleases from Spotify).
      Deliberately plain — it's the safety-net card for a drop no one has hand-made
      a bespoke card for yet. Neutral pink so it reads as "system-generated". */
@@ -2766,6 +2776,15 @@
             <div class="cd-links">
               <a class="cd-btn nt-btn" href="https://rosesarerosie.lnk.to/newtrick" target="_blank" rel="noopener" onclick="saveNewTrick()">Pre-save ↗</a>
               <button class="cd-btn nt-btn" onclick="openNewTrickCard()">📸 Share</button>
+            </div>
+            <div class="nt-playlists">
+              <div class="nt-pl-head">🎧 Pre-save our playlists</div>
+              <div class="nt-pl-note">They’ll update the moment “new trick” drops</div>
+              <div class="nt-pl-list">
+                <a class="nt-pl-link" href="https://open.spotify.com/playlist/7B0IWNfKvde2WwZ0qIbqCi" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>NEW TRICK Focused</a>
+                <a class="nt-pl-link" href="https://open.spotify.com/playlist/3kxAYSdpQthTwTNYvTGzk8" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>NEW TRICK × PINKS</a>
+                <a class="nt-pl-link" href="https://open.spotify.com/playlist/2qR2JYmYEfqioZtEPOMuIM" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>NEW TRICK × BP</a>
+              </div>
             </div>
             <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
               <summary>Release times worldwide</summary>
