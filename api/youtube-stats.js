@@ -46,6 +46,7 @@ const RELEASE = {
   'h-7_04c_hVc': '2026-09-02T00:00:00Z', // LISA teaser  — 02:00 Rome Sep 2 → 24h mark Sep 3, 02:00
   'FyS5dAywkEo': '2026-09-04T00:00:00Z', // LISA MV      — 02:00 Rome Sep 4 → 24h mark Sep 5, 02:00
   'sf02ugzPFE4': '2026-09-04T04:00:00Z', // JISOO MV     — 06:00 Rome Sep 4 → 24h mark Sep 5, 06:00
+  'Lufa9QAFFeY': '2026-09-17T23:00:00Z', // ROSÉ new trick MV — 7PM EDT Sep 17 → 24h mark Sep 18, 7PM EDT
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;

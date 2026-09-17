@@ -21,7 +21,7 @@ const YT_API = 'https://www.googleapis.com/youtube/v3/videos';
 // drives the release+24h pin, and a 7-day mark is a different thing the pin logic
 // doesn't model yet. Collecting it now is what matters — the 7-day value is
 // recoverable from the stored series afterwards, a missed sample is not.
-const DEFAULT_IDS = ['LzgE8ift2Uw', 'h-7_04c_hVc', 'FyS5dAywkEo', 'sf02ugzPFE4', 's466YCiHfKw'];
+const DEFAULT_IDS = ['LzgE8ift2Uw', 'h-7_04c_hVc', 'FyS5dAywkEo', 'sf02ugzPFE4', 's466YCiHfKw', 'Lufa9QAFFeY'];
 const MAX_POINTS = 2400;              // ~100 days at hourly — keep the full-life gain list
 const MIN_GAP_MS = 55 * 60 * 1000;    // don't store more than ~once an hour
 const key = id => `bu_yt_hist_${id}`;
@@ -67,6 +67,7 @@ const RELEASE = {
   'h-7_04c_hVc': '2026-09-02T00:00:00Z', // LISA teaser  — 02:00 Rome Sep 2 → 24h mark Sep 3, 02:00
   'FyS5dAywkEo': '2026-09-04T00:00:00Z', // LISA MV      — 02:00 Rome Sep 4 → 24h mark Sep 5, 02:00
   'sf02ugzPFE4': '2026-09-04T04:00:00Z', // JISOO MV     — 06:00 Rome Sep 4 → 24h mark Sep 5, 06:00
+  'Lufa9QAFFeY': '2026-09-17T23:00:00Z', // ROSÉ new trick MV — 7PM EDT Sep 17 → 24h mark Sep 18, 7PM EDT
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -82,7 +83,10 @@ const markOf = id => (RELEASE[id] ? Date.parse(RELEASE[id]) + DAY_MS : null);
 // pinned: 7 days, a chart cutoff, whatever comes next. The 24h mark keeps its
 // original storage key so every pin already frozen still reads.
 const EXTRA_MARKS = {
-  's466YCiHfKw': [{ key: '7d', label: '7 DAYS', at: '2026-09-04T04:00:00Z' }], // JENNIE — Fallen Angel
+  's466YCiHfKw': [{ key: '7d', label: '7 DAYS', at: '2026-09-04T04:00:00Z' }], // JENNIE — Fallen Angel (release + 7d)
+  'FyS5dAywkEo': [{ key: '7d', label: '7 DAYS', at: '2026-09-11T00:00:00Z' }], // LISA MV — release + 7d
+  'sf02ugzPFE4': [{ key: '7d', label: '7 DAYS', at: '2026-09-11T04:00:00Z' }], // JISOO MV — release + 7d
+  'Lufa9QAFFeY': [{ key: '7d', label: '7 DAYS', at: '2026-09-24T23:00:00Z' }], // ROSÉ new trick — release + 7d
 };
 const marksOf = id => [
   ...(RELEASE[id] ? [{ key: '24h', label: '24H', at: Date.parse(RELEASE[id]) + DAY_MS }] : []),
