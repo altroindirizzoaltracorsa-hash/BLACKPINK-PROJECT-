@@ -13609,7 +13609,7 @@ const CAMPAIGN_GOALS = [
   // only; renderReleaseGoalsList() no-ops without a mount, so nothing renders on
   // the public card yet. To reveal publicly later: add a goals-list element to
   // the new trick card and set mount to its id. Goals per Rosé Global Union.
-  { slug: 'new-trick',    name: 'new trick — ROSÉ',           releaseAt: '2026-09-17T23:00:00Z', mount: null, categories: [
+  { slug: 'new-trick',    name: 'new trick — ROSÉ',           releaseAt: '2026-09-17T23:00:00Z', mount: null, adminOnly: true, categories: [
     { category: '🟢 Spotify (filtered)', items: [
       { id: 'nt_sp_24h', label: '24 Hours: 2M streams' },
       { id: 'nt_sp_w1',  label: '1st Week: 10M streams' },
@@ -13707,7 +13707,7 @@ function populateAdminGoalReleaseSelect() {
   if (!sel) return;
   const cur = sel.value;
   sel.innerHTML = CAMPAIGN_GOALS.map(c =>
-    `<option value="${c.slug}">${c.name}${c.categories.length ? '' : ' — no goals yet'}</option>`
+    `<option value="${c.slug}">${c.name}${c.adminOnly ? ' 🔒 admin only' : (c.categories.length ? '' : ' — no goals yet')}</option>`
   ).join('');
   if (cur) sel.value = cur;
 }
@@ -13776,6 +13776,9 @@ async function adminToggleGoalId(id) {
 // the card is display-only. Renders into the release's `mount` container if present.
 async function renderReleaseGoalsList(slug) {
   const camp = getCampaign(slug);
+  // adminOnly campaigns NEVER render on the public site — hard guard so marking a
+  // goal reached can't surface it, regardless of whether a mount element exists.
+  if (camp.adminOnly) return;
   const el = camp.mount && document.getElementById(camp.mount);
   if (!el || !camp.categories.length) return;
   let reached = {}, values = {};
