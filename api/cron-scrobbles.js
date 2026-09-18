@@ -231,8 +231,12 @@ async function fetchRecentScrobbles(username, from, to, maxPages = 50, fetchFn =
 function trackKey(s) {
   return String(s || '').toLowerCase().replace(/\(.*?\)|\[.*?\]/g, '').replace(/[^a-z0-9]/g, '');
 }
+// Accent-insensitive artist compare — ROSÉ scrobbles as "Rosé" or "Rose", so a
+// plain includes('rosé') drops every non-accented play (new trick is ROSÉ's only
+// track, so it was the only one affected). Strip diacritics on both sides.
+const deAccent = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 function trackMatches(name, artist, t) {
-  return trackKey(name) === trackKey(t.track) && artist.includes(t.artist.toLowerCase());
+  return trackKey(name) === trackKey(t.track) && deAccent(artist).includes(deAccent(t.artist));
 }
 
 function countByTrack(scrobbles) {

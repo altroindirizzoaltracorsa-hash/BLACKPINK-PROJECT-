@@ -43,11 +43,16 @@ function keyName(s) {
   return norm(s).replace(/[^a-z0-9]/g, '');
 }
 
+// Accent-insensitive artist compare — ROSÉ scrobbles as "Rosé" or "Rose"; a plain
+// includes('rosé') misses non-accented plays (new trick is ROSÉ's only campaign
+// track, so it was the only one this dropped — such plays fell through to the
+// generic solo_rose bucket). Strip diacritics on both sides.
+const deAccent = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
 function matchTrack(artist, title) {
-  const a = norm(artist);
+  const a = deAccent(norm(artist));
   const tk = keyName(title);
   for (const x of TRACKS) {
-    if (tk === keyName(x.track) && a.includes(x.artist)) return x.id;
+    if (tk === keyName(x.track) && a.includes(deAccent(x.artist))) return x.id;
   }
   return null;
 }

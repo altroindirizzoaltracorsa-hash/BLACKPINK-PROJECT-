@@ -8667,6 +8667,12 @@ function _lbMemberKey(artist) {
 function _trackKey(s) {
   return String(s || '').toLowerCase().replace(/\(.*?\)|\[.*?\]/g, '').replace(/[^a-z0-9]/g, '');
 }
+// Accent-insensitive artist compare: ROSÉ scrobbles as "Rosé" OR "Rose" depending
+// on the scrobbler, so a plain includes('rosé') misses every non-accented play.
+// Strip diacritics on both sides so "rose"/"rosé" match (new trick is the only
+// ROSÉ track, so it was the only one this broke).
+function _deAccent(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+function _artistIncludes(artist, want) { return _deAccent(artist).includes(_deAccent(want)); }
 
 async function fetchLbTrackCounts(username) {
   const counts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, artistPlays: 0, memberPlays: { jisoo: 0, lisa: 0, rose: 0, jennie: 0 } };
@@ -8911,7 +8917,7 @@ function countByTrack(scrobbles) {
     const name = (s.name || '').toLowerCase();
     const artist = (s.artist?.['#text'] || s.artist || '').toLowerCase();
     for (const t of TRACKS) {
-      if (_trackKey(name) === _trackKey(t.track) && artist.includes(t.artist.toLowerCase())) { counts[t.id]++; break; }
+      if (_trackKey(name) === _trackKey(t.track) && _artistIncludes(artist, t.artist)) { counts[t.id]++; break; }
     }
   }
   return counts;
