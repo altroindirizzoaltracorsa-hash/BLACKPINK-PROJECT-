@@ -1043,9 +1043,14 @@
   .lb-tab:hover { background: var(--card2); color: var(--white); }
   .lb-tab.active { background: var(--pink); color: var(--black); }
 
-  .lb-subtabs { display: flex; gap: 1.5px; background: var(--border); margin-bottom: 1.5px; }
+  /* Scrolls horizontally when there are more song tabs than fit (mobile) while
+     still filling the row on wide screens. Tabs keep their full label instead of
+     being squeezed until they truncate off the edge. */
+  .lb-subtabs { display: flex; gap: 1.5px; background: var(--border); margin-bottom: 1.5px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .lb-subtabs::-webkit-scrollbar { display: none; }
   .lb-subtab {
-    flex: 1; padding: 0.6rem; text-align: center;
+    flex: 1 0 auto; white-space: nowrap; padding: 0.6rem; text-align: center;
     font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.14em;
     text-transform: uppercase; color: var(--muted);
     background: var(--card2); cursor: pointer; border: none;
@@ -3110,7 +3115,7 @@
       <div id="community-goal-home" style="display:none;margin-top:1.5rem;max-width:900px;width:calc(100% + 4rem);margin-left:-2rem;margin-right:-2rem;">
         <div class="goal-tracker-card">
           <div class="goal-tracker-top">
-            <span class="goal-tracker-label">// Today's Community Goal — JUMP + Shut Down + DDU-DU DDU-DU + GO + CLICK + SaWaDiKa + Fallen Angel EP</span>
+            <span class="goal-tracker-label">// Today's Community Goal — JUMP + Shut Down + DDU-DU DDU-DU + GO + CLICK + SaWaDiKa + Fallen Angel EP + new trick</span>
             <span class="goal-tracker-right">
               <span class="goal-tracker-nums" id="community-goal-nums">0<span> / 15,000 scrobbles</span></span>
               <span class="goal-pct" id="community-goal-pct">0%</span>
@@ -8532,6 +8537,7 @@ const DAILY_TIERS = {
   click:    makeTiers(40, 'CLICK'),
   fallenangel: makeTiers(30, 'FALLEN ANGEL'),
   heaven:      makeTiers(30, 'HEAVEN'),
+  newtrick:    makeTiers(40, 'NEW TRICK'),
 };
 
 const WEEKLY_TIERS = {
@@ -8544,6 +8550,7 @@ const WEEKLY_TIERS = {
   click:    makeTiers(40 * 7, 'CLICK',     '/wk'),
   fallenangel: makeTiers(30 * 7, 'FALLEN ANGEL', '/wk'),
   heaven:      makeTiers(30 * 7, 'HEAVEN',       '/wk'),
+  newtrick:    makeTiers(40 * 7, 'NEW TRICK',    '/wk'),
 };
 
 function getDailyBadge(trackId, count) {
@@ -8567,9 +8574,11 @@ function hasCompletedAllDaily(trackId, count) {
   return count >= tiers[0].min;
 }
 
-// "done" = reached tier ×1 on every track
-const dailyTier1 = id => DAILY_TIERS[id][0].min;
-const weeklyTier1 = id => WEEKLY_TIERS[id][0].min;
+// "done" = reached tier ×1 on every track. Guarded: a track that's live in
+// gridTracks but not (yet) in the tier tables must never throw here — that would
+// take down the whole My Badges render (weekly grid + stamp archive + history).
+const dailyTier1 = id => DAILY_TIERS[id]?.[0]?.min ?? Infinity;
+const weeklyTier1 = id => WEEKLY_TIERS[id]?.[0]?.min ?? Infinity;
 
 function getBadge(plays) {
   let b = null;
@@ -10277,7 +10286,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
         ${gridTracks.map(t => {
           const wc = weekCounts[t.id] || 0;
           const wBadge = getWeeklyBadge(t.id, wc);
-          const wNext  = WEEKLY_TIERS[t.id].find(tier => wc < tier.min);
+          const wNext  = (WEEKLY_TIERS[t.id] || []).find(tier => wc < tier.min);
           const d1 = dailyTier1(t.id);
           return `<tr>
           <td class="song-name">${t.title}</td>
