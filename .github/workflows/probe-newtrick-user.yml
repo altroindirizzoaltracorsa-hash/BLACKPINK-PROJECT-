@@ -1,0 +1,61 @@
+name: Probe new trick (read-only)
+# Read-only: for one user (matched by display name / linked-account substring),
+# print (a) the stored leaderboard newtrick scores and (b) a fresh Last.fm
+# track.getInfo for ROSÉ "new trick" per linked account, under BOTH the accented
+# and plain artist spelling. Isolates whether the leaderboard 0 is a stored-value
+# problem, a Last.fm artist-name/accent problem, or a display/period issue.
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Substring to match (display name or any linked account)'
+        required: true
+        default: 'demiband'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe
+        env:
+          NAME: ${{ github.event.inputs.name }}
+        run: |
+          python3 - <<'PY'
+          import os, json, subprocess, urllib.parse, urllib.request
+          LFM_KEY = "666b8ef2f3cc360fbc20df275fba2981"
+          LBASE = "https://ws.audioscrobbler.com/2.0/"
+          name = os.environ["NAME"].lower()
+
+          def get(url):
+              out = subprocess.run(["curl","-sS","-L",url],capture_output=True,text=True)
+              return json.loads(out.stdout)
+          def lfm(params):
+              qs = urllib.parse.urlencode({**params,"api_key":LFM_KEY,"format":"json"})
+              try:
+                  with urllib.request.urlopen(LBASE+"?"+qs) as r: return json.loads(r.read())
+              except Exception as e:
+                  return {"__err": str(e)}
+
+          board = get("https://www.blinksunited.com/api/leaderboard")
+          users = board.get("users", {})
+          def match(u):
+              ns = [(u.get("displayName") or ""), (u.get("username") or "")]
+              ns += [a.get("username","") for a in (u.get("linkedAccounts") or [])]
+              return any(name in (n or "").lower() for n in ns)
+          hits = [u for u in users.values() if match(u)]
+          print(f"matched {len(hits)} board entr(y/ies) for {name!r}\n")
+          for u in hits:
+              s = u.get("scores",{})
+              accts = [(a.get("type"), a.get("username")) for a in (u.get("linkedAccounts") or [])]
+              print(f"== {u.get('displayName')!r}  updatedAt={u.get('updatedAt')}")
+              print(f"   linkedAccounts={accts}")
+              print(f"   STORED newtrick -> overall={s.get('overall_newtrick')} daily={s.get('daily_newtrick')} weekly={s.get('weekly_newtrick')} daily_date={s.get('daily_date')}")
+              print(f"   (compare) overall_go={s.get('overall_go')} overall_sawadika={s.get('overall_sawadika')}")
+              for typ, un in accts:
+                  if typ not in ('lastfm','librefm', None): continue
+                  for artist in ('ROSÉ','Rosé','Rose','ROSE'):
+                      d = lfm({"method":"track.getInfo","artist":artist,"track":"new trick","username":un})
+                      pc = (d.get("track") or {}).get("userplaycount")
+                      corrected = (d.get("track") or {}).get("artist",{}).get("name") if isinstance((d.get("track") or {}).get("artist"), dict) else None
+                      print(f"      getInfo[{un}] artist={artist!r:8} -> userplaycount={pc}  (lastfm artist={corrected!r}) {'ERR '+d['__err'] if '__err' in d else ''}")
+          PY
