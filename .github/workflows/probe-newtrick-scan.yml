@@ -1,0 +1,39 @@
+name: Probe new trick scan (read-only)
+# Read-only: scan the whole live leaderboard and report how many users have the
+# overall_newtrick field present vs missing, and how many have it > 0. Flags any
+# user whose entry is MISSING the newtrick field entirely (the client-POST-wipe
+# bug) so we can confirm nobody else is affected after the fix + recompute.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+          def get(url):
+              out = subprocess.run(["curl","-sS","-L",url],capture_output=True,text=True)
+              return json.loads(out.stdout)
+          board = get("https://www.blinksunited.com/api/leaderboard")
+          users = board.get("users", {})
+          present=absent=pos=0
+          missing=[]
+          for k,u in users.items():
+              s=u.get("scores",{})
+              if "overall_newtrick" in s:
+                  present+=1
+                  if (s.get("overall_newtrick") or 0) > 0: pos+=1
+              else:
+                  absent+=1
+                  missing.append(u.get("displayName") or k)
+          print(f"total users: {len(users)}")
+          print(f"overall_newtrick PRESENT: {present}  (of which >0: {pos})")
+          print(f"overall_newtrick MISSING: {absent}")
+          if missing:
+              print("\nusers still MISSING the field (not yet refreshed / failed):")
+              for n in sorted(missing)[:80]:
+                  print(f"  - {n}")
+          PY
