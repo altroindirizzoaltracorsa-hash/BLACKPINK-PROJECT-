@@ -1043,14 +1043,12 @@
   .lb-tab:hover { background: var(--card2); color: var(--white); }
   .lb-tab.active { background: var(--pink); color: var(--black); }
 
-  /* Scrolls horizontally when there are more song tabs than fit (mobile) while
-     still filling the row on wide screens. Tabs keep their full label instead of
-     being squeezed until they truncate off the edge. */
-  .lb-subtabs { display: flex; gap: 1.5px; background: var(--border); margin-bottom: 1.5px;
-    overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .lb-subtabs::-webkit-scrollbar { display: none; }
+  /* Wraps onto multiple rows so every song tab stays visible at once (no
+     sideways scroll). Tabs keep their full label (never squeezed until they
+     truncate) and grow to fill each row. */
+  .lb-subtabs { display: flex; flex-wrap: wrap; gap: 1.5px; background: var(--border); margin-bottom: 1.5px; }
   .lb-subtab {
-    flex: 1 0 auto; white-space: nowrap; padding: 0.6rem; text-align: center;
+    flex: 1 1 auto; white-space: nowrap; padding: 0.6rem; text-align: center;
     font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.14em;
     text-transform: uppercase; color: var(--muted);
     background: var(--card2); cursor: pointer; border: none;
