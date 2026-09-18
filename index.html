@@ -11103,6 +11103,10 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       // out of overall_all/daily_all/weekly_all so they never inflate campaign totals.
       overall_fallenangel: totalPlays.fallenangel || 0,
       overall_heaven:      totalPlays.heaven      || 0,
+      // ROSÉ "new trick" — MUST be posted or the client overwrites the server's
+      // cron-computed newtrick with nothing (leaderboard/voting showed 0 while My
+      // Badges, which reads the value directly, showed it).
+      overall_newtrick: totalPlays.newtrick || 0,
       overall_artist:   artistPlays         || 0,
       // Only written when per-member data was fetched (multi-account path).
       // Absence of overall_bp_group signals "not yet synced" → old threshold applies.
@@ -11123,6 +11127,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       daily_click:      todayCounts.click    || 0,
       daily_fallenangel: todayCounts.fallenangel || 0,
       daily_heaven:      todayCounts.heaven      || 0,
+      daily_newtrick:    todayCounts.newtrick    || 0,
       daily_date:       today,
       weekly_all:       campaignTotalOf(weekCounts),
       weekly_jump:      weekCounts.jump     || 0,
@@ -11134,6 +11139,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       weekly_click:     weekCounts.click    || 0,
       weekly_fallenangel: weekCounts.fallenangel || 0,
       weekly_heaven:      weekCounts.heaven      || 0,
+      weekly_newtrick:    weekCounts.newtrick    || 0,
       weekly_start:     weekStart,
     };
 
