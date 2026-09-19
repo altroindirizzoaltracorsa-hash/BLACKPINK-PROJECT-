@@ -14,7 +14,7 @@ jobs:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
         run: |
           echo "Calling dispatch-member-fetch…"
-          code=$(curl -sS -o /tmp/resp.json -w '%{http_code}' \
-            "https://blinksunited.com/api/streams?action=dispatch-member-fetch&key=${ADMIN_KEY}")
+          code=$(curl -sS -L -o /tmp/resp.json -w '%{http_code}' \
+            "https://www.blinksunited.com/api/streams?action=dispatch-member-fetch&key=${ADMIN_KEY}")
           echo "HTTP $code"
           echo "Response body:"; cat /tmp/resp.json; echo
