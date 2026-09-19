@@ -783,17 +783,14 @@ function yesterdayLabel() {
 // repo). Fire-and-forget: never blocks or fails the response.
 const CATALOG_DISPATCH_LOCK_KEY = 'catalog_fetch_dispatch_lock';
 const CATALOG_DISPATCH_LOCK_TTL = 1800; // 30 min
-async function dispatchCatalogFetch(reason) {
+
+// Raw workflow_dispatch of fetch-catalog.yml (run_artist_fetch=true). Returns the
+// GitHub API status so an admin test route can verify the token/path end-to-end.
+async function githubDispatchCatalogFetch() {
   const token = process.env.GH_DISPATCH_TOKEN;
-  if (!token) return;
+  if (!token) return { ok: false, status: 0, reason: 'GH_DISPATCH_TOKEN not set' };
   try {
-    const locked = await redis.set(
-      CATALOG_DISPATCH_LOCK_KEY,
-      { reason, ts: Date.now() },
-      { nx: true, ex: CATALOG_DISPATCH_LOCK_TTL },
-    );
-    if (locked === null) return; // another request already dispatched within the window
-    await fetch(
+    const r = await fetch(
       'https://api.github.com/repos/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/actions/workflows/fetch-catalog.yml/dispatches',
       {
         method: 'POST',
@@ -807,6 +804,29 @@ async function dispatchCatalogFetch(reason) {
         body: JSON.stringify({ ref: 'main', inputs: { run_artist_fetch: 'true' } }),
       },
     );
+    // 204 No Content = accepted. Non-2xx bodies carry a GitHub error message.
+    const body = r.ok ? '' : await r.text().catch(() => '');
+    return { ok: r.ok, status: r.status, ...(body ? { error: body.slice(0, 300) } : {}) };
+  } catch (e) {
+    return { ok: false, status: 0, reason: String(e && e.message || e) };
+  }
+}
+
+// Locked wrapper for the automatic canary path: a 30-min Redis NX lock fans a storm
+// of concurrent visitor requests in to a single dispatch, while a genuinely separate
+// later bump can still fire again. Fire-and-forget. Only ever called on a real canary
+// bump (never on force/cron — fetch-tracks.mjs itself calls ?force=1, so dispatching
+// there would make fetch-catalog.yml re-trigger itself).
+async function dispatchCatalogFetch(reason) {
+  if (!process.env.GH_DISPATCH_TOKEN) return;
+  try {
+    const locked = await redis.set(
+      CATALOG_DISPATCH_LOCK_KEY,
+      { reason, ts: Date.now() },
+      { nx: true, ex: CATALOG_DISPATCH_LOCK_TTL },
+    );
+    if (locked === null) return; // another request already dispatched within the window
+    await githubDispatchCatalogFetch();
   } catch (_) { /* fire-and-forget */ }
 }
 
@@ -833,6 +853,19 @@ export default async function handler(req, res) {
     if (!adminSecret || req.query.key !== adminSecret) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
+  }
+
+  // Admin: manually kick the GitHub per-member/per-track artist fetch — the same
+  // workflow_dispatch the canary fires automatically. Bypasses the dedup lock and
+  // returns the GitHub API status so the token/path can be verified end-to-end.
+  //   /api/streams?action=dispatch-member-fetch&key=ADMIN_SECRET
+  if (req.query.action === 'dispatch-member-fetch') {
+    const adminSecret = process.env.ADMIN_SECRET;
+    if (!adminSecret || req.query.key !== adminSecret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const result = await githubDispatchCatalogFetch();
+    return res.status(result.ok ? 200 : 502).json({ dispatched: result.ok, ...result });
   }
 
   // tracks_only=1 refreshes ONLY the 4 campaign-track cards via the RapidAPI
@@ -1236,7 +1269,13 @@ export default async function handler(req, res) {
   if ((canaryCaughtBump || isCron || isForced) && fetchedLive && !tracksOnly) {
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'blinksunited.com';
     fetch(`https://${host}/api/streams?catalog=1&force=1&key=${process.env.ADMIN_SECRET || ''}`).catch(() => {});
-    dispatchCatalogFetch(canaryCaughtBump ? 'canary' : (isCron ? 'cron' : 'force'));
+  }
+  // Kick the GitHub per-member/per-track artist fetch ONLY on a genuine canary bump —
+  // never on force/cron: fetch-tracks.mjs (the GitHub job itself) calls ?force=1, so
+  // dispatching on force would make fetch-catalog.yml re-trigger itself. The nightly +
+  // small-hours fetch-catalog.yml schedules are the floor for the cron/force cases.
+  if (canaryCaughtBump && fetchedLive && !tracksOnly) {
+    dispatchCatalogFetch('canary');
   }
 
   res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
