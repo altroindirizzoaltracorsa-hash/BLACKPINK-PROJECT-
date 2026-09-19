@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-19T16:50:50.331Z",
+  "generatedAt": "2026-09-19T19:01:16.920Z",
   "date": "2026-09-19",
   "source": "https://xn--o39an51b2re.com",
   "charts": [
@@ -21,18 +21,9 @@
       "kr": "실시간 차트",
       "label": "Melon · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/melon/realtime",
-      "available": true,
-      "totalRows": 100,
-      "entries": [
-        {
-          "rank": 79,
-          "previous": 72,
-          "song": "toxic till the end",
-          "artists": "로제 (ROSÉ)",
-          "member": "ROSÉ",
-          "link": "https://www.melon.com/song/detail.htm?songId=38300904"
-        }
-      ]
+      "available": false,
+      "totalRows": 0,
+      "entries": []
     },
     {
       "key": "melon-realtime-5-min",
@@ -408,8 +399,8 @@
       "totalRows": 100,
       "entries": [
         {
-          "rank": 43,
-          "previous": 43,
+          "rank": 42,
+          "previous": 41,
           "song": "toxic till the end",
           "artists": "로제 (ROSÉ)",
           "member": "ROSÉ",
@@ -873,66 +864,9 @@
       "kr": "실시간 차트",
       "label": "Genie · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/genie/realtime",
-      "available": true,
-      "totalRows": 250,
-      "entries": [
-        {
-          "rank": 81,
-          "previous": 60,
-          "song": "뛰어(JUMP)",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=110931419"
-        },
-        {
-          "rank": 82,
-          "previous": 62,
-          "song": "toxic till the end",
-          "artists": "로제 (ROSÉ)",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108575614"
-        },
-        {
-          "rank": 98,
-          "previous": 106,
-          "song": "like JENNIE",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=109342665"
-        },
-        {
-          "rank": 124,
-          "previous": 127,
-          "song": "APT.",
-          "artists": "로제 (ROSÉ), 로제 (ROSÉ) & Bruno Mars, Bruno Mars",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108107291"
-        },
-        {
-          "rank": 130,
-          "previous": 142,
-          "song": "Less than a Lover",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=116078119"
-        },
-        {
-          "rank": 177,
-          "previous": 170,
-          "song": "new trick",
-          "artists": "로제 (ROSÉ)",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=116925508"
-        },
-        {
-          "rank": 227,
-          "previous": 184,
-          "song": "FALLEN ANGEL",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=116605149"
-        }
-      ]
+      "available": false,
+      "totalRows": 0,
+      "entries": []
     },
     {
       "key": "genie-daily",
@@ -1165,16 +1099,16 @@
       "totalRows": 100,
       "entries": [
         {
-          "rank": 56,
-          "previous": 54,
+          "rank": 64,
+          "previous": 57,
           "song": "APT.",
           "artists": "로제 (ROSÉ), Bruno Mars",
           "member": "ROSÉ",
           "link": "https://www.music-flo.com/detail/track/517125479/details"
         },
         {
-          "rank": 70,
-          "previous": 63,
+          "rank": 71,
+          "previous": 70,
           "song": "뛰어(JUMP)",
           "artists": "BLACKPINK",
           "member": "BLACKPINK",
@@ -1189,7 +1123,7 @@
           "link": "https://www.music-flo.com/detail/track/522311944/details"
         },
         {
-          "rank": 85,
+          "rank": 87,
           "previous": 85,
           "song": "like JENNIE",
           "artists": "제니 (JENNIE)",
@@ -1465,7 +1399,7 @@
   ],
   "summary": {
     "chartsChecked": 26,
-    "chartsAvailable": 25,
-    "totalEntries": 144
+    "chartsAvailable": 23,
+    "totalEntries": 136
   }
 }
