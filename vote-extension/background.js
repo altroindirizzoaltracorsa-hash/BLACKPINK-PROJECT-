@@ -421,23 +421,29 @@ async function processBtVote(e) {
   if (seen.length > SEEN_MAX) seen.splice(0, seen.length - SEEN_MAX);
   chrome.storage.local.set({ [BT_SEEN_KEY]: seen });
 
-  // Each entry = one vote. Attribute the member from the candidate id, then the
-  // category slug, else a generic label. Every entry counts (no daily cap).
+  // BreakTudo stacks a sequence's votes onto the candidate as a COUNT in `pos`:
+  // votes=[{"id":BP,"pos":5}] is 5 votes for BLACKPINK (you cast 5, then the
+  // Cloudflare check runs). So sum `pos` per entry — it's the vote count, not a
+  // position. (Missing/invalid → treat as 1 so a vote is never dropped.) Attribute
+  // the member from the candidate id, then the category slug, else a generic label.
   const catInfo = e.slug ? BT_CATS[e.slug] : null;
   let n = 0; const perMember = {};
   for (const v of votes) {
     if (!v || v.id == null) continue;
-    n += 1;
+    let c = parseInt(v.pos, 10);
+    if (!Number.isFinite(c) || c <= 0) c = 1;
+    c = Math.min(c, 50); // per-candidate sanity bound (a sequence is 5)
+    n += c;
     const who = BT_CANDIDATES[v.id] || (catInfo && catInfo.who) || 'BLACKPINK/member';
-    perMember[who] = (perMember[who] || 0) + 1;
+    perMember[who] = (perMember[who] || 0) + c;
     if (!BT_CANDIDATES[v.id] && !catInfo) {
-      console.log('[BU BreakTudo] vote counted with generic attribution:',
+      console.log('[BU BreakTudo] ' + c + ' vote(s) counted with generic attribution:',
         'slug=' + (e.slug || '?'), 'id=' + v.id + ' (' + btB64(v.id) + ')', 'pos=' + (v.pos != null ? v.pos : '?'),
         '\n→ add the id to BT_CANDIDATES or the slug to BT_CATS in background.js for precise per-member attribution.');
     }
   }
   if (n <= 0) return;
-  n = Math.min(n, 200); // sanity bound
+  n = Math.min(n, 500); // batch sanity bound
 
   const catLabel = (catInfo && catInfo.label) || 'BreakTudo';
   postBtVotes(n).then((res) => {

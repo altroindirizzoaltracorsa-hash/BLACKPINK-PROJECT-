@@ -13,9 +13,11 @@ the URL: `POST /wp-json/bta/v1/awards/vote/?_wpnonce=… →
 action=update_vote&votes=[{"id":"<base64>","pos":N}]&valid=<turnstile>`. So
 `background.js` reads it with `onBeforeRequest` + `['requestBody']`, grabs the
 `/vote/<slug>/` referer in `onSendHeaders`, and only counts it once `onCompleted`
-confirms a 2xx. **Each entry in the `votes` array is one vote** (BreakTudo has no
-daily cap — repeat batches all count); retries are de-duped by the fresh-per-batch
-Turnstile token. Member attribution comes from the candidate id (`BT_CANDIDATES`),
+confirms a 2xx. BreakTudo stacks a sequence's votes onto the candidate as a **count
+in `pos`** (`votes=[{"id":BP,"pos":5}]` = 5 votes for BLACKPINK — you cast 5, then the
+Cloudflare check runs), so the counter **sums `pos`**, not array length. There's no
+daily cap (repeat sequences all count); retries are de-duped by the Turnstile token
+**plus each mark's id+pos** so distinct marks under one token still count. Member attribution comes from the candidate id (`BT_CANDIDATES`),
 then the category slug (`BT_CATS`), else a generic "BLACKPINK/member" label — a vote
 **always counts** even before its id is mapped, and each unmapped id is logged to the
 service-worker console (decoded) so it's a copy-paste to add. POSTs carry
