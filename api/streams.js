@@ -768,6 +768,48 @@ function yesterdayLabel() {
   return getDateLabel(d);
 }
 
+// Fire the GitHub artist/catalog fetch (fetch-catalog.yml → per-member + per-track
+// artist streams) the instant the canary catches Spotify's daily bump. Spotify moves
+// all counters together, so the whole catalog is fresh the moment the campaign tracks
+// move — this makes the per-member cards track the real publish time instead of only
+// the fixed nightly GitHub run, which can miss a small-hours publish and merge two
+// days into one entry. The catalog-TOTAL refresh (?catalog=1) alone never covered the
+// per-member/per-track streams; this closes that gap.
+//
+// Deduped via a short Redis NX lock so a storm of concurrent visitor requests fans in
+// to a single workflow_dispatch, while a genuinely separate later bump (> the lock TTL)
+// can still fire again — important when Spotify publishes two days close together.
+// No-op unless GH_DISPATCH_TOKEN is set (a fine-grained PAT with Actions: write on this
+// repo). Fire-and-forget: never blocks or fails the response.
+const CATALOG_DISPATCH_LOCK_KEY = 'catalog_fetch_dispatch_lock';
+const CATALOG_DISPATCH_LOCK_TTL = 1800; // 30 min
+async function dispatchCatalogFetch(reason) {
+  const token = process.env.GH_DISPATCH_TOKEN;
+  if (!token) return;
+  try {
+    const locked = await redis.set(
+      CATALOG_DISPATCH_LOCK_KEY,
+      { reason, ts: Date.now() },
+      { nx: true, ex: CATALOG_DISPATCH_LOCK_TTL },
+    );
+    if (locked === null) return; // another request already dispatched within the window
+    await fetch(
+      'https://api.github.com/repos/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/actions/workflows/fetch-catalog.yml/dispatches',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'Content-Type': 'application/json',
+          'User-Agent': 'blinksunited-canary',
+        },
+        body: JSON.stringify({ ref: 'main', inputs: { run_artist_fetch: 'true' } }),
+      },
+    );
+  } catch (_) { /* fire-and-forget */ }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -1179,15 +1221,22 @@ export default async function handler(req, res) {
     if (a) anomalies[name] = a;
   }
 
-  // Trigger catalog total update (fire-and-forget, no await) when:
+  // Trigger the downstream stream updates (fire-and-forget, no await) when:
   //   - the canary just caught today's bump (Spotify updates all counters
   //     together, so the whole catalog is fresh the moment the tracks move —
   //     this is the primary path now, catching it in the small hours), OR
   //   - a cron/force sweep ran (the 11pm floor / manual refresh).
   // Skipped when tracks_only=1 — that path is campaign cards only.
+  // Two downstreams fire here:
+  //   1. the catalog TOTAL refresh (?catalog=1) on Vercel, and
+  //   2. the GitHub per-member/per-track artist fetch (fetch-catalog.yml) — the
+  //      catalog total alone never covered the member cards, so the canary now
+  //      kicks the member/catalog capture at the same moment, instead of leaving
+  //      it to the fixed nightly run that can miss the window and merge two days.
   if ((canaryCaughtBump || isCron || isForced) && fetchedLive && !tracksOnly) {
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'blinksunited.com';
     fetch(`https://${host}/api/streams?catalog=1&force=1&key=${process.env.ADMIN_SECRET || ''}`).catch(() => {});
+    dispatchCatalogFetch(canaryCaughtBump ? 'canary' : (isCron ? 'cron' : 'force'));
   }
 
   res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');

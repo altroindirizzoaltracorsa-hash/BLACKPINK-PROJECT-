@@ -2,8 +2,17 @@ name: BLACKPINK Spotify Catalog
 
 on:
   schedule:
-    # 10 PM UTC daily — Spotify usually updates earlier in the evening
+    # 10 PM UTC daily — the canonical floor run.
     - cron: '0 22 * * *'
+    # Small-hours floor runs (02:00 + 05:00 UTC) covering Spotify's usual
+    # post-2AM-Rome publish window, so a day is captured close to when it lands
+    # instead of only at 22:00 (which recently missed a window and merged two
+    # days). fetch_artist_streams skips when the total is unchanged, so these
+    # extra runs are no-ops until Spotify actually publishes. The canary in
+    # api/streams.js also workflow_dispatches this same job the instant the
+    # campaign tracks move — these crons are the belt-and-braces floor for it.
+    - cron: '0 2 * * *'
+    - cron: '0 5 * * *'
   workflow_dispatch:   # also allows manual trigger from the GitHub Actions tab
     inputs:
       base_url:
