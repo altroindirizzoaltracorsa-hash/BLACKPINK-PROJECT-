@@ -31,6 +31,12 @@ const etDay = (d = new Date()) => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
 }).format(d);
 
+// BreakTudo Awards is Brazil-based; its "today" bucket uses Brasília (UTC-3, no
+// DST). Kept fully separate from the VMA (ET) path.
+const brDay = (d = new Date()) => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(d);
+
 function bearer(req) {
   const h = req.headers.authorization || '';
   const m = /^Bearer\s+(.+)$/i.exec(h);
@@ -67,6 +73,27 @@ async function myTotals(sb, uid) {
   return { today, week, month, total, bp, lisa };
 }
 
+// BreakTudo sibling of myTotals — single vote tally, Brasília day boundaries.
+async function myBtTotals(sb, uid) {
+  const { data } = await sb.from('breaktudo_user_votes').select('day, votes').eq('app_user_id', uid);
+  const rows = data || [];
+  const t = brDay();
+  const [y, m, dd] = t.split('-').map(Number);
+  const base = new Date(Date.UTC(y, m - 1, dd));
+  const dow = (base.getUTCDay() + 6) % 7;           // 0 = Monday
+  const monday = new Date(Date.UTC(y, m - 1, dd - dow)).toISOString().slice(0, 10);
+  const first = `${t.slice(0, 7)}-01`;
+  let today = 0, week = 0, month = 0, total = 0;
+  for (const r of rows) {
+    const v = r.votes || 0;
+    total += v;
+    if (r.day === t)     today += v;
+    if (r.day >= monday) week  += v;
+    if (r.day >= first)  month += v;
+  }
+  return { today, week, month, total };
+}
+
 // The caller's campaign streams: today's (ET-day aligned) for display + Monster
 // Blink, and whether they've EVER streamed (the silent gate for ranking/badges —
 // you can register votes without streaming, but you only rank if you've streamed).
@@ -95,6 +122,82 @@ export default async function handler(req, res) {
   if (!sb) return res.status(503).json({ error: 'Voting not configured' });
 
   try {
+    // ── BreakTudo Awards — fully isolated award dimension ────────────────────
+    // Everything below reads/writes breaktudo_user_votes + its own RPCs; the VMA
+    // path (default) is untouched. Selected with ?award=breaktudo (GET) or
+    // {award:'breaktudo'} (POST). Single vote tally, Brasília day boundary.
+    const award = String((req.method === 'POST' ? (req.body || {}).award : req.query.award) || '').toLowerCase();
+    if (award === 'breaktudo') {
+      if (req.method === 'GET') {
+        if (req.query.board) {
+          const { data, error } = await sb.rpc('breaktudo_vote_board');
+          if (error) throw error;
+          return res.status(200).json({ board: data || [] });
+        }
+        if (req.query.sync) {
+          const extToken = String(req.headers['x-ext-token'] || '').trim();
+          if (!extToken) return res.status(401).json({ error: 'link required' });
+          const { data: tok } = await sb.from('scrobble_tokens').select('app_user_id').eq('token', extToken).maybeSingle();
+          if (!tok) return res.status(401).json({ error: 'link required' });
+          const { data: v } = await sb.from('breaktudo_user_votes').select('votes').eq('app_user_id', tok.app_user_id).eq('day', brDay()).maybeSingle();
+          return res.status(200).json({ total: v?.votes || 0, accounts: [] });
+        }
+        if (req.query.live) {
+          const cutoff = new Date(Date.now() - 90 * 1000).toISOString();
+          const { data, error } = await sb.from('breaktudo_user_votes').select('app_user_id').gte('updated_at', cutoff);
+          if (error) throw error;
+          return res.status(200).json({ liveVoters: data ? new Set(data.map((r) => r.app_user_id)).size : 0 });
+        }
+        if (req.query.me) {
+          const token = bearer(req);
+          if (!token) return res.status(401).json({ error: 'not signed in' });
+          const { data: { user } = {}, error: authErr } = await sb.auth.getUser(token);
+          if (authErr || !user) return res.status(401).json({ error: 'not signed in' });
+          const [totals, streams] = await Promise.all([myBtTotals(sb, user.id), myStreams(sb, user.id)]);
+          const linked = await isLinked(sb, user.id);
+          return res.status(200).json({ linked, ...totals, ...streams });
+        }
+        const { data, error } = await sb.rpc('breaktudo_vote_totals');
+        if (error) throw error;
+        return res.status(200).json(data || { total: 0, today: 0, blinksTotal: 0, blinksToday: 0 });
+      }
+      if (req.method === 'POST') {
+        const body = req.body || {};
+        let votes = parseInt(body.votes, 10);
+        if (!Number.isFinite(votes) || votes <= 0) return res.status(400).json({ error: 'votes required' });
+        votes = Math.min(votes, 10000); // sanity bound (BreakTudo has no daily cap)
+        let uid = null, name = null;
+        const extToken = String(body.extToken || '').trim();
+        const token = String(body.accessToken || '').trim();
+        if (extToken) {
+          const { data: tok } = await sb.from('scrobble_tokens').select('app_user_id').eq('token', extToken).maybeSingle();
+          if (!tok) return res.status(401).json({ error: 'Link your blinksunited account in the extension first.' });
+          uid = tok.app_user_id;
+          try { const { data: got } = await sb.auth.admin.getUserById(uid); name = (got && got.user && got.user.user_metadata && got.user.user_metadata.display_name) || null; } catch (_) { name = null; }
+        } else {
+          if (!token) return res.status(401).json({ error: 'Sign in to log your votes' });
+          const { data: { user } = {}, error: authErr } = await sb.auth.getUser(token);
+          if (authErr || !user) return res.status(401).json({ error: 'Sign in to log your votes' });
+          uid = user.id;
+          name = (user.user_metadata && user.user_metadata.display_name) || null;
+        }
+        const day = brDay();
+        const { data: existing } = await sb.from('breaktudo_user_votes').select('votes').eq('app_user_id', uid).eq('day', day).maybeSingle();
+        const next = (existing?.votes || 0) + votes;
+        const { error: upErr } = await sb.from('breaktudo_user_votes').upsert(
+          { app_user_id: uid, day, votes: next, display_name: name, updated_at: new Date().toISOString() },
+          { onConflict: 'app_user_id,day' },
+        );
+        if (upErr) return res.status(500).json({ error: upErr.message });
+        let my = null, totals = {};
+        try {
+          const [m, t] = await Promise.all([myBtTotals(sb, uid), sb.rpc('breaktudo_vote_totals')]);
+          my = m; totals = t.data || {};
+        } catch { /* ignore — client refetches */ }
+        return res.status(200).json({ ok: true, my, totals });
+      }
+    }
+
     if (req.method === 'GET') {
       if (req.query.board) {
         const { data, error } = await sb.rpc('vma_vote_board');
