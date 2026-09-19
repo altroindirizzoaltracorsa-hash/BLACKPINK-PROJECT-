@@ -2253,6 +2253,10 @@
   .vv-auto-note b { color: #7ee0a0; }
   .vv-auto-more { display: inline-block; margin-top: 0.7rem; font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.04em; color: var(--muted); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; }
   .vv-auto-more:hover { color: var(--pink); }
+  .vv-awardsw { display: flex; gap: 0.4rem; margin-bottom: 1rem; }
+  .vv-awardsw-btn { flex: 1 1 auto; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--border); padding: 0.6rem 0.75rem; cursor: pointer; }
+  .vv-awardsw-btn:hover { color: var(--pink); }
+  .vv-awardsw-btn.active { color: var(--pink); border-color: var(--pink); background: rgba(255,0,102,0.1); font-weight: 700; }
   .vv-tabs { display: flex; gap: 0.4rem; margin-bottom: 0.9rem; }
   .vv-tab { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--border); padding: 0.42rem 0.75rem; cursor: pointer; }
   .vv-tab.active { color: var(--pink); border-color: var(--pink); background: rgba(255,0,102,0.08); }
@@ -8003,6 +8007,15 @@ function renderVoteCampaigns() {
 
 // ── VMA voting leaderboard (account-gated, self-reported) ───────────────────
 let _vvBoard = [], _vvUnranked = [], _vvMe = null, _vvSession = null, _vvToken = null, _vvPeriod = 'today';
+// Which award the panel is showing: 'vma' (default) or 'breaktudo'. The two are
+// counted separately (own tables/RPCs on the backend, own extension storage) — this
+// only switches which one the on-site board reads. Vote data shapes are compatible;
+// BreakTudo has no per-member split and a single vote tally (no daily cap).
+let _vvAward = 'vma';
+const _vvAwardMeta = {
+  vma:       { title: '🗳️ VMA Voting Leaderboard', label: 'MTV VMAs' },
+  breaktudo: { title: '🏆 BreakTudo Voting Leaderboard', label: 'BreakTudo' },
+};
 
 // Personal vote-badge tiers (by all-time votes logged).
 const VMA_VOTE_TIERS = [
@@ -8040,17 +8053,40 @@ async function renderVmaVoting() {
   if (!panel) return;
   try { _vvSession = (await sb?.auth.getSession())?.data?.session || null; } catch { _vvSession = null; }
   _vvToken = _vvSession?.access_token || null;
+  const aw = _vvAward === 'breaktudo' ? '&award=breaktudo' : '';
   const [board, me] = await Promise.all([
-    fetch('/api/vma-votes?board=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : { board: [] }).catch(() => ({ board: [] })),
+    fetch('/api/vma-votes?board=1' + aw, { cache: 'no-store' }).then(r => r.ok ? r.json() : { board: [] }).catch(() => ({ board: [] })),
     _vvToken
-      ? fetch('/api/vma-votes?me=1', { headers: { Authorization: 'Bearer ' + _vvToken }, cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)
+      ? fetch('/api/vma-votes?me=1' + aw, { headers: { Authorization: 'Bearer ' + _vvToken }, cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)
       : Promise.resolve(null),
   ]);
   const bd = board.board;
   _vvBoard = Array.isArray(bd) ? bd : (bd?.ranked || []);
   _vvUnranked = (bd && !Array.isArray(bd)) ? (bd.unranked || []) : [];
   _vvMe = me;
-  drawVmaVoting();
+  if (_vvAward === 'breaktudo') drawBtVoting(); else drawVmaVoting();
+}
+
+// The VMA ⇄ BreakTudo switch shown at the top of the panel. Same linked account,
+// two separately-counted awards.
+function vmaAwardSwitchHtml() {
+  return `<div class="vv-awardsw" role="tablist" aria-label="Award">`
+    + Object.keys(_vvAwardMeta).map(a =>
+        `<button class="vv-awardsw-btn ${a === _vvAward ? 'active' : ''}" role="tab" aria-selected="${a === _vvAward}" onclick="vmaSetAward('${a}')">${_vvAwardMeta[a].label}</button>`
+      ).join('')
+    + `</div>`;
+}
+function vmaSetAward(a) {
+  if (a !== 'vma' && a !== 'breaktudo') return;
+  if (a === _vvAward) return;
+  _vvAward = a;
+  _vvBoard = []; _vvUnranked = []; _vvMe = null;   // clear so we don't flash the other award's data
+  const panel = document.getElementById('vma-vote-panel');
+  if (panel) {
+    const wrap = panel.querySelector('.vv-wrap');
+    if (wrap) wrap.style.opacity = '0.55';
+  }
+  renderVmaVoting();
 }
 
 function drawVmaVoting() {
@@ -8186,6 +8222,7 @@ function drawVmaVoting() {
   const qualified = !!(_vvSession && _vvMe && _vvMe.linked !== false);
 
   panel.innerHTML = `<div class="vv-wrap${vmaScheduledPower() ? ' vv-live' : ''}">
+    ${vmaAwardSwitchHtml()}
     <div class="vv-head">
       <div class="vv-title">🗳️ VMA Voting Leaderboard</div>
       <div class="vv-note">Register the votes you cast and race other blinks up the board. Vote-only blinks earn a 🗳️ Voter badge; streaming blinks get ranked. <a href="/vmas">how &amp; where to vote →</a></div>
@@ -8194,6 +8231,93 @@ function drawVmaVoting() {
     ${vmaVideoGuidesHtml()}
     ${me}
     ${qualified ? vmaExtensionHtml() : ''}
+    <div class="vv-tabs">${toggle}</div>
+    ${table}
+    ${unrankedHtml}
+  </div>`;
+}
+
+// BreakTudo board — a simplified sibling of drawVmaVoting(). BreakTudo is a single
+// vote tally (no per-member split, no daily cap, no VMA power hours / badge ladder),
+// so this shows just your totals + the ranked community board. Reuses the same vv-*
+// styles and the shared period tabs. Ranking is gated on ever-having-streamed
+// (server), same as VMA — vote-only blinks appear below, unranked.
+function drawBtVoting() {
+  const panel = document.getElementById('vma-vote-panel');
+  if (!panel) return;
+
+  const P = _vvPeriod;
+  const periodLbl = { today: 'today', week: 'this week', month: 'this month', total: 'all time' }[P];
+  const displayName = _vvSession?.user?.user_metadata?.display_name || null;
+
+  const rows = _vvBoard.slice().sort((a, b) => (b[P] || 0) - (a[P] || 0) || (b.total || 0) - (a.total || 0));
+  const myIdx = displayName ? rows.findIndex(r => (r.name || '').toLowerCase() === displayName.toLowerCase()) : -1;
+  const myRank = myIdx >= 0 ? myIdx + 1 : null;
+
+  let me;
+  if (!_vvSession) {
+    me = `<div class="vv-me vv-gate">
+      <div>Sign in to <b>register your BreakTudo votes</b> and race other blinks up the board. 🏆 <b>Stream too</b> to appear on the ranked board.</div>
+      <a class="vv-gate-btn" href="/badges" onclick="goToMyBadges(); return false;">🔑 Sign in on My Badges →</a>
+    </div>`;
+  } else if (_vvMe) {
+    const isRanked = myRank != null || _vvMe.ranked;
+    const rankLine = (_vvMe.total || 0) === 0
+      ? `<div class="vv-rank">Add your first BreakTudo votes to climb the board 🗳️</div>`
+      : (isRanked
+          ? (myRank
+              ? `<div class="vv-rank">🏆 You're <b>#${myRank}</b> of ${_vvFmt(rows.length)} ${periodLbl}</div>`
+              : `<div class="vv-rank">🏆 You're on the board</div>`)
+          : `<div class="vv-rank vv-rank-hint">🎧 <b>Stream too</b> and you'll climb onto the ranked board. 🏆</div>`);
+    me = `<div class="vv-me">
+      <div class="vv-me-head">Your BreakTudo votes${displayName ? ' · ' + _vvEsc(displayName) : ''}</div>
+      ${rankLine}
+      <div class="vv-me-stats">
+        <div><span>${_vvFmt(_vvMe.today)}</span><small>today</small></div>
+        <div><span>${_vvFmt(_vvMe.week)}</span><small>this week</small></div>
+        <div><span>${_vvFmt(_vvMe.month)}</span><small>this month</small></div>
+        <div><span>${_vvFmt(_vvMe.total)}</span><small>all time</small></div>
+      </div>
+      <div class="vv-auto-note">🧩 Your BreakTudo votes are counted <b>automatically</b> by the Blinks United vote counter (browser extension / app) as you vote on <b>vote.breaktudoawards.com</b>.</div>
+    </div>`;
+  } else {
+    me = `<div class="vv-me vv-gate">Loading your votes…</div>`;
+  }
+
+  let table;
+  if (!rows.length) {
+    table = `<div class="vv-empty">No BreakTudo votes logged yet — be the first! 🗳️</div>`;
+  } else {
+    table = `<div class="vv-tablewrap"><table class="vv-table"><thead><tr><th>#</th><th>Blink</th><th>Streams</th><th>Votes ${periodLbl}</th></tr></thead><tbody>`;
+    rows.forEach((r, i) => {
+      const mine = displayName && (r.name || '').toLowerCase() === displayName.toLowerCase();
+      table += `<tr class="${mine ? 'vv-mine' : ''}"><td>${i + 1}</td><td>${_vvEsc(r.name || 'a blink')}</td><td>${_vvFmt(r.streams || 0)}</td><td class="vv-v">${_vvFmt(r[P] || 0)}</td></tr>`;
+    });
+    table += `</tbody></table></div>`;
+  }
+
+  const labels = { today: 'Today', week: 'Week', month: 'Month', total: 'All' };
+  const toggle = ['today', 'week', 'month', 'total']
+    .map(p => `<button class="vv-tab ${p === P ? 'active' : ''}" onclick="vmaSetPeriod('${p}')">${labels[p]}</button>`).join('');
+
+  const unranked = _vvUnranked.slice().sort((a, b) => (b[P] || 0) - (a[P] || 0) || (b.total || 0) - (a.total || 0));
+  const unrankedHtml = unranked.length ? `
+    <div class="vv-unranked">
+      <div class="vv-unranked-head">Voters · not streaming — not ranked</div>
+      ${unranked.map(r => {
+        const mine = displayName && (r.name || '').toLowerCase() === displayName.toLowerCase();
+        return `<div class="vv-unranked-row${mine ? ' vv-mine' : ''}"><span class="vv-unranked-name">${_vvEsc(r.name || 'a blink')}</span><span class="vv-unranked-v">${_vvFmt(r[P] || 0)} vote${(r[P] || 0) === 1 ? '' : 's'}</span></div>`;
+      }).join('')}
+      <div class="vv-unranked-foot">🎧 Stream today too and you'll climb onto the ranked board — these votes still count. 💗</div>
+    </div>` : '';
+
+  panel.innerHTML = `<div class="vv-wrap">
+    ${vmaAwardSwitchHtml()}
+    <div class="vv-head">
+      <div class="vv-title">🏆 BreakTudo Voting Leaderboard</div>
+      <div class="vv-note">Register the BreakTudo Awards votes you cast for BLACKPINK &amp; members and race other blinks up the board. Voting closes Oct 17. <a href="/voting">how &amp; where to vote →</a></div>
+    </div>
+    ${me}
     <div class="vv-tabs">${toggle}</div>
     ${table}
     ${unrankedHtml}
@@ -8230,13 +8354,13 @@ function vmaVideoGuidesHtml() {
 function vmaExtensionHtml() {
   return `<div class="vv-ext" id="vv-ext">
     <div class="vv-ext-head">
-      <span class="vv-ext-title">🧩 VMA Vote Counter — browser extension</span>
-      <span class="vv-ext-ver">v1.6.2</span>
+      <span class="vv-ext-title">🧩 Vote Counter — browser extension</span>
+      <span class="vv-ext-ver">v1.7.0</span>
     </div>
-    <div class="vv-ext-sub">Auto-counts the <b>BLACKPINK &amp; LISA</b> votes you cast on <b>vote.mtv.com</b> and logs them straight to this board — no more typing numbers into &ldquo;Add votes&rdquo;. It only reads your own votes; it <b>never votes for you</b>.</div>
+    <div class="vv-ext-sub">Auto-counts the <b>BLACKPINK &amp; members</b> votes you cast on <b>vote.mtv.com</b> (VMAs) <b>and vote.breaktudoawards.com</b> (BreakTudo) and logs them straight to this board — the two awards are tracked separately with one account. It only reads your own votes; it <b>never votes for you</b>.</div>
     <div class="vv-ext-dl">
-      <a class="vv-ext-btn" href="/vote-extension-v1.6.2-chrome.zip" download>⬇ Desktop <small>Chrome / Chromium</small></a>
-      <a class="vv-ext-btn ghost" href="/vote-extension-v1.6.2-android.zip" download>⬇ Android <small>Edge Canary / Quetta</small></a>
+      <a class="vv-ext-btn" href="/vote-extension-v1.7.0-chrome.zip" download>⬇ Desktop <small>Chrome / Chromium</small></a>
+      <a class="vv-ext-btn ghost" href="/vote-extension-v1.7.0-android.zip" download>⬇ Android <small>Edge Canary / Quetta</small></a>
       <button class="vv-ext-btn ghost" onclick="connectExtension()">🔗 Link my account</button>
     </div>
     <a class="vv-ext-guide" href="/vote-counter-guide.html" target="_blank" rel="noopener">📖 Illustrated step-by-step guide ↗</a>
@@ -8244,7 +8368,7 @@ function vmaExtensionHtml() {
       <li><b>Download &amp; unzip</b> the file above.</li>
       <li><b>Desktop</b> — works in any Chromium browser (<b>Chrome, Edge, Brave, Opera, Vivaldi</b>): open <code>chrome://extensions</code> (or <code>edge://extensions</code>…), turn on <b>Developer mode</b> (top-right), click <b>Load unpacked</b> and pick the unzipped folder.<br><b>Android</b> — needs a Chromium browser that still supports extensions since Kiwi shut down: <b>Microsoft Edge Canary</b> (it inherited Kiwi's extension engine) or <b>Quetta</b>. Open its Extensions menu and load the <code>.zip</code> directly. <i>Regular Chrome and Firefox for Android can't run it.</i></li>
       <li>Click the extension → <b>Link my Blinks United account</b> → sign in on the page that opens (the same account you use here). It should then read <b>● Linked</b>.</li>
-      <li>Go to <b>vote.mtv.com</b> and vote for BLACKPINK / LISA — your votes show up here automatically, and a live BLINKS UNITED panel appears on the MTV page.</li>
+      <li>Vote for BLACKPINK / members on <b>vote.mtv.com</b> or <b>vote.breaktudoawards.com</b> — your votes show up here automatically (use the <b>VMAs / BreakTudo</b> switch above the board), and a live BLINKS UNITED panel appears on each vote page.</li>
     </ol>
     <div class="vv-ext-app">
       <div class="vv-ext-app-head">📱 On a phone with no extension support? Get the <b>Android app</b></div>
@@ -8259,12 +8383,12 @@ function vmaExtensionHtml() {
     <details class="vv-ext-fns">
       <summary>▸ What the extension does</summary>
       <ul>
-        <li><b>Auto-counts your votes</b> — watches each successful vote you cast on vote.mtv.com and logs the BLACKPINK/LISA ones to your /voting board, no manual typing.</li>
-        <li><b>On-page panel</b> on vote.mtv.com — running &ldquo;counted today&rdquo; total, a BLACKPINK / LISA split, and a live activity log; draggable &amp; collapsible.</li>
+        <li><b>Auto-counts your votes</b> — watches each successful vote you cast on <b>vote.mtv.com</b> (VMAs) and <b>vote.breaktudoawards.com</b> (BreakTudo) and logs the BLACKPINK/member ones to your /voting board, no manual typing. The two awards stay separate.</li>
+        <li><b>On-page panel</b> on each vote site — running &ldquo;counted today&rdquo; total and a live activity log; draggable &amp; collapsible.</li>
         <li><b>&ldquo;Blinks voting now&rdquo; pulse</b> — how many blinks logged a vote in the last 90 seconds (our community, live).</li>
         <li><b>Power-hour glow</b> — the panel &amp; toolbar popup light up during MTV Power Hours / Double Days (2× votes).</li>
         <li><b>Cross-device sync</b> (opt-in) — merges your counts and voting-accounts list across every device you turn it on.</li>
-        <li><b>Count-only, never auto-vote</b> — it only reads votes you cast yourself, so it stays within VMA rules.</li>
+        <li><b>Count-only, never auto-vote</b> — it only reads votes you cast yourself, so it stays within each award's rules.</li>
       </ul>
     </details>
     <details class="vv-ext-fns vv-ext-privacy">
@@ -8297,7 +8421,7 @@ function _vvFormInner() {
         <div class="vv-honest">🤝 Honour system — please only log votes you've actually cast. Inflated counts just throw off the board for every blink. Default fills the per-category max (10, or 20 in a power hour) — tweak to what you actually cast. 💗</div>`;
 }
 
-function vmaSetPeriod(p) { _vvPeriod = p; drawVmaVoting(); }
+function vmaSetPeriod(p) { _vvPeriod = p; if (_vvAward === 'breaktudo') drawBtVoting(); else drawVmaVoting(); }
 
 // Re-check the voting state when the fan returns to the tab, so the manual "Add
 // votes" form hides as soon as the extension/app has logged a vote for them —
