@@ -290,19 +290,24 @@ function brDay() {
 const BT_CANDIDATES = {
   NjAwNkJUVzI1MTk2MjU4: 'BLACKPINK',
 };
-// Category slugs (the /vote/<slug>/ referer) BLACKPINK/members are nominated in →
-// { who, label } for member attribution + the activity-log category name. The
-// first slug is confirmed; the rest are BreakTudo's PT slugs (best-effort — a
-// wrong guess only changes the log label, never whether the vote is counted).
+// The ONLY categories we count — the /vote/<slug>/ pages BLACKPINK/members/BLINKs
+// are nominated in → { who, label }. A vote counts only if it's cast on one of
+// these pages (or its candidate id is a known BP id in BT_CANDIDATES); votes in any
+// other category (e.g. a Brazilian/other-artist category) are ignored. Slugs are
+// BreakTudo's Portuguese category titles, kebab-cased with accents stripped —
+// verified against the site's 2026 category names.
 const BT_CATS = {
-  'grupo-feminino-internacional':     { who: 'BLACKPINK', label: 'Int. Female Group' },
-  'artista-feminina-internacional':   { who: 'JENNIE',    label: 'Int. Female Artist' },
-  'artista-asiatico':                 { who: 'LISA',      label: 'Asian Artist' },
-  'colaboracao-internacional-do-ano': { who: 'JISOO',     label: 'Int. Collaboration' },
-  'hit-internacional-do-ano':         { who: 'JENNIE',    label: 'Int. Hit of the Year' },
-  'videoclipe-internacional':         { who: 'BLACKPINK', label: 'Int. Music Video' },
-  'fandom-internacional-do-ano':      { who: 'BLINKs',    label: 'Int. Fandom' },
-  'serie-internacional':              { who: 'BLACKPINK', label: 'Int. Series' },
+  'grupo-feminino-internacional':      { who: 'BLACKPINK', label: 'Int. Female Group' },   // Grupo Feminino Internacional — BLACKPINK
+  'artista-feminina-internacional':    { who: 'JENNIE',    label: 'Int. Female Artist' },  // Artista Feminina Internacional — JENNIE
+  'artista-asiatico':                  { who: 'LISA',      label: 'Asian Artist' },        // Artista Asiático — LISA
+  'colaboracao-internacional-do-ano':  { who: 'JISOO',     label: 'Int. Collaboration' },  // Colaboração Internacional do Ano — JISOO × ZAYN
+  'hit-internacional-do-ano':          { who: 'JENNIE',    label: 'Int. Hit of the Year' },// Hit Internacional do Ano — Dracula (w/ JENNIE)
+  'videoclipe-internacional-do-ano':   { who: 'BLACKPINK', label: 'Int. Music Video' },    // Videoclipe Internacional do Ano — GO / DREAM
+  'fandom-internacional-do-ano':       { who: 'BLINKs',    label: 'Int. Fandom' },         // Fandom Internacional do Ano — BLINKs
+  'serie-internacional':               { who: 'BLACKPINK', label: 'Int. Series' },         // Série Internacional — Boyfriend On Demand
+  // tolerated aliases in case a slug ships slightly differently:
+  'videoclipe-internacional':          { who: 'BLACKPINK', label: 'Int. Music Video' },
+  'serie-internacional-do-ano':        { who: 'BLACKPINK', label: 'Int. Series' },
 };
 
 function btB64(s) { try { return atob(s); } catch (_) { return s; } }
@@ -421,28 +426,32 @@ async function processBtVote(e) {
   if (seen.length > SEEN_MAX) seen.splice(0, seen.length - SEEN_MAX);
   chrome.storage.local.set({ [BT_SEEN_KEY]: seen });
 
-  // BreakTudo stacks a sequence's votes onto the candidate as a COUNT in `pos`:
-  // votes=[{"id":BP,"pos":5}] is 5 votes for BLACKPINK (you cast 5, then the
-  // Cloudflare check runs). So sum `pos` per entry — it's the vote count, not a
-  // position. (Missing/invalid → treat as 1 so a vote is never dropped.) Attribute
-  // the member from the candidate id, then the category slug, else a generic label.
+  // Count ONLY BLACKPINK/member/BLINKs votes. A vote is ours iff its candidate id
+  // is a known BP id (BT_CANDIDATES) OR it's cast on one of our nominated category
+  // pages (BT_CATS, keyed by the /vote/<slug>/ referer). Any other vote — a different
+  // artist, a Brazilian/other category — is skipped. BreakTudo stacks a sequence's
+  // votes onto the candidate as a COUNT in `pos` (votes=[{id:BP,pos:5}] = 5 votes),
+  // so we sum `pos`, not array length (missing/invalid → 1).
   const catInfo = e.slug ? BT_CATS[e.slug] : null;
   let n = 0; const perMember = {};
   for (const v of votes) {
     if (!v || v.id == null) continue;
+    const known = BT_CANDIDATES[v.id];
+    if (!known && !catInfo) {
+      // Not a BLACKPINK/member/BLINKs vote — ignore it.
+      console.log('[BU BreakTudo] skipped a non-BLACKPINK vote:',
+        'slug=' + (e.slug || '?'), 'id=' + v.id + ' (' + btB64(v.id) + ')', 'pos=' + (v.pos != null ? v.pos : '?'),
+        '\n→ if this WAS a BLACKPINK/member/BLINKs vote, its category slug isn\'t in BT_CATS yet — send me this slug.');
+      continue;
+    }
     let c = parseInt(v.pos, 10);
     if (!Number.isFinite(c) || c <= 0) c = 1;
     c = Math.min(c, 50); // per-candidate sanity bound (a sequence is 5)
     n += c;
-    const who = BT_CANDIDATES[v.id] || (catInfo && catInfo.who) || 'BLACKPINK/member';
+    const who = known || (catInfo && catInfo.who) || 'BLACKPINK/member';
     perMember[who] = (perMember[who] || 0) + c;
-    if (!BT_CANDIDATES[v.id] && !catInfo) {
-      console.log('[BU BreakTudo] ' + c + ' vote(s) counted with generic attribution:',
-        'slug=' + (e.slug || '?'), 'id=' + v.id + ' (' + btB64(v.id) + ')', 'pos=' + (v.pos != null ? v.pos : '?'),
-        '\n→ add the id to BT_CANDIDATES or the slug to BT_CATS in background.js for precise per-member attribution.');
-    }
   }
-  if (n <= 0) return;
+  if (n <= 0) return;   // nothing of ours in this batch
   n = Math.min(n, 500); // batch sanity bound
 
   const catLabel = (catInfo && catInfo.label) || 'BreakTudo';

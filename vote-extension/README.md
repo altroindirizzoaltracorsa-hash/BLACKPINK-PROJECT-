@@ -17,10 +17,12 @@ confirms a 2xx. BreakTudo stacks a sequence's votes onto the candidate as a **co
 in `pos`** (`votes=[{"id":BP,"pos":5}]` = 5 votes for BLACKPINK — you cast 5, then the
 Cloudflare check runs), so the counter **sums `pos`**, not array length. There's no
 daily cap (repeat sequences all count); retries are de-duped by the Turnstile token
-**plus each mark's id+pos** so distinct marks under one token still count. Member attribution comes from the candidate id (`BT_CANDIDATES`),
-then the category slug (`BT_CATS`), else a generic "BLACKPINK/member" label — a vote
-**always counts** even before its id is mapped, and each unmapped id is logged to the
-service-worker console (decoded) so it's a copy-paste to add. POSTs carry
+**plus each mark's id+pos** so distinct marks under one token still count. **Only
+BLACKPINK/member/BLINKs votes are counted**: a vote is ours iff its candidate id is a
+known BP id (`BT_CANDIDATES`) OR it's cast on one of our nominated category pages
+(`BT_CATS`, keyed by the `/vote/<slug>/` referer). Any other vote — a different artist
+or a Brazilian/other category — is skipped and logged to the service-worker console
+(so if a real BLACKPINK category is ever missing its slug, you'll see it). POSTs carry
 `{award:'breaktudo'}`; the VMA path is untouched.
 
 ## How it works
