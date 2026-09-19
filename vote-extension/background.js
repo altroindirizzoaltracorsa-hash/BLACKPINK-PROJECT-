@@ -407,12 +407,15 @@ async function processBtVote(e) {
   const votes = Array.isArray(e.votes) ? e.votes : [];
   if (!votes.length) return;
 
-  // Dedupe retries by the Turnstile token (issued fresh per submitted batch).
-  // A retry re-uses the token; a genuine new batch carries a new one → counts.
+  // Dedupe *retries*, not distinct marks. BreakTudo's rules are 5 votes = 5 votes
+  // (mark 5, clear the Cloudflare check, submit; no total cap), and several of those
+  // marks can ride the SAME Turnstile token — so keying on the token alone would
+  // wrongly collapse them and undercount. Key on the token PLUS the exact marks
+  // (id+pos) in this POST: a true retry (identical token + identical marks) folds,
+  // but genuinely different marks always count.
   const seen = await loadBtSeen();
-  const key = e.valid
-    ? ('t:' + String(e.valid).slice(0, 48))
-    : [brDay(), e.slug || '?', votes.map((v) => v && v.id).join(','), votes.length].join('|');
+  const sig = votes.map((v) => (v && v.id) + ':' + (v && v.pos)).join(',');
+  const key = (e.valid ? 't:' + String(e.valid).slice(0, 48) : brDay() + '|' + (e.slug || '?')) + '|' + sig;
   if (seen.indexOf(key) !== -1) return;
   seen.push(key);
   if (seen.length > SEEN_MAX) seen.splice(0, seen.length - SEEN_MAX);
