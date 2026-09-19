@@ -7,6 +7,16 @@
   window.__buPanelMounted = true;
   if (window.top !== window) return;            // top frame only
 
+  // One panel, two awards. On vote.mtv.com it's the VMA counter; on
+  // vote.breaktudoawards.com it's the BreakTudo counter. They keep entirely
+  // separate storage keys and read their own award dimension off the board.
+  const AWARD = /(^|\.)vote\.breaktudoawards\.com$/i.test(location.hostname) ? 'breaktudo' : 'vma';
+  const CFG = AWARD === 'breaktudo'
+    ? { sub: 'BreakTudo Vote Counter', unit: 'votes · synced to /voting',
+        countKey: 'btCount', logKey: 'btLog' }
+    : { sub: 'VMA Vote Counter', unit: 'votes · synced to /voting',
+        countKey: 'buCount', logKey: 'buLog' };
+
   const HEART = chrome.runtime.getURL('assets/heart.png');
   const STICK = chrome.runtime.getURL('assets/lightstick.png');
 
@@ -215,6 +225,22 @@
   (document.body || document.documentElement).appendChild(host);
 
   const $ = (id) => root.getElementById(id);
+
+  // Award-specific chrome. BreakTudo has no per-member split, no power hours, no
+  // per-account roster / account-sharing (you vote on-site with no account), so
+  // those VMA-only sections are hidden — the total + activity log carry it.
+  (function configureForAward() {
+    const subEl = root.querySelector('.sub');
+    if (subEl) subEl.textContent = CFG.sub;
+    const unitEl = root.querySelector('.unit');
+    if (unitEl) unitEl.textContent = CFG.unit;
+    if (AWARD === 'breaktudo') {
+      ['.splits', '.sync', '.powerband'].forEach((sel) => {
+        const el = root.querySelector(sel); if (el) el.style.display = 'none';
+      });
+      const accts = root.getElementById('accts'); if (accts) accts.style.display = 'none';
+    }
+  })();
   const elPanel = $('panel'), elBody = $('body'), elHead = $('head');
   const elTotal = $('total'), elBP = $('bp'), elLisa = $('lisa'), elLog = $('log');
   const elLive = $('live'), elStatus = $('status'), elStatusTxt = $('statusTxt'), elMin = $('min');
@@ -252,10 +278,12 @@
   }
 
   function render(s) {
-    // Power hour / double day → gold glow + banner (schedule-driven, refreshes on each render).
-    const plabel = vmaPowerLabel();
-    $('panel').classList.toggle('power', !!plabel);
-    if (plabel) $('powerband').textContent = '⚡ ' + plabel + ' — 2× votes now';
+    // Power hour / double day → gold glow + banner (VMA-only, schedule-driven).
+    if (AWARD === 'vma') {
+      const plabel = vmaPowerLabel();
+      $('panel').classList.toggle('power', !!plabel);
+      if (plabel) $('powerband').textContent = '⚡ ' + plabel + ' — 2× votes now';
+    }
 
     // When cross-device sync is on and we have a server view, show the merged
     // numbers/accounts; otherwise show this device's local ones.
@@ -266,22 +294,26 @@
     const view = (s.buToken && syncView) ? syncView : null;
     const acctSynced = !!s.buSyncOn && !!view;   // only the accounts-used list is sync-gated
 
-    const total = view ? (view.total || 0) : (s.buCount || 0);
+    const total = view ? (view.total || 0) : (s[CFG.countKey] || 0);
     if (total !== lastTotal) { elTotal.classList.add('bump'); setTimeout(() => elTotal.classList.remove('bump'), 200); lastTotal = total; }
     elTotal.textContent = fmt(total);
     elPillNum.textContent = fmt(total);
-    elBP.textContent = fmt(view ? view.bp : s.bpCount);
-    elLisa.textContent = fmt(view ? view.lisa : s.lisaCount);
+    if (AWARD === 'vma') {
+      elBP.textContent = fmt(view ? view.bp : s.bpCount);
+      elLisa.textContent = fmt(view ? view.lisa : s.lisaCount);
+    }
 
-    // Sync toggle + caption.
+    // Sync toggle + caption (VMA-only — the account-sharing UI is hidden on BreakTudo).
     // Your vote counts merge across devices automatically once linked; this toggle
     // only shares the *voting accounts* (emails) you've used today across your devices.
-    elSyncToggle.setAttribute('aria-checked', s.buSyncOn ? 'true' : 'false');
-    elSyncSub.textContent = s.buSyncOn
-      ? 'On — sharing today’s voting accounts across your devices'
-      : 'Off — today’s voting accounts stay on this device';
+    if (AWARD === 'vma') {
+      elSyncToggle.setAttribute('aria-checked', s.buSyncOn ? 'true' : 'false');
+      elSyncSub.textContent = s.buSyncOn
+        ? 'On — sharing today’s voting accounts across your devices'
+        : 'Off — today’s voting accounts stay on this device';
+    }
 
-    const log = Array.isArray(s.buLog) ? s.buLog : [];
+    const log = Array.isArray(s[CFG.logKey]) ? s[CFG.logKey] : [];
     if (!log.length) {
       elLog.innerHTML = '<div class="empty">No votes counted yet — vote on this page and they’ll appear here.</div>';
     } else {
@@ -304,8 +336,9 @@
       if (lb) lb.onclick = () => window.open('https://blinksunited.com/vote-link.html', '_blank');
     }
 
-    // Accounts you've voted with today. Local to this browser unless sync is on, in
-    // which case it's the merged list across your devices.
+    // Accounts you've voted with today (VMA-only; the section is hidden on BreakTudo).
+    // Local to this browser unless sync is on, in which case it's the merged list.
+    if (AWARD !== 'vma') return;
     const accts = acctSynced ? (view.accounts || []) : (Array.isArray(s.buAccounts) ? s.buAccounts : []);
     let ah = '<button class="acctToggle" id="acctToggle">🔑 Accounts used today · ' + accts.length
       + (acctSynced ? '<span class="syncedTag">synced</span>' : '')
@@ -330,15 +363,15 @@
     if (at) at.onclick = () => { acctOpen = !acctOpen; refresh(); };
   }
 
-  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize'];
+  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize', 'btCount', 'btLog', 'btDay'];
   function refresh() { chrome.storage.local.get(KEYS, (s) => { applyLayout(s); render(s); }); }
 
   // React to background updates immediately.
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
     if (Object.keys(changes).some((k) => KEYS.includes(k))) refresh();
-    // A vote just landed — pull the merged view too if sync is on.
-    if (changes.buCount) pollSync();
+    // A vote just landed for this award — pull the merged view too.
+    if (changes[CFG.countKey]) pollSync();
   });
   // Keep the relative timestamps fresh.
   setInterval(refresh, 15000);
@@ -350,7 +383,7 @@
       // devices now, independent of the device-sync toggle.
       if (!s.buToken) { if (syncView) { syncView = null; refresh(); } return; }
       try {
-        chrome.runtime.sendMessage({ type: 'bu-sync-pull' }, (resp) => {
+        chrome.runtime.sendMessage({ type: 'bu-sync-pull', award: AWARD }, (resp) => {
           if (chrome.runtime.lastError) return;
           if (resp && resp.data) { syncView = resp.data; refresh(); }
         });
@@ -371,7 +404,7 @@
   // ── live "voting now" poll ──
   function pollLive() {
     try {
-      chrome.runtime.sendMessage({ type: 'bu-live' }, (resp) => {
+      chrome.runtime.sendMessage({ type: 'bu-live', award: AWARD }, (resp) => {
         if (chrome.runtime.lastError) return;
         if (resp && typeof resp.liveVoters === 'number') elLive.textContent = fmt(resp.liveVoters);
       });

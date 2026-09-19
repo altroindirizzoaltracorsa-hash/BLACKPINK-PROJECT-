@@ -14,7 +14,7 @@ function render() {
   var plabel = vmaPowerLabel();
   document.body.classList.toggle('power', !!plabel);
   if (plabel) { var pb = document.querySelector('.powerband'); if (pb) pb.textContent = '⚡ ' + plabel + ' — 2× votes now'; }
-  chrome.storage.local.get(['buToken', 'buProfile', 'buCount', 'buPending'], function (r) {
+  chrome.storage.local.get(['buToken', 'buProfile', 'buCount', 'buPending', 'btCount', 'btPendingN'], function (r) {
     const s = document.getElementById('status');
     if (r.buToken) {
       s.innerHTML = '<span class="status-ok">● Linked</span> '
@@ -23,7 +23,8 @@ function render() {
       s.innerHTML = '<span class="status-no">● Not linked</span> <span class="muted">— link to log votes</span>';
     }
     document.getElementById('count').textContent = r.buCount || 0;
-    const pend = r.buPending || 0;
+    document.getElementById('btcount').textContent = r.btCount || 0;
+    const pend = (r.buPending || 0) + (r.btPendingN || 0);
     document.getElementById('pending').textContent = pend
       ? (pend + ' vote(s) waiting — link your account to send them.') : '';
   });
@@ -39,7 +40,7 @@ document.getElementById('link').onclick = function () {
   chrome.tabs.create({ url: 'https://blinksunited.com/vote-link.html' });
 };
 document.getElementById('reset').onclick = function () {
-  chrome.storage.local.set({ buCount: 0, buPending: 0 }, render);
+  chrome.storage.local.set({ buCount: 0, buPending: 0, btCount: 0, btPendingN: 0 }, render);
 };
 
 render();

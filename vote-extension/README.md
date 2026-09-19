@@ -1,9 +1,25 @@
-# Blinks United — VMA Vote Counter (Chrome extension)
+# Blinks United — Vote Counter (Chrome extension)
 
-Counts the votes you cast on **vote.mtv.com** for **BLACKPINK & members** and logs
+Counts the votes you cast on **vote.mtv.com** (MTV VMAs) and
+**vote.breaktudoawards.com** (BreakTudo Awards) for **BLACKPINK & members** and logs
 them to your **blinksunited.com `/voting`** board automatically — no more typing
 numbers into "Add votes". It only *observes* the votes you cast yourself; it never
-votes for you.
+votes for you. The two awards are tracked **separately** (own counts, own board
+dimension) but through **one** linked account.
+
+## BreakTudo detection (differs from VMA)
+BreakTudo's vote request is a **POST** whose candidate ids live in the **body**, not
+the URL: `POST /wp-json/bta/v1/awards/vote/?_wpnonce=… →
+action=update_vote&votes=[{"id":"<base64>","pos":N}]&valid=<turnstile>`. So
+`background.js` reads it with `onBeforeRequest` + `['requestBody']`, grabs the
+`/vote/<slug>/` referer in `onSendHeaders`, and only counts it once `onCompleted`
+confirms a 2xx. **Each entry in the `votes` array is one vote** (BreakTudo has no
+daily cap — repeat batches all count); retries are de-duped by the fresh-per-batch
+Turnstile token. Member attribution comes from the candidate id (`BT_CANDIDATES`),
+then the category slug (`BT_CATS`), else a generic "BLACKPINK/member" label — a vote
+**always counts** even before its id is mapped, and each unmapped id is logged to the
+service-worker console (decoded) so it's a copy-paste to add. POSTs carry
+`{award:'breaktudo'}`; the VMA path is untouched.
 
 ## How it works
 1. `background.js` watches the site's own vote request with **`chrome.webRequest`**:

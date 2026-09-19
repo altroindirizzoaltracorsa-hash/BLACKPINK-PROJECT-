@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Blinks United — VMA Vote Counter",
-  "version": "1.6.2",
-  "description": "Counts the BLACKPINK & members votes you cast on the MTV VMA site and logs them to your blinksunited.com voting board.",
+  "name": "Blinks United — Vote Counter",
+  "version": "1.7.0",
+  "description": "Counts the BLACKPINK & members votes you cast on the MTV VMA and BreakTudo Awards sites and logs them to your blinksunited.com voting board.",
   "permissions": ["storage", "webRequest"],
   "host_permissions": [
     "https://vote.mtv.com/*",
+    "https://vote.breaktudoawards.com/*",
     "https://blinksunited.com/*",
     "https://*.blinksunited.com/*"
   ],
@@ -13,7 +14,7 @@
   "action": { "default_popup": "popup.html", "default_title": "BU Vote Counter" },
   "content_scripts": [
     {
-      "matches": ["https://vote.mtv.com/*"],
+      "matches": ["https://vote.mtv.com/*", "https://vote.breaktudoawards.com/*"],
       "js": ["panel.js"],
       "run_at": "document_idle"
     },
@@ -26,7 +27,7 @@
   "web_accessible_resources": [
     {
       "resources": ["assets/heart.png", "assets/lightstick.png"],
-      "matches": ["https://vote.mtv.com/*"]
+      "matches": ["https://vote.mtv.com/*", "https://vote.breaktudoawards.com/*"]
     }
   ]
 }

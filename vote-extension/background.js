@@ -85,21 +85,23 @@ async function postVotes(n, extra) {
 }
 
 // Pull this account's cross-device merged view (opt-in sync). Returns
-// { bp, lisa, total, accounts } or null.
-async function fetchSync() {
+// { bp, lisa, total, accounts } (VMA) or { total, accounts } (BreakTudo) or null.
+async function fetchSync(award) {
   const { buToken } = await getLocal('buToken');
   if (!buToken) return null;
   try {
-    const r = await fetch(BU_ENDPOINT + '?sync=1', { headers: { 'X-Ext-Token': buToken }, cache: 'no-store' });
+    const q = award === 'breaktudo' ? '?sync=1&award=breaktudo' : '?sync=1';
+    const r = await fetch(BU_ENDPOINT + q, { headers: { 'X-Ext-Token': buToken }, cache: 'no-store' });
     if (!r.ok) return null;
     return await r.json();
   } catch (_) { return null; }
 }
 
 // Fetch the community "voting now" pulse for the panel.
-async function fetchLive() {
+async function fetchLive(award) {
   try {
-    const r = await fetch(BU_ENDPOINT + '?live=1', { cache: 'no-store' });
+    const q = award === 'breaktudo' ? '?live=1&award=breaktudo' : '?live=1';
+    const r = await fetch(BU_ENDPOINT + q, { cache: 'no-store' });
     if (!r.ok) return null;
     const j = await r.json();
     return typeof j.liveVoters === 'number' ? j.liveVoters : null;
@@ -115,15 +117,15 @@ function rolledOver(store, today) {
 }
 
 chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
-  // Panel asks for the live "voting now" number.
+  // Panel asks for the live "voting now" number. (award: 'vma' | 'breaktudo')
   if (msg && msg.type === 'bu-live') {
-    fetchLive().then((liveVoters) => sendResponse({ liveVoters }));
+    fetchLive(msg.award).then((liveVoters) => sendResponse({ liveVoters }));
     return true; // async response
   }
 
   // Panel asks for the cross-device merged view (opt-in sync).
   if (msg && msg.type === 'bu-sync-pull') {
-    fetchSync().then((data) => sendResponse({ data }));
+    fetchSync(msg.award).then((data) => sendResponse({ data }));
     return true; // async response
   }
 });
@@ -260,5 +262,202 @@ async function processVote(detail) {
       }
     );
   });
+  });
+}
+
+// ── BreakTudo Awards ─────────────────────────────────────────────────────────
+// BreakTudo's vote request is a POST whose candidate ids live in the *body*
+// (action=update_vote&votes=[{"id":"<base64>","pos":N}]&valid=<turnstile>), not
+// the URL like MTV. So we read the body with onBeforeRequest+['requestBody'],
+// grab the referer (→ category slug) in onSendHeaders, and only count it once
+// onCompleted confirms a 2xx. Each entry in the votes array is one vote (there's
+// no daily cap on BreakTudo — repeat batches all count). Kept fully separate
+// from VMA: its own storage keys and its own award dimension on the board.
+const BT_VOTE_RE = /\/wp-json\/bta\/v1\/awards\/vote\/?$/i;
+
+// Brasília day (America/Sao_Paulo, UTC-3, no DST) — matches the server boundary.
+function brDay() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+}
+
+// Known BLACKPINK/member candidate ids (base64, as sent in votes[].id) → member.
+// Add more as you confirm them; the console logs each unmapped id (decoded) so
+// it's a copy-paste to fill in. Attribution falls back to the category slug and
+// then a generic label, so a vote still COUNTS even before its id is here.
+//   NjAwNkJUVzI1MTk2MjU4 → 6006BTW25196258 = BLACKPINK · Int. Female Group
+const BT_CANDIDATES = {
+  NjAwNkJUVzI1MTk2MjU4: 'BLACKPINK',
+};
+// Category slugs (the /vote/<slug>/ referer) BLACKPINK/members are nominated in →
+// { who, label } for member attribution + the activity-log category name. The
+// first slug is confirmed; the rest are BreakTudo's PT slugs (best-effort — a
+// wrong guess only changes the log label, never whether the vote is counted).
+const BT_CATS = {
+  'grupo-feminino-internacional':     { who: 'BLACKPINK', label: 'Int. Female Group' },
+  'artista-feminina-internacional':   { who: 'JENNIE',    label: 'Int. Female Artist' },
+  'artista-asiatico':                 { who: 'LISA',      label: 'Asian Artist' },
+  'colaboracao-internacional-do-ano': { who: 'JISOO',     label: 'Int. Collaboration' },
+  'hit-internacional-do-ano':         { who: 'JENNIE',    label: 'Int. Hit of the Year' },
+  'videoclipe-internacional':         { who: 'BLACKPINK', label: 'Int. Music Video' },
+  'fandom-internacional-do-ano':      { who: 'BLINKs',    label: 'Int. Fandom' },
+  'serie-internacional':              { who: 'BLACKPINK', label: 'Int. Series' },
+};
+
+function btB64(s) { try { return atob(s); } catch (_) { return s; } }
+function btSlug(ref) {
+  try { const m = new URL(ref).pathname.match(/\/vote\/([^/]+)\/?/i); return m ? m[1].toLowerCase() : null; }
+  catch (_) { return null; }
+}
+
+// Dedupe retried submissions (mirrors the VMA SEEN list; own storage key).
+const BT_SEEN_KEY = 'btSeenVotes';
+let btSeenVotes = null, btSeenLoading = null;
+function loadBtSeen() {
+  if (btSeenVotes) return Promise.resolve(btSeenVotes);
+  if (!btSeenLoading) {
+    btSeenLoading = getLocal(BT_SEEN_KEY).then((cfg) => {
+      if (!btSeenVotes) { const s = cfg && cfg[BT_SEEN_KEY]; btSeenVotes = Array.isArray(s) ? s.slice(-SEEN_MAX) : []; }
+      return btSeenVotes;
+    });
+  }
+  return btSeenLoading;
+}
+
+async function postBtVotes(n) {
+  const { buToken } = await getLocal('buToken');
+  if (!buToken || n <= 0) return { ok: false, reason: 'not-linked' };
+  try {
+    const r = await fetch(BU_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ award: 'breaktudo', extToken: buToken, votes: n }),
+    });
+    return { ok: r.ok };
+  } catch (_) { return { ok: false, reason: 'network' }; }
+}
+
+// requestId → { votes, valid, slug, ts }. The body arrives in onBeforeRequest,
+// the referer in onSendHeaders, the status in onCompleted — stitched by id.
+const btInflight = new Map();
+function btPrune() { const now = Date.now(); for (const [k, v] of btInflight) if (now - v.ts > 60000) btInflight.delete(k); }
+
+function parseBtBody(requestBody) {
+  if (!requestBody) return null;
+  let action = null, votesRaw = null, valid = null;
+  if (requestBody.formData) {
+    const fd = requestBody.formData;
+    action = fd.action && fd.action[0];
+    votesRaw = fd.votes && fd.votes[0];
+    valid = fd.valid && fd.valid[0];
+  } else if (requestBody.raw && requestBody.raw[0] && requestBody.raw[0].bytes) {
+    try {
+      const p = new URLSearchParams(new TextDecoder('utf-8').decode(requestBody.raw[0].bytes));
+      action = p.get('action'); votesRaw = p.get('votes'); valid = p.get('valid');
+    } catch (_) {}
+  }
+  if (action && action !== 'update_vote') return null;
+  let votes = null;
+  try { votes = JSON.parse(votesRaw); } catch (_) { votes = null; }
+  if (!Array.isArray(votes) || !votes.length) return null;
+  return { votes, valid: valid || null };
+}
+
+function btPathIsVote(url) { try { return BT_VOTE_RE.test(new URL(url).pathname); } catch (_) { return false; } }
+
+chrome.webRequest.onBeforeRequest.addListener(
+  function (details) {
+    if (details.method !== 'POST' || !btPathIsVote(details.url)) return;
+    const parsed = parseBtBody(details.requestBody);
+    if (parsed) { btPrune(); btInflight.set(details.requestId, Object.assign({ slug: null, ts: Date.now() }, parsed)); }
+  },
+  { urls: ['https://vote.breaktudoawards.com/*'], types: ['xmlhttprequest'] },
+  ['requestBody']
+);
+
+chrome.webRequest.onSendHeaders.addListener(
+  function (details) {
+    const e = btInflight.get(details.requestId);
+    if (!e) return;
+    const ref = (details.requestHeaders || []).find((h) => h.name.toLowerCase() === 'referer');
+    if (ref && ref.value) e.slug = btSlug(ref.value);
+  },
+  { urls: ['https://vote.breaktudoawards.com/*'], types: ['xmlhttprequest'] },
+  ['requestHeaders', 'extraHeaders']
+);
+
+chrome.webRequest.onCompleted.addListener(
+  function (details) {
+    const e = btInflight.get(details.requestId);
+    if (!e) return;
+    btInflight.delete(details.requestId);
+    if (details.statusCode < 200 || details.statusCode >= 300) return;
+    processBtVote(e).catch((err) => console.log('[BU BreakTudo] processBtVote failed:', err));
+  },
+  { urls: ['https://vote.breaktudoawards.com/*'], types: ['xmlhttprequest'] }
+);
+
+chrome.webRequest.onErrorOccurred.addListener(
+  function (details) { btInflight.delete(details.requestId); },
+  { urls: ['https://vote.breaktudoawards.com/*'], types: ['xmlhttprequest'] }
+);
+
+async function processBtVote(e) {
+  const votes = Array.isArray(e.votes) ? e.votes : [];
+  if (!votes.length) return;
+
+  // Dedupe retries by the Turnstile token (issued fresh per submitted batch).
+  // A retry re-uses the token; a genuine new batch carries a new one → counts.
+  const seen = await loadBtSeen();
+  const key = e.valid
+    ? ('t:' + String(e.valid).slice(0, 48))
+    : [brDay(), e.slug || '?', votes.map((v) => v && v.id).join(','), votes.length].join('|');
+  if (seen.indexOf(key) !== -1) return;
+  seen.push(key);
+  if (seen.length > SEEN_MAX) seen.splice(0, seen.length - SEEN_MAX);
+  chrome.storage.local.set({ [BT_SEEN_KEY]: seen });
+
+  // Each entry = one vote. Attribute the member from the candidate id, then the
+  // category slug, else a generic label. Every entry counts (no daily cap).
+  const catInfo = e.slug ? BT_CATS[e.slug] : null;
+  let n = 0; const perMember = {};
+  for (const v of votes) {
+    if (!v || v.id == null) continue;
+    n += 1;
+    const who = BT_CANDIDATES[v.id] || (catInfo && catInfo.who) || 'BLACKPINK/member';
+    perMember[who] = (perMember[who] || 0) + 1;
+    if (!BT_CANDIDATES[v.id] && !catInfo) {
+      console.log('[BU BreakTudo] vote counted with generic attribution:',
+        'slug=' + (e.slug || '?'), 'id=' + v.id + ' (' + btB64(v.id) + ')', 'pos=' + (v.pos != null ? v.pos : '?'),
+        '\n→ add the id to BT_CANDIDATES or the slug to BT_CATS in background.js for precise per-member attribution.');
+    }
+  }
+  if (n <= 0) return;
+  n = Math.min(n, 200); // sanity bound
+
+  const catLabel = (catInfo && catInfo.label) || 'BreakTudo';
+  postBtVotes(n).then((res) => {
+    const today = brDay();
+    chrome.storage.local.get(['btCount', 'btLog', 'btPendingN', 'btDay'], (raw) => {
+      const r = (raw.btDay === today)
+        ? raw
+        : { btDay: today, btCount: 0, btLog: [], btPendingN: raw.btPendingN || 0 };
+      const upd = { btDay: today };
+      if (res.ok) {
+        upd.btCount = (r.btCount || 0) + n;
+        const log = Array.isArray(r.btLog) ? r.btLog.slice() : [];
+        const now = Date.now();
+        // One log row per member in this batch (reversed so the first-listed sits on top).
+        Object.keys(perMember).reverse().forEach((who) => {
+          log.unshift({ n: perMember[who], cat: catLabel, who, ts: now });
+        });
+        upd.btLog = log.slice(0, 500);
+        if (r.btPendingN) { postBtVotes(r.btPendingN); upd.btPendingN = 0; }
+      } else {
+        upd.btPendingN = (r.btPendingN || 0) + n;
+      }
+      chrome.storage.local.set(upd);
+    });
   });
 }
