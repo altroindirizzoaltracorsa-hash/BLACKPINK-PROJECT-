@@ -124,10 +124,14 @@
   .cu-eta span{color:var(--pink);}
   .cu-note{font-size:10.5px;line-height:1.5;color:var(--dim);margin-top:8px;}
   .cu-win{color:var(--gold);}
-  .cu-graph{margin-top:10px;}
-  .cu-spark{display:block;width:100%;height:56px;overflow:visible;}
-  .cu-graph-cap{font-size:10.5px;color:var(--dim);margin-top:5px;letter-spacing:.02em;}
+  .cu-graph{margin-top:12px;}
+  .cu-leg{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:6px;font-size:11px;color:var(--muted);}
+  .cu-lg{display:inline-flex;align-items:center;gap:6px;}
+  .cu-lg i{width:12px;height:3px;border-radius:2px;display:inline-block;}
+  .cu-spark2{display:block;width:100%;height:auto;}
+  .cu-graph-cap{font-size:10.5px;color:var(--dim);margin-top:6px;letter-spacing:.02em;}
   .cu-graph-cap span{font-weight:700;}
+  .cu-graph-sub{font-size:10px;color:var(--dim);margin-top:3px;line-height:1.4;}
   .cu-tr-good{color:var(--pink-soft);}
   .cu-tr-warn{color:var(--gold);}
   .cu-tr-bad{color:#ff6b6b;}
@@ -276,58 +280,69 @@
     return out.sort((a, b) => a.d < b.d ? -1 : 1);
   }
 
-  // A sparkline of the gap over time + a plain-language trend read (closing
-  // faster / has slowed / widening). Returns '' when there aren't enough shared
-  // days to say anything.
+  const _cuDate = ms => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  // Two labelled lines — each group's own trajectory over time (2026 streams
+  // gained in year mode, all-time total otherwise) — in the same style as the
+  // /vs.html face-off chart, so it reads at a glance: a y-axis, dates, a legend,
+  // and a plain-language trend of whether the gap is closing, stalling or widening.
+  // Returns '' when neither line has ≥2 days yet.
   function _cuGraphHtml(c, t, yearMode) {
-    const s = _cuGapSeries(c, t, yearMode);
-    if (s.length < 2) return '';
-    const gaps = s.map(p => p.gap);
-    let lo = Math.min(...gaps), hi = Math.max(...gaps);
-    if (lo === hi) { lo -= 1; hi += 1; }
-    const W = 100, H = 40, pad = 3, n = s.length;
-    const X = i => pad + (W - 2 * pad) * (i / (n - 1));
-    const Y = v => pad + (H - 2 * pad) * (1 - (v - lo) / (hi - lo));
-    const pts = s.map((p, i) => `${X(i).toFixed(2)},${Y(p.gap).toFixed(2)}`);
-    const line = `M${pts.join(' L')}`;
-    const area = `M${X(0).toFixed(2)},${(H - pad).toFixed(2)} L${pts.join(' L')} L${X(n - 1).toFixed(2)},${(H - pad).toFixed(2)} Z`;
-    const zeroLine = (lo < 0 && hi > 0)
-      ? `<line x1="0" y1="${Y(0).toFixed(2)}" x2="${W}" y2="${Y(0).toFixed(2)}" stroke="#ffffff55" stroke-width="0.6" stroke-dasharray="2 2" vector-effect="non-scaling-stroke"/>` : '';
-    const gid = 'cuGrad' + Math.random().toString(36).slice(2, 7);
-    const svg = `<svg class="cu-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Gap over time">
-      <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#ff2e77" stop-opacity="0.35"/><stop offset="1" stop-color="#ff2e77" stop-opacity="0"/>
-      </linearGradient></defs>
-      ${zeroLine}
-      <path d="${area}" fill="url(#${gid})"/>
-      <path d="${line}" fill="none" stroke="#ff2e77" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
-      <circle cx="${X(n - 1).toFixed(2)}" cy="${Y(s[n - 1].gap).toFixed(2)}" r="1.8" fill="#fff"/>
-    </svg>`;
-
-    // Trend: compare how fast the gap moved recently vs earlier. A gap getting
-    // smaller = the chaser closing; the sign of the recent slope + how it compares
-    // to the earlier slope gives "closing faster / has slowed / widening".
-    const first = s[0], last = s[n - 1], mid = s[Math.floor((n - 1) / 2)];
-    const perDay = (a, b) => {
-      const days = (Date.parse(b.d) - Date.parse(a.d)) / 86400000;
-      return days > 0 ? (b.gap - a.gap) / days : 0;
+    const val = p => (yearMode ? p.ytd : p.v);
+    const mk = g => (g.series || [])
+      .filter(p => p && p.d && val(p) != null)
+      .map(p => ({ t: Date.parse(p.d + 'T00:00:00Z'), y: val(p) }))
+      .sort((a, b) => a.t - b.t);
+    const cs = mk(c), ts = mk(t);
+    if (cs.length < 2 && ts.length < 2) return '';
+    const all = [...cs, ...ts];
+    const tMin = Math.min(...all.map(p => p.t)), tMax = Math.max(...all.map(p => p.t));
+    const yLoR = Math.min(...all.map(p => p.y)), yHiR = Math.max(...all.map(p => p.y));
+    const padY = (yHiR - yLoR) * 0.10 || 1, yLo = Math.max(0, yLoR - padY), yHi = yHiR + padY;
+    const W = 320, H = 152, PL = 46, PR = 12, PT = 12, PB = 22;
+    const X = ms => PL + (tMax === tMin ? 0.5 : (ms - tMin) / (tMax - tMin)) * (W - PL - PR);
+    const Y = v => H - PB - (yHi === yLo ? 0.5 : (v - yLo) / (yHi - yLo)) * (H - PT - PB);
+    const COL_C = '#ff2e77', COL_T = '#f5c542';
+    let grid = '';
+    for (let i = 0; i <= 3; i++) {
+      const gv = yLo + (yHi - yLo) * i / 3, gy = Y(gv);
+      grid += `<line x1="${PL}" x2="${W - PR}" y1="${gy.toFixed(1)}" y2="${gy.toFixed(1)}" stroke="#ffffff12"/>`
+            + `<text x="${PL - 6}" y="${(gy + 3).toFixed(1)}" text-anchor="end" fill="#8a5c6c" font-size="8">${big(Math.round(gv))}</text>`;
+    }
+    const lineFor = (s, col) => { if (s.length < 2) return '';
+      const d = s.map((p, i) => `${i ? 'L' : 'M'}${X(p.t).toFixed(1)} ${Y(p.y).toFixed(1)}`).join(' ');
+      const last = s[s.length - 1];
+      return `<path d="${d}" fill="none" stroke="${col}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`
+           + `<circle cx="${X(last.t).toFixed(1)}" cy="${Y(last.y).toFixed(1)}" r="3" fill="${col}"/>`;
     };
-    const early = perDay(first, mid), late = perDay(mid, last);
-    const span = Math.round((Date.parse(last.d) - Date.parse(first.d)) / 86400000) || n - 1;
-    const moved = last.gap - first.gap;              // <0 = gap shrank over the window
-    const movedTxt = Math.abs(moved) < 1 ? 'flat'
-      : `${big(Math.abs(moved))} ${moved < 0 ? 'closer' : 'wider'} vs ${span}d ago`;
-    let trend, cls;
-    if (late > 1e4 && late > Math.abs(early)) { trend = 'gap widening lately'; cls = 'cu-tr-bad'; }
-    else if (late < 0 && early < 0 && Math.abs(late) > Math.abs(early) * 1.15) { trend = 'closing faster lately'; cls = 'cu-tr-good'; }
-    else if (late < 0 && Math.abs(late) < Math.abs(early) * 0.85) { trend = 'closing has slowed'; cls = 'cu-tr-warn'; }
-    else if (late < 0) { trend = 'closing steadily'; cls = 'cu-tr-good'; }
-    else { trend = 'roughly flat lately'; cls = 'cu-tr-warn'; }
+    const xlab = `<text x="${PL}" y="${H - 6}" fill="#8a5c6c" font-size="8">${_cuDate(tMin)}</text>`
+               + `<text x="${W - PR}" y="${H - 6}" text-anchor="end" fill="#8a5c6c" font-size="8">${_cuDate(tMax)}</text>`;
+    const svg = `<svg viewBox="0 0 ${W} ${H}" class="cu-spark2" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Streams over time">`
+      + `${grid}${lineFor(ts, COL_T)}${lineFor(cs, COL_C)}${xlab}</svg>`;
+    const legend = `<div class="cu-leg">`
+      + `<span class="cu-lg"><i style="background:${COL_C}"></i>${esc(c.name)}</span>`
+      + `<span class="cu-lg"><i style="background:${COL_T}"></i>${esc(t.name)}</span></div>`;
 
-    return `<div class="cu-graph">
-      ${svg}
-      <div class="cu-graph-cap"><span class="${cls}">${trend}</span> · gap ${movedTxt}</div>
-    </div>`;
+    // Trend read from the gap between the two lines over the window.
+    const gs = _cuGapSeries(c, t, yearMode);
+    let cap = '';
+    if (gs.length >= 2) {
+      const n = gs.length, first = gs[0], last = gs[n - 1], mid = gs[Math.floor((n - 1) / 2)];
+      const perDay = (a, b) => { const dd = (Date.parse(b.d) - Date.parse(a.d)) / 86400000; return dd > 0 ? (b.gap - a.gap) / dd : 0; };
+      const early = perDay(first, mid), late = perDay(mid, last);
+      const span = Math.round((Date.parse(last.d) - Date.parse(first.d)) / 86400000) || n - 1;
+      const moved = last.gap - first.gap;   // <0 = gap shrank over the window
+      const movedTxt = Math.abs(moved) < 1 ? 'flat' : `${big(Math.abs(moved))} ${moved < 0 ? 'closer' : 'wider'} vs ${span}d ago`;
+      let trend, cls;
+      if (late > 1e4 && late > Math.abs(early)) { trend = 'gap widening lately'; cls = 'cu-tr-bad'; }
+      else if (late < 0 && early < 0 && Math.abs(late) > Math.abs(early) * 1.15) { trend = 'closing faster lately'; cls = 'cu-tr-good'; }
+      else if (late < 0 && Math.abs(late) < Math.abs(early) * 0.85) { trend = 'closing has slowed'; cls = 'cu-tr-warn'; }
+      else if (late < 0) { trend = 'closing steadily'; cls = 'cu-tr-good'; }
+      else { trend = 'roughly flat lately'; cls = 'cu-tr-warn'; }
+      cap = `<div class="cu-graph-cap"><span class="${cls}">${trend}</span> · gap ${movedTxt}</div>`;
+    }
+    const sub = `<div class="cu-graph-sub">Each line is that group's ${yearMode ? '2026 streams gained' : 'all-time total'} so far — the closer the lines, the more the chase is working.</div>`;
+    return `<div class="cu-graph">${legend}${svg}${cap}${sub}</div>`;
   }
 
   function drawCatchup(asOf) {
