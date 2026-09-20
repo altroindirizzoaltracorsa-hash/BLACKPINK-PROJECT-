@@ -170,6 +170,36 @@ const parseList = arr => (arr || []).map(s => { try { return JSON.parse(s); } ca
 
 export default async function handler(req, res) {
 
+  // Admin: remove implausible-spike points from every group's series — heals a
+  // one-off kworb scope glitch that already got stored (e.g. TWICE's +4.35B "day").
+  // Walks each series keeping only plausible points; a dropped point's successor is
+  // measured against the last KEPT point, so a spike-then-return-to-normal is
+  // cleaned without nuking the real days around it. Idempotent.
+  if (req.query.prune) {
+    if (!authed(req)) return res.status(401).json({ error: 'unauthorized' });
+    const removed = {};
+    for (const g of GROUPS) {
+      const series = parseList((await upstash([['LRANGE', key(g.id), '0', '-1']]))[0]?.result);
+      const clean = [], drop = [];
+      for (const p of series) {
+        const prevGood = clean[clean.length - 1];
+        if (prevGood && p && p.d && p.v != null) {
+          const spanDays = Math.max(1, Math.round((Date.parse(p.d) - Date.parse(prevGood.d)) / DAY_MS));
+          const cap = Math.max(300_000_000, 80_000_000 * spanDays);
+          if (p.v - prevGood.v > cap) { drop.push({ d: p.d, v: p.v }); continue; }
+        }
+        clean.push(p);
+      }
+      if (drop.length) {
+        const cmds = [['DEL', key(g.id)]];
+        if (clean.length) cmds.push(['RPUSH', key(g.id), ...clean.map(p => JSON.stringify(p))]);
+        await upstash(cmds);
+        removed[g.name] = drop;
+      }
+    }
+    return res.status(200).json({ ok: true, removed });
+  }
+
   if (req.query.snapshot) {
     if (!authed(req)) return res.status(401).json({ error: 'unauthorized' });
 
@@ -188,6 +218,19 @@ export default async function handler(req, res) {
         // One point per streaming day. kworb not having advanced is a hold, not
         // a flat day — re-running the job can never double-count or overwrite.
         if (last[0] && last[0].d >= s.day) { held.push(g.name); continue; }
+        // Guard against a kworb scope glitch — kworb occasionally rescopes a
+        // catalog for a day (adding/removing large chunks), which shows up as an
+        // absurd one-shot jump (e.g. TWICE briefly +4.35B). A real gap is bounded
+        // by ~80M/day even across several skipped days; anything past that is not
+        // streams, so refuse it rather than poison the series.
+        if (last[0]) {
+          const spanDays = Math.max(1, Math.round((Date.parse(s.day) - Date.parse(last[0].d)) / DAY_MS));
+          const cap = Math.max(300_000_000, 80_000_000 * spanDays);
+          if (s.total - last[0].v > cap) {
+            errors.push(`${g.name}: implausible +${(s.total - last[0].v).toLocaleString()} over ${spanDays}d vs ${last[0].d} — kworb glitch, skipped`);
+            continue;
+          }
+        }
         const point = JSON.stringify({ d: s.day, v: s.total, dv: s.daily, t: s.tracks, ts: Date.now() });
         await upstash([['RPUSH', key(g.id), point], ['LTRIM', key(g.id), String(-MAX_POINTS), '-1']]);
         written.push(g.name);

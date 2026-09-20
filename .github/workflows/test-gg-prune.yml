@@ -1,0 +1,20 @@
+name: TEST girlgroups prune (throwaway)
+# One-off: calls /api/girlgroups?prune=1 to remove implausible-spike points
+# (heals TWICE's stored +4.35B kworb-glitch day). Prints the JSON of what was
+# removed. Delete after use.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the prune endpoint
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          code=$(curl -sS -L -o /tmp/resp.json -w '%{http_code}' \
+            -H "x-admin-secret: ${ADMIN_KEY}" \
+            "https://www.blinksunited.com/api/girlgroups?prune=1")
+          echo "HTTP $code"
+          echo "Response body:"; cat /tmp/resp.json; echo
