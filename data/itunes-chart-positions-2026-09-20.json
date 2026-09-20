@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-20T04:08:39.603Z",
+  "generatedAt": "2026-09-20T10:56:36.248Z",
   "date": "2026-09-20",
   "regions": {
     "us": {
@@ -8,19 +8,19 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 12,
+          "position": 16,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
         },
         {
-          "position": 113,
+          "position": 141,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 168,
+          "position": 146,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -33,13 +33,13 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 64,
+          "position": 78,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
         },
         {
-          "position": 141,
+          "position": 199,
           "name": "MISMATCH",
           "artists": "LEE JISOO",
           "member": "JISOO"
@@ -52,7 +52,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 6,
+          "position": 17,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
@@ -65,22 +65,22 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 15,
+          "position": 23,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
         },
         {
-          "position": 59,
-          "name": "SaWaDiKa",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 65,
+          "position": 104,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
+        },
+        {
+          "position": 191,
+          "name": "SaWaDiKa",
+          "artists": "LISA",
+          "member": "LISA"
         }
       ]
     },
@@ -96,7 +96,7 @@
           "member": "ROSÉ"
         },
         {
-          "position": 77,
+          "position": 98,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -109,7 +109,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 43,
+          "position": 37,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
@@ -122,7 +122,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 107,
+          "position": 143,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
@@ -135,7 +135,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 18,
+          "position": 27,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
@@ -146,7 +146,14 @@
       "region": "Brazil",
       "cc": "br",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 2,
+          "name": "new trick",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
+        }
+      ]
     },
     "mx": {
       "region": "Mexico",
@@ -154,13 +161,13 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 4,
+          "position": 9,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
         },
         {
-          "position": 37,
+          "position": 178,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
@@ -173,16 +180,28 @@
       "totalEntries": 99,
       "hits": [
         {
-          "position": 7,
+          "position": 15,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 39,
+          "position": 31,
           "name": "CLICK",
           "artists": "JISOO",
           "member": "JISOO"
+        },
+        {
+          "position": 61,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 84,
+          "name": "FALLEN ANGEL",
+          "artists": "JENNIE",
+          "member": "JENNIE"
         }
       ]
     },
@@ -192,59 +211,29 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 33,
-          "name": "SaWaDiKa",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 47,
-          "name": "toxic till the end",
-          "artists": "ROSÉ",
-          "member": "ROSÉ"
-        },
-        {
-          "position": 156,
-          "name": "number one girl",
-          "artists": "ROSÉ",
-          "member": "ROSÉ"
-        }
-      ]
-    },
-    "sg": {
-      "region": "Singapore",
-      "cc": "sg",
-      "totalEntries": 98,
-      "hits": [
-        {
           "position": 6,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 50,
-          "name": "FALLEN ANGEL",
-          "artists": "JENNIE",
-          "member": "JENNIE"
-        },
-        {
-          "position": 60,
-          "name": "JUMP",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK"
-        },
-        {
-          "position": 64,
-          "name": "EYES CLOSED",
-          "artists": "JISOO & ZAYN",
+          "position": 15,
+          "name": "CLICK",
+          "artists": "JISOO",
           "member": "JISOO"
-        },
+        }
+      ]
+    },
+    "sg": {
+      "region": "Singapore",
+      "cc": "sg",
+      "totalEntries": 99,
+      "hits": [
         {
-          "position": 72,
-          "name": "Less than a Lover",
-          "artists": "JENNIE",
-          "member": "JENNIE"
+          "position": 15,
+          "name": "CLICK",
+          "artists": "JISOO",
+          "member": "JISOO"
         }
       ]
     },
@@ -260,52 +249,22 @@
           "member": "ROSÉ"
         },
         {
-          "position": 16,
+          "position": 6,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 25,
+          "position": 16,
           "name": "CLICK",
           "artists": "JISOO",
           "member": "JISOO"
         },
         {
-          "position": 97,
-          "name": "like JENNIE",
+          "position": 75,
+          "name": "ZEN",
           "artists": "JENNIE",
           "member": "JENNIE"
-        },
-        {
-          "position": 110,
-          "name": "Handlebars",
-          "artists": "JENNIE & Dua Lipa",
-          "member": "JENNIE"
-        },
-        {
-          "position": 111,
-          "name": "Dracula (with JENNIE)",
-          "artists": "Tame Impala",
-          "member": "JENNIE"
-        },
-        {
-          "position": 147,
-          "name": "On The Ground",
-          "artists": "ROSÉ",
-          "member": "ROSÉ"
-        },
-        {
-          "position": 164,
-          "name": "SOLO",
-          "artists": "JENNIE",
-          "member": "JENNIE"
-        },
-        {
-          "position": 189,
-          "name": "BOOMBAYAH",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK"
         }
       ]
     },
@@ -321,76 +280,70 @@
           "member": "ROSÉ"
         },
         {
-          "position": 3,
+          "position": 4,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 21,
+          "position": 17,
           "name": "Less than a Lover",
           "artists": "JENNIE",
           "member": "JENNIE"
         },
         {
-          "position": 24,
+          "position": 21,
           "name": "CLICK",
           "artists": "JISOO",
           "member": "JISOO"
         },
         {
-          "position": 49,
+          "position": 30,
           "name": "Moonlit Floor",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 55,
-          "name": "Dream",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 71,
-          "name": "On My Mind",
-          "artists": "Alex Warren & ROSÉ",
-          "member": "ROSÉ"
-        },
-        {
-          "position": 76,
-          "name": "FALLEN ANGEL",
-          "artists": "JENNIE",
-          "member": "JENNIE"
-        },
-        {
-          "position": 93,
+          "position": 49,
           "name": "Handlebars",
           "artists": "JENNIE & Dua Lipa",
           "member": "JENNIE"
         },
         {
-          "position": 135,
-          "name": "One Of The Girls",
-          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
+          "position": 70,
+          "name": "FALLEN ANGEL",
+          "artists": "JENNIE",
           "member": "JENNIE"
         },
         {
-          "position": 156,
-          "name": "Rockstar",
+          "position": 115,
+          "name": "Goals",
+          "artists": "LISA, Anitta, Rema & FIFA Sound",
+          "member": "LISA"
+        },
+        {
+          "position": 161,
+          "name": "Dream",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 191,
-          "name": "How You Like That",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK"
+          "position": 168,
+          "name": "HEAVEN",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 194,
+          "name": "EYES CLOSED",
+          "artists": "JISOO & ZAYN",
+          "member": "JISOO"
         },
         {
           "position": 200,
-          "name": "Born Again (feat. Doja Cat & RAYE)",
-          "artists": "LISA",
-          "member": "LISA"
+          "name": "dance all night",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
         }
       ]
     },
@@ -400,34 +353,10 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 5,
+          "position": 4,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
-        },
-        {
-          "position": 32,
-          "name": "FALLEN ANGEL",
-          "artists": "JENNIE",
-          "member": "JENNIE"
-        },
-        {
-          "position": 109,
-          "name": "Less than a Lover",
-          "artists": "JENNIE",
-          "member": "JENNIE"
-        },
-        {
-          "position": 116,
-          "name": "toxic till the end",
-          "artists": "ROSÉ",
-          "member": "ROSÉ"
-        },
-        {
-          "position": 137,
-          "name": "JUMP",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK"
         }
       ]
     },
@@ -437,19 +366,25 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 6,
+          "position": 3,
+          "name": "new trick",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 14,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 17,
+          "position": 142,
           "name": "CLICK",
           "artists": "JISOO",
           "member": "JISOO"
         },
         {
-          "position": 25,
+          "position": 150,
           "name": "FALLEN ANGEL",
           "artists": "JENNIE",
           "member": "JENNIE"
@@ -462,46 +397,28 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 2,
+          "position": 4,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
         },
         {
-          "position": 21,
+          "position": 26,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 65,
-          "name": "How You Like That",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK"
-        },
-        {
-          "position": 85,
-          "name": "Gone",
-          "artists": "ROSÉ",
-          "member": "ROSÉ"
-        },
-        {
-          "position": 106,
-          "name": "drinks or coffee",
-          "artists": "ROSÉ",
-          "member": "ROSÉ"
-        },
-        {
-          "position": 133,
+          "position": 38,
           "name": "Less than a Lover",
           "artists": "JENNIE",
           "member": "JENNIE"
         },
         {
-          "position": 137,
-          "name": "On The Ground",
-          "artists": "ROSÉ",
-          "member": "ROSÉ"
+          "position": 89,
+          "name": "Moonlit Floor",
+          "artists": "LISA",
+          "member": "LISA"
         }
       ]
     },
@@ -515,12 +432,6 @@
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
-        },
-        {
-          "position": 91,
-          "name": "APT.",
-          "artists": "ROSÉ & Bruno Mars",
-          "member": "ROSÉ"
         }
       ]
     },
@@ -528,26 +439,7 @@
       "region": "New Zealand",
       "cc": "nz",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 12,
-          "name": "new trick",
-          "artists": "ROSÉ",
-          "member": "ROSÉ"
-        },
-        {
-          "position": 87,
-          "name": "APT.",
-          "artists": "ROSÉ & Bruno Mars",
-          "member": "ROSÉ"
-        },
-        {
-          "position": 117,
-          "name": "SaWaDiKa",
-          "artists": "LISA",
-          "member": "LISA"
-        }
-      ]
+      "hits": []
     },
     "nl": {
       "region": "Netherlands",
@@ -555,7 +447,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 39,
+          "position": 48,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
@@ -568,7 +460,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 105,
+          "position": 135,
           "name": "CLICK",
           "artists": "JISOO",
           "member": "JISOO"
@@ -587,7 +479,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 11,
+          "position": 20,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
@@ -606,7 +498,7 @@
           "member": "ROSÉ"
         },
         {
-          "position": 26,
+          "position": 35,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
@@ -619,7 +511,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 175,
+          "position": 6,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
@@ -632,16 +524,16 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 5,
+          "position": 4,
+          "name": "new trick",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 135,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
-        },
-        {
-          "position": 105,
-          "name": "ExtraL",
-          "artists": "JENNIE & Doechii",
-          "member": "JENNIE"
         }
       ]
     },
@@ -651,7 +543,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 2,
+          "position": 3,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
@@ -664,7 +556,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 3,
+          "position": 139,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
@@ -675,7 +567,14 @@
       "region": "Saudi Arabia",
       "cc": "sa",
       "totalEntries": 99,
-      "hits": []
+      "hits": [
+        {
+          "position": 4,
+          "name": "new trick",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
+        }
+      ]
     },
     "za": {
       "region": "South Africa",
@@ -689,22 +588,10 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 37,
+          "position": 39,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
-        },
-        {
-          "position": 170,
-          "name": "CLICK",
-          "artists": "JISOO",
-          "member": "JISOO"
-        },
-        {
-          "position": 189,
-          "name": "SaWaDiKa",
-          "artists": "LISA",
-          "member": "LISA"
         }
       ]
     },
@@ -720,16 +607,10 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 26,
+          "position": 33,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
-        },
-        {
-          "position": 200,
-          "name": "APT.",
-          "artists": "ROSÉ & Bruno Mars",
-          "member": "ROSÉ"
         }
       ]
     },
@@ -757,7 +638,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 51,
+          "position": 103,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
@@ -766,7 +647,7 @@
     }
   },
   "summary": {
-    "totalHits": 84,
+    "totalHits": 64,
     "regionsChecked": 38
   }
 }
