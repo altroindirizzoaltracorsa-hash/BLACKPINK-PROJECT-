@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-20T16:32:25.190Z",
+  "generatedAt": "2026-09-20T19:06:09.623Z",
   "date": "2026-09-20",
   "source": "https://xn--o39an51b2re.com",
   "charts": [
@@ -21,18 +21,9 @@
       "kr": "실시간 차트",
       "label": "Melon · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/melon/realtime",
-      "available": true,
-      "totalRows": 100,
-      "entries": [
-        {
-          "rank": 92,
-          "previous": 76,
-          "song": "toxic till the end",
-          "artists": "로제 (ROSÉ)",
-          "member": "ROSÉ",
-          "link": "https://www.melon.com/song/detail.htm?songId=38300904"
-        }
-      ]
+      "available": false,
+      "totalRows": 0,
+      "entries": []
     },
     {
       "key": "melon-realtime-5-min",
@@ -873,58 +864,9 @@
       "kr": "실시간 차트",
       "label": "Genie · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/genie/realtime",
-      "available": true,
-      "totalRows": 250,
-      "entries": [
-        {
-          "rank": 75,
-          "previous": 70,
-          "song": "뛰어(JUMP)",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=110931419"
-        },
-        {
-          "rank": 86,
-          "previous": 91,
-          "song": "toxic till the end",
-          "artists": "로제 (ROSÉ)",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108575614"
-        },
-        {
-          "rank": 106,
-          "previous": 103,
-          "song": "like JENNIE",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=109342665"
-        },
-        {
-          "rank": 125,
-          "previous": 122,
-          "song": "APT.",
-          "artists": "로제 (ROSÉ), 로제 (ROSÉ) & Bruno Mars, Bruno Mars",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108107291"
-        },
-        {
-          "rank": 152,
-          "previous": 131,
-          "song": "Less than a Lover",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=116078119"
-        },
-        {
-          "rank": 221,
-          "previous": 178,
-          "song": "FALLEN ANGEL",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=116605149"
-        }
-      ]
+      "available": false,
+      "totalRows": 0,
+      "entries": []
     },
     {
       "key": "genie-daily",
@@ -1157,8 +1099,8 @@
       "totalRows": 100,
       "entries": [
         {
-          "rank": 62,
-          "previous": 62,
+          "rank": 63,
+          "previous": 63,
           "song": "APT.",
           "artists": "로제 (ROSÉ), Bruno Mars",
           "member": "ROSÉ",
@@ -1166,23 +1108,23 @@
         },
         {
           "rank": 75,
-          "previous": 73,
+          "previous": 75,
           "song": "뛰어(JUMP)",
           "artists": "BLACKPINK",
           "member": "BLACKPINK",
           "link": "https://www.music-flo.com/detail/track/547505427/details"
         },
         {
-          "rank": 78,
-          "previous": 78,
+          "rank": 76,
+          "previous": 76,
           "song": "toxic till the end",
           "artists": "로제 (ROSÉ)",
           "member": "ROSÉ",
           "link": "https://www.music-flo.com/detail/track/522311944/details"
         },
         {
-          "rank": 87,
-          "previous": 87,
+          "rank": 88,
+          "previous": 88,
           "song": "like JENNIE",
           "artists": "제니 (JENNIE)",
           "member": "JENNIE",
@@ -1190,7 +1132,7 @@
         },
         {
           "rank": 96,
-          "previous": 96,
+          "previous": 95,
           "song": "Less than a Lover",
           "artists": "제니 (JENNIE)",
           "member": "JENNIE",
@@ -1449,7 +1391,7 @@
   ],
   "summary": {
     "chartsChecked": 26,
-    "chartsAvailable": 25,
-    "totalEntries": 142
+    "chartsAvailable": 23,
+    "totalEntries": 135
   }
 }
