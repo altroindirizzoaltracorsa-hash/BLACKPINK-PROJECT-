@@ -5148,6 +5148,7 @@ async function loadCatalogStreams() {
       date: fmtDate(h.date).slice(0, 5),
       total: h.total_streams,
       daily: h.daily_delta,
+      est: !!h.estimated,
     }));
     _catalogCardData = { total, history: hist };
 
@@ -5160,7 +5161,7 @@ async function loadCatalogStreams() {
         const diff = entry.total - hist[i - 1].total;
         if (diff > 0) streams = diff;
       }
-      if (streams !== null && streams > 0) dailyRows.push({ date: entry.date, streams });
+      if (streams !== null && streams > 0) dailyRows.push({ date: entry.date, streams, est: entry.est });
     }
 
     // Latest daily in the subtitle
@@ -5169,7 +5170,7 @@ async function loadCatalogStreams() {
       _catalogCardData.dailyStreams = latest.streams;
       _catalogCardData.dailyDate   = latest.date;
       _catalogCardData.dailyRows   = dailyRows;
-      if (dailyEl) dailyEl.innerHTML = `<strong>+${latest.streams.toLocaleString('en-US')}</strong> streams on ${latest.date}`;
+      if (dailyEl) dailyEl.innerHTML = `<strong>+${latest.streams.toLocaleString('en-US')}</strong> streams on ${latest.date}${latest.est ? ' <span title="Spotify reported this day together with the next after a reporting freeze; shown as an even-split estimate" style="color:rgba(255,180,80,0.9);font-size:0.82em;">≈ est</span>' : ''}`;
     }
 
     // Recent daily breakdown list (last 7 days, newest first)
@@ -5189,7 +5190,7 @@ async function loadCatalogStreams() {
         <div class="cat-daily-row">
           <span class="cat-daily-date">${row.date}</span>
           <div class="cat-daily-bar-wrap"><div class="cat-daily-bar" style="width:${Math.min(100, Math.round(row.streams / max * 100))}%"></div></div>
-          <span class="cat-daily-num">+${row.streams.toLocaleString('en-US')}</span>
+          <span class="cat-daily-num">+${row.streams.toLocaleString('en-US')}${row.est ? ' <span title="Spotify reported Sep 17–18 together after a reporting freeze; even-split estimate" style="color:rgba(255,180,80,0.95);">≈</span>' : ''}</span>
         </div>`).join('');
       histEl.style.display = '';
     }
@@ -5598,7 +5599,7 @@ async function loadArtistStreamsList() {
         <div class="as-list-figures">
           <div class="as-list-total">${fmtNum(a.total_streams)}</div>
           ${a.year_gained != null ? `<div class="as-list-year">+${fmtNum(a.year_gained)} <small>in 2026</small></div>` : ''}
-          <div class="as-list-delta"><span class="as-list-delta-lbl">${a.date ? fmtDayMon(a.date) : 'latest'}</span> ${fmtDelta(a.daily_delta)}</div>
+          <div class="as-list-delta"><span class="as-list-delta-lbl">${a.date ? fmtDayMon(a.date) : 'latest'}</span> ${fmtDelta(a.daily_delta)}${a.estimated ? ' <span title="Spotify reported this day together with the next after a reporting freeze; shown as an even split estimate" style="color:rgba(255,180,80,0.9);font-family:var(--mono);font-size:0.72em;">≈ est</span>' : ''}</div>
         </div>
       </div>
     `).join('') || '<div class="as-list-empty">No artists tracked yet</div>';
@@ -5699,11 +5700,12 @@ function renderArtistStreamsPage() {
   document.getElementById('as-daily-avg').textContent = fmtNum(dailyAvg);
 
   const _adj = '<span style="color:rgba(255,180,80,0.9);font-family:var(--mono);font-size:0.82em;letter-spacing:0.03em;" title="Spotify merged/split song versions this day and re-counted them — the daily change is an artifact of that, not real streams, so it is left out of the average">⚠ recount</span>';
+  const _est = '<span style="color:rgba(255,180,80,0.9);font-family:var(--mono);font-size:0.78em;letter-spacing:0.03em;" title="Spotify reported this day together with the next after a reporting freeze; the 2-day total is real, this day is shown as an even-split estimate">≈ est</span>';
   historyBody.innerHTML = shown.map((h, i) => `
     <tr>
       <td>${fmtDate(h.date)}</td>
       <td class="right">${fmtNum(h.total_streams)}</td>
-      <td class="right">${_bad(i) ? _adj : fmtDelta(h.daily_delta)}</td>
+      <td class="right">${_bad(i) ? _adj : (fmtDelta(h.daily_delta) + (h.estimated ? ' ' + _est : ''))}</td>
       <td class="right">${(_bad(i) || _bad(i + 1)) ? '—' : fmtTrend(h.daily_delta, hist[i + 1]?.daily_delta)}</td>
     </tr>
   `).join('') || '<tr><td colspan="4">No history yet</td></tr>';
