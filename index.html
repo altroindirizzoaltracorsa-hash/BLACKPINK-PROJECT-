@@ -2794,6 +2794,7 @@
                 <a class="nt-pl-link" href="https://open.spotify.com/playlist/2qR2JYmYEfqioZtEPOMuIM" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>NEW TRICK × BP</a>
               </div>
             </div>
+            <div class="cd-goals-block" id="nt-goals-list" style="display:none;"></div>
             <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
               <summary>Release times worldwide</summary>
               <div class="cd-times-body" data-times-for="2026-09-17T23:00:00Z"></div>
@@ -13787,11 +13788,10 @@ const CAMPAIGN_GOALS = [
       { id: 'sw_ch_five', label: 'At least 5 official charts entries' },
     ]},
   ] },
-  // NEW TRICK — ROSÉ. mount:null on purpose → shows in the ADMIN goals editor
-  // only; renderReleaseGoalsList() no-ops without a mount, so nothing renders on
-  // the public card yet. To reveal publicly later: add a goals-list element to
-  // the new trick card and set mount to its id. Goals per Rosé Global Union.
-  { slug: 'new-trick',    name: 'new trick — ROSÉ',           releaseAt: '2026-09-17T23:00:00Z', mount: null, adminOnly: true, categories: [
+  // NEW TRICK — ROSÉ. Now public (single is out): renders reached wins on the card's
+  // #nt-goals-list, win-only like every other campaign (un-reached targets never
+  // surface). Goals per Rosé Global Union.
+  { slug: 'new-trick',    name: 'new trick — ROSÉ',           releaseAt: '2026-09-17T23:00:00Z', mount: 'nt-goals-list', categories: [
     { category: '🟢 Spotify (filtered)', items: [
       { id: 'nt_sp_24h', label: '24 Hours: 2M streams' },
       { id: 'nt_sp_w1',  label: '1st Week: 10M streams' },
