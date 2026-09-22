@@ -1090,6 +1090,8 @@
   .lb-delta-dn { font-size: 0.62rem; color: rgba(245,240,240,0.3); letter-spacing: 0.08em; }
   .lb-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
   .lb-loading { padding: 3rem; text-align: center; color: var(--muted); font-size: 0.68rem; letter-spacing: 0.16em; }
+  .lb-nbr { margin: 0 0 0.6rem; padding: 0.6rem 0.8rem; border-radius: 8px; background: rgba(255,0,102,0.09); border: 1px solid rgba(255,0,102,0.28); color: var(--text, #f5f0f0); font-size: 0.72rem; line-height: 1.5; letter-spacing: 0.01em; }
+  .lb-nbr b { color: var(--pink); font-weight: 700; }
   #lb-table-wrap { }
 
   /* ── ARTIST STREAMS PAGE ── */
@@ -11445,7 +11447,32 @@ function renderLeaderboard() {
       const avg = contributors ? Math.round(communityTotal / contributors) : 0;
       totalEl.innerHTML = `👥 ${entries.length} Blinks · <strong>${contributors}</strong> active · <strong>${communityTotal.toLocaleString()}</strong> ${songLabel} ${periodLabel} combined · avg <strong>${avg.toLocaleString()}</strong>/contributor`;
     }
-    wrap.innerHTML = `
+    // Neighbour gaps — surface the user's rank + how far to the Blink above and how
+    // close the Blink below, so the board reads as progress you can chase, not a wall
+    // of numbers. Uses the same me-detection as the rows (own name or a linked account).
+    let meStrip = '';
+    const myIdx = myUsername ? entries.findIndex(e => {
+      const le = allLbUsersMap[e.username.toLowerCase()];
+      return e.username.toLowerCase() === myUsername.toLowerCase()
+        || (le?.linkedAccounts || []).some(a => (a.username || '').toLowerCase() === myUsername.toLowerCase());
+    }) : -1;
+    if (myIdx >= 0) {
+      const meE = entries[myIdx];
+      const above = myIdx > 0 ? entries[myIdx - 1] : null;
+      const below = myIdx < entries.length - 1 ? entries[myIdx + 1] : null;
+      const nm = x => escapeHtml(x.displayName || x.username);
+      const aboveTxt = !above
+        ? `<b>👑 you're #1</b> — hold the top`
+        : (above.score - meE.score === 0
+            ? `<b>tied</b> with <b>#${myIdx}</b> ${nm(above)} — pull ahead`
+            : `<b>${(above.score - meE.score).toLocaleString()}</b> to pass <b>#${myIdx}</b> ${nm(above)}`);
+      const belowTxt = !below ? ''
+        : (meE.score - below.score === 0
+            ? ` · <b>#${myIdx + 2}</b> ${nm(below)} is tied with you`
+            : ` · <b>#${myIdx + 2}</b> ${nm(below)} is <b>${(meE.score - below.score).toLocaleString()}</b> behind`);
+      meStrip = `<div class="lb-nbr">🏆 You're <b>#${myIdx + 1}</b> of ${entries.length} · ${aboveTxt}${belowTxt}</div>`;
+    }
+    wrap.innerHTML = meStrip + `
       <table class="lb-table">
         <thead><tr>
           <th style="width:44px">#</th>
