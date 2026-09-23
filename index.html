@@ -1094,6 +1094,34 @@
   .lb-nbr b { color: var(--pink); font-weight: 700; }
   #lb-table-wrap { }
 
+  /* ── BLINK LEAGUES (tiered leaderboard) — feature-flagged, see leaguesActive() ── */
+  .lg-bar { display:flex; align-items:center; justify-content:space-between; gap:0.6rem; flex-wrap:wrap; margin:0 0 0.8rem; font-family:var(--mono); font-size:0.56rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
+  .lg-bar .lg-where { color:var(--white); }
+  .lg-bar a { color:var(--pink); cursor:pointer; text-decoration:none; border-bottom:1px dotted rgba(255,0,102,0.5); white-space:nowrap; }
+  .lg-career { margin:0 0 0.9rem; padding:0.9rem 1rem; border-radius:10px; background:linear-gradient(90deg, rgba(255,0,102,0.11), rgba(255,0,102,0.02)); border:1px solid rgba(255,0,102,0.24); }
+  .lg-career .cur { display:flex; align-items:center; gap:0.55rem; font-family:var(--display); font-size:1.05rem; letter-spacing:0.05em; }
+  .lg-career .cur .ico { font-size:1.35rem; line-height:1; }
+  .lg-career .prog { margin-top:0.6rem; height:8px; border-radius:5px; background:rgba(255,255,255,0.08); overflow:hidden; }
+  .lg-career .prog i { display:block; height:100%; background:linear-gradient(90deg,#ff8fb4,#ff2e77); }
+  .lg-career .nxt { margin-top:0.5rem; font-family:var(--mono); font-size:0.56rem; letter-spacing:0.05em; color:var(--muted); }
+  .lg-career .nxt b { color:var(--pink); }
+  .lg-band { display:flex; align-items:center; gap:0.55rem; margin:1.05rem 0.15rem 0.35rem; font-family:var(--mono); font-size:0.54rem; letter-spacing:0.18em; text-transform:uppercase; }
+  .lg-band::after { content:""; flex:1; height:1px; background:linear-gradient(90deg,currentColor,transparent); opacity:0.35; }
+  .lg-band .n { font-weight:700; }
+  .lg-band .ct { color:var(--muted); letter-spacing:0.1em; }
+  .lg-band .zn { letter-spacing:0.1em; }
+  .lg-band .zn.up { color:#00ff88; } .lg-band .zn.dn { color:#ff5c72; }
+  .lg-table { width:100%; border-collapse:collapse; background:var(--card); }
+  .lg-table td { padding:0.75rem 1rem; border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:middle; }
+  .lg-table tr.lg-row { cursor:pointer; }
+  .lg-table tr.lg-row:hover td { background:var(--card2); }
+  .lg-table tr.lg-row.me td { background:rgba(255,0,102,0.07); }
+  .lg-table tr.lg-row.me .lb-user { color:var(--pink); }
+  .lg-tierdot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:0.55rem; vertical-align:middle; flex:none; }
+  .lg-promoline, .lg-relegline { text-align:center; font-family:var(--mono); font-size:0.5rem; letter-spacing:0.12em; text-transform:uppercase; padding:0.45rem 0; }
+  .lg-promoline { color:#00ff88; } .lg-relegline { color:#ff5c72; }
+  .lg-note { margin-top:0.9rem; font-family:var(--mono); font-size:0.52rem; letter-spacing:0.05em; color:rgba(245,240,240,0.35); text-align:center; line-height:1.5; }
+
   /* ── ARTIST STREAMS PAGE ── */
   .as-page {
     min-height: 100vh;
@@ -11385,6 +11413,12 @@ function getActiveLbUsers() {
 }
 
 function renderLeaderboard() {
+  // Blink Leagues path — feature-flagged. If it ever throws, fall through to the
+  // classic board below so the leaderboard can never go blank on a leagues bug.
+  if (leaguesActive()) {
+    try { return renderLeagues(); }
+    catch (e) { console.error('[leagues] render failed — falling back to classic board', e); }
+  }
   const wrap = document.getElementById('lb-table-wrap');
   const updEl = document.getElementById('lb-last-updated');
   const totalEl = document.getElementById('lb-community-total');
@@ -11503,6 +11537,247 @@ function renderLeaderboard() {
   }
 
   // Update timestamp
+  if (lbHistorySnapshot) {
+    updEl.textContent = `Archived snapshot · ${lbHistorySnapshot.label}`;
+  } else if (lbData.lastUpdated) {
+    const d = new Date(lbData.lastUpdated);
+    updEl.textContent = `Last updated: ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} · refreshes every 60 min`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  BLINK LEAGUES  —  tiered competitive leaderboard (Phase 1: frontend-only)
+// ══════════════════════════════════════════════════════════════════════════
+// Off by default — visitors keep the classic board until LEAGUES_ENABLED flips.
+//   • ?leagues=1  → preview the leagues view (also remembered in localStorage)
+//   • ?classic=1  → force the old board back
+//   • flip LEAGUES_ENABLED to true to make leagues the default for everyone
+// The classic renderLeaderboard() above is left fully intact; renderLeaderboard()
+// just branches to renderLeagues() when leaguesActive() is true. Nothing here
+// touches the backend — tiers are computed live from the same lbData.scores.
+const LEAGUES_ENABLED = false;
+
+// bottom → top. careerMin = absolute overall_all threshold used ONLY for the
+// All-Time career tier (mirrors BADGE_TIERS, already calibrated to real data —
+// tune freely). Daily/Weekly boards use relative percentile bands instead.
+const LEAGUE_TIERS = [
+  { id:'rookie',   name:'Rookie',   icon:'🐣', color:'#c98fb0', careerMin:0     },
+  { id:'quartz',   name:'Quartz',   icon:'🤍', color:'#e6d7df', careerMin:10    },
+  { id:'emerald',  name:'Emerald',  icon:'💚', color:'#39d98a', careerMin:50    },
+  { id:'sapphire', name:'Sapphire', icon:'💙', color:'#4aa3ff', careerMin:100   },
+  { id:'diamond',  name:'Diamond',  icon:'💎', color:'#9be7ff', careerMin:500   },
+  { id:'crown',    name:'Crown',    icon:'👑', color:'#f5c542', careerMin:10000 },
+];
+// Relative band sizes (fractions of the scored field), Crown → Quartz.
+// Rookie = whatever remains. Each guaranteed ≥1 slot so top tiers always exist.
+const LEAGUE_BAND_PCT = [0.05, 0.10, 0.15, 0.20, 0.25];
+
+function leaguesActive() {
+  try {
+    const qs = new URLSearchParams(location.search);
+    if (qs.has('classic')) { try { localStorage.setItem('bu_leagues_pref','0'); } catch(_){} return false; }
+    if (qs.has('leagues')) { try { localStorage.setItem('bu_leagues_pref','1'); } catch(_){} return true; }
+    const pref = localStorage.getItem('bu_leagues_pref');
+    if (pref === '1') return true;
+    if (pref === '0') return false;
+  } catch(_) {}
+  return LEAGUES_ENABLED;
+}
+function setLeaguesMode(on) {
+  try { localStorage.setItem('bu_leagues_pref', on ? '1' : '0'); } catch(_){}
+  renderLeaderboard();
+}
+
+// Absolute career tier index from a user's all-time campaign total.
+function careerTierIdx(overallAll) {
+  let idx = 0;
+  for (let i = 0; i < LEAGUE_TIERS.length; i++) {
+    if ((overallAll || 0) >= LEAGUE_TIERS[i].careerMin) idx = i;
+  }
+  return idx;
+}
+// Relative tier index for a 0-based rank among `total` scored rows (daily/weekly).
+function relativeTierIdx(rankIdx, total) {
+  if (total <= 0) return 0;
+  let acc = 0;
+  const top = LEAGUE_TIERS.length - 1; // 5 = Crown
+  for (let b = 0; b < LEAGUE_BAND_PCT.length; b++) {
+    acc += Math.max(1, Math.round(total * LEAGUE_BAND_PCT[b]));
+    if (rankIdx < acc) return top - b;
+  }
+  return 0; // Rookie
+}
+
+function renderLeagues() {
+  const wrap = document.getElementById('lb-table-wrap');
+  const updEl = document.getElementById('lb-last-updated');
+  const totalEl = document.getElementById('lb-community-total');
+  if (!lbData && !lbHistorySnapshot) {
+    wrap.innerHTML = '<div class="lb-loading">Loading…</div>';
+    if (totalEl) totalEl.textContent = '';
+    return;
+  }
+
+  const key = getScoreKey();
+  const myUsername = getSavedUsername();
+  const isCareer   = (lbPeriod === 'overall');   // All-Time = absolute career tiers
+  const isOverall  = (lbSong === 'all');         // the league lives on Overall; songs are filtered views
+
+  // Same de-dup + entry build as the classic board (kept self-contained so the
+  // classic path stays byte-for-byte untouched).
+  const allLbUsersMap = getActiveLbUsers();
+  const allLbUsers = Object.entries(allLbUsersMap);
+  const secondaryKeys = new Set();
+  for (const [k, d] of allLbUsers) {
+    if (Array.isArray(d.linkedAccounts)) for (const a of d.linkedAccounts) {
+      const ak = (a.username || '').toLowerCase();
+      if (ak && ak !== k) secondaryKeys.add(ak);
+    }
+  }
+  const entries = allLbUsers
+    .filter(([username]) => !secondaryKeys.has(username.toLowerCase()))
+    .map(([username, data]) => {
+      let score = data.scores?.[key] || 0;
+      if (!lbHistorySnapshot && lbPeriod === 'daily') {
+        const todayLabel = italyDateLabel();
+        if (data.scores?.daily_date && data.scores.daily_date !== todayLabel) score = 0;
+      }
+      return { username, displayName: data.displayName || username, avatar: data.avatar,
+               score, overallAll: data.scores?.overall_all || 0 };
+    })
+    .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
+
+  const songLabel = lbSong === 'all' ? 'All Campaign Tracks' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : lbSong === 'sawadika' ? 'SAWADIKA' : lbSong === 'click' ? 'CLICK' : lbSong === 'newtrick' ? 'NEW TRICK' : 'LESS THAN A LOVER';
+  const periodWord = lbPeriod === 'daily' ? 'Today' : lbPeriod === 'weekly' ? 'This Week' : 'All Time';
+  const periodLabel = lbPeriod === 'daily' ? 'streams today' : lbPeriod === 'weekly' ? 'streams this week' : 'total streams';
+
+  if (totalEl) {
+    const communityTotal = entries.reduce((s, e) => s + e.score, 0);
+    const contributors = entries.filter(e => e.score > 0).length;
+    const avg = contributors ? Math.round(communityTotal / contributors) : 0;
+    totalEl.innerHTML = `👥 ${entries.length} Blinks · <strong>${contributors}</strong> active · <strong>${communityTotal.toLocaleString()}</strong> ${songLabel} ${periodLabel} combined · avg <strong>${avg.toLocaleString()}</strong>/contributor`;
+  }
+
+  // Top bar with a one-click escape back to the classic board.
+  const where = `${isOverall ? 'Overall' : songLabel} · ${periodWord}`;
+  let html = `<div class="lg-bar"><span>🏆 Blink Leagues · <span class="lg-where">${escapeHtml(where)}</span></span><a onclick="setLeaguesMode(false)">classic view →</a></div>`;
+
+  if (entries.length === 0) {
+    wrap.innerHTML = html + '<div class="lb-empty">No scores yet — log into My Badges to join the leaderboard! 💗</div>';
+    if (lbHistorySnapshot) updEl.textContent = `Archived snapshot · ${lbHistorySnapshot.label}`;
+    else if (lbData.lastUpdated) { const d = new Date(lbData.lastUpdated); updEl.textContent = `Last updated: ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} · refreshes every 60 min`; }
+    return;
+  }
+
+  // Assign each row rank + tier index.
+  const scoredCount = entries.filter(e => e.score > 0).length;
+  // Absolute career tiers ONLY on Overall · All-Time (where the row score IS the
+  // all-time total, so tiers stay monotonic down the sorted list). Every song tab
+  // and every daily/weekly board uses relative percentile tiers by rank.
+  const useCareer = isCareer && isOverall;
+  entries.forEach((e, i) => {
+    e.rank = i + 1;
+    e.tier = useCareer ? careerTierIdx(e.overallAll)
+                       : (e.score > 0 ? relativeTierIdx(i, scoredCount) : 0);
+  });
+
+  // me detection (own name or any linked account) — same as classic.
+  const myIdx = myUsername ? entries.findIndex(e => {
+    const le = allLbUsersMap[e.username.toLowerCase()];
+    return e.username.toLowerCase() === myUsername.toLowerCase()
+      || (le?.linkedAccounts || []).some(a => (a.username || '').toLowerCase() === myUsername.toLowerCase());
+  }) : -1;
+
+  // ── Career header (All-Time · Overall, logged in) ──
+  if (isCareer && isOverall && myIdx >= 0) {
+    const me = entries[myIdx];
+    const t  = LEAGUE_TIERS[me.tier];
+    const next = LEAGUE_TIERS[me.tier + 1];
+    let progHtml = '';
+    if (next) {
+      const span = next.careerMin - t.careerMin;
+      const into = Math.max(0, me.overallAll - t.careerMin);
+      const pct  = Math.max(3, Math.min(100, Math.round(into / span * 100)));
+      const need = Math.max(0, next.careerMin - me.overallAll);
+      progHtml = `<div class="prog"><i style="width:${pct}%"></i></div>
+        <div class="nxt">${next.icon} <b>${need.toLocaleString()}</b> more to <b style="color:${next.color}">${next.name}</b> · career only climbs ⬆</div>`;
+    } else {
+      progHtml = `<div class="nxt">👑 top tier — you've maxed the ladder</div>`;
+    }
+    html += `<div class="lg-career">
+      <div class="cur"><span class="ico">${t.icon}</span><span>Your career rank · <span style="color:${t.color}">${t.name}</span></span></div>
+      ${progHtml}
+    </div>`;
+  }
+
+  // ── Neighbour-gap strip (reuses .lb-nbr styling) ──
+  if (myIdx >= 0) {
+    const meE = entries[myIdx];
+    const above = myIdx > 0 ? entries[myIdx - 1] : null;
+    const below = myIdx < entries.length - 1 ? entries[myIdx + 1] : null;
+    const nm = x => escapeHtml(x.displayName || x.username);
+    const aboveTxt = !above
+      ? `<b>👑 you're #1</b> — hold the top`
+      : (above.score - meE.score === 0
+          ? `<b>tied</b> with <b>#${myIdx}</b> ${nm(above)} — pull ahead`
+          : `<b>${(above.score - meE.score).toLocaleString()}</b> to pass <b>#${myIdx}</b> ${nm(above)}`);
+    const belowTxt = !below ? ''
+      : (meE.score - below.score === 0
+          ? ` · <b>#${myIdx + 2}</b> ${nm(below)} is tied with you`
+          : ` · <b>#${myIdx + 2}</b> ${nm(below)} is <b>${(meE.score - below.score).toLocaleString()}</b> behind`);
+    // Live "climb to next tier" — the promotion feel without persistence: the score
+    // of the lowest-ranked blink one tier above you is the line to cross.
+    let climbTxt = '';
+    if (!isCareer && meE.tier < LEAGUE_TIERS.length - 1) {
+      const nextTier = LEAGUE_TIERS[meE.tier + 1];
+      const lastAbove = [...entries].reverse().find(e => e.tier === meE.tier + 1);
+      if (lastAbove && lastAbove.score > meE.score) {
+        climbTxt = `<br>🔼 <b>${(lastAbove.score - meE.score).toLocaleString()}</b> to climb into <b style="color:${nextTier.color}">${nextTier.icon} ${nextTier.name}</b>`;
+      }
+    }
+    html += `<div class="lb-nbr">🏆 You're <b>#${myIdx + 1}</b> of ${entries.length} · in <b style="color:${LEAGUE_TIERS[meE.tier].color}">${LEAGUE_TIERS[meE.tier].icon} ${LEAGUE_TIERS[meE.tier].name}</b> · ${aboveTxt}${belowTxt}${climbTxt}</div>`;
+  }
+
+  // ── Tier-banded table ──
+  const tierCounts = {};
+  entries.forEach(e => { tierCounts[e.tier] = (tierCounts[e.tier] || 0) + 1; });
+  html += '<table class="lg-table"><tbody>';
+  let curTier = null;
+  entries.forEach((e, i) => {
+    if (e.tier !== curTier) {
+      curTier = e.tier;
+      const t = LEAGUE_TIERS[curTier];
+      const cnt = tierCounts[curTier];
+      html += `<tr><td colspan="3" style="border:0;padding:0">
+        <div class="lg-band" style="color:${t.color}"><span>${t.icon}</span><span class="n">${t.name}</span><span class="ct">${cnt} blink${cnt !== 1 ? 's' : ''}</span></div>
+      </td></tr>`;
+    }
+    const t = LEAGUE_TIERS[e.tier];
+    const rankEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+    const lbEntry = allLbUsersMap[e.username.toLowerCase()];
+    const isMe = myUsername && (
+      e.username.toLowerCase() === myUsername.toLowerCase() ||
+      (lbEntry?.linkedAccounts || []).some(a => (a.username || '').toLowerCase() === myUsername.toLowerCase())
+    );
+    const avatarHtml = e.avatar
+      ? `<img class="lb-avatar" src="${e.avatar}" alt="${escapeHtml(e.username)}">`
+      : `<span class="lb-avatar-placeholder">${e.username[0].toUpperCase()}</span>`;
+    html += `<tr class="lg-row ${isMe ? 'me' : ''}" onclick="showLbUserProfile('${e.username.replace(/'/g,"\\'")}')">
+      <td style="width:44px"><span class="lb-rank ${i===0?'top1':i===1?'top2':i===2?'top3':''}">${rankEmoji}</span></td>
+      <td><span class="lg-tierdot" style="background:${t.color}" title="${t.name}"></span>${avatarHtml}<span class="lb-user">${escapeHtml(e.displayName || e.username)}</span>${ogUsers.has(e.username.toLowerCase()) ? ' <span class="og-inline-badge" data-tip="Here from the start · OG Beta Tester">⭐ OG</span>' : ''}${isMe ? ' <span style="font-size:0.45rem;color:var(--pink);letter-spacing:0.1em;">YOU</span>' : ''}${leaderStreakBadge(i, e.username)}</td>
+      <td class="lb-score">${e.score > 0 ? e.score.toLocaleString() : '—'}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+
+  html += `<div class="lg-note">${isCareer
+    ? 'All-Time career tiers are earned by total streams and never drop — climb by streaming. 🐣→👑'
+    : isOverall
+      ? 'Tiers are your live standing this ' + (lbPeriod === 'daily' ? 'day' : 'week') + '. Weekly divisions with real promotion & relegation are coming next. 🐣→👑'
+      : escapeHtml(songLabel) + ' is a filtered view — same tiers + the chase, not its own league.'}</div>`;
+
+  wrap.innerHTML = html;
+
   if (lbHistorySnapshot) {
     updEl.textContent = `Archived snapshot · ${lbHistorySnapshot.label}`;
   } else if (lbData.lastUpdated) {
