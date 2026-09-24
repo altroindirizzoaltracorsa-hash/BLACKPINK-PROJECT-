@@ -39,6 +39,10 @@ function escapeHtml(x) {
 document.getElementById('link').onclick = function () {
   chrome.tabs.create({ url: 'https://blinksunited.com/vote-link.html' });
 };
+// Clears this device's local tally only. Once an account is linked the on-page
+// panel shows the SERVER total (merged across devices), so it will keep showing
+// the real figure after this — hence the label says "on this device" rather than
+// promising a reset that cannot happen from here.
 document.getElementById('reset').onclick = function () {
   chrome.storage.local.set({ buCount: 0, buPending: 0, btCount: 0, btPendingN: 0 }, render);
 };

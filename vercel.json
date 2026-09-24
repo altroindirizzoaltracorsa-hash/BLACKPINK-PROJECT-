@@ -53,6 +53,13 @@
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     },
     {
+      "source": "/(.*)\\.zip",
+      "headers": [
+        { "key": "Content-Type", "value": "application/zip" },
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
       "source": "/blinks-united-vote-counter.apk",
       "headers": [
         { "key": "Content-Type", "value": "application/vnd.android.package-archive" },

@@ -17,8 +17,20 @@
     : { sub: 'VMA Vote Counter', unit: 'votes · synced to /voting',
         countKey: 'buCount', logKey: 'buLog' };
 
-  const HEART = chrome.runtime.getURL('assets/heart.png');
-  const STICK = chrome.runtime.getURL('assets/lightstick.png');
+  // Extension-context guard: if the extension is reloaded/uninstalled while this
+  // tab is open, every chrome.runtime/storage call throws "Extension context
+  // invalidated." Check first and bail out of any dead context silently.
+  function validCtx() {
+    try { return !!(chrome && chrome.runtime && chrome.runtime.id); } catch (_) { return false; }
+  }
+  function safeCtx(fn) {
+    if (!validCtx()) return undefined;
+    try { return fn(); } catch (_) { return undefined; }
+  }
+  if (!validCtx()) return;
+
+  const HEART = (() => { try { return chrome.runtime.getURL('assets/heart.png'); } catch (_) { return ''; } })();
+  const STICK = (() => { try { return chrome.runtime.getURL('assets/lightstick.png'); } catch (_) { return ''; } })();
 
   const host = document.createElement('div');
   host.id = 'bu-vote-panel-host';
@@ -364,38 +376,43 @@
   }
 
   const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize', 'btCount', 'btLog', 'btDay'];
-  function refresh() { chrome.storage.local.get(KEYS, (s) => { applyLayout(s); render(s); }); }
+  function refresh() { safeCtx(() => chrome.storage.local.get(KEYS, (s) => { applyLayout(s); render(s); })); }
 
   // React to background updates immediately.
-  chrome.storage.onChanged.addListener((changes, area) => {
+  safeCtx(() => chrome.storage.onChanged.addListener((changes, area) => {
+    if (!validCtx()) return;
     if (area !== 'local') return;
     if (Object.keys(changes).some((k) => KEYS.includes(k))) refresh();
     // A vote just landed for this award — pull the merged view too.
     if (changes[CFG.countKey]) pollSync();
-  });
+  }));
   // Keep the relative timestamps fresh.
   setInterval(refresh, 15000);
 
   // ── cross-device sync (opt-in) ──
   function pollSync() {
-    chrome.storage.local.get(['buToken'], (s) => {
-      // Pull the account's server total whenever linked — counts always merge across
-      // devices now, independent of the device-sync toggle.
-      if (!s.buToken) { if (syncView) { syncView = null; refresh(); } return; }
-      try {
-        chrome.runtime.sendMessage({ type: 'bu-sync-pull', award: AWARD }, (resp) => {
-          if (chrome.runtime.lastError) return;
-          if (resp && resp.data) { syncView = resp.data; refresh(); }
-        });
-      } catch (_) {}
+    safeCtx(() => {
+      chrome.storage.local.get(['buToken'], (s) => {
+        // Pull the account's server total whenever linked — counts always merge across
+        // devices now, independent of the device-sync toggle.
+        if (!s.buToken) { if (syncView) { syncView = null; refresh(); } return; }
+        try {
+          chrome.runtime.sendMessage({ type: 'bu-sync-pull', award: AWARD }, (resp) => {
+            if (chrome.runtime.lastError) return;
+            if (resp && resp.data) { syncView = resp.data; refresh(); }
+          });
+        } catch (_) {}
+      });
     });
   }
   elSyncToggle.onclick = () => {
-    chrome.storage.local.get(['buToken', 'buSyncOn'], (s) => {
-      if (!s.buToken) { window.open('https://blinksunited.com/vote-link.html', '_blank'); return; }
-      const next = !s.buSyncOn;
-      // Keep the merged server counts regardless; just re-pull so the accounts list updates.
-      chrome.storage.local.set({ buSyncOn: next }, () => { pollSync(); refresh(); });
+    safeCtx(() => {
+      chrome.storage.local.get(['buToken', 'buSyncOn'], (s) => {
+        if (!s.buToken) { window.open('https://blinksunited.com/vote-link.html', '_blank'); return; }
+        const next = !s.buSyncOn;
+        // Keep the merged server counts regardless; just re-pull so the accounts list updates.
+        safeCtx(() => chrome.storage.local.set({ buSyncOn: next }, () => { pollSync(); refresh(); }));
+      });
     });
   };
   pollSync();
@@ -434,7 +451,7 @@
     else clearSizeStyles();
   }
   let justDragged = false;
-  const setMin = (v) => chrome.storage.local.set({ buPanelMin: v });
+  const setMin = (v) => safeCtx(() => chrome.storage.local.set({ buPanelMin: v }));
   elMin.onclick = (e) => { e.stopPropagation(); if (!justDragged) setMin(true); };
   elPill.addEventListener('click', () => { if (!justDragged) setMin(false); });
 
@@ -479,24 +496,24 @@
     if (!rs) return;
     rs = null;
     const r = elPanel.getBoundingClientRect();
-    chrome.storage.local.set({
+    safeCtx(() => chrome.storage.local.set({
       buPanelSize: { w: Math.round(r.width), h: Math.round(r.height) },
       buPanelPos: { left: Math.round(r.left), top: Math.round(r.top) },
-    });
+    }));
   }
   window.addEventListener('pointerup', endResize);
   window.addEventListener('pointercancel', endResize);
   elGrip.addEventListener('dblclick', (e) => {
     e.stopPropagation();
     clearSizeStyles();
-    chrome.storage.local.remove('buPanelSize');
+    safeCtx(() => chrome.storage.local.remove('buPanelSize'));
   });
   // Re-clamp after a rotate or window resize, so a size saved on a big screen
   // can't leave the panel taller than the phone it's opened on next.
   window.addEventListener('resize', () => {
     if (!elPanel.classList.contains('sized')) return;
     const r = elPanel.getBoundingClientRect();
-    chrome.storage.local.set({ buPanelSize: applySize(r.width, r.height) });
+    safeCtx(() => chrome.storage.local.set({ buPanelSize: applySize(r.width, r.height) }));
   });
 
   // ── drag (pointer events → works with touch on Kiwi/mobile) ──
@@ -519,7 +536,7 @@
     if (!drag) return;
     const moved = drag.moved; drag = null; elHead.classList.remove('dragging');
     const r = elPanel.getBoundingClientRect();
-    chrome.storage.local.set({ buPanelPos: { left: r.left, top: r.top } });
+    safeCtx(() => chrome.storage.local.set({ buPanelPos: { left: r.left, top: r.top } }));
     if (moved) { justDragged = true; setTimeout(() => { justDragged = false; }, 250); }
   }
   elHead.addEventListener('pointerdown', onDown);
