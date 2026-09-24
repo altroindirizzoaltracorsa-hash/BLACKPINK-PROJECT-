@@ -2790,7 +2790,7 @@
   <div class="ltal-reminder-box">
     <div class="ltal-reminder-badge">Update</div>
     <h2 class="ltal-reminder-title" id="ext-update-title">New Vote Counter — v1.7.2</h2>
-    <p class="ltal-reminder-body">A new version of the <strong>VMA Vote Counter</strong> browser extension is out. Please download <strong>v1.7.2</strong> and reload it so your votes keep being counted correctly on <strong>vote.mtv.com</strong>.</p>
+    <p class="ltal-reminder-body">A new version of the <strong>Vote Counter</strong> browser extension is out. It now counts your <strong>BreakTudo Awards</strong> votes too — not just the VMAs — tracked separately on your board with the same account. Please download <strong>v1.7.2</strong> and reload it so your votes keep being counted correctly on <strong>vote.mtv.com</strong> and <strong>vote.breaktudoawards.com</strong>.</p>
     <ol class="ltal-reminder-steps">
       <li>On the <strong>voting page</strong>, download <strong>v1.7.2</strong> (Desktop or Android).</li>
       <li>In your browser&rsquo;s <strong>Extensions</strong>, remove the old Vote Counter, then <strong>Load unpacked</strong> the newly unzipped folder.</li>
@@ -8341,7 +8341,11 @@ function drawBtVoting() {
         <div><span>${_vvFmt(_vvMe.month)}</span><small>this month</small></div>
         <div><span>${_vvFmt(_vvMe.total)}</span><small>all time</small></div>
       </div>
-      <div class="vv-auto-note">🧩 Your BreakTudo votes are counted <b>automatically</b> by the Blinks United vote counter (browser extension / app) as you vote on <b>vote.breaktudoawards.com</b>.</div>
+      <div class="vv-form vv-form-auto">
+        <div class="vv-auto-note">🧩 Your BreakTudo votes are counted <b>automatically</b> by the Blinks United vote counter (browser extension / app) as you vote on <b>vote.breaktudoawards.com</b>.</div>
+        <button class="vv-auto-more" onclick="var m=document.getElementById('bt-manual');if(m){m.style.display='block';this.style.display='none';}">Not using the counter right now? Add votes manually ▾</button>
+        <div id="bt-manual" style="display:none;margin-top:0.7rem;">${_btFormInner()}</div>
+      </div>
     </div>`;
   } else {
     me = `<div class="vv-me vv-gate">Loading your votes…</div>`;
@@ -8598,6 +8602,85 @@ async function vmaAddVotes() {
   } catch {}
 
   const m2 = document.getElementById('vv-msg');
+  if (m2) m2.textContent = !networkDrop ? `Added ${v} — thank you! 💗`
+    : landed ? 'Saved ✓ (connection was flaky — your total updated below).'
+             : 'Didn’t go through — the connection dropped. Add them again.';
+  resetBtn();
+}
+
+// ── BreakTudo manual entry ───────────────────────────────────────────────────
+// BreakTudo's tally is a single number: unlike the VMAs there is no per-member
+// split to record (the extension posts one count too), and no daily cap — you can
+// vote a category repeatedly, so there is no sensible "per category max" to
+// prefill. Hence one box, empty, rather than the VMA form's two prefilled ones.
+//
+// It also cannot auto-hide the way the VMA form does when the counter has already
+// logged today: that relies on `extToday`, which comes from an `ext_at` column
+// that breaktudo_user_votes does not have. So instead of guessing, it sits behind
+// a disclosure — deliberate to open, hard to double-count by reflex.
+function _btFormInner() {
+  return `<span class="vv-form-q">Just voted on BreakTudo? Add how many:</span>
+        <div class="vv-split-inputs">
+          <label class="vv-split-in"><span class="vv-bp">🗳️ BreakTudo votes</span><input id="bt-n" type="number" min="1" placeholder="e.g. 5" inputmode="numeric"></label>
+        </div>
+        <button id="bt-add" onclick="btAddVotes()">Add votes</button>
+        <div class="vv-msg" id="bt-msg"></div>
+        <div class="vv-honest">🤝 Honour system — please only log votes you have actually cast. <b>If the vote counter is running it has already logged them</b>, so adding here as well would count them twice. 💗</div>`;
+}
+
+async function btAddVotes() {
+  const btn = document.getElementById('bt-add');
+  const msg = document.getElementById('bt-msg');
+  const v = Math.max(0, parseInt((document.getElementById('bt-n') || {}).value, 10) || 0);
+  if (!_vvToken) { if (msg) msg.textContent = 'Sign in first.'; return; }
+  if (v <= 0) { if (msg) msg.textContent = 'Enter how many votes you cast.'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+  const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = 'Add votes'; } };
+  const prevTotal = Number(_vvMe && _vvMe.total) || 0;
+
+  // Same three-step shape as vmaAddVotes, and for the same reason: votes are
+  // additive, so a render error after a successful write must never read as
+  // "save failed" — that is what makes someone submit twice.
+  let saved = null, networkDrop = false;
+  try {
+    const r = await fetch('/api/vma-votes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ award: 'breaktudo', accessToken: _vvToken, votes: v }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { if (msg) msg.textContent = d.error || 'Couldn’t save — try again.'; resetBtn(); return; }
+    saved = d;
+  } catch { networkDrop = true; }
+
+  // On a dropped connection the server may still have saved it — check rather
+  // than inviting a re-submit.
+  let landed = true;
+  if (networkDrop) {
+    const me = await fetch('/api/vma-votes?me=1&award=breaktudo', { headers: { Authorization: 'Bearer ' + _vvToken }, cache: 'no-store' })
+      .then(x => x.ok ? x.json() : null).catch(() => null);
+    if (me == null) { if (msg) msg.textContent = 'Network error — reload to check before re-adding.'; resetBtn(); return; }
+    landed = (Number(me.total) || 0) >= prevTotal + v;
+    _vvMe = Object.assign({}, _vvMe, me, { linked: true });
+  } else if (saved.my) {
+    _vvMe = Object.assign({}, _vvMe, saved.my, { linked: true });
+  } else {
+    const bump = k => (Number(_vvMe && _vvMe[k]) || 0) + v;
+    _vvMe = Object.assign({}, _vvMe, { linked: true, today: bump('today'), week: bump('week'), month: bump('month'), total: bump('total') });
+  }
+
+  // Cosmetic from here — the vote is already saved.
+  try {
+    const b = await fetch('/api/vma-votes?board=1&award=breaktudo', { cache: 'no-store' }).then(x => x.ok ? x.json() : null).catch(() => null);
+    if (b && b.board != null) {
+      const bd = b.board;
+      _vvBoard = Array.isArray(bd) ? bd : (bd?.ranked || []);
+      _vvUnranked = (bd && !Array.isArray(bd)) ? (bd.unranked || []) : [];
+    }
+    drawBtVoting();
+  } catch {}
+
+  const m2 = document.getElementById('bt-msg');
   if (m2) m2.textContent = !networkDrop ? `Added ${v} — thank you! 💗`
     : landed ? 'Saved ✓ (connection was flaky — your total updated below).'
              : 'Didn’t go through — the connection dropped. Add them again.';
