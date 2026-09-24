@@ -242,8 +242,11 @@ async function processVote(detail) {
           upd.buPending = (r.buPending || 0) + n;
         }
         // Track which account cast this vote — the user's OWN roster of emails/logins
-        // used today, so they know which to rotate. Stored locally only, never sent
-        // to our server (the POST body carries only extToken + a vote count).
+        // used today, so they know which they have already used. Stored locally.
+        // NOTE: this roster is uploaded ONLY when the user turns the "share voting
+        // accounts" toggle on — see the buSyncOn branch above, which adds
+        // extra.account to the POST. With the toggle off (the default) the body
+        // carries only extToken, the vote count and the BLACKPINK/LISA split.
         if (account) {
           const accts = Array.isArray(r.buAccounts) ? r.buAccounts.slice() : [];
           const i = accts.findIndex((a) => a.id === account);
@@ -351,16 +354,34 @@ function btPrune() { const now = Date.now(); for (const [k, v] of btInflight) if
 function parseBtBody(requestBody) {
   if (!requestBody) return null;
   let action = null, votesRaw = null, valid = null;
+  let text = null;
+  if (requestBody.raw && requestBody.raw[0] && requestBody.raw[0].bytes) {
+    try { text = new TextDecoder('utf-8').decode(requestBody.raw[0].bytes); } catch (_) {}
+  }
   if (requestBody.formData) {
     const fd = requestBody.formData;
     action = fd.action && fd.action[0];
     votesRaw = fd.votes && fd.votes[0];
     valid = fd.valid && fd.valid[0];
-  } else if (requestBody.raw && requestBody.raw[0] && requestBody.raw[0].bytes) {
+  } else if (text != null) {
+    // form-urlencoded first (action=update_vote&votes=[...]&valid=<turnstile>)
     try {
-      const p = new URLSearchParams(new TextDecoder('utf-8').decode(requestBody.raw[0].bytes));
+      const p = new URLSearchParams(text);
       action = p.get('action'); votesRaw = p.get('votes'); valid = p.get('valid');
     } catch (_) {}
+    // JSON fallback: {"action":"update_vote","votes":[{...}],"valid":"..."}
+    // BreakTudo has shipped both encodings; without this a JSON body parses to
+    // nothing and the vote is silently uncounted.
+    if (votesRaw == null) {
+      try {
+        const j = JSON.parse(text);
+        if (j && typeof j === 'object' && typeof j.votes !== 'undefined') {
+          if (j.action != null) action = String(j.action);
+          votesRaw = Array.isArray(j.votes) ? JSON.stringify(j.votes) : String(j.votes);
+          if (j.valid != null) valid = String(j.valid);
+        }
+      } catch (_) {}
+    }
   }
   if (action && action !== 'update_vote') return null;
   let votes = null;
@@ -375,7 +396,18 @@ chrome.webRequest.onBeforeRequest.addListener(
   function (details) {
     if (details.method !== 'POST' || !btPathIsVote(details.url)) return;
     const parsed = parseBtBody(details.requestBody);
-    if (parsed) { btPrune(); btInflight.set(details.requestId, Object.assign({ slug: null, ts: Date.now() }, parsed)); }
+    if (parsed) {
+      btPrune(); btInflight.set(details.requestId, Object.assign({ slug: null, ts: Date.now() }, parsed));
+    } else {
+      // A vote POST we could not read is a vote we will not count, and it is
+      // otherwise invisible. Log the body so the encoding can be fixed.
+      let ex = '';
+      try {
+        if (details.requestBody && details.requestBody.raw && details.requestBody.raw[0] && details.requestBody.raw[0].bytes)
+          ex = new TextDecoder('utf-8').decode(details.requestBody.raw[0].bytes).slice(0, 300);
+      } catch (_) {}
+      console.log('[BU BreakTudo] vote POST NOT MATCHED: ' + details.url + ' body="' + ex + '"');
+    }
   },
   { urls: ['https://vote.breaktudoawards.com/*'], types: ['xmlhttprequest'] },
   ['requestBody']

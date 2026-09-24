@@ -2789,16 +2789,16 @@
   <button type="button" class="modal-x" aria-label="Close" onclick="closeExtUpdate(false)">×</button>
   <div class="ltal-reminder-box">
     <div class="ltal-reminder-badge">Update</div>
-    <h2 class="ltal-reminder-title" id="ext-update-title">New Vote Counter — v1.6.2</h2>
-    <p class="ltal-reminder-body">A new version of the <strong>VMA Vote Counter</strong> browser extension is out. Please download <strong>v1.6.2</strong> and reload it so your votes keep being counted correctly on <strong>vote.mtv.com</strong>.</p>
+    <h2 class="ltal-reminder-title" id="ext-update-title">New Vote Counter — v1.7.2</h2>
+    <p class="ltal-reminder-body">A new version of the <strong>VMA Vote Counter</strong> browser extension is out. Please download <strong>v1.7.2</strong> and reload it so your votes keep being counted correctly on <strong>vote.mtv.com</strong>.</p>
     <ol class="ltal-reminder-steps">
-      <li>On the <strong>voting page</strong>, download <strong>v1.6.2</strong> (Desktop or Android).</li>
+      <li>On the <strong>voting page</strong>, download <strong>v1.7.2</strong> (Desktop or Android).</li>
       <li>In your browser&rsquo;s <strong>Extensions</strong>, remove the old Vote Counter, then <strong>Load unpacked</strong> the newly unzipped folder.</li>
       <li>Open the extension &rarr; <strong>Link my account</strong> if it isn&rsquo;t already showing &ldquo;&#9679; Linked&rdquo;.</li>
     </ol>
-    <p class="ext-update-foot">Already on v1.6.2? You&rsquo;re all set — just close this.</p>
+    <p class="ext-update-foot">Already on v1.7.2? You&rsquo;re all set — just close this.</p>
     <div class="ltal-reminder-actions">
-      <button class="btn-primary" onclick="closeExtUpdate(true)">Get v1.6.2</button>
+      <button class="btn-primary" onclick="closeExtUpdate(true)">Get v1.7.2</button>
       <button class="ltal-reminder-dismiss" onclick="closeExtUpdate(false)">Not now</button>
     </div>
   </div>
@@ -7190,7 +7190,7 @@ window.addEventListener('DOMContentLoaded', maybeShowLtalReminder);
 // key is versioned (EXT_LATEST_VERSION), so the next time we bump the extension
 // and update this constant, the popup automatically re-appears once per user —
 // no need to reset anyone's storage.
-const EXT_LATEST_VERSION = '1.6.2';
+const EXT_LATEST_VERSION = '1.7.2';
 function closeExtUpdate(goVoting) {
   const ov = document.getElementById('ext-update-overlay');
   if (ov) ov.classList.remove('active');
@@ -8410,7 +8410,7 @@ function vmaVideoGuidesHtml() {
   </details>`;
 }
 
-// The VMA Vote Counter browser extension (v1.6.2) download + setup block, shown on
+// The VMA Vote Counter browser extension (v1.7.2) download + setup block, shown on
 // the /voting panel to signed-in blinks with a scrobbler linked. The extension
 // auto-counts the votes a fan casts on vote.mtv.com and logs the BLACKPINK/LISA
 // ones to their board — it never votes for them.
@@ -8418,12 +8418,12 @@ function vmaExtensionHtml() {
   return `<div class="vv-ext" id="vv-ext">
     <div class="vv-ext-head">
       <span class="vv-ext-title">🧩 Vote Counter — browser extension</span>
-      <span class="vv-ext-ver">v1.7.1</span>
+      <span class="vv-ext-ver">v1.7.2</span>
     </div>
     <div class="vv-ext-sub">Auto-counts the <b>BLACKPINK &amp; members</b> votes you cast on <b>vote.mtv.com</b> (VMAs) <b>and vote.breaktudoawards.com</b> (BreakTudo) and logs them straight to this board — the two awards are tracked separately with one account. It only reads your own votes; it <b>never votes for you</b>.</div>
     <div class="vv-ext-dl">
-      <a class="vv-ext-btn" href="/vote-extension-v1.7.1-chrome.zip" download>⬇ Desktop <small>Chrome / Chromium</small></a>
-      <a class="vv-ext-btn ghost" href="/vote-extension-v1.7.1-android.zip" download>⬇ Android <small>Edge Canary / Quetta</small></a>
+      <a class="vv-ext-btn" href="/vote-extension-v1.7.2-chrome.zip" download>⬇ Desktop <small>Chrome / Chromium</small></a>
+      <a class="vv-ext-btn ghost" href="/vote-extension-v1.7.2-android.zip" download>⬇ Android <small>Edge Canary / Quetta</small></a>
       <button class="vv-ext-btn ghost" onclick="connectExtension()">🔗 Link my account</button>
     </div>
     <a class="vv-ext-guide" href="/vote-counter-guide.html" target="_blank" rel="noopener">📖 Illustrated step-by-step guide ↗</a>
@@ -8459,9 +8459,9 @@ function vmaExtensionHtml() {
       <ul>
         <li><b>Only sends</b> your vote count + the BLACKPINK/LISA split to your own board — nothing else.</li>
         <li><b>Never sends</b> your email, password or MTV login. You sign in in your own browser; the tool only gets a link token back.</li>
-        <li>The <b>accounts/emails you vote with stay on your device</b> — used only for the 2/2 · 1/2 tracker, never uploaded.</li>
+        <li>The <b>accounts/emails you vote with stay on your device</b> by default — used for the 2/2 · 1/2 tracker. They are uploaded <b>only if you switch on &ldquo;Share voting accounts&rdquo;</b> in the panel, and then only to your own account, visible to no one else.</li>
         <li><b>Counts only the votes you cast — never votes for you.</b></li>
-        <li>Extension access is locked to <b>vote.mtv.com</b> and <b>blinksunited.com</b> only; the app asks for <b>Internet</b> and nothing else.</li>
+        <li>Extension access is locked to <b>vote.mtv.com</b>, <b>vote.breaktudoawards.com</b> and <b>blinksunited.com</b> only; the app asks for <b>Internet</b> and nothing else.</li>
         <li>Open-source &amp; sideloaded (not store-reviewed) — the code is there to inspect; you're trusting Blinks United.</li>
       </ul>
     </details>
