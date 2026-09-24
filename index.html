@@ -1098,13 +1098,13 @@
   .lg-bar { display:flex; align-items:center; justify-content:space-between; gap:0.6rem; flex-wrap:wrap; margin:0 0 0.8rem; font-family:var(--mono); font-size:0.56rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
   .lg-bar .lg-where { color:var(--white); }
   .lg-bar a { color:var(--pink); cursor:pointer; text-decoration:none; border-bottom:1px dotted rgba(255,0,102,0.5); white-space:nowrap; }
-  .lg-career { margin:0 0 0.9rem; padding:0.9rem 1rem; border-radius:10px; background:linear-gradient(90deg, rgba(255,0,102,0.11), rgba(255,0,102,0.02)); border:1px solid rgba(255,0,102,0.24); }
+  .lg-career { margin:0 0 0.9rem; padding:0.95rem 1.05rem; border-radius:12px; background:linear-gradient(120deg, rgba(122,209,255,0.10), rgba(122,209,255,0.02)); border:1px solid rgba(122,209,255,0.26); }
   .lg-career .cur { display:flex; align-items:center; gap:0.55rem; font-family:var(--display); font-size:1.05rem; letter-spacing:0.05em; }
   .lg-career .cur .ico { font-size:1.35rem; line-height:1; }
   .lg-career .prog { margin-top:0.6rem; height:8px; border-radius:5px; background:rgba(255,255,255,0.08); overflow:hidden; }
-  .lg-career .prog i { display:block; height:100%; background:linear-gradient(90deg,#ff8fb4,#ff2e77); }
+  .lg-career .prog i { display:block; height:100%; background:linear-gradient(90deg,var(--rose,#ff9e7a),#7fd8ff); }
   .lg-career .nxt { margin-top:0.5rem; font-family:var(--mono); font-size:0.56rem; letter-spacing:0.05em; color:var(--muted); }
-  .lg-career .nxt b { color:var(--pink); }
+  .lg-career .nxt b { color:#7fd8ff; }
   .lg-band { display:flex; align-items:center; gap:0.55rem; margin:1.05rem 0.15rem 0.35rem; font-family:var(--mono); font-size:0.54rem; letter-spacing:0.18em; text-transform:uppercase; }
   .lg-band::after { content:""; flex:1; height:1px; background:linear-gradient(90deg,currentColor,transparent); opacity:0.35; }
   .lg-band .n { font-weight:700; }
@@ -1118,8 +1118,38 @@
   .lg-table tr.lg-row.me td { background:rgba(255,0,102,0.07); }
   .lg-table tr.lg-row.me .lb-user { color:var(--pink); }
   .lg-tierdot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:0.55rem; vertical-align:middle; flex:none; }
+  .lg-table .lb-user { display:inline-block; max-width:min(52vw,220px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle; }
   .lg-promoline, .lg-relegline { text-align:center; font-family:var(--mono); font-size:0.5rem; letter-spacing:0.12em; text-transform:uppercase; padding:0.45rem 0; }
   .lg-promoline { color:#00ff88; } .lg-relegline { color:#ff5c72; }
+
+  /* rich mockup-style surfaces */
+  .lg-ctx { display:flex; align-items:center; justify-content:space-between; gap:0.5rem; flex-wrap:wrap; padding:0.6rem 0.9rem; margin:0 0 0.9rem; border-radius:10px; background:rgba(255,0,102,0.06); border:1px solid rgba(255,0,102,0.18); }
+  .lg-ctx .lgc-l { font-family:var(--display); font-size:0.95rem; letter-spacing:0.04em; display:flex; align-items:center; gap:0.4rem; }
+  .lg-ctx .lgc-r { font-family:var(--mono); font-size:0.55rem; letter-spacing:0.06em; color:#f5c542; white-space:nowrap; }
+  .lg-podium { display:grid; grid-template-columns:1fr; gap:0.6rem; margin:0 0 1rem; align-items:end; }
+  @media (min-width:521px){ .lg-podium { grid-template-columns:1fr 1fr 1fr; } .lg-pod.p-gold{ order:2; } .lg-pod.p-silver{ order:1; } .lg-pod.p-bronze{ order:3; } }
+  .lg-pod { background:var(--card2); border:1px solid var(--border); border-radius:12px; padding:0.9rem 0.6rem; text-align:center; }
+  .lg-pod.p-gold { border-color:rgba(245,197,66,0.5); background:rgba(245,197,66,0.06); }
+  .lg-pod .medal { font-size:1.5rem; line-height:1; }
+  .lg-pod .pn { font-family:var(--display); font-size:0.9rem; margin-top:0.35rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lg-pod .pv { font-family:var(--mono); font-size:0.72rem; color:var(--pink); margin-top:0.2rem; }
+  .lg-pod .pl { font-family:var(--mono); font-size:0.46rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-top:0.28rem; }
+  .lg-pod.you { outline:1.5px solid var(--pink); outline-offset:-1px; }
+  .lg-zone { border-radius:10px; overflow:hidden; margin:0 0 0.55rem; }
+  .lg-zone .zhd { font-family:var(--mono); font-size:0.5rem; letter-spacing:0.14em; text-transform:uppercase; padding:0.4rem 0.75rem; display:flex; align-items:center; justify-content:space-between; gap:0.5rem; }
+  .lg-zone.promote { border:1px solid rgba(0,255,136,0.28); background:rgba(0,255,136,0.05); }
+  .lg-zone.promote .zhd { color:#00ff88; background:rgba(0,255,136,0.08); }
+  .lg-zone.releg { border:1px solid rgba(255,92,114,0.28); background:rgba(255,92,114,0.05); }
+  .lg-zone.releg .zhd { color:#ff5c72; background:rgba(255,92,114,0.08); }
+  .lg-zone .lg-table, .lg-zone .lg-table td { background:transparent; }
+  .lg-wkbar { margin:0.2rem 0 1rem; }
+  .lg-wkbar .wl { display:flex; justify-content:space-between; font-family:var(--mono); font-size:0.5rem; color:var(--muted); letter-spacing:0.04em; margin-bottom:0.3rem; }
+  .lg-wkbar .track { height:9px; border-radius:5px; background:rgba(255,255,255,0.08); overflow:hidden; }
+  .lg-wkbar .track i { display:block; height:100%; background:linear-gradient(90deg,#ff8fb4,var(--pink)); }
+  .lg-wkbar .wc { font-family:var(--mono); font-size:0.5rem; color:var(--muted); margin-top:0.35rem; text-align:center; letter-spacing:0.03em; }
+  .lg-wkbar .wc b { color:var(--pink); } .lg-wkbar .wc .g { color:#00ff88; }
+  .lg-mvp { display:flex; align-items:center; gap:0.5rem; margin:0 0 1rem; padding:0.6rem 0.8rem; border-radius:10px; background:rgba(245,197,66,0.06); border:1px solid rgba(245,197,66,0.26); font-size:0.66rem; line-height:1.45; color:var(--white); }
+  .lg-mvp .st { font-size:1.1rem; } .lg-mvp b { color:#f5c542; }
   .lg-note { margin-top:0.9rem; font-family:var(--mono); font-size:0.52rem; letter-spacing:0.05em; color:rgba(245,240,240,0.35); text-align:center; line-height:1.5; }
 
   /* ── ARTIST STREAMS PAGE ── */
@@ -11607,6 +11637,28 @@ function relativeTierIdx(rankIdx, total) {
   }
   return 0; // Rookie
 }
+// ms until the next reset at `hour` Rome time. weekdayMon=1..7 (Mon..Sun) pins it
+// to a weekday (weekly reset); null = daily.
+function _msToNextRome(hour, weekdayMon) {
+  const now = new Date();
+  const rome = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Rome' }));
+  const t = new Date(rome); t.setHours(hour, 0, 0, 0);
+  if (weekdayMon) {
+    const cur = (rome.getDay() === 0 ? 7 : rome.getDay());
+    let add = (weekdayMon - cur + 7) % 7;
+    if (add === 0 && rome >= t) add = 7;
+    t.setDate(t.getDate() + add);
+  } else if (rome >= t) {
+    t.setDate(t.getDate() + 1);
+  }
+  return t - rome;
+}
+function _fmtCountdown(ms) {
+  if (ms < 0) ms = 0;
+  const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
+  if (h >= 24) return `${Math.floor(h / 24)}d ${h % 24}h`;
+  return `${h}h ${m}m`;
+}
 
 function renderLeagues() {
   const wrap = document.getElementById('lb-table-wrap');
@@ -11662,6 +11714,14 @@ function renderLeagues() {
   const where = `${isOverall ? 'Overall' : songLabel} · ${periodWord}`;
   let html = `<div class="lg-bar"><span>🏆 Blink Leagues · <span class="lg-where">${escapeHtml(where)}</span></span><a onclick="setLeaguesMode(false)">classic view →</a></div>`;
 
+  // Context bar with a live reset countdown (Overall · Today / This Week).
+  if (isOverall && (lbPeriod === 'daily' || lbPeriod === 'weekly')) {
+    const resetMs = lbPeriod === 'daily' ? _msToNextRome(2, null) : _msToNextRome(2, 1);
+    const icon = lbPeriod === 'daily' ? '☀️' : '⏳';
+    const resetLabel = lbPeriod === 'daily' ? 'resets 2AM Rome' : 'resets Mon 2AM';
+    html += `<div class="lg-ctx"><div class="lgc-l">🏆 Overall · ${periodWord}</div><div class="lgc-r">${icon} ${resetLabel} · ${_fmtCountdown(resetMs)} left</div></div>`;
+  }
+
   if (entries.length === 0) {
     wrap.innerHTML = html + '<div class="lb-empty">No scores yet — log into My Badges to join the leaderboard! 💗</div>';
     if (lbHistorySnapshot) updEl.textContent = `Archived snapshot · ${lbHistorySnapshot.label}`;
@@ -11687,6 +11747,39 @@ function renderLeagues() {
     return e.username.toLowerCase() === myUsername.toLowerCase()
       || (le?.linkedAccounts || []).some(a => (a.username || '').toLowerCase() === myUsername.toLowerCase());
   }) : -1;
+
+  // ── Podium (Today · Overall) — top 3 of the day, gold centred ──
+  if (isOverall && lbPeriod === 'daily' && entries[0] && entries[0].score > 0) {
+    const top = entries.slice(0, 3);
+    const pod = (e, place) => {
+      if (!e || e.score <= 0) return '';
+      const medal = place === 'gold' ? '🥇' : place === 'silver' ? '🥈' : '🥉';
+      const isYou = myIdx >= 0 && entries[myIdx].username === e.username;
+      const pl = place === 'gold' ? (isYou ? 'you · MVP today' : 'MVP today') : (isYou ? 'you · today' : 'today');
+      return `<div class="lg-pod p-${place} ${isYou ? 'you' : ''}" onclick="showLbUserProfile('${e.username.replace(/'/g,"\\'")}')" style="cursor:pointer">
+        <div class="medal">${medal}</div><div class="pn">${escapeHtml(e.displayName || e.username)}</div>
+        <div class="pv">${e.score.toLocaleString()}</div><div class="pl">${pl}</div></div>`;
+    };
+    html += `<div class="lg-podium">${pod(top[0], 'gold')}${pod(top[1], 'silver')}${pod(top[2], 'bronze')}</div>`;
+  }
+
+  // ── Weekly promotion bar — progress toward the next tier this week ──
+  if (isOverall && lbPeriod === 'weekly' && myIdx >= 0) {
+    const meE = entries[myIdx];
+    if (meE.tier < LEAGUE_TIERS.length - 1) {
+      const nextTier = LEAGUE_TIERS[meE.tier + 1];
+      const lastAbove = [...entries].reverse().find(e => e.tier === meE.tier + 1);
+      if (lastAbove && lastAbove.score > meE.score) {
+        const need = lastAbove.score - meE.score;
+        const pct = Math.max(4, Math.min(97, Math.round(meE.score / lastAbove.score * 100)));
+        html += `<div class="lg-wkbar">
+          <div class="wl"><span>climb to ${nextTier.icon} ${nextTier.name}</span><span>${meE.score.toLocaleString()} / ${lastAbove.score.toLocaleString()}</span></div>
+          <div class="track"><i style="width:${pct}%"></i></div>
+          <div class="wc">🔼 <b>${need.toLocaleString()}</b> more this week to promote · every stream still counts toward the campaign goal</div>
+        </div>`;
+      }
+    }
+  }
 
   // ── Career header (All-Time · Overall, logged in) ──
   if (isCareer && isOverall && myIdx >= 0) {
@@ -11739,15 +11832,28 @@ function renderLeagues() {
   }
 
   // ── Tier-banded table ──
+  const myTier = myIdx >= 0 ? entries[myIdx].tier : -1;
+  const zonesOn = isOverall && lbPeriod === 'weekly' && myTier >= 0; // green/red lines around your tier
   const tierCounts = {};
   entries.forEach(e => { tierCounts[e.tier] = (tierCounts[e.tier] || 0) + 1; });
   html += '<table class="lg-table"><tbody>';
   let curTier = null;
   entries.forEach((e, i) => {
     if (e.tier !== curTier) {
+      const prevTier = curTier;
       curTier = e.tier;
       const t = LEAGUE_TIERS[curTier];
       const cnt = tierCounts[curTier];
+      // Relegation line — just below your tier's last row.
+      if (zonesOn && prevTier === myTier && myTier > 0) {
+        const lower = LEAGUE_TIERS[myTier - 1];
+        html += `<tr><td colspan="3" style="border:0;padding:0"><div class="lg-relegline">⬇ relegation line — below here drops to ${lower.icon} ${lower.name}</div></td></tr>`;
+      }
+      // Promotion line — just above your tier's band header.
+      if (zonesOn && curTier === myTier && myTier < LEAGUE_TIERS.length - 1) {
+        const upper = LEAGUE_TIERS[myTier + 1];
+        html += `<tr><td colspan="3" style="border:0;padding:0"><div class="lg-promoline">⬆ promotion line — pass the top to reach ${upper.icon} ${upper.name}</div></td></tr>`;
+      }
       html += `<tr><td colspan="3" style="border:0;padding:0">
         <div class="lg-band" style="color:${t.color}"><span>${t.icon}</span><span class="n">${t.name}</span><span class="ct">${cnt} blink${cnt !== 1 ? 's' : ''}</span></div>
       </td></tr>`;
