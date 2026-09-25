@@ -100,6 +100,53 @@ def last_entry(history, artist_id):
     return (days[-1], history[days[-1]][artist_id]) if days else (None, None)
 
 
+def open_and_final(history, artist_id):
+    """(open_day, final_day, final_rec).
+
+    open_day is a day already started while Spotify was mid-publish. Its date is
+    REUSED rather than advanced past, so one streaming day cannot end up split
+    across two dated rows. final_rec is the last COMPLETE day — what the delta is
+    measured against, which is not the same thing as the last recorded row."""
+    days = sorted(d for d, groups in history.items() if artist_id in groups)
+    if not days:
+        return None, None, None
+    last = days[-1]
+    if history[last][artist_id].get("provisional"):
+        prev = days[-2] if len(days) > 1 else None
+        return last, prev, (history[prev][artist_id] if prev else None)
+    return None, last, history[last][artist_id]
+
+
+# Share of the comparable catalogue that may sit unchanged before we treat the
+# publish as unfinished. Shared with fetch_artist_streams.py, where it was
+# measured against real history: 0.0% unchanged on every clean day, against
+# 45.1% and 54.9% on the two rows that had to be repaired. The actual share is
+# printed every run so it can be tuned from real numbers here too.
+UNCHANGED_LIMIT = float(os.environ.get("UNCHANGED_LIMIT", "0.20"))
+MIN_COMPARABLE = int(os.environ.get("MIN_COMPARABLE", "12"))
+
+
+def publish_unfinished(got, known, failed):
+    """(unfinished, unchanged, comparable) — is Spotify still working through
+    this catalogue? Tracks covered by a last-known fallback are excluded: they
+    are unchanged by construction, and counting them would let a bad fetch
+    masquerade as a half-published day."""
+    failed = set(failed)
+    comparable = unchanged = 0
+    for tid, v in got.items():
+        if tid in failed:
+            continue
+        prev = known.get(tid)
+        if prev is None:
+            continue
+        comparable += 1
+        if v == prev:
+            unchanged += 1
+    if comparable < MIN_COMPARABLE:
+        return False, unchanged, comparable
+    return (unchanged / comparable) >= UNCHANGED_LIMIT, unchanged, comparable
+
+
 def equal_value_groups(per_track, min_streams=1_000_000):
     """Track IDs sharing an identical large play_count — Spotify has merged them,
     and every ID in the group reports the merged figure. kworb's list is summed
@@ -111,6 +158,31 @@ def equal_value_groups(per_track, min_streams=1_000_000):
         if v >= min_streams:
             by.setdefault(v, []).append(tid)
     return sum(1 for ids in by.values() if len(ids) > 1)
+
+
+def merge_csv_rows(existing, new_rows):
+    """(rows, replaced_keys) — `new_rows` folded into the rows already on disk.
+
+    The CSV is the durable record, so it is never rebuilt from history: one bad
+    run would erase months of lines. A new day is appended exactly as before; a
+    day still OPEN has its own (date, group) row replaced in place, and every
+    other line is carried over untouched. Without the replace, rewriting an open
+    day would append a second row for a date that already has one — which is the
+    shape of the bug this whole change exists to stop."""
+    rows = list(existing)
+    index = {(r["date"], r["group"]): i for i, r in enumerate(rows)}
+    replaced = []
+    for r in sorted(new_rows, key=lambda r: (r["date"], r["group"])):
+        key = (r["date"], r["group"])
+        row = {k: str(r[k]) for k in CSV_COLUMNS}
+        at = index.get(key)
+        if at is None:
+            rows.append(row)
+            index[key] = len(rows) - 1
+        else:
+            rows[at] = row
+            replaced.append(key)
+    return rows, replaced
 
 
 def main():
@@ -137,8 +209,16 @@ def main():
 
             total = sum(got.values())
             merged = equal_value_groups(got)
-            prev_day, prev = last_entry(history, aid)
+            # prev is the last COMPLETE day. When a day is still open, that is
+            # the row before it — never the open row itself, or the delta would
+            # be measured against a half-written day.
+            open_day, prev_day, prev = open_and_final(history, aid)
             note = ""
+
+            unfinished, unchanged, comparable = publish_unfinished(got, known, failed)
+            if comparable:
+                print(f"  {unchanged}/{comparable} tracks unchanged since {prev_day} "
+                      f"({100.0 * unchanged / comparable:.1f}%)")
 
             if still_missing:
                 print(f"  ⚠ {still_missing} track(s) unfetchable and no last-known value — holding")
@@ -166,9 +246,17 @@ def main():
                       f"reseed data/group_catalogs/{aid}.json before trusting this group again.")
                 continue
             else:
-                day = day_for(prev_day)
+                # A day already open stays open: reuse its date so the rest of
+                # this publish lands in the SAME day instead of opening another.
+                day = open_day or day_for(prev_day)
                 delta = total - prev["total_streams"]
-                print(f"  {total:,}  (+{delta:,} since {prev_day}) → labeling {day}")
+                print(f"  {total:,}  (+{delta:,} since {prev_day}) → labeling {day}"
+                      + (" [rewriting the open day]" if open_day else ""))
+
+            if unfinished and prev is not None:
+                note = f"{note}; still publishing" if note else "still publishing"
+                print(f"  ⏳ Spotify still publishing — {day} recorded as PROVISIONAL "
+                      f"and rewritten until it completes")
 
             if merged:
                 extra = f"{merged} merged-value group(s)"
@@ -181,6 +269,8 @@ def main():
                 "tracks": len(got),
                 "note": note,
             }
+            if unfinished and prev is not None:
+                rec["provisional"] = True
             history.setdefault(day, {})[aid] = rec
             rows_to_append.append({
                 "date": day, "group": name, "artist_id": aid,
@@ -188,8 +278,14 @@ def main():
                 "daily_delta": "" if delta is None else delta,
                 "tracks": len(got), "note": note,
             })
-            last_tracks[aid] = got
-            wrote.append(f"{name} {day} {total:,}")
+            # Only a COMPLETE day advances the per-track baseline. Saving a
+            # half-published run here would make the next run compare against
+            # the partial state, so the stragglers still to arrive would look
+            # like the whole catalogue and the day would finalise early.
+            if not (unfinished and prev is not None):
+                last_tracks[aid] = got
+            wrote.append(f"{name} {day} {total:,}"
+                         + (" (provisional)" if rec.get("provisional") else ""))
 
     if not rows_to_append:
         print("\nnothing new to record (every group held)")
@@ -208,15 +304,17 @@ def main():
         json.dump(last_tracks, f, sort_keys=True)
         f.write("\n")
 
-    # Append rather than rewrite: the CSV is the durable record, and rebuilding
-    # it from history each run would let one bad run erase months of rows.
-    exists = os.path.exists(CSV_PATH)
-    with open(CSV_PATH, "a", newline="") as f:
+    existing = []
+    if os.path.exists(CSV_PATH):
+        with open(CSV_PATH, newline="") as f:
+            existing = list(csv.DictReader(f))
+    merged, replaced = merge_csv_rows(existing, rows_to_append)
+    for key in replaced:
+        print(f"  rewrote open row {key[0]} {key[1]}")
+    with open(CSV_PATH, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
-        if not exists:
-            w.writeheader()
-        for r in sorted(rows_to_append, key=lambda r: (r["date"], r["group"])):
-            w.writerow(r)
+        w.writeheader()
+        w.writerows(merged)
 
     print(f"\nrecorded {len(rows_to_append)} row(s):")
     for w_ in wrote:
