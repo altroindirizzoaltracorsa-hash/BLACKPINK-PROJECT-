@@ -31,6 +31,22 @@ const etDay = (d = new Date()) => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
 }).format(d);
 
+// ── VMA voting is over ──────────────────────────────────────────────────────
+// MTV closed the ballot on 2026-09-25 at 6PM ET. The leaderboard stays up so
+// blinks can look back at what they cast, but it stops TAKING votes at the end
+// of the VMA voting day — midnight ET, the same boundary the day buckets roll
+// on — so the last day finishes normally instead of being cut off mid-way.
+//
+// After this instant the board and every "my votes" read keep working; only the
+// writes are refused. The vote counter extension will keep trying (it is
+// installed on people's machines and cannot be recalled), which is exactly why
+// this is enforced here and not only in the page.
+//
+// The page has the same constant — search VMA_CLOSES_AT in index.html. Change
+// both together.
+const VMA_CLOSES_AT = Date.parse('2026-09-26T04:00:00Z');
+const vmaClosed = () => Date.now() >= VMA_CLOSES_AT;
+
 // BreakTudo Awards is Brazil-based; its "today" bucket uses Brasília (UTC-3, no
 // DST). Kept fully separate from the VMA (ET) path.
 const brDay = (d = new Date()) => new Intl.DateTimeFormat('en-CA', {
@@ -248,7 +264,9 @@ export default async function handler(req, res) {
       if (req.query.board) {
         const { data, error } = await sb.rpc('vma_vote_board');
         if (error) throw error;
-        return res.status(200).json({ board: data || [] });
+        // `closed` travels with the board so the page never has to decide from
+        // its own clock whether the ballot is still open.
+        return res.status(200).json({ board: data || [], closed: vmaClosed() });
       }
       if (req.query.sync) {
         // The extension's authoritative counts for TODAY. Auth via the link token
@@ -304,7 +322,7 @@ export default async function handler(req, res) {
             .select('ext_at').eq('app_user_id', user.id).eq('day', etDay()).maybeSingle();
           extToday = !!(row && row.ext_at);
         } catch (_) { extToday = false; }
-        return res.status(200).json({ linked, extToday, ...totals, ...streams });
+        return res.status(200).json({ linked, extToday, closed: vmaClosed(), ...totals, ...streams });
       }
       const { data, error } = await sb.rpc('vma_vote_totals');
       if (error) throw error;
@@ -312,6 +330,16 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
+      // Ballot closed: refuse the write, but say so plainly enough that the
+      // extension's own error path shows something a blink can understand.
+      // 403 (not 400) so a client can tell "not allowed any more" apart from
+      // "you sent something malformed" and stop retrying.
+      if (vmaClosed()) {
+        return res.status(403).json({
+          error: 'VMA voting has ended — the leaderboard is final. Your totals are still on the board.',
+          closed: true,
+        });
+      }
       const body = req.body || {};
       // Per-artist split: the website sends {bp, lisa}; the extension sends
       // breakdown:{BLACKPINK, LISA}. When a split is given it is authoritative for

@@ -2361,6 +2361,13 @@
   .vv-awardsw-btn { flex: 1 1 auto; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--border); padding: 0.6rem 0.75rem; cursor: pointer; }
   .vv-awardsw-btn:hover { color: var(--pink); }
   .vv-awardsw-btn.active { color: var(--pink); border-color: var(--pink); background: rgba(255,0,102,0.1); font-weight: 700; }
+  /* A closed award still reads as a tab you can open — it is an archive, not a
+     disabled control — so only the "final" marker is dimmed. */
+  .vv-awardsw-btn i { font-style: normal; font-size: 0.52rem; letter-spacing: 0.1em; opacity: 0.65; margin-left: 0.3rem; }
+  .vv-closed-note { font-family: var(--mono); font-size: 0.64rem; line-height: 1.6; color: rgba(245,240,240,0.9); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-left: 2px solid var(--pink); border-radius: 6px; padding: 0.7rem 0.85rem; margin-bottom: 1rem; }
+  .vv-closed-note b { color: var(--pink); }
+  .vv-final-lbl { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.6rem; }
+  .vv-table th i { font-style: normal; font-size: 0.46rem; opacity: 0.7; }
   .vv-tabs { display: flex; gap: 0.4rem; margin-bottom: 0.9rem; }
   .vv-tab { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--border); padding: 0.42rem 0.75rem; cursor: pointer; }
   .vv-tab.active { color: var(--pink); border-color: var(--pink); background: rgba(255,0,102,0.08); }
@@ -8121,11 +8128,35 @@ let _vvBoard = [], _vvUnranked = [], _vvMe = null, _vvSession = null, _vvToken =
 // counted separately (own tables/RPCs on the backend, own extension storage) — this
 // only switches which one the on-site board reads. Vote data shapes are compatible;
 // BreakTudo has no per-member split and a single vote tally (no daily cap).
-let _vvAward = 'vma';
+// ── VMA voting is over ──────────────────────────────────────────────────────
+// MTV closed the ballot on 2026-09-25 at 6PM ET. The board stops taking votes at
+// the end of that voting day — midnight ET, the boundary its days already roll
+// on — so the final day completes instead of being cut off part-way.
+//
+// Closing does NOT hide anything: the standings, the vote-only list below them
+// and every blink's own totals stay readable for good. What changes is that
+// BreakTudo becomes the award the panel opens on, the VMA tab moves to second
+// and is marked final, and the parts that only make sense while a ballot is open
+// (the add-votes forms, the counter pitch, the next-badge nudges, the period
+// tabs) give way to the final numbers.
+//
+// The API enforces the same instant — search VMA_CLOSES_AT in api/vma-votes.js.
+// Change both together. `_vvClosed` prefers what the server reported over this
+// clock, since a visitor's device may be wrong.
+const VMA_CLOSES_AT = Date.parse('2026-09-26T04:00:00Z');
+let _vvClosedFromServer = null;
+function vmaClosed() {
+  return _vvClosedFromServer != null ? _vvClosedFromServer : Date.now() >= VMA_CLOSES_AT;
+}
+
+let _vvAward = vmaClosed() ? 'breaktudo' : 'vma';
 const _vvAwardMeta = {
   vma:       { title: '🗳️ VMA Voting Leaderboard', label: 'MTV VMAs' },
   breaktudo: { title: '🏆 BreakTudo Voting Leaderboard', label: 'BreakTudo' },
 };
+// A live ballot leads. Once the VMAs close, BreakTudo is the one still running,
+// so it takes first position and the VMAs become the archive tab.
+function vmaAwardOrder() { return vmaClosed() ? ['breaktudo', 'vma'] : ['vma', 'breaktudo']; }
 
 // Personal vote-badge tiers (by all-time votes logged).
 const VMA_VOTE_TIERS = [
@@ -8174,6 +8205,9 @@ async function renderVmaVoting() {
   _vvBoard = Array.isArray(bd) ? bd : (bd?.ranked || []);
   _vvUnranked = (bd && !Array.isArray(bd)) ? (bd.unranked || []) : [];
   _vvMe = me;
+  // The VMA board reports whether the ballot has closed; believe it over this
+  // device's clock. Only that award's response carries it.
+  if (_vvAward !== 'breaktudo' && typeof board.closed === 'boolean') _vvClosedFromServer = board.closed;
   if (_vvAward === 'breaktudo') drawBtVoting(); else drawVmaVoting();
 }
 
@@ -8181,9 +8215,10 @@ async function renderVmaVoting() {
 // two separately-counted awards.
 function vmaAwardSwitchHtml() {
   return `<div class="vv-awardsw" role="tablist" aria-label="Award">`
-    + Object.keys(_vvAwardMeta).map(a =>
-        `<button class="vv-awardsw-btn ${a === _vvAward ? 'active' : ''}" role="tab" aria-selected="${a === _vvAward}" onclick="vmaSetAward('${a}')">${_vvAwardMeta[a].label}</button>`
-      ).join('')
+    + vmaAwardOrder().map(a => {
+        const done = a === 'vma' && vmaClosed();
+        return `<button class="vv-awardsw-btn ${a === _vvAward ? 'active' : ''}${done ? ' done' : ''}" role="tab" aria-selected="${a === _vvAward}" onclick="vmaSetAward('${a}')">${_vvAwardMeta[a].label}${done ? ' <i>final</i>' : ''}</button>`;
+      }).join('')
     + `</div>`;
 }
 function vmaSetAward(a) {
@@ -8203,8 +8238,12 @@ function drawVmaVoting() {
   const panel = document.getElementById('vma-vote-panel');
   if (!panel) return;
 
-  const P = _vvPeriod;
-  const periodLbl = { today: 'today', week: 'this week', month: 'this month', total: 'all time' }[P];
+  // A closed ballot has exactly one meaningful view: the final, all-time totals.
+  // Today/week/month decay to zero as the calendar moves on, so offering them
+  // would turn the record of what people cast into a table of noughts.
+  const closed = vmaClosed();
+  const P = closed ? 'total' : _vvPeriod;
+  const periodLbl = closed ? 'final' : { today: 'today', week: 'this week', month: 'this month', total: 'all time' }[P];
   const displayName = _vvSession?.user?.user_metadata?.display_name || null;
 
   // The board is already server-ranked (streamers only) with streams baked in.
@@ -8215,7 +8254,12 @@ function drawVmaVoting() {
   // personal card / gate
   let me;
   if (!_vvSession) {
-    me = `<div class="vv-me vv-gate">
+    me = closed
+      ? `<div class="vv-me vv-gate">
+      <div>Voting has ended. <b>Sign in</b> to look back at the votes you logged. 💗</div>
+      <a class="vv-gate-btn" href="/badges" onclick="goToMyBadges(); return false;">🔑 Sign in on My Badges →</a>
+    </div>`
+      : `<div class="vv-me vv-gate">
       <div>Sign in to <b>register your votes</b> — vote-only blinks earn a 🗳️ Voter badge at ${_vvFmt(VMA_VOTER_DAILY)}/day; <b>stream too to climb the ranked board</b>. 🏆</div>
       <a class="vv-gate-btn" href="/badges" onclick="goToMyBadges(); return false;">🔑 Sign in on My Badges →</a>
     </div>`;
@@ -8228,17 +8272,28 @@ function drawVmaVoting() {
     const isRanked = !!_vvMe.ranked;
     let rankBadge = '';
     if (isRanked) {
-      const rankLine = myTotal === 0
-        ? `<div class="vv-rank">Add your first votes to climb the board 🗳️</div>`
-        : (myRank
-            ? `<div class="vv-rank">🏆 You're <b>#${myRank}</b> of ${_vvFmt(rows.length)} ${periodLbl}</div>`
-            : `<div class="vv-rank">🏆 You're on the board</div>`);
+      let rankLine;
+      if (myTotal === 0) {
+        rankLine = closed
+          ? `<div class="vv-rank vv-rank-hint">You didn't log any VMA votes this run.</div>`
+          : `<div class="vv-rank">Add your first votes to climb the board 🗳️</div>`;
+      } else if (myRank) {
+        rankLine = closed
+          ? `<div class="vv-rank">🏆 You finished <b>#${myRank}</b> of ${_vvFmt(rows.length)}</div>`
+          : `<div class="vv-rank">🏆 You're <b>#${myRank}</b> of ${_vvFmt(rows.length)} ${periodLbl}</div>`;
+      } else {
+        rankLine = `<div class="vv-rank">🏆 You're on the board</div>`;
+      }
       const MB = MONSTER_BLINK;
       const hasMonster = isMonsterBlink(myTotal, myStreams);
       const tier = hasMonster ? MB : voteTier(myTotal);
       const next = nextVoteTier(myTotal);
       let nextHtml;
-      if (hasMonster) {
+      if (closed) {
+        // Nothing left to climb towards — say where they finished instead of
+        // dangling a tier they can no longer reach.
+        nextHtml = `<span class="vv-badge-next">final — ${_vvFmt(myTotal)} vote${myTotal === 1 ? '' : 's'} cast</span>`;
+      } else if (hasMonster) {
         nextHtml = `<span class="vv-badge-next">${MB.icon} the ultimate blink — top tier reached</span>`;
       } else if (next) {
         nextHtml = `<span class="vv-badge-next"><b>${_vvFmt(next.min - myTotal)}</b> more → ${next.icon} ${next.label}</span>`;
@@ -8261,7 +8316,11 @@ function drawVmaVoting() {
       // Not streaming today → not ranked (no stream = no rank). Vote-only blinks
       // still earn a simple "Voter" badge once they hit VMA_VOTER_DAILY in a day.
       const myToday = _vvMe.today || 0;
-      if (myToday >= VMA_VOTER_DAILY) {
+      if (closed) {
+        // A vote-only blink after the close: their total is the whole story, and
+        // "stream to get ranked" is advice for a race that has finished.
+        rankBadge = `<div class="vv-rank vv-rank-hint">You voted but weren't streaming, so you sat below the ranked board — your votes still counted for BLACKPINK. 💗</div>`;
+      } else if (myToday >= VMA_VOTER_DAILY) {
         rankBadge = `<div class="vv-badge"><span class="vv-badge-cur">🗳️ Voter</span></div>
     <div class="vv-rank vv-rank-hint">🎧 <b>Stream too</b> and you'll climb onto the ranked board. 🏆</div>`;
       } else {
@@ -8271,17 +8330,23 @@ function drawVmaVoting() {
     me = `<div class="vv-me">
       <div class="vv-me-head">Your VMA votes${displayName ? ' · ' + _vvEsc(displayName) : ''}</div>
       ${rankBadge}
-      <div class="vv-me-stats">
+      ${closed
+        // Only the all-time figure is permanent — the other three roll to zero
+        // with the calendar, and a closed ballot is a record, not a live count.
+        ? `<div class="vv-me-stats">
+        <div><span>${_vvFmt(_vvMe.total)}</span><small>votes you cast</small></div>
+      </div>`
+        : `<div class="vv-me-stats">
         <div><span>${_vvFmt(_vvMe.today)}</span><small>today</small></div>
         <div><span>${_vvFmt(_vvMe.week)}</span><small>this week</small></div>
         <div><span>${_vvFmt(_vvMe.month)}</span><small>this month</small></div>
         <div><span>${_vvFmt(_vvMe.total)}</span><small>all time</small></div>
-      </div>
+      </div>`}
       <div class="vv-split-mine">
         <span class="vv-chip vv-bp">🖤 BLACKPINK <b>${_vvFmt((_vvMe.bp && _vvMe.bp.total) || 0)}</b></span>
         <span class="vv-chip vv-lisa">🎀 LISA <b>${_vvFmt((_vvMe.lisa && _vvMe.lisa.total) || 0)}</b></span>
       </div>
-      ${_vvMe.extToday ? `
+      ${closed ? '' : _vvMe.extToday ? `
       <div class="vv-form vv-form-auto">
         <div class="vv-auto-note">✅ <b>Counted automatically today</b> — your vote counter (browser extension or the app) is logging this account's votes. No need to add them here; doing so would double-count.</div>
         <button class="vv-auto-more" onclick="var m=document.getElementById('vv-manual');if(m){m.style.display='block';this.style.display='none';}">Not using the counter right now? Add votes manually ▾</button>
@@ -8298,18 +8363,37 @@ function drawVmaVoting() {
   if (!rows.length) {
     table = `<div class="vv-empty">No votes logged yet — be the first! 🗳️</div>`;
   } else {
-    table = `<div class="vv-tablewrap"><table class="vv-table"><thead><tr><th>#</th><th>Blink</th><th>Streams</th><th class="vv-c-bp">🖤 BP</th><th class="vv-c-lisa">🎀 LISA</th><th>Votes ${periodLbl}</th></tr></thead><tbody>`;
+    // Column order differs by state. While voting is open the votes column sits
+    // last, where a live board reads left-to-right towards the number that is
+    // changing. On a closed board the vote total IS the result, so it moves next
+    // to the name — the table scrolls sideways on a phone, and the final figure
+    // must not be the part that scrolls out of sight.
+    const headStreams = `<th>Streams${closed ? ' <i>all time</i>' : ''}</th>`;
+    const headVotes = `<th>Votes ${closed ? 'cast' : periodLbl}</th>`;
+    const headSplit = `<th class="vv-c-bp">🖤 BP</th><th class="vv-c-lisa">🎀 LISA</th>`;
+    table = `<div class="vv-tablewrap"><table class="vv-table"><thead><tr><th>#</th><th>Blink</th>`
+      + (closed ? headVotes + headStreams + headSplit : headStreams + headSplit + headVotes)
+      + `</tr></thead><tbody>`;
     rows.forEach((r, i) => {
-      const s = r.streams || 0; // server-provided (voting-day aligned)
+      // `streams` is the VOTING DAY's count, which reads 0 for everyone once the
+      // day rolls past a closed ballot. ever_streams is the same blink's all-time
+      // total, so the final table shows a number that stays true.
+      const s = (closed ? (r.ever_streams ?? r.streams) : r.streams) || 0;
       const mine = displayName && (r.name || '').toLowerCase() === displayName.toLowerCase();
       const bt = isMonsterBlink(r.total, s) ? MONSTER_BLINK : voteTier(r.total);
-      table += `<tr class="${mine ? 'vv-mine' : ''}"><td>${i + 1}</td><td>${bt ? `<span class="vv-rowbadge" title="${bt.label}">${bt.icon}</span> ` : ''}${_vvEsc(r.name || 'a blink')}</td><td>${_vvFmt(s)}</td><td class="vv-c-bp">${_vvFmt(r['bp_' + P] || 0)}</td><td class="vv-c-lisa">${_vvFmt(r['lisa_' + P] || 0)}</td><td class="vv-v">${_vvFmt(r[P] || 0)}</td></tr>`;
+      const cStreams = `<td>${_vvFmt(s)}</td>`;
+      const cVotes = `<td class="vv-v">${_vvFmt(r[P] || 0)}</td>`;
+      const cSplit = `<td class="vv-c-bp">${_vvFmt(r['bp_' + P] || 0)}</td><td class="vv-c-lisa">${_vvFmt(r['lisa_' + P] || 0)}</td>`;
+      table += `<tr class="${mine ? 'vv-mine' : ''}"><td>${i + 1}</td><td>${bt ? `<span class="vv-rowbadge" title="${bt.label}">${bt.icon}</span> ` : ''}${_vvEsc(r.name || 'a blink')}</td>`
+        + (closed ? cVotes + cStreams + cSplit : cStreams + cSplit + cVotes)
+        + `</tr>`;
     });
     table += `</tbody></table></div>`;
   }
 
   const labels = { today: 'Today', week: 'Week', month: 'Month', total: 'All' };
-  const toggle = ['today', 'week', 'month', 'total']
+  // No period switcher on a closed ballot — there is only the final total.
+  const toggle = closed ? '' : ['today', 'week', 'month', 'total']
     .map(p => `<button class="vv-tab ${p === P ? 'active' : ''}" onclick="vmaSetPeriod('${p}')">${labels[p]}</button>`).join('');
 
   // Voted but not streaming today → shown below the board, unranked. Their votes
@@ -8317,13 +8401,20 @@ function drawVmaVoting() {
   const unranked = _vvUnranked.slice().sort((a, b) => (b[P] || 0) - (a[P] || 0) || (b.total || 0) - (a.total || 0));
   const unrankedHtml = unranked.length ? `
     <div class="vv-unranked">
-      <div class="vv-unranked-head">Voters · not streaming — not ranked · 🗳️ Voter badge at ${_vvFmt(VMA_VOTER_DAILY)} votes/day</div>
+      <div class="vv-unranked-head">${closed
+        ? 'Voters · never streamed — not ranked'
+        : `Voters · not streaming — not ranked · 🗳️ Voter badge at ${_vvFmt(VMA_VOTER_DAILY)} votes/day`}</div>
       ${unranked.map(r => {
         const mine = displayName && (r.name || '').toLowerCase() === displayName.toLowerCase();
-        const voter = (r.today || 0) >= VMA_VOTER_DAILY;
+        // The badge marks 1,000 votes in a DAY, so after the close — when today
+        // is zero for everyone — it would silently vanish from every row. Drop
+        // the claim rather than print a false one.
+        const voter = !closed && (r.today || 0) >= VMA_VOTER_DAILY;
         return `<div class="vv-unranked-row${mine ? ' vv-mine' : ''}"><span class="vv-unranked-name">${voter ? '<span class="vv-rowbadge" title="Voter — 1,000+ votes today">🗳️</span> ' : ''}${_vvEsc(r.name || 'a blink')}</span><span class="vv-unranked-v">${_vvFmt(r[P] || 0)} vote${(r[P] || 0) === 1 ? '' : 's'}</span></div>`;
       }).join('')}
-      <div class="vv-unranked-foot">🎧 Stream today too and you'll climb onto the ranked board — these votes still count for BLACKPINK. 💗</div>
+      <div class="vv-unranked-foot">${closed
+        ? '💗 These blinks voted without streaming, so they sat below the ranked board — their votes still counted for BLACKPINK.'
+        : '🎧 Stream today too and you\'ll climb onto the ranked board — these votes still count for BLACKPINK. 💗'}</div>
     </div>` : '';
 
   // The vote-counter extension is offered only to blinks who are signed in AND
@@ -8331,17 +8422,19 @@ function drawVmaVoting() {
   // exactly the state where `_vvMe` exists with `linked !== false`.
   const qualified = !!(_vvSession && _vvMe && _vvMe.linked !== false);
 
-  panel.innerHTML = `<div class="vv-wrap${vmaScheduledPower() ? ' vv-live' : ''}">
+  panel.innerHTML = `<div class="vv-wrap${!closed && vmaScheduledPower() ? ' vv-live' : ''}">
     ${vmaAwardSwitchHtml()}
     <div class="vv-head">
-      <div class="vv-title">🗳️ VMA Voting Leaderboard</div>
-      <div class="vv-note">Register the votes you cast and race other blinks up the board. Vote-only blinks earn a 🗳️ Voter badge; streaming blinks get ranked. <a href="/vmas">how &amp; where to vote →</a></div>
-      <button class="vv-guide-btn" onclick="startGuide()">🧭 New here? Step-by-step guide</button>
+      <div class="vv-title">🗳️ VMA Voting Leaderboard${closed ? ' · Final' : ''}</div>
+      ${closed
+        ? `<div class="vv-note">Voting closed on <b>Sept 25</b>. These are the final standings — your votes stay here so you can look back at what you cast. 💗</div>`
+        : `<div class="vv-note">Register the votes you cast and race other blinks up the board. Vote-only blinks earn a 🗳️ Voter badge; streaming blinks get ranked. <a href="/vmas">how &amp; where to vote →</a></div>
+      <button class="vv-guide-btn" onclick="startGuide()">🧭 New here? Step-by-step guide</button>`}
     </div>
-    ${vmaVideoGuidesHtml()}
+    ${closed ? `<div class="vv-closed-note">🏁 <b>The VMA ballot is closed.</b> Nothing more can be added here. <b>BreakTudo is still running</b> — switch to it above to keep voting for BLACKPINK &amp; the members.</div>` : vmaVideoGuidesHtml()}
     ${me}
-    ${qualified ? vmaExtensionHtml() : ''}
-    <div class="vv-tabs">${toggle}</div>
+    ${!closed && qualified ? vmaExtensionHtml() : ''}
+    ${closed ? '<div class="vv-final-lbl">Final standings · every vote logged</div>' : `<div class="vv-tabs">${toggle}</div>`}
     ${table}
     ${unrankedHtml}
   </div>`;
@@ -8594,6 +8687,13 @@ function _vvPerCat() { return vmaScheduledPower() ? 20 : 10; }
 async function vmaAddVotes() {
   const btn = document.getElementById('vv-add');
   const msg = document.getElementById('vv-msg');
+  // The form is not rendered once the ballot closes, so this only fires from a
+  // page left open across the close. Say so here rather than letting the server's
+  // 403 surface as a generic failure.
+  if (vmaClosed()) {
+    if (msg) msg.textContent = 'VMA voting has ended — the board is final.';
+    return;
+  }
   const lisa = Math.max(0, parseInt((document.getElementById('vv-lisa') || {}).value, 10) || 0);
   const bp   = Math.max(0, parseInt((document.getElementById('vv-bp')   || {}).value, 10) || 0);
   const v = lisa + bp;   // combined total (ranking)
