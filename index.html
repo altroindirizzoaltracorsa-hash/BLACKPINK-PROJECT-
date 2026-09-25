@@ -2318,11 +2318,33 @@
   .vv-rowcat-rest b { color: var(--muted); }
   .vv-cats-legend { font-family: var(--mono); font-size: 0.56rem; line-height: 1.6; color: rgba(245,240,240,0.42); margin-top: 0.6rem; }
   .vv-cats-legend b { color: rgba(245,240,240,0.6); font-weight: 400; }
-  .vv-btcats-in { display: grid; gap: 0.4rem; margin: 0.5rem 0 0.8rem; }
-  .vv-btcat-in { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; font-size: 0.72rem; }
-  .vv-btcat-in span { color: rgba(245,240,240,0.9); }
-  .vv-btcat-in i { font-style: normal; font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-left: 0.35rem; }
-  .vv-btcat-in input { width: 5.2rem; flex: none; }
+  /* BreakTudo manual entry — the VMA form's look (label above a big centred box),
+     on a grid rather than a flex row. Eight categories in a wrapping flex row put
+     the last row's boxes at a different width from the rest; auto-fit keeps every
+     box identical and still collapses to two across on a phone. */
+  .vv-btcats-in { display: grid; grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr)); gap: 0.6rem 0.55rem; margin: 0.55rem 0 0; }
+  .vv-btcat-in { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+  /* Nominee and category on their own lines. One line ellipsised them at this
+     width ("INT. COLLABORA…") — and the category is the half that says which
+     vote it is, so it is the half that must not be cut. margin-top: auto on the
+     input keeps every box's input on the same baseline when one label wraps. */
+  .vv-btcat-in > span { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.06em; text-transform: uppercase; line-height: 1.45; }
+  .vv-btcat-in > span i { display: block; font-style: normal; color: rgba(245,240,240,0.55); }
+  .vv-btcat-in input { margin-top: auto; }
+  /* On a phone auto-fit drops to a single column — eight full-width boxes is a
+     very long scroll, and the VMA form is two across there. Force two. */
+  @media (max-width: 600px) { .vv-btcats-in { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .vv-btcat-in input { background: #0f0a0f; border: 1px solid var(--border); color: var(--white); font-family: var(--display); font-size: 1.35rem; text-align: center; padding: 0.4rem 0.3rem; min-width: 0; width: 100%; }
+  /* Nominee accents, taken from the member colours the charts already use
+     (YT_MEMBER_COLORS / AM_MEMBER_COLORS / IT_MEMBER_COLORS are all the same map)
+     so a member reads the same everywhere on the site. BLINKs is the one value
+     not in that map — the fandom is not a member — and gets the green the vote
+     split already uses. */
+  .vv-who-bp     { color: #ff4fc3; }
+  .vv-who-jennie { color: #FF0066; }
+  .vv-who-lisa   { color: #ffce6e; }
+  .vv-who-jisoo  { color: #7eb8f7; }
+  .vv-who-blinks { color: #8be0b0; }
   .vv-input-row { display: flex; gap: 0.5rem; margin-top: 0.55rem; max-width: 17rem; }
   .vv-input-row input { flex: 1; min-width: 0; background: #0f0a0f; border: 1px solid var(--border); color: var(--white); font-family: var(--display); font-size: 1.35rem; text-align: center; }
   .vv-input-row button { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); border: none; padding: 0 1.1rem; cursor: pointer; }
@@ -2367,8 +2389,10 @@
     font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.03em; color: #f5e6b0;
     background: rgba(245,197,66,0.12); border: 1px solid rgba(245,197,66,0.5); }
   .vv-power-live b { color: #f5c542; font-weight: 500; }
-  #vv-add { margin-top: 0.7rem; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); border: none; padding: 0.62rem 1.5rem; cursor: pointer; }
-  #vv-add:disabled { opacity: 0.6; cursor: default; }
+  /* #bt-add shares this: the BreakTudo form shipped with an unstyled default
+     button next to the VMA form's pink one. */
+  #vv-add, #bt-add { margin-top: 0.7rem; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); border: none; padding: 0.62rem 1.5rem; cursor: pointer; }
+  #vv-add:disabled, #bt-add:disabled { opacity: 0.6; cursor: default; }
   .vv-mine { background: rgba(255,0,102,0.08); }
   .vv-empty { font-family: var(--mono); font-size: 0.74rem; color: var(--muted); padding: 1.2rem 0; }
   /* Voted-but-not-streaming list (unranked) */
@@ -8651,6 +8675,16 @@ const BT_CATEGORIES = [
   { slug: 'fandom-internacional-do-ano',      label: 'Int. Fandom',          who: 'BLINKs'    },
   { slug: 'serie-internacional',              label: 'Int. Series',          who: 'BLACKPINK' },
 ];
+// Nominee → accent + icon for the manual form's labels. Keyed by BT_CATEGORIES.who,
+// with a fallback at the call site so adding a category for someone not listed here
+// still renders (in the default pink) rather than throwing.
+const BT_WHO = {
+  BLACKPINK: { cls: 'vv-who-bp',     icon: '🖤' },
+  JENNIE:    { cls: 'vv-who-jennie', icon: '💗' },
+  LISA:      { cls: 'vv-who-lisa',   icon: '🎀' },
+  JISOO:     { cls: 'vv-who-jisoo',  icon: '💙' },
+  BLINKs:    { cls: 'vv-who-blinks', icon: '🫶' },
+};
 // Aliases kept out of the picker (they would read as duplicates) but resolved for
 // display, since the extension may have stored votes under either spelling.
 const BT_CAT_ALIASES = { 'videoclipe-internacional': 'videoclipe-internacional-do-ano',
@@ -8717,9 +8751,14 @@ function _btRowCatsHtml(r, P) {
 // that breaktudo_user_votes does not have. So instead of guessing, it sits behind
 // a disclosure — deliberate to open, hard to double-count by reflex.
 function _btFormInner() {
-  return `<span class="vv-form-q">Just voted on BreakTudo? Add how many, per category:</span>
+  return `<span class="vv-form-q">Just voted on BreakTudo? Add how many — split by category:</span>
         <div class="vv-btcats-in">
-          ${BT_CATEGORIES.map(c => `<label class="vv-btcat-in"><span>${_vvEsc(c.label)} <i>${_vvEsc(c.who)}</i></span><input data-btcat="${c.slug}" type="number" min="0" placeholder="0" inputmode="numeric"></label>`).join('')}
+          ${BT_CATEGORIES.map(c => {
+            const a = BT_WHO[c.who] || { cls: '', icon: '💗' };
+            // Nominee first, then category — the same "🖤 BLACKPINK · JUMP" reading
+            // order as the VMA form, so the two look like one family.
+            return `<label class="vv-btcat-in"><span class="${a.cls}">${a.icon} ${_vvEsc(c.who)}<i>${_vvEsc(c.label)}</i></span><input data-btcat="${c.slug}" type="number" min="0" placeholder="0" inputmode="numeric"></label>`;
+          }).join('')}
         </div>
         <button id="bt-add" onclick="btAddVotes()">Add votes</button>
         <div class="vv-msg" id="bt-msg"></div>
