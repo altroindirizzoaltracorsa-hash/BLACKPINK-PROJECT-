@@ -96,6 +96,16 @@
       .chip .who{ font-size:10px; letter-spacing:.1em; color:#ff8fb4; text-transform:uppercase; }
       .chip .v{ font-variant-numeric:tabular-nums; font-weight:800; font-size:20px; margin-top:3px; }
 
+      /* BreakTudo per-category breakdown. VMA has its own two-chip split above;
+         BreakTudo has eight categories, so it lists rather than chips. */
+      .btcats{ margin:2px 12px 10px; background:#0a0407; border:1px solid #ff2e7722; border-radius:11px; padding:8px 8px 4px; }
+      .btcats .hd{ font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:#8a5c6c; padding:2px 4px 6px; }
+      .btcrow{ display:flex; align-items:center; gap:8px; font-size:11.5px; padding:5px 4px; border-bottom:1px dashed #ff2e7718; }
+      .btcrow:last-child{ border-bottom:0; }
+      .btcrow .nm{ flex:1; color:#fff2f6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .btcrow .vv{ color:#ff8fb4; font-weight:800; font-variant-numeric:tabular-nums; }
+      .btcats .empty{ color:#8a5c6c; font-size:11px; text-align:center; padding:8px 4px; }
+
       .log{ margin:2px 12px 12px; background:#0a0407; border:1px solid #ff2e7722; border-radius:11px; padding:8px 8px 4px; max-height:168px; overflow-y:auto; overflow-x:hidden; }
       .log::-webkit-scrollbar,.acctList::-webkit-scrollbar{ width:6px; } .log::-webkit-scrollbar-thumb,.acctList::-webkit-scrollbar-thumb{ background:#ff2e7744; border-radius:3px; }
       .loghd{ font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:#8a5c6c; padding:2px 4px 6px; position:sticky; top:0; background:#0a0407; }
@@ -213,6 +223,8 @@
           <div class="chip"><div class="who">LISA</div><div class="v" id="lisa">0</div></div>
         </div>
 
+        <div class="btcats" id="btcats" style="display:none"></div>
+
         <div class="log" id="log"></div>
 
         <div class="accts" id="accts"></div>
@@ -272,6 +284,45 @@
     if (m < 60) return m + 'm'; return Math.round(m / 60) + 'h';
   };
 
+  // Mirrors BT_CATS in background.js. A content script cannot import from the
+  // service worker, and the codebase already mirrors VMA_POWER between panel.js
+  // and popup.js for the same reason. An unrecognised slug is prettified rather
+  // than shown raw or dropped, so the two drifting apart degrades to a slightly
+  // clumsy label instead of a missing or cryptic row.
+  const BT_CAT_LABELS = {
+    'grupo-feminino-internacional':     'Int. Female Group',
+    'artista-feminina-internacional':   'Int. Female Artist',
+    'artista-asiatico':                 'Asian Artist',
+    'colaboracao-internacional-do-ano': 'Int. Collaboration',
+    'hit-internacional-do-ano':         'Int. Hit of the Year',
+    'videoclipe-internacional-do-ano':  'Int. Music Video',
+    'videoclipe-internacional':         'Int. Music Video',
+    'fandom-internacional-do-ano':      'Int. Fandom',
+    'serie-internacional':              'Int. Series',
+    'serie-internacional-do-ano':       'Int. Series',
+    _other:                             'Category not identified',
+  };
+  const btCatLabel = (slug) => BT_CAT_LABELS[slug]
+    || String(slug).replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+  function renderBtCats(map) {
+    const el = $('btcats');
+    if (!el) return;
+    const entries = Object.entries(map || {})
+      .filter(([, v]) => (Number(v) || 0) > 0)
+      .sort((a, b) => b[1] - a[1]);
+    el.style.display = 'block';
+    if (!entries.length) {
+      el.innerHTML = '<div class="hd">By category · today</div>'
+        + '<div class="empty">No votes counted yet today.</div>';
+      return;
+    }
+    el.innerHTML = '<div class="hd">By category · today</div>'
+      + entries.map(([k, v]) =>
+          '<div class="btcrow"><span class="nm">' + esc(btCatLabel(k)) + '</span>'
+          + '<span class="vv">' + fmt(v) + '</span></div>').join('');
+  }
+
   let lastTotal = 0;
   // 2026 VMA power schedule (US Eastern), mirrors blinksunited.com/voting:
   //   Power Hour 1:00–1:59 PM ET daily Aug 20 → Sep 24; Double Days Aug 18/19, Sep 25.
@@ -325,6 +376,8 @@
         : 'Off — today’s voting accounts stay on this device';
     }
 
+    if (AWARD === 'breaktudo') renderBtCats(s.btCats);
+
     const log = Array.isArray(s[CFG.logKey]) ? s[CFG.logKey] : [];
     if (!log.length) {
       elLog.innerHTML = '<div class="empty">No votes counted yet — vote on this page and they’ll appear here.</div>';
@@ -375,7 +428,7 @@
     if (at) at.onclick = () => { acctOpen = !acctOpen; refresh(); };
   }
 
-  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize', 'btCount', 'btLog', 'btDay'];
+  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize', 'btCount', 'btLog', 'btDay', 'btCats'];
   function refresh() { safeCtx(() => chrome.storage.local.get(KEYS, (s) => { applyLayout(s); render(s); })); }
 
   // React to background updates immediately.

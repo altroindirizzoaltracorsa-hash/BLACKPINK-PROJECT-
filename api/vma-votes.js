@@ -75,7 +75,7 @@ async function myTotals(sb, uid) {
 
 // BreakTudo sibling of myTotals — single vote tally, Brasília day boundaries.
 async function myBtTotals(sb, uid) {
-  const { data } = await sb.from('breaktudo_user_votes').select('day, votes').eq('app_user_id', uid);
+  const { data } = await sb.from('breaktudo_user_votes').select('day, votes, cats').eq('app_user_id', uid);
   const rows = data || [];
   const t = brDay();
   const [y, m, dd] = t.split('-').map(Number);
@@ -84,14 +84,26 @@ async function myBtTotals(sb, uid) {
   const monday = new Date(Date.UTC(y, m - 1, dd - dow)).toISOString().slice(0, 10);
   const first = `${t.slice(0, 7)}-01`;
   let today = 0, week = 0, month = 0, total = 0;
+  // Per-category, all-time and today. `votes` stays authoritative for ranking —
+  // these maps only ever explain PART of it, because rows written before the
+  // category migration carry a total with cats = {}. Anything rendering them must
+  // not present their sum as the whole.
+  const cats = {}, catsToday = {};
+  const add = (into, m) => {
+    for (const k in (m || {})) {
+      const n = Number(m[k]) || 0;
+      if (n > 0) into[k] = (into[k] || 0) + n;
+    }
+  };
   for (const r of rows) {
     const v = r.votes || 0;
     total += v;
-    if (r.day === t)     today += v;
+    add(cats, r.cats);
+    if (r.day === t)     { today += v; add(catsToday, r.cats); }
     if (r.day >= monday) week  += v;
     if (r.day >= first)  month += v;
   }
-  return { today, week, month, total };
+  return { today, week, month, total, cats, catsToday };
 }
 
 // The caller's campaign streams: today's (ET-day aligned) for display + Monster
@@ -166,6 +178,36 @@ export default async function handler(req, res) {
         let votes = parseInt(body.votes, 10);
         if (!Number.isFinite(votes) || votes <= 0) return res.status(400).json({ error: 'votes required' });
         votes = Math.min(votes, 10000); // sanity bound (BreakTudo has no daily cap)
+
+        // Per-category attribution. Either `category` (one slug — what the
+        // extension sends, since one vote POST is one /vote/<slug>/ page) or
+        // `cats` (a map — what the manual form sends when several are entered
+        // at once). Unknown/absent is fine: the vote still counts toward the
+        // total, it is simply unattributed, exactly like every row written
+        // before the category migration.
+        const SLUG_RE = /^[a-z0-9-]{1,64}$/;
+        const addCats = {};
+        if (body.cats && typeof body.cats === 'object' && !Array.isArray(body.cats)) {
+          for (const k of Object.keys(body.cats)) {
+            const n = parseInt(body.cats[k], 10);
+            if (SLUG_RE.test(k) && Number.isFinite(n) && n > 0) addCats[k] = Math.min(n, 10000);
+          }
+        } else if (typeof body.category === 'string' && SLUG_RE.test(body.category)) {
+          addCats[body.category] = votes;
+        }
+        // Never let the attributed parts exceed the total they are explaining —
+        // that would render as a breakdown bigger than the number it breaks down.
+        const addSum = Object.values(addCats).reduce((a, b) => a + b, 0);
+        if (addSum > votes) {
+          const scale = votes / addSum;
+          let left = votes;
+          const keys = Object.keys(addCats);
+          keys.forEach((k, i) => {
+            const v = i === keys.length - 1 ? left : Math.floor(addCats[k] * scale);
+            addCats[k] = v; left -= v;
+          });
+          Object.keys(addCats).forEach(k => { if (!addCats[k]) delete addCats[k]; });
+        }
         let uid = null, name = null;
         const extToken = String(body.extToken || '').trim();
         const token = String(body.accessToken || '').trim();
@@ -182,10 +224,14 @@ export default async function handler(req, res) {
           name = (user.user_metadata && user.user_metadata.display_name) || null;
         }
         const day = brDay();
-        const { data: existing } = await sb.from('breaktudo_user_votes').select('votes').eq('app_user_id', uid).eq('day', day).maybeSingle();
+        const { data: existing } = await sb.from('breaktudo_user_votes').select('votes, cats').eq('app_user_id', uid).eq('day', day).maybeSingle();
         const next = (existing?.votes || 0) + votes;
+        // Merge rather than replace: a fan votes several categories across a day,
+        // each arriving as its own POST.
+        const nextCats = Object.assign({}, (existing && existing.cats) || {});
+        for (const k in addCats) nextCats[k] = (Number(nextCats[k]) || 0) + addCats[k];
         const { error: upErr } = await sb.from('breaktudo_user_votes').upsert(
-          { app_user_id: uid, day, votes: next, display_name: name, updated_at: new Date().toISOString() },
+          { app_user_id: uid, day, votes: next, cats: nextCats, display_name: name, updated_at: new Date().toISOString() },
           { onConflict: 'app_user_id,day' },
         );
         if (upErr) return res.status(500).json({ error: upErr.message });
