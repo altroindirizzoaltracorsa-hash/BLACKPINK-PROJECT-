@@ -296,7 +296,22 @@ def _is_version_name(name):
     return any(h in n for h in _VERSION_HINTS)
 
 
-def collapse_merged(counted, merge_min=1_000_000):
+def _survivor_key(c):
+    """Which member of a merged group keeps its name: the non-version "original",
+    then the shortest name, then alphabetical."""
+    return (_is_version_name(c["name"]), len(c["name"]), c["name"])
+
+
+# How far two members of a previously-merged group may drift apart before we
+# believe Spotify really split them. One day of streams on a merged BLACKPINK
+# group is ~0.02% of its count; a genuine split leaves the version with a
+# completely different (far smaller) number. 1% sits far above the former and
+# far below the latter.
+SPLIT_TOLERANCE = float(os.environ.get("SPLIT_TOLERANCE", "0.01"))
+
+
+def collapse_merged(counted, merge_min=1_000_000, prev_groups=None,
+                    tol=None):
     """Spotify periodically "combines" alternate versions (Japanese / live / remix)
     into their original track. After a merge, every track ID in the group returns
     the SAME combined play_count, so summing them all double-counts those streams —
@@ -305,22 +320,60 @@ def collapse_merged(counted, merge_min=1_000_000):
     identical (large) play_count into a single entity so each merged group is
     counted ONCE, preferring the non-version "original" as the survivor.
 
-    Self-healing: if Spotify later re-splits a pair, their counts diverge again and
-    nothing collapses — no track list to maintain. merge_min guards against
-    coincidental equality among tiny counts (real merges involve large numbers).
+    Exact equality alone is not enough. Spotify publishes a day gradually, so
+    mid-publish one member of a merged group carries the new number while its
+    twin still carries yesterday's — the counts differ, the group stops looking
+    merged, and every member gets counted again. That is what put a phantom
+    +2,060,753,717 on BLACKPINK's 2026-09-23 row (How You Like That at
+    1,294,603,447 against its Live twin still at 1,294,387,257, and the same for
+    Lovesick Girls), which then vanished the next day as the twins caught up.
+
+    So a group that was merged on the previous FINAL day stays merged while its
+    members remain within `tol` of each other, and is counted once at the
+    HIGHEST value any member reports — the freshest number the group has. Only a
+    divergence bigger than that is read as a real split. merge_min guards
+    against coincidental equality among tiny counts.
+
+    `counted` is never mutated: each track still stores its own fetched number,
+    and this only governs the artist TOTAL and track_count.
 
     Returns (kept, merged_away)."""
+    if tol is None:
+        tol = SPLIT_TOLERANCE
     groups = {}
     for c in counted:
         groups.setdefault(c["streams"], []).append(c)
     kept, merged_away = [], []
     for streams, grp in groups.items():
         if len(grp) > 1 and streams >= merge_min:
-            grp = sorted(grp, key=lambda c: (_is_version_name(c["name"]), len(c["name"]), c["name"]))
+            grp = sorted(grp, key=_survivor_key)
             kept.append(grp[0])
             merged_away.extend(grp[1:])
         else:
             kept.extend(grp)
+
+    # Second pass: re-merge groups that only *look* split because the publish is
+    # half done. Runs on what the equality pass kept, so a group already reduced
+    # to one survivor is left alone.
+    for names in (prev_groups or ()):
+        members = [k for k in kept if k["name"] in names]
+        if len(members) < 2:
+            continue
+        vals = [m["streams"] for m in members]
+        lo, hi = min(vals), max(vals)
+        if lo < merge_min or hi <= 0 or (hi - lo) / hi > tol:
+            continue                      # genuinely split — leave them counted apart
+        survivor = sorted(members, key=_survivor_key)[0]
+        for m in members:
+            if m is survivor:
+                continue
+            kept.remove(m)
+            merged_away.append(m)
+        # Replace rather than mutate: `counted` shares these dicts, and the
+        # merge/split logging reads it afterwards.
+        kept[kept.index(survivor)] = {"name": survivor["name"], "streams": hi}
+        print(f"  ⤷ still merged mid-publish: {' = '.join(sorted(names))} "
+              f"(spread {hi - lo:,} of {hi:,}) — counted once at {hi:,}")
     return kept, merged_away
 
 
@@ -493,29 +546,75 @@ def previous_track_streams(artist_id, prev_date):
     return {r["track_ref"]: r["streams"] for r in rows}
 
 
-def latest_artist_stat(artist_id):
-    """The artist's most recent recorded snapshot -- the basis for both the next
-    day's label and the daily delta. None if the artist has never been recorded."""
-    rows = sb("GET", "/artist_daily_stats", params={
+def recent_artist_stats(artist_id, limit=2):
+    """The artist's most recent recorded snapshots, newest first. Two are needed
+    because the newest may be a still-open (provisional) day, in which case the
+    one before it is the last FINAL day that deltas must be measured against."""
+    return sb("GET", "/artist_daily_stats", params={
         "artist_id": f"eq.{artist_id}",
         "order": "date.desc",
-        "limit": 1,
-        "select": "date,total_streams,followers,monthly_listeners,world_rank",
-    })
-    return rows[0] if rows else None
+        "limit": limit,
+        "select": "date,total_streams,followers,monthly_listeners,world_rank,provisional",
+    }) or []
 
 
-def snapshot_date_for(prev_artist):
+def split_open_day(rows):
+    """(open_row, prev_final) from recent_artist_stats' output.
+
+    open_row is a day we already started writing while Spotify was still
+    publishing it — its date gets REUSED rather than advanced past, so one
+    streaming day cannot end up spread across two dated rows."""
+    if rows and rows[0].get("provisional"):
+        return rows[0], (rows[1] if len(rows) > 1 else None)
+    return None, (rows[0] if rows else None)
+
+
+def snapshot_date_for(prev_artist, open_row=None):
     """Date to label this snapshot with. OVERRIDE_DATE wins (manual backfills).
+
+    If a provisional day is open, reuse ITS date: Spotify was still publishing
+    when we wrote it, so this run is more of the same day, not a new one.
+
     Otherwise it's the day AFTER the artist's most recent recorded day: because
     Spotify publishes finalized days in order, a newly-changed total is the next
     unrecorded day regardless of how many days late Spotify is. Falls back to
     yesterday only on the very first run, when there's no prior row."""
     if OVERRIDE_DATE:
         return OVERRIDE_DATE
+    if open_row and open_row.get("date"):
+        return open_row["date"]
     if prev_artist and prev_artist.get("date"):
         return (date.fromisoformat(prev_artist["date"]) + timedelta(days=1)).isoformat()
     return (date.today() - timedelta(days=1)).isoformat()
+
+
+# Share of the comparable catalogue that may sit unchanged before we call the
+# publish unfinished. On a clean BLACKPINK day this is 0.0% — every one of 113
+# tracks moves. The two broken rows were 45.1% and 54.9%. 20% is far above the
+# noise and far below either of those.
+UNCHANGED_LIMIT = float(os.environ.get("UNCHANGED_LIMIT", "0.20"))
+# Below this many comparable tracks the share is too noisy to act on.
+MIN_COMPARABLE = int(os.environ.get("MIN_COMPARABLE", "12"))
+
+
+def publish_unfinished(canonical, name_to_ref, prev_streams_by_ref):
+    """(unfinished, unchanged, comparable) — is Spotify still mid-publish?
+
+    Only tracks we actually fetched AND have a previous value for are compared;
+    last-known fallback rows are excluded on purpose, since they are unchanged
+    by construction and would make a fetch failure look like a partial day."""
+    comparable = unchanged = 0
+    for c in canonical:
+        ref = name_to_ref.get(c["name"])
+        prev = prev_streams_by_ref.get(ref) if ref is not None else None
+        if prev is None:
+            continue
+        comparable += 1
+        if c["streams"] == prev:
+            unchanged += 1
+    if comparable < MIN_COMPARABLE:
+        return False, unchanged, comparable
+    return (unchanged / comparable) >= UNCHANGED_LIMIT, unchanged, comparable
 
 
 def process_artist(client, artist_id, artist_name):
@@ -555,8 +654,13 @@ def process_artist(client, artist_id, artist_name):
         print(f"  ⚠ discovery/persist step failed, using FIXED_TRACKS only: {e}", file=sys.stderr)
         track_specs = list(base_specs)
 
-    prev_artist = latest_artist_stat(artist_id)
-    today = snapshot_date_for(prev_artist)
+    # prev_artist is the last FINAL day — what deltas are measured against —
+    # which is not the same as the last recorded row when a day is still open.
+    open_row, prev_artist = split_open_day(recent_artist_stats(artist_id))
+    today = snapshot_date_for(prev_artist, open_row)
+    if open_row:
+        print(f"  {open_row['date']} is still open (Spotify was mid-publish) — "
+              f"rewriting that day rather than starting a new one")
     prev_date = prev_artist["date"] if prev_artist else None
     prev_track_streams_map = previous_track_streams(artist_id, prev_date)
 
@@ -587,7 +691,28 @@ def process_artist(client, artist_id, artist_name):
     # keep moving in lockstep with their original — the dedup only governs the
     # artist TOTAL and track_count, and self-corrects the day Spotify splits them.
     counted = [{"name": c["name"], "streams": c["streams"]} for c in canonical] + fallback_named
-    kept, merged_away = collapse_merged(counted)
+
+    # The groups Spotify had merged on the last FINAL day. collapse_merged uses
+    # them to keep a group merged through a half-published day, when its members
+    # briefly disagree; merged_name_groups(counted) below is read before the
+    # collapse so the merge/split log still describes what Spotify actually
+    # returned this run.
+    prev_named = [{"name": ref_to_name.get(ref), "streams": s}
+                  for ref, s in prev_track_streams_map.items() if ref_to_name.get(ref)]
+    prev_groups = merged_name_groups(prev_named)
+    today_groups = merged_name_groups(counted)
+
+    # Is Spotify still working through the catalogue? Decided on the raw fetch,
+    # before any collapsing, since that is where the staleness shows.
+    unfinished, unchanged, comparable = publish_unfinished(
+        canonical, all_refs, prev_track_streams_map)
+    if unfinished:
+        pct = 100.0 * unchanged / comparable
+        print(f"  ⏳ Spotify still publishing: {unchanged}/{comparable} tracks "
+              f"({pct:.1f}%) unchanged since {prev_date} — recording {today} as "
+              f"PROVISIONAL, to be rewritten until it completes")
+
+    kept, merged_away = collapse_merged(counted, prev_groups=prev_groups)
     for m in merged_away:
         print(f"  ⤷ merged: {m['name']!r} shares {m['streams']:,} with its original — counted once")
 
@@ -596,19 +721,20 @@ def process_artist(client, artist_id, artist_name):
     print(f"  {len(canonical)}/{len(track_specs)} fetched"
           + (f" (+{len(fallback_rows)} last-known)" if fallback_rows else "")
           + (f" (−{len(merged_away)} merged)" if merged_away else "")
-          + f", total={total_streams:,} across {track_count}  → labeling {today}")
+          + f", total={total_streams:,} across {track_count}  → labeling {today}"
+          + (" [provisional]" if unfinished else ""))
 
     # Merge/split change-detection (logs): compare today's equal-count groups to
     # the previous recorded day's and announce any Spotify merge or split.
-    prev_named = [{"name": ref_to_name.get(ref), "streams": s}
-                  for ref, s in prev_track_streams_map.items() if ref_to_name.get(ref)]
-    prev_groups = merged_name_groups(prev_named)
-    today_groups = merged_name_groups(counted)
     for names, v in sorted(today_groups.items(), key=lambda kv: -kv[1]):
         if names not in prev_groups:
             print(f"  🔗 NEW MERGE: {' = '.join(sorted(names))}  @ {v:,}")
+    kept_names = {k["name"] for k in kept}
     for names, v in sorted(prev_groups.items(), key=lambda kv: -kv[1]):
-        if names not in today_groups:
+        # Only a group that collapse_merged actually left counted apart is a real
+        # split. Reading today_groups alone would announce a split every time a
+        # half-published group briefly disagreed with itself.
+        if names not in today_groups and len(names & kept_names) > 1:
             print(f"  🔓 SPLIT: {' / '.join(sorted(names))}  (was {v:,})")
 
     # If Spotify hasn't published new counts yet, all totals are identical to
@@ -669,8 +795,11 @@ def process_artist(client, artist_id, artist_name):
            "world_rank": artist_data.world_rank,
            "world_rank_delta": rank_delta,
            "track_count": track_count,
+           # Keeps this date open: the next run reuses it instead of advancing,
+           # so a publish caught in halves stays ONE day.
+           "provisional": unfinished,
        }])
-    print(f"  saved. delta={artist_delta}, followers_delta={followers_delta}, monthly_delta={monthly_delta}, rank=#{artist_data.world_rank} (delta={rank_delta})")
+    print(f"  saved{' (provisional)' if unfinished else ''}. delta={artist_delta}, followers_delta={followers_delta}, monthly_delta={monthly_delta}, rank=#{artist_data.world_rank} (delta={rank_delta})")
 
 
 def main():
