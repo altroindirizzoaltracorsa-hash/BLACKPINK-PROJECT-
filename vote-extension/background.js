@@ -333,14 +333,19 @@ function loadBtSeen() {
   return btSeenLoading;
 }
 
-async function postBtVotes(n) {
+// `category` is the /vote/<slug>/ the votes were cast on. One POST is one
+// category page, so a single slug covers the batch. Omitted when the referer did
+// not yield one — the vote still counts, it is just unattributed.
+async function postBtVotes(n, category) {
   const { buToken } = await getLocal('buToken');
   if (!buToken || n <= 0) return { ok: false, reason: 'not-linked' };
   try {
+    const body = { award: 'breaktudo', extToken: buToken, votes: n };
+    if (category) body.category = category;
     const r = await fetch(BU_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ award: 'breaktudo', extToken: buToken, votes: n }),
+      body: JSON.stringify(body),
     });
     return { ok: r.ok };
   } catch (_) { return { ok: false, reason: 'network' }; }
@@ -487,15 +492,21 @@ async function processBtVote(e) {
   n = Math.min(n, 500); // batch sanity bound
 
   const catLabel = (catInfo && catInfo.label) || 'BreakTudo';
-  postBtVotes(n).then((res) => {
+  postBtVotes(n, e.slug).then((res) => {
     const today = brDay();
-    chrome.storage.local.get(['btCount', 'btLog', 'btPendingN', 'btDay'], (raw) => {
+    chrome.storage.local.get(['btCount', 'btLog', 'btPendingN', 'btDay', 'btCats'], (raw) => {
       const r = (raw.btDay === today)
         ? raw
-        : { btDay: today, btCount: 0, btLog: [], btPendingN: raw.btPendingN || 0 };
+        : { btDay: today, btCount: 0, btLog: [], btCats: {}, btPendingN: raw.btPendingN || 0 };
       const upd = { btDay: today };
       if (res.ok) {
         upd.btCount = (r.btCount || 0) + n;
+        // Today's per-category tally for the panel. Keyed by slug so it matches
+        // what the server stores; the label is looked up for display.
+        const cats = Object.assign({}, r.btCats || {});
+        const ck = e.slug || '_other';
+        cats[ck] = (Number(cats[ck]) || 0) + n;
+        upd.btCats = cats;
         const log = Array.isArray(r.btLog) ? r.btLog.slice() : [];
         const now = Date.now();
         // One log row per member in this batch (reversed so the first-listed sits on top).
@@ -503,6 +514,8 @@ async function processBtVote(e) {
           log.unshift({ n: perMember[who], cat: catLabel, who, ts: now });
         });
         upd.btLog = log.slice(0, 500);
+        // Flushed backlog carries no slug: it was accumulated across whatever
+        // categories were voted while offline and that detail was not kept.
         if (r.btPendingN) { postBtVotes(r.btPendingN); upd.btPendingN = 0; }
       } else {
         upd.btPendingN = (r.btPendingN || 0) + n;
