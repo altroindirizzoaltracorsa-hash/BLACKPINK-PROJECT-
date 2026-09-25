@@ -1105,6 +1105,8 @@
   .lg-career .prog i { display:block; height:100%; background:linear-gradient(90deg,var(--rose,#ff9e7a),#7fd8ff); }
   .lg-career .nxt { margin-top:0.5rem; font-family:var(--mono); font-size:0.56rem; letter-spacing:0.05em; color:var(--muted); }
   .lg-career .nxt b { color:#7fd8ff; }
+  .lg-career .pctl { margin-top:0.5rem; font-family:var(--mono); font-size:0.6rem; letter-spacing:0.04em; color:var(--muted); display:flex; align-items:baseline; gap:0.4rem; }
+  .lg-career .pctl b { color:#7fd8ff; font-size:1.25rem; font-family:var(--display); letter-spacing:0.03em; }
   .lg-band { display:flex; align-items:center; gap:0.55rem; margin:1.05rem 0.15rem 0.35rem; font-family:var(--mono); font-size:0.54rem; letter-spacing:0.18em; text-transform:uppercase; }
   .lg-band::after { content:""; flex:1; height:1px; background:linear-gradient(90deg,currentColor,transparent); opacity:0.35; }
   .lg-band .n { font-weight:700; }
@@ -11825,9 +11827,10 @@ const LEAGUE_TIERS = [
   { id:'diamond',  name:'Diamond',  icon:'💎', color:'#9be7ff', careerMin:500   },
   { id:'crown',    name:'Crown',    icon:'👑', color:'#f5c542', careerMin:10000 },
 ];
-// Relative band sizes (fractions of the scored field), Crown → Quartz.
+// Relative rank-band sizes (fractions of the scored field), Crown → Quartz.
 // Rookie = whatever remains. Each guaranteed ≥1 slot so top tiers always exist.
-const LEAGUE_BAND_PCT = [0.05, 0.10, 0.15, 0.20, 0.25];
+// Pyramid: Crown 2% · Diamond 6% · Sapphire 12% · Emerald 22% · Quartz 28% · Rookie 30%.
+const LEAGUE_BAND_PCT = [0.02, 0.06, 0.12, 0.22, 0.28];
 
 function leaguesActive() {
   try {
@@ -12024,8 +12027,13 @@ function renderLeagues() {
     } else {
       progHtml = `<div class="nxt">👑 top tier — you've maxed the ladder</div>`;
     }
+    // Spotify-Wrapped-style lifetime percentile (the tier is what you keep; this
+    // is the flex). top% from your 1-based rank among all blinks on this board.
+    const topPct = Math.max(1, Math.round((myIdx + 1) / entries.length * 100));
+    const pctlHtml = `<div class="pctl"><span>🌍 You're in the</span><b>top ${topPct}%</b><span>of ${entries.length} blinks all-time</span></div>`;
     html += `<div class="lg-career">
       <div class="cur"><span class="ico">${t.icon}</span><span>Your career rank · <span style="color:${t.color}">${t.name}</span></span></div>
+      ${pctlHtml}
       ${progHtml}
     </div>`;
   }
