@@ -1,0 +1,77 @@
+name: Probe page (read-only)
+
+# Fetch a page from the live site and report whether given strings are present.
+# Read-only: one GET, nothing written anywhere.
+#
+# Generic on purpose. Claude Code sessions cannot reach blinksunited.com directly
+# (outbound HTTP to it is blocked), so confirming "did that deploy actually land"
+# has meant adding a throwaway probe workflow each time. This is the reusable one:
+# give it a path and the strings that should be in the deployed markup.
+#
+# Fails the run when a required pattern is missing, so a red run means "not
+# deployed (or deployed wrong)" rather than needing the log read closely.
+on:
+  workflow_dispatch:
+    inputs:
+      path:
+        description: 'Path on www.blinksunited.com (e.g. /voting or /)'
+        required: true
+        default: '/'
+      expect:
+        description: 'Strings that must ALL be present, separated by |||'
+        required: false
+        default: ''
+      forbid:
+        description: 'Strings that must NOT be present, separated by |||'
+        required: false
+        default: ''
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch and check
+        env:
+          P: ${{ github.event.inputs.path }}
+          EXPECT: ${{ github.event.inputs.expect }}
+          FORBID: ${{ github.event.inputs.forbid }}
+        run: |
+          set -u
+          BASE="https://www.blinksunited.com"
+          echo "===== GET $BASE$P ====="
+          # -S so curl reports transport errors; the status line is echoed before
+          # any pattern check so a 404 or a redirect is obvious on its own.
+          code=$(curl -sSL -w '%{http_code}' -o /tmp/page "$BASE$P")
+          echo "HTTP $code · $(wc -c </tmp/page) bytes"
+          if [ "$code" != "200" ]; then echo "::error::expected HTTP 200, got $code"; exit 1; fi
+
+          fail=0
+          # ||| as the separator, not newline or comma: the strings being looked
+          # for are HTML/JS fragments that routinely contain both.
+          check() {   # check <mode> <blob>
+            mode="$1"; blob="$2"
+            [ -z "$blob" ] && return 0
+            printf '%s' "$blob" | awk 'BEGIN{RS="\\|\\|\\|"} {print}' | while IFS= read -r pat; do
+              [ -z "$pat" ] && continue
+              if grep -qF -- "$pat" /tmp/page; then found=yes; else found=no; fi
+              if [ "$mode" = expect ] && [ "$found" = no ]; then
+                echo "MISSING  $pat"; echo "$pat" >> /tmp/failures
+              elif [ "$mode" = forbid ] && [ "$found" = yes ]; then
+                echo "PRESENT (should not be)  $pat"; echo "$pat" >> /tmp/failures
+              else
+                echo "ok       $pat"
+              fi
+            done
+          }
+
+          # The while loop above runs in a subshell (pipeline), so a variable set
+          # inside it would not survive — failures go to a file instead.
+          : > /tmp/failures
+          echo "----- must be present -----"; check expect "$EXPECT"
+          echo "----- must be absent -----";  check forbid "$FORBID"
+
+          if [ -s /tmp/failures ]; then
+            echo "::error::$(wc -l </tmp/failures) pattern check(s) failed — see above"
+            exit 1
+          fi
+          echo "all pattern checks passed."
