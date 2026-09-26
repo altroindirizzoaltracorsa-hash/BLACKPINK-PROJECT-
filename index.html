@@ -3819,7 +3819,7 @@
       </div>
 
       <p class="badge-footer-note" style="margin-top:2rem;">
-        Data from various scrobblers · Resets at 2am Italy time daily ·
+        Data from various scrobblers · <span id="badge-reset-note">Resets at 2am Italy time daily</span> ·
         Fan-made by Blinks United · Not affiliated with YG Entertainment · Made with 💗
       </p>
     </div>
@@ -6924,6 +6924,7 @@ function routeInitial() {
   else history.replaceState({ page: 'home' }, '', '/');
   maybeShowTutorial();
   checkLegacyMigrationGate();
+  try { paintResetNotes(); } catch {}
   // Fallback (onAuthStateChange is the primary trigger): resume the guide if the
   // user is returning from the sign-in redirect mid-tour.
   setTimeout(() => { try { _maybeResumeGuide(); } catch {} }, 1400);
@@ -9629,6 +9630,39 @@ function getDayLabel(unixFrom) {
   return days[d.getUTCDay()];
 }
 
+// ── Reset times, said in the viewer's own clock ───────────────────────────────
+// The boundaries themselves stay 2am Italy (DST-aware, via getDay/WeekBounds —
+// the same functions the scores are bucketed with, so a label can never disagree
+// with the reset it describes). What changes is how we SAY it: "2AM Rome" is a
+// conversion a Blink in Manila or São Paulo has to do in their head, and most
+// won't. Everything below formats the real reset instant in the local zone.
+function nextDailyResetAt()  { return new Date(getDayBounds().to * 1000); }
+function nextWeeklyResetAt() { return new Date(getWeekBounds().to * 1000); }
+
+// Whatever the viewer's browser calls their zone — "GMT+2", "CEST", "PDT"…
+function localTzLabel() {
+  try {
+    const parts = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(new Date());
+    return (parts.find(p => p.type === 'timeZoneName') || {}).value || '';
+  } catch (_) { return ''; }
+}
+// "3:00 AM GMT+2", or "Mon 3:00 AM GMT+2" with the weekday. 12h/24h follows the
+// viewer's locale, so nobody is shown a clock format they don't read.
+function localResetLabel(d, withWeekday) {
+  try {
+    const o = { hour: 'numeric', minute: '2-digit' };
+    if (withWeekday) o.weekday = 'short';
+    const tz = localTzLabel();
+    return new Intl.DateTimeFormat(undefined, o).format(d) + (tz ? ' ' + tz : '');
+  } catch (_) { return ''; }
+}
+// Static copy that names a reset time — filled in at runtime so it, too, is in
+// the reader's clock rather than Rome's.
+function paintResetNotes() {
+  const el = document.getElementById('badge-reset-note');
+  if (el) el.textContent = `Resets daily at ${localResetLabel(nextDailyResetAt(), false)}`;
+}
+
 // Count scrobbles per track in a list
 function countByTrack(scrobbles) {
   const counts = {};
@@ -12113,14 +12147,16 @@ function renderLeaderboard() {
 // ══════════════════════════════════════════════════════════════════════════
 //  BLINK LEAGUES  —  tiered competitive leaderboard (Phase 1: frontend-only)
 // ══════════════════════════════════════════════════════════════════════════
-// Off by default — visitors keep the classic board until LEAGUES_ENABLED flips.
-//   • ?leagues=1  → preview the leagues view (also remembered in localStorage)
+// ON by default — leagues is the leaderboard everyone lands on. A visitor who
+// has chosen otherwise keeps their choice (bu_leagues_pref), and both views
+// carry a one-click link to the other.
+//   • ?leagues=1  → force leagues (also remembered in localStorage)
 //   • ?classic=1  → force the old board back
-//   • flip LEAGUES_ENABLED to true to make leagues the default for everyone
+//   • flip LEAGUES_ENABLED back to false to make classic the default again
 // The classic renderLeaderboard() above is left fully intact; renderLeaderboard()
 // just branches to renderLeagues() when leaguesActive() is true. Nothing here
 // touches the backend — tiers are computed live from the same lbData.scores.
-const LEAGUES_ENABLED = false;
+const LEAGUES_ENABLED = true;
 
 // bottom → top. careerMin = absolute overall_all threshold used ONLY for the
 // All-Time career tier (mirrors BADGE_TIERS, already calibrated to real data —
@@ -12206,22 +12242,9 @@ function relativeTierIdx(rankIdx, total) {
   }
   return 0; // Rookie
 }
-// ms until the next reset at `hour` Rome time. weekdayMon=1..7 (Mon..Sun) pins it
-// to a weekday (weekly reset); null = daily.
-function _msToNextRome(hour, weekdayMon) {
-  const now = new Date();
-  const rome = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Rome' }));
-  const t = new Date(rome); t.setHours(hour, 0, 0, 0);
-  if (weekdayMon) {
-    const cur = (rome.getDay() === 0 ? 7 : rome.getDay());
-    let add = (weekdayMon - cur + 7) % 7;
-    if (add === 0 && rome >= t) add = 7;
-    t.setDate(t.getDate() + add);
-  } else if (rome >= t) {
-    t.setDate(t.getDate() + 1);
-  }
-  return t - rome;
-}
+// (The old _msToNextRome() re-derived the reset from Europe/Rome wall-clock and
+// ignored DST, so it could disagree with the boundary the scores actually use.
+// nextDailyResetAt()/nextWeeklyResetAt() read getDay/WeekBounds instead.)
 function _fmtCountdown(ms) {
   if (ms < 0) ms = 0;
   const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
@@ -12285,9 +12308,10 @@ function renderLeagues() {
 
   // Context bar with a live reset countdown (Overall · Today / This Week).
   if (isOverall && (lbPeriod === 'daily' || lbPeriod === 'weekly')) {
-    const resetMs = lbPeriod === 'daily' ? _msToNextRome(2, null) : _msToNextRome(2, 1);
+    const resetAt = lbPeriod === 'daily' ? nextDailyResetAt() : nextWeeklyResetAt();
+    const resetMs = resetAt.getTime() - Date.now();
     const icon = lbPeriod === 'daily' ? '☀️' : '⏳';
-    const resetLabel = lbPeriod === 'daily' ? 'resets 2AM Rome' : 'resets Mon 2AM';
+    const resetLabel = `resets ${localResetLabel(resetAt, lbPeriod === 'weekly')}`;
     html += `<div class="lg-ctx"><div class="lgc-l">🏆 Overall · ${periodWord}</div><div class="lgc-r">${icon} ${resetLabel} · ${_fmtCountdown(resetMs)} left</div></div>`;
   }
 
