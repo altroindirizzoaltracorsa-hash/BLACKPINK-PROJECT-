@@ -2367,12 +2367,32 @@
   .vv-closed-note { font-family: var(--mono); font-size: 0.64rem; line-height: 1.6; color: rgba(245,240,240,0.9); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-left: 2px solid var(--pink); border-radius: 6px; padding: 0.7rem 0.85rem; margin-bottom: 1rem; }
   .vv-closed-note b { color: var(--pink); }
   .vv-final-lbl { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.6rem; }
-  .vv-community { border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 0.9rem; margin-bottom: 1rem; background: rgba(255,0,102,0.05); }
-  .vv-community-hd { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
-  .vv-community-row { display: flex; gap: 1.6rem; flex-wrap: wrap; }
+  /* The one number the whole campaign is about, so it gets to be the loudest
+     thing on the panel rather than another stat in a row. */
+  .vv-community { border: 1px solid rgba(255,0,102,0.35); border-radius: 10px; padding: 1.15rem 0.9rem 1rem; margin-bottom: 1rem; background: radial-gradient(120% 140% at 50% 0%, rgba(255,0,102,0.16), rgba(255,0,102,0.04) 60%, transparent); text-align: center; }
+  .vv-community-hd { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.55rem; }
+  /* clamp() rather than a fixed size: this is a 7-digit number inside a phone
+     column, and at a fixed size it would either overflow there or look timid on
+     a desktop. */
+  /* 12vw, not 14: measured, not guessed. At 14vw an 8-digit total overflowed its
+     column at 360px. At 12vw every total up to 99,999,999 fits from 320px up;
+     only 100M+ on a 320px screen would spill, and it cannot scroll the page.
+     nowrap so a number never breaks across lines mid-thousands. */
+  .vv-community-big { font-family: var(--display); font-size: clamp(2.2rem, 12vw, 4.6rem); line-height: 0.92; color: var(--pink); letter-spacing: -0.01em; white-space: nowrap; max-width: 100%; animation: vvPulse 2.6s ease-in-out infinite; will-change: transform, text-shadow; }
+  @keyframes vvPulse {
+    0%, 100% { transform: scale(1);     text-shadow: 0 0 16px rgba(255,0,102,0.35); }
+    50%      { transform: scale(1.035); text-shadow: 0 0 34px rgba(255,0,102,0.75), 0 0 68px rgba(255,0,102,0.3); }
+  }
+  .vv-community-sub { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,240,240,0.8); margin-top: 0.5rem; }
+  .vv-community-row { display: flex; gap: 1.4rem; flex-wrap: wrap; justify-content: center; margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
   .vv-community-row div { display: flex; flex-direction: column; }
-  .vv-community-row span { font-family: var(--display); font-size: 1.7rem; line-height: 0.9; color: var(--pink); }
+  .vv-community-row span { font-family: var(--display); font-size: 1.35rem; line-height: 0.9; color: rgba(245,240,240,0.92); }
   .vv-community-row small { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-top: 0.35rem; }
+  /* A number that throbs forever is exactly what reduced-motion is for; the glow
+     stays, so it still reads as the celebration it is. */
+  @media (prefers-reduced-motion: reduce) {
+    .vv-community-big { animation: none; text-shadow: 0 0 26px rgba(255,0,102,0.55); }
+  }
   .vv-forgot { display: block; font-family: var(--mono); font-size: 0.6rem; line-height: 1.55; color: rgba(245,240,240,0.85); background: rgba(255,255,255,0.03); border: 1px dashed var(--border); border-radius: 8px; padding: 0.6rem 0.8rem; margin-bottom: 1rem; text-decoration: none; }
   .vv-forgot:hover { border-color: var(--pink); }
   .vv-forgot b { color: var(--pink); }
@@ -8199,13 +8219,16 @@ function vvCommunityHtml(opts = {}) {
   if (!t || !(Number(t.total) > 0)) return '';
   const blinks = Number(t.blinksTotal) || 0;
   const today = Number(t.today) || 0;
+  // The headline is the total. Blinks and today drop to a quieter row beneath
+  // it — they are context for the big number, not competitors with it.
   return `<div class="vv-community">
     <div class="vv-community-hd">${opts.label || 'Together, as a community'}</div>
-    <div class="vv-community-row">
-      <div><span>${_vvFmt(t.total)}</span><small>votes cast</small></div>
+    <div class="vv-community-big">${_vvFmt(t.total)}</div>
+    <div class="vv-community-sub">${opts.sub || 'votes for BLACKPINK 💗'}</div>
+    ${blinks || (opts.showToday && today) ? `<div class="vv-community-row">
       ${blinks ? `<div><span>${_vvFmt(blinks)}</span><small>blink${blinks === 1 ? '' : 's'}</small></div>` : ''}
       ${opts.showToday && today ? `<div><span>${_vvFmt(today)}</span><small>today</small></div>` : ''}
-    </div>
+    </div>` : ''}
   </div>`;
 }
 
@@ -8520,7 +8543,11 @@ function drawVmaVoting() {
         : vmaVideoGuidesHtml()}
     ${me}
     ${!closed && qualified ? vmaExtensionHtml() : ''}
-    ${vvCommunityHtml({ label: closed ? 'Together, blinks cast' : 'Together, as a community', showToday: !closed })}
+    ${vvCommunityHtml({
+      label: closed ? '🏆 Together, blinks cast' : 'Together, as a community',
+      sub: closed ? 'votes for BLACKPINK 💗 whatever the result' : 'votes for BLACKPINK 💗',
+      showToday: !closed,
+    })}
     ${closed ? '<div class="vv-final-lbl">Final standings · every vote logged</div>' : `<div class="vv-tabs">${toggle}</div>`}
     ${table}
     ${unrankedHtml}
