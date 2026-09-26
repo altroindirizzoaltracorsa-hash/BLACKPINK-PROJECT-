@@ -8143,7 +8143,24 @@ let _vvBoard = [], _vvUnranked = [], _vvMe = null, _vvSession = null, _vvToken =
 // The API enforces the same instant — search VMA_CLOSES_AT in api/vma-votes.js.
 // Change both together. `_vvClosed` prefers what the server reported over this
 // clock, since a visitor's device may be wrong.
+// MTV's own ballot shut at 6PM ET; our board keeps taking entries until the
+// reset. That gap is deliberate: a blink who voted WITHOUT the counter has to
+// come here and type their votes in by hand, and they need a window to do it in
+// after they have finished voting. So these are two separate instants —
+// "you can no longer vote at MTV" and "you can no longer log what you voted".
+const VMA_BALLOT_ENDED_AT = Date.parse('2026-09-25T22:00:00Z');
 const VMA_CLOSES_AT = Date.parse('2026-09-26T04:00:00Z');
+const vmaBallotEnded = () => Date.now() >= VMA_BALLOT_ENDED_AT;
+// "2h 40m" / "35m" — how much of the catch-up window is left. Rendered once per
+// paint rather than ticking: this only needs to convey urgency, and a live timer
+// would mean repainting the whole panel every second.
+function vmaEntryLeft() {
+  const ms = VMA_CLOSES_AT - Date.now();
+  if (ms <= 0) return null;
+  const mins = Math.floor(ms / 60000);
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
 let _vvClosedFromServer = null;
 function vmaClosed() {
   return _vvClosedFromServer != null ? _vvClosedFromServer : Date.now() >= VMA_CLOSES_AT;
@@ -8431,7 +8448,15 @@ function drawVmaVoting() {
         : `<div class="vv-note">Register the votes you cast and race other blinks up the board. Vote-only blinks earn a 🗳️ Voter badge; streaming blinks get ranked. <a href="/vmas">how &amp; where to vote →</a></div>
       <button class="vv-guide-btn" onclick="startGuide()">🧭 New here? Step-by-step guide</button>`}
     </div>
-    ${closed ? `<div class="vv-closed-note">🏁 <b>The VMA ballot is closed.</b> Nothing more can be added here. <b>BreakTudo is still running</b> — switch to it above to keep voting for BLACKPINK &amp; the members.</div>` : vmaVideoGuidesHtml()}
+    ${closed
+      ? `<div class="vv-closed-note">🏁 <b>The VMA ballot is closed.</b> Nothing more can be added here. <b>BreakTudo is still running</b> — switch to it above to keep voting for BLACKPINK &amp; the members.</div>`
+      // Between MTV closing its ballot and this board freezing, the only thing
+      // left to do here is log votes already cast — above all for blinks who
+      // voted without the counter and have nothing recorded yet. Say so, and say
+      // how long they have, because nothing else on the page hints at a deadline.
+      : vmaBallotEnded()
+        ? `<div class="vv-closed-note">🏁 <b>Voting has ended at MTV.</b> Didn't use the vote counter? <b>Add the votes you cast below</b> — the leaderboard freezes${vmaEntryLeft() ? ` in <b>${vmaEntryLeft()}</b>` : ''}, at midnight ET, and after that nothing more can be added. 💗</div>${vmaVideoGuidesHtml()}`
+        : vmaVideoGuidesHtml()}
     ${me}
     ${!closed && qualified ? vmaExtensionHtml() : ''}
     ${closed ? '<div class="vv-final-lbl">Final standings · every vote logged</div>' : `<div class="vv-tabs">${toggle}</div>`}
