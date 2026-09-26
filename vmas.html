@@ -188,9 +188,7 @@
   .foot-fine { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.05em; color: var(--muted); line-height: 1.6; margin-top: 0.8rem; }
 
   @media (max-width: 560px) {
-    /* Two columns, not one: at five nominees a single column is five full-width
-       squares to scroll past. */
-    .videos { grid-template-columns: 1fr 1fr; gap: 1rem; max-width: 26rem; margin: 0 auto; }
+    .videos { grid-template-columns: 1fr; gap: 1.4rem; max-width: 22rem; margin: 0 auto; }
     .countdown { gap: 0.7rem; }
     .cd-unit { min-width: 3rem; }
   }
@@ -220,8 +218,17 @@
 
 <section class="section">
   <div class="wrap">
-    <div class="section-head">Nominations</div>
-    <div class="videos">
+    <!-- While the ballot is open this is one list under "Nominations", exactly
+         as it was. Once it closes, applyClosedState lifts Song of Summer into
+         the group above — what you can still vote for comes first, and the
+         "voting closed" heading sits with the things it describes instead of
+         directly above a button telling people to go and vote. -->
+    <div class="section-head" id="noms-open-head" hidden>Still open — vote here</div>
+    <div class="videos" id="videos-open" hidden></div>
+    <div class="videos-note ig" id="ig-note-open" hidden>📸 <b>Song of Summer</b> is voted in <b>MTV’s Instagram Stories</b>, not on vote.mtv.com — it runs as elimination rounds, so it keeps going for as long as BLACKPINK survive.</div>
+
+    <div class="section-head" id="noms-head">Nominations</div>
+    <div class="videos" id="videos-main">
       <!-- data-closed: dimmed and unlinked once fan voting ends (see
            applyClosedState). Song of Summer deliberately has no such flag — it
            runs on in MTV's Instagram Stories after the ballot shuts. -->
@@ -265,7 +272,7 @@
       </div>
     </div>
     <div class="videos-note">🔒 Chosen by an industry panel — not a fan vote</div>
-    <div class="videos-note ig">📸 <b>Song of Summer</b> is voted in <b>MTV’s Instagram Stories</b>, not on vote.mtv.com — it runs as elimination rounds, so it keeps going for as long as BLACKPINK survive.</div>
+    <div class="videos-note ig" id="ig-note-inline">📸 <b>Song of Summer</b> is voted in <b>MTV’s Instagram Stories</b>, not on vote.mtv.com — it runs as elimination rounds, so it keeps going for as long as BLACKPINK survive.</div>
   </div>
 </section>
 
@@ -425,11 +432,10 @@
 
   function tick() {
     var diff = DEADLINE - Date.now();
-    if (diff <= 0) {
-      cdEl.innerHTML = '<span class="cd-closed">Voting closed</span>';
-      resetEl.innerHTML = 'Thank you for voting 💗 Winners revealed Sun Sept 27.';
-      return;
-    }
+    // Past the deadline the hero belongs to applyClosedState, which writes it
+    // once. Without this return, the 1s tick would overwrite that back to
+    // "Voting closed" every second — directly above the vote button.
+    if (diff <= 0) return;
     var d = Math.floor(diff / 86400000);
     var h = Math.floor(diff % 86400000 / 3600000);
     var m = Math.floor(diff % 3600000 / 60000);
@@ -470,12 +476,36 @@
       }
     }
 
+    // Lift the one nomination still running above the closed ones, and retitle
+    // the group below to say what it now is.
+    var openWrap = document.getElementById('videos-open');
+    var openHead = document.getElementById('noms-open-head');
+    var openNote = document.getElementById('ig-note-open');
+    var inlineNote = document.getElementById('ig-note-inline');
+    var live = document.querySelector('#videos-main .video:not([data-closed])');
+    if (openWrap && live) {
+      openWrap.appendChild(live);
+      openWrap.hidden = false;
+      if (openHead) openHead.hidden = false;
+      if (openNote) openNote.hidden = false;
+      if (inlineNote) inlineNote.hidden = true;
+    }
+    var head = document.getElementById('noms-head');
+    if (head) head.textContent = 'Voting closed';
+
+    // The hero speaks only about what is OPEN. "Voting closed" belongs with the
+    // closed nominations further down, not directly above a button asking
+    // people to go and vote.
     var cta = document.getElementById('cta-btn');
     if (cta) { cta.setAttribute('href', IG_URL); cta.textContent = 'Vote on Instagram ↗'; }
     var note = document.getElementById('cta-note');
     if (note) note.innerHTML = 'Opens MTV on Instagram — <b>Song of Summer</b> is voted in their Stories';
     var label = document.getElementById('cd-label');
-    if (label) label.textContent = 'Fan voting';
+    if (label) label.textContent = 'Still open';
+    var cd = document.getElementById('countdown');
+    if (cd) cd.innerHTML = '<span class="cd-closed">Song of Summer</span>';
+    var reset = document.getElementById('cd-reset');
+    if (reset) reset.innerHTML = 'Elimination rounds in MTV’s Stories — it runs for as long as BLACKPINK survive';
     var rOpen = document.getElementById('rules-open');
     var rClosed = document.getElementById('rules-closed');
     if (rOpen && rClosed) { rOpen.hidden = true; rClosed.hidden = false; }
@@ -483,7 +513,7 @@
     var sub = document.getElementById('hero-sub');
     if (sub) {
       sub.innerHTML = 'BLACKPINK, LISA and JISOO × ZAYN were nominated at the MTV Video Music Awards. '
-        + 'The ballot has closed — but <b>Song of Summer</b> is still running in MTV’s Instagram Stories.';
+        + '<b>Song of Summer</b> is still running in MTV’s Instagram Stories.';
     }
   }
 
