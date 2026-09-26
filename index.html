@@ -2173,8 +2173,19 @@
   .vote-cat-thumb { width: 56px; height: 56px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; }
   .vote-cat-text { min-width: 0; }
   /* Nominee gallery — a horizontal row of the videos, each with the categories it's up for */
-  .vote-videos { display: flex; gap: 0.8rem; margin-bottom: 1.4rem; }
-  .vote-video { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+  /* Wraps because this card now carries five nominees, not three: at flex 1 1 0
+     a fifth one squeezes every thumbnail down to ~60px on a phone. A basis of
+     6.5rem keeps three per row there — the density it had at three — and lets
+     them all sit in one row on a desktop. */
+  /* Grid, not a wrapping flex row: this card now carries five nominees, and a
+     flex row left the odd one out stretched to full width on its own line.
+     auto-fit collapses the tracks nothing lands in, so five nominees spread
+     across a desktop row; on a phone all three columns are occupied, nothing
+     collapses, and the short last row sits at column width instead of one card
+     ballooning to the full width. (auto-fill instead left ~86px thumbnails on
+     desktop, holding open tracks that had nothing in them.) */
+  .vote-videos { display: grid; grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr)); gap: 0.8rem; margin-bottom: 1.4rem; }
+  .vote-video { min-width: 0; display: flex; flex-direction: column; }
   .vote-video-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border: 1px solid var(--border); display: block; }
   .vote-video-name { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); margin: 0.6rem 0 0.45rem; line-height: 1.35; }
   .vote-video-noms { display: flex; flex-direction: column; gap: 0.32rem; }
@@ -2183,6 +2194,14 @@
   .vote-video-nom.nolink { color: var(--muted); border-color: var(--border); pointer-events: none; }
   .vote-video-nom.pro { color: var(--muted); border-color: var(--border); border-style: dashed; pointer-events: none; }
   .vote-videos-note { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.03em; color: var(--muted); margin: -0.7rem 0 1.4rem; line-height: 1.4; }
+  /* The negative top margin tucks the first note under the thumbnails; a second
+     one must not inherit it or the two would collide. */
+  .vote-videos-note + .vote-videos-note { margin-top: 0; }
+  .vote-videos-note.ig { color: rgba(245,240,240,0.88); }
+  .vote-videos-note.ig b { color: var(--pink); }
+  /* Still live while the rest of the card has gone dark, so it keeps its colour
+     where a closed nomination is greyed out. */
+  .vote-video-nom.ig { color: var(--pink); border-color: rgba(255,0,102,0.55); }
   @media (max-width: 460px) { .vote-video-name { font-size: 0.54rem; } .vote-video-nom { font-size: 0.5rem; padding: 0.28rem 0.25rem; } }
   .vote-category-name { font-size: 0.65rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,0,102,0.7); margin-bottom: 0.5rem; }
   .vote-nominees { display: flex; flex-wrap: wrap; gap: 0.5rem; }
@@ -7800,11 +7819,17 @@ const VOTE_CAMPAIGNS = [
       'Each category has its own page — tap the “Vote ↗” link on each below',
       'Hit submit to lock in your ballot, then come back and vote every day',
       'Voting closes Sept 25, 6PM ET',
+      '📸 Song of Summer runs separately in MTV’s Instagram Stories — still open, and not counted on our leaderboard',
       'Winners revealed live Sun Sept 27, 7:30 ET / 4:30 PT on CBS & Paramount+',
     ],
     // On-page layout: a horizontal row of the 3 videos, each with the
     // categories it's up for. (categories[] below still feeds the share card.)
     videos: [
+      // The group's own nomination, not a video's — hence its own card rather
+      // than a category bolted onto "JUMP".
+      { name: 'BLACKPINK', img: '/vote-blackpink-ot4.jpg', noms: [
+        { cat: 'Best Group', url: 'https://vote.mtv.com/best-group' },
+      ] },
       { name: 'BLACKPINK — “JUMP”', img: '/vote-vma-jump.jpeg', noms: [
         { cat: 'Best K-Pop', url: 'https://vote.mtv.com/best-k-pop' },
       ] },
@@ -7817,8 +7842,19 @@ const VOTE_CAMPAIGNS = [
       { name: 'JISOO × ZAYN — “Eyes Closed”', img: '/vote-vma-eyesclosed.jpeg', noms: [
         { cat: 'Best Visual Effects', pro: true },
       ] },
+      // Still open after the main ballot closed: Song of Summer is voted in
+      // MTV's Instagram Stories, not on vote.mtv.com. `ig` keeps it live when
+      // everything else on the card has gone dark, and links to the account
+      // rather than a ballot page — a story has no URL of its own.
+      { name: 'Tame Impala & JENNIE — “Dracula”', img: '/vote-vma-dracula.jpg', noms: [
+        { cat: 'Song of Summer', ig: true, url: 'https://www.instagram.com/mtv/' },
+      ] },
     ],
     categories: [
+      { name: 'Best Group', url: 'https://vote.mtv.com/best-group',
+        nominees: [{ name: 'BLACKPINK', us: true }] },
+      { name: 'Song of Summer', url: 'https://www.instagram.com/mtv/',
+        nominees: [{ name: 'Tame Impala & JENNIE — “Dracula”', us: true }] },
       { name: 'Best Pop', url: 'https://vote.mtv.com/best-pop',
         nominees: [{ name: 'LISA — “Dream”', us: true }] },
       { name: 'Best K-Pop', url: 'https://vote.mtv.com/best-k-pop',
@@ -8105,12 +8141,18 @@ function renderVoteCampaigns() {
           <div class="vote-video-noms">
             ${v.noms.map(n => n.pro
               ? `<span class="vote-video-nom pro" title="Chosen by an industry panel — not a fan vote">🔒 ${n.cat}</span>`
-              : (n.url && !ended)
-                ? `<a class="vote-video-nom" href="${n.url}" target="_blank" rel="noopener noreferrer">${n.cat} ↗</a>`
-                : `<span class="vote-video-nom nolink">${n.cat}</span>`).join('')}
+              // `ig` ignores `ended`: this one runs in MTV's Instagram Stories
+              // on its own schedule, so the main ballot closing must not grey
+              // it out alongside everything else.
+              : n.ig
+                ? `<a class="vote-video-nom ig" href="${n.url}" target="_blank" rel="noopener noreferrer" title="Voted in MTV's Instagram Stories — not on vote.mtv.com">📸 ${n.cat} ↗</a>`
+                : (n.url && !ended)
+                  ? `<a class="vote-video-nom" href="${n.url}" target="_blank" rel="noopener noreferrer">${n.cat} ↗</a>`
+                  : `<span class="vote-video-nom nolink">${n.cat}</span>`).join('')}
           </div>
         </div>`).join('');
     const hasPro = (c.videos || []).some(v => v.noms.some(n => n.pro));
+    const hasIg = (c.videos || []).some(v => v.noms.some(n => n.ig));
     const wonBadge = c.winner ? `<div class="vote-winner-badge">🏆 WE WON — ${c.winner.name}</div>` : '';
     return `
       <div class="vote-card${c.winner ? ' won' : ''}">
@@ -8124,7 +8166,7 @@ function renderVoteCampaigns() {
           ${deadlineHtml}
         </div>
         ${c.resetOffset && !ended ? `<div class="vote-reset">🔄 Daily votes reset in <span class="vote-reset-time" data-reset-offset="${c.resetOffset}"></span></div>` : ''}
-        ${c.videos ? `<div class="vote-videos">${videosHtml}</div>${hasPro ? `<div class="vote-videos-note">🔒 Chosen by an industry panel — not a fan vote</div>` : ''}` : `<div class="vote-categories">${categoriesHtml}</div>`}
+        ${c.videos ? `<div class="vote-videos">${videosHtml}</div>${hasPro ? `<div class="vote-videos-note">🔒 Chosen by an industry panel — not a fan vote</div>` : ''}${hasIg ? `<div class="vote-videos-note ig">📸 <b>Song of Summer is still open</b> — it's voted in MTV's Instagram Stories, not on vote.mtv.com, so it isn't counted on our leaderboard.</div>` : ''}` : `<div class="vote-categories">${categoriesHtml}</div>`}
         ${c.rules?.length ? `<div class="vote-rules">
           <div class="vote-rules-label">📋 Rules</div>
           <ul>${c.rules.map(r => `<li>${r}</li>`).join('')}</ul>
