@@ -107,6 +107,14 @@
   .dayrow .v i{display:block;font-style:normal;font-size:9.5px;color:var(--dim);margin-top:2px;}
   .dayrow.absent .g{color:var(--dim);font-weight:400;}
   .dayrow.absent .v b{color:var(--dim);font-weight:400;font-size:11px;}
+  /* A provisional row is a real reading of a day Spotify has not finished
+     publishing. It is rewritten on a later run, so it must not be read as the
+     day's gain — +7,310 sitting under a run of +4M days looked like a collapse
+     rather than a day still in progress. */
+  .dayrow.partial .v b{color:var(--amber,#e8b04b);}
+  .dayrow.partial .v i{color:var(--amber,#e8b04b);opacity:.75;}
+  .dayhead.partial span:last-child{color:var(--amber,#e8b04b);}
+  td.up.partial{color:var(--amber,#e8b04b);}
   /* Catch-up projection widget */
   .catchup{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin:14px 0 8px;}
   .cu-title{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--pink-soft);margin-bottom:10px;}
@@ -497,6 +505,12 @@
 
   function num(v) { return v === '' || v == null ? null : Number(v); }
 
+  // The fetcher marks a row it wrote mid-publish with "still publishing" in the
+  // note column, and rewrites that same dated row on a later run once Spotify
+  // has finished. Until then its delta is a partial figure, so the log has to
+  // say so rather than present it as the day's gain.
+  function isPartial(r) { return !!r && /still publishing/i.test(r.note || ''); }
+
   function renderLog() {
     const body = document.getElementById('logbody');
 
@@ -518,9 +532,18 @@
       body.innerHTML = days.map(d => {
         const present = logGroups.filter(g => by[d] && by[d][g]);
         const sum = present.reduce((a, g) => a + (num(by[d][g].daily_delta) || 0), 0);
+        // "combined" is a claim about the whole day. It is only true once every
+        // group has a final reading — otherwise this is a running subtotal of a
+        // day still being published, and saying "+7,310 combined" for a day
+        // where six of seven groups have no reading yet is simply wrong.
+        const anyPartial = present.some(g => isPartial(by[d][g]));
+        const whole = present.length === logGroups.length && !anyPartial;
+        const headNote = !sum ? 'first day'
+          : whole ? `+${fmt(sum)} combined`
+          : `+${fmt(sum)} so far · ${present.length}/${logGroups.length} groups`;
         return `<div class="dayblock">
-          <div class="dayhead"><span>${esc(d)}</span>` +
-          (sum ? `<span>+${fmt(sum)} combined</span>` : '<span>first day</span>') +
+          <div class="dayhead${whole || !sum ? '' : ' partial'}"><span>${esc(d)}</span>` +
+          `<span>${headNote}</span>` +
           `</div>` +
           logGroups.map(g => {
             const r = by[d] && by[d][g];
@@ -534,10 +557,12 @@
                      `<div class="v"><b>—</b><i>no reading stored</i></div></div>`;
             }
             const dd = num(r.daily_delta);
+            const part = isPartial(r);
             // A blank delta is the group's FIRST stored day, not a zero day.
-            return `<div class="dayrow"><div class="g">${esc(g)}</div><div class="v">` +
-              (dd == null ? '<b>first day</b>' : `<b>+${fmt(dd)}</b>`) +
-              `<i>${fmt(num(r.total_streams))} total</i></div></div>`;
+            return `<div class="dayrow${part ? ' partial' : ''}"><div class="g">${esc(g)}</div><div class="v">` +
+              (dd == null ? '<b>first day</b>' : `<b>+${fmt(dd)}${part ? ' so far' : ''}</b>`) +
+              `<i>${part ? 'still publishing · not final yet'
+                         : fmt(num(r.total_streams)) + ' total'}</i></div></div>`;
           }).join('') +
         `</div>`;
       }).join('');
@@ -552,10 +577,12 @@
       '</tr></thead><tbody>' +
       mine.map(r => {
         const dd = num(r.daily_delta);
+        const part = isPartial(r);
         return '<tr>' +
           `<td>${esc(r.date)}</td>` +
           `<td>${fmt(num(r.total_streams))}</td>` +
-          (dd == null ? '<td class="none">first day</td>' : `<td class="up">+${fmt(dd)}</td>`) +
+          (dd == null ? '<td class="none">first day</td>'
+                      : `<td class="up${part ? ' partial' : ''}">+${fmt(dd)}${part ? ' so far' : ''}</td>`) +
           `<td class="none">${esc(r.tracks)}${r.note ? ' <span title="' + esc(r.note) + '">*</span>' : ''}</td>` +
         '</tr>';
       }).join('') +
