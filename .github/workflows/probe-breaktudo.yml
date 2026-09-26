@@ -16,9 +16,9 @@ on:
   workflow_dispatch:
     inputs:
       names:
-        description: 'Names to look for on each category page, separated by |'
+        description: 'Names to look for on each category page, separated by | (keep them distinctive — a bare BLINK matched every page on the first run, it is in the site chrome)'
         required: false
-        default: 'BLACKPINK|JENNIE|JISOO|LISA|ROSÉ|ROSE|BLINK'
+        default: 'BLACKPINK|JENNIE|JISOO|ROSÉ'
       max_pages:
         description: 'How many category pages to open (0 = list slugs only)'
         required: false
@@ -91,6 +91,7 @@ jobs:
           echo "===== category pages mentioning: $NAMES ====="
           n=0
           : > /tmp/ours
+          : > /tmp/unchecked
           while IFS= read -r slug; do
             [ "$MAXP" -le 0 ] && break
             n=$((n+1)); [ "$n" -gt "$MAXP" ] && break
@@ -101,8 +102,17 @@ jobs:
             else
               url="$BASE/vote/$slug/"
             fi
+            # archive.org refuses connections after ~15 rapid requests (the first
+            # run lost 75 of 91 pages that way), so pace them and retry once.
             code=$(curl -sSL --compressed -m 40 -A "$UA" -w '%{http_code}' -o /tmp/cat "$url" || echo 000)
-            [ "$code" = "200" ] || { echo "  HTTP $code  $slug"; continue; }
+            if [ "$code" != "200" ] && [ "${ARCHIVE:-0}" = "1" ]; then
+              sleep 6
+              code=$(curl -sSL --compressed -m 40 -A "$UA" -w '%{http_code}' -o /tmp/cat "$url" || echo 000)
+            fi
+            [ "${ARCHIVE:-0}" = "1" ] && sleep 2
+            if [ "$code" != "200" ]; then
+              echo "  HTTP $code  $slug"; echo "$slug" >> /tmp/unchecked; continue
+            fi
             # <title> is the category's own name — worth printing next to the slug
             # so a mis-translated guess is obvious at a glance.
             title=$(grep -oiE '<title>[^<]*' /tmp/cat | head -1 | sed 's/<title>//I' | sed 's/[[:space:]]\+/ /g' | cut -c1-90)
@@ -118,10 +128,23 @@ jobs:
 
           echo
           echo "===== verdict ====="
-          echo "BLACKPINK/member categories found on the site: $(wc -l </tmp/ours)"
-          # A slug in BT_CATS that the site doesn't have is a vote that silently
-          # counts zero — that is the failure mode this probe exists to catch.
-          echo "--- in BT_CATS but NOT a real BLACKPINK category page ---"
-          comm -23 /tmp/known <(sort -u /tmp/ours) || true
+          checked=$(( $(wc -l </tmp/slugs) - $(wc -l </tmp/unchecked) ))
+          total=$(wc -l </tmp/slugs)
+          echo "pages read: $checked of $total · BLACKPINK/member hits: $(wc -l </tmp/ours)"
+
+          # Whatever the index said is real; the per-page comparison is only worth
+          # reading if most pages were actually read. Going green with a confident
+          # verdict built on 16 of 91 pages is worse than failing.
+          echo "--- every slug the index knows (this part is reliable) ---"
+          cat /tmp/slugs
+          echo "--- in BT_CATS but never seen as a URL on this domain ---"
+          # comm needs BOTH inputs sorted; /tmp/known is in source order, so this
+          # printed garbage until it was sorted here.
+          comm -23 <(sort -u /tmp/known) /tmp/slugs || true
+
+          if [ "$checked" -lt $(( total / 2 )) ]; then
+            echo "::error::INCONCLUSIVE — only $checked of $total pages could be read; the per-page results above are not a verdict"
+            exit 1
+          fi
           echo "--- a BLACKPINK category page that BT_CATS does NOT accept ---"
-          comm -13 /tmp/known <(sort -u /tmp/ours) || true
+          comm -13 <(sort -u /tmp/known) <(sort -u /tmp/ours) || true

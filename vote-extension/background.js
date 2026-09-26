@@ -311,6 +311,14 @@ const BT_CATS = {
   // tolerated aliases in case a slug ships slightly differently:
   'videoclipe-internacional':          { who: 'BLACKPINK', label: 'Int. Music Video' },
   'serie-internacional-do-ano':        { who: 'BLACKPINK', label: 'Int. Series' },
+  // The archive has never seen a /vote/videoclipe-* URL on this domain — it has
+  // 'clipe-internacional-do-ano' and 'clipe-internacional' (probe-breaktudo.yml,
+  // run 36260347844, 91 slugs across every edition). v1.7.2 "corrected"
+  // clipe- → videoclipe- as a typo; the evidence says that was backwards. Both
+  // spellings are accepted so neither correction can zero a vote, and an
+  // unrecognised slug is now reported in the panel rather than silently dropped.
+  'clipe-internacional-do-ano':        { who: 'BLACKPINK', label: 'Int. Music Video' },
+  'clipe-internacional':               { who: 'BLACKPINK', label: 'Int. Music Video' },
 };
 
 function btB64(s) { try { return atob(s); } catch (_) { return s; } }
