@@ -37,6 +37,20 @@ id+pos** so distinct marks under one token still count.
 the day the endpoint moved (WordPress sites routinely post the same action to
 `/wp-admin/admin-ajax.php`).
 
+**A category can hold more than one of ours.** Int. Music Video has BLACKPINK's
+"GO" *and* LISA's "Dream" in it, and a fan can vote for both — both count, and
+each log row names the right one. The payload identifies a nominee only by an
+opaque base64 id, so `BT_CATS` lists the members (`who: ['BLACKPINK','LISA']`)
+and `btNomineeFor()` resolves which is which by asking the content script on the
+page, which can see the id and the name together. A reply is trusted only when it
+matches a nominee the category itself declares, so the lookup can never invent a
+member or credit the wrong one; unresolved, the row reads "BLACKPINK / LISA"
+rather than guessing. Answers are remembered in `btNominees`.
+
+This is also why `pos` is only read as an index when every entry shares the same
+id: `[{GO,pos:1},{Dream,pos:2}]` is two nominees with their own counts (3 votes),
+not one nominee marked twice.
+
 **Only BLACKPINK/member/BLINKs votes are counted**: a vote is ours iff its candidate
 id is a known BP id (`BT_CANDIDATES`) OR it's cast on one of our nominated category
 pages (`BT_CATS`, keyed by the `/vote/<slug>/` referer). Any other vote — a different
