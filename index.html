@@ -7831,6 +7831,15 @@ const VOTE_CAMPAIGNS = [
     videos: [
       // The group's own nomination, not a video's — hence its own card rather
       // than a category bolted onto "JUMP".
+      { name: 'Tame Impala & JENNIE — “Dracula”', img: '/vote-vma-dracula.jpg', noms: [
+        // No endsAt on purpose. It runs as elimination rounds in the stories,
+        // so when it finishes depends on how far BLACKPINK gets — there is no
+        // date to put here, and an invented one would drop the card into Past
+        // Votings while the vote was still going. With it absent the card stays
+        // in the live list; add endsAt (or drop `ig`) once the run is over.
+        { cat: 'Song of Summer', ig: true, url: 'https://www.instagram.com/mtv/',
+          startsAt: '2026-09-26' },
+      ] },
       { name: 'BLACKPINK', img: '/vote-blackpink-ot4.jpg', noms: [
         { cat: 'Best Group', url: 'https://vote.mtv.com/best-group' },
       ] },
@@ -7845,21 +7854,6 @@ const VOTE_CAMPAIGNS = [
       ] },
       { name: 'JISOO × ZAYN — “Eyes Closed”', img: '/vote-vma-eyesclosed.jpeg', noms: [
         { cat: 'Best Visual Effects', pro: true },
-      ] },
-      // Runs after the main ballot closed, in MTV's Instagram Stories rather
-      // than on vote.mtv.com. `ig` keeps it live when everything else on the
-      // card has gone dark, and links to the account rather than a ballot page —
-      // a story has no URL of its own. `startsAt` is an ET calendar date: the
-      // copy is derived from it so it cannot claim the vote is open before it
-      // is, or still say "later today" tomorrow.
-      { name: 'Tame Impala & JENNIE — “Dracula”', img: '/vote-vma-dracula.jpg', noms: [
-        // No endsAt on purpose. It runs as elimination rounds in the stories,
-        // so when it finishes depends on how far BLACKPINK gets — there is no
-        // date to put here, and an invented one would drop the card into Past
-        // Votings while the vote was still going. With it absent the card stays
-        // in the live list; add endsAt (or drop `ig`) once the run is over.
-        { cat: 'Song of Summer', ig: true, url: 'https://www.instagram.com/mtv/',
-          startsAt: '2026-09-26' },
       ] },
     ],
     categories: [
