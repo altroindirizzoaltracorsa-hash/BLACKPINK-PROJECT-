@@ -29,6 +29,39 @@
   }
   if (!validCtx()) return;
 
+  // ── "which nominee is this candidate id?" ─────────────────────────────────
+  // Int. Music Video has two of ours in it — BLACKPINK's "GO" and LISA's "Dream"
+  // — and the vote payload identifies the nominee only by an opaque base64 id.
+  // This page has both the id (in some attribute of the nominee's own card) and
+  // the name, so the background script asks us to join them up.
+  //
+  // Deliberately shape-agnostic: find ANY element carrying the id in an
+  // attribute, then walk up until an ancestor's text mentions a name. The
+  // background only trusts a reply that matches a nominee its category already
+  // declares, so a wrong guess here can't mis-credit anyone.
+  if (AWARD === 'breaktudo') safeCtx(() => chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
+    if (!msg || msg.type !== 'bu-bt-nominee' || !msg.id) return;
+    let name = null;
+    try {
+      const id = String(msg.id);
+      const el = [...document.querySelectorAll('*')].find((n) => {
+        for (const a of n.attributes) if (a.value && a.value.indexOf(id) !== -1) return true;
+        return false;
+      });
+      const NAMES = /(BLACKPINK|JISOO|JENNIE|ROS[EÉ]|LISA|BLINKS?)/i;
+      for (let n = el, up = 0; n && up < 6; n = n.parentElement, up++) {
+        const t = (n.textContent || '').replace(/\s+/g, ' ').trim();
+        // Stop climbing once the subtree is big enough to be the whole list of
+        // nominees — a match there would say nothing about THIS one.
+        if (t.length > 400) break;
+        const m = t.match(NAMES);
+        if (m) { name = m[1]; break; }
+      }
+    } catch (_) { name = null; }
+    sendResponse({ name });
+    return true;
+  }));
+
   const HEART = (() => { try { return chrome.runtime.getURL('assets/heart.png'); } catch (_) { return ''; } })();
   const STICK = (() => { try { return chrome.runtime.getURL('assets/lightstick.png'); } catch (_) { return ''; } })();
 

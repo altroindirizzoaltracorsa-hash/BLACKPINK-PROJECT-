@@ -305,11 +305,14 @@ const BT_CATS = {
   'artista-asiatico':                  { who: 'LISA',      label: 'Asian Artist' },        // Artista Asiático — LISA
   'colaboracao-internacional-do-ano':  { who: 'JISOO',     label: 'Int. Collaboration' },  // Colaboração Internacional do Ano — JISOO × ZAYN
   'hit-internacional-do-ano':          { who: 'JENNIE',    label: 'Int. Hit of the Year' },// Hit Internacional do Ano — Dracula (w/ JENNIE)
-  'videoclipe-internacional-do-ano':   { who: 'BLACKPINK', label: 'Int. Music Video' },    // Videoclipe Internacional do Ano — GO / DREAM
+  // Two of ours are nominated here — BLACKPINK's "GO" and LISA's "Dream" — so a
+  // fan can vote for BOTH. Both count; `who` lists them and the exact nominee is
+  // resolved per candidate id (see btNomineeFor) so each row names the right one.
+  'videoclipe-internacional-do-ano':   { who: ['BLACKPINK', 'LISA'], label: 'Int. Music Video' }, // Videoclipe Internacional do Ano — GO (BLACKPINK) / Dream (LISA)
   'fandom-internacional-do-ano':       { who: 'BLINKs',    label: 'Int. Fandom' },         // Fandom Internacional do Ano — BLINKs
   'serie-internacional':               { who: 'BLACKPINK', label: 'Int. Series' },         // Série Internacional — Boyfriend On Demand
   // tolerated aliases in case a slug ships slightly differently:
-  'videoclipe-internacional':          { who: 'BLACKPINK', label: 'Int. Music Video' },
+  'videoclipe-internacional':          { who: ['BLACKPINK', 'LISA'], label: 'Int. Music Video' },
   'serie-internacional-do-ano':        { who: 'BLACKPINK', label: 'Int. Series' },
   // The archive has never seen a /vote/videoclipe-* URL on this domain — it has
   // 'clipe-internacional-do-ano' and 'clipe-internacional' (probe-breaktudo.yml,
@@ -317,8 +320,8 @@ const BT_CATS = {
   // clipe- → videoclipe- as a typo; the evidence says that was backwards. Both
   // spellings are accepted so neither correction can zero a vote, and an
   // unrecognised slug is now reported in the panel rather than silently dropped.
-  'clipe-internacional-do-ano':        { who: 'BLACKPINK', label: 'Int. Music Video' },
-  'clipe-internacional':               { who: 'BLACKPINK', label: 'Int. Music Video' },
+  'clipe-internacional-do-ano':        { who: ['BLACKPINK', 'LISA'], label: 'Int. Music Video' },
+  'clipe-internacional':               { who: ['BLACKPINK', 'LISA'], label: 'Int. Music Video' },
 };
 
 function btB64(s) { try { return atob(s); } catch (_) { return s; } }
@@ -477,7 +480,7 @@ chrome.webRequest.onBeforeRequest.addListener(
     if (details.method !== 'POST') return;
     const parsed = parseBtBody(details.requestBody);
     if (parsed) {
-      btQueue((m) => { m[details.requestId] = Object.assign({ slug: null, ts: Date.now() }, parsed); });
+      btQueue((m) => { m[details.requestId] = Object.assign({ slug: null, tabId: details.tabId, ts: Date.now() }, parsed); });
       return;
     }
     // A vote POST we could not read is a vote we will not count, and it is
@@ -525,6 +528,57 @@ chrome.webRequest.onErrorOccurred.addListener(
   { urls: ['https://vote.breaktudoawards.com/*'] }
 );
 
+// ── Which of ours is this candidate id? ──────────────────────────────────────
+// Most categories have exactly one BLACKPINK/member nominee, so the category
+// settles it. Int. Music Video has two (BLACKPINK's "GO" and LISA's "Dream"),
+// and the id alone means nothing to us — it's an opaque base64 string.
+//
+// The content script is already running on the page the vote was cast from, so
+// ask it: "which name sits next to this id?". A reply is only accepted when it
+// is one of the nominees the category itself declares, so this can never invent
+// a member or attribute a vote to the wrong one — at worst it doesn't resolve
+// and the row keeps the honest combined label.
+const BT_NOMINEE_KEY = 'btNominees';   // { <candidate id>: 'LISA' } — learned, sticky
+
+function btAskTab(tabId, id) {
+  return new Promise((resolve) => {
+    if (typeof tabId !== 'number' || tabId < 0 || !chrome.tabs || !chrome.tabs.sendMessage) return resolve(null);
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(v); } };
+    setTimeout(() => finish(null), 1500);   // never hold up counting a vote
+    try {
+      chrome.tabs.sendMessage(tabId, { type: 'bu-bt-nominee', id }, (reply) => {
+        void chrome.runtime.lastError;      // tab closed / no listener — fine
+        finish(reply && reply.name ? String(reply.name) : null);
+      });
+    } catch (_) { finish(null); }
+  });
+}
+
+// Returns the member to credit, resolving between several when a category has
+// more than one of ours in it.
+async function btNomineeFor(v, catInfo, tabId) {
+  const known = BT_CANDIDATES[v.id];
+  if (known) return known;
+  const who = catInfo && catInfo.who;
+  if (!Array.isArray(who)) return who || 'BLACKPINK/member';
+
+  const cached = await getLocal(BT_NOMINEE_KEY);
+  const map = (cached && cached[BT_NOMINEE_KEY]) || {};
+  if (map[v.id] && who.indexOf(map[v.id]) !== -1) return map[v.id];
+
+  const name = await btAskTab(tabId, v.id);
+  // Only a name the category actually lists is trusted.
+  const match = name ? who.find((w) => name.toUpperCase().indexOf(w.toUpperCase()) !== -1) : null;
+  if (match) {
+    map[v.id] = match;
+    chrome.storage.local.set({ [BT_NOMINEE_KEY]: map });
+    return match;
+  }
+  // Unresolved: say both rather than guess one of them.
+  return who.join(' / ');
+}
+
 async function processBtVote(e) {
   const votes = Array.isArray(e.votes) ? e.votes : [];
   if (!votes.length) return;
@@ -558,6 +612,13 @@ async function processBtVote(e) {
   // second into 1. A run of distinct positions starting at 1 is an index sequence.
   const posIsIndex = (() => {
     if (votes.length < 2) return false;
+    // An index sequence is the SAME nominee marked N times. Entries with
+    // different ids are different nominees — that is a fan voting for both
+    // BLACKPINK and LISA in Int. Music Video, and each entry's pos is that
+    // nominee's own count. Without this check, [{GO,pos:1},{Dream,pos:2}] read
+    // as an index sequence and 3 votes were counted as 2.
+    const ids = new Set(votes.map((v) => v && v.id));
+    if (ids.size !== 1) return false;
     const seen = new Set();
     for (const v of votes) {
       const p = parseInt(v && v.pos, 10);
@@ -587,7 +648,7 @@ async function processBtVote(e) {
       c = Math.min(c, 50); // per-candidate sanity bound (a sequence is 5)
     }
     n += c;
-    const who = known || (catInfo && catInfo.who) || 'BLACKPINK/member';
+    const who = await btNomineeFor(v, catInfo, e.tabId);
     perMember[who] = (perMember[who] || 0) + c;
   }
   if (n <= 0) {
