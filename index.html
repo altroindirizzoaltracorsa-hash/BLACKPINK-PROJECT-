@@ -12028,8 +12028,10 @@ function renderLeaderboard() {
     })
     .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
 
+  const topBar = classicTopBarHtml();
+
   if (entries.length === 0) {
-    wrap.innerHTML = '<div class="lb-empty">No scores yet — log into My Badges to join the leaderboard! 💗</div>';
+    wrap.innerHTML = topBar + '<div class="lb-empty">No scores yet — log into My Badges to join the leaderboard! 💗</div>';
     if (totalEl) totalEl.textContent = '';
   } else {
     const periodLabel = lbPeriod === 'daily' ? 'streams today' : lbPeriod === 'weekly' ? 'streams this week' : 'total streams';
@@ -12069,7 +12071,7 @@ function renderLeaderboard() {
             : ` · <b>#${myIdx + 2}</b> ${nm(below)} is <b>${(meE.score - below.score).toLocaleString()}</b> behind`);
       meStrip = `<div class="lb-nbr">🏆 You're <b>#${myIdx + 1}</b> of ${entries.length} · ${aboveTxt}${belowTxt}</div>`;
     }
-    wrap.innerHTML = meStrip + `
+    wrap.innerHTML = topBar + meStrip + `
       <table class="lb-table">
         <thead><tr>
           <th style="width:44px">#</th>
@@ -12147,8 +12149,41 @@ function leaguesActive() {
   } catch(_) {}
   return LEAGUES_ENABLED;
 }
+// Has this visitor ever been in the leagues view? The classic board only offers
+// the way back to people who have seen leagues (or once it ships for everyone) —
+// otherwise the "classic view →" escape hatch is a one-way door: switching back
+// used to need a hand-typed ?leagues=1.
+function leaguesSeen() {
+  if (LEAGUES_ENABLED) return true;
+  try {
+    if (new URLSearchParams(location.search).has('leagues')) return true;
+    return localStorage.getItem('bu_leagues_pref') !== null;
+  } catch(_) { return LEAGUES_ENABLED; }
+}
+// The classic board's counterpart to the leagues bar. When leaguesActive() is
+// true we only got here because renderLeagues() threw, so say so rather than
+// offering a button that would just throw again.
+function classicTopBarHtml() {
+  if (!leaguesSeen()) return '';
+  if (leaguesActive()) {
+    return `<div class="lg-bar"><span>🏆 Blink Leagues unavailable — showing the classic board</span><a onclick="setLeaguesMode(false)">stay on classic →</a></div>`;
+  }
+  return `<div class="lg-bar"><span>📋 <span class="lg-where">Classic board</span></span><a onclick="setLeaguesMode(true)">🏆 Blink Leagues →</a></div>`;
+}
 function setLeaguesMode(on) {
   try { localStorage.setItem('bu_leagues_pref', on ? '1' : '0'); } catch(_){}
+  // Drop any ?leagues= / ?classic= from the URL first. leaguesActive() reads the
+  // query BEFORE the stored preference and rewrites the preference from it, so
+  // leaving it in place re-applies the old mode on the very next render and the
+  // toggle silently does nothing.
+  try {
+    const u = new URL(location.href);
+    if (u.searchParams.has('leagues') || u.searchParams.has('classic')) {
+      u.searchParams.delete('leagues');
+      u.searchParams.delete('classic');
+      history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    }
+  } catch(_) {}
   renderLeaderboard();
 }
 
