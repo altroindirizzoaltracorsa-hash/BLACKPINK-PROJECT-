@@ -7849,8 +7849,13 @@ const VOTE_CAMPAIGNS = [
       // copy is derived from it so it cannot claim the vote is open before it
       // is, or still say "later today" tomorrow.
       { name: 'Tame Impala & JENNIE — “Dracula”', img: '/vote-vma-dracula.jpg', noms: [
+        // endsAt keeps the whole card out of Past Votings until this is over.
+        // It is the show's start (Sun Sept 27, 7:30PM ET), when the winner is
+        // revealed — an assumption, not something MTV published, so move it if
+        // the stories say otherwise. Without it the card would sit at the top
+        // of /voting for good.
         { cat: 'Song of Summer', ig: true, url: 'https://www.instagram.com/mtv/',
-          startsAt: '2026-09-26' },
+          startsAt: '2026-09-26', endsAt: '2026-09-27T23:30:00Z' },
       ] },
     ],
     categories: [
@@ -8200,8 +8205,18 @@ function renderVoteCampaigns() {
       </div>`;
   }
 
-  const active = VOTE_CAMPAIGNS.filter(c => !c.deadline || new Date(c.deadline).getTime() > now);
-  const ended  = VOTE_CAMPAIGNS.filter(c =>  c.deadline && new Date(c.deadline).getTime() <= now);
+  // A campaign is only "past" when nothing on it is still running. The VMA
+  // ballot closed, but Song of Summer runs on after it in MTV's Instagram
+  // Stories — filing the card under Past Votings would collapse it behind a
+  // toggle and grey the whole thing out, including the one nomination blinks
+  // can still do something about. The closed categories stay shadowed inside
+  // the card either way, because that greying comes from the deadline.
+  const stillRunning = (c) => (c.videos || []).some(v => v.noms.some(n =>
+    n.ig && (!n.endsAt || now < new Date(n.endsAt).getTime())));
+  const isPast = (c) => !!c.deadline && new Date(c.deadline).getTime() <= now && !stillRunning(c);
+
+  const active = VOTE_CAMPAIGNS.filter(c => !isPast(c));
+  const ended  = VOTE_CAMPAIGNS.filter(isPast);
 
   let html = active.map(buildCard).join('');
   if (ended.length) {
