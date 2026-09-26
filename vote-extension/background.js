@@ -353,8 +353,57 @@ async function postBtVotes(n, category) {
 
 // requestId → { votes, valid, slug, ts }. The body arrives in onBeforeRequest,
 // the referer in onSendHeaders, the status in onCompleted — stitched by id.
-const btInflight = new Map();
-function btPrune() { const now = Date.now(); for (const [k, v] of btInflight) if (now - v.ts > 60000) btInflight.delete(k); }
+//
+// This MUST outlive the background script. Under MV3 (manifest.json) Chrome tears
+// the service worker down between events, so an in-memory Map here was empty by
+// the time onCompleted fired: every BreakTudo vote was dropped with no log at all
+// (the VMA path never hit this — it reads everything off the URL in a single
+// onCompleted). Same lesson as buSeenVotes above, one listener further along.
+// Mirrored into chrome.storage, with an in-memory copy as the synchronous guard,
+// and every touch serialised through btQueue so the three events can't clobber
+// each other's read-modify-write.
+const BT_INFLIGHT_KEY = 'btInflight';
+const BT_INFLIGHT_TTL = 120000;
+let btInflight = null;          // null until loaded back from storage
+let btChain = Promise.resolve(); // serialises all inflight-map access
+
+function btPruneMap(m) {
+  const now = Date.now();
+  for (const k of Object.keys(m)) if (!m[k] || now - m[k].ts > BT_INFLIGHT_TTL) delete m[k];
+  return m;
+}
+async function btLoadInflight() {
+  if (btInflight) return btPruneMap(btInflight);
+  const cfg = await getLocal(BT_INFLIGHT_KEY);
+  const saved = cfg && cfg[BT_INFLIGHT_KEY];
+  btInflight = btPruneMap(saved && typeof saved === 'object' ? saved : {});
+  return btInflight;
+}
+function btSaveInflight() {
+  return new Promise((resolve) => chrome.storage.local.set({ [BT_INFLIGHT_KEY]: btInflight }, resolve));
+}
+// Run `fn(map)` with the inflight map loaded, then persist. Chained so the
+// handlers apply in the order the events arrived.
+function btQueue(fn) {
+  btChain = btChain
+    .then(async () => { const m = await btLoadInflight(); const r = await fn(m); await btSaveInflight(); return r; })
+    .catch((err) => { console.log('[BU BreakTudo] inflight step failed:', err); });
+  return btChain;
+}
+
+// ── What the counter last SAW ────────────────────────────────────────────────
+// A vote that isn't counted used to be invisible: no panel row, and a console
+// line only if it got far enough to be parsed. The panel surfaces this instead,
+// so "it isn't counting" comes with the reason attached.
+const BT_DIAG_KEY = 'btDiag';
+const BT_DIAG_MAX = 12;
+function btDiag(entry) {
+  chrome.storage.local.get([BT_DIAG_KEY], (raw) => {
+    const list = Array.isArray(raw && raw[BT_DIAG_KEY]) ? raw[BT_DIAG_KEY] : [];
+    list.unshift(Object.assign({ ts: Date.now() }, entry));
+    chrome.storage.local.set({ [BT_DIAG_KEY]: list.slice(0, BT_DIAG_MAX) });
+  });
+}
 
 function parseBtBody(requestBody) {
   if (!requestBody) return null;
@@ -397,52 +446,75 @@ function parseBtBody(requestBody) {
 
 function btPathIsVote(url) { try { return BT_VOTE_RE.test(new URL(url).pathname); } catch (_) { return false; } }
 
+// The endpoint has moved before, and WordPress sites routinely post the same
+// `action=update_vote` to /wp-admin/admin-ajax.php rather than a /wp-json/ route.
+// So the path is a hint, not the gate: what makes a request a vote is a readable
+// update_vote body. Pinning it to one path means a silent zero the day it moves.
+const BT_ALT_PATH_RE = /(admin-ajax\.php|\/wp-json\/|\/vote)/i;
+function btLooksLikeVotePath(url) {
+  try { const p = new URL(url).pathname; return BT_VOTE_RE.test(p) || BT_ALT_PATH_RE.test(p); }
+  catch (_) { return false; }
+}
+function btUrlPath(url) { try { return new URL(url).pathname; } catch (_) { return String(url); } }
+function btBodyText(requestBody) {
+  try {
+    if (requestBody && requestBody.raw && requestBody.raw[0] && requestBody.raw[0].bytes)
+      return new TextDecoder('utf-8').decode(requestBody.raw[0].bytes);
+  } catch (_) {}
+  return '';
+}
+
 chrome.webRequest.onBeforeRequest.addListener(
   function (details) {
-    if (details.method !== 'POST' || !btPathIsVote(details.url)) return;
+    if (details.method !== 'POST') return;
     const parsed = parseBtBody(details.requestBody);
     if (parsed) {
-      btPrune(); btInflight.set(details.requestId, Object.assign({ slug: null, ts: Date.now() }, parsed));
-    } else {
-      // A vote POST we could not read is a vote we will not count, and it is
-      // otherwise invisible. Log the body so the encoding can be fixed.
-      let ex = '';
-      try {
-        if (details.requestBody && details.requestBody.raw && details.requestBody.raw[0] && details.requestBody.raw[0].bytes)
-          ex = new TextDecoder('utf-8').decode(details.requestBody.raw[0].bytes).slice(0, 300);
-      } catch (_) {}
-      console.log('[BU BreakTudo] vote POST NOT MATCHED: ' + details.url + ' body="' + ex + '"');
+      btQueue((m) => { m[details.requestId] = Object.assign({ slug: null, ts: Date.now() }, parsed); });
+      return;
     }
+    // A vote POST we could not read is a vote we will not count, and it is
+    // otherwise invisible. Record it so the encoding can be fixed — but only for
+    // requests that plausibly ARE votes, so this isn't drowned in page beacons.
+    if (!btLooksLikeVotePath(details.url)) return;
+    const ex = btBodyText(details.requestBody).slice(0, 300);
+    if (!btPathIsVote(details.url) && !/vote/i.test(ex)) return;
+    console.log('[BU BreakTudo] vote POST NOT MATCHED: ' + details.url + ' body="' + ex + '"');
+    btDiag({ kind: 'unreadable', path: btUrlPath(details.url), body: ex.slice(0, 160) });
   },
-  { urls: ['https://vote.breaktudoawards.com/*'], types: ['xmlhttprequest'] },
+  { urls: ['https://vote.breaktudoawards.com/*'] },
   ['requestBody']
 );
 
 chrome.webRequest.onSendHeaders.addListener(
   function (details) {
-    const e = btInflight.get(details.requestId);
-    if (!e) return;
     const ref = (details.requestHeaders || []).find((h) => h.name.toLowerCase() === 'referer');
-    if (ref && ref.value) e.slug = btSlug(ref.value);
+    if (!ref || !ref.value) return;
+    const slug = btSlug(ref.value);
+    btQueue((m) => { if (m[details.requestId]) m[details.requestId].slug = slug; });
   },
-  { urls: ['https://vote.breaktudoawards.com/*'], types: ['xmlhttprequest'] },
+  { urls: ['https://vote.breaktudoawards.com/*'] },
   ['requestHeaders', 'extraHeaders']
 );
 
 chrome.webRequest.onCompleted.addListener(
   function (details) {
-    const e = btInflight.get(details.requestId);
-    if (!e) return;
-    btInflight.delete(details.requestId);
-    if (details.statusCode < 200 || details.statusCode >= 300) return;
-    processBtVote(e).catch((err) => console.log('[BU BreakTudo] processBtVote failed:', err));
+    btQueue((m) => {
+      const e = m[details.requestId];
+      if (!e) return;
+      delete m[details.requestId];
+      if (details.statusCode < 200 || details.statusCode >= 300) {
+        btDiag({ kind: 'rejected', status: details.statusCode, slug: e.slug || null });
+        return;
+      }
+      return processBtVote(e).catch((err) => console.log('[BU BreakTudo] processBtVote failed:', err));
+    });
   },
-  { urls: ['https://vote.breaktudoawards.com/*'], types: ['xmlhttprequest'] }
+  { urls: ['https://vote.breaktudoawards.com/*'] }
 );
 
 chrome.webRequest.onErrorOccurred.addListener(
-  function (details) { btInflight.delete(details.requestId); },
-  { urls: ['https://vote.breaktudoawards.com/*'], types: ['xmlhttprequest'] }
+  function (details) { btQueue((m) => { delete m[details.requestId]; }); },
+  { urls: ['https://vote.breaktudoawards.com/*'] }
 );
 
 async function processBtVote(e) {
@@ -470,25 +542,53 @@ async function processBtVote(e) {
   // votes onto the candidate as a COUNT in `pos` (votes=[{id:BP,pos:5}] = 5 votes),
   // so we sum `pos`, not array length (missing/invalid → 1).
   const catInfo = e.slug ? BT_CATS[e.slug] : null;
-  let n = 0; const perMember = {};
+  // `pos` is ambiguous across BreakTudo's own payload shapes and reading it wrong
+  // silently mis-scales every vote, so decide per batch instead of assuming:
+  //   [{id:BP,pos:1},{id:BP,pos:2}…{id:BP,pos:5}]  → pos is the mark's INDEX  → 5 votes
+  //   [{id:BP,pos:5}]                              → pos is a COUNT           → 5 votes
+  // Summing blindly turns the first into 15; counting entries blindly turns the
+  // second into 1. A run of distinct positions starting at 1 is an index sequence.
+  const posIsIndex = (() => {
+    if (votes.length < 2) return false;
+    const seen = new Set();
+    for (const v of votes) {
+      const p = parseInt(v && v.pos, 10);
+      if (!Number.isFinite(p) || p < 1 || p > votes.length || seen.has(p)) return false;
+      seen.add(p);
+    }
+    return seen.size === votes.length;   // exactly 1..N, each once
+  })();
+  let n = 0, skipped = 0; const perMember = {};
   for (const v of votes) {
     if (!v || v.id == null) continue;
     const known = BT_CANDIDATES[v.id];
     if (!known && !catInfo) {
       // Not a BLACKPINK/member/BLINKs vote — ignore it.
+      skipped += 1;
       console.log('[BU BreakTudo] skipped a non-BLACKPINK vote:',
         'slug=' + (e.slug || '?'), 'id=' + v.id + ' (' + btB64(v.id) + ')', 'pos=' + (v.pos != null ? v.pos : '?'),
         '\n→ if this WAS a BLACKPINK/member/BLINKs vote, its category slug isn\'t in BT_CATS yet — send me this slug.');
       continue;
     }
-    let c = parseInt(v.pos, 10);
-    if (!Number.isFinite(c) || c <= 0) c = 1;
-    c = Math.min(c, 50); // per-candidate sanity bound (a sequence is 5)
+    let c;
+    if (posIsIndex) {
+      c = 1;
+    } else {
+      c = parseInt(v.pos, 10);
+      if (!Number.isFinite(c) || c <= 0) c = 1;
+      c = Math.min(c, 50); // per-candidate sanity bound (a sequence is 5)
+    }
     n += c;
     const who = known || (catInfo && catInfo.who) || 'BLACKPINK/member';
     perMember[who] = (perMember[who] || 0) + c;
   }
-  if (n <= 0) return;   // nothing of ours in this batch
+  if (n <= 0) {
+    // Nothing of ours in this batch. Say so where the user can see it: an
+    // unrecognised category slug used to mean the counter just sat at zero with
+    // the reason buried in a console nobody opens.
+    if (skipped) btDiag({ kind: 'not-ours', slug: e.slug || null, marks: skipped });
+    return;
+  }
   n = Math.min(n, 500); // batch sanity bound
 
   const catLabel = (catInfo && catInfo.label) || 'BreakTudo';
@@ -516,9 +616,27 @@ async function processBtVote(e) {
         upd.btLog = log.slice(0, 500);
         // Flushed backlog carries no slug: it was accumulated across whatever
         // categories were voted while offline and that detail was not kept.
-        if (r.btPendingN) { postBtVotes(r.btPendingN); upd.btPendingN = 0; }
+        // Clear it only once the server has actually taken it — zeroing it on a
+        // fire-and-forget post threw the backlog away whenever that post failed —
+        // and add it to today's count, which it never used to reach.
+        if (r.btPendingN) {
+          const pending = r.btPendingN;
+          postBtVotes(pending).then((f) => {
+            if (!f.ok) return;
+            chrome.storage.local.get(['btCount', 'btPendingN'], (r2) => {
+              chrome.storage.local.set({
+                btCount: (r2.btCount || 0) + pending,
+                btPendingN: Math.max(0, (r2.btPendingN || 0) - pending),
+              });
+            });
+          });
+        }
+        btDiag({ kind: 'counted', n, slug: e.slug || null });
       } else {
         upd.btPendingN = (r.btPendingN || 0) + n;
+        // Held, not lost — and now visible. "not-linked" is the common one: the
+        // votes are detected fine, there is just no account to log them to.
+        btDiag({ kind: 'held', reason: res.reason || 'error', n, slug: e.slug || null });
       }
       chrome.storage.local.set(upd);
     });

@@ -105,6 +105,9 @@
       .btcrow .nm{ flex:1; color:#fff2f6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
       .btcrow .vv{ color:#ff8fb4; font-weight:800; font-variant-numeric:tabular-nums; }
       .btcats .empty{ color:#8a5c6c; font-size:11px; text-align:center; padding:8px 4px; }
+      .btdiag{ margin:0 12px 10px; background:#170a0f; border:1px solid #ffb02e44; border-radius:11px; padding:8px 10px; font-size:11px; line-height:1.45; color:#ffd9a8; }
+      .btdiag b{ color:#fff2f6; }
+      .btdiag .why{ display:block; color:#e8c79a; margin-top:3px; }
 
       .log{ margin:2px 12px 12px; background:#0a0407; border:1px solid #ff2e7722; border-radius:11px; padding:8px 8px 4px; max-height:168px; overflow-y:auto; overflow-x:hidden; }
       .log::-webkit-scrollbar,.acctList::-webkit-scrollbar{ width:6px; } .log::-webkit-scrollbar-thumb,.acctList::-webkit-scrollbar-thumb{ background:#ff2e7744; border-radius:3px; }
@@ -224,6 +227,7 @@
         </div>
 
         <div class="btcats" id="btcats" style="display:none"></div>
+        <div class="btdiag" id="btdiag" style="display:none"></div>
 
         <div class="log" id="log"></div>
 
@@ -323,6 +327,34 @@
           + '<span class="vv">' + fmt(v) + '</span></div>').join('');
   }
 
+  // Why the last thing we saw was NOT counted. A vote that doesn't register used
+  // to be completely silent — the counter just sat there and there was nothing to
+  // report but "it isn't working". Only shown when something actually went wrong.
+  function renderBtDiag(list) {
+    const el = $('btdiag');
+    if (!el) return;
+    // Newest entry only. Searching past it for the most recent *failure* meant a
+    // vote that counted fine afterwards still left the warning on screen.
+    const last = (Array.isArray(list) && list[0] && list[0].kind && list[0].kind !== 'counted') ? list[0] : null;
+    // Stale complaints are noise — anything older than 10 minutes has been
+    // superseded by whatever happened since.
+    if (!last || Date.now() - (last.ts || 0) > 600000) { el.style.display = 'none'; return; }
+    let msg;
+    if (last.kind === 'held' && last.reason === 'not-linked') {
+      msg = '<b>Votes are being seen but not logged.</b><span class="why">Open the extension and tap “Link my account” — ' + fmt(last.n) + ' vote' + (last.n === 1 ? '' : 's') + ' are being held until you do.</span>';
+    } else if (last.kind === 'held') {
+      msg = '<b>Couldn’t reach blinksunited.com.</b><span class="why">' + fmt(last.n) + ' vote' + (last.n === 1 ? '' : 's') + ' are held and will be sent on the next one that goes through.</span>';
+    } else if (last.kind === 'not-ours') {
+      msg = '<b>Not counted — category not recognised.</b><span class="why">' + esc(last.slug || 'unknown page') + ' isn’t on the BLACKPINK list. If BLACKPINK or a member IS nominated here, send us this page name.</span>';
+    } else if (last.kind === 'rejected') {
+      msg = '<b>BreakTudo rejected that vote (' + esc(String(last.status || '?')) + ').</b><span class="why">Nothing was counted — try again.</span>';
+    } else if (last.kind === 'unreadable') {
+      msg = '<b>A vote went out in a shape we couldn’t read.</b><span class="why">' + esc(last.path || '') + ' — send us this and we’ll fix the counter.</span>';
+    } else { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    el.innerHTML = '⚠️ ' + msg;
+  }
+
   let lastTotal = 0;
   // 2026 VMA power schedule (US Eastern), mirrors blinksunited.com/voting:
   //   Power Hour 1:00–1:59 PM ET daily Aug 20 → Sep 24; Double Days Aug 18/19, Sep 25.
@@ -376,7 +408,7 @@
         : 'Off — today’s voting accounts stay on this device';
     }
 
-    if (AWARD === 'breaktudo') renderBtCats(s.btCats);
+    if (AWARD === 'breaktudo') { renderBtCats(s.btCats); renderBtDiag(s.btDiag); }
 
     const log = Array.isArray(s[CFG.logKey]) ? s[CFG.logKey] : [];
     if (!log.length) {
@@ -428,7 +460,7 @@
     if (at) at.onclick = () => { acctOpen = !acctOpen; refresh(); };
   }
 
-  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize', 'btCount', 'btLog', 'btDay', 'btCats'];
+  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize', 'btCount', 'btLog', 'btDay', 'btCats', 'btDiag'];
   function refresh() { safeCtx(() => chrome.storage.local.get(KEYS, (s) => { applyLayout(s); render(s); })); }
 
   // React to background updates immediately.
