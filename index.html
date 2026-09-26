@@ -2186,6 +2186,10 @@
      desktop, holding open tracks that had nothing in them.) */
   .vote-videos { display: grid; grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr)); gap: 0.8rem; margin-bottom: 1.4rem; }
   .vote-video { min-width: 0; display: flex; flex-direction: column; }
+  /* Finished nominees step back so the one still running reads as the live
+     thing on the card. Hover brings them back for anyone looking closer. */
+  .vote-video.past { opacity: 0.45; transition: opacity 0.2s; }
+  .vote-video.past:hover { opacity: 0.8; }
   .vote-video-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border: 1px solid var(--border); display: block; }
   .vote-video-name { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); margin: 0.6rem 0 0.45rem; line-height: 1.35; }
   .vote-video-noms { display: flex; flex-direction: column; gap: 0.32rem; }
@@ -7849,13 +7853,13 @@ const VOTE_CAMPAIGNS = [
       // copy is derived from it so it cannot claim the vote is open before it
       // is, or still say "later today" tomorrow.
       { name: 'Tame Impala & JENNIE — “Dracula”', img: '/vote-vma-dracula.jpg', noms: [
-        // endsAt keeps the whole card out of Past Votings until this is over.
-        // It is the show's start (Sun Sept 27, 7:30PM ET), when the winner is
-        // revealed — an assumption, not something MTV published, so move it if
-        // the stories say otherwise. Without it the card would sit at the top
-        // of /voting for good.
+        // No endsAt on purpose. It runs as elimination rounds in the stories,
+        // so when it finishes depends on how far BLACKPINK gets — there is no
+        // date to put here, and an invented one would drop the card into Past
+        // Votings while the vote was still going. With it absent the card stays
+        // in the live list; add endsAt (or drop `ig`) once the run is over.
         { cat: 'Song of Summer', ig: true, url: 'https://www.instagram.com/mtv/',
-          startsAt: '2026-09-26', endsAt: '2026-09-27T23:30:00Z' },
+          startsAt: '2026-09-26' },
       ] },
     ],
     categories: [
@@ -8142,8 +8146,12 @@ function renderVoteCampaigns() {
         </div>`).join('');
     // Optional nominee gallery: a horizontal row of videos, each with the
     // categories it's nominated in listed underneath (used by the VMAs card).
+    // A nominee whose categories have all closed is dimmed, so the one still
+    // running stands out. The card used to get this for free from Past Votings
+    // dimming the whole thing; now that it stays in the live list for Song of
+    // Summer, the finished nominees have to be shadowed individually.
     const videosHtml = (c.videos || []).map(v => `
-        <div class="vote-video">
+        <div class="vote-video${ended && !v.noms.some(n => n.ig) ? ' past' : ''}">
           <img class="vote-video-img" src="${v.img}" alt="${v.name}" loading="lazy">
           <div class="vote-video-name">${v.name}</div>
           <div class="vote-video-noms">
