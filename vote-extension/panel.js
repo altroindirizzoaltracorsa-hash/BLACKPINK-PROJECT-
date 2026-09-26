@@ -199,17 +199,26 @@
       .panel.min .head, .panel.min .body{ display:none; }
       .panel.min .pill{ display:flex; }
 
-      /* ── Resizing ──────────────────────────────────────────────────────────
-         .sized is only set once the grip has been dragged; until then the
-         panel keeps its content-driven height exactly as before. */
-      .panel.sized{ display:flex; flex-direction:column; }
-      .panel.sized .head{ flex:none; }
-      .panel.sized .body{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
+      /* ── Height & resizing ─────────────────────────────────────────────────
+         The panel must never be taller than the window. The resize grip lives on
+         its bottom edge, so once that edge dropped below the fold — which the
+         BreakTudo build does easily, with eight category rows above the log —
+         the grip could not be reached at all without zooming the page out.
+         So the column layout and the scrolling body are now the DEFAULT, with a
+         max-height set from the panel's own top (see fitToViewport). When the
+         content fits, this renders exactly as it did before. */
+      .panel{ display:flex; flex-direction:column; }
+      .panel .head{ flex:none; }
+      .panel .body{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
         overflow-y:auto; overflow-x:hidden; }
       /* Everything keeps its natural height and the activity log absorbs the
          slack — seeing more of the log is the reason to make this bigger. */
-      .panel.sized .body > *{ flex:0 0 auto; }
+      .panel .body > *{ flex:0 0 auto; }
+      /* .sized is only set once the grip has been dragged: then the log stretches
+         into the height you dragged out, instead of keeping its own scrollbox. */
       .panel.sized .log{ flex:1 1 auto; max-height:none; min-height:54px; }
+      .panel .body::-webkit-scrollbar{ width:6px; }
+      .panel .body::-webkit-scrollbar-thumb{ background:#ff2e7744; border-radius:3px; }
 
       .grip{ position:absolute; right:0; bottom:0; width:24px; height:24px; z-index:3;
         display:none; cursor:nwse-resize; touch-action:none; }
@@ -334,6 +343,10 @@
     'hit-internacional-do-ano':         'Int. Hit of the Year',
     'videoclipe-internacional-do-ano':  'Int. Music Video',
     'videoclipe-internacional':         'Int. Music Video',
+    // The live site uses the clipe- spelling — the by-category list was falling
+    // back to title-casing the raw slug ("Clipe Internacional Do Ano").
+    'clipe-internacional-do-ano':       'Int. Music Video',
+    'clipe-internacional':              'Int. Music Video',
     'fandom-internacional-do-ano':      'Int. Fandom',
     'serie-internacional':              'Int. Series',
     'serie-internacional-do-ano':       'Int. Series',
@@ -494,7 +507,9 @@
   }
 
   const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize', 'btCount', 'btLog', 'btDay', 'btCats', 'btDiag'];
-  function refresh() { safeCtx(() => chrome.storage.local.get(KEYS, (s) => { applyLayout(s); render(s); })); }
+  // fitToViewport AFTER render: the panel's natural height depends on how many
+  // category rows and log entries were just drawn.
+  function refresh() { safeCtx(() => chrome.storage.local.get(KEYS, (s) => { applyLayout(s); render(s); fitToViewport(); })); }
 
   // React to background updates immediately.
   safeCtx(() => chrome.storage.onChanged.addListener((changes, area) => {
@@ -560,7 +575,11 @@
     elPanel.classList.toggle('min', min);
     const pos = s.buPanelPos;
     if (pos && typeof pos.left === 'number') {
-      elPanel.style.left = pos.left + 'px'; elPanel.style.top = pos.top + 'px'; elPanel.style.right = 'auto';
+      // A position saved on a bigger window can put the panel (and its grip)
+      // off the bottom of a smaller one, so clamp it on the way back in.
+      const top = Math.max(4, Math.min(Math.max(4, window.innerHeight - MIN_H - 8), pos.top));
+      const left = Math.max(4, Math.min(Math.max(4, window.innerWidth - 48), pos.left));
+      elPanel.style.left = left + 'px'; elPanel.style.top = top + 'px'; elPanel.style.right = 'auto';
     }
     // The pill is never sized — collapsing drops back to its natural chip size,
     // and expanding restores whatever the panel was resized to.
@@ -577,7 +596,18 @@
   // Pointer events, like the drag handler below, so it works with touch on Kiwi.
   const MIN_W = 232, MIN_H = 200;  // below this the splits/log layout breaks up
   const maxW = () => Math.max(MIN_W, window.innerWidth - 8);
-  const maxH = () => Math.max(MIN_H, window.innerHeight - 8);
+  // Measured from the panel's own top, not from the top of the window: anchored
+  // at top:96px, a height of innerHeight-8 put the bottom edge 96px below the
+  // fold and took the resize grip with it.
+  const panelTop = () => elPanel.getBoundingClientRect().top;
+  const maxH = () => Math.max(MIN_H, window.innerHeight - panelTop() - 8);
+
+  // Keep the whole panel on screen, grip included. Called whenever the content,
+  // the position or the window changes.
+  function fitToViewport() {
+    if (elPanel.classList.contains('min')) { elPanel.style.maxHeight = ''; return; }
+    elPanel.style.maxHeight = maxH() + 'px';
+  }
 
   function applySize(w, h) {
     const cw = Math.round(Math.max(MIN_W, Math.min(maxW(), w)));
@@ -629,6 +659,7 @@
   // Re-clamp after a rotate or window resize, so a size saved on a big screen
   // can't leave the panel taller than the phone it's opened on next.
   window.addEventListener('resize', () => {
+    fitToViewport();
     if (!elPanel.classList.contains('sized')) return;
     const r = elPanel.getBoundingClientRect();
     safeCtx(() => chrome.storage.local.set({ buPanelSize: applySize(r.width, r.height) }));
@@ -646,8 +677,11 @@
     if (!drag) return;
     if (Math.abs(e.clientX - drag.sx) > 4 || Math.abs(e.clientY - drag.sy) > 4) drag.moved = true;
     const left = Math.max(4, Math.min(window.innerWidth - 48, e.clientX - drag.dx));
-    const top = Math.max(4, Math.min(window.innerHeight - 32, e.clientY - drag.dy));
+    // Leave room for at least a minimum-height panel below the drop point, so
+    // the bottom edge — and the grip on it — stays reachable.
+    const top = Math.max(4, Math.min(Math.max(4, window.innerHeight - MIN_H - 8), e.clientY - drag.dy));
     elPanel.style.left = left + 'px'; elPanel.style.top = top + 'px'; elPanel.style.right = 'auto';
+    fitToViewport();
     if (drag.moved) e.preventDefault();
   }
   function onUp() {

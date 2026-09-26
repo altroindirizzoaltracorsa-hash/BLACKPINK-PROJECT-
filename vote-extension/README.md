@@ -51,6 +51,15 @@ This is also why `pos` is only read as an index when every entry shares the same
 id: `[{GO,pos:1},{Dream,pos:2}]` is two nominees with their own counts (3 votes),
 not one nominee marked twice.
 
+**The panel never grows past the window.** Its resize grip sits on the bottom
+edge, and the BreakTudo build is tall (eight category rows above the activity
+log), so on a laptop the bottom edge — grip included — ended up below the fold
+and the only way to reach it was to zoom the page out. The column layout and the
+scrolling body are now the default, with a `max-height` measured from the panel's
+own top (`fitToViewport`, re-run on every render, drag and window resize), and
+both dragging and a stale saved position are clamped so a minimum-height panel
+always fits below the drop point.
+
 **Only BLACKPINK/member/BLINKs votes are counted**: a vote is ours iff its candidate
 id is a known BP id (`BT_CANDIDATES`) OR it's cast on one of our nominated category
 pages (`BT_CATS`, keyed by the `/vote/<slug>/` referer). Any other vote — a different
