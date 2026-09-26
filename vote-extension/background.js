@@ -310,10 +310,10 @@ const BT_CATS = {
   // resolved per candidate id (see btNomineeFor) so each row names the right one.
   'videoclipe-internacional-do-ano':   { who: ['BLACKPINK', 'LISA'], label: 'Int. Music Video' }, // Videoclipe Internacional do Ano — GO (BLACKPINK) / Dream (LISA)
   'fandom-internacional-do-ano':       { who: 'BLINKs',    label: 'Int. Fandom' },         // Fandom Internacional do Ano — BLINKs
-  'serie-internacional':               { who: 'BLACKPINK', label: 'Int. Series' },         // Série Internacional — Boyfriend On Demand
+  'serie-internacional':               { who: 'JISOO',     label: 'Int. Series' },         // Série Internacional — Boyfriend On Demand (JISOO)
   // tolerated aliases in case a slug ships slightly differently:
   'videoclipe-internacional':          { who: ['BLACKPINK', 'LISA'], label: 'Int. Music Video' },
-  'serie-internacional-do-ano':        { who: 'BLACKPINK', label: 'Int. Series' },
+  'serie-internacional-do-ano':        { who: 'JISOO',     label: 'Int. Series' },
   // The archive has never seen a /vote/videoclipe-* URL on this domain — it has
   // 'clipe-internacional-do-ano' and 'clipe-internacional' (probe-breaktudo.yml,
   // run 36260347844, 91 slugs across every edition). v1.7.2 "corrected"
