@@ -115,6 +115,13 @@
   .section { padding: 2.6rem 0 0.5rem; }
   .section-head { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--pink); margin-bottom: 1.3rem; }
   .section-head::before { content: '// '; color: var(--muted); }
+  /* The divider between what is still open and what has finished, at the same
+     weight the hero used to give it — it is the line that explains why
+     everything below it is greyed out, so it should read as a full stop rather
+     than another small label. Drops the "// " prefix, which belongs to the
+     small headings. */
+  .section-head.big { font-family: var(--display); font-size: clamp(1.7rem, 8vw, 2.4rem); letter-spacing: 0.08em; line-height: 1; margin: 2.6rem 0 1.3rem; }
+  .section-head.big::before { content: none; }
 
   /* ── Highlight / the stake ── */
   .highlight { border: 1px solid rgba(255,0,102,0.4); background: rgba(255,0,102,0.05); padding: 1.9rem 1.6rem; text-align: center; box-shadow: 0 0 40px -18px rgba(255,0,102,0.6) inset; }
@@ -491,7 +498,7 @@
       if (inlineNote) inlineNote.hidden = true;
     }
     var head = document.getElementById('noms-head');
-    if (head) head.textContent = 'Voting closed';
+    if (head) { head.textContent = 'Voting closed'; head.classList.add('big'); }
 
     // The hero speaks only about what is OPEN. "Voting closed" belongs with the
     // closed nominations further down, not directly above a button asking
