@@ -8286,7 +8286,11 @@ function drawVmaVoting() {
     // Ranking + badges are silently gated on having streamed (server `ranked`).
     // Non-streamers still see their registered votes — just no rank or badge, and
     // no explanation of why.
-    const isRanked = !!_vvMe.ranked;
+    // `ranked` comes from TODAY's streams, which are zero for everyone the moment
+    // the voting day rolls — so after the close it says "never streamed" about
+    // every blink on the board, including whoever is sitting at #1. Once closed,
+    // the board itself is the authority: being on it IS being ranked.
+    const isRanked = closed ? (myRank != null || !!_vvMe.ranked) : !!_vvMe.ranked;
     let rankBadge = '';
     if (isRanked) {
       let rankLine;
@@ -8334,9 +8338,11 @@ function drawVmaVoting() {
       // still earn a simple "Voter" badge once they hit VMA_VOTER_DAILY in a day.
       const myToday = _vvMe.today || 0;
       if (closed) {
-        // A vote-only blink after the close: their total is the whole story, and
-        // "stream to get ranked" is advice for a race that has finished.
-        rankBadge = `<div class="vv-rank vv-rank-hint">You voted but weren't streaming, so you sat below the ranked board — your votes still counted for BLACKPINK. 💗</div>`;
+        // Nothing goes in the rank slot here. Anything written where a rank
+        // belongs reads as a statement ABOUT this blink, and a line about not
+        // streaming lands as an accusation on someone who did. The conditional
+        // note below the numbers covers it instead.
+        rankBadge = '';
       } else if (myToday >= VMA_VOTER_DAILY) {
         rankBadge = `<div class="vv-badge"><span class="vv-badge-cur">🗳️ Voter</span></div>
     <div class="vv-rank vv-rank-hint">🎧 <b>Stream too</b> and you'll climb onto the ranked board. 🏆</div>`;
@@ -8363,6 +8369,12 @@ function drawVmaVoting() {
         <span class="vv-chip vv-bp">🖤 BLACKPINK <b>${_vvFmt((_vvMe.bp && _vvMe.bp.total) || 0)}</b></span>
         <span class="vv-chip vv-lisa">🎀 LISA <b>${_vvFmt((_vvMe.lisa && _vvMe.lisa.total) || 0)}</b></span>
       </div>
+      ${closed && !isRanked
+        // Conditional on purpose — "if you weren't", not "you weren't". This
+        // shows to anyone the board did not rank, and the board can only see
+        // streams it was told about.
+        ? `<div class="vv-rank vv-rank-hint">Ranked places needed streams as well as votes — if you weren't scrobbling, that's why you're below the board here. Your votes still counted for BLACKPINK. 💗</div>`
+        : ''}
       ${closed ? '' : _vvMe.extToday ? `
       <div class="vv-form vv-form-auto">
         <div class="vv-auto-note">✅ <b>Counted automatically today</b> — your vote counter (browser extension or the app) is logging this account's votes. No need to add them here; doing so would double-count.</div>
@@ -8551,13 +8563,21 @@ function drawBtVoting() {
       <div class="vv-unranked-foot">🎧 Stream today too and you'll climb onto the ranked board — these votes still count. 💗</div>
     </div>` : '';
 
+  // The counter is one extension covering BOTH awards — it reads BreakTudo votes
+  // as well as VMA ones — so the download and the guides belong on this tab too,
+  // on the same bar as the VMA panel uses: signed in, with a scrobbler linked.
+  const btQualified = !!(_vvSession && _vvMe && _vvMe.linked !== false);
+
   panel.innerHTML = `<div class="vv-wrap">
     ${vmaAwardSwitchHtml()}
     <div class="vv-head">
       <div class="vv-title">🏆 BreakTudo Voting Leaderboard</div>
       <div class="vv-note">Register the BreakTudo Awards votes you cast for BLACKPINK &amp; members and race other blinks up the board. Voting closes Oct 17. <a href="/voting">how &amp; where to vote →</a></div>
+      <button class="vv-guide-btn" onclick="startGuide()">🧭 New here? Step-by-step guide</button>
     </div>
+    ${vmaVideoGuidesHtml()}
     ${me}
+    ${btQualified ? vmaExtensionHtml() : ''}
     <div class="vv-tabs">${toggle}</div>
     ${table}
     ${unrankedHtml}
