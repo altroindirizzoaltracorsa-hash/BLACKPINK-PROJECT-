@@ -2411,6 +2411,11 @@
   .vv-community-row div { display: flex; flex-direction: column; }
   .vv-community-row span { font-family: var(--display); font-size: 1.35rem; line-height: 0.9; color: rgba(245,240,240,0.92); }
   .vv-community-row small { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-top: 0.35rem; }
+  .vv-community-share { margin-top: 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;
+    font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--white); background: rgba(255,0,102,0.16); border: 1px solid rgba(255,0,102,0.45);
+    border-radius: 999px; padding: 0.5rem 1rem; transition: background 0.15s, border-color 0.15s; }
+  .vv-community-share:hover { background: rgba(255,0,102,0.3); border-color: var(--pink); }
   /* A number that throbs forever is exactly what reduced-motion is for; the glow
      stays, so it still reads as the celebration it is. */
   @media (prefers-reduced-motion: reduce) {
@@ -8311,6 +8316,7 @@ function vvCommunityHtml(opts = {}) {
       ${blinks ? `<div><span>${_vvFmt(blinks)}</span><small>blink${blinks === 1 ? '' : 's'}</small></div>` : ''}
       ${opts.showToday && today ? `<div><span>${_vvFmt(today)}</span><small>today</small></div>` : ''}
     </div>` : ''}
+    <button class="vv-community-share" onclick="shareCommunityVotesCard('${opts.award || _vvAward}')">↑ Share this</button>
   </div>`;
 }
 
@@ -8626,6 +8632,7 @@ function drawVmaVoting() {
     ${me}
     ${!closed && qualified ? vmaExtensionHtml() : ''}
     ${vvCommunityHtml({
+      award: 'vma',
       label: closed ? '🏆 Together, blinks cast' : 'Together, as a community',
       sub: closed ? 'votes for BLACKPINK 💗 whatever the result' : 'votes for BLACKPINK 💗',
       showToday: !closed,
@@ -8737,7 +8744,7 @@ function drawBtVoting() {
     ${vmaVideoGuidesHtml()}
     ${me}
     ${btQualified ? vmaExtensionHtml() : ''}
-    ${vvCommunityHtml({ label: 'Together, as a community', showToday: true })}
+    ${vvCommunityHtml({ award: 'breaktudo', label: 'Together, as a community', showToday: true })}
     <div class="vv-tabs">${toggle}</div>
     ${table}
     ${unrankedHtml}
@@ -16103,6 +16110,7 @@ function setCardFormat(fmt, btn) {
   if (fmt === 'landscape') { canvas.width = 1200; canvas.height = 675; }
   else                     { canvas.width = 1080; canvas.height = 1080; }
   if (_cardType === 'lb') renderLbCard(_cardLogo);
+  else if (_cardType === 'community' && _communityCardData) drawCommunityCard(canvas, _communityCardData, _cardLogo);
   else if (_cardType === 'milestone') {
     drawMilestoneCard(canvas, _cardTrackId, _cardArt, _cardLogo, _msMilestoneTotal, _msMilestone, _msMilestoneDate);
     canvas.toBlob(blob => { _cardShareBlob = blob; }, 'image/jpeg', 0.92);
@@ -16317,6 +16325,203 @@ function renderSongCard(trackId, art, logo) {
 }
 
 // ── LEADERBOARD CARD ─────────────────────────────────────────────────────────
+// ── Community votes share card ───────────────────────────────────────────────
+// "Look what we did together": the total votes blinks logged here, and how many
+// of us logged them. Deliberately says "recorded on blinksunited.com" — these
+// are the votes OUR community logged, not every vote cast worldwide, and the
+// card is going to be screenshotted by people who don't know the difference.
+let _communityCardData = null;
+
+const _COMMUNITY_AWARDS = {
+  vma:       { title: 'MTV VMAs 2026',    sub: 'VOTES CAST BY BLINKS' },
+  breaktudo: { title: 'BreakTudo Awards', sub: 'VOTES CAST BY BLINKS' },
+};
+
+async function shareCommunityVotesCard(award) {
+  const meta = _COMMUNITY_AWARDS[award] || _COMMUNITY_AWARDS.vma;
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none';
+  _cardType = 'community';
+  _cardTrackId = null;
+  _cardFormat = 'square';
+  document.getElementById('fmt-landscape')?.classList.remove('active');
+  document.getElementById('fmt-square')?.classList.add('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1080; canvas.height = 1080;
+
+  // Read the award's own totals rather than whichever tab happens to be open —
+  // the card is titled with the award, so it must not show the other one's number.
+  let totals = _vvTotals;
+  if (award !== _vvAward || !totals) {
+    try {
+      const r = await fetch('/api/vma-votes' + (award === 'breaktudo' ? '?award=breaktudo' : ''), { cache: 'no-store' });
+      totals = r.ok ? await r.json() : null;
+    } catch (_) { totals = null; }
+  }
+  if (!totals || !(Number(totals.total) > 0)) {
+    label.textContent = 'NOTHING LOGGED YET';
+    _communityCardData = null;
+    return;
+  }
+  _communityCardData = { award, meta, totals };
+
+  await document.fonts.ready;
+  _cardLogo = await getBuLogo();
+  drawCommunityCard(canvas, _communityCardData, _cardLogo);
+  label.textContent = `${meta.title.toUpperCase()} · COMMUNITY VOTES`;
+}
+
+// Shrink a line until it fits the width it has, and leave ctx.font set to the
+// size that fit. Both headline lines on this card are variable — the total only
+// grows — and a card that clips its own headline is worse than a smaller one.
+// (The first render of this card lost the L and the R of "BLINKS UNITED,
+// TOGETHER" off both edges, which every text assertion happily passed.)
+function _ccFit(ctx, text, maxW, startSize, family) {
+  let size = startSize;
+  for (;;) {
+    ctx.font = `${size}px "${family}", sans-serif`;
+    if (ctx.measureText(text).width <= maxW || size <= 16) return size;
+    size -= Math.max(2, Math.round(size * 0.06));
+  }
+}
+
+function drawCommunityCard(canvas, data, logo) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const t = data.totals;
+  const total  = Number(t.total) || 0;
+  const blinks = Number(t.blinksTotal) || 0;
+  const bp     = Number(t.bpTotal) || 0;
+  const lisa   = Number(t.lisaTotal) || 0;
+  const hasSplit = bp > 0 && lisa > 0;
+
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+  drawNoise(ctx, W, H, 0.03);
+  // Glow behind the headline number, so the big figure reads as the celebration
+  // it is rather than as a statistic.
+  const glow = ctx.createRadialGradient(W / 2, H * 0.42, 0, W / 2, H * 0.42, W * 0.62);
+  glow.addColorStop(0, 'rgba(255,0,102,0.22)');
+  glow.addColorStop(1, 'rgba(255,0,102,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = '#FF0066';
+  ctx.fillRect(0, 0, W, 5);
+  ctx.fillRect(0, H - 5, W, 5);
+
+  ctx.textAlign = 'center';
+
+  // Everything above the footer is laid out inside A, not H. The footer block is
+  // a FIXED 130px tall, so positioning by fractions of the full height worked at
+  // 1080x1080 and collided at 1200x675 — "recorded on…" landed on top of the
+  // footer rule and the sub-line sat inside the big number.
+  const A = H - 130;
+
+  // Award
+  ctx.fillStyle = 'rgba(245,240,240,0.5)';
+  ctx.font = `500 ${Math.max(14, Math.round(A * 0.021))}px "DM Mono", monospace`;
+  ctx.letterSpacing = '6px';
+  ctx.fillText(data.meta.title.toUpperCase(), W / 2, A * 0.17);
+
+  ctx.fillStyle = '#FF0066';
+  ctx.letterSpacing = '5px';
+  _ccFit(ctx, 'BLINKS UNITED, TOGETHER', W - 100, Math.round(A * 0.085), 'Bebas Neue');
+  ctx.fillText('BLINKS UNITED, TOGETHER', W / 2, A * 0.27);
+
+  // The number. Shrink to fit rather than overflow — this total only grows, and
+  // a card that clips its own headline is worse than a slightly smaller one.
+  const numY = A * 0.56;
+  const numText = total.toLocaleString('en-US');
+  ctx.letterSpacing = '0px';
+  const numSize = _ccFit(ctx, numText, W - 120, Math.round(A * 0.27), 'Bebas Neue');
+  const grad = ctx.createLinearGradient(0, numY - numSize * 0.8, 0, numY + numSize * 0.1);
+  grad.addColorStop(0, '#FFFFFF');
+  grad.addColorStop(1, '#FF0066');
+  ctx.fillStyle = grad;
+  ctx.fillText(numText, W / 2, numY);
+
+  ctx.fillStyle = 'rgba(245,240,240,0.85)';
+  ctx.font = `500 ${Math.max(15, Math.round(A * 0.026))}px "DM Mono", monospace`;
+  ctx.letterSpacing = '7px';
+  ctx.fillText(data.meta.sub, W / 2, numY + Math.round(A * 0.085));
+
+  // Blinks, and the member split when there is one
+  const boxY = A * 0.82;
+  const cells = [{ v: blinks.toLocaleString('en-US'), k: blinks === 1 ? 'BLINK' : 'BLINKS' }];
+  if (hasSplit) {
+    cells.push({ v: bp.toLocaleString('en-US'), k: 'FOR BLACKPINK' });
+    cells.push({ v: lisa.toLocaleString('en-US'), k: 'FOR LISA' });
+  }
+  const cellW = (W - 140) / cells.length;
+  const cellFont = Math.round(A * 0.07);
+  cells.forEach((c, i) => {
+    const cx = 70 + cellW * i + cellW / 2;
+    if (i > 0) {
+      ctx.fillStyle = 'rgba(255,0,102,0.25)';
+      ctx.fillRect(70 + cellW * i, boxY - cellFont * 0.62, 1, cellFont * 1.5);
+    }
+    ctx.fillStyle = '#F5F0F0';
+    ctx.letterSpacing = '1px';
+    _ccFit(ctx, c.v, cellW - 30, cellFont, 'Bebas Neue');
+    ctx.fillText(c.v, cx, boxY + 6);
+    ctx.fillStyle = 'rgba(245,240,240,0.42)';
+    ctx.font = `500 ${Math.max(11, Math.round(A * 0.017))}px "DM Mono", monospace`;
+    ctx.letterSpacing = '3px';
+    ctx.fillText(c.k, cx, boxY + Math.round(cellFont * 0.62));
+  });
+
+  // The honest line: these are the votes logged HERE.
+  ctx.fillStyle = 'rgba(245,240,240,0.3)';
+  ctx.font = `500 ${Math.max(12, Math.round(A * 0.018))}px "DM Mono", monospace`;
+  ctx.letterSpacing = '2px';
+  ctx.fillText('RECORDED ON BLINKSUNITED.COM', W / 2, A * 0.965);
+
+  ctx.fillStyle = 'rgba(255,0,102,0.2)';
+  ctx.fillRect(60, H - 120, W - 120, 1);
+
+  const now = new Date();
+  const ds = String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear();
+  ctx.fillStyle = 'rgba(245,240,240,0.28)';
+  ctx.font = '500 16px "DM Mono", monospace';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('As of ' + ds, W / 2, H - 94);
+
+  // Same logo lockup as every other card.
+  const LR = 24, logoY = H - 52;
+  ctx.font = '38px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '8px';
+  const buText = 'BLINKS UNITED';
+  const buTextW = ctx.measureText(buText).width;
+  const gap = 14;
+  const blockW = logo ? LR * 2 + gap + buTextW : buTextW;
+  const blockX = (W - blockW) / 2;
+  const logoX  = logo ? blockX + LR : 0;
+  const textX  = logo ? blockX + LR * 2 + gap : W / 2;
+  if (logo) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(logoX, logoY, LR, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, logoX - LR, logoY - LR, LR * 2, LR * 2);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(logoX, logoY, LR + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF0066'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  ctx.fillStyle = '#F5F0F0';
+  ctx.textAlign = logo ? 'left' : 'center';
+  ctx.fillText(buText, textX, H - 38);
+  ctx.fillStyle = 'rgba(245,240,240,0.2)';
+  ctx.font = '500 13px "DM Mono", monospace';
+  ctx.letterSpacing = '2px';
+  ctx.textAlign = 'center';
+  ctx.fillText('blinksunited.com', W / 2, H - 20);
+
+  _markCardReady(canvas);
+}
+
 async function shareLbCard() {
   const overlay = document.getElementById('card-overlay');
   const label   = document.getElementById('card-box-label');
@@ -16533,7 +16738,7 @@ function renderLbCard(logo) {
   ctx.font = '500 13px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
   ctx.textAlign = 'center';
-  ctx.fillText('blinksunited.com', W / 2, H - 18);
+  ctx.fillText('blinksunited.com', W / 2, H - 20);
 
   _markCardReady(canvas);
 }
@@ -16594,6 +16799,18 @@ async function shareCard() {
       if (d.extraGoals?.length) lines.push(...d.extraGoals.map(g => `✔ ${g}`));
       statsText = '\n' + lines.join('\n') + '\n';
     }
+  } else if (_cardType === 'community' && _communityCardData) {
+    // The numbers go in the text too, not only in the picture: a screenshot is
+    // not searchable, and plenty of people read a timeline with images off.
+    const { meta, totals } = _communityCardData;
+    const n = (x) => (Number(x) || 0).toLocaleString('en-US');
+    const lines = [`🗳️ ${n(totals.total)} votes for the ${meta.title}, logged by ${n(totals.blinksTotal)} blinks`];
+    if (Number(totals.bpTotal) > 0 && Number(totals.lisaTotal) > 0) {
+      lines.push(`💗 ${n(totals.bpTotal)} for BLACKPINK · ${n(totals.lisaTotal)} for LISA`);
+    }
+    lines.push('👉 Log yours on blinksunited.com/voting');
+    statsText = '\n' + lines.join('\n') + '\n';
+    link = 'https://www.blinksunited.com/voting';
   } else if (_cardType === 'presave') {
     // Keep the link on our own site — clicking through here is what earns the
     // Early Supporter badge and moves the pre-save challenge bar.
