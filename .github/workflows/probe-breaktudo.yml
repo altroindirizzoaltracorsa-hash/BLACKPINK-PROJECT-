@@ -1,0 +1,100 @@
+name: Probe BreakTudo categories (read-only)
+
+# Lists the REAL /vote/<slug>/ category pages on vote.breaktudoawards.com and
+# says which ones BLACKPINK or a member appears on.
+#
+# Why this exists: the extension only counts a BreakTudo vote if the page's slug
+# is in BT_CATS (vote-extension/background.js). That list was written by hand
+# from translated category titles and at least one entry has already been wrong
+# ('clipe-internacional-do-ano' where the site says 'videoclipe-…'), which makes
+# every vote in that category count zero. Claude Code sessions can't reach
+# breaktudoawards.com — outbound HTTP to it is blocked — so this is the way to
+# check the list against the site.
+#
+# Read-only: GETs only, nothing is written anywhere and no vote is ever cast.
+on:
+  workflow_dispatch:
+    inputs:
+      names:
+        description: 'Names to look for on each category page, separated by |'
+        required: false
+        default: 'BLACKPINK|JENNIE|JISOO|LISA|ROSÉ|ROSE|BLINK'
+      max_pages:
+        description: 'How many category pages to open (0 = list slugs only)'
+        required: false
+        default: '60'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the category index
+        env:
+          UA: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36'
+        run: |
+          set -u
+          BASE="https://vote.breaktudoawards.com"
+          : > /tmp/slugs
+          for p in / /vote/ /categorias/ /votacao/; do
+            code=$(curl -sSL --compressed -m 45 -A "$UA" -w '%{http_code}' -o "/tmp/idx" "$BASE$p" || echo 000)
+            echo "GET $BASE$p → HTTP $code · $(wc -c </tmp/idx 2>/dev/null || echo 0) bytes"
+            [ "$code" = "200" ] || continue
+            # Every category link on the site is /vote/<slug>/ — pull them out of
+            # the raw markup rather than trying to parse the page structure.
+            grep -oE '/vote/[a-z0-9][a-z0-9-]*/' /tmp/idx | sed 's#^/vote/##; s#/$##' >> /tmp/slugs || true
+          done
+          sort -u /tmp/slugs -o /tmp/slugs
+          echo "===== $(wc -l </tmp/slugs) distinct category slugs ====="
+          cat /tmp/slugs
+          if [ ! -s /tmp/slugs ]; then
+            echo "::error::no /vote/<slug>/ links found — the site may be behind a bot check, or the URL shape changed"
+            exit 1
+          fi
+
+      - name: Which ones is BLACKPINK on, and what does BT_CATS say
+        env:
+          NAMES: ${{ github.event.inputs.names }}
+          MAXP: ${{ github.event.inputs.max_pages }}
+          UA: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36'
+        run: |
+          set -u
+          BASE="https://vote.breaktudoawards.com"
+          # What the extension currently accepts, read straight out of the source
+          # so this can never drift from what actually ships.
+          sed -n "/^const BT_CATS = {/,/^};/p" vote-extension/background.js \
+            | grep -oE "^  '[a-z0-9-]+'" | tr -d " '" > /tmp/known || true
+          echo "===== BT_CATS currently accepts ====="; cat /tmp/known
+
+          echo
+          echo "===== category pages mentioning: $NAMES ====="
+          n=0
+          : > /tmp/ours
+          while IFS= read -r slug; do
+            [ "$MAXP" -le 0 ] && break
+            n=$((n+1)); [ "$n" -gt "$MAXP" ] && break
+            code=$(curl -sSL --compressed -m 30 -A "$UA" -w '%{http_code}' -o /tmp/cat "$BASE/vote/$slug/" || echo 000)
+            [ "$code" = "200" ] || { echo "  HTTP $code  $slug"; continue; }
+            # <title> is the category's own name — worth printing next to the slug
+            # so a mis-translated guess is obvious at a glance.
+            title=$(grep -oiE '<title>[^<]*' /tmp/cat | head -1 | sed 's/<title>//I' | sed 's/[[:space:]]\+/ /g' | cut -c1-90)
+            if grep -qiE "$NAMES" /tmp/cat; then
+              hit=$(grep -oiE "$NAMES" /tmp/cat | sort -u | tr '\n' ',' | sed 's/,$//')
+              if grep -qxF "$slug" /tmp/known; then mark="OK      "; else mark="MISSING "; fi
+              echo "  $mark $slug"
+              echo "           title: $title"
+              echo "           found: $hit"
+              echo "$slug" >> /tmp/ours
+            fi
+          done < /tmp/slugs
+
+          echo
+          echo "===== verdict ====="
+          echo "BLACKPINK/member categories found on the site: $(wc -l </tmp/ours)"
+          # A slug in BT_CATS that the site doesn't have is a vote that silently
+          # counts zero — that is the failure mode this probe exists to catch.
+          echo "--- in BT_CATS but NOT a real BLACKPINK category page ---"
+          comm -23 /tmp/known <(sort -u /tmp/ours) || true
+          echo "--- a BLACKPINK category page that BT_CATS does NOT accept ---"
+          comm -13 /tmp/known <(sort -u /tmp/ours) || true
