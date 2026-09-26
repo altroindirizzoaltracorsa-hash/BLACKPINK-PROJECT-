@@ -2367,6 +2367,15 @@
   .vv-closed-note { font-family: var(--mono); font-size: 0.64rem; line-height: 1.6; color: rgba(245,240,240,0.9); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-left: 2px solid var(--pink); border-radius: 6px; padding: 0.7rem 0.85rem; margin-bottom: 1rem; }
   .vv-closed-note b { color: var(--pink); }
   .vv-final-lbl { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.6rem; }
+  .vv-community { border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 0.9rem; margin-bottom: 1rem; background: rgba(255,0,102,0.05); }
+  .vv-community-hd { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+  .vv-community-row { display: flex; gap: 1.6rem; flex-wrap: wrap; }
+  .vv-community-row div { display: flex; flex-direction: column; }
+  .vv-community-row span { font-family: var(--display); font-size: 1.7rem; line-height: 0.9; color: var(--pink); }
+  .vv-community-row small { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-top: 0.35rem; }
+  .vv-forgot { display: block; font-family: var(--mono); font-size: 0.6rem; line-height: 1.55; color: rgba(245,240,240,0.85); background: rgba(255,255,255,0.03); border: 1px dashed var(--border); border-radius: 8px; padding: 0.6rem 0.8rem; margin-bottom: 1rem; text-decoration: none; }
+  .vv-forgot:hover { border-color: var(--pink); }
+  .vv-forgot b { color: var(--pink); }
   .vv-table th i { font-style: normal; font-size: 0.46rem; opacity: 0.7; }
   .vv-tabs { display: flex; gap: 0.4rem; margin-bottom: 0.9rem; }
   .vv-tab { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--border); padding: 0.42rem 0.75rem; cursor: pointer; }
@@ -8166,6 +8175,40 @@ function vmaClosed() {
   return _vvClosedFromServer != null ? _vvClosedFromServer : Date.now() >= VMA_CLOSES_AT;
 }
 
+// Community tally for the selected award: { total, today, blinksTotal, blinksToday }.
+let _vvTotals = null;
+
+// Where a blink goes if they voted but never logged it. X gives a one-tap DM
+// compose link only when you know the account's NUMERIC id — the @handle is not
+// enough — so with the id unset this falls back to the profile, which works
+// everywhere and costs one extra tap. Filling BU_X_ID in turns it into a real
+// compose link with nothing else to change.
+const BU_X_HANDLE = 'blinksunitedtwt';
+const BU_X_ID = '';
+function buDmUrl() {
+  return BU_X_ID
+    ? `https://x.com/messages/compose?recipient_id=${BU_X_ID}`
+    : `https://x.com/${BU_X_HANDLE}`;
+}
+
+// "Together we cast N votes" — the same figure for both awards, read from the
+// award's own tally endpoint. Renders nothing at all rather than a zero when the
+// fetch failed, so a blip never reads as "nobody voted".
+function vvCommunityHtml(opts = {}) {
+  const t = _vvTotals;
+  if (!t || !(Number(t.total) > 0)) return '';
+  const blinks = Number(t.blinksTotal) || 0;
+  const today = Number(t.today) || 0;
+  return `<div class="vv-community">
+    <div class="vv-community-hd">${opts.label || 'Together, as a community'}</div>
+    <div class="vv-community-row">
+      <div><span>${_vvFmt(t.total)}</span><small>votes cast</small></div>
+      ${blinks ? `<div><span>${_vvFmt(blinks)}</span><small>blink${blinks === 1 ? '' : 's'}</small></div>` : ''}
+      ${opts.showToday && today ? `<div><span>${_vvFmt(today)}</span><small>today</small></div>` : ''}
+    </div>
+  </div>`;
+}
+
 let _vvAward = vmaClosed() ? 'breaktudo' : 'vma';
 const _vvAwardMeta = {
   vma:       { title: '🗳️ VMA Voting Leaderboard', label: 'MTV VMAs' },
@@ -8212,16 +8255,21 @@ async function renderVmaVoting() {
   try { _vvSession = (await sb?.auth.getSession())?.data?.session || null; } catch { _vvSession = null; }
   _vvToken = _vvSession?.access_token || null;
   const aw = _vvAward === 'breaktudo' ? '&award=breaktudo' : '';
-  const [board, me] = await Promise.all([
+  // The bare endpoint is the community tally for whichever award is selected.
+  // '?' not '&' here — it carries no other parameter.
+  const totalsUrl = '/api/vma-votes' + (_vvAward === 'breaktudo' ? '?award=breaktudo' : '');
+  const [board, me, totals] = await Promise.all([
     fetch('/api/vma-votes?board=1' + aw, { cache: 'no-store' }).then(r => r.ok ? r.json() : { board: [] }).catch(() => ({ board: [] })),
     _vvToken
       ? fetch('/api/vma-votes?me=1' + aw, { headers: { Authorization: 'Bearer ' + _vvToken }, cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)
       : Promise.resolve(null),
+    fetch(totalsUrl, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
   const bd = board.board;
   _vvBoard = Array.isArray(bd) ? bd : (bd?.ranked || []);
   _vvUnranked = (bd && !Array.isArray(bd)) ? (bd.unranked || []) : [];
   _vvMe = me;
+  _vvTotals = totals;
   // The VMA board reports whether the ballot has closed; believe it over this
   // device's clock. Only that award's response carries it.
   if (_vvAward !== 'breaktudo' && typeof board.closed === 'boolean') _vvClosedFromServer = board.closed;
@@ -8461,7 +8509,8 @@ function drawVmaVoting() {
       <button class="vv-guide-btn" onclick="startGuide()">🧭 New here? Step-by-step guide</button>`}
     </div>
     ${closed
-      ? `<div class="vv-closed-note">🏁 <b>The VMA ballot is closed.</b> Nothing more can be added here. <b>BreakTudo is still running</b> — switch to it above to keep voting for BLACKPINK &amp; the members.</div>`
+      ? `<div class="vv-closed-note">🏁 <b>The VMA ballot is closed.</b> Nothing more can be added here. <b>BreakTudo is still running</b> — switch to it above to keep voting for BLACKPINK &amp; the members.</div>
+      <a class="vv-forgot" href="${buDmUrl()}" target="_blank" rel="noopener">✉️ <b>Forgot to add your votes?</b> Tap here to DM us on X (@${BU_X_HANDLE}) with how many you cast — we'll add them for you.</a>`
       // Between MTV closing its ballot and this board freezing, the only thing
       // left to do here is log votes already cast — above all for blinks who
       // voted without the counter and have nothing recorded yet. Say so, and say
@@ -8471,6 +8520,7 @@ function drawVmaVoting() {
         : vmaVideoGuidesHtml()}
     ${me}
     ${!closed && qualified ? vmaExtensionHtml() : ''}
+    ${vvCommunityHtml({ label: closed ? 'Together, blinks cast' : 'Together, as a community', showToday: !closed })}
     ${closed ? '<div class="vv-final-lbl">Final standings · every vote logged</div>' : `<div class="vv-tabs">${toggle}</div>`}
     ${table}
     ${unrankedHtml}
@@ -8578,6 +8628,7 @@ function drawBtVoting() {
     ${vmaVideoGuidesHtml()}
     ${me}
     ${btQualified ? vmaExtensionHtml() : ''}
+    ${vvCommunityHtml({ label: 'Together, as a community', showToday: true })}
     <div class="vv-tabs">${toggle}</div>
     ${table}
     ${unrankedHtml}
