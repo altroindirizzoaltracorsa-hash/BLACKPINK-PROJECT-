@@ -13,17 +13,41 @@ the URL: `POST /wp-json/bta/v1/awards/vote/?_wpnonce=… →
 action=update_vote&votes=[{"id":"<base64>","pos":N}]&valid=<turnstile>`. So
 `background.js` reads it with `onBeforeRequest` + `['requestBody']`, grabs the
 `/vote/<slug>/` referer in `onSendHeaders`, and only counts it once `onCompleted`
-confirms a 2xx. BreakTudo stacks a sequence's votes onto the candidate as a **count
-in `pos`** (`votes=[{"id":BP,"pos":5}]` = 5 votes for BLACKPINK — you cast 5, then the
-Cloudflare check runs), so the counter **sums `pos`**, not array length. There's no
-daily cap (repeat sequences all count); retries are de-duped by the Turnstile token
-**plus each mark's id+pos** so distinct marks under one token still count. **Only
-BLACKPINK/member/BLINKs votes are counted**: a vote is ours iff its candidate id is a
-known BP id (`BT_CANDIDATES`) OR it's cast on one of our nominated category pages
-(`BT_CATS`, keyed by the `/vote/<slug>/` referer). Any other vote — a different artist
-or a Brazilian/other category — is skipped and logged to the service-worker console
-(so if a real BLACKPINK category is ever missing its slug, you'll see it). POSTs carry
-`{award:'breaktudo'}`; the VMA path is untouched.
+confirms a 2xx.
+
+**The three events must share state across a service-worker restart.** Under MV3
+Chrome tears the worker down between them, so the in-memory `requestId → body` map
+this used to keep was empty by the time `onCompleted` fired and **every BreakTudo
+vote was dropped, with nothing logged**. (The VMA path never hit this: it reads
+everything off the URL in a single `onCompleted`.) The map now lives in
+`chrome.storage.local` under `btInflight`, with every touch serialised through
+`btQueue` so the three events can't clobber each other's read-modify-write.
+
+**`pos` is decided per batch, not assumed.** BreakTudo has shipped both
+`[{id:BP,pos:5}]` (one entry, `pos` = a count) and
+`[{id:BP,pos:1},…,{id:BP,pos:5}]` (one entry per mark, `pos` = its index). Summing
+blindly turns the second into 15; counting entries blindly turns the first into 1.
+A run of distinct positions `1..N`, each appearing once, is an index sequence → one
+vote per entry; anything else → `pos` is a count. There's no daily cap (repeat
+sequences all count); retries are de-duped by the Turnstile token **plus each mark's
+id+pos** so distinct marks under one token still count.
+
+**The path is a hint, not a gate.** What makes a request a vote is a readable
+`update_vote` body — pinning it to `/wp-json/bta/v1/awards/vote` meant a silent zero
+the day the endpoint moved (WordPress sites routinely post the same action to
+`/wp-admin/admin-ajax.php`).
+
+**Only BLACKPINK/member/BLINKs votes are counted**: a vote is ours iff its candidate
+id is a known BP id (`BT_CANDIDATES`) OR it's cast on one of our nominated category
+pages (`BT_CATS`, keyed by the `/vote/<slug>/` referer). Any other vote — a different
+artist or a Brazilian/other category — is skipped.
+
+**A vote that isn't counted says so.** Every non-count is recorded in `btDiag`
+(newest first, last 12) and the on-page panel shows the newest one: not linked, held
+after a network failure, category not recognised (**with the slug**, so a missing
+`BT_CATS` entry can be reported), BreakTudo rejected it, or a body we couldn't read
+(with the endpoint). It used to be completely silent — the counter just sat at zero.
+POSTs carry `{award:'breaktudo'}`; the VMA path is untouched.
 
 ## How it works
 1. `background.js` watches the site's own vote request with **`chrome.webRequest`**:
