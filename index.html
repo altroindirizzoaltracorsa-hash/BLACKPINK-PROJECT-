@@ -7819,7 +7819,7 @@ const VOTE_CAMPAIGNS = [
       'Each category has its own page — tap the “Vote ↗” link on each below',
       'Hit submit to lock in your ballot, then come back and vote every day',
       'Voting closes Sept 25, 6PM ET',
-      '📸 Song of Summer runs separately in MTV’s Instagram Stories — still open, and not counted on our leaderboard',
+      '📸 Song of Summer runs separately in MTV’s Instagram Stories, from Sept 26 — not counted on our leaderboard',
       'Winners revealed live Sun Sept 27, 7:30 ET / 4:30 PT on CBS & Paramount+',
     ],
     // On-page layout: a horizontal row of the 3 videos, each with the
@@ -7842,12 +7842,15 @@ const VOTE_CAMPAIGNS = [
       { name: 'JISOO × ZAYN — “Eyes Closed”', img: '/vote-vma-eyesclosed.jpeg', noms: [
         { cat: 'Best Visual Effects', pro: true },
       ] },
-      // Still open after the main ballot closed: Song of Summer is voted in
-      // MTV's Instagram Stories, not on vote.mtv.com. `ig` keeps it live when
-      // everything else on the card has gone dark, and links to the account
-      // rather than a ballot page — a story has no URL of its own.
+      // Runs after the main ballot closed, in MTV's Instagram Stories rather
+      // than on vote.mtv.com. `ig` keeps it live when everything else on the
+      // card has gone dark, and links to the account rather than a ballot page —
+      // a story has no URL of its own. `startsAt` is an ET calendar date: the
+      // copy is derived from it so it cannot claim the vote is open before it
+      // is, or still say "later today" tomorrow.
       { name: 'Tame Impala & JENNIE — “Dracula”', img: '/vote-vma-dracula.jpg', noms: [
-        { cat: 'Song of Summer', ig: true, url: 'https://www.instagram.com/mtv/' },
+        { cat: 'Song of Summer', ig: true, url: 'https://www.instagram.com/mtv/',
+          startsAt: '2026-09-26' },
       ] },
     ],
     categories: [
@@ -8152,7 +8155,26 @@ function renderVoteCampaigns() {
           </div>
         </div>`).join('');
     const hasPro = (c.videos || []).some(v => v.noms.some(n => n.pro));
-    const hasIg = (c.videos || []).some(v => v.noms.some(n => n.ig));
+    const igNom = (c.videos || []).flatMap(v => v.noms).find(n => n.ig) || null;
+    // Say where the vote happens, and say WHEN only from the date on the
+    // nomination. An earlier version of this hard-coded "still open" while the
+    // vote had not started yet — the sort of claim that is wrong the moment it
+    // ships and wrong again the day after.
+    let igTiming = '';
+    if (igNom && igNom.startsAt) {
+      const etToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York',
+        year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      if (etToday < igNom.startsAt) {
+        // Noon UTC so the date cannot slip a day either way when formatted.
+        const label = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+          .format(new Date(igNom.startsAt + 'T12:00:00Z'));
+        igTiming = ` It opens ${label}.`;
+      } else if (etToday === igNom.startsAt) {
+        igTiming = ' It opens later today.';
+      }
+      // Once the day has passed, make no claim either way: a story's window is
+      // MTV's to decide and we cannot see it.
+    }
     const wonBadge = c.winner ? `<div class="vote-winner-badge">🏆 WE WON — ${c.winner.name}</div>` : '';
     return `
       <div class="vote-card${c.winner ? ' won' : ''}">
@@ -8166,7 +8188,7 @@ function renderVoteCampaigns() {
           ${deadlineHtml}
         </div>
         ${c.resetOffset && !ended ? `<div class="vote-reset">🔄 Daily votes reset in <span class="vote-reset-time" data-reset-offset="${c.resetOffset}"></span></div>` : ''}
-        ${c.videos ? `<div class="vote-videos">${videosHtml}</div>${hasPro ? `<div class="vote-videos-note">🔒 Chosen by an industry panel — not a fan vote</div>` : ''}${hasIg ? `<div class="vote-videos-note ig">📸 <b>Song of Summer is still open</b> — it's voted in MTV's Instagram Stories, not on vote.mtv.com, so it isn't counted on our leaderboard.</div>` : ''}` : `<div class="vote-categories">${categoriesHtml}</div>`}
+        ${c.videos ? `<div class="vote-videos">${videosHtml}</div>${hasPro ? `<div class="vote-videos-note">🔒 Chosen by an industry panel — not a fan vote</div>` : ''}${igNom ? `<div class="vote-videos-note ig">📸 <b>${igNom.cat}</b> is voted in <b>MTV's Instagram Stories</b>, not on vote.mtv.com — so it isn't counted on our leaderboard.${igTiming}</div>` : ''}` : `<div class="vote-categories">${categoriesHtml}</div>`}
         ${c.rules?.length ? `<div class="vote-rules">
           <div class="vote-rules-label">📋 Rules</div>
           <ul>${c.rules.map(r => `<li>${r}</li>`).join('')}</ul>
