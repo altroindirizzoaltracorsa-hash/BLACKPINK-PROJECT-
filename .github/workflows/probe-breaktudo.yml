@@ -46,10 +46,30 @@ jobs:
             grep -oE '/vote/[a-z0-9][a-z0-9-]*/' /tmp/idx | sed 's#^/vote/##; s#/$##' >> /tmp/slugs || true
           done
           sort -u /tmp/slugs -o /tmp/slugs
+
+          # Cloudflare 403s datacenter IPs, so a direct fetch from a runner comes
+          # back as a ~5KB challenge page with no links in it (confirmed: run
+          # 36260253094 — HTTP 403 on all four paths). The Wayback Machine is not
+          # behind that check and holds the same /vote/<slug>/ URLs, so fall back
+          # to its index rather than giving up.
+          if [ ! -s /tmp/slugs ]; then
+            echo "direct fetch yielded nothing (bot check) — falling back to the Wayback Machine"
+            for page in 0 1 2; do
+              curl -sS -m 60 --compressed -A "$UA" \
+                "https://web.archive.org/cdx/search/cdx?url=vote.breaktudoawards.com*&output=text&fl=original&collapse=urlkey&limit=2000&page=$page" \
+                -o /tmp/cdx || true
+              echo "  cdx page $page → $(wc -l </tmp/cdx 2>/dev/null || echo 0) archived urls"
+              grep -oE '/vote/[a-z0-9][a-z0-9-]*/' /tmp/cdx 2>/dev/null | sed 's#^/vote/##; s#/$##' >> /tmp/slugs || true
+              [ -s /tmp/cdx ] || break
+            done
+            sort -u /tmp/slugs -o /tmp/slugs
+            echo "ARCHIVE=1" >> "$GITHUB_ENV"
+          fi
+
           echo "===== $(wc -l </tmp/slugs) distinct category slugs ====="
           cat /tmp/slugs
           if [ ! -s /tmp/slugs ]; then
-            echo "::error::no /vote/<slug>/ links found — the site may be behind a bot check, or the URL shape changed"
+            echo "::error::no /vote/<slug>/ links found — the live site is behind a bot check and the archive had nothing"
             exit 1
           fi
 
@@ -74,7 +94,14 @@ jobs:
           while IFS= read -r slug; do
             [ "$MAXP" -le 0 ] && break
             n=$((n+1)); [ "$n" -gt "$MAXP" ] && break
-            code=$(curl -sSL --compressed -m 30 -A "$UA" -w '%{http_code}' -o /tmp/cat "$BASE/vote/$slug/" || echo 000)
+            # Same bot check applies to the category pages, so read them from the
+            # archive too when the index had to come from there.
+            if [ "${ARCHIVE:-0}" = "1" ]; then
+              url="https://web.archive.org/web/2026/$BASE/vote/$slug/"
+            else
+              url="$BASE/vote/$slug/"
+            fi
+            code=$(curl -sSL --compressed -m 40 -A "$UA" -w '%{http_code}' -o /tmp/cat "$url" || echo 000)
             [ "$code" = "200" ] || { echo "  HTTP $code  $slug"; continue; }
             # <title> is the category's own name — worth printing next to the slug
             # so a mis-translated guess is obvious at a glance.
