@@ -353,7 +353,20 @@ export default async function handler(req, res) {
       lisa = Math.max(0, Math.min(lisa, 10000));
       let votes = (bp + lisa) > 0 ? bp + lisa : parseInt(body.votes, 10);
       if (!Number.isFinite(votes) || votes <= 0) return res.status(400).json({ error: 'votes required' });
+      const claimed = votes;
       votes = Math.min(votes, 10000); // sanity bound only (no daily cap)
+      // Scale the split down with the total. Each half is bounded on its own
+      // BEFORE the total is bounded, so bp=8000 + lisa=8000 stored a 16,000
+      // breakdown against a 10,000 total — the parts exceeding the whole. Enough
+      // of those and the board shows 16,000 + 16,000 beside 20,000 votes.
+      //
+      // Only when a split was actually given: for a lump {votes} submission
+      // bp and lisa are both 0 and must STAY 0, or scaling would invent a
+      // breakdown for votes that never carried one.
+      if (claimed > votes && (bp + lisa) > 0) {
+        bp = Math.floor((bp * votes) / claimed);
+        lisa = votes - bp;            // the remainder, so the two add to `votes` exactly
+      }
 
       // Two ways to authenticate a vote submission:
       //   • accessToken — a Supabase session (the website "Add votes" button).
