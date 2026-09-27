@@ -7829,7 +7829,7 @@ const VOTE_CAMPAIGNS = [
       'Each category has its own page — tap the “Vote ↗” link on each below',
       'Hit submit to lock in your ballot, then come back and vote every day',
       'Voting closes Sept 25, 6PM ET',
-      '📸 Song of Summer runs separately in MTV’s Instagram Stories, from Sept 26 — not counted on our leaderboard',
+      '📸 Song of Summer ran separately in MTV’s Instagram Stories from Sept 26 — never counted on our leaderboard, and now closed too',
       'Winners revealed live Sun Sept 27, 7:30 ET / 4:30 PT on CBS & Paramount+',
     ],
     // On-page layout: a horizontal row of the 3 videos, each with the
@@ -7838,13 +7838,13 @@ const VOTE_CAMPAIGNS = [
       // The group's own nomination, not a video's — hence its own card rather
       // than a category bolted onto "JUMP".
       { name: 'Tame Impala & JENNIE — “Dracula”', img: '/vote-vma-dracula.jpg', noms: [
-        // No endsAt on purpose. It runs as elimination rounds in the stories,
-        // so when it finishes depends on how far BLACKPINK gets — there is no
-        // date to put here, and an invented one would drop the card into Past
-        // Votings while the vote was still going. With it absent the card stays
-        // in the live list; add endsAt (or drop `ig`) once the run is over.
+        // endsAt was deliberately absent while this ran: elimination rounds in
+        // the stories, finishing whenever BLACKPINK went out, so any invented
+        // date would have dropped the card into Past Votings mid-vote. The
+        // rounds closed on the 27th, so the date exists now — and with it the
+        // whole campaign finally files itself as past.
         { cat: 'Song of Summer', ig: true, url: 'https://www.instagram.com/mtv/',
-          startsAt: '2026-09-26' },
+          startsAt: '2026-09-26', endsAt: '2026-09-27' },
       ] },
       { name: 'BLACKPINK', img: '/vote-blackpink-ot4.jpg', noms: [
         { cat: 'Best Group', url: 'https://vote.mtv.com/best-group' },
@@ -8185,8 +8185,12 @@ function renderVoteCampaigns() {
       } else if (etToday === igNom.startsAt) {
         igTiming = ' It opens later today.';
       }
-      // Once the day has passed, make no claim either way: a story's window is
-      // MTV's to decide and we cannot see it.
+      // Between opening and closing, make no claim either way: a story's window
+      // is MTV's to decide and we cannot see it.
+    }
+    // Once it HAS closed we can say so, because that is a date we were given.
+    if (igNom && igNom.endsAt && now >= new Date(igNom.endsAt).getTime()) {
+      igTiming = ' Those rounds are closed now.';
     }
     const wonBadge = c.winner ? `<div class="vote-winner-badge">🏆 WE WON — ${c.winner.name}</div>` : '';
     return `
