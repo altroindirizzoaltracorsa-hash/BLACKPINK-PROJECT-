@@ -12168,13 +12168,17 @@ const LEAGUES_ENABLED = true;
 // bottom → top. careerMin = absolute overall_all threshold used ONLY for the
 // All-Time career tier (mirrors BADGE_TIERS, already calibrated to real data —
 // tune freely). Daily/Weekly boards use relative percentile bands instead.
+// careerMin = absolute all-time campaign streams for each All-Time tier, calibrated
+// 2026-09-27 to the live board (164 blinks, 119 streaming, median 1,507, max 223k)
+// via the Calibrate League Tiers workflow. Round milestone thresholds; re-run that
+// workflow and retune here as the community grows.
 const LEAGUE_TIERS = [
-  { id:'rookie',   name:'Rookie',   icon:'🐣', color:'#c98fb0', careerMin:0     },
-  { id:'quartz',   name:'Quartz',   icon:'🤍', color:'#e6d7df', careerMin:10    },
-  { id:'emerald',  name:'Emerald',  icon:'💚', color:'#39d98a', careerMin:50    },
-  { id:'sapphire', name:'Sapphire', icon:'💙', color:'#4aa3ff', careerMin:100   },
-  { id:'diamond',  name:'Diamond',  icon:'💎', color:'#9be7ff', careerMin:500   },
-  { id:'crown',    name:'Crown',    icon:'👑', color:'#f5c542', careerMin:10000 },
+  { id:'rookie',   name:'Rookie',   icon:'🐣', color:'#c98fb0', careerMin:0      },
+  { id:'quartz',   name:'Quartz',   icon:'🤍', color:'#e6d7df', careerMin:100    },
+  { id:'emerald',  name:'Emerald',  icon:'💚', color:'#39d98a', careerMin:1000   },
+  { id:'sapphire', name:'Sapphire', icon:'💙', color:'#4aa3ff', careerMin:10000  },
+  { id:'diamond',  name:'Diamond',  icon:'💎', color:'#9be7ff', careerMin:40000  },
+  { id:'crown',    name:'Crown',    icon:'👑', color:'#f5c542', careerMin:100000 },
 ];
 // Relative rank-band sizes (fractions of the scored field), Crown → Quartz.
 // Rookie = whatever remains. Each guaranteed ≥1 slot so top tiers always exist.
