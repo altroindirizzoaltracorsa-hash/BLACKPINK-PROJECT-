@@ -232,14 +232,17 @@
          directly above a button telling people to go and vote. -->
     <div class="section-head" id="noms-open-head" hidden>Still open — vote here</div>
     <div class="videos" id="videos-open" hidden></div>
-    <div class="videos-note ig" id="ig-note-open" hidden>📸 <b>Song of Summer</b> is voted in <b>MTV’s Instagram Stories</b>, not on vote.mtv.com — it runs as elimination rounds, so it keeps going for as long as BLACKPINK survive.</div>
+    <div class="videos-note ig" id="ig-note-open" hidden>📸 <b>Song of Summer</b> was voted in <b>MTV’s Instagram Stories</b>, not on vote.mtv.com — elimination rounds, now closed. Those votes were never counted on our leaderboard.</div>
 
     <div class="section-head" id="noms-head">Nominations</div>
     <div class="videos" id="videos-main">
       <!-- data-closed: dimmed and unlinked once fan voting ends (see
-           applyClosedState). Song of Summer deliberately has no such flag — it
-           runs on in MTV's Instagram Stories after the ballot shuts. -->
-      <div class="video">
+           applyClosedState). Song of Summer carried no such flag while it ran
+           on in MTV's Instagram Stories after the main ballot shut; those
+           rounds are over now, so it joins the rest. With no unflagged card
+           left, applyClosedState finds no live nomination and the "still open"
+           group simply never appears — no second code path needed. -->
+      <div class="video" data-closed>
         <img class="video-img" src="/vote-vma-dracula.jpg" alt="Tame Impala &amp; JENNIE — Dracula" loading="lazy">
         <div class="video-name">Tame Impala &amp; JENNIE — “Dracula”</div>
         <div class="video-noms">
@@ -279,7 +282,7 @@
       </div>
     </div>
     <div class="videos-note">🔒 Chosen by an industry panel — not a fan vote</div>
-    <div class="videos-note ig" id="ig-note-inline">📸 <b>Song of Summer</b> is voted in <b>MTV’s Instagram Stories</b>, not on vote.mtv.com — it runs as elimination rounds, so it keeps going for as long as BLACKPINK survive.</div>
+    <div class="videos-note ig" id="ig-note-inline">📸 <b>Song of Summer</b> was voted in <b>MTV’s Instagram Stories</b>, not on vote.mtv.com — elimination rounds, now closed. Those votes were never counted on our leaderboard.</div>
   </div>
 </section>
 
@@ -314,9 +317,9 @@
            day" on a shut ballot is worse than saying nothing. -->
       <ul id="rules-closed" hidden>
         <li>The main ballot on vote.mtv.com <b>closed September 25, 6PM ET</b> — thank you to everyone who voted. 💗</li>
-        <li><b>Song of Summer is still going</b>, in <b>MTV’s Instagram Stories</b> rather than on vote.mtv.com.</li>
-        <li>It runs as <b>elimination rounds</b>, so it keeps going for as long as BLACKPINK survive — watch MTV’s Stories and vote in each round.</li>
-        <li>Those votes are MTV’s to count; they don’t reach our leaderboard.</li>
+        <li><b>Song of Summer</b> ran on afterwards as elimination rounds in <b>MTV’s Instagram Stories</b>. Those rounds are <b>closed</b> too.</li>
+        <li>Those votes were MTV’s to count; they never reached our leaderboard.</li>
+        <li>Every vote is in. Nothing more can be cast.</li>
         <li>Winners revealed live <b>Sunday, September 27 · 7:30 ET / 4:30 PT</b> on CBS &amp; Paramount+.</li>
       </ul>
     </div>
@@ -466,6 +469,46 @@
   var IG_URL = 'https://www.instagram.com/mtv/';
   var closedApplied = false;
 
+  // The ceremony: Sunday September 27, 7:30PM ET = 23:30 UTC (EDT is UTC-4).
+  // Read off the rules list on this same page rather than invented, so the two
+  // cannot disagree.
+  var SHOW_AT = Date.UTC(2026, 8, 27, 23, 30, 0);
+  function showStarted() { return Date.now() >= SHOW_AT; }
+  // The show time in the READER's own timezone, named. Someone in Manila given
+  // "7:30 ET" has to convert it themselves, and most won't.
+  function showLocalLabel() {
+    try {
+      var t = new Intl.DateTimeFormat(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })
+        .format(new Date(SHOW_AT));
+      var zone = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' })
+        .formatToParts(new Date()).find(function (x) { return x.type === 'timeZoneName'; });
+      return t + (zone ? ' ' + zone.value : '');
+    } catch (e) { return 'Sun 7:30PM ET'; }
+  }
+  // Once every ballot is closed the hero counts down to the show instead of
+  // freezing on whatever it said when the page loaded. applyClosedState writes
+  // itself exactly once, so the clock lives here and is re-run each second.
+  function paintShowClock(force) {
+    if (!closedApplied && !force) return;
+    var live = showStarted();
+    var label = document.getElementById('cd-label');
+    var cd = document.getElementById('countdown');
+    var reset = document.getElementById('cd-reset');
+    if (label) label.textContent = live ? 'The show' : 'Show starts in';
+    if (cd) {
+      if (live) { cd.innerHTML = '<span class="cd-closed">Live now</span>'; }
+      else {
+        var diff = SHOW_AT - Date.now();
+        cd.innerHTML = unit(Math.floor(diff / 3600000), 'Hrs')
+          + unit(Math.floor(diff % 3600000 / 60000), 'Min')
+          + unit(Math.floor(diff % 60000 / 1000), 'Sec');
+      }
+    }
+    if (reset) reset.innerHTML = live
+      ? 'Winners are being announced — CBS &amp; Paramount+'
+      : 'Winners revealed <b>' + showLocalLabel() + '</b> · CBS &amp; Paramount+';
+  }
+
   function applyClosedState() {
     if (closedApplied || Date.now() < DEADLINE) return;
     closedApplied = true;
@@ -504,15 +547,10 @@
     // closed nominations further down, not directly above a button asking
     // people to go and vote.
     var cta = document.getElementById('cta-btn');
-    if (cta) { cta.setAttribute('href', IG_URL); cta.textContent = 'Vote on Instagram ↗'; }
+    if (cta) { cta.setAttribute('href', IG_URL); cta.textContent = 'MTV on Instagram ↗'; }
     var note = document.getElementById('cta-note');
-    if (note) note.innerHTML = 'Opens MTV on Instagram — <b>Song of Summer</b> is voted in their Stories';
-    var label = document.getElementById('cd-label');
-    if (label) label.textContent = 'Still open';
-    var cd = document.getElementById('countdown');
-    if (cd) cd.innerHTML = '<span class="cd-closed">Song of Summer</span>';
-    var reset = document.getElementById('cd-reset');
-    if (reset) reset.innerHTML = 'Elimination rounds in MTV’s Stories';
+    if (note) note.innerHTML = 'Every ballot is closed — follow MTV for the winners';
+    paintShowClock(true);
     var rOpen = document.getElementById('rules-open');
     var rClosed = document.getElementById('rules-closed');
     if (rOpen && rClosed) { rOpen.hidden = true; rClosed.hidden = false; }
@@ -520,13 +558,13 @@
     var sub = document.getElementById('hero-sub');
     if (sub) {
       sub.innerHTML = 'BLACKPINK, LISA and JISOO × ZAYN were nominated at the MTV Video Music Awards. '
-        + '<b>Song of Summer</b> is still running in MTV’s Instagram Stories.';
+        + 'Every ballot is closed — the winners are revealed at the ceremony.';
     }
   }
 
   tick();
   applyClosedState();
-  setInterval(function () { tick(); applyClosedState(); }, 1000);
+  setInterval(function () { tick(); applyClosedState(); paintShowClock(); }, 1000);
 </script>
 
 <!-- Community vote total — sticky bottom bar (logging happens in the app) -->
