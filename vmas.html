@@ -232,7 +232,7 @@
     <div class="countdown" id="countdown" role="timer" aria-label="Countdown to voting deadline"></div>
     <div class="cd-reset" id="cd-reset"></div>
 
-    <div class="cta-row">
+    <div class="cta-row" id="cta-row">
       <a class="cta-btn" id="cta-btn" href="https://vote.mtv.com/" target="_blank" rel="noopener noreferrer">Vote Now ↗</a>
     </div>
     <div class="cta-note" id="cta-note">Opens vote.mtv.com — tap a category below to go straight to its ballot</div>
@@ -493,7 +493,6 @@
   // Song of Summer is the exception and the reason any of this is here: it runs
   // on in MTV's Instagram Stories as elimination rounds, so the CTA points
   // there, its nomination keeps its colour, and only the finished ones dim.
-  var IG_URL = 'https://www.instagram.com/mtv/';
   var closedApplied = false;
 
   // The ceremony: Sunday September 27, 7:30PM ET = 23:30 UTC (EDT is UTC-4).
@@ -573,10 +572,10 @@
     // The hero speaks only about what is OPEN. "Voting closed" belongs with the
     // closed nominations further down, not directly above a button asking
     // people to go and vote.
-    var cta = document.getElementById('cta-btn');
-    if (cta) { cta.setAttribute('href', IG_URL); cta.textContent = 'MTV on Instagram ↗'; }
+    var ctaRow = document.getElementById('cta-row');
+    if (ctaRow) ctaRow.hidden = true;
     var note = document.getElementById('cta-note');
-    if (note) note.innerHTML = 'Every ballot is closed — follow MTV for the winners';
+    if (note) note.innerHTML = 'Every ballot is closed — nothing more can be cast';
     paintShowClock(true);
     var rOpen = document.getElementById('rules-open');
     var rClosed = document.getElementById('rules-closed');
