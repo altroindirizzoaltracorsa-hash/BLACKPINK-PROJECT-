@@ -4,18 +4,18 @@
 <meta charset="UTF-8">
 <title>BLACKPINK at the 2026 MTV VMAs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="BLACKPINK, JENNIE, LISA and JISOO x ZAYN are nominated at the 2026 MTV Video Music Awards. Voting has closed — winners revealed Sunday September 27, 7:30 ET on CBS and Paramount+.">
+<meta name="description" content="BLACKPINK, JENNIE, LISA and JISOO are nominated at the 2026 MTV Video Music Awards. Voting has closed — winners revealed Sunday September 27, 7:30 ET on CBS and Paramount+.">
 <meta name="theme-color" content="#080808">
 <meta property="og:site_name" content="Blinks United">
 <meta property="og:title" content="BLACKPINK at the 2026 MTV VMAs">
-<meta property="og:description" content="BLACKPINK, JENNIE, LISA and JISOO x ZAYN are nominated at the 2026 VMAs. Every ballot is closed — winners revealed Sun Sept 27, 7:30 ET on CBS &amp; Paramount+.">
+<meta property="og:description" content="BLACKPINK, JENNIE, LISA and JISOO are nominated at the 2026 VMAs. Every ballot is closed — winners revealed Sun Sept 27, 7:30 ET on CBS &amp; Paramount+.">
 <meta property="og:url" content="https://www.blinksunited.com/vmas.html">
 <meta property="og:image" content="https://www.blinksunited.com/vote-vma-jump.jpeg">
 <meta property="og:image:alt" content="BLACKPINK in the JUMP music video">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="BLACKPINK at the 2026 MTV VMAs">
-<meta name="twitter:description" content="BLACKPINK, JENNIE, LISA and JISOO x ZAYN are nominated at the 2026 VMAs. Every ballot is closed — winners revealed Sun Sept 27, 7:30 ET on CBS &amp; Paramount+.">
+<meta name="twitter:description" content="BLACKPINK, JENNIE, LISA and JISOO are nominated at the 2026 VMAs. Every ballot is closed — winners revealed Sun Sept 27, 7:30 ET on CBS &amp; Paramount+.">
 <meta name="twitter:image" content="https://www.blinksunited.com/vote-vma-jump.jpeg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -91,26 +91,29 @@
   .cd-reset b { color: var(--pink); font-weight: 500; }
 
   /* ── CTA ── */
-  .cta-row { display: flex; justify-content: center; margin: 2rem 0 0.6rem; }
-  .cta-btn {
-    display: inline-flex; align-items: center; gap: 0.6rem;
-    background: var(--pink); color: #12000a; text-decoration: none;
-    font-family: var(--display); font-size: 1.5rem; letter-spacing: 0.08em; text-transform: uppercase;
-    padding: 0.85rem 2.4rem; box-shadow: 0 12px 34px -12px rgba(255,0,102,0.8);
-    transition: transform 0.08s ease, filter 0.2s ease;
-  }
-  .cta-btn:hover { filter: brightness(1.07); }
-  .cta-btn:active { transform: translateY(1px); }
-  .cta-note { text-align: center; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; color: var(--muted); margin-top: 0.7rem; }
+  /* .cta-row / .cta-btn are gone with the "Vote Now" button they styled — it
+     had no other user on this page. The note below it stays: it is now the
+     line that says why there is nothing to press. */
+  .cta-note { margin-top: 2rem; text-align: center; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; color: var(--muted); margin-top: 0.7rem; }
 
   /* ── Community vote tally — sticky bottom bar (always visible) ── */
   .votebar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; padding: 0.65rem 1rem; padding-bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px)); background: rgba(10,7,10,0.96); border-top: 1px solid rgba(255,0,102,0.45); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 -12px 34px -20px rgba(255,0,102,0.8); }
-  .vb-stat { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
-  .vb-num { font-family: var(--display); font-size: 2rem; line-height: 0.85; color: var(--pink); font-variant-numeric: tabular-nums; }
+  .vb-stat { display: flex; align-items: center; gap: 0.55rem; min-width: 0; flex: 0 1 auto; }
+  .vb-num { font-family: var(--display); font-size: 2rem; line-height: 0.85; color: var(--pink); font-variant-numeric: tabular-nums; flex: 0 0 auto; }
   /* nowrap: in the narrow column between the total and the button this wrapped
      to four ragged lines and grew the fixed bar past the 4rem the body reserves
      for it. Two clean lines instead. */
-  .vb-lbl { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); line-height: 1.25; white-space: nowrap; }
+  .vb-lbl { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); line-height: 1.25; white-space: nowrap; min-width: 0; }
+  /* Measured, not guessed: with a 7-digit total the stat block is 242px wide
+     while the button starts at 151px on a 320px screen, so the label ran
+     underneath it. Below 430px the number shrinks, the blink count drops (the
+     thank-you block above still carries it) and the button tightens up. */
+  @media (max-width: 429px) {
+    .vb-num { font-size: 1.45rem; }
+    .vb-lbl { font-size: 0.46rem; letter-spacing: 0.08em; }
+    .vb-lbl-more { display: none; }
+    .vb-btn { padding: 0.65rem 0.7rem; font-size: 0.55rem; letter-spacing: 0.05em; }
+  }
   .vb-btn { flex: 0 0 auto; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); border: none; padding: 0.7rem 1rem; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-block; transition: filter .15s; }
   .vb-btn:hover { filter: brightness(1.07); }
 
@@ -226,16 +229,17 @@
     <img class="vma-logo" src="/vmas.png" alt="MTV Video Music Awards">
     <div class="hero-eyebrow">Nominated at the</div>
     <h1 class="hero-title">2026 <span class="pink">VMAs</span></h1>
-    <p class="hero-sub" id="hero-sub">BLACKPINK, JENNIE, LISA and JISOO&nbsp;×&nbsp;ZAYN are nominated at the MTV Video Music Awards. Every ballot is closed — the winners are revealed at the ceremony.</p>
+    <p class="hero-sub" id="hero-sub">BLACKPINK, JENNIE, LISA and JISOO are nominated at the MTV Video Music Awards. Every ballot is closed — the winners are revealed at the ceremony.</p>
 
     <div class="cd-label" id="cd-label">Fan voting closes in</div>
     <div class="countdown" id="countdown" role="timer" aria-label="Countdown to voting deadline"></div>
     <div class="cd-reset" id="cd-reset"></div>
 
-    <div class="cta-row" id="cta-row">
-      <a class="cta-btn" id="cta-btn" href="https://vote.mtv.com/" target="_blank" rel="noopener noreferrer">Vote Now ↗</a>
-    </div>
-    <div class="cta-note" id="cta-note">Opens vote.mtv.com — tap a category below to go straight to its ballot</div>
+    <!-- The "Vote Now" button is deleted, not hidden. Every VMA ballot is shut
+         for good, so there is no state left in which it should appear — and a
+         link to vote.mtv.com sitting in the markup is one stray CSS change away
+         from being visible again. -->
+    <div class="cta-note" id="cta-note">Every ballot is closed — nothing more can be cast</div>
   </div>
 </section>
 
@@ -435,7 +439,10 @@
           </div>
           <div>
             <div class="tl-note">This one's on us — the fans.</div>
-            <a class="tl-vote-up" href="#hero">↑ Vote now</a>
+            <!-- This said "↑ Vote now" and jumped to the hero's vote button.
+                 Both the ballot and that button are gone; the thank-you block
+                 is what is worth scrolling back up for now. -->
+            <a class="tl-vote-up" href="#thanks-sec">↑ See what we cast</a>
           </div>
         </div>
       </div>
@@ -572,8 +579,6 @@
     // The hero speaks only about what is OPEN. "Voting closed" belongs with the
     // closed nominations further down, not directly above a button asking
     // people to go and vote.
-    var ctaRow = document.getElementById('cta-row');
-    if (ctaRow) ctaRow.hidden = true;
     var note = document.getElementById('cta-note');
     if (note) note.innerHTML = 'Every ballot is closed — nothing more can be cast';
     paintShowClock(true);
@@ -583,7 +588,7 @@
 
     var sub = document.getElementById('hero-sub');
     if (sub) {
-      sub.innerHTML = 'BLACKPINK, JENNIE, LISA and JISOO × ZAYN were nominated at the MTV Video Music Awards. '
+      sub.innerHTML = 'BLACKPINK, JENNIE, LISA and JISOO were nominated at the MTV Video Music Awards. '
         + 'Every ballot is closed — the winners are revealed at the ceremony.';
     }
   }
@@ -597,7 +602,7 @@
 <div class="votebar" id="votebar" hidden>
   <div class="vb-stat">
     <span class="vb-num" id="vb-total">—</span>
-    <span class="vb-lbl">votes counted<br><span id="vb-blinks">—</span> blinks</span>
+    <span class="vb-lbl">votes counted<span class="vb-lbl-more"><br><span id="vb-blinks">—</span> blinks</span></span>
   </div>
   <a class="vb-btn" href="/voting">🏆 See the board ↗</a>
 </div>
