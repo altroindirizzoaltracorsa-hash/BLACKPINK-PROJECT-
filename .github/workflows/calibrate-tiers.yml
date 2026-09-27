@@ -1,0 +1,80 @@
+name: Calibrate League Tiers
+
+# One-off / on-demand: pull the live leaderboard and print the real overall_all
+# distribution so the Blink Leagues All-Time career tiers can be calibrated to
+# actual fan data instead of placeholder thresholds. Read-only — writes nothing.
+on:
+  workflow_dispatch:
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch leaderboard + compute tier distribution
+        run: |
+          curl -sSL --retry 3 -H 'accept: application/json' \
+            'https://www.blinksunited.com/api/leaderboard' -o board.json
+          echo "bytes: $(wc -c < board.json)"
+          node -e '
+            const fs = require("fs");
+            const d = JSON.parse(fs.readFileSync("board.json","utf8"));
+            const users = d.users || {};
+            const entries = Object.entries(users);
+
+            // De-dup secondary linked accounts exactly like the frontend render.
+            const secondary = new Set();
+            for (const [k,u] of entries) if (Array.isArray(u.linkedAccounts))
+              for (const a of u.linkedAccounts) { const ak=(a.username||"").toLowerCase(); if (ak && ak!==k) secondary.add(ak); }
+            const primary = entries.filter(([k]) => !secondary.has(k.toLowerCase()));
+
+            const grab = f => primary.map(([k,u]) => Number(u.scores?.[f]||0)).filter(v => v>=0);
+            const overall = grab("overall_all");
+            const all = overall.slice().sort((a,b)=>a-b);
+            const nz  = overall.filter(v=>v>0).sort((a,b)=>a-b);
+            const fmt = n => Number(n).toLocaleString();
+            const pct = (arr,p) => arr.length ? arr[Math.min(arr.length-1, Math.floor(p/100*arr.length))] : 0;
+
+            console.log("\n============ LEAGUE TIER CALIBRATION ============");
+            console.log("board lastUpdated     :", d.lastUpdated || "?");
+            console.log("total entries (dedup) :", primary.length);
+            console.log("with overall_all > 0  :", nz.length);
+            console.log("min / max             :", fmt(all[0]||0), "/", fmt(all[all.length-1]||0));
+            const mean = all.reduce((s,v)=>s+v,0)/(all.length||1);
+            console.log("mean / median         :", fmt(Math.round(mean)), "/", fmt(pct(all,50)));
+
+            const PS = [10,25,40,50,60,70,75,80,85,90,95,97,99];
+            console.log("\n--- percentiles of overall_all (ALL entries) ---");
+            PS.forEach(p => console.log(("p"+p).padEnd(5), fmt(pct(all,p))));
+            console.log("\n--- percentiles (overall_all > 0 only) ---");
+            PS.forEach(p => console.log(("p"+p).padEnd(5), fmt(pct(nz,p))));
+
+            const buckets = [[0,0],[1,9],[10,49],[50,99],[100,499],[500,999],[1000,4999],[5000,9999],[10000,49999],[50000,Infinity]];
+            console.log("\n--- histogram (overall_all) ---");
+            buckets.forEach(([lo,hi]) => {
+              const c = all.filter(v => v>=lo && v<=hi).length;
+              const bar = "#".repeat(Math.round(c/Math.max(1,all.length)*40));
+              console.log(`${fmt(lo)}-${hi===Infinity?"inf":fmt(hi)}`.padEnd(18), String(c).padStart(4), bar);
+            });
+
+            // tier counts for a candidate threshold set [quartz,emerald,sapphire,diamond,crown]
+            const NAMES = ["Rookie","Quartz","Emerald","Sapphire","Diamond","Crown"];
+            const tierCounts = thr => {
+              const mins = [0, ...thr];
+              return NAMES.map((n,i) => {
+                const hi = i<mins.length-1 ? mins[i+1] : Infinity;
+                const c = all.filter(v => v>=mins[i] && v<hi).length;
+                return `${n}:${c}`;
+              }).join("  ");
+            };
+            console.log("\n--- CURRENT thresholds 10/50/100/500/10000 ---");
+            console.log(tierCounts([10,50,100,500,10000]));
+
+            // percentile-driven suggestion, rounded to nice numbers
+            const niceRound = n => { if (n<=0) return 0; const mag=Math.pow(10,Math.floor(Math.log10(n))); const f=n/mag; const r=f<1.5?1:f<3.5?2:f<7.5?5:10; return r*mag; };
+            const src = nz.length>20 ? nz : all;
+            const sugg = [pct(src,40),pct(src,65),pct(src,85),pct(src,95),pct(src,99)].map(niceRound);
+            console.log("\n--- SUGGESTED (percentile p40/65/85/95/99, rounded) ---");
+            console.log("quartz/emerald/sapphire/diamond/crown =", sugg.map(fmt).join(" / "));
+            console.log(tierCounts(sugg));
+            console.log("=================================================\n");
+          '
