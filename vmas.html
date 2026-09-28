@@ -4,18 +4,18 @@
 <meta charset="UTF-8">
 <title>BLACKPINK at the 2026 MTV VMAs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="BLACKPINK, JENNIE, LISA and JISOO are nominated at the 2026 MTV Video Music Awards. Voting has closed — winners revealed Sunday September 27, 7:30 ET on CBS and Paramount+.">
+<meta name="description" content="LISA won Best Pop for “Dream” at the 2026 MTV Video Music Awards — the only female act in VMAs history to win both Best K-Pop and Best Pop. BLACKPINK, JENNIE and JISOO were nominated too.">
 <meta name="theme-color" content="#080808">
 <meta property="og:site_name" content="Blinks United">
 <meta property="og:title" content="BLACKPINK at the 2026 MTV VMAs">
-<meta property="og:description" content="BLACKPINK, JENNIE, LISA and JISOO are nominated at the 2026 VMAs. Every ballot is closed — winners revealed Sun Sept 27, 7:30 ET on CBS &amp; Paramount+.">
+<meta property="og:description" content="LISA won Best Pop for “Dream” at the 2026 VMAs — the only female act ever to win both Best K-Pop and Best Pop.">
 <meta property="og:url" content="https://www.blinksunited.com/vmas.html">
 <meta property="og:image" content="https://www.blinksunited.com/vote-vma-jump.jpeg">
 <meta property="og:image:alt" content="BLACKPINK in the JUMP music video">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="BLACKPINK at the 2026 MTV VMAs">
-<meta name="twitter:description" content="BLACKPINK, JENNIE, LISA and JISOO are nominated at the 2026 VMAs. Every ballot is closed — winners revealed Sun Sept 27, 7:30 ET on CBS &amp; Paramount+.">
+<meta name="twitter:description" content="LISA won Best Pop for “Dream” at the 2026 VMAs — the only female act ever to win both Best K-Pop and Best Pop.">
 <meta name="twitter:image" content="https://www.blinksunited.com/vote-vma-jump.jpeg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -176,6 +176,16 @@
      can still act on is the thing that stands out. Hover restores them. */
   .video.past { opacity: 0.45; transition: opacity 0.2s; }
   .video.past:hover { opacity: 0.8; }
+  /* A card that won. It has to stay lit while applyClosedState dims the rest —
+     otherwise the one thing worth looking at is the faintest thing on screen. */
+  .video.won.past, .video.won.past:hover { opacity: 1; }
+  .video.won .video-img { border-color: var(--pink); }
+  .won-ribbon {
+    font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.14em;
+    text-transform: uppercase; color: #12000a; background: var(--pink);
+    padding: 0.42rem 0.55rem; margin-bottom: 0.5rem; line-height: 1.3;
+  }
+  .nom.won-nom { background: var(--pink); color: #12000a; border-color: var(--pink); }
   .videos-note { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.03em; color: var(--muted); margin-top: 1.1rem; line-height: 1.5; }
   .videos-note.ig { color: rgba(245,240,240,0.88); margin-top: 0.6rem; }
   .videos-note.ig b { color: var(--pink); }
@@ -229,7 +239,7 @@
     <img class="vma-logo" src="/vmas.png" alt="MTV Video Music Awards">
     <div class="hero-eyebrow">Nominated at the</div>
     <h1 class="hero-title">2026 <span class="pink">VMAs</span></h1>
-    <p class="hero-sub" id="hero-sub">BLACKPINK, JENNIE, LISA and JISOO are nominated at the MTV Video Music Awards. Every ballot is closed — the winners are revealed at the ceremony.</p>
+    <p class="hero-sub" id="hero-sub">🏆 <b>LISA</b> won <b>Best Pop</b> for “Dream” at the 2026 MTV Video Music Awards.</p>
 
     <div class="cd-label" id="cd-label">Fan voting closes in</div>
     <div class="countdown" id="countdown" role="timer" aria-label="Countdown to voting deadline"></div>
@@ -273,28 +283,28 @@
            rounds are over now, so it joins the rest. With no unflagged card
            left, applyClosedState finds no live nomination and the "still open"
            group simply never appears — no second code path needed. -->
-      <div class="video" data-closed>
+      <div class="video" data-closed data-key="jennie-dracula">
         <img class="video-img" src="/vote-vma-dracula.jpg" alt="Tame Impala &amp; JENNIE — Dracula" loading="lazy">
         <div class="video-name">Tame Impala &amp; JENNIE — “Dracula”</div>
         <div class="video-noms">
           <a class="nom ig" href="https://www.instagram.com/mtv/" target="_blank" rel="noopener noreferrer" title="Voted in MTV's Instagram Stories — not on vote.mtv.com">📸 Song of Summer ↗</a>
         </div>
       </div>
-      <div class="video" data-closed>
+      <div class="video" data-closed data-key="blackpink">
         <img class="video-img" src="/vote-blackpink-ot4.jpg" alt="BLACKPINK" loading="lazy">
         <div class="video-name">BLACKPINK</div>
         <div class="video-noms">
           <a class="nom" href="https://vote.mtv.com/best-group" target="_blank" rel="noopener noreferrer">Best Group ↗</a>
         </div>
       </div>
-      <div class="video" data-closed>
+      <div class="video" data-closed data-key="blackpink-jump">
         <img class="video-img" src="/vote-vma-jump.jpeg" alt="BLACKPINK — JUMP" loading="lazy">
         <div class="video-name">BLACKPINK — “JUMP”</div>
         <div class="video-noms">
           <a class="nom" href="https://vote.mtv.com/best-k-pop" target="_blank" rel="noopener noreferrer">Best K-Pop ↗</a>
         </div>
       </div>
-      <div class="video" data-closed>
+      <div class="video" data-closed data-key="lisa-dream">
         <img class="video-img" src="/vote-vma-dream.jpg" alt="LISA — Dream" loading="lazy">
         <div class="video-name">LISA — “Dream”</div>
         <div class="video-noms">
@@ -304,7 +314,7 @@
           <span class="nom pro" title="Chosen by an industry panel — not a fan vote">🔒 Best Editing</span>
         </div>
       </div>
-      <div class="video" data-closed>
+      <div class="video" data-closed data-key="jisoo-eyesclosed">
         <img class="video-img" src="/vote-vma-eyesclosed.jpeg" alt="JISOO × ZAYN — Eyes Closed" loading="lazy">
         <div class="video-name">JISOO × ZAYN — “Eyes Closed”</div>
         <div class="video-noms">
@@ -432,6 +442,10 @@
           <div>
             <span class="tl-badge">You are here</span>
             <div class="tl-nom">Nominated: <span class="who">BLACKPINK</span> <span class="song">“JUMP”</span> · <span class="who">LISA</span> <span class="song">“Dream”</span> · <span class="who">JISOO × ZAYN</span> <span class="song">“Eyes Closed”</span></div>
+          </div>
+          <div>
+            <div class="tl-win-title">🏆 <span class="cat">Best Pop</span> · <span class="who">LISA</span> — <span class="song">“Dream”</span></div>
+            <div class="tl-note">The only female act in VMAs history to win both Best K-Pop and Best Pop.</div>
           </div>
           <div>
             <div class="tl-win-title">⭐ <span class="cat">A new record</span> · <span class="who">LISA</span></div>
@@ -591,11 +605,65 @@
       sub.innerHTML = 'BLACKPINK, JENNIE, LISA and JISOO were nominated at the MTV Video Music Awards. '
         + 'Every ballot is closed — the winners are revealed at the ceremony.';
     }
+    applyWins();
+  }
+
+  // ── Wins, as they are called ───────────────────────────────────────────────
+  // The ceremony runs live and categories land one at a time, so this is the
+  // only thing to edit: add an entry the moment one is announced and the card,
+  // its nomination pill and the hero line all follow from it.
+  //   card — the data-key on the .video card
+  //   cat  — must match that card's .nom pill exactly, minus ↗ / 🔒 / 📸
+  var WINS = [
+    { card: 'lisa-dream', cat: 'Best Pop', who: 'LISA', song: '“Dream”' }
+  ];
+
+  var winsApplied = -1;
+  function applyWins() {
+    // applyClosedState runs once but the tick calls this every second; only do
+    // the work when the list has actually grown.
+    if (winsApplied === WINS.length) return;
+    winsApplied = WINS.length;
+    if (!WINS.length) return;
+
+    var parts = [];
+    for (var i = 0; i < WINS.length; i++) {
+      var w = WINS[i];
+      var card = document.querySelector('.video[data-key="' + w.card + '"]');
+      if (card) {
+        card.classList.add('won');
+        if (!card.querySelector('.won-ribbon')) {
+          var ribbon = document.createElement('div');
+          ribbon.className = 'won-ribbon';
+          ribbon.textContent = '🏆 Winner · ' + w.cat;
+          card.insertBefore(ribbon, card.firstChild);
+        }
+        var noms = card.querySelectorAll('.nom');
+        for (var j = 0; j < noms.length; j++) {
+          // Exact match after stripping the decorations: "Best K-Pop" must not
+          // light up when "Best Pop" is the one that won.
+          var label = noms[j].textContent.replace(/[↗🔒📸]/g, '').trim();
+          if (label === w.cat) noms[j].classList.add('won-nom');
+        }
+      }
+      parts.push('<b>' + w.who + '</b> won <b>' + w.cat + '</b>'
+        + (w.song ? ' for ' + w.song : ''));
+    }
+
+    var sub = document.getElementById('hero-sub');
+    if (sub) {
+      sub.innerHTML = '🏆 ' + parts.join(' · ')
+        + ' at the 2026 MTV Video Music Awards.';
+    }
+    // The section heading stays "Voting closed": most of the cards below it
+    // are still nominations, and calling the whole group "Winner" would read
+    // as though they all won.
   }
 
   tick();
   applyClosedState();
-  setInterval(function () { tick(); applyClosedState(); paintShowClock(); }, 1000);
+  applyWins();
+  setInterval(function () { tick(); applyClosedState(); applyWins(); paintShowClock(); }, 1000);
 </script>
 
 <!-- Community vote total — sticky bottom bar (logging happens in the app) -->
