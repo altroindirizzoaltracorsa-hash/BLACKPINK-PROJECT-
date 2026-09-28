@@ -144,6 +144,20 @@
   .pr-trend.up { color: #4ade80; }
   .pr-trend.down { color: #ff5c7a; }
   .pr-trend.same { color: var(--muted); }
+
+  /* A nominee outside the top 5 in the latest partial. The table is otherwise
+     a calm grid of numbers, and "Not top 5" in the same grey as everything
+     else was the easiest thing on it to skim past — which is the opposite of
+     what it should be. */
+  .pr-row.alert { background: linear-gradient(90deg, rgba(255,92,122,0.16), rgba(255,92,122,0.03) 65%, transparent); box-shadow: inset 3px 0 0 #ff5c7a; }
+  .pr-row.alert .pr-who b { color: #ffd3dc; }
+  .pr-need { display: block; margin-top: 0.3rem; font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: #ff5c7a; font-style: normal; line-height: 1.3; }
+  .pr-row.alert .pr-pos.out { color: #ff5c7a; animation: prPulse 1.9s ease-in-out infinite; }
+  @keyframes prPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+  /* The pulse is an attention cue, not information — the colour, the rule and
+     the "votes needed" line all still read without it. */
+  @media (prefers-reduced-motion: reduce) { .pr-row.alert .pr-pos.out { animation: none; } }
   .pr-legend { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.06em; color: var(--muted); margin-top: 0.9rem; line-height: 1.7; }
   .pr-src { display: block; width: fit-content; margin-top: 0.8rem; font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pink); text-decoration: none; border-bottom: 1px solid rgba(255,0,102,0.4); }
 
@@ -348,8 +362,12 @@
 
     var rows = NOMS.map(function (n) {
       var cells = PARTIALS.map(function (p) { return posCell(p.places[n.key]); }).join('');
-      return '<div class="pr-row" style="grid-template-columns:minmax(0,1fr) repeat(' + PARTIALS.length + ', auto) auto;">'
-        + '<span class="pr-who"><b>' + esc(n.cat.replace(/^International /, 'Int. ')) + '</b><small>' + esc(n.who) + '</small></span>'
+      // Out of the top 5 in the LATEST partial. Marked as a rule rather than by
+      // hand, so whichever nominee is outside it is the one that lights up.
+      var out = last.places[n.key] === null;
+      return '<div class="pr-row' + (out ? ' alert' : '') + '" style="grid-template-columns:minmax(0,1fr) repeat(' + PARTIALS.length + ', auto) auto;">'
+        + '<span class="pr-who"><b>' + esc(n.cat.replace(/^International /, 'Int. ')) + '</b><small>' + esc(n.who) + '</small>'
+        + (out ? '<em class="pr-need">⚠ Not ranking — votes needed here</em>' : '') + '</span>'
         + cells
         + trendCell(prev ? prev.places[n.key] : undefined, last.places[n.key])
         + '</div>';
@@ -365,7 +383,7 @@
     }).join('');
 
     document.getElementById('pr-legend').innerHTML = PARTIALS.length > 1
-      ? '▲ climbed · ▼ slipped · = held · “Not top 5” means BreakTudo did not list the nominee in that partial.'
+      ? '▲ climbed · ▼ slipped · = held · “Not top 5” means BreakTudo did not list the nominee in that partial — <b style="color:#ff5c7a">the highlighted row is the one still outside it</b>.'
       // Not "only the 1st has been published" — that stops being true the moment
       // BreakTudo posts the next one, and it did. This says what the table is
       // showing, which stays true either way.
