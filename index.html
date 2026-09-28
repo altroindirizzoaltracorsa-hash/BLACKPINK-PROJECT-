@@ -2750,6 +2750,26 @@
      Lover stats card (used inside the Our Projects page via an iframe). The card
      is hidden on the normal homepage — it now lives on /projects. -->
 <script>if(new URLSearchParams(location.search).get('embed')==='ltal')document.documentElement.classList.add('embed-ltal');</script>
+<!-- Board-only embed mode: /vma-board-embed renders ONLY the voting board
+     (community total, ranked table, the unranked vote-only list and the vote
+     counter block) so the VMAs archive page can show the real thing rather
+     than a copy of it that would drift. -->
+<script>if(new URLSearchParams(location.search).get('embed')==='vmaboard'){
+  document.documentElement.classList.add('embed-vmaboard');
+  // Freeze the URL before anything can rewrite it. The router replaceStates to
+  // '/' and then '/voting' during startup, which drops ?embed=vmaboard — fine
+  // until something reloads the frame, at which point it would come back as the
+  // whole site instead of the board.
+  try { history.replaceState = function(){}; history.pushState = function(){}; } catch(e){}
+}</script>
+<style>
+  html.embed-vmaboard, html.embed-vmaboard body { background: transparent !important; margin: 0 !important; padding: 0 !important; }
+  html.embed-vmaboard body > *:not(#vv-embed-root) { display: none !important; }
+  html.embed-vmaboard #vv-embed-root { display: block !important; padding: 0; }
+  /* The card overlay is a body child and would be trapped inside a short
+     iframe, so the share buttons are dropped here. /vmas has its own. */
+  html.embed-vmaboard .vv-community-share, html.embed-vmaboard .vv-win-share { display: none !important; }
+</style>
 <style>
   html.embed-ltal, html.embed-ltal body { background: transparent !important; margin: 0 !important; padding: 0 !important; }
   /* Hide the whole homepage instantly in embed mode so it never flashes before
@@ -8397,6 +8417,9 @@ function vvCommunityHtml(opts = {}) {
   </div>`;
 }
 
+// Set by the embed bootstrap. The board is the same board either way; this
+// only changes copy that assumes you are on /voting with somewhere to go next.
+let _vvArchive = false;
 let _vvAward = vmaClosed() ? 'breaktudo' : 'vma';
 const _vvAwardMeta = {
   vma:       { title: '🗳️ VMA Voting Leaderboard', label: 'MTV VMAs' },
@@ -8688,7 +8711,7 @@ function drawVmaVoting() {
   const qualified = !!(_vvSession && _vvMe && _vvMe.linked !== false);
 
   panel.innerHTML = `<div class="vv-wrap${!closed && vmaScheduledPower() ? ' vv-live' : ''}">
-    ${vmaAwardSwitchHtml()}
+    ${_vvArchive ? '' : vmaAwardSwitchHtml()}
     <div class="vv-head">
       <div class="vv-title">🗳️ VMA Voting Leaderboard${closed ? ' · Final' : ''}</div>
       ${closed
@@ -8697,8 +8720,12 @@ function drawVmaVoting() {
       <button class="vv-guide-btn" onclick="startGuide()">🧭 New here? Step-by-step guide</button>`}
     </div>
     ${closed
-      ? `<div class="vv-closed-note">🏁 <b>The VMA ballot is closed.</b> Nothing more can be added here. <b>BreakTudo is still running</b> — switch to it above to keep voting for BLACKPINK &amp; the members.</div>
-      <a class="vv-forgot" href="${buDmUrl()}" target="_blank" rel="noopener">✉️ <b>Forgot to add your votes?</b> Tap here to DM us on X (@${BU_X_HANDLE}) with how many you cast — we'll add them for you.</a>`
+      ? (_vvArchive
+        // On the archive page there is no switcher above and nothing left to
+        // add, so neither the BreakTudo hand-off nor the DM link belongs.
+        ? `<div class="vv-closed-note">🏁 <b>Final board.</b> Voting closed on <b>Sept 25</b> — this is every vote blinks logged with us.</div>`
+        : `<div class="vv-closed-note">🏁 <b>The VMA ballot is closed.</b> Nothing more can be added here. <b>BreakTudo is still running</b> — switch to it above to keep voting for BLACKPINK &amp; the members.</div>
+      <a class="vv-forgot" href="${buDmUrl()}" target="_blank" rel="noopener">✉️ <b>Forgot to add your votes?</b> Tap here to DM us on X (@${BU_X_HANDLE}) with how many you cast — we'll add them for you.</a>`)
       // Between MTV closing its ballot and this board freezing, the only thing
       // left to do here is log votes already cast — above all for blinks who
       // voted without the counter and have nothing recorded yet. Say so, and say
@@ -8707,7 +8734,7 @@ function drawVmaVoting() {
         ? `<div class="vv-closed-note">🏁 <b>Voting has ended at MTV.</b> Didn't use the vote counter? <b>Add the votes you cast below</b> — the leaderboard freezes${vmaEntryLeft() ? ` in <b>${vmaEntryLeft()}</b>` : ''}, at midnight ET, and after that nothing more can be added. 💗</div>${vmaVideoGuidesHtml()}`
         : vmaVideoGuidesHtml()}
     ${me}
-    ${!closed && qualified ? vmaExtensionHtml() : ''}
+    ${(!_vvArchive && !closed && qualified) ? vmaExtensionHtml() : ''}
     ${vvWinsHtml()}
     ${vvCommunityHtml({
       award: 'vma',
@@ -8718,6 +8745,7 @@ function drawVmaVoting() {
     ${closed ? '<div class="vv-final-lbl">Final standings · every vote logged</div>' : `<div class="vv-tabs">${toggle}</div>`}
     ${table}
     ${unrankedHtml}
+    ${_vvArchive ? `<div class="vv-final-lbl" style="margin-top:1.6rem;">How these votes were counted</div>${vmaExtensionHtml(true)}` : ''}
   </div>`;
 }
 
@@ -8856,7 +8884,7 @@ function vmaVideoGuidesHtml() {
 // the /voting panel to signed-in blinks with a scrobbler linked. The extension
 // auto-counts the votes a fan casts on vote.mtv.com and logs the BLACKPINK/LISA
 // ones to their board — it never votes for them.
-function vmaExtensionHtml() {
+function vmaExtensionHtml(archive) {
   return `<div class="vv-ext" id="vv-ext">
     <div class="vv-ext-head">
       <span class="vv-ext-title">🧩 Vote Counter — browser extension</span>
@@ -8873,7 +8901,7 @@ function vmaExtensionHtml() {
       <li><b>Download &amp; unzip</b> the file above.</li>
       <li><b>Desktop</b> — works in any Chromium browser (<b>Chrome, Edge, Brave, Opera, Vivaldi</b>): open <code>chrome://extensions</code> (or <code>edge://extensions</code>…), turn on <b>Developer mode</b> (top-right), click <b>Load unpacked</b> and pick the unzipped folder.<br><b>Android</b> — needs a Chromium browser that still supports extensions since Kiwi shut down: <b>Microsoft Edge Canary</b> (it inherited Kiwi's extension engine) or <b>Quetta</b>. Open its Extensions menu and load the <code>.zip</code> directly. <i>Regular Chrome and Firefox for Android can't run it.</i></li>
       <li>Click the extension → <b>Link my Blinks United account</b> → sign in on the page that opens (the same account you use here). It should then read <b>● Linked</b>.</li>
-      <li>Vote for BLACKPINK / members on <b>vote.mtv.com</b> or <b>vote.breaktudoawards.com</b> — your votes show up here automatically (use the <b>VMAs / BreakTudo</b> switch above the board), and a live BLINKS UNITED panel appears on each vote page.</li>
+      <li>Vote for BLACKPINK / members on <b>vote.mtv.com</b> or <b>vote.breaktudoawards.com</b> — your votes show up here automatically${archive ? '' : ' (use the <b>VMAs / BreakTudo</b> switch above the board)'}, and a live BLINKS UNITED panel appears on each vote page.</li>
     </ol>
     <div class="vv-ext-app">
       <div class="vv-ext-app-head">📱 On a phone with no extension support? Get the <b>Android app</b></div>
@@ -20564,7 +20592,12 @@ async function shareMilestoneCard() {
 </script>
 
 <script>
-if ('serviceWorker' in navigator) {
+// Not in the board embed. The board runs inside an iframe on /vmas, the router
+// rewrites that frame's URL to /voting on load, and a controllerchange reload
+// would then re-request /voting WITHOUT ?embed=vmaboard — which renders the
+// entire site inside the iframe instead of the board. An embedded board has no
+// use for offline caching anyway.
+if ('serviceWorker' in navigator && !document.documentElement.classList.contains('embed-vmaboard')) {
   window.addEventListener('load', async () => {
     try {
       const reg = await navigator.serviceWorker.register('/sw.js');
@@ -20683,6 +20716,51 @@ window.addEventListener('appinstalled', () => {
   if (document.getElementById('jennie-release-card')) mount();
   else if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
   else mount();
+})();
+</script>
+<script>
+// Board embed: show the VMA board and nothing else, and report its height so
+// the parent iframe grows to fit. Unlike the release card, the board is
+// rendered by JS after a fetch, so this waits for it rather than mounting
+// straight away.
+(function(){
+  if (!document.documentElement.classList.contains('embed-vmaboard')) return;
+
+  function post(root){
+    try { parent.postMessage({ type: 'vv-embed-height', height: Math.ceil(root.getBoundingClientRect().height) }, '*'); } catch(e){}
+  }
+
+  function mount(){
+    var panel = document.getElementById('vma-vote-panel');
+    if (!panel) return;
+    var root = document.getElementById('vv-embed-root');
+    if (!root){ root = document.createElement('div'); root.id = 'vv-embed-root'; document.body.appendChild(root); }
+    root.appendChild(panel);
+    Array.prototype.forEach.call(document.body.children, function(el){ if (el !== root) el.style.display = 'none'; });
+    post(root);
+    if (window.ResizeObserver) new ResizeObserver(function(){ post(root); }).observe(root);
+    // A details/summary opening does not resize the observed box in every
+    // browser, so keep a slow poll as the backstop.
+    setInterval(function(){ post(root); }, 1200);
+  }
+
+  function go(){
+    try { _vvArchive = true; } catch(e){}
+    // Pick the award BEFORE the page loads its data, so it fetches the VMA
+    // board once instead of loading BreakTudo and then switching.
+    try { _vvAward = 'vma'; } catch(e){}
+    try { showPage('vote'); } catch(e){}
+    var tries = 0;
+    var t = setInterval(function(){
+      var p = document.getElementById('vma-vote-panel');
+      // Mount when the board has actually rendered; give up after ~20s and
+      // mount whatever is there rather than leaving a blank iframe forever.
+      if ((p && p.children.length) || ++tries > 100) { clearInterval(t); mount(); }
+    }, 200);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go);
+  else go();
 })();
 </script>
 </body>
