@@ -129,12 +129,16 @@
   .thanks-row { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
     margin-top: 0.95rem; padding-top: 0.8rem; border-top: 1px solid rgba(255,0,102,0.2); }
   .thanks-row b { color: rgba(245,240,240,0.92); font-weight: 700; }
-  .board-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; text-align: left;
-    font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pink);
-    background: rgba(255,0,102,0.08); border: 1px solid rgba(255,0,102,0.35); padding: 0.95rem 1rem; cursor: pointer;
+  /* Matches the thank-you box above it — same radius, same soft glow — so it
+     reads as part of that block rather than as a stray control. */
+  .board-toggle { width: 100%; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0.3rem 0.9rem; text-align: center;
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pink);
+    border: 1px solid rgba(255,0,102,0.35); border-radius: 12px; padding: 1.15rem 1.1rem; cursor: pointer;
+    background: radial-gradient(120% 140% at 50% 0%, rgba(255,0,102,0.16), rgba(255,0,102,0.04) 60%, transparent);
     transition: background .15s, border-color .15s; }
-  .board-toggle:hover { background: rgba(255,0,102,0.18); border-color: var(--pink); }
-  .board-toggle-c { color: var(--muted); white-space: nowrap; }
+  .board-toggle:hover { border-color: var(--pink);
+    background: radial-gradient(120% 140% at 50% 0%, rgba(255,0,102,0.26), rgba(255,0,102,0.08) 60%, transparent); }
+  .board-toggle-c { color: var(--muted); white-space: nowrap; font-size: 0.66rem; }
   .board-panel { margin-top: 1.1rem; }
   .board-note { font-size: 0.8rem; line-height: 1.6; color: var(--muted); margin-bottom: 1.1rem; }
   .board-frame { position: relative; min-height: 160px; }
