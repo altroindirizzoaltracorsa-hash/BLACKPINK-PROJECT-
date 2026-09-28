@@ -124,6 +124,8 @@
   .pr-table { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
   .pr-head, .pr-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 0.6rem; align-items: center; padding: 0.7rem 0.85rem; }
   .pr-head { background: rgba(255,255,255,0.03); font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .pr-col { display: block; text-align: center; }
+  .pr-col i { display: block; font-style: normal; letter-spacing: 0.06em; text-transform: none; color: rgba(176,154,173,0.65); margin-top: 0.15rem; }
   .pr-row + .pr-row, .pr-head + .pr-row { border-top: 1px solid var(--border); }
   .pr-who { min-width: 0; }
   .pr-who b { display: block; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--white); font-weight: 400; line-height: 1.3; }
@@ -205,7 +207,7 @@
 <section class="section">
   <div class="wrap">
     <div class="section-head">Where we stand</div>
-    <div class="pr-note">BreakTudo publishes a <b>top 5 per category</b> while voting runs. Each one is a checkpoint: it says whether we're holding, climbing or slipping — and which categories need the votes most.</div>
+    <div class="pr-note">BreakTudo publishes a <b>top 5 per category</b> while voting runs. Each partial counts <b>every vote since voting opened on 17 September</b> — they are running totals, not separate rounds, so holding a place across a longer window means the lead held as more votes came in.</div>
     <div class="pr-table" id="pr-table"></div>
     <div class="pr-legend" id="pr-legend"></div>
     <div id="pr-sources"></div>
@@ -263,12 +265,14 @@
   // rather than left blank. Add the next partial as another entry and every
   // row picks up a column and a movement arrow on its own.
   var PARTIALS = [
-    { label: '1st', url: 'https://www.breaktudoawards.com/primeiro-ranking-parcial-do-breaktudo-awards-2026-confira-o-top-5-de-cada-categoria/',
+    { label: '1st', to: '22 Sep',
+      url: 'https://www.breaktudoawards.com/primeiro-ranking-parcial-do-breaktudo-awards-2026-confira-o-top-5-de-cada-categoria/',
       places: {
         group: 3, artist: 1, asian: 3, collab: 3, hit: 2,
         'mv-go': 4, 'mv-dream': 5, fandom: null, series: 1,
       } },
-    { label: '2nd', url: 'https://www.breaktudoawards.com/segundo-ranking-parcial-do-breaktudo-awards-2026-confira-o-top-5-de-cada-categoria/',
+    { label: '2nd', to: '27 Sep',
+      url: 'https://www.breaktudoawards.com/segundo-ranking-parcial-do-breaktudo-awards-2026-confira-o-top-5-de-cada-categoria/',
       places: {
         group: 3, artist: 1, asian: 2, collab: 3, hit: 2,
         'mv-go': 4, 'mv-dream': 5, fandom: null, series: 1,
@@ -326,7 +330,10 @@
   (function renderRankings() {
     var last = PARTIALS[PARTIALS.length - 1];
     var prev = PARTIALS.length > 1 ? PARTIALS[PARTIALS.length - 2] : null;
-    var cols = PARTIALS.map(function (p) { return '<span>' + esc(p.label) + '</span>'; }).join('');
+    var cols = PARTIALS.map(function (p) {
+      return '<span class="pr-col">' + esc(p.label)
+        + (p.to ? '<i>to ' + esc(p.to) + '</i>' : '') + '</span>';
+    }).join('');
 
     var head = '<div class="pr-head" style="grid-template-columns:minmax(0,1fr) repeat(' + PARTIALS.length + ', auto) auto;">'
       + '<span>Category</span>' + cols + '<span>' + (PARTIALS.length > 1 ? 'Move' : '') + '</span></div>';
