@@ -559,14 +559,17 @@
     var cd = document.getElementById('countdown');
     var reset = document.getElementById('cd-reset');
 
-    if (label) label.textContent = ended ? 'The 2026 VMAs' : live ? 'The show' : 'Show starts in';
+    if (label) label.textContent = ended
+      ? (wins.length ? (wins.length === 1 ? 'Winner' : 'Winners') : 'The 2026 VMAs')
+      : live ? 'The show' : 'Show starts in';
 
     if (cd) {
       if (ended) {
-        // What we came away with. Counted from the list rather than typed, so
-        // it cannot end up disagreeing with the cards below it.
+        // The category won — not a tally. "1 win from 8 nominations" is a
+        // scoreboard, and a scoreboard with one on it reads as a loss, which
+        // is not what winning Best Pop is. Name the thing that was won.
         cd.innerHTML = wins.length
-          ? '<span class="cd-closed">' + wins.length + ' win' + (wins.length === 1 ? '' : 's') + '</span>'
+          ? '<span class="cd-closed">' + wins.map(function (w) { return w.cat; }).join(' · ') + '</span>'
           : '<span class="cd-closed">That’s a wrap</span>';
       } else if (live) {
         cd.innerHTML = '<span class="cd-closed">Live now</span>';
@@ -580,13 +583,15 @@
 
     if (reset) {
       if (ended) {
-        var noms = document.querySelectorAll('#videos-main .nom').length;
-        var from = noms ? ' · from <b>' + noms + '</b> nominations' : '';
+        // Who won it, then the thing actually worth bragging about. The
+        // nomination count is deliberately absent: it only invites the
+        // subtraction.
         reset.innerHTML = wins.length
           ? wins.map(function (w) {
-              return '🏆 <b>' + w.cat + '</b> · ' + w.who + (w.song ? ' — ' + w.song : '');
-            }).join(' · ') + from
-          : 'The ceremony has ended' + from;
+              return '🏆 <b>' + w.who + '</b>' + (w.song ? ' — ' + w.song : '');
+            }).join(' · ')
+            + (wins.length === 1 && wins[0].note ? '<br>' + wins[0].note : '')
+          : 'The ceremony has ended';
       } else if (live) {
         reset.innerHTML = 'Winners are being announced — CBS &amp; Paramount+';
       } else {
