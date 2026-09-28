@@ -530,6 +530,12 @@
   // cannot disagree.
   var SHOW_AT = Date.UTC(2026, 8, 27, 23, 30, 0);
   function showStarted() { return Date.now() >= SHOW_AT; }
+  // The broadcast ran about three hours. This decides wording only — by the
+  // time anyone reads this it is long past and every category we were up for
+  // has been called, so the page must stop saying "live now" and start saying
+  // what actually happened.
+  var SHOW_END = SHOW_AT + 3 * 3600000;
+  function showEnded() { return Date.now() >= SHOW_END; }
   // The show time in the READER's own timezone, named. Someone in Manila given
   // "7:30 ET" has to convert it themselves, and most won't.
   function showLocalLabel() {
@@ -546,23 +552,53 @@
   // itself exactly once, so the clock lives here and is re-run each second.
   function paintShowClock(force) {
     if (!closedApplied && !force) return;
-    var live = showStarted();
+    var ended = showEnded();
+    var live = showStarted() && !ended;
+    var wins = window.BU_VMA_WINS || [];
     var label = document.getElementById('cd-label');
     var cd = document.getElementById('countdown');
     var reset = document.getElementById('cd-reset');
-    if (label) label.textContent = live ? 'The show' : 'Show starts in';
+
+    if (label) label.textContent = ended ? 'The 2026 VMAs' : live ? 'The show' : 'Show starts in';
+
     if (cd) {
-      if (live) { cd.innerHTML = '<span class="cd-closed">Live now</span>'; }
-      else {
+      if (ended) {
+        // What we came away with. Counted from the list rather than typed, so
+        // it cannot end up disagreeing with the cards below it.
+        cd.innerHTML = wins.length
+          ? '<span class="cd-closed">' + wins.length + ' win' + (wins.length === 1 ? '' : 's') + '</span>'
+          : '<span class="cd-closed">That’s a wrap</span>';
+      } else if (live) {
+        cd.innerHTML = '<span class="cd-closed">Live now</span>';
+      } else {
         var diff = SHOW_AT - Date.now();
         cd.innerHTML = unit(Math.floor(diff / 3600000), 'Hrs')
           + unit(Math.floor(diff % 3600000 / 60000), 'Min')
           + unit(Math.floor(diff % 60000 / 1000), 'Sec');
       }
     }
-    if (reset) reset.innerHTML = live
-      ? 'Winners are being announced — CBS &amp; Paramount+'
-      : 'Winners revealed <b>' + showLocalLabel() + '</b> · CBS &amp; Paramount+';
+
+    if (reset) {
+      if (ended) {
+        var noms = document.querySelectorAll('#videos-main .nom').length;
+        var from = noms ? ' · from <b>' + noms + '</b> nominations' : '';
+        reset.innerHTML = wins.length
+          ? wins.map(function (w) {
+              return '🏆 <b>' + w.cat + '</b> · ' + w.who + (w.song ? ' — ' + w.song : '');
+            }).join(' · ') + from
+          : 'The ceremony has ended' + from;
+      } else if (live) {
+        reset.innerHTML = 'Winners are being announced — CBS &amp; Paramount+';
+      } else {
+        reset.innerHTML = 'Winners revealed <b>' + showLocalLabel() + '</b> · CBS &amp; Paramount+';
+      }
+    }
+
+    // "Nothing more can be cast" was the right line while the ballots had only
+    // just shut and the show was still to come. Once the results are in it is
+    // answering a question nobody is still asking.
+    var note = document.getElementById('cta-note');
+    if (note && ended) note.innerHTML = 'Every category has been called — the results are final';
   }
 
   function applyClosedState() {
