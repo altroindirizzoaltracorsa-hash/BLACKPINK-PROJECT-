@@ -126,6 +126,10 @@
   /* ── Partial rankings ──
      The point of this page: BreakTudo publishes a top 5 per category while
      voting runs, so each one is a checkpoint on whether we are holding. */
+  .pr-score { display: inline-block; margin-left: 0.5rem; font-family: var(--mono); font-size: 0.56rem;
+    letter-spacing: 0.1em; text-transform: uppercase; padding: 0.28rem 0.5rem; border-radius: 999px;
+    color: var(--muted); border: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+  .pr-score.warn { color: #ff5c7a; border-color: rgba(255,92,122,0.5); background: rgba(255,92,122,0.12); }
   .pr-note { font-size: 0.82rem; line-height: 1.6; color: var(--muted); margin-top: 1.1rem; }
   .pr-table { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
   .pr-head, .pr-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 0.6rem; align-items: center; padding: 0.7rem 0.85rem; }
@@ -218,7 +222,7 @@
 
 <section class="section">
   <div class="wrap">
-    <div class="section-head">Where we stand</div>
+    <div class="section-head">Where we stand <span class="pr-score" id="pr-score"></span></div>
     <div class="pr-table" id="pr-table"></div>
     <!-- Below the table, not above it: this explains what you have just read,
          and above it was the last thing between the reader and the standings. -->
@@ -374,6 +378,25 @@
     }).join('');
 
     document.getElementById('pr-table').innerHTML = head + rows;
+
+    // Counted by CATEGORY, not by nominee: Int. Music Video carries two of ours
+    // and both are in the top 5, so it is one category ranking, not two. Derived
+    // from the same data as the table, so the badge cannot contradict the rows
+    // underneath it.
+    var cats = {};
+    NOMS.forEach(function (n) {
+      if (!(n.cat in cats)) cats[n.cat] = false;
+      if (last.places[n.key] !== null && last.places[n.key] !== undefined) cats[n.cat] = true;
+    });
+    var names = Object.keys(cats);
+    var ranking = names.filter(function (c) { return cats[c]; }).length;
+    var score = document.getElementById('pr-score');
+    if (score) {
+      score.className = 'pr-score' + (ranking < names.length ? ' warn' : '');
+      score.innerHTML = ranking < names.length
+        ? '⚠ Ranking in ' + ranking + '/' + names.length
+        : '✓ Ranking in all ' + names.length;
+    }
     // Every figure on this table is BreakTudo's, so each partial links to the
     // post it was read from rather than to the site in general.
     document.getElementById('pr-sources').innerHTML = PARTIALS.map(function (p) {
