@@ -129,6 +129,17 @@
   .thanks-row { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
     margin-top: 0.95rem; padding-top: 0.8rem; border-top: 1px solid rgba(255,0,102,0.2); }
   .thanks-row b { color: rgba(245,240,240,0.92); font-weight: 700; }
+  .board-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; text-align: left;
+    font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pink);
+    background: rgba(255,0,102,0.08); border: 1px solid rgba(255,0,102,0.35); padding: 0.95rem 1rem; cursor: pointer;
+    transition: background .15s, border-color .15s; }
+  .board-toggle:hover { background: rgba(255,0,102,0.18); border-color: var(--pink); }
+  .board-toggle-c { color: var(--muted); white-space: nowrap; }
+  .board-panel { margin-top: 1.1rem; }
+  .board-note { font-size: 0.8rem; line-height: 1.6; color: var(--muted); margin-bottom: 1.1rem; }
+  .board-frame { position: relative; min-height: 160px; }
+  .board-embed { width: 100%; border: 0; display: block; height: 900px; background: transparent; }
+  .board-loading { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 2rem 0; text-align: center; }
 
   /* ── Section headers ── */
   .section { padding: 2.6rem 0 0.5rem; }
@@ -268,6 +279,31 @@
       <div class="thanks-big" id="thanks-total">—</div>
       <div class="thanks-sub">votes counted on blinksunited.com</div>
       <div class="thanks-row">cast by <b id="thanks-blinks">—</b> blinks</div>
+    </div>
+  </div>
+</section>
+
+<!-- The board itself, not a copy of it. /vma-board-embed is index.html in
+     board-only mode, so this is the same code that renders on /voting: the
+     community total, the ranked table, the vote-only blinks below it, and the
+     vote counter block. It reports its height back so the frame grows to fit
+     instead of scrolling inside itself. -->
+<section class="section" id="board-sec">
+  <div class="wrap">
+    <!-- Closed by default, deliberately: this page is what it was on the night,
+         and the board is an extra for whoever wants it rather than another
+         screen between the reader and the end of the page. The frame carries
+         data-src, not src, so nothing is fetched until it is actually opened. -->
+    <button class="board-toggle" id="board-toggle" type="button" aria-expanded="false" aria-controls="board-panel" onclick="toggleBoard(this)">
+      <span class="board-toggle-t">🗳️ The board &amp; how we counted</span>
+      <span class="board-toggle-c">Show ▾</span>
+    </button>
+    <div class="board-panel" id="board-panel" hidden>
+      <div class="board-note">Every vote blinks logged with us, exactly as it stood when the ballot closed — blinks who streamed too are ranked, and those who only voted are listed below them. Their votes counted the same.</div>
+      <div class="board-frame">
+        <div class="board-loading" id="board-loading">Loading the board…</div>
+        <iframe id="board-embed" class="board-embed" title="VMA voting leaderboard" scrolling="no" data-src="/vma-board-embed?embed=vmaboard"></iframe>
+      </div>
     </div>
   </div>
 </section>
@@ -715,6 +751,33 @@
     // are still nominations, and calling the whole group "Winner" would read
     // as though they all won.
   }
+
+  // The embedded board reports its own height, the same way Our Projects
+  // handles its embedded tracker. Without this the frame is a fixed box and
+  // the bottom of the board is simply unreachable.
+  // Load the frame the first time it is opened, not on page load: an archive
+  // page should not fetch a board nobody asked to see.
+  function toggleBoard(btn) {
+    var panel = document.getElementById('board-panel');
+    if (!panel) return;
+    var opening = panel.hasAttribute('hidden');
+    if (opening) panel.removeAttribute('hidden'); else panel.setAttribute('hidden', '');
+    btn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+    btn.querySelector('.board-toggle-c').textContent = opening ? 'Hide ▴' : 'Show ▾';
+    if (opening) {
+      var f = document.getElementById('board-embed');
+      if (f && f.getAttribute('data-src')) { f.src = f.getAttribute('data-src'); f.removeAttribute('data-src'); }
+    }
+  }
+
+  window.addEventListener('message', function (e) {
+    if (!e.data || e.data.type !== 'vv-embed-height') return;
+    var f = document.getElementById('board-embed');
+    if (!f) return;
+    f.style.height = Math.max(240, e.data.height || 0) + 6 + 'px';
+    var l = document.getElementById('board-loading');
+    if (l) l.remove();
+  });
 
   tick();
   applyClosedState();
