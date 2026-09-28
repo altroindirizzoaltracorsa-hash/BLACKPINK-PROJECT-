@@ -75,10 +75,17 @@ from members m
 order by m.who;
 
 \echo ''
-\echo '=== 3. any OTHER date pair with the same fingerprint, since August ==='
--- The 23rd is where we happen to be looking. If the old code split a publish
--- once it could have done it before, so ask the data rather than assume.
--- Lists adjacent day-pairs where almost no track moved twice.
+\echo '=== 3. BROKEN — DO NOT READ. Use checks/sweep_split_publishes.sql ==='
+-- This query cannot return a row, on any input. `b` is joined on
+-- b.track_ref = a.track_ref, so moved_d2 counts only tracks that moved on BOTH
+-- days — it is moved_both under another name. The filter then asks for
+-- moved_d2 > 5 AND moved_both <= a tenth of that, i.e. moved_both > 5 and
+-- moved_both <= 1. It printed "(0 rows)" for the 23rd/24th split it was aimed
+-- at, and that empty result was reported as "no other occurrences".
+--
+-- Kept, not deleted, so the claim it produced can be traced back to it.
+-- checks/sweep_split_publishes.sql computes the three counts separately, runs
+-- over every tracked artist, and fails the run when it finds something.
 with members(artist_id, who) as (
   values ('6UZ0ba50XreR4TM8u322gs', 'JISOO'),
          ('250b0Wlc5Vk0CoUsaCY84M', 'JENNIE'),

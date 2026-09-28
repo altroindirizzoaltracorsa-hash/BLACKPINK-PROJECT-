@@ -12,31 +12,41 @@
 --        * each pair sums to an ordinary day: LISA 4,164,256 against 4,242,322
 --          and 4,104,051 either side; JENNIE 7,712,877 against 7,697,307 and
 --          7,668,629;
---        * two independent fan trackers agree — LISA's 23rd reads 4,164,232
---          daily and JENNIE's 7,714,281, against our pair sums above.
+--        * three independent fan trackers agree — LISA's 23rd reads 4,164,232
+--          daily and JENNIE's 7,714,281, against our pair sums above, and
+--          ROSÉ's two consecutive snapshots differ by 4,102,517 against our
+--          pair sum of 4,107,723 (0.13%, the same scope offset her clean days
+--          carry).
 --
 --   2. Because the split was never folded, every date AFTER it is a day late.
---      The same trackers settle this exactly:
---        our 2026-09-25 total 5,577,828,916 = LISA tracker's 24th, to the stream
---        our 2026-09-26 total 5,581,859,101 = LISA tracker's 25th, to the stream
+--      LISA's tracker settles this exactly:
+--        our 2026-09-25 total 5,577,828,916 = her tracker's 24th, to the stream
+--        our 2026-09-26 total 5,581,859,101 = her tracker's 25th, to the stream
+--        our 2026-09-27 total 5,585,692,782 = her tracker's 26th, to the stream
 --      and it is why the members carry one more row than BLACKPINK, whose own
 --      dates were never shifted (its 24th was the newest row when it was
 --      repaired, so there was nothing after it to drag along).
 --
--- So: fold the 24th into the 23rd, then shift the 25th→24th and the 26th→25th.
--- Afterwards each member ends on 2026-09-25, level with BLACKPINK, and tonight's
--- fetch writes a 26th as it should.
+-- So: fold the 24th into the 23rd, then shift every later day back by one.
+-- Afterwards each member ends one day earlier, level with BLACKPINK, and the
+-- next fetch appends the correct date.
 --
 -- Deltas need no recomputation in step 2: each is a difference from the row
 -- before it, and no VALUE changes there — only the label on it.
+--
+-- The shift is deliberately NOT written as a fixed list of dates. A fetch runs
+-- nightly and again in the small hours, so the number of days trailing the
+-- split changes while this is being reviewed. It shifts whatever is there.
 --
 -- Safety:
 --   * one transaction; any failed guard rolls the whole thing back;
 --   * every affected row is copied into *_backup_sep23repair first, so this is
 --     reversible even after it commits;
---   * it refuses to run unless the tables still look exactly as diagnosed —
---     if tonight's fetch has landed, it aborts and asks for a re-diagnosis
---     rather than shifting a date it has not looked at;
+--   * it refuses unless the data still reads exactly as diagnosed — pinned on
+--     LISA's own totals rather than on the newest date, so a fetch landing
+--     mid-review does not block the repair but a CHANGED READING does;
+--   * the split signature and the known-normal control pair are both re-checked
+--     here rather than trusted from the diagnostic run;
 --   * BLACKPINK is untouched: its id is not in the list.
 
 \set ON_ERROR_STOP on
@@ -52,33 +62,63 @@ insert into _members values
   ('3eVa5w3URK5duf6eyVDbu9', 'ROSÉ'),
   ('5L1lO4eRHmJ7a0Q6csE5cT', 'LISA');
 
+-- how far the shift reaches and what it should look like afterwards, recorded
+-- before anything moves
+create temporary table _plan(
+  artist_id text primary key, who text,
+  newest_before date, rows_before int
+) on commit drop;
+
 -- ── preconditions ────────────────────────────────────────────────────────────
 do $$
 declare
   m record;
-  n_both int;
-  newest date;
+  n_both int; n_either int; n_control int;
+  newest date; n_days int; n_rows int;
   d22 bigint; d23 bigint; d24 bigint;
+  v bigint;
 begin
+  -- The anchor. LISA's totals are the figures a third party publishes and we
+  -- match to the stream, so they identify the exact rows this was diagnosed
+  -- against — and unlike "the newest row is the 27th", they stay true when
+  -- another night's fetch appends a day.
+  select total_streams into v from artist_daily_stats
+   where artist_id = '5L1lO4eRHmJ7a0Q6csE5cT' and date = date '2026-09-25';
+  if v is distinct from 5569560609 + 1134584 + 3029672 + 4104051 then  -- 5,577,828,916
+    raise exception 'LISA 2026-09-25 total is % — expected 5,577,828,916. The data is not what supabase/checks/diagnose_member_sep23_split.sql looked at; re-run it before repairing.', v;
+  end if;
+  select total_streams into v from artist_daily_stats
+   where artist_id = '5L1lO4eRHmJ7a0Q6csE5cT' and date = date '2026-09-23';
+  if v is distinct from 5570695193 then
+    raise exception 'LISA 2026-09-23 total is % — expected 5,570,695,193 (the first half of the split). Refusing.', v;
+  end if;
+  select total_streams into v from artist_daily_stats
+   where artist_id = '5L1lO4eRHmJ7a0Q6csE5cT' and date = date '2026-09-24';
+  if v is distinct from 5573724865 then
+    raise exception 'LISA 2026-09-24 total is % — expected 5,573,724,865 (the second half of the split). Refusing.', v;
+  end if;
+
   for m in select * from _members loop
-    select max(date) into newest from artist_daily_stats where artist_id = m.artist_id;
+    select max(date), count(*) into newest, n_rows
+      from artist_daily_stats where artist_id = m.artist_id;
     if newest is null then
       raise exception '% has no rows at all', m.who;
     end if;
-    if newest <> date '2026-09-26' then
-      raise exception '% newest row is % — expected 2026-09-26. A fetch has run since this was diagnosed; re-run supabase/checks/diagnose_member_sep23_split.sql before repairing.', m.who, newest;
+    if newest < date '2026-09-26' then
+      raise exception '% ends on % — nothing after the split to un-shift. Not the situation this repairs.', m.who, newest;
     end if;
 
-    if not exists (select 1 from artist_daily_stats where artist_id = m.artist_id and date = date '2026-09-22')
-    or not exists (select 1 from artist_daily_stats where artist_id = m.artist_id and date = date '2026-09-23')
-    or not exists (select 1 from artist_daily_stats where artist_id = m.artist_id and date = date '2026-09-24')
-    or not exists (select 1 from artist_daily_stats where artist_id = m.artist_id and date = date '2026-09-25')
-    or not exists (select 1 from artist_daily_stats where artist_id = m.artist_id and date = date '2026-09-26') then
-      raise exception '% is missing one of the 22nd–26th — not the situation this repairs', m.who;
+    -- the shape: the split pair, the day before it, and an unbroken run of
+    -- days after it. A gap would mean the shift is walking over something this
+    -- was not diagnosed against.
+    select count(*) into n_days from artist_daily_stats
+     where artist_id = m.artist_id and date between date '2026-09-22' and newest;
+    if n_days <> (newest - date '2026-09-22') + 1 then
+      raise exception '% has % rows between the 22nd and % — expected % (a gap in the run). Refusing.',
+        m.who, n_days, newest, (newest - date '2026-09-22') + 1;
     end if;
 
-    -- The signature. This is the whole basis of the repair, so it is re-checked
-    -- here rather than trusted from the diagnostic run.
+    -- The signature. This is the whole basis of the repair.
     select count(*) into n_both from (
       select d.track_ref
       from track_daily_stats d
@@ -88,14 +128,42 @@ begin
         and coalesce(d.daily_delta, 0) > 0
       group by d.track_ref having count(*) > 1
     ) x;
+    select count(distinct d.track_ref) into n_either
+      from track_daily_stats d
+      join artist_tracks t on t.id = d.track_ref
+      where t.artist_id = m.artist_id
+        and d.date in (date '2026-09-23', date '2026-09-24')
+        and coalesce(d.daily_delta, 0) > 0;
     if n_both > 0 then
       raise exception '% — % track(s) moved on BOTH the 23rd and 24th. Those are two real days, not one publish. Refusing.', m.who, n_both;
     end if;
+    if n_either < 5 then
+      raise exception '% — only % track(s) moved across the 23rd/24th at all. Too little to read a signature from. Refusing.', m.who, n_either;
+    end if;
+
+    -- The control: on a pair nobody has flagged, nearly every track must move
+    -- on both days. If it does not, the test above proves nothing and must not
+    -- be acted on.
+    select count(*) into n_control from (
+      select d.track_ref
+      from track_daily_stats d
+      join artist_tracks t on t.id = d.track_ref
+      where t.artist_id = m.artist_id
+        and d.date in (date '2026-09-20', date '2026-09-21')
+        and coalesce(d.daily_delta, 0) > 0
+      group by d.track_ref having count(*) > 1
+    ) x;
+    if n_control < n_either / 2 then
+      raise exception '% — the known-normal 20th/21st pair shows only % track(s) moving on both, against % across the split pair. The test does not discriminate here; refusing.', m.who, n_control, n_either;
+    end if;
+
+    insert into _plan values (m.artist_id, m.who, newest, n_rows);
 
     select daily_delta into d22 from artist_daily_stats where artist_id = m.artist_id and date = date '2026-09-22';
     select daily_delta into d23 from artist_daily_stats where artist_id = m.artist_id and date = date '2026-09-23';
     select daily_delta into d24 from artist_daily_stats where artist_id = m.artist_id and date = date '2026-09-24';
-    raise notice 'before  %: 22nd +%  23rd +%  24th +%  (pair %)', m.who, d22, d23, d24, d23 + d24;
+    raise notice 'before  %: 22nd +%  23rd +%  24th +%  (pair %)  ·  split 0/% moved both, control %/% · newest %',
+      m.who, d22, d23, d24, d23 + d24, n_either, n_control, n_either, newest;
   end loop;
 end $$;
 
@@ -113,14 +181,14 @@ begin
 end $$;
 
 insert into artist_daily_stats_backup_sep23repair
-select a.* from artist_daily_stats a join _members m on m.artist_id = a.artist_id
-where a.date between date '2026-09-22' and date '2026-09-26';
+select a.* from artist_daily_stats a join _plan p on p.artist_id = a.artist_id
+where a.date >= date '2026-09-22';
 
 insert into track_daily_stats_backup_sep23repair
 select d.* from track_daily_stats d
 join artist_tracks t on t.id = d.track_ref
-join _members m on m.artist_id = t.artist_id
-where d.date between date '2026-09-22' and date '2026-09-26';
+join _plan p on p.artist_id = t.artist_id
+where d.date >= date '2026-09-22';
 
 -- ── 1. fold the 24th into the 23rd ───────────────────────────────────────────
 -- per track: the 23rd takes the 24th's value, measured against the 22nd
@@ -131,7 +199,7 @@ from (
   select d24.track_ref, d24.streams as v24, d22.streams as v22
   from track_daily_stats d24
   join artist_tracks t   on t.id = d24.track_ref
-  join _members m        on m.artist_id = t.artist_id
+  join _plan p           on p.artist_id = t.artist_id
   join track_daily_stats d22
     on d22.track_ref = d24.track_ref and d22.date = date '2026-09-22'
   where d24.date = date '2026-09-24'
@@ -139,8 +207,8 @@ from (
 where d.track_ref = s.track_ref and d.date = date '2026-09-23';
 
 delete from track_daily_stats d
-using artist_tracks t, _members m
-where t.id = d.track_ref and m.artist_id = t.artist_id
+using artist_tracks t, _plan p
+where t.id = d.track_ref and p.artist_id = t.artist_id
   and d.date = date '2026-09-24';
 
 -- the artist row: the 24th's figures, dated the 23rd, delta against the 22nd
@@ -155,70 +223,105 @@ set total_streams           = n.total_streams,
     world_rank_delta        = n.world_rank - p.world_rank,
     track_count             = n.track_count,
     provisional             = false
-from artist_daily_stats n, artist_daily_stats p, _members m
-where a.artist_id = m.artist_id and a.date = date '2026-09-23'
+from artist_daily_stats n, artist_daily_stats p, _plan pl
+where a.artist_id = pl.artist_id and a.date = date '2026-09-23'
   and n.artist_id = a.artist_id and n.date = date '2026-09-24'
   and p.artist_id = a.artist_id and p.date = date '2026-09-22';
 
 delete from artist_daily_stats a
-using _members m
-where a.artist_id = m.artist_id and a.date = date '2026-09-24';
+using _plan p
+where p.artist_id = a.artist_id and a.date = date '2026-09-24';
 
--- ── 2. shift the days after it back by one ───────────────────────────────────
--- Ascending order, one statement each: the 24th is free (just deleted) so
--- 25→24 lands, which frees the 25th for 26→25. Doing both in one UPDATE would
--- risk a transient primary-key collision depending on row order.
-update track_daily_stats d set date = date '2026-09-24'
-from artist_tracks t, _members m
-where t.id = d.track_ref and m.artist_id = t.artist_id and d.date = date '2026-09-25';
-update artist_daily_stats a set date = date '2026-09-24'
-from _members m where m.artist_id = a.artist_id and a.date = date '2026-09-25';
+-- ── 2. shift every day after it back by one ──────────────────────────────────
+-- One date at a time, ascending: the 24th is free (just deleted), so the 25th
+-- lands on it, which frees the 25th for the 26th, and so on. Doing the whole
+-- range in one UPDATE would risk a transient primary-key collision depending on
+-- row order, and doing it as a fixed list of dates would go stale every time a
+-- fetch appends a day.
+do $$
+declare dd date;
+begin
+  for dd in
+    select distinct a.date from artist_daily_stats a join _plan p on p.artist_id = a.artist_id
+     where a.date >= date '2026-09-25'
+    union
+    select distinct d.date from track_daily_stats d
+      join artist_tracks t on t.id = d.track_ref
+      join _plan p on p.artist_id = t.artist_id
+     where d.date >= date '2026-09-25'
+    order by 1
+  loop
+    update track_daily_stats d set date = dd - 1
+    from artist_tracks t, _plan p
+    where t.id = d.track_ref and p.artist_id = t.artist_id and d.date = dd;
 
-update track_daily_stats d set date = date '2026-09-25'
-from artist_tracks t, _members m
-where t.id = d.track_ref and m.artist_id = t.artist_id and d.date = date '2026-09-26';
-update artist_daily_stats a set date = date '2026-09-25'
-from _members m where m.artist_id = a.artist_id and a.date = date '2026-09-26';
+    update artist_daily_stats a set date = dd - 1
+    from _plan p where p.artist_id = a.artist_id and a.date = dd;
+
+    raise notice 'shifted % → %', dd, dd - 1;
+  end loop;
+end $$;
 
 -- ── 3. prove it ──────────────────────────────────────────────────────────────
 do $$
 declare
-  m record; r record; newest date; n int; v bigint;
+  p record; r record; newest date; n int; v bigint; prev bigint;
 begin
-  for m in select * from _members loop
-    select max(date) into newest from artist_daily_stats where artist_id = m.artist_id;
-    if newest <> date '2026-09-25' then
-      raise exception '% now ends on % — expected 2026-09-25', m.who, newest;
+  for p in select * from _plan order by who loop
+    select max(date), count(*) into newest, n
+      from artist_daily_stats where artist_id = p.artist_id;
+
+    if newest <> p.newest_before - 1 then
+      raise exception '% now ends on % — expected % (one day earlier than before)',
+        p.who, newest, p.newest_before - 1;
+    end if;
+    if n <> p.rows_before - 1 then
+      raise exception '% has % rows — expected % (exactly one fewer: two halves became one day)',
+        p.who, n, p.rows_before - 1;
+    end if;
+    if exists (select 1 from artist_daily_stats
+                where artist_id = p.artist_id and date = p.newest_before) then
+      raise exception '% still has a row on %', p.who, p.newest_before;
     end if;
 
-    select count(*) into n from artist_daily_stats
-     where artist_id = m.artist_id and date = date '2026-09-26';
-    if n <> 0 then raise exception '% still has a 26th', m.who; end if;
-
+    -- every day from the folded one onwards must still be a real, rising day
+    prev := null;
     for r in
       select date, total_streams, daily_delta from artist_daily_stats
-       where artist_id = m.artist_id and date between date '2026-09-23' and date '2026-09-25'
+       where artist_id = p.artist_id and date between date '2026-09-23' and newest
        order by date
     loop
       if r.daily_delta is null or r.daily_delta <= 0 then
-        raise exception '% % has a non-positive delta %', m.who, r.date, r.daily_delta;
+        raise exception '% % has a non-positive delta %', p.who, r.date, r.daily_delta;
       end if;
-      raise notice 'after   % %: total % (+%)', m.who, r.date, r.total_streams, r.daily_delta;
+      if prev is not null and r.total_streams <= prev then
+        raise exception '% % total % is not above the day before (%)', p.who, r.date, r.total_streams, prev;
+      end if;
+      prev := r.total_streams;
+      raise notice 'after   % %: total % (+%)', p.who, r.date, r.total_streams, r.daily_delta;
     end loop;
   end loop;
 
-  -- The two figures a third party can check us against, to the stream.
+  -- The figures a third party can check us against, to the stream.
   select total_streams into v from artist_daily_stats
    where artist_id = '5L1lO4eRHmJ7a0Q6csE5cT' and date = date '2026-09-24';
-  if v <> 5577828916 then
+  if v is distinct from 5577828916 then
     raise exception 'LISA 24th is % — expected 5,577,828,916 (her tracker''s 24th)', v;
   end if;
   select total_streams into v from artist_daily_stats
    where artist_id = '5L1lO4eRHmJ7a0Q6csE5cT' and date = date '2026-09-25';
-  if v <> 5581859101 then
+  if v is distinct from 5581859101 then
     raise exception 'LISA 25th is % — expected 5,581,859,101 (her tracker''s 25th)', v;
   end if;
   raise notice 'LISA lines up with her tracker on both the 24th and the 25th, to the stream.';
+
+  -- BLACKPINK was repaired separately and must not have moved.
+  select count(*) into n from artist_daily_stats
+   where artist_id = '41MozSoPIsD1dJM0CLPjZF' and date = date '2026-09-23'
+     and total_streams = 17830645019 and daily_delta = 4270043;
+  if n <> 1 then
+    raise exception 'BLACKPINK 23rd no longer reads 17,830,645,019 (+4,270,043) — it should not have been touched';
+  end if;
 end $$;
 
 commit;
@@ -237,5 +340,5 @@ order by artist, a.date;
 \echo ''
 \echo '=== to undo, if it ever has to be undone ==='
 \echo 'The original rows are in artist_daily_stats_backup_sep23repair and'
-\echo 'track_daily_stats_backup_sep23repair — delete 2026-09-22..26 for these'
-\echo 'four artists and re-insert from those tables.'
+\echo 'track_daily_stats_backup_sep23repair — delete from 2026-09-22 onwards for'
+\echo 'these four artists and re-insert from those tables.'

@@ -1,0 +1,37 @@
+name: Split publish check
+
+# Asks one question, every week, of EVERY tracked artist: did a fetch catch
+# Spotify mid-publish and write one streaming day as two dated rows?
+#
+# This exists because it happened twice and was caught by eye both times — the
+# second time only because a −900k dip was noticed on the page, four days after
+# the same fetch run had done it to five artists at once. The check reads
+# tracked_artists rather than a list, so it covers whoever is being tracked at
+# the time and nobody has to remember to add anyone.
+#
+# Read-only: it opens no transaction that could write. It FAILS the run when it
+# finds something, so the finding arrives as a failure notification instead of
+# sitting in a log.
+
+on:
+  schedule:
+    # Mondays, 09:17 UTC. Off the hour on purpose: scheduled runs bunched on :00
+    # get queued behind everyone else's.
+    - cron: '17 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sweep for split publishes
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret is not set. Add it in the repo Settings → Secrets."
+            exit 1
+          fi
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 \
+            -f supabase/checks/sweep_split_publishes.sql
