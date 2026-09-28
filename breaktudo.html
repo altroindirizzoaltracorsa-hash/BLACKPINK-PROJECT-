@@ -64,10 +64,10 @@
   /* ── Hero ──
      No logo file for this award, so the name is set as a wordmark rather than
      shipping a placeholder image that would look broken until one arrives. */
-  #hero { text-align: center; padding: 4.5rem 1.2rem 2.5rem; }
+  #hero { text-align: center; padding: 3.4rem 1.2rem 1.8rem; }
   /* The logo is white on transparency at 200x120, so it is capped near its
      native width rather than blown up to the hero's full measure. */
-  .bt-logo { display: block; width: 100%; max-width: 230px; height: auto; margin: 0 auto 1.5rem;
+  .bt-logo { display: block; width: 100%; max-width: 172px; height: auto; margin: 0 auto 1.2rem;
     filter: drop-shadow(0 0 26px rgba(255,0,102,0.4)); }
   .hero-eyebrow { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.34em; text-transform: uppercase;
     color: var(--pink-lo); margin-bottom: 0.9rem; }
@@ -122,7 +122,7 @@
   /* ── Partial rankings ──
      The point of this page: BreakTudo publishes a top 5 per category while
      voting runs, so each one is a checkpoint on whether we are holding. */
-  .pr-note { font-size: 0.82rem; line-height: 1.6; color: var(--muted); margin-bottom: 1.2rem; }
+  .pr-note { font-size: 0.82rem; line-height: 1.6; color: var(--muted); margin-top: 1.1rem; }
   .pr-table { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
   .pr-head, .pr-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 0.6rem; align-items: center; padding: 0.7rem 0.85rem; }
   .pr-head { background: rgba(255,255,255,0.03); font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
@@ -201,8 +201,10 @@
 <section class="section">
   <div class="wrap">
     <div class="section-head">Where we stand</div>
-    <div class="pr-note">BreakTudo publishes a <b>top 5 per category</b> while voting runs. Each partial counts <b>every vote since voting opened on 17 September</b> — they are running totals, not separate rounds, so holding a place across a longer window means the lead held as more votes came in.</div>
     <div class="pr-table" id="pr-table"></div>
+    <!-- Below the table, not above it: this explains what you have just read,
+         and above it was the last thing between the reader and the standings. -->
+    <div class="pr-note">BreakTudo publishes a <b>top 5 per category</b> while voting runs. Each partial counts <b>every vote since voting opened on 17 September</b> — they are running totals, not separate rounds, so holding a place across a longer window means the lead held as more votes came in.</div>
     <div class="pr-legend" id="pr-legend"></div>
     <div id="pr-sources"></div>
   </div>
