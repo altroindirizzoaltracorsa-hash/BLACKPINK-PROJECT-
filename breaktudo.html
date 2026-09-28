@@ -64,7 +64,7 @@
   /* ── Hero ──
      No logo file for this award, so the name is set as a wordmark rather than
      shipping a placeholder image that would look broken until one arrives. */
-  #hero { text-align: center; padding: 3.4rem 1.2rem 1.8rem; }
+  #hero { text-align: center; padding: 3.4rem 1.2rem 0.8rem; }
   /* The logo is white on transparency at 200x120, so it is capped near its
      native width rather than blown up to the hero's full measure. */
   .bt-logo { display: block; width: 100%; max-width: 172px; height: auto; margin: 0 auto 1.2rem;
@@ -101,6 +101,10 @@
 
   /* ── Sections ── */
   .section { padding: 2.6rem 0 0; }
+  /* The hero's bottom padding and this one stacked to ~70px of dead space
+     between the Vote button's note and the standings. Only the first section
+     is tightened — the gaps further down separate unrelated blocks. */
+  #hero + .section { padding-top: 1.4rem; }
   .section-head { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--pink); margin-bottom: 1.3rem; }
   .section-head::before { content: '// '; color: rgba(255,0,102,0.5); }
 
