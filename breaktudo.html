@@ -65,14 +65,13 @@
      No logo file for this award, so the name is set as a wordmark rather than
      shipping a placeholder image that would look broken until one arrives. */
   #hero { text-align: center; padding: 4.5rem 1.2rem 2.5rem; }
-  .bt-wordmark { display: inline-block; margin: 0 auto 1.5rem; padding: 0.7rem 1.3rem;
-    border: 2px solid var(--pink); border-radius: 4px;
-    font-family: var(--display); font-size: clamp(1.5rem, 6vw, 2.2rem); letter-spacing: 0.12em;
-    line-height: 1; color: var(--white); text-transform: uppercase;
-    box-shadow: 0 0 34px -6px rgba(255,0,102,0.55); }
-  .bt-wordmark b { color: var(--pink); font-weight: 400; }
+  /* The logo is white on transparency at 200x120, so it is capped near its
+     native width rather than blown up to the hero's full measure. */
+  .bt-logo { display: block; width: 100%; max-width: 230px; height: auto; margin: 0 auto 1.5rem;
+    filter: drop-shadow(0 0 26px rgba(255,0,102,0.4)); }
   .hero-eyebrow { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.34em; text-transform: uppercase;
     color: var(--pink-lo); margin-bottom: 0.9rem; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
   h1.hero-title { font-family: var(--display); font-weight: 400;
     font-size: clamp(2.8rem, 11vw, 6rem); line-height: 0.92; letter-spacing: 0.02em;
     text-transform: uppercase; margin-bottom: 0.5rem; }
@@ -88,6 +87,7 @@
   .cd-closed { font-family: var(--display); font-size: 2.2rem; letter-spacing: 0.1em; color: var(--pink); }
   .cd-reset { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.05em; color: var(--muted); margin-top: 0.8rem; }
   .cd-reset b { color: var(--pink); font-weight: 500; }
+  .cd-reset .nb { white-space: nowrap; }
 
   /* ── CTA ── */
   .cta-row { display: flex; justify-content: center; margin-top: 2rem; }
@@ -176,9 +176,12 @@
 
 <section id="hero">
   <div class="wrap">
-    <div class="bt-wordmark">Break<b>Tudo</b> Awards</div>
+    <!-- The logo carries the award's name AND the year, so a headline under it
+         would just say the same thing twice. It becomes the title; the h1 stays
+         for screen readers and search, off-screen. -->
     <div class="hero-eyebrow">Nominated at the</div>
-    <h1 class="hero-title">2026 <span class="pink">BreakTudo</span></h1>
+    <h1 class="sr-only">BLACKPINK at the 2026 BreakTudo Awards</h1>
+    <img class="bt-logo" src="/breaktudo-logo.png" alt="BreakTudo Awards 2026" width="200" height="120">
     <p class="hero-sub">BLACKPINK, JENNIE, LISA, JISOO and BLINKs are up for <b>8 awards</b>. No account, no app, no daily limit — you can vote as many times as you like until the ballot closes.</p>
 
     <div class="cd-label" id="cd-label">Voting closes in</div>
@@ -245,10 +248,10 @@
     { key: 'asian',   who: 'LISA',                          cat: 'Asian Artist',                        img: '/vote-always-lalisa.jpg' },
     { key: 'collab',  who: 'JISOO × ZAYN — “Eyes Closed”',  cat: 'International Collaboration',         img: '/vote-vma-eyesclosed.jpeg' },
     { key: 'hit',     who: 'Tame Impala & JENNIE — “Dracula”', cat: 'International Hit of the Year',    img: '/vote-vma-dracula.jpg' },
-    { key: 'mv-go',   who: 'BLACKPINK — “GO”',              cat: 'International Music Video',           img: '' },
+    { key: 'mv-go',   who: 'BLACKPINK — “GO”',              cat: 'International Music Video',           img: '/vote-blackpink-ot4.jpg' },
     { key: 'mv-dream',who: 'LISA — “Dream”',                cat: 'International Music Video',           img: '/vote-vma-dream.jpg' },
     { key: 'fandom',  who: 'BLINKs',                        cat: 'International Fandom of the Year',    img: '' },
-    { key: 'series',  who: '“Boyfriend On Demand”',         cat: 'International Series',                img: '', note: 'JISOO' },
+    { key: 'series',  who: '“Boyfriend On Demand”',         cat: 'International Series',                img: '/vote-bt-boyfriend.jpg', note: 'JISOO' },
   ];
 
   // ── The partial rankings ──────────────────────────────────────────────────
@@ -365,7 +368,7 @@
       + unit(Math.floor(diff % 86400000 / 3600000), 'Hrs')
       + unit(Math.floor(diff % 3600000 / 60000), 'Min')
       + unit(Math.floor(diff % 60000 / 1000), 'Sec');
-    reset.innerHTML = 'Closes <b>Oct 17, 23:53</b> Brasília · winners <b>Nov 24</b>';
+    reset.innerHTML = '<span class="nb">Closes <b>Oct 17, 23:53</b> Brasília</span> · <span class="nb">winners <b>Nov 24</b></span>';
   }
   tick();
   setInterval(tick, 1000);
