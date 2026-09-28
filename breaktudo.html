@@ -77,6 +77,8 @@
     text-transform: uppercase; margin-bottom: 0.5rem; }
   h1.hero-title .pink { color: var(--pink); }
   .hero-sub { color: var(--muted); font-size: 0.95rem; line-height: 1.6; max-width: 32rem; margin: 0.6rem auto 0; }
+  /* Same voice as the hero line it used to be, now introducing the grid. */
+  .noms-intro { text-align: center; margin: 0 auto 1.6rem; }
 
   /* ── Countdown ── */
   .cd-label { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); margin: 2rem 0 0.8rem; }
@@ -184,7 +186,6 @@
     <div class="hero-eyebrow">Nominated at the</div>
     <h1 class="sr-only">BLACKPINK at the 2026 BreakTudo Awards</h1>
     <img class="bt-logo" src="/breaktudo-logo.png" alt="BreakTudo Awards 2026" width="200" height="120">
-    <p class="hero-sub">BLACKPINK, JENNIE, LISA, JISOO and BLINKs are up for <b>8 awards</b>. No account, no app, no daily limit — you can vote as many times as you like until the ballot closes.</p>
 
     <div class="cd-label" id="cd-label">Voting closes in</div>
     <div class="countdown" id="countdown" role="timer" aria-label="Countdown to voting deadline"></div>
@@ -199,18 +200,19 @@
 
 <section class="section">
   <div class="wrap">
-    <div class="section-head" id="noms-head">Nominations</div>
-    <div class="noms" id="noms"></div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="wrap">
     <div class="section-head">Where we stand</div>
     <div class="pr-note">BreakTudo publishes a <b>top 5 per category</b> while voting runs. Each partial counts <b>every vote since voting opened on 17 September</b> — they are running totals, not separate rounds, so holding a place across a longer window means the lead held as more votes came in.</div>
     <div class="pr-table" id="pr-table"></div>
     <div class="pr-legend" id="pr-legend"></div>
     <div id="pr-sources"></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <p class="hero-sub noms-intro">BLACKPINK, JENNIE, LISA, JISOO and BLINKs are up for <b>8 awards</b>. No account, no app, no daily limit — you can vote as many times as you like until the ballot closes.</p>
+    <div class="section-head" id="noms-head">Nominations</div>
+    <div class="noms" id="noms"></div>
   </div>
 </section>
 
