@@ -23,6 +23,7 @@
     { "source": "/kcharts", "destination": "/index.html" },
     { "source": "/projects", "destination": "/projects.html" },
     { "source": "/vmas", "destination": "/vmas.html" },
+    { "source": "/achievements", "destination": "/achievements.html" },
     { "source": "/ltal-embed", "destination": "/index.html" },
     { "source": "/api/spotify-oauth-start", "destination": "/api/sync-playlist" },
     { "source": "/api/spotify-oauth-callback", "destination": "/api/sync-playlist" }
@@ -49,7 +50,7 @@
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     },
     {
-      "source": "/(countdowns|badges|leaderboard|voting|vote|feedback|account|streams|charts|apple-charts|itunes-charts|spotify-charts|youtube|kcharts|projects|ltal-embed|vmas)",
+      "source": "/(countdowns|badges|leaderboard|voting|vote|feedback|account|streams|charts|apple-charts|itunes-charts|spotify-charts|youtube|kcharts|projects|ltal-embed|vmas|achievements)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     },
     {

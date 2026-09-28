@@ -2416,6 +2416,15 @@
     color: var(--white); background: rgba(255,0,102,0.16); border: 1px solid rgba(255,0,102,0.45);
     border-radius: 999px; padding: 0.5rem 1rem; transition: background 0.15s, border-color 0.15s; }
   .vv-community-share:hover { background: rgba(255,0,102,0.3); border-color: var(--pink); }
+  .vv-wins { border: 1px solid rgba(255,0,102,0.45); border-radius: 10px; padding: 1rem 0.9rem; margin-bottom: 1rem; background: radial-gradient(120% 140% at 50% 0%, rgba(255,0,102,0.2), rgba(255,0,102,0.05) 60%, transparent); text-align: center; }
+  .vv-wins-hd { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pink); margin-bottom: 0.7rem; }
+  .vv-win + .vv-win { margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px solid var(--border); }
+  .vv-win-who { font-family: var(--display); font-size: clamp(1.9rem, 9vw, 3rem); line-height: 0.95; color: var(--pink); }
+  .vv-win-cat { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(245,240,240,0.9); margin-top: 0.35rem; }
+  .vv-win-cat i { color: var(--muted); font-style: normal; }
+  .vv-win-note { font-size: 0.72rem; line-height: 1.45; color: var(--muted); margin-top: 0.45rem; }
+  .vv-win-share { margin-top: 0.75rem; font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pink); background: rgba(255,0,102,0.14); border: 1px solid rgba(255,0,102,0.45); border-radius: 999px; padding: 0.5rem 0.9rem; cursor: pointer; transition: background .15s, border-color .15s; }
+  .vv-win-share:hover { background: rgba(255,0,102,0.3); border-color: var(--pink); }
   /* A number that throbs forever is exactly what reduced-motion is for; the glow
      stays, so it still reads as the celebration it is. */
   @media (prefers-reduced-motion: reduce) {
@@ -2726,6 +2735,7 @@
     .nav-dropdown-item:hover { background: transparent; color: var(--pink) !important; opacity: 1 !important; }
   }
 </style>
+<script src="/vma-wins.js"></script>
 </head>
 <body>
 <!-- Card-only embed mode: /ltal-embed?embed=ltal renders ONLY the Less Than a
@@ -8305,6 +8315,51 @@ function buDmUrl() {
 // "Together we cast N votes" — the same figure for both awards, read from the
 // award's own tally endpoint. Renders nothing at all rather than a zero when the
 // fetch failed, so a blip never reads as "nobody voted".
+// The wins, on the board. The list lives in /vma-wins.js so /vmas and this
+// page can never disagree about what was won. Renders nothing until a category
+// is actually called, so it costs nothing on a normal night.
+function vvWinsHtml() {
+  const wins = window.BU_VMA_WINS || [];
+  if (!wins.length) return '';
+  return `<div class="vv-wins">
+    <div class="vv-wins-hd">\u{1F3C6} ${wins.length > 1 ? 'Winners' : 'Winner'} \u00b7 2026 VMAs</div>
+    ${wins.map((w, i) => `<div class="vv-win">
+      <div class="vv-win-who">${_vvEsc(w.who)}</div>
+      <div class="vv-win-cat">${_vvEsc(w.cat)}${w.song ? ` \u00b7 <i>${_vvEsc(w.song)}</i>` : ''}</div>
+      ${w.note ? `<div class="vv-win-note">${_vvEsc(w.note)}</div>` : ''}
+      <button class="vv-win-share" onclick="shareVmaWin(${i}, this)">\u2191 Share this win</button>
+    </div>`).join('')}
+  </div>`;
+}
+
+// Draw it through the page's own card overlay, so it gets the same Share /
+// Copy Image / Download buttons as every other card here rather than a second,
+// lesser share path.
+function shareVmaWin(i, btn) {
+  const win = (window.BU_VMA_WINS || [])[i];
+  if (!win || !window.BUWinCard) return;
+  const overlay = document.getElementById('card-overlay');
+  const label = document.getElementById('card-box-label');
+  if (!overlay) { window.BUWinCard.share(win, btn); return; }
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING\u2026';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  document.getElementById('release-pic-picker').style.display = 'none';
+  _cardType = 'vmawin';
+  _cardTrackId = null;
+  _cardFormat = 'square';
+  document.getElementById('fmt-landscape')?.classList.remove('active');
+  document.getElementById('fmt-square')?.classList.add('active');
+  _vmaWinCardData = win;
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1080; canvas.height = 1080;
+  document.fonts.ready.then(() => {
+    window.BUWinCard.draw(canvas, win);
+    label.textContent = `${win.who.toUpperCase()} \u00b7 ${win.cat.toUpperCase()}`;
+  });
+}
+let _vmaWinCardData = null;
+
 function vvCommunityHtml(opts = {}) {
   const t = _vvTotals;
   if (!t || !(Number(t.total) > 0)) return '';
@@ -8635,6 +8690,7 @@ function drawVmaVoting() {
         : vmaVideoGuidesHtml()}
     ${me}
     ${!closed && qualified ? vmaExtensionHtml() : ''}
+    ${vvWinsHtml()}
     ${vvCommunityHtml({
       award: 'vma',
       label: closed ? '🏆 Together, blinks cast' : 'Together, as a community',
@@ -16119,6 +16175,7 @@ function setCardFormat(fmt, btn) {
   else                     { canvas.width = 1080; canvas.height = 1080; }
   if (_cardType === 'lb') renderLbCard(_cardLogo);
   else if (_cardType === 'community' && _communityCardData) drawCommunityCard(canvas, _communityCardData, _cardLogo);
+  else if (_cardType === 'vmawin' && _vmaWinCardData && window.BUWinCard) window.BUWinCard.draw(canvas, _vmaWinCardData);
   else if (_cardType === 'milestone') {
     drawMilestoneCard(canvas, _cardTrackId, _cardArt, _cardLogo, _msMilestoneTotal, _msMilestone, _msMilestoneDate);
     canvas.toBlob(blob => { _cardShareBlob = blob; }, 'image/jpeg', 0.92);

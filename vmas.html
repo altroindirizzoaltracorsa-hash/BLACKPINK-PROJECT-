@@ -186,6 +186,14 @@
     padding: 0.42rem 0.55rem; margin-bottom: 0.5rem; line-height: 1.3;
   }
   .nom.won-nom { background: var(--pink); color: #12000a; border-color: var(--pink); }
+  .won-share {
+    margin-top: 0.55rem; width: 100%; font-family: var(--mono); font-size: 0.6rem;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--pink);
+    background: rgba(255,0,102,0.12); border: 1px solid rgba(255,0,102,0.45);
+    padding: 0.6rem 0.5rem; cursor: pointer; transition: background .15s, border-color .15s;
+  }
+  .won-share:hover { background: rgba(255,0,102,0.28); border-color: var(--pink); }
+  .won-share[disabled] { opacity: 0.6; cursor: default; }
   .videos-note { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.03em; color: var(--muted); margin-top: 1.1rem; line-height: 1.5; }
   .videos-note.ig { color: rgba(245,240,240,0.88); margin-top: 0.6rem; }
   .videos-note.ig b { color: var(--pink); }
@@ -469,6 +477,7 @@
   <div class="foot-fine">Fan-made by Blinks United · Not affiliated with MTV, CBS, Paramount or YG Entertainment</div>
 </footer>
 
+<script src="/vma-wins.js"></script>
 <script>
   // Deadline: Sep 25 2026, 6:00 PM ET (EDT = UTC-4)
   var DEADLINE = new Date('2026-09-25T18:00:00-04:00').getTime();
@@ -609,14 +618,10 @@
   }
 
   // ── Wins, as they are called ───────────────────────────────────────────────
-  // The ceremony runs live and categories land one at a time, so this is the
-  // only thing to edit: add an entry the moment one is announced and the card,
-  // its nomination pill and the hero line all follow from it.
-  //   card — the data-key on the .video card
-  //   cat  — must match that card's .nom pill exactly, minus ↗ / 🔒 / 📸
-  var WINS = [
-    { card: 'lisa-dream', cat: 'Best Pop', who: 'LISA', song: '“Dream”' }
-  ];
+  // The list itself lives in /vma-wins.js, because the voting board reads it
+  // too and a win recorded in one place but not the other is worse than no
+  // win banner at all. Add an entry there; this page follows.
+  var WINS = window.BU_VMA_WINS || [];
 
   var winsApplied = -1;
   function applyWins() {
@@ -637,6 +642,16 @@
           ribbon.className = 'won-ribbon';
           ribbon.textContent = '🏆 Winner · ' + w.cat;
           card.insertBefore(ribbon, card.firstChild);
+        }
+        if (!card.querySelector('.won-share') && window.BUWinCard) {
+          var sh = document.createElement('button');
+          sh.className = 'won-share';
+          sh.type = 'button';
+          sh.textContent = '\u2191 Share this win';
+          (function (wi) {
+            sh.onclick = function () { window.BUWinCard.share(wi, sh); };
+          })(w);
+          card.appendChild(sh);
         }
         var noms = card.querySelectorAll('.nom');
         for (var j = 0; j < noms.length; j++) {
