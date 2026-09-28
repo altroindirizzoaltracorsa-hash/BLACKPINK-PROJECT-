@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BLACKPINK at the 2026 BreakTudo Awards</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="BLACKPINK, JENNIE, LISA, JISOO and BLINKs are nominated in 8 categories at the 2026 BreakTudo Awards. Where to vote, the rules, and where we stand in the partial rankings.">
+<meta name="theme-color" content="#080808">
+<meta property="og:site_name" content="Blinks United">
+<meta property="og:title" content="BLACKPINK at the 2026 BreakTudo Awards">
+<meta property="og:description" content="Nominated in 8 categories. Voting is open until Oct 17 — here is where to vote and where we stand.">
+<meta property="og:url" content="https://www.blinksunited.com/breaktudo">
+<meta property="og:image" content="https://www.blinksunited.com/vote-blackpink-ot4.jpg">
+<meta property="og:image:alt" content="BLACKPINK">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="BLACKPINK at the 2026 BreakTudo Awards">
+<meta name="twitter:description" content="Nominated in 8 categories. Voting is open until Oct 17 — here is where to vote and where we stand.">
+<meta name="twitter:image" content="https://www.blinksunited.com/vote-blackpink-ot4.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #080808;
+    --card:    #140d14;
+    --pink:    #ff0066;
+    --pink-lo: #ff74ac;
+    --pink-muted: rgba(255,0,102,0.12);
+    --white:   #f5f0f0;
+    --muted:   #b09aad;
+    --border:  rgba(255,255,255,0.09);
+    --gold:    #f0c200;
+    --mono:    'DM Mono', ui-monospace, monospace;
+    --display: 'Bebas Neue', Impact, sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    background:
+      radial-gradient(120% 60% at 50% -5%, rgba(255,0,102,0.18), transparent 60%),
+      var(--bg);
+    color: var(--white);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    min-height: 100svh;
+    padding-bottom: 4rem; /* clear the fixed vote bar */
+  }
+
+  .accent-bar { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 50;
+    background: linear-gradient(90deg, transparent, var(--pink) 40%, var(--pink-lo) 60%, transparent); }
+
+  .back { position: fixed; top: 0.75rem; left: 50%; transform: translateX(-50%); z-index: 60;
+    text-decoration: none; text-align: center; white-space: nowrap;
+    font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase;
+    color: rgba(255,0,102,0.85); transition: color 0.2s; }
+  .back:hover { color: var(--pink); }
+
+  .wrap { max-width: 940px; margin: 0 auto; padding: 0 1.2rem; }
+
+  /* ── Hero ──
+     No logo file for this award, so the name is set as a wordmark rather than
+     shipping a placeholder image that would look broken until one arrives. */
+  #hero { text-align: center; padding: 4.5rem 1.2rem 2.5rem; }
+  .bt-wordmark { display: inline-block; margin: 0 auto 1.5rem; padding: 0.7rem 1.3rem;
+    border: 2px solid var(--pink); border-radius: 4px;
+    font-family: var(--display); font-size: clamp(1.5rem, 6vw, 2.2rem); letter-spacing: 0.12em;
+    line-height: 1; color: var(--white); text-transform: uppercase;
+    box-shadow: 0 0 34px -6px rgba(255,0,102,0.55); }
+  .bt-wordmark b { color: var(--pink); font-weight: 400; }
+  .hero-eyebrow { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.34em; text-transform: uppercase;
+    color: var(--pink-lo); margin-bottom: 0.9rem; }
+  h1.hero-title { font-family: var(--display); font-weight: 400;
+    font-size: clamp(2.8rem, 11vw, 6rem); line-height: 0.92; letter-spacing: 0.02em;
+    text-transform: uppercase; margin-bottom: 0.5rem; }
+  h1.hero-title .pink { color: var(--pink); }
+  .hero-sub { color: var(--muted); font-size: 0.95rem; line-height: 1.6; max-width: 32rem; margin: 0.6rem auto 0; }
+
+  /* ── Countdown ── */
+  .cd-label { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); margin: 2rem 0 0.8rem; }
+  .countdown { display: flex; justify-content: center; gap: 1.1rem; margin-bottom: 0.5rem; }
+  .cd-unit { display: flex; flex-direction: column; align-items: center; min-width: 3.6rem; }
+  .cd-num { font-family: var(--display); font-size: clamp(2.6rem, 9vw, 3.8rem); line-height: 1; color: var(--white); font-variant-numeric: tabular-nums; }
+  .cd-tag { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-top: 0.3rem; }
+  .cd-closed { font-family: var(--display); font-size: 2.2rem; letter-spacing: 0.1em; color: var(--pink); }
+  .cd-reset { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.05em; color: var(--muted); margin-top: 0.8rem; }
+  .cd-reset b { color: var(--pink); font-weight: 500; }
+
+  /* ── CTA ── */
+  .cta-row { display: flex; justify-content: center; margin-top: 2rem; }
+  .cta-btn { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: #12000a; background: var(--pink); border: none; border-radius: 4px; padding: 1rem 1.8rem;
+    text-decoration: none; display: inline-block; transition: filter .15s, transform .15s; }
+  .cta-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .cta-note { margin-top: 0.7rem; text-align: center; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; color: var(--muted); }
+
+  /* ── Sections ── */
+  .section { padding: 2.6rem 0 0; }
+  .section-head { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--pink); margin-bottom: 1.3rem; }
+  .section-head::before { content: '// '; color: rgba(255,0,102,0.5); }
+
+  /* ── Nominations ── */
+  .noms { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; }
+  .nom-card { display: flex; flex-direction: column; }
+  .nom-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border: 1px solid var(--border); display: block; }
+  /* A nominee with no picture gets a tile rather than a broken frame — the
+     award has no art for the fandom or the series categories. */
+  .nom-tile { width: 100%; aspect-ratio: 1 / 1; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; text-align: center;
+    background: radial-gradient(120% 120% at 50% 0%, rgba(255,0,102,0.16), rgba(255,0,102,0.03) 60%, transparent);
+    font-family: var(--display); font-size: 1.5rem; letter-spacing: 0.06em; color: var(--pink-lo); padding: 0.8rem; line-height: 1.05; }
+  .nom-name { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--white); margin: 0.75rem 0 0.55rem; line-height: 1.35; }
+  .nom-cat { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.03em; text-transform: uppercase;
+    color: var(--pink); text-decoration: none; border: 1px solid rgba(255,0,102,0.4); padding: 0.35rem 0.45rem;
+    text-align: center; line-height: 1.25; display: block; transition: background 0.2s, color 0.2s; }
+  .nom-cat:hover { background: var(--pink); color: #12000a; }
+
+  /* ── Partial rankings ──
+     The point of this page: BreakTudo publishes a top 5 per category while
+     voting runs, so each one is a checkpoint on whether we are holding. */
+  .pr-note { font-size: 0.82rem; line-height: 1.6; color: var(--muted); margin-bottom: 1.2rem; }
+  .pr-table { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .pr-head, .pr-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 0.6rem; align-items: center; padding: 0.7rem 0.85rem; }
+  .pr-head { background: rgba(255,255,255,0.03); font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .pr-row + .pr-row, .pr-head + .pr-row { border-top: 1px solid var(--border); }
+  .pr-who { min-width: 0; }
+  .pr-who b { display: block; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--white); font-weight: 400; line-height: 1.3; }
+  .pr-who small { display: block; font-size: 0.66rem; color: var(--muted); margin-top: 0.2rem; line-height: 1.3; }
+  .pr-pos { font-family: var(--display); font-size: 1.5rem; line-height: 1; color: var(--white); min-width: 2.2rem; text-align: center; font-variant-numeric: tabular-nums; }
+  .pr-pos.gold { color: var(--gold); }
+  .pr-pos.out { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+  .pr-pos.pending { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.08em; color: rgba(176,154,173,0.5); }
+  .pr-trend { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.06em; min-width: 2.6rem; text-align: right; white-space: nowrap; }
+  .pr-trend.up { color: #4ade80; }
+  .pr-trend.down { color: #ff5c7a; }
+  .pr-trend.same { color: var(--muted); }
+  .pr-legend { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.06em; color: var(--muted); margin-top: 0.9rem; line-height: 1.7; }
+  .pr-src { display: block; width: fit-content; margin-top: 0.8rem; font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pink); text-decoration: none; border-bottom: 1px solid rgba(255,0,102,0.4); }
+
+  /* ── Rules ── */
+  .rules { border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem 1rem; }
+  .rules li { list-style: none; display: flex; gap: 0.7rem; align-items: flex-start; font-size: 0.84rem; line-height: 1.6; color: var(--muted); }
+  .rules li + li { margin-top: 0.75rem; }
+  .rules li b { color: var(--white); font-weight: 500; }
+  .rules-dot { color: var(--pink); flex: 0 0 auto; }
+  .rules-src { display: inline-block; margin-top: 1rem; font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pink); text-decoration: none; border-bottom: 1px solid rgba(255,0,102,0.4); }
+
+  /* ── Sticky vote bar ── */
+  .votebar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem;
+    padding: 0.65rem 1rem; padding-bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px));
+    background: rgba(10,7,10,0.96); border-top: 1px solid rgba(255,0,102,0.45);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 -12px 34px -20px rgba(255,0,102,0.8); }
+  .vb-stat { display: flex; align-items: center; gap: 0.55rem; min-width: 0; flex: 0 1 auto; }
+  .vb-num { font-family: var(--display); font-size: 2rem; line-height: 0.85; color: var(--pink); font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+  .vb-lbl { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); line-height: 1.25; white-space: nowrap; min-width: 0; }
+  @media (max-width: 429px) {
+    .vb-num { font-size: 1.45rem; }
+    .vb-lbl { font-size: 0.46rem; letter-spacing: 0.08em; }
+    .vb-lbl-more { display: none; }
+    .vb-btn { padding: 0.65rem 0.7rem; font-size: 0.55rem; letter-spacing: 0.05em; }
+  }
+  .vb-btn { flex: 0 0 auto; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: #12000a; background: var(--pink); border: none; padding: 0.7rem 1rem; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-block; transition: filter .15s; }
+  .vb-btn:hover { filter: brightness(1.07); }
+
+  footer { text-align: center; padding: 3rem 1.2rem 2rem; }
+  .foot-link { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pink); text-decoration: none; }
+  .foot-fine { font-size: 0.68rem; color: var(--muted); margin-top: 0.8rem; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="accent-bar"></div>
+<a href="/index.html" class="back">← Blinks United</a>
+
+<section id="hero">
+  <div class="wrap">
+    <div class="bt-wordmark">Break<b>Tudo</b> Awards</div>
+    <div class="hero-eyebrow">Nominated at the</div>
+    <h1 class="hero-title">2026 <span class="pink">BreakTudo</span></h1>
+    <p class="hero-sub">BLACKPINK, JENNIE, LISA, JISOO and BLINKs are up for <b>8 awards</b>. No account, no app, no daily limit — you can vote as many times as you like until the ballot closes.</p>
+
+    <div class="cd-label" id="cd-label">Voting closes in</div>
+    <div class="countdown" id="countdown" role="timer" aria-label="Countdown to voting deadline"></div>
+    <div class="cd-reset" id="cd-reset"></div>
+
+    <div class="cta-row" id="cta-row">
+      <a class="cta-btn" href="https://vote.breaktudoawards.com/" target="_blank" rel="noopener noreferrer">🗳️ Vote now ↗</a>
+    </div>
+    <div class="cta-note" id="cta-note">Opens vote.breaktudoawards.com · winners revealed Nov 24</div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head" id="noms-head">Nominations</div>
+    <div class="noms" id="noms"></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">Where we stand</div>
+    <div class="pr-note">BreakTudo publishes a <b>top 5 per category</b> while voting runs. Each one is a checkpoint: it says whether we're holding, climbing or slipping — and which categories need the votes most.</div>
+    <div class="pr-table" id="pr-table"></div>
+    <div class="pr-legend" id="pr-legend"></div>
+    <div id="pr-sources"></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">The rules</div>
+    <div class="rules">
+      <ul id="rules-list"></ul>
+      <a class="rules-src" href="https://www.breaktudoawards.com/regras-da-votacao/" target="_blank" rel="noopener noreferrer">Full official rules ↗</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <a class="foot-link" href="/index.html">Blinks United →</a>
+  <div class="foot-fine">Fan-made by Blinks United · Not affiliated with BreakTudo or YG Entertainment</div>
+</footer>
+
+<div class="votebar" id="votebar">
+  <div class="vb-stat">
+    <span class="vb-num" id="vb-num">—</span>
+    <span class="vb-lbl">votes counted<br><span class="vb-lbl-more" id="vb-blinks"></span></span>
+  </div>
+  <a class="vb-btn" href="/voting">🏆 See the board ↗</a>
+</div>
+
+<script>
+  // Oct 17 2026, 23:53 BRT (UTC-3) — the closing time BreakTudo publishes.
+  var DEADLINE = new Date('2026-10-17T23:53:00-03:00').getTime();
+
+  // ── The nominations ───────────────────────────────────────────────────────
+  // One entry per NOMINEE, not per category: Int. Music Video carries two of
+  // ours, and a fan can vote for both, so they get a row each everywhere.
+  var NOMS = [
+    { key: 'group',   who: 'BLACKPINK',                     cat: 'International Female Group',          img: '/vote-blackpink-ot4.jpg' },
+    { key: 'artist',  who: 'JENNIE',                        cat: 'International Female Artist',         img: '/vote-jennie.jpg' },
+    { key: 'asian',   who: 'LISA',                          cat: 'Asian Artist',                        img: '/vote-always-lalisa.jpg' },
+    { key: 'collab',  who: 'JISOO × ZAYN — “Eyes Closed”',  cat: 'International Collaboration',         img: '/vote-vma-eyesclosed.jpeg' },
+    { key: 'hit',     who: 'Tame Impala & JENNIE — “Dracula”', cat: 'International Hit of the Year',    img: '/vote-vma-dracula.jpg' },
+    { key: 'mv-go',   who: 'BLACKPINK — “GO”',              cat: 'International Music Video',           img: '' },
+    { key: 'mv-dream',who: 'LISA — “Dream”',                cat: 'International Music Video',           img: '/vote-vma-dream.jpg' },
+    { key: 'fandom',  who: 'BLINKs',                        cat: 'International Fandom of the Year',    img: '' },
+    { key: 'series',  who: '“Boyfriend On Demand”',         cat: 'International Series',                img: '', note: 'JISOO' },
+  ];
+
+  // ── The partial rankings ──────────────────────────────────────────────────
+  // Positions as BreakTudo published them. `null` means the nominee was not in
+  // that partial's top 5 — which is information, not a gap, so it is shown
+  // rather than left blank. Add the next partial as another entry and every
+  // row picks up a column and a movement arrow on its own.
+  var PARTIALS = [
+    { label: '1st', url: 'https://www.breaktudoawards.com/primeiro-ranking-parcial-do-breaktudo-awards-2026-confira-o-top-5-de-cada-categoria/',
+      places: {
+        group: 3, artist: 1, asian: 3, collab: 3, hit: 2,
+        'mv-go': 4, 'mv-dream': null, fandom: null, series: 1,
+      } },
+  ];
+
+  var VOTE_URL = 'https://vote.breaktudoawards.com/';
+
+  // ── The rules ─────────────────────────────────────────────────────────────
+  var RULES = [
+    'No account and no app — vote straight at <b>vote.breaktudoawards.com</b>.',
+    'Cast in <b>sequences of 5</b>, clear the Cloudflare check, then hit <b>“Enviar Votos”</b>.',
+    '<b>No total limit.</b> The page refreshes after each batch so you can keep going — and every category is separate, so vote in all eight.',
+    'Voting runs to <b>Oct 17, 23:53 BRT</b> (Brasília time).',
+    'Winners are revealed <b>Nov 24, 2026</b>.',
+  ];
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+
+  document.getElementById('noms').innerHTML = NOMS.map(function (n) {
+    return '<div class="nom-card">'
+      + (n.img
+          ? '<img class="nom-img" src="' + n.img + '" alt="' + esc(n.who) + '" loading="lazy">'
+          : '<div class="nom-tile">' + esc(n.who.replace(/^.*— /, '').replace(/[“”]/g, '')) + '</div>')
+      + '<div class="nom-name">' + esc(n.who) + (n.note ? ' <span style="color:var(--muted)">· ' + esc(n.note) + '</span>' : '') + '</div>'
+      + '<a class="nom-cat" href="' + VOTE_URL + '" target="_blank" rel="noopener noreferrer">' + esc(n.cat) + ' ↗</a>'
+      + '</div>';
+  }).join('');
+
+  document.getElementById('rules-list').innerHTML = RULES.map(function (r) {
+    return '<li><span class="rules-dot">▸</span><span>' + r + '</span></li>';
+  }).join('');
+
+  function posCell(p) {
+    if (p === undefined) return '<span class="pr-pos pending">—</span>';
+    if (p === null) return '<span class="pr-pos out">Not top 5</span>';
+    return '<span class="pr-pos' + (p === 1 ? ' gold' : '') + '">' + p + '</span>';
+  }
+
+  // Movement between the two most recent partials. Moving INTO or OUT OF the
+  // top 5 counts as movement too — "not top 5" to 5th is the best news a
+  // category can have, and it would read as nothing if only numbers moved.
+  function trendCell(prev, cur) {
+    if (PARTIALS.length < 2) return '<span class="pr-trend same"></span>';
+    if (prev === undefined || cur === undefined) return '<span class="pr-trend same"></span>';
+    if (prev === null && cur === null) return '<span class="pr-trend same">—</span>';
+    if (prev === null) return '<span class="pr-trend up">▲ in</span>';
+    if (cur === null) return '<span class="pr-trend down">▼ out</span>';
+    if (cur < prev) return '<span class="pr-trend up">▲ ' + (prev - cur) + '</span>';
+    if (cur > prev) return '<span class="pr-trend down">▼ ' + (cur - prev) + '</span>';
+    return '<span class="pr-trend same">=</span>';
+  }
+
+  (function renderRankings() {
+    var last = PARTIALS[PARTIALS.length - 1];
+    var prev = PARTIALS.length > 1 ? PARTIALS[PARTIALS.length - 2] : null;
+    var cols = PARTIALS.map(function (p) { return '<span>' + esc(p.label) + '</span>'; }).join('');
+
+    var head = '<div class="pr-head" style="grid-template-columns:minmax(0,1fr) repeat(' + PARTIALS.length + ', auto) auto;">'
+      + '<span>Category</span>' + cols + '<span>' + (PARTIALS.length > 1 ? 'Move' : '') + '</span></div>';
+
+    var rows = NOMS.map(function (n) {
+      var cells = PARTIALS.map(function (p) { return posCell(p.places[n.key]); }).join('');
+      return '<div class="pr-row" style="grid-template-columns:minmax(0,1fr) repeat(' + PARTIALS.length + ', auto) auto;">'
+        + '<span class="pr-who"><b>' + esc(n.cat.replace(/^International /, 'Int. ')) + '</b><small>' + esc(n.who) + '</small></span>'
+        + cells
+        + trendCell(prev ? prev.places[n.key] : undefined, last.places[n.key])
+        + '</div>';
+    }).join('');
+
+    document.getElementById('pr-table').innerHTML = head + rows;
+    // Every figure on this table is BreakTudo's, so each partial links to the
+    // post it was read from rather than to the site in general.
+    document.getElementById('pr-sources').innerHTML = PARTIALS.map(function (p) {
+      return p.url
+        ? '<a class="pr-src" href="' + p.url + '" target="_blank" rel="noopener noreferrer">' + esc(p.label) + ' partial, as BreakTudo published it ↗</a>'
+        : '';
+    }).join('');
+
+    document.getElementById('pr-legend').innerHTML = PARTIALS.length > 1
+      ? '▲ climbed · ▼ slipped · = held · “Not top 5” means BreakTudo did not list the nominee in that partial.'
+      : 'Only the <b>1st partial</b> has been published so far. The moment the next one lands, every row gains a column and a movement arrow.';
+  })();
+
+  // ── Countdown ─────────────────────────────────────────────────────────────
+  function unit(v, t) { return '<div class="cd-unit"><div class="cd-num">' + String(v).padStart(2, '0') + '</div><div class="cd-tag">' + t + '</div></div>'; }
+
+  function tick() {
+    var cd = document.getElementById('countdown');
+    var reset = document.getElementById('cd-reset');
+    var diff = DEADLINE - Date.now();
+    if (diff <= 0) {
+      document.getElementById('cd-label').textContent = 'Fan voting';
+      cd.innerHTML = '<span class="cd-closed">Closed</span>';
+      reset.innerHTML = 'Winners revealed <b>Nov 24, 2026</b>';
+      var row = document.getElementById('cta-row');
+      if (row) row.style.display = 'none';
+      var note = document.getElementById('cta-note');
+      if (note) note.textContent = 'The ballot is closed — nothing more can be cast';
+      return;
+    }
+    var d = Math.floor(diff / 86400000);
+    cd.innerHTML = unit(d, 'Days')
+      + unit(Math.floor(diff % 86400000 / 3600000), 'Hrs')
+      + unit(Math.floor(diff % 3600000 / 60000), 'Min')
+      + unit(Math.floor(diff % 60000 / 1000), 'Sec');
+    reset.innerHTML = 'Closes <b>Oct 17, 23:53</b> Brasília · winners <b>Nov 24</b>';
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // ── What the community has logged ─────────────────────────────────────────
+  // Same endpoint the /voting board uses, asked for the BreakTudo tally.
+  fetch('/api/vma-votes?award=breaktudo', { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (t) {
+      if (!t || !(Number(t.total) > 0)) return;
+      document.getElementById('vb-num').textContent = Number(t.total).toLocaleString('en-US');
+      var b = Number(t.blinksTotal) || 0;
+      if (b) document.getElementById('vb-blinks').textContent = 'by ' + b.toLocaleString('en-US') + ' blink' + (b === 1 ? '' : 's');
+    })
+    .catch(function () {});
+</script>
+</body>
+</html>
