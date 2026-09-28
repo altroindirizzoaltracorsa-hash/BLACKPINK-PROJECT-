@@ -346,7 +346,10 @@
 
     document.getElementById('pr-legend').innerHTML = PARTIALS.length > 1
       ? '▲ climbed · ▼ slipped · = held · “Not top 5” means BreakTudo did not list the nominee in that partial.'
-      : 'Only the <b>1st partial</b> has been published so far. The moment the next one lands, every row gains a column and a movement arrow.';
+      // Not "only the 1st has been published" — that stops being true the moment
+      // BreakTudo posts the next one, and it did. This says what the table is
+      // showing, which stays true either way.
+      : 'Showing the <b>1st partial</b>. Every row gains a column and a ▲/▼ against it as soon as the next set of placements is added.';
   })();
 
   // ── Countdown ─────────────────────────────────────────────────────────────
