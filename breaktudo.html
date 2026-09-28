@@ -162,6 +162,14 @@
   /* The pulse is an attention cue, not information — the colour, the rule and
      the "votes needed" line all still read without it. */
   @media (prefers-reduced-motion: reduce) { .pr-row.alert .pr-pos.out { animation: none; } }
+  .pr-share { display: block; width: 100%; margin-top: 1.1rem; font-family: var(--mono); font-size: 0.66rem;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--pink);
+    border: 1px solid rgba(255,0,102,0.45); border-radius: 12px; padding: 0.95rem 1rem; cursor: pointer;
+    background: radial-gradient(120% 140% at 50% 0%, rgba(255,0,102,0.16), rgba(255,0,102,0.04) 60%, transparent);
+    transition: background .15s, border-color .15s; }
+  .pr-share:hover { border-color: var(--pink);
+    background: radial-gradient(120% 140% at 50% 0%, rgba(255,0,102,0.26), rgba(255,0,102,0.08) 60%, transparent); }
+  .pr-share[disabled] { opacity: 0.6; cursor: default; }
   .pr-legend { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.06em; color: var(--muted); margin-top: 0.9rem; line-height: 1.7; }
   .pr-src { display: block; width: fit-content; margin-top: 0.8rem; font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pink); text-decoration: none; border-bottom: 1px solid rgba(255,0,102,0.4); }
 
@@ -227,6 +235,7 @@
     <!-- Below the table, not above it: this explains what you have just read,
          and above it was the last thing between the reader and the standings. -->
     <div class="pr-note">BreakTudo publishes a <b>top 5 per category</b> while voting runs. Each partial counts <b>every vote since voting opened on 17 September</b> — they are running totals, not separate rounds, so holding a place across a longer window means the lead held as more votes came in.</div>
+    <button class="pr-share" id="pr-share" type="button" onclick="shareStandings(this)">↑ Share these standings</button>
     <div class="pr-legend" id="pr-legend"></div>
     <div id="pr-sources"></div>
   </div>
@@ -423,6 +432,215 @@
       // showing, which stays true either way.
       : 'Showing the <b>1st partial</b>. Every row gains a column and a ▲/▼ against it as soon as the next set of placements is added.';
   })();
+
+  // ── The standings, as a shareable card ────────────────────────────────────
+  // Drawn from the same NOMS/PARTIALS the table is drawn from, so a card that
+  // gets screenshotted into a group chat cannot show different numbers from the
+  // page it came from. Portrait 1080x1350 — the shape stories and posts want.
+  function fitText(ctx, text, maxW, startSize, family, weight) {
+    var size = startSize;
+    for (;;) {
+      ctx.font = (weight ? weight + ' ' : '') + size + 'px "' + family + '", sans-serif';
+      if (ctx.measureText(text).width <= maxW || size <= 11) return size;
+      size -= 1;
+    }
+  }
+
+  function drawStandingsCard(canvas) {
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height, pad = 62;
+    var last = PARTIALS[PARTIALS.length - 1];
+    var prev = PARTIALS.length > 1 ? PARTIALS[PARTIALS.length - 2] : null;
+
+    ctx.fillStyle = '#080808';
+    ctx.fillRect(0, 0, W, H);
+    var glow = ctx.createRadialGradient(W / 2, 0, 0, W / 2, 0, W * 1.1);
+    glow.addColorStop(0, 'rgba(255,0,102,0.22)');
+    glow.addColorStop(1, 'rgba(255,0,102,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#FF0066';
+    ctx.fillRect(0, 0, W, 5);
+    ctx.fillRect(0, H - 5, W, 5);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(245,240,240,0.55)';
+    ctx.letterSpacing = '7px';
+    ctx.font = '500 21px "DM Mono", monospace';
+    ctx.fillText('2026 BREAKTUDO AWARDS', W / 2, 92);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.letterSpacing = '5px';
+    ctx.font = '78px "Bebas Neue", sans-serif';
+    ctx.fillText('WHERE WE STAND', W / 2, 176);
+
+    // the same count the page badge shows, recomputed here from the same data
+    var cats = {};
+    NOMS.forEach(function (n) {
+      if (!(n.cat in cats)) cats[n.cat] = false;
+      if (last.places[n.key] !== null && last.places[n.key] !== undefined) cats[n.cat] = true;
+    });
+    var names = Object.keys(cats);
+    var ranking = names.filter(function (c) { return cats[c]; }).length;
+    var warn = ranking < names.length;
+    var badge = (warn ? '\u26A0 RANKING IN ' : '\u2713 RANKING IN ALL ') + (warn ? ranking + '/' + names.length : String(names.length));
+    ctx.letterSpacing = '4px';
+    ctx.font = '500 22px "DM Mono", monospace';
+    var bw = ctx.measureText(badge).width + 44;
+    ctx.fillStyle = warn ? 'rgba(255,92,122,0.16)' : 'rgba(255,255,255,0.06)';
+    ctx.beginPath();
+    ctx.roundRect((W - bw) / 2, 206, bw, 46, 23);
+    ctx.fill();
+    ctx.strokeStyle = warn ? 'rgba(255,92,122,0.6)' : 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = warn ? '#ff5c7a' : 'rgba(245,240,240,0.8)';
+    ctx.fillText(badge, W / 2, 238);
+
+    // column headers
+    var xP1 = W - pad - 250, xP2 = W - pad - 140, xMv = W - pad - 24;
+    ctx.textAlign = 'center';
+    ctx.letterSpacing = '2px';
+    ctx.font = '500 18px "DM Mono", monospace';
+    ctx.fillStyle = 'rgba(245,240,240,0.5)';
+    PARTIALS.forEach(function (p, i) {
+      var x = i === 0 ? xP1 : xP2;
+      ctx.fillText(p.label.toUpperCase(), x, 300);
+      if (p.to) {
+        ctx.font = '300 15px "DM Mono", monospace';
+        ctx.fillStyle = 'rgba(245,240,240,0.35)';
+        ctx.fillText('to ' + p.to, x, 320);
+        ctx.font = '500 18px "DM Mono", monospace';
+        ctx.fillStyle = 'rgba(245,240,240,0.5)';
+      }
+    });
+    if (prev) ctx.fillText('MOVE', xMv, 300);
+
+    // rows, in the page's order: anything outside the top 5 first
+    var ordered = NOMS.slice().sort(function (x, y) {
+      return (last.places[x.key] === null ? 0 : 1) - (last.places[y.key] === null ? 0 : 1);
+    });
+
+    // 9 rows must clear the footer rule at H-132: 336 + 9*94 = 1182 against
+    // 1218. At 104 the last row ran straight through it.
+    var y = 336, rowH = 94;
+    ordered.forEach(function (n) {
+      var out = last.places[n.key] === null;
+      if (out) {
+        var g = ctx.createLinearGradient(pad - 18, 0, W - pad, 0);
+        g.addColorStop(0, 'rgba(255,92,122,0.20)');
+        g.addColorStop(1, 'rgba(255,92,122,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(pad - 18, y - 4, W - pad * 2 + 36, rowH - 12);
+        ctx.fillStyle = '#ff5c7a';
+        ctx.fillRect(pad - 18, y - 4, 5, rowH - 12);
+      } else {
+        ctx.fillStyle = 'rgba(255,255,255,0.10)';
+        ctx.fillRect(pad, y + rowH - 16, W - pad * 2, 1);
+      }
+
+      ctx.textAlign = 'left';
+      ctx.letterSpacing = '2px';
+      ctx.fillStyle = out ? '#ffd3dc' : '#F5F0F0';
+      var cat = n.cat.replace(/^International /, 'Int. ').toUpperCase();
+      fitText(ctx, cat, W - pad * 2 - 300, 25, 'DM Mono', '500');
+      ctx.fillText(cat, pad, y + 30);
+
+      ctx.letterSpacing = '0px';
+      ctx.fillStyle = 'rgba(245,240,240,0.5)';
+      fitText(ctx, n.who, W - pad * 2 - 300, 21, 'DM Mono', '300');
+      ctx.fillText(n.who, pad, y + 58);
+
+      if (out) {
+        ctx.fillStyle = '#ff5c7a';
+        ctx.letterSpacing = '2px';
+        ctx.font = '500 16px "DM Mono", monospace';
+        ctx.fillText('\u26A0 NOT RANKING \u2014 VOTES NEEDED HERE', pad, y + 84);
+      }
+
+      ctx.textAlign = 'center';
+      PARTIALS.forEach(function (p, i) {
+        var x = i === 0 ? xP1 : xP2;
+        var v = p.places[n.key];
+        if (v === null || v === undefined) {
+          ctx.letterSpacing = '1px';
+          ctx.font = '500 15px "DM Mono", monospace';
+          ctx.fillStyle = out ? '#ff5c7a' : 'rgba(245,240,240,0.4)';
+          ctx.fillText('NOT TOP 5', x, y + 44);
+        } else {
+          ctx.letterSpacing = '0px';
+          ctx.font = '52px "Bebas Neue", sans-serif';
+          ctx.fillStyle = v === 1 ? '#f0c200' : '#F5F0F0';
+          ctx.fillText(String(v), x, y + 52);
+        }
+      });
+
+      if (prev) {
+        var a = prev.places[n.key], b = last.places[n.key], mv = '=', col = 'rgba(245,240,240,0.4)';
+        if (a === null && b === null) { mv = '\u2014'; }
+        else if (a === null) { mv = '\u25B2 IN'; col = '#4ade80'; }
+        else if (b === null) { mv = '\u25BC OUT'; col = '#ff5c7a'; }
+        else if (b < a) { mv = '\u25B2 ' + (a - b); col = '#4ade80'; }
+        else if (b > a) { mv = '\u25BC ' + (b - a); col = '#ff5c7a'; }
+        ctx.letterSpacing = '1px';
+        ctx.font = '500 19px "DM Mono", monospace';
+        ctx.fillStyle = col;
+        ctx.fillText(mv, xMv, y + 46);
+      }
+
+      y += rowH;
+    });
+
+    // footer
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,0,102,0.25)';
+    ctx.fillRect(pad, H - 132, W - pad * 2, 1);
+    ctx.fillStyle = '#FF0066';
+    ctx.letterSpacing = '4px';
+    ctx.font = '500 23px "DM Mono", monospace';
+    ctx.fillText('VOTE \u00B7 VOTE.BREAKTUDOAWARDS.COM', W / 2, H - 88);
+    ctx.fillStyle = 'rgba(245,240,240,0.45)';
+    ctx.letterSpacing = '3px';
+    ctx.font = '500 19px "DM Mono", monospace';
+    ctx.fillText('CLOSES OCT 17 \u00B7 BLINKSUNITED.COM/BREAKTUDO', W / 2, H - 50);
+    ctx.letterSpacing = '0px';
+  }
+
+  async function shareStandings(btn) {
+    var label = btn && btn.textContent;
+    if (btn) { btn.disabled = true; btn.textContent = 'Making card…'; }
+    try {
+      var canvas = document.createElement('canvas');
+      canvas.width = 1080; canvas.height = 1350;
+      try { await document.fonts.ready; } catch (_) {}
+      drawStandingsCard(canvas);
+      var blob = await new Promise(function (res) { canvas.toBlob(res, 'image/png'); });
+      if (!blob) throw new Error('toBlob returned nothing');
+      var file = new File([blob], 'blinksunited-breaktudo-standings.png', { type: 'image/png' });
+      var text = 'Where BLACKPINK, JENNIE, LISA, JISOO and BLINKs stand at the 2026 BreakTudo Awards — vote at vote.breaktudoawards.com';
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], text: text }); return; }
+        catch (err) {
+          // A cancelled share sheet is not a failure, and must not then drop a
+          // file into their downloads for a share they backed out of.
+          if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) return;
+        }
+      }
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = file.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+      if (btn) btn.textContent = 'Saved ✓';
+      return;
+    } catch (err) {
+      if (btn) btn.textContent = 'Couldn\u2019t make it';
+      try { console.log('[BU standings] share failed:', err); } catch (_) {}
+    } finally {
+      if (btn) setTimeout(function () { btn.disabled = false; btn.textContent = label; }, 1800);
+    }
+  }
 
   // ── Countdown ─────────────────────────────────────────────────────────────
   function unit(v, t) { return '<div class="cd-unit"><div class="cd-num">' + String(v).padStart(2, '0') + '</div><div class="cd-tag">' + t + '</div></div>'; }
