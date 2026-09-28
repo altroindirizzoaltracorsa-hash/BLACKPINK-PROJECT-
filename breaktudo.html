@@ -364,7 +364,18 @@
     var head = '<div class="pr-head" style="grid-template-columns:minmax(0,1fr) repeat(' + PARTIALS.length + ', auto) auto;">'
       + '<span>Category</span>' + cols + '<span>' + (PARTIALS.length > 1 ? 'Move' : '') + '</span></div>';
 
-    var rows = NOMS.map(function (n) {
+    // Anything outside the top 5 floats to the top: the row that needs votes is
+    // the reason to look at this table, and it was the last one on it. Same
+    // rule that drives the highlight, so the two can never disagree — and the
+    // order rights itself the moment the row is back in. Sort is stable, so
+    // everything else keeps its declared order.
+    var ordered = NOMS.slice().sort(function (x, y) {
+      var xo = last.places[x.key] === null ? 0 : 1;
+      var yo = last.places[y.key] === null ? 0 : 1;
+      return xo - yo;
+    });
+
+    var rows = ordered.map(function (n) {
       var cells = PARTIALS.map(function (p) { return posCell(p.places[n.key]); }).join('');
       // Out of the top 5 in the LATEST partial. Marked as a rule rather than by
       // hand, so whichever nominee is outside it is the one that lights up.
@@ -406,7 +417,7 @@
     }).join('');
 
     document.getElementById('pr-legend').innerHTML = PARTIALS.length > 1
-      ? '▲ climbed · ▼ slipped · = held · “Not top 5” means BreakTudo did not list the nominee in that partial — <b style="color:#ff5c7a">the highlighted row is the one still outside it</b>.'
+      ? '▲ climbed · ▼ slipped · = held · “Not top 5” means BreakTudo did not list the nominee in that partial — <b style="color:#ff5c7a">any category we are outside is pinned to the top</b>.'
       // Not "only the 1st has been published" — that stops being true the moment
       // BreakTudo posts the next one, and it did. This says what the table is
       // showing, which stays true either way.
