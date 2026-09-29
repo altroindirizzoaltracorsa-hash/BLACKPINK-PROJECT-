@@ -3,7 +3,7 @@
     "api/proxy-image.js": { "maxDuration": 30 }
   },
   "redirects": [
-    { "source": "/", "destination": "/vmas", "permanent": false }
+    { "source": "/", "destination": "/breaktudo", "permanent": false }
   ],
   "rewrites": [
     { "source": "/countdowns", "destination": "/index.html" },
