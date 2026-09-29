@@ -47,10 +47,23 @@ const etDay = (d = new Date()) => new Intl.DateTimeFormat('en-CA', {
 const VMA_CLOSES_AT = Date.parse('2026-09-26T04:00:00Z');
 const vmaClosed = () => Date.now() >= VMA_CLOSES_AT;
 
-// BreakTudo Awards is Brazil-based; its "today" bucket uses Brasília (UTC-3, no
-// DST). Kept fully separate from the VMA (ET) path.
-const brDay = (d = new Date()) => new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+// BreakTudo has no vote cap and no daily reset, so nothing on the award's side
+// marks the end of a day. Its "today" bucket therefore rolls at MIDNIGHT KST —
+// the clock this fandom counts days on — rather than at Brasília, which was the
+// original choice and bought no alignment with anything. Display only: `votes`,
+// all-time totals and the board's ranking are sums over every day and so do not
+// depend on where the boundary falls.
+//
+// Must stay in lockstep with breaktudo_vote_totals() / breaktudo_vote_board() in
+// Postgres (supabase/migrations/breaktudo_day_boundary_kst.sql) and with kstDay()
+// in vote-extension/background.js. If these drift, the community bar and the
+// ranked table disagree for the twelve hours a day the two clocks differ, and
+// each number still looks plausible on its own.
+//
+// Asia/Seoul is a fixed UTC+9 with no DST, unlike the ET boundary on the VMA path.
+// Kept fully separate from that path.
+const kstDay = (d = new Date()) => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
 }).format(d);
 
 function bearer(req) {
@@ -89,11 +102,11 @@ async function myTotals(sb, uid) {
   return { today, week, month, total, bp, lisa };
 }
 
-// BreakTudo sibling of myTotals — single vote tally, Brasília day boundaries.
+// BreakTudo sibling of myTotals — single vote tally, midnight-KST day boundaries.
 async function myBtTotals(sb, uid) {
   const { data } = await sb.from('breaktudo_user_votes').select('day, votes, cats').eq('app_user_id', uid);
   const rows = data || [];
-  const t = brDay();
+  const t = kstDay();
   const [y, m, dd] = t.split('-').map(Number);
   const base = new Date(Date.UTC(y, m - 1, dd));
   const dow = (base.getUTCDay() + 6) % 7;           // 0 = Monday
@@ -153,7 +166,7 @@ export default async function handler(req, res) {
     // ── BreakTudo Awards — fully isolated award dimension ────────────────────
     // Everything below reads/writes breaktudo_user_votes + its own RPCs; the VMA
     // path (default) is untouched. Selected with ?award=breaktudo (GET) or
-    // {award:'breaktudo'} (POST). Single vote tally, Brasília day boundary.
+    // {award:'breaktudo'} (POST). Single vote tally, midnight-KST day boundary.
     const award = String((req.method === 'POST' ? (req.body || {}).award : req.query.award) || '').toLowerCase();
     if (award === 'breaktudo') {
       if (req.method === 'GET') {
@@ -167,7 +180,7 @@ export default async function handler(req, res) {
           if (!extToken) return res.status(401).json({ error: 'link required' });
           const { data: tok } = await sb.from('scrobble_tokens').select('app_user_id').eq('token', extToken).maybeSingle();
           if (!tok) return res.status(401).json({ error: 'link required' });
-          const { data: v } = await sb.from('breaktudo_user_votes').select('votes').eq('app_user_id', tok.app_user_id).eq('day', brDay()).maybeSingle();
+          const { data: v } = await sb.from('breaktudo_user_votes').select('votes').eq('app_user_id', tok.app_user_id).eq('day', kstDay()).maybeSingle();
           return res.status(200).json({ total: v?.votes || 0, accounts: [] });
         }
         if (req.query.live) {
@@ -239,7 +252,7 @@ export default async function handler(req, res) {
           uid = user.id;
           name = (user.user_metadata && user.user_metadata.display_name) || null;
         }
-        const day = brDay();
+        const day = kstDay();
         const { data: existing } = await sb.from('breaktudo_user_votes').select('votes, cats').eq('app_user_id', uid).eq('day', day).maybeSingle();
         const next = (existing?.votes || 0) + votes;
         // Merge rather than replace: a fan votes several categories across a day,
