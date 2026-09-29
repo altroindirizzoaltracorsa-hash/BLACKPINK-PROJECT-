@@ -64,7 +64,7 @@ on:
         required: false
         default: ''
 
-# Ten slots a day, each ~12 minutes, and GitHub's scheduler can bunch them when
+# Fourteen slots a day, each ~12 minutes, and GitHub's scheduler can bunch them
 # it runs late. Two catalog fetches at once would both read the same "last
 # recorded day" and could write the same day twice, so serialize the whole
 # workflow. cancel-in-progress is false because a run that is already writing
@@ -75,7 +75,7 @@ concurrency:
 
 jobs:
   # The ONLY job here that can spend RapidAPI scraper keys, so it is pinned to the
-  # three original nightly slots and skipped on the other seven.
+  # three original nightly slots and skipped on the other eleven.
   #
   #   - fetch-tracks.mjs calls /api/streams?force=1, which bypasses the canary gate
   #     and fetches all four campaign tracks: 4 requests, every time.
@@ -137,12 +137,12 @@ jobs:
       - name: Run test fetch
         run: python .github/scripts/test-spotifyscraper.py
 
-  # Runs on EVERY scheduled slot (all ten) and on manual dispatch unless
+  # Runs on EVERY scheduled slot (all fourteen) and on manual dispatch unless
   # run_artist_fetch=false. Previously manual-only, which silently froze
   # per-member/per-artist streams (and the 2026 streams-gained board) between
   # hand-triggered /update-streams runs.
   #
-  # This is the job the ten slots exist for: it uses spotifyscraper + Supabase,
+  # This is the job the fourteen slots exist for: it uses spotifyscraper + Supabase,
   # costs no RapidAPI quota, and holds (prints "NOT UPDATED YET") when the total
   # is unchanged — so firing it every ~80 minutes across the publish window is
   # free and lands each day close to when Spotify actually publishes it.
