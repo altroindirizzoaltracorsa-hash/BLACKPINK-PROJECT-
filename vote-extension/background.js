@@ -278,10 +278,18 @@ async function processVote(detail) {
 // from VMA: its own storage keys and its own award dimension on the board.
 const BT_VOTE_RE = /\/wp-json\/bta\/v1\/awards\/vote\/?$/i;
 
-// Brasília day (America/Sao_Paulo, UTC-3, no DST) — matches the server boundary.
-function brDay() {
+// Midnight-KST day (Asia/Seoul, fixed UTC+9, no DST) — matches the server
+// boundary in /api/vma-votes (kstDay) and in breaktudo_vote_totals/_board.
+// BreakTudo has no daily reset of its own, so this is purely the bucket our own
+// board counts days in; it must track the server or the popup's "today" tally
+// and the board's today column roll at different hours.
+//
+// NOTE: builds shipped as v1.7.7 and earlier use Brasília here. Existing installs
+// therefore keep the old local rollover until the next release — the board itself
+// is unaffected, because the server stamps the authoritative `day` on every POST.
+function kstDay() {
   return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+    timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(new Date());
 }
 
@@ -591,7 +599,7 @@ async function processBtVote(e) {
   // but genuinely different marks always count.
   const seen = await loadBtSeen();
   const sig = votes.map((v) => (v && v.id) + ':' + (v && v.pos)).join(',');
-  const key = (e.valid ? 't:' + String(e.valid).slice(0, 48) : brDay() + '|' + (e.slug || '?')) + '|' + sig;
+  const key = (e.valid ? 't:' + String(e.valid).slice(0, 48) : kstDay() + '|' + (e.slug || '?')) + '|' + sig;
   if (seen.indexOf(key) !== -1) return;
   seen.push(key);
   if (seen.length > SEEN_MAX) seen.splice(0, seen.length - SEEN_MAX);
@@ -662,7 +670,7 @@ async function processBtVote(e) {
 
   const catLabel = (catInfo && catInfo.label) || 'BreakTudo';
   postBtVotes(n, e.slug).then((res) => {
-    const today = brDay();
+    const today = kstDay();
     chrome.storage.local.get(['btCount', 'btLog', 'btPendingN', 'btDay', 'btCats'], (raw) => {
       const r = (raw.btDay === today)
         ? raw

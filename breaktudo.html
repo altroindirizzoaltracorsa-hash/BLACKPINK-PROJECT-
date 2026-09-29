@@ -199,6 +199,24 @@
     color: #12000a; background: var(--pink); border: none; padding: 0.7rem 1rem; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-block; transition: filter .15s; }
   .vb-btn:hover { filter: brightness(1.07); }
 
+  /* ── The board, behind a toggle ──
+     Same control as /vmas, so the two pages open their board the same way. It is
+     a big rounded button rather than a link because it is the widest thing on the
+     page and needs to read as a panel that opens, not as a navigation item. */
+  .board-toggle { width: 100%; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0.3rem 0.9rem; text-align: center;
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pink);
+    border: 1px solid rgba(255,0,102,0.35); border-radius: 12px; padding: 1.15rem 1.1rem; cursor: pointer;
+    background: radial-gradient(120% 140% at 50% 0%, rgba(255,0,102,0.16), rgba(255,0,102,0.04) 60%, transparent);
+    transition: background .15s, border-color .15s; }
+  .board-toggle:hover { border-color: var(--pink);
+    background: radial-gradient(120% 140% at 50% 0%, rgba(255,0,102,0.26), rgba(255,0,102,0.08) 60%, transparent); }
+  .board-toggle-c { color: var(--muted); white-space: nowrap; font-size: 0.66rem; }
+  .board-panel { margin-top: 1.1rem; }
+  .board-note { font-size: 0.8rem; line-height: 1.6; color: var(--muted); margin-bottom: 1.1rem; }
+  .board-frame { position: relative; min-height: 160px; }
+  .board-embed { width: 100%; border: 0; display: block; height: 900px; background: transparent; }
+  .board-loading { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 2rem 0; text-align: center; }
+
   footer { text-align: center; padding: 3rem 1.2rem 2rem; }
   .foot-link { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pink); text-decoration: none; }
   .foot-fine { font-size: 0.68rem; color: var(--muted); margin-top: 0.8rem; line-height: 1.6; }
@@ -246,6 +264,31 @@
     <p class="hero-sub noms-intro">BLACKPINK, JENNIE, LISA, JISOO and BLINKs are up for <b>8 awards</b>. No account, no app, no daily limit — you can vote as many times as you like until the ballot closes.</p>
     <div class="section-head" id="noms-head">Nominations</div>
     <div class="noms" id="noms"></div>
+  </div>
+</section>
+
+<!-- The board itself, not a copy of it. /vma-board-embed is index.html in
+     board-only mode, so this is the same code that renders on /voting — the
+     community total, the ranked table, the vote-only blinks below it and the
+     counter block — pinned to the BreakTudo award by ?award=breaktudo rather than
+     to whatever the panel would default to. It reports its height back so the
+     frame grows to fit instead of scrolling inside itself. -->
+<section class="section" id="board-sec">
+  <div class="wrap">
+    <!-- Closed by default: what the page is for is the ballot and the standings,
+         and the board is for whoever wants it rather than another screen before
+         the rules. data-src, not src, so nothing is fetched until it is opened. -->
+    <button class="board-toggle" id="board-toggle" type="button" aria-expanded="false" aria-controls="board-panel" onclick="toggleBoard(this)">
+      <span class="board-toggle-t">🗳️ The board &amp; how we count</span>
+      <span class="board-toggle-c">Show ▾</span>
+    </button>
+    <div class="board-panel" id="board-panel" hidden>
+      <div class="board-note">Every BreakTudo vote blinks have logged with us. Blinks who stream too are ranked; those who only voted are listed below them, and their votes count exactly the same. BreakTudo sets no daily limit, so these are running totals for the whole campaign — the <b>Today</b> column is our own bucket and rolls at <b>midnight KST</b>.</div>
+      <div class="board-frame">
+        <div class="board-loading" id="board-loading">Loading the board…</div>
+        <iframe id="board-embed" class="board-embed" title="BreakTudo voting leaderboard" scrolling="no" data-src="/vma-board-embed?embed=vmaboard&amp;award=breaktudo"></iframe>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -680,6 +723,34 @@
       if (b) document.getElementById('vb-blinks').textContent = 'by ' + b.toLocaleString('en-US') + ' blink' + (b === 1 ? '' : 's');
     })
     .catch(function () {});
+
+  // ── The board toggle ──────────────────────────────────────────────────────
+  // Load the frame the first time it is opened, not on page load: most people
+  // come here for the ballot and the standings, and they should not pay for a
+  // board they never ask to see.
+  function toggleBoard(btn) {
+    var panel = document.getElementById('board-panel');
+    if (!panel) return;
+    var opening = panel.hasAttribute('hidden');
+    if (opening) panel.removeAttribute('hidden'); else panel.setAttribute('hidden', '');
+    btn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+    btn.querySelector('.board-toggle-c').textContent = opening ? 'Hide ▴' : 'Show ▾';
+    if (opening) {
+      var f = document.getElementById('board-embed');
+      if (f && f.getAttribute('data-src')) { f.src = f.getAttribute('data-src'); f.removeAttribute('data-src'); }
+    }
+  }
+
+  // The embedded board reports its own height. Without this the frame is a fixed
+  // box and the bottom of the board is simply unreachable.
+  window.addEventListener('message', function (e) {
+    if (!e.data || e.data.type !== 'vv-embed-height') return;
+    var f = document.getElementById('board-embed');
+    if (!f) return;
+    f.style.height = Math.max(240, e.data.height || 0) + 6 + 'px';
+    var l = document.getElementById('board-loading');
+    if (l) l.remove();
+  });
 </script>
 </body>
 </html>

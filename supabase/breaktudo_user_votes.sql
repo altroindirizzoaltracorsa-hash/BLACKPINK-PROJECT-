@@ -9,8 +9,14 @@
 -- may submit; enforced in /api/vma-votes (award='breaktudo'). Votes are
 -- self-reported and uncapped (BreakTudo has no per-person cap).
 --
--- Day boundary is BRASÍLIA (America/Sao_Paulo, UTC-3, no DST) — the award's own
--- timezone — used only for the "today" bucket; BreakTudo has no daily reset.
+-- Day boundary is MIDNIGHT KST (Asia/Seoul, fixed UTC+9, no DST), used only for
+-- the today/week/month buckets. BreakTudo has no vote cap and no daily reset, so
+-- nothing on the award's side marks the end of a day and there is no boundary to
+-- inherit; KST is the clock this fandom counts days on. (This was originally
+-- Brasília, reasoning from the award's country — see
+-- migrations/breaktudo_day_boundary_kst.sql for why that was dropped.)
+-- Display only: `votes` and the all-time totals the board ranks by are sums over
+-- every day and do not depend on it.
 --
 -- Single `votes` tally for now. If we later confirm (from the vote request) that
 -- BreakTudo exposes per-category detail, add category columns alongside `votes`
@@ -20,7 +26,7 @@
 
 create table if not exists breaktudo_user_votes (
   app_user_id  uuid        not null references auth.users(id) on delete cascade,
-  day          date        not null default (now() at time zone 'America/Sao_Paulo')::date,
+  day          date        not null default (now() at time zone 'Asia/Seoul')::date,
   votes        int         not null default 0 check (votes >= 0),  -- authoritative TOTAL (ranking)
   display_name text,
   updated_at   timestamptz not null default now(),
@@ -30,7 +36,7 @@ create table if not exists breaktudo_user_votes (
 create index if not exists breaktudo_user_votes_day_idx on breaktudo_user_votes (day);
 
 -- Community rally total (sum of everyone's submitted votes) for the counter bar.
--- Day boundaries are Brasília (America/Sao_Paulo) to match the award.
+-- Day boundaries are midnight KST (Asia/Seoul).
 create or replace function breaktudo_vote_totals()
 returns json
 language sql
@@ -38,21 +44,21 @@ stable
 as $$
   select json_build_object(
     'total',       coalesce(sum(votes), 0),
-    'today',       coalesce(sum(votes) filter (where day = (now() at time zone 'America/Sao_Paulo')::date), 0),
+    'today',       coalesce(sum(votes) filter (where day = (now() at time zone 'Asia/Seoul')::date), 0),
     'blinksTotal', count(distinct app_user_id),
-    'blinksToday', count(distinct app_user_id) filter (where day = (now() at time zone 'America/Sao_Paulo')::date)
+    'blinksToday', count(distinct app_user_id) filter (where day = (now() at time zone 'Asia/Seoul')::date)
   )
   from breaktudo_user_votes;
 $$;
 
 -- Ranked voting board — one entry per account, votes summed for today / this
--- (Mon-start) week / this month / all-time (all Brasília). Mirrors vma_vote_board:
+-- (Mon-start) week / this month / all-time (all KST). Mirrors vma_vote_board:
 --   • Only accounts that have STREAMED at least once EVER (any tracked campaign
 --     column of user_daily_counts) are ranked. Non-streamers still count in the
 --     community total (breaktudo_vote_totals) and earn the vote-only Voter badge,
 --     they just don't appear on the ranked board.
 --   • Nameless accounts show as blink1, blink2, … numbered by first vote (stable).
--- `streams` = that account's campaign streams for the current day (Brasília-aligned).
+-- `streams` = that account's campaign streams for the current day (KST-aligned).
 create or replace function breaktudo_vote_board()
 returns json
 language sql
@@ -62,9 +68,9 @@ as $$
     select
       app_user_id,
       sum(votes)                                                                                          as total,
-      sum(votes) filter (where day = (now() at time zone 'America/Sao_Paulo')::date)                       as today,
-      sum(votes) filter (where day >= date_trunc('week',  now() at time zone 'America/Sao_Paulo')::date)   as week,
-      sum(votes) filter (where day >= date_trunc('month', now() at time zone 'America/Sao_Paulo')::date)   as month,
+      sum(votes) filter (where day = (now() at time zone 'Asia/Seoul')::date)                       as today,
+      sum(votes) filter (where day >= date_trunc('week',  now() at time zone 'Asia/Seoul')::date)   as week,
+      sum(votes) filter (where day >= date_trunc('month', now() at time zone 'Asia/Seoul')::date)   as month,
       min(day)                                                                                             as first_day
     from breaktudo_user_votes
     group by app_user_id
@@ -93,7 +99,7 @@ as $$
           +coalesce(sawadika,0)+coalesce(click,0)+coalesce(fallenangel,0)+coalesce(heaven,0)+coalesce(newtrick,0))  as all_streams,
       sum((coalesce(jump,0)+coalesce(shutdown,0)+coalesce(ddududu,0)+coalesce(ltal,0)+coalesce(go,0)
            +coalesce(sawadika,0)+coalesce(click,0)+coalesce(fallenangel,0)+coalesce(heaven,0)+coalesce(newtrick,0)))
-        filter (where day_key::date = (now() at time zone 'America/Sao_Paulo')::date)                    as today_streams
+        filter (where day_key::date = (now() at time zone 'Asia/Seoul')::date)                    as today_streams
     from user_daily_counts
     group by app_user_id
   ),

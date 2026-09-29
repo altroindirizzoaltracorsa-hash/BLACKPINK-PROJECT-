@@ -2443,6 +2443,10 @@
   .vv-forgot b { color: var(--pink); }
   .vv-table th i { font-style: normal; font-size: 0.46rem; opacity: 0.7; }
   .vv-tabs { display: flex; gap: 0.4rem; margin-bottom: 0.9rem; }
+  /* Says which clock Today/This week/This month are measured on. BreakTudo has no
+     reset of its own, so without this the periods are three unlabelled buckets. */
+  .vv-daynote { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.03em; line-height: 1.5; color: var(--muted); margin: -0.45rem 0 0.9rem; }
+  .vv-daynote b { color: rgba(245,240,240,0.92); }
   .vv-tab { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--border); padding: 0.42rem 0.75rem; cursor: pointer; }
   .vv-tab.active { color: var(--pink); border-color: var(--pink); background: rgba(255,0,102,0.08); }
   .vv-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.74rem; }
@@ -8841,7 +8845,7 @@ function drawBtVoting() {
   const btQualified = !!(_vvSession && _vvMe && _vvMe.linked !== false);
 
   panel.innerHTML = `<div class="vv-wrap">
-    ${vmaAwardSwitchHtml()}
+    ${_vvArchive ? '' : vmaAwardSwitchHtml()}
     <div class="vv-head">
       <div class="vv-title">🏆 BreakTudo Voting Leaderboard</div>
       <div class="vv-note">Register the BreakTudo Awards votes you cast for BLACKPINK &amp; members and race other blinks up the board. Voting closes Oct 17. <a href="/voting">how &amp; where to vote →</a></div>
@@ -8852,6 +8856,7 @@ function drawBtVoting() {
     ${btQualified ? vmaExtensionHtml() : ''}
     ${vvCommunityHtml({ award: 'breaktudo', label: 'Together, as a community', showToday: true })}
     <div class="vv-tabs">${toggle}</div>
+    <div class="vv-daynote">BreakTudo has <b>no daily reset</b> — votes are uncapped and add up for the whole campaign. So <b>Today</b> here is our own bucket, and it rolls at <b>midnight KST</b>. All-time totals, and the order of the board, don't depend on it.</div>
     ${table}
     ${unrankedHtml}
   </div>`;
@@ -20745,10 +20750,18 @@ window.addEventListener('appinstalled', () => {
   }
 
   function go(){
+    // Also set for the BreakTudo embed, where BreakTudo voting is still open:
+    // in the BT path this flag only drops the VMAs/BreakTudo switch, which a
+    // frame dedicated to one award should not carry. The BT form, the counter
+    // block and the live board are untouched by it.
     try { _vvArchive = true; } catch(e){}
-    // Pick the award BEFORE the page loads its data, so it fetches the VMA
-    // board once instead of loading BreakTudo and then switching.
-    try { _vvAward = 'vma'; } catch(e){}
+    // Pick the award BEFORE the page loads its data, so it fetches that one
+    // board once instead of loading the default and then switching. Read from
+    // ?award= rather than leaning on _vvAward's own default, which flips to
+    // BreakTudo once the VMAs close — /vmas must keep showing the VMA board
+    // after that, and /breaktudo must show BreakTudo regardless.
+    var want = new URLSearchParams(location.search).get('award');
+    try { _vvAward = want === 'breaktudo' ? 'breaktudo' : 'vma'; } catch(e){}
     try { showPage('vote'); } catch(e){}
     var tries = 0;
     var t = setInterval(function(){
