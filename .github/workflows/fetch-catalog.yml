@@ -8,14 +8,13 @@ on:
   #
   # Two things make ten slots cheap rather than reckless:
   #
-  # 1. Only three of them run the `fetch` job's campaign-track step, which is the
-  #    one that spends RapidAPI scraper keys (see the `if:` on that step — it
-  #    matches these three cron strings verbatim). The other seven run the
-  #    catalog total (Cloudflare Worker first, no RapidAPI in the normal case,
-  #    and it warms the bp_worker_* Redis cache that fetchTrackMetadata reads
-  #    BEFORE RapidAPI — so it lowers scraper spend rather than raising it) plus
+  # 1. Only three of them run the `fetch` job, which is where every RapidAPI
+  #    scraper request in this workflow comes from (see the `if:` on it — it
+  #    matches these three cron strings verbatim). The other seven run only
   #    fetch-artist-streams / fetch-group-streams, which use spotifyscraper and
-  #    Supabase and cost no quota at all.
+  #    Supabase and cost no quota at all. That is the whole point: this workflow
+  #    is what records the per-member/per-track artist streams, and THAT part is
+  #    free to run as often as we like.
   # 2. Both python jobs hold when the total is unchanged, so a slot that fires
   #    before Spotify publishes writes nothing.
   #
@@ -65,7 +64,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # The ONLY job here that can spend RapidAPI scraper keys, so it is pinned to the
+  # three original nightly slots and skipped on the other seven.
+  #
+  #   - fetch-tracks.mjs calls /api/streams?force=1, which bypasses the canary gate
+  #     and fetches all four campaign tracks: 4 requests, every time.
+  #   - fetch-catalog.mjs is Worker-first and would cost nothing IF the Cloudflare
+  #     Worker were configured — but SPOTIFY_WORKER_URL / SPOTIFY_WORKER_KEY are NOT
+  #     set in Vercel today, so it falls through and attempts one RapidAPI request
+  #     per provider (2) before landing on the kworb scrape. Verified in run
+  #     36520222919: "worker: ... not set; rapidapi: spotify-scraper: HTTP 429;
+  #     spotify-scraper-api: HTTP 403; ... source: kworb".
+  #
+  # So do NOT move this job onto the cheap slots on the theory that the catalog
+  # total is free. It becomes free — and starts SAVING quota, by side-caching the
+  # four tracks into bp_worker_* which fetchTrackMetadata reads before RapidAPI —
+  # only once the Worker env vars exist. Re-check that log line before changing it.
+  #
+  # The cron strings below must stay byte-identical to the three marked "full run"
+  # in the schedule above: github.event.schedule returns the literal text from this
+  # file, so renumbering one there silently turns that slot into a full one.
   fetch:
+    if: >-
+      github.event_name != 'schedule' ||
+      contains(fromJSON('["53 21 * * *","49 2 * * *","19 5 * * *"]'), github.event.schedule)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -74,40 +96,12 @@ jobs:
         with:
           node-version: '20'
 
-      # actionlint typechecks the gate below but cannot verify `github.event.schedule`
-      # itself (the event payload is untyped), so print it. If this ever shows an
-      # empty value on a scheduled run, the gate is failing CLOSED — the three
-      # forced sweeps stop and only Vercel's 21:00 ?cron=1 floor remains, which is
-      # survivable but wrong, and this line is how you'd notice.
-      - name: Which slot is this
-        run: |
-          echo "event=${{ github.event_name }}"
-          echo "schedule=${{ github.event.schedule }}"
-          echo "campaign-track step will run: ${{ github.event_name != 'schedule' || contains(fromJSON('["53 21 * * *","49 2 * * *","19 5 * * *"]'), github.event.schedule) }}"
-
-      # The ONLY step in this workflow that spends RapidAPI scraper keys: it calls
-      # /api/streams?force=1, which bypasses the canary gate and fetches all four
-      # campaign tracks. So it is pinned to the three original nightly slots rather
-      # than running on all ten. The other seven slots still refresh the catalog
-      # total below, which warms bp_worker_* and keeps the campaign cards moving
-      # for free; ?cron=1 from Vercel at 21:00 UTC remains the separate daily floor.
-      #
-      # The cron strings below must stay byte-identical to the three marked
-      # "full run" in the schedule above — github.event.schedule returns the
-      # literal text from this file, so a reformat there silently turns every
-      # slot into a full one.
       - name: Force-refresh campaign tracks (JUMP / Shut Down / DDU-DU DDU-DU) on Vercel
-        if: >-
-          github.event_name != 'schedule' ||
-          contains(fromJSON('["53 21 * * *","49 2 * * *","19 5 * * *"]'), github.event.schedule)
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           VERCEL_URL: ${{ inputs.base_url != '' && inputs.base_url || 'https://blinksunited.com' }}
         run: node .github/scripts/fetch-tracks.mjs
 
-      # Runs on all ten slots. Worker-first, so normally no RapidAPI call at all,
-      # and a Worker hit side-caches the four campaign tracks in Redis for 4h —
-      # which is what lets the seven cheap slots keep the cards fresh.
       - name: Force-refresh BLACKPINK catalog total on Vercel
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
@@ -159,6 +153,17 @@ jobs:
 
       - name: Install spotifyscraper
         run: pip install spotifyscraper
+
+      # actionlint typechecks the gate on the `fetch` job but cannot verify
+      # `github.event.schedule` against the untyped event payload, so print it here,
+      # in the job that runs on every slot. An empty value on a scheduled run means
+      # that gate is failing CLOSED — the three forced campaign-track sweeps stop and
+      # only Vercel's 21:00 ?cron=1 floor is left, which is survivable but wrong.
+      - name: Which slot is this
+        run: |
+          echo "event=${{ github.event_name }}"
+          echo "schedule=${{ github.event.schedule }}"
+          echo "fetch job (campaign tracks + catalog total) ran: ${{ github.event_name != 'schedule' || contains(fromJSON('["53 21 * * *","49 2 * * *","19 5 * * *"]'), github.event.schedule) }}"
 
       - name: Fetch and store artist streams
         env:
