@@ -1,22 +1,28 @@
 name: BLACKPINK Spotify Catalog
 
 on:
-  # Ten slots covering 18:11 → 05:19 UTC at ≤80-minute gaps, because Spotify's
-  # publish time wanders across that whole window (observed anywhere from ~19:00
-  # to ~01:30 UTC) and a fixed nightly slot kept catching a day hours late — or
-  # missing one entirely and merging two days into one entry.
+  # Fourteen slots at ≤80-minute gaps covering 13:23 → 05:19 UTC, which is the
+  # site's own watch window (3PM Rome → 7AM) rather than a guess. Spotify's daily
+  # publish lands "way after 3PM Rome" and wanders from there — observed anywhere
+  # from ~19:00 to ~01:30 UTC — so a fixed nightly slot kept catching a day hours
+  # after it landed, or missing one entirely and merging two days into one entry.
+  # The 05:19 → 13:23 gap is the documented quiet stretch (7AM–3PM Rome).
   #
-  # Two things make ten slots cheap rather than reckless:
+  # Do NOT read a slot that finds nothing as evidence of a late publish: at 06:00
+  # Rome the day genuinely isn't due yet. That inference has been wrong every time.
+  #
+  # Two things make fourteen slots cheap rather than reckless:
   #
   # 1. Only three of them run the `fetch` job, which is where every RapidAPI
   #    scraper request in this workflow comes from (see the `if:` on it — it
-  #    matches these three cron strings verbatim). The other seven run only
+  #    matches these three cron strings verbatim). The other eleven run only
   #    fetch-artist-streams / fetch-group-streams, which use spotifyscraper and
   #    Supabase and cost no quota at all. That is the whole point: this workflow
   #    is what records the per-member/per-track artist streams, and THAT part is
   #    free to run as often as we like.
   # 2. Both python jobs hold when the total is unchanged, so a slot that fires
-  #    before Spotify publishes writes nothing.
+  #    before Spotify publishes writes nothing. Verified in run 36520505572:
+  #    all five artists "100.0% unchanged … NOT UPDATED YET, skipping".
   #
   # The minutes are deliberately NOT :00. Scheduled workflows are queued
   # behind the top-of-the-hour crush, and on this repo that delay measured
@@ -25,6 +31,10 @@ on:
   # were landing mid-morning and not covering the publish window they were added
   # for. Keep every minute field off :00 and :30.
   schedule:
+    - cron: '23 13 * * *'
+    - cron: '41 14 * * *'
+    - cron: '57 15 * * *'
+    - cron: '9 17 * * *'
     - cron: '11 18 * * *'
     - cron: '27 19 * * *'
     - cron: '43 20 * * *'
