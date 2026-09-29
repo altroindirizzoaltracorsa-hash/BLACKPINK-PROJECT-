@@ -96,8 +96,31 @@ POSTs carry `{award:'breaktudo'}`; the VMA path is untouched.
 `manifest.json` is Manifest V3 for desktop Chrome. **Kiwi Browser doesn't reliably
 inject MV3 content scripts**, so there's also `manifest-mv2.json` (Manifest V2, Kiwi's
 native mode). All the JS is identical and works under both — only the manifest differs.
-To make the Kiwi build, package the folder with `manifest-mv2.json` copied in as
-`manifest.json` (and omit the MV3 one). Kiwi can install the resulting `.zip` directly.
+The Kiwi build ships `manifest-mv2.json` copied in as `manifest.json`, with the MV3
+one omitted; the Android browsers can install the resulting `.zip` directly.
+
+**Build both with `./.github/scripts/build-extension.sh`** rather than zipping by
+hand. It reads the version from the manifests (and refuses to build if the two
+disagree), writes `vote-extension-v<version>-{chrome,android}.zip` at the repo root,
+and then asserts what it produced: the right `manifest_version` in the right zip,
+exactly one manifest in each, the expected nine entries, and no README. Packing this
+by hand is how the wrong manifest ends up in the wrong zip.
+
+### "Manifest version 2 is deprecated" on Kiwi / Lemur / Quetta
+Expected, and **not a failure**. Chromium prints it — as a WARNING, orange triangle,
+not a red error — the moment any MV2 extension is loaded, before you touch it. The
+extension still installs and runs.
+
+MV2 here is a deliberate choice, not stale packaging: these Android forks are the
+only way to run an extension on mobile at all, and they don't reliably inject MV3
+content scripts, which is the whole mechanism the counter depends on. Desktop Chrome
+has dropped MV2, which is exactly why the desktop zip is MV3 and only the Android one
+is not. Shipping MV3 to Android to silence the warning would trade a cosmetic notice
+for a counter that quietly stops counting.
+
+If an Android fork ever stops loading MV2 outright — a real error, not this warning —
+the fix is to test whether that browser injects MV3 content scripts on
+`vote.breaktudoawards.com`, and switch the Android zip to MV3 only if it does.
 
 ## Install (unpacked, for testing)
 1. Desktop **Chrome → `chrome://extensions`**.
