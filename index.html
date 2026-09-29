@@ -9096,7 +9096,7 @@ const BT_CATEGORIES = [
   { slug: 'artista-asiatico',                 label: 'Asian Artist',         who: 'LISA'      },
   { slug: 'colaboracao-internacional-do-ano', label: 'Int. Collaboration',   who: 'JISOO'     },
   { slug: 'hit-internacional-do-ano',         label: 'Int. Hit of the Year', who: 'JENNIE'    },
-  { slug: 'videoclipe-internacional-do-ano',  label: 'Int. Music Video',     who: 'BLACKPINK' },
+  { slug: 'clipe-internacional-do-ano',       label: 'Int. Music Video',     who: 'BLACKPINK' },
   { slug: 'fandom-internacional-do-ano',      label: 'Int. Fandom',          who: 'BLINKs'    },
   { slug: 'serie-internacional',              label: 'Int. Series',          who: 'BLACKPINK' },
 ];
@@ -9110,12 +9110,40 @@ const BT_WHO = {
   JISOO:     { cls: 'vv-who-jisoo',  icon: '💙' },
   BLINKs:    { cls: 'vv-who-blinks', icon: '🫶' },
 };
-// Aliases kept out of the picker (they would read as duplicates) but resolved for
-// display, since the extension may have stored votes under either spelling.
-const BT_CAT_ALIASES = { 'videoclipe-internacional': 'videoclipe-internacional-do-ano',
-                         'serie-internacional-do-ano': 'serie-internacional' };
+// BreakTudo serves one category under several slug spellings, and /api/vma-votes
+// stores whatever slug the vote arrived under — so one category can end up as two
+// keys in `cats`. Reported from the live board: Int. Music Video showing twice on
+// the same blink, once as "Int. Music Video" and once as "Clipe Internacional Do
+// Ano" (the title-cased fallback for a slug this table didn't know).
+//
+// Canonical is what the SITE actually serves: 'clipe-internacional-do-ano'. The
+// extension's BT_CATS carries the same evidence — probe-breaktudo.yml run
+// 36260347844 found 'clipe-*' across every edition and never a 'videoclipe-*' URL
+// — so making the site's own spelling canonical is what keeps the manual form and
+// the auto-counted votes in one bucket.
+//
+// This must stay a superset of the alias spellings the extension tolerates in
+// BT_CATS, or a spelling it accepts lands here as its own chip again.
+const BT_CAT_ALIASES = { 'videoclipe-internacional-do-ano': 'clipe-internacional-do-ano',
+                         'videoclipe-internacional':        'clipe-internacional-do-ano',
+                         'clipe-internacional':             'clipe-internacional-do-ano',
+                         'serie-internacional-do-ano':      'serie-internacional' };
+function btCanonCat(slug) { return BT_CAT_ALIASES[slug] || slug; }
+// Fold a stored cats map onto canonical slugs, SUMMING the aliases. Relabelling
+// alone is not enough: the renderers draw one chip per key, so two keys meaning
+// the same category would still be two chips — just two chips with the same name.
+function btFoldCats(cats) {
+  const out = {};
+  for (const k in (cats || {})) {
+    const n = Number(cats[k]) || 0;
+    if (n <= 0) continue;
+    const c = btCanonCat(k);
+    out[c] = (out[c] || 0) + n;
+  }
+  return out;
+}
 function btCatLabel(slug) {
-  const key = BT_CAT_ALIASES[slug] || slug;
+  const key = btCanonCat(slug);
   const hit = BT_CATEGORIES.find(c => c.slug === key);
   if (hit) return hit.label;
   if (slug === '_other') return 'Category not identified';
@@ -9127,7 +9155,7 @@ function btCatLabel(slug) {
 // vote whose category could not be identified. So it states what is attributed
 // and names the remainder rather than quietly implying the parts add up.
 function _btMyCatsHtml(me) {
-  const cats = (me && me.cats) || {};
+  const cats = btFoldCats((me && me.cats) || {});
   const rows = Object.entries(cats).filter(([, v]) => (Number(v) || 0) > 0)
     .sort((a, b) => b[1] - a[1]);
   if (!rows.length) return '';
@@ -9154,7 +9182,7 @@ function _btMyCatsHtml(me) {
 // Returns '' when there is no detail at all for the period, so a pre-split row
 // looks exactly as it did before rather than gaining an empty line.
 function _btRowCatsHtml(r, P) {
-  const cats = (r && r['cats_' + P]) || {};
+  const cats = btFoldCats((r && r['cats_' + P]) || {});
   const rows = Object.entries(cats).filter(([, v]) => (Number(v) || 0) > 0)
     .sort((a, b) => b[1] - a[1]);
   if (!rows.length) return '';

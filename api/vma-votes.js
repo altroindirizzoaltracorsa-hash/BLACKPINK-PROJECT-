@@ -66,6 +66,25 @@ const kstDay = (d = new Date()) => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
 }).format(d);
 
+// BreakTudo serves one category under several slug spellings, and this endpoint
+// stores whatever slug the vote arrived under — so without folding, one category
+// becomes two keys in `cats` and the board draws it as two chips. Canonical is the
+// spelling the SITE serves ('clipe-internacional-do-ano'); probe-breaktudo.yml run
+// 36260347844 found 'clipe-*' across every edition and never a 'videoclipe-*' URL.
+//
+// Normalising on WRITE stops the split growing; the page folds on read as well, so
+// rows already stored under an alias still render correctly.
+//
+// Must stay in step with BT_CAT_ALIASES in index.html and with the spellings
+// BT_CATS tolerates in vote-extension/background.js.
+const BT_CAT_ALIASES = {
+  'videoclipe-internacional-do-ano': 'clipe-internacional-do-ano',
+  'videoclipe-internacional':        'clipe-internacional-do-ano',
+  'clipe-internacional':             'clipe-internacional-do-ano',
+  'serie-internacional-do-ano':      'serie-internacional',
+};
+const btCanonCat = (slug) => BT_CAT_ALIASES[slug] || slug;
+
 function bearer(req) {
   const h = req.headers.authorization || '';
   const m = /^Bearer\s+(.+)$/i.exec(h);
@@ -121,7 +140,9 @@ async function myBtTotals(sb, uid) {
   const add = (into, m) => {
     for (const k in (m || {})) {
       const n = Number(m[k]) || 0;
-      if (n > 0) into[k] = (into[k] || 0) + n;
+      // Fold aliases here too: rows written before the canonicalisation above
+      // still carry the old spelling.
+      if (n > 0) { const c = btCanonCat(k); into[c] = (into[c] || 0) + n; }
     }
   };
   for (const r of rows) {
@@ -219,10 +240,15 @@ export default async function handler(req, res) {
         if (body.cats && typeof body.cats === 'object' && !Array.isArray(body.cats)) {
           for (const k of Object.keys(body.cats)) {
             const n = parseInt(body.cats[k], 10);
-            if (SLUG_RE.test(k) && Number.isFinite(n) && n > 0) addCats[k] = Math.min(n, 10000);
+            // += rather than =, because two alias spellings in one payload fold
+            // onto the same canonical key and the second must not replace the first.
+            if (SLUG_RE.test(k) && Number.isFinite(n) && n > 0) {
+              const c = btCanonCat(k);
+              addCats[c] = Math.min((addCats[c] || 0) + n, 10000);
+            }
           }
         } else if (typeof body.category === 'string' && SLUG_RE.test(body.category)) {
-          addCats[body.category] = votes;
+          addCats[btCanonCat(body.category)] = votes;
         }
         // Never let the attributed parts exceed the total they are explaining —
         // that would render as a breakdown bigger than the number it breaks down.
