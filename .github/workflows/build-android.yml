@@ -36,8 +36,17 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # `packages` is set explicitly. The action's DEFAULT is "tools platform-tools",
+      # and `tools` is the obsolete SDK Tools package Google removed from the
+      # repository — so the default now fails sdkmanager outright ("Failed to find
+      # package 'tools'", exit 1) before a line of our code is compiled. That is what
+      # broke this build; nothing in the app changed. Naming exactly what compileSdk 34
+      # and AGP 8.5.2 need also means the build stops silently drifting with the
+      # runner image.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
 
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
