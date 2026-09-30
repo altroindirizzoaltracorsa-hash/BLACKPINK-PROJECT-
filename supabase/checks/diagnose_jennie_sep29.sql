@@ -28,8 +28,7 @@ select a.date,
        a.daily_delta,
        a.track_count,
        a.provisional,
-       a.created_at,
-       a.updated_at
+       a.created_at
 from artist_daily_stats a
 where a.artist_id = '250b0Wlc5Vk0CoUsaCY84M'
   and a.date >= date '2026-09-20'
