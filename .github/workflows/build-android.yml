@@ -5,7 +5,10 @@ name: Build Android APK
 # site can offer it as a direct download. Triggered by pushes that touch the app.
 on:
   push:
-    branches: [ "claude/output-token-limit-i4syae" ]
+    # main, so a change to the app actually produces a new APK. This used to name a
+    # feature branch that was merged and deleted long ago, which meant the trigger
+    # silently never fired and the committed APK drifted behind the source.
+    branches: [ "main" ]
     paths:
       - "android-app/**"
       - ".github/workflows/build-android.yml"
@@ -68,6 +71,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No APK change to commit."
           else
-            git commit -m "Build Android vote-counter APK v1.0.0 [skip ci]"
+            VER=$(sed -n 's/.*versionName "\(.*\)".*/\1/p' android-app/app/build.gradle | head -1)
+            git commit -m "Build Android vote-counter APK v${VER:-unknown} [skip ci]"
             git push origin HEAD:${{ github.ref_name }}
           fi
