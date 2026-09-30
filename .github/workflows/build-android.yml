@@ -5,7 +5,10 @@ name: Build Android APK
 # site can offer it as a direct download. Triggered by pushes that touch the app.
 on:
   push:
-    branches: [ "claude/output-token-limit-i4syae" ]
+    # main, so a change to the app actually produces a new APK. This used to name a
+    # feature branch that was merged and deleted long ago, which meant the trigger
+    # silently never fired and the committed APK drifted behind the source.
+    branches: [ "main" ]
     paths:
       - "android-app/**"
       - ".github/workflows/build-android.yml"
@@ -33,8 +36,17 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # `packages` is set explicitly. The action's DEFAULT is "tools platform-tools",
+      # and `tools` is the obsolete SDK Tools package Google removed from the
+      # repository — so the default now fails sdkmanager outright ("Failed to find
+      # package 'tools'", exit 1) before a line of our code is compiled. That is what
+      # broke this build; nothing in the app changed. Naming exactly what compileSdk 34
+      # and AGP 8.5.2 need also means the build stops silently drifting with the
+      # runner image.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
 
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
@@ -68,6 +80,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No APK change to commit."
           else
-            git commit -m "Build Android vote-counter APK v1.0.0 [skip ci]"
+            VER=$(sed -n 's/.*versionName "\(.*\)".*/\1/p' android-app/app/build.gradle | head -1)
+            git commit -m "Build Android vote-counter APK v${VER:-unknown} [skip ci]"
             git push origin HEAD:${{ github.ref_name }}
           fi

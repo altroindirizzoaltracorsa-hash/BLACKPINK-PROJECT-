@@ -19,26 +19,49 @@ import java.util.TimeZone
 import java.util.concurrent.Executors
 
 /**
- * A thin WebView shell around vote.mtv.com that reuses the extension's counting logic:
- * inject counter.js on the MTV site to observe your own successful votes, filter the
- * BLACKPINK/LISA ones (VoteParser), and log them to /voting (VoteApi). Link once by
- * signing in on blinksunited.com/extension-link.html, where link.js hands the token back.
- * It only reads votes you cast — it never votes for you.
+ * A thin WebView shell around the vote sites that reuses the extension's counting
+ * logic: inject counter.js, observe your own successful votes, filter the
+ * BLACKPINK/member/BLINKs ones (VoteParser / BtVoteParser), and log them to /voting
+ * (VoteApi). Link once by signing in on blinksunited.com/extension-link.html, where
+ * link.js hands the token back. It only reads votes you cast — it never votes for you.
+ *
+ * TWO AWARDS, counted separately end to end, exactly as the board keeps them:
+ *   BreakTudo — open until 17 Oct, so it is what the Vote button opens.
+ *   MTV VMAs  — closed since 25 Sep. The code stays and still counts if you navigate
+ *               to vote.mtv.com, because the ballot returns next year and deleting a
+ *               working counter to save a branch is how you rebuild it from scratch.
+ *
+ * Their days roll on different clocks, so they get separate counters and separate
+ * rollovers: the VMA day is midnight ET (MTV's own reset), while BreakTudo has no
+ * daily reset at all — its bucket is ours, and midnight KST is where the board puts
+ * it. Sharing one "today" would reset one award on the other's clock.
  */
 class MainActivity : AppCompatActivity(), Bridge.Callback {
 
     private lateinit var web: WebView
     private lateinit var countView: TextView
+    private lateinit var countLabel: TextView
     private lateinit var statusView: TextView
     private lateinit var acctToggle: TextView
     private lateinit var acctScroll: android.widget.ScrollView
     private lateinit var acctList: android.widget.LinearLayout
     private val io = Executors.newSingleThreadExecutor()
     private val seenTs = ArrayDeque<String>()
+    private val btSeen = ArrayDeque<String>()
     private var counterJs = ""
     private var linkJs = ""
 
     private val prefs by lazy { getSharedPreferences("bu", Context.MODE_PRIVATE) }
+
+    /** Which award the header and roster are describing: "bt" or "vma". */
+    private var award: String
+        get() = prefs.getString("award", "bt") ?: "bt"
+        set(v) { prefs.edit().putString("award", v).apply() }
+
+    companion object {
+        private const val BT_URL = "https://vote.breaktudoawards.com/"
+        private const val MTV_URL = "https://vote.mtv.com/"
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,10 +69,11 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         setContentView(R.layout.activity_main)
 
         countView = findViewById(R.id.count)
+        countLabel = findViewById(R.id.countLabel)
         statusView = findViewById(R.id.status)
         web = findViewById(R.id.web)
 
-        findViewById<Button>(R.id.voteBtn).setOnClickListener { web.loadUrl("https://vote.mtv.com/") }
+        findViewById<Button>(R.id.voteBtn).setOnClickListener { web.loadUrl(BT_URL) }
         findViewById<Button>(R.id.linkBtn).setOnClickListener { startLinkFlow() }
         // Open the board in the real browser: blinksunited.com sign-in uses X/Google
         // OAuth, which is refused inside an embedded WebView. The browser also carries
@@ -62,7 +86,7 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         acctToggle.setOnClickListener {
             val show = acctScroll.visibility != android.view.View.VISIBLE
             acctScroll.visibility = if (show) android.view.View.VISIBLE else android.view.View.GONE
-            renderAccounts()
+            renderRoster()
         }
 
         counterJs = readAsset("counter.js")
@@ -85,19 +109,28 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
             override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 val host = try { android.net.Uri.parse(url).host ?: "" } catch (e: Exception) { "" }
-                if (host.contains("vote.mtv.com")) view.evaluateJavascript(counterJs, null)
+                // counter.js decides which award it is from its own hostname, so the
+                // same asset serves both sites.
+                if (host.contains("vote.mtv.com")) {
+                    award = "vma"; view.evaluateJavascript(counterJs, null); refreshHeader()
+                }
+                if (host.contains("vote.breaktudoawards.com")) {
+                    award = "bt"; view.evaluateJavascript(counterJs, null); refreshHeader()
+                }
                 if (host.contains("blinksunited.com")) view.evaluateJavascript(linkJs, null)
             }
         }
         web.webChromeClient = WebChromeClient()
 
         updateHeader()
-        renderAccounts()
+        renderRoster()
         // A deep link (buvotecounter://link?token=…) may have launched us.
         if (!handleLinkIntent(intent) && savedInstanceState == null) {
-            web.loadUrl("https://vote.mtv.com/")
+            web.loadUrl(BT_URL)
         }
     }
+
+    private fun refreshHeader() = runOnUiThread { updateHeader(); renderRoster() }
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
@@ -134,13 +167,13 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         val token = data.getQueryParameter("token") ?: return false
         onToken(token, data.getQueryParameter("profile"))
         runOnUiThread {
-            web.loadUrl("https://vote.mtv.com/")
+            web.loadUrl(BT_URL)
             android.widget.Toast.makeText(this, "✅ Linked — you can vote now", android.widget.Toast.LENGTH_LONG).show()
         }
         return true
     }
 
-    // ── Bridge callbacks ─────────────────────────────────────────────────────
+    // ── Bridge callbacks: MTV ────────────────────────────────────────────────
     override fun onVote(url: String) {
         val res = VoteParser.parse(url) ?: return
         // Dedupe identical retried submissions by their timestamp param.
@@ -157,7 +190,7 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
             .putInt("lisa", prefs.getInt("lisa", 0) + (res.breakdown["LISA"] ?: 0))
             .apply()
         recordAccount(res.account, res.category, res.total)
-        runOnUiThread { updateHeader(); renderAccounts() }
+        runOnUiThread { updateHeader(); renderRoster() }
 
         val token = prefs.getString("token", null)
         if (token != null) {
@@ -174,6 +207,46 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         }
     }
 
+    // ── Bridge callbacks: BreakTudo ──────────────────────────────────────────
+    override fun onBtVote(json: String) {
+        val res = BtVoteParser.parse(json) ?: return
+
+        // Nothing of ours in this batch. Say so rather than sitting silently at zero
+        // — an unrecognised category slug is exactly what that looks like, and it is
+        // the one failure a blink can actually report back to us.
+        if (res.total <= 0) {
+            if (res.skipped > 0) runOnUiThread {
+                toast("· ${res.skipped} vote${if (res.skipped == 1) "" else "s"} here aren't ours — not counted")
+            }
+            return
+        }
+
+        if (res.dedupeKey.isNotEmpty()) {
+            if (btSeen.contains(res.dedupeKey)) return
+            btSeen.addLast(res.dedupeKey)
+            if (btSeen.size > 60) btSeen.removeFirst()
+        }
+
+        btRollDayIfNeeded()
+        prefs.edit().putInt("btCount", prefs.getInt("btCount", 0) + res.total).apply()
+        recordBtCategory(res.category, res.total)
+        runOnUiThread { updateHeader(); renderRoster() }
+
+        val token = prefs.getString("token", null)
+        if (token != null) {
+            io.execute {
+                val ok = VoteApi.postBtVotes(token, res.total, res.category)
+                if (!ok) addBtPending(res.total) else flushBtPending(token)
+                val msg = if (ok) "✅ Synced ${res.total} · ${res.label}"
+                          else "⚠ Couldn't sync — will retry"
+                runOnUiThread { updateHeader(); toast(msg) }
+            }
+        } else {
+            addBtPending(res.total)
+            runOnUiThread { updateHeader(); toast("⚠ Not linked — vote queued") }
+        }
+    }
+
     private fun toast(m: String) =
         android.widget.Toast.makeText(this, m, android.widget.Toast.LENGTH_LONG).show()
 
@@ -182,20 +255,24 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
             putString("token", token)
             if (!profile.isNullOrBlank()) putString("profile", profile)
         }.apply()
-        io.execute { flushPending(token); runOnUiThread { updateHeader() } }
+        io.execute { flushPending(token); flushBtPending(token); runOnUiThread { updateHeader() } }
         runOnUiThread { updateHeader() }
     }
 
     override fun onResume() {
         super.onResume()
-        val token = prefs.getString("token", null)
-        if (token != null && prefs.getInt("pending", 0) > 0) {
-            io.execute { flushPending(token); runOnUiThread { updateHeader() } }
+        val token = prefs.getString("token", null) ?: return
+        if (prefs.getInt("pending", 0) > 0 || prefs.getInt("btPending", 0) > 0) {
+            io.execute { flushPending(token); flushBtPending(token); runOnUiThread { updateHeader() } }
         }
     }
 
     private fun addPending(n: Int) = synchronized(prefs) {
         prefs.edit().putInt("pending", prefs.getInt("pending", 0) + n).apply()
+    }
+
+    private fun addBtPending(n: Int) = synchronized(prefs) {
+        prefs.edit().putInt("btPending", prefs.getInt("btPending", 0) + n).apply()
     }
 
     /** Retry votes that failed to post, oldest-first. The BP/LISA split is lost for
@@ -210,16 +287,33 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         }
     }
 
+    /** Same for BreakTudo. The category is lost on a retry — the queue is a single
+     *  number, not a per-category ledger — so these land in the board's "no category"
+     *  remainder rather than being attributed to the wrong one. */
+    private fun flushBtPending(token: String) {
+        val pending = prefs.getInt("btPending", 0)
+        if (pending <= 0) return
+        if (VoteApi.postBtVotes(token, pending, null)) {
+            synchronized(prefs) {
+                prefs.edit().putInt("btPending", (prefs.getInt("btPending", 0) - pending).coerceAtLeast(0)).apply()
+            }
+        }
+    }
+
     // ── UI ───────────────────────────────────────────────────────────────────
     private fun updateHeader() {
-        countView.text = prefs.getInt("count", 0).toString()
+        val bt = award == "bt"
+        if (bt) btRollDayIfNeeded() else rollDayIfNeeded()
+        countView.text = (if (bt) prefs.getInt("btCount", 0) else prefs.getInt("count", 0)).toString()
+        countLabel.setText(if (bt) R.string.counted_today_bt else R.string.counted_today_vma)
+
         val linked = prefs.getString("token", null) != null
         val base = if (linked) {
             "● Linked" + (prefs.getString("profile", null)?.let { " · $it" } ?: "")
         } else {
             "○ Not linked — tap Link"
         }
-        val pending = prefs.getInt("pending", 0)
+        val pending = if (bt) prefs.getInt("btPending", 0) else prefs.getInt("pending", 0)
         statusView.text = if (pending > 0) "$base · ⏳ $pending syncing" else base
     }
 
@@ -235,10 +329,23 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         }
     }
 
-    // ── Voting-accounts roster ────────────────────────────────────────────────
-    // Tracks each account (the vote's user_id, usually the email) used today and which
-    // of the 2 fan-voted categories it has covered → 2/2 or 1/2. Reset daily. Stored
-    // locally only — never sent to our server (the POST carries just extToken + a count).
+    private fun btRollDayIfNeeded() {
+        val today = kstDay()
+        if (prefs.getString("btDay", "") != today) {
+            prefs.edit()
+                .putString("btDay", today)
+                .putInt("btCount", 0)
+                .putString("btCats", "{}")
+                .apply()
+        }
+    }
+
+    // ── The roster below the buttons ─────────────────────────────────────────
+    // VMA: which accounts you used today and how many of the 2 fan-voted categories
+    // each covered. BreakTudo has no accounts — there is nothing to sign into — so
+    // the same strip answers the question that DOES apply there: which of our 8
+    // categories you have voted today, and which you have not. Stored locally only;
+    // the POST carries a token and a count, never this.
     private val FAN_CATS = listOf("cat06", "cat11")
 
     private fun recordAccount(account: String?, category: String, votes: Int) {
@@ -267,8 +374,52 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         }
     }
 
-    private fun renderAccounts() {
+    private fun recordBtCategory(slug: String?, votes: Int) {
+        if (slug.isNullOrBlank()) return
+        synchronized(prefs) {
+            val o = try { org.json.JSONObject(prefs.getString("btCats", "{}")) } catch (e: Exception) { org.json.JSONObject() }
+            o.put(slug, o.optInt(slug, 0) + votes)
+            prefs.edit().putString("btCats", o.toString()).apply()
+        }
+    }
+
+    private fun renderRoster() {
         if (!::acctList.isInitialized) return
+        if (award == "bt") renderBtCategories() else renderAccounts()
+    }
+
+    private fun renderBtCategories() {
+        btRollDayIfNeeded()
+        val voted = try { org.json.JSONObject(prefs.getString("btCats", "{}")) } catch (e: Exception) { org.json.JSONObject() }
+        val all = BtVoteParser.CATEGORIES
+        val covered = all.keys.count { voted.optInt(it, 0) > 0 }
+        acctToggle.text = "🗳 Categories voted today — $covered/${all.size}" +
+            if (acctScroll.visibility == android.view.View.VISIBLE) " (tap to hide)" else " (tap to show)"
+        if (acctScroll.visibility != android.view.View.VISIBLE) return
+
+        acctList.removeAllViews()
+        // Not-yet-voted first: the point of the list is what is still missing.
+        for ((slug, label) in all.entries.sortedBy { voted.optInt(it.key, 0) > 0 }) {
+            val n = voted.optInt(slug, 0)
+            val row = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(dp(4), dp(7), dp(4), dp(7))
+            }
+            row.addView(makeAcctText(label, if (n > 0) "#F5F0F0" else "#9A8F95", 13f).apply {
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                layoutParams = android.widget.LinearLayout.LayoutParams(0, -2, 1f)
+            })
+            row.addView(makeAcctText(if (n > 0) "$n" else "—", if (n > 0) "#3FD982" else "#F5C542", 13f).apply {
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+            })
+            acctList.addView(row)
+            acctList.addView(divider())
+        }
+    }
+
+    private fun renderAccounts() {
         val arr = try { org.json.JSONArray(prefs.getString("accounts", "[]")) } catch (e: Exception) { org.json.JSONArray() }
         acctToggle.text = if (acctScroll.visibility == android.view.View.VISIBLE)
             "👤 Accounts used today — ${arr.length()} (tap to hide)"
@@ -306,13 +457,13 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
             row.addView(name)
             row.addView(badge)
             acctList.addView(row)
-
-            val div = android.view.View(this).apply {
-                layoutParams = android.widget.LinearLayout.LayoutParams(-1, 1)
-                setBackgroundColor(android.graphics.Color.parseColor("#22FF2E77"))
-            }
-            acctList.addView(div)
+            acctList.addView(divider())
         }
+    }
+
+    private fun divider(): android.view.View = android.view.View(this).apply {
+        layoutParams = android.widget.LinearLayout.LayoutParams(-1, 1)
+        setBackgroundColor(android.graphics.Color.parseColor("#22FF2E77"))
     }
 
     private fun makeAcctText(text: String, color: String, size: Float): TextView =
@@ -325,9 +476,16 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
-    private fun etDay(): String {
+    /** The VMA voting day: midnight ET, MTV's own reset. */
+    private fun etDay(): String = dayIn("America/New_York")
+
+    /** The BreakTudo bucket: midnight KST, matching the board. BreakTudo itself has
+     *  no daily reset, so this boundary is ours and has to agree with the server. */
+    private fun kstDay(): String = dayIn("Asia/Seoul")
+
+    private fun dayIn(tz: String): String {
         val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        fmt.timeZone = TimeZone.getTimeZone("America/New_York")
+        fmt.timeZone = TimeZone.getTimeZone(tz)
         return fmt.format(Date())
     }
 
