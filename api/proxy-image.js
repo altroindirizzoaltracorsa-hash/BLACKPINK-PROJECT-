@@ -134,7 +134,7 @@ const YEAR_SEED_GAINED = {
 async function fetchArtistTotals() {
   const r = await sbFetch(
     '/tracked_artists?active=eq.true&select=spotify_artist_id,name,avatar_url,' +
-    'artist_daily_stats(date,total_streams,daily_delta)&artist_daily_stats.order=date.desc&artist_daily_stats.limit=1',
+    'artist_daily_stats(date,total_streams,daily_delta,provisional)&artist_daily_stats.order=date.desc&artist_daily_stats.limit=1',
     { headers: { Accept: 'application/json' } },
   );
   if (!r.ok) return [];
@@ -144,6 +144,7 @@ async function fetchArtistTotals() {
     total: a.artist_daily_stats?.[0]?.total_streams ?? null,
     delta: a.artist_daily_stats?.[0]?.daily_delta ?? null,
     date:  a.artist_daily_stats?.[0]?.date ?? null,
+    provisional: !!a.artist_daily_stats?.[0]?.provisional,
   }));
 }
 
@@ -796,7 +797,7 @@ export default async function handler(req, res) {
     const [r, baselines, anchors] = await Promise.all([
       sbFetch(
         '/tracked_artists?active=eq.true&select=spotify_artist_id,name,avatar_url,' +
-        'artist_daily_stats(date,total_streams,daily_delta,followers,followers_delta,monthly_listeners,monthly_listeners_delta,world_rank,world_rank_delta,track_count,estimated)' +
+        'artist_daily_stats(date,total_streams,daily_delta,followers,followers_delta,monthly_listeners,monthly_listeners_delta,world_rank,world_rank_delta,track_count,estimated,provisional)' +
         '&artist_daily_stats.order=date.desc&artist_daily_stats.limit=1',
         { headers: { Accept: 'application/json' } },
       ),
@@ -823,7 +824,7 @@ export default async function handler(req, res) {
 
     const [artistRes, historyRes, tracksRes, baselines, anchors] = await Promise.all([
       sbFetch(`/tracked_artists?spotify_artist_id=eq.${artistId}&select=name,avatar_url`, { headers: { Accept: 'application/json' } }),
-      sbFetch(`/artist_daily_stats?artist_id=eq.${artistId}&order=date.desc&limit=8&select=date,total_streams,daily_delta,followers,followers_delta,monthly_listeners,monthly_listeners_delta,world_rank,world_rank_delta,track_count,estimated`, { headers: { Accept: 'application/json' } }),
+      sbFetch(`/artist_daily_stats?artist_id=eq.${artistId}&order=date.desc&limit=8&select=date,total_streams,daily_delta,followers,followers_delta,monthly_listeners,monthly_listeners_delta,world_rank,world_rank_delta,track_count,estimated,provisional`, { headers: { Accept: 'application/json' } }),
       sbFetch(
         `/artist_tracks?artist_id=eq.${artistId}&select=id,name,album,album_release_date,track_number,album_art_url,track_daily_stats(date,streams,daily_delta)` +
         '&track_daily_stats.order=date.desc&track_daily_stats.limit=2',
@@ -1418,7 +1419,7 @@ export default async function handler(req, res) {
     const [artistsRes, statsRes] = await Promise.all([
       sbFetch('/tracked_artists?select=spotify_artist_id,name', { headers: { Accept: 'application/json' } }),
       sbFetch(
-        '/artist_daily_stats?select=artist_id,date,total_streams,daily_delta,followers,followers_delta,monthly_listeners,monthly_listeners_delta,world_rank,world_rank_delta,track_count&order=artist_id.asc,date.asc',
+        '/artist_daily_stats?select=artist_id,date,total_streams,daily_delta,followers,followers_delta,monthly_listeners,monthly_listeners_delta,world_rank,world_rank_delta,track_count,provisional&order=artist_id.asc,date.asc',
         { headers: { Accept: 'application/json' } },
       ),
     ]);
