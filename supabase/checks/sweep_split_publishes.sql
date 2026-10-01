@@ -134,3 +134,53 @@ begin
     raise exception E'% day pair(s) look like one publish written as two days:%\n\nFold them before the dates drift further — see supabase/migrations/repair_members_sep23_split_publish.sql for the shape of the repair. Check EVERY artist listed, not just the one that was noticed.', n, msg;
   end if;
 end $$;
+
+-- ── Stall check ─────────────────────────────────────────────────────────────
+-- The fetch now HOLDS a half-published day rather than writing it provisionally
+-- (fetch_artist_streams.py / fetch_group_streams.py). That removes the "+376
+-- day" class of bug, but it introduces the opposite one: if a publish somehow
+-- never looks finished, the fetch waits forever and days go missing quietly —
+-- which reads as a quiet week rather than as a fault.
+--
+-- So assert the thing holding could break. 3 days is far outside anything
+-- observed: across 58 days x 5 artists no recorded day has ever been more than
+-- 1 day after the one before it, and the normal lag behind "yesterday" is 1 day
+-- (checks/can_we_hold_unfinished_days.sql).
+do $$
+declare
+  stale_after int := 3;
+  n int;
+  msg text := '';
+  r record;
+begin
+  select count(*) into n
+  from (
+    select a.artist_id, max(a.date) as last_day
+    from artist_daily_stats a
+    join tracked_artists t on t.spotify_artist_id = a.artist_id
+    group by a.artist_id
+  ) x
+  where (current_date - 1) - x.last_day > stale_after;
+
+  if n = 0 then
+    raise notice 'no stall: every tracked artist has a day recorded within % days of yesterday.', stale_after;
+  else
+    for r in
+      select coalesce(t.name, x.artist_id) as artist, x.last_day,
+             (current_date - 1) - x.last_day as days_behind
+      from (
+        select a.artist_id, max(a.date) as last_day
+        from artist_daily_stats a
+        join tracked_artists t2 on t2.spotify_artist_id = a.artist_id
+        group by a.artist_id
+      ) x
+      left join tracked_artists t on t.spotify_artist_id = x.artist_id
+      where (current_date - 1) - x.last_day > stale_after
+      order by days_behind desc, 1
+    loop
+      msg := msg || format(E'\n  %s: last recorded %s — %s days behind yesterday',
+                           r.artist, r.last_day, r.days_behind);
+    end loop;
+    raise exception E'% artist(s) have stopped recording days:%\n\nThe fetch holds a day it judges half-published, so a stuck publish-completeness check looks exactly like this. Read a fetch-catalog run log for the "still publishing: N/M tracks unchanged" line and check whether UNCHANGED_LIMIT is being tripped by something that is not actually a partial day.', n, msg;
+  end if;
+end $$;

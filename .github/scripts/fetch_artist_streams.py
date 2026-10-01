@@ -708,9 +708,30 @@ def process_artist(client, artist_id, artist_name):
         canonical, all_refs, prev_track_streams_map)
     if unfinished:
         pct = 100.0 * unchanged / comparable
+        # HOLD. A half-published day is not a day, so it does not get written at
+        # all — not even provisionally. Writing one produced JENNIE's 2026-09-29
+        # row: exactly 1 of her 43 tracks had ticked, so the day read +376 against
+        # ~7.3M neighbours, and because it was the newest row it also became her
+        # headline daily figure and dragged the 7-day average from 7,404,752 down
+        # to 6,346,984. Waiting costs nothing: the next slot picks the same day up
+        # once Spotify has finished it, and `today` is derived from the last
+        # RECORDED day, so holding cannot shift the label.
+        #
+        # Safe because the threshold has enormous headroom. Over 58 days x 5
+        # artists, the share of tracks not moving on a real day was 0.00% for
+        # BLACKPINK/JISOO/LISA/ROSÉ and 0.08% for JENNIE, worst case 2.4% — never
+        # within a factor of eight of this 20% line, and no recorded day has ever
+        # been more than 1 day after the one before it
+        # (checks/can_we_hold_unfinished_days.sql).
+        #
+        # The residual risk is the opposite failure: holding forever and silently
+        # losing days. That is why check-split-publishes.yml now also fails when
+        # any tracked artist falls more than STALE_AFTER_DAYS behind — a stall
+        # gets reported rather than looking like a quiet week.
         print(f"  ⏳ Spotify still publishing: {unchanged}/{comparable} tracks "
-              f"({pct:.1f}%) unchanged since {prev_date} — recording {today} as "
-              f"PROVISIONAL, to be rewritten until it completes")
+              f"({pct:.1f}%) unchanged since {prev_date} — holding, nothing written. "
+              f"A later run records {today} once the catalogue has moved.")
+        return
 
     kept, merged_away = collapse_merged(counted, prev_groups=prev_groups)
     for m in merged_away:
