@@ -2346,6 +2346,15 @@
   .vv-btday-d { flex: 1 1 auto; }
   .vv-btday-d i { font-style: normal; font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pink); margin-left: 0.35rem; }
   .vv-btday-cats { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.1rem; }
+  /* The BreakTudo vote calendar reuses the profile streak calendar's .cal-* grid;
+     these are only the parts that differ — a count instead of stamp icons, and a
+     day that exists but cannot be placed on this boundary. */
+  .bt-cal-v { font-family: var(--mono); font-size: 0.6rem; color: var(--pink); line-height: 1; }
+  .cal-day.pre-cutoff { opacity: 0.28; cursor: help; }
+  .bt-cal-det-hd { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.4rem; }
+  .bt-cal-det-hd b { color: #ff9cc2; }
+  #bt-cal .cal-nav-row { padding: 0.5rem 0.7rem 0; }
+  #bt-cal .cal-grid { padding: 0.5rem 0.7rem; }
   .vv-btcat-rest span, .vv-btcat-rest b { color: var(--muted); }
   /* Per-category split under a blink's name on the BreakTudo board. Chips rather
      than columns: eight categories would need eight columns nobody can read on a
@@ -9188,37 +9197,137 @@ function _btMyCatsHtml(me) {
   </div>`;
 }
 
-// Your own votes day by day, newest first — what the four period tabs cannot
-// answer, since they only offer today / this week / this month / all time and
-// "week minus today" equals yesterday only on a Tuesday.
+// Your own votes as a month calendar, the same shape as the streak calendar on
+// the profile (.cal-* classes are shared, so the two read as one component).
 //
-// The rows have always existed (breaktudo_user_votes is one row per blink per
-// day); they simply were not served. The API returns them already folded onto
-// canonical category slugs and already cut off at the KST boundary — see
-// BT_DAY_HISTORY_FROM, which exists because older rows were bucketed on Brasília
-// time and cannot be honestly re-dated.
+// This is what the four period tabs cannot answer: they offer today / this week /
+// this month / all time, and "week minus today" equals yesterday only on a
+// Tuesday. The rows always existed — breaktudo_user_votes is one row per blink
+// per day — they were simply never served.
+//
+// Days before BT_DAY_HISTORY_FROM are drawn, but inert and dimmed, with a reason
+// on hover. Leaving a hole in a calendar grid would read as "you voted nothing",
+// which is the opposite of true: those days still count in every total.
+let _btCalY = null, _btCalM = null, _btCalOpen = null;
+
+function _btCalDays(me) {
+  const out = {};
+  for (const d of ((me && me.days) || [])) out[d.day] = d;
+  return out;
+}
+function _btCalToday(me) { return (me && me.todayKey) || ''; }
+
 function _btMyDaysHtml(me) {
-  const days = (me && Array.isArray(me.days)) ? me.days : [];
-  if (!days.length) return '';
-  const today = days[0] && days[0].day;
-  return `<div class="vv-btcats">
-    <div class="vv-btcats-hd">Day by day · your votes</div>
-    ${days.map(d => {
-      const cats = btFoldCats(d.cats || {});
-      const chips = Object.entries(cats).filter(([, v]) => (Number(v) || 0) > 0)
-        .sort((a, b) => b[1] - a[1])
-        .map(([k, v]) => `<span class="vv-rowcat">${_vvEsc(btCatLabel(k))} <b>${_vvFmt(v)}</b></span>`).join('');
-      const attributed = Object.values(cats).reduce((a, v) => a + Number(v), 0);
-      const rest = Math.max(0, Number(d.votes || 0) - attributed);
-      return `<div class="vv-btcat-row vv-btday">
-        <span class="vv-btday-d">${_vvEsc(_btDayLabel(d.day))}${d.day === today ? ' <i>today</i>' : ''}</span>
-        <b>${_vvFmt(d.votes)}</b>
-        ${chips || rest > 0 ? `<span class="vv-btday-cats">${chips}${rest > 0
-          ? `<span class="vv-rowcat vv-rowcat-rest" title="Votes counted before the category was recorded, or whose category couldn&rsquo;t be identified">no category <b>${_vvFmt(rest)}</b></span>` : ''}</span>` : ''}
-      </div>`;
-    }).join('')}
-    <div class="vv-btcat-row vv-btcat-rest"><span>Starts ${_vvEsc(_btDayLabel(me.daysFrom || ''))} — the first full day on the midnight-KST boundary the board now counts on. Earlier days were bucketed on a different clock, so they are not listed here; they still count in your totals.</span></div>
-  </div>`;
+  if (!me || !Array.isArray(me.days)) return '';
+  const today = _btCalToday(me);
+  if (!today) return '';
+  if (_btCalY == null) { _btCalY = Number(today.slice(0, 4)); _btCalM = Number(today.slice(5, 7)) - 1; }
+  return `<div id="bt-cal" class="vv-btcats">${_btCalInner(me)}</div>`;
+}
+
+function _btCalInner(me) {
+  // The nav/tap handlers below re-render from _vvMe, which is null until the board
+  // has loaded and is cleared on sign-out. Guard rather than throw inside a click.
+  if (!me || !_btCalToday(me)) return '';
+  const byDay = _btCalDays(me);
+  const today = _btCalToday(me);
+  const from  = me.daysFrom || '';
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  // Grid: Monday-first, padded with the neighbouring months so the weeks line up.
+  const first = new Date(Date.UTC(_btCalY, _btCalM, 1));
+  const startDow = (first.getUTCDay() + 6) % 7;
+  const lastNum = new Date(Date.UTC(_btCalY, _btCalM + 1, 0)).getUTCDate();
+  const iso = (y, m, d) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
+  const cells = [];
+  for (let i = 0; i < startDow; i++) {
+    const d = new Date(Date.UTC(_btCalY, _btCalM, 1 - startDow + i));
+    cells.push({ key: d.toISOString().slice(0, 10), num: d.getUTCDate(), other: true });
+  }
+  for (let n = 1; n <= lastNum; n++) cells.push({ key: iso(_btCalY, _btCalM, n), num: n, other: false });
+  const tail = (7 - (cells.length % 7)) % 7;
+  for (let i = 1; i <= tail; i++) {
+    const d = new Date(Date.UTC(_btCalY, _btCalM + 1, i));
+    cells.push({ key: d.toISOString().slice(0, 10), num: d.getUTCDate(), other: true });
+  }
+
+  // Paging bounds: never past the current month, never before the month the
+  // history can honestly start in.
+  const curKey  = today.slice(0, 7);
+  const fromKey = from.slice(0, 7);
+  const thisKey = `${_btCalY}-${String(_btCalM + 1).padStart(2, '0')}`;
+  const canPrev = !fromKey || thisKey > fromKey;
+  const canNext = thisKey < curKey;
+
+  const monthTotal = cells
+    .filter(c => !c.other && !(from && c.key < from))
+    .reduce((n, c) => n + Number(byDay[c.key]?.votes || 0), 0);
+
+  return `
+    <div class="vv-btcats-hd">Day by day · your votes${monthTotal > 0 ? ` · ${_vvFmt(monthTotal)} this month` : ''}</div>
+    <div class="cal-nav-row">
+      <button class="cal-nav-btn" type="button" onclick="btCalShift(-1)"${canPrev ? '' : ' disabled'}>‹</button>
+      <span class="cal-month-label">${MONTHS[_btCalM]} ${_btCalY}</span>
+      <button class="cal-nav-btn" type="button" onclick="btCalShift(1)"${canNext ? '' : ' disabled'}>›</button>
+    </div>
+    <div class="cal-grid">
+      ${['M','T','W','T','F','S','S'].map(h => `<div class="cal-day-header">${h}</div>`).join('')}
+      ${cells.map(({ key, num, other }) => {
+        const d = byDay[key];
+        const votes = Number(d?.votes || 0);
+        const pre = !!from && key < from;
+        const future = key > today;
+        const cls = [
+          'cal-day',
+          votes > 0 ? 'has-stamp' : '',
+          key === today ? 'is-today' : '',
+          other ? 'other-month' : '',
+          future ? 'is-future' : '',
+          pre && !future ? 'pre-cutoff' : '',
+        ].filter(Boolean).join(' ');
+        const title = pre && !future
+          ? 'Before the board moved to the midnight-KST day. This day still counts in your totals, it just cannot be placed on this calendar.'
+          : (votes > 0 ? `${_vvFmt(votes)} votes — tap for the breakdown` : '');
+        return `<div class="${cls}"${title ? ` title="${_vvEsc(title)}"` : ''}${votes > 0 && !pre ? ` onclick="btCalDay('${key}')"` : ''}>
+          <div class="cal-day-num">${num}</div>
+          ${votes > 0 && !pre ? `<div class="bt-cal-v">${_vvFmt(votes)}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+    <div id="bt-cal-detail" class="stamp-detail"${_btCalOpen && byDay[_btCalOpen] ? '' : ' style="display:none"'}>${
+      _btCalOpen && byDay[_btCalOpen] ? _btCalDetailHtml(byDay[_btCalOpen]) : ''}</div>
+    ${from ? `<div class="vv-btcat-row vv-btcat-rest"><span>Dimmed days before ${_vvEsc(_btDayLabel(from))} were counted on a different day boundary (Brasília, before the board moved to midnight KST). They still count in your totals — they just cannot be placed on a calendar honestly.</span></div>` : ''}
+  `;
+}
+
+function _btCalDetailHtml(d) {
+  const cats = btFoldCats(d.cats || {});
+  const rows = Object.entries(cats).filter(([, v]) => (Number(v) || 0) > 0).sort((a, b) => b[1] - a[1]);
+  const attributed = rows.reduce((a, [, v]) => a + Number(v), 0);
+  const rest = Math.max(0, Number(d.votes || 0) - attributed);
+  return `<div class="bt-cal-det-hd">${_vvEsc(_btDayLabel(d.day))} · <b>${_vvFmt(d.votes)}</b> votes</div>
+    <div class="vv-btday-cats">${rows.map(([k, v]) =>
+      `<span class="vv-rowcat">${_vvEsc(btCatLabel(k))} <b>${_vvFmt(v)}</b></span>`).join('')
+    }${rest > 0 ? `<span class="vv-rowcat vv-rowcat-rest" title="Votes counted before the category was recorded, or whose category couldn&rsquo;t be identified">no category <b>${_vvFmt(rest)}</b></span>` : ''}</div>`;
+}
+
+// Re-render the calendar alone rather than the whole panel: redrawing the board
+// would scroll the page out from under the tap.
+function btCalShift(delta) {
+  if (!_vvMe) return;
+  _btCalM += delta;
+  if (_btCalM < 0)  { _btCalM = 11; _btCalY -= 1; }
+  if (_btCalM > 11) { _btCalM = 0;  _btCalY += 1; }
+  _btCalOpen = null;
+  const el = document.getElementById('bt-cal');
+  if (el) el.innerHTML = _btCalInner(_vvMe);
+}
+
+function btCalDay(key) {
+  if (!_vvMe) return;
+  _btCalOpen = (_btCalOpen === key) ? null : key;   // tapping the open day closes it
+  const el = document.getElementById('bt-cal');
+  if (el) el.innerHTML = _btCalInner(_vvMe);
 }
 
 // "30 Sep" from "2026-09-30", without pulling the date through a timezone — the
