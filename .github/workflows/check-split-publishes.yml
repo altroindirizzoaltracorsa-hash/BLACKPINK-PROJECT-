@@ -17,7 +17,11 @@ on:
   schedule:
     # Mondays, 09:17 UTC. Off the hour on purpose: scheduled runs bunched on :00
     # get queued behind everyone else's.
-    - cron: '17 9 * * 1'
+    # Daily, not weekly. The sweep now also catches a STALLED fetch, and the
+    # fetch holding a day it cannot finish is the one failure that produces
+    # no error anywhere else — a week's detection lag would mean a week of
+    # silently missing days. The queries are read-only and cheap.
+    - cron: '17 9 * * *'
   workflow_dispatch:
 
 jobs:

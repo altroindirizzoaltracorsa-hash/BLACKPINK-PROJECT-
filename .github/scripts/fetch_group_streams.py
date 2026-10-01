@@ -253,10 +253,17 @@ def main():
                 print(f"  {total:,}  (+{delta:,} since {prev_day}) → labeling {day}"
                       + (" [rewriting the open day]" if open_day else ""))
 
+            # HOLD, the same rule the artist fetch follows: a half-published day
+            # is not a day, so nothing is written for it — not even provisionally.
+            # Waiting costs nothing, because `day` comes from the last RECORDED
+            # day rather than the clock, so a later run picks up the same label
+            # once the catalogue has moved. The alternative is what it produced on
+            # the artist side: a row like +376 sitting among +7M days, which is
+            # then read as the day's gain and skews every average built on it.
             if unfinished and prev is not None:
-                note = f"{note}; still publishing" if note else "still publishing"
-                print(f"  ⏳ Spotify still publishing — {day} recorded as PROVISIONAL "
-                      f"and rewritten until it completes")
+                print(f"  ⏳ Spotify still publishing — holding, nothing written. "
+                      f"A later run records {day} once the catalogue has moved.")
+                continue
 
             if merged:
                 extra = f"{merged} merged-value group(s)"
@@ -269,7 +276,11 @@ def main():
                 "tracks": len(got),
                 "note": note,
             }
-            if unfinished and prev is not None:
+            # No provisional rows are produced any more — an unfinished publish
+            # returns above — but the flag stays readable for rows written before
+            # that change, and for a first-ever record (prev is None), which is
+            # not held because there is no previous day to compare it against.
+            if unfinished and prev is None:
                 rec["provisional"] = True
             history.setdefault(day, {})[aid] = rec
             rows_to_append.append({
