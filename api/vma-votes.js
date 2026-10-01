@@ -85,6 +85,24 @@ const BT_CAT_ALIASES = {
 };
 const btCanonCat = (slug) => BT_CAT_ALIASES[slug] || slug;
 
+// Where a blink's day-by-day history is allowed to start.
+//
+// The BreakTudo day bucket moved from Brasília to midnight KST when
+// breaktudo_day_boundary_kst.sql was applied and this file deployed, at
+// 2026-09-29 04:47–04:48 UTC. Rows older than that carry Brasília dates, and the
+// two clocks differ by a day whenever UTC sits outside 03:00–15:00. Aggregated
+// over a week or all time that is invisible; listed day by day it is a visible
+// seam, and one that cannot be corrected — a row is votes MERGED across a day, so
+// it has no per-vote timestamps to re-date from.
+//
+// A KST day runs 15:00→15:00 UTC, so the day containing the deploy (2026-09-29)
+// is itself mixed: votes cast before 04:48 that day were stamped Brasília. The
+// first day written entirely under the new rule is the one that began at
+// 2026-09-29 15:00 UTC — 2026-09-30. So the history starts there and says so,
+// rather than showing days whose boundary we cannot vouch for.
+const BT_DAY_HISTORY_FROM = '2026-09-30';
+const BT_DAY_HISTORY_MAX = 21;
+
 function bearer(req) {
   const h = req.headers.authorization || '';
   const m = /^Bearer\s+(.+)$/i.exec(h);
@@ -153,7 +171,20 @@ async function myBtTotals(sb, uid) {
     if (r.day >= monday) week  += v;
     if (r.day >= first)  month += v;
   }
-  return { today, week, month, total, cats, catsToday };
+  // Day by day, newest first — the same rows, just not collapsed. Only days on
+  // the KST boundary (see BT_DAY_HISTORY_FROM); anything older is a different
+  // clock and would read as a seam nobody can explain.
+  const days = rows
+    .filter(r => r.day >= BT_DAY_HISTORY_FROM && (r.votes || 0) > 0)
+    .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0))
+    .slice(0, BT_DAY_HISTORY_MAX)
+    .map(r => {
+      const c = {};
+      add(c, r.cats);
+      return { day: r.day, votes: r.votes || 0, cats: c };
+    });
+
+  return { today, week, month, total, cats, catsToday, days, daysFrom: BT_DAY_HISTORY_FROM };
 }
 
 // The caller's campaign streams: today's (ET-day aligned) for display + Monster
