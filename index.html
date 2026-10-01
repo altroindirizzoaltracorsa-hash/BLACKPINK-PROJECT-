@@ -2340,6 +2340,12 @@
   .vv-btcats-hd { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding: 0.5rem 0.7rem; background: rgba(255,255,255,0.03); }
   .vv-btcat-row { display: flex; justify-content: space-between; gap: 0.8rem; align-items: baseline; padding: 0.45rem 0.7rem; border-top: 1px solid var(--border); font-size: 0.74rem; }
   .vv-btcat-row b { font-family: var(--mono); color: #ff9cc2; }
+  /* A day row is date + count + its category chips, which wrap under the pair on
+     a phone rather than squeezing the count off the edge. */
+  .vv-btday { flex-wrap: wrap; }
+  .vv-btday-d { flex: 1 1 auto; }
+  .vv-btday-d i { font-style: normal; font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pink); margin-left: 0.35rem; }
+  .vv-btday-cats { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.1rem; }
   .vv-btcat-rest span, .vv-btcat-rest b { color: var(--muted); }
   /* Per-category split under a blink's name on the BreakTudo board. Chips rather
      than columns: eight categories would need eight columns nobody can read on a
@@ -8807,6 +8813,7 @@ function drawBtVoting() {
         <div><span>${_vvFmt(_vvMe.total)}</span><small>all time</small></div>
       </div>
       ${_btMyCatsHtml(_vvMe)}
+      ${_btMyDaysHtml(_vvMe)}
       <div class="vv-form vv-form-auto">
         <div class="vv-auto-note">🧩 Your BreakTudo votes are counted <b>automatically</b> by the Blinks United vote counter (browser extension / app) as you vote on <b>vote.breaktudoawards.com</b>.</div>
         <button class="vv-auto-more" onclick="var m=document.getElementById('bt-manual');if(m){m.style.display='block';this.style.display='none';}">Not using the counter right now? Add votes manually ▾</button>
@@ -9179,6 +9186,48 @@ function _btMyCatsHtml(me) {
     ${rows.map(([k, v]) => `<div class="vv-btcat-row"><span>${_vvEsc(btCatLabel(k))}</span><b>${_vvFmt(v)}</b></div>`).join('')}
     ${rest > 0 ? `<div class="vv-btcat-row vv-btcat-rest"><span>Not attributed to a category</span><b>${_vvFmt(rest)}</b></div>` : ''}
   </div>`;
+}
+
+// Your own votes day by day, newest first — what the four period tabs cannot
+// answer, since they only offer today / this week / this month / all time and
+// "week minus today" equals yesterday only on a Tuesday.
+//
+// The rows have always existed (breaktudo_user_votes is one row per blink per
+// day); they simply were not served. The API returns them already folded onto
+// canonical category slugs and already cut off at the KST boundary — see
+// BT_DAY_HISTORY_FROM, which exists because older rows were bucketed on Brasília
+// time and cannot be honestly re-dated.
+function _btMyDaysHtml(me) {
+  const days = (me && Array.isArray(me.days)) ? me.days : [];
+  if (!days.length) return '';
+  const today = days[0] && days[0].day;
+  return `<div class="vv-btcats">
+    <div class="vv-btcats-hd">Day by day · your votes</div>
+    ${days.map(d => {
+      const cats = btFoldCats(d.cats || {});
+      const chips = Object.entries(cats).filter(([, v]) => (Number(v) || 0) > 0)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => `<span class="vv-rowcat">${_vvEsc(btCatLabel(k))} <b>${_vvFmt(v)}</b></span>`).join('');
+      const attributed = Object.values(cats).reduce((a, v) => a + Number(v), 0);
+      const rest = Math.max(0, Number(d.votes || 0) - attributed);
+      return `<div class="vv-btcat-row vv-btday">
+        <span class="vv-btday-d">${_vvEsc(_btDayLabel(d.day))}${d.day === today ? ' <i>today</i>' : ''}</span>
+        <b>${_vvFmt(d.votes)}</b>
+        ${chips || rest > 0 ? `<span class="vv-btday-cats">${chips}${rest > 0
+          ? `<span class="vv-rowcat vv-rowcat-rest" title="Votes counted before the category was recorded, or whose category couldn&rsquo;t be identified">no category <b>${_vvFmt(rest)}</b></span>` : ''}</span>` : ''}
+      </div>`;
+    }).join('')}
+    <div class="vv-btcat-row vv-btcat-rest"><span>Starts ${_vvEsc(_btDayLabel(me.daysFrom || ''))} — the first full day on the midnight-KST boundary the board now counts on. Earlier days were bucketed on a different clock, so they are not listed here; they still count in your totals.</span></div>
+  </div>`;
+}
+
+// "30 Sep" from "2026-09-30", without pulling the date through a timezone — the
+// string IS the KST calendar day, so parsing it as a Date would shift it.
+function _btDayLabel(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  if (!m) return String(iso || '');
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${Number(m[3])} ${MON[Number(m[2]) - 1]}`;
 }
 
 // The same split, per row on the leaderboard, for whichever period is selected.
