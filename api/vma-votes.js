@@ -101,7 +101,7 @@ const btCanonCat = (slug) => BT_CAT_ALIASES[slug] || slug;
 // 2026-09-29 15:00 UTC — 2026-09-30. So the history starts there and says so,
 // rather than showing days whose boundary we cannot vouch for.
 const BT_DAY_HISTORY_FROM = '2026-09-30';
-const BT_DAY_HISTORY_MAX = 21;
+const BT_DAY_HISTORY_MAX = 120;   // enough to page a calendar back through the campaign
 
 function bearer(req) {
   const h = req.headers.authorization || '';
@@ -184,7 +184,7 @@ async function myBtTotals(sb, uid) {
       return { day: r.day, votes: r.votes || 0, cats: c };
     });
 
-  return { today, week, month, total, cats, catsToday, days, daysFrom: BT_DAY_HISTORY_FROM };
+  return { today, week, month, total, cats, catsToday, days, daysFrom: BT_DAY_HISTORY_FROM, todayKey: t };
 }
 
 // The caller's campaign streams: today's (ET-day aligned) for display + Monster
