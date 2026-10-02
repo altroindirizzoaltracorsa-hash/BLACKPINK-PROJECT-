@@ -214,6 +214,11 @@ jobs:
         env:
           OVERRIDE_DATE: ${{ inputs.group_override_date }}
           DRY_RUN: ${{ inputs.group_dry_run }}
+          # For the per-track detail (group_tracks + group_track_daily_stats).
+          # The committed files are written before Supabase is touched, so an
+          # unset secret or an outage costs the detail and nothing else.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python .github/scripts/fetch_group_streams.py
 
       - name: Commit the day

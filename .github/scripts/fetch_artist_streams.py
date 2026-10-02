@@ -728,9 +728,23 @@ def process_artist(client, artist_id, artist_name):
         # losing days. That is why check-split-publishes.yml now also fails when
         # any tracked artist falls more than STALE_AFTER_DAYS behind — a stall
         # gets reported rather than looking like a quiet week.
-        print(f"  ⏳ Spotify still publishing: {unchanged}/{comparable} tracks "
-              f"({pct:.1f}%) unchanged since {prev_date} — holding, nothing written. "
-              f"A later run records {today} once the catalogue has moved.")
+        #
+        # Two different situations reach this branch and the log has to tell them
+        # apart. NOTHING moved = Spotify has not published a new day at all,
+        # which at 06:00 Rome is simply not due yet and is the normal state for
+        # most of the fourteen slots. SOME moved = it is genuinely mid-publish.
+        # Before the hold existed the first case fell through to the "NOT UPDATED
+        # YET (same total)" message further down, so calling it "still
+        # publishing" would read as Spotify running late when it is not — and
+        # late-vs-not-yet-due is exactly the judgement these logs get used for.
+        if unchanged == comparable:
+            print(f"  ⏸ no new day yet: all {comparable} comparable tracks sit at "
+                  f"their {prev_date} values — nothing written. Not late, not "
+                  f"mid-publish; {today} is still unpublished.")
+        else:
+            print(f"  ⏳ Spotify still publishing: {unchanged}/{comparable} tracks "
+                  f"({pct:.1f}%) unchanged since {prev_date} — holding, nothing written. "
+                  f"A later run records {today} once the catalogue has moved.")
         return
 
     kept, merged_away = collapse_merged(counted, prev_groups=prev_groups)

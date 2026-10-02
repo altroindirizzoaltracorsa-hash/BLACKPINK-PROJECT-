@@ -95,7 +95,21 @@ mcp__github__actions_run_trigger
 - **`SPOTIFY_WORKER_URL` / `SPOTIFY_WORKER_KEY` (Vercel env) are UNSET — open gap.** The Cloudflare Worker is the intended primary catalog source: Cloudflare IPs can mint a fresh Spotify anon token, so it's free, needs no RapidAPI key, and side-caches per-track counts into `bp_worker_*`. With it unset, `/api/streams?catalog=1` burns a request on each provider and then scrapes **kworb** for the 17.5B total — i.e. the headline number on /streams depends on a third-party HTML scrape. Setting these two env vars is the single biggest scraper-quota win available.
 - **Network:** Direct HTTP to `blinksunited.com` is blocked in Claude Code sessions — always use GitHub Actions workflows to make HTTP calls against the Vercel deployment.
 - **Admin secret:** GitHub Actions secret = `secrets.ADMIN_KEY`; Vercel env var = `ADMIN_SECRET`.
-- **Supabase tables:** `artist_tracks` + `track_daily_stats` (written by `fetch_artist_streams.py`).
+- **Supabase tables:** `artist_tracks` + `track_daily_stats` (written by `fetch_artist_streams.py`); `group_tracks` + `group_track_daily_stats` (written by `fetch_group_streams.py`). The group pair is deliberately **separate** from the artist pair rather than reusing it with a group's `artist_id`: the artist tables carry site-visible meaning (/streams lists from `tracked_artists`, the split-publish sweep walks "every tracked artist", the per-artist pages query them), so seven girl groups' rows in there would quietly widen every one of those queries — first symptom being a girl group on a BLACKPINK page.
+  - `group_track_daily_stats.merged_with` = how many OTHER track ids reported this exact figure that day. Spotify sometimes serves several versions of a song as one merged count and then every id returns the same number, so summing them double counts. The group TOTAL still sums as-is (that is what reproduces kworb); this column is what lets a *per-track* read tell "Magnetic did 889.9M" from "Magnetic and four remixes all report 889.9M".
+  - `stale` = the fetch failed for that track and the last-known value was carried forward. Unchanged by construction, so a 0 delta there means "not seen", not "didn't move" — rate calculations must exclude it.
+  - **"Magnetic" (ILLIT) is one track ID: `1aKvZDoLGkNMxoRYgkckZG`** ([open.spotify.com](https://open.spotify.com/track/1aKvZDoLGkNMxoRYgkckZG)). Four other IDs carry "Magnetic" in the title, and **none of their streams are inside it** — they are separate songs, each with its own count. The proof is that the five figures all differ: a Spotify merge makes every ID in the group return the *identical* number (that is what `merged_with` detects), so five different numbers means five independent counts. Summing them therefore does not measure Magnetic harder, it adds four other tracks — ~32M of them, reaching 1B roughly **64 days early**. Never use the sum for a "fastest to 1B" claim. Values as of 2026-09-29, the last published day:
+
+    | track | Spotify ID | streams | daily |
+    |---|---|---|---|
+    | **Magnetic** — the song, the only one that counts | `1aKvZDoLGkNMxoRYgkckZG` | 889,906,032 | +524,542 |
+    | Magnetic - Sped Up | `4AcAYJr7ma4bdcni86Kp7I` | 13,183,827 | +3,133 |
+    | Magnetic - Starlight Remix | `1SNbKSraeBuFBuHeSpHLis` | 7,556,000 | +3,822 |
+    | Magnetic - R&B Remix | `2KYwtEX70O5wD2xEn4a42J` | 6,131,218 | +1,500 |
+    | Magnetic - City Night Remix | `6vkj9UHlADo13y5eHSwdec` | 5,337,537 | +2,127 |
+    | *all five summed — NOT Magnetic* | — | *922,114,614* | *+535,124* |
+
+    On those rates: Magnetic needs **~210 days** to 1B; the sum would say **~146**. The rate is falling (+580,979 → +549,747 → +524,542 across 27–29 Sep), so 210 is a floor. The **`Check Magnetic daily streams`** workflow (`check-magnetic.yml` → `check_magnetic.py`, read-only) re-reads all of this three ways — kworb's per-track table with its Daily column, a live spotifyscraper fetch, and our own recorded series — and projects both ways; its rate ignores `stale` and `merged_with` days.
 
 ---
 

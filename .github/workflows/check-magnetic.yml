@@ -1,0 +1,45 @@
+name: Check Magnetic daily streams
+
+# READ-ONLY. Writes nothing to the repo, Supabase or Redis.
+#
+# "Magnetic" is five Spotify track IDs, not one — the original plus a Sped Up
+# version and three remixes — so the song's stream count and its daily rate
+# depend on which IDs you include, and a 1B projection built on the sum arrives
+# early. This prints kworb's per-track table, a live spotifyscraper read, and our
+# own recorded per-track series side by side, then projects to 1B twice: the
+# original alone, and every version summed.
+#
+# Run it to sanity-check the per-track series after a day is recorded, or any
+# time a Magnetic figure needs to be defended.
+on:
+  workflow_dispatch:
+    inputs:
+      artist_id:
+        description: 'Group artist id (default ILLIT)'
+        required: false
+        default: '36cgvBn0aadzOijnjjwqMN'
+      track_match:
+        description: 'Substring of the track title to check (default magnetic)'
+        required: false
+        default: 'magnetic'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper
+
+      - name: Three readings of Magnetic
+        env:
+          ARTIST_ID: ${{ inputs.artist_id }}
+          TRACK_MATCH: ${{ inputs.track_match }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python .github/scripts/check_magnetic.py

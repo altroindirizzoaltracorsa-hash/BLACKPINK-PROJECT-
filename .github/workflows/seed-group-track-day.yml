@@ -1,0 +1,44 @@
+name: Backfill group per-track history
+
+# One-shot. data/group_streams/last_tracks.json is a group's per-track state on
+# its last COMPLETE day, and it is COMMITTED on every such day — so every past
+# snapshot, and every past per-track daily delta, is already in git. This walks
+# those commits oldest-first and writes group_track_daily_stats from them.
+# Nothing is re-fetched and nothing is estimated.
+#
+# Without it, the first day Spotify publishes after the table exists has no
+# earlier per-track values to subtract and lands with a NULL delta, so the first
+# usable per-track rate is two publishes away.
+#
+# Defaults to a dry run: it validates and prints the series it would write, and
+# writes only when write=true. Touches Supabase only — never the repo.
+on:
+  workflow_dispatch:
+    inputs:
+      write:
+        description: 'Actually write (true), or validate and print only (false)'
+        required: false
+        default: 'false'
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      # Full history: the backfill reads every past commit of last_tracks.json.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install httpx
+        run: pip install httpx
+
+      - name: Backfill from git history
+        env:
+          WRITE: ${{ inputs.write == 'true' && '1' || '0' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python .github/scripts/seed_group_track_day.py
