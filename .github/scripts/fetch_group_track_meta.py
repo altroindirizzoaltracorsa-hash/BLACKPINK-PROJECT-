@@ -171,12 +171,18 @@ def main():
                 if not album_day and not earliest:
                     missing.append(t)
                     continue
-                # The earliest release carrying this title wins whenever it is
-                # genuinely earlier; otherwise the track's own album date stands.
+                # Three outcomes, and the difference between the last two is the
+                # whole point: a title track's album date IS its release date, so
+                # the walk agreeing with it is CONFIRMATION, not a failure to
+                # find anything. Collapsing those two into one bucket put a
+                # "may be late" warning on ~50 correct rows and left the handful
+                # that are genuinely unverified indistinguishable from them.
                 if earliest and (not album_day or earliest < album_day):
-                    day, prec = earliest, "first_release"
+                    day, prec = earliest, "first_release"   # corrected: single later folded in
+                elif earliest:
+                    day, prec = album_day, "confirmed"      # discography agrees with the album
                 else:
-                    day, prec = album_day, "album"
+                    day, prec = album_day, "album"          # nothing found — an upper bound
                 # Spotify serves some dates as year-only, which arrives as 1
                 # January. Marked so a coarse date can be shown as coarse rather
                 # than read as a New Year's Day release — a days-from-release
@@ -188,14 +194,17 @@ def main():
                               "moved": (album_day and day != album_day)})
 
     moved = [f for f in found if f["moved"]]
+    unverified = [f for f in found if f["precision"] == "album"]
     print(f"\nresolved {len(found)}, unresolved {len(missing)}, "
-          f"{len(moved)} corrected off their album date")
+          f"{len(moved)} corrected off their album date, "
+          f"{len(found) - len(moved) - len(unverified)} confirmed by the discography, "
+          f"{len(unverified)} left on an unverified album date")
     for f in found:
         flag = ""
         if f["moved"]:
             flag = f"   ← album says {f['album_date']}"
         elif f["precision"] == "album":
-            flag = "   (album date — title not found in the group's own discography)"
+            flag = "   (unverified — no release carrying this title found; may be late)"
         if f["precision"] == "year":
             flag += "  [year-only]"
         print(f"  {f['streams']:>14,}  {f['release_date']}  {f['name']}{flag}")
