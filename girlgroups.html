@@ -719,6 +719,13 @@
     if (t.mergedWith > 0) flags.push(`<span class="b-warn" title="Spotify is serving ${t.mergedWith + 1} versions of this song as one merged count, so this figure is not this track alone.">merged ×${t.mergedWith + 1}</span>`);
     if (t.stale) flags.push('<span class="b-warn" title="The fetch failed for this track and the last known value was carried forward.">not observed</span>');
     if (t.releasePrecision === 'year') flags.push('<span class="b-warn" title="Spotify gives only a year for this release, so the days-from-release figure is approximate.">year-only date</span>');
+    // Spotify dates a track by the album its ID sits on, so a single later folded
+    // into an album reads months late — JUMP came back as DEADLINE's 2026-02-27
+    // rather than its own 2025-07-11. The date is normally corrected by finding
+    // the earliest release carrying the title; when that search finds nothing
+    // (a feature, a soundtrack) the album date stands and must say so, because
+    // it is an upper bound on the real one, not the real one.
+    else if (t.releasePrecision === 'album') flags.push('<span class="b-warn" title="Dated from the album this track ID belongs to — the song may have been released earlier as a single, which would make the days figure here too low.">album date, may be late</span>');
 
     let right, sub;
     if (arrived) {
