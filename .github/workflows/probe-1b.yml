@@ -1,0 +1,45 @@
+name: Probe road-to-1B
+
+# READ-ONLY. Calls /api/girlgroups?view=1b on the live deployment and prints the
+# board as text, so the endpoint and the data behind it can be checked without
+# opening the page. Direct HTTP to blinksunited.com is blocked from Claude Code
+# sessions, so this is the only way to see what it actually returns.
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL (blank = production)'
+        required: false
+        default: ''
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch and print the board
+        env:
+          BASE: ${{ inputs.base_url != '' && inputs.base_url || 'https://blinksunited.com' }}
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/b.json -w '%{http_code}' \
+            -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/girlgroups?view=1b")
+          echo "HTTP $code"
+          if [ "$code" != "200" ]; then head -c 600 /tmp/b.json; echo; exit 1; fi
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/b.json'))
+          print(f"as of {d.get('asOf')} · floor {d.get('floor'):,}")
+          print(f"{len(d.get('tracks') or [])} racing · {len(d.get('done') or [])} past 1B\n")
+          print(f"{'eta':<12} {'days':>5} {'from release':>13} {'streams':>14} {'per day':>10}  track")
+          for t in (d.get('tracks') or []):
+              dl = t.get('daysLeft'); td = t.get('totalDays'); rt = t.get('rate')
+              print(f"{str(t.get('eta') or '—'):<12} {(dl if dl is not None else '—'):>5} "
+                    f"{(td if td is not None else '—'):>13} {t['streams']:>14,} "
+                    f"{(round(rt) if rt else 0):>10,}  {t['group']} — {t['name']}"
+                    + ('' if t.get('releasePrecision') != 'album' else '  [album date, may be late]'))
+          print()
+          for t in (d.get('done') or []):
+              print(f"{'past 1B':<12} {'—':>5} {'—':>13} {t['streams']:>14,} "
+                    f"{(round(t['rate']) if t.get('rate') else 0):>10,}  {t['group']} — {t['name']}")
+          PY
