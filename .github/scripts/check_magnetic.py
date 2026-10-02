@@ -31,7 +31,9 @@ them). ARTIST_ID and TRACK_MATCH override the group and the title match.
 import json
 import os
 import re
+import statistics
 import sys
+from datetime import date
 
 import httpx
 from spotify_scraper import SpotifyClient
@@ -40,6 +42,15 @@ ARTIST_ID = os.environ.get("ARTIST_ID", "36cgvBn0aadzOijnjjwqMN")       # ILLIT
 TRACK_MATCH = os.environ.get("TRACK_MATCH", "magnetic").lower()
 CATALOG = f"data/group_catalogs/{ARTIST_ID}.json"
 TARGET = 1_000_000_000
+
+# How many recorded days to read back. A span rate wants a long enough base that
+# one smeared label barely moves it; 28 days is two full weeks past the point
+# where that matters and still a small query.
+WINDOW = int(os.environ.get("WINDOW", "28"))
+
+# A daily delta this many times the median is not one day — it is two publishes
+# landing in one row, which is what a 0-delta neighbour above it means.
+MULTI_DAY = 1.75
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
@@ -175,11 +186,15 @@ def main():
                       "fetch-catalog run that records a day")
             for ref in refs:
                 rows = sb("/group_track_daily_stats", {
-                    "track_ref": f"eq.{ref['id']}", "order": "date.desc", "limit": "14",
+                    "track_ref": f"eq.{ref['id']}", "order": "date.desc",
+                    "limit": str(WINDOW),
                     "select": "date,streams,daily_delta,merged_with,stale"})
                 print(f"\n  {ref['name']} [{ref['track_id']}] — {len(rows)} recorded day(s)")
                 if rows:
                     print(f"    {'date':<12} {'streams':>14} {'daily':>12}  flags")
+                usable = [r for r in rows if not r["stale"] and not r["merged_with"]]
+                deltas = [r["daily_delta"] for r in usable if r["daily_delta"]]
+                med = statistics.median(deltas) if deltas else 0
                 for r in rows:
                     flags = []
                     if r["merged_with"]:
@@ -187,16 +202,57 @@ def main():
                                      f"— this figure is not this track's alone")
                     if r["stale"]:
                         flags.append("STALE — carried from last-known, not observed")
+                    d = r["daily_delta"]
+                    if d == 0:
+                        flags.append("NO MOVEMENT — a day recorded before the hold "
+                                     "rule existed; its streams land on the next row")
+                    elif d and med and d > MULTI_DAY * med:
+                        flags.append(f"{d / med:.1f}x the median — two publishes in "
+                                     f"one row, not one day")
                     print(f"    {r['date']:<12} {fmt(r['streams']):>14} "
-                          f"{fmt(r['daily_delta']):>12}  {'; '.join(flags)}")
-                # A rate must only use days we actually saw move.
-                clean = [r["daily_delta"] for r in rows
-                         if r["daily_delta"] and not r["stale"] and not r["merged_with"]]
-                if clean:
-                    rate[ref["track_id"]] = sum(clean) / len(clean)
-                    print(f"    mean daily over {len(clean)} clean day(s): "
-                          f"{fmt(int(rate[ref['track_id']]))}")
-                else:
+                          f"{fmt(d):>12}  {'; '.join(flags)}")
+
+                # The rate comes from the SPAN, not from averaging the deltas, and
+                # the output above is why. A 0 day followed by a 2x day is one
+                # two-day publish smeared across two rows (visible here on 23/24
+                # Sep and 17 Sep), and averaging counts the 2x at full weight while
+                # the 0 drags nothing back — on Magnetic that reads 673,471/day
+                # against a true ~581,000, a 16% overstatement that then shortens
+                # the 1B projection by nearly 40 days. Cumulative totals do not
+                # have that problem: streams gained between the oldest and newest
+                # observed row, over the calendar days between them, is correct
+                # however the labels in between are smeared, and a missing day in
+                # the middle costs nothing because the totals are cumulative.
+                #
+                # One thing DOES break a span: a merge. A smeared label moves
+                # streams between rows and the endpoints still bracket the same
+                # real streams, but when Spotify folds another version in, the
+                # cumulative figure takes a permanent step up that was never
+                # played in that window — so a span crossing a merge overstates
+                # the rate for as long as it stays in the window. Timing artifacts
+                # are tolerated; a level shift is not, so the span starts after
+                # the newest merged row.
+                merged_rows = [r for r in rows if r["merged_with"]]
+                floor = max((r["date"] for r in merged_rows), default=None)
+                if floor:
+                    usable = [r for r in usable if r["date"] > floor]
+                    print(f"    merge at {floor} — the rate below starts after it, "
+                          f"since a merged figure steps the total up permanently")
+                if len(usable) >= 2:
+                    new, old = usable[0], usable[-1]
+                    span = (date.fromisoformat(new["date"])
+                            - date.fromisoformat(old["date"])).days
+                    if span > 0:
+                        rate[ref["track_id"]] = (new["streams"] - old["streams"]) / span
+                        print(f"    rate over the {span}-day span "
+                              f"{old['date']} → {new['date']}: "
+                              f"{fmt(int(rate[ref['track_id']]))}/day")
+                        if deltas:
+                            print(f"      (median of the daily deltas: "
+                                  f"{fmt(int(med))} — mean would be "
+                                  f"{fmt(int(sum(deltas) / len(deltas)))}, inflated "
+                                  f"by any two-publish row above)")
+                if ref["track_id"] not in rate:
                     print("    no clean day yet — no rate from our own data")
         except Exception as e:
             print(f"  ⚠ Supabase read failed: {e}")
@@ -214,7 +270,7 @@ def main():
         projection("all versions summed",
                    sum(k["streams"] for k in listed),
                    sum(k["daily"] or 0 for k in listed))
-    print(" from our own recorded deltas:")
+    print(" from our own recorded span (streams gained / calendar days):")
     projection(f"{original['name']} alone", live.get(oid) or ko.get("streams"), rate.get(oid))
     if rate:
         projection("all versions summed",
