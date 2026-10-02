@@ -15,6 +15,14 @@ Outputs (all under data/group_streams/):
   history.json     — {date: {artist_id: {...}}}, one entry per streaming day
   history.csv      — the same rows, long format, for spreadsheets
   last_tracks.json — most recent per-track value, used to cover a failed fetch
+
+And, when SUPABASE_URL / SUPABASE_SERVICE_KEY are set, the PER-TRACK detail into
+group_tracks + group_track_daily_stats. Every track is already fetched
+individually — that is how the total is built — so keeping the detail costs no
+extra request; throwing it away is what made "how fast is ILLIT's Magnetic
+actually moving" unanswerable from our own data. Supabase is strictly additive
+here: the committed files above are written FIRST and a Supabase failure cannot
+touch them.
 """
 
 import csv
@@ -23,6 +31,7 @@ import os
 import sys
 from datetime import date, timedelta
 
+import httpx
 from spotify_scraper import SpotifyClient
 
 CATALOG_DIR = "data/group_catalogs"
@@ -36,6 +45,12 @@ OVERRIDE_DATE = os.environ.get("OVERRIDE_DATE")
 DRY_RUN = os.environ.get("DRY_RUN", "0") == "1"
 BATCH = 40
 
+# Optional on purpose: unset means "write the files, skip the per-track rows".
+# This job's committed output predates Supabase and must keep working without it
+# — a missing secret is a gap in the new detail, not a broken daily record.
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
+
 CSV_COLUMNS = ["date", "group", "artist_id", "total_streams", "daily_delta", "tracks", "note"]
 
 
@@ -48,7 +63,9 @@ def load_json(path, default):
 
 
 def catalogs():
-    """[(name, artist_id, [track_id, ...])] — the seeded lists, in stable order."""
+    """[(name, artist_id, [{id, name, feature}, ...])] — the seeded lists, in
+    stable order. The full track dicts are carried, not just the IDs, because
+    the per-track rows need the title and the feature flag."""
     out = []
     for fn in sorted(os.listdir(CATALOG_DIR)):
         if not fn.endswith(".json"):
@@ -57,7 +74,7 @@ def catalogs():
         if not d or not d.get("tracks"):
             print(f"  ⚠ {fn}: no tracks, skipping", file=sys.stderr)
             continue
-        out.append((d["name"], d["artist_id"], [t["id"] for t in d["tracks"]]))
+        out.append((d["name"], d["artist_id"], d["tracks"]))
     return out
 
 
@@ -147,17 +164,126 @@ def publish_unfinished(got, known, failed):
     return (unchanged / comparable) >= UNCHANGED_LIMIT, unchanged, comparable
 
 
-def equal_value_groups(per_track, min_streams=1_000_000):
-    """Track IDs sharing an identical large play_count — Spotify has merged them,
-    and every ID in the group reports the merged figure. kworb's list is summed
-    as-is (that is what reproduces its total), so this does NOT change the
-    arithmetic; it records the count, because a NEW merge appearing mid-series
-    would inflate the total overnight and needs to be visible when it happens."""
+# Below this, an identical play_count across two IDs is coincidence (plenty of
+# obscure tracks sit on the same small number), not evidence of a merge.
+MERGE_MIN = 1_000_000
+
+
+def equal_value_ids(per_track, min_streams=MERGE_MIN):
+    """{play_count: [track_id, ...]} for values shared by more than one ID.
+
+    Spotify sometimes serves several versions of a song as one merged count, and
+    when it does every ID in the group returns the same number. kworb's list is
+    summed as-is (that is what reproduces its total), so this does NOT change the
+    arithmetic — but a per-track reading has to know, or five IDs reporting one
+    merged figure read as five separate songs."""
     by = {}
     for tid, v in per_track.items():
         if v >= min_streams:
             by.setdefault(v, []).append(tid)
-    return sum(1 for ids in by.values() if len(ids) > 1)
+    return {v: ids for v, ids in by.items() if len(ids) > 1}
+
+
+def equal_value_groups(per_track, min_streams=MERGE_MIN):
+    """How many merged value-groups this catalogue shows. Recorded on the day
+    row because a NEW merge appearing mid-series would inflate the total
+    overnight and needs to be visible when it happens."""
+    return len(equal_value_ids(per_track, min_streams))
+
+
+def sb(method, path, **kwargs):
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "apikey": SUPABASE_KEY,
+        "Content-Type": "application/json",
+        **kwargs.pop("headers", {}),
+    }
+    r = httpx.request(method, f"{SUPABASE_URL}/rest/v1{path}", headers=headers, timeout=30, **kwargs)
+    if r.is_error:
+        print(f"  Supabase error body: {r.text}", file=sys.stderr)
+    r.raise_for_status()
+    return r.json() if r.content else None
+
+
+def upsert_group_tracks(artist_id, tracks):
+    """Upserts group_tracks from the seeded catalogue, returns {track_id: ref}."""
+    rows = [
+        {
+            "artist_id": artist_id,
+            "track_id": t["id"],
+            "name": t.get("name"),
+            "feature": bool(t.get("feature")),
+        }
+        for t in tracks
+    ]
+    result = sb(
+        "POST", "/group_tracks",
+        params={"on_conflict": "track_id"},
+        headers={"Prefer": "resolution=merge-duplicates,return=representation"},
+        json=rows,
+    )
+    return {row["track_id"]: row["id"] for row in result}
+
+
+def store_per_track(name, artist_id, day, tracks, got, known, failed):
+    """Writes one day of per-track rows. Returns the number of rows written.
+
+    `known` is the PRE-RUN baseline (the last complete day's per-track snapshot),
+    so daily_delta is measured against the same thing the group total's delta is.
+    `failed` are the tracks whose value was carried forward from that baseline —
+    flagged `stale`, because their delta is 0 by construction and a rate
+    calculation must not read that as "it did not move"."""
+    refs = upsert_group_tracks(artist_id, tracks)
+    merged = equal_value_ids(got)
+    failed = set(failed)
+    rows = []
+    for tid, v in got.items():
+        ref = refs.get(tid)
+        if ref is None:          # not in the catalogue we just upserted
+            continue
+        prev = known.get(tid)
+        rows.append({
+            "track_ref": ref,
+            "date": day,
+            "streams": v,
+            "daily_delta": None if prev is None else v - prev,
+            "merged_with": len(merged.get(v, [])) - 1 if v in merged else 0,
+            "stale": tid in failed,
+        })
+    for i in range(0, len(rows), 200):
+        sb(
+            "POST", "/group_track_daily_stats",
+            params={"on_conflict": "track_ref,date"},
+            headers={"Prefer": "resolution=merge-duplicates"},
+            json=rows[i:i + 200],
+        )
+    return len(rows)
+
+
+def push_per_track(pending):
+    """Per-track rows for every day recorded this run. Called AFTER the committed
+    files are written, and every group is isolated: Supabase being down costs the
+    per-track detail for that day and nothing else. Nothing downstream breaks —
+    the next day's daily_delta is measured against last_tracks.json, not against
+    Supabase, so a lost day leaves one hole in `streams` and every later delta is
+    still right. Re-filling the hole needs OVERRIDE_DATE, since an ordinary run
+    only ever records the next UNrecorded day."""
+    if not pending:
+        return
+    if not (SUPABASE_URL and SUPABASE_KEY):
+        print("\nSUPABASE_URL/SUPABASE_SERVICE_KEY unset — per-track rows not stored "
+              "(the committed files above are unaffected)")
+        return
+    print("\nper-track rows:")
+    for p in pending:
+        try:
+            n = store_per_track(**p)
+            print(f"  {p['name']} {p['day']}: {n} track row(s)")
+        except Exception as e:
+            print(f"  ⚠ {p['name']} {p['day']}: per-track store FAILED ({e}) — "
+                  f"the day itself is recorded in the committed files, and later "
+                  f"deltas stay correct; this day's per-track detail is missing",
+                  file=sys.stderr)
 
 
 def merge_csv_rows(existing, new_rows):
@@ -189,10 +315,12 @@ def main():
     history = load_json(HISTORY, {})
     last_tracks = load_json(LAST_TRACKS, {})
     rows_to_append = []
+    pending_per_track = []
     wrote = []
 
     with SpotifyClient() as client:
-        for name, aid, ids in catalogs():
+        for name, aid, tracks in catalogs():
+            ids = [t["id"] for t in tracks]
             print(f"\n=== {name} [{aid}] — {len(ids)} tracks", flush=True)
             got, failed = playcounts(client, ids)
 
@@ -289,6 +417,13 @@ def main():
                 "daily_delta": "" if delta is None else delta,
                 "tracks": len(got), "note": note,
             })
+            # The same numbers, kept per track instead of only summed. `known` is
+            # captured before last_tracks[aid] is advanced below, so it is the
+            # last COMPLETE day — the same baseline the group delta used.
+            pending_per_track.append({
+                "name": name, "artist_id": aid, "day": day, "tracks": tracks,
+                "got": dict(got), "known": dict(known), "failed": list(failed),
+            })
             # Only a COMPLETE day advances the per-track baseline. Saving a
             # half-published run here would make the next run compare against
             # the partial state, so the stragglers still to arrive would look
@@ -302,7 +437,9 @@ def main():
         print("\nnothing new to record (every group held)")
         return
     if DRY_RUN:
-        print(f"\nDRY_RUN — would record {len(rows_to_append)} row(s):")
+        print(f"\nDRY_RUN — would record {len(rows_to_append)} row(s), plus "
+              f"per-track rows for {sum(len(p['got']) for p in pending_per_track)} "
+              f"track(s). Nothing written, Supabase included:")
         for w in wrote:
             print(f"  {w}")
         return
@@ -330,6 +467,8 @@ def main():
     print(f"\nrecorded {len(rows_to_append)} row(s):")
     for w_ in wrote:
         print(f"  {w_}")
+
+    push_per_track(pending_per_track)
 
 
 if __name__ == "__main__":

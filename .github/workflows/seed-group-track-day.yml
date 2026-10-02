@@ -1,0 +1,40 @@
+name: Seed group per-track day
+
+# One-shot. Writes the per-track snapshot we already hold in
+# data/group_streams/last_tracks.json into group_track_daily_stats, dated to each
+# group's newest recorded day.
+#
+# Without it, the first day Spotify publishes after the table exists has no
+# earlier per-track values to subtract and lands with a NULL delta, so the first
+# real per-track daily figure is two publishes away. With it, the next publish
+# gives one. The seeded row's own delta is NULL on purpose.
+#
+# Defaults to a dry run: it validates and prints, and writes only when
+# write=true. Touches Supabase only — never the repo.
+on:
+  workflow_dispatch:
+    inputs:
+      write:
+        description: 'Actually write (true), or validate and print only (false)'
+        required: false
+        default: 'false'
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install httpx
+        run: pip install httpx
+
+      - name: Seed the snapshot
+        env:
+          WRITE: ${{ inputs.write == 'true' && '1' || '0' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python .github/scripts/seed_group_track_day.py
