@@ -22,7 +22,10 @@ jobs:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
         run: |
           set -euo pipefail
-          code=$(curl -sS -o /tmp/b.json -w '%{http_code}' \
+          # -L because the apex 308-redirects; without it the probe reports the
+          # redirect as a failure rather than reading the endpoint. The admin
+          # header is a custom one, so curl carries it across the hop.
+          code=$(curl -sS -L -o /tmp/b.json -w '%{http_code}' \
             -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/girlgroups?view=1b")
           echo "HTTP $code"
           if [ "$code" != "200" ]; then head -c 600 /tmp/b.json; echo; exit 1; fi
