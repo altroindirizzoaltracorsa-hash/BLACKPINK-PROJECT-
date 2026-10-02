@@ -34,7 +34,7 @@ jobs:
           d = json.load(open('/tmp/b.json'))
           print(f"as of {d.get('asOf')} · floor {d.get('floor'):,}")
           print(f"{len(d.get('tracks') or [])} racing · {len(d.get('done') or [])} past 1B\n")
-          print(f"{'eta':<12} {'days':>5} {'from release':>13} {'streams':>14} {'per day':>10}  track")
+          print(f"{'eta':<12} {'days':>5} {'rel→1B':>13} {'streams':>14} {'per day':>10}  track")
           for t in (d.get('tracks') or []):
               dl = t.get('daysLeft'); td = t.get('totalDays'); rt = t.get('rate')
               print(f"{str(t.get('eta') or '—'):<12} {(dl if dl is not None else '—'):>5} "

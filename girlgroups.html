@@ -725,7 +725,11 @@
     // the earliest release carrying the title; when that search finds nothing
     // (a feature, a soundtrack) the album date stands and must say so, because
     // it is an upper bound on the real one, not the real one.
-    else if (t.releasePrecision === 'album') flags.push('<span class="b-warn" title="Dated from the album this track ID belongs to — the song may have been released earlier as a single, which would make the days figure here too low.">album date, may be late</span>');
+    // Not "may be late": it can miss in either direction. Kiss And Make Up's ID
+    // sits on a Dua Lipa album dated 2017-06-02, sixteen months BEFORE the song
+    // came out, while a single folded into a later album reads late. The honest
+    // claim is only that this is the album the ID belongs to.
+    else if (t.releasePrecision === 'album') flags.push('<span class="b-warn" title="No release carrying this title was found in the group\'s discography, so this is the date of the album this track ID sits on. The song itself may be older or newer than that.">album date, not the song\'s</span>');
 
     let right, sub;
     if (arrived) {
@@ -792,6 +796,11 @@
     document.getElementById('b-note').innerHTML =
       `<b>How this is worked out.</b> ${esc(d.note || '')} ` +
       `Figures are for streaming day <b>${esc(d.asOf || '—')}</b>. ` +
+      `<b>Release dates are the earliest Spotify still lists.</b> A pre-release single ` +
+      `that was delisted once its album shipped leaves no trace, so a date can be later ` +
+      `than the real one and nothing in the data shows it — How You Like That reads ` +
+      `2 Oct 2020, its album, rather than the 26 Jun single. Days-from-release is ` +
+      `therefore a floor for the older tracks. ` +
       `A track's rate is taken from its own recorded span, so a song that has been ` +
       `slowing for weeks projects from what it is doing now rather than its peak — ` +
       `and because these tracks are nearly all decaying, every arrival date here is ` +
