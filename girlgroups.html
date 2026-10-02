@@ -143,6 +143,38 @@
   .cu-tr-good{color:var(--pink-soft);}
   .cu-tr-warn{color:var(--gold);}
   .cu-tr-bad{color:#ff6b6b;}
+
+  /* ---- view toggle ---- */
+  .modes{display:flex;gap:6px;margin:16px 0 18px;}
+  .mode{flex:1;background:var(--card);color:var(--muted);border:1px solid var(--line);
+        border-radius:10px;padding:9px 8px;font-family:inherit;font-size:11.5px;
+        letter-spacing:.06em;cursor:pointer;transition:all .18s;}
+  .mode:hover{color:var(--pink-soft);}
+  .mode[aria-selected="true"]{background:#ff2e7718;border-color:#ff2e7788;color:var(--pink-soft);font-weight:700;}
+
+  /* ---- road to 1B ---- */
+  /* Same row component as the group race, so the two views read as one page.
+     The third column carries the arrival rather than a total, because that is
+     what the race is about. */
+  .b-eta{font-size:13px;font-weight:800;}
+  .b-eta.soon{color:var(--pink-soft);}
+  /* .nums sets white-space:nowrap so a stream figure never breaks mid-number.
+     This sub-line is prose, not a figure — left nowrap it pushed the grid's auto
+     column to 180px and the row off the right edge of a 320px phone. */
+  .b-sub{font-size:10px;color:var(--dim);margin-top:3px;letter-spacing:.02em;
+         white-space:normal;max-width:116px;margin-left:auto;}
+  .b-days{font-size:10.5px;color:var(--muted);}
+  .b-days b{color:var(--pink-soft);font-weight:700;}
+  .b-grp{font-size:10px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;}
+  .b-head{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--pink-soft);
+          margin:22px 0 10px;}
+  .b-head:first-child{margin-top:0;}
+  .row.done{border-color:#f5c54255;}
+  .row.done .rank{color:var(--gold);}
+  .row.done .name{color:var(--gold);}
+  .row.done .track>i{background:linear-gradient(90deg,#f5c542,#ffe08a);}
+  .b-warn{color:var(--gold);}
+  .b-empty{font-size:11px;color:var(--dim);line-height:1.6;padding:14px 0;}
 </style>
 </head>
 <body>
@@ -153,9 +185,19 @@
     <div class="sub" id="asof">loading…</div>
   </div>
 
+  <div class="modes" id="modes" role="tablist" hidden>
+    <button class="mode" data-view="race" aria-selected="true" role="tab">Group race</button>
+    <button class="mode" data-view="1b" aria-selected="false" role="tab">Road to 1B</button>
+  </div>
+
   <div id="stale" class="stale"></div>
   <div id="err" class="err"></div>
   <div id="list"></div>
+
+  <div id="race1b" hidden>
+    <div id="b-body" class="b-empty">loading…</div>
+    <div class="note" id="b-note"></div>
+  </div>
 
   <div id="catchup" class="catchup" hidden>
     <div class="cu-title">Catch-up projection</div>
@@ -247,8 +289,9 @@
     _cuGroups = (groups || []).filter(g => g.ytd != null);
     const box = document.getElementById('catchup');
     if (!box) return;
-    if (_cuGroups.length < 2) { box.hidden = true; return; }
-    box.hidden = false;
+    if (_cuGroups.length < 2) { _hasCatchup = false; applyView(); return; }
+    _hasCatchup = true;
+    applyView();
     const chaser = document.getElementById('cu-chaser');
     const target = document.getElementById('cu-target');
     const opts = _cuGroups.map((g, i) => `<option value="${i}">${esc(g.name)}</option>`).join('');
@@ -446,9 +489,12 @@
     if (d.asOf) {
       const age = Math.floor((Date.now() - Date.parse(d.asOf + 'T00:00:00Z')) / 86400000);
       if (age >= 3) {
-        const s = document.getElementById('stale');
-        s.style.display = 'block';
-        s.textContent = `⚠ kworb has not published a newer day in ${age} days — figures below are for ${d.asOf}.`;
+        // About kworb's day, so it belongs to the group-race view only — the
+        // per-track board does not come from kworb at all.
+        _staleShown = true;
+        document.getElementById('stale').textContent =
+          `⚠ kworb has not published a newer day in ${age} days — figures below are for ${d.asOf}.`;
+        applyView();
       }
     }
 
@@ -602,7 +648,8 @@
   }
 
   function loadLog() {
-    document.getElementById('logsec').hidden = false;
+    _hasLog = true;
+    applyView();
     fetch(HISTORY_CSV, { cache: 'no-store' })
       .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
       .then(text => {
@@ -654,6 +701,155 @@
       });
   }
 
+  // ── Road to 1B ──────────────────────────────────────────────────────────
+  // Per-track rather than per-group: which songs reach a billion streams, and
+  // when. Fed by group_track_daily_stats, which the nightly fetch fills from the
+  // per-track figures it already pulls to build the group totals.
+  const _d = s => s ? new Date(Date.parse(s + 'T00:00:00Z'))
+    .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+  const _dshort = s => s ? new Date(Date.parse(s + 'T00:00:00Z'))
+    .toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—';
+
+  function _bRow(t, i, arrived) {
+    const pct = Math.max(2, Math.min(100, 100 * t.streams / 1e9));
+    // Flags earned rather than decorative. A merged figure is not this track's
+    // alone and a stale one was not observed, so neither is presented as a plain
+    // reading — this is the same distinction the fetch records per row.
+    const flags = [];
+    if (t.mergedWith > 0) flags.push(`<span class="b-warn" title="Spotify is serving ${t.mergedWith + 1} versions of this song as one merged count, so this figure is not this track alone.">merged ×${t.mergedWith + 1}</span>`);
+    if (t.stale) flags.push('<span class="b-warn" title="The fetch failed for this track and the last known value was carried forward.">not observed</span>');
+    if (t.releasePrecision === 'year') flags.push('<span class="b-warn" title="Spotify gives only a year for this release, so the days-from-release figure is approximate.">year-only date</span>');
+
+    let right, sub;
+    if (arrived) {
+      right = `<div class="b-eta" style="color:var(--gold)">past 1B</div>`;
+      sub = `<div class="b-sub">${big(t.streams)}${t.rate ? ` · +${fmt(Math.round(t.rate))}/day` : ''}</div>`;
+    } else if (t.daysLeft == null) {
+      right = `<div class="b-eta">—</div>`;
+      sub = `<div class="b-sub">not enough history for a rate</div>`;
+    } else {
+      const soon = t.daysLeft <= 120 ? ' soon' : '';
+      right = `<div class="b-eta${soon}">${_dshort(t.eta)}</div>`;
+      sub = `<div class="b-sub">${t.daysLeft.toLocaleString()} days · +${fmt(Math.round(t.rate))}/day</div>`;
+    }
+
+    // "Days from release to 1B" is the graphic's metric, and it is only honest
+    // when the release date is known AND an arrival can be projected: half
+    // measured, half projected. Said that way rather than presented as a fact.
+    const total = (!arrived && t.totalDays != null)
+      ? `<div class="b-days"><b>${t.totalDays.toLocaleString()} days</b> from release to 1B · ${t.elapsed.toLocaleString()} so far, ${t.daysLeft.toLocaleString()} projected</div>`
+      : (t.release
+          ? `<div class="b-days">released ${_d(t.release)}${t.elapsed != null ? ` · ${t.elapsed.toLocaleString()} days ago` : ''}</div>`
+          : `<div class="b-days" style="color:var(--dim)">no release date on file</div>`);
+
+    // The arrived list is not a ranking — it is a set of tracks that are simply
+    // done — so it carries no position. Numbering it restarted at 1 under the
+    // racing list and read as a second leaderboard.
+    return `<div class="row${arrived ? ' done' : (i === 0 ? ' lead' : '')}">
+      <div class="rank">${arrived ? '✓' : i + 1}</div>
+      <div>
+        <div class="name">${esc(t.name)}</div>
+        <div class="meta"><span class="b-grp">${esc(t.group)}</span> · ${fmt(t.streams)}${arrived ? '' : ` · ${big(t.toGo)} to go`}</div>
+        ${total}
+        ${flags.length ? `<div class="b-days">${flags.join(' · ')}</div>` : ''}
+      </div>
+      <div class="nums">${right}${sub}</div>
+      <div class="track"><i style="width:${pct.toFixed(1)}%"></i></div>
+    </div>`;
+  }
+
+  let _b = null;
+  function render1B(d) {
+    _b = d;
+    const body = document.getElementById('b-body');
+    const racing = d.tracks || [], arrived = d.done || [];
+    if (!racing.length && !arrived.length) {
+      body.className = 'b-empty';
+      body.innerHTML = 'No per-track rows yet. They are written by the nightly fetch, ' +
+        'one day at a time, the first time Spotify publishes after the table was created.';
+      document.getElementById('b-note').innerHTML = '';
+      return;
+    }
+    body.className = '';
+    body.innerHTML =
+      (racing.length
+        ? `<div class="b-head">Closing in · ${racing.length} track${racing.length === 1 ? '' : 's'} over ${big(d.floor)}</div>`
+          + racing.map((t, i) => _bRow(t, i, false)).join('')
+        : '') +
+      (arrived.length
+        ? `<div class="b-head">Already past a billion</div>`
+          + arrived.map((t, i) => _bRow(t, i, true)).join('')
+        : '');
+
+    const nDated = racing.filter(t => t.release).length;
+    document.getElementById('b-note').innerHTML =
+      `<b>How this is worked out.</b> ${esc(d.note || '')} ` +
+      `Figures are for streaming day <b>${esc(d.asOf || '—')}</b>. ` +
+      `A track's rate is taken from its own recorded span, so a song that has been ` +
+      `slowing for weeks projects from what it is doing now rather than its peak — ` +
+      `and because these tracks are nearly all decaying, every arrival date here is ` +
+      `the <b>earliest plausible</b> one, not the likeliest. ` +
+      (nDated < racing.length
+        ? `${racing.length - nDated} of ${racing.length} have no release date on file yet, ` +
+          `so they show an arrival date but no days-from-release figure. `
+        : '') +
+      `The tracks already past a billion are shown without a days figure on purpose: ` +
+      `our per-track history begins in September 2026 and they crossed long before, ` +
+      `so the number of days it took them is not something this data can tell you.`;
+  }
+
+  let _1bLoaded = false;
+  function load1B(key) {
+    if (_1bLoaded) return;
+    _1bLoaded = true;
+    fetch('/api/girlgroups?view=1b', { headers: { 'x-admin-secret': key } })
+      .then(r => r.json())
+      .then(d => { if (d.error) throw new Error(d.error); render1B(d); })
+      .catch(e => {
+        _1bLoaded = false;   // let a retry happen on the next switch
+        document.getElementById('b-body').className = 'b-empty';
+        document.getElementById('b-body').textContent = 'Could not load: ' + e.message;
+      });
+  }
+
+  const VIEW_LS = 'bu_gg_view';
+  // Visibility is RECOMPUTED from state rather than toggled in place. The log
+  // and the catch-up box un-hide themselves when their data arrives, and the log
+  // arrives from a fetch — so a switch to the 1B view that merely hid them would
+  // be undone a moment later when that fetch resolved, putting the group race's
+  // log under the 1B board. Each block's own "do I have data" flag and the
+  // current view are tracked separately and applied together.
+  let _view = 'race', _hasCatchup = false, _hasLog = false, _staleShown = false;
+  function applyView() {
+    const race = _view === 'race';
+    const set = (id, show) => { const el = document.getElementById(id); if (el) el.hidden = !show; };
+    set('list', race);
+    set('note', race);
+    set('catchup', race && _hasCatchup);
+    set('logsec', race && _hasLog);
+    set('race1b', !race);
+    document.getElementById('stale').style.display = (race && _staleShown) ? 'block' : 'none';
+    document.querySelectorAll('#modes .mode').forEach(b =>
+      b.setAttribute('aria-selected', (b.dataset.view === _view) ? 'true' : 'false'));
+    document.querySelector('.kicker').textContent = race ? 'Spotify · this year' : 'Spotify · per track';
+  }
+  function setView(v, key) {
+    _view = v;
+    applyView();
+    try { localStorage.setItem(VIEW_LS, v); } catch {}
+    if (v === '1b') load1B(key);
+  }
+
+  function initViews(key) {
+    const modes = document.getElementById('modes');
+    modes.hidden = false;
+    modes.querySelectorAll('.mode').forEach(b =>
+      b.addEventListener('click', () => setView(b.dataset.view, key)));
+    let saved = 'race';
+    try { saved = localStorage.getItem(VIEW_LS) || 'race'; } catch {}
+    setView(saved === '1b' ? '1b' : 'race', key);
+  }
+
   // Admin-only. The key is the same one the rest of the site stores after the
   // admin unlock on the home page, so there is one login, not two. Sent as a
   // header rather than ?key= to keep it out of URLs, referrers and access logs.
@@ -680,7 +876,7 @@
         }
         return r.json();
       })
-      .then(d => { if (d.error) throw new Error(d.error); render(d); loadLog(); })
+      .then(d => { if (d.error) throw new Error(d.error); render(d); loadLog(); initViews(key); })
       .catch(e => {
         if (e.message === '__401__') {
           locked('That admin key was rejected. Unlock again on the <a href="/" style="color:var(--pink-soft)">home page</a>.');

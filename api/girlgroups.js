@@ -168,6 +168,133 @@ const authed = req => {
 
 const parseList = arr => (arr || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
 
+// ── road to 1B ────────────────────────────────────────────────────────────
+// Per-track, from Supabase. Only tracks within reach are returned: the point is
+// a race, and a track at 40M is not in one for years.
+const B = 1_000_000_000;
+const RACE_FLOOR = 400_000_000;
+
+const sbRest = async (path, params) => {
+  const url = `${process.env.SUPABASE_URL}/rest/v1${path}?${new URLSearchParams(params)}`;
+  const r = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+      apikey: process.env.SUPABASE_SERVICE_KEY,
+    },
+  });
+  if (!r.ok) throw new Error(`supabase ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  return r.json();
+};
+
+// The rate is the SPAN — streams gained between two observed rows over the
+// calendar days between them — never the mean of the daily deltas. Rows written
+// before the fetch learned to hold an unfinished day carry smeared labels (a
+// 0-delta day followed by one carrying two publishes), and averaging counts the
+// double at full weight while the zero pulls nothing back: on Magnetic that read
+// 673,471/day against a true ~580,000, which moved the 1B date by a month. A
+// span cannot be fooled by that, because the figures are cumulative and the
+// endpoints bracket the same real streams however the labels in between fell.
+//
+// The one thing that DOES break a span is a merge: when Spotify folds another
+// version into a track, its cumulative figure steps up by streams that were
+// never played in this window. That is a level shift rather than a timing
+// artifact, so the span starts after the newest merged row.
+function spanRate(rows) {
+  const usable = rows.filter(r => !r.stale);
+  const merged = usable.filter(r => r.merged_with > 0).map(r => r.date).sort();
+  const floor = merged.length ? merged[merged.length - 1] : null;
+  const ok = (floor ? usable.filter(r => r.date > floor) : usable)
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+  if (ok.length < 2) return { rate: null, days: 0, from: null, to: null, afterMerge: floor };
+  const first = ok[0], last = ok[ok.length - 1];
+  const days = Math.round((Date.parse(last.date) - Date.parse(first.date)) / DAY_MS);
+  if (days <= 0) return { rate: null, days: 0, from: null, to: null, afterMerge: floor };
+  return {
+    rate: (last.streams - first.streams) / days,
+    days, from: first.date, to: last.date, afterMerge: floor,
+  };
+}
+
+async function roadTo1B() {
+  const tracks = await sbRest('/group_tracks', {
+    select: 'id,artist_id,track_id,name,feature,release_date,release_precision',
+    limit: '5000',
+  });
+  if (!tracks.length) {
+    return { tracks: [], done: [], asOf: null, floor: RACE_FLOOR,
+             note: 'No per-track rows yet.' };
+  }
+  const byRef = new Map(tracks.map(t => [t.id, t]));
+  const groupName = Object.fromEntries(GROUPS.map(g => [g.id, g.name]));
+
+  // Everything at or near the race floor, all days. Narrowing by streams here
+  // keeps this a small read: the long tail of sub-400M tracks is most of the
+  // table and none of the race.
+  const stats = await sbRest('/group_track_daily_stats', {
+    select: 'track_ref,date,streams,daily_delta,merged_with,stale',
+    streams: `gte.${Math.round(RACE_FLOOR * 0.9)}`,
+    order: 'date.desc',
+    limit: '20000',
+  });
+  const rowsByRef = new Map();
+  for (const s of stats) {
+    if (!rowsByRef.has(s.track_ref)) rowsByRef.set(s.track_ref, []);
+    rowsByRef.get(s.track_ref).push(s);
+  }
+
+  const out = [], done = [];
+  let asOf = null;
+  for (const [ref, rows] of rowsByRef) {
+    const t = byRef.get(ref);
+    if (!t) continue;
+    const newest = rows[0];                      // date.desc
+    if (!asOf || newest.date > asOf) asOf = newest.date;
+    const { rate, days, from, to, afterMerge } = spanRate(rows);
+    const rel = t.release_date || null;
+    // Days from release to now, which is the first half of "days from release
+    // to 1B" — the half we can measure rather than project.
+    const elapsed = rel ? Math.round((Date.parse(newest.date) - Date.parse(rel)) / DAY_MS) : null;
+    const entry = {
+      group: groupName[t.artist_id] || t.artist_id,
+      name: t.name, trackId: t.track_id, feature: !!t.feature,
+      streams: newest.streams, day: newest.date,
+      daily: newest.daily_delta, mergedWith: newest.merged_with, stale: newest.stale,
+      rate, rateDays: days, rateFrom: from, rateTo: to, rateAfterMerge: afterMerge,
+      release: rel, releasePrecision: t.release_precision || null, elapsed,
+    };
+    if (newest.streams >= B) {
+      // Already past 1B. We cannot say how many days it TOOK: our per-track
+      // history starts in September 2026 and these crossed long before, so a
+      // days-from-release figure would have to be invented. Listed as arrived,
+      // without one.
+      done.push(entry);
+      continue;
+    }
+    if (newest.streams < RACE_FLOOR) continue;
+    const toGo = B - newest.streams;
+    entry.toGo = toGo;
+    entry.daysLeft = rate && rate > 0 ? Math.ceil(toGo / rate) : null;
+    entry.eta = entry.daysLeft == null ? null
+      : new Date(Date.parse(newest.date) + entry.daysLeft * DAY_MS).toISOString().slice(0, 10);
+    // The graphic's metric: total days from release to 1B, measured half and
+    // projected half.
+    entry.totalDays = (elapsed != null && entry.daysLeft != null) ? elapsed + entry.daysLeft : null;
+    out.push(entry);
+  }
+
+  out.sort((a, b) => {
+    if (a.daysLeft == null) return 1;
+    if (b.daysLeft == null) return -1;
+    return a.daysLeft - b.daysLeft;
+  });
+  done.sort((a, b) => b.streams - a.streams);
+
+  return {
+    asOf, floor: RACE_FLOOR, tracks: out, done,
+    note: 'Per-track figures are fetched from Spotify off the pinned group catalogues, the same track ids the group totals are summed from. The rate is streams gained across the recorded span divided by its calendar days — not an average of daily figures, which smeared publish days inflate. Projections assume the current rate holds; these tracks are mostly decaying, so an arrival date is the earliest plausible one rather than the likeliest.',
+  };
+}
+
 export default async function handler(req, res) {
 
   // Admin: remove implausible-spike points from every group's series — heals a
@@ -237,6 +364,16 @@ export default async function handler(req, res) {
       } catch (e) { errors.push(`${g.name}: ${e.message}`); }
     }
     return res.status(200).json({ ok: true, written, held, errors });
+  }
+
+  // ── road to 1B (admin only) ─────────────────────────────────────────────
+  // A different race from the one above: per TRACK rather than per group, from
+  // group_track_daily_stats, which the daily fetch fills from the per-track
+  // figures it was already fetching and throwing away.
+  if (req.query.view === '1b') {
+    if (!authed(req)) return res.status(401).json({ error: 'unauthorized' });
+    try { return res.status(200).json(await roadTo1B()); }
+    catch (e) { return res.status(500).json({ error: e.message }); }
   }
 
   // ── read (admin only) ───────────────────────────────────────────────────
