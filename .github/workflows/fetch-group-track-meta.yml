@@ -1,0 +1,50 @@
+name: Fetch group track release dates
+
+# Fills group_tracks.release_date for the tracks that are in range of 1 billion
+# streams, which is the missing term in "days from release to 1B" — we hold the
+# streams and the rate already.
+#
+# Scoped by streams rather than run over all ~870 tracks: a track at 40M is not
+# in a race to 1B for years. The floor is checked against each track's newest
+# recorded figure, so the scope widens on its own as tracks grow. Re-run it
+# occasionally (or after a comeback) to pick up newly-in-range tracks; already
+# dated tracks are skipped unless refetch=true.
+#
+# Free — spotifyscraper, no RapidAPI. Dry run by default. Touches Supabase only.
+on:
+  workflow_dispatch:
+    inputs:
+      write:
+        description: 'Actually write (true), or resolve and print only (false)'
+        required: false
+        default: 'false'
+      floor:
+        description: 'Only tracks at or above this many streams'
+        required: false
+        default: '300000000'
+      refetch:
+        description: 'Also re-resolve tracks that already have a date'
+        required: false
+        default: 'false'
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper
+
+      - name: Resolve release dates
+        env:
+          WRITE: ${{ inputs.write == 'true' && '1' || '0' }}
+          REFETCH: ${{ inputs.refetch == 'true' && '1' || '0' }}
+          FLOOR: ${{ inputs.floor }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python .github/scripts/fetch_group_track_meta.py
