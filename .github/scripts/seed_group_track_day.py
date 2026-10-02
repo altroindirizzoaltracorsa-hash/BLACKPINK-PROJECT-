@@ -1,28 +1,38 @@
-"""Seed group_track_daily_stats with the per-track snapshot we already hold.
+"""Backfill group_track_daily_stats from git history. One-shot.
 
-One-shot. data/group_streams/last_tracks.json is the per-track state of each
-group's LAST COMPLETE day — fetch_group_streams.py advances it only on a day it
-actually records — so the day it belongs to is simply that group's newest day in
-history.json. Those are real observed numbers, already committed; this just puts
-them in the table so the series has a starting row.
+data/group_streams/last_tracks.json is the per-track state of a group's last
+COMPLETE day — fetch_group_streams.py advances it only on a day it actually
+records — and it is COMMITTED on every such day. So every past snapshot is still
+in git, and with it every past per-track daily delta. Nothing has to be
+re-fetched or estimated: this walks the file's commits oldest-first, pairs each
+snapshot with the day it belongs to (that commit's newest recorded day for the
+group, read from the history.json beside it), and writes the rows.
 
-Why bother instead of waiting: daily_delta is computed against the previous
-per-track values, so without a seed row the first day Spotify publishes after the
-table exists would land with a NULL delta and the first usable rate would be two
-publishes away. With it, the very next publish produces a real per-track daily
-figure. The seed row's own delta is NULL — there is no earlier per-track snapshot
-to subtract, and inventing one would be worse than an honest gap.
+Why it matters beyond tidiness: without any seed, the first day Spotify publishes
+after the table exists has no earlier per-track values to subtract, so it lands
+with a NULL delta and the first usable per-track rate is two publishes away. With
+the backfill there are real deltas on day one — e.g. ILLIT's "Magnetic" at
++580,979 / +549,747 / +524,542 across 27–29 Sep, which is the number this whole
+table exists to make answerable.
 
-Refuses to run unless the snapshot and the history agree on track counts, and
-refuses any group whose newest day is marked provisional or carries a
-"last-known" note — in both of those cases some values are not that day's.
+Guards, applied per snapshot rather than once:
+  - a day marked provisional is skipped (its values are not one day's)
+  - a day whose note says "last-known" is skipped (some values are carried
+    forward from an earlier day and we cannot say which ones)
+  - a snapshot that does not sum to the total recorded for that day is skipped
+    (then it is not that day's snapshot)
+  - daily_delta is written ONLY between consecutive days; across a gap it is
+    NULL, because a two-day jump recorded as a daily figure is worse than none
 
+Needs full history: actions/checkout@v4 with fetch-depth: 0.
 Writes nothing unless WRITE=1. Needs SUPABASE_URL / SUPABASE_SERVICE_KEY.
 """
 
 import json
 import os
+import subprocess
 import sys
+from datetime import date, timedelta
 
 import httpx
 
@@ -49,79 +59,146 @@ def sb(method, path, **kwargs):
     return r.json() if r.content else None
 
 
+def git(*args):
+    r = subprocess.run(("git",) + args, capture_output=True, text=True)
+    if r.returncode:
+        raise RuntimeError(r.stderr.strip())
+    return r.stdout
+
+
+def show_json(sha, path):
+    return json.loads(git("show", f"{sha}:{path}"))
+
+
+def snapshots():
+    """[(sha, {artist_id: (day, {track_id: streams})})] oldest commit first.
+
+    Includes the working tree as the final entry: the newest recorded day may
+    not have been committed yet when this runs, and it is the one the next day's
+    delta will be measured against."""
+    shas = git("log", "--format=%H", "--reverse", "--", LAST_TRACKS).split()
+    out = []
+    for sha in shas:
+        try:
+            out.append((sha[:8], show_json(sha, LAST_TRACKS), show_json(sha, HISTORY)))
+        except Exception as e:
+            print(f"  ⚠ {sha[:8]}: unreadable ({e}) — skipped")
+    out.append(("worktree", json.load(open(LAST_TRACKS)), json.load(open(HISTORY))))
+    return out
+
+
 def main():
     if not (SUPABASE_URL and SUPABASE_KEY):
         sys.exit("SUPABASE_URL / SUPABASE_SERVICE_KEY required")
-    history = json.load(open(HISTORY))
-    last_tracks = json.load(open(LAST_TRACKS))
 
+    cats = {}
     for fn in sorted(os.listdir(CATALOG_DIR)):
-        if not fn.endswith(".json"):
-            continue
-        cat = json.load(open(os.path.join(CATALOG_DIR, fn)))
-        aid, name, tracks = cat["artist_id"], cat["name"], cat["tracks"]
-        snap = last_tracks.get(aid) or {}
-        days = sorted(d for d, groups in history.items() if aid in groups)
-        print(f"\n=== {name} [{aid}]")
-        if not days or not snap:
-            print("  no recorded day or no snapshot — skipping")
-            continue
-        day = days[-1]
-        rec = history[day][aid]
-        if rec.get("provisional"):
-            print(f"  {day} is provisional — skipping (its values are not one day's)")
-            continue
-        if "last-known" in (rec.get("note") or ""):
-            print(f"  {day} note says {rec['note']!r} — skipping, some values are "
-                  f"carried from an earlier day and we cannot say which")
-            continue
-        if len(snap) != rec["tracks"]:
-            print(f"  snapshot has {len(snap)} tracks, {day} recorded "
-                  f"{rec['tracks']} — skipping, they are not the same measurement")
-            continue
-        total = sum(snap.values())
-        if total != rec["total_streams"]:
-            print(f"  snapshot sums to {total:,} but {day} recorded "
-                  f"{rec['total_streams']:,} — skipping, the snapshot is not this day")
-            continue
+        if fn.endswith(".json"):
+            c = json.load(open(os.path.join(CATALOG_DIR, fn)))
+            cats[c["artist_id"]] = c
 
-        by_value = {}
-        for tid, v in snap.items():
-            if v >= MERGE_MIN:
-                by_value.setdefault(v, []).append(tid)
-        merged = {v: ids for v, ids in by_value.items() if len(ids) > 1}
+    # artist_id -> {day: snapshot}. A later commit wins for the same day, which
+    # is what we want: a day rewritten while it was open ends up with its
+    # finished values rather than its first partial ones.
+    per_group = {aid: {} for aid in cats}
+    for label, snap, hist in snapshots():
+        for aid in cats:
+            s = snap.get(aid)
+            if not s:
+                continue
+            days = [d for d, g in hist.items() if aid in g]
+            if not days:
+                continue
+            day = max(days)
+            rec = hist[day][aid]
+            why = None
+            if rec.get("provisional"):
+                why = f"{day} is provisional"
+            elif "last-known" in (rec.get("note") or ""):
+                why = f"{day} note: {rec['note']!r}"
+            elif sum(s.values()) != rec["total_streams"]:
+                why = (f"snapshot sums to {sum(s.values()):,}, {day} recorded "
+                       f"{rec['total_streams']:,}")
+            if why:
+                print(f"  ⚠ {cats[aid]['name']} @{label}: skipped — {why}")
+                continue
+            per_group[aid][day] = s
 
-        track_rows = [{"artist_id": aid, "track_id": t["id"], "name": t.get("name"),
-                       "feature": bool(t.get("feature"))} for t in tracks]
-        print(f"  {day}: {len(snap)} tracks, {total:,} total, "
-              f"{len(merged)} merged value-group(s)")
+    total_rows = 0
+    for aid, cat in cats.items():
+        days = sorted(per_group[aid])
+        print(f"\n=== {cat['name']} [{aid}] — {len(days)} usable snapshot(s)")
+        if not days:
+            print("  nothing to write")
+            continue
+        names = {t["id"]: t for t in cat["tracks"]}
+        rows, prev_day, prev = [], None, {}
+        for day in days:
+            snap = per_group[aid][day]
+            consecutive = (prev_day is not None
+                           and date.fromisoformat(day) - date.fromisoformat(prev_day)
+                           == timedelta(days=1))
+            by_value = {}
+            for tid, v in snap.items():
+                if v >= MERGE_MIN:
+                    by_value.setdefault(v, []).append(tid)
+            merged = {v: ids for v, ids in by_value.items() if len(ids) > 1}
+            n_delta = 0
+            for tid, v in snap.items():
+                if tid not in names:
+                    continue
+                delta = None
+                if consecutive and tid in prev:
+                    delta = v - prev[tid]
+                    n_delta += 1
+                rows.append({
+                    "track_id": tid, "date": day, "streams": v, "daily_delta": delta,
+                    "merged_with": len(merged.get(v, [])) - 1 if v in merged else 0,
+                    "stale": False,
+                })
+            gap = ("" if prev_day is None else
+                   "" if consecutive else f" [gap after {prev_day} — deltas NULL]")
+            print(f"  {day}: {len(snap)} tracks, {sum(snap.values()):,} total, "
+                  f"{len(merged)} merged group(s), {n_delta} delta(s){gap}")
+            prev_day, prev = day, snap
+
+        # Show the per-track series this unlocks for the group's biggest tracks,
+        # before writing anything — the point of a dry run is to read the numbers
+        # rather than the row count.
+        newest = max(days)
+        top = sorted((r for r in rows if r["date"] == newest),
+                     key=lambda r: -r["streams"])[:3]
+        for t in top:
+            series = [r for r in rows
+                      if r["track_id"] == t["track_id"] and r["daily_delta"] is not None]
+            ds = ", ".join(f"{r['date']} {r['daily_delta']:+,}" for r in series[-3:])
+            label = names[t["track_id"]].get("name") or t["track_id"]
+            print(f"    {label}: {t['streams']:,} — {ds or 'no delta yet'}")
+
         if not WRITE:
-            print("  WRITE != 1 — nothing written")
+            total_rows += len(rows)
+            print(f"  WRITE != 1 — would write {len(rows)} row(s)")
             continue
 
         refs = {r["track_id"]: r["id"] for r in sb(
             "POST", "/group_tracks",
             params={"on_conflict": "track_id"},
             headers={"Prefer": "resolution=merge-duplicates,return=representation"},
-            json=track_rows)}
-        rows = []
-        for tid, v in snap.items():
-            ref = refs.get(tid)
-            if ref is None:
-                print(f"  ⚠ {tid} is in the snapshot but not the catalogue — skipped")
-                continue
-            rows.append({
-                "track_ref": ref, "date": day, "streams": v,
-                "daily_delta": None,          # no earlier per-track snapshot exists
-                "merged_with": len(merged.get(v, [])) - 1 if v in merged else 0,
-                "stale": False,               # the guards above rule staleness out
-            })
-        for i in range(0, len(rows), 200):
+            json=[{"artist_id": aid, "track_id": t["id"], "name": t.get("name"),
+                   "feature": bool(t.get("feature"))} for t in cat["tracks"]])}
+        payload = [{"track_ref": refs[r["track_id"]], "date": r["date"],
+                    "streams": r["streams"], "daily_delta": r["daily_delta"],
+                    "merged_with": r["merged_with"], "stale": r["stale"]}
+                   for r in rows if r["track_id"] in refs]
+        for i in range(0, len(payload), 200):
             sb("POST", "/group_track_daily_stats",
                params={"on_conflict": "track_ref,date"},
                headers={"Prefer": "resolution=merge-duplicates"},
-               json=rows[i:i + 200])
-        print(f"  wrote {len(rows)} per-track row(s) for {day}")
+               json=payload[i:i + 200])
+        total_rows += len(payload)
+        print(f"  wrote {len(payload)} row(s)")
+
+    print(f"\n{'wrote' if WRITE else 'would write'} {total_rows} row(s) in total")
 
 
 if __name__ == "__main__":
