@@ -163,6 +163,13 @@
      column to 180px and the row off the right edge of a 320px phone. */
   .b-sub{font-size:10px;color:var(--dim);margin-top:3px;letter-spacing:.02em;
          white-space:normal;max-width:116px;margin-left:auto;}
+  /* The total — the headline of the whole board — sits directly under the date
+     it implies, a step up in weight from the rate below it. */
+  .b-tot{font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:.02em;
+         white-space:normal;max-width:116px;margin-left:auto;}
+  .b-tot b{color:var(--text);font-weight:800;font-size:12px;}
+  .b-drift{font-size:10px;margin-top:2px;letter-spacing:.02em;
+           white-space:normal;max-width:116px;margin-left:auto;}
   .b-days{font-size:10.5px;color:var(--muted);}
   .b-days b{color:var(--pink-soft);font-weight:700;}
   .b-grp{font-size:10px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;}
@@ -772,6 +779,20 @@
     // claim is only that this is the album the ID belongs to.
     else if (t.releasePrecision === 'album') flags.push('<span class="b-warn" title="No release carrying this title was found in the group\'s discography, so this is the date of the album this track ID sits on. The song itself may be older or newer than that.">album date, not the song\'s</span>');
 
+    // The right column reads top to bottom as: when · how long in total · how
+    // fast. It used to carry days-left while the TOTAL was buried mid-sentence
+    // on the left, so the two "days" numbers sat in different places and the
+    // bigger one looked like a detail of the smaller.
+    const drift = (() => {
+      if (t.totalDaysDelta == null) return '';
+      const n = t.totalDaysDelta;
+      if (n === 0) return `<span class="b-flat" title="Exactly on the pace it was on. A day passed and a day's worth of streams arrived, so the finish line did not move.">on pace</span>`;
+      const cls = n < 0 ? 'b-closer' : 'b-slower';
+      const word = n < 0 ? 'sooner' : 'later';
+      return `<span class="${cls}" title="Against the same estimate computed one recorded day ago (${esc(t.prevDay || '')}), which was ${t.totalDaysPrev ? t.totalDaysPrev.toLocaleString() : '—'} days.">`
+           + `${Math.abs(n).toLocaleString()} ${word}</span>`;
+    })();
+
     let right, sub;
     if (arrived) {
       right = `<div class="b-eta" style="color:var(--gold)">past 1B</div>`;
@@ -782,14 +803,25 @@
     } else {
       const soon = t.daysLeft <= 120 ? ' soon' : '';
       right = `<div class="b-eta${soon}">${_dshort(t.eta)}</div>`;
-      sub = `<div class="b-sub">${t.daysLeft.toLocaleString()} days · +${fmt(Math.round(t.rate))}/day</div>`;
+      sub = t.totalDays != null
+        // The drift gets its own line rather than trailing the total behind a
+        // separator: at this width the separator wrapped and left a line
+        // starting with a stray "·".
+        ? `<div class="b-tot"><b>${t.totalDays.toLocaleString()}</b> days total</div>`
+          + (drift ? `<div class="b-drift">${drift}</div>` : '')
+          + `<div class="b-sub">+${fmt(Math.round(t.rate))}/day</div>`
+        // No release date, so no total to show — the days left and the rate are
+        // still real and go where the total would have been.
+        : `<div class="b-tot"><b>${t.daysLeft.toLocaleString()}</b> days left</div>`
+          + `<div class="b-sub">+${fmt(Math.round(t.rate))}/day</div>`;
     }
 
-    // "Days from release to 1B" is the graphic's metric, and it is only honest
-    // when the release date is known AND an arrival can be projected: half
-    // measured, half projected. Said that way rather than presented as a fact.
+    // The split of the total into measured and projected, on the left, where the
+    // reading order is "this song, this far in, this much to go". The total
+    // itself sits on the right under the date it implies, because those two are
+    // the same claim stated twice and belong together.
     const total = (!arrived && t.totalDays != null)
-      ? `<div class="b-days"><b>${t.totalDays.toLocaleString()} days</b> from release to 1B · ${t.elapsed.toLocaleString()} so far, ${t.daysLeft.toLocaleString()} projected</div>`
+      ? `<div class="b-days"><b>${t.elapsed.toLocaleString()}</b> days passed · <b>${t.daysLeft.toLocaleString()}</b> left</div>`
       : (t.release
           ? `<div class="b-days">released ${_d(t.release)}${t.elapsed != null ? ` · ${t.elapsed.toLocaleString()} days ago` : ''}</div>`
           : `<div class="b-days" style="color:var(--dim)">no release date on file</div>`);

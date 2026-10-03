@@ -332,6 +332,31 @@ async function roadTo1B() {
     // The graphic's metric: total days from release to 1B, measured half and
     // projected half.
     entry.totalDays = (elapsed != null && entry.daysLeft != null) ? elapsed + entry.daysLeft : null;
+
+    // What the SAME estimate said one recorded day ago, so the board can show
+    // which way it moved. Recomputed exactly as above but with the newest row
+    // dropped — same span rule, same release date — because the only honest
+    // comparison is like with like.
+    //
+    // Note what a steady track does here: a day passes, so elapsed goes up by
+    // one, and at an unchanged rate the days remaining go down by one. The total
+    // is unmoved. So 0 means "exactly on the pace it was on", a negative means
+    // it beat that pace and 1B is nearer in absolute terms, and a positive means
+    // it fell behind. That is the number that answers "is it getting closer".
+    entry.totalDaysPrev = null;
+    entry.totalDaysDelta = null;
+    if (rel && entry.totalDays != null && rows.length > 1) {
+      const older = rows.slice(1);                 // rows are date.desc
+      const pr = spanRate(older);
+      const pNew = older[0];
+      if (pr.rate && pr.rate > 0 && pNew.streams < B) {
+        const pElapsed = Math.round((Date.parse(pNew.date) - Date.parse(rel)) / DAY_MS);
+        const pLeft = Math.ceil((B - pNew.streams) / pr.rate);
+        entry.totalDaysPrev = pElapsed + pLeft;
+        entry.totalDaysDelta = entry.totalDays - entry.totalDaysPrev;
+        entry.prevDay = pNew.date;
+      }
+    }
     entry.trend = trendOf(rows, toGo);
     out.push(entry);
   }
