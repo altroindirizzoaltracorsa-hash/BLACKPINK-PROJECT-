@@ -175,6 +175,36 @@
   .row.done .track>i{background:linear-gradient(90deg,#f5c542,#ffe08a);}
   .b-warn{color:var(--gold);}
   .b-empty{font-size:11px;color:var(--dim);line-height:1.6;padding:14px 0;}
+
+  /* ---- road to 1B: controls ---- */
+  .b-ctl{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+  .b-sorts{display:flex;gap:6px;}
+  .b-sort{flex:1;background:var(--card);color:var(--muted);border:1px solid var(--line);
+          border-radius:8px;padding:7px 6px;font-family:inherit;font-size:10.5px;
+          letter-spacing:.03em;cursor:pointer;transition:all .18s;}
+  .b-sort:hover{color:var(--pink-soft);}
+  .b-sort[aria-selected="true"]{background:#ff2e7718;border-color:#ff2e7788;color:var(--pink-soft);font-weight:700;}
+  .b-filter{display:flex;align-items:center;gap:8px;}
+  .b-filter label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);}
+  .b-filter select{flex:1;background:#0a0407;color:var(--text);border:1px solid var(--line);
+                   border-radius:8px;padding:7px 9px;font-family:inherit;font-size:12px;}
+  .b-filter select:focus{outline:none;border-color:var(--pink);}
+
+  /* ---- road to 1B: per-track panel ---- */
+  .row.tappable{cursor:pointer;}
+  .row.tappable:hover{border-color:#ff2e7755;}
+  .b-chev{font-size:10px;color:var(--dim);margin-left:6px;}
+  .row.open .b-chev{color:var(--pink-soft);}
+  .b-panel{grid-column:1/-1;margin-top:11px;padding-top:11px;border-top:1px solid var(--line);}
+  .b-chart{display:block;width:100%;height:auto;}
+  .b-cap{font-size:10.5px;color:var(--muted);line-height:1.6;margin-top:8px;}
+  .b-cap b{color:var(--pink-soft);font-weight:700;}
+  .b-closer{color:var(--pink-soft);font-weight:700;}
+  .b-slower{color:#ff6b6b;font-weight:700;}
+  .b-flat{color:var(--gold);font-weight:700;}
+  .b-leg{display:flex;flex-wrap:wrap;gap:12px;font-size:9.5px;color:var(--dim);margin-top:7px;}
+  .b-leg span{display:inline-flex;align-items:center;gap:5px;}
+  .b-leg i{width:9px;height:9px;border-radius:2px;display:inline-block;}
 </style>
 </head>
 <body>
@@ -195,6 +225,17 @@
   <div id="list"></div>
 
   <div id="race1b" hidden>
+    <div class="b-ctl" id="b-ctl" hidden>
+      <div class="b-sorts" id="b-sorts" role="tablist">
+        <button class="b-sort" data-sort="soon" aria-selected="true">Days left</button>
+        <button class="b-sort" data-sort="total" aria-selected="false">Total days</button>
+        <button class="b-sort" data-sort="daily" aria-selected="false">Per day</button>
+      </div>
+      <div class="b-filter">
+        <label for="b-group">Group</label>
+        <select id="b-group"></select>
+      </div>
+    </div>
     <div id="b-body" class="b-empty">loading…</div>
     <div class="note" id="b-note"></div>
   </div>
@@ -756,22 +797,205 @@
     // The arrived list is not a ranking — it is a set of tracks that are simply
     // done — so it carries no position. Numbering it restarted at 1 under the
     // racing list and read as a second leaderboard.
-    return `<div class="row${arrived ? ' done' : (i === 0 ? ' lead' : '')}">
+    // Only a track with a day-by-day series has anything to open.
+    const canOpen = (t.series || []).length >= 2;
+    const open = canOpen && _bOpen === t.trackId;
+    return `<div class="row${arrived ? ' done' : (i === 0 ? ' lead' : '')}`
+      + `${canOpen ? ' tappable' : ''}${open ? ' open' : ''}"`
+      + `${canOpen ? ` data-tid="${esc(t.trackId)}"` : ''}>
       <div class="rank">${arrived ? '✓' : i + 1}</div>
       <div>
-        <div class="name">${esc(t.name)}</div>
+        <div class="name">${esc(t.name)}${canOpen ? `<span class="b-chev">${open ? '▾' : '▸'}</span>` : ''}</div>
         <div class="meta"><span class="b-grp">${esc(t.group)}</span> · ${fmt(t.streams)}${arrived ? '' : ` · ${big(t.toGo)} to go`}</div>
         ${total}
         ${flags.length ? `<div class="b-days">${flags.join(' · ')}</div>` : ''}
       </div>
       <div class="nums">${right}${sub}</div>
       <div class="track"><i style="width:${pct.toFixed(1)}%"></i></div>
+      ${open ? `<div class="b-panel">${_bChart(t)}</div>` : ''}
     </div>`;
   }
 
+  // ── per-track panel ───────────────────────────────────────────────────────
+  // One bar per recorded day. Every day adds streams, so "closer to 1B" is
+  // always true in absolute terms and says nothing; what moves the finish line
+  // is whether a day beat the track's own typical day. So the bars are measured
+  // against this track's median day, and the caption answers the question in
+  // calendar terms — what the early pace implied against what the recent pace
+  // implies.
+  function _median(ns) {
+    if (!ns.length) return 0;
+    const s = [...ns].sort((a, b) => a - b), m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  }
+
+  function _bChart(t) {
+    const pts = (t.series || []).filter(p => p.dd != null);
+    if (pts.length < 2) return '<div class="b-cap">Not enough recorded days to chart yet.</div>';
+    // A day is only comparable if we actually observed it and it is this track's
+    // own figure — the same exclusions the rate uses, so the picture and the
+    // number cannot disagree.
+    const clean = pts.filter(p => !p.st && !p.m && p.dd > 0).map(p => p.dd);
+    const med = _median(clean);
+    const hi = Math.max(...pts.map(p => p.dd), med, 1);
+    const W = 320, H = 118, PL = 40, PR = 8, PT = 10, PB = 20;
+    const n = pts.length;
+    const bw = Math.max(2, (W - PL - PR) / n - 2);
+    const X = i => PL + i * ((W - PL - PR) / n) + 1;
+    const Y = v => H - PB - (v / hi) * (H - PT - PB);
+    const COL_UP = '#ff2e77', COL_DOWN = '#6a3f52', COL_FLAG = '#f5c542';
+    let bars = '';
+    pts.forEach((p, i) => {
+      const flagged = !!(p.st || p.m) || p.dd === 0;
+      const col = flagged ? COL_FLAG : (p.dd >= med ? COL_UP : COL_DOWN);
+      const y = Y(p.dd), h = Math.max(1, H - PB - y);
+      const why = flagged
+        ? (p.st ? 'carried forward, not observed'
+                : p.m ? 'merged with another version'
+                      : 'no movement recorded that day')
+        : (p.dd >= med ? 'at or above its typical day' : 'below its typical day');
+      bars += `<rect x="${X(i).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" `
+            + `height="${h.toFixed(1)}" rx="1" fill="${col}"${flagged ? ' opacity="0.55"' : ''}>`
+            + `<title>${esc(p.d)} · ${fmt(p.dd)} — ${why}</title></rect>`;
+    });
+    const medY = Y(med);
+    const grid = `<line x1="${PL}" x2="${W - PR}" y1="${medY.toFixed(1)}" y2="${medY.toFixed(1)}" `
+      + `stroke="#ffffff33" stroke-dasharray="3 3"/>`
+      + `<text x="${PL - 5}" y="${(medY + 3).toFixed(1)}" text-anchor="end" fill="#8a5c6c" font-size="8">${big(med)}</text>`
+      + `<text x="${PL - 5}" y="${(H - PB).toFixed(1)}" text-anchor="end" fill="#8a5c6c" font-size="8">0</text>`;
+    const xlab = `<text x="${PL}" y="${H - 6}" fill="#8a5c6c" font-size="8">${esc(pts[0].d.slice(5))}</text>`
+      + `<text x="${W - PR}" y="${H - 6}" text-anchor="end" fill="#8a5c6c" font-size="8">${esc(pts[n - 1].d.slice(5))}</text>`;
+    const svg = `<svg viewBox="0 0 ${W} ${H}" class="b-chart" preserveAspectRatio="xMidYMid meet" `
+      + `role="img" aria-label="Daily streams for ${esc(t.name)}">${grid}${bars}${xlab}</svg>`;
+
+    // The caption. `trend` compares the pace over the older half of the span
+    // with the newer half and asks what each implies for the streams still to
+    // go — which is the difference between "it is still moving" and "it is
+    // arriving sooner than it was".
+    let cap;
+    const tr = t.trend;
+    if (!tr) {
+      cap = '<div class="b-cap">Too few clean days yet to say whether the pace is changing.</div>';
+    } else if (tr.shift == null) {
+      // Past 1B: the two paces still say whether it is speeding up or slowing,
+      // but there is no distance left to turn either into an arrival date.
+      const faster = tr.late > tr.early;
+      cap = `<div class="b-cap">Past 1B, and still `
+          + `<span class="${faster ? 'b-closer' : 'b-slower'}">${faster ? 'speeding up' : 'slowing'}</span> — `
+          + `<b>+${fmt(Math.round(tr.early))}/day</b> over ${esc(tr.earlyFrom.slice(5))}–${esc(tr.midAt.slice(5))} `
+          + `vs <b>+${fmt(Math.round(tr.late))}/day</b> since.</div>`;
+    } else {
+      const sh = tr.shift;
+      const word = sh <= -3 ? `<span class="b-closer">1B is ${Math.abs(sh).toLocaleString()} days closer</span>`
+                 : sh >= 3 ? `<span class="b-slower">1B slipped ${sh.toLocaleString()} days further</span>`
+                           : `<span class="b-flat">holding steady</span>`;
+      cap = `<div class="b-cap">${word} than the earlier pace implied — `
+          + `<b>+${fmt(Math.round(tr.early))}/day</b> over ${esc(tr.earlyFrom.slice(5))}–${esc(tr.midAt.slice(5))} `
+          + `vs <b>+${fmt(Math.round(tr.late))}/day</b> since, which is `
+          + `${tr.daysAtEarly.toLocaleString()} days left against ${tr.daysAtLate.toLocaleString()}.</div>`;
+    }
+    const leg = `<div class="b-leg">`
+      + `<span><i style="background:${COL_UP}"></i>at or above its median day</span>`
+      + `<span><i style="background:${COL_DOWN}"></i>below</span>`
+      + `<span><i style="background:${COL_FLAG};opacity:.55"></i>not a clean reading</span></div>`;
+    return svg + cap + leg;
+  }
+
+  // Sort and filter are per-viewer conveniences, so they live in localStorage
+  // and every read is wrapped — a private window throws on access rather than
+  // returning null.
+  const SORT_LS = 'bu_gg_1b_sort', GRP_LS = 'bu_gg_1b_group';
+  let _bSort = 'soon', _bGroup = 'ALL', _bOpen = null;
+  const SORTS = {
+    // Nulls sink in every order: a track with no rate has no position in a race.
+    soon:  (a, b) => (a.daysLeft ?? 1e9) - (b.daysLeft ?? 1e9),
+    total: (a, b) => (a.totalDays ?? 1e9) - (b.totalDays ?? 1e9),
+    daily: (a, b) => (b.rate ?? -1) - (a.rate ?? -1),
+  };
+
   let _b = null;
+
+  function buildControls(d) {
+    const ctl = document.getElementById('b-ctl');
+    ctl.hidden = false;
+    // The filter lists only the groups actually on the board, so it can never
+    // offer an option that empties it.
+    const groups = [...new Set([...(d.tracks || []), ...(d.done || [])].map(t => t.group))].sort();
+    if (!groups.includes(_bGroup)) _bGroup = 'ALL';
+    const sel = document.getElementById('b-group');
+    sel.innerHTML = `<option value="ALL">All groups</option>`
+      + groups.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
+    sel.value = _bGroup;
+    sel.onchange = () => {
+      _bGroup = sel.value;
+      try { localStorage.setItem(GRP_LS, _bGroup); } catch {}
+      drawBoard();
+    };
+    ctl.querySelectorAll('.b-sort').forEach(b => {
+      b.onclick = () => {
+        _bSort = b.dataset.sort;
+        try { localStorage.setItem(SORT_LS, _bSort); } catch {}
+        drawBoard();
+      };
+    });
+  }
+
+  function drawBoard() {
+    const d = _b;
+    if (!d) return;
+    const body = document.getElementById('b-body');
+    document.querySelectorAll('#b-sorts .b-sort').forEach(b =>
+      b.setAttribute('aria-selected', b.dataset.sort === _bSort ? 'true' : 'false'));
+
+    const keep = t => _bGroup === 'ALL' || t.group === _bGroup;
+    const racing = (d.tracks || []).filter(keep).sort(SORTS[_bSort] || SORTS.soon);
+    // The arrived list has no days-left or release→1B to sort by, so under
+    // either of those it keeps its own order (biggest first) rather than being
+    // shuffled by a field it does not have.
+    const arrived = (d.done || []).filter(keep)
+      .sort(_bSort === 'daily' ? SORTS.daily : (a, b) => b.streams - a.streams);
+
+    if (!racing.length && !arrived.length) {
+      body.className = 'b-empty';
+      body.innerHTML = `No tracks for ${esc(_bGroup)} on this board.`;
+      return;
+    }
+    body.className = '';
+    const label = { soon: 'soonest first', total: 'fewest days from release first',
+                    daily: 'fastest per day first' }[_bSort];
+    body.innerHTML =
+      (racing.length
+        ? `<div class="b-head">Closing in · ${racing.length} track${racing.length === 1 ? '' : 's'}`
+          + `${_bGroup === 'ALL' ? ` over ${big(d.floor)}` : ''} · ${label}</div>`
+          + racing.map((t, i) => _bRow(t, i, false)).join('')
+        : '') +
+      (arrived.length
+        ? `<div class="b-head">Already past a billion</div>`
+          + arrived.map((t, i) => _bRow(t, i, true)).join('')
+        : '');
+  }
+
+  // Delegated, because the rows are rebuilt on every sort and filter change —
+  // handlers bound to the old nodes would be thrown away with them.
+  document.addEventListener('click', e => {
+    if (!e.target.closest) return;
+    // A tap inside an open chart is reading it, not asking to close it — the
+    // bars carry their own tooltips, and collapsing the panel out from under
+    // that is the opposite of what the tap meant.
+    if (e.target.closest('#b-body .b-panel')) return;
+    const row = e.target.closest('#b-body .row.tappable');
+    if (!row) return;
+    _bOpen = (_bOpen === row.dataset.tid) ? null : row.dataset.tid;
+    drawBoard();
+  });
+
   function render1B(d) {
     _b = d;
+    try {
+      _bSort = localStorage.getItem(SORT_LS) || _bSort;
+      _bGroup = localStorage.getItem(GRP_LS) || _bGroup;
+    } catch {}
+    if (!SORTS[_bSort]) _bSort = 'soon';
     const body = document.getElementById('b-body');
     const racing = d.tracks || [], arrived = d.done || [];
     if (!racing.length && !arrived.length) {
@@ -781,16 +1005,8 @@
       document.getElementById('b-note').innerHTML = '';
       return;
     }
-    body.className = '';
-    body.innerHTML =
-      (racing.length
-        ? `<div class="b-head">Closing in · ${racing.length} track${racing.length === 1 ? '' : 's'} over ${big(d.floor)}</div>`
-          + racing.map((t, i) => _bRow(t, i, false)).join('')
-        : '') +
-      (arrived.length
-        ? `<div class="b-head">Already past a billion</div>`
-          + arrived.map((t, i) => _bRow(t, i, true)).join('')
-        : '');
+    buildControls(d);
+    drawBoard();
 
     const nDated = racing.filter(t => t.release).length;
     document.getElementById('b-note').innerHTML =
