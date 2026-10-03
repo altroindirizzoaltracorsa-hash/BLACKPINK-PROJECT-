@@ -215,6 +215,50 @@ function spanRate(rows) {
   };
 }
 
+// Is the finish line getting closer or further? Every day adds streams, so in
+// absolute terms a track is always nearer 1B — the question that actually
+// matters is whether the ARRIVAL DATE is moving. Compare the pace over the older
+// half of the recorded span with the pace over the newer half, and ask what each
+// implies for the streams still to go:
+//
+//   at the early pace, N days left · at the recent pace, M days left
+//
+// M < N means the song sped up and 1B came closer than the earlier pace implied;
+// M > N means it slowed and the date slipped away. Both halves are measured as
+// spans, with the same stale/merge handling as the headline rate, so the panel
+// and the row can never tell different stories.
+function trendOf(rows, toGo) {
+  const usable = rows.filter(r => !r.stale);
+  const merged = usable.filter(r => r.merged_with > 0).map(r => r.date).sort();
+  const floor = merged.length ? merged[merged.length - 1] : null;
+  const ok = (floor ? usable.filter(r => r.date > floor) : usable)
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+  // Four points is the minimum that gives each half a real span rather than a
+  // single pair; below that the two halves are noise, not a trend.
+  if (ok.length < 4) return null;
+  const mid = Math.floor(ok.length / 2);
+  const span = (a, b) => {
+    const d = Math.round((Date.parse(b.date) - Date.parse(a.date)) / DAY_MS);
+    return d > 0 ? (b.streams - a.streams) / d : null;
+  };
+  const early = span(ok[0], ok[mid]);
+  const late = span(ok[mid], ok[ok.length - 1]);
+  if (!early || !late || early <= 0 || late <= 0) return null;
+  // A track already past 1B has no distance left to translate a pace into days,
+  // so it gets the two paces and no arrival arithmetic — rather than a days
+  // figure computed from a negative remainder.
+  const has = typeof toGo === 'number' && toGo > 0;
+  const dEarly = has ? Math.ceil(toGo / early) : null;
+  const dLate = has ? Math.ceil(toGo / late) : null;
+  return {
+    early, late,
+    earlyFrom: ok[0].date, midAt: ok[mid].date, lateTo: ok[ok.length - 1].date,
+    daysAtEarly: dEarly, daysAtLate: dLate,
+    // Negative = the recent pace brings 1B forward against the earlier pace.
+    shift: has ? dLate - dEarly : null,
+  };
+}
+
 async function roadTo1B() {
   const tracks = await sbRest('/group_tracks', {
     select: 'id,artist_id,track_id,name,feature,release_date,release_precision',
@@ -261,12 +305,21 @@ async function roadTo1B() {
       daily: newest.daily_delta, mergedWith: newest.merged_with, stale: newest.stale,
       rate, rateDays: days, rateFrom: from, rateTo: to, rateAfterMerge: afterMerge,
       release: rel, releasePrecision: t.release_precision || null, elapsed,
+      // The day-by-day series, oldest first, so the page can draw each track's
+      // own history without a second request. Short keys because this is ~38
+      // tracks x ~28 days and the names would be most of the payload.
+      series: rows.slice().reverse().map(r => ({
+        d: r.date, s: r.streams, dd: r.daily_delta,
+        ...(r.merged_with ? { m: r.merged_with } : {}),
+        ...(r.stale ? { st: 1 } : {}),
+      })),
     };
     if (newest.streams >= B) {
       // Already past 1B. We cannot say how many days it TOOK: our per-track
       // history starts in September 2026 and these crossed long before, so a
       // days-from-release figure would have to be invented. Listed as arrived,
       // without one.
+      entry.trend = trendOf(rows, null);
       done.push(entry);
       continue;
     }
@@ -279,6 +332,7 @@ async function roadTo1B() {
     // The graphic's metric: total days from release to 1B, measured half and
     // projected half.
     entry.totalDays = (elapsed != null && entry.daysLeft != null) ? elapsed + entry.daysLeft : null;
+    entry.trend = trendOf(rows, toGo);
     out.push(entry);
   }
 
