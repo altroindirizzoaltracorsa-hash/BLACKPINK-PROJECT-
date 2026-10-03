@@ -783,24 +783,22 @@
     // fast. It used to carry days-left while the TOTAL was buried mid-sentence
     // on the left, so the two "days" numbers sat in different places and the
     // bigger one looked like a detail of the smaller.
-    // Shows the previous estimate, not just the change. "1 later" alone makes
-    // the reader reconstruct what it moved FROM; "was 960 · 1 later" states both
-    // and cannot be misread.
+    // The change rides WITH the total — "961 days total (+1 day)" — rather than
+    // sitting on its own line as a change to be applied. Either form carries the
+    // same two facts, but one is read and the other has to be worked out.
     const drift = (() => {
       if (t.totalDaysDelta == null) return '';
       const n = t.totalDaysDelta, was = t.totalDaysPrev;
       const when = esc(t.prevDay || '');
       if (n === 0) {
-        // No "was", because it would repeat the number directly above it. A day
-        // passed and a day's worth of streams arrived, so the total is unmoved.
-        return `<span class="b-flat" title="Unchanged from ${when}: a day passed and a day's worth of streams arrived, so the finish line did not move.">on pace</span>`;
+        // A zero here is the STEADY case, not a missing reading: a day passed
+        // and a day's worth of streams arrived, so the finish line did not move.
+        return ` <span class="b-flat" title="Unchanged from ${when}: a day passed and a day's worth of streams arrived, so the finish line did not move.">(unchanged)</span>`;
       }
       const cls = n < 0 ? 'b-closer' : 'b-slower';
-      const word = n < 0 ? 'sooner' : 'later';
-      return `<span class="${cls}" title="On ${when} the same estimate came to ${was.toLocaleString()} days; today it comes to ${t.totalDays.toLocaleString()}.">`
-           // Non-breaking spaces inside each phrase: at this width the line broke
-           // after the magnitude and left "later" alone on the next one.
-           + `was\u00a0${was.toLocaleString()} · ${Math.abs(n).toLocaleString()}\u00a0${word}</span>`;
+      const mag = Math.abs(n);
+      return ` <span class="${cls}" title="On ${when} the same estimate came to ${was.toLocaleString()} days; today it comes to ${t.totalDays.toLocaleString()}.">`
+           + `(${n < 0 ? '\u2212' : '+'}${mag.toLocaleString()}\u00a0${mag === 1 ? 'day' : 'days'})</span>`;
     })();
 
     let right, sub;
@@ -817,8 +815,7 @@
         // The drift gets its own line rather than trailing the total behind a
         // separator: at this width the separator wrapped and left a line
         // starting with a stray "·".
-        ? `<div class="b-tot"><b>${t.totalDays.toLocaleString()}</b> days total</div>`
-          + (drift ? `<div class="b-drift">${drift}</div>` : '')
+        ? `<div class="b-tot"><b>${t.totalDays.toLocaleString()}</b> days total${drift}</div>`
           + `<div class="b-sub">+${fmt(Math.round(t.rate))}/day</div>`
         // No release date, so no total to show — the days left and the rate are
         // still real and go where the total would have been.
