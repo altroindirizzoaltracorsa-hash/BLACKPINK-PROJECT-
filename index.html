@@ -2120,6 +2120,15 @@
     font-size: 0.85rem; width: fit-content; }
   #cd-back-all:hover { background: rgba(255,0,102,0.12); }
   #countdowns-mount .cd-section-label { display: none; } /* page already has its own heading */
+  /* The past-countdowns heading is NOT .cd-section-label: that class is hidden
+     inside the hub, and this heading only ever appears inside the hub. */
+  .cd-past-label { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.28em;
+                   text-transform: uppercase; color: var(--muted, #c48aa0); margin: 2.4rem 0 1.2rem;
+                   padding-top: 1.6rem; border-top: 1px solid rgba(255,0,102,0.18); }
+  /* Finished, and it should look it — full colour next to a live countdown reads
+     as another thing to act on. Hover restores it for anyone actually reading. */
+  #cd-past .cd-card { opacity: 0.72; transition: opacity 0.2s; }
+  #cd-past .cd-card:hover { opacity: 1; }
   #countdowns-mount #home-countdowns { margin-top: 0.5rem; }
   #countdowns-mount.cd-hub-browse .cd-card { cursor: pointer; } /* click a card → its deep link */
 
@@ -3202,21 +3211,36 @@
               </div>
             </div>
           </div>
-          <div class="cd-card cd-card-vma" data-slug="vmas" data-target="2026-09-25T22:00:00Z" data-live="VOTING CLOSED">
-            <div class="vma-slides" data-vma-carousel>
-              <img class="vma-bg is-on" src="/vote-vma-jump.jpeg" alt="" loading="lazy" onerror="this.style.display='none'">
-              <img class="vma-bg" src="/vote-vma-dream.jpg" alt="" loading="lazy" onerror="this.style.display='none'">
-              <img class="vma-bg" src="/vote-vma-eyesclosed.jpeg" alt="" loading="lazy" onerror="this.style.display='none'">
-            </div>
-            <div class="vma-scrim"></div>
-            <div class="vma-dots" aria-hidden="true"><span class="vma-dot is-on"></span><span class="vma-dot"></span><span class="vma-dot"></span></div>
-            <img class="vma-logo" src="/vmas.png" alt="MTV Video Music Awards" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cd-title',textContent:'MTV VMAs'}))">
-            <div class="cd-eyebrow">2026 · Fan Voting Closes</div>
-            <div class="cd-timer" data-timer></div>
-            <div class="cd-sub">BLACKPINK · LISA · JISOO×ZAYN nominated — voting closes <b>Sep 25 · 6PM ET</b></div>
-            <div class="cd-links">
-              <a class="cd-btn" href="/voting" onclick="showPage('vote'); return false;">🗳 Vote now ↗</a>
-              <a class="cd-btn cd-btn-ghost" href="/vmas">See categories</a>
+        </div>
+
+        <!-- Past countdowns. These are over: nothing left to vote on, pre-save or
+             watch for, so they would be clutter on the home page. They are kept
+             because their deep links were shared widely (/countdowns/vmas) and a
+             shared link that 404s is worse than a card that says it is finished.
+             Hidden here; revealed only when this section is mounted in the
+             /countdowns hub (setupCountdownsPage). -->
+        <div id="cd-past" hidden>
+          <p class="cd-past-label">◇ Past countdowns</p>
+          <div class="cd-wrap">
+            <div class="cd-card cd-card-vma" data-slug="vmas" data-target="2026-09-25T22:00:00Z" data-live="VOTING CLOSED">
+              <div class="vma-slides" data-vma-carousel>
+                <img class="vma-bg is-on" src="/vote-vma-jump.jpeg" alt="" loading="lazy" onerror="this.style.display='none'">
+                <img class="vma-bg" src="/vote-vma-dream.jpg" alt="" loading="lazy" onerror="this.style.display='none'">
+                <img class="vma-bg" src="/vote-vma-eyesclosed.jpeg" alt="" loading="lazy" onerror="this.style.display='none'">
+              </div>
+              <div class="vma-scrim"></div>
+              <div class="vma-dots" aria-hidden="true"><span class="vma-dot is-on"></span><span class="vma-dot"></span><span class="vma-dot"></span></div>
+              <img class="vma-logo" src="/vmas.png" alt="MTV Video Music Awards" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cd-title',textContent:'MTV VMAs'}))">
+              <div class="cd-eyebrow">2026 · Fan Voting Closed</div>
+              <div class="cd-timer" data-timer></div>
+              <!-- Past tense, and no "Vote now". A countdown that has run out must not
+                   keep offering the thing it was counting down to — the ballot is shut,
+                   so the button would send people to a page that can do nothing for
+                   them. The categories remain worth reading. -->
+              <div class="cd-sub">BLACKPINK · LISA · JISOO×ZAYN were nominated — voting closed <b>Sep 25 · 6PM ET</b></div>
+              <div class="cd-links">
+                <a class="cd-btn cd-btn-ghost" href="/vmas">See categories</a>
+              </div>
             </div>
           </div>
         </div>
@@ -5713,8 +5737,11 @@ function restoreHomeCountdowns() {
   const sec = document.getElementById('home-countdowns');
   const anchor = document.getElementById('home-countdowns-anchor');
   if (sec && anchor && anchor.parentNode) anchor.parentNode.insertBefore(sec, anchor);
-  applyCountdownFilter('');
+  // Cleared BEFORE the filter runs, not after: applyCountdownFilter decides the
+  // past block's visibility from this flag, so clearing it afterwards would send
+  // the section home with the finished countdowns still showing.
   _cdMountedInHub = false;
+  applyCountdownFilter('');
 }
 function applyCountdownFilter(slug) {
   const cards = document.querySelectorAll('#home-countdowns .cd-card');
@@ -5726,6 +5753,14 @@ function applyCountdownFilter(slug) {
     if (show && slug) matched++;
   });
   if (slug && !matched) cards.forEach(c => { c.style.display = ''; }); // unknown slug → show all
+  // The past block appears only in the hub, and only when it still has a visible
+  // card: filtered to a live countdown it would otherwise leave a "Past
+  // countdowns" heading standing over nothing.
+  const past = document.getElementById('cd-past');
+  if (past) {
+    const anyPastShown = [...past.querySelectorAll('.cd-card')].some(c => c.style.display !== 'none');
+    past.hidden = !(_cdMountedInHub && anyPastShown);
+  }
   const back = document.getElementById('cd-back-all');
   if (back) back.style.display = (slug && matched) ? 'inline-flex' : 'none';
   const mount = document.getElementById('countdowns-mount');
@@ -14184,7 +14219,9 @@ function normPrereleaseName(s) {
 // the "days" field in the admin Countdowns panel (stored in bu_ltal_goals).
 const PRERELEASE_HORIZON_DEFAULT = 60;
 async function loadAutoPrereleases() {
-  const wrap = document.querySelector('#home-countdowns .cd-wrap');
+  // Direct child: #cd-past holds a .cd-wrap of its own, and a fresh pre-release
+  // appended into the past list would be announced as already over.
+  const wrap = document.querySelector('#home-countdowns > .cd-wrap');
   if (!wrap) return;
   let data;
   try {
