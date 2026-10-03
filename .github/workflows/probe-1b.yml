@@ -40,7 +40,7 @@ jobs:
               print(f"{str(t.get('eta') or '—'):<12} {(dl if dl is not None else '—'):>5} "
                     f"{(td if td is not None else '—'):>13} {t['streams']:>14,} "
                     f"{(round(rt) if rt else 0):>10,}  {t['group']} — {t['name']}"
-                    + ('' if t.get('releasePrecision') != 'album' else '  [album date, may be late]'))
+                    + ('' if t.get('releasePrecision') != 'album' else "  [album date, not the song's]"))
           print()
           for t in (d.get('done') or []):
               print(f"{'past 1B':<12} {'—':>5} {'—':>13} {t['streams']:>14,} "
