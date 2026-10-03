@@ -168,10 +168,13 @@
   .b-tot{font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:.02em;
          white-space:normal;max-width:116px;margin-left:auto;}
   .b-tot b{color:var(--text);font-weight:800;font-size:12px;}
-  /* The newest day's own streams, directly under the date. */
-  .b-day{font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:.02em;
-         white-space:normal;max-width:116px;margin-left:auto;}
-  .b-day b{color:var(--pink-soft);font-weight:800;font-size:12px;}
+  /* The figure the active tab sorts by leads; the rest follow, quieter. */
+  .b-lead{font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:.02em;
+          white-space:normal;max-width:116px;margin-left:auto;}
+  .b-lead b{color:var(--text);font-weight:800;font-size:12.5px;}
+  .b-stat{font-size:10px;color:var(--dim);margin-top:3px;letter-spacing:.02em;
+          white-space:normal;max-width:116px;margin-left:auto;}
+  .b-stat b{color:var(--muted);font-weight:700;font-size:10.5px;}
   .b-drift{font-size:10px;margin-top:2px;letter-spacing:.02em;
            white-space:normal;max-width:116px;margin-left:auto;}
   .b-days{font-size:10.5px;color:var(--muted);}
@@ -764,30 +767,55 @@
 
   // The newest day's actual streams, and how that compares with the day before
   // it. The average rate is what drives the projection, but it is a 25-day
-  // figure and says nothing about what the song did yesterday — which is the
-  // first thing you want when you open the board.
-  function _bDayLine(t) {
+  // figure and says nothing about what the song did yesterday.
+  // Returns inner markup only: which slot it occupies depends on the sort.
+  function _bDayInner(t) {
     const s = t.series || [];
     const last = s[s.length - 1], prev = s[s.length - 2];
     if (!last || last.dd == null) return '';
-    const flagged = !!(last.st || last.m);
     // A carried-forward or merged figure is not a day's streams, so it is not
     // presented as one — and no change is computed from it.
-    if (flagged) {
-      return `<div class="b-day"><b>${fmt(last.dd)}</b> <span class="b-warn" title="${last.st ? 'Carried forward after a failed fetch — not an observed day.' : 'A merged count covering more than this track.'}">${last.st ? 'not observed' : 'merged'}</span></div>`;
+    if (last.st || last.m) {
+      return `<b>${fmt(last.dd)}</b> <span class="b-warn" title="${last.st ? 'Carried forward after a failed fetch — not an observed day.' : 'A merged count covering more than this track.'}">${last.st ? 'not observed' : 'merged'}</span>`;
     }
     let chg = '';
     if (prev && prev.dd != null && !prev.st && !prev.m) {
       const n = last.dd - prev.dd;
       const cls = n > 0 ? 'b-closer' : n < 0 ? 'b-slower' : 'b-flat';
-      const sign = n > 0 ? '+' : n < 0 ? '−' : '±';
+      const sign = n > 0 ? '+' : n < 0 ? '\u2212' : '\u00b1';
       chg = ` <span class="b-day-chg ${cls}" title="On ${esc(prev.d)} it took ${fmt(prev.dd)}.">`
           + `(${sign}${fmt(Math.abs(n))})</span>`;
     }
-    return `<div class="b-day" title="Streams on ${esc(last.d)}."><b>+${fmt(last.dd)}</b>${chg}</div>`;
+    return `<b>+${fmt(last.dd)}</b>${chg}`;
   }
 
-  function _bRow(t, i, arrived) {
+  // Each tab is a different question, so each tab leads with its own answer.
+  // Sorting by one figure and then printing a different one first makes the
+  // reader hunt for the number the order is based on — the list looks sorted by
+  // something it is not.
+  function _bStats(t, lead, drift) {
+    const total = t.totalDays != null
+      ? `<b>${t.totalDays.toLocaleString()}</b> days total${drift}` : null;
+    const left = `<b>${t.daysLeft.toLocaleString()}</b> days left`;
+    const day = _bDayInner(t);
+    const avg = `avg +${fmt(Math.round(t.rate))}/day`;
+
+    let order;
+    if (lead === 'daily') {
+      order = day
+        ? [day, total || left, avg]
+        // Nothing to report for the latest day, so the sorted figure itself —
+        // the average — leads rather than something the order ignores.
+        : [`<b>+${fmt(Math.round(t.rate))}</b>/day avg`, total || left];
+    } else if (lead === 'total' && total) {
+      order = [total, left, avg];
+    } else {
+      order = [left, total, avg].filter(Boolean);
+    }
+    return order.map((h, i) => `<div class="${i === 0 ? 'b-lead' : 'b-stat'}">${h}</div>`).join('');
+  }
+
+  function _bRow(t, i, arrived, lead) {
     const pct = Math.max(2, Math.min(100, 100 * t.streams / 1e9));
     // Flags earned rather than decorative. A merged figure is not this track's
     // alone and a stale one was not observed, so neither is presented as a plain
@@ -840,13 +868,7 @@
     } else {
       const soon = t.daysLeft <= 120 ? ' soon' : '';
       right = `<div class="b-eta${soon}">${_dshort(t.eta)}</div>`;
-      sub = _bDayLine(t)
-        + (t.totalDays != null
-          ? `<div class="b-tot"><b>${t.totalDays.toLocaleString()}</b> days total${drift}</div>`
-          // No release date, so no total to show — the days left are still real
-          // and go where the total would have been.
-          : `<div class="b-tot"><b>${t.daysLeft.toLocaleString()}</b> days left</div>`)
-        + `<div class="b-sub">avg +${fmt(Math.round(t.rate))}/day</div>`;
+      sub = _bStats(t, lead, drift);
     }
 
     // The split of the total into measured and projected, on the left, where the
@@ -1076,11 +1098,11 @@
       (racing.length
         ? `<div class="b-head">Closing in · ${racing.length} track${racing.length === 1 ? '' : 's'}`
           + `${_bGroup === 'ALL' ? ` over ${big(d.floor)}` : ''} · ${label}</div>`
-          + racing.map((t, i) => _bRow(t, i, false)).join('')
+          + racing.map((t, i) => _bRow(t, i, false, _bSort)).join('')
         : '') +
       (arrived.length
         ? `<div class="b-head">Already past a billion</div>`
-          + arrived.map((t, i) => _bRow(t, i, true)).join('')
+          + arrived.map((t, i) => _bRow(t, i, true, _bSort)).join('')
         : '');
   }
 
