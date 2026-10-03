@@ -783,14 +783,24 @@
     // fast. It used to carry days-left while the TOTAL was buried mid-sentence
     // on the left, so the two "days" numbers sat in different places and the
     // bigger one looked like a detail of the smaller.
+    // Shows the previous estimate, not just the change. "1 later" alone makes
+    // the reader reconstruct what it moved FROM; "was 960 · 1 later" states both
+    // and cannot be misread.
     const drift = (() => {
       if (t.totalDaysDelta == null) return '';
-      const n = t.totalDaysDelta;
-      if (n === 0) return `<span class="b-flat" title="Exactly on the pace it was on. A day passed and a day's worth of streams arrived, so the finish line did not move.">on pace</span>`;
+      const n = t.totalDaysDelta, was = t.totalDaysPrev;
+      const when = esc(t.prevDay || '');
+      if (n === 0) {
+        // No "was", because it would repeat the number directly above it. A day
+        // passed and a day's worth of streams arrived, so the total is unmoved.
+        return `<span class="b-flat" title="Unchanged from ${when}: a day passed and a day's worth of streams arrived, so the finish line did not move.">on pace</span>`;
+      }
       const cls = n < 0 ? 'b-closer' : 'b-slower';
       const word = n < 0 ? 'sooner' : 'later';
-      return `<span class="${cls}" title="Against the same estimate computed one recorded day ago (${esc(t.prevDay || '')}), which was ${t.totalDaysPrev ? t.totalDaysPrev.toLocaleString() : '—'} days.">`
-           + `${Math.abs(n).toLocaleString()} ${word}</span>`;
+      return `<span class="${cls}" title="On ${when} the same estimate came to ${was.toLocaleString()} days; today it comes to ${t.totalDays.toLocaleString()}.">`
+           // Non-breaking spaces inside each phrase: at this width the line broke
+           // after the magnitude and left "later" alone on the next one.
+           + `was\u00a0${was.toLocaleString()} · ${Math.abs(n).toLocaleString()}\u00a0${word}</span>`;
     })();
 
     let right, sub;
