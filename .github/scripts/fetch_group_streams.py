@@ -35,10 +35,16 @@ import httpx
 from spotify_scraper import SpotifyClient
 
 CATALOG_DIR = "data/group_catalogs"
+WATCHLIST = "data/group_watchlist.json"
 OUT_DIR = "data/group_streams"
 HISTORY = os.path.join(OUT_DIR, "history.json")
 CSV_PATH = os.path.join(OUT_DIR, "history.csv")
 LAST_TRACKS = os.path.join(OUT_DIR, "last_tracks.json")
+# Deliberately a SEPARATE baseline from last_tracks.json. That file is the
+# per-track state of a group's last complete day and the group delta is measured
+# against it; letting watch tracks into it would put uncounted streams inside the
+# thing the counted total is compared to.
+LAST_WATCH = os.path.join(OUT_DIR, "last_watch.json")
 
 # Manual backfills only; normally the date is derived (see day_for).
 OVERRIDE_DATE = os.environ.get("OVERRIDE_DATE")
@@ -75,6 +81,42 @@ def catalogs():
             print(f"  ⚠ {fn}: no tracks, skipping", file=sys.stderr)
             continue
         out.append((d["name"], d["artist_id"], d["tracks"]))
+    return out
+
+
+def watchlist(counted_ids_by_artist):
+    """{artist_id: [{id, name}]} — tracks to RECORD but NOT COUNT.
+
+    A release is worth zero to a group's total until the pinned catalogue is
+    re-seeded, and kworb can take weeks to list an album. The ramp in those first
+    weeks is unrecoverable once missed: Spotify serves a cumulative figure, never
+    a history. So these are fetched and written per-track with counted=false,
+    and kept out of every number a group's total depends on.
+
+    An id already in that group's catalogue is dropped here — it is counted
+    through the normal path, and fetching it twice would write the same row from
+    two places. That also makes a stale watchlist entry harmless after a
+    re-seed, which is what lets the file be left alone rather than maintained."""
+    data = load_json(WATCHLIST, {})
+    out = {}
+    for aid, entry in data.items():
+        if aid.startswith("_") or not isinstance(entry, dict):
+            continue
+        counted = counted_ids_by_artist.get(aid, set())
+        keep, already = [], 0
+        for t in entry.get("tracks", []):
+            tid = t.get("id")
+            if not tid:
+                continue
+            if tid in counted:
+                already += 1
+                continue
+            keep.append({"id": tid, "name": t.get("name"), "feature": False})
+        if already:
+            print(f"  watchlist [{aid}]: {already} entr(y/ies) now in the catalogue "
+                  f"— counted normally, ignored here")
+        if keep:
+            out[aid] = keep
     return out
 
 
@@ -205,14 +247,19 @@ def sb(method, path, **kwargs):
     return r.json() if r.content else None
 
 
-def upsert_group_tracks(artist_id, tracks):
-    """Upserts group_tracks from the seeded catalogue, returns {track_id: ref}."""
+def upsert_group_tracks(artist_id, tracks, counted=True):
+    """Upserts group_tracks, returns {track_id: ref}.
+
+    `counted` is written every run rather than set once, so a watchlist track
+    flips to counted the moment a re-seed puts it in the catalogue — no cleanup
+    step, and no window where the flag disagrees with the catalogue."""
     rows = [
         {
             "artist_id": artist_id,
             "track_id": t["id"],
             "name": t.get("name"),
             "feature": bool(t.get("feature")),
+            "counted": counted,
         }
         for t in tracks
     ]
@@ -225,7 +272,7 @@ def upsert_group_tracks(artist_id, tracks):
     return {row["track_id"]: row["id"] for row in result}
 
 
-def store_per_track(name, artist_id, day, tracks, got, known, failed):
+def store_per_track(name, artist_id, day, tracks, got, known, failed, counted=True):
     """Writes one day of per-track rows. Returns the number of rows written.
 
     `known` is the PRE-RUN baseline (the last complete day's per-track snapshot),
@@ -233,7 +280,10 @@ def store_per_track(name, artist_id, day, tracks, got, known, failed):
     `failed` are the tracks whose value was carried forward from that baseline —
     flagged `stale`, because their delta is 0 by construction and a rate
     calculation must not read that as "it did not move"."""
-    refs = upsert_group_tracks(artist_id, tracks)
+    refs = upsert_group_tracks(artist_id, tracks, counted=counted)
+    # Merge detection stays WITHIN the set being written: a watch track sharing a
+    # figure with a counted one is not evidence of a Spotify merge, because the
+    # two sets are fetched and written separately.
     merged = equal_value_ids(got)
     failed = set(failed)
     rows = []
@@ -277,7 +327,7 @@ def push_per_track(pending):
     print("\nper-track rows:")
     for p in pending:
         try:
-            n = store_per_track(**p)
+            n = store_per_track(**p)   # `counted` rides in p for watch rows
             print(f"  {p['name']} {p['day']}: {n} track row(s)")
         except Exception as e:
             print(f"  ⚠ {p['name']} {p['day']}: per-track store FAILED ({e}) — "
@@ -314,12 +364,19 @@ def merge_csv_rows(existing, new_rows):
 def main():
     history = load_json(HISTORY, {})
     last_tracks = load_json(LAST_TRACKS, {})
+    last_watch = load_json(LAST_WATCH, {})
     rows_to_append = []
     pending_per_track = []
     wrote = []
 
+    cats = catalogs()
+    watch = watchlist({aid: {t["id"] for t in tracks} for _, aid, tracks in cats})
+    if watch:
+        print(f"watchlist: {sum(len(v) for v in watch.values())} track(s) across "
+              f"{len(watch)} group(s) — recorded, never counted")
+
     with SpotifyClient() as client:
-        for name, aid, tracks in catalogs():
+        for name, aid, tracks in cats:
             ids = [t["id"] for t in tracks]
             print(f"\n=== {name} [{aid}] — {len(ids)} tracks", flush=True)
             got, failed = playcounts(client, ids)
@@ -424,6 +481,45 @@ def main():
                 "name": name, "artist_id": aid, "day": day, "tracks": tracks,
                 "got": dict(got), "known": dict(known), "failed": list(failed),
             })
+
+            # ── watchlist ──────────────────────────────────────────────────
+            # Fetched only now, AFTER this group's day is settled, and kept in
+            # its own variables throughout. Nothing here touches `total`,
+            # `got`, `known`, the unchanged ratio, history.json, history.csv or
+            # last_tracks.json — a watch track must not be able to move a
+            # group's number, delay a publish decision or alter a delta.
+            #
+            # It shares the day label, because a day is a day; and it is skipped
+            # entirely when the group held, because there is no day to file it
+            # under.
+            if watch.get(aid):
+                try:
+                    w_tracks = watch[aid]
+                    w_got, w_failed = playcounts(client, [t["id"] for t in w_tracks])
+                    w_known = last_watch.get(aid, {})
+                    # No carry-forward here, unlike the counted path. There a
+                    # last-known value stops the TOTAL from silently shortening
+                    # when one track fails; a watch track is in no total, so
+                    # carrying it forward would only write a day we did not
+                    # observe. A skipped day leaves an honest gap instead, and
+                    # the next real reading's delta spans it correctly.
+                    pending_per_track.append({
+                        "name": f"{name} (watchlist)", "artist_id": aid, "day": day,
+                        "tracks": [t for t in w_tracks if t["id"] in w_got],
+                        "got": dict(w_got), "known": dict(w_known),
+                        "failed": [], "counted": False,
+                    })
+                    # The baseline keeps a value we failed to re-read, so a
+                    # missed day costs that day's row and not the anchor the
+                    # NEXT delta is measured from.
+                    last_watch[aid] = {**w_known, **w_got}
+                    missing = [t for t in w_failed]
+                    print(f"  watchlist: {len(w_got)}/{len(w_tracks)} fetched"
+                          + (f", {len(missing)} not released yet or unavailable" if missing else "")
+                          + " — recorded, not counted")
+                except Exception as e:
+                    # Never let the watchlist break the day it rides along with.
+                    print(f"  ⚠ watchlist fetch failed for {name}: {e}", file=sys.stderr)
             # Only a COMPLETE day advances the per-track baseline. Saving a
             # half-published run here would make the next run compare against
             # the partial state, so the stragglers still to arrive would look
@@ -451,6 +547,11 @@ def main():
     with open(LAST_TRACKS, "w") as f:
         json.dump(last_tracks, f, sort_keys=True)
         f.write("\n")
+    # Its own file, so a watch baseline can never be read as a counted one.
+    if last_watch:
+        with open(LAST_WATCH, "w") as f:
+            json.dump(last_watch, f, indent=2, sort_keys=True)
+            f.write("\n")
 
     existing = []
     if os.path.exists(CSV_PATH):
