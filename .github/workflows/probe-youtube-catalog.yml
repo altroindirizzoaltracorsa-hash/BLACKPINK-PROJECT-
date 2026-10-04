@@ -27,6 +27,10 @@ on:
         description: 'Uploads pages per channel, 50 each (default 12)'
         required: false
         default: ''
+      kinds:
+        description: "What to keep: blank = MVs + performance videos, 'all' = everything, or e.g. mv,live"
+        required: false
+        default: ''
       base_url:
         description: 'Base URL (blank = production)'
         required: false
@@ -43,6 +47,7 @@ jobs:
           MIN: ${{ inputs.min }}
           CHANNELS: ${{ inputs.channels }}
           MAX_PAGES: ${{ inputs.max_pages }}
+          KINDS: ${{ inputs.kinds }}
         run: |
           set -euo pipefail
           # if-blocks, not `[ -n "$X" ] && q=…`: under `set -e` a false test is a
@@ -52,6 +57,7 @@ jobs:
           if [ -n "$MIN" ];       then q="$q&min=$MIN"; fi
           if [ -n "$CHANNELS" ];  then q="$q&channels=$(printf %s "$CHANNELS" | jq -sRr @uri)"; fi
           if [ -n "$MAX_PAGES" ]; then q="$q&max_pages=$MAX_PAGES"; fi
+          if [ -n "$KINDS" ];     then q="$q&kinds=$KINDS"; fi
           # -L because the apex 308-redirects; the admin header survives the hop.
           code=$(curl -sS -L --max-time 180 -o /tmp/cat.json -w '%{http_code}' \
             -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/youtube-catalog?probe=1$q")
@@ -65,17 +71,23 @@ jobs:
 
           print(f"\nchannels resolved ({len(d['channels'])}):")
           for c in d['channels']:
-              note = f"  [{c['note']}]" if c.get('note') else ''
+              flags = []
+              if c.get('note'): flags.append(c['note'])
+              if c.get('truncated'): flags.append('TRUNCATED — raise max_pages')
+              note = ('  [' + '; '.join(flags) + ']') if flags else ''
               print(f"  {c['title']:<22} {c['id']}  {c.get('uploads',0):>4} uploads  "
                     f"{c.get('videos',0):>3} above floor{note}")
           if d.get('unresolved'):
               print(f"\n  UNRESOLVED (fix these in HANDLES): {', '.join(d['unresolved'])}")
 
-          print(f"\n{d['count']} video(s) at or above {d['min']:,} views, "
-                f"nearest milestone first:\n")
-          print(f"{'gap':>12} {'next':>7} {'views':>15}  {'channel':<14} title")
+          drop = d.get('dropped') or {}
+          if drop:
+              print("\nfiltered out: " + ', '.join(f"{n} {k}" for k, n in sorted(drop.items())))
+          print(f"\n{d['count']} video(s) at or above {d['min']:,} views "
+                f"(keeping {d.get('kinds')}), nearest milestone first:\n")
+          print(f"{'gap':>12} {'next':>7} {'views':>15}  {'kind':<11} {'channel':<14} title")
           for v in d['videos']:
               nxt = f"{v['next']/1e9:g}B" if v['next'] >= 1e9 else f"{v['next']/1e6:g}M"
-              print(f"{v['gap']:>12,} {nxt:>7} {v['views']:>15,}  "
-                    f"{v['channel'][:14]:<14} {v['title'][:60]}")
+              print(f"{v['gap']:>12,} {nxt:>7} {v['views']:>15,}  {v.get('kind',''):<11} "
+                    f"{v['channel'][:14]:<14} {v['title'][:58]}")
           PY

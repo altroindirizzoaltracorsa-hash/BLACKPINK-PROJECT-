@@ -26,30 +26,67 @@
 //   ?channels=<id|@handle>,…   override the configured set
 //   ?min=<views>               drop anything below this (default 100,000,000)
 //   ?max_pages=<n>             uploads pages per channel (default 12 = 600)
-//   ?seed=<videoId>,…          resolve channels FROM these videos instead
+//   ?seed=<videoId>,…          also resolve channels from these videos
 //
 // Env: YOUTUBE_API_KEY (required), ADMIN_SECRET / CRON_SECRET (auth).
 
 const V3 = 'https://www.googleapis.com/youtube/v3';
 
-// Channels to walk. Handles are resolved at call time and the response reports
-// what each one resolved to — a handle that has been renamed shows up as a
-// miss in `channels` rather than silently contributing nothing.
+// The channels to walk, confirmed against the live API (run 37227297852):
+// every handle below resolved to the account named beside it.
 //
-// SEED_VIDEOS is the more reliable half: these ids are already in the repo
-// (api/youtube-stats.js RELEASE, .github/workflows/youtube-probe.yml), so they
-// are known-good, and asking YouTube which channel a known-good video belongs
-// to cannot be wrong the way a guessed handle can. Handles only have to cover
-// what the seeds miss.
-const SEED_VIDEOS = [
-  'LzgE8ift2Uw', // JISOO teaser
-  'h-7_04c_hVc', // LISA teaser
-  'FyS5dAywkEo', // LISA MV
-  'sf02ugzPFE4', // JISOO MV
-  'Lufa9QAFFeY', // ROSÉ — new trick MV
-  's466YCiHfKw', // the fifth tracked video
+// Handles are now the ONLY default source, and SEED_VIDEOS is gone from that
+// path, because resolving channels from seed videos actively hurt: a seed sits
+// on whichever channel published it, and for LISA and JENNIE that is the VEVO
+// mirror, so the first run walked LISAOfficialVEVO and JennieRubyJaneVEVO
+// alongside the real channels and returned every video twice. Naming the five
+// accounts outright keeps the mirrors out at the source. ?seed= still resolves
+// from videos for ad-hoc use, and the dedup below remains as a safety net.
+const HANDLES = [
+  '@BLACKPINK',        // BLACKPINK      UCOmHUn--16B90oW2L6FRR3A
+  '@wearelloud',       // LLOUD Official UC6-BgjsBa5R3PZQ_kZ8hKPg  (LISA)
+  '@roses_are_rosie',  // ROSÉ           UCBo1hnzxV9rz3WVsv__Rn1g
+  '@jennierubyjane',   // JENNIE         UCNYi_zGmR519r5gYdOKLTjQ
+  '@sooyaaa__',        // JISOO          UCRE-097LGtx_Zo7LrHvkycA
 ];
-const HANDLES = ['@BLACKPINK', '@jennierubyjane', '@roseanne_park', '@LISA', '@jisoo'];
+
+// ── what counts as a milestone-worthy video ────────────────────────────────
+// The first live run returned 68 videos over 100M and most were not songs:
+// Inkigayo and Coachella stages, official audio, BLACKPINK HOUSE episodes, and
+// seven Shorts ("Bring your best dance moves and join the #PinkVenomChallenge").
+// A board that leads with a challenge clip is not a milestone board.
+//
+// Shorts are detected by DURATION, not by title. Their titles are chatty
+// sentences with nothing reliable in them, while the format has a hard length
+// limit — a 60-second ceiling catches every one of them and cannot be fooled by
+// wording.
+export const iso8601Seconds = d => {
+  const m = /^P(?:([\d.]+)D)?T?(?:([\d.]+)H)?(?:([\d.]+)M)?(?:([\d.]+)S)?$/.exec(d || '');
+  if (!m) return null;
+  return (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0);
+};
+
+const KIND_RULES = [
+  // Order matters: a title can match more than one rule and the first wins.
+  ['live',        /inkigayo|live at |live from |special stage|music bank|music core|the show|countdown|awards\)|live performance video/i],
+  ['audio',       /\(official audio\)|\(audio\)/i],
+  ['lyric',       /lyric video/i],
+  ['performance', /dance practice|dance performance|performance video|choreography|dance video/i],
+  ['mv',          /\bm\/v\b|\bmv\b|official music video|official video|\bm,\/v\b/i],
+  ['variety',     /house.*ep\.|ep\.\d|blackpink house/i],
+];
+
+export function classify(title, durationSec) {
+  if (durationSec !== null && durationSec <= 60) return 'short';
+  for (const [kind, re] of KIND_RULES) if (re.test(title)) return kind;
+  return 'other';
+}
+
+// Kept on the board by default. The fandom genuinely celebrates the dance
+// practice and performance videos — MONEY's performance video is one of the
+// biggest things on the BLACKPINK channel — so they count alongside the MVs,
+// while stages, audio, lyric videos, Shorts and variety do not.
+const DEFAULT_KINDS = ['mv', 'performance'];
 
 const STEP = 100e6;                       // the public milestone ladder
 const nextMilestone = v => Math.ceil((v + 1) / STEP) * STEP;
@@ -101,7 +138,9 @@ async function resolveChannels({ explicit, seeds }, key) {
     return { found: [...found.values()], missed };
   }
 
-  // Seeds first: a known-good video id names its channel without guesswork.
+  // Only when ?seed= was passed: a seed names whichever channel published the
+  // video, which for LISA and JENNIE is the VEVO mirror rather than the real
+  // account. Useful for discovering an unknown channel, wrong as a default.
   if (seeds.length) {
     const vids = await api('videos', { part: 'snippet', id: seeds.join(','), maxResults: '50' }, key);
     const chIds = [...new Set((vids.items || []).map(v => v.snippet?.channelId).filter(Boolean))];
@@ -158,11 +197,28 @@ export default async function handler(req, res) {
   const explicit = String(req.query.channels || '').split(',').map(s => s.trim()).filter(Boolean);
   const seeds = String(req.query.seed || '').split(',').map(s => s.trim()).filter(Boolean);
   const min = Math.max(0, parseInt(req.query.min ?? '100000000', 10) || 0);
-  const maxPages = Math.min(40, Math.max(1, parseInt(req.query.max_pages ?? '12', 10) || 12));
+  const maxPages = Math.min(40, Math.max(1, parseInt(req.query.max_pages ?? '30', 10) || 30));
+  // ?kinds=all keeps everything; ?kinds=mv,live picks explicitly.
+  const kindsParam = String(req.query.kinds || '').trim();
+  const keepAll = kindsParam === 'all';
+  const kinds = kindsParam && !keepAll
+    ? kindsParam.split(',').map(s => s.trim()).filter(Boolean)
+    : DEFAULT_KINDS;
 
   try {
-    const { found, missed } = await resolveChannels(
-      { explicit, seeds: seeds.length ? seeds : SEED_VIDEOS }, key);
+    const { found, missed } = await resolveChannels({ explicit, seeds }, key);
+
+    // A video can be reached from more than one channel: the artist channel and
+    // its VEVO mirror publish the same id, so the first run listed SaWaDiKa,
+    // Mantra, like JENNIE and ExtraL twice each. Dedup by video id, preferring
+    // the channel a human would name — "JENNIE" over "JennieRubyJaneVEVO".
+    const seen = new Map();
+    const dropped = {};                 // kind → how many were filtered out
+    const prefer = (a, b) => {
+      const vevo = t => /vevo$/i.test(t || '');
+      if (vevo(a.channel) !== vevo(b.channel)) return vevo(a.channel) ? b : a;
+      return a;                         // stable: first channel walked wins
+    };
 
     const videos = [];
     const channels = [];
@@ -174,22 +230,38 @@ export default async function handler(req, res) {
       for (const it of items) {
         const views = Number(it.statistics?.viewCount);
         if (!Number.isFinite(views) || views < min) continue;
+        const title = it.snippet?.title || '';
+        const durationSec = iso8601Seconds(it.contentDetails?.duration);
+        const kind = classify(title, durationSec);
+        if (!keepAll && !kinds.includes(kind)) { dropped[kind] = (dropped[kind] || 0) + 1; continue; }
         kept++;
         const next = nextMilestone(views);
-        videos.push({
+        const row = {
           id: it.id,
-          title: it.snippet?.title || '',
+          title,
+          kind,
           channel: ch.title,
           channelId: ch.id,
           publishedAt: it.snippet?.publishedAt || null,
           duration: it.contentDetails?.duration || null,
+          durationSec,
           views,
           next,
           gap: next - views,
-        });
+        };
+        const prev = seen.get(it.id);
+        if (prev) { seen.set(it.id, prefer(prev, row)); continue; }
+        seen.set(it.id, row);
       }
-      channels.push({ id: ch.id, title: ch.title, uploads: ids.length, videos: kept });
+      channels.push({
+        id: ch.id, title: ch.title, uploads: ids.length, videos: kept,
+        // 600 uploads from a 12-page cap is not "600 uploads", it is "we
+        // stopped looking". Say so rather than reporting a truncated walk as
+        // a complete one.
+        truncated: ids.length >= maxPages * 50 || undefined,
+      });
     }
+    videos.push(...seen.values());
 
     // Smallest gap first. NOT the board's order — "soonest" needs a daily rate,
     // which this endpoint cannot know from one reading. It is only the useful
@@ -198,6 +270,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       ts: Date.now(), min, maxPages,
+      kinds: keepAll ? 'all' : kinds, dropped,
       channels, unresolved: missed,
       count: videos.length, videos,
     });
