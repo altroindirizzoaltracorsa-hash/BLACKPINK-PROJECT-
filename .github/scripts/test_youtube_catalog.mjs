@@ -35,7 +35,8 @@ globalThis.fetch = async (url) => {
   const ok = body => ({ ok:true, json: async () => body });
   if (path === 'channels') {
     const handle = u.searchParams.get('forHandle');
-    if (handle) return ok({ items: handle === '@BLACKPINK' ? [CH.UCbp] : [] });
+    if (handle) return ok({ items: handle === '@BLACKPINK' ? [CH.UCbp]
+                                 : handle === '@roses_are_rosie' ? [CH.UCro] : [] });
     const ids = (u.searchParams.get('id')||'').split(',').filter(Boolean);
     return ok({ items: ids.map(i => CH[i]).filter(Boolean) });
   }
@@ -85,8 +86,10 @@ r = await run({});
 check(r.code === 200, 'returns 200');
 const ch = r.body.channels.map(c => c.title).sort();
 check(ch.includes('BLACKPINK') && ch.includes('ROSÉ'),
-      `seeds + handles resolved both channels (${ch.join(', ')})`);
-check(r.body.unresolved.length === 0, 'every configured handle resolved');
+      `the configured handles resolved both channels (${ch.join(', ')})`);
+check(r.body.unresolved.length === 3, `handles that match nothing are reported, not silent (${r.body.unresolved.join(' ')})`);
+check(!r.body.channels.some(c => /vevo$/i.test(c.title)),
+      'no VEVO mirror is walked by default — handles name the real accounts');
 const bp = r.body.channels.find(c => c.title === 'BLACKPINK');
 check(bp.uploads === 60, `paged through all 60 uploads (got ${bp.uploads})`);
 check(calls.filter(c => c.startsWith('playlistItems:UUbp')).length === 2, '…in 2 pages');
@@ -119,6 +122,10 @@ const exact = (() => { // a video sitting exactly on a milestone must advance
 })();
 check(exact, 'a video exactly on 2B targets 2.1B, not 2B');
 check(r.body.videos.every((v,i,a) => i===0 || a[i-1].gap <= v.gap), 'sorted by smallest gap');
+
+console.log('\n--- seeds are opt-in now');
+const seeded = await run({ seed:'ro000000001' });
+check(seeded.body.channels.some(c => c.title === 'ROSÉ'), '?seed= still resolves a channel from a video');
 
 console.log('\n--- VEVO mirrors');
 r = await run({ channels:'UCro,UCvv' });

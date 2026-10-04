@@ -26,36 +26,29 @@
 //   ?channels=<id|@handle>,…   override the configured set
 //   ?min=<views>               drop anything below this (default 100,000,000)
 //   ?max_pages=<n>             uploads pages per channel (default 12 = 600)
-//   ?seed=<videoId>,…          resolve channels FROM these videos instead
+//   ?seed=<videoId>,…          also resolve channels from these videos
 //
 // Env: YOUTUBE_API_KEY (required), ADMIN_SECRET / CRON_SECRET (auth).
 
 const V3 = 'https://www.googleapis.com/youtube/v3';
 
-// Channels to walk. Handles are resolved at call time and the response reports
-// what each one resolved to — a handle that has been renamed shows up as a
-// miss in `channels` rather than silently contributing nothing.
+// The channels to walk, confirmed against the live API (run 37227297852):
+// every handle below resolved to the account named beside it.
 //
-// SEED_VIDEOS is the more reliable half: these ids are already in the repo
-// (api/youtube-stats.js RELEASE, .github/workflows/youtube-probe.yml), so they
-// are known-good, and asking YouTube which channel a known-good video belongs
-// to cannot be wrong the way a guessed handle can. Handles only have to cover
-// what the seeds miss.
-const SEED_VIDEOS = [
-  'LzgE8ift2Uw', // JISOO teaser
-  'h-7_04c_hVc', // LISA teaser
-  'FyS5dAywkEo', // LISA MV
-  'sf02ugzPFE4', // JISOO MV
-  'Lufa9QAFFeY', // ROSÉ — new trick MV
-  's466YCiHfKw', // the fifth tracked video
+// Handles are now the ONLY default source, and SEED_VIDEOS is gone from that
+// path, because resolving channels from seed videos actively hurt: a seed sits
+// on whichever channel published it, and for LISA and JENNIE that is the VEVO
+// mirror, so the first run walked LISAOfficialVEVO and JennieRubyJaneVEVO
+// alongside the real channels and returned every video twice. Naming the five
+// accounts outright keeps the mirrors out at the source. ?seed= still resolves
+// from videos for ad-hoc use, and the dedup below remains as a safety net.
+const HANDLES = [
+  '@BLACKPINK',        // BLACKPINK      UCOmHUn--16B90oW2L6FRR3A
+  '@wearelloud',       // LLOUD Official UC6-BgjsBa5R3PZQ_kZ8hKPg  (LISA)
+  '@roses_are_rosie',  // ROSÉ           UCBo1hnzxV9rz3WVsv__Rn1g
+  '@jennierubyjane',   // JENNIE         UCNYi_zGmR519r5gYdOKLTjQ
+  '@sooyaaa__',        // JISOO          UCRE-097LGtx_Zo7LrHvkycA
 ];
-// Only the group channel. The members' channels all come from SEED_VIDEOS, and
-// the first live run showed why guessing the rest is worse than useless:
-// '@LISA' resolved to an unrelated one-upload channel called "Lisa", while the
-// real LISA content sits on "LLOUD Official". '@roseanne_park' and '@jisoo'
-// resolved to nothing at all, though both members were already found via seeds.
-// A wrong handle does not fail loudly — it quietly adds a stranger's channel.
-const HANDLES = ['@BLACKPINK'];
 
 // ── what counts as a milestone-worthy video ────────────────────────────────
 // The first live run returned 68 videos over 100M and most were not songs:
@@ -145,7 +138,9 @@ async function resolveChannels({ explicit, seeds }, key) {
     return { found: [...found.values()], missed };
   }
 
-  // Seeds first: a known-good video id names its channel without guesswork.
+  // Only when ?seed= was passed: a seed names whichever channel published the
+  // video, which for LISA and JENNIE is the VEVO mirror rather than the real
+  // account. Useful for discovering an unknown channel, wrong as a default.
   if (seeds.length) {
     const vids = await api('videos', { part: 'snippet', id: seeds.join(','), maxResults: '50' }, key);
     const chIds = [...new Set((vids.items || []).map(v => v.snippet?.channelId).filter(Boolean))];
@@ -202,7 +197,7 @@ export default async function handler(req, res) {
   const explicit = String(req.query.channels || '').split(',').map(s => s.trim()).filter(Boolean);
   const seeds = String(req.query.seed || '').split(',').map(s => s.trim()).filter(Boolean);
   const min = Math.max(0, parseInt(req.query.min ?? '100000000', 10) || 0);
-  const maxPages = Math.min(40, Math.max(1, parseInt(req.query.max_pages ?? '12', 10) || 12));
+  const maxPages = Math.min(40, Math.max(1, parseInt(req.query.max_pages ?? '30', 10) || 30));
   // ?kinds=all keeps everything; ?kinds=mv,live picks explicitly.
   const kindsParam = String(req.query.kinds || '').trim();
   const keepAll = kindsParam === 'all';
@@ -211,8 +206,7 @@ export default async function handler(req, res) {
     : DEFAULT_KINDS;
 
   try {
-    const { found, missed } = await resolveChannels(
-      { explicit, seeds: seeds.length ? seeds : SEED_VIDEOS }, key);
+    const { found, missed } = await resolveChannels({ explicit, seeds }, key);
 
     // A video can be reached from more than one channel: the artist channel and
     // its VEVO mirror publish the same id, so the first run listed SaWaDiKa,
