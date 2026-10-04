@@ -2828,8 +2828,18 @@
   .ytm-toggle[aria-expanded="true"] .ytm-chev { transform:rotate(180deg); }
 
   body.ytm-mode #page-home > section:not(.hero) { display:none !important; }
-  body.ytm-mode .hero-cta,
-  body.ytm-mode #home-countdowns { display:none !important; }
+  /* Everything in the hero goes EXCEPT what this view is made of. Listing what
+     to hide was wrong: the hero also carries the scrobble goal bar and today's
+     playlist, both added as plain divs beside the countdowns, and both survived
+     a rule that named .hero-cta and #home-countdowns by id. Anything added to
+     the hero later would have survived it too. Naming what to KEEP cannot rot
+     that way.
+     !important is load-bearing here: those blocks carry an inline
+     style="display:none" that JS clears, and an author !important beats an
+     inline declaration. */
+  body.ytm-mode .hero-content > *:not(.hero-eyebrow):not(.hero-title):not(.hero-subtitle):not(#ytm-toggle):not(#ytm-panel) {
+    display:none !important;
+  }
 
   .ytm-panel { max-width:900px; width:100%; margin:1.4rem auto 0; text-align:left;
     animation:ytmIn .28s ease both; }

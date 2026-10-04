@@ -69,6 +69,35 @@ check(await page.locator('#ytm-panel').isVisible(), 'the panel opens');
 check(!(await page.locator('#home-countdowns').isVisible()), 'countdowns are gone');
 check(!(await page.locator('.hero-cta').isVisible()), 'hero CTAs are gone');
 check(!(await page.locator('#songs').isVisible()), 'Our Targets is gone');
+
+// The hero carries more than the CTAs and the countdowns: the scrobble goal
+// bar and today's playlist are plain divs beside them, and an earlier rule
+// that named ids missed both. These are forced visible first, because both
+// ship with an inline display:none that JS clears only under conditions the
+// stub does not meet — so without this they would "pass" by being hidden for
+// the wrong reason.
+await page.evaluate(() => {
+  for (const id of ['community-goal-home', 'todays-playlist-home'])
+    document.getElementById(id)?.style.setProperty('display', 'block');
+});
+await page.waitForTimeout(100);
+check(!(await page.locator('#community-goal-home').isVisible()),
+      'the scrobble goal bar is gone even when forced visible');
+check(!(await page.locator('#todays-playlist-home').isVisible()),
+      "and so is today's playlist");
+
+// The real guard: the rule names what to KEEP, so a block nobody has written
+// yet is hidden too. An id list could never promise this.
+const strayHidden = await page.evaluate(() => {
+  const el = document.createElement('div');
+  el.id = 'a-block-invented-after-this-rule-was-written';
+  el.textContent = 'future homepage thing';
+  document.querySelector('.hero-content').appendChild(el);
+  const hidden = getComputedStyle(el).display === 'none';
+  el.remove();
+  return hidden;
+});
+check(strayHidden, 'and so is a brand-new hero block the rule has never seen');
 check(await page.locator('nav').first().isVisible(), 'the nav stays — it is site chrome, not homepage content');
 check((await page.locator('#ytm-toggle-label').textContent()).includes('Back'), 'the button becomes the way back');
 
