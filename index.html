@@ -2866,8 +2866,33 @@
   .ytm-card:hover { border-color:rgba(255,0,102,0.5); background:var(--card2); }
   .ytm-thumb { position:relative; flex:0 0 auto; width:104px; height:59px; overflow:hidden;
     background:linear-gradient(135deg,#2b0a18 0%,#160410 60%,#1d0712 100%);
-    border:1px solid rgba(255,0,102,0.22); }
+    border:1px solid rgba(255,0,102,0.22); padding:0; cursor:pointer; display:block; }
   .ytm-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .ytm-thumb:hover .ytm-play-badge { background:#ff0000; transform:translate(-50%,-50%) scale(1.08); }
+  .ytm-play-badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:30px; height:21px; border-radius:5px; background:rgba(0,0,0,0.72);
+    display:grid; place-items:center; transition:background .18s, transform .18s; pointer-events:none; }
+  .ytm-play-badge::after { content:''; border-style:solid; border-width:5px 0 5px 8px;
+    border-color:transparent transparent transparent #fff; margin-left:2px; }
+
+  /* Playing: the row becomes a player. It spans both columns so the video is
+     not squeezed into half a card, and the figures move underneath rather than
+     disappearing — the milestone is still the point of the board. */
+  /* Capped and centred: 16:9 across the full two-column row is ~760px tall on
+     a desktop, which buries the rest of the board under one video. */
+  .ytm-player { display:none; width:100%; max-width:720px; margin:0 auto; aspect-ratio:16/9;
+    background:#000; border:1px solid rgba(255,0,102,0.22); }
+  .ytm-player iframe { width:100%; height:100%; border:0; display:block; }
+  .ytm-card.playing { grid-column:1 / -1; flex-direction:column; gap:0.7rem; }
+  .ytm-card.playing .ytm-thumb { display:none; }
+  .ytm-card.playing .ytm-player { display:block; }
+  .ytm-card.playing .ytm-body { width:100%; }
+  .ytm-close { font-family:var(--mono); font-size:0.46rem; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--muted); background:transparent; border:none; cursor:pointer; padding:0; }
+  .ytm-close:hover { color:var(--pink); }
+  .ytm-card:not(.playing) .ytm-close { display:none; }
+  a.ytm-name { text-decoration:none; }
+  a.ytm-name:hover { color:var(--pink); }
   .ytm-body { flex:1 1 auto; min-width:0; }
   .ytm-toprow { display:flex; align-items:flex-start; justify-content:space-between; gap:0.7rem; }
   .ytm-name { font-size:0.68rem; line-height:1.3; letter-spacing:0.02em; color:var(--white); }
@@ -21132,22 +21157,27 @@ function ytmDays(d) {
 }
 
 function ytmCard(v) {
-  // A static thumbnail, never an iframe: the player is several hundred KB of
-  // JS per embed and this is the homepage. onerror leaves the CSS placeholder.
-  const thumb = `https://i.ytimg.com/vi/${encodeURIComponent(v.videoId)}/mqdefault.jpg`;
+  // A FACADE, not an iframe. The embed is only built when someone clicks, so
+  // twelve cards cost twelve images instead of twelve copies of the YouTube
+  // player — which is several hundred KB of JS each, on the homepage.
+  const id = encodeURIComponent(v.videoId);
+  const thumb = `https://i.ytimg.com/vi/${id}/mqdefault.jpg`;
   const eta = ytmDays(v.days);
-  // The section heading already says BLACKPINK, so repeating it under every
-  // card there is noise; under Members the name is the useful part.
   const sub = v.artist === 'BLACKPINK' ? '' : v.artist;
+  const title = escapeHtml(v.title);
   return `
-    <a class="ytm-card" href="https://www.youtube.com/watch?v=${encodeURIComponent(v.videoId)}"
-       target="_blank" rel="noopener">
-      <div class="ytm-thumb"><img src="${thumb}" alt="" loading="lazy"
-           onerror="this.style.display='none'"></div>
+    <div class="ytm-card" data-vid="${id}">
+      <button class="ytm-thumb" type="button" aria-label="Play ${title}"
+              onclick="ytmPlay(this)">
+        <img src="${thumb}" alt="" loading="lazy" onerror="this.style.display='none'">
+        <span class="ytm-play-badge"></span>
+      </button>
+      <div class="ytm-player"></div>
       <div class="ytm-body">
         <div class="ytm-toprow">
           <div>
-            <div class="ytm-name">${escapeHtml(v.title)}</div>
+            <a class="ytm-name" href="https://www.youtube.com/watch?v=${id}"
+               target="_blank" rel="noopener">${title}</a>
             ${sub ? `<div class="ytm-art">${escapeHtml(sub)}</div>` : ''}
           </div>
           <div class="ytm-gapwrap">
@@ -21159,9 +21189,39 @@ function ytmCard(v) {
         <div class="ytm-foot">
           <span>${Number(v.views).toLocaleString('en-US')} views</span>
           ${eta ? `<span class="ytm-eta">≈ ${eta}</span>` : ''}
+          <button class="ytm-close" type="button" onclick="ytmStop(this.closest('.ytm-card'))">✕ Close player</button>
         </div>
       </div>
-    </a>`;
+    </div>`;
+}
+
+// Clearing the container, not just hiding it, is what actually stops playback:
+// an iframe left in the DOM keeps playing with the sound on.
+function ytmStop(card) {
+  if (!card) return;
+  card.classList.remove('playing');
+  const host = card.querySelector('.ytm-player');
+  if (host) host.innerHTML = '';
+}
+
+function ytmPlay(btn) {
+  const card = btn.closest('.ytm-card');
+  if (!card) return;
+  // One at a time. Two players running together is a mess to listen to and a
+  // second one would not get counted as a watch by anyone.
+  document.querySelectorAll('.ytm-card.playing').forEach(c => { if (c !== card) ytmStop(c); });
+
+  const vid = card.dataset.vid;
+  const host = card.querySelector('.ytm-player');
+  if (!host || !vid) return;
+  // youtube-nocookie, so a visitor who never presses play is not given a
+  // tracking cookie by us. autoplay is fine here: the click IS the gesture.
+  const src = `https://www.youtube-nocookie.com/embed/${vid}`
+            + `?autoplay=1&rel=0&playsinline=1&modestbranding=1`;
+  host.innerHTML = `<iframe src="${src}" title="YouTube video player" loading="lazy"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+  card.classList.add('playing');
 }
 
 function ytmSection(label, rows) {
@@ -21205,6 +21265,9 @@ function applyYtMilestones(open) {
   const label  = document.getElementById('ytm-toggle-label');
   if (!panel || !toggle) return;
   panel.style.display = open ? '' : 'none';
+  // Leaving the view has to stop the player, or the audio keeps going behind
+  // the homepage with nothing on screen to stop it.
+  if (!open) document.querySelectorAll('.ytm-card.playing').forEach(ytmStop);
   document.body.classList.toggle('ytm-mode', open);
   toggle.setAttribute('aria-expanded', String(open));
   toggle.querySelector('.ytm-play').textContent = open ? '←' : '▶';

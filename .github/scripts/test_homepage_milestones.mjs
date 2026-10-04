@@ -115,6 +115,42 @@ check(/Nearest first/.test(basis) && /no dates yet/.test(basis),
       `the basis line explains why there are no ETAs: "${basis.trim().slice(0,70)}…"`);
 check((await page.locator('.ytm-eta').count()) === 0, 'and no card claims an ETA');
 
+console.log('\n--- the embed is a facade until clicked');
+check(await page.locator('iframe[src*="youtube"]').count() === 0,
+      'no YouTube iframe exists before anyone presses play');
+check(await page.locator('.ytm-thumb').first().isVisible(), 'the thumbnail is the play button');
+
+await page.locator('.ytm-card').first().locator('.ytm-thumb').click();
+await page.waitForTimeout(500);
+const frames = page.locator('.ytm-card.playing iframe');
+check(await frames.count() === 1, 'clicking it builds exactly one player');
+const src = await frames.first().getAttribute('src');
+check(src.includes('youtube-nocookie.com/embed/'),
+      'on youtube-nocookie, so a visitor who never plays gets no cookie from us');
+check(src.includes('autoplay=1'), 'and autoplays — the click is the gesture');
+
+// A second player is the bug worth guarding: two soundtracks at once, and the
+// first one left running invisibly behind the card that replaced it.
+await page.locator('.ytm-card').nth(1).locator('.ytm-thumb').click();
+await page.waitForTimeout(500);
+check(await page.locator('iframe[src*="youtube"]').count() === 1,
+      'playing a second video stops the first — only ever one player');
+check(await page.locator('.ytm-card.playing').count() === 1, 'and only one card is in the playing state');
+
+await page.locator('.ytm-card.playing .ytm-close').click();
+await page.waitForTimeout(400);
+check(await page.locator('iframe[src*="youtube"]').count() === 0,
+      'Close removes the iframe rather than hiding it — a hidden iframe keeps playing');
+
+await page.locator('.ytm-card').first().locator('.ytm-thumb').click();
+await page.waitForTimeout(400);
+await page.locator('#ytm-toggle').click();     // back to the homepage
+await page.waitForTimeout(500);
+check(await page.locator('iframe[src*="youtube"]').count() === 0,
+      'and leaving the view stops it too — audio must not follow you to the homepage');
+await page.locator('#ytm-toggle').click();
+await page.waitForTimeout(600);
+
 console.log('\n--- it survives a reload, and does not leak to other pages');
 await page.reload({ waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(2000);
