@@ -1,0 +1,84 @@
+name: Probe YouTube milestones
+
+# READ-ONLY. Calls /api/youtube-milestones on the live deployment and prints the
+# board the way the page will show it: BLACKPINK on top, Members below, each
+# already sorted. Direct HTTP to blinksunited.com is blocked from Claude Code
+# sessions, so this is the only way to see what the endpoint returns.
+#
+# No auth header: this endpoint is public, unlike /api/youtube-catalog. The
+# probe therefore also proves it is reachable WITHOUT a key, which is what the
+# homepage toggle needs.
+on:
+  workflow_dispatch:
+    inputs:
+      kinds:
+        description: "What counts: blank = mv,performance · 'all' · or e.g. mv"
+        required: false
+        default: ''
+      near:
+        description: 'Only videos arriving within this many days'
+        required: false
+        default: ''
+      limit:
+        description: 'Cap the list'
+        required: false
+        default: ''
+      base_url:
+        description: 'Base URL (blank = production)'
+        required: false
+        default: ''
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch and print the board
+        env:
+          BASE: ${{ inputs.base_url != '' && inputs.base_url || 'https://blinksunited.com' }}
+          KINDS: ${{ inputs.kinds }}
+          NEAR: ${{ inputs.near }}
+          LIMIT: ${{ inputs.limit }}
+        run: |
+          set -euo pipefail
+          # if-blocks, not `[ -n "$X" ] && q=…`: under `set -e` a false test is a
+          # non-zero exit for the whole line and an empty input would abort.
+          q=""
+          if [ -n "$KINDS" ]; then q="$q&kinds=$KINDS"; fi
+          if [ -n "$NEAR" ];  then q="$q&near=$NEAR"; fi
+          if [ -n "$LIMIT" ]; then q="$q&limit=$LIMIT"; fi
+          # -L because the apex 308-redirects. Deliberately NO admin header.
+          code=$(curl -sS -L --max-time 60 -o /tmp/m.json -w '%{http_code}' \
+            "$BASE/api/youtube-milestones?probe=1$q")
+          echo "HTTP $code  (no auth header sent — this endpoint is public)"
+          if [ "$code" != "200" ]; then head -c 600 /tmp/m.json; echo; exit 1; fi
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/m.json'))
+          if d.get('error'):
+              print('error:', d['error']); raise SystemExit(1)
+          if d.get('note'):
+              print('note:', d['note'])
+
+          c = d.get('counts') or {}
+          print(f"as of {d.get('asOf')} (captured {d.get('capturedAt')})")
+          print(f"sorted by {d.get('sortedBy')} · rates available: {d.get('hasRates')}")
+          print(f"keeping {d.get('kinds')} · {c.get('shown')} shown of {c.get('total')}\n")
+
+          def block(label, rows):
+              print(f"◇ {label}  ({len(rows)})")
+              if not rows:
+                  print("   —\n"); return
+              print(f"   {'gap':>12} {'next':>7} {'views':>15} {'per day':>12} "
+                    f"{'eta':>12}  title")
+              for v in rows:
+                  nxt = f"{v['next']/1e9:g}B" if v['next'] >= 1e9 else f"{v['next']/1e6:g}M"
+                  rate = f"{round(v['rate']):,}" if v.get('rate') else '—'
+                  eta = v.get('eta') or '—'
+                  days = f" ({v['days']:.0f}d)" if v.get('days') is not None else ''
+                  print(f"   {v['gap']:>12,} {nxt:>7} {v['views']:>15,} {rate:>12} "
+                        f"{eta:>12}{days}  {v['artist']} — {v['title'][:46]}")
+              print()
+
+          block('BLACKPINK', d.get('blackpink') or [])
+          block('Members',   d.get('members') or [])
+          PY
