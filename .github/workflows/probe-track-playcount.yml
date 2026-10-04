@@ -1,7 +1,12 @@
 name: Probe track play_count
 
-# Read-only: print the CURRENT Spotify play_count for the given track IDs via the
-# same spotifyscraper the catalog fetch uses. Writes nothing.
+# Read-only: should this track count towards a group's total?
+#
+# Prints each track's play_count, its CREDITED ARTISTS, whether any pinned
+# catalogue already counts it, and — with kworb_artist set — whether kworb lists
+# it under that artist. A track on a group's Spotify profile is not necessarily
+# a track credited to the group, and the catalogues are pinned to kworb's scope
+# so that the seven groups stay comparable. Writes nothing.
 
 on:
   workflow_dispatch:
@@ -10,6 +15,10 @@ on:
         description: 'Comma-separated Spotify track IDs'
         required: true
         default: '0CC8DrwncRXH6MqAL5A90O,0eOpWsum2W5l1KLxJ4QVcM,0IHmXRAKcRd00l50QW5pQU,4tPfvkQAA3q6PF6bkBhvB0,4HB3f71StsELKzgk2iV9mM'
+      kworb_artist:
+        description: 'Optional Spotify artist id — reports whether kworb lists each track under it'
+        required: false
+        default: ''
 
 jobs:
   probe:
@@ -20,8 +29,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install spotifyscraper
-        run: pip install spotifyscraper
+        run: pip install spotifyscraper httpx
       - name: Fetch current play_count
         env:
           TRACK_IDS: ${{ inputs.track_ids }}
+          KWORB_ARTIST: ${{ inputs.kworb_artist }}
         run: python .github/scripts/probe_track_playcount.py
