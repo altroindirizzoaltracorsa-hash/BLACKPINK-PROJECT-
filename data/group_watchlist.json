@@ -1,0 +1,68 @@
+{
+  "_README": [
+    "Tracks to RECORD but NOT COUNT.",
+    "",
+    "The group catalogues in data/group_catalogs/ are pinned to kworb's scope so",
+    "the seven groups stay comparable, which means a new release is worth zero to",
+    "a group's total until the catalogue is re-seeded — and kworb can take days or",
+    "weeks to list an album. The ramp in those first weeks is the most interesting",
+    "part of a release and it is unrecoverable once missed: Spotify serves a",
+    "cumulative figure, never a history.",
+    "",
+    "So fetch_group_streams.py also fetches these ids each day and writes their",
+    "per-track rows to group_track_daily_stats with counted=false. They are left",
+    "out of the group total, out of history.json/history.csv, out of the",
+    "unchanged-ratio that decides whether Spotify is mid-publish, and out of",
+    "last_tracks.json. Nothing about any group's number changes.",
+    "",
+    "A watchlist id that is ALSO in that group's catalogue is ignored — so after a",
+    "re-seed these entries become harmless no-ops and the counted flag flips to",
+    "true on the next run by itself. Removing them afterwards is tidying, not",
+    "maintenance.",
+    "",
+    "Keys are Spotify artist ids, matching data/group_catalogs/<artist_id>.json."
+  ],
+
+  "7n2Ycct7Beij7Dj7meI4X0": {
+    "_note": "TWICE — <THIS IS FOR> WORLD TOUR FINALE in SEOUL - LIVE, album 3HSgUtzlySkMA6JP288qO2, out 2026-10-16. All live re-recordings of songs already in the catalogue: separate ids, separate streams, so not double counting, but expect far less than a studio album.",
+    "tracks": [
+      { "id": "2ceQRBraJi6gZmjZpmyhKN", "name": "THIS IS FOR - Live" },
+      { "id": "4jpntrHXRdZIXtqohpndgh", "name": "Strategy - Live" },
+      { "id": "4HSr3bZy3Q4mZpEI7JGJdT", "name": "MAKE ME GO - Live" },
+      { "id": "3a9s37U2Zs3ItuBLo06Z0I", "name": "SET ME FREE - Live" },
+      { "id": "1I5R1HS197HHVoEqovHgwy", "name": "I CAN'T STOP ME - Live" },
+      { "id": "2lN2w6dfjbf9rFNcFe9zEN", "name": "OPTIONS - Live" },
+      { "id": "7LhevkEVe3dirzHctzR1vL", "name": "MOONLIGHT SUNRISE - Live" },
+      { "id": "4At34q0W9owV0ayMmMajaW", "name": "MARS - Live" },
+      { "id": "2OQ3MA8CungsPYzc3q6XZ7", "name": "I GOT YOU - Live" },
+      { "id": "4Jf9zO2El061h6hF1QghaF", "name": "Talk that Talk - Live" },
+      { "id": "733diFQudsyhS1s1cQbI8W", "name": "Gone - Live" },
+      { "id": "6BQWMrVdSJXyTg4xxdscOe", "name": "FIREWORK - Live" },
+      { "id": "7fuAygVwUwrrG4nmlDpglg", "name": "HELL IN HEAVEN - Live" },
+      { "id": "0sZuNgSByTNKzrNL1FuNbj", "name": "RIGHT HAND GIRL - Live" },
+      { "id": "6Aax6FMEpCPiJCwuNAtYMt", "name": "TT - Live" },
+      { "id": "44pR0DMTyZHcSJ9jbT8yLY", "name": "Heart Shaker - Live" },
+      { "id": "6DpLRqbD1aWdNIsMe9ai86", "name": "Like OOH-AHH - Live" },
+      { "id": "7JEsqWx0N9qSm3fd2lcDFD", "name": "YES or YES - Live" },
+      { "id": "3Ld57MSsltgFgRmYGBsGpo", "name": "Dance The Night Away - Live" },
+      { "id": "4DwM3fExM73lpmjfyz2IyV", "name": "What is Love? - Live" },
+      { "id": "4VDT4dDuYFbFbn7bWonwJj", "name": "CHEER UP - Live" },
+      { "id": "0j9XnlwDGRHE1p50ZPHjJG", "name": "Feel Special - Live" },
+      { "id": "4OtuQ99K6pP6lWP6gbXHSO", "name": "ONE SPARK - Live" },
+      { "id": "7DB1FoScLHd08C8GqTAN6a", "name": "DAT AHH DAT OOH (SANA, JIHYO, DAHYUN, CHAEYOUNG, TZUYU) - Live" },
+      { "id": "3NyO0F4voTPzp1bp4nq45I", "name": "BATTITUDE (NAYEON, JEONGYEON, MOMO, MINA) - Live" },
+      { "id": "2m8JfLyuj3DsKs9roXJp8J", "name": "THIS IS FOR ONCE, THIS IS FOR TWICE - Live" },
+      { "id": "0uI8zAUhinOJDIfWYam8lX", "name": "Bye Bye Inhibitions (Alok, NAYEON, TWICE) — TWICE-credited, not on kworb as of 2026-10-04" }
+    ]
+  },
+
+  "36cgvBn0aadzOijnjjwqMN": {
+    "_note": "ILLIT — BREAK EVEN, album 4xYpXVSKqRTsL3ucRd8EMM, out 2026-10-26. A genuine new EP, and proportionally the bigger of the two: ILLIT's catalogue is 64 tracks and it is the group the Road to 1B board leads with.",
+    "tracks": [
+      { "id": "6CpYN9MxjHzzvcn71aQdMD", "name": "Super in Love" },
+      { "id": "6oTEeofndrgN1q7et4xypc", "name": "More" },
+      { "id": "0pMoUGdpD8nupNP1mSdZUn", "name": "You're Under Arrest" },
+      { "id": "1mre3HoVD50XwY02NvxKZZ", "name": "Pop" }
+    ]
+  }
+}

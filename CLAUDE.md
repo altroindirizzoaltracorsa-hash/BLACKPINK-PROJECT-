@@ -147,6 +147,28 @@ sums agree, so the catalogue stays *defined by* kworb rather than drifting into 
 hand-maintained list. Re-seeding **before** kworb lists the album just reproduces
 the current list; re-seeding while kworb is mid-update can pin a partial one.
 
+**The streams are recorded in the meantime.** `data/group_watchlist.json` lists
+ids to **record but not count**: `fetch_group_streams.py` fetches them each day
+and writes their per-track rows to `group_track_daily_stats` with
+`counted = false`, so the ramp from release day survives even though kworb has
+not listed the album. They are kept out of the group total, out of
+`history.json` / `history.csv`, out of the unchanged-ratio that decides whether
+Spotify is mid-publish, and out of `last_tracks.json` — a watch track cannot
+move a group's number, delay a publish decision or alter a delta. Their baseline
+is its own file, `data/group_streams/last_watch.json`.
+
+`counted` is **derived every run**, not declared: a watch id that is also in the
+catalogue is ignored by the watchlist and written `counted = true` through the
+normal path. So a re-seed flips the flag by itself and the watchlist entries
+become harmless no-ops — removing them afterwards is tidying, not maintenance.
+Both albums' tracks are already on it.
+
+Unlike the counted path, a watch track whose fetch fails is **not** carried
+forward: last-known values exist to stop a TOTAL from shortening, and a watch
+track is in no total, so a skipped day leaves an honest gap rather than a day we
+did not observe. Its baseline survives the gap, so the next real reading's delta
+spans it correctly.
+
 Verified 2026-10-04 via `probe-album.yml` — **0/26 and 0/4 counted today**:
 
 ### TWICE — `<THIS IS FOR> WORLD TOUR FINALE in SEOUL - LIVE` · 2026-10-16
