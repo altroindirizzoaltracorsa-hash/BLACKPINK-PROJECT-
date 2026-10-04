@@ -2809,6 +2809,69 @@
   html.embed-ltal #jennie-release-card, html.embed-ltal #release-expand-panel { margin: 0 !important; width: 100% !important; max-width: 100% !important; }
   html.embed-ltal #jennie-release-card .song-number, html.embed-ltal #jennie-release-card .song-tag { display: none !important; }
   html:not(.embed-ltal) #jennie-release-card, html:not(.embed-ltal) #release-expand-panel { display: none !important; }
+
+  /* ── YouTube milestones ───────────────────────────────────────────────
+     A toggle under the hero CTAs that swaps the homepage for the milestone
+     view. The countdowns, campaigns, catalog total and the rest are homepage
+     content and have no place in this view; the nav and footer are site
+     chrome and stay. */
+  .ytm-toggle {
+    margin-top:1.4rem; display:inline-flex; align-items:center; gap:0.6rem;
+    font-family:var(--mono); font-size:0.58rem; letter-spacing:0.18em; text-transform:uppercase;
+    color:var(--white); background:transparent; border:1px solid rgba(255,68,68,0.38);
+    padding:0.7rem 1.4rem; cursor:pointer; transition:border-color .2s, background .2s;
+  }
+  .ytm-toggle:hover { border-color:#ff4444; background:rgba(255,68,68,0.08); }
+  .ytm-toggle .ytm-play { color:#ff4444; }
+  .ytm-toggle .ytm-chev { font-size:0.7rem; color:var(--muted); transition:transform .25s; }
+  .ytm-toggle[aria-expanded="true"] { border-color:#ff4444; background:rgba(255,68,68,0.08); }
+  .ytm-toggle[aria-expanded="true"] .ytm-chev { transform:rotate(180deg); }
+
+  body.ytm-mode #page-home > section:not(.hero) { display:none !important; }
+  body.ytm-mode .hero-cta,
+  body.ytm-mode #home-countdowns { display:none !important; }
+
+  .ytm-panel { max-width:900px; width:100%; margin:1.4rem auto 0; text-align:left;
+    animation:ytmIn .28s ease both; }
+  @keyframes ytmIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+  .ytm-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:0.3rem; }
+  .ytm-label { font-size:0.62rem; letter-spacing:0.28em; text-transform:uppercase; color:#ff4444;
+    display:flex; align-items:center; gap:0.5rem; }
+  .ytm-all { font-size:0.52rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted);
+    text-decoration:none; border-bottom:1px solid var(--border); padding-bottom:2px; }
+  .ytm-all:hover { color:var(--pink); border-color:var(--pink); }
+  .ytm-basis { font-size:0.5rem; letter-spacing:0.08em; color:rgba(245,240,240,0.33);
+    margin-bottom:1.1rem; line-height:1.7; }
+
+  .ytm-sec + .ytm-sec { margin-top:1.6rem; }
+  .ytm-sec-label { font-size:0.52rem; letter-spacing:0.26em; text-transform:uppercase; color:var(--pink);
+    margin-bottom:0.7rem; display:flex; align-items:baseline; gap:0.5rem; }
+  .ytm-sec-label small { font-size:0.46rem; letter-spacing:0.14em; color:rgba(245,240,240,0.3); }
+  .ytm-grid { display:grid; grid-template-columns:1fr; gap:0.7rem; }
+  @media (min-width: 720px) { .ytm-grid { grid-template-columns:1fr 1fr; } }
+
+  .ytm-card { background:var(--card); border:1px solid var(--border); padding:0.85rem;
+    display:flex; gap:0.85rem; align-items:flex-start; text-decoration:none;
+    transition:border-color .2s, background .2s; }
+  .ytm-card:hover { border-color:rgba(255,0,102,0.5); background:var(--card2); }
+  .ytm-thumb { position:relative; flex:0 0 auto; width:104px; height:59px; overflow:hidden;
+    background:linear-gradient(135deg,#2b0a18 0%,#160410 60%,#1d0712 100%);
+    border:1px solid rgba(255,0,102,0.22); }
+  .ytm-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .ytm-body { flex:1 1 auto; min-width:0; }
+  .ytm-toprow { display:flex; align-items:flex-start; justify-content:space-between; gap:0.7rem; }
+  .ytm-name { font-size:0.68rem; line-height:1.3; letter-spacing:0.02em; color:var(--white); }
+  .ytm-art { font-size:0.46rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin-top:0.22rem; }
+  .ytm-gapwrap { text-align:right; flex:0 0 auto; }
+  .ytm-gap { font-family:var(--display); font-size:1.5rem; color:var(--pink); line-height:1;
+    letter-spacing:0.02em; display:block; font-variant-numeric:tabular-nums; }
+  .ytm-to { font-size:0.46rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
+  .ytm-bar { height:2px; background:rgba(255,255,255,0.09); position:relative; overflow:hidden; margin:0.6rem 0 0.4rem; }
+  .ytm-bar i { position:absolute; inset:0 auto 0 0; background:linear-gradient(90deg,var(--pink),var(--hot-pink)); }
+  .ytm-foot { display:flex; justify-content:space-between; gap:0.7rem; font-size:0.5rem;
+    letter-spacing:0.06em; color:rgba(245,240,240,0.45); font-variant-numeric:tabular-nums; }
+  .ytm-foot .ytm-eta { color:rgba(245,240,240,0.33); white-space:nowrap; }
+  .ytm-empty { font-size:0.6rem; color:var(--muted); padding:2rem 0; text-align:center; line-height:2; }
 </style>
 <div id="intro-overlay">
   <div id="intro-lines"></div>
@@ -2997,6 +3060,24 @@
         <a href="#songs" class="btn-primary" onclick="setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100)">Start Streaming</a>
         <a href="/badges" class="btn-ghost" onclick="showPage('badges'); return false;">Badge Challenge</a>
         <a href="/voting" class="btn-primary" onclick="showPage('vote'); return false;">Vote</a>
+      </div>
+
+      <!-- YouTube milestones: a view switch, not an expansion. Opening it
+           hides the homepage's own content (see body.ytm-mode in the CSS). -->
+      <button class="ytm-toggle" id="ytm-toggle" aria-expanded="false" aria-controls="ytm-panel"
+              onclick="toggleYtMilestones()">
+        <span class="ytm-play">▶</span>
+        <span id="ytm-toggle-label">YouTube milestones</span>
+        <span class="ytm-chev">▾</span>
+      </button>
+
+      <div class="ytm-panel" id="ytm-panel" style="display:none">
+        <div class="ytm-head">
+          <span class="ytm-label">Closest to a milestone</span>
+          <a class="ytm-all" href="/youtube" onclick="showPage('youtube'); return false;">All videos →</a>
+        </div>
+        <p class="ytm-basis" id="ytm-basis"></p>
+        <div id="ytm-sections"><p class="ytm-empty">Loading…</p></div>
       </div>
 
       <!-- Upcoming release / reveal countdowns -->
@@ -6919,6 +7000,9 @@ function renderArtistTracks() {
 }
 
 function showPage(page, { replace = false } = {}) {
+  // body.ytm-mode hides the homepage's own sections. It must not follow the
+  // reader to another page, where it would hide that page's content instead.
+  if (page !== 'home' && typeof exitYtMilestonesMode === 'function') exitYtMilestonesMode();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   // The /countdowns hub borrows the home countdown cards; move them in/out.
@@ -21010,6 +21094,131 @@ window.addEventListener('appinstalled', () => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go);
   else go();
 })();
+
+// ── YouTube milestones ─────────────────────────────────────────────────────
+// The toggle under the hero CTAs swaps the homepage for the milestone view.
+// Everything is read from /api/youtube-milestones, which is public and returns
+// the list already split into BLACKPINK and Members and already sorted, so
+// nothing here decides what order things go in.
+let _ytmLoaded = false;
+
+// Per-viewer convenience only, so localStorage — wrapped, because it throws in
+// a private window with site data blocked.
+const YTM_LS = 'bu_ytm_open';
+const ytmWasOpen  = () => { try { return localStorage.getItem(YTM_LS) === '1'; } catch { return false; } };
+const ytmRemember = v => { try { localStorage.setItem(YTM_LS, v ? '1' : '0'); } catch {} };
+
+function ytmShort(n) {
+  if (n >= 1e9) return (n / 1e9).toFixed(n % 1e9 === 0 ? 0 : 2).replace(/\.?0+$/, '') + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(n % 1e6 === 0 ? 0 : 1).replace(/\.0$/, '') + 'M';
+  return Math.round(n).toLocaleString('en-US');
+}
+function ytmDays(d) {
+  if (d == null) return null;
+  if (d < 1) return 'today';
+  if (d < 45) return Math.round(d) + ' days away';
+  if (d < 365) return Math.round(d / 7) + ' weeks away';
+  return (d / 365).toFixed(1) + ' years away';
+}
+
+function ytmCard(v) {
+  // A static thumbnail, never an iframe: the player is several hundred KB of
+  // JS per embed and this is the homepage. onerror leaves the CSS placeholder.
+  const thumb = `https://i.ytimg.com/vi/${encodeURIComponent(v.videoId)}/mqdefault.jpg`;
+  const eta = ytmDays(v.days);
+  // The section heading already says BLACKPINK, so repeating it under every
+  // card there is noise; under Members the name is the useful part.
+  const sub = v.artist === 'BLACKPINK' ? '' : v.artist;
+  return `
+    <a class="ytm-card" href="https://www.youtube.com/watch?v=${encodeURIComponent(v.videoId)}"
+       target="_blank" rel="noopener">
+      <div class="ytm-thumb"><img src="${thumb}" alt="" loading="lazy"
+           onerror="this.style.display='none'"></div>
+      <div class="ytm-body">
+        <div class="ytm-toprow">
+          <div>
+            <div class="ytm-name">${escapeHtml(v.title)}</div>
+            ${sub ? `<div class="ytm-art">${escapeHtml(sub)}</div>` : ''}
+          </div>
+          <div class="ytm-gapwrap">
+            <span class="ytm-gap">${ytmShort(v.gap)}</span>
+            <span class="ytm-to">to ${ytmShort(v.next)}</span>
+          </div>
+        </div>
+        <div class="ytm-bar"><i style="width:${Math.max(0, Math.min(100, v.pct)).toFixed(1)}%"></i></div>
+        <div class="ytm-foot">
+          <span>${Number(v.views).toLocaleString('en-US')} views</span>
+          ${eta ? `<span class="ytm-eta">≈ ${eta}</span>` : ''}
+        </div>
+      </div>
+    </a>`;
+}
+
+function ytmSection(label, rows) {
+  if (!rows.length) return '';            // an empty heading is worse than none
+  return `<div class="ytm-sec">
+    <p class="ytm-sec-label">◇ ${label} <small>${rows.length}</small></p>
+    <div class="ytm-grid">${rows.map(ytmCard).join('')}</div>
+  </div>`;
+}
+
+async function loadYtMilestones() {
+  if (_ytmLoaded) return;
+  const host  = document.getElementById('ytm-sections');
+  const basis = document.getElementById('ytm-basis');
+  if (!host) return;
+  try {
+    const r = await fetch('/api/youtube-milestones?limit=12');
+    const d = await r.json();
+    if (d.error || (!(d.blackpink || []).length && !(d.members || []).length)) {
+      host.innerHTML = `<p class="ytm-empty">${escapeHtml(d.note || 'Nothing to show yet.')}</p>`;
+      basis.textContent = '';
+      return;
+    }
+    // Say which basis the order is using. "Soonest" and "nearest" genuinely
+    // disagree, so the list silently changing meaning the night the first
+    // rates land would be worse than a line of text.
+    basis.textContent = d.sortedBy === 'soonest'
+      ? `Soonest first · views as of ${d.asOf}`
+      : `Nearest first — daily rates are still building, so there are no dates yet · views as of ${d.asOf}`;
+    host.innerHTML = ytmSection('BLACKPINK', d.blackpink || [])
+                   + ytmSection('Members',   d.members || []);
+    _ytmLoaded = true;
+  } catch (e) {
+    host.innerHTML = '<p class="ytm-empty">Could not load the milestone board.</p>';
+  }
+}
+
+function applyYtMilestones(open) {
+  const panel  = document.getElementById('ytm-panel');
+  const toggle = document.getElementById('ytm-toggle');
+  const label  = document.getElementById('ytm-toggle-label');
+  if (!panel || !toggle) return;
+  panel.style.display = open ? '' : 'none';
+  document.body.classList.toggle('ytm-mode', open);
+  toggle.setAttribute('aria-expanded', String(open));
+  toggle.querySelector('.ytm-play').textContent = open ? '←' : '▶';
+  if (label) label.textContent = open ? 'Back to homepage' : 'YouTube milestones';
+  if (open) loadYtMilestones();
+}
+
+function toggleYtMilestones() {
+  const open = document.getElementById('ytm-toggle')?.getAttribute('aria-expanded') !== 'true';
+  ytmRemember(open);
+  applyYtMilestones(open);
+  if (!open) window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Leaving the homepage must drop the mode with it — otherwise body.ytm-mode
+// follows the reader to /badges and hides sections there.
+function exitYtMilestonesMode() {
+  if (document.body.classList.contains('ytm-mode')) applyYtMilestones(false);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (ytmWasOpen()) applyYtMilestones(true);
+});
+
 </script>
 </body>
 </html>
