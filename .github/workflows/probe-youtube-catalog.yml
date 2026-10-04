@@ -1,0 +1,81 @@
+name: Probe YouTube catalog
+
+# READ-ONLY. Calls /api/youtube-catalog on the live deployment and prints what
+# it found: which channels resolved, how many uploads each has, and every video
+# above the view floor with its gap to the next 100M milestone.
+#
+# This is the step that turns the milestone board from placeholders into real
+# data. It also VERIFIES the ids — each row carries the video's own title, so a
+# wrong id is visible immediately rather than rendering someone else's
+# thumbnail. Direct HTTP to blinksunited.com is blocked from Claude Code
+# sessions, so this workflow is the only way to see the output.
+#
+# Nothing is written anywhere. Safe to run repeatedly; ~100 units of a
+# 10,000/day YouTube quota per full sweep.
+on:
+  workflow_dispatch:
+    inputs:
+      min:
+        description: 'View floor (default 100000000 = 100M)'
+        required: false
+        default: ''
+      channels:
+        description: 'Override channels: comma-separated ids or @handles'
+        required: false
+        default: ''
+      max_pages:
+        description: 'Uploads pages per channel, 50 each (default 12)'
+        required: false
+        default: ''
+      base_url:
+        description: 'Base URL (blank = production)'
+        required: false
+        default: ''
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch and print the catalog
+        env:
+          BASE: ${{ inputs.base_url != '' && inputs.base_url || 'https://blinksunited.com' }}
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          MIN: ${{ inputs.min }}
+          CHANNELS: ${{ inputs.channels }}
+          MAX_PAGES: ${{ inputs.max_pages }}
+        run: |
+          set -euo pipefail
+          # if-blocks, not `[ -n "$X" ] && q=…`: under `set -e` a false test is a
+          # non-zero exit status for the whole line, so an empty input would
+          # abort the step instead of skipping the parameter.
+          q=""
+          if [ -n "$MIN" ];       then q="$q&min=$MIN"; fi
+          if [ -n "$CHANNELS" ];  then q="$q&channels=$(printf %s "$CHANNELS" | jq -sRr @uri)"; fi
+          if [ -n "$MAX_PAGES" ]; then q="$q&max_pages=$MAX_PAGES"; fi
+          # -L because the apex 308-redirects; the admin header survives the hop.
+          code=$(curl -sS -L --max-time 180 -o /tmp/cat.json -w '%{http_code}' \
+            -H "x-admin-secret: $ADMIN_KEY" "$BASE/api/youtube-catalog?probe=1$q")
+          echo "HTTP $code"
+          if [ "$code" != "200" ]; then head -c 800 /tmp/cat.json; echo; exit 1; fi
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/cat.json'))
+          if d.get('error'):
+              print('error:', d['error']); raise SystemExit(1)
+
+          print(f"\nchannels resolved ({len(d['channels'])}):")
+          for c in d['channels']:
+              note = f"  [{c['note']}]" if c.get('note') else ''
+              print(f"  {c['title']:<22} {c['id']}  {c.get('uploads',0):>4} uploads  "
+                    f"{c.get('videos',0):>3} above floor{note}")
+          if d.get('unresolved'):
+              print(f"\n  UNRESOLVED (fix these in HANDLES): {', '.join(d['unresolved'])}")
+
+          print(f"\n{d['count']} video(s) at or above {d['min']:,} views, "
+                f"nearest milestone first:\n")
+          print(f"{'gap':>12} {'next':>7} {'views':>15}  {'channel':<14} title")
+          for v in d['videos']:
+              nxt = f"{v['next']/1e9:g}B" if v['next'] >= 1e9 else f"{v['next']/1e6:g}M"
+              print(f"{v['gap']:>12,} {nxt:>7} {v['views']:>15,}  "
+                    f"{v['channel'][:14]:<14} {v['title'][:60]}")
+          PY

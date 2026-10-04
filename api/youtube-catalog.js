@@ -1,0 +1,207 @@
+// GET /api/youtube-catalog   — READ-ONLY. Admin-gated.
+//
+// Walks the uploads of the BLACKPINK channel AND each member's own channel and
+// returns every video with its view count, its next 100M milestone and the gap
+// to it. This is the id list the milestone board needs; nothing here writes.
+//
+// Why a channel walk rather than a pinned list of ids:
+//   - /api/youtube-stats takes explicit ids, ten at a time. Fine for the five
+//     tracked release videos on /vs.html, useless for a catalogue.
+//   - A hand-written id list silently rots: a wrong id renders a confidently
+//     wrong thumbnail and nobody notices, and a new release is invisible until
+//     someone remembers to add it. The uploads playlist is the channel's own
+//     answer to "what have you published", so it cannot drift from it.
+//
+// Why both the group channel and the solo ones: the members' older MVs live on
+// the BLACKPINK channel (SOLO, LALISA, On The Ground) while the recent ones are
+// on their own, so "the members' videos" and "the members' channels" are
+// different sets and neither alone is complete. Every video carries the channel
+// it was found on so the two can be told apart downstream.
+//
+// Quota: channels.list 1 + playlistItems.list 1 per 50 uploads + videos.list 1
+// per 50 ids. A ~500-upload channel is ~21 units, five channels ~100 — against
+// a 10,000/day free quota. ?max_pages caps the walk if a channel is huge.
+//
+// Params (all optional):
+//   ?channels=<id|@handle>,…   override the configured set
+//   ?min=<views>               drop anything below this (default 100,000,000)
+//   ?max_pages=<n>             uploads pages per channel (default 12 = 600)
+//   ?seed=<videoId>,…          resolve channels FROM these videos instead
+//
+// Env: YOUTUBE_API_KEY (required), ADMIN_SECRET / CRON_SECRET (auth).
+
+const V3 = 'https://www.googleapis.com/youtube/v3';
+
+// Channels to walk. Handles are resolved at call time and the response reports
+// what each one resolved to — a handle that has been renamed shows up as a
+// miss in `channels` rather than silently contributing nothing.
+//
+// SEED_VIDEOS is the more reliable half: these ids are already in the repo
+// (api/youtube-stats.js RELEASE, .github/workflows/youtube-probe.yml), so they
+// are known-good, and asking YouTube which channel a known-good video belongs
+// to cannot be wrong the way a guessed handle can. Handles only have to cover
+// what the seeds miss.
+const SEED_VIDEOS = [
+  'LzgE8ift2Uw', // JISOO teaser
+  'h-7_04c_hVc', // LISA teaser
+  'FyS5dAywkEo', // LISA MV
+  'sf02ugzPFE4', // JISOO MV
+  'Lufa9QAFFeY', // ROSÉ — new trick MV
+  's466YCiHfKw', // the fifth tracked video
+];
+const HANDLES = ['@BLACKPINK', '@jennierubyjane', '@roseanne_park', '@LISA', '@jisoo'];
+
+const STEP = 100e6;                       // the public milestone ladder
+const nextMilestone = v => Math.ceil((v + 1) / STEP) * STEP;
+
+const authed = req => {
+  const cronSecret = process.env.CRON_SECRET, adminSecret = process.env.ADMIN_SECRET;
+  const given = req.headers['x-admin-secret'] || req.query.key;
+  return (cronSecret && req.headers.authorization === `Bearer ${cronSecret}`)
+      || (adminSecret && given === adminSecret);
+};
+
+async function api(path, params, key) {
+  const qs = new URLSearchParams({ ...params, key }).toString();
+  const r = await fetch(`${V3}/${path}?${qs}`);
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const reason = body?.error?.errors?.[0]?.reason || body?.error?.message || `HTTP ${r.status}`;
+    throw new Error(`${path}: ${reason}`);
+  }
+  return body;
+}
+
+// → [{ id, title, uploads }] for whatever we could resolve, plus the misses.
+async function resolveChannels({ explicit, seeds }, key) {
+  const found = new Map(), missed = [];
+
+  const take = items => {
+    for (const c of items || []) {
+      if (c.id && !found.has(c.id)) {
+        found.set(c.id, {
+          id: c.id,
+          title: c.snippet?.title || '',
+          uploads: c.contentDetails?.relatedPlaylists?.uploads || null,
+        });
+      }
+    }
+  };
+
+  if (explicit.length) {
+    const ids = explicit.filter(x => !x.startsWith('@'));
+    const handles = explicit.filter(x => x.startsWith('@'));
+    if (ids.length) take((await api('channels', { part: 'snippet,contentDetails', id: ids.join(','), maxResults: '50' }, key)).items);
+    for (const h of handles) {
+      try {
+        const r = await api('channels', { part: 'snippet,contentDetails', forHandle: h }, key);
+        if (r.items?.length) take(r.items); else missed.push(h);
+      } catch { missed.push(h); }
+    }
+    return { found: [...found.values()], missed };
+  }
+
+  // Seeds first: a known-good video id names its channel without guesswork.
+  if (seeds.length) {
+    const vids = await api('videos', { part: 'snippet', id: seeds.join(','), maxResults: '50' }, key);
+    const chIds = [...new Set((vids.items || []).map(v => v.snippet?.channelId).filter(Boolean))];
+    if (chIds.length) take((await api('channels', { part: 'snippet,contentDetails', id: chIds.join(','), maxResults: '50' }, key)).items);
+  }
+  // Then handles, for the channels no seed video covered.
+  for (const h of HANDLES) {
+    try {
+      const r = await api('channels', { part: 'snippet,contentDetails', forHandle: h }, key);
+      if (r.items?.length) take(r.items); else missed.push(h);
+    } catch { missed.push(h); }
+  }
+  return { found: [...found.values()], missed };
+}
+
+async function uploadIds(playlistId, maxPages, key) {
+  const ids = [];
+  let page;
+  for (let i = 0; i < maxPages; i++) {
+    const r = await api('playlistItems', {
+      part: 'contentDetails', playlistId, maxResults: '50',
+      ...(page ? { pageToken: page } : {}),
+    }, key);
+    for (const it of r.items || []) {
+      const id = it.contentDetails?.videoId;
+      if (id) ids.push(id);
+    }
+    page = r.nextPageToken;
+    if (!page) break;
+  }
+  return ids;
+}
+
+async function statsFor(ids, key) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += 50) {
+    const r = await api('videos', {
+      part: 'statistics,snippet,contentDetails',
+      id: ids.slice(i, i + 50).join(','), maxResults: '50',
+    }, key);
+    out.push(...(r.items || []));
+  }
+  return out;
+}
+
+export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (!authed(req)) return res.status(401).json({ error: 'unauthorized' });
+
+  const key = process.env.YOUTUBE_API_KEY;
+  if (!key) return res.status(200).json({ error: 'not-configured', videos: [] });
+
+  const explicit = String(req.query.channels || '').split(',').map(s => s.trim()).filter(Boolean);
+  const seeds = String(req.query.seed || '').split(',').map(s => s.trim()).filter(Boolean);
+  const min = Math.max(0, parseInt(req.query.min ?? '100000000', 10) || 0);
+  const maxPages = Math.min(40, Math.max(1, parseInt(req.query.max_pages ?? '12', 10) || 12));
+
+  try {
+    const { found, missed } = await resolveChannels(
+      { explicit, seeds: seeds.length ? seeds : SEED_VIDEOS }, key);
+
+    const videos = [];
+    const channels = [];
+    for (const ch of found) {
+      if (!ch.uploads) { channels.push({ ...ch, videos: 0, note: 'no uploads playlist' }); continue; }
+      const ids = await uploadIds(ch.uploads, maxPages, key);
+      const items = await statsFor(ids, key);
+      let kept = 0;
+      for (const it of items) {
+        const views = Number(it.statistics?.viewCount);
+        if (!Number.isFinite(views) || views < min) continue;
+        kept++;
+        const next = nextMilestone(views);
+        videos.push({
+          id: it.id,
+          title: it.snippet?.title || '',
+          channel: ch.title,
+          channelId: ch.id,
+          publishedAt: it.snippet?.publishedAt || null,
+          duration: it.contentDetails?.duration || null,
+          views,
+          next,
+          gap: next - views,
+        });
+      }
+      channels.push({ id: ch.id, title: ch.title, uploads: ids.length, videos: kept });
+    }
+
+    // Smallest gap first. NOT the board's order — "soonest" needs a daily rate,
+    // which this endpoint cannot know from one reading. It is only the useful
+    // order for eyeballing a single call.
+    videos.sort((a, b) => a.gap - b.gap);
+
+    return res.status(200).json({
+      ts: Date.now(), min, maxPages,
+      channels, unresolved: missed,
+      count: videos.length, videos,
+    });
+  } catch (e) {
+    return res.status(502).json({ error: String(e.message || e) });
+  }
+}
