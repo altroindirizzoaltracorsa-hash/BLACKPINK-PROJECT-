@@ -1,0 +1,62 @@
+name: YouTube daily snapshot
+
+# One reading a day of every tracked YouTube video, into Supabase.
+#
+# This is what turns the milestone board from "how far" into "how soon".
+# /api/youtube-catalog can only ever say where things are now; a rate needs two
+# readings, and YouTube serves a cumulative number with no history, so a reading
+# not taken is gone for good.
+#
+# Minute is deliberately not :00 or :30. GitHub queues scheduled runs behind the
+# top-of-the-hour crush and on this repo that delay has measured 2h10m-5h, which
+# is documented in CLAUDE.md and is why the fetch-catalog slots all use odd
+# minutes. It matters less here than there — snapshot_youtube.py records the real
+# elapsed hours between readings rather than assuming a day — but a run that
+# lands when it is supposed to is still worth having.
+#
+# 04:41 UTC is a quiet slot and well clear of the 03:00-ish window when the
+# girl-group jobs are usually finishing, so the two do not contend.
+on:
+  schedule:
+    - cron: '41 4 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Fetch and report, write nothing (1 = dry run)'
+        required: false
+        default: ''
+      min_views:
+        description: 'View floor (default 50000000)'
+        required: false
+        default: ''
+      override_date:
+        description: 'Label this reading YYYY-MM-DD instead of today (backfill a hole)'
+        required: false
+        default: ''
+
+# One reading at a time. Two overlapping runs would both read the same previous
+# reading and compute the same delta twice; the upsert makes that harmless for
+# the stored row, but hours_since would be wrong on whichever lost the race.
+concurrency:
+  group: youtube-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet httpx
+      - name: Take the reading
+        env:
+          BASE: https://blinksunited.com
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          MIN_VIEWS: ${{ inputs.min_views }}
+          OVERRIDE_DATE: ${{ inputs.override_date }}
+        run: python .github/scripts/snapshot_youtube.py
