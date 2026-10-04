@@ -57,6 +57,44 @@ const SEED_VIDEOS = [
 // A wrong handle does not fail loudly — it quietly adds a stranger's channel.
 const HANDLES = ['@BLACKPINK'];
 
+// ── what counts as a milestone-worthy video ────────────────────────────────
+// The first live run returned 68 videos over 100M and most were not songs:
+// Inkigayo and Coachella stages, official audio, BLACKPINK HOUSE episodes, and
+// seven Shorts ("Bring your best dance moves and join the #PinkVenomChallenge").
+// A board that leads with a challenge clip is not a milestone board.
+//
+// Shorts are detected by DURATION, not by title. Their titles are chatty
+// sentences with nothing reliable in them, while the format has a hard length
+// limit — a 60-second ceiling catches every one of them and cannot be fooled by
+// wording.
+export const iso8601Seconds = d => {
+  const m = /^P(?:([\d.]+)D)?T?(?:([\d.]+)H)?(?:([\d.]+)M)?(?:([\d.]+)S)?$/.exec(d || '');
+  if (!m) return null;
+  return (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0);
+};
+
+const KIND_RULES = [
+  // Order matters: a title can match more than one rule and the first wins.
+  ['live',        /inkigayo|live at |live from |special stage|music bank|music core|the show|countdown|awards\)|live performance video/i],
+  ['audio',       /\(official audio\)|\(audio\)/i],
+  ['lyric',       /lyric video/i],
+  ['performance', /dance practice|dance performance|performance video|choreography|dance video/i],
+  ['mv',          /\bm\/v\b|\bmv\b|official music video|official video|\bm,\/v\b/i],
+  ['variety',     /house.*ep\.|ep\.\d|blackpink house/i],
+];
+
+export function classify(title, durationSec) {
+  if (durationSec !== null && durationSec <= 60) return 'short';
+  for (const [kind, re] of KIND_RULES) if (re.test(title)) return kind;
+  return 'other';
+}
+
+// Kept on the board by default. The fandom genuinely celebrates the dance
+// practice and performance videos — MONEY's performance video is one of the
+// biggest things on the BLACKPINK channel — so they count alongside the MVs,
+// while stages, audio, lyric videos, Shorts and variety do not.
+const DEFAULT_KINDS = ['mv', 'performance'];
+
 const STEP = 100e6;                       // the public milestone ladder
 const nextMilestone = v => Math.ceil((v + 1) / STEP) * STEP;
 
@@ -165,6 +203,12 @@ export default async function handler(req, res) {
   const seeds = String(req.query.seed || '').split(',').map(s => s.trim()).filter(Boolean);
   const min = Math.max(0, parseInt(req.query.min ?? '100000000', 10) || 0);
   const maxPages = Math.min(40, Math.max(1, parseInt(req.query.max_pages ?? '12', 10) || 12));
+  // ?kinds=all keeps everything; ?kinds=mv,live picks explicitly.
+  const kindsParam = String(req.query.kinds || '').trim();
+  const keepAll = kindsParam === 'all';
+  const kinds = kindsParam && !keepAll
+    ? kindsParam.split(',').map(s => s.trim()).filter(Boolean)
+    : DEFAULT_KINDS;
 
   try {
     const { found, missed } = await resolveChannels(
@@ -175,6 +219,7 @@ export default async function handler(req, res) {
     // Mantra, like JENNIE and ExtraL twice each. Dedup by video id, preferring
     // the channel a human would name — "JENNIE" over "JennieRubyJaneVEVO".
     const seen = new Map();
+    const dropped = {};                 // kind → how many were filtered out
     const prefer = (a, b) => {
       const vevo = t => /vevo$/i.test(t || '');
       if (vevo(a.channel) !== vevo(b.channel)) return vevo(a.channel) ? b : a;
@@ -191,15 +236,21 @@ export default async function handler(req, res) {
       for (const it of items) {
         const views = Number(it.statistics?.viewCount);
         if (!Number.isFinite(views) || views < min) continue;
+        const title = it.snippet?.title || '';
+        const durationSec = iso8601Seconds(it.contentDetails?.duration);
+        const kind = classify(title, durationSec);
+        if (!keepAll && !kinds.includes(kind)) { dropped[kind] = (dropped[kind] || 0) + 1; continue; }
         kept++;
         const next = nextMilestone(views);
         const row = {
           id: it.id,
-          title: it.snippet?.title || '',
+          title,
+          kind,
           channel: ch.title,
           channelId: ch.id,
           publishedAt: it.snippet?.publishedAt || null,
           duration: it.contentDetails?.duration || null,
+          durationSec,
           views,
           next,
           gap: next - views,
@@ -225,6 +276,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       ts: Date.now(), min, maxPages,
+      kinds: keepAll ? 'all' : kinds, dropped,
       channels, unresolved: missed,
       count: videos.length, videos,
     });
