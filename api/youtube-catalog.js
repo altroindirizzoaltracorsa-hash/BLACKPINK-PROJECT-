@@ -71,6 +71,11 @@ const KIND_RULES = [
   ['live',        /inkigayo|live at |live from |special stage|music bank|music core|the show|countdown|awards\)|live performance video/i],
   ['audio',       /\(official audio\)|\(audio\)/i],
   ['lyric',       /lyric video/i],
+  // Before 'mv', because these titles contain "M/V" and would otherwise be
+  // filed as the music video itself. The live run put "BLACKPINK - 'Kill This
+  // Love' M/V MAKING FILM" on the board next to the real Kill This Love M/V,
+  // and LISA's DREAM, a phone-brand short film, alongside her singles.
+  ['behind',      /making film|making of|behind the scenes|short film|teaser|trailer|highlight|recap|unboxing|vlog|reaction/i],
   ['performance', /dance practice|dance performance|performance video|choreography|dance video/i],
   ['mv',          /\bm\/v\b|\bmv\b|official music video|official video|\bm,\/v\b/i],
   ['variety',     /house.*ep\.|ep\.\d|blackpink house/i],
