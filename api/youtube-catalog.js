@@ -49,7 +49,13 @@ const SEED_VIDEOS = [
   'Lufa9QAFFeY', // ROSÉ — new trick MV
   's466YCiHfKw', // the fifth tracked video
 ];
-const HANDLES = ['@BLACKPINK', '@jennierubyjane', '@roseanne_park', '@LISA', '@jisoo'];
+// Only the group channel. The members' channels all come from SEED_VIDEOS, and
+// the first live run showed why guessing the rest is worse than useless:
+// '@LISA' resolved to an unrelated one-upload channel called "Lisa", while the
+// real LISA content sits on "LLOUD Official". '@roseanne_park' and '@jisoo'
+// resolved to nothing at all, though both members were already found via seeds.
+// A wrong handle does not fail loudly — it quietly adds a stranger's channel.
+const HANDLES = ['@BLACKPINK'];
 
 const STEP = 100e6;                       // the public milestone ladder
 const nextMilestone = v => Math.ceil((v + 1) / STEP) * STEP;
@@ -164,6 +170,17 @@ export default async function handler(req, res) {
     const { found, missed } = await resolveChannels(
       { explicit, seeds: seeds.length ? seeds : SEED_VIDEOS }, key);
 
+    // A video can be reached from more than one channel: the artist channel and
+    // its VEVO mirror publish the same id, so the first run listed SaWaDiKa,
+    // Mantra, like JENNIE and ExtraL twice each. Dedup by video id, preferring
+    // the channel a human would name — "JENNIE" over "JennieRubyJaneVEVO".
+    const seen = new Map();
+    const prefer = (a, b) => {
+      const vevo = t => /vevo$/i.test(t || '');
+      if (vevo(a.channel) !== vevo(b.channel)) return vevo(a.channel) ? b : a;
+      return a;                         // stable: first channel walked wins
+    };
+
     const videos = [];
     const channels = [];
     for (const ch of found) {
@@ -176,7 +193,7 @@ export default async function handler(req, res) {
         if (!Number.isFinite(views) || views < min) continue;
         kept++;
         const next = nextMilestone(views);
-        videos.push({
+        const row = {
           id: it.id,
           title: it.snippet?.title || '',
           channel: ch.title,
@@ -186,10 +203,20 @@ export default async function handler(req, res) {
           views,
           next,
           gap: next - views,
-        });
+        };
+        const prev = seen.get(it.id);
+        if (prev) { seen.set(it.id, prefer(prev, row)); continue; }
+        seen.set(it.id, row);
       }
-      channels.push({ id: ch.id, title: ch.title, uploads: ids.length, videos: kept });
+      channels.push({
+        id: ch.id, title: ch.title, uploads: ids.length, videos: kept,
+        // 600 uploads from a 12-page cap is not "600 uploads", it is "we
+        // stopped looking". Say so rather than reporting a truncated walk as
+        // a complete one.
+        truncated: ids.length >= maxPages * 50 || undefined,
+      });
     }
+    videos.push(...seen.values());
 
     // Smallest gap first. NOT the board's order — "soonest" needs a daily rate,
     // which this endpoint cannot know from one reading. It is only the useful

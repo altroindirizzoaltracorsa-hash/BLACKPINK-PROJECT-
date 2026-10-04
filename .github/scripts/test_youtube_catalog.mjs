@@ -16,11 +16,13 @@ const CH = {
   UCbp: { id:'UCbp', snippet:{title:'BLACKPINK'}, contentDetails:{relatedPlaylists:{uploads:'UUbp'}} },
   UCro: { id:'UCro', snippet:{title:'ROSÉ'},      contentDetails:{relatedPlaylists:{uploads:'UUro'}} },
   UCno: { id:'UCno', snippet:{title:'NoUploads'}, contentDetails:{relatedPlaylists:{}} },
+  UCvv: { id:'UCvv', snippet:{title:'ROSÉVEVO'},  contentDetails:{relatedPlaylists:{uploads:'UUvv'}} },
 };
 // 60 uploads on BLACKPINK (forces 2 pages) and 3 on ROSÉ.
 const UP = {
   UUbp: Array.from({length:60}, (_,i)=>'bp'+String(i).padStart(9,'0')),
   UUro: ['ro000000001','ro000000002','ro000000003'],
+  UUvv: ['ro000000001'],                   // the VEVO mirror: same id, again
 };
 const views = id => id.startsWith('bp')
   ? (id === 'bp000000000' ? 2487300000 : (id === 'bp000000001' ? 50000000 : 900000000 + Number(id.slice(-3))*1e6))
@@ -79,7 +81,7 @@ check(r.code === 200, 'returns 200');
 const ch = r.body.channels.map(c => c.title).sort();
 check(ch.includes('BLACKPINK') && ch.includes('ROSÉ'),
       `seeds + handles resolved both channels (${ch.join(', ')})`);
-check(r.body.unresolved.length === 4, `handles that matched nothing are reported (${r.body.unresolved.join(' ')})`);
+check(r.body.unresolved.length === 0, 'every configured handle resolved');
 const bp = r.body.channels.find(c => c.title === 'BLACKPINK');
 check(bp.uploads === 60, `paged through all 60 uploads (got ${bp.uploads})`);
 check(calls.filter(c => c.startsWith('playlistItems:UUbp')).length === 2, '…in 2 pages');
@@ -104,6 +106,23 @@ const exact = (() => { // a video sitting exactly on a milestone must advance
 })();
 check(exact, 'a video exactly on 2B targets 2.1B, not 2B');
 check(r.body.videos.every((v,i,a) => i===0 || a[i-1].gap <= v.gap), 'sorted by smallest gap');
+
+console.log('\n--- VEVO mirrors');
+r = await run({ channels:'UCro,UCvv' });
+const ro1 = r.body.videos.filter(v => v.id === 'ro000000001');
+check(ro1.length === 1, `a video on both the artist channel and its VEVO mirror appears once (got ${ro1.length})`);
+check(ro1[0].channel === 'ROSÉ', `and is credited to the artist channel, not the mirror (${ro1[0].channel})`);
+r = await run({ channels:'UCvv,UCro' });
+check(r.body.videos.filter(v => v.id === 'ro000000001')[0].channel === 'ROSÉ',
+      'whichever order the channels are walked in');
+
+console.log('\n--- a truncated walk');
+r = await run({ channels:'UCbp', max_pages:'1' });
+check(r.body.channels[0].truncated === true,
+      'stopping at the page cap is reported as truncated, not as a complete walk');
+check(r.body.channels[0].uploads === 50, 'and only the first page was read');
+r = await run({ channels:'UCbp' });
+check(r.body.channels[0].truncated === undefined, 'a complete walk is not flagged');
 
 console.log('\n--- a channel with no uploads playlist');
 calls = [];
