@@ -125,6 +125,79 @@ mcp__github__actions_run_trigger
 
 ---
 
+## Girl group catalogues — upcoming re-seeds
+
+The group catalogues in `data/group_catalogs/` are **pinned**. `fetch_group_streams.py`
+sums exactly the ids in those files and nothing adds to them on its own — that is
+what keeps all seven groups on kworb's scope so their totals stay comparable, and
+it is also why a new release is worth **zero** to a group's total until the
+catalogue is re-seeded. There is no auto-discovery for groups (unlike
+`fetch_artist_streams.py`, which does discover for BLACKPINK and the members).
+
+**When kworb lists the album, re-seed that group** — do not hand-edit the JSON:
+
+```
+Seed group catalogs from kworb  (seed-group-catalogs.yml)
+  only:  TWICE        ← or ILLIT
+  write: 1
+```
+
+It re-reads kworb's id list, re-fetches every track itself, and checks the two
+sums agree, so the catalogue stays *defined by* kworb rather than drifting into a
+hand-maintained list. Re-seeding **before** kworb lists the album just reproduces
+the current list; re-seeding while kworb is mid-update can pin a partial one.
+
+Verified 2026-10-04 via `probe-album.yml` — **0/26 and 0/4 counted today**:
+
+### TWICE — `<THIS IS FOR> WORLD TOUR FINALE in SEOUL - LIVE` · 2026-10-16
+Album `3HSgUtzlySkMA6JP288qO2` · 26 tracks, **all "- Live"**. A concert album, not
+26 new songs: these are live re-recordings of tracks already in the catalogue, so
+expect a far smaller bump than the track count suggests. Not double counting —
+separate recordings with their own ids and their own streams, and kworb lists
+them under TWICE — but it does mean part of TWICE's growth will be the same songs
+performed live.
+
+| # | Track ID | # | Track ID |
+|---|---|---|---|
+| 1 THIS IS FOR | `2ceQRBraJi6gZmjZpmyhKN` | 14 RIGHT HAND GIRL | `0sZuNgSByTNKzrNL1FuNbj` |
+| 2 Strategy | `4jpntrHXRdZIXtqohpndgh` | 15 TT | `6Aax6FMEpCPiJCwuNAtYMt` |
+| 3 MAKE ME GO | `4HSr3bZy3Q4mZpEI7JGJdT` | 16 Heart Shaker | `44pR0DMTyZHcSJ9jbT8yLY` |
+| 4 SET ME FREE | `3a9s37U2Zs3ItuBLo06Z0I` | 17 Like OOH-AHH | `6DpLRqbD1aWdNIsMe9ai86` |
+| 5 I CAN'T STOP ME | `1I5R1HS197HHVoEqovHgwy` | 18 YES or YES | `7JEsqWx0N9qSm3fd2lcDFD` |
+| 6 OPTIONS | `2lN2w6dfjbf9rFNcFe9zEN` | 19 Dance The Night Away | `3Ld57MSsltgFgRmYGBsGpo` |
+| 7 MOONLIGHT SUNRISE | `7LhevkEVe3dirzHctzR1vL` | 20 What is Love? | `4DwM3fExM73lpmjfyz2IyV` |
+| 8 MARS | `4At34q0W9owV0ayMmMajaW` | 21 CHEER UP | `4VDT4dDuYFbFbn7bWonwJj` |
+| 9 I GOT YOU | `2OQ3MA8CungsPYzc3q6XZ7` | 22 Feel Special | `0j9XnlwDGRHE1p50ZPHjJG` |
+| 10 Talk that Talk | `4Jf9zO2El061h6hF1QghaF` | 23 ONE SPARK | `4OtuQ99K6pP6lWP6gbXHSO` |
+| 11 Gone | `733diFQudsyhS1s1cQbI8W` | 24 DAT AHH DAT OOH | `7DB1FoScLHd08C8GqTAN6a` |
+| 12 FIREWORK | `6BQWMrVdSJXyTg4xxdscOe` | 25 BATTITUDE | `3NyO0F4voTPzp1bp4nq45I` |
+| 13 HELL IN HEAVEN | `7fuAygVwUwrrG4nmlDpglg` | 26 THIS IS FOR ONCE… | `2m8JfLyuj3DsKs9roXJp8J` |
+
+### ILLIT — `BREAK EVEN` · 2026-10-26
+Album `4xYpXVSKqRTsL3ucRd8EMM` · 4 tracks. A genuine new EP, and proportionally the
+bigger of the two: ILLIT's catalogue is only 64 tracks, and ILLIT is the group the
+Road to 1B board leads with (Magnetic).
+
+| Track | Spotify ID |
+|-------|-----------|
+| Super in Love | `6CpYN9MxjHzzvcn71aQdMD` |
+| More | `6oTEeofndrgN1q7et4xypc` |
+| You're Under Arrest | `0pMoUGdpD8nupNP1mSdZUn` |
+| Pop | `1mre3HoVD50XwY02NvxKZZ` |
+
+**Reading the numbers before a re-seed.** `probe-track-playcount.yml` takes these
+ids and prints each track's play_count, its credited artists, whether a pinned
+catalogue counts it, and — with `kworb_artist` set — whether kworb lists it. That
+last field is the re-seed trigger. `probe-album.yml` does the same per album.
+
+**A separate case, same mechanism.** TWICE's *Bye Bye Inhibitions*
+(`0uI8zAUhinOJDIfWYam8lX`, Alok × NAYEON × TWICE) is TWICE-credited but **not on
+kworb** as of 2026-10-04, so it is correctly uncounted. At 409,478 streams against
+TWICE's 13.03B it is 0.003% — nothing on the board moves either way. Same
+resolution: when kworb lists it, re-seed.
+
+---
+
 ## Auto-discovery of new releases
 
 `fetch_artist_streams.py` (the daily `fetch-catalog.yml` job) **auto-detects brand-new releases** so a fresh single/EP is counted from day one — no manual `FIXED_TRACKS` edit needed. This is what fixes the old failure mode where a drop (e.g. Jennie's *Fallen Angel* EP) went uncounted until someone noticed.
