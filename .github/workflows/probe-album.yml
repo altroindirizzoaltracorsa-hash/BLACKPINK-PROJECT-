@@ -1,0 +1,31 @@
+name: Probe album
+
+# READ-ONLY. Prints an album's release date, artists and every track id, and
+# checks each track against the pinned group catalogues.
+#
+# The catalogues do not grow on their own — that is what keeps every group on
+# kworb's scope — so a new album contributes nothing to a group's total until
+# the catalogue is re-seeded (Seed group catalogs from kworb, only: <GROUP>,
+# write: 1). This says how many of an album's tracks are counted today, which is
+# the number that decides whether a re-seed is urgent or can wait.
+on:
+  workflow_dispatch:
+    inputs:
+      album_ids:
+        description: 'Comma-separated Spotify album IDs'
+        required: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install spotifyscraper
+        run: pip install spotifyscraper
+      - name: Inspect the albums
+        env:
+          ALBUM_IDS: ${{ inputs.album_ids }}
+        run: python .github/scripts/probe_album.py
