@@ -2815,16 +2815,33 @@
      view. The countdowns, campaigns, catalog total and the rest are homepage
      content and have no place in this view; the nav and footer are site
      chrome and stay. */
+  /* A peer of the hero CTAs, not a footnote under them. It was a thin
+     low-contrast outline sitting beneath three solid buttons and read as
+     secondary chrome. Same size, padding and notched corners as .btn-primary
+     so it belongs to that row; YouTube red rather than pink so it is obviously
+     the YouTube one and not a fourth pink call to action. */
   .ytm-toggle {
-    margin-top:1.4rem; display:inline-flex; align-items:center; gap:0.6rem;
-    font-family:var(--mono); font-size:0.58rem; letter-spacing:0.18em; text-transform:uppercase;
-    color:var(--white); background:transparent; border:1px solid rgba(255,68,68,0.38);
-    padding:0.7rem 1.4rem; cursor:pointer; transition:border-color .2s, background .2s;
+    margin-top:1.1rem;
+    display:inline-flex; align-items:center; gap:0.65rem;
+    font-family:var(--mono); font-size:0.65rem; letter-spacing:0.2em;
+    text-transform:uppercase; font-weight:500;
+    color:#fff; background:#ff0000; border:none;
+    padding:0.9rem 2.2rem; cursor:pointer;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    box-shadow: 0 14px 34px -16px rgba(255,0,0,0.85);
+    transition: filter .2s, transform .2s, box-shadow .2s;
   }
-  .ytm-toggle:hover { border-color:#ff4444; background:rgba(255,68,68,0.08); }
-  .ytm-toggle .ytm-play { color:#ff4444; }
-  .ytm-toggle .ytm-chev { font-size:0.7rem; color:var(--muted); transition:transform .25s; }
-  .ytm-toggle[aria-expanded="true"] { border-color:#ff4444; background:rgba(255,68,68,0.08); }
+  .ytm-toggle:hover { filter:brightness(1.12); transform:translateY(-1px); }
+  .ytm-toggle .ytm-play { font-size:0.8em; }
+  .ytm-toggle .ytm-chev { font-size:0.7rem; opacity:0.8; transition:transform .25s; }
+
+  /* Open, the button means "go back", which should not shout louder than the
+     board it sits above — so it drops to the ghost treatment. */
+  .ytm-toggle[aria-expanded="true"] {
+    background:transparent; color:var(--white);
+    border:1px solid rgba(245,240,240,0.3); box-shadow:none;
+  }
+  .ytm-toggle[aria-expanded="true"]:hover { filter:none; border-color:var(--white); }
   .ytm-toggle[aria-expanded="true"] .ytm-chev { transform:rotate(180deg); }
 
   body.ytm-mode #page-home > section:not(.hero) { display:none !important; }

@@ -62,6 +62,22 @@ check(!(await page.locator('#ytm-panel').isVisible()), 'and the panel is closed'
 check(await page.locator('#home-countdowns').isVisible(), 'countdowns are visible');
 check(await page.locator('.hero-cta').isVisible(), 'so are the hero CTAs');
 
+// It shipped as a thin low-contrast outline under three solid CTAs and read
+// as secondary chrome. It is a peer of that row now, and this is what stops it
+// drifting back.
+const cta = await page.evaluate(() => {
+  const g = el => { const c = getComputedStyle(el), r = el.getBoundingClientRect();
+    return { bg: c.backgroundColor, fs: c.fontSize, h: Math.round(r.height) }; };
+  return { primary: g(document.querySelector('.hero-cta .btn-primary')),
+           toggle:  g(document.getElementById('ytm-toggle')) };
+});
+check(cta.toggle.bg !== 'rgba(0, 0, 0, 0)',
+      `the toggle is filled, not an outline (${cta.toggle.bg})`);
+check(cta.toggle.fs === cta.primary.fs,
+      `same type size as the hero CTAs (${cta.toggle.fs} vs ${cta.primary.fs})`);
+check(Math.abs(cta.toggle.h - cta.primary.h) <= 3,
+      `and the same height, so it reads as one of them (${cta.toggle.h} vs ${cta.primary.h})`);
+
 console.log('\n--- opening it');
 await page.locator('#ytm-toggle').click();
 await page.waitForTimeout(900);
@@ -100,6 +116,9 @@ const strayHidden = await page.evaluate(() => {
 check(strayHidden, 'and so is a brand-new hero block the rule has never seen');
 check(await page.locator('nav').first().isVisible(), 'the nav stays — it is site chrome, not homepage content');
 check((await page.locator('#ytm-toggle-label').textContent()).includes('Back'), 'the button becomes the way back');
+const openBg = await page.evaluate(() => getComputedStyle(document.getElementById('ytm-toggle')).backgroundColor);
+check(openBg === 'rgba(0, 0, 0, 0)',
+      '…and drops to a ghost: "go back" should not shout louder than the board below it');
 
 console.log('\n--- the board rendered from the API');
 const secs = await page.locator('.ytm-sec-label').allTextContents();
