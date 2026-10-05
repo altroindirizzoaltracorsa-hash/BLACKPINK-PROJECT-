@@ -2867,7 +2867,7 @@
      vs.html's palette is scoped to #ytm-panel rather than imported globally —
      its pinks are a shade off the homepage's, and the view hides the whole
      homepage anyway, so inside this panel it is the only thing on screen. */
-  #ytm-panel {
+  #ytm-panel, #ytm-page {
     --v-card:#15070c; --v-line:#3a1526; --v-pink:#ff2e77; --v-pink-soft:#ff8fb4;
     --v-text:#fff2f6; --v-muted:#c48aa0; --v-dim:#8a5c6c;
   }
@@ -2927,6 +2927,17 @@
   .ytm-watch:hover { border-color:var(--v-pink); color:var(--v-text); }
   .ytm-card:not(.playing) .ytm-stop { display:none; }
 
+
+  /* ── /youtube — the full view-milestone board ──────────────────────── */
+  .ytv-tools { display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center; margin:0 0 0.9rem; }
+  .ytv-tools-label { font-size:9.5px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--v-dim); margin-right:0.3rem; }
+  .ytv-chip { font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+    padding:5px 12px; border:1px solid var(--v-line); border-radius:99px; color:var(--v-muted);
+    background:transparent; cursor:pointer; }
+  .ytv-chip:hover { color:var(--v-text); }
+  .ytv-chip.on { border-color:var(--v-pink); color:var(--v-pink); background:rgba(255,46,119,0.08); }
+  .ytv-basis { font-size:11px; color:var(--v-dim); line-height:1.7; margin-bottom:1.2rem; }
   .ytm-empty { font-size:0.6rem; color:var(--muted); padding:2rem 0; text-align:center; line-height:2; }
 </style>
 <div id="intro-overlay">
@@ -2970,14 +2981,22 @@
     <li><a href="#songs" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('songs').scrollIntoView({behavior:'smooth'}),100); return false;">Songs</a></li>
     <li><a href="/badges" onclick="goToMyBadges(); closeMobileNav(); return false;" id="nav-badges">My Badges</a></li>
     <li><a href="/leaderboard" onclick="showPage('leaderboard'); closeMobileNav(); return false;" id="nav-leaderboard">Leaderboard</a></li>
-    <li><a href="/streams" onclick="showPage('streams'); closeMobileNav(); return false;" id="nav-streams">Streams</a></li>
+    <li class="nav-has-dropdown" id="nav-streams-dropdown">
+      <a href="/streams" class="nav-dropdown-trigger" id="nav-streams"
+         onclick="toggleStreamsDropdown(event)"
+         ondblclick="document.getElementById('nav-streams-dropdown')?.classList.remove('open'); showPage('streams');">Streams &amp; Views <span class="nav-chevron">▾</span></a>
+      <div class="nav-dropdown" id="streams-dropdown-panel">
+        <a class="nav-dropdown-item" id="nav-streams-spotify" href="/streams" onclick="document.getElementById('nav-streams-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('streams'); return false;">Spotify Streams</a>
+        <a class="nav-dropdown-item" id="nav-ytviews" href="/youtube" onclick="document.getElementById('nav-streams-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('ytviews'); return false;">YouTube Views</a>
+      </div>
+    </li>
     <li class="nav-has-dropdown" id="nav-charts-dropdown">
       <a href="/charts" class="nav-dropdown-trigger" id="nav-charts"
          onclick="toggleChartsDropdown(event)"
          ondblclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); showPage('charts');">Charts <span class="nav-chevron">▾</span></a>
       <div class="nav-dropdown" id="charts-dropdown-panel">
         <a class="nav-dropdown-item" id="nav-spotify-charts" href="/spotify-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('spotify-charts'); return false;">Spotify Charts</a>
-        <a class="nav-dropdown-item" id="nav-youtube" href="/youtube" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('youtube'); return false;">YouTube Charts</a>
+        <a class="nav-dropdown-item" id="nav-youtube" href="/youtube-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('youtube'); return false;">YouTube Charts</a>
         <a class="nav-dropdown-item" id="nav-apple" href="/apple-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('apple'); return false;">Apple Music Charts</a>
         <a class="nav-dropdown-item" id="nav-itunes" href="/itunes-charts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('itunes'); return false;">iTunes Charts</a>
         <a class="nav-dropdown-item" id="nav-kcharts" href="/kcharts" onclick="document.getElementById('nav-charts-dropdown')?.classList.remove('open'); closeMobileNav(); showPage('kcharts'); return false;">K-Charts</a>
@@ -3130,7 +3149,7 @@
       <div class="ytm-panel" id="ytm-panel" style="display:none">
         <div class="ytm-head">
           <span class="ytm-label">Closest to a milestone</span>
-          <a class="ytm-all" href="/youtube" onclick="showPage('youtube'); return false;">All videos →</a>
+          <a class="ytm-all" href="/youtube" onclick="showPage('ytviews'); return false;">All videos →</a>
         </div>
         <p class="ytm-basis" id="ytm-basis"></p>
         <div id="ytm-sections"><p class="ytm-empty">Loading…</p></div>
@@ -4379,6 +4398,29 @@
 <!-- ══════════════════════════════════════
      YOUTUBE CHARTS PAGE
 ════════════════════════════════════════ -->
+
+<!-- YOUTUBE VIEWS (/youtube) — the view-milestone board.
+     Distinct from #page-youtube, which is CHART POSITIONS and lives at
+     /youtube-charts. Two different questions about the same platform. -->
+<div id="page-ytviews" class="page">
+  <div class="as-page" id="ytm-page">
+    <div class="as-header">
+      <svg class="as-gem" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="color:#ff4444;width:32px;height:32px;">
+        <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.75 15.5v-7l6.25 3.5-6.25 3.5z"/>
+      </svg>
+      <p class="as-eyebrow">YouTube Views</p>
+      <h1 class="as-title">ROAD TO THE<br><span>NEXT MILESTONE</span></h1>
+      <p class="as-sub">Every BLACKPINK and member video closing on its next 100M — play them right here</p>
+    </div>
+
+    <div class="as-inner">
+      <div class="ytv-tools" id="ytv-filters"></div>
+      <p class="ytv-basis" id="ytv-basis"></p>
+      <div id="ytv-sections"><p class="ytm-empty">Loading…</p></div>
+    </div>
+  </div>
+</div>
+
 <div id="page-youtube" class="page">
   <div class="as-page">
 
@@ -4470,7 +4512,7 @@
         <span class="ch-hub-label">Spotify Charts</span>
         <span class="ch-hub-arrow">›</span>
       </a>
-      <a class="ch-hub-item" href="/youtube" onclick="showPage('youtube'); return false;">
+      <a class="ch-hub-item" href="/youtube-charts" onclick="showPage('youtube'); return false;">
         <svg class="ch-hub-icon" viewBox="0 0 24 24" fill="currentColor" style="color:#FF0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
         <span class="ch-hub-label">YouTube Charts</span>
         <span class="ch-hub-arrow">›</span>
@@ -5777,21 +5819,28 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // ── PAGE ROUTING ─────────────────────────────────────────────
 
-function toggleChartsDropdown(e) {
+// One opener for every nav dropdown. There are two now (Charts, Streams &
+// Views); copying the Charts one would have let them drift, and nothing would
+// have closed the other when one opened.
+function toggleNavDropdown(e, id) {
   e.preventDefault();
-  const li = document.getElementById('nav-charts-dropdown');
+  const li = document.getElementById(id);
+  if (!li) return;
   const wasOpen = li.classList.contains('open');
-  li.classList.toggle('open');
-  if (!wasOpen) {
-    const closeOutside = (ev) => {
-      if (!li.contains(ev.target)) {
-        li.classList.remove('open');
-        document.removeEventListener('click', closeOutside);
-      }
-    };
-    setTimeout(() => document.addEventListener('click', closeOutside), 0);
-  }
+  document.querySelectorAll('.nav-has-dropdown.open').forEach(o => o.classList.remove('open'));
+  if (wasOpen) return;                       // the click that closes it is done
+  li.classList.add('open');
+  const closeOutside = (ev) => {
+    if (!li.contains(ev.target)) {
+      li.classList.remove('open');
+      document.removeEventListener('click', closeOutside);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', closeOutside), 0);
 }
+
+function toggleChartsDropdown(e)  { toggleNavDropdown(e, 'nav-charts-dropdown'); }
+function toggleStreamsDropdown(e) { toggleNavDropdown(e, 'nav-streams-dropdown'); }
 
 
 function toggleMobileNav() {
@@ -5805,7 +5854,12 @@ function closeMobileNav() {
   document.getElementById('nav-hamburger').classList.remove('open');
 }
 
-const PAGE_PATHS = { home: '/', countdowns: '/countdowns', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', 'spotify-charts': '/spotify-charts', youtube: '/youtube', apple: '/apple-charts', itunes: '/itunes-charts', kcharts: '/kcharts', charts: '/charts' };
+// NOTE on the two YouTube pages. The key `youtube` is the CHART-POSITIONS
+// page and now lives at /youtube-charts, alongside its siblings
+// /spotify-charts, /apple-charts and /itunes-charts — it was the only one
+// without the suffix. /youtube now serves `ytviews`, the view-milestone board,
+// which is what a reader typing that URL is overwhelmingly looking for.
+const PAGE_PATHS = { home: '/', countdowns: '/countdowns', badges: '/badges', leaderboard: '/leaderboard', vote: '/voting', feedback: '/feedback', streams: '/streams', ytviews: '/youtube', 'spotify-charts': '/spotify-charts', youtube: '/youtube-charts', apple: '/apple-charts', itunes: '/itunes-charts', kcharts: '/kcharts', charts: '/charts' };
 
 // Mirrors the per-route <title> the Vercel edge middleware sets on first
 // load, so client-side navigation keeps the tab title in sync too.
@@ -5818,6 +5872,7 @@ const PAGE_TITLES = {
   feedback: 'Feedback | BLINKS UNITED',
   account: 'My Account | BLINKS UNITED',
   streams: 'BLACKPINK Spotify Streams | BLINKS UNITED',
+  ytviews: 'BLACKPINK YouTube Views | BLINKS UNITED',
   'spotify-charts': 'Spotify Charts | BLINKS UNITED',
   youtube: 'YouTube Charts | BLINKS UNITED',
   apple: 'Apple Music Charts | BLINKS UNITED',
@@ -7079,11 +7134,14 @@ function showPage(page, { replace = false } = {}) {
   }
   if (page === 'badges') { tryAutoLoad(); renderSpecialBadges(); }
   if (page === 'spotify-charts' || page === 'youtube' || page === 'apple' || page === 'itunes' || page === 'kcharts' || page === 'charts') document.getElementById('nav-charts')?.classList.add('active');
+  // Both entries under "Streams & Views" light the same parent.
+  if (page === 'streams' || page === 'ytviews') document.getElementById('nav-streams')?.classList.add('active');
   if (page === 'streams') loadArtistStreamsPage();
   if (page === 'kcharts') loadKCharts();
   else stopKChartsLive();
   if (page === 'spotify-charts') loadSpotifyChartsPage();
   if (page === 'youtube') loadYouTubeCharts();
+  if (page === 'ytviews') loadYtViews();
   if (page === 'apple') loadAppleCharts();
   if (page === 'itunes') loadItunesCharts();
   if (page === 'leaderboard') {
@@ -21325,6 +21383,65 @@ function exitYtMilestonesMode() {
 document.addEventListener('DOMContentLoaded', () => {
   if (ytmWasOpen()) applyYtMilestones(true);
 });
+
+
+// ── /youtube — the full view-milestone board ───────────────────────────────
+// Shares ytmCard/ytmSection with the homepage panel, so the two can never
+// drift apart visually. The difference is scope: the homepage shows the
+// closest twelve, this shows everything, with a filter.
+let _ytvRows = null;        // the whole board, fetched once per visit
+let _ytvArtist = 'all';
+
+function ytvRender() {
+  const host  = document.getElementById('ytv-sections');
+  const basis = document.getElementById('ytv-basis');
+  if (!host || !_ytvRows) return;
+  const keep = x => _ytvArtist === 'all' || x.artist === _ytvArtist;
+  const bp = (_ytvRows.blackpink || []).filter(keep);
+  const me = (_ytvRows.members   || []).filter(keep);
+  host.innerHTML = (bp.length || me.length)
+    ? ytmSection('BLACKPINK', bp) + ytmSection('Members', me)
+    : '<p class="ytm-empty">Nothing for that artist yet.</p>';
+  basis.innerHTML = _ytvRows.sortedBy === 'soonest'
+    ? `Sorted by how soon each one gets there, not how far it has left — a smaller gap moving slowly arrives later. Views as of <b>${escapeHtml(_ytvRows.asOf || '')}</b>.`
+    : `Sorted by how far each one has left. Daily rates are still building, so there are no dates yet — once there are, this re-sorts by how soon each one arrives. Views as of <b>${escapeHtml(_ytvRows.asOf || '')}</b>.`;
+}
+
+function ytvSetArtist(a, btn) {
+  _ytvArtist = a;
+  document.querySelectorAll('#ytv-filters .ytv-chip')
+    .forEach(c => c.classList.toggle('on', c === btn));
+  document.querySelectorAll('#ytv-sections .ytm-card.playing').forEach(ytmStop);
+  ytvRender();
+}
+
+async function loadYtViews() {
+  const host = document.getElementById('ytv-sections');
+  if (!host) return;
+  if (_ytvRows) { ytvRender(); return; }
+  try {
+    const r = await fetch('/api/youtube-milestones');   // no limit: everything
+    const d = await r.json();
+    if (d.error || (!(d.blackpink || []).length && !(d.members || []).length)) {
+      host.innerHTML = `<p class="ytm-empty">${escapeHtml(d.note || 'Nothing to show yet.')}</p>`;
+      return;
+    }
+    _ytvRows = d;
+    // Only offer a filter for artists actually on the board — a chip that
+    // always returns nothing is worse than no chip.
+    const present = [...new Set([...(d.blackpink || []), ...(d.members || [])].map(x => x.artist))];
+    const order = ['BLACKPINK', 'JISOO', 'JENNIE', 'ROSÉ', 'LISA'].filter(a => present.includes(a));
+    const filters = document.getElementById('ytv-filters');
+    if (filters) {
+      filters.innerHTML = '<span class="ytv-tools-label">Artist</span>'
+        + `<button class="ytv-chip on" type="button" onclick="ytvSetArtist('all', this)">All ${d.counts ? d.counts.total : ''}</button>`
+        + order.map(a => `<button class="ytv-chip" type="button" onclick="ytvSetArtist('${a}', this)">${escapeHtml(a)}</button>`).join('');
+    }
+    ytvRender();
+  } catch (e) {
+    host.innerHTML = '<p class="ytm-empty">Could not load the board.</p>';
+  }
+}
 
 </script>
 </body>
