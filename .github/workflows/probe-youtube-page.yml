@@ -1,0 +1,145 @@
+name: Probe the live /youtube page (read-only)
+
+# Loads https://blinksunited.com/youtube in a real browser and reports, for
+# every card, what the <img> actually ended up showing: currentSrc, naturalWidth
+# and whether it finished loading. Screenshots it too.
+#
+# Why this exists: two cards render a grey box instead of a thumbnail, and two
+# rounds of reasoning about it were both wrong — maxresdefault 404s cleanly
+# (so `onerror` does fire) and every fallback size is a real frame (so the
+# fallback has something good to land on). The only thing left that can answer
+# it is the page itself, and Claude Code sessions cannot reach blinksunited.com.
+#
+# Read-only: it loads a public page and takes pictures.
+on:
+  workflow_dispatch:
+    inputs:
+      path:
+        description: 'Page to load'
+        required: false
+        default: '/youtube'
+      base_url:
+        description: 'Base URL (blank = production)'
+        required: false
+        default: ''
+      width:
+        description: 'Viewport width (412 = phone, 1280 = desktop)'
+        required: false
+        default: '412'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --silent playwright@latest
+          npx playwright install --with-deps chromium
+
+      - name: Load the page and interrogate every thumbnail
+        env:
+          BASE: ${{ inputs.base_url != '' && inputs.base_url || 'https://blinksunited.com' }}
+          PAGE_PATH: ${{ inputs.path }}
+          WIDTH: ${{ inputs.width }}
+        run: |
+          mkdir -p shots
+          cat > probe.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const base = process.env.BASE, path = process.env.PAGE_PATH;
+          const width = parseInt(process.env.WIDTH, 10) || 412;
+
+          const b = await chromium.launch();
+          const p = await b.newPage({
+            viewport: { width, height: 900 }, deviceScaleFactor: 2,
+            // A real phone UA: i.ytimg.com is a CDN and the card is only ever
+            // seen on a phone, so ask for it the way a phone does.
+            userAgent: width <= 500
+              ? 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Mobile Safari/537.36'
+              : undefined,
+            isMobile: width <= 500, hasTouch: width <= 500,
+          });
+
+          // Every image request, with the status it came back with.
+          const seen = new Map();
+          p.on('response', r => {
+            const u = r.url();
+            if (u.includes('i.ytimg.com')) seen.set(u, r.status());
+          });
+          const failed = [];
+          p.on('requestfailed', r => {
+            if (r.url().includes('i.ytimg.com')) failed.push([r.url(), r.failure()?.errorText]);
+          });
+
+          await p.goto(base + path, { waitUntil: 'domcontentloaded', timeout: 60000 });
+          await p.waitForTimeout(4000);
+          await p.evaluate(() => {
+            try { closeTutorial(); } catch {}
+            document.getElementById('tutorial-overlay')?.remove();
+            document.getElementById('ext-update-overlay')?.remove();
+          });
+          // loading="lazy": nothing below the fold is even requested until it is
+          // scrolled to, so walk the whole page before asking what loaded.
+          await p.evaluate(async () => {
+            for (let y = 0; y < document.body.scrollHeight; y += 600) {
+              window.scrollTo(0, y);
+              await new Promise(r => setTimeout(r, 120));
+            }
+            window.scrollTo(0, 0);
+          });
+          await p.waitForTimeout(3000);
+
+          const imgs = await p.$$eval('.ytm-card img', els => els.map(e => ({
+            title: e.closest('.ytm-card')?.querySelector('.ytm-name')?.textContent.trim().slice(0, 44),
+            src: e.getAttribute('src'),
+            currentSrc: e.currentSrc,
+            natural: `${e.naturalWidth}x${e.naturalHeight}`,
+            complete: e.complete,
+            fb: e.dataset.fb || '',
+            display: getComputedStyle(e).display,
+            box: (() => { const r = e.getBoundingClientRect(); return `${Math.round(r.width)}x${Math.round(r.height)}`; })(),
+          })));
+
+          const L = (s, n) => String(s ?? '').padEnd(n);
+          const R = (s, n) => String(s ?? '').padStart(n);
+          console.log(`${imgs.length} thumbnails on ${base}${path} at ${width}px\n`);
+          console.log(`${R('natural', 11)} ${R('fb', 3)} ${R('cmp', 5)} ${R('disp', 6)}  ${L('size', 14)} title`);
+          const bad = [];
+          for (const i of imgs) {
+            const size = (i.currentSrc || i.src || '').split('/').pop();
+            const ok = i.complete && !i.natural.startsWith('0x');
+            if (!ok || i.display === 'none') bad.push(i);
+            console.log(`${R(i.natural, 11)} ${R(i.fb, 3)} ${R(i.complete, 5)} ${R(i.display, 6)}  ${L(size, 14)} ${i.title}`);
+          }
+
+          console.log('\n--- i.ytimg responses');
+          const byStatus = {};
+          for (const [u, s] of seen) (byStatus[s] ||= []).push(u.split('/').slice(-2).join('/'));
+          for (const [s, us] of Object.entries(byStatus)) {
+            console.log(`  HTTP ${s}: ${us.length}`);
+            if (s !== '200') us.forEach(u => console.log(`      ${u}`));
+          }
+          if (failed.length) {
+            console.log('\n--- requests that never completed');
+            failed.forEach(([u, e]) => console.log(`  ${e}  ${u.split('/').slice(-2).join('/')}`));
+          }
+
+          console.log(`\n${bad.length} thumbnail(s) did not end up with a picture.`);
+          bad.forEach(i => console.log(`  ${i.natural}  fb=${i.fb || '-'}  ${i.currentSrc}\n      ${i.title}`));
+
+          await p.screenshot({ path: 'shots/page.png', fullPage: true });
+          // And a close-up of each card that went wrong.
+          const cards = await p.$$('.ytm-card');
+          for (let n = 0; n < cards.length; n++) {
+            const t = await cards[n].$eval('img', e => e.naturalWidth).catch(() => -1);
+            if (t === 0 || t === -1) await cards[n].screenshot({ path: `shots/card-${n}.png` }).catch(() => {});
+          }
+          await b.close();
+          EOF
+          node probe.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: page-shots
+          path: shots
