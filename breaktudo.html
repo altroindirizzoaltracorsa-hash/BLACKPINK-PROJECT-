@@ -131,7 +131,14 @@
     color: var(--muted); border: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
   .pr-score.warn { color: #ff5c7a; border-color: rgba(255,92,122,0.5); background: rgba(255,92,122,0.12); }
   .pr-note { font-size: 0.82rem; line-height: 1.6; color: var(--muted); margin-top: 1.1rem; }
-  .pr-table { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  /* The header and every row are separate grids, so `auto` tracks were sized by
+     each one's own content: the header sized itself to "1ST", a digit row to a
+     digit and the BLINKs row to "Not top 5", and the three columns did not line
+     up with each other. One declared width per column instead, shared by all of
+     them — the widest cell a column can hold is "Not top 5", so that is what it
+     is sized for. */
+  .pr-table { border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    --pr-w: 4.2rem; --pr-mw: 3rem; }
   .pr-head, .pr-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 0.6rem; align-items: center; padding: 0.7rem 0.85rem; }
   .pr-head { background: rgba(255,255,255,0.03); font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
   .pr-col { display: block; text-align: center; }
@@ -172,6 +179,23 @@
   .pr-share[disabled] { opacity: 0.6; cursor: default; }
   .pr-legend { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.06em; color: var(--muted); margin-top: 0.9rem; line-height: 1.7; }
   .pr-src { display: block; width: fit-content; margin-top: 0.8rem; font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pink); text-decoration: none; border-bottom: 1px solid rgba(255,0,102,0.4); }
+
+  /* Each partial adds a column, and the auto tracks are sized by their widest
+     cell — which is "Not top 5", not a digit. At three partials that is three
+     ~3.7rem tracks plus Move, and the category name was down to a couple of
+     characters per line on a 360px phone. So on narrow screens the out-cell
+     wraps to two lines instead of widening its track, and the gaps tighten. */
+  @media (max-width: 429px) {
+    /* Narrow enough that "Not top 5" wraps and "to 22 Sep" needs its own size:
+       the category name is the column worth giving the width back to. */
+    .pr-table { --pr-w: 2.6rem; --pr-mw: 2.2rem; }
+    .pr-col i { font-size: 0.44rem; letter-spacing: 0.02em; }
+    .pr-head, .pr-row { gap: 0.4rem; padding: 0.7rem 0.6rem; }
+    .pr-pos { min-width: 0; }
+    .pr-pos.out { white-space: normal; display: inline-block; line-height: 1.25; }
+    .pr-trend { min-width: 0; font-size: 0.56rem; }
+    .pr-who b { font-size: 0.62rem; letter-spacing: 0.02em; }
+  }
 
   /* ── Rules ── */
   .rules { border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem 1rem; }
@@ -252,7 +276,7 @@
     <div class="pr-table" id="pr-table"></div>
     <!-- Below the table, not above it: this explains what you have just read,
          and above it was the last thing between the reader and the standings. -->
-    <div class="pr-note">BreakTudo publishes a <b>top 5 per category</b> while voting runs. Each partial counts <b>every vote since voting opened on 17 September</b> — they are running totals, not separate rounds, so holding a place across a longer window means the lead held as more votes came in.</div>
+    <div class="pr-note">BreakTudo publishes a <b>top 5 per category</b> while voting runs. Each partial counts <b>every vote since voting opened on 17 September</b> — they are running totals, not separate rounds, so holding a place across a longer window means the lead held as more votes came in. BreakTudo says the <b>next one is the last</b> — Sunday <b>11 October</b> — so it is the final read on the race before the ballot closes on the 17th.</div>
     <button class="pr-share" id="pr-share" type="button" onclick="shareStandings(this)">↑ Share these standings</button>
     <div class="pr-legend" id="pr-legend"></div>
     <div id="pr-sources"></div>
@@ -355,6 +379,19 @@
         group: 3, artist: 1, asian: 2, collab: 3, hit: 2,
         'mv-go': 4, 'mv-dream': 5, fandom: null, series: 1,
       } },
+    // 3rd, published 5 Oct, covering votes to 4 Oct. Read off BreakTudo's own
+    // top 5s: Grupo Feminino Int. BINI · BABYMONSTER · BLACKPINK · ITZY · TWICE;
+    // Artista Feminina Int. Jennie first; Artista Asiático BGYO · Lisa; Colab.
+    // Int. Emoji · SPAGHETTI · Eyes Closed; Hit Int. SWIM · Dracula (JENNIE
+    // Remix); Clipe Int. Sweet Tooth · I Want You Back · Go · Bloody Paradise ·
+    // DREAM; Fandom Int. FreenBecky · ARMYS · Blooms · A'TIN · ENGENE (no
+    // BLINKs); Série Int. Boyfriend on Demand first.
+    { label: '3rd', to: '4 Oct',
+      url: 'https://www.breaktudoawards.com/terceiro-ranking-parcial-do-breaktudo-awards-2026-confira-o-top-5-de-cada-categoria/',
+      places: {
+        group: 3, artist: 1, asian: 2, collab: 3, hit: 2,
+        'mv-go': 3, 'mv-dream': 5, fandom: null, series: 1,
+      } },
   ];
 
   var VOTE_URL = 'https://vote.breaktudoawards.com/';
@@ -413,7 +450,12 @@
         + (p.to ? '<i>to ' + esc(p.to) + '</i>' : '') + '</span>';
     }).join('');
 
-    var head = '<div class="pr-head" style="grid-template-columns:minmax(0,1fr) repeat(' + PARTIALS.length + ', auto) auto;">'
+    // Declared widths, not `auto`: the header and the rows are separate grids
+    // and auto tracks made each size itself to its own content, so the columns
+    // did not line up down the table. --pr-w / --pr-mw live on .pr-table.
+    var TRACKS = 'grid-template-columns:minmax(0,1fr) repeat(' + PARTIALS.length + ', var(--pr-w)) var(--pr-mw);';
+
+    var head = '<div class="pr-head" style="' + TRACKS + '">'
       + '<span>Category</span>' + cols + '<span>' + (PARTIALS.length > 1 ? 'Move' : '') + '</span></div>';
 
     // Anything outside the top 5 floats to the top: the row that needs votes is
@@ -432,7 +474,7 @@
       // Out of the top 5 in the LATEST partial. Marked as a rule rather than by
       // hand, so whichever nominee is outside it is the one that lights up.
       var out = last.places[n.key] === null;
-      return '<div class="pr-row' + (out ? ' alert' : '') + '" style="grid-template-columns:minmax(0,1fr) repeat(' + PARTIALS.length + ', auto) auto;">'
+      return '<div class="pr-row' + (out ? ' alert' : '') + '" style="' + TRACKS + '">'
         + '<span class="pr-who"><b>' + esc(n.cat.replace(/^International /, 'Int. ')) + '</b><small>' + esc(n.who) + '</small>'
         + (out ? '<em class="pr-need">⚠ Not ranking — votes needed here</em>' : '') + '</span>'
         + cells
@@ -541,13 +583,31 @@
     ctx.fillText(badge, W / 2, 238);
 
     // column headers
-    var xP1 = W - pad - 250, xP2 = W - pad - 140, xMv = W - pad - 24;
+    //
+    // One column per partial, laid out from the RIGHT so the newest placement
+    // always sits in the same spot and the Move column never moves. These were
+    // two hard-coded x's (xP1/xP2 with `i === 0 ? xP1 : xP2`), which silently
+    // drew the 2nd and 3rd partials on top of each other the moment a third was
+    // added — the table on the page grew a column by itself and the share card
+    // did not. Derived from PARTIALS.length, it cannot fall behind again.
+    //
+    // 110px apart, newest at W-pad-140: at two partials this reproduces the old
+    // 768/878 exactly, so the card people have already shared is unchanged.
+    var xMv = W - pad - 24;
+    var xCols = PARTIALS.map(function (_, i) {
+      return W - pad - 140 - (PARTIALS.length - 1 - i) * 110;
+    });
+    // The category/nominee text has to stop short of the leftmost column, which
+    // moves left with every new partial. Fixed at 300 it would have run under
+    // "NOT TOP 5" at three. The 60 is that cell's half-width (~45) plus a gap:
+    // the widest thing in a column is the words, not the digit.
+    var textW = xCols[0] - pad - 60;
     ctx.textAlign = 'center';
     ctx.letterSpacing = '2px';
     ctx.font = '500 18px "DM Mono", monospace';
     ctx.fillStyle = 'rgba(245,240,240,0.5)';
     PARTIALS.forEach(function (p, i) {
-      var x = i === 0 ? xP1 : xP2;
+      var x = xCols[i];
       ctx.fillText(p.label.toUpperCase(), x, 300);
       if (p.to) {
         ctx.font = '300 15px "DM Mono", monospace';
@@ -586,12 +646,12 @@
       ctx.letterSpacing = '2px';
       ctx.fillStyle = out ? '#ffd3dc' : '#F5F0F0';
       var cat = n.cat.replace(/^International /, 'Int. ').toUpperCase();
-      fitText(ctx, cat, W - pad * 2 - 300, 25, 'DM Mono', '500');
+      fitText(ctx, cat, textW, 25, 'DM Mono', '500');
       ctx.fillText(cat, pad, y + 30);
 
       ctx.letterSpacing = '0px';
       ctx.fillStyle = 'rgba(245,240,240,0.5)';
-      fitText(ctx, n.who, W - pad * 2 - 300, 21, 'DM Mono', '300');
+      fitText(ctx, n.who, textW, 21, 'DM Mono', '300');
       ctx.fillText(n.who, pad, y + 58);
 
       if (out) {
@@ -603,7 +663,7 @@
 
       ctx.textAlign = 'center';
       PARTIALS.forEach(function (p, i) {
-        var x = i === 0 ? xP1 : xP2;
+        var x = xCols[i];
         var v = p.places[n.key];
         if (v === null || v === undefined) {
           ctx.letterSpacing = '1px';
