@@ -2815,33 +2815,39 @@
      view. The countdowns, campaigns, catalog total and the rest are homepage
      content and have no place in this view; the nav and footer are site
      chrome and stay. */
-  /* A peer of the hero CTAs, not a footnote under them. It was a thin
-     low-contrast outline sitting beneath three solid buttons and read as
-     secondary chrome. Same size, padding and notched corners as .btn-primary
-     so it belongs to that row; YouTube red rather than pink so it is obviously
-     the YouTube one and not a fourth pink call to action. */
+  /* A peer of the hero CTAs — same size, padding and notched corners as
+     .btn-primary — in the site's own pink. The red filled box read as a
+     foreign object dropped into the hero. The YouTube mark carries the
+     identity instead of the colour: it is the same <svg> the /youtube and
+     /youtube-charts headers already use, so there is one copy of that asset
+     on the site and not a second drawn by hand. */
   .ytm-toggle {
     margin-top:1.1rem;
-    display:inline-flex; align-items:center; gap:0.65rem;
+    display:inline-flex; align-items:center; gap:0.6rem;
     font-family:var(--mono); font-size:0.65rem; letter-spacing:0.2em;
     text-transform:uppercase; font-weight:500;
-    color:#fff; background:#ff0000; border:none;
-    padding:0.9rem 2.2rem; cursor:pointer;
+    color:var(--black); background:var(--pink); border:none;
+    padding:0.9rem 2.2rem; cursor:pointer; line-height:1;
     clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
-    box-shadow: 0 14px 34px -16px rgba(255,0,0,0.85);
-    transition: filter .2s, transform .2s, box-shadow .2s;
+    transition: filter .2s, transform .2s;
   }
-  .ytm-toggle:hover { filter:brightness(1.12); transform:translateY(-1px); }
-  .ytm-toggle .ytm-play { font-size:0.8em; }
-  .ytm-toggle .ytm-chev { font-size:0.7rem; opacity:0.8; transition:transform .25s; }
+  .ytm-toggle:hover { filter:brightness(1.08); transform:translateY(-1px); }
+  /* currentColor, so the mark takes the button's text colour in both states
+     rather than needing its own rule for each. */
+  .ytm-toggle .ytm-mark { width:14px; height:14px; flex:0 0 auto; color:currentColor; display:block; }
+  .ytm-toggle .ytm-back { display:none; font-size:0.9em; }
+  .ytm-toggle .ytm-chev { font-size:0.7rem; opacity:0.75; transition:transform .25s; }
 
-  /* Open, the button means "go back", which should not shout louder than the
-     board it sits above — so it drops to the ghost treatment. */
+  /* Open, the button means "go back": the ghost treatment Badge Challenge
+     uses, and the mark gives way to an arrow — a YouTube logo on a control
+     that leaves YouTube would be pointing the wrong way. */
   .ytm-toggle[aria-expanded="true"] {
     background:transparent; color:var(--white);
-    border:1px solid rgba(245,240,240,0.3); box-shadow:none;
+    border:1px solid rgba(245,240,240,0.3);
   }
   .ytm-toggle[aria-expanded="true"]:hover { filter:none; border-color:var(--white); }
+  .ytm-toggle[aria-expanded="true"] .ytm-mark { display:none; }
+  .ytm-toggle[aria-expanded="true"] .ytm-back { display:inline; }
   .ytm-toggle[aria-expanded="true"] .ytm-chev { transform:rotate(180deg); }
 
   body.ytm-mode #page-home > section:not(.hero) { display:none !important; }
@@ -3158,7 +3164,8 @@
            hides the homepage's own content (see body.ytm-mode in the CSS). -->
       <button class="ytm-toggle" id="ytm-toggle" aria-expanded="false" aria-controls="ytm-panel"
               onclick="toggleYtMilestones()">
-        <span class="ytm-play">▶</span>
+        <svg class="ytm-mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.75 15.5v-7l6.25 3.5-6.25 3.5z"/></svg>
+        <span class="ytm-back" aria-hidden="true">←</span>
         <span id="ytm-toggle-label">YouTube milestones</span>
         <span class="ytm-chev">▾</span>
       </button>
@@ -21379,7 +21386,6 @@ function applyYtMilestones(open) {
   if (!open) document.querySelectorAll('.ytm-card.playing').forEach(ytmStop);
   document.body.classList.toggle('ytm-mode', open);
   toggle.setAttribute('aria-expanded', String(open));
-  toggle.querySelector('.ytm-play').textContent = open ? '←' : '▶';
   if (label) label.textContent = open ? 'Back to homepage' : 'YouTube milestones';
   if (open) loadYtMilestones();
 }
