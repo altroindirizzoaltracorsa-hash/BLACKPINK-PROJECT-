@@ -2831,7 +2831,7 @@
     clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
     transition: filter .2s, transform .2s;
   }
-  .ytm-toggle:hover { filter:brightness(1.08); transform:translateY(-1px); }
+  @media (hover: hover) { .ytm-toggle:hover { filter:brightness(1.08); transform:translateY(-1px); } }
   /* currentColor, so the mark takes the button's text colour in both states
      rather than needing its own rule for each. */
   .ytm-toggle .ytm-mark { width:14px; height:14px; flex:0 0 auto; color:currentColor; display:block; }
@@ -2845,7 +2845,7 @@
     background:transparent; color:var(--white);
     border:1px solid rgba(245,240,240,0.3);
   }
-  .ytm-toggle[aria-expanded="true"]:hover { filter:none; border-color:var(--white); }
+  @media (hover: hover) { .ytm-toggle[aria-expanded="true"]:hover { filter:none; border-color:var(--white); } }
   .ytm-toggle[aria-expanded="true"] .ytm-mark { display:none; }
   .ytm-toggle[aria-expanded="true"] .ytm-back { display:inline; }
   .ytm-toggle[aria-expanded="true"] .ytm-chev { transform:rotate(180deg); }
@@ -2872,7 +2872,7 @@
     display:flex; align-items:center; gap:0.5rem; }
   .ytm-all { font-size:0.52rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted);
     text-decoration:none; border-bottom:1px solid var(--border); padding-bottom:2px; }
-  .ytm-all:hover { color:var(--pink); border-color:var(--pink); }
+  @media (hover: hover) { .ytm-all:hover { color:var(--pink); border-color:var(--pink); } }
   .ytm-basis { font-size:0.5rem; letter-spacing:0.08em; color:rgba(245,240,240,0.33);
     margin-bottom:1.1rem; line-height:1.7; }
 
@@ -2914,7 +2914,13 @@
     background:#000; display:block; border:1px solid #ffffff10; }
   .ytm-thumb { position:relative; overflow:hidden; padding:0; cursor:pointer; }
   .ytm-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
-  .ytm-thumb:hover .ytm-play-badge { background:#ff0000; transform:translate(-50%,-50%) scale(1.06); }
+  /* Only where there is a pointer that can leave again. On a touchscreen Chrome
+     applies :hover to whatever was tapped last and leaves it there until
+     something else is tapped, so a hover colour becomes a stuck colour — the
+     card whose title was tapped keeps reading as highlighted long after. */
+  @media (hover: hover) {
+    .ytm-thumb:hover .ytm-play-badge { background:#ff0000; transform:translate(-50%,-50%) scale(1.06); }
+  }
   .ytm-play-badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
     width:54px; height:38px; border-radius:9px; background:rgba(0,0,0,0.70);
     display:grid; place-items:center; transition:background .18s, transform .18s; pointer-events:none; }
@@ -2927,9 +2933,12 @@
 
   .ytm-name { font-size:12.5px; font-weight:700; line-height:1.35; margin:10px 0 2px;
     color:var(--v-text); text-decoration:none;
-    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
-    min-height:2.7em; }
-  a.ytm-name:hover { color:var(--v-pink); }
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  /* Reserving the second line keeps the stat rows level across a pair of cards,
+     so it belongs to the two-column layout. In one column there is nothing to
+     line up with and it reads as a gap under every one-line title. */
+  @media (min-width: 720px) { .ytm-name { min-height:2.7em; } }
+  @media (hover: hover) { a.ytm-name:hover { color:var(--v-pink); } }
   .ytm-art { font-size:10.5px; color:var(--v-muted); margin-bottom:10px; }
 
   .ytm-stat { display:flex; align-items:baseline; justify-content:space-between;
@@ -2947,7 +2956,7 @@
   .ytm-watch { display:inline-block; font-size:10.5px; color:var(--v-pink-soft); text-decoration:none;
     border:1px solid #ff2e7744; border-radius:99px; padding:5px 12px; background:transparent;
     cursor:pointer; font-family:var(--mono); }
-  .ytm-watch:hover { border-color:var(--v-pink); color:var(--v-text); }
+  @media (hover: hover) { .ytm-watch:hover { border-color:var(--v-pink); color:var(--v-text); } }
   .ytm-card:not(.playing) .ytm-stop { display:none; }
 
 
@@ -21276,13 +21285,14 @@ function ytmCard(v) {
   const sub = v.artist === 'BLACKPINK' ? kind : `${v.artist} · ${kind}`;
   // maxres is sharp but is not generated for every video; hq always exists.
   // It is 4:3 with letterbox bars, which object-fit:cover crops back off.
+  // The swap is driven by ytmThumbLoaded, NOT by onerror — see the note there.
   const max = `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`;
   const hq  = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
   return `
     <div class="ytm-card" data-vid="${id}">
       <button class="ytm-thumb" type="button" aria-label="Play ${title}" onclick="ytmPlay(this)">
-        <img src="${max}" alt="" loading="lazy"
-             onerror="if(this.dataset.fb){this.style.display='none'}else{this.dataset.fb=1;this.src='${hq}'}">
+        <img src="${max}" alt="" loading="lazy" data-hq="${hq}"
+             onload="ytmThumbLoaded(this)" onerror="ytmThumbNext(this)">
         <span class="ytm-play-badge"></span>
       </button>
       <div class="ytm-player"></div>
@@ -21309,6 +21319,38 @@ function ytmCard(v) {
                 onclick="ytmStop(this.closest('.ytm-card'))">✕ Stop</button>
       </div>
     </div>`;
+}
+
+// A 404 IS NOT AN ERROR TO AN <img>, IF THE 404 HAS A PICTURE IN IT.
+//
+// i.ytimg.com answers a missing maxresdefault.jpg with HTTP 404 whose body is
+// the 120x90 grey "no thumbnail" JPEG. Browsers decode that body and show it:
+// the `load` event fires, `error` does NOT, and an onerror fallback — which is
+// what this card used to have — never runs. The card then stretches a 120px
+// grey square across the whole 16:9 slot.
+//
+// Measured on the live page (run 37321415458): BOOMBAYAH and the As If It's
+// Your Last dance practice both sat at naturalWidth 120 with complete=true and
+// the fallback flag unset, while the network log showed 404 for exactly those
+// two URLs. Fetching the same URLs from a script says "404, no body", because
+// urllib throws away the body a browser goes on to render — which is why this
+// looked for two rounds like a bug in the fallback rather than in the premise.
+//
+// So judge the picture that arrived, not the request that fetched it. Every
+// real thumbnail is 480x360 (hq) or 1280x720 (maxres); only the placeholder is
+// 120 wide. onerror stays for the genuine failures — DNS, offline, blocked.
+function ytmThumbLoaded(img) {
+  if (img.naturalWidth > 120) return;
+  ytmThumbNext(img);
+}
+
+function ytmThumbNext(img) {
+  // hq was already tried: the video has no usable thumbnail at all. Hide the
+  // img so the slot falls back to its own black with the play badge on top,
+  // which reads as a video rather than as a broken image.
+  if (img.dataset.fb) { img.style.display = 'none'; return; }
+  img.dataset.fb = '1';
+  img.src = img.dataset.hq;
 }
 
 // Clearing the container, not just hiding it, is what actually stops playback:
