@@ -2860,42 +2860,37 @@
   .ytm-grid { display:grid; grid-template-columns:1fr; gap:0.7rem; }
   @media (min-width: 720px) { .ytm-grid { grid-template-columns:1fr 1fr; } }
 
-  .ytm-card { background:var(--card); border:1px solid var(--border); padding:0.85rem;
-    display:flex; gap:0.85rem; align-items:flex-start; text-decoration:none;
+  /* Video on top, figures underneath — one card, two stacked halves. */
+  .ytm-card { background:var(--card); border:1px solid var(--border); padding:0.7rem;
+    display:flex; flex-direction:column; gap:0.7rem;
     transition:border-color .2s, background .2s; }
   .ytm-card:hover { border-color:rgba(255,0,102,0.5); background:var(--card2); }
-  .ytm-thumb { position:relative; flex:0 0 auto; width:104px; height:59px; overflow:hidden;
-    background:linear-gradient(135deg,#2b0a18 0%,#160410 60%,#1d0712 100%);
-    border:1px solid rgba(255,0,102,0.22); padding:0; cursor:pointer; display:block; }
-  .ytm-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
-  .ytm-thumb:hover .ytm-play-badge { background:#ff0000; transform:translate(-50%,-50%) scale(1.08); }
-  .ytm-play-badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-    width:30px; height:21px; border-radius:5px; background:rgba(0,0,0,0.72);
-    display:grid; place-items:center; transition:background .18s, transform .18s; pointer-events:none; }
-  .ytm-play-badge::after { content:''; border-style:solid; border-width:5px 0 5px 8px;
-    border-color:transparent transparent transparent #fff; margin-left:2px; }
 
-  /* Playing: the row becomes a player. It spans both columns so the video is
-     not squeezed into half a card, and the figures move underneath rather than
-     disappearing — the milestone is still the point of the board. */
-  /* Capped and centred: 16:9 across the full two-column row is ~760px tall on
-     a desktop, which buries the rest of the board under one video. */
-  .ytm-player { display:none; width:100%; max-width:720px; margin:0 auto; aspect-ratio:16/9;
-    background:#000; border:1px solid rgba(255,0,102,0.22); }
+  /* The thumbnail and the player occupy the same 16:9 slot, so pressing play
+     swaps one for the other without the card changing size or the grid
+     reflowing under the reader's cursor. */
+  .ytm-thumb, .ytm-player { width:100%; aspect-ratio:16/9; display:block; }
+  .ytm-thumb { position:relative; overflow:hidden; padding:0; cursor:pointer;
+    background:linear-gradient(135deg,#2b0a18 0%,#160410 60%,#1d0712 100%);
+    border:1px solid rgba(255,0,102,0.22); }
+  .ytm-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .ytm-thumb:hover .ytm-play-badge { background:#ff0000; transform:translate(-50%,-50%) scale(1.06); }
+  .ytm-play-badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:54px; height:38px; border-radius:9px; background:rgba(0,0,0,0.70);
+    display:grid; place-items:center; transition:background .18s, transform .18s; pointer-events:none; }
+  .ytm-play-badge::after { content:''; border-style:solid; border-width:9px 0 9px 15px;
+    border-color:transparent transparent transparent #fff; margin-left:4px; }
+
+  .ytm-player { display:none; background:#000; border:1px solid rgba(255,0,102,0.22); }
   .ytm-player iframe { width:100%; height:100%; border:0; display:block; }
-  .ytm-card.playing { grid-column:1 / -1; flex-direction:column; gap:0.7rem; }
   .ytm-card.playing .ytm-thumb { display:none; }
   .ytm-card.playing .ytm-player { display:block; }
-  .ytm-card.playing .ytm-body { width:100%; }
-  .ytm-close { font-family:var(--mono); font-size:0.46rem; letter-spacing:0.14em; text-transform:uppercase;
-    color:var(--muted); background:transparent; border:none; cursor:pointer; padding:0; }
-  .ytm-close:hover { color:var(--pink); }
-  .ytm-card:not(.playing) .ytm-close { display:none; }
-  a.ytm-name { text-decoration:none; }
-  a.ytm-name:hover { color:var(--pink); }
-  .ytm-body { flex:1 1 auto; min-width:0; }
+
+  .ytm-body { width:100%; min-width:0; }
   .ytm-toprow { display:flex; align-items:flex-start; justify-content:space-between; gap:0.7rem; }
-  .ytm-name { font-size:0.68rem; line-height:1.3; letter-spacing:0.02em; color:var(--white); }
+  .ytm-name { font-size:0.68rem; line-height:1.3; letter-spacing:0.02em; color:var(--white);
+    text-decoration:none; display:block; }
+  a.ytm-name:hover { color:var(--pink); }
   .ytm-art { font-size:0.46rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin-top:0.22rem; }
   .ytm-gapwrap { text-align:right; flex:0 0 auto; }
   .ytm-gap { font-family:var(--display); font-size:1.5rem; color:var(--pink); line-height:1;
@@ -2903,9 +2898,14 @@
   .ytm-to { font-size:0.46rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
   .ytm-bar { height:2px; background:rgba(255,255,255,0.09); position:relative; overflow:hidden; margin:0.6rem 0 0.4rem; }
   .ytm-bar i { position:absolute; inset:0 auto 0 0; background:linear-gradient(90deg,var(--pink),var(--hot-pink)); }
-  .ytm-foot { display:flex; justify-content:space-between; gap:0.7rem; font-size:0.5rem;
-    letter-spacing:0.06em; color:rgba(245,240,240,0.45); font-variant-numeric:tabular-nums; }
+  .ytm-foot { display:flex; justify-content:space-between; align-items:center; gap:0.7rem;
+    font-size:0.5rem; letter-spacing:0.06em; color:rgba(245,240,240,0.45); font-variant-numeric:tabular-nums; }
   .ytm-foot .ytm-eta { color:rgba(245,240,240,0.33); white-space:nowrap; }
+  .ytm-close { font-family:var(--mono); font-size:0.46rem; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--muted); background:transparent; border:none; cursor:pointer; padding:0; }
+  .ytm-close:hover { color:var(--pink); }
+  .ytm-card:not(.playing) .ytm-close { display:none; }
+
   .ytm-empty { font-size:0.6rem; color:var(--muted); padding:2rem 0; text-align:center; line-height:2; }
 </style>
 <div id="intro-overlay">
@@ -21157,19 +21157,23 @@ function ytmDays(d) {
 }
 
 function ytmCard(v) {
-  // A FACADE, not an iframe. The embed is only built when someone clicks, so
-  // twelve cards cost twelve images instead of twelve copies of the YouTube
-  // player — which is several hundred KB of JS each, on the homepage.
+  // A FACADE, not an iframe. It looks the same as an unplayed embed — YouTube's
+  // own player shows a thumbnail with a play button until you press it — but
+  // twelve cards cost twelve images instead of twelve copies of the player,
+  // which is several hundred KB of JS each, on the homepage.
   const id = encodeURIComponent(v.videoId);
-  const thumb = `https://i.ytimg.com/vi/${id}/mqdefault.jpg`;
   const eta = ytmDays(v.days);
   const sub = v.artist === 'BLACKPINK' ? '' : v.artist;
   const title = escapeHtml(v.title);
+  // maxres is sharp but is not generated for every video; hq always exists.
+  // It is 4:3 with letterbox bars, which object-fit:cover crops back off.
+  const max = `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`;
+  const hq  = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
   return `
     <div class="ytm-card" data-vid="${id}">
-      <button class="ytm-thumb" type="button" aria-label="Play ${title}"
-              onclick="ytmPlay(this)">
-        <img src="${thumb}" alt="" loading="lazy" onerror="this.style.display='none'">
+      <button class="ytm-thumb" type="button" aria-label="Play ${title}" onclick="ytmPlay(this)">
+        <img src="${max}" alt="" loading="lazy"
+             onerror="if(this.dataset.fb){this.style.display='none'}else{this.dataset.fb=1;this.src='${hq}'}">
         <span class="ytm-play-badge"></span>
       </button>
       <div class="ytm-player"></div>
@@ -21189,7 +21193,7 @@ function ytmCard(v) {
         <div class="ytm-foot">
           <span>${Number(v.views).toLocaleString('en-US')} views</span>
           ${eta ? `<span class="ytm-eta">≈ ${eta}</span>` : ''}
-          <button class="ytm-close" type="button" onclick="ytmStop(this.closest('.ytm-card'))">✕ Close player</button>
+          <button class="ytm-close" type="button" onclick="ytmStop(this.closest('.ytm-card'))">✕ Stop</button>
         </div>
       </div>
     </div>`;
