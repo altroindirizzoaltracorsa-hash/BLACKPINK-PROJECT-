@@ -106,14 +106,80 @@ const secs = await page.locator('.ytm-sec-label').allTextContents();
 check(secs.length === 2 && secs[0].includes('BLACKPINK') && secs[1].includes('Members'),
       `split into BLACKPINK then Members (${secs.map(t=>t.trim()).join(' | ')})`);
 check(await page.locator('.ytm-card').count() === 4, 'four cards');
-const firstArt = await page.locator('.ytm-sec').first().locator('.ytm-art').count();
-check(firstArt === 0, 'no artist line under the BLACKPINK cards — the heading already says it');
+// vs.html always carries a line under the title. On the BLACKPINK cards it
+// holds the kind rather than repeating the heading; on the members' it names
+// them. Either way it is never empty and never redundant.
+const bpArts = await page.locator('.ytm-sec').first().locator('.ytm-art').allTextContents();
+check(bpArts.every(t => t.trim() && !t.includes('BLACKPINK')),
+      `BLACKPINK cards show the kind, not the heading again (${bpArts.join(' | ')})`);
 const memberArts = await page.locator('.ytm-sec').nth(1).locator('.ytm-art').allTextContents();
-check(memberArts.join(',') === 'LISA,JENNIE', `members are named (${memberArts.join(', ')})`);
+check(memberArts.every(t => /^(LISA|JENNIE|ROSÉ|JISOO) · /.test(t.trim())),
+      `members are named, then the kind (${memberArts.join(' | ')})`);
 const basis = await page.locator('#ytm-basis').textContent();
 check(/Nearest first/.test(basis) && /no dates yet/.test(basis),
       `the basis line explains why there are no ETAs: "${basis.trim().slice(0,70)}…"`);
-check((await page.locator('.ytm-eta').count()) === 0, 'and no card claims an ETA');
+const labels = await page.locator('.ytm-lbl').allTextContents();
+check(!labels.some(t => /gets there/i.test(t)), 'and no card claims when it gets there');
+
+console.log('\n--- the embed is a facade until clicked');
+check(await page.locator('iframe[src*="youtube"]').count() === 0,
+      'no YouTube iframe exists before anyone presses play');
+check(await page.locator('.ytm-thumb').first().isVisible(), 'the thumbnail is the play button');
+
+await page.locator('.ytm-card').first().locator('.ytm-thumb').click();
+await page.waitForTimeout(500);
+const frames = page.locator('.ytm-card.playing iframe');
+check(await frames.count() === 1, 'clicking it builds exactly one player');
+const src = await frames.first().getAttribute('src');
+check(src.includes('youtube-nocookie.com/embed/'),
+      'on youtube-nocookie, so a visitor who never plays gets no cookie from us');
+check(src.includes('autoplay=1'), 'and autoplays — the click is the gesture');
+
+// A second player is the bug worth guarding: two soundtracks at once, and the
+// first one left running invisibly behind the card that replaced it.
+await page.locator('.ytm-card').nth(1).locator('.ytm-thumb').click();
+await page.waitForTimeout(500);
+check(await page.locator('iframe[src*="youtube"]').count() === 1,
+      'playing a second video stops the first — only ever one player');
+check(await page.locator('.ytm-card.playing').count() === 1, 'and only one card is in the playing state');
+
+await page.locator('.ytm-card.playing .ytm-stop').click();
+await page.waitForTimeout(400);
+check(await page.locator('iframe[src*="youtube"]').count() === 0,
+      'Stop removes the iframe rather than hiding it — a hidden iframe keeps playing');
+
+await page.locator('.ytm-card').first().locator('.ytm-thumb').click();
+await page.waitForTimeout(400);
+await page.locator('#ytm-toggle').click();     // back to the homepage
+await page.waitForTimeout(500);
+check(await page.locator('iframe[src*="youtube"]').count() === 0,
+      'and leaving the view stops it too — audio must not follow you to the homepage');
+await page.locator('#ytm-toggle').click();
+await page.waitForTimeout(600);
+
+console.log('\n--- the /vs.html idiom');
+const style = await page.evaluate(() => {
+  const card = document.querySelector('.ytm-card');
+  const thumb = document.querySelector('.ytm-thumb');
+  const stat = document.querySelector('.ytm-stat');
+  const watch = document.querySelector('.ytm-watch');
+  const cs = getComputedStyle;
+  return {
+    cardRadius: cs(card).borderTopLeftRadius, cardPad: cs(card).paddingTop,
+    thumbRadius: cs(thumb).borderTopLeftRadius,
+    statBorder: cs(stat).borderTopStyle,
+    watchRadius: parseFloat(cs(watch).borderTopLeftRadius),
+    panelPink: cs(document.getElementById('ytm-panel')).getPropertyValue('--v-pink').trim(),
+    bodyPink: cs(document.body).getPropertyValue('--v-pink').trim(),
+  };
+});
+check(style.cardRadius === '16px' && style.cardPad === '14px',
+      `card is vs.html's 16px radius / 14px padding (${style.cardRadius}, ${style.cardPad})`);
+check(style.thumbRadius === '10px', `thumbnail is its 10px radius (${style.thumbRadius})`);
+check(style.statBorder === 'dashed', 'stat rows use its dashed rule');
+check(style.watchRadius >= 99, `the watch link is its pill (${style.watchRadius}px)`);
+check(style.panelPink === '#ff2e77', `vs.html's pink is in scope inside the panel (${style.panelPink})`);
+check(style.bodyPink === '', 'and does not leak onto the rest of the homepage');
 
 console.log('\n--- it survives a reload, and does not leak to other pages');
 await page.reload({ waitUntil: 'domcontentloaded' });
