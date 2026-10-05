@@ -1,0 +1,97 @@
+name: Probe YouTube thumbnails (read-only)
+
+# For every video the milestone board shows, ask i.ytimg.com what it actually
+# serves for maxresdefault.jpg — status, bytes and pixel size.
+#
+# Why: two cards on /youtube render a grey "no thumbnail" box stretched across
+# the 16:9 slot. The card already falls back to hqdefault on `onerror`, so
+# either that fallback is not firing or hqdefault is grey too — and the two
+# possibilities need different fixes:
+#
+#   404            → the error handler should have caught it; the bug is ours
+#   200, 120x90    → a SUCCESSFUL load of the grey placeholder, so `onerror`
+#                    never runs and no amount of error handling will help;
+#                    the image has to be judged by what arrived
+#
+# Claude Code sessions cannot reach i.ytimg.com (egress-blocked), so this is the
+# only way to tell those apart. Read-only: GETs only, nothing is written.
+on:
+  workflow_dispatch:
+    inputs:
+      kinds:
+        description: "What to check: blank = mv,performance · 'all'"
+        required: false
+        default: 'all'
+      base_url:
+        description: 'Base URL (blank = production)'
+        required: false
+        default: ''
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask the board what it shows, then ask YouTube for each thumbnail
+        env:
+          BASE: ${{ inputs.base_url != '' && inputs.base_url || 'https://blinksunited.com' }}
+          KINDS: ${{ inputs.kinds }}
+        run: |
+          set -euo pipefail
+          q=""
+          if [ -n "$KINDS" ]; then q="&kinds=$KINDS"; fi
+          code=$(curl -sS -L --max-time 60 -o /tmp/m.json -w '%{http_code}' \
+            "$BASE/api/youtube-milestones?probe=1$q")
+          echo "board: HTTP $code"
+          [ "$code" = "200" ] || { head -c 600 /tmp/m.json; exit 1; }
+
+      - name: Measure every thumbnail
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          import json, urllib.request, io
+          from PIL import Image
+
+          d = json.load(open('/tmp/m.json'))
+          vids = (d.get('blackpink') or []) + (d.get('members') or [])
+          print(f"{len(vids)} videos on the board (as of {d.get('asOf')})\n")
+
+          def fetch(url):
+              req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as r:
+                      body = r.read()
+                      try:
+                          size = Image.open(io.BytesIO(body)).size
+                      except Exception:
+                          size = None
+                      return r.status, len(body), size
+              except urllib.error.HTTPError as e:
+                  return e.code, 0, None
+              except Exception as e:
+                  return str(e), 0, None
+
+          bad = []
+          print(f"{'maxres':>26}   {'hq':>22}   title")
+          for v in vids:
+              vid = v['videoId']
+              ms, mb, mz = fetch(f'https://i.ytimg.com/vi/{vid}/maxresdefault.jpg')
+              # The grey placeholder is 120x90. A real maxres is 1280x720 and a
+              # real hqdefault 480x360, so the width alone separates them.
+              grey = bool(mz and mz[0] <= 120)
+              hq = ''
+              if grey or ms != 200:
+                  hs, hb, hz = fetch(f'https://i.ytimg.com/vi/{vid}/hqdefault.jpg')
+                  hq = f"{hs} {hz[0]}x{hz[1]}" if hz else f"{hs} —"
+                  bad.append((vid, v['title'], ms, mz, hs, hz))
+              mark = '  GREY' if grey else ('  HTTP' if ms != 200 else '      ')
+              print(f"{mark} {str(ms):>5} {str(mz):>12}   {hq:>22}   {v['title'][:44]}")
+
+          print(f"\n{len(bad)} of {len(vids)} have no usable maxresdefault.")
+          for vid, title, ms, mz, hs, hz in bad:
+              how = 'a 200 carrying the grey placeholder' if (mz and mz[0] <= 120) else f'HTTP {ms}'
+              print(f"  {vid}  {title[:52]}")
+              print(f"      maxres: {how}   hq: {hs} {hz}")
+          if bad and all((mz and mz[0] <= 120) for _, _, _, mz, _, _ in bad):
+              print("\n→ every failure is a SUCCESSFUL load of the grey image.")
+              print("  onerror cannot see this. The image must be judged by naturalWidth.")
+          PY
