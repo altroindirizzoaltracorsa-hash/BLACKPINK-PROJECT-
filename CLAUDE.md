@@ -212,11 +212,27 @@ ids and prints each track's play_count, its credited artists, whether a pinned
 catalogue counts it, and — with `kworb_artist` set — whether kworb lists it. That
 last field is the re-seed trigger. `probe-album.yml` does the same per album.
 
-**A separate case, same mechanism.** TWICE's *Bye Bye Inhibitions*
-(`0uI8zAUhinOJDIfWYam8lX`, Alok × NAYEON × TWICE) is TWICE-credited but **not on
-kworb** as of 2026-10-04, so it is correctly uncounted. At 409,478 streams against
-TWICE's 13.03B it is 0.003% — nothing on the board moves either way. Same
-resolution: when kworb lists it, re-seed.
+**A separate case, same mechanism — now resolved.** TWICE's *Bye Bye Inhibitions*
+(`0uI8zAUhinOJDIfWYam8lX`, Alok × NAYEON × TWICE) was TWICE-credited but not on
+kworb as of 2026-10-04, so it was correctly uncounted and sat on the watchlist.
+**kworb began listing it on 2026-10-05** and TWICE was re-seeded: 329 tracks → 330.
+
+It carries kworb's leading `*`, which marks a track the artist only *features*
+on — and **a `*` track is still inside kworb's total.** That is not an assumption:
+the seeder sums every row it parses and compares against kworb's own summary
+figure, and on this re-seed the two matched to the digit (13,051,924,359, 5 of
+the 330 rows asterisked). Four `*` tracks were already counted for TWICE before
+this one, and every other group has some. So the asterisk is a credit marker,
+never a scope filter — do not add a filter for it.
+
+**A re-seed is a level shift and it hides inside a normal delta.** The track
+joined with ~780k already on it, and all of that lands in one day's `daily_delta`
+as if played that day. `scope_growth()` in `fetch_group_streams.py` now detects a
+catalogue that grew since the previous complete day and writes the amount into
+the row's `note` ("catalog grew by N track(s); X of the delta is their back
+catalogue"). **A span rate across that day must subtract it or start after it** —
+same rule as a `merged_with` row. The falling direction was already refused
+loudly (the BABYMONSTER re-scope); this is the rising one.
 
 ---
 

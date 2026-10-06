@@ -211,6 +211,32 @@ def publish_unfinished(got, known, failed):
 MERGE_MIN = 1_000_000
 
 
+def scope_growth(got, known):
+    """Tracks counted today that were not in the previous complete day, and the
+    streams they bring with them.
+
+    A RE-SEED IS A LEVEL SHIFT, AND IT HIDES INSIDE A NORMAL DELTA. A track
+    added to the pinned catalogue arrives with its whole back catalogue — Bye
+    Bye Inhibitions joined TWICE with ~780k already on it — and all of it lands
+    in one day's delta as if it had been played that day. The fall case is
+    already refused loudly (the BABYMONSTER re-scope); the rise case looked like
+    an ordinary good day.
+
+    Same hazard as a merged_with row: streams never played inside the window. So
+    it gets named, with the amount, and a span rate can start after that day or
+    subtract it.
+
+    `known` must be the PREVIOUS complete day's per-track snapshot, before
+    last_tracks is advanced. Returns ([], 0) when there is no baseline to
+    compare against — on a first-ever record every track is new, which is not a
+    scope change.
+    """
+    if not known:
+        return [], 0
+    fresh = [tid for tid in got if tid not in known]
+    return fresh, sum(got[tid] for tid in fresh)
+
+
 def equal_value_ids(per_track, min_streams=MERGE_MIN):
     """{play_count: [track_id, ...]} for values shared by more than one ID.
 
@@ -454,6 +480,18 @@ def main():
                 extra = f"{merged} merged-value group(s)"
                 note = f"{note}; {extra}" if note else extra
                 print(f"  note: {extra}")
+
+            # `known` is still the PREVIOUS complete day here — last_tracks[aid]
+            # is advanced below — which is what makes this comparison meaningful.
+            if prev is not None:
+                fresh, added = scope_growth(got, known)
+                if fresh:
+                    extra = (f"catalog grew by {len(fresh)} track(s); {added:,} of "
+                             f"the delta is their back catalogue, not today's streams")
+                    note = f"{note}; {extra}" if note else extra
+                    print(f"  ⚠ {extra}")
+                    for tid in fresh[:5]:
+                        print(f"      + {got[tid]:>14,}  {tid}")
 
             rec = {
                 "total_streams": total,
