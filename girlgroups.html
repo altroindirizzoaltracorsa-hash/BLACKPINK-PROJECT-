@@ -223,6 +223,11 @@
   .b-sfoot{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:3px;}
   .b-srange{color:var(--muted);}
   .b-paces{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+  .b-phead{font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;
+           color:var(--dim);margin-bottom:1px;}
+  /* The caveat about the headline date: true, but only wanted by a reader who
+     has already spotted that it differs from both bars. Dim and after. */
+  .b-note{font-size:9.5px;color:var(--dim);line-height:1.55;margin-top:4px;}
   .b-prow{display:grid;grid-template-columns:62px 1fr auto;gap:7px;align-items:center;
           font-size:9.5px;color:var(--muted);}
   .b-plab{color:var(--dim);white-space:nowrap;}
@@ -1037,7 +1042,13 @@
       rows.push({ rate: t.rate, days: t.daysLeft, soft: false, label: 'current pace' });
     }
     const top = Math.max(...rows.map(r => r.rate), 1);
-    const bars = rows.length ? `<div class="b-paces">` + rows.map(r => {
+    // What the two rows ARE, said once. Without it the reader has to infer from
+    // the dates that these are two halves of one window rather than two
+    // unrelated measurements — which is the inference the old "pace to 09-23" /
+    // "pace since" labels asked for and did not get.
+    const phead = rows.length > 1
+      ? `<div class="b-phead">Pace in each half of the recorded window</div>` : '';
+    const bars = rows.length ? `<div class="b-paces">` + phead + rows.map(r => {
       const when = r.days != null
         ? `<span class="b-pdays">→ 1B in <b>${r.days.toLocaleString()} days</b> `
           + `<span class="b-pwhen">${esc(_d(
@@ -1053,24 +1064,37 @@
     }).join('') + `</div>` : '';
 
     // ── the sentence ────────────────────────────────────────────────────────
+    // Cause then effect, in that order, and nothing else. The version this
+    // replaces restated all four numbers that were already on screen and then
+    // spent its last clause on a caveat about the headline date — so the first
+    // thing it explained was a discrepancy the reader had not noticed yet. The
+    // caveat is still true and still worth saying, so it moved to its own dim
+    // line underneath, where it answers the question only if you have it.
+    const faster = tr && tr.late > tr.early;
+    const gap = tr ? fmt(Math.abs(Math.round(tr.late - tr.early))) : '';
     let cap;
     if (past) {
       cap = `<div class="b-cap">Already past 1B${tr ? ` — and still `
-        + `<span class="${tr.late > tr.early ? 'b-closer' : 'b-slower'}">`
-        + `${tr.late > tr.early ? 'speeding up' : 'slowing'}</span>` : ''}.</div>`;
+        + `<span class="${faster ? 'b-closer' : 'b-slower'}">`
+        + `${faster ? 'speeding up' : 'slowing'}</span>, by <b>${gap}/day</b>` : ''}.</div>`;
     } else if (!rows.length) {
       cap = '<div class="b-cap">No clean pace yet.</div>';
     } else if (!tr || tr.shift == null) {
       cap = `<div class="b-cap"><b>${big(toGo)}</b> to go at the current pace.</div>`;
     } else {
       const sh = tr.shift;
-      const word = sh <= -3
-        ? `<span class="b-closer">1B came ${Math.abs(sh)} days closer</span>`
+      const verdict = sh <= -3
+        ? `<span class="b-closer">Speeding up</span> — the second half ran `
+          + `<b>+${gap}/day</b> faster, pulling 1B <b>${Math.abs(sh)} days</b> sooner.`
         : sh >= 3
-          ? `<span class="b-slower">1B slipped ${sh} days further away</span>`
-          : `<span class="b-flat">The two paces land within days of each other</span>`;
-      cap = `<div class="b-cap">${word} — <b>${big(toGo)}</b> still to go. `
-          + `The card's date uses the whole window, so it sits between the two.</div>`;
+          ? `<span class="b-slower">Slowing</span> — the second half ran `
+            + `<b>${gap}/day</b> slower, pushing 1B <b>${sh} days</b> later.`
+          : `<span class="b-flat">Holding steady</span> — the two halves land `
+            + `within days of each other.`;
+      cap = `<div class="b-cap">${verdict}</div>`
+          + `<div class="b-note">${big(toGo)} to go${t.eta
+              ? ` · the card's ${esc(_d(t.eta))} averages the whole window, so it `
+                + `sits between these two` : ''}</div>`;
     }
 
     return `<div class="b-panel">${spark}${sparkFoot}${bars}${cap}</div>`;
