@@ -6,15 +6,18 @@
 // (probe run 37564299241), chosen because they are the four shapes the chart
 // has to survive —
 //
-//   Magnetic           a big shift (-18 days), the case the old chart drew least badly
-//   OMG                a 3-day shift: the old chart drew both projections as ONE line,
-//                      so the caption's "3 days further" had nothing behind it
+//   Magnetic           a big shift (-18 days), speeding up
+//   OMG                a 3-day shift: the two rays nearly coincide, so the
+//                      caption is the only thing that can carry it
 //   Ditto              a 5-day shift, slowing
-//   How You Like That  already past 1B, so there is no arrival arithmetic at all
+//   How You Like That  already past 1B, so the readings sit ABOVE the line and
+//                      there is no arrival arithmetic at all
 //
-// What is actually asserted is that the picture agrees with the arithmetic: the
-// bar lengths are in the same ratio as the rates, the days under each bar are
-// the ones trendOf computed, and the faster pace is the one with the nearer date.
+// The chart draws the climb against a 1B ceiling with a projection ray per
+// pace. What is asserted is the part that was wrong before and is easy to
+// regress: that gold means ONLY the finish line, that the legend names the two
+// date ranges rather than asking the reader to decode "pace since", and that
+// each ray lands where its own arithmetic says it should.
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 
 const PAGE = new URL('../../girlgroups.html', import.meta.url).pathname;
@@ -56,143 +59,116 @@ const TRACKS = [
     series: series('2026-09-10', '2026-10-05', 1291612148, 1297280618) },
 ];
 
-const open = async (width) => {
-  const p = await b.newPage({ viewport: { width, height: 1200 }, deviceScaleFactor: 2 });
-  const errs = [];
-  p.on('pageerror', e => errs.push(String(e)));
-  await p.route('**/*', async route => {
-    const u = new URL(route.request().url());
-    if (u.pathname.endsWith('/girlgroups') || u.pathname.endsWith('girlgroups.html'))
-      return route.fulfill({ path: PAGE, contentType: 'text/html' });
-    if (u.pathname === '/api/girlgroups')
-      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
-        asOf: '2026-10-05', floor: 4e8,
-        tracks: TRACKS.filter(t => t.eta), done: TRACKS.filter(t => !t.eta) }) });
-    if (u.hostname.includes('fonts.g')) return route.continue();
-    return route.fulfill({ status: 204, body: '' });
-  });
-  await p.goto('https://www.blinksunited.com/girlgroups', { waitUntil: 'domcontentloaded' });
-  await p.waitForTimeout(1200);
-  return { p, errs };
-};
-
-const { p, errs } = await open(412);
-
-// The chart lives behind the row's expander, so open every row first.
-const opened = await p.evaluate(() => {
-  const rows = [...document.querySelectorAll('[onclick*="_bToggle"], .brow, .b-row')];
-  rows.forEach(r => { try { r.click(); } catch {} });
-  return document.querySelectorAll('.b-panel').length;
+const p = await b.newPage({ viewport: { width: 412, height: 1200 }, deviceScaleFactor: 2 });
+const errs = [];
+p.on('pageerror', e => errs.push(String(e)));
+await p.route('**/*', async route => {
+  const u = new URL(route.request().url());
+  if (u.pathname.endsWith('/girlgroups') || u.pathname.endsWith('girlgroups.html'))
+    return route.fulfill({ path: PAGE, contentType: 'text/html' });
+  if (u.pathname === '/api/girlgroups')
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      asOf: '2026-10-05', floor: 4e8,
+      tracks: TRACKS.filter(t => t.eta), done: TRACKS.filter(t => !t.eta) }) });
+  if (u.hostname.includes('fonts.g')) return route.continue();
+  return route.fulfill({ status: 204, body: '' });
 });
-if (!opened) {
-  // Fall back to calling the renderer directly — the point of this test is the
-  // chart, not the expander, and the expander has its own interactions.
-  await p.evaluate((tracks) => {
-    const host = document.createElement('div');
-    host.id = 'test-charts';
-    document.body.appendChild(host);
-    host.innerHTML = tracks.map(t => `<div class="card">${_bChart(t)}</div>`).join('');
-  }, TRACKS);
-}
+await p.goto('https://www.blinksunited.com/girlgroups', { waitUntil: 'domcontentloaded' });
+await p.waitForTimeout(1200);
+
+// The chart lives behind the row expander, which has its own interactions. This
+// test is about the chart, so it renders it directly from the page's own code.
+await p.evaluate((tracks) => {
+  const host = document.createElement('div');
+  host.id = 'test-charts';
+  document.body.appendChild(host);
+  host.innerHTML = tracks.map(t => `<div class="card chartwrap">${_bChart(t)}</div>`).join('');
+}, TRACKS);
 await p.waitForTimeout(300);
 
-const panels = await p.$$eval('.b-panel', els => els.map(el => ({
-  sparks: el.querySelectorAll('.b-spark').length,
-  paths: el.querySelectorAll('.b-spark path').length,
-  bars: [...el.querySelectorAll('.b-pbar i')].map(i => ({
-    pct: parseFloat(i.style.width), col: i.style.background,
-    px: i.getBoundingClientRect().width,
-  })),
-  rates: [...el.querySelectorAll('.b-prate')].map(e => e.textContent.trim()),
-  days: [...el.querySelectorAll('.b-pdays')].map(e => e.textContent.trim()),
-  cap: el.querySelector('.b-cap')?.textContent.trim(),
-  note: el.querySelector('.b-note')?.textContent.trim(),
-  phead: el.querySelector('.b-phead')?.textContent.trim(),
-  legend: el.querySelectorAll('.b-leg').length,
-})));
+const got = await p.$$eval('.chartwrap', els => els.map(el => {
+  const svg = el.querySelector('svg.b-chart');
+  const strokes = [...svg.querySelectorAll('[stroke]')].map(n => n.getAttribute('stroke'));
+  const rays = [...svg.querySelectorAll('path[stroke]')]
+    .filter(n => n.getAttribute('stroke') !== '#fff2f6')
+    .map(n => ({ col: n.getAttribute('stroke'), d: n.getAttribute('d'),
+                 dash: n.getAttribute('stroke-dasharray') || '' }));
+  return {
+    strokes,
+    rays,
+    dots: [...svg.querySelectorAll('circle[fill]')].map(n => n.getAttribute('fill')),
+    gold: strokes.filter(s => s === '#f5c542').length,
+    legend: [...el.querySelectorAll('.b-leg span')].map(n => n.textContent.trim()),
+    legendCols: [...el.querySelectorAll('.b-leg i')].map(n => n.style.background),
+    hairline: svg.innerHTML.includes('stroke-opacity="0.18"'),
+    cap: el.querySelector('.b-cap')?.textContent.trim(),
+    note: el.querySelector('.b-note')?.textContent.trim(),
+    oneB: /1B/.test(svg.textContent),
+  };
+}));
+console.log(`--- ${got.length} chart(s)`);
+check(got.length === 4, `one per track (${got.length})`);
+const [mag, omg, ditto, past] = got;
 
-console.log(`--- ${panels.length} chart(s) rendered`);
-check(panels.length === 4, `one per track (${panels.length})`);
+console.log('\n--- the 1B ceiling is back and is the point of the picture');
+check(got.every(x => x.oneB), 'every chart labels the 1B line');
+check(past.oneB, 'including the one already past it, which has to pull the line into view');
 
-const [mag, omg, ditto, past] = panels;
+console.log('\n--- gold means the finish line, and nothing else');
+// It used to be the 1B rule, the earlier pace AND a flagged reading at once.
+check(mag.rays.every(r => r.col !== '#f5c542'),
+      `no projection ray is gold (${mag.rays.map(r => r.col).join(', ')})`);
+check(mag.rays.some(r => r.col === '#ff8fb4') && mag.rays.some(r => r.col === '#ff2e77'),
+      'the two paces are the ordered pink pair — lighter is older');
+check(mag.rays.find(r => r.col === '#ff8fb4').dash !== ''
+      && mag.rays.find(r => r.col === '#ff2e77').dash === '',
+      'and the older one is dashed, so they differ by more than hue');
 
-console.log('\n--- the climb is on its own scale, not under a 1B ceiling');
-check(panels.every(x => x.sparks === 1 && x.paths === 2),
-      'every card draws the recorded line and its area fill');
-check(panels.every(x => x.legend === 0),
-      'and no legend box — one series, and the bars are direct-labelled');
+console.log('\n--- the legend names the windows instead of asking for a decode');
+check(!mag.legend.some(l => /pace since|pace to/.test(l)),
+      `no "pace since" (${mag.legend.join(' · ')})`);
+check(mag.legend.includes('09-10–09-23') && mag.legend.includes('09-23–10-05'),
+      'both date ranges are spelled out');
+check(mag.legend[0] === 'recorded' && mag.legend[mag.legend.length - 1] === '1B',
+      'recorded first, 1B last');
 
-console.log('\n--- the bars are proportional to the rates, from zero');
-// Magnetic: 551,661 vs 608,300 -> the earlier bar must be 90.7% of the later.
-const ratio = (a, b) => a / b;
-check(Math.abs(ratio(mag.bars[0].pct, mag.bars[1].pct) - ratio(551661, 608300)) < 0.01,
-      `Magnetic's bars are in the rates' ratio, 0.907 (${(mag.bars[0].pct / mag.bars[1].pct).toFixed(3)})`);
-check(mag.bars[1].pct === 100, 'the faster pace sets the scale');
-check(Math.abs(ratio(omg.bars[1].pct, omg.bars[0].pct) - ratio(287478.75, 302655.08)) < 0.01,
-      `OMG's slower recent pace draws SHORTER (${omg.bars[1].pct} vs ${omg.bars[0].pct})`);
-// This is the case the old chart could not show at all: a 3-day shift drew as
-// one line. Here it is a visible difference in bar length.
-check(omg.bars[0].px - omg.bars[1].px > 4,
-      `and the difference is ${(omg.bars[0].px - omg.bars[1].px).toFixed(1)}px of real estate, `
-      + 'not the single overlapping line the old chart drew');
-
-console.log('\n--- the numbers under the bars are the ones trendOf computed');
-check(mag.rates[0].startsWith('+551,661') && mag.rates[1].startsWith('+608,300'),
-      `Magnetic: ${mag.rates.join(' / ')}`);
-check(mag.days[0].includes('194 days') && mag.days[1].includes('176 days'),
-      `and its two arrival dates: ${mag.days.join(' · ')}`);
-check(/Apr 17, 2027/.test(mag.days[0]) && /Mar 30, 2027/.test(mag.days[1]),
-      'dated from the last reading, not from today');
-check(omg.days[0].includes('54 days') && omg.days[1].includes('57 days'),
-      `OMG: ${omg.days.join(' · ')}`);
-check(ditto.days[0].includes('72 days') && ditto.days[1].includes('77 days'),
-      `Ditto: ${ditto.days.join(' · ')}`);
-
-console.log('\n--- the faster pace always has the nearer date');
-for (const [name, x] of [['Magnetic', mag], ['OMG', omg], ['Ditto', ditto]]) {
-  const d = x.days.map(s => parseInt(s.match(/(\d[\d,]*) days/)[1].replace(/,/g, ''), 10));
-  const r = x.bars.map(bb => bb.pct);
-  const consistent = (r[0] > r[1]) === (d[0] < d[1]);
-  check(consistent, `${name}: longer bar ↔ fewer days (${r.join('/')}% → ${d.join('/')}d)`);
+console.log('\n--- each ray lands where its own arithmetic says');
+// Faster pace -> fewer days -> crosses 1B further LEFT. Read the ray endpoints.
+const endX = r => parseFloat(r.d.split('L')[1].trim().split(' ')[0]);
+for (const [name, x, early, late] of [['Magnetic', mag, 194, 176],
+                                      ['OMG', omg, 54, 57], ['Ditto', ditto, 72, 77]]) {
+  const e = x.rays.find(r => r.col === '#ff8fb4'), l = x.rays.find(r => r.col === '#ff2e77');
+  check((endX(e) > endX(l)) === (early > late),
+        `${name}: the ${early > late ? 'recent' : 'earlier'} pace crosses first `
+        + `(${endX(e).toFixed(1)} vs ${endX(l).toFixed(1)}px for ${early}d / ${late}d)`);
 }
+check(mag.hairline && omg.hairline, 'a hairline marks today, where recording stops');
+check(mag.dots.includes('#fff2f6'), "and today's reading carries a dot");
 
-console.log('\n--- past 1B has no arrival arithmetic');
-check(past.bars.length === 2 && past.days.length === 0,
-      `two paces, no days (${past.bars.length} bars, ${past.days.length} day lines)`);
-check(/Already past 1B/.test(past.cap) && /slowing/.test(past.cap),
-      `and says so: "${past.cap}"`);
-
-console.log('\n--- the sentence says cause then effect, and nothing already on screen');
-// The old caption restated all four numbers and then spent its last clause on a
-// caveat about the headline date. The verdict should now name the CHANGE in
-// pace (a number that appears nowhere else) and what it does to the date.
-check(/Speeding up/.test(mag.cap) && /56,639\/day faster/.test(mag.cap)
-      && /18 days.*sooner/.test(mag.cap), `Magnetic: ${mag.cap}`);
-check(/Slowing/.test(omg.cap) && /15,176\/day slower/.test(omg.cap)
-      && /3 days.*later/.test(omg.cap), `OMG: ${omg.cap}`);
-check(/Slowing/.test(ditto.cap) && /26,327\/day slower/.test(ditto.cap),
-      `Ditto: ${ditto.cap}`);
-// The rate gap must be the difference between the two bars, not a new quantity.
+console.log('\n--- the sentence carries what the rays cannot');
+// On OMG the two rays are within a few pixels; the words are the only place the
+// 3-day shift can actually be read.
+check(/Speeding up/.test(mag.cap) && /56,639\/day/.test(mag.cap)
+      && /18 days/.test(mag.cap), `Magnetic: ${mag.cap}`);
+check(/Slowing/.test(omg.cap) && /15,176\/day/.test(omg.cap) && /3 days/.test(omg.cap),
+      `OMG: ${omg.cap}`);
+check(/Slowing/.test(ditto.cap) && /26,327\/day/.test(ditto.cap), `Ditto: ${ditto.cap}`);
 check(Math.round(608299.83 - 551661.15) === 56639
       && Math.round(302655.08 - 287478.75) === 15176,
-      'and that gap is late minus early, the two rates the bars already show');
-check(!/106\.70M/.test(mag.cap) && /106\.70M/.test(mag.note),
-      'the distance moved out of the verdict and into the dim line');
+      'that gap is late minus early, not a new quantity');
+check(/Already past 1B/.test(past.cap) && /slowing/.test(past.cap), `past 1B: ${past.cap}`);
 
-console.log('\n--- the caveat is present but subordinate');
+console.log('\n--- the headline-date caveat is present but subordinate');
+check(!/106\.70M/.test(mag.cap) && /106\.70M/.test(mag.note),
+      'the distance sits on the dim line, not in the verdict');
 check(/averages the whole window/.test(mag.note) && /Apr 8, 2027/.test(mag.note),
       `and it names the card's own date: ${mag.note}`);
-check(panels.slice(0, 3).every(x => x.phead === 'Pace in each half of the recorded window'),
-      `the two rows say what they are (${mag.phead})`);
-check(past.phead === 'Pace in each half of the recorded window',
-      'including the past-1B card, which still shows two halves');
+check(past.note === undefined, 'a track past 1B has no date to caveat');
 
-console.log('\n--- phone layout');
+console.log('\n--- layout');
 const of = await p.evaluate(() =>
   document.documentElement.scrollWidth - document.documentElement.clientWidth);
 check(of <= 1, `no horizontal overflow at 412px (${of}px)`);
-check(panels.every(x => x.bars.every(bb => bb.px > 8)),
-      'every bar is wide enough to see');
 check(errs.length === 0, `no page errors (${errs.join(' | ') || 'none'})`);
 
 await p.screenshot({ path: '/tmp/road-to-1b.png', fullPage: true }).catch(() => {});
