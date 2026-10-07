@@ -106,6 +106,8 @@ const panels = await p.$$eval('.b-panel', els => els.map(el => ({
   rates: [...el.querySelectorAll('.b-prate')].map(e => e.textContent.trim()),
   days: [...el.querySelectorAll('.b-pdays')].map(e => e.textContent.trim()),
   cap: el.querySelector('.b-cap')?.textContent.trim(),
+  note: el.querySelector('.b-note')?.textContent.trim(),
+  phead: el.querySelector('.b-phead')?.textContent.trim(),
   legend: el.querySelectorAll('.b-leg').length,
 })));
 
@@ -160,9 +162,30 @@ check(past.bars.length === 2 && past.days.length === 0,
 check(/Already past 1B/.test(past.cap) && /slowing/.test(past.cap),
       `and says so: "${past.cap}"`);
 
-console.log('\n--- the sentence still matches the picture');
-check(/18 days closer/.test(mag.cap) && /106\.70M/.test(mag.cap), `Magnetic: ${mag.cap}`);
-check(/3 days further/.test(omg.cap), `OMG: ${omg.cap}`);
+console.log('\n--- the sentence says cause then effect, and nothing already on screen');
+// The old caption restated all four numbers and then spent its last clause on a
+// caveat about the headline date. The verdict should now name the CHANGE in
+// pace (a number that appears nowhere else) and what it does to the date.
+check(/Speeding up/.test(mag.cap) && /56,639\/day faster/.test(mag.cap)
+      && /18 days.*sooner/.test(mag.cap), `Magnetic: ${mag.cap}`);
+check(/Slowing/.test(omg.cap) && /15,176\/day slower/.test(omg.cap)
+      && /3 days.*later/.test(omg.cap), `OMG: ${omg.cap}`);
+check(/Slowing/.test(ditto.cap) && /26,327\/day slower/.test(ditto.cap),
+      `Ditto: ${ditto.cap}`);
+// The rate gap must be the difference between the two bars, not a new quantity.
+check(Math.round(608299.83 - 551661.15) === 56639
+      && Math.round(302655.08 - 287478.75) === 15176,
+      'and that gap is late minus early, the two rates the bars already show');
+check(!/106\.70M/.test(mag.cap) && /106\.70M/.test(mag.note),
+      'the distance moved out of the verdict and into the dim line');
+
+console.log('\n--- the caveat is present but subordinate');
+check(/averages the whole window/.test(mag.note) && /Apr 8, 2027/.test(mag.note),
+      `and it names the card's own date: ${mag.note}`);
+check(panels.slice(0, 3).every(x => x.phead === 'Pace in each half of the recorded window'),
+      `the two rows say what they are (${mag.phead})`);
+check(past.phead === 'Pace in each half of the recorded window',
+      'including the past-1B card, which still shows two halves');
 
 console.log('\n--- phone layout');
 const of = await p.evaluate(() =>
