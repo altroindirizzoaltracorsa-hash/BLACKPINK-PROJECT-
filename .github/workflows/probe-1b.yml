@@ -47,10 +47,36 @@ jobs:
                     f"{(round(t['rate']) if t.get('rate') else 0):>10,}  {t['group']} — {t['name']}")
           PY
 
-      # The printed table is the summary; the raw payload carries each track's
-      # `series` and `trend`, which is what the card's chart is actually drawn
-      # from. Keeping it means a chart can be designed against real readings
-      # instead of invented ones.
+      # The artifact is for a human; a session cannot download one (artifacts are
+      # served from blob storage, which the session's GitHub client will not
+      # follow). So the shapes a chart has to handle are also printed inline:
+      # the fastest few, one already past 1B, and one with too few clean days to
+      # have a trend at all.
+      - name: Dump the series a chart would be drawn from
+        run: |
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/b.json'))
+          tracks = (d.get('tracks') or [])
+          done = (d.get('done') or [])
+          notrend = [t for t in tracks if not t.get('trend')]
+          picks = tracks[:3] + done[:1] + notrend[:1]
+          seen, out = set(), []
+          for t in picks:
+              k = (t.get('group'), t.get('name'))
+              if k in seen:
+                  continue
+              seen.add(k)
+              out.append({
+                  'group': t.get('group'), 'name': t.get('name'),
+                  'streams': t.get('streams'), 'rate': t.get('rate'),
+                  'daysLeft': t.get('daysLeft'), 'totalDays': t.get('totalDays'),
+                  'eta': t.get('eta'), 'trend': t.get('trend'),
+                  'series': t.get('series'),
+              })
+          print('CHARTDATA ' + json.dumps(out, separators=(',', ':')))
+          PY
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
