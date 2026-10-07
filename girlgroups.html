@@ -216,9 +216,26 @@
   .b-closer{color:var(--pink-soft);font-weight:700;}
   .b-slower{color:#ff6b6b;font-weight:700;}
   .b-flat{color:var(--gold);font-weight:700;}
-  .b-leg{display:flex;flex-wrap:wrap;gap:12px;font-size:9.5px;color:var(--dim);margin-top:7px;}
-  .b-leg span{display:inline-flex;align-items:center;gap:5px;}
-  .b-leg i{width:9px;height:9px;border-radius:2px;display:inline-block;}
+  /* The climb, on its own scale. No legend: one series, and the foot row names
+     it. The old chart carried a four-item legend for what is now two
+     direct-labelled bars and one line. */
+  .b-spark{display:block;width:100%;height:46px;}
+  .b-sfoot{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:3px;}
+  .b-srange{color:var(--muted);}
+  .b-paces{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+  .b-prow{display:grid;grid-template-columns:62px 1fr auto;gap:7px;align-items:center;
+          font-size:9.5px;color:var(--muted);}
+  .b-plab{color:var(--dim);white-space:nowrap;}
+  .b-pbar{grid-column:2;height:9px;border-radius:5px;background:#0a0407;
+          border:1px solid var(--line);overflow:hidden;display:block;}
+  .b-pbar i{display:block;height:100%;border-radius:5px;}
+  .b-prate{grid-column:3;white-space:nowrap;color:var(--text);font-variant-numeric:tabular-nums;}
+  .b-prate small{color:var(--dim);}
+  /* Subordinate to the bar it belongs to: same column, directly under it, not
+     right-aligned off on its own where it reads as a separate fact. */
+  .b-pdays{grid-column:2/4;font-size:9.5px;color:var(--dim);margin:-2px 0 2px;}
+  .b-pdays b{color:var(--text);font-weight:700;}
+  .b-pwhen{color:var(--muted);}
 </style>
 </head>
 <body>
@@ -929,108 +946,136 @@
   // the earlier pace was heading, and where the current pace is heading. The one
   // that meets 1B further left is the faster one, and the gap between the two
   // crossings IS the change — the thing the row states as "(+6 days)", drawn.
+  // The redesigned card chart.
+  //
+  // What the old one tried to do: draw two projection rays from today to where
+  // each pace crosses 1B, so the gap between the crossings IS the change. The
+  // arithmetic was right and the picture was not:
+  //
+  //   * the observed days were 12% of the x-axis on Magnetic and the rest was
+  //     extrapolation, so the only real data was a stub in the corner;
+  //   * the two rays start at the same point, so the gap is a wedge that is zero
+  //     at the left and a couple of pixels at the right — on OMG (a 3-day shift
+  //     out of 57) it is about 3px wide and cannot be seen at all;
+  //   * #f5c542 meant the 1B line, the earlier pace AND a flagged reading.
+  //
+  // So it is split into the two questions a reader actually has, each in the form
+  // that fits it (dataviz: "before -> after per item" is a dumbbell/paired bar,
+  // "1 hue, 2 shades"; the climb is a trend, which is a line):
+  //
+  //   1. what has it been doing?   -> a sparkline on its OWN scale, where 14M of
+  //                                   movement is the height of the panel instead
+  //                                   of one pixel under a 1B ceiling
+  //   2. is it getting closer?     -> two paces as bars from ZERO, direct-labelled
+  //                                   with the rate and the date each implies
+  //
+  // The bars start at zero on purpose: the paces differ by 9% on Magnetic and the
+  // bars show 9%. A truncated axis would turn that into a dramatic difference,
+  // which is the lie the number would then have to walk back.
+
   function _bChart(t) {
     const B = 1e9;
     const pts = (t.series || []).filter(p => p.s != null)
       .slice().sort((a, b) => (a.d < b.d ? -1 : 1));
     if (pts.length < 2) return '<div class="b-cap">Not enough recorded days to chart yet.</div>';
+
     const tr = t.trend;
     const first = pts[0], last = pts[pts.length - 1];
-    const t0 = Date.parse(first.d + 'T00:00:00Z'), tNow = Date.parse(last.d + 'T00:00:00Z');
-    const DAY = 86400000;
-
-    // Past 1B: there is nothing to project to, so the chart is just the climb
-    // with the line already crossed.
     const past = last.s >= B;
-    const paces = [];
-    if (!past && tr && tr.early > 0 && tr.late > 0) {
-      paces.push({ rate: tr.early, days: Math.ceil((B - last.s) / tr.early),
-                   col: '#f5c542', label: `pace to ${tr.midAt.slice(5)}`, dash: '5 4' });
-      paces.push({ rate: tr.late, days: Math.ceil((B - last.s) / tr.late),
-                   col: '#ff2e77', label: 'pace since', dash: '' });
-    } else if (!past && t.rate > 0) {
-      paces.push({ rate: t.rate, days: t.daysLeft, col: '#ff2e77', label: 'current pace', dash: '' });
-    }
+    const toGo = B - last.s;
 
-    const tEnd = paces.length ? tNow + Math.max(...paces.map(p => p.days)) * DAY : tNow;
-    // A track already past 1B has all its readings ABOVE the line, so the line
-    // has to be pulled into view or it renders off the bottom of the chart and
-    // "already across" is a claim with nothing behind it.
-    const yLo = past ? Math.min(B, ...pts.map(p => p.s)) : Math.min(...pts.map(p => p.s));
-    const yHi = past ? Math.max(B, last.s) : B;
-    const W = 320, H = 150, PL = 44, PR = 10, PT = 14, PB = 24;
-    const X = ms => PL + (tEnd === t0 ? 0.5 : (ms - t0) / (tEnd - t0)) * (W - PL - PR);
-    const Y = v => H - PB - (yHi === yLo ? 0.5 : (v - yLo) / (yHi - yLo)) * (H - PT - PB);
+    // ── 1. the climb, on its own scale ──────────────────────────────────────
+    // Deliberately NOT scaled to 1B. Magnetic moved 878.8M -> 893.3M in the
+    // window, 1.6% of the way to the line; against a 1B ceiling that is a flat
+    // line and the panel answers nothing.
+    const W = 320, SH = 46, PL = 2, PR = 2, PT = 6, PB = 6;
+    const t0 = Date.parse(first.d + 'T00:00:00Z');
+    const tN = Date.parse(last.d + 'T00:00:00Z');
+    const lo = Math.min(...pts.map(p => p.s)), hi = Math.max(...pts.map(p => p.s));
+    const X = ms => PL + (tN === t0 ? 0.5 : (ms - t0) / (tN - t0)) * (W - PL - PR);
+    const Y = v => SH - PB - (hi === lo ? 0.5 : (v - lo) / (hi - lo)) * (SH - PT - PB);
 
-    // The 1B line, which is the whole point of the picture.
-    const y1b = Y(B);
-    let grid = `<line x1="${PL}" x2="${W - PR}" y1="${y1b.toFixed(1)}" y2="${y1b.toFixed(1)}" `
-      + `stroke="#f5c542" stroke-width="1.5" stroke-dasharray="2 2"/>`
-      + `<text x="${PL - 6}" y="${(y1b + 3).toFixed(1)}" text-anchor="end" fill="#f5c542" font-size="8">1B</text>`
-      + `<text x="${PL - 6}" y="${(Y(yLo) + 3).toFixed(1)}" text-anchor="end" fill="#8a5c6c" font-size="8">${big(yLo)}</text>`;
-
-    // The recorded days. A short segment next to a projection measured in years,
-    // but it is the only part that is observed, so it is drawn solid and thick.
-    const real = pts.map((p, i) => `${i ? 'L' : 'M'}${X(Date.parse(p.d + 'T00:00:00Z')).toFixed(1)} ${Y(p.s).toFixed(1)}`).join(' ');
-    let lines = `<path d="${real}" fill="none" stroke="#fff2f6" stroke-width="2.4" `
-      + `stroke-linejoin="round" stroke-linecap="round"/>`;
-
-    // Flagged readings marked where they sit on that line, so a day that was not
-    // observed is not silently part of the climb.
-    pts.forEach(p => {
-      if (!p.st && !p.m) return;
-      lines += `<circle cx="${X(Date.parse(p.d + 'T00:00:00Z')).toFixed(1)}" cy="${Y(p.s).toFixed(1)}" `
-        + `r="2.6" fill="none" stroke="#f5c542" stroke-width="1.2">`
-        + `<title>${esc(p.d)} — ${p.st ? 'carried forward, not observed' : 'merged with another version'}</title></circle>`;
-    });
+    const d = pts.map((p, i) =>
+      `${i ? 'L' : 'M'}${X(Date.parse(p.d + 'T00:00:00Z')).toFixed(1)} ${Y(p.s).toFixed(1)}`).join(' ');
+    // Area under the line, so the panel reads as a climb rather than as a wire.
+    const area = `${d} L${X(tN).toFixed(1)} ${SH - PB} L${X(t0).toFixed(1)} ${SH - PB} Z`;
 
     let marks = '';
-    paces.forEach(p => {
-      const xEnd = X(tNow + p.days * DAY);
-      lines += `<path d="M${X(tNow).toFixed(1)} ${Y(last.s).toFixed(1)} L${xEnd.toFixed(1)} ${y1b.toFixed(1)}" `
-        + `fill="none" stroke="${p.col}" stroke-width="1.8"${p.dash ? ` stroke-dasharray="${p.dash}"` : ''} `
-        + `stroke-linecap="round"/>`;
-      marks += `<circle cx="${xEnd.toFixed(1)}" cy="${y1b.toFixed(1)}" r="3.2" fill="${p.col}">`
-        + `<title>${esc(p.label)}: reaches 1B around ${_d(new Date(tNow + p.days * DAY).toISOString().slice(0, 10))}</title></circle>`;
+    pts.forEach(p => {
+      if (!p.st && !p.m) return;
+      marks += `<circle cx="${X(Date.parse(p.d + 'T00:00:00Z')).toFixed(1)}" `
+        + `cy="${Y(p.s).toFixed(1)}" r="2.6" fill="none" stroke="#f5c542" stroke-width="1.2">`
+        + `<title>${esc(p.d)} — ${p.st ? 'carried forward, not observed'
+          : 'merged with another version'}</title></circle>`;
     });
+    // The last reading gets a dot; nothing else does. (A number on every point is
+    // the anti-pattern; the endpoint is the one that matters.)
+    marks += `<circle cx="${X(tN).toFixed(1)}" cy="${Y(last.s).toFixed(1)}" r="2.8" `
+      + `fill="#fff2f6" stroke="#15070c" stroke-width="1.5"/>`;
 
-    const xlab = `<text x="${PL}" y="${H - 7}" fill="#8a5c6c" font-size="8">${esc(first.d.slice(5))}</text>`
-      + (paces.length
-        ? `<text x="${W - PR}" y="${H - 7}" text-anchor="end" fill="#8a5c6c" font-size="8">`
-          + `${esc(_dshort(new Date(tEnd).toISOString().slice(0, 10)))}</text>`
-        : `<text x="${W - PR}" y="${H - 7}" text-anchor="end" fill="#8a5c6c" font-size="8">${esc(last.d.slice(5))}</text>`);
+    const spark = `<svg viewBox="0 0 ${W} ${SH}" class="b-spark" preserveAspectRatio="none" `
+      + `role="img" aria-label="${esc(t.name)}: ${big(lo)} to ${big(hi)} over the recorded window">`
+      + `<defs><linearGradient id="bg-${esc(t.name).replace(/\W/g, '')}" x1="0" x2="0" y1="0" y2="1">`
+      + `<stop offset="0" stop-color="#ff2e77" stop-opacity="0.30"/>`
+      + `<stop offset="1" stop-color="#ff2e77" stop-opacity="0"/></linearGradient></defs>`
+      + `<path d="${area}" fill="url(#bg-${esc(t.name).replace(/\W/g, '')})"/>`
+      + `<path d="${d}" fill="none" stroke="#fff2f6" stroke-width="2" `
+      + `stroke-linejoin="round" stroke-linecap="round"/>${marks}</svg>`;
 
-    const svg = `<svg viewBox="0 0 ${W} ${H}" class="b-chart" preserveAspectRatio="xMidYMid meet" `
-      + `role="img" aria-label="Projected path to 1 billion for ${esc(t.name)}">`
-      + `${grid}${lines}${marks}${xlab}</svg>`;
+    const sparkFoot = `<div class="b-sfoot"><span>${esc(first.d.slice(5))}</span>`
+      + `<span class="b-srange">${big(lo)} → ${big(hi)}</span>`
+      + `<span>${esc(last.d.slice(5))}</span></div>`;
 
+    // ── 2. the two paces ────────────────────────────────────────────────────
+    const rows = [];
+    if (tr && tr.early > 0 && tr.late > 0) {
+      rows.push({ rate: tr.early, days: tr.daysAtEarly, soft: true,
+                  label: `${tr.earlyFrom.slice(5)}–${tr.midAt.slice(5)}` });
+      rows.push({ rate: tr.late, days: tr.daysAtLate, soft: false,
+                  label: `${tr.midAt.slice(5)}–${tr.lateTo.slice(5)}` });
+    } else if (t.rate > 0) {
+      rows.push({ rate: t.rate, days: t.daysLeft, soft: false, label: 'current pace' });
+    }
+    const top = Math.max(...rows.map(r => r.rate), 1);
+    const bars = rows.length ? `<div class="b-paces">` + rows.map(r => {
+      const when = r.days != null
+        ? `<span class="b-pdays">→ 1B in <b>${r.days.toLocaleString()} days</b> `
+          + `<span class="b-pwhen">${esc(_d(
+              new Date(Date.parse(last.d + 'T00:00:00Z') + r.days * 86400000)
+                .toISOString().slice(0, 10)))}</span></span>`
+        : '';
+      return `<div class="b-prow">`
+        + `<span class="b-plab">${esc(r.label)}</span>`
+        + `<span class="b-pbar"><i style="width:${(r.rate / top * 100).toFixed(1)}%;`
+        + `background:${r.soft ? '#ff8fb4' : '#ff2e77'}"></i></span>`
+        + `<span class="b-prate">+${fmt(Math.round(r.rate))}<small>/day</small></span>`
+        + when + `</div>`;
+    }).join('') + `</div>` : '';
+
+    // ── the sentence ────────────────────────────────────────────────────────
     let cap;
     if (past) {
-      cap = `<div class="b-cap">Already across the line${tr ? ` — still `
-        + `<span class="${tr.late > tr.early ? 'b-closer' : 'b-slower'}">${tr.late > tr.early ? 'speeding up' : 'slowing'}</span>, `
-        + `<b>+${fmt(Math.round(tr.early))}/day</b> to ${esc(tr.midAt.slice(5))} vs <b>+${fmt(Math.round(tr.late))}/day</b> since` : ''}.</div>`;
-    } else if (!tr) {
-      cap = '<div class="b-cap">Too few clean days yet to compare two paces — the single line is the current one.</div>';
+      cap = `<div class="b-cap">Already past 1B${tr ? ` — and still `
+        + `<span class="${tr.late > tr.early ? 'b-closer' : 'b-slower'}">`
+        + `${tr.late > tr.early ? 'speeding up' : 'slowing'}</span>` : ''}.</div>`;
+    } else if (!rows.length) {
+      cap = '<div class="b-cap">No clean pace yet.</div>';
+    } else if (!tr || tr.shift == null) {
+      cap = `<div class="b-cap"><b>${big(toGo)}</b> to go at the current pace.</div>`;
     } else {
       const sh = tr.shift;
-      const word = sh <= -3 ? `<span class="b-closer">1B came ${Math.abs(sh).toLocaleString()} days closer</span>`
-                 : sh >= 3 ? `<span class="b-slower">1B slipped ${sh.toLocaleString()} days further</span>`
-                           : `<span class="b-flat">The two paces land within days of each other</span>`;
-      cap = `<div class="b-cap">${word}: at <b>+${fmt(Math.round(tr.early))}/day</b> `
-          + `(${esc(tr.earlyFrom.slice(5))}–${esc(tr.midAt.slice(5))}) it meets 1B in `
-          + `${tr.daysAtEarly.toLocaleString()} days; at <b>+${fmt(Math.round(tr.late))}/day</b> since, `
-          + `${tr.daysAtLate.toLocaleString()}. The row's date uses the whole span and sits between them.</div>`;
+      const word = sh <= -3
+        ? `<span class="b-closer">1B came ${Math.abs(sh)} days closer</span>`
+        : sh >= 3
+          ? `<span class="b-slower">1B slipped ${sh} days further away</span>`
+          : `<span class="b-flat">The two paces land within days of each other</span>`;
+      cap = `<div class="b-cap">${word} — <b>${big(toGo)}</b> still to go. `
+          + `The card's date uses the whole window, so it sits between the two.</div>`;
     }
 
-    const leg = paces.length
-      ? `<div class="b-leg">`
-        + `<span><i style="background:#fff2f6"></i>recorded</span>`
-        + paces.map(p => `<span><i style="background:${p.col}"></i>${esc(p.label)}</span>`).join('')
-        + `<span><i style="background:#f5c542"></i>1B</span></div>`
-      : `<div class="b-leg"><span><i style="background:#fff2f6"></i>recorded</span>`
-        + `<span><i style="background:#f5c542"></i>1B</span></div>`;
-    return svg + cap + leg;
+    return `<div class="b-panel">${spark}${sparkFoot}${bars}${cap}</div>`;
   }
+
 
   // Sort and filter are per-viewer conveniences, so they live in localStorage
   // and every read is wrapped — a private window throws on access rather than
