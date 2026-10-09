@@ -408,9 +408,9 @@
     if (!last || Date.now() - (last.ts || 0) > 600000) { el.style.display = 'none'; return; }
     let msg;
     if (last.kind === 'held' && last.reason === 'not-linked') {
-      msg = '<b>Votes are being seen but not logged.</b><span class="why">Open the extension and tap “Link my account” — ' + fmt(last.n) + ' vote' + (last.n === 1 ? '' : 's') + ' are being held until you do.</span>';
+      msg = '<b>Votes are being seen but not logged.</b><span class="why">Open the extension and tap “Link my account” — ' + fmt(last.n) + (last.n === 1 ? ' vote is' : ' votes are') + ' being held until you do.</span>';
     } else if (last.kind === 'held') {
-      msg = '<b>Couldn’t reach blinksunited.com.</b><span class="why">' + fmt(last.n) + ' vote' + (last.n === 1 ? '' : 's') + ' are held and will be sent on the next one that goes through.</span>';
+      msg = '<b>Couldn’t reach blinksunited.com.</b><span class="why">' + fmt(last.n) + (last.n === 1 ? ' vote is' : ' votes are') + ' held and will be sent on the next one that goes through.</span>';
     } else if (last.kind === 'not-ours') {
       msg = '<b>Not counted — category not recognised.</b><span class="why">' + esc(last.slug || 'unknown page') + ' isn’t on the BLACKPINK list. If BLACKPINK or a member IS nominated here, send us this page name.</span>';
     } else if (last.kind === 'rejected') {
@@ -434,9 +434,9 @@
     if (!last || Date.now() - (last.ts || 0) > 600000) { el.style.display = 'none'; return; }
     let msg;
     if (last.kind === 'held' && last.reason === 'not-linked') {
-      msg = '<b>Votes are being seen but not logged.</b><span class="why">Open the extension and tap “Link my account” — ' + fmt(last.n) + ' vote' + (last.n === 1 ? '' : 's') + ' are being held until you do.</span>';
+      msg = '<b>Votes are being seen but not logged.</b><span class="why">Open the extension and tap “Link my account” — ' + fmt(last.n) + (last.n === 1 ? ' vote is' : ' votes are') + ' being held until you do.</span>';
     } else if (last.kind === 'held') {
-      msg = '<b>Couldn’t reach blinksunited.com.</b><span class="why">' + fmt(last.n) + ' vote' + (last.n === 1 ? '' : 's') + ' are held and will be sent on the next one that goes through.</span>';
+      msg = '<b>Couldn’t reach blinksunited.com.</b><span class="why">' + fmt(last.n) + (last.n === 1 ? ' vote is' : ' votes are') + ' held and will be sent on the next one that goes through.</span>';
     } else if (last.kind === 'no-ballot') {
       msg = '<b>A round was submitted but we couldn’t read the ballot.</b><span class="why">Nickelodeon’s vote only carries id numbers, so without the ballot we can’t tell which pick was BLACKPINK — nothing was counted. Reload the page; if it keeps happening, add those votes by hand on /voting.</span>';
     } else if (last.kind === 'unidentified') {
