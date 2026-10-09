@@ -19,6 +19,10 @@ on:
         description: 'Category slugs, space separated'
         required: false
         default: 'favorite-music-group-or-duo favorite-music-collaboration favorite-female-artist'
+      slug:
+        description: 'Single slug for the ballot-markup job'
+        required: false
+        default: 'favorite-music-group-or-duo'
 
 jobs:
   probe:
@@ -116,3 +120,147 @@ jobs:
           await b.close();
           JS
           SLUGS="${{ inputs.paths }}" node kca.mjs
+
+  # ── Where do the ballot's ids live, and what does an option look like? ──────
+  # Answers the one question the vote capture could not. The KCA vote request is
+  #   POST https://kca.nick.tv/api/vote
+  #   {"user_id":"…","region":"us","environment":"production",
+  #    "votes":[{"question_id":"<uuid>","option_id":"<uuid>"}, …]}
+  # — opaque UUIDs for both the category and the nominee, and nothing in the
+  # payload names BLACKPINK. So the counter has to learn which pick is ours from
+  # the PAGE. The only other signal in the capture was Adobe click telemetry
+  # (edge.adobedc.net), which (a) any ad blocker removes and (b) races the SPA
+  # router — one BLACKPINK click in that capture was reported under the NEXT
+  # category's URL. A counter built on that alone is a silent zero waiting to
+  # happen, which is the failure mode BreakTudo already taught us.
+  #
+  # Prints the page's own network requests (is there a ballot API?), each option
+  # element as a click listener would see it, every UUID in the DOM with its
+  # context, and any UUID-bearing global. Never clicks a nominee, and FAILS the
+  # job if a /api/vote request happens anyway.
+  ballot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Render the page and report its ballot markup
+        env:
+          SLUG: ${{ inputs.slug || 'favorite-music-group-or-duo' }}
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --silent playwright@1.56.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat > ballot.mjs <<'JS'
+          import { chromium } from 'playwright';
+
+          const slug = process.env.SLUG;
+          const url = `https://kca.nick.tv/vote/${slug}`;
+          const b = await chromium.launch();
+          const p = await b.newPage({ viewport: { width: 1280, height: 1600 } });
+
+          // Every request, so a ballot API cannot hide. The vote endpoint must
+          // never appear — this probe reads, it does not vote.
+          const reqs = [];
+          let voted = false;
+          p.on('request', (r) => {
+            const u = r.url();
+            if (/\/api\/vote\b/.test(u)) voted = true;
+            reqs.push({ m: r.method(), u, rt: r.resourceType() });
+          });
+          // Bodies of same-origin JSON responses — that is where a ballot would be.
+          const bodies = [];
+          p.on('response', async (r) => {
+            const u = r.url();
+            if (!/kca\.nick\.tv/.test(u)) return;
+            const ct = (r.headers()['content-type'] || '');
+            if (!/json/i.test(ct)) return;
+            try { bodies.push({ u, body: (await r.text()).slice(0, 4000) }); } catch {}
+          });
+
+          await p.goto(url, { waitUntil: 'networkidle', timeout: 90000 }).catch(e => console.log('nav:', e.message));
+          await p.waitForTimeout(4000);
+
+          console.log(`\n${'='.repeat(72)}\n${url}\n${'='.repeat(72)}`);
+
+          console.log('\n--- same-origin / API requests (assets filtered out)');
+          for (const r of reqs) {
+            if (/\.(png|jpe?g|webp|svg|woff2?|mp3|wav|css|js|ico|gif|mp4)(\?|$)/i.test(r.u)) continue;
+            if (/googlesyndication|adobedc|nr-data|videoamp|ketchcdn|demdex|doubleclick|adtrafficquality/.test(r.u)) continue;
+            console.log(`  ${r.m} ${r.u}`);
+          }
+
+          console.log('\n--- same-origin JSON responses');
+          if (!bodies.length) console.log('  none — the ballot is not served as JSON from this origin');
+          for (const r of bodies) console.log(`  ${r.u}\n    ${r.body.slice(0, 1200).replace(/\n/g, ' ')}`);
+
+          // What a click listener would actually see. Deliberately several
+          // candidate selectors: the counter must key off whichever is real.
+          console.log('\n--- option elements, per candidate selector');
+          const sels = ['.question-option', '[class*="question-option"]', 'button[class*="option"]',
+                        '[role="radio"]', '[role="button"]', 'button'];
+          for (const sel of sels) {
+            const found = await p.$$eval(sel, (els) => els.slice(0, 8).map((e) => ({
+              tag: e.tagName.toLowerCase(),
+              cls: (e.getAttribute('class') || '').slice(0, 140),
+              attrs: [...e.attributes].filter(a => a.name !== 'class' && a.name !== 'style')
+                .map(a => `${a.name}=${a.value.slice(0, 60)}`).join(' '),
+              text: (e.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 80),
+            }))).catch(() => []);
+            console.log(`\n  [${sel}] ${found.length} shown`);
+            for (const f of found) console.log(`    <${f.tag}> text="${f.text}"\n       class="${f.cls}"\n       ${f.attrs || '(no other attributes)'}`);
+          }
+
+          // Does the nominee's own element carry its option_id? That is the
+          // difference between a counter that reads ids off the page and one
+          // that has to infer them.
+          console.log('\n--- every UUID in the rendered DOM, with context');
+          const uuids = await p.evaluate(() => {
+            const re = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+            const out = [];
+            const walk = (el, path) => {
+              for (const a of el.attributes || []) {
+                for (const m of String(a.value).match(re) || [])
+                  out.push({ id: m, where: `${path}[${a.name}]`, text: (el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60) });
+              }
+              for (const c of el.children) walk(c, `${path}>${c.tagName.toLowerCase()}`);
+            };
+            walk(document.documentElement, 'html');
+            return out.slice(0, 60);
+          });
+          if (!uuids.length) console.log('  NONE — no UUID appears in any DOM attribute');
+          for (const u of uuids) console.log(`  ${u.id}  @ ${u.where}  text="${u.text}"`);
+
+          console.log('\n--- UUIDs in inline <script> / JSON blocks');
+          const inline = await p.evaluate(() => {
+            const re = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+            return [...document.querySelectorAll('script')]
+              .map(s => (s.textContent || ''))
+              .filter(t => re.test(t))
+              .map(t => t.slice(0, 1500));
+          });
+          if (!inline.length) console.log('  none');
+          inline.forEach((t, i) => console.log(`  [${i}] ${t.replace(/\n/g, ' ')}`));
+
+          console.log('\n--- UUID-bearing globals on window');
+          const globals = await p.evaluate(() => {
+            const re = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+            const hits = [];
+            for (const k of Object.keys(window)) {
+              let v; try { v = window[k]; } catch { continue; }
+              if (!v || typeof v !== 'object') continue;
+              let s; try { s = JSON.stringify(v); } catch { continue; }
+              if (s && re.test(s)) hits.push({ k, len: s.length, head: s.slice(0, 400) });
+            }
+            return hits.slice(0, 10);
+          });
+          if (!globals.length) console.log('  none');
+          for (const g of globals) console.log(`  window.${g.k} (${g.len}B) ${g.head}`);
+
+          // The nominee names, so the counter's name matching can be checked
+          // against what the page really renders (accents included).
+          console.log('\n--- page text (first 1200 chars)');
+          console.log('  ' + (await p.evaluate(() => document.body.innerText.replace(/\s+/g, ' ').trim())).slice(0, 1200));
+
+          console.log(`\n--- read-only assertion: ${voted ? 'FAILED — a /api/vote request was made!' : 'ok, no vote request was made'}`);
+          await b.close();
+          if (voted) process.exit(1);
+          JS
+          node ballot.mjs
