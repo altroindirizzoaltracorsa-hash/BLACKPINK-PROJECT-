@@ -15,10 +15,11 @@
 //   * the "100 a day" figure is contradicted, not repeated: the published rules
 //     allow repeat voting and state NO number, and a search traced that figure
 //     to a different award entirely
-//   * the round mechanic is the first rule on the card, because the official
-//     rules say picks are "sent for submission at the end of the round" — a
-//     blink who votes in one category and closes the page loses the vote, and
-//     this card hands out per-category deep links
+//   * the card links ONCE, to the hub. Nothing is submitted until a round is
+//     finished, so a per-category deep link drops someone exactly where a round
+//     gets abandoned. The card used to carry three of them; it must not again.
+//   * the round rule is first and SHORT, because a long warning about a thing
+//     that silently throws the vote away is a warning people skip
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 
 const INDEX = new URL('../../index.html', import.meta.url).pathname;
@@ -92,18 +93,19 @@ check(dl < Date.parse('2026-11-14T17:00:00Z'),
 check(kca.deadline !== 'VOTING OPEN' && /\d/.test(kca.deadline || ''),
       `so the card counts down instead of saying VOTING OPEN (${kca.deadline})`);
 
-console.log('\n--- the three categories, with the links that were probed');
-const want = {
-  'Favorite Music Group or Duo': 'https://kca.nick.tv/vote/favorite-music-group-or-duo',
-  'Favorite Female Artist': 'https://kca.nick.tv/vote/favorite-female-artist',
-  'Favorite Music Collaboration': 'https://kca.nick.tv/vote/favorite-music-collaboration',
-};
+console.log('\n--- the three categories, and exactly one link off the card');
+const want = ['Favorite Music Group or Duo', 'Favorite Female Artist',
+              'Favorite Music Collaboration'];
 check(kca.cats.length === 3, `three categories (${kca.cats.length})`);
-for (const [name, href] of Object.entries(want)) {
-  const row = kca.cats.find(c => c.name === name);
-  check(!!row, `"${name}" is on the card`);
-  check(row && row.href === href, `and links to ${href.split('/').pop()}`);
+for (const name of want) {
+  check(kca.cats.some(c => c.name === name), `"${name}" is on the card`);
 }
+// The deep links are the regression to guard. A round only submits at the end,
+// so landing someone inside one category is landing them where rounds die.
+check(kca.cats.every(c => c.href === null),
+      `no per-category "Vote ↗" link (${kca.cats.map(c => c.href).join(', ')})`);
+check(!JSON.stringify(kca.data.categories).includes('kca.nick.tv'),
+      'and no category carries a url at all in the data');
 
 console.log('\n--- ours is marked, and the field is real');
 const byName = Object.fromEntries(kca.cats.map(c => [c.name, c]));
@@ -124,25 +126,26 @@ check(byName['Favorite Female Artist'].all === 8,
 check(new Set(kca.cats.map(c => c.thumb)).size === 1,
       `every category row treats thumbnails the same (${kca.cats.map(c => c.thumb).join(', ')})`);
 
-console.log('\n--- the round mechanic is the first thing said');
+console.log('\n--- the round rule is first, and short enough to read');
 const rules = kca.rules.join(' ');
-// The official rules: picks are "sent for submission at the end of the round".
-// This card links straight into single categories, so a blink who votes there
-// and closes the page loses it. That warning cannot be buried.
-check(/Finish the whole round/i.test(kca.rules[0]),
-      `rule 1 is the round warning (${kca.rules[0].slice(0, 72)}…)`);
-check(/only submitted/i.test(rules) && /don.{0,3}t close the page/i.test(rules),
-      'and it says both halves: submitted at the end, so do not close early');
-check(/Vote Again/.test(rules), 'with the way to start another round');
+check(/Vote every category to the end/i.test(kca.rules[0]),
+      `rule 1 is the round rule (${kca.rules[0]})`);
+check(/nothing is submitted until you finish/i.test(kca.rules[0]),
+      'and says why in the same breath');
+// It was 150 characters of explanation before. A warning about something that
+// silently throws the vote away has to be readable at a glance or it is decoration.
+check(kca.rules[0].length <= 95,
+      `kept short — ${kca.rules[0].length} characters`);
+check(/Vote Again/.test(rules), 'and the way to go round again is still said');
 
 console.log('\n--- the circulating limit is corrected, not repeated');
-check(/no number/i.test(rules) && /vote more than once/i.test(rules),
-      'the card says the rules allow repeats and publish no number');
+check(/no number/i.test(rules) && /No vote limit/i.test(rules),
+      'the card says there is no limit and that none is published');
 check(/isn.{0,3}t Nickelodeon.{0,3}s/.test(rules) && /100/.test(rules),
       'and names the "100 a day" figure to correct it rather than leaving it to spread');
 check(/Oct 8\s*–\s*Nov 13/.test(rules), 'the voting period is stated as the rules give it');
-check(/differ by region/i.test(rules), 'including that closing times vary by region');
-check(/Bots, scripts and macros/i.test(rules),
+check(/vary by region/i.test(rules), 'including that closing times vary by region');
+check(/Bots, scripts and macros/i.test(rules) && /Vote by hand/i.test(rules),
       'and the organiser\'s ban on automated voting is passed on');
 
 console.log('\n--- the top button');

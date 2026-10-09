@@ -8109,36 +8109,42 @@ const VOTE_CAMPAIGNS = [
     // Still NOT the show date (Nov 14) — voting shuts before the ceremony.
     deadline: '2026-11-14T07:59:00Z',
     rules: [
-      // First, because getting this wrong silently throws the vote away.
-      '⚠ <b>Finish the whole round.</b> Voting walks you through every category and your picks are only submitted <b>at the end</b> — don’t close the page after voting in one category',
-      'Vote at <b>kca.nick.tv</b> — no account needed. Tap VOTE on BLACKPINK, ROSÉ and “Dracula”, keep going to the end, then hit <b>Vote Again</b> for another round',
-      'The rules let you <b>vote more than once</b> and publish <b>no number</b> — so keep doing rounds. (The “100 a day” going around isn’t Nickelodeon’s; they don’t state a limit)',
-      'Voting runs <b>Oct 8 – Nov 13</b>. Closing times differ by region, so don’t leave it to the last day',
-      'Bots, scripts and macros are <b>banned</b> and those votes get thrown out — vote by hand',
-      'Show airs live <b>Sat Nov 14</b> on Nickelodeon & CBS, hosted by Alex Warren. <b>Bonus</b> and <b>Live</b> votes run during it, on their own timings',
+      // First and short, because getting it wrong throws the vote away silently.
+      '⚠ <b>Vote every category to the end</b> — nothing is submitted until you finish the round',
+      'No account needed. Tap VOTE on BLACKPINK, ROSÉ and “Dracula” as they come up, then <b>Vote Again</b> to go round again',
+      '<b>No vote limit</b> — the rules allow repeats and publish no number. (The “100 a day” going around isn’t Nickelodeon’s)',
+      'Voting runs <b>Oct 8 – Nov 13</b>. Closing times vary by region — don’t leave it to the last day',
+      '<b>Vote by hand.</b> Bots, scripts and macros are banned and those votes get thrown out',
+      'Live <b>Sat Nov 14</b> on Nickelodeon & CBS, hosted by Alex Warren. <b>Bonus</b> and <b>Live</b> votes run during the show',
     ],
     // Nominee lists are what the live vote pages actually show, read off a
     // rendered browser rather than from the announcement post.
+    //
+    // NO per-category `url`. The deep links were here first and were a mistake:
+    // nothing submits until a round is finished, so dropping someone into one
+    // category is dropping them exactly where a round gets abandoned. The single
+    // "Vote Now" button starts the round properly. The categories stay as
+    // information — which three we are in, and who we are up against.
     //
     // No per-category thumbs: there is a BLACKPINK and a Dracula image in the
     // repo but no ROSÉ one, and two rows with a picture beside a third
     // without reads as a missing asset rather than a choice. BreakTudo's card
     // carries none either.
     categories: [
-      { name: 'Favorite Music Group or Duo', url: 'https://kca.nick.tv/vote/favorite-music-group-or-duo',
+      { name: 'Favorite Music Group or Duo',
         nominees: [
           { name: 'BLACKPINK', us: true },
           { name: 'BTS' }, { name: 'Jonas Brothers' }, { name: 'Maroon 5' },
           { name: 'Twenty One Pilots' }, { name: 'Weezer' },
         ] },
-      { name: 'Favorite Female Artist', url: 'https://kca.nick.tv/vote/favorite-female-artist',
+      { name: 'Favorite Female Artist',
         nominees: [
           { name: 'ROSÉ', us: true },
           { name: 'Ariana Grande' }, { name: 'Cardi B' }, { name: 'Karol G' },
           { name: 'Miley' }, { name: 'Olivia Rodrigo' },
           { name: 'Sabrina Carpenter' }, { name: 'Taylor Swift' },
         ] },
-      { name: 'Favorite Music Collaboration', url: 'https://kca.nick.tv/vote/favorite-music-collaboration',
+      { name: 'Favorite Music Collaboration',
         nominees: [
           { name: 'Tame Impala, JENNIE — “Dracula (with JENNIE)”', us: true },
           { name: 'Alex Warren (with Jelly Roll) — “Bloodline”' },
