@@ -8139,14 +8139,18 @@ const VOTE_CAMPAIGNS = [
       '<b>Vote by hand.</b> Bots, scripts and macros are banned and those votes get thrown out',
       'Live <b>Sat Nov 14</b> on Nickelodeon & CBS, hosted by Alex Warren. <b>Bonus</b> and <b>Live</b> votes run during the show',
     ],
-    // Nominee lists are what the live vote pages actually show, read off a
-    // rendered browser rather than from the announcement post.
+    // OURS ONLY, like every other card here. The rival fields were listed at
+    // first on the theory that a category showing only us reads like a poll we
+    // invented — but nobody comes to a BLACKPINK fan site to study the field,
+    // and eighteen chips sat between the countdown and the button. The names
+    // were still worth reading off the live pages (probe-kca.yml) rather than
+    // the announcement post: that is how the three category names and the exact
+    // "Dracula (with JENNIE)" billing were confirmed.
     //
     // NO per-category `url`. The deep links were here first and were a mistake:
     // nothing submits until a round is finished, so dropping someone into one
     // category is dropping them exactly where a round gets abandoned. The single
-    // "Vote Now" button starts the round properly. The categories stay as
-    // information — which three we are in, and who we are up against.
+    // "Vote Now" button starts the round properly.
     //
     // No per-category thumbs: there is a BLACKPINK and a Dracula image in the
     // repo but no ROSÉ one, and two rows with a picture beside a third
@@ -8154,25 +8158,11 @@ const VOTE_CAMPAIGNS = [
     // carries none either.
     categories: [
       { name: 'Favorite Music Group or Duo',
-        nominees: [
-          { name: 'BLACKPINK', us: true },
-          { name: 'BTS' }, { name: 'Jonas Brothers' }, { name: 'Maroon 5' },
-          { name: 'Twenty One Pilots' }, { name: 'Weezer' },
-        ] },
+        nominees: [{ name: 'BLACKPINK', us: true }] },
       { name: 'Favorite Female Artist',
-        nominees: [
-          { name: 'ROSÉ', us: true },
-          { name: 'Ariana Grande' }, { name: 'Cardi B' }, { name: 'Karol G' },
-          { name: 'Miley' }, { name: 'Olivia Rodrigo' },
-          { name: 'Sabrina Carpenter' }, { name: 'Taylor Swift' },
-        ] },
+        nominees: [{ name: 'ROSÉ', us: true }] },
       { name: 'Favorite Music Collaboration',
-        nominees: [
-          { name: 'Tame Impala, JENNIE — “Dracula (with JENNIE)”', us: true },
-          { name: 'Alex Warren (with Jelly Roll) — “Bloodline”' },
-          { name: 'Cardi B (feat. Kehlani) — “Safe”' },
-          { name: 'Shakira, Burna Boy — “Dai Dai”' },
-        ] },
+        nominees: [{ name: 'Tame Impala, JENNIE — “Dracula (with JENNIE)”', us: true }] },
     ],
   },
   {
