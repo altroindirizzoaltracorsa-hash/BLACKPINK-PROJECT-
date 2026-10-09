@@ -121,7 +121,7 @@ check(kca.cats.every(c => c.href === null),
 check(!JSON.stringify(kca.data.categories).includes('kca.nick.tv'),
       'and no category carries a url at all in the data');
 
-console.log('\n--- ours is marked, and the field is real');
+console.log('\n--- ours, and only ours');
 const byName = Object.fromEntries(kca.cats.map(c => [c.name, c]));
 check(byName['Favorite Music Group or Duo'].us.join() === 'BLACKPINK',
       `BLACKPINK is the highlighted chip (${byName['Favorite Music Group or Duo'].us.join()})`);
@@ -129,11 +129,14 @@ check(byName['Favorite Female Artist'].us.join() === 'ROSÉ',
       `ROSÉ is the highlighted chip (${byName['Favorite Female Artist'].us.join()})`);
 check(/Dracula/.test(byName['Favorite Music Collaboration'].us.join()),
       `Dracula is the highlighted chip (${byName['Favorite Music Collaboration'].us.join()})`);
-// The rivals matter: a category listing only us reads like a poll we invented.
-check(byName['Favorite Music Group or Duo'].all === 6,
-      `the group field has all six nominees (${byName['Favorite Music Group or Duo'].all})`);
-check(byName['Favorite Female Artist'].all === 8,
-      `the female-artist field has all eight (${byName['Favorite Female Artist'].all})`);
+// One chip per category, same as every other card here. The rival fields were
+// listed at first and put eighteen chips between the countdown and the button.
+check(kca.cats.every(c => c.all === 1),
+      `one chip per category — ours (${kca.cats.map(c => c.all).join(', ')})`);
+check(kca.cats.every(c => c.all === c.us.length),
+      'and every chip shown is marked as ours, so none is a rival in disguise');
+check(!JSON.stringify(kca.data.categories).match(/BTS|Taylor Swift|Sabrina|Weezer|Shakira/),
+      'no rival names left in the data either');
 
 // Two rows with a picture and a third without reads as a broken asset rather
 // than a choice, so the card has to be all or nothing.
