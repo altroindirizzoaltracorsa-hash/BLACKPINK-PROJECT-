@@ -255,6 +255,41 @@ jobs:
           // what name sits beside each one? This is the map the counter needs:
           // the vote payload names nobody, so an option_id is the only thing
           // that says "this pick was BLACKPINK".
+          // No inline script assigns window.jsonData itself (only
+          // .environment), so the ballot arrives as an external file — and THAT
+          // is what the counter has to fetch, since a content script in an
+          // isolated world cannot read the global. So: which same-origin file is
+          // it, and what does it look like at the top?
+          console.log('\n--- same-origin script/link URLs, and which one carries the ballot');
+          const ballotSrc = await p.evaluate(async () => {
+            const urls = [...new Set([
+              ...[...document.querySelectorAll('script[src]')].map(s => s.src),
+              ...[...document.querySelectorAll('link[href]')].map(l => l.href),
+            ])].filter(u => u.startsWith(location.origin));
+            const out = [];
+            for (const u of urls) {
+              // The Vue bundle is big and is not the ballot; skip it by path, but
+              // report it so the filter can be checked.
+              const isAsset = /\/mik-assets\/vite\/assets\//.test(u);
+              let note = isAsset ? 'vite asset, not fetched' : '';
+              let head = '';
+              if (!isAsset) {
+                try {
+                  const t = await (await fetch(u, { cache: 'force-cache' })).text();
+                  head = t.slice(0, 160).replace(/\s+/g, ' ');
+                  note = `${t.length}B · has "questions": ${/"questions"\s*:/.test(t)}`
+                       + ` · has window.jsonData=: ${/window\.jsonData\s*=/.test(t)}`;
+                } catch (e) { note = 'fetch failed: ' + e.message; }
+              }
+              out.push({ u, note, head });
+            }
+            return out;
+          });
+          for (const s of ballotSrc) {
+            console.log(`  ${s.u}\n      ${s.note}`);
+            if (s.head) console.log(`      head: ${s.head}`);
+          }
+
           console.log('\n--- window.jsonData: top-level keys');
           const jd = await p.evaluate(() => {
             const d = window.jsonData;
