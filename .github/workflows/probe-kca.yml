@@ -282,9 +282,12 @@ jobs:
           if (!paths.length) console.log('  not found');
           for (const x of paths) console.log(`  ${x.path} = "${x.v}"`);
 
-          // The whole question object for this page's category, so the parser is
-          // written against the real field names rather than guessed ones.
-          console.log('\n--- the question object that holds BLACKPINK (ids + names, trimmed)');
+          // THE JOIN, printed on its own. This is the one thing the counter
+          // needs: the option_id in the vote payload, next to the name beside
+          // it. Printed as the last section and one line per option so it
+          // survives log truncation, and with the pivot read explicitly rather
+          // than through a depth-limited pretty-printer.
+          console.log('\n--- the question that holds BLACKPINK: its id, its scalars, and the id↔name join');
           const q = await p.evaluate(() => {
             const seen = new Set();
             let hit = null;
@@ -303,25 +306,35 @@ jobs:
             };
             walk(window.jsonData, 0);
             if (!hit) return null;
-            // Print it with the long fields (images, copy, html) cut out, so the
-            // ids and names are readable.
-            const slim = (v, d) => {
-              if (d > 3) return '…';
-              if (Array.isArray(v)) return v.map(x => slim(x, d + 1));
-              if (v && typeof v === 'object') {
-                const o = {};
-                for (const k of Object.keys(v)) {
-                  const x = v[k];
-                  if (typeof x === 'string' && x.length > 120) { o[k] = x.slice(0, 60) + `…(${x.length}B)`; continue; }
-                  o[k] = slim(x, d + 1);
-                }
-                return o;
-              }
-              return v;
-            };
-            return JSON.stringify(slim(hit, 0), null, 1).slice(0, 6000);
+            // Which key holds the options, and every short scalar on the
+            // question (that is where a slug or a path would be).
+            const listKey = Object.keys(hit).find(k => Array.isArray(hit[k]) && hit[k].length > 1
+              && hit[k].every(x => x && typeof x === 'object'));
+            const scalars = Object.keys(hit)
+              .filter(k => hit[k] == null || ['string', 'number', 'boolean'].includes(typeof hit[k]))
+              .map(k => `${k} = ${JSON.stringify(hit[k]) || 'null'}`.slice(0, 120));
+            const opts = (listKey ? hit[listKey] : []).map(o => ({
+              title: o.title, id: o.id,
+              pivotQ: o.pivot && o.pivot.question_id, pivotO: o.pivot && o.pivot.option_id,
+              pivotKeys: o.pivot ? Object.keys(o.pivot).join(',') : '(no pivot)',
+            }));
+            return { qid: hit.id, listKey, scalars, opts };
           });
-          console.log(q || '  not found');
+          if (!q) console.log('  not found');
+          else {
+            console.log(`  question.id = ${q.qid}`);
+            console.log(`  options live under: ${q.listKey}`);
+            console.log('  question scalars:');
+            for (const s of q.scalars) console.log('    ' + s);
+            console.log('  options — title | own id | pivot.option_id | pivot.question_id');
+            for (const o of q.opts)
+              console.log(`    ${String(o.title).padEnd(20)} | ${o.id} | ${o.pivotO} | ${o.pivotQ}`);
+            console.log(`  pivot keys: ${q.opts[0] ? q.opts[0].pivotKeys : '—'}`);
+            // If these hold, the counter can read the whole ballot as
+            // option_id → title and never needs to infer anything.
+            console.log(`  every pivot.question_id === question.id ? ${q.opts.every(o => o.pivotQ === q.qid)}`);
+            console.log(`  every pivot.option_id === option.id ?    ${q.opts.every(o => o.pivotO === o.id)}`);
+          }
 
           // The nominee names, so the counter's name matching can be checked
           // against what the page really renders (accents included).
