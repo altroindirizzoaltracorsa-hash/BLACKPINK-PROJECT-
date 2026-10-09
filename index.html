@@ -8094,6 +8094,56 @@ function milestoneTotalOf(tp) { return MILESTONE_TRACK_IDS.reduce((s, id) => s +
 // ── VOTE CAMPAIGNS ───────────────────────────────────────────
 const VOTE_CAMPAIGNS = [
   {
+    id: 'kca-2026',
+    platform: 'Nickelodeon Kids’ Choice Awards',
+    title: '2026 Kids’ Choice Awards',
+    url: 'https://kca.nick.tv/vote/',
+    image: '/vote-blackpink-ot4.jpg',
+    // NO DEADLINE ON PURPOSE. Nickelodeon has not published one: the vote pages
+    // were rendered in a browser (probe-kca.yml, run 37930904572) and not one
+    // sentence on any of the three states a closing date or a vote limit. The
+    // card therefore reads "VOTING OPEN", which is true, instead of counting
+    // down to a date nobody announced. The show is Nov 14 — voting will close
+    // before that, so DO NOT use the show date as the deadline. Set `deadline`
+    // here the moment Nickelodeon says when it closes.
+    rules: [
+      'Vote at <b>kca.nick.tv/vote</b> — no account needed, just tap VOTE on BLACKPINK, ROSÉ and “Dracula”',
+      'Each category is its own page — use the three “Vote ↗” links below',
+      'Nickelodeon doesn’t publish a vote limit on the page. Blinks report around <b>100 per category, per day, per device</b> — so keep going until it stops you',
+      'Nominations were announced Oct 8. <b>A closing date hasn’t been announced</b> — vote early rather than waiting',
+      'The show airs live <b>Sat Nov 14</b> on Nickelodeon & CBS, hosted by Alex Warren',
+    ],
+    // Nominee lists are what the live vote pages actually show, read off a
+    // rendered browser rather than from the announcement post.
+    //
+    // No per-category thumbs: there is a BLACKPINK and a Dracula image in the
+    // repo but no ROSÉ one, and two rows with a picture beside a third
+    // without reads as a missing asset rather than a choice. BreakTudo's card
+    // carries none either.
+    categories: [
+      { name: 'Favorite Music Group or Duo', url: 'https://kca.nick.tv/vote/favorite-music-group-or-duo',
+        nominees: [
+          { name: 'BLACKPINK', us: true },
+          { name: 'BTS' }, { name: 'Jonas Brothers' }, { name: 'Maroon 5' },
+          { name: 'Twenty One Pilots' }, { name: 'Weezer' },
+        ] },
+      { name: 'Favorite Female Artist', url: 'https://kca.nick.tv/vote/favorite-female-artist',
+        nominees: [
+          { name: 'ROSÉ', us: true },
+          { name: 'Ariana Grande' }, { name: 'Cardi B' }, { name: 'Karol G' },
+          { name: 'Miley' }, { name: 'Olivia Rodrigo' },
+          { name: 'Sabrina Carpenter' }, { name: 'Taylor Swift' },
+        ] },
+      { name: 'Favorite Music Collaboration', url: 'https://kca.nick.tv/vote/favorite-music-collaboration',
+        nominees: [
+          { name: 'Tame Impala, JENNIE — “Dracula (with JENNIE)”', us: true },
+          { name: 'Alex Warren (with Jelly Roll) — “Bloodline”' },
+          { name: 'Cardi B (feat. Kehlani) — “Safe”' },
+          { name: 'Shakira, Burna Boy — “Dai Dai”' },
+        ] },
+    ],
+  },
+  {
     id: 'tiff-peoples-choice-2026',
     platform: 'TIFF · Toronto Int’l Film Festival',
     title: 'People’s Choice Award 2026',
