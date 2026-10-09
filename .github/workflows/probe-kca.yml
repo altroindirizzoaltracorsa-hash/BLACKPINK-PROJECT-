@@ -228,31 +228,100 @@ jobs:
           if (!uuids.length) console.log('  NONE — no UUID appears in any DOM attribute');
           for (const u of uuids) console.log(`  ${u.id}  @ ${u.where}  text="${u.text}"`);
 
-          console.log('\n--- UUIDs in inline <script> / JSON blocks');
-          const inline = await p.evaluate(() => {
-            const re = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-            return [...document.querySelectorAll('script')]
-              .map(s => (s.textContent || ''))
-              .filter(t => re.test(t))
-              .map(t => t.slice(0, 1500));
+          // ── how the ballot reaches the page ────────────────────────────────
+          // This decides what the counter can read. A content script runs in an
+          // ISOLATED world, so it cannot touch window.jsonData — but it can read
+          // the text of the inline <script> that assigns it, because that is DOM
+          // and not page JS. (world:"MAIN" is not an option: the Kiwi-family
+          // Android browsers this extension also ships for don't inject it
+          // reliably — see background.js.) So the shape of these assignments is
+          // the parser's contract.
+          console.log('\n--- inline <script> assignments (how window.jsonData is assembled)');
+          const assigns = await p.evaluate(() => {
+            const out = [];
+            [...document.querySelectorAll('script')].forEach((s, i) => {
+              const t = s.textContent || '';
+              if (!t) return;
+              for (const m of t.matchAll(/window\.([A-Za-z_$][\w$]*)((?:\.[\w$]+)*)\s*=/g))
+                out.push({ i, target: `window.${m[1]}${m[2]}`, len: t.length, src: s.src || '' });
+            });
+            return out;
           });
-          if (!inline.length) console.log('  none');
-          inline.forEach((t, i) => console.log(`  [${i}] ${t.replace(/\n/g, ' ')}`));
+          if (!assigns.length) console.log('  none');
+          for (const a of assigns) console.log(`  script[${a.i}] (${a.len}B inline) assigns ${a.target}`);
 
-          console.log('\n--- UUID-bearing globals on window');
-          const globals = await p.evaluate(() => {
-            const re = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-            const hits = [];
-            for (const k of Object.keys(window)) {
-              let v; try { v = window[k]; } catch { continue; }
-              if (!v || typeof v !== 'object') continue;
-              let s; try { s = JSON.stringify(v); } catch { continue; }
-              if (s && re.test(s)) hits.push({ k, len: s.length, head: s.slice(0, 400) });
-            }
-            return hits.slice(0, 10);
+          // ── the ballot itself ─────────────────────────────────────────────
+          // Where do the question_id / option_id UUIDs live inside jsonData, and
+          // what name sits beside each one? This is the map the counter needs:
+          // the vote payload names nobody, so an option_id is the only thing
+          // that says "this pick was BLACKPINK".
+          console.log('\n--- window.jsonData: top-level keys');
+          const jd = await p.evaluate(() => {
+            const d = window.jsonData;
+            if (!d) return null;
+            const typeOf = (v) => Array.isArray(v) ? `array[${v.length}]` : (v === null ? 'null' : typeof v);
+            return Object.keys(d).map(k => `${k}: ${typeOf(d[k])}`);
           });
-          if (!globals.length) console.log('  none');
-          for (const g of globals) console.log(`  window.${g.k} (${g.len}B) ${g.head}`);
+          console.log(jd ? '  ' + jd.join('\n  ') : '  window.jsonData is not defined');
+
+          console.log('\n--- where BLACKPINK sits inside window.jsonData');
+          const paths = await p.evaluate(() => {
+            const out = [];
+            const seen = new Set();
+            const walk = (v, path, depth) => {
+              if (out.length > 40 || depth > 8 || v == null) return;
+              if (typeof v === 'string') { if (/BLACKPINK/i.test(v)) out.push({ path, v: v.slice(0, 80) }); return; }
+              if (typeof v !== 'object') return;
+              if (seen.has(v)) return; seen.add(v);
+              if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${path}[${i}]`, depth + 1));
+              else for (const k of Object.keys(v)) walk(v[k], `${path}.${k}`, depth + 1);
+            };
+            walk(window.jsonData, 'jsonData', 0);
+            return out;
+          });
+          if (!paths.length) console.log('  not found');
+          for (const x of paths) console.log(`  ${x.path} = "${x.v}"`);
+
+          // The whole question object for this page's category, so the parser is
+          // written against the real field names rather than guessed ones.
+          console.log('\n--- the question object that holds BLACKPINK (ids + names, trimmed)');
+          const q = await p.evaluate(() => {
+            const seen = new Set();
+            let hit = null;
+            const isUuid = (s) => typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+            const walk = (v, depth) => {
+              if (hit || depth > 8 || v == null || typeof v !== 'object') return;
+              if (seen.has(v)) return; seen.add(v);
+              if (!Array.isArray(v) && isUuid(v.id)) {
+                let s = ''; try { s = JSON.stringify(v); } catch {}
+                // The question, not the option: it is the object that CONTAINS
+                // the BLACKPINK option, so it mentions BLACKPINK and has a list.
+                if (/BLACKPINK/i.test(s) && Object.values(v).some(x => Array.isArray(x) && x.length > 1)) { hit = v; return; }
+              }
+              if (Array.isArray(v)) v.forEach(x => walk(x, depth + 1));
+              else Object.values(v).forEach(x => walk(x, depth + 1));
+            };
+            walk(window.jsonData, 0);
+            if (!hit) return null;
+            // Print it with the long fields (images, copy, html) cut out, so the
+            // ids and names are readable.
+            const slim = (v, d) => {
+              if (d > 3) return '…';
+              if (Array.isArray(v)) return v.map(x => slim(x, d + 1));
+              if (v && typeof v === 'object') {
+                const o = {};
+                for (const k of Object.keys(v)) {
+                  const x = v[k];
+                  if (typeof x === 'string' && x.length > 120) { o[k] = x.slice(0, 60) + `…(${x.length}B)`; continue; }
+                  o[k] = slim(x, d + 1);
+                }
+                return o;
+              }
+              return v;
+            };
+            return JSON.stringify(slim(hit, 0), null, 1).slice(0, 6000);
+          });
+          console.log(q || '  not found');
 
           // The nominee names, so the counter's name matching can be checked
           // against what the page really renders (accents included).
