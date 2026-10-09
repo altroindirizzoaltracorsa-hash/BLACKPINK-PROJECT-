@@ -1,0 +1,83 @@
+name: Probe Kids' Choice Awards vote pages (read-only)
+
+# Opens the KCA category pages and reports what they actually say: HTTP status,
+# the category heading, every nominee listed, and any text stating a vote limit
+# or a closing date.
+#
+# Why: a card is going on /voting with three per-category links and a stated
+# rule. Two things could not be checked from a session — kca.nick.tv does not
+# resolve through the egress proxy, and a web search turned up a "100 votes per
+# day" rule that belongs to a DIFFERENT award (Academy Kids Choice, Canada), so
+# repeating it as Nickelodeon's would be inventing a rule. A dead link or a
+# wrong limit on a voting page is worse than no card.
+#
+# Read-only: GETs only, no vote is ever cast.
+on:
+  workflow_dispatch:
+    inputs:
+      paths:
+        description: 'Category slugs, space separated'
+        required: false
+        default: 'favorite-music-group-or-duo favorite-music-collaboration favorite-female-artist'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch each page
+        env:
+          SLUGS: ${{ inputs.paths }}
+          UA: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36'
+        run: |
+          set -u
+          mkdir -p /tmp/kca
+          for u in "https://kca.nick.tv/vote/" $(for s in $SLUGS; do echo "https://kca.nick.tv/vote/$s"; done); do
+            f="/tmp/kca/$(echo "$u" | md5sum | cut -c1-8).html"
+            code=$(curl -sSL --compressed -m 45 -A "$UA" -w '%{http_code}' -o "$f" "$u" || echo 000)
+            echo "GET $u -> HTTP $code · $(wc -c <"$f" 2>/dev/null || echo 0) bytes"
+            echo "$u" > "$f.url"
+          done
+
+      - name: Read what they say
+        run: |
+          python3 - <<'PY'
+          import glob, html, os, re
+
+          def text(h):
+              h = re.sub(r'(?is)<(script|style|noscript)[^>]*>.*?</\1>', ' ', h)
+              h = re.sub(r'(?s)<[^>]+>', ' ', h)
+              return re.sub(r'\s+', ' ', html.unescape(h)).strip()
+
+          for f in sorted(glob.glob('/tmp/kca/*.html')):
+              url = open(f + '.url').read().strip() if os.path.exists(f + '.url') else f
+              raw = open(f, encoding='utf-8', errors='replace').read()
+              t = text(raw)
+              print(f"\n{'='*72}\n{url}\n{'='*72}")
+              if len(raw) < 2000:
+                  print(f"  tiny response ({len(raw)}B) — almost certainly a bot challenge")
+                  print('  ' + t[:400]); continue
+              m = re.search(r'(?is)<title[^>]*>(.*?)</title>', raw)
+              print('title:', html.unescape(m.group(1)).strip() if m else '—')
+
+              # Anything that states a limit or a deadline, in its own words.
+              for pat, lbl in [
+                  (r'[^.]*?\b\d+\s*votes?\b[^.]*\.', 'VOTE LIMIT'),
+                  (r'[^.]*?\bper (?:day|category|device)\b[^.]*\.', 'PER …'),
+                  (r'[^.]*?\b(?:voting (?:ends|closes)|deadline|closes on)\b[^.]*\.', 'CLOSES'),
+                  (r'[^.]*?\b(?:November|Nov\.?)\s*\d{1,2}[^.]*\.', 'DATE'),
+              ]:
+                  hits = {h.strip() for h in re.findall(pat, t, re.I)}
+                  for h in list(hits)[:4]:
+                      print(f"  [{lbl}] {h[:220]}")
+
+              # Nominee names: the vote pages list them as buttons/cards.
+              names = re.findall(r'(?is)(?:alt|aria-label|title)="([^"]{3,80})"', raw)
+              keep = [n for n in dict.fromkeys(names)
+                      if not re.search(r'(?i)logo|icon|nickelodeon|share|facebook|twitter|close|menu', n)]
+              if keep:
+                  print('  candidates:', ' | '.join(keep[:25]))
+              for who in ['BLACKPINK', 'JENNIE', 'Tame Impala', 'Dracula', 'ROS', 'BTS']:
+                  if re.search(who, t, re.I):
+                      i = re.search(who, t, re.I).start()
+                      print(f"  ✓ {who}: …{t[max(0,i-60):i+90]}…")
+          PY
