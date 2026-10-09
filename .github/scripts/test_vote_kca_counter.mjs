@@ -275,6 +275,27 @@ console.log('\n--- A. not linked yet: held, not lost');
         'with "link your account" as the reason');
 }
 
+console.log('\n--- A. a round reaches us in pieces, and the backlog adds them up');
+{
+  // This is what a real round looks like from here: KCA flushes 5–7 picks at a
+  // time around the ad breaks, and our three categories are scattered across
+  // the ballot — in the captured session they landed in flushes 1, 3 and 4. So
+  // three votes arrive as three separate submissions of one, and the backlog is
+  // the only number that knows there are three.
+  const bg = loadBackground();
+  bg.store.kcaBallot = freshBallot();        // no buToken, so each one is held
+  const flushes = [
+    [{ q: '1ae0e782-6c39-4329-88ae-137533d9f497', o: 'aa2a878e-15d2-455f-9829-1b55fd948c81' }],
+    [{ q: '22222222-2222-2222-2222-222222222222', o: '11111111-1111-1111-1111-111111111111' }],
+    [{ q: '44444444-4444-4444-4444-444444444444', o: '33333333-3333-3333-3333-333333333333' }],
+  ];
+  for (const f of flushes) { await bg.processKcaVote({ votes: f }); await settle(); }
+  check(bg.store.kcaPendingN === 3, `all three are held, not just the last (${bg.store.kcaPendingN})`);
+  const diag = bg.store.kcaDiag || [];
+  check(diag.length === 3 && diag.every(d => d.kind === 'held'), `one reason per flush (${diag.length})`);
+  check(diag[0].n === 1, 'and each reason describes only its own flush, which is why the panel must not read it as the backlog');
+}
+
 // ── B. panel.js: finding and parsing the ballot ─────────────────────────────
 console.log('\n--- B. panel.js reads the ballot off the page');
 {
@@ -310,8 +331,14 @@ console.log('\n--- B. panel.js reads the ballot off the page');
 
   // Everything the content script touches, stubbed — including the message
   // channel, which is how the parsed map leaves the page.
+  // Storage is backed by a mutable object and the change listener is kept, so a
+  // case can put the panel into a given state and make it re-render — which is
+  // how the held band is read below.
   await p.addInitScript(() => {
     window.__sent = [];
+    window.__store = {};
+    const onChanged = [];
+    window.__fire = () => onChanged.forEach((f) => f({ kcaDiag: {} }, 'local'));
     window.chrome = {
       runtime: {
         id: 'test', lastError: null,
@@ -325,7 +352,13 @@ console.log('\n--- B. panel.js reads the ballot off the page');
         },
         onMessage: { addListener() {} },
       },
-      storage: { local: { get: (k, cb) => cb && cb({}), set: (o, cb) => cb && cb() }, onChanged: { addListener() {} } },
+      storage: {
+        local: {
+          get: (k, cb) => cb && cb(window.__store),
+          set: (o, cb) => { Object.assign(window.__store, o); cb && cb(); },
+        },
+        onChanged: { addListener(f) { onChanged.push(f); } },
+      },
     };
   });
 
@@ -349,6 +382,25 @@ console.log('\n--- B. panel.js reads the ballot off the page');
   await p.goto('https://kca.nick.tv/vote/favorite-music-group-or-duo', { waitUntil: 'domcontentloaded' });
   await p.evaluate(panelSrc);
   await p.waitForTimeout(600);
+
+  // The held band is the only thing a blink sees while votes are queueing, so
+  // it has to name the BACKLOG. Three flushes held one each reads as "3 votes
+  // are held"; the last flush's own count would say 1 and never move.
+  const bandText = async (store) => {
+    await p.evaluate((s) => { window.__store = s; window.__fire(); }, store);
+    await p.waitForTimeout(80);
+    return p.evaluate(() => {
+      const el = document.getElementById('bu-vote-panel-host').shadowRoot.getElementById('btdiag');
+      return el.style.display === 'none' ? '' : el.textContent.replace(/\s+/g, ' ').trim();
+    });
+  };
+  const diag3 = [{ kind: 'held', reason: 'error', n: 1, ts: Date.now() }];
+  const three = await bandText({ kcaDiag: diag3, kcaPendingN: 3 });
+  check(/3 votes are held/.test(three), `three held votes read as three (${three})`);
+  const one = await bandText({ kcaDiag: diag3, kcaPendingN: 1 });
+  check(/1 vote is held/.test(one), `and one reads as one, with the verb agreeing (${one})`);
+  check((await bandText({ kcaDiag: diag3, kcaPendingN: 0 })) === '',
+        'and the band goes away once the backlog has gone through');
 
   const sent = await p.evaluate(() => window.__sent);
   const asked = sent.find((m) => m.type === 'bu-kca-ballot-stale');

@@ -394,10 +394,23 @@
           + '<span class="vv">' + fmt(v) + '</span></div>').join('');
   }
 
+  // How many votes are actually waiting. The stored backlog is the truth; the
+  // diag entry's own count is the fallback for the moment between a failed
+  // submission and the backlog being written.
+  // A stored zero is an answer, not a missing value: it means the backlog went
+  // through, and the band should disappear rather than keep quoting the last
+  // failed submission forever. Only an ABSENT backlog falls back to that
+  // submission's own count — the window between a failed send and the backlog
+  // being written, which the next storage change re-renders out of.
+  function heldCount(last, pending) {
+    const n = Number(pending);
+    return Number.isFinite(n) ? n : (Number(last && last.n) || 0);
+  }
+
   // Why the last thing we saw was NOT counted. A vote that doesn't register used
   // to be completely silent — the counter just sat there and there was nothing to
   // report but "it isn't working". Only shown when something actually went wrong.
-  function renderBtDiag(list) {
+  function renderBtDiag(list, pending) {
     const el = $('btdiag');
     if (!el) return;
     // Newest entry only. Searching past it for the most recent *failure* meant a
@@ -406,11 +419,18 @@
     // Stale complaints are noise — anything older than 10 minutes has been
     // superseded by whatever happened since.
     if (!last || Date.now() - (last.ts || 0) > 600000) { el.style.display = 'none'; return; }
+    // A "held" band is about the BACKLOG, not about the one submission that
+    // happened to fail last. Votes are held one submission at a time, so
+    // reporting that submission's count said "1 vote is held" while three were
+    // waiting — and the number it showed never grew, which reads like the
+    // counter missing the other two rather than queueing them.
+    const held = heldCount(last, pending);
+    if (held === 0 && last.kind === 'held') { el.style.display = 'none'; return; }
     let msg;
     if (last.kind === 'held' && last.reason === 'not-linked') {
-      msg = '<b>Votes are being seen but not logged.</b><span class="why">Open the extension and tap “Link my account” — ' + fmt(last.n) + (last.n === 1 ? ' vote is' : ' votes are') + ' being held until you do.</span>';
+      msg = '<b>Votes are being seen but not logged.</b><span class="why">Open the extension and tap “Link my account” — ' + fmt(held) + (held === 1 ? ' vote is' : ' votes are') + ' being held until you do.</span>';
     } else if (last.kind === 'held') {
-      msg = '<b>Couldn’t reach blinksunited.com.</b><span class="why">' + fmt(last.n) + (last.n === 1 ? ' vote is' : ' votes are') + ' held and will be sent on the next one that goes through.</span>';
+      msg = '<b>Couldn’t reach blinksunited.com.</b><span class="why">' + fmt(held) + (held === 1 ? ' vote is' : ' votes are') + ' held and will be sent on the next one that goes through.</span>';
     } else if (last.kind === 'not-ours') {
       msg = '<b>Not counted — category not recognised.</b><span class="why">' + esc(last.slug || 'unknown page') + ' isn’t on the BLACKPINK list. If BLACKPINK or a member IS nominated here, send us this page name.</span>';
     } else if (last.kind === 'rejected') {
@@ -427,16 +447,21 @@
   // without the ballot map a submitted round cannot be read at all — and the
   // honest count is then zero rather than a guess. That has to say so, or it
   // looks exactly like "you cast nothing".
-  function renderKcaDiag(list) {
+  function renderKcaDiag(list, pending) {
     const el = $('btdiag');
     if (!el) return;
     const last = (Array.isArray(list) && list[0] && list[0].kind && list[0].kind !== 'counted') ? list[0] : null;
     if (!last || Date.now() - (last.ts || 0) > 600000) { el.style.display = 'none'; return; }
+    // See renderBtDiag: the band reports the backlog. It matters more here —
+    // KCA submits a round in several flushes, so our three categories reach the
+    // counter as three separate holds rather than one.
+    const held = heldCount(last, pending);
+    if (held === 0 && last.kind === 'held') { el.style.display = 'none'; return; }
     let msg;
     if (last.kind === 'held' && last.reason === 'not-linked') {
-      msg = '<b>Votes are being seen but not logged.</b><span class="why">Open the extension and tap “Link my account” — ' + fmt(last.n) + (last.n === 1 ? ' vote is' : ' votes are') + ' being held until you do.</span>';
+      msg = '<b>Votes are being seen but not logged.</b><span class="why">Open the extension and tap “Link my account” — ' + fmt(held) + (held === 1 ? ' vote is' : ' votes are') + ' being held until you do.</span>';
     } else if (last.kind === 'held') {
-      msg = '<b>Couldn’t reach blinksunited.com.</b><span class="why">' + fmt(last.n) + (last.n === 1 ? ' vote is' : ' votes are') + ' held and will be sent on the next one that goes through.</span>';
+      msg = '<b>Couldn’t reach blinksunited.com.</b><span class="why">' + fmt(held) + (held === 1 ? ' vote is' : ' votes are') + ' held and will be sent on the next one that goes through.</span>';
     } else if (last.kind === 'no-ballot') {
       msg = '<b>A round was submitted but we couldn’t read the ballot.</b><span class="why">Nickelodeon’s vote only carries id numbers, so without the ballot we can’t tell which pick was BLACKPINK — nothing was counted. Reload the page; if it keeps happening, add those votes by hand on /voting.</span>';
     } else if (last.kind === 'unidentified') {
@@ -589,8 +614,8 @@
         : 'Off — today’s voting accounts stay on this device';
     }
 
-    if (AWARD === 'breaktudo') { renderBtCats(s.btCats); renderBtDiag(s.btDiag); }
-    if (AWARD === 'kca') { renderBtCats(s.kcaCats, kcaCatLabel); renderKcaDiag(s.kcaDiag); }
+    if (AWARD === 'breaktudo') { renderBtCats(s.btCats); renderBtDiag(s.btDiag, s.btPendingN); }
+    if (AWARD === 'kca') { renderBtCats(s.kcaCats, kcaCatLabel); renderKcaDiag(s.kcaDiag, s.kcaPendingN); }
 
     const log = Array.isArray(s[CFG.logKey]) ? s[CFG.logKey] : [];
     if (!log.length) {
@@ -642,7 +667,7 @@
     if (at) at.onclick = () => { acctOpen = !acctOpen; refresh(); };
   }
 
-  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize', 'btCount', 'btLog', 'btDay', 'btCats', 'btDiag', 'kcaCount', 'kcaLog', 'kcaDay', 'kcaCats', 'kcaDiag'];
+  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize', 'btCount', 'btLog', 'btDay', 'btCats', 'btDiag', 'btPendingN', 'kcaCount', 'kcaLog', 'kcaDay', 'kcaCats', 'kcaDiag', 'kcaPendingN'];
   // fitToViewport AFTER render: the panel's natural height depends on how many
   // category rows and log entries were just drawn.
   function refresh() { safeCtx(() => chrome.storage.local.get(KEYS, (s) => { applyLayout(s); render(s); fitToViewport(); })); }
