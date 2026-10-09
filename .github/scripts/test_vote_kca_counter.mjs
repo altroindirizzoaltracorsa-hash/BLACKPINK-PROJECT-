@@ -402,6 +402,23 @@ console.log('\n--- B. panel.js reads the ballot off the page');
   check((await bandText({ kcaDiag: diag3, kcaPendingN: 0 })) === '',
         'and the band goes away once the backlog has gone through');
 
+  // A backlog does not time out. Held votes are still waiting however long ago
+  // the last send failed, and a KCA round takes long enough that a ten-minute
+  // cutoff could hide the queue before the round even ends — which is exactly
+  // how a blink ends up being told nothing is wrong while three votes sit in it.
+  const old = [{ kind: 'held', reason: 'error', n: 1, ts: Date.now() - 20 * 60 * 1000 }];
+  const stillHeld = await bandText({ kcaDiag: old, kcaPendingN: 3 });
+  check(/3 votes are held/.test(stillHeld), `a 20-minute-old hold still shows (${stillHeld})`);
+  check((await bandText({ kcaDiag: old, kcaPendingN: 0 })) === '',
+        'but it does go once those votes have been sent');
+  // Everything else IS a complaint about one past event, and those still age out.
+  const oldFail = [{ kind: 'rejected', status: 500, ts: Date.now() - 20 * 60 * 1000 }];
+  check((await bandText({ kcaDiag: oldFail, kcaPendingN: 0 })) === '',
+        'a stale one-off failure is still dropped');
+  const freshFail = [{ kind: 'rejected', status: 500, ts: Date.now() }];
+  check(/rejected that round/.test(await bandText({ kcaDiag: freshFail, kcaPendingN: 0 })),
+        'while a fresh one is shown');
+
   const sent = await p.evaluate(() => window.__sent);
   const asked = sent.find((m) => m.type === 'bu-kca-ballot-stale');
   const handed = sent.find((m) => m.type === 'bu-kca-ballot');

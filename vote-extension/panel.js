@@ -416,16 +416,22 @@
     // Newest entry only. Searching past it for the most recent *failure* meant a
     // vote that counted fine afterwards still left the warning on screen.
     const last = (Array.isArray(list) && list[0] && list[0].kind && list[0].kind !== 'counted') ? list[0] : null;
-    // Stale complaints are noise — anything older than 10 minutes has been
-    // superseded by whatever happened since.
-    if (!last || Date.now() - (last.ts || 0) > 600000) { el.style.display = 'none'; return; }
+    if (!last) { el.style.display = 'none'; return; }
     // A "held" band is about the BACKLOG, not about the one submission that
     // happened to fail last. Votes are held one submission at a time, so
     // reporting that submission's count said "1 vote is held" while three were
     // waiting — and the number it showed never grew, which reads like the
     // counter missing the other two rather than queueing them.
     const held = heldCount(last, pending);
-    if (held === 0 && last.kind === 'held') { el.style.display = 'none'; return; }
+    if (last.kind === 'held' && held === 0) { el.style.display = 'none'; return; }
+    // Stale complaints are noise — anything older than 10 minutes has been
+    // superseded by whatever happened since. But a backlog is not a complaint
+    // about something that happened, it is a state that is still true: those
+    // votes are still waiting to be sent. Timing it out told a blink nothing
+    // was wrong while their votes sat in a queue, so it stays until it clears.
+    if (!(last.kind === 'held' && held > 0) && Date.now() - (last.ts || 0) > 600000) {
+      el.style.display = 'none'; return;
+    }
     let msg;
     if (last.kind === 'held' && last.reason === 'not-linked') {
       msg = '<b>Votes are being seen but not logged.</b><span class="why">Open the extension and tap “Link my account” — ' + fmt(held) + (held === 1 ? ' vote is' : ' votes are') + ' being held until you do.</span>';
@@ -451,12 +457,17 @@
     const el = $('btdiag');
     if (!el) return;
     const last = (Array.isArray(list) && list[0] && list[0].kind && list[0].kind !== 'counted') ? list[0] : null;
-    if (!last || Date.now() - (last.ts || 0) > 600000) { el.style.display = 'none'; return; }
-    // See renderBtDiag: the band reports the backlog. It matters more here —
-    // KCA submits a round in several flushes, so our three categories reach the
-    // counter as three separate holds rather than one.
+    if (!last) { el.style.display = 'none'; return; }
+    // See renderBtDiag for both rules: the band reports the backlog, and a
+    // backlog does not time out. Both matter more here — KCA submits a round in
+    // several flushes, so our three categories reach the counter as three
+    // separate holds rather than one, and a round takes long enough that the
+    // ten-minute cutoff could hide the queue before the round even ended.
     const held = heldCount(last, pending);
-    if (held === 0 && last.kind === 'held') { el.style.display = 'none'; return; }
+    if (last.kind === 'held' && held === 0) { el.style.display = 'none'; return; }
+    if (!(last.kind === 'held' && held > 0) && Date.now() - (last.ts || 0) > 600000) {
+      el.style.display = 'none'; return;
+    }
     let msg;
     if (last.kind === 'held' && last.reason === 'not-linked') {
       msg = '<b>Votes are being seen but not logged.</b><span class="why">Open the extension and tap “Link my account” — ' + fmt(held) + (held === 1 ? ' vote is' : ' votes are') + ' being held until you do.</span>';
