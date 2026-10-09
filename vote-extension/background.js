@@ -84,13 +84,19 @@ async function postVotes(n, extra) {
   }
 }
 
+// The award dimension as /api/vma-votes names it. The VMAs are the default, so
+// only the others say so — and spelling it once here means a new award is one
+// line in AWARD (panel.js) rather than a ternary in every fetch.
+function awardQ(award) { return (award && award !== 'vma') ? '&award=' + award : ''; }
+
 // Pull this account's cross-device merged view (opt-in sync). Returns
-// { bp, lisa, total, accounts } (VMA) or { total, accounts } (BreakTudo) or null.
+// { bp, lisa, total, accounts } (VMA), { total, accounts } (BreakTudo) or
+// { total, cats, accounts } (KCA) — or null.
 async function fetchSync(award) {
   const { buToken } = await getLocal('buToken');
   if (!buToken) return null;
   try {
-    const q = award === 'breaktudo' ? '?sync=1&award=breaktudo' : '?sync=1';
+    const q = '?sync=1' + awardQ(award);
     const r = await fetch(BU_ENDPOINT + q, { headers: { 'X-Ext-Token': buToken }, cache: 'no-store' });
     if (!r.ok) return null;
     return await r.json();
@@ -100,7 +106,7 @@ async function fetchSync(award) {
 // Fetch the community "voting now" pulse for the panel.
 async function fetchLive(award) {
   try {
-    const q = award === 'breaktudo' ? '?live=1&award=breaktudo' : '?live=1';
+    const q = '?live=1' + awardQ(award);
     const r = await fetch(BU_ENDPOINT + q, { cache: 'no-store' });
     if (!r.ok) return null;
     const j = await r.json();
@@ -126,6 +132,33 @@ chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
   // Panel asks for the cross-device merged view (opt-in sync).
   if (msg && msg.type === 'bu-sync-pull') {
     fetchSync(msg.award).then((data) => sendResponse({ data }));
+    return true; // async response
+  }
+
+  // The KCA panel has read the ballot off the page and is handing over the
+  // option_id → nominee map. It arrives from the content script because only
+  // the page knows where the ballot file is; see the KCA section below for why
+  // this map is the whole basis of counting there.
+  if (msg && msg.type === 'bu-kca-ballot' && msg.byOption && typeof msg.byOption === 'object') {
+    const n = Object.keys(msg.byOption).length;
+    // A map that came back nearly empty is a parse that half-worked; keeping it
+    // would mean "fresh" for six hours while decoding almost nothing. A real
+    // ballot is 36 questions and a few hundred options.
+    if (n < 20) {
+      console.log('[BU KCA] ignoring a ballot map with only ' + n + ' options');
+      sendResponse({ ok: false, options: n });
+      return; // nothing async
+    }
+    chrome.storage.local.set({ [KCA_BALLOT_KEY]: { ts: Date.now(), byOption: msg.byOption } }, () => {
+      sendResponse({ ok: true, options: n });
+    });
+    return true; // async response
+  }
+
+  // The panel asks whether it still needs to fetch the ballot (325KB), so a
+  // fresh map is read once every few hours rather than on every category page.
+  if (msg && msg.type === 'bu-kca-ballot-stale') {
+    getLocal(KCA_BALLOT_KEY).then((cfg) => sendResponse({ stale: !kcaBallotFresh(cfg && cfg[KCA_BALLOT_KEY]) }));
     return true; // async response
   }
 });
@@ -714,6 +747,325 @@ async function processBtVote(e) {
         // Held, not lost — and now visible. "not-linked" is the common one: the
         // votes are detected fine, there is just no account to log them to.
         btDiag({ kind: 'held', reason: res.reason || 'error', n, slug: e.slug || null });
+      }
+      chrome.storage.local.set(upd);
+    });
+  });
+}
+
+// ── Kids' Choice Awards 2026 (kca.nick.tv) ───────────────────────────────────
+// The third award, and the first whose payload names nobody at all. One vote
+// request looks like:
+//
+//   POST https://kca.nick.tv/api/vote
+//   {"user_id":"<uuid>","region":"us","environment":"production",
+//    "votes":[{"question_id":"<uuid>","option_id":"<uuid>"}, …]}
+//
+// Three things about that shape decide this whole module:
+//
+//   1. ONE ENTRY IS EXACTLY ONE VOTE. There is no count, weight or position
+//      field anywhere in the body, so the BreakTudo `pos` ambiguity — which has
+//      meant both "a count" and "an index", and reading it wrong is 15 votes
+//      instead of 5 — does not exist here. We count entries.
+//   2. A ROUND IS SUBMITTED IN BATCHES. Nickelodeon's ballot does not submit per
+//      category: picks accumulate and flush in groups (5–7 observed) around the
+//      interstitial ads. So one POST legitimately carries several categories,
+//      and the request's own `referer` is NOT the category being voted — in the
+//      captured session a flush refered from /vote/favorite-female-animated-
+//      voice-from-a-movie carried six earlier categories. Attribution comes from
+//      the ids, never from the referer.
+//   3. BOTH IDS ARE OPAQUE. Nothing in the payload says "BLACKPINK".
+//
+// So the counter needs a map from option_id to the nominee's name, and it gets
+// one from the ballot itself: every /vote/ page carries all 36 questions, each
+// with {id, slug, title} and options with {id, title}. panel.js reads that and
+// sends it here (see kcaBallotFrom / the bu-kca-ballot message), and the pair it
+// reports for BLACKPINK — question 1ae0e782…, option aa2a878e… — is the exact
+// pair the captured vote request sent, so this is a decode and not a guess.
+//
+// Two mechanisms were considered and rejected, both for the same reason:
+//   * Adobe click telemetry (edge.adobedc.net) carries the nominee's name per
+//     click. Any ad blocker removes it, and it races the SPA router — in the
+//     capture one BLACKPINK click was reported under the NEXT category's URL.
+//   * Inferring the ids by matching click order against the flush. It works
+//     until the orders differ once, and then it credits the wrong nominee
+//     silently. The ballot makes inference unnecessary.
+//
+// PRIVACY. The body's `user_id` is the voter's own KCA identity. It is never
+// read, stored or sent anywhere — we take the votes array and nothing else.
+const KCA_HOST_RE = /(^|\.)kca\.nick\.tv$/i;
+
+// Our nominees, keyed by the ballot's own category slug → the option title the
+// ballot gives them, verbatim (probe-kca.yml). A vote counts only when BOTH the
+// category and the nominee match: another artist in one of our three categories
+// is not ours, and that is most of what these three lines are for.
+//
+// Must stay in step with KCA_CATEGORIES in index.html and KCA_CATS in
+// api/vma-votes.js.
+const KCA_NOMINEES = {
+  'favorite-music-group-or-duo':  { nominee: 'BLACKPINK',             who: 'BLACKPINK', label: 'Music Group or Duo' },
+  'favorite-female-artist':       { nominee: 'ROSÉ',                  who: 'ROSÉ',      label: 'Female Artist' },
+  'favorite-music-collaboration': { nominee: 'Dracula (with JENNIE)', who: 'JENNIE',    label: 'Music Collaboration' },
+};
+
+// Compare names the way a human would: case, accents and punctuation all differ
+// between how the ballot writes a name and how we do. "ROSÉ" vs "ROSE" is the
+// one that matters today — without the accent fold, ROSÉ's votes never count.
+function kcaNorm(s) {
+  return String(s == null ? '' : s)
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')   // drop accents
+    .toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+// ── the ballot map ──────────────────────────────────────────────────────────
+// { ts, byOption: { <option_id>: { t: title, q: question_id, s: slug } } }
+// Refreshed by panel.js on page load when stale. Sticky in storage so a vote
+// that flushes on a page whose ballot fetch failed still decodes.
+const KCA_BALLOT_KEY = 'kcaBallot';
+const KCA_BALLOT_TTL = 6 * 60 * 60 * 1000;   // the ballot changes rarely; 6h is plenty
+
+function kcaBallotFresh(b) {
+  return !!(b && b.byOption && Object.keys(b.byOption).length && (Date.now() - (b.ts || 0)) < KCA_BALLOT_TTL);
+}
+
+// ── dedupe retried submissions ──────────────────────────────────────────────
+// Keyed on the exact set of (question, option) pairs in the POST — but ONLY
+// within a short window, which is the opposite of the BreakTudo rule and
+// deliberately so. KCA allows repeat voting, and a second round casts the very
+// same pairs again (same categories, same nominees), so keying on the pairs
+// alone would silently swallow every round after the first. A network retry
+// arrives seconds later; a fresh round takes minutes, because it walks all 36
+// categories. There is no token or nonce in the payload to key on instead —
+// the capture shows no captcha, no CSRF header and no nonce anywhere.
+const KCA_SEEN_KEY = 'kcaSeenVotes';
+const KCA_SEEN_WINDOW = 90000;
+let kcaSeen = null, kcaSeenLoading = null;
+function loadKcaSeen() {
+  if (kcaSeen) return Promise.resolve(kcaSeen);
+  if (!kcaSeenLoading) {
+    kcaSeenLoading = getLocal(KCA_SEEN_KEY).then((cfg) => {
+      if (!kcaSeen) {
+        const s = cfg && cfg[KCA_SEEN_KEY];
+        kcaSeen = Array.isArray(s) ? s.slice(-SEEN_MAX) : [];
+      }
+      return kcaSeen;
+    });
+  }
+  return kcaSeenLoading;
+}
+
+// ── what the counter last SAW ───────────────────────────────────────────────
+// Same idea as btDiag: a vote that is not counted must not be silent.
+const KCA_DIAG_KEY = 'kcaDiag';
+const KCA_DIAG_MAX = 12;
+function kcaDiag(entry) {
+  chrome.storage.local.get([KCA_DIAG_KEY], (raw) => {
+    const list = Array.isArray(raw && raw[KCA_DIAG_KEY]) ? raw[KCA_DIAG_KEY] : [];
+    list.unshift(Object.assign({ ts: Date.now() }, entry));
+    chrome.storage.local.set({ [KCA_DIAG_KEY]: list.slice(0, KCA_DIAG_MAX) });
+  });
+}
+
+// `cats` is a MAP here, not a single slug: one submitted round carries up to one
+// pick per category, so a single POST can be a BLACKPINK vote and a ROSÉ vote at
+// once. /api/vma-votes takes {cats} for exactly this case.
+async function postKcaVotes(n, cats) {
+  const { buToken } = await getLocal('buToken');
+  if (!buToken || n <= 0) return { ok: false, reason: 'not-linked' };
+  try {
+    const body = { award: 'kca', extToken: buToken, votes: n };
+    if (cats && Object.keys(cats).length) body.cats = cats;
+    const r = await fetch(BU_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return { ok: r.ok };
+  } catch (_) { return { ok: false, reason: 'network' }; }
+}
+
+// requestId → { votes, ts }. Same storage-backed inflight map as the BreakTudo
+// path, and for the same reason: under MV3 Chrome tears the service worker down
+// between onBeforeRequest and onCompleted, so an in-memory Map is empty by the
+// time the status arrives and every vote is dropped with no log at all.
+const KCA_INFLIGHT_KEY = 'kcaInflight';
+const KCA_INFLIGHT_TTL = 120000;
+let kcaInflight = null;
+let kcaChain = Promise.resolve();
+
+async function kcaLoadInflight() {
+  if (kcaInflight) return btPruneMap(kcaInflight);
+  const cfg = await getLocal(KCA_INFLIGHT_KEY);
+  const saved = cfg && cfg[KCA_INFLIGHT_KEY];
+  kcaInflight = btPruneMap(saved && typeof saved === 'object' ? saved : {});
+  return kcaInflight;
+}
+function kcaSaveInflight() {
+  return new Promise((resolve) => chrome.storage.local.set({ [KCA_INFLIGHT_KEY]: kcaInflight }, resolve));
+}
+function kcaQueue(fn) {
+  kcaChain = kcaChain
+    .then(async () => { const m = await kcaLoadInflight(); const r = await fn(m); await kcaSaveInflight(); return r; })
+    .catch((err) => { console.log('[BU KCA] inflight step failed:', err); });
+  return kcaChain;
+}
+
+// What makes a request a vote is a readable votes array of {question_id,
+// option_id} — not the path. The path is checked only to keep this out of the
+// page's other POSTs; if Nickelodeon moves the endpoint, the body still matches.
+// (BreakTudo moved its endpoint once and the counter silently went to zero.)
+function parseKcaBody(requestBody) {
+  if (!requestBody) return null;
+  let text = null;
+  if (requestBody.raw && requestBody.raw[0] && requestBody.raw[0].bytes) {
+    try { text = new TextDecoder('utf-8').decode(requestBody.raw[0].bytes); } catch (_) {}
+  }
+  if (text == null && requestBody.formData && requestBody.formData.votes) {
+    text = '{"votes":' + requestBody.formData.votes[0] + '}';
+  }
+  if (!text) return null;
+  let j = null;
+  try { j = JSON.parse(text); } catch (_) { return null; }
+  if (!j || typeof j !== 'object' || !Array.isArray(j.votes) || !j.votes.length) return null;
+  const votes = j.votes
+    .filter(v => v && typeof v.option_id === 'string')
+    .map(v => ({ q: String(v.question_id || ''), o: String(v.option_id) }));
+  // `user_id` is deliberately NOT carried over — see the PRIVACY note above.
+  return votes.length ? { votes } : null;
+}
+
+chrome.webRequest.onBeforeRequest.addListener(
+  function (details) {
+    if (details.method !== 'POST') return;
+    const parsed = parseKcaBody(details.requestBody);
+    if (parsed) {
+      kcaQueue((m) => { m[details.requestId] = { votes: parsed.votes, ts: Date.now() }; });
+      return;
+    }
+    // A vote POST we could not read is a vote we will not count, and it would
+    // otherwise be invisible. Only report requests that plausibly ARE votes, so
+    // this isn't drowned in the page's ad and telemetry beacons.
+    if (!/\/api\/vote\b/.test(details.url)) return;
+    const ex = btBodyText(details.requestBody).slice(0, 300);
+    console.log('[BU KCA] vote POST NOT MATCHED: ' + details.url + ' body="' + ex + '"');
+    kcaDiag({ kind: 'unreadable', path: btUrlPath(details.url), body: ex.slice(0, 160) });
+  },
+  { urls: ['https://kca.nick.tv/*'] },
+  ['requestBody']
+);
+
+chrome.webRequest.onCompleted.addListener(
+  function (details) {
+    kcaQueue((m) => {
+      const e = m[details.requestId];
+      if (!e) return;
+      delete m[details.requestId];
+      if (details.statusCode < 200 || details.statusCode >= 300) {
+        kcaDiag({ kind: 'rejected', status: details.statusCode, marks: e.votes.length });
+        return;
+      }
+      return processKcaVote(e).catch((err) => console.log('[BU KCA] processKcaVote failed:', err));
+    });
+  },
+  { urls: ['https://kca.nick.tv/*'] }
+);
+
+chrome.webRequest.onErrorOccurred.addListener(
+  function (details) { kcaQueue((m) => { delete m[details.requestId]; }); },
+  { urls: ['https://kca.nick.tv/*'] }
+);
+
+async function processKcaVote(e) {
+  const votes = Array.isArray(e.votes) ? e.votes : [];
+  if (!votes.length) return;
+
+  const seen = await loadKcaSeen();
+  const sig = votes.map(v => v.q + ':' + v.o).sort().join(',');
+  const now = Date.now();
+  // Prune first, so an old round's signature cannot block today's.
+  for (let i = seen.length - 1; i >= 0; i--) {
+    if (!Array.isArray(seen[i]) || now - seen[i][1] > KCA_SEEN_WINDOW) seen.splice(i, 1);
+  }
+  if (seen.some(x => x[0] === sig)) return;
+  seen.push([sig, now]);
+  if (seen.length > SEEN_MAX) seen.splice(0, seen.length - SEEN_MAX);
+  chrome.storage.local.set({ [KCA_SEEN_KEY]: seen });
+
+  const cfg = await getLocal(KCA_BALLOT_KEY);
+  const ballot = cfg && cfg[KCA_BALLOT_KEY];
+  if (!kcaBallotFresh(ballot)) {
+    // Without the ballot an option_id means nothing, and the honest count is
+    // zero: guessing which of 6 entries was BLACKPINK would invent votes.
+    // Visible in the panel so it reads as "we can't tell", not "you cast none".
+    console.log('[BU KCA] a round was submitted but the ballot map is missing/stale — nothing counted');
+    kcaDiag({ kind: 'no-ballot', marks: votes.length });
+    return;
+  }
+
+  let n = 0, unknown = 0, notOurs = 0;
+  const cats = {}, perMember = {};
+  for (const v of votes) {
+    const opt = ballot.byOption[v.o];
+    if (!opt) { unknown += 1; continue; }
+    const mine = KCA_NOMINEES[opt.s];
+    if (!mine || kcaNorm(mine.nominee) !== kcaNorm(opt.t)) {
+      notOurs += 1;
+      continue;
+    }
+    n += 1;
+    cats[opt.s] = (cats[opt.s] || 0) + 1;
+    perMember[mine.who] = (perMember[mine.who] || 0) + 1;
+  }
+
+  if (n <= 0) {
+    // A finished round with none of ours in it is normal — a blink can vote the
+    // other 33 categories and skip ours — so it is only worth reporting when
+    // something could not be read at all.
+    if (unknown) kcaDiag({ kind: 'unidentified', marks: unknown });
+    return;
+  }
+
+  postKcaVotes(n, cats).then((res) => {
+    const today = kstDay();
+    chrome.storage.local.get(['kcaCount', 'kcaLog', 'kcaPendingN', 'kcaDay', 'kcaCats'], (raw) => {
+      const r = (raw.kcaDay === today)
+        ? raw
+        : { kcaDay: today, kcaCount: 0, kcaLog: [], kcaCats: {}, kcaPendingN: raw.kcaPendingN || 0 };
+      const upd = { kcaDay: today };
+      if (res.ok) {
+        upd.kcaCount = (r.kcaCount || 0) + n;
+        const c = Object.assign({}, r.kcaCats || {});
+        for (const k in cats) c[k] = (Number(c[k]) || 0) + cats[k];
+        upd.kcaCats = c;
+        const log = Array.isArray(r.kcaLog) ? r.kcaLog.slice() : [];
+        const ts = Date.now();
+        // One row per nominee in this round, so a round that voted all three of
+        // ours shows as three rows with the right names on them.
+        Object.keys(cats).reverse().forEach((slug) => {
+          const mine = KCA_NOMINEES[slug];
+          log.unshift({ n: cats[slug], cat: (mine && mine.label) || slug, who: (mine && mine.who) || '', ts });
+        });
+        upd.kcaLog = log.slice(0, 500);
+        // Flush a backlog only once the server has actually taken it — zeroing
+        // it on a fire-and-forget post threw the backlog away whenever that post
+        // failed. It carries no cats: it was accumulated across whatever rounds
+        // were submitted while offline and that detail was not kept.
+        if (r.kcaPendingN) {
+          const pending = r.kcaPendingN;
+          postKcaVotes(pending, null).then((f) => {
+            if (!f.ok) return;
+            chrome.storage.local.get(['kcaCount', 'kcaPendingN'], (r2) => {
+              chrome.storage.local.set({
+                kcaCount: (r2.kcaCount || 0) + pending,
+                kcaPendingN: Math.max(0, (r2.kcaPendingN || 0) - pending),
+              });
+            });
+          });
+        }
+        kcaDiag({ kind: 'counted', n, notOurs, unknown });
+      } else {
+        upd.kcaPendingN = (r.kcaPendingN || 0) + n;
+        kcaDiag({ kind: 'held', reason: res.reason || 'error', n });
       }
       chrome.storage.local.set(upd);
     });

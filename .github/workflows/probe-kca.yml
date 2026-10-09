@@ -260,12 +260,15 @@ jobs:
           // is what the counter has to fetch, since a content script in an
           // isolated world cannot read the global. So: which same-origin file is
           // it, and what does it look like at the top?
-          console.log('\n--- same-origin script/link URLs, and which one carries the ballot');
+          // Only <script src>, and only same-origin: the ballot is a script the
+          // page loads, and the <link> list is a few dozen nominee thumbnails
+          // that would bury the one line that matters. This mirrors what
+          // panel.js does, so a change here is a change there.
+          console.log('\n--- same-origin script URLs, and which one carries the ballot');
           const ballotSrc = await p.evaluate(async () => {
-            const urls = [...new Set([
-              ...[...document.querySelectorAll('script[src]')].map(s => s.src),
-              ...[...document.querySelectorAll('link[href]')].map(l => l.href),
-            ])].filter(u => u.startsWith(location.origin));
+            const urls = [...new Set(
+              [...document.querySelectorAll('script[src]')].map(s => s.src),
+            )].filter(u => u.startsWith(location.origin));
             const out = [];
             for (const u of urls) {
               // The Vue bundle is big and is not the ballot; skip it by path, but

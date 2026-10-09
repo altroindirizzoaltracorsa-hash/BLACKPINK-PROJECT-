@@ -1,11 +1,17 @@
 # Blinks United — Vote Counter (Chrome extension)
 
-Counts the votes you cast on **vote.mtv.com** (MTV VMAs) and
-**vote.breaktudoawards.com** (BreakTudo Awards) for **BLACKPINK & members** and logs
-them to your **blinksunited.com `/voting`** board automatically — no more typing
-numbers into "Add votes". It only *observes* the votes you cast yourself; it never
-votes for you. The two awards are tracked **separately** (own counts, own board
+Counts the votes you cast on **vote.mtv.com** (MTV VMAs),
+**vote.breaktudoawards.com** (BreakTudo Awards) and **kca.nick.tv** (Nickelodeon
+Kids' Choice Awards) for **BLACKPINK & members** and logs them to your
+**blinksunited.com `/voting`** board automatically — no more typing numbers into
+"Add votes". It only *observes* the votes you cast yourself; it never votes for
+you. The three awards are tracked **separately** (own counts, own board
 dimension) but through **one** linked account.
+
+Each site hides what a vote *is* somewhere different, which is why there are
+three detection sections below rather than one: the VMAs put everything in the
+request URL, BreakTudo in a form body keyed by an opaque base64 id, and Kids'
+Choice in a JSON body that names nobody at all.
 
 ## BreakTudo detection (differs from VMA)
 BreakTudo's vote request is a **POST** whose candidate ids live in the **body**, not
@@ -71,6 +77,81 @@ after a network failure, category not recognised (**with the slug**, so a missin
 `BT_CATS` entry can be reported), BreakTudo rejected it, or a body we couldn't read
 (with the endpoint). It used to be completely silent — the counter just sat at zero.
 POSTs carry `{award:'breaktudo'}`; the VMA path is untouched.
+
+
+## Kids' Choice detection (names nobody — the ballot does)
+The KCA vote is a **POST with a JSON body** and batched:
+
+```
+POST https://kca.nick.tv/api/vote
+{"user_id":"<uuid>","region":"us","environment":"production",
+ "votes":[{"question_id":"<uuid>","option_id":"<uuid>"}, …]}
+```
+
+Three facts about that shape decide the whole module.
+
+**One entry is exactly one vote.** There is no count, weight or position field
+anywhere in the body, so the BreakTudo `pos` ambiguity simply does not exist
+here — entries are counted. (Confirmed across a captured 36-category session:
+six flushes of 5–7 entries, 36 distinct `question_id`s, 36 distinct
+`option_id`s, no repeats.)
+
+**A round is submitted in batches, so the referer is useless.** The ballot does
+not submit per category: picks accumulate and flush in groups around the
+interstitial ads. In the captured session a flush refered from
+`/vote/favorite-female-animated-voice-from-a-movie` carried six *earlier*
+categories. Attribution therefore comes from the ids, never from the referer —
+and `cats` on the POST to `/api/vma-votes` is a **map**, because one submitted
+round legitimately carries BLACKPINK *and* ROSÉ *and* Dracula at once.
+
+**Both ids are opaque.** Nothing in the payload says "BLACKPINK". So the counter
+needs a map from `option_id` to the nominee's name, and it takes one from the
+ballot itself: every `/vote/` page carries all 36 questions, each with
+`{id, slug, title}` and options with `{id, title}`. `panel.js` reads it and hands
+it to `background.js` (`bu-kca-ballot`), which caches it in `kcaBallot` for six
+hours. The pair this yields for BLACKPINK — question `1ae0e782…`, option
+`aa2a878e…` — is the exact pair the captured vote request sent, so this is a
+decode and not a guess.
+
+**Finding the ballot is the fiddly part.** It is *not* inline — no inline
+`<script>` assigns `window.jsonData` itself — and a content script runs in an
+isolated world, so the global is out of reach (`world:"MAIN"` is not an option
+here: the Kiwi-family Android browsers don't inject it reliably). What *is* in
+reach is a same-origin `fetch` and the page's own `script[src]` list. So the
+ballot file is identified **by what it contains**, not by its URL, which carries
+a UUID that will change; the object is then brace-matched out and `JSON.parse`d,
+with string state tracked so a `{` inside a nominee title cannot end it early.
+
+**Two mechanisms were rejected, both for the same reason.** Adobe click
+telemetry (`edge.adobedc.net`) carries the nominee's name per click, but any ad
+blocker removes it *and* it races the SPA router — in the capture one BLACKPINK
+click was reported under the **next** category's URL. And inferring the ids by
+matching click order against the flush works right up until the two orders
+differ once, after which it credits the wrong nominee silently. The ballot makes
+inference unnecessary.
+
+**A rival in our category is not ours.** A vote counts only when the category
+*and* the nominee match, which is what stops a BTS vote in Favorite Music Group
+or Duo being counted. Names are compared with accents, case and punctuation
+folded — without the accent fold, ROSÉ's votes never count at all.
+
+**Dedupe is the opposite of BreakTudo's, deliberately.** KCA allows repeat
+voting and a second round casts the very same `(question, option)` pairs again,
+so keying on the pairs alone would silently cap every blink at one round. There
+is no token, nonce or captcha in the payload to key on instead. So the pairs are
+keyed **within a 90-second window**: a network retry arrives seconds later, while
+a fresh round takes minutes because it walks all 36 categories.
+
+**Without the ballot, nothing is counted — and the panel says why.** Guessing
+which of six entries was BLACKPINK would invent votes, so `kcaDiag` carries a
+`no-ballot` reason and the panel shows it. The same goes for an `option_id` the
+map doesn't know (`unidentified`). Silence would read as "you cast none".
+
+**`user_id` is never read, stored or sent.** It is the voter's own KCA identity;
+`parseKcaBody` takes the votes array and nothing else.
+
+Both halves are covered by `.github/scripts/test_vote_kca_counter.mjs`, which
+decodes the real captured flush (de-identified) against the real ballot ids.
 
 ## How it works
 1. `background.js` watches the site's own vote request with **`chrome.webRequest`**:

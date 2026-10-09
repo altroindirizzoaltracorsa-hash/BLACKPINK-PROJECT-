@@ -2419,6 +2419,7 @@
      split already uses. */
   .vv-who-bp     { color: #ff4fc3; }
   .vv-who-jennie { color: #FF0066; }
+  .vv-who-rose   { color: #ff9eb5; }
   .vv-who-lisa   { color: #ffce6e; }
   .vv-who-jisoo  { color: #7eb8f7; }
   .vv-who-blinks { color: #8be0b0; }
@@ -3156,16 +3157,16 @@
   <button type="button" class="modal-x" aria-label="Close" onclick="closeExtUpdate(false)">×</button>
   <div class="ltal-reminder-box">
     <div class="ltal-reminder-badge">Update</div>
-    <h2 class="ltal-reminder-title" id="ext-update-title">Vote Counter — v1.7.8</h2>
-    <p class="ltal-reminder-body">A small alignment fix for the <strong>Vote Counter</strong> browser extension. The BreakTudo total it shows you now rolls over at the <strong>same moment the board does</strong> — <strong>midnight KST</strong>. Before this, the extension counted its day on Brazil time while the board counted on Korea time, so for about twelve hours a day the number in the extension could sit <strong>higher than your Today column</strong> on the board and look like votes had gone missing. They never had — the board was always right, and nothing you have already logged is affected. Nothing else changed, so there is <strong>no rush</strong>: grab <strong>v1.7.8</strong> whenever it suits you.</p>
+    <h2 class="ltal-reminder-title" id="ext-update-title">Vote Counter — v1.8.0</h2>
+    <p class="ltal-reminder-body">The <strong>Vote Counter</strong> now counts the <strong>Nickelodeon Kids&rsquo; Choice Awards</strong> as well — BLACKPINK, ROS&Eacute; and &ldquo;Dracula&rdquo; on <strong>kca.nick.tv</strong>, straight onto the new Kids&rsquo; Choice tab on your board. This one <strong>does</strong> need updating: v1.7.8 only listens on the MTV and BreakTudo sites, so on the Kids&rsquo; Choice site it sees nothing at all. The VMA and BreakTudo counting is unchanged, and everything you have already logged is untouched.</p>
     <ol class="ltal-reminder-steps">
-      <li>On the <strong>voting page</strong>, download <strong>v1.7.8</strong> (Desktop or Android).</li>
+      <li>On the <strong>voting page</strong>, download <strong>v1.8.0</strong> (Desktop or Android).</li>
       <li>In your browser&rsquo;s <strong>Extensions</strong>, remove the old Vote Counter, then <strong>Load unpacked</strong> the newly unzipped folder.</li>
       <li>Open the extension &rarr; <strong>Link my account</strong> if it isn&rsquo;t already showing &ldquo;&#9679; Linked&rdquo;.</li>
     </ol>
-    <p class="ext-update-foot">Already on v1.7.8? You&rsquo;re all set — just close this.</p>
+    <p class="ext-update-foot">Already on v1.8.0? You&rsquo;re all set — just close this.</p>
     <div class="ltal-reminder-actions">
-      <button class="btn-primary" onclick="closeExtUpdate(true)">Get v1.7.8</button>
+      <button class="btn-primary" onclick="closeExtUpdate(true)">Get v1.8.0</button>
       <button class="ltal-reminder-dismiss" onclick="closeExtUpdate(false)">Not now</button>
     </div>
   </div>
@@ -7657,7 +7658,7 @@ window.addEventListener('DOMContentLoaded', maybeShowLtalReminder);
 // key is versioned (EXT_LATEST_VERSION), so the next time we bump the extension
 // and update this constant, the popup automatically re-appears once per user —
 // no need to reset anyone's storage.
-const EXT_LATEST_VERSION = '1.7.8';
+const EXT_LATEST_VERSION = '1.8.0';
 function closeExtUpdate(goVoting) {
   const ov = document.getElementById('ext-update-overlay');
   if (ov) ov.classList.remove('active');
@@ -8793,14 +8794,40 @@ function vvCommunityHtml(opts = {}) {
 // Set by the embed bootstrap. The board is the same board either way; this
 // only changes copy that assumes you are on /voting with somewhere to go next.
 let _vvArchive = false;
-let _vvAward = vmaClosed() ? 'breaktudo' : 'vma';
 const _vvAwardMeta = {
   vma:       { title: '🗳️ VMA Voting Leaderboard', label: 'MTV VMAs' },
   breaktudo: { title: '🏆 BreakTudo Voting Leaderboard', label: 'BreakTudo' },
+  kca:       { title: '🧒 Kids’ Choice Voting Leaderboard', label: 'Kids’ Choice' },
 };
-// A live ballot leads. Once the VMAs close, BreakTudo is the one still running,
-// so it takes first position and the VMAs become the archive tab.
-function vmaAwardOrder() { return vmaClosed() ? ['breaktudo', 'vma'] : ['vma', 'breaktudo']; }
+// When each ballot shuts, for TAB ORDER ONLY. Nothing is counted or refused off
+// these: the VMA close is enforced server-side from its own constant, and the
+// other two have no server gate (see the KCA note in api/vma-votes.js). So an
+// hour out here moves a tab, it never costs a vote.
+//   • VMA — MTV's published 6PM ET, Sep 25. Shares VMA_CLOSES_AT so the switch
+//     and the ballot can never disagree about whether it is over.
+//   • BreakTudo — "closes Oct 17" with no published clock time; end of Oct 17 in
+//     Brasília, the award's own country.
+//   • KCA — the card's own deadline (end of Nov 13 in the latest US zone). Kept
+//     equal to the kca-2026 campaign's `deadline` above.
+const VV_AWARD_CLOSES = {
+  vma:       VMA_CLOSES_AT,
+  breaktudo: Date.parse('2026-10-18T02:59:00Z'),
+  kca:       Date.parse('2026-11-14T07:59:00Z'),
+};
+// A live ballot leads, and among the live ones the one closing soonest leads —
+// that is the one where a vote not cast today is a vote lost. Closed ballots
+// fall to the end, most recently closed first, as archive tabs.
+function vmaAwardOrder() {
+  const now = Date.now();
+  return Object.keys(_vvAwardMeta).sort((a, b) => {
+    const ca = VV_AWARD_CLOSES[a] || 0, cb = VV_AWARD_CLOSES[b] || 0;
+    const oa = now < ca, ob = now < cb;
+    if (oa !== ob) return oa ? -1 : 1;      // open before closed
+    return oa ? ca - cb : cb - ca;          // soonest to close / latest closed
+  });
+}
+function vmaAwardClosed(a) { const c = VV_AWARD_CLOSES[a]; return !!c && Date.now() >= c; }
+let _vvAward = vmaAwardOrder()[0];
 
 // Personal vote-badge tiers (by all-time votes logged).
 const VMA_VOTE_TIERS = [
@@ -8838,10 +8865,11 @@ async function renderVmaVoting() {
   if (!panel) return;
   try { _vvSession = (await sb?.auth.getSession())?.data?.session || null; } catch { _vvSession = null; }
   _vvToken = _vvSession?.access_token || null;
-  const aw = _vvAward === 'breaktudo' ? '&award=breaktudo' : '';
+  // The VMAs are the default dimension, so only the others name themselves.
+  const aw = _vvAward === 'vma' ? '' : '&award=' + _vvAward;
   // The bare endpoint is the community tally for whichever award is selected.
   // '?' not '&' here — it carries no other parameter.
-  const totalsUrl = '/api/vma-votes' + (_vvAward === 'breaktudo' ? '?award=breaktudo' : '');
+  const totalsUrl = '/api/vma-votes' + (_vvAward === 'vma' ? '' : '?award=' + _vvAward);
   const [board, me, totals] = await Promise.all([
     fetch('/api/vma-votes?board=1' + aw, { cache: 'no-store' }).then(r => r.ok ? r.json() : { board: [] }).catch(() => ({ board: [] })),
     _vvToken
@@ -8856,8 +8884,16 @@ async function renderVmaVoting() {
   _vvTotals = totals;
   // The VMA board reports whether the ballot has closed; believe it over this
   // device's clock. Only that award's response carries it.
-  if (_vvAward !== 'breaktudo' && typeof board.closed === 'boolean') _vvClosedFromServer = board.closed;
-  if (_vvAward === 'breaktudo') drawBtVoting(); else drawVmaVoting();
+  if (_vvAward === 'vma' && typeof board.closed === 'boolean') _vvClosedFromServer = board.closed;
+  drawVoteAward();
+}
+
+// One place that decides which award's panel is drawn, so a new dimension is a
+// line here rather than a ternary in five call sites.
+function drawVoteAward() {
+  if (_vvAward === 'breaktudo') return drawBtVoting();
+  if (_vvAward === 'kca') return drawKcaVoting();
+  return drawVmaVoting();
 }
 
 // The VMA ⇄ BreakTudo switch shown at the top of the panel. Same linked account,
@@ -8865,13 +8901,15 @@ async function renderVmaVoting() {
 function vmaAwardSwitchHtml() {
   return `<div class="vv-awardsw" role="tablist" aria-label="Award">`
     + vmaAwardOrder().map(a => {
-        const done = a === 'vma' && vmaClosed();
+        // The VMA tab believes the server over this device's clock (that is what
+        // vmaClosed() adds); the others have only their own date.
+        const done = a === 'vma' ? vmaClosed() : vmaAwardClosed(a);
         return `<button class="vv-awardsw-btn ${a === _vvAward ? 'active' : ''}${done ? ' done' : ''}" role="tab" aria-selected="${a === _vvAward}" onclick="vmaSetAward('${a}')">${_vvAwardMeta[a].label}${done ? ' <i>final</i>' : ''}</button>`;
       }).join('')
     + `</div>`;
 }
 function vmaSetAward(a) {
-  if (a !== 'vma' && a !== 'breaktudo') return;
+  if (!_vvAwardMeta[a]) return;
   if (a === _vvAward) return;
   _vvAward = a;
   _vvBoard = []; _vvUnranked = []; _vvMe = null;   // clear so we don't flash the other award's data
@@ -9255,7 +9293,7 @@ function vmaVideoGuidesHtml() {
   </details>`;
 }
 
-// The VMA Vote Counter browser extension (v1.7.8) download + setup block, shown on
+// The Vote Counter browser extension (v1.8.0) download + setup block, shown on
 // the /voting panel to signed-in blinks with a scrobbler linked. The extension
 // auto-counts the votes a fan casts on vote.mtv.com and logs the BLACKPINK/LISA
 // ones to their board — it never votes for them.
@@ -9263,12 +9301,12 @@ function vmaExtensionHtml(archive) {
   return `<div class="vv-ext" id="vv-ext">
     <div class="vv-ext-head">
       <span class="vv-ext-title">🧩 Vote Counter — browser extension</span>
-      <span class="vv-ext-ver">v1.7.8</span>
+      <span class="vv-ext-ver">v1.8.0</span>
     </div>
-    <div class="vv-ext-sub">Auto-counts the <b>BLACKPINK &amp; members</b> votes you cast on <b>vote.mtv.com</b> (VMAs) <b>and vote.breaktudoawards.com</b> (BreakTudo) and logs them straight to this board — the two awards are tracked separately with one account. It only reads your own votes; it <b>never votes for you</b>.</div>
+    <div class="vv-ext-sub">Auto-counts the <b>BLACKPINK &amp; members</b> votes you cast on <b>vote.mtv.com</b> (VMAs), <b>vote.breaktudoawards.com</b> (BreakTudo) and <b>kca.nick.tv</b> (Kids&rsquo; Choice) and logs them straight to this board — the three awards are tracked separately with one account. It only reads your own votes; it <b>never votes for you</b>.</div>
     <div class="vv-ext-dl">
-      <a class="vv-ext-btn" href="/vote-extension-v1.7.8-chrome.zip" download>⬇ Desktop <small>Chrome / Chromium</small></a>
-      <a class="vv-ext-btn ghost" href="/vote-extension-v1.7.8-android.zip" download>⬇ Android <small>Edge Canary / Quetta</small></a>
+      <a class="vv-ext-btn" href="/vote-extension-v1.8.0-chrome.zip" download>⬇ Desktop <small>Chrome / Chromium</small></a>
+      <a class="vv-ext-btn ghost" href="/vote-extension-v1.8.0-android.zip" download>⬇ Android <small>Edge Canary / Quetta</small></a>
       <button class="vv-ext-btn ghost" onclick="connectExtension()">🔗 Link my account</button>
     </div>
     <a class="vv-ext-guide" href="/vote-counter-guide.html" target="_blank" rel="noopener">📖 Illustrated step-by-step guide ↗</a>
@@ -9276,11 +9314,11 @@ function vmaExtensionHtml(archive) {
       <li><b>Download &amp; unzip</b> the file above.</li>
       <li><b>Desktop</b> — works in any Chromium browser (<b>Chrome, Edge, Brave, Opera, Vivaldi</b>): open <code>chrome://extensions</code> (or <code>edge://extensions</code>…), turn on <b>Developer mode</b> (top-right), click <b>Load unpacked</b> and pick the unzipped folder.<br><b>Android</b> — needs a Chromium browser that still supports extensions since Kiwi shut down: <b>Microsoft Edge Canary</b> (it inherited Kiwi's extension engine) or <b>Quetta</b>. Open its Extensions menu and load the <code>.zip</code> directly. <i>Regular Chrome and Firefox for Android can't run it.</i></li>
       <li>Click the extension → <b>Link my Blinks United account</b> → sign in on the page that opens (the same account you use here). It should then read <b>● Linked</b>.</li>
-      <li>Vote for BLACKPINK / members on <b>vote.mtv.com</b> or <b>vote.breaktudoawards.com</b> — your votes show up here automatically${archive ? '' : ' (use the <b>VMAs / BreakTudo</b> switch above the board)'}, and a live BLINKS UNITED panel appears on each vote page.</li>
+      <li>Vote for BLACKPINK / members on <b>vote.mtv.com</b>, <b>vote.breaktudoawards.com</b> or <b>kca.nick.tv</b> — your votes show up here automatically${archive ? '' : ' (use the award switch above the board)'}, and a live BLINKS UNITED panel appears on each vote page. On Kids&rsquo; Choice a round only counts once you <b>finish it</b> — the site submits the whole round at the end.</li>
     </ol>
     <div class="vv-ext-app">
       <div class="vv-ext-app-head">📱 On a phone with no extension support? Get the <b>Android app</b></div>
-      <div class="vv-ext-app-sub">Same counter, wrapped in an app — you vote inside it and it logs to your board. Counts <b>BreakTudo</b> (and the VMAs, for next year). No browser extension needed. <i>Android only; iPhone can't sideload apps.</i></div>
+      <div class="vv-ext-app-sub">Same counter, wrapped in an app — you vote inside it and it logs to your board. Counts <b>BreakTudo</b> (and the VMAs, for next year). <b>Not Kids&rsquo; Choice yet</b> — for that one use the browser extension above, or add the rounds by hand. No browser extension needed. <i>Android only; iPhone can't sideload apps.</i></div>
       <a class="vv-ext-btn" href="/blinks-united-vote-counter.apk" download>⬇ Download Android app <small>.apk</small></a>
       <a class="vv-ext-guide" href="/vote-app-guide.html" target="_blank" rel="noopener" style="margin-left:0.6rem;">📖 App setup guide ↗</a>
       <ol class="vv-ext-steps" style="margin-top:0.9rem;">
@@ -9291,7 +9329,7 @@ function vmaExtensionHtml(archive) {
     <details class="vv-ext-fns">
       <summary>▸ What the extension does</summary>
       <ul>
-        <li><b>Auto-counts your votes</b> — watches each successful vote you cast on <b>vote.mtv.com</b> (VMAs) and <b>vote.breaktudoawards.com</b> (BreakTudo) and logs the BLACKPINK/member ones to your /voting board, no manual typing. The two awards stay separate.</li>
+        <li><b>Auto-counts your votes</b> — watches each successful vote you cast on <b>vote.mtv.com</b> (VMAs), <b>vote.breaktudoawards.com</b> (BreakTudo) and <b>kca.nick.tv</b> (Kids&rsquo; Choice) and logs the BLACKPINK/member ones to your /voting board, no manual typing. The three awards stay separate.</li>
         <li><b>On-page panel</b> on each vote site — running &ldquo;counted today&rdquo; total and a live activity log; draggable &amp; collapsible.</li>
         <li><b>&ldquo;Blinks voting now&rdquo; pulse</b> — how many blinks logged a vote in the last 90 seconds (our community, live).</li>
         <li><b>Power-hour glow</b> — the panel &amp; toolbar popup light up during MTV Power Hours / Double Days (2× votes).</li>
@@ -9302,11 +9340,11 @@ function vmaExtensionHtml(archive) {
     <details class="vv-ext-fns vv-ext-privacy">
       <summary>🔒 Your privacy — what it does &amp; doesn't send</summary>
       <ul>
-        <li><b>Only sends</b> your vote count + the BLACKPINK/LISA split to your own board — nothing else.</li>
+        <li><b>Only sends</b> your vote count, the category it was cast in, and (on the VMAs) the BLACKPINK/LISA split to your own board — nothing else. On Kids&rsquo; Choice the vote carries a <b>voter id of its own</b>; that is never read, stored or sent.</li>
         <li><b>Never sends</b> your email, password or MTV login. You sign in in your own browser; the tool only gets a link token back.</li>
         <li>The <b>accounts/emails you vote with stay on your device</b> by default — used for the 2/2 · 1/2 tracker. They are uploaded <b>only if you switch on &ldquo;Share voting accounts&rdquo;</b> in the panel, and then only to your own account, visible to no one else.</li>
         <li><b>Counts only the votes you cast — never votes for you.</b></li>
-        <li>Extension access is locked to <b>vote.mtv.com</b>, <b>vote.breaktudoawards.com</b> and <b>blinksunited.com</b> only; the app asks for <b>Internet</b> and nothing else.</li>
+        <li>Extension access is locked to <b>vote.mtv.com</b>, <b>vote.breaktudoawards.com</b>, <b>kca.nick.tv</b> and <b>blinksunited.com</b> only; the app asks for <b>Internet</b> and nothing else.</li>
         <li>Open-source &amp; sideloaded (not store-reviewed) — the code is there to inspect; you're trusting Blinks United.</li>
       </ul>
     </details>
@@ -9329,7 +9367,7 @@ function _vvFormInner() {
         <div class="vv-honest">🤝 Honour system — please only log votes you've actually cast. Inflated counts just throw off the board for every blink. Default fills the per-category max (10, or 20 in a power hour) — tweak to what you actually cast. 💗</div>`;
 }
 
-function vmaSetPeriod(p) { _vvPeriod = p; if (_vvAward === 'breaktudo') drawBtVoting(); else drawVmaVoting(); }
+function vmaSetPeriod(p) { _vvPeriod = p; drawVoteAward(); }
 
 // Re-check the voting state when the fan returns to the tab, so the manual "Add
 // votes" form hides as soon as the extension/app has logged a vote for them —
@@ -9794,6 +9832,259 @@ async function btAddVotes() {
     : landed ? 'Saved ✓ (connection was flaky — your total updated below).'
              : 'Didn’t go through — the connection dropped. Add them again.';
   resetBtn();
+}
+
+// ── Kids' Choice Awards 2026 ─────────────────────────────────────────────────
+// The three categories BLACKPINK / members are nominated in, keyed by the
+// /vote/<slug> the live site serves. The slugs are the SAME keys the extension
+// posts and the same keys stored in kca_user_votes.cats, so a manually-added
+// vote and an auto-counted one land in one bucket per category.
+//
+// Read off the ballot itself, not off the announcement post: probe-kca.yml dumps
+// window.jsonData.questions, where each question carries {id, slug, title} and
+// each option {id, title} — which is also how the counter decodes a vote, since
+// the payload names nobody. The `nominee` strings below are the option titles
+// verbatim, and the extension matches on them.
+//
+// Must stay in step with KCA_CATS in api/vma-votes.js and KCA_NOMINEES in
+// vote-extension/background.js.
+const KCA_CATEGORIES = [
+  { slug: 'favorite-music-group-or-duo',  label: 'Music Group or Duo',  who: 'BLACKPINK', nominee: 'BLACKPINK' },
+  { slug: 'favorite-female-artist',       label: 'Female Artist',       who: 'ROSÉ',      nominee: 'ROSÉ' },
+  { slug: 'favorite-music-collaboration', label: 'Music Collaboration', who: 'JENNIE',    nominee: 'Dracula (with JENNIE)' },
+];
+const KCA_WHO = {
+  BLACKPINK: { cls: 'vv-who-bp',     icon: '🖤' },
+  'ROSÉ':    { cls: 'vv-who-rose',   icon: '🌹' },
+  JENNIE:    { cls: 'vv-who-jennie', icon: '💗' },
+};
+// No alias map, deliberately: BreakTudo needs btCanonCat because it serves one
+// category under several slug spellings, while these three came off one site in
+// one spelling. If that ever changes the fix is a KCA_CAT_ALIASES here, in
+// api/vma-votes.js and in the extension — not a looser label lookup.
+function kcaCatLabel(slug) {
+  const hit = KCA_CATEGORIES.find(c => c.slug === slug);
+  if (hit) return hit.label;
+  if (slug === '_other') return 'Category not identified';
+  // An unknown slug is prettified rather than dropped: Nickelodeon runs extra
+  // "Bonus" and "Live" categories during the show, and a vote in one of those
+  // must still read as something.
+  return String(slug).replace(/^favorite-/, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// Your own votes split by category. Same honesty rule as the BreakTudo version:
+// the map only ever explains PART of the total, because a vote whose nominee the
+// counter could not identify is counted but unattributed. So the remainder is
+// named rather than quietly folded into a category.
+function _kcaMyCatsHtml(me) {
+  const cats = (me && me.cats) || {};
+  const rows = Object.entries(cats).filter(([, v]) => (Number(v) || 0) > 0).sort((a, b) => b[1] - a[1]);
+  if (!rows.length) return '';
+  const attributed = rows.reduce((a, [, v]) => a + Number(v), 0);
+  const rest = Math.max(0, (Number(me && me.total) || 0) - attributed);
+  return `<div class="vv-btcats">
+    <div class="vv-btcats-hd">By category · all time</div>
+    ${rows.map(([k, v]) => `<div class="vv-btcat-row"><span>${_vvEsc(kcaCatLabel(k))}</span><b>${_vvFmt(v)}</b></div>`).join('')}
+    ${rest > 0 ? `<div class="vv-btcat-row vv-btcat-rest"><span>Not attributed to a category</span><b>${_vvFmt(rest)}</b></div>` : ''}
+  </div>`;
+}
+
+// Per-row chips on the board, for the selected period. Reads cats_today /
+// cats_week / cats_month / cats_total off the board row, the same four maps
+// kca_vote_board() returns.
+function _kcaRowCatsHtml(r, P) {
+  const cats = (r && r['cats_' + P]) || {};
+  const rows = Object.entries(cats).filter(([, v]) => (Number(v) || 0) > 0).sort((a, b) => b[1] - a[1]);
+  if (!rows.length) return '';
+  const attributed = rows.reduce((a, [, v]) => a + Number(v), 0);
+  const rest = Math.max(0, (Number(r[P]) || 0) - attributed);
+  return `<div class="vv-rowcats">${rows.map(([k, v]) =>
+      `<span class="vv-rowcat">${_vvEsc(kcaCatLabel(k))} <b>${_vvFmt(v)}</b></span>`).join('')
+    }${rest > 0 ? `<span class="vv-rowcat vv-rowcat-rest" title="Votes whose nominee the counter couldn’t identify — they still count in the total">no category <b>${_vvFmt(rest)}</b></span>` : ''}</div>`;
+}
+
+// ── KCA manual entry ────────────────────────────────────────────────────────
+// Three boxes, one per category, and the total is their sum — so the breakdown
+// can never disagree with the number being added. Empty rather than prefilled:
+// KCA publishes no per-category cap, so there is no "max" to offer, and a round
+// gives at most one pick per category, so the honest default is whatever the
+// blink actually did.
+function _kcaFormInner() {
+  return `<span class="vv-form-q">Just finished a Kids’ Choice round? Add how many — split by category:</span>
+        <div class="vv-btcats-in">
+          ${KCA_CATEGORIES.map(c => {
+            const a = KCA_WHO[c.who] || { cls: '', icon: '💗' };
+            return `<label class="vv-btcat-in"><span class="${a.cls}">${a.icon} ${_vvEsc(c.who)}<i>${_vvEsc(c.label)}</i></span><input data-kcacat="${c.slug}" type="number" min="0" placeholder="0" inputmode="numeric"></label>`;
+          }).join('')}
+        </div>
+        <button id="kca-add" onclick="kcaAddVotes()">Add votes</button>
+        <div class="vv-msg" id="kca-msg"></div>
+        <div class="vv-honest">🤝 Honour system — please only log rounds you have actually finished. Remember <b>nothing is submitted until a round reaches the end</b>, so a round you abandoned halfway cast no votes at all. 💗</div>`;
+}
+
+async function kcaAddVotes() {
+  const btn = document.getElementById('kca-add');
+  const msg = document.getElementById('kca-msg');
+  const cats = {};
+  document.querySelectorAll('[data-kcacat]').forEach(el => {
+    const n = Math.max(0, parseInt(el.value, 10) || 0);
+    if (n > 0) cats[el.getAttribute('data-kcacat')] = n;
+  });
+  const v = Object.values(cats).reduce((a, b) => a + b, 0);
+  if (!_vvToken) { if (msg) msg.textContent = 'Sign in first.'; return; }
+  if (v <= 0) { if (msg) msg.textContent = 'Enter how many votes you cast, in at least one category.'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+  const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = 'Add votes'; } };
+  const prevTotal = Number(_vvMe && _vvMe.total) || 0;
+
+  // Same three-step shape as vmaAddVotes / btAddVotes, and for the same reason:
+  // votes are additive, so a render error after a successful write must never
+  // read as "save failed" — that is what makes someone submit twice.
+  let saved = null, networkDrop = false;
+  try {
+    const r = await fetch('/api/vma-votes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ award: 'kca', accessToken: _vvToken, votes: v, cats }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { if (msg) msg.textContent = d.error || 'Couldn’t save — try again.'; resetBtn(); return; }
+    saved = d;
+  } catch { networkDrop = true; }
+
+  let landed = true;
+  if (networkDrop) {
+    const me = await fetch('/api/vma-votes?me=1&award=kca', { headers: { Authorization: 'Bearer ' + _vvToken }, cache: 'no-store' })
+      .then(x => x.ok ? x.json() : null).catch(() => null);
+    if (me == null) { if (msg) msg.textContent = 'Network error — reload to check before re-adding.'; resetBtn(); return; }
+    landed = (Number(me.total) || 0) >= prevTotal + v;
+    _vvMe = Object.assign({}, _vvMe, me, { linked: true });
+  } else if (saved.my) {
+    _vvMe = Object.assign({}, _vvMe, saved.my, { linked: true });
+  } else {
+    const bump = k => (Number(_vvMe && _vvMe[k]) || 0) + v;
+    _vvMe = Object.assign({}, _vvMe, { linked: true, today: bump('today'), week: bump('week'), month: bump('month'), total: bump('total') });
+  }
+
+  // Cosmetic from here — the vote is already saved.
+  try {
+    const b = await fetch('/api/vma-votes?board=1&award=kca', { cache: 'no-store' }).then(x => x.ok ? x.json() : null).catch(() => null);
+    if (b && b.board != null) {
+      const bd = b.board;
+      _vvBoard = Array.isArray(bd) ? bd : (bd?.ranked || []);
+      _vvUnranked = (bd && !Array.isArray(bd)) ? (bd.unranked || []) : [];
+    }
+    drawKcaVoting();
+  } catch {}
+
+  const m2 = document.getElementById('kca-msg');
+  if (m2) m2.textContent = !networkDrop ? `Added ${v} — thank you! 💗`
+    : landed ? 'Saved ✓ (connection was flaky — your total updated below).'
+             : 'Didn’t go through — the connection dropped. Add them again.';
+  resetBtn();
+}
+
+function drawKcaVoting() {
+  const panel = document.getElementById('vma-vote-panel');
+  if (!panel) return;
+
+  const P = _vvPeriod;
+  const periodLbl = { today: 'today', week: 'this week', month: 'this month', total: 'all time' }[P];
+  const displayName = _vvSession?.user?.user_metadata?.display_name || null;
+
+  const rows = _vvBoard.slice().sort((a, b) => (b[P] || 0) - (a[P] || 0) || (b.total || 0) - (a.total || 0));
+  const myIdx = displayName ? rows.findIndex(r => (r.name || '').toLowerCase() === displayName.toLowerCase()) : -1;
+  const myRank = myIdx >= 0 ? myIdx + 1 : null;
+
+  let me;
+  if (!_vvSession) {
+    me = `<div class="vv-me vv-gate">
+      <div>Sign in to <b>register your Kids’ Choice votes</b> and race other blinks up the board. 🏆 <b>Stream too</b> to appear on the ranked board.</div>
+      <a class="vv-gate-btn" href="/badges" onclick="goToMyBadges(); return false;">🔑 Sign in on My Badges →</a>
+    </div>`;
+  } else if (_vvMe) {
+    const isRanked = myRank != null || _vvMe.ranked;
+    const rankLine = (_vvMe.total || 0) === 0
+      ? `<div class="vv-rank">Add your first Kids’ Choice votes to climb the board 🗳️</div>`
+      : (isRanked
+          ? (myRank
+              ? `<div class="vv-rank">🏆 You're <b>#${myRank}</b> of ${_vvFmt(rows.length)} ${periodLbl}</div>`
+              : `<div class="vv-rank">🏆 You're on the board</div>`)
+          : `<div class="vv-rank vv-rank-hint">🎧 <b>Stream too</b> and you'll climb onto the ranked board. 🏆</div>`);
+    // The counter has already logged for this account today → the manual form
+    // goes behind a disclosure instead of sitting open, so the usual way to
+    // double-count (type in what the extension already counted) takes a
+    // deliberate click. kca_user_votes has carried ext_at since its first
+    // migration, which is why this tab can do what the BreakTudo one cannot.
+    const counted = !!_vvMe.extToday;
+    me = `<div class="vv-me">
+      <div class="vv-me-head">Your Kids’ Choice votes${displayName ? ' · ' + _vvEsc(displayName) : ''}</div>
+      ${rankLine}
+      <div class="vv-me-stats">
+        <div><span>${_vvFmt(_vvMe.today)}</span><small>today</small></div>
+        <div><span>${_vvFmt(_vvMe.week)}</span><small>this week</small></div>
+        <div><span>${_vvFmt(_vvMe.month)}</span><small>this month</small></div>
+        <div><span>${_vvFmt(_vvMe.total)}</span><small>all time</small></div>
+      </div>
+      ${_kcaMyCatsHtml(_vvMe)}
+      <div class="vv-form vv-form-auto">
+        <div class="vv-auto-note">🧩 Your Kids’ Choice votes are counted <b>automatically</b> by the Blinks United vote counter (browser extension) as you vote on <b>kca.nick.tv</b> — one round at a time, as each round is submitted.${counted ? ' <b>It has already logged votes for you today.</b>' : ''}</div>
+        <button class="vv-auto-more" onclick="var m=document.getElementById('kca-manual');if(m){m.style.display='block';this.style.display='none';}">${counted ? 'Cast some by hand as well? Add them manually ▾' : 'Not using the counter right now? Add votes manually ▾'}</button>
+        <div id="kca-manual" style="display:none;margin-top:0.7rem;">${_kcaFormInner()}</div>
+      </div>
+    </div>`;
+  } else {
+    me = `<div class="vv-me vv-gate">Loading your votes…</div>`;
+  }
+
+  let table;
+  if (!rows.length) {
+    table = `<div class="vv-empty">No Kids’ Choice votes logged yet — be the first! 🗳️</div>`;
+  } else {
+    table = `<div class="vv-tablewrap"><table class="vv-table"><thead><tr><th>#</th><th>Blink</th><th>Streams</th><th>Votes ${periodLbl}</th></tr></thead><tbody>`;
+    rows.forEach((r, i) => {
+      const mine = displayName && (r.name || '').toLowerCase() === displayName.toLowerCase();
+      table += `<tr class="${mine ? 'vv-mine' : ''}"><td>${i + 1}</td><td>${_vvEsc(r.name || 'a blink')}${_kcaRowCatsHtml(r, P)}</td><td>${_vvFmt(r.streams || 0)}</td><td class="vv-v">${_vvFmt(r[P] || 0)}</td></tr>`;
+    });
+    table += `</tbody></table></div>`;
+    const anySplit = rows.some(r => Object.values(r['cats_' + P] || {}).some(v => (Number(v) || 0) > 0));
+    if (anySplit) table += `<div class="vv-cats-legend">Under each name: that blink's votes split by Kids’ Choice category ${periodLbl}. <b>no category</b> means the counter could not tell which nominee the pick was for — those votes still count towards the total.</div>`;
+  }
+
+  const labels = { today: 'Today', week: 'Week', month: 'Month', total: 'All' };
+  const toggle = ['today', 'week', 'month', 'total']
+    .map(p => `<button class="vv-tab ${p === P ? 'active' : ''}" onclick="vmaSetPeriod('${p}')">${labels[p]}</button>`).join('');
+
+  const unranked = _vvUnranked.slice().sort((a, b) => (b[P] || 0) - (a[P] || 0) || (b.total || 0) - (a.total || 0));
+  const unrankedHtml = unranked.length ? `
+    <div class="vv-unranked">
+      <div class="vv-unranked-head">Voters · not streaming — not ranked</div>
+      ${unranked.map(r => {
+        const mine = displayName && (r.name || '').toLowerCase() === displayName.toLowerCase();
+        return `<div class="vv-unranked-row${mine ? ' vv-mine' : ''}"><div class="vv-unranked-left"><span class="vv-unranked-name">${_vvEsc(r.name || 'a blink')}</span>${_kcaRowCatsHtml(r, P)}</div><span class="vv-unranked-v">${_vvFmt(r[P] || 0)} vote${(r[P] || 0) === 1 ? '' : 's'}</span></div>`;
+      }).join('')}
+      <div class="vv-unranked-foot">🎧 Stream today too and you'll climb onto the ranked board — these votes still count. 💗</div>
+    </div>` : '';
+
+  const kcaQualified = !!(_vvSession && _vvMe && _vvMe.linked !== false);
+
+  panel.innerHTML = `<div class="vv-wrap">
+    ${_vvArchive ? '' : vmaAwardSwitchHtml()}
+    <div class="vv-head">
+      <div class="vv-title">🧒 Kids’ Choice Voting Leaderboard</div>
+      <div class="vv-note">Register the Nickelodeon Kids’ Choice Awards votes you cast for BLACKPINK, ROSÉ and “Dracula”. Voting runs Oct 8 – Nov 13. <a href="/voting">how &amp; where to vote →</a></div>
+      <button class="vv-guide-btn" onclick="startGuide()">🧭 New here? Step-by-step guide</button>
+    </div>
+    ${vmaVideoGuidesHtml()}
+    <div class="vv-daynote">⚠️ <b>Nothing is submitted until you finish the round.</b> The site walks you through all 36 categories and sends the whole round at the end — so stopping after BLACKPINK casts <b>no votes at all</b>, and the counter has nothing to count. Vote every category to the end, then <b>Vote Again</b>.</div>
+    ${me}
+    ${kcaQualified ? vmaExtensionHtml() : ''}
+    ${vvCommunityHtml({ award: 'kca', label: 'Together, as a community', showToday: true })}
+    <div class="vv-tabs">${toggle}</div>
+    <div class="vv-daynote">Nickelodeon publishes <b>no vote limit</b> — the rules allow repeat voting and name no number, so votes add up for the whole campaign. (The &ldquo;100 a day&rdquo; figure going around belongs to a different award.) <b>Today</b> here is our own bucket and rolls at <b>midnight KST</b>; all-time totals and the order of the board don't depend on it.</div>
+    ${table}
+    ${unrankedHtml}
+  </div>`;
 }
 
 // Less Than a Lover-themed tier names, same thresholds/icons as BADGE_TIERS,
@@ -16991,8 +17282,9 @@ function renderSongCard(trackId, art, logo) {
 let _communityCardData = null;
 
 const _COMMUNITY_AWARDS = {
-  vma:       { title: 'MTV VMAs 2026',    sub: 'VOTES CAST BY BLINKS' },
-  breaktudo: { title: 'BreakTudo Awards', sub: 'VOTES CAST BY BLINKS' },
+  vma:       { title: 'MTV VMAs 2026',     sub: 'VOTES CAST BY BLINKS' },
+  breaktudo: { title: 'BreakTudo Awards',  sub: 'VOTES CAST BY BLINKS' },
+  kca:       { title: 'Kids’ Choice 2026', sub: 'VOTES CAST BY BLINKS' },
 };
 
 async function shareCommunityVotesCard(award) {
@@ -17016,7 +17308,7 @@ async function shareCommunityVotesCard(award) {
   let totals = _vvTotals;
   if (award !== _vvAward || !totals) {
     try {
-      const r = await fetch('/api/vma-votes' + (award === 'breaktudo' ? '?award=breaktudo' : ''), { cache: 'no-store' });
+      const r = await fetch('/api/vma-votes' + (award === 'vma' ? '' : '?award=' + award), { cache: 'no-store' });
       totals = r.ok ? await r.json() : null;
     } catch (_) { totals = null; }
   }
@@ -21299,11 +21591,13 @@ window.addEventListener('appinstalled', () => {
     try { _vvArchive = true; } catch(e){}
     // Pick the award BEFORE the page loads its data, so it fetches that one
     // board once instead of loading the default and then switching. Read from
-    // ?award= rather than leaning on _vvAward's own default, which flips to
-    // BreakTudo once the VMAs close — /vmas must keep showing the VMA board
-    // after that, and /breaktudo must show BreakTudo regardless.
+    // ?award= rather than leaning on _vvAward's own default, which follows
+    // whichever ballot closes soonest — /vmas must keep showing the VMA board
+    // after the VMAs close, and an embed must show the award it asked for.
+    // Anything unrecognised falls back to the VMAs, which is what every embed
+    // without an ?award= has always meant.
     var want = new URLSearchParams(location.search).get('award');
-    try { _vvAward = want === 'breaktudo' ? 'breaktudo' : 'vma'; } catch(e){}
+    try { _vvAward = (want && _vvAwardMeta[want]) ? want : 'vma'; } catch(e){}
     try { showPage('vote'); } catch(e){}
     var tries = 0;
     var t = setInterval(function(){
