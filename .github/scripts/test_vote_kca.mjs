@@ -9,11 +9,16 @@
 // (run 37930904572), and the things that were NOT verified are asserted to be
 // absent:
 //
-//   * no closing date is claimed — Nickelodeon has not published one, and the
-//     show date (Nov 14) is NOT it, because voting closes before the show
-//   * the ~100/day figure is attributed to blinks, not to Nickelodeon, because
-//     no vote page states any limit and a web search traced that number to a
-//     different award entirely
+//   * the deadline is the END of the last day the official rules name
+//     (Oct 8 - Nov 13), not the show date (Nov 14) — voting shuts before the
+//     ceremony
+//   * the "100 a day" figure is contradicted, not repeated: the published rules
+//     allow repeat voting and state NO number, and a search traced that figure
+//     to a different award entirely
+//   * the round mechanic is the first rule on the card, because the official
+//     rules say picks are "sent for submission at the end of the round" — a
+//     blink who votes in one category and closes the page loses the vote, and
+//     this card hands out per-category deep links
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 
 const INDEX = new URL('../../index.html', import.meta.url).pathname;
@@ -71,16 +76,21 @@ const kca = await p.evaluate(() => {
 console.log('--- the card is there and live');
 check(!kca.missing, 'a Kids’ Choice card renders in #vote-list');
 check(!kca.inPast, 'in the active list, not folded into Past Votings');
-check(kca.deadline === 'VOTING OPEN',
-      `and it says VOTING OPEN rather than counting down (${kca.deadline})`);
+check(/\d+D/.test(kca.deadline || ''),
+      `with a live countdown now that the period is published (${kca.deadline})`);
 
-console.log('\n--- no deadline is invented');
-check(kca.data.deadline === undefined,
-      'the campaign carries no `deadline` at all — none has been announced');
-// The show is Nov 14. Using it as the deadline would be a countdown to the
-// wrong instant, since voting closes before the ceremony.
-check(!JSON.stringify(kca.data).includes('2026-11-14'),
-      'and the show date is not quietly used as one');
+console.log('\n--- the deadline is the end of the stated period, not the show');
+const dl = Date.parse(kca.data.deadline);
+check(!Number.isNaN(dl), `a deadline is set (${kca.data.deadline})`);
+// The official rules say Oct 8 - Nov 13 with no clock time and note that
+// closing times differ by region, so the deadline must land INSIDE Nov 13
+// somewhere on earth and before the Nov 14 ceremony.
+check(dl > Date.parse('2026-11-13T08:00:00Z') && dl < Date.parse('2026-11-14T12:00:00Z'),
+      'it falls at the end of Nov 13, not mid-day and not on show day');
+check(dl < Date.parse('2026-11-14T17:00:00Z'),
+      'and well before the ceremony — the show date is never the deadline');
+check(kca.deadline !== 'VOTING OPEN' && /\d/.test(kca.deadline || ''),
+      `so the card counts down instead of saying VOTING OPEN (${kca.deadline})`);
 
 console.log('\n--- the three categories, with the links that were probed');
 const want = {
@@ -114,15 +124,26 @@ check(byName['Favorite Female Artist'].all === 8,
 check(new Set(kca.cats.map(c => c.thumb)).size === 1,
       `every category row treats thumbnails the same (${kca.cats.map(c => c.thumb).join(', ')})`);
 
-console.log('\n--- the unverified rule is attributed, not asserted');
+console.log('\n--- the round mechanic is the first thing said');
 const rules = kca.rules.join(' ');
-check(/100 per category, per day, per device/.test(rules),
-      'the figure blinks are circulating is still passed on');
-check(/Blinks report/.test(rules) && /doesn.{0,3}t publish a vote limit/.test(rules),
-      'but as a fan report against a page that states no limit — not as a Nickelodeon rule');
-check(/closing date hasn.{0,3}t been announced/i.test(rules),
-      'and the missing deadline is said out loud');
-check(/Nov 14/.test(rules), 'with the show date, which is the part that IS known');
+// The official rules: picks are "sent for submission at the end of the round".
+// This card links straight into single categories, so a blink who votes there
+// and closes the page loses it. That warning cannot be buried.
+check(/Finish the whole round/i.test(kca.rules[0]),
+      `rule 1 is the round warning (${kca.rules[0].slice(0, 72)}…)`);
+check(/only submitted/i.test(rules) && /don.{0,3}t close the page/i.test(rules),
+      'and it says both halves: submitted at the end, so do not close early');
+check(/Vote Again/.test(rules), 'with the way to start another round');
+
+console.log('\n--- the circulating limit is corrected, not repeated');
+check(/no number/i.test(rules) && /vote more than once/i.test(rules),
+      'the card says the rules allow repeats and publish no number');
+check(/isn.{0,3}t Nickelodeon.{0,3}s/.test(rules) && /100/.test(rules),
+      'and names the "100 a day" figure to correct it rather than leaving it to spread');
+check(/Oct 8\s*–\s*Nov 13/.test(rules), 'the voting period is stated as the rules give it');
+check(/differ by region/i.test(rules), 'including that closing times vary by region');
+check(/Bots, scripts and macros/i.test(rules),
+      'and the organiser\'s ban on automated voting is passed on');
 
 console.log('\n--- the top button');
 check(kca.voteBtn === 'https://kca.nick.tv/vote/',

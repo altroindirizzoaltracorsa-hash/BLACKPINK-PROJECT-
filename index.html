@@ -8099,19 +8099,23 @@ const VOTE_CAMPAIGNS = [
     title: '2026 Kids’ Choice Awards',
     url: 'https://kca.nick.tv/vote/',
     image: '/vote-blackpink-ot4.jpg',
-    // NO DEADLINE ON PURPOSE. Nickelodeon has not published one: the vote pages
-    // were rendered in a browser (probe-kca.yml, run 37930904572) and not one
-    // sentence on any of the three states a closing date or a vote limit. The
-    // card therefore reads "VOTING OPEN", which is true, instead of counting
-    // down to a date nobody announced. The show is Nov 14 — voting will close
-    // before that, so DO NOT use the show date as the deadline. Set `deadline`
-    // here the moment Nickelodeon says when it closes.
+    // Nov 13 2026, 23:59 PT. The official rules give the voting period as
+    // "October 8, 2026, to November 13, 2026" but no clock time, and say
+    // outright that "opening and closing times may differ by region" — so this
+    // is the END of the last stated day in the latest US zone, deliberately the
+    // LATE reading. Of the two ways to be wrong, a countdown that says CLOSED
+    // while the ballot is still open costs votes; one that runs a few hours long
+    // costs nothing, because the rules line tells people not to leave it late.
+    // Still NOT the show date (Nov 14) — voting shuts before the ceremony.
+    deadline: '2026-11-14T07:59:00Z',
     rules: [
-      'Vote at <b>kca.nick.tv/vote</b> — no account needed, just tap VOTE on BLACKPINK, ROSÉ and “Dracula”',
-      'Each category is its own page — use the three “Vote ↗” links below',
-      'Nickelodeon doesn’t publish a vote limit on the page. Blinks report around <b>100 per category, per day, per device</b> — so keep going until it stops you',
-      'Nominations were announced Oct 8. <b>A closing date hasn’t been announced</b> — vote early rather than waiting',
-      'The show airs live <b>Sat Nov 14</b> on Nickelodeon & CBS, hosted by Alex Warren',
+      // First, because getting this wrong silently throws the vote away.
+      '⚠ <b>Finish the whole round.</b> Voting walks you through every category and your picks are only submitted <b>at the end</b> — don’t close the page after voting in one category',
+      'Vote at <b>kca.nick.tv</b> — no account needed. Tap VOTE on BLACKPINK, ROSÉ and “Dracula”, keep going to the end, then hit <b>Vote Again</b> for another round',
+      'The rules let you <b>vote more than once</b> and publish <b>no number</b> — so keep doing rounds. (The “100 a day” going around isn’t Nickelodeon’s; they don’t state a limit)',
+      'Voting runs <b>Oct 8 – Nov 13</b>. Closing times differ by region, so don’t leave it to the last day',
+      'Bots, scripts and macros are <b>banned</b> and those votes get thrown out — vote by hand',
+      'Show airs live <b>Sat Nov 14</b> on Nickelodeon & CBS, hosted by Alex Warren. <b>Bonus</b> and <b>Live</b> votes run during it, on their own timings',
     ],
     // Nominee lists are what the live vote pages actually show, read off a
     // rendered browser rather than from the announcement post.
