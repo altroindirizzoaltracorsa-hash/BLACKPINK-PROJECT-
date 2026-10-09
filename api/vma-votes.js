@@ -11,11 +11,23 @@
 //        (votes total = bp + lisa). Legacy { accessToken, votes } still accepted (unattributed).
 //        extra (extension, sync mode): { extToken, votes, sync, breakdown:{BLACKPINK,LISA}, account:{id,method} }
 //
+// Three awards share this endpoint, each with its own table and its own RPCs,
+// selected with ?award= on a GET or {award} on a POST. Omitted = the VMAs.
+//
+//   (none)      → vma_user_votes        · midnight ET  · BLACKPINK/LISA split
+//   breaktudo   → breaktudo_user_votes  · midnight KST · per-category `cats`
+//   kca         → kca_user_votes        · midnight KST · per-category `cats`
+//
+// They are deliberately separate dimensions rather than one table with an award
+// column: these tables carry site-visible meaning, and widening them is how a
+// wrong row ends up on a page.
+//
 // To submit you must be signed in. A linked scrobbler is OPTIONAL: streaming
 // blinks get ranked on the board; vote-only blinks stay unranked and earn a
 // "Voter" badge at 1000 votes/day (no stream = no rank).
 //
-// Env: SUPABASE_URL, SUPABASE_SERVICE_KEY.  Schema: supabase/vma_user_votes.sql
+// Env: SUPABASE_URL, SUPABASE_SERVICE_KEY.  Schema: supabase/vma_user_votes.sql,
+// supabase/migrations/kca_vote_board.sql + kca_vote_board_ranked.sql
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -103,6 +115,49 @@ const btCanonCat = (slug) => BT_CAT_ALIASES[slug] || slug;
 const BT_DAY_HISTORY_FROM = '2026-09-30';
 const BT_DAY_HISTORY_MAX = 120;   // enough to page a calendar back through the campaign
 
+// ── Kids' Choice Awards 2026 ────────────────────────────────────────────────
+// A third award dimension: its own table (kca_user_votes) and its own two RPCs,
+// for the same reason the BreakTudo tables are separate from the VMA ones — a
+// KCA vote shares nothing with the others but its shape, and widening a table
+// that carries site-visible meaning is how a wrong row ends up on a page.
+//
+// WHAT A VOTE IS HERE. The KCA ballot does not submit per category: one round
+// carries up to one pick per category and is sent at the end. So `votes` counts
+// per-category picks for OUR nominees — a round in which a blink picked
+// BLACKPINK, ROSÉ and Dracula is 3, not 1 — and `cats` breaks that down by
+// category slug, exactly as on the BreakTudo side. See the header of
+// supabase/migrations/kca_vote_board.sql.
+//
+// DAY BOUNDARY: midnight KST, from the first row. KCA's own rules say closing
+// times "may differ by region", so there is no externally-imposed instant to
+// align to, and this is the clock the fandom counts days on. The table's `day`
+// default and both RPCs are on Asia/Seoul too, so kstDay() is shared with the
+// BreakTudo path deliberately rather than copied.
+//
+// NO SERVER-SIDE CLOSE GATE, unlike the VMA path. The VMAs had a published
+// closing instant (6PM ET, Sep 25) and refusing writes after it was the only way
+// to stop installed extensions logging into a finished ballot. KCA publishes a
+// closing DAY (Nov 13) and says outright that times vary by region, so any
+// instant picked here would be a guess — and of the two ways to be wrong,
+// refusing a vote a blink really cast is the one that costs something. The card
+// on /voting carries the date; this endpoint keeps taking what it is given.
+const KCA_DAY_HISTORY_FROM = '2026-10-08';   // the first day of the voting period
+const KCA_DAY_HISTORY_MAX = 120;
+
+// The three categories BLACKPINK / members are nominated in, keyed by the
+// /vote/<slug> the live site serves (confirmed in probe-kca.yml). Only used to
+// LABEL and to sanity-check; an unknown slug is still stored and still counts,
+// because Nickelodeon runs extra "Bonus" and "Live" categories during the show
+// and a whitelist here would silently drop their attribution.
+//
+// Must stay in step with KCA_CATEGORIES in index.html and KCA_NOMINEES in
+// vote-extension/background.js.
+const KCA_CATS = {
+  'favorite-music-group-or-duo':  'BLACKPINK',
+  'favorite-female-artist':       'ROSÉ',
+  'favorite-music-collaboration': 'Dracula (with JENNIE)',
+};
+
 function bearer(req) {
   const h = req.headers.authorization || '';
   const m = /^Bearer\s+(.+)$/i.exec(h);
@@ -185,6 +240,53 @@ async function myBtTotals(sb, uid) {
     });
 
   return { today, week, month, total, cats, catsToday, days, daysFrom: BT_DAY_HISTORY_FROM, todayKey: t };
+}
+
+// KCA sibling of myBtTotals. Same shape, same midnight-KST buckets, its own
+// table — so the panel that renders one renders the other.
+//
+// No alias folding here, and none needed: BreakTudo serves one category under
+// several slug spellings (which is why btCanonCat exists), while the KCA slugs
+// come from a single site in a single spelling and were read off the live pages.
+// If that ever stops being true the fix is a KCA_CAT_ALIASES map here and in
+// index.html, not a loosening of the writes.
+async function myKcaTotals(sb, uid) {
+  const { data } = await sb.from('kca_user_votes').select('day, votes, cats').eq('app_user_id', uid);
+  const rows = data || [];
+  const t = kstDay();
+  const [y, m, dd] = t.split('-').map(Number);
+  const base = new Date(Date.UTC(y, m - 1, dd));
+  const dow = (base.getUTCDay() + 6) % 7;           // 0 = Monday
+  const monday = new Date(Date.UTC(y, m - 1, dd - dow)).toISOString().slice(0, 10);
+  const first = `${t.slice(0, 7)}-01`;
+  let today = 0, week = 0, month = 0, total = 0;
+  const cats = {}, catsToday = {};
+  const add = (into, src) => {
+    for (const k in (src || {})) {
+      const n = Number(src[k]) || 0;
+      if (n > 0) into[k] = (into[k] || 0) + n;
+    }
+  };
+  for (const r of rows) {
+    const v = r.votes || 0;
+    total += v;
+    add(cats, r.cats);
+    if (r.day === t)     { today += v; add(catsToday, r.cats); }
+    if (r.day >= monday) week  += v;
+    if (r.day >= first)  month += v;
+  }
+  // Day by day, newest first — the calendar the four period tabs cannot answer
+  // ("week minus today" is yesterday only on a Tuesday). The KCA table was on
+  // the KST boundary from its first row, so unlike BreakTudo there is no seam to
+  // start the history after; KCA_DAY_HISTORY_FROM is simply the voting period's
+  // first day, and a row older than that would be a bug worth not drawing.
+  const days = rows
+    .filter(r => r.day >= KCA_DAY_HISTORY_FROM && (r.votes || 0) > 0)
+    .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0))
+    .slice(0, KCA_DAY_HISTORY_MAX)
+    .map(r => { const c = {}; add(c, r.cats); return { day: r.day, votes: r.votes || 0, cats: c }; });
+
+  return { today, week, month, total, cats, catsToday, days, daysFrom: KCA_DAY_HISTORY_FROM, todayKey: t };
 }
 
 // The caller's campaign streams: today's (ET-day aligned) for display + Monster
@@ -324,6 +426,135 @@ export default async function handler(req, res) {
         let my = null, totals = {};
         try {
           const [m, t] = await Promise.all([myBtTotals(sb, uid), sb.rpc('breaktudo_vote_totals')]);
+          my = m; totals = t.data || {};
+        } catch { /* ignore — client refetches */ }
+        return res.status(200).json({ ok: true, my, totals });
+      }
+    }
+
+    // ── Kids' Choice Awards — the third award dimension ──────────────────────
+    // Selected with ?award=kca (GET) or {award:'kca'} (POST). Reads and writes
+    // kca_user_votes + its own RPCs; the VMA and BreakTudo paths are untouched.
+    // Per-category picks for our nominees, midnight-KST day boundary.
+    if (award === 'kca') {
+      if (req.method === 'GET') {
+        if (req.query.board) {
+          const { data, error } = await sb.rpc('kca_vote_board');
+          if (error) throw error;
+          return res.status(200).json({ board: data || [] });
+        }
+        if (req.query.sync) {
+          const extToken = String(req.headers['x-ext-token'] || '').trim();
+          if (!extToken) return res.status(401).json({ error: 'link required' });
+          const { data: tok } = await sb.from('scrobble_tokens').select('app_user_id').eq('token', extToken).maybeSingle();
+          if (!tok) return res.status(401).json({ error: 'link required' });
+          const { data: v } = await sb.from('kca_user_votes').select('votes, cats').eq('app_user_id', tok.app_user_id).eq('day', kstDay()).maybeSingle();
+          // `cats` travels with it so the extension panel can show today's
+          // per-category tally merged across the blink's devices, not just the
+          // one browser it happens to be running in.
+          return res.status(200).json({ total: v?.votes || 0, cats: v?.cats || {}, accounts: [] });
+        }
+        if (req.query.live) {
+          const cutoff = new Date(Date.now() - 90 * 1000).toISOString();
+          const { data, error } = await sb.from('kca_user_votes').select('app_user_id').gte('updated_at', cutoff);
+          if (error) throw error;
+          return res.status(200).json({ liveVoters: data ? new Set(data.map((r) => r.app_user_id)).size : 0 });
+        }
+        if (req.query.me) {
+          const token = bearer(req);
+          if (!token) return res.status(401).json({ error: 'not signed in' });
+          const { data: { user } = {}, error: authErr } = await sb.auth.getUser(token);
+          if (authErr || !user) return res.status(401).json({ error: 'not signed in' });
+          const [totals, streams] = await Promise.all([myKcaTotals(sb, user.id), myStreams(sb, user.id)]);
+          const linked = await isLinked(sb, user.id);
+          // extToday hides the manual "Add votes" form once the counter has
+          // logged for this account today, so an auto-counted blink cannot
+          // double-count by also typing votes in. The VMA path reads this too.
+          let extToday = false;
+          try {
+            const { data: row } = await sb.from('kca_user_votes')
+              .select('ext_at').eq('app_user_id', user.id).eq('day', kstDay()).maybeSingle();
+            extToday = !!(row && row.ext_at);
+          } catch (_) { extToday = false; }
+          return res.status(200).json({ linked, extToday, ...totals, ...streams });
+        }
+        const { data, error } = await sb.rpc('kca_vote_totals');
+        if (error) throw error;
+        return res.status(200).json(data || { total: 0, today: 0, blinksTotal: 0, blinksToday: 0 });
+      }
+      if (req.method === 'POST') {
+        const body = req.body || {};
+        let votes = parseInt(body.votes, 10);
+        if (!Number.isFinite(votes) || votes <= 0) return res.status(400).json({ error: 'votes required' });
+        votes = Math.min(votes, 10000);   // sanity bound (KCA publishes no cap)
+
+        // Per-category attribution. `cats` (a map) is what BOTH clients send
+        // here, and that is the KCA-specific part: one submitted round carries
+        // up to one pick per category, so a single POST legitimately covers
+        // several categories at once — unlike BreakTudo, where one POST is one
+        // /vote/<slug>/ page. `category` (a single slug) is still accepted for
+        // the one-category case.
+        const SLUG_RE = /^[a-z0-9-]{1,64}$/;
+        const addCats = {};
+        if (body.cats && typeof body.cats === 'object' && !Array.isArray(body.cats)) {
+          for (const k of Object.keys(body.cats)) {
+            const n = parseInt(body.cats[k], 10);
+            if (SLUG_RE.test(k) && Number.isFinite(n) && n > 0) {
+              addCats[k] = Math.min((addCats[k] || 0) + n, 10000);
+            }
+          }
+        } else if (typeof body.category === 'string' && SLUG_RE.test(body.category)) {
+          addCats[body.category] = votes;
+        }
+        // Never let the attributed parts exceed the total they explain — that
+        // renders as a breakdown bigger than the number it breaks down.
+        const addSum = Object.values(addCats).reduce((a, b) => a + b, 0);
+        if (addSum > votes) {
+          const scale = votes / addSum;
+          let left = votes;
+          const keys = Object.keys(addCats);
+          keys.forEach((k, i) => {
+            const v = i === keys.length - 1 ? left : Math.floor(addCats[k] * scale);
+            addCats[k] = v; left -= v;
+          });
+          Object.keys(addCats).forEach(k => { if (!addCats[k]) delete addCats[k]; });
+        }
+
+        let uid = null, name = null;
+        const extToken = String(body.extToken || '').trim();
+        const token = String(body.accessToken || '').trim();
+        if (extToken) {
+          const { data: tok } = await sb.from('scrobble_tokens').select('app_user_id').eq('token', extToken).maybeSingle();
+          if (!tok) return res.status(401).json({ error: 'Link your blinksunited account in the extension first.' });
+          uid = tok.app_user_id;
+          try { const { data: got } = await sb.auth.admin.getUserById(uid); name = (got && got.user && got.user.user_metadata && got.user.user_metadata.display_name) || null; } catch (_) { name = null; }
+        } else {
+          if (!token) return res.status(401).json({ error: 'Sign in to log your votes' });
+          const { data: { user } = {}, error: authErr } = await sb.auth.getUser(token);
+          if (authErr || !user) return res.status(401).json({ error: 'Sign in to log your votes' });
+          uid = user.id;
+          name = (user.user_metadata && user.user_metadata.display_name) || null;
+        }
+        const day = kstDay();
+        const { data: existing } = await sb.from('kca_user_votes').select('votes, cats').eq('app_user_id', uid).eq('day', day).maybeSingle();
+        const next = (existing?.votes || 0) + votes;
+        // Merge rather than replace: a blink votes several rounds across a day.
+        const nextCats = Object.assign({}, (existing && existing.cats) || {});
+        for (const k in addCats) nextCats[k] = (Number(nextCats[k]) || 0) + addCats[k];
+        const row = {
+          app_user_id: uid, day, votes: next, cats: nextCats,
+          display_name: name, updated_at: new Date().toISOString(),
+        };
+        // ext_at is set in the same upsert rather than in a follow-up update:
+        // kca_user_votes has carried the column since its first migration, so
+        // unlike the VMA path there is nothing to be defensive about.
+        if (extToken) row.ext_at = new Date().toISOString();
+        const { error: upErr } = await sb.from('kca_user_votes').upsert(row, { onConflict: 'app_user_id,day' });
+        if (upErr) return res.status(500).json({ error: upErr.message });
+
+        let my = null, totals = {};
+        try {
+          const [m, t] = await Promise.all([myKcaTotals(sb, uid), sb.rpc('kca_vote_totals')]);
           my = m; totals = t.data || {};
         } catch { /* ignore — client refetches */ }
         return res.status(200).json({ ok: true, my, totals });
