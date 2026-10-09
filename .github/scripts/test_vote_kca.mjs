@@ -18,8 +18,9 @@
 //   * the card links ONCE, to the hub. Nothing is submitted until a round is
 //     finished, so a per-category deep link drops someone exactly where a round
 //     gets abandoned. The card used to carry three of them; it must not again.
-//   * the round rule is first and SHORT, because a long warning about a thing
-//     that silently throws the vote away is a warning people skip
+//   * the round rule is not in the rules list at all. It is the one line that
+//     COSTS the vote if missed, and in a grey 0.7rem list it read like "no
+//     account needed" — so it is a band of its own, directly above the button
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 
 const INDEX = new URL('../../index.html', import.meta.url).pathname;
@@ -69,6 +70,19 @@ const kca = await p.evaluate(() => {
       thumb: !!r.querySelector('.vote-cat-thumb'),
     })),
     rules: [...card.querySelectorAll('.vote-rules li')].map(x => x.textContent.trim()),
+    alert: card.querySelector('.vote-alert-text')?.textContent.trim() || null,
+    // Where it sits relative to the button is the whole point of promoting it.
+    alertBeforeBtn: (() => {
+      const a = card.querySelector('.vote-alert'), btn = card.querySelector('.vote-btn');
+      if (!a || !btn) return null;
+      return !!(a.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING);
+    })(),
+    alertSize: (() => {
+      const a = card.querySelector('.vote-alert-text');
+      const li = card.querySelector('.vote-rules li');
+      if (!a || !li) return null;
+      return [parseFloat(getComputedStyle(a).fontSize), parseFloat(getComputedStyle(li).fontSize)];
+    })(),
     voteBtn: card.querySelector('.vote-btn')?.getAttribute('href'),
     inPast: !!card.closest('.vote-past, .vote-ended, [data-past]'),
   };
@@ -126,16 +140,22 @@ check(byName['Favorite Female Artist'].all === 8,
 check(new Set(kca.cats.map(c => c.thumb)).size === 1,
       `every category row treats thumbnails the same (${kca.cats.map(c => c.thumb).join(', ')})`);
 
-console.log('\n--- the round rule is first, and short enough to read');
+console.log('\n--- the round rule is a band, not a bullet');
 const rules = kca.rules.join(' ');
-check(/Vote every category to the end/i.test(kca.rules[0]),
-      `rule 1 is the round rule (${kca.rules[0]})`);
-check(/nothing is submitted until you finish/i.test(kca.rules[0]),
+check(/Vote every category to the end/i.test(kca.alert || ''),
+      `the alert band carries it (${kca.alert})`);
+check(/nothing is submitted until you finish/i.test(kca.alert || ''),
       'and says why in the same breath');
-// It was 150 characters of explanation before. A warning about something that
-// silently throws the vote away has to be readable at a glance or it is decoration.
-check(kca.rules[0].length <= 95,
-      `kept short — ${kca.rules[0].length} characters`);
+// The regression to guard: it drifting back into the rules list, where it read
+// like "no account needed".
+check(!/Vote every category/i.test(rules),
+      'and it is NOT also a grey bullet in the rules list');
+check(kca.alertBeforeBtn === true,
+      'the band sits immediately above the Vote Now button, not buried at the top');
+check(kca.alertSize && kca.alertSize[0] > kca.alertSize[1] * 1.25,
+      `and is rendered bigger than a rules bullet (${kca.alertSize?.join('px vs ')}px)`);
+check((kca.alert || '').length <= 130,
+      `still short enough to read at a glance — ${(kca.alert || '').length} characters`);
 check(/Vote Again/.test(rules), 'and the way to go round again is still said');
 
 console.log('\n--- the circulating limit is corrected, not repeated');

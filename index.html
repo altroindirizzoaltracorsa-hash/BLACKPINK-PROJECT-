@@ -2231,6 +2231,26 @@
   .vote-cat-link { display: inline-block; font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em; color: var(--pink); text-decoration: none; border: 1px solid rgba(255,0,102,0.45); padding: 0.15rem 0.5rem; margin-left: 0.55rem; vertical-align: middle; text-transform: none; transition: background 0.2s, color 0.2s; }
   .vote-cat-link:hover { background: var(--pink); color: #000; }
 
+  /* A rule that COSTS THE VOTE if it is missed, as opposed to the reference
+     material in .vote-rules. Bigger, brighter, and sat immediately above the
+     button — the last thing read before tapping through, rather than bullet
+     three in grey at 0.7rem where it was indistinguishable from "no account
+     needed". */
+  .vote-alert {
+    display: flex; gap: 0.75rem; align-items: flex-start;
+    margin: 0 0 1.1rem; padding: 0.95rem 1.1rem;
+    border: 1px solid rgba(255,0,102,0.6);
+    background: linear-gradient(90deg, rgba(255,0,102,0.20), rgba(255,0,102,0.06) 72%, rgba(255,0,102,0.03));
+    box-shadow: inset 3px 0 0 var(--pink);
+  }
+  .vote-alert-icon { font-size: 1.15rem; line-height: 1.3; flex: 0 0 auto; }
+  .vote-alert-text { font-size: 0.95rem; line-height: 1.5; color: var(--white); font-weight: 500; }
+  .vote-alert-text b { color: var(--pink); font-weight: 700; }
+  @media (max-width: 480px) {
+    .vote-alert { padding: 0.85rem 0.9rem; gap: 0.6rem; }
+    .vote-alert-text { font-size: 0.88rem; }
+  }
+
   .vote-rules {
     background: rgba(255,0,102,0.04); border: 1px solid var(--border);
     padding: 0.9rem 1.1rem; margin-bottom: 1.4rem;
@@ -8108,9 +8128,11 @@ const VOTE_CAMPAIGNS = [
     // costs nothing, because the rules line tells people not to leave it late.
     // Still NOT the show date (Nov 14) — voting shuts before the ceremony.
     deadline: '2026-11-14T07:59:00Z',
+    // Promoted out of `rules` into the band above the button: in a grey 0.7rem
+    // list it read like "no account needed", and it is the one line here that
+    // costs the vote if it is missed.
+    alert: '<b>Vote every category to the end.</b> Nothing is submitted until you finish the round — so don’t stop after BLACKPINK.',
     rules: [
-      // First and short, because getting it wrong throws the vote away silently.
-      '⚠ <b>Vote every category to the end</b> — nothing is submitted until you finish the round',
       'No account needed. Tap VOTE on BLACKPINK, ROSÉ and “Dracula” as they come up, then <b>Vote Again</b> to go round again',
       '<b>No vote limit</b> — the rules allow repeats and publish no number. (The “100 a day” going around isn’t Nickelodeon’s)',
       'Voting runs <b>Oct 8 – Nov 13</b>. Closing times vary by region — don’t leave it to the last day',
@@ -8612,6 +8634,10 @@ function renderVoteCampaigns() {
         ${c.rules?.length ? `<div class="vote-rules">
           <div class="vote-rules-label">📋 Rules</div>
           <ul>${c.rules.map(r => `<li>${r}</li>`).join('')}</ul>
+        </div>` : ''}
+        ${c.alert && !ended ? `<div class="vote-alert">
+          <span class="vote-alert-icon">⚠️</span>
+          <span class="vote-alert-text">${c.alert}</span>
         </div>` : ''}
         <div class="vote-card-actions">
           <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
