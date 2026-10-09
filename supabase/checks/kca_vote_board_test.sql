@@ -2,13 +2,20 @@
 --
 -- Run against a THROWAWAY database, not production — it inserts and rolls back:
 --   psql -f supabase/migrations/kca_vote_board.sql
+--   psql -f supabase/migrations/kca_vote_board_ranked.sql
 --   psql -f supabase/checks/kca_vote_board_test.sql
 --
--- The arithmetic worth pinning is the per-category rollup. `votes` is a plain
--- sum and hard to get wrong; `cats` is a jsonb map summed per blink per period,
--- and a wrong period filter there shows up as a category tally that is right in
--- one bucket and silently wrong in another — the kind of thing a page renders
--- without complaint.
+-- Two things are worth pinning here.
+--
+-- The per-category rollup: `votes` is a plain sum and hard to get wrong, while
+-- `cats` is a jsonb map summed per blink per period, and a wrong period filter
+-- there shows up as a category tally that is right in one bucket and silently
+-- wrong in another — the kind of thing a page renders without complaint.
+--
+-- And the ranked/unranked split, which kca_vote_board_ranked.sql added: the rule
+-- across this board is "no stream = no rank", so a blink who votes and never
+-- streams must come back under `unranked` and still carry their full totals. A
+-- board that put them in the ranked table would look completely normal.
 begin;
 
 -- Fixed identities so the expectations can name them.
@@ -33,6 +40,12 @@ insert into kca_user_votes (app_user_id, day, votes, cats, display_name, ext_at)
   -- blink 2, today, hand-logged (no ext_at)
   (:u2, (select d from kst), 3,
    '{"favorite-music-group-or-duo":1,"favorite-female-artist":2}', 'beta', null);
+
+-- Only blink 1 has ever streamed, so only blink 1 can be RANKED. Blink 2 votes
+-- and does not stream, which is the case the split exists for: they must come
+-- back under `unranked`, with their totals intact.
+insert into user_daily_counts (app_user_id, day_key, jump) values
+  (:u1, (select d::text from kst), 40);
 
 \echo ''
 \echo '=== community totals'
@@ -66,36 +79,45 @@ select
 \echo ''
 \echo '=== the board'
 select
-  b->>'name'                   as name,
-  (b->>'total')::int           as total,
-  (b->>'today')::int           as today,
-  (b->>'usedExtension')::bool  as ext,
-  b->'cats'->>'favorite-music-group-or-duo'      as cats_group,
-  b->'catsToday'->>'favorite-music-group-or-duo' as today_group
-from json_array_elements(kca_vote_board()) b;
+  which, b->>'name' as name,
+  (b->>'total')::int          as total,
+  (b->>'today')::int          as today,
+  (b->>'streams')::int        as streams,
+  (b->>'usedExtension')::bool as ext,
+  b->'cats_total'->>'favorite-music-group-or-duo' as cats_group,
+  b->'cats_today'->>'favorite-music-group-or-duo' as today_group
+from (values ('ranked'), ('unranked')) as w(which),
+     json_array_elements(kca_vote_board()->w.which) b;
 
 \echo ''
-\echo 'expected: alpha 17 total / 5 today / ext true; beta 3 / 3 / false; alpha ranks first'
+\echo 'expected: alpha ranked (17 total / 5 today / 40 streams / ext true); beta unranked (3 / 3 / hand)'
 select
-  case when (kca_vote_board()->0->>'name') = 'alpha' then 'PASS' else 'FAIL' end as alpha_first,
-  case when (kca_vote_board()->0->>'total')::int = 17 then 'PASS' else 'FAIL' end as alpha_17,
-  case when (kca_vote_board()->0->>'today')::int = 5  then 'PASS' else 'FAIL' end as alpha_today_5,
-  case when (kca_vote_board()->0->>'usedExtension')::bool then 'PASS' else 'FAIL' end as alpha_ext,
-  case when not (kca_vote_board()->1->>'usedExtension')::bool then 'PASS' else 'FAIL' end as beta_hand;
+  case when json_array_length(kca_vote_board()->'ranked')   = 1 then 'PASS' else 'FAIL · ' || json_array_length(kca_vote_board()->'ranked')::text end   as one_ranked,
+  case when json_array_length(kca_vote_board()->'unranked') = 1 then 'PASS' else 'FAIL · ' || json_array_length(kca_vote_board()->'unranked')::text end as one_unranked,
+  case when (kca_vote_board()->'ranked'->0->>'name') = 'alpha' then 'PASS' else 'FAIL' end as alpha_ranked,
+  case when (kca_vote_board()->'ranked'->0->>'total')::int = 17 then 'PASS' else 'FAIL' end as alpha_17,
+  case when (kca_vote_board()->'ranked'->0->>'today')::int = 5  then 'PASS' else 'FAIL' end as alpha_today_5,
+  case when (kca_vote_board()->'ranked'->0->>'streams')::int = 40 then 'PASS' else 'FAIL' end as alpha_streams,
+  case when (kca_vote_board()->'ranked'->0->>'usedExtension')::bool then 'PASS' else 'FAIL' end as alpha_ext,
+  -- The point of the split: a blink who never streamed keeps their full total,
+  -- they are simply not in the ranked table.
+  case when (kca_vote_board()->'unranked'->0->>'name') = 'beta' then 'PASS' else 'FAIL' end as beta_unranked,
+  case when (kca_vote_board()->'unranked'->0->>'total')::int = 3 then 'PASS' else 'FAIL' end as beta_3,
+  case when not (kca_vote_board()->'unranked'->0->>'usedExtension')::bool then 'PASS' else 'FAIL' end as beta_hand;
 
 \echo ''
 \echo '=== the 60-day-old row is all-time only, not in today or week'
 \echo 'alpha cats group: all-time 13, today 3 — the 10 must NOT leak into today'
 select
-  case when (kca_vote_board()->0->'cats'->>'favorite-music-group-or-duo')::int = 13
-       then 'PASS' else 'FAIL · ' || coalesce((kca_vote_board()->0->'cats'->>'favorite-music-group-or-duo'),'null') end as alpha_group_all,
-  case when (kca_vote_board()->0->'catsToday'->>'favorite-music-group-or-duo')::int = 3
-       then 'PASS' else 'FAIL · ' || coalesce((kca_vote_board()->0->'catsToday'->>'favorite-music-group-or-duo'),'null') end as alpha_group_today,
+  case when (kca_vote_board()->'ranked'->0->'cats_total'->>'favorite-music-group-or-duo')::int = 13
+       then 'PASS' else 'FAIL · ' || coalesce((kca_vote_board()->'ranked'->0->'cats_total'->>'favorite-music-group-or-duo'),'null') end as alpha_group_all,
+  case when (kca_vote_board()->'ranked'->0->'cats_today'->>'favorite-music-group-or-duo')::int = 3
+       then 'PASS' else 'FAIL · ' || coalesce((kca_vote_board()->'ranked'->0->'cats_today'->>'favorite-music-group-or-duo'),'null') end as alpha_group_today,
   -- A category with no votes in a period must be ABSENT from that period's map,
   -- not present as 0 — the page keys off presence.
   -- `?` is a jsonb operator and the RPC returns json, hence the casts.
-  case when ((kca_vote_board()->0->'catsToday')::jsonb ? 'favorite-music-collaboration')
-        and not ((kca_vote_board()->1->'catsToday')::jsonb ? 'favorite-music-collaboration')
+  case when ((kca_vote_board()->'ranked'->0->'cats_today')::jsonb ? 'favorite-music-collaboration')
+        and not ((kca_vote_board()->'unranked'->0->'cats_today')::jsonb ? 'favorite-music-collaboration')
        then 'PASS' else 'FAIL' end as absent_not_zero;
 
 rollback;

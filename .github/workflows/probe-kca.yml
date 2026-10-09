@@ -19,6 +19,10 @@ on:
         description: 'Category slugs, space separated'
         required: false
         default: 'favorite-music-group-or-duo favorite-music-collaboration favorite-female-artist'
+      slug:
+        description: 'Single slug for the ballot-markup job'
+        required: false
+        default: 'favorite-music-group-or-duo'
 
 jobs:
   probe:
@@ -116,3 +120,267 @@ jobs:
           await b.close();
           JS
           SLUGS="${{ inputs.paths }}" node kca.mjs
+
+  # ── Where do the ballot's ids live, and what does an option look like? ──────
+  # Answers the one question the vote capture could not. The KCA vote request is
+  #   POST https://kca.nick.tv/api/vote
+  #   {"user_id":"…","region":"us","environment":"production",
+  #    "votes":[{"question_id":"<uuid>","option_id":"<uuid>"}, …]}
+  # — opaque UUIDs for both the category and the nominee, and nothing in the
+  # payload names BLACKPINK. So the counter has to learn which pick is ours from
+  # the PAGE. The only other signal in the capture was Adobe click telemetry
+  # (edge.adobedc.net), which (a) any ad blocker removes and (b) races the SPA
+  # router — one BLACKPINK click in that capture was reported under the NEXT
+  # category's URL. A counter built on that alone is a silent zero waiting to
+  # happen, which is the failure mode BreakTudo already taught us.
+  #
+  # Prints the page's own network requests (is there a ballot API?), each option
+  # element as a click listener would see it, every UUID in the DOM with its
+  # context, and any UUID-bearing global. Never clicks a nominee, and FAILS the
+  # job if a /api/vote request happens anyway.
+  ballot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Render the page and report its ballot markup
+        env:
+          SLUG: ${{ inputs.slug || 'favorite-music-group-or-duo' }}
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --silent playwright@1.56.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat > ballot.mjs <<'JS'
+          import { chromium } from 'playwright';
+
+          const slug = process.env.SLUG;
+          const url = `https://kca.nick.tv/vote/${slug}`;
+          const b = await chromium.launch();
+          const p = await b.newPage({ viewport: { width: 1280, height: 1600 } });
+
+          // Every request, so a ballot API cannot hide. The vote endpoint must
+          // never appear — this probe reads, it does not vote.
+          const reqs = [];
+          let voted = false;
+          p.on('request', (r) => {
+            const u = r.url();
+            if (/\/api\/vote\b/.test(u)) voted = true;
+            reqs.push({ m: r.method(), u, rt: r.resourceType() });
+          });
+          // Bodies of same-origin JSON responses — that is where a ballot would be.
+          const bodies = [];
+          p.on('response', async (r) => {
+            const u = r.url();
+            if (!/kca\.nick\.tv/.test(u)) return;
+            const ct = (r.headers()['content-type'] || '');
+            if (!/json/i.test(ct)) return;
+            try { bodies.push({ u, body: (await r.text()).slice(0, 4000) }); } catch {}
+          });
+
+          await p.goto(url, { waitUntil: 'networkidle', timeout: 90000 }).catch(e => console.log('nav:', e.message));
+          await p.waitForTimeout(4000);
+
+          console.log(`\n${'='.repeat(72)}\n${url}\n${'='.repeat(72)}`);
+
+          console.log('\n--- same-origin / API requests (assets filtered out)');
+          for (const r of reqs) {
+            if (/\.(png|jpe?g|webp|svg|woff2?|mp3|wav|css|js|ico|gif|mp4)(\?|$)/i.test(r.u)) continue;
+            if (/googlesyndication|adobedc|nr-data|videoamp|ketchcdn|demdex|doubleclick|adtrafficquality/.test(r.u)) continue;
+            console.log(`  ${r.m} ${r.u}`);
+          }
+
+          console.log('\n--- same-origin JSON responses');
+          if (!bodies.length) console.log('  none — the ballot is not served as JSON from this origin');
+          for (const r of bodies) console.log(`  ${r.u}\n    ${r.body.slice(0, 1200).replace(/\n/g, ' ')}`);
+
+          // What a click listener would actually see. Deliberately several
+          // candidate selectors: the counter must key off whichever is real.
+          console.log('\n--- option elements, per candidate selector');
+          const sels = ['.question-option', '[class*="question-option"]', 'button[class*="option"]',
+                        '[role="radio"]', '[role="button"]', 'button'];
+          for (const sel of sels) {
+            const found = await p.$$eval(sel, (els) => els.slice(0, 8).map((e) => ({
+              tag: e.tagName.toLowerCase(),
+              cls: (e.getAttribute('class') || '').slice(0, 140),
+              attrs: [...e.attributes].filter(a => a.name !== 'class' && a.name !== 'style')
+                .map(a => `${a.name}=${a.value.slice(0, 60)}`).join(' '),
+              text: (e.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 80),
+            }))).catch(() => []);
+            console.log(`\n  [${sel}] ${found.length} shown`);
+            for (const f of found) console.log(`    <${f.tag}> text="${f.text}"\n       class="${f.cls}"\n       ${f.attrs || '(no other attributes)'}`);
+          }
+
+          // Does the nominee's own element carry its option_id? That is the
+          // difference between a counter that reads ids off the page and one
+          // that has to infer them.
+          console.log('\n--- every UUID in the rendered DOM, with context');
+          const uuids = await p.evaluate(() => {
+            const re = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+            const out = [];
+            const walk = (el, path) => {
+              for (const a of el.attributes || []) {
+                for (const m of String(a.value).match(re) || [])
+                  out.push({ id: m, where: `${path}[${a.name}]`, text: (el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60) });
+              }
+              for (const c of el.children) walk(c, `${path}>${c.tagName.toLowerCase()}`);
+            };
+            walk(document.documentElement, 'html');
+            return out.slice(0, 60);
+          });
+          if (!uuids.length) console.log('  NONE — no UUID appears in any DOM attribute');
+          for (const u of uuids) console.log(`  ${u.id}  @ ${u.where}  text="${u.text}"`);
+
+          // ── how the ballot reaches the page ────────────────────────────────
+          // This decides what the counter can read. A content script runs in an
+          // ISOLATED world, so it cannot touch window.jsonData — but it can read
+          // the text of the inline <script> that assigns it, because that is DOM
+          // and not page JS. (world:"MAIN" is not an option: the Kiwi-family
+          // Android browsers this extension also ships for don't inject it
+          // reliably — see background.js.) So the shape of these assignments is
+          // the parser's contract.
+          console.log('\n--- inline <script> assignments (how window.jsonData is assembled)');
+          const assigns = await p.evaluate(() => {
+            const out = [];
+            [...document.querySelectorAll('script')].forEach((s, i) => {
+              const t = s.textContent || '';
+              if (!t) return;
+              for (const m of t.matchAll(/window\.([A-Za-z_$][\w$]*)((?:\.[\w$]+)*)\s*=/g))
+                out.push({ i, target: `window.${m[1]}${m[2]}`, len: t.length, src: s.src || '' });
+            });
+            return out;
+          });
+          if (!assigns.length) console.log('  none');
+          for (const a of assigns) console.log(`  script[${a.i}] (${a.len}B inline) assigns ${a.target}`);
+
+          // ── the ballot itself ─────────────────────────────────────────────
+          // Where do the question_id / option_id UUIDs live inside jsonData, and
+          // what name sits beside each one? This is the map the counter needs:
+          // the vote payload names nobody, so an option_id is the only thing
+          // that says "this pick was BLACKPINK".
+          // No inline script assigns window.jsonData itself (only
+          // .environment), so the ballot arrives as an external file — and THAT
+          // is what the counter has to fetch, since a content script in an
+          // isolated world cannot read the global. So: which same-origin file is
+          // it, and what does it look like at the top?
+          // Only <script src>, and only same-origin: the ballot is a script the
+          // page loads, and the <link> list is a few dozen nominee thumbnails
+          // that would bury the one line that matters. This mirrors what
+          // panel.js does, so a change here is a change there.
+          console.log('\n--- same-origin script URLs, and which one carries the ballot');
+          const ballotSrc = await p.evaluate(async () => {
+            const urls = [...new Set(
+              [...document.querySelectorAll('script[src]')].map(s => s.src),
+            )].filter(u => u.startsWith(location.origin));
+            const out = [];
+            for (const u of urls) {
+              // The Vue bundle is big and is not the ballot; skip it by path, but
+              // report it so the filter can be checked.
+              const isAsset = /\/mik-assets\/vite\/assets\//.test(u);
+              let note = isAsset ? 'vite asset, not fetched' : '';
+              let head = '';
+              if (!isAsset) {
+                try {
+                  const t = await (await fetch(u, { cache: 'force-cache' })).text();
+                  head = t.slice(0, 160).replace(/\s+/g, ' ');
+                  note = `${t.length}B · has "questions": ${/"questions"\s*:/.test(t)}`
+                       + ` · has window.jsonData=: ${/window\.jsonData\s*=/.test(t)}`;
+                } catch (e) { note = 'fetch failed: ' + e.message; }
+              }
+              out.push({ u, note, head });
+            }
+            return out;
+          });
+          for (const s of ballotSrc) {
+            console.log(`  ${s.u}\n      ${s.note}`);
+            if (s.head) console.log(`      head: ${s.head}`);
+          }
+
+          console.log('\n--- window.jsonData: top-level keys');
+          const jd = await p.evaluate(() => {
+            const d = window.jsonData;
+            if (!d) return null;
+            const typeOf = (v) => Array.isArray(v) ? `array[${v.length}]` : (v === null ? 'null' : typeof v);
+            return Object.keys(d).map(k => `${k}: ${typeOf(d[k])}`);
+          });
+          console.log(jd ? '  ' + jd.join('\n  ') : '  window.jsonData is not defined');
+
+          console.log('\n--- where BLACKPINK sits inside window.jsonData');
+          const paths = await p.evaluate(() => {
+            const out = [];
+            const seen = new Set();
+            const walk = (v, path, depth) => {
+              if (out.length > 40 || depth > 8 || v == null) return;
+              if (typeof v === 'string') { if (/BLACKPINK/i.test(v)) out.push({ path, v: v.slice(0, 80) }); return; }
+              if (typeof v !== 'object') return;
+              if (seen.has(v)) return; seen.add(v);
+              if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${path}[${i}]`, depth + 1));
+              else for (const k of Object.keys(v)) walk(v[k], `${path}.${k}`, depth + 1);
+            };
+            walk(window.jsonData, 'jsonData', 0);
+            return out;
+          });
+          if (!paths.length) console.log('  not found');
+          for (const x of paths) console.log(`  ${x.path} = "${x.v}"`);
+
+          // THE JOIN, printed on its own. This is the one thing the counter
+          // needs: the option_id in the vote payload, next to the name beside
+          // it. Printed as the last section and one line per option so it
+          // survives log truncation, and with the pivot read explicitly rather
+          // than through a depth-limited pretty-printer.
+          console.log('\n--- the question that holds BLACKPINK: its id, its scalars, and the id↔name join');
+          const q = await p.evaluate(() => {
+            const seen = new Set();
+            let hit = null;
+            const isUuid = (s) => typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+            const walk = (v, depth) => {
+              if (hit || depth > 8 || v == null || typeof v !== 'object') return;
+              if (seen.has(v)) return; seen.add(v);
+              if (!Array.isArray(v) && isUuid(v.id)) {
+                let s = ''; try { s = JSON.stringify(v); } catch {}
+                // The question, not the option: it is the object that CONTAINS
+                // the BLACKPINK option, so it mentions BLACKPINK and has a list.
+                if (/BLACKPINK/i.test(s) && Object.values(v).some(x => Array.isArray(x) && x.length > 1)) { hit = v; return; }
+              }
+              if (Array.isArray(v)) v.forEach(x => walk(x, depth + 1));
+              else Object.values(v).forEach(x => walk(x, depth + 1));
+            };
+            walk(window.jsonData, 0);
+            if (!hit) return null;
+            // Which key holds the options, and every short scalar on the
+            // question (that is where a slug or a path would be).
+            const listKey = Object.keys(hit).find(k => Array.isArray(hit[k]) && hit[k].length > 1
+              && hit[k].every(x => x && typeof x === 'object'));
+            const scalars = Object.keys(hit)
+              .filter(k => hit[k] == null || ['string', 'number', 'boolean'].includes(typeof hit[k]))
+              .map(k => `${k} = ${JSON.stringify(hit[k]) || 'null'}`.slice(0, 120));
+            const opts = (listKey ? hit[listKey] : []).map(o => ({
+              title: o.title, id: o.id,
+              pivotQ: o.pivot && o.pivot.question_id, pivotO: o.pivot && o.pivot.option_id,
+              pivotKeys: o.pivot ? Object.keys(o.pivot).join(',') : '(no pivot)',
+            }));
+            return { qid: hit.id, listKey, scalars, opts };
+          });
+          if (!q) console.log('  not found');
+          else {
+            console.log(`  question.id = ${q.qid}`);
+            console.log(`  options live under: ${q.listKey}`);
+            console.log('  question scalars:');
+            for (const s of q.scalars) console.log('    ' + s);
+            console.log('  options — title | own id | pivot.option_id | pivot.question_id');
+            for (const o of q.opts)
+              console.log(`    ${String(o.title).padEnd(20)} | ${o.id} | ${o.pivotO} | ${o.pivotQ}`);
+            console.log(`  pivot keys: ${q.opts[0] ? q.opts[0].pivotKeys : '—'}`);
+            // If these hold, the counter can read the whole ballot as
+            // option_id → title and never needs to infer anything.
+            console.log(`  every pivot.question_id === question.id ? ${q.opts.every(o => o.pivotQ === q.qid)}`);
+            console.log(`  every pivot.option_id === option.id ?    ${q.opts.every(o => o.pivotO === o.id)}`);
+          }
+
+          // The nominee names, so the counter's name matching can be checked
+          // against what the page really renders (accents included).
+          console.log('\n--- page text (first 1200 chars)');
+          console.log('  ' + (await p.evaluate(() => document.body.innerText.replace(/\s+/g, ' ').trim())).slice(0, 1200));
+
+          console.log(`\n--- read-only assertion: ${voted ? 'FAILED — a /api/vote request was made!' : 'ok, no vote request was made'}`);
+          await b.close();
+          if (voted) process.exit(1);
+          JS
+          node ballot.mjs

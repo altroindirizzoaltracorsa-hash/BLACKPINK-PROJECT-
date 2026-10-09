@@ -7,15 +7,19 @@
   window.__buPanelMounted = true;
   if (window.top !== window) return;            // top frame only
 
-  // One panel, two awards. On vote.mtv.com it's the VMA counter; on
-  // vote.breaktudoawards.com it's the BreakTudo counter. They keep entirely
-  // separate storage keys and read their own award dimension off the board.
-  const AWARD = /(^|\.)vote\.breaktudoawards\.com$/i.test(location.hostname) ? 'breaktudo' : 'vma';
-  const CFG = AWARD === 'breaktudo'
-    ? { sub: 'BreakTudo Vote Counter', unit: 'votes · synced to /voting',
-        countKey: 'btCount', logKey: 'btLog' }
-    : { sub: 'VMA Vote Counter', unit: 'votes · synced to /voting',
-        countKey: 'buCount', logKey: 'buLog' };
+  // One panel, three awards. On vote.mtv.com it's the VMA counter, on
+  // vote.breaktudoawards.com the BreakTudo one, on kca.nick.tv the Kids' Choice
+  // one. Each keeps entirely separate storage keys and reads its own award
+  // dimension off the board.
+  const AWARD = /(^|\.)vote\.breaktudoawards\.com$/i.test(location.hostname) ? 'breaktudo'
+              : /(^|\.)kca\.nick\.tv$/i.test(location.hostname) ? 'kca'
+              : 'vma';
+  const CFG = {
+    vma:       { sub: 'VMA Vote Counter',          countKey: 'buCount',  logKey: 'buLog' },
+    breaktudo: { sub: 'BreakTudo Vote Counter',    countKey: 'btCount',  logKey: 'btLog' },
+    kca:       { sub: 'Kids’ Choice Vote Counter', countKey: 'kcaCount', logKey: 'kcaLog' },
+  }[AWARD];
+  CFG.unit = 'votes · synced to /voting';
 
   // Extension-context guard: if the extension is reloaded/uninstalled while this
   // tab is open, every chrome.runtime/storage call throws "Extension context
@@ -304,7 +308,11 @@
     if (subEl) subEl.textContent = CFG.sub;
     const unitEl = root.querySelector('.unit');
     if (unitEl) unitEl.textContent = CFG.unit;
-    if (AWARD === 'breaktudo') {
+    // Neither BreakTudo nor KCA has a per-member split chip pair, power hours or
+    // a voting account to share (you vote on-site with no account), so those
+    // VMA-only sections are hidden — the total, the per-category list and the
+    // activity log carry it.
+    if (AWARD !== 'vma') {
       ['.splits', '.sync', '.powerband'].forEach((sel) => {
         const el = root.querySelector(sel); if (el) el.style.display = 'none';
       });
@@ -355,7 +363,20 @@
   const btCatLabel = (slug) => BT_CAT_LABELS[slug]
     || String(slug).replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
-  function renderBtCats(map) {
+  // Mirrors KCA_NOMINEES in background.js, for the same reason BT_CAT_LABELS
+  // mirrors BT_CATS: a content script cannot import from the service worker.
+  // An unrecognised slug is prettified rather than dropped — Nickelodeon runs
+  // extra "Bonus" and "Live" categories during the show.
+  const KCA_CAT_LABELS = {
+    'favorite-music-group-or-duo':  'Music Group or Duo',
+    'favorite-female-artist':       'Female Artist',
+    'favorite-music-collaboration': 'Music Collaboration',
+    _other:                         'Category not identified',
+  };
+  const kcaCatLabel = (slug) => KCA_CAT_LABELS[slug]
+    || String(slug).replace(/^favorite-/, '').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+  function renderBtCats(map, label) {
     const el = $('btcats');
     if (!el) return;
     const entries = Object.entries(map || {})
@@ -369,27 +390,53 @@
     }
     el.innerHTML = '<div class="hd">By category · today</div>'
       + entries.map(([k, v]) =>
-          '<div class="btcrow"><span class="nm">' + esc(btCatLabel(k)) + '</span>'
+          '<div class="btcrow"><span class="nm">' + esc((label || btCatLabel)(k)) + '</span>'
           + '<span class="vv">' + fmt(v) + '</span></div>').join('');
+  }
+
+  // How many votes are actually waiting. The stored backlog is the truth; the
+  // diag entry's own count is the fallback for the moment between a failed
+  // submission and the backlog being written.
+  // A stored zero is an answer, not a missing value: it means the backlog went
+  // through, and the band should disappear rather than keep quoting the last
+  // failed submission forever. Only an ABSENT backlog falls back to that
+  // submission's own count — the window between a failed send and the backlog
+  // being written, which the next storage change re-renders out of.
+  function heldCount(last, pending) {
+    const n = Number(pending);
+    return Number.isFinite(n) ? n : (Number(last && last.n) || 0);
   }
 
   // Why the last thing we saw was NOT counted. A vote that doesn't register used
   // to be completely silent — the counter just sat there and there was nothing to
   // report but "it isn't working". Only shown when something actually went wrong.
-  function renderBtDiag(list) {
+  function renderBtDiag(list, pending) {
     const el = $('btdiag');
     if (!el) return;
     // Newest entry only. Searching past it for the most recent *failure* meant a
     // vote that counted fine afterwards still left the warning on screen.
     const last = (Array.isArray(list) && list[0] && list[0].kind && list[0].kind !== 'counted') ? list[0] : null;
+    if (!last) { el.style.display = 'none'; return; }
+    // A "held" band is about the BACKLOG, not about the one submission that
+    // happened to fail last. Votes are held one submission at a time, so
+    // reporting that submission's count said "1 vote is held" while three were
+    // waiting — and the number it showed never grew, which reads like the
+    // counter missing the other two rather than queueing them.
+    const held = heldCount(last, pending);
+    if (last.kind === 'held' && held === 0) { el.style.display = 'none'; return; }
     // Stale complaints are noise — anything older than 10 minutes has been
-    // superseded by whatever happened since.
-    if (!last || Date.now() - (last.ts || 0) > 600000) { el.style.display = 'none'; return; }
+    // superseded by whatever happened since. But a backlog is not a complaint
+    // about something that happened, it is a state that is still true: those
+    // votes are still waiting to be sent. Timing it out told a blink nothing
+    // was wrong while their votes sat in a queue, so it stays until it clears.
+    if (!(last.kind === 'held' && held > 0) && Date.now() - (last.ts || 0) > 600000) {
+      el.style.display = 'none'; return;
+    }
     let msg;
     if (last.kind === 'held' && last.reason === 'not-linked') {
-      msg = '<b>Votes are being seen but not logged.</b><span class="why">Open the extension and tap “Link my account” — ' + fmt(last.n) + ' vote' + (last.n === 1 ? '' : 's') + ' are being held until you do.</span>';
+      msg = '<b>Votes are being seen but not logged.</b><span class="why">Open the extension and tap “Link my account” — ' + fmt(held) + (held === 1 ? ' vote is' : ' votes are') + ' being held until you do.</span>';
     } else if (last.kind === 'held') {
-      msg = '<b>Couldn’t reach blinksunited.com.</b><span class="why">' + fmt(last.n) + ' vote' + (last.n === 1 ? '' : 's') + ' are held and will be sent on the next one that goes through.</span>';
+      msg = '<b>Couldn’t reach blinksunited.com.</b><span class="why">' + fmt(held) + (held === 1 ? ' vote is' : ' votes are') + ' held and will be sent on the next one that goes through.</span>';
     } else if (last.kind === 'not-ours') {
       msg = '<b>Not counted — category not recognised.</b><span class="why">' + esc(last.slug || 'unknown page') + ' isn’t on the BLACKPINK list. If BLACKPINK or a member IS nominated here, send us this page name.</span>';
     } else if (last.kind === 'rejected') {
@@ -400,6 +447,130 @@
     el.style.display = 'block';
     el.innerHTML = '⚠️ ' + msg;
   }
+
+  // Same band, KCA's own reasons. The one that is specific to this award is
+  // "no-ballot": the vote payload identifies nominees only by opaque ids, so
+  // without the ballot map a submitted round cannot be read at all — and the
+  // honest count is then zero rather than a guess. That has to say so, or it
+  // looks exactly like "you cast nothing".
+  function renderKcaDiag(list, pending) {
+    const el = $('btdiag');
+    if (!el) return;
+    const last = (Array.isArray(list) && list[0] && list[0].kind && list[0].kind !== 'counted') ? list[0] : null;
+    if (!last) { el.style.display = 'none'; return; }
+    // See renderBtDiag for both rules: the band reports the backlog, and a
+    // backlog does not time out. Both matter more here — KCA submits a round in
+    // several flushes, so our three categories reach the counter as three
+    // separate holds rather than one, and a round takes long enough that the
+    // ten-minute cutoff could hide the queue before the round even ended.
+    const held = heldCount(last, pending);
+    if (last.kind === 'held' && held === 0) { el.style.display = 'none'; return; }
+    if (!(last.kind === 'held' && held > 0) && Date.now() - (last.ts || 0) > 600000) {
+      el.style.display = 'none'; return;
+    }
+    let msg;
+    if (last.kind === 'held' && last.reason === 'not-linked') {
+      msg = '<b>Votes are being seen but not logged.</b><span class="why">Open the extension and tap “Link my account” — ' + fmt(held) + (held === 1 ? ' vote is' : ' votes are') + ' being held until you do.</span>';
+    } else if (last.kind === 'held') {
+      msg = '<b>Couldn’t reach blinksunited.com.</b><span class="why">' + fmt(held) + (held === 1 ? ' vote is' : ' votes are') + ' held and will be sent on the next one that goes through.</span>';
+    } else if (last.kind === 'no-ballot') {
+      msg = '<b>A round was submitted but we couldn’t read the ballot.</b><span class="why">Nickelodeon’s vote only carries id numbers, so without the ballot we can’t tell which pick was BLACKPINK — nothing was counted. Reload the page; if it keeps happening, add those votes by hand on /voting.</span>';
+    } else if (last.kind === 'unidentified') {
+      msg = '<b>' + fmt(last.marks) + ' pick' + (last.marks === 1 ? '' : 's') + ' in that round weren’t recognised.</b><span class="why">The ballot may have changed since we last read it. Reload the page and the next round will count.</span>';
+    } else if (last.kind === 'rejected') {
+      msg = '<b>Nickelodeon rejected that round (' + esc(String(last.status || '?')) + ').</b><span class="why">Nothing was counted — try the round again.</span>';
+    } else if (last.kind === 'unreadable') {
+      msg = '<b>A vote went out in a shape we couldn’t read.</b><span class="why">' + esc(last.path || '') + ' — send us this and we’ll fix the counter.</span>';
+    } else { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    el.innerHTML = '⚠️ ' + msg;
+  }
+
+  // ── reading the KCA ballot ──────────────────────────────────────────────────
+  // The vote request names nobody: {"votes":[{"question_id":"…","option_id":"…"}]}
+  // and both are opaque UUIDs. The map from option_id to the nominee's name is
+  // in the ballot, which every /vote/ page carries in full (all 36 questions,
+  // each {id, slug, title} with options {id, title}).
+  //
+  // It is NOT inline, though — no inline <script> assigns window.jsonData
+  // itself — and this content script runs in an isolated world, so the global is
+  // out of reach. (world:"MAIN" is not an option: the Kiwi-family Android
+  // browsers this also ships for don't inject it reliably.) What IS in reach is
+  // a same-origin fetch, and the page's own <script src> list is in the DOM. So
+  // find the ballot file by what it contains rather than by its URL — the URL
+  // carries a UUID that will change.
+  //
+  // Done once every few hours, not per page: the file is ~325KB. The background
+  // script owns that decision (bu-kca-ballot-stale) because it owns the cache.
+  function kcaScriptUrls() {
+    return [...document.querySelectorAll('script[src]')]
+      .map((s) => s.src)
+      .filter((u) => u && u.indexOf(location.origin) === 0)
+      // The Vue bundle is large and is not the ballot.
+      .filter((u) => !/\/mik-assets\/vite\/assets\//.test(u));
+  }
+
+  function kcaParseBallot(text) {
+    // The file assigns the ballot to a global; take the object literal that
+    // follows and parse it as JSON rather than evaluating anything.
+    const m = /window\.jsonData\s*=\s*/.exec(text);
+    if (!m) return null;
+    const start = text.indexOf('{', m.index + m[0].length - 1);
+    if (start < 0) return null;
+    // Walk to the matching brace. A regex cannot do this, and the nominee titles
+    // contain braces-free but quote-heavy text, so string state is tracked.
+    let depth = 0, inStr = false, esc2 = false, end = -1;
+    for (let i = start; i < text.length; i++) {
+      const c = text[i];
+      if (inStr) {
+        if (esc2) { esc2 = false; continue; }
+        if (c === '\\') { esc2 = true; continue; }
+        if (c === '"') inStr = false;
+        continue;
+      }
+      if (c === '"') { inStr = true; continue; }
+      if (c === '{') depth++;
+      else if (c === '}') { depth--; if (depth === 0) { end = i + 1; break; } }
+    }
+    if (end < 0) return null;
+    let data = null;
+    try { data = JSON.parse(text.slice(start, end)); } catch (_) { return null; }
+    if (!data || !Array.isArray(data.questions)) return null;
+    const byOption = {};
+    for (const q of data.questions) {
+      if (!q || !q.id || !Array.isArray(q.options)) continue;
+      for (const o of q.options) {
+        if (!o || !o.id) continue;
+        byOption[String(o.id)] = { t: String(o.title == null ? '' : o.title), q: String(q.id), s: String(q.slug || '') };
+      }
+    }
+    return Object.keys(byOption).length ? byOption : null;
+  }
+
+  async function kcaRefreshBallot() {
+    for (const u of kcaScriptUrls()) {
+      let text = '';
+      try {
+        // force-cache: the page has already loaded this file, so this is a read
+        // from the browser's own cache rather than a second 325KB download.
+        text = await (await fetch(u, { cache: 'force-cache' })).text();
+      } catch (_) { continue; }
+      if (text.indexOf('"questions"') === -1) continue;
+      const byOption = kcaParseBallot(text);
+      if (!byOption) continue;
+      safeCtx(() => chrome.runtime.sendMessage({ type: 'bu-kca-ballot', byOption }, () => {
+        void chrome.runtime.lastError;
+      }));
+      return true;
+    }
+    console.log('[BU KCA] could not find the ballot in any same-origin script');
+    return false;
+  }
+
+  if (AWARD === 'kca') safeCtx(() => chrome.runtime.sendMessage({ type: 'bu-kca-ballot-stale' }, (resp) => {
+    if (chrome.runtime.lastError) return;
+    if (resp && resp.stale) kcaRefreshBallot();
+  }));
 
   let lastTotal = 0;
   // 2026 VMA power schedule (US Eastern), mirrors blinksunited.com/voting:
@@ -454,7 +625,8 @@
         : 'Off — today’s voting accounts stay on this device';
     }
 
-    if (AWARD === 'breaktudo') { renderBtCats(s.btCats); renderBtDiag(s.btDiag); }
+    if (AWARD === 'breaktudo') { renderBtCats(s.btCats); renderBtDiag(s.btDiag, s.btPendingN); }
+    if (AWARD === 'kca') { renderBtCats(s.kcaCats, kcaCatLabel); renderKcaDiag(s.kcaDiag, s.kcaPendingN); }
 
     const log = Array.isArray(s[CFG.logKey]) ? s[CFG.logKey] : [];
     if (!log.length) {
@@ -506,7 +678,7 @@
     if (at) at.onclick = () => { acctOpen = !acctOpen; refresh(); };
   }
 
-  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize', 'btCount', 'btLog', 'btDay', 'btCats', 'btDiag'];
+  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize', 'btCount', 'btLog', 'btDay', 'btCats', 'btDiag', 'btPendingN', 'kcaCount', 'kcaLog', 'kcaDay', 'kcaCats', 'kcaDiag', 'kcaPendingN'];
   // fitToViewport AFTER render: the panel's natural height depends on how many
   // category rows and log entries were just drawn.
   function refresh() { safeCtx(() => chrome.storage.local.get(KEYS, (s) => { applyLayout(s); render(s); fitToViewport(); })); }
