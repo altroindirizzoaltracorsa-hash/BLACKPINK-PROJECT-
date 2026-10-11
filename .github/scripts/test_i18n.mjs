@@ -19,7 +19,7 @@
 //     that is 40% translated is worse than no language at all.
 //   * NUMBERS AND TAGS MUST SURVIVE REORDERING, because word order is the
 //     entire reason this translates sentences instead of text nodes.
-import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
@@ -62,7 +62,15 @@ await page.route('**/*', async (route) => {
   if (u.pathname === '/i18n/i18n.js') {
     return route.fulfill({ contentType: 'application/javascript', body: readFileSync(root + 'i18n/i18n.js', 'utf8') });
   }
+  // de is the deliberately missing one — the fallback is tested on it.
   if (u.pathname === '/i18n/de.json') return route.fulfill({ status: 404, body: '' });
+  // Every other language is served from the repo, so choosing one here does
+  // what choosing it on the site does. Without this they 204 to an empty body,
+  // the runtime correctly falls back to English, and a test that meant to check
+  // the picker ends up checking the fallback again.
+  if (/^\/i18n\/[\w-]+\.json$/.test(u.pathname) && existsSync(root + u.pathname.slice(1))) {
+    return route.fulfill({ path: root + u.pathname.slice(1), contentType: 'application/json' });
+  }
   if (u.pathname.startsWith('/api/')) {
     return route.fulfill({ contentType: 'application/json', body: '{"board":{"ranked":[],"unranked":[]},"messages":[],"total":0}' });
   }
@@ -209,12 +217,14 @@ check(await page.evaluate(() => document.querySelector('.beta-sub').textContent.
       'with the text intact');
 
 console.log('\n--- the picker, and what it must never translate');
-await page.evaluate(() => {
-  const host = document.createElement('div');
-  host.id = 'lang-picker';
-  document.body.appendChild(host);
-  window.BU_I18N.setLang('es');
-});
+// The real one, in the nav — not a stand-in appended here. It lives outside the
+// nav list so it survives the hamburger collapse, and that placement is part of
+// what this checks.
+check(await page.evaluate(() => {
+  const p = document.getElementById('lang-picker');
+  return !!p && !p.closest('.nav-links') && !!p.closest('.nav-actions');
+}), 'it sits in the nav bar beside Install App, not inside the collapsing list');
+await page.evaluate(() => window.BU_I18N.setLang('es'));
 await page.waitForTimeout(400);
 const picker = await page.evaluate(() => {
   const els = [...document.querySelectorAll('#lang-picker option')];
@@ -236,6 +246,63 @@ check(flagged.length === 11, `every one carries a flag before the name (${flagge
 check(picker.labels.includes('한국어') && picker.labels.every(l => l && !/[\u{1F1E6}-\u{1F1FF}]/u.test(l)),
       'and the accessible name is the language alone, without the flag');
 check(picker.marked, 'and is marked data-no-i18n, so it never translates itself');
+
+// The closed control is our own markup with the real <select> invisible on top.
+// Two ways that silently stops being a control: the select drifts off the face
+// (clicks land on nothing), or the face stops following the language (it reads
+// EN while the site is in Spanish). Neither throws, so both are pinned here.
+const face = await page.evaluate(() => {
+  const f = document.querySelector('.lang-pick-face');
+  const s = document.querySelector('#lang-picker select');
+  const a = f.getBoundingClientRect(), b2 = s.getBoundingClientRect();
+  return {
+    text: f.textContent.trim(),
+    hidden: f.getAttribute('aria-hidden') === 'true',
+    label: s.getAttribute('aria-label'),
+    covered: Math.abs(a.left - b2.left) < 2 && Math.abs(a.top - b2.top) < 2
+             && Math.abs(a.width - b2.width) < 2 && Math.abs(a.height - b2.height) < 2,
+    // 16px or more, or iOS zooms the whole page when it takes focus.
+    px: parseFloat(getComputedStyle(s).fontSize),
+  };
+});
+check(face.text.includes('ES'), `the face shows the language in use (${face.text})`);
+check(face.covered, 'the real select lies exactly over it, so the click lands on the control');
+check(face.hidden && face.label === 'Language',
+      'the face is aria-hidden and the select carries the accessible name');
+check(face.px >= 16, `the select's text is ≥16px, so iOS does not zoom on focus (${face.px}px)`);
+// Choosing from it must work the way a visitor's change event does, not only
+// through setLang().
+await page.evaluate(() => {
+  const s = document.querySelector('#lang-picker select');
+  s.value = 'ko';
+  s.dispatchEvent(new Event('change'));
+});
+await page.waitForTimeout(400);
+const chosen = await page.evaluate(() => ({
+  lang: window.BU_I18N.lang,
+  face: document.querySelector('.lang-pick-face').textContent.trim(),
+  html: document.documentElement.getAttribute('lang'),
+}));
+check(chosen.lang === 'ko' && chosen.html === 'ko', `choosing from it switches the site (${chosen.lang})`);
+check(chosen.face.includes('KO'), `and the face follows (${chosen.face})`);
+await page.evaluate(() => window.BU_I18N.setLang('en'));
+await page.waitForTimeout(300);
+
+// The bar has four things in it on a phone and only one of them is the way out.
+console.log('\n--- the nav bar still fits a phone');
+for (const w of [430, 390, 360, 320]) {
+  await page.setViewportSize({ width: w, height: 800 });
+  await page.waitForTimeout(250);
+  const past = await page.evaluate(() => {
+    // beforeinstallprompt never fires headless, and the install button is the
+    // widest thing in the cluster — measure the crowded case, not the easy one.
+    document.getElementById('pwa-install-btn').style.display = 'inline-block';
+    const h = document.getElementById('nav-hamburger').getBoundingClientRect();
+    return Math.round(Math.max(0, h.right - document.documentElement.clientWidth));
+  });
+  check(past === 0, `at ${w}px the hamburger keeps its corner (${past}px past the edge)`);
+}
+await page.setViewportSize({ width: 1280, height: 1200 });
 
 console.log('\n--- nothing else broke');
 check(errs.length === 0, `no page errors (${errs.join(' | ') || 'none'})`);

@@ -76,6 +76,13 @@
     en: '🇬🇧', es: '🇪🇸', 'pt-BR': '🇧🇷', id: '🇮🇩', fil: '🇵🇭',
     th: '🇹🇭', ko: '🇰🇷', ja: '🇯🇵', fr: '🇫🇷', de: '🇩🇪', it: '🇮🇹',
   };
+  // What the closed control shows. The nav bar has room for a marker, not for
+  // "Bahasa Indonesia", so the face is a code and the full names live in the
+  // list that opens.
+  const CODES = {
+    en: 'EN', es: 'ES', 'pt-BR': 'PT', id: 'ID', fil: 'FIL',
+    th: 'TH', ko: 'KO', ja: 'JA', fr: 'FR', de: 'DE', it: 'IT',
+  };
   const DEFAULT_LANG = 'en';
   const STORE_KEY = 'buLang';
 
@@ -357,7 +364,19 @@
     // The language names are already in their own languages and must never be
     // translated into the current one.
     host.setAttribute('data-no-i18n', '');
-    host.innerHTML = '<select id="lang-select" aria-label="Language">'
+    // The face is a globe, not the current language's flag. Windows ships no
+    // flag glyphs, so 🇰🇷 would render as the letters "KR" directly beside the
+    // code "KO" — two letter pairs saying the same thing. A globe renders
+    // everywhere and means "language" on its own. Inside the open list the
+    // flags earn their place (see FLAGS); here they would only add noise.
+    // aria-hidden: the <select> on top already carries the accessible name.
+    // The code is its own span so a narrow phone can drop it and keep the
+    // globe: the nav bar there is the logo, this, Install App and the
+    // hamburger, and the hamburger losing its corner is a worse outcome than
+    // a two-letter code going away.
+    host.innerHTML = '<span class="lang-pick-face" aria-hidden="true">🌐'
+      + '<span class="lang-pick-code">' + (CODES[current] || current.toUpperCase()) + '</span></span>'
+      + '<select id="lang-select" aria-label="Language">'
       + Object.keys(LANGS).map((k) => {
           const flag = FLAGS[k] ? FLAGS[k] + ' ' : '';
           // The label a screen reader announces is the name alone: a flag read
