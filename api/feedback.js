@@ -28,7 +28,8 @@
 //
 // Env: SUPABASE_URL, SUPABASE_SERVICE_KEY, ADMIN_SECRET, DISCORD_WEBHOOK_URL,
 //      RESEND_API_KEY (optional — turns on sending), FEEDBACK_FROM_EMAIL
-//      (optional — an address on a domain verified with Resend).
+//      (optional — an address on a domain verified with Resend),
+//      FEEDBACK_REPLY_TO (optional — where a reply to our reply should land).
 // Schema: supabase/feedback.sql
 import { createClient } from '@supabase/supabase-js';
 
@@ -96,14 +97,23 @@ function mailConfigured() { return !!process.env.RESEND_API_KEY; }
 
 async function sendReplyEmail({ to, reply, original }) {
   const from = process.env.FEEDBACK_FROM_EMAIL || 'Blinks United <onboarding@resend.dev>';
+  // Where a reply to our reply goes. Defaults to the From address, which is
+  // usually right — but that one only has to be able to SEND, and a reply
+  // bouncing off it is both rude to the blink and bad for our reputation.
+  const replyTo = process.env.FEEDBACK_REPLY_TO || null;
   const quoted = String(original || '').split('\n').map((l) => '> ' + l).join('\n');
-  const text = `${reply}\n\n—\nYou wrote to Blinks United:\n${quoted}\n`;
+  // Why they are getting this, in their words not ours. Standard for mail a
+  // person triggered themselves, and one of the things a filter looks for.
+  const why = 'You are getting this because you sent feedback on blinksunited.com.';
+  const text = `${reply}\n\n—\nYou wrote to Blinks United:\n${quoted}\n\n${why}\n`;
   const esc = (x) => String(x).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   const html = `<div style="font:15px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1a1a">`
     + `<p style="white-space:pre-wrap;margin:0 0 1.2rem">${esc(reply)}</p>`
     + `<hr style="border:none;border-top:1px solid #e5e5e5;margin:1.2rem 0">`
     + `<p style="color:#777;font-size:13px;margin:0 0 .4rem">You wrote to Blinks United:</p>`
     + `<blockquote style="margin:0;padding-left:.9rem;border-left:3px solid #ff0066;color:#555;white-space:pre-wrap">${esc(original || '')}</blockquote>`
+    + `<p style="color:#999;font-size:12px;margin:1.2rem 0 0">${why} `
+    + `<a href="https://blinksunited.com" style="color:#ff0066">blinksunited.com</a></p>`
     + `</div>`;
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -111,7 +121,15 @@ async function sendReplyEmail({ to, reply, original }) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
     },
-    body: JSON.stringify({ from, to: [to], subject: 'Re: your message to Blinks United', text, html }),
+    // NOT "Re: …". This is not a reply to an email they sent — they used a web
+    // form, so there is no thread, and there are no In-Reply-To / References
+    // headers to back one up. A fabricated Re: is a spam tactic, and the first
+    // send off a new domain doing it is the exact shape Gmail's content filter
+    // is looking for. It put the test email straight in spam.
+    body: JSON.stringify(Object.assign(
+      { from, to: [to], subject: 'Your message to Blinks United', text, html },
+      replyTo ? { reply_to: replyTo } : {},
+    )),
   });
   // Resend answers with a JSON error body. Carry it back rather than flattening
   // every failure into "couldn't send" — an unverified domain and a wrong key
