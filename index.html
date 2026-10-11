@@ -2417,6 +2417,17 @@
      so a member reads the same everywhere on the site. BLINKs is the one value
      not in that map — the fandom is not a member — and gets the green the vote
      split already uses. */
+  /* Language picker — a native <select> on purpose: on a phone it opens the
+     system picker, which already handles ten scripts, scrolling and
+     accessibility better than anything hand-built here would. */
+  #lang-picker select {
+    background: transparent; border: 1px solid rgba(255,0,102,0.35);
+    color: var(--pink); font-family: var(--mono); font-size: 0.48rem;
+    letter-spacing: 0.14em; text-transform: uppercase; padding: 0.4rem 0.6rem;
+    cursor: pointer; border-radius: 2px; outline: none; max-width: 10rem;
+  }
+  #lang-picker select:focus { border-color: var(--pink); }
+  #lang-picker option { background: #12000a; color: var(--white); text-transform: none; letter-spacing: 0; }
   .vv-who-bp     { color: #ff4fc3; }
   .vv-who-jennie { color: #FF0066; }
   .vv-who-rose   { color: #ff9eb5; }
@@ -2827,6 +2838,7 @@
   }
 </style>
 <script src="/vma-wins.js"></script>
+  <script src="/i18n/i18n.js" defer></script>
 </head>
 <body>
 <!-- Card-only embed mode: /ltal-embed?embed=ltal renders ONLY the Less Than a
@@ -3096,6 +3108,10 @@
     <li><a href="/achievements">Achievements</a></li>
     <li><a href="/projects">Our Projects</a></li>
     <li id="nav-signout-item" style="display:none;"><a href="#" onclick="navSignOut(); return false;" id="nav-signout">Sign out</a></li>
+    <!-- Filled by i18n/i18n.js. Inside the nav list so it folds into the mobile
+         menu like everything else, and data-no-i18n because the language names
+         are already in their own languages. -->
+    <li id="lang-picker" data-no-i18n></li>
   </ul>
   <button id="pwa-install-btn" onclick="triggerInstall()" style="display:none;background:transparent;border:1px solid rgba(255,0,102,0.5);color:var(--pink);font-family:var(--mono);font-size:0.48rem;letter-spacing:0.14em;text-transform:uppercase;padding:0.4rem 0.8rem;cursor:pointer;white-space:nowrap;transition:border-color 0.2s,background 0.2s;" title="Install as app">⬇ Install App</button>
   <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
