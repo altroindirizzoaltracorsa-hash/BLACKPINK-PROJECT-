@@ -310,6 +310,27 @@ console.log('\n--- sending the email reply, once a key exists');
   check(sent.body.text.includes('on the list!'), 'carrying the reply');
   check(sent.body.text.includes('> please add weekly streams'),
         'with their own message quoted, so it makes sense out of context');
+  // The subject must not fake a thread. They wrote through a web form, so there
+  // is no email to be replying to and no In-Reply-To header to prove one — a
+  // fabricated "Re:" is a spam tactic, and it is what put the first real test
+  // send into Gmail's spam folder.
+  check(!/^re:/i.test(sent.body.subject), `the subject does not fake a reply (${sent.body.subject})`);
+  check(/blinks united/i.test(sent.body.subject), 'but still says who it is from');
+  // Says why they are getting it, in both parts. Mail a person triggered
+  // themselves should explain itself; filters look for this.
+  check(/because you sent feedback on blinksunited\.com/i.test(sent.body.text),
+        'the text explains why they received it');
+  check(/because you sent feedback on blinksunited\.com/i.test(sent.body.html),
+        'and so does the HTML');
+  check(!('reply_to' in sent.body), 'no Reply-To unless one is configured');
+
+  // A reply to our reply should land somewhere real — bouncing off a send-only
+  // address is rude to the blink and bad for the domain's reputation.
+  const rowsRt = emailRow();
+  const rt = await run(rowsRt, USERS, { method: 'POST', body: { action: 'reply', id: 7, reply: 'hi', key: 'S3CRET' } },
+    Object.assign({ FEEDBACK_REPLY_TO: 'feedback@blinksunited.com' }, withKey));
+  check(rt.calls.mail[0].body.reply_to === 'feedback@blinksunited.com',
+        `FEEDBACK_REPLY_TO is carried through (${rt.calls.mail[0].body.reply_to})`);
   check(on.body.sent && on.body.sent.ok === true, 'the caller is told it went');
   check(!!rowsOn[0].reply_sent_at, 'and only now is it stamped as sent');
 
