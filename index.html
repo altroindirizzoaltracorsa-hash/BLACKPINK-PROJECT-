@@ -2561,6 +2561,40 @@
 .feedback-form textarea { width: 100%; background: var(--off-black); border: 1px solid rgba(255,0,102,0.25); color: var(--white); font-family: var(--mono); font-size: 0.7rem; padding: 0.75rem 1rem; border-radius: 2px; outline: none; resize: vertical; min-height: 100px; margin-bottom: 0.75rem; }
 .feedback-form textarea:focus { border-color: var(--pink); }
 .feedback-form select { width: 100%; background: var(--off-black); border: 1px solid rgba(255,0,102,0.25); color: var(--white); font-family: var(--mono); font-size: 0.7rem; padding: 0.75rem 1rem; border-radius: 2px; outline: none; appearance: none; cursor: pointer; margin-bottom: 0.75rem; }
+/* ── a message and its reply ──────────────────────────────────────────────
+   Shared by the sender's "Your messages" list and the admin queue, so a reply
+   looks the same to whoever is reading it. */
+.fb-thread { border: 1px solid var(--border); border-radius: 2px; padding: 1rem 1.1rem; margin-bottom: 0.9rem; background: var(--off-black); }
+.fb-thread-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; font-size: 0.55rem; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 0.6rem; }
+.fb-tag { font-size: 0.5rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.15rem 0.45rem; border-radius: 2px; background: rgba(255,0,102,0.12); color: var(--pink); border: 1px solid rgba(255,0,102,0.25); }
+.fb-tag.wait { background: rgba(255,176,46,0.12); color: #ffb02e; border-color: rgba(255,176,46,0.3); }
+.fb-tag.done { background: rgba(140,224,176,0.12); color: #8be0b0; border-color: rgba(140,224,176,0.3); }
+.fb-msg { font-size: 0.7rem; line-height: 1.6; color: var(--white); white-space: pre-wrap; word-break: break-word; }
+.fb-reply { margin-top: 0.8rem; padding: 0.8rem 1rem; border-left: 2px solid var(--pink); background: rgba(255,0,102,0.06); border-radius: 0 2px 2px 0; }
+.fb-reply-who { font-size: 0.5rem; letter-spacing: 0.15em; color: var(--pink); margin-bottom: 0.35rem; }
+.fb-reply-text { font-size: 0.7rem; line-height: 1.6; color: var(--white); white-space: pre-wrap; word-break: break-word; }
+.fb-none { font-size: 0.65rem; color: var(--muted); text-align: center; padding: 1.2rem 0; }
+/* The claim code, shown once. It has to survive being read off a screen. */
+.fb-ticket { margin-top: 0.8rem; text-align: center; }
+.fb-ticket code { display: inline-block; font-family: var(--mono); font-size: 1.15rem; letter-spacing: 0.3em; color: var(--pink); background: var(--off-black); border: 1px dashed rgba(255,0,102,0.4); border-radius: 2px; padding: 0.55rem 1rem 0.55rem 1.3rem; }
+.fb-ticket small { display: block; font-size: 0.55rem; color: var(--muted); margin-top: 0.5rem; line-height: 1.6; letter-spacing: 0.05em; }
+.fb-inline { display: flex; gap: 0.5rem; align-items: stretch; }
+.fb-inline .beta-input { margin-bottom: 0; }
+.fb-inline button { flex: none; background: transparent; border: 1px solid rgba(255,0,102,0.35); color: var(--pink); font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; padding: 0 0.9rem; border-radius: 2px; cursor: pointer; }
+.fb-inline button:hover { background: rgba(255,0,102,0.1); }
+/* Admin queue only. */
+.fb-admin-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; font-size: 0.6rem; color: var(--muted); }
+.fb-admin-bar button { background: transparent; border: 1px solid var(--border); color: var(--muted); font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em; padding: 0.35rem 0.7rem; border-radius: 2px; cursor: pointer; }
+.fb-admin-bar button.active { border-color: var(--pink); color: var(--pink); }
+.fb-contact { font-size: 0.6rem; color: var(--muted); margin-top: 0.5rem; word-break: break-all; }
+.fb-contact a { color: var(--pink); }
+.fb-replybox { margin-top: 0.7rem; }
+.fb-replybox textarea { width: 100%; background: var(--card); border: 1px solid rgba(255,0,102,0.25); color: var(--white); font-family: var(--mono); font-size: 0.65rem; padding: 0.6rem 0.8rem; border-radius: 2px; outline: none; resize: vertical; min-height: 64px; }
+.fb-replybox textarea:focus { border-color: var(--pink); }
+.fb-replybox .row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; align-items: center; }
+.fb-replybox .row button { background: var(--pink); color: #fff; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; border: none; padding: 0.45rem 1rem; border-radius: 2px; cursor: pointer; }
+.fb-replybox .row button.ghost { background: transparent; color: var(--pink); border: 1px solid rgba(255,0,102,0.35); }
+.fb-replybox .note { font-size: 0.55rem; color: var(--muted); }
 /* OG inline badge next to username */
 .og-inline-badge { display:inline-flex; align-items:center; gap:0.3rem; font-family:var(--mono); font-size:0.42rem; letter-spacing:0.15em; color:#ffd700; background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.3); padding:0.2rem 0.5rem; cursor:default; position:relative; white-space:nowrap; vertical-align:middle; }
 .og-inline-badge::after { content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--card); border:1px solid rgba(255,215,0,0.25); color:rgba(245,240,240,0.75); font-family:var(--mono); font-size:0.45rem; letter-spacing:0.08em; padding:0.35rem 0.65rem; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.15s; z-index:10; }
@@ -4895,11 +4929,58 @@
       </select>
       <p class="beta-label" style="margin-top:0.75rem;">MESSAGE</p>
       <textarea id="feedback-message" placeholder="Tell us what's on your mind…" maxlength="2000"></textarea>
-      <p class="beta-label">CONTACT <span style="color:rgba(245,240,240,0.3)">(optional — email or @handle for a reply)</span></p>
-      <input class="beta-input" id="feedback-contact" type="text" placeholder="your email or @handle" maxlength="100">
+      <!-- The old form offered "email or @handle (optional — for a reply)" and
+           there was no reply path at all, so the promise was empty. Now the
+           sender says where they want one, because only they know. -->
+      <p class="beta-label">HOW SHOULD WE REPLY?</p>
+      <select id="feedback-replyvia" onchange="updateFeedbackReplyVia()">
+        <option value="site" selected>Here on the site</option>
+        <option value="email">By email</option>
+        <option value="handle">On my handle (Discord / X / Instagram…)</option>
+        <option value="none">No reply needed</option>
+      </select>
+      <div id="feedback-contact-wrap">
+        <p class="beta-label" id="feedback-contact-label">CONTACT</p>
+        <input class="beta-input" id="feedback-contact" type="text" placeholder="your email" maxlength="100">
+      </div>
+      <p class="beta-label" id="feedback-replynote" style="color:rgba(245,240,240,0.45); letter-spacing:0.05em; line-height:1.6; text-transform:none;"></p>
       <button class="beta-btn" id="feedback-submit-btn" onclick="submitFeedback()">SEND FEEDBACK</button>
       <div class="beta-success" id="feedback-success"></div>
       <div class="beta-error" id="feedback-error"></div>
+    </div>
+
+    <!-- Your own messages. Shown when there is something to show: a signed-in
+         blink's threads, or one looked up with a claim code. -->
+    <div class="beta-card" id="feedback-mine-card" style="display:none;">
+      <p class="beta-card-title">YOUR MESSAGES</p>
+      <div id="feedback-mine-list"></div>
+    </div>
+
+    <div class="beta-card" id="feedback-lookup-card">
+      <p class="beta-card-title">CHECK FOR A REPLY</p>
+      <p class="beta-label" style="text-transform:none; letter-spacing:0.05em; line-height:1.6; color:rgba(245,240,240,0.45);">
+        Sent something without signing in? Put the code you were given here.
+        <b style="color:rgba(245,240,240,0.7)">Signed in?</b> Your messages appear above on their own.
+      </p>
+      <div class="fb-inline">
+        <input class="beta-input" id="feedback-ticket-input" type="text" placeholder="e.g. PQ3HRN6A" maxlength="16"
+               onkeydown="if(event.key==='Enter')lookupFeedbackTicket()">
+        <button onclick="lookupFeedbackTicket()">CHECK</button>
+      </div>
+      <div class="beta-error" id="feedback-lookup-error"></div>
+    </div>
+
+    <!-- The queue. Only ever rendered for a correct admin key, and the key is
+         re-checked by the server on every call — this block being in the page
+         source gives nobody anything. -->
+    <div class="beta-card" id="feedback-admin-card" style="display:none;">
+      <p class="beta-card-title">FEEDBACK QUEUE</p>
+      <div class="fb-admin-bar">
+        <button id="fb-filter-open" class="active" onclick="setFeedbackFilter(true)">Needs a reply</button>
+        <button id="fb-filter-all" onclick="setFeedbackFilter(false)">Everything</button>
+        <span id="fb-admin-count"></span>
+      </div>
+      <div id="feedback-admin-list"></div>
     </div>
 
   </div>
@@ -7198,6 +7279,7 @@ function showPage(page, { replace = false } = {}) {
   if (page === 'ytviews') loadYtViews();
   if (page === 'apple') loadAppleCharts();
   if (page === 'itunes') loadItunesCharts();
+  if (page === 'feedback') initFeedbackPage();
   if (page === 'leaderboard') {
     const pending = parseLbHistoryParam();
     if (pending) {
@@ -11051,36 +11133,354 @@ async function autoRegisterBeta(username) {
   } catch {}
 }
 
+// ── FEEDBACK: sending, and getting an answer back ───────────────────────────
+// The reply channel is the sender's choice, because only they know it: a
+// signed-in blink usually wants it here, someone who left an email wants an
+// email, and plenty of people want no reply and should not sit in the queue
+// looking ignored. See the header of api/feedback.js.
+const FB_REPLY_VIA = {
+  site:   { label: null, placeholder: null,
+            note: 'We’ll answer right here on this page. <b>Signed in?</b> Your reply appears under “Your messages”. If not, you’ll get a short code to check back with.' },
+  email:  { label: 'YOUR EMAIL', placeholder: 'you@example.com',
+            note: 'We’ll email you. Your address is only ever used to answer this message.' },
+  handle: { label: 'YOUR HANDLE', placeholder: '@you on Discord / X / Instagram',
+            note: 'Tell us where to find you — include which app, so we message the right person.' },
+  none:   { label: null, placeholder: null,
+            note: 'Noted — we won’t chase you. Thank you for taking the time. 💗' },
+};
+
+function updateFeedbackReplyVia() {
+  const via = document.getElementById('feedback-replyvia')?.value || 'site';
+  const cfg = FB_REPLY_VIA[via] || FB_REPLY_VIA.site;
+  const wrap = document.getElementById('feedback-contact-wrap');
+  const label = document.getElementById('feedback-contact-label');
+  const input = document.getElementById('feedback-contact');
+  const note = document.getElementById('feedback-replynote');
+  // Only ask for a contact when the answer is going somewhere that needs one —
+  // an always-on "optional" box is what made the old promise so easy to miss.
+  if (wrap) wrap.style.display = cfg.label ? 'block' : 'none';
+  if (label && cfg.label) label.textContent = cfg.label;
+  if (input && cfg.placeholder) input.placeholder = cfg.placeholder;
+  if (note) note.innerHTML = cfg.note;
+}
+
 async function submitFeedback() {
   const msg = document.getElementById('feedback-message')?.value.trim();
   const cat = document.getElementById('feedback-category')?.value;
+  const via = document.getElementById('feedback-replyvia')?.value || 'site';
   const contact = document.getElementById('feedback-contact')?.value.trim();
   const btn = document.getElementById('feedback-submit-btn');
   const errEl = document.getElementById('feedback-error');
   const successEl = document.getElementById('feedback-success');
   if (!msg) { errEl.style.display = 'block'; errEl.textContent = 'Message is required.'; return; }
+  // Asking for an answer somewhere and not saying where is the one combination
+  // that cannot work, so it is caught here rather than silently never answered.
+  if ((via === 'email' || via === 'handle') && !contact) {
+    errEl.style.display = 'block';
+    errEl.textContent = via === 'email'
+      ? 'Add your email, or choose a different way to be answered.'
+      : 'Add your handle, or choose a different way to be answered.';
+    return;
+  }
   errEl.style.display = 'none';
   btn.disabled = true;
   btn.textContent = 'SENDING…';
+  let token = null;
+  try { token = (await sb?.auth.getSession())?.data?.session?.access_token || null; } catch {}
   try {
     const r = await fetch('/api/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: msg, category: cat, contact: contact || undefined, username: getSavedUsername() || undefined }),
+      body: JSON.stringify({ message: msg, category: cat, replyVia: via,
+        contact: contact || undefined, username: getSavedUsername() || undefined,
+        accessToken: token || undefined }),
     });
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || 'Server error');
     successEl.style.display = 'block';
-    successEl.textContent = '✓ Thank you! Your feedback has been submitted.';
+    // The code comes back exactly once and nothing will ever hand it over
+    // again, so it is put in front of them properly rather than in a sentence.
+    if (data.ticket) {
+      successEl.innerHTML = '✓ Thank you! Keep this code to check for our reply:'
+        + '<div class="fb-ticket"><code>' + _vvEsc(data.ticket) + '</code>'
+        + '<small>Write it down — it is the only way back to this message. '
+        + 'Or <b>sign in</b> before you write next time and your replies just appear here.</small></div>';
+    } else if (via === 'site') {
+      successEl.textContent = '✓ Thank you! Our reply will appear under “Your messages” below.';
+    } else if (via === 'none') {
+      successEl.textContent = '✓ Thank you! 💗';
+    } else {
+      successEl.textContent = '✓ Thank you! We’ll get back to you' + (via === 'email' ? ' by email.' : ' on your handle.');
+    }
     document.getElementById('feedback-message').value = '';
     document.getElementById('feedback-contact').value = '';
     btn.textContent = '✓ SENT';
+    loadMyFeedback();
   } catch(e) {
     errEl.style.display = 'block';
     errEl.textContent = e.message || 'Something went wrong. Try again.';
     btn.disabled = false;
     btn.textContent = 'SEND FEEDBACK';
   }
+}
+
+// ── the sender's side ───────────────────────────────────────────────────────
+function _fbWhen(iso) {
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch { return ''; }
+}
+const FB_CAT_LABEL = { bug: 'Bug', feature: 'Feature request', suggestion: 'Suggestion', praise: 'Praise', general: 'General' };
+
+// One message and its reply. `admin` adds the things only you should see.
+function _fbThreadHtml(m, admin) {
+  const answered = !!m.reply;
+  const wanted = m.reply_via !== 'none';
+  const state = !wanted ? '<span class="fb-tag">no reply wanted</span>'
+    : answered ? '<span class="fb-tag done">answered</span>'
+               : '<span class="fb-tag wait">waiting</span>';
+  let out = '<div class="fb-thread">'
+    + '<div class="fb-thread-head"><span class="fb-tag">' + _vvEsc(FB_CAT_LABEL[m.category] || m.category || 'General') + '</span>'
+    + state + '<span>' + _vvEsc(_fbWhen(m.created_at)) + '</span></div>'
+    + '<div class="fb-msg">' + _vvEsc(m.message || '') + '</div>';
+  if (answered) {
+    out += '<div class="fb-reply"><div class="fb-reply-who">BLINKS UNITED · '
+      + _vvEsc(_fbWhen(m.replied_at)) + '</div>'
+      + '<div class="fb-reply-text">' + _vvEsc(m.reply) + '</div></div>';
+  }
+  if (admin) out += _fbAdminToolsHtml(m);
+  return out + '</div>';
+}
+
+let _fbMine = [];        // the signed-in blink's own threads
+let _fbLooked = [];      // whatever a claim code turned up
+
+function renderMyFeedback() {
+  const card = document.getElementById('feedback-mine-card');
+  const list = document.getElementById('feedback-mine-list');
+  if (!card || !list) return;
+  // Both sources, newest first — someone can be signed in AND hold a code from
+  // before they had an account.
+  const seen = new Set();
+  const all = [..._fbMine, ..._fbLooked].filter(m => {
+    const k = String(m.id);
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  }).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  if (!all.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  list.innerHTML = all.map(m => _fbThreadHtml(m, false)).join('');
+}
+
+async function loadMyFeedback() {
+  let token = null;
+  try { token = (await sb?.auth.getSession())?.data?.session?.access_token || null; } catch {}
+  if (!token) { _fbMine = []; renderMyFeedback(); return; }
+  try {
+    const r = await fetch('/api/feedback?mine=1', { headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' });
+    if (!r.ok) return;
+    _fbMine = (await r.json()).messages || [];
+  } catch { _fbMine = []; }
+  renderMyFeedback();
+}
+
+async function lookupFeedbackTicket() {
+  const input = document.getElementById('feedback-ticket-input');
+  const err = document.getElementById('feedback-lookup-error');
+  const code = (input?.value || '').trim().toUpperCase();
+  if (err) err.style.display = 'none';
+  if (!code) return;
+  try {
+    const r = await fetch('/api/feedback?ticket=' + encodeURIComponent(code), { cache: 'no-store' });
+    if (!r.ok) throw new Error('No message found with that code.');
+    const found = (await r.json()).messages || [];
+    if (!found.length) throw new Error('No message found with that code.');
+    _fbLooked = found;
+    renderMyFeedback();
+    if (input) input.value = '';
+    document.getElementById('feedback-mine-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    if (err) { err.style.display = 'block'; err.textContent = e.message || 'Could not check that code.'; }
+  }
+}
+
+// ── your side: the queue ────────────────────────────────────────────────────
+// Reached with /feedback?admin=<ADMIN_SECRET>. The key is kept for the tab only
+// (sessionStorage, not localStorage) and the server re-checks it on every call,
+// so nothing here is a gate in itself.
+let _fbAdminKey = null, _fbAdminOpenOnly = true, _fbQueue = [], _fbMailOn = false;
+
+function _fbAdminToolsHtml(m) {
+  const id = _vvEsc(String(m.id));
+  let who = '';
+  if (m.reply_via === 'email' && m.contact) {
+    who = 'Email: <a href="mailto:' + encodeURIComponent(m.contact) + '">' + _vvEsc(m.contact) + '</a>';
+  } else if (m.reply_via === 'handle' && m.contact) {
+    who = 'Handle: ' + _vvEsc(m.contact);
+  } else if (m.reply_via === 'site') {
+    who = m.app_user_id ? 'On the site · signed in' : 'On the site · code ' + _vvEsc(m.ticket || '—');
+  } else if (m.reply_via === 'none') {
+    who = 'Asked for no reply';
+  } else {
+    // Written before the form asked. Their contact is whatever they typed.
+    who = m.contact ? 'Left a contact: ' + _vvEsc(m.contact) : 'No contact left';
+  }
+  if (m.username) who += ' · Last.fm ' + _vvEsc(m.username);
+  if (m.reply && !m.reply_sent_at && (m.reply_via === 'email' || m.reply_via === 'handle')) {
+    who += ' · <b style="color:#ffb02e">not sent yet</b>';
+  }
+  const sendable = (m.reply_via === 'email' || m.reply_via === 'handle');
+  // An email reply sends itself once RESEND_API_KEY is set on the server; until
+  // then, and always for a handle, the message is composed here and sent by
+  // hand. The button says which of the two is about to happen rather than
+  // leaving you to find out afterwards.
+  const autoSend = _fbMailOn && m.reply_via === 'email';
+  return '<div class="fb-contact">' + who + '</div>'
+    + '<div class="fb-replybox">'
+    + '<textarea id="fb-reply-' + id + '" placeholder="Write a reply…">' + _vvEsc(m.reply || '') + '</textarea>'
+    + '<div class="row">'
+    + '<button onclick="saveFeedbackReply(\'' + id + '\')">'
+    + (autoSend ? (m.reply_sent_at ? 'SEND AGAIN' : 'SAVE &amp; SEND') : (m.reply ? 'UPDATE REPLY' : 'SAVE REPLY')) + '</button>'
+    + (sendable && !autoSend ? '<button class="ghost" onclick="composeFeedbackReply(\'' + id + '\')">'
+        + (m.reply_via === 'email' ? 'OPEN EMAIL' : 'COPY') + '</button>' : '')
+    // Only offered when it is still true: a reply that has gone needs no
+    // marking, and an automatic send marks itself.
+    + (sendable && !autoSend && m.reply && !m.reply_sent_at
+        ? '<button class="ghost" onclick="markFeedbackSent(\'' + id + '\')">MARK SENT</button>' : '')
+    + '<span class="note" id="fb-note-' + id + '"></span>'
+    + '</div></div>';
+}
+
+function renderFeedbackQueue() {
+  const list = document.getElementById('feedback-admin-list');
+  const count = document.getElementById('fb-admin-count');
+  if (!list) return;
+  if (count) count.textContent = _fbQueue.length + (_fbQueue.length === 1 ? ' message' : ' messages');
+  list.innerHTML = _fbQueue.length
+    ? _fbQueue.map(m => _fbThreadHtml(m, true)).join('')
+    : '<div class="fb-none">Nothing here. 💗</div>';
+}
+
+async function loadFeedbackQueue() {
+  if (!_fbAdminKey) return;
+  const card = document.getElementById('feedback-admin-card');
+  try {
+    const r = await fetch('/api/feedback?admin=1&key=' + encodeURIComponent(_fbAdminKey)
+      + (_fbAdminOpenOnly ? '&open=1' : ''), { cache: 'no-store' });
+    if (!r.ok) {
+      // A wrong key should say so rather than render an empty queue that looks
+      // like "no feedback yet".
+      if (card) { card.style.display = 'block'; }
+      const list = document.getElementById('feedback-admin-list');
+      if (list) list.innerHTML = '<div class="fb-none">That admin key was refused.</div>';
+      return;
+    }
+    const payload = await r.json();
+    _fbQueue = payload.messages || [];
+    _fbMailOn = !!payload.mail;
+    if (card) card.style.display = 'block';
+    renderFeedbackQueue();
+  } catch {}
+}
+
+function setFeedbackFilter(openOnly) {
+  _fbAdminOpenOnly = openOnly;
+  document.getElementById('fb-filter-open')?.classList.toggle('active', openOnly);
+  document.getElementById('fb-filter-all')?.classList.toggle('active', !openOnly);
+  loadFeedbackQueue();
+}
+
+async function saveFeedbackReply(id) {
+  const box = document.getElementById('fb-reply-' + id);
+  const note = document.getElementById('fb-note-' + id);
+  const text = (box?.value || '').trim();
+  if (!text) { if (note) note.textContent = 'Write something first.'; return; }
+  if (note) note.textContent = 'Saving…';
+  try {
+    const r = await fetch('/api/feedback', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reply', id, reply: text, key: _fbAdminKey }),
+    });
+    const out = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(out.error || 'failed');
+    const row = _fbQueue.find(m => String(m.id) === String(id));
+    if (row) { row.reply = text; row.replied_at = new Date().toISOString(); }
+    // A send that failed must not read as success. The reply is saved either
+    // way — that is the point of saving first — so say exactly which happened.
+    if (out.sent && out.sent.ok === false) {
+      if (note) note.textContent = 'Saved, but the email did NOT send: ' + (out.sent.error || 'unknown');
+      return;   // leave it in the queue: nobody has heard from us
+    }
+    if (out.sent && out.sent.ok) {
+      if (note) note.textContent = 'Saved and emailed ✓';
+      if (row) row.reply_sent_at = new Date().toISOString();
+    } else if (note) {
+      note.textContent = 'Saved ✓';
+    }
+    // On the "needs a reply" filter an answered row has left the list, so
+    // re-fetch rather than leave it sitting there as if it hadn't.
+    if (_fbAdminOpenOnly) setTimeout(loadFeedbackQueue, 600);
+  } catch (e) {
+    if (note) note.textContent = 'Could not save: ' + (e.message || 'error');
+  }
+}
+
+// No mail service is configured on this project, so an email or handle reply is
+// composed here and sent by you. This hands over the finished message rather
+// than making you retype it.
+function composeFeedbackReply(id) {
+  const row = _fbQueue.find(m => String(m.id) === String(id));
+  const box = document.getElementById('fb-reply-' + id);
+  const note = document.getElementById('fb-note-' + id);
+  const text = (box?.value || '').trim();
+  if (!row || !text) { if (note) note.textContent = 'Write the reply first.'; return; }
+  const quoted = (row.message || '').split('\n').map(l => '> ' + l).join('\n');
+  const body = text + '\n\n—\nYou wrote to Blinks United:\n' + quoted;
+  if (row.reply_via === 'email') {
+    window.location.href = 'mailto:' + encodeURIComponent(row.contact || '')
+      + '?subject=' + encodeURIComponent('Re: your message to Blinks United')
+      + '&body=' + encodeURIComponent(body);
+    if (note) note.textContent = 'Opened your mail app — then tap MARK SENT.';
+  } else {
+    navigator.clipboard?.writeText(body).then(
+      () => { if (note) note.textContent = 'Copied — send it to ' + (row.contact || 'them') + ', then tap MARK SENT.'; },
+      () => { if (note) note.textContent = 'Could not copy. Select the text above instead.'; });
+  }
+}
+
+async function markFeedbackSent(id) {
+  const note = document.getElementById('fb-note-' + id);
+  try {
+    const r = await fetch('/api/feedback', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'mark-sent', id, key: _fbAdminKey }),
+    });
+    if (!r.ok) throw new Error('failed');
+    if (note) note.textContent = 'Marked as sent ✓';
+    const row = _fbQueue.find(m => String(m.id) === String(id));
+    if (row) row.reply_sent_at = new Date().toISOString();
+  } catch { if (note) note.textContent = 'Could not mark it.'; }
+}
+
+// Called whenever the feedback page is shown.
+function initFeedbackPage() {
+  updateFeedbackReplyVia();
+  loadMyFeedback();
+  try {
+    const key = new URLSearchParams(location.search).get('admin');
+    if (key) {
+      _fbAdminKey = key;
+      sessionStorage.setItem('fbAdminKey', key);
+      // Don't leave the key sitting in the address bar to be shoulder-read,
+      // shared in a screenshot or saved into history.
+      const u = new URL(location.href);
+      u.searchParams.delete('admin');
+      history.replaceState(null, '', u.pathname + u.search + u.hash);
+    } else {
+      _fbAdminKey = sessionStorage.getItem('fbAdminKey');
+    }
+  } catch {}
+  if (_fbAdminKey) loadFeedbackQueue();
 }
 
 
