@@ -91,12 +91,22 @@ function stub(rows, users) {
   return { sb, calls };
 }
 
-function run(rows, users, req, env = {}) {
+function run(rows, users, req, env = {}, mail = {}) {
   const { sb, calls } = stub(rows, users);
+  calls.mail = [];
+  // Stands in for Resend. `mail.fail` makes it answer the way Resend does when
+  // the domain is not verified, which is the failure that actually happens.
+  const fakeFetch = async (url, opts) => {
+    calls.mail.push({ url, headers: opts?.headers || {}, body: JSON.parse(opts?.body || '{}') });
+    if (mail.fail) {
+      return { ok: false, status: 403, json: async () => ({ name: 'validation_error', message: mail.fail }) };
+    }
+    return { ok: true, status: 200, json: async () => ({ id: 'resend-id-1' }) };
+  };
   const handler = makeHandler(
     () => sb,
     { env: Object.assign({ SUPABASE_URL: 'u', SUPABASE_SERVICE_KEY: 'k', ADMIN_SECRET: 'S3CRET' }, env) },
-    async () => ({ ok: true }),   // the Discord webhook, never reached without the env var
+    fakeFetch,
   );
   let status = 0, body = null;
   const res = { setHeader() {}, status(s) { status = s; return res; }, json(b) { body = b; return res; }, end() { return res; } };
@@ -223,6 +233,18 @@ console.log('\n--- the queue is admin-only');
   const open = await run(seed(), USERS, { query: { admin: '1', key: 'S3CRET', open: '1' } });
   const ids = open.body.messages.map(m => m.id).sort();
   check(JSON.stringify(ids) === '[1,3,5]', `only the ones waiting on you (${ids.join(', ')})`);
+  // An email reply that is written but has not gone is still owed. This is the
+  // state a failed send leaves behind, and the first version of the filter let
+  // it fall out of the queue entirely.
+  const unsentRows = seed().concat([{ id: 6, created_at: '2026-10-06T00:00:00Z', message: 'wrote back, never sent',
+    category: 'bug', contact: 'x@y.z', username: null, app_user_id: null, reply_via: 'email',
+    ticket: null, reply: 'here you go', replied_at: '2026-10-07T00:00:00Z', reply_sent_at: null }]);
+  const unsent = await run(unsentRows, USERS, { query: { admin: '1', key: 'S3CRET', open: '1' } });
+  check(unsent.body.messages.some(m => m.id === 6),
+        'a reply written but not delivered is still in the queue');
+  const delivered = unsentRows.map(r => r.id === 6 ? { ...r, reply_sent_at: '2026-10-07T01:00:00Z' } : r);
+  const gone = await run(delivered, USERS, { query: { admin: '1', key: 'S3CRET', open: '1' } });
+  check(!gone.body.messages.some(m => m.id === 6), 'and leaves it once it has actually gone');
   check(!open.body.messages.some(m => m.reply_via === 'none'), 'nobody who asked for no reply is in it');
   check(!open.body.messages.some(m => m.reply), 'and nothing already answered');
   // The one that nearly shipped invisible. Every message written before the
@@ -260,6 +282,73 @@ console.log('\n--- writing a reply');
   // The sender then actually sees it.
   const mine = await run(rows, USERS, { query: { mine: '1' }, headers: { authorization: 'Bearer tok-a' } });
   check(mine.body.messages[0].reply === 'thanks for this!', 'and the sender can now read it');
+}
+
+console.log('\n--- sending the email reply, once a key exists');
+{
+  const withKey = { RESEND_API_KEY: 're_test', FEEDBACK_FROM_EMAIL: 'Blinks United <hello@blinksunited.com>' };
+  const emailRow = () => ([{ id: 7, created_at: '2026-10-10T00:00:00Z', message: 'please add weekly streams',
+    category: 'feature', contact: 'blink@example.com', username: null, app_user_id: null,
+    reply_via: 'email', ticket: null, reply: null, replied_at: null, reply_sent_at: null }]);
+
+  // Off by default: no key, no send, and the reply still saves.
+  const rowsOff = emailRow();
+  const off = await run(rowsOff, USERS, { method: 'POST', body: { action: 'reply', id: 7, reply: 'on the list!', key: 'S3CRET' } });
+  check(off.calls.mail.length === 0, 'with no RESEND_API_KEY nothing is sent');
+  check(rowsOff[0].reply === 'on the list!', 'but the reply is still saved');
+  check(rowsOff[0].reply_sent_at === null, 'and nothing claims it went');
+  check(off.body.mail === false, 'and the page is told sending is unavailable');
+
+  const rowsOn = emailRow();
+  const on = await run(rowsOn, USERS, { method: 'POST', body: { action: 'reply', id: 7, reply: 'on the list!', key: 'S3CRET' } }, withKey);
+  check(on.calls.mail.length === 1, 'with a key it sends exactly once');
+  const sent = on.calls.mail[0];
+  check(sent.url === 'https://api.resend.com/emails', `to Resend (${sent.url})`);
+  check(/^Bearer re_test$/.test(sent.headers.Authorization || ''), 'authenticated with the key');
+  check(JSON.stringify(sent.body.to) === '["blink@example.com"]', `addressed to the sender (${JSON.stringify(sent.body.to)})`);
+  check(sent.body.from === withKey.FEEDBACK_FROM_EMAIL, `from the configured address (${sent.body.from})`);
+  check(sent.body.text.includes('on the list!'), 'carrying the reply');
+  check(sent.body.text.includes('> please add weekly streams'),
+        'with their own message quoted, so it makes sense out of context');
+  check(on.body.sent && on.body.sent.ok === true, 'the caller is told it went');
+  check(!!rowsOn[0].reply_sent_at, 'and only now is it stamped as sent');
+
+  // The failure that matters: Resend refuses (unverified domain is the usual
+  // one). The reply must survive, the stamp must not appear, and the reason
+  // must come back — a send that quietly "succeeds" is how someone gets marked
+  // answered having heard nothing.
+  const rowsFail = emailRow();
+  const fail = await run(rowsFail, USERS,
+    { method: 'POST', body: { action: 'reply', id: 7, reply: 'on the list!', key: 'S3CRET' } },
+    withKey, { fail: 'The blinksunited.com domain is not verified' });
+  check(fail.status === 200, 'a failed send is not a failed save');
+  check(rowsFail[0].reply === 'on the list!', 'the reply is still there');
+  check(rowsFail[0].reply_sent_at === null, 'NOT stamped as sent');
+  check(fail.body.sent && fail.body.sent.ok === false, 'and the caller is told it failed');
+  check(/not verified/.test(fail.body.sent.error || ''),
+        `with Resend's own reason, not a flattened one (${fail.body.sent.error})`);
+
+  // And it stays in the queue, because nobody has heard from us. A failed send
+  // that vanished from the work list would be the worst outcome here: it reads
+  // as handled and the blink is never answered.
+  const stillOpen = await run(rowsFail, USERS, { query: { admin: '1', key: 'S3CRET', open: '1' } }, withKey);
+  check(stillOpen.body.messages.some(m => m.id === 7),
+        `a failed send stays in "needs a reply" (${stillOpen.body.messages.length} there)`);
+
+  // Only the email route sends. A handle has no API to send to.
+  const handleRows = [{ id: 8, message: 'hi', category: 'praise', contact: '@someone',
+    reply_via: 'handle', reply: null, replied_at: null, reply_sent_at: null }];
+  const handle = await run(handleRows, USERS, { method: 'POST', body: { action: 'reply', id: 8, reply: 'thank you!', key: 'S3CRET' } }, withKey);
+  check(handle.calls.mail.length === 0, 'a handle reply is never emailed');
+  check(handleRows[0].reply_sent_at === null, 'and is not marked sent on its own');
+
+  // Someone who wanted it on the site gets no email either.
+  const siteRows = emailRow(); siteRows[0].reply_via = 'site';
+  await run(siteRows, USERS, { method: 'POST', body: { action: 'reply', id: 7, reply: 'done', key: 'S3CRET' } }, withKey);
+  check(siteRows[0].reply === 'done', 'an on-site reply saves');
+  const siteSend = await run(emailRow().map(r => ({ ...r, reply_via: 'site' })), USERS,
+    { method: 'POST', body: { action: 'reply', id: 7, reply: 'done', key: 'S3CRET' } }, withKey);
+  check(siteSend.calls.mail.length === 0, 'and is never emailed — they asked for it here');
 }
 
 // ── the page ────────────────────────────────────────────────────────────────

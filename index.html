@@ -11308,7 +11308,7 @@ async function lookupFeedbackTicket() {
 // Reached with /feedback?admin=<ADMIN_SECRET>. The key is kept for the tab only
 // (sessionStorage, not localStorage) and the server re-checks it on every call,
 // so nothing here is a gate in itself.
-let _fbAdminKey = null, _fbAdminOpenOnly = true, _fbQueue = [];
+let _fbAdminKey = null, _fbAdminOpenOnly = true, _fbQueue = [], _fbMailOn = false;
 
 function _fbAdminToolsHtml(m) {
   const id = _vvEsc(String(m.id));
@@ -11330,14 +11330,22 @@ function _fbAdminToolsHtml(m) {
     who += ' · <b style="color:#ffb02e">not sent yet</b>';
   }
   const sendable = (m.reply_via === 'email' || m.reply_via === 'handle');
+  // An email reply sends itself once RESEND_API_KEY is set on the server; until
+  // then, and always for a handle, the message is composed here and sent by
+  // hand. The button says which of the two is about to happen rather than
+  // leaving you to find out afterwards.
+  const autoSend = _fbMailOn && m.reply_via === 'email';
   return '<div class="fb-contact">' + who + '</div>'
     + '<div class="fb-replybox">'
     + '<textarea id="fb-reply-' + id + '" placeholder="Write a reply…">' + _vvEsc(m.reply || '') + '</textarea>'
     + '<div class="row">'
-    + '<button onclick="saveFeedbackReply(\'' + id + '\')">' + (m.reply ? 'UPDATE REPLY' : 'SAVE REPLY') + '</button>'
-    + (sendable ? '<button class="ghost" onclick="composeFeedbackReply(\'' + id + '\')">'
+    + '<button onclick="saveFeedbackReply(\'' + id + '\')">'
+    + (autoSend ? (m.reply_sent_at ? 'SEND AGAIN' : 'SAVE &amp; SEND') : (m.reply ? 'UPDATE REPLY' : 'SAVE REPLY')) + '</button>'
+    + (sendable && !autoSend ? '<button class="ghost" onclick="composeFeedbackReply(\'' + id + '\')">'
         + (m.reply_via === 'email' ? 'OPEN EMAIL' : 'COPY') + '</button>' : '')
-    + (sendable && m.reply && !m.reply_sent_at
+    // Only offered when it is still true: a reply that has gone needs no
+    // marking, and an automatic send marks itself.
+    + (sendable && !autoSend && m.reply && !m.reply_sent_at
         ? '<button class="ghost" onclick="markFeedbackSent(\'' + id + '\')">MARK SENT</button>' : '')
     + '<span class="note" id="fb-note-' + id + '"></span>'
     + '</div></div>';
@@ -11367,7 +11375,9 @@ async function loadFeedbackQueue() {
       if (list) list.innerHTML = '<div class="fb-none">That admin key was refused.</div>';
       return;
     }
-    _fbQueue = (await r.json()).messages || [];
+    const payload = await r.json();
+    _fbQueue = payload.messages || [];
+    _fbMailOn = !!payload.mail;
     if (card) card.style.display = 'block';
     renderFeedbackQueue();
   } catch {}
@@ -11391,10 +11401,22 @@ async function saveFeedbackReply(id) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'reply', id, reply: text, key: _fbAdminKey }),
     });
-    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'failed');
-    if (note) note.textContent = 'Saved ✓';
+    const out = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(out.error || 'failed');
     const row = _fbQueue.find(m => String(m.id) === String(id));
     if (row) { row.reply = text; row.replied_at = new Date().toISOString(); }
+    // A send that failed must not read as success. The reply is saved either
+    // way — that is the point of saving first — so say exactly which happened.
+    if (out.sent && out.sent.ok === false) {
+      if (note) note.textContent = 'Saved, but the email did NOT send: ' + (out.sent.error || 'unknown');
+      return;   // leave it in the queue: nobody has heard from us
+    }
+    if (out.sent && out.sent.ok) {
+      if (note) note.textContent = 'Saved and emailed ✓';
+      if (row) row.reply_sent_at = new Date().toISOString();
+    } else if (note) {
+      note.textContent = 'Saved ✓';
+    }
     // On the "needs a reply" filter an answered row has left the list, so
     // re-fetch rather than leave it sitting there as if it hadn't.
     if (_fbAdminOpenOnly) setTimeout(loadFeedbackQueue, 600);
