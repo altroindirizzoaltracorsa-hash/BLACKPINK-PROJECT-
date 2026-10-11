@@ -44,7 +44,7 @@ const makeHandler = loadHandler();
 function stub(rows, users) {
   const calls = { selects: [], updates: [], inserts: [] };
   const chain = () => {
-    const f = {}; const ops = { eq: {}, is: [], neq: [] };
+    const f = {}; const ops = { eq: {}, is: [], neq: [], or: [] };
     const self = {
       select(cols) { f.cols = cols; calls.selects.push(cols); return self; },
       insert(row) { calls.inserts.push(row); rows.push(Object.assign({ id: rows.length + 1, created_at: new Date().toISOString() }, row)); f.insert = true; return self; },
@@ -52,13 +52,22 @@ function stub(rows, users) {
       eq(c, v) { ops.eq[c] = v; return self; },
       is(c, v) { ops.is.push([c, v]); return self; },
       neq(c, v) { ops.neq.push([c, v]); return self; },
+      // PostgREST's or(): a comma-separated list of col.op.value, any of which
+      // may match. Only the two operators this endpoint uses are implemented.
+      or(expr) { ops.or.push(String(expr).split(',').map(t => t.split('.'))); return self; },
       order() { return self; },
       limit() { return self; },
       maybeSingle() { f.single = true; return self; },
       then(res, rej) {
         let out = rows.filter(r => Object.entries(ops.eq).every(([c, v]) => String(r[c]) === String(v)));
         for (const [c, v] of ops.is) out = out.filter(r => (r[c] ?? null) === v);
-        for (const [c, v] of ops.neq) out = out.filter(r => r[c] !== v);
+        for (const [c, v] of ops.neq) out = out.filter(r => (r[c] ?? null) !== null && r[c] !== v);
+        for (const group of ops.or) {
+          out = out.filter(r => group.some(([c, op, v]) =>
+            op === 'is' ? (r[c] ?? null) === (v === 'null' ? null : v)
+          : op === 'neq' ? ((r[c] ?? null) !== null && r[c] !== v)
+          : false));
+        }
         if (f.update) {
           out.forEach(r => Object.assign(r, f.update));
           calls.updates.push({ patch: f.update, matched: out.length });
@@ -108,6 +117,11 @@ const seed = () => ([
     ticket: 'PQ3HRN6A', reply: null, replied_at: null, reply_sent_at: null },
   { id: 4, created_at: '2026-10-05T00:00:00Z', message: 'no reply wanted', category: 'praise',
     contact: null, username: null, app_user_id: null, reply_via: 'none',
+    ticket: null, reply: null, replied_at: null, reply_sent_at: null },
+  // Written before the form asked where to reply — reply_via is null, which is
+  // what every one of the 66 messages already in the table looks like.
+  { id: 5, created_at: '2026-09-01T00:00:00Z', message: 'from before we asked', category: 'bug',
+    contact: 'old@example.com', username: null, app_user_id: null, reply_via: null,
     ticket: null, reply: null, replied_at: null, reply_sent_at: null },
 ]);
 
@@ -200,7 +214,7 @@ console.log('\n--- the queue is admin-only');
   check(unset.status === 401, 'and an unset ADMIN_SECRET locks it rather than opening it');
 
   const all = await run(seed(), USERS, { query: { admin: '1', key: 'S3CRET' } });
-  check(all.status === 200 && all.body.messages.length === 4, `the key gets the queue (${all.body.messages.length})`);
+  check(all.status === 200 && all.body.messages.length === 5, `the key gets the queue (${all.body.messages.length})`);
   check(Object.keys(all.body.messages[0]).includes('contact'),
         'with the contact details, which is the point of it');
 
@@ -208,9 +222,15 @@ console.log('\n--- the queue is admin-only');
   // they did not want one.
   const open = await run(seed(), USERS, { query: { admin: '1', key: 'S3CRET', open: '1' } });
   const ids = open.body.messages.map(m => m.id).sort();
-  check(JSON.stringify(ids) === '[1,3]', `only the ones waiting on you (${ids.join(', ')})`);
+  check(JSON.stringify(ids) === '[1,3,5]', `only the ones waiting on you (${ids.join(', ')})`);
   check(!open.body.messages.some(m => m.reply_via === 'none'), 'nobody who asked for no reply is in it');
   check(!open.body.messages.some(m => m.reply), 'and nothing already answered');
+  // The one that nearly shipped invisible. Every message written before the
+  // form asked about a channel has reply_via null, and SQL compares null to
+  // 'none' as null rather than true — so a plain `neq` drops the entire
+  // existing backlog behind a filter that looks like it is working.
+  check(open.body.messages.some(m => m.id === 5),
+        'and the ones from before we asked are still in the queue, not silently dropped');
 }
 
 console.log('\n--- writing a reply');

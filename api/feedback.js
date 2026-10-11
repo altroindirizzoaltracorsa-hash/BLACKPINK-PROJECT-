@@ -106,7 +106,14 @@ export default async function handler(req, res) {
           .order('created_at', { ascending: false }).limit(limit);
         // The default view is the work: everything still waiting on you. A row
         // whose sender asked for no reply is not waiting on anything.
-        if (req.query.open) q = q.is('reply', null).neq('reply_via', 'none');
+        //
+        // The `or` is load-bearing, not defensive. `reply_via` is null on every
+        // row written before the form asked — 66 of them when this shipped —
+        // and `neq('reply_via','none')` drops those, because SQL compares null
+        // to anything as null, not as true. The whole existing backlog would
+        // have been invisible behind a filter that looked like it was working.
+        // Null means "we never asked", which is not the same as "they said no".
+        if (req.query.open) q = q.is('reply', null).or('reply_via.is.null,reply_via.neq.none');
         const { data, error } = await q;
         if (error) throw error;
         return res.status(200).json({ messages: data || [] });
