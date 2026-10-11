@@ -61,6 +61,21 @@
     de:      'Deutsch',
     it:      'Italiano',
   };
+  // A flag beside each name, to make the list scannable rather than read.
+  //
+  // BESIDE, never instead of. A flag is a country and these are languages, and
+  // the two only line up for some of them: Spanish is spoken by far more people
+  // outside Spain than in it, and English has no sensible flag at all. The
+  // native name carries the meaning; the flag is a marker for the eye.
+  //
+  // ON WINDOWS THESE ARE NOT FLAGS. Windows ships no flag glyphs, so each one
+  // falls back to its two regional-indicator letters — 🇰🇷 renders as "KR".
+  // That still works as a scan marker, which is why this is worth doing anyway,
+  // but it is not a rendering bug and nothing here can fix it.
+  const FLAGS = {
+    en: '🇬🇧', es: '🇪🇸', 'pt-BR': '🇧🇷', id: '🇮🇩', fil: '🇵🇭',
+    th: '🇹🇭', ko: '🇰🇷', ja: '🇯🇵', fr: '🇫🇷', de: '🇩🇪', it: '🇮🇹',
+  };
   const DEFAULT_LANG = 'en';
   const STORE_KEY = 'buLang';
 
@@ -343,8 +358,14 @@
     // translated into the current one.
     host.setAttribute('data-no-i18n', '');
     host.innerHTML = '<select id="lang-select" aria-label="Language">'
-      + Object.keys(LANGS).map((k) =>
-          `<option value="${k}"${k === current ? ' selected' : ''}>${LANGS[k]}</option>`).join('')
+      + Object.keys(LANGS).map((k) => {
+          const flag = FLAGS[k] ? FLAGS[k] + ' ' : '';
+          // The label a screen reader announces is the name alone: a flag read
+          // aloud as "flag of South Korea" in place of "한국어" is worse than
+          // nothing, and the name is the part that actually identifies it.
+          return `<option value="${k}"${k === current ? ' selected' : ''} aria-label="${LANGS[k]}">`
+            + `${flag}${LANGS[k]}</option>`;
+        }).join('')
       + '</select>';
     host.querySelector('select').onchange = (e) => setLang(e.target.value);
   }
@@ -393,6 +414,7 @@
 
   window.BU_I18N = {
     langs: LANGS,
+    flags: FLAGS,
     setLang,
     get lang() { return current; },
     __collect: collect,

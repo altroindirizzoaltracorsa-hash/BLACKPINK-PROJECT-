@@ -217,12 +217,24 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(400);
 const picker = await page.evaluate(() => {
-  const o = [...document.querySelectorAll('#lang-picker option')].map(x => x.textContent);
-  return { options: o, marked: document.getElementById('lang-picker').hasAttribute('data-no-i18n') };
+  const els = [...document.querySelectorAll('#lang-picker option')];
+  return {
+    options: els.map(x => x.textContent),
+    labels: els.map(x => x.getAttribute('aria-label')),
+    marked: document.getElementById('lang-picker').hasAttribute('data-no-i18n'),
+  };
 });
 check(picker.options.length === 11, `the picker lists every language (${picker.options.length})`);
-check(picker.options.includes('한국어') && picker.options.includes('Português (BR)'),
+// The native name must survive the flag being prepended. A flag is a country,
+// not a language, so it is only ever a marker beside the name — if a name ever
+// got replaced by one, this is what would catch it.
+check(picker.options.some(t => t.endsWith('한국어')) && picker.options.some(t => t.endsWith('Português (BR)')),
       'in their own scripts');
+const flagged = picker.options.filter(t => /^[\u{1F1E6}-\u{1F1FF}]{2} /u.test(t));
+check(flagged.length === 11, `every one carries a flag before the name (${flagged.length}/11)`);
+// A screen reader should say "한국어", not "flag of South Korea, 한국어".
+check(picker.labels.includes('한국어') && picker.labels.every(l => l && !/[\u{1F1E6}-\u{1F1FF}]/u.test(l)),
+      'and the accessible name is the language alone, without the flag');
 check(picker.marked, 'and is marked data-no-i18n, so it never translates itself');
 
 console.log('\n--- nothing else broke');
