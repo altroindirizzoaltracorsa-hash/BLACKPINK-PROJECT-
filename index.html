@@ -3120,7 +3120,7 @@
 </script>
 
 <nav>
-  <span class="nav-logo" onclick="showPage('home')" style="display:flex;align-items:center;gap:0.6rem;">
+  <span class="nav-logo" data-no-i18n onclick="showPage('home')" style="display:flex;align-items:center;gap:0.6rem;">
     <img src="https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/blinksunited.jpg" alt="Blinks United" style="width:28px;height:28px;object-fit:cover;border-radius:50%;">
     BLINKS UNITED
   </span>
@@ -5065,10 +5065,10 @@
      bottom of every page. -->
 <footer>
   <p>© 2025 Blinks United · Fan-made · Not affiliated with YG Entertainment · Made with 💗</p>
-  <div class="footer-logo">BLINKS UNITED</div>
+  <div class="footer-logo" data-no-i18n>BLINKS UNITED</div>
   <p>Stream data from various scrobblers · Goals are fan estimates</p>
   <div style="display:flex;gap:0.5rem;align-items:center;">
-    <button class="admin-unlock" onclick="openAdminPanel()" title="Admin">· · ·</button>
+    <button class="admin-unlock" data-no-i18n onclick="openAdminPanel()" title="Admin">· · ·</button>
   </div>
 </footer>
 
@@ -5153,7 +5153,12 @@
 </div>
 
 <!-- Admin panel overlay — unified menu (one key, one place) -->
-<div id="admin-overlay" class="admin-overlay" style="display:none" onclick="if(event.target===this)closeAdminPanel()">
+<!-- data-no-i18n: the admin panel is one person's tooling, not the site. Its
+     copy would otherwise sit in every translator's file as ~30 strings about
+     bans, CSV exports and API quota that no visitor can ever reach — work that
+     is pure cost, and that drags the "every page" coverage figure down forever
+     so it can never read done. -->
+<div id="admin-overlay" class="admin-overlay" data-no-i18n style="display:none" onclick="if(event.target===this)closeAdminPanel()">
   <div class="admin-box">
     <h2 id="admin-h2">⬡ ADMIN</h2>
     <div id="admin-auth" >

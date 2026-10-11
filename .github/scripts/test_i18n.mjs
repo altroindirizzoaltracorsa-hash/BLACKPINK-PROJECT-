@@ -288,6 +288,32 @@ check(chosen.face.includes('KO'), `and the face follows (${chosen.face})`);
 await page.evaluate(() => window.BU_I18N.setLang('en'));
 await page.waitForTimeout(300);
 
+// The chrome is set in wide-tracked uppercase mono, which is a Latin device.
+// Nothing throws when Hangul or Thai inherits it — it just reads badly, and
+// Thai, which has no spaces between words, reads badly in a way that costs
+// meaning. So: tracked in Latin, not tracked in those scripts, and the
+// original spacing back when the site returns to English.
+console.log('\n--- letter-spacing follows the script');
+const track = async (lang) => {
+  await page.evaluate((l) => window.BU_I18N.setLang(l), lang);
+  await page.waitForTimeout(400);
+  return page.evaluate(() => {
+    const ls = (sel) => getComputedStyle(document.querySelector(sel)).letterSpacing;
+    // #nav-home is the <a> INSIDE the <li> the walk actually holds: the key is
+    // <0>Home</0>, and `.nav-links a` beats anything inherited from the parent.
+    return { nav: ls('#nav-home'), install: ls('#pwa-install-btn') };
+  });
+};
+const en0 = await track('en');
+const es0 = await track('es');
+const ko0 = await track('ko');
+const en1 = await track('en');
+check(es0.nav === en0.nav, `Spanish keeps the Latin tracking (${es0.nav})`);
+check(ko0.nav === 'normal', `Korean drops it, inside the tag and not just on the host (${ko0.nav})`);
+check(ko0.install === 'normal', `and on the install button too (${ko0.install})`);
+check(en1.nav === en0.nav && en1.install === en0.install,
+      `switching back to English puts the original spacing back (${en1.nav})`);
+
 // The bar has four things in it on a phone and only one of them is the way out.
 console.log('\n--- the nav bar still fits a phone');
 for (const w of [430, 390, 360, 320]) {

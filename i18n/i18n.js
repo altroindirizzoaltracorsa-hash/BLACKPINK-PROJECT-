@@ -83,6 +83,9 @@
     en: 'EN', es: 'ES', 'pt-BR': 'PT', id: 'ID', fil: 'FIL',
     th: 'TH', ko: 'KO', ja: 'JA', fr: 'FR', de: 'DE', it: 'IT',
   };
+  // Languages whose script should not inherit the site's Latin letter-spacing.
+  // See translateEl() for what this does and why it is per-element.
+  const TIGHT = new Set(['ko', 'ja', 'th']);
   const DEFAULT_LANG = 'en';
   const STORE_KEY = 'buLang';
 
@@ -230,11 +233,35 @@
       key, tags,
       nodes: [...el.childNodes],
       tagKids: tags.map((t) => [...t.childNodes]),
+      ls: el.style.letterSpacing,   // see TIGHT below
+      tagLs: tags.map((t) => t.style.letterSpacing),
     });
     const source = norm(el.textContent);
     const frag = build(hit, tags, source);
     el.textContent = '';
     el.appendChild(frag);
+    // This site's chrome is set in wide-tracked uppercase mono, which is a
+    // Latin display device. Hangul, kana and Thai are not alphabets being
+    // spaced out — they are syllables and clusters, and 0.18em between them
+    // reads as damage rather than as style. Thai is the case that actually
+    // costs something: it has no spaces between words, so tracking the glyphs
+    // apart removes the only cue for where one word ends.
+    //
+    // Only elements this ACTUALLY translated are touched, so a string still
+    // falling back to English keeps the design it was drawn for. The inline
+    // value is saved above and put back by restore(), because a few of these
+    // elements carry their own letter-spacing in a style attribute and
+    // clearing it would be a one-way loss.
+    //
+    // The tags get it too, and they are not a detail: every nav item's key is
+    // <0>Home</0>, so the element this walk holds is the <li> while the text
+    // is inside the <a> — and `.nav-links a` is a more specific rule than
+    // anything inherited from the parent. Setting only the host left the
+    // entire navigation still tracked at 0.18em.
+    if (TIGHT.has(current)) {
+      el.style.letterSpacing = 'normal';
+      for (const t of tags) t.style.letterSpacing = 'normal';
+    }
   }
 
   function translateAttrs(el) {
@@ -278,6 +305,7 @@
         // Inner content first, then the top level. Both put back the same
         // objects, so the order only has to be self-consistent.
         prev.tags.forEach((t, i) => {
+          t.style.letterSpacing = (prev.tagLs && prev.tagLs[i]) || '';
           const kids = prev.tagKids[i];
           if (!kids) return;
           t.textContent = '';
@@ -285,6 +313,7 @@
         });
         el.textContent = '';
         for (const n of prev.nodes) el.appendChild(n);
+        el.style.letterSpacing = prev.ls || '';
       }
       for (const a of ATTRS) {
         const store = `__i18n_${a}`;

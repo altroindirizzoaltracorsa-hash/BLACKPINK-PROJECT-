@@ -1,6 +1,6 @@
 {
   "generated": "2026-10-11",
-  "count": 1141,
+  "count": 1080,
   "strings": [
     {
       "s": "— or scrobble from your browser —",
@@ -19,12 +19,6 @@
       "s": "? How it works",
       "where": [
         "badges"
-      ]
-    },
-    {
-      "s": "‹ Menu",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -369,14 +363,7 @@
       "s": "↻ Refresh",
       "where": [
         "badges",
-        "chrome",
         "leaderboard"
-      ]
-    },
-    {
-      "s": "↻ Refresh catalog total",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -389,12 +376,6 @@
       "s": "＋ Load unpacked",
       "where": [
         "vote-counter-guide.html"
-      ]
-    },
-    {
-      "s": "±spots",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -413,18 +394,6 @@
       "s": "<0/> <1>to main</1>",
       "where": [
         "10years.html"
-      ]
-    },
-    {
-      "s": "<0/> BLINKS UNITED",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "<0/>BLINKS UNITED",
-      "where": [
-        "projects.html"
       ]
     },
     {
@@ -859,12 +828,6 @@
       ]
     },
     {
-      "s": "<0>▶️</0><1>YouTube Face-Off</1><2>Views · {n}H pins · milestones</2>",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "<0>▸</0><1><2>No total limit.</2> The page refreshes after each batch so you can keep going — and every category is separate, so vote in all eight.</1>",
       "where": [
         "breaktudo.html"
@@ -931,12 +894,6 @@
       ]
     },
     {
-      "s": "<0>🎉</0><1>Milestones</1><2>Stream milestones</2>",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "<0>🎯 Blinks Pre-Save Challenge</0> <1></1>",
       "where": [
         "countdowns",
@@ -951,18 +908,6 @@
       ]
     },
     {
-      "s": "<0>🎯</0><1>Campaign Goals</1><2>Per-release checklists</2>",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "<0>🎵</0><1>Playlist & Data</1><2>Playlist · catalog · CSV</2>",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "<0>🏆 Blink Leagues · <1>Overall · Today</1></0><2>classic view →</2>",
       "where": [
         "leaderboard"
@@ -972,18 +917,6 @@
       "s": "<0>🏆</0><1><2>Past</2><3>Voting</3></1>",
       "where": [
         "projects.html"
-      ]
-    },
-    {
-      "s": "<0>🏆</0><1>Leaderboard</1><2>Ranking · bans · remove entry</2>",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "<0>👑</0><1>Girl Group Race</1><2>Spotify · streams this year</2>",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -1014,18 +947,6 @@
       "s": "<0>💯</0><1><2>Current</2><3>Streaming</3></1>",
       "where": [
         "projects.html"
-      ]
-    },
-    {
-      "s": "<0>📈</0><1>Charts & Countries</1><2>Positions · iTunes #{n}</2>",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "<0>📊</0><1>Stats</1><2>YouTube · {n}H streams</2>",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -1994,12 +1915,6 @@
       ]
     },
     {
-      "s": "⏳ Auto pre-release countdowns — hide drops further out than this many days",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "□ Square",
       "where": [
         "chrome"
@@ -2139,18 +2054,6 @@
       ]
     },
     {
-      "s": "⛔ Banned users — removed from the leaderboard, can't rejoin",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "🇺🇸 flag emoji",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "✉️ <0>Forgot to add your votes?</0> Tap here to DM us on X (@blinksunitedtwt) with how many you cast — we'll add them for you.",
       "where": [
         "vote"
@@ -2193,25 +2096,7 @@
       ]
     },
     {
-      "s": "⬇ Download Artist CSV",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "⬇ Download Track CSV",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "⬇ Install App",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "⬡ ADMIN",
       "where": [
         "chrome"
       ]
@@ -2290,12 +2175,6 @@
       ]
     },
     {
-      "s": "🌍 iTunes #{n} Countries — add or remove from the list",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "🌐 Also Streaming On",
       "where": [
         "home"
@@ -2303,18 +2182,6 @@
     },
     {
       "s": "🎉 MILESTONES",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "🎉 Save & Show",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "🎉 Stream milestone — announce & log a track milestone",
       "where": [
         "chrome"
       ]
@@ -2358,21 +2225,9 @@
       ]
     },
     {
-      "s": "🎯 Campaign Goals — pick a release, tap a goal to mark it reached / not reached",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "🎵 iTunes #{n}: <0>{n} countries (goal reached!)</0> — tap to view →",
       "where": [
         "home"
-      ]
-    },
-    {
-      "s": "🎵 Today's Playlist — pin the Spotify playlist link",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -2515,12 +2370,6 @@
       ]
     },
     {
-      "s": "💾 Save",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "💿 Physical CD only",
       "where": [
         "countdowns",
@@ -2541,33 +2390,9 @@
       ]
     },
     {
-      "s": "📄 Artist streams CSV — full daily history for BLACKPINK + all {n} members, always current",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "📈 {n}st Week — Toward {n}M Filtered Streams",
       "where": [
         "home"
-      ]
-    },
-    {
-      "s": "📈 Chart Updates — artist or track positions (Spotify, iTunes, etc.)",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "📊 Catalog total — fetches all BLACKPINK track streams directly from your browser (free, no API quota)",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "📊 Official {n}H Spotify streams — total fandom streams (to show ratio once numbers drop)",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -2623,12 +2448,6 @@
       "s": "📺 <0><1>Watch</1> the {n}-second guides</0> <2>›</2>",
       "where": [
         "vote"
-      ]
-    },
-    {
-      "s": "📺 YouTube MV views — shown as \"(X after {n}h · Y now)\"",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -2694,12 +2513,6 @@
       ]
     },
     {
-      "s": "🧹 Remove a leaderboard entry — e.g. duplicate rows from a display-name edit",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "🛡️ Google Play Protect",
       "where": [
         "vote-app-guide.html"
@@ -2754,12 +2567,6 @@
       ]
     },
     {
-      "s": "Add",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "Add to Home screen",
       "where": [
         "chrome"
@@ -2784,13 +2591,6 @@
       ]
     },
     {
-      "s": "Admin",
-      "where": [
-        "10years.html",
-        "chrome"
-      ]
-    },
-    {
       "s": "Admin Access",
       "where": [
         "10years.html"
@@ -2799,8 +2599,7 @@
     {
       "s": "Admin key",
       "where": [
-        "10years.html",
-        "chrome"
+        "10years.html"
       ]
     },
     {
@@ -2932,18 +2731,6 @@
       ]
     },
     {
-      "s": "Artwork URL or Spotify Track ID (optional)",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "Artwork: Spotify Track ID or URL (optional)",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "Asian Artist ↗",
       "where": [
         "breaktudo.html"
@@ -3013,12 +2800,6 @@
       "s": "BADGE<0/><1>CHALLENGE</1>",
       "where": [
         "badges"
-      ]
-    },
-    {
-      "s": "Ban",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -3250,13 +3031,6 @@
       ]
     },
     {
-      "s": "BLINKS UNITED",
-      "where": [
-        "chrome",
-        "projects.html"
-      ]
-    },
-    {
       "s": "Blinks United →",
       "where": [
         "breaktudo.html",
@@ -3410,12 +3184,6 @@
       "s": "Champion audio",
       "where": [
         "10years.html"
-      ]
-    },
-    {
-      "s": "Chart (e.g. Top Artists, Top {n})",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -3593,12 +3361,6 @@
       ]
     },
     {
-      "s": "Country name",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "Counts as you vote",
       "where": [
         "vote-app-guide.html"
@@ -3621,18 +3383,6 @@
       "s": "Cross-device sync",
       "where": [
         "vote-counter-guide.html"
-      ]
-    },
-    {
-      "s": "Current total streams",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "Current views (e.g. {n}M)",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -3679,24 +3429,6 @@
       ]
     },
     {
-      "s": "Date dd/mm/yyyy",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "Date reached dd/mm/yyyy (optional)",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "Day # (optional)",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "Days",
       "where": [
         "apple",
@@ -3705,12 +3437,6 @@
         "home",
         "itunes",
         "youtube"
-      ]
-    },
-    {
-      "s": "Days (default {n})",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -4710,12 +4436,6 @@
       ]
     },
     {
-      "s": "Last.fm username",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "Last.fm, ListenBrainz, Libre.fm, Musicat, and/or Stats.fm usernames — all streams count toward one leaderboard row.",
       "where": [
         "badges"
@@ -4929,7 +4649,6 @@
       "s": "Loading…",
       "where": [
         "apple",
-        "chrome",
         "home",
         "itunes",
         "leaderboard",
@@ -4980,12 +4699,6 @@
       ]
     },
     {
-      "s": "Merge the {n} default countries back into the list",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "MESSAGE",
       "where": [
         "feedback"
@@ -5001,12 +4714,6 @@
       "s": "Microsoft Edge Canary",
       "where": [
         "vote-counter-guide.html"
-      ]
-    },
-    {
-      "s": "Milestone (e.g. {n}M)",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -5089,12 +4796,6 @@
       "s": "My login picture",
       "where": [
         "badges"
-      ]
-    },
-    {
-      "s": "Name (e.g. JENNIE or JUMP)",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -5445,12 +5146,6 @@
       ]
     },
     {
-      "s": "Paste the Spotify playlist link…",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "Peak",
       "where": [
         "itunes"
@@ -5490,12 +5185,6 @@
       "s": "Play Protect hasn't seen an app from this developer before.",
       "where": [
         "vote-app-guide.html"
-      ]
-    },
-    {
-      "s": "Positive = up, negative = down, {n} = same, blank = NEW",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -5640,12 +5329,6 @@
       ]
     },
     {
-      "s": "Region (e.g. Global, US)",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "Register the BreakTudo Awards votes you cast for BLACKPINK & members and race other blinks up the board. Voting closes Oct {n} <0>how & where to vote →</0>",
       "where": [
         "vote"
@@ -5674,12 +5357,6 @@
       "s": "Reset session count",
       "where": [
         "vote-counter-guide.html"
-      ]
-    },
-    {
-      "s": "Restore defaults",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -5747,32 +5424,13 @@
     {
       "s": "Save",
       "where": [
-        "badges",
-        "chrome"
+        "badges"
       ]
     },
     {
       "s": "Save {n} Years intro as video",
       "where": [
         "10years.html"
-      ]
-    },
-    {
-      "s": "Save {n}H",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "Save Now",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "Save Playlist",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -5833,12 +5491,6 @@
     },
     {
       "s": "SDA {n} Winner — JISOO",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
-      "s": "Search display name or username…",
       "where": [
         "chrome"
       ]
@@ -6017,12 +5669,6 @@
       "s": "Spotify Charts",
       "where": [
         "spotify-charts"
-      ]
-    },
-    {
-      "s": "Spotify pre-releases (auto-detected) only show a countdown card once they're within this window. Hand-made cards are never affected. Default {n}",
-      "where": [
-        "chrome"
       ]
     },
     {
@@ -6439,12 +6085,6 @@
       ]
     },
     {
-      "s": "Track name (e.g. AS IF IT'S YOUR LAST)",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "Track the accounts you've used",
       "where": [
         "vote-app-guide.html"
@@ -6500,12 +6140,6 @@
       ]
     },
     {
-      "s": "Unlock →",
-      "where": [
-        "chrome"
-      ]
-    },
-    {
       "s": "Up to {n} votes per account, per day — shared across all categories",
       "where": [
         "vote"
@@ -6539,12 +6173,6 @@
       "s": "View Results Page ↗",
       "where": [
         "vote"
-      ]
-    },
-    {
-      "s": "Views at {n}H mark (e.g. {n}M)",
-      "where": [
-        "chrome"
       ]
     },
     {

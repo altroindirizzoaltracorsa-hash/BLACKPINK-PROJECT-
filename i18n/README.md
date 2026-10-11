@@ -8,6 +8,28 @@ Filipino, ไทย, 한국어, 日本語, Français, Deutsch, Italiano. Anythin
 translated simply shows in English, so a language that is half done is useful
 today rather than broken until it is finished.
 
+Pick a language from the 🌐 button in the top bar, next to Install App.
+
+## Where it stands — and the thing we most need from you
+
+**The nav, footer, buttons and overlays — everything on every page — are done
+in all ten languages, and every one of them is a machine first draft.** No
+native speaker has read them yet. They are live because English-for-everyone
+was worse, not because they are right.
+
+So the most valuable thing you can do is not translate a new string. It is to
+switch the site to your language, read what is already there, and fix what a
+real person would never say. Correcting a draft takes a minute and is worth
+more than a new sentence nobody checks.
+
+The two places a draft is most likely to be wrong:
+
+- **Fandom words.** Scrobble, stream, bias, comeback, board, badge. A machine
+  translates these literally; blinks have real words for them already.
+- **Tone.** The site speaks to one person, warmly and informally. Several of
+  these languages have to choose a politeness level to say anything at all,
+  and a draft picks one at random.
+
 ## How to add a translation
 
 Open the file for your language — `es.json`, `ko.json`, `th.json` and so on.
@@ -53,6 +75,11 @@ order they appear in your translation.
 - **Brands**: Spotify, YouTube, Nickelodeon, BreakTudo, MTV, Last.fm
 - **The site's own name**, Blinks United
 
+Most of those never reach you: the site's own name and the admin tools are
+marked `data-no-i18n` in the page, so they are not collected as strings at all.
+If something that should never be translated turns up in `strings.json`, that
+is worth reporting — the fix belongs in the page, not in ten dictionaries.
+
 Fandom words usually have a settled form in your language already — use the one
 blinks actually say, not the dictionary one. That is the single most valuable
 thing a real speaker brings here, and the main reason these files are not left
@@ -68,6 +95,17 @@ particular:
 
 If that reads as "you can stop whenever you like" in your language, people will
 stop, and their votes will not count. Say it as plainly as your language allows.
+
+## 한국어 · 日本語 · ไทย — one thing that is not a bug
+
+Much of the site is set in wide-tracked uppercase, which is a Latin design
+device. Between Hangul, kana or Thai glyphs it reads as broken spacing instead
+of as style, and Thai has no spaces between words, so tracking the characters
+apart takes away the only cue for where a word ends. The site therefore drops
+that spacing automatically — but only on the elements it actually translated.
+A string still falling back to English keeps the spacing it was drawn with, so
+a half-translated page will show both. That is the fallback working, not a
+layout fault.
 
 ## For maintainers
 
