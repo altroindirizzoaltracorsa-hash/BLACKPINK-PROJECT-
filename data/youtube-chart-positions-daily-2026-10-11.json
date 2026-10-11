@@ -1,0 +1,50 @@
+{
+  "generatedAt": "2026-10-11T12:13:59.687Z",
+  "chartType": "daily",
+  "date": "2026-10-11",
+  "regions": {
+    "co": {
+      "region": "Colombia",
+      "gl": "CO",
+      "period": {
+        "entityId": "daily:20261011:co",
+        "periodType": "daily",
+        "startDate": "20261011",
+        "endDate": "20261011",
+        "region": "co"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "nl": {
+      "region": "Netherlands",
+      "gl": "NL",
+      "period": {
+        "entityId": "daily:20261011:nl",
+        "periodType": "daily",
+        "startDate": "20261011",
+        "endDate": "20261011",
+        "region": "nl"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 35,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 6285,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    }
+  },
+  "summary": {
+    "totalHits": 1,
+    "regionsChecked": 2
+  }
+}
