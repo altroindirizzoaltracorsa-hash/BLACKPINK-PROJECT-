@@ -293,6 +293,48 @@ await page.waitForTimeout(300);
 // Thai, which has no spaces between words, reads badly in a way that costs
 // meaning. So: tracked in Latin, not tracked in those scripts, and the
 // original spacing back when the site returns to English.
+// FILLING AN ELEMENT THAT ALREADY EXISTS. `el.textContent = '...'` adds only a
+// text node, and the observer used to keep element nodes and drop those — so
+// anything written into markup already on the page was never translated. The
+// whole guided tour stayed English for exactly this reason: each of its steps
+// writes into the same #guide-title that shipped with the document.
+console.log('\n--- text written into existing markup still translates');
+await page.evaluate(() => window.BU_I18N.setLang('es'));
+await page.waitForTimeout(300);
+await page.evaluate(() => {
+  const host = document.createElement('div');
+  host.id = 'tc-probe';
+  document.body.appendChild(host);
+});
+// The wait matters: it lets the observer flush the empty element, so the fill
+// below is a batch of its own carrying ONLY a text node — which is the case
+// that was broken. Filling it in the same batch would pass either way, because
+// the element itself was already queued.
+await page.waitForTimeout(400);
+await page.evaluate(() => {
+  document.getElementById('tc-probe').textContent = 'Found a bug? Have a suggestion? Tell us.';
+});
+await page.waitForTimeout(500);
+check(await page.evaluate(() => document.getElementById('tc-probe').textContent) === 'ENCONTRASTE UN ERROR',
+      'an element filled with .textContent gets translated');
+
+// A NUMBER ENDS ON A DIGIT. The old pattern swallowed a following '.' or ','
+// into the number. In English that is invisible — the number is put back where
+// it was and the punctuation returns with it — but a translation that moves the
+// number drags the punctuation along, and Spanish read "el 17. de octubre".
+console.log('\n--- punctuation after a number is not part of the number');
+check(await page.evaluate(() => {
+  // __collect() keys the page the same way lookup does, so ask it directly.
+  const d = document.createElement('div');
+  d.id = 'num-probe';
+  d.textContent = 'closes Oct 17. and 1,234.5 too';
+  document.body.appendChild(d);
+  const hit = window.BU_I18N.__collect().find(x => x.s && x.s.indexOf('closes Oct') === 0);
+  d.remove();
+  return hit && hit.s;
+}) === 'closes Oct {n}. and {n} too',
+      'a full stop stays in the sentence, while a decimal stays in the number');
+
 console.log('\n--- letter-spacing follows the script');
 const track = async (lang) => {
   await page.evaluate((l) => window.BU_I18N.setLang(l), lang);

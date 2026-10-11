@@ -12,10 +12,10 @@ Pick a language from the 🌐 button in the top bar, next to Install App.
 
 ## Where it stands — and the thing we most need from you
 
-**The nav, footer, buttons and overlays — everything on every page — are done
-in all ten languages, and every one of them is a machine first draft.** No
-native speaker has read them yet. They are live because English-for-everyone
-was worse, not because they are right.
+**The nav, footer, buttons and overlays — everything on every page — and the
+voting pages and their guides are done in all ten languages, and every one of
+them is a machine first draft.** No native speaker has read them yet. They are
+live because English-for-everyone was worse, not because they are right.
 
 So the most valuable thing you can do is not translate a new string. It is to
 switch the site to your language, read what is already there, and fix what a
@@ -74,6 +74,15 @@ order they appear in your translation.
 - **Other people's names**: nominees, other artists, other fandoms
 - **Brands**: Spotify, YouTube, Nickelodeon, BreakTudo, MTV, Last.fm
 - **The site's own name**, Blinks United
+- **Award and category names**: Best K-Pop, Female Group, Fan Army Face-Off.
+  These are the wording of the ballot you are about to click. If the site says
+  "Mejor K-Pop" and the MTV page says "Best K-Pop", we have made voting harder,
+  not easier. They are not collected as strings, so they will not reach you.
+
+What a screenshot shows **is** translated, though: "Load unpacked", "Install
+anyway", "Continue with Google". Chrome and Android show those in the reader's
+own language, so leaving them in English makes the picture stop matching the
+screen it is a picture of.
 
 Most of those never reach you: the site's own name and the admin tools are
 marked `data-no-i18n` in the page, so they are not collected as strings at all.

@@ -114,7 +114,13 @@
   // Numbers are why a plain dictionary fails on a live site: "3 votes are held"
   // and "7 votes are held" are one sentence and nobody translates every value.
   // Both key as "{n} votes are held", and the real numbers go back in after.
-  const NUM_RE = /\d[\d.,]*/g;
+  // A number must END on a digit. The inner [.,] is for thousands separators
+  // and decimals ("1,234.5"), but without the closing \d the match also eats a
+  // sentence's full stop — "closes Oct 17." captured "17." as the number. In
+  // English that is invisible, because the number is refilled exactly where it
+  // was and the stop comes back with it. In a translation that moves the number
+  // the stop travels too, and Spanish read "cierra el 17. de octubre".
+  const NUM_RE = /\d(?:[\d.,]*\d)?/g;
   const keyOf = (s) => s.replace(NUM_RE, '{n}');
 
   function fillNums(translated, source) {
@@ -331,7 +337,16 @@
   function schedule(nodes) {
     if (current === DEFAULT_LANG || !dict) return;
     if (!pending) pending = new Set();
-    for (const n of nodes) if (n.nodeType === 1) pending.add(n);
+    for (const n of nodes) {
+      if (n.nodeType === 1) pending.add(n);
+      // A TEXT node, and its parent is what has to be translated. Filling an
+      // element that already exists — `el.textContent = '...'` — adds only a
+      // text node, so dropping those meant none of it was ever translated.
+      // That is how the whole guide tour stayed in English while the panels
+      // around it translated: every one of its steps writes into the same
+      // #guide-title and #guide-body that were in the page from the start.
+      else if (n.nodeType === 3 && n.parentElement) pending.add(n.parentElement);
+    }
     if (queued) return;
     queued = true;
     requestAnimationFrame(() => {

@@ -8706,8 +8706,8 @@ function renderVoteCampaigns() {
         <div class="vote-cat-row">
           ${cat.thumb ? `<img class="vote-cat-thumb" src="${cat.thumb}" alt="" loading="lazy">` : ''}
           <div class="vote-cat-text">
-            <div class="vote-category-name">${cat.name}${cat.url && !ended ? ` <a class="vote-cat-link" href="${cat.url}" target="_blank" rel="noopener noreferrer">Vote ↗</a>` : ''}</div>
-            <div class="vote-nominees">
+            <div class="vote-category-name"><span data-no-i18n>${cat.name}</span>${cat.url && !ended ? ` <a class="vote-cat-link" href="${cat.url}" target="_blank" rel="noopener noreferrer">Vote ↗</a>` : ''}</div>
+            <div class="vote-nominees" data-no-i18n>
               ${cat.nominees.map(n => `<span class="vote-chip ${n.us ? 'us' : ''}">${n.name}</span>`).join('')}
             </div>
           </div>
@@ -8727,8 +8727,8 @@ function renderVoteCampaigns() {
         <div class="vote-video${win ? ' won' : ''}${ended && !win && !v.noms.some(n => n.ig) ? ' past' : ''}">
           ${win ? `<div class="vote-video-ribbon">\u{1F3C6} Winner \u00b7 ${win.cat}</div>` : ''}
           <img class="vote-video-img" src="${v.img}" alt="${v.name}" loading="lazy">
-          <div class="vote-video-name">${v.name}</div>
-          <div class="vote-video-noms">
+          <div class="vote-video-name" data-no-i18n>${v.name}</div>
+          <div class="vote-video-noms" data-no-i18n>
             ${v.noms.map(n => n.pro
               ? `<span class="vote-video-nom pro" title="Chosen by an industry panel — not a fan vote">🔒 ${n.cat}</span>`
               // `ig` ignores `ended`: this one runs in MTV's Instagram Stories
@@ -8774,8 +8774,8 @@ function renderVoteCampaigns() {
         ${wonBadge}
         <div class="vote-card-top">
           <div>
-            <div class="vote-platform">${c.platform}</div>
-            <div class="vote-title">${c.title}</div>
+            <div class="vote-platform" data-no-i18n>${c.platform}</div>
+            <div class="vote-title" data-no-i18n>${c.title}</div>
             ${c.restriction ? `<div class="vote-restriction">⚠ ${c.restriction}</div>` : ''}
           </div>
           ${deadlineHtml}
