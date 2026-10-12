@@ -2437,7 +2437,10 @@
   .mama-rules { margin-top: 0.8rem; }
   .mama-rules summary { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em;
     text-transform: uppercase; color: var(--pink); cursor: pointer; }
-  .mama-rules ul { list-style: none; margin: 0.7rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
+  .mama-rules-head { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--white); margin: 0.9rem 0 0; }
+  .mama-rules-head:first-of-type { margin-top: 0.7rem; }
+  .mama-rules ul { list-style: none; margin: 0.45rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
   .mama-rules li { display: flex; gap: 0.5rem; font-size: 0.7rem; line-height: 1.55; color: rgba(245,240,240,0.85); }
 
   /* MAMA's headline row: three numbers, not the four the other awards show. */
@@ -9109,11 +9112,22 @@ function drawVoteAward() {
 // Most people here signed in with Google, so the panel's first job for them is
 // the link, not the vote.
 //
-// The exact wording of a valid vote is MNET'S, not ours — one artist tag plus
-// the campaign tag, and a post carrying several artist tags is not counted at
-// all. Kept in one constant because it is the thing most likely to need
-// correcting against Mnet's own notice.
-const MAMA_TWEET = 'I vote #BLACKPINK #2026MAMAVOTE';
+// WHAT MNET ACTUALLY REQUIRES is the two tags: the campaign tag and the
+// artist's official hashtag, and nothing else. Per the official 1st Vote Guide
+// a post is valid if it carries both; the surrounding words are free text, and
+// capitals in the artist tag do not matter. So "I vote" is OUR wording, not a
+// format — kept because a post that is only two hashtags, repeated daily, is
+// exactly the shape X's own spam rules reject, and the guide rejects posts that
+// break those rules.
+//
+// The tags are separate constants because they are the part that must match
+// Mnet, and the artist tag is the one thing here that cannot be verified from
+// outside: the guide says to read it off the official voting page in the Mnet
+// Plus app. #BLACKPINK is the obvious candidate and is what the fandom is
+// using, but obvious is not the same as checked.
+const MAMA_TAG_CAMPAIGN = '#2026MAMAVOTE';
+const MAMA_TAG_ARTIST   = '#BLACKPINK';
+const MAMA_TWEET = 'I vote ' + MAMA_TAG_ARTIST + ' ' + MAMA_TAG_CAMPAIGN;
 
 // ── what we are nominated for ───────────────────────────────────────────────
 // `fanVote` is the whole point of the list: only FANS' CHOICE is decided by
@@ -9135,16 +9149,36 @@ const MAMA_NOMS = [
 ];
 
 // ── the rules ───────────────────────────────────────────────────────────────
-// From MAMA's own account. The X share is the part this page can act on, and
-// the two things most likely to waste a vote are the per-day cap and the
-// one-artist-tag rule, so they lead.
+// From MAMA's own 1st Vote Guide, not from coverage of it. Grouped by where the
+// vote is cast, because the two halves have different rules and wildly
+// different weight: X is 10% of Fans' Choice and Mnet Plus is the other 90%.
+//
+// Ordered by what costs a vote when ignored. The leading one is the correction
+// that mattered most: an earlier version of this list said a post, a repost and
+// a quote "all count as the same single vote — tweeting more does not add
+// more", which is true but soft. The official rule is harder — if several
+// voting posts go out the same day, only the FIRST is read. That turns "post
+// again properly" from redundant into impossible, so it has to be the first
+// thing on the page, not a footnote.
 const MAMA_RULES = [
-  '<b>One vote per X account per day.</b> A post, a repost and a quote all count as the same single vote — tweeting more does not add more.',
-  'Use <b>#2026MAMAVOTE</b> plus <b>one</b> artist tag. A post carrying several artist tags is <b>not counted at all</b>.',
-  'X is <b>10%</b> of the Fans’ Choice score. <b>Mnet Plus is the other 90%</b> — vote there too, it is worth nine times as much.',
-  '<b>Round 1</b> 12 Oct 19:00 – 22 Oct 23:59 KST. The <b>top 20</b> go through.',
-  '<b>Round 2</b> 28 Oct 18:00 – 8 Nov 23:59 KST.',
-  'Winners announced at the ceremony, <b>20–21 November</b>, Kyocera Dome Osaka.',
+  { head: 'On X — worth 10% of Fans’ Choice', items: [
+    '<b>One vote per X account per day</b>, on the KST day — and it is the <b>first</b> voting post you make that day that is read, not the best or the last one. A post with the wrong tags still spends the day.',
+    'A valid post carries <b>' + MAMA_TAG_CAMPAIGN + '</b> <i>and</i> the artist’s official hashtag, exactly as the official voting page lists it. Capitals do not matter.',
+    '<b>One artist tag, one nominee.</b> Pick the Male or the Female category and name a single nominee — a post carrying several artist hashtags is <b>not counted at all</b>.',
+    '<b>A repost of someone else’s valid post counts as your vote.</b> Your own post and a repost are worth the same one vote, so either is fine.',
+    '<b>Your account has to be public.</b> Votes from protected accounts are not counted, and nor are posts that break X’s own rules.',
+  ]},
+  { head: 'On Mnet Plus — the other 90%', items: [
+    'Once a day, from <b>one ID on one device</b>, on the KST day. It is worth <b>nine times</b> an X vote — if you only do one thing, do this one.',
+    '<b>You have to vote in both Male and Female to complete a session.</b> Filling in one side only does not submit a vote.',
+    'Each side takes <b>1 to 3 teams</b>, and the same artist cannot be picked twice.',
+    'The artist’s official hashtag is listed on the voting page in the <b>Mnet Plus app</b> — that is the same list the X rule above points at.',
+  ]},
+  { head: 'Dates', items: [
+    '<b>Round 1</b> 12 Oct 19:00 – 22 Oct 23:59 KST. The <b>top 20</b> go through.',
+    '<b>Round 2</b> 28 Oct 18:00 – 8 Nov 23:59 KST.',
+    'Winners announced at the ceremony, <b>20–21 November</b>, Kyocera Dome Osaka.',
+  ]},
 ];
 
 async function mamaLoad() {
@@ -9261,14 +9295,14 @@ function drawMamaVoting() {
   } else if (me.votedToday) {
     state = `<div class="vv-me">
       <div class="vv-me-head">@${_vvEsc(me.handle || '')} · counted today ✓</div>
-      <div class="vv-rank">You have voted today. One per account per day is the cap — the next one you can cast is tomorrow.</div>
+      <div class="vv-rank">You have voted today. One per account per day is the cap, and Mnet reads your <b>first</b> post of the day — so the next vote you can cast is tomorrow’s.</div>
       <div class="vv-me-stats"><div><span>${_vvFmt(me.myDays || 0)}</span><small>days voted</small></div></div>
-      <a class="vv-auto-more" href="https://x.com/intent/post?text=${encodeURIComponent(MAMA_TWEET)}" target="_blank" rel="noopener noreferrer">Post it again anyway ↗</a>
+      <a class="vv-auto-more" href="https://x.com/intent/post?text=${encodeURIComponent(MAMA_TWEET)}" target="_blank" rel="noopener noreferrer">Post again anyway — it will not add a vote ↗</a>
     </div>`;
   } else {
     state = `<div class="vv-me">
       <div class="vv-me-head">@${_vvEsc(me.handle || '')}</div>
-      <div class="vv-auto-note">Post <b>${_vvEsc(MAMA_TWEET)}</b> on X, then log it here. One per account per day — more posts do not add more votes.</div>
+      <div class="vv-auto-note">Post <b>${_vvEsc(MAMA_TWEET)}</b> on X, then log it here. What Mnet requires is <b>${_vvEsc(MAMA_TAG_CAMPAIGN)}</b> and <b>${_vvEsc(MAMA_TAG_ARTIST)}</b> in the same post — the rest is yours to write. Get it right first time: only your <b>first</b> voting post of the day is read.</div>
       <a class="vv-gate-btn" href="https://x.com/intent/post?text=${encodeURIComponent(MAMA_TWEET)}" target="_blank" rel="noopener noreferrer">𝕏 Post my vote ↗</a>
       <button class="vv-gate-btn" onclick="mamaLogVote(this)">✓ I voted on X today</button>
       <div class="vv-me-stats"><div><span>${_vvFmt(me.myDays || 0)}</span><small>days voted</small></div></div>
@@ -9304,12 +9338,13 @@ function drawMamaVoting() {
       </div>`).join('')}
     </div>
     <details class="mama-rules"><summary>📋 Rules — what counts, and what wastes a vote</summary>
-      <ul>${MAMA_RULES.map(r => `<li><span class="rules-dot">▸</span><span>${r}</span></li>`).join('')}</ul>
+      ${MAMA_RULES.map(g => `<div class="mama-rules-head">${_vvEsc(g.head)}</div>
+      <ul>${g.items.map(r => `<li><span class="rules-dot">▸</span><span>${r}</span></li>`).join('')}</ul>`).join('')}
     </details>
     ${state}
     <div class="vv-msg" id="mama-msg">${_mamaReturnErr ? 'X sent us back with an error: ' + _vvEsc(_mamaReturnErr) : ''}</div>
     ${table}
-    <div class="vv-honest">One vote per X account per day, counted by the X account rather than by this site’s account — so a second sign-in or a second device is still one vote, which is how Mnet counts it too. Posting more often does not add votes.</div>
+    <div class="vv-honest">One vote per X account per day, counted by the X account rather than by this site’s account — so a second sign-in or a second device is still one vote, which is how Mnet counts it too. Posting more often does not add votes: Mnet reads the first voting post of your day and ignores the rest.</div>
   </div>`;
 }
 

@@ -317,13 +317,46 @@ console.log('\n--- the panel');
   check(noms.filter(n => !n.votable).every(n => /not a fan vote/i.test(n.tag)),
         'and every other nomination says it is not a fan vote');
 
-  // The two rules that actually cost a vote when ignored.
+  // The rules that actually cost a vote when ignored. Each of these is a line
+  // from Mnet's own 1st Vote Guide, and each was either missing or softened in
+  // the first version of this list — which is why they are pinned rather than
+  // trusted to stay put.
   const rules = await page.evaluate(() => (document.querySelector('.mama-rules') || {}).textContent || '');
   check(/one vote per X account per day/i.test(rules), 'the per-day cap is in the rules');
   check(/not counted at all/i.test(rules) && /one.{0,12}artist tag/i.test(rules),
         'and so is the one-artist-tag rule, which silently voids a post');
   check(/90%/.test(rules) && /Mnet Plus/i.test(rules),
         'and that Mnet Plus is worth nine times what X is');
+  // THE STRICT VERSION OF THE PER-DAY CAP. "More posts do not add votes" and
+  // "only the first post is read" sound alike and are not: under the second, a
+  // badly-tagged post cannot be corrected by posting again. Someone who
+  // believes the first can lose a day without knowing it.
+  check(/\bfirst\b/i.test(rules) && /not the (best or the )?last/i.test(rules),
+        'only the FIRST voting post of the day is read — not merely "extra posts do not add votes"');
+  check(/repost/i.test(rules) && /counts as your vote/i.test(rules),
+        'a repost of a valid post counts as a vote');
+  check(/public/i.test(rules) && /protected accounts are not counted/i.test(rules),
+        'and a protected account is not counted at all');
+  check(/capitals do not matter/i.test(rules), 'the artist tag is case-insensitive');
+  check(/both Male and Female/i.test(rules) && /1 to 3 teams/i.test(rules),
+        'the Mnet Plus session rules are stated (both categories, 1–3 teams)');
+  check(/one ID on one device/i.test(rules), 'as is its one-ID-one-device cap');
+  // The two halves have different rules, so the page must say which half each
+  // rule belongs to. A flat list mixes "1 to 3 teams" (Mnet Plus) with "one
+  // nominee" (X) and reads as a contradiction.
+  const heads = await page.evaluate(() => [...document.querySelectorAll('.mama-rules-head')].map(h => h.textContent.trim()));
+  check(heads.length >= 2 && heads.some(h => /\bX\b/.test(h)) && heads.some(h => /Mnet Plus/i.test(h)),
+        `the rules are split by where the vote is cast (${heads.join(' | ') || 'no headings'})`);
+
+  // WHAT THE PRE-FILLED POST MUST CARRY. The guide requires the campaign tag
+  // and the artist tag; everything else in the text is ours. If a rewrite of
+  // the suggested wording ever drops one of the two tags, the button hands
+  // every blink an invalid vote.
+  const tweet = await page.evaluate(() => MAMA_TWEET);
+  check(tweet.includes('#2026MAMAVOTE'), `the suggested post carries the campaign tag (${tweet})`);
+  check(/#BLACKPINK/i.test(tweet), 'and exactly one artist tag');
+  check(tweet.match(/#(?!2026MAMAVOTE)[A-Za-z0-9_]+/g).length === 1,
+        'only one — several artist hashtags void the post entirely');
   check(errs.length === 0, `no page errors (${errs.join(' | ') || 'none'})`);
 
   // Linking sends the browser to X and back. The tab it comes back to is the
