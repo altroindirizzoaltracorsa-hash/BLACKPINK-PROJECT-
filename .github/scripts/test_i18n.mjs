@@ -298,6 +298,47 @@ await page.waitForTimeout(300);
 // anything written into markup already on the page was never translated. The
 // whole guided tour stayed English for exactly this reason: each of its steps
 // writes into the same #guide-title that shipped with the document.
+// A NAME INSIDE A TRANSLATED SENTENCE. Badge names are lyrics and fandom
+// coinages — "A little bit less than a lover" — and must survive verbatim while
+// the sentence around them translates. data-no-i18n would freeze the sentence
+// too; data-i18n-keep rides the <br>/<img> path instead, so the name enters the
+// key as <0/> and build() puts the original element back untouched. Being a
+// numbered placeholder, it can also move: the point of this test.
+console.log('\n--- a kept fragment survives the sentence around it');
+await page.evaluate(() => {
+  const d = document.createElement('div');
+  d.id = 'keep-probe';
+  d.innerHTML = 'for <span data-i18n-keep>Who let this bitch out the cage?</span>';
+  document.body.appendChild(d);
+});
+await page.waitForTimeout(400);
+const keep = await page.evaluate(() => {
+  const el = document.getElementById('keep-probe');
+  const hit = window.BU_I18N.__collect().find((x) => x.s && x.s.indexOf('for <') === 0);
+  return { key: hit && hit.s, text: el.textContent };
+});
+check(keep.key === 'for <0/>', `the name is a placeholder, not words to translate (${keep.key})`);
+check(keep.text === 'for Who let this bitch out the cage?',
+      'and it is still there, exactly as written');
+// Now translate a sentence that MOVES it, which is the whole reason it is
+// numbered rather than fixed in place.
+await page.evaluate(() => {
+  document.getElementById('keep-probe').remove();
+  const d = document.createElement('div');
+  d.id = 'keep-probe2';
+  d.innerHTML = 'one then <b data-i18n-keep>KEEPME</b>';
+  document.body.appendChild(d);
+});
+await page.waitForTimeout(400);
+const moved = await page.evaluate(() => {
+  const el = document.getElementById('keep-probe2');
+  const hit = window.BU_I18N.__collect().find((x) => x.s === 'one then <0/>');
+  return { found: !!hit, html: el.innerHTML };
+});
+check(moved.found, 'a kept element in mid-sentence keys as <0/>');
+check(moved.html.indexOf('data-i18n-keep') > -1 && moved.html.indexOf('KEEPME') > -1,
+      'and the element itself, attributes and all, is what sits in the page');
+
 console.log('\n--- text written into existing markup still translates');
 await page.evaluate(() => window.BU_I18N.setLang('es'));
 await page.waitForTimeout(300);

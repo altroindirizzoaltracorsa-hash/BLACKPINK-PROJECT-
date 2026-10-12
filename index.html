@@ -12425,18 +12425,18 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
           : 100;
         const badgeDisplay = currentBadge
           ? `<div style="font-size:1.6rem;line-height:1;">${currentBadge.icon}</div>
-             <div style="font-family:var(--display);font-size:0.7rem;letter-spacing:0.1em;color:var(--pink);">${currentBadge.label}</div>
+             <div data-no-i18n style="font-family:var(--display);font-size:0.7rem;letter-spacing:0.1em;color:var(--pink);">${currentBadge.label}</div>
              <div style="font-family:var(--light-serif);font-style:italic;font-size:0.55rem;color:var(--muted);">${currentBadge.desc}</div>`
           : `<div style="font-size:1.2rem;opacity:0.15;">🔒</div>
              <div style="font-size:0.45rem;letter-spacing:0.15em;color:rgba(245,240,240,0.2);">No badge yet</div>`;
         return `<div class="daily-card">
           <div class="daily-song-name">${t.title}</div>
           <div class="${acctBreakdown&&acctBreakdown.length>1?'daily-count tappable':'daily-count'}" ${acctBreakdown&&acctBreakdown.length>1?`onclick="showBreakdown('daily','${t.id}')"`:''} >${count}</div>
-          <div class="daily-target">${nextTier ? `/ ${nextTier.min} for ${nextTier.label}` : (currentBadge ? `✨ ×${currentBadge.mult} accounts!` : 'streams today')}</div>
+          <div class="daily-target">${nextTier ? `/ ${nextTier.min} for <span data-i18n-keep>${nextTier.label}</span>` : (currentBadge ? `✨ ×${currentBadge.mult} accounts!` : 'streams today')}</div>
           <div style="margin:0.6rem 0;">${badgeDisplay}</div>
           <div class="tier-dots">
             ${tiers.slice(0, 5).map(tier =>
-              `<div class="tier-dot${count >= tier.min ? ' earned' : ''}" title="${tier.label}: ${tier.min}+">${count >= tier.min ? tier.icon : ''}</div>`
+              `<div class="tier-dot${count >= tier.min ? ' earned' : ''}" data-no-i18n title="${tier.label}: ${tier.min}+">${count >= tier.min ? tier.icon : ''}</div>`
             ).join('')}
           </div>
           <div class="daily-progress-bar"><div class="daily-progress-fill" style="width:${pct}%"></div></div>
@@ -12483,7 +12483,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
             return `<td class="week-cell-empty">·</td>`;
           }).join('')}
           <td style="color:${wBadge ? 'var(--pink)' : 'var(--muted)'}; text-align:center;">
-            ${wBadge ? `${wBadge.icon} ${wBadge.label}` : (wNext ? `${wc}/${wNext.min}` : wc)}
+            ${wBadge ? `${wBadge.icon} <span data-i18n-keep>${wBadge.label}</span>` : (wNext ? `${wc}/${wNext.min}` : wc)}
           </td>
         </tr>`;}).join('')}
       </tbody>
@@ -12518,7 +12518,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
             <div class="badge-history-item badge-history-head" onclick="toggleTierAcc(this)" role="button" tabindex="0" aria-expanded="false">
               <div class="badge-history-icon">${item.badge.icon}</div>
               <div>
-                <div class="badge-history-label">${labels ? labels[item.badge.id] : item.badge.label}</div>
+                <div class="badge-history-label" data-no-i18n>${labels ? labels[item.badge.id] : item.badge.label}</div>
                 <div class="badge-history-song">${t.title}</div>
                 <div class="badge-history-date">${plays.toLocaleString()} scrobbles</div>
               </div>
@@ -12531,7 +12531,7 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
                 const name = labels ? labels[tier.id] : tier.label;
                 return `<div class="tier-cell ${earned ? 'earned' : ''}">
                   <div class="tier-cell-icon" style="opacity:${earned ? 1 : 0.2}">${tier.icon}</div>
-                  <div class="tier-cell-name" style="color:${earned ? 'var(--pink)' : 'var(--white)'}">${name}</div>
+                  <div class="tier-cell-name" data-no-i18n style="color:${earned ? 'var(--pink)' : 'var(--white)'}">${name}</div>
                   <div class="tier-cell-req">${tier.min.toLocaleString()}+ plays</div>
                   ${earned ? '<div class="tier-earned-tag">✓ EARNED</div>' : '<div class="tier-locked-tag">locked</div>'}
                 </div>`;
@@ -12666,7 +12666,7 @@ async function renderSpecialBadges() {
           <div class="badge-history-item">
             <div class="badge-history-icon">${b.icon}</div>
             <div>
-              <div class="badge-history-label">${b.label}</div>
+              <div class="badge-history-label" data-no-i18n>${b.label}</div>
               <div class="badge-history-song">${b.song}</div>
             </div>
             <div style="margin-left:auto;font-family:var(--light-serif);font-style:italic;font-size:0.65rem;color:var(--muted);">${b.desc}</div>
@@ -12902,7 +12902,7 @@ function showStampDetail(dateKey) {
         const s = stamps[t.id];
         return `<div class="stamp-detail-item">
           <span class="stamp-detail-icon">${s.icon}</span>
-          <span class="stamp-detail-label">${s.label}</span>
+          <span class="stamp-detail-label" data-no-i18n>${s.label}</span>
           <span class="stamp-detail-count">${s.count} streams</span>
         </div>`;
       }).join('')}

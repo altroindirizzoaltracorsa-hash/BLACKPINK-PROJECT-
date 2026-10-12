@@ -68,12 +68,23 @@ where English left it:
 it as `{n}`, and move it wherever your sentence needs it. They are filled in the
 order they appear in your translation.
 
+**`<0/>` with the slash is something the site drops in whole** — most often a
+badge name. You cannot change what goes inside it, only where it goes:
+
+```json
+"/ {n} for <0/>": "<0/>까지 {n}개"
+```
+
 ## What not to translate
 
 - **Names**: BLACKPINK, JENNIE, ROSÉ, JISOO, LISA, BLINK, song and album titles
 - **Other people's names**: nominees, other artists, other fandoms
 - **Brands**: Spotify, YouTube, Nickelodeon, BreakTudo, MTV, Last.fm
 - **The site's own name**, Blinks United
+- **Badge names**: BLINK, STAN, QUEEN, and the per-song ladders drawn from the
+  lyrics — "A little bit less than a lover", "Who let this bitch out the cage?".
+  These are coinages and lyric fragments, not sentences. They reach you as
+  `<0/>`, so the line around them still translates.
 - **Award and category names**: Best K-Pop, Female Group, Fan Army Face-Off.
   These are the wording of the ballot you are about to click. If the site says
   "Mejor K-Pop" and the MTV page says "Best K-Pop", we have made voting harder,

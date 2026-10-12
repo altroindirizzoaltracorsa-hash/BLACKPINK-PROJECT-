@@ -174,8 +174,19 @@
         if (n.nodeType === 3) out += n.nodeValue.replace(NUM_RE, '{n}');
         else if (n.nodeType === 1) {
           const i = tags.length; tags.push(n);
-          out += (n.tagName === 'BR' || n.tagName === 'IMG' || n.tagName === 'WBR')
-            ? `<${i}/>` : `<${i}>${walk(n)}</${i}>`;
+          // data-i18n-keep rides the same path as <br>/<img>: the element goes
+          // into the key as <0/>, and build() puts the ORIGINAL back, contents
+          // untouched. That is the difference from data-no-i18n, which takes
+          // the whole sentence out of translation along with the name inside
+          // it. Here the sentence still translates and the name cannot be
+          // touched — and because it is a numbered placeholder, a language that
+          // wants the name first is free to put it first.
+          // Badge names are the case: "A little bit less than a lover",
+          // "Who let this bitch out the cage?" are lyrics and fandom coinages,
+          // not words to be rendered into Thai.
+          const keep = n.tagName === 'BR' || n.tagName === 'IMG' || n.tagName === 'WBR'
+            || n.hasAttribute('data-i18n-keep');
+          out += keep ? `<${i}/>` : `<${i}>${walk(n)}</${i}>`;
         }
       }
       return out;
