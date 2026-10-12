@@ -350,8 +350,8 @@
 </div>
 
 <script>
-  // Oct 17 2026, 23:53 BRT (UTC-3) — the closing time BreakTudo publishes.
-  var DEADLINE = new Date('2026-10-17T23:53:00-03:00').getTime();
+  // Oct 17 2026, 23:59 BRT (UTC-3) — the closing time BreakTudo publishes.
+  var DEADLINE = new Date('2026-10-17T23:59:00-03:00').getTime();
 
   // ── The nominations ───────────────────────────────────────────────────────
   // One entry per NOMINEE, not per category: Int. Music Video carries two of
@@ -429,7 +429,7 @@
     'No account and no app — vote straight at <b>vote.breaktudoawards.com</b>.',
     'Cast in <b>sequences of 5</b>, clear the Cloudflare check, then hit <b>“Enviar Votos”</b>.',
     '<b>No total limit.</b> The page refreshes after each batch so you can keep going — and every category is separate, so vote in all eight.',
-    'Voting runs to <b>Oct 17, 23:53 BRT</b> (Brasília time).',
+    'Voting runs to <b>Oct 17, 23:59 BRT</b> (Brasília time).',
     'Winners are revealed <b>Nov 24, 2026</b>.',
   ];
 
@@ -833,7 +833,7 @@
       + unit(Math.floor(diff % 86400000 / 3600000), 'Hrs')
       + unit(Math.floor(diff % 3600000 / 60000), 'Min')
       + unit(Math.floor(diff % 60000 / 1000), 'Sec');
-    reset.innerHTML = '<span class="nb">Closes <b>Oct 17, 23:53</b> Brasília</span> · <span class="nb">winners <b>Nov 24</b></span>';
+    reset.innerHTML = '<span class="nb">Closes <b>Oct 17, 23:59</b> Brasília</span> · <span class="nb">winners <b>Nov 24</b></span>';
   }
   tick();
   setInterval(tick, 1000);

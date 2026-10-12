@@ -8328,12 +8328,15 @@ const VOTE_CAMPAIGNS = [
     title: 'BreakTudo Awards 2026',
     url: 'https://vote.breaktudoawards.com/',
     image: '/vote-blackpink-ot4.jpg',
-    deadline: '2026-10-18T02:53:00Z', // Oct 17 2026, 23:53 BRT (UTC-3)
+    // Oct 17 2026, 23:59 BRT (UTC-3), as BreakTudo's own post states. This
+    // read 02:53Z while VV_AWARD_CLOSES below read 02:59Z — the card's
+    // countdown hit zero six minutes before the award tab actually closed.
+    deadline: '2026-10-18T02:59:00Z',
     rules: [
       'Vote at vote.breaktudoawards.com — no app or account needed',
       'No total vote limit — cast in sequences of 5, complete the Cloudflare check, then hit “Enviar Votos”',
       'The page refreshes after each batch so you can keep going — vote in every category below',
-      'Voting: Sep 17 – Oct 17, 23:53 BRT (Brasília)',
+      'Voting: Sep 17 – Oct 17, 23:59 BRT (Brasília)',
       'Winners revealed Nov 24, 2026',
     ],
     categories: [

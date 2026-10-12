@@ -18,6 +18,7 @@
 //
 // page.route() serves the real file at the real hostname so absolute /api and
 // image paths resolve without DNS.
+import { readFileSync } from 'node:fs';
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 
 const PAGE = new URL('../../breaktudo.html', import.meta.url).pathname;
@@ -91,6 +92,32 @@ check(data.prev['group'] === 3 && data.places['group'] === 2, 'BLACKPINK climbed
 // The one that is NOT a climb, and the whole reason depth exists.
 check(data.prev['fandom'] === null && data.places['fandom'] === 6,
       'BLINKs were off the top 5 and are 6th of 8 — more detail, not movement');
+
+// The closing time, in the three places breaktudo.html states it and against
+// the one index.html gates the award tab on. They disagreed by six minutes —
+// the campaign card's countdown hit zero while the tab was still open — and a
+// deadline is the one number on this page that costs a vote when it is wrong.
+console.log('\n--- the deadline agrees with itself');
+const when = await p.evaluate(() => ({
+  deadline: DEADLINE,
+  rule: RULES.find(r => /Voting runs to/.test(r)),
+  reset: document.getElementById('reset-note') ? document.getElementById('reset-note').textContent : document.body.innerText,
+}));
+// 2026-10-17 23:59 BRT (UTC-3) = 2026-10-18 02:59 UTC.
+check(when.deadline === Date.parse('2026-10-18T02:59:00Z'),
+      `the countdown ends 17 Oct 23:59 Brasília (${new Date(when.deadline).toISOString()})`);
+check(/23:59 BRT/.test(when.rule || ''), `the rules say the same time (${when.rule})`);
+check(/23:59/.test(when.reset) && !/23:53/.test(when.reset),
+      'and so does the line under the countdown');
+// And the OTHER file. index.html carries the same deadline twice — the campaign
+// card's countdown and the gate that closes the award tab — and that is where
+// the six minutes came from: one said 02:53Z, the other 02:59Z, in the same
+// document, with nothing comparing them.
+const idx = readFileSync(new URL('../../index.html', import.meta.url).pathname, 'utf8');
+const stamps = [...idx.matchAll(/2026-10-18T02:\d\d:00Z/g)].map(m => m[0]);
+check(stamps.length >= 2 && stamps.every(x => x === '2026-10-18T02:59:00Z'),
+      `index.html states the BreakTudo close once and once only: ${[...new Set(stamps)].join(', ')}`);
+check(!/23:53/.test(idx), 'and no 23:53 survives anywhere in it');
 
 console.log('\n--- the table');
 // <b> is the CATEGORY and <small> is the nominee, not the other way round.
