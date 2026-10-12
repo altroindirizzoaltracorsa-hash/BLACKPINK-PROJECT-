@@ -1,10 +1,24 @@
 {
-  "generatedAt": "2026-10-11T12:13:49.652Z",
+  "generatedAt": "2026-10-12T14:36:41.388Z",
   "chartType": "weekly",
-  "weekEndingDate": "2026-10-11",
-  "regions": {},
+  "weekEndingDate": "2026-10-12",
+  "regions": {
+    "jp": {
+      "region": "Japan",
+      "gl": "JP",
+      "period": {
+        "entityId": "weekly:20261002:20261008:jp",
+        "periodType": "weekly",
+        "startDate": "20261002",
+        "endDate": "20261008",
+        "region": "jp"
+      },
+      "totalEntries": 94,
+      "hits": []
+    }
+  },
   "summary": {
     "totalHits": 0,
-    "regionsChecked": 0
+    "regionsChecked": 1
   }
 }
