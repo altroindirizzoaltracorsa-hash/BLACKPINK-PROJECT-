@@ -413,8 +413,94 @@
   }
 
   // ── the picker ────────────────────────────────────────────────────────────
+  // The picker's own look, injected as the FIRST thing in <head> so any rule a
+  // page writes beats it — index.html's narrow-screen overrides depend on that,
+  // and a media query adds no specificity to win with.
+  //
+  // It lives here rather than in a stylesheet because the runtime loads on
+  // eleven pages and only one of them, index.html, has this CSS or a slot in
+  // its nav for the control.
+  const CSS = `
+#lang-picker { position: relative; display: inline-flex; align-items: center; }
+#lang-picker.lang-pick-float { position: fixed; right: 16px; bottom: 16px; z-index: 9000; }
+.lang-pick-face {
+  display: inline-flex; align-items: center; gap: 0.32rem;
+  background: rgba(8,8,8,0.82); border: 1px solid rgba(255,0,102,0.5);
+  color: #ff0066; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.48rem; letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 0.4rem 0.8rem; white-space: nowrap; border-radius: 2px;
+  transition: border-color 0.2s, background 0.2s;
+}
+#lang-picker:hover .lang-pick-face,
+#lang-picker:focus-within .lang-pick-face {
+  border-color: #ff0066; background: rgba(255,0,102,0.12);
+}
+#lang-picker select {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer; border: 0; padding: 0;
+  /* iOS zooms the whole page when a focused control's text is under 16px. */
+  font-size: 16px; -webkit-appearance: none; appearance: none;
+}
+#lang-picker option { background: #12000a; color: #f5f0f0; text-transform: none; letter-spacing: 0; }`;
+
+  function injectCss() {
+    if (document.getElementById('bu-i18n-css') || !document.head) return;
+    const st = document.createElement('style');
+    st.id = 'bu-i18n-css';
+    st.textContent = CSS;
+    document.head.insertBefore(st, document.head.firstChild);
+  }
+
+  // index.html puts the control in its nav bar, next to Install App. Every
+  // other page — the guides, the campaign pages — has its own markup and no
+  // slot for it, so one is placed in the corner instead. Editing ten different
+  // navs to each hold the same control is the version of this that rots.
+  function pickerHost() {
+    let host = document.getElementById('lang-picker');
+    if (host) return host;
+    if (!document.body) return null;
+    host = document.createElement('div');
+    host.id = 'lang-picker';
+    host.className = 'lang-pick-float';
+    document.body.appendChild(host);
+    clearOfFixedBars(host);
+    return host;
+  }
+
+  // That corner is not always empty: breaktudo.html parks a full-width "see the
+  // board" bar along the bottom, and the picker landed on top of its button.
+  // Rather than guess a safe offset per page, ask the page what is actually at
+  // that point and step over it. Re-checked once after load, because a bar that
+  // appears late would otherwise be missed.
+  function clearOfFixedBars(host) {
+    const lift = () => {
+      host.style.bottom = '16px';
+      const r = host.getBoundingClientRect();
+      const x = Math.round(r.left + r.width / 2);
+      const y = Math.round(r.top + r.height / 2);
+      let bottom = 16;
+      for (const el of document.elementsFromPoint(x, y) || []) {
+        if (el === host || host.contains(el)) continue;
+        const cs = getComputedStyle(el);
+        if (cs.position !== 'fixed' && cs.position !== 'sticky') continue;
+        const b = el.getBoundingClientRect();
+        if (b.height && b.height < window.innerHeight / 2) {
+          bottom = Math.max(bottom, window.innerHeight - b.top + 10);
+        }
+        break;
+      }
+      host.style.bottom = bottom + 'px';
+    };
+    try {
+      lift();
+      window.addEventListener('load', () => { try { lift(); } catch (_) {} }, { once: true });
+      setTimeout(() => { try { lift(); } catch (_) {} }, 1500);
+    } catch (_) {}
+  }
+
   function renderPicker() {
-    const host = document.getElementById('lang-picker');
+    injectCss();
+    const host = pickerHost();
     if (!host) return;
     // The language names are already in their own languages and must never be
     // translated into the current one.

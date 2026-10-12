@@ -413,6 +413,69 @@ for (const w of [430, 390, 360, 320]) {
 }
 await page.setViewportSize({ width: 1280, height: 1200 });
 
+// EVERY PAGE NEEDS A WAY OUT OF ENGLISH. The runtime loads on eleven pages and
+// only index.html has a slot for the control in its nav — and the site root
+// redirects to /breaktudo, which is one of the ten that does not. A visitor
+// landing there had no way to change language at all.
+console.log('\n--- the picker reaches the pages outside the app');
+check(await page.evaluate(() => {
+  const p = document.getElementById('lang-picker');
+  return p && !p.classList.contains('lang-pick-float');
+}), 'index.html keeps its in-nav picker and gets no floating one');
+
+const standalone = await b.newPage({ viewport: { width: 1100, height: 900 } });
+standalone.on('pageerror', (e) => errs.push('breaktudo: ' + e));
+await standalone.route('**/*', async (route) => {
+  const u = new URL(route.request().url());
+  if (u.hostname.includes('fonts.g')) return route.continue();
+  const f = u.pathname === '/' ? 'index.html' : u.pathname.slice(1);
+  if (existsSync(root + f) && /\.(html|js|json|css|png|jpg|svg|webp)$/.test(f)) {
+    return route.fulfill({ path: root + f });
+  }
+  return route.fulfill({ status: 204, body: '' });
+});
+await standalone.goto('https://www.blinksunited.com/breaktudo.html', { waitUntil: 'domcontentloaded' });
+await standalone.waitForTimeout(1600);
+const sp = await standalone.evaluate(() => {
+  const p = document.getElementById('lang-picker');
+  if (!p) return { there: false };
+  const r = p.getBoundingClientRect();
+  const sel = p.querySelector('select');
+  const q = sel.getBoundingClientRect();
+  return {
+    there: true, floating: p.classList.contains('lang-pick-float'),
+    options: sel.options.length,
+    onScreen: r.width > 0 && r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1,
+    covered: Math.abs(r.width - q.width) < 2 && Math.abs(r.height - q.height) < 2,
+    styled: !!document.getElementById('bu-i18n-css'),
+  };
+});
+check(sp.there && sp.floating, 'a page with no slot for it gets one in the corner');
+check(sp.styled, 'and the runtime brings its own styling, which that page does not have');
+check(sp.options === 11, `with every language in it (${sp.options})`);
+check(sp.onScreen, 'sitting inside the viewport');
+check(sp.covered, 'and still clickable — the select lies over the face');
+// That corner was already taken: breaktudo.html parks a full-width bar along
+// the bottom, and the picker landed on its "see the board" button. It has to
+// step over whatever is fixed there, not sit on it.
+const clash = await standalone.evaluate(() => {
+  const p = document.getElementById('lang-picker').getBoundingClientRect();
+  const hits = [];
+  for (const el of document.querySelectorAll('body *')) {
+    const cs = getComputedStyle(el);
+    if (cs.position !== 'fixed' && cs.position !== 'sticky') continue;
+    if (el.id === 'lang-picker' || el.closest('#lang-picker')) continue;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    if (r.left < p.right && r.right > p.left && r.top < p.bottom && r.bottom > p.top) {
+      hits.push((el.className || el.tagName).toString().slice(0, 40));
+    }
+  }
+  return hits;
+});
+check(clash.length === 0, `it does not land on anything already fixed there (${clash.join(', ') || 'clear'})`);
+await standalone.close();
+
 console.log('\n--- nothing else broke');
 check(errs.length === 0, `no page errors (${errs.join(' | ') || 'none'})`);
 const of_ = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

@@ -2417,36 +2417,10 @@
      so a member reads the same everywhere on the site. BLINKs is the one value
      not in that map — the fandom is not a member — and gets the green the vote
      split already uses. */
-  /* Language picker — a native <select> on purpose: on a phone it opens the
-     system picker, which already handles ten scripts, scrolling and
-     accessibility better than anything hand-built here would.
-
-     What a native select cannot do is show one thing closed and another open:
-     closed, it shows the selected option's text, and "Bahasa Indonesia" does
-     not fit in a nav bar beside the logo, the install button and the
-     hamburger. So the face below is ours and the select is laid transparent
-     on top of it — still the thing that takes the click, the focus and the
-     keyboard, still opening the system list with the full names in it. */
-  #lang-picker { position: relative; display: inline-flex; align-items: center; }
-  .lang-pick-face {
-    display: inline-flex; align-items: center; gap: 0.32rem;
-    background: transparent; border: 1px solid rgba(255,0,102,0.5);
-    color: var(--pink); font-family: var(--mono); font-size: 0.48rem;
-    letter-spacing: 0.14em; text-transform: uppercase;
-    padding: 0.4rem 0.8rem; white-space: nowrap;
-    transition: border-color 0.2s, background 0.2s;
-  }
-  #lang-picker:hover .lang-pick-face,
-  #lang-picker:focus-within .lang-pick-face {
-    border-color: var(--pink); background: rgba(255,0,102,0.08);
-  }
-  #lang-picker select {
-    position: absolute; inset: 0; width: 100%; height: 100%;
-    opacity: 0; cursor: pointer; border: 0; padding: 0;
-    /* iOS zooms the whole page when a focused control's text is under 16px. */
-    font-size: 16px; -webkit-appearance: none; appearance: none;
-  }
-  #lang-picker option { background: #12000a; color: var(--white); text-transform: none; letter-spacing: 0; }
+  /* The picker's own look now ships inside i18n/i18n.js, injected at the top
+     of <head> so that page rules — the responsive overrides below — still win.
+     It lives there because the guides and the campaign pages load the runtime
+     too, and those have neither this stylesheet nor a slot in their nav. */
   /* Language, install and the hamburger travel together on the right. */
   .nav-actions { display: flex; align-items: center; gap: 0.6rem; }
   /* Below ~430px the bar is logo + language + Install App + hamburger, and
