@@ -164,7 +164,10 @@
   .pr-row.alert .pr-who b { color: #ffd3dc; }
   .pr-need { display: block; margin-top: 0.3rem; font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.06em;
     text-transform: uppercase; color: #ff5c7a; font-style: normal; line-height: 1.3; }
-  .pr-row.alert .pr-pos.out { color: #ff5c7a; animation: prPulse 1.9s ease-in-out infinite; }
+  .pr-row.alert .pr-pos.out,
+  .pr-row.alert .pr-pos.low { color: #ff5c7a; animation: prPulse 1.9s ease-in-out infinite; }
+  /* Outside the top 5 but published, which only the final partial can show. */
+  .pr-pos.low { color: #ff8da3; }
   @keyframes prPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
   /* The pulse is an attention cue, not information — the colour, the rule and
      the "votes needed" line all still read without it. */
@@ -181,16 +184,22 @@
   .pr-src { display: block; width: fit-content; margin-top: 0.8rem; font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pink); text-decoration: none; border-bottom: 1px solid rgba(255,0,102,0.4); }
 
   /* Each partial adds a column, and the auto tracks are sized by their widest
-     cell — which is "Not top 5", not a digit. At three partials that is three
-     ~3.7rem tracks plus Move, and the category name was down to a couple of
-     characters per line on a 360px phone. So on narrow screens the out-cell
-     wraps to two lines instead of widening its track, and the gaps tighten. */
-  @media (max-width: 429px) {
+     cell — which is "Not top 5", not a digit. At FOUR partials the full-width
+     tracks leave the category column 6px at 430px and 76px at 500px, measured —
+     the name had nowhere to go. So the narrow treatment starts much earlier now
+     and comes in two steps. There will be no fifth: BreakTudo published the
+     fourth as the last one. */
+  @media (max-width: 700px) {
+    .pr-table { --pr-w: 3.1rem; --pr-mw: 2.6rem; }
+    .pr-head, .pr-row { gap: 0.5rem; }
+  }
+  @media (max-width: 480px) {
     /* Narrow enough that "Not top 5" wraps and "to 22 Sep" needs its own size:
-       the category name is the column worth giving the width back to. */
-    .pr-table { --pr-w: 2.6rem; --pr-mw: 2.2rem; }
+       the category name is the column worth giving the width back to. At
+       2.1rem four columns leave it roughly what three left it at 2.6rem. */
+    .pr-table { --pr-w: 2.1rem; --pr-mw: 1.9rem; }
     .pr-col i { font-size: 0.44rem; letter-spacing: 0.02em; }
-    .pr-head, .pr-row { gap: 0.4rem; padding: 0.7rem 0.6rem; }
+    .pr-head, .pr-row { gap: 0.35rem; padding: 0.7rem 0.5rem; }
     .pr-pos { min-width: 0; }
     .pr-pos.out { white-space: normal; display: inline-block; line-height: 1.25; }
     .pr-trend { min-width: 0; font-size: 0.56rem; }
@@ -245,6 +254,7 @@
   .foot-link { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pink); text-decoration: none; }
   .foot-fine { font-size: 0.68rem; color: var(--muted); margin-top: 0.8rem; line-height: 1.6; }
 </style>
+  <script src="/i18n/i18n.js" defer></script>
 </head>
 <body>
 <div class="accent-bar"></div>
@@ -276,7 +286,7 @@
     <div class="pr-table" id="pr-table"></div>
     <!-- Below the table, not above it: this explains what you have just read,
          and above it was the last thing between the reader and the standings. -->
-    <div class="pr-note">BreakTudo publishes a <b>top 5 per category</b> while voting runs. Each partial counts <b>every vote since voting opened on 17 September</b> — they are running totals, not separate rounds, so holding a place across a longer window means the lead held as more votes came in. BreakTudo says the <b>next one is the last</b> — Sunday <b>11 October</b> — so it is the final read on the race before the ballot closes on the 17th.</div>
+    <div class="pr-note">BreakTudo publishes a <b>top 5 per category</b> while voting runs. Each partial counts <b>every vote since voting opened on 17 September</b> — they are running totals, not separate rounds, so holding a place across a longer window means the lead held as more votes came in. The <b>fourth is the last</b>, published 11 October and counting votes to <b>10 October</b> — and it is a special edition that lists <b>all eight</b> places per category instead of five. That is why BLINKs finally show a number rather than “Not top 5”: nothing moved, we can simply see further down the list. Voting is still open until the 17th, so none of this is final.</div>
     <button class="pr-share" id="pr-share" type="button" onclick="shareStandings(this)">↑ Share these standings</button>
     <div class="pr-legend" id="pr-legend"></div>
     <div id="pr-sources"></div>
@@ -340,8 +350,8 @@
 </div>
 
 <script>
-  // Oct 17 2026, 23:53 BRT (UTC-3) — the closing time BreakTudo publishes.
-  var DEADLINE = new Date('2026-10-17T23:53:00-03:00').getTime();
+  // Oct 17 2026, 23:59 BRT (UTC-3) — the closing time BreakTudo publishes.
+  var DEADLINE = new Date('2026-10-17T23:59:00-03:00').getTime();
 
   // ── The nominations ───────────────────────────────────────────────────────
   // One entry per NOMINEE, not per category: Int. Music Video carries two of
@@ -366,14 +376,18 @@
   // that partial's top 5 — which is information, not a gap, so it is shown
   // rather than left blank. Add the next partial as another entry and every
   // row picks up a column and a movement arrow on its own.
+  // `depth` is how many places that partial published. The first three listed a
+  // top 5; the final one is a special edition listing all eight. It is not a
+  // detail: "not in the top 5" against "6th of 8" is the SAME fact told in more
+  // detail, and reading it as a climb would be inventing a result.
   var PARTIALS = [
-    { label: '1st', to: '22 Sep',
+    { label: '1st', to: '22 Sep', depth: 5,
       url: 'https://www.breaktudoawards.com/primeiro-ranking-parcial-do-breaktudo-awards-2026-confira-o-top-5-de-cada-categoria/',
       places: {
         group: 3, artist: 1, asian: 3, collab: 3, hit: 2,
         'mv-go': 4, 'mv-dream': 5, fandom: null, series: 1,
       } },
-    { label: '2nd', to: '27 Sep',
+    { label: '2nd', to: '27 Sep', depth: 5,
       url: 'https://www.breaktudoawards.com/segundo-ranking-parcial-do-breaktudo-awards-2026-confira-o-top-5-de-cada-categoria/',
       places: {
         group: 3, artist: 1, asian: 2, collab: 3, hit: 2,
@@ -386,11 +400,25 @@
     // Remix); Clipe Int. Sweet Tooth · I Want You Back · Go · Bloody Paradise ·
     // DREAM; Fandom Int. FreenBecky · ARMYS · Blooms · A'TIN · ENGENE (no
     // BLINKs); Série Int. Boyfriend on Demand first.
-    { label: '3rd', to: '4 Oct',
+    { label: '3rd', to: '4 Oct', depth: 5,
       url: 'https://www.breaktudoawards.com/terceiro-ranking-parcial-do-breaktudo-awards-2026-confira-o-top-5-de-cada-categoria/',
       places: {
         group: 3, artist: 1, asian: 2, collab: 3, hit: 2,
         'mv-go': 3, 'mv-dream': 5, fandom: null, series: 1,
+      } },
+    // 4th and final, published 11 Oct, covering votes to 10 Oct. A special
+    // edition: eight places per category instead of five, so BLINKs have a
+    // number for the first time. Read off BreakTudo's own lists:
+    // Grupo Feminino Int. BINI · BLACKPINK · BABYMONSTER · ITZY · TWICE · ILLIT
+    // · KATSEYE · FLO; Artista Feminina Int. Jennie first; Artista Asiático
+    // BGYO · Lisa; Colab. Int. Emoji · SPAGHETTI · Eyes Closed; Hit Int. SWIM ·
+    // Dracula (JENNIE Remix); Clipe Int. Go · Sweet Tooth · I Want You Back ·
+    // Bloody Paradise · DREAM; Fandom Int. FreenBecky · ARMYS · Blooms · A'TIN
+    // · ENGENE · Blinks; Série Int. Boyfriend on Demand first.
+    { label: '4th', to: '10 Oct', depth: 8, url: '',
+      places: {
+        group: 2, artist: 1, asian: 2, collab: 3, hit: 2,
+        'mv-go': 1, 'mv-dream': 5, fandom: 6, series: 1,
       } },
   ];
 
@@ -401,7 +429,7 @@
     'No account and no app — vote straight at <b>vote.breaktudoawards.com</b>.',
     'Cast in <b>sequences of 5</b>, clear the Cloudflare check, then hit <b>“Enviar Votos”</b>.',
     '<b>No total limit.</b> The page refreshes after each batch so you can keep going — and every category is separate, so vote in all eight.',
-    'Voting runs to <b>Oct 17, 23:53 BRT</b> (Brasília time).',
+    'Voting runs to <b>Oct 17, 23:59 BRT</b> (Brasília time).',
     'Winners are revealed <b>Nov 24, 2026</b>.',
   ];
 
@@ -422,19 +450,54 @@
     return '<li><span class="rules-dot">▸</span><span>' + r + '</span></li>';
   }).join('');
 
-  function posCell(p) {
+  // The thing this table is for is "are we in the top 5" — that was the same
+  // question as "did BreakTudo list us" only while every partial listed five.
+  // The final one lists eight, so a nominee can now be listed AND outside the
+  // five, and the two have to be told apart.
+  function outOfFive(place) { return place === null || place > 5; }
+  function ordinal(n) {
+    var s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+
+  // How many CATEGORIES we are in the top 5 of. By category, not by nominee:
+  // Int. Music Video carries two of ours, and that is one category.
+  //
+  // Defined once because it is read twice — the page badge and the share card.
+  // They used to compute it separately, with the card's copy left behind when
+  // the rule changed, so a card headed "✓ RANKING IN ALL 8" went out under a
+  // row reading "6th of 8 — votes needed here".
+  function topFiveScore(partial) {
+    var cats = {};
+    NOMS.forEach(function (n) {
+      if (!(n.cat in cats)) cats[n.cat] = false;
+      var v = partial.places[n.key];
+      if (v !== undefined && !outOfFive(v)) cats[n.cat] = true;
+    });
+    var names = Object.keys(cats);
+    var ranking = names.filter(function (c) { return cats[c]; }).length;
+    return { ranking: ranking, total: names.length, warn: ranking < names.length };
+  }
+
+  function posCell(p, depth) {
     if (p === undefined) return '<span class="pr-pos pending">—</span>';
-    if (p === null) return '<span class="pr-pos out">Not top 5</span>';
-    return '<span class="pr-pos' + (p === 1 ? ' gold' : '') + '">' + p + '</span>';
+    if (p === null) return '<span class="pr-pos out">Not top ' + (depth || 5) + '</span>';
+    return '<span class="pr-pos' + (p === 1 ? ' gold' : (p > 5 ? ' low' : '')) + '">' + p + '</span>';
   }
 
   // Movement between the two most recent partials. Moving INTO or OUT OF the
   // top 5 counts as movement too — "not top 5" to 5th is the best news a
   // category can have, and it would read as nothing if only numbers moved.
-  function trendCell(prev, cur) {
+  function trendCell(prev, cur, prevDepth, curDepth) {
     if (PARTIALS.length < 2) return '<span class="pr-trend same"></span>';
     if (prev === undefined || cur === undefined) return '<span class="pr-trend same"></span>';
     if (prev === null && cur === null) return '<span class="pr-trend same">—</span>';
+    // Not comparable: the nominee was off the end of one list and inside the
+    // other only because that list goes deeper. BLINKs were "not in the top 5"
+    // and are now "6th of 8" — which is not a climb, it is the first time we
+    // could see them at all. Claiming ▲ here would be a result we never had.
+    if (prev === null && cur > (prevDepth || 5)) return '<span class="pr-trend same" title="Not comparable — the earlier partial only listed ' + (prevDepth || 5) + '">—</span>';
+    if (cur === null && prev > (curDepth || 5)) return '<span class="pr-trend same" title="Not comparable — this partial only lists ' + (curDepth || 5) + '">—</span>';
     if (prev === null) return '<span class="pr-trend up">▲ in</span>';
     if (cur === null) return '<span class="pr-trend down">▼ out</span>';
     if (cur < prev) return '<span class="pr-trend up">▲ ' + (prev - cur) + '</span>';
@@ -464,21 +527,25 @@
     // order rights itself the moment the row is back in. Sort is stable, so
     // everything else keeps its declared order.
     var ordered = NOMS.slice().sort(function (x, y) {
-      var xo = last.places[x.key] === null ? 0 : 1;
-      var yo = last.places[y.key] === null ? 0 : 1;
-      return xo - yo;
+      return (outOfFive(last.places[x.key]) ? 0 : 1) - (outOfFive(last.places[y.key]) ? 0 : 1);
     });
 
     var rows = ordered.map(function (n) {
-      var cells = PARTIALS.map(function (p) { return posCell(p.places[n.key]); }).join('');
+      var cells = PARTIALS.map(function (p) { return posCell(p.places[n.key], p.depth); }).join('');
       // Out of the top 5 in the LATEST partial. Marked as a rule rather than by
       // hand, so whichever nominee is outside it is the one that lights up.
-      var out = last.places[n.key] === null;
+      var mine = last.places[n.key];
+      var out = outOfFive(mine);
+      // "Not ranking" stopped being true the moment a partial listed eight: a
+      // 6th place IS a ranking, and still needs votes. Say which it is.
+      var need = mine === null
+        ? '⚠ Not ranking — votes needed here'
+        : '⚠ ' + ordinal(mine) + ' of ' + last.depth + ' — votes needed here';
       return '<div class="pr-row' + (out ? ' alert' : '') + '" style="' + TRACKS + '">'
         + '<span class="pr-who"><b>' + esc(n.cat.replace(/^International /, 'Int. ')) + '</b><small>' + esc(n.who) + '</small>'
-        + (out ? '<em class="pr-need">⚠ Not ranking — votes needed here</em>' : '') + '</span>'
+        + (out ? '<em class="pr-need">' + need + '</em>' : '') + '</span>'
         + cells
-        + trendCell(prev ? prev.places[n.key] : undefined, last.places[n.key])
+        + trendCell(prev ? prev.places[n.key] : undefined, mine, prev ? prev.depth : undefined, last.depth)
         + '</div>';
     }).join('');
 
@@ -488,19 +555,16 @@
     // and both are in the top 5, so it is one category ranking, not two. Derived
     // from the same data as the table, so the badge cannot contradict the rows
     // underneath it.
-    var cats = {};
-    NOMS.forEach(function (n) {
-      if (!(n.cat in cats)) cats[n.cat] = false;
-      if (last.places[n.key] !== null && last.places[n.key] !== undefined) cats[n.cat] = true;
-    });
-    var names = Object.keys(cats);
-    var ranking = names.filter(function (c) { return cats[c]; }).length;
+    var sc = topFiveScore(last);
     var score = document.getElementById('pr-score');
     if (score) {
-      score.className = 'pr-score' + (ranking < names.length ? ' warn' : '');
-      score.innerHTML = ranking < names.length
-        ? '⚠ Ranking in ' + ranking + '/' + names.length
-        : '✓ Ranking in all ' + names.length;
+      // "Top 5 in", not "Ranking in": with eight places published we ARE
+      // ranking in all eight, and a badge reading "✓ Ranking in all 8" would
+      // have called a 6th place good news.
+      score.className = 'pr-score' + (sc.warn ? ' warn' : '');
+      score.innerHTML = sc.warn
+        ? '⚠ Top 5 in ' + sc.ranking + '/' + sc.total
+        : '✓ Top 5 in all ' + sc.total;
     }
     // Every figure on this table is BreakTudo's, so each partial links to the
     // post it was read from rather than to the site in general.
@@ -511,7 +575,7 @@
     }).join('');
 
     document.getElementById('pr-legend').innerHTML = PARTIALS.length > 1
-      ? '▲ climbed · ▼ slipped · = held · “Not top 5” means BreakTudo did not list the nominee in that partial — <b style="color:#ff5c7a">any category we are outside is pinned to the top</b>.'
+      ? '▲ climbed · ▼ slipped · = held · “—” means the two partials cannot be compared. The first three listed a <b>top 5</b>; the final one lists <b>all eight</b>, so a place outside the five now shows as a number — <b style="color:#ff5c7a">any category we are outside the top 5 in is pinned to the top</b>.'
       // Not "only the 1st has been published" — that stops being true the moment
       // BreakTudo posts the next one, and it did. This says what the table is
       // showing, which stays true either way.
@@ -559,16 +623,10 @@
     ctx.font = '78px "Bebas Neue", sans-serif';
     ctx.fillText('WHERE WE STAND', W / 2, 176);
 
-    // the same count the page badge shows, recomputed here from the same data
-    var cats = {};
-    NOMS.forEach(function (n) {
-      if (!(n.cat in cats)) cats[n.cat] = false;
-      if (last.places[n.key] !== null && last.places[n.key] !== undefined) cats[n.cat] = true;
-    });
-    var names = Object.keys(cats);
-    var ranking = names.filter(function (c) { return cats[c]; }).length;
-    var warn = ranking < names.length;
-    var badge = (warn ? '\u26A0 RANKING IN ' : '\u2713 RANKING IN ALL ') + (warn ? ranking + '/' + names.length : String(names.length));
+    // The page badge's own function, not a second copy of its arithmetic.
+    var sc = topFiveScore(last);
+    var warn = sc.warn;
+    var badge = (warn ? '\u26A0 TOP 5 IN ' : '\u2713 TOP 5 IN ALL ') + (warn ? sc.ranking + '/' + sc.total : String(sc.total));
     ctx.letterSpacing = '4px';
     ctx.font = '500 22px "DM Mono", monospace';
     var bw = ctx.measureText(badge).width + 44;
@@ -621,14 +679,15 @@
 
     // rows, in the page's order: anything outside the top 5 first
     var ordered = NOMS.slice().sort(function (x, y) {
-      return (last.places[x.key] === null ? 0 : 1) - (last.places[y.key] === null ? 0 : 1);
+      return (outOfFive(last.places[x.key]) ? 0 : 1) - (outOfFive(last.places[y.key]) ? 0 : 1);
     });
 
     // 9 rows must clear the footer rule at H-132: 336 + 9*94 = 1182 against
     // 1218. At 104 the last row ran straight through it.
     var y = 336, rowH = 94;
     ordered.forEach(function (n) {
-      var out = last.places[n.key] === null;
+      var mine = last.places[n.key];
+      var out = outOfFive(mine);
       if (out) {
         var g = ctx.createLinearGradient(pad - 18, 0, W - pad, 0);
         g.addColorStop(0, 'rgba(255,92,122,0.20)');
@@ -658,7 +717,9 @@
         ctx.fillStyle = '#ff5c7a';
         ctx.letterSpacing = '2px';
         ctx.font = '500 16px "DM Mono", monospace';
-        ctx.fillText('\u26A0 NOT RANKING \u2014 VOTES NEEDED HERE', pad, y + 84);
+        ctx.fillText(mine === null
+          ? '\u26A0 NOT RANKING \u2014 VOTES NEEDED HERE'
+          : '\u26A0 ' + ordinal(mine).toUpperCase() + ' OF ' + last.depth + ' \u2014 VOTES NEEDED HERE', pad, y + 84);
       }
 
       ctx.textAlign = 'center';
@@ -669,11 +730,13 @@
           ctx.letterSpacing = '1px';
           ctx.font = '500 15px "DM Mono", monospace';
           ctx.fillStyle = out ? '#ff5c7a' : 'rgba(245,240,240,0.4)';
-          ctx.fillText('NOT TOP 5', x, y + 44);
+          ctx.fillText('NOT TOP ' + (p.depth || 5), x, y + 44);
         } else {
           ctx.letterSpacing = '0px';
           ctx.font = '52px "Bebas Neue", sans-serif';
-          ctx.fillStyle = v === 1 ? '#f0c200' : '#F5F0F0';
+          // A listed place that is still outside the five reads in the alert
+          // colour, or the card would show a calm white 6 under a red row.
+          ctx.fillStyle = v === 1 ? '#f0c200' : (v > 5 ? '#ff5c7a' : '#F5F0F0');
           ctx.fillText(String(v), x, y + 52);
         }
       });
@@ -681,6 +744,9 @@
       if (prev) {
         var a = prev.places[n.key], b = last.places[n.key], mv = '=', col = 'rgba(245,240,240,0.4)';
         if (a === null && b === null) { mv = '\u2014'; }
+        // Same rule as the table: a deeper list is not movement.
+        else if (a === null && b > (prev.depth || 5)) { mv = '\u2014'; }
+        else if (b === null && a > (last.depth || 5)) { mv = '\u2014'; }
         else if (a === null) { mv = '\u25B2 IN'; col = '#4ade80'; }
         else if (b === null) { mv = '\u25BC OUT'; col = '#ff5c7a'; }
         else if (b < a) { mv = '\u25B2 ' + (a - b); col = '#4ade80'; }
@@ -767,7 +833,7 @@
       + unit(Math.floor(diff % 86400000 / 3600000), 'Hrs')
       + unit(Math.floor(diff % 3600000 / 60000), 'Min')
       + unit(Math.floor(diff % 60000 / 1000), 'Sec');
-    reset.innerHTML = '<span class="nb">Closes <b>Oct 17, 23:53</b> Brasília</span> · <span class="nb">winners <b>Nov 24</b></span>';
+    reset.innerHTML = '<span class="nb">Closes <b>Oct 17, 23:59</b> Brasília</span> · <span class="nb">winners <b>Nov 24</b></span>';
   }
   tick();
   setInterval(tick, 1000);

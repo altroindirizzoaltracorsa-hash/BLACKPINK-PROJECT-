@@ -1,0 +1,29 @@
+name: Probe auth settings
+
+# READ ONLY. Asks the project's own GoTrue what it thinks is switched on.
+#
+# Written because a friendly error message got in the way of a diagnosis: the
+# MAMA panel turns a failed linkIdentity() into plain English, and its match was
+# loose enough that "provider is not enabled" and "manual linking is disabled"
+# both came out as the same sentence. Those are different problems with
+# different fixes, and no amount of re-reading the page would tell them apart.
+#
+# /auth/v1/settings returns configuration — which providers are on, whether
+# signups are disabled, and so on. No keys, no users, no tokens.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask GoTrue what is enabled
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ]; then echo "::error::SUPABASE_URL is not set"; exit 1; fi
+          echo "== /auth/v1/settings =="
+          curl -sS "$SUPABASE_URL/auth/v1/settings" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" | python3 -m json.tool
