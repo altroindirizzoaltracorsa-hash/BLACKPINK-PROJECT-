@@ -85,7 +85,11 @@ await page.route('**/*', async (route) => {
   return route.fulfill({ status: 204, body: '' });
 });
 
-await page.goto('https://www.blinksunited.com/feedback', { waitUntil: 'domcontentloaded' });
+// ?i18n=on because the runtime ships switched OFF — the translations are not
+// finished and the picker is not shown to visitors yet. Everything below tests
+// the machinery, so it has to turn it on; the switch itself is tested at the
+// bottom of this file, from a clean browser.
+await page.goto('https://www.blinksunited.com/feedback?i18n=on', { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(2200);
 await page.evaluate(() => {
   document.getElementById('tutorial-overlay')?.remove();
@@ -434,7 +438,7 @@ await standalone.route('**/*', async (route) => {
   }
   return route.fulfill({ status: 204, body: '' });
 });
-await standalone.goto('https://www.blinksunited.com/breaktudo.html', { waitUntil: 'domcontentloaded' });
+await standalone.goto('https://www.blinksunited.com/breaktudo.html?i18n=on', { waitUntil: 'domcontentloaded' });
 await standalone.waitForTimeout(1600);
 const sp = await standalone.evaluate(() => {
   const p = document.getElementById('lang-picker');
@@ -475,6 +479,70 @@ const clash = await standalone.evaluate(() => {
 });
 check(clash.length === 0, `it does not land on anything already fixed there (${clash.join(', ') || 'clear'})`);
 await standalone.close();
+
+// ── THE LIVE SWITCH ─────────────────────────────────────────────────────────
+// The runtime ships OFF: the translations are 28% done and unreviewed, so the
+// picker is not offered to visitors yet. Every check above turned it on with
+// ?i18n=on, which means every check above would keep passing if the switch
+// stopped working — so the off state needs its own browser, with no preview
+// flag in its storage.
+//
+// What "off" has to mean is strict. Not "the picker is hidden": no picker in
+// the DOM, no injected stylesheet, and the English text still English. A
+// half-off switch that translated the page but hid the control would be the
+// worst of both.
+console.log('\n--- shipped off, until the translations are worth choosing');
+{
+  const clean = await b.newContext({ viewport: { width: 1280, height: 1000 } });
+  const off = await clean.newPage();
+  const offErrs = [];
+  off.on('pageerror', (e) => offErrs.push(String(e)));
+  await off.route('**/*', async (route) => {
+    const u = new URL(route.request().url());
+    if (u.hostname.includes('fonts.g')) return route.continue();
+    const f = u.pathname === '/' ? 'index.html' : u.pathname.slice(1);
+    if (existsSync(root + f) && /\.(html|js|json|css|png|jpg|svg|webp)$/.test(f)) return route.fulfill({ path: root + f });
+    if (u.pathname.startsWith('/api/')) return route.fulfill({ contentType: 'application/json', body: '{"board":{"ranked":[],"unranked":[]},"messages":[],"total":0}' });
+    if (u.hostname === 'www.blinksunited.com' && !/\.\w{2,4}$/.test(u.pathname)) return route.fulfill({ path: root + 'index.html', contentType: 'text/html' });
+    return route.fulfill({ status: 204, body: '' });
+  });
+  await off.goto('https://www.blinksunited.com/', { waitUntil: 'domcontentloaded' });
+  await off.waitForTimeout(2000);
+  const state = await off.evaluate(() => ({
+    picker: !!document.querySelector('#lang-picker select'),
+    css: !!document.getElementById('bu-i18n-css'),
+    html: document.documentElement.lang,
+    api: !!window.BU_I18N,
+    nav: (document.querySelector('.nav-links a') || {}).textContent || '',
+  }));
+  check(!state.picker, 'no language picker is rendered for a visitor');
+  check(!state.css, 'and the runtime injects no stylesheet');
+  check(!/^(es|ko|ja|th|fr|de|it|id|fil|pt)/.test(state.html || ''),
+        `the page is not switched to another language (lang="${state.html}")`);
+  check(/^[\x00-\x7F]*$/.test(state.nav) && state.nav.trim().length > 0,
+        `and the nav is still the English text (${state.nav.trim()})`);
+  // The export has to survive the switch: i18n-extract.mjs drives __collect()
+  // through a real page load, so gating it would break the tooling that exists
+  // to finish the translations — the switch would be blocking its own removal.
+  check(state.api, 'but window.BU_I18N is still exported, so the extractor still works');
+
+  // And it is reversible in both directions, or it is a one-way trip for
+  // anyone who turns the preview on.
+  await off.goto('https://www.blinksunited.com/?i18n=on', { waitUntil: 'domcontentloaded' });
+  await off.waitForTimeout(1600);
+  check(await off.evaluate(() => !!document.querySelector('#lang-picker select')),
+        '?i18n=on turns it on for this browser only');
+  await off.goto('https://www.blinksunited.com/', { waitUntil: 'domcontentloaded' });
+  await off.waitForTimeout(1600);
+  check(await off.evaluate(() => !!document.querySelector('#lang-picker select')),
+        'and it sticks across a navigation, because the site rewrites its own URL');
+  await off.goto('https://www.blinksunited.com/?i18n=off', { waitUntil: 'domcontentloaded' });
+  await off.waitForTimeout(1600);
+  check(await off.evaluate(() => !document.querySelector('#lang-picker select')),
+        '?i18n=off puts it back');
+  check(offErrs.length === 0, `and none of that threw (${offErrs.join(' | ') || 'clean'})`);
+  await clean.close();
+}
 
 console.log('\n--- nothing else broke');
 check(errs.length === 0, `no page errors (${errs.join(' | ') || 'none'})`);

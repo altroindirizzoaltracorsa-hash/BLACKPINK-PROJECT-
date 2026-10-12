@@ -589,6 +589,46 @@
     if (want !== DEFAULT_LANG) setLang(want, { silent: true });
   }
 
+  // ── the live switch ────────────────────────────────────────────────────────
+  // OFF. The machinery is finished and shipped; the translations are not. At
+  // the time of writing each language covers 28% of the page — the nav
+  // completely, the voting flow almost, and the other 593 strings not at all —
+  // and none of the 283 that do exist has been read by a native speaker.
+  //
+  // Half is worse than none here. A blink who picks 한국어 and gets a Korean
+  // nav above an English page has not been helped; they have been told the site
+  // speaks Korean and then shown that it does not. So the picker does not
+  // appear and nothing is translated until there is enough to be worth
+  // choosing.
+  //
+  // This gates `start()` ONLY. window.BU_I18N above is still exported, because
+  // i18n-extract.mjs and i18n-status.mjs drive __collect() through a real page
+  // load — gating the export would break the very tooling used to finish the
+  // translations, and the switch would then be defending the work it is meant
+  // to protect.
+  //
+  // To flip it: LIVE = true. Nothing else; the attributes are already in the
+  // HTML and inert while this is false.
+  const LIVE = false;
+
+  // Previewing without shipping. ?i18n=on turns it on for this browser, ?i18n=off
+  // turns it back off. Deliberately sticky rather than per-page-load: the site is
+  // a single page that rewrites its own URL as you move around, so a query
+  // param would be dropped on the first navigation and the preview would last
+  // one screen. The cost of sticky is that it has to be switchable off again,
+  // hence ?i18n=off — and it is per-browser, so it can never leak to visitors.
+  function live() {
+    try {
+      const q = new URLSearchParams(location.search).get('i18n');
+      if (q === 'on')  { localStorage.setItem('bu_i18n_preview', '1'); return true; }
+      if (q === 'off') { localStorage.removeItem('bu_i18n_preview'); return false; }
+      if (localStorage.getItem('bu_i18n_preview') === '1') return true;
+    } catch (e) { /* private mode: fall through to the shipped setting */ }
+    return LIVE;
+  }
+
+  if (!live()) return;
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
 })();
