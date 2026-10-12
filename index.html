@@ -9099,6 +9099,7 @@ async function mamaLinkX(btn) {
     if (btn) { btn.disabled = false; btn.textContent = '𝕏 Link my X account'; }
     const msg = document.getElementById('mama-msg');
     const raw = String((e && e.message) || e);
+    const code = String((e && (e.code || e.error_code)) || '');
     // Two failures are worth naming, because the raw message explains neither
     // and both look like the site being broken.
     //
@@ -9107,13 +9108,22 @@ async function mamaLinkX(btn) {
     //     account is one voter — so it should read as the rule, not a fault.
     //   • Manual Linking is off in the Supabase project. It is OFF BY DEFAULT,
     //     so this is the first thing to check if nobody can link at all.
-    if (msg) {
-      msg.textContent = /already|identity_already_exists|linked/i.test(raw)
+    //
+    // MATCHED ON THE ERROR CODE, not on words in the sentence. The first
+    // version of this tested /not enabled|disabled/, which also catches
+    // "provider is not enabled" — a different problem with a different fix —
+    // and reported it as the wrong one. A friendly message that can lie about
+    // which failure happened is worse than no friendly message.
+    //
+    // And the raw text is always kept, because the moment this mislabels
+    // something again, the real error has to still be on the screen.
+    const friendly =
+      /identity_already_exists/.test(code) || /already.*(linked|exists)/i.test(raw)
         ? 'That X account is already linked to another Blinks United account. One X account is one voter — sign in with it instead, or link a different one.'
-        : (/manual linking|not enabled|disabled/i.test(raw)
+        : (/manual_linking_disabled/.test(code) || /manual linking/i.test(raw)
             ? 'Account linking is switched off for this site right now. We are on it.'
-            : 'Could not open X: ' + raw);
-    }
+            : 'Could not open X.');
+    if (msg) msg.textContent = friendly + ' [' + (code ? code + ': ' : '') + raw + ']';
   }
 }
 
