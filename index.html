@@ -9121,10 +9121,11 @@ function drawVoteAward() {
 // break those rules.
 //
 // The tags are separate constants because they are the part that must match
-// Mnet, and the artist tag is the one thing here that cannot be verified from
-// outside: the guide says to read it off the official voting page in the Mnet
-// Plus app. #BLACKPINK is the obvious candidate and is what the fandom is
-// using, but obvious is not the same as checked.
+// Mnet: a wrong artist tag does not weaken a vote, it voids it. The guide says
+// to read the artist tag off the official voting page in the Mnet Plus app,
+// which is not reachable from here — CONFIRMED AGAINST THAT PAGE BY THE SITE
+// OWNER, 12 Oct 2026: it is #BLACKPINK. Checked rather than assumed, which is
+// the only reason it is safe to pre-fill the post button with it.
 const MAMA_TAG_CAMPAIGN = '#2026MAMAVOTE';
 const MAMA_TAG_ARTIST   = '#BLACKPINK';
 const MAMA_TWEET = 'I vote ' + MAMA_TAG_ARTIST + ' ' + MAMA_TAG_CAMPAIGN;
