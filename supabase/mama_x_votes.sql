@@ -90,3 +90,25 @@ as $$
     limit p_limit
   ) r;
 $$;
+
+-- ── grants ──────────────────────────────────────────────────────────────────
+-- Enabling RLS is not the same as granting access, and the two fail in
+-- different ways. service_role BYPASSES row-level security, so the policies
+-- are irrelevant to it — but it still needs ordinary table privileges, and a
+-- table created over a direct psql connection does not pick up Supabase's
+-- default grants. The symptom was "permission denied for table mama_x_votes"
+-- on the very first read, with RLS looking like the obvious suspect and having
+-- nothing to do with it.
+--
+-- service_role only. anon and authenticated are deliberately left with no
+-- access at all: every read and write goes through /api/mama-votes, because
+-- that is where the X identity is resolved from the caller's token. A browser
+-- that could write this table directly could name any X account it liked, and
+-- the primary key would be guarding nothing.
+grant usage on schema public to service_role;
+grant select, insert, update, delete on table mama_x_votes to service_role;
+
+-- The two readers run as the caller (security invoker), so they need the same
+-- grant to be useful, and execute on top.
+grant execute on function mama_vote_totals(date) to service_role;
+grant execute on function mama_vote_board(int)  to service_role;
