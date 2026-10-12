@@ -316,6 +316,16 @@ console.log('\n--- the panel');
         `exactly one is marked as the one you vote for, and it is Fans' Choice (${votable.map(v => v.cat).join(', ')})`);
   check(noms.filter(n => !n.votable).every(n => /not a fan vote/i.test(n.tag)),
         'and every other nomination says it is not a fan vote');
+  // The list is the COMPLETE set, confirmed by the site owner — LISA, ROSÉ and
+  // JISOO really did not land a solo nomination. Without a heading saying so,
+  // four rows read as "the four we found", and the obvious reaction is that
+  // the page is missing some. The count has to come from the array, or it
+  // becomes a lie the first time a nomination is corrected.
+  const nhead = await page.evaluate(() => (document.querySelector('.mama-noms-head') || {}).textContent || '');
+  check(new RegExp('All ' + noms.length + '\\b').test(nhead),
+        `the nominations are presented as the full list, counted from the data (${nhead || 'no heading'})`);
+  check(new RegExp('\\b' + votable.length + ' you can vote for').test(nhead),
+        'and it says how many of them a vote can actually move');
 
   // The rules that actually cost a vote when ignored. Each of these is a line
   // from Mnet's own 1st Vote Guide, and each was either missing or softened in

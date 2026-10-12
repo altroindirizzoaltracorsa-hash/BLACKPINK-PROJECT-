@@ -2423,6 +2423,10 @@
      too, and those have neither this stylesheet nor a slot in their nav. */
   /* MAMA nominations. The one category a vote can move is marked, because the
      others are judged and tweeting at them achieves nothing. */
+  /* "All 4" rather than "4": the list is the complete set, and a reader who
+     cannot tell a full list from a partial one will assume we left someone out. */
+  .mama-noms-head { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); margin: 0.95rem 0 -0.5rem; }
   .mama-noms { display: grid; gap: 0.4rem; margin: 0.9rem 0 0.2rem; }
   .mama-nom { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 0.1rem 0.8rem;
     align-items: baseline; padding: 0.6rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; }
@@ -9137,11 +9141,16 @@ const MAMA_TWEET = 'I vote ' + MAMA_TAG_ARTIST + ' ' + MAMA_TAG_CAMPAIGN;
 // vote button, without saying which one the button is for, would send people
 // to tweet at categories they cannot affect.
 //
-// SOURCED, NOT GUESSED, AND INCOMPLETE. These are the ones traceable to a
-// published list on announcement day. Nothing was found for LISA, ROSÉ or
-// JISOO in the solo categories — one stale page claimed JISOO but also listed
-// artists who are not in this year's lineup, so it was not used. If they are
-// nominated, add them here; an empty row is better than an invented one.
+// SOURCED, NOT GUESSED, AND COMPLETE. Each is traceable to a published list
+// from announcement day, and the site owner confirmed on 12 Oct 2026 that
+// these four are the whole set — so the absence of LISA, ROSÉ and JISOO from
+// the solo categories is the real result, not a gap still being filled. (One
+// stale page did claim JISOO, but it also listed artists who are not in this
+// year's lineup, so it was not used. Good thing: it would have been wrong.)
+//
+// Which means the list can now be shown as final. Anything added here later is
+// a correction to a known-complete list, not a late arrival — so it wants a
+// source, the same as these did.
 const MAMA_NOMS = [
   { who: 'BLACKPINK',                         cat: 'Fans’ Choice Female',          fanVote: true },
   { who: 'BLACKPINK',                         cat: 'Best Female Group' },
@@ -9331,6 +9340,7 @@ function drawMamaVoting() {
       <div><span>${_vvFmt(t.accounts || 0)}</span><small>X accounts ever</small></div>
       <div><span>${_vvFmt(t.votes || 0)}</span><small>days logged</small></div>
     </div>
+    <div class="mama-noms-head">All ${MAMA_NOMS.length} nominations · ${MAMA_NOMS.filter(n => n.fanVote).length} you can vote for</div>
     <div class="mama-noms">
       ${MAMA_NOMS.map(n => `<div class="mama-nom${n.fanVote ? ' votable' : ''}">
         <span class="mama-nom-cat">${_vvEsc(n.cat)}</span>
