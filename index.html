@@ -8979,10 +8979,33 @@ function vmaAwardClosed(a) { const c = VV_AWARD_CLOSES[a]; return !!c && Date.no
 // usual order.
 let _vvAward = (() => {
   try {
+    // ?award= first: an OAuth return replaces the fragment with its own
+    // payload (tokens, or an error), so #mama does not survive the trip to X
+    // and back. The hash is still read for a link someone typed or shared.
+    const q = new URLSearchParams(location.search || '').get('award');
+    if (q && _vvAwardMeta[q]) return q;
     const want = (location.hash || '').replace('#', '');
     if (want && _vvAwardMeta[want]) return want;
   } catch (_) {}
   return vmaAwardOrder()[0];
+})();
+
+// WHAT CAME BACK FROM X. A failed link returns here with the reason in the URL
+// — and the page used to drop it, so the whole flow read as a loop: off to X,
+// grant, back, still asking you to link, no explanation anywhere. Confirmed
+// against the database: zero identities were being created, so the failure was
+// real and silent, which is the worst of both.
+//
+// Captured at load because supabase-js tidies the URL as soon as it runs.
+const _mamaReturnErr = (() => {
+  try {
+    const h = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+    const q = new URLSearchParams(location.search || '');
+    const code = h.get('error_code') || q.get('error_code') || h.get('error') || q.get('error');
+    const desc = h.get('error_description') || q.get('error_description');
+    if (!code && !desc) return null;
+    return [code, desc].filter(Boolean).join(' — ').replace(/\+/g, ' ');
+  } catch (_) { return null; }
 })();
 
 // Personal vote-badge tiers (by all-time votes logged).
@@ -9093,7 +9116,7 @@ async function mamaLinkX(btn) {
   if (!sb) return;
   if (btn) { btn.disabled = true; btn.textContent = 'Opening X…'; }
   try {
-    const { error } = await sb.auth.linkIdentity({ provider: 'x', options: { redirectTo: location.origin + '/voting#mama' } });
+    const { error } = await sb.auth.linkIdentity({ provider: 'x', options: { redirectTo: location.origin + '/voting?award=mama' } });
     if (error) throw error;
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = '𝕏 Link my X account'; }
@@ -9223,7 +9246,7 @@ function drawMamaVoting() {
       <div><span>${_vvFmt(t.votes || 0)}</span><small>days logged</small></div>
     </div>
     ${state}
-    <div class="vv-msg" id="mama-msg"></div>
+    <div class="vv-msg" id="mama-msg">${_mamaReturnErr ? 'X sent us back with an error: ' + _vvEsc(_mamaReturnErr) : ''}</div>
     ${table}
     <div class="vv-honest">One vote per X account per day, counted by the X account rather than by this site’s account — so a second sign-in or a second device is still one vote, which is how Mnet counts it too. Posting more often does not add votes.</div>
   </div>`;

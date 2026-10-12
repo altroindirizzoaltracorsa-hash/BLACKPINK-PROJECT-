@@ -310,6 +310,31 @@ console.log('\n--- the panel');
   await back.waitForTimeout(1800);
   check(await back.evaluate(() => _vvAward) === 'mama',
         'coming back to /voting#mama lands on the MAMA tab, not the default one');
+  // The query param is what the real return uses, because an OAuth redirect
+  // overwrites the fragment with its own payload.
+  await back.goto('https://www.blinksunited.com/voting?award=mama', { waitUntil: 'domcontentloaded' });
+  await back.waitForTimeout(1500);
+  check(await back.evaluate(() => _vvAward) === 'mama',
+        '?award=mama does too, which is what survives the trip to X and back');
+
+  // A FAILED LINK MUST SAY SO. X returns the reason in the URL; the page used
+  // to drop it, so the flow read as a loop with no explanation — and the
+  // database confirmed nothing was being created, so it was a real failure
+  // being hidden rather than a cosmetic one.
+  // about:blank first: the previous URL differs only by its fragment, and a
+  // fragment-only change is a same-document navigation — the page would not
+  // re-run, and the error is read once at load. (Which is the same property
+  // that made the fragment a bad place to carry the tab name.)
+  await back.goto('about:blank');
+  await back.goto('https://www.blinksunited.com/voting?award=mama#error=server_error&error_code=manual_linking_disabled&error_description=Manual+linking+is+disabled',
+                  { waitUntil: 'domcontentloaded' });
+  // Long enough for the panel to render on its own — calling showPage() here
+  // raced the load and read the message before it was drawn.
+  await back.waitForTimeout(2600);
+  const shown = await back.evaluate(() => (document.getElementById('mama-msg') || {}).textContent || '');
+  check(/manual_linking_disabled/.test(shown),
+        `the reason X sent back is on the page (${shown.slice(0, 90) || 'nothing'})`);
+
   await back.goto('https://www.blinksunited.com/voting#nonsense', { waitUntil: 'domcontentloaded' });
   await back.waitForTimeout(1200);
   check(await back.evaluate(() => _vvAward) !== 'nonsense',
