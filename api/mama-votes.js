@@ -46,13 +46,19 @@ const kstDay = (d = new Date()) => new Intl.DateTimeFormat('en-CA', {
 // Two rounds with a gap between them, so "is it open" is not one deadline.
 // 18:00 KST = 09:00Z, and 23:59 KST = 14:59Z the day before in UTC terms.
 //
-// THESE DATES ARE FROM SECONDARY SOURCES — a Soompi write-up and a Weibo post,
-// not Mnet's own notice, which I could not reach. They are in one place and
-// named so they can be corrected in one edit. Being wrong here refuses a real
-// vote or accepts one with nothing to vote on, so they are worth confirming.
+// From MAMA's OWN account (@MnetMAMA), which posted the schedule twice:
+//   1st VOTE  2026.10.12 19:00 – 2026.10.22 23:59 KST
+//   2nd VOTE  2026.10.28 18:00 – 2026.11.08 23:59 KST
+//
+// This replaces dates taken from a Soompi write-up and a Weibo post, and the
+// corrections were not cosmetic. Soompi had round 2 ending 18 Nov — TEN DAYS
+// after it actually does — so every "vote" logged in that window would have
+// been counted against a closed ballot. The start was an hour early too.
+//
+// Round 1 opens at 19:00 KST, not the 18:00 that was going round.
 const MAMA_ROUNDS = [
-  { n: 1, from: Date.parse('2026-10-12T09:00:00Z'), to: Date.parse('2026-10-22T14:59:59Z') },
-  { n: 2, from: Date.parse('2026-10-28T09:00:00Z'), to: Date.parse('2026-11-18T14:59:59Z') },
+  { n: 1, from: Date.parse('2026-10-12T10:00:00Z'), to: Date.parse('2026-10-22T14:59:59Z') },
+  { n: 2, from: Date.parse('2026-10-28T09:00:00Z'), to: Date.parse('2026-11-08T14:59:59Z') },
 ];
 function roundAt(t = Date.now()) {
   for (const r of MAMA_ROUNDS) if (t >= r.from && t <= r.to) return r;

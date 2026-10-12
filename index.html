@@ -2421,6 +2421,25 @@
      of <head> so that page rules — the responsive overrides below — still win.
      It lives there because the guides and the campaign pages load the runtime
      too, and those have neither this stylesheet nor a slot in their nav. */
+  /* MAMA nominations. The one category a vote can move is marked, because the
+     others are judged and tweeting at them achieves nothing. */
+  .mama-noms { display: grid; gap: 0.4rem; margin: 0.9rem 0 0.2rem; }
+  .mama-nom { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 0.1rem 0.8rem;
+    align-items: baseline; padding: 0.6rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; }
+  .mama-nom.votable { border-color: rgba(255,0,102,0.45); background: rgba(255,0,102,0.06); }
+  .mama-nom-cat { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--white); }
+  .mama-nom.votable .mama-nom-cat { color: var(--pink); }
+  .mama-nom-who { grid-column: 1; font-size: 0.68rem; color: var(--muted); }
+  .mama-nom-tag { grid-row: 1 / span 2; align-self: center; font-family: var(--mono);
+    font-size: 0.52rem; letter-spacing: 0.06em; color: var(--muted); white-space: nowrap; }
+  .mama-nom.votable .mama-nom-tag { color: #ff8da3; }
+  .mama-rules { margin-top: 0.8rem; }
+  .mama-rules summary { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--pink); cursor: pointer; }
+  .mama-rules ul { list-style: none; margin: 0.7rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
+  .mama-rules li { display: flex; gap: 0.5rem; font-size: 0.7rem; line-height: 1.55; color: rgba(245,240,240,0.85); }
+
   /* MAMA's headline row: three numbers, not the four the other awards show. */
   .vv-mama-top { margin: 0.9rem 0 0.2rem; }
   .vv-mama-top div span { color: var(--pink); }
@@ -8955,10 +8974,10 @@ const VV_AWARD_CLOSES = {
   vma:       VMA_CLOSES_AT,
   breaktudo: Date.parse('2026-10-18T02:59:00Z'),
   kca:       Date.parse('2026-11-14T07:59:00Z'),
-  //   • MAMA — the end of round 2, 18 Nov 23:59 KST. The server has its own
-  //     copy in api/mama-votes.js and is the one that refuses a vote; this
-  //     only decides where the tab sits.
-  mama:      Date.parse('2026-11-18T14:59:59Z'),
+  //   • MAMA — the end of round 2, 8 Nov 23:59 KST, per MAMA's own account.
+  //     The server has its own copy in api/mama-votes.js and is the one that
+  //     refuses a vote; this only decides where the tab sits.
+  mama:      Date.parse('2026-11-08T14:59:59Z'),
 };
 // A live ballot leads, and among the live ones the one closing soonest leads —
 // that is the one where a vote not cast today is a vote lost. Closed ballots
@@ -9095,6 +9114,38 @@ function drawVoteAward() {
 // all. Kept in one constant because it is the thing most likely to need
 // correcting against Mnet's own notice.
 const MAMA_TWEET = 'I vote #BLACKPINK #2026MAMAVOTE';
+
+// ── what we are nominated for ───────────────────────────────────────────────
+// `fanVote` is the whole point of the list: only FANS' CHOICE is decided by
+// voting. Every other nomination here is judged, or judged plus data, and no
+// amount of tweeting moves it. A page that showed four nominations and one
+// vote button, without saying which one the button is for, would send people
+// to tweet at categories they cannot affect.
+//
+// SOURCED, NOT GUESSED, AND INCOMPLETE. These are the ones traceable to a
+// published list on announcement day. Nothing was found for LISA, ROSÉ or
+// JISOO in the solo categories — one stale page claimed JISOO but also listed
+// artists who are not in this year's lineup, so it was not used. If they are
+// nominated, add them here; an empty row is better than an invented one.
+const MAMA_NOMS = [
+  { who: 'BLACKPINK',                         cat: 'Fans’ Choice Female',          fanVote: true },
+  { who: 'BLACKPINK',                         cat: 'Best Female Group' },
+  { who: 'BLACKPINK — DEADLINE',              cat: 'Album of the Year' },
+  { who: 'JENNIE — “Less than a lover”',      cat: 'Best Vocal Performance Solo' },
+];
+
+// ── the rules ───────────────────────────────────────────────────────────────
+// From MAMA's own account. The X share is the part this page can act on, and
+// the two things most likely to waste a vote are the per-day cap and the
+// one-artist-tag rule, so they lead.
+const MAMA_RULES = [
+  '<b>One vote per X account per day.</b> A post, a repost and a quote all count as the same single vote — tweeting more does not add more.',
+  'Use <b>#2026MAMAVOTE</b> plus <b>one</b> artist tag. A post carrying several artist tags is <b>not counted at all</b>.',
+  'X is <b>10%</b> of the Fans’ Choice score. <b>Mnet Plus is the other 90%</b> — vote there too, it is worth nine times as much.',
+  '<b>Round 1</b> 12 Oct 19:00 – 22 Oct 23:59 KST. The <b>top 20</b> go through.',
+  '<b>Round 2</b> 28 Oct 18:00 – 8 Nov 23:59 KST.',
+  'Winners announced at the ceremony, <b>20–21 November</b>, Kyocera Dome Osaka.',
+];
 
 async function mamaLoad() {
   const [totals, board, me] = await Promise.all([
@@ -9245,6 +9296,16 @@ function drawMamaVoting() {
       <div><span>${_vvFmt(t.accounts || 0)}</span><small>X accounts ever</small></div>
       <div><span>${_vvFmt(t.votes || 0)}</span><small>days logged</small></div>
     </div>
+    <div class="mama-noms">
+      ${MAMA_NOMS.map(n => `<div class="mama-nom${n.fanVote ? ' votable' : ''}">
+        <span class="mama-nom-cat">${_vvEsc(n.cat)}</span>
+        <span class="mama-nom-who">${_vvEsc(n.who)}</span>
+        <span class="mama-nom-tag">${n.fanVote ? '🗳 you vote for this' : '🔒 not a fan vote'}</span>
+      </div>`).join('')}
+    </div>
+    <details class="mama-rules"><summary>📋 Rules — what counts, and what wastes a vote</summary>
+      <ul>${MAMA_RULES.map(r => `<li><span class="rules-dot">▸</span><span>${r}</span></li>`).join('')}</ul>
+    </details>
     ${state}
     <div class="vv-msg" id="mama-msg">${_mamaReturnErr ? 'X sent us back with an error: ' + _vvEsc(_mamaReturnErr) : ''}</div>
     ${table}

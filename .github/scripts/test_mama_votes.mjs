@@ -116,10 +116,20 @@ console.log('--- when voting is open');
   check(windowState().open === true && windowState().round === 1, 'mid-round-1 is open, as round 1');
 }
 {
-  // 12 Oct 17:59 KST — one minute before the ballot opens.
-  const { windowState } = build(Date.parse('2026-10-12T08:59:00Z'));
-  const w = windowState();
-  check(w.open === false && w.round === 1 && !!w.opensAt, 'the minute before round 1 is shut, and says when it opens');
+  // THE EXACT BOUNDARIES MAMA PUBLISHED, to the minute:
+  //   1st VOTE  2026.10.12 19:00 – 2026.10.22 23:59 KST
+  //   2nd VOTE  2026.10.28 18:00 – 2026.11.08 23:59 KST
+  // Pinned because the first version of these came from a fan write-up and was
+  // wrong by an hour at the start and by TEN DAYS at the end — long enough to
+  // have counted votes against a ballot that had already closed.
+  const shut = (iso) => build(Date.parse(iso)).windowState().open === false;
+  const open = (iso) => build(Date.parse(iso)).windowState().open === true;
+  check(shut('2026-10-12T09:59:00Z'), 'round 1 is shut at 18:59 KST');
+  check(open('2026-10-12T10:00:00Z'), 'and opens at 19:00 KST, not 18:00');
+  check(open('2026-11-08T14:59:00Z'), 'round 2 still counts at 23:59 KST on 8 Nov');
+  check(shut('2026-11-08T15:00:00Z'), 'and is over a minute later — not ten days later');
+  const w = build(Date.parse('2026-10-12T09:59:00Z')).windowState();
+  check(w.round === 1 && !!w.opensAt, 'and before it opens the page can say when it does');
 }
 {
   // 22 Oct 23:59 KST — the last minute of round 1.
@@ -290,6 +300,30 @@ console.log('\n--- the panel');
   check(/our turnout|not the whole fandom/i.test(panel.text),
         'and so is what the number does not cover');
   check(/Sign in/i.test(panel.text), 'a signed-out blink is asked to sign in');
+
+  // THE NOMINATIONS, AND WHICH ONE A VOTE CAN MOVE. Only Fans' Choice is
+  // decided by voting; the rest are judged. A page showing four nominations
+  // and one vote button, without saying which the button is for, sends people
+  // to tweet at categories they cannot affect.
+  const noms = await page.evaluate(() => [...document.querySelectorAll('.mama-nom')].map(n => ({
+    cat: n.querySelector('.mama-nom-cat').textContent.trim(),
+    votable: n.classList.contains('votable'),
+    tag: n.querySelector('.mama-nom-tag').textContent.trim(),
+  })));
+  check(noms.length >= 4, `the nominations are listed (${noms.length})`);
+  const votable = noms.filter(n => n.votable);
+  check(votable.length === 1 && /Fans/i.test(votable[0].cat),
+        `exactly one is marked as the one you vote for, and it is Fans' Choice (${votable.map(v => v.cat).join(', ')})`);
+  check(noms.filter(n => !n.votable).every(n => /not a fan vote/i.test(n.tag)),
+        'and every other nomination says it is not a fan vote');
+
+  // The two rules that actually cost a vote when ignored.
+  const rules = await page.evaluate(() => (document.querySelector('.mama-rules') || {}).textContent || '');
+  check(/one vote per X account per day/i.test(rules), 'the per-day cap is in the rules');
+  check(/not counted at all/i.test(rules) && /one.{0,12}artist tag/i.test(rules),
+        'and so is the one-artist-tag rule, which silently voids a post');
+  check(/90%/.test(rules) && /Mnet Plus/i.test(rules),
+        'and that Mnet Plus is worth nine times what X is');
   check(errs.length === 0, `no page errors (${errs.join(' | ') || 'none'})`);
 
   // Linking sends the browser to X and back. The tab it comes back to is the
