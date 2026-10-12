@@ -8973,7 +8973,17 @@ function vmaAwardOrder() {
   });
 }
 function vmaAwardClosed(a) { const c = VV_AWARD_CLOSES[a]; return !!c && Date.now() >= c; }
-let _vvAward = vmaAwardOrder()[0];
+// A link or sign-in round trip leaves and comes back, and the default tab is
+// whichever ballot closes soonest — not the one you were on. #mama in the
+// return URL brings you back to it; anything unrecognised falls through to the
+// usual order.
+let _vvAward = (() => {
+  try {
+    const want = (location.hash || '').replace('#', '');
+    if (want && _vvAwardMeta[want]) return want;
+  } catch (_) {}
+  return vmaAwardOrder()[0];
+})();
 
 // Personal vote-badge tiers (by all-time votes logged).
 const VMA_VOTE_TIERS = [
@@ -9083,12 +9093,27 @@ async function mamaLinkX(btn) {
   if (!sb) return;
   if (btn) { btn.disabled = true; btn.textContent = 'Opening X…'; }
   try {
-    const { error } = await sb.auth.linkIdentity({ provider: 'x', options: { redirectTo: location.origin + '/voting' } });
+    const { error } = await sb.auth.linkIdentity({ provider: 'x', options: { redirectTo: location.origin + '/voting#mama' } });
     if (error) throw error;
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = '𝕏 Link my X account'; }
     const msg = document.getElementById('mama-msg');
-    if (msg) msg.textContent = 'Could not open X: ' + ((e && e.message) || e);
+    const raw = String((e && e.message) || e);
+    // Two failures are worth naming, because the raw message explains neither
+    // and both look like the site being broken.
+    //
+    //   • The X account is already attached to somebody else's Blinks United
+    //     account. That is the primary key's whole point arriving early — one X
+    //     account is one voter — so it should read as the rule, not a fault.
+    //   • Manual Linking is off in the Supabase project. It is OFF BY DEFAULT,
+    //     so this is the first thing to check if nobody can link at all.
+    if (msg) {
+      msg.textContent = /already|identity_already_exists|linked/i.test(raw)
+        ? 'That X account is already linked to another Blinks United account. One X account is one voter — sign in with it instead, or link a different one.'
+        : (/manual linking|not enabled|disabled/i.test(raw)
+            ? 'Account linking is switched off for this site right now. We are on it.'
+            : 'Could not open X: ' + raw);
+    }
   }
 }
 

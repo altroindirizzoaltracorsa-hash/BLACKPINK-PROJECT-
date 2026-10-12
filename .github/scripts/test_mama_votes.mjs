@@ -291,6 +291,30 @@ console.log('\n--- the panel');
         'and so is what the number does not cover');
   check(/Sign in/i.test(panel.text), 'a signed-out blink is asked to sign in');
   check(errs.length === 0, `no page errors (${errs.join(' | ') || 'none'})`);
+
+  // Linking sends the browser to X and back. The tab it comes back to is the
+  // soonest-closing ballot unless the return URL says otherwise — so a blink
+  // who links lands on BreakTudo and cannot tell whether it worked.
+  const back = await b.newPage({ viewport: { width: 1000, height: 1000 } });
+  await back.route('**/*', async (route) => {
+    const u = new URL(route.request().url());
+    if (u.hostname.includes('fonts.g')) return route.continue();
+    if (u.pathname === '/api/mama-votes') return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ today: 7, accounts: 9, votes: 11, board: [] }) });
+    if (u.pathname.startsWith('/api/')) return route.fulfill({ contentType: 'application/json', body: '{"board":{"ranked":[],"unranked":[]},"total":0}' });
+    const f = u.pathname === '/' ? 'index.html' : u.pathname.slice(1);
+    if (/\.(html|js|json|css|png|jpg|svg|webp)$/.test(f)) { try { return await route.fulfill({ path: root + f }); } catch { return route.fulfill({ status: 204, body: '' }); } }
+    if (u.hostname === 'www.blinksunited.com') return route.fulfill({ path: root + 'index.html', contentType: 'text/html' });
+    return route.fulfill({ status: 204, body: '' });
+  });
+  await back.goto('https://www.blinksunited.com/voting#mama', { waitUntil: 'domcontentloaded' });
+  await back.waitForTimeout(1800);
+  check(await back.evaluate(() => _vvAward) === 'mama',
+        'coming back to /voting#mama lands on the MAMA tab, not the default one');
+  await back.goto('https://www.blinksunited.com/voting#nonsense', { waitUntil: 'domcontentloaded' });
+  await back.waitForTimeout(1200);
+  check(await back.evaluate(() => _vvAward) !== 'nonsense',
+        'and an unrecognised hash falls through to the usual order');
+  await back.close();
   await b.close();
 }
 
