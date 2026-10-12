@@ -714,55 +714,55 @@
       ]
     },
     {
-      "s": "<0><1>Asian Artist</1><2>LISA</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>=</6>",
+      "s": "<0><1>Asian Artist</1><2>LISA</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>{n}</6><7>=</7>",
       "where": [
         "breaktudo.html"
       ]
     },
     {
-      "s": "<0><1>Int. Collaboration</1><2>JISOO × ZAYN — “Eyes Closed”</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>=</6>",
+      "s": "<0><1>Int. Collaboration</1><2>JISOO × ZAYN — “Eyes Closed”</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>{n}</6><7>=</7>",
       "where": [
         "breaktudo.html"
       ]
     },
     {
-      "s": "<0><1>Int. Fandom of the Year</1><2>BLINKs</2><3>⚠ Not ranking — votes needed here</3></0><4>Not top {n}</4><5>Not top {n}</5><6>Not top {n}</6><7>—</7>",
+      "s": "<0><1>Int. Fandom of the Year</1><2>BLINKs</2><3>⚠ {n}th of {n} — votes needed here</3></0><4>Not top {n}</4><5>Not top {n}</5><6>Not top {n}</6><7>{n}</7><8>—</8>",
       "where": [
         "breaktudo.html"
       ]
     },
     {
-      "s": "<0><1>Int. Female Artist</1><2>JENNIE</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>=</6>",
+      "s": "<0><1>Int. Female Artist</1><2>JENNIE</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>{n}</6><7>=</7>",
       "where": [
         "breaktudo.html"
       ]
     },
     {
-      "s": "<0><1>Int. Female Group</1><2>BLACKPINK</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>=</6>",
+      "s": "<0><1>Int. Female Group</1><2>BLACKPINK</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>{n}</6><7>▲ {n}</7>",
       "where": [
         "breaktudo.html"
       ]
     },
     {
-      "s": "<0><1>Int. Hit of the Year</1><2>Tame Impala & JENNIE — “Dracula”</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>=</6>",
+      "s": "<0><1>Int. Hit of the Year</1><2>Tame Impala & JENNIE — “Dracula”</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>{n}</6><7>=</7>",
       "where": [
         "breaktudo.html"
       ]
     },
     {
-      "s": "<0><1>Int. Music Video</1><2>BLACKPINK — “GO”</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>▲ {n}</6>",
+      "s": "<0><1>Int. Music Video</1><2>BLACKPINK — “GO”</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>{n}</6><7>▲ {n}</7>",
       "where": [
         "breaktudo.html"
       ]
     },
     {
-      "s": "<0><1>Int. Music Video</1><2>LISA — “Dream”</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>=</6>",
+      "s": "<0><1>Int. Music Video</1><2>LISA — “Dream”</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>{n}</6><7>=</7>",
       "where": [
         "breaktudo.html"
       ]
     },
     {
-      "s": "<0><1>Int. Series</1><2>“Boyfriend On Demand”</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>=</6>",
+      "s": "<0><1>Int. Series</1><2>“Boyfriend On Demand”</2></0><3>{n}</3><4>{n}</4><5>{n}</5><6>{n}</6><7>=</7>",
       "where": [
         "breaktudo.html"
       ]
@@ -1335,7 +1335,7 @@
       ]
     },
     {
-      "s": "<0>Category</0><1>{n}st<2>to {n} Sep</2></1><3>{n}nd<4>to {n} Sep</4></3><5>{n}rd<6>to {n} Oct</6></5><7>Move</7>",
+      "s": "<0>Category</0><1>{n}st<2>to {n} Sep</2></1><3>{n}nd<4>to {n} Sep</4></3><5>{n}rd<6>to {n} Oct</6></5><7>{n}th<8>to {n} Oct</8></7><9>Move</9>",
       "where": [
         "breaktudo.html"
       ]
@@ -1768,7 +1768,7 @@
       ]
     },
     {
-      "s": "▲ climbed · ▼ slipped · = held · “Not top {n}” means BreakTudo did not list the nominee in that partial — <0>any category we are outside is pinned to the top</0>.",
+      "s": "▲ climbed · ▼ slipped · = held · “—” means the two partials cannot be compared. The first three listed a <0>top {n}</0>; the final one lists <1>all eight</1>, so a place outside the five now shows as a number — <2>any category we are outside the top {n} in is pinned to the top</2>.",
       "where": [
         "breaktudo.html"
       ]
@@ -2869,7 +2869,7 @@
       ]
     },
     {
-      "s": "BreakTudo publishes a <0>top {n} per category</0> while voting runs. Each partial counts <1>every vote since voting opened on {n} September</1> — they are running totals, not separate rounds, so holding a place across a longer window means the lead held as more votes came in. BreakTudo says the <2>next one is the last</2> — Sunday <3>{n} October</3> — so it is the final read on the race before the ballot closes on the {n}th.",
+      "s": "BreakTudo publishes a <0>top {n} per category</0> while voting runs. Each partial counts <1>every vote since voting opened on {n} September</1> — they are running totals, not separate rounds, so holding a place across a longer window means the lead held as more votes came in. The <2>fourth is the last</2>, published {n} October and counting votes to <3>{n} October</3> — and it is a special edition that lists <4>all eight</4> places per category instead of five. That is why BLINKs finally show a number rather than “Not top {n}”: nothing moved, we can simply see further down the list. Voting is still open until the {n}th, so none of this is final.",
       "where": [
         "breaktudo.html"
       ]
@@ -4066,7 +4066,7 @@
       ]
     },
     {
-      "s": "Last updated: {n}:{n} AM · refreshes every {n} min",
+      "s": "Last updated: {n}:{n} PM · refreshes every {n} min",
       "where": [
         "leaderboard"
       ]
@@ -6085,7 +6085,7 @@
       ]
     },
     {
-      "s": "Where we stand <0>⚠ Ranking in {n}/{n}</0>",
+      "s": "Where we stand <0>⚠ Top {n} in {n}/{n}</0>",
       "where": [
         "breaktudo.html"
       ]

@@ -25,15 +25,17 @@ const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
 let fails = [];
 const check = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fails.push(m); };
 
-// BreakTudo's 3rd partial (published 5 Oct, votes to 4 Oct), by category, as
-// positions among the five it listed. null = not in the top 5.
-const THIRD = {
-  'International Female Group':     3,   // BINI · BABYMONSTER · BLACKPINK · ITZY · TWICE
+// BreakTudo's 4th and FINAL partial (published 11 Oct, votes to 10 Oct). A
+// special edition listing all eight places per category instead of five, so a
+// nominee can be listed and still outside the top 5 — which is new, and is the
+// thing most likely to be got wrong.
+const FOURTH = {
+  'International Female Group':     2,   // BINI · BLACKPINK · BABYMONSTER · ITZY · TWICE · ILLIT · KATSEYE · FLO
   'International Female Artist':    1,   // Jennie first
   'Asian Artist':                   2,   // BGYO · Lisa
   'International Collaboration':    3,   // Emoji · SPAGHETTI · Eyes Closed
   'International Hit of the Year':  2,   // SWIM · Dracula (JENNIE Remix)
-  'International Fandom of the Year': null, // FreenBecky · ARMYS · Blooms · A'TIN · ENGENE
+  'International Fandom of the Year': 6, // FreenBecky · ARMYS · Blooms · A'TIN · ENGENE · Blinks
   'International Series':           1,   // Boyfriend on Demand first
 };
 
@@ -62,15 +64,18 @@ const data = await p.evaluate(() => ({
   urls: PARTIALS.map(x => x.url),
   places: PARTIALS[PARTIALS.length - 1].places,
   prev: PARTIALS[PARTIALS.length - 2].places,
+  depths: PARTIALS.map(x => x.depth),
   noms: NOMS.map(n => ({ key: n.key, cat: n.cat, who: n.who })),
 }));
-check(data.labels.join(',') === '1st,2nd,3rd', `three partials, in order (${data.labels.join(', ')})`);
-check(data.tos[2] === '4 Oct', `the newest covers votes to 4 Oct (${data.tos[2]})`);
-check(data.urls.every(u => /^https:\/\/www\.breaktudoawards\.com\//.test(u)),
-      'each partial links to the BreakTudo post it was read from');
+check(data.labels.join(',') === '1st,2nd,3rd,4th', `four partials, in order (${data.labels.join(', ')})`);
+check(data.tos[3] === '10 Oct', `the newest covers votes to 10 Oct (${data.tos[3]})`);
+check(data.depths.join(',') === '5,5,5,8',
+      `the final one published eight places, the rest five (${data.depths.join(',')})`);
+check(data.urls.filter(Boolean).every(u => /^https:\/\/www\.breaktudoawards\.com\//.test(u)),
+      'every partial that carries a source link points at BreakTudo');
 
 // By CATEGORY, so a key renamed in NOMS cannot quietly pass.
-for (const [cat, want] of Object.entries(THIRD)) {
+for (const [cat, want] of Object.entries(FOURTH)) {
   const keys = data.noms.filter(n => n.cat === cat).map(n => n.key);
   check(keys.length > 0, `NOMS still carries "${cat}"`);
   for (const k of keys) {
@@ -79,10 +84,13 @@ for (const [cat, want] of Object.entries(THIRD)) {
     check(got === want, `${cat} → ${want === null ? 'not top 5' : want} (got ${got === null ? 'not top 5' : got})`);
   }
 }
-check(data.places['mv-go'] === 3, `Int. Music Video: GO is 3rd (got ${data.places['mv-go']})`);
+check(data.places['mv-go'] === 1, `Int. Music Video: GO is 1st (got ${data.places['mv-go']})`);
 check(data.places['mv-dream'] === 5, `Int. Music Video: DREAM is 5th (got ${data.places['mv-dream']})`);
-check(data.prev['mv-go'] === 4 && data.places['mv-go'] === 3,
-      'GO climbed 4th → 3rd, the only movement in this partial');
+check(data.prev['mv-go'] === 3 && data.places['mv-go'] === 1, 'GO climbed 3rd → 1st');
+check(data.prev['group'] === 3 && data.places['group'] === 2, 'BLACKPINK climbed 3rd → 2nd');
+// The one that is NOT a climb, and the whole reason depth exists.
+check(data.prev['fandom'] === null && data.places['fandom'] === 6,
+      'BLINKs were off the top 5 and are 6th of 8 — more detail, not movement');
 
 console.log('\n--- the table');
 // <b> is the CATEGORY and <small> is the nominee, not the other way round.
@@ -91,14 +99,15 @@ const rows = await p.evaluate(() => [...document.querySelectorAll('#pr-table .pr
   who: r.querySelector('.pr-who small')?.textContent.trim(),
   pos: [...r.querySelectorAll('.pr-pos')].map(x => x.textContent.trim()),
   trend: r.querySelector('.pr-trend')?.textContent.trim(),
+  need: r.querySelector('.pr-need')?.textContent.trim(),
   alert: r.classList.contains('alert'),
 })));
 check(rows.length === 9, `nine nominee rows (${rows.length})`);
-check(rows.every(r => r.pos.length === 3), 'every row shows all three partials');
+check(rows.every(r => r.pos.length === 4), 'every row shows all four partials');
 const head = await p.evaluate(() =>
   [...document.querySelectorAll('#pr-table .pr-col')].map(x => x.textContent.trim()));
-check(head.length === 3, `three column headers (${head.join(' | ')})`);
-check(head[2].startsWith('3rd'), `the newest is headed 3rd (${head[2]})`);
+check(head.length === 4, `four column headers (${head.join(' | ')})`);
+check(head[3].startsWith('4th'), `the newest is headed 4th (${head[3]})`);
 
 // The header and every row are independent grids. With `auto` tracks each one
 // sized itself to its own content, so the digit rows, the "Not top 5" row and
@@ -111,25 +120,40 @@ const align = await p.evaluate(() => {
   return { head, perRow, trend: [...document.querySelectorAll('#pr-table .pr-trend')].map(mid) };
 });
 check(align.perRow.every(r => r.every((x, i) => Math.abs(x - align.perRow[0][i]) <= 1)),
-      'every row puts its three placements on the same three x positions');
+      'every row puts its four placements on the same four x positions');
 check(align.head.every((x, i) => Math.abs(x - align.perRow[0][i]) <= 1),
       `and the column headers sit over them (${align.head.join(', ')} vs ${align.perRow[0].join(', ')})`);
 check(align.trend.every(x => Math.abs(x - align.trend[0]) <= 1), 'the Move column lines up too');
 
+// BLINKs: listed at last, and still outside the five. The row has to stay
+// pinned and flagged — a 6th place is not good news just because it is a
+// number — and the flag has to stop saying "Not ranking", which is now false.
 const blinks = rows.find(r => /BLINK/i.test(r.who || ''));
-check(blinks && blinks.alert && blinks.pos.every(x => /Not top 5/i.test(x)),
-      'BLINKs are outside the top 5 in all three and the row is still pinned/flagged');
+check(blinks && blinks.alert, 'the BLINKs row is still pinned and flagged');
+check(blinks && blinks.pos.slice(0, 3).every(x => /Not top 5/i.test(x)) && blinks.pos[3] === '6',
+      `three "Not top 5" then a 6 (${blinks && blinks.pos.join(' · ')})`);
+check(blinks && /6th of 8/i.test(blinks.need || '') && !/not ranking/i.test(blinks.need || ''),
+      `and it reads as 6th of 8, not "not ranking" (${blinks && blinks.need})`);
+// The claim this whole change exists to avoid.
+check(blinks && !/▲/.test(blinks.trend || ''),
+      `BLINKs show no climb — a deeper list is not movement (${blinks && blinks.trend})`);
+
 const go = rows.find(r => /“GO”/.test(r.who || ''));
 check(go && go.trend.includes('▲'), `GO's row shows a climb (${go && go.trend})`);
-check(rows.filter(r => r.trend && r.trend.includes('▲')).length === 1,
-      'and it is the only ▲ on the table');
+check(go && go.pos[3] === '1', `GO is 1st in the final partial (${go && go.pos[3]})`);
+const grp = rows.find(r => /^BLACKPINK$/.test(r.who || ''));
+check(grp && grp.trend.includes('▲'), `BLACKPINK's row shows a climb (${grp && grp.trend})`);
+check(rows.filter(r => r.trend && r.trend.includes('▲')).length === 2,
+      'two climbs on the table, and only two');
 
 const scored = await p.evaluate(() => document.getElementById('pr-score').textContent.trim());
-check(/8\/9|Ranking in 8/.test(scored) || /⚠/.test(scored),
-      `the badge still warns about the category we are outside (${scored})`);
+// "Top 5 in 7/8": we are listed in all eight now, so a badge counting "ranking"
+// would read ✓ and call a 6th place good news.
+check(/Top 5 in 7\/8/.test(scored) && /⚠/.test(scored),
+      `the badge counts top-5 placements, not listings (${scored})`);
 const srcs = await p.evaluate(() =>
   [...document.querySelectorAll('#pr-sources .pr-src')].map(a => a.textContent.trim()));
-check(srcs.length === 3, `one source link per partial (${srcs.length})`);
+check(srcs.length === 3, `a source link for each partial that has one (${srcs.length})`);
 
 console.log('\n--- the share card keeps up with the table');
 // Draw it, then read the pixels: three distinct column positions, nothing
@@ -161,8 +185,8 @@ const xs = [...new Set(cells.map(c => c.x))].sort((a, b) => a - b);
 // Hard-coded here on purpose — deriving them from the page's own formula would
 // assert the formula against itself, and the bug this catches was the 2nd and
 // 3rd partials both drawing at 878.
-check(xs.length === 3, `three distinct placement columns, none stacked (${xs.join(', ')})`);
-check(xs.join(',') === '658,768,878', `and they are where the layout puts them (${xs.join(' / ')})`);
+check(xs.length === 4, `four distinct placement columns, none stacked (${xs.join(', ')})`);
+check(xs.join(',') === '548,658,768,878', `and they are where the layout puts them (${xs.join(' / ')})`);
 check(xs.every(x => cells.filter(c => c.x === x).length === 9),
       'each column carries all nine rows');
 const moveCalls = inRows.filter(c => c.align === 'center' && !cells.includes(c));
@@ -175,11 +199,53 @@ const colLeft = Math.min(...cells.filter(c => c.x === xs[0]).map(c => c.x - c.w 
 const labels = inRows.filter(c => c.align === 'left');
 const worst = labels.reduce((a, c) => Math.max(a, c.x + c.w), 0);
 check(labels.length >= 18, `every row drew its category and nominee (${labels.length} lines)`);
+
+// THE CARD AND THE PAGE MUST SAY THE SAME THING. They each used to compute the
+// headline badge from the data, and the card's copy was left behind when the
+// rule changed: it drew "✓ RANKING IN ALL 8" — a tick, in green — above a row
+// reading "6th of 8 — votes needed here". The card is the thing that gets
+// screenshotted into a group chat, so it is the worse of the two to be wrong.
+const cardBadge = card.find(c => /TOP 5 IN|RANKING IN/.test(c.t));
+const pageBadge = await p.evaluate(() => document.getElementById('pr-score').textContent.trim());
+check(cardBadge && /TOP 5 IN 7\/8/.test(cardBadge.t),
+      `the card's badge counts top-5 placements (${cardBadge && cardBadge.t})`);
+check(cardBadge && cardBadge.t.replace(/\s+/g, ' ').toUpperCase().replace('⚠ ', '')
+        === pageBadge.replace(/\s+/g, ' ').toUpperCase().replace('⚠ ', ''),
+      `and it is the same sentence the page shows (${cardBadge && cardBadge.t} vs ${pageBadge})`);
+// BLINKs on the card: the number, flagged, and no invented climb.
+const six = card.filter(c => c.t === '6');
+check(six.length === 1, `BLINKs' 6 is drawn once on the card (${six.length})`);
+check(card.some(c => /6TH OF 8/.test(c.t)), 'with the 6th-of-8 warning under it');
+check(!card.some(c => /\u25B2 IN/.test(c.t)), 'and no "▲ IN" anywhere — a deeper list is not movement');
 check(worst < colLeft,
       `the widest label ends at ${Math.round(worst)}, clear of the column at ${Math.round(colLeft)}`);
 
-console.log('\n--- it still fits a 360px phone');
+// 360px was the only width this checked, and 360px was never the problem: a
+// fourth column collapsed the category name to 6px at 430 and 76px at 500,
+// where no narrow rule applied at all. Every width the table is read at now has
+// to leave the name room.
+console.log('\n--- and every width in between');
 await p.close();
+for (const w of [320, 430, 500, 560, 700, 900]) {
+  const q = await open(w);
+  const m = await q.p.evaluate(() => {
+    const t = document.getElementById('pr-table');
+    const rows = [...t.querySelectorAll('.pr-row')];
+    return {
+      over: Math.max(document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                     t.scrollWidth - t.clientWidth),
+      min: Math.round(Math.min(...rows.map(r => r.querySelector('.pr-who').getBoundingClientRect().width))),
+    };
+  });
+  // 320px is the floor: four columns and a Move leave it tight whatever we do,
+  // and it was 75px with three.
+  const want = w <= 320 ? 65 : 95;
+  check(m.over <= 1 && m.min >= want,
+        `at ${w}px the category name keeps ${m.min}px and nothing overflows (${m.over}px)`);
+  await q.p.close();
+}
+
+console.log('\n--- it still fits a 360px phone');
 const narrow = await open(360);
 const fit = await narrow.p.evaluate(() => {
   const t = document.getElementById('pr-table');
@@ -190,12 +256,12 @@ const fit = await narrow.p.evaluate(() => {
     // Every row must still show a readable category name, not two characters
     // per line squeezed against the numbers.
     minLabel: Math.min(...rows.map(r => r.querySelector('.pr-who').getBoundingClientRect().width)),
-    cells: rows.every(r => r.querySelectorAll('.pr-pos').length === 3),
+    cells: rows.every(r => r.querySelectorAll('.pr-pos').length === 4),
   };
 });
 check(fit.docOverflow <= 1, `no horizontal page scroll at 360px (${fit.docOverflow}px)`);
 check(fit.tableOverflow <= 1, `the table itself does not overflow (${fit.tableOverflow}px)`);
-check(fit.cells, 'all three columns are present on the phone too');
+check(fit.cells, 'all four columns are present on the phone too');
 check(fit.minLabel >= 90, `the narrowest category label still has room (${Math.round(fit.minLabel)}px)`);
 
 check(errs.length === 0 && narrow.errs.length === 0,
