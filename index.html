@@ -2421,6 +2421,10 @@
      of <head> so that page rules — the responsive overrides below — still win.
      It lives there because the guides and the campaign pages load the runtime
      too, and those have neither this stylesheet nor a slot in their nav. */
+  /* MAMA's headline row: three numbers, not the four the other awards show. */
+  .vv-mama-top { margin: 0.9rem 0 0.2rem; }
+  .vv-mama-top div span { color: var(--pink); }
+
   /* Language, install and the hamburger travel together on the right. */
   .nav-actions { display: flex; align-items: center; gap: 0.6rem; }
   /* Below ~430px the bar is logo + language + Install App + hamburger, and
@@ -8935,6 +8939,7 @@ const _vvAwardMeta = {
   vma:       { title: '🗳️ VMA Voting Leaderboard', label: 'MTV VMAs' },
   breaktudo: { title: '🏆 BreakTudo Voting Leaderboard', label: 'BreakTudo' },
   kca:       { title: '🧒 Kids’ Choice Voting Leaderboard', label: 'Kids’ Choice' },
+  mama:      { title: '🎤 MAMA Fans’ Choice — X votes', label: 'MAMA' },
 };
 // When each ballot shuts, for TAB ORDER ONLY. Nothing is counted or refused off
 // these: the VMA close is enforced server-side from its own constant, and the
@@ -8950,6 +8955,10 @@ const VV_AWARD_CLOSES = {
   vma:       VMA_CLOSES_AT,
   breaktudo: Date.parse('2026-10-18T02:59:00Z'),
   kca:       Date.parse('2026-11-14T07:59:00Z'),
+  //   • MAMA — the end of round 2, 18 Nov 23:59 KST. The server has its own
+  //     copy in api/mama-votes.js and is the one that refuses a vote; this
+  //     only decides where the tab sits.
+  mama:      Date.parse('2026-11-18T14:59:59Z'),
 };
 // A live ballot leads, and among the live ones the one closing soonest leads —
 // that is the one where a vote not cast today is a vote lost. Closed ballots
@@ -9002,6 +9011,9 @@ async function renderVmaVoting() {
   if (!panel) return;
   try { _vvSession = (await sb?.auth.getSession())?.data?.session || null; } catch { _vvSession = null; }
   _vvToken = _vvSession?.access_token || null;
+  // MAMA is its own endpoint: it counts distinct accounts rather than votes, so
+  // none of the shapes below fit it.
+  if (_vvAward === 'mama') { await mamaLoad(); return drawVoteAward(); }
   // The VMAs are the default dimension, so only the others name themselves.
   const aw = _vvAward === 'vma' ? '' : '&award=' + _vvAward;
   // The bare endpoint is the community tally for whichever award is selected.
@@ -9030,7 +9042,156 @@ async function renderVmaVoting() {
 function drawVoteAward() {
   if (_vvAward === 'breaktudo') return drawBtVoting();
   if (_vvAward === 'kca') return drawKcaVoting();
+  if (_vvAward === 'mama') return drawMamaVoting();
   return drawVmaVoting();
+}
+
+// ── MAMA: the one award here that is not a count ────────────────────────────
+// Mnet counts an X vote as ONE PER X ACCOUNT PER DAY — post, repost and quote
+// of the same tag all collapse into that one vote. So there is no number to
+// type in and nothing to be gained by coming back twice in a day; the only
+// thing a blink can do more of is turn up again tomorrow, which is what the
+// board ranks.
+//
+// It also needs an identity the other three do not: the X account itself.
+// Most people here signed in with Google, so the panel's first job for them is
+// the link, not the vote.
+//
+// The exact wording of a valid vote is MNET'S, not ours — one artist tag plus
+// the campaign tag, and a post carrying several artist tags is not counted at
+// all. Kept in one constant because it is the thing most likely to need
+// correcting against Mnet's own notice.
+const MAMA_TWEET = 'I vote #BLACKPINK #2026MAMAVOTE';
+
+async function mamaLoad() {
+  const [totals, board, me] = await Promise.all([
+    fetch('/api/mama-votes', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('/api/mama-votes?board=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : { board: [] }).catch(() => ({ board: [] })),
+    _vvToken
+      ? fetch('/api/mama-votes?me=1', { headers: { Authorization: 'Bearer ' + _vvToken }, cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)
+      : Promise.resolve(null),
+  ]);
+  _vvTotals = totals;
+  _vvBoard = (board && board.board) || [];
+  _vvMe = me;
+}
+
+// Supabase's own "link another provider to this account" flow. It needs Manual
+// Linking switched on in the project's auth settings; if it is off this throws,
+// and the message says so rather than failing silently.
+async function mamaLinkX(btn) {
+  if (!sb) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Opening X…'; }
+  try {
+    const { error } = await sb.auth.linkIdentity({ provider: 'x', options: { redirectTo: location.origin + '/voting' } });
+    if (error) throw error;
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '𝕏 Link my X account'; }
+    const msg = document.getElementById('mama-msg');
+    if (msg) msg.textContent = 'Could not open X: ' + ((e && e.message) || e);
+  }
+}
+
+async function mamaLogVote(btn) {
+  const msg = document.getElementById('mama-msg');
+  if (!_vvToken) { if (msg) msg.textContent = 'Sign in first.'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Logging…'; }
+  try {
+    const r = await fetch('/api/mama-votes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken: _vvToken }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      if (msg) msg.textContent = d.message || d.error || 'Could not log that.';
+      if (btn) { btn.disabled = false; btn.textContent = '✓ I voted on X today'; }
+      return;
+    }
+    // `already` is not a failure — the key did its job and the honest reply is
+    // that today is already counted.
+    await mamaLoad();
+    drawMamaVoting();
+    const m2 = document.getElementById('mama-msg');
+    if (m2) m2.textContent = d.already ? 'Already counted for today — see you tomorrow 💗' : 'Counted. Thank you 💗';
+  } catch (e) {
+    if (msg) msg.textContent = 'Could not log that: ' + ((e && e.message) || e);
+    if (btn) { btn.disabled = false; btn.textContent = '✓ I voted on X today'; }
+  }
+}
+
+function drawMamaVoting() {
+  const panel = document.getElementById('vma-vote-panel');
+  if (!panel) return;
+  const t = _vvTotals || {};
+  const me = _vvMe;
+  const w = (t.window) || (me && me.window) || {};
+  const rows = Array.isArray(_vvBoard) ? _vvBoard : [];
+
+  let state;
+  if (!_vvSession) {
+    state = `<div class="vv-me vv-gate">
+      <div>Sign in to <b>log your MAMA vote</b>. It is counted <b>once per X account per day</b> — the same rule Mnet uses — so we need to know which X account is yours.</div>
+      <a class="vv-gate-btn" href="/badges" onclick="goToMyBadges(); return false;">🔑 Sign in on My Badges →</a>
+    </div>`;
+  } else if (!me) {
+    state = `<div class="vv-me vv-gate">Loading…</div>`;
+  } else if (!me.linkedX) {
+    state = `<div class="vv-me">
+      <div class="vv-me-head">Link your X account</div>
+      <div class="vv-auto-note">Mnet counts <b>one vote per X account per day</b>, so the count only means something if we know the account. Linking adds X to the account you already have — it does not create a second one.</div>
+      <button class="vv-gate-btn" onclick="mamaLinkX(this)">𝕏 Link my X account</button>
+    </div>`;
+  } else if (!w.open) {
+    const when = w.ended ? 'MAMA voting has ended.'
+      : (w.opensAt ? 'Round ' + (w.round || '') + ' opens ' + new Date(w.opensAt).toLocaleString() + '.' : 'Voting is not open right now.');
+    state = `<div class="vv-me">
+      <div class="vv-me-head">@${_vvEsc(me.handle || 'your X account')}</div>
+      <div class="vv-rank">${_vvEsc(when)}</div>
+      <div class="vv-me-stats"><div><span>${_vvFmt(me.myDays || 0)}</span><small>days voted</small></div></div>
+    </div>`;
+  } else if (me.votedToday) {
+    state = `<div class="vv-me">
+      <div class="vv-me-head">@${_vvEsc(me.handle || '')} · counted today ✓</div>
+      <div class="vv-rank">You have voted today. One per account per day is the cap — the next one you can cast is tomorrow.</div>
+      <div class="vv-me-stats"><div><span>${_vvFmt(me.myDays || 0)}</span><small>days voted</small></div></div>
+      <a class="vv-auto-more" href="https://x.com/intent/post?text=${encodeURIComponent(MAMA_TWEET)}" target="_blank" rel="noopener noreferrer">Post it again anyway ↗</a>
+    </div>`;
+  } else {
+    state = `<div class="vv-me">
+      <div class="vv-me-head">@${_vvEsc(me.handle || '')}</div>
+      <div class="vv-auto-note">Post <b>${_vvEsc(MAMA_TWEET)}</b> on X, then log it here. One per account per day — more posts do not add more votes.</div>
+      <a class="vv-gate-btn" href="https://x.com/intent/post?text=${encodeURIComponent(MAMA_TWEET)}" target="_blank" rel="noopener noreferrer">𝕏 Post my vote ↗</a>
+      <button class="vv-gate-btn" onclick="mamaLogVote(this)">✓ I voted on X today</button>
+      <div class="vv-me-stats"><div><span>${_vvFmt(me.myDays || 0)}</span><small>days voted</small></div></div>
+    </div>`;
+  }
+
+  let table;
+  if (!rows.length) {
+    table = `<div class="vv-empty">No MAMA votes logged yet — be the first! 🗳️</div>`;
+  } else {
+    table = `<div class="vv-tablewrap"><table class="vv-table"><thead><tr><th>#</th><th>Blink</th><th>Days voted</th></tr></thead><tbody>`;
+    rows.forEach((r, i) => {
+      const mine = me && me.handle && (r.handle || '').toLowerCase() === String(me.handle).toLowerCase();
+      table += `<tr class="${mine ? 'vv-mine' : ''}"><td>${i + 1}</td><td>${r.handle ? '@' + _vvEsc(r.handle) : 'a blink'}</td><td>${_vvFmt(r.days || 0)}</td></tr>`;
+    });
+    table += `</tbody></table></div>`;
+  }
+
+  panel.innerHTML = `<div class="vv-wrap">
+    ${vmaAwardSwitchHtml()}
+    <div class="vv-title">${_vvAwardMeta.mama.title}</div>
+    <div class="vv-sub">X voting is <b>10%</b> of Fans’ Choice; Mnet Plus is the other 90%. This counts <b>blinks who log it here</b> — it is our turnout, not the whole fandom’s.</div>
+    <div class="vv-me-stats vv-mama-top">
+      <div><span>${_vvFmt(t.today || 0)}</span><small>blinks voted today</small></div>
+      <div><span>${_vvFmt(t.accounts || 0)}</span><small>X accounts ever</small></div>
+      <div><span>${_vvFmt(t.votes || 0)}</span><small>days logged</small></div>
+    </div>
+    ${state}
+    <div class="vv-msg" id="mama-msg"></div>
+    ${table}
+    <div class="vv-honest">One vote per X account per day, counted by the X account rather than by this site’s account — so a second sign-in or a second device is still one vote, which is how Mnet counts it too. Posting more often does not add votes.</div>
+  </div>`;
 }
 
 // The VMA ⇄ BreakTudo switch shown at the top of the panel. Same linked account,
