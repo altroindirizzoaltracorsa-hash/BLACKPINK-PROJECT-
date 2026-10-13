@@ -419,10 +419,16 @@ console.log('\n--- the panel');
   // did not. The card is that box.
   console.log('\n--- the campaign card');
   const card = await page.evaluate(() => {
+    // Found by the TITLE, which is the line that has to name the awards. The
+    // first version of this looked at .vote-platform and would have gone on
+    // passing after the two lines were swapped — a locator that survives the
+    // thing it is meant to pin is not pinning it.
     const c = [...document.querySelectorAll('.vote-card')]
-      .find((x) => /MAMA/i.test((x.querySelector('.vote-platform') || {}).textContent || ''));
+      .find((x) => /MAMA/i.test((x.querySelector('.vote-title') || {}).textContent || ''));
     if (!c) return null;
     return {
+      title: (c.querySelector('.vote-title') || {}).textContent.trim(),
+      platform: (c.querySelector('.vote-platform') || {}).textContent.trim(),
       deadline: (c.querySelector('.vote-deadline') || {}).textContent || '',
       votable: [...c.querySelectorAll('.vote-cat-link')].length,
       locked: [...c.querySelectorAll('.vote-cat-pro')].length,
@@ -437,6 +443,13 @@ console.log('\n--- the panel');
     };
   });
   check(!!card, 'MAMA has a campaign box like the other awards, not just a tab');
+  // The headline names the show. Someone scrolling the page has to be able to
+  // tell WHICH awards this is from the big line alone; the category is context
+  // for it, not a replacement.
+  check(card && /2026 MAMA Awards/i.test(card.title) && /Fans.{0,3} Choice/i.test(card.platform),
+        `the white line names the awards and the pink line the category (“${card && card.platform}” / “${card && card.title}”)`);
+  check(card && !/Fans/i.test(card.title),
+        'and the headline is not the category on its own, which never said which awards it was');
   check(card && card.rows === 4 && card.votable === 1 && card.locked === 3,
         `with all four nominations, one votable and three marked judged (${card && card.rows} rows, ${card && card.votable} link, ${card && card.locked} locked)`);
   // Derived from MAMA_NOMS, so the card and the tab cannot come to list

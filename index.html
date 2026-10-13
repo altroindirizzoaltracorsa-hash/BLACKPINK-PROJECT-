@@ -8386,8 +8386,14 @@ const VOTE_CAMPAIGNS = [
   },
   {
     id: 'mama-2026',
-    platform: '2026 MAMA AWARDS',
-    title: 'Fans’ Choice',
+    // The big white line names the SHOW, the quiet pink line above it names the
+    // part of it we are voting in — the same way round as every other card
+    // here ("Nickelodeon Kids' Choice Awards" over "2026 Kids' Choice Awards").
+    // It shipped the other way for a day: "FANS' CHOICE" in white told someone
+    // scrolling past which category it was without ever telling them which
+    // awards, and the awards are the thing you scan for.
+    platform: 'Fans’ Choice',
+    title: '2026 MAMA Awards',
     // The Mnet Plus platform home, NOT a guessed deep link into the ballot.
     // mnetplus.world is confirmed as Mnet Plus's own domain; the path to this
     // year's voting page inside the app is not, and a dead link on the one
