@@ -531,6 +531,44 @@ console.log('\n--- the panel');
   check(Date.parse(timing.over.deadline) < Date.parse('2026-12-01T00:00:00Z'),
         'and once it is over the date is in the past, so the card files itself away');
 
+  // ── THE SHARE CAPTION ───────────────────────────────────────────────────
+  // Hitting Share copies a caption to the clipboard. For MAMA that caption is
+  // ITSELF A VALID VOTE — it opens with the exact post Mnet counts — so a blink
+  // who shares has voted, not merely told people to vote. Everything below
+  // protects that property.
+  console.log('\n--- the share caption');
+  const cap = await page.evaluate(() => {
+    const t = mamaShareText();
+    const noUrl = t.replace(/\S*blinksunited\.com\S*/g, '');
+    const emoji = (noUrl.match(/\p{Extended_Pictographic}/gu) || []).length;
+    return { t, tweet: MAMA_TWEET, weighted: [...noUrl].length + emoji + 23,
+             close: MAMA_ROUNDS.find((r) => Date.now() <= r.to).to };
+  });
+  check(cap.t.startsWith(cap.tweet),
+        `it opens with the post Mnet counts, so sharing IS voting (“${cap.t.split('\n')[0]}”)`);
+  // A post naming two artists is not counted AT ALL, so a stray second artist
+  // tag here would silently void every share. Counted, not assumed.
+  const artistTags = (cap.t.match(/#(?!2026MAMAVOTE\b)[A-Za-z][A-Za-z0-9_]*/g) || []);
+  check(artistTags.length === 1,
+        `and carries exactly one artist tag, or it would void the vote (${artistTags.join(' ') || 'none'})`);
+  check(/#2026MAMAVOTE/.test(cap.t), 'plus the campaign tag');
+  // X truncates past 280 for accounts without a subscription, and the line it
+  // would cut is the deadline.
+  check(cap.weighted <= 280, `and fits in a post without a subscription (${cap.weighted} weighted chars)`);
+  const kstClose = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Seoul', day: 'numeric', month: 'short' }).format(new Date(cap.close));
+  check(cap.t.includes(kstClose), `the deadline in it is the real one from MAMA_ROUNDS (${kstClose})`);
+  check(/90%/.test(cap.t) && /10%/.test(cap.t) && /both/i.test(cap.t) && /FIRST/.test(cap.t),
+        'and it carries the four things worth knowing: the split, both categories, first post only');
+
+  // NO MARKUP IN ANY CAPTION. The rules render as HTML on the cards, and the
+  // generic caption pasted them in raw — Kids' Choice was shipping fourteen
+  // literal <b> tags per share. Checked for every campaign, not just MAMA.
+  const tagLeak = await page.evaluate(() => VOTE_CAMPAIGNS
+    .filter((c) => c.rules?.length)
+    .map((c) => ({ id: c.id, bad: c.rules.map((r) => String(r).replace(/<[^>]+>/g, '')).join(' ') }))
+    .filter((c) => /[<>]/.test(c.bad)).map((c) => c.id));
+  check(tagLeak.length === 0, `no campaign's rules leave markup in a caption (${tagLeak.join(', ') || 'all clean'})`);
+
   // ── THE SHAREABLE GUIDE ─────────────────────────────────────────────────
   // mama-guide.html is rendered to a PNG and posted. A poster is the worst
   // place for a stale fact: it keeps circulating after the page is fixed, and
