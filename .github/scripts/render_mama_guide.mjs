@@ -43,6 +43,10 @@ for (const [k, ok] of Object.entries(fonts)) {
   if (!ok) { console.error(`FAILED: the ${k} webfont did not load — not writing a poster in a fallback face.`); process.exit(1); }
 }
 
+// The star field is painted by a script in the page. Screenshotting before it
+// has run gives a poster with an empty sky and no error anywhere.
+await page.waitForFunction(() => document.documentElement.dataset.starsDrawn === '1', null, { timeout: 10000 });
+
 const el = await page.$('#poster');
 const box = await el.boundingBox();
 if (Math.round(box.width) !== 1080 || Math.round(box.height) !== 1350) {
@@ -58,6 +62,13 @@ const clipped = await page.evaluate(() => {
   const r = p.getBoundingClientRect();
   const bad = [];
   for (const el of p.querySelectorAll('*')) {
+    // The galaxy layers bleed past the frame ON PURPOSE — a nebula that stopped
+    // at the edge would read as a rectangle pasted on, and the band has to run
+    // off both sides to look like it continues. They are decoration and the
+    // frame crops them, which is the whole point, so they are not "clipped
+    // content" and the check skips them. Everything that carries a word is
+    // still checked.
+    if (el.closest('.sky')) continue;
     const b = el.getBoundingClientRect();
     if (!b.width || !b.height) continue;
     if (b.bottom > r.bottom - 1 || b.right > r.right - 1 || b.left < r.left - 1) {

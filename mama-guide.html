@@ -9,22 +9,28 @@
 <!-- A SHAREABLE POSTER, not a page of the site.
      ===========================================
      The fandom passes these around as images, so this exists to be rendered to
-     one: 1080x1350, the 4:5 the reference graphics use and the tallest frame
-     Instagram and X will show without cropping.
+     one: 1080x1350, the 4:5 X and Instagram show without cropping.
 
      It is HTML rather than a drawing because the rules change — round 2 has its
      own dates and its own ballot — and a poster you can only edit in an image
      editor is a poster that goes stale and gets posted anyway. Re-render with
      .github/scripts/render_mama_guide.mjs.
 
+     STYLE: the galaxy is MAMA's, the colours and the furniture are the site's.
+     The hero follows /streams and /leaderboard exactly — a centred mono eyebrow
+     between ✦ marks, a two-line Bebas headline with the second line in pink, an
+     italic Bodoni subtitle, then a rule — and the method cards echo the
+     leaderboard's section bars: a pink-tinted strip with a solid pink edge.
+     Nothing here invents a look the site does not already have.
+
      Deliberately NOT loading /i18n/i18n.js. Every other page does; this one is
      an image in waiting, and a floating language picker would be baked into
      the middle of it.
 
      The content is the official 1st Vote Guide, not a summary of coverage of
-     it. The one line most worth keeping accurate is "only your FIRST post of
-     the day counts" — it is the rule that silently costs a vote, and it is why
-     the copy-paste box sits directly under it. -->
+     it. The line most worth keeping accurate is "only your first post of the
+     day is read" — it is the rule that silently costs a vote, which is why the
+     copy-paste box sits directly under it. -->
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,9 +40,6 @@
   :root {
     --pink: #FF0066;
     --hot-pink: #FF2D8A;
-    --black: #080808;
-    --card: #111111;
-    --card2: #161616;
     --white: #F5F0F0;
     --muted: rgba(245,240,240,0.45);
     --border: rgba(255,0,102,0.18);
@@ -52,146 +55,183 @@
   }
 
   /* The frame the renderer screenshots. Fixed px, not rem or %, because the
-     output has to be the same every time regardless of the viewport it is
-     rendered in. */
+     output has to be identical whatever viewport it is rendered in. */
   .poster {
     position: relative; width: 1080px; height: 1350px; flex: none;
-    background: var(--black); overflow: hidden;
-    padding: 52px 60px 44px;
-    display: flex; flex-direction: column;
+    background: #05020a; overflow: hidden;
+    padding: 46px 58px 40px;
+    display: flex; flex-direction: column; isolation: isolate;
   }
-  /* The site's own glow, rather than the reference's starfield: two soft pink
-     pools in opposite corners. It has to stay faint — this poster is mostly
-     small text, and anything brighter eats the contrast the rules need. */
-  .poster::before, .poster::after {
-    content: ''; position: absolute; border-radius: 50%; pointer-events: none;
+
+  /* ── the galaxy ──────────────────────────────────────────────────────────
+     MAMA's deep-space look, recoloured. Theirs is blue; this is the site's
+     #FF0066 and #FF2D8A over near-black, with one cold violet left in a corner
+     so the pink has something to be pink against — an all-pink nebula reads as
+     a gradient, not as space.
+     Three layers: nebula clouds, a diagonal dust band, and a vignette that
+     pulls the corners down so the small print stays readable. The whole thing
+     is decoration and must never win against the type. */
+  .sky { position: absolute; inset: 0; z-index: 0; }
+  .sky-neb {
+    position: absolute; inset: -10%;
+    background:
+      radial-gradient(42% 32% at 18% 10%, rgba(255,0,102,0.40) 0%, rgba(255,0,102,0.10) 45%, transparent 72%),
+      radial-gradient(38% 30% at 86% 20%, rgba(255,45,138,0.34) 0%, rgba(255,45,138,0.08) 48%, transparent 74%),
+      radial-gradient(44% 34% at 88% 92%, rgba(255,0,102,0.30) 0%, rgba(255,0,102,0.07) 46%, transparent 72%),
+      radial-gradient(40% 30% at 10% 88%, rgba(150,40,160,0.26) 0%, rgba(120,30,130,0.06) 48%, transparent 74%),
+      radial-gradient(70% 55% at 50% 50%, rgba(40,6,28,0.55) 0%, transparent 70%);
+    filter: blur(2px);
   }
-  .poster::before {
-    width: 900px; height: 900px; top: -380px; right: -320px;
-    background: radial-gradient(circle, rgba(255,0,102,0.17) 0%, rgba(255,0,102,0.05) 42%, transparent 70%);
+  /* The dust band. Rotated and very soft — structure behind the type, never a
+     stripe across it. */
+  .sky-band {
+    position: absolute; left: -30%; right: -30%; top: 24%; height: 56%;
+    transform: rotate(-19deg);
+    background: linear-gradient(90deg, transparent 0%, rgba(255,0,102,0.13) 28%, rgba(255,120,190,0.10) 50%, rgba(255,0,102,0.12) 72%, transparent 100%);
+    filter: blur(46px);
   }
-  .poster::after {
-    width: 820px; height: 820px; bottom: -400px; left: -300px;
-    background: radial-gradient(circle, rgba(255,45,138,0.13) 0%, rgba(255,0,102,0.04) 45%, transparent 72%);
+  .sky-stars { position: absolute; inset: 0; }
+  .sky-vig {
+    position: absolute; inset: 0;
+    background: radial-gradient(118% 88% at 50% 46%, transparent 36%, rgba(3,1,6,0.55) 78%, rgba(3,1,6,0.9) 100%);
   }
-  .poster > * { position: relative; z-index: 1; }
+  .poster > *:not(.sky) { position: relative; z-index: 1; }
 
   /* ── masthead ───────────────────────────────────────────────────────────── */
   .top { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-  .brand { display: flex; align-items: center; gap: 14px; }
-  .brand img { width: 42px; height: 42px; border-radius: 10px; display: block; }
+  .brand { display: flex; align-items: center; gap: 13px; }
+  .brand img { width: 40px; height: 40px; border-radius: 9px; display: block; }
   .brand span {
-    font-family: var(--mono); font-size: 15px; font-weight: 500;
+    font-family: var(--mono); font-size: 14px; font-weight: 500;
     letter-spacing: 0.22em; text-transform: uppercase; color: var(--pink);
   }
   .top-right {
-    font-family: var(--mono); font-size: 12px; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--muted); text-align: right; line-height: 1.7;
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--muted); text-align: right; line-height: 1.75;
   }
 
-  /* ── title ──────────────────────────────────────────────────────────────── */
-  .title-wrap { margin-top: 30px; }
+  /* ── hero, straight off /streams and /leaderboard ───────────────────────── */
+  .hero { text-align: center; margin-top: 28px; }
   .eyebrow {
-    font-family: var(--mono); font-size: 13px; letter-spacing: 0.34em;
-    text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+    font-family: var(--mono); font-size: 13px; letter-spacing: 0.3em;
+    text-transform: uppercase; color: var(--pink); margin-bottom: 12px;
   }
+  .eyebrow i { font-style: normal; opacity: 0.8; margin: 0 10px; }
   h1 {
-    font-family: var(--display); font-size: 96px; line-height: 0.86;
-    letter-spacing: 0.01em; color: var(--white); text-transform: uppercase;
+    font-family: var(--display); font-size: 94px; line-height: 0.84;
+    letter-spacing: 0.012em; text-transform: uppercase; color: var(--white);
+    text-shadow: 0 0 44px rgba(255,0,102,0.3);
   }
-  h1 em { font-style: normal; color: var(--pink); }
+  h1 em { display: block; font-style: normal; color: var(--pink); text-shadow: 0 0 52px rgba(255,0,102,0.55); }
   .sub {
-    margin-top: 16px; font-family: var(--serif); font-style: italic;
-    font-size: 24px; color: rgba(245,240,240,0.75); line-height: 1.4;
+    margin-top: 15px; font-family: var(--serif); font-style: italic;
+    font-size: 23px; color: rgba(245,240,240,0.72);
   }
 
-  /* The deadline is the single most time-critical fact here, so it gets the one
-     solid pink block on the poster — nothing else competes with it. */
+  /* The deadline is the most time-critical fact on the poster, so it is the one
+     solid pink block — nothing else competes with it. */
   .deadline {
-    margin-top: 30px; display: inline-flex; align-items: baseline; gap: 16px;
-    align-self: flex-start; background: var(--pink); color: #000;
-    padding: 14px 26px 13px;
+    margin: 20px auto 0; display: inline-flex; align-items: baseline; gap: 15px;
+    background: var(--pink); color: #000; padding: 11px 24px 10px;
+    box-shadow: 0 0 46px rgba(255,0,102,0.45);
   }
   .deadline b {
-    font-family: var(--mono); font-size: 13px; font-weight: 500;
+    font-family: var(--mono); font-size: 12.5px; font-weight: 500;
     letter-spacing: 0.2em; text-transform: uppercase;
   }
-  .deadline span {
-    font-family: var(--display); font-size: 37px; line-height: 0.9; letter-spacing: 0.03em;
+  .deadline span { font-family: var(--display); font-size: 34px; line-height: 0.9; letter-spacing: 0.03em; }
+
+  .rule {
+    margin: 24px 0 0; height: 1px; border: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,0,102,0.45), transparent);
   }
 
   /* ── the two methods ────────────────────────────────────────────────────── */
-  .methods { margin-top: 30px; display: grid; gap: 18px; }
+  .methods { margin-top: 24px; display: grid; gap: 16px; }
+  /* Translucent over the galaxy rather than a flat panel: the sky has to carry
+     through, or this is the site's hero with a picture parked behind it. */
   .method {
-    border: 1px solid var(--border); background: var(--card);
-    padding: 24px 28px 22px; position: relative;
+    border: 1px solid var(--border); background: rgba(10,5,12,0.62);
+    backdrop-filter: blur(3px); position: relative;
   }
-  /* The 90% one is the one that matters nine times as much, so it is the one
-     wearing the site's pink border. A guide that presented both the same way
-     would be accurate and useless. */
-  .method.primary { border-color: rgba(255,0,102,0.5); background: var(--card2); }
-  .method-head { display: flex; align-items: center; gap: 14px; margin-bottom: 15px; }
+  .method.primary { border-color: rgba(255,0,102,0.45); background: rgba(16,6,16,0.68); }
+  /* The leaderboard's section bar: pink-tinted strip, solid pink left edge. */
+  .method-head {
+    display: flex; align-items: center; gap: 13px; padding: 11px 22px;
+    border-left: 3px solid rgba(255,0,102,0.35);
+    background: linear-gradient(90deg, rgba(255,0,102,0.14), rgba(255,0,102,0.02));
+    border-bottom: 1px solid var(--border);
+  }
+  .method.primary .method-head {
+    border-left-color: var(--pink);
+    background: linear-gradient(90deg, rgba(255,0,102,0.26), rgba(255,0,102,0.03));
+  }
   .method-no {
-    font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
     text-transform: uppercase; color: var(--muted);
-    border: 1px solid var(--border); padding: 5px 10px;
+    border: 1px solid var(--border); padding: 4px 9px;
   }
-  .method-name {
-    font-family: var(--display); font-size: 44px; line-height: 1;
-    letter-spacing: 0.03em; color: var(--white);
-  }
+  .method-name { font-family: var(--display); font-size: 35px; line-height: 1; letter-spacing: 0.03em; color: var(--white); }
   .method.primary .method-name { color: var(--pink); }
-  .weight {
-    margin-left: auto; font-family: var(--display); font-size: 46px;
-    line-height: 1; letter-spacing: 0.02em; color: var(--pink);
-  }
-  .method:not(.primary) .weight { color: rgba(245,240,240,0.55); }
+  .weight { margin-left: auto; text-align: right; }
+  .weight b { display: block; font-family: var(--display); font-weight: 400; font-size: 37px; line-height: 0.95; color: var(--pink); }
+  .method:not(.primary) .weight b { color: rgba(245,240,240,0.6); }
   .weight small {
-    display: block; font-family: var(--mono); font-size: 10px; font-weight: 400;
-    letter-spacing: 0.18em; color: var(--muted); text-align: right; margin-top: 3px;
+    display: block; font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-top: 2px;
   }
+  .method-body { padding: 17px 22px 19px; }
   .method ul { list-style: none; display: grid; gap: 10px; }
   .method li {
-    font-size: 17px; line-height: 1.5; color: rgba(245,240,240,0.82);
+    font-size: 17px; line-height: 1.52; color: rgba(245,240,240,0.84);
     padding-left: 23px; position: relative;
   }
-  .method li::before {
-    content: '▸'; position: absolute; left: 0; top: 0; color: var(--pink); font-size: 14px;
-  }
+  .method li::before { content: '▸'; position: absolute; left: 0; top: 0; color: var(--pink); font-size: 13px; }
   .method li b { color: var(--white); font-weight: 500; }
   .method li .warn { color: var(--hot-pink); font-weight: 500; }
 
-  /* ── the tweet to copy ──────────────────────────────────────────────────── */
-  .copy { margin-top: 18px; border: 1px dashed rgba(255,0,102,0.45); padding: 16px 20px; background: rgba(255,0,102,0.05); }
+  /* ── the post to copy ───────────────────────────────────────────────────── */
+  .copy { margin-top: 14px; border: 1px dashed rgba(255,0,102,0.45); padding: 12px 18px; background: rgba(255,0,102,0.07); }
   .copy-label {
-    font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--muted); margin-bottom: 7px;
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
   }
-  .copy-text {
-    font-family: var(--mono); font-size: 26px; font-weight: 500;
-    letter-spacing: 0.01em; color: var(--white);
-  }
+  .copy-text { font-family: var(--mono); font-size: 23px; font-weight: 500; color: var(--white); }
   .copy-text i { font-style: normal; color: var(--pink); }
+
+  /* ── the ask ────────────────────────────────────────────────────────────── */
+  .cta {
+    margin-top: 16px; display: flex; align-items: center; gap: 14px;
+    border: 1px solid rgba(255,0,102,0.45); background: rgba(255,0,102,0.1);
+    padding: 15px 22px;
+  }
+  .cta-mark { color: var(--pink); font-size: 19px; line-height: 1; }
+  .cta-text { font-size: 16.5px; line-height: 1.45; color: rgba(245,240,240,0.88); }
+  .cta-text b { color: var(--white); font-weight: 500; }
 
   /* ── footer ─────────────────────────────────────────────────────────────── */
   .foot {
-    margin-top: auto; padding-top: 18px; border-top: 1px solid var(--border);
+    margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border);
     display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
   }
-  .foot-note { font-size: 15px; line-height: 1.55; color: var(--muted); max-width: 640px; }
-  .foot-note b { color: rgba(245,240,240,0.8); font-weight: 500; }
-  .foot-url {
-    font-family: var(--display); font-size: 34px; line-height: 0.95;
-    letter-spacing: 0.04em; color: var(--pink); white-space: nowrap;
-  }
+  .foot-note { font-size: 13.5px; line-height: 1.5; color: var(--muted); max-width: 640px; }
+  .foot-note b { color: rgba(245,240,240,0.78); font-weight: 500; }
+  .foot-url { font-family: var(--display); font-size: 31px; line-height: 0.95; letter-spacing: 0.04em; color: var(--pink); white-space: nowrap; }
   .foot-url small {
-    display: block; font-family: var(--mono); font-size: 10px; font-weight: 400;
-    letter-spacing: 0.2em; color: var(--muted); text-align: right; margin-top: 5px;
+    display: block; font-family: var(--mono); font-size: 9.5px; font-weight: 400;
+    letter-spacing: 0.2em; color: var(--muted); text-align: right; margin-top: 4px;
   }
 </style>
 </head>
 <body>
 <div class="poster" id="poster">
+
+  <div class="sky">
+    <div class="sky-neb"></div>
+    <div class="sky-band"></div>
+    <canvas class="sky-stars" id="stars" width="1080" height="1350"></canvas>
+    <div class="sky-vig"></div>
+  </div>
 
   <div class="top">
     <div class="brand">
@@ -203,16 +243,17 @@
     </div>
   </div>
 
-  <div class="title-wrap">
-    <div class="eyebrow">2026 MAMA Awards</div>
-    <h1>How to vote<br>for <em>BLACKPINK</em></h1>
-    <div class="sub">Two places, and one is worth nine times the other.</div>
+  <div class="hero">
+    <div class="eyebrow"><i>✦</i>2026 MAMA Awards<i>✦</i></div>
+    <h1>How to vote<em>for BLACKPINK</em></h1>
+    <div class="sub">Two places to vote, and one is worth nine times the other</div>
+    <div class="deadline">
+      <b>Round 1 closes</b>
+      <span>Oct 22 · 23:59 KST</span>
+    </div>
   </div>
 
-  <div class="deadline">
-    <b>Round 1 closes</b>
-    <span>Oct 22 · 23:59 KST</span>
-  </div>
+  <hr class="rule">
 
   <div class="methods">
 
@@ -220,34 +261,47 @@
       <div class="method-head">
         <span class="method-no">Method 1</span>
         <span class="method-name">Mnet Plus app</span>
-        <span class="weight">90%<small>of the score</small></span>
+        <span class="weight"><b>90%</b><small>of the score</small></span>
       </div>
-      <ul>
-        <li>Once a day, from <b>one ID on one device</b> — the day resets at midnight KST.</li>
-        <li>Pick <b>1 to 3 teams</b> in Male <b>and</b> 1 to 3 in Female. Vote <b>BLACKPINK</b> in Female.</li>
-        <li><span class="warn">You must vote in both categories to submit.</span> Filling in one side does not count as a vote.</li>
-        <li>The same artist cannot be picked twice, and you have to see the completion notice for it to count.</li>
-        <li>Only the <b>top 20</b> in each category go through to round 2.</li>
-      </ul>
+      <div class="method-body">
+        <ul>
+          <li>Once a day, from <b>one ID on one device</b> — the day resets at midnight KST.</li>
+          <li>Pick <b>1 to 3 teams</b> in Male <b>and</b> 1 to 3 in Female. Vote <b>BLACKPINK</b> in Female.</li>
+          <li><span class="warn">You must vote in both categories to submit.</span> Filling in one side does not count as a vote.</li>
+          <li>The same artist cannot be picked twice, and you have to see the completion notice for it to count.</li>
+          <li>Only the <b>top 20</b> in each category go through to round 2.</li>
+        </ul>
+      </div>
     </div>
 
     <div class="method">
       <div class="method-head">
         <span class="method-no">Method 2</span>
-        <span class="method-name" style="font-family:var(--mono);font-size:34px;font-weight:500;">𝕏</span>
-        <span class="weight">10%<small>of the score</small></span>
+        <span class="method-name" style="font-family:var(--mono);font-size:29px;font-weight:500;">𝕏</span>
+        <span class="weight"><b>10%</b><small>of the score</small></span>
       </div>
-      <ul>
-        <li>One voting post per account per day, on the KST day — and <span class="warn">only your first post of the day is read</span>, so get it right first time.</li>
-        <li>The post needs <b>both</b> tags, and <b>one artist tag only</b> — several artists in one post voids it entirely.</li>
-        <li>Your account has to be <b>public</b>. A <b>repost</b> of someone else’s valid post counts as your vote too.</li>
-      </ul>
-      <div class="copy">
-        <div class="copy-label">Copy &amp; paste</div>
-        <div class="copy-text">I vote <i>#BLACKPINK</i> <i>#2026MAMAVOTE</i></div>
+      <div class="method-body">
+        <ul>
+          <li>One voting post per account per day, on the KST day — and <span class="warn">only your first post of the day is read</span>, so get it right first time.</li>
+          <li>The post needs <b>both</b> tags, and <b>one artist tag only</b> — several artists in one post voids it entirely.</li>
+          <li>Your account has to be <b>public</b>. A <b>repost</b> of someone else’s valid post counts as your vote too.</li>
+        </ul>
+        <div class="copy">
+          <div class="copy-label">Copy &amp; paste</div>
+          <div class="copy-text">I vote <i>#BLACKPINK</i> <i>#2026MAMAVOTE</i></div>
+        </div>
       </div>
     </div>
 
+  </div>
+
+  <!-- The ask. The two cards explain how to vote; nothing above this says to do
+       it twice, and every day, which is the only thing that actually moves the
+       number. Shaped like the site's .vote-alert — pink-tinted band, warning
+       mark, one sentence. -->
+  <div class="cta">
+    <span class="cta-mark">✦</span>
+    <span class="cta-text">Do <b>both</b>, <b>every day</b> until 22 October. The app vote and the post are counted separately — doing one is leaving the other on the table.</span>
   </div>
 
   <div class="foot">
@@ -259,5 +313,57 @@
   </div>
 
 </div>
+
+<script>
+// The star field.
+//
+// SEEDED, not random. The poster is re-rendered whenever the rules or the dates
+// change, and a fresh scatter every time would make each render a different
+// image — a round 2 version should differ from round 1 in the words that
+// changed, not in the sky. mulberry32 with a fixed seed gives the same field on
+// every machine and every run.
+//
+// Drawn to a canvas rather than built from DOM nodes: six hundred absolutely
+// positioned divs is six hundred more elements for the renderer's clipping
+// check to walk, and they are decoration, not content.
+(function () {
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  const c = document.getElementById('stars');
+  const g = c.getContext('2d');
+  const rnd = mulberry32(20261022);   // round 1's closing date, for luck
+
+  // Most stars are small, dim and white; about a quarter are pink, because the
+  // nebula is pink and a sky of pure white dots sits on top of it rather than
+  // in it. The exponent on the radius keeps the big ones rare.
+  for (let i = 0; i < 620; i++) {
+    const x = rnd() * 1080, y = rnd() * 1350;
+    const r = Math.pow(rnd(), 2.4) * 1.7 + 0.25;
+    const a = 0.16 + Math.pow(rnd(), 1.6) * 0.72;
+    const pink = rnd() < 0.26;
+    g.beginPath();
+    g.arc(x, y, r, 0, Math.PI * 2);
+    g.fillStyle = pink ? 'rgba(255,150,195,' + a + ')' : 'rgba(255,245,250,' + a + ')';
+    g.fill();
+  }
+  // A handful bright enough to carry a glow, so the field has some depth.
+  for (let i = 0; i < 16; i++) {
+    const x = rnd() * 1080, y = rnd() * 1350, r = 1.1 + rnd() * 1.5;
+    const grd = g.createRadialGradient(x, y, 0, x, y, r * 11);
+    grd.addColorStop(0, 'rgba(255,255,255,0.95)');
+    grd.addColorStop(0.18, 'rgba(255,140,190,0.42)');
+    grd.addColorStop(1, 'rgba(255,0,102,0)');
+    g.fillStyle = grd;
+    g.beginPath(); g.arc(x, y, r * 11, 0, Math.PI * 2); g.fill();
+  }
+  document.documentElement.dataset.starsDrawn = '1';
+})();
+</script>
 </body>
 </html>
