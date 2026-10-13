@@ -355,8 +355,24 @@
     const v00 = at(x0, y0), v10 = at(x0 + 1, y0), v01 = at(x0, y0 + 1), v11 = at(x0 + 1, y0 + 1);
     return (v00 * (1 - fx) + v10 * fx) * (1 - fy) + (v01 * (1 - fx) + v11 * fx) * fy;
   }
-  const OCT = [makeGrid(3, 4), makeGrid(6, 7), makeGrid(11, 14), makeGrid(22, 27), makeGrid(44, 55), makeGrid(88, 110)];
+  // The grids are WIDER THAN THEY ARE TALL relative to the frame, which
+  // stretches every feature along one axis. Isotropic noise gives round clumps
+  // of filament; real nebulae — and the reference's — have gas streaming in a
+  // direction. This is the cheap half of that.
+  const OCT = [makeGrid(4, 3), makeGrid(8, 5), makeGrid(15, 10), makeGrid(29, 19), makeGrid(57, 37), makeGrid(113, 73)];
+  // Two small grids used only to push the sampling point around.
+  const WARP_X = makeGrid(5, 4), WARP_Y = makeGrid(4, 5);
+
   function ridged(u, v) {
+    // DOMAIN WARPING: sample the noise at a point that has itself been moved by
+    // other noise. This is the expensive half, and it is the one that matters —
+    // it bends the strands into streams and curls instead of leaving them as
+    // concentric rings, which is the difference between "fractal texture" and
+    // "gas". Skewed so the drift runs diagonally, the way the reference's does.
+    const wx = (sample(WARP_X, u, v) - 0.5), wy = (sample(WARP_Y, u, v) - 0.5);
+    u = u + wx * 0.34 + wy * 0.12;
+    v = v + wy * 0.22 - wx * 0.10;
+
     let sum = 0, amp = 0.55, norm = 0;
     for (let o = 0; o < OCT.length; o++) {
       const n = sample(OCT[o], u, v);
@@ -383,11 +399,11 @@
       // band, and a nebula drifting across them would cost more than it adds.
       const dx = (u - 0.5) * 2, dy = (v - 0.5) * 2;
       const d = Math.sqrt(dx * dx + dy * dy * 0.82);
-      let mask = Math.min(1, Math.pow(Math.max(0, d - 0.46) / 0.72, 2.2));
+      let mask = Math.min(1, Math.pow(Math.max(0, d - 0.52) / 0.62, 2.3));
 
       let n = ridged(u, v);
-      n = Math.pow(Math.max(0, n - 0.44) / 0.56, 2.4);   // cut the haze, keep the strands
-      const a = Math.min(1, n * mask * 1.25);
+      n = Math.pow(Math.max(0, n - 0.46) / 0.54, 2.1);   // cut the haze, keep the strands
+      const a = Math.min(1, n * mask * 1.55);
       if (a <= 0.004) { img.data[(y * NW + x) * 4 + 3] = 0; continue; }
 
       // Dim gas is violet, bright gas is the site's pink going to near-white at
