@@ -592,6 +592,17 @@ console.log('\n--- the panel');
           'with no Bodoni actually used or loaded');
     check(/Cormorant\+Garamond/.test(guide), 'and Cormorant Garamond actually loaded');
 
+    // ROUNDED, LIKE EVERY OTHER SURFACE ON THE SITE. /streams builds its track
+    // rows as 14px-radius cards with a diagonal pink wash; the leaderboard's
+    // panels are 10-12px. The poster's cards shipped square, which is the kind
+    // of thing that reads as "not quite ours" without being nameable.
+    const siteRadius = (site.match(/\.as-tracks-table tbody tr:not\(\.as-album-row\) td:first-child\s*\{[^}]*border-radius:\s*(\d+)px/) || [])[1];
+    const cardRadius = (guide.match(/\.method\s*\{[^}]*border-radius:\s*(\d+)px/) || [])[1];
+    check(siteRadius && cardRadius === siteRadius,
+          `the cards are rounded like /streams' track rows (${cardRadius}px vs ${siteRadius}px)`);
+    check(/\.method\s*\{[^}]*linear-gradient\(135deg[^}]*rgba\(255,0,102/.test(guide),
+          'and carry the same diagonal pink wash');
+
     // ── TAKING IT AWAY ──────────────────────────────────────────────────────
     // A poster nobody can save is a poster nobody posts. Checked as a real
     // download attribute pointing at a file that exists, not as the presence of

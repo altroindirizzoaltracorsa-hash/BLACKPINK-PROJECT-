@@ -166,11 +166,23 @@
   .methods { margin-top: 18px; display: grid; gap: 14px; }
   /* Translucent over the galaxy rather than a flat panel: the sky has to carry
      through, or this is the site's hero with a picture parked behind it. */
+  /* .as-tracks-table's rows: 14px corners, a diagonal pink wash over --card2,
+     a hairline pink border and a soft pink shadow beneath. Alpha'd, because
+     the site's rows sit on flat black and these sit on a galaxy that has to
+     carry through them. The radius is the part that was missing — every
+     surface on /streams and the leaderboard is rounded and the poster's were
+     all square. */
   .method {
-    border: 1px solid var(--border); background: rgba(10,5,12,0.62);
+    border: 1px solid rgba(255,0,102,0.09);
+    background: linear-gradient(135deg, rgba(255,0,102,0.07), rgba(255,0,102,0.02) 60%), rgba(22,22,22,0.70);
+    box-shadow: 0 2px 14px rgba(255,0,102,0.045);
+    border-radius: 14px; overflow: hidden;
     backdrop-filter: blur(3px); position: relative;
   }
-  .method.primary { border-color: rgba(255,0,102,0.45); background: rgba(16,6,16,0.68); }
+  .method.primary {
+    border-color: rgba(255,0,102,0.3);
+    background: linear-gradient(135deg, rgba(255,0,102,0.13), rgba(255,0,102,0.03) 60%), rgba(26,10,22,0.74);
+  }
   /* The leaderboard's section bar: pink-tinted strip, solid pink left edge. */
   .method-head {
     display: flex; align-items: center; gap: 13px; padding: 11px 22px;
@@ -187,6 +199,7 @@
     text-transform: uppercase; color: var(--muted);
     border: 1px solid var(--border); padding: 4px 9px;
   }
+  /* .as-track-name: the display face at 0.03em. */
   .method-name { font-family: var(--display); font-size: 35px; line-height: 1; letter-spacing: 0.03em; color: var(--white); }
   .method.primary .method-name { color: var(--pink); }
   .weight { margin-left: auto; text-align: right; }
@@ -199,15 +212,15 @@
   .method-body { padding: 15px 22px 16px; }
   .method ul { list-style: none; display: grid; gap: 9px; }
   .method li {
-    font-size: 17px; line-height: 1.52; color: rgba(245,240,240,0.84);
-    padding-left: 23px; position: relative;
+    font-size: 17px; line-height: 1.52; letter-spacing: 0.02em;
+    color: rgba(245,240,240,0.84); padding-left: 23px; position: relative;
   }
   .method li::before { content: '▸'; position: absolute; left: 0; top: 0; color: var(--pink); font-size: 13px; }
   .method li b { color: var(--white); font-weight: 500; }
   .method li .warn { color: var(--hot-pink); font-weight: 500; }
 
   /* ── the post to copy ───────────────────────────────────────────────────── */
-  .copy { margin-top: 14px; border: 1px dashed rgba(255,0,102,0.45); padding: 12px 18px; background: rgba(255,0,102,0.07); }
+  .copy { margin-top: 14px; border: 1px dashed rgba(255,0,102,0.45); border-radius: 10px; padding: 12px 18px; background: rgba(255,0,102,0.07); }
   .copy-label {
     font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.2em;
     text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
@@ -219,7 +232,7 @@
   .cta {
     margin-top: 16px; display: flex; align-items: center; gap: 14px;
     border: 1px solid rgba(255,0,102,0.45); background: rgba(255,0,102,0.1);
-    padding: 15px 22px;
+    border-radius: 12px; padding: 15px 22px;
   }
   .cta-mark { color: var(--pink); font-size: 19px; line-height: 1; }
   .cta-text { font-size: 16.5px; line-height: 1.45; color: rgba(245,240,240,0.88); }
