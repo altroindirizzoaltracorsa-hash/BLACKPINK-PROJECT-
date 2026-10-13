@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T13:50:34.446Z",
+  "generatedAt": "2026-10-13T22:25:49.990Z",
   "date": "2026-10-13",
   "regions": {
     "us": {
@@ -8,7 +8,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 166,
+          "position": 141,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -21,7 +21,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 87,
+          "position": 102,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
@@ -38,20 +38,20 @@
       "region": "Canada",
       "cc": "ca",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 189,
-          "name": "Dracula (with JENNIE)",
-          "artists": "Tame Impala",
-          "member": "JENNIE"
-        }
-      ]
+      "hits": []
     },
     "de": {
       "region": "Germany",
       "cc": "de",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 113,
+          "name": "Dracula (with JENNIE)",
+          "artists": "Tame Impala",
+          "member": "JENNIE"
+        }
+      ]
     },
     "fr": {
       "region": "France",
@@ -59,13 +59,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 117,
-          "name": "APT.",
-          "artists": "ROSÉ & Bruno Mars",
-          "member": "ROSÉ"
-        },
-        {
-          "position": 146,
+          "position": 125,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -90,10 +84,16 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 61,
+          "position": 97,
           "name": "Pink Venom",
           "artists": "BLACKPINK",
           "member": "BLACKPINK"
+        },
+        {
+          "position": 180,
+          "name": "new trick",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
         }
       ]
     },
@@ -109,7 +109,7 @@
       "totalEntries": 99,
       "hits": [
         {
-          "position": 65,
+          "position": 56,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
@@ -120,14 +120,7 @@
       "region": "Hong Kong",
       "cc": "hk",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 185,
-          "name": "Moonlit Floor (Kiss Me)",
-          "artists": "LISA",
-          "member": "LISA"
-        }
-      ]
+      "hits": []
     },
     "sg": {
       "region": "Singapore",
@@ -135,7 +128,7 @@
       "totalEntries": 99,
       "hits": [
         {
-          "position": 3,
+          "position": 6,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
@@ -148,7 +141,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 42,
+          "position": 69,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
@@ -167,46 +160,88 @@
           "member": "JENNIE"
         },
         {
-          "position": 10,
+          "position": 11,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 54,
-          "name": "Dream",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 58,
+          "position": 33,
           "name": "Less than a Lover",
           "artists": "JENNIE",
           "member": "JENNIE"
         },
         {
-          "position": 89,
+          "position": 38,
+          "name": "Dream",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 79,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
         },
         {
-          "position": 108,
-          "name": "How You Like That",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK"
+          "position": 91,
+          "name": "FALLEN ANGEL",
+          "artists": "JENNIE",
+          "member": "JENNIE"
         },
         {
-          "position": 122,
+          "position": 102,
+          "name": "CLICK",
+          "artists": "JISOO",
+          "member": "JISOO"
+        },
+        {
+          "position": 124,
+          "name": "Handlebars",
+          "artists": "JENNIE & Dua Lipa",
+          "member": "JENNIE"
+        },
+        {
+          "position": 129,
           "name": "DDU-DU DDU-DU",
           "artists": "BLACKPINK",
           "member": "BLACKPINK"
         },
         {
-          "position": 163,
-          "name": "APT.",
-          "artists": "ROSÉ & Bruno Mars",
-          "member": "ROSÉ"
+          "position": 132,
+          "name": "Mantra",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 143,
+          "name": "Moonlit Floor",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 146,
+          "name": "Bad Angel",
+          "artists": "Anyma & LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 161,
+          "name": "ZEN",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 166,
+          "name": "Love Hangover",
+          "artists": "JENNIE & Dominic Fike",
+          "member": "JENNIE"
+        },
+        {
+          "position": 197,
+          "name": "Kill This Love",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
         }
       ]
     },
@@ -216,7 +251,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 8,
+          "position": 9,
           "name": "One Of The Girls",
           "artists": "The Weeknd, JENNIE & Lily Rose Depp",
           "member": "JENNIE"
@@ -227,7 +262,14 @@
       "region": "Malaysia",
       "cc": "my",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 46,
+          "name": "One Of The Girls",
+          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
+          "member": "JENNIE"
+        }
+      ]
     },
     "vn": {
       "region": "Vietnam",
@@ -235,10 +277,46 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 18,
+          "position": 20,
           "name": "One Of The Girls",
           "artists": "The Weeknd, JENNIE & Lily Rose Depp",
           "member": "JENNIE"
+        },
+        {
+          "position": 69,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 133,
+          "name": "new trick",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 134,
+          "name": "Kill This Love",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        },
+        {
+          "position": 145,
+          "name": "How You Like That",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        },
+        {
+          "position": 188,
+          "name": "FLOWER",
+          "artists": "JISOO",
+          "member": "JISOO"
+        },
+        {
+          "position": 189,
+          "name": "Pink Venom",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
         }
       ]
     },
@@ -248,7 +326,13 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 88,
+          "position": 123,
+          "name": "toxic till the end",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 180,
           "name": "APT.",
           "artists": "ROSÉ & Bruno Mars",
           "member": "ROSÉ"
@@ -261,7 +345,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 72,
+          "position": 84,
           "name": "APT.",
           "artists": "ROSÉ & Bruno Mars",
           "member": "ROSÉ"
@@ -272,7 +356,14 @@
       "region": "Netherlands",
       "cc": "nl",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 195,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
     },
     "se": {
       "region": "Sweden",
@@ -292,7 +383,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 11,
+          "position": 43,
           "name": "APT.",
           "artists": "ROSÉ & Bruno Mars",
           "member": "ROSÉ"
@@ -305,7 +396,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 172,
+          "position": 121,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -318,7 +409,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 135,
+          "position": 154,
           "name": "Lovesick Girls",
           "artists": "BLACKPINK",
           "member": "BLACKPINK"
@@ -343,7 +434,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 126,
+          "position": 171,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
@@ -360,14 +451,7 @@
       "region": "South Africa",
       "cc": "za",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 117,
-          "name": "Pink Venom",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK"
-        }
-      ]
+      "hits": []
     },
     "be": {
       "region": "Belgium",
@@ -397,7 +481,14 @@
       "region": "Finland",
       "cc": "fi",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 94,
+          "name": "One Of The Girls",
+          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
+          "member": "JENNIE"
+        }
+      ]
     },
     "dk": {
       "region": "Denmark",
@@ -413,7 +504,7 @@
     }
   },
   "summary": {
-    "totalHits": 27,
+    "totalHits": 42,
     "regionsChecked": 38
   }
 }
