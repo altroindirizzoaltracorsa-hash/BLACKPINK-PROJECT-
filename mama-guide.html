@@ -34,7 +34,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,300&family=DM+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
   :root {
@@ -44,6 +44,7 @@
     --muted: rgba(245,240,240,0.45);
     --border: rgba(255,0,102,0.18);
     --mono: 'DM Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
     --display: 'Bebas Neue', sans-serif;
     --light-serif: 'Cormorant Garamond', serif;
   }
@@ -163,7 +164,7 @@
   .rule { margin: 18px 0 0; height: 0; border: 0; border-top: 1px solid var(--border); }
 
   /* ── the two methods ────────────────────────────────────────────────────── */
-  .methods { margin-top: 18px; display: grid; gap: 14px; }
+  .methods { margin-top: 22px; display: grid; gap: 18px; }
   /* Translucent over the galaxy rather than a flat panel: the sky has to carry
      through, or this is the site's hero with a picture parked behind it. */
   /* .as-tracks-table's rows: 14px corners, a diagonal pink wash over --card2,
@@ -185,7 +186,7 @@
   }
   /* The leaderboard's section bar: pink-tinted strip, solid pink left edge. */
   .method-head {
-    display: flex; align-items: center; gap: 13px; padding: 11px 22px;
+    display: flex; align-items: center; gap: 13px; padding: 13px 24px;
     border-left: 3px solid rgba(255,0,102,0.35);
     background: linear-gradient(90deg, rgba(255,0,102,0.14), rgba(255,0,102,0.02));
     border-bottom: 1px solid var(--border);
@@ -200,7 +201,7 @@
     border: 1px solid var(--border); padding: 4px 9px;
   }
   /* .as-track-name: the display face at 0.03em. */
-  .method-name { font-family: var(--display); font-size: 35px; line-height: 1; letter-spacing: 0.03em; color: var(--white); }
+  .method-name { font-family: var(--display); font-size: 38px; line-height: 1; letter-spacing: 0.03em; color: var(--white); }
   .method.primary .method-name { color: var(--pink); }
   .weight { margin-left: auto; text-align: right; }
   .weight b { display: block; font-family: var(--display); font-weight: 400; font-size: 37px; line-height: 0.95; color: var(--pink); }
@@ -209,42 +210,43 @@
     display: block; font-family: var(--mono); font-size: 9.5px;
     letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-top: 2px;
   }
-  .method-body { padding: 15px 22px 16px; }
-  .method ul { list-style: none; display: grid; gap: 9px; }
+  .method-body { padding: 19px 24px 21px; }
+  .method ul { list-style: none; display: grid; gap: 12px; }
   .method li {
-    font-size: 17px; line-height: 1.52; letter-spacing: 0.02em;
-    color: rgba(245,240,240,0.84); padding-left: 23px; position: relative;
+    font-family: var(--sans); font-size: 19.5px; line-height: 1.58;
+    letter-spacing: 0.004em; font-weight: 400;
+    color: rgba(245,240,240,0.88); padding-left: 23px; position: relative;
   }
   .method li::before { content: '▸'; position: absolute; left: 0; top: 0; color: var(--pink); font-size: 13px; }
-  .method li b { color: var(--white); font-weight: 500; }
-  .method li .warn { color: var(--hot-pink); font-weight: 500; }
+  .method li b { color: var(--white); font-weight: 600; }
+  .method li .warn { color: var(--hot-pink); font-weight: 600; }
 
   /* ── the post to copy ───────────────────────────────────────────────────── */
-  .copy { margin-top: 14px; border: 1px dashed rgba(255,0,102,0.45); border-radius: 10px; padding: 12px 18px; background: rgba(255,0,102,0.07); }
+  .copy { margin-top: 16px; border: 1px dashed rgba(255,0,102,0.45); border-radius: 10px; padding: 14px 20px; background: rgba(255,0,102,0.07); }
   .copy-label {
     font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.2em;
     text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
   }
-  .copy-text { font-family: var(--mono); font-size: 23px; font-weight: 500; color: var(--white); }
+  .copy-text { font-family: var(--mono); font-size: 25px; font-weight: 500; color: var(--white); }
   .copy-text i { font-style: normal; color: var(--pink); }
 
   /* ── the ask ────────────────────────────────────────────────────────────── */
   .cta {
     margin-top: 16px; display: flex; align-items: center; gap: 14px;
     border: 1px solid rgba(255,0,102,0.45); background: rgba(255,0,102,0.1);
-    border-radius: 12px; padding: 15px 22px;
+    border-radius: 12px; padding: 18px 24px;
   }
   .cta-mark { color: var(--pink); font-size: 19px; line-height: 1; }
-  .cta-text { font-size: 16.5px; line-height: 1.45; color: rgba(245,240,240,0.88); }
-  .cta-text b { color: var(--white); font-weight: 500; }
+  .cta-text { font-family: var(--sans); font-size: 18px; line-height: 1.5; color: rgba(245,240,240,0.9); }
+  .cta-text b { color: var(--white); font-weight: 600; }
 
   /* ── footer ─────────────────────────────────────────────────────────────── */
   .foot {
     margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border);
     display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
   }
-  .foot-note { font-size: 13.5px; line-height: 1.5; color: var(--muted); max-width: 640px; }
-  .foot-note b { color: rgba(245,240,240,0.78); font-weight: 500; }
+  .foot-note { font-family: var(--sans); font-size: 14.5px; line-height: 1.5; color: var(--muted); max-width: 640px; }
+  .foot-note b { color: rgba(245,240,240,0.8); font-weight: 600; }
   .foot-url { font-family: var(--display); font-size: 31px; line-height: 0.95; letter-spacing: 0.04em; color: var(--pink); white-space: nowrap; }
   .foot-url small {
     display: block; font-family: var(--mono); font-size: 9.5px; font-weight: 400;

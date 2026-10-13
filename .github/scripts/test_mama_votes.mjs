@@ -603,6 +603,19 @@ console.log('\n--- the panel');
     check(/\.method\s*\{[^}]*linear-gradient\(135deg[^}]*rgba\(255,0,102/.test(guide),
           'and carry the same diagonal pink wash');
 
+    // THE INSTRUCTIONS ARE PROSE, SO THEY ARE SET IN A PROSE FACE. They shipped
+    // in DM Mono, which is the site's default and therefore felt safe, and read
+    // badly: a monospace is for labels, counters and literal strings, not for
+    // five lines of explanation someone has to get through. IBM Plex Sans is
+    // already one of the site's faces.
+    check(/\.method li\s*\{[^}]*var\(--sans\)/.test(guide),
+          'the rules are set in the sans, not the monospace');
+    check(/IBM\+Plex\+Sans/.test(guide), 'and IBM Plex Sans is actually loaded');
+    // The literal you copy stays mono — that one IS a string, and a proportional
+    // face would make the two hashtags harder to check character by character.
+    check(/\.copy-text\s*\{[^}]*var\(--mono\)/.test(guide),
+          'while the post you copy stays monospace, because it is a literal');
+
     // ── TAKING IT AWAY ──────────────────────────────────────────────────────
     // A poster nobody can save is a poster nobody posts. Checked as a real
     // download attribute pointing at a file that exists, not as the presence of
