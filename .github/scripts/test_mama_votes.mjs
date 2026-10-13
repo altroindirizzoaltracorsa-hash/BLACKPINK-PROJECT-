@@ -23,7 +23,7 @@
 //
 // Supabase is stubbed and the clock is injected, so this needs no database, no
 // network and no waiting until November.
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 
 const root = new URL('../../', import.meta.url).pathname;
@@ -530,6 +530,185 @@ console.log('\n--- the panel');
         `between the rounds it says voting is paused (${timing.gap.restriction || 'no warning'})`);
   check(Date.parse(timing.over.deadline) < Date.parse('2026-12-01T00:00:00Z'),
         'and once it is over the date is in the past, so the card files itself away');
+
+  // ── THE SHARE CAPTION ───────────────────────────────────────────────────
+  // Hitting Share copies a caption to the clipboard. For MAMA that caption is
+  // ITSELF A VALID VOTE — it opens with the exact post Mnet counts — so a blink
+  // who shares has voted, not merely told people to vote. Everything below
+  // protects that property.
+  console.log('\n--- the share caption');
+  const cap = await page.evaluate(() => {
+    const t = mamaShareText();
+    const noUrl = t.replace(/\S*blinksunited\.com\S*/g, '');
+    const emoji = (noUrl.match(/\p{Extended_Pictographic}/gu) || []).length;
+    return { t, tweet: MAMA_TWEET, weighted: [...noUrl].length + emoji + 23,
+             close: MAMA_ROUNDS.find((r) => Date.now() <= r.to).to };
+  });
+  check(cap.t.startsWith(cap.tweet),
+        `it opens with the post Mnet counts, so sharing IS voting (“${cap.t.split('\n')[0]}”)`);
+  // A post naming two artists is not counted AT ALL, so a stray second artist
+  // tag here would silently void every share. Counted, not assumed.
+  const artistTags = (cap.t.match(/#(?!2026MAMAVOTE\b)[A-Za-z][A-Za-z0-9_]*/g) || []);
+  check(artistTags.length === 1,
+        `and carries exactly one artist tag, or it would void the vote (${artistTags.join(' ') || 'none'})`);
+  check(/#2026MAMAVOTE/.test(cap.t), 'plus the campaign tag');
+  // X truncates past 280 for accounts without a subscription, and the line it
+  // would cut is the deadline.
+  check(cap.weighted <= 280, `and fits in a post without a subscription (${cap.weighted} weighted chars)`);
+  const kstClose = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Seoul', day: 'numeric', month: 'short' }).format(new Date(cap.close));
+  check(cap.t.includes(kstClose), `the deadline in it is the real one from MAMA_ROUNDS (${kstClose})`);
+  check(/90%/.test(cap.t) && /10%/.test(cap.t) && /both/i.test(cap.t) && /FIRST/.test(cap.t),
+        'and it carries the four things worth knowing: the split, both categories, first post only');
+
+  // NO MARKUP IN ANY CAPTION. The rules render as HTML on the cards, and the
+  // generic caption pasted them in raw — Kids' Choice was shipping fourteen
+  // literal <b> tags per share. Checked for every campaign, not just MAMA.
+  const tagLeak = await page.evaluate(() => VOTE_CAMPAIGNS
+    .filter((c) => c.rules?.length)
+    .map((c) => ({ id: c.id, bad: c.rules.map((r) => String(r).replace(/<[^>]+>/g, '')).join(' ') }))
+    .filter((c) => /[<>]/.test(c.bad)).map((c) => c.id));
+  check(tagLeak.length === 0, `no campaign's rules leave markup in a caption (${tagLeak.join(', ') || 'all clean'})`);
+
+  // BreakTudo and Kids' Choice get their own captions too. Unlike MAMA's these
+  // are NOT votes — those awards are voted on their own sites — so what each
+  // has to carry is the one rule that costs people a vote there.
+  const others = await page.evaluate(() => ['breaktudo-2026', 'kca-2026'].map((id) => {
+    const c = VOTE_CAMPAIGNS.find((x) => x.id === id);
+    const t = c.shareText(c);
+    return { id, t, w: xWeight(t) };
+  }));
+  for (const o of others) {
+    check(o.w <= 280, `${o.id}'s caption fits a post (${o.w} weighted chars)`);
+    check(!/[<>]/.test(o.t), `and carries no markup`);
+    check(/blinksunited|breaktudoawards|kca\.nick/.test(o.t), 'and says where to go');
+  }
+  check(/Cloudflare/.test(others[0].t) && /Enviar Votos/.test(others[0].t),
+        'BreakTudo says votes go in batches behind the Cloudflare check');
+  check(/EVERY category/.test(others[1].t) && /nothing is submitted/.test(others[1].t),
+        'and Kids’ Choice says nothing submits until the round is finished');
+  // These two must NOT look like MAMA's, which is a vote in itself. Telling
+  // people to post a hashtag for an award that is not counted that way sends
+  // them to do something useless.
+  check(!others.some((o) => /2026MAMAVOTE/.test(o.t)),
+        'and neither pretends a hashtag is a vote');
+  // The nominee names in the Kids' Choice caption are read off the data, so a
+  // longer one could push it past 280. It names them when they fit and counts
+  // them when they do not, rather than overflowing — checked by adding one.
+  const fellBack = await page.evaluate(() => {
+    const c = VOTE_CAMPAIGNS.find((x) => x.id === 'kca-2026');
+    const fat = { deadline: c.deadline, categories: c.categories.concat([{ name: 'X',
+      nominees: [{ name: 'A Really Very Long Nominee Name That Will Not Fit At All' }] }]) };
+    const t = kcaShareText(fat);
+    return { w: xWeight(t), named: /ROSÉ/.test(t) };
+  });
+  check(fellBack.w <= 280 && !fellBack.named,
+        `and falls back to a count rather than overflowing when the names grow (${fellBack.w} chars)`);
+
+  // ── THE SHAREABLE GUIDE ─────────────────────────────────────────────────
+  // mama-guide.html is rendered to a PNG and posted. A poster is the worst
+  // place for a stale fact: it keeps circulating after the page is fixed, and
+  // nobody looking at it can tell it is out of date. So the three things it
+  // asserts that the site also asserts are checked against the site.
+  console.log('\n--- the shareable guide');
+  {
+    const guide = readFileSync(root + 'mama-guide.html', 'utf8');
+    const tweet = await page.evaluate(() => MAMA_TWEET);
+    // The copy-paste box is the one bit people act on directly. Compared on the
+    // tags rather than the whole string, because the poster marks them up.
+    const copy = (guide.match(/<div class="copy-text">([\s\S]*?)<\/div>/) || [])[1] || '';
+    const plain = copy.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    check(plain === tweet, `the copy-paste post matches the site's button (“${plain}” vs “${tweet}”)`);
+    // The deadline, in the one place on the poster that shouts it.
+    const closes = new Date(await page.evaluate(() => MAMA_ROUNDS[0].to));
+    const kst = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' }).format(closes);
+    check(guide.includes(kst), `and the deadline block says round 1's real close date (${kst})`);
+    check(/90%/.test(guide) && /10%/.test(guide), 'the two weights are on it');
+    // The rules that cost a vote. If one of these ever leaves the site's rule
+    // list it has to leave the poster too — and vice versa.
+    for (const [re, what] of [
+      [/first post of the day/i, 'only the first post of the day counts'],
+      [/one artist tag only/i, 'one artist tag only'],
+      [/public/i, 'public accounts only'],
+      [/repost/i, 'a repost counts'],
+      [/both categories/i, 'both Male and Female to submit'],
+    ]) check(re.test(guide), `and it carries: ${what}`);
+    // It must not pick up the language picker: every other page loads i18n.js,
+    // and a floating picker would be baked into the middle of the image.
+    // Matched on a script TAG, not the bare filename: the file explains in a
+    // comment why it does not load the runtime, and the first version of this
+    // check failed on that comment — a test that cannot tell a <script> from
+    // the prose about it will fail every time someone documents the decision.
+    check(!/<script[^>]+i18n\.js/.test(guide),
+          'the poster loads no i18n runtime, so no picker is rendered into the image');
+
+    // THE POSTER'S HERO IS THE SITE'S HERO. /streams (.as-title/.as-sub) and
+    // /leaderboard (.lb-header-title/.lb-header-sub) share one recipe, and the
+    // poster is supposed to be a third copy of it. It was not: the headline
+    // shipped at 0.012em tracking against the site's 0.055em, and the subtitle
+    // in Bodoni Moda — the site's OTHER serif, used for display numerals and
+    // never for this line. Both read as "nearly right", which is the hardest
+    // kind of wrong to notice, so the values are compared against index.html
+    // rather than written down here.
+    const site = readFileSync(root + 'index.html', 'utf8');
+    const siteTrack = (site.match(/\.as-title\s*\{[^}]*letter-spacing:\s*([\d.]+)em/) || [])[1];
+    const posterTrack = (guide.match(/\bh1\s*\{[^}]*letter-spacing:\s*([\d.]+)em/) || [])[1];
+    check(siteTrack && posterTrack && Math.abs(+siteTrack - +posterTrack) <= 0.01,
+          `the headline is tracked like the site's (${posterTrack}em vs /streams ${siteTrack}em)`);
+    check(/\.as-sub\s*\{[^}]*var\(--light-serif\)/.test(site) && /\.sub\s*\{[^}]*var\(--light-serif\)/.test(guide),
+          'and the subtitle uses the same serif the site uses, not the other one');
+    // Matched on a font-family DECLARATION and on the webfont request, not on
+    // the bare word: the file explains in a comment why Bodoni is the wrong
+    // serif here, and a check that cannot tell CSS from the prose about it
+    // fails every time someone writes the reason down. Second time this exact
+    // shape of over-broad match has bitten in this file.
+    check(!/font-family:[^;]*Bodoni/.test(guide) && !/family=Bodoni/.test(guide),
+          'with no Bodoni actually used or loaded');
+    check(/Cormorant\+Garamond/.test(guide), 'and Cormorant Garamond actually loaded');
+
+    // ROUNDED, LIKE EVERY OTHER SURFACE ON THE SITE. /streams builds its track
+    // rows as 14px-radius cards with a diagonal pink wash; the leaderboard's
+    // panels are 10-12px. The poster's cards shipped square, which is the kind
+    // of thing that reads as "not quite ours" without being nameable.
+    const siteRadius = (site.match(/\.as-tracks-table tbody tr:not\(\.as-album-row\) td:first-child\s*\{[^}]*border-radius:\s*(\d+)px/) || [])[1];
+    const cardRadius = (guide.match(/\.method\s*\{[^}]*border-radius:\s*(\d+)px/) || [])[1];
+    check(siteRadius && cardRadius === siteRadius,
+          `the cards are rounded like /streams' track rows (${cardRadius}px vs ${siteRadius}px)`);
+    check(/\.method\s*\{[^}]*linear-gradient\(135deg[^}]*rgba\(255,0,102/.test(guide),
+          'and carry the same diagonal pink wash');
+
+    // THE INSTRUCTIONS ARE PROSE, SO THEY ARE SET IN A PROSE FACE. They shipped
+    // in DM Mono, which is the site's default and therefore felt safe, and read
+    // badly: a monospace is for labels, counters and literal strings, not for
+    // five lines of explanation someone has to get through. IBM Plex Sans is
+    // already one of the site's faces.
+    check(/\.method li\s*\{[^}]*var\(--sans\)/.test(guide),
+          'the rules are set in the sans, not the monospace');
+    check(/IBM\+Plex\+Sans/.test(guide), 'and IBM Plex Sans is actually loaded');
+    // The literal you copy stays mono — that one IS a string, and a proportional
+    // face would make the two hashtags harder to check character by character.
+    check(/\.copy-text\s*\{[^}]*var\(--mono\)/.test(guide),
+          'while the post you copy stays monospace, because it is a literal');
+
+    // ── TAKING IT AWAY ──────────────────────────────────────────────────────
+    // A poster nobody can save is a poster nobody posts. Checked as a real
+    // download attribute pointing at a file that exists, not as the presence of
+    // the word "download" — and the rendered PNG has to be on disk, because the
+    // link is useless if the asset was never built.
+    check(existsSync(root + 'mama-guide.png'), 'the rendered poster exists to be downloaded');
+    const dl = guide.match(/<a[^>]+class="dl-btn"[^>]*>/) || [];
+    check(dl[0] && /download="[^"]*\.png"/.test(dl[0]) && /href="\/mama-guide\.png"/.test(dl[0]),
+          `the poster page offers it as a download (${(dl[0] || 'no button').slice(0, 72)}…)`);
+    // (That the bar sits OUTSIDE the screenshotted frame is asserted in
+    // render_mama_guide.mjs, against the live DOM. Trying to establish it by
+    // matching tags in the source was a test that would have passed almost
+    // anything — the question is whether .dl-bar is a descendant of #poster,
+    // and only a parser can answer that.)
+    // The campaign card and the rules panel both offer it, since those are the
+    // two places someone reading about MAMA actually is.
+    check(/guide:\s*'\/mama-guide\.png'/.test(site), 'the campaign card carries the guide download');
+    check(/class="mama-guide-dl"[^>]*href="\/mama-guide\.png"[^>]*download=/.test(site),
+          'and so does the rules panel on the MAMA tab');
+  }
 
   await back.goto('https://www.blinksunited.com/voting#nonsense', { waitUntil: 'domcontentloaded' });
   await back.waitForTimeout(1200);

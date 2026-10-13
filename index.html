@@ -2286,6 +2286,10 @@
     padding: 0.65rem 0.9rem; cursor: pointer; transition: border-color 0.2s, color 0.2s;
   }
   .vote-share-btn:hover { border-color: var(--pink); color: var(--pink); }
+  /* The guide download is an <a>, because a download needs an href. Anchors do
+     not inherit the button reset, so the two have to be told to line up or the
+     row ends up with one control sitting a few pixels off the other. */
+  a.vote-share-btn { text-decoration: none; display: inline-block; line-height: normal; }
   .vote-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
 
   /* VMA voting leaderboard (account-gated) */
@@ -2457,6 +2461,14 @@
   .mama-rules-head:first-of-type { margin-top: 0.7rem; }
   .mama-rules ul { list-style: none; margin: 0.45rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
   .mama-rules li { display: flex; gap: 0.5rem; font-size: 0.7rem; line-height: 1.55; color: rgba(245,240,240,0.85); }
+  .mama-guide-dl {
+    display: inline-block; margin-top: 0.9rem; font-family: var(--mono);
+    font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--pink); text-decoration: none;
+    border: 1px solid rgba(255,0,102,0.45); padding: 0.5rem 0.8rem;
+    transition: background 0.2s, color 0.2s;
+  }
+  .mama-guide-dl:hover { background: var(--pink); color: #000; }
 
   /* MAMA's headline row: three numbers, not the four the other awards show. */
   .vv-mama-top { margin: 0.9rem 0 0.2rem; }
@@ -8362,10 +8374,96 @@ function mamaCardTiming(now = Date.now()) {
   return { deadline: iso(MAMA_ROUNDS[MAMA_ROUNDS.length - 1].to), url };
 }
 
+// The caption that goes on the clipboard when someone shares the MAMA card.
+//
+// IT IS ITSELF A VALID VOTE. It opens with the exact post Mnet counts — the
+// campaign tag and one artist tag — so a blink who shares this has voted,
+// rather than having told people to go and vote. That is also why nothing else
+// in it may carry a second artist hashtag: a post naming two artists is not
+// counted at all, so an extra tag here would quietly void every share.
+//
+// UNDER 280 CHARACTERS, checked by a test. X truncates past that for accounts
+// without a subscription, and the line it would cut is the deadline.
+//
+// Built from MAMA_TWEET and MAMA_ROUNDS rather than typed out, so the post and
+// the date cannot drift from the button and the countdown.
+function mamaShareText() {
+  const to = (MAMA_ROUNDS.find((r) => Date.now() <= r.to) || MAMA_ROUNDS[MAMA_ROUNDS.length - 1]);
+  const close = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Seoul', day: 'numeric', month: 'short' })
+    .format(new Date(to.to));
+  return [
+    MAMA_TWEET,
+    '',
+    `🗳️ 2026 MAMA Fans’ Choice — round ${to.n}, how it works:`,
+    '📱 Mnet Plus = 90% · once a day, 1–3 in Male AND Female (both, or it won’t submit)',
+    '𝕏 = 10% · one post a day, and only your FIRST one counts',
+    `⏰ Ends ${close}, 23:59 KST`,
+    'blinksunited.com/voting',
+  ].join('\n');
+}
+
+// ── the other two captions ──────────────────────────────────────────────────
+// BreakTudo and Kids' Choice are not hashtag votes — you vote on their own
+// sites — so unlike MAMA's these captions are not themselves votes and must not
+// pretend to be. What they do instead is carry the one rule that costs people a
+// vote on each (BreakTudo: votes go in batches and need the Cloudflare check
+// before "Enviar Votos"; Kids' Choice: nothing submits until the whole round is
+// finished), the deadline, and where to go.
+//
+// Dates and nomination counts are read off the campaign rather than typed, so a
+// corrected deadline or an added category updates the caption by itself.
+function shareDay(iso, tz) {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: 'numeric', month: 'short' }).format(new Date(iso));
+}
+// What X will count this as. A URL is 23 characters whatever its length, and
+// most emoji are two. Used to keep a caption inside the 280 an account without
+// a subscription gets, rather than guessing from .length and being wrong by the
+// width of a link.
+function xWeight(text) {
+  const noUrl = String(text).replace(/\S*\.(com|tv|world|net|org)\S*/g, '');
+  const emoji = (noUrl.match(/\p{Extended_Pictographic}/gu) || []).length;
+  const urls = (String(text).match(/\S*\.(com|tv|world|net|org)\S*/g) || []).length;
+  return [...noUrl].length + emoji + urls * 23;
+}
+function breaktudoShareText(c) {
+  const n = c.categories.length;
+  return [
+    `🗳️ BreakTudo Awards — BLACKPINK & the members, ${n} nominations`,
+    '',
+    '📍 vote.breaktudoawards.com · no app, no account',
+    '🔁 No vote limit — vote in 5s, pass the Cloudflare check, hit “Enviar Votos”, repeat',
+    `⏰ Ends ${shareDay(c.deadline, 'America/Sao_Paulo')}, 23:59 BRT`,
+    '',
+    '#BLACKPINK #BreakTudoAwards',
+  ].join('\n');
+}
+function kcaShareText(c) {
+  const body = (head) => [
+    head,
+    '',
+    '📍 kca.nick.tv/vote · no account, no vote limit',
+    '⚠️ Vote EVERY category to the end — nothing is submitted until you finish the round',
+    `⏰ Voting runs to ${shareDay(c.deadline, 'America/Los_Angeles')}`,
+    '',
+    '#BLACKPINK #KidsChoiceAwards',
+  ].join('\n');
+
+  // Naming the nominees is better than counting them, but the names are read
+  // off the data and one long one ("Dracula (with JENNIE)" is already 21
+  // characters) can push this past 280. So: name them if they fit, count them
+  // if they do not. The alternative is a caption that silently loses its
+  // deadline the day somebody adds a category.
+  const who = c.categories.flatMap((k) => k.nominees.map((x) => x.name.replace(/^.*— /, ''))).join(', ');
+  const named = body(`🗳️ Kids’ Choice Awards — ${who} are nominated`);
+  if (xWeight(named) <= 280) return named;
+  return body(`🗳️ Kids’ Choice Awards — BLACKPINK are up for ${c.categories.length} awards`);
+}
+
 // ── VOTE CAMPAIGNS ───────────────────────────────────────────
 const VOTE_CAMPAIGNS = [
   {
     id: 'kca-2026',
+    shareText: kcaShareText,
     platform: 'Nickelodeon Kids’ Choice Awards',
     title: '2026 Kids’ Choice Awards',
     url: 'https://kca.nick.tv/vote/',
@@ -8431,6 +8529,14 @@ const VOTE_CAMPAIGNS = [
     // literal one here would be silently overwritten by the spread, which is a
     // worse kind of wrong than not having it.
     image: '/vote-blackpink-ot4.jpg',
+    // The shareable poster, for posting rather than reading — mama-guide.html
+    // rendered by render_mama_guide.mjs. Named on download, because a file
+    // called mama-guide.png in someone's camera roll is a file they will not
+    // find again.
+    guide: '/mama-guide.png',
+    guideName: 'blinksunited-2026-mama-voting-guide.png',
+    // Replaces the generic caption entirely — see mamaShareText().
+    shareText: mamaShareText,
     // Both the countdown and the pause warning come from MAMA_ROUNDS above, so
     // this card cannot disagree with the award tab or with the API about when
     // voting is open. Spread at load: the page reloads often enough, and a tab
@@ -8491,6 +8597,7 @@ const VOTE_CAMPAIGNS = [
   },
   {
     id: 'breaktudo-2026',
+    shareText: breaktudoShareText,
     platform: 'BreakTudo Awards',
     title: 'BreakTudo Awards 2026',
     url: 'https://vote.breaktudoawards.com/',
@@ -8945,6 +9052,7 @@ function renderVoteCampaigns() {
         <div class="vote-card-actions">
           <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
           ${c.winner ? `<button class="vote-share-btn" style="color:#ffd700;border-color:rgba(255,215,0,0.35);" onclick="showWinnerAnnouncement('${c.id}')">🏆 See Announcement</button>` : `<button class="vote-share-btn" onclick="openVoteCard('${c.id}')">⬡ Share</button>`}
+          ${c.guide ? `<a class="vote-share-btn" href="${c.guide}" download="${c.guideName || 'voting-guide.png'}">⬇ Voting guide</a>` : ''}
         </div>
       </div>`;
   }
@@ -9498,6 +9606,10 @@ function drawMamaVoting() {
     <details class="mama-rules"><summary>📋 Rules — what counts, and what wastes a vote</summary>
       ${MAMA_RULES.map(g => `<div class="mama-rules-head">${_vvEsc(g.head)}</div>
       <ul>${g.items.map(r => `<li><span class="rules-dot">▸</span><span>${r}</span></li>`).join('')}</ul>`).join('')}
+      <!-- Inside the rules panel on purpose. Someone who has opened the rules is
+           the person most likely to want to pass them on, and the poster says
+           the same things in a form that fits a post. -->
+      <a class="mama-guide-dl" href="/mama-guide.png" download="blinksunited-2026-mama-voting-guide.png">⬇ Download this as a shareable guide</a>
     </details>
     ${state}
     <div class="vv-msg" id="mama-msg">${_mamaReturnErr ? 'X sent us back with an error: ' + _vvEsc(_mamaReturnErr) : ''}</div>
@@ -18639,7 +18751,14 @@ async function shareCard() {
     const campaign = VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId);
     if (campaign) {
       link = campaign.url;
-      if (campaign.rules?.length) rulesText = '\nRules:\n' + campaign.rules.map(r => `• ${r}`).join('\n') + '\n';
+      // STRIP THE MARKUP. The rules are rendered as HTML on the card, so they
+      // carry <b> and the odd <a>; pasted into a post they arrived as literal
+      // "<b>No vote limit</b>". Kids' Choice has been sharing fourteen tags per
+      // caption. A caption is plain text and has to be built as plain text.
+      if (campaign.rules?.length) {
+        const plain = campaign.rules.map(r => String(r).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
+        rulesText = '\nRules:\n' + plain.map(r => `• ${r}`).join('\n') + '\n';
+      }
     }
   } else if (_cardType === 'song') {
     const d = window.streamData?.[_cardTrackId];
@@ -18738,7 +18857,18 @@ async function shareCard() {
       statsText += '\n';
     }
   }
-  const text  = title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
+  // A campaign may supply its OWN caption, replacing the lot. The generic
+  // assembly — label, our hashtags, every rule as a bullet, the link — is a
+  // decent default for a card whose job is "look at this", but MAMA's caption
+  // has a job of its own: it is itself a valid vote, so it has to be a specific
+  // string of a specific length and cannot be a label with bullets stapled
+  // underneath. See mamaShareText().
+  const ownShare = _cardType === 'vote'
+    ? VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId)?.shareText : null;
+  const shareCampaign = _cardType === 'vote' ? VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId) : null;
+  const text = ownShare
+    ? (typeof ownShare === 'function' ? ownShare(shareCampaign) : ownShare)
+    : title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
   // Mobile: Web Share API with image file
   if (typeof navigator.share === 'function') {
     // Use the pre-generated blob if available (created when the card finished

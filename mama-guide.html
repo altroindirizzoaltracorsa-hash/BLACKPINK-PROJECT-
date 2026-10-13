@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 MAMA Fans’ Choice — Voting Guide | BLINKS UNITED</title>
+<meta name="description" content="How to vote for BLACKPINK in the 2026 MAMA Fans' Choice — Mnet Plus and X, with the rules that waste a vote if you miss them.">
+
+<!-- A SHAREABLE POSTER, not a page of the site.
+     ===========================================
+     The fandom passes these around as images, so this exists to be rendered to
+     one: 1080x1350, the 4:5 X and Instagram show without cropping.
+
+     It is HTML rather than a drawing because the rules change — round 2 has its
+     own dates and its own ballot — and a poster you can only edit in an image
+     editor is a poster that goes stale and gets posted anyway. Re-render with
+     .github/scripts/render_mama_guide.mjs.
+
+     STYLE: the galaxy is MAMA's, the colours and the furniture are the site's.
+     The hero follows /streams and /leaderboard exactly — a centred mono eyebrow
+     between ✦ marks, a two-line Bebas headline with the second line in pink, an
+     italic Cormorant Garamond subtitle, then a hairline rule — and the cards echo the
+     leaderboard's section bars: a pink-tinted strip with a solid pink edge.
+     Nothing here invents a look the site does not already have.
+
+     Deliberately NOT loading /i18n/i18n.js. Every other page does; this one is
+     an image in waiting, and a floating language picker would be baked into
+     the middle of it.
+
+     The content is the official 1st Vote Guide, not a summary of coverage of
+     it. The line most worth keeping accurate is "only your first post of the
+     day is read" — it is the rule that silently costs a vote, which is why the
+     copy-paste box sits directly under it. -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,300&family=DM+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --pink: #FF0066;
+    --hot-pink: #FF2D8A;
+    --white: #F5F0F0;
+    --muted: rgba(245,240,240,0.45);
+    --border: rgba(255,0,102,0.18);
+    --mono: 'DM Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --display: 'Bebas Neue', sans-serif;
+    --light-serif: 'Cormorant Garamond', serif;
+  }
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000; color: var(--white); font-family: var(--mono);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 24px; min-height: 100vh;
+  }
+
+  /* The take-it-away bar. Outside the poster frame, so it is on the page and
+     never in the image — render_mama_guide.mjs asserts that against the DOM. */
+  .dl-bar {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    justify-content: center; margin: 22px 0 8px;
+  }
+  .dl-btn {
+    background: var(--pink); color: #000; text-decoration: none;
+    font-family: var(--mono); font-size: 0.72rem; font-weight: 500;
+    letter-spacing: 0.14em; text-transform: uppercase; padding: 0.8rem 1.3rem;
+  }
+  .dl-btn:hover { background: var(--hot-pink); }
+  .dl-note {
+    font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+
+  /* The frame the renderer screenshots. Fixed px, not rem or %, because the
+     output has to be identical whatever viewport it is rendered in. */
+  .poster {
+    position: relative; width: 1080px; height: 1350px; flex: none;
+    background: #05020a; overflow: hidden;
+    padding: 46px 58px 40px;
+    display: flex; flex-direction: column; isolation: isolate;
+  }
+
+  /* ── the galaxy ──────────────────────────────────────────────────────────
+     MAMA's own sky, recoloured into the site's palette. Built by
+     .github/scripts/make_mama_sky.py, which takes their vote-guide graphic,
+     patches out the MAMA wordmark and the VISA line, clears their body copy
+     from the middle, and remaps the whole thing from blue-white through a pink
+     ramp. That script is where the reasoning lives; mama-sky.png is its output
+     and the only part kept in the repo.
+
+     Two generated versions came before it — soft radial gradients, then ridged
+     fractal noise with domain warping. The noise one had the right kind of
+     structure and still was not theirs, which is what was being asked for.
+
+     The vignette stays on top because the recoloured plate is still bright at
+     the very edges, and the small print has to hold up against it. */
+  .sky {
+    position: absolute; inset: 0; z-index: 0;
+    background: #05020a url('/mama-sky.png') center / cover no-repeat;
+  }
+  .sky-vig {
+    position: absolute; inset: 0;
+    background: radial-gradient(120% 92% at 50% 46%, rgba(3,1,6,0.18) 20%, rgba(3,1,6,0.42) 62%, rgba(3,1,6,0.82) 100%);
+  }
+  .poster > *:not(.sky) { position: relative; z-index: 1; }
+
+  /* ── masthead ───────────────────────────────────────────────────────────── */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+  .brand { display: flex; align-items: center; gap: 13px; }
+  .brand img { width: 40px; height: 40px; border-radius: 9px; display: block; }
+  .brand span {
+    font-family: var(--mono); font-size: 14px; font-weight: 500;
+    letter-spacing: 0.22em; text-transform: uppercase; color: var(--pink);
+  }
+  .top-right {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--muted); text-align: right; line-height: 1.75;
+  }
+
+  /* ── hero, straight off /streams and /leaderboard ───────────────────────── */
+  .hero { text-align: center; margin-top: 14px; }
+  .gem {
+    width: 24px; height: 20px; color: var(--pink); margin: 0 auto 10px;
+    display: block; filter: drop-shadow(0 0 8px rgba(255,0,102,0.5));
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 13px; letter-spacing: 0.3em;
+    text-transform: uppercase; color: var(--pink); margin-bottom: 12px;
+  }
+  .eyebrow i { font-style: normal; opacity: 0.8; margin: 0 10px; }
+  /* .lb-header-title / .as-title: the display face at 0.055em tracking on a
+     0.92 line, second line in pink via a span. The tracking is the tell — at
+     the near-zero spacing this had before, it was Bebas but it was not the
+     site's Bebas. */
+  h1 {
+    font-family: var(--display); font-size: 86px; line-height: 0.92;
+    letter-spacing: 0.055em; text-transform: uppercase; color: var(--white);
+    text-shadow: 0 0 44px rgba(255,0,102,0.3);
+  }
+  h1 em { display: block; font-style: normal; color: var(--pink); text-shadow: 0 0 52px rgba(255,0,102,0.55); }
+  /* .lb-header-sub / .as-sub: Cormorant Garamond italic at --muted. It was
+     Bodoni Moda here, which is the site's OTHER serif — used for display
+     numerals, never for this line. Wrong face, right idea. */
+  .sub {
+    margin-top: 15px; font-family: var(--light-serif); font-style: italic;
+    font-size: 23px; color: var(--muted);
+  }
+
+  /* The deadline is the most time-critical fact on the poster, so it is the one
+     solid pink block — nothing else competes with it. */
+  .deadline {
+    margin: 16px auto 0; display: inline-flex; align-items: baseline; gap: 15px;
+    background: var(--pink); color: #000; padding: 11px 24px 10px;
+    box-shadow: 0 0 46px rgba(255,0,102,0.45);
+  }
+  .deadline b {
+    font-family: var(--mono); font-size: 12.5px; font-weight: 500;
+    letter-spacing: 0.2em; text-transform: uppercase;
+  }
+  .deadline span { font-family: var(--display); font-size: 34px; line-height: 0.9; letter-spacing: 0.03em; }
+
+  /* .lb-header / .as-header close with a flat hairline, not a gradient. */
+  .rule { margin: 18px 0 0; height: 0; border: 0; border-top: 1px solid var(--border); }
+
+  /* ── the two methods ────────────────────────────────────────────────────── */
+  .methods { margin-top: 22px; display: grid; gap: 18px; }
+  /* Translucent over the galaxy rather than a flat panel: the sky has to carry
+     through, or this is the site's hero with a picture parked behind it. */
+  /* .as-tracks-table's rows: 14px corners, a diagonal pink wash over --card2,
+     a hairline pink border and a soft pink shadow beneath. Alpha'd, because
+     the site's rows sit on flat black and these sit on a galaxy that has to
+     carry through them. The radius is the part that was missing — every
+     surface on /streams and the leaderboard is rounded and the poster's were
+     all square. */
+  .method {
+    border: 1px solid rgba(255,0,102,0.09);
+    background: linear-gradient(135deg, rgba(255,0,102,0.07), rgba(255,0,102,0.02) 60%), rgba(22,22,22,0.70);
+    box-shadow: 0 2px 14px rgba(255,0,102,0.045);
+    border-radius: 14px; overflow: hidden;
+    backdrop-filter: blur(3px); position: relative;
+  }
+  .method.primary {
+    border-color: rgba(255,0,102,0.3);
+    background: linear-gradient(135deg, rgba(255,0,102,0.13), rgba(255,0,102,0.03) 60%), rgba(26,10,22,0.74);
+  }
+  /* The leaderboard's section bar: pink-tinted strip, solid pink left edge. */
+  .method-head {
+    display: flex; align-items: center; gap: 13px; padding: 13px 24px;
+    border-left: 3px solid rgba(255,0,102,0.35);
+    background: linear-gradient(90deg, rgba(255,0,102,0.14), rgba(255,0,102,0.02));
+    border-bottom: 1px solid var(--border);
+  }
+  .method.primary .method-head {
+    border-left-color: var(--pink);
+    background: linear-gradient(90deg, rgba(255,0,102,0.26), rgba(255,0,102,0.03));
+  }
+  .method-no {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--muted);
+    border: 1px solid var(--border); padding: 4px 9px;
+  }
+  /* .as-track-name: the display face at 0.03em. */
+  .method-name { font-family: var(--display); font-size: 38px; line-height: 1; letter-spacing: 0.03em; color: var(--white); }
+  .method.primary .method-name { color: var(--pink); }
+  .weight { margin-left: auto; text-align: right; }
+  .weight b { display: block; font-family: var(--display); font-weight: 400; font-size: 37px; line-height: 0.95; color: var(--pink); }
+  .method:not(.primary) .weight b { color: rgba(245,240,240,0.6); }
+  .weight small {
+    display: block; font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-top: 2px;
+  }
+  .method-body { padding: 19px 24px 21px; }
+  .method ul { list-style: none; display: grid; gap: 12px; }
+  .method li {
+    font-family: var(--sans); font-size: 19.5px; line-height: 1.58;
+    letter-spacing: 0.004em; font-weight: 400;
+    color: rgba(245,240,240,0.88); padding-left: 23px; position: relative;
+  }
+  .method li::before { content: '▸'; position: absolute; left: 0; top: 0; color: var(--pink); font-size: 13px; }
+  .method li b { color: var(--white); font-weight: 600; }
+  .method li .warn { color: var(--hot-pink); font-weight: 600; }
+
+  /* ── the post to copy ───────────────────────────────────────────────────── */
+  .copy { margin-top: 16px; border: 1px dashed rgba(255,0,102,0.45); border-radius: 10px; padding: 14px 20px; background: rgba(255,0,102,0.07); }
+  .copy-label {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+  }
+  .copy-text { font-family: var(--mono); font-size: 25px; font-weight: 500; color: var(--white); }
+  .copy-text i { font-style: normal; color: var(--pink); }
+
+  /* ── the ask ────────────────────────────────────────────────────────────── */
+  .cta {
+    margin-top: 16px; display: flex; align-items: center; gap: 14px;
+    border: 1px solid rgba(255,0,102,0.45); background: rgba(255,0,102,0.1);
+    border-radius: 12px; padding: 18px 24px;
+  }
+  .cta-mark { color: var(--pink); font-size: 19px; line-height: 1; }
+  .cta-text { font-family: var(--sans); font-size: 18px; line-height: 1.5; color: rgba(245,240,240,0.9); }
+  .cta-text b { color: var(--white); font-weight: 600; }
+
+  /* ── footer ─────────────────────────────────────────────────────────────── */
+  .foot {
+    margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border);
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+  }
+  .foot-note { font-family: var(--sans); font-size: 14.5px; line-height: 1.5; color: var(--muted); max-width: 640px; }
+  .foot-note b { color: rgba(245,240,240,0.8); font-weight: 600; }
+  .foot-url { font-family: var(--display); font-size: 31px; line-height: 0.95; letter-spacing: 0.04em; color: var(--pink); white-space: nowrap; }
+  .foot-url small {
+    display: block; font-family: var(--mono); font-size: 9.5px; font-weight: 400;
+    letter-spacing: 0.2em; color: var(--muted); text-align: right; margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="poster" id="poster">
+
+  <div class="sky">
+    <div class="sky-vig"></div>
+  </div>
+
+  <div class="top">
+    <div class="brand">
+      <img src="/icon-512.png" alt="">
+      <span>Blinks United</span>
+    </div>
+    <div class="top-right">
+      Fans’ Choice Female<br>Round 1 · 12–22 Oct
+    </div>
+  </div>
+
+  <div class="hero">
+    <svg class="gem" viewBox="-1 -1 52 45" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M25,8 C25,3 21,0 16,0 C8,0 2,6 2,14 C2,26 14,34 25,42 C36,34 48,26 48,14 C48,6 42,0 34,0 C29,0 25,3 25,8Z"/><line x1="25" y1="8" x2="25" y2="42"/><line x1="3" y1="22" x2="25" y2="22"/></svg>
+    <div class="eyebrow"><i>✦</i>2026 MAMA Awards<i>✦</i></div>
+    <h1>How to vote<em>for BLACKPINK</em></h1>
+    <div class="sub">Two places to vote, and one is worth nine times the other</div>
+    <div class="deadline">
+      <b>Round 1 closes</b>
+      <span>Oct 22 · 23:59 KST</span>
+    </div>
+  </div>
+
+  <hr class="rule">
+
+  <div class="methods">
+
+    <div class="method primary">
+      <div class="method-head">
+        <span class="method-no">Method 1</span>
+        <span class="method-name">Mnet Plus app</span>
+        <span class="weight"><b>90%</b><small>of the score</small></span>
+      </div>
+      <div class="method-body">
+        <ul>
+          <li>Once a day, from <b>one ID on one device</b> — the day resets at midnight KST.</li>
+          <li>Pick <b>1 to 3 teams</b> in Male <b>and</b> 1 to 3 in Female. Vote <b>BLACKPINK</b> in Female.</li>
+          <li><span class="warn">You must vote in both categories to submit.</span> Filling in one side does not count as a vote.</li>
+          <li>The same artist cannot be picked twice, and you have to see the completion notice for it to count.</li>
+          <li>Only the <b>top 20</b> in each category go through to round 2.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="method">
+      <div class="method-head">
+        <span class="method-no">Method 2</span>
+        <span class="method-name" style="font-family:var(--mono);font-size:29px;font-weight:500;">𝕏</span>
+        <span class="weight"><b>10%</b><small>of the score</small></span>
+      </div>
+      <div class="method-body">
+        <ul>
+          <li>One voting post per account per day, on the KST day — and <span class="warn">only your first post of the day is read</span>, so get it right first time.</li>
+          <li>The post needs <b>both</b> tags, and <b>one artist tag only</b> — several artists in one post voids it entirely.</li>
+          <li>Your account has to be <b>public</b>. A <b>repost</b> of someone else’s valid post counts as your vote too.</li>
+        </ul>
+        <div class="copy">
+          <div class="copy-label">Copy &amp; paste</div>
+          <div class="copy-text">I vote <i>#BLACKPINK</i> <i>#2026MAMAVOTE</i></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- The ask. The two cards explain how to vote; nothing above this says to do
+       it twice, and every day, which is the only thing that actually moves the
+       number. Shaped like the site's .vote-alert — pink-tinted band, warning
+       mark, one sentence. -->
+  <div class="cta">
+    <span class="cta-mark">✦</span>
+    <span class="cta-text">Do <b>both</b>, <b>every day</b> until 22 October. The app vote and the post are counted separately — doing one is leaving the other on the table.</span>
+  </div>
+
+  <div class="foot">
+    <div class="foot-note">
+      Round 2 runs <b>28 Oct – 8 Nov</b> for whoever makes the top 20. Winners at the ceremony,
+      <b>20–21 November</b>, Kyocera Dome Osaka.
+    </div>
+    <div class="foot-url">blinksunited.com<small>/voting</small></div>
+  </div>
+
+</div>
+
+<!-- OUTSIDE #poster, which is the only part the renderer screenshots — so this
+     bar exists for anyone who opens the page and never appears in the image.
+     The page is the poster; this is how you take it away. -->
+<div class="dl-bar">
+  <a class="dl-btn" href="/mama-guide.png" download="blinksunited-2026-mama-voting-guide.png">⬇ Download the guide</a>
+  <span class="dl-note">1080 × 1350 · ready to post on X or Instagram</span>
+</div>
+
+
+</body>
+</html>
