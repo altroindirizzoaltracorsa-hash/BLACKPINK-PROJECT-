@@ -19,7 +19,7 @@
      STYLE: the galaxy is MAMA's, the colours and the furniture are the site's.
      The hero follows /streams and /leaderboard exactly — a centred mono eyebrow
      between ✦ marks, a two-line Bebas headline with the second line in pink, an
-     italic Bodoni subtitle, then a rule — and the method cards echo the
+     italic Cormorant Garamond subtitle, then a hairline rule — and the cards echo the
      leaderboard's section bars: a pink-tinted strip with a solid pink edge.
      Nothing here invents a look the site does not already have.
 
@@ -34,7 +34,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
 <style>
   :root {
@@ -45,7 +45,7 @@
     --border: rgba(255,0,102,0.18);
     --mono: 'DM Mono', monospace;
     --display: 'Bebas Neue', sans-serif;
-    --serif: 'Bodoni Moda', serif;
+    --light-serif: 'Cormorant Garamond', serif;
   }
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -101,27 +101,38 @@
   }
 
   /* ── hero, straight off /streams and /leaderboard ───────────────────────── */
-  .hero { text-align: center; margin-top: 28px; }
+  .hero { text-align: center; margin-top: 14px; }
+  .gem {
+    width: 24px; height: 20px; color: var(--pink); margin: 0 auto 10px;
+    display: block; filter: drop-shadow(0 0 8px rgba(255,0,102,0.5));
+  }
   .eyebrow {
     font-family: var(--mono); font-size: 13px; letter-spacing: 0.3em;
     text-transform: uppercase; color: var(--pink); margin-bottom: 12px;
   }
   .eyebrow i { font-style: normal; opacity: 0.8; margin: 0 10px; }
+  /* .lb-header-title / .as-title: the display face at 0.055em tracking on a
+     0.92 line, second line in pink via a span. The tracking is the tell — at
+     the near-zero spacing this had before, it was Bebas but it was not the
+     site's Bebas. */
   h1 {
-    font-family: var(--display); font-size: 94px; line-height: 0.84;
-    letter-spacing: 0.012em; text-transform: uppercase; color: var(--white);
+    font-family: var(--display); font-size: 86px; line-height: 0.92;
+    letter-spacing: 0.055em; text-transform: uppercase; color: var(--white);
     text-shadow: 0 0 44px rgba(255,0,102,0.3);
   }
   h1 em { display: block; font-style: normal; color: var(--pink); text-shadow: 0 0 52px rgba(255,0,102,0.55); }
+  /* .lb-header-sub / .as-sub: Cormorant Garamond italic at --muted. It was
+     Bodoni Moda here, which is the site's OTHER serif — used for display
+     numerals, never for this line. Wrong face, right idea. */
   .sub {
-    margin-top: 15px; font-family: var(--serif); font-style: italic;
-    font-size: 23px; color: rgba(245,240,240,0.72);
+    margin-top: 15px; font-family: var(--light-serif); font-style: italic;
+    font-size: 23px; color: var(--muted);
   }
 
   /* The deadline is the most time-critical fact on the poster, so it is the one
      solid pink block — nothing else competes with it. */
   .deadline {
-    margin: 20px auto 0; display: inline-flex; align-items: baseline; gap: 15px;
+    margin: 16px auto 0; display: inline-flex; align-items: baseline; gap: 15px;
     background: var(--pink); color: #000; padding: 11px 24px 10px;
     box-shadow: 0 0 46px rgba(255,0,102,0.45);
   }
@@ -131,13 +142,11 @@
   }
   .deadline span { font-family: var(--display); font-size: 34px; line-height: 0.9; letter-spacing: 0.03em; }
 
-  .rule {
-    margin: 24px 0 0; height: 1px; border: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,0,102,0.45), transparent);
-  }
+  /* .lb-header / .as-header close with a flat hairline, not a gradient. */
+  .rule { margin: 18px 0 0; height: 0; border: 0; border-top: 1px solid var(--border); }
 
   /* ── the two methods ────────────────────────────────────────────────────── */
-  .methods { margin-top: 24px; display: grid; gap: 16px; }
+  .methods { margin-top: 18px; display: grid; gap: 14px; }
   /* Translucent over the galaxy rather than a flat panel: the sky has to carry
      through, or this is the site's hero with a picture parked behind it. */
   .method {
@@ -170,8 +179,8 @@
     display: block; font-family: var(--mono); font-size: 9.5px;
     letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-top: 2px;
   }
-  .method-body { padding: 17px 22px 19px; }
-  .method ul { list-style: none; display: grid; gap: 10px; }
+  .method-body { padding: 15px 22px 16px; }
+  .method ul { list-style: none; display: grid; gap: 9px; }
   .method li {
     font-size: 17px; line-height: 1.52; color: rgba(245,240,240,0.84);
     padding-left: 23px; position: relative;
@@ -231,6 +240,7 @@
   </div>
 
   <div class="hero">
+    <svg class="gem" viewBox="-1 -1 52 45" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M25,8 C25,3 21,0 16,0 C8,0 2,6 2,14 C2,26 14,34 25,42 C36,34 48,26 48,14 C48,6 42,0 34,0 C29,0 25,3 25,8Z"/><line x1="25" y1="8" x2="25" y2="42"/><line x1="3" y1="22" x2="25" y2="22"/></svg>
     <div class="eyebrow"><i>✦</i>2026 MAMA Awards<i>✦</i></div>
     <h1>How to vote<em>for BLACKPINK</em></h1>
     <div class="sub">Two places to vote, and one is worth nine times the other</div>

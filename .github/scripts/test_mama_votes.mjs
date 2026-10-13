@@ -567,6 +567,30 @@ console.log('\n--- the panel');
     // the prose about it will fail every time someone documents the decision.
     check(!/<script[^>]+i18n\.js/.test(guide),
           'the poster loads no i18n runtime, so no picker is rendered into the image');
+
+    // THE POSTER'S HERO IS THE SITE'S HERO. /streams (.as-title/.as-sub) and
+    // /leaderboard (.lb-header-title/.lb-header-sub) share one recipe, and the
+    // poster is supposed to be a third copy of it. It was not: the headline
+    // shipped at 0.012em tracking against the site's 0.055em, and the subtitle
+    // in Bodoni Moda — the site's OTHER serif, used for display numerals and
+    // never for this line. Both read as "nearly right", which is the hardest
+    // kind of wrong to notice, so the values are compared against index.html
+    // rather than written down here.
+    const site = readFileSync(root + 'index.html', 'utf8');
+    const siteTrack = (site.match(/\.as-title\s*\{[^}]*letter-spacing:\s*([\d.]+)em/) || [])[1];
+    const posterTrack = (guide.match(/\bh1\s*\{[^}]*letter-spacing:\s*([\d.]+)em/) || [])[1];
+    check(siteTrack && posterTrack && Math.abs(+siteTrack - +posterTrack) <= 0.01,
+          `the headline is tracked like the site's (${posterTrack}em vs /streams ${siteTrack}em)`);
+    check(/\.as-sub\s*\{[^}]*var\(--light-serif\)/.test(site) && /\.sub\s*\{[^}]*var\(--light-serif\)/.test(guide),
+          'and the subtitle uses the same serif the site uses, not the other one');
+    // Matched on a font-family DECLARATION and on the webfont request, not on
+    // the bare word: the file explains in a comment why Bodoni is the wrong
+    // serif here, and a check that cannot tell CSS from the prose about it
+    // fails every time someone writes the reason down. Second time this exact
+    // shape of over-broad match has bitten in this file.
+    check(!/font-family:[^;]*Bodoni/.test(guide) && !/family=Bodoni/.test(guide),
+          'with no Bodoni actually used or loaded');
+    check(/Cormorant\+Garamond/.test(guide), 'and Cormorant Garamond actually loaded');
   }
 
   await back.goto('https://www.blinksunited.com/voting#nonsense', { waitUntil: 'domcontentloaded' });

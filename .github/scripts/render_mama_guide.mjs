@@ -37,7 +37,7 @@ await page.evaluate(() => document.fonts.ready);
 const fonts = await page.evaluate(() => ({
   display: document.fonts.check('100px "Bebas Neue"'),
   mono: document.fonts.check('16px "DM Mono"'),
-  serif: document.fonts.check('italic 25px "Bodoni Moda"'),
+  serif: document.fonts.check('italic 25px "Cormorant Garamond"'),
 }));
 for (const [k, ok] of Object.entries(fonts)) {
   if (!ok) { console.error(`FAILED: the ${k} webfont did not load — not writing a poster in a fallback face.`); process.exit(1); }
