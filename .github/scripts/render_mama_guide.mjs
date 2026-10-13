@@ -43,9 +43,22 @@ for (const [k, ok] of Object.entries(fonts)) {
   if (!ok) { console.error(`FAILED: the ${k} webfont did not load — not writing a poster in a fallback face.`); process.exit(1); }
 }
 
-// The star field is painted by a script in the page. Screenshotting before it
-// has run gives a poster with an empty sky and no error anywhere.
-await page.waitForFunction(() => document.documentElement.dataset.starsDrawn === '1', null, { timeout: 10000 });
+// The sky is a background image. Screenshotting before it decodes gives a
+// poster on flat near-black with no error anywhere, which looks deliberate
+// enough to ship by mistake.
+// Awaited via decode() rather than polling `complete`: a freshly constructed
+// Image is never complete in the same tick it is given a src, so a polling
+// version of this check can only ever time out.
+const skyW = await page.evaluate(async () => {
+  const el = document.querySelector('.sky');
+  const url = (getComputedStyle(el).backgroundImage.match(/url\("([^"]+)"\)/) || [])[1];
+  if (!url) return 0;
+  const im = new Image();
+  im.src = url;
+  try { await im.decode(); } catch (e) { return 0; }
+  return im.naturalWidth;
+});
+if (!skyW) { console.error('FAILED: the sky image did not load — the poster would render on flat black.'); process.exit(1); }
 
 const el = await page.$('#poster');
 const box = await el.boundingBox();

@@ -64,24 +64,23 @@
   }
 
   /* ── the galaxy ──────────────────────────────────────────────────────────
-     MAMA's deep-space look, recoloured. Theirs is blue; this is the site's
-     #FF0066 and #FF2D8A over near-black, with cold violet mixed into the dim
-     parts so the pink has something to be pink against — an all-pink nebula
-     reads as a gradient, not as space.
+     MAMA's own sky, recoloured into the site's palette. Built by
+     .github/scripts/make_mama_sky.py, which takes their vote-guide graphic,
+     patches out the MAMA wordmark and the VISA line, clears their body copy
+     from the middle, and remaps the whole thing from blue-white through a pink
+     ramp. That script is where the reasoning lives; mama-sky.png is its output
+     and the only part kept in the repo.
 
-     THE CLOUDS ARE DRAWN, NOT GRADIENTS. The first version stacked big soft
-     radial-gradients, and soft circles are exactly what they look like: halos,
-     not a galaxy. Real nebulae are filamentary — wispy strands with hard edges
-     against empty black — and no number of overlapping ellipses gets there,
-     because the thing that is missing is structure, not softness. So the sky is
-     painted with ridged fractal noise on a canvas (see the script below), which
-     is what produces strands.
+     Two generated versions came before it — soft radial gradients, then ridged
+     fractal noise with domain warping. The noise one had the right kind of
+     structure and still was not theirs, which is what was being asked for.
 
-     What stays in CSS is only the vignette, which pulls the corners down so the
-     small print holds up. All of it is decoration and none of it may win
-     against the type. */
-  .sky { position: absolute; inset: 0; z-index: 0; background: #05020a; }
-  .sky-stars { position: absolute; inset: 0; }
+     The vignette stays on top because the recoloured plate is still bright at
+     the very edges, and the small print has to hold up against it. */
+  .sky {
+    position: absolute; inset: 0; z-index: 0;
+    background: #05020a url('/mama-sky.png') center / cover no-repeat;
+  }
   .sky-vig {
     position: absolute; inset: 0;
     background: radial-gradient(120% 92% at 50% 46%, rgba(3,1,6,0.18) 20%, rgba(3,1,6,0.42) 62%, rgba(3,1,6,0.82) 100%);
@@ -218,7 +217,6 @@
 <div class="poster" id="poster">
 
   <div class="sky">
-    <canvas class="sky-stars" id="stars" width="1080" height="1350"></canvas>
     <div class="sky-vig"></div>
   </div>
 
@@ -303,155 +301,6 @@
 
 </div>
 
-<script>
-// The star field.
-//
-// SEEDED, not random. The poster is re-rendered whenever the rules or the dates
-// change, and a fresh scatter every time would make each render a different
-// image — a round 2 version should differ from round 1 in the words that
-// changed, not in the sky. mulberry32 with a fixed seed gives the same field on
-// every machine and every run.
-//
-// Drawn to a canvas rather than built from DOM nodes: six hundred absolutely
-// positioned divs is six hundred more elements for the renderer's clipping
-// check to walk, and they are decoration, not content.
-(function () {
-  function mulberry32(a) {
-    return function () {
-      a |= 0; a = a + 0x6D2B79F5 | 0;
-      let t = Math.imul(a ^ a >>> 15, 1 | a);
-      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-  }
-  const c = document.getElementById('stars');
-  const g = c.getContext('2d');
-  const rnd = mulberry32(20261022);   // round 1's closing date, for luck
 
-  // ── the nebula ───────────────────────────────────────────────────────────
-  // Ridged fractal noise. Plain fBm gives soft puffy cloud, which is the same
-  // problem the radial gradients had; folding it at the midpoint
-  // (1 - |2v-1|) turns the fold line into a crease, and stacking octaves of
-  // creases is what reads as filaments. The power curve afterwards decides how
-  // much black is left between the strands — without it the whole frame fogs
-  // over and the type loses its contrast.
-  //
-  // Computed at a sixth of the poster's size and scaled up with smoothing:
-  // 180x225 is 40k pixels instead of 1.4M, and the upscale supplies the
-  // softness that a nebula wants anyway.
-  function makeGrid(gw, gh) {
-    const a = new Float32Array(gw * gh);
-    for (let i = 0; i < a.length; i++) a[i] = rnd();
-    return { a: a, gw: gw, gh: gh };
-  }
-  function smooth(t) { return t * t * (3 - 2 * t); }
-  function sample(grid, u, v) {
-    const x = u * grid.gw, y = v * grid.gh;
-    const x0 = Math.floor(x), y0 = Math.floor(y);
-    const fx = smooth(x - x0), fy = smooth(y - y0);
-    const at = function (xx, yy) {
-      return grid.a[(((yy % grid.gh) + grid.gh) % grid.gh) * grid.gw + (((xx % grid.gw) + grid.gw) % grid.gw)];
-    };
-    const v00 = at(x0, y0), v10 = at(x0 + 1, y0), v01 = at(x0, y0 + 1), v11 = at(x0 + 1, y0 + 1);
-    return (v00 * (1 - fx) + v10 * fx) * (1 - fy) + (v01 * (1 - fx) + v11 * fx) * fy;
-  }
-  // The grids are WIDER THAN THEY ARE TALL relative to the frame, which
-  // stretches every feature along one axis. Isotropic noise gives round clumps
-  // of filament; real nebulae — and the reference's — have gas streaming in a
-  // direction. This is the cheap half of that.
-  const OCT = [makeGrid(4, 3), makeGrid(8, 5), makeGrid(15, 10), makeGrid(29, 19), makeGrid(57, 37), makeGrid(113, 73)];
-  // Two small grids used only to push the sampling point around.
-  const WARP_X = makeGrid(5, 4), WARP_Y = makeGrid(4, 5);
-
-  function ridged(u, v) {
-    // DOMAIN WARPING: sample the noise at a point that has itself been moved by
-    // other noise. This is the expensive half, and it is the one that matters —
-    // it bends the strands into streams and curls instead of leaving them as
-    // concentric rings, which is the difference between "fractal texture" and
-    // "gas". Skewed so the drift runs diagonally, the way the reference's does.
-    const wx = (sample(WARP_X, u, v) - 0.5), wy = (sample(WARP_Y, u, v) - 0.5);
-    u = u + wx * 0.34 + wy * 0.12;
-    v = v + wy * 0.22 - wx * 0.10;
-
-    let sum = 0, amp = 0.55, norm = 0;
-    for (let o = 0; o < OCT.length; o++) {
-      const n = sample(OCT[o], u, v);
-      sum += (1 - Math.abs(n * 2 - 1)) * amp;   // the fold that makes the strands
-      norm += amp;
-      amp *= 0.55;
-    }
-    return sum / norm;
-  }
-
-  const NW = 180, NH = 225;
-  const off = document.createElement('canvas');
-  off.width = NW; off.height = NH;
-  const og = off.getContext('2d');
-  const img = og.createImageData(NW, NH);
-
-  for (let y = 0; y < NH; y++) {
-    for (let x = 0; x < NW; x++) {
-      const u = x / NW, v = y / NH;
-
-      // Where the cloud is allowed to be. The reference keeps the middle of the
-      // frame clear and packs the gas around the edges, which is also exactly
-      // what this poster needs: the headline and the rules sit in that clear
-      // band, and a nebula drifting across them would cost more than it adds.
-      const dx = (u - 0.5) * 2, dy = (v - 0.5) * 2;
-      const d = Math.sqrt(dx * dx + dy * dy * 0.82);
-      let mask = Math.min(1, Math.pow(Math.max(0, d - 0.52) / 0.62, 2.3));
-
-      let n = ridged(u, v);
-      n = Math.pow(Math.max(0, n - 0.46) / 0.54, 2.1);   // cut the haze, keep the strands
-      const a = Math.min(1, n * mask * 1.55);
-      if (a <= 0.004) { img.data[(y * NW + x) * 4 + 3] = 0; continue; }
-
-      // Dim gas is violet, bright gas is the site's pink going to near-white at
-      // the cores — the same progression a real emission nebula photographs
-      // with, and it keeps #FF0066 as the colour the eye actually names.
-      let r, gr, bl;
-      if (a < 0.45) {
-        const t = a / 0.45;
-        r = 96 + t * 159; gr = 22 + t * -22; bl = 112 + t * -10;
-      } else {
-        const t = (a - 0.45) / 0.55;
-        r = 255; gr = 0 + t * 165; bl = 102 + t * 110;
-      }
-      const i = (y * NW + x) * 4;
-      img.data[i] = r; img.data[i + 1] = gr; img.data[i + 2] = bl;
-      img.data[i + 3] = Math.round(a * 205);
-    }
-  }
-  og.putImageData(img, 0, 0);
-  g.imageSmoothingEnabled = true;
-  g.imageSmoothingQuality = 'high';
-  g.drawImage(off, 0, 0, 1080, 1350);
-
-  // Most stars are small, dim and white; about a quarter are pink, because the
-  // nebula is pink and a sky of pure white dots sits on top of it rather than
-  // in it. The exponent on the radius keeps the big ones rare.
-  for (let i = 0; i < 620; i++) {
-    const x = rnd() * 1080, y = rnd() * 1350;
-    const r = Math.pow(rnd(), 2.4) * 1.7 + 0.25;
-    const a = 0.16 + Math.pow(rnd(), 1.6) * 0.72;
-    const pink = rnd() < 0.26;
-    g.beginPath();
-    g.arc(x, y, r, 0, Math.PI * 2);
-    g.fillStyle = pink ? 'rgba(255,150,195,' + a + ')' : 'rgba(255,245,250,' + a + ')';
-    g.fill();
-  }
-  // A handful bright enough to carry a glow, so the field has some depth.
-  for (let i = 0; i < 16; i++) {
-    const x = rnd() * 1080, y = rnd() * 1350, r = 1.1 + rnd() * 1.5;
-    const grd = g.createRadialGradient(x, y, 0, x, y, r * 11);
-    grd.addColorStop(0, 'rgba(255,255,255,0.95)');
-    grd.addColorStop(0.18, 'rgba(255,140,190,0.42)');
-    grd.addColorStop(1, 'rgba(255,0,102,0)');
-    g.fillStyle = grd;
-    g.beginPath(); g.arc(x, y, r * 11, 0, Math.PI * 2); g.fill();
-  }
-  document.documentElement.dataset.starsDrawn = '1';
-})();
-</script>
 </body>
 </html>
