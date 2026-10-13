@@ -569,6 +569,41 @@ console.log('\n--- the panel');
     .filter((c) => /[<>]/.test(c.bad)).map((c) => c.id));
   check(tagLeak.length === 0, `no campaign's rules leave markup in a caption (${tagLeak.join(', ') || 'all clean'})`);
 
+  // BreakTudo and Kids' Choice get their own captions too. Unlike MAMA's these
+  // are NOT votes — those awards are voted on their own sites — so what each
+  // has to carry is the one rule that costs people a vote there.
+  const others = await page.evaluate(() => ['breaktudo-2026', 'kca-2026'].map((id) => {
+    const c = VOTE_CAMPAIGNS.find((x) => x.id === id);
+    const t = c.shareText(c);
+    return { id, t, w: xWeight(t) };
+  }));
+  for (const o of others) {
+    check(o.w <= 280, `${o.id}'s caption fits a post (${o.w} weighted chars)`);
+    check(!/[<>]/.test(o.t), `and carries no markup`);
+    check(/blinksunited|breaktudoawards|kca\.nick/.test(o.t), 'and says where to go');
+  }
+  check(/Cloudflare/.test(others[0].t) && /Enviar Votos/.test(others[0].t),
+        'BreakTudo says votes go in batches behind the Cloudflare check');
+  check(/EVERY category/.test(others[1].t) && /nothing is submitted/.test(others[1].t),
+        'and Kids’ Choice says nothing submits until the round is finished');
+  // These two must NOT look like MAMA's, which is a vote in itself. Telling
+  // people to post a hashtag for an award that is not counted that way sends
+  // them to do something useless.
+  check(!others.some((o) => /2026MAMAVOTE/.test(o.t)),
+        'and neither pretends a hashtag is a vote');
+  // The nominee names in the Kids' Choice caption are read off the data, so a
+  // longer one could push it past 280. It names them when they fit and counts
+  // them when they do not, rather than overflowing — checked by adding one.
+  const fellBack = await page.evaluate(() => {
+    const c = VOTE_CAMPAIGNS.find((x) => x.id === 'kca-2026');
+    const fat = { deadline: c.deadline, categories: c.categories.concat([{ name: 'X',
+      nominees: [{ name: 'A Really Very Long Nominee Name That Will Not Fit At All' }] }]) };
+    const t = kcaShareText(fat);
+    return { w: xWeight(t), named: /ROSÉ/.test(t) };
+  });
+  check(fellBack.w <= 280 && !fellBack.named,
+        `and falls back to a count rather than overflowing when the names grow (${fellBack.w} chars)`);
+
   // ── THE SHAREABLE GUIDE ─────────────────────────────────────────────────
   // mama-guide.html is rendered to a PNG and posted. A poster is the worst
   // place for a stale fact: it keeps circulating after the page is fixed, and

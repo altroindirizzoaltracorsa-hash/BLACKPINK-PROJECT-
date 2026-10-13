@@ -8402,10 +8402,68 @@ function mamaShareText() {
   ].join('\n');
 }
 
+// ── the other two captions ──────────────────────────────────────────────────
+// BreakTudo and Kids' Choice are not hashtag votes — you vote on their own
+// sites — so unlike MAMA's these captions are not themselves votes and must not
+// pretend to be. What they do instead is carry the one rule that costs people a
+// vote on each (BreakTudo: votes go in batches and need the Cloudflare check
+// before "Enviar Votos"; Kids' Choice: nothing submits until the whole round is
+// finished), the deadline, and where to go.
+//
+// Dates and nomination counts are read off the campaign rather than typed, so a
+// corrected deadline or an added category updates the caption by itself.
+function shareDay(iso, tz) {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: 'numeric', month: 'short' }).format(new Date(iso));
+}
+// What X will count this as. A URL is 23 characters whatever its length, and
+// most emoji are two. Used to keep a caption inside the 280 an account without
+// a subscription gets, rather than guessing from .length and being wrong by the
+// width of a link.
+function xWeight(text) {
+  const noUrl = String(text).replace(/\S*\.(com|tv|world|net|org)\S*/g, '');
+  const emoji = (noUrl.match(/\p{Extended_Pictographic}/gu) || []).length;
+  const urls = (String(text).match(/\S*\.(com|tv|world|net|org)\S*/g) || []).length;
+  return [...noUrl].length + emoji + urls * 23;
+}
+function breaktudoShareText(c) {
+  const n = c.categories.length;
+  return [
+    `🗳️ BreakTudo Awards — BLACKPINK & the members, ${n} nominations`,
+    '',
+    '📍 vote.breaktudoawards.com · no app, no account',
+    '🔁 No vote limit — vote in 5s, pass the Cloudflare check, hit “Enviar Votos”, repeat',
+    `⏰ Ends ${shareDay(c.deadline, 'America/Sao_Paulo')}, 23:59 BRT`,
+    '',
+    '#BLACKPINK #BreakTudoAwards',
+  ].join('\n');
+}
+function kcaShareText(c) {
+  const body = (head) => [
+    head,
+    '',
+    '📍 kca.nick.tv/vote · no account, no vote limit',
+    '⚠️ Vote EVERY category to the end — nothing is submitted until you finish the round',
+    `⏰ Voting runs to ${shareDay(c.deadline, 'America/Los_Angeles')}`,
+    '',
+    '#BLACKPINK #KidsChoiceAwards',
+  ].join('\n');
+
+  // Naming the nominees is better than counting them, but the names are read
+  // off the data and one long one ("Dracula (with JENNIE)" is already 21
+  // characters) can push this past 280. So: name them if they fit, count them
+  // if they do not. The alternative is a caption that silently loses its
+  // deadline the day somebody adds a category.
+  const who = c.categories.flatMap((k) => k.nominees.map((x) => x.name.replace(/^.*— /, ''))).join(', ');
+  const named = body(`🗳️ Kids’ Choice Awards — ${who} are nominated`);
+  if (xWeight(named) <= 280) return named;
+  return body(`🗳️ Kids’ Choice Awards — BLACKPINK are up for ${c.categories.length} awards`);
+}
+
 // ── VOTE CAMPAIGNS ───────────────────────────────────────────
 const VOTE_CAMPAIGNS = [
   {
     id: 'kca-2026',
+    shareText: kcaShareText,
     platform: 'Nickelodeon Kids’ Choice Awards',
     title: '2026 Kids’ Choice Awards',
     url: 'https://kca.nick.tv/vote/',
@@ -8539,6 +8597,7 @@ const VOTE_CAMPAIGNS = [
   },
   {
     id: 'breaktudo-2026',
+    shareText: breaktudoShareText,
     platform: 'BreakTudo Awards',
     title: 'BreakTudo Awards 2026',
     url: 'https://vote.breaktudoawards.com/',
@@ -18806,8 +18865,9 @@ async function shareCard() {
   // underneath. See mamaShareText().
   const ownShare = _cardType === 'vote'
     ? VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId)?.shareText : null;
+  const shareCampaign = _cardType === 'vote' ? VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId) : null;
   const text = ownShare
-    ? (typeof ownShare === 'function' ? ownShare() : ownShare)
+    ? (typeof ownShare === 'function' ? ownShare(shareCampaign) : ownShare)
     : title + '\n🖤💗 #BLACKPINK #BLINKSUNITED\n' + rulesText + statsText + link;
   // Mobile: Web Share API with image file
   if (typeof navigator.share === 'function') {
