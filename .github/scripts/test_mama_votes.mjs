@@ -412,6 +412,71 @@ console.log('\n--- the panel');
   check(/manual_linking_disabled/.test(shown),
         `the reason X sent back is on the page (${shown.slice(0, 90) || 'nothing'})`);
 
+  // ── THE CAMPAIGN CARD ───────────────────────────────────────────────────
+  // The nominations used to exist only inside the MAMA tab, so a blink reading
+  // the BreakTudo or Kids' Choice tab never saw that MAMA was happening at all
+  // — every other award on this page has a standing box of its own and MAMA
+  // did not. The card is that box.
+  console.log('\n--- the campaign card');
+  const card = await page.evaluate(() => {
+    const c = [...document.querySelectorAll('.vote-card')]
+      .find((x) => /MAMA/i.test((x.querySelector('.vote-platform') || {}).textContent || ''));
+    if (!c) return null;
+    return {
+      deadline: (c.querySelector('.vote-deadline') || {}).textContent || '',
+      votable: [...c.querySelectorAll('.vote-cat-link')].length,
+      locked: [...c.querySelectorAll('.vote-cat-pro')].length,
+      rows: [...c.querySelectorAll('.vote-cat-row')].length,
+      chips: [...c.querySelectorAll('.vote-chip')].map((n) => n.textContent.trim()),
+      rules: (c.querySelector('.vote-rules') || {}).textContent || '',
+      href: (c.querySelector('.vote-btn') || {}).href || '',
+      linkColour: (() => {
+        const a = c.querySelector('.vote-rules a');
+        return a ? getComputedStyle(a).color : null;
+      })(),
+    };
+  });
+  check(!!card, 'MAMA has a campaign box like the other awards, not just a tab');
+  check(card && card.rows === 4 && card.votable === 1 && card.locked === 3,
+        `with all four nominations, one votable and three marked judged (${card && card.rows} rows, ${card && card.votable} link, ${card && card.locked} locked)`);
+  // Derived from MAMA_NOMS, so the card and the tab cannot come to list
+  // different nominations — which is the bug this card would otherwise add a
+  // second copy of.
+  const noms2 = await page.evaluate(() => MAMA_NOMS.map((n) => n.who));
+  check(card && JSON.stringify(card.chips) === JSON.stringify(noms2),
+        `and they are read from the same list the tab uses (${(card && card.chips || []).join(' / ')})`);
+  check(card && /90%/.test(card.rules) && /#2026MAMAVOTE/.test(card.rules) && /first<?\/?b?>? voting post|first voting post/.test(card.rules.replace(/\s+/g, ' ')),
+        'the card carries the rules that cost a vote, not just the dates');
+  check(card && /mnetplus\.world/.test(card.href), `and Vote Now goes to Mnet Plus (${card && card.href})`);
+  check(card && card.linkColour && card.linkColour !== 'rgb(0, 0, 238)',
+        `the rules link is styled, not browser-default blue (${card && card.linkColour})`);
+
+  // ONE SOURCE FOR THE DATES. BreakTudo shipped 02:53Z on the card and 02:59Z
+  // on the tab and the countdown hit zero six minutes early; this is the same
+  // shape of bug, made impossible rather than fixed again.
+  check(await page.evaluate(() => VV_AWARD_CLOSES.mama === MAMA_ROUNDS[MAMA_ROUNDS.length - 1].to),
+        'the tab closes on the same instant the rounds data says the last round ends');
+
+  // THE SIX-DAY HOLE. A single deadline cannot express two rounds with a gap,
+  // so the card picks one per state. Each is checked at a moment inside it.
+  const timing = await page.evaluate(() => {
+    const at = (s) => mamaCardTiming(Date.parse(s));
+    return {
+      r1:   at('2026-10-15T00:00:00Z'),
+      gap:  at('2026-10-25T00:00:00Z'),
+      r2:   at('2026-11-01T00:00:00Z'),
+      over: at('2026-12-01T00:00:00Z'),
+      ends: MAMA_ROUNDS.map((r) => new Date(r.to).toISOString()),
+    };
+  });
+  check(timing.r1.deadline === timing.ends[0],
+        'inside round 1 the countdown runs to round 1’s end, not to November');
+  check(timing.r2.deadline === timing.ends[1], 'inside round 2 it runs to round 2’s end');
+  check(timing.gap.deadline === timing.ends[1] && /paused/i.test(timing.gap.restriction || ''),
+        `between the rounds it says voting is paused (${timing.gap.restriction || 'no warning'})`);
+  check(Date.parse(timing.over.deadline) < Date.parse('2026-12-01T00:00:00Z'),
+        'and once it is over the date is in the past, so the card files itself away');
+
   await back.goto('https://www.blinksunited.com/voting#nonsense', { waitUntil: 'domcontentloaded' });
   await back.waitForTimeout(1200);
   check(await back.evaluate(() => _vvAward) !== 'nonsense',

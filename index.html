@@ -2230,6 +2230,12 @@
   .vote-chip.us { color: var(--pink); border-color: var(--pink); background: var(--pink-muted); }
   .vote-cat-link { display: inline-block; font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em; color: var(--pink); text-decoration: none; border: 1px solid rgba(255,0,102,0.45); padding: 0.15rem 0.5rem; margin-left: 0.55rem; vertical-align: middle; text-transform: none; transition: background 0.2s, color 0.2s; }
   .vote-cat-link:hover { background: var(--pink); color: #000; }
+  /* A category on the card that a vote cannot move — judged, or judged plus
+     data. Deliberately shaped like the "Vote ↗" link it replaces and coloured
+     like the surrounding text rather than the pink: it sits where the eye
+     already looks for the thing to tap, and has to read as "nothing to do
+     here" at a glance. Same idea as the VMA card's 🔒 industry-panel noms. */
+  .vote-cat-pro { display: inline-block; font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em; color: var(--muted); border: 1px solid var(--border); padding: 0.15rem 0.5rem; margin-left: 0.55rem; vertical-align: middle; text-transform: none; }
 
   /* A rule that COSTS THE VOTE if it is missed, as opposed to the reference
      material in .vote-rules. Bigger, brighter, and sat immediately above the
@@ -2259,6 +2265,11 @@
   .vote-rules ul { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
   .vote-rules li { font-size: 0.7rem; color: rgba(245,240,240,0.65); line-height: 1.4; padding-left: 1rem; position: relative; }
   .vote-rules li::before { content: '·'; position: absolute; left: 0; color: var(--pink); }
+  /* A rules line may carry a link (MAMA's points at our own board). Without
+     this it renders in the browser default — blue, underlined, and the one
+     thing on a pink-on-black card that looks like it was pasted in by mistake. */
+  .vote-rules a { color: var(--pink); text-decoration: none; border-bottom: 1px solid rgba(255,0,102,0.4); }
+  .vote-rules a:hover { border-bottom-color: var(--pink); }
 
   .vote-btn {
     display: inline-flex; align-items: center; gap: 0.5rem;
@@ -8276,6 +8287,49 @@ const MILESTONE_TRACK_IDS = (EP_IN_MILESTONES
   : [...CAMPAIGN_TRACK_IDS]).concat('sawadika', 'click', 'newtrick');
 function milestoneTotalOf(tp) { return MILESTONE_TRACK_IDS.reduce((s, id) => s + (tp?.[id] || 0), 0); }
 
+// ── MAMA's two rounds, in one place ─────────────────────────────────────────
+// The same two windows api/mama-votes.js enforces. THE SERVER IS THE AUTHORITY
+// — it decides whether a vote is counted; these exist so the page can say the
+// same thing it does. The campaign card's countdown and the award tab's close
+// time both read from here instead of each carrying its own copy of the date.
+//
+// Not hypothetical tidiness: BreakTudo shipped with 02:53Z on the card and
+// 02:59Z on the tab, and the card's countdown hit zero six minutes before the
+// ballot actually shut. Two copies of a date is two chances to be wrong.
+const MAMA_ROUNDS = [
+  { n: 1, from: Date.parse('2026-10-12T10:00:00Z'), to: Date.parse('2026-10-22T14:59:59Z') },
+  { n: 2, from: Date.parse('2026-10-28T09:00:00Z'), to: Date.parse('2026-11-08T14:59:59Z') },
+];
+
+// What the campaign card should count down to, and what to warn about.
+//
+// THREE STATES, because a two-round vote with a six-day hole in the middle has
+// three and the card only knows about one date. Counting down to round 2's end
+// the whole way through would run a live countdown across the gap, next to a
+// Vote Now button, while the ballot is shut. Counting down to round 1's end
+// would file the whole card under Past Votings on 22 Oct and hide round 2
+// entirely.
+//
+// So: inside a round, count to that round's end. Between rounds, count to the
+// next round's end but say in the card's warning line that voting is paused —
+// the countdown is then honest about the last moment that matters, and the
+// warning covers the part a countdown cannot express. After the last round,
+// the date is in the past and the card files itself away, which is correct.
+function mamaCardTiming(now = Date.now()) {
+  const iso = (t) => new Date(t).toISOString();
+  const open = MAMA_ROUNDS.find((r) => now >= r.from && now <= r.to);
+  if (open) return { deadline: iso(open.to), round: open.n };
+  const next = MAMA_ROUNDS.find((r) => now < r.from);
+  if (next) {
+    const when = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Seoul', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: false,
+    }).format(new Date(next.from));
+    return { deadline: iso(next.to), round: next.n,
+             restriction: `Round ${next.n} opens ${when} KST — voting is paused until then` };
+  }
+  return { deadline: iso(MAMA_ROUNDS[MAMA_ROUNDS.length - 1].to) };
+}
+
 // ── VOTE CAMPAIGNS ───────────────────────────────────────────
 const VOTE_CAMPAIGNS = [
   {
@@ -8329,6 +8383,51 @@ const VOTE_CAMPAIGNS = [
       { name: 'Favorite Music Collaboration',
         nominees: [{ name: 'Tame Impala, JENNIE — “Dracula (with JENNIE)”', us: true }] },
     ],
+  },
+  {
+    id: 'mama-2026',
+    platform: '2026 MAMA AWARDS',
+    title: 'Fans’ Choice',
+    // The Mnet Plus platform home, NOT a guessed deep link into the ballot.
+    // mnetplus.world is confirmed as Mnet Plus's own domain; the path to this
+    // year's voting page inside the app is not, and a dead link on the one
+    // button that matters is worse than one extra tap.
+    url: 'https://www.mnetplus.world/',
+    image: '/vote-blackpink-ot4.jpg',
+    // Both the countdown and the pause warning come from MAMA_ROUNDS above, so
+    // this card cannot disagree with the award tab or with the API about when
+    // voting is open. Spread at load: the page reloads often enough, and a tab
+    // left open across a round boundary shows "VOTING CLOSED", which is true of
+    // the round it was counting.
+    ...mamaCardTiming(),
+    alert: '<b>Mnet Plus is 90% of this.</b> X is the other 10% — if you only do one thing, vote in the app, and remember a session does not submit until you have voted in <b>both</b> Male and Female.',
+    rules: [
+      '<b>Mnet Plus app — 90%.</b> Once a day from one ID on one device. Pick <b>1 to 3 teams</b> in Male <i>and</i> 1 to 3 in Female; the same artist cannot be picked twice, and nothing submits until both sides are filled in',
+      '<b>X — 10%.</b> One post a day carrying <b>#2026MAMAVOTE</b> and <b>#BLACKPINK</b>. Only your <b>first</b> voting post of the day is read, so get it right first time — a repost of someone else’s valid post counts just the same',
+      'Your X account has to be <b>public</b>, and a post naming several artists is <b>not counted at all</b>',
+      '<b>Round 1</b> 12 Oct 19:00 – 22 Oct 23:59 KST — the <b>top 20</b> go through. <b>Round 2</b> 28 Oct 18:00 – 8 Nov 23:59 KST',
+      'Winners at the ceremony, <b>20–21 Nov</b>, Kyocera Dome Osaka',
+      '<a href="/voting?award=mama">Log your X vote on our board →</a> — it is the one award here we can count, because the X account is the vote',
+    ],
+    // DERIVED from MAMA_NOMS rather than restated, so the card and the MAMA tab
+    // cannot list different nominations — the thing this card exists to fix is
+    // that they were only in one place, and two copies would be a worse version
+    // of the same bug.
+    //
+    // A GETTER because MAMA_NOMS is declared further down the file, with the
+    // rest of the MAMA panel. VOTE_CAMPAIGNS is initialised at load, so reading
+    // it eagerly here would hit the temporal dead zone and throw; a getter is
+    // not read until a card is built, by which time everything exists.
+    get categories() {
+      return MAMA_NOMS.map((n) => ({
+        name: n.cat,
+        // Only the fan vote gets a link. Everything else is judged, and `pro`
+        // puts the 🔒 where the Vote button would have been.
+        url: n.fanVote ? 'https://www.mnetplus.world/' : undefined,
+        pro: !n.fanVote,
+        nominees: [{ name: n.who, us: true }],
+      }));
+    },
   },
   {
     id: 'tiff-peoples-choice-2026',
@@ -8713,7 +8812,15 @@ function renderVoteCampaigns() {
         <div class="vote-cat-row">
           ${cat.thumb ? `<img class="vote-cat-thumb" src="${cat.thumb}" alt="" loading="lazy">` : ''}
           <div class="vote-cat-text">
-            <div class="vote-category-name"><span data-no-i18n>${cat.name}</span>${cat.url && !ended ? ` <a class="vote-cat-link" href="${cat.url}" target="_blank" rel="noopener noreferrer">Vote ↗</a>` : ''}</div>
+            <div class="vote-category-name"><span data-no-i18n>${cat.name}</span>${
+              // `pro` wins over `url`: a category nobody can vote in must never
+              // offer a Vote link, whatever else the entry says. MAMA is the
+              // first card where most rows are like this — four nominations,
+              // one of them a fan vote — and a card that showed four and said
+              // nothing would send people to campaign at a jury.
+              cat.pro
+                ? ` <span class="vote-cat-pro" title="Judged — not a fan vote">🔒 not a fan vote</span>`
+                : (cat.url && !ended ? ` <a class="vote-cat-link" href="${cat.url}" target="_blank" rel="noopener noreferrer">Vote ↗</a>` : '')}</div>
             <div class="vote-nominees" data-no-i18n>
               ${cat.nominees.map(n => `<span class="vote-chip ${n.us ? 'us' : ''}">${n.name}</span>`).join('')}
             </div>
@@ -8981,10 +9088,12 @@ const VV_AWARD_CLOSES = {
   vma:       VMA_CLOSES_AT,
   breaktudo: Date.parse('2026-10-18T02:59:00Z'),
   kca:       Date.parse('2026-11-14T07:59:00Z'),
-  //   • MAMA — the end of round 2, 8 Nov 23:59 KST, per MAMA's own account.
-  //     The server has its own copy in api/mama-votes.js and is the one that
-  //     refuses a vote; this only decides where the tab sits.
-  mama:      Date.parse('2026-11-08T14:59:59Z'),
+  //   • MAMA — the end of the LAST round, read off MAMA_ROUNDS rather than
+  //     written again here. The server has its own copy in api/mama-votes.js
+  //     and is the one that refuses a vote; this only decides where the tab
+  //     sits. It used to be a third hand-typed date, which is exactly how
+  //     BreakTudo ended up with a countdown six minutes out of step.
+  mama:      MAMA_ROUNDS[MAMA_ROUNDS.length - 1].to,
 };
 // A live ballot leads, and among the live ones the one closing soonest leads —
 // that is the one where a vote not cast today is a vote lost. Closed ballots
