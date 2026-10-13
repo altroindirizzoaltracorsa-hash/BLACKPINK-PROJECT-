@@ -67,6 +67,13 @@
     letter-spacing: 0.14em; text-transform: uppercase; padding: 0.8rem 1.3rem;
   }
   .dl-btn:hover { background: var(--hot-pink); }
+  .dl-alt { background: transparent; color: var(--pink); border: 1px solid rgba(255,0,102,0.45); cursor: pointer; }
+  .dl-alt:hover { background: rgba(255,0,102,0.12); }
+  .caption-fallback {
+    max-width: 1080px; margin: 0 auto 24px; padding: 14px 18px; white-space: pre-wrap;
+    font-family: var(--mono); font-size: 0.72rem; line-height: 1.6; color: var(--white);
+    background: rgba(255,0,102,0.07); border: 1px solid rgba(255,0,102,0.3); border-radius: 10px;
+  }
   .dl-note {
     font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em;
     color: var(--muted);
@@ -347,9 +354,48 @@
      bar exists for anyone who opens the page and never appears in the image.
      The page is the poster; this is how you take it away. -->
 <div class="dl-bar">
-  <a class="dl-btn" href="/mama-guide.png" download="blinksunited-2026-mama-voting-guide.png">⬇ Download the guide</a>
-  <span class="dl-note">1080 × 1350 · ready to post on X or Instagram</span>
+  <a class="dl-btn" href="/mama-guide.png" download="blinksunited-2026-mama-voting-guide.png" onclick="copyCaption()">⬇ Download the guide</a>
+  <button class="dl-btn dl-alt" onclick="copyCaption(true)">⧉ Copy the caption</button>
+  <span class="dl-note" id="dl-note">1080 × 1350 · the caption copies with it</span>
 </div>
+
+<!-- The caption, verbatim. This page is standalone — it cannot call the site's
+     mamaShareText() — so the text is duplicated here, and a test compares the
+     two and fails if they drift. Round number and date are part of it, so this
+     is re-checked whenever the poster is re-rendered for a new round. -->
+<script type="text/plain" id="caption-src">I vote #BLACKPINK #2026MAMAVOTE
+
+🗳️ 2026 MAMA Fans’ Choice — round 1, how it works:
+📱 Mnet Plus = 90% · once a day, 1–3 in Male AND Female (both, or it won’t submit)
+𝕏 = 10% · one post a day, and only your FIRST one counts
+⏰ Ends 22 Oct, 23:59 KST
+blinksunited.com/voting</script>
+<script>
+  // Runs alongside the download, not instead of it — the anchor keeps its href
+  // and download attribute. A refused clipboard says so rather than going quiet.
+  async function copyCaption(only) {
+    const text = document.getElementById('caption-src').textContent;
+    const note = document.getElementById('dl-note');
+    try {
+      await navigator.clipboard.writeText(text);
+      note.textContent = only ? 'Caption copied ✓' : 'Guide saved · caption copied ✓';
+    } catch (e) {
+      note.textContent = 'Could not copy — select the caption below instead';
+      document.getElementById('caption-fallback').hidden = false;
+    }
+  }
+</script>
+
+<!-- Shown only if the clipboard is refused, so there is still a way to get the
+     words out. An insecure context or a locked-down in-app browser is common
+     enough on a phone that "it just did nothing" is a real outcome. -->
+<pre id="caption-fallback" class="caption-fallback" hidden>I vote #BLACKPINK #2026MAMAVOTE
+
+🗳️ 2026 MAMA Fans’ Choice — round 1, how it works:
+📱 Mnet Plus = 90% · once a day, 1–3 in Male AND Female (both, or it won’t submit)
+𝕏 = 10% · one post a day, and only your FIRST one counts
+⏰ Ends 22 Oct, 23:59 KST
+blinksunited.com/voting</pre>
 
 
 </body>

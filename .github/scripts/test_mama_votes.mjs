@@ -695,6 +695,28 @@ console.log('\n--- the panel');
     // the word "download" — and the rendered PNG has to be on disk, because the
     // link is useless if the asset was never built.
     check(existsSync(root + 'mama-guide.png'), 'the rendered poster exists to be downloaded');
+
+    // THE CAPTION COMES WITH THE DOWNLOAD. It was only copied by Share, which
+    // is a different gesture: downloading the guide is the moment the words are
+    // wanted, and the first person to try it got a picture and nothing to say
+    // with it. Checked on all three download points.
+    check(/onclick="copyGuideCaption\('mama-2026'\)"/.test(site),
+          'the rules panel copies the caption as it downloads');
+    check(/download="\$\{c\.guideName[^}]*\}"[^>]*onclick="copyGuideCaption/.test(site),
+          'and so does the campaign card');
+    check(/class="dl-btn"[^>]*onclick="copyCaption\(\)"/.test(guide),
+          'and so does the poster page');
+    // The poster page is standalone and cannot call the site's generator, so it
+    // holds its own copy. Compared against the real one here, because a
+    // duplicated string with a round number and a date in it is exactly the
+    // thing that goes stale quietly.
+    const inlineCap = (guide.match(/<script type="text\/plain" id="caption-src">([\s\S]*?)<\/script>/) || [])[1];
+    check(inlineCap && inlineCap === cap.t,
+          'and the caption it holds is identical to the one the site generates');
+    // The fallback block has to say the same thing too, or the one person who
+    // hits a refused clipboard gets a different post from everyone else.
+    const fallbackCap = (guide.match(/<pre id="caption-fallback"[^>]*>([\s\S]*?)<\/pre>/) || [])[1];
+    check(fallbackCap === cap.t, 'as is the copy shown when the clipboard is refused');
     const dl = guide.match(/<a[^>]+class="dl-btn"[^>]*>/) || [];
     check(dl[0] && /download="[^"]*\.png"/.test(dl[0]) && /href="\/mama-guide\.png"/.test(dl[0]),
           `the poster page offers it as a download (${(dl[0] || 'no button').slice(0, 72)}…)`);
