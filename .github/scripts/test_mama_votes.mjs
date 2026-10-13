@@ -531,6 +531,44 @@ console.log('\n--- the panel');
   check(Date.parse(timing.over.deadline) < Date.parse('2026-12-01T00:00:00Z'),
         'and once it is over the date is in the past, so the card files itself away');
 
+  // ── THE SHAREABLE GUIDE ─────────────────────────────────────────────────
+  // mama-guide.html is rendered to a PNG and posted. A poster is the worst
+  // place for a stale fact: it keeps circulating after the page is fixed, and
+  // nobody looking at it can tell it is out of date. So the three things it
+  // asserts that the site also asserts are checked against the site.
+  console.log('\n--- the shareable guide');
+  {
+    const guide = readFileSync(root + 'mama-guide.html', 'utf8');
+    const tweet = await page.evaluate(() => MAMA_TWEET);
+    // The copy-paste box is the one bit people act on directly. Compared on the
+    // tags rather than the whole string, because the poster marks them up.
+    const copy = (guide.match(/<div class="copy-text">([\s\S]*?)<\/div>/) || [])[1] || '';
+    const plain = copy.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    check(plain === tweet, `the copy-paste post matches the site's button (“${plain}” vs “${tweet}”)`);
+    // The deadline, in the one place on the poster that shouts it.
+    const closes = new Date(await page.evaluate(() => MAMA_ROUNDS[0].to));
+    const kst = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' }).format(closes);
+    check(guide.includes(kst), `and the deadline block says round 1's real close date (${kst})`);
+    check(/90%/.test(guide) && /10%/.test(guide), 'the two weights are on it');
+    // The rules that cost a vote. If one of these ever leaves the site's rule
+    // list it has to leave the poster too — and vice versa.
+    for (const [re, what] of [
+      [/first post of the day/i, 'only the first post of the day counts'],
+      [/one artist tag only/i, 'one artist tag only'],
+      [/public/i, 'public accounts only'],
+      [/repost/i, 'a repost counts'],
+      [/both categories/i, 'both Male and Female to submit'],
+    ]) check(re.test(guide), `and it carries: ${what}`);
+    // It must not pick up the language picker: every other page loads i18n.js,
+    // and a floating picker would be baked into the middle of the image.
+    // Matched on a script TAG, not the bare filename: the file explains in a
+    // comment why it does not load the runtime, and the first version of this
+    // check failed on that comment — a test that cannot tell a <script> from
+    // the prose about it will fail every time someone documents the decision.
+    check(!/<script[^>]+i18n\.js/.test(guide),
+          'the poster loads no i18n runtime, so no picker is rendered into the image');
+  }
+
   await back.goto('https://www.blinksunited.com/voting#nonsense', { waitUntil: 'domcontentloaded' });
   await back.waitForTimeout(1200);
   check(await back.evaluate(() => _vvAward) !== 'nonsense',

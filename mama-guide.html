@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 MAMA Fans’ Choice — Voting Guide | BLINKS UNITED</title>
+<meta name="description" content="How to vote for BLACKPINK in the 2026 MAMA Fans' Choice — Mnet Plus and X, with the rules that waste a vote if you miss them.">
+
+<!-- A SHAREABLE POSTER, not a page of the site.
+     ===========================================
+     The fandom passes these around as images, so this exists to be rendered to
+     one: 1080x1350, the 4:5 the reference graphics use and the tallest frame
+     Instagram and X will show without cropping.
+
+     It is HTML rather than a drawing because the rules change — round 2 has its
+     own dates and its own ballot — and a poster you can only edit in an image
+     editor is a poster that goes stale and gets posted anyway. Re-render with
+     .github/scripts/render_mama_guide.mjs.
+
+     Deliberately NOT loading /i18n/i18n.js. Every other page does; this one is
+     an image in waiting, and a floating language picker would be baked into
+     the middle of it.
+
+     The content is the official 1st Vote Guide, not a summary of coverage of
+     it. The one line most worth keeping accurate is "only your FIRST post of
+     the day counts" — it is the rule that silently costs a vote, and it is why
+     the copy-paste box sits directly under it. -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --pink: #FF0066;
+    --hot-pink: #FF2D8A;
+    --black: #080808;
+    --card: #111111;
+    --card2: #161616;
+    --white: #F5F0F0;
+    --muted: rgba(245,240,240,0.45);
+    --border: rgba(255,0,102,0.18);
+    --mono: 'DM Mono', monospace;
+    --display: 'Bebas Neue', sans-serif;
+    --serif: 'Bodoni Moda', serif;
+  }
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000; color: var(--white); font-family: var(--mono);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 24px; min-height: 100vh;
+  }
+
+  /* The frame the renderer screenshots. Fixed px, not rem or %, because the
+     output has to be the same every time regardless of the viewport it is
+     rendered in. */
+  .poster {
+    position: relative; width: 1080px; height: 1350px; flex: none;
+    background: var(--black); overflow: hidden;
+    padding: 52px 60px 44px;
+    display: flex; flex-direction: column;
+  }
+  /* The site's own glow, rather than the reference's starfield: two soft pink
+     pools in opposite corners. It has to stay faint — this poster is mostly
+     small text, and anything brighter eats the contrast the rules need. */
+  .poster::before, .poster::after {
+    content: ''; position: absolute; border-radius: 50%; pointer-events: none;
+  }
+  .poster::before {
+    width: 900px; height: 900px; top: -380px; right: -320px;
+    background: radial-gradient(circle, rgba(255,0,102,0.17) 0%, rgba(255,0,102,0.05) 42%, transparent 70%);
+  }
+  .poster::after {
+    width: 820px; height: 820px; bottom: -400px; left: -300px;
+    background: radial-gradient(circle, rgba(255,45,138,0.13) 0%, rgba(255,0,102,0.04) 45%, transparent 72%);
+  }
+  .poster > * { position: relative; z-index: 1; }
+
+  /* ── masthead ───────────────────────────────────────────────────────────── */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand img { width: 42px; height: 42px; border-radius: 10px; display: block; }
+  .brand span {
+    font-family: var(--mono); font-size: 15px; font-weight: 500;
+    letter-spacing: 0.22em; text-transform: uppercase; color: var(--pink);
+  }
+  .top-right {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--muted); text-align: right; line-height: 1.7;
+  }
+
+  /* ── title ──────────────────────────────────────────────────────────────── */
+  .title-wrap { margin-top: 30px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 13px; letter-spacing: 0.34em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+  }
+  h1 {
+    font-family: var(--display); font-size: 96px; line-height: 0.86;
+    letter-spacing: 0.01em; color: var(--white); text-transform: uppercase;
+  }
+  h1 em { font-style: normal; color: var(--pink); }
+  .sub {
+    margin-top: 16px; font-family: var(--serif); font-style: italic;
+    font-size: 24px; color: rgba(245,240,240,0.75); line-height: 1.4;
+  }
+
+  /* The deadline is the single most time-critical fact here, so it gets the one
+     solid pink block on the poster — nothing else competes with it. */
+  .deadline {
+    margin-top: 30px; display: inline-flex; align-items: baseline; gap: 16px;
+    align-self: flex-start; background: var(--pink); color: #000;
+    padding: 14px 26px 13px;
+  }
+  .deadline b {
+    font-family: var(--mono); font-size: 13px; font-weight: 500;
+    letter-spacing: 0.2em; text-transform: uppercase;
+  }
+  .deadline span {
+    font-family: var(--display); font-size: 37px; line-height: 0.9; letter-spacing: 0.03em;
+  }
+
+  /* ── the two methods ────────────────────────────────────────────────────── */
+  .methods { margin-top: 30px; display: grid; gap: 18px; }
+  .method {
+    border: 1px solid var(--border); background: var(--card);
+    padding: 24px 28px 22px; position: relative;
+  }
+  /* The 90% one is the one that matters nine times as much, so it is the one
+     wearing the site's pink border. A guide that presented both the same way
+     would be accurate and useless. */
+  .method.primary { border-color: rgba(255,0,102,0.5); background: var(--card2); }
+  .method-head { display: flex; align-items: center; gap: 14px; margin-bottom: 15px; }
+  .method-no {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--muted);
+    border: 1px solid var(--border); padding: 5px 10px;
+  }
+  .method-name {
+    font-family: var(--display); font-size: 44px; line-height: 1;
+    letter-spacing: 0.03em; color: var(--white);
+  }
+  .method.primary .method-name { color: var(--pink); }
+  .weight {
+    margin-left: auto; font-family: var(--display); font-size: 46px;
+    line-height: 1; letter-spacing: 0.02em; color: var(--pink);
+  }
+  .method:not(.primary) .weight { color: rgba(245,240,240,0.55); }
+  .weight small {
+    display: block; font-family: var(--mono); font-size: 10px; font-weight: 400;
+    letter-spacing: 0.18em; color: var(--muted); text-align: right; margin-top: 3px;
+  }
+  .method ul { list-style: none; display: grid; gap: 10px; }
+  .method li {
+    font-size: 17px; line-height: 1.5; color: rgba(245,240,240,0.82);
+    padding-left: 23px; position: relative;
+  }
+  .method li::before {
+    content: '▸'; position: absolute; left: 0; top: 0; color: var(--pink); font-size: 14px;
+  }
+  .method li b { color: var(--white); font-weight: 500; }
+  .method li .warn { color: var(--hot-pink); font-weight: 500; }
+
+  /* ── the tweet to copy ──────────────────────────────────────────────────── */
+  .copy { margin-top: 18px; border: 1px dashed rgba(255,0,102,0.45); padding: 16px 20px; background: rgba(255,0,102,0.05); }
+  .copy-label {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 7px;
+  }
+  .copy-text {
+    font-family: var(--mono); font-size: 26px; font-weight: 500;
+    letter-spacing: 0.01em; color: var(--white);
+  }
+  .copy-text i { font-style: normal; color: var(--pink); }
+
+  /* ── footer ─────────────────────────────────────────────────────────────── */
+  .foot {
+    margin-top: auto; padding-top: 18px; border-top: 1px solid var(--border);
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+  }
+  .foot-note { font-size: 15px; line-height: 1.55; color: var(--muted); max-width: 640px; }
+  .foot-note b { color: rgba(245,240,240,0.8); font-weight: 500; }
+  .foot-url {
+    font-family: var(--display); font-size: 34px; line-height: 0.95;
+    letter-spacing: 0.04em; color: var(--pink); white-space: nowrap;
+  }
+  .foot-url small {
+    display: block; font-family: var(--mono); font-size: 10px; font-weight: 400;
+    letter-spacing: 0.2em; color: var(--muted); text-align: right; margin-top: 5px;
+  }
+</style>
+</head>
+<body>
+<div class="poster" id="poster">
+
+  <div class="top">
+    <div class="brand">
+      <img src="/icon-512.png" alt="">
+      <span>Blinks United</span>
+    </div>
+    <div class="top-right">
+      Fans’ Choice Female<br>Round 1 · 12–22 Oct
+    </div>
+  </div>
+
+  <div class="title-wrap">
+    <div class="eyebrow">2026 MAMA Awards</div>
+    <h1>How to vote<br>for <em>BLACKPINK</em></h1>
+    <div class="sub">Two places, and one is worth nine times the other.</div>
+  </div>
+
+  <div class="deadline">
+    <b>Round 1 closes</b>
+    <span>Oct 22 · 23:59 KST</span>
+  </div>
+
+  <div class="methods">
+
+    <div class="method primary">
+      <div class="method-head">
+        <span class="method-no">Method 1</span>
+        <span class="method-name">Mnet Plus app</span>
+        <span class="weight">90%<small>of the score</small></span>
+      </div>
+      <ul>
+        <li>Once a day, from <b>one ID on one device</b> — the day resets at midnight KST.</li>
+        <li>Pick <b>1 to 3 teams</b> in Male <b>and</b> 1 to 3 in Female. Vote <b>BLACKPINK</b> in Female.</li>
+        <li><span class="warn">You must vote in both categories to submit.</span> Filling in one side does not count as a vote.</li>
+        <li>The same artist cannot be picked twice, and you have to see the completion notice for it to count.</li>
+        <li>Only the <b>top 20</b> in each category go through to round 2.</li>
+      </ul>
+    </div>
+
+    <div class="method">
+      <div class="method-head">
+        <span class="method-no">Method 2</span>
+        <span class="method-name" style="font-family:var(--mono);font-size:34px;font-weight:500;">𝕏</span>
+        <span class="weight">10%<small>of the score</small></span>
+      </div>
+      <ul>
+        <li>One voting post per account per day, on the KST day — and <span class="warn">only your first post of the day is read</span>, so get it right first time.</li>
+        <li>The post needs <b>both</b> tags, and <b>one artist tag only</b> — several artists in one post voids it entirely.</li>
+        <li>Your account has to be <b>public</b>. A <b>repost</b> of someone else’s valid post counts as your vote too.</li>
+      </ul>
+      <div class="copy">
+        <div class="copy-label">Copy &amp; paste</div>
+        <div class="copy-text">I vote <i>#BLACKPINK</i> <i>#2026MAMAVOTE</i></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    <div class="foot-note">
+      Round 2 runs <b>28 Oct – 8 Nov</b> for whoever makes the top 20. Winners at the ceremony,
+      <b>20–21 November</b>, Kyocera Dome Osaka.
+    </div>
+    <div class="foot-url">blinksunited.com<small>/voting</small></div>
+  </div>
+
+</div>
+</body>
+</html>
