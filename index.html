@@ -8459,6 +8459,29 @@ function kcaShareText(c) {
   return body(`🗳️ Kids’ Choice Awards — BLACKPINK are up for ${c.categories.length} awards`);
 }
 
+// Downloading the guide is the moment the caption is wanted — that is when the
+// image is in your hand and the post is the next thing you do. The caption was
+// only copied by the Share button, which is a different gesture for a different
+// purpose, so the one person who tried it got the picture and nothing to say
+// with it.
+//
+// Fires alongside the download rather than instead of it: the anchor keeps its
+// href and its download attribute, and this runs on the same click. If the
+// clipboard is refused — an insecure context, or a browser that wants a
+// stronger gesture — the download still happens and the toast says the copy did
+// not, instead of claiming a success nobody got.
+async function copyGuideCaption(campaignId) {
+  const c = VOTE_CAMPAIGNS.find((x) => x.id === campaignId);
+  if (!c || !c.shareText) return;
+  const text = typeof c.shareText === 'function' ? c.shareText(c) : c.shareText;
+  try {
+    await navigator.clipboard.writeText(text);
+    _showShareToast('Guide saved · caption copied ✓');
+  } catch (e) {
+    _showShareToast('Guide saved — caption could not be copied');
+  }
+}
+
 // ── VOTE CAMPAIGNS ───────────────────────────────────────────
 const VOTE_CAMPAIGNS = [
   {
@@ -9052,7 +9075,7 @@ function renderVoteCampaigns() {
         <div class="vote-card-actions">
           <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
           ${c.winner ? `<button class="vote-share-btn" style="color:#ffd700;border-color:rgba(255,215,0,0.35);" onclick="showWinnerAnnouncement('${c.id}')">🏆 See Announcement</button>` : `<button class="vote-share-btn" onclick="openVoteCard('${c.id}')">⬡ Share</button>`}
-          ${c.guide ? `<a class="vote-share-btn" href="${c.guide}" download="${c.guideName || 'voting-guide.png'}">⬇ Voting guide</a>` : ''}
+          ${c.guide ? `<a class="vote-share-btn" href="${c.guide}" download="${c.guideName || 'voting-guide.png'}" onclick="copyGuideCaption('${c.id}')">⬇ Voting guide</a>` : ''}
         </div>
       </div>`;
   }
@@ -9609,7 +9632,7 @@ function drawMamaVoting() {
       <!-- Inside the rules panel on purpose. Someone who has opened the rules is
            the person most likely to want to pass them on, and the poster says
            the same things in a form that fits a post. -->
-      <a class="mama-guide-dl" href="/mama-guide.png" download="blinksunited-2026-mama-voting-guide.png">⬇ Download this as a shareable guide</a>
+      <a class="mama-guide-dl" href="/mama-guide.png" download="blinksunited-2026-mama-voting-guide.png" onclick="copyGuideCaption('mama-2026')">⬇ Download the guide + copy the caption</a>
     </details>
     ${state}
     <div class="vv-msg" id="mama-msg">${_mamaReturnErr ? 'X sent us back with an error: ' + _vvEsc(_mamaReturnErr) : ''}</div>
