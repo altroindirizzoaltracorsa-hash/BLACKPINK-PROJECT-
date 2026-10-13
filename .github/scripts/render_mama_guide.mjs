@@ -60,6 +60,16 @@ const skyW = await page.evaluate(async () => {
 });
 if (!skyW) { console.error('FAILED: the sky image did not load — the poster would render on flat black.'); process.exit(1); }
 
+// The page carries a download bar for anyone who opens it. It must not be
+// inside the frame, or the image handed to people has a "Download the guide"
+// button printed on it. Asked of the DOM, because nesting is not something you
+// can check by looking at tags in the source.
+const barInside = await page.evaluate(() => {
+  const bar = document.querySelector('.dl-bar');
+  return !!(bar && bar.closest('#poster'));
+});
+if (barInside) { console.error('FAILED: the download bar is inside #poster — it would be baked into the poster.'); process.exit(1); }
+
 const el = await page.$('#poster');
 const box = await el.boundingBox();
 if (Math.round(box.width) !== 1080 || Math.round(box.height) !== 1350) {

@@ -23,7 +23,7 @@
 //
 // Supabase is stubbed and the clock is injected, so this needs no database, no
 // network and no waiting until November.
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 
 const root = new URL('../../', import.meta.url).pathname;
@@ -591,6 +591,26 @@ console.log('\n--- the panel');
     check(!/font-family:[^;]*Bodoni/.test(guide) && !/family=Bodoni/.test(guide),
           'with no Bodoni actually used or loaded');
     check(/Cormorant\+Garamond/.test(guide), 'and Cormorant Garamond actually loaded');
+
+    // ── TAKING IT AWAY ──────────────────────────────────────────────────────
+    // A poster nobody can save is a poster nobody posts. Checked as a real
+    // download attribute pointing at a file that exists, not as the presence of
+    // the word "download" — and the rendered PNG has to be on disk, because the
+    // link is useless if the asset was never built.
+    check(existsSync(root + 'mama-guide.png'), 'the rendered poster exists to be downloaded');
+    const dl = guide.match(/<a[^>]+class="dl-btn"[^>]*>/) || [];
+    check(dl[0] && /download="[^"]*\.png"/.test(dl[0]) && /href="\/mama-guide\.png"/.test(dl[0]),
+          `the poster page offers it as a download (${(dl[0] || 'no button').slice(0, 72)}…)`);
+    // (That the bar sits OUTSIDE the screenshotted frame is asserted in
+    // render_mama_guide.mjs, against the live DOM. Trying to establish it by
+    // matching tags in the source was a test that would have passed almost
+    // anything — the question is whether .dl-bar is a descendant of #poster,
+    // and only a parser can answer that.)
+    // The campaign card and the rules panel both offer it, since those are the
+    // two places someone reading about MAMA actually is.
+    check(/guide:\s*'\/mama-guide\.png'/.test(site), 'the campaign card carries the guide download');
+    check(/class="mama-guide-dl"[^>]*href="\/mama-guide\.png"[^>]*download=/.test(site),
+          'and so does the rules panel on the MAMA tab');
   }
 
   await back.goto('https://www.blinksunited.com/voting#nonsense', { waitUntil: 'domcontentloaded' });

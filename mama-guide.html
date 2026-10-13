@@ -50,8 +50,25 @@
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     background: #000; color: var(--white); font-family: var(--mono);
-    display: flex; align-items: flex-start; justify-content: center;
+    display: flex; flex-direction: column; align-items: center;
     padding: 24px; min-height: 100vh;
+  }
+
+  /* The take-it-away bar. Outside the poster frame, so it is on the page and
+     never in the image — render_mama_guide.mjs asserts that against the DOM. */
+  .dl-bar {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    justify-content: center; margin: 22px 0 8px;
+  }
+  .dl-btn {
+    background: var(--pink); color: #000; text-decoration: none;
+    font-family: var(--mono); font-size: 0.72rem; font-weight: 500;
+    letter-spacing: 0.14em; text-transform: uppercase; padding: 0.8rem 1.3rem;
+  }
+  .dl-btn:hover { background: var(--hot-pink); }
+  .dl-note {
+    font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em;
+    color: var(--muted);
   }
 
   /* The frame the renderer screenshots. Fixed px, not rem or %, because the
@@ -309,6 +326,14 @@
     <div class="foot-url">blinksunited.com<small>/voting</small></div>
   </div>
 
+</div>
+
+<!-- OUTSIDE #poster, which is the only part the renderer screenshots — so this
+     bar exists for anyone who opens the page and never appears in the image.
+     The page is the poster; this is how you take it away. -->
+<div class="dl-bar">
+  <a class="dl-btn" href="/mama-guide.png" download="blinksunited-2026-mama-voting-guide.png">⬇ Download the guide</a>
+  <span class="dl-note">1080 × 1350 · ready to post on X or Instagram</span>
 </div>
 
 

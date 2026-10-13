@@ -2286,6 +2286,10 @@
     padding: 0.65rem 0.9rem; cursor: pointer; transition: border-color 0.2s, color 0.2s;
   }
   .vote-share-btn:hover { border-color: var(--pink); color: var(--pink); }
+  /* The guide download is an <a>, because a download needs an href. Anchors do
+     not inherit the button reset, so the two have to be told to line up or the
+     row ends up with one control sitting a few pixels off the other. */
+  a.vote-share-btn { text-decoration: none; display: inline-block; line-height: normal; }
   .vote-empty { padding: 3rem; text-align: center; font-family: var(--light-serif); font-style: italic; color: var(--muted); background: var(--card); }
 
   /* VMA voting leaderboard (account-gated) */
@@ -2457,6 +2461,14 @@
   .mama-rules-head:first-of-type { margin-top: 0.7rem; }
   .mama-rules ul { list-style: none; margin: 0.45rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
   .mama-rules li { display: flex; gap: 0.5rem; font-size: 0.7rem; line-height: 1.55; color: rgba(245,240,240,0.85); }
+  .mama-guide-dl {
+    display: inline-block; margin-top: 0.9rem; font-family: var(--mono);
+    font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--pink); text-decoration: none;
+    border: 1px solid rgba(255,0,102,0.45); padding: 0.5rem 0.8rem;
+    transition: background 0.2s, color 0.2s;
+  }
+  .mama-guide-dl:hover { background: var(--pink); color: #000; }
 
   /* MAMA's headline row: three numbers, not the four the other awards show. */
   .vv-mama-top { margin: 0.9rem 0 0.2rem; }
@@ -8431,6 +8443,12 @@ const VOTE_CAMPAIGNS = [
     // literal one here would be silently overwritten by the spread, which is a
     // worse kind of wrong than not having it.
     image: '/vote-blackpink-ot4.jpg',
+    // The shareable poster, for posting rather than reading — mama-guide.html
+    // rendered by render_mama_guide.mjs. Named on download, because a file
+    // called mama-guide.png in someone's camera roll is a file they will not
+    // find again.
+    guide: '/mama-guide.png',
+    guideName: 'blinksunited-2026-mama-voting-guide.png',
     // Both the countdown and the pause warning come from MAMA_ROUNDS above, so
     // this card cannot disagree with the award tab or with the API about when
     // voting is open. Spread at load: the page reloads often enough, and a tab
@@ -8945,6 +8963,7 @@ function renderVoteCampaigns() {
         <div class="vote-card-actions">
           <a class="vote-btn" href="${c.url}" target="_blank" rel="noopener noreferrer">${ended ? 'View Results Page' : 'Vote Now'} ↗</a>
           ${c.winner ? `<button class="vote-share-btn" style="color:#ffd700;border-color:rgba(255,215,0,0.35);" onclick="showWinnerAnnouncement('${c.id}')">🏆 See Announcement</button>` : `<button class="vote-share-btn" onclick="openVoteCard('${c.id}')">⬡ Share</button>`}
+          ${c.guide ? `<a class="vote-share-btn" href="${c.guide}" download="${c.guideName || 'voting-guide.png'}">⬇ Voting guide</a>` : ''}
         </div>
       </div>`;
   }
@@ -9498,6 +9517,10 @@ function drawMamaVoting() {
     <details class="mama-rules"><summary>📋 Rules — what counts, and what wastes a vote</summary>
       ${MAMA_RULES.map(g => `<div class="mama-rules-head">${_vvEsc(g.head)}</div>
       <ul>${g.items.map(r => `<li><span class="rules-dot">▸</span><span>${r}</span></li>`).join('')}</ul>`).join('')}
+      <!-- Inside the rules panel on purpose. Someone who has opened the rules is
+           the person most likely to want to pass them on, and the poster says
+           the same things in a form that fits a post. -->
+      <a class="mama-guide-dl" href="/mama-guide.png" download="blinksunited-2026-mama-voting-guide.png">⬇ Download this as a shareable guide</a>
     </details>
     ${state}
     <div class="vv-msg" id="mama-msg">${_mamaReturnErr ? 'X sent us back with an error: ' + _vvEsc(_mamaReturnErr) : ''}</div>
