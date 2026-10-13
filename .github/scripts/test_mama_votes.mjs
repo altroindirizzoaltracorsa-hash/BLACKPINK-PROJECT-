@@ -460,7 +460,48 @@ console.log('\n--- the panel');
         `and they are read from the same list the tab uses (${(card && card.chips || []).join(' / ')})`);
   check(card && /90%/.test(card.rules) && /#2026MAMAVOTE/.test(card.rules) && /first<?\/?b?>? voting post|first voting post/.test(card.rules.replace(/\s+/g, ' ')),
         'the card carries the rules that cost a vote, not just the dates');
-  check(card && /mnetplus\.world/.test(card.href), `and Vote Now goes to Mnet Plus (${card && card.href})`);
+  check(card && /mnetplus\.world/.test(card.href), `and Vote Now goes to Mnet Plus (${(card && card.href || '').slice(0, 60)}…)`);
+  // THE BALLOT, not the front door: the deep link drops you on the vote itself.
+  check(card && /deeplink=/.test(card.href) && /mama-fans-choice-vote/.test(decodeURIComponent(card.href)),
+        'straight to the Fans’ Choice ballot rather than the event page');
+  // TWO PARAMETERS THAT MUST NEVER COME BACK. The link was copied out of the
+  // app's share sheet and arrived carrying both.
+  //
+  // `refererCode` is the one that matters: it arrived empty, but it is a
+  // referral slot, and a link on a public page that has one is a link that
+  // quietly credits a single account the day somebody pastes a code into it.
+  // `missionType` claims a share mission on the visitor's behalf, which is not
+  // ours to claim.
+  check(card && !/refererCode/.test(card.href),
+        'with no referral slot in it — an empty one is still a loaded one');
+  check(card && !/missionType/.test(card.href),
+        'and no share-mission tracking claimed on the visitor’s behalf');
+  // The Fans' Choice row links to the same place the button does; two links to
+  // one ballot that disagree is how one of them goes stale unnoticed.
+  const rowHref = await page.evaluate(() => {
+    const c = [...document.querySelectorAll('.vote-card')]
+      .find((x) => /MAMA/i.test((x.querySelector('.vote-title') || {}).textContent || ''));
+    return (c.querySelector('.vote-cat-link') || {}).href || '';
+  });
+  check(rowHref === card.href, 'and the category’s own Vote link is the same URL');
+
+  // ROUND 2 HAS A DIFFERENT BALLOT. The deep link names the round and carries a
+  // template id, so round 1's link is dead the moment round 2 opens. Round 2's
+  // id is not known yet; the fallback has to be the event page, never r1 — a
+  // card confidently pointing at a closed ballot is worse than one that makes
+  // you tap twice.
+  const urls = await page.evaluate(() => ({
+    r1:   mamaVoteUrl(Date.parse('2026-10-15T00:00:00Z')),
+    gap:  mamaVoteUrl(Date.parse('2026-10-25T00:00:00Z')),
+    r2:   mamaVoteUrl(Date.parse('2026-11-01T00:00:00Z')),
+    over: mamaVoteUrl(Date.parse('2026-12-01T00:00:00Z')),
+    event: MAMA_EVENT_URL,
+  }));
+  check(/vote-r1/.test(decodeURIComponent(urls.r1)), 'round 1 uses round 1’s ballot');
+  check(!/vote-r1/.test(decodeURIComponent(urls.r2)) && urls.r2 === urls.event,
+        `round 2 falls back to the event page, not to round 1’s closed ballot (${urls.r2})`);
+  check(!/vote-r1/.test(decodeURIComponent(urls.over)) && urls.over === urls.event,
+        'and so does the period after the last round');
   check(card && card.linkColour && card.linkColour !== 'rgb(0, 0, 238)',
         `the rules link is styled, not browser-default blue (${card && card.linkColour})`);
 

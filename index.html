@@ -8296,10 +8296,41 @@ function milestoneTotalOf(tp) { return MILESTONE_TRACK_IDS.reduce((s, id) => s +
 // Not hypothetical tidiness: BreakTudo shipped with 02:53Z on the card and
 // 02:59Z on the tab, and the card's countdown hit zero six minutes before the
 // ballot actually shut. Two copies of a date is two chances to be wrong.
+//
+// `voteUrl` is that round's ballot. It is PER ROUND because the deep link
+// names the round and carries a template id — `…/mama-fans-choice-vote-r1/
+// 6ab09532…` — so round 1's link is not round 2's, and a card still pointing
+// at r1 on 29 October would be sending everyone to a ballot that closed.
+// Round 2's id does not exist yet; until it does, mamaVoteUrl() falls back to
+// the event page, which is the right answer rather than a broken one.
 const MAMA_ROUNDS = [
-  { n: 1, from: Date.parse('2026-10-12T10:00:00Z'), to: Date.parse('2026-10-22T14:59:59Z') },
+  { n: 1, from: Date.parse('2026-10-12T10:00:00Z'), to: Date.parse('2026-10-22T14:59:59Z'),
+    voteUrl: 'https://mnetplus.world/event/2026-mama?deeplink=mnetplus%3A%2F%2Fvote%2Ftemplates%2Fmama-fans-choice-vote-r1%2F6ab09532c314bb17315adc4e%3Furl_fallback_type%3Dupdate' },
   { n: 2, from: Date.parse('2026-10-28T09:00:00Z'), to: Date.parse('2026-11-08T14:59:59Z') },
 ];
+// Where the ballot lives when no round-specific link is known.
+const MAMA_EVENT_URL = 'https://mnetplus.world/event/2026-mama';
+
+// The link the Vote Now button and the Fans' Choice row should use right now.
+//
+// TWO PARAMETERS WERE DELETED from the link as it came out of the app's share
+// sheet, and neither is an oversight:
+//
+//   • `missionType=MAMA_2026_FANS_CHOICE_VOTE_1ST_SHARE` — the app's tracking
+//     for a share mission. Ours is a link on a fan site, not somebody
+//     completing their share mission, and claiming to be one is not our call
+//     to make on a visitor's behalf.
+//   • `refererCode=` — a referral slot, and it arrived EMPTY, so nothing was
+//     attached to it. Dropped anyway: an empty referral slot sitting in a URL
+//     on a public page is a loaded one, and the day it is copied with a code in
+//     it, every blink who taps Vote Now is quietly crediting one account.
+//
+// The `deeplink` parameter is the part that opens the ballot, and it stays.
+function mamaVoteUrl(now = Date.now()) {
+  const open = MAMA_ROUNDS.find((r) => now >= r.from && now <= r.to);
+  const next = MAMA_ROUNDS.find((r) => now < r.from);
+  return (open && open.voteUrl) || (next && next.voteUrl) || MAMA_EVENT_URL;
+}
 
 // What the campaign card should count down to, and what to warn about.
 //
@@ -8318,16 +8349,17 @@ const MAMA_ROUNDS = [
 function mamaCardTiming(now = Date.now()) {
   const iso = (t) => new Date(t).toISOString();
   const open = MAMA_ROUNDS.find((r) => now >= r.from && now <= r.to);
-  if (open) return { deadline: iso(open.to), round: open.n };
+  const url = mamaVoteUrl(now);
+  if (open) return { deadline: iso(open.to), round: open.n, url };
   const next = MAMA_ROUNDS.find((r) => now < r.from);
   if (next) {
     const when = new Intl.DateTimeFormat('en-US', {
       timeZone: 'Asia/Seoul', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: false,
     }).format(new Date(next.from));
-    return { deadline: iso(next.to), round: next.n,
+    return { deadline: iso(next.to), round: next.n, url,
              restriction: `Round ${next.n} opens ${when} KST — voting is paused until then` };
   }
-  return { deadline: iso(MAMA_ROUNDS[MAMA_ROUNDS.length - 1].to) };
+  return { deadline: iso(MAMA_ROUNDS[MAMA_ROUNDS.length - 1].to), url };
 }
 
 // ── VOTE CAMPAIGNS ───────────────────────────────────────────
@@ -8394,11 +8426,10 @@ const VOTE_CAMPAIGNS = [
     // awards, and the awards are the thing you scan for.
     platform: 'Fans’ Choice',
     title: '2026 MAMA Awards',
-    // The Mnet Plus platform home, NOT a guessed deep link into the ballot.
-    // mnetplus.world is confirmed as Mnet Plus's own domain; the path to this
-    // year's voting page inside the app is not, and a dead link on the one
-    // button that matters is worse than one extra tap.
-    url: 'https://www.mnetplus.world/',
+    // NO `url` HERE ON PURPOSE. It comes from the spread below, because the
+    // right link depends on which round is open — see mamaVoteUrl(). Putting a
+    // literal one here would be silently overwritten by the spread, which is a
+    // worse kind of wrong than not having it.
     image: '/vote-blackpink-ot4.jpg',
     // Both the countdown and the pause warning come from MAMA_ROUNDS above, so
     // this card cannot disagree with the award tab or with the API about when
@@ -8427,9 +8458,10 @@ const VOTE_CAMPAIGNS = [
     get categories() {
       return MAMA_NOMS.map((n) => ({
         name: n.cat,
-        // Only the fan vote gets a link. Everything else is judged, and `pro`
-        // puts the 🔒 where the Vote button would have been.
-        url: n.fanVote ? 'https://www.mnetplus.world/' : undefined,
+        // Only the fan vote gets a link, and it is the same round-aware one the
+        // button uses. Everything else is judged, and `pro` puts the 🔒 where
+        // the Vote link would have been.
+        url: n.fanVote ? mamaVoteUrl() : undefined,
         pro: !n.fanVote,
         nominees: [{ name: n.who, us: true }],
       }));
