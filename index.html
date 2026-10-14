@@ -11972,6 +11972,10 @@ async function lookupFeedbackTicket() {
 // (sessionStorage, not localStorage) and the server re-checks it on every call,
 // so nothing here is a gate in itself.
 let _fbAdminKey = null, _fbAdminOpenOnly = true, _fbQueue = [], _fbMailOn = false;
+// Where the key came from: 'url' (typed deliberately), 'session' (this tab) or
+// 'panel' (borrowed from the admin panel's localStorage). Only the last one may
+// be thrown away on a refusal — see loadFeedbackQueue.
+let _fbAdminKeyFrom = null;
 
 function _fbAdminToolsHtml(m) {
   const id = _vvEsc(String(m.id));
@@ -12031,6 +12035,17 @@ async function loadFeedbackQueue() {
     const r = await fetch('/api/feedback?admin=1&key=' + encodeURIComponent(_fbAdminKey)
       + (_fbAdminOpenOnly ? '&open=1' : ''), { cache: 'no-store' });
     if (!r.ok) {
+      // A BORROWED KEY THAT HAS GONE STALE IS NOT AN ERROR TO SHOW. If the key
+      // came from the admin panel's localStorage and the server now refuses it,
+      // the secret has been rotated — the panel drops its copy on a 401 for the
+      // same reason, and this page should not be left showing a red banner on
+      // an otherwise ordinary page. A key typed into ?admin= is different: that
+      // was deliberate, so being told it was refused is the useful answer.
+      if (r.status === 401 && _fbAdminKeyFrom === 'panel') {
+        try { localStorage.removeItem(ADMIN_KEY_LS); } catch {}
+        _fbAdminKey = null; _fbAdminKeyFrom = null;
+        return;
+      }
       // A wrong key should say so rather than render an empty queue that looks
       // like "no feedback yet".
       if (card) { card.style.display = 'block'; }
@@ -12132,7 +12147,7 @@ function initFeedbackPage() {
   try {
     const key = new URLSearchParams(location.search).get('admin');
     if (key) {
-      _fbAdminKey = key;
+      _fbAdminKey = key; _fbAdminKeyFrom = 'url';
       sessionStorage.setItem('fbAdminKey', key);
       // Don't leave the key sitting in the address bar to be shoulder-read,
       // shared in a screenshot or saved into history.
@@ -12141,6 +12156,22 @@ function initFeedbackPage() {
       history.replaceState(null, '', u.pathname + u.search + u.hash);
     } else {
       _fbAdminKey = sessionStorage.getItem('fbAdminKey');
+      _fbAdminKeyFrom = _fbAdminKey ? 'session' : null;
+      // ── ONE LOGIN, NOT TWO ────────────────────────────────────────────────
+      // The admin panel (goals, playlist, control) keeps the same secret in
+      // localStorage under ADMIN_KEY_LS. This page only ever looked at its own
+      // sessionStorage copy, so unlocking the panel left /feedback still
+      // asking for ?admin= — two logins for one key, on one device, for the
+      // same person.
+      //
+      // This costs nothing in exposure: the panel's copy is ALREADY in
+      // localStorage on this browser, so anyone who could read it could
+      // already open the panel. The server re-checks the key on every call
+      // either way, so none of this is the gate — the gate is /api/feedback.
+      if (!_fbAdminKey) {
+        _fbAdminKey = localStorage.getItem(ADMIN_KEY_LS) || null;
+        if (_fbAdminKey) _fbAdminKeyFrom = 'panel';
+      }
     }
   } catch {}
   if (_fbAdminKey) loadFeedbackQueue();
