@@ -1,10 +1,63 @@
 {
-  "generatedAt": "2026-10-13T13:41:41.104Z",
+  "generatedAt": "2026-10-14T11:20:29.447Z",
   "chartType": "weekly",
-  "weekEndingDate": "2026-10-13",
-  "regions": {},
+  "weekEndingDate": "2026-10-14",
+  "regions": {
+    "my": {
+      "region": "Malaysia",
+      "gl": "MY",
+      "period": {
+        "entityId": "weekly:20261002:20261008:my",
+        "periodType": "weekly",
+        "startDate": "20261002",
+        "endDate": "20261008",
+        "region": "my"
+      },
+      "totalEntries": 97,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 25,
+          "name": "SaWaDiKa",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 392033,
+          "releaseDate": {
+            "year": 2026,
+            "month": 8,
+            "day": 27
+          }
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "BLACKPINK",
+          "position": 50,
+          "name": "BLACKPINK",
+          "artists": [
+            "BLACKPINK"
+          ],
+          "channelId": "UCOmHUn--16B90oW2L6FRR3A",
+          "viewCount": 1144066
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "JENNIE",
+          "position": 66,
+          "name": "JENNIE",
+          "artists": [
+            "JENNIE"
+          ],
+          "channelId": "UCNYi_zGmR519r5gYdOKLTjQ",
+          "viewCount": 982528
+        }
+      ]
+    }
+  },
   "summary": {
-    "totalHits": 0,
-    "regionsChecked": 0
+    "totalHits": 3,
+    "regionsChecked": 1
   }
 }
