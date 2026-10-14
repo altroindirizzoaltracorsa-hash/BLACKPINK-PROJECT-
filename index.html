@@ -2320,6 +2320,11 @@
   .vv-me.vv-gate a:not(.vv-gate-btn) { color: var(--pink); }
   .vv-gate-btn { display: inline-block; margin-top: 0.9rem; font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); padding: 0.7rem 1.1rem; text-decoration: none; box-shadow: 0 4px 16px -6px rgba(255,0,102,0.9); transition: filter .15s; }
   .vv-gate-btn:hover { filter: brightness(1.08); }
+  /* The repost route. Outlined rather than solid: it is an equal alternative to
+     posting your own, not the primary action, and two solid pink buttons side
+     by side would make the choice look like a mistake. */
+  .vv-repost { background: transparent; color: var(--pink); border: 1px solid rgba(255,0,102,0.5); box-shadow: none; }
+  .vv-repost:hover { background: rgba(255,0,102,0.1); filter: none; }
   /* VMA Vote Counter extension — download + setup, shown only to signed-in blinks with a scrobbler linked */
   .vv-ext { background: linear-gradient(180deg, rgba(255,0,102,0.08), rgba(255,0,102,0.03)); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.15rem; margin-bottom: 1.1rem; }
   .vv-ext-head { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; }
@@ -9412,6 +9417,28 @@ const MAMA_TAG_CAMPAIGN = '#2026MAMAVOTE';
 const MAMA_TAG_ARTIST   = '#BLACKPINK';
 const MAMA_TWEET = 'I vote ' + MAMA_TAG_ARTIST + ' ' + MAMA_TAG_CAMPAIGN;
 
+// ── reposting ours instead of writing your own ──────────────────────────────
+// The 1st Vote Guide is explicit that "reposting a valid post from another
+// account will also be counted as a valid vote", which makes our own daily
+// post the shortest path there is for a blink: one tap, no typing, no chance
+// of fumbling the tags — and getting the tags wrong is the thing that silently
+// voids a vote, because only your FIRST post of the day is read.
+//
+// A SEARCH, NOT A PINNED LINK. There is no free way to ask X what our latest
+// post is, and the alternatives are both worse: the paid API costs money for
+// one string, and pasting today's post URL into an admin box every morning is
+// a chore that will be forgotten on exactly the day it matters, leaving blinks
+// reposting something stale with nobody any the wiser. Scoping a search to our
+// handle and the campaign tag, sorted newest first, is self-maintaining: the
+// top result is today's vote post because that is what we posted today.
+//
+// If we stop posting daily, the top result is simply our last one — still a
+// valid post carrying the right tags, so a repost of it still counts.
+const MAMA_X_HANDLE = 'blinksunitedtwt';
+function mamaRepostUrl() {
+  return 'https://x.com/search?q=' + encodeURIComponent('from:' + MAMA_X_HANDLE + ' ' + MAMA_TAG_CAMPAIGN) + '&f=live';
+}
+
 // ── what we are nominated for ───────────────────────────────────────────────
 // `fanVote` is the whole point of the list: only FANS' CHOICE is decided by
 // voting. Every other nomination here is judged, or judged plus data, and no
@@ -9590,8 +9617,13 @@ function drawMamaVoting() {
   } else {
     state = `<div class="vv-me">
       <div class="vv-me-head">@${_vvEsc(me.handle || '')}</div>
-      <div class="vv-auto-note">Post <b>${_vvEsc(MAMA_TWEET)}</b> on X, then log it here. What Mnet requires is <b>${_vvEsc(MAMA_TAG_CAMPAIGN)}</b> and <b>${_vvEsc(MAMA_TAG_ARTIST)}</b> in the same post — the rest is yours to write. Get it right first time: only your <b>first</b> voting post of the day is read.</div>
+      <div class="vv-auto-note">Post <b>${_vvEsc(MAMA_TWEET)}</b> on X, then log it here. What Mnet requires is <b>${_vvEsc(MAMA_TAG_CAMPAIGN)}</b> and <b>${_vvEsc(MAMA_TAG_ARTIST)}</b> in the same post — the rest is yours to write. Get it right first time: only your <b>first</b> voting post of the day is read — or skip the typing and <b>repost ours</b>, which Mnet counts the same.</div>
       <a class="vv-gate-btn" href="https://x.com/intent/post?text=${encodeURIComponent(MAMA_TWEET)}" target="_blank" rel="noopener noreferrer">𝕏 Post my vote ↗</a>
+      <!-- The other route to the same vote, and the shorter one: Mnet counts a
+           repost of a valid post as the reposter's own. Offered beside posting
+           rather than instead of it, because a repost is still one vote a day
+           and still only the first thing you do that day. -->
+      <a class="vv-gate-btn vv-repost" href="${mamaRepostUrl()}" target="_blank" rel="noopener noreferrer">↻ Repost @${MAMA_X_HANDLE} ↗</a>
       <button class="vv-gate-btn" onclick="mamaLogVote(this)">✓ I voted on X today</button>
       <div class="vv-me-stats"><div><span>${_vvFmt(me.myDays || 0)}</span><small>days voted</small></div></div>
     </div>`;

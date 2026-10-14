@@ -412,6 +412,23 @@ console.log('\n--- the panel');
   check(/manual_linking_disabled/.test(shown),
         `the reason X sent back is on the page (${shown.slice(0, 90) || 'nothing'})`);
 
+  // ── REPOSTING OURS ──────────────────────────────────────────────────────
+  // Mnet counts a repost of a valid post as the reposter's own vote, which
+  // makes our daily post the shortest route for a blink: one tap and no chance
+  // of fumbling the tags. The link is a search rather than a pinned URL — X
+  // will not tell us our latest post for free — so what matters is that it is
+  // scoped to BOTH our handle and the campaign tag. Scoped to only one of them
+  // it would surface other people's posts, or our non-voting ones, and a
+  // repost of the wrong thing is a wasted day.
+  console.log('\n--- reposting ours');
+  const rp = await page.evaluate(() => ({ url: mamaRepostUrl(), handle: MAMA_X_HANDLE, tag: MAMA_TAG_CAMPAIGN }));
+  const q = decodeURIComponent(new URL(rp.url).searchParams.get('q') || '');
+  check(/^https:\/\/x\.com\/search\?/.test(rp.url), `it is an X search (${rp.url.slice(0, 48)}…)`);
+  check(q.includes('from:' + rp.handle), `scoped to our account (${q})`);
+  check(q.includes(rp.tag), 'and to the campaign tag, so only voting posts come back');
+  check(new URL(rp.url).searchParams.get('f') === 'live',
+        'sorted newest first, so the top result is today’s');
+
   // ── THE CAMPAIGN CARD ───────────────────────────────────────────────────
   // The nominations used to exist only inside the MAMA tab, so a blink reading
   // the BreakTudo or Kids' Choice tab never saw that MAMA was happening at all
