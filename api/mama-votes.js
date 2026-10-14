@@ -30,10 +30,68 @@
 // Env: SUPABASE_URL, SUPABASE_SERVICE_KEY.  Schema: supabase/mama_x_votes.sql
 
 import { createClient } from '@supabase/supabase-js';
+import { Redis } from '@upstash/redis';
 
 function supabase() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return null;
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+}
+
+// ── today's post to repost ──────────────────────────────────────────────────
+//
+//   GET  /api/mama-votes                               → includes { pinned }
+//   POST /api/mama-votes?action=pin&key=ADMIN_SECRET   → { url } | { url: '' }
+//
+// Mnet counts a repost of a valid post as the reposter's own vote, so our daily
+// post is the shortest route a blink has to voting. The site cannot find that
+// post by itself: since February 2026 X has no read-capable free tier, and
+// reading the account's latest post is a paid, per-request call. One pasted URL
+// a day costs nothing and does the same job.
+//
+// IT EXPIRES ON PURPOSE. A pin that is not replaced tomorrow is a pin nobody
+// remembered, and the failure mode of trusting it for ever is blinks being sent
+// to a post from last week with nobody the wiser. After PIN_TTL the page stops
+// using it and falls back to the live search of our own posts, which is
+// self-maintaining and always finds the newest. Forgetting therefore degrades
+// to the behaviour we already shipped rather than to something wrong.
+//
+// Redis, like the playlist: one small value, no schema, same admin-key shape.
+const PIN_KEY = 'bp_mama_pinned_post';
+const PIN_TTL_MS = 24 * 3600 * 1000;
+
+function redis() {
+  try {
+    if (!process.env.UPSTASH_REDIS_REST_URL && !process.env.KV_REST_API_URL) return null;
+    return Redis.fromEnv();
+  } catch (e) { return null; }
+}
+
+// Only a real post, and only OURS. A pin is a link every blink is told to
+// repost, so pointing it at another account — by typo or by paste from the
+// wrong tab — would have the whole site amplifying a post nobody checked. The
+// handle is pinned to an env var so it can be corrected without a deploy.
+const PIN_HANDLE = (process.env.MAMA_X_HANDLE || 'blinksunitedtwt').toLowerCase();
+
+function parsePostUrl(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return null;
+  const m = s.match(/^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/([A-Za-z0-9_]{1,15})\/status\/(\d{5,25})\b/i);
+  if (!m) return { error: 'That is not an x.com post link. It should look like https://x.com/' + PIN_HANDLE + '/status/1234567890' };
+  if (m[1].toLowerCase() !== PIN_HANDLE) {
+    return { error: 'That post is from @' + m[1] + ', not @' + PIN_HANDLE + '. Only our own posts can be pinned.' };
+  }
+  // Rebuilt from the parts rather than stored as pasted: share links arrive
+  // carrying ?t= and ?s= tracking that would be handed on to every blink.
+  return { id: m[2], url: 'https://x.com/' + PIN_HANDLE + '/status/' + m[2] };
+}
+
+// What the page should show. Past its life it is not returned at all, so the
+// client has nothing stale to decide about.
+function freshPin(pin) {
+  if (!pin || !pin.url || !pin.at) return null;
+  const age = Date.now() - Number(pin.at);
+  if (!(age >= 0) || age > PIN_TTL_MS) return null;
+  return { url: pin.url, id: pin.id, at: pin.at, ageMs: age };
 }
 
 // Mnet's day. The same boundary BreakTudo and KCA use in api/vma-votes.js —
@@ -137,11 +195,43 @@ export default async function handler(req, res) {
 
       const { data, error } = await sb.rpc('mama_vote_totals', { p_day: kstDay() });
       if (error) throw error;
+      // The pin rides along with the totals the page already asks for — a
+      // second round trip for one short string would be the page waiting on
+      // Redis before it could draw a button.
+      let pinned = null;
+      try {
+        const r = redis();
+        if (r) pinned = freshPin(await r.get(PIN_KEY));
+      } catch (e) { /* Redis down is not a reason to fail the page */ }
       return res.status(200).json(Object.assign(
         { day: kstDay(), today: 0, accounts: 0, votes: 0, days: [] },
         data || {},
-        { window: windowState() },
+        { window: windowState(), pinned },
       ));
+    }
+
+    if (req.method === 'POST' && req.query.action === 'pin') {
+      const adminSecret = process.env.ADMIN_SECRET;
+      if (!adminSecret || req.query.key !== adminSecret) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const r = redis();
+      if (!r) return res.status(500).json({ error: 'Redis is not configured' });
+
+      const raw = String((req.body || {}).url || '').trim();
+      if (!raw) {                                   // an empty url clears it
+        await r.del(PIN_KEY);
+        return res.status(200).json({ pinned: null, cleared: true });
+      }
+      const parsed = parsePostUrl(raw);
+      if (parsed.error) return res.status(400).json({ error: parsed.error });
+
+      const pin = { url: parsed.url, id: parsed.id, at: Date.now() };
+      // Expired in the store as well as in the read, so a forgotten pin does
+      // not sit around for ever waiting to be served by a future code path
+      // that forgets to check its age.
+      await r.set(PIN_KEY, pin, { px: PIN_TTL_MS });
+      return res.status(200).json({ pinned: freshPin(pin) });
     }
 
     if (req.method === 'POST') {
