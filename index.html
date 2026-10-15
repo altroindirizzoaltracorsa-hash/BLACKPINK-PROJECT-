@@ -2466,6 +2466,27 @@
   .mama-rules-head:first-of-type { margin-top: 0.7rem; }
   .mama-rules ul { list-style: none; margin: 0.45rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
   .mama-rules li { display: flex; gap: 0.5rem; font-size: 0.7rem; line-height: 1.55; color: rgba(245,240,240,0.85); }
+  /* The admin pin strip. Deliberately plainer than anything around it — it is
+     a control panel wedged into a fan page, and dressing it up would make it
+     look like something a visitor was meant to use. */
+  .mama-pin { margin-top: 0.9rem; padding: 0.75rem 0.85rem; border: 1px dashed rgba(255,0,102,0.35);
+    border-radius: 10px; background: rgba(255,0,102,0.04); }
+  .mama-pin-head { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 0.55rem; }
+  .mama-pin-head b { color: var(--pink); font-weight: 500; }
+  .mama-pin-head i { color: rgba(245,240,240,0.35); font-style: normal; }
+  .mama-pin-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .mama-pin-input { flex: 1; min-width: 180px; background: rgba(0,0,0,0.35);
+    border: 1px solid var(--border); color: var(--white); font-family: var(--mono);
+    font-size: 0.64rem; padding: 0.45rem 0.6rem; border-radius: 6px; }
+  .mama-pin-btn { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: #12000a; background: var(--pink); border: none;
+    padding: 0.45rem 0.8rem; border-radius: 6px; cursor: pointer; }
+  .mama-pin-btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .mama-pin-btn:disabled { opacity: 0.5; cursor: default; }
+  .mama-pin-msg { font-family: var(--mono); font-size: 0.56rem; line-height: 1.5;
+    color: rgba(245,240,240,0.4); margin-top: 0.5rem; }
+
   .mama-guide-dl {
     display: inline-block; margin-top: 0.9rem; font-family: var(--mono);
     font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
@@ -9435,9 +9456,19 @@ const MAMA_TWEET = 'I vote ' + MAMA_TAG_ARTIST + ' ' + MAMA_TAG_CAMPAIGN;
 // If we stop posting daily, the top result is simply our last one — still a
 // valid post carrying the right tags, so a repost of it still counts.
 const MAMA_X_HANDLE = 'blinksunitedtwt';
-function mamaRepostUrl() {
+function mamaRepostSearchUrl() {
   return 'https://x.com/search?q=' + encodeURIComponent('from:' + MAMA_X_HANDLE + ' ' + MAMA_TAG_CAMPAIGN) + '&f=live';
 }
+
+// The pinned post beats the search when there is a fresh one. The server only
+// ever returns a pin less than 24h old — past that it hands back null and this
+// falls back by itself, so a morning nobody remembered to paste degrades to the
+// self-maintaining search rather than to a stale link.
+function mamaRepostUrl() {
+  const pin = _vvTotals && _vvTotals.pinned;
+  return (pin && pin.url) ? pin.url : mamaRepostSearchUrl();
+}
+function mamaHasPin() { return !!(_vvTotals && _vvTotals.pinned && _vvTotals.pinned.url); }
 
 // ── what we are nominated for ───────────────────────────────────────────────
 // `fanVote` is the whole point of the list: only FANS' CHOICE is decided by
@@ -9550,6 +9581,64 @@ async function mamaLinkX(btn) {
   }
 }
 
+// ── pinning today's post (admin only) ───────────────────────────────────────
+// Lives in the MAMA panel rather than the admin panel because this is a thing
+// you do while looking at the MAMA tab, on the day, right after posting. Shown
+// only to a browser that already holds the admin key — the same one the
+// feedback queue borrows — and the server re-checks it, so this is convenience
+// and not a gate.
+function mamaPinAdminHtml() {
+  const pin = _vvTotals && _vvTotals.pinned;
+  const age = pin && pin.ageMs != null
+    ? (pin.ageMs < 3600000 ? Math.max(1, Math.round(pin.ageMs / 60000)) + 'm ago'
+                           : Math.round(pin.ageMs / 3600000) + 'h ago')
+    : null;
+  return `<div class="mama-pin">
+    <div class="mama-pin-head">📌 Today’s post to repost ${pin
+      ? '<b>· pinned ' + age + '</b>'
+      : '<i>· none pinned — blinks get the search instead</i>'}</div>
+    <div class="mama-pin-row">
+      <input id="mama-pin-url" class="mama-pin-input" type="url" inputmode="url"
+             placeholder="https://x.com/${MAMA_X_HANDLE}/status/…" value="">
+      <button class="mama-pin-btn" onclick="mamaPinPost(this)">Pin</button>
+      ${pin ? '<button class="mama-pin-btn ghost" onclick="mamaPinPost(this, true)">Clear</button>' : ''}
+    </div>
+    <div class="mama-pin-msg" id="mama-pin-msg">${pin
+      ? 'Expires 24h after pinning, then the search takes over again.'
+      : 'Paste the link to today’s vote post. It expires after 24h on purpose.'}</div>
+  </div>`;
+}
+
+async function mamaPinPost(btn, clear) {
+  const key = localStorage.getItem(ADMIN_KEY_LS);
+  const msg = document.getElementById('mama-pin-msg');
+  const input = document.getElementById('mama-pin-url');
+  if (!key) return;
+  const url = clear ? '' : (input ? input.value.trim() : '');
+  if (!clear && !url) { if (msg) msg.textContent = 'Paste the post link first.'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = clear ? 'Clearing…' : 'Pinning…'; }
+  try {
+    const r = await fetch('/api/mama-votes?action=pin&key=' + encodeURIComponent(key), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      // The server's reason, not a generic one: the two it gives — wrong shape
+      // and wrong account — are both things you fix by looking at what you
+      // pasted, and "could not pin" would not tell you which.
+      if (msg) msg.textContent = d.error || 'Could not pin that.';
+      if (btn) { btn.disabled = false; btn.textContent = clear ? 'Clear' : 'Pin'; }
+      return;
+    }
+    await mamaLoad();
+    drawMamaVoting();
+  } catch (e) {
+    if (msg) msg.textContent = 'Could not pin that: ' + ((e && e.message) || e);
+    if (btn) { btn.disabled = false; btn.textContent = clear ? 'Clear' : 'Pin'; }
+  }
+}
+
 async function mamaLogVote(btn) {
   const msg = document.getElementById('mama-msg');
   if (!_vvToken) { if (msg) msg.textContent = 'Sign in first.'; return; }
@@ -9623,7 +9712,7 @@ function drawMamaVoting() {
            repost of a valid post as the reposter's own. Offered beside posting
            rather than instead of it, because a repost is still one vote a day
            and still only the first thing you do that day. -->
-      <a class="vv-gate-btn vv-repost" href="${mamaRepostUrl()}" target="_blank" rel="noopener noreferrer">↻ Repost @${MAMA_X_HANDLE} ↗</a>
+      <a class="vv-gate-btn vv-repost" href="${mamaRepostUrl()}" target="_blank" rel="noopener noreferrer">↻ ${mamaHasPin() ? 'Repost today’s vote' : 'Repost @' + MAMA_X_HANDLE} ↗</a>
       <button class="vv-gate-btn" onclick="mamaLogVote(this)">✓ I voted on X today</button>
       <div class="vv-me-stats"><div><span>${_vvFmt(me.myDays || 0)}</span><small>days voted</small></div></div>
     </div>`;
@@ -9658,6 +9747,7 @@ function drawMamaVoting() {
         <span class="mama-nom-tag">${n.fanVote ? '🗳 you vote for this' : '🔒 not a fan vote'}</span>
       </div>`).join('')}
     </div>
+    ${localStorage.getItem(ADMIN_KEY_LS) ? mamaPinAdminHtml() : ''}
     <details class="mama-rules"><summary>📋 Rules — what counts, and what wastes a vote</summary>
       ${MAMA_RULES.map(g => `<div class="mama-rules-head">${_vvEsc(g.head)}</div>
       <ul>${g.items.map(r => `<li><span class="rules-dot">▸</span><span>${r}</span></li>`).join('')}</ul>`).join('')}

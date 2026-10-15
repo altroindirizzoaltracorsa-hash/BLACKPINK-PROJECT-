@@ -37,8 +37,17 @@ function loadHandler() {
   const src = readFileSync(root + 'api/mama-votes.js', 'utf8');
   const stripped = src
     .replace(/^import \{ createClient \} from '@supabase\/supabase-js';$/m, '// import stubbed by the test')
+    .replace(/^import \{ Redis \} from '@upstash\/redis';$/m, '// import stubbed by the test')
     .replace(/^export default async function handler/m, 'async function handler')
     .replace(/^export const __test = .*$/m, '');
+  // Every import has to be accounted for, not just the ones this test knew
+  // about when it was written: adding one to the handler used to make the whole
+  // file die with "Cannot use import statement outside a module" partway
+  // through a run, which reads like a broken test rather than a stale loader.
+  const leftover = (stripped.match(/^import .*$/gm) || []);
+  if (leftover.length) {
+    throw new Error('the handler imports something this test does not stub: ' + leftover.join(' / '));
+  }
   if (stripped === src) throw new Error('the handler no longer looks the way this test rewrites it');
   return (now) => {
     // A Date that still parses and formats normally, but whose "now" is ours.
@@ -48,9 +57,13 @@ function loadHandler() {
     }
     FakeDate.parse = Date.parse;
     FakeDate.UTC = Date.UTC;
-    return new Function('createClient', 'process', 'Date',
+    // Redis is stubbed as absent: these tests are about the vote table and the
+    // windows, and `redis()` returning null is the path the handler already has
+    // to survive, because Upstash being down must not take the page with it.
+    const FakeRedis = { fromEnv: () => { throw new Error('no redis in tests'); } };
+    return new Function('createClient', 'Redis', 'process', 'Date',
       stripped + '\nreturn { handler, kstDay, roundAt, windowState, MAMA_ROUNDS };')(
-      () => fakeSb, { env: { SUPABASE_URL: 'u', SUPABASE_SERVICE_KEY: 'k' } }, FakeDate);
+      () => fakeSb, FakeRedis, { env: { SUPABASE_URL: 'u', SUPABASE_SERVICE_KEY: 'k', ADMIN_SECRET: 'admin-secret' } }, FakeDate);
   };
 }
 const build = loadHandler();
@@ -428,6 +441,70 @@ console.log('\n--- the panel');
   check(q.includes(rp.tag), 'and to the campaign tag, so only voting posts come back');
   check(new URL(rp.url).searchParams.get('f') === 'live',
         'sorted newest first, so the top result is today’s');
+
+  // ── WHO MAY PIN ─────────────────────────────────────────────────────────
+  // The paste box only APPEARS for a browser holding the admin key, and that
+  // is cosmetic — localStorage is the visitor's to edit. The gate is the
+  // server, and this proves it: the key is checked against ADMIN_SECRET before
+  // the handler looks at anything else, so faking the box gets you a 401 and
+  // nothing pinned.
+  {
+    const { handler } = build(INSIDE_R1);
+    const post = async (query) => {
+      const r = res();
+      await handler({ method: 'POST', query, headers: {},
+                      body: { url: 'https://x.com/blinksunitedtwt/status/1234567890123' } }, r);
+      return r;
+    };
+    check((await post({ action: 'pin' })).code === 401, 'pinning with no key is refused');
+    check((await post({ action: 'pin', key: 'guessed' })).code === 401, 'and with the wrong key');
+    // With the right key it gets past auth and dies on Redis, which is absent
+    // in tests — a 500 here is the proof that the 401 above was the auth check
+    // and not the handler failing before it ever looked at the key.
+    const ok = await post({ action: 'pin', key: 'admin-secret' });
+    check(ok.code !== 401, `the right key gets past the gate (${ok.code}: ${(ok.body || {}).error || 'pinned'})`);
+  }
+
+  // ── THE PINNED POST ─────────────────────────────────────────────────────
+  // A pasted URL beats the search while it is fresh, and the server only
+  // returns one under 24h old — so forgetting to pin degrades to the search
+  // rather than to a link from last week. Checked against the API's own
+  // validator, because what may be pinned is the part that matters: a pin is a
+  // link the whole site tells people to repost.
+  console.log('\n--- the pinned post');
+  {
+    const src = readFileSync(root + 'api/mama-votes.js', 'utf8');
+    const grab = (name) => {
+      const i = src.indexOf('function ' + name);
+      const j = src.indexOf('\nfunction ', i + 1);
+      return src.slice(i, j > 0 ? j : src.indexOf('\n\n// ──', i));
+    };
+    const mod = "const PIN_HANDLE='blinksunitedtwt'; const PIN_TTL_MS=24*3600*1000;\n"
+      + grab('parsePostUrl') + '\n' + grab('freshPin') + '\nexport { parsePostUrl, freshPin };';
+    const { parsePostUrl, freshPin } = await import('data:text/javascript,' + encodeURIComponent(mod));
+
+    check(parsePostUrl('https://x.com/blinksunitedtwt/status/1234567890123').url
+            === 'https://x.com/blinksunitedtwt/status/1234567890123',
+          'our own post link is accepted');
+    // Share links arrive with ?t= and ?s= on them; handing those to every blink
+    // would pass our share session along with the post.
+    check(!/[?&]t=/.test(parsePostUrl('https://x.com/blinksunitedtwt/status/1234567890123?t=abc&s=20').url),
+          'and its share tracking is stripped before anyone is sent to it');
+    check(parsePostUrl('https://twitter.com/BlinksUnitedTwt/status/1234567890123').url
+            === 'https://x.com/blinksunitedtwt/status/1234567890123',
+          'twitter.com and odd capitals normalise to the same link');
+    // The one that would really hurt: a post from another account, pinned by a
+    // paste from the wrong tab, with the whole site then amplifying it.
+    check(/not @blinksunitedtwt/.test(parsePostUrl('https://x.com/someoneelse/status/1234567890123').error || ''),
+          'someone else’s post is refused, and the message says whose it was');
+    check(!!parsePostUrl('https://x.com/blinksunitedtwt').error, 'a profile link is not a post');
+    check(parsePostUrl('') === null, 'and an empty url means "clear the pin", not an error');
+
+    const pin = (ageMs) => ({ url: 'https://x.com/blinksunitedtwt/status/1', id: '1', at: Date.now() - ageMs });
+    check(!!freshPin(pin(0)) && !!freshPin(pin(23 * 3600e3)), 'a pin from today is served');
+    check(!freshPin(pin(25 * 3600e3)), 'one older than a day is not, so the search takes back over');
+    check(!freshPin(null), 'and no pin at all is simply no pin');
+  }
 
   // ── THE CAMPAIGN CARD ───────────────────────────────────────────────────
   // The nominations used to exist only inside the MAMA tab, so a blink reading
