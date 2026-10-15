@@ -237,15 +237,13 @@
         period: 'In progress →', url: '/streams',
       },
       {
-        status: 'current', kind: 'streaming', icon: '💗', name: 'Less Than a Lover — Release', tag: 'Release · Jennie',
-        desc: "Jennie's 'Less Than a Lover' — the first release we ever tracked on the website. 24-hour & 1st-week stream goals, iTunes tracking and per-Blink milestone contributions.",
-        period: 'In progress →', url: '/streams',
-        expand: `<div class="ltal-embed-wrap">
-            <div class="ltal-embed-loading">Loading live tracker…</div>
-            <iframe class="ltal-embed" title="Less Than a Lover — live tracker" loading="lazy" scrolling="no"
-                    onload="this.previousElementSibling && this.previousElementSibling.remove()"
-                    data-src="/ltal-embed?embed=ltal"></iframe>
-          </div>`,
+        // The EP the whole jenn.ie countdown was built for: the countdown, the
+        // pre-save flow and the Early Supporter badge. `url` points at the
+        // countdown, which still resolves now that the card lives under Past
+        // countdowns rather than being deleted.
+        status: 'current', kind: 'streaming', icon: '🚀', name: 'FALLEN ANGEL — EP Release', tag: 'EP · JENNIE',
+        desc: "Jennie's FALLEN ANGEL EP — the countdown, the pre-save campaign and the Early Supporter badge, plus streaming support for all three tracks: 'Fallen Angel', 'Heaven' and 'Less Than a Lover'.",
+        period: 'In progress →', url: '/countdowns/jenn.ie',
       },
       {
         status: 'current', kind: 'voting', icon: '🗳️', name: 'BreakTudo Awards 2026', tag: 'Voting · BLACKPINK & the members',
@@ -259,14 +257,18 @@
         period: 'LISA won Best Pop ✓', url: '/vmas',
       },
       {
-        // The EP the whole jenn.ie countdown was built for. It had a countdown
-        // card and a pre-save flow and a badge, and no entry here at all —
-        // /projects is meant to be everything we built, and this was one of the
-        // bigger ones. `url` points at the countdown, which still resolves now
-        // that the card lives under Past countdowns rather than being deleted.
-        status: 'past', kind: 'streaming', icon: '🚀', name: 'FALLEN ANGEL — EP Release', tag: 'EP · JENNIE',
-        desc: "Jennie's FALLEN ANGEL EP — the countdown, the pre-save campaign and the Early Supporter badge, plus streaming support for all three tracks: 'Fallen Angel', 'Heaven' and 'Less Than a Lover'.",
-        period: 'Released 28 Aug ✓', url: '/countdowns/jenn.ie',
+        // Filed under Past: the goals this one tracked were 24-hour and
+        // first-week, both long settled. The live tracker travels with it —
+        // the embed is the record of what those numbers came to.
+        status: 'past', kind: 'streaming', icon: '💗', name: 'Less Than a Lover — Release', tag: 'Release · Jennie',
+        desc: "Jennie's 'Less Than a Lover' — the first release we ever tracked on the website. 24-hour & 1st-week stream goals, iTunes tracking and per-Blink milestone contributions.",
+        period: 'Released 24 July ✓', url: '/streams',
+        expand: `<div class="ltal-embed-wrap">
+            <div class="ltal-embed-loading">Loading live tracker…</div>
+            <iframe class="ltal-embed" title="Less Than a Lover — live tracker" loading="lazy" scrolling="no"
+                    onload="this.previousElementSibling && this.previousElementSibling.remove()"
+                    data-src="/ltal-embed?embed=ltal"></iframe>
+          </div>`,
       },
       {
         status: 'past', kind: 'streaming', icon: '💎', name: 'How You Like That → 1B', tag: '1B Streams · with @BPSpotifySchool',
