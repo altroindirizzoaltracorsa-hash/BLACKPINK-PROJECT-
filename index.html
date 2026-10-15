@@ -1727,7 +1727,17 @@
     font-size: clamp(1.7rem, 7.4vw, 2.6rem); line-height: 1.12;
     letter-spacing: 0.01em; color: #ff8fc4; text-shadow: 0 0 26px rgba(255,0,102,0.75), 0 0 60px rgba(255,0,102,0.35);
   }
-  .st-by { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.26em; text-transform: uppercase; color: #fff; margin-top: 0.7rem; }
+  /* Also cut from the trailer — the credit card's own JENNIE, kept as the
+     trailer sets it (the J's tail and all) rather than re-spaced.
+     Sized so its CAP HEIGHT stays ~0.84x the title's at every width, not by a
+     flat percentage: the two marks have very different aspect ratios (3.7:1
+     against 10.7:1), so matching widths proportionally made JENNIE's letters
+     nearly twice the title's on a phone. 29% of the title's width is what
+     holds the ratio — see the check in check_steps.mjs. */
+  .st-by { display: block; width: min(29%, 180px); height: auto; margin: 0.85rem auto 0;
+    filter: drop-shadow(0 0 12px rgba(255,0,102,0.6)); }
+  /* Fallback if that SVG cannot be fetched. */
+  .st-by-text { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.26em; text-transform: uppercase; color: #fff; margin-top: 0.7rem; }
   .st-film { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.6); margin-top: 0.5rem; }
   .st-note { font-size: 0.72rem; line-height: 1.65; color: rgba(245,240,240,0.66); margin-bottom: 1rem; }
   .st-note b { color: var(--white); font-weight: 500; }
@@ -3589,7 +3599,9 @@
               <img class="st-wordmark" src="/steps/someone-to-hold.svg" width="10736" height="1820"
                    alt="Someone to Hold" loading="lazy"
                    onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'st-title',textContent:'Someone to Hold'}))">
-              <div class="st-by">JENNIE</div>
+              <img class="st-by" src="/steps/jennie.svg" width="3690" height="1256"
+                   alt="JENNIE" loading="lazy"
+                   onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'st-by-text',textContent:'JENNIE'}))">
               <div class="st-film">Steps · Only on Netflix · Nov 20</div>
             </div>
             <div class="cd-eyebrow">JENNIE · Original Song · Netflix Film</div>

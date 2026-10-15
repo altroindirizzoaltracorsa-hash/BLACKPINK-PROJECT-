@@ -30,7 +30,13 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 
-FRAME, LOGO_FRAME, OUT_SVG, WORK = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+FRAME, LOGO_FRAME, JENNIE_FRAME, OUT_DIR, WORK = sys.argv[1:6]
+
+# The credit card's own "JENNIE", cut as one piece so it keeps the setting the
+# trailer gives it. Its line is the second on that frame; the first
+# ("FEATURING AN ORIGINAL SONG BY") is NOT usable — two of its letters merge
+# under the threshold, so it stays in the site's own type.
+JENNIE_LINE, JENNIE_GLYPHS = 1, 6
 
 # Lines 6-7 ("with PETER DINKLAGE" / "and BETTE MIDLER") are deliberately
 # unused: their small-caps words merge under the threshold, so their glyph
@@ -135,6 +141,45 @@ def trace(gray, tag):
     if not m:
         raise SystemExit(f'potrace output for {tag} has no transform group')
     return re.findall(r'<path[^>]*\bd="([^"]+)"', text), tuple(float(v) for v in m.groups())
+
+
+def word_as_set(frame, line_idx, expect, tag):
+    """A whole line cut as one piece, keeping its own spacing.
+
+    Unlike the title, nothing is re-spaced here: the glyphs keep the exact
+    positions the trailer sets them in, normalised only so the cap height is
+    CAP and the baseline is 0."""
+    lum, lab, lines = glyph_lines(frame)
+    if line_idx >= len(lines) or len(lines[line_idx]['items']) != expect:
+        got = len(lines[line_idx]['items']) if line_idx < len(lines) else 'no such line'
+        raise SystemExit(f'{tag}: line {line_idx} has {got} glyphs, expected {expect}')
+    items = lines[line_idx]['items']
+    cap_top, baseline = line_metrics(items)
+    k = CAP / (baseline - cap_top)
+    groups, ext = [], []
+    x_origin = items[0][0] * k
+    for n, (x0, y0, x1, y1, comp) in enumerate(items):
+        pad = 3
+        ox, oy = max(0, x0 - pad), max(0, y0 - pad)
+        sub = lum[oy:y1 + pad, ox:x1 + pad].copy()
+        sub[lab[oy:y1 + pad, ox:x1 + pad] != comp] = 0
+        paths, (tx, ty, sx, sy) = trace(sub, f'{tag}{n}')
+        g = k / TRACE_SCALE
+        groups.append(f'    <g transform="translate({(tx / TRACE_SCALE + ox) * k - x_origin:.2f},'
+                      f'{(ty / TRACE_SCALE + oy - baseline) * k:.2f}) '
+                      f'scale({g * sx:.5f},{g * sy:.5f})">'
+                      + ''.join(f'<path d="{d}"/>' for d in paths) + '</g>')
+        ext += [(x0 * k - x_origin, x1 * k - x_origin, (y0 - baseline) * k, (y1 - baseline) * k)]
+    x_lo, x_hi = min(e[0] for e in ext), max(e[1] for e in ext)
+    y_lo, y_hi = min(e[2] for e in ext), max(e[3] for e in ext)
+    if abs(y_lo + CAP) > 0.15 * CAP:
+        raise SystemExit(f'{tag}: cap line is at {y_lo:.0f}, expected ~{-CAP:.0f}')
+    m = 0.03 * CAP
+    vb = (x_lo - m, y_lo - m, (x_hi - x_lo) + 2 * m, (y_hi - y_lo) + 2 * m)
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{vb[0]:.1f} {vb[1]:.1f} '
+            f'{vb[2]:.1f} {vb[3]:.1f}" role="img" aria-label="{tag}">\n'
+            f'  <title>{tag}</title>\n  <g fill="{FILL}">\n'
+            + '\n'.join(groups) + '\n  </g>\n</svg>\n'), vb, len(items)
 
 
 def logo_initial(frame):
@@ -279,7 +324,10 @@ svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{vb[0]:.1f} {vb[1]:.1f
        f'role="img" aria-label="Someone to Hold">\n'
        f'  <title>Someone to Hold</title>\n  <g fill="{FILL}">\n'
        + '\n'.join(groups) + '\n  </g>\n</svg>\n')
-open(OUT_SVG, 'w').write(svg)
+open(f'{OUT_DIR}/someone-to-hold.svg', 'w').write(svg)
+
+jennie_svg, jvb, jn = word_as_set(JENNIE_FRAME, JENNIE_LINE, JENNIE_GLYPHS, 'JENNIE')
+open(f'{OUT_DIR}/jennie.svg', 'w').write(jennie_svg)
 
 print(f'{len(groups)} glyphs placed')
 print('body: ' + '  '.join(f'{c}=line{g["src"][0]}[{g["src"][1]}]'
@@ -288,3 +336,5 @@ print(f'initial: STEPS logotype S — {sw["h_ratio"]:.2f}x the logo\'s own cap h
       f'riding {sw["above"]:.2f} above and {sw["below"]:.2f} below its line')
 print(f'cap height {CAP:.0f}, body {btop:.0f}..{bbot:.0f}, whole mark {top:.0f}..{bot:.0f}, '
       f'aspect {vb[2] / vb[3]:.2f}:1, {len(svg)} bytes')
+print(f'jennie.svg: {jn} glyphs as the trailer sets them, '
+      f'aspect {jvb[2] / jvb[3]:.2f}:1, {len(jennie_svg)} bytes')
