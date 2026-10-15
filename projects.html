@@ -232,8 +232,11 @@
         period: 'In progress →', url: '/streams',
       },
       {
-        status: 'current', kind: 'streaming', icon: '💯', name: 'GO → 100M', tag: '100M Streams · In progress',
-        desc: "Pushing 'GO' to 100 million Spotify streams.",
+        // 100M landed 28/08/2026, so the live goal is 200M — the same number
+        // SPOTIFY_TRACKS carries in index.html (`goal: 200_000_000`, with 100M
+        // kept in `reachedGoals`). The 100M run is its own Past entry below.
+        status: 'current', kind: 'streaming', icon: '💎', name: 'GO → 200M', tag: '200M Streams · In progress',
+        desc: "Pushing 'GO' to 200 million Spotify streams, after it cleared 100M in August.",
         period: 'In progress →', url: '/streams',
       },
       {
@@ -269,6 +272,11 @@
                     onload="this.previousElementSibling && this.previousElementSibling.remove()"
                     data-src="/ltal-embed?embed=ltal"></iframe>
           </div>`,
+      },
+      {
+        status: 'past', kind: 'streaming', icon: '💯', name: 'GO → 100M', tag: '100M Streams',
+        desc: "Pushing 'GO' to 100 million Spotify streams — a community goal set on the site and cleared in August. The campaign continues towards 200M.",
+        period: 'Reached 100M ✓', url: '/streams',
       },
       {
         status: 'past', kind: 'streaming', icon: '💎', name: 'How You Like That → 1B', tag: '1B Streams · with @BPSpotifySchool',
