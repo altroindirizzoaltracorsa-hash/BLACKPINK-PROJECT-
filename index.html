@@ -27,7 +27,11 @@
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/altroindirizzoaltracorsa-hash/BLACKPINK-PROJECT-/main/blinksunited.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,300&family=IBM+Plex+Sans:wght@400;500;600;700&family=Pinyon+Script&display=swap" rel="stylesheet">
+<!-- Berkshire Swash is only for the "Someone to Hold" countdown card, as the
+     nearest free stand-in for the Steps logotype. It has no weight axis, so it
+     must be requested bare: adding ":wght@400" makes css2 reject the WHOLE
+     request and every family above it falls back too. -->
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Berkshire+Swash&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,300&family=IBM+Plex+Sans:wght@400;500;600;700&family=Pinyon+Script&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
@@ -1709,9 +1713,14 @@
   }
   .st-hero > * { position: relative; z-index: 2; }
   .st-eyebrow { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(255,255,255,0.72); margin-bottom: 0.75rem; }
+  /* The Steps logotype is custom swash lettering, not a typeface anyone can
+     license, so this is the closest free stand-in: same Art-Nouveau bones,
+     bulbous bowls and curled terminals. It runs wider and shorter than Bebas,
+     hence the smaller clamp and the extra line-height. */
   .st-title {
-    font-family: var(--display); font-size: clamp(2rem, 9vw, 3rem); line-height: 0.95;
-    letter-spacing: 0.02em; color: #ff8fc4; text-shadow: 0 0 26px rgba(255,0,102,0.75), 0 0 60px rgba(255,0,102,0.35);
+    font-family: 'Berkshire Swash', var(--serif), serif;
+    font-size: clamp(1.7rem, 7.4vw, 2.6rem); line-height: 1.12;
+    letter-spacing: 0.01em; color: #ff8fc4; text-shadow: 0 0 26px rgba(255,0,102,0.75), 0 0 60px rgba(255,0,102,0.35);
   }
   .st-by { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.26em; text-transform: uppercase; color: #fff; margin-top: 0.7rem; }
   .st-film { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.6); margin-top: 0.5rem; }
