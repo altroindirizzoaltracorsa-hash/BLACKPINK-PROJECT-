@@ -63,7 +63,7 @@ function loadHandler() {
     const FakeRedis = { fromEnv: () => { throw new Error('no redis in tests'); } };
     return new Function('createClient', 'Redis', 'process', 'Date',
       stripped + '\nreturn { handler, kstDay, roundAt, windowState, MAMA_ROUNDS };')(
-      () => fakeSb, FakeRedis, { env: { SUPABASE_URL: 'u', SUPABASE_SERVICE_KEY: 'k' } }, FakeDate);
+      () => fakeSb, FakeRedis, { env: { SUPABASE_URL: 'u', SUPABASE_SERVICE_KEY: 'k', ADMIN_SECRET: 'admin-secret' } }, FakeDate);
   };
 }
 const build = loadHandler();
@@ -441,6 +441,29 @@ console.log('\n--- the panel');
   check(q.includes(rp.tag), 'and to the campaign tag, so only voting posts come back');
   check(new URL(rp.url).searchParams.get('f') === 'live',
         'sorted newest first, so the top result is today’s');
+
+  // ── WHO MAY PIN ─────────────────────────────────────────────────────────
+  // The paste box only APPEARS for a browser holding the admin key, and that
+  // is cosmetic — localStorage is the visitor's to edit. The gate is the
+  // server, and this proves it: the key is checked against ADMIN_SECRET before
+  // the handler looks at anything else, so faking the box gets you a 401 and
+  // nothing pinned.
+  {
+    const { handler } = build(INSIDE_R1);
+    const post = async (query) => {
+      const r = res();
+      await handler({ method: 'POST', query, headers: {},
+                      body: { url: 'https://x.com/blinksunitedtwt/status/1234567890123' } }, r);
+      return r;
+    };
+    check((await post({ action: 'pin' })).code === 401, 'pinning with no key is refused');
+    check((await post({ action: 'pin', key: 'guessed' })).code === 401, 'and with the wrong key');
+    // With the right key it gets past auth and dies on Redis, which is absent
+    // in tests — a 500 here is the proof that the 401 above was the auth check
+    // and not the handler failing before it ever looked at the key.
+    const ok = await post({ action: 'pin', key: 'admin-secret' });
+    check(ok.code !== 401, `the right key gets past the gate (${ok.code}: ${(ok.body || {}).error || 'pinned'})`);
+  }
 
   // ── THE PINNED POST ─────────────────────────────────────────────────────
   // A pasted URL beats the search while it is fresh, and the server only
