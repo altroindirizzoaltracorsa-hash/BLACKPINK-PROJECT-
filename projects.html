@@ -118,6 +118,11 @@
   .card-period { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; color: var(--dim); }
   .card-link { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pink); transition: opacity 0.2s; }
   .card-link:hover { opacity: 0.7; }
+  /* A goal already cleared by a campaign that is still running — gold like the
+     Past pill, so it reads as finished without the card leaving Current. */
+  .card-done { display: flex; align-items: baseline; gap: 0.45rem; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); }
+  .card-done::before { content: '✓'; font-size: 0.7rem; letter-spacing: 0; }
+  .card-done + .card-done { margin-top: -0.4rem; }
 
   .empty { border: 1px dashed var(--line); border-radius: 14px; padding: 2.6rem 1.5rem; text-align: center; font-family: var(--serif); font-style: italic; color: var(--muted); font-size: 0.95rem; }
 
@@ -213,7 +218,9 @@
 
     // ── Project list ──────────────────────────────────────────────────────
     // Edit this array to add / move / remove projects. status: 'current' | 'past'.
-    // Fields: icon (emoji), name, tag, desc, period, url (optional, '' to hide link).
+    // Fields: icon (emoji), name, tag, desc, period, url (optional, '' to hide link),
+    // done (optional array of goals this campaign has already cleared, shown on
+    // the card so a still-running campaign can carry its finished targets).
     const PROJECTS = [
       // ── Current ──
       {
@@ -232,8 +239,14 @@
         period: 'In progress →', url: '/streams',
       },
       {
-        status: 'current', kind: 'streaming', icon: '💯', name: 'GO → 100M', tag: '100M Streams · In progress',
-        desc: "Pushing 'GO' to 100 million Spotify streams.",
+        // One card, still Current: the campaign never stopped, the number moved.
+        // 200M is the same goal SPOTIFY_TRACKS carries in index.html
+        // (`goal: 200_000_000`, with 100M kept in `reachedGoals`), and `done`
+        // keeps the cleared goal on the card instead of filing a second entry
+        // under Past — which would have read as two campaigns rather than one.
+        status: 'current', kind: 'streaming', icon: '💎', name: 'GO → 200M', tag: '200M Streams · In progress',
+        done: ['100M reached on 28 August 2026'],
+        desc: "Pushing 'GO' to 200 million Spotify streams — the next goal after it cleared 100M in August.",
         period: 'In progress →', url: '/streams',
       },
       {
@@ -305,6 +318,7 @@
         <div class="card-top"><span class="card-icon">${p.icon || '✦'}</span><span class="pills"><span class="pill ${p.status}">${p.status === 'past' ? 'Past' : 'Current'}</span><span class="pill kind">${p.kind === 'voting' ? 'Voting' : 'Streaming'}</span></span></div>
         <div class="card-name">${p.name}</div>
         ${p.tag ? `<div class="card-tag">${p.tag}</div>` : ''}
+        ${(p.done || []).map((d) => `<div class="card-done">${d}</div>`).join('')}
         <div class="card-desc">${p.desc || ''}</div>
         <div class="card-foot"><span class="card-period">${p.period || ''}</span>${foot}</div>
         ${p.expand ? `<div class="card-expand" hidden>${p.expand}</div>` : ''}
