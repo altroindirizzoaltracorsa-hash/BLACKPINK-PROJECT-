@@ -59,9 +59,13 @@ function supabase() {
 const PIN_KEY = 'bp_mama_pinned_post';
 const PIN_TTL_MS = 24 * 3600 * 1000;
 
+// UPSTASH_REDIS_REST_URL / _TOKEN, the same pair every other endpoint here
+// uses. Guarded rather than calling fromEnv() bare like api/playlist.js does:
+// this endpoint's main job is the vote count, and Redis being unset must cost
+// the page its pin, not its totals.
 function redis() {
   try {
-    if (!process.env.UPSTASH_REDIS_REST_URL && !process.env.KV_REST_API_URL) return null;
+    if (!process.env.UPSTASH_REDIS_REST_URL) return null;
     return Redis.fromEnv();
   } catch (e) { return null; }
 }
