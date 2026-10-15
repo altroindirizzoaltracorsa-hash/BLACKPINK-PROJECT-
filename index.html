@@ -1713,10 +1713,13 @@
   }
   .st-hero > * { position: relative; z-index: 2; }
   .st-eyebrow { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(255,255,255,0.72); margin-bottom: 0.75rem; }
-  /* The Steps logotype is custom swash lettering, not a typeface anyone can
-     license, so this is the closest free stand-in: same Art-Nouveau bones,
-     bulbous bowls and curled terminals. It runs wider and shorter than Bebas,
-     hence the smaller clamp and the extra line-height. */
+  /* The title is the film's OWN credit lettering, rebuilt letter by letter
+     from the trailer's cast cards (see .github/scripts/build_steps_wordmark.py)
+     — so it is a vector, not type. The glow is a drop-shadow rather than a
+     text-shadow because it has to follow the outlines. */
+  .st-wordmark { display: block; width: min(100%, 560px); height: auto; margin: 0 auto;
+    filter: drop-shadow(0 0 18px rgba(255,0,102,0.75)) drop-shadow(0 0 46px rgba(255,0,102,0.4)); }
+  /* Fallback if the SVG cannot be fetched: the title still has to read. */
   .st-title {
     font-family: 'Berkshire Swash', var(--serif), serif;
     font-size: clamp(1.7rem, 7.4vw, 2.6rem); line-height: 1.12;
@@ -3581,7 +3584,9 @@
           <div class="cd-card cd-card-steps" data-slug="steps" data-target="2026-11-20T08:00:00Z" data-live="OUT NOW ✨">
             <div class="st-hero">
               <div class="st-eyebrow">Featuring an original song by</div>
-              <div class="st-title">Someone to Hold</div>
+              <img class="st-wordmark" src="/steps/someone-to-hold.svg" width="10203" height="1149"
+                   alt="Someone to Hold" loading="lazy"
+                   onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'st-title',textContent:'Someone to Hold'}))">
               <div class="st-by">JENNIE</div>
               <div class="st-film">Steps · Only on Netflix · Nov 20</div>
             </div>
