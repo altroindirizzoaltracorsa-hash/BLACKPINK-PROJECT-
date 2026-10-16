@@ -45,6 +45,14 @@ const COUNTDOWNS = {
     description: "Counting down to LISA's PRESS PLAY EP — Oct 23, 2026 (1PM KST / 12AM EDT). lalisaofficial.com.",
     image: '/og-countdown-pressplay.jpg',
   },
+  // No image: there is no official "Someone to Hold" artwork yet, and the
+  // film's key art is Netflix's. Without an `image` the page keeps the site's
+  // default og:image rather than shipping someone else's. Add one here when a
+  // cover exists.
+  'steps': {
+    title: 'JENNIE — Someone to Hold, Nov 20, 2026 | Countdown · BLINKS UNITED',
+    description: "Counting down to JENNIE's “Someone to Hold” — her original song for Netflix's animated film Steps, out Nov 20, 2026 with the film.",
+  },
   'vmas': {
     title: '2026 VMAs — voting closes Sep 25 | Countdown · BLINKS UNITED',
     description: 'BLACKPINK, LISA and JISOO x ZAYN are nominated at the 2026 VMAs. Fan voting closes Sep 25, 6PM ET.',
@@ -64,7 +72,7 @@ export const config = {
     '/voting', '/leaderboard', '/badges', '/feedback', '/account',
     '/countdowns',
     '/countdowns/jisoo.io', '/countdowns/jenn.ie', '/countdowns/hellosawadika.com',
-    '/countdowns/lalisaofficial.com', '/countdowns/vmas',
+    '/countdowns/lalisaofficial.com', '/countdowns/steps', '/countdowns/vmas',
   ],
 };
 
