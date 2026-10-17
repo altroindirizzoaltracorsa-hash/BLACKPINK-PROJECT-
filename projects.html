@@ -258,10 +258,54 @@
         desc: "Jennie's FALLEN ANGEL EP — the countdown, the pre-save campaign and the Early Supporter badge, plus streaming support for all three tracks: 'Fallen Angel', 'Heaven' and 'Less Than a Lover'.",
         period: 'In progress →', url: '/countdowns/jenn.ie',
       },
+      // ── The solo releases we are still pushing. Each links to its own
+      //    countdown rather than /streams: that is where the release lives —
+      //    the pre-save flow, the Early Supporter badge, the community
+      //    playlists and the scrobble counter.
+      {
+        status: 'current', kind: 'streaming', icon: '🚀', name: 'CLICK — Single Release', tag: 'Single · JISOO',
+        desc: "JISOO's first solo single 'CLICK' — the countdown, the pre-save campaign, the Early Supporter badge and the community playlists, plus streaming support since release day.",
+        period: 'In progress →', url: '/countdowns/jisoo.io',
+      },
+      {
+        status: 'current', kind: 'streaming', icon: '🚀', name: 'SaWaDiKa — Single Release', tag: 'Single · LISA',
+        desc: "LISA's 'SaWaDiKa' — the world-premiere countdown, the pre-save campaign and streaming support since it dropped.",
+        period: 'In progress →', url: '/countdowns/hellosawadika.com',
+      },
+      {
+        status: 'current', kind: 'streaming', icon: '🚀', name: 'new trick — Single Release', tag: 'Single · ROSÉ',
+        desc: "ROSÉ's 'new trick' — the premiere countdown, the pre-save campaign, the Early Supporter badge and three community playlists, plus streaming support since release.",
+        period: 'In progress →', url: '/countdowns/newtrick',
+      },
+      {
+        // Not out yet, so it says so rather than "In progress": the pre-save is
+        // the whole job this week. Date and time match the countdown card's own
+        // data-target in index.html (2026-10-23T04:00:00Z).
+        status: 'current', kind: 'streaming', icon: '🚀', name: 'PRESS PLAY — EP Release', tag: 'EP · LISA',
+        desc: "LISA's PRESS PLAY EP — the countdown, the pre-save campaign and the Early Supporter badge, ready to turn into streaming support the moment it lands.",
+        period: 'Out Fri 23 Oct · 1PM KST →', url: '/countdowns/lalisaofficial.com',
+      },
+      // ── The ballots that are still open. `?award=` opens that ballot's own
+      //    tab on /voting — the page otherwise defaults to whichever closes
+      //    soonest, which is not the one the card named.
       {
         status: 'current', kind: 'voting', icon: '🗳️', name: 'BreakTudo Awards 2026', tag: 'Voting · BLACKPINK & the members',
         desc: "Voting for BLACKPINK and the members at the BreakTudo Awards — log the votes you cast and race other blinks up the board.",
-        period: 'In progress →', url: '/voting',
+        period: 'Closes Sat 17 Oct →', url: '/voting?award=breaktudo',
+      },
+      {
+        // Two rounds, and the card names the END of the last one — the same
+        // date MAMA_ROUNDS gives VV_AWARD_CLOSES.mama in index.html. Round 1
+        // closes 22 Oct and round 2 opens 28 Oct, so a single "until" date is
+        // the honest summary; the tab itself shows which round is live.
+        status: 'current', kind: 'voting', icon: '🎤', name: '2026 MAMA Awards', tag: "Fans' Choice · BLACKPINK & the members",
+        desc: "The MAMA Fans' Choice vote — a shareable voting guide, the rules that decide whether a post counts, and a board for the votes blinks have cast on X.",
+        period: 'Voting until 8 Nov →', url: '/voting?award=mama',
+      },
+      {
+        status: 'current', kind: 'voting', icon: '🧒', name: '2026 Kids’ Choice Awards', tag: 'Voting · BLACKPINK, ROSÉ & JENNIE',
+        desc: "Nickelodeon's Kids' Choice Awards — BLACKPINK for Favorite Music Group, ROSÉ for Favorite Female Artist and 'Dracula (with JENNIE)' for Favorite Collaboration. No account needed, and no vote limit.",
+        period: 'Voting until 13 Nov →', url: '/voting?award=kca',
       },
       // ── Past (completed ✓) ──
       {
