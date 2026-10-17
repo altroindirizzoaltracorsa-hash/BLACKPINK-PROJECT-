@@ -91,6 +91,30 @@ for (const [name, status] of WANT) {
 }
 if (errs.length) bad('no page errors', errs.join(' | ')); else ok('no page errors', 'none');
 
+console.log('--- any weekday a card names matches its date');
+// Writing "Fri 17 Oct" when the 17th is a Saturday is invisible on the page and
+// wrong in the one place a reader trusts. (It shipped once, for BreakTudo.)
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+let dated = 0;
+for (const c of cards) {
+  const m = c.period.match(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/);
+  if (!m) continue;
+  dated++;
+  const [, dow, day, mon] = m;
+  // No year on the card: take whichever of this year or next puts the date
+  // nearest to today, which is what a reader assumes too.
+  const now = new Date();
+  const cand = [now.getFullYear(), now.getFullYear() + 1, now.getFullYear() - 1]
+    .map((y) => new Date(Date.UTC(y, MONTHS.indexOf(mon), +day)))
+    .sort((a, b) => Math.abs(a - now) - Math.abs(b - now))[0];
+  const real = DAYS[cand.getUTCDay()];
+  real === dow
+    ? ok(`${c.name}: ${dow} ${day} ${mon}`, cand.toISOString().slice(0, 10))
+    : bad(`${c.name} says ${dow} ${day} ${mon}`, `${cand.toISOString().slice(0, 10)} is a ${real}`);
+}
+if (!dated) ok('no card names a weekday', 'nothing to check');
+
 console.log('--- every link resolves');
 for (const c of cards) {
   if (!c.href || /^https?:/.test(c.href)) continue;
