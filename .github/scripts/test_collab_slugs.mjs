@@ -44,6 +44,20 @@ function literal(file, decl) {
 }
 
 const COLLAB = literal('vote-extension/background.js', 'const COLLAB = {');
+// The Android app carries its own copy, in Kotlin, for phones that cannot run
+// extensions. A third copy is a third chance to drift, and the app's failure
+// mode is the worst of the three: it is installed, not loaded from the site, so
+// a wrong slug there keeps counting nothing until somebody reinstalls.
+const APP = readFileSync(root + 'android-app/app/src/main/java/com/blinksunited/votecounter/KcaVoteParser.kt', 'utf8');
+function appPairs(block) {
+  const at = APP.indexOf(block);
+  if (at < 0) throw new Error(`${block} not found in KcaVoteParser.kt`);
+  const end = APP.indexOf(')', APP.indexOf('mapOf(', at));
+  const body = APP.slice(at, APP.indexOf('\n    )', at));
+  const out = {};
+  for (const m of body.matchAll(/"([a-z0-9-]+)" to \(?"([^"]+)"/g)) out[m[1]] = m[2];
+  return out;
+}
 const COLLABS = literal('collabs.html', 'var COLLABS = [');
 const KCA_CATEGORIES = literal('index.html', 'const KCA_CATEGORIES = [');
 
@@ -94,6 +108,29 @@ for (const p of page.weGive) {
   check(!KCA_CATEGORIES.some((k) => k.slug === p.slug),
         `${p.slug} is not a category we have a nominee in`);
 }
+
+console.log('--- and the Android app agrees with both');
+const appCollab = appPairs('private val COLLAB_NOMINEES');
+const appMine = appPairs('private val KCA_NOMINEES');
+for (const p of picks) {
+  check(appCollab[p.slug] === p.nominee, `the app counts ${p.slug} for the collab`,
+        appCollab[p.slug] ? (appCollab[p.slug] === p.nominee ? p.nominee
+          : `app "${appCollab[p.slug]}" vs page "${p.nominee}"`) : 'missing');
+}
+for (const p of page.theyGive) {
+  check(appMine[p.slug] === p.nominee, `and counts ${p.slug} for the Kids’ Choice board`,
+        appMine[p.slug] ? (appMine[p.slug] === p.nominee ? p.nominee
+          : `app "${appMine[p.slug]}" vs page "${p.nominee}"`) : 'missing');
+}
+for (const p of page.weGive) {
+  check(!appMine[p.slug], `and does NOT count ${p.slug} as ours`,
+        appMine[p.slug] ? `the app would post a ${appMine[p.slug]} pick to the BLACKPINK board` : '');
+}
+const appUntil = (APP.match(/COLLAB_UNTIL_MS = (\d+)L/) || [])[1];
+check(appUntil && Number(appUntil) === Date.parse(page.deadline),
+      'and stops at the same moment', appUntil ? new Date(Number(appUntil)).toISOString() : 'not found');
+const appId = (APP.match(/COLLAB_ID = "([^"]+)"/) || [])[1];
+check(appId === COLLAB.id, 'and posts to the same collab', appId || 'not found');
 
 console.log('--- the window the counter will post in');
 const until = COLLAB.until;

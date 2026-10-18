@@ -69,7 +69,12 @@ object KcaVoteParser {
 
     /** Past this the collab is over and the app stops posting to it. */
     const val COLLAB_ID = "bvp-kca-2026"
-    const val COLLAB_UNTIL_MS = 1763107140000L  // 2026-11-14T07:59:00Z
+    // 2026-11-14T07:59:00Z. Written as an epoch literal because a Kotlin const
+    // cannot parse a date, which is exactly how the first one was a YEAR out —
+    // it read 2025 and would have stopped the app posting collab votes
+    // immediately, with no symptom but an empty column. test_collab_slugs.mjs
+    // now compares it against the page's deadline.
+    const val COLLAB_UNTIL_MS = 1794643140000L
 
     /**
      * Compare names the way a human would: case, accents and punctuation all differ
