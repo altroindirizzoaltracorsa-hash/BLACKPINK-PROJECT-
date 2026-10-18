@@ -156,6 +156,71 @@
   .tally-why[open] summary::before { content: '▾ '; }
   .tally-why ol { margin: 0.5rem 0 0 1.1rem; display: grid; gap: 0.35rem; line-height: 1.6; }
 
+
+  /* ── Tabs · breakdown · board · days ─────────────────────────────────── */
+  .tabs { display: flex; gap: 0.4rem; margin-bottom: 0.8rem; }
+  .tab { flex: 1 1 auto; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); background: transparent;
+    border: 1px solid var(--border); padding: 0.5rem 0.6rem; cursor: pointer; }
+  .tab:hover { color: var(--pink); }
+  .tab.on { color: var(--pink); border-color: var(--pink); background: var(--pink-muted); }
+
+  /* The bar is a button: it opens the per-category split underneath it. */
+  button.bar { border: 0; padding: 0; width: 100%; cursor: pointer; }
+  button.bar:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
+  .bar-hint { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); margin-top: 0.4rem; }
+  .bar-hint::before { content: '▸ '; color: var(--pink); }
+  .tally.open .bar-hint::before { content: '▾ '; }
+
+  .split { margin-top: 0.7rem; display: grid; gap: 0.45rem; }
+  .split-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 0.2rem 0.8rem;
+    align-items: baseline; }
+  .split-cat { font-size: 0.62rem; letter-spacing: 0.06em; color: var(--muted); min-width: 0; }
+  .split-cat b { color: var(--white); font-weight: 500; }
+  .split-n { font-size: 0.8rem; color: var(--white); font-variant-numeric: tabular-nums; }
+  .split-track { grid-column: 1 / -1; height: 4px; background: rgba(255,255,255,0.06); }
+  .split-fill { height: 100%; background: var(--accent, var(--pink)); }
+
+  .board { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.74rem; }
+  .board th { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted); text-align: left; font-weight: 400;
+    padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); }
+  .board td { padding: 0.5rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);
+    vertical-align: top; }
+  .board td:first-child { color: var(--muted); font-variant-numeric: tabular-nums; width: 2.2rem; }
+  .board td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .board-cats { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.3rem; }
+  .board-cat { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.04em;
+    color: var(--muted); border: 1px solid var(--border); padding: 0.1rem 0.3rem; }
+  .board-cat b { color: var(--white); font-weight: 500; }
+
+  /* Capped: seven square columns across a full-width card stretch each day to
+     ~125px, which is a wall of empty boxes for a five-week window. At 420px a
+     cell is about 56px — the same size it is on a phone, where the grid is
+     already as wide as it can get. */
+  .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+    margin-top: 0.5rem; max-width: 420px; }
+  .dow { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.1em; color: var(--muted);
+    text-align: center; padding-bottom: 0.2rem; }
+  .day { aspect-ratio: 1 / 1; border: 1px solid var(--border); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 1px; font-size: 0.55rem; color: var(--muted); }
+  .day.pad { border-color: transparent; }
+  .day.has { border-color: rgba(255,0,102,0.45); background: var(--pink-muted);
+    color: var(--white); cursor: pointer; }
+  .day.has:hover { border-color: var(--pink); }
+  .day.on { border-color: var(--pink); background: rgba(255,0,102,0.25); }
+  .day.today { box-shadow: inset 0 0 0 1px var(--pink-lo); }
+  .day-n { font-family: var(--mono); font-size: 0.5rem; opacity: 0.7; }
+  .day-v { font-size: 0.64rem; color: var(--pink); font-variant-numeric: tabular-nums; }
+  .day-detail { margin-top: 0.6rem; border-left: 2px solid var(--pink); padding-left: 0.8rem; }
+  .day-detail-hd { font-size: 0.68rem; color: var(--white); margin-bottom: 0.35rem; }
+
+  .sub { border-top: 1px solid var(--border); margin-top: 1.4rem; padding-top: 1.2rem; }
+  .sub-head { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 0.2rem; }
+  .sub-note { font-size: 0.66rem; color: var(--muted); line-height: 1.6; margin-top: 0.5rem; }
+
   .collab-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.3rem; }
   .btn { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
     text-decoration: none; padding: 0.7rem 1.1rem; border: 1px solid var(--pink);
@@ -409,30 +474,93 @@ function passesFrom(c, t) {
   return counts.length ? Math.min.apply(null, counts) : null;
 }
 
+// ── periods ────────────────────────────────────────────────────────────────
+// today · this week · all time. The tabs drive the bar, the per-category split
+// AND the board together: three views of one period is one question answered,
+// where three independent period controls would let the page show today's bar
+// above an all-time board and look like a contradiction.
+var PERIODS = [
+  { k: 'today', label: 'Today' },
+  { k: 'week',  label: 'This week' },
+  { k: 'all',   label: 'All time' },
+];
+var PERIOD = 'all';
+
+// A tally may carry {periods:{today,week,all}} or just the all-time figures at
+// the top level. The flat shape is read as all-time rather than rejected: a
+// feed that only knows a running total is still worth drawing, it just has
+// nothing to put behind the other two tabs.
+function periodOf(t, k) {
+  if (!t) return null;
+  if (t.periods) return t.periods[k] || null;
+  return k === 'all' ? t : null;
+}
+
+function catLabelOf(c, cat) {
+  var hit = c.theyGive.concat(c.weGive).filter(function (p) { return p.cat === cat; })[0];
+  return hit ? (hit.who || hit.nominee) : cat;
+}
+
+// The per-category split behind the bar. Ordered biggest first, each with its
+// own share drawn, and coloured by whose nominee it is so the three-against-one
+// shape is visible rather than asserted.
+function splitHtml(c, byCat) {
+  var rows = Object.keys(byCat || {})
+    .map(function (k) { return { cat: k, n: Math.max(0, Number(byCat[k]) || 0) }; })
+    .filter(function (r) { return r.n > 0; })
+    .sort(function (a, b) { return b.n - a.n; });
+  if (!rows.length) return '';
+  var top = rows[0].n || 1;
+  var theirCats = {};
+  c.weGive.forEach(function (p) { theirCats[p.cat] = 1; });
+  return '<div class="split">' + rows.map(function (r) {
+    var mine = !theirCats[r.cat];
+    return '<div class="split-row" style="--accent:' + (mine ? 'var(--pink)' : 'var(--them)') + '">'
+      + '<span class="split-cat"><b>' + esc(catLabelOf(c, r.cat)) + '</b> · ' + esc(r.cat) + '</span>'
+      + '<span class="split-n">' + fmt(r.n) + '</span>'
+      + '<span class="split-track"><span class="split-fill" style="width:'
+      + (r.n / top * 100) + '%"></span></span></div>';
+  }).join('') + '</div>';
+}
+
+var SPLIT_OPEN = false;
+
 function tallyHtml(c) {
   var usSlots = c.weGive.length;         // what the partner's act is up for
   var themSlots = c.theyGive.length;     // what ours are up for
   var t = c.tally;
-  if (t && (t.forUs || t.forThem)) {
-    var forUs = totalOf(t.forUs), forThem = totalOf(t.forThem);
+  var p = periodOf(t, PERIOD);
+  var tabs = t && t.periods ? '<div class="tabs">' + PERIODS.map(function (x) {
+    return '<button class="tab' + (x.k === PERIOD ? ' on' : '') + '" type="button" '
+      + 'onclick="setPeriod(\'' + x.k + '\')">' + esc(x.label) + '</button>';
+  }).join('') + '</div>' : '';
+
+  if (t && p && (p.forUs || p.forThem)) {
+    var forUs = totalOf(p.forUs), forThem = totalOf(p.forThem);
     var sum = forUs + forThem || 1;
-    var passes = passesFrom(c, t);
-    var needed = requiredOf(c.theyGive).length + requiredOf(c.weGive).length;
+    var passes = passesFrom(c, p);
     var most = c.theyGive.length + c.weGive.length;
-    // Artists, de-duplicated and in order — two categories can belong to the
-    // same member, and "BLACKPINK, BLACKPINK & ROSÉ" is not a sentence.
     var seen = {}, acts = [];
-    c.theyGive.forEach(function (p) {
-      var n = p.who || p.nominee;
+    c.theyGive.forEach(function (x) {
+      var n = x.who || x.nominee;
       if (!seen[n]) { seen[n] = 1; acts.push(n); }
     });
     var ourActs = acts.join(', ').replace(/, ([^,]*)$/, ' & $1');
-    return '<div class="tally">'
+    var split = splitHtml(c, p.byCat);
+    return '<div class="tally' + (SPLIT_OPEN && split ? ' open' : '') + '">' + tabs
       + '<div class="tally-head"><span class="tally-label">Votes cast through this collab</span>'
       + '<span class="tally-nums"><span class="us">' + fmt(forUs) + ' for ' + esc(ourActs) + '</span>'
       + ' · <span class="them">' + fmt(forThem) + ' for ' + esc(c.partner.act) + '</span></span></div>'
-      + '<div class="bar"><div class="bar-us" style="width:' + (forUs / sum * 100) + '%"></div>'
-      + '<div class="bar-them" style="width:' + (forThem / sum * 100) + '%"></div></div>'
+      + (split
+          ? '<button class="bar" type="button" onclick="toggleSplit()" '
+            + 'aria-expanded="' + (SPLIT_OPEN ? 'true' : 'false') + '" '
+            + 'aria-label="Show the votes by category">'
+          : '<div class="bar">')
+      + '<div class="bar-us" style="width:' + (forUs / sum * 100) + '%"></div>'
+      + '<div class="bar-them" style="width:' + (forThem / sum * 100) + '%"></div>'
+      + (split ? '</button>' : '</div>')
+      + (split ? '<div class="bar-hint">' + (SPLIT_OPEN ? 'Hide' : 'Show') + ' the votes by category</div>' : '')
+      + (SPLIT_OPEN ? split : '')
       + '<div class="tally-note">'
       + '<b>These are not two teams.</b> Blinks and ' + esc(c.partner.fandom)
       + ' both vote the whole ballot, so neither number belongs to one fandom — and nothing here '
@@ -442,7 +570,7 @@ function tallyHtml(c) {
       + ', so one pass through the ballot adds ' + themSlots + ' on one side and ' + usSlots
       + ' on the other.'
       + '<br>One pass through the ballot is <b>' + most + ' votes</b> — '
-      + esc(c.theyGive.concat(c.weGive).map(function (p) { return p.who || p.nominee; })
+      + esc(c.theyGive.concat(c.weGive).map(function (x) { return x.who || x.nominee; })
             .join(', ').replace(/, ([^,]*)$/, ' and $1')) + '.'
       + (passes != null ? ' That is <b>' + fmt(passes) + '</b> complete '
           + (passes === 1 ? 'pass' : 'passes') + ' so far.' : '')
@@ -451,14 +579,101 @@ function tallyHtml(c) {
       + '. A collab vote never counts toward a BLACKPINK total.</div>'
       + '</div>';
   }
-  return '<div class="tally"><div class="tally-head">'
-    + '<span class="tally-label">Votes logged</span>'
+  return '<div class="tally">' + tabs + '<div class="tally-head">'
+    + '<span class="tally-label">Votes cast through this collab</span>'
     + '<span class="tally-nums tally-nocount">Not counting yet</span></div>'
     + '<div class="bar no-data"></div>'
     + '<details class="tally-why"><summary>What has to happen first</summary><ol>'
-    + (c.pending || []).map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('')
+    + (c.pending || []).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('')
     + '</ol></details></div>';
 }
+
+// ── the board ──────────────────────────────────────────────────────────────
+// Ranked on VOTES CAST and nothing else. /voting ranks on streaming — you are
+// unranked there until you have streamed today — and that is the right rule
+// for a streaming-and-voting board and the wrong one here: this is a voting
+// collaboration, and half the people on it have no reason to be streaming
+// BLACKPINK at all. A BLOOM who votes belongs on this board.
+function boardHtml(c) {
+  var p = periodOf(c.tally, PERIOD);
+  var rows = (p && p.board) || [];
+  if (!rows.length) return '';
+  var lbl = (PERIODS.filter(function (x) { return x.k === PERIOD; })[0] || {}).label || '';
+  return '<div class="sub"><div class="sub-head">Who is voting · ' + esc(lbl) + '</div>'
+    + '<table class="board"><thead><tr><th>#</th><th>Blink</th><th>Votes</th></tr></thead><tbody>'
+    + rows.map(function (r, i) {
+        var cats = Object.keys(r.byCat || {})
+          .map(function (k) { return { cat: k, n: Math.max(0, Number(r.byCat[k]) || 0) }; })
+          .filter(function (x) { return x.n > 0; })
+          .sort(function (a, b) { return b.n - a.n; });
+        return '<tr><td>' + (i + 1) + '</td><td>' + esc(r.name || 'a blink')
+          + (cats.length ? '<div class="board-cats">' + cats.map(function (x) {
+              return '<span class="board-cat">' + esc(catLabelOf(c, x.cat))
+                + ' <b>' + fmt(x.n) + '</b></span>';
+            }).join('') + '</div>' : '')
+          + '</td><td>' + fmt(r.votes || 0) + '</td></tr>';
+      }).join('')
+    + '</tbody></table>'
+    + '<div class="sub-note">Under each name: that person\'s votes split by category. '
+    + 'Ranked on votes cast through the collab — streaming is not part of it, because this is '
+    + 'not a streaming collaboration.</div></div>';
+}
+
+// ── day by day ─────────────────────────────────────────────────────────────
+// One continuous Monday-first grid over the whole voting window rather than a
+// paged month view like the BreakTudo calendar: that window is about five
+// weeks and spans two months, so paging would hide half of it behind an arrow
+// for no gain. Tapping a day opens its own split, which is the BreakTudo
+// interaction kept.
+var DAY_OPEN = null;
+
+function dayGridHtml(c) {
+  var t = c.tally;
+  var days = (t && t.days) || [];
+  if (!days.length) return '';
+  var by = {};
+  days.forEach(function (d) { by[d.day] = d; });
+  var keys = days.map(function (d) { return d.day; }).sort();
+  var first = keys[0], last = (t.todayKey && t.todayKey > keys[keys.length - 1])
+    ? t.todayKey : keys[keys.length - 1];
+  var d0 = new Date(first + 'T00:00:00Z'), d1 = new Date(last + 'T00:00:00Z');
+  var pad = (d0.getUTCDay() + 6) % 7;                       // Monday-first
+  var cells = [];
+  for (var i = 0; i < pad; i++) cells.push(null);
+  for (var d = new Date(d0); d <= d1; d.setUTCDate(d.getUTCDate() + 1)) {
+    cells.push(d.toISOString().slice(0, 10));
+  }
+  var open = DAY_OPEN && by[DAY_OPEN];
+  return '<div class="sub"><div class="sub-head">Day by day</div>'
+    + '<div class="days">'
+    + ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(function (h) { return '<div class="dow">' + h + '</div>'; }).join('')
+    + cells.map(function (k) {
+        if (!k) return '<div class="day pad"></div>';
+        var row = by[k], n = row ? Math.max(0, Number(row.votes) || 0) : 0;
+        var cls = ['day', n > 0 ? 'has' : '', k === DAY_OPEN ? 'on' : '',
+                   k === t.todayKey ? 'today' : ''].filter(Boolean).join(' ');
+        return '<div class="' + cls + '"' + (n > 0 ? ' onclick="openDay(\'' + k + '\')"'
+            + ' title="' + fmt(n) + ' votes — tap for the breakdown"' : '')
+          + '><span class="day-n">' + Number(k.slice(8, 10)) + '</span>'
+          + (n > 0 ? '<span class="day-v">' + fmt(n) + '</span>' : '') + '</div>';
+      }).join('')
+    + '</div>'
+    + (open ? '<div class="day-detail"><div class="day-detail-hd">' + esc(dayLabel(open.day))
+        + ' · <b>' + fmt(open.votes) + '</b> votes</div>' + (splitHtml(c, open.byCat) || '')
+        + '</div>' : '')
+    + '</div>';
+}
+
+// "18 Oct" from "2026-10-18" without parsing it as a Date — the string IS the
+// calendar day, and putting it through a timezone can shift it by one.
+var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function dayLabel(iso) {
+  return Number(iso.slice(8, 10)) + ' ' + MONTHS_SHORT[Number(iso.slice(5, 7)) - 1];
+}
+
+function setPeriod(k) { PERIOD = k; DAY_OPEN = null; render(); }
+function toggleSplit() { SPLIT_OPEN = !SPLIT_OPEN; render(); }
+function openDay(k) { DAY_OPEN = (DAY_OPEN === k) ? null : k; render(); }
 
 function card(c) {
   var now = Date.now();
@@ -499,6 +714,8 @@ function card(c) {
         + ' <b>BLACKPINK</b> and the members are up for — <b>' + esc(c.partner.act)
         + '</b> is in none of them.', c.theyGive)
     + '</div>'
+    + boardHtml(c)
+    + dayGridHtml(c)
     + '<div class="collab-actions">'
     + (ended ? '' : '<a class="btn" href="' + esc(c.voteUrl) + '" target="_blank" rel="noopener noreferrer">Open the ballot ↗</a>')
     + '<a class="btn ghost" href="/voting?award=kca">Our board for this award →</a>'

@@ -298,6 +298,132 @@ const passes = await prev.evaluate(() => {
   ? ok('100 complete passes, not 60', 'ROSÉ excluded from the minimum')
   : bad('100 complete passes, not 60', passes.slice(0, 200));
 
+console.log('--- tabs, the breakdown behind the bar, the board and the day grid');
+// None of this is fed by anything yet, so without a fixture it would ship
+// never having rendered. Everything below is driven by real clicks rather than
+// by calling the render functions, because the wiring is most of what can
+// break: a handler named wrong fails silently and leaves a bar that just does
+// not respond.
+const FIX = {
+  periods: {
+    today: { forUs: { picks: 9 }, forThem: { picks: 3 },
+      byCat: { 'Favorite Music Group or Duo': 3, 'Favorite Music Collaboration': 3,
+               'Favorite Female Artist': 3, 'Favorite Global Music Star': 3 },
+      board: [{ name: 'rllyanav', votes: 8, byCat: { 'Favorite Music Group or Duo': 2,
+                 'Favorite Global Music Star': 2, 'Favorite Music Collaboration': 2,
+                 'Favorite Female Artist': 2 } },
+              { name: 'a blink', votes: 4, byCat: { 'Favorite Music Group or Duo': 2 } }] },
+    week: { forUs: { picks: 60 }, forThem: { picks: 20 }, byCat: {}, board: [] },
+    all: { forUs: { picks: 300 }, forThem: { picks: 100 },
+      byCat: { 'Favorite Music Group or Duo': 100, 'Favorite Music Collaboration': 100,
+               'Favorite Female Artist': 60, 'Favorite Global Music Star': 100 },
+      board: [{ name: 'rllyanav', votes: 160, byCat: { 'Favorite Music Group or Duo': 40 } },
+              { name: 'a blink', votes: 120, byCat: { 'Favorite Global Music Star': 40 } }] },
+  },
+  days: [
+    { day: '2026-10-16', votes: 40, byCat: { 'Favorite Music Group or Duo': 10, 'Favorite Global Music Star': 10 } },
+    { day: '2026-10-17', votes: 24, byCat: { 'Favorite Music Group or Duo': 8 } },
+    { day: '2026-10-18', votes: 12, byCat: { 'Favorite Global Music Star': 3 } },
+  ],
+  todayKey: '2026-10-18', themSource: 'their page',
+};
+await prev.evaluate((fix) => { COLLABS[0].tally = fix; render(); }, FIX);
+await prev.waitForTimeout(300);
+
+const tabCount = await prev.locator('.tab').count();
+tabCount === 3 ? ok('three tabs', 'today / this week / all time')
+               : bad('three tabs', `${tabCount}`);
+const activeTab = (await prev.locator('.tab.on').textContent()).trim();
+activeTab === 'All time' ? ok('all time leads') : bad('all time leads', activeTab);
+
+// The bar opens the split, and the split is per category.
+(await prev.locator('.split').count()) === 0
+  ? ok('the breakdown starts closed') : bad('the breakdown starts closed');
+await prev.locator('button.bar').click();
+await prev.waitForTimeout(250);
+const split = await prev.evaluate(() => [...document.querySelectorAll('.split-row')].map((r) => ({
+  text: r.querySelector('.split-cat').textContent.replace(/\s+/g, ' ').trim(),
+  n: r.querySelector('.split-n').textContent.trim(),
+  fill: Math.round(parseFloat(r.querySelector('.split-fill').style.width)),
+})));
+split.length === 4 ? ok('clicking the bar shows all four categories', split.map((r) => r.n).join('/'))
+                   : bad('clicking the bar shows all four categories', `${split.length} rows`);
+// Ordered biggest first, and ROSÉ's 60 really is the short one.
+(split[0].n === '100' && split[split.length - 1].n === '60')
+  ? ok('ordered biggest first', `${split[0].n} … ${split[split.length - 1].n}`)
+  : bad('ordered biggest first', split.map((r) => r.n).join(', '));
+split[split.length - 1].fill < split[0].fill
+  ? ok('and each row is drawn to its own share')
+  : bad('and each row is drawn to its own share', JSON.stringify(split.map((r) => r.fill)));
+split.every((r) => /BLACKPINK|JENNIE|ROSÉ|BINI/.test(r.text))
+  ? ok('and each names the act, not just the slug')
+  : bad('and each names the act, not just the slug', split.map((r) => r.text).join(' | '));
+await prev.locator('button.bar').click();
+await prev.waitForTimeout(200);
+(await prev.locator('.split').count()) === 0
+  ? ok('and clicking again closes it') : bad('and clicking again closes it');
+
+// Tabs move the bar AND the board together.
+const allNums = (await prev.locator('.tally-nums').textContent()).trim();
+await prev.locator('.tab', { hasText: 'Today' }).click();
+await prev.waitForTimeout(250);
+const todayNums = (await prev.locator('.tally-nums').textContent()).trim();
+(/\b9\b/.test(todayNums) && /\b3\b/.test(todayNums) && todayNums !== allNums)
+  ? ok('switching to Today moves the bar', todayNums)
+  : bad('switching to Today moves the bar', `${allNums} → ${todayNums}`);
+const boardHead = (await prev.locator('.sub-head').first().textContent()).trim();
+/today/i.test(boardHead)
+  ? ok('and the board follows the same period', boardHead)
+  : bad('and the board follows the same period', boardHead);
+
+console.log('--- the board ranks on votes cast, and shows what each person cast');
+const board = await prev.evaluate(() => [...document.querySelectorAll('.board tbody tr')].map((tr) => ({
+  rank: tr.children[0].textContent.trim(),
+  name: tr.children[1].childNodes[0].textContent.trim(),
+  cats: [...tr.querySelectorAll('.board-cat')].map((c) => c.textContent.replace(/\s+/g, ' ').trim()),
+  votes: Number(tr.children[2].textContent.replace(/,/g, '')),
+})));
+board.length === 2 ? ok('every account is listed', `${board.length}`)
+                   : bad('every account is listed', `${board.length}`);
+(board[0].votes >= board[1].votes)
+  ? ok('ranked by votes cast', `${board[0].votes} then ${board[1].votes}`)
+  : bad('ranked by votes cast', board.map((r) => r.votes).join(' then '));
+board[0].cats.length === 4
+  ? ok('and each row shows the votes they cast, by category', board[0].cats.join(' '))
+  : bad('and each row shows the votes they cast, by category', `${board[0].cats.length} chips`);
+const boardNote = (await prev.locator('.sub-note').first().textContent()).replace(/\s+/g, ' ');
+/streaming is not part of it/i.test(boardNote)
+  ? ok('and says streaming is not part of the ranking')
+  : bad('and says streaming is not part of the ranking', boardNote.slice(0, 90));
+
+console.log('--- a day opens its own breakdown');
+const dayCells = await prev.locator('.day.has').count();
+dayCells === 3 ? ok('the three days with votes are tappable', `${dayCells}`)
+               : bad('the three days with votes are tappable', `${dayCells}`);
+(await prev.locator('.day-detail').count()) === 0
+  ? ok('no day is open to start with') : bad('no day is open to start with');
+await prev.locator('.day.has').first().click();
+await prev.waitForTimeout(250);
+const detail = await prev.evaluate(() => {
+  const d = document.querySelector('.day-detail');
+  return d && { hd: d.querySelector('.day-detail-hd').textContent.replace(/\s+/g, ' ').trim(),
+                rows: d.querySelectorAll('.split-row').length };
+});
+(detail && /16 Oct/.test(detail.hd) && /\b40\b/.test(detail.hd))
+  ? ok('tapping a day opens that day', detail.hd)
+  : bad('tapping a day opens that day', JSON.stringify(detail));
+(detail && detail.rows === 2)
+  ? ok('with that day’s own split', `${detail.rows} categories`)
+  : bad('with that day’s own split', JSON.stringify(detail));
+await prev.locator('.day.has').first().click();
+await prev.waitForTimeout(200);
+(await prev.locator('.day-detail').count()) === 0
+  ? ok('and tapping it again closes it') : bad('and tapping it again closes it');
+
+// Put the page back for the checks that follow.
+await prev.evaluate(() => { COLLABS[0].tally = null; PERIOD = 'all'; render(); });
+await prev.waitForTimeout(200);
+
 console.log('--- the bar sits under the countdown, not at the bottom');
 // Its position is the point: once a trade is running this is the live number
 // people reopen the page for, and it belongs above the reference material
