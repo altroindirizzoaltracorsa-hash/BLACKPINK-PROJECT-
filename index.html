@@ -7073,7 +7073,12 @@ function renderItunesRegion() {
     const days = h.releaseDate && itunesData.date
       ? Math.max(1, Math.round((new Date(itunesData.date) - new Date(h.releaseDate)) / 86400000) + 1)
       : null;
-    const peakEntry = itunesPeaks?.byCountry?.[itunesCountry]?.[h.appleId ?? ''];
+    // The key has to be built the SAME way compute_itunes_peaks.mjs builds it
+    // (`hit.appleId ?? \`${hit.name}__${hit.artists}\``). This fell back to ''
+    // instead, and since the kworb scraper never produces an appleId, every
+    // lookup missed and the peak column read "—" on every row, in every
+    // country, always. Change one side and you must change the other.
+    const peakEntry = itunesPeaks?.byCountry?.[itunesCountry]?.[h.appleId ?? `${h.name}__${h.artists}`];
     const peak      = peakEntry?.bestPosition;
     const peakStyle = peak != null && peak < h.position ? 'color:#ffd700' : 'color:var(--muted)';
     const peakStr   = peak != null ? '#' + peak : '—';
