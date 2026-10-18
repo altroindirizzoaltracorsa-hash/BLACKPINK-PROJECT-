@@ -490,10 +490,29 @@ var PERIOD = 'all';
 // the top level. The flat shape is read as all-time rather than rejected: a
 // feed that only knows a running total is still worth drawing, it just has
 // nothing to put behind the other two tabs.
-function periodOf(t, k) {
+function periodOf(c, t, k) {
   if (!t) return null;
-  if (t.periods) return t.periods[k] || null;
-  return k === 'all' ? t : null;
+  var p = t.periods ? t.periods[k] : (k === 'all' ? t : null);
+  if (!p) return null;
+  // forUs / forThem are DERIVED here rather than sent. The API returns picks
+  // keyed by ballot category and deliberately does not know whose nominee is
+  // whose — that list lives on this page, once. If the server carried a second
+  // copy it would be free to drift, and the first symptom would be the bar
+  // attributing votes to the wrong act, which is the one thing it exists to
+  // get right.
+  if (p.byCat && !p.forUs && !p.forThem) {
+    var mine = 0, theirs = 0, ourCats = {}, theirCats = {};
+    c.theyGive.forEach(function (x) { ourCats[x.cat] = 1; });
+    c.weGive.forEach(function (x) { theirCats[x.cat] = 1; });
+    Object.keys(p.byCat).forEach(function (k2) {
+      var n = Math.max(0, Number(p.byCat[k2]) || 0);
+      if (ourCats[k2]) mine += n; else if (theirCats[k2]) theirs += n;
+      // A category in neither list is a ballot category this collab is not
+      // about. Counted into nothing rather than guessed at.
+    });
+    p = { byCat: p.byCat, board: p.board, forUs: { picks: mine }, forThem: { picks: theirs } };
+  }
+  return p;
 }
 
 function catLabelOf(c, cat) {
@@ -529,7 +548,7 @@ function tallyHtml(c) {
   var usSlots = c.weGive.length;         // what the partner's act is up for
   var themSlots = c.theyGive.length;     // what ours are up for
   var t = c.tally;
-  var p = periodOf(t, PERIOD);
+  var p = periodOf(c, t, PERIOD);
   var tabs = t && t.periods ? '<div class="tabs">' + PERIODS.map(function (x) {
     return '<button class="tab' + (x.k === PERIOD ? ' on' : '') + '" type="button" '
       + 'onclick="setPeriod(\'' + x.k + '\')">' + esc(x.label) + '</button>';
@@ -595,7 +614,7 @@ function tallyHtml(c) {
 // collaboration, and half the people on it have no reason to be streaming
 // BLACKPINK at all. A BLOOM who votes belongs on this board.
 function boardHtml(c) {
-  var p = periodOf(c.tally, PERIOD);
+  var p = periodOf(c, c.tally, PERIOD);
   var rows = (p && p.board) || [];
   if (!rows.length) return '';
   var lbl = (PERIODS.filter(function (x) { return x.k === PERIOD; })[0] || {}).label || '';
@@ -735,6 +754,31 @@ function render() {
 }
 
 render();
+
+// ── live numbers ───────────────────────────────────────────────────────────
+// Fetched after the first paint, never before it: the card is worth reading
+// with no numbers at all, so nothing about it waits on a request, and a failed
+// one leaves the honest "not counting yet" rather than a spinner or an empty
+// board. One request per collab that is actually running.
+COLLABS.filter(function (c) { return c.status === 'live'; }).forEach(function (c) {
+  fetch('/api/collabs?id=' + encodeURIComponent(c.id), { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (j) {
+      // Only adopt a tally that has something in it. An endpoint answering 200
+      // with an empty board is a collab nobody has voted in yet, and drawing a
+      // 0-0 bar for it would claim counting where there is none to show.
+      if (!j || !j.periods || !j.periods.all || !sumOf(j.periods.all.byCat)) return;
+      c.tally = j;
+      render();
+    })
+    .catch(function () { /* the card stands on its own */ });
+});
+
+function sumOf(o) {
+  var n = 0;
+  for (var k in (o || {})) n += Math.max(0, Number(o[k]) || 0);
+  return n;
+}
 
 // Tick the countdowns in place, like every other deadline on the site.
 setInterval(function () {

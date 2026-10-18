@@ -424,6 +424,76 @@ await prev.waitForTimeout(200);
 await prev.evaluate(() => { COLLABS[0].tally = null; PERIOD = 'all'; render(); });
 await prev.waitForTimeout(200);
 
+console.log('--- the page reads /api/collabs and works out the two totals itself');
+// The endpoint returns picks keyed by ballot category and nothing else — it
+// does not know whose nominee is whose, on purpose, so that list lives in one
+// place. Which means the split between the two totals happens HERE, and a
+// mis-assignment would show as a bar crediting the wrong act while every
+// number on the page still added up. 100 + 100 + 60 ours, 100 theirs.
+{
+  const API = {
+    todayKey: '2026-10-18', from: '2026-10-16',
+    periods: {
+      today: { byCat: { 'Favorite Music Group or Duo': 3, 'Favorite Global Music Star': 1 }, board: [] },
+      week:  { byCat: {}, board: [] },
+      all:   { byCat: { 'Favorite Music Group or Duo': 100, 'Favorite Music Collaboration': 100,
+                        'Favorite Female Artist': 60, 'Favorite Global Music Star': 100 },
+               board: [{ name: 'rllyanav', votes: 24, byCat: { 'Favorite Music Group or Duo': 12 } }] },
+    },
+    days: [{ day: '2026-10-16', votes: 360, byCat: { 'Favorite Global Music Star': 100 } }],
+  };
+  const live = await browser.newPage({ viewport: { width: 1200, height: 1000 } });
+  await live.route('**/api/collabs*', (route) => route.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify(API),
+  }));
+  await live.goto(base + '/collabs', { waitUntil: 'domcontentloaded' });
+  let got = null;
+  for (let i = 0; i < 40 && !got; i++) {
+    await live.waitForTimeout(250);
+    got = await live.evaluate(() => {
+      const n = document.querySelector('.tally-nums');
+      if (!n || /not counting/i.test(n.textContent)) return null;
+      const track = document.querySelector('.bar').getBoundingClientRect().width;
+      const pct = (s) => {
+        const el = document.querySelector(s);
+        return el ? Math.round(el.getBoundingClientRect().width / track * 100) : null;
+      };
+      return { nums: n.textContent.replace(/\s+/g, ' ').trim(), us: pct('.bar-us'), them: pct('.bar-them'),
+               board: document.querySelectorAll('.board tbody tr').length,
+               days: document.querySelectorAll('.day.has').length };
+    }).catch(() => null);
+  }
+  if (!got) bad('the fetched tally is adopted', 'the card still says not counting yet');
+  else {
+    // 260 of 360 is 72%. If BINI were summed into our side it would read 100%.
+    (/\b260\b/.test(got.nums) && /\b100\b/.test(got.nums))
+      ? ok('the two totals are summed from the right categories', got.nums)
+      : bad('the two totals are summed from the right categories', got.nums);
+    (Math.abs(got.us - 72) <= 1 && Math.abs(got.them - 28) <= 1)
+      ? ok('and the bar is drawn from them', `${got.us}% / ${got.them}%`)
+      : bad('and the bar is drawn from them', `${got.us}% / ${got.them}% — expected 72/28`);
+    got.board === 1 ? ok('the board rendered from the endpoint') : bad('the board rendered from the endpoint', `${got.board} rows`);
+    got.days === 1 ? ok('and so did the day grid') : bad('and so did the day grid', `${got.days} days`);
+  }
+  await live.close();
+
+  // An endpoint that answers but has nothing in it must leave the card alone.
+  const empty = await browser.newPage({ viewport: { width: 1200, height: 1000 } });
+  await empty.route('**/api/collabs*', (route) => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ todayKey: '2026-10-18', from: null, days: [],
+      periods: { today: { byCat: {}, board: [] }, week: { byCat: {}, board: [] }, all: { byCat: {}, board: [] } } }),
+  }));
+  await empty.goto(base + '/collabs', { waitUntil: 'domcontentloaded' });
+  await empty.waitForTimeout(2500);
+  const stillHonest = await empty.evaluate(() =>
+    /not counting/i.test(document.querySelector('.tally-nums').textContent)
+    && document.querySelectorAll('.bar-us, .bar-them').length === 0);
+  stillHonest ? ok('a collab nobody has voted in yet still says so')
+              : bad('a collab nobody has voted in yet still says so', 'a 0–0 bar was drawn');
+  await empty.close();
+}
+
 console.log('--- the bar sits under the countdown, not at the bottom');
 // Its position is the point: once a trade is running this is the live number
 // people reopen the page for, and it belongs above the reference material
