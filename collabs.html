@@ -118,12 +118,6 @@
   .pick-cat { flex: 1 1 auto; font-size: 0.6rem; letter-spacing: 0.1em;
     text-transform: uppercase; color: var(--muted); }
   .pick-name { font-size: 0.82rem; color: var(--white); }
-  /* A category the other side fills without having promised to. Dimmed and
-     labelled: it is a gift, and a page that shows it identically to the agreed
-     ones turns it into something we are owed. */
-  .pick.extra { opacity: 0.6; }
-  .pick-extra { display: block; font-style: normal; font-size: 0.52rem;
-    letter-spacing: 0.08em; color: var(--muted); margin-top: 0.15rem; }
   .tally-note b { color: var(--white); font-weight: 500; }
   .tally-note .us { color: var(--pink); }
   .tally-note .them { color: var(--them); }
@@ -225,10 +219,13 @@
         <li><b>It only works across categories.</b> If both acts are nominated in the same category
           there is no trade to make, only a fight. Every collab here names the exact categories so
           you can see that for yourself.</li>
-        <li><b>We count what blinks log here, and say so.</b> Our side of a bar is votes recorded
-          through this site or the vote counter extension. That is self-reported — accurate and
-          effortless, but still what people tell us — so it reads <em>logged</em>, never
-          <em>verified</em>.</li>
+        <li><b>The numbers are not two teams.</b> Everyone in a collab votes the whole ballot,
+          so a vote cannot be traced to a fandom — nothing here knows whether the person who
+          picked BLACKPINK is a blink or not. The two figures are what each act received out of
+          the collab, and they sit apart roughly in the ratio of the slot counts.</li>
+        <li><b>We count what people log here, and say so.</b> It is votes recorded through this
+          site or the vote counter extension: self-reported — accurate and effortless, but still
+          what people tell us — so it reads <em>logged</em>, never <em>verified</em>.</li>
         <li><b>A trade vote is never a BLACKPINK vote.</b> Picks for a partner's nominee are kept
           out of your BLACKPINK totals, your rank and your badges. They belong to the collab and
           nowhere else.</li>
@@ -279,20 +276,24 @@ var COLLABS = [
     ],
     // What their side puts in ours. Read off the live ballot (probe-kca.yml) and
     // in step with KCA_CATEGORIES in index.html.
-    // THE AGREED TRADE IS BLACKPINK AND JENNIE. ROSÉ is not in it: BLOOMs vote
-    // her anyway, which is a kindness and not a term, so she is marked and
-    // counted apart. Folding her in would overstate what they signed up for and
-    // quietly turn a gift into an expectation.
+    // The formal agreement covers BLACKPINK and JENNIE; ROSÉ was never part of
+    // it and BLOOMs vote her anyway. She is counted with the rest — the totals
+    // are of votes cast, not of promises kept.
     theyGive: [
-      { cat: 'Favorite Music Group or Duo',  nominee: 'BLACKPINK' },
-      { cat: 'Favorite Music Collaboration', nominee: 'Dracula (with JENNIE)' },
-      { cat: 'Favorite Female Artist',       nominee: 'ROSÉ', agreed: false },
+      // `who` is the ARTIST; `nominee` is what the ballot calls the entry. The
+      // headline totals name artists ("BLACKPINK, JENNIE & ROSÉ"), the rows name
+      // what you will actually see on the ballot. Same split as KCA_CATEGORIES
+      // in index.html.
+      { cat: 'Favorite Music Group or Duo',  nominee: 'BLACKPINK',             who: 'BLACKPINK' },
+      { cat: 'Favorite Music Collaboration', nominee: 'Dracula (with JENNIE)', who: 'JENNIE' },
+      { cat: 'Favorite Female Artist',       nominee: 'ROSÉ',                  who: 'ROSÉ' },
     ],
     why: 'The Kids’ Choice ballot does not submit until every category is filled. '
-       + 'BLACKPINK and JENNIE are up in two categories and BINI in a third, and '
+       + 'BLACKPINK and the members are up in three categories and BINI in a fourth, and '
        + '<b>no act is in the other’s category</b> — so a blink filling in Favorite Global Music Star '
        + 'gives up nothing, and neither does a BLOOM filling in ours. '
-       + '<b>BLOOMs vote ROSÉ too</b>, which was never part of the deal.',
+       + 'The formal agreement covers <b>BLACKPINK and JENNIE</b>; BLOOMs vote <b>ROSÉ</b> too, '
+       + 'which was never part of it, and her votes are counted with the rest.',
     // Numbers, once both halves exist. null = not counting yet, and the card
     // says what is missing rather than drawing an empty 0–0 bar.
     //   { us: <picks blinks logged for their act>, them: <picks their side reports>,
@@ -325,12 +326,6 @@ function countdown(ms) {
   return m + 'M ' + pad(s % 60) + 'S';
 }
 
-// A slot is in the trade unless it says otherwise. `agreed: false` is a
-// category the other side fills without having promised to — generosity, not
-// an obligation — and it is marked as such so nobody reads it as a debt we are
-// owed, and so nobody on their side feels held to it.
-function agreedOnly(picks) { return picks.filter(function (p) { return p.agreed !== false; }); }
-
 // "The two they agreed to" reads; "The 2 they agreed to" does not. Falls back
 // to the numeral past the point where a word stops helping.
 var NUM_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six'];
@@ -344,9 +339,7 @@ function sideHtml(cls, head, who, picks) {
     + '<div class="side-head">' + esc(head) + '</div>'
     + '<div class="side-who">' + who + '</div>'
     + picks.map(function (p) {
-        return '<div class="pick' + (p.agreed === false ? ' extra' : '') + '">'
-          + '<span class="pick-cat">' + esc(p.cat)
-          + (p.agreed === false ? '<i class="pick-extra">not in the trade</i>' : '') + '</span>'
+        return '<div class="pick"><span class="pick-cat">' + esc(p.cat) + '</span>'
           + '<span class="pick-name">' + esc(p.nominee) + '</span></div>';
       }).join('')
     + '</div>';
@@ -354,56 +347,72 @@ function sideHtml(cls, head, who, picks) {
 
 var fmt = function (n) { return Number(n || 0).toLocaleString('en-US'); };
 
-// ── WHAT THE BAR COUNTS, AND WHY IT IS NOT PICKS ────────────────────────────
-// The two sides do not have the same number of slots to fill. BLOOMs put
-// BLACKPINK and Dracula in for us; blinks put BINI in for them. Count raw picks
-// and their column is TWICE ours before a single person has done anything —
-// not because more of them turned up, but because arithmetic. Add ROSÉ, which
-// they vote without having promised to, and it reads 3:1. A bar that says one
-// fandom is losing 3:1 when both showed up in equal numbers is not a friendly
-// competition, it is an insult produced by a denominator.
+// ── WHAT THE TWO NUMBERS ARE, AND WHAT THEY ARE NOT ─────────────────────────
+// NOT two teams. Everyone in this collab votes the whole ballot — a blink puts
+// BINI in, a BLOOM puts BLACKPINK, JENNIE and ROSÉ in, and both of them do all
+// four on the way through. So a vote cannot be attributed to a fandom: the
+// extension sees a person's picks and has no idea which fandom that person
+// belongs to, and neither does their page. "Who is contributing more" is not a
+// question this data can answer, and a bar implying it did would be inventing
+// the answer.
 //
-// So the unit is a ROUND: one pass through the ballot in which you filled the
-// other side's slots. A blink's round is one BINI pick. A BLOOM's round is the
-// agreed set, filled. Equal effort counts equal, whatever the slot counts are,
-// and that is the only comparison that means "who turned up".
-//
-// Picks are still shown, because they are the real work and people want to see
-// them — just underneath, labelled, and never as the bar.
-function roundsOf(side, slots) {
-  if (!side) return 0;
-  if (side.rounds != null) return Math.max(0, side.rounds);
-  // Derived only as a fallback, and floored: a half-finished round is not a
-  // round, and rounding it up would let a partial pass outscore a full one.
-  return slots > 0 ? Math.floor(Math.max(0, side.picks || 0) / slots) : 0;
+// What it CAN say is how many votes each act got out of the collab. That is
+// two totals, pooled across everybody. They sit at roughly 3:1 by construction
+// — BLACKPINK is up in three categories and BINI in one, so one full pass adds
+// three here and one there — and the note says so, because a reader who is not
+// told that will read 3:1 as a scoreline.
+// forUs  = votes our nominees received · forThem = votes theirs received.
+// Named by WHO GOT THEM, not who gave them, because nobody gave them as a
+// fandom: the keys read `ours/theirs` once and it took a screenshot to notice
+// our own acts were being drawn in the partner's colour.
+function totalOf(side) { return Math.max(0, (side && side.picks) || 0); }
+
+// How many complete passes the pooled votes amount to: the smaller of what each
+// act's slots could have produced. The one honest measure of turnout here, and
+// it is a single number rather than a comparison, which is the point.
+function roundsFrom(t, usSlots, themSlots) {
+  if (!t) return 0;
+  if (t.rounds != null) return Math.max(0, t.rounds);
+  var a = themSlots > 0 ? Math.floor(totalOf(t.forUs)   / themSlots) : 0;
+  var b = usSlots   > 0 ? Math.floor(totalOf(t.forThem) / usSlots)   : 0;
+  return Math.min(a, b);
 }
 
 function tallyHtml(c) {
-  var usSlots = agreedOnly(c.weGive).length;
-  var themSlots = agreedOnly(c.theyGive).length;
+  var usSlots = c.weGive.length;         // what the partner's act is up for
+  var themSlots = c.theyGive.length;     // what ours are up for
   var t = c.tally;
-  if (t && (t.us || t.them)) {
-    var us = roundsOf(t.us, usSlots), them = roundsOf(t.them, themSlots);
-    var sum = us + them || 1;
-    var usPicks = (t.us && t.us.picks) || 0, themPicks = (t.them && t.them.picks) || 0;
-    var extra = (t.them && t.them.extraPicks) || 0;
+  if (t && (t.forUs || t.forThem)) {
+    var forUs = totalOf(t.forUs), forThem = totalOf(t.forThem);
+    var sum = forUs + forThem || 1;
+    var rounds = roundsFrom(t, usSlots, themSlots);
+    // Artists, de-duplicated and in order — two categories can belong to the
+    // same member, and "BLACKPINK, BLACKPINK & ROSÉ" is not a sentence.
+    var seen = {}, acts = [];
+    c.theyGive.forEach(function (p) {
+      var n = p.who || p.nominee;
+      if (!seen[n]) { seen[n] = 1; acts.push(n); }
+    });
+    var ourActs = acts.join(', ').replace(/, ([^,]*)$/, ' & $1');
     return '<div class="tally">'
-      + '<div class="tally-head"><span class="tally-label">Rounds voted</span>'
-      + '<span class="tally-nums"><span class="us">' + fmt(us) + ' by BLINKs</span>'
-      + ' · <span class="them">' + fmt(them) + ' by ' + esc(c.partner.fandom) + '</span></span></div>'
-      + '<div class="bar"><div class="bar-us" style="width:' + (us / sum * 100) + '%"></div>'
-      + '<div class="bar-them" style="width:' + (them / sum * 100) + '%"></div></div>'
+      + '<div class="tally-head"><span class="tally-label">Votes cast through this collab</span>'
+      + '<span class="tally-nums"><span class="us">' + fmt(forUs) + ' for ' + esc(ourActs) + '</span>'
+      + ' · <span class="them">' + fmt(forThem) + ' for ' + esc(c.partner.act) + '</span></span></div>'
+      + '<div class="bar"><div class="bar-us" style="width:' + (forUs / sum * 100) + '%"></div>'
+      + '<div class="bar-them" style="width:' + (forThem / sum * 100) + '%"></div></div>'
       + '<div class="tally-note">'
-      + 'A <b>round</b> is one pass through the ballot with the other side\'s slots filled — '
-      + 'the bar counts those, because the two sides have different numbers of slots ('
-      + usSlots + ' for us, ' + themSlots + ' for them) and counting picks would show '
-      + esc(c.partner.fandom) + ' ahead ' + themSlots + ':' + usSlots + ' before anybody voted.<br>'
-      + 'Picks so far: <span class="us">' + fmt(usPicks) + '</span> for ' + esc(c.partner.act)
-      + ' · <span class="them">' + fmt(themPicks) + '</span> for BLACKPINK'
-      + (extra ? ' <span class="them">+ ' + fmt(extra) + ' for ROSÉ, which they were never asked for</span>' : '')
-      + '.<br>Logged, not verified — our half is what blinks record here or through the extension'
-      + (t.themSource ? '; their half is reported by ' + esc(t.themSource) : '')
-      + '. A trade vote never counts toward a BLACKPINK total.</div>'
+      + '<b>These are not two teams.</b> Blinks and ' + esc(c.partner.fandom)
+      + ' both vote the whole ballot, so neither number belongs to one fandom — and nothing here '
+      + 'can tell which fandom a vote came from. The gap is slot counts, not standings: '
+      + esc(acts[0]) + (acts.length > 1 ? ' and the rest are' : ' is') + ' up in ' + themSlots
+      + ' ' + catWord(themSlots) + ' and ' + esc(c.partner.act) + ' in ' + usSlots
+      + ', so one pass through the ballot adds ' + themSlots + ' on one side and ' + usSlots
+      + ' on the other.'
+      + (rounds ? '<br>That is about <b>' + fmt(rounds) + '</b> complete '
+          + (rounds === 1 ? 'pass' : 'passes') + ' through the ballot.' : '')
+      + '<br>Logged, not verified — our half is what people record here or through the extension'
+      + (t.themSource ? '; the other half is reported by ' + esc(t.themSource) : '')
+      + '. A collab vote never counts toward a BLACKPINK total.</div>'
       + '</div>';
   }
   return '<div class="tally"><div class="tally-head">'
@@ -442,14 +451,17 @@ function card(c) {
     // Counts written out from the AGREED slots rather than typed. The copy said
     // "the three BLACKPINK is up for" and stayed saying it when ROSÉ moved out
     // of the deal and the agreed set became two.
-    + sideHtml('side-us', 'What BLINKs vote',
-        'The ' + numWord(agreedOnly(c.weGive).length) + ' ' + catWord(agreedOnly(c.weGive).length)
-        + ' <b>' + esc(c.partner.act) + '</b> is up for — we have no nominee in '
-        + (agreedOnly(c.weGive).length === 1 ? 'it' : 'them') + '.',
-        c.weGive)
-    + sideHtml('side-them', 'What ' + esc(c.partner.fandom) + ' vote',
-        'The ' + numWord(agreedOnly(c.theyGive).length) + ' ' + catWord(agreedOnly(c.theyGive).length)
-        + ' they agreed to — <b>' + esc(c.partner.act) + '</b> is in none of them.', c.theyGive)
+    // Labelled by WHOSE CATEGORY it is, not by who votes it. Everybody in the
+    // collab fills all four on the way through, so "what BLINKs vote" was a
+    // frame that implied two teams and two separate jobs.
+    + sideHtml('side-us', esc(c.partner.act) + '’s ' + catWord(c.weGive.length),
+        'The ' + numWord(c.weGive.length) + ' ' + catWord(c.weGive.length) + ' <b>'
+        + esc(c.partner.act) + '</b> is up for — we have no nominee in '
+        + (c.weGive.length === 1 ? 'it' : 'them') + '.', c.weGive)
+    + sideHtml('side-them', 'Our ' + catWord(c.theyGive.length),
+        'The ' + numWord(c.theyGive.length) + ' ' + catWord(c.theyGive.length)
+        + ' <b>BLACKPINK</b> and the members are up for — <b>' + esc(c.partner.act)
+        + '</b> is in none of them.', c.theyGive)
     + '</div>'
     + '<div class="collab-actions">'
     + (ended ? '' : '<a class="btn" href="' + esc(c.voteUrl) + '" target="_blank" rel="noopener noreferrer">Open the ballot ↗</a>')

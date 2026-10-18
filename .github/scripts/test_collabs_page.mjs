@@ -179,15 +179,12 @@ console.log('--- and when there ARE numbers, the bar draws them in proportion');
 // reader would still believe.
 const filled = await prev.evaluate(() => {
   const before = JSON.parse(JSON.stringify(COLLABS[0].tally || null));
-  // THE CASE THE BAR EXISTS TO GET RIGHT. Equal turnout, unequal slot counts:
-  // 100 rounds each side. Blinks fill one slot per round, so 100 picks; BLOOMs
-  // fill two, so 200 — plus 100 for ROSÉ, which they were never asked for.
-  // Counting picks would draw this 25/75 (or 33/67 with ROSÉ folded in) and
-  // tell a fandom it is losing 3:1 when it turned up in exactly equal numbers.
-  // It has to come out 50/50.
+  // 100 passes through the ballot by the collab as a whole: three picks land on
+  // our nominees each time and one on theirs. The two figures are what each act
+  // RECEIVED — not what each fandom contributed, which nothing here can know.
   COLLABS[0].tally = {
-    us:   { picks: 100 },
-    them: { picks: 200, extraPicks: 100 },
+    forUs:   { picks: 300 },           // votes BLACKPINK, JENNIE & ROSÉ received
+    forThem: { picks: 100 },           // votes BINI received
     asOf: new Date().toISOString(), themSource: 'their page',
   };
   render();
@@ -206,22 +203,33 @@ const filled = await prev.evaluate(() => {
   render();
   return out;
 });
-// Equal rounds must draw equal, however lopsided the picks are.
-(Math.abs(filled.us - 50) <= 1 && Math.abs(filled.them - 50) <= 1)
-  ? ok('equal turnout draws 50/50 despite 1 slot against 2', `${filled.us}% / ${filled.them}%`)
-  : bad('equal turnout draws 50/50 despite 1 slot against 2',
-        `${filled.us}% / ${filled.them}% — picks were counted, not rounds`);
-(/100 by BLINKs/.test(filled.nums) && /100 by BLOOMs/.test(filled.nums))
-  ? ok('and the headline figure is rounds', filled.nums.trim())
-  : bad('and the headline figure is rounds', filled.nums.trim());
-// The raw picks still have to be visible — they are the actual work, and
-// hiding them to make the bar tidy would be its own dishonesty.
-(/100/.test(filled.note) && /200/.test(filled.note))
-  ? ok('and the raw picks are shown underneath')
-  : bad('and the raw picks are shown underneath', filled.note.replace(/\s+/g, ' ').slice(0, 90));
-/never asked for|ROSÉ/.test(filled.note)
-  ? ok('and the un-agreed ROSÉ votes are named as such')
-  : bad('and the un-agreed ROSÉ votes are named as such', filled.note.replace(/\s+/g, ' ').slice(0, 90));
+// Drawn to scale, NOT normalised. 300 against 100 really is 75/25, and
+// flattening it would be inventing a tidier number than the one we have.
+// And our acts are drawn in OUR colour: .bar-us is the pink one, and it has to
+// be the segment carrying 300 rather than the partner's 100.
+(Math.abs(filled.us - 75) <= 1 && Math.abs(filled.them - 25) <= 1)
+  ? ok('the totals are drawn to scale, ours in our colour', `${filled.us}% / ${filled.them}%`)
+  : bad('the totals are drawn to scale, ours in our colour',
+        `${filled.us}% / ${filled.them}% — expected 75/25, pink first`);
+(/300/.test(filled.nums) && /100/.test(filled.nums))
+  ? ok('and both totals are in the headline', filled.nums.trim())
+  : bad('and both totals are in the headline', filled.nums.trim());
+// ROSÉ is in our side's total now, so the headline has to name her — she is a
+// third of that number.
+/ROSÉ/.test(filled.nums)
+  ? ok('and ROSÉ is named in the total she is part of')
+  : bad('and ROSÉ is named in the total she is part of', filled.nums.trim());
+// The whole point of the note. A reader shown 3:1 and not told why will read it
+// as a scoreline, and it is not one — neither figure belongs to a fandom.
+/not two teams/i.test(filled.note)
+  ? ok('and the note says these are not two teams')
+  : bad('and the note says these are not two teams', filled.note.replace(/\s+/g, ' ').slice(0, 90));
+/slot counts, not standings/i.test(filled.note)
+  ? ok('and explains the gap as slot counts')
+  : bad('and explains the gap as slot counts', filled.note.replace(/\s+/g, ' ').slice(0, 90));
+/complete pass/i.test(filled.note)
+  ? ok('and gives the turnout as complete passes', '100')
+  : bad('and gives the turnout as complete passes', filled.note.replace(/\s+/g, ' ').slice(0, 120));
 /logged, not verified/i.test(filled.note)
   ? ok('and it says logged, not verified')
   : bad('and it says logged, not verified', filled.note.trim());
