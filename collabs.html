@@ -36,6 +36,14 @@
     --border:  rgba(255,255,255,0.09);
     --mono:    'DM Mono', ui-monospace, monospace;
     --display: 'Bebas Neue', Impact, sans-serif;
+    /* The rest of the site rounds; this page was the only one of the four front
+       doors with no border-radius at all. One scale, taken from what is already
+       used elsewhere (10-12px panels, 8px controls, 999px pills) rather than a
+       new set of numbers. */
+    --r-card:  12px;   /* the collab card itself */
+    --r-box:   10px;   /* panels inside it */
+    --r-ctl:    8px;   /* buttons, tabs, day cells */
+    --r-pill: 999px;   /* chips, status markers, bars */
   }
 
   body {
@@ -75,7 +83,7 @@
   .section { padding: 1rem 0 3rem; }
 
   /* ── A collab ───────────────────────────────────────────────────────── */
-  .collab { border: 1px solid var(--border); padding: 1.5rem 1.4rem; margin-bottom: 1.6rem;
+  .collab { border: 1px solid var(--border); border-radius: var(--r-card); padding: 1.5rem 1.4rem; margin-bottom: 1.6rem;
     background: var(--card); position: relative; }
   .collab-top { display: flex; flex-wrap: wrap; gap: 0.8rem 1rem;
     align-items: flex-start; justify-content: space-between; margin-bottom: 1.1rem; }
@@ -86,7 +94,8 @@
   .collab-title b:first-of-type { font-weight: 400; color: var(--pink); }
   .collab-title b:last-of-type  { font-weight: 400; color: var(--them); }
   .collab-deadline { font-size: 0.95rem; font-weight: 500; letter-spacing: 0.08em;
-    text-transform: uppercase; padding: 0.55rem 0.9rem; border: 1px solid var(--border); white-space: nowrap; }
+    text-transform: uppercase; padding: 0.55rem 0.9rem; border: 1px solid var(--border);
+    border-radius: var(--r-ctl); white-space: nowrap; }
   .collab-deadline.urgent { color: #ff5050; border-color: rgba(255,80,80,0.4); background: rgba(255,80,80,0.08); }
   .collab-deadline.ended { color: var(--muted); }
 
@@ -94,6 +103,7 @@
      so it says so on its face wherever it is shown. */
   .collab-status { display: inline-block; font-size: 0.55rem; letter-spacing: 0.12em;
     text-transform: uppercase; padding: 0.2rem 0.5rem; border: 1px dashed var(--border);
+    border-radius: var(--r-pill);
     color: var(--muted); margin-left: 0.5rem; vertical-align: middle; }
   .collab-status.live { border-style: solid; border-color: var(--pink); color: var(--pink); }
 
@@ -134,7 +144,11 @@
   .tally-nums .us   { color: var(--pink); }
   .tally-nums .them { color: var(--them); }
   .tally-nums.tally-nocount { color: var(--muted); font-size: 0.68rem; }
-  .bar { height: 12px; background: rgba(255,255,255,0.06); overflow: hidden; display: flex; }
+  /* overflow:hidden was already here, so rounding the track rounds the two
+     fills with it — no need to round each end separately and get it wrong when
+     one side is zero. */
+  .bar { height: 12px; background: rgba(255,255,255,0.06); border-radius: var(--r-pill);
+    overflow: hidden; display: flex; }
   .bar-us   { background: var(--pink); transition: width 0.6s ease; }
   .bar-them { background: var(--them); transition: width 0.6s ease; }
   .tally-note { font-size: 0.68rem; color: var(--muted); margin-top: 0.5rem; line-height: 1.6; }
@@ -161,7 +175,8 @@
   .tabs { display: flex; gap: 0.4rem; margin-bottom: 0.8rem; }
   .tab { flex: 1 1 auto; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em;
     text-transform: uppercase; color: var(--muted); background: transparent;
-    border: 1px solid var(--border); padding: 0.5rem 0.6rem; cursor: pointer; }
+    border: 1px solid var(--border); border-radius: var(--r-ctl);
+    padding: 0.5rem 0.6rem; cursor: pointer; }
   .tab:hover { color: var(--pink); }
   .tab.on { color: var(--pink); border-color: var(--pink); background: var(--pink-muted); }
 
@@ -179,7 +194,8 @@
   .split-cat { font-size: 0.62rem; letter-spacing: 0.06em; color: var(--muted); min-width: 0; }
   .split-cat b { color: var(--white); font-weight: 500; }
   .split-n { font-size: 0.8rem; color: var(--white); font-variant-numeric: tabular-nums; }
-  .split-track { grid-column: 1 / -1; height: 4px; background: rgba(255,255,255,0.06); }
+  .split-track { grid-column: 1 / -1; height: 4px; background: rgba(255,255,255,0.06);
+    border-radius: var(--r-pill); overflow: hidden; }
   .split-fill { height: 100%; background: var(--accent, var(--pink)); }
 
   .board { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.74rem; }
@@ -194,7 +210,8 @@
   .board td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .board-cats { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.3rem; }
   .board-cat { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.04em;
-    color: var(--muted); border: 1px solid var(--border); padding: 0.1rem 0.3rem; }
+    color: var(--muted); border: 1px solid var(--border); border-radius: var(--r-pill);
+    padding: 0.15rem 0.45rem; }
   .board-cat b { color: var(--white); font-weight: 500; }
 
   /* Capped: seven square columns across a full-width card stretch each day to
@@ -205,7 +222,8 @@
     margin-top: 0.5rem; max-width: 420px; }
   .dow { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.1em; color: var(--muted);
     text-align: center; padding-bottom: 0.2rem; }
-  .day { aspect-ratio: 1 / 1; border: 1px solid var(--border); display: flex; flex-direction: column;
+  .day { aspect-ratio: 1 / 1; border: 1px solid var(--border); border-radius: var(--r-ctl);
+    display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 1px; font-size: 0.55rem; color: var(--muted); }
   .day.pad { border-color: transparent; }
   .day.has { border-color: rgba(255,0,102,0.45); background: var(--pink-muted);
@@ -226,18 +244,19 @@
 
   /* ── Get the counter ─────────────────────────────────────────────────── */
   .get { border: 1px solid rgba(255,0,102,0.3); background: rgba(255,0,102,0.04);
-    padding: 1.2rem 1.3rem; margin-top: 1.6rem; }
+    border-radius: var(--r-box); padding: 1.2rem 1.3rem; margin-top: 1.6rem; }
   .get-head { display: flex; flex-wrap: wrap; gap: 0.4rem 0.7rem; align-items: baseline;
     margin-bottom: 0.5rem; }
   .get-title { font-size: 0.72rem; letter-spacing: 0.08em; color: var(--white); }
   .get-ver { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em;
-    color: var(--pink); border: 1px solid rgba(255,0,102,0.45); padding: 0.1rem 0.4rem; }
+    color: var(--pink); border: 1px solid rgba(255,0,102,0.45);
+    border-radius: var(--r-pill); padding: 0.15rem 0.5rem; }
   .get-sub { font-size: 0.74rem; color: var(--muted); line-height: 1.7; margin-bottom: 0.9rem; }
   .get-sub b { color: var(--white); font-weight: 500; }
   .get-dl { display: flex; flex-wrap: wrap; gap: 0.5rem; }
   .get-btn { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em;
     text-transform: uppercase; text-decoration: none; color: #12000a; background: var(--pink);
-    border: 1px solid var(--pink); padding: 0.6rem 0.9rem; }
+    border: 1px solid var(--pink); border-radius: var(--r-ctl); padding: 0.6rem 0.9rem; }
   .get-btn small { display: block; font-size: 0.5rem; opacity: 0.75; letter-spacing: 0.04em;
     text-transform: none; margin-top: 0.1rem; }
   .get-btn.ghost { background: transparent; color: var(--pink); }
@@ -248,17 +267,20 @@
   .collab-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.3rem; }
   .btn { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
     text-decoration: none; padding: 0.7rem 1.1rem; border: 1px solid var(--pink);
+    border-radius: var(--r-ctl);
     color: #12000a; background: var(--pink); transition: filter 0.15s; }
   .btn:hover { filter: brightness(1.08); }
   .btn.ghost { background: transparent; color: var(--pink); }
   .btn.ghost:hover { background: var(--pink-muted); filter: none; }
 
-  .empty { border: 1px dashed var(--border); padding: 2rem 1.4rem; text-align: center;
+  .empty { border: 1px dashed var(--border); border-radius: var(--r-box);
+    padding: 2rem 1.4rem; text-align: center;
     color: var(--muted); font-size: 0.8rem; line-height: 1.8; }
   .empty b { color: var(--white); font-weight: 500; }
 
   /* ── How it works ───────────────────────────────────────────────────── */
-  .how { border: 1px solid var(--border); padding: 1.3rem 1.3rem 1.1rem; }
+  .how { border: 1px solid var(--border); border-radius: var(--r-box);
+    padding: 1.3rem 1.3rem 1.1rem; }
   .how-head { font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase;
     color: var(--pink-lo); margin-bottom: 0.8rem; }
   .how ul { list-style: none; display: grid; gap: 0.7rem; }
