@@ -9347,7 +9347,14 @@ function renderVoteCampaigns() {
     // IS a post, "go and tweet" is the step people get wrong — the tags have
     // to be exact and only the first post of the day is read — so the card
     // carries the text to send and a one-tap repost of ours, which Mnet counts
-    // the same. `r.url` is already the pinned post when there is a fresh one
+    // the same.
+    //
+    // It sits ABOVE the nominations, not below them, and that is the card's
+    // whole shape: who (the logo), how long (the countdown), where we stand
+    // (the ranking), WHAT TO DO (this), and only then what we are up for. The
+    // nominations are the reference material — worth reading, but not the
+    // reason somebody opened the page — and they were pushing the one
+    // actionable thing on the card a screen further down. `r.url` is already the pinned post when there is a fresh one
     // and a live search of our handle otherwise (see mamaRepostUrl), so this
     // block cannot point at a stale post; the heading says which of the two it
     // is rather than claiming "today's" either way.
@@ -9390,8 +9397,8 @@ function renderVoteCampaigns() {
           <span class="vote-standing-txt">in <b data-no-i18n>${c.standing.cat}</b> on Mnet Plus
             <span class="vote-standing-when">round ${c.standing.round} · checked ${c.standing.day}</span></span>
         </div>` : ''}
-        ${c.videos ? `<div class="vote-videos">${videosHtml}</div>${hasPro ? `<div class="vote-videos-note">🔒 Chosen by an industry panel — not a fan vote</div>` : ''}${igNom ? `<div class="vote-videos-note ig">📸 <b>${igNom.cat}</b> is voted in <b>MTV's Instagram Stories</b>, not on vote.mtv.com — so it isn't counted on our leaderboard.${igTiming}</div>` : ''}` : `<div class="vote-categories">${categoriesHtml}</div>`}
         ${repostHtml}
+        ${c.videos ? `<div class="vote-videos">${videosHtml}</div>${hasPro ? `<div class="vote-videos-note">🔒 Chosen by an industry panel — not a fan vote</div>` : ''}${igNom ? `<div class="vote-videos-note ig">📸 <b>${igNom.cat}</b> is voted in <b>MTV's Instagram Stories</b>, not on vote.mtv.com — so it isn't counted on our leaderboard.${igTiming}</div>` : ''}` : `<div class="vote-categories">${categoriesHtml}</div>`}
         ${c.rules?.length ? `<div class="vote-rules">
           <div class="vote-rules-label">📋 Rules</div>
           <ul>${c.rules.map(r => `<li>${r}</li>`).join('')}</ul>

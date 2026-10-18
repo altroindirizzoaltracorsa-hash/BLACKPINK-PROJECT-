@@ -188,6 +188,28 @@ console.log('--- the MAMA half shows where we stand and what to post');
         ? ok('a round-1 standing hides in the pause and in round 2', JSON.stringify(s.gate))
         : bad('a round-1 standing hides in the pause and in round 2', JSON.stringify(s.gate));
 
+    // The card's shape, top to bottom: how long, where we stand, what to do,
+    // what we are up for. Asserted because it is an ordering of independent
+    // template expressions — nothing makes them come out in this order except
+    // their position in the string, and nothing else would notice a swap.
+    const order = await fr.evaluate(() => {
+      const card = document.querySelector('#vc-embed-root .vote-card');
+      const want = ['.vote-deadline', '.vote-standing', '.vote-repost', '.vote-categories'];
+      const found = want.map((sel) => {
+        const el = card.querySelector(sel);
+        return el ? { sel, y: Math.round(el.getBoundingClientRect().top) } : { sel, y: null };
+      });
+      return found;
+    });
+    const missing = order.filter((o) => o.y === null).map((o) => o.sel);
+    if (missing.length) bad('the card carries every block in the order', `missing ${missing.join(', ')}`);
+    else {
+      const ys = order.map((o) => o.y);
+      const sorted = ys.every((y, i) => i === 0 || y > ys[i - 1]);
+      sorted ? ok('countdown → ranking → post → nominations', order.map((o) => `${o.sel.slice(1)}@${o.y}`).join(' '))
+             : bad('countdown → ranking → post → nominations', order.map((o) => `${o.sel.slice(1)}@${o.y}`).join(' '));
+    }
+
     if (!s.repost) bad('the daily vote post is shown');
     else {
       s.repost.text.length > 8 ? ok('the daily vote post is shown', `"${s.repost.text}"`)
