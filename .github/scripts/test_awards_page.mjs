@@ -143,6 +143,72 @@ for (const b of BALLOTS) {
   }
 }
 
+console.log('--- the MAMA half shows where we stand and what to post');
+{
+  const fr = page.frames().find((f) => f.url().includes('card=mama'));
+  if (!fr) { bad('mama frame found for the standing check'); }
+  else {
+    const s = await fr.evaluate(() => {
+      const el = document.querySelector('#vc-embed-root .vote-standing');
+      const r = document.querySelector('#vc-embed-root .vote-repost');
+      return {
+        standing: el && { pos: (el.querySelector('.vote-standing-pos') || {}).textContent,
+                          when: (el.querySelector('.vote-standing-when') || {}).textContent,
+                          txt: el.textContent.replace(/\s+/g, ' ').trim() },
+        repost: r && { head: (r.querySelector('.vote-repost-head') || {}).textContent.trim(),
+                       who: (r.querySelector('.vote-repost-who') || {}).textContent.trim(),
+                       text: (r.querySelector('.vote-repost-text') || {}).textContent.trim(),
+                       repost: (r.querySelector('.vote-repost-btn') || {}).href,
+                       own: (r.querySelector('.vote-repost-alt') || {}).href },
+        // The gating, exercised against the page's own function rather than
+        // re-implemented here. A standing read in round 1 must not be shown
+        // during the pause or in round 2: round 2 counts from zero.
+        gate: (() => {
+          try {
+            return { now: !!mamaStanding(Date.parse('2026-10-18T12:00:00Z')),
+                     pause: !!mamaStanding(Date.parse('2026-10-25T12:00:00Z')),
+                     r2: !!mamaStanding(Date.parse('2026-10-30T12:00:00Z')) };
+          } catch (e) { return { err: String(e) }; }
+        })(),
+      };
+    });
+    if (!s.standing) bad('the Mnet Plus standing is shown');
+    else {
+      /^#\d+$/.test(s.standing.pos) ? ok('the Mnet Plus standing is shown', s.standing.txt)
+                                    : bad('the Mnet Plus standing is shown', `position reads "${s.standing.pos}"`);
+      // A position with no date is a claim to be current, and it is not.
+      /checked/i.test(s.standing.when || '') && /\d/.test(s.standing.when || '')
+        ? ok('and says when it was read', s.standing.when.trim())
+        : bad('and says when it was read', s.standing.when || 'no date');
+      /round \d/i.test(s.standing.when || '') ? ok('and which round it belongs to')
+                                              : bad('and which round it belongs to', s.standing.when || '');
+    }
+    s.gate.err ? bad('the standing gate runs', s.gate.err)
+      : (s.gate.now && !s.gate.pause && !s.gate.r2)
+        ? ok('a round-1 standing hides in the pause and in round 2', JSON.stringify(s.gate))
+        : bad('a round-1 standing hides in the pause and in round 2', JSON.stringify(s.gate));
+
+    if (!s.repost) bad('the daily vote post is shown');
+    else {
+      s.repost.text.length > 8 ? ok('the daily vote post is shown', `"${s.repost.text}"`)
+                               : bad('the daily vote post is shown', `"${s.repost.text}"`);
+      // The post has to carry both tags or it is not a vote — this is the
+      // text people are being handed, so it is worth asserting literally.
+      (/#2026MAMAVOTE/i.test(s.repost.text) && /#BLACKPINK/i.test(s.repost.text))
+        ? ok('and it carries both required hashtags')
+        : bad('and it carries both required hashtags', s.repost.text);
+      /^@\w+/.test(s.repost.who) ? ok('and names the account it comes from', s.repost.who)
+                                 : bad('and names the account it comes from', s.repost.who);
+      /^https:\/\/(x|twitter)\.com\//.test(s.repost.repost || '')
+        ? ok('repost button goes to X', s.repost.repost)
+        : bad('repost button goes to X', s.repost.repost || 'no href');
+      /^https:\/\/x\.com\/intent\/post/.test(s.repost.own || '')
+        ? ok('and "post my own" opens a composer', s.repost.own)
+        : bad('and "post my own" opens a composer', s.repost.own || 'no href');
+    }
+  }
+}
+
 console.log('--- each half carries its award\'s own logo');
 // An <img> that 404s or fails to decode has no intrinsic size, and a logo
 // that silently vanished would leave a column with no identity at all — the

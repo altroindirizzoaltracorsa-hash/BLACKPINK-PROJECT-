@@ -2245,6 +2245,37 @@
   .vote-reset { font-family: var(--mono); font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 1.2rem; }
   .vote-reset-time { color: var(--pink); font-weight: 500; }
 
+  /* Where we stand in the app's own ranking. One line, led by the number,
+     because the number is the thing being looked up — everything after it is
+     the caveat that makes the number mean something. */
+  .vote-standing { display: flex; align-items: baseline; gap: 0.6rem; margin-bottom: 1.2rem; }
+  .vote-standing-pos { font-family: var(--display); font-size: 2rem; line-height: 1; color: var(--pink); }
+  .vote-standing-txt { font-size: 0.76rem; color: var(--muted); line-height: 1.4; }
+  .vote-standing-txt b { color: var(--white); font-weight: 500; }
+  .vote-standing-when { display: block; font-family: var(--mono); font-size: 0.58rem;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); opacity: 0.8; margin-top: 0.15rem; }
+
+  /* The post, shown as a post. Quoted rather than styled as a button so it
+     reads as the thing you are about to send, with the actions under it. */
+  .vote-repost { border: 1px solid rgba(255,255,255,0.14); padding: 0.9rem 1rem; margin-bottom: 1.4rem; }
+  .vote-repost-head { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 0.6rem; }
+  .vote-repost-post { display: block; text-decoration: none; border-left: 2px solid var(--pink);
+    padding: 0.1rem 0 0.1rem 0.7rem; margin-bottom: 0.75rem; }
+  .vote-repost-who { display: block; font-family: var(--mono); font-size: 0.6rem;
+    letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.2rem; }
+  .vote-repost-text { display: block; font-size: 0.92rem; color: var(--white); line-height: 1.45; }
+  .vote-repost-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+  .vote-repost-btn { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em;
+    text-transform: uppercase; text-decoration: none; color: #12000a; background: var(--pink);
+    border: 1px solid var(--pink); padding: 0.45rem 0.8rem; transition: opacity 0.15s; }
+  .vote-repost-btn:hover { opacity: 0.85; }
+  .vote-repost-alt { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em;
+    text-transform: uppercase; text-decoration: none; color: var(--pink);
+    border: 1px solid rgba(255,0,102,0.45); padding: 0.45rem 0.8rem; }
+  .vote-repost-alt:hover { background: var(--pink-muted); }
+  .vote-repost-note { font-size: 0.66rem; color: var(--muted); line-height: 1.5; margin-top: 0.6rem; }
+
   .vote-categories { display: flex; flex-direction: column; gap: 0.9rem; margin-bottom: 1.4rem; }
   .vote-cat-row { display: flex; align-items: center; gap: 0.85rem; }
   /* A row nobody can vote in, shaded the same way and by the same amount as a
@@ -8511,6 +8542,48 @@ const MAMA_ROUNDS = [
 // Where the ballot lives when no round-specific link is known.
 const MAMA_EVENT_URL = 'https://mnetplus.world/event/2026-mama';
 
+// ── where we actually stand ─────────────────────────────────────────────────
+// The Fans' Choice ranking as the Mnet Plus app shows it.
+//
+// HAND-ENTERED, and it has to be: the standing lives inside the app's own
+// voting page, and Mnet publishes no page, feed or API carrying it — the only
+// things outside the app are fan screenshots, which is not a source. So the
+// reading carries the day it was taken and the round it was taken in, and both
+// are load-bearing rather than decoration:
+//
+//   * the DATE is always shown. A position with no date is a claim to be
+//     current, and this one is only ever as current as the last time somebody
+//     opened the app.
+//   * the ROUND is checked against the round that is open, and the block hides
+//     itself if they differ. Round 2 counts from zero, with a six-day pause in
+//     between — a round-1 position displayed during round 2 is not stale, it
+//     is wrong.
+//   * past MAX_AGE_DAYS it hides itself too. These move daily; past about a
+//     work week "as of" has stopped being a caveat and started being an
+//     excuse, and showing nothing is better than showing last week's.
+//
+// To update it: open Mnet Plus, read the position, change `pos` and `at`. That
+// is the whole job — the card, the award tab and the date all follow.
+const MAMA_STANDING = { pos: 6, cat: 'Fans’ Choice Female', round: 1, at: '2026-10-18' };
+const MAMA_STANDING_MAX_AGE_DAYS = 5;
+
+function mamaStanding(now = Date.now()) {
+  const s = MAMA_STANDING;
+  if (!s || !s.pos || !s.at) return null;
+  // The round the card is about: the one running, or the next one up.
+  const r = MAMA_ROUNDS.find((x) => now >= x.from && now <= x.to)
+         || MAMA_ROUNDS.find((x) => now < x.from);
+  if (!r || r.n !== s.round) return null;
+  // Noon UTC so the day cannot slip either way when it is formatted.
+  const taken = Date.parse(s.at + 'T12:00:00Z');
+  if (!taken) return null;
+  const ageDays = (now - taken) / 86400000;
+  if (ageDays > MAMA_STANDING_MAX_AGE_DAYS) return null;
+  return { pos: s.pos, cat: s.cat, round: r.n,
+           day: new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'short' })
+             .format(new Date(taken)) };
+}
+
 // The link the Vote Now button and the Fans' Choice row should use right now.
 //
 // TWO PARAMETERS WERE DELETED from the link as it came out of the app's share
@@ -8754,6 +8827,15 @@ const VOTE_CAMPAIGNS = [
     // left open across a round boundary shows "VOTING CLOSED", which is true of
     // the round it was counting.
     ...mamaCardTiming(),
+    // Both getters, not values: the standing has to be re-read against the
+    // round that is open when the card is BUILT, and the repost link has to
+    // pick up a pinned post that may have arrived after this file was parsed.
+    // Spread values would freeze both at load.
+    get standing() { return mamaStanding(); },
+    get repost() {
+      return { handle: MAMA_X_HANDLE, text: MAMA_TWEET, url: mamaRepostUrl(), pinned: mamaHasPin(),
+               own: 'https://x.com/intent/post?text=' + encodeURIComponent(MAMA_TWEET) };
+    },
     alert: '<b>Mnet Plus is 90% of this.</b> X is the other 10% — if you only do one thing, vote in the app, and remember a session does not submit until you have voted in <b>both</b> Male and Female.',
     rules: [
       '<b>Mnet Plus app — 90%.</b> Once a day from one ID on one device. Pick <b>1 to 3 teams</b> in Male <i>and</i> 1 to 3 in Female; the same artist cannot be picked twice, and nothing submits until both sides are filled in',
@@ -9239,6 +9321,28 @@ function renderVoteCampaigns() {
     if (igNom && igNom.endsAt && now >= new Date(igNom.endsAt).getTime()) {
       igTiming = ' Those rounds are closed now.';
     }
+    // The post itself, shown rather than described. On an award where the vote
+    // IS a post, "go and tweet" is the step people get wrong — the tags have
+    // to be exact and only the first post of the day is read — so the card
+    // carries the text to send and a one-tap repost of ours, which Mnet counts
+    // the same. `r.url` is already the pinned post when there is a fresh one
+    // and a live search of our handle otherwise (see mamaRepostUrl), so this
+    // block cannot point at a stale post; the heading says which of the two it
+    // is rather than claiming "today's" either way.
+    const r = (!ended && c.repost) ? c.repost : null;
+    const repostHtml = !r ? '' : `
+        <div class="vote-repost">
+          <div class="vote-repost-head">𝕏 ${r.pinned ? 'Today’s post' : 'Our latest vote post'} — reposting it IS your vote</div>
+          <a class="vote-repost-post" href="${r.url}" target="_blank" rel="noopener noreferrer">
+            <span class="vote-repost-who" data-no-i18n>@${r.handle}</span>
+            <span class="vote-repost-text" data-no-i18n>${r.text}</span>
+          </a>
+          <div class="vote-repost-actions">
+            <a class="vote-repost-btn" href="${r.url}" target="_blank" rel="noopener noreferrer">↻ Repost ours ↗</a>
+            <a class="vote-repost-alt" href="${r.own}" target="_blank" rel="noopener noreferrer">Post my own ↗</a>
+          </div>
+          <div class="vote-repost-note">Either counts as one vote, and only your <b>first</b> voting post of the day is read — so a repost is the safe one.</div>
+        </div>`;
     const wonBadge = c.winner ? `<div class="vote-winner-badge">🏆 WE WON — ${c.winner.name}</div>` : '';
     return `
       <div class="vote-card${c.winner ? ' won' : ''}" data-campaign="${c.id}">
@@ -9252,7 +9356,13 @@ function renderVoteCampaigns() {
           ${deadlineHtml}
         </div>
         ${c.resetOffset && !ended ? `<div class="vote-reset">🔄 Daily votes reset in <span class="vote-reset-time" data-reset-offset="${c.resetOffset}"></span></div>` : ''}
+        ${c.standing && !ended ? `<div class="vote-standing">
+          <span class="vote-standing-pos">#${c.standing.pos}</span>
+          <span class="vote-standing-txt">in <b data-no-i18n>${c.standing.cat}</b> on Mnet Plus
+            <span class="vote-standing-when">round ${c.standing.round} · checked ${c.standing.day}</span></span>
+        </div>` : ''}
         ${c.videos ? `<div class="vote-videos">${videosHtml}</div>${hasPro ? `<div class="vote-videos-note">🔒 Chosen by an industry panel — not a fan vote</div>` : ''}${igNom ? `<div class="vote-videos-note ig">📸 <b>${igNom.cat}</b> is voted in <b>MTV's Instagram Stories</b>, not on vote.mtv.com — so it isn't counted on our leaderboard.${igTiming}</div>` : ''}` : `<div class="vote-categories">${categoriesHtml}</div>`}
+        ${repostHtml}
         ${c.rules?.length ? `<div class="vote-rules">
           <div class="vote-rules-label">📋 Rules</div>
           <ul>${c.rules.map(r => `<li>${r}</li>`).join('')}</ul>
