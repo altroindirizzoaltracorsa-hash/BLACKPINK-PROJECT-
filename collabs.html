@@ -344,8 +344,13 @@ var COLLABS = [
     },
     // What BLINKs put in the partner's category. One slot, and it is a slot we
     // have no nominee in — so this costs a blink nothing at all.
+    // `slug` is the ballot's own category id and is THE KEY everything is
+    // matched on — the extension reads it off kca.nick.tv, the API stores it,
+    // and this page sums by it. `cat` is only what a reader sees. They were one
+    // field for a while, which meant the page keyed on a human label the ballot
+    // has never heard of and nothing could ever have matched.
     weGive: [
-      { cat: 'Favorite Global Music Star', nominee: 'BINI' },
+      { slug: 'favorite-global-music-star', cat: 'Favorite Global Music Star', nominee: 'BINI' },
     ],
     // What their side puts in ours. Read off the live ballot (probe-kca.yml) and
     // in step with KCA_CATEGORIES in index.html.
@@ -369,9 +374,12 @@ var COLLABS = [
       // only person it could change the behaviour of is someone who would
       // otherwise have voted for her. The leniency costs nobody anything by
       // being quiet: it can only ever help someone who already skipped it.
-      { cat: 'Favorite Music Group or Duo',  nominee: 'BLACKPINK',             who: 'BLACKPINK' },
-      { cat: 'Favorite Music Collaboration', nominee: 'Dracula (with JENNIE)', who: 'JENNIE' },
-      { cat: 'Favorite Female Artist',       nominee: 'ROSÉ',                  who: 'ROSÉ', required: false },
+      { slug: 'favorite-music-group-or-duo',  cat: 'Favorite Music Group or Duo',
+        nominee: 'BLACKPINK',             who: 'BLACKPINK' },
+      { slug: 'favorite-music-collaboration', cat: 'Favorite Music Collaboration',
+        nominee: 'Dracula (with JENNIE)', who: 'JENNIE' },
+      { slug: 'favorite-female-artist',       cat: 'Favorite Female Artist',
+        nominee: 'ROSÉ',                  who: 'ROSÉ', required: false },
     ],
     why: 'The Kids’ Choice ballot does not submit until every category is filled. '
        + 'BLACKPINK and the members are up in three categories and BINI in a fourth, and '
@@ -474,7 +482,7 @@ function passesFrom(c, t) {
   if (!by) return null;
   var counts = [];
   requiredOf(c.theyGive).concat(requiredOf(c.weGive)).forEach(function (p) {
-    counts.push(Math.max(0, Number(by[p.cat]) || 0));
+    counts.push(Math.max(0, Number(by[p.slug]) || 0));
   });
   return counts.length ? Math.min.apply(null, counts) : null;
 }
@@ -507,8 +515,8 @@ function periodOf(c, t, k) {
   // get right.
   if (p.byCat && !p.forUs && !p.forThem) {
     var mine = 0, theirs = 0, ourCats = {}, theirCats = {};
-    c.theyGive.forEach(function (x) { ourCats[x.cat] = 1; });
-    c.weGive.forEach(function (x) { theirCats[x.cat] = 1; });
+    c.theyGive.forEach(function (x) { ourCats[x.slug] = 1; });
+    c.weGive.forEach(function (x) { theirCats[x.slug] = 1; });
     Object.keys(p.byCat).forEach(function (k2) {
       var n = Math.max(0, Number(p.byCat[k2]) || 0);
       if (ourCats[k2]) mine += n; else if (theirCats[k2]) theirs += n;
@@ -520,9 +528,16 @@ function periodOf(c, t, k) {
   return p;
 }
 
-function catLabelOf(c, cat) {
-  var hit = c.theyGive.concat(c.weGive).filter(function (p) { return p.cat === cat; })[0];
-  return hit ? (hit.who || hit.nominee) : cat;
+function pickBySlug(c, slug) {
+  return c.theyGive.concat(c.weGive).filter(function (p) { return p.slug === slug; })[0] || null;
+}
+function catLabelOf(c, slug) {
+  var hit = pickBySlug(c, slug);
+  return hit ? (hit.who || hit.nominee) : slug;
+}
+function catNameOf(c, slug) {
+  var hit = pickBySlug(c, slug);
+  return hit ? hit.cat : slug;
 }
 
 // The per-category split behind the bar. Ordered biggest first, each with its
@@ -536,11 +551,12 @@ function splitHtml(c, byCat) {
   if (!rows.length) return '';
   var top = rows[0].n || 1;
   var theirCats = {};
-  c.weGive.forEach(function (p) { theirCats[p.cat] = 1; });
+  c.weGive.forEach(function (p) { theirCats[p.slug] = 1; });
   return '<div class="split">' + rows.map(function (r) {
     var mine = !theirCats[r.cat];
     return '<div class="split-row" style="--accent:' + (mine ? 'var(--pink)' : 'var(--them)') + '">'
-      + '<span class="split-cat"><b>' + esc(catLabelOf(c, r.cat)) + '</b> · ' + esc(r.cat) + '</span>'
+      + '<span class="split-cat"><b>' + esc(catLabelOf(c, r.cat)) + '</b> · '
+      + esc(catNameOf(c, r.cat)) + '</span>'
       + '<span class="split-n">' + fmt(r.n) + '</span>'
       + '<span class="split-track"><span class="split-fill" style="width:'
       + (r.n / top * 100) + '%"></span></span></div>';

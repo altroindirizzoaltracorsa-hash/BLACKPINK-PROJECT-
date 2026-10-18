@@ -808,6 +808,48 @@ const KCA_NOMINEES = {
   'favorite-music-collaboration': { nominee: 'Dracula (with JENNIE)', who: 'JENNIE',    label: 'Music Collaboration' },
 };
 
+// ── the fandom collab (blinksunited.com/collabs) ────────────────────────────
+// BLINKs and BLOOMs agreed to fill each other's categories on this ballot, so
+// the counter records the WHOLE pass — ours and theirs — for the collab board.
+//
+// IT GOES TO ITS OWN ENDPOINT, never to /api/vma-votes. That endpoint's `votes`
+// column ranks the Kids' Choice board and earns the Voter badge, and a pick for
+// BINI is not a BLACKPINK vote: posting it there would raise a blink's
+// BLACKPINK standing for voting BINI. /api/collabs writes a separate table that
+// the Kids' Choice board never reads.
+//
+// Keyed by the ballot's own category slug, the same key the site and the API
+// use, so nothing has to translate between them.
+const COLLAB = {
+  id: 'bvp-kca-2026',
+  endpoint: 'https://blinksunited.com/api/collabs',
+  // The ballot's close, as the site has it. Past this the collab is over and
+  // the counter stops posting to it — an extension lives on people's machines
+  // and cannot be recalled, so the window is enforced here as well as there.
+  until: Date.parse('2026-11-14T07:59:00Z'),
+  // Every category the collab counts. Ours are here too: the collab board
+  // counts a whole pass through the ballot, not only the half done for them.
+  nominees: {
+    'favorite-music-group-or-duo':  'BLACKPINK',
+    'favorite-music-collaboration': 'Dracula (with JENNIE)',
+    'favorite-female-artist':       'ROSÉ',
+    'favorite-global-music-star':   'BINI',
+  },
+};
+
+async function postCollabVotes(cats) {
+  const { buToken } = await getLocal('buToken');
+  if (!buToken || !cats || !Object.keys(cats).length) return { ok: false, reason: 'not-linked' };
+  try {
+    const r = await fetch(COLLAB.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: COLLAB.id, extToken: buToken, cats }),
+    });
+    return { ok: r.ok };
+  } catch (_) { return { ok: false, reason: 'network' }; }
+}
+
 // Compare names the way a human would: case, accents and punctuation all differ
 // between how the ballot writes a name and how we do. "ROSÉ" vs "ROSE" is the
 // one that matters today — without the accent fold, ROSÉ's votes never count.
@@ -1003,10 +1045,17 @@ async function processKcaVote(e) {
   }
 
   let n = 0, unknown = 0, notOurs = 0;
-  const cats = {}, perMember = {};
+  const cats = {}, perMember = {}, collabCats = {};
   for (const v of votes) {
     const opt = ballot.byOption[v.o];
     if (!opt) { unknown += 1; continue; }
+    // The collab counts the whole pass, so this is checked for every pick
+    // INCLUDING the partner's — and before the "is it ours" test below, which
+    // rightly calls a BINI pick not ours.
+    const inCollab = COLLAB.nominees[opt.s];
+    if (inCollab && kcaNorm(inCollab) === kcaNorm(opt.t)) {
+      collabCats[opt.s] = (collabCats[opt.s] || 0) + 1;
+    }
     const mine = KCA_NOMINEES[opt.s];
     if (!mine || kcaNorm(mine.nominee) !== kcaNorm(opt.t)) {
       notOurs += 1;
@@ -1015,6 +1064,15 @@ async function processKcaVote(e) {
     n += 1;
     cats[opt.s] = (cats[opt.s] || 0) + 1;
     perMember[mine.who] = (perMember[mine.who] || 0) + 1;
+  }
+
+  // Sent before the early return below: a round can carry a BINI pick and none
+  // of ours — somebody voting the other side's category and skipping ours is
+  // exactly what a collab makes possible — and returning first would drop it.
+  if (Date.now() < COLLAB.until && Object.keys(collabCats).length) {
+    postCollabVotes(collabCats).then((res) => {
+      if (!res.ok) kcaDiag({ kind: 'collab-post-failed', reason: res.reason || 'http' });
+    });
   }
 
   if (n <= 0) {

@@ -1,0 +1,109 @@
+// The ballot category slugs have to mean the same thing in three files.
+//
+// Run: node .github/scripts/test_collab_slugs.mjs
+//
+// A vote is matched by slug AND nominee name: the extension reads both off
+// kca.nick.tv, posts the slug, the API stores it, and /collabs sums by it. So
+// three separate files carry the same strings:
+//
+//   vote-extension/background.js  COLLAB.nominees   — what the counter records
+//   collabs.html                  COLLABS[].slug    — what the page sums
+//   index.html                    KCA_CATEGORIES    — the Kids' Choice board
+//
+// Drift between them does not throw and does not look wrong. It silently
+// counts nothing: a slug the page does not know lands in no total, and a
+// nominee name that does not match the ballot never matches at all. Both read
+// on the page as "the collab has no votes", which is the hardest kind of bug
+// to notice because it is also what an honest empty board looks like.
+import { readFileSync } from 'node:fs';
+
+const root = new URL('../..', import.meta.url).pathname;
+let fails = [];
+const check = (c, m, d) => { console.log((c ? '  ok   ' : '  FAIL ') + m + (d ? ` (${d})` : '')); if (!c) fails.push(m); };
+
+// Pull one top-level literal out of a file and evaluate it. Deliberately not a
+// regex over the contents: these are hand-edited lists and the point is to
+// compare what the code actually holds, not what a pattern can scrape.
+function literal(file, decl) {
+  const src = readFileSync(root + file, 'utf8');
+  const at = src.indexOf(decl);
+  if (at < 0) throw new Error(`${decl} not found in ${file}`);
+  const open = src.indexOf(decl.endsWith('[') ? '[' : '{', at + decl.length - 1);
+  let depth = 0, i = open, inStr = null, prev = '';
+  for (; i < src.length; i++) {
+    const ch = src[i];
+    if (inStr) {
+      if (ch === inStr && prev !== '\\') inStr = null;
+    } else if (ch === '"' || ch === "'" || ch === '`') inStr = ch;
+    else if (ch === '/' && src[i + 1] === '/') { i = src.indexOf('\n', i); if (i < 0) break; }
+    else if (ch === '[' || ch === '{') depth++;
+    else if (ch === ']' || ch === '}') { depth--; if (!depth) { i++; break; } }
+    prev = ch;
+  }
+  return new Function('return (' + src.slice(open, i) + ')')();
+}
+
+const COLLAB = literal('vote-extension/background.js', 'const COLLAB = {');
+const COLLABS = literal('collabs.html', 'var COLLABS = [');
+const KCA_CATEGORIES = literal('index.html', 'const KCA_CATEGORIES = [');
+
+const page = COLLABS.find((c) => c.id === COLLAB.id);
+check(!!page, `collabs.html has the collab the extension posts to (${COLLAB.id})`);
+if (!page) { console.log(`\nFAILURES: ${fails.length}`); process.exit(1); }
+
+const picks = page.theyGive.concat(page.weGive);
+
+console.log('--- every category the page shows, the counter records');
+for (const p of picks) {
+  const got = COLLAB.nominees[p.slug];
+  check(!!got, `the counter knows ${p.slug}`, got || 'missing from COLLAB.nominees');
+  if (got) {
+    check(got === p.nominee, `and calls ${p.slug} the same thing`,
+          got === p.nominee ? p.nominee : `extension "${got}" vs page "${p.nominee}"`);
+  }
+}
+
+console.log('--- and records nothing the page would not count');
+// A slug the counter posts that the page does not know lands in no total at
+// all: it would be written, charged against nobody, and invisible.
+for (const slug of Object.keys(COLLAB.nominees)) {
+  check(picks.some((p) => p.slug === slug), `the page counts ${slug}`,
+        picks.some((p) => p.slug === slug) ? '' : 'the page has no such category');
+}
+
+console.log('--- our own three still agree with the Kids’ Choice board');
+// These three are counted twice over, in two tables, and the nominee string is
+// what matches a pick to a nominee in both. If one copy drifts, one of the two
+// boards quietly stops counting a member.
+for (const p of page.theyGive) {
+  const kca = KCA_CATEGORIES.find((k) => k.slug === p.slug);
+  check(!!kca, `${p.slug} is a Kids’ Choice category`, kca ? '' : 'not in KCA_CATEGORIES');
+  if (kca) {
+    check(kca.nominee === p.nominee, `${p.slug}: the nominee string matches index.html`,
+          kca.nominee === p.nominee ? p.nominee : `board "${kca.nominee}" vs collab "${p.nominee}"`);
+    check(kca.who === p.who, `${p.slug}: and so does the artist`,
+          kca.who === p.who ? p.who : `board "${kca.who}" vs collab "${p.who}"`);
+  }
+}
+
+console.log('--- the partner’s category is NOT one of ours');
+// The whole premise. If BINI's category were also one BLACKPINK is up for,
+// there would be no trade to make, and the counter would be posting a vote for
+// a rival in a category we are in.
+for (const p of page.weGive) {
+  check(!KCA_CATEGORIES.some((k) => k.slug === p.slug),
+        `${p.slug} is not a category we have a nominee in`);
+}
+
+console.log('--- the window the counter will post in');
+const until = COLLAB.until;
+check(Number.isFinite(until), 'the extension has a closing time', new Date(until).toISOString());
+check(until === Date.parse(page.deadline), 'and it is the page’s deadline to the second',
+      until === Date.parse(page.deadline) ? new Date(until).toISOString()
+        : `${new Date(until).toISOString()} vs ${page.deadline}`);
+check(/^https:\/\/(www\.)?blinksunited\.com\/api\/collabs$/.test(COLLAB.endpoint),
+      'and posts to the collab endpoint, not the vote board', COLLAB.endpoint);
+
+console.log(`\nFAILURES: ${fails.length}`);
+for (const f of fails) console.log('  - ' + f);
+process.exit(fails.length ? 1 : 0);

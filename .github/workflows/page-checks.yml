@@ -18,6 +18,7 @@ on:
       - 'awards.html'
       - 'collabs.html'
       - 'api/collabs.js'
+      - 'vote-extension/background.js'
       - 'vmas.html'
       - 'breaktudo.html'
       - 'achievements.html'
@@ -33,6 +34,7 @@ on:
       - 'awards.html'
       - 'collabs.html'
       - 'api/collabs.js'
+      - 'vote-extension/background.js'
       - 'vmas.html'
       - 'breaktudo.html'
       - 'achievements.html'
@@ -96,3 +98,10 @@ jobs:
       - name: The collab board endpoint
         if: always()
         run: node .github/scripts/test_collabs_api.mjs
+
+      # Three files carry the same ballot slugs. Drift between them does not
+      # throw — it silently counts nothing, and reads on the page exactly like
+      # an honest empty board.
+      - name: Collab slugs agree across the site, the API and the counter
+        if: always()
+        run: node .github/scripts/test_collab_slugs.mjs

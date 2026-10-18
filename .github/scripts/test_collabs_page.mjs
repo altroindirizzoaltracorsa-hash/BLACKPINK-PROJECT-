@@ -117,8 +117,8 @@ console.log('--- the two sides are genuinely different categories');
 // they needed for BLACKPINK.
 const sides = await prev.evaluate(() => COLLABS.map((c) => ({
   id: c.id,
-  ours: c.theyGive.map((p) => p.cat),
-  theirs: c.weGive.map((p) => p.cat),
+  ours: c.theyGive.map((p) => p.slug),
+  theirs: c.weGive.map((p) => p.slug),
   ourNames: c.theyGive.map((p) => p.nominee),
   theirNames: c.weGive.map((p) => p.nominee),
 })));
@@ -282,10 +282,10 @@ const passes = await prev.evaluate(() => {
   COLLABS[0].tally = {
     forUs: { picks: 260 }, forThem: { picks: 100 },
     byCat: {
-      'Favorite Music Group or Duo': 100,     // BLACKPINK — required
-      'Favorite Music Collaboration': 100,    // JENNIE — required
-      'Favorite Female Artist': 60,           // ROSÉ — optional, the trap
-      'Favorite Global Music Star': 100,      // BINI — required
+      'favorite-music-group-or-duo': 100,     // BLACKPINK — required
+      'favorite-music-collaboration': 100,    // JENNIE — required
+      'favorite-female-artist': 60,           // ROSÉ — optional, the trap
+      'favorite-global-music-star': 100,      // BINI — required
     },
     themSource: 'their page',
   };
@@ -307,23 +307,23 @@ console.log('--- tabs, the breakdown behind the bar, the board and the day grid'
 const FIX = {
   periods: {
     today: { forUs: { picks: 9 }, forThem: { picks: 3 },
-      byCat: { 'Favorite Music Group or Duo': 3, 'Favorite Music Collaboration': 3,
-               'Favorite Female Artist': 3, 'Favorite Global Music Star': 3 },
-      board: [{ name: 'rllyanav', votes: 8, byCat: { 'Favorite Music Group or Duo': 2,
-                 'Favorite Global Music Star': 2, 'Favorite Music Collaboration': 2,
-                 'Favorite Female Artist': 2 } },
-              { name: 'a blink', votes: 4, byCat: { 'Favorite Music Group or Duo': 2 } }] },
+      byCat: { 'favorite-music-group-or-duo': 3, 'favorite-music-collaboration': 3,
+               'favorite-female-artist': 3, 'favorite-global-music-star': 3 },
+      board: [{ name: 'rllyanav', votes: 8, byCat: { 'favorite-music-group-or-duo': 2,
+                 'favorite-global-music-star': 2, 'favorite-music-collaboration': 2,
+                 'favorite-female-artist': 2 } },
+              { name: 'a blink', votes: 4, byCat: { 'favorite-music-group-or-duo': 2 } }] },
     week: { forUs: { picks: 60 }, forThem: { picks: 20 }, byCat: {}, board: [] },
     all: { forUs: { picks: 300 }, forThem: { picks: 100 },
-      byCat: { 'Favorite Music Group or Duo': 100, 'Favorite Music Collaboration': 100,
-               'Favorite Female Artist': 60, 'Favorite Global Music Star': 100 },
-      board: [{ name: 'rllyanav', votes: 160, byCat: { 'Favorite Music Group or Duo': 40 } },
-              { name: 'a blink', votes: 120, byCat: { 'Favorite Global Music Star': 40 } }] },
+      byCat: { 'favorite-music-group-or-duo': 100, 'favorite-music-collaboration': 100,
+               'favorite-female-artist': 60, 'favorite-global-music-star': 100 },
+      board: [{ name: 'rllyanav', votes: 160, byCat: { 'favorite-music-group-or-duo': 40 } },
+              { name: 'a blink', votes: 120, byCat: { 'favorite-global-music-star': 40 } }] },
   },
   days: [
-    { day: '2026-10-16', votes: 40, byCat: { 'Favorite Music Group or Duo': 10, 'Favorite Global Music Star': 10 } },
-    { day: '2026-10-17', votes: 24, byCat: { 'Favorite Music Group or Duo': 8 } },
-    { day: '2026-10-18', votes: 12, byCat: { 'Favorite Global Music Star': 3 } },
+    { day: '2026-10-16', votes: 40, byCat: { 'favorite-music-group-or-duo': 10, 'favorite-global-music-star': 10 } },
+    { day: '2026-10-17', votes: 24, byCat: { 'favorite-music-group-or-duo': 8 } },
+    { day: '2026-10-18', votes: 12, byCat: { 'favorite-global-music-star': 3 } },
   ],
   todayKey: '2026-10-18', themSource: 'their page',
 };
@@ -440,13 +440,13 @@ console.log('--- the page reads /api/collabs and works out the two totals itself
   const API = {
     todayKey: '2026-10-18', from: '2026-10-16',
     periods: {
-      today: { byCat: { 'Favorite Music Group or Duo': 3, 'Favorite Global Music Star': 1 }, board: [] },
+      today: { byCat: { 'favorite-music-group-or-duo': 3, 'favorite-global-music-star': 1 }, board: [] },
       week:  { byCat: {}, board: [] },
-      all:   { byCat: { 'Favorite Music Group or Duo': 100, 'Favorite Music Collaboration': 100,
-                        'Favorite Female Artist': 60, 'Favorite Global Music Star': 100 },
-               board: [{ name: 'rllyanav', votes: 24, byCat: { 'Favorite Music Group or Duo': 12 } }] },
+      all:   { byCat: { 'favorite-music-group-or-duo': 100, 'favorite-music-collaboration': 100,
+                        'favorite-female-artist': 60, 'favorite-global-music-star': 100 },
+               board: [{ name: 'rllyanav', votes: 24, byCat: { 'favorite-music-group-or-duo': 12 } }] },
     },
-    days: [{ day: '2026-10-16', votes: 360, byCat: { 'Favorite Global Music Star': 100 } }],
+    days: [{ day: '2026-10-16', votes: 360, byCat: { 'favorite-global-music-star': 100 } }],
   };
   const live = await browser.newPage({ viewport: { width: 1200, height: 1000 } });
   await live.route('**/api/collabs*', (route) => route.fulfill({
