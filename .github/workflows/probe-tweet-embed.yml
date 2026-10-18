@@ -1,0 +1,60 @@
+name: Probe tweet embed
+
+# READ-ONLY. Writes nothing, touches no secret.
+#
+# Decides HOW the MAMA card can show our daily vote post for real, rather than
+# quoting its text: whether publish.twitter.com/oembed still answers without
+# credentials (which would let the post be rendered server-side, with nothing
+# of X loaded in a visitor's browser), and whether the official widgets.js
+# embed actually renders. It also prints whether a post is pinned on the site
+# right now, because the card can only embed a post whose URL it knows.
+#
+# It runs here rather than in a Claude Code session because every X host is
+# refused from that container.
+on:
+  workflow_dispatch:
+    inputs:
+      tweet_url:
+        description: 'A post to test with. Any public one proves the mechanism; use one of ours to see it as it would ship.'
+        required: false
+        default: 'https://x.com/jack/status/20'
+  # Also on its own push, so the answer arrives without waiting for this file
+  # to reach the default branch — workflow_dispatch is only offered for
+  # workflows that are already on it.
+  push:
+    paths:
+      - '.github/workflows/probe-tweet-embed.yml'
+      - '.github/scripts/probe_tweet_embed.mjs'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Same pin as page-checks.yml, for the same reason: the browser under a
+      # check should not change without a commit.
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Probe
+        env:
+          TWEET_URL: ${{ inputs.tweet_url }}
+        run: node .github/scripts/probe_tweet_embed.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # The screenshot is the point when the answer is "it rendered" — it says
+      # what it looks like, which no exit code does.
+      - name: Keep the screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tweet-embed-probe
+          path: probe-out/
+          if-no-files-found: ignore
