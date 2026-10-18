@@ -647,6 +647,44 @@ console.log('--- an upcoming collab counts down to its OPENING, not its deadline
                  : bad('while a single group carries no heading', `${oneGroup} heading(s)`);
 }
 
+console.log('--- the worked example of that card is reachable, and only on purpose');
+// The state is invisible while nothing is in it, so ?demo=upcoming draws one
+// to look at. It names nobody real and it must never appear without the flag:
+// an example card on the public page is indistinguishable, to a reader, from
+// an announced partnership.
+{
+  const noFlag = await prev.evaluate(() => ({
+    cards: [...document.querySelectorAll('.collab')].map((el) => el.dataset.collab),
+    text: /EXAMPLE/.test(document.body.innerText),
+  }));
+  (!noFlag.cards.includes('__demo-upcoming') && !noFlag.text)
+    ? ok('no example card on the page as served')
+    : bad('no example card on the page as served', noFlag.cards.join(', '));
+  const demo = await open('/collabs?demo=upcoming');
+  const shownDemo = await demo.evaluate(() => {
+    const el = document.querySelector('[data-collab="__demo-upcoming"]');
+    return el && {
+      status: (el.querySelector('.collab-status') || {}).textContent.trim(),
+      opens: !!el.querySelector('.collab-deadline[data-opens="1"]'),
+      says: el.innerText.replace(/\s+/g, ' '),
+      others: document.querySelectorAll('.collab').length,
+    };
+  });
+  shownDemo ? ok('?demo=upcoming draws one', `${shownDemo.others} cards`)
+            : bad('?demo=upcoming draws one', 'nothing rendered');
+  if (shownDemo) {
+    (/upcoming/i.test(shownDemo.status) && shownDemo.opens)
+      ? ok('as an upcoming card counting down to its opening')
+      : bad('as an upcoming card counting down to its opening', JSON.stringify(shownDemo.status));
+    // It says what it is, in the card itself — not only in the URL, which is
+    // the part that does not survive a screenshot.
+    /this card is an example, not a real collab/i.test(shownDemo.says)
+      ? ok('and says on its face that it is an example')
+      : bad('and says on its face that it is an example', shownDemo.says.slice(0, 90));
+  }
+  await demo.close();
+}
+
 console.log('--- the request form: a collab can be proposed from here');
 // The page could only ever describe trades we had already arranged. A partner
 // page that finds us has to be able to ask, and the "no collabs" note links

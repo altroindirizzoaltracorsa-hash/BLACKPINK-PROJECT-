@@ -604,6 +604,35 @@ var COLLABS = [
 // ── render ──────────────────────────────────────────────────────────────────
 var PREVIEW = new URLSearchParams(location.search).get('preview') === '1';
 
+// A worked example of the 'upcoming' card, shown ONLY with ?demo=upcoming.
+//
+// The state exists but nothing is in it, which makes it invisible — and a
+// state nobody can look at cannot be agreed or argued with. This is how it
+// will look, linkable, without putting a second collab on the public page.
+//
+// Named EXAMPLE throughout and labelled on its face. The one thing this page
+// must never do is appear to announce a fandom that has not agreed, so the
+// demo names nobody real — not even a plausible placeholder.
+if (new URLSearchParams(location.search).get('demo') === 'upcoming') {
+  var _d = function (days) { return new Date(Date.now() + days * 86400000).toISOString(); };
+  COLLABS.push({
+    id: '__demo-upcoming',
+    status: 'upcoming',
+    award: '2027 Example Awards',
+    opens: _d(9).slice(0, 10) + 'T04:00:00Z',
+    deadline: _d(40),
+    from: _d(9).slice(0, 10),
+    voteUrl: 'https://example.com/',
+    partner: { name: 'Example Voting Page', fandom: 'EXAMPLEs', act: 'EXAMPLE' },
+    weGive: [{ slug: 'demo-theirs', cat: 'Favorite Example', nominee: 'EXAMPLE', who: 'EXAMPLE' }],
+    theyGive: [{ slug: 'demo-ours', cat: 'Favorite Group', nominee: 'BLACKPINK', who: 'BLACKPINK' }],
+    why: '<b>This card is an example, not a real collab.</b> It is what an agreed trade looks '
+       + 'like before its ballot opens: the countdown runs to the opening rather than the '
+       + 'deadline, and nothing is counted or claimed until voting actually starts.',
+    tally: null, pending: [],
+  });
+}
+
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
