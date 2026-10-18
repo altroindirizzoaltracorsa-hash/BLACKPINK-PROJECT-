@@ -45,6 +45,21 @@ try {
     line(`pinned: ${j.pinned.url}`);
     line(`id: ${j.pinned.id}   age: ${ageH}h`);
     summary.push(`pin: present (${ageH}h old)`);
+    // The half that decides what the card actually shows. A pin with no html
+    // still works — the buttons point at the right post — but the card quotes
+    // our own text instead of showing the post, and the only other symptom is
+    // a card that looks exactly like it did before anything was pinned. A pin
+    // set BEFORE the oEmbed code deployed has no html by construction.
+    if (j.pinned.html) {
+      const t = String(j.pinned.html).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      line(`html: yes (${j.pinned.html.length} bytes)`);
+      line(`it reads: ${t.slice(0, 200)}`);
+      summary.push(`pin html: YES — the card shows the real post`);
+      summary.push(`post reads: ${t.slice(0, 110)}`);
+    } else {
+      line('html: NO — the card will quote our own text instead');
+      summary.push('pin html: NO — re-pin to fetch the post text');
+    }
   } else {
     line('pinned: null — nothing pinned, or the pin is over 24h old and expired');
     summary.push('pin: none');
