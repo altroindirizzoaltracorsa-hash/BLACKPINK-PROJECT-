@@ -81,38 +81,24 @@
   .ballots { display: grid; gap: 1.6rem; grid-template-columns: 1fr; align-items: start; }
   @media (min-width: 980px) { .ballots { grid-template-columns: 1fr 1fr; gap: 1.8rem; } }
 
-  /* Each ballot carries its OWN award's colour, not the site pink, so the two
-     columns read as two awards rather than two of the same thing. The KCA
-     values are sampled from its logo (#ff7eeb is its largest vivid area);
-     MAMA's identity is monochrome, so its accent is white. */
-  .ballot {
-    --accent: var(--pink); --glow: rgba(255,0,102,0.26);
-    border: 1px solid var(--border); border-top: 2px solid var(--accent);
-    border-radius: 14px; background: var(--card); overflow: hidden;
-  }
-  #ballot-mama { --accent: #ffffff; --glow: rgba(255,255,255,0.16); }
-  #ballot-kca  { --accent: #ff7eeb; --glow: rgba(255,126,235,0.32); }
+  /* No boxes. Each ballot is a column marked by ONE vertical rule in its own
+     award's colour, and the two stand side by side — the card inside has had
+     its own frame and its own pink bar removed to match (see the embed CSS in
+     index.html). The KCA colour is sampled from its logo, its largest vivid
+     area; MAMA's identity is monochrome, so white. */
+  .ballot { --accent: var(--pink); border-left: 2px solid var(--accent); padding-left: 1.3rem; }
+  #ballot-mama { --accent: #ffffff; }
+  #ballot-kca  { --accent: #ff7eeb; }
 
-  /* Both logos sit on black — the MAMA wordmark is white with no outline of
-     its own, and the KCA lockup is built on black slabs. A fixed band height
-     keeps the two columns level despite one logo being a stacked square and
-     the other a long strip. */
+  /* An invisible floor, not a band: it has no background of its own, it is
+     only here so both columns' cards start on the same line. Without it the
+     86px lockup and the 62px strip would push their columns out of step. */
   .ballot-head {
-    position: relative; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 0.85rem; /* Above what the TALLER lockup needs, so both bands compute to exactly this
-       and the two columns start level. Side by side, a few px apart reads as a
-       misalignment rather than as two different logos. */
-    min-height: 174px; padding: 1.4rem 1.1rem 1.15rem;
-    background: #000; border-bottom: 1px solid var(--border); overflow: hidden;
+    display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end;
+    gap: 0.9rem; min-height: 152px; padding-bottom: 1.2rem;
   }
-  .ballot-head::before {
-    content: ''; position: absolute; inset: -60% -20% auto; height: 190%;
-    background: radial-gradient(48% 50% at 50% 40%, var(--glow), rgba(0,0,0,0) 72%);
-    pointer-events: none;
-  }
-  .ballot-head > * { position: relative; }
-  .ballot-logo { display: block; width: auto; max-width: 88%; object-fit: contain; }
-  /* Sized per lockup rather than one rule: 234x120 stacked against 1024x164
+  .ballot-logo { display: block; width: auto; max-width: 100%; object-fit: contain; }
+  /* Sized per lockup rather than one rule: 234x120 stacked against a 1024x164
      strip. Matched so the two read as the same visual weight. */
   #ballot-mama .ballot-logo { height: 86px; }
   #ballot-kca  .ballot-logo { height: 62px; }
@@ -123,17 +109,17 @@
     transition: background 0.15s, color 0.15s;
   }
   .ballot-more:hover { background: var(--accent); color: #0a0a0a; }
-  .frame-wrap { position: relative; padding: 0.9rem; }
+  .frame-wrap { position: relative; }
   /* Starts short and grows to whatever the card reports, so the page does not
      reserve a tall gap before the card has loaded. */
   .ballot-frame { width: 100%; height: 320px; border: 0; display: block; }
   .frame-loading {
-    position: absolute; inset: 0.9rem; display: flex; align-items: center; justify-content: center;
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     font-size: 0.72rem; color: var(--muted); pointer-events: none;
   }
   /* Last resort only. If a frame never reports a height the card is still
      reachable, so say where rather than leaving an empty box. */
-  .frame-fallback { display: none; padding: 0 1.1rem 1.1rem; font-size: 0.74rem; color: var(--muted); }
+  .frame-fallback { display: none; padding-top: 1rem; font-size: 0.74rem; color: var(--muted); }
   .ballot.stalled .frame-fallback { display: block; }
   .ballot.stalled .frame-loading { display: none; }
 

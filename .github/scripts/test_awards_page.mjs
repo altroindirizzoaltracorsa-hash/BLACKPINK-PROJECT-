@@ -107,12 +107,40 @@ for (const l of logos) {
   l.inside ? ok(`${l.id}: logo fits its band`) : bad(`${l.id}: logo fits its band`, `${l.w}px wide`);
   l.alt ? ok(`${l.id}: logo has alt text`, l.alt) : bad(`${l.id}: logo has alt text`);
 }
-// The two bands have to line up or the columns look broken side by side.
-const heads = await page.evaluate(() => [...document.querySelectorAll('.ballot-head')]
-  .map((h) => Math.round(h.getBoundingClientRect().height)));
-(heads.length === 2 && Math.abs(heads[0] - heads[1]) <= 2)
-  ? ok('the two logo bands are the same height', `${heads.join(' / ')}px`)
-  : bad('the two logo bands are the same height', heads.join(' / ') + 'px');
+// With the boxes gone there is no frame holding the columns level, so the
+// thing to check is that they still are: both cards must start on the same
+// line, or two unequal logos quietly knock the columns out of step.
+const tops = await page.evaluate(() => [...document.querySelectorAll('.ballot .frame-wrap')]
+  .map((f) => Math.round(f.getBoundingClientRect().top)));
+(tops.length === 2 && Math.abs(tops[0] - tops[1]) <= 2)
+  ? ok('both cards start on the same line', `y ${tops.join(' / ')}`)
+  : bad('both cards start on the same line', `y ${tops.join(' / ')}`);
+
+// And the vertical rule — the only thing marking a column now — is really
+// drawn, in that award's own colour rather than the inherited site pink.
+const rules = await page.evaluate(() => [...document.querySelectorAll('.ballot')].map((b) => {
+  const cs = getComputedStyle(b);
+  return { id: b.id, width: cs.borderLeftWidth, colour: cs.borderLeftColor, style: cs.borderLeftStyle };
+}));
+for (const r of rules) {
+  (parseFloat(r.width) >= 2 && r.style !== 'none')
+    ? ok(`${r.id}: has its vertical rule`, `${r.width} ${r.colour}`)
+    : bad(`${r.id}: has its vertical rule`, JSON.stringify(r));
+}
+(rules.length === 2 && rules[0].colour !== rules[1].colour)
+  ? ok('the two rules are different colours')
+  : bad('the two rules are different colours', rules.map((r) => r.colour).join(' / '));
+
+// No box should have come back: a background or a full border on the column
+// is exactly what was removed.
+const boxed = await page.evaluate(() => [...document.querySelectorAll('.ballot')].map((b) => {
+  const cs = getComputedStyle(b);
+  const bg = cs.backgroundColor;
+  const solid = bg && !/rgba\(0, 0, 0, 0\)|transparent/.test(bg);
+  return { id: b.id, bg, solid, right: cs.borderRightWidth, top: cs.borderTopWidth, radius: cs.borderRadius };
+}).filter((b) => b.solid || parseFloat(b.right) > 0 || parseFloat(b.top) > 0));
+boxed.length === 0 ? ok('neither column is boxed')
+                   : bad('neither column is boxed', JSON.stringify(boxed));
 
 console.log('--- the parent applies each height to the right frame');
 for (const b of BALLOTS) {

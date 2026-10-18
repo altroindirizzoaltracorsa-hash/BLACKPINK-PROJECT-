@@ -3051,6 +3051,14 @@
   html.embed-votecard .vote-platform,
   html.embed-votecard .vote-title { display: none !important; }
   html.embed-votecard .vote-card-top { justify-content: flex-start; }
+  /* And the card drops its own box. The embedding page already draws a column
+     with its own vertical rule, so keeping this one meant a card inside a
+     column inside a page — three nested frames, and two vertical pink bars a
+     few pixels apart. The column supplies the padding now. */
+  html.embed-votecard .vote-card {
+    background: transparent !important; border: 0 !important; padding: 0 !important;
+  }
+  html.embed-votecard .vote-card::before { display: none !important; }
 </style>
 <style>
   html.embed-vmaboard, html.embed-vmaboard body { background: transparent !important; margin: 0 !important; padding: 0 !important; }
