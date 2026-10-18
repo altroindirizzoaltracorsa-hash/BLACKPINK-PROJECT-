@@ -86,6 +86,34 @@ for (const b of BALLOTS) {
                                   : bad(`${b.key}: nothing else of the site shows`, (leaked || []).join(', '));
 }
 
+console.log('--- each half carries its award\'s own logo');
+// An <img> that 404s or fails to decode has no intrinsic size, and a logo
+// that silently vanished would leave a column with no identity at all — the
+// whole reason these are logos rather than text.
+const logos = await page.evaluate(() => [...document.querySelectorAll('.ballot')].map((b) => {
+  const img = b.querySelector('img.ballot-logo');
+  const r = img ? img.getBoundingClientRect() : null;
+  return { id: b.id, src: img && img.getAttribute('src'), alt: img && img.getAttribute('alt'),
+           ok: !!(img && img.naturalWidth > 0 && img.naturalHeight > 0),
+           h: r ? Math.round(r.height) : 0, w: r ? Math.round(r.width) : 0,
+           // The band must contain it: these are two very different aspect
+           // ratios forced to one row height.
+           inside: !!(r && b.querySelector('.ballot-head') &&
+             r.left >= b.querySelector('.ballot-head').getBoundingClientRect().left - 1 &&
+             r.right <= b.querySelector('.ballot-head').getBoundingClientRect().right + 1) };
+}));
+for (const l of logos) {
+  l.ok ? ok(`${l.id}: logo loaded`, `${l.src} at ${l.w}x${l.h}`) : bad(`${l.id}: logo loaded`, l.src || 'no img');
+  l.inside ? ok(`${l.id}: logo fits its band`) : bad(`${l.id}: logo fits its band`, `${l.w}px wide`);
+  l.alt ? ok(`${l.id}: logo has alt text`, l.alt) : bad(`${l.id}: logo has alt text`);
+}
+// The two bands have to line up or the columns look broken side by side.
+const heads = await page.evaluate(() => [...document.querySelectorAll('.ballot-head')]
+  .map((h) => Math.round(h.getBoundingClientRect().height)));
+(heads.length === 2 && Math.abs(heads[0] - heads[1]) <= 2)
+  ? ok('the two logo bands are the same height', `${heads.join(' / ')}px`)
+  : bad('the two logo bands are the same height', heads.join(' / ') + 'px');
+
 console.log('--- the parent applies each height to the right frame');
 for (const b of BALLOTS) {
   const h = await page.locator(`#${b.frame}`).evaluate((el) => el.getBoundingClientRect().height);

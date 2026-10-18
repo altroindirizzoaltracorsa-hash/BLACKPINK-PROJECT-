@@ -3044,6 +3044,13 @@
   /* The card's own share sheet is a body child and would be trapped inside a
      short iframe — the parent page links through to /voting for that. */
   html.embed-votecard .vote-card-share { display: none !important; }
+  /* The embedding page puts the award's LOGO directly above this card, so the
+     platform line and the title underneath it say the same thing twice. Drop
+     them and let the countdown lead, which is the part that is actually news.
+     Only in the embed: on /voting these cards have no logo above them. */
+  html.embed-votecard .vote-platform,
+  html.embed-votecard .vote-title { display: none !important; }
+  html.embed-votecard .vote-card-top { justify-content: flex-start; }
 </style>
 <style>
   html.embed-vmaboard, html.embed-vmaboard body { background: transparent !important; margin: 0 !important; padding: 0 !important; }
