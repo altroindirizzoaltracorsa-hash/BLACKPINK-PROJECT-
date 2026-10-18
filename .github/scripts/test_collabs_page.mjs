@@ -117,24 +117,89 @@ const bars = await prev.evaluate(() => [...document.querySelectorAll('.collab')]
   const counting = !!(c.tally && (c.tally.us || c.tally.them));
   return { id, counting,
            hasBar: !!el.querySelector('.bar'),
-           hasPending: !!el.querySelector('.tally-pending'),
-           pendingText: (el.querySelector('.tally-pending') || {}).textContent || '',
+           // The fills are the claim. An empty track is honest furniture; a
+           // track with segments in it asserts a score.
+           fills: el.querySelectorAll('.bar-us, .bar-them').length,
+           label: (el.querySelector('.tally-nums') || {}).textContent || '',
+           why: (el.querySelector('.tally-why') || {}).textContent || '',
            note: (el.querySelector('.tally-note') || {}).textContent || '' };
 }));
 for (const b of bars) {
   if (b.counting) {
-    b.hasBar && !b.hasPending ? ok(`${b.id}: draws a bar because it has numbers`)
-                              : bad(`${b.id}: draws a bar because it has numbers`, JSON.stringify(b));
+    (b.hasBar && b.fills === 2) ? ok(`${b.id}: the bar is filled from both sides`)
+                                : bad(`${b.id}: the bar is filled from both sides`, JSON.stringify(b));
     /logged, not verified/i.test(b.note)
       ? ok(`${b.id}: the bar says logged, not verified`)
       : bad(`${b.id}: the bar says logged, not verified`, b.note.trim());
   } else {
-    (!b.hasBar && b.hasPending) ? ok(`${b.id}: no numbers, so no bar`, 'says what is missing')
-                                : bad(`${b.id}: no numbers, so no bar`, JSON.stringify(b));
-    /not counting yet/i.test(b.pendingText)
-      ? ok(`${b.id}: and says so plainly`)
-      : bad(`${b.id}: and says so plainly`, b.pendingText.slice(0, 60));
+    // The track may be drawn — it holds the place the bar will take. What it
+    // must not do is put anything IN it, because a segment of any width is a
+    // score, and a 50/50 one reads as a real tie.
+    b.fills === 0 ? ok(`${b.id}: no numbers, so nothing is drawn in the bar`)
+                  : bad(`${b.id}: no numbers, so nothing is drawn in the bar`, `${b.fills} fill(s)`);
+    /not counting yet/i.test(b.label)
+      ? ok(`${b.id}: and the label says so`, b.label.trim())
+      : bad(`${b.id}: and the label says so`, b.label.trim() || '(no label)');
+    // The reasons stay reachable even though they are folded away.
+    /extension|record|counting/i.test(b.why)
+      ? ok(`${b.id}: what is missing is still readable`)
+      : bad(`${b.id}: what is missing is still readable`, b.why.slice(0, 60));
   }
+}
+
+console.log('--- and when there ARE numbers, the bar draws them in proportion');
+// Nothing on the page has a tally yet, so without this the filled branch would
+// ship having never rendered once. Feed it numbers and re-render: the widths
+// are the only thing on this page that could be silently wrong in a way a
+// reader would still believe.
+const filled = await prev.evaluate(() => {
+  const before = JSON.parse(JSON.stringify(COLLABS[0].tally || null));
+  COLLABS[0].tally = { us: 1200, them: 400, asOf: new Date().toISOString(), themSource: 'their page' };
+  render();
+  const el = document.querySelector('.collab');
+  const pct = (sel) => {
+    const n = el.querySelector(sel);
+    if (!n) return null;
+    const track = el.querySelector('.bar').getBoundingClientRect().width;
+    return Math.round(n.getBoundingClientRect().width / track * 100);
+  };
+  const out = { us: pct('.bar-us'), them: pct('.bar-them'),
+                nums: (el.querySelector('.tally-nums') || {}).textContent || '',
+                note: (el.querySelector('.tally-note') || {}).textContent || '',
+                stillHasWhy: !!el.querySelector('.tally-why') };
+  COLLABS[0].tally = before;                 // leave the page as it was
+  render();
+  return out;
+});
+// 1200 of 1600 is 75/25. Allow a point of rounding on either side.
+(Math.abs(filled.us - 75) <= 1 && Math.abs(filled.them - 25) <= 1)
+  ? ok('the two sides are drawn in proportion', `${filled.us}% / ${filled.them}%`)
+  : bad('the two sides are drawn in proportion', `${filled.us}% / ${filled.them}% — expected 75/25`);
+(/1,200/.test(filled.nums) && /400/.test(filled.nums))
+  ? ok('and the numbers are written out with separators', filled.nums.trim())
+  : bad('and the numbers are written out with separators', filled.nums.trim());
+/logged, not verified/i.test(filled.note)
+  ? ok('and it says logged, not verified')
+  : bad('and it says logged, not verified', filled.note.trim());
+!filled.stillHasWhy ? ok('and the "what has to happen first" note is gone')
+                    : bad('and the "what has to happen first" note is gone', 'both states showing');
+
+console.log('--- the bar sits under the countdown, not at the bottom');
+// Its position is the point: once a trade is running this is the live number
+// people reopen the page for, and it belongs above the reference material
+// rather than below two columns of it. Ordering of template expressions, which
+// nothing else would notice a change to.
+const order = await prev.evaluate(() => [...document.querySelectorAll('.collab')].map((el) => {
+  const y = (sel) => { const n = el.querySelector(sel); return n ? Math.round(n.getBoundingClientRect().top) : null; };
+  return { id: el.dataset.collab, deadline: y('.collab-deadline'), tally: y('.tally'),
+           why: y('.collab-why'), sides: y('.sides') };
+}));
+for (const o of order) {
+  const seq = [o.deadline, o.tally, o.why, o.sides];
+  if (seq.some((v) => v === null)) { bad(`${o.id}: every block is present`, JSON.stringify(o)); continue; }
+  seq.every((v, i) => i === 0 || v > seq[i - 1])
+    ? ok(`${o.id}: countdown → bar → why → the two sides`, seq.join(' < '))
+    : bad(`${o.id}: countdown → bar → why → the two sides`, JSON.stringify(o));
 }
 
 console.log('--- the page itself');

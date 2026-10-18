@@ -120,22 +120,35 @@
   .pick-name { font-size: 0.82rem; color: var(--white); }
 
   /* ── The bar ────────────────────────────────────────────────────────── */
-  .tally { border-top: 1px solid var(--border); padding-top: 1.2rem; }
+  /* Directly under the countdown, before anything is explained: when the trade
+     is running this is the thing people come back to look at, so it gets the
+     position the eye lands on rather than the bottom of the card. */
+  .tally { margin-bottom: 1.3rem; }
   .tally-head { display: flex; flex-wrap: wrap; gap: 0.4rem 0.8rem;
-    align-items: baseline; justify-content: space-between; margin-bottom: 0.6rem; }
+    align-items: baseline; justify-content: space-between; margin-bottom: 0.5rem; }
   .tally-label { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
   .tally-nums { font-size: 0.78rem; }
   .tally-nums .us   { color: var(--pink); }
   .tally-nums .them { color: var(--them); }
-  .bar { height: 10px; background: rgba(255,255,255,0.06); overflow: hidden; display: flex; }
-  .bar-us   { background: var(--pink); }
-  .bar-them { background: var(--them); }
-  /* Nothing to draw yet. An empty bar reading 0–0 looks like a dead feature and
-     invites "is it broken?"; this says which half is missing and why. */
-  .tally-pending { font-size: 0.72rem; color: var(--muted); line-height: 1.7;
-    border-left: 2px solid var(--border); padding-left: 0.9rem; }
-  .tally-pending b { color: var(--white); font-weight: 500; }
-  .tally-note { font-size: 0.68rem; color: var(--muted); margin-top: 0.6rem; line-height: 1.6; }
+  .tally-nums.tally-nocount { color: var(--muted); font-size: 0.68rem; }
+  .bar { height: 12px; background: rgba(255,255,255,0.06); overflow: hidden; display: flex; }
+  .bar-us   { background: var(--pink); transition: width 0.6s ease; }
+  .bar-them { background: var(--them); transition: width 0.6s ease; }
+  .tally-note { font-size: 0.68rem; color: var(--muted); margin-top: 0.5rem; line-height: 1.6; }
+
+  /* Nothing to draw yet. An empty bar reading 0–0 looks like a dead feature,
+     and worse, claims counting is happening when it is not — so the track is
+     drawn empty and labelled, with the reasons folded away. Compact on purpose:
+     it sits where the bar will sit, and a four-line apology at the top of the
+     card would be a worse thing to lead with than the trade itself. */
+  .bar.empty { background: repeating-linear-gradient(135deg,
+      rgba(255,255,255,0.05) 0 6px, rgba(255,255,255,0.02) 6px 12px); }
+  .tally-why { margin-top: 0.5rem; font-size: 0.68rem; color: var(--muted); }
+  .tally-why summary { cursor: pointer; list-style: none; color: var(--muted); }
+  .tally-why summary::-webkit-details-marker { display: none; }
+  .tally-why summary::before { content: '▸ '; color: var(--pink); }
+  .tally-why[open] summary::before { content: '▾ '; }
+  .tally-why ol { margin: 0.5rem 0 0 1.1rem; display: grid; gap: 0.35rem; line-height: 1.6; }
 
   .collab-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.3rem; }
   .btn { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
@@ -322,11 +335,13 @@ function tallyHtml(c) {
       + '. A trade vote never counts toward a BLACKPINK total.</div>'
       + '</div>';
   }
-  return '<div class="tally"><div class="tally-head"><span class="tally-label">Votes logged</span></div>'
-    + '<div class="tally-pending"><b>Not counting yet.</b> Three things have to exist before a bar here '
-    + 'would mean anything:<br>' + (c.pending || []).map(function (p, i) {
-        return (i + 1) + '. ' + esc(p);
-      }).join('<br>') + '</div></div>';
+  return '<div class="tally"><div class="tally-head">'
+    + '<span class="tally-label">Votes logged</span>'
+    + '<span class="tally-nums tally-nocount">Not counting yet</span></div>'
+    + '<div class="bar empty"></div>'
+    + '<details class="tally-why"><summary>What has to happen first</summary><ol>'
+    + (c.pending || []).map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('')
+    + '</ol></details></div>';
 }
 
 function card(c) {
@@ -347,6 +362,10 @@ function card(c) {
     + '<div class="collab-award">' + esc(c.award) + '</div>'
     + '<div class="collab-title"><b>BLINKs</b><i>&times;</i><b>' + esc(c.partner.fandom) + '</b>'
     + status + '</div></div>' + dl + '</div>'
+    // The bar sits here — under the countdown, before the explanation. Once a
+    // trade is running this is the live number people come back for, and it
+    // should not be below two columns of reference material.
+    + tallyHtml(c)
     + '<p class="collab-why">' + c.why + '</p>'
     + '<div class="sides">'
     + sideHtml('side-us', 'What BLINKs vote', 'In the one category <b>' + esc(c.partner.act)
@@ -354,7 +373,6 @@ function card(c) {
     + sideHtml('side-them', 'What ' + esc(c.partner.fandom) + ' vote',
         'The three <b>BLACKPINK</b> is up for — ' + esc(c.partner.act) + ' is in none of them.', c.theyGive)
     + '</div>'
-    + tallyHtml(c)
     + '<div class="collab-actions">'
     + (ended ? '' : '<a class="btn" href="' + esc(c.voteUrl) + '" target="_blank" rel="noopener noreferrer">Open the ballot ↗</a>')
     + '<a class="btn ghost" href="/voting?award=kca">Our board for this award →</a>'
