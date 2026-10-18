@@ -41,9 +41,18 @@ create index if not exists collab_user_votes_collab_day_idx
 create index if not exists collab_user_votes_collab_user_idx
   on collab_user_votes (collab_id, app_user_id);
 
--- Service-role only. The API is the single writer and it authenticates every
--- caller itself; no anon client has any business reaching this directly.
+-- ── Privileges ──────────────────────────────────────────────────────────────
+-- Written and read ONLY by /api/collabs (service_role, which does its own auth).
+-- RLS on with no policies → anon/authenticated cannot touch it directly.
+--
+-- THE GRANT IS NOT OPTIONAL. service_role bypasses RLS but still needs an
+-- explicit GRANT on a freshly created table, and without one every request
+-- fails with "permission denied for table collab_user_votes" — which this
+-- file shipped without, and the endpoint duly returned on its first probe.
+-- breaktudo_user_votes.sql warns about exactly this; I did not read it first.
 alter table collab_user_votes enable row level security;
+grant all privileges on table collab_user_votes to service_role;
+grant execute on function collab_votes_sum(jsonb) to service_role;
 
 -- `votes` must equal the sum of `cats`, or a board ordered by `votes` disagrees
 -- with the breakdown printed underneath it. Enforced rather than trusted: the
