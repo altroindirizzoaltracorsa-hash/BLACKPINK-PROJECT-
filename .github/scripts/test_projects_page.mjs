@@ -12,7 +12,7 @@
 // followed exactly as production would.
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+import { chromium } from './_playwright.mjs';
 
 const ROOT = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
 const SPA = /^\/(countdowns|badges|leaderboard|voting|vote|feedback|account|streams|charts|apple-charts|itunes-charts|spotify-charts|youtube|kcharts|ltal-embed)(\/|$)/;

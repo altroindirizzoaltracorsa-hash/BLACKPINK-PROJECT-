@@ -14,7 +14,7 @@
 // because it reads as a bug long before anyone traces it to a rename.
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+import { chromium } from './_playwright.mjs';
 
 const ROOT = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
 
