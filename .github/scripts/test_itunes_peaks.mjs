@@ -33,6 +33,16 @@ const server = createServer(async (req, res) => {
 });
 await new Promise((r) => server.listen(0, r));
 
+// A skip and a pass both exit 0, so from the Actions tab they look identical —
+// and a check that quietly stops verifying is worse than one that fails. Put
+// the verdict in the run summary, where it is readable without the log.
+async function summarise(line) {
+  const f = process.env.GITHUB_STEP_SUMMARY;
+  if (!f) return;
+  const { appendFile } = await import('node:fs/promises');
+  await appendFile(f, `**iTunes peak column** — ${line}\n`);
+}
+
 let failures = 0;
 const ok = (m, d) => console.log(`  ok   ${m}${d ? ` (${d})` : ''}`);
 const bad = (m, d) => { failures++; console.log(`  FAIL ${m}${d ? ` (${d})` : ''}`); };
@@ -58,6 +68,7 @@ if (expected > 0) {
   // so this reports and stops rather than going red in CI for no reason.
   console.log('  SKIP today\'s rows have no peak on record — nothing to verify today');
   console.log('\nFAILURES: 0 (skipped)');
+  await summarise('SKIPPED — no row on today\'s chart has a peak on record, so nothing could be verified');
   server.close();
   process.exit(0);
 }
@@ -103,10 +114,14 @@ else {
   else ok('the table has a Peak column', `column ${peakIdx}`);
   const peakCells = cells.map((r) => r[peakIdx]).filter((c) => c != null);
   const withPeak = peakCells.filter((c) => /^#\d+$/.test(c));
-  withPeak.length > 0
-    ? ok('rows showing a real peak rather than "—"', `${withPeak.length}/${peakCells.length}: ${withPeak.slice(0, 6).join(' ')}`)
-    : bad('rows showing a real peak rather than "—"',
-          `0/${peakCells.length} — the lookup key no longer matches what compute_itunes_peaks.mjs writes`);
+  if (withPeak.length > 0) {
+    ok('rows showing a real peak rather than "—"', `${withPeak.length}/${peakCells.length}: ${withPeak.slice(0, 6).join(' ')}`);
+    await summarise(`verified — ${withPeak.length}/${peakCells.length} rows in "${best[0]}" show a peak (${withPeak.slice(0, 6).join(' ')})`);
+  } else {
+    bad('rows showing a real peak rather than "—"',
+        `0/${peakCells.length} — the lookup key no longer matches what compute_itunes_peaks.mjs writes`);
+    await summarise(`FAILED — 0/${peakCells.length} rows show a peak; the lookup key no longer matches compute_itunes_peaks.mjs`);
+  }
 }
 
 await browser.close();
