@@ -38,6 +38,19 @@
     --display: 'Bebas Neue', Impact, sans-serif;
   }
 
+  /* The way back. This page is the site's front door — / redirects here — so
+     it is the only page where the homepage is not one tap up the nav, and
+     without this the site proper is unreachable from the thing that replaced
+     it. Same fixed, centred mark /breaktudo and /vmas carry, because those
+     two took the front door before this one and a reader who learned it there
+     should find it in the same place. The footer link is not a substitute: it
+     is past two full ballots. */
+  .back { position: fixed; top: 0.75rem; left: 50%; transform: translateX(-50%); z-index: 60;
+    text-decoration: none; text-align: center; white-space: nowrap;
+    font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase;
+    color: rgba(255,0,102,0.85); transition: color 0.2s; }
+  .back:hover { color: var(--pink); }
+
   html { scroll-behavior: smooth; }
   body {
     background: var(--bg); color: var(--white);
@@ -161,6 +174,7 @@
 </style>
 </head>
 <body>
+<a href="/index.html" class="back">← Blinks United</a>
 
 <section id="hero">
   <div class="wrap">

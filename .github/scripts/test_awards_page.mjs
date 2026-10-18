@@ -300,6 +300,45 @@ for (const b of BALLOTS) {
 const stalled = await page.locator('.ballot.stalled').count();
 stalled === 0 ? ok('neither ballot fell back to its link') : bad('neither ballot fell back to its link', `${stalled}`);
 
+console.log('--- the way back to the site');
+// This page IS the front door — / redirects here — so it is the one page with
+// no nav above it. Without a link out, the site proper is unreachable from the
+// thing that replaced it. It shipped that way once.
+//
+// Checked on all three front doors rather than just this one, read from their
+// own markup: /vmas and /breaktudo took this role before /awards, and the next
+// page to take it should fail here rather than ship without the escape hatch.
+for (const path of ['/awards', '/breaktudo', '/vmas']) {
+  const r = await page.request.get(base + path);
+  const html = r.ok() ? await r.text() : '';
+  /class="back"[^>]*>|<a[^>]+class="back"/.test(html) && /href="\/index\.html"[^>]*class="back"|class="back"[^>]*href="\/index\.html"/.test(html)
+    ? ok(`${path} links back to the homepage`)
+    : bad(`${path} links back to the homepage`, r.ok() ? 'no .back → /index.html' : `HTTP ${r.status()}`);
+}
+// And on this page, that it is actually on screen and clear of the hero rather
+// than merely present in the source.
+for (const w of [390, 1280]) {
+  await page.setViewportSize({ width: w, height: 844 });
+  await page.waitForTimeout(300);
+  const b = await page.evaluate(() => {
+    const a = document.querySelector('a.back');
+    if (!a) return null;
+    const r = a.getBoundingClientRect();
+    const eyebrow = document.querySelector('.hero-eyebrow').getBoundingClientRect();
+    return { top: Math.round(r.top), bottom: Math.round(r.bottom), w: Math.round(r.width),
+             text: a.textContent.trim(), href: a.getAttribute('href'),
+             visible: getComputedStyle(a).display !== 'none' && r.width > 0,
+             clearsHero: r.bottom <= eyebrow.top,
+             inView: r.left >= 0 && r.right <= window.innerWidth };
+  });
+  if (!b) { bad(`the back link is on the page at ${w}px`); continue; }
+  (b.visible && b.inView) ? ok(`the back link is on screen at ${w}px`, `"${b.text}" at y${b.top}`)
+                          : bad(`the back link is on screen at ${w}px`, JSON.stringify(b));
+  b.clearsHero ? ok(`and does not collide with the hero at ${w}px`)
+               : bad(`and does not collide with the hero at ${w}px`, `back ends ${b.bottom}, hero starts above it`);
+}
+await page.setViewportSize({ width: 1280, height: 1000 });
+
 console.log('--- the page itself');
 const links = await page.evaluate(() => [...document.querySelectorAll('a[href^="/"]')].map((a) => a.getAttribute('href')));
 for (const href of [...new Set(links)]) {
