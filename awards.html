@@ -75,11 +75,35 @@
 
   /* ── The two ballots ────────────────────────────────────────────────── */
   .section { padding: 1.4rem 0 3rem; }
-  /* Side by side where there is room, stacked below — and the stacked order
-     is the source order, so whichever ballot is written first leads on a
-     phone. MAMA leads: it closes first. */
-  .ballots { display: grid; gap: 1.6rem; grid-template-columns: 1fr; align-items: start; }
-  @media (min-width: 980px) { .ballots { grid-template-columns: 1fr 1fr; gap: 1.8rem; } }
+  /* Side by side at EVERY width — the two ballots are the page, and a phone
+     that stacks them shows one award and hides the other below the fold.
+     What changes on a narrow screen is not the arrangement but the viewport:
+     the row keeps its columns near full width and scrolls, one card snapping
+     into place at a time.
+     Not a 50/50 split down there, which is the obvious alternative and is
+     broken: measured at 390px it gives a 160px and a 130px card, and the
+     cards do not reflow that far — the countdown, the Dracula chip and the
+     alert all get clipped. 86% columns with a 1rem gap leave ~33px of the
+     next card showing, which is what tells you to swipe.
+     MAMA is first in both directions because it closes first. */
+  .ballots {
+    display: grid; gap: 1rem; align-items: start;
+    grid-auto-flow: column; grid-auto-columns: 86%;
+    overflow-x: auto; overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+  }
+  .ballot { scroll-snap-align: start; }
+  /* Wide enough for both at full size: no scroller, no snapping, no hint. */
+  @media (min-width: 980px) {
+    .ballots { grid-auto-flow: row; grid-template-columns: 1fr 1fr; gap: 1.8rem;
+               overflow-x: visible; scroll-snap-type: none; padding-bottom: 0; }
+  }
+  .ballots-hint {
+    font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--muted); text-align: center; margin-bottom: 0.9rem;
+  }
+  @media (min-width: 980px) { .ballots-hint { display: none; } }
 
   /* No boxes. Each ballot is a column marked by ONE vertical rule in its own
      award's colour, and the two stand side by side — the card inside has had
@@ -159,8 +183,12 @@
          step with /voting. ?card= takes the award key, not the campaign id,
          so there is no year here to edit.
          MAMA is first because it closes first; on a phone that is the order
-         they stack in. -->
-    <div class="ballots">
+         they swipe in. -->
+    <p class="ballots-hint">Swipe for the other ballot →</p>
+    <!-- tabindex so the row can be scrolled from a keyboard: a scroll
+         container with no focusable chrome is reachable in Chrome and not in
+         every other browser, and the second ballot is behind this scroll. -->
+    <div class="ballots" tabindex="0" role="group" aria-label="The two open ballots">
       <div class="ballot" id="ballot-mama">
         <div class="ballot-head">
           <!-- The award's own logo carries the identity; the name stays for

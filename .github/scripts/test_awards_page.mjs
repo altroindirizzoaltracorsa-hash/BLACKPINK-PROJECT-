@@ -227,6 +227,52 @@ for (const w of [390, 1280]) {
   over <= 0 ? ok(`no sideways scroll at ${w}px`) : bad(`no sideways scroll at ${w}px`, `${over}px`);
 }
 
+console.log('--- side by side on a phone too, by scrolling the row rather than shrinking it');
+// The page stacked them here once, which hid the second award below the fold.
+// The obvious alternative — a 50/50 split — was measured and is worse: at
+// 390px it gives a 160px and a 130px card, and the embedded card does not
+// reflow that far, so its countdown and alert get clipped. So: one row, near
+// full-width columns, and the ROW scrolls. Three things have to hold together
+// or that silently becomes a stack again, or a card too narrow to read.
+await page.setViewportSize({ width: 390, height: 1000 });
+await page.waitForTimeout(600);
+const narrow = await page.evaluate(() => {
+  const row = document.querySelector('.ballots');
+  const b = [...document.querySelectorAll('.ballot')].map((el) => {
+    const r = el.getBoundingClientRect();
+    return { id: el.id, top: Math.round(r.top), left: Math.round(r.left),
+             card: Math.round(el.querySelector('.ballot-frame').getBoundingClientRect().width) };
+  });
+  return { scrollW: Math.round(row.scrollWidth), clientW: Math.round(row.clientWidth),
+           snap: getComputedStyle(row).scrollSnapType,
+           hint: !!document.querySelector('.ballots-hint')
+                 && getComputedStyle(document.querySelector('.ballots-hint')).display !== 'none', b };
+});
+(narrow.b.length === 2 && Math.abs(narrow.b[0].top - narrow.b[1].top) <= 2 && narrow.b[0].left !== narrow.b[1].left)
+  ? ok('the two ballots sit on one row at 390px', `tops ${narrow.b.map((x) => x.top).join('/')}, lefts ${narrow.b.map((x) => x.left).join('/')}`)
+  : bad('the two ballots sit on one row at 390px', JSON.stringify(narrow.b));
+// Wide enough to read: below this the embedded card starts clipping its own
+// content, which is the failure the stack was avoiding.
+for (const x of narrow.b) {
+  x.card >= 260 ? ok(`${x.id}: card still readable at 390px`, `${x.card}px`)
+                : bad(`${x.id}: card still readable at 390px`, `${x.card}px — too narrow, it will clip`);
+}
+narrow.scrollW > narrow.clientW + 20
+  ? ok('the row itself scrolls', `${narrow.scrollW} in ${narrow.clientW}`)
+  : bad('the row itself scrolls', `${narrow.scrollW} in ${narrow.clientW} — the second ballot is unreachable`);
+/x/.test(narrow.snap) ? ok('and snaps card to card', narrow.snap) : bad('and snaps card to card', narrow.snap);
+narrow.hint ? ok('the swipe hint is shown') : bad('the swipe hint is shown', 'nothing tells you there is a second ballot');
+
+await page.setViewportSize({ width: 1280, height: 1000 });
+await page.waitForTimeout(500);
+const wide = await page.evaluate(() => {
+  const row = document.querySelector('.ballots');
+  return { over: Math.round(row.scrollWidth - row.clientWidth),
+           hint: getComputedStyle(document.querySelector('.ballots-hint')).display };
+});
+wide.over <= 2 ? ok('no scroller on a desktop') : bad('no scroller on a desktop', `${wide.over}px of overflow`);
+wide.hint === 'none' ? ok('and no swipe hint there') : bad('and no swipe hint there', wide.hint);
+
 await browser.close();
 server.close();
 console.log(`\nFAILURES: ${failures}`);
