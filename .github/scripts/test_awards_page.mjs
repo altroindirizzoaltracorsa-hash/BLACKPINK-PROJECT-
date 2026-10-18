@@ -86,6 +86,63 @@ for (const b of BALLOTS) {
                                   : bad(`${b.key}: nothing else of the site shows`, (leaked || []).join(', '));
 }
 
+console.log('--- every nomination has a picture, and the ones nobody can vote in are shaded');
+// Two things that look fine in the source and are wrong on screen:
+//   * a thumb whose src 404s or fails to decode leaves a 56px hole beside the
+//     row, and the page reports nothing — the whole point of the pictures is
+//     that the row is recognised at a glance,
+//   * the shading on a judged category comes from a class the renderer has to
+//     add; lose it and the row claims, silently, that there is a vote to cast.
+// Read off the live rows rather than a list kept here, so a category added to
+// MAMA_NOMS or the KCA card is covered the day it appears.
+for (const b of BALLOTS) {
+  const fr = page.frames().find((f) => f.url().includes(`card=${b.key}`));
+  if (!fr) { bad(`${b.key}: frame found for the row check`); continue; }
+  // Wait for the images themselves, not just the markup: decode() settles
+  // whether the file is really there, which naturalWidth alone would report
+  // as 0 simply because the browser had not got to it yet.
+  const rows = await fr.evaluate(async () => {
+    const out = [];
+    for (const r of document.querySelectorAll('#vc-embed-root .vote-cat-row')) {
+      const img = r.querySelector('img.vote-cat-thumb');
+      if (img) { try { await img.decode(); } catch (e) {} }
+      out.push({
+        name: (r.querySelector('.vote-category-name span')?.textContent || '').trim(),
+        pro: r.classList.contains('pro'),
+        lock: !!r.querySelector('.vote-cat-pro'),
+        link: !!r.querySelector('.vote-cat-link'),
+        src: img ? img.getAttribute('src') : null,
+        loaded: !!(img && img.naturalWidth > 0 && img.naturalHeight > 0),
+        box: img ? Math.round(img.getBoundingClientRect().width) : 0,
+        opacity: parseFloat(getComputedStyle(r).opacity),
+      });
+    }
+    return out;
+  });
+  rows.length ? ok(`${b.key}: ${rows.length} category rows`)
+              : bad(`${b.key}: has category rows`, 'none rendered — nothing was checked');
+  for (const r of rows) {
+    const who = `${b.key}: ${r.name || '(unnamed)'}`;
+    if (!r.src) { bad(`${who} has a picture`, 'no thumb at all'); }
+    else if (!r.loaded) { bad(`${who} has a picture`, `${r.src} did not load`); }
+    else if (r.box < 40) { bad(`${who} has a picture`, `rendered ${r.box}px wide`); }
+    else ok(`${who} has a picture`, r.src);
+
+    // `pro` and the 🔒 chip are two halves of the same fact; either one alone
+    // is a row that shades without saying why, or says why without shading.
+    r.pro === r.lock ? null : bad(`${who}: shading and the 🔒 chip agree`,
+      `class.pro=${r.pro}, chip=${r.lock}`);
+    if (r.pro) {
+      r.opacity < 0.6 ? ok(`${who} is shaded`, `opacity ${r.opacity}`)
+                      : bad(`${who} is shaded`, `opacity ${r.opacity}`);
+      r.link ? bad(`${who} offers no Vote link`, 'a judged category is linked as votable')
+             : ok(`${who} offers no Vote link`);
+    } else {
+      r.opacity >= 0.99 ? ok(`${who} is not shaded`) : bad(`${who} is not shaded`, `opacity ${r.opacity}`);
+    }
+  }
+}
+
 console.log('--- each half carries its award\'s own logo');
 // An <img> that 404s or fails to decode has no intrinsic size, and a logo
 // that silently vanished would leave a column with no identity at all — the
