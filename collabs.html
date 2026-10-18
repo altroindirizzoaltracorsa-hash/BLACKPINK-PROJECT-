@@ -107,6 +107,17 @@
     color: var(--muted); margin-left: 0.5rem; vertical-align: middle; }
   .collab-status.live { border-style: solid; border-color: var(--pink); color: var(--pink); }
 
+
+  .group-head { font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--muted); margin: 1.8rem 0 0.8rem; }
+  .group-head:first-child { margin-top: 0; }
+  .collab-deadline.soon { color: var(--them); border-color: rgba(111,211,255,0.4);
+    background: rgba(111,211,255,0.08); font-size: 0.78rem; }
+  .collab-status.soon { border-style: solid; border-color: var(--them); color: var(--them); }
+  .collab-soon { font-size: 0.78rem; color: var(--muted); line-height: 1.7;
+    border-left: 2px solid var(--them); padding-left: 0.9rem; margin-bottom: 1.2rem; }
+  .collab-soon b { color: var(--white); font-weight: 500; }
+
   .collab-why { font-size: 0.8rem; color: var(--muted); line-height: 1.75; margin-bottom: 1.3rem; }
   .collab-why b { color: var(--white); font-weight: 500; }
 
@@ -293,6 +304,52 @@
   .how li::before { content: '▸'; position: absolute; left: 0; top: 0; color: var(--pink); }
   .how b { color: var(--white); font-weight: 500; }
 
+  /* ── Asking for a collab ─────────────────────────────────────────────── */
+  /* The one thing this page could not do until now. A trade needs the other
+     side to agree, and nothing here told a page that found us how to propose
+     one — the "no collabs" note already linked #request before the form
+     existed. */
+  #request { border: 1px solid var(--border); border-radius: var(--r-box);
+    background: var(--card); padding: 1.3rem 1.3rem 1.2rem; margin-top: 1.6rem;
+    scroll-margin-top: 3.2rem; }
+  .req-head { font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--them); margin-bottom: 0.5rem; }
+  .req-sub { font-size: 0.78rem; color: var(--muted); line-height: 1.75; margin-bottom: 1.1rem; }
+  .req-sub b { color: var(--white); font-weight: 500; }
+  .req-grid { display: grid; gap: 0.8rem; grid-template-columns: 1fr; }
+  @media (min-width: 680px) {
+    .req-grid { grid-template-columns: 1fr 1fr; gap: 0.9rem 1rem; }
+    .req-wide { grid-column: 1 / -1; }
+  }
+  .req-field { display: grid; gap: 0.3rem; min-width: 0; }
+  .req-field > span { font-size: 0.55rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--muted); }
+  .req-field em { font-style: normal; color: rgba(255,255,255,0.25); }
+  .req-field input, .req-field textarea {
+    font-family: var(--mono); font-size: 0.78rem; color: var(--white);
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: var(--r-ctl); padding: 0.6rem 0.7rem; width: 100%; }
+  .req-field textarea { resize: vertical; min-height: 5.4rem; line-height: 1.6; }
+  .req-field textarea.req-short { min-height: 3.2rem; }
+  .req-field input:focus, .req-field textarea:focus {
+    outline: none; border-color: var(--them); background: rgba(111,211,255,0.05); }
+  .req-field input::placeholder, .req-field textarea::placeholder { color: rgba(255,255,255,0.22); }
+  .req-hint { font-size: 0.62rem; color: var(--muted); line-height: 1.6; }
+  .req-foot { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center;
+    margin-top: 1.1rem; }
+  /* The one button on the page that is the partner's colour, not ours: it is
+     the other fandom's move to make. */
+  .req-btn { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 0.7rem 1.1rem; cursor: pointer;
+    border: 1px solid var(--them); border-radius: var(--r-ctl);
+    color: #04202c; background: var(--them); transition: filter 0.15s; }
+  .req-btn:hover { filter: brightness(1.08); }
+  .req-btn[disabled] { opacity: 0.55; cursor: default; filter: none; }
+  .req-msg { font-size: 0.72rem; line-height: 1.6; }
+  .req-msg.err { color: #ff5050; }
+  .req-msg.ok { color: var(--them); }
+  .req-fine { font-size: 0.62rem; color: var(--muted); line-height: 1.7; margin-top: 0.9rem; }
+
   footer { border-top: 1px solid var(--border); padding: 2rem 0 2.6rem; text-align: center; margin-top: 2rem; }
   .foot-link { font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase;
     color: var(--pink); text-decoration: none; }
@@ -377,6 +434,68 @@
           nowhere else.</li>
       </ul>
     </div>
+
+    <!-- A trade cannot start from our side alone, and until now nothing here
+         told a page that found us how to propose one — the "no collabs" note
+         already linked #request before there was anything to link to.
+         The four facts asked for are the four that decide whether a trade is
+         even possible: who you are, which act, which award, and which
+         categories — because if your categories are also ours there is no
+         trade to make, only a fight (see "How a trade works" above). -->
+    <section id="request">
+      <div class="req-head">🤝 Propose a collab</div>
+      <p class="req-sub">
+        Run a voting page for another act? If it is nominated in <b>different categories</b> of an
+        award BLACKPINK or a member is in, there is a trade to make — tell us about it. We check the
+        categories don't overlap, talk it through with you, and <b>nothing appears on this page
+        until both sides have agreed</b>: a proposal is not an announcement, and we don't get to
+        announce your involvement for you.
+      </p>
+      <form id="req-form" class="req-grid" autocomplete="off">
+        <label class="req-field">
+          <span>Your page or fandom</span>
+          <input id="req-page" type="text" required maxlength="100"
+                 placeholder="e.g. BINI Voting Page">
+        </label>
+        <label class="req-field">
+          <span>The act you vote for</span>
+          <input id="req-act" type="text" required maxlength="100" placeholder="e.g. BINI">
+        </label>
+        <label class="req-field">
+          <span>The award</span>
+          <input id="req-award" type="text" required maxlength="120"
+                 placeholder="e.g. Kids’ Choice Awards 2026">
+        </label>
+        <label class="req-field">
+          <span>Where can we reach you</span>
+          <input id="req-contact" type="text" required maxlength="100"
+                 placeholder="@you on X / Instagram, or an email">
+        </label>
+        <label class="req-field req-wide">
+          <span>The categories your act is nominated in</span>
+          <!-- A textarea, not an input, because the hint asks for one per line
+               and a text input silently strips the newlines out of what is
+               pasted into it — several categories would arrive run together. -->
+          <textarea id="req-cats" class="req-short" required maxlength="300"
+                    placeholder="e.g. Favorite Global Music Star"></textarea>
+          <span class="req-hint">One per line or comma-separated — exactly as the ballot writes
+            them, so we can check them against ours.</span>
+        </label>
+        <label class="req-field req-wide">
+          <span>Anything else <em>— optional</em></span>
+          <textarea id="req-note" maxlength="1200"
+                    placeholder="When voting opens and closes, how your fandom usually votes, anyone else already involved…"></textarea>
+        </label>
+        <div class="req-foot req-wide">
+          <button id="req-btn" class="req-btn" type="submit">Send the proposal</button>
+          <span id="req-msg" class="req-msg"></span>
+        </div>
+      </form>
+      <p class="req-fine">
+        This goes to the same inbox as the site's feedback, and we answer wherever you tell us to.
+        Your contact is used for that and nothing else — it is never shown on the site.
+      </p>
+    </section>
   </div>
 </section>
 
@@ -396,7 +515,13 @@
 //                page beside ours reads as an announced partnership, and we do
 //                not get to announce someone else's involvement. Visible with
 //                ?preview=1 so it can be looked at and sent to them.
-//   'live'     — both sides have agreed and both are telling their own people.
+//   'upcoming' — agreed and announced by both sides, but the ballot has not
+//                opened yet. Public, because this one HAS been agreed — the
+//                difference from 'proposed' is consent, not timing. Counts down
+//                to `opens` instead of the deadline, and shows no board: there
+//                is nothing to count yet, and an empty board on a collab that
+//                has not started reads as a collab nobody joined.
+//   'live'     — voting is open. The board, the bar and the day grid appear.
 //   'ended'    — the award closed. Kept, because it is a record of who helped.
 //
 // Flip to 'live' only once the partner has said yes IN THEIR OWN WORDS. A page
@@ -817,13 +942,20 @@ function openDay(k) { DAY_OPEN = (DAY_OPEN === k) ? null : k; render(); }
 function card(c) {
   var now = Date.now();
   var ended = c.status === 'ended' || (c.deadline && new Date(c.deadline).getTime() <= now);
-  var left = c.deadline ? new Date(c.deadline).getTime() - now : null;
-  var dl = !c.deadline ? ''
+  // An upcoming collab counts down to the moment it STARTS. Showing how long
+  // is left to vote in something nobody can vote in yet is the sort of thing
+  // that is technically a number and useless to a reader.
+  var soon = c.status === 'upcoming' && c.opens && new Date(c.opens).getTime() > now;
+  var target = soon ? c.opens : c.deadline;
+  var left = target ? new Date(target).getTime() - now : null;
+  var dl = !target ? ''
     : ended ? '<span class="collab-deadline ended">CLOSED</span>'
-    : '<span class="collab-deadline' + (left <= 48 * 3600000 ? ' urgent' : '') + '" data-deadline="'
-      + esc(c.deadline) + '">' + countdown(left) + '</span>';
+    : '<span class="collab-deadline' + (soon ? ' soon' : (left <= 48 * 3600000 ? ' urgent' : ''))
+      + '" data-deadline="' + esc(target) + '"' + (soon ? ' data-opens="1"' : '') + '>'
+      + (soon ? 'OPENS IN ' : '') + countdown(left) + '</span>';
   var status = c.status === 'live'
     ? '<span class="collab-status live">Running</span>'
+    : c.status === 'upcoming' ? '<span class="collab-status soon">Upcoming</span>'
     : c.status === 'ended' ? '<span class="collab-status">Finished</span>'
     : '<span class="collab-status">Proposed · not announced</span>';
 
@@ -835,7 +967,12 @@ function card(c) {
     // The bar sits here — under the countdown, before the explanation. Once a
     // trade is running this is the live number people come back for, and it
     // should not be below two columns of reference material.
-    + tallyHtml(c)
+    + (c.status === 'live' ? tallyHtml(c) : '')
+    + (c.status === 'upcoming' && c.opens
+        ? '<div class="collab-soon">Voting opens <b>' + esc(longDay(c.opens)) + '</b>. '
+          + 'Nothing to do yet — this is here so you know it is coming, and what to fill in '
+          + 'when it does.</div>'
+        : '')
     + '<p class="collab-why">' + c.why + '</p>'
     + '<div class="sides">'
     // Counts written out from the AGREED slots rather than typed. The copy said
@@ -856,10 +993,21 @@ function card(c) {
     + boardHtml(c)
     + dayGridHtml(c)
     + '<div class="collab-actions">'
-    + (ended ? '' : '<a class="btn" href="' + esc(c.voteUrl) + '" target="_blank" rel="noopener noreferrer">Open the ballot ↗</a>')
+    + (ended || soon ? '' : '<a class="btn" href="' + esc(c.voteUrl)
+        + '" target="_blank" rel="noopener noreferrer">Open the ballot ↗</a>')
     + '<a class="btn ghost" href="/voting?award=kca">Our board for this award →</a>'
     + '</div></article>';
 }
+
+// Running first, then what is coming, then what is done. Headings only appear
+// when there is more than one group — a single section does not need a label
+// telling you it is the only one.
+var GROUPS = [
+  { k: 'live', head: 'Running now' },
+  { k: 'upcoming', head: 'Coming up' },
+  { k: 'proposed', head: 'Proposed · not announced' },
+  { k: 'ended', head: 'Finished' },
+];
 
 function render() {
   var visible = COLLABS.filter(function (c) { return PREVIEW || c.status !== 'proposed'; });
@@ -867,10 +1015,26 @@ function render() {
   if (!visible.length) {
     el.innerHTML = '<div class="empty"><b>No collabs running right now.</b><br>'
       + 'When another fandom and ours are nominated in different categories of the same award, '
-      + 'a trade goes here. Got one in mind? <a href="/feedback">Tell us</a>.</div>';
+      + 'a trade goes here. Running a voting page yourself? '
+      + '<a href="#request">Ask us about one</a>.</div>';
     return;
   }
-  el.innerHTML = visible.map(card).join('');
+  var groups = GROUPS.map(function (g) {
+    return { head: g.head, items: visible.filter(function (c) { return c.status === g.k; }) };
+  }).filter(function (g) { return g.items.length; });
+  var many = groups.length > 1;
+  el.innerHTML = groups.map(function (g) {
+    return (many ? '<h3 class="group-head">' + esc(g.head) + '</h3>' : '')
+      + g.items.map(card).join('');
+  }).join('');
+}
+
+// "13 November" — the string is a date, so it is formatted from its parts
+// rather than put through a timezone that could move it a day.
+var MONTHS_LONG = ['January','February','March','April','May','June','July',
+                   'August','September','October','November','December'];
+function longDay(iso) {
+  return Number(iso.slice(8, 10)) + ' ' + MONTHS_LONG[Number(iso.slice(5, 7)) - 1];
 }
 
 render();
@@ -900,13 +1064,98 @@ function sumOf(o) {
   return n;
 }
 
+// ── proposing a collab ─────────────────────────────────────────────────────
+// Posted to /api/feedback with category 'collab' rather than to an endpoint and
+// a table of its own. That inbox already has everything a proposal needs and
+// nothing else here does: a reply path (email, or by hand on a handle), an
+// admin queue that tracks who is still waiting to hear back, and the Discord
+// ping — and a second inbox is a second one to forget to read.
+//
+// The fields are composed into the single `message` the API stores, labelled,
+// in a fixed order. The free-text note goes LAST and is capped in the form, so
+// the API's 2000-character truncation can only ever cut the end of the note
+// rather than one of the four facts the proposal is judged on.
+var REQ_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+function reqSay(text, kind) {
+  var el = document.getElementById('req-msg');
+  el.className = 'req-msg' + (kind ? ' ' + kind : '');
+  el.textContent = text;
+}
+
+document.getElementById('req-form').addEventListener('submit', function (ev) {
+  ev.preventDefault();
+  var val = function (id) { return (document.getElementById(id).value || '').trim(); };
+  var page = val('req-page'), act = val('req-act'), award = val('req-award'),
+      cats = val('req-cats'), contact = val('req-contact'), note = val('req-note');
+  // `required` is satisfied by a single space, so the trimmed values are
+  // checked again here: a proposal with no act or no categories cannot be
+  // acted on at all, and would sit in the queue as a mystery.
+  if (!page || !act || !award || !cats || !contact) {
+    reqSay('Fill in everything except the last box.', 'err');
+    return;
+  }
+  // Where the answer goes is DERIVED from what they typed rather than asked as
+  // a second question: an address takes the queue's email route, which can send
+  // on its own; anything else is a handle, answered by hand. Asking them to
+  // also pick a channel would be asking them to restate the box above.
+  var via = REQ_EMAIL.test(contact) ? 'email' : 'handle';
+  var message = [
+    'COLLAB REQUEST',
+    '',
+    'Page / fandom: ' + page,
+    'Act: ' + act,
+    'Award: ' + award,
+    'Their categories: ' + cats.replace(/\s*[\n,]\s*/g, ' · '),
+  ].concat(note ? ['', note] : []).join('\n');
+
+  var btn = document.getElementById('req-btn');
+  btn.disabled = true;
+  reqSay('Sending…');
+  fetch('/api/feedback', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    // No `username`. That field means a scrobbler name everywhere else on the
+    // site — the admin queue prints it as "Last.fm …" — so a fan page's name
+    // there would be mislabelled in two places. It goes in the message.
+    body: JSON.stringify({ message: message, category: 'collab', contact: contact, replyVia: via }),
+  })
+    // Read as text first: a 503 from an unconfigured deploy is not always JSON,
+    // and a parse error thrown here would surface as the user's error message.
+    .then(function (r) {
+      return r.text().then(function (t) {
+        var j = null; try { j = JSON.parse(t); } catch (_) {}
+        return { ok: r.ok, j: j };
+      });
+    })
+    .then(function (out) {
+      if (!out.ok) throw new Error((out.j && out.j.error) || 'Something went wrong');
+      document.getElementById('req-form').reset();
+      btn.textContent = '✓ Sent';
+      reqSay(via === 'email'
+        ? 'Got it — we’ll email you. Thank you!'
+        : 'Got it — we’ll message you on that handle. Thank you!', 'ok');
+    })
+    .catch(function (e) {
+      btn.disabled = false;
+      reqSay((e && e.message) || 'Something went wrong. Try again.', 'err');
+    });
+});
+
 // Tick the countdowns in place, like every other deadline on the site.
 setInterval(function () {
   document.querySelectorAll('.collab-deadline[data-deadline]').forEach(function (el) {
     var diff = new Date(el.dataset.deadline).getTime() - Date.now();
-    if (diff <= 0) { el.textContent = 'CLOSED'; el.className = 'collab-deadline ended'; return; }
-    el.classList.toggle('urgent', diff <= 48 * 3600000);
-    el.textContent = countdown(diff);
+    var opens = el.dataset.opens === '1';
+    // A countdown to an opening that reaches zero is not "closed" — the collab
+    // has just started. Re-render so the card switches to the live shape rather
+    // than sitting there saying the wrong word.
+    if (diff <= 0) {
+      if (opens) { render(); return; }
+      el.textContent = 'CLOSED'; el.className = 'collab-deadline ended'; return;
+    }
+    el.classList.toggle('urgent', !opens && diff <= 48 * 3600000);
+    el.textContent = (opens ? 'OPENS IN ' : '') + countdown(diff);
   });
 }, 1000);
 </script>

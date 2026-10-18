@@ -12383,7 +12383,10 @@ function _fbWhen(iso) {
     return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
   } catch { return ''; }
 }
-const FB_CAT_LABEL = { bug: 'Bug', feature: 'Feature request', suggestion: 'Suggestion', praise: 'Praise', general: 'General' };
+// 'collab' is not in the feedback form's own picker — it arrives from the
+// request form on /collabs, which posts to this same inbox. Unlabelled it would
+// render as the raw slug in the queue.
+const FB_CAT_LABEL = { bug: 'Bug', feature: 'Feature request', suggestion: 'Suggestion', praise: 'Praise', collab: 'Collab request', general: 'General' };
 
 // One message and its reply. `admin` adds the things only you should see.
 function _fbThreadHtml(m, admin) {

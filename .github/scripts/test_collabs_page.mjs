@@ -251,10 +251,19 @@ console.log('--- the ranking threshold is never stated on the page');
 const quiet = await prev.evaluate(() => {
   const hasOptional = COLLABS.some((c) =>
     c.theyGive.concat(c.weGive).some((p) => p.required === false));
+  // The request form is read with the section hidden, which is also how it is
+  // excluded: it marks its own last field "optional", which is a form field
+  // and not a category — the rule here is about what the page says of a
+  // NOMINEE. innerText ignores a hidden subtree, so hiding it for the read is
+  // the whole exemption, and anything added anywhere else is still covered.
+  const req = document.getElementById('request');
+  if (req) req.style.display = 'none';
   // innerText, not textContent: the latter includes the inline <script>, so
   // the code comment explaining WHY the threshold is quiet registered as the
   // page saying it out loud. What matters is what a reader sees.
-  return { hasOptional, text: document.body.innerText.replace(/\s+/g, ' ') };
+  const text = document.body.innerText.replace(/\s+/g, ' ');
+  if (req) req.style.display = '';
+  return { hasOptional, text };
 });
 if (!quiet.hasOptional) {
   ok('no category is marked non-required', 'nothing to keep quiet');
@@ -562,6 +571,211 @@ for (const o of order) {
   seq.every((v, i) => i === 0 || v > seq[i - 1])
     ? ok(`${o.id}: countdown → bar → why → the two sides`, seq.join(' < '))
     : bad(`${o.id}: countdown → bar → why → the two sides`, JSON.stringify(o));
+}
+
+console.log('--- an upcoming collab counts down to its OPENING, not its deadline');
+// A collab both sides have agreed to but whose ballot has not opened. It is
+// public — the difference from 'proposed' is consent, not timing — so the one
+// thing it must not do is look like something you can act on: a deadline
+// countdown, a board with nobody on it and an "open the ballot" button all say
+// "you are late" about a thing that has not started.
+//
+// Injected rather than waited for, for the same reason the proposed case is:
+// there is no upcoming collab today, so the branch would otherwise ship having
+// never rendered.
+{
+  const up = await prev.evaluate(() => {
+    const before = COLLABS.slice();
+    const opens = new Date(Date.now() + 9 * 86400000).toISOString().slice(0, 10) + 'T04:00:00Z';
+    COLLABS.push({
+      id: '__test-upcoming', status: 'upcoming', award: 'Test Awards 2027',
+      opens: opens, deadline: new Date(Date.now() + 30 * 86400000).toISOString(),
+      from: opens.slice(0, 10), voteUrl: 'https://example.com/',
+      partner: { name: 'Test Page', fandom: 'Testers', act: 'Nobody' },
+      weGive: [{ slug: 'x', cat: 'Theirs', nominee: 'Nobody', who: 'Nobody' }],
+      theyGive: [{ slug: 'y', cat: 'Ours', nominee: 'BLACKPINK', who: 'BLACKPINK' }],
+      why: 'test', tally: null, pending: [],
+    });
+    render();
+    const el = document.querySelector('[data-collab="__test-upcoming"]');
+    const dl = el && el.querySelector('.collab-deadline');
+    const out = {
+      drawn: !!el,
+      status: el ? (el.querySelector('.collab-status') || {}).textContent.trim() : '',
+      countdown: dl ? dl.textContent.trim() : '',
+      opensFlag: dl ? dl.dataset.opens : null,
+      target: dl ? dl.dataset.deadline : null,
+      opens: opens,
+      // Nothing to count, so none of the counting furniture may appear.
+      tally: el ? el.querySelectorAll('.tally').length : -1,
+      board: el ? el.querySelectorAll('.board').length : -1,
+      days: el ? el.querySelectorAll('.days').length : -1,
+      ballotBtn: el ? [...el.querySelectorAll('a.btn')]
+        .filter((a) => /open the ballot/i.test(a.textContent)).length : -1,
+      soon: el ? (el.querySelector('.collab-soon') || {}).textContent.replace(/\s+/g, ' ').trim() : '',
+      // And the groups get headings, because there is now more than one.
+      heads: [...document.querySelectorAll('.group-head')].map((h) => h.textContent.trim()),
+    };
+    COLLABS.length = 0; before.forEach((c) => COLLABS.push(c)); render();
+    return out;
+  });
+  up.drawn ? ok('an agreed-but-not-open collab IS shown publicly')
+           : bad('an agreed-but-not-open collab IS shown publicly', 'not rendered');
+  /upcoming/i.test(up.status) ? ok('and is marked Upcoming', up.status)
+                              : bad('and is marked Upcoming', up.status || '(no marker)');
+  // The whole point of the state: the number on the card is time until it
+  // STARTS, taken from `opens`, and labelled so it cannot be read as a deadline.
+  (up.target === up.opens && up.opensFlag === '1' && /^OPENS IN/.test(up.countdown))
+    ? ok('the countdown runs to the opening and says so', up.countdown)
+    : bad('the countdown runs to the opening and says so',
+          `${up.countdown} → ${up.target} (wanted ${up.opens})`);
+  (up.tally === 0 && up.board === 0 && up.days === 0)
+    ? ok('and nothing pretends to be counting yet', 'no bar, no board, no day grid')
+    : bad('and nothing pretends to be counting yet',
+          `tally ${up.tally} / board ${up.board} / days ${up.days}`);
+  up.ballotBtn === 0 ? ok('and no button to a ballot that is not open')
+                     : bad('and no button to a ballot that is not open', `${up.ballotBtn} button(s)`);
+  /voting opens/i.test(up.soon) ? ok('and it says when it opens, in words', up.soon.slice(0, 70))
+                                : bad('and it says when it opens, in words', up.soon || '(nothing)');
+  // One group needs no heading; two do, or the live and upcoming cards read as
+  // one undifferentiated list.
+  (up.heads.length >= 2 && up.heads.some((h) => /running/i.test(h)) && up.heads.some((h) => /coming up/i.test(h)))
+    ? ok('and the two groups are labelled', up.heads.join(' / '))
+    : bad('and the two groups are labelled', up.heads.join(' / ') || '(none)');
+  const oneGroup = await prev.evaluate(() => document.querySelectorAll('.group-head').length);
+  oneGroup === 0 ? ok('while a single group carries no heading')
+                 : bad('while a single group carries no heading', `${oneGroup} heading(s)`);
+}
+
+console.log('--- the request form: a collab can be proposed from here');
+// The page could only ever describe trades we had already arranged. A partner
+// page that finds us has to be able to ask, and the "no collabs" note links
+// #request — which pointed at nothing at all until this existed.
+{
+  const form = await prev.evaluate(() => {
+    const sec = document.getElementById('request');
+    return {
+      exists: !!sec,
+      fields: ['req-page', 'req-act', 'req-award', 'req-cats', 'req-contact', 'req-note']
+        .filter((id) => !document.getElementById(id)),
+      required: ['req-page', 'req-act', 'req-award', 'req-cats', 'req-contact']
+        .filter((id) => !document.getElementById(id)?.required),
+      // The promise the status machinery actually keeps, made to the person
+      // proposing: their name does not go up until they have said yes.
+      says: (sec || {}).innerText || '',
+    };
+  });
+  form.exists ? ok('#request exists, so the empty-state link resolves')
+              : bad('#request exists, so the empty-state link resolves');
+  form.fields.length === 0 ? ok('every field is present') : bad('every field is present', `missing ${form.fields.join(', ')}`);
+  form.required.length === 0 ? ok('and the four facts plus a contact are required')
+                             : bad('and the four facts plus a contact are required', form.required.join(', '));
+  /nothing appears on this page until both sides have agreed/i.test(form.says.replace(/\s+/g, ' '))
+    ? ok('and it promises not to announce them before they agree')
+    : bad('and it promises not to announce them before they agree', form.says.replace(/\s+/g, ' ').slice(0, 120));
+
+  // Submitting, with the POST captured. The body is the whole deliverable here:
+  // four labelled facts in a fixed order, the contact, and a reply channel
+  // DERIVED from what the contact looks like rather than asked twice.
+  const send = await browser.newPage({ viewport: { width: 1200, height: 1000 } });
+  let posted = null;
+  await send.route('**/api/feedback', (route) => {
+    posted = JSON.parse(route.request().postData() || '{}');
+    route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
+  });
+  await send.goto(base + '/collabs', { waitUntil: 'domcontentloaded' });
+  await send.waitForTimeout(400);
+
+  // Whitespace is not an answer. `required` is satisfied by a single space, so
+  // without the trimmed check a proposal with no act at all would be accepted
+  // and sit in the queue as a mystery.
+  await send.fill('#req-page', '  ');
+  await send.fill('#req-act', 'Nobody');
+  await send.fill('#req-award', 'Test Awards');
+  await send.fill('#req-cats', 'Some Category');
+  await send.fill('#req-contact', '@nobody');
+  await send.click('#req-btn');
+  await send.waitForTimeout(250);
+  (posted === null && /fill in/i.test(await send.locator('#req-msg').textContent()))
+    ? ok('a blank-but-not-empty field is refused, and nothing is sent')
+    : bad('a blank-but-not-empty field is refused, and nothing is sent', JSON.stringify(posted));
+
+  await send.fill('#req-page', 'Test Voting Page');
+  await send.fill('#req-cats', 'Favorite Test Act\nBest Test');
+  await send.fill('#req-note', 'Voting opens next week.');
+  await send.click('#req-btn');
+  await send.waitForTimeout(500);
+  if (!posted) bad('submitting posts the proposal', 'nothing was posted');
+  else {
+    posted.category === 'collab'
+      ? ok('posted to the feedback inbox as a collab', posted.category)
+      : bad('posted to the feedback inbox as a collab', String(posted.category));
+    // A handle, not an address → answered by hand. The queue decides who is
+    // still waiting from this field, so a wrong one leaves them unanswered.
+    posted.replyVia === 'handle'
+      ? ok('a handle is routed to the by-hand reply', posted.replyVia)
+      : bad('a handle is routed to the by-hand reply', String(posted.replyVia));
+    posted.contact === '@nobody' ? ok('and the contact is carried') : bad('and the contact is carried', String(posted.contact));
+    // `username` means a scrobbler name everywhere else on the site and the
+    // admin queue prints it as "Last.fm …", so a page name must not go there.
+    !posted.username ? ok('and no page name is passed off as a scrobbler username')
+                     : bad('and no page name is passed off as a scrobbler username', String(posted.username));
+    const msg = String(posted.message || '');
+    const wanted = [/COLLAB REQUEST/, /Page \/ fandom: Test Voting Page/, /Act: Nobody/,
+                    /Award: Test Awards/, /Favorite Test Act · Best Test/, /Voting opens next week\./];
+    const missing = wanted.filter((re) => !re.test(msg));
+    missing.length === 0
+      ? ok('and every field is in the one message the inbox stores', `${msg.length} chars`)
+      : bad('and every field is in the one message the inbox stores', missing.join(', '));
+    // The note goes last and is capped in the form, so the API's 2000-character
+    // truncation can only ever cut the end of the note rather than one of the
+    // four facts the proposal is judged on.
+    // Asserted as "the note is the LAST thing in the message" rather than
+    // "after the award line": a note tucked between two facts also satisfies
+    // the looser version while leaving a fact exposed to the cut.
+    (msg.trimEnd().endsWith('Voting opens next week.') && msg.length < 2000)
+      ? ok('with the free text last, so truncation cannot eat a fact')
+      : bad('with the free text last, so truncation cannot eat a fact', `${msg.length} chars`);
+    /thank you/i.test(await send.locator('#req-msg').textContent())
+      ? ok('and the sender is told it went') : bad('and the sender is told it went');
+  }
+
+  // An address takes the route that can send on its own.
+  posted = null;
+  await send.reload({ waitUntil: 'domcontentloaded' });
+  await send.waitForTimeout(400);
+  for (const [sel, v] of [['#req-page', 'Test Page'], ['#req-act', 'Nobody'],
+                          ['#req-award', 'Test Awards'], ['#req-cats', 'Best Test'],
+                          ['#req-contact', 'them@example.com']]) await send.fill(sel, v);
+  await send.click('#req-btn');
+  await send.waitForTimeout(400);
+  (posted && posted.replyVia === 'email')
+    ? ok('an email address is routed to the email reply', posted.replyVia)
+    : bad('an email address is routed to the email reply', posted ? String(posted.replyVia) : 'nothing posted');
+
+  // A failure has to say so and leave the proposal re-sendable, not swallow it.
+  posted = null;
+  await send.unroute('**/api/feedback');
+  await send.route('**/api/feedback', (route) => route.fulfill({
+    status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Feedback service not configured' }) }));
+  await send.reload({ waitUntil: 'domcontentloaded' });
+  await send.waitForTimeout(400);
+  for (const [sel, v] of [['#req-page', 'Test Page'], ['#req-act', 'Nobody'],
+                          ['#req-award', 'Test Awards'], ['#req-cats', 'Best Test'],
+                          ['#req-contact', '@nobody']]) await send.fill(sel, v);
+  await send.click('#req-btn');
+  await send.waitForTimeout(400);
+  const failState = await send.evaluate(() => ({
+    msg: document.getElementById('req-msg').textContent,
+    cls: document.getElementById('req-msg').className,
+    disabled: document.getElementById('req-btn').disabled,
+    kept: document.getElementById('req-act').value,
+  }));
+  (/not configured/i.test(failState.msg) && /err/.test(failState.cls)
+    && !failState.disabled && failState.kept === 'Nobody')
+    ? ok('a rejected proposal says why, keeps what they typed and can be re-sent', failState.msg)
+    : bad('a rejected proposal says why, keeps what they typed and can be re-sent', JSON.stringify(failState));
+  await send.close();
 }
 
 console.log('--- the page itself');
