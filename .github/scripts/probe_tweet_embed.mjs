@@ -150,6 +150,67 @@ try {
 }
 summary.push(`widgets.js: ${widgetOk ? 'WORKS' : 'no (' + widgetNote + ')'}`);
 
+// ── 4. and does it actually render on the live site? ───────────────────────
+// Everything above says the DATA is right. This is the only step that says the
+// PAGE is right, and it is the one thing no local check can do: blinksunited
+// .com is unreachable from a Claude Code container, so until now nothing had
+// ever looked at production. A runner can.
+//
+// What it is looking for is the failure that would otherwise be invisible from
+// here: the post present in the API but not on the page, or present alongside
+// our quoted copy so the card says the same thing twice.
+head('the live page');
+try {
+  const { chromium } = await import('playwright');
+  const browser = await chromium.launch();
+  const p = await browser.newPage({ viewport: { width: 420, height: 900 } });
+  await p.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen', '1'); } catch (e) {} });
+  await p.goto(`${SITE}/awards`, { waitUntil: 'domcontentloaded', timeout: 45000 });
+  let state = null;
+  for (let i = 0; i < 40 && !state; i++) {
+    await p.waitForTimeout(500);
+    const fr = p.frames().find((f) => f.url().includes('card=mama'));
+    if (!fr) continue;
+    state = await fr.evaluate(() => {
+      const box = document.querySelector('#vc-embed-root .vote-repost');
+      if (!box) return null;
+      const slot = box.querySelector('.vote-repost-embed');
+      const quote = box.querySelector('.vote-repost-post');
+      const shown = (el) => !!el && getComputedStyle(el).display !== 'none' && !!el.getClientRects().length;
+      if (!shown(slot)) return null;             // not upgraded yet — keep waiting
+      const r = slot.getBoundingClientRect();
+      return {
+        head: box.querySelector('.vote-repost-head').textContent.trim(),
+        text: slot.innerText.replace(/\s+/g, ' ').trim(),
+        quoteStillShown: shown(quote),
+        overflows: r.right > document.documentElement.clientWidth + 1,
+        btn: box.querySelector('a.vote-repost-btn').getAttribute('href'),
+        xScripts: document.querySelectorAll('script[src*="twitter"],script[src*="twimg"]').length,
+      };
+    }).catch(() => null);
+  }
+  if (!state) {
+    line('the post did not appear on the page within 20s');
+    summary.push('live page: post NOT rendered');
+  } else {
+    line(`heading: ${state.head}`);
+    line(`shows:   ${state.text.slice(0, 240)}`);
+    line(`repost button → ${state.btn}`);
+    line(`our quoted copy still visible: ${state.quoteStillShown}`);
+    line(`overflows its column: ${state.overflows}`);
+    line(`scripts loaded from X: ${state.xScripts}`);
+    const good = !state.quoteStillShown && !state.overflows && state.xScripts === 0;
+    summary.push(`live page: post RENDERED${good ? ', clean' : ' BUT ' + [
+      state.quoteStillShown && 'the quote is still showing too',
+      state.overflows && 'it overflows the column',
+      state.xScripts && `${state.xScripts} script(s) from X`].filter(Boolean).join('; ')}`);
+  }
+  await browser.close();
+} catch (e) {
+  line(`could not check the live page: ${e.message}`);
+  summary.push(`live page: could not check (${e.message.slice(0, 60)})`);
+}
+
 head('summary');
 summary.forEach((s) => line('  ' + s));
 line('');
