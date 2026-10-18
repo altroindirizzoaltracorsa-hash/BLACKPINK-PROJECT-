@@ -837,6 +837,34 @@ const COLLAB = {
   },
 };
 
+// What the panel shows of the collab. Kept locally because nothing else can
+// show it: these picks are deliberately absent from kcaCount and kcaCats — a
+// BINI pick is not a BLACKPINK vote and must never move that total — so
+// without this the counter records them and says nothing, and a working collab
+// and a dead endpoint look identical from the panel. That is exactly how
+// v1.9.0 read as "it isn't counting BINI" while it was counting it perfectly
+// and posting into a 404.
+//
+// `held` is picks the board did not take. Not a retry queue: the collab board
+// is a tally, and a pick re-sent later would land on the wrong day. It is a
+// count of what did not arrive, so the panel can say so instead of implying
+// everything went.
+const KCA_COLLAB_KEY = 'kcaCollab';
+
+function recordCollabLocal(cats, ok) {
+  const today = kstDay();
+  chrome.storage.local.get([KCA_COLLAB_KEY], (raw) => {
+    const prev = raw && raw[KCA_COLLAB_KEY];
+    const cur = (prev && prev.day === today) ? prev : { day: today, cats: {}, held: 0 };
+    const next = { day: today, cats: Object.assign({}, cur.cats || {}), held: cur.held || 0 };
+    let n = 0;
+    for (const k in cats) n += cats[k];
+    if (ok) { for (const k in cats) next.cats[k] = (Number(next.cats[k]) || 0) + cats[k]; }
+    else next.held += n;
+    chrome.storage.local.set({ [KCA_COLLAB_KEY]: next });
+  });
+}
+
 async function postCollabVotes(cats) {
   const { buToken } = await getLocal('buToken');
   if (!buToken || !cats || !Object.keys(cats).length) return { ok: false, reason: 'not-linked' };
@@ -1071,6 +1099,7 @@ async function processKcaVote(e) {
   // exactly what a collab makes possible — and returning first would drop it.
   if (Date.now() < COLLAB.until && Object.keys(collabCats).length) {
     postCollabVotes(collabCats).then((res) => {
+      recordCollabLocal(collabCats, res.ok);
       if (!res.ok) kcaDiag({ kind: 'collab-post-failed', reason: res.reason || 'http' });
     });
   }
