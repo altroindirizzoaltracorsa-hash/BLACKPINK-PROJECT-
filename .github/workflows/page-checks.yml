@@ -18,7 +18,7 @@ on:
       - 'awards.html'
       - 'collabs.html'
       - 'api/collabs.js'
-      - 'vote-extension/background.js'
+      - 'vote-extension/**'
       - 'vmas.html'
       - 'breaktudo.html'
       - 'achievements.html'
@@ -34,7 +34,7 @@ on:
       - 'awards.html'
       - 'collabs.html'
       - 'api/collabs.js'
-      - 'vote-extension/background.js'
+      - 'vote-extension/**'
       - 'vmas.html'
       - 'breaktudo.html'
       - 'achievements.html'
@@ -105,3 +105,10 @@ jobs:
       - name: Collab slugs agree across the site, the API and the counter
         if: always()
         run: node .github/scripts/test_collab_slugs.mjs
+
+      # A release touches two manifests, two zips and two pages. The quiet
+      # failure is a page still advertising the old version, which on a
+      # blink's board looks like "my votes aren't counting".
+      - name: The extension release is consistent
+        if: always()
+        run: node .github/scripts/test_extension_release.mjs

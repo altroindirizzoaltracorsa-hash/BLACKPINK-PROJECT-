@@ -223,6 +223,28 @@
     color: var(--muted); margin-bottom: 0.2rem; }
   .sub-note { font-size: 0.66rem; color: var(--muted); line-height: 1.6; margin-top: 0.5rem; }
 
+
+  /* ── Get the counter ─────────────────────────────────────────────────── */
+  .get { border: 1px solid rgba(255,0,102,0.3); background: rgba(255,0,102,0.04);
+    padding: 1.2rem 1.3rem; margin-top: 1.6rem; }
+  .get-head { display: flex; flex-wrap: wrap; gap: 0.4rem 0.7rem; align-items: baseline;
+    margin-bottom: 0.5rem; }
+  .get-title { font-size: 0.72rem; letter-spacing: 0.08em; color: var(--white); }
+  .get-ver { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em;
+    color: var(--pink); border: 1px solid rgba(255,0,102,0.45); padding: 0.1rem 0.4rem; }
+  .get-sub { font-size: 0.74rem; color: var(--muted); line-height: 1.7; margin-bottom: 0.9rem; }
+  .get-sub b { color: var(--white); font-weight: 500; }
+  .get-dl { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .get-btn { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em;
+    text-transform: uppercase; text-decoration: none; color: #12000a; background: var(--pink);
+    border: 1px solid var(--pink); padding: 0.6rem 0.9rem; }
+  .get-btn small { display: block; font-size: 0.5rem; opacity: 0.75; letter-spacing: 0.04em;
+    text-transform: none; margin-top: 0.1rem; }
+  .get-btn.ghost { background: transparent; color: var(--pink); }
+  .get-btn.ghost:hover { background: var(--pink-muted); }
+  .get-note { font-size: 0.66rem; color: var(--muted); line-height: 1.6; margin-top: 0.8rem; }
+  .get-note a { color: var(--pink-lo); }
+
   .collab-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.3rem; }
   .btn { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
     text-decoration: none; padding: 0.7rem 1.1rem; border: 1px solid var(--pink);
@@ -276,6 +298,36 @@
   <div class="wrap">
     <h2 class="sr-only">Active collabs</h2>
     <div id="list"></div>
+
+
+    <!-- The counter, offered where the collab is explained. It was only ever on
+         /voting, behind a scrobbler check, which is exactly the wrong place for
+         the people this page is for: a BLOOM arriving here has no board, no
+         scrobbler and no reason to go looking on a BLACKPINK voting page. -->
+    <div class="get">
+      <div class="get-head">
+        <span class="get-title">🧩 Get the Vote Counter</span>
+        <span class="get-ver">v1.9.0</span>
+      </div>
+      <p class="get-sub">
+        It counts the votes <b>you</b> cast on kca.nick.tv and logs them to the board above —
+        all four categories, both sides of the trade. It only ever reads your own votes and
+        <b>never votes for you</b>. All you need is a Blinks United account: no scrobbler,
+        and nothing to do with streaming.
+      </p>
+      <div class="get-dl">
+        <a class="get-btn" href="/vote-extension-v1.9.0-chrome.zip" download>⬇ Desktop<small>Chrome · Edge · Brave · Opera</small></a>
+        <a class="get-btn ghost" href="/vote-extension-v1.9.0-android.zip" download>⬇ Android<small>Edge Canary · Quetta</small></a>
+      </div>
+      <p class="get-note">
+        Unzip it, then load it unpacked from your browser's extensions page, and tap
+        <b>Link my account</b> inside it once. There's an
+        <a href="/vote-counter-guide.html" target="_blank" rel="noopener">illustrated guide ↗</a>
+        if any of that is unfamiliar.<br>
+        <b>Already have it?</b> Update to v1.9.0 — earlier versions don't know this collab exists
+        and will count only the BLACKPINK side of your ballot.
+      </p>
+    </div>
 
     <div class="how" style="margin-top:1.6rem">
       <div class="how-head">How a trade works</div>
