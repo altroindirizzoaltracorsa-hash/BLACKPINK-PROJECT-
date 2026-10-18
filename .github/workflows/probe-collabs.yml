@@ -1,0 +1,70 @@
+name: Probe collab board
+
+# READ-ONLY. GETs /api/collabs and reports what comes back.
+#
+# The migration running is not the same as the endpoint working: the SQL
+# creating a table says nothing about whether this file selects the right
+# columns, aggregates without throwing, or answers at all. An empty table is
+# the perfect case to find that out on, because every failure is a 500 rather
+# than a wrong number hiding in real data.
+#
+# It runs here because blinksunited.com and *.vercel.app are both unreachable
+# from a Claude Code session, and reports through annotations because Actions
+# serves job logs from blob storage that the session's client will not follow.
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: 'Site to probe — a Vercel preview URL, or production'
+        required: false
+        default: 'https://www.blinksunited.com'
+      id:
+        description: 'Collab id'
+        required: false
+        default: 'bvp-kca-2026'
+  push:
+    paths:
+      - '.github/workflows/probe-collabs.yml'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: GET /api/collabs
+        env:
+          BASE: ${{ inputs.base || 'https://www.blinksunited.com' }}
+          ID: ${{ inputs.id || 'bvp-kca-2026' }}
+        run: |
+          set -u
+          url="$BASE/api/collabs?id=$ID"
+          echo "GET $url"
+          code=$(curl -sS -m 30 -o /tmp/out.json -w '%{http_code}' "$url" || echo 000)
+          echo "HTTP $code"
+          head -c 1200 /tmp/out.json; echo
+          python3 - <<'PY'
+          import json, sys
+          try:
+              j = json.load(open('/tmp/out.json'))
+          except Exception as e:
+              print(f"::notice title=collabs::could not parse the response ({e})")
+              sys.exit(0)
+          if 'error' in j:
+              print(f"::notice title=collabs::endpoint answered with an error: {j['error']}")
+              sys.exit(0)
+          per = j.get('periods') or {}
+          need = ['today', 'week', 'all']
+          missing = [k for k in need if k not in per]
+          if missing:
+              print(f"::notice title=collabs::answered, but without {', '.join(missing)}")
+              sys.exit(0)
+          allp = per['all']
+          cats = allp.get('byCat') or {}
+          board = allp.get('board') or []
+          total = sum(int(v) for v in cats.values())
+          print(f"::notice title=collabs::endpoint OK — {total} votes, "
+                f"{len(board)} on the board, {len(j.get('days') or [])} days, today={j.get('todayKey')}")
+          if cats:
+              print("::notice title=collabs::by category — "
+                    + ", ".join(f"{k}: {v}" for k, v in sorted(cats.items())))
+          PY
