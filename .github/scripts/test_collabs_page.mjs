@@ -227,14 +227,50 @@ const filled = await prev.evaluate(() => {
 /slot counts, not standings/i.test(filled.note)
   ? ok('and explains the gap as slot counts')
   : bad('and explains the gap as slot counts', filled.note.replace(/\s+/g, ' ').slice(0, 90));
-/complete pass/i.test(filled.note)
-  ? ok('and gives the turnout as complete passes', '100')
-  : bad('and gives the turnout as complete passes', filled.note.replace(/\s+/g, ' ').slice(0, 120));
+// The scoring rule is stated whether or not a count can be derived: three
+// votes to a pass, four with ROSÉ, every pick worth the same.
+/one pass is 3 votes/i.test(filled.note.replace(/\s+/g, ' '))
+  ? ok('and states the pass as 3 votes')
+  : bad('and states the pass as 3 votes', filled.note.replace(/\s+/g, ' ').slice(0, 140));
+/or 4 with ROSÉ/i.test(filled.note.replace(/\s+/g, ' '))
+  ? ok('and that ROSÉ makes it 4, obliged of nobody')
+  : bad('and that ROSÉ makes it 4, obliged of nobody', filled.note.replace(/\s+/g, ' ').slice(0, 140));
+// Totals alone CANNOT give a pass count — 300 is 100 passes with ROSÉ every
+// time or 150 with her never — so no number may appear.
+!/complete pass/i.test(filled.note)
+  ? ok('and claims no pass count from totals alone')
+  : bad('and claims no pass count from totals alone', filled.note.replace(/\s+/g, ' ').slice(0, 140));
 /logged, not verified/i.test(filled.note)
   ? ok('and it says logged, not verified')
   : bad('and it says logged, not verified', filled.note.trim());
 !filled.stillHasWhy ? ok('and the "what has to happen first" note is gone')
                     : bad('and the "what has to happen first" note is gone', 'both states showing');
+
+console.log('--- with a per-category breakdown, the pass count ignores the optional one');
+// The trap this exists for: ROSÉ is optional, so a pass is complete without
+// her. Fold her into the minimum and 100 passes where 60 people also voted
+// ROSÉ reports as 60 — undercounting the collab by 40% and, worse, making it
+// look as though people who skipped an optional category had not finished.
+const passes = await prev.evaluate(() => {
+  const before = JSON.parse(JSON.stringify(COLLABS[0].tally || null));
+  COLLABS[0].tally = {
+    forUs: { picks: 260 }, forThem: { picks: 100 },
+    byCat: {
+      'Favorite Music Group or Duo': 100,     // BLACKPINK — required
+      'Favorite Music Collaboration': 100,    // JENNIE — required
+      'Favorite Female Artist': 60,           // ROSÉ — optional, the trap
+      'Favorite Global Music Star': 100,      // BINI — required
+    },
+    themSource: 'their page',
+  };
+  render();
+  const note = document.querySelector('.tally-note').textContent.replace(/\s+/g, ' ');
+  COLLABS[0].tally = before; render();
+  return note;
+});
+/\b100\b complete passes/i.test(passes)
+  ? ok('100 complete passes, not 60', 'ROSÉ excluded from the minimum')
+  : bad('100 complete passes, not 60', passes.slice(0, 200));
 
 console.log('--- the bar sits under the countdown, not at the bottom');
 // Its position is the point: once a trade is running this is the live number

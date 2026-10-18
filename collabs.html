@@ -118,6 +118,11 @@
   .pick-cat { flex: 1 1 auto; font-size: 0.6rem; letter-spacing: 0.1em;
     text-transform: uppercase; color: var(--muted); }
   .pick-name { font-size: 0.82rem; color: var(--white); }
+  /* The optional category. NOT dimmed to nothing: a pick here is worth the same
+     1 as any other, so it is marked rather than demoted — the label says it is
+     not owed, the weight says it still counts. */
+  .pick-opt { display: block; font-style: normal; font-size: 0.52rem;
+    letter-spacing: 0.08em; color: var(--muted); margin-top: 0.15rem; }
   .tally-note b { color: var(--white); font-weight: 500; }
   .tally-note .us { color: var(--pink); }
   .tally-note .them { color: var(--them); }
@@ -223,6 +228,10 @@
           so a vote cannot be traced to a fandom — nothing here knows whether the person who
           picked BLACKPINK is a blink or not. The two figures are what each act received out of
           the collab, and they sit apart roughly in the ratio of the slot counts.</li>
+        <li><b>Every pick is worth one.</b> A pass through the ballot is as many votes as it
+          carried — three where the collab asked for three, four if you also filled a category
+          nobody was obliged to. A category that was never promised still counts when it is
+          cast; it just never counts against anyone who skipped it.</li>
         <li><b>We count what people log here, and say so.</b> It is votes recorded through this
           site or the vote counter extension: self-reported — accurate and effortless, but still
           what people tell us — so it reads <em>logged</em>, never <em>verified</em>.</li>
@@ -284,16 +293,21 @@ var COLLABS = [
       // headline totals name artists ("BLACKPINK, JENNIE & ROSÉ"), the rows name
       // what you will actually see on the ballot. Same split as KCA_CATEGORIES
       // in index.html.
+      // `required: false` is ROSÉ, and it is the scoring rule rather than a
+      // footnote: BLOOMs were never asked for her, so a pass is complete at
+      // three without her — but every pick is worth the same 1, so casting her
+      // makes it four. Counted, never required.
       { cat: 'Favorite Music Group or Duo',  nominee: 'BLACKPINK',             who: 'BLACKPINK' },
       { cat: 'Favorite Music Collaboration', nominee: 'Dracula (with JENNIE)', who: 'JENNIE' },
-      { cat: 'Favorite Female Artist',       nominee: 'ROSÉ',                  who: 'ROSÉ' },
+      { cat: 'Favorite Female Artist',       nominee: 'ROSÉ',                  who: 'ROSÉ', required: false },
     ],
     why: 'The Kids’ Choice ballot does not submit until every category is filled. '
        + 'BLACKPINK and the members are up in three categories and BINI in a fourth, and '
        + '<b>no act is in the other’s category</b> — so a blink filling in Favorite Global Music Star '
        + 'gives up nothing, and neither does a BLOOM filling in ours. '
-       + 'The formal agreement covers <b>BLACKPINK and JENNIE</b>; BLOOMs vote <b>ROSÉ</b> too, '
-       + 'which was never part of it, and her votes are counted with the rest.',
+       + 'The agreement covers <b>BLACKPINK, JENNIE and BINI</b> — three votes, one pass through '
+       + 'the ballot. <b>ROSÉ</b> was never part of it and BLOOMs vote her anyway, which makes it '
+       + 'four; every pick is worth the same, so she counts without ever being owed.',
     // Numbers, once both halves exist. null = not counting yet, and the card
     // says what is missing rather than drawing an empty 0–0 bar.
     //   { us: <picks blinks logged for their act>, them: <picks their side reports>,
@@ -339,8 +353,10 @@ function sideHtml(cls, head, who, picks) {
     + '<div class="side-head">' + esc(head) + '</div>'
     + '<div class="side-who">' + who + '</div>'
     + picks.map(function (p) {
-        return '<div class="pick"><span class="pick-cat">' + esc(p.cat) + '</span>'
-          + '<span class="pick-name">' + esc(p.nominee) + '</span></div>';
+        return '<div class="pick' + (p.required === false ? ' optional' : '') + '">'
+          + '<span class="pick-cat">' + esc(p.cat)
+          + (p.required === false ? '<i class="pick-opt">optional · counts, never required</i>' : '')
+          + '</span><span class="pick-name">' + esc(p.nominee) + '</span></div>';
       }).join('')
     + '</div>';
 }
@@ -367,15 +383,28 @@ var fmt = function (n) { return Number(n || 0).toLocaleString('en-US'); };
 // our own acts were being drawn in the partner's colour.
 function totalOf(side) { return Math.max(0, (side && side.picks) || 0); }
 
-// How many complete passes the pooled votes amount to: the smaller of what each
-// act's slots could have produced. The one honest measure of turnout here, and
-// it is a single number rather than a comparison, which is the point.
-function roundsFrom(t, usSlots, themSlots) {
-  if (!t) return 0;
-  if (t.rounds != null) return Math.max(0, t.rounds);
-  var a = themSlots > 0 ? Math.floor(totalOf(t.forUs)   / themSlots) : 0;
-  var b = usSlots   > 0 ? Math.floor(totalOf(t.forThem) / usSlots)   : 0;
-  return Math.min(a, b);
+// The slots a pass has to fill to be complete. ROSÉ is not one of them.
+function requiredOf(picks) { return picks.filter(function (p) { return p.required !== false; }); }
+
+// How many complete passes the pooled votes amount to.
+//
+// NOT derivable from the two totals once a category is optional: our total
+// mixes the two required picks with ROSÉ, and 300 could be 100 passes with
+// ROSÉ every time or 150 passes with her never. Guessing would put a confident
+// number on the page that is wrong by half, so this returns null unless the
+// tally carries either the figure itself or a per-category breakdown to take
+// the required categories out of — and the line is simply not drawn when it is
+// null. A missing sentence beats an invented number.
+function passesFrom(c, t) {
+  if (!t) return null;
+  if (t.passes != null) return Math.max(0, t.passes);
+  var by = t.byCat;
+  if (!by) return null;
+  var counts = [];
+  requiredOf(c.theyGive).concat(requiredOf(c.weGive)).forEach(function (p) {
+    counts.push(Math.max(0, Number(by[p.cat]) || 0));
+  });
+  return counts.length ? Math.min.apply(null, counts) : null;
 }
 
 function tallyHtml(c) {
@@ -385,7 +414,9 @@ function tallyHtml(c) {
   if (t && (t.forUs || t.forThem)) {
     var forUs = totalOf(t.forUs), forThem = totalOf(t.forThem);
     var sum = forUs + forThem || 1;
-    var rounds = roundsFrom(t, usSlots, themSlots);
+    var passes = passesFrom(c, t);
+    var needed = requiredOf(c.theyGive).length + requiredOf(c.weGive).length;
+    var most = c.theyGive.length + c.weGive.length;
     // Artists, de-duplicated and in order — two categories can belong to the
     // same member, and "BLACKPINK, BLACKPINK & ROSÉ" is not a sentence.
     var seen = {}, acts = [];
@@ -408,8 +439,16 @@ function tallyHtml(c) {
       + ' ' + catWord(themSlots) + ' and ' + esc(c.partner.act) + ' in ' + usSlots
       + ', so one pass through the ballot adds ' + themSlots + ' on one side and ' + usSlots
       + ' on the other.'
-      + (rounds ? '<br>That is about <b>' + fmt(rounds) + '</b> complete '
-          + (rounds === 1 ? 'pass' : 'passes') + ' through the ballot.' : '')
+      + '<br>One pass is <b>' + needed + ' votes</b> — '
+      + esc(requiredOf(c.theyGive).map(function (p) { return p.who || p.nominee; })
+            .concat(requiredOf(c.weGive).map(function (p) { return p.who || p.nominee; })).join(', ')
+            .replace(/, ([^,]*)$/, ' and $1'))
+      + (most > needed ? ', or <b>' + most + '</b> with '
+          + esc(c.theyGive.concat(c.weGive).filter(function (p) { return p.required === false; })
+                .map(function (p) { return p.who || p.nominee; }).join(' and '))
+          + ', who nobody is obliged to vote for.' : '.')
+      + (passes != null ? ' That is <b>' + fmt(passes) + '</b> complete '
+          + (passes === 1 ? 'pass' : 'passes') + ' so far.' : '')
       + '<br>Logged, not verified — our half is what people record here or through the extension'
       + (t.themSource ? '; the other half is reported by ' + esc(t.themSource) : '')
       + '. A collab vote never counts toward a BLACKPINK total.</div>'
