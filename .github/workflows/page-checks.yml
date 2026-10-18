@@ -1,0 +1,80 @@
+name: Page checks
+
+# The browser checks that guard things which are invisible on the page itself:
+# a project filed under the wrong heading or linking somewhere that 404s, a
+# country label that disagrees between the picker and the chart tables, and the
+# iTunes peak column silently reading "—" on every row.
+#
+# Deliberately NOT triggered by data/**. The chore jobs commit chart data many
+# times a day and none of it can break these; running on code is what catches
+# regressions. Use the manual run to check against a day's fresh data.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'projects.html'
+      - 'vmas.html'
+      - 'breaktudo.html'
+      - 'achievements.html'
+      - 'middleware.js'
+      - 'vercel.json'
+      - '.github/scripts/test_*.mjs'
+      - '.github/scripts/_playwright.mjs'
+      - '.github/workflows/page-checks.yml'
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'projects.html'
+      - 'vmas.html'
+      - 'breaktudo.html'
+      - 'achievements.html'
+      - 'middleware.js'
+      - 'vercel.json'
+      - '.github/scripts/test_*.mjs'
+      - '.github/scripts/_playwright.mjs'
+      - '.github/workflows/page-checks.yml'
+  workflow_dispatch:
+
+# A later push supersedes an in-flight run of the same ref; nothing here writes
+# anything, so cancelling one is free.
+concurrency:
+  group: page-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Pinned to the version these tests were written and verified against
+      # (the same one the Claude Code container ships), so the browser under
+      # them cannot change without a commit. No cache: `npm install playwright`
+      # fetches the browser in its own postinstall, which would run BEFORE a
+      # restore step and make the cache pointless — and the whole install is
+      # under a minute on a workflow that only fires on code changes.
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      # Each runs regardless of the ones before it: three separate reports beat
+      # one that stops at the first failure. The job still fails if any did.
+      - name: The project board
+        if: always()
+        run: node .github/scripts/test_projects_page.mjs
+
+      - name: Country labels
+        if: always()
+        run: node .github/scripts/test_country_labels.mjs
+
+      - name: The iTunes peak column
+        if: always()
+        run: node .github/scripts/test_itunes_peaks.mjs
