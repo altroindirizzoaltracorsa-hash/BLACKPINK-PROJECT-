@@ -339,6 +339,74 @@ const wide = await page.evaluate(() => {
 wide.over <= 2 ? ok('no scroller on a desktop') : bad('no scroller on a desktop', `${wide.over}px of overflow`);
 wide.hint === 'none' ? ok('and no swipe hint there') : bad('and no swipe hint there', wide.hint);
 
+console.log('--- and when a post IS pinned, the card shows the post itself');
+// The card draws from constants, so the real post arrives afterwards: the
+// embed fetches /api/mama-votes, and the oEmbed markup the server cached on
+// that pin replaces our quoted copy. Three things have to be true, and none
+// of them is visible until it actually runs:
+//   * the post appears AND the quote goes away — showing both would read as
+//     the post having been said twice,
+//   * the buttons repoint from the search to today's post,
+//   * nothing of X's javascript comes with it. That is the entire reason this
+//     goes through oEmbed instead of widgets.js, and it is one grep.
+{
+  const PIN_URL = 'https://x.com/blinksunitedtwt/status/1234567890123456789';
+  const OEMBED = '<blockquote class="twitter-tweet" data-dnt="true"><p lang="en" dir="ltr">'
+    + 'I vote #BLACKPINK #2026MAMAVOTE — round 1 ends 22 Oct</p>&mdash; Blinks United '
+    + `(@blinksunitedtwt) <a href="${PIN_URL}">October 18, 2026</a></blockquote>`;
+  const p2 = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+  await p2.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen', '1'); } catch (e) {} });
+  // Stand in for the live endpoint, which this local server does not serve.
+  await p2.route('**/api/mama-votes*', (route) => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ day: '2026-10-18', today: 3, accounts: 9, votes: 12, days: [],
+      pinned: { url: PIN_URL, id: '1234567890123456789', at: Date.now(), ageMs: 60000, html: OEMBED } }),
+  }));
+  await p2.goto(base + '/awards', { waitUntil: 'domcontentloaded' });
+  const fr2 = () => p2.frames().find((f) => f.url().includes('card=mama'));
+  let got = null;
+  for (let i = 0; i < 60 && !got; i++) {
+    await p2.waitForTimeout(500);
+    got = await (fr2()?.evaluate(() => {
+      const box = document.querySelector('#vc-embed-root .vote-repost');
+      const slot = box && box.querySelector('.vote-repost-embed');
+      if (!slot || slot.hidden || !slot.children.length) return null;
+      const quote = box.querySelector('.vote-repost-post');
+      return {
+        text: slot.textContent.replace(/\s+/g, ' ').trim(),
+        // Whether it is ON THE SCREEN, not whether the attribute is set. The
+        // `hidden` attribute loses to any author `display` rule, so asking the
+        // property passed happily while both copies were visible.
+        quoteHidden: getComputedStyle(quote).display === 'none' || !quote.getClientRects().length,
+        embedShown: getComputedStyle(slot).display !== 'none' && !!slot.getClientRects().length,
+        head: box.querySelector('.vote-repost-head').textContent.trim(),
+        btn: box.querySelector('a.vote-repost-btn').getAttribute('href'),
+        scripts: document.querySelectorAll('script[src*="twitter"], script[src*="twimg"], script[src*="x.com"]').length,
+        styled: getComputedStyle(slot.querySelector('blockquote')).borderLeftWidth,
+      };
+    }).catch(() => null) || Promise.resolve(null));
+  }
+  if (!got) bad('the pinned post replaces the quote', 'the embed never appeared');
+  else {
+    /I vote #BLACKPINK/.test(got.text) ? ok('the pinned post is rendered', got.text.slice(0, 70))
+                                       : bad('the pinned post is rendered', got.text);
+    got.embedShown ? ok('and the post is actually on the screen')
+                   : bad('and the post is actually on the screen', 'the slot is filled but not displayed');
+    got.quoteHidden ? ok('and our quoted copy is gone from the screen')
+                    : bad('and our quoted copy is gone from the screen', 'both copies are visible');
+    /Today/i.test(got.head) ? ok('and the heading says it is today’s', got.head)
+                            : bad('and the heading says it is today’s', got.head);
+    got.btn === PIN_URL ? ok('and the repost button goes to that post')
+                        : bad('and the repost button goes to that post', got.btn);
+    // The whole reason for the oEmbed route rather than the official widget.
+    got.scripts === 0 ? ok('and nothing of X’s javascript was loaded')
+                      : bad('and nothing of X’s javascript was loaded', `${got.scripts} script(s)`);
+    parseFloat(got.styled) >= 1 ? ok('and the post is styled by us, not left bare', got.styled)
+                                : bad('and the post is styled by us, not left bare', got.styled);
+  }
+  await p2.close();
+}
+
 await browser.close();
 server.close();
 console.log(`\nFAILURES: ${failures}`);

@@ -62,11 +62,46 @@ function loadHandler() {
     // to survive, because Upstash being down must not take the page with it.
     const FakeRedis = { fromEnv: () => { throw new Error('no redis in tests'); } };
     return new Function('createClient', 'Redis', 'process', 'Date',
-      stripped + '\nreturn { handler, kstDay, roundAt, windowState, MAMA_ROUNDS };')(
+      stripped + '\nreturn { handler, kstDay, roundAt, windowState, MAMA_ROUNDS, sanitizeEmbed };')(
       () => fakeSb, FakeRedis, { env: { SUPABASE_URL: 'u', SUPABASE_SERVICE_KEY: 'k', ADMIN_SECRET: 'admin-secret' } }, FakeDate);
   };
 }
 const build = loadHandler();
+
+// ── the post's markup, before it is stored ─────────────────────────────────
+// This is the one string in the system that comes from a third party and ends
+// up in a page via innerHTML. It arrives from publish.twitter.com, for a URL
+// the pin endpoint has already checked is one of ours, so the realistic threat
+// is small — but "small" is not a reason to put unfiltered remote HTML into
+// every visitor's DOM, and the filter is only worth having if it is exercised.
+{
+  console.log('\n--- the embed markup is cut down before it is stored');
+  const { sanitizeEmbed } = build(Date.parse('2026-10-18T12:00:00Z'));
+  const real = '<blockquote class="twitter-tweet" data-dnt="true"><p lang="en" dir="ltr">'
+    + 'I vote #BLACKPINK #2026MAMAVOTE</p>&mdash; Blinks United (@blinksunitedtwt) '
+    + '<a href="https://twitter.com/blinksunitedtwt/status/1234567890123456789">October 18, 2026</a></blockquote>';
+  const kept = sanitizeEmbed(real);
+  check(/I vote #BLACKPINK #2026MAMAVOTE/.test(kept) && /<blockquote/.test(kept),
+        'a normal post keeps its text and its blockquote');
+  check(/href="https:\/\/twitter\.com\/blinksunitedtwt\/status\/1234567890123456789"/.test(kept),
+        'and the link back to the post survives');
+
+  for (const [name, bad, gone] of [
+    ['a script tag', real + '<script>fetch("//evil")</script>', /<script/i],
+    ['an inline handler', '<blockquote onclick="steal()">hi</blockquote>', /onclick/i],
+    ['a single-quoted handler', "<blockquote onload='x()'>hi</blockquote>", /onload/i],
+    ['an unquoted handler', '<blockquote onmouseover=x()>hi</blockquote>', /onmouseover/i],
+    ['an iframe', real + '<iframe src="//evil"></iframe>', /<iframe/i],
+    ['a javascript: href', '<blockquote><a href="javascript:x()">t</a></blockquote>', /javascript:/i],
+    ['a style block', real + '<style>body{display:none}</style>', /<style/i],
+  ]) {
+    check(!gone.test(sanitizeEmbed(bad)), `${name} is stripped`);
+  }
+  // The shape gate in fetchEmbed is the other half: anything that is not a
+  // blockquote is not stored at all, whatever the sanitizer left behind.
+  check(!/^<blockquote/i.test(sanitizeEmbed('<div>not a post</div>')),
+        'and markup that is not a blockquote fails the shape gate');
+}
 
 // ── the stand-in database ───────────────────────────────────────────────────
 let rows = [];          // mama_x_votes

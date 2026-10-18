@@ -89,13 +89,68 @@ function parsePostUrl(raw) {
   return { id: m[2], url: 'https://x.com/' + PIN_HANDLE + '/status/' + m[2] };
 }
 
+// ── the post's own words ────────────────────────────────────────────────────
+// Showing the real post beats quoting what we think it says, and there are two
+// ways to do that. The official one — X's widgets.js — puts a script from X on
+// every page the card appears on, which on /awards means X sees everyone who
+// opens the front door. The other is oEmbed: one server-side GET that returns
+// the post's markup, text and all, with `omit_script=1` so nothing of X's runs
+// in anybody's browser.
+//
+// oEmbed needs no credentials. VERIFIED rather than assumed, on a GitHub
+// runner (probe-tweet-embed.yml, 18 Oct 2026): publish.twitter.com answered
+// 200 unauthenticated and handed back the post's text. The same probe failed
+// to render widgets.js, which is weaker evidence — X blocks datacentre ranges
+// — but it points the same way, and the route that needs no script in a
+// visitor's browser is the one to prefer regardless.
+//
+// FETCHED WHEN THE POST IS PINNED, not when the page is read: once a day on an
+// admin action instead of on a visitor's critical path, and a page read never
+// waits on X. A failure here is never fatal — the pin is still stored without
+// its html, and the card falls back to quoting the text itself.
+const OEMBED_TIMEOUT_MS = 6000;
+
+// Third-party HTML, so it is cut down to what it is supposed to be before it
+// is ever stored. With omit_script=1 the response is a <blockquote> and a
+// link; anything executable in there is not oEmbed behaving normally, and the
+// card injects this into the page.
+function sanitizeEmbed(html) {
+  return String(html || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<\/?(?:iframe|object|embed|style|link|meta|form|input)\b[^>]*>/gi, '')
+    .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/(href|src)\s*=\s*(["'])\s*javascript:[^"']*\2/gi, '$1="#"')
+    .trim();
+}
+
+async function fetchEmbed(url) {
+  const api = 'https://publish.twitter.com/oembed?omit_script=1&dnt=1&theme=dark'
+    + '&align=left&url=' + encodeURIComponent(url);
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), OEMBED_TIMEOUT_MS);
+  try {
+    const r = await fetch(api, { signal: ctl.signal, headers: { accept: 'application/json' } });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const html = sanitizeEmbed(j && j.html);
+    // A blockquote is the shape oEmbed returns. Anything else is not something
+    // to put on the page on the strength of a pattern match.
+    if (!html || !/^<blockquote/i.test(html)) return null;
+    return { html, author: j.author_name || null };
+  } catch (e) {
+    return null;                                  // timeout, block, bad JSON
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // What the page should show. Past its life it is not returned at all, so the
 // client has nothing stale to decide about.
 function freshPin(pin) {
   if (!pin || !pin.url || !pin.at) return null;
   const age = Date.now() - Number(pin.at);
   if (!(age >= 0) || age > PIN_TTL_MS) return null;
-  return { url: pin.url, id: pin.id, at: pin.at, ageMs: age };
+  return { url: pin.url, id: pin.id, at: pin.at, ageMs: age, html: pin.html || null };
 }
 
 // Mnet's day. The same boundary BreakTudo and KCA use in api/vma-votes.js —
@@ -230,7 +285,12 @@ export default async function handler(req, res) {
       const parsed = parsePostUrl(raw);
       if (parsed.error) return res.status(400).json({ error: parsed.error });
 
-      const pin = { url: parsed.url, id: parsed.id, at: Date.now() };
+      // The post's own markup, fetched once here rather than on every read.
+      // Null when X is slow or refuses: the pin is worth storing either way,
+      // because the repost button only needs the URL.
+      const embed = await fetchEmbed(parsed.url);
+      const pin = { url: parsed.url, id: parsed.id, at: Date.now(),
+                    html: embed ? embed.html : null };
       // Expired in the store as well as in the read, so a forgotten pin does
       // not sit around for ever waiting to be served by a future code path
       // that forgets to check its age.
@@ -287,4 +347,4 @@ export default async function handler(req, res) {
 }
 
 // For tests.
-export const __test = { kstDay, roundAt, windowState, MAMA_ROUNDS };
+export const __test = { kstDay, roundAt, windowState, MAMA_ROUNDS, sanitizeEmbed };
