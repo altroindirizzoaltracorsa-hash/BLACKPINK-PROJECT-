@@ -189,6 +189,8 @@
   .board td { padding: 0.5rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);
     vertical-align: top; }
   .board td:first-child { color: var(--muted); font-variant-numeric: tabular-nums; width: 2.2rem; }
+  .board-empty { font-size: 0.74rem; color: var(--muted); padding: 0.9rem 0.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.05); }
   .board td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .board-cats { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.3rem; }
   .board-cat { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.04em;
@@ -331,6 +333,9 @@ var COLLABS = [
     // Deadline is the KCA ballot's, copied from the campaign card on /voting:
     // Nov 13 2026 23:59 PT, the late reading of "October 8 to November 13".
     deadline: '2026-11-14T07:59:00Z',
+    // Day one of the voting window, so the day grid can be drawn over the whole
+    // campaign before anybody has voted rather than appearing out of nowhere.
+    from: '2026-10-08',
     voteUrl: 'https://kca.nick.tv/vote/',
     partner: {
       name: 'BINI Voting Page',     // CONFIRM the exact name and handle with them
@@ -549,7 +554,11 @@ function tallyHtml(c) {
   var themSlots = c.theyGive.length;     // what ours are up for
   var t = c.tally;
   var p = periodOf(c, t, PERIOD);
-  var tabs = t && t.periods ? '<div class="tabs">' + PERIODS.map(function (x) {
+  // Drawn for any running collab, with or without numbers behind them. They
+  // are part of what the card says it will show, and a control that appears
+  // only once data exists leaves a reader unable to tell a quiet collab from
+  // an unfinished page.
+  var tabs = c.status === 'live' ? '<div class="tabs">' + PERIODS.map(function (x) {
     return '<button class="tab' + (x.k === PERIOD ? ' on' : '') + '" type="button" '
       + 'onclick="setPeriod(\'' + x.k + '\')">' + esc(x.label) + '</button>';
   }).join('') + '</div>' : '';
@@ -614,9 +623,9 @@ function tallyHtml(c) {
 // collaboration, and half the people on it have no reason to be streaming
 // BLACKPINK at all. A BLOOM who votes belongs on this board.
 function boardHtml(c) {
+  if (c.status !== 'live') return '';
   var p = periodOf(c, c.tally, PERIOD);
   var rows = (p && p.board) || [];
-  if (!rows.length) return '';
   var lbl = (PERIODS.filter(function (x) { return x.k === PERIOD; })[0] || {}).label || '';
   return '<div class="sub"><div class="sub-head">Who is voting · ' + esc(lbl) + '</div>'
     + '<table class="board"><thead><tr><th>#</th><th>Blink</th><th>Votes</th></tr></thead><tbody>'
@@ -633,9 +642,11 @@ function boardHtml(c) {
           + '</td><td>' + fmt(r.votes || 0) + '</td></tr>';
       }).join('')
     + '</tbody></table>'
+    + (rows.length ? '' : '<div class="board-empty">No collab votes logged yet — be the first. 🗳️</div>')
     + '<div class="sub-note">Under each name: that person\'s votes split by category. '
-    + 'Ranked on votes cast through the collab — streaming is not part of it, because this is '
-    + 'not a streaming collaboration.</div></div>';
+    + '<b>All you need to appear here is an account</b> — sign in, link the counter, and your '
+    + 'votes land on this board. No scrobbler, and no streaming: /voting ranks on streams '
+    + 'because it is a streaming board, and this one is about votes.</div></div>';
 }
 
 // ── day by day ─────────────────────────────────────────────────────────────
@@ -647,14 +658,20 @@ function boardHtml(c) {
 var DAY_OPEN = null;
 
 function dayGridHtml(c) {
+  if (c.status !== 'live' || !c.from) return '';
   var t = c.tally;
   var days = (t && t.days) || [];
-  if (!days.length) return '';
   var by = {};
   days.forEach(function (d) { by[d.day] = d; });
+  // Drawn over the WHOLE voting window, not just the days with votes in them.
+  // An empty grid is the shape of the campaign with nothing on it yet, which
+  // is worth seeing; a grid that appears only once somebody has voted hides
+  // the thing it is there to explain.
+  var today = (t && t.todayKey) || kstToday();
   var keys = days.map(function (d) { return d.day; }).sort();
-  var first = keys[0], last = (t.todayKey && t.todayKey > keys[keys.length - 1])
-    ? t.todayKey : keys[keys.length - 1];
+  var first = c.from < (keys[0] || c.from) ? c.from : (keys[0] || c.from);
+  var last = today;
+  if (keys.length && keys[keys.length - 1] > last) last = keys[keys.length - 1];
   var d0 = new Date(first + 'T00:00:00Z'), d1 = new Date(last + 'T00:00:00Z');
   var pad = (d0.getUTCDay() + 6) % 7;                       // Monday-first
   var cells = [];
@@ -663,6 +680,7 @@ function dayGridHtml(c) {
     cells.push(d.toISOString().slice(0, 10));
   }
   var open = DAY_OPEN && by[DAY_OPEN];
+  var any = days.length > 0;
   return '<div class="sub"><div class="sub-head">Day by day</div>'
     + '<div class="days">'
     + ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(function (h) { return '<div class="dow">' + h + '</div>'; }).join('')
@@ -670,13 +688,15 @@ function dayGridHtml(c) {
         if (!k) return '<div class="day pad"></div>';
         var row = by[k], n = row ? Math.max(0, Number(row.votes) || 0) : 0;
         var cls = ['day', n > 0 ? 'has' : '', k === DAY_OPEN ? 'on' : '',
-                   k === t.todayKey ? 'today' : ''].filter(Boolean).join(' ');
+                   k === today ? 'today' : ''].filter(Boolean).join(' ');
         return '<div class="' + cls + '"' + (n > 0 ? ' onclick="openDay(\'' + k + '\')"'
             + ' title="' + fmt(n) + ' votes — tap for the breakdown"' : '')
           + '><span class="day-n">' + Number(k.slice(8, 10)) + '</span>'
           + (n > 0 ? '<span class="day-v">' + fmt(n) + '</span>' : '') + '</div>';
       }).join('')
     + '</div>'
+    + (any ? '' : '<div class="sub-note">Each day of the collab. Once votes are logged, '
+        + 'a day carries its own count and opens to the categories it was spent on.</div>')
     + (open ? '<div class="day-detail"><div class="day-detail-hd">' + esc(dayLabel(open.day))
         + ' · <b>' + fmt(open.votes) + '</b> votes</div>' + (splitHtml(c, open.byCat) || '')
         + '</div>' : '')
@@ -688,6 +708,14 @@ function dayGridHtml(c) {
 var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function dayLabel(iso) {
   return Number(iso.slice(8, 10)) + ' ' + MONTHS_SHORT[Number(iso.slice(5, 7)) - 1];
+}
+
+// The day the API buckets on, worked out here so the grid knows where today is
+// before any data has arrived. Same boundary as api/collabs.js and the rest of
+// the vote tables: midnight KST.
+function kstToday() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul',
+    year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
 function setPeriod(k) { PERIOD = k; DAY_OPEN = null; render(); }

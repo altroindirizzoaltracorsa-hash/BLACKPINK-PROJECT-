@@ -392,9 +392,15 @@ board[0].cats.length === 4
   ? ok('and each row shows the votes they cast, by category', board[0].cats.join(' '))
   : bad('and each row shows the votes they cast, by category', `${board[0].cats.length} chips`);
 const boardNote = (await prev.locator('.sub-note').first().textContent()).replace(/\s+/g, ' ');
-/streaming is not part of it/i.test(boardNote)
-  ? ok('and says streaming is not part of the ranking')
-  : bad('and says streaming is not part of the ranking', boardNote.slice(0, 90));
+// The eligibility rule, stated on the board itself: an account and nothing
+// else. It is the one thing that differs from /voting, and the people it
+// matters most to — BLOOMs — have no reason to guess it.
+/no scrobbler, and no streaming/i.test(boardNote)
+  ? ok('and says an account is all you need')
+  : bad('and says an account is all you need', boardNote.slice(0, 120));
+/all you need to appear here is an account/i.test(boardNote)
+  ? ok('and says it in those words')
+  : bad('and says it in those words', boardNote.slice(0, 120));
 
 console.log('--- a day opens its own breakdown');
 const dayCells = await prev.locator('.day.has').count();
@@ -492,6 +498,52 @@ console.log('--- the page reads /api/collabs and works out the two totals itself
   stillHonest ? ok('a collab nobody has voted in yet still says so')
               : bad('a collab nobody has voted in yet still says so', 'a 0–0 bar was drawn');
   await empty.close();
+}
+
+console.log('--- the board and the day grid are drawn before any votes exist');
+// With no data they used to render as nothing, which is indistinguishable from
+// not having been built. The structure is the explanation: a reader should be
+// able to see what will be counted, who can appear, and that the campaign runs
+// day by day, before the first vote is logged.
+{
+  const bare = await browser.newPage({ viewport: { width: 1200, height: 1000 } });
+  // No endpoint at all — the hardest case, and the one that is live today.
+  await bare.route('**/api/collabs*', (route) => route.abort());
+  await bare.goto(base + '/collabs', { waitUntil: 'domcontentloaded' });
+  await bare.waitForTimeout(1200);
+  const shape = await bare.evaluate(() => ({
+    tabs: document.querySelectorAll('.tab').length,
+    headers: [...document.querySelectorAll('.board th')].map((t) => t.textContent.trim()),
+    boardRows: document.querySelectorAll('.board tbody tr').length,
+    boardEmpty: (document.querySelector('.board-empty') || {}).textContent || '',
+    note: (document.querySelector('.sub-note') || {}).textContent || '',
+    dayCells: document.querySelectorAll('.day').length,
+    filledDays: document.querySelectorAll('.day.has').length,
+    hasToday: !!document.querySelector('.day.today'),
+    counting: !/not counting/i.test(document.querySelector('.tally-nums').textContent),
+  }));
+  shape.headers.length === 3 ? ok('the board shows its columns', shape.headers.join(' / '))
+                             : bad('the board shows its columns', JSON.stringify(shape.headers));
+  // No streams column: that is the rule difference from /voting, and a column
+  // headed Streams here would state the opposite of the eligibility note.
+  !shape.headers.some((h) => /stream/i.test(h))
+    ? ok('and no streams column, unlike /voting')
+    : bad('and no streams column, unlike /voting', shape.headers.join(' / '));
+  (shape.boardRows === 0 && /be the first/i.test(shape.boardEmpty))
+    ? ok('with an empty state rather than a fake row', shape.boardEmpty.trim())
+    : bad('with an empty state rather than a fake row', JSON.stringify(shape));
+  /all you need to appear here is an account/i.test(shape.note)
+    ? ok('and the eligibility rule is readable with no data')
+    : bad('and the eligibility rule is readable with no data', shape.note.slice(0, 90));
+  // The grid spans the voting window, so it is many days wide on day one.
+  shape.dayCells >= 14 ? ok('the day grid covers the whole window', `${shape.dayCells} cells`)
+                       : bad('the day grid covers the whole window', `${shape.dayCells} cells`);
+  shape.filledDays === 0 ? ok('with no day claiming votes') : bad('with no day claiming votes', `${shape.filledDays}`);
+  shape.hasToday ? ok('and today marked on it') : bad('and today marked on it');
+  !shape.counting ? ok('while the bar still says it is not counting')
+                  : bad('while the bar still says it is not counting');
+  shape.tabs === 3 ? ok('and the three tabs are there') : bad('and the three tabs are there', `${shape.tabs}`);
+  await bare.close();
 }
 
 console.log('--- the bar sits under the countdown, not at the bottom');
