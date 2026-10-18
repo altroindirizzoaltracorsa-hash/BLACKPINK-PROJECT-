@@ -55,14 +55,39 @@ const pub = await open('/collabs');
 const data = await pub.evaluate(() => ({
   all: COLLABS.map((c) => ({ id: c.id, status: c.status })),
   drawn: [...document.querySelectorAll('.collab')].map((el) => el.dataset.collab),
-  empty: !!document.querySelector('.empty'),
+  // Scoped to the list, not `.empty` anywhere: an unqualified match once found
+  // the empty BAR track and reported the page as showing its empty-state note.
+  empty: !!document.querySelector('#list > .empty'),
 }));
 const proposed = data.all.filter((c) => c.status === 'proposed').map((c) => c.id);
 const leaked = proposed.filter((id) => data.drawn.includes(id));
-proposed.length
-  ? (leaked.length === 0 ? ok(`${proposed.length} proposed collab(s) hidden`, proposed.join(', '))
-                         : bad('proposed collabs hidden', `visible: ${leaked.join(', ')}`))
-  : ok('no proposed collabs to hide', 'nothing to check');
+if (proposed.length) {
+  leaked.length === 0 ? ok(`${proposed.length} proposed collab(s) hidden`, proposed.join(', '))
+                      : bad('proposed collabs hidden', `visible: ${leaked.join(', ')}`);
+}
+// Exercised whether or not one happens to exist today. This is the guard that
+// stops the site announcing a partnership nobody agreed to, and "nothing to
+// check" is how it would rot: the day every collab is live, a broken filter
+// would pass silently and only show itself on the next proposed one.
+const hidden = await pub.evaluate(() => {
+  const before = COLLABS.slice();
+  COLLABS.push({
+    id: '__test-proposed', status: 'proposed', award: 'Test', deadline: null,
+    voteUrl: 'https://example.com/', partner: { name: 'Someone', fandom: 'Someones', act: 'Nobody' },
+    weGive: [{ cat: 'A', nominee: 'X' }], theyGive: [{ cat: 'B', nominee: 'Y' }],
+    why: 'test', tally: null, pending: ['test'],
+  });
+  render();
+  const shown = [...document.querySelectorAll('.collab')].map((el) => el.dataset.collab);
+  const body = document.body.textContent;
+  COLLABS.length = 0; before.forEach((c) => COLLABS.push(c));
+  render();
+  return { shown, named: /Someones|Nobody/.test(body) };
+});
+(!hidden.shown.includes('__test-proposed') && !hidden.named)
+  ? ok('a proposed collab injected into the list is not rendered publicly')
+  : bad('a proposed collab injected into the list is not rendered publicly',
+        hidden.named ? 'the partner was named in the page text' : hidden.shown.join(', '));
 // And the page still says something rather than rendering a blank slab.
 const nonProposed = data.all.filter((c) => c.status !== 'proposed');
 (nonProposed.length ? data.drawn.length === nonProposed.length : data.empty)
@@ -154,7 +179,17 @@ console.log('--- and when there ARE numbers, the bar draws them in proportion');
 // reader would still believe.
 const filled = await prev.evaluate(() => {
   const before = JSON.parse(JSON.stringify(COLLABS[0].tally || null));
-  COLLABS[0].tally = { us: 1200, them: 400, asOf: new Date().toISOString(), themSource: 'their page' };
+  // THE CASE THE BAR EXISTS TO GET RIGHT. Equal turnout, unequal slot counts:
+  // 100 rounds each side. Blinks fill one slot per round, so 100 picks; BLOOMs
+  // fill two, so 200 — plus 100 for ROSÉ, which they were never asked for.
+  // Counting picks would draw this 25/75 (or 33/67 with ROSÉ folded in) and
+  // tell a fandom it is losing 3:1 when it turned up in exactly equal numbers.
+  // It has to come out 50/50.
+  COLLABS[0].tally = {
+    us:   { picks: 100 },
+    them: { picks: 200, extraPicks: 100 },
+    asOf: new Date().toISOString(), themSource: 'their page',
+  };
   render();
   const el = document.querySelector('.collab');
   const pct = (sel) => {
@@ -171,13 +206,22 @@ const filled = await prev.evaluate(() => {
   render();
   return out;
 });
-// 1200 of 1600 is 75/25. Allow a point of rounding on either side.
-(Math.abs(filled.us - 75) <= 1 && Math.abs(filled.them - 25) <= 1)
-  ? ok('the two sides are drawn in proportion', `${filled.us}% / ${filled.them}%`)
-  : bad('the two sides are drawn in proportion', `${filled.us}% / ${filled.them}% — expected 75/25`);
-(/1,200/.test(filled.nums) && /400/.test(filled.nums))
-  ? ok('and the numbers are written out with separators', filled.nums.trim())
-  : bad('and the numbers are written out with separators', filled.nums.trim());
+// Equal rounds must draw equal, however lopsided the picks are.
+(Math.abs(filled.us - 50) <= 1 && Math.abs(filled.them - 50) <= 1)
+  ? ok('equal turnout draws 50/50 despite 1 slot against 2', `${filled.us}% / ${filled.them}%`)
+  : bad('equal turnout draws 50/50 despite 1 slot against 2',
+        `${filled.us}% / ${filled.them}% — picks were counted, not rounds`);
+(/100 by BLINKs/.test(filled.nums) && /100 by BLOOMs/.test(filled.nums))
+  ? ok('and the headline figure is rounds', filled.nums.trim())
+  : bad('and the headline figure is rounds', filled.nums.trim());
+// The raw picks still have to be visible — they are the actual work, and
+// hiding them to make the bar tidy would be its own dishonesty.
+(/100/.test(filled.note) && /200/.test(filled.note))
+  ? ok('and the raw picks are shown underneath')
+  : bad('and the raw picks are shown underneath', filled.note.replace(/\s+/g, ' ').slice(0, 90));
+/never asked for|ROSÉ/.test(filled.note)
+  ? ok('and the un-agreed ROSÉ votes are named as such')
+  : bad('and the un-agreed ROSÉ votes are named as such', filled.note.replace(/\s+/g, ' ').slice(0, 90));
 /logged, not verified/i.test(filled.note)
   ? ok('and it says logged, not verified')
   : bad('and it says logged, not verified', filled.note.trim());

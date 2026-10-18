@@ -118,6 +118,15 @@
   .pick-cat { flex: 1 1 auto; font-size: 0.6rem; letter-spacing: 0.1em;
     text-transform: uppercase; color: var(--muted); }
   .pick-name { font-size: 0.82rem; color: var(--white); }
+  /* A category the other side fills without having promised to. Dimmed and
+     labelled: it is a gift, and a page that shows it identically to the agreed
+     ones turns it into something we are owed. */
+  .pick.extra { opacity: 0.6; }
+  .pick-extra { display: block; font-style: normal; font-size: 0.52rem;
+    letter-spacing: 0.08em; color: var(--muted); margin-top: 0.15rem; }
+  .tally-note b { color: var(--white); font-weight: 500; }
+  .tally-note .us { color: var(--pink); }
+  .tally-note .them { color: var(--them); }
 
   /* ── The bar ────────────────────────────────────────────────────────── */
   /* Directly under the countdown, before anything is explained: when the trade
@@ -141,7 +150,10 @@
      drawn empty and labelled, with the reasons folded away. Compact on purpose:
      it sits where the bar will sit, and a four-line apology at the top of the
      card would be a worse thing to lead with than the trade itself. */
-  .bar.empty { background: repeating-linear-gradient(135deg,
+  /* NOT .empty — that class is the page's "no collabs" note, and two different
+     meanings under one name had a check matching a bar and reporting it as the
+     empty state. */
+  .bar.no-data { background: repeating-linear-gradient(135deg,
       rgba(255,255,255,0.05) 0 6px, rgba(255,255,255,0.02) 6px 12px); }
   .tally-why { margin-top: 0.5rem; font-size: 0.68rem; color: var(--muted); }
   .tally-why summary { cursor: pointer; list-style: none; color: var(--muted); }
@@ -249,7 +261,7 @@
 var COLLABS = [
   {
     id: 'bvp-kca-2026',
-    status: 'proposed',
+    status: 'live',
     award: '2026 Kids’ Choice Awards',
     // Deadline is the KCA ballot's, copied from the campaign card on /voting:
     // Nov 13 2026 23:59 PT, the late reading of "October 8 to November 13".
@@ -267,15 +279,20 @@ var COLLABS = [
     ],
     // What their side puts in ours. Read off the live ballot (probe-kca.yml) and
     // in step with KCA_CATEGORIES in index.html.
+    // THE AGREED TRADE IS BLACKPINK AND JENNIE. ROSÉ is not in it: BLOOMs vote
+    // her anyway, which is a kindness and not a term, so she is marked and
+    // counted apart. Folding her in would overstate what they signed up for and
+    // quietly turn a gift into an expectation.
     theyGive: [
       { cat: 'Favorite Music Group or Duo',  nominee: 'BLACKPINK' },
-      { cat: 'Favorite Female Artist',       nominee: 'ROSÉ' },
       { cat: 'Favorite Music Collaboration', nominee: 'Dracula (with JENNIE)' },
+      { cat: 'Favorite Female Artist',       nominee: 'ROSÉ', agreed: false },
     ],
     why: 'The Kids’ Choice ballot does not submit until every category is filled. '
-       + 'BLACKPINK is up for three awards and BINI for one, and <b>none of them is the same award</b> — '
-       + 'so a blink filling in Favorite Global Music Star gives up nothing, and neither does a BLOOM '
-       + 'filling in the three of ours.',
+       + 'BLACKPINK and JENNIE are up in two categories and BINI in a third, and '
+       + '<b>no act is in the other’s category</b> — so a blink filling in Favorite Global Music Star '
+       + 'gives up nothing, and neither does a BLOOM filling in ours. '
+       + '<b>BLOOMs vote ROSÉ too</b>, which was never part of the deal.',
     // Numbers, once both halves exist. null = not counting yet, and the card
     // says what is missing rather than drawing an empty 0–0 bar.
     //   { us: <picks blinks logged for their act>, them: <picks their side reports>,
@@ -283,9 +300,9 @@ var COLLABS = [
     tally: null,
     // What is still needed before the bar can be real. Shown verbatim.
     pending: [
-      'the vote counter extension to recognise a pick in their category (a one-line table entry, but it needs a release)',
-      'somewhere to record those picks that is not your BLACKPINK vote total',
-      'their side counting their half, and an agreed way to hand the number over',
+      'the vote counter extension to recognise a BINI pick in Favorite Global Music Star (a one-line table entry, but it needs a release)',
+      'somewhere to record those picks that is not your BLACKPINK vote total — a trade vote must never move the board or a badge',
+      'their side reporting their rounds, and an agreed way to hand the number over',
     ],
   },
 ];
@@ -308,37 +325,91 @@ function countdown(ms) {
   return m + 'M ' + pad(s % 60) + 'S';
 }
 
+// A slot is in the trade unless it says otherwise. `agreed: false` is a
+// category the other side fills without having promised to — generosity, not
+// an obligation — and it is marked as such so nobody reads it as a debt we are
+// owed, and so nobody on their side feels held to it.
+function agreedOnly(picks) { return picks.filter(function (p) { return p.agreed !== false; }); }
+
+// "The two they agreed to" reads; "The 2 they agreed to" does not. Falls back
+// to the numeral past the point where a word stops helping.
+var NUM_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six'];
+function numWord(n) { return NUM_WORDS[n] != null ? NUM_WORDS[n] : String(n); }
+// "category" / "categories" — the left side has one slot and the right has two,
+// and the sentence is built from whichever it is.
+function catWord(n) { return n === 1 ? 'category' : 'categories'; }
+
 function sideHtml(cls, head, who, picks) {
   return '<div class="side ' + cls + '">'
     + '<div class="side-head">' + esc(head) + '</div>'
     + '<div class="side-who">' + who + '</div>'
     + picks.map(function (p) {
-        return '<div class="pick"><span class="pick-cat">' + esc(p.cat) + '</span>'
+        return '<div class="pick' + (p.agreed === false ? ' extra' : '') + '">'
+          + '<span class="pick-cat">' + esc(p.cat)
+          + (p.agreed === false ? '<i class="pick-extra">not in the trade</i>' : '') + '</span>'
           + '<span class="pick-name">' + esc(p.nominee) + '</span></div>';
       }).join('')
     + '</div>';
 }
 
+var fmt = function (n) { return Number(n || 0).toLocaleString('en-US'); };
+
+// ── WHAT THE BAR COUNTS, AND WHY IT IS NOT PICKS ────────────────────────────
+// The two sides do not have the same number of slots to fill. BLOOMs put
+// BLACKPINK and Dracula in for us; blinks put BINI in for them. Count raw picks
+// and their column is TWICE ours before a single person has done anything —
+// not because more of them turned up, but because arithmetic. Add ROSÉ, which
+// they vote without having promised to, and it reads 3:1. A bar that says one
+// fandom is losing 3:1 when both showed up in equal numbers is not a friendly
+// competition, it is an insult produced by a denominator.
+//
+// So the unit is a ROUND: one pass through the ballot in which you filled the
+// other side's slots. A blink's round is one BINI pick. A BLOOM's round is the
+// agreed set, filled. Equal effort counts equal, whatever the slot counts are,
+// and that is the only comparison that means "who turned up".
+//
+// Picks are still shown, because they are the real work and people want to see
+// them — just underneath, labelled, and never as the bar.
+function roundsOf(side, slots) {
+  if (!side) return 0;
+  if (side.rounds != null) return Math.max(0, side.rounds);
+  // Derived only as a fallback, and floored: a half-finished round is not a
+  // round, and rounding it up would let a partial pass outscore a full one.
+  return slots > 0 ? Math.floor(Math.max(0, side.picks || 0) / slots) : 0;
+}
+
 function tallyHtml(c) {
-  if (c.tally && (c.tally.us || c.tally.them)) {
-    var us = Math.max(0, c.tally.us || 0), them = Math.max(0, c.tally.them || 0);
+  var usSlots = agreedOnly(c.weGive).length;
+  var themSlots = agreedOnly(c.theyGive).length;
+  var t = c.tally;
+  if (t && (t.us || t.them)) {
+    var us = roundsOf(t.us, usSlots), them = roundsOf(t.them, themSlots);
     var sum = us + them || 1;
-    var fmt = function (n) { return n.toLocaleString('en-US'); };
+    var usPicks = (t.us && t.us.picks) || 0, themPicks = (t.them && t.them.picks) || 0;
+    var extra = (t.them && t.them.extraPicks) || 0;
     return '<div class="tally">'
-      + '<div class="tally-head"><span class="tally-label">Votes logged</span>'
+      + '<div class="tally-head"><span class="tally-label">Rounds voted</span>'
       + '<span class="tally-nums"><span class="us">' + fmt(us) + ' by BLINKs</span>'
       + ' · <span class="them">' + fmt(them) + ' by ' + esc(c.partner.fandom) + '</span></span></div>'
       + '<div class="bar"><div class="bar-us" style="width:' + (us / sum * 100) + '%"></div>'
       + '<div class="bar-them" style="width:' + (them / sum * 100) + '%"></div></div>'
-      + '<div class="tally-note">Logged, not verified — our half is what blinks record here or through '
-      + 'the extension' + (c.tally.themSource ? '; their half is reported by ' + esc(c.tally.themSource) : '')
+      + '<div class="tally-note">'
+      + 'A <b>round</b> is one pass through the ballot with the other side\'s slots filled — '
+      + 'the bar counts those, because the two sides have different numbers of slots ('
+      + usSlots + ' for us, ' + themSlots + ' for them) and counting picks would show '
+      + esc(c.partner.fandom) + ' ahead ' + themSlots + ':' + usSlots + ' before anybody voted.<br>'
+      + 'Picks so far: <span class="us">' + fmt(usPicks) + '</span> for ' + esc(c.partner.act)
+      + ' · <span class="them">' + fmt(themPicks) + '</span> for BLACKPINK'
+      + (extra ? ' <span class="them">+ ' + fmt(extra) + ' for ROSÉ, which they were never asked for</span>' : '')
+      + '.<br>Logged, not verified — our half is what blinks record here or through the extension'
+      + (t.themSource ? '; their half is reported by ' + esc(t.themSource) : '')
       + '. A trade vote never counts toward a BLACKPINK total.</div>'
       + '</div>';
   }
   return '<div class="tally"><div class="tally-head">'
     + '<span class="tally-label">Votes logged</span>'
     + '<span class="tally-nums tally-nocount">Not counting yet</span></div>'
-    + '<div class="bar empty"></div>'
+    + '<div class="bar no-data"></div>'
     + '<details class="tally-why"><summary>What has to happen first</summary><ol>'
     + (c.pending || []).map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('')
     + '</ol></details></div>';
@@ -368,10 +439,17 @@ function card(c) {
     + tallyHtml(c)
     + '<p class="collab-why">' + c.why + '</p>'
     + '<div class="sides">'
-    + sideHtml('side-us', 'What BLINKs vote', 'In the one category <b>' + esc(c.partner.act)
-        + '</b> is up for — we have no nominee in it.', c.weGive)
+    // Counts written out from the AGREED slots rather than typed. The copy said
+    // "the three BLACKPINK is up for" and stayed saying it when ROSÉ moved out
+    // of the deal and the agreed set became two.
+    + sideHtml('side-us', 'What BLINKs vote',
+        'The ' + numWord(agreedOnly(c.weGive).length) + ' ' + catWord(agreedOnly(c.weGive).length)
+        + ' <b>' + esc(c.partner.act) + '</b> is up for — we have no nominee in '
+        + (agreedOnly(c.weGive).length === 1 ? 'it' : 'them') + '.',
+        c.weGive)
     + sideHtml('side-them', 'What ' + esc(c.partner.fandom) + ' vote',
-        'The three <b>BLACKPINK</b> is up for — ' + esc(c.partner.act) + ' is in none of them.', c.theyGive)
+        'The ' + numWord(agreedOnly(c.theyGive).length) + ' ' + catWord(agreedOnly(c.theyGive).length)
+        + ' they agreed to — <b>' + esc(c.partner.act) + '</b> is in none of them.', c.theyGive)
     + '</div>'
     + '<div class="collab-actions">'
     + (ended ? '' : '<a class="btn" href="' + esc(c.voteUrl) + '" target="_blank" rel="noopener noreferrer">Open the ballot ↗</a>')
