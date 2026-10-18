@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fandom collabs — Blinks United</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Vote trades between BLINKs and other fandoms: who we are working with, what to vote for on each side, the deadlines, and how far along each one is.">
+<meta name="theme-color" content="#080808">
+<meta property="og:site_name" content="Blinks United">
+<meta property="og:title" content="Fandom collabs — Blinks United">
+<meta property="og:description" content="Vote trades between BLINKs and other fandoms — what to vote, where, and by when.">
+<meta property="og:url" content="https://www.blinksunited.com/collabs">
+<meta property="og:image" content="https://www.blinksunited.com/vote-blackpink-ot4.jpg">
+<meta property="og:image:alt" content="BLACKPINK">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Fandom collabs — Blinks United">
+<meta name="twitter:description" content="Vote trades between BLINKs and other fandoms — what to vote, where, and by when.">
+<meta name="twitter:image" content="https://www.blinksunited.com/vote-blackpink-ot4.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* The same tokens as /awards, /breaktudo and /vmas. */
+  :root {
+    --bg:      #080808;
+    --card:    #140d14;
+    --pink:    #ff0066;
+    --pink-lo: #ff74ac;
+    --pink-muted: rgba(255,0,102,0.12);
+    --them:    #6fd3ff;          /* the other fandom's side, in every chart here */
+    --white:   #f5f0f0;
+    --muted:   #b09aad;
+    --border:  rgba(255,255,255,0.09);
+    --mono:    'DM Mono', ui-monospace, monospace;
+    --display: 'Bebas Neue', Impact, sans-serif;
+  }
+
+  body {
+    background: var(--bg); color: var(--white);
+    font-family: var(--mono); font-size: 0.9rem; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  .wrap { width: min(960px, 100% - 2.4rem); margin: 0 auto; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+
+  .accent-bar { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 50;
+    background: linear-gradient(90deg, transparent, var(--pink) 40%, var(--them) 60%, transparent); }
+  .back { position: fixed; top: 0.75rem; left: 50%; transform: translateX(-50%); z-index: 60;
+    text-decoration: none; text-align: center; white-space: nowrap;
+    font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase;
+    color: rgba(255,0,102,0.85); transition: color 0.2s; }
+  .back:hover { color: var(--pink); }
+
+  /* ── Hero ───────────────────────────────────────────────────────────── */
+  #hero { padding: 3.4rem 0 1.6rem; text-align: center; position: relative; overflow: hidden; }
+  #hero::before {
+    content: ''; position: absolute; inset: -50% -20% auto; height: 150%;
+    background: radial-gradient(52% 44% at 50% 30%, rgba(255,0,102,0.18), rgba(255,0,102,0) 70%);
+    pointer-events: none;
+  }
+  #hero > * { position: relative; }
+  .hero-eyebrow { font-size: 0.6rem; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--pink-lo); margin-bottom: 0.9rem; }
+  .hero-title { font-family: var(--display); font-size: clamp(2.4rem, 8vw, 4rem);
+    line-height: 0.95; letter-spacing: 0.04em; }
+  .hero-title span { color: var(--them); }
+  .hero-sub { color: var(--muted); font-size: 0.82rem; line-height: 1.75;
+    max-width: 54ch; margin: 1rem auto 0; }
+
+  .section { padding: 1rem 0 3rem; }
+
+  /* ── A collab ───────────────────────────────────────────────────────── */
+  .collab { border: 1px solid var(--border); padding: 1.5rem 1.4rem; margin-bottom: 1.6rem;
+    background: var(--card); position: relative; }
+  .collab-top { display: flex; flex-wrap: wrap; gap: 0.8rem 1rem;
+    align-items: flex-start; justify-content: space-between; margin-bottom: 1.1rem; }
+  .collab-award { font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--pink-lo); margin-bottom: 0.3rem; }
+  .collab-title { font-family: var(--display); font-size: 1.9rem; letter-spacing: 0.03em; line-height: 1; }
+  .collab-title i { font-style: normal; color: var(--muted); margin: 0 0.25rem; }
+  .collab-title b:first-of-type { font-weight: 400; color: var(--pink); }
+  .collab-title b:last-of-type  { font-weight: 400; color: var(--them); }
+  .collab-deadline { font-size: 0.95rem; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.55rem 0.9rem; border: 1px solid var(--border); white-space: nowrap; }
+  .collab-deadline.urgent { color: #ff5050; border-color: rgba(255,80,80,0.4); background: rgba(255,80,80,0.08); }
+  .collab-deadline.ended { color: var(--muted); }
+
+  /* The status marker. A collab nobody has agreed to is not an announcement,
+     so it says so on its face wherever it is shown. */
+  .collab-status { display: inline-block; font-size: 0.55rem; letter-spacing: 0.12em;
+    text-transform: uppercase; padding: 0.2rem 0.5rem; border: 1px dashed var(--border);
+    color: var(--muted); margin-left: 0.5rem; vertical-align: middle; }
+  .collab-status.live { border-style: solid; border-color: var(--pink); color: var(--pink); }
+
+  .collab-why { font-size: 0.8rem; color: var(--muted); line-height: 1.75; margin-bottom: 1.3rem; }
+  .collab-why b { color: var(--white); font-weight: 500; }
+
+  /* ── The two sides ──────────────────────────────────────────────────── */
+  /* Side by side where there is room; stacked below. Ours leads in both, so
+     the first thing a blink reads is the thing a blink has to do. */
+  .sides { display: grid; gap: 1rem; grid-template-columns: 1fr; margin-bottom: 1.4rem; }
+  @media (min-width: 760px) { .sides { grid-template-columns: 1fr 1fr; gap: 1.2rem; } }
+  .side { border-left: 2px solid var(--accent); padding-left: 1rem; }
+  .side-us   { --accent: var(--pink); }
+  .side-them { --accent: var(--them); }
+  .side-head { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 0.2rem; }
+  .side-who { font-size: 0.78rem; color: var(--white); margin-bottom: 0.8rem; }
+  .side-who b { font-weight: 500; color: var(--accent); }
+  .pick { display: flex; align-items: baseline; gap: 0.6rem; padding: 0.5rem 0;
+    border-top: 1px solid var(--border); }
+  .pick:first-of-type { border-top: 0; }
+  .pick-cat { flex: 1 1 auto; font-size: 0.6rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); }
+  .pick-name { font-size: 0.82rem; color: var(--white); }
+
+  /* ── The bar ────────────────────────────────────────────────────────── */
+  .tally { border-top: 1px solid var(--border); padding-top: 1.2rem; }
+  .tally-head { display: flex; flex-wrap: wrap; gap: 0.4rem 0.8rem;
+    align-items: baseline; justify-content: space-between; margin-bottom: 0.6rem; }
+  .tally-label { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .tally-nums { font-size: 0.78rem; }
+  .tally-nums .us   { color: var(--pink); }
+  .tally-nums .them { color: var(--them); }
+  .bar { height: 10px; background: rgba(255,255,255,0.06); overflow: hidden; display: flex; }
+  .bar-us   { background: var(--pink); }
+  .bar-them { background: var(--them); }
+  /* Nothing to draw yet. An empty bar reading 0–0 looks like a dead feature and
+     invites "is it broken?"; this says which half is missing and why. */
+  .tally-pending { font-size: 0.72rem; color: var(--muted); line-height: 1.7;
+    border-left: 2px solid var(--border); padding-left: 0.9rem; }
+  .tally-pending b { color: var(--white); font-weight: 500; }
+  .tally-note { font-size: 0.68rem; color: var(--muted); margin-top: 0.6rem; line-height: 1.6; }
+
+  .collab-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.3rem; }
+  .btn { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
+    text-decoration: none; padding: 0.7rem 1.1rem; border: 1px solid var(--pink);
+    color: #12000a; background: var(--pink); transition: filter 0.15s; }
+  .btn:hover { filter: brightness(1.08); }
+  .btn.ghost { background: transparent; color: var(--pink); }
+  .btn.ghost:hover { background: var(--pink-muted); filter: none; }
+
+  .empty { border: 1px dashed var(--border); padding: 2rem 1.4rem; text-align: center;
+    color: var(--muted); font-size: 0.8rem; line-height: 1.8; }
+  .empty b { color: var(--white); font-weight: 500; }
+
+  /* ── How it works ───────────────────────────────────────────────────── */
+  .how { border: 1px solid var(--border); padding: 1.3rem 1.3rem 1.1rem; }
+  .how-head { font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--pink-lo); margin-bottom: 0.8rem; }
+  .how ul { list-style: none; display: grid; gap: 0.7rem; }
+  /* NOT display:flex on the li. These items carry inline <b> and <em>, and a
+     flex li makes every one of those its own column — the text came out in
+     three ragged stacks. The marker is positioned instead, which leaves the
+     item as ordinary flowing text. */
+  .how li { position: relative; padding-left: 1.2rem;
+    font-size: 0.78rem; color: var(--muted); line-height: 1.7; }
+  .how li::before { content: '▸'; position: absolute; left: 0; top: 0; color: var(--pink); }
+  .how b { color: var(--white); font-weight: 500; }
+
+  footer { border-top: 1px solid var(--border); padding: 2rem 0 2.6rem; text-align: center; margin-top: 2rem; }
+  .foot-link { font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--pink); text-decoration: none; }
+  .foot-fine { margin-top: 0.7rem; font-size: 0.62rem; color: var(--muted); line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="accent-bar"></div>
+<a href="/index.html" class="back">← Blinks United</a>
+
+<section id="hero">
+  <div class="wrap">
+    <div class="hero-eyebrow">Fandom collabs</div>
+    <h1 class="hero-title">BLINKs <span>&amp; friends</span></h1>
+    <p class="hero-sub">
+      Some awards make you vote in every category before anything is submitted. When two fandoms
+      are nominated in <em>different</em> categories, each can fill the other's slot at no cost to
+      itself — two votes out of one ballot. This page is where those trades live: who we are
+      working with, what to vote on each side, and how long is left.
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2 class="sr-only">Active collabs</h2>
+    <div id="list"></div>
+
+    <div class="how" style="margin-top:1.6rem">
+      <div class="how-head">How a trade works</div>
+      <ul>
+        <li><b>Nothing is given up.</b> A ballot that will not submit until every category is filled
+          means you were going to put <em>something</em> in that category anyway. Putting the other
+          fandom's nominee there costs you nothing — it is a slot, not a choice between them and us.</li>
+        <li><b>It only works across categories.</b> If both acts are nominated in the same category
+          there is no trade to make, only a fight. Every collab here names the exact categories so
+          you can see that for yourself.</li>
+        <li><b>We count what blinks log here, and say so.</b> Our side of a bar is votes recorded
+          through this site or the vote counter extension. That is self-reported — accurate and
+          effortless, but still what people tell us — so it reads <em>logged</em>, never
+          <em>verified</em>.</li>
+        <li><b>A trade vote is never a BLACKPINK vote.</b> Picks for a partner's nominee are kept
+          out of your BLACKPINK totals, your rank and your badges. They belong to the collab and
+          nowhere else.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <a class="foot-link" href="/voting">The voting board →</a>
+  <div class="foot-fine">
+    Fan-made by Blinks United · Not affiliated with Nickelodeon, Mnet or YG Entertainment<br>
+    Partner fan pages are independent projects; naming one here is not a claim to speak for it.
+  </div>
+</footer>
+
+<script>
+// ── the collabs ─────────────────────────────────────────────────────────────
+// `status` is the whole safety mechanism of this page.
+//
+//   'proposed' — an idea. NOT shown publicly, because naming another fandom's
+//                page beside ours reads as an announced partnership, and we do
+//                not get to announce someone else's involvement. Visible with
+//                ?preview=1 so it can be looked at and sent to them.
+//   'live'     — both sides have agreed and both are telling their own people.
+//   'ended'    — the award closed. Kept, because it is a record of who helped.
+//
+// Flip to 'live' only once the partner has said yes IN THEIR OWN WORDS. A page
+// that quietly promotes a collab nobody agreed to costs the next one.
+var COLLABS = [
+  {
+    id: 'bvp-kca-2026',
+    status: 'proposed',
+    award: '2026 Kids’ Choice Awards',
+    // Deadline is the KCA ballot's, copied from the campaign card on /voting:
+    // Nov 13 2026 23:59 PT, the late reading of "October 8 to November 13".
+    deadline: '2026-11-14T07:59:00Z',
+    voteUrl: 'https://kca.nick.tv/vote/',
+    partner: {
+      name: 'BINI Voting Page',     // CONFIRM the exact name and handle with them
+      fandom: 'BLOOMs',
+      act: 'BINI',
+    },
+    // What BLINKs put in the partner's category. One slot, and it is a slot we
+    // have no nominee in — so this costs a blink nothing at all.
+    weGive: [
+      { cat: 'Favorite Global Music Star', nominee: 'BINI' },
+    ],
+    // What their side puts in ours. Read off the live ballot (probe-kca.yml) and
+    // in step with KCA_CATEGORIES in index.html.
+    theyGive: [
+      { cat: 'Favorite Music Group or Duo',  nominee: 'BLACKPINK' },
+      { cat: 'Favorite Female Artist',       nominee: 'ROSÉ' },
+      { cat: 'Favorite Music Collaboration', nominee: 'Dracula (with JENNIE)' },
+    ],
+    why: 'The Kids’ Choice ballot does not submit until every category is filled. '
+       + 'BLACKPINK is up for three awards and BINI for one, and <b>none of them is the same award</b> — '
+       + 'so a blink filling in Favorite Global Music Star gives up nothing, and neither does a BLOOM '
+       + 'filling in the three of ours.',
+    // Numbers, once both halves exist. null = not counting yet, and the card
+    // says what is missing rather than drawing an empty 0–0 bar.
+    //   { us: <picks blinks logged for their act>, them: <picks their side reports>,
+    //     asOf: ISO, themSource: 'who told us' }
+    tally: null,
+    // What is still needed before the bar can be real. Shown verbatim.
+    pending: [
+      'the vote counter extension to recognise a pick in their category (a one-line table entry, but it needs a release)',
+      'somewhere to record those picks that is not your BLACKPINK vote total',
+      'their side counting their half, and an agreed way to hand the number over',
+    ],
+  },
+];
+
+// ── render ──────────────────────────────────────────────────────────────────
+var PREVIEW = new URLSearchParams(location.search).get('preview') === '1';
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+  });
+}
+
+function countdown(ms) {
+  var s = Math.floor(ms / 1000);
+  var d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  if (d > 0) return d + 'D ' + pad(h) + 'H ' + pad(m) + 'M';
+  if (h > 0) return h + 'H ' + pad(m) + 'M ' + pad(s % 60) + 'S';
+  return m + 'M ' + pad(s % 60) + 'S';
+}
+
+function sideHtml(cls, head, who, picks) {
+  return '<div class="side ' + cls + '">'
+    + '<div class="side-head">' + esc(head) + '</div>'
+    + '<div class="side-who">' + who + '</div>'
+    + picks.map(function (p) {
+        return '<div class="pick"><span class="pick-cat">' + esc(p.cat) + '</span>'
+          + '<span class="pick-name">' + esc(p.nominee) + '</span></div>';
+      }).join('')
+    + '</div>';
+}
+
+function tallyHtml(c) {
+  if (c.tally && (c.tally.us || c.tally.them)) {
+    var us = Math.max(0, c.tally.us || 0), them = Math.max(0, c.tally.them || 0);
+    var sum = us + them || 1;
+    var fmt = function (n) { return n.toLocaleString('en-US'); };
+    return '<div class="tally">'
+      + '<div class="tally-head"><span class="tally-label">Votes logged</span>'
+      + '<span class="tally-nums"><span class="us">' + fmt(us) + ' by BLINKs</span>'
+      + ' · <span class="them">' + fmt(them) + ' by ' + esc(c.partner.fandom) + '</span></span></div>'
+      + '<div class="bar"><div class="bar-us" style="width:' + (us / sum * 100) + '%"></div>'
+      + '<div class="bar-them" style="width:' + (them / sum * 100) + '%"></div></div>'
+      + '<div class="tally-note">Logged, not verified — our half is what blinks record here or through '
+      + 'the extension' + (c.tally.themSource ? '; their half is reported by ' + esc(c.tally.themSource) : '')
+      + '. A trade vote never counts toward a BLACKPINK total.</div>'
+      + '</div>';
+  }
+  return '<div class="tally"><div class="tally-head"><span class="tally-label">Votes logged</span></div>'
+    + '<div class="tally-pending"><b>Not counting yet.</b> Three things have to exist before a bar here '
+    + 'would mean anything:<br>' + (c.pending || []).map(function (p, i) {
+        return (i + 1) + '. ' + esc(p);
+      }).join('<br>') + '</div></div>';
+}
+
+function card(c) {
+  var now = Date.now();
+  var ended = c.status === 'ended' || (c.deadline && new Date(c.deadline).getTime() <= now);
+  var left = c.deadline ? new Date(c.deadline).getTime() - now : null;
+  var dl = !c.deadline ? ''
+    : ended ? '<span class="collab-deadline ended">CLOSED</span>'
+    : '<span class="collab-deadline' + (left <= 48 * 3600000 ? ' urgent' : '') + '" data-deadline="'
+      + esc(c.deadline) + '">' + countdown(left) + '</span>';
+  var status = c.status === 'live'
+    ? '<span class="collab-status live">Running</span>'
+    : c.status === 'ended' ? '<span class="collab-status">Finished</span>'
+    : '<span class="collab-status">Proposed · not announced</span>';
+
+  return '<article class="collab" data-collab="' + esc(c.id) + '" data-status="' + esc(c.status) + '">'
+    + '<div class="collab-top"><div>'
+    + '<div class="collab-award">' + esc(c.award) + '</div>'
+    + '<div class="collab-title"><b>BLINKs</b><i>&times;</i><b>' + esc(c.partner.fandom) + '</b>'
+    + status + '</div></div>' + dl + '</div>'
+    + '<p class="collab-why">' + c.why + '</p>'
+    + '<div class="sides">'
+    + sideHtml('side-us', 'What BLINKs vote', 'In the one category <b>' + esc(c.partner.act)
+        + '</b> is up for — we have no nominee in it.', c.weGive)
+    + sideHtml('side-them', 'What ' + esc(c.partner.fandom) + ' vote',
+        'The three <b>BLACKPINK</b> is up for — ' + esc(c.partner.act) + ' is in none of them.', c.theyGive)
+    + '</div>'
+    + tallyHtml(c)
+    + '<div class="collab-actions">'
+    + (ended ? '' : '<a class="btn" href="' + esc(c.voteUrl) + '" target="_blank" rel="noopener noreferrer">Open the ballot ↗</a>')
+    + '<a class="btn ghost" href="/voting?award=kca">Our board for this award →</a>'
+    + '</div></article>';
+}
+
+function render() {
+  var visible = COLLABS.filter(function (c) { return PREVIEW || c.status !== 'proposed'; });
+  var el = document.getElementById('list');
+  if (!visible.length) {
+    el.innerHTML = '<div class="empty"><b>No collabs running right now.</b><br>'
+      + 'When another fandom and ours are nominated in different categories of the same award, '
+      + 'a trade goes here. Got one in mind? <a href="/feedback">Tell us</a>.</div>';
+    return;
+  }
+  el.innerHTML = visible.map(card).join('');
+}
+
+render();
+
+// Tick the countdowns in place, like every other deadline on the site.
+setInterval(function () {
+  document.querySelectorAll('.collab-deadline[data-deadline]').forEach(function (el) {
+    var diff = new Date(el.dataset.deadline).getTime() - Date.now();
+    if (diff <= 0) { el.textContent = 'CLOSED'; el.className = 'collab-deadline ended'; return; }
+    el.classList.toggle('urgent', diff <= 48 * 3600000);
+    el.textContent = countdown(diff);
+  });
+}, 1000);
+</script>
+</body>
+</html>

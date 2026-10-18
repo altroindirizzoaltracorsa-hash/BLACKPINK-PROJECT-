@@ -16,6 +16,7 @@ on:
       - 'index.html'
       - 'projects.html'
       - 'awards.html'
+      - 'collabs.html'
       - 'vmas.html'
       - 'breaktudo.html'
       - 'achievements.html'
@@ -29,6 +30,7 @@ on:
       - 'index.html'
       - 'projects.html'
       - 'awards.html'
+      - 'collabs.html'
       - 'vmas.html'
       - 'breaktudo.html'
       - 'achievements.html'
@@ -84,3 +86,7 @@ jobs:
       - name: The front door
         if: always()
         run: node .github/scripts/test_awards_page.mjs
+
+      - name: Fandom collabs
+        if: always()
+        run: node .github/scripts/test_collabs_page.mjs

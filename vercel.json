@@ -25,6 +25,7 @@
     { "source": "/projects", "destination": "/projects.html" },
     { "source": "/vmas", "destination": "/vmas.html" },
     { "source": "/awards", "destination": "/awards.html" },
+    { "source": "/collabs", "destination": "/collabs.html" },
     { "source": "/votecard-embed", "destination": "/index.html" },
     { "source": "/breaktudo", "destination": "/breaktudo.html" },
     { "source": "/achievements", "destination": "/achievements.html" },
@@ -55,7 +56,7 @@
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     },
     {
-      "source": "/(countdowns|badges|leaderboard|voting|vote|feedback|account|streams|charts|apple-charts|itunes-charts|spotify-charts|youtube|kcharts|projects|ltal-embed|vmas|achievements|breaktudo|awards|votecard-embed)",
+      "source": "/(countdowns|badges|leaderboard|voting|vote|feedback|account|streams|charts|apple-charts|itunes-charts|spotify-charts|youtube|kcharts|projects|ltal-embed|vmas|achievements|breaktudo|awards|votecard-embed|collabs)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     },
     {
