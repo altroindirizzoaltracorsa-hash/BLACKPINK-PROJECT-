@@ -52,7 +52,9 @@ create index if not exists collab_user_votes_collab_user_idx
 -- breaktudo_user_votes.sql warns about exactly this; I did not read it first.
 alter table collab_user_votes enable row level security;
 grant all privileges on table collab_user_votes to service_role;
-grant execute on function collab_votes_sum(jsonb) to service_role;
+-- collab_votes_sum is granted at the foot of the file, after it exists: a
+-- grant on a function that has not been created yet aborts the whole script,
+-- which is how the first version of this block would have failed.
 
 -- `votes` must equal the sum of `cats`, or a board ordered by `votes` disagrees
 -- with the breakdown printed underneath it. Enforced rather than trusted: the
@@ -74,3 +76,5 @@ begin
       check (votes = collab_votes_sum(cats));
   end if;
 end $$;
+
+grant execute on function collab_votes_sum(jsonb) to service_role;
