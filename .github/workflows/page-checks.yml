@@ -15,6 +15,7 @@ on:
     paths:
       - 'index.html'
       - 'projects.html'
+      - 'awards.html'
       - 'vmas.html'
       - 'breaktudo.html'
       - 'achievements.html'
@@ -27,6 +28,7 @@ on:
     paths:
       - 'index.html'
       - 'projects.html'
+      - 'awards.html'
       - 'vmas.html'
       - 'breaktudo.html'
       - 'achievements.html'
@@ -78,3 +80,7 @@ jobs:
       - name: The iTunes peak column
         if: always()
         run: node .github/scripts/test_itunes_peaks.mjs
+
+      - name: The front door
+        if: always()
+        run: node .github/scripts/test_awards_page.mjs

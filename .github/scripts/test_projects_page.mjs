@@ -31,12 +31,6 @@ const WANT = [
   // GO's 100M is carried inside the GO card now, not filed as a second entry.
   ['GO → 100M', null],
 ];
-// card name -> the ?award= it must carry, and the tab label that must come up.
-const BALLOTS = [
-  ['BreakTudo Awards 2026', 'breaktudo', 'BreakTudo'],
-  ['2026 MAMA Awards', 'mama', 'MAMA'],
-  ['2026 Kids’ Choice Awards', 'kca', 'Kids’ Choice'],
-];
 
 const server = createServer(async (req, res) => {
   const p = req.url.split('?')[0];
@@ -123,25 +117,34 @@ for (const c of cards) {
 }
 await page.close();
 
-console.log('--- each voting card opens ITS ballot, not the default one');
-for (const [name, award, label] of BALLOTS) {
-  const card = cards.find((c) => c.name === name);
-  if (!card || !card.href) { bad(`${name} has a link`); continue; }
-  if (!card.href.includes('award=' + award)) { bad(`${name} carries award=${award}`, card.href); continue; }
+console.log('--- every card that links to a ballot opens THAT ballot');
+// Derived from the cards themselves rather than a list kept here: a campaign
+// that closes and stops linking to /voting (BreakTudo now points at its own
+// archive) drops out by itself, instead of failing a check that was only ever
+// describing last month's board.
+const ballotCards = cards.filter((c) => c.href && c.href.startsWith('/voting') && c.href.includes('award='));
+if (!ballotCards.length) ok('no card links to a ballot', 'nothing to check');
+for (const card of ballotCards) {
+  const award = new URLSearchParams(card.href.split('?')[1]).get('award');
   const { page: vp } = await open(card.href);
-  let active;
+  let active, expected;
   try {
-    // .vv-awardsw-btn is rendered once the board loads; aria-selected marks the
-    // live one. Its absence is a failure, not "nothing to assert" — a selector
-    // that matches nothing is how this check first passed while pointing at the
-    // wrong element entirely.
+    // .vv-awardsw-btn is rendered once the board loads; aria-selected marks
+    // the live one. Its absence is a failure, not "nothing to assert" — a
+    // selector that matches nothing is how this check first passed while
+    // pointing at the wrong element entirely.
     await vp.waitForSelector('.vv-awardsw-btn', { timeout: 20000 });
-    active = await vp.evaluate(() => {
+    [active, expected] = await vp.evaluate((a) => {
       const on = document.querySelector('.vv-awardsw-btn[aria-selected="true"]');
-      return on ? on.textContent.trim() : '(none selected)';
-    });
-  } catch { active = '(no award switch rendered)'; }
-  active.includes(label) ? ok(`${card.href} opens ${label}`) : bad(`${card.href} opens "${active}"`, `expected ${label}`);
+      // The expected label comes from the page's own _vvAwardMeta, so this
+      // never has to be re-typed when a tab is renamed.
+      const meta = (typeof _vvAwardMeta !== 'undefined' && _vvAwardMeta[a]) ? _vvAwardMeta[a].label : null;
+      return [on ? on.textContent.trim() : '(none selected)', meta];
+    }, award);
+  } catch { active = '(no award switch rendered)'; expected = null; }
+  if (!expected) { bad(`${card.name}: "${award}" is a known award`); await vp.close(); continue; }
+  active.includes(expected) ? ok(`${card.name} \u2192 ${card.href} opens ${expected}`)
+                            : bad(`${card.name} \u2192 ${card.href} opened "${active}"`, `expected ${expected}`);
   await vp.close();
 }
 

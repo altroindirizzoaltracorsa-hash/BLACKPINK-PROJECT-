@@ -3028,6 +3028,23 @@
   // whole site instead of the board.
   try { history.replaceState = function(){}; history.pushState = function(){}; } catch(e){}
 }</script>
+<!-- Card-only embed mode: /votecard-embed?embed=votecard&card=kca renders ONE
+     campaign card from the /voting panel and nothing else, so a landing page
+     can show the real card — its countdown, rules, nominations, ballot link
+     and, for MAMA, the round-1/round-2 switch — instead of a second copy that
+     would drift. Same reasoning as the board embed above. -->
+<script>if(new URLSearchParams(location.search).get('embed')==='votecard'){
+  document.documentElement.classList.add('embed-votecard');
+  try { history.replaceState = function(){}; history.pushState = function(){}; } catch(e){}
+}</script>
+<style>
+  html.embed-votecard, html.embed-votecard body { background: transparent !important; margin: 0 !important; padding: 0 !important; }
+  html.embed-votecard body > *:not(#vc-embed-root) { display: none !important; }
+  html.embed-votecard #vc-embed-root { display: block !important; padding: 0; }
+  /* The card's own share sheet is a body child and would be trapped inside a
+     short iframe — the parent page links through to /voting for that. */
+  html.embed-votecard .vote-card-share { display: none !important; }
+</style>
 <style>
   html.embed-vmaboard, html.embed-vmaboard body { background: transparent !important; margin: 0 !important; padding: 0 !important; }
   html.embed-vmaboard body > *:not(#vv-embed-root) { display: none !important; }
@@ -9199,7 +9216,7 @@ function renderVoteCampaigns() {
     }
     const wonBadge = c.winner ? `<div class="vote-winner-badge">🏆 WE WON — ${c.winner.name}</div>` : '';
     return `
-      <div class="vote-card${c.winner ? ' won' : ''}">
+      <div class="vote-card${c.winner ? ' won' : ''}" data-campaign="${c.id}">
         ${wonBadge}
         <div class="vote-card-top">
           <div>
@@ -22791,7 +22808,11 @@ async function shareMilestoneCard() {
 // would then re-request /voting WITHOUT ?embed=vmaboard — which renders the
 // entire site inside the iframe instead of the board. An embedded board has no
 // use for offline caching anyway.
-if ('serviceWorker' in navigator && !document.documentElement.classList.contains('embed-vmaboard')) {
+// Not from inside an embed: a frame registering the site's service worker is
+// the whole site's worker, scoped from a page that is only ever a fragment.
+if ('serviceWorker' in navigator
+    && !document.documentElement.classList.contains('embed-vmaboard')
+    && !document.documentElement.classList.contains('embed-votecard')) {
   window.addEventListener('load', async () => {
     try {
       const reg = await navigator.serviceWorker.register('/sw.js');
@@ -22960,6 +22981,64 @@ window.addEventListener('appinstalled', () => {
       // Mount when the board has actually rendered; give up after ~20s and
       // mount whatever is there rather than leaving a blank iframe forever.
       if ((p && p.children.length) || ++tries > 100) { clearInterval(t); mount(); }
+    }, 200);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go);
+  else go();
+})();
+
+// Card embed: show ONE campaign card and nothing else, and report its height
+// so the parent frame grows to fit. Modelled on the board embed above, with
+// one difference that matters: the height message carries which card sent it,
+// because the page using this shows TWO frames side by side and an anonymous
+// height would be applied to whichever one the parent guessed.
+(function(){
+  if (!document.documentElement.classList.contains('embed-votecard')) return;
+
+  // ?card= takes an award KEY, not a campaign id: 'kca' matches kca-2026 and
+  // will still match kca-2027, so the parent page does not carry a year that
+  // has to be edited every January.
+  var want = (new URLSearchParams(location.search).get('card') || '').toLowerCase();
+
+  function find(){
+    var cards = document.querySelectorAll('#vote-list .vote-card[data-campaign]');
+    for (var i = 0; i < cards.length; i++) {
+      var id = (cards[i].dataset.campaign || '').toLowerCase();
+      if (id === want || id.indexOf(want + '-') === 0) return cards[i];
+    }
+    return null;
+  }
+
+  function post(root){
+    try {
+      parent.postMessage({ type: 'bu-card-height', card: want,
+        height: Math.ceil(root.getBoundingClientRect().height) }, '*');
+    } catch(e){}
+  }
+
+  function mount(card){
+    var root = document.getElementById('vc-embed-root');
+    if (!root){ root = document.createElement('div'); root.id = 'vc-embed-root'; document.body.appendChild(root); }
+    if (card) root.appendChild(card);
+    else root.innerHTML = '<div style="font:0.8rem ui-monospace,monospace;color:#b09aad;padding:1rem">'
+      + 'This ballot is not listed right now — open /voting for every campaign.</div>';
+    Array.prototype.forEach.call(document.body.children, function(el){ if (el !== root) el.style.display = 'none'; });
+    post(root);
+    if (window.ResizeObserver) new ResizeObserver(function(){ post(root); }).observe(root);
+    // A details/summary opening does not resize the observed box in every
+    // browser, so keep a slow poll as the backstop.
+    setInterval(function(){ post(root); }, 1200);
+  }
+
+  function go(){
+    try { showPage('vote'); } catch(e){}
+    var tries = 0;
+    var t = setInterval(function(){
+      var card = find();
+      // Mount once the card exists; give up after ~20s and mount the "not
+      // listed" note rather than leaving a blank frame forever.
+      if (card || ++tries > 100) { clearInterval(t); mount(card); }
     }, 200);
   }
 

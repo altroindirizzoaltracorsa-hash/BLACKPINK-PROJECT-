@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Vote for BLACKPINK — MAMA & Kids' Choice 2026</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Two ballots are open for BLACKPINK: the 2026 MAMA Awards Fans' Choice and the 2026 Nickelodeon Kids' Choice Awards. Where to vote, the rules, and how long is left on each.">
+<meta name="theme-color" content="#080808">
+<meta property="og:site_name" content="Blinks United">
+<meta property="og:title" content="Vote for BLACKPINK — MAMA & Kids' Choice 2026">
+<meta property="og:description" content="Two ballots are open: the MAMA Fans' Choice and the Kids' Choice Awards. Where to vote and how long is left on each.">
+<meta property="og:url" content="https://www.blinksunited.com/awards">
+<meta property="og:image" content="https://www.blinksunited.com/vote-blackpink-ot4.jpg">
+<meta property="og:image:alt" content="BLACKPINK">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Vote for BLACKPINK — MAMA & Kids' Choice 2026">
+<meta name="twitter:description" content="Two ballots are open: the MAMA Fans' Choice and the Kids' Choice Awards. Where to vote and how long is left on each.">
+<meta name="twitter:image" content="https://www.blinksunited.com/vote-blackpink-ot4.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* Same tokens as /breaktudo and /vmas — this is the third page to take the
+     front door and it should look like the two before it. */
+  :root {
+    --bg:      #080808;
+    --card:    #140d14;
+    --pink:    #ff0066;
+    --pink-lo: #ff74ac;
+    --pink-muted: rgba(255,0,102,0.12);
+    --white:   #f5f0f0;
+    --muted:   #b09aad;
+    --border:  rgba(255,255,255,0.09);
+    --mono:    'DM Mono', ui-monospace, monospace;
+    --display: 'Bebas Neue', Impact, sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--white);
+    font-family: var(--mono); font-size: 0.9rem; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  .wrap { width: min(1180px, 100% - 2.4rem); margin: 0 auto; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+  }
+
+  /* ── Hero ───────────────────────────────────────────────────────────── */
+  #hero { padding: 3.4rem 0 2.2rem; text-align: center; position: relative; overflow: hidden; }
+  #hero::before {
+    content: ''; position: absolute; inset: -50% -20% auto; height: 150%;
+    background: radial-gradient(52% 44% at 50% 30%, rgba(255,0,102,0.20), rgba(255,0,102,0) 70%);
+    pointer-events: none;
+  }
+  #hero > * { position: relative; }
+  .hero-eyebrow {
+    font-size: 0.6rem; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--pink-lo); margin-bottom: 0.9rem;
+  }
+  .hero-title {
+    font-family: var(--display); font-size: clamp(2.6rem, 9vw, 4.4rem);
+    line-height: 0.95; letter-spacing: 0.04em;
+  }
+  .hero-title span { color: var(--pink); }
+  .hero-sub {
+    color: var(--muted); font-size: 0.82rem; line-height: 1.75;
+    max-width: 48ch; margin: 1rem auto 0;
+  }
+
+  /* ── The two ballots ────────────────────────────────────────────────── */
+  .section { padding: 1.4rem 0 3rem; }
+  /* Side by side where there is room, stacked below — and the stacked order
+     is the source order, so whichever ballot is written first leads on a
+     phone. MAMA leads: it closes first. */
+  .ballots { display: grid; gap: 1.6rem; grid-template-columns: 1fr; align-items: start; }
+  @media (min-width: 980px) { .ballots { grid-template-columns: 1fr 1fr; gap: 1.8rem; } }
+
+  .ballot { border: 1px solid var(--border); border-radius: 14px; background: var(--card); overflow: hidden; }
+  .ballot-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 0.8rem;
+    padding: 0.95rem 1.1rem; border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(255,0,102,0.08), rgba(255,0,102,0));
+  }
+  .ballot-name { font-family: var(--display); font-size: 1.35rem; letter-spacing: 0.05em; }
+  .ballot-more {
+    font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--pink); text-decoration: none; white-space: nowrap;
+  }
+  .ballot-more:hover { opacity: 0.75; }
+  .frame-wrap { position: relative; padding: 0.9rem; }
+  /* Starts short and grows to whatever the card reports, so the page does not
+     reserve a tall gap before the card has loaded. */
+  .ballot-frame { width: 100%; height: 320px; border: 0; display: block; }
+  .frame-loading {
+    position: absolute; inset: 0.9rem; display: flex; align-items: center; justify-content: center;
+    font-size: 0.72rem; color: var(--muted); pointer-events: none;
+  }
+  /* Last resort only. If a frame never reports a height the card is still
+     reachable, so say where rather than leaving an empty box. */
+  .frame-fallback { display: none; padding: 0 1.1rem 1.1rem; font-size: 0.74rem; color: var(--muted); }
+  .ballot.stalled .frame-fallback { display: block; }
+  .ballot.stalled .frame-loading { display: none; }
+
+  .foot-note {
+    margin-top: 1.8rem; text-align: center; font-size: 0.72rem; color: var(--muted); line-height: 1.8;
+  }
+  .foot-note a { color: var(--pink-lo); }
+
+  footer { border-top: 1px solid var(--border); padding: 2rem 0 2.6rem; text-align: center; }
+  .foot-link {
+    font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--pink); text-decoration: none;
+  }
+  .foot-fine { margin-top: 0.7rem; font-size: 0.62rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<section id="hero">
+  <div class="wrap">
+    <div class="hero-eyebrow">Two ballots are open</div>
+    <h1 class="hero-title">Vote for <span>BLACKPINK</span></h1>
+    <p class="hero-sub">
+      The MAMA Fans' Choice and the Nickelodeon Kids' Choice Awards are both taking votes right now.
+      Each card below is the live one from our voting page — the countdown, the rules and the ballot
+      link are the same ones it carries there.
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2 class="sr-only">The open ballots</h2>
+    <!-- Each frame is index.html in card-embed mode, NOT a copy of the card.
+         The deadlines, the rules, the nominations and MAMA's round-1/round-2
+         switch all come from VOTE_CAMPAIGNS, so this page cannot fall out of
+         step with /voting. ?card= takes the award key, not the campaign id,
+         so there is no year here to edit.
+         MAMA is first because it closes first; on a phone that is the order
+         they stack in. -->
+    <div class="ballots">
+      <div class="ballot" id="ballot-mama">
+        <div class="ballot-head">
+          <span class="ballot-name">MAMA Fans' Choice</span>
+          <a class="ballot-more" href="/voting?award=mama">The board &amp; guide ↗</a>
+        </div>
+        <div class="frame-wrap">
+          <div class="frame-loading" id="loading-mama">Loading the ballot…</div>
+          <iframe class="ballot-frame" id="frame-mama" title="2026 MAMA Awards — how and where to vote"
+                  scrolling="no" loading="eager" src="/votecard-embed?embed=votecard&amp;card=mama"></iframe>
+        </div>
+        <p class="frame-fallback">Couldn't load the card — <a href="/voting?award=mama">open the MAMA ballot on /voting</a>.</p>
+      </div>
+
+      <div class="ballot" id="ballot-kca">
+        <div class="ballot-head">
+          <span class="ballot-name">Kids' Choice Awards</span>
+          <a class="ballot-more" href="/voting?award=kca">The board ↗</a>
+        </div>
+        <div class="frame-wrap">
+          <div class="frame-loading" id="loading-kca">Loading the ballot…</div>
+          <iframe class="ballot-frame" id="frame-kca" title="2026 Kids' Choice Awards — how and where to vote"
+                  scrolling="no" loading="eager" src="/votecard-embed?embed=votecard&amp;card=kca"></iframe>
+        </div>
+        <p class="frame-fallback">Couldn't load the card — <a href="/voting?award=kca">open the Kids' Choice ballot on /voting</a>.</p>
+      </div>
+    </div>
+
+    <p class="foot-note">
+      Logging the votes you cast puts you on the board — <a href="/voting">blinksunited.com/voting</a>.<br>
+      BreakTudo voting has closed; the standings and the Nov 24 winners live on at <a href="/breaktudo">/breaktudo</a>.
+    </p>
+  </div>
+</section>
+
+<footer>
+  <a class="foot-link" href="/index.html">Blinks United →</a>
+  <div class="foot-fine">Fan-made by Blinks United · Not affiliated with Mnet, Nickelodeon or YG Entertainment</div>
+</footer>
+
+<script>
+  // Each card reports its own height, tagged with which card it is: both
+  // frames post to the same window, so an untagged height would be applied to
+  // whichever frame the parent happened to look up.
+  var SEEN = {};
+  window.addEventListener('message', function (e) {
+    if (!e.data || e.data.type !== 'bu-card-height') return;
+    var key = String(e.data.card || '');
+    var f = document.getElementById('frame-' + key);
+    if (!f) return;
+    SEEN[key] = true;
+    f.style.height = Math.max(240, e.data.height || 0) + 6 + 'px';
+    var l = document.getElementById('loading-' + key);
+    if (l) l.remove();
+    var b = document.getElementById('ballot-' + key);
+    if (b) b.classList.remove('stalled');
+  });
+
+  // If a frame never reports back, show the link instead of a stuck spinner.
+  setTimeout(function () {
+    ['mama', 'kca'].forEach(function (key) {
+      if (SEEN[key]) return;
+      var b = document.getElementById('ballot-' + key);
+      if (b) b.classList.add('stalled');
+    });
+  }, 25000);
+</script>
+</body>
+</html>
