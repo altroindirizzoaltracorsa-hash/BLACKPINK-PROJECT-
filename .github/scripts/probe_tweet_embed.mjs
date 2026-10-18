@@ -66,6 +66,11 @@ for (const omit of ['1', '0']) {
     if (r.ok) {
       let j = null;
       try { j = JSON.parse(body); } catch (e) {}
+      if (j && j.html && omit === '1') {
+        const t = j.html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ').trim().slice(0, 120);
+        summary.push(`oembed text: ${t}`);
+      }
       if (j && j.html) {
         // The point of this route: the TEXT comes back, so the post can be
         // rendered without loading anything of X's in the visitor's browser.
@@ -135,3 +140,10 @@ summary.forEach((s) => line('  ' + s));
 line('');
 line('Remember: a failure on a GitHub runner may be X blocking the runner, not');
 line('the endpoint. A success is the conclusive direction.');
+
+// ALSO as workflow annotations, and not for decoration: Actions serves job
+// logs from blob storage, which the GitHub client in a Claude Code session
+// refuses to follow, so a probe whose answer exists only in the log is a
+// probe nobody here can read. Annotations come back through the API.
+// One per finding, kept few — the API returns a bounded set.
+for (const s of summary) console.log(`::notice title=probe::${s}`);
