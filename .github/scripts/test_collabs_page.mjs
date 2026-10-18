@@ -227,14 +227,10 @@ const filled = await prev.evaluate(() => {
 /slot counts, not standings/i.test(filled.note)
   ? ok('and explains the gap as slot counts')
   : bad('and explains the gap as slot counts', filled.note.replace(/\s+/g, ' ').slice(0, 90));
-// The scoring rule is stated whether or not a count can be derived: three
-// votes to a pass, four with ROSÉ, every pick worth the same.
-/one pass is 3 votes/i.test(filled.note.replace(/\s+/g, ' '))
-  ? ok('and states the pass as 3 votes')
-  : bad('and states the pass as 3 votes', filled.note.replace(/\s+/g, ' ').slice(0, 140));
-/or 4 with ROSÉ/i.test(filled.note.replace(/\s+/g, ' '))
-  ? ok('and that ROSÉ makes it 4, obliged of nobody')
-  : bad('and that ROSÉ makes it 4, obliged of nobody', filled.note.replace(/\s+/g, ' ').slice(0, 140));
+// The page asks for ALL FOUR and names them.
+/one pass through the ballot is 4 votes/i.test(filled.note.replace(/\s+/g, ' '))
+  ? ok('and asks for all four votes')
+  : bad('and asks for all four votes', filled.note.replace(/\s+/g, ' ').slice(0, 140));
 // Totals alone CANNOT give a pass count — 300 is 100 passes with ROSÉ every
 // time or 150 with her never — so no number may appear.
 !/complete pass/i.test(filled.note)
@@ -245,6 +241,36 @@ const filled = await prev.evaluate(() => {
   : bad('and it says logged, not verified', filled.note.trim());
 !filled.stillHasWhy ? ok('and the "what has to happen first" note is gone')
                     : bad('and the "what has to happen first" note is gone', 'both states showing');
+
+console.log('--- the ranking threshold is never stated on the page');
+// `required: false` exists so a BLOOM who skips ROSÉ's category — which their
+// side never agreed to — still reaches the ranking. It is a leniency, not a
+// view on whose votes matter, and saying it out loud reads as "do not bother
+// with her". The only person it could change the behaviour of is someone who
+// would otherwise have voted for her, so it stays in the data and off the page.
+const quiet = await prev.evaluate(() => {
+  const hasOptional = COLLABS.some((c) =>
+    c.theyGive.concat(c.weGive).some((p) => p.required === false));
+  // innerText, not textContent: the latter includes the inline <script>, so
+  // the code comment explaining WHY the threshold is quiet registered as the
+  // page saying it out loud. What matters is what a reader sees.
+  return { hasOptional, text: document.body.innerText.replace(/\s+/g, ' ') };
+});
+if (!quiet.hasOptional) {
+  ok('no category is marked non-required', 'nothing to keep quiet');
+} else {
+  const leaks = [/optional/i, /not required/i, /never required/i, /obliged/i, /\bexempt/i]
+    .filter((re) => re.test(quiet.text)).map((re) => String(re));
+  leaks.length === 0
+    ? ok('the page never calls a category optional', 'the threshold stays in the data')
+    : bad('the page never calls a category optional', leaks.join(', '));
+  // And it still asks for every one of them by name.
+  const named = await prev.evaluate(() => COLLABS[0].theyGive.concat(COLLABS[0].weGive)
+    .map((p) => p.who || p.nominee)
+    .filter((n) => !document.body.innerText.includes(n)));
+  named.length === 0 ? ok('and every nominee is still named on it')
+                     : bad('and every nominee is still named on it', `missing ${named.join(', ')}`);
+}
 
 console.log('--- with a per-category breakdown, the pass count ignores the optional one');
 // The trap this exists for: ROSÉ is optional, so a pass is complete without

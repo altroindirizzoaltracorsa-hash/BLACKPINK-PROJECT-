@@ -118,11 +118,6 @@
   .pick-cat { flex: 1 1 auto; font-size: 0.6rem; letter-spacing: 0.1em;
     text-transform: uppercase; color: var(--muted); }
   .pick-name { font-size: 0.82rem; color: var(--white); }
-  /* The optional category. NOT dimmed to nothing: a pick here is worth the same
-     1 as any other, so it is marked rather than demoted — the label says it is
-     not owed, the weight says it still counts. */
-  .pick-opt { display: block; font-style: normal; font-size: 0.52rem;
-    letter-spacing: 0.08em; color: var(--muted); margin-top: 0.15rem; }
   .tally-note b { color: var(--white); font-weight: 500; }
   .tally-note .us { color: var(--pink); }
   .tally-note .them { color: var(--them); }
@@ -229,9 +224,8 @@
           picked BLACKPINK is a blink or not. The two figures are what each act received out of
           the collab, and they sit apart roughly in the ratio of the slot counts.</li>
         <li><b>Every pick is worth one.</b> A pass through the ballot is as many votes as it
-          carried — three where the collab asked for three, four if you also filled a category
-          nobody was obliged to. A category that was never promised still counts when it is
-          cast; it just never counts against anyone who skipped it.</li>
+          carried, and no category is worth more than another — the member in one is not
+          competing with the member in the next.</li>
         <li><b>We count what people log here, and say so.</b> It is votes recorded through this
           site or the vote counter extension: self-reported — accurate and effortless, but still
           what people tell us — so it reads <em>logged</em>, never <em>verified</em>.</li>
@@ -293,10 +287,18 @@ var COLLABS = [
       // headline totals name artists ("BLACKPINK, JENNIE & ROSÉ"), the rows name
       // what you will actually see on the ballot. Same split as KCA_CATEGORIES
       // in index.html.
-      // `required: false` is ROSÉ, and it is the scoring rule rather than a
-      // footnote: BLOOMs were never asked for her, so a pass is complete at
-      // three without her — but every pick is worth the same 1, so casting her
-      // makes it four. Counted, never required.
+      // `required: false` on ROSÉ is a THRESHOLD, AND IT STAYS OFF THE PAGE.
+      // It exists only because BLOOMs did not agree to her category, so a
+      // BLOOM who skips it has still done everything they signed up for and
+      // must not be held short of the ranking for it. It is NOT a statement
+      // about how much her votes are wanted — they are wanted exactly as much
+      // as the others, and every pick is worth the same one.
+      //
+      // So the page asks for all four and never publishes this distinction.
+      // Printing "optional" beside a member reads as "do not bother", and the
+      // only person it could change the behaviour of is someone who would
+      // otherwise have voted for her. The leniency costs nobody anything by
+      // being quiet: it can only ever help someone who already skipped it.
       { cat: 'Favorite Music Group or Duo',  nominee: 'BLACKPINK',             who: 'BLACKPINK' },
       { cat: 'Favorite Music Collaboration', nominee: 'Dracula (with JENNIE)', who: 'JENNIE' },
       { cat: 'Favorite Female Artist',       nominee: 'ROSÉ',                  who: 'ROSÉ', required: false },
@@ -305,9 +307,7 @@ var COLLABS = [
        + 'BLACKPINK and the members are up in three categories and BINI in a fourth, and '
        + '<b>no act is in the other’s category</b> — so a blink filling in Favorite Global Music Star '
        + 'gives up nothing, and neither does a BLOOM filling in ours. '
-       + 'The agreement covers <b>BLACKPINK, JENNIE and BINI</b> — three votes, one pass through '
-       + 'the ballot. <b>ROSÉ</b> was never part of it and BLOOMs vote her anyway, which makes it '
-       + 'four; every pick is worth the same, so she counts without ever being owed.',
+       + 'BLOOMs vote <b>ROSÉ</b> too, beyond anything the agreement asked of them.',
     // Numbers, once both halves exist. null = not counting yet, and the card
     // says what is missing rather than drawing an empty 0–0 bar.
     //   { us: <picks blinks logged for their act>, them: <picks their side reports>,
@@ -353,10 +353,12 @@ function sideHtml(cls, head, who, picks) {
     + '<div class="side-head">' + esc(head) + '</div>'
     + '<div class="side-who">' + who + '</div>'
     + picks.map(function (p) {
-        return '<div class="pick' + (p.required === false ? ' optional' : '') + '">'
-          + '<span class="pick-cat">' + esc(p.cat)
-          + (p.required === false ? '<i class="pick-opt">optional · counts, never required</i>' : '')
-          + '</span><span class="pick-name">' + esc(p.nominee) + '</span></div>';
+        // EVERY row is presented the same. `required` is an eligibility rule,
+        // not a ranking of who matters, and printing "optional" beside a member
+        // reads as "we would rather you didn't bother" — which is the opposite
+        // of the case. See the note on `required` in the data below.
+        return '<div class="pick"><span class="pick-cat">' + esc(p.cat) + '</span>'
+          + '<span class="pick-name">' + esc(p.nominee) + '</span></div>';
       }).join('')
     + '</div>';
 }
@@ -439,14 +441,9 @@ function tallyHtml(c) {
       + ' ' + catWord(themSlots) + ' and ' + esc(c.partner.act) + ' in ' + usSlots
       + ', so one pass through the ballot adds ' + themSlots + ' on one side and ' + usSlots
       + ' on the other.'
-      + '<br>One pass is <b>' + needed + ' votes</b> — '
-      + esc(requiredOf(c.theyGive).map(function (p) { return p.who || p.nominee; })
-            .concat(requiredOf(c.weGive).map(function (p) { return p.who || p.nominee; })).join(', ')
-            .replace(/, ([^,]*)$/, ' and $1'))
-      + (most > needed ? ', or <b>' + most + '</b> with '
-          + esc(c.theyGive.concat(c.weGive).filter(function (p) { return p.required === false; })
-                .map(function (p) { return p.who || p.nominee; }).join(' and '))
-          + ', who nobody is obliged to vote for.' : '.')
+      + '<br>One pass through the ballot is <b>' + most + ' votes</b> — '
+      + esc(c.theyGive.concat(c.weGive).map(function (p) { return p.who || p.nominee; })
+            .join(', ').replace(/, ([^,]*)$/, ' and $1')) + '.'
       + (passes != null ? ' That is <b>' + fmt(passes) + '</b> complete '
           + (passes === 1 ? 'pass' : 'passes') + ' so far.' : '')
       + '<br>Logged, not verified — our half is what people record here or through the extension'
