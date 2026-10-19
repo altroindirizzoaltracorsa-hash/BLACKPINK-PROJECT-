@@ -132,6 +132,25 @@ check(appUntil && Number(appUntil) === Date.parse(page.deadline),
 const appId = (APP.match(/COLLAB_ID = "([^"]+)"/) || [])[1];
 check(appId === COLLAB.id, 'and posts to the same collab', appId || 'not found');
 
+console.log('--- and matches a nominee the same way');
+// The names agreeing is not enough on its own: the ballot writes BINI as
+// "Asia: BINI", so a counter comparing titles EXACTLY drops every pick while
+// still holding the right string. The extension was fixed for that; an app
+// left on exact matching would carry the same bug, agree with every check
+// above, and count nothing — which is exactly how this was found.
+const EXT = readFileSync(root + 'vote-extension/background.js', 'utf8');
+for (const [src, label] of [[EXT, 'the extension'], [APP, 'the app']]) {
+  // The prefix-tolerant compare: take everything after the first colon and
+  // compare it WHOLE. Both files must have it, and neither may compare titles
+  // with a bare equality on the normalised whole string alone.
+  const tolerant = /indexOf\(':'\)/.test(src) && /(slice|substring)\(i \+ 1\)/.test(src);
+  check(tolerant, `${label} tolerates the ballot's region prefix`,
+        tolerant ? '' : 'titles are compared exactly — "Asia: BINI" would count for nobody');
+  const reports = /nearMiss|NearMiss/.test(src);
+  check(reports, `${label} reports a nominee the ballot has renamed`,
+        reports ? '' : 'a dropped pick would be silent again');
+}
+
 console.log('--- the window the counter will post in');
 const until = COLLAB.until;
 check(Number.isFinite(until), 'the extension has a closing time', new Date(until).toISOString());

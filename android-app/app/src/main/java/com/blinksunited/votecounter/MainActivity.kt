@@ -282,15 +282,33 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
 
         val token = prefs.getString("token", null)
 
-        // The collab goes first and goes on its own. It is counted even when the
-        // round carried none of ours, because filling the other side's category
-        // and skipping ours is exactly what a collab makes possible.
-        if (token != null && res.collabTotal > 0 &&
-            System.currentTimeMillis() < KcaVoteParser.COLLAB_UNTIL_MS) {
-            io.execute { VoteApi.postCollabVotes(token, KcaVoteParser.COLLAB_ID, res.collabCats) }
+        // A nominee the ballot has renamed is said out loud, because the vote it
+        // cost is invisible otherwise: "Asia: BINI" counted as nothing for days
+        // and looked exactly like a category nobody voted in. Both strings, so
+        // the fix is one line rather than another round of guessing.
+        res.renamed?.let { (want, got) ->
+            runOnUiThread { toast("⚠ Not counted: the ballot says “$got”, we expect “$want”") }
         }
 
-        if (res.total <= 0) return
+        val wantsCollab = token != null && res.collabTotal > 0 &&
+            System.currentTimeMillis() < KcaVoteParser.COLLAB_UNTIL_MS
+
+        // A round can be ONLY the partner's pick — filling their category and
+        // skipping ours is exactly what a collab makes possible — and that case
+        // used to post and then return without a word, so the app looked like it
+        // was ignoring the trade. It is the same silence the extension had.
+        if (res.total <= 0) {
+            if (wantsCollab) {
+                io.execute {
+                    val ok = VoteApi.postCollabVotes(token!!, KcaVoteParser.COLLAB_ID, res.collabCats)
+                    runOnUiThread {
+                        toast(if (ok) "🤝 ${res.collabTotal} to the collab"
+                              else "⚠ The collab board didn’t take that round")
+                    }
+                }
+            }
+            return
+        }
 
         kcaRollDayIfNeeded()
         prefs.edit().putInt("kcaCount", prefs.getInt("kcaCount", 0) + res.total).apply()
@@ -299,11 +317,24 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
 
         if (token != null) {
             io.execute {
+                // Both posts in the one job so a single toast can report both.
+                // Two toasts per round queue up behind each other and the second
+                // arrives after the blink has moved on.
+                //
+                // The collab result NEVER changes the Kids' Choice outcome: a
+                // pick for the partner's act is not a BLACKPINK vote, so it is
+                // reported beside that total and never added to it.
+                val collabOk = if (wantsCollab)
+                    VoteApi.postCollabVotes(token, KcaVoteParser.COLLAB_ID, res.collabCats) else null
                 val ok = VoteApi.postKcaVotes(token, res.total, res.cats)
                 if (!ok) addKcaPending(res.total) else flushKcaPending(token)
-                val msg = if (ok) "✅ Synced ${res.total} · ${res.label}"
-                          else "⚠ Couldn't sync — will retry"
-                runOnUiThread { updateHeader(); toast(msg) }
+                val msg = StringBuilder(
+                    if (ok) "✅ Synced ${res.total} · ${res.label}"
+                    else "⚠ Couldn't sync — will retry"
+                )
+                if (collabOk == true) msg.append("  ·  🤝 ${res.collabTotal} to the collab")
+                if (collabOk == false) msg.append("  ·  ⚠ collab board didn’t take it")
+                runOnUiThread { updateHeader(); toast(msg.toString()) }
             }
         } else {
             addKcaPending(res.total)

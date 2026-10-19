@@ -15,7 +15,15 @@ data class KcaVoteResult(
     /** True when the round could not be read at all because the ballot was missing. */
     val noBallot: Boolean,
     /** Stable key for this round, so a retry is not counted twice. */
-    val dedupeKey: String
+    val dedupeKey: String,
+    /**
+     * A nominee whose ballot title CONTAINS the name we look for but does not
+     * match it — (what we expect, what the ballot said). It means a vote is
+     * being thrown away, which is otherwise indistinguishable from nobody
+     * voting: "Asia: BINI" ran for days as a zero on the board. Port of
+     * kcaNameNearMiss in background.js. Null is the normal case.
+     */
+    val renamed: Pair<String, String>? = null
 ) {
     val total: Int get() = cats.values.sum()
     val collabTotal: Int get() = collabCats.values.sum()
@@ -113,6 +121,20 @@ object KcaVoteParser {
     }
 
     /**
+     * A title that CONTAINS the nominee but does not match it. The ballot has
+     * decorated the name in a way titleIs does not handle, and that pick is
+     * being dropped without a word — the failure that ran for days as a zero.
+     *
+     * The contains test is what keeps it from firing on a vote for a rival:
+     * "BTS" does not contain "BLACKPINK". Port of kcaNameNearMiss.
+     */
+    private fun nearMiss(want: String, title: String?): Boolean {
+        val w = norm(want)
+        val t = norm(title)
+        return w.isNotEmpty() && t.isNotEmpty() && t != w && t.contains(w)
+    }
+
+    /**
      * @param json what counter.js posted: { picks:[{slug,title}], marks, sig, ballot }.
      *   `picks` are already resolved from option ids in the page, where the ballot is.
      */
@@ -138,6 +160,7 @@ object KcaVoteParser {
             val collab = HashMap<String, Int>()
             var matched = 0
             var lastLabel: String? = null
+            var renamed: Pair<String, String>? = null
             for (i in 0 until (picks?.length() ?: 0)) {
                 val p = picks!!.optJSONObject(i) ?: continue
                 val slug = p.optString("slug", "")
@@ -148,10 +171,14 @@ object KcaVoteParser {
                 // "is it ours" test below, which rightly calls a BINI pick not ours.
                 COLLAB_NOMINEES[slug]?.let { want ->
                     if (titleIs(want, title)) collab[slug] = (collab[slug] ?: 0) + 1
+                    else if (nearMiss(want, title) && renamed == null) renamed = want to title
                 }
 
                 val mine = KCA_NOMINEES[slug] ?: continue
-                if (!titleIs(mine.first, title)) continue
+                if (!titleIs(mine.first, title)) {
+                    if (nearMiss(mine.first, title) && renamed == null) renamed = mine.first to title
+                    continue
+                }
                 cats[slug] = (cats[slug] ?: 0) + 1
                 matched += 1
                 lastLabel = CATEGORIES[slug] ?: slug
@@ -162,7 +189,7 @@ object KcaVoteParser {
                 lastLabel != null -> lastLabel!!
                 else -> "Kids’ Choice"
             }
-            KcaVoteResult(cats, collab, label, marks - matched, false, sig)
+            KcaVoteResult(cats, collab, label, marks - matched, false, sig, renamed)
         } catch (e: Exception) {
             null
         }
