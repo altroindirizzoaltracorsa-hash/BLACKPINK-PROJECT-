@@ -265,6 +265,12 @@
   .fandom-foot { font-size: 0.66rem; color: var(--muted); margin-top: 0.4rem; }
   .fandom-foot b { color: var(--white); font-weight: 500; font-variant-numeric: tabular-nums; }
   .fandom-tot { opacity: 0.75; }
+  /* Drawn, but visibly waiting rather than scoring zero. The track stays
+     empty: a fill of any width is a claim, and two half-full tracks read as a
+     dead heat nobody is in. */
+  .fandom-waiting { border-style: dashed; }
+  .fandom-waiting .fandom-track { background: repeating-linear-gradient(135deg,
+      rgba(255,255,255,0.05) 0 6px, rgba(255,255,255,0.02) 6px 12px); }
 
   .sub { border-top: 1px solid var(--border); margin-top: 1.4rem; padding-top: 1.2rem; }
   .sub-head { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase;
@@ -945,31 +951,46 @@ function fandomsHtml(c) {
   rows.forEach(function (r) { r.each = r.people ? r.votes / r.people : 0; });
   var most = Math.max.apply(null, rows.map(function (r) { return r.each; }).concat([0.0001]));
 
+  // The two sides are ALWAYS drawn, with nothing in them before anybody has
+  // said. The shape is the explanation — who can appear, and what will be
+  // compared — and a single sentence where a structure should be reads as a
+  // feature that has not been built. Same rule the board follows.
+  //
+  // What an empty card must NOT do is fill its track. A segment of any width
+  // is a claim, and two half-full tracks read as a dead heat that nobody is
+  // actually in.
   return '<div class="sub"><div class="sub-head">Who is logging · ' + esc(lbl) + '</div>'
-    + (any
-      ? '<div class="fandoms">'
+    + '<div class="fandoms">'
         + rows.map(function (r) {
             var avg = Math.round(r.each * 10) / 10;
-            return '<div class="fandom fandom-' + esc(r.side) + '">'
+            return '<div class="fandom fandom-' + esc(r.side) + (r.people ? '' : ' fandom-waiting') + '">'
               + '<div class="fandom-top"><span class="fandom-name">' + esc(r.label) + '</span>'
               + '<span class="fandom-n">' + fmt(r.people) + ' '
               + (r.people === 1 ? 'person' : 'people') + '</span></div>'
-              + '<div class="fandom-track" title="votes each"><div class="fandom-fill" style="width:'
-              + (r.each / most * 100) + '%"></div></div>'
+              + '<div class="fandom-track"' + (r.people ? ' title="votes each"' : '') + '>'
+              + (r.people ? '<div class="fandom-fill" style="width:'
+                  + (r.each / most * 100) + '%"></div>' : '')
+              + '</div>'
               + '<div class="fandom-foot">'
-              + (r.people ? '<b>' + avg + '</b> votes each · ' : '')
-              + '<span class="fandom-tot">' + fmt(r.votes) + ' logged</span></div>'
+              + (r.people
+                  ? '<b>' + avg + '</b> votes each · <span class="fandom-tot">'
+                    + fmt(r.votes) + ' logged</span>'
+                  : '<span class="fandom-tot">nobody yet</span>')
+              + '</div>'
               + '</div>';
           }).join('')
         + '</div>'
+        + (!any
+            ? '<div class="sub-note">No one has said which side they are on yet. '
+              + 'The vote counter asks once, after your first round — and the bars fill with '
+              + '<b>votes each</b>, so a side is never behind for being smaller.</div>'
+            : '')
         + (unsaid && unsaid.people
             ? '<div class="sub-note">' + fmt(unsaid.people) + ' '
               + (unsaid.people === 1 ? 'person has' : 'people have')
-              + ' not said which side they are on, and ' + (unsaid.people === 1 ? 'their' : 'their')
-              + ' ' + fmt(unsaid.votes) + ' votes are in the totals above like everyone else’s.</div>'
+              + ' not said which side they are on, and their '
+              + fmt(unsaid.votes) + ' votes are in the totals above like everyone else’s.</div>'
             : '')
-      : '<div class="board-empty">No one has said which side they are on yet. '
-        + 'The vote counter asks once, after your first round.</div>')
     + '<div class="sub-note"><b>This is not the bar.</b> It counts <b>people</b>, by what they '
     + 'tell us they are — the votes themselves still cannot be traced to a fandom, because '
     + 'everyone here votes the whole ballot. <b>The bars are votes each</b>, not the totals: '

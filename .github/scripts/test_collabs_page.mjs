@@ -497,18 +497,47 @@ console.log('--- who is logging: people by declared side, never a split of the v
     ? ok('and people who did not say are counted honestly, not assigned')
     : bad('and people who did not say are counted honestly, not assigned', note.slice(0, 200));
 
-  // Before anyone has said anything, it explains itself rather than drawing
-  // two empty bars that look like a dead heat.
-  const NONE = JSON.parse(JSON.stringify(FIX));
+  // Before anyone has said anything the two sides are STILL drawn. The shape is
+  // the explanation — who can appear and what gets compared — and a lone
+  // sentence where a structure should be reads as a feature that was never
+  // built. That is what it did on the first preview.
+  //
+  // What it must not do is fill the tracks: a segment of any width is a claim,
+  // and two part-full bars read as a dead heat nobody is in.
+  const NONE = JSON.parse(JSON.stringify(BARE));
+  NONE.periods.all.fandoms = {};
   await prev.evaluate((fix) => { COLLABS[0].tally = fix; render(); }, NONE);
   await prev.waitForTimeout(200);
-  const empty = await prev.evaluate(() => {
-    const el = [...document.querySelectorAll('.board-empty')].map((x) => x.textContent.replace(/\s+/g, ' ').trim());
-    return { texts: el, cards: document.querySelectorAll('.fandom').length };
-  });
-  (empty.cards === 0 && empty.texts.some((t) => /no one has said which side/i.test(t)))
-    ? ok('with nothing declared, it says so instead of drawing a 0–0 race')
-    : bad('with nothing declared, it says so instead of drawing a 0–0 race', JSON.stringify(empty));
+  const empty = await prev.evaluate(() => ({
+    cards: [...document.querySelectorAll('.fandom')].map((el) => ({
+      name: el.querySelector('.fandom-name').textContent.trim(),
+      waiting: el.classList.contains('fandom-waiting'),
+      fills: el.querySelectorAll('.fandom-fill').length,
+      foot: el.querySelector('.fandom-foot').textContent.trim(),
+      shown: el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden',
+    })),
+    notes: [...document.querySelectorAll('.sub-note')].map((n) => n.textContent.replace(/\s+/g, ' ')),
+  }));
+  (empty.cards.length === 2 && empty.cards.every((c) => c.waiting && c.shown))
+    ? ok('with nothing declared, both sides are still drawn AND on screen',
+         empty.cards.map((c) => c.name).join(' / '))
+    : bad('with nothing declared, both sides are still drawn AND on screen', JSON.stringify(empty.cards));
+  empty.cards.every((c) => c.fills === 0)
+    ? ok('and neither track is filled, so there is no 0–0 race')
+    : bad('and neither track is filled, so there is no 0–0 race', JSON.stringify(empty.cards));
+  empty.cards.every((c) => /nobody yet/i.test(c.foot))
+    ? ok('and each says it is waiting rather than showing a zero')
+    : bad('and each says it is waiting rather than showing a zero',
+          empty.cards.map((c) => c.foot).join(' | '));
+  empty.notes.some((n) => /no one has said which side/i.test(n))
+    ? ok('with the explanation underneath')
+    : bad('with the explanation underneath', empty.notes.join(' | ').slice(0, 120));
+  // Said here because it is the moment somebody decides whether to bother:
+  // a smaller fandom should know it is not structurally losing.
+  empty.notes.some((n) => /never behind for being smaller/i.test(n))
+    ? ok('and it says a smaller side is not behind for being smaller')
+    : bad('and it says a smaller side is not behind for being smaller',
+          empty.notes.join(' | ').slice(0, 160));
   await prev.evaluate((fix) => { COLLABS[0].tally = fix; render(); }, FIX);
   await prev.waitForTimeout(200);
 }
