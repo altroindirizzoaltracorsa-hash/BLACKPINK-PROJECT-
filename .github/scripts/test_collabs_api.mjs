@@ -25,7 +25,7 @@ function load() {
   if (leftover.length) throw new Error('unstubbed import: ' + leftover.join(' / '));
   if (stripped === src) throw new Error('api/collabs.js no longer looks the way this test rewrites it');
   return new Function('createClient', 'process',
-    stripped + '\nreturn { kstDay, mondayOf, periodFrom, sumOf, addInto, SLUG_RE };')(
+    stripped + '\nreturn { kstDay, mondayOf, periodFrom, sumOf, addInto, SLUG_RE, FANDOM_RE };')(
     () => ({}), { env: {} });
 }
 
@@ -79,6 +79,60 @@ const into = { X: 1 };
 api.addInto(into, { X: 2, Y: 0, Z: -5 });
 check(into.X === 3 && into.Y === undefined && into.Z === undefined,
       'and merging drops zero and negative counts', JSON.stringify(into));
+
+console.log('--- who turned up, by the side they declared');
+// The only competition this board can honestly run. It counts PEOPLE: the
+// per-act totals stay pooled, because everyone in a collab votes the whole
+// ballot and no vote belongs to a fandom.
+{
+  // Two people on one side, one on the other, one who never said — and one of
+  // them voting on two days, because a person is counted once however many
+  // days they logged. Counting rows instead would make the keenest voter look
+  // like a crowd.
+  const rows = [
+    { app_user_id: 'a', day: '2026-10-18', votes: 4, cats: { X: 4 }, display_name: 'ana', fandom: 'blink' },
+    { app_user_id: 'a', day: '2026-10-19', votes: 4, cats: { X: 4 }, display_name: 'ana', fandom: 'blink' },
+    { app_user_id: 'b', day: '2026-10-19', votes: 2, cats: { X: 2 }, display_name: 'bea', fandom: 'blink' },
+    { app_user_id: 'c', day: '2026-10-19', votes: 9, cats: { X: 9 }, display_name: 'cy',  fandom: 'bloom' },
+    { app_user_id: 'd', day: '2026-10-19', votes: 1, cats: { X: 1 }, display_name: 'dee', fandom: null },
+  ];
+  const fandomOf = new Map();
+  for (const r of rows) if (r.fandom) fandomOf.set(r.app_user_id, r.fandom);
+  const all = api.periodFrom(rows, fandomOf);
+  check(all.fandoms.blink.people === 2, `two people on one side, not four rows (${all.fandoms.blink.people})`);
+  check(all.fandoms.blink.votes === 10, `and their votes add up across days (${all.fandoms.blink.votes})`);
+  check(all.fandoms.bloom.people === 1 && all.fandoms.bloom.votes === 9, 'the other side is counted too');
+  // Never folded into either side, and never dropped: the votes are in the
+  // totals like anyone else's, and the page says how many people that is.
+  check(all.fandoms.unsaid && all.fandoms.unsaid.people === 1,
+        'somebody who never said is their own row, not assigned');
+  // The thing this must never do.
+  check(all.total === 20 && api.sumOf(all.byCat) === 20,
+        `the per-act total is untouched by any of it (${all.total})`);
+
+  // A person who declares TODAY is that side in the all-time view too. The map
+  // is built across every row and handed in, so a period that happens to hold
+  // only their earlier days still knows who they are — otherwise one person
+  // answers twice, once as themselves and once as "didn't say".
+  const earlier = api.periodFrom(rows.filter((r) => r.day === '2026-10-18'), fandomOf);
+  check(earlier.fandoms.blink && earlier.fandoms.blink.people === 1,
+        'and a side declared later still labels the earlier days');
+}
+
+console.log('--- what may be used as a fandom key');
+// Stored, counted and printed on a page, and the caller is an extension
+// anybody can edit.
+for (const [v, want, why] of [
+  ['blink', true, 'a plain key'],
+  ['bloom-2', true, 'with a digit and a dash'],
+  ['', false, 'empty'],
+  ['BLINK', false, 'upper case — the API lowercases before testing'],
+  ['<b>x</b>', false, 'markup'],
+  ['-leading', false, 'starting with a dash'],
+  ['a'.repeat(40), false, 'absurdly long'],
+]) {
+  check(api.FANDOM_RE.test(v) === want, `${why} is ${want ? 'accepted' : 'refused'}`);
+}
 
 console.log('--- what may be used as a category');
 for (const [v, want, why] of [

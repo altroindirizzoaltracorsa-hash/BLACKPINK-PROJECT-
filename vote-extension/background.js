@@ -835,7 +835,23 @@ const COLLAB = {
     'favorite-female-artist':       'ROSÉ',
     'favorite-global-music-star':   'BINI',
   },
+  // The sides a person can say they are, in step with COLLABS[].fandoms on
+  // /collabs — the keys are what the board counts people by, so a key only one
+  // side knows counts nobody. test_collab_slugs checks they agree.
+  //
+  // It changes NOTHING about what is counted: the same picks are posted either
+  // way, and the collab board's per-act totals stay pooled, because everyone
+  // votes the whole ballot and no vote belongs to a fandom.
+  fandoms: [
+    { key: 'blink', label: 'BLINK' },
+    { key: 'bloom', label: 'BLOOM' },
+  ],
 };
+
+// Which side this person says they are. Null until they say, and null is sent
+// as nothing rather than guessed at — a default of 'blink' would quietly file
+// every BLOOM on our side of a board about who turned up.
+const KCA_FANDOM_KEY = 'kcaFandom';
 
 // What the panel shows of the collab. Kept locally because nothing else can
 // show it: these picks are deliberately absent from kcaCount and kcaCats — a
@@ -868,11 +884,15 @@ function recordCollabLocal(cats, ok) {
 async function postCollabVotes(cats) {
   const { buToken } = await getLocal('buToken');
   if (!buToken || !cats || !Object.keys(cats).length) return { ok: false, reason: 'not-linked' };
+  const got = await getLocal(KCA_FANDOM_KEY);
+  const fandom = (got && got[KCA_FANDOM_KEY]) || null;
+  const valid = fandom && COLLAB.fandoms.some((f) => f.key === fandom) ? fandom : null;
   try {
     const r = await fetch(COLLAB.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: COLLAB.id, extToken: buToken, cats }),
+      body: JSON.stringify(Object.assign({ id: COLLAB.id, extToken: buToken, cats },
+        valid ? { fandom: valid } : {})),
     });
     return { ok: r.ok };
   } catch (_) { return { ok: false, reason: 'network' }; }

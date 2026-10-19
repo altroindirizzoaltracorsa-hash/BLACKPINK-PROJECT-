@@ -411,6 +411,91 @@ const boardNote = (await prev.locator('.sub-note').first().textContent()).replac
   ? ok('and says it in those words')
   : bad('and says it in those words', boardNote.slice(0, 120));
 
+console.log('--- who is logging: people by declared side, never a split of the votes');
+// The line this block has to hold. The bar above it is what each ACT received
+// and cannot be attributed to a fandom — everyone votes the whole ballot. This
+// counts PEOPLE, which self-declaration can answer. If the two ever merge, the
+// page starts claiming it knows which fandom a vote came from, which is the
+// one thing it has said all along that it cannot.
+{
+  // The bar as it reads with no fandoms at all, to compare against. Asserted as
+  // "unchanged" rather than against a number typed here: the invariant is that
+  // declaring a side moves nothing about the per-act totals, and a hardcoded
+  // figure tests my arithmetic instead.
+  await prev.evaluate((fix) => { COLLABS[0].tally = fix; PERIOD = 'all'; render(); }, FIX);
+  await prev.waitForTimeout(200);
+  const barBefore = await prev.evaluate(() =>
+    document.querySelector('.tally-nums').textContent.replace(/\s+/g, ' ').trim());
+
+  const FAN = JSON.parse(JSON.stringify(FIX));
+  FAN.periods.all.fandoms = {
+    blink: { people: 8, votes: 160 },
+    bloom: { people: 2, votes: 120 },
+    unsaid: { people: 1, votes: 20 },
+  };
+  await prev.evaluate((fix) => { COLLABS[0].tally = fix; PERIOD = 'all'; render(); }, FAN);
+  await prev.waitForTimeout(250);
+  const f = await prev.evaluate(() => {
+    const heads = [...document.querySelectorAll('.sub-head')].map((h) => h.textContent.trim());
+    const cards = [...document.querySelectorAll('.fandom')].map((el) => ({
+      name: el.querySelector('.fandom-name').textContent.trim(),
+      top: el.querySelector('.fandom-n').textContent.trim(),
+      foot: el.querySelector('.fandom-foot').textContent.replace(/\s+/g, ' ').trim(),
+      fill: Math.round(parseFloat(el.querySelector('.fandom-fill').style.width)),
+      pink: getComputedStyle(el.querySelector('.fandom-fill')).backgroundColor,
+    }));
+    const notes = [...document.querySelectorAll('.sub-note')].map((n) => n.textContent.replace(/\s+/g, ' '));
+    return { heads, cards, notes, nums: document.querySelector('.tally-nums').textContent.replace(/\s+/g, ' ') };
+  });
+  f.heads.some((h) => /who is logging/i.test(h))
+    ? ok('the block is there and says what it counts', f.heads.find((h) => /who is logging/i.test(h)))
+    : bad('the block is there and says what it counts', f.heads.join(' | '));
+  f.cards.length === 2 ? ok('both sides are listed', f.cards.map((c) => c.name).join(' / '))
+                       : bad('both sides are listed', `${f.cards.length}`);
+  (/8 people/.test(f.cards[0].top) && /2 people/.test(f.cards[1].top))
+    ? ok('with the headcount each', `${f.cards[0].top} / ${f.cards[1].top}`)
+    : bad('with the headcount each', `${f.cards[0].top} / ${f.cards[1].top}`);
+  // The number that survives one side simply having more accounts: 160/8 = 20
+  // each against 120/2 = 60 each, so the smaller side is AHEAD per person and
+  // the page has to show it.
+  (/20 each/.test(f.cards[0].foot) && /60 each/.test(f.cards[1].foot))
+    ? ok('and the per-person average, which the headcount hides', f.cards[1].foot)
+    : bad('and the per-person average, which the headcount hides',
+          `${f.cards[0].foot} | ${f.cards[1].foot}`);
+  // The totals above are untouched by any of it.
+  f.nums.trim() === barBefore
+    ? ok('the per-act bar is unchanged by the split', barBefore)
+    : bad('the per-act bar is unchanged by the split', `${barBefore} → ${f.nums.trim()}`);
+  const note = f.notes.join(' ');
+  /this is not the bar/i.test(note)
+    ? ok('and the block says it is not the bar')
+    : bad('and the block says it is not the bar', note.slice(0, 120));
+  /cannot be traced to a fandom/i.test(note)
+    ? ok('and repeats that a vote cannot be traced to a fandom')
+    : bad('and repeats that a vote cannot be traced to a fandom', note.slice(0, 160));
+  /self-declared/i.test(note)
+    ? ok('and that it is self-declared')
+    : bad('and that it is self-declared', note.slice(0, 160));
+  /1 person has not said/i.test(note)
+    ? ok('and people who did not say are counted honestly, not assigned')
+    : bad('and people who did not say are counted honestly, not assigned', note.slice(0, 200));
+
+  // Before anyone has said anything, it explains itself rather than drawing
+  // two empty bars that look like a dead heat.
+  const NONE = JSON.parse(JSON.stringify(FIX));
+  await prev.evaluate((fix) => { COLLABS[0].tally = fix; render(); }, NONE);
+  await prev.waitForTimeout(200);
+  const empty = await prev.evaluate(() => {
+    const el = [...document.querySelectorAll('.board-empty')].map((x) => x.textContent.replace(/\s+/g, ' ').trim());
+    return { texts: el, cards: document.querySelectorAll('.fandom').length };
+  });
+  (empty.cards === 0 && empty.texts.some((t) => /no one has said which side/i.test(t)))
+    ? ok('with nothing declared, it says so instead of drawing a 0–0 race')
+    : bad('with nothing declared, it says so instead of drawing a 0–0 race', JSON.stringify(empty));
+  await prev.evaluate((fix) => { COLLABS[0].tally = fix; render(); }, FIX);
+  await prev.waitForTimeout(200);
+}
+
 console.log('--- a day opens its own breakdown');
 const dayCells = await prev.locator('.day.has').count();
 dayCells === 3 ? ok('the three days with votes are tappable', `${dayCells}`)

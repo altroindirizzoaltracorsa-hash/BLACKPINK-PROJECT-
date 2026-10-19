@@ -249,6 +249,22 @@
   .day-detail { margin-top: 0.6rem; border-left: 2px solid var(--pink); padding-left: 0.8rem; }
   .day-detail-hd { font-size: 0.68rem; color: var(--white); margin-bottom: 0.35rem; }
 
+  .fandoms { display: grid; gap: 0.8rem; grid-template-columns: 1fr; margin-top: 0.6rem; }
+  @media (min-width: 560px) { .fandoms { grid-template-columns: 1fr 1fr; gap: 1rem; } }
+  .fandom { --accent: var(--pink); border: 1px solid var(--border); border-radius: var(--r-box);
+    padding: 0.7rem 0.8rem; }
+  .fandom-us   { --accent: var(--pink); }
+  .fandom-them { --accent: var(--them); }
+  .fandom-top { display: flex; flex-wrap: wrap; gap: 0.3rem 0.6rem; align-items: baseline;
+    justify-content: space-between; margin-bottom: 0.45rem; }
+  .fandom-name { font-size: 0.72rem; letter-spacing: 0.06em; color: var(--accent); }
+  .fandom-n { font-size: 0.62rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .fandom-track { height: 6px; background: rgba(255,255,255,0.06); border-radius: var(--r-pill);
+    overflow: hidden; }
+  .fandom-fill { height: 100%; background: var(--accent); transition: width 0.6s ease; }
+  .fandom-foot { font-size: 0.66rem; color: var(--muted); margin-top: 0.4rem; }
+  .fandom-foot b { color: var(--white); font-weight: 500; font-variant-numeric: tabular-nums; }
+
   .sub { border-top: 1px solid var(--border); margin-top: 1.4rem; padding-top: 1.2rem; }
   .sub-head { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase;
     color: var(--muted); margin-bottom: 0.2rem; }
@@ -388,7 +404,7 @@
     <div class="get">
       <div class="get-head">
         <span class="get-title">🧩 Get the Vote Counter</span>
-        <span class="get-ver">v1.9.2</span>
+        <span class="get-ver">v1.9.3</span>
       </div>
       <p class="get-sub">
         It counts the votes <b>you</b> cast on kca.nick.tv and logs them to the board above —
@@ -398,8 +414,8 @@
         <b>app</b> does the same job — you vote inside it.
       </p>
       <div class="get-dl">
-        <a class="get-btn" href="/vote-extension-v1.9.2-chrome.zip" download>⬇ Desktop<small>Chrome · Edge · Brave · Opera</small></a>
-        <a class="get-btn ghost" href="/vote-extension-v1.9.2-android.zip" download>⬇ Android extension<small>Edge Canary · Quetta</small></a>
+        <a class="get-btn" href="/vote-extension-v1.9.3-chrome.zip" download>⬇ Desktop<small>Chrome · Edge · Brave · Opera</small></a>
+        <a class="get-btn ghost" href="/vote-extension-v1.9.3-android.zip" download>⬇ Android extension<small>Edge Canary · Quetta</small></a>
         <a class="get-btn ghost" href="/blinks-united-vote-counter.apk" download>⬇ Android app<small>.apk · no extension needed</small></a>
       </div>
       <p class="get-note">
@@ -407,7 +423,7 @@
         <b>Link my account</b> inside it once. There's an
         <a href="/vote-counter-guide.html" target="_blank" rel="noopener">illustrated guide ↗</a>
         if any of that is unfamiliar.<br>
-        <b>Already have it?</b> Update to v1.9.2. Older versions either don't know this collab
+        <b>Already have it?</b> Update to v1.9.3. Older versions either don't know this collab
         exists — and count only the BLACKPINK side of your ballot — or count the whole trade
         without ever showing it, which leaves no way to tell a counted pick from a lost one.
       </p>
@@ -546,6 +562,17 @@ var COLLABS = [
       fandom: 'BLOOMs',
       act: 'BINI',
     },
+    // The sides a person can say they belong to. Keys are what the counter
+    // posts and what the API stores; labels are what the page prints.
+    //
+    // THIS SPLITS NO VOTES. Everyone in a collab votes all four categories, so
+    // the bar above cannot be broken down by fandom and never is — this counts
+    // PEOPLE, which is a question self-declaration can actually answer.
+    // `side` only picks the colour, so each fandom reads in its own.
+    fandoms: [
+      { key: 'blink', label: 'BLINKs', side: 'us' },
+      { key: 'bloom', label: 'BLOOMs', side: 'them' },
+    ],
     // What BLINKs put in the partner's category. One slot, and it is a slot we
     // have no nominee in — so this costs a blink nothing at all.
     // `slug` is the ballot's own category id and is THE KEY everything is
@@ -877,6 +904,69 @@ function tallyHtml(c) {
     + '</ol></details></div>';
 }
 
+// ── who is logging, by what they say they are ───────────────────────────────
+// The one competition this page can honestly run.
+//
+// It is NOT the bar. The bar is what each act received, and that cannot be
+// attributed to a fandom — everyone votes the whole ballot, so there is no
+// such thing as "votes from BLOOMs". What CAN be attributed, once somebody
+// says what they are, is the person: who turned up, and how much they logged.
+//
+// The average is printed as prominently as the total on purpose. BLINKs find
+// the counter on their own site and BLOOMs have to be told it exists, so the
+// headcount is lopsided for reasons that have nothing to do with effort, and a
+// raw total alone would read as one fandom beating the other when it is
+// measuring reach. Per person is the number that survives that.
+function fandomsHtml(c) {
+  if (c.status !== 'live' || !c.fandoms || !c.fandoms.length) return '';
+  var p = periodOf(c, c.tally, PERIOD);
+  var f = (p && p.fandoms) || null;
+  var lbl = (PERIODS.filter(function (x) { return x.k === PERIOD; })[0] || {}).label || '';
+
+  // Every declared side is listed even at zero: a side missing from the table
+  // reads as "they are not in this", and the empty state is the point before
+  // anybody has said anything.
+  var rows = c.fandoms.map(function (x) {
+    var got = (f && f[x.key]) || { people: 0, votes: 0 };
+    return { key: x.key, label: x.label, side: x.side,
+             people: got.people || 0, votes: got.votes || 0 };
+  });
+  var unsaid = (f && f.unsaid) || null;
+  var any = rows.some(function (r) { return r.people > 0; }) || (unsaid && unsaid.people > 0);
+  var most = Math.max.apply(null, rows.map(function (r) { return r.votes; }).concat([1]));
+
+  return '<div class="sub"><div class="sub-head">Who is logging · ' + esc(lbl) + '</div>'
+    + (any
+      ? '<div class="fandoms">'
+        + rows.map(function (r) {
+            var avg = r.people ? Math.round(r.votes / r.people * 10) / 10 : 0;
+            return '<div class="fandom fandom-' + esc(r.side) + '">'
+              + '<div class="fandom-top"><span class="fandom-name">' + esc(r.label) + '</span>'
+              + '<span class="fandom-n">' + fmt(r.people) + ' '
+              + (r.people === 1 ? 'person' : 'people') + '</span></div>'
+              + '<div class="fandom-track"><div class="fandom-fill" style="width:'
+              + (r.votes / most * 100) + '%"></div></div>'
+              + '<div class="fandom-foot"><b>' + fmt(r.votes) + '</b> votes logged'
+              + (r.people ? ' · <b>' + avg + '</b> each' : '') + '</div>'
+              + '</div>';
+          }).join('')
+        + '</div>'
+        + (unsaid && unsaid.people
+            ? '<div class="sub-note">' + fmt(unsaid.people) + ' '
+              + (unsaid.people === 1 ? 'person has' : 'people have')
+              + ' not said which side they are on, and ' + (unsaid.people === 1 ? 'their' : 'their')
+              + ' ' + fmt(unsaid.votes) + ' votes are in the totals above like everyone else’s.</div>'
+            : '')
+      : '<div class="board-empty">No one has said which side they are on yet. '
+        + 'The vote counter asks once, after your first round.</div>')
+    + '<div class="sub-note"><b>This is not the bar.</b> It counts <b>people</b>, by what they '
+    + 'tell us they are — the votes themselves still cannot be traced to a fandom, because '
+    + 'everyone here votes the whole ballot. <b>Votes each</b> is the fairer of the two numbers: '
+    + 'one side finds the counter on its own site and the other has to be told it exists, so a '
+    + 'headcount measures reach more than effort. Self-declared, and nobody is asked to prove it.'
+    + '</div></div>';
+}
+
 // ── the board ──────────────────────────────────────────────────────────────
 // Ranked on VOTES CAST and nothing else. /voting ranks on streaming — you are
 // unranked there until you have streamed today — and that is the right rule
@@ -1035,6 +1125,7 @@ function card(c) {
         + '</b> is in none of them.', c.theyGive)
     + '</div>'
     + boardHtml(c)
+    + fandomsHtml(c)
     + dayGridHtml(c)
     + '<div class="collab-actions">'
     + (ended || soon ? '' : '<a class="btn" href="' + esc(c.voteUrl)

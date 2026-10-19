@@ -338,6 +338,44 @@ console.log('\n--- A. a nominee the ballot has renamed is reported, not swallowe
         'but an ordinary vote for a rival is not');
 }
 
+console.log('\n--- A. the side a person says they are rides along with the post');
+// Self-declared, and it changes NOTHING about what is counted: the same picks
+// go either way. It only lets the board say who turned up — which is the one
+// competition this collab can honestly run, since the votes themselves cannot
+// be traced to a fandom.
+{
+  const bg = loadBackground();
+  bg.store.buToken = 'tok';
+  bg.store.kcaBallot = freshBallot();
+  const round = [{ q: '88888888-8888-8888-8888-888888888888', o: '77777777-7777-7777-7777-777777777777' }];
+  await bg.processKcaVote({ votes: round });
+  await settle();
+  const first = bg.posts.find((p) => p.url.includes('/api/collabs'));
+  check(first && !('fandom' in first.body), 'nothing is sent before they have said');
+
+  const said = loadBackground();
+  said.store.buToken = 'tok';
+  said.store.kcaBallot = freshBallot();
+  said.store.kcaFandom = 'bloom';
+  await said.processKcaVote({ votes: round });
+  await settle();
+  const posted = said.posts.find((p) => p.url.includes('/api/collabs'));
+  check(posted && posted.body.fandom === 'bloom', `and the chosen side rides along (${posted && posted.body.fandom})`);
+  check(posted && JSON.stringify(posted.body.cats) === JSON.stringify(first.body.cats),
+        'while the picks posted are identical either way');
+
+  // A key neither side of the collab knows counts nobody, so it is dropped
+  // rather than written: the board would show it as a fandom of one.
+  const junk = loadBackground();
+  junk.store.buToken = 'tok';
+  junk.store.kcaBallot = freshBallot();
+  junk.store.kcaFandom = 'not-a-fandom';
+  await junk.processKcaVote({ votes: round });
+  await settle();
+  const j = junk.posts.find((p) => p.url.includes('/api/collabs'));
+  check(j && !('fandom' in j.body), 'a side the collab does not have is not sent');
+}
+
 console.log('\n--- A. a pick in the collab’s category for someone else is nobody’s');
 {
   const bg = loadBackground();
@@ -535,6 +573,7 @@ console.log('\n--- B. panel.js reads the ballot off the page');
     window.__store = {};
     const onChanged = [];
     window.__fire = () => onChanged.forEach((f) => f({ kcaDiag: {} }, 'local'));
+    window.__written = {};
     window.chrome = {
       runtime: {
         id: 'test', lastError: null,
@@ -551,7 +590,11 @@ console.log('\n--- B. panel.js reads the ballot off the page');
       storage: {
         local: {
           get: (k, cb) => cb && cb(window.__store),
-          set: (o, cb) => { Object.assign(window.__store, o); cb && cb(); },
+          set: (o, cb) => {
+            Object.assign(window.__store, o);
+            Object.assign(window.__written, o);
+            cb && cb();
+          },
         },
         onChanged: { addListener(f) { onChanged.push(f); } },
       },
@@ -666,6 +709,46 @@ console.log('\n--- B. panel.js reads the ballot off the page');
   });
   check(heldPicks.shown && /2 picks didn.t reach the collab board/i.test(heldPicks.text),
         `picks that did not arrive are counted and named (${heldPicks.text.slice(-60)})`);
+
+  // ── the chooser ───────────────────────────────────────────────────────────
+  // It is asked after a round, inside the collab block, and a click has to
+  // survive the block being re-rendered — the innerHTML is rewritten on every
+  // storage change, so a handler bound to a chip would be gone by the time
+  // anyone clicked it.
+  const withPicks = { kcaCount: 1, kcaCats: { 'favorite-music-group-or-duo': 1 },
+                      kcaCollab: { day: '2026-10-19', cats: { 'favorite-global-music-star': 1 }, held: 0 } };
+  await p.evaluate((s0) => { window.__store = s0; window.__fire(); }, withPicks);
+  await p.waitForTimeout(100);
+  const chips = await p.evaluate(() => {
+    const r = document.getElementById('bu-vote-panel-host').shadowRoot;
+    return [...r.querySelectorAll('#kcacollab .fandom-chip')].map((b) => ({
+      key: b.getAttribute('data-fandom'), on: b.classList.contains('on'),
+    }));
+  });
+  check(chips.length === 2 && chips.every((c) => !c.on),
+        `both sides are offered and neither is preselected (${chips.map((c) => c.key).join('/')})`);
+  // A default would file everyone who ignores the question on one side of a
+  // board about who turned up, and most people ignore it.
+  check(!(await p.evaluate(() => window.__written && window.__written.kcaFandom)),
+        'and nothing is stored until they answer');
+
+  await p.evaluate(() => {
+    const r = document.getElementById('bu-vote-panel-host').shadowRoot;
+    r.querySelector('#kcacollab .fandom-chip[data-fandom="bloom"]').click();
+  });
+  await p.waitForTimeout(100);
+  check((await p.evaluate(() => window.__written && window.__written.kcaFandom)) === 'bloom',
+        'clicking a side stores it for the next post');
+  const lit = await p.evaluate((s0) => {
+    window.__store = Object.assign({}, s0, { kcaFandom: 'bloom' }); window.__fire();
+    return new Promise((res) => setTimeout(() => {
+      const r = document.getElementById('bu-vote-panel-host').shadowRoot;
+      res([...r.querySelectorAll('#kcacollab .fandom-chip')].map((b) => ({
+        key: b.getAttribute('data-fandom'), on: b.classList.contains('on') })));
+    }, 80));
+  }, withPicks);
+  check(lit.find((c) => c.key === 'bloom')?.on && !lit.find((c) => c.key === 'blink')?.on,
+        'and the panel shows which one is set');
 
   const sent = await p.evaluate(() => window.__sent);
   const asked = sent.find((m) => m.type === 'bu-kca-ballot-stale');

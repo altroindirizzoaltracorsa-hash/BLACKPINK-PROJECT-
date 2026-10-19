@@ -151,6 +151,32 @@ for (const [src, label] of [[EXT, 'the extension'], [APP, 'the app']]) {
         reports ? '' : 'a dropped pick would be silent again');
 }
 
+console.log('--- the two sides a person can say they are');
+// The key is what gets stored and counted. A key only the counter knows counts
+// nobody — the board would simply never see that side — and a key only the
+// page knows draws a column that can never fill. Same class of silent drift as
+// the category slugs above, with the same symptom: an honest-looking zero.
+const pageFandoms = page.fandoms || [];
+const extFandoms = COLLAB.fandoms || [];
+check(pageFandoms.length > 0, 'the page defines the sides', pageFandoms.map((f) => f.key).join(', '));
+check(extFandoms.length === pageFandoms.length,
+      'and the counter offers the same number of them', `${extFandoms.length} vs ${pageFandoms.length}`);
+for (const f of pageFandoms) {
+  check(extFandoms.some((x) => x.key === f.key), `the counter knows ${f.key}`,
+        extFandoms.map((x) => x.key).join(', '));
+}
+for (const f of extFandoms) {
+  check(pageFandoms.some((x) => x.key === f.key), `the page counts ${f.key}`,
+        pageFandoms.map((x) => x.key).join(', '));
+}
+// The panel has its own copy, because a content script cannot import from the
+// service worker — a third place for the same strings to drift.
+const PANEL = readFileSync(root + 'vote-extension/panel.js', 'utf8');
+for (const f of extFandoms) {
+  const inPanel = new RegExp(`key:\\s*'${f.key}'`).test(PANEL);
+  check(inPanel, `and the panel offers ${f.key} to click`, inPanel ? '' : 'not in KCA_FANDOMS');
+}
+
 console.log('--- the window the counter will post in');
 const until = COLLAB.until;
 check(Number.isFinite(until), 'the extension has a closing time', new Date(until).toISOString());

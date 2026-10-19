@@ -151,6 +151,15 @@
       .btcats.collab .vv{ color:#9fe3ff; }
       .btcats.collab .foot{ color:#6c93a8; font-size:10px; line-height:1.5; padding:6px 4px 2px; }
       .btcats.collab .held{ color:#ffd9a8; }
+      .btcats.collab .fandoms{ display:flex; flex-wrap:wrap; align-items:center; gap:5px;
+        padding:7px 4px 2px; border-top:1px dashed #6fd3ff18; margin-top:4px; }
+      .btcats.collab .fandoms-q{ flex:1 1 auto; font-size:10px; letter-spacing:.08em;
+        text-transform:uppercase; color:#6c93a8; }
+      .btcats.collab .fandom-chip{ font:inherit; font-size:10.5px; letter-spacing:.06em;
+        color:#9fe3ff; background:transparent; border:1px solid #6fd3ff44; border-radius:999px;
+        padding:3px 9px; cursor:pointer; }
+      .btcats.collab .fandom-chip:hover{ border-color:#6fd3ff; }
+      .btcats.collab .fandom-chip.on{ background:#6fd3ff1f; border-color:#6fd3ff; color:#d6f3ff; }
       .btdiag{ margin:0 12px 10px; background:#170a0f; border:1px solid #ffb02e44; border-radius:11px; padding:8px 10px; font-size:11px; line-height:1.45; color:#ffd9a8; }
       .btdiag b{ color:#fff2f6; }
       .btdiag .why{ display:block; color:#e8c79a; margin-top:3px; }
@@ -414,7 +423,15 @@
   //
   // Hidden entirely until the collab has recorded something, so it does not sit
   // on the panel of every blink who never votes the trade.
-  function renderKcaCollab(c) {
+  // Mirrors COLLAB.fandoms in background.js, for the same reason KCA_CAT_LABELS
+  // mirrors KCA_NOMINEES: a content script cannot import from the service
+  // worker. The KEY is what gets stored and counted; the label is only shown.
+  const KCA_FANDOMS = [
+    { key: 'blink', label: 'BLINK' },
+    { key: 'bloom', label: 'BLOOM' },
+  ];
+
+  function renderKcaCollab(c, fandom) {
     const el = $('kcacollab');
     if (!el) return;
     const cats = (c && c.cats) || {};
@@ -424,12 +441,31 @@
       .sort((a, b) => b[1] - a[1]);
     if (!entries.length && !held) { el.style.display = 'none'; return; }
     el.style.display = 'block';
+    // Which side they say they are. Asked HERE rather than before they vote:
+    // the question only makes sense once they have done a round, and a chooser
+    // on an empty panel is a form to fill in before anything has happened.
+    //
+    // Nothing is preselected. A default would file everyone who ignores it on
+    // one side of a board about who turned up, and most people ignore it.
+    const chosen = fandom || null;
+    const chooser = '<div class="fandoms">'
+      + '<span class="fandoms-q">' + (chosen ? 'Logging as' : 'Which side are you?') + '</span>'
+      + KCA_FANDOMS.map((f) =>
+          '<button type="button" class="fandom-chip' + (chosen === f.key ? ' on' : '')
+          + '" data-fandom="' + esc(f.key) + '"'
+          + (chosen === f.key ? ' aria-pressed="true"' : ' aria-pressed="false"')
+          + '>' + esc(f.label) + '</button>').join('')
+      + '</div>';
+
     el.innerHTML = '<div class="hd">Collab · today</div>'
       + entries.map(([k, v]) =>
           '<div class="btcrow"><span class="nm">' + esc(kcaCatLabel(k)) + '</span>'
           + '<span class="vv">' + fmt(v) + '</span></div>').join('')
+      + chooser
       + '<div class="foot">Every pick in the trade, theirs as well as ours — '
       + 'counted at blinksunited.com/collabs. <b>Not</b> added to your BLACKPINK total above.'
+      + (chosen ? '' : '<br>Saying which side you are on only counts <b>you</b> on the '
+          + 'collab board — it never changes what your votes count for.')
       + (held ? '<br><span class="held">' + fmt(held) + ' pick' + (held === 1 ? '' : 's')
           + ' didn’t reach the collab board.</span>' : '')
       + '</div>';
@@ -702,7 +738,7 @@
     if (AWARD === 'breaktudo') { renderBtCats(s.btCats); renderBtDiag(s.btDiag, s.btPendingN); }
     if (AWARD === 'kca') {
       renderBtCats(s.kcaCats, kcaCatLabel);
-      renderKcaCollab(s.kcaCollab);
+      renderKcaCollab(s.kcaCollab, s.kcaFandom);
       renderKcaDiag(s.kcaDiag, s.kcaPendingN);
     }
 
@@ -756,7 +792,7 @@
     if (at) at.onclick = () => { acctOpen = !acctOpen; refresh(); };
   }
 
-  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize', 'btCount', 'btLog', 'btDay', 'btCats', 'btDiag', 'btPendingN', 'kcaCount', 'kcaLog', 'kcaDay', 'kcaCats', 'kcaDiag', 'kcaPendingN', 'kcaCollab'];
+  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize', 'btCount', 'btLog', 'btDay', 'btCats', 'btDiag', 'btPendingN', 'kcaCount', 'kcaLog', 'kcaDay', 'kcaCats', 'kcaDiag', 'kcaPendingN', 'kcaCollab', 'kcaFandom'];
   // fitToViewport AFTER render: the panel's natural height depends on how many
   // category rows and log entries were just drawn.
   function refresh() { safeCtx(() => chrome.storage.local.get(KEYS, (s) => { applyLayout(s); render(s); fitToViewport(); })); }
@@ -840,6 +876,23 @@
   let justDragged = false;
   const setMin = (v) => safeCtx(() => chrome.storage.local.set({ buPanelMin: v }));
   elMin.onclick = (e) => { e.stopPropagation(); if (!justDragged) setMin(true); };
+  // Delegated, on the container rather than the chips: the block's innerHTML is
+  // rewritten on every storage change, so a handler bound to a chip would be
+  // thrown away the first time a vote came in.
+  const elCollab = $('kcacollab');
+  if (elCollab) {
+    elCollab.addEventListener('click', (e) => {
+      const btn = e.target && e.target.closest ? e.target.closest('.fandom-chip') : null;
+      if (!btn) return;
+      const key = btn.getAttribute('data-fandom');
+      if (!KCA_FANDOMS.some((f) => f.key === key)) return;
+      // Written here and read by the worker on the next post. It is also sent
+      // back over the person's earlier days of this collab by the API, so the
+      // day they joined is not stuck as "didn't say".
+      try { chrome.storage.local.set({ kcaFandom: key }); } catch (_) {}
+    });
+  }
+
   elPill.addEventListener('click', () => { if (!justDragged) setMin(false); });
 
   // ── resize (drag the corner grip; double-click it to go back to default) ──
