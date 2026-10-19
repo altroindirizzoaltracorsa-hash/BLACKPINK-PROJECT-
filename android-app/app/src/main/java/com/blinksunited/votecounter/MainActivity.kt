@@ -300,7 +300,8 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         if (res.total <= 0) {
             if (wantsCollab) {
                 io.execute {
-                    val ok = VoteApi.postCollabVotes(token!!, KcaVoteParser.COLLAB_ID, res.collabCats)
+                    val ok = VoteApi.postCollabVotes(
+                        token!!, KcaVoteParser.COLLAB_ID, res.collabCats, kcaFandom())
                     runOnUiThread {
                         toast(if (ok) "🤝 ${res.collabTotal} to the collab"
                               else "⚠ The collab board didn’t take that round")
@@ -325,7 +326,8 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
                 // pick for the partner's act is not a BLACKPINK vote, so it is
                 // reported beside that total and never added to it.
                 val collabOk = if (wantsCollab)
-                    VoteApi.postCollabVotes(token, KcaVoteParser.COLLAB_ID, res.collabCats) else null
+                    VoteApi.postCollabVotes(
+                        token, KcaVoteParser.COLLAB_ID, res.collabCats, kcaFandom()) else null
                 val ok = VoteApi.postKcaVotes(token, res.total, res.cats)
                 if (!ok) addKcaPending(res.total) else flushKcaPending(token)
                 val msg = StringBuilder(
@@ -396,6 +398,51 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
                 textSize = 13f
                 setPadding(0, 6, 0, 6)
             })
+        }
+        if (System.currentTimeMillis() < KcaVoteParser.COLLAB_UNTIL_MS) {
+            acctList.addView(kcaFandomRow())
+        }
+    }
+
+    /** The side this person says they are, or null until they say. */
+    private fun kcaFandom(): String? {
+        val got = prefs.getString("kcaFandom", null)
+        return if (KcaVoteParser.FANDOMS.any { it.first == got }) got else null
+    }
+
+    /**
+     * Which side are you? Asked here rather than nowhere: without it every blink
+     * and every BLOOM voting from the app counts as "didn't say" on the collab
+     * board, and the people most likely to be on a phone are the ones the
+     * question is for.
+     *
+     * NOTHING IS PRESELECTED, and a side is never assumed from which app you
+     * happen to be using — it would file every BLOOM who ignores this under
+     * BLINKs, and most people ignore it. It only counts YOU on the collab
+     * board; it changes nothing about what your votes count for.
+     */
+    private fun kcaFandomRow(): android.view.View {
+        val chosen = kcaFandom()
+        return android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            setPadding(0, 14, 0, 2)
+            addView(android.widget.TextView(this@MainActivity).apply {
+                text = if (chosen == null) "Which side are you?" else "Logging as"
+                textSize = 12f
+                alpha = 0.7f
+            })
+            KcaVoteParser.FANDOMS.forEach { (key, label) ->
+                addView(android.widget.TextView(this@MainActivity).apply {
+                    text = (if (chosen == key) "● " else "○ ") + label
+                    textSize = 12f
+                    setPadding(26, 0, 0, 0)
+                    setOnClickListener {
+                        prefs.edit().putString("kcaFandom", key).apply()
+                        renderKcaCategories()
+                        toast("Logging as $label on the collab board — it doesn’t change your votes")
+                    }
+                })
+            }
         }
     }
 

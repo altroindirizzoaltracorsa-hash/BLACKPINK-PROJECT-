@@ -115,13 +115,22 @@ object VoteApi {
      * a collab post failing is not that. The Kids' Choice post is the one that
      * decides whether the counter is working.
      */
-    fun postCollabVotes(token: String, collabId: String, cats: Map<String, Int>): Boolean {
+    fun postCollabVotes(
+        token: String,
+        collabId: String,
+        cats: Map<String, Int>,
+        fandom: String? = null
+    ): Boolean {
         if (cats.isEmpty()) return false
         return try {
             val body = JSONObject().apply {
                 put("id", collabId)
                 put("extToken", token)
                 put("cats", JSONObject().apply { cats.forEach { (k, v) -> put(k, v) } })
+                // Only when they have actually said. Sending a default would file
+                // everyone who never answered on one side of a board about who
+                // turned up — and most people never answer.
+                if (fandom != null) put("fandom", fandom)
             }.toString()
             postJson(COLLAB_ENDPOINT, body, 3) in 200..299
         } catch (e: Exception) {

@@ -75,6 +75,20 @@ object KcaVoteParser {
         "favorite-global-music-star" to "BINI"
     )
 
+    /**
+     * The sides a person can say they belong to, in step with COLLAB.fandoms in
+     * background.js and COLLABS[].fandoms on /collabs. The KEY is what the board
+     * counts people by; a key only this file knows counts nobody.
+     *
+     * It changes nothing about what is counted. The same picks are posted either
+     * way, and the collab's per-act totals stay pooled — everyone votes the whole
+     * ballot, so no vote belongs to a side. This counts PEOPLE.
+     */
+    val FANDOMS: List<Pair<String, String>> = listOf(
+        "blink" to "BLINK",
+        "bloom" to "BLOOM"
+    )
+
     /** Past this the collab is over and the app stops posting to it. */
     const val COLLAB_ID = "bvp-kca-2026"
     // 2026-11-14T07:59:00Z. Written as an epoch literal because a Kotlin const

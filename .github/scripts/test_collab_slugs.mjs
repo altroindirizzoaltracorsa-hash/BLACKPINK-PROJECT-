@@ -169,6 +169,18 @@ for (const f of extFandoms) {
   check(pageFandoms.some((x) => x.key === f.key), `the page counts ${f.key}`,
         pageFandoms.map((x) => x.key).join(', '));
 }
+// The app carries a fourth copy, in Kotlin, and its failure mode is the worst:
+// it is installed rather than loaded from the site, so a side it does not know
+// counts nobody until somebody reinstalls.
+for (const f of extFandoms) {
+  const inApp = new RegExp(`"${f.key}" to "`).test(APP);
+  check(inApp, `and the app offers ${f.key}`, inApp ? '' : 'not in KcaVoteParser.FANDOMS');
+}
+const appSends = /put\("fandom", fandom\)/.test(
+  readFileSync(root + 'android-app/app/src/main/java/com/blinksunited/votecounter/VoteApi.kt', 'utf8'));
+check(appSends, 'and actually sends it with the collab post',
+      appSends ? '' : 'the chooser would store a side and post nothing');
+
 // The panel has its own copy, because a content script cannot import from the
 // service worker — a third place for the same strings to drift.
 const PANEL = readFileSync(root + 'vote-extension/panel.js', 'utf8');
