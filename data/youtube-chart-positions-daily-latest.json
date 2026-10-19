@@ -1,29 +1,134 @@
 {
-  "generatedAt": "2026-10-18T10:35:12.937Z",
+  "generatedAt": "2026-10-19T12:21:25.476Z",
   "chartType": "daily",
-  "date": "2026-10-18",
+  "date": "2026-10-19",
   "regions": {
+    "global": {
+      "region": "Global",
+      "gl": "US",
+      "period": {
+        "entityId": "daily:20261019:global",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "global"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 40,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 1324122,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 95,
+          "name": "One Of The Girls",
+          "artists": [
+            "The Weeknd",
+            "JENNIE",
+            "Lily-Rose Depp"
+          ],
+          "videoId": "Mx92lTYxrJQ",
+          "viewCount": 904180,
+          "releaseDate": "2023-07-06"
+        }
+      ]
+    },
+    "kr": {
+      "region": "South Korea",
+      "gl": "KR",
+      "period": {
+        "entityId": "daily:20261019:kr",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "kr"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
     "jp": {
       "region": "Japan",
       "gl": "JP",
       "period": {
-        "entityId": "daily:20261018:jp",
+        "entityId": "daily:20261019:jp",
         "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
+        "startDate": "20261019",
+        "endDate": "20261019",
         "region": "jp"
       },
       "totalEntries": 100,
       "hits": []
     },
+    "tw": {
+      "region": "Taiwan",
+      "gl": "TW",
+      "period": {
+        "entityId": "daily:20261019:tw",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "tw"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 62,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 20164,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
+    "hk": {
+      "region": "Hong Kong",
+      "gl": "HK",
+      "period": {
+        "entityId": "daily:20261019:hk",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "hk"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 55,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 4896,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
     "id": {
       "region": "Indonesia",
       "gl": "ID",
       "period": {
-        "entityId": "daily:20261018:id",
+        "entityId": "daily:20261019:id",
         "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
+        "startDate": "20261019",
+        "endDate": "20261019",
         "region": "id"
       },
       "totalEntries": 100,
@@ -33,11 +138,64 @@
       "region": "Thailand",
       "gl": "TH",
       "period": {
-        "entityId": "daily:20261018:th",
+        "entityId": "daily:20261019:th",
         "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
+        "startDate": "20261019",
+        "endDate": "20261019",
         "region": "th"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 45,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 175187,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 51,
+          "name": "One Of The Girls",
+          "artists": [
+            "The Weeknd",
+            "JENNIE",
+            "Lily-Rose Depp"
+          ],
+          "videoId": "Mx92lTYxrJQ",
+          "viewCount": 147007,
+          "releaseDate": "2023-07-06"
+        }
+      ]
+    },
+    "ph": {
+      "region": "Philippines",
+      "gl": "PH",
+      "period": {
+        "entityId": "daily:20261019:ph",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "ph"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "my": {
+      "region": "Malaysia",
+      "gl": "MY",
+      "period": {
+        "entityId": "daily:20261019:my",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "my"
       },
       "totalEntries": 100,
       "hits": [
@@ -50,7 +208,60 @@
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 185145,
+          "viewCount": 35756,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 63,
+          "name": "One Of The Girls",
+          "artists": [
+            "The Weeknd",
+            "JENNIE",
+            "Lily-Rose Depp"
+          ],
+          "videoId": "Mx92lTYxrJQ",
+          "viewCount": 23015,
+          "releaseDate": "2023-07-06"
+        }
+      ]
+    },
+    "vn": {
+      "region": "Vietnam",
+      "gl": "VN",
+      "period": {
+        "entityId": "daily:20261019:vn",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "vn"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "sg": {
+      "region": "Singapore",
+      "gl": "SG",
+      "period": {
+        "entityId": "daily:20261019:sg",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "sg"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 16,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 6623,
           "releaseDate": "2026-09-03"
         },
         {
@@ -64,47 +275,7 @@
             "Lily-Rose Depp"
           ],
           "videoId": "Mx92lTYxrJQ",
-          "viewCount": 157015,
-          "releaseDate": "2023-07-06"
-        }
-      ]
-    },
-    "my": {
-      "region": "Malaysia",
-      "gl": "MY",
-      "period": {
-        "entityId": "daily:20261018:my",
-        "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
-        "region": "my"
-      },
-      "totalEntries": 100,
-      "hits": [
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "LISA",
-          "position": 30,
-          "name": "SaWaDiKa (Official Music Video)",
-          "artists": [
-            "LISA"
-          ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 36511,
-          "releaseDate": "2026-09-03"
-        },
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "JENNIE",
-          "position": 59,
-          "name": "One Of The Girls",
-          "artists": [
-            "The Weeknd",
-            "JENNIE",
-            "Lily-Rose Depp"
-          ],
-          "videoId": "Mx92lTYxrJQ",
-          "viewCount": 23177,
+          "viewCount": 3590,
           "releaseDate": "2023-07-06"
         }
       ]
@@ -113,23 +284,49 @@
       "region": "India",
       "gl": "IN",
       "period": {
-        "entityId": "daily:20261018:in",
+        "entityId": "daily:20261019:in",
         "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
+        "startDate": "20261019",
+        "endDate": "20261019",
         "region": "in"
       },
       "totalEntries": 100,
       "hits": []
     },
+    "au": {
+      "region": "Australia",
+      "gl": "AU",
+      "period": {
+        "entityId": "daily:20261019:au",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "au"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 48,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 13971,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
     "nz": {
       "region": "New Zealand",
       "gl": "NZ",
       "period": {
-        "entityId": "daily:20261018:nz",
+        "entityId": "daily:20261019:nz",
         "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
+        "startDate": "20261019",
+        "endDate": "20261019",
         "region": "nz"
       },
       "totalEntries": 100,
@@ -137,13 +334,13 @@
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 72,
+          "position": 85,
           "name": "SaWaDiKa (Official Music Video)",
           "artists": [
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 2411,
+          "viewCount": 2459,
           "releaseDate": "2026-09-03"
         }
       ]
@@ -152,10 +349,10 @@
       "region": "United States",
       "gl": "US",
       "period": {
-        "entityId": "daily:20261018:us",
+        "entityId": "daily:20261019:us",
         "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
+        "startDate": "20261019",
+        "endDate": "20261019",
         "region": "us"
       },
       "totalEntries": 100,
@@ -163,13 +360,39 @@
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 70,
+          "position": 85,
           "name": "SaWaDiKa (Official Music Video)",
           "artists": [
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 86130,
+          "viewCount": 85793,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
+    "ca": {
+      "region": "Canada",
+      "gl": "CA",
+      "period": {
+        "entityId": "daily:20261019:ca",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "ca"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 69,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 10768,
           "releaseDate": "2026-09-03"
         }
       ]
@@ -178,11 +401,24 @@
       "region": "Mexico",
       "gl": "MX",
       "period": {
-        "entityId": "daily:20261018:mx",
+        "entityId": "daily:20261019:mx",
         "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
+        "startDate": "20261019",
+        "endDate": "20261019",
         "region": "mx"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "br": {
+      "region": "Brazil",
+      "gl": "BR",
+      "period": {
+        "entityId": "daily:20261019:br",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "br"
       },
       "totalEntries": 100,
       "hits": []
@@ -191,11 +427,24 @@
       "region": "Argentina",
       "gl": "AR",
       "period": {
-        "entityId": "daily:20261018:ar",
+        "entityId": "daily:20261019:ar",
         "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
+        "startDate": "20261019",
+        "endDate": "20261019",
         "region": "ar"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "cl": {
+      "region": "Chile",
+      "gl": "CL",
+      "period": {
+        "entityId": "daily:20261019:cl",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "cl"
       },
       "totalEntries": 100,
       "hits": []
@@ -204,11 +453,24 @@
       "region": "Colombia",
       "gl": "CO",
       "period": {
-        "entityId": "daily:20261018:co",
+        "entityId": "daily:20261019:co",
         "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
+        "startDate": "20261019",
+        "endDate": "20261019",
         "region": "co"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "pe": {
+      "region": "Peru",
+      "gl": "PE",
+      "period": {
+        "entityId": "daily:20261019:pe",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "pe"
       },
       "totalEntries": 100,
       "hits": []
@@ -217,11 +479,50 @@
       "region": "United Kingdom",
       "gl": "GB",
       "period": {
-        "entityId": "daily:20261018:gb",
+        "entityId": "daily:20261019:gb",
         "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
+        "startDate": "20261019",
+        "endDate": "20261019",
         "region": "gb"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 91,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 15104,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
+    "fr": {
+      "region": "France",
+      "gl": "FR",
+      "period": {
+        "entityId": "daily:20261019:fr",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "fr"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "de": {
+      "region": "Germany",
+      "gl": "DE",
+      "period": {
+        "entityId": "daily:20261019:de",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "de"
       },
       "totalEntries": 100,
       "hits": [
@@ -234,33 +535,7 @@
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 14715,
-          "releaseDate": "2026-09-03"
-        }
-      ]
-    },
-    "de": {
-      "region": "Germany",
-      "gl": "DE",
-      "period": {
-        "entityId": "daily:20261018:de",
-        "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
-        "region": "de"
-      },
-      "totalEntries": 100,
-      "hits": [
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "LISA",
-          "position": 71,
-          "name": "SaWaDiKa (Official Music Video)",
-          "artists": [
-            "LISA"
-          ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 20076,
+          "viewCount": 20522,
           "releaseDate": "2026-09-03"
         }
       ]
@@ -269,11 +544,24 @@
       "region": "Spain",
       "gl": "ES",
       "period": {
-        "entityId": "daily:20261018:es",
+        "entityId": "daily:20261019:es",
         "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
+        "startDate": "20261019",
+        "endDate": "20261019",
         "region": "es"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "it": {
+      "region": "Italy",
+      "gl": "IT",
+      "period": {
+        "entityId": "daily:20261019:it",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "it"
       },
       "totalEntries": 100,
       "hits": []
@@ -282,10 +570,10 @@
       "region": "Netherlands",
       "gl": "NL",
       "period": {
-        "entityId": "daily:20261018:nl",
+        "entityId": "daily:20261019:nl",
         "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
+        "startDate": "20261019",
+        "endDate": "20261019",
         "region": "nl"
       },
       "totalEntries": 100,
@@ -293,13 +581,13 @@
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 52,
+          "position": 68,
           "name": "SaWaDiKa (Official Music Video)",
           "artists": [
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 5028,
+          "viewCount": 4939,
           "releaseDate": "2026-09-03"
         }
       ]
@@ -308,10 +596,10 @@
       "region": "Sweden",
       "gl": "SE",
       "period": {
-        "entityId": "daily:20261018:se",
+        "entityId": "daily:20261019:se",
         "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
+        "startDate": "20261019",
+        "endDate": "20261019",
         "region": "se"
       },
       "totalEntries": 100,
@@ -319,13 +607,39 @@
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 61,
+          "position": 80,
           "name": "SaWaDiKa (Official Music Video)",
           "artists": [
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 2376,
+          "viewCount": 2278,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
+    "no": {
+      "region": "Norway",
+      "gl": "NO",
+      "period": {
+        "entityId": "daily:20261019:no",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "no"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 60,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 1302,
           "releaseDate": "2026-09-03"
         }
       ]
@@ -334,10 +648,10 @@
       "region": "Poland",
       "gl": "PL",
       "period": {
-        "entityId": "daily:20261018:pl",
+        "entityId": "daily:20261019:pl",
         "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
+        "startDate": "20261019",
+        "endDate": "20261019",
         "region": "pl"
       },
       "totalEntries": 100,
@@ -347,18 +661,44 @@
       "region": "Turkey",
       "gl": "TR",
       "period": {
-        "entityId": "daily:20261018:tr",
+        "entityId": "daily:20261019:tr",
         "periodType": "daily",
-        "startDate": "20261018",
-        "endDate": "20261018",
+        "startDate": "20261019",
+        "endDate": "20261019",
         "region": "tr"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "sa": {
+      "region": "Saudi Arabia",
+      "gl": "SA",
+      "period": {
+        "entityId": "daily:20261019:sa",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "sa"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "za": {
+      "region": "South Africa",
+      "gl": "ZA",
+      "period": {
+        "entityId": "daily:20261019:za",
+        "periodType": "daily",
+        "startDate": "20261019",
+        "endDate": "20261019",
+        "region": "za"
       },
       "totalEntries": 100,
       "hits": []
     }
   },
   "summary": {
-    "totalHits": 10,
-    "regionsChecked": 17
+    "totalHits": 19,
+    "regionsChecked": 34
   }
 }
