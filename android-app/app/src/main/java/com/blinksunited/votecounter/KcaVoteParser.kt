@@ -89,6 +89,30 @@ object KcaVoteParser {
     }
 
     /**
+     * Does this option name the nominee we are looking for? Port of kcaTitleIs
+     * in background.js, and it must stay a port: the two counting the same
+     * ballot differently is the whole reason they are written in parallel.
+     *
+     * Exact first. The fallback is for the one category the ballot labels by
+     * region — Favorite Global Music Star lists BINI as "Asia: BINI" — which
+     * against an exact match is a different string, so every BINI pick was
+     * dropped and looked exactly like nobody voting. The prefix is not written
+     * into the table instead: it depends on the region the ballot is served
+     * for, so pinning it would fix one ballot and break the rest.
+     *
+     * Everything after the first colon is compared WHOLE, so a different act
+     * is still refused: "Asia: BTS" does not become BINI.
+     */
+    private fun titleIs(want: String, title: String?): Boolean {
+        val w = norm(want)
+        if (w.isEmpty()) return false
+        val t = title ?: ""
+        if (norm(t) == w) return true
+        val i = t.indexOf(':')
+        return i > -1 && norm(t.substring(i + 1)) == w
+    }
+
+    /**
      * @param json what counter.js posted: { picks:[{slug,title}], marks, sig, ballot }.
      *   `picks` are already resolved from option ids in the page, where the ballot is.
      */
@@ -123,11 +147,11 @@ object KcaVoteParser {
                 // Checked for every pick INCLUDING the partner's, and before the
                 // "is it ours" test below, which rightly calls a BINI pick not ours.
                 COLLAB_NOMINEES[slug]?.let { want ->
-                    if (norm(want) == norm(title)) collab[slug] = (collab[slug] ?: 0) + 1
+                    if (titleIs(want, title)) collab[slug] = (collab[slug] ?: 0) + 1
                 }
 
                 val mine = KCA_NOMINEES[slug] ?: continue
-                if (norm(mine.first) != norm(title)) continue
+                if (!titleIs(mine.first, title)) continue
                 cats[slug] = (cats[slug] ?: 0) + 1
                 matched += 1
                 lastLabel = CATEGORIES[slug] ?: slug

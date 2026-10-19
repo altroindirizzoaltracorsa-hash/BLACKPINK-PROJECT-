@@ -139,6 +139,8 @@
   .pick-cat { flex: 1 1 auto; font-size: 0.6rem; letter-spacing: 0.1em;
     text-transform: uppercase; color: var(--muted); }
   .pick-name { font-size: 0.82rem; color: var(--white); }
+  .pick-note { flex: 1 0 100%; font-size: 0.62rem; color: var(--muted); margin-top: -0.15rem; }
+  .pick-note b { color: var(--them); font-weight: 400; }
   .tally-note b { color: var(--white); font-weight: 500; }
   .tally-note .us { color: var(--pink); }
   .tally-note .them { color: var(--them); }
@@ -386,7 +388,7 @@
     <div class="get">
       <div class="get-head">
         <span class="get-title">🧩 Get the Vote Counter</span>
-        <span class="get-ver">v1.9.1</span>
+        <span class="get-ver">v1.9.2</span>
       </div>
       <p class="get-sub">
         It counts the votes <b>you</b> cast on kca.nick.tv and logs them to the board above —
@@ -396,8 +398,8 @@
         <b>app</b> does the same job — you vote inside it.
       </p>
       <div class="get-dl">
-        <a class="get-btn" href="/vote-extension-v1.9.1-chrome.zip" download>⬇ Desktop<small>Chrome · Edge · Brave · Opera</small></a>
-        <a class="get-btn ghost" href="/vote-extension-v1.9.1-android.zip" download>⬇ Android extension<small>Edge Canary · Quetta</small></a>
+        <a class="get-btn" href="/vote-extension-v1.9.2-chrome.zip" download>⬇ Desktop<small>Chrome · Edge · Brave · Opera</small></a>
+        <a class="get-btn ghost" href="/vote-extension-v1.9.2-android.zip" download>⬇ Android extension<small>Edge Canary · Quetta</small></a>
         <a class="get-btn ghost" href="/blinks-united-vote-counter.apk" download>⬇ Android app<small>.apk · no extension needed</small></a>
       </div>
       <p class="get-note">
@@ -405,7 +407,7 @@
         <b>Link my account</b> inside it once. There's an
         <a href="/vote-counter-guide.html" target="_blank" rel="noopener">illustrated guide ↗</a>
         if any of that is unfamiliar.<br>
-        <b>Already have it?</b> Update to v1.9.1. Older versions either don't know this collab
+        <b>Already have it?</b> Update to v1.9.2. Older versions either don't know this collab
         exists — and count only the BLACKPINK side of your ballot — or count the whole trade
         without ever showing it, which leaves no way to tell a counted pick from a lost one.
       </p>
@@ -552,7 +554,12 @@ var COLLABS = [
     // field for a while, which meant the page keyed on a human label the ballot
     // has never heard of and nothing could ever have matched.
     weGive: [
-      { slug: 'favorite-global-music-star', cat: 'Favorite Global Music Star', nominee: 'BINI' },
+      // `onBallot` differs from `nominee` because this category is listed by
+      // region. Read off the live ballot by probe-kca-ballot.yml on 19 Oct —
+      // and it varies with the region the ballot is served for, so it is shown
+      // as an example rather than matched on.
+      { slug: 'favorite-global-music-star', cat: 'Favorite Global Music Star', nominee: 'BINI',
+        onBallot: 'Asia: BINI' },
     ],
     // What their side puts in ours. Read off the live ballot (probe-kca.yml) and
     // in step with KCA_CATEGORIES in index.html.
@@ -667,7 +674,14 @@ function sideHtml(cls, head, who, picks) {
         // reads as "we would rather you didn't bother" — which is the opposite
         // of the case. See the note on `required` in the data below.
         return '<div class="pick"><span class="pick-cat">' + esc(p.cat) + '</span>'
-          + '<span class="pick-name">' + esc(p.nominee) + '</span></div>';
+          + '<span class="pick-name">' + esc(p.nominee) + '</span></div>'
+          // `onBallot` is how the ballot writes the name when that differs from
+          // how anyone says it. Worth printing: the one category here is listed
+          // by region, so a blink scanning for "BINI" is looking for a line
+          // that actually reads "Asia: BINI". It is also what the counter has
+          // to match, and it dropped every pick until it did.
+          + (p.onBallot ? '<div class="pick-note">on the ballot: <b>'
+              + esc(p.onBallot) + '</b></div>' : '');
       }).join('')
     + '</div>';
 }

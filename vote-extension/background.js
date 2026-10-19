@@ -887,6 +887,43 @@ function kcaNorm(s) {
     .toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
+// Does this option name the nominee we are looking for?
+//
+// Exact first, and that is what counted BLACKPINK, ROSÉ and Dracula. The
+// fallback is here because the ballot labels one category by region:
+// Favorite Global Music Star lists BINI as "Asia: BINI" (read off the live
+// ballot by probe-kca-ballot.yml, 19 Oct). Against an exact match that is a
+// different string, so every BINI pick was dropped — silently, because a pick
+// for somebody else in our category looks the same from here.
+//
+// The prefix is NOT written into the nominee table instead. It depends on the
+// region the ballot is served for, and the vote payload carries a `region`
+// field, so "Asia: " is the label one visitor sees and not a property of the
+// nominee. Pinning it would fix the US ballot and break everyone else's.
+//
+// What is compared is everything after the first colon, WHOLE — so this still
+// refuses a different act. "Asia: BTS" does not become BINI.
+function kcaTitleIs(want, title) {
+  const w = kcaNorm(want);
+  if (!w) return false;
+  const t = String(title == null ? '' : title);
+  if (kcaNorm(t) === w) return true;
+  const i = t.indexOf(':');
+  return i > -1 && kcaNorm(t.slice(i + 1)) === w;
+}
+
+// A title that CONTAINS the nominee but does not match it. That means the
+// ballot has decorated the name in some way this does not handle and the vote
+// is being thrown away without a word — the exact failure above, which took a
+// person noticing a zero to find.
+//
+// The contains test is what stops this firing on every vote for a rival: "BTS"
+// does not contain "BLACKPINK". It can only fire on a near miss.
+function kcaNameNearMiss(want, title) {
+  const w = kcaNorm(want), t = kcaNorm(title);
+  return !!w && !!t && t !== w && t.indexOf(w) > -1;
+}
+
 // ── the ballot map ──────────────────────────────────────────────────────────
 // { ts, byOption: { <option_id>: { t: title, q: question_id, s: slug } } }
 // Refreshed by panel.js on page load when stale. Sticky in storage so a vote
@@ -1073,7 +1110,7 @@ async function processKcaVote(e) {
   }
 
   let n = 0, unknown = 0, notOurs = 0;
-  const cats = {}, perMember = {}, collabCats = {};
+  const cats = {}, perMember = {}, collabCats = {}, near = [];
   for (const v of votes) {
     const opt = ballot.byOption[v.o];
     if (!opt) { unknown += 1; continue; }
@@ -1081,11 +1118,13 @@ async function processKcaVote(e) {
     // INCLUDING the partner's — and before the "is it ours" test below, which
     // rightly calls a BINI pick not ours.
     const inCollab = COLLAB.nominees[opt.s];
-    if (inCollab && kcaNorm(inCollab) === kcaNorm(opt.t)) {
-      collabCats[opt.s] = (collabCats[opt.s] || 0) + 1;
+    if (inCollab) {
+      if (kcaTitleIs(inCollab, opt.t)) collabCats[opt.s] = (collabCats[opt.s] || 0) + 1;
+      else if (kcaNameNearMiss(inCollab, opt.t)) near.push({ slug: opt.s, want: inCollab, got: opt.t });
     }
     const mine = KCA_NOMINEES[opt.s];
-    if (!mine || kcaNorm(mine.nominee) !== kcaNorm(opt.t)) {
+    if (!mine || !kcaTitleIs(mine.nominee, opt.t)) {
+      if (mine && kcaNameNearMiss(mine.nominee, opt.t)) near.push({ slug: opt.s, want: mine.nominee, got: opt.t });
       notOurs += 1;
       continue;
     }
@@ -1093,6 +1132,11 @@ async function processKcaVote(e) {
     cats[opt.s] = (cats[opt.s] || 0) + 1;
     perMember[mine.who] = (perMember[mine.who] || 0) + 1;
   }
+
+  // A nominee the ballot has renamed is worth saying out loud, whichever side
+  // it is on: it is a vote being dropped, and it cannot be told apart from
+  // "nobody voted" by looking at a total.
+  if (near.length) kcaDiag({ kind: 'nominee-renamed', slug: near[0].slug, want: near[0].want, got: near[0].got });
 
   // Sent before the early return below: a round can carry a BINI pick and none
   // of ours — somebody voting the other side's category and skipping ours is

@@ -529,6 +529,15 @@
       msg = '<b>' + fmt(last.marks) + ' pick' + (last.marks === 1 ? '' : 's') + ' in that round weren’t recognised.</b><span class="why">The ballot may have changed since we last read it. Reload the page and the next round will count.</span>';
     } else if (last.kind === 'rejected') {
       msg = '<b>Nickelodeon rejected that round (' + esc(String(last.status || '?')) + ').</b><span class="why">Nothing was counted — try the round again.</span>';
+    } else if (last.kind === 'nominee-renamed') {
+      // The ballot wrote a nominee's name in a way the counter did not expect,
+      // so that pick counted for nobody. Shown with BOTH strings, because the
+      // fix is a one-line table change and this message is the whole bug
+      // report — the alternative is a zero that looks like nobody voted.
+      msg = '<b>A pick wasn’t counted — the ballot named them differently.</b>'
+        + '<span class="why">It says “' + esc(last.got || '?') + '” where we expect “'
+        + esc(last.want || '?') + '”. Send us this and the next round will count. '
+        + 'Everything else in that round counted as normal.</span>';
     } else if (last.kind === 'collab-post-failed') {
       // Deliberately NOT silent any more. This was the one kind the renderer
       // fell through and hid, so a collab pick that reached nothing looked

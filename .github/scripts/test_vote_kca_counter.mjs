@@ -266,6 +266,78 @@ console.log('\n--- A. the collab: the partner’s pick counts there and nowhere 
   check(bg.store.kcaCollab && !bg.store.kcaCollab.held, 'and nothing is marked as held');
 }
 
+console.log('\n--- A. the ballot labels that category by region, and it still counts');
+// The real bug, from the live ballot: Favorite Global Music Star lists BINI as
+// "Asia: BINI". Against an exact match that is a different string, so every
+// BINI pick was dropped — and a dropped pick is indistinguishable from nobody
+// voting, which is why it took a person noticing a zero on the board.
+//
+// The prefix is not pinned into the table: it depends on the region the ballot
+// is served for, so the match has to tolerate any prefix rather than that one.
+{
+  for (const written of ['Asia: BINI', 'Europe: BINI', 'BINI']) {
+    const bg = loadBackground();
+    bg.store.buToken = 'tok';
+    const ballot = freshBallot();
+    ballot.byOption['77777777-7777-7777-7777-777777777777'].t = written;
+    bg.store.kcaBallot = ballot;
+    await bg.processKcaVote({ votes: [
+      { q: '88888888-8888-8888-8888-888888888888', o: '77777777-7777-7777-7777-777777777777' },
+    ] });
+    await settle();
+    const collab = bg.posts.find((p) => p.url.includes('/api/collabs'));
+    check(collab && collab.body.cats['favorite-global-music-star'] === 1,
+          `"${written}" counts for BINI`);
+    check(!(bg.store.kcaDiag || []).some((e) => e.kind === 'nominee-renamed'),
+          `and "${written}" is not reported as a rename`);
+  }
+  // …while a prefix in front of somebody else is still somebody else. The
+  // fallback compares the whole tail, so this is a different act, not a match.
+  const bg = loadBackground();
+  bg.store.buToken = 'tok';
+  const ballot = freshBallot();
+  ballot.byOption['aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'].t = 'Asia: Someone';
+  bg.store.kcaBallot = ballot;
+  await bg.processKcaVote({ votes: [
+    { q: '88888888-8888-8888-8888-888888888888', o: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' },
+  ] });
+  await settle();
+  check(!bg.posts.length, 'a region prefix on a rival does not make them ours');
+}
+
+console.log('\n--- A. a nominee the ballot has renamed is reported, not swallowed');
+// The diagnostic that would have found the above in a minute instead of a
+// release. It fires only on a NEAR miss — a title that contains the nominee
+// but does not match — so a vote for a rival never trips it.
+{
+  const bg = loadBackground();
+  bg.store.buToken = 'tok';
+  const ballot = freshBallot();
+  ballot.byOption['77777777-7777-7777-7777-777777777777'].t = 'BINI (Philippines)';
+  bg.store.kcaBallot = ballot;
+  await bg.processKcaVote({ votes: [
+    { q: '1ae0e782-6c39-4329-88ae-137533d9f497', o: 'aa2a878e-15d2-455f-9829-1b55fd948c81' },
+    { q: '88888888-8888-8888-8888-888888888888', o: '77777777-7777-7777-7777-777777777777' },
+  ] });
+  await settle();
+  const d = (bg.store.kcaDiag || []).find((e) => e.kind === 'nominee-renamed');
+  check(!!d, 'a decorated name we do not handle is reported');
+  check(d && d.got === 'BINI (Philippines)' && d.want === 'BINI',
+        `with both strings, so the fix is one line (${d && d.got} vs ${d && d.want})`);
+  // And the rest of the round is untouched by it.
+  check(bg.store.kcaCount === 1, `the BLACKPINK pick still counted (${bg.store.kcaCount})`);
+
+  const rival = loadBackground();
+  rival.store.buToken = 'tok';
+  rival.store.kcaBallot = freshBallot();
+  await rival.processKcaVote({ votes: [
+    { q: '1ae0e782-6c39-4329-88ae-137533d9f497', o: 'b156d9c1-4905-44c1-8dbb-730e2a77f3e5' },  // BTS
+  ] });
+  await settle();
+  check(!(rival.store.kcaDiag || []).some((e) => e.kind === 'nominee-renamed'),
+        'but an ordinary vote for a rival is not');
+}
+
 console.log('\n--- A. a pick in the collab’s category for someone else is nobody’s');
 {
   const bg = loadBackground();
