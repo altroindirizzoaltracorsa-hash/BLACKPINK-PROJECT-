@@ -264,6 +264,7 @@
   .fandom-fill { height: 100%; background: var(--accent); transition: width 0.6s ease; }
   .fandom-foot { font-size: 0.66rem; color: var(--muted); margin-top: 0.4rem; }
   .fandom-foot b { color: var(--white); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .fandom-tot { opacity: 0.75; }
 
   .sub { border-top: 1px solid var(--border); margin-top: 1.4rem; padding-top: 1.2rem; }
   .sub-head { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase;
@@ -795,7 +796,7 @@ function periodOf(c, t, k) {
       // A category in neither list is a ballot category this collab is not
       // about. Counted into nothing rather than guessed at.
     });
-    p = { byCat: p.byCat, board: p.board, forUs: { picks: mine }, forThem: { picks: theirs } };
+    p = Object.assign({}, p, { forUs: { picks: mine }, forThem: { picks: theirs } });
   }
   return p;
 }
@@ -933,21 +934,31 @@ function fandomsHtml(c) {
   });
   var unsaid = (f && f.unsaid) || null;
   var any = rows.some(function (r) { return r.people > 0; }) || (unsaid && unsaid.people > 0);
-  var most = Math.max.apply(null, rows.map(function (r) { return r.votes; }).concat([1]));
+  // The BAR is drawn on votes-each, not on the total.
+  //
+  // A bar is an invitation to compare, and comparing raw totals between sides
+  // with different headcounts compares reach rather than effort — one side
+  // finds the counter on its own site, the other has to be told it exists.
+  // Drawn on totals, 34 people averaging 34.7 get a full bar next to 9
+  // averaging 50: the picture says the opposite of the fairer number printed
+  // directly underneath it.
+  rows.forEach(function (r) { r.each = r.people ? r.votes / r.people : 0; });
+  var most = Math.max.apply(null, rows.map(function (r) { return r.each; }).concat([0.0001]));
 
   return '<div class="sub"><div class="sub-head">Who is logging · ' + esc(lbl) + '</div>'
     + (any
       ? '<div class="fandoms">'
         + rows.map(function (r) {
-            var avg = r.people ? Math.round(r.votes / r.people * 10) / 10 : 0;
+            var avg = Math.round(r.each * 10) / 10;
             return '<div class="fandom fandom-' + esc(r.side) + '">'
               + '<div class="fandom-top"><span class="fandom-name">' + esc(r.label) + '</span>'
               + '<span class="fandom-n">' + fmt(r.people) + ' '
               + (r.people === 1 ? 'person' : 'people') + '</span></div>'
-              + '<div class="fandom-track"><div class="fandom-fill" style="width:'
-              + (r.votes / most * 100) + '%"></div></div>'
-              + '<div class="fandom-foot"><b>' + fmt(r.votes) + '</b> votes logged'
-              + (r.people ? ' · <b>' + avg + '</b> each' : '') + '</div>'
+              + '<div class="fandom-track" title="votes each"><div class="fandom-fill" style="width:'
+              + (r.each / most * 100) + '%"></div></div>'
+              + '<div class="fandom-foot">'
+              + (r.people ? '<b>' + avg + '</b> votes each · ' : '')
+              + '<span class="fandom-tot">' + fmt(r.votes) + ' logged</span></div>'
               + '</div>';
           }).join('')
         + '</div>'
@@ -961,9 +972,10 @@ function fandomsHtml(c) {
         + 'The vote counter asks once, after your first round.</div>')
     + '<div class="sub-note"><b>This is not the bar.</b> It counts <b>people</b>, by what they '
     + 'tell us they are — the votes themselves still cannot be traced to a fandom, because '
-    + 'everyone here votes the whole ballot. <b>Votes each</b> is the fairer of the two numbers: '
-    + 'one side finds the counter on its own site and the other has to be told it exists, so a '
-    + 'headcount measures reach more than effort. Self-declared, and nobody is asked to prove it.'
+    + 'everyone here votes the whole ballot. <b>The bars are votes each</b>, not the totals: '
+    + 'one side finds the counter on its own site and the other has to be told it exists, so '
+    + 'comparing the totals compares reach more than effort. Self-declared, and nobody is asked '
+    + 'to prove it.'
     + '</div></div>';
 }
 

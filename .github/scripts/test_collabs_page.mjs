@@ -418,16 +418,24 @@ console.log('--- who is logging: people by declared side, never a split of the v
 // page starts claiming it knows which fandom a vote came from, which is the
 // one thing it has said all along that it cannot.
 {
-  // The bar as it reads with no fandoms at all, to compare against. Asserted as
-  // "unchanged" rather than against a number typed here: the invariant is that
-  // declaring a side moves nothing about the per-act totals, and a hardcoded
-  // figure tests my arithmetic instead.
-  await prev.evaluate((fix) => { COLLABS[0].tally = fix; PERIOD = 'all'; render(); }, FIX);
+  // Shaped like what the ENDPOINT sends: byCat only, with forUs / forThem
+  // derived on the page. That deriving step rebuilt the period object, which is
+  // where `fandoms` was being dropped — with a fixture that supplies the two
+  // totals directly, the branch never runs and the bug is invisible.
+  const BARE = JSON.parse(JSON.stringify(FIX));
+  delete BARE.periods.all.forUs;
+  delete BARE.periods.all.forThem;
+
+  // The bar as it reads with no fandoms at all. Asserted as "unchanged" rather
+  // than against a number typed here: the invariant is that declaring a side
+  // moves nothing about the per-act totals, and a hardcoded figure would test
+  // my arithmetic instead of the page's behaviour.
+  await prev.evaluate((fix) => { COLLABS[0].tally = fix; PERIOD = 'all'; render(); }, BARE);
   await prev.waitForTimeout(200);
   const barBefore = await prev.evaluate(() =>
     document.querySelector('.tally-nums').textContent.replace(/\s+/g, ' ').trim());
 
-  const FAN = JSON.parse(JSON.stringify(FIX));
+  const FAN = JSON.parse(JSON.stringify(BARE));
   FAN.periods.all.fandoms = {
     blink: { people: 8, votes: 160 },
     bloom: { people: 2, votes: 120 },
@@ -458,10 +466,19 @@ console.log('--- who is logging: people by declared side, never a split of the v
   // The number that survives one side simply having more accounts: 160/8 = 20
   // each against 120/2 = 60 each, so the smaller side is AHEAD per person and
   // the page has to show it.
-  (/20 each/.test(f.cards[0].foot) && /60 each/.test(f.cards[1].foot))
+  (/20 votes each/.test(f.cards[0].foot) && /60 votes each/.test(f.cards[1].foot))
     ? ok('and the per-person average, which the headcount hides', f.cards[1].foot)
     : bad('and the per-person average, which the headcount hides',
           `${f.cards[0].foot} | ${f.cards[1].foot}`);
+  // The BAR has to draw the comparable number. 8 people × 20 against 2 × 60 is
+  // the whole trap: on totals the big side's bar is longer (160 vs 120) while
+  // the fairer number printed underneath says the opposite, so the picture
+  // would contradict the sentence.
+  (f.cards[1].fill > f.cards[0].fill)
+    ? ok('and the bar is drawn on votes each, not the total',
+         `${f.cards[0].fill}% vs ${f.cards[1].fill}%`)
+    : bad('and the bar is drawn on votes each, not the total',
+          `${f.cards[0].fill}% vs ${f.cards[1].fill}% — the smaller side averages more and must be longer`);
   // The totals above are untouched by any of it.
   f.nums.trim() === barBefore
     ? ok('the per-act bar is unchanged by the split', barBefore)
