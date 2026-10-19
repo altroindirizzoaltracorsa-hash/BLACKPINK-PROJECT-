@@ -34,6 +34,20 @@ create table if not exists collab_user_votes (
   primary key (collab_id, app_user_id, day)
 );
 
+-- Which fandom the person SAYS they are, for this collab. Null until they say,
+-- and null is a real answer the page shows as its own row rather than guessing.
+--
+-- IT NEVER SPLITS THE VOTES. Everyone in a collab votes the whole ballot, so a
+-- pick cannot be attributed to a fandom and the per-act totals stay pooled —
+-- this column answers "who turned up and logged", which is a count of PEOPLE
+-- and a different question. Keeping those two apart is the whole reason the
+-- page says "these are not two teams" above the bar.
+--
+-- Self-declared and unverified, deliberately: there is nothing to verify it
+-- against, and a collab is not a place to start asking people to prove who
+-- they are.
+alter table collab_user_votes add column if not exists fandom text;
+
 -- The board reads every row of one collab and the day grid reads every day of
 -- it, so both of those are the hot path.
 create index if not exists collab_user_votes_collab_day_idx

@@ -48,6 +48,10 @@ function mondayOf(day) {
 }
 
 const SLUG_RE = /^[\w .'’&()-]{1,80}$/;        // a ballot category, as the page writes it
+// A self-declared fandom key, as /collabs defines it for that collab. Narrow
+// on purpose: it is stored, counted and printed on a page, and the caller is
+// an extension that anybody can edit.
+const FANDOM_RE = /^[a-z][a-z0-9-]{0,23}$/;
 const ID_RE = /^[a-z0-9-]{1,64}$/;
 const MAX_PER_CAT = 10000;
 const BOARD_MAX = 200;
@@ -68,14 +72,18 @@ const sumOf = (o) => Object.values(o || {}).reduce((a, b) => a + (Number(b) || 0
 // One period's view: the category split, and the people, ordered by votes.
 // `board` carries each person's own split so the page can show what they cast
 // without a second request.
-function periodFrom(rows) {
+function periodFrom(rows, fandomOf) {
   const byCat = {};
   const per = new Map();
   for (const r of rows) {
     addInto(byCat, r.cats);
     const key = r.app_user_id;
     let e = per.get(key);
-    if (!e) { e = { name: r.display_name || null, votes: 0, byCat: {} }; per.set(key, e); }
+    if (!e) {
+      e = { name: r.display_name || null, votes: 0, byCat: {},
+            fandom: (fandomOf && fandomOf.get(key)) || null };
+      per.set(key, e);
+    }
     // Latest non-null name wins: a row written by the extension before the
     // profile had a display name should not blank out one that does.
     if (r.display_name) e.name = r.display_name;
@@ -86,7 +94,22 @@ function periodFrom(rows) {
     .filter((e) => e.votes > 0)
     .sort((a, b) => b.votes - a.votes || String(a.name || '').localeCompare(String(b.name || '')))
     .slice(0, BOARD_MAX);
-  return { byCat, board, total: sumOf(byCat) };
+
+  // Who turned up, by what they say they are. PEOPLE and their logged votes —
+  // never a split of the per-act totals above, which cannot be attributed to a
+  // fandom at all because everyone votes the whole ballot. `people` is what
+  // makes the average meaningful, and the average is what makes this readable
+  // when one side simply has more accounts than the other.
+  const fandoms = {};
+  for (const e of per.values()) {
+    if (e.votes <= 0) continue;
+    const k = e.fandom || 'unsaid';
+    const f = fandoms[k] || (fandoms[k] = { people: 0, votes: 0 });
+    f.people += 1;
+    f.votes += e.votes;
+  }
+
+  return { byCat, board, fandoms, total: sumOf(byCat) };
 }
 
 export default async function handler(req, res) {
@@ -106,13 +129,20 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const { data, error } = await sb
         .from('collab_user_votes')
-        .select('app_user_id, day, votes, cats, display_name')
+        .select('app_user_id, day, votes, cats, display_name, fandom')
         .eq('collab_id', id)
         .limit(ROW_MAX);
       if (error) throw error;
       const rows = data || [];
       const today = kstDay();
       const monday = mondayOf(today);
+
+      // One fandom per person, worked out ACROSS EVERY ROW and then applied to
+      // each period. Reading it per period instead would count somebody who
+      // declared today as "didn't say" in the all-time view, which is the same
+      // person answering twice. Latest non-null wins, as with display_name.
+      const fandomOf = new Map();
+      for (const r of rows) if (r.fandom) fandomOf.set(r.app_user_id, r.fandom);
 
       // Day by day, for the grid. Pooled across everybody: the grid is the
       // collab's shape over time, not one person's.
@@ -129,9 +159,9 @@ export default async function handler(req, res) {
         todayKey: today,
         from: days.length ? days[0].day : null,
         periods: {
-          today: periodFrom(rows.filter((r) => r.day === today)),
-          week:  periodFrom(rows.filter((r) => r.day >= monday)),
-          all:   periodFrom(rows),
+          today: periodFrom(rows.filter((r) => r.day === today), fandomOf),
+          week:  periodFrom(rows.filter((r) => r.day >= monday), fandomOf),
+          all:   periodFrom(rows, fandomOf),
         },
         days,
       });
@@ -190,18 +220,37 @@ export default async function handler(req, res) {
       // Summed from the merged map rather than added to the old total, so the
       // stored `votes` can never drift from `cats` — the table has a constraint
       // saying exactly that, and this is the side that has to honour it.
+      // What they say they are. Validated, never trusted for anything but a
+      // count of people: it splits no votes and gates nothing.
+      const fandom = FANDOM_RE.test(String(body.fandom || '').trim().toLowerCase())
+        ? String(body.fandom).trim().toLowerCase() : null;
+
       const row = {
         collab_id: id, app_user_id: uid, day,
         votes: sumOf(nextCats), cats: nextCats,
         display_name: name, updated_at: new Date().toISOString(),
       };
       if (extToken) row.ext_at = new Date().toISOString();
+      if (fandom) row.fandom = fandom;
 
       const { error: upErr } = await sb.from('collab_user_votes')
         .upsert(row, { onConflict: 'collab_id,app_user_id,day' });
       if (upErr) return res.status(500).json({ error: upErr.message });
 
-      return res.status(200).json({ ok: true, day, votes: row.votes, cats: row.cats });
+      // Carry it back over their earlier days of THIS collab. Somebody is
+      // asked which fandom they are after their first round, so without this
+      // the day they joined counts as "didn't say" for ever — the one day the
+      // answer is most obviously known. Best-effort: the vote is already
+      // recorded and a failure here costs nothing but a label.
+      if (fandom) {
+        try {
+          await sb.from('collab_user_votes')
+            .update({ fandom })
+            .eq('collab_id', id).eq('app_user_id', uid).is('fandom', null);
+        } catch (_) {}
+      }
+
+      return res.status(200).json({ ok: true, day, votes: row.votes, cats: row.cats, fandom });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
