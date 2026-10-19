@@ -1,0 +1,110 @@
+name: Probe KCA ballot — slugs and nominee titles (read-only)
+
+# What the ballot ACTUALLY calls each category and each nominee.
+#
+# The counter matches a pick on two strings, both read off the ballot itself:
+# the question's `slug` and the option's `title` (see kcaParseBallot in
+# panel.js). A pick only counts when BOTH match the table in background.js — so
+# a category whose slug we spell differently, or a nominee written with a suffix
+# we don't expect, counts nothing and looks exactly like "nobody voted".
+#
+# That is not hypothetical: the collab recorded BLACKPINK, JENNIE and ROSÉ and
+# never once recorded BINI, which means one of those two strings is wrong for
+# that category and right for the other three.
+#
+# Read-only. Renders the ballot page, reads the question list, and prints
+# slug ↔ title ↔ options. It never clicks a nominee and FAILS if a /api/vote
+# request happens anyway.
+on:
+  workflow_dispatch:
+    inputs:
+      find:
+        description: 'Nominee to locate, case-insensitive'
+        required: false
+        default: 'BINI'
+      slug:
+        description: 'Category page to render'
+        required: false
+        default: 'favorite-music-group-or-duo'
+
+jobs:
+  ballot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Read the ballot
+        env:
+          FIND: ${{ inputs.find || 'BINI' }}
+          SLUG: ${{ inputs.slug || 'favorite-music-group-or-duo' }}
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --silent playwright@1.56.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat > ballot.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const find = (process.env.FIND || 'BINI').trim();
+          const slug = process.env.SLUG;
+          const url = `https://kca.nick.tv/vote/${slug}`;
+          const b = await chromium.launch();
+          const p = await b.newPage({ viewport: { width: 1280, height: 1400 } });
+          let voted = false;
+          p.on('request', (r) => { if (/\/api\/vote\b/.test(r.url())) voted = true; });
+          await p.goto(url, { waitUntil: 'networkidle', timeout: 90000 }).catch((e) => console.log('nav:', e.message));
+          await p.waitForTimeout(3500);
+
+          // The counter reads the ballot out of the same-origin script that
+          // carries it, because a content script cannot touch window.jsonData.
+          // Both are read here and compared: if they ever disagree, the counter
+          // is working from the one on the left.
+          const data = await p.evaluate(async () => {
+            const out = { fromGlobal: null, fromFile: null, file: null };
+            if (window.jsonData && Array.isArray(window.jsonData.questions)) out.fromGlobal = window.jsonData;
+            const urls = [...new Set([...document.querySelectorAll('script[src]')].map((s) => s.src))]
+              .filter((u) => u.startsWith(location.origin) && !/\/mik-assets\/vite\/assets\//.test(u));
+            for (const u of urls) {
+              try {
+                const t = await (await fetch(u, { cache: 'force-cache' })).text();
+                if (t.indexOf('"questions"') === -1) continue;
+                const i = t.indexOf('{'), j = t.lastIndexOf('}');
+                const parsed = JSON.parse(t.slice(i, j + 1));
+                if (Array.isArray(parsed.questions)) { out.fromFile = parsed; out.file = u; break; }
+              } catch (_) {}
+            }
+            return out;
+          });
+
+          const d = data.fromFile || data.fromGlobal;
+          if (!d) { console.log('::notice title=ballot::could not read the ballot at all'); await b.close(); process.exit(0); }
+          console.log(`ballot file: ${data.file || '(window.jsonData)'} · ${d.questions.length} questions`);
+          console.log(`global and file agree: ${!!(data.fromGlobal && data.fromFile
+            && data.fromGlobal.questions.length === data.fromFile.questions.length)}`);
+
+          console.log('\n--- every category, exactly as the ballot spells it');
+          for (const q of d.questions) {
+            console.log(`  slug="${q.slug}"  title="${q.title}"  options=${(q.options || []).length}`);
+          }
+
+          console.log(`\n--- where "${find}" appears`);
+          const re = new RegExp(find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+          let hits = 0;
+          for (const q of d.questions) {
+            for (const o of q.options || []) {
+              if (!re.test(String(o.title || ''))) continue;
+              hits += 1;
+              console.log(`  category slug="${q.slug}"`);
+              console.log(`  category title="${q.title}"`);
+              console.log(`  option title="${o.title}"  id=${o.id}`);
+              console.log(`::notice title=${find}::slug="${q.slug}" · option title="${o.title}"`);
+              // Every nominee in that category, so a near-miss on the name is
+              // visible rather than guessed at.
+              console.log('  all options in it: ' + (q.options || []).map((x) => `"${x.title}"`).join(', '));
+            }
+          }
+          if (!hits) {
+            console.log(`  NOT FOUND — no option title matches ${find}`);
+            console.log(`::notice title=${find}::no option on the ballot has that name`);
+          }
+          if (voted) { console.log('::error::a vote request was made — this probe must never vote'); process.exit(1); }
+          await b.close();
+          JS
+          node ballot.mjs
