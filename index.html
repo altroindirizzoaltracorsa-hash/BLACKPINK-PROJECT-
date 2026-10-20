@@ -3479,16 +3479,16 @@
   <button type="button" class="modal-x" aria-label="Close" onclick="closeExtUpdate(false)">×</button>
   <div class="ltal-reminder-box">
     <div class="ltal-reminder-badge">Update</div>
-    <h2 class="ltal-reminder-title" id="ext-update-title">Vote Counter — v1.8.0</h2>
-    <p class="ltal-reminder-body">The <strong>Vote Counter</strong> now counts the <strong>Nickelodeon Kids&rsquo; Choice Awards</strong> as well — BLACKPINK, ROS&Eacute; and &ldquo;Dracula&rdquo; on <strong>kca.nick.tv</strong>, straight onto the new Kids&rsquo; Choice tab on your board. This one <strong>does</strong> need updating: v1.7.8 only listens on the MTV and BreakTudo sites, so on the Kids&rsquo; Choice site it sees nothing at all. The VMA and BreakTudo counting is unchanged, and everything you have already logged is untouched.</p>
+    <h2 class="ltal-reminder-title" id="ext-update-title">Vote Counter — v1.9.3</h2>
+    <p class="ltal-reminder-body">BLINKs and <strong>BLOOMs</strong> are trading votes on the Kids&rsquo; Choice ballot — they fill in BLACKPINK, JENNIE and ROS&Eacute;, we fill in <strong>BINI</strong> — and the counter now records the whole pass for the <a href="/collabs">collab board</a>. Your BLACKPINK totals are <strong>untouched</strong>: a BINI pick is kept out of them entirely, so it can never move your rank or a badge. Everything already logged stays exactly as it is.</p>
     <ol class="ltal-reminder-steps">
-      <li>On the <strong>voting page</strong>, download <strong>v1.8.0</strong> (Desktop or Android).</li>
+      <li>On the <strong>voting page</strong> or the <strong><a href="/collabs">collab page</a></strong>, download <strong>v1.9.3</strong> (Desktop or Android).</li>
       <li>In your browser&rsquo;s <strong>Extensions</strong>, remove the old Vote Counter, then <strong>Load unpacked</strong> the newly unzipped folder.</li>
       <li>Open the extension &rarr; <strong>Link my account</strong> if it isn&rsquo;t already showing &ldquo;&#9679; Linked&rdquo;.</li>
     </ol>
-    <p class="ext-update-foot">Already on v1.8.0? You&rsquo;re all set — just close this.</p>
+    <p class="ext-update-foot">Already on v1.9.3? You&rsquo;re all set — just close this.</p>
     <div class="ltal-reminder-actions">
-      <button class="btn-primary" onclick="closeExtUpdate(true)">Get v1.8.0</button>
+      <button class="btn-primary" onclick="closeExtUpdate(true)">Get v1.9.3</button>
       <button class="ltal-reminder-dismiss" onclick="closeExtUpdate(false)">Not now</button>
     </div>
   </div>
@@ -8086,7 +8086,7 @@ window.addEventListener('DOMContentLoaded', maybeShowLtalReminder);
 // key is versioned (EXT_LATEST_VERSION), so the next time we bump the extension
 // and update this constant, the popup automatically re-appears once per user —
 // no need to reset anyone's storage.
-const EXT_LATEST_VERSION = '1.8.0';
+const EXT_LATEST_VERSION = '1.9.3';
 function closeExtUpdate(goVoting) {
   const ov = document.getElementById('ext-update-overlay');
   if (ov) ov.classList.remove('active');
@@ -10528,7 +10528,7 @@ function vmaVideoGuidesHtml() {
   </details>`;
 }
 
-// The Vote Counter browser extension (v1.8.0) download + setup block, shown on
+// The Vote Counter browser extension (v1.9.3) download + setup block, shown on
 // the /voting panel to signed-in blinks with a scrobbler linked. The extension
 // auto-counts the votes a fan casts on vote.mtv.com and logs the BLACKPINK/LISA
 // ones to their board — it never votes for them.
@@ -10536,12 +10536,12 @@ function vmaExtensionHtml(archive) {
   return `<div class="vv-ext" id="vv-ext">
     <div class="vv-ext-head">
       <span class="vv-ext-title">🧩 Vote Counter — browser extension</span>
-      <span class="vv-ext-ver">v1.8.0</span>
+      <span class="vv-ext-ver">v1.9.3</span>
     </div>
     <div class="vv-ext-sub">Auto-counts the <b>BLACKPINK &amp; members</b> votes you cast on <b>vote.mtv.com</b> (VMAs), <b>vote.breaktudoawards.com</b> (BreakTudo) and <b>kca.nick.tv</b> (Kids&rsquo; Choice) and logs them straight to this board — the three awards are tracked separately with one account. It only reads your own votes; it <b>never votes for you</b>.</div>
     <div class="vv-ext-dl">
-      <a class="vv-ext-btn" href="/vote-extension-v1.8.0-chrome.zip" download>⬇ Desktop <small>Chrome / Chromium</small></a>
-      <a class="vv-ext-btn ghost" href="/vote-extension-v1.8.0-android.zip" download>⬇ Android <small>Edge Canary / Quetta</small></a>
+      <a class="vv-ext-btn" href="/vote-extension-v1.9.3-chrome.zip" download>⬇ Desktop <small>Chrome / Chromium</small></a>
+      <a class="vv-ext-btn ghost" href="/vote-extension-v1.9.3-android.zip" download>⬇ Android <small>Edge Canary / Quetta</small></a>
       <button class="vv-ext-btn ghost" onclick="connectExtension()">🔗 Link my account</button>
     </div>
     <a class="vv-ext-guide" href="/vote-counter-guide.html" target="_blank" rel="noopener">📖 Illustrated step-by-step guide ↗</a>
@@ -10553,12 +10553,12 @@ function vmaExtensionHtml(archive) {
     </ol>
     <div class="vv-ext-app">
       <div class="vv-ext-app-head">📱 On a phone with no extension support? Get the <b>Android app</b></div>
-      <div class="vv-ext-app-sub">Same counter, wrapped in an app — you vote inside it and it logs to your board. Counts <b>BreakTudo</b> (and the VMAs, for next year). <b>Not Kids&rsquo; Choice yet</b> — for that one use the browser extension above, or add the rounds by hand. No browser extension needed. <i>Android only; iPhone can't sideload apps.</i></div>
+      <div class="vv-ext-app-sub">Same counter, wrapped in an app — you vote inside it and it logs to your board. Now counts the <b>Kids&rsquo; Choice Awards</b> too, and the <a href="/collabs">BLINKs &times; BLOOMs collab</a> with it, alongside BreakTudo and the VMAs. No browser extension needed. <i>Android only; iPhone can't sideload apps.</i></div>
       <a class="vv-ext-btn" href="/blinks-united-vote-counter.apk" download>⬇ Download Android app <small>.apk</small></a>
       <a class="vv-ext-guide" href="/vote-app-guide.html" target="_blank" rel="noopener" style="margin-left:0.6rem;">📖 App setup guide ↗</a>
       <ol class="vv-ext-steps" style="margin-top:0.9rem;">
         <li>Tap <b>Download</b>, then open the <code>.apk</code>. Allow <b>Install unknown apps</b> for your browser if asked (Chrome shows a routine &ldquo;this file could harm your device&rdquo; notice — tap <b>Download anyway</b>).</li>
-        <li>Open the app → <b>Link</b> → sign in with the same account. Then vote on <b>vote.breaktudoawards.com</b> <i>inside the app</i> — it counts automatically, category by category, and shows which of the 8 you still have left today.</li>
+        <li>Open the app → <b>Link</b> → sign in with the same account. Then vote on <b>kca.nick.tv</b> <i>inside the app</i> — tap <b>Vote</b> and it opens there — and it counts automatically, category by category, showing which of ours you have left today.</li>
       </ol>
     </div>
     <details class="vv-ext-fns">
@@ -12383,7 +12383,10 @@ function _fbWhen(iso) {
     return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
   } catch { return ''; }
 }
-const FB_CAT_LABEL = { bug: 'Bug', feature: 'Feature request', suggestion: 'Suggestion', praise: 'Praise', general: 'General' };
+// 'collab' is not in the feedback form's own picker — it arrives from the
+// request form on /collabs, which posts to this same inbox. Unlabelled it would
+// render as the raw slug in the queue.
+const FB_CAT_LABEL = { bug: 'Bug', feature: 'Feature request', suggestion: 'Suggestion', praise: 'Praise', collab: 'Collab request', general: 'General' };
 
 // One message and its reply. `admin` adds the things only you should see.
 function _fbThreadHtml(m, admin) {

@@ -26,6 +26,12 @@ object VoteApi {
     // follows any redirect as a safety net.)
     private const val ENDPOINT = "https://www.blinksunited.com/api/vma-votes"
 
+    // The collab board is a different dimension with its own table, so it has its
+    // own endpoint. A pick for the partner's act must never reach the one above:
+    // that `votes` column ranks the Kids' Choice board and earns the Voter badge,
+    // and a BINI pick is not a BLACKPINK vote.
+    private const val COLLAB_ENDPOINT = "https://www.blinksunited.com/api/collabs"
+
     // Last transport result, for the in-app diagnostic toast: the final HTTP status,
     // 0 before any call, -1 on a transport exception.
     @Volatile var lastStatus: Int = 0
@@ -71,6 +77,63 @@ object VoteApi {
         } catch (e: Exception) {
             lastStatus = -1
             lastError = e.javaClass.simpleName + ": " + (e.message ?: "")
+            false
+        }
+    }
+
+    /**
+     * Kids' Choice sibling of postVotes. `cats` is a map of the ballot's own
+     * category slug to how many picks of ours it carried — one round can be a
+     * BLACKPINK vote and a ROSÉ vote at once, which is why it is a map and not a
+     * single category like BreakTudo's.
+     */
+    fun postKcaVotes(token: String, votes: Int, cats: Map<String, Int>): Boolean {
+        if (votes <= 0) return false
+        return try {
+            val body = JSONObject().apply {
+                put("award", "kca")
+                put("extToken", token)
+                put("votes", votes)
+                if (cats.isNotEmpty()) {
+                    put("cats", JSONObject().apply { cats.forEach { (k, v) -> put(k, v) } })
+                }
+            }.toString()
+            val code = postJson(ENDPOINT, body, 3)
+            lastStatus = code
+            lastError = ""
+            code in 200..299
+        } catch (e: Exception) {
+            lastStatus = -1
+            lastError = e.javaClass.simpleName + ": " + (e.message ?: "")
+            false
+        }
+    }
+
+    /**
+     * The fandom collab. Deliberately does NOT touch lastStatus/lastError: those
+     * drive the in-app diagnostic for whether a blink's own votes are syncing, and
+     * a collab post failing is not that. The Kids' Choice post is the one that
+     * decides whether the counter is working.
+     */
+    fun postCollabVotes(
+        token: String,
+        collabId: String,
+        cats: Map<String, Int>,
+        fandom: String? = null
+    ): Boolean {
+        if (cats.isEmpty()) return false
+        return try {
+            val body = JSONObject().apply {
+                put("id", collabId)
+                put("extToken", token)
+                put("cats", JSONObject().apply { cats.forEach { (k, v) -> put(k, v) } })
+                // Only when they have actually said. Sending a default would file
+                // everyone who never answered on one side of a board about who
+                // turned up — and most people never answer.
+                if (fandom != null) put("fandom", fandom)
+            }.toString()
+            postJson(COLLAB_ENDPOINT, body, 3) in 200..299
+        } catch (e: Exception) {
             false
         }
     }

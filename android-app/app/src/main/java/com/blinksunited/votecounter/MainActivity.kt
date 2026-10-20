@@ -53,7 +53,9 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
 
     private val prefs by lazy { getSharedPreferences("bu", Context.MODE_PRIVATE) }
 
-    /** Which award the header and roster are describing: "bt" or "vma". */
+    private val kcaSeen = ArrayDeque<String>()
+
+    /** Which award the header and roster are describing: "bt", "vma" or "kca". */
     private var award: String
         get() = prefs.getString("award", "bt") ?: "bt"
         set(v) { prefs.edit().putString("award", v).apply() }
@@ -61,6 +63,7 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
     companion object {
         private const val BT_URL = "https://vote.breaktudoawards.com/"
         private const val MTV_URL = "https://vote.mtv.com/"
+        private const val KCA_URL = "https://kca.nick.tv/vote/"
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -73,7 +76,11 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         statusView = findViewById(R.id.status)
         web = findViewById(R.id.web)
 
-        findViewById<Button>(R.id.voteBtn).setOnClickListener { web.loadUrl(BT_URL) }
+        // The ballot that is actually open. BreakTudo closed on 17 Oct and this
+        // button still opened it, which is a vote counter whose Vote button goes
+        // nowhere useful. Kids' Choice runs to 13 Nov; the other two sites still
+        // count if a blink navigates to them, as they always did.
+        findViewById<Button>(R.id.voteBtn).setOnClickListener { web.loadUrl(KCA_URL) }
         findViewById<Button>(R.id.linkBtn).setOnClickListener { startLinkFlow() }
         // Open the board in the real browser: blinksunited.com sign-in uses X/Google
         // OAuth, which is refused inside an embedded WebView. The browser also carries
@@ -117,6 +124,9 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
                 if (host.contains("vote.breaktudoawards.com")) {
                     award = "bt"; view.evaluateJavascript(counterJs, null); refreshHeader()
                 }
+                if (host.endsWith("kca.nick.tv")) {
+                    award = "kca"; view.evaluateJavascript(counterJs, null); refreshHeader()
+                }
                 if (host.contains("blinksunited.com")) view.evaluateJavascript(linkJs, null)
             }
         }
@@ -126,7 +136,7 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         renderRoster()
         // A deep link (buvotecounter://link?token=…) may have launched us.
         if (!handleLinkIntent(intent) && savedInstanceState == null) {
-            web.loadUrl(BT_URL)
+            web.loadUrl(KCA_URL)
         }
     }
 
@@ -167,7 +177,7 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         val token = data.getQueryParameter("token") ?: return false
         onToken(token, data.getQueryParameter("profile"))
         runOnUiThread {
-            web.loadUrl(BT_URL)
+            web.loadUrl(KCA_URL)
             android.widget.Toast.makeText(this, "✅ Linked — you can vote now", android.widget.Toast.LENGTH_LONG).show()
         }
         return true
@@ -247,6 +257,195 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         }
     }
 
+    // ── Bridge callbacks: Kids' Choice ───────────────────────────────────────
+    override fun onKcaVote(json: String) {
+        val res = KcaVoteParser.parse(json) ?: return
+
+        // The round submitted and not one pick could be read. Worth saying: it is
+        // the one failure a blink can act on, and it looks exactly like "you voted
+        // for nobody" if we stay quiet.
+        if (res.noBallot) {
+            runOnUiThread { toast("⚠ Couldn’t read the ballot — reload the page") }
+            return
+        }
+
+        // A round with none of ours in it is normal — the ballot has 36 categories
+        // and a blink can vote the other 33 — so it is not worth a toast unless
+        // the collab half found something.
+        if (res.total <= 0 && res.collabTotal <= 0) return
+
+        if (res.dedupeKey.isNotEmpty()) {
+            if (kcaSeen.contains(res.dedupeKey)) return
+            kcaSeen.addLast(res.dedupeKey)
+            if (kcaSeen.size > 60) kcaSeen.removeFirst()
+        }
+
+        val token = prefs.getString("token", null)
+
+        // A nominee the ballot has renamed is said out loud, because the vote it
+        // cost is invisible otherwise: "Asia: BINI" counted as nothing for days
+        // and looked exactly like a category nobody voted in. Both strings, so
+        // the fix is one line rather than another round of guessing.
+        res.renamed?.let { (want, got) ->
+            runOnUiThread { toast("⚠ Not counted: the ballot says “$got”, we expect “$want”") }
+        }
+
+        val wantsCollab = token != null && res.collabTotal > 0 &&
+            System.currentTimeMillis() < KcaVoteParser.COLLAB_UNTIL_MS
+
+        // A round can be ONLY the partner's pick — filling their category and
+        // skipping ours is exactly what a collab makes possible — and that case
+        // used to post and then return without a word, so the app looked like it
+        // was ignoring the trade. It is the same silence the extension had.
+        if (res.total <= 0) {
+            if (wantsCollab) {
+                io.execute {
+                    val ok = VoteApi.postCollabVotes(
+                        token!!, KcaVoteParser.COLLAB_ID, res.collabCats, kcaFandom())
+                    runOnUiThread {
+                        toast(if (ok) "🤝 ${res.collabTotal} to the collab"
+                              else "⚠ The collab board didn’t take that round")
+                    }
+                }
+            }
+            return
+        }
+
+        kcaRollDayIfNeeded()
+        prefs.edit().putInt("kcaCount", prefs.getInt("kcaCount", 0) + res.total).apply()
+        recordKcaCats(res.cats)
+        runOnUiThread { updateHeader(); renderRoster() }
+
+        if (token != null) {
+            io.execute {
+                // Both posts in the one job so a single toast can report both.
+                // Two toasts per round queue up behind each other and the second
+                // arrives after the blink has moved on.
+                //
+                // The collab result NEVER changes the Kids' Choice outcome: a
+                // pick for the partner's act is not a BLACKPINK vote, so it is
+                // reported beside that total and never added to it.
+                val collabOk = if (wantsCollab)
+                    VoteApi.postCollabVotes(
+                        token, KcaVoteParser.COLLAB_ID, res.collabCats, kcaFandom()) else null
+                val ok = VoteApi.postKcaVotes(token, res.total, res.cats)
+                if (!ok) addKcaPending(res.total) else flushKcaPending(token)
+                val msg = StringBuilder(
+                    if (ok) "✅ Synced ${res.total} · ${res.label}"
+                    else "⚠ Couldn't sync — will retry"
+                )
+                if (collabOk == true) msg.append("  ·  🤝 ${res.collabTotal} to the collab")
+                if (collabOk == false) msg.append("  ·  ⚠ collab board didn’t take it")
+                runOnUiThread { updateHeader(); toast(msg.toString()) }
+            }
+        } else {
+            addKcaPending(res.total)
+            runOnUiThread { updateHeader(); toast("⚠ Not linked — vote queued") }
+        }
+    }
+
+    private fun addKcaPending(n: Int) = synchronized(prefs) {
+        prefs.edit().putInt("kcaPending", prefs.getInt("kcaPending", 0) + n).apply()
+    }
+
+    /** Like the BreakTudo queue, the category is lost on a retry — it is a single
+     *  number, not a per-category ledger — so these land in the board's remainder
+     *  rather than being attributed to the wrong category. */
+    private fun flushKcaPending(token: String) {
+        val pending = prefs.getInt("kcaPending", 0)
+        if (pending <= 0) return
+        if (VoteApi.postKcaVotes(token, pending, emptyMap())) {
+            synchronized(prefs) {
+                prefs.edit().putInt("kcaPending", (prefs.getInt("kcaPending", 0) - pending).coerceAtLeast(0)).apply()
+            }
+        }
+    }
+
+    private fun kcaRollDayIfNeeded() {
+        val today = kstDay()
+        if (prefs.getString("kcaDay", "") != today) {
+            prefs.edit()
+                .putString("kcaDay", today)
+                .putInt("kcaCount", 0)
+                .putString("kcaCats", "{}")
+                .apply()
+        }
+    }
+
+    private fun recordKcaCats(cats: Map<String, Int>) {
+        if (cats.isEmpty()) return
+        synchronized(prefs) {
+            val o = try { org.json.JSONObject(prefs.getString("kcaCats", "{}")) } catch (e: Exception) { org.json.JSONObject() }
+            cats.forEach { (slug, n) -> o.put(slug, o.optInt(slug, 0) + n) }
+            prefs.edit().putString("kcaCats", o.toString()).apply()
+        }
+    }
+
+    private fun renderKcaCategories() {
+        kcaRollDayIfNeeded()
+        val voted = try { org.json.JSONObject(prefs.getString("kcaCats", "{}")) } catch (e: Exception) { org.json.JSONObject() }
+        val all = KcaVoteParser.CATEGORIES
+        val covered = all.keys.count { voted.optInt(it, 0) > 0 }
+        acctToggle.text = "🗳 Categories voted today — $covered/${all.size}" +
+            if (acctScroll.visibility == android.view.View.VISIBLE) " (tap to hide)" else " (tap to show)"
+        if (acctScroll.visibility != android.view.View.VISIBLE) return
+
+        acctList.removeAllViews()
+        all.forEach { (slug, label) ->
+            val n = voted.optInt(slug, 0)
+            acctList.addView(android.widget.TextView(this).apply {
+                text = (if (n > 0) "✓ " else "· ") + label + (if (n > 0) "  ×$n" else "")
+                textSize = 13f
+                setPadding(0, 6, 0, 6)
+            })
+        }
+        if (System.currentTimeMillis() < KcaVoteParser.COLLAB_UNTIL_MS) {
+            acctList.addView(kcaFandomRow())
+        }
+    }
+
+    /** The side this person says they are, or null until they say. */
+    private fun kcaFandom(): String? {
+        val got = prefs.getString("kcaFandom", null)
+        return if (KcaVoteParser.FANDOMS.any { it.first == got }) got else null
+    }
+
+    /**
+     * Which side are you? Asked here rather than nowhere: without it every blink
+     * and every BLOOM voting from the app counts as "didn't say" on the collab
+     * board, and the people most likely to be on a phone are the ones the
+     * question is for.
+     *
+     * NOTHING IS PRESELECTED, and a side is never assumed from which app you
+     * happen to be using — it would file every BLOOM who ignores this under
+     * BLINKs, and most people ignore it. It only counts YOU on the collab
+     * board; it changes nothing about what your votes count for.
+     */
+    private fun kcaFandomRow(): android.view.View {
+        val chosen = kcaFandom()
+        return android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            setPadding(0, 14, 0, 2)
+            addView(android.widget.TextView(this@MainActivity).apply {
+                text = if (chosen == null) "Which side are you?" else "Logging as"
+                textSize = 12f
+                alpha = 0.7f
+            })
+            KcaVoteParser.FANDOMS.forEach { (key, label) ->
+                addView(android.widget.TextView(this@MainActivity).apply {
+                    text = (if (chosen == key) "● " else "○ ") + label
+                    textSize = 12f
+                    setPadding(26, 0, 0, 0)
+                    setOnClickListener {
+                        prefs.edit().putString("kcaFandom", key).apply()
+                        renderKcaCategories()
+                        toast("Logging as $label on the collab board — it doesn’t change your votes")
+                    }
+                })
+            }
+        }
+    }
+
     private fun toast(m: String) =
         android.widget.Toast.makeText(this, m, android.widget.Toast.LENGTH_LONG).show()
 
@@ -302,10 +501,21 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
 
     // ── UI ───────────────────────────────────────────────────────────────────
     private fun updateHeader() {
-        val bt = award == "bt"
-        if (bt) btRollDayIfNeeded() else rollDayIfNeeded()
-        countView.text = (if (bt) prefs.getInt("btCount", 0) else prefs.getInt("count", 0)).toString()
-        countLabel.setText(if (bt) R.string.counted_today_bt else R.string.counted_today_vma)
+        when (award) {
+            "bt" -> btRollDayIfNeeded()
+            "kca" -> kcaRollDayIfNeeded()
+            else -> rollDayIfNeeded()
+        }
+        countView.text = when (award) {
+            "bt" -> prefs.getInt("btCount", 0)
+            "kca" -> prefs.getInt("kcaCount", 0)
+            else -> prefs.getInt("count", 0)
+        }.toString()
+        countLabel.setText(when (award) {
+            "bt" -> R.string.counted_today_bt
+            "kca" -> R.string.counted_today_kca
+            else -> R.string.counted_today_vma
+        })
 
         val linked = prefs.getString("token", null) != null
         val base = if (linked) {
@@ -313,7 +523,11 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
         } else {
             "○ Not linked — tap Link"
         }
-        val pending = if (bt) prefs.getInt("btPending", 0) else prefs.getInt("pending", 0)
+        val pending = when (award) {
+            "bt" -> prefs.getInt("btPending", 0)
+            "kca" -> prefs.getInt("kcaPending", 0)
+            else -> prefs.getInt("pending", 0)
+        }
         statusView.text = if (pending > 0) "$base · ⏳ $pending syncing" else base
     }
 
@@ -385,7 +599,11 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
 
     private fun renderRoster() {
         if (!::acctList.isInitialized) return
-        if (award == "bt") renderBtCategories() else renderAccounts()
+        when (award) {
+            "bt" -> renderBtCategories()
+            "kca" -> renderKcaCategories()
+            else -> renderAccounts()
+        }
     }
 
     private fun renderBtCategories() {

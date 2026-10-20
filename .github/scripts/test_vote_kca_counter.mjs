@@ -61,6 +61,13 @@ const BALLOT = {
   '11111111-1111-1111-1111-111111111111': { t: 'ROSÉ',      q: '22222222-2222-2222-2222-222222222222', s: 'favorite-female-artist' },
   '33333333-3333-3333-3333-333333333333': { t: 'Dracula (with JENNIE)', q: '44444444-4444-4444-4444-444444444444', s: 'favorite-music-collaboration' },
   '55555555-5555-5555-5555-555555555555': { t: 'Fortnite',  q: '66666666-6666-6666-6666-666666666666', s: 'favorite-video-game' },
+  // The collab's category. Ours has no nominee in it — that is the whole
+  // premise of the trade — so a pick here is counted for the collab board and
+  // for nothing else. The decoy shares the category: a pick in the right
+  // category for the wrong act is the failure that would silently inflate a
+  // partner's number.
+  '77777777-7777-7777-7777-777777777777': { t: 'BINI',    q: '88888888-8888-8888-8888-888888888888', s: 'favorite-global-music-star' },
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa': { t: 'Someone', q: '88888888-8888-8888-8888-888888888888', s: 'favorite-global-music-star' },
 };
 // The other five entries of the real flush, so the fixture is a whole round
 // rather than one vote with padding.
@@ -72,7 +79,12 @@ const freshBallot = () => ({ ts: Date.now(), byOption: JSON.parse(JSON.stringify
 // ── a background.js with the browser stubbed out ────────────────────────────
 // The module registers its webRequest listeners at load, so those are stubs; the
 // pieces under test are reached through the closure the wrapper returns.
-function loadBackground() {
+// `opts.failUrl` is a substring; a post to a url containing it answers like a
+// route that is not there. That case is not hypothetical — it is what
+// production did to every collab pick until /api/collabs shipped, and the
+// counter said nothing about it.
+function loadBackground(opts) {
+  const failUrl = (opts && opts.failUrl) || null;
   const src = readFileSync(root + 'vote-extension/background.js', 'utf8');
   const store = {};
   const posts = [];
@@ -98,8 +110,11 @@ function loadBackground() {
       onChanged: listener,
     },
   };
-  const fetch = async (url, opts) => {
-    posts.push({ url, body: JSON.parse((opts && opts.body) || '{}') });
+  const fetch = async (url, init) => {
+    posts.push({ url, body: JSON.parse((init && init.body) || '{}') });
+    if (failUrl && String(url).includes(failUrl)) {
+      return { ok: false, status: 404, json: async () => ({ error: 'not found' }) };
+    }
     return { ok: true, json: async () => ({ ok: true }) };
   };
   const api = new Function('chrome', 'fetch', 'console', src + `
@@ -117,6 +132,14 @@ const asRequestBody = (obj) => ({ raw: [{ bytes: new TextEncoder().encode(JSON.s
 // processKcaVote posts and updates storage through callbacks, with no promise to
 // await — so settle the microtask/callback queue before asserting.
 const settle = () => new Promise((r) => setTimeout(r, 30));
+
+// The counter posts to TWO endpoints — the BLACKPINK board, and the collab
+// board for the trade — so "the post" has to be chosen by url rather than by
+// position. posts[0] is whichever request resolved first, which is why every
+// assertion written that way went red the day the collab shipped: the suite
+// was reading a collab body and asking it for `votes`.
+const boardPosts  = (bg) => bg.posts.filter((p) => !p.url.includes('/api/collabs'));
+const collabPosts = (bg) => bg.posts.filter((p) =>  p.url.includes('/api/collabs'));
 
 console.log('--- A. background.js: reading the vote request');
 {
@@ -153,8 +176,8 @@ console.log('\n--- A. a submitted round is decoded, and only ours is counted');
   bg.store.kcaBallot = freshBallot();
   await bg.processKcaVote({ votes: FLUSH_1.votes.map(v => ({ q: v.question_id, o: v.option_id })) });
   await settle();
-  const p = bg.posts[0];
-  check(bg.posts.length === 1, `one post to the board (${bg.posts.length})`);
+  const p = boardPosts(bg)[0];
+  check(boardPosts(bg).length === 1, `one post to the board (${boardPosts(bg).length})`);
   check(p && p.body.award === 'kca', 'on the kca award dimension');
   check(p && p.body.votes === 1, `one vote counted out of the six picks (${p && p.body.votes})`);
   check(p && JSON.stringify(p.body.cats) === '{"favorite-music-group-or-duo":1}',
@@ -193,7 +216,7 @@ console.log('\n--- A. all three of ours in one round is three votes');
     { q: '66666666-6666-6666-6666-666666666666', o: '55555555-5555-5555-5555-555555555555' },
   ] });
   await settle();
-  const p = bg.posts[0];
+  const p = boardPosts(bg)[0];
   check(p && p.body.votes === 3, `three votes from one round (${p && p.body.votes})`);
   check(p && p.body.cats['favorite-female-artist'] === 1, 'ROSÉ counted despite the accent');
   check(p && p.body.cats['favorite-music-collaboration'] === 1, 'Dracula counted');
@@ -202,6 +225,213 @@ console.log('\n--- A. all three of ours in one round is three votes');
   check(sum === (p && p.body.votes), `the breakdown adds up to the total (${sum} vs ${p && p.body.votes})`);
   check(Array.isArray(bg.store.kcaLog) && bg.store.kcaLog.length === 3,
         `three activity rows, one per nominee (${bg.store.kcaLog && bg.store.kcaLog.length})`);
+}
+
+console.log('\n--- A. the collab: the partner’s pick counts there and nowhere else');
+// The trade's whole safety property. A BINI pick must reach the collab board
+// and must NOT reach the BLACKPINK total, the per-category breakdown or the
+// activity log — a blink's standing cannot rise for voting someone else's act.
+// Two posts, two endpoints, and the only thing that proves they stayed apart
+// is reading both.
+{
+  const bg = loadBackground();
+  bg.store.buToken = 'tok';
+  bg.store.kcaBallot = freshBallot();
+  await bg.processKcaVote({ votes: [
+    { q: '1ae0e782-6c39-4329-88ae-137533d9f497', o: 'aa2a878e-15d2-455f-9829-1b55fd948c81' },  // BLACKPINK
+    { q: '88888888-8888-8888-8888-888888888888', o: '77777777-7777-7777-7777-777777777777' },  // BINI
+  ] });
+  await settle();
+  const collab = bg.posts.find((p) => p.url.includes('/api/collabs'));
+  const ours = bg.posts.find((p) => !p.url.includes('/api/collabs'));
+  check(!!collab, 'the collab board is posted to');
+  check(collab && collab.body.cats['favorite-global-music-star'] === 1, 'with the BINI pick');
+  // The collab counts a whole pass, so ours belongs in it too — that is the
+  // number /collabs draws both sides of the bar from.
+  check(collab && collab.body.cats['favorite-music-group-or-duo'] === 1,
+        'and our own pick, because a collab counts the whole pass');
+  check(ours && ours.body.votes === 1, `the BLACKPINK post counts 1, not 2 (${ours && ours.body.votes})`);
+  check(ours && !('favorite-global-music-star' in ours.body.cats),
+        'and BINI’s category is not in it');
+  check(bg.store.kcaCount === 1, `the day's BLACKPINK total is 1 (${bg.store.kcaCount})`);
+  check(!bg.store.kcaCats['favorite-global-music-star'], 'and the breakdown has no BINI row');
+  check(Array.isArray(bg.store.kcaLog) && bg.store.kcaLog.length === 1,
+        `one activity row, not two (${bg.store.kcaLog && bg.store.kcaLog.length})`);
+  // Recorded locally, which is the panel's ONLY window into this. Without it
+  // the extension counts the collab perfectly and shows nothing, so a dead
+  // endpoint and a working one look identical — which is how a 404 read as
+  // "it isn't counting BINI".
+  check(bg.store.kcaCollab && bg.store.kcaCollab.cats['favorite-global-music-star'] === 1,
+        'the panel can see the BINI pick');
+  check(bg.store.kcaCollab && !bg.store.kcaCollab.held, 'and nothing is marked as held');
+}
+
+console.log('\n--- A. the ballot labels that category by region, and it still counts');
+// The real bug, from the live ballot: Favorite Global Music Star lists BINI as
+// "Asia: BINI". Against an exact match that is a different string, so every
+// BINI pick was dropped — and a dropped pick is indistinguishable from nobody
+// voting, which is why it took a person noticing a zero on the board.
+//
+// The prefix is not pinned into the table: it depends on the region the ballot
+// is served for, so the match has to tolerate any prefix rather than that one.
+{
+  for (const written of ['Asia: BINI', 'Europe: BINI', 'BINI']) {
+    const bg = loadBackground();
+    bg.store.buToken = 'tok';
+    const ballot = freshBallot();
+    ballot.byOption['77777777-7777-7777-7777-777777777777'].t = written;
+    bg.store.kcaBallot = ballot;
+    await bg.processKcaVote({ votes: [
+      { q: '88888888-8888-8888-8888-888888888888', o: '77777777-7777-7777-7777-777777777777' },
+    ] });
+    await settle();
+    const collab = bg.posts.find((p) => p.url.includes('/api/collabs'));
+    check(collab && collab.body.cats['favorite-global-music-star'] === 1,
+          `"${written}" counts for BINI`);
+    check(!(bg.store.kcaDiag || []).some((e) => e.kind === 'nominee-renamed'),
+          `and "${written}" is not reported as a rename`);
+  }
+  // …while a prefix in front of somebody else is still somebody else. The
+  // fallback compares the whole tail, so this is a different act, not a match.
+  const bg = loadBackground();
+  bg.store.buToken = 'tok';
+  const ballot = freshBallot();
+  ballot.byOption['aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'].t = 'Asia: Someone';
+  bg.store.kcaBallot = ballot;
+  await bg.processKcaVote({ votes: [
+    { q: '88888888-8888-8888-8888-888888888888', o: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' },
+  ] });
+  await settle();
+  check(!bg.posts.length, 'a region prefix on a rival does not make them ours');
+}
+
+console.log('\n--- A. a nominee the ballot has renamed is reported, not swallowed');
+// The diagnostic that would have found the above in a minute instead of a
+// release. It fires only on a NEAR miss — a title that contains the nominee
+// but does not match — so a vote for a rival never trips it.
+{
+  const bg = loadBackground();
+  bg.store.buToken = 'tok';
+  const ballot = freshBallot();
+  ballot.byOption['77777777-7777-7777-7777-777777777777'].t = 'BINI (Philippines)';
+  bg.store.kcaBallot = ballot;
+  await bg.processKcaVote({ votes: [
+    { q: '1ae0e782-6c39-4329-88ae-137533d9f497', o: 'aa2a878e-15d2-455f-9829-1b55fd948c81' },
+    { q: '88888888-8888-8888-8888-888888888888', o: '77777777-7777-7777-7777-777777777777' },
+  ] });
+  await settle();
+  const d = (bg.store.kcaDiag || []).find((e) => e.kind === 'nominee-renamed');
+  check(!!d, 'a decorated name we do not handle is reported');
+  check(d && d.got === 'BINI (Philippines)' && d.want === 'BINI',
+        `with both strings, so the fix is one line (${d && d.got} vs ${d && d.want})`);
+  // And the rest of the round is untouched by it.
+  check(bg.store.kcaCount === 1, `the BLACKPINK pick still counted (${bg.store.kcaCount})`);
+
+  const rival = loadBackground();
+  rival.store.buToken = 'tok';
+  rival.store.kcaBallot = freshBallot();
+  await rival.processKcaVote({ votes: [
+    { q: '1ae0e782-6c39-4329-88ae-137533d9f497', o: 'b156d9c1-4905-44c1-8dbb-730e2a77f3e5' },  // BTS
+  ] });
+  await settle();
+  check(!(rival.store.kcaDiag || []).some((e) => e.kind === 'nominee-renamed'),
+        'but an ordinary vote for a rival is not');
+}
+
+console.log('\n--- A. the side a person says they are rides along with the post');
+// Self-declared, and it changes NOTHING about what is counted: the same picks
+// go either way. It only lets the board say who turned up — which is the one
+// competition this collab can honestly run, since the votes themselves cannot
+// be traced to a fandom.
+{
+  const bg = loadBackground();
+  bg.store.buToken = 'tok';
+  bg.store.kcaBallot = freshBallot();
+  const round = [{ q: '88888888-8888-8888-8888-888888888888', o: '77777777-7777-7777-7777-777777777777' }];
+  await bg.processKcaVote({ votes: round });
+  await settle();
+  const first = bg.posts.find((p) => p.url.includes('/api/collabs'));
+  check(first && !('fandom' in first.body), 'nothing is sent before they have said');
+
+  const said = loadBackground();
+  said.store.buToken = 'tok';
+  said.store.kcaBallot = freshBallot();
+  said.store.kcaFandom = 'bloom';
+  await said.processKcaVote({ votes: round });
+  await settle();
+  const posted = said.posts.find((p) => p.url.includes('/api/collabs'));
+  check(posted && posted.body.fandom === 'bloom', `and the chosen side rides along (${posted && posted.body.fandom})`);
+  check(posted && JSON.stringify(posted.body.cats) === JSON.stringify(first.body.cats),
+        'while the picks posted are identical either way');
+
+  // A key neither side of the collab knows counts nobody, so it is dropped
+  // rather than written: the board would show it as a fandom of one.
+  const junk = loadBackground();
+  junk.store.buToken = 'tok';
+  junk.store.kcaBallot = freshBallot();
+  junk.store.kcaFandom = 'not-a-fandom';
+  await junk.processKcaVote({ votes: round });
+  await settle();
+  const j = junk.posts.find((p) => p.url.includes('/api/collabs'));
+  check(j && !('fandom' in j.body), 'a side the collab does not have is not sent');
+}
+
+console.log('\n--- A. a pick in the collab’s category for someone else is nobody’s');
+{
+  const bg = loadBackground();
+  bg.store.buToken = 'tok';
+  bg.store.kcaBallot = freshBallot();
+  await bg.processKcaVote({ votes: [
+    { q: '1ae0e782-6c39-4329-88ae-137533d9f497', o: 'aa2a878e-15d2-455f-9829-1b55fd948c81' },  // BLACKPINK
+    { q: '88888888-8888-8888-8888-888888888888', o: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' },  // not BINI
+  ] });
+  await settle();
+  const collab = bg.posts.find((p) => p.url.includes('/api/collabs'));
+  check(collab && !('favorite-global-music-star' in collab.body.cats),
+        'the right category with the wrong act does not count for the collab');
+  check(collab && collab.body.cats['favorite-music-group-or-duo'] === 1,
+        'and the rest of the pass still does');
+}
+
+console.log('\n--- A. a round that is ONLY the partner’s pick still reaches the collab');
+// The early-return trap: a blink who fills the trade's category and skips ours
+// has cast nothing for BLACKPINK, and returning on that would drop the pick the
+// collab exists for.
+{
+  const bg = loadBackground();
+  bg.store.buToken = 'tok';
+  bg.store.kcaBallot = freshBallot();
+  await bg.processKcaVote({ votes: [
+    { q: '88888888-8888-8888-8888-888888888888', o: '77777777-7777-7777-7777-777777777777' },
+  ] });
+  await settle();
+  check(bg.posts.some((p) => p.url.includes('/api/collabs')), 'the collab post went');
+  check(!bg.posts.some((p) => !p.url.includes('/api/collabs')), 'and nothing was posted to the BLACKPINK board');
+  check(!bg.store.kcaCount, `the BLACKPINK total stays 0 (${bg.store.kcaCount || 0})`);
+  check(bg.store.kcaCollab && bg.store.kcaCollab.cats['favorite-global-music-star'] === 1,
+        'while the panel shows the pick');
+}
+
+console.log('\n--- A. a collab post that goes nowhere says so instead of nothing');
+// Exactly what production did until /api/collabs shipped: 404 on every pick,
+// and a panel that showed the same thing either way.
+{
+  const bg = loadBackground({ failUrl: '/api/collabs' });
+  bg.store.buToken = 'tok';
+  bg.store.kcaBallot = freshBallot();
+  await bg.processKcaVote({ votes: [
+    { q: '1ae0e782-6c39-4329-88ae-137533d9f497', o: 'aa2a878e-15d2-455f-9829-1b55fd948c81' },
+    { q: '88888888-8888-8888-8888-888888888888', o: '77777777-7777-7777-7777-777777777777' },
+  ] });
+  await settle();
+  const c = bg.store.kcaCollab;
+  check(c && c.held === 2, `both picks are counted as not arrived (${c && c.held})`);
+  check(c && !Object.keys(c.cats).length, 'and none of them is shown as counted');
+  check((bg.store.kcaDiag || []).some((e) => e.kind === 'collab-post-failed'),
+        'the failure is recorded for the panel to show');
+  // The two posts are independent: the collab failing must not cost a blink
+  // their BLACKPINK vote.
+  check(bg.store.kcaCount === 1, `and the BLACKPINK vote still counted (${bg.store.kcaCount})`);
 }
 
 console.log('\n--- A. a retry folds, a second round does not');
@@ -214,7 +444,7 @@ console.log('\n--- A. a retry folds, a second round does not');
   await settle();
   await bg.processKcaVote({ votes: round });          // the same POST, retried
   await settle();
-  check(bg.posts.length === 1, `the retry was not counted again (${bg.posts.length} posts)`);
+  check(boardPosts(bg).length === 1, `the retry was not counted again (${boardPosts(bg).length} posts)`);
 
   // KCA allows repeat voting, and a second round casts the very same pairs. Age
   // the dedupe entry past the window and it must count — this is the case that
@@ -227,7 +457,7 @@ console.log('\n--- A. a retry folds, a second round does not');
   bg2.store[bg2.KCA_SEEN_KEY] = bg.store[bg.KCA_SEEN_KEY];
   await bg2.processKcaVote({ votes: round });
   await settle();
-  check(bg2.posts.length === 1, `a later round with identical picks counts again (${bg2.posts.length} posts)`);
+  check(boardPosts(bg2).length === 1, `a later round with identical picks counts again (${boardPosts(bg2).length} posts)`);
 }
 
 console.log('\n--- A. no ballot means count NOTHING, and say so');
@@ -292,7 +522,11 @@ console.log('\n--- A. a round reaches us in pieces, and the backlog adds them up
   for (const f of flushes) { await bg.processKcaVote({ votes: f }); await settle(); }
   check(bg.store.kcaPendingN === 3, `all three are held, not just the last (${bg.store.kcaPendingN})`);
   const diag = bg.store.kcaDiag || [];
-  check(diag.length === 3 && diag.every(d => d.kind === 'held'), `one reason per flush (${diag.length})`);
+  // Filtered to the holds: with no account linked the collab post is held too
+  // and writes its own entry per flush, which is correct and not what this
+  // line is about.
+  const holds = diag.filter((d) => d.kind === 'held');
+  check(holds.length === 3, `one reason per flush (${holds.length})`);
   check(diag[0].n === 1, 'and each reason describes only its own flush, which is why the panel must not read it as the backlog');
 }
 
@@ -339,6 +573,7 @@ console.log('\n--- B. panel.js reads the ballot off the page');
     window.__store = {};
     const onChanged = [];
     window.__fire = () => onChanged.forEach((f) => f({ kcaDiag: {} }, 'local'));
+    window.__written = {};
     window.chrome = {
       runtime: {
         id: 'test', lastError: null,
@@ -355,7 +590,11 @@ console.log('\n--- B. panel.js reads the ballot off the page');
       storage: {
         local: {
           get: (k, cb) => cb && cb(window.__store),
-          set: (o, cb) => { Object.assign(window.__store, o); cb && cb(); },
+          set: (o, cb) => {
+            Object.assign(window.__store, o);
+            Object.assign(window.__written, o);
+            cb && cb();
+          },
         },
         onChanged: { addListener(f) { onChanged.push(f); } },
       },
@@ -418,6 +657,98 @@ console.log('\n--- B. panel.js reads the ballot off the page');
   const freshFail = [{ kind: 'rejected', status: 500, ts: Date.now() }];
   check(/rejected that round/.test(await bandText({ kcaDiag: freshFail, kcaPendingN: 0 })),
         'while a fresh one is shown');
+
+  // A collab post that reached nothing must say so. This was the one diag kind
+  // the renderer fell through and hid, so a pick that went into a 404 looked
+  // exactly like one that was counted — which is how a missing endpoint read
+  // as "the extension isn't counting BINI".
+  const failed = [{ kind: 'collab-post-failed', reason: 'http', ts: Date.now() }];
+  check(/not the collab board/i.test(await bandText({ kcaDiag: failed })),
+        'a collab post that went nowhere is reported');
+  // And it is not masked by the ordinary post finishing after it: the two are
+  // separate requests, so a 'counted' entry can land on top of this one and
+  // says nothing about it.
+  const masked = [{ kind: 'counted', n: 1, ts: Date.now() },
+                  { kind: 'collab-post-failed', reason: 'http', ts: Date.now() - 500 }];
+  check(/not the collab board/i.test(await bandText({ kcaDiag: masked })),
+        'even when the BLACKPINK post lands after it');
+
+  // ── the collab block ──────────────────────────────────────────────────────
+  const collabBlock = async (store) => {
+    await p.evaluate((s) => { window.__store = s; window.__fire(); }, store);
+    await p.waitForTimeout(80);
+    return p.evaluate(() => {
+      const r = document.getElementById('bu-vote-panel-host').shadowRoot;
+      const el = r.getElementById('kcacollab');
+      return { shown: el.style.display !== 'none',
+               text: el.textContent.replace(/\s+/g, ' ').trim(),
+               total: (r.getElementById('total') || {}).textContent || '' };
+    });
+  };
+  const noCollab = await collabBlock({ kcaCount: 4, kcaCats: { 'favorite-music-group-or-duo': 4 } });
+  check(!noCollab.shown, 'no collab block for a blink who has not voted the trade');
+
+  const withBini = await collabBlock({
+    kcaCount: 4, kcaCats: { 'favorite-music-group-or-duo': 4 },
+    kcaCollab: { day: '2026-10-19', cats: { 'favorite-global-music-star': 3,
+                                            'favorite-music-group-or-duo': 4 }, held: 0 },
+  });
+  check(withBini.shown && /Global Music Star/.test(withBini.text),
+        `the BINI pick is on the panel (${withBini.text.slice(0, 60)})`);
+  // The whole point of keeping it in its own block: seven picks are shown and
+  // the BLACKPINK total is still four. A collab vote must never move a
+  // standing, and this is the number that would show it if it did.
+  check(withBini.total.trim() === '4',
+        `and the BLACKPINK total is untouched by it (${withBini.total.trim()})`);
+  check(/not.{0,3} added to your blackpink total/i.test(withBini.text),
+        'and the block says so in words');
+
+  const heldPicks = await collabBlock({
+    kcaCount: 1, kcaCats: { 'favorite-music-group-or-duo': 1 },
+    kcaCollab: { day: '2026-10-19', cats: {}, held: 2 },
+  });
+  check(heldPicks.shown && /2 picks didn.t reach the collab board/i.test(heldPicks.text),
+        `picks that did not arrive are counted and named (${heldPicks.text.slice(-60)})`);
+
+  // ── the chooser ───────────────────────────────────────────────────────────
+  // It is asked after a round, inside the collab block, and a click has to
+  // survive the block being re-rendered — the innerHTML is rewritten on every
+  // storage change, so a handler bound to a chip would be gone by the time
+  // anyone clicked it.
+  const withPicks = { kcaCount: 1, kcaCats: { 'favorite-music-group-or-duo': 1 },
+                      kcaCollab: { day: '2026-10-19', cats: { 'favorite-global-music-star': 1 }, held: 0 } };
+  await p.evaluate((s0) => { window.__store = s0; window.__fire(); }, withPicks);
+  await p.waitForTimeout(100);
+  const chips = await p.evaluate(() => {
+    const r = document.getElementById('bu-vote-panel-host').shadowRoot;
+    return [...r.querySelectorAll('#kcacollab .fandom-chip')].map((b) => ({
+      key: b.getAttribute('data-fandom'), on: b.classList.contains('on'),
+    }));
+  });
+  check(chips.length === 2 && chips.every((c) => !c.on),
+        `both sides are offered and neither is preselected (${chips.map((c) => c.key).join('/')})`);
+  // A default would file everyone who ignores the question on one side of a
+  // board about who turned up, and most people ignore it.
+  check(!(await p.evaluate(() => window.__written && window.__written.kcaFandom)),
+        'and nothing is stored until they answer');
+
+  await p.evaluate(() => {
+    const r = document.getElementById('bu-vote-panel-host').shadowRoot;
+    r.querySelector('#kcacollab .fandom-chip[data-fandom="bloom"]').click();
+  });
+  await p.waitForTimeout(100);
+  check((await p.evaluate(() => window.__written && window.__written.kcaFandom)) === 'bloom',
+        'clicking a side stores it for the next post');
+  const lit = await p.evaluate((s0) => {
+    window.__store = Object.assign({}, s0, { kcaFandom: 'bloom' }); window.__fire();
+    return new Promise((res) => setTimeout(() => {
+      const r = document.getElementById('bu-vote-panel-host').shadowRoot;
+      res([...r.querySelectorAll('#kcacollab .fandom-chip')].map((b) => ({
+        key: b.getAttribute('data-fandom'), on: b.classList.contains('on') })));
+    }, 80));
+  }, withPicks);
+  check(lit.find((c) => c.key === 'bloom')?.on && !lit.find((c) => c.key === 'blink')?.on,
+        'and the panel shows which one is set');
 
   const sent = await p.evaluate(() => window.__sent);
   const asked = sent.find((m) => m.type === 'bu-kca-ballot-stale');

@@ -93,7 +93,7 @@ await p.evaluate(() => {
   document.getElementById('ext-update-overlay')?.remove();
 });
 
-console.log('--- the award switch carries all three');
+console.log('--- the award switch carries every award');
 // Order and labels come from the award table + the close dates, with no network.
 const sw = await p.evaluate(() => ({
   order: vmaAwardOrder(),
@@ -101,7 +101,13 @@ const sw = await p.evaluate(() => ({
   closed: vmaAwardOrder().map(a => vmaAwardClosed(a)),
   dflt: _vvAward,
 }));
-check(sw.order.length === 3, `three awards (${sw.order.join(', ')})`);
+// Derived from the award table rather than typed: this read "three" and stayed
+// reading it when MAMA was added, so the suite went red over a site that was
+// right. The thing worth asserting is that the switch offers EVERY award there
+// is — a missing one is unreachable from here.
+const ALL_AWARDS = await p.evaluate(() => Object.keys(_vvAwardMeta));
+check(sw.order.length === ALL_AWARDS.length,
+      `every award is in the switch (${sw.order.join(', ')})`);
 check(sw.order.includes('kca'), 'Kids’ Choice is one of them');
 check(sw.labels.every(Boolean) && sw.labels.includes('Kids’ Choice'), `each has a label (${sw.labels.join(' · ')})`);
 // The VMAs closed in September; whatever else moves, they must sort last and be
@@ -244,7 +250,8 @@ const back = await p.evaluate(() => {
   const btns = [...document.querySelectorAll('.vv-awardsw-btn')].map(x => x.textContent.replace(/\s+/g, ' ').trim());
   return btns;
 });
-check(back.length === 3, `the switch still offers all three from this tab (${back.join(' | ')})`);
+check(back.length === ALL_AWARDS.length,
+      `the switch still offers all of them from this tab (${back.join(' | ')})`);
 check(back.some(x => /final/i.test(x)), 'with the finished ballot marked final');
 
 await p.screenshot({ path: '/tmp/kca-board.png', fullPage: true }).catch(() => {});

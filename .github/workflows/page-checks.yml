@@ -16,6 +16,10 @@ on:
       - 'index.html'
       - 'projects.html'
       - 'awards.html'
+      - 'collabs.html'
+      - 'api/collabs.js'
+      - 'vote-extension/**'
+      - 'android-app/app/src/main/**'
       - 'vmas.html'
       - 'breaktudo.html'
       - 'achievements.html'
@@ -29,6 +33,10 @@ on:
       - 'index.html'
       - 'projects.html'
       - 'awards.html'
+      - 'collabs.html'
+      - 'api/collabs.js'
+      - 'vote-extension/**'
+      - 'android-app/app/src/main/**'
       - 'vmas.html'
       - 'breaktudo.html'
       - 'achievements.html'
@@ -84,3 +92,25 @@ jobs:
       - name: The front door
         if: always()
         run: node .github/scripts/test_awards_page.mjs
+
+      - name: Fandom collabs
+        if: always()
+        run: node .github/scripts/test_collabs_page.mjs
+
+      - name: The collab board endpoint
+        if: always()
+        run: node .github/scripts/test_collabs_api.mjs
+
+      # Three files carry the same ballot slugs. Drift between them does not
+      # throw — it silently counts nothing, and reads on the page exactly like
+      # an honest empty board.
+      - name: Collab slugs agree across the site, the API and the counter
+        if: always()
+        run: node .github/scripts/test_collab_slugs.mjs
+
+      # A release touches two manifests, two zips and two pages. The quiet
+      # failure is a page still advertising the old version, which on a
+      # blink's board looks like "my votes aren't counting".
+      - name: The extension release is consistent
+        if: always()
+        run: node .github/scripts/test_extension_release.mjs

@@ -6,11 +6,12 @@ BLACKPINK / member / BLINKs votes you cast and logs them to your
 **blinksunited.com/voting** board. It only reads your own votes — it **never votes for
 you**.
 
-Counts **both awards**, kept apart end to end exactly as the board keeps them:
+Counts **three awards**, kept apart end to end exactly as the board keeps them:
 
 | | |
 |---|---|
-| **BreakTudo** | open until 17 Oct — what the Vote button opens |
+| **Kids' Choice** | open until 13 Nov — what the Vote button opens. Also counts the [BLINKs × BLOOMs collab](https://blinksunited.com/collabs), which is posted to its own board and never mixed into the BLACKPINK total |
+| **BreakTudo** | closed since 17 Oct; still counted if you navigate there |
 | **MTV VMAs** | closed since 25 Sep; still counted if you navigate to vote.mtv.com, because the ballot returns next year |
 
 ## Why an app
@@ -19,7 +20,7 @@ So instead the app *is* the browser for voting: it opens the vote site in a WebV
 injects the same counting logic the extension uses.
 
 ## How it works
-- `assets/counter.js` is injected on **both** vote sites and picks its award from its
+- `assets/counter.js` is injected on **all three** vote sites and picks its award from its
   own `location.hostname`. It hooks `fetch`/`XMLHttpRequest` and reports only
   **successful** submissions.
   - MTV: everything is in the request URL, so the URL goes over

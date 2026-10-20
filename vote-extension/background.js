@@ -808,6 +808,96 @@ const KCA_NOMINEES = {
   'favorite-music-collaboration': { nominee: 'Dracula (with JENNIE)', who: 'JENNIE',    label: 'Music Collaboration' },
 };
 
+// ── the fandom collab (blinksunited.com/collabs) ────────────────────────────
+// BLINKs and BLOOMs agreed to fill each other's categories on this ballot, so
+// the counter records the WHOLE pass — ours and theirs — for the collab board.
+//
+// IT GOES TO ITS OWN ENDPOINT, never to /api/vma-votes. That endpoint's `votes`
+// column ranks the Kids' Choice board and earns the Voter badge, and a pick for
+// BINI is not a BLACKPINK vote: posting it there would raise a blink's
+// BLACKPINK standing for voting BINI. /api/collabs writes a separate table that
+// the Kids' Choice board never reads.
+//
+// Keyed by the ballot's own category slug, the same key the site and the API
+// use, so nothing has to translate between them.
+const COLLAB = {
+  id: 'bvp-kca-2026',
+  endpoint: 'https://blinksunited.com/api/collabs',
+  // The ballot's close, as the site has it. Past this the collab is over and
+  // the counter stops posting to it — an extension lives on people's machines
+  // and cannot be recalled, so the window is enforced here as well as there.
+  until: Date.parse('2026-11-14T07:59:00Z'),
+  // Every category the collab counts. Ours are here too: the collab board
+  // counts a whole pass through the ballot, not only the half done for them.
+  nominees: {
+    'favorite-music-group-or-duo':  'BLACKPINK',
+    'favorite-music-collaboration': 'Dracula (with JENNIE)',
+    'favorite-female-artist':       'ROSÉ',
+    'favorite-global-music-star':   'BINI',
+  },
+  // The sides a person can say they are, in step with COLLABS[].fandoms on
+  // /collabs — the keys are what the board counts people by, so a key only one
+  // side knows counts nobody. test_collab_slugs checks they agree.
+  //
+  // It changes NOTHING about what is counted: the same picks are posted either
+  // way, and the collab board's per-act totals stay pooled, because everyone
+  // votes the whole ballot and no vote belongs to a fandom.
+  fandoms: [
+    { key: 'blink', label: 'BLINK' },
+    { key: 'bloom', label: 'BLOOM' },
+  ],
+};
+
+// Which side this person says they are. Null until they say, and null is sent
+// as nothing rather than guessed at — a default of 'blink' would quietly file
+// every BLOOM on our side of a board about who turned up.
+const KCA_FANDOM_KEY = 'kcaFandom';
+
+// What the panel shows of the collab. Kept locally because nothing else can
+// show it: these picks are deliberately absent from kcaCount and kcaCats — a
+// BINI pick is not a BLACKPINK vote and must never move that total — so
+// without this the counter records them and says nothing, and a working collab
+// and a dead endpoint look identical from the panel. That is exactly how
+// v1.9.0 read as "it isn't counting BINI" while it was counting it perfectly
+// and posting into a 404.
+//
+// `held` is picks the board did not take. Not a retry queue: the collab board
+// is a tally, and a pick re-sent later would land on the wrong day. It is a
+// count of what did not arrive, so the panel can say so instead of implying
+// everything went.
+const KCA_COLLAB_KEY = 'kcaCollab';
+
+function recordCollabLocal(cats, ok) {
+  const today = kstDay();
+  chrome.storage.local.get([KCA_COLLAB_KEY], (raw) => {
+    const prev = raw && raw[KCA_COLLAB_KEY];
+    const cur = (prev && prev.day === today) ? prev : { day: today, cats: {}, held: 0 };
+    const next = { day: today, cats: Object.assign({}, cur.cats || {}), held: cur.held || 0 };
+    let n = 0;
+    for (const k in cats) n += cats[k];
+    if (ok) { for (const k in cats) next.cats[k] = (Number(next.cats[k]) || 0) + cats[k]; }
+    else next.held += n;
+    chrome.storage.local.set({ [KCA_COLLAB_KEY]: next });
+  });
+}
+
+async function postCollabVotes(cats) {
+  const { buToken } = await getLocal('buToken');
+  if (!buToken || !cats || !Object.keys(cats).length) return { ok: false, reason: 'not-linked' };
+  const got = await getLocal(KCA_FANDOM_KEY);
+  const fandom = (got && got[KCA_FANDOM_KEY]) || null;
+  const valid = fandom && COLLAB.fandoms.some((f) => f.key === fandom) ? fandom : null;
+  try {
+    const r = await fetch(COLLAB.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ id: COLLAB.id, extToken: buToken, cats },
+        valid ? { fandom: valid } : {})),
+    });
+    return { ok: r.ok };
+  } catch (_) { return { ok: false, reason: 'network' }; }
+}
+
 // Compare names the way a human would: case, accents and punctuation all differ
 // between how the ballot writes a name and how we do. "ROSÉ" vs "ROSE" is the
 // one that matters today — without the accent fold, ROSÉ's votes never count.
@@ -815,6 +905,43 @@ function kcaNorm(s) {
   return String(s == null ? '' : s)
     .normalize('NFD').replace(/[̀-ͯ]/g, '')   // drop accents
     .toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+// Does this option name the nominee we are looking for?
+//
+// Exact first, and that is what counted BLACKPINK, ROSÉ and Dracula. The
+// fallback is here because the ballot labels one category by region:
+// Favorite Global Music Star lists BINI as "Asia: BINI" (read off the live
+// ballot by probe-kca-ballot.yml, 19 Oct). Against an exact match that is a
+// different string, so every BINI pick was dropped — silently, because a pick
+// for somebody else in our category looks the same from here.
+//
+// The prefix is NOT written into the nominee table instead. It depends on the
+// region the ballot is served for, and the vote payload carries a `region`
+// field, so "Asia: " is the label one visitor sees and not a property of the
+// nominee. Pinning it would fix the US ballot and break everyone else's.
+//
+// What is compared is everything after the first colon, WHOLE — so this still
+// refuses a different act. "Asia: BTS" does not become BINI.
+function kcaTitleIs(want, title) {
+  const w = kcaNorm(want);
+  if (!w) return false;
+  const t = String(title == null ? '' : title);
+  if (kcaNorm(t) === w) return true;
+  const i = t.indexOf(':');
+  return i > -1 && kcaNorm(t.slice(i + 1)) === w;
+}
+
+// A title that CONTAINS the nominee but does not match it. That means the
+// ballot has decorated the name in some way this does not handle and the vote
+// is being thrown away without a word — the exact failure above, which took a
+// person noticing a zero to find.
+//
+// The contains test is what stops this firing on every vote for a rival: "BTS"
+// does not contain "BLACKPINK". It can only fire on a near miss.
+function kcaNameNearMiss(want, title) {
+  const w = kcaNorm(want), t = kcaNorm(title);
+  return !!w && !!t && t !== w && t.indexOf(w) > -1;
 }
 
 // ── the ballot map ──────────────────────────────────────────────────────────
@@ -1003,18 +1130,42 @@ async function processKcaVote(e) {
   }
 
   let n = 0, unknown = 0, notOurs = 0;
-  const cats = {}, perMember = {};
+  const cats = {}, perMember = {}, collabCats = {}, near = [];
   for (const v of votes) {
     const opt = ballot.byOption[v.o];
     if (!opt) { unknown += 1; continue; }
+    // The collab counts the whole pass, so this is checked for every pick
+    // INCLUDING the partner's — and before the "is it ours" test below, which
+    // rightly calls a BINI pick not ours.
+    const inCollab = COLLAB.nominees[opt.s];
+    if (inCollab) {
+      if (kcaTitleIs(inCollab, opt.t)) collabCats[opt.s] = (collabCats[opt.s] || 0) + 1;
+      else if (kcaNameNearMiss(inCollab, opt.t)) near.push({ slug: opt.s, want: inCollab, got: opt.t });
+    }
     const mine = KCA_NOMINEES[opt.s];
-    if (!mine || kcaNorm(mine.nominee) !== kcaNorm(opt.t)) {
+    if (!mine || !kcaTitleIs(mine.nominee, opt.t)) {
+      if (mine && kcaNameNearMiss(mine.nominee, opt.t)) near.push({ slug: opt.s, want: mine.nominee, got: opt.t });
       notOurs += 1;
       continue;
     }
     n += 1;
     cats[opt.s] = (cats[opt.s] || 0) + 1;
     perMember[mine.who] = (perMember[mine.who] || 0) + 1;
+  }
+
+  // A nominee the ballot has renamed is worth saying out loud, whichever side
+  // it is on: it is a vote being dropped, and it cannot be told apart from
+  // "nobody voted" by looking at a total.
+  if (near.length) kcaDiag({ kind: 'nominee-renamed', slug: near[0].slug, want: near[0].want, got: near[0].got });
+
+  // Sent before the early return below: a round can carry a BINI pick and none
+  // of ours — somebody voting the other side's category and skipping ours is
+  // exactly what a collab makes possible — and returning first would drop it.
+  if (Date.now() < COLLAB.until && Object.keys(collabCats).length) {
+    postCollabVotes(collabCats).then((res) => {
+      recordCollabLocal(collabCats, res.ok);
+      if (!res.ok) kcaDiag({ kind: 'collab-post-failed', reason: res.reason || 'http' });
+    });
   }
 
   if (n <= 0) {

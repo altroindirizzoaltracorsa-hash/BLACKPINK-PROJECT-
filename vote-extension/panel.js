@@ -142,6 +142,24 @@
       .btcrow .nm{ flex:1; color:#fff2f6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
       .btcrow .vv{ color:#ff8fb4; font-weight:800; font-variant-numeric:tabular-nums; }
       .btcats .empty{ color:#8a5c6c; font-size:11px; text-align:center; padding:8px 4px; }
+      /* The collab block, in the partner's colour rather than ours — the same
+         blue /collabs draws their side in. The colour is the first thing that
+         says these are not your BLACKPINK votes. */
+      .btcats.collab{ border-color:#6fd3ff33; }
+      .btcats.collab .hd{ color:#6c93a8; }
+      .btcats.collab .btcrow{ border-bottom-color:#6fd3ff18; }
+      .btcats.collab .vv{ color:#9fe3ff; }
+      .btcats.collab .foot{ color:#6c93a8; font-size:10px; line-height:1.5; padding:6px 4px 2px; }
+      .btcats.collab .held{ color:#ffd9a8; }
+      .btcats.collab .fandoms{ display:flex; flex-wrap:wrap; align-items:center; gap:5px;
+        padding:7px 4px 2px; border-top:1px dashed #6fd3ff18; margin-top:4px; }
+      .btcats.collab .fandoms-q{ flex:1 1 auto; font-size:10px; letter-spacing:.08em;
+        text-transform:uppercase; color:#6c93a8; }
+      .btcats.collab .fandom-chip{ font:inherit; font-size:10.5px; letter-spacing:.06em;
+        color:#9fe3ff; background:transparent; border:1px solid #6fd3ff44; border-radius:999px;
+        padding:3px 9px; cursor:pointer; }
+      .btcats.collab .fandom-chip:hover{ border-color:#6fd3ff; }
+      .btcats.collab .fandom-chip.on{ background:#6fd3ff1f; border-color:#6fd3ff; color:#d6f3ff; }
       .btdiag{ margin:0 12px 10px; background:#170a0f; border:1px solid #ffb02e44; border-radius:11px; padding:8px 10px; font-size:11px; line-height:1.45; color:#ffd9a8; }
       .btdiag b{ color:#fff2f6; }
       .btdiag .why{ display:block; color:#e8c79a; margin-top:3px; }
@@ -273,6 +291,7 @@
         </div>
 
         <div class="btcats" id="btcats" style="display:none"></div>
+        <div class="btcats collab" id="kcacollab" style="display:none"></div>
         <div class="btdiag" id="btdiag" style="display:none"></div>
 
         <div class="log" id="log"></div>
@@ -394,6 +413,64 @@
           + '<span class="vv">' + fmt(v) + '</span></div>').join('');
   }
 
+  // The collab block: what blinksunited.com/collabs counted from your ballot.
+  //
+  // It overlaps the block above on purpose and says so. A collab counts the
+  // WHOLE pass — their nominee and ours — so BLACKPINK appears in both, and a
+  // reader who is not told that reads it as the same vote counted twice. What
+  // it must never do is add to the total at the top of the panel: that total is
+  // a BLACKPINK standing, and a BINI pick belongs nowhere near it.
+  //
+  // Hidden entirely until the collab has recorded something, so it does not sit
+  // on the panel of every blink who never votes the trade.
+  // Mirrors COLLAB.fandoms in background.js, for the same reason KCA_CAT_LABELS
+  // mirrors KCA_NOMINEES: a content script cannot import from the service
+  // worker. The KEY is what gets stored and counted; the label is only shown.
+  const KCA_FANDOMS = [
+    { key: 'blink', label: 'BLINK' },
+    { key: 'bloom', label: 'BLOOM' },
+  ];
+
+  function renderKcaCollab(c, fandom) {
+    const el = $('kcacollab');
+    if (!el) return;
+    const cats = (c && c.cats) || {};
+    const held = Math.max(0, Number(c && c.held) || 0);
+    const entries = Object.entries(cats)
+      .filter(([, v]) => (Number(v) || 0) > 0)
+      .sort((a, b) => b[1] - a[1]);
+    if (!entries.length && !held) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    // Which side they say they are. Asked HERE rather than before they vote:
+    // the question only makes sense once they have done a round, and a chooser
+    // on an empty panel is a form to fill in before anything has happened.
+    //
+    // Nothing is preselected. A default would file everyone who ignores it on
+    // one side of a board about who turned up, and most people ignore it.
+    const chosen = fandom || null;
+    const chooser = '<div class="fandoms">'
+      + '<span class="fandoms-q">' + (chosen ? 'Logging as' : 'Which side are you?') + '</span>'
+      + KCA_FANDOMS.map((f) =>
+          '<button type="button" class="fandom-chip' + (chosen === f.key ? ' on' : '')
+          + '" data-fandom="' + esc(f.key) + '"'
+          + (chosen === f.key ? ' aria-pressed="true"' : ' aria-pressed="false"')
+          + '>' + esc(f.label) + '</button>').join('')
+      + '</div>';
+
+    el.innerHTML = '<div class="hd">Collab · today</div>'
+      + entries.map(([k, v]) =>
+          '<div class="btcrow"><span class="nm">' + esc(kcaCatLabel(k)) + '</span>'
+          + '<span class="vv">' + fmt(v) + '</span></div>').join('')
+      + chooser
+      + '<div class="foot">Every pick in the trade, theirs as well as ours — '
+      + 'counted at blinksunited.com/collabs. <b>Not</b> added to your BLACKPINK total above.'
+      + (chosen ? '' : '<br>Saying which side you are on only counts <b>you</b> on the '
+          + 'collab board — it never changes what your votes count for.')
+      + (held ? '<br><span class="held">' + fmt(held) + ' pick' + (held === 1 ? '' : 's')
+          + ' didn’t reach the collab board.</span>' : '')
+      + '</div>';
+  }
+
   // How many votes are actually waiting. The stored backlog is the truth; the
   // diag entry's own count is the fallback for the moment between a failed
   // submission and the backlog being written.
@@ -456,7 +533,16 @@
   function renderKcaDiag(list, pending) {
     const el = $('btdiag');
     if (!el) return;
-    const last = (Array.isArray(list) && list[0] && list[0].kind && list[0].kind !== 'counted') ? list[0] : null;
+    const entries = Array.isArray(list) ? list : [];
+    const newest = (entries[0] && entries[0].kind && entries[0].kind !== 'counted') ? entries[0] : null;
+    // A 'counted' entry is about the post to /voting and says NOTHING about the
+    // collab post, which is a separate request resolving in its own time — so
+    // whichever finishes last ends up first in the list. Taking only the newest
+    // entry would hide a collab failure whenever the ordinary post happened to
+    // land after it, which is most of the time. It is looked for on its own,
+    // and still comes second to a problem with the main post.
+    const collabFail = entries.find((e) => e && e.kind === 'collab-post-failed');
+    const last = newest || collabFail || null;
     if (!last) { el.style.display = 'none'; return; }
     // See renderBtDiag for both rules: the band reports the backlog, and a
     // backlog does not time out. Both matter more here — KCA submits a round in
@@ -479,6 +565,30 @@
       msg = '<b>' + fmt(last.marks) + ' pick' + (last.marks === 1 ? '' : 's') + ' in that round weren’t recognised.</b><span class="why">The ballot may have changed since we last read it. Reload the page and the next round will count.</span>';
     } else if (last.kind === 'rejected') {
       msg = '<b>Nickelodeon rejected that round (' + esc(String(last.status || '?')) + ').</b><span class="why">Nothing was counted — try the round again.</span>';
+    } else if (last.kind === 'nominee-renamed') {
+      // The ballot wrote a nominee's name in a way the counter did not expect,
+      // so that pick counted for nobody. Shown with BOTH strings, because the
+      // fix is a one-line table change and this message is the whole bug
+      // report — the alternative is a zero that looks like nobody voted.
+      msg = '<b>A pick wasn’t counted — the ballot named them differently.</b>'
+        + '<span class="why">It says “' + esc(last.got || '?') + '” where we expect “'
+        + esc(last.want || '?') + '”. Send us this and the next round will count. '
+        + 'Everything else in that round counted as normal.</span>';
+    } else if (last.kind === 'collab-post-failed') {
+      // Deliberately NOT silent any more. This was the one kind the renderer
+      // fell through and hid, so a collab pick that reached nothing looked
+      // exactly like one that was counted — which is how a missing endpoint
+      // read as "the extension isn't counting BINI".
+      //
+      // It says the BLACKPINK votes are fine in the same breath: the two posts
+      // are independent, and somebody told only that something failed will
+      // reasonably assume the whole round was lost.
+      msg = '<b>That round reached /voting, but not the collab board.</b>'
+        + '<span class="why">Your BLACKPINK, JENNIE and ROSÉ picks are counted as normal. '
+        + (last.reason === 'not-linked'
+            ? 'The collab needs your account linked — open the extension and tap “Link my account”.'
+            : 'The collab board couldn’t be reached, so this round isn’t on it. Nothing to redo — the next round will go.')
+        + '</span>';
     } else if (last.kind === 'unreadable') {
       msg = '<b>A vote went out in a shape we couldn’t read.</b><span class="why">' + esc(last.path || '') + ' — send us this and we’ll fix the counter.</span>';
     } else { el.style.display = 'none'; return; }
@@ -626,7 +736,11 @@
     }
 
     if (AWARD === 'breaktudo') { renderBtCats(s.btCats); renderBtDiag(s.btDiag, s.btPendingN); }
-    if (AWARD === 'kca') { renderBtCats(s.kcaCats, kcaCatLabel); renderKcaDiag(s.kcaDiag, s.kcaPendingN); }
+    if (AWARD === 'kca') {
+      renderBtCats(s.kcaCats, kcaCatLabel);
+      renderKcaCollab(s.kcaCollab, s.kcaFandom);
+      renderKcaDiag(s.kcaDiag, s.kcaPendingN);
+    }
 
     const log = Array.isArray(s[CFG.logKey]) ? s[CFG.logKey] : [];
     if (!log.length) {
@@ -678,7 +792,7 @@
     if (at) at.onclick = () => { acctOpen = !acctOpen; refresh(); };
   }
 
-  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize', 'btCount', 'btLog', 'btDay', 'btCats', 'btDiag', 'btPendingN', 'kcaCount', 'kcaLog', 'kcaDay', 'kcaCats', 'kcaDiag', 'kcaPendingN'];
+  const KEYS = ['buCount', 'bpCount', 'lisaCount', 'buLog', 'buAccounts', 'buToken', 'buProfile', 'buSyncOn', 'buPanelPos', 'buPanelMin', 'buPanelSize', 'btCount', 'btLog', 'btDay', 'btCats', 'btDiag', 'btPendingN', 'kcaCount', 'kcaLog', 'kcaDay', 'kcaCats', 'kcaDiag', 'kcaPendingN', 'kcaCollab', 'kcaFandom'];
   // fitToViewport AFTER render: the panel's natural height depends on how many
   // category rows and log entries were just drawn.
   function refresh() { safeCtx(() => chrome.storage.local.get(KEYS, (s) => { applyLayout(s); render(s); fitToViewport(); })); }
@@ -762,6 +876,23 @@
   let justDragged = false;
   const setMin = (v) => safeCtx(() => chrome.storage.local.set({ buPanelMin: v }));
   elMin.onclick = (e) => { e.stopPropagation(); if (!justDragged) setMin(true); };
+  // Delegated, on the container rather than the chips: the block's innerHTML is
+  // rewritten on every storage change, so a handler bound to a chip would be
+  // thrown away the first time a vote came in.
+  const elCollab = $('kcacollab');
+  if (elCollab) {
+    elCollab.addEventListener('click', (e) => {
+      const btn = e.target && e.target.closest ? e.target.closest('.fandom-chip') : null;
+      if (!btn) return;
+      const key = btn.getAttribute('data-fandom');
+      if (!KCA_FANDOMS.some((f) => f.key === key)) return;
+      // Written here and read by the worker on the next post. It is also sent
+      // back over the person's earlier days of this collab by the API, so the
+      // day they joined is not stuck as "didn't say".
+      try { chrome.storage.local.set({ kcaFandom: key }); } catch (_) {}
+    });
+  }
+
   elPill.addEventListener('click', () => { if (!justDragged) setMin(false); });
 
   // ── resize (drag the corner grip; double-click it to go back to default) ──

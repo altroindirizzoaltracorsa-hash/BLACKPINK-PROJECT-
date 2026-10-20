@@ -295,10 +295,15 @@ export default async function handler(req, res) {
 
     // Discord notification (best-effort, don't fail the request if it errors).
     if (process.env.DISCORD_WEBHOOK_URL) {
-      const categoryEmoji = { bug: '🐛', suggestion: '💡', feature: '💡', praise: '💗', general: '💬' };
+      const categoryEmoji = { bug: '🐛', suggestion: '💡', feature: '💡', praise: '💗',
+                              collab: '🤝', general: '💬' };
       const emoji = categoryEmoji[category] || '💬';
       const lines = [
-        `${emoji} **New feedback** · \`${category || 'general'}\``,
+        // 'collab' comes from the form on /collabs — another fandom's voting
+        // page proposing a vote trade. Named in the ping rather than left as
+        // "New feedback", because it is the one category where somebody outside
+        // this fandom is waiting on an answer from us.
+        `${emoji} **${category === 'collab' ? 'Collab request' : 'New feedback'}** · \`${category || 'general'}\``,
         `>>> ${message.trim().slice(0, 1800)}`,
       ];
       if (username) lines.push(`**Last.fm:** ${username}`);
