@@ -68,6 +68,10 @@ const BALLOT = {
   // partner's number.
   '77777777-7777-7777-7777-777777777777': { t: 'BINI',    q: '88888888-8888-8888-8888-888888888888', s: 'favorite-global-music-star' },
   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa': { t: 'Someone', q: '88888888-8888-8888-8888-888888888888', s: 'favorite-global-music-star' },
+  // The second partner's category. Its slug reads favorite-ANIMATED-MALE while
+  // the ballot prints "Favorite Male Animated Voice" — the words are in the
+  // other order, so it is written here exactly as the ballot has it.
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb': { t: 'Ahn Hyo-seop', q: 'cccccccc-cccc-cccc-cccc-cccccccccccc', s: 'favorite-animated-male-voice-from-a-movie' },
 };
 // The other five entries of the real flush, so the fixture is a whole round
 // rather than one vote with padding.
@@ -374,6 +378,30 @@ console.log('\n--- A. the side a person says they are rides along with the post'
   await settle();
   const j = junk.posts.find((p) => p.url.includes('/api/collabs'));
   check(j && !('fandom' in j.body), 'a side the collab does not have is not sent');
+}
+
+console.log('\n--- A. the second partner’s category counts for the collab too');
+// A collab can gain a partner mid-ballot, and the counter is the half that
+// cannot be fixed from the server: a category it does not know counts nothing
+// and looks exactly like a category nobody voted in.
+{
+  const bg = loadBackground();
+  bg.store.buToken = 'tok';
+  bg.store.kcaBallot = freshBallot();
+  await bg.processKcaVote({ votes: [
+    { q: '1ae0e782-6c39-4329-88ae-137533d9f497', o: 'aa2a878e-15d2-455f-9829-1b55fd948c81' },
+    { q: '88888888-8888-8888-8888-888888888888', o: '77777777-7777-7777-7777-777777777777' },
+    { q: 'cccccccc-cccc-cccc-cccc-cccccccccccc', o: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' },
+  ] });
+  await settle();
+  const collab = bg.posts.find((p) => p.url.includes('/api/collabs'));
+  check(!!(collab && collab.body.cats['favorite-animated-male-voice-from-a-movie'] === 1),
+        'the Ahn Hyo-seop pick reaches the collab board');
+  check(!!(collab && Object.keys(collab.body.cats).length === 3),
+        `and all three picks are in the one post (${collab && Object.keys(collab.body.cats).length})`);
+  check(bg.store.kcaCount === 1, `the BLACKPINK total is still 1 (${bg.store.kcaCount})`);
+  check(!bg.store.kcaCats['favorite-animated-male-voice-from-a-movie'],
+        'and the Kids’ Choice breakdown has no row for it');
 }
 
 console.log('\n--- A. a pick in the collab’s category for someone else is nobody’s');
