@@ -466,7 +466,7 @@
     <div class="get">
       <div class="get-head">
         <span class="get-title">🧩 Get the Vote Counter</span>
-        <span class="get-ver">v1.9.3</span>
+        <span class="get-ver">v1.9.4</span>
       </div>
       <p class="get-sub">
         It counts the votes <b>you</b> cast on kca.nick.tv and logs them to the board above —
@@ -476,8 +476,8 @@
         <b>app</b> does the same job — you vote inside it.
       </p>
       <div class="get-dl">
-        <a class="get-btn" href="/vote-extension-v1.9.3-chrome.zip" download>⬇ Desktop<small>Chrome · Edge · Brave · Opera</small></a>
-        <a class="get-btn ghost" href="/vote-extension-v1.9.3-android.zip" download>⬇ Android extension<small>Edge Canary · Quetta</small></a>
+        <a class="get-btn" href="/vote-extension-v1.9.4-chrome.zip" download>⬇ Desktop<small>Chrome · Edge · Brave · Opera</small></a>
+        <a class="get-btn ghost" href="/vote-extension-v1.9.4-android.zip" download>⬇ Android extension<small>Edge Canary · Quetta</small></a>
         <a class="get-btn ghost" href="/blinks-united-vote-counter.apk" download>⬇ Android app<small>.apk · no extension needed</small></a>
       </div>
       <p class="get-note">
@@ -485,7 +485,7 @@
         <b>Link my account</b> inside it once. There's an
         <a href="/vote-counter-guide.html" target="_blank" rel="noopener">illustrated guide ↗</a>
         if any of that is unfamiliar.<br>
-        <b>Already have it?</b> Update to v1.9.3. Older versions either don't know this collab
+        <b>Already have it?</b> Update to v1.9.4. Older versions either don't know this collab
         exists — and count only the BLACKPINK side of your ballot — or count the whole trade
         without ever showing it, which leaves no way to tell a counted pick from a lost one.
       </p>
@@ -647,14 +647,19 @@ var COLLABS = [
     // campaign before anybody has voted rather than appearing out of nowhere.
     from: '2026-10-08',
     voteUrl: 'https://kca.nick.tv/vote/',
-    partner: {
-      // The FANDOM and the ACT, which are facts about the ballot. Who is
-      // running it is `organisers` below — this used to carry a page name too,
-      // guessed at and wrong, which is the sort of thing that only stays
-      // harmless while it is never rendered.
-      fandom: 'BLOOMs',
-      act: 'BINI',
-    },
+    // The acts on the other side — more than one, because this ballot now
+    // carries two separate agreements with two separate fandoms. Each is a
+    // whole fandom turning up for BLACKPINK, and a page that names one while
+    // counting two is the quiet kind of wrong.
+    //
+    // Who is running it is `organisers` below. This used to carry a page name
+    // too, guessed at and wrong, which only stayed harmless while nothing
+    // rendered it. `fandom` is what that fandom calls itself and falls back to
+    // the act's own name: inventing one for somebody else is the same mistake.
+    partners: [
+      { fandom: 'BLOOMs', act: 'BINI' },
+      { act: 'Ahn Hyo-seop' },     // CONFIRM what this fandom calls itself
+    ],
     // The pages running it, per side. Named on the card because a collab is
     // THEIR work as much as ours and the page should say so — and because a
     // tracker nobody is credited for reads as ours alone.
@@ -671,7 +676,8 @@ var COLLABS = [
       us:   [{ name: 'Blinks United', url: '/' },
              { name: '@BLINKVotingPage', url: 'https://x.com/BLINKVotingPage' }],
       them: [{ name: '@BINIVotingTeam', url: 'https://x.com/BINIVotingTeam' },
-             { name: '@BloomStreamers', url: 'https://x.com/BloomStreamers' }],
+             { name: '@BloomStreamers', url: 'https://x.com/BloomStreamers' },
+             { name: '@ahnhyoseop_DC', url: 'https://x.com/ahnhyoseop_DC' }],
     },
     // The sides a person can say they belong to. Keys are what the counter
     // posts and what the API stores; labels are what the page prints.
@@ -698,6 +704,14 @@ var COLLABS = [
       // as an example rather than matched on.
       { slug: 'favorite-global-music-star', cat: 'Favorite Global Music Star', nominee: 'BINI',
         onBallot: 'Asia: BINI' },
+      // Read off the live ballot by probe-kca-ballot.yml, 21 Oct. The slug is
+      // favorite-ANIMATED-MALE-voice while the category is printed "Favorite
+      // MALE ANIMATED Voice" — the words are in the other order, so neither
+      // could have been derived from the other, and the counter matches on the
+      // slug.
+      { slug: 'favorite-animated-male-voice-from-a-movie',
+        cat: 'Favorite Male Animated Voice From a Movie',
+        nominee: 'Ahn Hyo-seop', who: 'Ahn Hyo-seop' },
     ],
     // What their side puts in ours. Read off the live ballot (probe-kca.yml) and
     // in step with KCA_CATEGORIES in index.html.
@@ -836,7 +850,7 @@ if (new URLSearchParams(location.search).get('demo') === 'upcoming') {
     deadline: _d(40),
     from: _d(9).slice(0, 10),
     voteUrl: 'https://example.com/',
-    partner: { name: 'Example Voting Page', fandom: 'EXAMPLEs', act: 'EXAMPLE' },
+    partners: [{ fandom: 'EXAMPLEs', act: 'EXAMPLE' }],
     weGive: [{ slug: 'demo-theirs', cat: 'Favorite Example', nominee: 'EXAMPLE', who: 'EXAMPLE' }],
     theyGive: [{ slug: 'demo-ours', cat: 'Favorite Group', nominee: 'BLACKPINK', who: 'BLACKPINK' }],
     why: '<b>This card is an example, not a real collab.</b> It is what an agreed trade looks '
@@ -868,6 +882,27 @@ function numWord(n) { return NUM_WORDS[n] != null ? NUM_WORDS[n] : String(n); }
 // "category" / "categories" — the left side has one slot and the right has two,
 // and the sentence is built from whichever it is.
 function catWord(n) { return n === 1 ? 'category' : 'categories'; }
+
+// The other side, in words. A collab used to have one partner and the page
+// said "BINI" in a dozen places; it now has two, so every one of those reads
+// the list instead. A page that names one partner while counting two is the
+// quiet kind of wrong: the second fandom turns up, their votes land, and the
+// page never says their act's name.
+function joinNames(list) {
+  return list.join(', ').replace(/, ([^,]*)$/, ' & $1');
+}
+// Defensive: a collab that arrives without `partners` should render without
+// them, not stop the page. render() builds every card in one pass, so one bad
+// entry took down the whole list — including the collabs that were fine.
+function partnerCount(c) { return (c.partners || []).length; }
+function partnerActs(c) {
+  return joinNames((c.partners || []).map(function (x) { return x.act; }));
+}
+// What each fandom calls itself, falling back to the act's own name rather
+// than inventing one for them.
+function partnerFandoms(c) {
+  return joinNames((c.partners || []).map(function (x) { return x.fandom || x.act; }));
+}
 
 // Who is running it, grouped by side and coloured by side. Deliberately under
 // the title rather than in the footer: the fandoms in the heading are who the
@@ -981,7 +1016,7 @@ function shareTextFor(c, period) {
   var left = c.deadline ? countdown(new Date(c.deadline).getTime() - Date.now()) : null;
   var acts = c.theyGive.map(function (x) { return x.who || x.nominee; });
   var ourActs = acts.join(', ').replace(/, ([^,]*)$/, ' & $1');
-  var head = 'BLINKs × ' + c.partner.fandom + ' · ' + c.award;
+  var head = 'BLINKs × ' + partnerFandoms(c) + ' · ' + c.award;
 
   var forUs = p && p.forUs ? Math.max(0, Number(p.forUs.picks) || 0) : 0;
   var forThem = p && p.forThem ? Math.max(0, Number(p.forThem.picks) || 0) : 0;
@@ -990,7 +1025,8 @@ function shareTextFor(c, period) {
   // so it gets its own text rather than a zero that reads as a dead campaign.
   if (!forUs && !forThem) {
     return head + '\n\n'
-      + 'We fill in ' + c.partner.act + '’s category, they fill in ours. The ballot needs every '
+      + 'We fill in ' + partnerActs(c) + '’s ' + catWord(c.weGive.length)
+      + ', they fill in ours. The ballot needs every '
       + 'category filled anyway, so neither side gives anything up.\n'
       + (left ? left + ' left to vote.\n' : '')
       + SHARE_URL;
@@ -998,7 +1034,7 @@ function shareTextFor(c, period) {
 
   var lines = [head, ''];
   lines.push(fmt(forUs) + ' votes for ' + ourActs + ' and ' + fmt(forThem) + ' for '
-    + c.partner.act + ' logged through the collab' + when + '.');
+    + partnerActs(c) + ' logged through the collab' + when + '.');
   var passes = passesFrom(c, p);
   if (passes) lines.push('That is ' + fmt(passes) + ' complete '
     + (passes === 1 ? 'pass' : 'passes') + ' through the ballot.');
@@ -1040,7 +1076,7 @@ function shareCollab(id) {
     setTimeout(function () { btn.textContent = was; }, 2200);
   };
   if (navigator.share) {
-    navigator.share({ title: 'BLINKs × ' + c.partner.fandom, text: text })
+    navigator.share({ title: 'BLINKs × ' + partnerFandoms(c), text: text })
       .then(function () { said('Shared ✓'); })
       // A cancelled share sheet is not a failure and must not fall through to
       // a copy the person did not ask for.
@@ -1140,7 +1176,7 @@ function drawCollabCard(canvas, c, opts) {
   // MINUS the logo: the logo sits top-right, and the first version let a long
   // fandom name run underneath it.
   var titleRoom = inner - L.logo - L.pad * 0.5;
-  var us = 'BLINKs', sep = '  ×  ', them = c.partner.fandom;
+  var us = 'BLINKs', sep = '  ×  ', them = partnerFandoms(c);
   var size = L.title;
   ctx.font = size + 'px ' + display;
   var measure = function () {
@@ -1173,7 +1209,7 @@ function drawCollabCard(canvas, c, opts) {
     var acts = c.theyGive.map(function (a) { return a.who || a.nominee; })
       .join(', ').replace(/, ([^,]*)$/, ' & $1');
     big(forUs, '#ff0066', 'for ' + acts);
-    big(forThem, '#6fd3ff', 'for ' + c.partner.act);
+    big(forThem, '#6fd3ff', 'for ' + partnerActs(c));
 
     var sum = forUs + forThem;
     y += L.gapBar - L.gapNum;
@@ -1266,7 +1302,7 @@ function drawCollabCard(canvas, c, opts) {
     // Nothing counted yet: the card is the invitation, not a pair of noughts.
     ctx.fillStyle = '#f5f0f0';
     ctx.font = '500 ' + (L.label + 6) + 'px ' + mono;
-    ['We fill in ' + c.partner.act + '’s category,', 'they fill in ours.']
+    ['We fill in ' + partnerActs(c) + '’s ' + catWord(c.weGive.length) + ',', 'they fill in ours.']
       .forEach(function (ln) { ctx.fillText(ln, L.pad, y); y += L.line + (wide ? 3 : 8); });
     y += 4;
     ctx.fillStyle = '#b09aad';
@@ -1549,7 +1585,7 @@ function tallyHtml(c) {
     return '<div class="tally' + (SPLIT_OPEN && split ? ' open' : '') + '">' + tabs
       + '<div class="tally-head"><span class="tally-label">Votes cast through this collab</span>'
       + '<span class="tally-nums"><span class="us">' + fmt(forUs) + ' for ' + esc(ourActs) + '</span>'
-      + ' · <span class="them">' + fmt(forThem) + ' for ' + esc(c.partner.act) + '</span></span></div>'
+      + ' · <span class="them">' + fmt(forThem) + ' for ' + esc(partnerActs(c)) + '</span></span></div>'
       + (split
           ? '<button class="bar" type="button" onclick="toggleSplit()" '
             + 'aria-expanded="' + (SPLIT_OPEN ? 'true' : 'false') + '" '
@@ -1561,11 +1597,11 @@ function tallyHtml(c) {
       + (split ? '<div class="bar-hint">' + (SPLIT_OPEN ? 'Hide' : 'Show') + ' the votes by category</div>' : '')
       + (SPLIT_OPEN ? split : '')
       + '<div class="tally-note">'
-      + '<b>These are not two teams.</b> Blinks and ' + esc(c.partner.fandom)
+      + '<b>These are not two teams.</b> Blinks and ' + esc(partnerFandoms(c))
       + ' both vote the whole ballot, so neither number belongs to one fandom — and nothing here '
       + 'can tell which fandom a vote came from. The gap is slot counts, not standings: '
       + esc(acts[0]) + (acts.length > 1 ? ' and the rest are' : ' is') + ' up in ' + themSlots
-      + ' ' + catWord(themSlots) + ' and ' + esc(c.partner.act) + ' in ' + usSlots
+      + ' ' + catWord(themSlots) + ' and ' + esc(partnerActs(c)) + ' in ' + usSlots
       + ', so one pass through the ballot adds ' + themSlots + ' on one side and ' + usSlots
       + ' on the other.'
       + '<br>One pass through the ballot is <b>' + most + ' votes</b> — '
@@ -1805,7 +1841,7 @@ function card(c) {
   return '<article class="collab" data-collab="' + esc(c.id) + '" data-status="' + esc(c.status) + '">'
     + '<div class="collab-top"><div>'
     + '<div class="collab-award">' + esc(c.award) + '</div>'
-    + '<div class="collab-title"><b>BLINKs</b><i>&times;</i><b>' + esc(c.partner.fandom) + '</b>'
+    + '<div class="collab-title"><b>BLINKs</b><i>&times;</i><b>' + esc(partnerFandoms(c)) + '</b>'
     + status + '</div>' + organisersHtml(c) + '</div>' + dl + '</div>'
     // The bar sits here — under the countdown, before the explanation. Once a
     // trade is running this is the live number people come back for, and it
@@ -1829,14 +1865,15 @@ function card(c) {
     // Labelled by WHOSE CATEGORY it is, not by who votes it. Everybody in the
     // collab fills all four on the way through, so "what BLINKs vote" was a
     // frame that implied two teams and two separate jobs.
-    + sideHtml('side-us', esc(c.partner.act) + '’s ' + catWord(c.weGive.length),
+    + sideHtml('side-us', esc(partnerActs(c)) + '’s ' + catWord(c.weGive.length),
         'The ' + numWord(c.weGive.length) + ' ' + catWord(c.weGive.length) + ' <b>'
-        + esc(c.partner.act) + '</b> is up for — we have no nominee in '
+        + esc(partnerActs(c)) + '</b> ' + (partnerCount(c) > 1 ? 'are' : 'is')
+        + ' up for — we have no nominee in '
         + (c.weGive.length === 1 ? 'it' : 'them') + '.', c.weGive)
     + sideHtml('side-them', 'Our ' + catWord(c.theyGive.length),
         'The ' + numWord(c.theyGive.length) + ' ' + catWord(c.theyGive.length)
-        + ' <b>BLACKPINK</b> and the members are up for — <b>' + esc(c.partner.act)
-        + '</b> is in none of them.', c.theyGive)
+        + ' <b>BLACKPINK</b> and the members are up for — <b>' + esc(partnerActs(c))
+        + '</b> ' + (partnerCount(c) > 1 ? 'are' : 'is') + ' in none of them.', c.theyGive)
     + '</div>'
     + boardHtml(c)
     + fandomsHtml(c)

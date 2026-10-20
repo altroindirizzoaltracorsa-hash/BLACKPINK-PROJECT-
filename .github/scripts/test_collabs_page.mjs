@@ -73,7 +73,7 @@ const hidden = await pub.evaluate(() => {
   const before = COLLABS.slice();
   COLLABS.push({
     id: '__test-proposed', status: 'proposed', award: 'Test', deadline: null,
-    voteUrl: 'https://example.com/', partner: { name: 'Someone', fandom: 'Someones', act: 'Nobody' },
+    voteUrl: 'https://example.com/', partners: [{ fandom: 'Someones', act: 'Nobody' }],
     weGive: [{ cat: 'A', nominee: 'X' }], theyGive: [{ cat: 'B', nominee: 'Y' }],
     why: 'test', tally: null, pending: ['test'],
   });
@@ -296,10 +296,20 @@ const filled = await prev.evaluate(() => {
 /slot counts, not standings/i.test(filled.note)
   ? ok('and explains the gap as slot counts')
   : bad('and explains the gap as slot counts', filled.note.replace(/\s+/g, ' ').slice(0, 90));
-// The page asks for ALL FOUR and names them.
-/one pass through the ballot is 4 votes/i.test(filled.note.replace(/\s+/g, ' '))
-  ? ok('and asks for all four votes')
-  : bad('and asks for all four votes', filled.note.replace(/\s+/g, ' ').slice(0, 140));
+// The page asks for every pick in the trade and names them all.
+{
+  const want = await prev.evaluate(() => COLLABS[0].theyGive.length + COLLABS[0].weGive.length);
+  const got = filled.note.replace(/\s+/g, ' ');
+  new RegExp(`one pass through the ballot is ${want} votes`, 'i').test(got)
+    ? ok(`and asks for all ${want} votes`)
+    : bad(`and asks for all ${want} votes`, got.slice(0, 140));
+  const names = await prev.evaluate(() =>
+    COLLABS[0].theyGive.concat(COLLABS[0].weGive).map((x) => x.who || x.nominee));
+  const unnamed = names.filter((n) => !got.includes(n));
+  unnamed.length === 0
+    ? ok('and names every one of them', names.join(', '))
+    : bad('and names every one of them', `missing ${unnamed.join(', ')}`);
+}
 // Totals alone CANNOT give a pass count — 300 is 100 passes with ROSÉ every
 // time or 150 with her never — so no number may appear.
 !/complete pass/i.test(filled.note)
@@ -364,6 +374,7 @@ const passes = await prev.evaluate(() => {
       'favorite-music-collaboration': 100,    // JENNIE — required
       'favorite-female-artist': 60,           // ROSÉ — optional, the trap
       'favorite-global-music-star': 100,      // BINI — required
+      'favorite-animated-male-voice-from-a-movie': 100,   // Ahn Hyo-seop — required
     },
     themSource: 'their page',
   };
@@ -1087,7 +1098,7 @@ console.log('--- an upcoming collab counts down to its OPENING, not its deadline
       id: '__test-upcoming', status: 'upcoming', award: 'Test Awards 2027',
       opens: opens, deadline: new Date(Date.now() + 30 * 86400000).toISOString(),
       from: opens.slice(0, 10), voteUrl: 'https://example.com/',
-      partner: { name: 'Test Page', fandom: 'Testers', act: 'Nobody' },
+      partners: [{ fandom: 'Testers', act: 'Nobody' }],
       weGive: [{ slug: 'x', cat: 'Theirs', nominee: 'Nobody', who: 'Nobody' }],
       theyGive: [{ slug: 'y', cat: 'Ours', nominee: 'BLACKPINK', who: 'BLACKPINK' }],
       why: 'test', tally: null, pending: [],
