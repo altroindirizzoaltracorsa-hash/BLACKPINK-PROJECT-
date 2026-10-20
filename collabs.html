@@ -184,6 +184,9 @@
     overflow: hidden; display: flex; }
   .bar-us   { background: var(--pink); transition: width 0.6s ease; }
   .bar-them { background: var(--them); transition: width 0.6s ease; }
+  /* One segment per act. The colour is carried in the data, so a third
+     partner adds a segment without touching this file's CSS. */
+  .bar-seg { transition: width 0.6s ease; }
   .tally-note { font-size: 0.68rem; color: var(--muted); margin-top: 0.5rem; line-height: 1.6; }
 
   /* Nothing to draw yet. An empty bar reading 0–0 looks like a dead feature,
@@ -662,10 +665,18 @@ var COLLABS = [
       // beyond what was asked), Pauljjak announced BLACKPINK alone. `gives` is
       // their own category. Both are read only by the per-agreement pass
       // count — nothing else on the page splits by partner.
-      { fandom: 'BLOOMs', act: 'BINI',
+      // `covers` is the part of OUR half that agreement asked for, and the two
+      // differ: BLOOMs traded for BLACKPINK and JENNIE, Pauljjak announced
+      // BLACKPINK alone. It decides that agreement's pass count and NOTHING
+      // else — every vote still counts in every total, so a Pauljjak voter who
+      // also picks JENNIE and ROSÉ has those counted like anybody's.
+      //
+      // `colour` is this act's own on the bar and in the split. Carried in the
+      // data so a third partner is a data change, not a code change.
+      { fandom: 'BLOOMs', act: 'BINI', colour: '#6fd3ff',
         covers: ['favorite-music-group-or-duo', 'favorite-music-collaboration'],
         gives: ['favorite-global-music-star'] },
-      { fandom: 'Pauljjak', act: 'Ahn Hyo-seop',
+      { fandom: 'Pauljjak', act: 'Ahn Hyo-seop', colour: '#b388ff',
         covers: ['favorite-music-group-or-duo'],
         gives: ['favorite-animated-male-voice-from-a-movie'] },
     ],
@@ -789,18 +800,6 @@ var PREVIEW = new URLSearchParams(location.search).get('preview') === '1';
 // of it without the banner would be indistinguishable from a real tally, and
 // the banner is the part that survives being screenshotted. Nothing renders
 // without the flag, which is checked both ways.
-// DRAFT: three ways to count a complete pass, since two agreements now run on
-// one ballot and they asked for different things. ?opt=1|2|3 draws each so the
-// difference can be looked at rather than described; 1 is what is live.
-//
-// Declared HERE, above the first thing that reads it: the ?opt=3 split runs at
-// the top of this script, and `var` hoists the name without the value — so
-// read from further down it was undefined and the split quietly never ran.
-var PASS_OPT = (function () {
-  var v = new URLSearchParams(location.search).get('opt');
-  return v === '2' || v === '3' ? v : '1';
-})();
-
 var DEMO_OPTION = (function () {
   var v = new URLSearchParams(location.search).get('demo');
   return (v === 'a' || v === 'b') ? v : null;
@@ -853,57 +852,6 @@ if (DEMO_OPTION) {
   // Option A is this page WITHOUT the sides. One line, which is also exactly
   // what switching between them costs for real.
   if (DEMO_OPTION === 'a') delete COLLABS[0].fandoms;
-}
-
-// ── DRAFT ?opt=3 — one card per agreement ──────────────────────────────────
-// The two trades asked for different things, so this draws them as two
-// collabs: each card carries only the categories its own agreement covers,
-// and each counts passes against that.
-//
-// WHAT IT COSTS IS MEANT TO BE VISIBLE. Favorite Music Group or Duo is in both
-// agreements, so BLACKPINK's votes appear on BOTH cards — the same vote,
-// counted on two boards, and the site's "votes logged" adds up to more than
-// the votes anybody cast. That is the trade-off to look at, not a detail to
-// hide, so nothing here tries to soften it.
-if (PASS_OPT === '3' && COLLABS.length && COLLABS[0].partners) {
-  (function () {
-    var base = COLLABS[0];
-    var split = base.partners.map(function (x) {
-      var keep = {};
-      (x.covers || []).concat(x.gives || []).forEach(function (sl) { keep[sl] = 1; });
-      var sub = function (list) { return list.filter(function (p) { return keep[p.slug]; }); };
-      var tally = null;
-      if (base.tally && base.tally.periods) {
-        tally = JSON.parse(JSON.stringify(base.tally));
-        ['today', 'week', 'all'].forEach(function (k) {
-          var p = tally.periods[k];
-          if (!p || !p.byCat) return;
-          Object.keys(p.byCat).forEach(function (sl) { if (!keep[sl]) delete p.byCat[sl]; });
-          delete p.forUs; delete p.forThem;
-        });
-        (tally.days || []).forEach(function (d) {
-          var v = 0;
-          Object.keys(d.byCat || {}).forEach(function (sl) {
-            if (!keep[sl]) delete d.byCat[sl]; else v += Number(d.byCat[sl]) || 0;
-          });
-          d.votes = v;
-        });
-      }
-      return Object.assign({}, base, {
-        id: base.id + '-' + (x.fandom || x.act).toLowerCase().replace(/[^a-z0-9]+/g, ''),
-        partners: [x],
-        theyGive: sub(base.theyGive),
-        weGive: sub(base.weGive),
-        tally: tally,
-        why: '<b>One agreement per card.</b> This one is ' + esc(x.fandom || x.act)
-           + ': they fill in ' + (sub(base.theyGive).length === 1 ? 'the category' : 'the categories')
-           + ' BLACKPINK is up for in it, we fill in ' + esc(x.act) + '’s.',
-        organisers: null,
-      });
-    });
-    COLLABS.length = 0;
-    split.forEach(function (c) { COLLABS.push(c); });
-  }());
 }
 
 // A worked example of the 'upcoming' card, shown ONLY with ?demo=upcoming.
@@ -1052,6 +1000,38 @@ function totalOf(side) { return Math.max(0, (side && side.picks) || 0); }
 // The slots a pass has to fill to be complete. ROSÉ is not one of them.
 function requiredOf(picks) { return picks.filter(function (p) { return p.required !== false; }); }
 
+// The bar, one segment per ACT.
+//
+// It was two: ours and theirs. With two partners "theirs" pooled two different
+// acts behind one colour, and the whole point of the bar is what each act
+// received — a reader cannot see how BINI is doing if Ahn Hyo-seop is inside
+// the same block.
+//
+// Still acts and not fandoms. Everybody in a collab votes the whole ballot, so
+// no segment is a fandom's contribution; it is what that act got.
+function barParts(c, p) {
+  if (!p || !p.byCat) return [];
+  var by = p.byCat;
+  var sum = function (slugs) {
+    return slugs.reduce(function (a, sl) { return a + Math.max(0, Number(by[sl]) || 0); }, 0);
+  };
+  var parts = [{
+    key: 'us',
+    label: joinNames(c.theyGive.map(function (x) { return x.who || x.nominee; })
+      .filter(function (n, i, all) { return all.indexOf(n) === i; })),
+    colour: '#ff0066',
+    n: sum(c.theyGive.map(function (x) { return x.slug; })),
+  }];
+  (c.partners || []).forEach(function (x) {
+    var mine = (x.gives || []).length
+      ? x.gives
+      : c.weGive.filter(function (q) { return q.who === x.act || q.nominee === x.act; })
+          .map(function (q) { return q.slug; });
+    parts.push({ key: x.act, label: x.act, colour: x.colour || 'var(--them)', n: sum(mine) });
+  });
+  return parts;
+}
+
 // ── DRAFT: three ways to count a complete pass ──────────────────────────────
 // Two agreements now run on one ballot and they asked for different things, so
 // "a complete pass" has stopped having one meaning. ?opt=1|2|3 draws each one
@@ -1071,23 +1051,31 @@ function passesForPartner(c, p, x) {
   return counts.length ? Math.min.apply(null, counts) : null;
 }
 
-// The sentence each option prints in place of "That is N complete passes".
+// "That is N complete passes" — one figure per AGREEMENT once there is more
+// than one, because the agreements asked for different things.
+//
+// A single minimum across every category sounds right and is not: it counts
+// only people who did the whole ballot for every partner, so somebody doing
+// exactly what Pauljjak announced — BLACKPINK and Ahn Hyo-seop — would never
+// register as a pass at all.
+//
+// It changes no total. Every vote counts everywhere it always did: a Pauljjak
+// voter who also picks JENNIE and ROSÉ has those counted like anybody else's,
+// they simply are not what that agreement is measured against.
 function passesSentence(c, p, passes) {
-  if (PASS_OPT === '1' || !c.partners || c.partners.length < 2) {
+  if (!c.partners || c.partners.length < 2) {
     return passes != null
       ? ' That is <b>' + fmt(passes) + '</b> complete ' + (passes === 1 ? 'pass' : 'passes') + ' so far.'
       : '';
   }
-  // Option 2 — one figure per agreement, each against what that fandom
-  // actually agreed to. A Pauljjak voter doing exactly what they announced
-  // (BLACKPINK and Ahn Hyo-seop) counts as a pass here and does not above.
   var parts = c.partners.map(function (x) {
     var n = passesForPartner(c, p, x);
     return n == null ? null : '<b>' + fmt(n) + '</b> with ' + esc(x.fandom || x.act);
   }).filter(Boolean);
   if (!parts.length) return '';
-  return ' That is ' + parts.join(' and ') + ' — each counted against what that '
-    + 'agreement actually asked for, which is not the same list.';
+  return ' That is ' + joinNames(parts) + ' — each counted against what that '
+    + 'agreement asked for, which is not the same list. Votes beyond it still count '
+    + 'in the totals above.';
 }
 
 // How many complete passes the pooled votes amount to.
@@ -1262,6 +1250,17 @@ function drawCollabCard(canvas, c, opts) {
     : { pad: 84, logo: 92, eyebrow: 24, gap1: 42, title: 104, gap2: 30,
         num: 118, label: 24, gapNum: 40, gapBar: 30, bar: 16, note: 19, line: 30,
         foot: 30, footGap: 40, by: 17, row: 26, rowGap: 44, track: 8 };
+  // Three acts means three stacked figures where the sizes were chosen for
+  // two, and the body ran into the footer — the overflow check caught it
+  // before it was ever rendered. The block shrinks with the number of acts
+  // rather than the sizes being retuned by hand for each new partner.
+  var bigN = any ? Math.max(2, (p && p.byCat ? barParts(c, p).length : 2)) : 2;
+  if (bigN > 2) {
+    L.num = Math.round(L.num * (wide ? 0.56 : 0.68));
+    L.gapNum = Math.round(L.gapNum * (wide ? 0.62 : 0.74));
+    L.label = Math.round(L.label * (wide ? 0.85 : 0.9));
+  }
+
   var mono = '"DM Mono", ui-monospace, monospace';
   var display = '"Bebas Neue", Impact, sans-serif';
   var inner = W - L.pad * 2;
@@ -1276,6 +1275,17 @@ function drawCollabCard(canvas, c, opts) {
   var g2 = ctx.createRadialGradient(W * 0.9, H * 0.92, 0, W * 0.9, H * 0.92, W * 0.8);
   g2.addColorStop(0, 'rgba(111,211,255,0.2)'); g2.addColorStop(1, 'rgba(111,211,255,0)');
   ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
+
+  // Worked out BEFORE the body is drawn, because the per-category rows need to
+  // know how much room is left. Tuning sizes by hand for each new partner is
+  // how the last row ended up through the countdown; this way the rows take
+  // what there is.
+  var byLine = c.organisers
+    ? (c.organisers.us || []).concat(c.organisers.them || [])
+        .map(function (o) { return o.name; }).join('  ×  ')
+    : null;
+  var footH = L.foot + L.footGap + (byLine ? L.by + 14 : 0);
+  var footTop = H - L.pad - footH;
 
   ctx.textBaseline = 'top';
   var y = L.pad;
@@ -1319,10 +1329,18 @@ function drawCollabCard(canvas, c, opts) {
   var rowsTop = y;
   var drawnRows = [];
   if (any) {
-    var acts = c.theyGive.map(function (a) { return a.who || a.nominee; })
-      .join(', ').replace(/, ([^,]*)$/, ' & $1');
-    big(forUs, '#ff0066', 'for ' + acts);
-    big(forThem, '#6fd3ff', 'for ' + partnerActs(c));
+    // One figure and one segment per ACT, as on the page. Two partners pooled
+    // behind a single colour hides the thing the card is for — how each act is
+    // doing — and a card that disagrees with the page is worse than no card.
+    var parts = barParts(c, p);
+    if (parts.length) {
+      parts.forEach(function (x) { big(x.n, x.colour, 'for ' + x.label); });
+    } else {
+      var acts = c.theyGive.map(function (a) { return a.who || a.nominee; })
+        .join(', ').replace(/, ([^,]*)$/, ' & $1');
+      big(forUs, '#ff0066', 'for ' + acts);
+      big(forThem, '#6fd3ff', 'for ' + partnerActs(c));
+    }
 
     var sum = forUs + forThem;
     y += L.gapBar - L.gapNum;
@@ -1332,10 +1350,21 @@ function drawCollabCard(canvas, c, opts) {
     var colW = wide ? (inner - L.pad * 0.6) / 2 : inner;
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(L.pad, y, colW, L.bar);
-    ctx.fillStyle = '#ff0066';
-    ctx.fillRect(L.pad, y, colW * (forUs / sum), L.bar);
-    ctx.fillStyle = '#6fd3ff';
-    ctx.fillRect(L.pad + colW * (forUs / sum), y, colW * (forThem / sum), L.bar);
+    if (parts.length) {
+      var barSum = parts.reduce(function (a, x) { return a + x.n; }, 0) || 1;
+      var bx = L.pad;
+      parts.forEach(function (x) {
+        var w = colW * (x.n / barSum);
+        ctx.fillStyle = x.colour;
+        ctx.fillRect(bx, y, w, L.bar);
+        bx += w;
+      });
+    } else {
+      ctx.fillStyle = '#ff0066';
+      ctx.fillRect(L.pad, y, colW * (forUs / sum), L.bar);
+      ctx.fillStyle = '#6fd3ff';
+      ctx.fillRect(L.pad + colW * (forUs / sum), y, colW * (forThem / sum), L.bar);
+    }
     y += L.bar + L.note;
 
     // Said on the card for the reason it is said on the page: the gap is slot
@@ -1384,28 +1413,38 @@ function drawCollabCard(canvas, c, opts) {
         .map(function (k) { return { slug: k, n: Math.max(0, Number(byCat[k]) || 0) }; })
         .filter(function (r) { return r.n > 0; })
         .sort(function (a, b) { return b.n - a.n; });
-      var theirs = {};
-      c.weGive.forEach(function (pk) { theirs[pk.slug] = 1; });
+      var colourOf = {};
+      c.weGive.forEach(function (pk) { colourOf[pk.slug] = '#6fd3ff'; });
+      (c.partners || []).forEach(function (x) {
+        (x.gives || []).forEach(function (sl) { colourOf[sl] = x.colour || '#6fd3ff'; });
+      });
       var top = rows.length ? rows[0].n : 1;
       var rx = wide ? L.pad + colW + L.pad * 0.6 : L.pad;
       var ry = wide ? rowsTop : y + L.line * 0.4;
+      // The pitch is whatever fits. A fifth category pushed the block 20px
+      // past the footer at full size, and the next partner would push it
+      // further — so the rows are compressed to the room available rather
+      // than the sizes being retuned by hand each time.
+      var pitch = L.rowGap + L.track;
+      var room = (footTop - 10 - ry) / Math.max(1, rows.length);
+      if (room < pitch) pitch = Math.max(L.row + L.track + 6, room);
       rows.forEach(function (r) {
-        var mine = !theirs[r.slug];
+        var tint = colourOf[r.slug] || '#ff0066';
         var label = catLabelOf(c, r.slug);
         var n = fmt(r.n);
         drawnRows.push({ slug: r.slug, label: label, shown: n });
-        ctx.fillStyle = mine ? '#ff0066' : '#6fd3ff';
+        ctx.fillStyle = tint;
         ctx.font = '500 ' + L.row + 'px ' + mono;
         ctx.fillText(label, rx, ry);
         ctx.fillStyle = '#f5f0f0';
         ctx.font = '500 ' + L.row + 'px ' + mono;
         ctx.fillText(n, rx + colW - ctx.measureText(n).width, ry);
-        ry += L.row + 7;
+        var barY = ry + L.row + 5;
         ctx.fillStyle = 'rgba(255,255,255,0.08)';
-        ctx.fillRect(rx, ry, colW, L.track);
-        ctx.fillStyle = mine ? '#ff0066' : '#6fd3ff';
-        ctx.fillRect(rx, ry, colW * (r.n / top), L.track);
-        ry += L.rowGap - L.row - 7 + L.track;
+        ctx.fillRect(rx, barY, colW, L.track);
+        ctx.fillStyle = tint;
+        ctx.fillRect(rx, barY, colW * (r.n / top), L.track);
+        ry += pitch;
       });
       // On the wide card the two columns run side by side, so the body ends
       // wherever the LOWER of them ends.
@@ -1429,7 +1468,12 @@ function drawCollabCard(canvas, c, opts) {
     // and find out, which most of them will not.
     c.theyGive.concat(c.weGive).forEach(function (pk) {
       var act = pk.who || pk.nominee;
-      ctx.fillStyle = c.weGive.indexOf(pk) > -1 ? '#6fd3ff' : '#ff74ac';
+      ctx.fillStyle = (function () {
+        var hit = (c.partners || []).filter(function (x) {
+          return (x.gives || []).indexOf(pk.slug) > -1;
+        })[0];
+        return hit ? (hit.colour || '#6fd3ff') : (c.weGive.indexOf(pk) > -1 ? '#6fd3ff' : '#ff74ac');
+      }());
       ctx.font = '500 ' + L.label + 'px ' + mono;
       ctx.fillText(act, L.pad, y);
       var w = ctx.measureText(act).width;
@@ -1452,13 +1496,8 @@ function drawCollabCard(canvas, c, opts) {
   var bodyBottom = y;
 
   // Footer, measured up from the bottom edge so it sits in the same place
-  // whatever the body did.
-  var byLine = c.organisers
-    ? (c.organisers.us || []).concat(c.organisers.them || [])
-        .map(function (o) { return o.name; }).join('  ×  ')
-    : null;
-  var footH = L.foot + L.footGap + (byLine ? L.by + 14 : 0);
-  var footTop = H - L.pad - footH;
+  // whatever the body did. (byLine / footH / footTop are computed above,
+  // because the rows need footTop to know their room.)
   var ms = c.deadline ? new Date(c.deadline).getTime() - Date.now() : null;
   var left = null;
   if (ms != null && ms > 0) {
@@ -1654,11 +1693,16 @@ function splitHtml(c, byCat) {
     .sort(function (a, b) { return b.n - a.n; });
   if (!rows.length) return '';
   var top = rows[0].n || 1;
-  var theirCats = {};
-  c.weGive.forEach(function (p) { theirCats[p.slug] = 1; });
+  // Each row in its act's own colour, the same one the bar segment uses —
+  // with two partners a single "theirs" colour put two different acts in one
+  // shade, which is the thing the three-way bar exists to undo.
+  var colourOf = {};
+  c.weGive.forEach(function (p) { colourOf[p.slug] = 'var(--them)'; });
+  (c.partners || []).forEach(function (x) {
+    (x.gives || []).forEach(function (sl) { colourOf[sl] = x.colour || 'var(--them)'; });
+  });
   return '<div class="split">' + rows.map(function (r) {
-    var mine = !theirCats[r.cat];
-    return '<div class="split-row" style="--accent:' + (mine ? 'var(--pink)' : 'var(--them)') + '">'
+    return '<div class="split-row" style="--accent:' + (colourOf[r.cat] || 'var(--pink)') + '">'
       + '<span class="split-cat"><b>' + esc(catLabelOf(c, r.cat)) + '</b> · '
       + esc(catNameOf(c, r.cat)) + '</span>'
       + '<span class="split-n">' + fmt(r.n) + '</span>'
@@ -1695,17 +1739,31 @@ function tallyHtml(c) {
     });
     var ourActs = acts.join(', ').replace(/, ([^,]*)$/, ' & $1');
     var split = splitHtml(c, p.byCat);
+    var parts = barParts(c, p);
+    var barSum = parts.reduce(function (a, x) { return a + x.n; }, 0) || sum;
     return '<div class="tally' + (SPLIT_OPEN && split ? ' open' : '') + '">' + tabs
       + '<div class="tally-head"><span class="tally-label">Votes cast through this collab</span>'
-      + '<span class="tally-nums"><span class="us">' + fmt(forUs) + ' for ' + esc(ourActs) + '</span>'
-      + ' · <span class="them">' + fmt(forThem) + ' for ' + esc(partnerActs(c)) + '</span></span></div>'
+      + '<span class="tally-nums">'
+      + (parts.length
+          ? parts.map(function (x) {
+              return '<span style="color:' + esc(x.colour) + '">' + fmt(x.n) + ' for '
+                + esc(x.label) + '</span>';
+            }).join(' · ')
+          : '<span class="us">' + fmt(forUs) + ' for ' + esc(ourActs) + '</span>'
+            + ' · <span class="them">' + fmt(forThem) + ' for ' + esc(partnerActs(c)) + '</span>')
+      + '</span></div>'
       + (split
           ? '<button class="bar" type="button" onclick="toggleSplit()" '
             + 'aria-expanded="' + (SPLIT_OPEN ? 'true' : 'false') + '" '
             + 'aria-label="Show the votes by category">'
           : '<div class="bar">')
-      + '<div class="bar-us" style="width:' + (forUs / sum * 100) + '%"></div>'
-      + '<div class="bar-them" style="width:' + (forThem / sum * 100) + '%"></div>'
+      + (parts.length
+          ? parts.map(function (x) {
+              return '<div class="bar-seg" style="width:' + (x.n / barSum * 100)
+                + '%;background:' + esc(x.colour) + '"></div>';
+            }).join('')
+          : '<div class="bar-us" style="width:' + (forUs / sum * 100) + '%"></div>'
+            + '<div class="bar-them" style="width:' + (forThem / sum * 100) + '%"></div>')
       + (split ? '</button>' : '</div>')
       + (split ? '<div class="bar-hint">' + (SPLIT_OPEN ? 'Hide' : 'Show') + ' the votes by category</div>' : '')
       + (SPLIT_OPEN ? split : '')

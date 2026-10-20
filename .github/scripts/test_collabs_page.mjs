@@ -383,9 +383,22 @@ const passes = await prev.evaluate(() => {
   COLLABS[0].tally = before; render();
   return note;
 });
-/\b100\b complete passes/i.test(passes)
-  ? ok('100 complete passes, not 60', 'ROSÉ excluded from the minimum')
-  : bad('100 complete passes, not 60', passes.slice(0, 200));
+{
+  const want = await prev.evaluate(() => (COLLABS[0].partners || []).map((x) => x.fandom || x.act));
+  const missing = want.filter((f) => !new RegExp(`100 with ${f}`).test(passes));
+  missing.length === 0
+    ? ok('100 complete passes for each agreement, not 60', 'ROSÉ excluded from every minimum')
+    : bad('100 complete passes for each agreement, not 60', passes.slice(0, 220));
+  // The number that would appear if the optional category were folded in.
+  !/\b60\b/.test(passes)
+    ? ok('and 60 appears nowhere in the sentence')
+    : bad('and 60 appears nowhere in the sentence', passes.slice(0, 220));
+  // Said plainly, because it is the question a partner will ask: votes past
+  // what your agreement asked for still count.
+  /still count in the totals/i.test(passes)
+    ? ok('and it says extra votes still count')
+    : bad('and it says extra votes still count', passes.slice(0, 220));
+}
 
 console.log('--- tabs, the breakdown behind the bar, the board and the day grid');
 // None of this is fed by anything yet, so without a fixture it would ship
@@ -700,15 +713,27 @@ console.log('--- the share card');
   const fits = await prev.evaluate(() => {
     const cv = document.getElementById('card-canvas');
     const out = {};
+    const c = COLLABS[0];
+    const byCat = {};
+    c.theyGive.concat(c.weGive).forEach((p, i) => { byCat[p.slug] = 400 - i * 7; });
+    const period = { byCat, board: [],
+                     fandoms: { blink: { people: 34, votes: 1180 },
+                                bloom: { people: 9, votes: 450 } } };
+    const full = { todayKey: '2026-10-21', periods: { today: period, week: period, all: period },
+                   days: [] };
+    const keep = c.tally;
+    c.tally = full;
     for (const fmt of ['square', 'landscape']) {
       setCollabCardFormat(fmt, document.querySelector(`[data-fmt="${fmt}"]`));
       // With numbers, and with none — the two states draw different bodies.
       const before = COLLABS[0].tally;
+      COLLABS[0].tally = full;
       out[fmt + ':full'] = drawCollabCard(cv, COLLABS[0]);
       COLLABS[0].tally = null;
       out[fmt + ':empty'] = drawCollabCard(cv, COLLABS[0]);
       COLLABS[0].tally = before;
     }
+    c.tally = keep;
     return out;
   });
   // The link-preview size too: 1200x630 is what X crops to, it is drawn by
@@ -719,6 +744,13 @@ console.log('--- the share card');
     cv.width = 1200; cv.height = 630;
     const out = {};
     const before = COLLABS[0].tally;
+    const c2 = COLLABS[0];
+    const byCat2 = {};
+    c2.theyGive.concat(c2.weGive).forEach((p, i) => { byCat2[p.slug] = 400 - i * 7; });
+    const per2 = { byCat: byCat2, board: [],
+                   fandoms: { blink: { people: 34, votes: 1180 },
+                              bloom: { people: 9, votes: 450 } } };
+    c2.tally = { todayKey: '2026-10-21', periods: { today: per2, week: per2, all: per2 }, days: [] };
     out['og:full'] = drawCollabCard(cv, COLLABS[0], { coarseLeft: true });
     COLLABS[0].tally = null;
     out['og:empty'] = drawCollabCard(cv, COLLABS[0], { coarseLeft: true });
@@ -980,7 +1012,11 @@ console.log('--- the page reads /api/collabs and works out the two totals itself
         const el = document.querySelector(s);
         return el ? Math.round(el.getBoundingClientRect().width / track * 100) : null;
       };
-      return { nums: n.textContent.replace(/\s+/g, ' ').trim(), us: pct('.bar-us'), them: pct('.bar-them'),
+      const segs = [...document.querySelectorAll('.bar-seg')].map((el) => ({
+        pct: Math.round(el.getBoundingClientRect().width / track * 100),
+        colour: getComputedStyle(el).backgroundColor,
+      }));
+      return { nums: n.textContent.replace(/\s+/g, ' ').trim(), segs,
                board: document.querySelectorAll('.board tbody tr').length,
                days: document.querySelectorAll('.day.has').length };
     }).catch(() => null);
@@ -991,9 +1027,22 @@ console.log('--- the page reads /api/collabs and works out the two totals itself
     (/\b260\b/.test(got.nums) && /\b100\b/.test(got.nums))
       ? ok('the two totals are summed from the right categories', got.nums)
       : bad('the two totals are summed from the right categories', got.nums);
-    (Math.abs(got.us - 72) <= 1 && Math.abs(got.them - 28) <= 1)
-      ? ok('and the bar is drawn from them', `${got.us}% / ${got.them}%`)
-      : bad('and the bar is drawn from them', `${got.us}% / ${got.them}% — expected 72/28`);
+    // One segment per act, ours first and in our colour. 260 of 360 is 72%,
+    // and if a partner's votes were summed into ours it would read 100%.
+    const ours = got.segs[0] || {};
+    const theirs = got.segs.slice(1).reduce((a, x) => a + x.pct, 0);
+    (Math.abs(ours.pct - 72) <= 1 && Math.abs(theirs - 28) <= 1)
+      ? ok('and the bar is drawn from them', `${ours.pct}% ours / ${theirs}% theirs across ${got.segs.length - 1} partner(s)`)
+      : bad('and the bar is drawn from them', `${ours.pct}% / ${theirs}% — expected 72/28`);
+    // A segment per partner, not one block for all of them: a reader cannot
+    // see how BINI is doing if Ahn Hyo-seop is inside the same colour.
+    const wantSegs = await live.evaluate(() => 1 + (COLLABS[0].partners || []).length);
+    got.segs.length === wantSegs
+      ? ok('with one segment per act', `${got.segs.length} segments`)
+      : bad('with one segment per act', `${got.segs.length}, expected ${wantSegs}`);
+    (ours.colour && /255,\s*0,\s*102/.test(ours.colour))
+      ? ok('and ours is the pink one', ours.colour)
+      : bad('and ours is the pink one', String(ours.colour));
     got.board === 1 ? ok('the board rendered from the endpoint') : bad('the board rendered from the endpoint', `${got.board} rows`);
     got.days === 1 ? ok('and so did the day grid') : bad('and so did the day grid', `${got.days} days`);
   }
