@@ -657,8 +657,17 @@ var COLLABS = [
     // rendered it. `fandom` is what that fandom calls itself and falls back to
     // the act's own name: inventing one for somebody else is the same mistake.
     partners: [
-      { fandom: 'BLOOMs', act: 'BINI' },
-      { fandom: 'Pauljjak', act: 'Ahn Hyo-seop' },
+      // `covers` is the part of OUR half that this agreement actually asked
+      // for, and the two differ: BLOOMs trade for BLACKPINK and JENNIE (ROSÉ
+      // beyond what was asked), Pauljjak announced BLACKPINK alone. `gives` is
+      // their own category. Both are read only by the per-agreement pass
+      // count — nothing else on the page splits by partner.
+      { fandom: 'BLOOMs', act: 'BINI',
+        covers: ['favorite-music-group-or-duo', 'favorite-music-collaboration'],
+        gives: ['favorite-global-music-star'] },
+      { fandom: 'Pauljjak', act: 'Ahn Hyo-seop',
+        covers: ['favorite-music-group-or-duo'],
+        gives: ['favorite-animated-male-voice-from-a-movie'] },
     ],
     // The pages running it, per side. Named on the card because a collab is
     // THEIR work as much as ours and the page should say so — and because a
@@ -780,6 +789,18 @@ var PREVIEW = new URLSearchParams(location.search).get('preview') === '1';
 // of it without the banner would be indistinguishable from a real tally, and
 // the banner is the part that survives being screenshotted. Nothing renders
 // without the flag, which is checked both ways.
+// DRAFT: three ways to count a complete pass, since two agreements now run on
+// one ballot and they asked for different things. ?opt=1|2|3 draws each so the
+// difference can be looked at rather than described; 1 is what is live.
+//
+// Declared HERE, above the first thing that reads it: the ?opt=3 split runs at
+// the top of this script, and `var` hoists the name without the value — so
+// read from further down it was undefined and the split quietly never ran.
+var PASS_OPT = (function () {
+  var v = new URLSearchParams(location.search).get('opt');
+  return v === '2' || v === '3' ? v : '1';
+})();
+
 var DEMO_OPTION = (function () {
   var v = new URLSearchParams(location.search).get('demo');
   return (v === 'a' || v === 'b') ? v : null;
@@ -798,19 +819,22 @@ if (DEMO_OPTION) {
     todayKey: _dday(0),
     periods: {
       today: { byCat: { 'favorite-music-group-or-duo': 44, 'favorite-music-collaboration': 43,
-                        'favorite-female-artist': 41, 'favorite-global-music-star': 42 },
+                        'favorite-female-artist': 41, 'favorite-global-music-star': 42,
+                        'favorite-animated-male-voice-from-a-movie': 38 },
                board: [{ name: 'Voter A', votes: 68, byCat: { 'favorite-music-group-or-duo': 17 } },
                        { name: 'Voter B', votes: 52, byCat: { 'favorite-global-music-star': 13 } }],
                fandoms: { blink: { people: 9, votes: 104 }, bloom: { people: 3, votes: 56 },
                           unsaid: { people: 1, votes: 10 } } },
       week:  { byCat: { 'favorite-music-group-or-duo': 240, 'favorite-music-collaboration': 236,
-                        'favorite-female-artist': 228, 'favorite-global-music-star': 232 },
+                        'favorite-female-artist': 228, 'favorite-global-music-star': 232,
+                        'favorite-animated-male-voice-from-a-movie': 205 },
                board: [{ name: 'Voter A', votes: 320, byCat: { 'favorite-music-group-or-duo': 80 } },
                        { name: 'Voter B', votes: 268, byCat: { 'favorite-global-music-star': 67 } }],
                fandoms: { blink: { people: 22, votes: 620 }, bloom: { people: 7, votes: 286 },
                           unsaid: { people: 2, votes: 30 } } },
       all:   { byCat: { 'favorite-music-group-or-duo': 440, 'favorite-music-collaboration': 435,
-                        'favorite-female-artist': 420, 'favorite-global-music-star': 425 },
+                        'favorite-female-artist': 420, 'favorite-global-music-star': 425,
+                        'favorite-animated-male-voice-from-a-movie': 390 },
                board: [{ name: 'Voter A', votes: 408, byCat: { 'favorite-music-group-or-duo': 102,
                            'favorite-music-collaboration': 102, 'favorite-female-artist': 102,
                            'favorite-global-music-star': 102 } },
@@ -829,6 +853,57 @@ if (DEMO_OPTION) {
   // Option A is this page WITHOUT the sides. One line, which is also exactly
   // what switching between them costs for real.
   if (DEMO_OPTION === 'a') delete COLLABS[0].fandoms;
+}
+
+// ── DRAFT ?opt=3 — one card per agreement ──────────────────────────────────
+// The two trades asked for different things, so this draws them as two
+// collabs: each card carries only the categories its own agreement covers,
+// and each counts passes against that.
+//
+// WHAT IT COSTS IS MEANT TO BE VISIBLE. Favorite Music Group or Duo is in both
+// agreements, so BLACKPINK's votes appear on BOTH cards — the same vote,
+// counted on two boards, and the site's "votes logged" adds up to more than
+// the votes anybody cast. That is the trade-off to look at, not a detail to
+// hide, so nothing here tries to soften it.
+if (PASS_OPT === '3' && COLLABS.length && COLLABS[0].partners) {
+  (function () {
+    var base = COLLABS[0];
+    var split = base.partners.map(function (x) {
+      var keep = {};
+      (x.covers || []).concat(x.gives || []).forEach(function (sl) { keep[sl] = 1; });
+      var sub = function (list) { return list.filter(function (p) { return keep[p.slug]; }); };
+      var tally = null;
+      if (base.tally && base.tally.periods) {
+        tally = JSON.parse(JSON.stringify(base.tally));
+        ['today', 'week', 'all'].forEach(function (k) {
+          var p = tally.periods[k];
+          if (!p || !p.byCat) return;
+          Object.keys(p.byCat).forEach(function (sl) { if (!keep[sl]) delete p.byCat[sl]; });
+          delete p.forUs; delete p.forThem;
+        });
+        (tally.days || []).forEach(function (d) {
+          var v = 0;
+          Object.keys(d.byCat || {}).forEach(function (sl) {
+            if (!keep[sl]) delete d.byCat[sl]; else v += Number(d.byCat[sl]) || 0;
+          });
+          d.votes = v;
+        });
+      }
+      return Object.assign({}, base, {
+        id: base.id + '-' + (x.fandom || x.act).toLowerCase().replace(/[^a-z0-9]+/g, ''),
+        partners: [x],
+        theyGive: sub(base.theyGive),
+        weGive: sub(base.weGive),
+        tally: tally,
+        why: '<b>One agreement per card.</b> This one is ' + esc(x.fandom || x.act)
+           + ': they fill in ' + (sub(base.theyGive).length === 1 ? 'the category' : 'the categories')
+           + ' BLACKPINK is up for in it, we fill in ' + esc(x.act) + '’s.',
+        organisers: null,
+      });
+    });
+    COLLABS.length = 0;
+    split.forEach(function (c) { COLLABS.push(c); });
+  }());
 }
 
 // A worked example of the 'upcoming' card, shown ONLY with ?demo=upcoming.
@@ -976,6 +1051,44 @@ function totalOf(side) { return Math.max(0, (side && side.picks) || 0); }
 
 // The slots a pass has to fill to be complete. ROSÉ is not one of them.
 function requiredOf(picks) { return picks.filter(function (p) { return p.required !== false; }); }
+
+// ── DRAFT: three ways to count a complete pass ──────────────────────────────
+// Two agreements now run on one ballot and they asked for different things, so
+// "a complete pass" has stopped having one meaning. ?opt=1|2|3 draws each one
+// so the difference can be looked at rather than described. 1 is what is live.
+// What one agreement asked for: the categories of ours it covers, plus that
+// partner's own. A pass through it is the smallest of those counts — the same
+// rule as the single number, applied to one agreement instead of all of them.
+function passesForPartner(c, p, x) {
+  var by = p && p.byCat;
+  if (!by) return null;
+  var slugs = (x.covers || []).concat(x.gives || []);
+  var all = c.theyGive.concat(c.weGive);
+  var counts = slugs.filter(function (slug) {
+    var pick = all.filter(function (q) { return q.slug === slug; })[0];
+    return pick && pick.required !== false;
+  }).map(function (slug) { return Math.max(0, Number(by[slug]) || 0); });
+  return counts.length ? Math.min.apply(null, counts) : null;
+}
+
+// The sentence each option prints in place of "That is N complete passes".
+function passesSentence(c, p, passes) {
+  if (PASS_OPT === '1' || !c.partners || c.partners.length < 2) {
+    return passes != null
+      ? ' That is <b>' + fmt(passes) + '</b> complete ' + (passes === 1 ? 'pass' : 'passes') + ' so far.'
+      : '';
+  }
+  // Option 2 — one figure per agreement, each against what that fandom
+  // actually agreed to. A Pauljjak voter doing exactly what they announced
+  // (BLACKPINK and Ahn Hyo-seop) counts as a pass here and does not above.
+  var parts = c.partners.map(function (x) {
+    var n = passesForPartner(c, p, x);
+    return n == null ? null : '<b>' + fmt(n) + '</b> with ' + esc(x.fandom || x.act);
+  }).filter(Boolean);
+  if (!parts.length) return '';
+  return ' That is ' + parts.join(' and ') + ' — each counted against what that '
+    + 'agreement actually asked for, which is not the same list.';
+}
 
 // How many complete passes the pooled votes amount to.
 //
@@ -1607,8 +1720,7 @@ function tallyHtml(c) {
       + '<br>One pass through the ballot is <b>' + most + ' votes</b> — '
       + esc(c.theyGive.concat(c.weGive).map(function (x) { return x.who || x.nominee; })
             .join(', ').replace(/, ([^,]*)$/, ' and $1')) + '.'
-      + (passes != null ? ' That is <b>' + fmt(passes) + '</b> complete '
-          + (passes === 1 ? 'pass' : 'passes') + ' so far.' : '')
+      + passesSentence(c, p, passes)
       + '<br>Logged, not verified — our half is what people record here or through the extension'
       + (t.themSource ? '; the other half is reported by ' + esc(t.themSource) : '')
       + '. A collab vote never counts toward a BLACKPINK total.</div>'
