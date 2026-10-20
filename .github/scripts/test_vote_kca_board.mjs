@@ -240,6 +240,40 @@ check(typeof post.accessToken === 'string', 'authenticated as the signed-in blin
 const msg = await p.evaluate(() => document.getElementById('kca-msg')?.textContent || '');
 check(/Added 3/.test(msg), `and it says so (${msg})`);
 
+console.log('\n--- the collab is reachable from the ballot it belongs to');
+// The page existed only at a URL somebody had to be sent. Half its audience is
+// in the OTHER fandom, who have no reason to be handed a link by us — so the
+// entry points are the feature, not decoration.
+{
+  const line = await p.evaluate(() => {
+    const a = document.querySelector('.vv-collab-line');
+    return a && { href: a.getAttribute('href'), text: a.textContent.replace(/\s+/g, ' ').trim(),
+                  shown: a.getClientRects().length > 0 };
+  });
+  check(!!(line && line.href === '/collabs' && line.shown),
+        `the Kids' Choice tab links to the collab (${line ? line.text.slice(0, 50) : 'no link'})`);
+  // And nowhere else: a line about BINI on the MAMA board is noise, and this
+  // renders inside the shared award switch, so getting it wrong shows it on
+  // every tab at once.
+  const elsewhere = {};
+  const others = await p.evaluate(() => Object.keys(_vvAwardMeta).filter((a) => a !== 'kca'));
+  for (const a of others) {
+    await p.evaluate((x) => vmaSetAward(x), a);
+    await p.waitForTimeout(700);
+    elsewhere[a] = await p.evaluate(() => !!document.querySelector('.vv-collab-line'));
+  }
+  await p.evaluate(() => vmaSetAward('kca'));
+  await p.waitForTimeout(700);
+  check(Object.values(elsewhere).every((v) => v === false),
+        `and no other award tab mentions it (${JSON.stringify(elsewhere)})`);
+  // The nav is the entry that does not depend on already being on a ballot.
+  const nav = await p.evaluate(() => {
+    const a = document.getElementById('nav-collabs');
+    return a && { href: a.getAttribute('href'), text: a.textContent.trim() };
+  });
+  check(!!(nav && nav.href === '/collabs'), `and the nav carries it too (${nav ? nav.text : 'missing'})`);
+}
+
 console.log('\n--- nothing else broke');
 check(errs.length === 0, `no page errors (${errs.join(' | ') || 'none'})`);
 const of_ = await p.evaluate(() =>

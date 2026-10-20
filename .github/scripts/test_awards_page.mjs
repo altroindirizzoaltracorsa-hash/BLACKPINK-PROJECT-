@@ -22,6 +22,7 @@ import { chromium } from './_playwright.mjs';
 const ROOT = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
 // The routes vercel.json rewrites, mirrored so links resolve as in production.
 const PAGES = { '/awards': '/awards.html', '/breaktudo': '/breaktudo.html', '/vmas': '/vmas.html',
+  '/collabs': '/collabs.html',
                 '/projects': '/projects.html', '/achievements': '/achievements.html' };
 const SPA = /^\/(votecard-embed|vma-board-embed|ltal-embed|countdowns|voting|vote|streams|charts|badges|leaderboard|account|feedback)(\/|$)/;
 
@@ -299,6 +300,37 @@ for (const b of BALLOTS) {
 }
 const stalled = await page.locator('.ballot.stalled').count();
 stalled === 0 ? ok('neither ballot fell back to its link') : bad('neither ballot fell back to its link', `${stalled}`);
+
+console.log('--- the collab is reachable from the front door');
+// This page is where / lands, and the collab page had no entry point on it at
+// all — reachable only from a URL somebody had been sent. That is useless for
+// the half of its audience in the OTHER fandom, who will arrive here from
+// their own page's link and find nothing.
+{
+  const c = await page.evaluate(() => {
+    const kca = document.getElementById('ballot-kca');
+    const mama = document.getElementById('ballot-mama');
+    const a = kca && kca.querySelector('a[href="/collabs"]');
+    return {
+      onKca: !!a,
+      shown: !!(a && a.getClientRects().length),
+      text: a ? a.textContent.replace(/\s+/g, ' ').trim() : '',
+      // On the ballot it belongs to, and not the other one: the trade exists
+      // on the Kids' Choice ballot only.
+      onMama: !!(mama && mama.querySelector('a[href="/collabs"]')),
+      insideFrame: !!(a && a.closest('iframe')),
+    };
+  });
+  (c.onKca && c.shown) ? ok('the Kids’ Choice card links to it', c.text.slice(0, 70))
+                       : bad('the Kids’ Choice card links to it', JSON.stringify(c));
+  !c.onMama ? ok('and the MAMA card does not, because the trade is not on that ballot')
+            : bad('and the MAMA card does not, because the trade is not on that ballot');
+  // It has to say what it is. "Collabs →" means nothing to somebody who has
+  // never heard of this, which is everybody it is for.
+  /fill in/i.test(c.text)
+    ? ok('and says what the trade is, not just its name')
+    : bad('and says what the trade is, not just its name', c.text.slice(0, 90));
+}
 
 console.log('--- the way back to the site');
 // This page IS the front door — / redirects here — so it is the one page with
