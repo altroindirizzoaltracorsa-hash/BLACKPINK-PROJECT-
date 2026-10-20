@@ -10,13 +10,16 @@
 <meta property="og:title" content="Fandom collabs — Blinks United">
 <meta property="og:description" content="Vote trades between BLINKs and other fandoms — what to vote, where, and by when.">
 <meta property="og:url" content="https://www.blinksunited.com/collabs">
-<meta property="og:image" content="https://www.blinksunited.com/vote-blackpink-ot4.jpg">
-<meta property="og:image:alt" content="BLACKPINK">
+<meta property="og:image" content="https://www.blinksunited.com/collab-card.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="BLINKs × BLOOMs — the Kids' Choice vote trade, and how it is going">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Fandom collabs — Blinks United">
 <meta name="twitter:description" content="Vote trades between BLINKs and other fandoms — what to vote, where, and by when.">
-<meta name="twitter:image" content="https://www.blinksunited.com/vote-blackpink-ot4.jpg">
+<meta name="twitter:image" content="https://www.blinksunited.com/collab-card.jpg">
+<meta name="twitter:image:alt" content="BLINKs × BLOOMs — the Kids' Choice vote trade, and how it is going">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
@@ -1083,7 +1086,13 @@ function fitText(ctx, text, max, width, family, weight) {
   return size;
 }
 
-function drawCollabCard(canvas, c) {
+// `opts.coarseLeft` rounds the countdown to whole days. The in-page card is
+// drawn the instant somebody taps, so "24D 11H 34M" is true when they see it;
+// the link preview is scraped once and shown for days, so a minute-precise
+// countdown on it is a lie within the hour — and it would also change the
+// file's bytes every run, which is an hourly commit of a PNG forever.
+function drawCollabCard(canvas, c, opts) {
+  opts = opts || {};
   var W = canvas.width, H = canvas.height;
   var wide = W > H;
   var ctx = canvas.getContext('2d');
@@ -1258,7 +1267,7 @@ function drawCollabCard(canvas, c) {
     ctx.fillStyle = '#f5f0f0';
     ctx.font = '500 ' + (L.label + 6) + 'px ' + mono;
     ['We fill in ' + c.partner.act + '’s category,', 'they fill in ours.']
-      .forEach(function (ln) { ctx.fillText(ln, L.pad, y); y += L.line + 8; });
+      .forEach(function (ln) { ctx.fillText(ln, L.pad, y); y += L.line + (wide ? 3 : 8); });
     y += 4;
     ctx.fillStyle = '#b09aad';
     ctx.font = L.note + 'px ' + mono;
@@ -1278,7 +1287,7 @@ function drawCollabCard(canvas, c) {
       ctx.fillStyle = '#b09aad';
       ctx.font = L.note + 'px ' + mono;
       ctx.fillText('  ·  ' + pk.cat, L.pad + w, y + (L.label - L.note) * 0.6);
-      y += L.line + 6;
+      y += L.line + (wide ? 2 : 6);
     });
     // The one that is written differently on the ballot than anyone says it.
     var odd = c.weGive.concat(c.theyGive).filter(function (pk) { return pk.onBallot; })[0];
@@ -1301,7 +1310,16 @@ function drawCollabCard(canvas, c) {
     : null;
   var footH = L.foot + L.footGap + (byLine ? L.by + 14 : 0);
   var footTop = H - L.pad - footH;
-  var left = c.deadline ? countdown(new Date(c.deadline).getTime() - Date.now()) : null;
+  var ms = c.deadline ? new Date(c.deadline).getTime() - Date.now() : null;
+  var left = null;
+  if (ms != null && ms > 0) {
+    if (opts.coarseLeft) {
+      var days = Math.floor(ms / 86400000);
+      left = days > 1 ? days + ' DAYS' : days === 1 ? '1 DAY' : 'HOURS';
+    } else {
+      left = countdown(ms);
+    }
+  }
   var fy = footTop;
   if (left) {
     ctx.fillStyle = '#ff74ac';

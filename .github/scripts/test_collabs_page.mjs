@@ -592,6 +592,54 @@ console.log('--- sharing the numbers');
     : bad('and it copies when there is not', JSON.stringify(shared.viaCopy).slice(0, 90));
 }
 
+console.log('--- the link preview');
+// The picture X shows for a bare URL. It is a FILE, not something the page
+// draws on demand: X does not run our JavaScript. So the three things that
+// can break it are the tag pointing nowhere, the file missing, and the
+// renderer writing somewhere else — all of which look perfect in a browser.
+{
+  const { existsSync, statSync } = await import('node:fs');
+  const html = await readFile(ROOT + '/collabs.html', 'utf8');
+  const og = (html.match(/property="og:image" content="([^"]+)"/) || [])[1] || '';
+  const tw = (html.match(/name="twitter:image" content="([^"]+)"/) || [])[1] || '';
+  (og && og === tw)
+    ? ok('og:image and twitter:image are the same picture', og)
+    : bad('og:image and twitter:image are the same picture', `${og} vs ${tw}`);
+  // Absolute: a relative og:image is ignored by most scrapers, and the one
+  // that matters here is X's.
+  /^https:\/\/www\.blinksunited\.com\//.test(og)
+    ? ok('and an absolute URL on the live host') : bad('and an absolute URL on the live host', og);
+
+  const file = ROOT + '/' + og.split('/').pop();
+  existsSync(file)
+    ? ok('the file it names is in the repo', og.split('/').pop())
+    : bad('the file it names is in the repo', `${og.split('/').pop()} is missing — the preview would 404`);
+  if (existsSync(file)) {
+    const kb = Math.round(statSync(file).size / 1024);
+    // Served on every share and committed whenever it changes. The same card
+    // as a PNG was 943KB, because a full-bleed gradient is the worst case for
+    // it; this is the check that keeps it from going back.
+    kb < 400 ? ok('and is a sensible size to serve', `${kb} KB`)
+             : bad('and is a sensible size to serve', `${kb} KB — too heavy for a link preview`);
+  }
+  // The renderer has to write the file the tag names. These are in different
+  // files and nothing else connects them.
+  const renderer = await readFile(ROOT + '/.github/scripts/render_collab_card.mjs', 'utf8');
+  const writes = (renderer.match(/collab-card\.(png|jpe?g)/g) || []);
+  const named = og.split('/').pop();
+  (writes.length && writes.every((w) => w === named))
+    ? ok('and the renderer writes exactly that file', named)
+    : bad('and the renderer writes exactly that file', `tag wants ${named}, renderer writes ${[...new Set(writes)].join(', ')}`);
+  // The tag's declared size has to be the size that is drawn, or X lays out
+  // a box of the wrong shape and crops the card into it.
+  const w = (html.match(/property="og:image:width" content="(\d+)"/) || [])[1];
+  const h = (html.match(/property="og:image:height" content="(\d+)"/) || [])[1];
+  const rw = (renderer.match(/const W = (\d+), H = (\d+);/) || []);
+  (w && h && rw && w === rw[1] && h === rw[2])
+    ? ok('and the declared size is the size it draws', `${w}×${h}`)
+    : bad('and the declared size is the size it draws', `tag ${w}×${h} vs renderer ${rw && rw[1]}×${rw && rw[2]}`);
+}
+
 console.log('--- the share card');
 // A fandom posts pictures. The card is drawn from the same numbers as the bar
 // and the same text as the post, so it can never disagree with the page it
@@ -652,6 +700,21 @@ console.log('--- the share card');
     }
     return out;
   });
+  // The link-preview size too: 1200x630 is what X crops to, it is drawn by
+  // render_collab_card.mjs from this same function, and it is the one card
+  // nobody looks at before it goes out.
+  const og = await prev.evaluate(() => {
+    const cv = document.createElement('canvas');
+    cv.width = 1200; cv.height = 630;
+    const out = {};
+    const before = COLLABS[0].tally;
+    out['og:full'] = drawCollabCard(cv, COLLABS[0], { coarseLeft: true });
+    COLLABS[0].tally = null;
+    out['og:empty'] = drawCollabCard(cv, COLLABS[0], { coarseLeft: true });
+    COLLABS[0].tally = before;
+    return out;
+  });
+  Object.assign(fits, og);
   for (const [k, m] of Object.entries(fits)) {
     (m.bodyBottom <= m.footTop)
       ? ok(`${k}: the body stops before the footer`, `${Math.round(m.bodyBottom)} < ${Math.round(m.footTop)}`)

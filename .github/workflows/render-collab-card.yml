@@ -1,0 +1,63 @@
+name: Render the collab link-preview card
+
+# The picture X shows when somebody pastes blinksunited.com/collabs.
+#
+# og:image has to be a real PNG at a URL — X does not run our JavaScript and
+# does not take SVG — so the card is drawn here, by the PAGE'S OWN
+# drawCollabCard in a real browser, and committed as a static file. One card
+# implementation rather than a second one in another language that would
+# quietly stop agreeing with the first.
+#
+# Hourly, because a preview that lags the board by a day is worse than no
+# numbers at all. In practice X caches the image per URL far longer than that,
+# so this is the ceiling on freshness, not the floor.
+on:
+  schedule:
+    # :17 rather than :00 — the top of the hour is queued behind everybody
+    # else's cron and runs late, which this repo has measured at 2h+.
+    - cron: '17 * * * *'
+  push:
+    branches: [ "main" ]
+    paths:
+      # The card is drawn from this page, so a change to it can change the card.
+      - 'collabs.html'
+      - '.github/scripts/render_collab_card.mjs'
+      - '.github/workflows/render-collab-card.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: collab-card
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: npm i -D playwright@1.56.0 && npx playwright install --with-deps chromium
+      - name: Draw the card
+        run: node .github/scripts/render_collab_card.mjs --out collab-card.jpg
+      - name: Commit it if it changed
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add collab-card.jpg
+          # Nothing to commit unless the card actually says something new.
+          # The countdown on this render is rounded to whole days for exactly
+          # this reason: minute-precise bytes would differ on every run and
+          # commit a PNG hourly for ever.
+          if git diff --cached --quiet; then
+            echo "no change."
+            exit 0
+          fi
+          git commit -m "Render the collab link-preview card [skip ci]"
+          git push origin HEAD:main
