@@ -329,7 +329,7 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
                     VoteApi.postCollabVotes(
                         token, KcaVoteParser.COLLAB_ID, res.collabCats, kcaFandom()) else null
                 val ok = VoteApi.postKcaVotes(token, res.total, res.cats)
-                if (!ok) addKcaPending(res.total) else flushKcaPending(token)
+                if (!ok) addKcaPending(res.total, res.cats) else flushKcaPending(token)
                 val msg = StringBuilder(
                     if (ok) "✅ Synced ${res.total} · ${res.label}"
                     else "⚠ Couldn't sync — will retry"
@@ -339,24 +339,51 @@ class MainActivity : AppCompatActivity(), Bridge.Callback {
                 runOnUiThread { updateHeader(); toast(msg.toString()) }
             }
         } else {
-            addKcaPending(res.total)
+            addKcaPending(res.total, res.cats)
             runOnUiThread { updateHeader(); toast("⚠ Not linked — vote queued") }
         }
     }
 
-    private fun addKcaPending(n: Int) = synchronized(prefs) {
-        prefs.edit().putInt("kcaPending", prefs.getInt("kcaPending", 0) + n).apply()
+    /** Held WITH its categories. The panel's own breakdown is already whole —
+     *  recordKcaCats() runs before the post — but the SERVER's breakdown only
+     *  ever sees what a post carries, so a round that was retried used to reach
+     *  the board's total and never its per-category split. The collab board
+     *  posts separately and lands first, which is how the two boxes drifted. */
+    private fun addKcaPending(n: Int, cats: Map<String, Int> = emptyMap()) = synchronized(prefs) {
+        val o = try { org.json.JSONObject(prefs.getString("kcaPendingCats", "{}")) } catch (e: Exception) { org.json.JSONObject() }
+        cats.forEach { (slug, c) -> o.put(slug, o.optInt(slug, 0) + c) }
+        prefs.edit()
+            .putInt("kcaPending", prefs.getInt("kcaPending", 0) + n)
+            .putString("kcaPendingCats", o.toString())
+            .apply()
     }
 
-    /** Like the BreakTudo queue, the category is lost on a retry — it is a single
-     *  number, not a per-category ledger — so these land in the board's remainder
-     *  rather than being attributed to the wrong category. */
+    private fun pendingKcaCats(): Map<String, Int> {
+        val o = try { org.json.JSONObject(prefs.getString("kcaPendingCats", "{}")) } catch (e: Exception) { org.json.JSONObject() }
+        val out = HashMap<String, Int>()
+        o.keys().forEach { k -> val n = o.optInt(k, 0); if (n > 0) out[k] = n }
+        return out
+    }
+
+    /** Sends the backlog with the categories it was held with, then clears only
+     *  what it actually sent — a round that arrives mid-flush stays queued.
+     *  Does NOT touch the local kcaCats: that was recorded when the round was
+     *  parsed, so re-adding here would double count it in the panel. */
     private fun flushKcaPending(token: String) {
         val pending = prefs.getInt("kcaPending", 0)
         if (pending <= 0) return
-        if (VoteApi.postKcaVotes(token, pending, emptyMap())) {
+        val cats = pendingKcaCats()
+        if (VoteApi.postKcaVotes(token, pending, cats)) {
             synchronized(prefs) {
-                prefs.edit().putInt("kcaPending", (prefs.getInt("kcaPending", 0) - pending).coerceAtLeast(0)).apply()
+                val o = try { org.json.JSONObject(prefs.getString("kcaPendingCats", "{}")) } catch (e: Exception) { org.json.JSONObject() }
+                cats.forEach { (slug, c) ->
+                    val left = o.optInt(slug, 0) - c
+                    if (left > 0) o.put(slug, left) else o.remove(slug)
+                }
+                prefs.edit()
+                    .putInt("kcaPending", (prefs.getInt("kcaPending", 0) - pending).coerceAtLeast(0))
+                    .putString("kcaPendingCats", o.toString())
+                    .apply()
             }
         }
     }
