@@ -146,6 +146,31 @@ console.log('--- who is running it, named on the card and coloured by side');
     ? ok('and the two sides are told apart')
     : bad('and the two sides are told apart', JSON.stringify(live));
   live && live.underTitle ? ok('with the credit under the title') : bad('with the credit under the title');
+  // Each handle has to reach the actual account. A credit nobody can follow is
+  // a name on a page, and these are other people's pages.
+  const links = await prev.evaluate(() => [...document.querySelectorAll('.collab-by a')].map((a) => ({
+    text: a.textContent.trim(),
+    href: a.getAttribute('href'),
+    blank: a.getAttribute('target') === '_blank',
+    rel: a.getAttribute('rel') || '',
+  })));
+  const handles = links.filter((l) => l.text.startsWith('@'));
+  handles.length >= 3
+    ? ok('every handle is a link', handles.map((h) => h.text).join(' '))
+    : bad('every handle is a link', `${handles.length} of them`);
+  const wrong = handles.filter((h) => h.href !== `https://x.com/${h.text.slice(1)}`);
+  wrong.length === 0
+    ? ok('and points at that account on x.com')
+    : bad('and points at that account on x.com', wrong.map((w) => `${w.text} → ${w.href}`).join(', '));
+  // Off-site, so it opens in its own tab and cannot reach back through
+  // window.opener — the page someone was reading should still be there.
+  handles.every((h) => h.blank && /noopener/.test(h.rel))
+    ? ok('and opens in its own tab, with noopener')
+    : bad('and opens in its own tab, with noopener', JSON.stringify(handles));
+  const ours = links.filter((l) => !l.text.startsWith('@'));
+  ours.every((l) => !l.blank)
+    ? ok('while our own link stays in the tab', ours.map((l) => l.text).join(', '))
+    : bad('while our own link stays in the tab', JSON.stringify(ours));
   // A page that has not agreed is not named anywhere, which the hidden-collab
   // check above covers for the card as a whole — this is the same rule stated
   // for the credit line specifically, since that is the part that names people.

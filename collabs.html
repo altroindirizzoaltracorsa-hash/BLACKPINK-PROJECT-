@@ -598,14 +598,14 @@ var COLLABS = [
     // reason `status` exists, and it applies to each page separately rather
     // than to the collab as a lump.
     //
-    // No links: these are handles and the platform they belong to has not been
-    // confirmed, and a handle linked to the wrong site is worse than one that
-    // is only text. `url` is read if it is ever added.
+    // The handles are on x.com. Written out in full rather than derived from
+    // the @name: a link built by rule is a link nobody checked, and these
+    // point at other people's accounts.
     organisers: {
       us:   [{ name: 'Blinks United', url: '/' },
-             { name: '@BLINKVotingPage' }],
-      them: [{ name: '@BINIVotingTeam' },
-             { name: '@BloomStreamers' }],
+             { name: '@BLINKVotingPage', url: 'https://x.com/BLINKVotingPage' }],
+      them: [{ name: '@BINIVotingTeam', url: 'https://x.com/BINIVotingTeam' },
+             { name: '@BloomStreamers', url: 'https://x.com/BloomStreamers' }],
     },
     // The sides a person can say they belong to. Keys are what the counter
     // posts and what the API stores; labels are what the page prints.
@@ -812,8 +812,14 @@ function organisersHtml(c) {
   var side = function (list, cls) {
     return (list || []).map(function (x) {
       var label = esc(x.name);
+      // An off-site link opens in its own tab and carries noopener: these go to
+      // other people's accounts, and the page someone was reading should still
+      // be there when they come back. Our own link stays in the tab.
+      var off = /^https?:/i.test(String(x.url || ''));
       return '<span class="by-one ' + cls + '">'
-        + (x.url ? '<a href="' + esc(x.url) + '">' + label + '</a>' : label)
+        + (x.url ? '<a href="' + esc(x.url) + '"'
+            + (off ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' + label + '</a>'
+          : label)
         + '</span>';
     }).join('<i>&times;</i>');
   };
