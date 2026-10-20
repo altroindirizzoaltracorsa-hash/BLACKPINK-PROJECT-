@@ -125,6 +125,16 @@
     border-radius: var(--r-box); padding: 0.7rem 0.9rem; margin-bottom: 1.1rem; }
   .demo-banner b { color: #fff2e2; font-weight: 500; }
 
+  .collab-by { margin-top: 0.45rem; font-size: 0.66rem; line-height: 1.9;
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.1rem; }
+  .collab-by .by-one { white-space: nowrap; }
+  .collab-by .by-us   { color: var(--pink-lo); }
+  .collab-by .by-them { color: var(--them); }
+  .collab-by a { text-decoration: none; }
+  .collab-by a:hover { text-decoration: underline; }
+  .collab-by i { font-style: normal; color: var(--muted); margin: 0 0.35rem; }
+  .collab-by .by-and { margin: 0 0.5rem; }
+
   .collab-why { font-size: 0.8rem; color: var(--muted); line-height: 1.75; margin-bottom: 1.3rem; }
   .collab-why b { color: var(--white); font-weight: 500; }
 
@@ -572,9 +582,30 @@ var COLLABS = [
     from: '2026-10-08',
     voteUrl: 'https://kca.nick.tv/vote/',
     partner: {
-      name: 'BINI Voting Page',     // CONFIRM the exact name and handle with them
+      // The FANDOM and the ACT, which are facts about the ballot. Who is
+      // running it is `organisers` below — this used to carry a page name too,
+      // guessed at and wrong, which is the sort of thing that only stays
+      // harmless while it is never rendered.
       fandom: 'BLOOMs',
       act: 'BINI',
+    },
+    // The pages running it, per side. Named on the card because a collab is
+    // THEIR work as much as ours and the page should say so — and because a
+    // tracker nobody is credited for reads as ours alone.
+    //
+    // A NAME HERE IS A PUBLIC CLAIM THAT THEY ARE IN. Nobody goes in this list
+    // before they have said yes in their own words; that rule is the whole
+    // reason `status` exists, and it applies to each page separately rather
+    // than to the collab as a lump.
+    //
+    // The handles are on x.com. Written out in full rather than derived from
+    // the @name: a link built by rule is a link nobody checked, and these
+    // point at other people's accounts.
+    organisers: {
+      us:   [{ name: 'Blinks United', url: '/' },
+             { name: '@BLINKVotingPage', url: 'https://x.com/BLINKVotingPage' }],
+      them: [{ name: '@BINIVotingTeam', url: 'https://x.com/BINIVotingTeam' },
+             { name: '@BloomStreamers', url: 'https://x.com/BloomStreamers' }],
     },
     // The sides a person can say they belong to. Keys are what the counter
     // posts and what the API stores; labels are what the page prints.
@@ -772,6 +803,32 @@ function numWord(n) { return NUM_WORDS[n] != null ? NUM_WORDS[n] : String(n); }
 // and the sentence is built from whichever it is.
 function catWord(n) { return n === 1 ? 'category' : 'categories'; }
 
+// Who is running it, grouped by side and coloured by side. Deliberately under
+// the title rather than in the footer: the fandoms in the heading are who the
+// collab is FOR, and these are the people who actually arranged it.
+function organisersHtml(c) {
+  var o = c.organisers;
+  if (!o) return '';
+  var side = function (list, cls) {
+    return (list || []).map(function (x) {
+      var label = esc(x.name);
+      // An off-site link opens in its own tab and carries noopener: these go to
+      // other people's accounts, and the page someone was reading should still
+      // be there when they come back. Our own link stays in the tab.
+      var off = /^https?:/i.test(String(x.url || ''));
+      return '<span class="by-one ' + cls + '">'
+        + (x.url ? '<a href="' + esc(x.url) + '"'
+            + (off ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' + label + '</a>'
+          : label)
+        + '</span>';
+    }).join('<i>&times;</i>');
+  };
+  var us = side(o.us, 'by-us'), them = side(o.them, 'by-them');
+  if (!us && !them) return '';
+  return '<div class="collab-by">' + us
+    + (us && them ? '<i class="by-and">with</i>' : '') + them + '</div>';
+}
+
 function sideHtml(cls, head, who, picks) {
   return '<div class="side ' + cls + '">'
     + '<div class="side-head">' + esc(head) + '</div>'
@@ -838,6 +895,97 @@ function passesFrom(c, t) {
     counts.push(Math.max(0, Number(by[p.slug]) || 0));
   });
   return counts.length ? Math.min.apply(null, counts) : null;
+}
+
+// ── sharing the numbers ────────────────────────────────────────────────────
+// A tracker nobody can quote is a tracker nobody looks at twice. The point of
+// sharing is to bring people back to the ballot, so the text always carries
+// what is left to do and the link, not only the score.
+//
+// IT SAYS WHAT THE PAGE SAYS. The totals are what each ACT received, never
+// what a fandom contributed — everyone votes the whole ballot, so a post
+// reading "BLOOMs got us 425" would be the one claim this page refuses to
+// make, and a post travels further than the page it came from.
+var SHARE_URL = 'https://www.blinksunited.com/collabs';
+
+function shareTextFor(c, period) {
+  var t = c.tally;
+  var p = periodOf(c, t, period || PERIOD);
+  var when = { today: ' today', week: ' this week', all: '' }[period || PERIOD] || '';
+  var left = c.deadline ? countdown(new Date(c.deadline).getTime() - Date.now()) : null;
+  var acts = c.theyGive.map(function (x) { return x.who || x.nominee; });
+  var ourActs = acts.join(', ').replace(/, ([^,]*)$/, ' & $1');
+  var head = 'BLINKs × ' + c.partner.fandom + ' · ' + c.award;
+
+  var forUs = p && p.forUs ? Math.max(0, Number(p.forUs.picks) || 0) : 0;
+  var forThem = p && p.forThem ? Math.max(0, Number(p.forThem.picks) || 0) : 0;
+
+  // Nothing counted yet is the MOST worth sharing — it is the invitation —
+  // so it gets its own text rather than a zero that reads as a dead campaign.
+  if (!forUs && !forThem) {
+    return head + '\n\n'
+      + 'We fill in ' + c.partner.act + '’s category, they fill in ours. The ballot needs every '
+      + 'category filled anyway, so neither side gives anything up.\n'
+      + (left ? left + ' left to vote.\n' : '')
+      + SHARE_URL;
+  }
+
+  var lines = [head, ''];
+  lines.push(fmt(forUs) + ' votes for ' + ourActs + ' and ' + fmt(forThem) + ' for '
+    + c.partner.act + ' logged through the collab' + when + '.');
+  var passes = passesFrom(c, p);
+  if (passes) lines.push('That is ' + fmt(passes) + ' complete '
+    + (passes === 1 ? 'pass' : 'passes') + ' through the ballot.');
+  if (left) lines.push(left + ' left.');
+  lines.push(SHARE_URL);
+  return lines.join('\n');
+}
+
+// X counts a link as 23 characters whatever its length, so the text is
+// measured the way the site will measure it rather than by its own length.
+function shareLength(text) {
+  return text.replace(/https?:\/\/\S+/g, 'x'.repeat(23)).length;
+}
+
+function shareHtml(c) {
+  if (c.status !== 'live') return '';
+  return '<button class="btn ghost" type="button" onclick="shareCollab(\'' + esc(c.id) + '\')" '
+      + 'data-share="' + esc(c.id) + '">Share the numbers</button>'
+    + '<a class="btn ghost" data-share-x="' + esc(c.id) + '" target="_blank" rel="noopener noreferrer"'
+      + ' href="https://x.com/intent/post?text=' + encodeURIComponent(shareTextFor(c, PERIOD))
+      + '">Post on X ↗</a>';
+}
+
+// Native share where the browser has it — that is the one path that reaches
+// the apps people actually post from — and the clipboard everywhere else.
+// Both say what happened: a share sheet that fails silently looks like a
+// broken button, and so does a copy.
+function shareCollab(id) {
+  var c = COLLABS.filter(function (x) { return x.id === id; })[0];
+  if (!c) return;
+  var text = shareTextFor(c, PERIOD);
+  var btn = document.querySelector('[data-share="' + id + '"]');
+  var said = function (msg) {
+    if (!btn) return;
+    var was = btn.textContent;
+    btn.textContent = msg;
+    setTimeout(function () { btn.textContent = was; }, 2200);
+  };
+  if (navigator.share) {
+    navigator.share({ title: 'BLINKs × ' + c.partner.fandom, text: text })
+      .then(function () { said('Shared ✓'); })
+      // A cancelled share sheet is not a failure and must not fall through to
+      // a copy the person did not ask for.
+      .catch(function () {});
+    return;
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(function () { said('Copied ✓'); })
+      .catch(function () { said('Press ⌘/Ctrl+C'); });
+    return;
+  }
+  said('Press ⌘/Ctrl+C');
 }
 
 // ── periods ────────────────────────────────────────────────────────────────
@@ -1204,7 +1352,7 @@ function card(c) {
     + '<div class="collab-top"><div>'
     + '<div class="collab-award">' + esc(c.award) + '</div>'
     + '<div class="collab-title"><b>BLINKs</b><i>&times;</i><b>' + esc(c.partner.fandom) + '</b>'
-    + status + '</div></div>' + dl + '</div>'
+    + status + '</div>' + organisersHtml(c) + '</div>' + dl + '</div>'
     // The bar sits here — under the countdown, before the explanation. Once a
     // trade is running this is the live number people come back for, and it
     // should not be below two columns of reference material.
@@ -1242,6 +1390,7 @@ function card(c) {
     + '<div class="collab-actions">'
     + (ended || soon ? '' : '<a class="btn" href="' + esc(c.voteUrl)
         + '" target="_blank" rel="noopener noreferrer">Open the ballot ↗</a>')
+    + shareHtml(c)
     + '<a class="btn ghost" href="/voting?award=kca">Our board for this award →</a>'
     + '</div></article>';
 }

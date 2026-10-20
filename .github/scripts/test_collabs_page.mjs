@@ -79,7 +79,11 @@ const hidden = await pub.evaluate(() => {
   });
   render();
   const shown = [...document.querySelectorAll('.collab')].map((el) => el.dataset.collab);
-  const body = document.body.textContent;
+  // innerText, not textContent. textContent includes the inline <script>, so a
+  // CODE COMMENT counts as page text — this is the second check in this file
+  // to report a leak that was a comment explaining the leak rule. What matters
+  // is what a reader can see.
+  const body = document.body.innerText;
   COLLABS.length = 0; before.forEach((c) => COLLABS.push(c));
   render();
   return { shown, named: /Someones|Nobody/.test(body) };
@@ -109,6 +113,71 @@ for (const s of shown.filter((x) => x.status === 'proposed')) {
   /proposed|not announced/i.test(s.statusText)
     ? ok(`${s.id} is marked as not announced`, s.statusText.trim())
     : bad(`${s.id} is marked as not announced`, s.statusText.trim() || 'no marker');
+}
+
+console.log('--- who is running it, named on the card and coloured by side');
+// A collab is the partner pages' work as much as ours, and a tracker with
+// nobody credited on it reads as ours alone. Each name is also a public claim
+// that that page is in, which is why they are listed per collab and per side
+// rather than being a site-wide credit.
+{
+  const by = await prev.evaluate(() => [...document.querySelectorAll('.collab')].map((el) => ({
+    id: el.dataset.collab,
+    status: el.dataset.status,
+    us: [...el.querySelectorAll('.collab-by .by-us')].map((x) => x.textContent.trim()),
+    them: [...el.querySelectorAll('.collab-by .by-them')].map((x) => x.textContent.trim()),
+    // Under the title, not in the footer: the heading says who the collab is
+    // FOR, this says who arranged it, and they belong together.
+    underTitle: (() => {
+      const t = el.querySelector('.collab-title'), b = el.querySelector('.collab-by');
+      return !!(t && b && b.getBoundingClientRect().top >= t.getBoundingClientRect().top);
+    })(),
+  })));
+  const live = by.find((x) => x.id === 'bvp-kca-2026');
+  (live && live.us.length >= 2 && live.them.length >= 2)
+    ? ok('every page running it is named', `${live.us.join(' × ')} with ${live.them.join(' × ')}`)
+    : bad('every page running it is named', JSON.stringify(live));
+  (live && live.us.some((n) => /blinks united/i.test(n)))
+    ? ok('including us, not only the partners')
+    : bad('including us, not only the partners', JSON.stringify(live && live.us));
+  // Each side in its own colour, so four names do not read as one undifferentiated
+  // list of strangers.
+  (live && live.us.length && live.them.length)
+    ? ok('and the two sides are told apart')
+    : bad('and the two sides are told apart', JSON.stringify(live));
+  live && live.underTitle ? ok('with the credit under the title') : bad('with the credit under the title');
+  // Each handle has to reach the actual account. A credit nobody can follow is
+  // a name on a page, and these are other people's pages.
+  const links = await prev.evaluate(() => [...document.querySelectorAll('.collab-by a')].map((a) => ({
+    text: a.textContent.trim(),
+    href: a.getAttribute('href'),
+    blank: a.getAttribute('target') === '_blank',
+    rel: a.getAttribute('rel') || '',
+  })));
+  const handles = links.filter((l) => l.text.startsWith('@'));
+  handles.length >= 3
+    ? ok('every handle is a link', handles.map((h) => h.text).join(' '))
+    : bad('every handle is a link', `${handles.length} of them`);
+  const wrong = handles.filter((h) => h.href !== `https://x.com/${h.text.slice(1)}`);
+  wrong.length === 0
+    ? ok('and points at that account on x.com')
+    : bad('and points at that account on x.com', wrong.map((w) => `${w.text} → ${w.href}`).join(', '));
+  // Off-site, so it opens in its own tab and cannot reach back through
+  // window.opener — the page someone was reading should still be there.
+  handles.every((h) => h.blank && /noopener/.test(h.rel))
+    ? ok('and opens in its own tab, with noopener')
+    : bad('and opens in its own tab, with noopener', JSON.stringify(handles));
+  const ours = links.filter((l) => !l.text.startsWith('@'));
+  ours.every((l) => !l.blank)
+    ? ok('while our own link stays in the tab', ours.map((l) => l.text).join(', '))
+    : bad('while our own link stays in the tab', JSON.stringify(ours));
+  // A page that has not agreed is not named anywhere, which the hidden-collab
+  // check above covers for the card as a whole — this is the same rule stated
+  // for the credit line specifically, since that is the part that names people.
+  const leaked = by.filter((x) => x.status === 'proposed' && (x.us.length || x.them.length));
+  leaked.length === 0
+    ? ok('and no unannounced collab lists anybody')
+    : bad('and no unannounced collab lists anybody', JSON.stringify(leaked));
 }
 
 console.log('--- the two sides are genuinely different categories');
@@ -410,6 +479,118 @@ const boardNote = (await prev.locator('.sub-note').first().textContent()).replac
 /all you need to appear here is an account/i.test(boardNote)
   ? ok('and says it in those words')
   : bad('and says it in those words', boardNote.slice(0, 120));
+
+console.log('--- sharing the numbers');
+// A post travels further than the page it came from, so the text has to hold
+// the same line the page does: the totals are what each ACT received, never
+// what a fandom contributed. It also has to be worth posting before there are
+// any numbers, which is when sharing matters most.
+{
+  // With numbers.
+  await prev.evaluate((fix) => { COLLABS[0].tally = fix; PERIOD = 'all'; render(); }, FIX);
+  await prev.waitForTimeout(250);
+  const COLLABS_ACTS = await prev.evaluate(() =>
+    COLLABS[0].theyGive.map((x) => x.who || x.nominee));
+  const withNums = await prev.evaluate(() => ({
+    text: shareTextFor(COLLABS[0], 'all'),
+    len: shareLength(shareTextFor(COLLABS[0], 'all')),
+    btn: !!document.querySelector('[data-share]'),
+    x: (document.querySelector('[data-share-x]') || {}).href || '',
+  }));
+  withNums.btn ? ok('there is a share button') : bad('there is a share button');
+  (/300/.test(withNums.text) && /100/.test(withNums.text))
+    ? ok('and the text carries both totals', withNums.text.split('\n')[2])
+    : bad('and the text carries both totals', withNums.text.replace(/\n/g, ' | '));
+  // The claim the page refuses to make. "BLOOMs cast 100" is a vote traced to
+  // a fandom, which nothing here can know.
+  !/(BLOOMs|BLINKs) (cast|got|voted|contributed|gave)/i.test(withNums.text)
+    ? ok('and never credits a fandom with votes')
+    : bad('and never credits a fandom with votes', withNums.text.replace(/\n/g, ' | '));
+  /blinksunited\.com\/collabs/.test(withNums.text)
+    ? ok('and links back to the page') : bad('and links back to the page');
+  // Every act by name, ROSÉ included. The first version of this joined the
+  // list with a replace that dropped its own capture group, so the post read
+  // "BLACKPINK, JENNIE & and 100 for BINI" — a member missing from a post
+  // asking people to vote for her.
+  {
+    const want = COLLABS_ACTS.concat(['BINI']);
+    const missing = want.filter((n) => !withNums.text.includes(n));
+    missing.length === 0
+      ? ok('and names every act, ROSÉ included', want.join(', '))
+      : bad('and names every act, ROSÉ included', `missing ${missing.join(', ')}`);
+  }
+  // Something to DO, not just a scoreline — the point of the post is the
+  // ballot, and a countdown is what makes somebody open it now.
+  /left/i.test(withNums.text)
+    ? ok('and says how long is left') : bad('and says how long is left', withNums.text.replace(/\n/g, ' | '));
+  withNums.len <= 280
+    ? ok('and fits in a post', `${withNums.len} chars as X counts them`)
+    : bad('and fits in a post', `${withNums.len} chars`);
+  /^https:\/\/x\.com\/intent\/post\?text=/.test(withNums.x)
+    ? ok('the X button posts it, pre-filled')
+    : bad('the X button posts it, pre-filled', withNums.x.slice(0, 60));
+  decodeURIComponent((withNums.x.split('text=')[1] || '')) === withNums.text
+    ? ok('with exactly the same text, encoded')
+    : bad('with exactly the same text, encoded', decodeURIComponent((withNums.x.split('text=')[1] || '')).slice(0, 80));
+
+  // The period follows the tab: a post saying "today" has to carry today's
+  // figures, not all time's.
+  const perTab = await prev.evaluate(() => ({
+    today: shareTextFor(COLLABS[0], 'today'),
+    all: shareTextFor(COLLABS[0], 'all'),
+  }));
+  (/\b9\b/.test(perTab.today) && /today/.test(perTab.today) && perTab.today !== perTab.all)
+    ? ok('and follows the period tab', perTab.today.split('\n')[2])
+    : bad('and follows the period tab', perTab.today.replace(/\n/g, ' | '));
+
+  // Nothing counted yet — the case worth sharing most, and the one where a
+  // scoreline would read as a dead campaign.
+  const empty = await prev.evaluate(() => {
+    const before = COLLABS[0].tally;
+    COLLABS[0].tally = null; render();
+    const out = { text: shareTextFor(COLLABS[0], 'all'),
+                  btn: !!document.querySelector('[data-share]') };
+    COLLABS[0].tally = before; render();
+    return out;
+  });
+  empty.btn ? ok('the button is there before any votes exist')
+            : bad('the button is there before any votes exist');
+  !/\b0 votes\b/.test(empty.text)
+    ? ok('and does not post a zero')
+    : bad('and does not post a zero', empty.text.replace(/\n/g, ' | '));
+  /neither side gives anything up/i.test(empty.text)
+    ? ok('it posts the invitation instead', empty.text.split('\n')[2].slice(0, 70))
+    : bad('it posts the invitation instead', empty.text.replace(/\n/g, ' | '));
+
+  // The share itself: native sheet where there is one, clipboard otherwise,
+  // and a cancelled sheet must not fall through to a copy nobody asked for.
+  const shared = await prev.evaluate(async () => {
+    const calls = { share: null, copy: null };
+    const realShare = navigator.share, realClip = navigator.clipboard;
+    Object.defineProperty(navigator, 'share',
+      { configurable: true, value: (d) => { calls.share = d; return Promise.resolve(); } });
+    Object.defineProperty(navigator, 'clipboard',
+      { configurable: true, value: { writeText: (t) => { calls.copy = t; return Promise.resolve(); } } });
+    shareCollab(COLLABS[0].id);
+    await new Promise((r) => setTimeout(r, 80));
+    const viaShare = { ...calls };
+    calls.share = null; calls.copy = null;
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    shareCollab(COLLABS[0].id);
+    await new Promise((r) => setTimeout(r, 80));
+    const viaCopy = { ...calls };
+    if (realShare) Object.defineProperty(navigator, 'share', { configurable: true, value: realShare });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: realClip });
+    return { viaShare, viaCopy };
+  });
+  (shared.viaShare.share && !shared.viaShare.copy)
+    ? ok('the share sheet is used where there is one, and the clipboard is left alone')
+    : bad('the share sheet is used where there is one, and the clipboard is left alone',
+          JSON.stringify(shared.viaShare).slice(0, 90));
+  (shared.viaCopy.copy && /blinksunited/.test(shared.viaCopy.copy))
+    ? ok('and it copies when there is not')
+    : bad('and it copies when there is not', JSON.stringify(shared.viaCopy).slice(0, 90));
+}
 
 console.log('--- who is logging: people by declared side, never a split of the votes');
 // The line this block has to hold. The bar above it is what each ACT received
