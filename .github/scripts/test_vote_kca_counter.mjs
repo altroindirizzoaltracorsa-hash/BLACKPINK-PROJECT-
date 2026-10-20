@@ -533,6 +533,60 @@ console.log('\n--- A. not linked yet: held, not lost');
         'with "link your account" as the reason');
 }
 
+console.log('\n--- A. a held round keeps its categories');
+// The two boxes on the panel have to agree about the same picks. They did not:
+// a round whose post failed was held with only a COUNT, and the backlog was
+// flushed as `cats: null` — so those votes reached the day's total and the
+// server's total but never either per-category breakdown, while the collab
+// box recorded them the moment its own post landed. On a blink's screen that
+// was 5 BLACKPINK in one box and 4 in the other.
+{
+  const bg = loadBackground({ failUrl: '/api/vma-votes' });
+  bg.store.buToken = 'tok';
+  bg.store.kcaBallot = freshBallot();
+  await bg.processKcaVote({ votes: [
+    { q: '1ae0e782-6c39-4329-88ae-137533d9f497', o: 'aa2a878e-15d2-455f-9829-1b55fd948c81' },
+    { q: '22222222-2222-2222-2222-222222222222', o: '11111111-1111-1111-1111-111111111111' },
+  ] });
+  await settle();
+  check(bg.store.kcaPendingN === 2, `the round is held (${bg.store.kcaPendingN})`);
+  check(!!(bg.store.kcaPendingCats
+           && bg.store.kcaPendingCats['favorite-music-group-or-duo'] === 1
+           && bg.store.kcaPendingCats['favorite-female-artist'] === 1),
+        'and its categories are held with it');
+  // The collab recorded the same picks straight away, which is exactly how
+  // the two boxes came to disagree.
+  check(!!(bg.store.kcaCollab && bg.store.kcaCollab.cats['favorite-music-group-or-duo'] === 1),
+        'while the collab box already has them');
+
+  // Now the next round goes through, which is what flushes the backlog.
+  const bg2 = loadBackground();
+  bg2.store.buToken = 'tok';
+  bg2.store.kcaBallot = freshBallot();
+  bg2.store.kcaDay = bg.store.kcaDay;
+  bg2.store.kcaPendingN = bg.store.kcaPendingN;
+  bg2.store.kcaPendingCats = bg.store.kcaPendingCats;
+  bg2.store.kcaCats = {};
+  bg2.store.kcaCount = 0;
+  await bg2.processKcaVote({ votes: [
+    { q: '44444444-4444-4444-4444-444444444444', o: '33333333-3333-3333-3333-333333333333' },
+  ] });
+  await settle();
+  const flushed = boardPosts(bg2).filter((p) => p.body.votes === 2)[0];
+  check(!!flushed, 'the backlog is sent');
+  check(!!(flushed && flushed.body.cats
+           && flushed.body.cats['favorite-music-group-or-duo'] === 1),
+        'with its categories, so the SERVER breakdown gets them too');
+  const cats = bg2.store.kcaCats || {};
+  check(cats['favorite-music-group-or-duo'] === 1 && cats['favorite-female-artist'] === 1
+        && cats['favorite-music-collaboration'] === 1,
+        `and the panel's breakdown is whole again (${JSON.stringify(cats)})`);
+  const sum = Object.values(cats).reduce((a, b) => a + b, 0);
+  check(sum === bg2.store.kcaCount,
+        `the breakdown adds up to the day's total (${sum} vs ${bg2.store.kcaCount})`);
+  check(!Object.keys(bg2.store.kcaPendingCats || {}).length, 'and nothing is left held');
+}
+
 console.log('\n--- A. a round reaches us in pieces, and the backlog adds them up');
 {
   // This is what a real round looks like from here: KCA flushes 5–7 picks at a
@@ -815,6 +869,53 @@ console.log('\n--- B. panel.js reads the ballot off the page');
   check(errs.length === 0, `no page errors (${errs.join(' | ') || 'none'})`);
 
   await b.close();
+}
+
+console.log('\n--- C. the Android app holds its categories the same way');
+// The app is the third copy of this counter and the one that cannot be fixed
+// from the server: it is installed, so a regression here keeps shipping a wrong
+// breakdown until somebody reinstalls. Its own comment used to say the category
+// was lost on a retry. This is read statically because the Kotlin cannot be run
+// from here — what it can still catch is the revert, which is the realistic
+// failure: someone simplifying `addKcaPending(n, cats)` back to a bare count,
+// or flushing with `emptyMap()` again.
+{
+  const app = readFileSync(root + 'android-app/app/src/main/java/com/blinksunited/votecounter/MainActivity.kt', 'utf8');
+  const body = (name) => {
+    const at = app.indexOf('private fun ' + name);
+    if (at < 0) return '';
+    const open = app.indexOf('{', at);
+    let depth = 0;
+    for (let i = open; i < app.length; i++) {
+      if (app[i] === '{') depth++;
+      else if (app[i] === '}' && !--depth) return app.slice(open, i + 1);
+    }
+    return '';
+  };
+
+  check(/private fun addKcaPending\(n: Int, cats: Map<String, Int>/.test(app),
+        'a held round is held with its categories');
+  const calls = [...app.matchAll(/addKcaPending\(([^)]*)\)/g)]
+    .map((m) => m[1]).filter((a) => !a.startsWith('n: Int'));
+  check(calls.length >= 2 && calls.every((a) => /res\.cats/.test(a)),
+        `and every call site hands them over (${calls.length}: ${calls.join(' / ')})`);
+
+  const flush = body('flushKcaPending');
+  check(/postKcaVotes\(token, pending, cats\)/.test(flush),
+        'the backlog is sent with them, so the SERVER breakdown gets them too');
+  check(!/emptyMap\(\)/.test(flush),
+        'and not with an empty map, which is what dropped them');
+  // The app records the round's categories as it parses it, BEFORE the post —
+  // so the flush must not add them again or the panel would double count what
+  // it already has. That asymmetry with the extension is deliberate.
+  check(/recordKcaCats\(res\.cats\)/.test(app) && !/recordKcaCats/.test(flush),
+        'the panel keeps its own breakdown, recorded before the post, untouched by the flush');
+  // Written, not just read: a hold that lives in memory is lost to the one
+  // thing it exists for — the app being closed between the failure and the
+  // retry. Both sides have to write, or the backlog drains without them.
+  const writesCats = (b) => /putString\("kcaPendingCats"/.test(b);
+  check(writesCats(body('addKcaPending')) && writesCats(flush),
+        'held categories survive the app being closed (they are written to prefs)');
 }
 
 console.log(`\nFAILURES: ${fails.length}`);

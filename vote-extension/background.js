@@ -1180,10 +1180,11 @@ async function processKcaVote(e) {
 
   postKcaVotes(n, cats).then((res) => {
     const today = kstDay();
-    chrome.storage.local.get(['kcaCount', 'kcaLog', 'kcaPendingN', 'kcaDay', 'kcaCats'], (raw) => {
+    chrome.storage.local.get(['kcaCount', 'kcaLog', 'kcaPendingN', 'kcaPendingCats', 'kcaDay', 'kcaCats'], (raw) => {
       const r = (raw.kcaDay === today)
         ? raw
-        : { kcaDay: today, kcaCount: 0, kcaLog: [], kcaCats: {}, kcaPendingN: raw.kcaPendingN || 0 };
+        : { kcaDay: today, kcaCount: 0, kcaLog: [], kcaCats: {},
+            kcaPendingN: raw.kcaPendingN || 0, kcaPendingCats: raw.kcaPendingCats || {} };
       const upd = { kcaDay: today };
       if (res.ok) {
         upd.kcaCount = (r.kcaCount || 0) + n;
@@ -1201,16 +1202,35 @@ async function processKcaVote(e) {
         upd.kcaLog = log.slice(0, 500);
         // Flush a backlog only once the server has actually taken it — zeroing
         // it on a fire-and-forget post threw the backlog away whenever that post
-        // failed. It carries no cats: it was accumulated across whatever rounds
-        // were submitted while offline and that detail was not kept.
+        // failed.
         if (r.kcaPendingN) {
           const pending = r.kcaPendingN;
-          postKcaVotes(pending, null).then((f) => {
+          // The backlog's CATEGORIES go with it. They used to be dropped —
+          // held with only a count, flushed as `null` — so a held round
+          // reached the day's total and the server's total but never either
+          // per-category breakdown. On the panel that showed as the Kids'
+          // Choice box and the collab box disagreeing about the very same
+          // picks, which is how it was found: the collab records a round as
+          // soon as its own post lands, so a blink saw 5 BLACKPINK there and
+          // 4 here.
+          const pendingCats = Object.assign({}, r.kcaPendingCats || {});
+          postKcaVotes(pending, Object.keys(pendingCats).length ? pendingCats : null).then((f) => {
             if (!f.ok) return;
-            chrome.storage.local.get(['kcaCount', 'kcaPendingN'], (r2) => {
+            chrome.storage.local.get(['kcaCount', 'kcaPendingN', 'kcaPendingCats', 'kcaCats'], (r2) => {
+              const cats2 = Object.assign({}, r2.kcaCats || {});
+              for (const k in pendingCats) cats2[k] = (Number(cats2[k]) || 0) + pendingCats[k];
+              // Only what this flush actually sent is cleared: a round held
+              // while the flush was in flight must not be wiped with it.
+              const left = Object.assign({}, r2.kcaPendingCats || {});
+              for (const k in pendingCats) {
+                const rest = (Number(left[k]) || 0) - pendingCats[k];
+                if (rest > 0) left[k] = rest; else delete left[k];
+              }
               chrome.storage.local.set({
                 kcaCount: (r2.kcaCount || 0) + pending,
                 kcaPendingN: Math.max(0, (r2.kcaPendingN || 0) - pending),
+                kcaPendingCats: left,
+                kcaCats: cats2,
               });
             });
           });
@@ -1218,6 +1238,11 @@ async function processKcaVote(e) {
         kcaDiag({ kind: 'counted', n, notOurs, unknown });
       } else {
         upd.kcaPendingN = (r.kcaPendingN || 0) + n;
+        // Held WITH its categories, so the breakdown can be made whole when
+        // the backlog goes through.
+        const held = Object.assign({}, r.kcaPendingCats || {});
+        for (const k in cats) held[k] = (Number(held[k]) || 0) + cats[k];
+        upd.kcaPendingCats = held;
         kcaDiag({ kind: 'held', reason: res.reason || 'error', n });
       }
       chrome.storage.local.set(upd);
