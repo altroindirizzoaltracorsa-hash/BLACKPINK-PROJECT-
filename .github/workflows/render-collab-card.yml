@@ -60,4 +60,16 @@ jobs:
             exit 0
           fi
           git commit -m "Render the collab link-preview card [skip ci]"
-          git push origin HEAD:main
+          # main gets written by more than one workflow now — this one, and the
+          # hourly link-preview render — so a push can land on a main that moved
+          # underneath it. Rebase and retry rather than failing a build whose
+          # artefact is perfectly good.
+          for i in 1 2 3; do
+            if git push origin HEAD:main; then exit 0; fi
+            echo "push rejected; rebasing on main (attempt $i)"
+            git pull --rebase origin main
+            sleep $((i * 5))
+          done
+          echo "::error::could not push after 3 attempts"
+          exit 1
+

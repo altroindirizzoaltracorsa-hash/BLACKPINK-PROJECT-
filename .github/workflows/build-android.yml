@@ -82,5 +82,17 @@ jobs:
           else
             VER=$(sed -n 's/.*versionName "\(.*\)".*/\1/p' android-app/app/build.gradle | head -1)
             git commit -m "Build Android vote-counter APK v${VER:-unknown} [skip ci]"
-            git push origin HEAD:${{ github.ref_name }}
+            # The branch this run was started on gets written by more than one
+            # workflow now — this one, and the hourly link-preview render — so a
+            # push can land on a ref that moved underneath it. Rebase and retry
+            # rather than failing a build whose artefact is perfectly good.
+            REF='${{ github.ref_name }}'
+            for i in 1 2 3; do
+              if git push origin HEAD:"$REF"; then exit 0; fi
+              echo "push rejected; rebasing on $REF (attempt $i)"
+              git pull --rebase origin "$REF"
+              sleep $((i * 5))
+            done
+            echo "::error::could not push after 3 attempts"
+            exit 1
           fi
