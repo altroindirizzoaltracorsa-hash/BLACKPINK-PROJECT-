@@ -273,11 +273,13 @@
   .day-detail-hd { font-size: 0.68rem; color: var(--white); margin-bottom: 0.35rem; }
 
   .fandoms { display: grid; gap: 0.8rem; grid-template-columns: 1fr; margin-top: 0.6rem; }
-  @media (min-width: 560px) { .fandoms { grid-template-columns: 1fr 1fr; gap: 1rem; } }
+  /* auto-fit rather than a fixed pair: there are as many sides as there are
+     fandoms in the trade, and that number grows. */
+  @media (min-width: 560px) {
+    .fandoms { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+  }
   .fandom { --accent: var(--pink); border: 1px solid var(--border); border-radius: var(--r-box);
     padding: 0.7rem 0.8rem; }
-  .fandom-us   { --accent: var(--pink); }
-  .fandom-them { --accent: var(--them); }
   .fandom-top { display: flex; flex-wrap: wrap; gap: 0.3rem 0.6rem; align-items: baseline;
     justify-content: space-between; margin-bottom: 0.45rem; }
   .fandom-name { font-size: 0.72rem; letter-spacing: 0.06em; color: var(--accent); }
@@ -469,7 +471,7 @@
     <div class="get">
       <div class="get-head">
         <span class="get-title">🧩 Get the Vote Counter</span>
-        <span class="get-ver">v1.9.4</span>
+        <span class="get-ver">v1.9.5</span>
       </div>
       <p class="get-sub">
         It counts the votes <b>you</b> cast on kca.nick.tv and logs them to the board above —
@@ -479,8 +481,8 @@
         <b>app</b> does the same job — you vote inside it.
       </p>
       <div class="get-dl">
-        <a class="get-btn" href="/vote-extension-v1.9.4-chrome.zip" download>⬇ Desktop<small>Chrome · Edge · Brave · Opera</small></a>
-        <a class="get-btn ghost" href="/vote-extension-v1.9.4-android.zip" download>⬇ Android extension<small>Edge Canary · Quetta</small></a>
+        <a class="get-btn" href="/vote-extension-v1.9.5-chrome.zip" download>⬇ Desktop<small>Chrome · Edge · Brave · Opera</small></a>
+        <a class="get-btn ghost" href="/vote-extension-v1.9.5-android.zip" download>⬇ Android extension<small>Edge Canary · Quetta</small></a>
         <a class="get-btn ghost" href="/blinks-united-vote-counter.apk" download>⬇ Android app<small>.apk · no extension needed</small></a>
       </div>
       <p class="get-note">
@@ -488,7 +490,7 @@
         <b>Link my account</b> inside it once. There's an
         <a href="/vote-counter-guide.html" target="_blank" rel="noopener">illustrated guide ↗</a>
         if any of that is unfamiliar.<br>
-        <b>Already have it?</b> Update to v1.9.4. Older versions either don't know this collab
+        <b>Already have it?</b> Update to v1.9.5. Older versions either don't know this collab
         exists — and count only the BLACKPINK side of your ballot — or count the whole trade
         without ever showing it, which leaves no way to tell a counted pick from a lost one.
       </p>
@@ -706,9 +708,17 @@ var COLLABS = [
     // the bar above cannot be broken down by fandom and never is — this counts
     // PEOPLE, which is a question self-declaration can actually answer.
     // `side` only picks the colour, so each fandom reads in its own.
+    // One entry per fandom in the trade — ours and every partner's. It was
+    // two while the bar had three acts, so Pauljjak had no side to pick and
+    // the turnout block disagreed with the bar directly above it.
+    //
+    // `colour` is that fandom's act's colour, so the two blocks say the same
+    // thing in the same shades: a BLOOM reading cyan in the bar finds cyan in
+    // the turnout.
     fandoms: [
-      { key: 'blink', label: 'BLINKs', side: 'us' },
-      { key: 'bloom', label: 'BLOOMs', side: 'them' },
+      { key: 'blink', label: 'BLINKs', colour: '#ff0066' },
+      { key: 'bloom', label: 'BLOOMs', colour: '#6fd3ff' },
+      { key: 'pauljjak', label: 'Pauljjak', colour: '#b388ff' },
     ],
     // What BLINKs put in the partner's category. One slot, and it is a slot we
     // have no nominee in — so this costs a blink nothing at all.
@@ -823,14 +833,14 @@ if (DEMO_OPTION) {
                board: [{ name: 'Voter A', votes: 68, byCat: { 'favorite-music-group-or-duo': 17 } },
                        { name: 'Voter B', votes: 52, byCat: { 'favorite-global-music-star': 13 } }],
                fandoms: { blink: { people: 9, votes: 104 }, bloom: { people: 3, votes: 56 },
-                          unsaid: { people: 1, votes: 10 } } },
+                          pauljjak: { people: 4, votes: 40 }, unsaid: { people: 1, votes: 10 } } },
       week:  { byCat: { 'favorite-music-group-or-duo': 240, 'favorite-music-collaboration': 236,
                         'favorite-female-artist': 228, 'favorite-global-music-star': 232,
                         'favorite-animated-male-voice-from-a-movie': 205 },
                board: [{ name: 'Voter A', votes: 320, byCat: { 'favorite-music-group-or-duo': 80 } },
                        { name: 'Voter B', votes: 268, byCat: { 'favorite-global-music-star': 67 } }],
                fandoms: { blink: { people: 22, votes: 620 }, bloom: { people: 7, votes: 286 },
-                          unsaid: { people: 2, votes: 30 } } },
+                          pauljjak: { people: 9, votes: 200 }, unsaid: { people: 2, votes: 30 } } },
       all:   { byCat: { 'favorite-music-group-or-duo': 440, 'favorite-music-collaboration': 435,
                         'favorite-female-artist': 420, 'favorite-global-music-star': 425,
                         'favorite-animated-male-voice-from-a-movie': 390 },
@@ -842,7 +852,7 @@ if (DEMO_OPTION) {
                        { name: 'Voter C', votes: 196, byCat: { 'favorite-music-group-or-duo': 49 } }],
                // 34 people averaging 34.7 against 9 averaging 50.
                fandoms: { blink: { people: 34, votes: 1180 }, bloom: { people: 9, votes: 450 },
-                          unsaid: { people: 3, votes: 90 } } },
+                          pauljjak: { people: 12, votes: 300 }, unsaid: { people: 3, votes: 90 } } },
     },
     days: [5, 4, 3, 2, 1, 0].map(function (b, i) {
       return { day: _dday(b), votes: [180, 240, 300, 360, 470, 170][i],
@@ -1817,7 +1827,7 @@ function fandomsHtml(c) {
   // anybody has said anything.
   var rows = c.fandoms.map(function (x) {
     var got = (f && f[x.key]) || { people: 0, votes: 0 };
-    return { key: x.key, label: x.label, side: x.side,
+    return { key: x.key, label: x.label, colour: x.colour || 'var(--pink)',
              people: got.people || 0, votes: got.votes || 0 };
   });
   var unsaid = (f && f.unsaid) || null;
@@ -1845,7 +1855,8 @@ function fandomsHtml(c) {
     + '<div class="fandoms">'
         + rows.map(function (r) {
             var avg = Math.round(r.each * 10) / 10;
-            return '<div class="fandom fandom-' + esc(r.side) + (r.people ? '' : ' fandom-waiting') + '">'
+            return '<div class="fandom' + (r.people ? '' : ' fandom-waiting')
+              + '" style="--accent:' + esc(r.colour) + '">'
               + '<div class="fandom-top"><span class="fandom-name">' + esc(r.label) + '</span>'
               + '<span class="fandom-n">' + fmt(r.people) + ' '
               + (r.people === 1 ? 'person' : 'people') + '</span></div>'
