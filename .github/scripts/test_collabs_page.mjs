@@ -816,6 +816,79 @@ console.log('--- the worked example of that card is reachable, and only on purpo
   await demo.close();
 }
 
+console.log('--- ?demo=a / ?demo=b: the two versions a fanbase is choosing between');
+// A fanbase is being asked which version it wants, and an empty board cannot
+// be judged. Both links show the SAME invented figures so the only difference
+// is the thing being voted on — and both say, on the card, that the figures
+// are invented, because a screenshot travels further than a URL does.
+{
+  const clean = await prev.evaluate(() => ({
+    banner: document.querySelectorAll('.demo-banner').length,
+    counting: !/not counting/i.test(document.querySelector('.tally-nums').textContent),
+  }));
+  (clean.banner === 0 && !clean.counting)
+    ? ok('no sample numbers on the page as served')
+    : bad('no sample numbers on the page as served', JSON.stringify(clean));
+
+  const shots = {};
+  for (const opt of ['a', 'b']) {
+    const d = await open(`/collabs?demo=${opt}`);
+    shots[opt] = await d.evaluate(() => ({
+      banner: (document.querySelector('.demo-banner') || {}).textContent || '',
+      nums: (document.querySelector('.tally-nums') || {}).textContent.replace(/\s+/g, ' ').trim(),
+      sides: document.querySelectorAll('.fandom').length,
+      board: document.querySelectorAll('.board tbody tr').length,
+      days: document.querySelectorAll('.day.has').length,
+      bannerFirst: (() => {
+        const card = document.querySelector('.collab');
+        const b = card.querySelector('.demo-banner'), t = card.querySelector('.tally');
+        return !!(b && t && b.getBoundingClientRect().top < t.getBoundingClientRect().top);
+      })(),
+    }));
+    await d.close();
+  }
+  for (const opt of ['a', 'b']) {
+    /sample numbers/i.test(shots[opt].banner)
+      ? ok(`${opt}: says the figures are made up`)
+      : bad(`${opt}: says the figures are made up`, shots[opt].banner.slice(0, 60));
+    // Above the numbers, not under them: a banner below the bar is cropped out
+    // of the screenshot that gets shared.
+    shots[opt].bannerFirst
+      ? ok(`${opt}: and says it ABOVE the numbers, where a crop keeps it`)
+      : bad(`${opt}: and says it ABOVE the numbers, where a crop keeps it`);
+    new RegExp(`option ${opt}`, 'i').test(shots[opt].banner)
+      ? ok(`${opt}: and names which option this is`)
+      : bad(`${opt}: and names which option this is`, shots[opt].banner.slice(0, 90));
+    (shots[opt].board > 0 && shots[opt].days > 0)
+      ? ok(`${opt}: the board and the day grid have something in them`,
+           `${shots[opt].board} rows, ${shots[opt].days} days`)
+      : bad(`${opt}: the board and the day grid have something in them`, JSON.stringify(shots[opt]));
+  }
+  // The whole point of the pair: identical except for the one thing being
+  // chosen. If the totals differed, the fanbase would be comparing two
+  // different collabs rather than two presentations of one.
+  shots.a.nums === shots.b.nums
+    ? ok('both options show the same votes', shots.a.nums)
+    : bad('both options show the same votes', `${shots.a.nums} vs ${shots.b.nums}`);
+  (shots.a.sides === 0 && shots.b.sides === 2)
+    ? ok('and differ only in the turnout block', `a: ${shots.a.sides} · b: ${shots.b.sides}`)
+    : bad('and differ only in the turnout block', `a: ${shots.a.sides} · b: ${shots.b.sides}`);
+  // Option B's sample has to show the case the block exists for, or it is a
+  // picture that flatters the bigger fandom and the choice is made on it.
+  const b = await open('/collabs?demo=b');
+  const each = await b.evaluate(() => [...document.querySelectorAll('.fandom')].map((el) => ({
+    name: el.querySelector('.fandom-name').textContent.trim(),
+    foot: el.querySelector('.fandom-foot').textContent.replace(/\s+/g, ' ').trim(),
+    fill: Math.round(parseFloat(el.querySelector('.fandom-fill').style.width)),
+  })));
+  await b.close();
+  (each.length === 2 && each[1].fill > each[0].fill)
+    ? ok('and the smaller side leads per person, as the block is meant to show',
+         `${each[0].foot} | ${each[1].foot}`)
+    : bad('and the smaller side leads per person, as the block is meant to show',
+          JSON.stringify(each));
+}
+
 console.log('--- the request form: a collab can be proposed from here');
 // The page could only ever describe trades we had already arranged. A partner
 // page that finds us has to be able to ask, and the "no collabs" note links

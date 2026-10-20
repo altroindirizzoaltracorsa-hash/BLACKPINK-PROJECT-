@@ -118,6 +118,13 @@
     border-left: 2px solid var(--them); padding-left: 0.9rem; margin-bottom: 1.2rem; }
   .collab-soon b { color: var(--white); font-weight: 500; }
 
+  /* Loud on purpose: this is the real card with invented figures in it, and a
+     screenshot travels further than a URL. */
+  .demo-banner { font-size: 0.72rem; line-height: 1.6; color: #ffd9a8;
+    border: 1px dashed rgba(255,176,46,0.5); background: rgba(255,176,46,0.07);
+    border-radius: var(--r-box); padding: 0.7rem 0.9rem; margin-bottom: 1.1rem; }
+  .demo-banner b { color: #fff2e2; font-weight: 500; }
+
   .collab-why { font-size: 0.8rem; color: var(--muted); line-height: 1.75; margin-bottom: 1.3rem; }
   .collab-why b { color: var(--white); font-weight: 500; }
 
@@ -646,6 +653,73 @@ var COLLABS = [
 // ── render ──────────────────────────────────────────────────────────────────
 var PREVIEW = new URLSearchParams(location.search).get('preview') === '1';
 
+// ── ?demo=a / ?demo=b — the two versions, side by side, to be chosen between
+//
+// A fanbase is being asked which of these it wants, and an empty board cannot
+// be judged: "no one has said which side they are on yet" tells you nothing
+// about what the thing looks like in use. So both links fill the card with the
+// SAME sample figures, and the only difference between them is the one being
+// voted on — whether the page also counts who turned up.
+//
+//   ?demo=a   one shared count, no sides
+//   ?demo=b   the same, plus the turnout block
+//
+// THE NUMBERS ARE INVENTED AND THE PAGE SAYS SO, loudly, at the top of the
+// card. This is the real BLINKs × BLOOMs card with figures in it: a screenshot
+// of it without the banner would be indistinguishable from a real tally, and
+// the banner is the part that survives being screenshotted. Nothing renders
+// without the flag, which is checked both ways.
+var DEMO_OPTION = (function () {
+  var v = new URLSearchParams(location.search).get('demo');
+  return (v === 'a' || v === 'b') ? v : null;
+})();
+
+if (DEMO_OPTION) {
+  var _dday = function (back) {
+    var d = new Date(Date.now() - back * 86400000);
+    return d.toISOString().slice(0, 10);
+  };
+  // Chosen to show the thing the block exists to handle: one side has four
+  // times the people and the other is ahead per person. If the sample made
+  // the bigger fandom win on every measure, the fanbase being asked would be
+  // choosing on a picture that flatters us.
+  COLLABS[0].tally = {
+    todayKey: _dday(0),
+    periods: {
+      today: { byCat: { 'favorite-music-group-or-duo': 44, 'favorite-music-collaboration': 43,
+                        'favorite-female-artist': 41, 'favorite-global-music-star': 42 },
+               board: [{ name: 'Voter A', votes: 68, byCat: { 'favorite-music-group-or-duo': 17 } },
+                       { name: 'Voter B', votes: 52, byCat: { 'favorite-global-music-star': 13 } }],
+               fandoms: { blink: { people: 9, votes: 104 }, bloom: { people: 3, votes: 56 },
+                          unsaid: { people: 1, votes: 10 } } },
+      week:  { byCat: { 'favorite-music-group-or-duo': 240, 'favorite-music-collaboration': 236,
+                        'favorite-female-artist': 228, 'favorite-global-music-star': 232 },
+               board: [{ name: 'Voter A', votes: 320, byCat: { 'favorite-music-group-or-duo': 80 } },
+                       { name: 'Voter B', votes: 268, byCat: { 'favorite-global-music-star': 67 } }],
+               fandoms: { blink: { people: 22, votes: 620 }, bloom: { people: 7, votes: 286 },
+                          unsaid: { people: 2, votes: 30 } } },
+      all:   { byCat: { 'favorite-music-group-or-duo': 440, 'favorite-music-collaboration': 435,
+                        'favorite-female-artist': 420, 'favorite-global-music-star': 425 },
+               board: [{ name: 'Voter A', votes: 408, byCat: { 'favorite-music-group-or-duo': 102,
+                           'favorite-music-collaboration': 102, 'favorite-female-artist': 102,
+                           'favorite-global-music-star': 102 } },
+                       { name: 'Voter B', votes: 352, byCat: { 'favorite-music-group-or-duo': 88,
+                           'favorite-global-music-star': 88 } },
+                       { name: 'Voter C', votes: 196, byCat: { 'favorite-music-group-or-duo': 49 } }],
+               // 34 people averaging 34.7 against 9 averaging 50.
+               fandoms: { blink: { people: 34, votes: 1180 }, bloom: { people: 9, votes: 450 },
+                          unsaid: { people: 3, votes: 90 } } },
+    },
+    days: [5, 4, 3, 2, 1, 0].map(function (b, i) {
+      return { day: _dday(b), votes: [180, 240, 300, 360, 470, 170][i],
+               byCat: { 'favorite-music-group-or-duo': Math.round([180, 240, 300, 360, 470, 170][i] / 4) } };
+    }),
+  };
+  // Option A is this page WITHOUT the sides. One line, which is also exactly
+  // what switching between them costs for real.
+  if (DEMO_OPTION === 'a') delete COLLABS[0].fandoms;
+}
+
 // A worked example of the 'upcoming' card, shown ONLY with ?demo=upcoming.
 //
 // The state exists but nothing is in it, which makes it invisible — and a
@@ -1134,6 +1208,11 @@ function card(c) {
     // The bar sits here — under the countdown, before the explanation. Once a
     // trade is running this is the live number people come back for, and it
     // should not be below two columns of reference material.
+    + (DEMO_OPTION ? '<div class="demo-banner"><b>Sample numbers.</b> No one has voted in this '
+        + 'collab yet — these figures are made up, to show what the page looks like in use. '
+        + 'You are looking at <b>option ' + esc(DEMO_OPTION.toUpperCase()) + '</b>: '
+        + (DEMO_OPTION === 'b' ? 'with the turnout block.' : 'one shared count, no sides.')
+        + '</div>' : '')
     + (c.status === 'live' ? tallyHtml(c) : '')
     + (c.status === 'upcoming' && c.opens
         ? '<div class="collab-soon">Voting opens <b>' + esc(longDay(c.opens)) + '</b>. '
