@@ -658,6 +658,43 @@ console.log('--- the share card');
       : bad(`${k}: the body stops before the footer`,
             `body ends at ${Math.round(m.bodyBottom)}, footer starts at ${Math.round(m.footTop)} — they overlap`);
   }
+  // EVERY CATEGORY, WITH ITS OWN NUMBER. The two totals are the headline;
+  // this is what people actually want off the page — where each member stands
+  // — and a card without it sends the reader back to look it up.
+  //
+  // Compared against the period the page is showing rather than against
+  // figures typed here: a card that quietly drifted from the bar above it
+  // would still look like a perfectly good card.
+  const cardRows = await prev.evaluate(() => {
+    const cv = document.getElementById('card-canvas');
+    const m = drawCollabCard(cv, COLLABS[0]);
+    const p = periodOf(COLLABS[0], COLLABS[0].tally, PERIOD);
+    // `shown` is the string that was painted, so a figure changed between
+    // being recorded and being drawn cannot hide behind the report.
+    return { drawn: m.rows.map((r) => ({ slug: r.slug, label: r.label,
+                                         n: Number(String(r.shown).replace(/,/g, '')) })),
+             byCat: p.byCat, labels: m.rows.map((r) => r.label) };
+  });
+  {
+    const want = Object.entries(cardRows.byCat).filter(([, n]) => n > 0);
+    const missing = want.filter(([k]) => !cardRows.drawn.some((r) => r.slug === k));
+    const wrong = cardRows.drawn.filter((r) => cardRows.byCat[r.slug] !== r.n);
+    (want.length > 0 && missing.length === 0)
+      ? ok('every category is on the card', cardRows.labels.join(', '))
+      : bad('every category is on the card', `missing ${missing.map(([k]) => k).join(', ')}`);
+    wrong.length === 0
+      ? ok('with the same figures the page is showing',
+           cardRows.drawn.map((r) => `${r.n}`).join('/'))
+      : bad('with the same figures the page is showing',
+            wrong.map((r) => `${r.slug}: card ${r.n} vs page ${cardRows.byCat[r.slug]}`).join(', '));
+    // Biggest first, as the page orders its split — a card ordered by the
+    // object's key order would reshuffle whenever the API did.
+    const ns = cardRows.drawn.map((r) => r.n);
+    ns.every((n, i) => i === 0 || n <= ns[i - 1])
+      ? ok('and ordered biggest first, like the split behind the bar', ns.join(' ≥ '))
+      : bad('and ordered biggest first, like the split behind the bar', ns.join(', '));
+  }
+
   // Both formats are real sizes, not the same canvas relabelled.
   const sizes = await prev.evaluate(() => {
     const cv = document.getElementById('card-canvas');

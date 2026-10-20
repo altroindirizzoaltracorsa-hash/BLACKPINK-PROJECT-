@@ -1099,11 +1099,11 @@ function drawCollabCard(canvas, c) {
   // fails if the body reaches the footer.
   var L = wide
     ? { pad: 64, logo: 72, eyebrow: 19, gap1: 30, title: 78, gap2: 10,
-        num: 86, label: 20, gapNum: 30, gapBar: 26, bar: 12, note: 16, line: 26,
-        foot: 24, footGap: 32, by: 15 }
-    : { pad: 84, logo: 92, eyebrow: 24, gap1: 42, title: 104, gap2: 34,
-        num: 140, label: 27, gapNum: 46, gapBar: 34, bar: 18, note: 20, line: 34,
-        foot: 32, footGap: 42, by: 18 };
+        num: 80, label: 19, gapNum: 28, gapBar: 24, bar: 12, note: 16, line: 25,
+        foot: 24, footGap: 32, by: 15, row: 23, rowGap: 34, track: 7 }
+    : { pad: 84, logo: 92, eyebrow: 24, gap1: 42, title: 104, gap2: 30,
+        num: 118, label: 24, gapNum: 40, gapBar: 30, bar: 16, note: 19, line: 30,
+        foot: 30, footGap: 40, by: 17, row: 26, rowGap: 44, track: 8 };
   var mono = '"DM Mono", ui-monospace, monospace';
   var display = '"Bebas Neue", Impact, sans-serif';
   var inner = W - L.pad * 2;
@@ -1158,6 +1158,8 @@ function drawCollabCard(canvas, c) {
     y += L.gapNum;
   };
 
+  var rowsTop = y;
+  var drawnRows = [];
   if (any) {
     var acts = c.theyGive.map(function (a) { return a.who || a.nominee; })
       .join(', ').replace(/, ([^,]*)$/, ' & $1');
@@ -1166,12 +1168,16 @@ function drawCollabCard(canvas, c) {
 
     var sum = forUs + forThem;
     y += L.gapBar - L.gapNum;
+    // On the wide card the totals take the left half and the per-category
+    // rows the right, because 675px of height cannot hold both stacked — the
+    // first version that tried drew the countdown through the bar.
+    var colW = wide ? (inner - L.pad * 0.6) / 2 : inner;
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.fillRect(L.pad, y, inner, L.bar);
+    ctx.fillRect(L.pad, y, colW, L.bar);
     ctx.fillStyle = '#ff0066';
-    ctx.fillRect(L.pad, y, inner * (forUs / sum), L.bar);
+    ctx.fillRect(L.pad, y, colW * (forUs / sum), L.bar);
     ctx.fillStyle = '#6fd3ff';
-    ctx.fillRect(L.pad + inner * (forUs / sum), y, inner * (forThem / sum), L.bar);
+    ctx.fillRect(L.pad + colW * (forUs / sum), y, colW * (forThem / sum), L.bar);
     y += L.bar + L.note;
 
     // Said on the card for the reason it is said on the page: the gap is slot
@@ -1206,6 +1212,46 @@ function drawCollabCard(canvas, c) {
         ctx.fillText(parts.join(' and ') + ' logging', L.pad, y);
         y += L.line;
       }
+    }
+
+    // ── every category, with its own number ─────────────────────────────
+    // The two totals are the headline; this is the thing people actually
+    // want off the page — where each member stands — and a card without it
+    // sends them back to look it up, which is a card that did not do its
+    // job. Same figures, same order and same colours as the split behind
+    // the bar on the page.
+    var byCat = p && p.byCat;
+    if (byCat) {
+      var rows = Object.keys(byCat)
+        .map(function (k) { return { slug: k, n: Math.max(0, Number(byCat[k]) || 0) }; })
+        .filter(function (r) { return r.n > 0; })
+        .sort(function (a, b) { return b.n - a.n; });
+      var theirs = {};
+      c.weGive.forEach(function (pk) { theirs[pk.slug] = 1; });
+      var top = rows.length ? rows[0].n : 1;
+      var rx = wide ? L.pad + colW + L.pad * 0.6 : L.pad;
+      var ry = wide ? rowsTop : y + L.line * 0.4;
+      rows.forEach(function (r) {
+        var mine = !theirs[r.slug];
+        var label = catLabelOf(c, r.slug);
+        var n = fmt(r.n);
+        drawnRows.push({ slug: r.slug, label: label, shown: n });
+        ctx.fillStyle = mine ? '#ff0066' : '#6fd3ff';
+        ctx.font = '500 ' + L.row + 'px ' + mono;
+        ctx.fillText(label, rx, ry);
+        ctx.fillStyle = '#f5f0f0';
+        ctx.font = '500 ' + L.row + 'px ' + mono;
+        ctx.fillText(n, rx + colW - ctx.measureText(n).width, ry);
+        ry += L.row + 7;
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fillRect(rx, ry, colW, L.track);
+        ctx.fillStyle = mine ? '#ff0066' : '#6fd3ff';
+        ctx.fillRect(rx, ry, colW * (r.n / top), L.track);
+        ry += L.rowGap - L.row - 7 + L.track;
+      });
+      // On the wide card the two columns run side by side, so the body ends
+      // wherever the LOWER of them ends.
+      if (ry > y) y = ry;
     }
   } else {
     // Nothing counted yet: the card is the invitation, not a pair of noughts.
@@ -1285,7 +1331,7 @@ function drawCollabCard(canvas, c) {
   // Returned so a test can assert the body never reaches the footer, in every
   // format and every state. Overlap is the one failure that looks fine in code
   // and ruins the picture people keep.
-  return { bodyBottom: bodyBottom, footTop: footTop, width: W, height: H };
+  return { bodyBottom: bodyBottom, footTop: footTop, width: W, height: H, rows: drawnRows };
 }
 
 function renderCollabCard() {
