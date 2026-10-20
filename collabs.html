@@ -897,6 +897,97 @@ function passesFrom(c, t) {
   return counts.length ? Math.min.apply(null, counts) : null;
 }
 
+// ── sharing the numbers ────────────────────────────────────────────────────
+// A tracker nobody can quote is a tracker nobody looks at twice. The point of
+// sharing is to bring people back to the ballot, so the text always carries
+// what is left to do and the link, not only the score.
+//
+// IT SAYS WHAT THE PAGE SAYS. The totals are what each ACT received, never
+// what a fandom contributed — everyone votes the whole ballot, so a post
+// reading "BLOOMs got us 425" would be the one claim this page refuses to
+// make, and a post travels further than the page it came from.
+var SHARE_URL = 'https://www.blinksunited.com/collabs';
+
+function shareTextFor(c, period) {
+  var t = c.tally;
+  var p = periodOf(c, t, period || PERIOD);
+  var when = { today: ' today', week: ' this week', all: '' }[period || PERIOD] || '';
+  var left = c.deadline ? countdown(new Date(c.deadline).getTime() - Date.now()) : null;
+  var acts = c.theyGive.map(function (x) { return x.who || x.nominee; });
+  var ourActs = acts.join(', ').replace(/, ([^,]*)$/, ' & $1');
+  var head = 'BLINKs × ' + c.partner.fandom + ' · ' + c.award;
+
+  var forUs = p && p.forUs ? Math.max(0, Number(p.forUs.picks) || 0) : 0;
+  var forThem = p && p.forThem ? Math.max(0, Number(p.forThem.picks) || 0) : 0;
+
+  // Nothing counted yet is the MOST worth sharing — it is the invitation —
+  // so it gets its own text rather than a zero that reads as a dead campaign.
+  if (!forUs && !forThem) {
+    return head + '\n\n'
+      + 'We fill in ' + c.partner.act + '’s category, they fill in ours. The ballot needs every '
+      + 'category filled anyway, so neither side gives anything up.\n'
+      + (left ? left + ' left to vote.\n' : '')
+      + SHARE_URL;
+  }
+
+  var lines = [head, ''];
+  lines.push(fmt(forUs) + ' votes for ' + ourActs + ' and ' + fmt(forThem) + ' for '
+    + c.partner.act + ' logged through the collab' + when + '.');
+  var passes = passesFrom(c, p);
+  if (passes) lines.push('That is ' + fmt(passes) + ' complete '
+    + (passes === 1 ? 'pass' : 'passes') + ' through the ballot.');
+  if (left) lines.push(left + ' left.');
+  lines.push(SHARE_URL);
+  return lines.join('\n');
+}
+
+// X counts a link as 23 characters whatever its length, so the text is
+// measured the way the site will measure it rather than by its own length.
+function shareLength(text) {
+  return text.replace(/https?:\/\/\S+/g, 'x'.repeat(23)).length;
+}
+
+function shareHtml(c) {
+  if (c.status !== 'live') return '';
+  return '<button class="btn ghost" type="button" onclick="shareCollab(\'' + esc(c.id) + '\')" '
+      + 'data-share="' + esc(c.id) + '">Share the numbers</button>'
+    + '<a class="btn ghost" data-share-x="' + esc(c.id) + '" target="_blank" rel="noopener noreferrer"'
+      + ' href="https://x.com/intent/post?text=' + encodeURIComponent(shareTextFor(c, PERIOD))
+      + '">Post on X ↗</a>';
+}
+
+// Native share where the browser has it — that is the one path that reaches
+// the apps people actually post from — and the clipboard everywhere else.
+// Both say what happened: a share sheet that fails silently looks like a
+// broken button, and so does a copy.
+function shareCollab(id) {
+  var c = COLLABS.filter(function (x) { return x.id === id; })[0];
+  if (!c) return;
+  var text = shareTextFor(c, PERIOD);
+  var btn = document.querySelector('[data-share="' + id + '"]');
+  var said = function (msg) {
+    if (!btn) return;
+    var was = btn.textContent;
+    btn.textContent = msg;
+    setTimeout(function () { btn.textContent = was; }, 2200);
+  };
+  if (navigator.share) {
+    navigator.share({ title: 'BLINKs × ' + c.partner.fandom, text: text })
+      .then(function () { said('Shared ✓'); })
+      // A cancelled share sheet is not a failure and must not fall through to
+      // a copy the person did not ask for.
+      .catch(function () {});
+    return;
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(function () { said('Copied ✓'); })
+      .catch(function () { said('Press ⌘/Ctrl+C'); });
+    return;
+  }
+  said('Press ⌘/Ctrl+C');
+}
+
 // ── periods ────────────────────────────────────────────────────────────────
 // today · this week · all time. The tabs drive the bar, the per-category split
 // AND the board together: three views of one period is one question answered,
@@ -1299,6 +1390,7 @@ function card(c) {
     + '<div class="collab-actions">'
     + (ended || soon ? '' : '<a class="btn" href="' + esc(c.voteUrl)
         + '" target="_blank" rel="noopener noreferrer">Open the ballot ↗</a>')
+    + shareHtml(c)
     + '<a class="btn ghost" href="/voting?award=kca">Our board for this award →</a>'
     + '</div></article>';
 }

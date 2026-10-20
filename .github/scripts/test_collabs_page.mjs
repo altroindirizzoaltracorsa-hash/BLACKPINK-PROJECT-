@@ -480,6 +480,118 @@ const boardNote = (await prev.locator('.sub-note').first().textContent()).replac
   ? ok('and says it in those words')
   : bad('and says it in those words', boardNote.slice(0, 120));
 
+console.log('--- sharing the numbers');
+// A post travels further than the page it came from, so the text has to hold
+// the same line the page does: the totals are what each ACT received, never
+// what a fandom contributed. It also has to be worth posting before there are
+// any numbers, which is when sharing matters most.
+{
+  // With numbers.
+  await prev.evaluate((fix) => { COLLABS[0].tally = fix; PERIOD = 'all'; render(); }, FIX);
+  await prev.waitForTimeout(250);
+  const COLLABS_ACTS = await prev.evaluate(() =>
+    COLLABS[0].theyGive.map((x) => x.who || x.nominee));
+  const withNums = await prev.evaluate(() => ({
+    text: shareTextFor(COLLABS[0], 'all'),
+    len: shareLength(shareTextFor(COLLABS[0], 'all')),
+    btn: !!document.querySelector('[data-share]'),
+    x: (document.querySelector('[data-share-x]') || {}).href || '',
+  }));
+  withNums.btn ? ok('there is a share button') : bad('there is a share button');
+  (/300/.test(withNums.text) && /100/.test(withNums.text))
+    ? ok('and the text carries both totals', withNums.text.split('\n')[2])
+    : bad('and the text carries both totals', withNums.text.replace(/\n/g, ' | '));
+  // The claim the page refuses to make. "BLOOMs cast 100" is a vote traced to
+  // a fandom, which nothing here can know.
+  !/(BLOOMs|BLINKs) (cast|got|voted|contributed|gave)/i.test(withNums.text)
+    ? ok('and never credits a fandom with votes')
+    : bad('and never credits a fandom with votes', withNums.text.replace(/\n/g, ' | '));
+  /blinksunited\.com\/collabs/.test(withNums.text)
+    ? ok('and links back to the page') : bad('and links back to the page');
+  // Every act by name, ROSÉ included. The first version of this joined the
+  // list with a replace that dropped its own capture group, so the post read
+  // "BLACKPINK, JENNIE & and 100 for BINI" — a member missing from a post
+  // asking people to vote for her.
+  {
+    const want = COLLABS_ACTS.concat(['BINI']);
+    const missing = want.filter((n) => !withNums.text.includes(n));
+    missing.length === 0
+      ? ok('and names every act, ROSÉ included', want.join(', '))
+      : bad('and names every act, ROSÉ included', `missing ${missing.join(', ')}`);
+  }
+  // Something to DO, not just a scoreline — the point of the post is the
+  // ballot, and a countdown is what makes somebody open it now.
+  /left/i.test(withNums.text)
+    ? ok('and says how long is left') : bad('and says how long is left', withNums.text.replace(/\n/g, ' | '));
+  withNums.len <= 280
+    ? ok('and fits in a post', `${withNums.len} chars as X counts them`)
+    : bad('and fits in a post', `${withNums.len} chars`);
+  /^https:\/\/x\.com\/intent\/post\?text=/.test(withNums.x)
+    ? ok('the X button posts it, pre-filled')
+    : bad('the X button posts it, pre-filled', withNums.x.slice(0, 60));
+  decodeURIComponent((withNums.x.split('text=')[1] || '')) === withNums.text
+    ? ok('with exactly the same text, encoded')
+    : bad('with exactly the same text, encoded', decodeURIComponent((withNums.x.split('text=')[1] || '')).slice(0, 80));
+
+  // The period follows the tab: a post saying "today" has to carry today's
+  // figures, not all time's.
+  const perTab = await prev.evaluate(() => ({
+    today: shareTextFor(COLLABS[0], 'today'),
+    all: shareTextFor(COLLABS[0], 'all'),
+  }));
+  (/\b9\b/.test(perTab.today) && /today/.test(perTab.today) && perTab.today !== perTab.all)
+    ? ok('and follows the period tab', perTab.today.split('\n')[2])
+    : bad('and follows the period tab', perTab.today.replace(/\n/g, ' | '));
+
+  // Nothing counted yet — the case worth sharing most, and the one where a
+  // scoreline would read as a dead campaign.
+  const empty = await prev.evaluate(() => {
+    const before = COLLABS[0].tally;
+    COLLABS[0].tally = null; render();
+    const out = { text: shareTextFor(COLLABS[0], 'all'),
+                  btn: !!document.querySelector('[data-share]') };
+    COLLABS[0].tally = before; render();
+    return out;
+  });
+  empty.btn ? ok('the button is there before any votes exist')
+            : bad('the button is there before any votes exist');
+  !/\b0 votes\b/.test(empty.text)
+    ? ok('and does not post a zero')
+    : bad('and does not post a zero', empty.text.replace(/\n/g, ' | '));
+  /neither side gives anything up/i.test(empty.text)
+    ? ok('it posts the invitation instead', empty.text.split('\n')[2].slice(0, 70))
+    : bad('it posts the invitation instead', empty.text.replace(/\n/g, ' | '));
+
+  // The share itself: native sheet where there is one, clipboard otherwise,
+  // and a cancelled sheet must not fall through to a copy nobody asked for.
+  const shared = await prev.evaluate(async () => {
+    const calls = { share: null, copy: null };
+    const realShare = navigator.share, realClip = navigator.clipboard;
+    Object.defineProperty(navigator, 'share',
+      { configurable: true, value: (d) => { calls.share = d; return Promise.resolve(); } });
+    Object.defineProperty(navigator, 'clipboard',
+      { configurable: true, value: { writeText: (t) => { calls.copy = t; return Promise.resolve(); } } });
+    shareCollab(COLLABS[0].id);
+    await new Promise((r) => setTimeout(r, 80));
+    const viaShare = { ...calls };
+    calls.share = null; calls.copy = null;
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    shareCollab(COLLABS[0].id);
+    await new Promise((r) => setTimeout(r, 80));
+    const viaCopy = { ...calls };
+    if (realShare) Object.defineProperty(navigator, 'share', { configurable: true, value: realShare });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: realClip });
+    return { viaShare, viaCopy };
+  });
+  (shared.viaShare.share && !shared.viaShare.copy)
+    ? ok('the share sheet is used where there is one, and the clipboard is left alone')
+    : bad('the share sheet is used where there is one, and the clipboard is left alone',
+          JSON.stringify(shared.viaShare).slice(0, 90));
+  (shared.viaCopy.copy && /blinksunited/.test(shared.viaCopy.copy))
+    ? ok('and it copies when there is not')
+    : bad('and it copies when there is not', JSON.stringify(shared.viaCopy).slice(0, 90));
+}
+
 console.log('--- who is logging: people by declared side, never a split of the votes');
 // The line this block has to hold. The bar above it is what each ACT received
 // and cannot be attributed to a fandom — everyone votes the whole ballot. This
