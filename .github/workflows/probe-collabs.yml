@@ -31,6 +31,37 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: GET /collabs
+        # The page, not just the endpoint. /collabs reaches the right file
+        # through a rewrite in vercel.json, and a missing rewrite is a 404 on
+        # a URL that has already been sent to somebody — which is the one
+        # failure nobody can fix from their end.
+        env:
+          BASE: ${{ inputs.base || 'https://www.blinksunited.com' }}
+        run: |
+          set -u
+          code=$(curl -sS -m 30 -o /tmp/page.html -w '%{http_code}' "$BASE/collabs" || echo 000)
+          echo "GET $BASE/collabs -> HTTP $code"
+          python3 - <<'PY'
+          import os, re
+          code = open('/tmp/page.html', encoding='utf-8', errors='replace').read()
+          want = {
+              'the collab card': 'var COLLABS',
+              'the turnout block (option B)': 'Who is logging',
+              'the request form': 'id="request"',
+              'the counter download': 'vote-extension-v',
+          }
+          missing = [k for k, v in want.items() if v not in code]
+          if len(code) < 2000:
+              print(f"::notice title=/collabs::served {len(code)} bytes — that is not the page")
+          elif missing:
+              print(f"::notice title=/collabs::served, but without {', '.join(missing)}")
+          else:
+              ver = re.search(r'vote-extension-v([\d.]+)-chrome', code)
+              print(f"::notice title=/collabs::the page is live — card, turnout block, "
+                    f"request form, counter v{ver.group(1) if ver else '?'}")
+          PY
+
       - name: GET /api/collabs
         env:
           BASE: ${{ inputs.base || 'https://www.blinksunited.com' }}
