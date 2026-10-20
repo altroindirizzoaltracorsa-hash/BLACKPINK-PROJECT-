@@ -125,6 +125,16 @@
     border-radius: var(--r-box); padding: 0.7rem 0.9rem; margin-bottom: 1.1rem; }
   .demo-banner b { color: #fff2e2; font-weight: 500; }
 
+  .collab-by { margin-top: 0.45rem; font-size: 0.66rem; line-height: 1.9;
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.1rem; }
+  .collab-by .by-one { white-space: nowrap; }
+  .collab-by .by-us   { color: var(--pink-lo); }
+  .collab-by .by-them { color: var(--them); }
+  .collab-by a { text-decoration: none; }
+  .collab-by a:hover { text-decoration: underline; }
+  .collab-by i { font-style: normal; color: var(--muted); margin: 0 0.35rem; }
+  .collab-by .by-and { margin: 0 0.5rem; }
+
   .collab-why { font-size: 0.8rem; color: var(--muted); line-height: 1.75; margin-bottom: 1.3rem; }
   .collab-why b { color: var(--white); font-weight: 500; }
 
@@ -572,9 +582,30 @@ var COLLABS = [
     from: '2026-10-08',
     voteUrl: 'https://kca.nick.tv/vote/',
     partner: {
-      name: 'BINI Voting Page',     // CONFIRM the exact name and handle with them
+      // The FANDOM and the ACT, which are facts about the ballot. Who is
+      // running it is `organisers` below — this used to carry a page name too,
+      // guessed at and wrong, which is the sort of thing that only stays
+      // harmless while it is never rendered.
       fandom: 'BLOOMs',
       act: 'BINI',
+    },
+    // The pages running it, per side. Named on the card because a collab is
+    // THEIR work as much as ours and the page should say so — and because a
+    // tracker nobody is credited for reads as ours alone.
+    //
+    // A NAME HERE IS A PUBLIC CLAIM THAT THEY ARE IN. Nobody goes in this list
+    // before they have said yes in their own words; that rule is the whole
+    // reason `status` exists, and it applies to each page separately rather
+    // than to the collab as a lump.
+    //
+    // No links: these are handles and the platform they belong to has not been
+    // confirmed, and a handle linked to the wrong site is worse than one that
+    // is only text. `url` is read if it is ever added.
+    organisers: {
+      us:   [{ name: 'Blinks United', url: '/' },
+             { name: '@BLINKVotingPage' }],
+      them: [{ name: '@BINIVotingTeam' },
+             { name: '@BloomStreamers' }],
     },
     // The sides a person can say they belong to. Keys are what the counter
     // posts and what the API stores; labels are what the page prints.
@@ -771,6 +802,26 @@ function numWord(n) { return NUM_WORDS[n] != null ? NUM_WORDS[n] : String(n); }
 // "category" / "categories" — the left side has one slot and the right has two,
 // and the sentence is built from whichever it is.
 function catWord(n) { return n === 1 ? 'category' : 'categories'; }
+
+// Who is running it, grouped by side and coloured by side. Deliberately under
+// the title rather than in the footer: the fandoms in the heading are who the
+// collab is FOR, and these are the people who actually arranged it.
+function organisersHtml(c) {
+  var o = c.organisers;
+  if (!o) return '';
+  var side = function (list, cls) {
+    return (list || []).map(function (x) {
+      var label = esc(x.name);
+      return '<span class="by-one ' + cls + '">'
+        + (x.url ? '<a href="' + esc(x.url) + '">' + label + '</a>' : label)
+        + '</span>';
+    }).join('<i>&times;</i>');
+  };
+  var us = side(o.us, 'by-us'), them = side(o.them, 'by-them');
+  if (!us && !them) return '';
+  return '<div class="collab-by">' + us
+    + (us && them ? '<i class="by-and">with</i>' : '') + them + '</div>';
+}
 
 function sideHtml(cls, head, who, picks) {
   return '<div class="side ' + cls + '">'
@@ -1204,7 +1255,7 @@ function card(c) {
     + '<div class="collab-top"><div>'
     + '<div class="collab-award">' + esc(c.award) + '</div>'
     + '<div class="collab-title"><b>BLINKs</b><i>&times;</i><b>' + esc(c.partner.fandom) + '</b>'
-    + status + '</div></div>' + dl + '</div>'
+    + status + '</div>' + organisersHtml(c) + '</div>' + dl + '</div>'
     // The bar sits here — under the countdown, before the explanation. Once a
     // trade is running this is the live number people come back for, and it
     // should not be below two columns of reference material.

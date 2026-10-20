@@ -79,7 +79,11 @@ const hidden = await pub.evaluate(() => {
   });
   render();
   const shown = [...document.querySelectorAll('.collab')].map((el) => el.dataset.collab);
-  const body = document.body.textContent;
+  // innerText, not textContent. textContent includes the inline <script>, so a
+  // CODE COMMENT counts as page text — this is the second check in this file
+  // to report a leak that was a comment explaining the leak rule. What matters
+  // is what a reader can see.
+  const body = document.body.innerText;
   COLLABS.length = 0; before.forEach((c) => COLLABS.push(c));
   render();
   return { shown, named: /Someones|Nobody/.test(body) };
@@ -109,6 +113,46 @@ for (const s of shown.filter((x) => x.status === 'proposed')) {
   /proposed|not announced/i.test(s.statusText)
     ? ok(`${s.id} is marked as not announced`, s.statusText.trim())
     : bad(`${s.id} is marked as not announced`, s.statusText.trim() || 'no marker');
+}
+
+console.log('--- who is running it, named on the card and coloured by side');
+// A collab is the partner pages' work as much as ours, and a tracker with
+// nobody credited on it reads as ours alone. Each name is also a public claim
+// that that page is in, which is why they are listed per collab and per side
+// rather than being a site-wide credit.
+{
+  const by = await prev.evaluate(() => [...document.querySelectorAll('.collab')].map((el) => ({
+    id: el.dataset.collab,
+    status: el.dataset.status,
+    us: [...el.querySelectorAll('.collab-by .by-us')].map((x) => x.textContent.trim()),
+    them: [...el.querySelectorAll('.collab-by .by-them')].map((x) => x.textContent.trim()),
+    // Under the title, not in the footer: the heading says who the collab is
+    // FOR, this says who arranged it, and they belong together.
+    underTitle: (() => {
+      const t = el.querySelector('.collab-title'), b = el.querySelector('.collab-by');
+      return !!(t && b && b.getBoundingClientRect().top >= t.getBoundingClientRect().top);
+    })(),
+  })));
+  const live = by.find((x) => x.id === 'bvp-kca-2026');
+  (live && live.us.length >= 2 && live.them.length >= 2)
+    ? ok('every page running it is named', `${live.us.join(' × ')} with ${live.them.join(' × ')}`)
+    : bad('every page running it is named', JSON.stringify(live));
+  (live && live.us.some((n) => /blinks united/i.test(n)))
+    ? ok('including us, not only the partners')
+    : bad('including us, not only the partners', JSON.stringify(live && live.us));
+  // Each side in its own colour, so four names do not read as one undifferentiated
+  // list of strangers.
+  (live && live.us.length && live.them.length)
+    ? ok('and the two sides are told apart')
+    : bad('and the two sides are told apart', JSON.stringify(live));
+  live && live.underTitle ? ok('with the credit under the title') : bad('with the credit under the title');
+  // A page that has not agreed is not named anywhere, which the hidden-collab
+  // check above covers for the card as a whole — this is the same rule stated
+  // for the credit line specifically, since that is the part that names people.
+  const leaked = by.filter((x) => x.status === 'proposed' && (x.us.length || x.them.length));
+  leaked.length === 0
+    ? ok('and no unannounced collab lists anybody')
+    : bad('and no unannounced collab lists anybody', JSON.stringify(leaked));
 }
 
 console.log('--- the two sides are genuinely different categories');
