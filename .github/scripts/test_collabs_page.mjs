@@ -847,6 +847,7 @@ console.log('--- who is logging: people by declared side, never a split of the v
   FAN.periods.all.fandoms = {
     blink: { people: 8, votes: 160 },
     bloom: { people: 2, votes: 120 },
+    pauljjak: { people: 5, votes: 100 },
     unsaid: { people: 1, votes: 20 },
   };
   await prev.evaluate((fix) => { COLLABS[0].tally = fix; PERIOD = 'all'; render(); }, FAN);
@@ -857,8 +858,14 @@ console.log('--- who is logging: people by declared side, never a split of the v
       name: el.querySelector('.fandom-name').textContent.trim(),
       top: el.querySelector('.fandom-n').textContent.trim(),
       foot: el.querySelector('.fandom-foot').textContent.replace(/\s+/g, ' ').trim(),
-      fill: Math.round(parseFloat(el.querySelector('.fandom-fill').style.width)),
-      pink: getComputedStyle(el.querySelector('.fandom-fill')).backgroundColor,
+      fill: (() => {
+        const bar = el.querySelector('.fandom-fill');
+        return bar ? Math.round(parseFloat(bar.style.width)) : null;
+      })(),
+      colour: (() => {
+        const bar = el.querySelector('.fandom-fill');
+        return bar ? getComputedStyle(bar).backgroundColor : null;
+      })(),
     }));
     const notes = [...document.querySelectorAll('.sub-note')].map((n) => n.textContent.replace(/\s+/g, ' '));
     return { heads, cards, notes, nums: document.querySelector('.tally-nums').textContent.replace(/\s+/g, ' ') };
@@ -866,8 +873,32 @@ console.log('--- who is logging: people by declared side, never a split of the v
   f.heads.some((h) => /who is logging/i.test(h))
     ? ok('the block is there and says what it counts', f.heads.find((h) => /who is logging/i.test(h)))
     : bad('the block is there and says what it counts', f.heads.join(' | '));
-  f.cards.length === 2 ? ok('both sides are listed', f.cards.map((c) => c.name).join(' / '))
-                       : bad('both sides are listed', `${f.cards.length}`);
+  {
+    // One side per fandom in the trade: ours plus every partner's. The list
+    // was two while the bar had three acts, so a whole fandom had no side to
+    // pick and this block disagreed with the bar directly above it.
+    const want = await prev.evaluate(() => 1 + (COLLABS[0].partners || []).length);
+    f.cards.length === want
+      ? ok('a side for every fandom in the trade', f.cards.map((c) => c.name).join(' / '))
+      : bad('a side for every fandom in the trade', `${f.cards.length} sides for ${want} fandoms`);
+  }
+  {
+    // The colours have to agree with the bar above it: a BLOOM reading cyan
+    // there should find cyan here. They came from two separate lists.
+    const match = await prev.evaluate(() => {
+      const c = COLLABS[0];
+      const bar = {};
+      barParts(c, periodOf(c, c.tally, PERIOD)).forEach((x, i) => {
+        bar[i === 0 ? 'blink' : String(c.partners[i - 1].fandom || '').toLowerCase()] = x.colour;
+      });
+      return (c.fandoms || []).map((f2) => ({ key: f2.key, side: f2.colour, act: bar[f2.key] || null }));
+    });
+    const off = match.filter((m) => m.act && m.act !== m.side);
+    off.length === 0
+      ? ok('and each side is in its act\u2019s colour', match.map((m) => `${m.key} ${m.side}`).join(' '))
+      : bad('and each side is in its act\u2019s colour',
+            off.map((m) => `${m.key}: side ${m.side} vs bar ${m.act}`).join(', '));
+  }
   (/8 people/.test(f.cards[0].top) && /2 people/.test(f.cards[1].top))
     ? ok('with the headcount each', `${f.cards[0].top} / ${f.cards[1].top}`)
     : bad('with the headcount each', `${f.cards[0].top} / ${f.cards[1].top}`);
@@ -926,10 +957,13 @@ console.log('--- who is logging: people by declared side, never a split of the v
     })),
     notes: [...document.querySelectorAll('.sub-note')].map((n) => n.textContent.replace(/\s+/g, ' ')),
   }));
-  (empty.cards.length === 2 && empty.cards.every((c) => c.waiting && c.shown))
-    ? ok('with nothing declared, both sides are still drawn AND on screen',
-         empty.cards.map((c) => c.name).join(' / '))
-    : bad('with nothing declared, both sides are still drawn AND on screen', JSON.stringify(empty.cards));
+  {
+    const want = await prev.evaluate(() => (COLLABS[0].fandoms || []).length);
+    (empty.cards.length === want && empty.cards.every((c) => c.waiting && c.shown))
+      ? ok('with nothing declared, every side is still drawn AND on screen',
+           empty.cards.map((c) => c.name).join(' / '))
+      : bad('with nothing declared, every side is still drawn AND on screen', JSON.stringify(empty.cards));
+  }
   empty.cards.every((c) => c.fills === 0)
     ? ok('and neither track is filled, so there is no 0–0 race')
     : bad('and neither track is filled, so there is no 0–0 race', JSON.stringify(empty.cards));
@@ -1295,21 +1329,35 @@ console.log('--- ?demo=a / ?demo=b: the two versions a fanbase is choosing betwe
   shots.a.nums === shots.b.nums
     ? ok('both options show the same votes', shots.a.nums)
     : bad('both options show the same votes', `${shots.a.nums} vs ${shots.b.nums}`);
-  (shots.a.sides === 0 && shots.b.sides === 2)
-    ? ok('and differ only in the turnout block', `a: ${shots.a.sides} · b: ${shots.b.sides}`)
-    : bad('and differ only in the turnout block', `a: ${shots.a.sides} · b: ${shots.b.sides}`);
+  {
+    const want = await prev.evaluate(() => (COLLABS[0].fandoms || []).length);
+    (shots.a.sides === 0 && shots.b.sides === want)
+      ? ok('and differ only in the turnout block', `a: ${shots.a.sides} · b: ${shots.b.sides}`)
+      : bad('and differ only in the turnout block',
+            `a: ${shots.a.sides} · b: ${shots.b.sides}, expected 0 and ${want}`);
+  }
   // Option B's sample has to show the case the block exists for, or it is a
   // picture that flatters the bigger fandom and the choice is made on it.
   const b = await open('/collabs?demo=b');
-  const each = await b.evaluate(() => [...document.querySelectorAll('.fandom')].map((el) => ({
-    name: el.querySelector('.fandom-name').textContent.trim(),
-    foot: el.querySelector('.fandom-foot').textContent.replace(/\s+/g, ' ').trim(),
-    fill: Math.round(parseFloat(el.querySelector('.fandom-fill').style.width)),
-  })));
+  const each = await b.evaluate(() => [...document.querySelectorAll('.fandom')].map((el) => {
+    const bar = el.querySelector('.fandom-fill');
+    return {
+      name: el.querySelector('.fandom-name').textContent.trim(),
+      foot: el.querySelector('.fandom-foot').textContent.replace(/\s+/g, ' ').trim(),
+      people: Number((el.querySelector('.fandom-n').textContent.match(/[\d,]+/) || ['0'])[0].replace(/,/g, '')),
+      fill: bar ? Math.round(parseFloat(bar.style.width)) : null,
+    };
+  }));
   await b.close();
-  (each.length === 2 && each[1].fill > each[0].fill)
+  // The sample has to show the case this block exists for: the side with
+  // FEWER people leading per person. A sample where the biggest fandom won on
+  // every measure is a picture that flatters us, and the choice gets made on
+  // it. Found by rank rather than by index, so the order can change.
+  const ranked = each.filter((x) => x.fill != null).sort((a2, b2) => b2.fill - a2.fill);
+  const biggest = each.filter((x) => x.fill != null).sort((a2, b2) => b2.people - a2.people)[0];
+  (ranked.length >= 2 && ranked[0].name !== biggest.name)
     ? ok('and the smaller side leads per person, as the block is meant to show',
-         `${each[0].foot} | ${each[1].foot}`)
+         `${ranked[0].name} ${ranked[0].foot}`)
     : bad('and the smaller side leads per person, as the block is meant to show',
           JSON.stringify(each));
 }

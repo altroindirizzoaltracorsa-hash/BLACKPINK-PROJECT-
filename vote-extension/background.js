@@ -846,6 +846,7 @@ const COLLAB = {
   fandoms: [
     { key: 'blink', label: 'BLINK' },
     { key: 'bloom', label: 'BLOOM' },
+    { key: 'pauljjak', label: 'Pauljjak' },
   ],
 };
 

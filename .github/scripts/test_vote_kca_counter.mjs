@@ -753,8 +753,8 @@ console.log('\n--- B. panel.js reads the ballot off the page');
       key: b.getAttribute('data-fandom'), on: b.classList.contains('on'),
     }));
   });
-  check(chips.length === 2 && chips.every((c) => !c.on),
-        `both sides are offered and neither is preselected (${chips.map((c) => c.key).join('/')})`);
+  check(chips.length >= 3 && chips.every((c) => !c.on),
+        `every side is offered and none is preselected (${chips.map((c) => c.key).join('/')})`);
   // A default would file everyone who ignores the question on one side of a
   // board about who turned up, and most people ignore it.
   check(!(await p.evaluate(() => window.__written && window.__written.kcaFandom)),

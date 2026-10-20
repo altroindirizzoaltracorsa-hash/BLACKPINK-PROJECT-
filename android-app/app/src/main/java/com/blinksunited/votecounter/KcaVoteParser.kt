@@ -91,7 +91,8 @@ object KcaVoteParser {
      */
     val FANDOMS: List<Pair<String, String>> = listOf(
         "blink" to "BLINK",
-        "bloom" to "BLOOM"
+        "bloom" to "BLOOM",
+        "pauljjak" to "Pauljjak"
     )
 
     /** Past this the collab is over and the app stops posting to it. */
