@@ -592,6 +592,90 @@ console.log('--- sharing the numbers');
     : bad('and it copies when there is not', JSON.stringify(shared.viaCopy).slice(0, 90));
 }
 
+console.log('--- the share card');
+// A fandom posts pictures. The card is drawn from the same numbers as the bar
+// and the same text as the post, so it can never disagree with the page it
+// came from — and it outlives that page, so what it says has to stand alone.
+{
+  await prev.evaluate((fix) => { COLLABS[0].tally = fix; PERIOD = 'all'; render(); }, FIX);
+  await prev.waitForTimeout(200);
+  const opened = await prev.evaluate(() => {
+    openCollabCard(COLLABS[0].id);
+    const o = document.getElementById('card-overlay');
+    const cv = document.getElementById('card-canvas');
+    return { shown: o.style.display === 'flex', w: cv.width, h: cv.height,
+             text: document.getElementById('card-text').textContent,
+             x: document.getElementById('card-x').getAttribute('href') };
+  });
+  opened.shown ? ok('the button opens a card', `${opened.w}×${opened.h}`)
+               : bad('the button opens a card', JSON.stringify(opened));
+  // The picture and the words are offered together: a card posted with no
+  // text says nothing searchable, and the text alone has no picture.
+  (opened.text && /blinksunited\.com\/collabs/.test(opened.text))
+    ? ok('with the post text beside it') : bad('with the post text beside it', opened.text);
+  /^https:\/\/x\.com\/intent\/post/.test(opened.x || '')
+    ? ok('and a pre-filled X post') : bad('and a pre-filled X post', String(opened.x));
+
+  // Something is actually drawn. A canvas that stayed the background colour
+  // is the failure mode of every draw bug, and it looks like a working button.
+  const painted = await prev.evaluate(() => {
+    const cv = document.getElementById('card-canvas');
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let light = 0, bg = 0;
+    for (let i = 0; i < d.length; i += 4 * 199) {
+      if (Math.min(d[i], d[i + 1], d[i + 2]) > 170) light += 1;
+      bg += 1;
+    }
+    return { light, sampled: bg };
+  });
+  painted.light > 20
+    ? ok('and the canvas has text on it, not just the background wash',
+         `${painted.light} light pixels of ${painted.sampled} sampled`)
+    : bad('and the canvas has text on it, not just the background wash',
+          `${painted.light} light pixels — the gradient drew but nothing else did`);
+
+  // THE LAYOUT INVARIANT. The body flows down and the footer is measured up
+  // from the bottom edge; if they meet, the countdown is drawn through the
+  // bar. That is exactly what the wide card did on its first render, and it
+  // is invisible to every other check here.
+  const fits = await prev.evaluate(() => {
+    const cv = document.getElementById('card-canvas');
+    const out = {};
+    for (const fmt of ['square', 'landscape']) {
+      setCollabCardFormat(fmt, document.querySelector(`[data-fmt="${fmt}"]`));
+      // With numbers, and with none — the two states draw different bodies.
+      const before = COLLABS[0].tally;
+      out[fmt + ':full'] = drawCollabCard(cv, COLLABS[0]);
+      COLLABS[0].tally = null;
+      out[fmt + ':empty'] = drawCollabCard(cv, COLLABS[0]);
+      COLLABS[0].tally = before;
+    }
+    return out;
+  });
+  for (const [k, m] of Object.entries(fits)) {
+    (m.bodyBottom <= m.footTop)
+      ? ok(`${k}: the body stops before the footer`, `${Math.round(m.bodyBottom)} < ${Math.round(m.footTop)}`)
+      : bad(`${k}: the body stops before the footer`,
+            `body ends at ${Math.round(m.bodyBottom)}, footer starts at ${Math.round(m.footTop)} — they overlap`);
+  }
+  // Both formats are real sizes, not the same canvas relabelled.
+  const sizes = await prev.evaluate(() => {
+    const cv = document.getElementById('card-canvas');
+    setCollabCardFormat('landscape', document.querySelector('[data-fmt="landscape"]'));
+    const w = { w: cv.width, h: cv.height };
+    setCollabCardFormat('square', document.querySelector('[data-fmt="square"]'));
+    return { wide: w, square: { w: cv.width, h: cv.height } };
+  });
+  (sizes.square.w === 1080 && sizes.square.h === 1080 && sizes.wide.w === 1200 && sizes.wide.h === 675)
+    ? ok('and both formats are the sizes they claim')
+    : bad('and both formats are the sizes they claim', JSON.stringify(sizes));
+
+  await prev.evaluate(() => closeCollabCard());
+  await prev.waitForTimeout(100);
+  (await prev.evaluate(() => document.getElementById('card-overlay').style.display)) === 'none'
+    ? ok('and it closes') : bad('and it closes');
+}
+
 console.log('--- who is logging: people by declared side, never a split of the votes');
 // The line this block has to hold. The bar above it is what each ACT received
 // and cannot be attributed to a fandom — everyone votes the whole ballot. This

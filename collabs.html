@@ -392,6 +392,41 @@
   .req-msg.ok { color: var(--them); }
   .req-fine { font-size: 0.62rem; color: var(--muted); line-height: 1.7; margin-top: 0.9rem; }
 
+  /* ── The share card ──────────────────────────────────────────────────── */
+  .card-overlay { position: fixed; inset: 0; z-index: 100; display: flex;
+    align-items: center; justify-content: center; padding: 1rem; overflow-y: auto;
+    background: rgba(0,0,0,0.94); backdrop-filter: blur(4px); }
+  .card-box { background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--r-card); padding: 1.3rem; max-width: 720px; width: 100%; margin: auto; }
+  .card-box-top { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+    justify-content: space-between; margin-bottom: 0.8rem; }
+  .card-box-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--pink); }
+  .card-fmt-toggle { display: flex; gap: 2px; }
+  .card-fmt { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted); background: transparent;
+    border: 1px solid rgba(255,0,102,0.2); border-radius: var(--r-ctl);
+    padding: 0.3rem 0.7rem; cursor: pointer; }
+  .card-fmt.active { background: var(--pink-muted); border-color: var(--pink); color: var(--pink); }
+  #card-canvas { max-width: 100%; max-height: 62vh; width: auto; height: auto; display: block;
+    margin: 0 auto; border: 1px solid var(--border); border-radius: var(--r-box); }
+  /* The text that goes with the picture, shown so it can be read before it is
+     posted rather than pasted blind. */
+  .card-text { white-space: pre-wrap; font-size: 0.66rem; line-height: 1.6; color: var(--muted);
+    border: 1px solid var(--border); border-radius: var(--r-box);
+    padding: 0.7rem 0.8rem; margin-top: 0.9rem; }
+  .card-box-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.9rem; }
+  .card-dl-btn { flex: 1 1 auto; min-width: 120px; text-align: center; text-decoration: none;
+    font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 0.75rem 0.6rem; border: 1px solid var(--pink); border-radius: var(--r-ctl);
+    background: var(--pink); color: #12000a; cursor: pointer; }
+  .card-dl-btn.ghost { background: transparent; color: var(--pink); }
+  .card-dl-btn.ghost:hover { background: var(--pink-muted); }
+  .card-cl-btn { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.14em;
+    text-transform: uppercase; padding: 0.75rem 1rem; border: 1px solid var(--border);
+    border-radius: var(--r-ctl); background: transparent; color: var(--muted); cursor: pointer; }
+  .card-ok { color: #00ff88 !important; border-color: #00ff88 !important; }
+
   footer { border-top: 1px solid var(--border); padding: 2rem 0 2.6rem; text-align: center; margin-top: 2rem; }
   .foot-link { font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase;
     color: var(--pink); text-decoration: none; }
@@ -541,6 +576,34 @@
     </section>
   </div>
 </section>
+
+<!-- The share card. Built the way the rest of the site builds cards — a
+     canvas, two formats, download / copy / share — because a fandom posts
+     images, and a link with no picture is a link nobody stops scrolling for. -->
+<div id="card-overlay" class="card-overlay" style="display:none"
+     onclick="if (event.target === this) closeCollabCard()" role="dialog" aria-modal="true"
+     aria-label="Share card">
+  <div class="card-box">
+    <div class="card-box-top">
+      <div class="card-box-label" id="card-label">Generating…</div>
+      <div class="card-fmt-toggle">
+        <button type="button" class="card-fmt active" data-fmt="square"
+                onclick="setCollabCardFormat('square', this)">Square</button>
+        <button type="button" class="card-fmt" data-fmt="landscape"
+                onclick="setCollabCardFormat('landscape', this)">Wide</button>
+      </div>
+    </div>
+    <canvas id="card-canvas" width="1080" height="1080"></canvas>
+    <p class="card-text" id="card-text"></p>
+    <div class="card-box-actions">
+      <button type="button" class="card-dl-btn" onclick="downloadCollabCard()">↓ Download</button>
+      <button type="button" class="card-dl-btn ghost" onclick="copyCollabCard(this)">Copy image</button>
+      <button type="button" class="card-dl-btn ghost" onclick="copyCollabText(this)">Copy text</button>
+      <a class="card-dl-btn ghost" id="card-x" target="_blank" rel="noopener noreferrer">Post on X ↗</a>
+      <button type="button" class="card-cl-btn" onclick="closeCollabCard()">Close</button>
+    </div>
+  </div>
+</div>
 
 <footer>
   <a class="foot-link" href="/voting">The voting board →</a>
@@ -949,7 +1012,9 @@ function shareLength(text) {
 
 function shareHtml(c) {
   if (c.status !== 'live') return '';
-  return '<button class="btn ghost" type="button" onclick="shareCollab(\'' + esc(c.id) + '\')" '
+  return '<button class="btn ghost" type="button" onclick="openCollabCard(\'' + esc(c.id) + '\')" '
+      + 'data-card="' + esc(c.id) + '">Share card ↓</button>'
+    + '<button class="btn ghost" type="button" onclick="shareCollab(\'' + esc(c.id) + '\')" '
       + 'data-share="' + esc(c.id) + '">Share the numbers</button>'
     + '<a class="btn ghost" data-share-x="' + esc(c.id) + '" target="_blank" rel="noopener noreferrer"'
       + ' href="https://x.com/intent/post?text=' + encodeURIComponent(shareTextFor(c, PERIOD))
@@ -986,6 +1051,331 @@ function shareCollab(id) {
     return;
   }
   said('Press ⌘/Ctrl+C');
+}
+
+// ── the share card ─────────────────────────────────────────────────────────
+// A picture, because that is what gets posted. The numbers are the same ones
+// the page is showing and the same ones the text says — one source, drawn
+// three ways, so a card can never disagree with the bar above it.
+var CARD_FMT = 'square';
+var CARD_ID = null;
+var _cardLogo = null;
+
+function cardLogo() {
+  if (_cardLogo) return Promise.resolve(_cardLogo);
+  return new Promise(function (res) {
+    var img = new Image();
+    img.onload = function () { _cardLogo = img; res(img); };
+    // A missing logo is not worth failing a card for.
+    img.onerror = function () { res(null); };
+    img.src = '/blinksunited.jpg';
+  });
+}
+
+// Largest size up to `max` that still fits `width` — the totals run from one
+// digit to five and a fixed size would either overflow or look lost.
+function fitText(ctx, text, max, width, family, weight) {
+  var size = max;
+  ctx.font = (weight ? weight + ' ' : '') + size + 'px ' + family;
+  var w = ctx.measureText(text).width;
+  if (w > width) size = Math.floor(size * width / w);
+  ctx.font = (weight ? weight + ' ' : '') + size + 'px ' + family;
+  return size;
+}
+
+function drawCollabCard(canvas, c) {
+  var W = canvas.width, H = canvas.height;
+  var wide = W > H;
+  var ctx = canvas.getContext('2d');
+  var p = periodOf(c, c.tally, PERIOD);
+  var forUs = p && p.forUs ? Math.max(0, Number(p.forUs.picks) || 0) : 0;
+  var forThem = p && p.forThem ? Math.max(0, Number(p.forThem.picks) || 0) : 0;
+  var any = forUs > 0 || forThem > 0;
+
+  // One place for every size, because the two formats are the same card at
+  // two shapes and the wide one has 400px less height to put it in. The first
+  // version used the square's sizes for both and the bar landed on top of the
+  // countdown — which is why drawing now reports where it finished and a test
+  // fails if the body reaches the footer.
+  var L = wide
+    ? { pad: 64, logo: 72, eyebrow: 19, gap1: 30, title: 78, gap2: 10,
+        num: 86, label: 20, gapNum: 30, gapBar: 26, bar: 12, note: 16, line: 26,
+        foot: 24, footGap: 32, by: 15 }
+    : { pad: 84, logo: 92, eyebrow: 24, gap1: 42, title: 104, gap2: 34,
+        num: 140, label: 27, gapNum: 46, gapBar: 34, bar: 18, note: 20, line: 34,
+        foot: 32, footGap: 42, by: 18 };
+  var mono = '"DM Mono", ui-monospace, monospace';
+  var display = '"Bebas Neue", Impact, sans-serif';
+  var inner = W - L.pad * 2;
+
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, W, H);
+  // The same two-colour wash the page uses: ours from one corner, theirs from
+  // the other, so the card reads as a trade before a word of it is read.
+  var g1 = ctx.createRadialGradient(W * 0.12, H * 0.1, 0, W * 0.12, H * 0.1, W * 0.85);
+  g1.addColorStop(0, 'rgba(255,0,102,0.28)'); g1.addColorStop(1, 'rgba(255,0,102,0)');
+  ctx.fillStyle = g1; ctx.fillRect(0, 0, W, H);
+  var g2 = ctx.createRadialGradient(W * 0.9, H * 0.92, 0, W * 0.9, H * 0.92, W * 0.8);
+  g2.addColorStop(0, 'rgba(111,211,255,0.2)'); g2.addColorStop(1, 'rgba(111,211,255,0)');
+  ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
+
+  ctx.textBaseline = 'top';
+  var y = L.pad;
+
+  ctx.fillStyle = '#ff74ac';
+  ctx.font = '500 ' + L.eyebrow + 'px ' + mono;
+  ctx.fillText(c.award.toUpperCase(), L.pad, y);
+  y += L.gap1;
+
+  // BLINKs × BLOOMs, each fandom in its own colour. Measured against the width
+  // MINUS the logo: the logo sits top-right, and the first version let a long
+  // fandom name run underneath it.
+  var titleRoom = inner - L.logo - L.pad * 0.5;
+  var us = 'BLINKs', sep = '  ×  ', them = c.partner.fandom;
+  var size = L.title;
+  ctx.font = size + 'px ' + display;
+  var measure = function () {
+    return ctx.measureText(us).width + ctx.measureText(sep).width + ctx.measureText(them).width;
+  };
+  if (measure() > titleRoom) {
+    size = Math.floor(size * titleRoom / measure());
+    ctx.font = size + 'px ' + display;
+  }
+  var wUs = ctx.measureText(us).width, wSep = ctx.measureText(sep).width;
+  ctx.fillStyle = '#ff0066'; ctx.fillText(us, L.pad, y);
+  ctx.fillStyle = '#b09aad'; ctx.fillText(sep, L.pad + wUs, y);
+  ctx.fillStyle = '#6fd3ff'; ctx.fillText(them, L.pad + wUs + wSep, y);
+  y += size * 1.02 + L.gap2;
+
+  var big = function (n, colour, label) {
+    var s2 = fitText(ctx, fmt(n), L.num, inner, display);
+    ctx.fillStyle = colour;
+    ctx.fillText(fmt(n), L.pad, y);
+    y += s2 * 0.9;
+    ctx.fillStyle = '#f5f0f0';
+    ctx.font = '500 ' + L.label + 'px ' + mono;
+    ctx.fillText(label, L.pad, y);
+    y += L.gapNum;
+  };
+
+  if (any) {
+    var acts = c.theyGive.map(function (a) { return a.who || a.nominee; })
+      .join(', ').replace(/, ([^,]*)$/, ' & $1');
+    big(forUs, '#ff0066', 'for ' + acts);
+    big(forThem, '#6fd3ff', 'for ' + c.partner.act);
+
+    var sum = forUs + forThem;
+    y += L.gapBar - L.gapNum;
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(L.pad, y, inner, L.bar);
+    ctx.fillStyle = '#ff0066';
+    ctx.fillRect(L.pad, y, inner * (forUs / sum), L.bar);
+    ctx.fillStyle = '#6fd3ff';
+    ctx.fillRect(L.pad + inner * (forUs / sum), y, inner * (forThem / sum), L.bar);
+    y += L.bar + L.note;
+
+    // Said on the card for the reason it is said on the page: the gap is slot
+    // counts, and a bar with no explanation reads as a score between two
+    // fandoms, which it is not — and a card outlives the page it came from.
+    ctx.fillStyle = '#b09aad';
+    ctx.font = L.note + 'px ' + mono;
+    var note = 'Votes logged through the collab — not a score between fandoms.';
+    fitText(ctx, note, L.note, inner, mono);
+    ctx.fillText(note, L.pad, y);
+    y += L.line;
+
+    var passes = passesFrom(c, p);
+    if (passes) {
+      ctx.fillStyle = '#f5f0f0';
+      ctx.font = '500 ' + L.label + 'px ' + mono;
+      ctx.fillText(fmt(passes) + ' complete ' + (passes === 1 ? 'pass' : 'passes')
+        + ' through the ballot', L.pad, y);
+      y += L.line;
+    }
+    // Who turned up, when anybody has said — people, never a split of the
+    // votes above.
+    var f = p && p.fandoms;
+    if (f && c.fandoms) {
+      var parts = c.fandoms.map(function (x) {
+        var got = f[x.key];
+        return got && got.people ? fmt(got.people) + ' ' + x.label : null;
+      }).filter(Boolean);
+      if (parts.length) {
+        ctx.fillStyle = '#b09aad';
+        ctx.font = L.note + 'px ' + mono;
+        ctx.fillText(parts.join(' and ') + ' logging', L.pad, y);
+        y += L.line;
+      }
+    }
+  } else {
+    // Nothing counted yet: the card is the invitation, not a pair of noughts.
+    ctx.fillStyle = '#f5f0f0';
+    ctx.font = '500 ' + (L.label + 6) + 'px ' + mono;
+    ['We fill in ' + c.partner.act + '’s category,', 'they fill in ours.']
+      .forEach(function (ln) { ctx.fillText(ln, L.pad, y); y += L.line + 8; });
+    y += 4;
+    ctx.fillStyle = '#b09aad';
+    ctx.font = L.note + 'px ' + mono;
+    ['The ballot needs every category filled anyway,', 'so neither side gives anything up.']
+      .forEach(function (ln) { ctx.fillText(ln, L.pad, y); y += L.line; });
+    y += L.line * 0.6;
+
+    // What to actually vote. On a card whose whole job is to recruit, the four
+    // picks are the most useful thing on it — without them a reader has to go
+    // and find out, which most of them will not.
+    c.theyGive.concat(c.weGive).forEach(function (pk) {
+      var act = pk.who || pk.nominee;
+      ctx.fillStyle = c.weGive.indexOf(pk) > -1 ? '#6fd3ff' : '#ff74ac';
+      ctx.font = '500 ' + L.label + 'px ' + mono;
+      ctx.fillText(act, L.pad, y);
+      var w = ctx.measureText(act).width;
+      ctx.fillStyle = '#b09aad';
+      ctx.font = L.note + 'px ' + mono;
+      ctx.fillText('  ·  ' + pk.cat, L.pad + w, y + (L.label - L.note) * 0.6);
+      y += L.line + 6;
+    });
+    // The one that is written differently on the ballot than anyone says it.
+    var odd = c.weGive.concat(c.theyGive).filter(function (pk) { return pk.onBallot; })[0];
+    if (odd) {
+      ctx.fillStyle = '#b09aad';
+      ctx.font = L.note + 'px ' + mono;
+      ctx.fillText('On the ballot ' + (odd.who || odd.nominee) + ' reads “' + odd.onBallot + '”.',
+        L.pad, y);
+      y += L.line;
+    }
+  }
+
+  var bodyBottom = y;
+
+  // Footer, measured up from the bottom edge so it sits in the same place
+  // whatever the body did.
+  var byLine = c.organisers
+    ? (c.organisers.us || []).concat(c.organisers.them || [])
+        .map(function (o) { return o.name; }).join('  ×  ')
+    : null;
+  var footH = L.foot + L.footGap + (byLine ? L.by + 14 : 0);
+  var footTop = H - L.pad - footH;
+  var left = c.deadline ? countdown(new Date(c.deadline).getTime() - Date.now()) : null;
+  var fy = footTop;
+  if (left) {
+    ctx.fillStyle = '#ff74ac';
+    ctx.font = (L.foot + 4) + 'px ' + display;
+    ctx.fillText(left + ' LEFT TO VOTE', L.pad, fy);
+  }
+  fy += L.footGap;
+  ctx.fillStyle = '#f5f0f0';
+  ctx.font = '500 ' + L.foot + 'px ' + mono;
+  ctx.fillText('blinksunited.com/collabs', L.pad, fy);
+  if (byLine) {
+    fy += L.foot + 14;
+    ctx.fillStyle = '#b09aad';
+    fitText(ctx, byLine, L.by, inner, mono);
+    ctx.fillText(byLine, L.pad, fy);
+  }
+
+  if (_cardLogo) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(W - L.pad - L.logo / 2, L.pad + L.logo / 2, L.logo / 2, 0, Math.PI * 2);
+    ctx.closePath(); ctx.clip();
+    ctx.drawImage(_cardLogo, W - L.pad - L.logo, L.pad, L.logo, L.logo);
+    ctx.restore();
+  }
+
+  // Returned so a test can assert the body never reaches the footer, in every
+  // format and every state. Overlap is the one failure that looks fine in code
+  // and ruins the picture people keep.
+  return { bodyBottom: bodyBottom, footTop: footTop, width: W, height: H };
+}
+
+function renderCollabCard() {
+  var c = COLLABS.filter(function (x) { return x.id === CARD_ID; })[0];
+  if (!c) return;
+  var canvas = document.getElementById('card-canvas');
+  if (CARD_FMT === 'landscape') { canvas.width = 1200; canvas.height = 675; }
+  else { canvas.width = 1080; canvas.height = 1080; }
+  drawCollabCard(canvas, c);
+  var text = shareTextFor(c, PERIOD);
+  document.getElementById('card-text').textContent = text;
+  document.getElementById('card-x').href =
+    'https://x.com/intent/post?text=' + encodeURIComponent(text);
+  document.getElementById('card-label').textContent =
+    'Share card · ' + (PERIODS.filter(function (x) { return x.k === PERIOD; })[0] || {}).label;
+}
+
+function setCollabCardFormat(fmt, btn) {
+  CARD_FMT = fmt;
+  Array.prototype.forEach.call(document.querySelectorAll('.card-fmt'), function (b) {
+    b.classList.toggle('active', b === btn);
+  });
+  renderCollabCard();
+}
+
+function openCollabCard(id) {
+  CARD_ID = id;
+  var overlay = document.getElementById('card-overlay');
+  overlay.style.display = 'flex';
+  // Fonts first: a card drawn before they load is drawn in Times, and it is
+  // the picture people keep.
+  var ready = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+  Promise.all([ready, cardLogo()]).then(renderCollabCard);
+  renderCollabCard();
+}
+
+function closeCollabCard() {
+  document.getElementById('card-overlay').style.display = 'none';
+}
+
+function cardBlob() {
+  var canvas = document.getElementById('card-canvas');
+  return new Promise(function (res) { canvas.toBlob(res, 'image/png'); });
+}
+
+function cardFileName() {
+  var d = new Date();
+  return 'blinks-united-collab-' + d.getFullYear() + '-'
+    + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2) + '.png';
+}
+
+function downloadCollabCard() {
+  cardBlob().then(function (blob) {
+    if (!blob) return;
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.download = cardFileName();
+    a.href = url;
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+  });
+}
+
+function flash(btn, msg) {
+  if (!btn) return;
+  var was = btn.textContent;
+  btn.textContent = msg;
+  btn.classList.add('card-ok');
+  setTimeout(function () { btn.textContent = was; btn.classList.remove('card-ok'); }, 2000);
+}
+
+function copyCollabCard(btn) {
+  cardBlob().then(function (blob) {
+    if (!blob || !navigator.clipboard || !window.ClipboardItem) {
+      flash(btn, 'Use download'); return;
+    }
+    navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+      .then(function () { flash(btn, 'Copied ✓'); })
+      .catch(function () { flash(btn, 'Use download'); });
+  });
+}
+
+function copyCollabText(btn) {
+  var c = COLLABS.filter(function (x) { return x.id === CARD_ID; })[0];
+  if (!c) return;
+  var text = shareTextFor(c, PERIOD);
+  if (!navigator.clipboard || !navigator.clipboard.writeText) { flash(btn, 'Press ⌘/Ctrl+C'); return; }
+  navigator.clipboard.writeText(text)
+    .then(function () { flash(btn, 'Copied ✓'); })
+    .catch(function () { flash(btn, 'Press ⌘/Ctrl+C'); });
 }
 
 // ── periods ────────────────────────────────────────────────────────────────
