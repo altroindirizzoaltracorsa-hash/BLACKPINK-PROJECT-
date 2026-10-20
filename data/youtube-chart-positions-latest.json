@@ -1,46 +1,48 @@
 {
-  "generatedAt": "2026-10-18T10:32:56.583Z",
+  "generatedAt": "2026-10-20T11:00:48.739Z",
   "chartType": "weekly",
-  "weekEndingDate": "2026-10-08",
+  "weekEndingDate": "2026-10-15",
   "regions": {
-    "tw": {
-      "region": "Taiwan",
-      "gl": "TW",
+    "kr": {
+      "region": "South Korea",
+      "gl": "KR",
       "period": {
-        "entityId": "weekly:20261002:20261008:tw",
+        "entityId": "weekly:20261009:20261015:kr",
         "periodType": "weekly",
-        "startDate": "20261002",
-        "endDate": "20261008",
-        "region": "tw"
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "kr"
       },
-      "totalEntries": 95,
+      "totalEntries": 98,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
-          "member": "LISA",
-          "position": 24,
-          "name": "SaWaDiKa",
+          "member": "JENNIE",
+          "position": 65,
+          "name": "One Of The Girls",
           "artists": [
-            "LISA"
+            "The Weeknd",
+            "JENNIE",
+            "Lily Rose Depp"
           ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 261929,
+          "videoId": "Mx92lTYxrJQ",
+          "viewCount": 466174,
           "releaseDate": {
-            "year": 2026,
-            "month": 8,
-            "day": 27
+            "year": 2023,
+            "month": 6,
+            "day": 23
           }
         },
         {
           "chartType": "TOP_VIDEOS",
           "member": "JENNIE",
-          "position": 68,
+          "position": 66,
           "name": "Less than a Lover",
           "artists": [
             "JENNIE"
           ],
           "videoId": "_IT83Y_HcAw",
-          "viewCount": 140126,
+          "viewCount": 440676,
           "releaseDate": {
             "year": 2026,
             "month": 7,
@@ -56,7 +58,7 @@
             "ROSÉ"
           ],
           "videoId": "Lufa9QAFFeY",
-          "viewCount": 136903,
+          "viewCount": 410022,
           "releaseDate": {
             "year": 2026,
             "month": 9,
@@ -66,35 +68,241 @@
         {
           "chartType": "TOP_ARTISTS",
           "member": "BLACKPINK",
-          "position": 61,
+          "position": 42,
           "name": "BLACKPINK",
           "artists": [
             "BLACKPINK"
           ],
           "channelId": "UCOmHUn--16B90oW2L6FRR3A",
-          "viewCount": 1057898
+          "viewCount": 3430660
         },
         {
           "chartType": "TOP_ARTISTS",
           "member": "JENNIE",
-          "position": 82,
+          "position": 48,
           "name": "JENNIE",
           "artists": [
             "JENNIE"
           ],
           "channelId": "UCNYi_zGmR519r5gYdOKLTjQ",
-          "viewCount": 794299
+          "viewCount": 3221496
         },
         {
           "chartType": "TOP_ARTISTS",
           "member": "ROSÉ",
-          "position": 85,
+          "position": 78,
           "name": "ROSÉ",
           "artists": [
             "ROSÉ"
           ],
           "channelId": "UCBo1hnzxV9rz3WVsv__Rn1g",
-          "viewCount": 785140
+          "viewCount": 2368600
+        }
+      ]
+    },
+    "jp": {
+      "region": "Japan",
+      "gl": "JP",
+      "period": {
+        "entityId": "weekly:20261009:20261015:jp",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "jp"
+      },
+      "totalEntries": 94,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "ROSÉ",
+          "position": 76,
+          "name": "new trick",
+          "artists": [
+            "ROSÉ"
+          ],
+          "videoId": "Lufa9QAFFeY",
+          "viewCount": 607609,
+          "releaseDate": {
+            "year": 2026,
+            "month": 9,
+            "day": 17
+          }
+        }
+      ]
+    },
+    "tw": {
+      "region": "Taiwan",
+      "gl": "TW",
+      "period": {
+        "entityId": "weekly:20261009:20261015:tw",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "tw"
+      },
+      "totalEntries": 95,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 31,
+          "name": "SaWaDiKa",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 220343,
+          "releaseDate": {
+            "year": 2026,
+            "month": 8,
+            "day": 27
+          }
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 92,
+          "name": "Less than a Lover",
+          "artists": [
+            "JENNIE"
+          ],
+          "videoId": "_IT83Y_HcAw",
+          "viewCount": 122330,
+          "releaseDate": {
+            "year": 2026,
+            "month": 7,
+            "day": 24
+          }
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "BLACKPINK",
+          "position": 57,
+          "name": "BLACKPINK",
+          "artists": [
+            "BLACKPINK"
+          ],
+          "channelId": "UCOmHUn--16B90oW2L6FRR3A",
+          "viewCount": 1069558
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "JENNIE",
+          "position": 81,
+          "name": "JENNIE",
+          "artists": [
+            "JENNIE"
+          ],
+          "channelId": "UCNYi_zGmR519r5gYdOKLTjQ",
+          "viewCount": 796077
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "ROSÉ",
+          "position": 98,
+          "name": "ROSÉ",
+          "artists": [
+            "ROSÉ"
+          ],
+          "channelId": "UCBo1hnzxV9rz3WVsv__Rn1g",
+          "viewCount": 715751
+        }
+      ]
+    },
+    "hk": {
+      "region": "Hong Kong",
+      "gl": "HK",
+      "period": {
+        "entityId": "weekly:20261009:20261015:hk",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "hk"
+      },
+      "totalEntries": 97,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 40,
+          "name": "SaWaDiKa",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 54004,
+          "releaseDate": {
+            "year": 2026,
+            "month": 8,
+            "day": 27
+          }
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 69,
+          "name": "One Of The Girls",
+          "artists": [
+            "The Weeknd",
+            "JENNIE",
+            "Lily Rose Depp"
+          ],
+          "videoId": "Mx92lTYxrJQ",
+          "viewCount": 38453,
+          "releaseDate": {
+            "year": 2023,
+            "month": 6,
+            "day": 23
+          }
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 88,
+          "name": "Less than a Lover",
+          "artists": [
+            "JENNIE"
+          ],
+          "videoId": "_IT83Y_HcAw",
+          "viewCount": 32192,
+          "releaseDate": {
+            "year": 2026,
+            "month": 7,
+            "day": 24
+          }
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "BLACKPINK",
+          "position": 54,
+          "name": "BLACKPINK",
+          "artists": [
+            "BLACKPINK"
+          ],
+          "channelId": "UCOmHUn--16B90oW2L6FRR3A",
+          "viewCount": 273411
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "JENNIE",
+          "position": 64,
+          "name": "JENNIE",
+          "artists": [
+            "JENNIE"
+          ],
+          "channelId": "UCNYi_zGmR519r5gYdOKLTjQ",
+          "viewCount": 237729
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "ROSÉ",
+          "position": 97,
+          "name": "ROSÉ",
+          "artists": [
+            "ROSÉ"
+          ],
+          "channelId": "UCBo1hnzxV9rz3WVsv__Rn1g",
+          "viewCount": 177536
         }
       ]
     },
@@ -102,13 +310,198 @@
       "region": "Indonesia",
       "gl": "ID",
       "period": {
-        "entityId": "weekly:20261002:20261008:id",
+        "entityId": "weekly:20261009:20261015:id",
         "periodType": "weekly",
-        "startDate": "20261002",
-        "endDate": "20261008",
+        "startDate": "20261009",
+        "endDate": "20261015",
         "region": "id"
       },
       "totalEntries": 95,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 41,
+          "name": "One Of The Girls",
+          "artists": [
+            "The Weeknd",
+            "JENNIE",
+            "Lily Rose Depp"
+          ],
+          "videoId": "Mx92lTYxrJQ",
+          "viewCount": 1395412,
+          "releaseDate": {
+            "year": 2023,
+            "month": 6,
+            "day": 23
+          }
+        }
+      ]
+    },
+    "th": {
+      "region": "Thailand",
+      "gl": "TH",
+      "period": {
+        "entityId": "weekly:20261009:20261015:th",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "th"
+      },
+      "totalEntries": 98,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 20,
+          "name": "One Of The Girls",
+          "artists": [
+            "The Weeknd",
+            "JENNIE",
+            "Lily Rose Depp"
+          ],
+          "videoId": "Mx92lTYxrJQ",
+          "viewCount": 1621885,
+          "releaseDate": {
+            "year": 2023,
+            "month": 6,
+            "day": 23
+          }
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 30,
+          "name": "SaWaDiKa",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 1331411,
+          "releaseDate": {
+            "year": 2026,
+            "month": 8,
+            "day": 27
+          }
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "JENNIE",
+          "position": 56,
+          "name": "JENNIE",
+          "artists": [
+            "JENNIE"
+          ],
+          "channelId": "UCNYi_zGmR519r5gYdOKLTjQ",
+          "viewCount": 3285243
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "LISA",
+          "position": 65,
+          "name": "LISA",
+          "artists": [
+            "LISA"
+          ],
+          "channelId": "UC6-BgjsBa5R3PZQ_kZ8hKPg",
+          "viewCount": 3042146
+        }
+      ]
+    },
+    "ph": {
+      "region": "Philippines",
+      "gl": "PH",
+      "period": {
+        "entityId": "weekly:20261009:20261015:ph",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "ph"
+      },
+      "totalEntries": 94,
+      "hits": []
+    },
+    "my": {
+      "region": "Malaysia",
+      "gl": "MY",
+      "period": {
+        "entityId": "weekly:20261009:20261015:my",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "my"
+      },
+      "totalEntries": 98,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 35,
+          "name": "One Of The Girls",
+          "artists": [
+            "The Weeknd",
+            "JENNIE",
+            "Lily Rose Depp"
+          ],
+          "videoId": "Mx92lTYxrJQ",
+          "viewCount": 333474,
+          "releaseDate": {
+            "year": 2023,
+            "month": 6,
+            "day": 23
+          }
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 36,
+          "name": "SaWaDiKa",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 333440,
+          "releaseDate": {
+            "year": 2026,
+            "month": 8,
+            "day": 27
+          }
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "BLACKPINK",
+          "position": 52,
+          "name": "BLACKPINK",
+          "artists": [
+            "BLACKPINK"
+          ],
+          "channelId": "UCOmHUn--16B90oW2L6FRR3A",
+          "viewCount": 1149090
+        },
+        {
+          "chartType": "TOP_ARTISTS",
+          "member": "JENNIE",
+          "position": 60,
+          "name": "JENNIE",
+          "artists": [
+            "JENNIE"
+          ],
+          "channelId": "UCNYi_zGmR519r5gYdOKLTjQ",
+          "viewCount": 1028826
+        }
+      ]
+    },
+    "vn": {
+      "region": "Vietnam",
+      "gl": "VN",
+      "period": {
+        "entityId": "weekly:20261009:20261015:vn",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "vn"
+      },
+      "totalEntries": 92,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
@@ -121,106 +514,11 @@
             "Lily Rose Depp"
           ],
           "videoId": "Mx92lTYxrJQ",
-          "viewCount": 1238548,
+          "viewCount": 492669,
           "releaseDate": {
             "year": 2023,
             "month": 6,
             "day": 23
-          }
-        }
-      ]
-    },
-    "ph": {
-      "region": "Philippines",
-      "gl": "PH",
-      "period": {
-        "entityId": "weekly:20261002:20261008:ph",
-        "periodType": "weekly",
-        "startDate": "20261002",
-        "endDate": "20261008",
-        "region": "ph"
-      },
-      "totalEntries": 95,
-      "hits": []
-    },
-    "my": {
-      "region": "Malaysia",
-      "gl": "MY",
-      "period": {
-        "entityId": "weekly:20261002:20261008:my",
-        "periodType": "weekly",
-        "startDate": "20261002",
-        "endDate": "20261008",
-        "region": "my"
-      },
-      "totalEntries": 97,
-      "hits": [
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "LISA",
-          "position": 25,
-          "name": "SaWaDiKa",
-          "artists": [
-            "LISA"
-          ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 392033,
-          "releaseDate": {
-            "year": 2026,
-            "month": 8,
-            "day": 27
-          }
-        },
-        {
-          "chartType": "TOP_ARTISTS",
-          "member": "BLACKPINK",
-          "position": 50,
-          "name": "BLACKPINK",
-          "artists": [
-            "BLACKPINK"
-          ],
-          "channelId": "UCOmHUn--16B90oW2L6FRR3A",
-          "viewCount": 1144066
-        },
-        {
-          "chartType": "TOP_ARTISTS",
-          "member": "JENNIE",
-          "position": 66,
-          "name": "JENNIE",
-          "artists": [
-            "JENNIE"
-          ],
-          "channelId": "UCNYi_zGmR519r5gYdOKLTjQ",
-          "viewCount": 982528
-        }
-      ]
-    },
-    "vn": {
-      "region": "Vietnam",
-      "gl": "VN",
-      "period": {
-        "entityId": "weekly:20261002:20261008:vn",
-        "periodType": "weekly",
-        "startDate": "20261002",
-        "endDate": "20261008",
-        "region": "vn"
-      },
-      "totalEntries": 91,
-      "hits": [
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "LISA",
-          "position": 90,
-          "name": "SaWaDiKa",
-          "artists": [
-            "LISA"
-          ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 282581,
-          "releaseDate": {
-            "year": 2026,
-            "month": 8,
-            "day": 27
           }
         }
       ]
@@ -229,24 +527,24 @@
       "region": "Singapore",
       "gl": "SG",
       "period": {
-        "entityId": "weekly:20261002:20261008:sg",
+        "entityId": "weekly:20261009:20261015:sg",
         "periodType": "weekly",
-        "startDate": "20261002",
-        "endDate": "20261008",
+        "startDate": "20261009",
+        "endDate": "20261015",
         "region": "sg"
       },
-      "totalEntries": 99,
+      "totalEntries": 100,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 4,
+          "position": 6,
           "name": "SaWaDiKa",
           "artists": [
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 82098,
+          "viewCount": 65414,
           "releaseDate": {
             "year": 2026,
             "month": 8,
@@ -256,7 +554,7 @@
         {
           "chartType": "TOP_VIDEOS",
           "member": "JENNIE",
-          "position": 18,
+          "position": 12,
           "name": "One Of The Girls",
           "artists": [
             "The Weeknd",
@@ -264,7 +562,7 @@
             "Lily Rose Depp"
           ],
           "videoId": "Mx92lTYxrJQ",
-          "viewCount": 48441,
+          "viewCount": 49697,
           "releaseDate": {
             "year": 2023,
             "month": 6,
@@ -273,30 +571,14 @@
         },
         {
           "chartType": "TOP_VIDEOS",
-          "member": "ROSÉ",
-          "position": 70,
-          "name": "new trick",
-          "artists": [
-            "ROSÉ"
-          ],
-          "videoId": "Lufa9QAFFeY",
-          "viewCount": 24495,
-          "releaseDate": {
-            "year": 2026,
-            "month": 9,
-            "day": 17
-          }
-        },
-        {
-          "chartType": "TOP_VIDEOS",
           "member": "JENNIE",
-          "position": 85,
+          "position": 89,
           "name": "Less than a Lover",
           "artists": [
             "JENNIE"
           ],
           "videoId": "_IT83Y_HcAw",
-          "viewCount": 19584,
+          "viewCount": 17764,
           "releaseDate": {
             "year": 2026,
             "month": 7,
@@ -306,71 +588,84 @@
         {
           "chartType": "TOP_ARTISTS",
           "member": "JENNIE",
-          "position": 39,
+          "position": 38,
           "name": "JENNIE",
           "artists": [
             "JENNIE"
           ],
           "channelId": "UCNYi_zGmR519r5gYdOKLTjQ",
-          "viewCount": 167384
+          "viewCount": 165454
         },
         {
           "chartType": "TOP_ARTISTS",
           "member": "BLACKPINK",
-          "position": 40,
+          "position": 39,
           "name": "BLACKPINK",
           "artists": [
             "BLACKPINK"
           ],
           "channelId": "UCOmHUn--16B90oW2L6FRR3A",
-          "viewCount": 164726
+          "viewCount": 164072
         },
         {
           "chartType": "TOP_ARTISTS",
           "member": "LISA",
-          "position": 57,
+          "position": 69,
           "name": "LISA",
           "artists": [
             "LISA"
           ],
           "channelId": "UC6-BgjsBa5R3PZQ_kZ8hKPg",
-          "viewCount": 140368
+          "viewCount": 120775
         },
         {
           "chartType": "TOP_ARTISTS",
           "member": "ROSÉ",
-          "position": 68,
+          "position": 77,
           "name": "ROSÉ",
           "artists": [
             "ROSÉ"
           ],
           "channelId": "UCBo1hnzxV9rz3WVsv__Rn1g",
-          "viewCount": 125260
+          "viewCount": 113335
         }
       ]
     },
-    "us": {
-      "region": "United States",
-      "gl": "US",
+    "in": {
+      "region": "India",
+      "gl": "IN",
       "period": {
-        "entityId": "weekly:20261002:20261008:us",
+        "entityId": "weekly:20261009:20261015:in",
         "periodType": "weekly",
-        "startDate": "20261002",
-        "endDate": "20261008",
-        "region": "us"
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "in"
       },
-      "totalEntries": 96,
+      "totalEntries": 94,
+      "hits": []
+    },
+    "au": {
+      "region": "Australia",
+      "gl": "AU",
+      "period": {
+        "entityId": "weekly:20261009:20261015:au",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "au"
+      },
+      "totalEntries": 97,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 47,
+          "position": 31,
           "name": "SaWaDiKa",
           "artists": [
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 1306491,
+          "viewCount": 114208,
           "releaseDate": {
             "year": 2026,
             "month": 8,
@@ -379,27 +674,182 @@
         }
       ]
     },
+    "nz": {
+      "region": "New Zealand",
+      "gl": "NZ",
+      "period": {
+        "entityId": "weekly:20261009:20261015:nz",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "nz"
+      },
+      "totalEntries": 96,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 55,
+          "name": "SaWaDiKa",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 18960,
+          "releaseDate": {
+            "year": 2026,
+            "month": 8,
+            "day": 27
+          }
+        }
+      ]
+    },
+    "us": {
+      "region": "United States",
+      "gl": "US",
+      "period": {
+        "entityId": "weekly:20261009:20261015:us",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "us"
+      },
+      "totalEntries": 96,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 56,
+          "name": "SaWaDiKa",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 1143106,
+          "releaseDate": {
+            "year": 2026,
+            "month": 8,
+            "day": 27
+          }
+        }
+      ]
+    },
+    "ca": {
+      "region": "Canada",
+      "gl": "CA",
+      "period": {
+        "entityId": "weekly:20261009:20261015:ca",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "ca"
+      },
+      "totalEntries": 98,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 40,
+          "name": "SaWaDiKa",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 149567,
+          "releaseDate": {
+            "year": 2026,
+            "month": 8,
+            "day": 27
+          }
+        }
+      ]
+    },
+    "mx": {
+      "region": "Mexico",
+      "gl": "MX",
+      "period": {
+        "entityId": "weekly:20261009:20261015:mx",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "mx"
+      },
+      "totalEntries": 97,
+      "hits": []
+    },
+    "br": {
+      "region": "Brazil",
+      "gl": "BR",
+      "period": {
+        "entityId": "weekly:20261009:20261015:br",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "br"
+      },
+      "totalEntries": 95,
+      "hits": []
+    },
     "ar": {
       "region": "Argentina",
       "gl": "AR",
       "period": {
-        "entityId": "weekly:20261002:20261008:ar",
+        "entityId": "weekly:20261009:20261015:ar",
         "periodType": "weekly",
-        "startDate": "20261002",
-        "endDate": "20261008",
+        "startDate": "20261009",
+        "endDate": "20261015",
         "region": "ar"
       },
+      "totalEntries": 95,
+      "hits": []
+    },
+    "cl": {
+      "region": "Chile",
+      "gl": "CL",
+      "period": {
+        "entityId": "weekly:20261009:20261015:cl",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "cl"
+      },
+      "totalEntries": 99,
+      "hits": []
+    },
+    "co": {
+      "region": "Colombia",
+      "gl": "CO",
+      "period": {
+        "entityId": "weekly:20261009:20261015:co",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "co"
+      },
       "totalEntries": 96,
+      "hits": []
+    },
+    "pe": {
+      "region": "Peru",
+      "gl": "PE",
+      "period": {
+        "entityId": "weekly:20261009:20261015:pe",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "pe"
+      },
+      "totalEntries": 97,
       "hits": []
     },
     "gb": {
       "region": "United Kingdom",
       "gl": "GB",
       "period": {
-        "entityId": "weekly:20261002:20261008:gb",
+        "entityId": "weekly:20261009:20261015:gb",
         "periodType": "weekly",
-        "startDate": "20261002",
-        "endDate": "20261008",
+        "startDate": "20261009",
+        "endDate": "20261015",
         "region": "gb"
       },
       "totalEntries": 96,
@@ -407,13 +857,73 @@
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 44,
+          "position": 52,
           "name": "SaWaDiKa",
           "artists": [
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 215987,
+          "viewCount": 185736,
+          "releaseDate": {
+            "year": 2026,
+            "month": 8,
+            "day": 27
+          }
+        }
+      ]
+    },
+    "fr": {
+      "region": "France",
+      "gl": "FR",
+      "period": {
+        "entityId": "weekly:20261009:20261015:fr",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "fr"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 76,
+          "name": "SaWaDiKa",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 264080,
+          "releaseDate": {
+            "year": 2026,
+            "month": 8,
+            "day": 27
+          }
+        }
+      ]
+    },
+    "de": {
+      "region": "Germany",
+      "gl": "DE",
+      "period": {
+        "entityId": "weekly:20261009:20261015:de",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "de"
+      },
+      "totalEntries": 97,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 36,
+          "name": "SaWaDiKa",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 243838,
           "releaseDate": {
             "year": 2026,
             "month": 8,
@@ -426,54 +936,50 @@
       "region": "Spain",
       "gl": "ES",
       "period": {
-        "entityId": "weekly:20261002:20261008:es",
+        "entityId": "weekly:20261009:20261015:es",
         "periodType": "weekly",
-        "startDate": "20261002",
-        "endDate": "20261008",
+        "startDate": "20261009",
+        "endDate": "20261015",
         "region": "es"
       },
+      "totalEntries": 99,
+      "hits": []
+    },
+    "it": {
+      "region": "Italy",
+      "gl": "IT",
+      "period": {
+        "entityId": "weekly:20261009:20261015:it",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "it"
+      },
       "totalEntries": 100,
-      "hits": [
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "LISA",
-          "position": 92,
-          "name": "SaWaDiKa",
-          "artists": [
-            "LISA"
-          ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 156447,
-          "releaseDate": {
-            "year": 2026,
-            "month": 8,
-            "day": 27
-          }
-        }
-      ]
+      "hits": []
     },
     "nl": {
       "region": "Netherlands",
       "gl": "NL",
       "period": {
-        "entityId": "weekly:20261002:20261008:nl",
+        "entityId": "weekly:20261009:20261015:nl",
         "periodType": "weekly",
-        "startDate": "20261002",
-        "endDate": "20261008",
+        "startDate": "20261009",
+        "endDate": "20261015",
         "region": "nl"
       },
-      "totalEntries": 96,
+      "totalEntries": 98,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 26,
+          "position": 33,
           "name": "SaWaDiKa",
           "artists": [
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 65032,
+          "viewCount": 56955,
           "releaseDate": {
             "year": 2026,
             "month": 8,
@@ -486,24 +992,24 @@
       "region": "Sweden",
       "gl": "SE",
       "period": {
-        "entityId": "weekly:20261002:20261008:se",
+        "entityId": "weekly:20261009:20261015:se",
         "periodType": "weekly",
-        "startDate": "20261002",
-        "endDate": "20261008",
+        "startDate": "20261009",
+        "endDate": "20261015",
         "region": "se"
       },
-      "totalEntries": 97,
+      "totalEntries": 96,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 18,
+          "position": 29,
           "name": "SaWaDiKa",
           "artists": [
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 30932,
+          "viewCount": 26115,
           "releaseDate": {
             "year": 2026,
             "month": 8,
@@ -516,10 +1022,10 @@
       "region": "Norway",
       "gl": "NO",
       "period": {
-        "entityId": "weekly:20261002:20261008:no",
+        "entityId": "weekly:20261009:20261015:no",
         "periodType": "weekly",
-        "startDate": "20261002",
-        "endDate": "20261008",
+        "startDate": "20261009",
+        "endDate": "20261015",
         "region": "no"
       },
       "totalEntries": 94,
@@ -527,13 +1033,13 @@
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 17,
+          "position": 21,
           "name": "SaWaDiKa",
           "artists": [
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 17822,
+          "viewCount": 14632,
           "releaseDate": {
             "year": 2026,
             "month": 8,
@@ -542,28 +1048,71 @@
         }
       ]
     },
+    "pl": {
+      "region": "Poland",
+      "gl": "PL",
+      "period": {
+        "entityId": "weekly:20261009:20261015:pl",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "pl"
+      },
+      "totalEntries": 97,
+      "hits": []
+    },
     "tr": {
       "region": "Turkey",
       "gl": "TR",
       "period": {
-        "entityId": "weekly:20261002:20261008:tr",
+        "entityId": "weekly:20261009:20261015:tr",
         "periodType": "weekly",
-        "startDate": "20261002",
-        "endDate": "20261008",
+        "startDate": "20261009",
+        "endDate": "20261015",
         "region": "tr"
       },
-      "totalEntries": 97,
+      "totalEntries": 98,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 94,
+          "position": 99,
           "name": "SaWaDiKa",
           "artists": [
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 693383,
+          "viewCount": 642827,
+          "releaseDate": {
+            "year": 2026,
+            "month": 8,
+            "day": 27
+          }
+        }
+      ]
+    },
+    "sa": {
+      "region": "Saudi Arabia",
+      "gl": "SA",
+      "period": {
+        "entityId": "weekly:20261009:20261015:sa",
+        "periodType": "weekly",
+        "startDate": "20261009",
+        "endDate": "20261015",
+        "region": "sa"
+      },
+      "totalEntries": 93,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 74,
+          "name": "SaWaDiKa",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 128845,
           "releaseDate": {
             "year": 2026,
             "month": 8,
@@ -576,18 +1125,18 @@
       "region": "South Africa",
       "gl": "ZA",
       "period": {
-        "entityId": "weekly:20261002:20261008:za",
+        "entityId": "weekly:20261009:20261015:za",
         "periodType": "weekly",
-        "startDate": "20261002",
-        "endDate": "20261008",
+        "startDate": "20261009",
+        "endDate": "20261015",
         "region": "za"
       },
-      "totalEntries": 98,
+      "totalEntries": 99,
       "hits": []
     }
   },
   "summary": {
-    "totalHits": 26,
-    "regionsChecked": 15
+    "totalHits": 47,
+    "regionsChecked": 33
   }
 }
