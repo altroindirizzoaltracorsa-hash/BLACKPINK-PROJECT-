@@ -2680,6 +2680,14 @@
   .vv-awardsw { display: flex; gap: 0.4rem; margin-bottom: 1rem; }
   .vv-awardsw-btn { flex: 1 1 auto; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--border); padding: 0.6rem 0.75rem; cursor: pointer; }
   .vv-awardsw-btn:hover { color: var(--pink); }
+  /* Blue, like the other fandom's side everywhere else on the site. */
+  .vv-collab-line { display: block; margin: 0.55rem 0 0; padding: 0.6rem 0.75rem;
+    border: 1px solid rgba(111,211,255,0.3); background: rgba(111,211,255,0.05);
+    border-radius: 10px; font-size: 0.68rem; line-height: 1.6; color: var(--muted);
+    text-decoration: none; transition: border-color 0.15s, background 0.15s; }
+  .vv-collab-line:hover { border-color: rgba(111,211,255,0.65); background: rgba(111,211,255,0.09); }
+  .vv-collab-line b { color: #6fd3ff; font-weight: 500; }
+  .vv-collab-line span { color: #9fe3ff; white-space: nowrap; }
   .vv-awardsw-btn.active { color: var(--pink); border-color: var(--pink); background: rgba(255,0,102,0.1); font-weight: 700; }
   /* A closed award still reads as a tab you can open — it is an archive, not a
      disabled control — so only the "final" marker is dimmed. */
@@ -3367,6 +3375,10 @@
       </div>
     </li>
     <li><a href="/voting" onclick="showPage('vote'); closeMobileNav(); return false;" id="nav-vote">Vote</a></li>
+    <!-- A standalone page, so a plain href like /achievements and /projects
+         rather than an SPA showPage(). Next to Vote because that is what it
+         is: the half of the voting that happens with another fandom. -->
+    <li><a href="/collabs" id="nav-collabs">Collabs</a></li>
     <li><a href="/feedback" onclick="showPage('feedback'); closeMobileNav(); return false;" id="nav-feedback">Feedback</a></li>
     <li><a href="#follow" onclick="showPage('home'); closeMobileNav(); setTimeout(()=>document.getElementById('follow').scrollIntoView({behavior:'smooth'}),100); return false;">Follow</a></li>
     <li><a href="/10years.html">10th Anniv.</a></li>
@@ -10141,7 +10153,14 @@ function vmaAwardSwitchHtml() {
         const done = a === 'vma' ? vmaClosed() : vmaAwardClosed(a);
         return `<button class="vv-awardsw-btn ${a === _vvAward ? 'active' : ''}${done ? ' done' : ''}" role="tab" aria-selected="${a === _vvAward}" onclick="vmaSetAward('${a}')">${_vvAwardMeta[a].label}${done ? ' <i>final</i>' : ''}</button>`;
       }).join('')
-    + `</div>`;
+    + `</div>`
+    // The collab, on the tab it belongs to and nowhere else — it is a Kids'
+    // Choice trade, and a line about BINI on the MAMA board would be noise.
+    // Put here rather than at the four call sites so it cannot appear on three
+    // of them and be forgotten on the fourth.
+    + (_vvAward === 'kca' && !vmaAwardClosed('kca')
+        ? `<a class="vv-collab-line" href="/collabs">🤝 <b>BLINKs &times; BLOOMs</b> — we fill in BINI&rsquo;s category, they fill in ours. Neither side gives anything up. <span>The collab board &rarr;</span></a>`
+        : '');
 }
 function vmaSetAward(a) {
   if (!_vvAwardMeta[a]) return;

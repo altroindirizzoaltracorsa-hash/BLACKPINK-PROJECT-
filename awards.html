@@ -146,6 +146,20 @@
     transition: background 0.15s, color 0.15s;
   }
   .ballot-more:hover { background: var(--accent); color: #0a0a0a; }
+  /* Reads as part of the Kids' Choice card rather than an advert beside it:
+     the trade only exists on this ballot. Blue for the other fandom, the same
+     colour /collabs draws their side in. */
+  .ballot-collab { display: block; margin-top: 0.9rem; text-decoration: none;
+    border: 1px solid rgba(111,211,255,0.3); border-radius: 10px;
+    background: rgba(111,211,255,0.05); padding: 0.7rem 0.85rem;
+    transition: border-color 0.15s, background 0.15s; }
+  .ballot-collab:hover { border-color: rgba(111,211,255,0.65); background: rgba(111,211,255,0.09); }
+  .ballot-collab b { display: block; font-family: var(--display); font-size: 1.15rem;
+    letter-spacing: 0.04em; color: #6fd3ff; font-weight: 400; }
+  .ballot-collab b i { font-style: normal; color: var(--muted); margin: 0 0.2rem; }
+  .ballot-collab span { display: block; margin-top: 0.2rem; font-size: 0.7rem;
+    line-height: 1.6; color: var(--muted); }
+
   .frame-wrap { position: relative; }
   /* Starts short and grows to whatever the card reports, so the page does not
      reserve a tall gap before the card has loaded. */
@@ -231,6 +245,15 @@
                   scrolling="no" loading="eager" src="/votecard-embed?embed=votecard&amp;card=kca"></iframe>
         </div>
         <p class="frame-fallback">Couldn't load the card — <a href="/voting?award=kca">open the Kids' Choice ballot on /voting</a>.</p>
+        <!-- The collab, on the ballot it belongs to. The page existed only at a
+             URL somebody had to be sent, which is useless for the half of its
+             audience that is not in this fandom: a BLOOM arriving at the front
+             door had no path to it at all. -->
+        <a class="ballot-collab" href="/collabs">
+          <b>BLINKs <i>&times;</i> BLOOMs</b>
+          <span>We fill in BINI's category, they fill in ours — neither side gives anything
+            up, and the ballot needs every category filled anyway. See the board &rarr;</span>
+        </a>
       </div>
     </div>
 
