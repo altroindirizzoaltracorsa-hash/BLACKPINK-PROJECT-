@@ -7897,8 +7897,16 @@ async function saveDisplayName() {
   }
   if (status) status.textContent = '';
 
-  // Update Supabase auth metadata
-  const { error } = await sb.auth.updateUser({ data: { display_name } });
+  // Update Supabase auth metadata.
+  //
+  // display_name_auto: FALSE is the important half. A name the site issued is
+  // flagged auto so a later fandom answer may replace it, and updateUser MERGES
+  // metadata — so without clearing the flag here, somebody auto-named "bloom7"
+  // who then types their own name stays marked as auto, and the next time their
+  // fandom is set (in the counter, or on another device) reissue_fan_name
+  // renames the name they chose. Which is the one thing that must never happen.
+  const { error } = await sb.auth.updateUser({
+    data: { display_name, display_name_auto: false } });
   if (error) {
     if (status) { status.textContent = error.message; status.style.color = '#ff4444'; }
     return;

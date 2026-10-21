@@ -52,6 +52,18 @@
       <button id="magic" class="ghost">Email me a login link</button>
     </div>
 
+    <!-- Their one chance to pick a name. A partner fandom's whole visit to this
+         site can be this page: the counter sends them here and nowhere else, so
+         "change it in Settings on blinksunited.com" is the same as "you cannot".
+         The anonymous bloom7 the account was given is prefilled, so the field
+         says what they are currently called rather than looking empty. -->
+    <div id="namebox" class="hidden">
+      <label>Your name on the <a href="/collabs">collab board</a>
+        <span style="opacity:0.6">(optional — leave it as it is and stay anonymous)</span></label>
+      <input id="dname" type="text" maxlength="40" autocomplete="off" />
+      <button id="savename" class="ghost">Save this name</button>
+    </div>
+
     <div id="status" class="msg"></div>
     <div class="foot">The anon key here is public by design; your account stays protected by Supabase RLS.
       Same blinksunited account you use on the site — sign in with whichever method you signed up with.</div>
@@ -167,6 +179,8 @@
         deliver(); // send now; if the extension announces later, we resend on "ready"
         $('login').classList.add('hidden');
         $('lead').textContent = `Signed in as ${d.profile}.`;
+        const { data: { session: s2 } } = await sb.auth.getSession();
+        showNameBox((s2 && s2.user.user_metadata && s2.user.user_metadata.display_name) || '');
         status('Handing the token to the extension…');
         setTimeout(() => {
           if (!extensionSeen) {
@@ -199,6 +213,47 @@
       if (!email) { status('Enter your email first.', 'err'); return; }
       const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href } });
       status(error ? ('Could not send link: ' + error.message) : 'Check your email for a login link, then reopen this page.', error ? 'err' : 'ok');
+    });
+
+    // Every numbered auto name is reserved, so a hand-picked one cannot collide
+    // with an auto-named fan's leaderboard key and overwrite their row. Built
+    // from the same list the chips above come from.
+    const RESERVED = new RegExp('^(' + FANDOMS.map((f) => f.key).join('|') + ')\\d+$', 'i');
+
+    function showNameBox(current) {
+      $('dname').value = current || '';
+      $('namebox').classList.remove('hidden');
+    }
+
+    $('savename').addEventListener('click', async () => {
+      const name = $('dname').value.trim();
+      if (!name) { status('Enter a name, or leave this alone to stay anonymous.', 'err'); return; }
+      if (RESERVED.test(name)) {
+        status('That name is reserved — it is one the site hands out. Please choose another.', 'err');
+        return;
+      }
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { status('Sign in first.', 'err'); return; }
+      if (name === (session.user.user_metadata || {}).display_name) {
+        status('That is already your name.', 'ok'); return;
+      }
+      // display_name_auto: FALSE is the point. The name this account was given
+      // is flagged auto so a later fandom answer may replace it; a name they
+      // chose themselves must never be replaced, and metadata MERGES, so the
+      // flag has to be cleared here rather than just left out.
+      const { error } = await sb.auth.updateUser({
+        data: { display_name: name, display_name_auto: false } });
+      if (error) { status('Could not save that: ' + error.message, 'err'); return; }
+      // The board keys on the name, so it is pushed straight across rather than
+      // waiting for the hourly reconcile.
+      try {
+        await fetch('/api/leaderboard?action=set-display-name', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayName: name, accessToken: session.access_token }),
+        });
+      } catch (e) {}
+      status('✅ Saved — you are <b>' + name.replace(/[<&>]/g, '') + '</b> on the collab board.', 'ok');
     });
 
     // Re-run when auth state resolves (e.g. returning from OAuth / a magic link).

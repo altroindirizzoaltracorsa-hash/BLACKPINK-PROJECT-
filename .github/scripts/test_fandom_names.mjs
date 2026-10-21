@@ -479,6 +479,77 @@ async function openLinkPage(opts = {}) {
   await ctx.close();
 }
 
+console.log('\n--- choosing your own name clears the auto flag');
+// The flag is what tells a name the site ISSUED from a name somebody CHOSE,
+// and reissue_fan_name renames only the first kind. updateUser MERGES
+// metadata, so writing display_name without display_name_auto: false leaves a
+// chosen name still marked auto — and the next fandom answer replaces it.
+// Reproduced against a real Postgres before this was written: "RoséStan" came
+// back as bloom208.
+{
+  const user = {
+    id: 'u9', created_at: '2026-01-04T00:00:00Z', email: 'a@b.c',
+    user_metadata: { display_name: 'bloom7', display_name_auto: true, fandom: 'bloom' },
+  };
+  const { p, ctx, errs } = await openPage({ user, rpc: {} });
+  await openSettings(p);
+  const wrote = await p.evaluate(async () => {
+    document.getElementById('linked-displayname-input-settings').value = 'RoséStan';
+    await saveDisplayName();
+    return (window.__sbLog.filter((e) => e.kind === 'updateUser').pop() || {}).data;
+  });
+  check(!!wrote && wrote.display_name === 'RoséStan', 'the name they typed is saved',
+        wrote ? wrote.display_name : 'nothing saved');
+  check(!!wrote && wrote.display_name_auto === false,
+        'and it is no longer flagged as one the site issued',
+        wrote ? String(wrote.display_name_auto) : '-');
+  check(errs.length === 0, `no page errors (${errs.join(' | ') || 'none'})`);
+  await ctx.close();
+}
+
+console.log('\n--- /vote-link lets them choose a name at all');
+// A partner fandom's entire visit to this site can be this page. Without a
+// field here, "change it in Settings on blinksunited.com" is the same thing as
+// "you cannot choose".
+{
+  const user = {
+    id: 'u10', created_at: new Date().toISOString(), email: 'a@b.c', user_metadata: {},
+  };
+  const { p, ctx, errs } = await openLinkPage({ user, fandom: 'bloom', rpc: { assign_fan_name: 'bloom7' } });
+  const box = await p.evaluate(() => {
+    const el = document.getElementById('namebox');
+    return { shown: el && !el.classList.contains('hidden'),
+             prefilled: (document.getElementById('dname') || {}).value };
+  });
+  check(box.shown, 'the field is there once they are linked');
+  check(box.prefilled === 'bloom7', 'prefilled with what they are currently called', String(box.prefilled));
+
+  // A reserved name is refused — two people on one "bloom12" collide on one
+  // leaderboard key and one row overwrites the other.
+  const refused = await p.evaluate(async () => {
+    document.getElementById('dname').value = 'bloom12';
+    document.getElementById('savename').click();
+    await new Promise((r) => setTimeout(r, 120));
+    return { said: document.getElementById('status').textContent,
+             saved: window.__sbLog.some((e) => e.kind === 'updateUser' && e.data && e.data.display_name === 'bloom12') };
+  });
+  check(/reserved/i.test(refused.said) && !refused.saved, 'a name the site hands out is refused',
+        refused.said.slice(0, 80));
+
+  const saved = await p.evaluate(async () => {
+    document.getElementById('dname').value = 'Bloom of the Day';
+    document.getElementById('savename').click();
+    await new Promise((r) => setTimeout(r, 200));
+    return (window.__sbLog.filter((e) => e.kind === 'updateUser').pop() || {}).data;
+  });
+  check(!!saved && saved.display_name === 'Bloom of the Day', 'and their own name is saved',
+        saved ? saved.display_name : 'nothing saved');
+  check(!!saved && saved.display_name_auto === false,
+        'with the auto flag cleared, so no fandom answer can take it back');
+  check(errs.length === 0, `no page errors (${errs.join(' | ') || 'none'})`);
+  await ctx.close();
+}
+
 await b.close();
 console.log(`\nFAILURES: ${fails.length}`);
 fails.forEach((f) => console.log('  - ' + f));
