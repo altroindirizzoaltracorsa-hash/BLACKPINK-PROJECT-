@@ -1,0 +1,52 @@
+name: Test SQL functions
+
+# The files in supabase/ are applied BY HAND in the Supabase SQL editor, which
+# means nothing in this repo has ever told us whether they do what their comments
+# say. A function that names people is the wrong place to find out in production:
+# the two failures that matter are both silent — a name minted twice (two people
+# collide on one leaderboard key and one row overwrites the other), and a reissue
+# replacing a name somebody chose for themselves.
+#
+# So the real files are applied to a throwaway Postgres and exercised. Enough of
+# Supabase is stubbed by the test itself (the auth schema, auth.users, auth.uid()
+# and the two roles the grants name) to run them unmodified.
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - 'supabase/**.sql'
+      - '.github/workflows/test-sql.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        # Supabase runs 15/16; the features used here (gen_random_uuid, jsonb
+        # operators, on conflict … returning) are old enough not to care.
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # \i in the test file resolves against the working directory, so this runs
+      # from the repo root rather than from supabase/tests.
+      - name: Auto display names
+        env:
+          PGHOST: localhost
+          PGPORT: '5432'
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: postgres
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/fan_display_names_test.sql

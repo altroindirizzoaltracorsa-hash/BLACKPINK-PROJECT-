@@ -151,7 +151,7 @@ for (const [src, label] of [[EXT, 'the extension'], [APP, 'the app']]) {
         reports ? '' : 'a dropped pick would be silent again');
 }
 
-console.log('--- the two sides a person can say they are');
+console.log('--- the sides a person can say they are');
 // The key is what gets stored and counted. A key only the counter knows counts
 // nobody — the board would simply never see that side — and a key only the
 // page knows draws a column that can never fill. Same class of silent drift as
@@ -188,6 +188,51 @@ for (const f of extFandoms) {
   const inPanel = new RegExp(`key:\\s*'${f.key}'`).test(PANEL);
   check(inPanel, `and the panel offers ${f.key} to click`, inPanel ? '' : 'not in KCA_FANDOMS');
 }
+
+// The site has its own copy, and this one does something the others don't: it
+// decides the anonymous display name a new account is given (bloom1 rather than
+// blink41), and it builds the reserved-name pattern from the same list. A side
+// missing here is named "blink" for ever — on the very board that exists to show
+// each fandom turning up.
+const SITE_FANDOMS = literal('index.html', 'const FANDOMS = [');
+for (const f of extFandoms) {
+  check(SITE_FANDOMS.some((x) => x.key === f.key), `and the site can name a ${f.key}`,
+        SITE_FANDOMS.map((x) => x.key).join(', '));
+}
+check(SITE_FANDOMS.length === extFandoms.length,
+      'with no side the site knows and the collab does not',
+      `${SITE_FANDOMS.length} vs ${extFandoms.length}`);
+// And /vote-link has its own copy, because that is the page the COUNTER sends
+// people to — a partner fandom's sign-up happens there, not on /badges. A side
+// missing from this one is named "blink" at the exact moment it is created.
+const LINK_FANDOMS = literal('vote-link.html', 'const FANDOMS = [');
+for (const f of extFandoms) {
+  check(LINK_FANDOMS.some((x) => x.key === f.key), `and /vote-link can name a ${f.key}`,
+        LINK_FANDOMS.map((x) => x.key).join(', '));
+}
+check(LINK_FANDOMS.length === SITE_FANDOMS.length,
+      'the two sign-up pages offer the same sides',
+      `${LINK_FANDOMS.length} vs ${SITE_FANDOMS.length}`);
+// Every one of them has to be a legal start for a display name, or Postgres
+// falls back to "blink" and names a BLOOM a blink. Same shape as the prefix
+// check in fan_display_names.sql and NAME_PREFIX_RE in api/collabs.js.
+for (const f of SITE_FANDOMS) {
+  check(/^[a-z][a-z0-9]{1,20}$/.test(f.key), `${f.key} is a legal auto-name prefix`);
+}
+// And the reserved pattern must actually reserve them: a hand-picked "bloom12"
+// collides with an auto-named fan's leaderboard key and overwrites their row.
+const siteSrc = readFileSync(root + 'index.html', 'utf8');
+const built = /const AUTO_NAME_RE = new RegExp\('\^\(' \+ FANDOMS\.map\(\(f\) => f\.key\)\.join\('\|'\) \+ '\)\\\\d\+\$', 'i'\)/
+  .test(siteSrc);
+check(built, 'the reserved-name pattern is built from that list, not written out',
+      built ? '' : 'a new side would be choosable by hand');
+const reserved = new RegExp('^(' + SITE_FANDOMS.map((f) => f.key).join('|') + ')\\d+$', 'i');
+for (const f of SITE_FANDOMS) {
+  check(reserved.test(f.key + '12') && reserved.test(f.key.toUpperCase() + '12'),
+        `and ${f.key}12 cannot be taken by hand, in any case`);
+}
+check(!reserved.test('ROSÉ4ever') && !reserved.test('bloom') && !reserved.test('12'),
+      'while an ordinary name is still allowed');
 
 console.log('--- the window the counter will post in');
 const until = COLLAB.until;

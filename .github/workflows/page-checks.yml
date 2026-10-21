@@ -108,6 +108,13 @@ jobs:
         if: always()
         run: node .github/scripts/test_collab_slugs.mjs
 
+      # The anonymous name a new account is given follows the fandom it says it
+      # is. The rule that matters is the dangerous one: rename a name the site
+      # issued, never a name somebody chose for themselves.
+      - name: Auto display names follow the fandom
+        if: always()
+        run: node .github/scripts/test_fandom_names.mjs
+
       # A release touches two manifests, two zips and two pages. The quiet
       # failure is a page still advertising the old version, which on a
       # blink's board looks like "my votes aren't counting".
