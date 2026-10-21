@@ -414,13 +414,15 @@ const FIX = {
       board: [{ name: 'rllyanav', votes: 8, byCat: { 'favorite-music-group-or-duo': 2,
                  'favorite-global-music-star': 2, 'favorite-music-collaboration': 2,
                  'favorite-female-artist': 2 } },
-              { name: 'a blink', votes: 4, byCat: { 'favorite-music-group-or-duo': 2 } }] },
+              { name: null, fandom: 'bloom', votes: 4, byCat: { 'favorite-music-group-or-duo': 2 } },
+              { name: null, votes: 2, byCat: { 'favorite-music-group-or-duo': 1 } }] },
     week: { forUs: { picks: 60 }, forThem: { picks: 20 }, byCat: {}, board: [] },
     all: { forUs: { picks: 300 }, forThem: { picks: 100 },
       byCat: { 'favorite-music-group-or-duo': 100, 'favorite-music-collaboration': 100,
                'favorite-female-artist': 60, 'favorite-global-music-star': 100 },
       board: [{ name: 'rllyanav', votes: 160, byCat: { 'favorite-music-group-or-duo': 40 } },
-              { name: 'a blink', votes: 120, byCat: { 'favorite-global-music-star': 40 } }] },
+              { name: null, fandom: 'bloom', votes: 120, byCat: { 'favorite-global-music-star': 40 } },
+              { name: null, votes: 40, byCat: { 'favorite-global-music-star': 10 } }] },
   },
   days: [
     { day: '2026-10-16', votes: 40, byCat: { 'favorite-music-group-or-duo': 10, 'favorite-global-music-star': 10 } },
@@ -485,14 +487,36 @@ const board = await prev.evaluate(() => [...document.querySelectorAll('.board tb
   cats: [...tr.querySelectorAll('.board-cat')].map((c) => c.textContent.replace(/\s+/g, ' ').trim()),
   votes: Number(tr.children[2].textContent.replace(/,/g, '')),
 })));
-board.length === 2 ? ok('every account is listed', `${board.length}`)
-                   : bad('every account is listed', `${board.length}`);
+// Counted from the fixture, not typed: a board that grows should widen this
+// check rather than turn it red.
+const wantRows = FIX.periods.today.board.length;
+board.length === wantRows ? ok('every account is listed', `${board.length}`)
+                          : bad('every account is listed', `${board.length} of ${wantRows}`);
 (board[0].votes >= board[1].votes)
   ? ok('ranked by votes cast', `${board[0].votes} then ${board[1].votes}`)
   : bad('ranked by votes cast', board.map((r) => r.votes).join(' then '));
 board[0].cats.length === 4
   ? ok('and each row shows the votes they cast, by category', board[0].cats.join(' '))
   : bad('and each row shows the votes they cast, by category', `${board[0].cats.length} chips`);
+// Somebody with no display name is called by their OWN side. This read "a
+// blink" for everybody, including the BLOOMs the board exists to show — and
+// production had exactly one such account.
+const anonNames = board.slice(1).map((r) => r.name);
+/bloom/i.test(anonNames[0] || '')
+  ? ok('a nameless BLOOM is called a bloom', anonNames[0])
+  : bad('a nameless BLOOM is called a bloom', anonNames[0] || '(no row)');
+!/blink/i.test(anonNames.join(' '))
+  ? ok('and nobody nameless is called a blink by default', anonNames.join(' / '))
+  : bad('and nobody nameless is called a blink by default', anonNames.join(' / '));
+/someone/i.test(anonNames[1] || '')
+  ? ok('while somebody who has not said reads as "someone"', anonNames[1])
+  : bad('while somebody who has not said reads as "someone"', anonNames[1] || '(no row)');
+// The column header is the same mislabel one level up.
+const boardHeadCell = (await prev.locator('.board thead th').nth(1).textContent()).trim();
+!/blink/i.test(boardHeadCell)
+  ? ok('and the column is not headed "Blink" either', boardHeadCell)
+  : bad('and the column is not headed "Blink" either', boardHeadCell);
+
 const boardNote = (await prev.locator('.sub-note').first().textContent()).replace(/\s+/g, ' ');
 // The eligibility rule, stated on the board itself: an account and nothing
 // else. It is the one thing that differs from /voting, and the people it
