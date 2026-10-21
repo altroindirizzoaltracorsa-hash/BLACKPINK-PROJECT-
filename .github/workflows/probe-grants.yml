@@ -77,10 +77,35 @@ jobs:
           # A table granted to anon with RLS off is open to the internet. This
           # should always be none; it is the one line here that is a finding
           # rather than a fact.
-          q "select '::notice title=anon-readable with RLS off::' ||
-                    coalesce(string_agg(distinct g.table_name, ', ' order by g.table_name),
+          # WITH the privileges, because "readable" and "writable by anyone
+          # holding a key that ships in the page" are different findings.
+          q "with bad as (
+               select g.table_name,
+                      string_agg(distinct lower(g.privilege_type), '/' order by lower(g.privilege_type)) as privs
+               from information_schema.role_table_grants g
+               join pg_class c on c.relname = g.table_name
+               join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+               where g.table_schema = 'public' and g.grantee = 'anon' and c.relrowsecurity = false
+               group by g.table_name
+             )
+             select '::notice title=anon with RLS off::' ||
+                    coalesce(string_agg(table_name || ' (' || privs || ')', ', ' order by table_name),
                              'none — every anon-granted table has RLS on')
-             from information_schema.role_table_grants g
-             join pg_class c on c.relname = g.table_name
-             join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
-             where g.table_schema = 'public' and g.grantee = 'anon' and c.relrowsecurity = false"
+             from bad"
+
+          # Write privileges for anon anywhere, RLS on or off. With RLS on and a
+          # policy, a write is still gated; with RLS off it is not gated at all.
+          q "with w as (
+               select g.table_name, c.relrowsecurity as rls,
+                      string_agg(distinct lower(g.privilege_type), '/' order by lower(g.privilege_type)) as privs
+               from information_schema.role_table_grants g
+               join pg_class c on c.relname = g.table_name
+               join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+               where g.table_schema = 'public' and g.grantee = 'anon'
+                 and g.privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE')
+               group by g.table_name, c.relrowsecurity
+             )
+             select '::notice title=anon can write, RLS off::' ||
+                    coalesce(string_agg(table_name || ' (' || privs || ')', ', ' order by table_name),
+                             'none')
+             from w where rls = false"
