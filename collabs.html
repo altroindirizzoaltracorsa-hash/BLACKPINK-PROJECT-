@@ -1415,7 +1415,7 @@ function drawCollabCard(canvas, c, opts) {
     if (byCat) {
       var rows = Object.keys(byCat)
         .map(function (k) { return { slug: k, n: Math.max(0, Number(byCat[k]) || 0) }; })
-        .filter(function (r) { return r.n > 0; })
+        .filter(function (r) { return r.n > 0 && isCollabCat(c, r.slug); })
         .sort(function (a, b) { return b.n - a.n; });
       var colourOf = {};
       c.weGive.forEach(function (pk) { colourOf[pk.slug] = '#6fd3ff'; });
@@ -1686,6 +1686,15 @@ function periodOf(c, t, k) {
   return p;
 }
 
+// Whether this collab is ABOUT a category at all. Stored data outlives the
+// agreement that produced it: this trade had a second partner for two days and
+// the votes cast in that partner's category are still in every row. The
+// headline figures already ignore a category in neither list (see periodOf) —
+// the row lists did not, and rendered it with its raw ballot slug as the label,
+// on the page and on the share card. A category the collab no longer lists is
+// history, not a row.
+function isCollabCat(c, slug) { return !!pickBySlug(c, slug); }
+
 function pickBySlug(c, slug) {
   return c.theyGive.concat(c.weGive).filter(function (p) { return p.slug === slug; })[0] || null;
 }
@@ -1711,7 +1720,7 @@ function anonOf(c, key) {
 function splitHtml(c, byCat) {
   var rows = Object.keys(byCat || {})
     .map(function (k) { return { cat: k, n: Math.max(0, Number(byCat[k]) || 0) }; })
-    .filter(function (r) { return r.n > 0; })
+    .filter(function (r) { return r.n > 0 && isCollabCat(c, r.cat); })
     .sort(function (a, b) { return b.n - a.n; });
   if (!rows.length) return '';
   var top = rows[0].n || 1;
@@ -1936,7 +1945,7 @@ function boardHtml(c) {
     + rows.map(function (r, i) {
         var cats = Object.keys(r.byCat || {})
           .map(function (k) { return { cat: k, n: Math.max(0, Number(r.byCat[k]) || 0) }; })
-          .filter(function (x) { return x.n > 0; })
+          .filter(function (x) { return x.n > 0 && isCollabCat(c, x.cat); })
           .sort(function (a, b) { return b.n - a.n; });
         return '<tr><td>' + (i + 1) + '</td><td>' + esc(r.name || anonOf(c, r.fandom))
           + (cats.length ? '<div class="board-cats">' + cats.map(function (x) {
