@@ -612,6 +612,150 @@ console.log('\n--- /vote-link lets them choose a name at all');
   await ctx.close();
 }
 
+console.log('\n--- the OTHER link page, the one the Android app opens');
+// There are two. The browser extension opens /vote-link.html; the Android app
+// opens /extension-link.html?app=android, and everything built for a partner
+// fandom went into the first one only — so a BLOOM on a phone, which is the
+// option /collabs recommends to people who cannot run extensions, met a page
+// titled "Link your scrobbler" with no fandom question and no name field.
+//
+// Checked as a PAIR from here on, because "fixed one of the two" is exactly
+// what happened.
+{
+  const ctx = await b.newContext();
+  const p = await ctx.newPage();
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(String(e)));
+  await p.addInitScript(() => {
+    window.__sbLog = [];
+    const user = { id: 'app-bloom', created_at: new Date().toISOString(), email: 'a@b.c', user_metadata: {} };
+    window.__user = user;
+    window.supabase = { createClient: () => ({
+      auth: {
+        getSession: async () => ({ data: { session: { user, access_token: 't' } } }),
+        onAuthStateChange() { return { data: { subscription: { unsubscribe() {} } } }; },
+        async updateUser({ data }) {
+          window.__sbLog.push({ kind: 'updateUser', data });
+          Object.assign(user.user_metadata, data);
+          return { error: null };
+        },
+        signInWithOAuth: async () => ({}), signInWithOtp: async () => ({}),
+        signInWithPassword: async () => ({}),
+      },
+      async rpc(fn, args) {
+        window.__sbLog.push({ kind: 'rpc', fn, args });
+        if (fn === 'assign_fan_name') return { data: (args.p_fandom || 'blink') + '1', error: null };
+        return { data: null, error: null };
+      },
+    }) };
+    try { localStorage.setItem('buFandom', 'bloom'); } catch {}
+  });
+  await p.route('**/*', async (route) => {
+    const u = new URL(route.request().url());
+    if (u.pathname === '/extension-link')
+      return route.fulfill({ path: root + 'extension-link.html', contentType: 'text/html' });
+    if (u.pathname === '/api/extension-link')
+      return route.fulfill({ contentType: 'application/json',
+        body: JSON.stringify({ ok: true, token: 'tok', profile: 'bloom1' }) });
+    if (u.pathname.startsWith('/api/')) return route.fulfill({ contentType: 'application/json', body: '{}' });
+    return route.fulfill({ status: 204, body: '' });
+  });
+  await p.goto('https://www.blinksunited.com/extension-link?app=android', { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(800);
+
+  const log = await p.evaluate(() => window.__sbLog);
+  const call = log.find((e) => e.fn === 'assign_fan_name');
+  check(!!call && call.args.p_fandom === 'bloom', 'the app path names them for their fandom too',
+        call ? JSON.stringify(call.args) : 'never asked');
+  check(log.some((e) => e.kind === 'updateUser' && e.data.display_name === 'bloom1'),
+        'and the name is written');
+  const nameBox = await p.evaluate(() => {
+    const el = document.getElementById('namebox');
+    return { shown: el && !el.classList.contains('hidden'),
+             prefilled: (document.getElementById('dname') || {}).value };
+  });
+  check(nameBox.shown && nameBox.prefilled === 'bloom1',
+        'and they can choose their own, prefilled with the number they got',
+        String(nameBox.prefilled));
+  const txt = await p.evaluate(() => document.body.innerText);
+  const pitch = /Link your scrobbler|Multi-Account Scrobbler|scrobbles to your profile/i.exec(txt);
+  check(!pitch, 'the counter path never pitches the scrobbler at them', pitch ? pitch[0] : '');
+  check(errs.length === 0, `no page errors (${errs.join(' | ') || 'none'})`);
+  await ctx.close();
+}
+{
+  // The app path SIGNED OUT, which is the first screen a newcomer sees and the
+  // only place the title and lead are set. Checking only the post-link state
+  // missed it entirely: putting "Link your scrobbler" back passed happily.
+  const ctx = await b.newContext();
+  const p = await ctx.newPage();
+  await p.addInitScript(() => {
+    window.supabase = { createClient: () => ({
+      auth: { getSession: async () => ({ data: { session: null } }),
+              onAuthStateChange() { return { data: { subscription: { unsubscribe() {} } } }; },
+              signInWithOAuth: async () => ({}), signInWithOtp: async () => ({}),
+              signInWithPassword: async () => ({}) },
+      rpc: async () => ({ data: null, error: null }),
+    }) };
+  });
+  await p.route('**/*', async (route) => {
+    const u = new URL(route.request().url());
+    if (u.pathname === '/extension-link')
+      return route.fulfill({ path: root + 'extension-link.html', contentType: 'text/html' });
+    return route.fulfill({ status: 204, body: '' });
+  });
+  await p.goto('https://www.blinksunited.com/extension-link?app=android', { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(500);
+  const txt = await p.evaluate(() => document.body.innerText);
+  const pitched = /Link your scrobbler|Multi-Account Scrobbler|scrobbles to your profile/i.exec(txt);
+  check(!pitched, 'signed out, the app path does not pitch the scrobbler at them',
+        pitched ? pitched[0] : '');
+  check(/no scrobbler, no streaming/i.test(txt), 'and says what the account actually costs');
+  const chips = await p.$$eval('#fandoms button', (els) => els.map((e) => e.getAttribute('data-f')));
+  check(chips.length >= 2, 'and asks which fandom they are, before the account exists', chips.join(', '));
+  await ctx.close();
+}
+{
+  // The scrobbler extension opens the SAME page without ?app=android, and that
+  // product is unchanged — its wording is correct for it, and this is what
+  // stops the fix above from being made at its expense.
+  const ctx = await b.newContext();
+  const p = await ctx.newPage();
+  await p.addInitScript(() => {
+    window.supabase = { createClient: () => ({
+      auth: { getSession: async () => ({ data: { session: null } }),
+              onAuthStateChange() { return { data: { subscription: { unsubscribe() {} } } }; },
+              signInWithOAuth: async () => ({}), signInWithOtp: async () => ({}),
+              signInWithPassword: async () => ({}) },
+      rpc: async () => ({ data: null, error: null }),
+    }) };
+  });
+  await p.route('**/*', async (route) => {
+    const u = new URL(route.request().url());
+    if (u.pathname === '/extension-link')
+      return route.fulfill({ path: root + 'extension-link.html', contentType: 'text/html' });
+    return route.fulfill({ status: 204, body: '' });
+  });
+  await p.goto('https://www.blinksunited.com/extension-link', { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(500);
+  const txt = await p.evaluate(() => document.body.innerText);
+  check(/scrobbler/i.test(txt), 'the scrobbler path still speaks to scrobbler people',
+        (txt.split('\n').filter(Boolean)[0] || '').slice(0, 50));
+  const chips = await p.evaluate(() =>
+    !document.getElementById('appintro').classList.contains('hidden'));
+  check(!chips, 'and is not asked which fandom it is, which is not its question');
+  await ctx.close();
+}
+
+// Both pages offer the same sides, since either can create an account.
+{
+  const read = (f) => readFileSync(root + f, 'utf8');
+  const keys = (f) => [...read(f).matchAll(/key:\s*'([a-z]+)'/g)].map((m) => m[1]);
+  const a = keys('vote-link.html'), c = keys('extension-link.html');
+  check(a.length > 0 && a.join() === c.join(),
+        'both link pages offer the same sides', `${a.join('/')} vs ${c.join('/')}`);
+}
+
 await b.close();
 console.log(`\nFAILURES: ${fails.length}`);
 fails.forEach((f) => console.log('  - ' + f));
