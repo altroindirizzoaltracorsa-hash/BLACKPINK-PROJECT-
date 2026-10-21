@@ -168,6 +168,12 @@ begin
 end $$;
 
 -- ── backup, before anything is touched ───────────────────────────────────────
+-- no grants on artist_daily_stats_backup_sep23repair: a safety copy for the
+-- length of this repair, read by nothing but this script and by hand over a
+-- direct connection. The site must not be able to see it, and after
+-- 2026-10-30 Supabase no longer grants it Data API access on its own.
+-- no grants on track_daily_stats_backup_sep23repair: same — the other half of
+-- the same safety copy.
 create table if not exists artist_daily_stats_backup_sep23repair
   (like artist_daily_stats including all);
 create table if not exists track_daily_stats_backup_sep23repair

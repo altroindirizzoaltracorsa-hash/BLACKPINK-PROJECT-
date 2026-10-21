@@ -56,9 +56,15 @@ const browserUse = usedBy(readdirSync(root).filter((f) => f.endsWith('.html')), 
 check(serverUse.size > 5, 'the scan sees which tables the server queries', `${serverUse.size}`);
 check(browserUse.size > 0, 'and which the browser queries', [...browserUse.keys()].join(', '));
 
-// Only the migrations. supabase/checks and supabase/tests create nothing that
-// ships — the test file's own stub tables are not this project's schema.
-const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+// Both places migrations live. supabase/migrations/ was missed on the first
+// pass and is exactly where the next gap was: kca_user_votes, the Kids' Choice
+// vote board, is created there with only a function grant. supabase/checks and
+// supabase/tests create nothing that ships — the test file's own stub tables
+// are not this project's schema.
+const files = [
+  ...readdirSync(dir).filter((f) => f.endsWith('.sql')),
+  ...readdirSync(dir + 'migrations').filter((f) => f.endsWith('.sql')).map((f) => 'migrations/' + f),
+].sort();
 check(files.length > 0, 'there are migrations to check', `${files.length} files`);
 
 const ROLES = ['anon', 'authenticated', 'service_role'];
