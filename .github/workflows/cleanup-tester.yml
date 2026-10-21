@@ -51,10 +51,12 @@ jobs:
 
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 \
                -v dname="$DNAME" -v mode="$MODE" <<'SQL'
+          select set_config('bu.dname', :'dname', false);
+          select set_config('bu.mode',  :'mode',  false);
           do $$
           declare
-            dname text := :'dname';
-            mode  text := :'mode';
+            dname text := current_setting('bu.dname');
+            mode  text := current_setting('bu.mode');
             ids   uuid[];
             r     record;
             n_c   int := 0;
