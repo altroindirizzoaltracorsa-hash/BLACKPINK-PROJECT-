@@ -44,9 +44,15 @@ function usedBy(dirOrFiles, isDir) {
   for (const f of files) {
     let src;
     try { src = readFileSync(root + f, 'utf8'); } catch { continue; }
-    for (const m of src.matchAll(/\.from\(\s*['"`]([a-z_][a-z0-9_]*)['"`]/g)) {
-      if (!out.has(m[1])) out.set(m[1], new Set());
-      out.get(m[1]).add(f);
+    const pats = [
+      /\.from\(\s*['"`]([a-z_][a-z0-9_]*)['"`]/g,          // the supabase client
+      /sbFetch\(\s*[`'"]\/([a-z_][a-z0-9_]*)/g,            // PostgREST by URL
+    ];
+    for (const re of pats) {
+      for (const m of src.matchAll(re)) {
+        if (!out.has(m[1])) out.set(m[1], new Set());
+        out.get(m[1]).add(f);
+      }
     }
   }
   return out;

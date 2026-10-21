@@ -429,7 +429,6 @@
   const KCA_FANDOMS = [
     { key: 'blink', label: 'BLINK' },
     { key: 'bloom', label: 'BLOOM' },
-    { key: 'pauljjak', label: 'Pauljjak' },
   ];
 
   function renderKcaCollab(c, fandom) {

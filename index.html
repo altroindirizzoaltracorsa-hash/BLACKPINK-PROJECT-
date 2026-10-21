@@ -3498,16 +3498,16 @@
   <button type="button" class="modal-x" aria-label="Close" onclick="closeExtUpdate(false)">×</button>
   <div class="ltal-reminder-box">
     <div class="ltal-reminder-badge">Update</div>
-    <h2 class="ltal-reminder-title" id="ext-update-title">Vote Counter — v1.9.6</h2>
-    <p class="ltal-reminder-body">BLINKs are trading votes on the Kids&rsquo; Choice ballot with <strong>BLOOMs</strong> and <strong>Pauljjak</strong> — they fill in BLACKPINK, JENNIE and ROS&Eacute;, we fill in <strong>BINI</strong> and <strong>Ahn Hyo-seop</strong> — and the counter records the whole pass for the <a href="/collabs">collab board</a>. Your BLACKPINK totals are <strong>untouched</strong>: a pick for their side is kept out of them entirely, so it can never move your rank or a badge. This version also fixes a round that had to be retried showing up in your day&rsquo;s total but not in your <strong>by-category</strong> breakdown. Everything already logged stays exactly as it is.</p>
+    <h2 class="ltal-reminder-title" id="ext-update-title">Vote Counter — v1.9.7</h2>
+    <p class="ltal-reminder-body">BLINKs and <strong>BLOOMs</strong> are trading votes on the Kids&rsquo; Choice ballot — they fill in BLACKPINK, JENNIE and ROS&Eacute;, we fill in <strong>BINI</strong> — and the counter records the whole pass for the <a href="/collabs">collab board</a>. Your BLACKPINK totals are <strong>untouched</strong>: a pick for their side is kept out of them entirely, so it can never move your rank or a badge. The trade with <strong>Pauljjak</strong> for Ahn Hyo-seop is no longer running, so this version stops logging that category &mdash; if you have it, update, or your counter keeps sending a vote the board no longer counts. Everything already logged stays exactly as it is.</p>
     <ol class="ltal-reminder-steps">
-      <li>On the <strong>voting page</strong> or the <strong><a href="/collabs">collab page</a></strong>, download <strong>v1.9.6</strong> (Desktop or Android).</li>
+      <li>On the <strong>voting page</strong> or the <strong><a href="/collabs">collab page</a></strong>, download <strong>v1.9.7</strong> (Desktop or Android).</li>
       <li>In your browser&rsquo;s <strong>Extensions</strong>, remove the old Vote Counter, then <strong>Load unpacked</strong> the newly unzipped folder.</li>
       <li>Open the extension &rarr; <strong>Link my account</strong> if it isn&rsquo;t already showing &ldquo;&#9679; Linked&rdquo;.</li>
     </ol>
-    <p class="ext-update-foot">Already on v1.9.6? You&rsquo;re all set — just close this.</p>
+    <p class="ext-update-foot">Already on v1.9.7? You&rsquo;re all set — just close this.</p>
     <div class="ltal-reminder-actions">
-      <button class="btn-primary" onclick="closeExtUpdate(true)">Get v1.9.6</button>
+      <button class="btn-primary" onclick="closeExtUpdate(true)">Get v1.9.7</button>
       <button class="ltal-reminder-dismiss" onclick="closeExtUpdate(false)">Not now</button>
     </div>
   </div>
@@ -8124,7 +8124,7 @@ window.addEventListener('DOMContentLoaded', maybeShowLtalReminder);
 // key is versioned (EXT_LATEST_VERSION), so the next time we bump the extension
 // and update this constant, the popup automatically re-appears once per user —
 // no need to reset anyone's storage.
-const EXT_LATEST_VERSION = '1.9.6';
+const EXT_LATEST_VERSION = '1.9.7';
 function closeExtUpdate(goVoting) {
   const ov = document.getElementById('ext-update-overlay');
   if (ov) ov.classList.remove('active');
@@ -8475,7 +8475,6 @@ async function removeLinkedAccount(id) {
 const FANDOMS = [
   { key: 'blink',    label: 'BLINK' },
   { key: 'bloom',    label: 'BLOOM' },
-  { key: 'pauljjak', label: 'Pauljjak' },
 ];
 // Every numbered auto name, reserved against a manual pick: two people on one
 // "bloom12" would collide on one leaderboard key and one row would overwrite
@@ -10705,7 +10704,7 @@ function vmaVideoGuidesHtml() {
   </details>`;
 }
 
-// The Vote Counter browser extension (v1.9.6) download + setup block, shown on
+// The Vote Counter browser extension (v1.9.7) download + setup block, shown on
 // the /voting panel to signed-in blinks with a scrobbler linked. The extension
 // auto-counts the votes a fan casts on vote.mtv.com and logs the BLACKPINK/LISA
 // ones to their board — it never votes for them.
@@ -10713,12 +10712,12 @@ function vmaExtensionHtml(archive) {
   return `<div class="vv-ext" id="vv-ext">
     <div class="vv-ext-head">
       <span class="vv-ext-title">🧩 Vote Counter — browser extension</span>
-      <span class="vv-ext-ver">v1.9.6</span>
+      <span class="vv-ext-ver">v1.9.7</span>
     </div>
     <div class="vv-ext-sub">Auto-counts the <b>BLACKPINK &amp; members</b> votes you cast on <b>vote.mtv.com</b> (VMAs), <b>vote.breaktudoawards.com</b> (BreakTudo) and <b>kca.nick.tv</b> (Kids&rsquo; Choice) and logs them straight to this board — the three awards are tracked separately with one account. It only reads your own votes; it <b>never votes for you</b>.</div>
     <div class="vv-ext-dl">
-      <a class="vv-ext-btn" href="/vote-extension-v1.9.6-chrome.zip" download>⬇ Desktop <small>Chrome / Chromium</small></a>
-      <a class="vv-ext-btn ghost" href="/vote-extension-v1.9.6-android.zip" download>⬇ Android <small>Edge Canary / Quetta</small></a>
+      <a class="vv-ext-btn" href="/vote-extension-v1.9.7-chrome.zip" download>⬇ Desktop <small>Chrome / Chromium</small></a>
+      <a class="vv-ext-btn ghost" href="/vote-extension-v1.9.7-android.zip" download>⬇ Android <small>Edge Canary / Quetta</small></a>
       <button class="vv-ext-btn ghost" onclick="connectExtension()">🔗 Link my account</button>
     </div>
     <a class="vv-ext-guide" href="/vote-counter-guide.html" target="_blank" rel="noopener">📖 Illustrated step-by-step guide ↗</a>

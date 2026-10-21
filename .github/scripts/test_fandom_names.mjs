@@ -138,9 +138,15 @@ console.log('--- the question is asked before signing in');
   const { p, ctx, errs } = await openPage();
   const chips = await p.$$eval('#fandom-picker-login .fandom-chip',
     (els) => els.map((e) => ({ key: e.getAttribute('data-fandom'), on: e.classList.contains('on'), label: e.textContent })));
-  check(chips.length >= 3, 'the sign-in card offers every side', chips.map((c) => c.key).join(', '));
-  check(chips.some((c) => c.key === 'bloom') && chips.some((c) => c.key === 'pauljjak'),
-        'including the ones that are not us');
+  // Counted from the page's own list rather than typed: ">= 3" went red the day
+  // the trade's second partner was dropped, which is a test failing for a
+  // change that was correct. test_collab_slugs is what proves that list agrees
+  // with the collab, the counter and the app.
+  const sides = await p.evaluate(() => FANDOMS.map((f) => f.key));
+  check(chips.length === sides.length, 'the sign-in card offers every side',
+        chips.map((c) => c.key).join(', '));
+  check(sides.some((k) => k !== 'blink') && chips.some((c) => c.key !== 'blink'),
+        'including at least one that is not us', sides.join(', '));
   check(chips.every((c) => !c.on), 'and none is preselected — nobody is assumed to be anything');
   // It is NOT a sign-in requirement: a blink who ignores it must still be able
   // to sign in, and ignoring it means blink.
@@ -273,17 +279,24 @@ console.log('\n--- the account outranks this browser');
 {
   // Answered on their phone, or in the counter. Opening Settings here must show
   // the question answered, not blank — and must not re-ask or re-mint.
+  // Whichever side the collab's partner is, read off the page rather than named
+  // here — this was pinned to 'pauljjak' and broke when that partner left.
+  const probe = await openPage();
+  const other = (await probe.p.evaluate(() => FANDOMS.map((f) => f.key)))
+    .find((k) => k !== 'blink');
+  await probe.ctx.close();
+  check(!!other, 'the collab has a partner side to test with', String(other));
   const user = {
     id: 'u5', created_at: '2026-01-04T00:00:00Z', email: 'a@b.c',
-    user_metadata: { display_name: 'pauljjak3', display_name_auto: true, fandom: 'pauljjak' },
+    user_metadata: { display_name: other + '3', display_name_auto: true, fandom: other },
   };
-  const { p, ctx, errs } = await openPage({ user, rpc: { reissue_fan_name: 'pauljjak3' } });
+  const { p, ctx, errs } = await openPage({ user, rpc: { reissue_fan_name: other + '3' } });
   await openSettings(p);
   const on = await p.$$eval('#fandom-picker-settings .fandom-chip',
     (els) => els.filter((e) => e.classList.contains('on')).map((e) => e.getAttribute('data-fandom')));
-  check(on.length === 1 && on[0] === 'pauljjak', 'Settings shows the side the account holds', on.join(', '));
+  check(on.length === 1 && on[0] === other, 'Settings shows the side the account holds', on.join(', '));
   const stored = await p.evaluate(() => localStorage.getItem('buFandom'));
-  check(stored === 'pauljjak', 'and this browser is brought in line with it', String(stored));
+  check(stored === other, 'and this browser is brought in line with it', String(stored));
   const log = await sbLog(p);
   const renamed = log.filter((e) => e.kind === 'updateUser' && e.data && e.data.display_name);
   check(renamed.length === 0, 'a name that already matches is not re-minted',
@@ -302,7 +315,10 @@ console.log('\n--- every auto namespace is reserved against a manual pick');
   // Every side's namespace, read off the page's own list rather than typed here,
   // so a fandom joining a trade is covered by this check automatically.
   const keys = await p.evaluate(() => FANDOMS.map((f) => f.key));
-  check(keys.length >= 3, 'the site knows every side', keys.join(', '));
+  // Two at the very least — us and a partner — because a trade with nobody on
+  // the other side is not a trade. A count beyond that belongs to the collab,
+  // not to this test.
+  check(keys.length >= 2 && keys.includes('blink'), 'the site knows every side', keys.join(', '));
   for (const k of keys) {
     const refused = await p.evaluate(async (name) => {
       document.getElementById('linked-displayname-input-settings').value = name;
@@ -395,7 +411,12 @@ async function openLinkPage(opts = {}) {
   const { p, ctx, errs } = await openLinkPage();
   const chips = await p.$$eval('#fandoms button',
     (els) => els.map((e) => e.getAttribute('data-f')));
-  check(chips.length >= 3, 'the link page asks which fandom they are', chips.join(', '));
+  // Compared with the main page's list rather than a number, since the two are
+  // separate copies and drifting apart is the failure worth catching.
+  const siteSides = await p.evaluate(() => FANDOMS.map((f) => f.key));
+  check(chips.length === siteSides.length && chips.every((k) => siteSides.includes(k)),
+        'the link page asks which fandom they are, with the same sides',
+        chips.join(', ') + ' vs ' + siteSides.join(', '));
   await p.click('#fandoms [data-f="bloom"]');
   const kept = await p.evaluate(() => localStorage.getItem('buFandom'));
   check(kept === 'bloom', 'and the answer survives the OAuth redirect this page does', String(kept));

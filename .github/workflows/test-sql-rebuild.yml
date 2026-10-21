@@ -1,0 +1,121 @@
+name: Test SQL rebuild
+
+# Applies the nine rebuilt tables to an empty Postgres, three times, and fails
+# if any of them is not re-runnable.
+#
+# Two separate promises are checked here, and both were being made without
+# anything behind them:
+#
+#   1. apply-sql.yml says the files in supabase/ are idempotent and safe to
+#      re-apply. They were not: `create policy` and `alter table … add
+#      constraint` have no IF NOT EXISTS, so a second apply stopped with
+#      "already exists" — and in two files that happened BEFORE the grants, so
+#      a re-apply silently did less than it looked like it did.
+#
+#   2. The nine migrations written on 21 Oct are supposed to reproduce tables
+#      that until then existed only inside the Supabase editor. "Supposed to" is
+#      worth nothing; the schema they produce was compared, column by column and
+#      grant by grant, against a pg_dump of production. This job keeps the first
+#      half of that honest — that they still apply at all — and a drift in the
+#      second half shows up as a failure the next time dump-schema.yml is run.
+#
+# No database credentials: this runs against a throwaway Postgres service, and
+# touches nothing real.
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - 'supabase/**.sql'
+      - '.github/workflows/test-sql-rebuild.yml'
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stub what Supabase provides
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          -- The auth schema and the three Data API roles. Enough for the
+          -- migrations to run unmodified: several reference auth.users by
+          -- foreign key, and every grant names one of the roles.
+          create schema if not exists auth;
+          create table if not exists auth.users (
+            id uuid primary key,
+            created_at timestamptz not null default now(),
+            raw_user_meta_data jsonb not null default '{}'::jsonb
+          );
+          create or replace function auth.uid() returns uuid
+            language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
+          do $$
+          declare r text;
+          begin
+            foreach r in array array['anon', 'authenticated', 'service_role'] loop
+              if not exists (select 1 from pg_roles where rolname = r) then
+                execute format('create role %I', r);
+              end if;
+            end loop;
+          end $$;
+          SQL
+
+      - name: Apply the nine rebuilt tables three times
+        run: |
+          set -eu
+          # These seven files, not the whole folder. supabase/ also holds
+          # maintenance scripts (clear_collab_votes.sql DELETES rows), probes
+          # that need parts of Supabase no stub provides, and files whose
+          # functions reference columns added later by supabase/migrations/ —
+          # so a whole-folder rebuild needs a defined order and an exclusion
+          # list, which is a separate job from this one.
+          #
+          # profiles.sql is first because spotify_accounts and stream_counts
+          # point at it by foreign key, and that ordering is itself part of what
+          # is being checked.
+          files="supabase/profiles.sql supabase/spotify_accounts.sql
+                 supabase/legacy_stream_counts.sql supabase/chat.sql
+                 supabase/leaderboard_archive.sql supabase/beta_testers.sql
+                 supabase/user_stamps.sql"
+          for pass in 1 2 3; do
+            echo "── pass $pass ──"
+            for f in $files; do
+              if ! psql -v ON_ERROR_STOP=1 -q -f "$f" 2>/tmp/err.txt; then
+                echo "::error file=$f::pass $pass failed — $(grep -i -m1 error /tmp/err.txt || true)"
+                exit 1
+              fi
+            done
+            echo "all $(echo $files | wc -w) files applied"
+          done
+
+      - name: Report what was built
+        run: |
+          psql -At -v ON_ERROR_STOP=1 -c "
+            select '::notice title=rebuilt::' || count(*) || ' tables, ' ||
+                   (select count(*) from pg_policies where schemaname = 'public') || ' policies, ' ||
+                   (select count(distinct table_name) from information_schema.role_table_grants
+                     where table_schema = 'public' and grantee = 'service_role') ||
+                   ' with a service_role grant'
+            from information_schema.tables
+            where table_schema = 'public' and table_type = 'BASE TABLE'"
