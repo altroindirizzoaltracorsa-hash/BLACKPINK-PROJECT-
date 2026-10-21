@@ -24,7 +24,7 @@
 // Supabase is stubbed, so every RPC and metadata write is recorded rather than
 // sent. The stub answers like the real functions do, including the nulls.
 import { readFileSync } from 'node:fs';
-import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+import { chromium } from './_playwright.mjs';
 
 const root = new URL('../../', import.meta.url).pathname;
 const INDEX = root + 'index.html';
