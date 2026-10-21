@@ -35,7 +35,37 @@ create index if not exists extension_scrobbles_track_idx
 alter table scrobble_tokens enable row level security;
 alter table extension_scrobbles enable row level security;
 
+-- Re-runnable, which `create policy` is not: it has no IF NOT EXISTS, so a
+-- second apply of this file used to stop here with "policy already exists" —
+-- and the grants below it would never run. In one transaction, so a reader of
+-- a live table sees the old policy or the new one and never the gap between
+-- them (RLS with no policy denies everything, which is safe but is still an
+-- outage). Dropping and recreating rather than skipping when present also
+-- keeps this file the source of truth: an edited policy actually lands.
+begin;
+drop policy if exists "read own tokens" on scrobble_tokens;
 create policy "read own tokens" on scrobble_tokens
   for select using (auth.uid() = app_user_id);
+drop policy if exists "read own extension scrobbles" on extension_scrobbles;
 create policy "read own extension scrobbles" on extension_scrobbles
   for select using (auth.uid() = app_user_id);
+commit;
+
+-- Grants, stated rather than inherited. Supabase auto-granted Data API access
+-- to new public tables until 2026-10-30; these two tables predate that and keep
+-- what they were given, so production is unaffected. A RECREATION of this
+-- schema is not — a new project, a preview branch, a local `supabase db reset`
+-- — and there the five server routes that use these tables would start
+-- answering "permission denied" months after anyone touched them. The service
+-- role bypasses RLS but NOT table grants.
+--
+-- `select` to authenticated is what the two policies above are for: without a
+-- grant the policies are still there, still correct, and match nothing. It
+-- exposes only the owner's own rows, which is exactly what production does
+-- today — this reproduces that rather than quietly narrowing it. Nothing in the
+-- site reads either table from the browser at the moment; if that stays true,
+-- dropping these two lines is a safe tightening, and a deliberate one.
+grant select, insert, update, delete on table scrobble_tokens     to service_role;
+grant select, insert, update, delete on table extension_scrobbles to service_role;
+grant select on table scrobble_tokens     to authenticated;
+grant select on table extension_scrobbles to authenticated;

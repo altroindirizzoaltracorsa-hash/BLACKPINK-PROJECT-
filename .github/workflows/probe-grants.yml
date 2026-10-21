@@ -1,0 +1,86 @@
+name: Probe table grants
+
+# READ-ONLY. Reports who can reach each table in `public`, as annotations.
+#
+# Supabase stopped auto-granting Data API access to new public tables on
+# 2026-10-30. Existing tables keep what they were given, so the point of this
+# probe is to find out what that actually is — the migrations in supabase/ were
+# written while the auto-grant was doing it for them, and
+# test_sql_grants.mjs can only check what the FILES say. This says what the
+# database says.
+#
+# Two things worth knowing from it:
+#   · a table with no grant at all, which after a recreate is a permission-denied
+#     waiting to happen (and, for one table here, is deliberate);
+#   · a table granted to `anon`, i.e. readable through the Data API with no
+#     session at all. That is the row to look hardest at.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Who can reach what
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -u
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret is not set."
+            exit 1
+          fi
+          q() { psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c "$1"; }
+
+          q "select '::notice title=tables::' || count(*) || ' tables in public'
+             from information_schema.tables
+             where table_schema = 'public' and table_type = 'BASE TABLE'"
+
+          # No grant to any of the three Data API roles. Fine only when it is on
+          # purpose — fan_name_counters is reached by security-definer functions
+          # alone, and granting anybody access to it would let a signed-in
+          # person mint display names.
+          q "with t as (
+               select table_name from information_schema.tables
+               where table_schema = 'public' and table_type = 'BASE TABLE'
+             ), g as (
+               select distinct table_name from information_schema.role_table_grants
+               where table_schema = 'public'
+                 and grantee in ('anon','authenticated','service_role')
+             )
+             select '::notice title=no grants at all::' ||
+                    coalesce(string_agg(t.table_name, ', ' order by t.table_name), 'none')
+             from t left join g using (table_name) where g.table_name is null"
+
+          # The server reads almost everything with the service-role key, which
+          # bypasses RLS but NOT grants.
+          q "with t as (
+               select table_name from information_schema.tables
+               where table_schema = 'public' and table_type = 'BASE TABLE'
+             ), g as (
+               select distinct table_name from information_schema.role_table_grants
+               where table_schema = 'public' and grantee = 'service_role'
+             )
+             select '::notice title=no service_role grant::' ||
+                    coalesce(string_agg(t.table_name, ', ' order by t.table_name), 'none')
+             from t left join g using (table_name) where g.table_name is null"
+
+          # Reachable through the Data API with no session.
+          q "select '::notice title=granted to anon::' ||
+                    coalesce(string_agg(distinct table_name, ', ' order by table_name), 'none')
+             from information_schema.role_table_grants
+             where table_schema = 'public' and grantee = 'anon'"
+
+          # A table granted to anon with RLS off is open to the internet. This
+          # should always be none; it is the one line here that is a finding
+          # rather than a fact.
+          q "select '::notice title=anon-readable with RLS off::' ||
+                    coalesce(string_agg(distinct g.table_name, ', ' order by g.table_name),
+                             'none — every anon-granted table has RLS on')
+             from information_schema.role_table_grants g
+             join pg_class c on c.relname = g.table_name
+             join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+             where g.table_schema = 'public' and g.grantee = 'anon' and c.relrowsecurity = false"
