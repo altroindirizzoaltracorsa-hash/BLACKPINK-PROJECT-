@@ -176,7 +176,15 @@ function stubSb(meta, opts = {}) {
       const prefix = /^[a-z][a-z0-9]{1,20}$/.test(args.p_prefix) ? args.p_prefix : 'blink';
       return { data: prefix + '9', error: null };
     },
-    from: () => ({ update: (patch) => { log.rowNames.push(patch.display_name); return { eq: async () => ({}) }; } }),
+    from: (table) => {
+      if (table === 'linked_accounts') {
+        // Whether a Last.fm handle is already showing for them.
+        const res = { data: opts.linked ? [{ id: 'x' }] : [], error: null };
+        const q = { select: () => q, eq: () => q, limit: async () => res };
+        return q;
+      }
+      return { update: (patch) => { log.rowNames.push(patch.display_name); return { eq: async () => ({}) }; } };
+    },
   };
   return { sb, log };
 }
@@ -244,6 +252,35 @@ function stubSb(meta, opts = {}) {
   const { sb: sb2 } = stubSb(null, { noUser: true });
   const out2 = await api.syncAccountFandom(sb2, 'u8', 'bloom', 'whoever');
   check(out2 === 'whoever', 'and an account that cannot be read changes nothing', out2);
+}
+
+{
+  // Somebody with NO display name, here for the collab and nothing else. They
+  // have to end up NUMBERED, or every nameless person on the board reads the
+  // same and none of them can find their own row.
+  const { sb, log } = stubSb({}, { linked: false });
+  const out = await api.syncAccountFandom(sb, 'u20', 'bloom', null);
+  check(out === 'bloom9', 'somebody with no name at all is given a numbered one', String(out));
+  check(log.updated && log.updated.display_name === 'bloom9', 'and the account carries it');
+  check(log.updated && log.updated.display_name_auto === true,
+        'flagged auto, so it gives way the moment they choose their own');
+}
+{
+  // The same, but their Last.fm handle is already showing on the streaming
+  // leaderboard. Naming them would replace it with a number they never asked
+  // for — which this site did once and had to undo.
+  const { sb, log } = stubSb({}, { linked: true });
+  const out = await api.syncAccountFandom(sb, 'u21', 'bloom', null);
+  check(out === null && log.minted === 0,
+        'but not somebody whose handle is already on show', String(out));
+  check(log.updated && log.updated.fandom === 'bloom', 'they are still counted as a BLOOM');
+}
+{
+  // A fandom key that cannot start a name would mint "blink9" — so nobody is
+  // named rather than a BLOOM being called a blink.
+  const { sb, log } = stubSb({}, { linked: false });
+  const out = await api.syncAccountFandom(sb, 'u22', 'x-men', null);
+  check(out === null && log.minted === 0, 'and nobody is numbered under a key that cannot name them');
 }
 
 console.log(`\nFAILURES: ${fails.length}`);

@@ -523,6 +523,30 @@ const boardHead = (await prev.locator('.sub-head').first().textContent()).trim()
   ? ok('and the board follows the same period', boardHead)
   : bad('and the board follows the same period', boardHead);
 
+console.log('--- every page credited is a page still in the trade');
+// Naming somebody on this card says publicly that they are in it. When the
+// second agreement ended, its page stayed credited on the live card — the
+// partner was removed from one list and the page left in another, with nothing
+// tying them together. `for` ties them; this checks it.
+{
+  const creds = await prev.evaluate(() => {
+    const c = COLLABS[0];
+    const partners = (c.partners || []).map((x) => x.fandom || x.act);
+    const them = ((c.organisers || {}).them || []).map((o) => ({ name: o.name, for: o.for || null }));
+    return { partners, them, shown: [...document.querySelectorAll('.card-run a, .runners a')]
+      .map((a2) => a2.textContent.trim()) };
+  });
+  const unnamed = creds.them.filter((o) => !o.for);
+  unnamed.length === 0
+    ? ok('every partner page says which partner it runs with', creds.them.map((o) => `${o.name}→${o.for}`).join(' '))
+    : bad('every partner page says which partner it runs with', unnamed.map((o) => o.name).join(', '));
+  const orphan = creds.them.filter((o) => o.for && !creds.partners.includes(o.for));
+  orphan.length === 0
+    ? ok('and none is credited for a partner that has left', creds.partners.join(', '))
+    : bad('and none is credited for a partner that has left',
+          orphan.map((o) => `${o.name} (for ${o.for})`).join(', '));
+}
+
 console.log('--- a category the collab no longer lists is not rendered');
 // The removal of a partner leaves its votes behind in every stored row, and
 // the row lists used to print them with the raw ballot slug as the label —
