@@ -499,6 +499,32 @@ async function openLinkPage(opts = {}) {
   await ctx.close();
 }
 
+console.log('\n--- /vote-link says so when the sign-in library cannot load');
+// The library comes from a CDN, and this page is somebody's whole encounter
+// with the site. Unguarded, a blocked cdn.jsdelivr.net threw at the first line
+// of the script: the sign-in card stayed hidden and the page sat there with a
+// title and nothing to press — which reads as "this site is broken", not as
+// "try another network". Found by rendering the page with no library present.
+{
+  const ctx = await b.newContext();
+  const p = await ctx.newPage();
+  // No stub at all: exactly what a blocked CDN leaves behind.
+  await p.route('**/*', async (route) => {
+    const u = new URL(route.request().url());
+    if (u.pathname === '/vote-link')
+      return route.fulfill({ path: root + 'vote-link.html', contentType: 'text/html' });
+    return route.fulfill({ status: 204, body: '' });
+  });
+  await p.goto('https://www.blinksunited.com/vote-link', { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(400);
+  const txt = await p.evaluate(() => document.body.innerText);
+  check(/could not load/i.test(txt), 'it says the library did not load',
+        (txt || '').split('\n').filter(Boolean)[1] || '(nothing)');
+  check(/blocking|content blocker|another network/i.test(txt),
+        'and says what to try, rather than leaving a dead card');
+  await ctx.close();
+}
+
 console.log('\n--- choosing your own name clears the auto flag');
 // The flag is what tells a name the site ISSUED from a name somebody CHOSE,
 // and reissue_fan_name renames only the first kind. updateUser MERGES
