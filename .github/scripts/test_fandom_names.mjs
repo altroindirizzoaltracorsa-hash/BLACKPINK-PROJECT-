@@ -409,6 +409,26 @@ async function openLinkPage(opts = {}) {
 
 {
   const { p, ctx, errs } = await openLinkPage();
+  // Checked while SIGNED OUT as well, because that is when the lead and the
+  // sign-in card are on screen — the first version of this check only looked
+  // after linking, by which time that copy has been replaced, and it passed
+  // happily with "VMA Vote Counter" restored.
+  const before = await p.evaluate(() => document.body.innerText);
+  const staleOut = (/(vote\.mtv\.com|BLACKPINK & LISA|VMA)/i.exec(before) || [])[0];
+  check(!staleOut, 'signed out, the page does not pitch another award at them', staleOut || '');
+  // And in the SOURCE, because this page rewrites its own lead the moment it
+  // loads: the rendered text never contains the markup's opening line, so a
+  // rendered-only check passed with "VMA Vote Counter" put straight back. What
+  // a reader sees for half a second is still what the page says.
+  {
+    const src = readFileSync(root + 'vote-link.html', 'utf8')
+      .replace(/<!--[\s\S]*?-->/g, '')     // HTML comments
+      .replace(/^\s*\/\/.*$/gm, '');       // and the script's own
+    const staleSrc = (/(vote\.mtv\.com|BLACKPINK & LISA|VMA)/i.exec(src) || [])[0];
+    check(!staleSrc, 'and neither does its source', staleSrc || '');
+  }
+  check(/no scrobbler/i.test(before), 'and says an account is all it needs',
+        (/[^.]*no scrobbler[^.]*/i.exec(before) || [''])[0].trim().slice(0, 70));
   const chips = await p.$$eval('#fandoms button',
     (els) => els.map((e) => e.getAttribute('data-f')));
   // Compared with the main page's list rather than a number, since the two are
@@ -519,8 +539,17 @@ console.log('\n--- /vote-link lets them choose a name at all');
   const box = await p.evaluate(() => {
     const el = document.getElementById('namebox');
     return { shown: el && !el.classList.contains('hidden'),
-             prefilled: (document.getElementById('dname') || {}).value };
+             prefilled: (document.getElementById('dname') || {}).value,
+             text: document.body.innerText };
   });
+  // This page is a partner fandom's whole encounter with the site, and it used
+  // to describe the award the counter was BUILT for — "your BLACKPINK & LISA
+  // votes on vote.mtv.com" — to somebody who has just made an account to help
+  // with a trade. Nothing here should read as a BLACKPINK streaming sign-up,
+  // because that is the impression that makes people think they need a full
+  // account.
+  const stale = (/(vote\.mtv\.com|BLACKPINK & LISA|VMA)/i.exec(box.text) || [])[0];
+  check(!stale, 'the page does not pitch another award at them', stale || '');
   check(box.shown, 'the field is there once they are linked');
   check(box.prefilled === 'bloom7', 'prefilled with what they are currently called', String(box.prefilled));
 
