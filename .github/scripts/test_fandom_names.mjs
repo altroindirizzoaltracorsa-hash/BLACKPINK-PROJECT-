@@ -717,7 +717,7 @@ console.log('\n--- the OTHER link page, the one the Android app opens');
   // screen the whole time — and it is what a probe of the served page reads,
   // which is how it was caught after the heading had already been fixed.
   const tab = await p.title();
-  check(!/scrobbler/i.test(tab), 'and the tab does not say scrobbler either', tab);
+  check(/vote counter/i.test(tab), 'and the tab names the vote counter', tab);
   await ctx.close();
 }
 {
@@ -746,6 +746,8 @@ console.log('\n--- the OTHER link page, the one the Android app opens');
   const txt = await p.evaluate(() => document.body.innerText);
   check(/scrobbler/i.test(txt), 'the scrobbler path still speaks to scrobbler people',
         (txt.split('\n').filter(Boolean)[0] || '').slice(0, 50));
+  const tab2 = await p.title();
+  check(/scrobbler/i.test(tab2), 'and its tab still names the scrobbler', tab2);
   const chips = await p.evaluate(() =>
     !document.getElementById('appintro').classList.contains('hidden'));
   check(!chips, 'and is not asked which fandom it is, which is not its question');
