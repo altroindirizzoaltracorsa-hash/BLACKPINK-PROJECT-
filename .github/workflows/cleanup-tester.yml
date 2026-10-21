@@ -1,0 +1,105 @@
+name: Remove a tester's rows
+
+# Deletes the vote rows belonging to ONE account, named by the display name it
+# chose. For walking the sign-up flow on the live site and then putting the
+# boards back exactly as they were.
+#
+# Dry run by default: it prints what it would delete and stops. Nothing goes
+# unless `apply` is typed, and even then it refuses to touch more than one
+# account or a name the site hands out automatically — deleting "bloom1" by
+# mistake would take out a real BLOOM's votes.
+#
+# The display name is used rather than an email because it is already public on
+# the board, so nothing private ends up in a workflow log.
+#
+# What it removes:
+#   collab_user_votes — their rows on the /collabs board
+#   kca_user_votes    — their rows on the Kids' Choice board
+# What it does NOT touch: the auth account itself (delete that in the Supabase
+# dashboard if you want it gone), and the votes actually cast on kca.nick.tv,
+# which are the award's and not ours to take back.
+on:
+  workflow_dispatch:
+    inputs:
+      display_name:
+        description: 'The display name that account is using (exact)'
+        required: true
+      mode:
+        description: 'dry (print only) or apply (delete)'
+        required: true
+        default: 'dry'
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find and remove
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          DNAME: ${{ inputs.display_name }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -u
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret is not set."
+            exit 1
+          fi
+          case "$MODE" in dry|apply) ;; *) echo "::error::mode must be dry or apply"; exit 1 ;; esac
+
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 \
+               -v dname="$DNAME" -v mode="$MODE" <<'SQL'
+          do $$
+          declare
+            dname text := :'dname';
+            mode  text := :'mode';
+            ids   uuid[];
+            r     record;
+            n_c   int := 0;
+            n_k   int := 0;
+          begin
+            if dname ~* '^(blink|bloom|pauljjak)[0-9]+$' then
+              raise exception
+                'refusing: "%" is a name the site hands out automatically, so it may belong to somebody else. Choose a distinctive name for a test.', dname;
+            end if;
+
+            select array_agg(distinct app_user_id) into ids
+            from collab_user_votes where display_name = dname;
+
+            if ids is null or array_length(ids, 1) = 0 then
+              raise notice 'no collab rows carry the name "%" — nothing to do', dname;
+              return;
+            end if;
+            if array_length(ids, 1) > 1 then
+              raise exception 'refusing: % accounts share the name "%"', array_length(ids, 1), dname;
+            end if;
+
+            raise notice 'account %… , named "%"', left(ids[1]::text, 8), dname;
+            for r in
+              select collab_id, day, votes, cats from collab_user_votes
+              where app_user_id = ids[1] order by day
+            loop
+              n_c := n_c + 1;
+              raise notice '  collab % · % · % votes · %', r.collab_id, r.day, r.votes, r.cats;
+            end loop;
+            for r in
+              select day, votes, cats from kca_user_votes
+              where app_user_id = ids[1] order by day
+            loop
+              n_k := n_k + 1;
+              raise notice '  kca    % · % votes · %', r.day, r.votes, r.cats;
+            end loop;
+            raise notice '% collab row(s), % kca row(s)', n_c, n_k;
+
+            if mode <> 'apply' then
+              raise notice 'DRY RUN — nothing deleted. Re-run with mode: apply to remove these.';
+              return;
+            end if;
+
+            delete from collab_user_votes where app_user_id = ids[1];
+            delete from kca_user_votes    where app_user_id = ids[1];
+            raise notice 'deleted. the boards are back to what they were.';
+          end $$;
+          SQL
