@@ -24,10 +24,13 @@ function load() {
   const leftover = stripped.match(/^import .*$/gm) || [];
   if (leftover.length) throw new Error('unstubbed import: ' + leftover.join(' / '));
   if (stripped === src) throw new Error('api/collabs.js no longer looks the way this test rewrites it');
+  // The handler builds its client from env at call time, so the stub goes in
+  // through createClient and the env only has to be non-empty.
   return new Function('createClient', 'process',
     stripped + '\nreturn { kstDay, mondayOf, periodFrom, sumOf, addInto, SLUG_RE, FANDOM_RE,'
-             + ' NAME_PREFIX_RE, syncAccountFandom };')(
-    () => ({}), { env: {} });
+             + ' NAME_PREFIX_RE, syncAccountFandom, handler };')(
+    (url, key) => (globalThis.__sbStub || {}),
+    { env: { SUPABASE_URL: 'https://stub', SUPABASE_SERVICE_KEY: 'stub' } });
 }
 
 const api = load();
@@ -281,6 +284,68 @@ function stubSb(meta, opts = {}) {
   const { sb, log } = stubSb({}, { linked: false });
   const out = await api.syncAccountFandom(sb, 'u22', 'x-men', null);
   check(out === null && log.minted === 0, 'and nobody is numbered under a key that cannot name them');
+}
+
+console.log('\n--- logging a vote never requires a scrobbler');
+// The rule this collab is built on: a partner fandom is NOT asked to set up a
+// streaming account to have their votes counted. They sign in, link the
+// counter, and that is the whole of it — the page says so in those words, and
+// nothing in the vote path may quietly start disagreeing with it.
+//
+// The one linked_accounts lookup in this file decides a NAME, never whether a
+// vote is taken. This drives the real handler to prove that, with an account
+// that has no scrobbler and never will.
+{
+  const stored = [];
+  const voter = { id: 'bloom-no-scrobbler', user_metadata: {} };
+  globalThis.__sbStub = {
+    auth: {
+      admin: {
+        getUserById: async () => ({ data: { user: voter } }),
+        updateUserById: async (_i, patch) => { voter.user_metadata = patch.user_metadata; return { error: null }; },
+      },
+      getUser: async () => ({ data: { user: voter } }),
+    },
+    rpc: async (fn, args) => ({ data: args.p_prefix + '1', error: null }),
+    from: (table) => {
+      if (table === 'scrobble_tokens') {
+        const q = { select: () => q, eq: () => q, maybeSingle: async () => ({ data: { app_user_id: voter.id } }) };
+        return q;
+      }
+      if (table === 'linked_accounts') {
+        // No scrobbler. Not one, not ever.
+        const q = { select: () => q, eq: () => q, limit: async () => ({ data: [], error: null }) };
+        return q;
+      }
+      const q = {
+        select: () => q, eq: () => q, is: () => q,
+        maybeSingle: async () => ({ data: null }),
+        upsert: async (row) => { stored.push(row); return { error: null }; },
+        update: () => ({ eq: () => ({ is: async () => ({}) }), is: async () => ({}) }),
+      };
+      return q;
+    },
+  };
+
+  let status = 0, body = null;
+  const res = { setHeader() {}, status(c) { status = c; return this; }, json(b) { body = b; return this; } };
+  await api.handler({
+    method: 'POST', query: {}, headers: {},
+    body: { id: 'bvp-kca-2026', extToken: 'tok', fandom: 'bloom',
+            cats: { 'favorite-music-group-or-duo': 1, 'favorite-global-music-star': 1 } },
+  }, res);
+
+  check(status === 200, `the vote is accepted with no scrobbler linked (HTTP ${status})`,
+        body && body.error ? body.error : '');
+  check(!!body && body.votes === 2, 'and both picks are counted', body ? String(body.votes) : '-');
+  check(stored.length === 1 && stored[0].app_user_id === voter.id,
+        'a row is written for them like anybody else');
+  // And they are given a numbered name, which is the point of being on a board.
+  check(voter.user_metadata.display_name === 'bloom1',
+        'and they are numbered, not left as one of many "a bloom"s',
+        String(voter.user_metadata.display_name));
+  check(stored[0].display_name === 'bloom1', 'with that name on the row itself');
+  delete globalThis.__sbStub;
 }
 
 console.log(`\nFAILURES: ${fails.length}`);
