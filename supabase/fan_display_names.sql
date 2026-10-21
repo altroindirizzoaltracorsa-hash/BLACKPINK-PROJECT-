@@ -44,6 +44,15 @@ create table if not exists public.fan_name_counters (
 -- lock.
 alter table public.fan_name_counters enable row level security;
 
+-- Enforced, not just stated. This table was created while Supabase was still
+-- auto-granting, so the platform handed anon and authenticated privileges on it
+-- the moment it existed — references, trigger and truncate, though not select.
+-- No Data API verb reaches any of those three, so nothing was exposed, but the
+-- file said "nobody" and the database said otherwise. Revoking is a no-op where
+-- the privilege was never granted, which is the case on any project created
+-- after 2026-10-30.
+revoke all on public.fan_name_counters from anon, authenticated;
+
 -- ── the counter ─────────────────────────────────────────────────────────────
 -- Returns a free "<prefix><n>", skipping any number already held as a display
 -- name (auto or hand-picked). No caller check: the grants below decide who may
