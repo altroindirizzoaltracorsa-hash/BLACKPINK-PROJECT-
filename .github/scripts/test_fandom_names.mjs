@@ -612,6 +612,30 @@ console.log('\n--- /vote-link lets them choose a name at all');
   await ctx.close();
 }
 
+console.log('\n--- an account that already has a name is asked nothing');
+// Reported from a real link attempt: an existing account, _demibandwout, was
+// shown a name box prefilled with its own name and the line "That is already
+// your name." Being registered is the normal case, and the box exists only for
+// somebody the SITE named — an unregistered person here for a trade.
+for (const [who, meta, want] of [
+  ['a name they chose',        { display_name: '_demibandwout' },                         false],
+  ['one the site issued',      { display_name: 'bloom7', display_name_auto: true },       true],
+  ['a legacy blinkN, no flag', { display_name: 'blink12' },                               true],
+  ['no name at all',           {},                                                        true],
+]) {
+  const user = { id: 'u-' + who.length, created_at: '2026-01-04T00:00:00Z',
+                 email: 'a@b.c', user_metadata: Object.assign({}, meta) };
+  const { p, ctx, errs } = await openLinkPage({ user, rpc: { reissue_fan_name: null } });
+  const shown = await p.evaluate(() => {
+    const el = document.getElementById('namebox');
+    return !!el && !el.classList.contains('hidden');
+  });
+  check(shown === want, `${want ? 'asked' : 'not asked'}: ${who}`,
+        shown ? 'the box is shown' : 'no box');
+  check(errs.length === 0, `  and no page errors for ${who}`, errs.join(' | ') || 'none');
+  await ctx.close();
+}
+
 console.log('\n--- the OTHER link page, the one the Android app opens');
 // There are two. The browser extension opens /vote-link.html; the Android app
 // opens /extension-link.html?app=android, and everything built for a partner
@@ -677,6 +701,44 @@ console.log('\n--- the OTHER link page, the one the Android app opens');
   check(nameBox.shown && nameBox.prefilled === 'bloom1',
         'and they can choose their own, prefilled with the number they got',
         String(nameBox.prefilled));
+  // And the same rule as the other page: an account that already has a name
+  // its owner chose is asked nothing. Checked HERE too because this is the
+  // page the app opens, and "fixed one of the two" is the recurring mistake.
+  {
+    const ctx2 = await b.newContext();
+    const p2 = await ctx2.newPage();
+    await p2.addInitScript(() => {
+      const user = { id: 'named', created_at: '2026-01-04T00:00:00Z', email: 'a@b.c',
+                     user_metadata: { display_name: '_demibandwout' } };
+      window.supabase = { createClient: () => ({
+        auth: { getSession: async () => ({ data: { session: { user, access_token: 't' } } }),
+                onAuthStateChange() { return { data: { subscription: { unsubscribe() {} } } }; },
+                updateUser: async () => ({ error: null }),
+                signInWithOAuth: async () => ({}), signInWithOtp: async () => ({}),
+                signInWithPassword: async () => ({}) },
+        rpc: async () => ({ data: null, error: null }),
+      }) };
+    });
+    await p2.route('**/*', async (route) => {
+      const u = new URL(route.request().url());
+      if (u.pathname === '/extension-link')
+        return route.fulfill({ path: root + 'extension-link.html', contentType: 'text/html' });
+      if (u.pathname === '/api/extension-link')
+        return route.fulfill({ contentType: 'application/json',
+          body: JSON.stringify({ ok: true, token: 'tok', profile: '_demibandwout' }) });
+      if (u.pathname.startsWith('/api/')) return route.fulfill({ contentType: 'application/json', body: '{}' });
+      return route.fulfill({ status: 204, body: '' });
+    });
+    await p2.goto('https://www.blinksunited.com/extension-link?app=android', { waitUntil: 'domcontentloaded' });
+    await p2.waitForTimeout(700);
+    const asked = await p2.evaluate(() => {
+      const el = document.getElementById('namebox');
+      return !!el && !el.classList.contains('hidden');
+    });
+    check(!asked, 'while an already-named account is asked nothing here either',
+          asked ? 'the box was shown' : 'no box');
+    await ctx2.close();
+  }
   const txt = await p.evaluate(() => document.body.innerText);
   const pitch = /Link your scrobbler|Multi-Account Scrobbler|scrobbles to your profile/i.exec(txt);
   check(!pitch, 'the counter path never pitches the scrobbler at them', pitch ? pitch[0] : '');

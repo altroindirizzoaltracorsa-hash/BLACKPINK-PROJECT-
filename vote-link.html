@@ -200,7 +200,8 @@
         $('login').classList.add('hidden');
         $('lead').textContent = `Signed in as ${d.profile}.`;
         const { data: { session: s2 } } = await sb.auth.getSession();
-        showNameBox((s2 && s2.user.user_metadata && s2.user.user_metadata.display_name) || '');
+        const md2 = (s2 && s2.user.user_metadata) || {};
+        if (isAutoName(md2)) showNameBox(md2.display_name || '');
         status('Handing the token to the extension…');
         setTimeout(() => {
           if (!extensionSeen) {
@@ -241,6 +242,20 @@
     // from the same list the chips above come from.
     const RESERVED = new RegExp('^(' + FANDOMS.map((f) => f.key).join('|') + ')\\d+$', 'i');
 
+    // Only for somebody the SITE named. An account that already has a name its
+    // owner chose is not asked anything — it is already registered, and being
+    // shown a box prefilled with your own name and told "that is already your
+    // name" is a question nobody needed to answer.
+    //
+    // Same rule the database uses (reissue_fan_name): the flag is written
+    // beside a name the site issued, and the ^blink\d+$ fallback covers the
+    // accounts named before that flag existed, a namespace that was never
+    // choosable.
+    function isAutoName(md) {
+      const n = String((md && md.display_name) || '').trim();
+      if (!n) return true;                      // nothing yet — they need one
+      return (md && md.display_name_auto === true) || /^blink\d+$/i.test(n);
+    }
     function showNameBox(current) {
       $('dname').value = current || '';
       $('namebox').classList.remove('hidden');
