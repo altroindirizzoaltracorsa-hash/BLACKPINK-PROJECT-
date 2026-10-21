@@ -33,7 +33,18 @@ jobs:
             echo "::error::SUPABASE_DB_URL secret is not set."
             exit 1
           fi
-          q() { psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c "$1"; }
+          # The tables this repo's migrations create, read out of the files so
+          # the comparison below cannot drift from them.
+          # Comments are stripped first: feedback.sql discusses "create table if
+          # not exists" in prose, and without this the list gains a table called
+          # "if". The name is the last field, so the optional clauses cannot
+          # become the name.
+          TABLES=$(sed -E 's/^[[:space:]]*--.*$//' supabase/*.sql \
+                   | grep -ho -iE 'create table (if not exists )?(public\.)?[a-z_]+' \
+                   | awk '{print $NF}' | sed 's/^public\.//' | grep -vx 'if' \
+                   | sort -u | paste -sd,)
+          echo "migrations create: $TABLES"
+          q() { psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -v tables="$TABLES" -c "$1"; }
 
           q "select '::notice title=tables::' || count(*) || ' tables in public'
              from information_schema.tables
@@ -74,6 +85,21 @@ jobs:
           # gave no select on, and PostgREST exposes none of those three — so a
           # table can appear "granted to anon" while anon cannot read a row of
           # it. Asking for select is the question worth asking.
+          # Which production tables no migration in this repo creates. They are
+          # not an access problem — they exist, so they keep their grants — but
+          # there is no file to recreate them from, and the grants rule from
+          # 2026-10-30 applies to whoever writes that file later. The names are
+          # the useful part; several are tables the site reads every day.
+          q "with mine as (
+               select unnest(string_to_array(:'tables', ',')) as t
+             )
+             select '::notice title=tables with no migration in the repo::' ||
+                    coalesce(string_agg(i.table_name, ', ' order by i.table_name), 'none')
+             from information_schema.tables i
+             left join mine on mine.t = i.table_name
+             where i.table_schema = 'public' and i.table_type = 'BASE TABLE'
+               and mine.t is null"
+
           q "select '::notice title=anon can SELECT::' ||
                     coalesce(string_agg(distinct table_name, ', ' order by table_name), 'none')
              from information_schema.role_table_grants
