@@ -601,6 +601,13 @@ console.log('\n--- /vote-link lets them choose a name at all');
         saved ? saved.display_name : 'nothing saved');
   check(!!saved && saved.display_name_auto === false,
         'with the auto flag cleared, so no fandom answer can take it back');
+  // The page must not say two different things about who they are: the lead
+  // read "Signed in as bloom1" (the token's label, stored once at link time)
+  // directly above a line saying they are called something else.
+  const shown = await p.evaluate(() => document.body.innerText);
+  check(!/bloom7|bloom1\b/.test(shown) && /Bloom of the Day/.test(shown),
+        'and the page agrees with itself about their name',
+        (shown.split('\n').filter((l) => /Signed in as/.test(l))[0] || '').slice(0, 60));
   check(errs.length === 0, `no page errors (${errs.join(' | ') || 'none'})`);
   await ctx.close();
 }

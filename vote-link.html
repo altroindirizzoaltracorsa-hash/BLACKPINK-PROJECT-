@@ -274,7 +274,13 @@
           body: JSON.stringify({ displayName: name, accessToken: session.access_token }),
         });
       } catch (e) {}
-      status('✅ Saved — you are <b>' + name.replace(/[<&>]/g, '') + '</b> on the collab board.', 'ok');
+      const safe = name.replace(/[<&>]/g, '');
+      status('✅ Saved — you are <b>' + safe + '</b> on the collab board.', 'ok');
+      // The lead still read "Signed in as bloom1" — true of the token's label,
+      // which is stored once at link time, but it sits two lines above a green
+      // line saying they are called something else. Whichever is right, a page
+      // should not say both.
+      $('lead').textContent = 'Signed in as ' + name + '.';
     });
 
     // Re-run when auth state resolves (e.g. returning from OAuth / a magic link).
