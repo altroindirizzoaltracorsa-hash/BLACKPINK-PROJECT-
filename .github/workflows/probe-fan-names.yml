@@ -1,0 +1,76 @@
+name: Probe fan display names
+
+# READ-ONLY. Reports what the auto-naming has actually done, as annotations.
+#
+# apply-sql.yml can run supabase/checks/verify_fan_display_names.sql, and a
+# green run there already proves every assertion in it — but its output lives in
+# the job log, which Actions serves from blob storage that a Claude Code session
+# cannot fetch. So the numbers worth reading come back as ::notice lines here
+# instead, the same way the other probes in this repo report.
+#
+# Nothing here writes, and nothing here mints: calling mint_fan_name would burn
+# a number and push the first real BLOOM to bloom2. No display name is ever
+# printed — only counts, by shape.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: What the naming has done
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -u
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret is not set."
+            exit 1
+          fi
+          q() { psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c "$1"; }
+
+          # Applied at all? Said plainly, because every number below reads as a
+          # perfectly calm zero when the functions simply are not there.
+          q "select '::notice title=applied::' ||
+                    case when count(*) = 4 then 'all four functions are in place'
+                         else 'ONLY ' || count(*) || ' of 4 functions exist — fan_display_names.sql is not fully applied' end
+             from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+             where n.nspname = 'public'
+               and p.proname in ('mint_fan_name','assign_fan_name','reissue_fan_name','assign_blink_name')"
+
+          # One row per fandom that has named somebody. blink is absent on
+          # purpose: it keeps the original sequence so its numbering continues.
+          q "select '::notice title=names minted::' ||
+                    coalesce(string_agg(prefix || ': ' || n, ', ' order by prefix), 'none yet')
+             from public.fan_name_counters"
+
+          # The census the feature exists to move: auto-named accounts still
+          # carrying a blink name while having said they are something else.
+          q "with u as (
+               select coalesce(raw_user_meta_data->>'fandom', '(unsaid)') as says,
+                      case
+                        when coalesce(raw_user_meta_data->>'display_name', '') = '' then 'no name'
+                        when raw_user_meta_data->>'display_name_auto' = 'true'
+                          or raw_user_meta_data->>'display_name' ~* '^blink[0-9]+\$' then 'auto'
+                        else 'chose their own'
+                      end as kind
+               from auth.users
+             ), g as (
+               select says, kind, count(*) as n from u group by says, kind
+             )
+             select '::notice title=accounts::' ||
+                    coalesce(string_agg(says || ' — ' || kind || ': ' || n, ' | ' order by says, kind), 'none')
+             from g"
+
+          q "select '::notice title=still mismatched::' ||
+                    count(*) || ' auto-named account(s) carry a prefix that is not the fandom they said'
+             from auth.users
+             where coalesce(raw_user_meta_data->>'fandom', '') <> ''
+               and coalesce(raw_user_meta_data->>'display_name', '') <> ''
+               and (raw_user_meta_data->>'display_name_auto' = 'true'
+                    or raw_user_meta_data->>'display_name' ~* '^blink[0-9]+\$')
+               and raw_user_meta_data->>'display_name'
+                   !~* ('^' || (raw_user_meta_data->>'fandom') || '[0-9]+\$')"
