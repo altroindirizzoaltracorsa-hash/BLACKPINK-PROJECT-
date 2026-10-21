@@ -713,6 +713,11 @@ console.log('\n--- the OTHER link page, the one the Android app opens');
   check(/no scrobbler, no streaming/i.test(txt), 'and says what the account actually costs');
   const chips = await p.$$eval('#fandoms button', (els) => els.map((e) => e.getAttribute('data-f')));
   check(chips.length >= 2, 'and asks which fandom they are, before the account exists', chips.join(', '));
+  // The TAB title too. The app opens this in the real browser, so it sits on
+  // screen the whole time — and it is what a probe of the served page reads,
+  // which is how it was caught after the heading had already been fixed.
+  const tab = await p.title();
+  check(!/scrobbler/i.test(tab), 'and the tab does not say scrobbler either', tab);
   await ctx.close();
 }
 {
