@@ -25,7 +25,8 @@ function load() {
   if (leftover.length) throw new Error('unstubbed import: ' + leftover.join(' / '));
   if (stripped === src) throw new Error('api/collabs.js no longer looks the way this test rewrites it');
   return new Function('createClient', 'process',
-    stripped + '\nreturn { kstDay, mondayOf, periodFrom, sumOf, addInto, SLUG_RE, FANDOM_RE };')(
+    stripped + '\nreturn { kstDay, mondayOf, periodFrom, sumOf, addInto, SLUG_RE, FANDOM_RE,'
+             + ' NAME_PREFIX_RE, syncAccountFandom };')(
     () => ({}), { env: {} });
 }
 
@@ -143,6 +144,106 @@ for (const [v, want, why] of [
   ['a'.repeat(100), false, 'absurdly long'],
 ]) {
   check(api.SLUG_RE.test(v) === want, `${why} is ${want ? 'accepted' : 'refused'}`);
+}
+
+console.log('\n--- the fandom answer reaches the account, and the name follows it');
+// The answer usually arrives through the EXTENSION, and somebody who votes that
+// way may never open blinksunited.com again — so until this existed their row
+// on the collab board read "blink41" for ever, on the one board whose whole
+// point is showing each fandom turning up.
+//
+// The rule being tested is the dangerous one: rename an auto name, never a name
+// somebody chose. The flag is what tells them apart, because "bloom12" is a
+// perfectly plausible thing for a person to have picked by hand.
+function stubSb(meta, opts = {}) {
+  const log = { updated: null, minted: 0, rowNames: [] };
+  const sb = {
+    auth: { admin: {
+      getUserById: async () => (opts.noUser ? { data: null } : { data: { user: { user_metadata: meta } } }),
+      updateUserById: async (_uid, patch) => {
+        log.updated = patch.user_metadata;
+        return { error: opts.updateFails ? { message: 'nope' } : null };
+      },
+    } },
+    rpc: async (fn, args) => {
+      if (fn !== 'mint_fan_name') throw new Error('unexpected rpc ' + fn);
+      if (opts.noFunction) return { data: null, error: { message: 'function does not exist' } };
+      log.minted++;
+      // Answers like mint_fan_name does, INCLUDING its fallback: a prefix it
+      // will not accept comes back as a blink name rather than an error. That
+      // fallback is there so a signup is never failed over a label — and it is
+      // exactly why the caller has to refuse such a prefix itself.
+      const prefix = /^[a-z][a-z0-9]{1,20}$/.test(args.p_prefix) ? args.p_prefix : 'blink';
+      return { data: prefix + '9', error: null };
+    },
+    from: () => ({ update: (patch) => { log.rowNames.push(patch.display_name); return { eq: async () => ({}) }; } }),
+  };
+  return { sb, log };
+}
+
+{
+  // An auto name, and they now say they are a BLOOM.
+  const { sb, log } = stubSb({ display_name: 'blink41', display_name_auto: true });
+  const out = await api.syncAccountFandom(sb, 'u1', 'bloom', 'blink41');
+  check(out === 'bloom9', 'an auto name is renamed for the fandom', out);
+  check(log.updated && log.updated.display_name === 'bloom9', 'and the account carries the new name');
+  check(log.updated && log.updated.fandom === 'bloom', 'with the answer itself recorded beside it');
+  check(log.updated && log.updated.display_name_auto === true, 'still flagged auto, so a later answer still works');
+  // Their earlier rows keep the old name otherwise, and the board takes the
+  // last non-null one it happens to read — which with no ordering is any of them.
+  check(log.rowNames.includes('bloom9'), 'and the rows already written are brought with it');
+}
+{
+  // The one that must never happen.
+  const { sb, log } = stubSb({ display_name: 'ROSÉ4ever' });
+  const out = await api.syncAccountFandom(sb, 'u2', 'bloom', 'ROSÉ4ever');
+  check(out === 'ROSÉ4ever', 'a name they chose is left alone', out);
+  check(log.minted === 0, 'nothing is minted for them');
+  check(log.updated && log.updated.display_name === 'ROSÉ4ever', 'and their name is not overwritten');
+  check(log.updated && log.updated.fandom === 'bloom', 'but they are still counted as a BLOOM');
+  check(log.rowNames.length === 0, 'and no row is rewritten');
+}
+{
+  // Named before the auto flag existed. That namespace was never choosable, so
+  // it is auto by construction — the same fallback the SQL makes.
+  const { sb } = stubSb({ display_name: 'blink12' });
+  const out = await api.syncAccountFandom(sb, 'u3', 'bloom', 'blink12');
+  check(out === 'bloom9', 'a legacy blinkN counts as auto even without the flag', out);
+}
+{
+  // Every vote carries the answer, so this runs on every round of every day.
+  const { sb, log } = stubSb({ display_name: 'bloom5', display_name_auto: true, fandom: 'bloom' });
+  const out = await api.syncAccountFandom(sb, 'u4', 'bloom', 'bloom5');
+  check(out === 'bloom5' && log.minted === 0, 'an answer that already matches mints nothing', out);
+  check(log.updated === null, 'and writes nothing at all — not once per vote');
+}
+{
+  // fan_display_names.sql is applied by hand in the Supabase SQL editor, so the
+  // code ships first. A missing function must cost a label, never a vote.
+  const { sb, log } = stubSb({ display_name: 'blink41', display_name_auto: true }, { noFunction: true });
+  const out = await api.syncAccountFandom(sb, 'u5', 'bloom', 'blink41');
+  check(out === 'blink41', 'without the migration the name simply stays', out);
+  check(log.updated && log.updated.fandom === 'bloom', 'and the answer is still recorded');
+}
+{
+  // A hyphenated key is a perfectly good fandom to count people under, but
+  // mint_fan_name would fall back to "blink" for it — which would name a
+  // hyphenated fandom's member a blink. Better to leave the name alone.
+  check(api.FANDOM_RE.test('x-men') && !api.NAME_PREFIX_RE.test('x-men'),
+        'a hyphenated fandom key is countable but not nameable');
+  const { sb, log } = stubSb({ display_name: 'blink41', display_name_auto: true });
+  const out = await api.syncAccountFandom(sb, 'u6', 'x-men', 'blink41');
+  check(out === 'blink41' && log.minted === 0, 'so it never names anybody a blink by accident', out);
+  check(log.updated && log.updated.fandom === 'x-men', 'while still counting them');
+}
+{
+  // The vote is the thing that must land. Everything here is a label.
+  const { sb } = stubSb({ display_name: 'blink41', display_name_auto: true }, { updateFails: true });
+  const out = await api.syncAccountFandom(sb, 'u7', 'bloom', 'blink41');
+  check(out === 'blink41', 'a failed write leaves the row with the name it had', out);
+  const { sb: sb2 } = stubSb(null, { noUser: true });
+  const out2 = await api.syncAccountFandom(sb2, 'u8', 'bloom', 'whoever');
+  check(out2 === 'whoever', 'and an account that cannot be read changes nothing', out2);
 }
 
 console.log(`\nFAILURES: ${fails.length}`);

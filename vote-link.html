@@ -24,6 +24,10 @@
     .hidden { display:none; }
     .foot { margin-top:16px; font-size:11px; color:#6a4a56; }
     a { color:var(--pink-soft); }
+    .chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+    .chips button { width:auto; margin:0; padding:7px 12px; border:1px solid #4a1526; border-radius:999px;
+      background:transparent; color:#d38aa4; font-weight:500; font-size:12px; }
+    .chips button.on { border-color:var(--pink); background:rgba(255,46,119,0.14); color:#fff2f6; }
   </style>
   <script src="/i18n/i18n.js" defer></script>
 </head>
@@ -33,6 +37,13 @@
     <p id="lead">Connecting your blinksunited profile to the VMA Vote Counter extension…</p>
 
     <div id="login" class="hidden">
+      <!-- Asked here because THIS is the sign-up a partner fandom actually
+           does: the counter sends them to this page, not to /badges. The
+           answer decides the anonymous name their new account is given, and
+           that name has to exist before the token below is minted — the token's
+           label is stored once and reused for ever. -->
+      <label>Which fandom are you? <span style="opacity:0.6">(optional)</span></label>
+      <div id="fandoms" class="chips"></div>
       <button id="google">Continue with Google</button>
       <button id="x">Continue with X</button>
       <button id="discord">Continue with Discord</button>
@@ -74,10 +85,77 @@
       }
     });
 
+    // ── which fandom, and the name that follows from it ───────────────────
+    // Keys are the ones the collab board counts people by — FANDOMS in
+    // index.html, COLLABS[].fandoms in collabs.html, COLLAB.fandoms in the
+    // counter. test_collab_slugs checks they all agree.
+    const FANDOMS = [
+      { key: 'blink',    label: 'BLINK' },
+      { key: 'bloom',    label: 'BLOOM' },
+      { key: 'pauljjak', label: 'Pauljjak' },
+    ];
+    const myFandom = () => {
+      try {
+        const v = localStorage.getItem('buFandom');
+        return FANDOMS.some((f) => f.key === v) ? v : null;
+      } catch { return null; }
+    };
+    function renderFandoms() {
+      const cur = myFandom();
+      $('fandoms').innerHTML = FANDOMS.map((f) =>
+        `<button type="button" data-f="${f.key}" class="${f.key === cur ? 'on' : ''}">${f.label}</button>`).join('');
+    }
+    $('fandoms').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-f]');
+      if (!b) return;
+      try { localStorage.setItem('buFandom', b.getAttribute('data-f')); } catch {}
+      renderFandoms();
+    });
+    renderFandoms();
+
+    // A new account gets a clean anonymous "<fandom>N" rather than the OAuth real
+    // name or email this page would otherwise label them with — the same naming
+    // the main site does, which is the whole reason it exists. It has to happen
+    // BEFORE the token is minted: /api/extension-link stores the label once and
+    // reuses it for ever, so a name arriving afterwards would never be seen.
+    async function ensureFanName(session) {
+      const md = session.user.user_metadata || {};
+      const fandom = md.fandom || myFandom();
+      try {
+        if (md.display_name) {
+          // Already named, and they may have answered since. reissue_fan_name
+          // renames an auto name and refuses one they chose — that call is the
+          // decision, not this code.
+          if (!fandom) return;
+          const { data: name } = await sb.rpc('reissue_fan_name', { p_fandom: fandom });
+          if (!name || name === md.display_name) return;
+          await sb.auth.updateUser({ data: { display_name: name, display_name_auto: true } });
+          return;
+        }
+        // Brand-new signups only — the same rule the site applies. An
+        // established fan who never chose a name keeps their handle.
+        const created = session.user.created_at ? Date.parse(session.user.created_at) : 0;
+        if (!created || (Date.now() - created) > 10 * 60 * 1000) return;
+        let name = null;
+        const got = await sb.rpc('assign_fan_name', { p_fandom: fandom || 'blink' });
+        if (got.error) {
+          // fan_display_names.sql is applied by hand, so the page can ship
+          // first. Name them a blink rather than leaving them nameless.
+          const old = await sb.rpc('assign_blink_name');
+          name = old.error ? null : old.data;
+        } else { name = got.data; }
+        if (!name) return;
+        const data = { display_name: name, display_name_auto: true };
+        if (fandom && md.fandom !== fandom) data.fandom = fandom;
+        await sb.auth.updateUser({ data });
+      } catch {}
+    }
+
     async function mintAndSend() {
       const { data: { session } } = await sb.auth.getSession();
       if (!session) { showLogin(); return; }
       status('Linking…');
+      await ensureFanName(session);
       try {
         const r = await fetch('/api/extension-link', {
           method: 'POST',

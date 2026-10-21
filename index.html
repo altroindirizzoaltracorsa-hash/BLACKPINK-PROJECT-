@@ -528,6 +528,13 @@
 
   .oauth-btn { display:flex; align-items:center; justify-content:center; gap:0.6rem; width:100%; padding:0.85rem 1rem; margin-bottom:0.6rem; background:var(--card2); border:1px solid var(--border); color:var(--white); font-family:var(--mono); font-size:0.72rem; letter-spacing:0.06em; cursor:pointer; transition:border-color 0.2s,background 0.2s; }
   .oauth-btn:hover { border-color:var(--pink); background:rgba(255,0,102,0.08); }
+  /* Which fandom you are — on the sign-in card and in Settings → Account. */
+  .fandom-chips { display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1.1rem; }
+  .fandom-chip { padding:0.45rem 0.8rem; background:var(--card2); border:1px solid var(--border);
+    border-radius:999px; color:var(--muted); font-family:var(--mono); font-size:0.66rem;
+    letter-spacing:0.06em; cursor:pointer; transition:border-color 0.2s,background 0.2s,color 0.2s; }
+  .fandom-chip:hover { border-color:var(--pink); color:var(--white); }
+  .fandom-chip.on { border-color:var(--pink); background:rgba(255,0,102,0.12); color:var(--white); }
   .oauth-divider { display:flex; align-items:center; gap:0.8rem; margin:1.2rem 0; color:var(--muted); font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; }
   .oauth-divider::before, .oauth-divider::after { content:''; flex:1; height:1px; background:var(--border); }
   .linked-row { display:flex; align-items:center; justify-content:space-between; background:var(--card2); border:1px solid var(--border); padding:0.8rem 1rem; margin-bottom:0.5rem; }
@@ -4265,6 +4272,12 @@
         <div class="login-card">
           <p class="login-label">Sign in to track your badges</p>
           <p class="login-desc">Create a free account to link your scrobbler accounts, earn badges, and appear on the leaderboard.</p>
+          <!-- Asked BEFORE signing in, because the answer decides the anonymous
+               name a new account is given (bloom1 rather than blink41) and that
+               name is issued the moment the account exists. Optional: no answer
+               means BLINK, which is who this page is for. -->
+          <p class="login-desc" style="margin-bottom:0.4rem;">Which fandom are you? <span style="opacity:0.6">(optional — we're trading votes with a few)</span></p>
+          <div id="fandom-picker-login" class="fandom-chips"></div>
           <button class="oauth-btn" onclick="signInWithProvider('google')">Continue with Google</button>
           <button class="oauth-btn" onclick="signInWithProvider('x')">Continue with X</button>
           <button class="oauth-btn" onclick="signInWithProvider('discord')">Continue with Discord</button>
@@ -4391,6 +4404,11 @@
                 <button class="btn-primary" onclick="saveDisplayName()">Save</button>
               </div>
               <p class="settings-hint" id="settings-displayname-status"></p>
+            </div>
+            <div class="settings-group">
+              <label class="settings-label">Your fandom</label>
+              <div id="fandom-picker-settings" class="fandom-chips"></div>
+              <p class="settings-hint">Counted on the <a href="/collabs">collab board</a> as one more person from your side. If your name was given to you automatically, it changes to match; a name you chose is left alone.</p>
             </div>
           </div>
 
@@ -7800,6 +7818,13 @@ function renderAccountPage(session) {
     if (emailEl) emailEl.textContent = session.user.email || session.user.id;
     const dnInput = document.getElementById('linked-displayname-input-settings');
     if (dnInput) dnInput.value = session.user.user_metadata?.display_name || '';
+    // The account is authoritative over this browser: someone who answered in
+    // the extension, or on their phone, must not see the question unanswered here.
+    const acctFandom = session.user.user_metadata?.fandom;
+    if (acctFandom && FANDOMS.some((f) => f.key === acctFandom)) {
+      try { localStorage.setItem('buFandom', acctFandom); } catch {}
+    }
+    renderFandomPicker('fandom-picker-settings');
     loadLinkedAccounts();
     loadLinkedAccountsInline();
   } else {
@@ -7863,9 +7888,10 @@ async function saveDisplayName() {
     if (status) { status.textContent = 'Display name cannot be empty.'; status.style.color = '#ff4444'; }
     return;
   }
-  // Reserve the auto-assigned "blinkN" namespace so a manual pick can't collide
-  // with (and overwrite) an auto-named fan's leaderboard row.
-  if (/^blink\d+$/i.test(display_name)) {
+  // Reserve every auto-assigned "<fandom>N" namespace (blinkN, bloomN, …) so a
+  // manual pick can't collide with (and overwrite) an auto-named fan's
+  // leaderboard row.
+  if (AUTO_NAME_RE.test(display_name)) {
     if (status) { status.textContent = 'That name is reserved — please choose another.'; status.style.color = '#ff4444'; }
     return;
   }
@@ -8437,9 +8463,127 @@ async function removeLinkedAccount(id) {
   loadLinkedAccounts();
 }
 
-// If a signed-in fan has no display name, give them a clean anonymous "blinkN"
-// (blink1, blink2, …) instead of exposing their raw Last.fm handle or OAuth real
-// name. The number is issued atomically by the assign_blink_name() Postgres
+// ── WHICH FANDOM ─────────────────────────────────────────────
+// A vote trade (see /collabs) brings other fandoms to this sign-up form, and the
+// auto display name below follows the one they say they are: a BLOOM is bloom1,
+// not blink41. The keys are the SAME ones the collab board counts people by —
+// COLLABS[].fandoms in collabs.html and COLLAB.fandoms in the extension — so a
+// key only one file knows counts nobody. test_collab_slugs checks all three.
+//
+// It decides a label and nothing else: no vote, badge, rank or board total
+// anywhere on this site reads it.
+const FANDOMS = [
+  { key: 'blink',    label: 'BLINK' },
+  { key: 'bloom',    label: 'BLOOM' },
+  { key: 'pauljjak', label: 'Pauljjak' },
+];
+// Every numbered auto name, reserved against a manual pick: two people on one
+// "bloom12" would collide on one leaderboard key and one row would overwrite
+// the other. Built from the list rather than written out, so a fandom joining a
+// trade is reserved by adding it above and nowhere else.
+const AUTO_NAME_RE = new RegExp('^(' + FANDOMS.map((f) => f.key).join('|') + ')\\d+$', 'i');
+
+// The answer is given BEFORE signing in, so it has to survive an OAuth round
+// trip through another origin — hence localStorage rather than a variable.
+function buFandom() {
+  try {
+    const v = localStorage.getItem('buFandom');
+    return FANDOMS.some((f) => f.key === v) ? v : null;
+  } catch { return null; }
+}
+
+// Both pickers (the sign-in card and Settings → Account) render from here.
+function renderFandomPicker(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const cur = buFandom();
+  el.innerHTML = FANDOMS.map((f) =>
+    `<button type="button" class="fandom-chip${f.key === cur ? ' on' : ''}" data-fandom="${f.key}"` +
+    ` aria-pressed="${f.key === cur}">${f.label}</button>`).join('');
+}
+
+// Delegated, so a picker rendered later (Settings opens after sign-in) still works.
+document.addEventListener('click', (e) => {
+  const b = e.target && e.target.closest && e.target.closest('[data-fandom]');
+  if (b) chooseFandom(b.getAttribute('data-fandom'));
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+  renderFandomPicker('fandom-picker-login');
+  renderFandomPicker('fandom-picker-settings');
+});
+
+async function chooseFandom(key) {
+  if (!FANDOMS.some((f) => f.key === key)) return;
+  try { localStorage.setItem('buFandom', key); } catch {}
+  renderFandomPicker('fandom-picker-login');
+  renderFandomPicker('fandom-picker-settings');
+  // Not signed in yet: ensureAutoDisplayName picks it up after the redirect.
+  if (!sb) return;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session?.user) return;
+    if (session.user.user_metadata?.fandom !== key) {
+      // user_metadata.fandom is the single answer. The extension posts the same
+      // key to /api/collabs, which writes it here too, so the two cannot drift.
+      const { error } = await sb.auth.updateUser({ data: { fandom: key } });
+      if (error) return;
+    }
+    await reissueAutoDisplayName(key);
+  } catch {}
+}
+
+// Push a name to the leaderboard rows so the board updates now rather than at
+// the next cron (which reconciles from auth metadata either way).
+async function pushDisplayNameToBoard(name, token) {
+  if (!token) return;
+  try {
+    await fetch('/api/leaderboard?action=set-display-name', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ displayName: name, accessToken: token }),
+    });
+  } catch {}
+}
+
+// The answer usually arrives AFTER the account: the fandom question is in the
+// counter, and the counter is installed after signing up. So an auto name
+// follows a later answer — and a name somebody chose for themselves never does.
+// That decision is the database's, not this function's: reissue_fan_name()
+// checks the display_name_auto flag the name was saved with and returns null for
+// a chosen one. Here we only apply what comes back.
+let _reissuing = false;
+async function reissueAutoDisplayName(key) {
+  if (!sb || _reissuing) return;
+  _reissuing = true;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session?.user) return;
+    const cur = (session.user.user_metadata?.display_name || '').trim();
+    const { data: name, error } = await sb.rpc('reissue_fan_name', { p_fandom: key });
+    // null: a name they chose, or the migration isn't applied yet. Either way,
+    // leave them exactly as they are.
+    if (error || !name || name === cur) return;
+    const { error: upErr } = await sb.auth.updateUser({
+      data: { display_name: name, display_name_auto: true } });
+    if (upErr) return;
+    try { cacheDisplayName(name); } catch {}
+    await pushDisplayNameToBoard(name, session.access_token);
+    const input = document.getElementById('linked-displayname-input-settings');
+    if (input) input.value = name;
+    const status = document.getElementById('settings-displayname-status');
+    if (status) {
+      status.textContent = `You're now ${name}.`;
+      status.style.color = '#4caf50';
+    }
+    if (currentUser?.info) currentUser.info.displayName = name;
+    lbCacheTime = null;
+  } catch {} finally { _reissuing = false; }
+}
+
+// If a signed-in fan has no display name, give them a clean anonymous "<fandom>N"
+// (blink1, bloom1, …) instead of exposing their raw Last.fm handle or OAuth real
+// name. The number is issued atomically by the assign_fan_name() Postgres
 // function, so two concurrent signups can never land on the same leaderboard
 // display-name key. Once it's saved to auth metadata the hourly cron relabels the
 // fan's board row to match (the same recovery path that fixes handle-named rows).
@@ -8447,7 +8591,13 @@ async function removeLinkedAccount(id) {
 let _assigningBlink = false;
 async function ensureAutoDisplayName(session) {
   if (!sb || !session?.user) return;
-  if (session.user.user_metadata?.display_name) return; // already has a name
+  if (session.user.user_metadata?.display_name) {
+    // Already named — but they may have answered the fandom question since, in
+    // the extension or on another device. Catch the name up to the answer.
+    const f = session.user.user_metadata?.fandom || buFandom();
+    if (f) reissueAutoDisplayName(f);
+    return;
+  }
   // ONLY brand-new signups — never a returning existing user. An established fan who
   // simply never set a display name must keep showing their handle, not suddenly
   // become "blinkN". A new signup's account was created seconds ago; a returning
@@ -8457,23 +8607,31 @@ async function ensureAutoDisplayName(session) {
   if (_assigningBlink) return;
   _assigningBlink = true;
   try {
-    const { data: name, error } = await sb.rpc('assign_blink_name');
-    if (error || !name) return;
-    const { error: upErr } = await sb.auth.updateUser({ data: { display_name: name } });
+    const fandom = session.user.user_metadata?.fandom || buFandom() || 'blink';
+    let name = null;
+    const got = await sb.rpc('assign_fan_name', { p_fandom: fandom });
+    if (got.error) {
+      // fan_display_names.sql not applied yet. Fall back to the original
+      // function so a signup is still named, just as a blink — a missing
+      // migration must not leave people nameless.
+      const old = await sb.rpc('assign_blink_name');
+      if (old.error || !old.data) return;
+      name = old.data;
+    } else {
+      name = got.data;
+    }
+    if (!name) return;
+    // display_name_auto is what lets a later fandom answer rename this safely:
+    // without it, a reissue could only ever guess from the name's shape.
+    const meta = { display_name: name, display_name_auto: true };
+    if (fandom && session.user.user_metadata?.fandom !== fandom) meta.fandom = fandom;
+    const { error: upErr } = await sb.auth.updateUser({ data: meta });
     if (upErr) return;
     try { cacheDisplayName(name); } catch {}
     // Push straight to the leaderboard rows so the board updates now, not next cron.
-    try {
-      const tok = session.access_token
-        || (await sb.auth.getSession()).data?.session?.access_token;
-      if (tok) {
-        await fetch('/api/leaderboard?action=set-display-name', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ displayName: name, accessToken: tok }),
-        });
-      }
-    } catch {}
+    const tok = session.access_token
+      || (await sb.auth.getSession()).data?.session?.access_token;
+    await pushDisplayNameToBoard(name, tok);
   } catch {} finally { _assigningBlink = false; }
 }
 

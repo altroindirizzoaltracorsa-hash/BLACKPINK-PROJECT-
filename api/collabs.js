@@ -52,6 +52,12 @@ const SLUG_RE = /^[\w .'’&()-]{1,80}$/;        // a ballot category, as the pa
 // on purpose: it is stored, counted and printed on a page, and the caller is
 // an extension that anybody can edit.
 const FANDOM_RE = /^[a-z][a-z0-9-]{0,23}$/;
+// A fandom key is also the start of an auto display name (bloom1, pauljjak1) —
+// but only if it has the shape fan_display_names.sql accepts as a prefix, which
+// is narrower: no hyphens, at least two characters. A key outside it is still a
+// perfectly good fandom to count people under; it just never names anybody,
+// because mint_fan_name would fall back to "blink" and call a BLOOM a blink.
+const NAME_PREFIX_RE = /^[a-z][a-z0-9]{1,20}$/;
 const ID_RE = /^[a-z0-9-]{1,64}$/;
 const MAX_PER_CAT = 10000;
 const BOARD_MAX = 200;
@@ -68,6 +74,61 @@ const addInto = (into, src) => {
   }
 };
 const sumOf = (o) => Object.values(o || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+
+// Record on the ACCOUNT which fandom somebody says they are, and bring an
+// auto-assigned display name in line with it. Returns the name to store on this
+// row — the new one if it was renamed, otherwise the one passed in.
+//
+// Only ever an AUTO name. `display_name_auto` is the flag the site writes beside
+// a name it issued; the ^blink\d+$ fallback covers accounts named before that
+// flag existed, a namespace that was never choosable. A name somebody chose for
+// themselves is never touched, which is the whole reason this is a flag and not
+// a guess from the name's shape: "bloom12" is a plausible hand-picked name.
+//
+// Best-effort throughout: the vote is the thing that must land, and every
+// failure here costs nothing but a label.
+async function syncAccountFandom(sb, uid, fandom, name) {
+  const { data: got } = await sb.auth.admin.getUserById(uid);
+  const md = (got && got.user && got.user.user_metadata) || null;
+  if (!md) return name;
+
+  const cur = String(md.display_name || '').trim();
+  const isAuto = md.display_name_auto === true || /^blink\d+$/i.test(cur);
+  const matches = cur && new RegExp('^' + fandom + '\\d+$', 'i').test(cur);
+  const next = Object.assign({}, md);
+  let changed = false;
+
+  if (md.fandom !== fandom) { next.fandom = fandom; changed = true; }
+
+  let newName = null;
+  if (cur && isAuto && !matches && NAME_PREFIX_RE.test(fandom)) {
+    const { data: minted, error } = await sb.rpc('mint_fan_name', { p_prefix: fandom });
+    // No function yet (the migration is applied by hand) — record the fandom
+    // and leave the name alone rather than failing the vote.
+    if (!error && minted) {
+      newName = minted;
+      next.display_name = minted;
+      next.display_name_auto = true;
+      changed = true;
+    }
+  }
+  if (!changed) return name;
+
+  const { error: upErr } = await sb.auth.admin.updateUserById(uid, { user_metadata: next });
+  if (upErr || !newName) return name;
+
+  // Their earlier rows still carry the old name, and the board takes the last
+  // non-null one it reads — with no ordering, that could be any of them. So the
+  // rename has to reach the rows that already exist, not only the one being
+  // written now. Every collab, not just this one: a display name belongs to the
+  // account, so one person cannot be two names on two boards.
+  try {
+    await sb.from('collab_user_votes')
+      .update({ display_name: newName })
+      .eq('app_user_id', uid);
+  } catch (_) {}
+  return newName;
+}
 
 // One period's view: the category split, and the people, ordered by votes.
 // `board` carries each person's own split so the page can show what they cast
@@ -224,6 +285,22 @@ export default async function handler(req, res) {
       // count of people: it splits no votes and gates nothing.
       const fandom = FANDOM_RE.test(String(body.fandom || '').trim().toLowerCase())
         ? String(body.fandom).trim().toLowerCase() : null;
+
+      // The answer given in the extension belongs to the ACCOUNT, not just to
+      // this collab's rows: it decides the anonymous display name the site
+      // gives someone (bloom1 rather than blink41), and naming a BLOOM a blink
+      // is most visible exactly here, on the board that exists to show each
+      // fandom turning up. The site writes the same user_metadata.fandom, so
+      // the two can never disagree about who somebody is.
+      //
+      // Renaming is handled here too rather than waiting for them to open the
+      // site: somebody who votes through the extension may never come back to
+      // blinksunited.com, and until they did their row would read "blink41".
+      // mint_fan_name is the server's side door into the same counter the
+      // browser reaches through assign_fan_name / reissue_fan_name.
+      if (fandom) {
+        try { name = await syncAccountFandom(sb, uid, fandom, name); } catch (_) {}
+      }
 
       const row = {
         collab_id: id, app_user_id: uid, day,
