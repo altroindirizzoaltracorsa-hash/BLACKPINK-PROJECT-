@@ -1,0 +1,15 @@
+name: Probe the link pages
+on: { workflow_dispatch: {} }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Are the link URLs reachable
+        run: |
+          set -u
+          for u in /vote-link /vote-link.html /extension-link /extension-link.html; do
+            code=$(curl -sS -m 20 -o /tmp/p.html -w '%{http_code}' "https://www.blinksunited.com$u" || echo 000)
+            t=$(grep -o '<title>[^<]*' /tmp/p.html | sed 's/<title>//' | head -1)
+            echo "::notice title=$u::HTTP $code — ${t:-no title}"
+          done
