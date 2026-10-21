@@ -447,14 +447,23 @@ const FIX = {
                'favorite-female-artist': 3, 'favorite-global-music-star': 3 },
       board: [{ name: 'rllyanav', votes: 8, byCat: { 'favorite-music-group-or-duo': 2,
                  'favorite-global-music-star': 2, 'favorite-music-collaboration': 2,
-                 'favorite-female-artist': 2 } },
+                 'favorite-female-artist': 2,
+                 // In the DEFAULT period as well, because that is the board a
+                 // visitor sees — a leak only visible after clicking a tab is
+                 // a leak nobody would have caught.
+                 'favorite-animated-male-voice-from-a-movie': 3 } },
               { name: null, fandom: 'bloom', votes: 4, byCat: { 'favorite-music-group-or-duo': 2 } },
               { name: null, votes: 2, byCat: { 'favorite-music-group-or-duo': 1 } }] },
     week: { forUs: { picks: 60 }, forThem: { picks: 20 }, byCat: {}, board: [] },
     all: { forUs: { picks: 300 }, forThem: { picks: 100 },
       byCat: { 'favorite-music-group-or-duo': 100, 'favorite-music-collaboration': 100,
-               'favorite-female-artist': 60, 'favorite-global-music-star': 100 },
-      board: [{ name: 'rllyanav', votes: 160, byCat: { 'favorite-music-group-or-duo': 40 } },
+               'favorite-female-artist': 60, 'favorite-global-music-star': 100,
+               'favorite-animated-male-voice-from-a-movie': 90 },
+      board: [{ name: 'rllyanav', votes: 160, byCat: { 'favorite-music-group-or-duo': 40,
+                  // A category this collab no longer lists. Production has
+                  // exactly this: the trade had a second partner for two days
+                  // and those votes are still in every stored row.
+                  'favorite-animated-male-voice-from-a-movie': 12 } },
               { name: null, fandom: 'bloom', votes: 120, byCat: { 'favorite-global-music-star': 40 } },
               { name: null, votes: 40, byCat: { 'favorite-global-music-star': 10 } }] },
   },
@@ -513,6 +522,29 @@ const boardHead = (await prev.locator('.sub-head').first().textContent()).trim()
 /today/i.test(boardHead)
   ? ok('and the board follows the same period', boardHead)
   : bad('and the board follows the same period', boardHead);
+
+console.log('--- a category the collab no longer lists is not rendered');
+// The removal of a partner leaves its votes behind in every stored row, and
+// the row lists used to print them with the raw ballot slug as the label —
+// "favorite-animated-male-voice-from-a-movie 12" on the page and on the share
+// card. The headline figures never counted it (periodOf ignores a category in
+// neither list), which is exactly why nothing complained.
+{
+  const leak = await prev.evaluate(() => {
+    const txt = document.body.innerText;
+    return {
+      onPage: /favorite-[a-z-]+/.exec(txt) ? RegExp.lastMatch : null,
+      rows: [...document.querySelectorAll('.split-cat, .board-cat')]
+        .map((e) => e.textContent.trim()).filter((t) => /favorite-/.test(t)),
+    };
+  });
+  !leak.onPage
+    ? ok('no ballot slug is printed anywhere on the page')
+    : bad('no ballot slug is printed anywhere on the page', leak.onPage);
+  leak.rows.length === 0
+    ? ok('and no breakdown or board row is built from one')
+    : bad('and no breakdown or board row is built from one', leak.rows.join(' | '));
+}
 
 console.log('--- the board ranks on votes cast, and shows what each person cast');
 const board = await prev.evaluate(() => [...document.querySelectorAll('.board tbody tr')].map((tr) => ({
@@ -837,15 +869,28 @@ console.log('--- the share card');
     // being recorded and being drawn cannot hide behind the report.
     return { drawn: m.rows.map((r) => ({ slug: r.slug, label: r.label,
                                          n: Number(String(r.shown).replace(/,/g, '')) })),
-             byCat: p.byCat, labels: m.rows.map((r) => r.label) };
+             byCat: p.byCat, labels: m.rows.map((r) => r.label),
+             // Which of the stored categories this collab is still about. The
+             // rest are from an agreement that has ended and must NOT be drawn.
+             mine: Object.keys(p.byCat).filter((k) => isCollabCat(COLLABS[0], k)),
+             dropped: Object.keys(p.byCat).filter((k) => !isCollabCat(COLLABS[0], k)) };
   });
   {
-    const want = Object.entries(cardRows.byCat).filter(([, n]) => n > 0);
+    const want = Object.entries(cardRows.byCat)
+      .filter(([k, n]) => n > 0 && cardRows.mine.includes(k));
     const missing = want.filter(([k]) => !cardRows.drawn.some((r) => r.slug === k));
     const wrong = cardRows.drawn.filter((r) => cardRows.byCat[r.slug] !== r.n);
     (want.length > 0 && missing.length === 0)
-      ? ok('every category is on the card', cardRows.labels.join(', '))
-      : bad('every category is on the card', `missing ${missing.map(([k]) => k).join(', ')}`);
+      ? ok('every category the collab lists is on the card', cardRows.labels.join(', '))
+      : bad('every category the collab lists is on the card', `missing ${missing.map(([k]) => k).join(', ')}`);
+    // And nothing from an agreement that has ended. The fixture carries one, so
+    // this is a real exclusion rather than a vacuous pass.
+    const leaked = cardRows.drawn.filter((r) => cardRows.dropped.includes(r.slug));
+    (cardRows.dropped.length > 0 && leaked.length === 0)
+      ? ok('and a category it no longer lists is not', `${cardRows.dropped.length} excluded`)
+      : bad('and a category it no longer lists is not',
+            cardRows.dropped.length === 0 ? 'the fixture has none to exclude'
+                                          : leaked.map((r) => r.slug).join(', '));
     wrong.length === 0
       ? ok('with the same figures the page is showing',
            cardRows.drawn.map((r) => `${r.n}`).join('/'))
