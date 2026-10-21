@@ -1,0 +1,187 @@
+name: Merge one account's votes into another
+
+# Moves the vote rows of one account onto another, named by display name.
+# For a test account whose votes were really cast by the person behind the
+# other one — the votes happened, they just landed under the wrong name.
+#
+# Dry run by default. It SUMS: both accounts can have a row for the same day,
+# and overwriting would throw away whichever was written second. It refuses to
+# merge an account into itself, refuses a name the site hands out
+# automatically, and refuses if either name matches more than one account.
+#
+# Note on `votes`:
+#   collab_user_votes has a CHECK that votes equals the sum of cats, so there it
+#   is recomputed from the merged breakdown.
+#   kca_user_votes counts every BLACKPINK-side pick while cats break down only
+#   the ones we track, so votes can legitimately exceed the sum — there the two
+#   totals are added and cats merged separately.
+on:
+  workflow_dispatch:
+    inputs:
+      from_name:
+        description: 'Display name of the account to empty'
+        required: true
+      to_name:
+        description: 'Display name of the account to merge INTO'
+        required: true
+      mode:
+        description: 'dry (print only) or apply'
+        required: true
+        default: 'dry'
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Merge
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          FROM_NAME: ${{ inputs.from_name }}
+          TO_NAME: ${{ inputs.to_name }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -u
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret is not set."
+            exit 1
+          fi
+          case "$MODE" in dry|apply) ;; *) echo "::error::mode must be dry or apply"; exit 1 ;; esac
+          set +e
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 \
+               -v from_name="$FROM_NAME" -v to_name="$TO_NAME" -v mode="$MODE" \
+               >/tmp/out.txt 2>&1 <<'SQL'
+          -- psql substitutes :'var' while lexing and does not look inside a
+          -- dollar-quoted block, so the values come in through set_config.
+          select set_config('bu.from', :'from_name', false);
+          select set_config('bu.to',   :'to_name',   false);
+          select set_config('bu.mode', :'mode',      false);
+
+          -- Sum two breakdowns key by key.
+          create or replace function pg_temp.merge_cats(a jsonb, b jsonb) returns jsonb
+          language sql immutable as $fn$
+            select coalesce(jsonb_object_agg(k, v), '{}'::jsonb)
+            from (
+              select key as k, sum(value::int) as v
+              from (
+                select * from jsonb_each_text(coalesce(a, '{}'::jsonb))
+                union all
+                select * from jsonb_each_text(coalesce(b, '{}'::jsonb))
+              ) both_of_them
+              group by key
+            ) summed
+          $fn$;
+
+          do $$
+          declare
+            from_name text := current_setting('bu.from');
+            to_name   text := current_setting('bu.to');
+            mode      text := current_setting('bu.mode');
+            src uuid; tgt uuid;
+            r record; have record; merged jsonb;
+            n int := 0;
+          begin
+            if from_name = to_name then
+              raise exception 'refusing: both names are "%"', from_name;
+            end if;
+            if from_name ~* '^(blink|bloom|pauljjak)[0-9]+$'
+               or to_name ~* '^(blink|bloom|pauljjak)[0-9]+$' then
+              raise exception 'refusing: a name the site hands out automatically may belong to somebody else';
+            end if;
+
+            select distinct app_user_id into src from collab_user_votes where display_name = from_name;
+            if not found then
+              raise notice 'nothing named "%" — nothing to do', from_name; return;
+            end if;
+            if (select count(distinct app_user_id) from collab_user_votes where display_name = from_name) > 1 then
+              raise exception 'refusing: more than one account is named "%"', from_name;
+            end if;
+
+            select distinct app_user_id into tgt from collab_user_votes where display_name = to_name;
+            if not found then
+              raise exception 'no account named "%" has any rows to merge into', to_name;
+            end if;
+            if (select count(distinct app_user_id) from collab_user_votes where display_name = to_name) > 1 then
+              raise exception 'refusing: more than one account is named "%"', to_name;
+            end if;
+
+            raise notice 'merging %… ("%") into %… ("%")',
+              left(src::text, 8), from_name, left(tgt::text, 8), to_name;
+
+            -- ── the collab board ────────────────────────────────────────────
+            for r in select * from collab_user_votes where app_user_id = src loop
+              select * into have from collab_user_votes
+               where collab_id = r.collab_id and app_user_id = tgt and day = r.day;
+              if found then
+                merged := pg_temp.merge_cats(have.cats, r.cats);
+                raise notice 'collab % · % · % + % = % votes',
+                  r.collab_id, r.day, have.votes, r.votes, collab_votes_sum(merged);
+                if mode = 'apply' then
+                  update collab_user_votes
+                     set cats = merged,
+                         votes = collab_votes_sum(merged),
+                         fandom = coalesce(have.fandom, r.fandom),
+                         updated_at = now()
+                   where collab_id = r.collab_id and app_user_id = tgt and day = r.day;
+                end if;
+              else
+                raise notice 'collab % · % · % votes move across', r.collab_id, r.day, r.votes;
+                if mode = 'apply' then
+                  insert into collab_user_votes
+                        (collab_id, app_user_id, day, votes, cats, display_name, fandom, updated_at)
+                  values (r.collab_id, tgt, r.day, r.votes, r.cats, to_name, r.fandom, now());
+                end if;
+              end if;
+              n := n + 1;
+            end loop;
+
+            -- ── the Kids' Choice board ──────────────────────────────────────
+            for r in select * from kca_user_votes where app_user_id = src loop
+              select * into have from kca_user_votes where app_user_id = tgt and day = r.day;
+              if found then
+                merged := pg_temp.merge_cats(have.cats, r.cats);
+                raise notice 'kca    % · % + % = % votes', r.day, have.votes, r.votes, have.votes + r.votes;
+                if mode = 'apply' then
+                  update kca_user_votes
+                     set cats = merged, votes = have.votes + r.votes, updated_at = now()
+                   where app_user_id = tgt and day = r.day;
+                end if;
+              else
+                raise notice 'kca    % · % votes move across', r.day, r.votes;
+                if mode = 'apply' then
+                  insert into kca_user_votes (app_user_id, day, votes, cats, display_name, updated_at)
+                  values (tgt, r.day, r.votes, r.cats, to_name, now());
+                end if;
+              end if;
+              n := n + 1;
+            end loop;
+
+            if mode <> 'apply' then
+              raise notice 'DRY RUN — % row(s) would move. Re-run with mode: apply.', n;
+              return;
+            end if;
+
+            delete from collab_user_votes where app_user_id = src;
+            delete from kca_user_votes    where app_user_id = src;
+            -- The token too: it can still post votes, and posting them as the
+            -- emptied account is the thing being undone here.
+            delete from scrobble_tokens where app_user_id = src;
+
+            if exists (select 1 from collab_user_votes
+                       where app_user_id = tgt and votes <> collab_votes_sum(cats)) then
+              raise exception 'a merged row''s votes no longer match its breakdown';
+            end if;
+            raise notice '% row(s) merged. the emptied account can no longer post.', n;
+          end $$;
+          SQL
+          rc=$?
+          set -e
+          grep -E '^(psql:)?.*(NOTICE|ERROR):' /tmp/out.txt \
+            | sed -E 's/^.*(NOTICE|ERROR): +//' \
+            | while IFS= read -r line; do echo "::notice title=$MODE::$line"; done
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::psql exited $rc — see the notices above"
+            exit "$rc"
+          fi
