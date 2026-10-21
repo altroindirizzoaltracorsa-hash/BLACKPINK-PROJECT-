@@ -101,7 +101,39 @@ async function syncAccountFandom(sb, uid, fandom, name) {
   if (md.fandom !== fandom) { next.fandom = fandom; changed = true; }
 
   let newName = null;
-  if (cur && isAuto && !matches && NAME_PREFIX_RE.test(fandom)) {
+
+  // NO NAME AT ALL is its own case, and the one that matters on a board.
+  // Everybody without a display name used to render identically — "a bloom",
+  // "a bloom", "a bloom" — so nobody could find their own row. An automatic
+  // name is only useful if it is NUMBERED, which is the whole point of bloom1,
+  // bloom2 beside blink1, blink2.
+  //
+  // Not for somebody whose Last.fm handle is already showing on the streaming
+  // leaderboard, though: naming them would replace that handle with a number
+  // they did not ask for, which is a thing this site did once before and had to
+  // undo (see the revert-auto-blink cleanup in api/leaderboard.js). A linked
+  // scrobbler is exactly what makes a handle visible, so its absence is the
+  // test. Best-effort: if the lookup fails, leave the name alone rather than
+  // risk taking a handle away.
+  if (!cur && NAME_PREFIX_RE.test(fandom)) {
+    let hasHandle = true;
+    try {
+      const { data: linked, error: lErr } = await sb.from('linked_accounts')
+        .select('id').eq('app_user_id', uid).limit(1);
+      hasHandle = !!lErr || !!(linked && linked.length);
+    } catch (_) { hasHandle = true; }
+    if (!hasHandle) {
+      const { data: minted, error } = await sb.rpc('mint_fan_name', { p_prefix: fandom });
+      if (!error && minted) {
+        newName = minted;
+        next.display_name = minted;
+        next.display_name_auto = true;
+        changed = true;
+      }
+    }
+  }
+
+  if (!newName && cur && isAuto && !matches && NAME_PREFIX_RE.test(fandom)) {
     const { data: minted, error } = await sb.rpc('mint_fan_name', { p_prefix: fandom });
     // No function yet (the migration is applied by hand) — record the fandom
     // and leave the name alone rather than failing the vote.
