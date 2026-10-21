@@ -49,8 +49,9 @@ jobs:
           fi
           case "$MODE" in dry|apply) ;; *) echo "::error::mode must be dry or apply"; exit 1 ;; esac
 
+          set +e
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 \
-               -v dname="$DNAME" -v mode="$MODE" <<'SQL'
+               -v dname="$DNAME" -v mode="$MODE" >/tmp/out.txt 2>&1 <<'SQL'
           select set_config('bu.dname', :'dname', false);
           select set_config('bu.mode',  :'mode',  false);
           do $$
@@ -105,3 +106,14 @@ jobs:
             raise notice 'deleted. the boards are back to what they were.';
           end $$;
           SQL
+          rc=$?
+          set -e
+          # Every NOTICE becomes an annotation, so the dry run can be read
+          # without fetching the job log.
+          grep -E '^(psql:)?.*(NOTICE|ERROR):' /tmp/out.txt \
+            | sed -E 's/^.*(NOTICE|ERROR): +//' \
+            | while IFS= read -r line; do echo "::notice title=$MODE::$line"; done
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::psql exited $rc — see the notices above"
+            exit "$rc"
+          fi
