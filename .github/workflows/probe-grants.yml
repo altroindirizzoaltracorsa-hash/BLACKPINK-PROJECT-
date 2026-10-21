@@ -44,7 +44,7 @@ jobs:
                    | awk '{print $NF}' | sed 's/^public\.//' | grep -vx 'if' \
                    | sort -u | paste -sd,)
           echo "migrations create: $TABLES"
-          q() { psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -v tables="$TABLES" -c "$1"; }
+          q() { psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c "$1"; }
 
           q "select '::notice title=tables::' || count(*) || ' tables in public'
              from information_schema.tables
@@ -91,12 +91,12 @@ jobs:
           # 2026-10-30 applies to whoever writes that file later. The names are
           # the useful part; several are tables the site reads every day.
           q "with mine as (
-               select unnest(string_to_array(:'tables', ',')) as t
+               select unnest(string_to_array('$TABLES', ',')) as t
              )
              select '::notice title=tables with no migration in the repo::' ||
                     coalesce(string_agg(i.table_name, ', ' order by i.table_name), 'none')
              from information_schema.tables i
-             left join mine on mine.t = i.table_name
+             left join mine on mine.t = i.table_name::text
              where i.table_schema = 'public' and i.table_type = 'BASE TABLE'
                and mine.t is null"
 
