@@ -73,6 +73,21 @@
   <script>
     const SUPABASE_URL = 'https://esbzlrmrdvvsrsobrzfz.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzYnpscm1yZHZ2c3Jzb2JyemZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODQyNDYsImV4cCI6MjA5NTY2MDI0Nn0.P3VhWYeog5CmE67VjvHboG3rP876OPjcmmtBmz1zfck';
+    // Guarded, because this page is somebody's whole encounter with the site
+    // and the library comes from a CDN. If that script does not arrive — a
+    // blocked domain, a captive wifi, an ad blocker that is too keen — the
+    // unguarded version threw here, the script stopped, and the sign-in card
+    // stayed hidden: a dead page with no buttons and no explanation, which
+    // reads as "this is broken" rather than "try again". index.html has always
+    // guarded this; this page did not.
+    if (typeof supabase === 'undefined' || !supabase.createClient) {
+      document.getElementById('lead').textContent =
+        'Could not load the sign-in library — something is blocking cdn.jsdelivr.net.';
+      document.getElementById('status').className = 'msg err';
+      document.getElementById('status').textContent =
+        'Try another network or turn off a content blocker for this page, then reload.';
+      throw new Error('supabase-js did not load');
+    }
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const $ = (id) => document.getElementById(id);
