@@ -106,6 +106,16 @@ jobs:
              where i.table_schema = 'public' and i.table_type = 'BASE TABLE'
                and mine.t is null"
 
+          # Which functions a signed-in person can call. The site offers a
+          # "Delete Account" button that calls delete_account() — a function
+          # with no migration in this repo, so whether it exists at all is a
+          # question only the database can answer.
+          q "select '::notice title=functions authenticated may call::' ||
+                    coalesce(string_agg(p.proname, ', ' order by p.proname), 'none')
+             from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+             where n.nspname = 'public'
+               and has_function_privilege('authenticated', p.oid, 'execute')"
+
           q "select '::notice title=anon can SELECT::' ||
                     coalesce(string_agg(distinct table_name, ', ' order by table_name), 'none')
              from information_schema.role_table_grants
