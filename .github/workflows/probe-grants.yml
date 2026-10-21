@@ -39,8 +39,14 @@ jobs:
           # not exists" in prose, and without this the list gains a table called
           # "if". The name is the last field, so the optional clauses cannot
           # become the name.
-          TABLES=$(sed -E 's/^[[:space:]]*--.*$//' supabase/*.sql \
-                   | grep -ho -iE 'create table (if not exists )?(public\.)?[a-z_]+' \
+          # Both folders: supabase/migrations/ holds the rest of the schema
+          # (kca_user_votes, group_tracks, the youtube tables), and leaving it
+          # out overstated this list by seven. [a-z0-9_] rather than [a-z_],
+          # because a name with a digit in it was being cut short —
+          # artist_daily_stats_backup_sep23repair arrived as
+          # "artist_daily_stats_backup_sep" and so matched nothing.
+          TABLES=$(sed -E 's/^[[:space:]]*--.*$//' supabase/*.sql supabase/migrations/*.sql \
+                   | grep -ho -iE 'create table (if not exists )?(public\.)?[a-z0-9_]+' \
                    | awk '{print $NF}' | sed 's/^public\.//' | grep -vx 'if' \
                    | sort -u | paste -sd,)
           echo "migrations create: $TABLES"
