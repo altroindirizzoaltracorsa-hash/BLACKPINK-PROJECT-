@@ -60,6 +60,13 @@ jobs:
               ver = re.search(r'vote-extension-v([\d.]+)-chrome', code)
               print(f"::notice title=/collabs::the page is live — card, turnout block, "
                     f"request form, counter v{ver.group(1) if ver else '?'}")
+          # Who the page CREDITS. Naming somebody here says publicly that they
+          # are in the trade, and a page credited for a partner that has left
+          # stayed on the live card for a day — removed from one list, left in
+          # another. Reported from the served HTML rather than from the repo,
+          # because the repo being right is not the same as the site being right.
+          handles = sorted(set(re.findall(r'x\.com/([A-Za-z0-9_]+)', code)))
+          print("::notice title=credited on the card::" + (", ".join("@" + h for h in handles) or "none"))
           PY
 
       - name: GET /api/collabs
