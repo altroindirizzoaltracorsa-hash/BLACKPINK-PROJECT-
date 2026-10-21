@@ -19,6 +19,10 @@
     .msg { margin-top:14px; font-size:13px; }
     .ok { color:#1db954; } .err { color:#e0554e; }
     .hidden { display:none; }
+    .chips { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 10px; }
+    .chips button { width:auto; margin:0; padding:7px 12px; border:1px solid #4a1526; border-radius:999px;
+      background:transparent; color:#d38aa4; font-weight:500; font-size:12px; }
+    .chips button.on { border-color:#ff2e77; background:rgba(255,46,119,0.14); color:#fff2f6; }
     .foot { margin-top:16px; font-size:11px; color:#6a6a6a; }
     a { color:#1db954; }
   </style>
@@ -26,10 +30,17 @@
 </head>
 <body>
   <div class="card">
-    <h1>Link your scrobbler</h1>
-    <p id="lead">Connecting your blinksunited profile to the Multi-Account Scrobbler extension…</p>
+    <h1 id="title">Link your account</h1>
+    <p id="lead">Connecting your blinksunited profile…</p>
 
     <div id="login" class="hidden">
+      <!-- The counter app's people only. A scrobbler user is a blink who is
+           already streaming; a BLOOM linking the counter may be making an
+           account for this trade and nothing else. -->
+      <div id="appintro" class="hidden">
+        <label>Which fandom are you? <span style="opacity:0.6">(optional)</span></label>
+        <div id="fandoms" class="chips"></div>
+      </div>
       <button id="google">Continue with Google</button>
       <button id="twitter" class="ghost">Continue with X</button>
       <button id="discord" class="ghost">Continue with Discord</button>
@@ -40,6 +51,15 @@
       <button id="magic" class="ghost">Email me a login link instead</button>
     </div>
 
+    <!-- Shown once linked, so somebody who is here only for a vote trade can be
+         a name rather than one of many identical anonymous rows. -->
+    <div id="namebox" class="hidden">
+      <label>Your name on the <a href="/collabs">collab board</a>
+        <span style="opacity:0.6">(optional — leave it and stay anonymous)</span></label>
+      <input id="dname" type="text" maxlength="40" autocomplete="off" />
+      <button id="savename" class="ghost">Save this name</button>
+    </div>
+
     <div id="status" class="msg"></div>
     <div class="foot">The anon key here is public by design; your account stays protected by Supabase RLS.</div>
   </div>
@@ -48,7 +68,23 @@
   <script>
     const SUPABASE_URL = 'https://esbzlrmrdvvsrsobrzfz.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzYnpscm1yZHZ2c3Jzb2JyemZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODQyNDYsImV4cCI6MjA5NTY2MDI0Nn0.P3VhWYeog5CmE67VjvHboG3rP876OPjcmmtBmz1zfck';
+    // Guarded: the library comes from a CDN, and unguarded this threw at the
+    // first line, leaving a card with nothing to press and no explanation.
+    if (typeof supabase === 'undefined' || !supabase.createClient) {
+      document.getElementById('lead').textContent =
+        'Could not load the sign-in library — something is blocking cdn.jsdelivr.net.';
+      document.getElementById('status').className = 'msg err';
+      document.getElementById('status').textContent =
+        'Try another network or turn off a content blocker for this page, then reload.';
+      throw new Error('supabase-js did not load');
+    }
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // This page serves TWO products: the Multi-Account Scrobbler extension, and
+    // the Android Vote Counter app (which opens it with ?app=android so the
+    // token can bounce back through a deep link). They need different words and
+    // different questions — a BLOOM linking the counter is not here to scrobble
+    // — so everything below branches on this rather than pitching one at both.
+    const IS_APP = new URLSearchParams(location.search).get('app') === 'android';
 
     const $ = (id) => document.getElementById(id);
     const status = (html, cls) => { $('status').className = 'msg ' + (cls || ''); $('status').innerHTML = html; };
@@ -59,9 +95,94 @@
       if (e.source !== window || !e.data) return;
       if (e.data.source === 'bu-ext-link-ready') extensionSeen = true;
       if (e.data.source === 'bu-ext-link-ack') {
-        if (e.data.ok) status('✅ Linked! Every Spotify tab in this browser now scrobbles to your profile. You can close this tab.', 'ok');
+        if (e.data.ok) status(IS_APP
+          ? '✅ Linked! The votes you cast will now log to your profile and to the <a href="/collabs">collab board</a>.'
+          : '✅ Linked! Every Spotify tab in this browser now scrobbles to your profile. You can close this tab.', 'ok');
         else status('Could not save to the extension. Make sure it is installed and enabled, then reload.', 'err');
       }
+    });
+
+    // Same sides, same keys, same reserved namespace as /vote-link — the other
+    // page somebody can link from. test_fandom_names checks the two agree.
+    const FANDOMS = [
+      { key: 'blink',    label: 'BLINK' },
+      { key: 'bloom',    label: 'BLOOM' },
+    ];
+    const RESERVED = new RegExp('^(' + FANDOMS.map((f) => f.key).join('|') + ')\\d+$', 'i');
+    const myFandom = () => {
+      try {
+        const v = localStorage.getItem('buFandom');
+        return FANDOMS.some((f) => f.key === v) ? v : null;
+      } catch { return null; }
+    };
+    function renderFandoms() {
+      const cur = myFandom();
+      $('fandoms').innerHTML = FANDOMS.map((f) =>
+        `<button type="button" data-f="${f.key}" class="${f.key === cur ? 'on' : ''}">${f.label}</button>`).join('');
+    }
+    if (IS_APP) {
+      $('appintro').classList.remove('hidden');
+      renderFandoms();
+      $('fandoms').addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-f]');
+        if (!btn) return;
+        try { localStorage.setItem('buFandom', btn.getAttribute('data-f')); } catch {}
+        renderFandoms();
+      });
+    }
+
+    // Give a brand-new account a numbered name before the token is minted:
+    // /api/extension-link stores the token's label once and reuses it for ever,
+    // so a name arriving afterwards would never be seen.
+    async function ensureFanName(session) {
+      const md = session.user.user_metadata || {};
+      const fandom = md.fandom || myFandom();
+      try {
+        if (md.display_name) {
+          if (!fandom) return;
+          const { data: name } = await sb.rpc('reissue_fan_name', { p_fandom: fandom });
+          if (!name || name === md.display_name) return;
+          await sb.auth.updateUser({ data: { display_name: name, display_name_auto: true } });
+          return;
+        }
+        const created = session.user.created_at ? Date.parse(session.user.created_at) : 0;
+        if (!created || (Date.now() - created) > 10 * 60 * 1000) return;
+        let name = null;
+        const got = await sb.rpc('assign_fan_name', { p_fandom: fandom || 'blink' });
+        if (got.error) {
+          const old = await sb.rpc('assign_blink_name');
+          name = old.error ? null : old.data;
+        } else { name = got.data; }
+        if (!name) return;
+        const data = { display_name: name, display_name_auto: true };
+        if (fandom && md.fandom !== fandom) data.fandom = fandom;
+        await sb.auth.updateUser({ data });
+      } catch {}
+    }
+
+    $('savename').addEventListener('click', async () => {
+      const name = $('dname').value.trim();
+      if (!name) { status('Enter a name, or leave this alone to stay anonymous.', 'err'); return; }
+      if (RESERVED.test(name)) {
+        status('That name is reserved — it is one the site hands out. Please choose another.', 'err');
+        return;
+      }
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { status('Sign in first.', 'err'); return; }
+      // display_name_auto FALSE: a name they chose is never replaced by a later
+      // fandom answer.
+      const { error } = await sb.auth.updateUser({
+        data: { display_name: name, display_name_auto: false } });
+      if (error) { status('Could not save that: ' + error.message, 'err'); return; }
+      try {
+        await fetch('/api/leaderboard?action=set-display-name', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayName: name, accessToken: session.access_token }),
+        });
+      } catch (e) {}
+      status('✅ Saved — you are <b>' + name.replace(/[<&>]/g, '') + '</b> on the collab board.', 'ok');
+      $('lead').textContent = 'Signed in as ' + name + '.';
     });
 
     async function mintAndSend() {
@@ -69,6 +190,7 @@
       if (!session) { showLogin(); return; }
       status('Linking…');
       try {
+        await ensureFanName(session);
         const r = await fetch('/api/extension-link', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -80,6 +202,11 @@
         window.postMessage({ source: 'bu-ext-link', token: d.token, profile: d.profile }, '*');
         $('login').classList.add('hidden');
         $('lead').textContent = `Signed in as ${d.profile}.`;
+      if (IS_APP) {
+        const { data: { session: s2 } } = await sb.auth.getSession();
+        $('dname').value = (s2 && s2.user.user_metadata && s2.user.user_metadata.display_name) || '';
+        $('namebox').classList.remove('hidden');
+      }
 
         // Native Android app handoff: when this page is opened from the BU Vote
         // Counter app (?app=android) — in the user's real browser, so OAuth works —
@@ -109,7 +236,17 @@
     }
 
     function showLogin() {
-      $('lead').textContent = 'Sign in with your blinksunited account to link the extension.';
+      // Two products, two readings. Telling somebody who installed the vote
+      // counter to "link the scrobbler" is how an account starts looking like
+      // more than it is.
+      if (IS_APP) {
+        $('title').textContent = 'Link your vote counter';
+        $('lead').innerHTML = 'Sign in with your blinksunited account to link the vote counter. '
+          + '<b>An account is all this needs</b> — no scrobbler, no streaming, nothing to set up.';
+      } else {
+        $('title').textContent = 'Link your scrobbler';
+        $('lead').textContent = 'Sign in with your blinksunited account to link the extension.';
+      }
       $('login').classList.remove('hidden');
       status('');
     }
