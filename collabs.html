@@ -715,10 +715,15 @@ var COLLABS = [
     // `colour` is that fandom's act's colour, so the two blocks say the same
     // thing in the same shades: a BLOOM reading cyan in the bar finds cyan in
     // the turnout.
+    // `anon` is what somebody with no display name is called on the board
+    // below. It used to be "a blink" for everybody, which on a board that
+    // exists to show other fandoms turning up is the one label guaranteed to
+    // be wrong about half of them — and it is what a BLOOM with no display
+    // name actually read as.
     fandoms: [
-      { key: 'blink', label: 'BLINKs', colour: '#ff0066' },
-      { key: 'bloom', label: 'BLOOMs', colour: '#6fd3ff' },
-      { key: 'pauljjak', label: 'Pauljjak', colour: '#b388ff' },
+      { key: 'blink', label: 'BLINKs', colour: '#ff0066', anon: 'a blink' },
+      { key: 'bloom', label: 'BLOOMs', colour: '#6fd3ff', anon: 'a bloom' },
+      { key: 'pauljjak', label: 'Pauljjak', colour: '#b388ff', anon: 'someone from Pauljjak' },
     ],
     // What BLINKs put in the partner's category. One slot, and it is a slot we
     // have no nominee in — so this costs a blink nothing at all.
@@ -1692,6 +1697,13 @@ function catNameOf(c, slug) {
   var hit = pickBySlug(c, slug);
   return hit ? hit.cat : slug;
 }
+// What to call somebody who has no display name. Their own side if they have
+// said one, and "someone" if they have not — never "a blink" by default, which
+// is a guess this board of all places has no business making.
+function anonOf(c, key) {
+  var hit = (c.fandoms || []).filter(function (f) { return f.key === key; })[0];
+  return (hit && hit.anon) || 'someone';
+}
 
 // The per-category split behind the bar. Ordered biggest first, each with its
 // own share drawn, and coloured by whose nominee it is so the three-against-one
@@ -1905,13 +1917,13 @@ function boardHtml(c) {
   var rows = (p && p.board) || [];
   var lbl = (PERIODS.filter(function (x) { return x.k === PERIOD; })[0] || {}).label || '';
   return '<div class="sub"><div class="sub-head">Who is voting · ' + esc(lbl) + '</div>'
-    + '<table class="board"><thead><tr><th>#</th><th>Blink</th><th>Votes</th></tr></thead><tbody>'
+    + '<table class="board"><thead><tr><th>#</th><th>Voter</th><th>Votes</th></tr></thead><tbody>'
     + rows.map(function (r, i) {
         var cats = Object.keys(r.byCat || {})
           .map(function (k) { return { cat: k, n: Math.max(0, Number(r.byCat[k]) || 0) }; })
           .filter(function (x) { return x.n > 0; })
           .sort(function (a, b) { return b.n - a.n; });
-        return '<tr><td>' + (i + 1) + '</td><td>' + esc(r.name || 'a blink')
+        return '<tr><td>' + (i + 1) + '</td><td>' + esc(r.name || anonOf(c, r.fandom))
           + (cats.length ? '<div class="board-cats">' + cats.map(function (x) {
               return '<span class="board-cat">' + esc(catLabelOf(c, x.cat))
                 + ' <b>' + fmt(x.n) + '</b></span>';
