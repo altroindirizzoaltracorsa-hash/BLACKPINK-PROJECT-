@@ -33,6 +33,17 @@ jobs:
             echo "::error::SUPABASE_DB_URL secret is not set."
             exit 1
           fi
+          # The tables this repo's migrations create, read out of the files so
+          # the comparison below cannot drift from them.
+          # Comments are stripped first: feedback.sql discusses "create table if
+          # not exists" in prose, and without this the list gains a table called
+          # "if". The name is the last field, so the optional clauses cannot
+          # become the name.
+          TABLES=$(sed -E 's/^[[:space:]]*--.*$//' supabase/*.sql \
+                   | grep -ho -iE 'create table (if not exists )?(public\.)?[a-z_]+' \
+                   | awk '{print $NF}' | sed 's/^public\.//' | grep -vx 'if' \
+                   | sort -u | paste -sd,)
+          echo "migrations create: $TABLES"
           q() { psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c "$1"; }
 
           q "select '::notice title=tables::' || count(*) || ' tables in public'
@@ -68,19 +79,74 @@ jobs:
                     coalesce(string_agg(t.table_name, ', ' order by t.table_name), 'none')
              from t left join g using (table_name) where g.table_name is null"
 
-          # Reachable through the Data API with no session.
-          q "select '::notice title=granted to anon::' ||
+          # READABLE with no session, which means SELECT and nothing else.
+          # Counting "has any grant to anon" instead is misleading: Supabase's
+          # old auto-grant handed anon references/trigger/truncate on tables it
+          # gave no select on, and PostgREST exposes none of those three — so a
+          # table can appear "granted to anon" while anon cannot read a row of
+          # it. Asking for select is the question worth asking.
+          # Which production tables no migration in this repo creates. They are
+          # not an access problem — they exist, so they keep their grants — but
+          # there is no file to recreate them from, and the grants rule from
+          # 2026-10-30 applies to whoever writes that file later. The names are
+          # the useful part; several are tables the site reads every day.
+          q "with mine as (
+               select unnest(string_to_array('$TABLES', ',')) as t
+             )
+             select '::notice title=tables with no migration in the repo::' ||
+                    coalesce(string_agg(i.table_name, ', ' order by i.table_name), 'none')
+             from information_schema.tables i
+             left join mine on mine.t = i.table_name::text
+             where i.table_schema = 'public' and i.table_type = 'BASE TABLE'
+               and mine.t is null"
+
+          q "select '::notice title=anon can SELECT::' ||
                     coalesce(string_agg(distinct table_name, ', ' order by table_name), 'none')
              from information_schema.role_table_grants
-             where table_schema = 'public' and grantee = 'anon'"
+             where table_schema = 'public' and grantee = 'anon' and privilege_type = 'SELECT'"
 
           # A table granted to anon with RLS off is open to the internet. This
           # should always be none; it is the one line here that is a finding
           # rather than a fact.
-          q "select '::notice title=anon-readable with RLS off::' ||
-                    coalesce(string_agg(distinct g.table_name, ', ' order by g.table_name),
-                             'none — every anon-granted table has RLS on')
-             from information_schema.role_table_grants g
-             join pg_class c on c.relname = g.table_name
-             join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
-             where g.table_schema = 'public' and g.grantee = 'anon' and c.relrowsecurity = false"
+          # The finding, if there is one: a table anon can actually READ or
+          # WRITE while RLS is off, i.e. open to anybody with the anon key —
+          # which ships in the page and is public by design. The privileges are
+          # printed because "can read" and "can write" are different findings,
+          # and because the three the auto-grant handed out most widely
+          # (references, trigger, truncate) are reachable through no Data API
+          # verb at all, so a line that counted them read as alarming and meant
+          # nothing.
+          q "with bad as (
+               select g.table_name,
+                      string_agg(distinct lower(g.privilege_type), '/' order by lower(g.privilege_type)) as privs
+               from information_schema.role_table_grants g
+               join pg_class c on c.relname = g.table_name
+               join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+               where g.table_schema = 'public' and g.grantee = 'anon'
+                 and g.privilege_type in ('SELECT','INSERT','UPDATE','DELETE')
+                 and c.relrowsecurity = false
+               group by g.table_name
+             )
+             select '::notice title=OPEN to the internet::' ||
+                    coalesce(string_agg(table_name || ' (' || privs || ')', ', ' order by table_name),
+                             'none — nothing anon can read or write has RLS off')
+             from bad"
+
+          # Anywhere anon can write at all. TRUNCATE is left out on purpose:
+          # the auto-grant handed it out everywhere and PostgREST has no verb
+          # for it, so including it buries the three that matter.
+          q "with w as (
+               select g.table_name, c.relrowsecurity as rls,
+                      string_agg(distinct lower(g.privilege_type), '/' order by lower(g.privilege_type)) as privs
+               from information_schema.role_table_grants g
+               join pg_class c on c.relname = g.table_name
+               join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+               where g.table_schema = 'public' and g.grantee = 'anon'
+                 and g.privilege_type in ('INSERT','UPDATE','DELETE')
+               group by g.table_name, c.relrowsecurity
+             )
+             select '::notice title=anon can write (RLS gates it where on)::' ||
+                    coalesce(string_agg(table_name || ' (' || privs ||
+                                        case when rls then ', RLS on' else ', RLS OFF' end || ')',
+                                        ', ' order by table_name), 'none')
+             from w"
