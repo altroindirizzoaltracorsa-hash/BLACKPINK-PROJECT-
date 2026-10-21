@@ -33,6 +33,15 @@ create table if not exists public.fan_name_counters (
 );
 
 -- Nobody reaches this table directly; the functions below are security definer.
+--
+-- no grants on fan_name_counters: nothing outside Postgres may touch it. The
+-- three functions below are security definer, so they reach it on their own
+-- authority, and anybody able to reach it through the Data API could advance a
+-- counter — minting display names at will and skipping the new-signup guard
+-- that is the whole point of assign_fan_name. Supabase stopped auto-granting
+-- Data API access to new public tables on 2026-10-30, which for this one table
+-- is the behaviour we wanted anyway. RLS is on with no policies as the second
+-- lock.
 alter table public.fan_name_counters enable row level security;
 
 -- ── the counter ─────────────────────────────────────────────────────────────

@@ -115,6 +115,13 @@ jobs:
         if: always()
         run: node .github/scripts/test_fandom_names.mjs
 
+      # Supabase stopped auto-granting Data API access to new public tables on
+      # 2026-10-30, so a migration now has to say who may reach its table. The
+      # failure is a permission-denied on a recreate, months later.
+      - name: Every table a migration creates says who may reach it
+        if: always()
+        run: node .github/scripts/test_sql_grants.mjs
+
       # A release touches two manifests, two zips and two pages. The quiet
       # failure is a page still advertising the old version, which on a
       # blink's board looks like "my votes aren't counting".
