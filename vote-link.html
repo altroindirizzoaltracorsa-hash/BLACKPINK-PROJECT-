@@ -34,7 +34,7 @@
 <body>
   <div class="card">
     <h1>♥ Link your vote counter</h1>
-    <p id="lead">Connecting your blinksunited profile to the VMA Vote Counter extension…</p>
+    <p id="lead">Connecting your blinksunited profile to the Vote Counter extension…</p>
 
     <div id="login" class="hidden">
       <!-- Asked here because THIS is the sign-up a partner fandom actually
@@ -92,7 +92,12 @@
       if (e.source !== window || !e.data) return;
       if (e.data.source === 'bu-ext-link-ready') { extensionSeen = true; deliver(); }
       if (e.data.source === 'bu-ext-link-ack') {
-        if (e.data.ok) status('✅ Linked! Your BLACKPINK & LISA votes on vote.mtv.com will now log to your profile. You can close this tab.', 'ok');
+        // Was "your BLACKPINK & LISA votes on vote.mtv.com" — the award this
+        // counter was built for, and the acts a partner fandom is not here to
+        // vote. Whoever is reading this may be a BLOOM who has just made an
+        // account to help with a trade.
+        if (e.data.ok) status('✅ Linked! The votes you cast will now log to your profile and to the '
+          + '<a href="/collabs">collab board</a>. You can close this tab.', 'ok');
         else status('Could not save to the extension. Make sure it is installed and enabled, then reload.', 'err');
       }
     });
@@ -184,7 +189,7 @@
         status('Handing the token to the extension…');
         setTimeout(() => {
           if (!extensionSeen) {
-            status('Extension not detected on this page. Install/enable the Blinks United — VMA Vote Counter, then reload this page.', 'err');
+            status('Extension not detected on this page. Install/enable the Blinks United Vote Counter, then reload this page.', 'err');
           }
         }, 2500);
       } catch (err) {
@@ -193,7 +198,8 @@
     }
 
     function showLogin() {
-      $('lead').textContent = 'Sign in with your blinksunited account to link the vote counter.';
+      $('lead').innerHTML = 'Sign in with your blinksunited account to link the vote counter. '
+        + '<b>An account is all this needs</b> — no scrobbler, no streaming, nothing to set up.';
       $('login').classList.remove('hidden');
       status('');
     }
