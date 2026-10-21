@@ -612,6 +612,63 @@ console.log('\n--- /vote-link lets them choose a name at all');
   await ctx.close();
 }
 
+console.log('\n--- Delete Account actually deletes the account');
+// It used to call nothing. `sb.auth.admin?.deleteUser` is always present on a
+// supabase-js client — it just 403s with an anon key — so the ternary always
+// took the "no RPC" branch, and the button signed you out and left the account
+// where it was. Signing out looks enough like success that it went unnoticed,
+// and the RPC it meant to call did not exist in the database either.
+{
+  for (const [name, rpcErr, want] of [
+    ['it calls the function and signs out',  null,                      ['rpc:delete_account', 'signOut']],
+    ['and a failure is reported, not hidden', { message: 'nope' },      ['rpc:delete_account']],
+  ]) {
+    const ctx = await b.newContext();
+    const p = await ctx.newPage();
+    await p.addInitScript((err) => {
+      window.__log = [];
+      const user = { id: 'u1', email: 'a@b.c', user_metadata: { display_name: 'TESTBLOOM' } };
+      window.supabase = { createClient: () => ({
+        auth: {
+          // Present on the real client with an anon key too.
+          admin: { deleteUser: async () => ({ error: { message: 'not allowed' } }) },
+          getSession: async () => ({ data: { session: { user, access_token: 't' } } }),
+          onAuthStateChange() { return { data: { subscription: { unsubscribe() {} } } }; },
+          signOut: async () => { window.__log.push('signOut'); return {}; },
+          updateUser: async () => ({ error: null }),
+        },
+        rpc: async (fn) => { window.__log.push('rpc:' + fn); return { data: null, error: err }; },
+        from: () => { const q = { delete: () => q, neq: async () => ({}), select: () => q, eq: () => q,
+                                  limit: async () => ({ data: [] }), maybeSingle: async () => ({ data: null }) };
+                      window.__log.push('from'); return q; },
+      }) };
+      window.confirm = () => true;
+      window.alert = (m) => window.__log.push('alert:' + m);
+    }, rpcErr);
+    await p.route('**/*', async (route) => {
+      const u = new URL(route.request().url());
+      if (u.pathname === '/badges') return route.fulfill({ path: root + 'index.html', contentType: 'text/html' });
+      if (u.hostname.includes('fonts.g')) return route.continue();
+      if (u.pathname.startsWith('/api/')) return route.fulfill({ contentType: 'application/json', body: '{}' });
+      return route.fulfill({ status: 204, body: '' });
+    });
+    await p.goto('https://www.blinksunited.com/badges', { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(1100);
+    await p.evaluate(() => { try { closeTutorial(); } catch {} window.__log = []; });
+    await p.evaluate(() => deleteAccount());
+    await p.waitForTimeout(300);
+    const log = await p.evaluate(() => window.__log);
+    const steps = log.filter((l) => !l.startsWith('alert:'));
+    check(steps.join() === want.join(), name, log.join(' → ') || '(did nothing)');
+    if (rpcErr) {
+      check(log.some((l) => /^alert:Could not delete/.test(l)),
+            '  and it says so rather than signing them out',
+            log.find((l) => l.startsWith('alert:')) || '(said nothing)');
+    }
+    await ctx.close();
+  }
+}
+
 console.log('\n--- an account that already has a name is asked nothing');
 // Reported from a real link attempt: an existing account, _demibandwout, was
 // shown a name box prefilled with its own name and the line "That is already

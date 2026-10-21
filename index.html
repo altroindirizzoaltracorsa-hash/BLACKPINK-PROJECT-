@@ -8213,22 +8213,35 @@ async function navSignOut() {
 }
 
 
+// Delete the account, for real.
+//
+// This used to read:
+//
+//   const { error } = await sb.auth.admin?.deleteUser
+//     ? (() => ({ error: null }))()
+//     : await sb.rpc('delete_account');
+//
+// supabase-js always exposes auth.admin.deleteUser — it simply 403s with an
+// anon key — so the first branch was ALWAYS taken: no RPC, error null, then
+// sign out and re-render. Clicking "Delete Account" signed you out and left
+// the account exactly where it was, and signing out looks enough like success
+// that nobody noticed. The RPC did not exist in the database either.
+//
+// A destructive button that silently does nothing is worse than no button, so
+// this now calls the function, and SAYS SO when it fails instead of signing
+// you out as though it had worked.
 async function deleteAccount() {
   if (!sb) return;
   if (!confirm('Delete your account? This cannot be undone. Your leaderboard data stays but will no longer be linked to any account.')) return;
-  const { error } = await sb.auth.admin?.deleteUser
-    ? (() => ({ error: null }))()   // service-role only — use RPC instead
-    : await sb.rpc('delete_account');
+  const { error } = await sb.rpc('delete_account');
   if (error) {
-    // Fallback: just sign out and remove linked accounts
-    await sb.from('linked_accounts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    await sb.auth.signOut();
-    renderAccountPage(null);
-    alert('Signed out and removed linked accounts.');
+    alert('Could not delete the account: ' + (error.message || 'unknown error')
+      + '\n\nNothing has been changed. Please try again, or tell us through Feedback.');
     return;
   }
   await sb.auth.signOut();
   renderAccountPage(null);
+  alert('Your account has been deleted.');
 }
 
 // Auth-gated entry to My Badges — redirects to Account if not signed in,
