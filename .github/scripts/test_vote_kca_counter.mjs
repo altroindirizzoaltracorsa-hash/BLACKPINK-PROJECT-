@@ -68,9 +68,11 @@ const BALLOT = {
   // partner's number.
   '77777777-7777-7777-7777-777777777777': { t: 'BINI',    q: '88888888-8888-8888-8888-888888888888', s: 'favorite-global-music-star' },
   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa': { t: 'Someone', q: '88888888-8888-8888-8888-888888888888', s: 'favorite-global-music-star' },
-  // The second partner's category. Its slug reads favorite-ANIMATED-MALE while
-  // the ballot prints "Favorite Male Animated Voice" — the words are in the
-  // other order, so it is written here exactly as the ballot has it.
+  // A category the collab does NOT cover, and a real one: this collab had a
+  // second partner for two days (Pauljjak, for Ahn Hyo-seop) and then dropped
+  // it. Kept as a fixture on purpose — removing a partner has to stop the
+  // counting, and "stopped counting" is indistinguishable from "nobody voted"
+  // unless something checks it.
   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb': { t: 'Ahn Hyo-seop', q: 'cccccccc-cccc-cccc-cccc-cccccccccccc', s: 'favorite-animated-male-voice-from-a-movie' },
 };
 // The other five entries of the real flush, so the fixture is a whole round
@@ -123,7 +125,7 @@ function loadBackground(opts) {
   };
   const api = new Function('chrome', 'fetch', 'console', src + `
     return { parseKcaBody, kcaNorm, processKcaVote, kcaBallotFresh, KCA_NOMINEES,
-             KCA_SEEN_WINDOW, KCA_SEEN_KEY, KCA_BALLOT_KEY };
+             KCA_SEEN_WINDOW, KCA_SEEN_KEY, KCA_BALLOT_KEY, COLLAB };
   `)(chrome, fetch, { log() {} });
   // The seen-list and inflight caches are module-level, so each case gets its
   // own instance rather than inheriting the previous one's dedupe state.
@@ -380,28 +382,57 @@ console.log('\n--- A. the side a person says they are rides along with the post'
   check(j && !('fandom' in j.body), 'a side the collab does not have is not sent');
 }
 
-console.log('\n--- A. the second partner’s category counts for the collab too');
-// A collab can gain a partner mid-ballot, and the counter is the half that
-// cannot be fixed from the server: a category it does not know counts nothing
-// and looks exactly like a category nobody voted in.
+console.log('\n--- A. every category the collab covers, and nothing else');
+// A collab gains and loses partners mid-ballot, and the counter is the half
+// that cannot be fixed from the server: a category it does not know counts
+// nothing, and a category it knows but the collab has dropped counts something
+// it should not. Both read on the board exactly like an honest number.
+//
+// Derived from COLLAB.nominees rather than listed here, so adding a partner
+// widens this check and dropping one narrows it — which is what happened when
+// Pauljjak was added and then called off, and this is the check that has to
+// notice either way.
 {
   const bg = loadBackground();
+  const slugs = Object.keys(bg.COLLAB.nominees);
+  const votes = [], want = {};
+  for (const [opt, e] of Object.entries(BALLOT)) {
+    if (!slugs.includes(e.s)) continue;              // not in the collab
+    if (bg.COLLAB.nominees[e.s] !== e.t) continue;   // the decoy in that category
+    if (want[e.s]) continue;
+    votes.push({ q: e.q, o: opt });
+    want[e.s] = 1;
+  }
+  // Plus a pick in a category the collab used to cover and no longer does.
+  const dropped = Object.entries(BALLOT)
+    .find(([, e]) => !slugs.includes(e.s) && e.t === 'Ahn Hyo-seop');
+  check(!!dropped, 'the fixture still has a nominee the collab dropped');
+  votes.push({ q: dropped[1].q, o: dropped[0] });
+
   bg.store.buToken = 'tok';
   bg.store.kcaBallot = freshBallot();
-  await bg.processKcaVote({ votes: [
-    { q: '1ae0e782-6c39-4329-88ae-137533d9f497', o: 'aa2a878e-15d2-455f-9829-1b55fd948c81' },
-    { q: '88888888-8888-8888-8888-888888888888', o: '77777777-7777-7777-7777-777777777777' },
-    { q: 'cccccccc-cccc-cccc-cccc-cccccccccccc', o: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' },
-  ] });
+  await bg.processKcaVote({ votes });
   await settle();
   const collab = bg.posts.find((p) => p.url.includes('/api/collabs'));
-  check(!!(collab && collab.body.cats['favorite-animated-male-voice-from-a-movie'] === 1),
-        'the Ahn Hyo-seop pick reaches the collab board');
-  check(!!(collab && Object.keys(collab.body.cats).length === 3),
-        `and all three picks are in the one post (${collab && Object.keys(collab.body.cats).length})`);
-  check(bg.store.kcaCount === 1, `the BLACKPINK total is still 1 (${bg.store.kcaCount})`);
-  check(!bg.store.kcaCats['favorite-animated-male-voice-from-a-movie'],
-        'and the Kids’ Choice breakdown has no row for it');
+  check(!!collab, 'the round reaches the collab board');
+  const sent = (collab && collab.body.cats) || {};
+  check(Object.keys(want).every((k) => sent[k] === 1),
+        `every category the collab covers is in the one post (${Object.keys(sent).length} of ${Object.keys(want).length})`,
+        JSON.stringify(sent));
+  check(Object.keys(sent).length === Object.keys(want).length,
+        'and nothing it does not cover rode along with them');
+  check(!sent[dropped[1].s],
+        `the dropped partner’s category is not counted (${dropped[1].s})`);
+  // The partner halves never touch the BLACKPINK board. The round covers the
+  // whole collab, so the BLACKPINK total is however many of those categories
+  // are OURS — counted from the two lists rather than written down, since the
+  // round above is built from the collab and both lists move.
+  const mine = Object.keys(want).filter((k) => k in bg.KCA_NOMINEES).length;
+  check(bg.store.kcaCount === mine,
+        `the BLACKPINK total counts ours and only ours (${bg.store.kcaCount} of ${mine})`);
+  const ours = Object.keys(bg.store.kcaCats || {});
+  check(!ours.includes(dropped[1].s) && !ours.includes('favorite-global-music-star'),
+        'and the Kids’ Choice breakdown has no row for any of them', ours.join(', '));
 }
 
 console.log('\n--- A. a pick in the collab’s category for someone else is nobody’s');
@@ -807,8 +838,13 @@ console.log('\n--- B. panel.js reads the ballot off the page');
       key: b.getAttribute('data-fandom'), on: b.classList.contains('on'),
     }));
   });
-  check(chips.length >= 3 && chips.every((c) => !c.on),
-        `every side is offered and none is preselected (${chips.map((c) => c.key).join('/')})`);
+  // Counted from the collab, not typed: this said ">= 3" and went red the day
+  // the trade's second partner was dropped, which is a test failing for a
+  // change that was correct. test_collab_slugs is what proves the panel's own
+  // list matches the one counted here.
+  const sides = loadBackground().COLLAB.fandoms.length;
+  check(chips.length === sides && chips.every((c) => !c.on),
+        `every side is offered and none is preselected (${chips.map((c) => c.key).join('/')} of ${sides})`);
   // A default would file everyone who ignores the question on one side of a
   // board about who turned up, and most people ignore it.
   check(!(await p.evaluate(() => window.__written && window.__written.kcaFandom)),

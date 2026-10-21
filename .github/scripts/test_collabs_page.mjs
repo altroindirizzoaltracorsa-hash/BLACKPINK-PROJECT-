@@ -365,34 +365,68 @@ console.log('--- with a per-category breakdown, the pass count ignores the optio
 // her. Fold her into the minimum and 100 passes where 60 people also voted
 // ROSÉ reports as 60 — undercounting the collab by 40% and, worse, making it
 // look as though people who skipped an optional category had not finished.
-const passes = await prev.evaluate(() => {
-  const before = JSON.parse(JSON.stringify(COLLABS[0].tally || null));
-  COLLABS[0].tally = {
-    forUs: { picks: 260 }, forThem: { picks: 100 },
-    byCat: {
-      'favorite-music-group-or-duo': 100,     // BLACKPINK — required
-      'favorite-music-collaboration': 100,    // JENNIE — required
-      'favorite-female-artist': 60,           // ROSÉ — optional, the trap
-      'favorite-global-music-star': 100,      // BINI — required
-      'favorite-animated-male-voice-from-a-movie': 100,   // Ahn Hyo-seop — required
-    },
-    themSource: 'their page',
-  };
-  render();
-  const note = document.querySelector('.tally-note').textContent.replace(/\s+/g, ' ');
-  COLLABS[0].tally = before; render();
-  return note;
-});
+//
+// The sentence has two shapes and BOTH are tested, because which one a reader
+// gets depends on how many partners the trade has THAT DAY. This suite used to
+// test only the two-partner shape and went red the day the second partner was
+// dropped — a correct change failing a test. So the second partner is injected
+// here rather than assumed, which also keeps that branch covered while the
+// live collab has one.
+async function passSentence(extraPartner) {
+  return prev.evaluate((extra) => {
+    const beforeT = JSON.parse(JSON.stringify(COLLABS[0].tally || null));
+    const beforeP = JSON.parse(JSON.stringify(COLLABS[0].partners || []));
+    if (extra) COLLABS[0].partners = beforeP.concat([extra]);
+    COLLABS[0].tally = {
+      forUs: { picks: 260 }, forThem: { picks: 100 },
+      byCat: {
+        'favorite-music-group-or-duo': 100,     // BLACKPINK — required
+        'favorite-music-collaboration': 100,    // JENNIE — required
+        'favorite-female-artist': 60,           // ROSÉ — optional, the trap
+        'favorite-global-music-star': 100,      // BINI — required
+        'favorite-animated-male-voice-from-a-movie': 100,   // the injected partner's
+      },
+      themSource: 'their page',
+    };
+    render();
+    const note = document.querySelector('.tally-note').textContent.replace(/\s+/g, ' ');
+    COLLABS[0].tally = beforeT; COLLABS[0].partners = beforeP; render();
+    return note;
+  }, extraPartner || null);
+}
+
 {
-  const want = await prev.evaluate(() => (COLLABS[0].partners || []).map((x) => x.fandom || x.act));
-  const missing = want.filter((f) => !new RegExp(`100 with ${f}`).test(passes));
-  missing.length === 0
-    ? ok('100 complete passes for each agreement, not 60', 'ROSÉ excluded from every minimum')
-    : bad('100 complete passes for each agreement, not 60', passes.slice(0, 220));
+  // As the collab stands. One partner means one figure, and no per-agreement
+  // breakdown to read.
+  const passes = await passSentence(null);
+  const live = await prev.evaluate(() => (COLLABS[0].partners || []).length);
+  /100/.test(passes)
+    ? ok(`100 complete passes with ${live} partner${live === 1 ? '' : 's'}, not 60`,
+         'ROSÉ excluded from the minimum')
+    : bad('100 complete passes, not 60', passes.slice(0, 220));
   // The number that would appear if the optional category were folded in.
   !/\b60\b/.test(passes)
     ? ok('and 60 appears nowhere in the sentence')
     : bad('and 60 appears nowhere in the sentence', passes.slice(0, 220));
+}
+
+{
+  // And with a second agreement, which asks for less of our half than the
+  // first: a single minimum across everything would report nobody at all.
+  const passes = await passSentence({
+    fandom: 'Testers', act: 'Someone Else', colour: '#b388ff',
+    covers: ['favorite-music-group-or-duo'],
+    gives: ['favorite-animated-male-voice-from-a-movie'],
+  });
+  const want = await prev.evaluate(() => (COLLABS[0].partners || []).map((x) => x.fandom || x.act))
+    .then((names) => names.concat(['Testers']));
+  const missing = want.filter((f) => !new RegExp(`100 with ${f}`).test(passes));
+  missing.length === 0
+    ? ok('a figure per agreement once there are two', want.join(' / '))
+    : bad('a figure per agreement once there are two', `missing ${missing.join(', ')} — ${passes.slice(0, 200)}`);
+  !/\b60\b/.test(passes)
+    ? ok('and the optional category is still excluded from every one of them')
+    : bad('and the optional category is still excluded from every one of them', passes.slice(0, 220));
   // Said plainly, because it is the question a partner will ask: votes past
   // what your agreement asked for still count.
   /still count in the totals/i.test(passes)
@@ -871,6 +905,11 @@ console.log('--- who is logging: people by declared side, never a split of the v
   FAN.periods.all.fandoms = {
     blink: { people: 8, votes: 160 },
     bloom: { people: 2, votes: 120 },
+    // A side the collab NO LONGER HAS. Not a stale fixture — production has
+    // rows like this, because the trade had a second partner for two days and
+    // those people's answers are still stored. They must not draw a phantom
+    // column, and they must not vanish either: they are in the board and in
+    // every total above it.
     pauljjak: { people: 5, votes: 100 },
     unsaid: { people: 1, votes: 20 },
   };
@@ -923,6 +962,17 @@ console.log('--- who is logging: people by declared side, never a split of the v
       : bad('and each side is in its act\u2019s colour',
             off.map((m) => `${m.key}: side ${m.side} vs bar ${m.act}`).join(', '));
   }
+  {
+    const names = f.cards.map((c) => c.name.toLowerCase()).join(' ');
+    !/pauljjak/.test(names)
+      ? ok('a side the collab has dropped draws no column', f.cards.map((c) => c.name).join(' / '))
+      : bad('a side the collab has dropped draws no column', f.cards.map((c) => c.name).join(' / '));
+    // 5 of them, folded in with the 1 who never answered.
+    const note = f.notes.find((n) => /have not said|has not said|didn/i.test(n)) || '';
+    /\b6 people/.test(note)
+      ? ok('and its people are counted as having not said, not dropped', note.slice(0, 90))
+      : bad('and its people are counted as having not said, not dropped', note.slice(0, 160) || '(no note)');
+  }
   (/8 people/.test(f.cards[0].top) && /2 people/.test(f.cards[1].top))
     ? ok('with the headcount each', `${f.cards[0].top} / ${f.cards[1].top}`)
     : bad('with the headcount each', `${f.cards[0].top} / ${f.cards[1].top}`);
@@ -956,9 +1006,19 @@ console.log('--- who is logging: people by declared side, never a split of the v
   /self-declared/i.test(note)
     ? ok('and that it is self-declared')
     : bad('and that it is self-declared', note.slice(0, 160));
-  /1 person has not said/i.test(note)
-    ? ok('and people who did not say are counted honestly, not assigned')
-    : bad('and people who did not say are counted honestly, not assigned', note.slice(0, 200));
+  {
+    // Counted from the fixture: everyone whose side the collab does not have,
+    // plus everyone who never answered. Typed as "1 person" before, which went
+    // red the moment a dropped side started folding in here — correctly.
+    const sides = await prev.evaluate(() => (COLLABS[0].fandoms || []).map((x) => x.key));
+    const f2 = FAN.periods.all.fandoms;
+    const n = Object.keys(f2).filter((k) => !sides.includes(k))
+      .reduce((a2, k) => a2 + (f2[k].people || 0), 0);
+    new RegExp(`\\b${n} ${n === 1 ? 'person has' : 'people have'} not said`, 'i').test(note)
+      ? ok('and people who did not say are counted honestly, not assigned', `${n} of them`)
+      : bad('and people who did not say are counted honestly, not assigned',
+            `expected ${n} — ${note.slice(0, 160)}`);
+  }
 
   // Before anyone has said anything the two sides are STILL drawn. The shape is
   // the explanation — who can appear and what gets compared — and a lone

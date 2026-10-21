@@ -471,7 +471,7 @@
     <div class="get">
       <div class="get-head">
         <span class="get-title">🧩 Get the Vote Counter</span>
-        <span class="get-ver">v1.9.6</span>
+        <span class="get-ver">v1.9.7</span>
       </div>
       <p class="get-sub">
         It counts the votes <b>you</b> cast on kca.nick.tv and logs them to the board above —
@@ -481,8 +481,8 @@
         <b>app</b> does the same job — you vote inside it.
       </p>
       <div class="get-dl">
-        <a class="get-btn" href="/vote-extension-v1.9.6-chrome.zip" download>⬇ Desktop<small>Chrome · Edge · Brave · Opera</small></a>
-        <a class="get-btn ghost" href="/vote-extension-v1.9.6-android.zip" download>⬇ Android extension<small>Edge Canary · Quetta</small></a>
+        <a class="get-btn" href="/vote-extension-v1.9.7-chrome.zip" download>⬇ Desktop<small>Chrome · Edge · Brave · Opera</small></a>
+        <a class="get-btn ghost" href="/vote-extension-v1.9.7-android.zip" download>⬇ Android extension<small>Edge Canary · Quetta</small></a>
         <a class="get-btn ghost" href="/blinks-united-vote-counter.apk" download>⬇ Android app<small>.apk · no extension needed</small></a>
       </div>
       <p class="get-note">
@@ -490,7 +490,7 @@
         <b>Link my account</b> inside it once. There's an
         <a href="/vote-counter-guide.html" target="_blank" rel="noopener">illustrated guide ↗</a>
         if any of that is unfamiliar.<br>
-        <b>Already have it?</b> Update to v1.9.6. Older versions either don't know this collab
+        <b>Already have it?</b> Update to v1.9.7. Older versions either don't know this collab
         exists — and count only the BLACKPINK side of your ballot — or count the whole trade
         without ever showing it, which leaves no way to tell a counted pick from a lost one.
       </p>
@@ -662,25 +662,18 @@ var COLLABS = [
     // rendered it. `fandom` is what that fandom calls itself and falls back to
     // the act's own name: inventing one for somebody else is the same mistake.
     partners: [
-      // `covers` is the part of OUR half that this agreement actually asked
-      // for, and the two differ: BLOOMs trade for BLACKPINK and JENNIE (ROSÉ
-      // beyond what was asked), Pauljjak announced BLACKPINK alone. `gives` is
-      // their own category. Both are read only by the per-agreement pass
+      // `covers` is the part of OUR half this agreement actually asked for:
+      // BLOOMs trade for BLACKPINK and JENNIE, and ROSÉ is beyond what was
+      // asked. `gives` is their own category. Both are read only by the pass
       // count — nothing else on the page splits by partner.
-      // `covers` is the part of OUR half that agreement asked for, and the two
-      // differ: BLOOMs traded for BLACKPINK and JENNIE, Pauljjak announced
-      // BLACKPINK alone. It decides that agreement's pass count and NOTHING
-      // else — every vote still counts in every total, so a Pauljjak voter who
-      // also picks JENNIE and ROSÉ has those counted like anybody's.
       //
-      // `colour` is this act's own on the bar and in the split. Carried in the
-      // data so a third partner is a data change, not a code change.
+      // `colour` is this act's own on the bar and in the split. This is a LIST
+      // and the page renders a segment per entry, so a partner is a data change
+      // rather than a code change: a second one was added here and later called
+      // off, and both times this array was most of the diff.
       { fandom: 'BLOOMs', act: 'BINI', colour: '#6fd3ff',
         covers: ['favorite-music-group-or-duo', 'favorite-music-collaboration'],
         gives: ['favorite-global-music-star'] },
-      { fandom: 'Pauljjak', act: 'Ahn Hyo-seop', colour: '#b388ff',
-        covers: ['favorite-music-group-or-duo'],
-        gives: ['favorite-animated-male-voice-from-a-movie'] },
     ],
     // The pages running it, per side. Named on the card because a collab is
     // THEIR work as much as ours and the page should say so — and because a
@@ -708,9 +701,10 @@ var COLLABS = [
     // the bar above cannot be broken down by fandom and never is — this counts
     // PEOPLE, which is a question self-declaration can actually answer.
     // `side` only picks the colour, so each fandom reads in its own.
-    // One entry per fandom in the trade — ours and every partner's. It was
-    // two while the bar had three acts, so Pauljjak had no side to pick and
-    // the turnout block disagreed with the bar directly above it.
+    // One entry per fandom in the trade — ours and every partner's. It has to
+    // stay in step with `partners` above: while the bar had an act that this
+    // list had no side for, that partner's people could pick nothing and the
+    // turnout block disagreed with the bar directly above it.
     //
     // `colour` is that fandom's act's colour, so the two blocks say the same
     // thing in the same shades: a BLOOM reading cyan in the bar finds cyan in
@@ -723,7 +717,6 @@ var COLLABS = [
     fandoms: [
       { key: 'blink', label: 'BLINKs', colour: '#ff0066', anon: 'a blink' },
       { key: 'bloom', label: 'BLOOMs', colour: '#6fd3ff', anon: 'a bloom' },
-      { key: 'pauljjak', label: 'Pauljjak', colour: '#b388ff', anon: 'someone from Pauljjak' },
     ],
     // What BLINKs put in the partner's category. One slot, and it is a slot we
     // have no nominee in — so this costs a blink nothing at all.
@@ -739,14 +732,6 @@ var COLLABS = [
       // as an example rather than matched on.
       { slug: 'favorite-global-music-star', cat: 'Favorite Global Music Star', nominee: 'BINI',
         onBallot: 'Asia: BINI' },
-      // Read off the live ballot by probe-kca-ballot.yml, 21 Oct. The slug is
-      // favorite-ANIMATED-MALE-voice while the category is printed "Favorite
-      // MALE ANIMATED Voice" — the words are in the other order, so neither
-      // could have been derived from the other, and the counter matches on the
-      // slug.
-      { slug: 'favorite-animated-male-voice-from-a-movie',
-        cat: 'Favorite Male Animated Voice From a Movie',
-        nominee: 'Ahn Hyo-seop', who: 'Ahn Hyo-seop' },
     ],
     // What their side puts in ours. Read off the live ballot (probe-kca.yml) and
     // in step with KCA_CATEGORIES in index.html.
@@ -833,22 +818,19 @@ if (DEMO_OPTION) {
     todayKey: _dday(0),
     periods: {
       today: { byCat: { 'favorite-music-group-or-duo': 44, 'favorite-music-collaboration': 43,
-                        'favorite-female-artist': 41, 'favorite-global-music-star': 42,
-                        'favorite-animated-male-voice-from-a-movie': 38 },
+                        'favorite-female-artist': 41, 'favorite-global-music-star': 42 },
                board: [{ name: 'Voter A', votes: 68, byCat: { 'favorite-music-group-or-duo': 17 } },
                        { name: 'Voter B', votes: 52, byCat: { 'favorite-global-music-star': 13 } }],
                fandoms: { blink: { people: 9, votes: 104 }, bloom: { people: 3, votes: 56 },
-                          pauljjak: { people: 4, votes: 40 }, unsaid: { people: 1, votes: 10 } } },
+                          unsaid: { people: 1, votes: 10 } } },
       week:  { byCat: { 'favorite-music-group-or-duo': 240, 'favorite-music-collaboration': 236,
-                        'favorite-female-artist': 228, 'favorite-global-music-star': 232,
-                        'favorite-animated-male-voice-from-a-movie': 205 },
+                        'favorite-female-artist': 228, 'favorite-global-music-star': 232 },
                board: [{ name: 'Voter A', votes: 320, byCat: { 'favorite-music-group-or-duo': 80 } },
                        { name: 'Voter B', votes: 268, byCat: { 'favorite-global-music-star': 67 } }],
                fandoms: { blink: { people: 22, votes: 620 }, bloom: { people: 7, votes: 286 },
-                          pauljjak: { people: 9, votes: 200 }, unsaid: { people: 2, votes: 30 } } },
+                          unsaid: { people: 2, votes: 30 } } },
       all:   { byCat: { 'favorite-music-group-or-duo': 440, 'favorite-music-collaboration': 435,
-                        'favorite-female-artist': 420, 'favorite-global-music-star': 425,
-                        'favorite-animated-male-voice-from-a-movie': 390 },
+                        'favorite-female-artist': 420, 'favorite-global-music-star': 425 },
                board: [{ name: 'Voter A', votes: 408, byCat: { 'favorite-music-group-or-duo': 102,
                            'favorite-music-collaboration': 102, 'favorite-female-artist': 102,
                            'favorite-global-music-star': 102 } },
@@ -857,7 +839,7 @@ if (DEMO_OPTION) {
                        { name: 'Voter C', votes: 196, byCat: { 'favorite-music-group-or-duo': 49 } }],
                // 34 people averaging 34.7 against 9 averaging 50.
                fandoms: { blink: { people: 34, votes: 1180 }, bloom: { people: 9, votes: 450 },
-                          pauljjak: { people: 12, votes: 300 }, unsaid: { people: 3, votes: 90 } } },
+                          unsaid: { people: 3, votes: 90 } } },
     },
     days: [5, 4, 3, 2, 1, 0].map(function (b, i) {
       return { day: _dday(b), votes: [180, 240, 300, 360, 470, 170][i],
@@ -1019,7 +1001,7 @@ function requiredOf(picks) { return picks.filter(function (p) { return p.require
 //
 // It was two: ours and theirs. With two partners "theirs" pooled two different
 // acts behind one colour, and the whole point of the bar is what each act
-// received — a reader cannot see how BINI is doing if Ahn Hyo-seop is inside
+// received — a reader cannot see how BINI is doing if another act is inside
 // the same block.
 //
 // Still acts and not fandoms. Everybody in a collab votes the whole ballot, so
@@ -1070,13 +1052,15 @@ function passesForPartner(c, p, x) {
 // than one, because the agreements asked for different things.
 //
 // A single minimum across every category sounds right and is not: it counts
-// only people who did the whole ballot for every partner, so somebody doing
-// exactly what Pauljjak announced — BLACKPINK and Ahn Hyo-seop — would never
-// register as a pass at all.
+// only people who did the whole ballot for EVERY partner, so somebody doing
+// exactly what their own agreement asked for would never register as a pass.
+// That was the case with the second partner this collab had for two days, who
+// asked for BLACKPINK alone.
 //
-// It changes no total. Every vote counts everywhere it always did: a Pauljjak
-// voter who also picks JENNIE and ROSÉ has those counted like anybody else's,
-// they simply are not what that agreement is measured against.
+// It changes no total. Every vote counts everywhere it always did; a vote
+// simply is not measured against an agreement it was not part of. Kept now
+// that there is one partner again, because the branch above returns the single
+// figure and this one has to be right the day a second is added back.
 function passesSentence(c, p, passes) {
   if (!c.partners || c.partners.length < 2) {
     return passes != null
@@ -1265,12 +1249,17 @@ function drawCollabCard(canvas, c, opts) {
     : { pad: 84, logo: 92, eyebrow: 24, gap1: 42, title: 104, gap2: 30,
         num: 118, label: 24, gapNum: 40, gapBar: 30, bar: 16, note: 19, line: 30,
         foot: 30, footGap: 40, by: 17, row: 26, rowGap: 44, track: 8 };
-  // Three acts means three stacked figures where the sizes were chosen for
-  // two, and the body ran into the footer — the overflow check caught it
-  // before it was ever rendered. The block shrinks with the number of acts
-  // rather than the sizes being retuned by hand for each new partner.
+  // The stacked act figures are the tall part, and how tall depends on how
+  // many acts there are — which changes whenever a partner is added or
+  // dropped. Shrinking them by act count alone was wrong in both directions:
+  // tuned for two, three overflowed; then tuned around three, and going BACK
+  // to two overflowed by 2px on the wide card, because two at full size is
+  // taller than three shrunk. So the count is only the first guess, and
+  // `opts.compact` is the second pass — see the end of this function, which
+  // redraws once if the body reached the footer. No size in here is tuned to a
+  // particular number of partners.
   var bigN = any ? Math.max(2, (p && p.byCat ? barParts(c, p).length : 2)) : 2;
-  if (bigN > 2) {
+  if (bigN > 2 || opts.compact) {
     L.num = Math.round(L.num * (wide ? 0.56 : 0.68));
     L.gapNum = Math.round(L.gapNum * (wide ? 0.62 : 0.74));
     L.label = Math.round(L.label * (wide ? 0.85 : 0.9));
@@ -1547,6 +1536,17 @@ function drawCollabCard(canvas, c, opts) {
     ctx.closePath(); ctx.clip();
     ctx.drawImage(_cardLogo, W - L.pad - L.logo, L.pad, L.logo, L.logo);
     ctx.restore();
+  }
+
+  // One retry, at the smaller figure sizes, if the body reached the footer.
+  // Drawing is cheap and starts by repainting the whole background, so a second
+  // pass leaves nothing of the first behind. This is what makes the card safe
+  // against a change in the number of acts: it measures the result instead of
+  // predicting it.
+  if (bodyBottom > footTop && !opts.compact) {
+    var retry = Object.assign({}, opts);
+    retry.compact = true;
+    return drawCollabCard(canvas, c, retry);
   }
 
   // Returned so a test can assert the body never reaches the footer, in every
@@ -1842,7 +1842,22 @@ function fandomsHtml(c) {
     return { key: x.key, label: x.label, colour: x.colour || 'var(--pink)',
              people: got.people || 0, votes: got.votes || 0 };
   });
-  var unsaid = (f && f.unsaid) || null;
+  // "Didn't say" has to absorb a side the collab no longer has, or those people
+  // vanish: this trade had a second partner for two days and the people who
+  // picked that side are still in the board and still in every total above. A
+  // key nothing recognises is exactly the same situation as never having
+  // answered, and dropping them would make these counts quietly short of the
+  // board directly below.
+  var known = {};
+  c.fandoms.forEach(function (x) { known[x.key] = true; });
+  var unsaid = null;
+  for (var k in (f || {})) {
+    if (known[k]) continue;
+    var g = f[k] || {};
+    unsaid = unsaid || { people: 0, votes: 0 };
+    unsaid.people += Number(g.people) || 0;
+    unsaid.votes  += Number(g.votes)  || 0;
+  }
   var any = rows.some(function (r) { return r.people > 0; }) || (unsaid && unsaid.people > 0);
   // The BAR is drawn on votes-each, not on the total.
   //
