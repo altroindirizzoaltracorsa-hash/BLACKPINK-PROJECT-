@@ -1,0 +1,111 @@
+name: Dump schema for named tables
+
+# Reads the real definition of named tables out of Supabase and pushes it to a
+# throwaway branch, so a migration can be written from what the database
+# actually holds rather than from memory.
+#
+# Nine tables in production have no migration in this repo: they were created by
+# typing SQL into the Supabase editor and never written down. They work, but
+# there is no file to rebuild them from — and after 2026-10-30 a rebuilt table
+# also needs its grants stated, so guessing at the definition is doubly a bad
+# idea.
+#
+# READ-ONLY against the database. pg_dump --schema-only takes no data and no
+# locks worth the name. The branch it writes to is scratch: force-pushed, and
+# meant to be deleted once the migrations are written.
+on:
+  workflow_dispatch:
+    inputs:
+      tables:
+        description: 'Comma-separated table names in public'
+        required: true
+        default: 'beta_testers,chat_claims,chat_messages,global_stream_snapshots,leaderboard_archive,profiles,spotify_accounts,stream_counts,user_stamps'
+      branch:
+        description: 'Scratch branch to push the dump to'
+        required: false
+        default: 'claude/schema-dump'
+
+permissions:
+  contents: write
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: pg_dump the named tables
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          TABLES: ${{ inputs.tables }}
+        run: |
+          set -eu
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret is not set."
+            exit 1
+          fi
+          # pg_dump refuses a server NEWER than itself, and the runner's version
+          # is whatever ubuntu-latest ships this month. Postgres 17's pg_dump
+          # reads every server version this project could be on, so it comes
+          # from the image rather than the runner.
+          args=""
+          for t in $(echo "$TABLES" | tr ',' ' '); do
+            case "$t" in
+              *[!a-z0-9_]*) echo "::error::refusing odd table name: $t"; exit 1 ;;
+            esac
+            args="$args -t public.$t"
+          done
+          mkdir -p dump
+          # --no-owner: roles differ between projects and the owner line would
+          # only ever be noise in a migration.
+          # Privileges and policies are deliberately KEPT: they are most of what
+          # the migration has to reproduce.
+          docker run --rm -e PGCONNECT_TIMEOUT=20 postgres:17 \
+            pg_dump "$SUPABASE_DB_URL" --schema-only --no-owner $args \
+            > dump/schema-dump.sql
+          echo "wrote $(wc -l < dump/schema-dump.sql) lines"
+
+          # What pg_dump does not print in a form worth reading: the RLS flag per
+          # table, and the grants as a flat list.
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c "
+            select 'rls: ' || c.relname || ' = ' || c.relrowsecurity
+            from pg_class c join pg_namespace n on n.oid = c.relnamespace
+            where n.nspname = 'public' and c.relname = any(string_to_array('$TABLES', ','))
+            order by c.relname" > dump/rls.txt
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c "
+            select table_name || ' | ' || grantee || ' | ' || privilege_type
+            from information_schema.role_table_grants
+            where table_schema = 'public'
+              and table_name = any(string_to_array('$TABLES', ','))
+              and grantee in ('anon','authenticated','service_role')
+            order by table_name, grantee, privilege_type" > dump/grants.txt
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c "
+            select tablename || ' | ' || policyname || ' | ' || cmd || ' | ' ||
+                   coalesce(qual, '-') || ' | ' || coalesce(with_check, '-')
+            from pg_policies
+            where schemaname = 'public'
+              and tablename = any(string_to_array('$TABLES', ','))
+            order by tablename, policyname" > dump/policies.txt
+          # Row counts, so a migration's author knows which of these is a live
+          # table and which is an empty leftover.
+          : > dump/counts.txt
+          for t in $(echo "$TABLES" | tr ',' ' '); do
+            n=$(psql "$SUPABASE_DB_URL" -At -c "select count(*) from public.$t")
+            echo "$t = $n rows" >> dump/counts.txt
+          done
+          cat dump/counts.txt
+
+      - name: Push to the scratch branch
+        env:
+          BRANCH: ${{ inputs.branch || 'claude/schema-dump' }}
+        run: |
+          set -eu
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan "$BRANCH"
+          git rm -rq --cached . || true
+          git add -f dump/schema-dump.sql dump/rls.txt dump/grants.txt dump/policies.txt dump/counts.txt
+          git commit -qm "Schema dump for ${{ inputs.tables }}"
+          git push -f origin "HEAD:refs/heads/$BRANCH"
+          echo "::notice title=dump::pushed to $BRANCH"
