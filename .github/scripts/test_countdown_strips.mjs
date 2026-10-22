@@ -52,7 +52,8 @@ for (const [slug,name,n] of CARDS) {
       shown: getComputedStyle(st).display!=='none',
       loaded: fr.filter(i=>i.tagName==='VIDEO' ? !!i.currentSrc||!!i.getAttribute('src') : (i.complete && i.naturalWidth>0)).length,
       heights: [...new Set(fr.map(i=>Math.round(i.getBoundingClientRect().height)))],
-      oneUp: Math.abs(fr[0].getBoundingClientRect().width - st.clientWidth) < 3 };
+      oneUp: Math.abs(fr[0].getBoundingClientRect().width - st.clientWidth) < 3,
+      videoPoster: (()=>{ const v=st.querySelector('video'); return v ? v.getAttribute('poster') : undefined; })() };
   });
   if (r.none) { bad(`${name}: has a strip`); await page.close(); continue; }
   r.shown ? ok(`${name}: the strip is shown`) : bad(`${name}: the strip is shown`);
@@ -61,6 +62,14 @@ for (const [slug,name,n] of CARDS) {
   r.dots===n ? ok('   a dot each') : bad('   a dot each',`${r.dots}`);
   r.navShown ? ok('   dots visible') : bad('   dots visible');
   r.oneUp ? ok('   one picture at a time') : bad('   one picture at a time');
+  if (r.videoPoster !== undefined) {
+    // A video must show its OWN first frame. It once carried a poster that was
+    // a different photograph, so the slide showed one picture and played
+    // another — and nothing on this page could catch that, because the headless
+    // browser cannot decode the clip to compare them.
+    r.videoPoster === null ? ok('   the film shows its own first frame, not another photo')
+                           : bad('   the film shows its own first frame, not another photo', r.videoPoster);
+  }
   r.heights.length===1 ? ok('   every frame the same height, so it cannot jump',`${r.heights[0]}px`)
                        : bad('   every frame the same height, so it cannot jump',r.heights.join('/'));
   errs.length ? bad('   no page errors',errs.join(' | ')) : ok('   no page errors');
