@@ -70,6 +70,20 @@ console.log('--- the countdown cards, on the home page');
   await page.waitForTimeout(3000);
   let s=await state(page);
   s.slides>=5 ? ok('every card is a slide',`${s.slides}`) : bad('every card is a slide',`${s.slides}`);
+
+  // The running order is a decision, not whatever order the cards were written
+  // in, and it is invisible from any one card's markup. PRESS PLAY leads.
+  const ORDER = ['lalisaofficial.com','steps','newtrick','jisoo.io','hellosawadika.com'];
+  const got = await page.evaluate(()=>[...document.querySelectorAll('#home-countdowns > .cd-wrap > .cd-card')]
+    .map(c=>c.dataset.slug));
+  // Auto-discovered pre-releases are inserted ahead of everything on purpose,
+  // so compare the hand-authored cards in the order they appear among them.
+  const hand = got.filter(g=>ORDER.includes(g));
+  JSON.stringify(hand)===JSON.stringify(ORDER)
+    ? ok('they run in the order they are meant to', hand.join(' → '))
+    : bad('they run in the order they are meant to', `got ${hand.join(' → ')}`);
+  got[0]===ORDER[0] ? ok('and the carousel opens on PRESS PLAY')
+                    : bad('and the carousel opens on PRESS PLAY',`opens on ${got[0]}`);
   s.dots===s.slides ? ok('one dot per slide',`${s.dots}`) : bad('one dot per slide',`${s.dots} dots / ${s.slides} slides`);
   s.navHidden===false ? ok('the controls are shown') : bad('the controls are shown',`hidden=${s.navHidden}`);
   s.cardW===s.trackW ? ok('one card fills the view',`${s.cardW}px`) : bad('one card fills the view',`card ${s.cardW} vs track ${s.trackW}`);
