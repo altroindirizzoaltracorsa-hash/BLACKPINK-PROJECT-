@@ -138,7 +138,7 @@ console.log('--- the countdown cards, on the home page');
              dots: n ? n.querySelectorAll('.cd-dot').length : 0,
              navShown: n ? !n.hidden && getComputedStyle(n).display!=='none' : false };
   });
-  strip.strip && strip.navShown && strip.dots===4
+  strip.strip && strip.navShown && strip.dots===7
     ? ok('the MV frames ride along on the home card',`${strip.dots} dots`)
     : bad('the MV frames ride along on the home card',JSON.stringify(strip));
   errs.length ? bad('no page errors',errs.join(' | ')) : ok('no page errors');
@@ -184,7 +184,7 @@ console.log('--- the MV frames inside the card');
   await page.locator('.cd-card-lisa .cd-strip').scrollIntoViewIfNeeded().catch(()=>{});
   await page.waitForTimeout(600);
   let f=await read();
-  f.dots===4 ? ok('four dots for four frames') : bad('four dots for four frames',`${f.dots}`);
+  f.dots===7 ? ok('a dot for every picture in the strip') : bad('a dot for every picture in the strip',`${f.dots}`);
   f.navHidden===false ? ok('the dots are shown') : bad('the dots are shown');
   f.frameW===f.trackW ? ok('one frame at a time',`${f.frameW}px`) : bad('one frame at a time',`${f.frameW} vs ${f.trackW}`);
   const before=f.at;

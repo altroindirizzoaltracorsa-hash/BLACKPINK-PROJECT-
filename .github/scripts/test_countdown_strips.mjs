@@ -31,7 +31,7 @@ const browser=await chromium.launch();
 let fails=0;
 const ok=(m,d)=>console.log(`  ok   ${m}${d?` (${d})`:''}`);
 const bad=(m,d)=>{fails++;console.log(`  FAIL ${m}${d?` (${d})`:''}`);};
-const CARDS=[['lalisaofficial.com','PRESS PLAY',4],['jisoo.io','CLICK',2],['hellosawadika.com','SaWaDiKa',5]];
+const CARDS=[['lalisaofficial.com','PRESS PLAY',7],['jisoo.io','CLICK',2],['hellosawadika.com','SaWaDiKa',5]];
 console.log('--- each countdown page carries its own strip');
 for (const [slug,name,n] of CARDS) {
   const page=await browser.newPage({viewport:{width:390,height:900}});
@@ -46,11 +46,11 @@ for (const [slug,name,n] of CARDS) {
     const card=[...document.querySelectorAll('#home-countdowns .cd-card')].find(c=>getComputedStyle(c).display!=='none');
     const st=card.querySelector('.cd-strip'); if(!st) return {none:true};
     const nav=card.querySelector('.cd-strip-nav');
-    const fr=[...st.querySelectorAll('.cd-frame img')];
+    const fr=[...st.querySelectorAll('.cd-frame img, .cd-frame video')];
     return { frames:fr.length, dots:nav?nav.querySelectorAll('.cd-dot').length:0,
       navShown: nav? !nav.hidden && getComputedStyle(nav).display!=='none' : false,
       shown: getComputedStyle(st).display!=='none',
-      loaded: fr.filter(i=>i.complete && i.naturalWidth>0).length,
+      loaded: fr.filter(i=>i.tagName==='VIDEO' ? !!i.currentSrc||!!i.getAttribute('src') : (i.complete && i.naturalWidth>0)).length,
       heights: [...new Set(fr.map(i=>Math.round(i.getBoundingClientRect().height)))],
       oneUp: Math.abs(fr[0].getBoundingClientRect().width - st.clientWidth) < 3 };
   });
