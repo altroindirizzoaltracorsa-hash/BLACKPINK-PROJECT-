@@ -1,0 +1,33 @@
+name: Probe the release by market
+
+# Is the EP already out where it is already the 23rd? That is the whole
+# "one global instant vs midnight local time" question, answered by looking
+# instead of by reading a field — and only answerable in the hours before
+# the drop. Read-only; writes nothing.
+#
+# Results come back as ::notice annotations and in the run summary: the job
+# log and the artifacts are both served from blob storage that the session
+# reading this cannot fetch.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: pip install spotifyscraper requests
+      - name: Ask each market what it can see
+        run: python .github/scripts/probe_release_by_market.py
+      - name: Upload what each market returned
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: albums-by-market
+          path: albums_by_market.json
+          if-no-files-found: ignore
