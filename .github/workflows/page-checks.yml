@@ -122,6 +122,12 @@ jobs:
         if: always()
         run: node .github/scripts/test_sql_grants.mjs
 
+      # The share card's picture picker: one shared element that every release
+      # rebuilds, checked on the canvas pixels rather than the state behind it.
+      - name: The PRESS PLAY share picker
+        if: always()
+        run: node .github/scripts/test_pressplay_share.mjs
+
       # Each countdown's picture strip: the files load, the dots match, and
       # they stay on the release's own page rather than the home carousel.
       - name: The countdown picture strips

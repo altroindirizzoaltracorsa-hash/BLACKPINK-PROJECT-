@@ -17772,6 +17772,7 @@ function openLisaPressPlayCard() {
         '<div class="pp-sheet-title">Share PRESS PLAY</div>' +
         '<button class="pp-opt" onclick="_ppPicture()">🖼<span>Picture</span><small>Countdown card · square or landscape</small></button>' +
         '<button class="pp-opt" onclick="_sharePressPlay(\'video\')">🎬<span>Video</span><small>Teaser clip + details</small></button>' +
+        '<button class="pp-opt" onclick="_sharePressPlay(\'poster\')">📅<span>Poster</span><small>Tarantino premiere · the times in five zones</small></button>' +
         '<button class="pp-opt" onclick="_sharePressPlay(\'link\')">🔗<span>Link</span><small>Preview link</small></button>' +
         '<div class="pp-note">The caption &amp; link are copied automatically — just paste them with your post. 📋</div>' +
         '<button class="pp-cancel" onclick="closePressPlayShare()">Cancel</button>' +
@@ -17806,8 +17807,13 @@ async function _sharePressPlay(kind) {
     else _showShareToast(copied ? 'Caption + link copied ✨' : 'Copy failed — try again');
     return;
   }
+  // The poster goes out as itself. It already carries the title and the five
+  // timezones, and laying this card's wordmark and countdown over it would
+  // cross out both — which is exactly what it looked like when it was tried.
   const asset = kind === 'video'
     ? { src: '/lisa-preview-share.mp4', type: 'video/mp4', name: 'LISA-PRESS-PLAY.mp4' }
+    : kind === 'poster'
+    ? { src: '/tarantino/premiere.webp', type: 'image/webp', name: 'TARANTINO-PREMIERE.webp' }
     : { src: '/og-countdown-pressplay.jpg', type: 'image/jpeg', name: 'LISA-PRESS-PLAY.jpg' };
   let blob;
   try { blob = await (await fetch(asset.src)).blob(); }
@@ -21783,6 +21789,25 @@ async function openPresaveCard(campaign = 'fa') {
 // Same pipeline as JENNIE's Fallen Angel card: full-bleed photo, live countdown,
 // Early Supporter stamp for pre-savers, drawn on the shared #card-canvas so it
 // gets the landscape/square toggle + share/download/copy for free.
+// Everything PRESS PLAY has to share, in the order the card's own strip shows
+// it. The picker is the shared #release-pic-picker, same as SaWaDiKa and CLICK.
+const PRESS_PLAY_CARD_PICS = [
+  '/lisa-pressplay-hero.webp',   // the official still — the card's own art
+  '/lisa-mona.webp',             // the first PRESS PLAY image
+  '/tarantino/still-1.webp',
+  '/tarantino/still-2.webp',
+  '/tarantino/still-3.webp',
+  '/tarantino/still-4.webp',
+];
+// focal = how far down the photo to bias the crop (0 = keep the top).
+// fit = show the whole picture inside the card instead of filling it. The
+// premiere poster is a TIMETABLE: filling a 16:9 card with a 4:5 poster would
+// crop the times straight off it, which is the one thing it is for.
+const PP_FRAME = {
+  '/lisa-pressplay-hero.webp': { focal: 0.02, dim: 0.30 },   // pale grey behind the type
+  '/lisa-mona.webp':           { focal: 0.06 },
+};
+
 let _ppCardData = null;
 let _ppPhotoImg = null, _ppWordImg = null, _ppTitleImg = null;
 function drawPressPlayCard(canvas, d) {
@@ -21795,15 +21820,25 @@ function drawPressPlayCard(canvas, d) {
   ctx.fillRect(0, 0, W, H);
   const photo = d.photo;
   if (photo && photo.naturalWidth) {
-    const scale = Math.max(W / photo.naturalWidth, H / photo.naturalHeight);
+    // fit = the whole picture inside the card; otherwise fill it and bias the
+    // crop with focal (0 keeps the top, 1 the bottom).
+    const scale = d.fit ? Math.min(W / photo.naturalWidth, H / photo.naturalHeight)
+                        : Math.max(W / photo.naturalWidth, H / photo.naturalHeight);
     const dw = photo.naturalWidth * scale, dh = photo.naturalHeight * scale;
-    ctx.drawImage(photo, (W - dw) / 2, -(dh - H) * 0.06, dw, dh);
+    ctx.drawImage(photo, (W - dw) / 2,
+      d.fit ? (H - dh) / 2 : -(dh - H) * (d.focal == null ? 0.06 : d.focal), dw, dh);
   }
+  // The scrim was weighted for one dark photo. Now that any of seven can be on
+  // the card, a pale one washes the type out — the official still is grey behind
+  // the top line and the wordmark. `dim` deepens the ramp for those, per picture,
+  // rather than darkening the ones that never needed it.
+  const dim = d.dim || 0;
+  const a = (v) => Math.min(0.99, v + dim);
   const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0,    'rgba(18,3,8,0.55)');
-  g.addColorStop(0.32, 'rgba(18,3,8,0.05)');
-  g.addColorStop(0.60, 'rgba(18,3,8,0.36)');
-  g.addColorStop(1,    'rgba(12,2,6,0.97)');
+  g.addColorStop(0,    `rgba(18,3,8,${a(0.55)})`);
+  g.addColorStop(0.32, `rgba(18,3,8,${a(0.05)})`);
+  g.addColorStop(0.60, `rgba(18,3,8,${a(0.36)})`);
+  g.addColorStop(1,    `rgba(12,2,6,${a(0.97)})`);
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
   drawNoise(ctx, W, H, 0.018);
@@ -21907,7 +21942,7 @@ async function openPressPlayCard() {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
-  document.getElementById('release-pic-picker').style.display = 'none';
+  buildPicPicker(PRESS_PLAY_CARD_PICS, 'selectPressPlayCardArt');
   _cardType = 'pressplay';
   _cardTrackId = null;
   _cardFormat = 'landscape';
@@ -21917,7 +21952,7 @@ async function openPressPlayCard() {
   canvas.width = 1200; canvas.height = 675;
 
   const [photo, wordImg, titleImg] = await Promise.all([
-    _ppPhotoImg ? Promise.resolve(_ppPhotoImg) : loadImg('/lisa-mona.webp').then(i => (_ppPhotoImg = i)).catch(() => null),
+    _ppPhotoImg ? Promise.resolve(_ppPhotoImg) : loadImg(PRESS_PLAY_CARD_PICS[0]).then(i => (_ppPhotoImg = i)).catch(() => null),
     _ppWordImg  ? Promise.resolve(_ppWordImg)  : loadImg('/lisa-word.webp').then(i => (_ppWordImg = i)).catch(() => null),
     _ppTitleImg ? Promise.resolve(_ppTitleImg) : loadImg('/lisa-pressplay.webp').then(i => (_ppTitleImg = i)).catch(() => null),
   ]);
@@ -21927,6 +21962,7 @@ async function openPressPlayCard() {
   const earned = _buSignedIn && !!localStorage.getItem(LISA_SAVE_LS);
   _ppCardData = {
     earned, photo, logoImg: wordImg, titleImg,
+    ...(PP_FRAME[PRESS_PLAY_CARD_PICS[0]] || {}),
     // The card is rendered on the sharer's machine, so the countdown it
     // freezes is theirs — which is the right one to post, the EP being due at
     // their midnight.
@@ -21939,6 +21975,27 @@ async function openPressPlayCard() {
   label.textContent = earned ? "I'M AN EARLY SUPPORTER" : 'LISA · PRESS PLAY';
   drawPressPlayCard(canvas, _ppCardData);
   _markCardReady(canvas);
+}
+
+// Pick which picture the shared card carries. Same shape as selectLisaCardArt
+// and selectJisooCardArt, so the one picker serves every release.
+async function selectPressPlayCardArt(url, thumbEl) {
+  document.querySelectorAll('.release-pic-thumb').forEach(t => t.classList.remove('active'));
+  if (thumbEl) thumbEl.classList.add('active');
+  const canvas = document.getElementById('card-canvas');
+  const label  = document.getElementById('card-box-label');
+  label.textContent = 'GENERATING…';
+  const img = await loadImg(url).catch(() => null);
+  if (_ppCardData) {
+    const fr = PP_FRAME[url] || {};
+    _ppCardData.photo = img;
+    _ppCardData.focal = fr.focal;
+    _ppCardData.fit = fr.fit;
+    _ppCardData.dim = fr.dim;
+    drawPressPlayCard(canvas, _ppCardData);
+    _markCardReady(canvas);
+  }
+  label.textContent = _ppCardData?.earned ? "I'M AN EARLY SUPPORTER" : 'LISA · PRESS PLAY';
 }
 
 // ── LISA "hellosawadika" REVEAL SHARE CARD ───────────────────────────────────
