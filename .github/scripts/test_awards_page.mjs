@@ -164,16 +164,34 @@ console.log('--- the MAMA half shows where we stand and what to post');
         // The gating, exercised against the page's own function rather than
         // re-implemented here. A standing read in round 1 must not be shown
         // during the pause or in round 2: round 2 counts from zero.
+        // Is one due at all AS THIS RUNS? Between rounds there is nothing
+        // honest to show, and that is a pass, not a missing block.
+        due: (() => { try { return !!mamaStanding(Date.now()); } catch (e) { return null; } })(),
+        // Against a SYNTHETIC reading, not the stored one. Every date that
+        // reaches a different round is further from the real reading than
+        // MAMA_STANDING_MAX_AGE_DAYS, so the age rule answers first and the
+        // round rule is never reached — this check passed with that rule
+        // deleted, while the card showed round 1's position labelled round 2.
+        // A reading dated the day before each probe isolates the round rule.
         gate: (() => {
           try {
-            return { now: !!mamaStanding(Date.parse('2026-10-18T12:00:00Z')),
-                     pause: !!mamaStanding(Date.parse('2026-10-25T12:00:00Z')),
-                     r2: !!mamaStanding(Date.parse('2026-10-30T12:00:00Z')) };
+            const r1 = (day) => ({ pos: 6, cat: 'Fans\u2019 Choice Female', round: 1, at: day });
+            return { now:   !!mamaStanding(Date.parse('2026-10-18T12:00:00Z'), r1('2026-10-17')),
+                     pause: !!mamaStanding(Date.parse('2026-10-25T12:00:00Z'), r1('2026-10-24')),
+                     r2:    !!mamaStanding(Date.parse('2026-10-30T12:00:00Z'), r1('2026-10-29')),
+                     // ...and the age rule still works on its own.
+                     stale: !!mamaStanding(Date.parse('2026-10-18T12:00:00Z'), r1('2026-10-01')) };
           } catch (e) { return { err: String(e) }; }
         })(),
       };
     });
-    if (!s.standing) bad('the Mnet Plus standing is shown');
+    if (s.due === false) {
+      // The pause between rounds: round 1's reading must not be dressed up as
+      // round 2's, so the block is deliberately absent. Asserted, not skipped —
+      // a standing appearing here would be the bug.
+      !s.standing ? ok('no standing between rounds, which is right')
+                  : bad('no standing between rounds, which is right', s.standing.txt);
+    } else if (!s.standing) bad('the Mnet Plus standing is shown');
     else {
       /^#\d+$/.test(s.standing.pos) ? ok('the Mnet Plus standing is shown', s.standing.txt)
                                     : bad('the Mnet Plus standing is shown', `position reads "${s.standing.pos}"`);
@@ -185,9 +203,9 @@ console.log('--- the MAMA half shows where we stand and what to post');
                                               : bad('and which round it belongs to', s.standing.when || '');
     }
     s.gate.err ? bad('the standing gate runs', s.gate.err)
-      : (s.gate.now && !s.gate.pause && !s.gate.r2)
-        ? ok('a round-1 standing hides in the pause and in round 2', JSON.stringify(s.gate))
-        : bad('a round-1 standing hides in the pause and in round 2', JSON.stringify(s.gate));
+      : (s.gate.now && !s.gate.pause && !s.gate.r2 && !s.gate.stale)
+        ? ok('a round-1 standing hides in the pause, in round 2, and when stale', JSON.stringify(s.gate))
+        : bad('a round-1 standing hides in the pause, in round 2, and when stale', JSON.stringify(s.gate));
 
     // The card's shape, top to bottom: how long, where we stand, what to do,
     // what we are up for. Asserted because it is an ordering of independent
@@ -195,7 +213,11 @@ console.log('--- the MAMA half shows where we stand and what to post');
     // their position in the string, and nothing else would notice a swap.
     const order = await fr.evaluate(() => {
       const card = document.querySelector('#vc-embed-root .vote-card');
-      const want = ['.vote-deadline', '.vote-standing', '.vote-repost', '.vote-categories'];
+      const want = ['.vote-deadline', '.vote-standing', '.vote-repost', '.vote-categories']
+        // Dropped from the ordering only when the card legitimately has no
+        // standing to place; the blocks around it are still asserted in order.
+        .filter((sel) => sel !== '.vote-standing' || card.querySelector(sel) ||
+                         (() => { try { return !!mamaStanding(Date.now()); } catch (e) { return true; } })());
       const found = want.map((sel) => {
         const el = card.querySelector(sel);
         return el ? { sel, y: Math.round(el.getBoundingClientRect().top) } : { sel, y: null };
