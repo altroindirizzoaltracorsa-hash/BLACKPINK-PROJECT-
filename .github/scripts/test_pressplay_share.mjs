@@ -67,7 +67,6 @@ for (let i=0;i<6;i++){
   if (dup) bad(`picture ${i+1} draws something of its own`,`identical to picture ${dup[0]+1}`);
   else ok(`picture ${i+1} draws something of its own`, `${st.src}${st.fit?' · fitted whole':''}`);
   seen.set(i,h);
-  if (i===0) await page.locator('#card-canvas').screenshot({path:'card-hero.png'});
 }
 console.log('--- and it does not leak into another release');
 await page.evaluate(()=>{ try{ document.getElementById('card-overlay').style.display='none'; }catch(e){} });
