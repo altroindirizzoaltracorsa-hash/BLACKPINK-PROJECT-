@@ -2155,10 +2155,17 @@
     grid-template-columns: minmax(0, 1fr);
     border: 1px solid rgba(225,29,42,0.4); box-shadow: 0 20px 55px -30px rgba(225,29,42,0.6); }
   .cd-card-lisa::before { content: ''; grid-area: 1 / 1; aspect-ratio: 400 / 500; }
+  /* A still, not a video, since the official PRESS PLAY shot is exactly the
+     card's own 4:5 — so at the card's floor ratio it is shown whole, with no
+     crop at all, and only starts cropping when the card grows past it. */
   .cd-card-lisa .lisa-hero { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
     object-position: center 12%; z-index: 0; -webkit-user-drag: none; }
+  /* Weighted for the PRESS PLAY still, which is pale grey behind the eyebrow
+     and the wordmark — the old ramp was built for a video that was already dark
+     up there, and white type on this one did not read. */
   .cd-card-lisa .lisa-scrim { position: absolute; inset: 0; z-index: 1;
-    background: linear-gradient(180deg, rgba(42,4,6,0.15) 0%, rgba(42,4,6,0.12) 34%, rgba(42,4,6,0.72) 72%, rgba(42,4,6,0.95) 100%); }
+    background: linear-gradient(180deg, rgba(42,4,6,0.62) 0%, rgba(42,4,6,0.34) 22%,
+      rgba(42,4,6,0.30) 45%, rgba(42,4,6,0.78) 76%, rgba(42,4,6,0.96) 100%); }
   .cd-card-lisa .lisa-content { grid-area: 1 / 1; align-self: end; position: relative; z-index: 2;
     min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
     padding: 0 1.1rem 1.2rem; }
@@ -2171,9 +2178,6 @@
   .cd-card-lisa .cd-sub { font-family: 'GaramondPremierPro', 'Cormorant Garamond', Georgia, serif;
     font-style: italic; font-size: 1.02rem; color: var(--la-cream); letter-spacing: 0.01em; margin-top: 0.05rem; }
   .cd-card-lisa .cd-sub b { color: var(--la-red); font-style: normal; font-weight: 700; }
-  .cd-card-lisa .cd-sub-local { display: block; font-size: 0.82rem; color: rgba(242,233,226,0.66);
-    letter-spacing: 0.01em; margin-top: 0.05rem; }
-  .cd-card-lisa .cd-sub-local:empty { display: none; }
   .cd-card-lisa .cd-timer { justify-content: center; gap: 0.7rem; margin: 0.15rem 0 0.1rem; }
   .cd-card-lisa .cd-unit { min-width: 0; background: none; border: none; padding: 0;
     display: flex; flex-direction: column; align-items: center; gap: 0.16rem; }
@@ -2238,8 +2242,15 @@
   .cd-card-lisa .cd-live-txt [data-live-local]:empty { display: none; }
   .cd-card-lisa .cd-live-go { margin-left: auto; flex: none; font-family: 'DM Mono', monospace;
     font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.85; }
-  .cd-card-lisa .cd-mv-note { font-family: 'DM Mono', monospace; font-size: 0.56rem; letter-spacing: 0.1em;
-    text-transform: uppercase; color: rgba(242,233,226,0.6); margin-top: 0.1rem; }
+  .cd-card-lisa .cd-mv-note { display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
+    font-family: 'DM Mono', monospace; font-size: 0.56rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: rgba(242,233,226,0.62); margin-top: 0.15rem;
+    text-decoration: none; transition: color 0.15s ease; }
+  .cd-card-lisa .cd-mv-note:hover { color: var(--la-cream); }
+  .cd-card-lisa .cd-mv-when { font-family: 'GaramondPremierPro', 'Cormorant Garamond', Georgia, serif;
+    font-style: italic; text-transform: none; letter-spacing: 0.01em; font-size: 0.76rem;
+    color: rgba(242,233,226,0.5); }
+  .cd-card-lisa .cd-mv-when:empty { display: none; }
   /* The MV strip and the worldwide times belong to /countdowns/<this release>,
      not to the grid. On the home page this card is a poster with a countdown
      over it, and both of these push it to ~550px — the video stops being a hero
@@ -3664,23 +3675,27 @@
              stopped matching. It is `hidden` until the script counts the slides,
              so controls never appear with nothing behind them. -->
         <div class="cd-wrap" data-carousel data-carousel-fit aria-label="Countdowns">
-          <div class="cd-card cd-card-lisa" data-slug="lalisaofficial.com" data-target="2026-10-23T04:00:00Z" data-live="OUT NOW ✨" data-prerelease-id="5jAv4CUEptHKQj6HSTMosH" data-prerelease-name="press play">
-            <video class="lisa-hero" autoplay muted loop playsinline preload="metadata" poster="/lisa-mona.webp">
-              <source src="/lisa-preview.mp4" type="video/mp4">
-            </video>
+          <!-- The EP lands at midnight wherever you are, so there is no one
+               instant to count to and data-target-local names the DATE instead:
+               each reader's own midnight is the target. (The "Tarantino" MV is
+               the opposite — a single world premiere — and keeps its own fixed
+               instant further down.) data-target is kept as the floor for
+               anything that reads this card without the local rule. -->
+          <div class="cd-card cd-card-lisa" data-slug="lalisaofficial.com" data-target-local="2026-10-23" data-target="2026-10-23T04:00:00Z" data-live="OUT NOW ✨" data-prerelease-id="5jAv4CUEptHKQj6HSTMosH" data-prerelease-name="press play">
+            <img class="lisa-hero" src="/lisa-pressplay-hero.webp" width="900" height="1125"
+                 alt="LISA, in black leather, hair swept across the frame" loading="lazy">
             <div class="lisa-scrim"></div>
             <div class="lisa-content">
               <div class="lisa-eyebrow">New EP · lalisaofficial.com</div>
               <img class="lisa-word" src="/lisa-word.webp" alt="LISA" loading="lazy">
               <img class="lisa-pp" src="/lisa-pressplay.webp" alt="PRESS PLAY" loading="lazy">
               <div class="cd-badge-chip lisa-locket" id="lisa-badge" style="display:none;"><img src="/lisa-pressplay.webp" alt="" aria-hidden="true">Early Supporter</div>
-              <!-- KST and EDT are the announced pair, and they answer the
-                   question for two countries. The line under them is the same
-                   instant on the reader's own clock, which is what everybody
-                   else is actually asking — and it carries the date, because
-                   west of about UTC-5 this drop lands the day before. -->
-              <div class="cd-sub">Fri, Oct 23, 2026 · <b>1PM KST / 12AM EDT</b>
-                <span class="cd-sub-local" data-local-target></span></div>
+              <!-- No timezone pair here on purpose. Naming one would be naming
+                   somebody else's midnight: the EP arrives at each country's
+                   own, so Seoul has it thirteen hours before Los Angeles and a
+                   "1PM KST / 12AM EDT" would be wrong for nearly everyone
+                   reading it. The clock above counts to the reader's. -->
+              <div class="cd-sub">Fri, Oct 23, 2026 · <b>Midnight local time</b></div>
               <div class="cd-timer" data-timer></div>
               <div class="cd-goal" id="lisa-goal" style="display:none;">
                 <div class="cd-goal-top">
@@ -3707,16 +3722,24 @@
                 <span class="cd-live-go">Watch ↗</span>
               </a>
               <div class="cd-links">
-                <a class="cd-btn" href="https://lisa.lnk.to/PressPlay" target="_blank" rel="noopener" onclick="saveLisaSawadika()">Pre-save ↗</a>
+                <a class="cd-btn" href="https://lisa.lnk.to/PRESSPLAY" target="_blank" rel="noopener" onclick="saveLisaSawadika()">Pre-save ↗</a>
                 <a class="cd-btn cd-btn-ghost" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">▶ MV Teaser ↗</a>
                 <a class="cd-btn cd-btn-ghost" href="https://lalisaofficial.com" target="_blank" rel="noopener">Store ↗</a>
                 <button class="cd-btn cd-btn-ghost" onclick="openLisaPressPlayCard()">📸 Share</button>
               </div>
-              <!-- The MV premieres at the same instant as the EP (Oct 23, 12AM ET
-                   = the card's own target), so it needs no second countdown — the
-                   one already on the card is counting to both. -->
-              <div class="cd-mv-note" data-pre="“Tarantino” MV premieres with the EP"
-                   data-post="“Tarantino” MV is out now">“Tarantino” MV premieres with the EP</div>
+              <!-- The MV is the one fixed moment on this card: a world premiere,
+                   the same instant everywhere, which is why its own poster can
+                   list five timezones against one clock. That is a different
+                   thing from the EP above it, so it carries its own instant
+                   (data-pre-at) rather than borrowing the card's — otherwise it
+                   would read "out now" at a reader's local midnight, hours
+                   before it has actually premiered for them. -->
+              <a class="cd-mv-note" href="https://youtu.be/-5ZXrO_lYSA" target="_blank" rel="noopener">
+                <span data-pre-at="2026-10-23T04:00:00Z"
+                      data-pre="“Tarantino” MV · world premiere"
+                      data-post="“Tarantino” MV is out">“Tarantino” MV · world premiere</span>
+                <span class="cd-mv-when" data-local-target="2026-10-23T04:00:00Z"></span>
+              </a>
               <!-- Frames from the MV, as a strip you push along. Shown whole
                    rather than cropped to a tidy thumbnail: each one is already
                    framed — through binoculars, letterboxed, split in two — and
@@ -3739,13 +3762,14 @@
               <div class="cd-nav pp-nav" data-carousel-nav hidden>
                 <div class="cd-dots" data-carousel-dots></div>
               </div>
-              <!-- The premiere's own times. LISA's poster lists five zones —
-                   EST 12AM, BST 5AM, ICT 11AM, KST 1PM, AEST 3PM on Oct 23 —
-                   and all five are this one instant, which is what this list is
-                   generated from, so it extends the official five rather than
-                   competing with them. -->
+              <!-- The MV premiere's times, not the EP's — the EP has none to
+                   list, being midnight in each place. LISA's premiere poster
+                   gives five zones (EST 12AM, BST 5AM, ICT 11AM, KST 1PM, AEST
+                   3PM on Oct 23) and all five are this one instant, which is
+                   what this list is generated from, so it extends the official
+                   five rather than competing with them. -->
               <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
-                <summary>Premiere times worldwide</summary>
+                <summary>“Tarantino” premiere times worldwide</summary>
                 <div class="cd-times-body" data-times-for="2026-10-23T04:00:00Z"></div>
               </details>
             </div>
@@ -16953,6 +16977,24 @@ function renderCardLiveEvents(now) {
   });
 }
 
+// What a card counts to. Usually one instant, named in data-target. But a
+// release that arrives at midnight in each country has no single instant —
+// data-target-local names the DATE, and the reader's own midnight is the
+// target, so Seoul's clock reaches zero thirteen hours before Los Angeles's.
+// data-target stays alongside it as a floor for anything reading this card
+// that does not know the local rule.
+function cardTargetAt(card) {
+  const day = card.dataset.targetLocal;
+  if (day) {
+    const [y, m, d] = day.split('-').map(Number);
+    // Constructed from parts, which is local time by definition. Parsing
+    // "2026-10-23" instead would give UTC midnight — the very bug this exists
+    // to avoid, and wrong by up to a day on either side.
+    if (y && m && d) return new Date(y, m - 1, d, 0, 0, 0, 0).getTime();
+  }
+  return Date.parse(card.dataset.target);
+}
+
 function renderHomeCountdowns() {
   const now = Date.now();
   // Walled off from the clock below: this runs every second beside it, and a
@@ -16961,27 +17003,35 @@ function renderHomeCountdowns() {
   document.querySelectorAll('#home-countdowns .cd-card[data-target]').forEach(card => {
     const timer = card.querySelector('[data-timer]');
     if (!timer) return;
-    let diff = Date.parse(card.dataset.target) - now;
+    let diff = cardTargetAt(card) - now;
     // Copy that reads as "any minute now" before the drop and as a lie after it.
     // Both texts live on the element, so the page still says the right thing in
     // the morning without anyone editing it.
     card.querySelectorAll('[data-pre][data-post]').forEach(el => {
-      const want = diff > 0 ? el.dataset.pre : el.dataset.post;
+      // data-pre-at lets one line on the card turn over at a different moment
+      // from the card itself — the MV's world premiere is not the EP's local
+      // midnight, and saying "out" at the wrong one is just a lie with a timer.
+      const at = el.dataset.preAt ? Date.parse(el.dataset.preAt) : null;
+      const ahead = at ? (at > now) : (diff > 0);
+      const want = ahead ? el.dataset.pre : el.dataset.post;
       if (el.textContent !== want) el.textContent = want;
     });
     // The drop on the reader's own clock, worked out once. A card that names
     // only the two timezones a label announced leaves everyone else doing
     // arithmetic, and getting it wrong — which is how "it drops at midnight
     // where you are" starts going round in the first place.
-    const localAt = card.querySelector('[data-local-target]');
-    if (localAt && !localAt.dataset.filled) {
+    card.querySelectorAll('[data-local-target]').forEach(localAt => {
+      if (localAt.dataset.filled) return;
+      // An instant in the attribute wins; empty means the card's own target.
+      const at = Date.parse(localAt.dataset.localTarget || '') || cardTargetAt(card);
+      if (!at) return;
       localAt.dataset.filled = '1';
       try {
         localAt.textContent = new Intl.DateTimeFormat(undefined,
           { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-          .format(new Date(Date.parse(card.dataset.target))) + ' your time';
+          .format(new Date(at)) + ' your time';
       } catch (e) {}
-    }
+    });
     if (!(diff > 0)) { timer.innerHTML = `<div class="cd-out">${card.dataset.live || 'OUT NOW ✨'}</div>`; return; }
     const d = Math.floor(diff / 86400000); diff %= 86400000;
     const h = Math.floor(diff / 3600000);  diff %= 3600000;

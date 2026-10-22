@@ -122,6 +122,13 @@ jobs:
         if: always()
         run: node .github/scripts/test_sql_grants.mjs
 
+      # One card carries a release that lands at midnight in each country and a
+      # video that premieres at one instant worldwide. Both wrong silently: a
+      # clock that looks healthy and is thirteen hours out for Seoul.
+      - name: Release timing, local and global
+        if: always()
+        run: node .github/scripts/test_release_timing.mjs
+
       # The countdowns are a carousel now, and everything that can go wrong
       # with one is invisible in a screenshot: dots that drift from the slide
       # you are on, controls left over after a filter hides every card but one,
