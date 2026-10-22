@@ -132,7 +132,7 @@ console.log('--- the countdown cards, on the home page');
              : bad('and the cards really do differ enough for that to matter',`only ${spread}px`);
 
   const stray = await page.evaluate(()=>{
-    const n=document.querySelector('.cd-card-lisa .pp-nav');
+    const n=document.querySelector('.cd-card-lisa .cd-strip-nav');
     return {hidden:n.hidden, display:getComputedStyle(n).display,
             shown: n.getBoundingClientRect().height > 0};
   });
@@ -166,8 +166,8 @@ console.log('--- the MV frames inside the card');
   await page.locator('.cd-card-lisa').waitFor({timeout:20000});
   await page.waitForTimeout(3000);
   const read=()=>page.evaluate(()=>{
-    const t=document.querySelector('.pp-strip');
-    const nav=document.querySelector('.pp-nav');
+    const t=document.querySelector('.cd-card-lisa .cd-strip');
+    const nav=document.querySelector('.cd-card-lisa .cd-strip-nav');
     const sl=[...t.children];
     const mid=t.scrollLeft+t.clientWidth/2;
     let at=0,g=Infinity; sl.forEach((s,i)=>{const d=Math.abs((s.offsetLeft+s.offsetWidth/2)-mid); if(d<g){g=d;at=i;}});
@@ -185,7 +185,12 @@ console.log('--- the MV frames inside the card');
   f.at!==before ? ok('it advances on its own',`${before} → ${f.at}`) : bad('it advances on its own',`stuck at ${f.at}`);
   f.lit===f.at ? ok('and the dot keeps up') : bad('and the dot keeps up',`at ${f.at}, lit ${f.lit}`);
   // Touch it, and it must stop for good.
-  await page.locator('.pp-strip').dispatchEvent('pointerdown');
+  await page.locator('.cd-card-lisa .cd-strip').dispatchEvent('pointerdown');
+  // Settle first. An autoplay tick fired just before the touch is still
+  // scrolling smoothly, so reading the position now catches it mid-flight and
+  // the comparison below fails on a carousel that did stop — which is how this
+  // check went red once in four runs.
+  await page.waitForTimeout(1200);
   const held=(await read()).at;
   await page.waitForTimeout(6000);
   const after=(await read()).at;

@@ -2258,24 +2258,40 @@
      has opened the page FOR this release has asked for more, and has the room;
      the Share card's own link already lands there. Browsing /countdowns (all) is
      still the grid, so the cards there stay the same height as each other. */
-  .cd-card-lisa .pp-strip,
-  .cd-card-lisa .pp-nav,
+  /* A strip of pictures inside a countdown card — one at a time, swiped, with
+     dots of its own. Any card can have one; what differs per release is only
+     the shape of its photos, set with --cd-frame-ratio.
+     On /countdowns/<this release>, not in the grid: on the home page these take
+     a card from ~450px to ~650px and the hero stops being a hero. Someone who
+     opened the page FOR a release has asked for more and has the room, and the
+     Share card's own link already lands there. The LISA card's worldwide times
+     follow the same rule; the other cards' times are not hidden, because theirs
+     are the only times they give. */
+  .cd-card .cd-strip,
+  .cd-card .cd-strip-nav,
   .cd-card-lisa .cd-times { display: none; }
-  #countdowns-mount:not(.cd-hub-browse) .cd-card-lisa .pp-strip { display: flex; }
-  #countdowns-mount:not(.cd-hub-browse) .cd-card-lisa .pp-nav { display: flex; }
+  #countdowns-mount:not(.cd-hub-browse) .cd-card .cd-strip { display: flex; }
+  #countdowns-mount:not(.cd-hub-browse) .cd-card .cd-strip-nav { display: flex; }
   #countdowns-mount:not(.cd-hub-browse) .cd-card-lisa .cd-times { display: block; }
-  /* It scrolls rather than wrapping or shrinking: four 16:9 frames side by side
-     on a poster-width card would be too small to read, and a wrap would make the
-     card taller than the countdown it belongs to. */
-  .cd-card-lisa .pp-strip { gap: 0.35rem; width: 100%; min-width: 0; margin-top: 0.3rem;
+  /* It scrolls rather than wrapping or shrinking: several frames side by side on
+     a card this width would be too small to read, and a wrap would make the card
+     taller than the countdown it belongs to. */
+  .cd-strip { gap: 0.35rem; width: 100%; min-width: 0; margin: 0.5rem auto 0;
     overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity;
     scrollbar-width: none; -ms-overflow-style: none; }
-  .cd-card-lisa .pp-strip::-webkit-scrollbar { display: none; }
-  .cd-card-lisa .pp-frame { flex: 0 0 100%; min-width: 0; scroll-snap-align: center;
+  .cd-strip::-webkit-scrollbar { display: none; }
+  .cd-frame { flex: 0 0 100%; min-width: 0; scroll-snap-align: center;
     display: block; border-radius: 6px; overflow: hidden; line-height: 0;
-    border: 1px solid rgba(242,233,226,0.2); transition: border-color 0.15s ease; }
-  .cd-card-lisa .pp-frame:hover { border-color: var(--la-red); }
-  .cd-card-lisa .pp-frame img { display: block; width: 100%; height: auto; }
+    aspect-ratio: var(--cd-frame-ratio, 16 / 9);
+    border: 1px solid rgba(255,255,255,0.18); transition: border-color 0.15s ease; }
+  .cd-frame:hover { border-color: rgba(255,255,255,0.45); }
+  /* contain, not cover: a release's photos are not all one shape, and the whole
+     point of showing them is the framing the shoot chose. A fixed ratio keeps
+     the strip from changing height as it scrolls; the picture is fitted inside
+     it rather than cropped to fill. */
+  .cd-frame img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .cd-card-lisa .cd-frame { border-color: rgba(242,233,226,0.2); }
+  .cd-card-lisa .cd-frame:hover { border-color: var(--la-red); }
   /* PRESS PLAY share chooser (Picture / Video / Link) */
   #pp-share-sheet .pp-sheet { background: #1a0406; border: 1px solid rgba(225,29,42,0.4);
     border-radius: 20px 20px 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
@@ -3744,22 +3760,22 @@
                    rather than cropped to a tidy thumbnail: each one is already
                    framed — through binoculars, letterboxed, split in two — and
                    cropping to fill a box would throw that framing away. -->
-              <div class="pp-strip" data-carousel data-carousel-autoplay="4500"
+              <div class="cd-strip" style="--cd-frame-ratio: 16 / 9;" data-carousel data-carousel-autoplay="4500"
                    aria-label="Frames from the Tarantino music video">
-                <a class="pp-frame" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">
+                <a class="cd-frame" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">
                   <img src="/tarantino/still-1.webp" width="640" height="360" loading="lazy"
                        alt="A chef lying on the kitchen floor, watched through binoculars"></a>
-                <a class="pp-frame" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">
+                <a class="cd-frame" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">
                   <img src="/tarantino/still-2.webp" width="640" height="360" loading="lazy"
                        alt="LISA standing alone in the restaurant kitchen"></a>
-                <a class="pp-frame" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">
+                <a class="cd-frame" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">
                   <img src="/tarantino/still-3.webp" width="640" height="360" loading="lazy"
                        alt="Two frames side by side of a chef being struck"></a>
-                <a class="pp-frame" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">
+                <a class="cd-frame" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">
                   <img src="/tarantino/still-4.webp" width="640" height="360" loading="lazy"
                        alt="Hands with silver nails on an envelope sealed with a rose"></a>
               </div>
-              <div class="cd-nav pp-nav" data-carousel-nav hidden>
+              <div class="cd-nav cd-strip-nav" data-carousel-nav hidden>
                 <div class="cd-dots" data-carousel-dots></div>
               </div>
               <!-- The MV premiere's times, not the EP's — the EP has none to
@@ -3873,6 +3889,19 @@
                 <a class="cd-btn cd-btn-ghost js-teaser-btn" href="https://youtu.be/LzgE8ift2Uw" target="_blank" rel="noopener">▶ MV Teaser ↗</a>
                 <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
               </div>
+              <!-- Pictures from CLICK. The carnival teaser is the card's own
+                   header image, so it is not repeated here. Both of these are
+                   16:9 and fill the frame exactly. -->
+              <div class="cd-strip" style="--cd-frame-ratio: 16 / 9;" data-carousel data-carousel-autoplay="4500"
+                   aria-label="Pictures from CLICK">
+                <a class="cd-frame" href="/strips/click-1.webp" target="_blank" rel="noopener">
+                  <img src="/strips/click-1.webp" loading="lazy" alt="JISOO holding a battered teddy bear with glowing blue eyes"></a>
+                <a class="cd-frame" href="/strips/click-2.webp" target="_blank" rel="noopener">
+                  <img src="/strips/click-2.webp" loading="lazy" alt="JISOO resting her chin on her hand beside the bear and a wall of red buttons"></a>
+              </div>
+              <div class="cd-nav cd-strip-nav" data-carousel-nav hidden>
+                <div class="cd-dots" data-carousel-dots></div>
+              </div>
               <div class="cd-goals-block" id="jisoo-goals-list" style="display:none;"></div>
               <div class="cd-cs" id="jisoo-cs" style="display:none;">
                 <span class="cd-cs-head">◇ Blinks United scrobbles</span>
@@ -3910,6 +3939,27 @@
               <a class="cd-btn sw-btn" href="https://www.lalisaofficial.com/" target="_blank" rel="noopener">Pre-save ↗</a>
               <a class="cd-btn sw-btn sw-btn-ghost" href="https://youtu.be/h-7_04c_hVc" target="_blank" rel="noopener">▶ MV Teaser ↗</a>
               <button class="cd-btn sw-btn sw-btn-ghost" onclick="openLisaCard()">📸 Share</button>
+            </div>
+            <!-- Pictures from SaWaDiKa, in the order the share-card picker
+                 lists them. The single cover is the card's own header image and
+                 is not repeated. Four of these are 3:4 and fill the frame; the
+                 tuk-tuk in motion is landscape and sits inside it, which is the
+                 point of fitting rather than cropping. -->
+            <div class="cd-strip" style="--cd-frame-ratio: 3 / 4;" data-carousel data-carousel-autoplay="4500"
+                 aria-label="Pictures from SaWaDiKa">
+              <a class="cd-frame" href="/strips/sawadika-1.webp" target="_blank" rel="noopener">
+                <img src="/strips/sawadika-1.webp" loading="lazy" alt="LISA, promo portrait"></a>
+              <a class="cd-frame" href="/strips/sawadika-2.webp" target="_blank" rel="noopener">
+                <img src="/strips/sawadika-2.webp" loading="lazy" alt="LISA in the boxing-ring concept"></a>
+              <a class="cd-frame" href="/strips/sawadika-3.webp" target="_blank" rel="noopener">
+                <img src="/strips/sawadika-3.webp" loading="lazy" alt="LISA driving a tuk-tuk, the street streaking past"></a>
+              <a class="cd-frame" href="/strips/sawadika-4.webp" target="_blank" rel="noopener">
+                <img src="/strips/sawadika-4.webp" loading="lazy" alt="LISA seated in the tuk-tuk"></a>
+              <a class="cd-frame" href="/strips/sawadika-5.webp" target="_blank" rel="noopener">
+                <img src="/strips/sawadika-5.webp" loading="lazy" alt="LISA reclining across the tuk-tuk"></a>
+            </div>
+            <div class="cd-nav cd-strip-nav" data-carousel-nav hidden>
+              <div class="cd-dots" data-carousel-dots></div>
             </div>
             <div class="cd-goals-block" id="sawadika-goals-list" style="display:none;"></div>
             <div class="cd-cs" id="sawadika-cs" style="display:none;">
