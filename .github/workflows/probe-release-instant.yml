@@ -1,0 +1,35 @@
+name: Probe the release instant
+
+# Is PRESS PLAY one moment worldwide, or midnight wherever the fan is? The
+# countdown card can only keep a single clock if it is the former. Read-only:
+# it asks Spotify and reports, and writes nothing.
+#
+# Results come back as ::notice annotations and in the run summary, because the
+# job log itself is served from blob storage that the session reading this
+# cannot fetch.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: pip install spotifyscraper requests
+      - name: Ask Spotify
+        run: python .github/scripts/probe_release_instant.py
+      - name: Upload the raw answers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-instant
+          path: |
+            artist_overview.json
+            prerelease_node.json
+            prerelease_page.html
+          if-no-files-found: ignore
