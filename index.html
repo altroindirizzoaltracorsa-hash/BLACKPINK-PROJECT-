@@ -2161,6 +2161,40 @@
   .cd-card-lisa .cd-goal-nums span { color: rgba(242,233,226,0.6); }
   .cd-card-lisa .cd-goal-bar { background: rgba(255,255,255,0.14); }
   .cd-card-lisa .cd-goal-fill { background: linear-gradient(90deg, #e11d2a, #ff6f78); }
+  /* Listening party row — a dated event sitting on a dated card, so it reads as
+     a separate thing from the release the countdown is for. */
+  .cd-card-lisa .cd-live { display: flex; align-items: center; gap: 0.55rem; width: min(94%, 340px);
+    margin: 0.3rem auto 0.05rem; padding: 0.42rem 0.7rem; border-radius: 12px; text-decoration: none;
+    text-align: left; color: var(--la-cream); background: rgba(26,4,6,0.55);
+    border: 1px solid rgba(242,233,226,0.26); backdrop-filter: blur(3px); }
+  /* The author display:flex above outranks the browser's own [hidden] rule, and
+     expiring is this row's whole point. */
+  .cd-card-lisa .cd-live[hidden] { display: none; }
+  .cd-card-lisa .cd-live:hover { border-color: var(--la-red); background: rgba(225,29,42,0.18); }
+  .cd-card-lisa .cd-live.is-on { border-color: var(--la-red); background: rgba(225,29,42,0.2); }
+  .cd-card-lisa .cd-live-dot { flex: none; width: 7px; height: 7px; border-radius: 50%;
+    background: rgba(242,233,226,0.5); }
+  .cd-card-lisa .cd-live.is-on .cd-live-dot { background: var(--la-red);
+    animation: ppLivePulse 1.5s ease-in-out infinite; }
+  @keyframes ppLivePulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(225,29,42,0.7); }
+                           50%      { box-shadow: 0 0 0 5px rgba(225,29,42,0); } }
+  @media (prefers-reduced-motion: reduce) {
+    .cd-card-lisa .cd-live.is-on .cd-live-dot { animation: none; }
+  }
+  .cd-card-lisa .cd-live-txt { min-width: 0; display: flex; flex-direction: column; gap: 0.08rem; }
+  .cd-card-lisa .cd-live-txt b { font-family: 'DM Mono', monospace; font-weight: 500; font-size: 0.6rem;
+    letter-spacing: 0.14em; text-transform: uppercase; }
+  .cd-card-lisa .cd-live-txt small { font-family: 'GaramondPremierPro', 'Cormorant Garamond', Georgia, serif;
+    font-style: italic; font-size: 0.78rem; line-height: 1.25; color: rgba(242,233,226,0.78); }
+  /* Its own line rather than running on: the announced time and the viewer's
+     own are different facts, and a locale that writes a long one would break
+     the run-on mid-phrase anyway. */
+  .cd-card-lisa .cd-live-txt [data-live-local] { display: block; color: rgba(242,233,226,0.62); }
+  .cd-card-lisa .cd-live-txt [data-live-local]:empty { display: none; }
+  .cd-card-lisa .cd-live-go { margin-left: auto; flex: none; font-family: 'DM Mono', monospace;
+    font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.85; }
+  .cd-card-lisa .cd-mv-note { font-family: 'DM Mono', monospace; font-size: 0.56rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: rgba(242,233,226,0.6); margin-top: 0.1rem; }
   /* PRESS PLAY share chooser (Picture / Video / Link) */
   #pp-share-sheet .pp-sheet { background: #1a0406; border: 1px solid rgba(225,29,42,0.4);
     border-radius: 20px 20px 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
@@ -3692,11 +3726,34 @@
                 </div>
                 <div class="cd-goal-bar"><div class="cd-goal-fill" id="lisa-goal-fill" style="width:0%"></div></div>
               </div>
+              <!-- The listening party is one evening, not a standing link, so it
+                   carries its own window and takes itself off the card when the
+                   window closes (renderCardLiveEvents). A card still advertising
+                   last night's livestream is worse than one that never had it.
+                   It starts `hidden` on purpose: if that script never runs, a row
+                   that cannot expire is the one thing not to leave behind. -->
+              <a class="cd-live" href="https://www.youtube.com/live/1mHSWvSA5LM"
+                 target="_blank" rel="noopener" hidden
+                 data-live-at="2026-10-23T03:30:00Z" data-live-until="2026-10-23T06:00:00Z"
+                 data-live-soon="Listening Party" data-live-on="Listening Party · Live now">
+                <span class="cd-live-dot" aria-hidden="true"></span>
+                <span class="cd-live-txt">
+                  <b data-live-state>Listening Party</b>
+                  <small>Oct 22 · 8:30PM PT<span data-live-local></span></small>
+                </span>
+                <span class="cd-live-go">Watch ↗</span>
+              </a>
               <div class="cd-links">
                 <a class="cd-btn" href="https://lisa.lnk.to/PressPlay" target="_blank" rel="noopener" onclick="saveLisaSawadika()">Pre-save ↗</a>
+                <a class="cd-btn cd-btn-ghost" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">▶ MV Teaser ↗</a>
                 <a class="cd-btn cd-btn-ghost" href="https://lalisaofficial.com" target="_blank" rel="noopener">Store ↗</a>
                 <button class="cd-btn cd-btn-ghost" onclick="openLisaPressPlayCard()">📸 Share</button>
               </div>
+              <!-- The MV premieres at the same instant as the EP (Oct 23, 12AM ET
+                   = the card's own target), so it needs no second countdown — the
+                   one already on the card is counting to both. -->
+              <div class="cd-mv-note" data-pre="“Tarantino” MV premieres with the EP"
+                   data-post="“Tarantino” MV is out now">“Tarantino” MV premieres with the EP</div>
             </div>
           </div>
           <!-- JENNIE — "Someone to Hold", the song she wrote for Netflix's
@@ -16561,12 +16618,58 @@ function initVmaCarousels() {
   });
 }
 
+// Side events on a countdown card — a listening party, a premiere stream — that
+// start, run a while, and are then over. Declared entirely on the element:
+// data-live-at and data-live-until are ISO instants, so the next one of these
+// needs markup and no code. The element carries `hidden` in the page and is
+// revealed only once this has decided it is still ahead or on air.
+function renderCardLiveEvents(now) {
+  document.querySelectorAll('#home-countdowns [data-live-at]').forEach(el => {
+    const at = Date.parse(el.dataset.liveAt);
+    if (!at) return;
+    // No window given: assume two hours, which is long for a listening party
+    // and still gone by morning.
+    const until = Date.parse(el.dataset.liveUntil || '') || (at + 7200000);
+    if (now >= until) { el.hidden = true; return; }
+    el.hidden = false;
+    const on = now >= at;
+    el.classList.toggle('is-on', on);
+    const state = el.querySelector('[data-live-state]');
+    if (state) {
+      const want = on ? (el.dataset.liveOn || 'Live now') : (el.dataset.liveSoon || state.textContent);
+      if (state.textContent !== want) state.textContent = want;
+    }
+    // And the viewer's own clock, worked out once. The announced PT time beside
+    // it is the canonical one; this answers the question a fan in Manila or
+    // Milan is actually asking of it. No separator — where this sits on its own
+    // line or inline is the card's business, not this function's.
+    const loc = el.querySelector('[data-live-local]');
+    if (loc && !loc.dataset.filled) {
+      loc.dataset.filled = '1';
+      try {
+        loc.textContent = new Intl.DateTimeFormat(undefined,
+          { weekday: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(at)) + ' your time';
+      } catch (e) {}
+    }
+  });
+}
+
 function renderHomeCountdowns() {
   const now = Date.now();
+  // Walled off from the clock below: this runs every second beside it, and a
+  // countdown that stops is a worse failure than a side event that never shows.
+  try { renderCardLiveEvents(now); } catch (e) {}
   document.querySelectorAll('#home-countdowns .cd-card[data-target]').forEach(card => {
     const timer = card.querySelector('[data-timer]');
     if (!timer) return;
     let diff = Date.parse(card.dataset.target) - now;
+    // Copy that reads as "any minute now" before the drop and as a lie after it.
+    // Both texts live on the element, so the page still says the right thing in
+    // the morning without anyone editing it.
+    card.querySelectorAll('[data-pre][data-post]').forEach(el => {
+      const want = diff > 0 ? el.dataset.pre : el.dataset.post;
+      if (el.textContent !== want) el.textContent = want;
+    });
     if (!(diff > 0)) { timer.innerHTML = `<div class="cd-out">${card.dataset.live || 'OUT NOW ✨'}</div>`; return; }
     const d = Math.floor(diff / 86400000); diff %= 86400000;
     const h = Math.floor(diff / 3600000);  diff %= 3600000;
