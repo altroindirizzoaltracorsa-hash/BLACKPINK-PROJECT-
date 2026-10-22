@@ -138,7 +138,7 @@ for code, tz, label in MARKETS:
         detail = f"failed: {e}"
 
     mark = "PAST midnight" if past else "not yet midnight"
-    note(f"{label} ({code}) — local {local.strftime('%a %d %H:%M')}, {mark} — "
+    decisive(f"{label} ({code}) — local {local.strftime('%a %d %H:%M')}, {mark} — "
          f"{'OUT' if found else 'not out' if found is False else '?'} — {detail}")
     if past and found is True:
         past_midnight_seen.append(label)
