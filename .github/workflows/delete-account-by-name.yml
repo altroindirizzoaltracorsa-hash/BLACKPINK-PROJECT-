@@ -1,0 +1,132 @@
+name: Delete an account by display name
+
+# Removes ONE auth account, named by its display name. For a test account that
+# has served its purpose — the site's own Delete Account button can only ever
+# delete the person using it (delete_account() reads auth.uid() and takes no
+# arguments, deliberately), so an account nobody is going to sign into again
+# needs this.
+#
+# Dry run by default. It refuses a name the site hands out automatically, and
+# refuses if the name matches anything other than exactly one account.
+#
+# It also REFUSES if the account still has vote rows. Deleting it then would
+# strand rows whose owner no longer exists — if those votes should count for
+# somebody, run "Merge one account's votes into another" first; if they should
+# go, run "Remove a tester's rows". Both decisions belong to a person, not to
+# this.
+on:
+  workflow_dispatch:
+    inputs:
+      display_name:
+        description: 'The display name on the account (exact)'
+        required: true
+      mode:
+        description: 'dry (print only) or apply'
+        required: true
+        default: 'dry'
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find and delete
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          DNAME: ${{ inputs.display_name }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -u
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret is not set."
+            exit 1
+          fi
+          case "$MODE" in dry|apply) ;; *) echo "::error::mode must be dry or apply"; exit 1 ;; esac
+          set +e
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 \
+               -v dname="$DNAME" -v mode="$MODE" >/tmp/out.txt 2>&1 <<'SQL'
+          -- Through set_config, because psql does not substitute :'var' inside
+          -- a dollar-quoted block.
+          select set_config('bu.dname', :'dname', false);
+          select set_config('bu.mode',  :'mode',  false);
+
+          do $$
+          declare
+            dname text := current_setting('bu.dname');
+            mode  text := current_setting('bu.mode');
+            uid   uuid;
+            n     int;
+            total int := 0;
+            t     text;
+          begin
+            if dname ~* '^(blink|bloom|pauljjak)[0-9]+$' then
+              raise exception
+                'refusing: "%" is a name the site hands out automatically, so it may belong to somebody else', dname;
+            end if;
+
+            select count(*) into n from auth.users
+             where raw_user_meta_data->>'display_name' = dname;
+            if n = 0 then
+              raise notice 'no account is named "%" — nothing to do', dname; return;
+            end if;
+            if n > 1 then
+              raise exception 'refusing: % accounts are named "%"', n, dname;
+            end if;
+
+            select id into uid from auth.users
+             where raw_user_meta_data->>'display_name' = dname;
+            raise notice 'account %… , named "%", created %',
+              left(uid::text, 8), dname,
+              (select to_char(created_at, 'YYYY-MM-DD HH24:MI') from auth.users where id = uid);
+
+            -- Anything still keyed to it. Vote rows are a stop; the other two
+            -- are things that belong to the account and go with it.
+            foreach t in array array['collab_user_votes', 'kca_user_votes',
+                                     'vma_user_votes', 'breaktudo_user_votes']
+            loop
+              if to_regclass('public.' || t) is not null then
+                execute format('select count(*) from public.%I where app_user_id = $1', t)
+                  into n using uid;
+                if n > 0 then
+                  raise notice '  % still has % row(s)', t, n;
+                  total := total + n;
+                end if;
+              end if;
+            end loop;
+            if total > 0 then
+              raise exception
+                'refusing: this account still has % vote row(s). Merge them into another account or remove them first — stranding them is not this job''s call.', total;
+            end if;
+            raise notice '  no vote rows anywhere';
+
+            select count(*) into n from linked_accounts where app_user_id = uid;
+            raise notice '  % linked scrobbler(s)', n;
+            select count(*) into n from scrobble_tokens where app_user_id = uid;
+            raise notice '  % counter token(s) — these can still post votes, so they go too', n;
+
+            if mode <> 'apply' then
+              raise notice 'DRY RUN — nothing deleted. Re-run with mode: apply.';
+              return;
+            end if;
+
+            delete from linked_accounts where app_user_id = uid;
+            delete from scrobble_tokens where app_user_id = uid;
+            delete from auth.users where id = uid;
+
+            if exists (select 1 from auth.users where id = uid) then
+              raise exception 'the account is still there after the delete';
+            end if;
+            raise notice 'deleted. the account is gone.';
+          end $$;
+          SQL
+          rc=$?
+          set -e
+          grep -E '^(psql:)?.*(NOTICE|ERROR):' /tmp/out.txt \
+            | sed -E 's/^.*(NOTICE|ERROR): +//' \
+            | while IFS= read -r line; do echo "::notice title=$MODE::$line"; done
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::psql exited $rc — see the notices above"
+            exit "$rc"
+          fi
