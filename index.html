@@ -2287,7 +2287,8 @@
      point of showing them is the framing the shoot chose. A fixed ratio keeps
      the strip from changing height as it scrolls; the picture is fitted inside
      it rather than cropped to fill. */
-  .cd-frame img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .cd-frame img,
+  .cd-frame video { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
   .cd-card-lisa .cd-frame { border-color: rgba(242,233,226,0.2); }
   .cd-card-lisa .cd-frame:hover { border-color: var(--la-red); }
   /* PRESS PLAY share chooser (Picture / Video / Link) */
@@ -3754,12 +3755,27 @@
                       data-post="“Tarantino” MV is out">“Tarantino” MV · world premiere</span>
                 <span class="cd-mv-when" data-local-target="2026-10-23T04:00:00Z"></span>
               </a>
-              <!-- Frames from the MV, as a strip you push along. Shown whole
-                   rather than cropped to a tidy thumbnail: each one is already
-                   framed — through binoculars, letterboxed, split in two — and
-                   cropping to fill a box would throw that framing away. -->
-              <div class="cd-strip" style="--cd-frame-ratio: 16 / 9;" data-carousel data-carousel-autoplay="4500"
-                   aria-label="Frames from the Tarantino music video">
+              <!-- Everything PRESS PLAY has, in one strip: the original image,
+                   the preview film, the premiere poster, then the frames from
+                   the MV. The frame ratio is 1/1 because this set is no longer
+                   one shape — the art is 4:5 and the MV frames are 16:9, and a
+                   square is the least bad box to fit both in. Fitted, never
+                   cropped: the poster is a timetable, and cropping it would cut
+                   the times off it. -->
+              <div class="cd-strip" style="--cd-frame-ratio: 1 / 1;" data-carousel data-carousel-autoplay="5500"
+                   aria-label="PRESS PLAY pictures and the Tarantino MV frames">
+                <a class="cd-frame" href="/lisa-mona.webp" target="_blank" rel="noopener">
+                  <img src="/strips/pressplay-mona.webp" loading="lazy" alt="LISA — the first PRESS PLAY image"></a>
+                <!-- preload=none, so a megabyte and a half is fetched only if
+                     somebody actually asks for it; the still above is its
+                     poster frame until then. -->
+                <div class="cd-frame">
+                  <video src="/lisa-preview.mp4" poster="/strips/pressplay-mona.webp" preload="none"
+                         controls playsinline muted loop></video>
+                </div>
+                <a class="cd-frame" href="/tarantino/premiere.webp" target="_blank" rel="noopener">
+                  <img src="/tarantino/premiere.webp" loading="lazy"
+                       alt="The world premiere poster for Tarantino, listing the times in five zones"></a>
                 <a class="cd-frame" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">
                   <img src="/tarantino/still-1.webp" width="640" height="360" loading="lazy"
                        alt="A chef lying on the kitchen floor, watched through binoculars"></a>
