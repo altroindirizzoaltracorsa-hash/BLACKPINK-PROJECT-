@@ -43,11 +43,22 @@ STORED = "2026-10-23T04:00:00Z"   # what the card counts to today
 notices = []
 
 
+verdict = []
+
+
 def note(msg):
-    """Job logs are served from blob storage this session cannot read, so every
-    line worth having comes back as an annotation."""
+    """Job logs and artifacts are both served from blob storage this session
+    cannot fetch, so what matters has to come back as annotations — and GitHub
+    shows only ten per step. Everything is collected here; only the lines marked
+    decisive are emitted, joined into ONE annotation, so a long JSON dump cannot
+    push the answer off the end."""
     print(msg)
     notices.append(msg)
+
+
+def decisive(msg):
+    note(msg)
+    verdict.append(msg)
 
 
 def find_token(root):
@@ -86,15 +97,15 @@ runner_tz = None
 try:
     g = requests.get("https://ipinfo.io/json", timeout=20).json()
     runner_tz = g.get("timezone")
-    note(f"runner: {g.get('city')}, {g.get('region')}, {g.get('country')} — tz {runner_tz}")
+    decisive(f"runner: {g.get('city')}, {g.get('region')}, {g.get('country')} — tz {runner_tz}")
     if runner_tz:
         try:
             from zoneinfo import ZoneInfo
             drop_day = datetime.datetime(2026, 10, 23, tzinfo=ZoneInfo(runner_tz))
             runner_offset = drop_day.utcoffset()
             local_midnight = drop_day.astimezone(datetime.timezone.utc)
-            note(f"runner's own midnight on release day = "
-                 f"{local_midnight.strftime('%Y-%m-%dT%H:%M:%SZ')}")
+            decisive(f"runner's own local midnight on release day = "
+                     f"{local_midnight.strftime('%Y-%m-%dT%H:%M:%SZ')}")
         except Exception as e:
             note(f"runner: could not resolve its timezone ({e})")
 except Exception as e:
@@ -138,8 +149,8 @@ if node:
     rd = node.get("releaseDate") or {}
     iso = rd.get("isoString")
     prec = rd.get("precision") or rd.get("__typename") or "(no precision field)"
-    note(f"releaseDate.isoString = {iso}")
-    note(f"releaseDate.precision = {prec}")
+    decisive(f"releaseDate.isoString = {iso}")
+    decisive(f"releaseDate.precision = {prec}")
 else:
     note("no preRelease node came back for LISA (it may be out already)")
 
@@ -152,7 +163,7 @@ try:
     with open("prerelease_page.html", "w") as f:
         f.write(pr.text)
     stamps = sorted(set(re.findall(r"\d{4}-\d{2}-\d{2}T[\d:.]+Z?", pr.text)))
-    note(f"every timestamp on that page: {stamps if stamps else '(none)'}")
+    decisive(f"every timestamp on that page: {stamps if stamps else '(none)'}")
     for word in ("precision", "releaseDate", "timezone", "localRelease", "midnight"):
         hits = len(re.findall(word, pr.text, re.I))
         if hits:
@@ -161,12 +172,12 @@ except Exception as e:
     note(f"prerelease page failed: {e}")
 
 # ── 4. what that adds up to ────────────────────────────────────────────────
-note("--- verdict ---")
+decisive("--- verdict ---")
 iso = ((node or {}).get("releaseDate") or {}).get("isoString")
 if not iso:
-    note("INCONCLUSIVE: Spotify returned no release instant to reason about.")
+    decisive("INCONCLUSIVE: Spotify returned no release instant to reason about.")
 elif runner_tz is None:
-    note(f"Spotify says {iso}, but this runner's own timezone is unknown, so it "
+    decisive(f"Spotify says {iso}, but this runner's own timezone is unknown, so it "
          f"cannot be told apart from the caller's local midnight.")
 else:
     parsed = datetime.datetime.fromisoformat(iso.replace("Z", "+00:00"))
@@ -174,24 +185,24 @@ else:
     try:
         from zoneinfo import ZoneInfo
         here = parsed.astimezone(ZoneInfo(runner_tz))
-        note(f"that instant, in the runner's own timezone, is {here.strftime('%Y-%m-%d %H:%M')}")
+        decisive(f"that instant, in the runner's own timezone, is {here.strftime('%Y-%m-%d %H:%M')}")
         if (here.hour, here.minute) == (0, 0):
-            note("IT IS THIS RUNNER'S LOCAL MIDNIGHT — consistent with a midnight-local "
+            decisive("IT IS THIS RUNNER'S LOCAL MIDNIGHT — consistent with a midnight-local "
                  "release, and also with a global instant that happens to land there. "
                  "Not decisive on its own; see whether the runner sits in US Eastern.")
         else:
-            note("NOT this runner's local midnight. The instant does not follow the "
+            decisive("NOT this runner's local midnight. The instant does not follow the "
                  "caller, so it is a single global moment and the card's countdown "
                  "is right for everyone.")
     except Exception as e:
-        note(f"could not re-express the instant locally ({e})")
+        decisive(f"could not re-express the instant locally ({e})")
     if iso != STORED:
-        note(f"NOTE: Spotify has MOVED it — card counts to {STORED}, Spotify now says {iso}")
+        decisive(f"NOTE: Spotify has MOVED it — card counts to {STORED}, Spotify now says {iso}")
     else:
-        note(f"unchanged from what the card counts to ({STORED})")
+        decisive(f"unchanged from what the card counts to ({STORED})")
 
 with open(os.environ.get("GITHUB_STEP_SUMMARY", os.devnull), "a") as f:
     f.write("```\n" + "\n".join(notices) + "\n```\n")
-for line in notices:
-    safe = line.replace("%", "%25").replace("\r", "").replace("\n", "%0A")
-    print(f"::notice title=release-instant::{safe}")
+
+blob = "%0A".join(l.replace("%", "%25").replace("\r", "") for l in verdict)
+print(f"::notice title=release-instant::{blob[:60000]}")
