@@ -1675,6 +1675,30 @@
   /* ── Home countdown cards (release / reveal timers) ── */
   .cd-section-label { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--pink); margin-bottom: 1.2rem; }
   .cd-wrap { display: flex; flex-direction: column; gap: 1.3rem; width: 100%; max-width: 100%; margin: 0 auto; }
+  /* Carousel: a row of full-width slides that snap. align-items:flex-start, so
+     each card keeps its own height — the track is as tall as the tallest, and
+     nothing is cropped to a common size. Scrolling is the browser's. */
+  .cd-wrap[data-carousel] { flex-direction: row; gap: 0; align-items: flex-start;
+    overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory;
+    scrollbar-width: none; -ms-overflow-style: none; }
+  .cd-wrap[data-carousel]::-webkit-scrollbar { display: none; }
+  .cd-wrap[data-carousel-fit] { overflow-y: hidden; }
+  .cd-wrap[data-carousel] > .cd-card { flex: 0 0 100%; min-width: 0; scroll-snap-align: center; }
+  .cd-nav { display: flex; align-items: center; justify-content: center; gap: 0.9rem; margin-top: 1rem; }
+  .cd-nav[hidden] { display: none; }   /* author display:flex outranks the UA rule */
+  .cd-dots { display: flex; align-items: center; justify-content: center; gap: 7px; }
+  .cd-dot { width: 8px; height: 8px; padding: 0; border-radius: 50%; cursor: pointer;
+    background: rgba(255,255,255,0.28); border: none; transition: background 0.25s ease, transform 0.25s ease; }
+  .cd-dot:hover { background: rgba(255,255,255,0.5); }
+  .cd-dot.is-on { background: var(--pink, #ff0066); transform: scale(1.25); }
+  .cd-arrow { width: 32px; height: 32px; flex: none; border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; line-height: 1;
+    font-size: 1.1rem; padding-bottom: 2px;
+    background: rgba(255,255,255,0.06); color: var(--white, #fff);
+    border: 1px solid rgba(255,255,255,0.22); transition: background 0.2s ease, border-color 0.2s ease; }
+  .cd-arrow:hover { background: rgba(255,0,102,0.18); border-color: rgba(255,0,102,0.6); }
+  /* Touch gets the swipe, which is better than a 32px target next to a card edge. */
+  @media (hover: none) { .cd-arrow { display: none; } }
   .cd-card { background: var(--card); border: 1px solid rgba(255,0,102,0.32); padding: 1.5rem 1.4rem; text-align: left; box-shadow: 0 18px 50px -30px rgba(255,0,102,0.7); }
   .cd-eyebrow { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.2em; text-transform: uppercase; color: #ff74ac; margin-bottom: 0.45rem; }
   .cd-title { font-family: var(--display); font-size: 2rem; letter-spacing: 0.02em; color: var(--white); line-height: 0.98; margin-bottom: 0.35rem; word-break: break-word; }
@@ -2224,8 +2248,10 @@
      the Share card's own link already lands there. Browsing /countdowns (all) is
      still the grid, so the cards there stay the same height as each other. */
   .cd-card-lisa .pp-strip,
+  .cd-card-lisa .pp-nav,
   .cd-card-lisa .cd-times { display: none; }
   #countdowns-mount:not(.cd-hub-browse) .cd-card-lisa .pp-strip { display: flex; }
+  #countdowns-mount:not(.cd-hub-browse) .cd-card-lisa .pp-nav { display: flex; }
   #countdowns-mount:not(.cd-hub-browse) .cd-card-lisa .cd-times { display: block; }
   /* It scrolls rather than wrapping or shrinking: four 16:9 frames side by side
      on a poster-width card would be too small to read, and a wrap would make the
@@ -2234,7 +2260,7 @@
     overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity;
     scrollbar-width: none; -ms-overflow-style: none; }
   .cd-card-lisa .pp-strip::-webkit-scrollbar { display: none; }
-  .cd-card-lisa .pp-frame { flex: 0 0 auto; width: 150px; scroll-snap-align: center;
+  .cd-card-lisa .pp-frame { flex: 0 0 100%; min-width: 0; scroll-snap-align: center;
     display: block; border-radius: 6px; overflow: hidden; line-height: 0;
     border: 1px solid rgba(242,233,226,0.2); transition: border-color 0.15s ease; }
   .cd-card-lisa .pp-frame:hover { border-color: var(--la-red); }
@@ -3631,7 +3657,13 @@
       <!-- Upcoming release / reveal countdowns -->
       <section id="home-countdowns" style="margin-top:2.2rem;max-width:900px;width:100%;text-align:center;">
         <p class="cd-section-label">◇ Countdowns</p>
-        <div class="cd-wrap">
+        <!-- One at a time, swiped across, rather than a column five cards deep.
+             The nav below is a SIBLING of .cd-wrap, not a wrapper around it:
+             loadAutoPrereleases finds the track with "#home-countdowns > .cd-wrap"
+             and an auto-discovered drop would quietly stop appearing if that
+             stopped matching. It is `hidden` until the script counts the slides,
+             so controls never appear with nothing behind them. -->
+        <div class="cd-wrap" data-carousel data-carousel-fit aria-label="Countdowns">
           <div class="cd-card cd-card-newtrick" data-slug="newtrick" data-target="2026-09-17T23:00:00Z" data-live="OUT NOW ✨" data-plain="1" data-prerelease-name="new trick">
             <div class="nt-hero"><img src="/newtrick/newtrick-cover.jpg" alt="ROSÉ — new trick (single cover)" loading="lazy"></div>
             <div class="nt-title">new trick</div>
@@ -3808,7 +3840,8 @@
                    rather than cropped to a tidy thumbnail: each one is already
                    framed — through binoculars, letterboxed, split in two — and
                    cropping to fill a box would throw that framing away. -->
-              <div class="pp-strip" aria-label="Frames from the Tarantino music video">
+              <div class="pp-strip" data-carousel data-carousel-autoplay="4500"
+                   aria-label="Frames from the Tarantino music video">
                 <a class="pp-frame" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">
                   <img src="/tarantino/still-1.webp" width="640" height="360" loading="lazy"
                        alt="A chef lying on the kitchen floor, watched through binoculars"></a>
@@ -3821,6 +3854,9 @@
                 <a class="pp-frame" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">
                   <img src="/tarantino/still-4.webp" width="640" height="360" loading="lazy"
                        alt="Hands with silver nails on an envelope sealed with a rose"></a>
+              </div>
+              <div class="cd-nav pp-nav" data-carousel-nav hidden>
+                <div class="cd-dots" data-carousel-dots></div>
               </div>
               <!-- The premiere's own times. LISA's poster lists five zones —
                    EST 12AM, BST 5AM, ICT 11AM, KST 1PM, AEST 3PM on Oct 23 —
@@ -3871,6 +3907,11 @@
               <div class="cd-times-body" data-times-for="2026-11-20T08:00:00Z"></div>
             </details>
           </div>
+        </div>
+        <div class="cd-nav" data-carousel-nav hidden>
+          <button type="button" class="cd-arrow" data-carousel-dir="-1" aria-label="Previous countdown">‹</button>
+          <div class="cd-dots" data-carousel-dots></div>
+          <button type="button" class="cd-arrow" data-carousel-dir="1" aria-label="Next countdown">›</button>
         </div>
 
         <!-- Past countdowns. These are over: nothing left to vote on, pre-save or
@@ -6434,6 +6475,7 @@ window.addEventListener('DOMContentLoaded', () => {
   setInterval(renderHomeCountdowns, 1000);
   renderAllReleaseGoals();
   initVmaCarousels();
+  syncCarousels();
   loadJennieSaveCount();
   loadFaSaveCount();
   loadFaCommunityScrobbles();
@@ -6543,6 +6585,7 @@ function setupCountdownsPage() {
   _initCountdownsCardClicks();
   applyCountdownFilter(slug);
   renderHomeCountdowns();
+  syncCarousels(mount || undefined);
 }
 
 // On the /countdowns hub, clicking a card (anywhere except its own buttons/links)
@@ -6552,8 +6595,15 @@ function _initCountdownsCardClicks() {
   const mount = document.getElementById('countdowns-mount');
   if (!mount || mount.dataset.clickBound) return;
   mount.dataset.clickBound = '1';
+  // Where the pointer went down. Since the cards became a carousel, a swipe
+  // across them ends in a click on whichever card is under the finger — and
+  // without this, browsing by swipe would navigate away on every push.
+  let downX = 0, downY = 0;
+  mount.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; },
+    { passive: true });
   mount.addEventListener('click', (e) => {
     if (currentCountdownSlug()) return;                       // already on one deep link
+    if (Math.abs(e.clientX - downX) > 10 || Math.abs(e.clientY - downY) > 10) return; // a drag, not a tap
     if (e.target.closest('a, button, .cd-links, .cd-btn')) return; // let buttons do their thing
     const card = e.target.closest('.cd-card[data-slug]');
     if (card && card.dataset.slug) goCountdowns(card.dataset.slug);
@@ -6592,6 +6642,8 @@ function applyCountdownFilter(slug) {
   if (back) back.style.display = (slug && matched) ? 'inline-flex' : 'none';
   const mount = document.getElementById('countdowns-mount');
   if (mount) mount.classList.toggle('cd-hub-browse', !(slug && matched)); // card-click nav only on the "all" view
+  // Every card but one may have just been hidden, or shown again.
+  syncCarousels(document.getElementById('home-countdowns') || undefined);
 }
 function goCountdowns(slug) {
   const path = slug ? '/countdowns/' + slug : '/countdowns';
@@ -16695,6 +16747,176 @@ function initVmaCarousels() {
   });
 }
 
+// ── Carousels ───────────────────────────────────────────────────────────────
+// One horizontal, snap-scrolling carousel used by both the countdown section
+// and the strip of MV frames inside the PRESS PLAY card.
+//
+// The scrolling itself is CSS (scroll-snap), not script: that keeps native
+// momentum, trackpads, shift-wheel, keyboard and screen readers working, and
+// means a failure here leaves a strip you can still push along rather than a
+// dead box. This only adds the dots, the arrows and the optional autoplay.
+//
+// Slides are read fresh every time, because the set changes under us:
+// applyCountdownFilter display:none's every card but one on a deep link, and
+// loadAutoPrereleases inserts a card for a drop nobody has carded by hand. Both
+// call syncCarousels afterwards.
+const CAROUSEL_AUTOPLAY_MIN = 1500;
+
+function carouselSlides(track) {
+  return [...track.children].filter(el =>
+    el.nodeType === 1 && getComputedStyle(el).display !== 'none');
+}
+
+function carouselActive(track, slides) {
+  // Whichever slide's centre is nearest the track's centre. Derived from the
+  // real scroll position rather than counted by us, so a flick that crosses two
+  // slides, or a snap we did not initiate, still lights the right dot.
+  const mid = track.scrollLeft + track.clientWidth / 2;
+  let best = 0, bestGap = Infinity;
+  slides.forEach((s, i) => {
+    const gap = Math.abs((s.offsetLeft + s.offsetWidth / 2) - mid);
+    if (gap < bestGap) { bestGap = gap; best = i; }
+  });
+  return best;
+}
+
+// Cards differ wildly in height — a poster next to a tracklist — so a track as
+// tall as the tallest leaves the short ones floating over a few hundred pixels
+// of nothing. Opt-in with data-carousel-fit: the track takes the height of the
+// card you are ON, and expands to the tallest for as long as you are moving, so
+// a taller neighbour is never clipped on its way past.
+function carouselFit(track, slides, settled) {
+  if (!('carouselFit' in track.dataset) || !slides.length) return;
+  const h = settled ? slides[carouselActive(track, slides)].offsetHeight
+                    : Math.max(...slides.map(s => s.offsetHeight));
+  if (!h) return;
+  // Growing happens mid-swipe and must be instant, or the neighbour is clipped
+  // while the animation catches up. Settling back down can be eased.
+  track.style.transition = (settled && !prefersReducedMotion()) ? 'height 0.25s ease' : 'none';
+  track.style.height = h + 'px';
+}
+
+function carouselGo(track, n, smooth = true) {
+  const slides = carouselSlides(track);
+  if (!slides.length) return;
+  const i = (n % slides.length + slides.length) % slides.length;
+  const delta = slides[i].getBoundingClientRect().left - track.getBoundingClientRect().left;
+  // scrollBy, not scrollIntoView: the latter would also scroll the PAGE to bring
+  // the track into view, yanking the reader somewhere they did not ask to go.
+  track.scrollBy({ left: delta, behavior: (smooth && !prefersReducedMotion()) ? 'smooth' : 'auto' });
+}
+
+function prefersReducedMotion() {
+  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+  catch (e) { return false; }
+}
+
+function initCarousel(track) {
+  if (track._carouselInit) return;
+  track._carouselInit = true;
+  const nav = track.parentElement
+    ? track.parentElement.querySelector(':scope > [data-carousel-nav]') : null;
+  const dotBox = nav ? nav.querySelector('[data-carousel-dots]') : null;
+
+  const paint = () => {
+    // Not rendered at all — the strip of MV frames is display:none everywhere
+    // but the release's own page. Children of a hidden parent still report a
+    // display of their own, so counting them would raise controls over nothing.
+    if (!track.clientWidth && !track.offsetParent) { if (nav) nav.hidden = true; return; }
+    const slides = carouselSlides(track);
+    if (nav) nav.hidden = slides.length < 2;     // controls for one slide are furniture
+    if (!dotBox) { carouselFit(track, slides, true); return; }
+    while (dotBox.children.length > slides.length) dotBox.lastChild.remove();
+    while (dotBox.children.length < slides.length) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cd-dot';
+      b.addEventListener('click', () => {
+        carouselGo(track, [...dotBox.children].indexOf(b));
+        hold();                                   // a tap is a choice; stop moving it
+      });
+      dotBox.appendChild(b);
+    }
+    carouselFit(track, slides, true);
+    const at = carouselActive(track, slides);
+    [...dotBox.children].forEach((d, i) => {
+      d.classList.toggle('is-on', i === at);
+      d.setAttribute('aria-label', `Go to ${i + 1} of ${slides.length}`);
+      d.setAttribute('aria-current', i === at ? 'true' : 'false');
+    });
+  };
+  track._carouselSync = paint;
+
+  let frame = 0, settle = 0;
+  track.addEventListener('scroll', () => {
+    carouselFit(track, carouselSlides(track), false);
+    clearTimeout(settle);
+    settle = setTimeout(paint, 160);             // snapped and stopped: take its height
+    if (frame) return;
+    frame = requestAnimationFrame(() => { frame = 0; paint(); });
+  }, { passive: true });
+
+  // A card can change height under us — a timer reaching OUT NOW, a pre-save
+  // bar appearing — and the fitted track would keep the old one.
+  if ('carouselFit' in track.dataset && window.ResizeObserver) {
+    let pending = 0;
+    const ro = new ResizeObserver(() => {
+      if (pending) return;
+      pending = requestAnimationFrame(() => { pending = 0; paint(); });
+    });
+    [...track.children].forEach(c => { if (c.nodeType === 1) ro.observe(c); });
+    track._carouselRO = ro;
+  }
+
+  if (nav) {
+    nav.querySelectorAll('[data-carousel-dir]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const slides = carouselSlides(track);
+        carouselGo(track, carouselActive(track, slides) + Number(btn.dataset.carouselDir));
+        hold();
+      });
+    });
+  }
+
+  // Autoplay, where it is asked for. It stops for good the moment somebody
+  // touches the thing — a carousel that keeps yanking itself out from under a
+  // reader is worse than one that never moved.
+  const every = Number(track.dataset.carouselAutoplay || 0);
+  let timer = null, held = false;
+  function hold() { held = true; stop(); }
+  function stop() { if (timer) { clearInterval(timer); timer = null; } }
+  function start() {
+    if (held || timer || !(every >= CAROUSEL_AUTOPLAY_MIN) || prefersReducedMotion()) return;
+    timer = setInterval(() => {
+      // Pointless and rude while off-screen or in a hidden tab.
+      if (document.hidden || !track.clientWidth) return;
+      const slides = carouselSlides(track);
+      if (slides.length > 1) carouselGo(track, carouselActive(track, slides) + 1);
+    }, every);
+  }
+  if (every) {
+    ['pointerdown', 'wheel', 'touchstart', 'focusin', 'keydown'].forEach(ev =>
+      track.addEventListener(ev, hold, { passive: true, once: true }));
+    track.addEventListener('pointerenter', stop);
+    track.addEventListener('pointerleave', start);
+    document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
+    start();
+  }
+
+  paint();
+}
+
+// Idempotent: safe to call on every navigation, filter change and insertion.
+function syncCarousels(root) {
+  (root || document).querySelectorAll('[data-carousel]').forEach(track => {
+    initCarousel(track);
+    if (track._carouselRO) {
+      [...track.children].forEach(c => { if (c.nodeType === 1) track._carouselRO.observe(c); });
+    }
+    if (track._carouselSync) track._carouselSync();
+  });
+}
+
 // Side events on a countdown card — a listening party, a premiere stream — that
 // start, run a while, and are then over. Declared entirely on the element:
 // data-live-at and data-live-until are ISO instants, so the next one of these
@@ -16879,6 +17101,7 @@ async function loadAutoPrereleases() {
     wrap.insertBefore(card, wrap.firstElementChild);
   });
   renderHomeCountdowns();
+  syncCarousels(wrap.parentElement || undefined);   // a slide just appeared
 }
 
 function renderReleaseCountdown() {
