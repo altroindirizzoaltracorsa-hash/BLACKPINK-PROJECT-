@@ -122,6 +122,12 @@ jobs:
         if: always()
         run: node .github/scripts/test_sql_grants.mjs
 
+      # Each countdown's picture strip: the files load, the dots match, and
+      # they stay on the release's own page rather than the home carousel.
+      - name: The countdown picture strips
+        if: always()
+        run: node .github/scripts/test_countdown_strips.mjs
+
       # One card carries a release that lands at midnight in each country and a
       # video that premieres at one instant worldwide. Both wrong silently: a
       # clock that looks healthy and is thirteen hours out for Seoul.
