@@ -1,4 +1,5 @@
-// Each countdown's own picture strip, in a real browser.
+// The panels inside the countdown cards — each release's picture strip, and
+// the PRESS PLAY playlists — in a real browser.
 //
 // Run: node .github/scripts/test_countdown_strips.mjs
 //
@@ -91,7 +92,10 @@ console.log('--- and on the home carousel too, which is where people look');
              withDots: navs.filter(n=>!n.hidden && n.querySelectorAll('.cd-dot').length>1).length,
              times: [...document.querySelectorAll('#home-countdowns .cd-card:not(.cd-card-lisa) .cd-times')]
                       .filter(e=>getComputedStyle(e).display!=='none').length,
-             lisaTimes: [...document.querySelectorAll('#home-countdowns .cd-card-lisa .cd-times')]
+             // :not(.cd-playlists) — the playlists panel is a .cd-times element
+             // too, and it is shown here on purpose. Only the MV's worldwide
+             // times keep to the release's own page.
+             lisaTimes: [...document.querySelectorAll('#home-countdowns .cd-card-lisa .cd-times:not(.cd-playlists)')]
                       .filter(e=>getComputedStyle(e).display!=='none').length };
   });
   r.shown===3 ? ok('all three strips are on the home page too',`${r.shown}/${r.strips}`)
@@ -102,6 +106,50 @@ console.log('--- and on the home carousel too, which is where people look');
   r.lisaTimes===0 ? ok("and the MV's worldwide times stay on the release's own page")
                   : bad("and the MV's worldwide times stay on the release's own page");
   await page.close();
+}
+console.log('--- the PRESS PLAY community playlists');
+{
+  // Four hand-typed Spotify ids. A typo here does not throw and does not look
+  // wrong: it quietly sends blinks to somebody else's playlist on release
+  // night, which is the whole reason this is asserted id by id, in order.
+  const WANT = [
+    ['PRESS PLAY FOCUSED','6YZw8yGS7AeTgGAEHjDwU5'],
+    ['TARANTINO FOCUSED', '4yLrtij2wkmmGjXJkxi7Ec'],
+    ['TARANTINO x PINKS', '6r67sLT2Fr1dSb5sT4lGWN'],
+    ['TARANTINO x BP',    '3sxqqL3OF3s7HeG14kwbyH'],
+  ];
+  for (const [path,label] of [['/','home card'],['/countdowns/lalisaofficial.com','release page']]) {
+    const page=await browser.newPage({viewport:{width:390,height:900}});
+    await page.addInitScript(()=>{try{localStorage.setItem('bu_tutorial_seen','1');
+      localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.7','1');}catch(e){}});
+    await page.goto(base+path,{waitUntil:'domcontentloaded'});
+    await page.locator('.cd-card-lisa').waitFor({timeout:20000});
+    await page.waitForTimeout(3000);
+    const r=await page.evaluate(()=>{
+      const c=document.querySelector('.cd-card-lisa');
+      const pl=c.querySelector('.cd-playlists');
+      const times=c.querySelector('.cd-times:not(.cd-playlists)');
+      const vis=e=>!!e && getComputedStyle(e).display!=='none' && e.getBoundingClientRect().height>0;
+      return { plShown:vis(pl), timesShown:vis(times),
+        links: pl ? [...pl.querySelectorAll('.cd-times-body a')].map(a=>[a.textContent.replace(/\s*→\s*$/,'').trim(), a.getAttribute('href')]) : [] };
+    });
+    r.plShown ? ok(`${label}: the playlists are there`) : bad(`${label}: the playlists are there`);
+    let wrong=0;
+    WANT.forEach(([name,id],i)=>{
+      const got=r.links[i]||[];
+      if (got[0]!==name || got[1]!==`https://open.spotify.com/playlist/${id}`) {
+        wrong++; bad(`   ${label}: ${name}`, `got ${got[0]} → ${got[1]}`);
+      }
+    });
+    if(!wrong && r.links.length===4) ok(`   ${label}: all four ids, in order`);
+    else if(!wrong) bad(`   ${label}: all four ids, in order`,`${r.links.length} links`);
+    // The MV's worldwide times are reference and stay on the release page; the
+    // playlists are something to go and do, so they follow the card everywhere.
+    (path==='/' ? !r.timesShown : r.timesShown)
+      ? ok(`   ${label}: the MV times are where they belong`)
+      : bad(`   ${label}: the MV times are where they belong`);
+    await page.close();
+  }
 }
 await browser.close(); server.close();
 console.log(fails?`\n${fails} FAILED`:'\nAll strips correct.');

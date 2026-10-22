@@ -2059,6 +2059,8 @@
   .cd-playlists .cd-times-body { display: flex; flex-direction: column; gap: 0; }
   .cd-playlists .cd-times-body a { display: block; font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase;
     color: rgba(255,255,255,0.82); text-decoration: none; padding: 0.5rem 0.2rem; border-bottom: 1px solid rgba(255,255,255,0.08); transition: color 0.15s; }
+  .cd-pl-note { margin: 0 0.2rem 0.3rem; font-size: 0.64rem; line-height: 1.5; letter-spacing: 0.02em;
+    text-transform: none; color: rgba(255,255,255,0.6); }
   .cd-playlists .cd-times-body a:last-child { border-bottom: none; }
   .cd-playlists .cd-times-body a:hover { color: #1DB954; }
   .cd-card-jisoo .js-park { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
@@ -2275,7 +2277,7 @@
      The LISA card's worldwide times stay on its own page — they belong to its
      video, not its release. The other cards' times are untouched: theirs are
      the only times they give. */
-  .cd-card-lisa .cd-times { display: none; }
+  .cd-card-lisa .cd-times:not(.cd-playlists) { display: none; }
   #countdowns-mount:not(.cd-hub-browse) .cd-card-lisa .cd-times { display: block; }
   /* It scrolls rather than wrapping or shrinking: several frames side by side on
      a card this width would be too small to read, and a wrap would make the card
@@ -3819,6 +3821,16 @@
               <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
                 <summary>“Tarantino” premiere times worldwide</summary>
                 <div class="cd-times-body" data-times-for="2026-10-23T04:00:00Z"></div>
+              </details>
+              <details class="cd-times cd-playlists">
+                <summary>🎧 Community Playlists</summary>
+                <div class="cd-times-body">
+                  <p class="cd-pl-note">Pre-save them — they fill up when PRESS PLAY lands, at your own midnight.</p>
+                  <a href="https://open.spotify.com/playlist/6YZw8yGS7AeTgGAEHjDwU5" target="_blank" rel="noopener">PRESS PLAY FOCUSED →</a>
+                  <a href="https://open.spotify.com/playlist/4yLrtij2wkmmGjXJkxi7Ec" target="_blank" rel="noopener">TARANTINO FOCUSED →</a>
+                  <a href="https://open.spotify.com/playlist/6r67sLT2Fr1dSb5sT4lGWN" target="_blank" rel="noopener">TARANTINO x PINKS →</a>
+                  <a href="https://open.spotify.com/playlist/3sxqqL3OF3s7HeG14kwbyH" target="_blank" rel="noopener">TARANTINO x BP →</a>
+                </div>
               </details>
             </div>
           </div>
