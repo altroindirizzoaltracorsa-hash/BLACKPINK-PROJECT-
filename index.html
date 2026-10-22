@@ -17457,7 +17457,14 @@ async function loadFaCommunityScrobbles() {
 // (bu_lisa_sawadika_joins) so earlier joiners carry over as pre-savers.
 const LISA_SAVE_LS   = 'bu_lisa_sawadika_saved';
 const LISA_SAVE_GOAL = 50;
-const LISA_REVEAL_AT = '2026-10-23T04:00:00Z'; // PRESS PLAY EP · 1PM KST / 12AM EDT
+// PRESS PLAY arrives at midnight in each country, so there is no constant to
+// compare against — only a moment per reader. Built from parts: Date.parse of a
+// bare date is UTC midnight, which is somebody else's.
+const PRESS_PLAY_DAY = [2026, 10, 23];
+function pressPlayOutAt() {
+  const [y, m, d] = PRESS_PLAY_DAY;
+  return new Date(y, m - 1, d, 0, 0, 0, 0).getTime();
+}
 
 function renderLisaBadge() {
   const el = document.getElementById('lisa-badge');
@@ -17469,7 +17476,7 @@ function renderLisaSaveCount(count) {
   const numsEl = document.getElementById('lisa-goal-nums');
   const fillEl = document.getElementById('lisa-goal-fill');
   if (!wrap || !numsEl || !fillEl || count <= 0) return;
-  if (Date.now() >= new Date(LISA_REVEAL_AT).getTime()) { wrap.style.display = 'none'; return; }
+  if (Date.now() >= pressPlayOutAt()) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'flex';
   const milestonesPassed = Math.floor(count / LISA_SAVE_GOAL);
   const currentMilestone = milestonesPassed * LISA_SAVE_GOAL;
@@ -17683,7 +17690,7 @@ function openJisooCard() {
 // Share LISA's PRESS PLAY EP countdown. Opens a small sheet so the fan can pick
 // what to post: the countdown-card Picture, LISA's teaser Video, or the Link
 // (whose /countdowns deep link renders the preview card on socials).
-const PP_SHARE_TEXT = '🎬 LISA — PRESS PLAY (New EP) · Fri, Oct 23, 2026 · 1PM KST\nCountdown & pre-save:';
+const PP_SHARE_TEXT = '🎬 LISA — PRESS PLAY (New EP) · Fri, Oct 23, 2026 · midnight local time\nCountdown & pre-save:';
 const PP_SHARE_URL = 'https://www.blinksunited.com/countdowns/lalisaofficial.com';
 function openLisaPressPlayCard() {
   let ov = document.getElementById('pp-share-sheet');
@@ -21852,8 +21859,11 @@ async function openPressPlayCard() {
   const earned = _buSignedIn && !!localStorage.getItem(LISA_SAVE_LS);
   _ppCardData = {
     earned, photo, logoImg: wordImg, titleImg,
-    releaseAt: '2026-10-23T04:00:00Z',
-    dateLine: 'Fri, Oct 23, 2026 · 1PM KST / 12AM EDT',
+    // The card is rendered on the sharer's machine, so the countdown it
+    // freezes is theirs — which is the right one to post, the EP being due at
+    // their midnight.
+    releaseAt: new Date(pressPlayOutAt()).toISOString(),
+    dateLine: 'Fri, Oct 23, 2026 · Midnight local time',
     dateShort: 'out Oct 23, 2026',
     cta: '▶ PRE-SAVE · LALISAOFFICIAL.COM',
     act: 'LISA', release: 'PRESS PLAY',

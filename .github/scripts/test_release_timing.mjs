@@ -101,6 +101,41 @@ console.log('--- the copy and the hero');
                          : bad('and names nobody else’s timezone as the time',r.sub);
   r.hero ? ok('the new hero photo loaded') : bad('the new hero photo loaded');
 }
+console.log('--- what gets SHARED carries the same time');
+{
+  // The share card is an image people post, and it freezes a countdown at the
+  // moment it is drawn. Drawn against the old global instant it would be wrong
+  // by up to thirteen hours for the person posting it — and unlike the card on
+  // the page, nobody can see that it is stale.
+  const page=await browser.newPage({viewport:{width:390,height:900}, timezoneId:'Asia/Seoul'});
+  await page.addInitScript(()=>{try{localStorage.setItem('bu_tutorial_seen','1');
+    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.7','1');}catch(e){}});
+  await page.goto(base+'/countdowns/lalisaofficial.com',{waitUntil:'domcontentloaded'});
+  await page.locator('.cd-card-lisa').waitFor({timeout:20000});
+  await page.waitForTimeout(2000);
+  const r=await page.evaluate(async ()=>{
+    const want=new Date(2026,9,23,0,0,0,0).getTime();      // Seoul's own midnight
+    let card=null;
+    try { await openPressPlayCard(); card=_ppCardData; } catch (e) { card={err:String(e)}; }
+    return { out: pressPlayOutAt(), want, text: PP_SHARE_TEXT,
+             dateLine: card && card.dateLine, releaseAt: card && card.releaseAt, err: card && card.err };
+  });
+  r.out===r.want ? ok('pressPlayOutAt is the reader\u2019s own midnight')
+                 : bad('pressPlayOutAt is the reader\u2019s own midnight',`${new Date(r.out).toISOString()} vs ${new Date(r.want).toISOString()}`);
+  !/1PM KST|12AM EDT/.test(r.text) && /midnight local time/i.test(r.text)
+    ? ok('the share text says midnight local time')
+    : bad('the share text says midnight local time',r.text);
+  if (r.err) bad('the share card builds',r.err);
+  else {
+    !/1PM KST|12AM EDT/.test(r.dateLine||'') && /Midnight local time/i.test(r.dateLine||'')
+      ? ok('the share image prints midnight local time',r.dateLine)
+      : bad('the share image prints midnight local time',r.dateLine);
+    Date.parse(r.releaseAt||'')===r.want
+      ? ok('and freezes its countdown against that same midnight')
+      : bad('and freezes its countdown against that same midnight',r.releaseAt);
+  }
+  await page.close();
+}
 await browser.close(); server.close();
 console.log(fails?`\n${fails} FAILED`:'\nAll correct.');
 process.exit(fails?1:0);
