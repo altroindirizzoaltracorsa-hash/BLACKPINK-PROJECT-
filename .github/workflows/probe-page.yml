@@ -56,22 +56,33 @@ jobs:
               if grep -qF -- "$pat" /tmp/page; then found=yes; else found=no; fi
               if [ "$mode" = expect ] && [ "$found" = no ]; then
                 echo "MISSING  $pat"; echo "$pat" >> /tmp/failures
+                echo "MISSING  $pat" >> /tmp/results
               elif [ "$mode" = forbid ] && [ "$found" = yes ]; then
                 echo "PRESENT (should not be)  $pat"; echo "$pat" >> /tmp/failures
+                echo "PRESENT but should not be  $pat" >> /tmp/results
               else
-                echo "ok       $pat"
+                echo "ok       $pat"; echo "ok  $pat" >> /tmp/results
               fi
             done
           }
 
           # The while loop above runs in a subshell (pipeline), so a variable set
           # inside it would not survive — failures go to a file instead.
-          : > /tmp/failures
+          : > /tmp/failures; : > /tmp/results
+          echo "HTTP $code · $(wc -c </tmp/page) bytes · final URL $(curl -sSL -o /dev/null -w '%{url_effective}' "$BASE$P")" >> /tmp/results
           echo "----- must be present -----"; check expect "$EXPECT"
           echo "----- must be absent -----";  check forbid "$FORBID"
 
+          # Each result as its own annotation: the job log lives in blob storage
+          # that a Claude Code session cannot fetch, so "6 checks failed" with
+          # the names only in the log is a dead end.
+          if [ -s /tmp/results ]; then
+            while IFS= read -r line; do
+              echo "::notice title=probe::${line}"
+            done < /tmp/results
+          fi
           if [ -s /tmp/failures ]; then
-            echo "::error::$(wc -l </tmp/failures) pattern check(s) failed — see above"
+            echo "::error::$(wc -l </tmp/failures) pattern check(s) failed — see the notices"
             exit 1
           fi
           echo "all pattern checks passed."
