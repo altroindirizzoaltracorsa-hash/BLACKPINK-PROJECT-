@@ -131,12 +131,16 @@ console.log('--- the countdown cards, on the home page');
   spread>100 ? ok('and the cards really do differ enough for that to matter',`${spread}px between tallest and shortest`)
              : bad('and the cards really do differ enough for that to matter',`only ${spread}px`);
 
-  const stray = await page.evaluate(()=>{
+  const strip = await page.evaluate(()=>{
+    const st=document.querySelector('.cd-card-lisa .cd-strip');
     const n=document.querySelector('.cd-card-lisa .cd-strip-nav');
-    return {hidden:n.hidden, display:getComputedStyle(n).display,
-            shown: n.getBoundingClientRect().height > 0};
+    return { strip: st ? getComputedStyle(st).display!=='none' : false,
+             dots: n ? n.querySelectorAll('.cd-dot').length : 0,
+             navShown: n ? !n.hidden && getComputedStyle(n).display!=='none' : false };
   });
-  !stray.shown ? ok('the MV frame dots stay off the home card') : bad('the MV frame dots stay off the home card',`display=${stray.display} hidden=${stray.hidden}`);
+  strip.strip && strip.navShown && strip.dots===4
+    ? ok('the MV frames ride along on the home card',`${strip.dots} dots`)
+    : bad('the MV frames ride along on the home card',JSON.stringify(strip));
   errs.length ? bad('no page errors',errs.join(' | ')) : ok('no page errors');
   await page.close();
 }
@@ -175,6 +179,10 @@ console.log('--- the MV frames inside the card');
       lit:[...nav.querySelectorAll('.cd-dot')].findIndex(d=>d.classList.contains('is-on')),
       frameW:Math.round(sl[0].getBoundingClientRect().width), trackW:Math.round(t.clientWidth)};
   });
+  // Scroll to it first. Autoplay deliberately skips a strip that is off
+  // screen, so testing it below the fold measures the guard, not the carousel.
+  await page.locator('.cd-card-lisa .cd-strip').scrollIntoViewIfNeeded().catch(()=>{});
+  await page.waitForTimeout(600);
   let f=await read();
   f.dots===4 ? ok('four dots for four frames') : bad('four dots for four frames',`${f.dots}`);
   f.navHidden===false ? ok('the dots are shown') : bad('the dots are shown');

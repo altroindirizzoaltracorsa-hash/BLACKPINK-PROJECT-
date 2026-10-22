@@ -2261,22 +2261,20 @@
   /* A strip of pictures inside a countdown card — one at a time, swiped, with
      dots of its own. Any card can have one; what differs per release is only
      the shape of its photos, set with --cd-frame-ratio.
-     On /countdowns/<this release>, not in the grid: on the home page these take
-     a card from ~450px to ~650px and the hero stops being a hero. Someone who
-     opened the page FOR a release has asked for more and has the room, and the
-     Share card's own link already lands there. The LISA card's worldwide times
-     follow the same rule; the other cards' times are not hidden, because theirs
-     are the only times they give. */
-  .cd-card .cd-strip,
-  .cd-card .cd-strip-nav,
+     Shown everywhere the card is. These were once confined to
+     /countdowns/<release> to keep the home cards poster-shaped, which cost more
+     than it bought: the pictures were the thing asked for and nobody found
+     them. The cards are taller for it, and since the countdowns became a
+     carousel that is one card's height at a time rather than five stacked.
+     The LISA card's worldwide times stay on its own page — they belong to its
+     video, not its release. The other cards' times are untouched: theirs are
+     the only times they give. */
   .cd-card-lisa .cd-times { display: none; }
-  #countdowns-mount:not(.cd-hub-browse) .cd-card .cd-strip { display: flex; }
-  #countdowns-mount:not(.cd-hub-browse) .cd-card .cd-strip-nav { display: flex; }
   #countdowns-mount:not(.cd-hub-browse) .cd-card-lisa .cd-times { display: block; }
   /* It scrolls rather than wrapping or shrinking: several frames side by side on
      a card this width would be too small to read, and a wrap would make the card
      taller than the countdown it belongs to. */
-  .cd-strip { gap: 0.35rem; width: 100%; min-width: 0; margin: 0.5rem auto 0;
+  .cd-strip { display: flex; gap: 0.35rem; width: 100%; min-width: 0; margin: 0.5rem auto 0;
     overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity;
     scrollbar-width: none; -ms-overflow-style: none; }
   .cd-strip::-webkit-scrollbar { display: none; }
@@ -16970,8 +16968,12 @@ function initCarousel(track) {
   function start() {
     if (held || timer || !(every >= CAROUSEL_AUTOPLAY_MIN) || prefersReducedMotion()) return;
     timer = setInterval(() => {
-      // Pointless and rude while off-screen or in a hidden tab.
+      // Pointless and rude while off-screen or in a hidden tab — and with a
+      // strip on each countdown, every one but the card being looked at is
+      // parked off to the side of the carousel.
       if (document.hidden || !track.clientWidth) return;
+      const r = track.getBoundingClientRect();
+      if (r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth) return;
       const slides = carouselSlides(track);
       if (slides.length > 1) carouselGo(track, carouselActive(track, slides) + 1);
     }, every);
