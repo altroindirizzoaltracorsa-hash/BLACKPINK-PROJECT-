@@ -3772,16 +3772,23 @@
                    aria-label="PRESS PLAY pictures and the Tarantino MV frames">
                 <a class="cd-frame" href="/lisa-mona.webp" target="_blank" rel="noopener">
                   <img src="/strips/pressplay-mona.webp" loading="lazy" alt="LISA — the first PRESS PLAY image"></a>
-                <!-- No controls. With preload=none the browser drew its own
-                     player over the poster — an outsized play button pinned to
-                     the left of the letterbox and a scrubber in the corner,
-                     which is what looked broken. It is the same silent loop it
-                     was as the card's hero instead, which is how it is meant to
-                     read. Muted and playsinline so it is allowed to; metadata
-                     only, so nothing is fetched until it is wanted. -->
+                <!-- NO poster. It had one, and it was a different photo
+                     altogether — so the slide showed one picture and then played
+                     something else, which is simply wrong. A video's own first
+                     frame is the only honest poster for it, and leaving the
+                     attribute off is how you get that. (It cannot be extracted
+                     and checked in here: neither the headless browser nor the
+                     ffmpeg build in this container decodes h264, so this clip is
+                     the one thing on the card that has to be looked at on a real
+                     device.)
+                     No controls either: with preload=none the browser drew its
+                     own player over the frame — an outsized play button pinned
+                     to the left of the letterbox, a scrubber in the corner. It
+                     is the silent loop it was as the card's hero instead.
+                     Muted and playsinline so it is allowed to autoplay. -->
                 <div class="cd-frame">
-                  <video src="/lisa-preview.mp4" poster="/strips/pressplay-mona.webp"
-                         preload="metadata" autoplay muted loop playsinline
+                  <video src="/lisa-preview.mp4" preload="metadata"
+                         autoplay muted loop playsinline
                          aria-label="LISA — PRESS PLAY preview"></video>
                 </div>
                 <a class="cd-frame" href="/tarantino/premiere.webp" target="_blank" rel="noopener">
