@@ -66,23 +66,32 @@ for (const [slug,name,n] of CARDS) {
   errs.length ? bad('   no page errors',errs.join(' | ')) : ok('   no page errors');
   await page.close();
 }
-console.log('--- and none of them on the home page');
+console.log('--- and on the home carousel too, which is where people look');
 {
   const page=await browser.newPage({viewport:{width:390,height:900}});
   await page.addInitScript(()=>{try{localStorage.setItem('bu_tutorial_seen','1');
     localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.7','1');}catch(e){}});
   await page.goto(base+'/',{waitUntil:'domcontentloaded'});
   await page.locator('#home-countdowns > .cd-wrap').waitFor({timeout:20000});
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(3500);
   const r=await page.evaluate(()=>{
-    const vis=s=>[...document.querySelectorAll(s)].filter(e=>e.getBoundingClientRect().height>0).length;
-    return { strips:vis('#home-countdowns .cd-strip'), navs:vis('#home-countdowns .cd-strip-nav'),
-             times:vis('#home-countdowns .cd-card:not(.cd-card-lisa) .cd-times') };
+    const strips=[...document.querySelectorAll('#home-countdowns .cd-strip')];
+    const navs=[...document.querySelectorAll('#home-countdowns .cd-strip-nav')];
+    return { strips: strips.length,
+             shown: strips.filter(e=>getComputedStyle(e).display!=='none').length,
+             withDots: navs.filter(n=>!n.hidden && n.querySelectorAll('.cd-dot').length>1).length,
+             times: [...document.querySelectorAll('#home-countdowns .cd-card:not(.cd-card-lisa) .cd-times')]
+                      .filter(e=>getComputedStyle(e).display!=='none').length,
+             lisaTimes: [...document.querySelectorAll('#home-countdowns .cd-card-lisa .cd-times')]
+                      .filter(e=>getComputedStyle(e).display!=='none').length };
   });
-  r.strips===0 && r.navs===0 ? ok('the home carousel stays the cards alone')
-                             : bad('the home carousel stays the cards alone',`${r.strips} strips, ${r.navs} navs`);
-  r.times>0 ? ok("and the other cards' own release times are untouched",`${r.times} still shown`)
-            : bad("and the other cards' own release times are untouched",'they were hidden too');
+  r.shown===3 ? ok('all three strips are on the home page too',`${r.shown}/${r.strips}`)
+              : bad('all three strips are on the home page too',`${r.shown}/${r.strips} shown`);
+  r.withDots===3 ? ok('each with its dots') : bad('each with its dots',`${r.withDots}`);
+  r.times>0 ? ok("the other cards' own release times are untouched",`${r.times} shown`)
+            : bad("the other cards' own release times are untouched",'they were hidden');
+  r.lisaTimes===0 ? ok("and the MV's worldwide times stay on the release's own page")
+                  : bad("and the MV's worldwide times stay on the release's own page");
   await page.close();
 }
 await browser.close(); server.close();
