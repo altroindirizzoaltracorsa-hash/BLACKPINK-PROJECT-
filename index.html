@@ -2124,6 +2124,11 @@
   .cd-card-lisa { --la-red: #e11d2a; --la-deep: #4a0509; --la-cream: #f2e9e2;
     position: relative; overflow: hidden; padding: 0; text-align: center; color: var(--la-cream);
     display: grid; background: #2a0406;
+    /* minmax(0,1fr), not the default auto: a scrolling strip still offers its
+       max-content width to an auto track, so the four MV frames would widen the
+       column to 654px — and the spacer below, being a ratio of that width, would
+       then make the card 817px tall at every viewport. */
+    grid-template-columns: minmax(0, 1fr);
     border: 1px solid rgba(225,29,42,0.4); box-shadow: 0 20px 55px -30px rgba(225,29,42,0.6); }
   .cd-card-lisa::before { content: ''; grid-area: 1 / 1; aspect-ratio: 400 / 500; }
   .cd-card-lisa .lisa-hero { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
@@ -2131,7 +2136,8 @@
   .cd-card-lisa .lisa-scrim { position: absolute; inset: 0; z-index: 1;
     background: linear-gradient(180deg, rgba(42,4,6,0.15) 0%, rgba(42,4,6,0.12) 34%, rgba(42,4,6,0.72) 72%, rgba(42,4,6,0.95) 100%); }
   .cd-card-lisa .lisa-content { grid-area: 1 / 1; align-self: end; position: relative; z-index: 2;
-    display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0 1.1rem 1.2rem; }
+    min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+    padding: 0 1.1rem 1.2rem; }
   .cd-card-lisa .lisa-eyebrow { font-family: 'DM Mono', monospace; font-size: 0.66rem; letter-spacing: 0.28em;
     text-transform: uppercase; color: var(--la-cream); opacity: 0.92; }
   .cd-card-lisa .lisa-word { height: 1.55rem; width: auto; display: block;
@@ -2210,6 +2216,29 @@
     font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.85; }
   .cd-card-lisa .cd-mv-note { font-family: 'DM Mono', monospace; font-size: 0.56rem; letter-spacing: 0.1em;
     text-transform: uppercase; color: rgba(242,233,226,0.6); margin-top: 0.1rem; }
+  /* The MV strip and the worldwide times belong to /countdowns/<this release>,
+     not to the grid. On the home page this card is a poster with a countdown
+     over it, and both of these push it to ~550px — the video stops being a hero
+     and becomes a dim backdrop with LISA's face cropped off the top. Someone who
+     has opened the page FOR this release has asked for more, and has the room;
+     the Share card's own link already lands there. Browsing /countdowns (all) is
+     still the grid, so the cards there stay the same height as each other. */
+  .cd-card-lisa .pp-strip,
+  .cd-card-lisa .cd-times { display: none; }
+  #countdowns-mount:not(.cd-hub-browse) .cd-card-lisa .pp-strip { display: flex; }
+  #countdowns-mount:not(.cd-hub-browse) .cd-card-lisa .cd-times { display: block; }
+  /* It scrolls rather than wrapping or shrinking: four 16:9 frames side by side
+     on a poster-width card would be too small to read, and a wrap would make the
+     card taller than the countdown it belongs to. */
+  .cd-card-lisa .pp-strip { gap: 0.35rem; width: 100%; min-width: 0; margin-top: 0.3rem;
+    overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity;
+    scrollbar-width: none; -ms-overflow-style: none; }
+  .cd-card-lisa .pp-strip::-webkit-scrollbar { display: none; }
+  .cd-card-lisa .pp-frame { flex: 0 0 auto; width: 150px; scroll-snap-align: center;
+    display: block; border-radius: 6px; overflow: hidden; line-height: 0;
+    border: 1px solid rgba(242,233,226,0.2); transition: border-color 0.15s ease; }
+  .cd-card-lisa .pp-frame:hover { border-color: var(--la-red); }
+  .cd-card-lisa .pp-frame img { display: block; width: 100%; height: auto; }
   /* PRESS PLAY share chooser (Picture / Video / Link) */
   #pp-share-sheet .pp-sheet { background: #1a0406; border: 1px solid rgba(225,29,42,0.4);
     border-radius: 20px 20px 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
@@ -3775,6 +3804,33 @@
                    one already on the card is counting to both. -->
               <div class="cd-mv-note" data-pre="“Tarantino” MV premieres with the EP"
                    data-post="“Tarantino” MV is out now">“Tarantino” MV premieres with the EP</div>
+              <!-- Frames from the MV, as a strip you push along. Shown whole
+                   rather than cropped to a tidy thumbnail: each one is already
+                   framed — through binoculars, letterboxed, split in two — and
+                   cropping to fill a box would throw that framing away. -->
+              <div class="pp-strip" aria-label="Frames from the Tarantino music video">
+                <a class="pp-frame" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">
+                  <img src="/tarantino/still-1.webp" width="640" height="360" loading="lazy"
+                       alt="A chef lying on the kitchen floor, watched through binoculars"></a>
+                <a class="pp-frame" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">
+                  <img src="/tarantino/still-2.webp" width="640" height="360" loading="lazy"
+                       alt="LISA standing alone in the restaurant kitchen"></a>
+                <a class="pp-frame" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">
+                  <img src="/tarantino/still-3.webp" width="640" height="360" loading="lazy"
+                       alt="Two frames side by side of a chef being struck"></a>
+                <a class="pp-frame" href="https://youtu.be/671wXVviVAI" target="_blank" rel="noopener">
+                  <img src="/tarantino/still-4.webp" width="640" height="360" loading="lazy"
+                       alt="Hands with silver nails on an envelope sealed with a rose"></a>
+              </div>
+              <!-- The premiere's own times. LISA's poster lists five zones —
+                   EST 12AM, BST 5AM, ICT 11AM, KST 1PM, AEST 3PM on Oct 23 —
+                   and all five are this one instant, which is what this list is
+                   generated from, so it extends the official five rather than
+                   competing with them. -->
+              <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
+                <summary>Premiere times worldwide</summary>
+                <div class="cd-times-body" data-times-for="2026-10-23T04:00:00Z"></div>
+              </details>
             </div>
           </div>
           <!-- JENNIE — "Someone to Hold", the song she wrote for Netflix's
