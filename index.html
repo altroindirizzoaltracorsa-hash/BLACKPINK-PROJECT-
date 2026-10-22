@@ -2110,15 +2110,27 @@
 
   /* ── LISA "PRESS PLAY" EP countdown (lalisaofficial.com — Alter Ego red,
        Garamond serif, living video hero) ─────────────────────────────────── */
+  /* Poster-shaped, but the shape is a FLOOR, not a cage. The card used to be
+     `aspect-ratio: 400/500` with its content absolutely positioned, and neither
+     half of that can give: absolute content contributes no height, and an
+     aspect ratio only yields to its content while `overflow` is visible — which
+     this card's cannot be, because it clips the video to the rounded border. So
+     a card carrying everything at once (the Early Supporter chip, the pre-save
+     bar, the listening party row, four buttons) lost its eyebrow and wordmark
+     off the top on any phone narrower than ~430px.
+     Instead: one grid cell, with an empty spacer holding the poster ratio and
+     the content laid over it, bottom-aligned. The row is as tall as the taller
+     of the two, so the card keeps its shape until the content needs more. */
   .cd-card-lisa { --la-red: #e11d2a; --la-deep: #4a0509; --la-cream: #f2e9e2;
     position: relative; overflow: hidden; padding: 0; text-align: center; color: var(--la-cream);
-    aspect-ratio: 400 / 500; background: #2a0406;
+    display: grid; background: #2a0406;
     border: 1px solid rgba(225,29,42,0.4); box-shadow: 0 20px 55px -30px rgba(225,29,42,0.6); }
+  .cd-card-lisa::before { content: ''; grid-area: 1 / 1; aspect-ratio: 400 / 500; }
   .cd-card-lisa .lisa-hero { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
     object-position: center 12%; z-index: 0; -webkit-user-drag: none; }
   .cd-card-lisa .lisa-scrim { position: absolute; inset: 0; z-index: 1;
     background: linear-gradient(180deg, rgba(42,4,6,0.15) 0%, rgba(42,4,6,0.12) 34%, rgba(42,4,6,0.72) 72%, rgba(42,4,6,0.95) 100%); }
-  .cd-card-lisa .lisa-content { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+  .cd-card-lisa .lisa-content { grid-area: 1 / 1; align-self: end; position: relative; z-index: 2;
     display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0 1.1rem 1.2rem; }
   .cd-card-lisa .lisa-eyebrow { font-family: 'DM Mono', monospace; font-size: 0.66rem; letter-spacing: 0.28em;
     text-transform: uppercase; color: var(--la-cream); opacity: 0.92; }
@@ -2129,6 +2141,9 @@
   .cd-card-lisa .cd-sub { font-family: 'GaramondPremierPro', 'Cormorant Garamond', Georgia, serif;
     font-style: italic; font-size: 1.02rem; color: var(--la-cream); letter-spacing: 0.01em; margin-top: 0.05rem; }
   .cd-card-lisa .cd-sub b { color: var(--la-red); font-style: normal; font-weight: 700; }
+  .cd-card-lisa .cd-sub-local { display: block; font-size: 0.82rem; color: rgba(242,233,226,0.66);
+    letter-spacing: 0.01em; margin-top: 0.05rem; }
+  .cd-card-lisa .cd-sub-local:empty { display: none; }
   .cd-card-lisa .cd-timer { justify-content: center; gap: 0.7rem; margin: 0.15rem 0 0.1rem; }
   .cd-card-lisa .cd-unit { min-width: 0; background: none; border: none; padding: 0;
     display: flex; flex-direction: column; align-items: center; gap: 0.16rem; }
@@ -3717,7 +3732,13 @@
               <img class="lisa-word" src="/lisa-word.webp" alt="LISA" loading="lazy">
               <img class="lisa-pp" src="/lisa-pressplay.webp" alt="PRESS PLAY" loading="lazy">
               <div class="cd-badge-chip lisa-locket" id="lisa-badge" style="display:none;"><img src="/lisa-pressplay.webp" alt="" aria-hidden="true">Early Supporter</div>
-              <div class="cd-sub">Fri, Oct 23, 2026 · <b>1PM KST / 12AM EDT</b></div>
+              <!-- KST and EDT are the announced pair, and they answer the
+                   question for two countries. The line under them is the same
+                   instant on the reader's own clock, which is what everybody
+                   else is actually asking — and it carries the date, because
+                   west of about UTC-5 this drop lands the day before. -->
+              <div class="cd-sub">Fri, Oct 23, 2026 · <b>1PM KST / 12AM EDT</b>
+                <span class="cd-sub-local" data-local-target></span></div>
               <div class="cd-timer" data-timer></div>
               <div class="cd-goal" id="lisa-goal" style="display:none;">
                 <div class="cd-goal-top">
@@ -16670,6 +16691,19 @@ function renderHomeCountdowns() {
       const want = diff > 0 ? el.dataset.pre : el.dataset.post;
       if (el.textContent !== want) el.textContent = want;
     });
+    // The drop on the reader's own clock, worked out once. A card that names
+    // only the two timezones a label announced leaves everyone else doing
+    // arithmetic, and getting it wrong — which is how "it drops at midnight
+    // where you are" starts going round in the first place.
+    const localAt = card.querySelector('[data-local-target]');
+    if (localAt && !localAt.dataset.filled) {
+      localAt.dataset.filled = '1';
+      try {
+        localAt.textContent = new Intl.DateTimeFormat(undefined,
+          { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+          .format(new Date(Date.parse(card.dataset.target))) + ' your time';
+      } catch (e) {}
+    }
     if (!(diff > 0)) { timer.innerHTML = `<div class="cd-out">${card.dataset.live || 'OUT NOW ✨'}</div>`; return; }
     const d = Math.floor(diff / 86400000); diff %= 86400000;
     const h = Math.floor(diff / 3600000);  diff %= 3600000;
