@@ -122,6 +122,12 @@ jobs:
         if: always()
         run: node .github/scripts/test_sql_grants.mjs
 
+      # Every countdown prints its time on the reader's own clock, cross-checked
+      # against the foreign-zone label each card already hand-types.
+      - name: Local times on every countdown
+        if: always()
+        run: node .github/scripts/test_local_times.mjs
+
       # The share card's picture picker: one shared element that every release
       # rebuilds, checked on the canvas pixels rather than the state behind it.
       - name: The PRESS PLAY share picker

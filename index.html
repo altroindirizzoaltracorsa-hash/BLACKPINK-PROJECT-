@@ -1674,6 +1674,12 @@
 
   /* ── Home countdown cards (release / reveal timers) ── */
   .cd-section-label { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--pink); margin-bottom: 1.2rem; }
+  /* "...and what time is that where I am?" — the one question a card naming two
+     foreign timezones cannot answer for anybody else. Inherits the card's own
+     colour and font, so each release theme gets it without a rule of its own. */
+  .cd-sub-local { display: block; font-size: 0.92em; color: inherit; opacity: 0.7;
+    font-weight: 400; font-style: italic; letter-spacing: 0.01em; margin-top: 0.12rem; }
+  .cd-sub-local:empty { display: none; }
   .cd-wrap { display: flex; flex-direction: column; gap: 1.3rem; width: 100%; max-width: 100%; margin: 0 auto; }
   /* Carousel: a row of full-width slides that snap. align-items:flex-start, so
      each card keeps its own height — the track is as tall as the tallest, and
@@ -3766,12 +3772,17 @@
                    aria-label="PRESS PLAY pictures and the Tarantino MV frames">
                 <a class="cd-frame" href="/lisa-mona.webp" target="_blank" rel="noopener">
                   <img src="/strips/pressplay-mona.webp" loading="lazy" alt="LISA — the first PRESS PLAY image"></a>
-                <!-- preload=none, so a megabyte and a half is fetched only if
-                     somebody actually asks for it; the still above is its
-                     poster frame until then. -->
+                <!-- No controls. With preload=none the browser drew its own
+                     player over the poster — an outsized play button pinned to
+                     the left of the letterbox and a scrubber in the corner,
+                     which is what looked broken. It is the same silent loop it
+                     was as the card's hero instead, which is how it is meant to
+                     read. Muted and playsinline so it is allowed to; metadata
+                     only, so nothing is fetched until it is wanted. -->
                 <div class="cd-frame">
-                  <video src="/lisa-preview.mp4" poster="/strips/pressplay-mona.webp" preload="none"
-                         controls playsinline muted loop></video>
+                  <video src="/lisa-preview.mp4" poster="/strips/pressplay-mona.webp"
+                         preload="metadata" autoplay muted loop playsinline
+                         aria-label="LISA — PRESS PLAY preview"></video>
                 </div>
                 <a class="cd-frame" href="/tarantino/premiere.webp" target="_blank" rel="noopener">
                   <img src="/tarantino/premiere.webp" loading="lazy"
@@ -3827,7 +3838,7 @@
               <div class="st-film">From the Netflix film Steps · Nov 20</div>
             </div>
             <div class="cd-eyebrow">JENNIE · Original Song · Netflix Film</div>
-            <div class="cd-sub">Fri, Nov 20, 2026 · counting to the film's Netflix premiere · <b>12AM PT / 3AM ET</b></div>
+            <div class="cd-sub">Fri, Nov 20, 2026 · counting to the film's Netflix premiere · <b>12AM PT / 3AM ET</b><span class="cd-sub-local" data-local-target></span></div>
             <div class="cd-timer" data-timer></div>
             <div class="st-note">
               Jennie wrote and performs <b>“Someone to Hold”</b> for <b>Steps</b>, Netflix Animation's
@@ -3846,7 +3857,7 @@
             <div class="nt-hero"><img src="/newtrick/newtrick-cover.jpg" alt="ROSÉ — new trick (single cover)" loading="lazy"></div>
             <div class="nt-title">new trick</div>
             <div class="cd-eyebrow nt-eyebrow">ROSÉ · New Single · rosesarerosie.lnk.to</div>
-            <div class="cd-sub">World Premiere · Wed, Sep 17, 2026 · 7PM EDT / Thu, Sep 18 · 8AM KST</div>
+            <div class="cd-sub">World Premiere · Wed, Sep 17, 2026 · 7PM EDT / Thu, Sep 18 · 8AM KST<span class="cd-sub-local" data-local-target></span></div>
             <div class="cd-timer cd-timer-plain" data-timer></div>
             <div class="cd-badge-chip nt-locket" id="newtrick-badge" style="display:none;"><img src="/newtrick/newtrick-wordmark.png" alt="" aria-hidden="true">Early Supporter</div>
             <div class="cd-goal" id="newtrick-goal" style="display:none;">
@@ -3885,7 +3896,7 @@
             <a class="js-teaser" href="https://youtu.be/LzgE8ift2Uw" target="_blank" rel="noopener" title="Watch the JISOO — CLICK MV teaser"><img src="/jisoo-teaser.webp" alt="Watch the JISOO — CLICK MV teaser"></a>
             <div class="js-body">
               <img class="js-title" src="/jisoo-word-jisoo.webp" alt="JISOO" loading="lazy">
-              <div class="cd-sub"><span class="js-date">Thu, Sep 4, 2026</span><span class="js-tz">1PM KST / 12AM EDT</span></div>
+              <div class="cd-sub"><span class="js-date">Thu, Sep 4, 2026</span><span class="js-tz">1PM KST / 12AM EDT</span><span class="cd-sub-local" data-local-target></span></div>
               <div class="cd-eyebrow">JISOO · 1st Single · jisoo.io</div>
               <div class="cd-badge-chip js-locket" id="jisoo-badge" style="display:none;"><img src="/jisoo-heart.webp" alt="">Early Supporter</div>
               <div class="cd-timer" data-timer></div>
@@ -3947,7 +3958,7 @@
               <div class="sw-thai"><img src="/sawadika/sawadika.svg" alt="สวัสดีค่ะ — Sawadika"></div>
             </div>
             <div class="cd-eyebrow sw-eyebrow">LISA · New Single · lalisaofficial.com</div>
-            <div class="cd-sub">World Premiere · Fri, Sep 4, 2026 · 9AM KST / Thu, Sep 3 · 8PM EDT</div>
+            <div class="cd-sub">World Premiere · Fri, Sep 4, 2026 · 9AM KST / Thu, Sep 3 · 8PM EDT<span class="cd-sub-local" data-local-target></span></div>
             <div class="cd-timer cd-timer-plain" data-timer></div>
             <div class="cd-links">
               <a class="cd-btn sw-btn" href="https://www.lalisaofficial.com/" target="_blank" rel="noopener">Pre-save ↗</a>
