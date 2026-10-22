@@ -8989,8 +8989,16 @@ const MAMA_EVENT_URL = 'https://mnetplus.world/event/2026-mama';
 const MAMA_STANDING = { pos: 6, cat: 'Fans’ Choice Female', round: 1, at: '2026-10-18' };
 const MAMA_STANDING_MAX_AGE_DAYS = 5;
 
-function mamaStanding(now = Date.now()) {
-  const s = MAMA_STANDING;
+// `reading` is the stored standing, and only a test ever passes another. It has
+// to be injectable, because the round rule below CANNOT be exercised with the
+// real one: the only dates that reach a different round are more than
+// MAMA_STANDING_MAX_AGE_DAYS past the stored reading, so the age rule returns
+// null first and the round rule is never consulted. The check that was meant to
+// guard it therefore passed with the round rule deleted — and with it deleted,
+// an 18 Oct round-1 reading renders as "#6 … round 2 · checked 18 Oct", which is
+// the one thing this function exists to stop. Round 2 counts from zero.
+function mamaStanding(now = Date.now(), reading = MAMA_STANDING) {
+  const s = reading;
   if (!s || !s.pos || !s.at) return null;
   // The round the card is about: the one running, or the next one up.
   const r = MAMA_ROUNDS.find((x) => now >= x.from && now <= x.to)
