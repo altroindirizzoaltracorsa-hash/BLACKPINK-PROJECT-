@@ -1299,8 +1299,15 @@ export default async function handler(req, res) {
           }
         } catch {}
       }
+      // NAME the countries that could not be fetched, not just how many.
+      // A skipped country writes no row, and in chart_positions that is
+      // indistinguishable from "nobody charted there" — the stored date simply
+      // stops moving. Reading a count alone, the honest conclusion "Thailand
+      // has not charted since Oct 12" and the real one "Thailand keeps getting
+      // rate-limited out of the sweep" look exactly the same.
       return res.status(200).json({
         ok: true, date: today, upserted: upsertRows.length, skipped: skipped.length,
+        skippedCountries: [...new Set(skipped.map(s => s.country.toUpperCase()))].sort(),
         matchedCountries: [...new Set(upsertRows.map(r => r.country))].sort(),
       });
     } catch (err) { return res.status(500).json({ error: err.message }); }
