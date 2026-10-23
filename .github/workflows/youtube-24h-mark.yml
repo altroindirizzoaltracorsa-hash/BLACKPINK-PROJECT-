@@ -17,8 +17,17 @@ name: YouTube 24h Mark Capture
 #   captured 2026-09-03T00:00Z  SaWaDiKa teaser     (pinned by hand)
 #   captured 2026-09-03T04:00Z  JISOO CLICK teaser  (pinned +14s)
 #   captured 2026-09-04T04:00Z  s466YCiHfKw 7-day   (read back from the series, -8s)
-#   pending  2026-09-05T00:00Z  SaWaDiKa MV
-#   pending  2026-09-05T04:00Z  JISOO CLICK MV
+#   passed   2026-09-05T00:00Z  SaWaDiKa MV
+#   passed   2026-09-05T04:00Z  JISOO CLICK MV
+#   pending  2026-10-24T04:00Z  -5ZXrO_lYSA Tarantino MV 24h
+#   pending  2026-10-30T04:00Z  -5ZXrO_lYSA Tarantino MV 7-day
+#
+# KEEP THIS LIST CURRENT. A mark that is not here is not captured precisely —
+# the job finds nothing in window, exits 0 green, and the pin silently falls
+# back to whenever the hourly snapshot last ran. That fallback is weaker than
+# it sounds: the hourly job is scheduled every 20 min but GitHub sheds it, and
+# on 2026-10-23 it actually ran at 00:11, 05:06, 10:17, 15:15 and 19:22 — five
+# hour gaps, any one of which can straddle a mark.
 on:
   schedule:
     # Six chances spread over the two hours before the mark; GitHub sheds
@@ -56,7 +65,7 @@ jobs:
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           BASE: https://www.blinksunited.com
-          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-09-05T00:00:00Z,2026-09-05T04:00:00Z' }}
+          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-10-24T04:00:00Z,2026-10-30T04:00:00Z' }}
         run: |
           set -u
           now=$(date -u +%s)
