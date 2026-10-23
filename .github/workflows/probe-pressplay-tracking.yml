@@ -53,7 +53,7 @@ jobs:
             from information_schema.columns where table_name = 'track_daily_stats';
           select '  latest day recorded for LISA: ' || coalesce(max(d)::text, '(nothing)')
             from (
-              select s.stat_date as d from track_daily_stats s
+              select s.date as d from track_daily_stats s
                 join artist_tracks a on a.id = s.track_ref
                where a.artist_id = '5L1lO4eRHmJ7a0Q6csE5cT'
             ) x;
