@@ -432,6 +432,20 @@
   .weekly-table th.song-col { text-align: left; color: var(--pink); }
   .weekly-table td { padding: 0.8rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.68rem; }
   .weekly-table td.song-name { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.06em; color: var(--white); text-align: left; }
+  /* An EP folded into one row, opening to its tracks. Rows cannot nest, so the
+     group is a <tbody> and closed simply means its track rows are not laid
+     out — no height to animate, which is why this one has no transition while
+     the daily card does. */
+  .week-ep:not(.open) .week-ep-track { display: none; }
+  .weekly-table .week-ep-head { cursor: pointer; }
+  .weekly-table .week-ep-head:hover td { background: var(--card2); }
+  .week-ep-chev { display: inline-block; margin-left: 0.4rem; font-size: 0.6rem; color: var(--muted); transition: transform 0.25s ease; }
+  .week-ep.open .week-ep-chev { transform: rotate(180deg); }
+  /* The open group's extent, the same pink rule the daily card uses. On a
+     table it has to ride the first cell of every row in the group, since a
+     tbody will not paint a border of its own. */
+  .week-ep.open tr > td:first-child { border-left: 3px solid var(--pink); }
+  .week-ep-track .song-name { padding-left: 1.6rem; font-size: 0.8rem; color: rgba(245,240,240,0.8); }
   .week-cell-done { color: var(--pink); font-size: 0.9rem; }
   .week-cell-partial { color: rgba(245,240,240,0.4); font-size: 0.7rem; }
   .week-cell-empty { color: rgba(245,240,240,0.15); }
@@ -12108,6 +12122,15 @@ function toggleDailyEp(btn) {
   const open = item.classList.toggle('open');
   btn.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
+// The weekly table's EP rows. The row IS the control here — a <button> cannot
+// wrap a <tr> — so it carries role/tabindex and its own key handler, where the
+// daily card gets Enter and Space free from being a real button.
+function toggleWeekEp(row) {
+  const body = row.closest('.week-ep');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  row.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
 // Overall combined prestige badge — 1,000 in a day / 10,000 in a week across all
 // campaign tracks. Rendered under the daily and weekly challenges.
 function overallPrestigeBanner(combined, goal, period) {
@@ -14215,13 +14238,13 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
         ${dayLabels.map(d => `<th>${d}</th>`).join('')}
         <th>Total</th>
       </tr></thead>
-      <tbody>
-        ${gridTracks.map(t => {
+      ${(() => {
+        const weekRow = (t, nested) => {
           const wc = weekCounts[t.id] || 0;
           const wBadge = getWeeklyBadge(t.id, wc);
           const wNext  = (WEEKLY_TIERS[t.id] || []).find(tier => wc < tier.min);
           const d1 = dailyTier1(t.id);
-          return `<tr>
+          return `<tr${nested ? ' class="week-ep-track"' : ''}>
           <td class="song-name">${t.title}</td>
           ${weekDays.map(day => {
             if (!day) return `<td class="week-cell-future">—</td>`;
@@ -14233,8 +14256,45 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
           <td style="color:${wBadge ? 'var(--pink)' : 'var(--muted)'}; text-align:center;">
             ${wBadge ? `${wBadge.icon} <span data-i18n-keep>${wBadge.label}</span>` : (wNext ? `${wc}/${wNext.min}` : wc)}
           </td>
-        </tr>`;}).join('')}
-      </tbody>
+        </tr>`;
+        };
+
+        // The EP's summary row. Its day cells use the same vocabulary as a
+        // track's — ✓ / a number / · — but ✓ here means EVERY track in the EP
+        // cleared its own first tier that day, which is the honest reading of
+        // "the EP is done for Monday". A combined number against one combined
+        // bar would be a different, easier target wearing the same tick.
+        const weekEpRow = tile => {
+          const ids = tile.tracks.map(t => t.id);
+          const total = ids.reduce((s, id) => s + (weekCounts[id] || 0), 0);
+          const badges = ids.filter(id => getWeeklyBadge(id, weekCounts[id] || 0)).length;
+          return `<tr class="week-ep-head" onclick="toggleWeekEp(this)" tabindex="0" role="button"
+            aria-expanded="false"
+            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleWeekEp(this);}">
+          <td class="song-name">${tile.group.label}<span class="week-ep-chev" aria-hidden="true">▾</span></td>
+          ${weekDays.map(day => {
+            if (!day) return `<td class="week-cell-future">—</td>`;
+            const c = ids.reduce((s, id) => s + (day.counts[id] || 0), 0);
+            const allDone = ids.every(id => (day.counts[id] || 0) >= dailyTier1(id));
+            if (allDone) return `<td class="week-cell-done">✓<br><span style="font-size:0.4rem;color:var(--muted)">${c}</span></td>`;
+            if (c > 0)   return `<td class="week-cell-partial">${c}</td>`;
+            return `<td class="week-cell-empty">·</td>`;
+          }).join('')}
+          <td style="color:${badges ? 'var(--pink)' : 'var(--muted)'}; text-align:center;">
+            ${total}${badges ? `<br><span style="font-size:0.45rem;letter-spacing:0.1em;">${badges}/${ids.length} badges</span>` : ''}
+          </td>
+        </tr>`;
+        };
+
+        // One <tbody> per tile. A group's rows have to share a parent for the
+        // open/closed rule to reach them, and tbody is the only element a
+        // table will accept around a run of rows.
+        return tiles.map(tile => tile.kind === 'ep'
+          ? `<tbody class="week-ep" data-ep="${tile.group.key}">
+               ${weekEpRow(tile)}${tile.tracks.map(t => weekRow(t, true)).join('')}
+             </tbody>`
+          : `<tbody>${weekRow(tile.track)}</tbody>`).join('');
+      })()}
     </table>
     ${overallPrestigeBanner(weekCombined, 10000, 'week')}
   `;

@@ -181,6 +181,116 @@ for (const vp of [{width:1280,height:1000,name:'desktop'},{width:430,height:950,
     ? bad('pre-release: the unreleased five are absent', prePP.loose.join(', '))
     : ok('pre-release: the unreleased five are absent');
 
+  // ── the weekly table ──────────────────────────────────────────────────────
+  // Same grouping, different mechanics: rows cannot nest, so a group is a
+  // <tbody> and closed means its track rows are not laid out at all. Re-render
+  // at today's clock first, since the pre-release check above left the table
+  // drawn with PRESS PLAY ungrouped.
+  await page.evaluate(() => {
+    const counts = zeroTrackCounts();
+    SCROBBLE_TRACK_IDS.forEach((id, i) => { counts[id] = (i + 1) * 3; });
+    // A week of days, so the day cells have something to sum rather than all
+    // reading "—". Monday is deliberately a clean sweep and Tuesday is not.
+    const sweep = {}, partial = {};
+    for (const id of SCROBBLE_TRACK_IDS) { sweep[id] = 9999; partial[id] = 1; }
+    // Tuesday must be a genuine MIX inside each EP — one track over its tier,
+    // the rest under. With nothing cleared, "every track done" and "any track
+    // done" agree, and a group tick that fires on ANY track passes unnoticed.
+    for (const g of EP_RELEASES) partial[g.songs[0]] = 9999;
+    window.__wkPartial = partial;   // the check below needs the day's counts
+    const weekDays = [{ label: 'Mon', counts: sweep }, { label: 'Tue', counts: partial },
+                      ...Array.from({ length: 5 }, () => null)];
+    renderProfile({
+      info: { name: 'test', playcount: 0, registered: { unixtime: 0 }, image: [] },
+      artistPlays: 0, totalPlays: counts, todayCounts: counts, weekCounts: counts,
+      weekDays, lastScrobbleTs: null, memberPlays: zeroMemberPlays(),
+    });
+  });
+  await page.waitForTimeout(300);
+
+  const wk = await page.evaluate(() => {
+    const table = document.querySelector('#weekly-challenge-grid .weekly-table');
+    const groups = [...table.querySelectorAll('tbody.week-ep')];
+    const laidOut = tr => !!tr.offsetParent || tr.getClientRects().length > 0;
+    return {
+      headerCells: table.querySelectorAll('thead th').length,
+      // Every row must have exactly as many cells as the header, group rows
+      // included: one short and the whole week shifts a column to the left.
+      ragged: [...table.querySelectorAll('tr')]
+        .filter(tr => tr.querySelectorAll('td').length &&
+                      tr.querySelectorAll('td').length !== table.querySelectorAll('thead th').length)
+        .map(tr => `${tr.querySelector('td')?.textContent.trim()}=${tr.querySelectorAll('td').length}`),
+      groups: groups.map(g => ({
+        key: g.dataset.ep,
+        label: g.querySelector('.week-ep-head .song-name').textContent.replace('▾','').trim(),
+        total: Number(g.querySelector('.week-ep-head td:last-child').textContent.trim().split('\n')[0]),
+        trackTotals: [...g.querySelectorAll('.week-ep-track')].map(tr =>
+          Number(tr.querySelector('td:last-child').textContent.trim().split('/')[0].replace(/[^0-9]/g,'') || 0)),
+        trackNames: [...g.querySelectorAll('.week-ep-track .song-name')].map(e => e.textContent.trim()),
+        tracksLaidOut: [...g.querySelectorAll('.week-ep-track')].filter(laidOut).length,
+        // Monday was a clean sweep for everything, Tuesday was not.
+        monDone: g.querySelector('.week-ep-head td:nth-child(2)').className === 'week-cell-done',
+        tueDone: g.querySelector('.week-ep-head td:nth-child(3)').className === 'week-cell-done',
+        // The NUMBER in the day cell, not just its styling: a cell summing
+        // every track on the page still shows "partial" on a partial day.
+        tueShown: Number(g.querySelector('.week-ep-head td:nth-child(3)').textContent.replace(/[^0-9]/g,'') || 0),
+        tueOwn: EP_RELEASES.find(e => e.key === g.dataset.ep).songs
+                  .reduce((s, id) => s + (window.__wkPartial[id] || 0), 0),
+      })),
+      looseRowCount: table.querySelectorAll('tbody:not(.week-ep) tr').length,
+    };
+  });
+
+  console.log(`    weekly: ${wk.groups.length} group tbodies, ${wk.looseRowCount} loose rows`);
+  wk.ragged.length ? bad('every weekly row has a full set of cells', wk.ragged.join(', '))
+                   : ok('every weekly row has a full set of cells', `${wk.headerCells} columns`);
+  wk.groups.length === 2 ? ok('both EPs are folded into a weekly row')
+                         : bad('both EPs are folded into a weekly row', `${wk.groups.length}`);
+  for (const g of wk.groups) {
+    const sum = g.trackTotals.reduce((a, b) => a + b, 0);
+    g.total === sum ? ok(`${g.label}: the weekly total is the sum of its tracks`, `${g.total}`)
+                    : bad(`${g.label}: the weekly total is the sum of its tracks`, `row ${g.total} vs ${sum}`);
+    g.tracksLaidOut === 0 ? ok(`${g.label}: its track rows start hidden`)
+                          : bad(`${g.label}: its track rows start hidden`, `${g.tracksLaidOut} laid out`);
+    // ✓ on a group day must mean EVERY track cleared its own tier that day.
+    g.monDone ? ok(`${g.label}: a clean sweep day shows done`)
+              : bad(`${g.label}: a clean sweep day shows done`);
+    g.tueDone ? bad(`${g.label}: a partial day does NOT show done`)
+              : ok(`${g.label}: a partial day does NOT show done`);
+    g.tueShown === g.tueOwn
+      ? ok(`${g.label}: the day cell counts only its own tracks`, `${g.tueShown}`)
+      : bad(`${g.label}: the day cell counts only its own tracks`, `shows ${g.tueShown}, its tracks did ${g.tueOwn}`);
+  }
+
+  // Opened by keyboard, because the row is the control and had to grow its own
+  // key handler — the daily card gets Enter and Space free from being a button.
+  const wkHead = page.locator('.week-ep[data-ep="pressplay"] .week-ep-head');
+  await wkHead.focus();
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  const afterKey = await page.evaluate(() => {
+    const g = document.querySelector('.week-ep[data-ep="pressplay"]');
+    return {
+      open: g.classList.contains('open'),
+      expanded: g.querySelector('.week-ep-head').getAttribute('aria-expanded'),
+      laidOut: [...g.querySelectorAll('.week-ep-track')].filter(tr => tr.getClientRects().length > 0).length,
+      rule: getComputedStyle(g.querySelector('.week-ep-track td')).borderLeftWidth,
+    };
+  });
+  afterKey.open && afterKey.expanded === 'true'
+    ? ok('Enter opens a weekly EP row') : bad('Enter opens a weekly EP row', JSON.stringify(afterKey));
+  afterKey.laidOut === 6 ? ok('all six tracks appear once open')
+                         : bad('all six tracks appear once open', `${afterKey.laidOut} laid out`);
+  afterKey.rule === '3px' ? ok('the open group is ruled down the left', afterKey.rule)
+                          : bad('the open group is ruled down the left', afterKey.rule);
+
+  await wkHead.click();
+  await page.waitForTimeout(300);
+  const wkClosed = await page.evaluate(() =>
+    [...document.querySelectorAll('.week-ep[data-ep="pressplay"] .week-ep-track')]
+      .filter(tr => tr.getClientRects().length > 0).length);
+  wkClosed === 0 ? ok('clicking closes it again') : bad('clicking closes it again', `${wkClosed} still laid out`);
+
   if (errs.length) { console.log('    page errors: ' + errs.slice(0,4).join(' | ')); fails += errs.length; }
   await page.close();
 }
