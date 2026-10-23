@@ -1,0 +1,39 @@
+name: Probe discovery for LISA
+
+# Two questions, one run, nothing written.
+#
+# 1. Why does `Preview new-release discovery` list no artists? It asks
+#    PostgREST for /tracked_artists the same way the nightly fetch does, and
+#    the nightly fetch plainly gets five — so the answer is in the raw
+#    response, not in reading the call again. This prints the status and the
+#    body (never the key).
+# 2. Would auto-discovery add LISA's PRESS PLAY tracks? Asked by running the
+#    real scan_recent_tracks against her discography, not by inference.
+#
+# Read-only. Results come back as ::notice annotations: the job log is served
+# from blob storage a Claude Code session cannot fetch.
+on:
+  workflow_dispatch:
+    inputs:
+      within_days:
+        description: "Recency window in days (default 75)."
+        required: false
+        default: "75"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: pip install spotifyscraper httpx
+      - name: Ask PostgREST, then ask Spotify
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          WITHIN_DAYS: ${{ github.event.inputs.within_days }}
+        run: python .github/scripts/probe_discovery_lisa.py
