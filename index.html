@@ -11965,6 +11965,14 @@ const DAILY_TIERS = {
   fallenangel: makeTiers(30, 'FALLEN ANGEL'),
   heaven:      makeTiers(30, 'HEAVEN'),
   newtrick:    makeTiers(40, 'NEW TRICK'),
+  // PRESS PLAY EP (LISA). Base 30, as the Fallen Angel EP's tracks use;
+  // singles use 40. SaWaDiKa keeps the 40 it was given as a single —
+  // it has a month of counts earned against that bar.
+  v12:         makeTiers(30, 'V12'),
+  cobra:       makeTiers(30, 'COBRA'),
+  tarantino:   makeTiers(30, 'TARANTINO'),
+  cutuoff:     makeTiers(30, 'CUT U OFF'),
+  sweat:       makeTiers(30, 'SWEAT'),
 };
 
 const WEEKLY_TIERS = {
@@ -11978,6 +11986,14 @@ const WEEKLY_TIERS = {
   fallenangel: makeTiers(30 * 7, 'FALLEN ANGEL', '/wk'),
   heaven:      makeTiers(30 * 7, 'HEAVEN',       '/wk'),
   newtrick:    makeTiers(40 * 7, 'NEW TRICK',    '/wk'),
+  // PRESS PLAY EP (LISA). Base 30, as the Fallen Angel EP's tracks use;
+  // singles use 40. SaWaDiKa keeps the 40 it was given as a single —
+  // it has a month of counts earned against that bar.
+  v12:         makeTiers(30 * 7, 'V12', '/wk'),
+  cobra:       makeTiers(30 * 7, 'COBRA', '/wk'),
+  tarantino:   makeTiers(30 * 7, 'TARANTINO', '/wk'),
+  cutuoff:     makeTiers(30 * 7, 'CUT U OFF', '/wk'),
+  sweat:       makeTiers(30 * 7, 'SWEAT', '/wk'),
 };
 
 function getDailyBadge(trackId, count) {
