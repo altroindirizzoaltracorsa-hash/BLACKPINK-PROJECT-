@@ -71,8 +71,17 @@ def _report(lines):
     keep = [l for l in lines
             if "NEW" in l or l.startswith("===") or "new to add" in l
             or "no releases in window" in l or l.startswith("Recency window")]
-    blob = "%0A".join(l.replace("%", "%25").replace("\r", "") for l in keep)
-    print(f"::notice title=discovery::{blob[:60000]}")
+    # A literal newline ENDS a workflow command: everything after it becomes
+    # ordinary log output, which on this repo means it is gone, since the log
+    # is served from blob storage a Claude Code session cannot fetch. The very
+    # first kept line here ends in \n, so the annotation was one line long and
+    # read exactly like "discovery found no artists" — which is how the
+    # auto-discovery of a release night came to look broken when it was not.
+    # %0A is the only line break a command carries; 4096 is the message cap.
+    blob = "%0A".join(
+        l.replace("%", "%25").replace("\r", "").replace("\n", " ")
+        for l in keep)
+    print(f"::notice title=discovery::{blob[:3500]}")
 
 
 if __name__ == "__main__":
