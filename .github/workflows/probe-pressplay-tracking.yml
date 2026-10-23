@@ -49,7 +49,7 @@ jobs:
           select '  daily rows in the last 5 days: ' || count(*) ||
                  ' (latest day ' || coalesce(max(day)::text,'none') || ')'
             from track_daily_stats s
-            join artist_tracks a on a.id = s.track_id
+            join artist_tracks a on a.id = s.track_ref
            where a.artist_id = '5L1lO4eRHmJ7a0Q6csE5cT'
              and s.day > current_date - 5;
           SQL
