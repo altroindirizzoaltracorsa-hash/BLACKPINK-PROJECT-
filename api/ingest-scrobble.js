@@ -29,6 +29,13 @@ const TRACKS = [
   { id: 'fallenangel', artist: 'jennie',    track: 'fallen angel' },
   { id: 'heaven',      artist: 'jennie',    track: 'heaven' },
   { id: 'newtrick',    artist: 'rosé',      track: 'new trick' },
+  // PRESS PLAY EP (LISA). SaWaDiKa is track 1 and already has its own entry
+  // above — it keeps the id and the history it had as a September single.
+  { id: 'v12',         artist: 'lisa',      track: 'v12' },
+  { id: 'cobra',       artist: 'lisa',      track: 'cobra' },
+  { id: 'tarantino',   artist: 'lisa',      track: 'tarantino' },
+  { id: 'cutuoff',     artist: 'lisa',      track: 'cut u off' },
+  { id: 'sweat',       artist: 'lisa',      track: 'sweat' },
 ];
 
 function norm(s) {

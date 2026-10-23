@@ -63,6 +63,19 @@ const TRACKS = [
   // toward the campaign *_all sums + community goal and drives its own NEW TRICK
   // board. No plays exist until release, so it contributes 0 until then.
   { id: 'newtrick',    artist: 'ROSÉ',   track: 'new trick' },
+  // PRESS PLAY EP (LISA, 2026-10-23) — grouped under the "Press Play EP"
+  // leaderboard tab. SaWaDiKa is track 1 of this EP and is NOT repeated here: it
+  // shipped as a single in September, so it keeps the id, the history and the
+  // campaign scope it already had, and only moves under the EP tab in the UI.
+  // The rest follow the Fallen Angel EP's treatment exactly — their own per-track
+  // boards and the community total, but kept OUT of the campaign *_all ranking
+  // sums and out of the durable user_daily_counts columns, which stay
+  // campaign-scoped.
+  { id: 'v12',        artist: 'LISA',   track: 'V12' },
+  { id: 'cobra',      artist: 'LISA',   track: 'Cobra' },
+  { id: 'tarantino',  artist: 'LISA',   track: 'Tarantino' },
+  { id: 'cutuoff',    artist: 'LISA',   track: 'Cut U Off' },
+  { id: 'sweat',      artist: 'LISA',   track: 'Sweat' },
 ];
 
 // Less Than a Lover leaves the campaign at the reset cutoff. Per-track ltal values
@@ -318,7 +331,7 @@ async function extensionCountsForUsers(sb, appUserIds, dayFrom, dayTo, weekFrom,
   // Includes the Fallen Angel EP ids so the extension's per-song plays fold into
   // overall_fallenangel / overall_heaven (the EP boards). They're excluded from
   // campaignTotal / *_all above, so this never inflates the campaign totals.
-  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 });
+  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0 });
   const out = { total: empty(), week: empty(), today: empty() };
   if (!sb || !appUserIds || !appUserIds.length) return out;
   // Counted in the database (see supabase/extension_counts_fn.sql) so it scales
@@ -396,10 +409,10 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
   const { from: dayFrom, to: dayTo }   = getDayBounds();
   const { from: weekFrom, to: weekTo } = getWeekBounds();
 
-  const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 };
+  const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0 };
   let artistPlays   = 0;
-  const todayCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 };
-  const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 };
+  const todayCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0 };
+  const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0 };
   let lastScrobbleAt = entry.lastScrobbleAt || null;
   // Per-scrobbler split of TODAY's counts, for the personal history calendar. Each
   // key is a human label ("Last.fm · Alice9629", "BU Extension", "Musicat / Stats.fm")
