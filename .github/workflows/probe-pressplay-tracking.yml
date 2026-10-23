@@ -57,6 +57,19 @@ jobs:
                 join artist_tracks a on a.id = s.track_ref
                where a.artist_id = '5L1lO4eRHmJ7a0Q6csE5cT'
             ) x;
+          -- ...and the same for everyone, because "LISA is two days behind" and
+          -- "Spotify has not published since Tuesday" look identical from one
+          -- artist and mean opposite things: the first is ours to fix, the
+          -- second is simply waiting.
+          select '  latest day per artist: ' || string_agg(
+                   t.name || ' ' || coalesce(x.d::text, '(nothing)'), ', ' order by t.name)
+            from tracked_artists t
+            left join lateral (
+              select max(s.date) as d from track_daily_stats s
+                join artist_tracks a on a.id = s.track_ref
+               where a.artist_id = t.spotify_artist_id
+            ) x on true
+           where t.active;
           SQL
           rc=$?
           set -e
