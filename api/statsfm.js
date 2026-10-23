@@ -171,6 +171,13 @@ export default async function handler(request) {
       { id: 'fallenangel', prefix: 'fallen angel',      artist: 'JENNIE' },
       { id: 'heaven',      prefix: 'heaven',            artist: 'JENNIE' },
       { id: 'newtrick',    prefix: 'new trick',         artist: 'ROSÉ' },
+      // PRESS PLAY EP (LISA). SaWaDiKa is track 1 and already has its entry
+      // above — it keeps the id it has carried since September.
+      { id: 'v12',         prefix: 'v12',               artist: 'LISA' },
+      { id: 'cobra',       prefix: 'cobra',             artist: 'LISA' },
+      { id: 'tarantino',   prefix: 'tarantino',         artist: 'LISA' },
+      { id: 'cutuoff',     prefix: 'cut u off',         artist: 'LISA' },
+      { id: 'sweat',       prefix: 'sweat',             artist: 'LISA' },
     ];
 
     function countTracks(list) {
