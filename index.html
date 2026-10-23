@@ -4252,7 +4252,9 @@
       <div id="community-goal-home" style="display:none;margin-top:1.5rem;max-width:900px;width:calc(100% + 4rem);margin-left:-2rem;margin-right:-2rem;">
         <div class="goal-tracker-card">
           <div class="goal-tracker-top">
-            <span class="goal-tracker-label">// Today's Community Goal — JUMP + Shut Down + DDU-DU DDU-DU + GO + CLICK + SaWaDiKa + Fallen Angel EP + new trick</span>
+            <!-- SaWaDiKa is not listed beside Press Play: it is track 1 of that
+                 EP, so naming both would count it twice to the reader's eye. -->
+            <span class="goal-tracker-label">// Today's Community Goal — JUMP + Shut Down + DDU-DU DDU-DU + GO + CLICK + Press Play EP + Fallen Angel EP + new trick</span>
             <span class="goal-tracker-right">
               <span class="goal-tracker-nums" id="community-goal-nums">0<span> / 15,000 scrobbles</span></span>
               <span class="goal-pct" id="community-goal-pct">0%</span>
@@ -4848,9 +4850,20 @@
         <button class="lb-subtab" onclick="switchLbSong('ddududu', this)">DDU-DU DDU-DU</button>
         <button class="lb-subtab" onclick="switchLbSong('go', this)">GO</button>
         <button class="lb-subtab" id="lb-subtab-faep" style="display:none" onclick="openFaEpLeaderboard(this)">FALLEN ANGEL EP ▾</button>
-        <button class="lb-subtab" onclick="switchLbSong('sawadika', this)">SAWADIKA</button>
+        <button class="lb-subtab" id="lb-subtab-pressplay" onclick="openPressPlayLeaderboard(this)">PRESS PLAY EP ▾</button>
         <button class="lb-subtab" onclick="switchLbSong('click', this)">CLICK</button>
         <button class="lb-subtab" id="lb-subtab-newtrick" style="display:none" onclick="switchLbSong('newtrick', this)">NEW TRICK</button>
+      </div>
+      <!-- Nested per-track row for PRESS PLAY — shown only when that tab is open.
+           SaWaDiKa is track 1 and leads it; it kept the `sawadika` id it had as a
+           September single, so every play counted since then is still its own. -->
+      <div class="lb-subtabs lb-ep-subtabs" id="lb-pp-subtabs" style="display:none">
+        <button class="lb-subtab active" onclick="switchLbSong('sawadika', this)">SAWADIKA</button>
+        <button class="lb-subtab" onclick="switchLbSong('v12', this)">V12</button>
+        <button class="lb-subtab" onclick="switchLbSong('cobra', this)">COBRA</button>
+        <button class="lb-subtab" onclick="switchLbSong('tarantino', this)">TARANTINO</button>
+        <button class="lb-subtab" onclick="switchLbSong('cutuoff', this)">CUT U OFF</button>
+        <button class="lb-subtab" onclick="switchLbSong('sweat', this)">SWEAT</button>
       </div>
       <!-- Nested per-track row for the Fallen Angel EP — shown only when that tab is open -->
       <div class="lb-subtabs lb-ep-subtabs" id="lb-ep-subtabs" style="display:none">
@@ -9019,7 +9032,9 @@ const EP_TRACK_IDS = ['ltal', 'fallenangel', 'heaven'];
 // the community goal. The whole Fallen Angel EP (LTAL + Fallen Angel + Heaven) is
 // now included so a new release lifts the community goal and the board (the daily
 // STAMP stays campaign-only — see CAMPAIGN_TRACK_IDS above).
-const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven', 'sawadika', 'click', 'newtrick'];
+// PRESS PLAY's other five join SaWaDiKa here: the EP counts toward the
+// community goal, the way the Fallen Angel EP does.
+const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven', 'sawadika', 'click', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat'];
 function campaignTotalOf(tp) { return CAMPAIGN_TOTAL_IDS.reduce((s, id) => s + (tp?.[id] || 0), 0); }
 
 // ── MOMENTARY: Fallen Angel EP push ──────────────────────────
@@ -14796,10 +14811,11 @@ function computeDailyCommunityTotal(users) {
     if (secondaryKeys.has(username.toLowerCase())) return sum;
     const s = d.scores || {};
     if (s.daily_date !== todayLabel) return sum;
-    // Whole campaign incl. the Fallen Angel EP (LTAL + Fallen Angel + Heaven), so a
+    // Whole campaign incl. both EPs — Fallen Angel (LTAL + Fallen Angel +
+    // Heaven) and PRESS PLAY (SaWaDiKa + the five new tracks) — so a
     // release lifts the community goal — mirrors CAMPAIGN_TOTAL_IDS / daily_all.
     return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
-      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_newtrick || 0);
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_newtrick || 0);
   }, 0);
 }
 
@@ -16260,19 +16276,27 @@ function parseLbHistoryParam() {
 }
 
 // The three Fallen Angel EP tracks live under the nested "Fallen Angel EP" tab.
-const EP_SONGS = ['fallenangel', 'heaven', 'ltal'];
+// Each EP tab owns a nested row and the songs inside it. Two groups now, so a
+// song has to say which row it opens — picking the one by hand is how the wrong
+// row ends up open under a lit tab.
+const EP_GROUPS = [
+  { tab: 'lb-subtab-faep',      row: 'lb-ep-subtabs', songs: ['fallenangel', 'heaven', 'ltal'] },
+  { tab: 'lb-subtab-pressplay', row: 'lb-pp-subtabs',
+    songs: ['sawadika', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat'] },
+];
+const EP_SONGS = EP_GROUPS.flatMap(g => g.songs);
 
 function switchLbSong(song, btn) {
   lbSong = song;
   document.querySelectorAll('.lb-subtabs .lb-subtab').forEach(b => b.classList.remove('active'));
-  const epRow = document.getElementById('lb-ep-subtabs');
-  const epTab = document.getElementById('lb-subtab-faep');
-  if (EP_SONGS.includes(song)) {
-    // Keep the EP group open: reveal the nested row and keep the parent tab lit.
-    if (epRow) epRow.style.display = 'flex';
-    if (epTab) epTab.classList.add('active');
-  } else if (epRow) {
-    epRow.style.display = 'none';
+  // Keep the owning EP group open — its nested row revealed and its parent tab
+  // lit — and every other group shut.
+  for (const g of EP_GROUPS) {
+    const row = document.getElementById(g.row);
+    const tab = document.getElementById(g.tab);
+    const mine = g.songs.includes(song);
+    if (row) row.style.display = mine ? 'flex' : 'none';
+    if (tab && mine) tab.classList.add('active');
   }
   if (btn) btn.classList.add('active');
   renderLeaderboard();
@@ -16280,6 +16304,12 @@ function switchLbSong(song, btn) {
 
 // The "Fallen Angel EP" parent tab — opens the nested track row, defaulting to the
 // title track. Brought Less Than a Lover back inside this group.
+// The "Press Play EP" parent tab — opens its row on SaWaDiKa, track 1.
+function openPressPlayLeaderboard() {
+  const first = document.querySelector('#lb-pp-subtabs .lb-subtab');
+  switchLbSong('sawadika', first);
+}
+
 function openFaEpLeaderboard() {
   const first = document.querySelector('#lb-ep-subtabs .lb-subtab');
   switchLbSong('fallenangel', first);
