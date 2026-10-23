@@ -959,11 +959,35 @@ export default async function handler(req, res) {
       }
       if (!result.ok) return res.status(200).json({ ok: false, alias: result.alias, status: result.status });
       const entries = result.data?.entries ?? result.data?.displayChart?.entries ?? [];
+      // Which tracked artists are on THIS chart, by the same artist-id rule the
+      // sweep uses. One country, one request — the only way to ask "is a member
+      // actually charting in Thailand" without a 74-country sweep, which under
+      // rate limiting can skip every country, write nothing, and still return
+      // ok. Without this, a country that was skipped and a country where nobody
+      // charted leave exactly the same trace: a date that stops moving.
+      const matched = [];
+      for (const e of entries) {
+        const meta = e.trackMetadata || e.albumMetadata || e.artistMetadata || {};
+        const artists = meta.artists || (meta.artistUri ? [{ spotifyUri: meta.artistUri, name: meta.artistName }] : []);
+        for (const a of artists) {
+          const id = (a.spotifyUri || '').startsWith('spotify:artist:')
+            ? a.spotifyUri.slice('spotify:artist:'.length) : null;
+          if (id && CHARTS_TRACKED_ARTISTS[id]) {
+            matched.push({
+              rank: e.chartEntryData?.currentRank,
+              artist: CHARTS_TRACKED_ARTISTS[id],
+              name: meta.trackName || meta.albumName || meta.artistName || '',
+            });
+            break;
+          }
+        }
+      }
       return res.status(200).json({
         ok: true, alias: result.alias, topKeys: Object.keys(result.data || {}), entryCount: entries.length,
+        matchedCount: matched.length, matched: matched.slice(0, 12),
         entry0Keys: entries[0] ? Object.keys(entries[0]) : [],
-        entry0: JSON.stringify(entries[0] || {}).slice(0, 1100),
-        sample: entries.slice(0, 3).map(e => ({ rank: e.chartEntryData?.currentRank, ...(e.trackMetadata || e.albumMetadata || e.artistMetadata || {}) })),
+        entry0: JSON.stringify(entries[0] || {}).slice(0, 300),
+        sample: entries.slice(0, 2).map(e => ({ rank: e.chartEntryData?.currentRank, ...(e.trackMetadata || e.albumMetadata || e.artistMetadata || {}) })),
       });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
