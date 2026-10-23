@@ -91,12 +91,25 @@ def discovery_for_lisa(within):
 
 
 def report():
+    """One annotation per line.
+
+    A single newline-joined blob came back cut after 149 characters — two
+    lines of a thirty-line answer, which is worse than no answer because it
+    looks complete. Every other probe in this repo emits one ::notice per
+    line and those arrive whole, so this does the same, splitting any line
+    long enough to be at risk."""
     path = os.environ.get("GITHUB_STEP_SUMMARY")
     if path:
         with open(path, "a") as f:
             f.write("```\n" + "\n".join(lines) + "\n```\n")
-    blob = "%0A".join(l.replace("%", "%25").replace("\r", "") for l in lines)
-    print(f"::notice title=discovery-probe::{blob[:60000]}")
+    # Numbered, because the annotations API does not hand them back in the
+    # order they were emitted and an unordered tracklist is not a tracklist.
+    n = 0
+    for line in lines:
+        clean = line.replace("%", "%25").replace("\r", "").replace("\n", " ")
+        for i in range(0, max(len(clean), 1), 120):
+            n += 1
+            print(f"::notice title=discovery-probe::{n:03d} {clean[i:i + 120]}")
 
 
 if __name__ == "__main__":
