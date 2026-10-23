@@ -29,6 +29,10 @@ on:
         description: 'Set to 1 to send the admin secret — needed for admin-gated endpoints like /api/youtube-history, which 401 without it.'
         required: false
         default: ''
+      show:
+        description: 'Print this many bytes of the body (e.g. 600). A 200 can still be a refusal; the size and the text say which.'
+        required: false
+        default: ''
 
 jobs:
   probe:
@@ -40,6 +44,7 @@ jobs:
           EXPECT: ${{ github.event.inputs.expect }}
           FORBID: ${{ github.event.inputs.forbid }}
           ADMIN: ${{ github.event.inputs.admin }}
+          SHOW: ${{ github.event.inputs.show }}
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
         run: |
           set -u
@@ -61,6 +66,15 @@ jobs:
           fi
           echo "HTTP $code · $(wc -c </tmp/page) bytes"
           if [ "$code" != "200" ]; then echo "::error::expected HTTP 200, got $code"; exit 1; fi
+
+          # A 200 is not the same as an answer: an endpoint that cannot serve a
+          # country returns a short refusal body with a 200, which byte count
+          # alone hints at and the text settles. A literal newline would end
+          # the workflow command, so the body is flattened into one line.
+          if [ -n "$SHOW" ]; then
+            head -c "$SHOW" /tmp/page | tr '\n\r' '  ' | sed 's/%/%25/g' \
+              | while IFS= read -r l; do echo "::notice title=body::$l"; done
+          fi
 
           fail=0
           # ||| as the separator, not newline or comma: the strings being looked
