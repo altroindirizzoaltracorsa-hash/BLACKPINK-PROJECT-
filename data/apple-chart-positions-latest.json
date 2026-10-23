@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-22T13:21:46.289Z",
-  "date": "2026-10-22",
+  "generatedAt": "2026-10-23T13:00:17.105Z",
+  "date": "2026-10-23",
   "regions": {
     "us": {
       "region": "United States",
@@ -63,7 +63,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 146,
+          "position": 133,
           "name": "APT.",
           "artists": "ROSÉ & Bruno Mars",
           "member": "ROSÉ"
@@ -82,13 +82,13 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 95,
+          "position": 90,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
         },
         {
-          "position": 158,
+          "position": 140,
           "name": "APT.",
           "artists": "ROSÉ & Bruno Mars",
           "member": "ROSÉ"
@@ -101,7 +101,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 160,
+          "position": 134,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -126,7 +126,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 89,
+          "position": 88,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
@@ -429,7 +429,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 107,
+          "position": 102,
           "name": "APT.",
           "artists": "ROSÉ & Bruno Mars",
           "member": "ROSÉ"
@@ -440,7 +440,14 @@
       "region": "Netherlands",
       "cc": "nl",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 198,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
     },
     "se": {
       "region": "Sweden",
@@ -619,7 +626,7 @@
     }
   },
   "summary": {
-    "totalHits": 59,
+    "totalHits": 60,
     "regionsChecked": 40
   }
 }
