@@ -32,7 +32,7 @@ function communityGoalTotal(users, todayDDMM) {
     // Whole campaign incl. the Fallen Angel EP — matches computeDailyCommunityTotal
     // (client) and the record-goal path in leaderboard.js so all three agree.
     return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
-      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_newtrick || 0);
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_newtrick || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0);
   }, 0);
 }
 
@@ -431,7 +431,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       // return scrobbles newest-first, so today's counts, the weekly counts,
       // and the most recent BLACKPINK scrobble can all be derived from one
       // paginated range instead of re-fetching/re-paginating once per day.
-      const [ap, jumpPlays, shutdownPlays, ddududuPlays, ltalPlays, goPlays, swPlays, clPlays, faPlays, heavenPlays, ntPlays, weekSc] = await Promise.all([
+      const [ap, jumpPlays, shutdownPlays, ddududuPlays, ltalPlays, goPlays, swPlays, clPlays, faPlays, heavenPlays, ntPlays, v12Plays, cobraPlays, tarantinoPlays, cutuoffPlays, sweatPlays, weekSc] = await Promise.all([
         fetchArtistPlays(u, 'BLACKPINK', fetchFn),
         fetchTrackPlays(u, 'BLACKPINK', 'JUMP', fetchFn),
         fetchTrackPlays(u, 'BLACKPINK', 'Shut Down', fetchFn),
@@ -443,6 +443,11 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         fetchTrackPlays(u, 'Jennie', 'Fallen Angel', fetchFn),
         fetchTrackPlays(u, 'Jennie', 'Heaven', fetchFn),
         fetchTrackPlays(u, 'ROSÉ', 'new trick', fetchFn),
+        fetchTrackPlays(u, 'LISA', 'V12', fetchFn),
+        fetchTrackPlays(u, 'LISA', 'Cobra', fetchFn),
+        fetchTrackPlays(u, 'LISA', 'Tarantino', fetchFn),
+        fetchTrackPlays(u, 'LISA', 'Cut U Off', fetchFn),
+        fetchTrackPlays(u, 'LISA', 'Sweat', fetchFn),
         fetchRecentScrobbles(u, weekFrom, dayTo, 50, fetchFn),
       ]);
       artistPlays        += ap;
@@ -456,6 +461,11 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       totalPlays.fallenangel += faPlays;
       totalPlays.heaven      += heavenPlays;
       totalPlays.newtrick    += ntPlays;
+      totalPlays.v12    += v12Plays;
+      totalPlays.cobra    += cobraPlays;
+      totalPlays.tarantino    += tarantinoPlays;
+      totalPlays.cutuoff    += cutuoffPlays;
+      totalPlays.sweat    += sweatPlays;
 
       const todaySc = weekSc.filter(s => {
         const ts = parseInt(s.date?.uts || '0', 10);
@@ -472,6 +482,11 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       todayCounts.fallenangel += dc.fallenangel || 0;
       todayCounts.heaven      += dc.heaven      || 0;
       todayCounts.newtrick    += dc.newtrick    || 0;
+      todayCounts.v12    += dc.v12    || 0;
+      todayCounts.cobra    += dc.cobra    || 0;
+      todayCounts.tarantino    += dc.tarantino    || 0;
+      todayCounts.cutuoff    += dc.cutuoff    || 0;
+      todayCounts.sweat    += dc.sweat    || 0;
       todayBySource[`${acct.type === 'librefm' ? 'Libre.fm' : 'Last.fm'} · ${u}`] = {
         jump: dc.jump || 0, shutdown: dc.shutdown || 0, ddududu: dc.ddududu || 0, ltal: dc.ltal || 0, go: dc.go || 0,
       };
@@ -487,6 +502,11 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       weekCounts.fallenangel += wdc.fallenangel || 0;
       weekCounts.heaven      += wdc.heaven      || 0;
       weekCounts.newtrick    += wdc.newtrick    || 0;
+      weekCounts.v12    += wdc.v12    || 0;
+      weekCounts.cobra    += wdc.cobra    || 0;
+      weekCounts.tarantino    += wdc.tarantino    || 0;
+      weekCounts.cutuoff    += wdc.cutuoff    || 0;
+      weekCounts.sweat    += wdc.sweat    || 0;
 
       // "blackpink" alone misses activity on Jennie's solo campaign track
       // (Less Than a Lover), which would otherwise wrongly flag an actively-
@@ -519,6 +539,11 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         totalPlays.fallenangel += lbTotals.fallenangel || 0;
         totalPlays.heaven      += lbTotals.heaven      || 0;
         totalPlays.newtrick    += lbTotals.newtrick    || 0;
+        totalPlays.v12    += lbTotals.v12    || 0;
+        totalPlays.cobra    += lbTotals.cobra    || 0;
+        totalPlays.tarantino    += lbTotals.tarantino    || 0;
+        totalPlays.cutuoff    += lbTotals.cutuoff    || 0;
+        totalPlays.sweat    += lbTotals.sweat    || 0;
 
         const todayListens = weekListens.filter(l => l.listened_at >= dayFrom && l.listened_at < dayTo);
         const lbTodayCounts = countLbByTrack(todayListens);
@@ -532,6 +557,11 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         todayCounts.fallenangel += lbTodayCounts.fallenangel || 0;
         todayCounts.heaven      += lbTodayCounts.heaven      || 0;
         todayCounts.newtrick    += lbTodayCounts.newtrick    || 0;
+        todayCounts.v12    += lbTodayCounts.v12    || 0;
+        todayCounts.cobra    += lbTodayCounts.cobra    || 0;
+        todayCounts.tarantino    += lbTodayCounts.tarantino    || 0;
+        todayCounts.cutuoff    += lbTodayCounts.cutuoff    || 0;
+        todayCounts.sweat    += lbTodayCounts.sweat    || 0;
         todayBySource[`ListenBrainz · ${u}`] = {
           jump: lbTodayCounts.jump || 0, shutdown: lbTodayCounts.shutdown || 0, ddududu: lbTodayCounts.ddududu || 0, ltal: lbTodayCounts.ltal || 0, go: lbTodayCounts.go || 0,
         };
@@ -547,6 +577,11 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         weekCounts.fallenangel += lbWeekCounts.fallenangel || 0;
         weekCounts.heaven      += lbWeekCounts.heaven      || 0;
         weekCounts.newtrick    += lbWeekCounts.newtrick    || 0;
+        weekCounts.v12    += lbWeekCounts.v12    || 0;
+        weekCounts.cobra    += lbWeekCounts.cobra    || 0;
+        weekCounts.tarantino    += lbWeekCounts.tarantino    || 0;
+        weekCounts.cutuoff    += lbWeekCounts.cutuoff    || 0;
+        weekCounts.sweat    += lbWeekCounts.sweat    || 0;
 
         // ListenBrainz never fed lastScrobbleAt before -- a fan scrobbling only
         // through LB (e.g. after moving off Last.fm) would drift towards a
@@ -656,7 +691,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
   // Whole campaign incl. the Fallen Angel EP (LTAL + Fallen Angel + Heaven) so a
   // new release lifts the board. Mirrors CAMPAIGN_TOTAL_IDS / rankTids on the client
   // + leaderboard.js. (Per-track EP boards stay separate via overall_fallenangel/heaven.)
-  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal + totalPlays.go + totalPlays.sawadika + totalPlays.click + totalPlays.fallenangel + totalPlays.heaven + totalPlays.newtrick;
+  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal + totalPlays.go + totalPlays.sawadika + totalPlays.click + totalPlays.fallenangel + totalPlays.heaven + totalPlays.newtrick + totalPlays.v12 + totalPlays.cobra + totalPlays.tarantino + totalPlays.cutuoff + totalPlays.sweat;
 
   return {
     username:      displayName,
@@ -688,8 +723,13 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       overall_fallenangel: totalPlays.fallenangel,
       overall_heaven:      totalPlays.heaven,
       overall_newtrick:    totalPlays.newtrick,
+      overall_v12:    totalPlays.v12,
+      overall_cobra:    totalPlays.cobra,
+      overall_tarantino:    totalPlays.tarantino,
+      overall_cutuoff:    totalPlays.cutuoff,
+      overall_sweat:    totalPlays.sweat,
       overall_artist:   artistPlays,
-      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0) + (todayCounts.sawadika || 0) + (todayCounts.click || 0) + (todayCounts.fallenangel || 0) + (todayCounts.heaven || 0) + (todayCounts.newtrick || 0),
+      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0) + (todayCounts.sawadika || 0) + (todayCounts.click || 0) + (todayCounts.fallenangel || 0) + (todayCounts.heaven || 0) + (todayCounts.newtrick || 0) + (todayCounts.v12 || 0) + (todayCounts.cobra || 0) + (todayCounts.tarantino || 0) + (todayCounts.cutuoff || 0) + (todayCounts.sweat || 0),
       daily_jump:       todayCounts.jump     || 0,
       daily_shutdown:   todayCounts.shutdown || 0,
       daily_ddududu:    todayCounts.ddududu  || 0,
@@ -700,8 +740,13 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       daily_fallenangel: todayCounts.fallenangel || 0,
       daily_heaven:      todayCounts.heaven      || 0,
       daily_newtrick:    todayCounts.newtrick    || 0,
+      daily_v12:    todayCounts.v12    || 0,
+      daily_cobra:    todayCounts.cobra    || 0,
+      daily_tarantino:    todayCounts.tarantino    || 0,
+      daily_cutuoff:    todayCounts.cutuoff    || 0,
+      daily_sweat:    todayCounts.sweat    || 0,
       daily_date:       todayLabel,
-      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0) + (weekCounts.sawadika || 0) + (weekCounts.click || 0) + (weekCounts.fallenangel || 0) + (weekCounts.heaven || 0) + (weekCounts.newtrick || 0),
+      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0) + (weekCounts.sawadika || 0) + (weekCounts.click || 0) + (weekCounts.fallenangel || 0) + (weekCounts.heaven || 0) + (weekCounts.newtrick || 0) + (weekCounts.v12 || 0) + (weekCounts.cobra || 0) + (weekCounts.tarantino || 0) + (weekCounts.cutuoff || 0) + (weekCounts.sweat || 0),
       weekly_jump:      weekCounts.jump     || 0,
       weekly_shutdown:  weekCounts.shutdown || 0,
       weekly_ddududu:   weekCounts.ddududu  || 0,
@@ -712,6 +757,11 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       weekly_fallenangel: weekCounts.fallenangel || 0,
       weekly_heaven:      weekCounts.heaven      || 0,
       weekly_newtrick:    weekCounts.newtrick    || 0,
+      weekly_v12:    weekCounts.v12    || 0,
+      weekly_cobra:    weekCounts.cobra    || 0,
+      weekly_tarantino:    weekCounts.tarantino    || 0,
+      weekly_cutuoff:    weekCounts.cutuoff    || 0,
+      weekly_sweat:    weekCounts.sweat    || 0,
       weekly_start:     weekStartLabel,
     },
   };
@@ -943,6 +993,11 @@ export default async function handler(req, res) {
             fallenangel: s.daily_fallenangel || 0,
             heaven:      s.daily_heaven      || 0,
             newtrick:    s.daily_newtrick    || 0,
+            v12:    s.daily_v12    || 0,
+            cobra:    s.daily_cobra    || 0,
+            tarantino:    s.daily_tarantino    || 0,
+            cutuoff:    s.daily_cutuoff    || 0,
+            sweat:    s.daily_sweat    || 0,
             by_source: Object.keys(bySrc).length ? bySrc : null,
           });
         }

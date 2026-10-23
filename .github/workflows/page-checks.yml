@@ -122,6 +122,12 @@ jobs:
         if: always()
         run: node .github/scripts/test_sql_grants.mjs
 
+      # Two EP groups share the leaderboard tab row; pointing both at one
+      # nested row shows the wrong tracks under a lit tab, silently.
+      - name: The leaderboard EP tabs
+        if: always()
+        run: node .github/scripts/test_leaderboard_ep_tabs.mjs
+
       # Every countdown prints its time on the reader's own clock, cross-checked
       # against the foreign-zone label each card already hand-types.
       - name: Local times on every countdown
