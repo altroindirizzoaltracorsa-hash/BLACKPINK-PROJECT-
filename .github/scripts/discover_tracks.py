@@ -55,5 +55,33 @@ def main():
             print(f"   → {new_count} new to add\n")
 
 
+def _report(lines):
+    """Hand the preview back where it can actually be read.
+
+    The job log is served from blob storage a Claude Code session cannot
+    fetch, so a run that only prints is a run whose answer never arrives.
+    Everything goes to the step summary, and the lines that decide the
+    question — the new tracks, and the per-artist totals — come back as one
+    annotation."""
+    import os
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if path:
+        with open(path, "a") as f:
+            f.write("```\n" + "\n".join(lines) + "\n```\n")
+    keep = [l for l in lines
+            if "NEW" in l or l.startswith("===") or "new to add" in l
+            or "no releases in window" in l or l.startswith("Recency window")]
+    blob = "%0A".join(l.replace("%", "%25").replace("\r", "") for l in keep)
+    print(f"::notice title=discovery::{blob[:60000]}")
+
+
 if __name__ == "__main__":
-    main()
+    import builtins, io
+    _lines = []
+    _print = builtins.print
+    builtins.print = lambda *a, **k: (_lines.append(" ".join(str(x) for x in a)), _print(*a, **k))[1]
+    try:
+        main()
+    finally:
+        builtins.print = _print
+        _report(_lines)
