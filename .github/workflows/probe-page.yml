@@ -25,6 +25,10 @@ on:
         description: 'Strings that must NOT be present, separated by |||'
         required: false
         default: ''
+      admin:
+        description: 'Set to 1 to send the admin secret — needed for admin-gated endpoints like /api/youtube-history, which 401 without it.'
+        required: false
+        default: ''
 
 jobs:
   probe:
@@ -35,13 +39,26 @@ jobs:
           P: ${{ github.event.inputs.path }}
           EXPECT: ${{ github.event.inputs.expect }}
           FORBID: ${{ github.event.inputs.forbid }}
+          ADMIN: ${{ github.event.inputs.admin }}
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
         run: |
           set -u
           BASE="https://www.blinksunited.com"
           echo "===== GET $BASE$P ====="
           # -S so curl reports transport errors; the status line is echoed before
           # any pattern check so a 404 or a redirect is obvious on its own.
-          code=$(curl -sSL -w '%{http_code}' -o /tmp/page "$BASE$P")
+          # Admin-gated endpoints (/api/youtube-history and friends) answer 401
+          # to an unauthenticated GET, so a probe of one without this reports
+          # "not deployed" when the truth is "not allowed to look". The secret
+          # travels in a header, never the URL, so it cannot reach a redirect
+          # target or a log line.
+          if [ -n "$ADMIN" ]; then
+            if [ -z "$ADMIN_KEY" ]; then echo "::error::admin=1 but ADMIN_KEY is not set"; exit 1; fi
+            code=$(curl -sSL -w '%{http_code}' -o /tmp/page \
+              -H "x-admin-secret: $ADMIN_KEY" "$BASE$P")
+          else
+            code=$(curl -sSL -w '%{http_code}' -o /tmp/page "$BASE$P")
+          fi
           echo "HTTP $code · $(wc -c </tmp/page) bytes"
           if [ "$code" != "200" ]; then echo "::error::expected HTTP 200, got $code"; exit 1; fi
 
