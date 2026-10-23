@@ -17803,6 +17803,7 @@ function openLisaPressPlayCard() {
         '<button class="pp-opt" onclick="_ppPicture()">🖼<span>Picture</span><small>Countdown card · square or landscape</small></button>' +
         '<button class="pp-opt" onclick="_sharePressPlay(\'video\')">🎬<span>Video</span><small>Teaser clip + details</small></button>' +
         '<button class="pp-opt" onclick="_sharePressPlay(\'poster\')">📅<span>Poster</span><small>Tarantino premiere · the times in five zones</small></button>' +
+        '<button class="pp-opt" onclick="_sharePressPlay(\'playlists\')">🎧<span>Playlists</span><small>All four, titles and links</small></button>' +
         '<button class="pp-opt" onclick="_sharePressPlay(\'link\')">🔗<span>Link</span><small>Preview link</small></button>' +
         '<div class="pp-note">The caption &amp; link are copied automatically — just paste them with your post. 📋</div>' +
         '<button class="pp-cancel" onclick="closePressPlayShare()">Cancel</button>' +
@@ -17823,14 +17824,39 @@ const PP_SHARE_CAPTION = PP_SHARE_TEXT + ' ' + PP_SHARE_URL;
 // Picture → the full canvas card (live countdown + Early Supporter stamp + the
 // landscape/square toggle + share/download/copy), the same pipeline as JENNIE.
 function _ppPicture() { closePressPlayShare(); openPressPlayCard(); }
+// The playlists as a post: every title with its link under it.
+//
+// Read off the panel on the card rather than from a second copy of the ids.
+// Four 22-character strings typed twice is how a post ends up advertising a
+// playlist the card does not have, and neither copy looks wrong on its own.
+function _ppPlaylistPost() {
+  const links = [...document.querySelectorAll('.cd-card-lisa .cd-playlists .cd-times-body a')];
+  if (!links.length) return null;
+  const rows = links.map(a =>
+    `▶ ${a.textContent.replace(/\s*→\s*$/, '').trim()}\n${a.href}`).join('\n\n');
+  return 'BLINKs — pre-save our PRESS PLAY playlists 🎧\n'
+       + 'They fill up when the EP lands, at midnight your time.\n\n'
+       + rows + '\n\n' + PP_SHARE_URL;
+}
+
 async function _sharePressPlay(kind) {
   closePressPlayShare();
+  const post = kind === 'playlists' ? _ppPlaylistPost() : null;
+  if (kind === 'playlists' && !post) { _showShareToast('Playlists not loaded — try again'); return; }
   // ALWAYS put the caption + link on the clipboard first (within the tap gesture).
   // Instagram / X / TikTok etc. silently drop the share `text` when a file is
   // attached, so the countdown details + link would otherwise never travel with
   // the picture or video. Copying it means the fan can just paste the caption.
   let copied = false;
-  try { await navigator.clipboard?.writeText(PP_SHARE_CAPTION); copied = true; } catch {}
+  try { await navigator.clipboard?.writeText(post || PP_SHARE_CAPTION); copied = true; } catch {}
+
+  if (kind === 'playlists') {
+    // Text only: there is no picture of four links, and attaching one would
+    // make the targets that drop `text` swallow the whole thing.
+    if (navigator.share) navigator.share({ title: 'LISA — PRESS PLAY playlists', text: post }).catch(() => {});
+    else _showShareToast(copied ? 'Playlists copied — paste them anywhere ✨' : 'Copy failed — try again');
+    return;
+  }
 
   if (kind === 'link') {
     if (navigator.share) navigator.share({ title: 'LISA — PRESS PLAY', text: PP_SHARE_TEXT, url: PP_SHARE_URL }).catch(() => {});
