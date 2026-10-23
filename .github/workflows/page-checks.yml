@@ -136,6 +136,14 @@ jobs:
         if: always()
         run: node .github/scripts/test_track_wiring.mjs
 
+      # The daily challenge folds each EP behind one tile. Three ways that goes
+      # wrong without throwing: a track shown both inside the EP and loose, a
+      # summary that is not the sum of what opening it reveals, and a body
+      # clipped by its max-height so the last track cannot be reached at all.
+      - name: The collapsible EP cards on My Badges
+        if: always()
+        run: node .github/scripts/test_badges_ep_cards.mjs
+
       # Every countdown prints its time on the reader's own clock, cross-checked
       # against the foreign-zone label each card already hand-types.
       - name: Local times on every countdown

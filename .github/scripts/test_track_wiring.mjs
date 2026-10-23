@@ -63,11 +63,26 @@ const R = await page.evaluate(() => {
     // SCROBBLE_TRACK_IDS must BE the TRACKS ids: it is what every counts
     // object, loop and payload is now built from.
     scrobbleIdsAgree: JSON.stringify(SCROBBLE_TRACK_IDS) === JSON.stringify(ids),
+    // EP_RELEASES is now the one membership list the leaderboard's tab rows
+    // and My Badges' collapsible cards both read. A song id that is not a real
+    // track silently drops out of both.
+    epGhosts: EP_RELEASES.flatMap(g => g.songs.filter(id => !ids.includes(id)).map(id => `${g.key}:${id}`)),
+    epOverlap: (() => {
+      const seen = new Set(), dup = [];
+      for (const g of EP_RELEASES) for (const id of g.songs) {
+        if (seen.has(id)) dup.push(id); else seen.add(id);
+      }
+      return dup;
+    })(),
   };
 });
 
 console.log(`    ${R.ids.length} tracks: ${R.ids.join(', ')}`);
 R.scrobbleIdsAgree ? ok('SCROBBLE_TRACK_IDS is TRACKS') : bad('SCROBBLE_TRACK_IDS is TRACKS');
+R.epGhosts.length ? bad('every EP song is a real track', R.epGhosts.join(', '))
+                  : ok('every EP song is a real track');
+R.epOverlap.length ? bad('no track is on two EPs', R.epOverlap.join(', '))
+                   : ok('no track is on two EPs');
 R.missingFromZero.length ? bad('every track has a counts slot', R.missingFromZero.join(', '))
                          : ok('every track has a counts slot');
 R.zeroExtras.length ? bad('no counts slot without a track', R.zeroExtras.join(', '))
