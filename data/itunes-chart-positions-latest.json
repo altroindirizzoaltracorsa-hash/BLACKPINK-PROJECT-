@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-23T03:59:39.072Z",
+  "generatedAt": "2026-10-23T11:15:12.652Z",
   "date": "2026-10-23",
   "regions": {
     "us": {
@@ -8,7 +8,13 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 120,
+          "position": 96,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 144,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -27,16 +33,34 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 81,
+          "position": 29,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 63,
           "name": "new trick",
           "artists": "ROSÉ",
           "member": "ROSÉ"
         },
         {
-          "position": 169,
-          "name": "APT.",
-          "artists": "ROSÉ & Bruno Mars",
-          "member": "ROSÉ"
+          "position": 97,
+          "name": "Cut U Off",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 98,
+          "name": "Cobra",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 99,
+          "name": "V12",
+          "artists": "LISA",
+          "member": "LISA"
         }
       ]
     },
@@ -46,7 +70,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 69,
+          "position": 140,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -57,39 +81,57 @@
       "region": "Germany",
       "cc": "de",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 187,
-          "name": "Dracula (with JENNIE)",
-          "artists": "Tame Impala",
-          "member": "JENNIE"
-        }
-      ]
+      "hits": []
     },
     "fr": {
       "region": "France",
       "cc": "fr",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 139,
-          "name": "Dracula (with JENNIE)",
-          "artists": "Tame Impala",
-          "member": "JENNIE"
-        }
-      ]
+      "hits": []
     },
     "it": {
       "region": "Italy",
       "cc": "it",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 25,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 89,
+          "name": "Sweat",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 90,
+          "name": "Cobra",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 91,
+          "name": "V12",
+          "artists": "LISA",
+          "member": "LISA"
+        }
+      ]
     },
     "es": {
       "region": "Spain",
       "cc": "es",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 10,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        }
+      ]
     },
     "br": {
       "region": "Brazil",
@@ -101,7 +143,50 @@
       "region": "Mexico",
       "cc": "mx",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 4,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 5,
+          "name": "Sweat",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 6,
+          "name": "Cut U Off",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 7,
+          "name": "Cobra",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 8,
+          "name": "V12",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 20,
+          "name": "SaWaDiKa",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 84,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
     },
     "tw": {
       "region": "Taiwan",
@@ -113,31 +198,54 @@
       "region": "Hong Kong",
       "cc": "hk",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 90,
-          "name": "new trick",
-          "artists": "ROSÉ",
-          "member": "ROSÉ"
-        }
-      ]
+      "hits": []
     },
     "sg": {
       "region": "Singapore",
       "cc": "sg",
-      "totalEntries": 98,
+      "totalEntries": 99,
       "hits": [
         {
-          "position": 30,
-          "name": "Tarantino",
+          "position": 5,
+          "name": "Sweat",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 44,
-          "name": "Champion",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK"
+          "position": 8,
+          "name": "Cut U Off",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 10,
+          "name": "Cobra",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 11,
+          "name": "V12",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 32,
+          "name": "SaWaDiKa",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 33,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 78,
+          "name": "EYES CLOSED",
+          "artists": "JISOO & ZAYN",
+          "member": "JISOO"
         }
       ]
     },
@@ -147,13 +255,31 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 13,
-          "name": "Tarantino",
+          "position": 2,
+          "name": "V12",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 111,
+          "position": 3,
+          "name": "Cobra",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 4,
+          "name": "Cut U Off",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 5,
+          "name": "Sweat",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 8,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
@@ -167,13 +293,202 @@
       "hits": [
         {
           "position": 2,
-          "name": "Tarantino",
+          "name": "Cut U Off",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 3,
+          "name": "Sweat",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 4,
+          "name": "Cobra",
           "artists": "LISA",
           "member": "LISA"
         },
         {
           "position": 5,
+          "name": "V12",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 8,
           "name": "SaWaDiKa",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 27,
+          "name": "Dream",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 37,
+          "name": "One Of The Girls",
+          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
+          "member": "JENNIE"
+        },
+        {
+          "position": 40,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 43,
+          "name": "CLICK",
+          "artists": "JISOO",
+          "member": "JISOO"
+        },
+        {
+          "position": 44,
+          "name": "Bad Angel",
+          "artists": "Anyma & LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 50,
+          "name": "Priceless",
+          "artists": "Maroon 5 & LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 85,
+          "name": "Moonlit Floor (Kiss Me)",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 102,
+          "name": "Chill",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 130,
+          "name": "new trick",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 132,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 143,
+          "name": "Lifestyle",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 184,
+          "name": "Born Again (feat. Doja Cat & RAYE)",
+          "artists": "LISA",
+          "member": "LISA"
+        }
+      ]
+    },
+    "id": {
+      "region": "Indonesia",
+      "cc": "id",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 3,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 18,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 20,
+          "name": "SaWaDiKa",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 151,
+          "name": "JUMP",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        },
+        {
+          "position": 187,
+          "name": "CLICK",
+          "artists": "JISOO",
+          "member": "JISOO"
+        }
+      ]
+    },
+    "my": {
+      "region": "Malaysia",
+      "cc": "my",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 2,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 4,
+          "name": "Sweat",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 5,
+          "name": "V12",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 6,
+          "name": "SaWaDiKa",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 10,
+          "name": "Cut U Off",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 11,
+          "name": "Cobra",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 105,
+          "name": "Champion",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        }
+      ]
+    },
+    "vn": {
+      "region": "Vietnam",
+      "cc": "vn",
+      "totalEntries": 199,
+      "hits": [
+        {
+          "position": 3,
+          "name": "Tarantino",
           "artists": "LISA",
           "member": "LISA"
         },
@@ -185,144 +500,39 @@
         },
         {
           "position": 7,
-          "name": "Cut U Off",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 8,
-          "name": "Cobra",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 9,
           "name": "V12",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 32,
+          "position": 8,
+          "name": "Cut U Off",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 9,
+          "name": "Cobra",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 11,
+          "name": "SaWaDiKa",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 52,
           "name": "Dream",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 43,
-          "name": "One Of The Girls",
-          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
-          "member": "JENNIE"
-        },
-        {
-          "position": 62,
-          "name": "Bad Angel",
-          "artists": "Anyma & LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 69,
-          "name": "Less than a Lover",
-          "artists": "JENNIE",
-          "member": "JENNIE"
-        },
-        {
-          "position": 81,
-          "name": "Moonlit Floor",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 151,
-          "name": "Chill",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 190,
-          "name": "When I'm With You (feat. Tyla)",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 200,
-          "name": "Love Hangover",
-          "artists": "JENNIE & Dominic Fike",
-          "member": "JENNIE"
-        }
-      ]
-    },
-    "id": {
-      "region": "Indonesia",
-      "cc": "id",
-      "totalEntries": 199,
-      "hits": [
-        {
-          "position": 14,
-          "name": "SaWaDiKa",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 45,
-          "name": "One Of The Girls",
-          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
-          "member": "JENNIE"
-        },
-        {
-          "position": 109,
-          "name": "Less than a Lover",
-          "artists": "JENNIE",
-          "member": "JENNIE"
-        }
-      ]
-    },
-    "my": {
-      "region": "Malaysia",
-      "cc": "my",
-      "totalEntries": 199,
-      "hits": [
-        {
-          "position": 86,
-          "name": "SaWaDiKa",
-          "artists": "LISA",
-          "member": "LISA"
-        }
-      ]
-    },
-    "vn": {
-      "region": "Vietnam",
-      "cc": "vn",
-      "totalEntries": 199,
-      "hits": [
-        {
-          "position": 21,
-          "name": "SaWaDiKa",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 27,
-          "name": "Tarantino",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 54,
-          "name": "Kill This Love",
+          "position": 113,
+          "name": "JUMP",
           "artists": "BLACKPINK",
           "member": "BLACKPINK"
-        },
-        {
-          "position": 103,
-          "name": "Less than a Lover",
-          "artists": "JENNIE",
-          "member": "JENNIE"
-        },
-        {
-          "position": 179,
-          "name": "Dream",
-          "artists": "LISA",
-          "member": "LISA"
         }
       ]
     },
@@ -332,7 +542,13 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 61,
+          "position": 22,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 39,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -343,32 +559,50 @@
       "region": "New Zealand",
       "cc": "nz",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 22,
-          "name": "APT.",
-          "artists": "ROSÉ & Bruno Mars",
-          "member": "ROSÉ"
-        },
-        {
-          "position": 94,
-          "name": "Dracula (with JENNIE)",
-          "artists": "Tame Impala",
-          "member": "JENNIE"
-        },
-        {
-          "position": 137,
-          "name": "SaWaDiKa",
-          "artists": "LISA",
-          "member": "LISA"
-        }
-      ]
+      "hits": []
     },
     "nl": {
       "region": "Netherlands",
       "cc": "nl",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 104,
+          "name": "Dracula (with JENNIE)",
+          "artists": "Tame Impala",
+          "member": "JENNIE"
+        },
+        {
+          "position": 149,
+          "name": "Sweat",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 150,
+          "name": "Cut U Off",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 151,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 152,
+          "name": "Cobra",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 153,
+          "name": "V12",
+          "artists": "LISA",
+          "member": "LISA"
+        }
+      ]
     },
     "se": {
       "region": "Sweden",
@@ -376,7 +610,13 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 28,
+          "position": 40,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 71,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -393,19 +633,58 @@
       "region": "Poland",
       "cc": "pl",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 4,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 34,
+          "name": "JUMP",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        },
+        {
+          "position": 104,
+          "name": "Sweat",
+          "artists": "LISA",
+          "member": "LISA"
+        }
+      ]
     },
     "tr": {
       "region": "Turkey",
       "cc": "tr",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 89,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 141,
+          "name": "Sweat",
+          "artists": "LISA",
+          "member": "LISA"
+        }
+      ]
     },
     "ar": {
       "region": "Argentina",
       "cc": "ar",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 21,
+          "name": "SaWaDiKa",
+          "artists": "LISA",
+          "member": "LISA"
+        }
+      ]
     },
     "cl": {
       "region": "Chile",
@@ -413,16 +692,34 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 39,
+          "position": 2,
+          "name": "Sweat",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 3,
+          "name": "Cut U Off",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 4,
+          "name": "Cobra",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 5,
+          "name": "V12",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 13,
           "name": "APT.",
           "artists": "ROSÉ & Bruno Mars",
           "member": "ROSÉ"
-        },
-        {
-          "position": 148,
-          "name": "Kill This Love",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK"
         }
       ]
     },
@@ -430,7 +727,14 @@
       "region": "Colombia",
       "cc": "co",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 53,
+          "name": "Messy",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
+        }
+      ]
     },
     "pe": {
       "region": "Peru",
@@ -438,7 +742,13 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 17,
+          "position": 2,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 91,
           "name": "One Of The Girls",
           "artists": "The Weeknd, JENNIE & Lily Rose Depp",
           "member": "JENNIE"
@@ -449,39 +759,63 @@
       "region": "Saudi Arabia",
       "cc": "sa",
       "totalEntries": 99,
-      "hits": []
+      "hits": [
+        {
+          "position": 2,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 18,
+          "name": "Sweat",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 19,
+          "name": "Cut U Off",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 20,
+          "name": "Cobra",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 21,
+          "name": "V12",
+          "artists": "LISA",
+          "member": "LISA"
+        }
+      ]
     },
     "za": {
       "region": "South Africa",
       "cc": "za",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 129,
-          "name": "SaWaDiKa",
-          "artists": "LISA",
-          "member": "LISA"
-        }
-      ]
+      "hits": []
     },
     "be": {
       "region": "Belgium",
       "cc": "be",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 24,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        }
+      ]
     },
     "at": {
       "region": "Austria",
       "cc": "at",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 154,
-          "name": "SaWaDiKa",
-          "artists": "LISA",
-          "member": "LISA"
-        }
-      ]
+      "hits": []
     },
     "ch": {
       "region": "Switzerland",
@@ -505,7 +839,14 @@
       "region": "Denmark",
       "cc": "dk",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 174,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        }
+      ]
     },
     "ie": {
       "region": "Ireland",
@@ -513,7 +854,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 45,
+          "position": 81,
           "name": "Tarantino",
           "artists": "LISA",
           "member": "LISA"
@@ -522,7 +863,7 @@
     }
   },
   "summary": {
-    "totalHits": 45,
+    "totalHits": 101,
     "regionsChecked": 38
   }
 }
