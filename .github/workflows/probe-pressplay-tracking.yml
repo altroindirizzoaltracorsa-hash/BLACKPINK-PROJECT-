@@ -45,13 +45,18 @@ jobs:
             from (select name, created_at from artist_tracks
                    where artist_id = '5L1lO4eRHmJ7a0Q6csE5cT'
                    order by created_at desc nulls last limit 6) t;
-          -- Anything recorded for her at all lately?
-          select '  daily rows in the last 5 days: ' || count(*) ||
-                 ' (latest day ' || coalesce(max(day)::text,'none') || ')'
-            from track_daily_stats s
-            join artist_tracks a on a.id = s.track_ref
-           where a.artist_id = '5L1lO4eRHmJ7a0Q6csE5cT'
-             and s.day > current_date - 5;
+          -- Anything recorded for her at all lately? Asked AGAINST THE SCHEMA
+          -- rather than against column names remembered: two runs were spent
+          -- guessing track_id and day, and a probe that cannot name its own
+          -- columns is answering a different question from the one asked.
+          select '  track_daily_stats columns: ' || string_agg(column_name, ', ' order by ordinal_position)
+            from information_schema.columns where table_name = 'track_daily_stats';
+          select '  latest day recorded for LISA: ' || coalesce(max(d)::text, '(nothing)')
+            from (
+              select s.stat_date as d from track_daily_stats s
+                join artist_tracks a on a.id = s.track_ref
+               where a.artist_id = '5L1lO4eRHmJ7a0Q6csE5cT'
+            ) x;
           SQL
           rc=$?
           set -e
