@@ -12483,6 +12483,15 @@ function paintResetNotes() {
 }
 
 // Count scrobbles per track in a list
+// A cached day is only usable if it was counted against the CURRENT track
+// list. One cached before a release has no key for the new track, and a
+// missing key reads as a confident zero for the rest of the week — on the day
+// the record came out, which is the day worth looking at. Missing key →
+// refetch that day rather than trust it.
+function weekCacheUsable(cachedDay) {
+  return !!cachedDay && SCROBBLE_TRACK_IDS.every(k => k in cachedDay);
+}
+
 function countByTrack(scrobbles) {
   const counts = {};
   for (const t of TRACKS) counts[t.id] = 0;
@@ -12544,7 +12553,8 @@ async function loadProfile(usernameOverride, silent = false) {
       const dayKey = new Date(dayStart * 1000).toISOString().slice(0, 10);
       const isToday = dayKey === italyDayKey(0);
       const isPast  = !isToday && dayEnd <= Math.floor(Date.now() / 1000);
-      if (isPast && weekCache[dayKey]) return { dayKey, label: getDayLabel(dayStart), counts: weekCache[dayKey], cached: true };
+      const cachedDay = weekCache[dayKey];
+      if (isPast && weekCacheUsable(cachedDay)) return { dayKey, label: getDayLabel(dayStart), counts: cachedDay, cached: true };
       const daySc = await fetchRecentScrobbles(username, dayStart, dayEnd).catch(() => []);
       return { dayKey, label: getDayLabel(dayStart), counts: countByTrack(daySc), isPast, scrobbles: daySc };
     }));
@@ -12570,7 +12580,11 @@ async function loadProfile(usernameOverride, silent = false) {
           if (!lastScrobbleTs || ts > lastScrobbleTs) lastScrobbleTs = ts;
         }
       }
-      weekDays.push({ label, counts });
+      // A COPY: on a cached day `counts` is the cache entry itself, and the
+      // ListenBrainz merge below adds into the day. Writing through to the
+      // cache object would bake LB plays into a Last.fm-only cache and count
+      // them twice the next time that cache is trusted.
+      weekDays.push({ label, counts: { ...counts } });
       for (const k of SCROBBLE_TRACK_IDS) weekCounts[k] += counts[k] || 0;
     }
 
@@ -12594,7 +12608,13 @@ async function loadProfile(usernameOverride, silent = false) {
           const ds = lbWeekFrom + i * 86400;
           if (ds * 1000 > Date.now()) break;
           const dc = countLbByTrack(await fetchLbRecentListens(lbUsername, ds, ds + 86400));
-          for (const k of SCROBBLE_TRACK_IDS) weekCounts[k] += dc[k] || 0;
+          // Into the DAY as well as the week. Adding to the total alone made a
+          // ListenBrainz play show up in the Total column and in no day cell,
+          // so the row never added up to its own total.
+          for (const k of SCROBBLE_TRACK_IDS) {
+            weekCounts[k] += dc[k] || 0;
+            if (weekDays[i]) weekDays[i].counts[k] = (weekDays[i].counts[k] || 0) + (dc[k] || 0);
+          }
         }
       } catch (e) { console.warn('LB fetch failed:', e.message); }
     }
@@ -13549,6 +13569,30 @@ async function fetchSingleAccountStats(source, username) {
 }
 
 // Load and aggregate multiple linked accounts, then render combined profile
+// One day of the weekly table: every linked account's counts for that day,
+// then reconciled with the server's frozen value if the day is past.
+//
+// It is a named function because it is the piece that has to cover every
+// track, and it could not be checked while it lived as a loop inside an async
+// aggregator — a test can only re-type such a loop, which is a test of the
+// copy. It was wrong for exactly that reason: it summed a hand-written list
+// that stopped at `heaven`, so "new trick" and the PRESS PLAY EP showed a dot
+// on every day of the week beside a real week total.
+function mergeWeekDay(breakdown, i, serverDay) {
+  const day = zeroTrackCounts();
+  for (const a of breakdown || []) {
+    const dc = a.weekDayCounts?.[i];
+    if (dc) for (const k of SCROBBLE_TRACK_IDS) day[k] += dc[k] || 0;
+  }
+  // Driven by the keys the server actually returned: a track whose column
+  // exists is honoured, one whose column does not is left to the client sum
+  // rather than being forced to zero.
+  if (serverDay) for (const k of SCROBBLE_TRACK_IDS) {
+    if (typeof serverDay[k] === 'number') day[k] = Math.max(day[k], serverDay[k]);
+  }
+  return day;
+}
+
 async function loadMultiAccountProfile(accounts) {
   document.getElementById('lfm-error').style.display = 'none';
   document.getElementById('login-panel').style.display = 'none';
@@ -13715,22 +13759,8 @@ async function loadMultiAccountProfile(accounts) {
   for (let i = 0; i < 7; i++) {
     const ds = weekFrom + i * 86400;
     if (ds * 1000 > Date.now()) { weekDays.push(null); continue; }
-    const day = zeroTrackCounts();
-    for (const a of _breakdown) {
-      const dc = a.weekDayCounts[i];
-      if (dc) { day.jump += dc.jump||0; day.shutdown += dc.shutdown||0; day.ddududu += dc.ddududu||0; day.ltal += dc.ltal||0; day.go += dc.go||0; day.sawadika += dc.sawadika||0; day.click += dc.click||0; day.fallenangel += dc.fallenangel||0; day.heaven += dc.heaven||0; }
-    }
-    // Past day → merge in the server's frozen value (per-track max). Today stays live.
-    if (ds < _todayFrom) {
-      const sv = _serverDays[dayKeyOf(ds)];
-      if (sv) {
-        day.jump     = Math.max(day.jump,     sv.jump     || 0);
-        day.shutdown = Math.max(day.shutdown, sv.shutdown || 0);
-        day.ddududu  = Math.max(day.ddududu,  sv.ddududu  || 0);
-        day.ltal     = Math.max(day.ltal,     sv.ltal     || 0);
-        day.go       = Math.max(day.go,       sv.go       || 0);
-      }
-    }
+    // Past day → reconcile with the server's frozen value; today stays live.
+    const day = mergeWeekDay(_breakdown, i, ds < _todayFrom ? _serverDays[dayKeyOf(ds)] : null);
     weekDays.push({ label: getDayLabel(ds), counts: day });
   }
   combined.weekDays = weekDays;
