@@ -1,0 +1,58 @@
+name: Probe song columns
+
+# Which tables carry a column per song, and what the columns are called.
+#
+# Adding a song to the leaderboard means adding columns, and there is more than
+# one table involved — the scores row and the per-day archive at least. Guessing
+# which, and guessing the spelling, is how a migration lands half-applied. This
+# asks. Read-only.
+#
+# Results come back as ::notice annotations: the job log is served from blob
+# storage a Claude Code session cannot fetch.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ask the schema
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -u
+          if [ -z "$SUPABASE_DB_URL" ]; then echo "::error::SUPABASE_DB_URL is not set."; exit 1; fi
+          set +e
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -t -A >/tmp/out.txt 2>&1 <<'SQL'
+          -- Every table that already has a per-song column, found by one song
+          -- that certainly has one, so nothing depends on me recalling names.
+          select 'TABLE ' || table_name || ' — ' || count(*) || ' song columns'
+            from information_schema.columns
+           where table_schema = 'public'
+             and (column_name like 'daily\_%' or column_name like 'weekly\_%'
+               or column_name like 'total\_%' or column_name in
+                  ('jump','shutdown','ddududu','ltal','go','sawadika','click',
+                   'fallenangel','heaven','newtrick'))
+             and table_name in (select table_name from information_schema.columns
+                                 where table_schema='public'
+                                   and column_name in ('daily_sawadika','sawadika'))
+           group by table_name order by table_name;
+          -- ...and exactly what they are called in each.
+          select '  ' || table_name || ': ' || string_agg(column_name || ' ' || data_type, ', ' order by column_name)
+            from information_schema.columns
+           where table_schema='public'
+             and table_name in (select table_name from information_schema.columns
+                                 where table_schema='public'
+                                   and column_name in ('daily_sawadika','sawadika'))
+             and (column_name like '%sawadika%' or column_name like '%newtrick%' or column_name like '%\_all')
+           group by table_name order by table_name;
+          SQL
+          rc=$?
+          set -e
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            echo "::notice title=columns::${line}"
+          done < /tmp/out.txt
+          if [ "$rc" -ne 0 ]; then echo "::error::psql exited $rc"; exit "$rc"; fi
