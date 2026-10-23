@@ -183,6 +183,25 @@ def write(rows):
            json=rows[i:i + CHUNK])
 
 
+def report_fresh(videos):
+    """Say which videos are here only because they are new.
+
+    The job log is served from blob storage a Claude Code session cannot
+    fetch, so a run that only prints is a run whose answer never arrives — and
+    the question worth asking after a release is the narrow one: did it get in.
+    A literal newline would end the workflow command, hence %0A.
+    """
+    below = [v for v in videos if (v.get("views") or 0) < MIN_VIEWS]
+    lines = [f"catalog {len(videos)} video(s); {len(below)} below the "
+             f"{MIN_VIEWS:,} floor, kept by the {FRESH_DAYS}-day window"]
+    for v in sorted(below, key=lambda x: -(x.get("views") or 0))[:15]:
+        lines.append(f"  {v.get('views', 0):>12,}  {v.get('kind', ''):<11} "
+                     f"{(v.get('publishedAt') or '?')[:10]}  {v.get('title', '')[:60]}")
+    blob = "%0A".join(
+        l.replace("%", "%25").replace("\r", "").replace("\n", " ") for l in lines)
+    print(f"::notice title=fresh::{blob[:3500]}")
+
+
 def main():
     if not ADMIN_KEY:
         print("ADMIN_KEY unset", file=sys.stderr)
@@ -193,6 +212,7 @@ def main():
 
     d = fetch_catalog()
     videos = d.get("videos") or []
+    report_fresh(videos)
     print(f"catalog: {len(videos)} video(s) at or above {MIN_VIEWS:,} views, "
           f"across {len(d.get('channels') or [])} channel(s)")
     for c in d.get("channels") or []:
