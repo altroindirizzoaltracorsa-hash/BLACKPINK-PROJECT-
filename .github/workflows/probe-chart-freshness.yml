@@ -1,0 +1,73 @@
+name: Probe chart freshness
+
+# Which countries are behind on /spotify-charts, and by how much.
+#
+# The page reads the newest tracking_date per country, so a country whose rows
+# stopped arriving shows a stale chart that looks perfectly healthy — there is
+# no error anywhere, just an old date. "Thailand is stuck on Oct 12" is the
+# symptom; this asks whether that is one country or fifty, and whether they all
+# stopped on the same day (one broken sweep) or drifted apart (rate-limit
+# skips landing on different countries each run).
+#
+# Read-only: SELECTs only.
+#
+# Results come back as ::notice annotations, GROUPED BY DATE rather than one
+# line per country: GitHub keeps only ~10 notices per run, and 74 countries
+# would blow past that and silently truncate the answer.
+on:
+  workflow_dispatch:
+    inputs:
+      chart_type:
+        description: 'daily | weekly'
+        required: false
+        default: 'daily'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ask the database
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          CT: ${{ github.event.inputs.chart_type }}
+        run: |
+          set -u
+          if [ -z "$SUPABASE_DB_URL" ]; then echo "::error::SUPABASE_DB_URL is not set."; exit 1; fi
+          CT="${CT:-daily}"
+          set +e
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -t -A -v ct="$CT" >/tmp/out.txt 2>&1 <<'SQL'
+          \pset footer off
+          select 'chart_type = ' || :'ct' || ' · today is ' || current_date;
+          -- The newest date anywhere, which is what the page calls "current".
+          select 'newest tracking_date anywhere: ' || max(tracking_date)
+            from chart_positions where chart_type = :'ct';
+          -- Countries grouped by how far behind they are. One line per date,
+          -- because 74 lines would exceed the annotation cap and truncate.
+          select '  ' || d::text || '  (' || (current_date - d) || 'd behind, '
+                 || count(*) || ' countries)  ' || string_agg(c, ' ' order by c)
+            from (
+              select country as c, max(tracking_date) as d
+                from chart_positions where chart_type = :'ct'
+               group by country
+            ) t group by d order by d;
+          -- How many rows arrived per day lately: a sweep that half-ran shows
+          -- up here as a short day, which a per-country view cannot tell from
+          -- "nothing charted".
+          select '  rows on ' || tracking_date::text || ': ' || count(*)
+                 || ' across ' || count(distinct country) || ' countries'
+            from chart_positions
+           where chart_type = :'ct' and tracking_date > current_date - 9
+           group by tracking_date order by tracking_date desc;
+          SQL
+          rc=$?
+          set -e
+          n=0
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            n=$((n+1))
+            [ "$n" -gt 9 ] && { echo "::notice title=charts::(more lines omitted — annotation cap)"; break; }
+            echo "::notice title=charts::${line}"
+          done < /tmp/out.txt
+          if [ "$rc" -ne 0 ]; then echo "::error::psql exited $rc"; exit "$rc"; fi
