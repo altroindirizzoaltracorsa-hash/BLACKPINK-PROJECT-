@@ -291,6 +291,102 @@ for (const vp of [{width:1280,height:1000,name:'desktop'},{width:430,height:950,
       .filter(tr => tr.getClientRects().length > 0).length);
   wkClosed === 0 ? ok('clicking closes it again') : bad('clicking closes it again', `${wkClosed} still laid out`);
 
+  // The invariant the live page broke: a row's day cells must add up to its own
+  // week total. The multi-account day build summed a hand-typed list of ids
+  // that stopped at `heaven`, so "new trick" and all five PRESS PLAY tracks
+  // showed a dot on every day beside a real total — which reads as "nobody
+  // streamed this" on the day a record came out. Driven through the real
+  // aggregator rather than renderProfile, since that is where the list was.
+  const agg = await page.evaluate(() => {
+    const ids = SCROBBLE_TRACK_IDS;
+    const perDay = () => Object.fromEntries(ids.map(id => [id, 3]));
+    // TWO accounts, so the cross-account sum is exercised too, and a server
+    // row that is higher for one track and lower for another, so the
+    // frozen-value reconcile is as well.
+    const breakdown = [
+      { label: 'a', source: 'lastfm', username: 'u1', weekDayCounts: [perDay(), null, null, null, null, null, null] },
+      { label: 'b', source: 'listenbrainz', username: 'u2', weekDayCounts: [perDay(), null, null, null, null, null, null] },
+    ];
+    const day = mergeWeekDay(breakdown, 0, null);
+    const server = { [ids[0]]: 99, [ids[ids.length - 1]]: 1, by_source: { lastfm: 1 } };
+    const reconciled = mergeWeekDay(breakdown, 0, server);
+    return {
+      day, keys: Object.keys(day).length,
+      missed: ids.filter(id => day[id] !== 6),
+      serverWins: reconciled[ids[0]],
+      serverLoses: reconciled[ids[ids.length - 1]],
+      bySourceLeaked: 'by_source' in reconciled,
+    };
+  });
+  agg.missed.length
+    ? bad('the day build covers every track', agg.missed.join(', '))
+    : ok('the day build covers every track', `${agg.keys} ids, 3+3 each`);
+  agg.serverWins === 99 ? ok('a higher frozen server value wins')
+                        : bad('a higher frozen server value wins', `${agg.serverWins}`);
+  agg.serverLoses === 6 ? ok('a lower frozen server value does not shrink the day')
+                        : bad('a lower frozen server value does not shrink the day', `${agg.serverLoses}`);
+  agg.bySourceLeaked ? bad('by_source is not treated as a track count')
+                     : ok('by_source is not treated as a track count');
+
+  // The weekly day cache. A day cached before a release has no key for the new
+  // track, so trusting it pins that day at zero for the rest of the week — and
+  // the release day is the one worth looking at.
+  const cache = await page.evaluate(() => {
+    const full = Object.fromEntries(SCROBBLE_TRACK_IDS.map(id => [id, 0]));
+    const stale = { ...full };
+    for (const k of PRESS_PLAY_KEYS) delete stale[k];   // cached before the EP
+    return {
+      full: weekCacheUsable(full),
+      stale: weekCacheUsable(stale),
+      missing: weekCacheUsable(undefined),
+      zeroesAreFine: weekCacheUsable(Object.fromEntries(SCROBBLE_TRACK_IDS.map(id => [id, 0]))),
+    };
+  });
+  cache.full ? ok('a current cached day is reused') : bad('a current cached day is reused');
+  cache.stale ? bad('a day cached before a release is refetched')
+              : ok('a day cached before a release is refetched');
+  cache.missing ? bad('no cached day means refetch') : ok('no cached day means refetch');
+  cache.zeroesAreFine ? ok('a genuine all-zero day is still cacheable')
+                      : bad('a genuine all-zero day is still cacheable');
+
+  // And the same thing end to end on the rendered table: every visible row's
+  // seven day cells must sum to the total the row claims.
+  const rows = await page.evaluate(() => {
+    const counts = zeroTrackCounts();
+    const perDay = {};
+    SCROBBLE_TRACK_IDS.forEach((id, i) => { perDay[id] = i + 1; counts[id] = (i + 1) * 2; });
+    const weekDays = [{ label: 'Mon', counts: perDay }, { label: 'Tue', counts: perDay },
+                      ...Array.from({ length: 5 }, () => null)];
+    renderProfile({
+      info: { name: 't', playcount: 0, registered: { unixtime: 0 }, image: [] },
+      artistPlays: 0, totalPlays: counts, todayCounts: counts, weekCounts: counts,
+      weekDays, lastScrobbleTs: null, memberPlays: zeroMemberPlays(),
+    });
+    document.querySelectorAll('.week-ep').forEach(g => g.classList.add('open'));
+    const out = [];
+    for (const tr of document.querySelectorAll('#weekly-challenge-grid .weekly-table tbody tr')) {
+      const tds = [...tr.querySelectorAll('td')];
+      const name = tds[0].textContent.replace('▾','').trim();
+      const days = tds.slice(1, 8).reduce((s, td) => {
+        if (td.className === 'week-cell-future') return s;
+        return s + Number(td.textContent.replace(/[^0-9]/g, '') || 0);
+      }, 0);
+      const total = Number(tds[8].textContent.trim().split('\n')[0].split('/')[0].replace(/[^0-9]/g,'') || 0);
+      out.push({ name, days, total, isEp: tr.classList.contains('week-ep-head') });
+    }
+    return out;
+  });
+  // Only the rows whose Total cell shows a plain number can be compared; a row
+  // that earned its weekly badge shows the badge there instead.
+  const mismatched = rows.filter(r => r.total > 0 && r.days !== r.total);
+  mismatched.length
+    ? bad('every row adds up to its own total',
+          mismatched.map(r => `${r.name}: days ${r.days} vs total ${r.total}`).join('; '))
+    : ok('every row adds up to its own total', `${rows.length} rows checked`);
+  const allDots = rows.filter(r => r.days === 0 && r.total > 0).map(r => r.name);
+  allDots.length ? bad('no row shows a week of dots beside a real total', allDots.join(', '))
+                 : ok('no row shows a week of dots beside a real total');
+
   if (errs.length) { console.log('    page errors: ' + errs.slice(0,4).join(' | ')); fails += errs.length; }
   await page.close();
 }
