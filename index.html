@@ -401,6 +401,24 @@
   .tier-dot.earned { background: var(--pink); border-color: var(--pink); box-shadow: 0 0 8px rgba(255,0,102,0.4); }
   .daily-progress-bar { height: 2px; background: rgba(255,255,255,0.06); margin-top: 0.5rem; }
   .daily-progress-fill { height: 100%; background: var(--pink); transition: width 1s ease; }
+  /* An EP folded into one tile. Closed it is an ordinary grid cell; open it
+     takes the full row, so its tracks get whole cards rather than a third of
+     one each. The padding moves onto the button so the whole summary is the
+     hit target, not just the text. */
+  .daily-ep { padding: 0; }
+  .daily-ep-head { display: block; width: 100%; padding: 1.5rem; background: transparent; border: none; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+  .daily-ep-head:hover { background: var(--card2); }
+  .daily-ep-chev { display: inline-block; margin-left: 0.5rem; font-size: 0.7rem; color: var(--muted); transition: transform 0.25s ease; }
+  .daily-ep.open .daily-ep-chev { transform: rotate(180deg); }
+  .daily-ep-body { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+  /* Open, the EP's tracks are cards exactly like the loose ones, so without a
+     cue there is nothing to say where the group ends and the next tile starts.
+     A rule down the left edge marks the extent of what was opened. */
+  .daily-ep.open { grid-column: 1 / -1; box-shadow: inset 3px 0 0 var(--pink); }
+  /* Six cards, one per column on a phone — the cap has to clear the tallest
+     case or the last track is cut off with no scrollbar to reveal it. */
+  .daily-ep.open .daily-ep-body { max-height: 3200px; }
+  .daily-ep-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5px; background: var(--border); border-top: 1.5px solid var(--border); }
   .complete-banner { background: rgba(255,0,102,0.1); border: 1px solid rgba(255,0,102,0.3); padding: 1rem 1.5rem; text-align: center; margin-top: 1.5px; font-family: var(--display); font-size: 1.2rem; letter-spacing: 0.1em; color: var(--pink); }
   /* Overall combined prestige badge (1k/day · 10k/week) */
   .prestige-banner { background: rgba(255,0,102,0.05); border: 1px solid rgba(255,0,102,0.18); padding: 0.85rem 1.5rem; text-align: center; margin-top: 1.5px; font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
@@ -984,6 +1002,7 @@
     .track-card { grid-template-columns: 1fr auto; }
     .track-num { display: none; }
     .daily-grid { grid-template-columns: 1fr; }
+    .daily-ep-grid { grid-template-columns: 1fr; }
   }
   /* Nav collapses to the hamburger well before a typical desktop viewport
      runs out of room -- 11 nav items in one row has no wrap/shrink fallback,
@@ -9054,6 +9073,17 @@ function zeroMemberPlays() { return { jisoo: 0, lisa: 0, rose: 0, jennie: 0 }; }
 // 'cutuoff'), so the normalized key doubles as the counter name and the
 // three ListenBrainz matchers need one line each instead of five.
 const PRESS_PLAY_KEYS = ['v12', 'cobra', 'tarantino', 'cutuoff', 'sweat'];
+// The EPs, as ONE membership list. The leaderboard's nested tab rows and My
+// Badges' collapsible cards both read it, so a track cannot be filed under an
+// EP in one place and left loose in the other. SaWaDiKa is on PRESS PLAY: it
+// shipped as the pre-release single and keeps its own id and its own tier bar,
+// but it is a track on the EP and reads as one.
+const EP_RELEASES = [
+  { key: 'faep',      label: 'FALLEN ANGEL EP', songs: ['fallenangel', 'heaven', 'ltal'] },
+  { key: 'pressplay', label: 'PRESS PLAY EP',
+    songs: ['sawadika', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat'] },
+];
+function epSongsOf(key) { return EP_RELEASES.find(g => g.key === key)?.songs || []; }
 // Campaign tracks (drive the campaign totals + daily stamp). The Fallen Angel EP
 // songs are tracked and shown, but never counted into these.
 const CAMPAIGN_TRACK_IDS = ['jump', 'shutdown', 'ddududu', 'go'];
@@ -12069,6 +12099,15 @@ function toggleTierAcc(btn) {
   const open = item.classList.toggle('open');
   btn.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
+// The daily challenge's EP tiles. Open, the tile spans the whole row (see the
+// grid-column rule) so its tracks get full-width cards instead of a third of
+// one; that is a CSS consequence of the class, not something to set here.
+function toggleDailyEp(btn) {
+  const item = btn.closest('.daily-ep');
+  if (!item) return;
+  const open = item.classList.toggle('open');
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
 // Overall combined prestige badge — 1,000 in a day / 10,000 in a week across all
 // campaign tracks. Rendered under the daily and weekly challenges.
 function overallPrestigeBanner(combined, goal, period) {
@@ -14070,9 +14109,38 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
     : PRESS_PLAY_KEYS.includes(t.id) ? ppOut
     : (!EP_TRACK_IDS.includes(t.id) || epOut));
   const todayCombined = milestoneTotalOf(todayCounts);
-  dailyGrid.innerHTML = `
-    <div class="daily-grid">
-      ${gridTracks.map(t => {
+
+  // One card per track put fifteen equal tiles on the page, which reads as a
+  // wall rather than a scoreboard. The EPs fold into one tile each: the
+  // combined count up front, the per-track detail a tap away. Same accordion
+  // behaviour as the badge history below, so there is one way to open a thing
+  // on this page rather than two.
+  const visibleIds = new Set(gridTracks.map(t => t.id));
+  const groupOfTrack = {};
+  for (const g of EP_RELEASES) {
+    const shown = g.songs.filter(id => visibleIds.has(id));
+    // One visible track is not a group. Before the rest of an EP is out,
+    // folding its single released track behind an "EP" tile would hide that
+    // track AND overstate what is on the page — so it stays a plain card.
+    if (shown.length > 1) for (const id of shown) groupOfTrack[id] = g;
+  }
+  // A group takes the slot of its first visible member; everything else keeps
+  // TRACKS' order, so the campaign tracks stay where readers expect them.
+  const tiles = [];
+  const placed = new Set();
+  for (const t of gridTracks) {
+    const g = groupOfTrack[t.id];
+    if (!g) { tiles.push({ kind: 'track', track: t }); continue; }
+    if (placed.has(g.key)) continue;
+    placed.add(g.key);
+    tiles.push({
+      kind: 'ep', group: g,
+      tracks: g.songs.filter(id => visibleIds.has(id))
+                     .map(id => gridTracks.find(x => x.id === id)),
+    });
+  }
+
+  const dailyCard = t => {
         const count = todayCounts[t.id] || 0;
         const tiers = DAILY_TIERS[t.id] || [];
         const currentBadge = getDailyBadge(t.id, count);
@@ -14098,7 +14166,30 @@ function renderProfile({ info, artistPlays, totalPlays, todayCounts, weekCounts,
           </div>
           <div class="daily-progress-bar"><div class="daily-progress-fill" style="width:${pct}%"></div></div>
         </div>`;
-      }).join('')}
+  };
+
+  // The EP tile. The headline number is the EP's combined scrobbles today; the
+  // badge count is there because "how am I doing" is the question the summary
+  // has to answer on its own, without being opened.
+  const epTile = tile => {
+    const ids = tile.tracks.map(t => t.id);
+    const total = ids.reduce((s, id) => s + (todayCounts[id] || 0), 0);
+    const earned = ids.filter(id => getDailyBadge(id, todayCounts[id] || 0)).length;
+    return `<div class="daily-card daily-ep" data-ep="${tile.group.key}">
+      <button type="button" class="daily-ep-head" onclick="toggleDailyEp(this)" aria-expanded="false">
+        <div class="daily-song-name">${tile.group.label}<span class="daily-ep-chev" aria-hidden="true">▾</span></div>
+        <div class="daily-count">${total}</div>
+        <div class="daily-target">${ids.length} tracks${earned ? ` · ${earned} with a badge` : ''} · tap for detail</div>
+      </button>
+      <div class="daily-ep-body">
+        <div class="daily-ep-grid">${tile.tracks.map(dailyCard).join('')}</div>
+      </div>
+    </div>`;
+  };
+
+  dailyGrid.innerHTML = `
+    <div class="daily-grid">
+      ${tiles.map(tile => tile.kind === 'ep' ? epTile(tile) : dailyCard(tile.track)).join('')}
     </div>
     ${(() => {
       // The daily stamp is earned across the CAMPAIGN tracks only — the Fallen Angel
@@ -16310,10 +16401,12 @@ function parseLbHistoryParam() {
 // Each EP tab owns a nested row and the songs inside it. Two groups now, so a
 // song has to say which row it opens — picking the one by hand is how the wrong
 // row ends up open under a lit tab.
+// The leaderboard's own concern is which tab opens which nested row; the track
+// membership comes from EP_RELEASES so it stays the same list My Badges groups
+// by.
 const EP_GROUPS = [
-  { tab: 'lb-subtab-faep',      row: 'lb-ep-subtabs', songs: ['fallenangel', 'heaven', 'ltal'] },
-  { tab: 'lb-subtab-pressplay', row: 'lb-pp-subtabs',
-    songs: ['sawadika', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat'] },
+  { tab: 'lb-subtab-faep',      row: 'lb-ep-subtabs', songs: epSongsOf('faep') },
+  { tab: 'lb-subtab-pressplay', row: 'lb-pp-subtabs', songs: epSongsOf('pressplay') },
 ];
 const EP_SONGS = EP_GROUPS.flatMap(g => g.songs);
 
