@@ -57,7 +57,7 @@ jobs:
            group by tracking_date order by tracking_date desc;
           -- Thailand specifically: its last dates, and what charted on each.
           select '  TH ' || tracking_date::text || ': ' || count(*) || ' row(s)  '
-                 || left(string_agg(distinct coalesce(track_name, artist_name, '?'), ', '), 120)
+                 || left(string_agg(distinct coalesce(track_name, primary_artist_name, '?'), ', '), 120)
             from chart_positions
            where chart_type = :'ct' and country = 'TH'
            group by tracking_date order by tracking_date desc limit 6;
