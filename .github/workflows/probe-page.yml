@@ -72,8 +72,14 @@ jobs:
           # alone hints at and the text settles. A literal newline would end
           # the workflow command, so the body is flattened into one line.
           if [ -n "$SHOW" ]; then
+            # `|| [ -n "$l" ]` because a JSON body has no trailing newline and
+            # read returns false on the last chunk — without it the ONLY line
+            # here is dropped and the probe reports nothing at all, which is
+            # how this printed an empty body for two different countries.
             head -c "$SHOW" /tmp/page | tr '\n\r' '  ' | sed 's/%/%25/g' \
-              | while IFS= read -r l; do echo "::notice title=body::$l"; done
+              | while IFS= read -r l || [ -n "$l" ]; do
+                  [ -n "$l" ] && echo "::notice title=body::$l"
+                done
           fi
 
           fail=0
