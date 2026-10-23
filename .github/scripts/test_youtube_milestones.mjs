@@ -24,6 +24,11 @@ const V = [
   [10,'ice', "BLACKPINK X Selena Gomez - 'Ice Cream' DANCE PERFORMANCE VIDEO", 'BLACKPINK', 'performance'],
   [11,'swd', "LISA - SaWaDiKa (Official Music Video)",             'LLOUD Official', 'mv'],
   [12,'sho', "🌹 and 🌷 #JISOO_FLOWER #지수꽃",                      'BLACKPINK',      'short'],
+  // A release hours old: far below any view floor, on the board from day one.
+  [13,'tar', "LISA - Tarantino (Official Music Video)",           'LLOUD Official', 'mv'],
+  // A video the snapshot has stopped reading — aged past the fresh-release
+  // window still under the floor, or renamed, or made private.
+  [14,'gon', "BLACKPINK - 'Gone' (Fan Edit)",                     'BLACKPINK',      'mv'],
 ];
 const VIDEOS = V.map(([id, vid, title, channel, kind]) =>
   ({ id, video_id: vid, title, channel, kind }));
@@ -44,6 +49,9 @@ const STATS = [
   { video_ref: 10, date: '2026-10-04', views:   148_778_278, captured_at: '2026-10-04T20:34:00Z' },
   { video_ref: 11, date: '2026-10-04', views:   196_556_674, captured_at: '2026-10-04T20:34:00Z' },
   { video_ref: 12, date: '2026-10-04', views:    98_605_553, captured_at: '2026-10-04T20:34:00Z' },
+  { video_ref: 13, date: '2026-10-05', views:     4_212_880, captured_at: '2026-10-05T04:41:00Z' },
+  // Three weeks behind the newest reading: not a partial snapshot, abandoned.
+  { video_ref: 14, date: '2026-09-14', views:    31_000_000, captured_at: '2026-09-14T04:41:00Z' },
 ];
 // GO: +80,857 over 8.12h → ~239k/day.  APT: +2,633,896 over 8.12h → ~7.8M/day.
 let RATES = [
@@ -156,6 +164,28 @@ check(nearIds.includes('go') && !nearIds.includes('sol'),
 const lim = await call({ limit: '2' });
 check(lim.body.counts.shown === 2 && lim.body.counts.total > 2,
       `limit caps the list but counts.total still reports everything (${lim.body.counts.shown}/${lim.body.counts.total})`);
+
+console.log('\n--- a brand-new release');
+r = await call();
+const all2 = [...r.body.blackpink, ...r.body.members];
+const tar = all2.find(x => x.videoId === 'tar');
+check(!!tar, 'a release hours old is on the board at all — the point of the fresh-release window');
+check(tar?.artist === 'LISA', `and files under LISA (${tar?.artist})`);
+check(tar?.next === 100e6, `its next milestone is its first 100M (${tar?.next / 1e6}M)`);
+check(tar?.rate == null && tar?.eta === null,
+      'with no rate or ETA on one reading — a guess from a single point is worse than a blank');
+check(tar?.pct > 4 && tar?.pct < 5, `and a real percentage, not NaN (${tar?.pct?.toFixed(1)}%)`);
+
+console.log('\n--- a video that stopped being read');
+check(!all2.some(x => x.videoId === 'gon'),
+      'a reading three weeks stale is dropped, not shown wearing today\'s asOf date');
+check(r.body.counts.droppedStale === 1, `and the drop is reported (${r.body.counts.droppedStale})`);
+check(all2.some(x => x.videoId === 'go'),
+      'while a video a day behind the newest is kept — a partial snapshot is not abandonment');
+// The staleness filter needs each row's date while it works; that is a working
+// field, not part of the contract, and this is a public response.
+const leaked = [...new Set(all2.flatMap(x => Object.keys(x)))].filter(k => k.startsWith('_'));
+check(leaked.length === 0, `no internal field reaches the response (${leaked.join(', ') || 'none'})`);
 
 console.log('\n--- asOf');
 check(r.body.asOf === '2026-10-05', `asOf is the newest reading's date (${r.body.asOf})`);

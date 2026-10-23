@@ -68,6 +68,12 @@ const RELEASE = {
   'FyS5dAywkEo': '2026-09-04T00:00:00Z', // LISA MV      — 02:00 Rome Sep 4 → 24h mark Sep 5, 02:00
   'sf02ugzPFE4': '2026-09-04T04:00:00Z', // JISOO MV     — 06:00 Rome Sep 4 → 24h mark Sep 5, 06:00
   'Lufa9QAFFeY': '2026-09-17T23:00:00Z', // ROSÉ new trick MV — 7PM EDT Sep 17 → 24h mark Sep 18, 7PM EDT
+  // LISA Tarantino MV — the ONE thing about PRESS PLAY that is a single
+  // worldwide instant; the EP itself dropped at midnight local. The premiere
+  // poster's five clocks all land on this: 12AM New York, 5AM London, 11AM
+  // Bangkok, 1PM Seoul, 3PM Sydney (it says EST/AEST where the dates make it
+  // EDT/AEDT — the clock times are what agree). → 24h mark Oct 24, 04:00Z.
+  '-5ZXrO_lYSA': '2026-10-23T04:00:00Z',
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -87,6 +93,7 @@ const EXTRA_MARKS = {
   'FyS5dAywkEo': [{ key: '7d', label: '7 DAYS', at: '2026-09-11T00:00:00Z' }], // LISA MV — release + 7d
   'sf02ugzPFE4': [{ key: '7d', label: '7 DAYS', at: '2026-09-11T04:00:00Z' }], // JISOO MV — release + 7d
   'Lufa9QAFFeY': [{ key: '7d', label: '7 DAYS', at: '2026-09-24T23:00:00Z' }], // ROSÉ new trick — release + 7d
+  '-5ZXrO_lYSA': [{ key: '7d', label: '7 DAYS', at: '2026-10-30T04:00:00Z' }], // LISA Tarantino — release + 7d
 };
 const marksOf = id => [
   ...(RELEASE[id] ? [{ key: '24h', label: '24H', at: Date.parse(RELEASE[id]) + DAY_MS }] : []),

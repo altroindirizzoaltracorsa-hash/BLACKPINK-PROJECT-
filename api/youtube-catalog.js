@@ -202,6 +202,10 @@ export default async function handler(req, res) {
   const explicit = String(req.query.channels || '').split(',').map(s => s.trim()).filter(Boolean);
   const seeds = String(req.query.seed || '').split(',').map(s => s.trim()).filter(Boolean);
   const min = Math.max(0, parseInt(req.query.min ?? '100000000', 10) || 0);
+  // ?fresh_days=<n> — also keep anything published within the last n days,
+  // however few views it has. Defaults to 0 (off), so this endpoint's
+  // existing behaviour is unchanged for every caller that does not ask.
+  const freshDays = Math.max(0, parseInt(req.query.fresh_days ?? '0', 10) || 0);
   const maxPages = Math.min(40, Math.max(1, parseInt(req.query.max_pages ?? '30', 10) || 30));
   // ?kinds=all keeps everything; ?kinds=mv,live picks explicitly.
   const kindsParam = String(req.query.kinds || '').trim();
@@ -234,7 +238,15 @@ export default async function handler(req, res) {
       let kept = 0;
       for (const it of items) {
         const views = Number(it.statistics?.viewCount);
-        if (!Number.isFinite(views) || views < min) continue;
+        if (!Number.isFinite(views)) continue;
+        // A brand-new release is below any sensible view floor on the day it
+        // lands, which is the day it is most worth watching — the milestone
+        // board exists to show a video climbing, and a new MV climbs fastest.
+        // So recency is a second way in, alongside the floor.
+        const publishedAt = it.snippet?.publishedAt || null;
+        const fresh = freshDays > 0 && publishedAt
+          && Date.now() - Date.parse(publishedAt) <= freshDays * 86400000;
+        if (views < min && !fresh) continue;
         const title = it.snippet?.title || '';
         const durationSec = iso8601Seconds(it.contentDetails?.duration);
         const kind = classify(title, durationSec);
@@ -247,7 +259,7 @@ export default async function handler(req, res) {
           kind,
           channel: ch.title,
           channelId: ch.id,
-          publishedAt: it.snippet?.publishedAt || null,
+          publishedAt,
           duration: it.contentDetails?.duration || null,
           durationSec,
           views,
@@ -274,7 +286,7 @@ export default async function handler(req, res) {
     videos.sort((a, b) => a.gap - b.gap);
 
     return res.status(200).json({
-      ts: Date.now(), min, maxPages,
+      ts: Date.now(), min, freshDays, maxPages,
       kinds: keepAll ? 'all' : kinds, dropped,
       channels, unresolved: missed,
       count: videos.length, videos,
