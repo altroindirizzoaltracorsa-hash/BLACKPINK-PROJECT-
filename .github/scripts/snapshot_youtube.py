@@ -31,6 +31,8 @@ Env:
   SUPABASE_URL          Supabase project URL
   SUPABASE_SERVICE_KEY  service_role key
   MIN_VIEWS             view floor (default 50_000_000)
+  FRESH_DAYS            also keep anything published this recently, whatever
+                        its view count (default 30; 0 turns it off)
   DRY_RUN=1             fetch and report, write nothing
   OVERRIDE_DATE         label this reading with a given YYYY-MM-DD
 """
@@ -45,6 +47,11 @@ ADMIN_KEY = os.environ.get("ADMIN_KEY", "")
 SUPABASE_URL = (os.environ.get("SUPABASE_URL") or "").rstrip("/")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY") or ""
 MIN_VIEWS = int(os.environ.get("MIN_VIEWS") or 50_000_000)
+# A release is below any sensible view floor on the day it lands, which is the
+# day the board is most worth reading — a new MV climbing to its first 100M is
+# the fastest-moving row there will ever be. Recency is a second way past the
+# floor, so the video is recorded from day one and has a rate by day two.
+FRESH_DAYS = int(os.environ.get("FRESH_DAYS") or 30)
 DRY_RUN = os.environ.get("DRY_RUN") == "1"
 OVERRIDE_DATE = os.environ.get("OVERRIDE_DATE")
 
@@ -67,8 +74,9 @@ def sb(method, path, **kwargs):
 
 
 def fetch_catalog():
-    """Every video above the floor, of every kind — filtering is the board's job."""
-    url = f"{BASE}/api/youtube-catalog?min={MIN_VIEWS}&kinds=all"
+    """Every video above the floor OR published in the last FRESH_DAYS days, of
+    every kind — filtering is the board's job."""
+    url = f"{BASE}/api/youtube-catalog?min={MIN_VIEWS}&kinds=all&fresh_days={FRESH_DAYS}"
     r = httpx.get(url, headers={"x-admin-secret": ADMIN_KEY},
                   timeout=180, follow_redirects=True)   # the apex 308-redirects
     r.raise_for_status()

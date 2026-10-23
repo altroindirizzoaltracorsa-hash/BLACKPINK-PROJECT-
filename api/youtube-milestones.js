@@ -18,6 +18,10 @@ const STEP = 100e6;                     // the public milestone ladder, per vide
 const nextMilestone = v => Math.ceil((v + 1) / STEP) * STEP;
 const prevMilestone = v => Math.floor(v / STEP) * STEP;
 const DEFAULT_KINDS = ['mv', 'performance'];
+// How far behind the newest reading a video may fall before the board stops
+// showing it. Not a tuning knob — it is the line between "the snapshot was
+// partial today" and "this video is no longer being read".
+const STALE_DAYS = 7;
 
 const sbRest = async (path, params) => {
   const url = `${process.env.SUPABASE_URL}/rest/v1${path}?${new URLSearchParams(params)}`;
@@ -148,8 +152,25 @@ export default async function handler(req, res) {
         eta: days == null ? null
           : new Date(Date.now() + days * 86400000).toISOString().slice(0, 10),
         readings: r ? r.readings : 1,
+        _date: s.date,
       });
     }
+
+    // A row the snapshot has stopped reading must leave, not sit there frozen.
+    // The board stamps ONE "as of" date across the whole page, so a video that
+    // dropped out of the catalogue — aged past the fresh-release window still
+    // under the floor, renamed, made private, moved channel — would keep its
+    // last reading and wear today's date. Stale beats missing nowhere here: a
+    // view count is a number people quote. STALE_DAYS of slack, because a
+    // partial snapshot can legitimately leave a few videos a day behind.
+    const newest = all.reduce((d, x) => (x._date > d ? x._date : d), '');
+    const cutoff = new Date(Date.parse(newest) - STALE_DAYS * 86400000)
+      .toISOString().slice(0, 10);
+    const fresh = all.filter(x => x._date >= cutoff);
+    const dropped = all.length - fresh.length;
+    all.length = 0;
+    all.push(...fresh);
+    for (const x of all) delete x._date;
 
     // Soonest first once rates exist, smallest gap until then. The two disagree
     // — a 16M gap at 130k/day is four months out while a 12.7M gap at 620k/day
@@ -170,7 +191,7 @@ export default async function handler(req, res) {
       asOf, capturedAt, step: STEP,
       kinds: keepAll ? 'all' : kinds,
       sortedBy, hasRates,
-      counts: { total: all.length, shown: list.length },
+      counts: { total: all.length, shown: list.length, droppedStale: dropped },
       blackpink: list.filter(x => x.artist === 'BLACKPINK'),
       members: list.filter(x => x.artist !== 'BLACKPINK'),
     });
