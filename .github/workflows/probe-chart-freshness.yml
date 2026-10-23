@@ -39,35 +39,38 @@ jobs:
           set +e
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -t -A -v ct="$CT" >/tmp/out.txt 2>&1 <<'SQL'
           \pset footer off
-          select 'chart_type = ' || :'ct' || ' · today is ' || current_date;
-          -- The newest date anywhere, which is what the page calls "current".
-          select 'newest tracking_date anywhere: ' || max(tracking_date)
-            from chart_positions where chart_type = :'ct';
-          -- Countries grouped by how far behind they are. One line per date,
-          -- because 74 lines would exceed the annotation cap and truncate.
-          select '  ' || d::text || '  (' || (current_date - d) || 'd behind, '
-                 || count(*) || ' countries)  ' || string_agg(c, ' ' order by c)
-            from (
-              select country as c, max(tracking_date) as d
-                from chart_positions where chart_type = :'ct'
-               group by country
-            ) t group by d order by d;
-          -- How many rows arrived per day lately: a sweep that half-ran shows
-          -- up here as a short day, which a per-country view cannot tell from
-          -- "nothing charted".
-          select '  rows on ' || tracking_date::text || ': ' || count(*)
-                 || ' across ' || count(distinct country) || ' countries'
-            from chart_positions
-           where chart_type = :'ct' and tracking_date > current_date - 9
+          select 'chart_type=' || :'ct' || '  today=' || current_date
+                 || '  newest anywhere=' || (select max(tracking_date) from chart_positions where chart_type = :'ct');
+          -- How many countries sit on each of the last few dates. NEWEST FIRST,
+          -- because the question is "who is current", and a truncated answer
+          -- must lose the stragglers rather than the headline.
+          select '  ' || d::text || ' (' || (current_date - d) || 'd): '
+                 || count(*) || ' countries  ' || left(string_agg(c, ' ' order by c), 300)
+            from (select country as c, max(tracking_date) as d
+                    from chart_positions where chart_type = :'ct' group by country) t
+           group by d order by d desc limit 8;
+          -- Rows per sweep day: a half-run sweep is a short day here, which a
+          -- per-country date cannot distinguish from "nothing charted".
+          select '  rows ' || tracking_date::text || ': ' || count(*) || ' in '
+                 || count(distinct country) || ' countries'
+            from chart_positions where chart_type = :'ct' and tracking_date > current_date - 8
            group by tracking_date order by tracking_date desc;
+          -- Thailand specifically: its last dates, and what charted on each.
+          select '  TH ' || tracking_date::text || ': ' || count(*) || ' row(s)  '
+                 || left(string_agg(distinct coalesce(track_name, artist_name, '?'), ', '), 120)
+            from chart_positions
+           where chart_type = :'ct' and country = 'TH'
+           group by tracking_date order by tracking_date desc limit 6;
           SQL
           rc=$?
           set -e
-          n=0
+          # ONE annotation: GitHub keeps ~10 notices per run, and a literal
+          # newline ends a workflow command, so lines are joined with %0A.
+          blob=""
           while IFS= read -r line; do
             [ -z "$line" ] && continue
-            n=$((n+1))
-            [ "$n" -gt 9 ] && { echo "::notice title=charts::(more lines omitted — annotation cap)"; break; }
-            echo "::notice title=charts::${line}"
+            esc=${line//\%/%25}
+            if [ -z "$blob" ]; then blob="$esc"; else blob="$blob%0A$esc"; fi
           done < /tmp/out.txt
+          echo "::notice title=charts::${blob:0:3500}"
           if [ "$rc" -ne 0 ]; then echo "::error::psql exited $rc"; exit "$rc"; fi
