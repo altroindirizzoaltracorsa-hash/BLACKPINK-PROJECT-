@@ -1,0 +1,51 @@
+name: Seed tracks into an artist catalogue
+
+# Build a catalogue ahead of the nightly fetch.
+#
+# Auto-discovery already finds a release on drop day, but the line that saves
+# it runs after process_artist's early returns (the mid-publish hold, and "same
+# total as yesterday"), so until Spotify publishes a day the find is logged and
+# dropped. The tracks do land in the same run that first records their numbers,
+# so nothing is ever missed by waiting — this is for when you want the rows in
+# place beforehand.
+#
+# Writes artist_tracks only, never a day of stats. Default is a DRY RUN; pass
+# write=1 to apply. Re-running is a no-op.
+on:
+  workflow_dispatch:
+    inputs:
+      artist_id:
+        description: "Spotify artist id (LISA = 5L1lO4eRHmJ7a0Q6csE5cT)."
+        required: true
+      track_ids:
+        description: "Track ids, comma or space separated."
+        required: true
+      write:
+        description: "1 to write. Anything else is a dry run."
+        required: false
+        default: "0"
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Shares the catalogue fetch's lane so a seed cannot interleave with a
+    # nightly run reading the same catalogue.
+    concurrency:
+      group: catalog-fetch
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: pip install spotifyscraper httpx
+      - name: Seed
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          ARTIST_ID: ${{ github.event.inputs.artist_id }}
+          TRACK_IDS: ${{ github.event.inputs.track_ids }}
+          WRITE: ${{ github.event.inputs.write }}
+        run: python .github/scripts/seed_tracks.py
