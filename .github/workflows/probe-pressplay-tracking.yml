@@ -1,0 +1,62 @@
+name: Probe PRESS PLAY tracking
+
+# Is the new LISA EP actually being counted? Read-only — one SELECT each,
+# nothing written.
+#
+# Asks three things the site cannot be eyeballed for:
+#   1. whether tracked_artists has any ACTIVE rows at all, because the
+#      discovery preview came back listing no artists, which either means the
+#      table is empty of them or the nightly fetch has nothing to walk;
+#   2. whether LISA's catalogue has picked up the EP's tracks yet;
+#   3. whether anything was recorded for her in the last few days.
+#
+# Results come back as ::notice annotations: the job log is served from blob
+# storage a Claude Code session cannot fetch.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ask the database
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -u
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL is not set."; exit 1
+          fi
+          set +e
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -t -A >/tmp/out.txt 2>&1 <<'SQL'
+          \pset footer off
+          select 'tracked_artists: ' || count(*) || ' rows, ' ||
+                 count(*) filter (where active) || ' active'
+            from tracked_artists;
+          select '  active: ' || coalesce(string_agg(name, ', ' order by name), '(none)')
+            from tracked_artists where active;
+          -- LISA's catalogue, and anything in it that looks like the new EP.
+          select 'LISA artist_tracks: ' || count(*) || ' tracks'
+            from artist_tracks where artist_id = '5L1lO4eRHmJ7a0Q6csE5cT';
+          select '  newest by first-seen: ' ||
+                 coalesce(string_agg(name || ' [' || to_char(created_at,'Mon DD') || ']', ' | '), '(none)')
+            from (select name, created_at from artist_tracks
+                   where artist_id = '5L1lO4eRHmJ7a0Q6csE5cT'
+                   order by created_at desc nulls last limit 6) t;
+          -- Anything recorded for her at all lately?
+          select '  daily rows in the last 5 days: ' || count(*) ||
+                 ' (latest day ' || coalesce(max(day)::text,'none') || ')'
+            from track_daily_stats s
+            join artist_tracks a on a.id = s.track_id
+           where a.artist_id = '5L1lO4eRHmJ7a0Q6csE5cT'
+             and s.day > current_date - 5;
+          SQL
+          rc=$?
+          set -e
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            echo "::notice title=tracking::${line}"
+          done < /tmp/out.txt
+          if [ "$rc" -ne 0 ]; then echo "::error::psql exited $rc"; exit "$rc"; fi
