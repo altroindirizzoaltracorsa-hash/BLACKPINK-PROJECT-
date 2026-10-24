@@ -137,15 +137,30 @@ export default async function middleware(req) {
       .replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${desc}$2`);
     if (page.image) {
       const img = `${url.origin}${page.image}`;
+      const type = /\.png$/i.test(page.image) ? 'image/png'
+                 : /\.webp$/i.test(page.image) ? 'image/webp' : 'image/jpeg';
+      // secure_url and type alongside og:image, not instead of it. The page
+      // carries only og:image, and several scrapers — WhatsApp among them —
+      // look for og:image:secure_url first and treat a bare og:image as a
+      // weaker signal. Cheap to state, and it removes one reason a share can
+      // come up as plain text while the tag itself is perfectly correct.
       html = html
-        .replace(/(<meta property="og:image" content=")[^"]*(")/, `$1${img}$2`)
+        .replace(/(<meta property="og:image" content=")[^"]*(")/,
+          `$1${img}$2>\n<meta property="og:image:secure_url" content="${img}">\n<meta property="og:image:type" content="${type}"`)
         .replace(/(<meta name="twitter:image" content=")[^"]*(")/, `$1${img}$2`);
     }
 
     return new Response(html, {
       headers: {
         'content-type': 'text/html; charset=utf-8',
-        'cache-control': 's-maxage=3600, stale-while-revalidate=86400',
+        // Was s-maxage=3600, stale-while-revalidate=86400, and that day-long
+        // stale window is a real way for a fixed preview to stay broken: the
+        // first request after the hour expires is SERVED the stale copy while
+        // the new one is fetched behind it, and a scraper fetches once. So a
+        // crawler asking the day after a fix could still be handed the markup
+        // from before it. These pages are a title, a line of text and an image
+        // URL — there is nothing here worth a day of staleness.
+        'cache-control': 's-maxage=300, stale-while-revalidate=60',
       },
     });
   } catch {

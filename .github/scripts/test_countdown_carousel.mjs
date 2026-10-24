@@ -105,7 +105,9 @@ console.log('--- the countdown cards, on the home page');
   // then Someone to Hold with the Steps film on Nov 20. Then the ones already
   // out, newest first. PRESS PLAY led this list until it was released on the
   // 23rd; a countdown to a date that has passed is not the thing to open on.
-  const ORDER = ['addicted','steps','lalisaofficial.com','newtrick','jisoo.io','hellosawadika.com'];
+  // CLICK (jisoo.io) is no longer in this row at all — it moved to the past
+  // block on 2026-10-24, which is what the #cd-past check below now expects.
+  const ORDER = ['addicted','steps','lalisaofficial.com','newtrick','hellosawadika.com'];
   // Read the AUTHORED order, not the DOM order: with looping on, the track
   // rotates cards between its ends, so the DOM order is the running order
   // turned by however many times it has wrapped.
@@ -145,29 +147,63 @@ console.log('--- the countdown cards, on the home page');
   !s.pageOverflow ? ok('and the PAGE does not') : bad('and the PAGE does not');
   s.lit===0 ? ok('the first dot is lit') : bad('the first dot is lit',`lit=${s.lit}`);
 
-  // One flick must move one card. A real fling cannot be driven from here —
-  // synthetic touch carries no momentum and synthesizeScrollGesture will not
-  // drive this element — so what is checked is the condition the browser needs
-  // in order to honour it: the rule is in the stylesheet, unconditionally,
-  // BEFORE the finger lands. That is the whole lesson of the first attempt,
-  // which gated it on a class added at pointerdown: a fling runs on the
-  // compositor, which reads the snap rules as the gesture begins, so a class
-  // set by JavaScript can arrive after the decision is already made. Checked
-  // at rest with no classes on the wrap, which is the state a finger meets.
-  // The matching half — that a dot press for a far card still goes all the way
-  // there rather than crawling one slide — is the dot check further down.
-  const snap = await page.evaluate(()=>{
-    const t=document.querySelector('#home-countdowns > .cd-wrap');
-    const cards=[...t.children].filter(c=>c.nodeType===1&&c.classList.contains('cd-card'));
-    return { cls:[...t.classList].filter(c=>c==='is-jumping'||c==='is-dragging'),
-             stops:cards.map(c=>getComputedStyle(c).scrollSnapStop) };
-  });
-  const allStop = snap.stops.length>0 && snap.stops.every(v=>v==='always');
-  (allStop && !snap.cls.length)
-    ? ok('a flick is held to one card',`scroll-snap-stop: always on all ${snap.stops.length}, with no class needed`)
-    : bad('a flick is held to one card',
-          !allStop ? `scroll-snap-stop reads ${[...new Set(snap.stops)].join('/')||'nothing'} at rest — a fling will run past several cards`
-                   : `only true while ${snap.cls.join('+')} is set, which is too late for a compositor fling`);
+  // ONE FLICK, ONE CARD — and this is now a real measurement, which the two
+  // earlier attempts could not have. Those left the scrolling to the browser
+  // and tried to constrain it with scroll-snap-stop; the thing doing the
+  // scrolling was then the compositor's fling, which cannot be produced here
+  // (synthetic touch carries no momentum, and synthesizeScrollGesture will
+  // not drive this element), so the check could only ever inspect the rule
+  // rather than the behaviour. The track now declares `touch-action: pan-y`,
+  // which means the browser never scrolls it sideways at all and the gesture
+  // is handled by the page on the main thread — so a pointerdown/move/up
+  // sequence IS the production path, and the length of the drag is the thing
+  // that used to decide how many cards went past.
+  await page.evaluate(()=>document.querySelector('#home-countdowns > .cd-wrap')
+    .dispatchEvent(new Event('focusin',{bubbles:true})));      // autoplay out of the way
+  const ta = await page.evaluate(()=>
+    getComputedStyle(document.querySelector('#home-countdowns > .cd-wrap')).touchAction);
+  /(^|\s)pan-y(\s|$)/.test(ta) && !/manipulation|auto|pan-x/.test(ta)
+    ? ok('the browser does not scroll the cards itself',`touch-action: ${ta}`)
+    : bad('the browser does not scroll the cards itself',
+          `touch-action: ${ta} — a sideways fling belongs to the compositor again, and it will run past several cards`);
+  // Dispatched on the track and left to bubble, the way a real touch arrives.
+  const drag = async (dx, steps=14) => {
+    await page.evaluate(({dx,steps})=>new Promise(res=>{
+      const el=document.querySelector('#home-countdowns > .cd-wrap');
+      const r=el.getBoundingClientRect();
+      const y=Math.round(r.top+Math.min(80, r.height/2));
+      const x0=Math.round(r.left+r.width/2);
+      const send=(type,x)=>el.dispatchEvent(new PointerEvent(type,
+        {clientX:x, clientY:y, pointerId:7, pointerType:'touch', bubbles:true}));
+      send('pointerdown', x0);
+      let i=0;
+      const tick=()=>{
+        i++;
+        send('pointermove', Math.round(x0+dx*i/steps));
+        if (i<steps) { requestAnimationFrame(tick); return; }
+        send('pointerup', Math.round(x0+dx));
+        res();
+      };
+      requestAnimationFrame(tick);
+    }), {dx,steps});
+    await page.waitForTimeout(1000);
+  };
+  // A short swipe and a long one. The long one is the complaint: 700px across
+  // a 390px viewport is nearly two whole cards of travel, and before this it
+  // would have carried three or four. Compared on the AUTHORED index, because
+  // the loop rotates the DOM underneath and a position in the track names a
+  // different card each lap.
+  for (const [dx,label] of [[-140,'a short swipe'],[-700,'a long flick'],[700,'and a long flick back']]) {
+    const was=await state(page);
+    await drag(dx);
+    const now=await state(page);
+    const n=now.slides;
+    const want=((was.atLogical + (dx<0?1:-1)) % n + n) % n;
+    now.atLogical===want
+      ? ok(`${label} moves exactly one card`,`${was.showing} → ${now.showing}`)
+      : bad(`${label} moves exactly one card`,
+            `${was.showing} → ${now.showing}, which is ${((now.atLogical-was.atLogical)%n+n)%n} along, not 1`);
+  }
 
   // Same here: hold autoplay still so the position under test is the one the
   // check put it in.
@@ -199,8 +235,13 @@ console.log('--- the countdown cards, on the home page');
   await page.evaluate(()=>document.querySelectorAll('#home-countdowns > [data-carousel-nav] .cd-dot')[4].click());
   await page.waitForTimeout(900);
   s=await state(page);
-  (s.at===4 && s.lit===4) ? ok('clicking a dot goes to that slide',`"${s.active}"`)
-                          : bad('clicking a dot goes to that slide',`at ${s.at}, lit ${s.lit}`);
+  // Compared on the AUTHORED index, not the DOM position: the fifth dot stands
+  // for the fifth countdown in the running order, and looping moves that card
+  // around the track, so demanding it sit fifth in the DOM is asking the wrong
+  // question. It passed for a while on the rotation happening to line up.
+  (s.atLogical===4 && s.lit===4)
+    ? ok('clicking a dot goes to that slide',`"${s.showing}"`)
+    : bad('clicking a dot goes to that slide',`showing "${s.showing}" (order ${s.atLogical}), lit ${s.lit}`);
   // The track takes the height of the card you are on — otherwise a poster-
   // shaped card sits over a few hundred pixels of nothing, left by whichever
   // sibling happens to be tallest.
@@ -359,6 +400,16 @@ console.log('--- the hub lists them, it does not page through them');
     const tops=cards.map(c=>Math.round(c.getBoundingClientRect().top));
     return { n: cards.length, dir: getComputedStyle(w).flexDirection,
              stacked: new Set(tops).size===tops.length,
+             // Top to bottom as the reader meets them, against the authored
+             // running order held on each card. Looping browses by moving a
+             // card from one end of the track to the other, so the DOM order
+             // on arrival is the running order turned by however many times it
+             // has wrapped — which a carousel is indifferent to and a LIST is
+             // not. The hub was opening on hellosawadika.com for exactly that
+             // reason.
+             domOrder: cards.map(c=>c.dataset.slug),
+             byLogical: cards.map((c,i)=>({s:c.dataset.slug,k:c._cdLogical!=null?c._cdLogical:i}))
+               .sort((a,b)=>a.k-b.k).map(o=>o.s),
              navHidden: nav?nav.hidden:null, inlineHeight: w.style.height||'',
              dimmed: cards.filter(c=>c.classList.contains('is-ahead')).length,
              widthsSame: new Set(cards.map(c=>Math.round(c.getBoundingClientRect().width))).size===1,
@@ -368,6 +419,10 @@ console.log('--- the hub lists them, it does not page through them');
   r.dir==='column' && r.stacked
     ? ok('one under another, not side by side')
     : bad('one under another, not side by side',JSON.stringify(r));
+  JSON.stringify(r.domOrder)===JSON.stringify(r.byLogical)
+    ? ok('and in the order they are meant to run', r.domOrder.join(' → '))
+    : bad('and in the order they are meant to run',
+          `reads ${r.domOrder.join(' → ')}, should be ${r.byLogical.join(' → ')}`);
   r.navHidden===true ? ok('and the carousel controls stand down')
                      : bad('and the carousel controls stand down',`navHidden=${r.navHidden}`);
   // A list has no single height to take and nothing to dim: both are carousel
