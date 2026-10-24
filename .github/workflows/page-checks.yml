@@ -143,6 +143,13 @@ jobs:
       # A campaign can be registered with no goals and a mount that does not
       # exist, and nothing throws — the renderer returns early on both. PRESS
       # PLAY sat like that while the admin picker said "no goals yet".
+      # A countdown slug lives in three places and two of them fail silently:
+      # no preview entry, or no matcher line, and a shared link falls back to
+      # the generic site preview with nothing erroring.
+      - name: Countdown slugs are wired in all three places
+        if: always()
+        run: node .github/scripts/test_countdown_slugs.mjs
+
       - name: Campaign goal checklists are wired up
         if: always()
         run: node .github/scripts/test_campaign_goals.mjs
