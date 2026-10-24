@@ -80,6 +80,28 @@ def main():
         now_on = [t for t in pending if t["id"] in kw]
         print(f"{name}: {len(pending)} pending, {len(now_on)} now on kworb "
               f"(kworb lists {len(kw)} ids, catalogue pins {len(counted)})")
+
+        # The two SETS, not the two counts. Comparing sizes says nothing about
+        # membership — 67 against 64 was read here as "three tracks kworb
+        # counts that we do not", which does not follow and was wrong. The
+        # catalogue pins kworb's scope as of its seed day while kworb's own
+        # list moves underneath it, so the lists drift in both directions.
+        #
+        # Reported, never failed on. Drift is worth seeing — a group missing
+        # tracks kworb counts reads low, and reads like a quiet week — but it
+        # is a standing condition, and a daily red for it would bury the one
+        # thing this check exists to shout about.
+        watched = {t["id"] for t in entry.get("tracks", [])}
+        kworb_only = kw - counted - watched        # watched ones are the headline above
+        ours_only = counted - kw
+        if kworb_only or ours_only:
+            print(f"    scope drift: kworb has {len(kworb_only)} id(s) the catalogue does not"
+                  f" (beyond the watchlist), the catalogue has {len(ours_only)} kworb no longer lists")
+            for tid in sorted(kworb_only):
+                print(f"      kworb only   https://open.spotify.com/track/{tid}")
+            for tid in sorted(ours_only):
+                nm = next((t.get("name", "?") for t in cat.get("tracks", []) if t["id"] == tid), "?")
+                print(f"      ours only    {tid}  {nm}")
         for t in now_on:
             print(f"    LISTED  {t['name']}  {t['id']}")
         if now_on:
