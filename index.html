@@ -1716,6 +1716,12 @@
 
   /* ── Home countdown cards (release / reveal timers) ── */
   .cd-section-label { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--pink); margin-bottom: 1.2rem; }
+  /* The heading links to the hub, and still reads as a heading. */
+  .cd-section-label a { color: inherit; text-decoration: none; }
+  .cd-section-label a:hover, .cd-section-label a:focus-visible { text-decoration: underline; text-underline-offset: 0.35em; }
+  /* A card opens its own countdown, so it should look like it will. Off while
+     a deep link has filtered to that one card, where there is nowhere to go. */
+  #home-countdowns.cd-browse > .cd-wrap > .cd-card { cursor: pointer; }
   /* "...and what time is that where I am?" — the one question a card naming two
      foreign timezones cannot answer for anybody else. Inherits the card's own
      colour and font, so each release theme gets it without a rule of its own. */
@@ -3935,8 +3941,12 @@
       </div>
 
       <!-- Upcoming release / reveal countdowns -->
-      <section id="home-countdowns" style="margin-top:2.2rem;max-width:900px;width:100%;text-align:center;">
-        <p class="cd-section-label">◇ Countdowns</p>
+      <section id="home-countdowns" class="cd-browse" style="margin-top:2.2rem;max-width:900px;width:100%;text-align:center;">
+        <!-- A real <a>, not a span with a handler: the heading is how you get
+             to the hub from the home page, so it should open in a new tab,
+             copy as a link and tell a crawler where it goes like any other.
+             The onclick keeps it inside the SPA; the href is what it means. -->
+        <p class="cd-section-label"><a href="/countdowns" onclick="goCountdowns(); return false;">◇ Countdowns</a></p>
         <!-- One at a time, swiped across, rather than a column five cards deep.
              The nav below is a SIBLING of .cd-wrap, not a wrapper around it:
              loadAutoPrereleases finds the track with "#home-countdowns > .cd-wrap"
@@ -7080,20 +7090,32 @@ function cdListMode(on) {
 // On the /countdowns hub, clicking a card (anywhere except its own buttons/links)
 // opens that card's deep link. Only active on the "all" view — not when already
 // filtered to a single countdown. Delegated + bound once.
+// What a tap must NOT turn into navigation. Two kinds of thing: anything that
+// already does something of its own, and the ARTWORK. The art on these cards
+// is not decoration — ADDICTED's lockup turns under a finger and its sky
+// answers with lightning, the picture strips page through their frames — so a
+// tap there belongs to the card, not to the router.
+const CD_NO_NAV = 'a, button, input, label, select, textarea, details, summary,'
+  + ' .cd-links, .cd-btn, .cd-strip, .cd-hero, .ad-sky, .sw-hero, .vma-slides';
+
 function _initCountdownsCardClicks() {
-  const mount = document.getElementById('countdowns-mount');
-  if (!mount || mount.dataset.clickBound) return;
-  mount.dataset.clickBound = '1';
+  // Bound to the SECTION, not to the hub's mount. The section is physically
+  // moved into /countdowns and back again, so a listener on it travels with
+  // the cards and works in both places. On the mount it only ever worked on
+  // the hub, which is why a card on the HOME page did nothing when tapped.
+  const sec = document.getElementById('home-countdowns');
+  if (!sec || sec.dataset.clickBound) return;
+  sec.dataset.clickBound = '1';
   // Where the pointer went down. Since the cards became a carousel, a swipe
   // across them ends in a click on whichever card is under the finger — and
   // without this, browsing by swipe would navigate away on every push.
   let downX = 0, downY = 0;
-  mount.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; },
+  sec.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; },
     { passive: true });
-  mount.addEventListener('click', (e) => {
+  sec.addEventListener('click', (e) => {
     if (currentCountdownSlug()) return;                       // already on one deep link
     if (Math.abs(e.clientX - downX) > 10 || Math.abs(e.clientY - downY) > 10) return; // a drag, not a tap
-    if (e.target.closest('a, button, .cd-links, .cd-btn')) return; // let buttons do their thing
+    if (e.target.closest(CD_NO_NAV)) return;                  // its own thing, or the art
     const card = e.target.closest('.cd-card[data-slug]');
     if (card && card.dataset.slug) goCountdowns(card.dataset.slug);
   });
@@ -7132,6 +7154,11 @@ function applyCountdownFilter(slug) {
   if (back) back.style.display = (slug && matched) ? 'inline-flex' : 'none';
   const mount = document.getElementById('countdowns-mount');
   if (mount) mount.classList.toggle('cd-hub-browse', !(slug && matched)); // card-click nav only on the "all" view
+  // The same decision, on the section itself, because that is where the cards
+  // live on the home page too — it carries the pointer cursor that says a card
+  // is a door. A deep link has filtered to one card and there is nowhere to go.
+  const sec = document.getElementById('home-countdowns');
+  if (sec) sec.classList.toggle('cd-browse', !(slug && matched));
   // Every card but one may have just been hidden, or shown again.
   syncCarousels(document.getElementById('home-countdowns') || undefined);
 }
@@ -17945,6 +17972,12 @@ function cardTargetAt(card) {
 }
 
 function renderHomeCountdowns() {
+  // Bind the card-tap navigation here, because this is the one function the
+  // home countdowns always run through — setupCountdownsPage only fires on
+  // the hub, which is exactly why tapping a card on the home page used to do
+  // nothing. Guarded by a flag on the section, so calling it from a clock
+  // that ticks every second costs one lookup.
+  _initCountdownsCardClicks();
   const now = Date.now();
   // Walled off from the clock below: this runs every second beside it, and a
   // countdown that stops is a worse failure than a side event that never shows.

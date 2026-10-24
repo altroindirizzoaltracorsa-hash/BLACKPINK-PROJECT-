@@ -612,29 +612,127 @@ console.log('--- swiping the hub must not navigate away');
   await page.goto(base+'/countdowns',{waitUntil:'domcontentloaded'});
   await page.locator(TRACK).waitFor({timeout:20000});
   await page.waitForTimeout(3000);
-  const box=await page.locator('#home-countdowns .cd-card').first().boundingBox();
-  const y=Math.round(box.y+120), x0=Math.round(box.x+60), x1=Math.round(box.x+180);
-  await page.evaluate(([x0,x1,y])=>{
-    const el=document.elementFromPoint(x0,y);
-    el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:x0,clientY:y,pointerType:'touch'}));
-    el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,clientX:x1,clientY:y,pointerType:'touch'}));
-    el.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:x1,clientY:y}));
-  },[x0,x1,y]);
-  await page.waitForTimeout(900);
-  page.url().endsWith('/countdowns') ? ok('a swipe across the cards stays on the hub')
-                                     : bad('a swipe across the cards stays on the hub',page.url().replace(base,''));
-  // ...and a tap in one place still opens that countdown.
-  await page.evaluate(([x,y])=>{
-    const el=document.elementFromPoint(x,y);
-    el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:x,clientY:y,pointerType:'touch'}));
-    el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,clientX:x+2,clientY:y+1,pointerType:'touch'}));
-    el.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:x+2,clientY:y+1}));
-  },[x0,y]);
-  await page.waitForTimeout(900);
-  page.url().includes('/countdowns/') ? ok('and a tap still opens that countdown',page.url().replace(base,''))
-                                      : bad('and a tap still opens that countdown',page.url().replace(base,''));
+  // Aimed at the card's own TEXT, not at a point 120px down from its corner.
+  // That landed in the artwork, which is deliberately not a link now — so the
+  // swipe half of this check would have passed whether or not the drag guard
+  // existed, which is no check at all. The date line navigates, so a swipe
+  // across it genuinely has to be held back by the guard.
+  const spot = await page.evaluate(()=>{
+    const card=[...document.querySelectorAll('#home-countdowns .cd-card')]
+      .find(c=>c.offsetParent && getComputedStyle(c).display!=='none');
+    const el=card && card.querySelector('.cd-sub');
+    if (!el) return null;
+    el.scrollIntoView({ block:'center', inline:'nearest', behavior:'instant' });
+    const r=el.getBoundingClientRect();
+    return { x: Math.round(r.x+r.width/2), y: Math.round(r.y+r.height/2), slug: card.dataset.slug };
+  });
+  if (!spot) bad('a swipe across the cards stays on the hub','no card text to aim at');
+  else {
+    const fire=(x0,x1,y)=>page.evaluate(([x0,x1,y])=>{
+      const el=document.elementFromPoint(x0,y);
+      if (!el) return 'off screen';
+      el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:x0,clientY:y,pointerType:'touch'}));
+      el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,clientX:x1,clientY:y,pointerType:'touch'}));
+      el.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:x1,clientY:y}));
+      return 'fired';
+    },[x0,x1,y]);
+    await fire(spot.x-60, spot.x+60, spot.y);     // a swipe, 120px across
+    await page.waitForTimeout(900);
+    page.url().endsWith('/countdowns') ? ok('a swipe across the cards stays on the hub')
+                                       : bad('a swipe across the cards stays on the hub',page.url().replace(base,''));
+    // ...and a tap in one place still opens that countdown.
+    await fire(spot.x, spot.x+2, spot.y);
+    await page.waitForTimeout(900);
+    page.url()===base+'/countdowns/'+spot.slug
+      ? ok('and a tap still opens that countdown',page.url().replace(base,''))
+      : bad('and a tap still opens that countdown',`${page.url().replace(base,'')}, card was ${spot.slug}`);
+  }
   await ctx.close();
 }
+console.log('--- from the home page, a countdown is a door');
+{
+  const page=await newPage();
+  await page.goto(base+'/',{waitUntil:'domcontentloaded'});
+  await page.locator(TRACK).waitFor({timeout:20000});
+  await page.waitForTimeout(3000);
+
+  // 1. The heading goes to the hub. A real link, so this also asserts the
+  //    href — the thing that makes it openable in a new tab and followable by
+  //    anything that is not a mouse.
+  const head = await page.evaluate(()=>{
+    const a=document.querySelector('#home-countdowns .cd-section-label a');
+    return a ? { href: new URL(a.getAttribute('href'), location.origin).pathname, text: a.textContent.trim() } : null;
+  });
+  head && head.href==='/countdowns'
+    ? ok('the Countdowns heading links to the hub', `"${head.text}" → ${head.href}`)
+    : bad('the Countdowns heading links to the hub', head ? head.href : 'it is not a link at all');
+  if (head) {
+    await page.locator('#home-countdowns .cd-section-label a').click();
+    await page.waitForTimeout(700);
+    page.url().replace(base,'')==='/countdowns'
+      ? ok('and clicking it opens the hub')
+      : bad('and clicking it opens the hub', page.url().replace(base,''));
+    await page.goBack(); await page.waitForTimeout(1200);
+  }
+
+  // 2. A tap on the card's own body opens that countdown. Aimed at the date
+  //    line, which is text the card prints and nothing else claims.
+  // Always aimed at the card that is ON SCREEN. Taking the first card in the
+  // DOM does not do that: the loop rotates cards between the ends of the
+  // track, so the first one is usually parked off to the left, where
+  // elementFromPoint returns null and the tap lands on nothing at all. That
+  // is what the first version of this check was measuring — silently.
+  const tapShowing = async (relSel) => {
+    const r = await page.evaluate((relSel)=>{
+      const t=document.querySelector('#home-countdowns > .cd-wrap');
+      const sl=[...t.children].filter(c=>c.nodeType===1&&getComputedStyle(c).display!=='none');
+      const mid=t.scrollLeft+t.clientWidth/2; let at=0,g=Infinity;
+      sl.forEach((s,i)=>{const d=Math.abs((s.offsetLeft+s.offsetWidth/2)-mid); if(d<g){g=d;at=i;}});
+      const card=sl[at], el=card.querySelector(relSel);
+      if (!el) return { missing: `no ${relSel} on ${card.dataset.slug}` };
+      // These cards are taller than a phone screen, so the part being aimed
+      // at is often below the fold — and a tap at a point outside the
+      // viewport lands on nothing. inline:'nearest' so bringing it into view
+      // cannot scroll the TRACK sideways and change which card is centred.
+      // behavior:'instant' because the page sets html{scroll-behavior:smooth},
+      // so a default scrollIntoView ANIMATES — and the rect read on the very
+      // next line is still the old one. That is why this first reported the
+      // element as off screen at exactly the coordinates it started at.
+      el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+      const b2=el.getBoundingClientRect();
+      const x=Math.round(b2.x+b2.width/2), y=Math.round(b2.y+b2.height/2);
+      const hit=document.elementFromPoint(x,y);
+      if (!hit) return { err: `${relSel} is still off screen at ${x},${y}` };
+      hit.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:x,clientY:y,pointerType:'touch'}));
+      hit.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,clientX:x+1,clientY:y+1,pointerType:'touch'}));
+      hit.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:x+1,clientY:y+1}));
+      return { slug: card.dataset.slug, hit: hit.tagName.toLowerCase() };
+    }, relSel);
+    await page.waitForTimeout(800);
+    return { ...r, url: page.url().replace(base,'') };
+  };
+  const t1 = await tapShowing('.cd-sub');
+  (t1.err || t1.missing) ? bad('tapping the card opens its own countdown', t1.err || t1.missing)
+    : t1.url===`/countdowns/${t1.slug}`
+      ? ok('tapping the card opens its own countdown', t1.url)
+      : bad('tapping the card opens its own countdown', `${t1.url} — the card showing is ${t1.slug}`);
+  await page.goto(base+'/',{waitUntil:'domcontentloaded'});
+  await page.waitForTimeout(2500);
+
+  // 3. But the ARTWORK is not a link. ADDICTED's lockup turns under a finger
+  //    and the sky strikes; a tap there belongs to the card. Same for the
+  //    buttons, which have somewhere of their own to go.
+  for (const [rel, what] of [['.ad-sky','the art'], ['.cd-btn','a button']]) {
+    const r = await tapShowing(rel);
+    if (r.missing) { continue; }             // this card has no such part
+    if (r.err) { bad(`tapping ${what} does not navigate`, r.err); continue; }
+    r.url==='/' ? ok(`tapping ${what} does not navigate`)
+                : bad(`tapping ${what} does not navigate`, `it went to ${r.url}`);
+    if (r.url!=='/') { await page.goto(base+'/',{waitUntil:'domcontentloaded'}); await page.waitForTimeout(2500); }
+  }
+  await page.close();
+}
+
 await browser.close(); server.close();
 console.log(fails?`\n${fails} FAILED`:'\nAll carousel checks passed.');
 process.exit(fails?1:0);
