@@ -150,6 +150,14 @@ jobs:
         if: always()
         run: node .github/scripts/test_countdown_slugs.mjs
 
+      # The ADDICTED card carries jisoo.io's art and moves the way that site
+      # does. Every way it breaks still looks finished in a screenshot: the
+      # bolt stuck at opacity 0, the logo rendering one transform wherever
+      # the finger is, an <img> that 404d. Measured, not read off the source.
+      - name: The ADDICTED sky strikes and the logo turns
+        if: always()
+        run: node .github/scripts/test_addicted_sky.mjs
+
       - name: Campaign goal checklists are wired up
         if: always()
         run: node .github/scripts/test_campaign_goals.mjs
