@@ -1318,6 +1318,15 @@
   .as-album-art-fallback svg { width: 16px; height: 13px; }
   .as-album-name { font-family: var(--display); font-size: 0.9rem; letter-spacing: 0.06em; color: #FF6FA8; text-transform: uppercase; }
   .as-album-stats { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; margin-top: 0.15rem; }
+  /* Why a first reading is not a day. Sits under the album header, where the
+     number it qualifies is, rather than in a footnote. */
+  .as-album-partial { margin-top: 0.5rem; font-size: 0.66rem; line-height: 1.55; color: rgba(245,240,240,0.55); letter-spacing: 0.01em; }
+  .as-album-partial strong { color: var(--pink); font-weight: 600; }
+  /* A single folded into its EP keeps its own sleeve on its row. */
+  .as-track-art { width: 20px; height: 20px; border-radius: 4px; object-fit: cover; vertical-align: -0.28em; margin-right: 0.45rem; border: 1px solid rgba(255,0,102,0.18); }
+  /* "first reading" is prose where a number usually goes, so it must not wear
+     the number's size — at 1.35rem it wraps and shoves the row around. */
+  .as-track-daily-num.as-track-first { font-family: var(--mono, monospace); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(245,240,240,0.38); }
 
   /* All Tracks: soft card-style rows instead of plain table lines */
   .as-tracks-wrap { border: none; overflow: visible; }
@@ -7888,7 +7897,20 @@ function renderMergeNote(merges) {
   el.style.display = 'block';
 }
 
-function trackRowHtml(t, showRank) {
+// A pre-release single ships as its own release, so Spotify files it under its
+// own album name — and the BY ALBUM view then stands it apart from the EP it is
+// actually a track on. SaWaDiKa is on PRESS PLAY; Less Than a Lover is on
+// Fallen Angel. Keyed on the album string Spotify returns, read off the live
+// data rather than guessed: 'SaWaDiKa' and 'Less than a Lover' (that casing).
+// The single keeps its own cover on its row — a different sleeve is not a
+// different record.
+const ALBUM_CANON = {
+  'sawadika': 'PRESS PLAY',
+  'less than a lover': 'Fallen Angel',
+};
+const canonAlbum = a => ALBUM_CANON[String(a || '').trim().toLowerCase()] || a;
+
+function trackRowHtml(t, showRank, groupArt) {
   // Spotify has "combined" this version into another track — every merged ID
   // reports the same count, so we don't count it again. Keep it visible but show
   // a disclaimer instead of the repeated number.
@@ -7905,15 +7927,22 @@ function trackRowHtml(t, showRank) {
   `;
   }
   const trend = fmtTrend(t.daily_delta, t.prev_daily_delta);
+  // A track folded into another release keeps its own sleeve, so the reader can
+  // see it is the single — grouping it is a claim about the record, not the art.
+  const ownArt = groupArt && t.album_art_url && t.album_art_url !== groupArt
+    ? `<img class="as-track-art" src="${t.album_art_url}" alt="" loading="lazy">` : '';
+  // No previous day to subtract from: this is the track's FIRST reading, and
+  // "—" reads as "did nothing today" when it means "nothing to compare yet".
+  const firstReading = t.daily_delta == null;
   return `
     <tr>
       <td class="as-rank">${showRank ? t.rank : ''}</td>
       <td>
-        <div class="as-track-name">${t.name}</div>
+        <div class="as-track-name">${ownArt}${t.name}</div>
         <div class="as-track-sub">${fmtNum(t.streams)} total streams</div>
       </td>
       <td class="right">
-        <div class="as-track-daily-num">${fmtDelta(t.daily_delta)}</div>
+        <div class="as-track-daily-num${firstReading ? ' as-track-first' : ''}">${firstReading ? 'first reading' : fmtDelta(t.daily_delta)}</div>
         ${trend === '—' ? '' : `<div class="as-track-trend">${trend}</div>`}
       </td>
     </tr>
@@ -7934,9 +7963,20 @@ function renderArtistTracks() {
 
   const groups = new Map();
   for (const t of ranked) {
-    const key = t.album || '\0other';
-    if (!groups.has(key)) groups.set(key, { album: t.album, release_date: t.album_release_date, art: t.album_art_url, tracks: [] });
-    groups.get(key).tracks.push(t);
+    const album = canonAlbum(t.album);
+    const key = album || '\0other';
+    if (!groups.has(key)) groups.set(key, { album, release_date: t.album_release_date, art: t.album_art_url, tracks: [] });
+    const g = groups.get(key);
+    // The header must describe the EP, not whichever of its tracks happens to
+    // have the most streams. Tracks arrive sorted by streams, so SaWaDiKa (88M)
+    // reaches PRESS PLAY first and would otherwise hand the group its single's
+    // sleeve and release date. A member whose OWN album is the canonical one
+    // wins the metadata.
+    if (t.album === album && g.art !== t.album_art_url) {
+      g.art = t.album_art_url;
+      g.release_date = t.album_release_date;
+    }
+    g.tracks.push(t);
   }
   // Albums newest-first by release date; tracks with no album metadata sink to an "Other" group at the end.
   const sortedGroups = [...groups.values()].sort((a, b) => {
@@ -7956,6 +7996,20 @@ function renderArtistTracks() {
     const art = g.art
       ? `<img class="as-album-art" src="${g.art}" alt="">`
       : `<div class="as-album-art-fallback"><svg viewBox="-1 -1 52 45" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M25,8 C25,3 21,0 16,0 C8,0 2,6 2,14 C2,26 14,34 25,42 C36,34 48,26 48,14 C48,6 42,0 34,0 C29,0 25,3 25,8Z"/></svg></div>`;
+    // Tracks on their first reading. Their streams are real but they are NOT a
+    // day's streams: Spotify's day is the UTC day, and a release that lands at
+    // midnight LOCAL time reaches markets ahead of UTC only for the tail of
+    // that day — PRESS PLAY's first recorded day covers roughly 1 hour in
+    // London and 13 in Auckland, and none at all in the Americas. Reading the
+    // figure as a first-day total understates it; reading the NEXT day as day
+    // two overstates the trajectory. Say so where the number is, not in a
+    // footnote nobody scrolls to.
+    const firstReads = counted.filter(t => t.daily_delta == null);
+    const partialNote = firstReads.length
+      ? `<div class="as-album-partial">↳ ${firstReads.length} track${firstReads.length === 1 ? '' : 's'} on a first reading — `
+        + `streams so far, over a <strong>partial day</strong>: Spotify counts by UTC day and the release landed at midnight local time, `
+        + `so that first day is only a few hours in most countries and none in the Americas.</div>`
+      : '';
     return `
     <tr class="as-album-row"><td colspan="3">
       <div class="as-album-header">
@@ -7965,8 +8019,9 @@ function renderArtistTracks() {
           <div class="as-album-stats">${g.tracks.length} track${g.tracks.length === 1 ? '' : 's'} · ${fmtNum(totalStreams)} streams · ${fmtDelta(totalDaily)}</div>
         </div>
       </div>
+      ${partialNote}
     </td></tr>
-    ${g.tracks.map(t => trackRowHtml(t, false)).join('')}
+    ${g.tracks.map(t => trackRowHtml(t, false, g.art)).join('')}
   `;
   }).join('') || '<tr><td colspan="3">No tracks yet</td></tr>';
 }
