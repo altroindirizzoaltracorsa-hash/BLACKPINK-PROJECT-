@@ -2161,7 +2161,13 @@
      the lockup itself. The canvas fills the whole sky, so giving IT pan-y
      would mean a swipe anywhere on the art could no longer move the carousel
      — the model would have quietly taken the gesture the flat card left
-     alone. Everything outside this box still swipes. */
+     alone. Everything outside this box still swipes.
+     NOTE: pan-y here no longer decides that by itself. The track took
+     touch-action: pan-y as well (one flick, one card), so this value now
+     matches its parent's and tells the browser nothing new. What keeps a drag
+     on the lockup out of the carousel is OWN_DRAG in initCarousel, which
+     names this class. Both are kept: the rule states the intent on the
+     element, the handler enforces it. */
   .ad-grab { position: absolute; left: 50%; top: 50%; width: min(86%, 420px);
     aspect-ratio: 1955 / 727; transform: translate(-50%, -50%);
     touch-action: pan-y; }
@@ -17827,9 +17833,22 @@ function initCarousel(track) {
     // axis is decided once and does not change for the rest of the gesture,
     // so a drifting thumb cannot flip a page-scroll into a card change.
     const SLOP = 8;
+    // Patches where a sideways drag belongs to the CARD and not to the
+    // carousel: the box over ADDICTED's lockup, which is how you turn it, and
+    // the picture strips, which page through their own frames.
+    //
+    // This used to be decided by the stylesheet — .ad-grab was the one thing
+    // on the card with touch-action: pan-y, so the browser handed it the
+    // horizontal and left everything else to scroll the track. Giving the
+    // whole track pan-y, which is what makes one flick move one card, quietly
+    // ended that distinction: both now read pan-y, so both get the gesture,
+    // and the logo could not be turned without paging the carousel under it.
+    // The distinction has to be made here instead.
+    const OWN_DRAG = '.ad-grab, .cd-strip';
     let gId = -1, gx = 0, gy = 0, gLeft = 0, axis = '';
     track.addEventListener('pointerdown', (e) => {
       if (e.pointerType !== 'touch' || track._cdPaused) return;
+      if (e.target.closest(OWN_DRAG)) return;     // that patch owns this drag
       gId = e.pointerId; gx = e.clientX; gy = e.clientY; gLeft = track.scrollLeft; axis = '';
       track._loopShift = 0;
     }, { passive: true });

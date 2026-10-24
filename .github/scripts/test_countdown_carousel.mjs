@@ -205,6 +205,60 @@ console.log('--- the countdown cards, on the home page');
             `${was.showing} → ${now.showing}, which is ${((now.atLogical-was.atLogical)%n+n)%n} along, not 1`);
   }
 
+  // ...but not every sideways drag belongs to the carousel. ADDICTED's lockup
+  // is turned by dragging it, and taking the horizontal gesture for the track
+  // took that away: the logo could not be moved without paging to the next
+  // countdown under your finger. A drag that STARTS on the grab box must turn
+  // the lockup and leave the carousel exactly where it was.
+  {
+    // Put ADDICTED back under the finger first, whatever the swipes above left.
+    await page.evaluate(()=>{
+      const t=document.querySelector('#home-countdowns > .cd-wrap');
+      const sl=[...t.children].filter(c=>c.nodeType===1&&getComputedStyle(c).display!=='none');
+      const pos=sl.findIndex(c=>c.dataset.slug==='addicted');
+      if (pos>=0) carouselGo(t,pos,false);
+    });
+    await page.waitForTimeout(900);
+    const was = await state(page);
+    const r = await page.evaluate(async ()=>{
+      const grab=document.querySelector('#home-countdowns .cd-card-addicted .ad-grab');
+      if (!grab) return { missing:true };
+      const b=grab.getBoundingClientRect();
+      if (!b.width || b.bottom<0 || b.top>innerHeight) return { offscreen:`${Math.round(b.x)},${Math.round(b.y)}` };
+      const x=Math.round(b.x+b.width/2), y=Math.round(b.y+b.height/2);
+      // The angle from whichever of the two is live: the three.js scene when
+      // WebGL mounted, the flat lockup's own --ad-ry when it did not. Reading
+      // only the custom property reported "none" on a card that was turning
+      // perfectly well, because with the model up it is the scene that moves.
+      const sky=document.querySelector('#home-countdowns .cd-card-addicted .ad-sky');
+      const deg=()=>{
+        if (sky && sky._adScene) return 'scene:' + sky._adScene.yawDeg().toFixed(3);
+        const logo=document.querySelector('#home-countdowns .cd-card-addicted .ad-logo');
+        const v=logo && getComputedStyle(logo).getPropertyValue('--ad-ry');
+        return 'css:' + String(v || getComputedStyle(logo||sky).transform).trim();
+      };
+      const before=deg();
+      const send=(ty,cx)=>grab.dispatchEvent(new PointerEvent(ty,{clientX:cx,clientY:y,pointerId:9,pointerType:'touch',bubbles:true}));
+      send('pointerdown',x);
+      for (let i=1;i<=10;i++){ send('pointermove',x+i*9); await new Promise(r2=>requestAnimationFrame(r2)); }
+      send('pointerup',x+90);
+      await new Promise(r2=>setTimeout(r2,700));
+      return { before, after:deg() };
+    });
+    const now = await state(page);
+    if (r.missing) bad('dragging the ADDICTED logo turns it instead of paging','no .ad-grab on the card');
+    else if (r.offscreen) bad('dragging the ADDICTED logo turns it instead of paging',`the grab box is off screen at ${r.offscreen}`);
+    else {
+      now.showing===was.showing
+        ? ok('dragging the ADDICTED logo leaves the carousel alone',`still on ${now.showing}`)
+        : bad('dragging the ADDICTED logo leaves the carousel alone',
+              `it paged ${was.showing} → ${now.showing} under the finger`);
+      r.after!==r.before
+        ? ok('and the lockup actually turns')
+        : bad('and the lockup actually turns',`unchanged at ${r.before}`);
+    }
+  }
+
   // Same here: hold autoplay still so the position under test is the one the
   // check put it in.
   await page.evaluate(()=>document.querySelector('#home-countdowns > .cd-wrap')
