@@ -37,6 +37,10 @@ on:
         description: 'Print this many bytes of the body (e.g. 600). A 200 can still be a refusal; the size and the text say which.'
         required: false
         default: ''
+      match:
+        description: 'Extended regex: print the matching fragments instead of a byte window. For finding a date or an id inside a page far too large to dump.'
+        required: false
+        default: ''
 
 jobs:
   probe:
@@ -50,6 +54,7 @@ jobs:
           ADMIN: ${{ github.event.inputs.admin }}
           URL: ${{ github.event.inputs.url }}
           SHOW: ${{ github.event.inputs.show }}
+          MATCH: ${{ github.event.inputs.match }}
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
         run: |
           set -u
@@ -106,6 +111,19 @@ jobs:
               | while IFS= read -r l || [ -n "$l" ]; do
                   [ -n "$l" ] && echo "::notice title=body::$l"
                 done
+          fi
+
+          # Pull out just the fragments that match. A built page is tens of
+          # kilobytes of minified script; the answer in it is usually one date
+          # or one id, and a byte window either misses it or buries it.
+          # Deduplicated and capped, because a loose pattern can match
+          # thousands of times.
+          if [ -n "$MATCH" ]; then
+            n=0
+            grep -oE "$MATCH" /tmp/page | sort -u | head -40 | while IFS= read -r hit || [ -n "$hit" ]; do
+              [ -n "$hit" ] && echo "::notice title=match::$(printf '%s' "$hit" | tr '\n\r' '  ' | sed 's/%/%25/g' | cut -c1-200)"
+            done
+            echo "matches: $(grep -ocE "$MATCH" /tmp/page 2>/dev/null || echo '?') line(s) hit"
           fi
 
           fail=0
