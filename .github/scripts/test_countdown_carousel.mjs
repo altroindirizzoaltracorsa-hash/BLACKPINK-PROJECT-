@@ -138,6 +138,10 @@ console.log('--- the countdown cards, on the home page');
   !s.pageOverflow ? ok('and the PAGE does not') : bad('and the PAGE does not');
   s.lit===0 ? ok('the first dot is lit') : bad('the first dot is lit',`lit=${s.lit}`);
 
+  // Same here: hold autoplay still so the position under test is the one the
+  // check put it in.
+  await page.evaluate(()=>document.querySelector('#home-countdowns > .cd-wrap')
+    .dispatchEvent(new Event('focusin',{bubbles:true})));
   // Scroll the track and watch the dots follow the real position.
   await page.evaluate(()=>{const t=document.querySelector('#home-countdowns > .cd-wrap');
     t.scrollBy({left:t.clientWidth*2, behavior:'auto'});});
@@ -162,6 +166,13 @@ console.log('--- the countdown cards, on the home page');
   // The track takes the height of the card you are on — otherwise a poster-
   // shaped card sits over a few hundred pixels of nothing, left by whichever
   // sibling happens to be tallest.
+  // Freeze autoplay first. It no longer stops when you touch the thing, it
+  // just waits out a fresh interval, so a measurement that walks every card
+  // can have the track moved under it halfway through — which is what made
+  // this read one card's height against another's. focusin is the page's own
+  // way of saying "a keyboard user is reading this; stay put".
+  await page.evaluate(()=>document.querySelector('#home-countdowns > .cd-wrap')
+    .dispatchEvent(new Event('focusin',{bubbles:true})));
   const fit = await page.evaluate(async ()=>{
     const t=document.querySelector('#home-countdowns > .cd-wrap');
     const slides=[...t.children].filter(c=>getComputedStyle(c).display!=='none');
@@ -414,16 +425,24 @@ console.log('--- the MV frames inside the card');
   afterOffEdge!==offEdge ? ok('and a drag released off the card still lets it resume',`${offEdge} → ${afterOffEdge}`)
                          : bad('and a drag released off the card still lets it resume',`stuck at ${offEdge}`);
 
-  // A sideways drag IS taking it over, and that holds for good.
+  // A sideways drag used to stop it for good. It now buys the FULL interval
+  // instead: landing somewhere on purpose should not be undone a moment
+  // later by a tick that had been running since before you got there, but it
+  // should not silence the thing either. So: still there a moment after, and
+  // moving again once the interval has gone by.
   await touch('pointerdown', 300, 300);
   await touch('pointermove', 230, 303);          // dx 70, dy 3 — a real swipe
   await touch('pointerup',   230, 303);
-  await page.waitForTimeout(1200);
-  const held=(await read()).at;
-  await page.waitForTimeout(7000);
-  const after=(await read()).at;
-  after===held ? ok('and stops for good once you swipe it',`held on ${held}`)
-               : bad('and stops for good once you swipe it',`${held} → ${after}`);
+  await page.waitForTimeout(1500);
+  const landed=(await read()).at;
+  await page.waitForTimeout(2500);               // well inside the 4.5s strip interval
+  const soon=(await read()).at;
+  soon===landed ? ok('a swipe buys the whole interval before it moves again',`held on ${landed}`)
+                : bad('a swipe buys the whole interval before it moves again',`${landed} → ${soon} too soon`);
+  await page.waitForTimeout(6000);
+  const later=(await read()).at;
+  later!==landed ? ok('and then it carries on by itself',`${landed} → ${later}`)
+                 : bad('and then it carries on by itself',`still on ${landed}`);
   await page.close();
 }
 

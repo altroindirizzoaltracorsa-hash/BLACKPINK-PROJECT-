@@ -1742,6 +1742,12 @@
   .cd-wrap[data-carousel]::after { content: ''; flex: 0 0 10%; }
   .cd-wrap[data-carousel] > .cd-card { flex: 0 0 80%; min-width: 0; scroll-snap-align: center;
     transition: opacity 0.3s ease; }
+  /* One swipe moves one card: a flick otherwise carries its momentum across
+     three or four of them and you arrive somewhere you did not aim for.
+     Only while a finger is actually down, though — scroll-snap-stop binds
+     PROGRAMMATIC scrolling too, so applying it always meant a dot press for a
+     far card crawled one slide at a time instead of going there. */
+  .cd-wrap[data-carousel].is-dragging > .cd-card { scroll-snap-stop: always; }
   /* The first try put a fade over both edges so a clipped neighbour would not
      end in a hard vertical cut. It read beautifully and defeated the point:
      the sliver was 11px and the fade covered all of it, so the neighbours
@@ -3924,7 +3930,7 @@
              countdown card is a date, a clock and a row of buttons to take in,
              not one photograph. It only advances while it is actually on
              screen, so reading further down the page does not move it. -->
-        <div class="cd-wrap" data-carousel data-carousel-fit data-carousel-loop data-carousel-autoplay="9000" aria-label="Countdowns">
+        <div class="cd-wrap" data-carousel data-carousel-fit data-carousel-loop data-carousel-autoplay="12000" aria-label="Countdowns">
           <!-- JISOO — "ADDICTED", counted down at jisoo.io. ONE worldwide
                instant (13:00 KST = 04:00 UTC), confirmed rather than assumed:
                the same clock JISOO's CLICK used and the same one the jisoo.io
@@ -17601,7 +17607,7 @@ function initCarousel(track) {
         // Find where that card is RIGHT NOW, which rotation may have moved.
         const pos = now.findIndex(el => (el._cdLogical != null ? el._cdLogical : now.indexOf(el)) === want);
         carouselGo(track, pos < 0 ? want : pos);
-        hold();                                   // a tap is a choice; stop moving it
+        defer();            // a choice buys you the full interval, not silence
       });
       dotBox.appendChild(b);
     }
@@ -17631,9 +17637,13 @@ function initCarousel(track) {
 
   let frame = 0, settle = 0;
   track.addEventListener('scroll', () => {
+    // Any movement of the track — a swipe, an arrow, a dot, or autoplay's own
+    // advance — restarts the countdown, so the gap is always measured from
+    // the last thing that moved rather than from the last tick.
+    if (typeof track._cdDefer === 'function') track._cdDefer();
     carouselFit(track, carouselSlides(track), false);
     clearTimeout(settle);
-    settle = setTimeout(paint, 160);             // snapped and stopped: take its height
+    settle = setTimeout(() => { track.classList.remove('is-dragging'); paint(); }, 160);
     if (frame) return;
     frame = requestAnimationFrame(() => { frame = 0; paint(); });
   }, { passive: true });
@@ -17655,57 +17665,66 @@ function initCarousel(track) {
       btn.addEventListener('click', () => {
         const slides = carouselSlides(track);
         carouselGo(track, carouselActive(track, slides) + Number(btn.dataset.carouselDir));
-        hold();
+        defer();
       });
     });
   }
 
-  // Autoplay, where it is asked for. It stops for good once somebody takes
-  // the thing over — a carousel that keeps yanking itself out from under a
-  // reader is worse than one that never moved. The hard part is what counts
-  // as taking it over: see the binding below.
+  // Autoplay. Every interaction puts the WHOLE interval back on the clock
+  // rather than leaving a tick that is already half elapsed to fire the moment
+  // you arrive somewhere. That was the complaint and it is the real bug here:
+  // a card you swipe to would move on again almost at once, because the timer
+  // had been running since the last advance and knew nothing about the swipe.
+  //
+  // So a self-rescheduling timeout rather than an interval: a timeout can be
+  // restarted from zero, an interval cannot.
   const every = Number(track.dataset.carouselAutoplay || 0);
   let timer = null, held = false;
-  function hold() { held = true; stop(); }
-  function stop() { if (timer) { clearInterval(timer); timer = null; } }
+  function hold() { held = true; stop(); }          // keyboard/focus: stay put
+  function stop() { if (timer) { clearTimeout(timer); timer = null; } }
+  function tick() {
+    timer = null;
+    // Pointless and rude while off-screen or in a hidden tab — and with a
+    // strip on each countdown, every one but the card being looked at is
+    // parked off to the side of the carousel.
+    const showing = !document.hidden && track.clientWidth && !track._cdPaused;
+    if (showing) {
+      const r = track.getBoundingClientRect();
+      const onScreen = !(r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth);
+      const slides = carouselSlides(track);
+      if (onScreen && slides.length > 1) carouselGo(track, carouselActive(track, slides) + 1);
+    }
+    start();
+  }
   function start() {
     if (held || timer || !(every >= CAROUSEL_AUTOPLAY_MIN) || prefersReducedMotion()) return;
-    timer = setInterval(() => {
-      // Pointless and rude while off-screen or in a hidden tab — and with a
-      // strip on each countdown, every one but the card being looked at is
-      // parked off to the side of the carousel.
-      if (document.hidden || !track.clientWidth || track._cdPaused) return;
-      const r = track.getBoundingClientRect();
-      if (r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth) return;
-      const slides = carouselSlides(track);
-      if (slides.length > 1) carouselGo(track, carouselActive(track, slides) + 1);
-    }, every);
+    timer = setTimeout(tick, every);
   }
+  // Put the full interval back. Used by every interaction, including the
+  // track's own scroll — which is the only thing a native swipe reliably
+  // produces, see below.
+  function defer() { stop(); start(); }
+  track._cdDefer = defer;
   if (every) {
-    // Unambiguous: the wheel, the keyboard, focus landing inside. The dots and
-    // arrows call hold() from their own handlers above.
-    ['wheel', 'focusin', 'keydown'].forEach(ev =>
-      track.addEventListener(ev, hold, { passive: true, once: true }));
-    // A finger is NOT by itself a choice, and binding hold() to touchstart
-    // assumed it was. Most fingers that land here are scrolling the page past
-    // the card, so on a phone the first of those killed the looping for the
-    // rest of the visit — measured, not guessed: untouched the strip advanced,
-    // and after a single finger-down it never moved again.
-    // So pause while the finger is down, and only hold for good once the drag
-    // is unmistakably a sideways swipe of this carousel.
-    let downX = 0, downY = 0, down = false;
-    track.addEventListener('pointerdown', (e) => {
-      down = true; downX = e.clientX; downY = e.clientY; stop();
+    // Focus landing inside is a keyboard user reading; that one stays put
+    // rather than resuming under them.
+    track.addEventListener('focusin', hold, { passive: true, once: true });
+    // A swipe was never being noticed. The threshold below waits for a
+    // sideways pointermove, and on a phone the browser claims the gesture for
+    // its own scrolling after one or two moves and sends pointercancel — so
+    // the threshold was usually never reached and the swipe counted for
+    // nothing. The track's SCROLL is what a swipe always produces, so that is
+    // what the timer listens to; see the scroll handler above.
+    let down = false;
+    track.addEventListener('pointerdown', () => {
+      down = true; stop();
+      track.classList.add('is-dragging');   // one card per flick, while dragging
     }, { passive: true });
-    track.addEventListener('pointermove', (e) => {
-      if (!down) return;
-      const dx = Math.abs(e.clientX - downX), dy = Math.abs(e.clientY - downY);
-      if (dx > 12 && dx > dy) hold();
-    }, { passive: true });
+    track.addEventListener('wheel', defer, { passive: true });
     // On the DOCUMENT, not the track: a drag that ends with the finger past
     // the card's edge fires its pointerup somewhere else entirely, and the
     // pause taken on pointerdown would never be lifted.
-    const endDrag = () => { if (down) { down = false; start(); } };
+    const endDrag = () => { if (down) { down = false; defer(); } };
     ['pointerup', 'pointercancel'].forEach(ev =>
       document.addEventListener(ev, endDrag, { passive: true }));
     // Hover-pause is a mouse idea. On touch, pointerenter fires on the tap and
@@ -18472,6 +18491,23 @@ const AD_EASE_RATE = 6;
 // Approximate rather than exact: matching the camera angle is not the same as
 // matching the scene, whose scale depends on the model's own size.
 const AD_FOV_DEG = 38;
+// jisoo.io: x = ((clientX - r.left)/innerWidth - 0.5)*2, with its canvas the
+// full window — so one unit of x is half a window's width of travel, and the
+// same is true of y over innerHeight. Reproduced here from the element's
+// centre, so the gearing matches whatever size the card happens to be.
+function adAim(ev, r) {
+  const halfW = (window.innerWidth || r.width) / 2;
+  const halfH = (window.innerHeight || r.height) / 2;
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const c = (v) => Math.max(-1, Math.min(1, v));
+  return { x: c((ev.clientX - cx) / halfW), y: c((ev.clientY - cy) / halfH) };
+}
+// How far this sky can actually reach, for the poke: the same limit a drag
+// has, so a tap and a drag agree about how far the thing turns.
+function adReach(sky) {
+  const r = sky.getBoundingClientRect();
+  return Math.min(1, (r.width / 2) / ((window.innerWidth || r.width) / 2));
+}
 function adFitPerspective(sky) {
   const h = sky.getBoundingClientRect().height;
   if (!h) return;
@@ -18590,7 +18626,11 @@ function setupAddictedSky(sky) {
   const chase = () => { if (!raf) { last = performance.now(); raf = requestAnimationFrame(step); } };
 
   const tilt = (ev) => {
-    if (!logo || reduce) return;
+    // Not gated on reduced motion. That setting is about motion the page
+    // starts by itself — jisoo.io zeroes only its idle drift under it
+    // (`idle = reduce ? 0 : …`) and still follows the pointer. Refusing to
+    // move under a finger is not a kindness, it is an unresponsive control.
+    if (!logo) return;
     const r = sky.getBoundingClientRect();
     if (!r.width || !r.height) return;
     // −1 … 1, the way jisoo.io normalises it:
@@ -18602,13 +18642,21 @@ function setupAddictedSky(sky) {
     // Its own figures, in radians, converted once:
     //   rotation.y = x * 0.42   → 24.06°
     //   rotation.x = -y * 0.3   → 17.19°
-    const fx = (ev.clientX - r.left) / r.width, fy = (ev.clientY - r.top) / r.height;
+    // Normalised against the WINDOW, not against the sky — which is what makes
+    // a given finger movement turn the lockup by the same amount it would on
+    // jisoo.io. That page divides by innerWidth because its canvas IS the
+    // window; dividing by this card instead made the whole 24° reachable in a
+    // drag a third as long, so ours turned far more for the same gesture.
+    // Measured from the sky's centre so it stays symmetric, and clamped,
+    // which means a small card simply cannot reach the extremes — the same
+    // as being unable to drag past the edge of their screen.
+    const n = adAim(ev, r);
     // Once the model is up it runs its own chase on the same constant, so the
     // pointer goes straight to it and the CSS path stands down. Two chases on
     // one value would damp it twice.
-    if (sky._adScene) { sky._adScene.point(fx, fy); return; }
-    tgX = (fx - 0.5) * 2;
-    tgY = (fy - 0.5) * 2;
+    if (sky._adScene) { sky._adScene.aim(n.x, n.y); return; }
+    tgX = n.x;
+    tgY = n.y;
     chase();
   };
   // Rest is a target like any other — it is chased home on the same curve
@@ -18616,7 +18664,7 @@ function setupAddictedSky(sky) {
   const rest = () => {
     sky.classList.remove('is-grabbed');
     if (sky._adScene) { sky._adScene.rest(); return; }
-    if (!logo || reduce) return;
+    if (!logo) return;
     tgX = 0; tgY = 0;
     chase();
   };
@@ -18631,7 +18679,7 @@ function setupAddictedSky(sky) {
     // shove it to the far edge and let go, so it swings and settles on that
     // site's own curve instead of a keyframe of ours.
     if (sky._adScene) {
-      sky._adScene.point(fromLeft ? 1 : 0, 0.5);
+      sky._adScene.aim((fromLeft ? 1 : -1) * adReach(sky), 0);
       clearTimeout(sky._adKnockT);
       sky._adKnockT = setTimeout(() => sky._adScene && sky._adScene.rest(), 190);
       return;
@@ -18639,7 +18687,7 @@ function setupAddictedSky(sky) {
     if (!logo) return;
     // Sized to that site's own maximum yaw. The poke itself is ours — jisoo.io
     // is a hover scene and has nothing for a tap that never moves.
-    logo.style.setProperty('--ad-knock', (fromLeft ? 1 : -1) * AD_YAW_DEG + 'deg');
+    logo.style.setProperty('--ad-knock', ((fromLeft ? 1 : -1) * AD_YAW_DEG * adReach(sky)).toFixed(1) + 'deg');
     logo.classList.remove('is-knocked');
     void logo.offsetWidth;
     logo.classList.add('is-knocked');
