@@ -1002,6 +1002,11 @@ export default async function handler(req, res) {
         ok: true, alias: result.alias, topKeys: Object.keys(result.data || {}), entryCount: entries.length,
         matchedCount: matched.length, matched: matched.slice(0, 12),
         entry0Keys: entries[0] ? Object.keys(entries[0]) : [],
+        // The chart's OWN date. tracking_date is currently stamped with the
+        // FETCH date, but a chart published today covers yesterday — the same
+        // way Spotify's streaming figures do. If the payload states its date,
+        // that beats subtracting a day and guessing.
+        displayChart: JSON.stringify(result.data?.displayChart || {}).slice(0, 500),
         entry0: JSON.stringify(entries[0] || {}).slice(0, 300),
         sample: entries.slice(0, 2).map(e => ({ rank: e.chartEntryData?.currentRank, ...(e.trackMetadata || e.albumMetadata || e.artistMetadata || {}) })),
       });
