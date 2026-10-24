@@ -20528,6 +20528,17 @@ const KNOWN_SPOTIFY_IDS = {
 };
 let cardCanvas = null; // current canvas for download
 let _cardShareBlob = null; // pre-generated blob for shareCard (set when drawing completes)
+
+// Which countdown a pre-save card's share link should point at, by the
+// campaign name the card data already carries. One table rather than a chain
+// of ifs, because the chain is what got this wrong: every campaign drawn by
+// drawPresaveCard shares _cardType 'presave', so the first release's link was
+// quietly standing in for all of them. A new campaign adds a line here and is
+// caught by the check in test_presave_wiring if it does not.
+const PRESAVE_CARD_LINKS = {
+  fa:       'https://www.blinksunited.com/countdowns/jenn.ie',
+  addicted: 'https://www.blinksunited.com/countdowns/addicted',
+};
 let _msShareBlob   = null; // pre-generated blob for shareMilestoneCard
 let _goalCardPhoto = null; // pre-loaded BLACKPINK photo for goal hit card
 let _goalWalkersImg = null; // pre-loaded walking-members cutout for the goal card
@@ -21338,7 +21349,14 @@ async function shareCard() {
   if (_cardType === 'jisoo') link = 'https://www.blinksunited.com/countdowns/jisoo.io';
   else if (_cardType === 'lisa') link = 'https://www.blinksunited.com/countdowns/hellosawadika.com';
   else if (_cardType === 'pressplay') link = 'https://www.blinksunited.com/countdowns/lalisaofficial.com';
-  else if (_cardType === 'presave') link = 'https://www.blinksunited.com/countdowns/jenn.ie';
+  // 'presave' is not one release. Fallen Angel's card and ADDICTED's are both
+  // drawn by the same code and both carry _cardType 'presave', so a single
+  // hardcoded link here sent every ADDICTED share to JENNIE's countdown —
+  // right picture, wrong release, and nothing about it looks wrong until you
+  // follow the link. The card data already names its own campaign; use it.
+  else if (_cardType === 'presave') {
+    link = PRESAVE_CARD_LINKS[_presaveCardData?.campaign] || PRESAVE_CARD_LINKS.fa;
+  }
   else if (_cardType === 'newtrick') link = 'https://www.blinksunited.com/countdowns/newtrick';
   if (_cardType === 'vote') {
     const campaign = VOTE_CAMPAIGNS.find(c => c.id === _voteCampaignId);
@@ -22995,10 +23013,21 @@ function drawPresaveCard(canvas, d) {
     : logoH + gapS + titleH + gapM + cdEyebrowH + gapXS + cdBigSize + gapS + dateH + gapM + ctaH;
   let y = H - BP - blockH;
 
+  // Left by default, which is jenn.ie's layout and PRESS PLAY's. A release
+  // whose artwork is built around a centred lockup — ADDICTED's lettering
+  // sits inside a centred heart — reads as broken when the type under it
+  // starts at the left margin: the heart is on the middle line and the name
+  // beneath it is not. `align: 'center'` puts the whole block on that line.
+  // Opt-in, so every card drawn before this is unchanged to the pixel.
+  const mid = d.align === 'center';
+  const tx = mid ? Math.round(W / 2) : PX;            // where text begins
+  const ix = (w) => mid ? Math.round((W - w) / 2) : PX;  // where an image does
+  ctx.textAlign = mid ? 'center' : 'left';
+
   ctx.textBaseline = 'top';
-  if (logoW)  ctx.drawImage(logoImg, PX, y, logoW, logoH);
+  if (logoW)  ctx.drawImage(logoImg, ix(logoW), y, logoW, logoH);
   y += logoH + gapS;
-  if (titleH) ctx.drawImage(titleImg, PX, y, titleW, titleH);
+  if (titleH) ctx.drawImage(titleImg, ix(titleW), y, titleW, titleH);
   y += titleH + gapM;
 
   if (d.earned) {
@@ -23006,24 +23035,24 @@ function drawPresaveCard(canvas, d) {
     ctx.fillStyle = ACCENT;
     ctx.font = HEADFONT.replace('%SPX%', String(Math.round(headSize * 1.05)) + 'px');
     ctx.letterSpacing = '1px';
-    ctx.fillText(d.claim || 'I pre-saved', PX, y);
+    ctx.fillText(d.claim || 'I pre-saved', tx, y);
     y += headSize + gapXS;
     ctx.font = '600 22px "DM Mono", monospace';
     ctx.letterSpacing = '3px';
     ctx.fillStyle = 'rgba(245,240,240,0.9)';
-    ctx.fillText('⏳ ' + cdCompact, PX, y);
+    ctx.fillText('⏳ ' + cdCompact, tx, y);
     y += cdLineH + gapS;
   } else {
     // Anyone else shares a neutral countdown card — no pre-save claim.
     ctx.font = '500 18px "DM Mono", monospace';
     ctx.letterSpacing = '5px';
     ctx.fillStyle = 'rgba(245,240,240,0.6)';
-    ctx.fillText(isOut ? 'JUST RELEASED' : 'COUNTDOWN TO RELEASE', PX, y);
+    ctx.fillText(isOut ? 'JUST RELEASED' : 'COUNTDOWN TO RELEASE', tx, y);
     y += cdEyebrowH + gapXS;
     ctx.fillStyle = '#F5F0F0';
     _fitFont(ctx, cdBig, '', '"Bebas Neue", sans-serif', cdBigSize, W - PX * 2, 40);
     ctx.letterSpacing = '2px';
-    ctx.fillText(cdBig, PX, y);
+    ctx.fillText(cdBig, tx, y);
     y += cdBigSize + gapS;
   }
 
@@ -23031,14 +23060,14 @@ function drawPresaveCard(canvas, d) {
   ctx.font = `italic 28px "Cormorant Garamond", serif`;
   ctx.letterSpacing = '1px';
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  ctx.fillText(d.dateLine, PX, y);
+  ctx.fillText(d.dateLine, tx, y);
   y += dateH + gapM;
 
   // CTA row
   ctx.font = '600 22px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
   ctx.fillStyle = ACCENT;
-  ctx.fillText(d.cta, PX, y);
+  ctx.fillText(d.cta, tx, y);
   ctx.textAlign = 'right';
   ctx.fillStyle = 'rgba(245,240,240,0.6)';
   ctx.fillText('blinksunited.com', W - PX, y);
@@ -23133,6 +23162,9 @@ async function openAddictedCard() {
     act: 'JISOO', release: 'ADDICTED',
     photo: clouds, titleImg: logo, logoImg: null, emblemImg: bolt,
     base: '#0b0618', scrimRGB: '11,6,24', focalBias: 0.5,
+    // The lockup lives inside a centred heart; the name and the dates belong
+    // on the same middle line, not against the left margin.
+    align: 'center',
     stampTint: '#0b0618', stampPill: '#b6a3ff', stampInk: '#0b0618',
     accent: '#b6a3ff', claim: 'I pre-saved',
     headFont: '500 %SPX% "CinzelVariable", Georgia, serif',

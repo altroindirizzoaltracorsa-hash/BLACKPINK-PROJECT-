@@ -150,6 +150,74 @@ drew.litFraction > 0.5
   ? ok('and it actually drew something', `${Math.round(drew.litFraction * 100)}% of sampled pixels are not black`)
   : bad('and it actually drew something', `${Math.round(drew.litFraction * 100)}% — a blank card`);
 
+// 3c. ADDICTED's type sits on the same middle line as its art. The lockup is
+// inside a centred heart, so a block starting at the left margin reads as a
+// mistake — the heart on one axis and the name under it on another. Checked
+// by recording what the card actually asks the canvas to draw, because the
+// alignment is gone by the time the pixels exist and no pixel test tells
+// "centred" from "nearly centred" on a photographic background.
+const align = await page.evaluate(async () => {
+  const proto = CanvasRenderingContext2D.prototype;
+  const real = proto.fillText;
+  const seen = [];
+  proto.fillText = function (txt, x, y) { seen.push({ txt: String(txt), x, a: this.textAlign }); return real.apply(this, arguments); };
+  try {
+    await window.openAddictedCard();
+    await new Promise(r2 => setTimeout(r2, 1500));
+  } finally { proto.fillText = real; }
+  const c = document.getElementById('card-canvas');
+  return { w: c.width, seen };
+});
+{
+  // The lines of the block itself — not BLINKS UNITED or the site mark, which
+  // are corner marks and belong in their corners.
+  const body = align.seen.filter(s => /PRE-SAVED|PRE-SAVE|Oct 30|OUT IN|COUNTDOWN TO RELEASE|JUST RELEASED/i.test(s.txt));
+  const off = body.filter(s => s.a !== 'center' || Math.abs(s.x - align.w / 2) > 2);
+  body.length >= 3 && off.length === 0
+    ? ok('the ADDICTED card centres its type under the art', `${body.length} lines on the middle line`)
+    : bad('the ADDICTED card centres its type under the art',
+          body.length < 3 ? `only found ${body.length} lines of the block`
+                          : off.map(s => `"${s.txt.slice(0, 22)}" ${s.a}@${Math.round(s.x)}`).join(', ') + ` (centre is ${align.w / 2})`);
+}
+
+// 3a. What the SHARE button sends. Every campaign drawn by drawPresaveCard
+// carries _cardType 'presave', so a single hardcoded link in shareCard stood
+// in for all of them and ADDICTED's card shared JENNIE's countdown — the
+// right picture under the wrong link, which looks perfectly fine until
+// somebody follows it. Read through the same table shareCard reads.
+// Driven through shareCard itself, with the share sheet and the clipboard
+// stubbed to record. Asking the lookup table what it holds would only test
+// this file's own arithmetic — the first version of this check did exactly
+// that and stayed green with the bug put back.
+const links = await page.evaluate(async () => {
+  let caption = null, opened = null;
+  const realOpen = window.open;
+  try {
+    Object.defineProperty(navigator, 'share', { configurable: true, value: async () => {} });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (t) => { caption = t; } } });
+    window.open = (u) => { opened = u; return null; };
+    await window.shareCard();
+    await new Promise(r2 => setTimeout(r2, 800));
+  } catch (e) { return { err: String(e && e.message || e) }; }
+  finally { window.open = realOpen; }
+  const t = (typeof PRESAVE_CARD_LINKS !== 'undefined') ? PRESAVE_CARD_LINKS : {};
+  return { caption, opened, table: t };
+});
+{
+  // The card open at this point is ADDICTED's, drawn above.
+  const sent = links.caption || links.opened || '';
+  if (links.err) bad('the ADDICTED card shares the ADDICTED countdown', `shareCard threw: ${links.err}`);
+  else if (!sent) bad('the ADDICTED card shares the ADDICTED countdown', 'nothing was shared or copied');
+  else /\/countdowns\/addicted(\s|$)/.test(sent)
+    ? ok('the ADDICTED card shares the ADDICTED countdown', sent.split('\n').pop())
+    : bad('the ADDICTED card shares the ADDICTED countdown',
+          `it sent ${sent.split('\n').pop()} — that is somebody else's release`);
+  const vals = Object.values(links.table || {});
+  vals.length >= 2 && new Set(vals).size === vals.length
+    ? ok('and no two campaigns share one link', `${vals.length} campaigns`)
+    : bad('and no two campaigns share one link', vals.join(' | ') || 'no table');
+}
+
 // 3b. The lightning heart has to FIT, on both shapes of card. It was sized off
 // the width alone, which is fine at 1:1 and wrong at 16:9: 56% of 1200px is
 // 672px of heart on a 675px canvas, so the landscape card drew a heart with
