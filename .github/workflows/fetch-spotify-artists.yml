@@ -37,10 +37,16 @@ on:
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    # The canary hands its refresh to charts-full-sweep.yml, which needs the
+    # token to be allowed to start a workflow.
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Trigger official chart fetch on Vercel
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BASE: ${{ inputs.base_url != '' && inputs.base_url || 'https://www.blinksunited.com' }}
           SCHED: ${{ github.event.schedule }}
           INPUT_TYPE: ${{ inputs.type }}
@@ -65,10 +71,38 @@ jobs:
           if [ "$SCHED" = "0 */2 * * *" ] || [ "$INPUT_TYPE" = "canary" ]; then
             echo "── canary ──"; hit "charts=artist-canary"
             if grep -q '"changed":true' /tmp/out.json; then
-              echo "changed → refresh daily songs + artists"
-              echo "── Top Songs (daily) ──";   hit "charts=fetch-songs&type=daily";    need200
-              sleep 75
-              echo "── Top Artists (daily) ──"; hit "charts=fetch-artists&type=daily";  need200
+              # The refresh used to happen right here: two 74-country bursts 75
+              # seconds apart. Spotify rate-limits on a rolling window, so the
+              # budget ran out partway down a list that is always walked in the
+              # same order — the tail (SG…ZA: Thailand, Taiwan, Ukraine, the
+              # United States, Vietnam) was never fetched at all. Measured
+              # 2026-10-24: 11 of 74 skipped on a normal pass, 74 of 74 on a
+              # starved one, and a fully-skipped pass still returns ok.
+              #
+              # So the canary keeps its job — noticing the chart changed, which
+              # costs one request — and hands the sweep to charts-full-sweep.yml,
+              # which paces it in chunks, retries what the limiter drops and
+              # fails loudly if a country never lands. One implementation of
+              # that, not two: the alternative was copying the chunk loop here,
+              # where it would drift from the tested one.
+              #
+              # Overlap is safe: that workflow's concurrency group serialises it
+              # against the nightly sweep and against another canary.
+              echo "changed → dispatching charts-full-sweep (chunked)"
+              dc=$(curl -sS -o /tmp/dispatch.json -w '%{http_code}' -X POST \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/charts-full-sweep.yml/dispatches" \
+                -d '{"ref":"main","inputs":{"kinds":"both"}}') || dc=000
+              echo "dispatch HTTP $dc"
+              # 204 is the only success. Anything else means no sweep ran, and
+              # a canary that silently fails to trigger one is the quiet
+              # failure this whole exercise was about.
+              if [ "$dc" != "204" ]; then
+                cat /tmp/dispatch.json 2>/dev/null
+                echo "::error::could not dispatch charts-full-sweep (HTTP $dc) — no refresh ran"
+                rc=1
+              fi
             else
               echo "no change"
             fi
