@@ -1275,7 +1275,7 @@ export default async function handler(req, res) {
           const batch = jobList.slice(i, i + concurrency);
           const results = await Promise.all(batch.map(async (j) => ({ ...j, result: await fetchOfficialChart(token, 'regional', j.chartType, j.country) })));
           for (const { chartType, country, result } of results) {
-            if (!result.ok) failed.push({ chartType, country }); else collect(country, chartType, result.data);
+            if (!result.ok) failed.push({ chartType, country, status: result.status }); else collect(country, chartType, result.data);
           }
         }
         return failed;
@@ -1341,6 +1341,17 @@ export default async function handler(req, res) {
           }
         } catch {}
       }
+      // 404 is not a failure, it is an answer: Spotify has no such chart for
+      // that country. regional-cy-daily 404s — Cyprus has no daily song chart
+      // at all — so a sweep that treats it as missing can never be complete,
+      // and a driver that fails on "incomplete" would then be red every night
+      // forever. A permanently red signal is the same as no signal: the whole
+      // point of asserting completeness is that green means something.
+      const noChart = [...new Set(skipped.filter(s => s.status === 404)
+        .map(s => s.country.toUpperCase()))].sort();
+      const unfetched = [...new Set(skipped.filter(s => s.status !== 404)
+        .map(s => s.country.toUpperCase()))].sort();
+
       // NAME the countries that could not be fetched, not just how many.
       // A skipped country writes no row, and in chart_positions that is
       // indistinguishable from "nobody charted there" — the stored date simply
@@ -1350,7 +1361,8 @@ export default async function handler(req, res) {
       return res.status(200).json({
         ok: true, date: today, upserted: upsertRows.length, skipped: skipped.length,
         requested: sweepCountries.length,
-        skippedCountries: [...new Set(skipped.map(s => s.country.toUpperCase()))].sort(),
+        skippedCountries: unfetched,
+        noChartCountries: noChart,
         matchedCountries: [...new Set(upsertRows.map(r => r.country))].sort(),
       });
     } catch (err) { return res.status(500).json({ error: err.message }); }
