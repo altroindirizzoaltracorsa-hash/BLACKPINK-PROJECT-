@@ -21,7 +21,16 @@ const YT_API = 'https://www.googleapis.com/youtube/v3/videos';
 // drives the release+24h pin, and a 7-day mark is a different thing the pin logic
 // doesn't model yet. Collecting it now is what matters — the 7-day value is
 // recoverable from the stored series afterwards, a missed sample is not.
-const DEFAULT_IDS = ['LzgE8ift2Uw', 'h-7_04c_hVc', 'FyS5dAywkEo', 'sf02ugzPFE4', 's466YCiHfKw', 'Lufa9QAFFeY'];
+// What the snapshot job RECORDS. Both the hourly job and the 24h-mark capture
+// call ?snapshot=1 with no ids, so a video missing here is never recorded by
+// any automated path — only by a visitor happening to have vs.html open. That
+// is how Tarantino's 24h pin was lost: it was in vs.html's list and in RELEASE
+// below, so the page drew it and a mark existed for it, but nothing was
+// writing points, and at 04:00 there was none within the 95-minute tolerance
+// to freeze. A release has to be in ALL THREE lists; test_youtube_marks.mjs
+// now fails if a marked video is missing from this one.
+const DEFAULT_IDS = ['LzgE8ift2Uw', 'h-7_04c_hVc', 'FyS5dAywkEo', 'sf02ugzPFE4', 's466YCiHfKw', 'Lufa9QAFFeY',
+  '-5ZXrO_lYSA'];
 const MAX_POINTS = 2400;              // ~100 days at hourly — keep the full-life gain list
 const MIN_GAP_MS = 55 * 60 * 1000;    // don't store more than ~once an hour
 const key = id => `bu_yt_hist_${id}`;
