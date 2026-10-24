@@ -196,6 +196,15 @@ jobs:
         if: always()
         run: node .github/scripts/test_youtube_marks.mjs
 
+      # The read pipeline fetched the same list twice and dragged the full
+      # 2400-point hourly series along on every 45s live poll. The output was
+      # correct throughout — it just bought it several times over, which used up
+      # a 10 GB monthly Upstash allowance and suspended the database, taking
+      # /streams, the leaderboard, badges and the playlist down with it.
+      - name: The history read asks for each thing once
+        if: always()
+        run: node .github/scripts/test_youtube_history_reads.mjs
+
       # Spotify files a pre-release single under its own album name, so the
       # BY ALBUM view showed the same record twice and the EP's total was
       # missing the track carrying most of its streams.
