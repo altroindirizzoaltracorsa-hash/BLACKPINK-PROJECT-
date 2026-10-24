@@ -46,8 +46,12 @@ async function readAll(tz){
   await page.goto(base+'/',{waitUntil:'domcontentloaded'});
   await page.locator('#home-countdowns > .cd-wrap').waitFor({timeout:20000});
   await page.waitForTimeout(3000);
+  // Every card in the section, the #cd-past block included. A card's printed
+  // local time is its own business wherever the card sits, and a countdown
+  // that finishes moves into that block — CLICK did on 2026-10-24, which read
+  // here as the card having vanished.
   const r=await page.evaluate(()=>Object.fromEntries(
-    [...document.querySelectorAll('#home-countdowns > .cd-wrap > .cd-card')].map(c=>[
+    [...document.querySelectorAll('#home-countdowns .cd-card')].map(c=>[
       c.dataset.slug,
       { line: (c.querySelector('.cd-sub-local')||{}).textContent || '',
         sub: (c.querySelector('.cd-sub')||{}).textContent.replace(/\s+/g,' ').trim() }])));
@@ -70,12 +74,18 @@ for (const [slug,tz,time,day] of CLAIMS){
     : bad(`${slug} in ${tz}`, `wanted ${day} ${time}, got "${line}"`);
 }
 console.log('--- and every card answers, from anywhere');
+// Named rather than "whatever is in the track". This used to be every card in
+// the live row minus PRESS PLAY, which meant moving a card out of that row
+// quietly dropped it from the check instead of failing — and the whole point
+// of this file is that a clock can be hours wrong while looking healthy.
+const MUST_ANSWER = ['addicted','steps','newtrick','jisoo.io','hellosawadika.com'];
 for (const tz of ['Europe/Rome','America/New_York','Asia/Kolkata']){
   const r = await readAll(tz);
-  const missing = Object.entries(r).filter(([k,v])=> k!=='lalisaofficial.com' && !/your time/.test(v.line)).map(([k])=>k);
-  missing.length===0 ? ok(`${tz}: all four carry a local line`,
-                          Object.entries(r).filter(([k])=>k==='jisoo.io').map(([,v])=>v.line)[0])
-                     : bad(`${tz}: all four carry a local line`, `missing on ${missing.join(', ')}`);
+  const missing = MUST_ANSWER.filter(k => !/your time/.test((r[k]||{}).line||''));
+  missing.length===0 ? ok(`${tz}: all ${MUST_ANSWER.length} carry a local line`,
+                          (r['jisoo.io']||{}).line)
+                     : bad(`${tz}: all ${MUST_ANSWER.length} carry a local line`,
+                           `missing on ${missing.join(', ')}`);
   // PRESS PLAY says "Midnight local time" instead, which IS the local answer.
   /Midnight local time/.test(r['lalisaofficial.com'].sub)
     ? ok('   and PRESS PLAY still says midnight local time')
