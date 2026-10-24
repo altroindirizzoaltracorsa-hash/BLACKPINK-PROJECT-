@@ -111,10 +111,15 @@ function supabase() {
 // tells us, when a fan says "I played it 5× but it counted once", whether the
 // extension sent 5 POSTs (and 4 hit the dedup) or only ever sent 1. Best-effort
 // and capped, so it can't slow or break ingest. Read via ?reclass=peek.
+// SECOND DATABASE (optional) — see the note in api/streams.js. Reads
+// UPSTASH_REDIS_REST_URL_B/_TOKEN_B when both are set, otherwise the primary.
+const storeUrl = () => process.env.UPSTASH_REDIS_REST_URL_B || process.env.UPSTASH_REDIS_REST_URL;
+const storeToken = () => process.env.UPSTASH_REDIS_REST_TOKEN_B || process.env.UPSTASH_REDIS_REST_TOKEN;
+
 const DEBUG_KEY = 'bu_ingest_debug';
 const CAMPAIGN_IDS = new Set(TRACKS.map(t => t.id));
 async function debugLog(entry) {
-  const url = process.env.UPSTASH_REDIS_REST_URL, tok = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const url = storeUrl(), tok = storeToken();
   if (!url || !tok) return;
   try {
     await fetch(`${url}/pipeline`, {
@@ -125,7 +130,7 @@ async function debugLog(entry) {
   } catch { /* never break ingest over a debug write */ }
 }
 async function debugRead(n = 80) {
-  const url = process.env.UPSTASH_REDIS_REST_URL, tok = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const url = storeUrl(), tok = storeToken();
   if (!url || !tok) return [];
   try {
     const r = await fetch(`${url}/lrange/${DEBUG_KEY}/0/${n - 1}`, { headers: { Authorization: `Bearer ${tok}` } });

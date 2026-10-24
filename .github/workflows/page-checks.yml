@@ -213,6 +213,14 @@ jobs:
         if: always()
         run: node .github/scripts/test_store_unavailable.mjs
 
+      # While the primary Upstash database is suspended, the endpoints whose
+      # data rebuilds itself run on a second free one and the leaderboard waits
+      # for the primary rather than restarting from zero. Splitting a key family
+      # across the two is a bug with no error message.
+      - name: No key family spans the two Redis databases
+        if: always()
+        run: node .github/scripts/test_store_split.mjs
+
       # Spotify files a pre-release single under its own album name, so the
       # BY ALBUM view showed the same record twice and the EP's total was
       # missing the track carrying most of its streams.

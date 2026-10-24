@@ -19,6 +19,13 @@
 //
 // Env: UPSTASH_REDIS_REST_URL / _TOKEN, and one of ADMIN_SECRET / CRON_SECRET.
 
+// SECOND DATABASE (optional) — see the note in api/streams.js. Reads
+// UPSTASH_REDIS_REST_URL_B/_TOKEN_B when both are set, otherwise the primary.
+// This endpoint's data regenerates on its own schedule, so a fresh store costs
+// it history, not correctness.
+const storeUrl = () => process.env.UPSTASH_REDIS_REST_URL_B || process.env.UPSTASH_REDIS_REST_URL;
+const storeToken = () => process.env.UPSTASH_REDIS_REST_TOKEN_B || process.env.UPSTASH_REDIS_REST_TOKEN;
+
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
 // Spotify artist ids, each confirmed against the page's own <title> rather than
@@ -106,9 +113,9 @@ const MAX_POINTS = 800;               // >2 years of daily points
 const DAY_MS = 86400000;
 
 async function upstash(cmds) {
-  const r = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
+  const r = await fetch(`${storeUrl()}/pipeline`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${storeToken()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(cmds),
   });
   return await r.json();

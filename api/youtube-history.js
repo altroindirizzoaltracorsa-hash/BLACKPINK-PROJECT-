@@ -16,6 +16,13 @@
 // Env: YOUTUBE_API_KEY (snapshot), UPSTASH_REDIS_REST_URL / _TOKEN, and one of
 // ADMIN_SECRET / CRON_SECRET to authorize snapshot writes.
 
+// SECOND DATABASE (optional) — see the note in api/streams.js. Reads
+// UPSTASH_REDIS_REST_URL_B/_TOKEN_B when both are set, otherwise the primary.
+// This endpoint's data regenerates on its own schedule, so a fresh store costs
+// it history, not correctness.
+const storeUrl = () => process.env.UPSTASH_REDIS_REST_URL_B || process.env.UPSTASH_REDIS_REST_URL;
+const storeToken = () => process.env.UPSTASH_REDIS_REST_TOKEN_B || process.env.UPSTASH_REDIS_REST_TOKEN;
+
 const YT_API = 'https://www.googleapis.com/youtube/v3/videos';
 // s466YCiHfKw is collected for its 7-day figure. It has no RELEASE entry: RELEASE
 // drives the release+24h pin, and a 7-day mark is a different thing the pin logic
@@ -308,9 +315,9 @@ async function liveSubCount(channelId) {
 }
 
 async function upstash(cmds) {
-  const r = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
+  const r = await fetch(`${storeUrl()}/pipeline`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${storeToken()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(cmds),
   });
   return await r.json(); // [{ result }, ...] in order
@@ -380,7 +387,7 @@ export default async function handler(req, res) {
   const idsParam = String(req.query.ids || '').split(',').map(s => s.trim()).filter(Boolean);
   const ids = (idsParam.length ? idsParam : DEFAULT_IDS).slice(0, 10);
   if (!ids.every(id => /^[A-Za-z0-9_-]{11}$/.test(id))) return res.status(400).json({ error: 'invalid video id' });
-  if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ error: 'no-store', videos: {} });
+  if (!storeUrl()) return res.status(200).json({ error: 'no-store', videos: {} });
   // Every path, reads included. The read is not passive — it freezes newly
   // derived crossings and 24h pins — so it is not something to leave open.
   if (!authed(req)) return res.status(401).json({ error: 'unauthorized' });

@@ -28,25 +28,28 @@ function json(data, status = 200) {
 //   • fall back to the last good payload when the upstream errors,
 // so a throttled call never zeroes a fan's score — it just serves slightly stale
 // numbers until the next successful scrape.
-const R_URL = process.env.UPSTASH_REDIS_REST_URL;
-const R_TOK = process.env.UPSTASH_REDIS_REST_TOKEN;
+// SECOND DATABASE (optional) — see the note in api/streams.js. Reads
+// UPSTASH_REDIS_REST_URL_B/_TOKEN_B when both are set, otherwise the primary.
+const storeUrl = () => process.env.UPSTASH_REDIS_REST_URL_B || process.env.UPSTASH_REDIS_REST_URL;
+const storeToken = () => process.env.UPSTASH_REDIS_REST_TOKEN_B || process.env.UPSTASH_REDIS_REST_TOKEN;
+
 const CACHE_FRESH_MS = 20 * 60 * 1000; // serve without re-scraping for 20 min
 const CACHE_TTL_S    = 7 * 24 * 3600;  // keep last-good for a week as error fallback
 
 async function cacheGet(key) {
-  if (!R_URL) return null;
+  if (!storeUrl()) return null;
   try {
-    const r = await fetch(`${R_URL}/get/${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${R_TOK}` } });
+    const r = await fetch(`${storeUrl()}/get/${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${storeToken()}` } });
     const d = await r.json();
     return d.result ? JSON.parse(d.result) : null;
   } catch { return null; }
 }
 async function cacheSet(key, entry) {
-  if (!R_URL) return;
+  if (!storeUrl()) return;
   try {
-    await fetch(`${R_URL}/pipeline`, {
+    await fetch(`${storeUrl()}/pipeline`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${R_TOK}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${storeToken()}`, 'Content-Type': 'application/json' },
       body: JSON.stringify([['SET', key, JSON.stringify(entry), 'EX', String(CACHE_TTL_S)]]),
     });
   } catch {}
