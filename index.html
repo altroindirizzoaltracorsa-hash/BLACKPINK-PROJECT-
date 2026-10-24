@@ -1773,13 +1773,25 @@
      next to a card edge is a bad one — so on a device without hover they get
      a 44px target rather than no target at all. The swipe still works. */
   @media (hover: none) { .cd-arrow { width: 44px; height: 44px; font-size: 1.35rem; } }
-  .cd-card { background: var(--card); border: 1px solid rgba(255,0,102,0.32); padding: 1.5rem 1.4rem; text-align: left; box-shadow: 0 18px 50px -30px rgba(255,0,102,0.7); }
+  /* The card is a container, so what is inside it can be sized off IT rather
+     than off the screen. The clocks were sized in vw, which was always a
+     guess — a card is a fraction of a track that is itself a fraction of the
+     window — and once the cards narrowed to 80% to let the neighbours show,
+     even the FLOOR of the big clock's clamp was wider than the room it had,
+     so the numbers ran off the edge at every width. 1cqw is 1% of the card.
+     Safe here: nothing inside a card is position:fixed (the overlays, the
+     chat button and the tutorial ring all live at page level), so the layout
+     containment this brings traps nothing. */
+  .cd-card { container-type: inline-size;
+    background: var(--card); border: 1px solid rgba(255,0,102,0.32); padding: 1.5rem 1.4rem; text-align: left; box-shadow: 0 18px 50px -30px rgba(255,0,102,0.7); }
   .cd-eyebrow { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.2em; text-transform: uppercase; color: #ff74ac; margin-bottom: 0.45rem; }
   .cd-title { font-family: var(--display); font-size: 2rem; letter-spacing: 0.02em; color: var(--white); line-height: 0.98; margin-bottom: 0.35rem; word-break: break-word; }
   .cd-sub { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 1.1rem; line-height: 1.5; }
   .cd-timer { display: flex; gap: 0.55rem; margin-bottom: 1.1rem; }
-  .cd-unit { min-width: 3rem; text-align: center; background: rgba(255,0,102,0.06); border: 1px solid var(--border); padding: 0.55rem 0.2rem; }
-  .cd-num { font-family: var(--display); font-size: 1.9rem; color: var(--pink); line-height: 1; font-variant-numeric: tabular-nums; }
+  /* The four boxes share whatever the card has, instead of each insisting on
+     3rem and together insisting on more than the card is wide. */
+  .cd-unit { flex: 1 1 0; min-width: 0; text-align: center; background: rgba(255,0,102,0.06); border: 1px solid var(--border); padding: 0.55rem 0.15rem; }
+  .cd-num { font-family: var(--display); font-size: clamp(1rem, 9cqw, 1.9rem); color: var(--pink); line-height: 1; font-variant-numeric: tabular-nums; }
   .cd-lbl { font-family: var(--mono); font-size: 0.46rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: 0.35rem; }
   .cd-out { font-family: var(--display); font-size: 1.6rem; letter-spacing: 0.05em; color: var(--pink); margin-bottom: 1.1rem; }
   .cd-tracklist { font-family: var(--mono); font-size: 0.62rem; color: rgba(245,240,240,0.62); line-height: 1.85; margin-bottom: 1.1rem; }
@@ -1967,13 +1979,19 @@
   .sw-thai { margin-top: 0.5rem; line-height: 0; }
   .sw-thai img { height: clamp(2.2rem, 9vw, 3.2rem); width: auto; max-width: 80%; }
   .sw-latin-wrap { line-height: 0; margin-bottom: 0.35rem; }
-  .sw-latin-wrap img { width: clamp(220px, 82%, 400px); height: auto; display: block; margin: 0 auto; }
+  /* max-width wins over the clamp's floor. Without it the 220px floor is a
+     hard minimum, and on a 360px phone the card's content box is 156px — so
+     the wordmark simply hung 65px off the right edge, auto margins having
+     nothing left to centre with. */
+  .sw-latin-wrap img { width: clamp(220px, 82%, 400px); max-width: 100%; height: auto; display: block; margin: 0 auto; }
   .cd-card-sawadika .cd-eyebrow.sw-eyebrow { color: var(--sw-text); opacity: 0.95; font-weight: 700; }
   .cd-card-sawadika .cd-sub { color: var(--sw-text); opacity: 0.9; font-weight: 600; }
   .cd-card-sawadika .cd-timer { justify-content: center; }
-  .cd-timer-plain { align-items: baseline; gap: 0.5rem; font-family: Georgia, "Times New Roman", serif; }
-  .cd-timer-plain span { font-size: clamp(2.4rem, 11vw, 3.6rem); color: #fff; font-weight: 400; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 2px 14px rgba(40,4,6,0.5); }
-  .cd-timer-plain i { font-style: normal; font-size: clamp(1.7rem, 8vw, 2.6rem); color: #fff; opacity: 0.6; }
+  /* Seven items on one line — four numbers and three colons — so the whole
+     clock has to come off the card's width, gaps included. */
+  .cd-timer-plain { align-items: baseline; gap: clamp(0.15rem, 1.8cqw, 0.5rem); font-family: Georgia, "Times New Roman", serif; }
+  .cd-timer-plain span { font-size: clamp(1.3rem, 13cqw, 3.6rem); color: #fff; font-weight: 400; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 2px 14px rgba(40,4,6,0.5); }
+  .cd-timer-plain i { font-style: normal; font-size: clamp(0.95rem, 9cqw, 2.6rem); color: #fff; opacity: 0.6; }
   .cd-card-sawadika .cd-out { color: var(--sw-text); }
   .cd-card-sawadika .cd-links { justify-content: center; }
   .cd-card-sawadika .cd-badge-chip { color: var(--sw-text); border-color: rgba(247,228,224,0.6); background: rgba(40,4,6,0.28); }
@@ -17437,8 +17455,12 @@ function initCarousel(track) {
     carouselFit(track, slides, true);
     const at = carouselActive(track, slides);
     // The cards either side are dimmed, so the peek reads as "there is more
-    // here" rather than as two cards crowding the one you are reading.
-    slides.forEach((s, i) => s.classList.toggle('is-ahead', i !== at));
+    // here" rather than as two cards crowding the one you are reading. Only
+    // on the card track: the picture strips inside a card are flush frames
+    // with nothing peeking, and marking those was just litter.
+    if (track.classList.contains('cd-wrap')) {
+      slides.forEach((s, i) => s.classList.toggle('is-ahead', i !== at));
+    }
     [...dotBox.children].forEach((d, i) => {
       d.classList.toggle('is-on', i === at);
       d.setAttribute('aria-label', `Go to ${i + 1} of ${slides.length}`);
