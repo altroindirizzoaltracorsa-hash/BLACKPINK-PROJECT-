@@ -417,7 +417,22 @@ async function handlerInner(req, res) {
   // AFTER this point (e.g. ?action=goal-history) aren't shadowed by this catch-all.
   if (req.method === 'GET' && !action) {
     const data = (await redis.get(LB_KEY)) || { users: {}, lastUpdated: new Date().toISOString() };
-    res.setHeader('Cache-Control', 'no-store');
+    // MEASURED AT 239,890 BYTES on 2026-10-24, and it was served no-store — so
+    // every load of the board pulled the whole bu_leaderboard_v1 blob out of
+    // Redis again. About 43,000 page views would exhaust a 10 GB monthly
+    // allowance on this one route, and unlike /vs.html this one is public.
+    //
+    // Thirty seconds of edge cache turns any amount of concurrent traffic into
+    // at most two origin reads a minute, and nobody can perceive a board that
+    // is half a minute old — it is rebuilt from scrobbles on a daily cron, not
+    // per request. stale-while-revalidate keeps it instant while it refreshes.
+    // Thirty and not longer: the mutating POSTs here (rename, set-display-name,
+    // delete-entry, ban) return only a confirmation, never the rebuilt board, so
+    // the client has to re-fetch to see its own change and would wear the full
+    // window. Half a minute is unnoticeable; minutes would not be. Beyond ~2
+    // requests a minute a longer TTL buys nothing anyway — the cache is already
+    // absorbing everything above that.
+    res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=120');
     const { banned, renameLog, ...publicData } = data;
     return res.status(200).json(publicData);
   }
