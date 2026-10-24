@@ -60,7 +60,7 @@ async function openCard(opts = {}) {
   });
   const page = await ctx.newPage();
   await page.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen', '1');
-    localStorage.setItem('ltal_reminder_dismissed_v1', '1'); localStorage.setItem('ext_update_dismissed_1.9.7', '1'); } catch (e) {} });
+    localStorage.setItem('ltal_reminder_dismissed_v1', '1'); localStorage.setItem('ext_update_dismissed_1.9.8', '1'); } catch (e) {} });
   if (opts.noWebGL) {
     // Exactly what an old phone or a blocked context gives the page.
     await page.addInitScript(() => {

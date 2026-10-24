@@ -79,6 +79,25 @@ const idx = readFileSync(root + 'index.html', 'utf8');
 const m = idx.match(/const EXT_LATEST_VERSION = '([\d.]+)'/);
 check(!!m && m[1] === V, 'EXT_LATEST_VERSION matches the build', m ? m[1] : 'not found');
 
+// And the suites themselves have to dismiss THIS version's update modal. They
+// pre-set ext_update_dismissed_<version> in localStorage so the nudge does not
+// open over the page; a key left on the previous version means the modal is
+// back, sitting over everything and swallowing clicks, and the suite that
+// trips over it fails somewhere else entirely with a timeout on an element
+// that was visible the whole time. That is exactly how the tutorial overlay
+// took out test_fandom_names, so it is worth one line to make the next bump
+// impossible to get half-right.
+{
+  const stale = readdirSync(root + '.github/scripts')
+    .filter((f) => /^test_.*\.mjs$/.test(f))
+    .map((f) => ({ f, keys: [...readFileSync(root + '.github/scripts/' + f, 'utf8')
+        .matchAll(/ext_update_dismissed_([\d.]+)/g)].map((x) => x[1]) }))
+    .filter((r) => r.keys.some((k) => k !== V));
+  check(stale.length === 0, 'every suite dismisses the CURRENT update nudge',
+        stale.length ? stale.map((r) => `${r.f} pins ${[...new Set(r.keys)].join(',')}`).join('; ')
+                     : `all on ${V}`);
+}
+
 console.log('--- older zips are kept, not overwritten');
 // Someone mid-install on an older link should not get a 404; the old files
 // stay, they are simply no longer advertised.

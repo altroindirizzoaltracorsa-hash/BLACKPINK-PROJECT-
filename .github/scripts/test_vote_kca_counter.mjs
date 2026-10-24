@@ -403,10 +403,14 @@ console.log('\n--- A. every category the collab covers, and nothing else');
     votes.push({ q: e.q, o: opt });
     want[e.s] = 1;
   }
-  // Plus a pick in a category the collab used to cover and no longer does.
-  const dropped = Object.entries(BALLOT)
-    .find(([, e]) => !slugs.includes(e.s) && e.t === 'Ahn Hyo-seop');
-  check(!!dropped, 'the fixture still has a nominee the collab dropped');
+  // Plus a pick in a category the collab does NOT cover, which is what proves
+  // "stopped counting" and "nobody voted" are different things. Taken from
+  // whatever the ballot has outside the collab rather than named: it used to
+  // pin Ahn Hyo-seop, and when that trade came back on 24 Oct this check
+  // failed for a correct change — the nominee was simply no longer outside.
+  const dropped = Object.entries(BALLOT).find(([, e]) => !slugs.includes(e.s));
+  check(!!dropped, 'the fixture has a nominee the collab does not cover',
+        dropped ? `${dropped[1].t} · ${dropped[1].s}` : 'every ballot entry is in the collab');
   votes.push({ q: dropped[1].q, o: dropped[0] });
 
   bg.store.buToken = 'tok';
@@ -422,7 +426,7 @@ console.log('\n--- A. every category the collab covers, and nothing else');
   check(Object.keys(sent).length === Object.keys(want).length,
         'and nothing it does not cover rode along with them');
   check(!sent[dropped[1].s],
-        `the dropped partner’s category is not counted (${dropped[1].s})`);
+        `a category outside the collab is not counted (${dropped[1].s})`);
   // The partner halves never touch the BLACKPINK board. The round covers the
   // whole collab, so the BLACKPINK total is however many of those categories
   // are OURS — counted from the two lists rather than written down, since the

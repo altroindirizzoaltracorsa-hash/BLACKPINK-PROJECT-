@@ -493,8 +493,15 @@ const split = await prev.evaluate(() => [...document.querySelectorAll('.split-ro
   n: r.querySelector('.split-n').textContent.trim(),
   fill: Math.round(parseFloat(r.querySelector('.split-fill').style.width)),
 })));
-split.length === 4 ? ok('clicking the bar shows all four categories', split.map((r) => r.n).join('/'))
-                   : bad('clicking the bar shows all four categories', `${split.length} rows`);
+// Counted from the collab, not written down: this said "four" and went red
+// the day a partner came back, which is a check failing for a correct change.
+const wantCats = await prev.evaluate(() => {
+  const c = COLLABS[0];
+  return (c.weGive || []).length + (c.theyGive || []).length;
+});
+split.length === wantCats
+  ? ok(`clicking the bar shows all ${wantCats} categories`, split.map((r) => r.n).join('/'))
+  : bad(`clicking the bar shows all ${wantCats} categories`, `${split.length} rows`);
 // Ordered biggest first, and ROSÉ's 60 really is the short one.
 (split[0].n === '100' && split[split.length - 1].n === '60')
   ? ok('ordered biggest first', `${split[0].n} … ${split[split.length - 1].n}`)
@@ -502,8 +509,14 @@ split.length === 4 ? ok('clicking the bar shows all four categories', split.map(
 split[split.length - 1].fill < split[0].fill
   ? ok('and each row is drawn to its own share')
   : bad('and each row is drawn to its own share', JSON.stringify(split.map((r) => r.fill)));
-split.every((r) => /BLACKPINK|JENNIE|ROSÉ|BINI/.test(r.text))
-  ? ok('and each names the act, not just the slug')
+// The acts come from the collab too — a hand-typed alternation is a list that
+// goes stale the moment a partner joins or leaves, and it did.
+const acts = await prev.evaluate(() => {
+  const c = COLLABS[0];
+  return [...(c.weGive || []), ...(c.theyGive || [])].map((g) => g.who || g.nominee).filter(Boolean);
+});
+split.every((r) => acts.some((a2) => r.text.includes(a2)))
+  ? ok('and each names the act, not just the slug', acts.join(', '))
   : bad('and each names the act, not just the slug', split.map((r) => r.text).join(' | '));
 await prev.locator('button.bar').click();
 await prev.waitForTimeout(200);
@@ -585,9 +598,12 @@ board.length === wantRows ? ok('every account is listed', `${board.length}`)
 (board[0].votes >= board[1].votes)
   ? ok('ranked by votes cast', `${board[0].votes} then ${board[1].votes}`)
   : bad('ranked by votes cast', board.map((r) => r.votes).join(' then '));
-board[0].cats.length === 4
+// One chip per category the collab covers — derived, for the same reason as
+// the split rows above.
+board[0].cats.length === wantCats
   ? ok('and each row shows the votes they cast, by category', board[0].cats.join(' '))
-  : bad('and each row shows the votes they cast, by category', `${board[0].cats.length} chips`);
+  : bad('and each row shows the votes they cast, by category',
+        `${board[0].cats.length} chips, want ${wantCats}`);
 // Somebody with no display name is called by their OWN side. This read "a
 // blink" for everybody, including the BLOOMs the board exists to show — and
 // production had exactly one such account.
@@ -887,6 +903,14 @@ console.log('--- the share card');
   // would still look like a perfectly good card.
   const cardRows = await prev.evaluate(() => {
     const cv = document.getElementById('card-canvas');
+    const p0 = periodOf(COLLABS[0], COLLABS[0].tally, PERIOD);
+    // A stored category the collab does not list, INJECTED rather than
+    // borrowed from whichever partner happens to be gone this week. Stored
+    // data outlives the agreement that produced it, which is the whole reason
+    // the card filters at all — but tying the check to a real ex-partner made
+    // it vacuous the moment that trade came back, and it reported "the fixture
+    // has none to exclude" instead of testing anything.
+    p0.byCat['favorite-video-game'] = 7;
     const m = drawCollabCard(cv, COLLABS[0]);
     const p = periodOf(COLLABS[0], COLLABS[0].tally, PERIOD);
     // `shown` is the string that was painted, so a figure changed between
@@ -907,7 +931,7 @@ console.log('--- the share card');
     (want.length > 0 && missing.length === 0)
       ? ok('every category the collab lists is on the card', cardRows.labels.join(', '))
       : bad('every category the collab lists is on the card', `missing ${missing.map(([k]) => k).join(', ')}`);
-    // And nothing from an agreement that has ended. The fixture carries one, so
+    // And nothing from an agreement that has ended. One is injected above, so
     // this is a real exclusion rather than a vacuous pass.
     const leaked = cardRows.drawn.filter((r) => cardRows.dropped.includes(r.slug));
     (cardRows.dropped.length > 0 && leaked.length === 0)
@@ -970,16 +994,30 @@ console.log('--- who is logging: people by declared side, never a split of the v
   const barBefore = await prev.evaluate(() =>
     document.querySelector('.tally-nums').textContent.replace(/\s+/g, ' ').trim());
 
+  // Checked against the collab so it can never quietly become a real side.
+  const STALE_SIDE = 'nobodys-fandom';
+  const isReallyStale = await prev.evaluate((k) =>
+    !(COLLABS[0].fandoms || []).some((f2) => f2.key === k), STALE_SIDE);
+  isReallyStale
+    ? ok('the stale side really is one the collab does not have', STALE_SIDE)
+    : bad('the stale side really is one the collab does not have',
+          `${STALE_SIDE} is a live side — pick another or this proves nothing`);
+
   const FAN = JSON.parse(JSON.stringify(BARE));
   FAN.periods.all.fandoms = {
     blink: { people: 8, votes: 160 },
     bloom: { people: 2, votes: 120 },
-    // A side the collab NO LONGER HAS. Not a stale fixture — production has
-    // rows like this, because the trade had a second partner for two days and
+    // A side the collab does NOT have. Not a stale fixture — production has
+    // rows like this, because a trade had a second partner for two days and
     // those people's answers are still stored. They must not draw a phantom
     // column, and they must not vanish either: they are in the board and in
     // every total above it.
-    pauljjak: { people: 5, votes: 100 },
+    //
+    // Deliberately a key that is nobody's partner rather than a real
+    // ex-partner's. This said `pauljjak`, and when that trade came back the
+    // check inverted — the side drew a column, correctly, and this failed for
+    // a correct change. A side the collab cannot acquire keeps it honest.
+    [STALE_SIDE]: { people: 5, votes: 100 },
     unsaid: { people: 1, votes: 20 },
   };
   await prev.evaluate((fix) => { COLLABS[0].tally = fix; PERIOD = 'all'; render(); }, FAN);
@@ -1033,9 +1071,9 @@ console.log('--- who is logging: people by declared side, never a split of the v
   }
   {
     const names = f.cards.map((c) => c.name.toLowerCase()).join(' ');
-    !/pauljjak/.test(names)
-      ? ok('a side the collab has dropped draws no column', f.cards.map((c) => c.name).join(' / '))
-      : bad('a side the collab has dropped draws no column', f.cards.map((c) => c.name).join(' / '));
+    !names.includes(STALE_SIDE)
+      ? ok('a side the collab does not have draws no column', f.cards.map((c) => c.name).join(' / '))
+      : bad('a side the collab does not have draws no column', f.cards.map((c) => c.name).join(' / '));
     // 5 of them, folded in with the 1 who never answered.
     const note = f.notes.find((n) => /have not said|has not said|didn/i.test(n)) || '';
     /\b6 people/.test(note)

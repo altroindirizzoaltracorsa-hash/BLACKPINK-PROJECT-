@@ -834,6 +834,7 @@ const COLLAB = {
     'favorite-music-collaboration': 'Dracula (with JENNIE)',
     'favorite-female-artist':       'ROSÉ',
     'favorite-global-music-star':   'BINI',
+    'favorite-animated-male-voice-from-a-movie': 'Ahn Hyo-seop',
   },
   // The sides a person can say they are, in step with COLLABS[].fandoms on
   // /collabs — the keys are what the board counts people by, so a key only one
@@ -845,6 +846,7 @@ const COLLAB = {
   fandoms: [
     { key: 'blink', label: 'BLINK' },
     { key: 'bloom', label: 'BLOOM' },
+    { key: 'pauljjak', label: 'Pauljjak' },
   ],
 };
 

@@ -29,7 +29,7 @@ const base=`http://127.0.0.1:${server.address().port}`;
 const browser=await chromium.launch();
 const page=await browser.newPage({viewport:{width:430,height:950}});
 await page.addInitScript(()=>{try{localStorage.setItem('bu_tutorial_seen','1');
-  localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.7','1');}catch(e){}});
+  localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.8','1');}catch(e){}});
 const errs=[]; page.on('pageerror',e=>errs.push(e.message));
 let fails=0;
 const ok=(m,d)=>console.log(`  ok   ${m}${d?` (${d})`:''}`);

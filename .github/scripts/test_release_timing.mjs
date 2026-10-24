@@ -42,7 +42,7 @@ const bad=(m,d)=>{fails++;console.log(`  FAIL ${m}${d?` (${d})`:''}`);};
 async function read(tz, nowISO){
   const page=await browser.newPage({viewport:{width:390,height:900}, timezoneId:tz});
   await page.addInitScript(()=>{try{localStorage.setItem('bu_tutorial_seen','1');
-    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.7','1');}catch(e){}});
+    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.8','1');}catch(e){}});
   await page.addInitScript(`(()=>{const t=Date.parse(${JSON.stringify(nowISO)});const R=Date;
     const D=function(...a){return a.length?new R(...a):new R(t)};
     D.prototype=R.prototype;D.now=()=>t;D.parse=R.parse;D.UTC=R.UTC;globalThis.Date=D;})()`);
@@ -114,7 +114,7 @@ console.log('--- what gets SHARED carries the same time');
   // the page, nobody can see that it is stale.
   const page=await browser.newPage({viewport:{width:390,height:900}, timezoneId:'Asia/Seoul'});
   await page.addInitScript(()=>{try{localStorage.setItem('bu_tutorial_seen','1');
-    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.7','1');}catch(e){}});
+    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.8','1');}catch(e){}});
   await page.goto(base+'/countdowns/lalisaofficial.com',{waitUntil:'domcontentloaded'});
   await page.locator('.cd-card-lisa').waitFor({timeout:20000});
   await page.waitForTimeout(2000);

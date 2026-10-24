@@ -471,7 +471,7 @@
     <div class="get">
       <div class="get-head">
         <span class="get-title">🧩 Get the Vote Counter</span>
-        <span class="get-ver">v1.9.7</span>
+        <span class="get-ver">v1.9.8</span>
       </div>
       <p class="get-sub">
         It counts the votes <b>you</b> cast on kca.nick.tv and logs them to the board above —
@@ -481,8 +481,8 @@
         <b>app</b> does the same job — you vote inside it.
       </p>
       <div class="get-dl">
-        <a class="get-btn" href="/vote-extension-v1.9.7-chrome.zip" download>⬇ Desktop<small>Chrome · Edge · Brave · Opera</small></a>
-        <a class="get-btn ghost" href="/vote-extension-v1.9.7-android.zip" download>⬇ Android extension<small>Edge Canary · Quetta</small></a>
+        <a class="get-btn" href="/vote-extension-v1.9.8-chrome.zip" download>⬇ Desktop<small>Chrome · Edge · Brave · Opera</small></a>
+        <a class="get-btn ghost" href="/vote-extension-v1.9.8-android.zip" download>⬇ Android extension<small>Edge Canary · Quetta</small></a>
         <a class="get-btn ghost" href="/blinks-united-vote-counter.apk" download>⬇ Android app<small>.apk · no extension needed</small></a>
       </div>
       <p class="get-note">
@@ -490,7 +490,7 @@
         <b>Link my account</b> inside it once. There's an
         <a href="/vote-counter-guide.html" target="_blank" rel="noopener">illustrated guide ↗</a>
         if any of that is unfamiliar.<br>
-        <b>Already have it?</b> Update to v1.9.7. Older versions either don't know this collab
+        <b>Already have it?</b> Update to v1.9.8. Older versions either don't know this collab
         exists — and count only the BLACKPINK side of your ballot — or count the whole trade
         without ever showing it, which leaves no way to tell a counted pick from a lost one.
       </p>
@@ -662,18 +662,25 @@ var COLLABS = [
     // rendered it. `fandom` is what that fandom calls itself and falls back to
     // the act's own name: inventing one for somebody else is the same mistake.
     partners: [
-      // `covers` is the part of OUR half this agreement actually asked for:
-      // BLOOMs trade for BLACKPINK and JENNIE, and ROSÉ is beyond what was
-      // asked. `gives` is their own category. Both are read only by the pass
-      // count — nothing else on the page splits by partner.
+      // `covers` is the part of OUR half that this agreement actually asked
+      // for, and the two differ: BLOOMs trade for BLACKPINK and JENNIE (ROSÉ
+      // beyond what was asked), Pauljjak announced BLACKPINK alone. `gives` is
+      // their own category. Both are read only by the per-agreement pass
+      // count — nothing else on the page splits by partner, so every vote
+      // still counts in every total: a Pauljjak voter who also picks JENNIE
+      // and ROSÉ has those counted like anybody's.
       //
       // `colour` is this act's own on the bar and in the split. This is a LIST
       // and the page renders a segment per entry, so a partner is a data change
-      // rather than a code change: a second one was added here and later called
-      // off, and both times this array was most of the diff.
+      // rather than a code change: this second one was added, called off on
+      // 21 Oct, and restored on the 24th when the page came back, and all
+      // three times this array was most of the diff.
       { fandom: 'BLOOMs', act: 'BINI', colour: '#6fd3ff',
         covers: ['favorite-music-group-or-duo', 'favorite-music-collaboration'],
         gives: ['favorite-global-music-star'] },
+      { fandom: 'Pauljjak', act: 'Ahn Hyo-seop', colour: '#b388ff',
+        covers: ['favorite-music-group-or-duo'],
+        gives: ['favorite-animated-male-voice-from-a-movie'] },
     ],
     // The pages running it, per side. Named on the card because a collab is
     // THEIR work as much as ours and the page should say so — and because a
@@ -697,7 +704,11 @@ var COLLABS = [
       us:   [{ name: 'Blinks United', url: '/' },
              { name: '@BLINKVotingPage', url: 'https://x.com/BLINKVotingPage' }],
       them: [{ name: '@BINIVotingTeam', url: 'https://x.com/BINIVotingTeam', for: 'BLOOMs' },
-             { name: '@BloomStreamers', url: 'https://x.com/BloomStreamers', for: 'BLOOMs' }],
+             { name: '@BloomStreamers', url: 'https://x.com/BloomStreamers', for: 'BLOOMs' },
+             // Back on 24 Oct: the page said yes again after calling it off.
+             // Same rule as the first time — this name is here because they
+             // said so themselves, not because the category is back.
+             { name: '@ahnhyoseop_DC', url: 'https://x.com/ahnhyoseop_DC', for: 'Pauljjak' }],
     },
     // The sides a person can say they belong to. Keys are what the counter
     // posts and what the API stores; labels are what the page prints.
@@ -722,6 +733,7 @@ var COLLABS = [
     fandoms: [
       { key: 'blink', label: 'BLINKs', colour: '#ff0066', anon: 'a blink' },
       { key: 'bloom', label: 'BLOOMs', colour: '#6fd3ff', anon: 'a bloom' },
+      { key: 'pauljjak', label: 'Pauljjak', colour: '#b388ff', anon: 'someone from Pauljjak' },
     ],
     // What BLINKs put in the partner's category. One slot, and it is a slot we
     // have no nominee in — so this costs a blink nothing at all.
@@ -737,6 +749,17 @@ var COLLABS = [
       // as an example rather than matched on.
       { slug: 'favorite-global-music-star', cat: 'Favorite Global Music Star', nominee: 'BINI',
         onBallot: 'Asia: BINI' },
+      // Re-read off the live ballot by probe-kca-ballot.yml on 24 Oct, when
+      // this trade came back, rather than copied out of the old commit: a slug
+      // or a nominee title that has drifted since counts nothing and looks
+      // exactly like nobody voting. All three strings came back identical.
+      // The slug is favorite-ANIMATED-MALE-voice while the category prints as
+      // "Favorite MALE ANIMATED Voice" — the words are in the other order, so
+      // neither could have been derived from the other, and the counter
+      // matches on the slug.
+      { slug: 'favorite-animated-male-voice-from-a-movie',
+        cat: 'Favorite Male Animated Voice From a Movie',
+        nominee: 'Ahn Hyo-seop', who: 'Ahn Hyo-seop' },
     ],
     // What their side puts in ours. Read off the live ballot (probe-kca.yml) and
     // in step with KCA_CATEGORIES in index.html.
@@ -823,19 +846,22 @@ if (DEMO_OPTION) {
     todayKey: _dday(0),
     periods: {
       today: { byCat: { 'favorite-music-group-or-duo': 44, 'favorite-music-collaboration': 43,
-                        'favorite-female-artist': 41, 'favorite-global-music-star': 42 },
+                        'favorite-female-artist': 41, 'favorite-global-music-star': 42,
+                        'favorite-animated-male-voice-from-a-movie': 38 },
                board: [{ name: 'Voter A', votes: 68, byCat: { 'favorite-music-group-or-duo': 17 } },
                        { name: 'Voter B', votes: 52, byCat: { 'favorite-global-music-star': 13 } }],
                fandoms: { blink: { people: 9, votes: 104 }, bloom: { people: 3, votes: 56 },
-                          unsaid: { people: 1, votes: 10 } } },
+                          pauljjak: { people: 4, votes: 40 }, unsaid: { people: 1, votes: 10 } } },
       week:  { byCat: { 'favorite-music-group-or-duo': 240, 'favorite-music-collaboration': 236,
-                        'favorite-female-artist': 228, 'favorite-global-music-star': 232 },
+                        'favorite-female-artist': 228, 'favorite-global-music-star': 232,
+                        'favorite-animated-male-voice-from-a-movie': 205 },
                board: [{ name: 'Voter A', votes: 320, byCat: { 'favorite-music-group-or-duo': 80 } },
                        { name: 'Voter B', votes: 268, byCat: { 'favorite-global-music-star': 67 } }],
                fandoms: { blink: { people: 22, votes: 620 }, bloom: { people: 7, votes: 286 },
-                          unsaid: { people: 2, votes: 30 } } },
+                          pauljjak: { people: 9, votes: 200 }, unsaid: { people: 2, votes: 30 } } },
       all:   { byCat: { 'favorite-music-group-or-duo': 440, 'favorite-music-collaboration': 435,
-                        'favorite-female-artist': 420, 'favorite-global-music-star': 425 },
+                        'favorite-female-artist': 420, 'favorite-global-music-star': 425,
+                        'favorite-animated-male-voice-from-a-movie': 390 },
                board: [{ name: 'Voter A', votes: 408, byCat: { 'favorite-music-group-or-duo': 102,
                            'favorite-music-collaboration': 102, 'favorite-female-artist': 102,
                            'favorite-global-music-star': 102 } },
@@ -844,7 +870,7 @@ if (DEMO_OPTION) {
                        { name: 'Voter C', votes: 196, byCat: { 'favorite-music-group-or-duo': 49 } }],
                // 34 people averaging 34.7 against 9 averaging 50.
                fandoms: { blink: { people: 34, votes: 1180 }, bloom: { people: 9, votes: 450 },
-                          unsaid: { people: 3, votes: 90 } } },
+                          pauljjak: { people: 12, votes: 300 }, unsaid: { people: 3, votes: 90 } } },
     },
     days: [5, 4, 3, 2, 1, 0].map(function (b, i) {
       return { day: _dday(b), votes: [180, 240, 300, 360, 470, 170][i],
