@@ -17565,6 +17565,15 @@ function carouselFit(track, slides, settled) {
 // between any two neighbours' offsets, and the compensation is exact.
 function carouselLoopKeep(track) {
   if (!('carouselLoop' in track.dataset) || track._cdPaused || track._loopBusy) return;
+  // Never while a scroll the page started is still running. Rotating writes
+  // scrollLeft, and writing scrollLeft during a smooth scroll ends that
+  // animation where it stands — so a dot press for a far card would arrive
+  // one card short of the card it named. Reproduced under a 6x CPU throttle,
+  // which is why it showed on CI and not here: pressing the fifth dot landed
+  // on the first countdown, with the scroll stopped exactly one card's width
+  // from the one asked for. There is nothing to lose by waiting; the settle
+  // below calls this again as soon as the scroll has stopped.
+  if (track._goingTo) return;
   const slides = carouselSlides(track);
   // Under three there is no "other end" to rotate towards worth having.
   if (slides.length < 3) return;
@@ -17620,6 +17629,12 @@ function carouselGo(track, n, smooth = true) {
   // bring the track into view, yanking the reader somewhere they did not ask
   // to go.)
   const left = slides[i].offsetLeft + slides[i].offsetWidth / 2 - track.clientWidth / 2;
+  // Hold the loop off until this has arrived — see carouselLoopKeep. Cleared
+  // by the settle; the timer is only a backstop for a move that turns out to
+  // be no move at all, which emits no scroll events to settle from.
+  track._goingTo = true;
+  clearTimeout(track._goT);
+  track._goT = setTimeout(() => { track._goingTo = false; }, 1200);
   track.scrollTo({ left, behavior: (smooth && !prefersReducedMotion()) ? 'smooth' : 'auto' });
 }
 
@@ -17700,8 +17715,11 @@ function initCarousel(track) {
     settle = setTimeout(() => {
       // Stopped. Snapping goes back on only now: through the release
       // animation it would be a second thing moving the track, which is
-      // exactly how a one-card swipe became a two-card one.
+      // exactly how a one-card swipe became a two-card one. The loop is
+      // released here too, for the same reason in reverse — it may rotate
+      // freely once nothing else is moving the track.
       track.classList.remove('is-dragging');
+      track._goingTo = false;
       paint();                                   // settled: take its height
     }, 160);
     if (frame) return;
@@ -23118,13 +23136,27 @@ async function openAddictedCard() {
     stampTint: '#0b0618', stampPill: '#b6a3ff', stampInk: '#0b0618',
     accent: '#b6a3ff', claim: 'I pre-saved',
     headFont: '500 %SPX% "CinzelVariable", Georgia, serif',
-    // The bolt goes on before the scrims, centred and a touch above the
-    // middle so the type at the bottom is not fighting it.
+    // The bolt goes on before the scrims, high enough that the type at the
+    // bottom is not fighting it.
+    //
+    // Fitted in BOTH directions, which is the whole lesson here. Sized off
+    // the width alone it was 56% of W square-ish, and that is fine on the
+    // 1:1 card and wrong on the 16:9 one: 672px of heart on a 675px canvas
+    // ran off the top edge, so the landscape card showed a heart with its
+    // top lobes sliced off and the lockup laid across its middle. The height
+    // budget and the clamped top keep it whole on any shape of canvas, and
+    // at 16:9 it lands at about a third of the width — the proportion
+    // jisoo.io's own key art uses, where the lettering reads THROUGH the
+    // heart rather than beside it.
     overlay: (ctx, W, H) => {
       if (!bolt || !bolt.naturalWidth) return;
-      const bw = W * 0.56, bh = bw * (bolt.naturalHeight / bolt.naturalWidth);
+      const ratio = bolt.naturalHeight / bolt.naturalWidth;
+      let bw = W * 0.56, bh = bw * ratio;
+      const maxH = H * 0.62;                 // the type block owns the rest
+      if (bh > maxH) { bh = maxH; bw = bh / ratio; }
+      const top = Math.max(H * 0.035, H * 0.30 - bh / 2);
       ctx.save(); ctx.globalAlpha = 0.9;
-      ctx.drawImage(bolt, (W - bw) / 2, H * 0.30 - bh / 2, bw, bh);
+      ctx.drawImage(bolt, (W - bw) / 2, top, bw, bh);
       ctx.restore();
     },
     releaseAt: ADDICTED_RELEASE_AT,
