@@ -2074,7 +2074,10 @@
      a page scroll. A pointercancel arrives when it takes one, and the logo
      falls back to rest. */
   .ad-sky { position: relative; width: calc(100% + 2.8rem); margin: -1.5rem -1.4rem 1.1rem;
-    aspect-ratio: 4 / 3; overflow: hidden; background: #090514; perspective: 560px; cursor: grab; }
+    aspect-ratio: 4 / 3; overflow: hidden; background: #090514; cursor: grab;
+    /* Default for the no-script case; the script replaces it with the value
+       that matches jisoo.io's 38° camera at this sky's actual height. */
+    perspective: 500px; }
   .ad-sky:active { cursor: grabbing; }
   .ad-clouds { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
   /* The strike. Two pulses, not one fade: a single fade reads as a lamp
@@ -2107,9 +2110,22 @@
      pan-y, not none: a vertical finger still scrolls the page as it should,
      and only the sideways drag is kept for the logo. Dragging anywhere else
      on the sky still swipes the carousel. */
-  .ad-logo { position: absolute; left: 50%; top: 50%; width: min(86%, 420px); height: auto;
+  /* The orbit carries the idle drift; the logo inside carries the pointer.
+     Two elements because they are two motions that have to compose — and
+     because jisoo.io's own scene adds its idle to the pointer yaw rather
+     than replacing it: rotation.y = x*0.42 + idle*0.6. */
+  .ad-logo-orbit { position: absolute; left: 50%; top: 50%; width: min(86%, 420px);
+    transform: translate(-50%, -50%); transform-style: preserve-3d;
+    animation: ad-idle 10.5s ease-in-out infinite; }
+  /* idle = sin(t*0.6)*0.05, then *0.6 → ±0.03 rad, and 2π/0.6 ≈ 10.5s.
+     Read off jisoo.io, not chosen: it is a slow breath, not a wobble. */
+  @keyframes ad-idle {
+    0%, 100% { transform: translate(-50%, -50%) rotateY(-1.72deg); }
+    50%      { transform: translate(-50%, -50%) rotateY(1.72deg); }
+  }
+  .ad-logo { display: block; width: 100%; height: auto;
     touch-action: pan-y;
-    transform: translate(-50%, -50%) rotateX(var(--ad-rx, 0deg)) rotateY(var(--ad-ry, 0deg));
+    transform: rotateX(var(--ad-rx, 0deg)) rotateY(var(--ad-ry, 0deg));
     transition: transform 420ms cubic-bezier(.22,.9,.3,1);
     filter: drop-shadow(0 6px 22px rgba(9,5,20,0.75)) drop-shadow(0 0 26px rgba(182,163,255,0.35));
     user-select: none; -webkit-user-drag: none; }
@@ -2120,13 +2136,13 @@
      something hanging, not a slide back to zero. */
   .ad-logo.is-knocked { animation: ad-knock 640ms cubic-bezier(.25,1,.3,1); }
   @keyframes ad-knock {
-    0%   { transform: translate(-50%, -50%) rotateY(0deg); }
-    20%  { transform: translate(-50%, -50%) rotateY(var(--ad-knock, 28deg)) scale(1.045); }
-    48%  { transform: translate(-50%, -50%) rotateY(calc(var(--ad-knock, 28deg) * -0.45)); }
-    74%  { transform: translate(-50%, -50%) rotateY(calc(var(--ad-knock, 28deg) * 0.18)); }
-    100% { transform: translate(-50%, -50%) rotateY(0deg); }
+    0%   { transform: rotateY(0deg); }
+    20%  { transform: rotateY(var(--ad-knock, 24deg)) scale(1.04); }
+    48%  { transform: rotateY(calc(var(--ad-knock, 24deg) * -0.45)); }
+    74%  { transform: rotateY(calc(var(--ad-knock, 24deg) * 0.18)); }
+    100% { transform: rotateY(0deg); }
   }
-  .ad-title-fallback { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); color: #fff; }
+  .ad-title-fallback { color: #fff; text-align: center; }
   /* Reduced motion keeps the art and drops the movement: the bolt simply
      sits there lit, which is what the still of this scene looks like. */
   @media (prefers-reduced-motion: reduce) {
@@ -2134,6 +2150,8 @@
     .ad-bolt { opacity: 0.55; }
     .ad-logo { transition: none; }
     .ad-logo.is-knocked { animation: none; }
+    /* jisoo.io does the same — its idle term is `reduce ? 0 : …`. */
+    .ad-logo-orbit { animation: none; }
   }
 
   /* Auto-detected pre-release card (built by loadAutoPrereleases from Spotify).
@@ -4256,8 +4274,10 @@
             <div class="ad-sky" data-addicted-sky>
               <img class="ad-clouds" src="/addicted/addicted-bg-clouds-v1.webp" alt="" loading="lazy">
               <img class="ad-bolt" src="/addicted/addicted-heart-lightning-v1.webp" alt="" loading="lazy">
-              <img class="ad-logo" src="/addicted/addicted-logo-full-v2.png" alt="JISOO — ADDICTED" loading="lazy"
-                   onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cd-title ad-title-fallback',textContent:'ADDICTED'}))">
+              <div class="ad-logo-orbit">
+                <img class="ad-logo" src="/addicted/addicted-logo-full-v2.png" alt="JISOO — ADDICTED" loading="lazy"
+                     onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cd-title ad-title-fallback',textContent:'ADDICTED'}))">
+              </div>
             </div>
             <div class="cd-eyebrow">JISOO · New Single · jisoo.io</div>
             <div class="cd-badge-chip ad-locket" id="addicted-badge" style="display:none;"><img src="/addicted/addicted-heart-lightning-v1.webp" alt="" aria-hidden="true">Early Supporter</div>
@@ -18337,11 +18357,36 @@ function saveAddicted() {
 // Wired per element rather than by id: the same markup is mounted a second
 // time on the /countdowns hub, and two cards must not share one state.
 const AD_IDLE_MIN = 5200, AD_IDLE_MAX = 11000, AD_STRIKE_MS = 900;
+// jisoo.io's own numbers, read off the page rather than picked to taste:
+//   logoRoot.rotation.y = x * 0.42 + idle * 0.6
+//   logoRoot.rotation.x = -y * 0.3
+// 0.42 rad and 0.3 rad, against a pointer normalised to −1…1.
+const AD_YAW_DEG = 0.42 * 180 / Math.PI;    // 24.06
+const AD_PITCH_DEG = 0.30 * 180 / Math.PI;  // 17.19
+// And its camera: new THREE.PerspectiveCamera(38, …). The CSS equivalent of a
+// 38° vertical field of view is (height/2) / tan(19°) — which depends on how
+// tall the sky actually is, so it cannot be one hardcoded px value. The CSS
+// carries a sensible default for the no-script case and this sharpens it.
+// Approximate rather than exact: matching the camera angle is not the same as
+// matching the scene, whose scale depends on the model's own size.
+const AD_FOV_DEG = 38;
+function adFitPerspective(sky) {
+  const h = sky.getBoundingClientRect().height;
+  if (!h) return;
+  sky.style.perspective = Math.round((h / 2) / Math.tan((AD_FOV_DEG / 2) * Math.PI / 180)) + 'px';
+}
 function setupAddictedSky(sky) {
   if (!sky || sky._adInit) return;
   sky._adInit = true;
   const logo = sky.querySelector('.ad-logo');
   const reduce = prefersReducedMotion();
+
+  // The sky's height changes with the card's width, so the perspective that
+  // matches a 38° camera changes with it.
+  adFitPerspective(sky);
+  if (window.ResizeObserver) {
+    try { new ResizeObserver(() => adFitPerspective(sky)).observe(sky); } catch {}
+  }
 
   let clearing = 0;
   const strike = () => {
@@ -18359,14 +18404,19 @@ function setupAddictedSky(sky) {
     if (!logo || reduce) return;
     const r = sky.getBoundingClientRect();
     if (!r.width || !r.height) return;
-    const x = (ev.clientX - r.left) / r.width  - 0.5;   // −0.5 … 0.5
-    const y = (ev.clientY - r.top)  / r.height - 0.5;
-    // Swings further than the first pass, which was tame next to jisoo.io's
-    // own scene. With the perspective at 560px these read as a real turn
-    // rather than a tilt: about 22° of yaw by the time the finger is a
-    // quarter of the way out, the full 44° at the edge.
-    logo.style.setProperty('--ad-ry', (x * 44).toFixed(2) + 'deg');
-    logo.style.setProperty('--ad-rx', (-y * 30).toFixed(2) + 'deg');
+    // −1 … 1, the way jisoo.io normalises it:
+    //   x = ((clientX - r.left) / innerWidth - 0.5) * 2
+    // Getting this range wrong is what made the first version feel tame: it
+    // used −0.5…0.5 against a 26° multiplier, so the real maximum was 13°
+    // against that site's 24°. Half, while the number in the code looked
+    // like a match.
+    const x = ((ev.clientX - r.left) / r.width  - 0.5) * 2;
+    const y = ((ev.clientY - r.top)  / r.height - 0.5) * 2;
+    // Its own figures, in radians, converted once:
+    //   rotation.y = x * 0.42   → 24.06°
+    //   rotation.x = -y * 0.3   → 17.19°
+    logo.style.setProperty('--ad-ry', (x * AD_YAW_DEG).toFixed(2) + 'deg');
+    logo.style.setProperty('--ad-rx', (-y * AD_PITCH_DEG).toFixed(2) + 'deg');
   };
   const rest = () => {
     sky.classList.remove('is-grabbed');
@@ -18381,7 +18431,9 @@ function setupAddictedSky(sky) {
   // so nothing ever renders. Poke it on the left and it swings right.
   const knock = (fromLeft) => {
     if (reduce || !logo) return;
-    logo.style.setProperty('--ad-knock', (fromLeft ? 28 : -28) + 'deg');
+    // Sized to that site's own maximum yaw. The poke itself is ours — jisoo.io
+    // is a hover scene and has nothing for a tap that never moves.
+    logo.style.setProperty('--ad-knock', (fromLeft ? 1 : -1) * AD_YAW_DEG + 'deg');
     logo.classList.remove('is-knocked');
     void logo.offsetWidth;
     logo.classList.add('is-knocked');
