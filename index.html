@@ -2126,12 +2126,12 @@
   .ad-logo { display: block; width: 100%; height: auto;
     touch-action: pan-y;
     transform: rotateX(var(--ad-rx, 0deg)) rotateY(var(--ad-ry, 0deg));
-    transition: transform 420ms cubic-bezier(.22,.9,.3,1);
+    /* No transition: the script eases the VALUES on jisoo.io's own curve
+       (1 - exp(-dt*6)) every frame. A transition on top of that would damp an
+       already-damped number, and restarting one on every pointermove is a
+       fresh curve each time rather than a decay toward a moving target. */
     filter: drop-shadow(0 6px 22px rgba(9,5,20,0.75)) drop-shadow(0 0 26px rgba(182,163,255,0.35));
     user-select: none; -webkit-user-drag: none; }
-  /* While a finger is down the logo tracks it directly — a 420ms ease on
-     every move trails the finger by a third of a second. */
-  .ad-sky.is-grabbed .ad-logo { transition: transform 90ms linear; }
   /* The poke. Overshoots, comes back past centre, settles — the swing of
      something hanging, not a slide back to zero. */
   .ad-logo.is-knocked { animation: ad-knock 640ms cubic-bezier(.25,1,.3,1); }
@@ -2148,7 +2148,6 @@
   @media (prefers-reduced-motion: reduce) {
     .ad-sky.is-striking .ad-bolt, .ad-sky.is-striking .ad-clouds { animation: none; }
     .ad-bolt { opacity: 0.55; }
-    .ad-logo { transition: none; }
     .ad-logo.is-knocked { animation: none; }
     /* jisoo.io does the same — its idle term is `reduce ? 0 : …`. */
     .ad-logo-orbit { animation: none; }
@@ -18363,6 +18362,8 @@ const AD_IDLE_MIN = 5200, AD_IDLE_MAX = 11000, AD_STRIKE_MS = 900;
 // 0.42 rad and 0.3 rad, against a pointer normalised to −1…1.
 const AD_YAW_DEG = 0.42 * 180 / Math.PI;    // 24.06
 const AD_PITCH_DEG = 0.30 * 180 / Math.PI;  // 17.19
+// ...and how it gets there: const ease = 1 - Math.exp(-dt * 6).
+const AD_EASE_RATE = 6;
 // And its camera: new THREE.PerspectiveCamera(38, …). The CSS equivalent of a
 // 38° vertical field of view is (height/2) / tan(19°) — which depends on how
 // tall the sky actually is, so it cannot be one hardcoded px value. The CSS
@@ -18400,6 +18401,34 @@ function setupAddictedSky(sky) {
     clearing = setTimeout(() => sky.classList.remove('is-striking'), AD_STRIKE_MS);
   };
 
+  // jisoo.io does not snap the lockup to the pointer, it chases it:
+  //   const ease = 1 - Math.exp(-dt * 6)
+  //   input.x += (input.tx - input.x) * ease
+  // That is exponential smoothing with a time constant of 1/6 s — about
+  // 170ms to cover 63% of the remaining distance, half a second to settle.
+  // Done here the same way rather than with a CSS transition, because a
+  // transition restarted on every pointermove is a different curve each time
+  // and does not behave at all like a decay toward a moving target.
+  let tgX = 0, tgY = 0, curX = 0, curY = 0, raf = 0, last = 0;
+  const writeDeg = () => {
+    logo.style.setProperty('--ad-ry', (curX * AD_YAW_DEG).toFixed(2) + 'deg');
+    logo.style.setProperty('--ad-rx', (-curY * AD_PITCH_DEG).toFixed(2) + 'deg');
+  };
+  const step = (now) => {
+    const dt = Math.min(0.05, (now - last) / 1000 || 0.016);   // a backgrounded
+    last = now;                                                 // tab can hand us
+    const ease = 1 - Math.exp(-dt * AD_EASE_RATE);              // a huge dt
+    curX += (tgX - curX) * ease;
+    curY += (tgY - curY) * ease;
+    writeDeg();
+    const settled = Math.abs(tgX - curX) < 0.001 && Math.abs(tgY - curY) < 0.001;
+    if (settled && !sky.classList.contains('is-grabbed')) {
+      curX = tgX; curY = tgY; writeDeg(); raf = 0; return;      // stop the loop
+    }
+    raf = requestAnimationFrame(step);
+  };
+  const chase = () => { if (!raf) { last = performance.now(); raf = requestAnimationFrame(step); } };
+
   const tilt = (ev) => {
     if (!logo || reduce) return;
     const r = sky.getBoundingClientRect();
@@ -18410,19 +18439,20 @@ function setupAddictedSky(sky) {
     // used −0.5…0.5 against a 26° multiplier, so the real maximum was 13°
     // against that site's 24°. Half, while the number in the code looked
     // like a match.
-    const x = ((ev.clientX - r.left) / r.width  - 0.5) * 2;
-    const y = ((ev.clientY - r.top)  / r.height - 0.5) * 2;
     // Its own figures, in radians, converted once:
     //   rotation.y = x * 0.42   → 24.06°
     //   rotation.x = -y * 0.3   → 17.19°
-    logo.style.setProperty('--ad-ry', (x * AD_YAW_DEG).toFixed(2) + 'deg');
-    logo.style.setProperty('--ad-rx', (-y * AD_PITCH_DEG).toFixed(2) + 'deg');
+    tgX = ((ev.clientX - r.left) / r.width  - 0.5) * 2;
+    tgY = ((ev.clientY - r.top)  / r.height - 0.5) * 2;
+    chase();
   };
+  // Rest is a target like any other — it is chased home on the same curve
+  // rather than snapped, which is what that site does when the pointer goes.
   const rest = () => {
     sky.classList.remove('is-grabbed');
-    if (!logo) return;
-    logo.style.setProperty('--ad-ry', '0deg');
-    logo.style.setProperty('--ad-rx', '0deg');
+    if (!logo || reduce) return;
+    tgX = 0; tgY = 0;
+    chase();
   };
 
   // A tap that never drags has to move it too — on jisoo.io the logo swings

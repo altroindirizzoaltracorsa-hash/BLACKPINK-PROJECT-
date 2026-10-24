@@ -115,13 +115,13 @@ const tilt = await page.evaluate(async () => {
   // and then compared everything against a tilted baseline.
   await wait(1500);
   const rest = t();
-  at(0.04, 0.5, 'pointerdown'); at(0.04, 0.5, 'pointermove'); await wait(260);
+  at(0.04, 0.5, 'pointerdown'); at(0.04, 0.5, 'pointermove'); await wait(700);
   const left = t();
-  at(0.96, 0.5, 'pointermove'); await wait(260);
+  at(0.96, 0.5, 'pointermove'); await wait(700);
   const right = t();
   // pointercancel is what a phone sends when the browser takes the drag over
   // for a carousel swipe; the logo must fall back to rest, not stay cranked.
-  at(0.96, 0.5, 'pointercancel'); await wait(700);
+  at(0.96, 0.5, 'pointercancel'); await wait(1300);   // the chase has to get home
   const after = t();
   return { rest, left, right, after };
 });
@@ -158,12 +158,19 @@ const angles = await page.evaluate(async () => {
     const ev = t => sky.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true,
       pointerId: 1, pointerType: 'mouse', clientX: r.left + r.width * fx, clientY: r.top + r.height * fy }));
     ev('pointerdown'); ev('pointermove'); };
-  at(1, 0.5); await wait(280); const right = read();
-  at(0.5, 0);  await wait(280); const top = read();
+  // It CHASES the pointer — ease = 1 - exp(-dt*6), a 1/6s time constant — so
+  // a sample taken too early reads a number still on its way. One sample at
+  // roughly one time constant and one after it has settled, which also pins
+  // the chase itself: a version that snapped would show the full angle at
+  // both, and a version with no easing at all would be indistinguishable
+  // from a correct one if we only ever looked at the end.
+  at(1, 0.5); await wait(170); const partial = read();
+  await wait(900);             const right = read();
+  at(0.5, 0);  await wait(1000); const top = read();
   const orbit = sky.querySelector('.ad-logo-orbit');
   const anim = orbit ? getComputedStyle(orbit).animationName : '(no orbit)';
   const dur  = orbit ? getComputedStyle(orbit).animationDuration : '';
-  return { right, top, anim, dur,
+  return { right, top, partial, anim, dur,
            persp: getComputedStyle(sky).perspective,
            skyH: Math.round(sky.getBoundingClientRect().height) };
 });
@@ -174,6 +181,17 @@ near(angles.right.yaw, JS_IO.yaw)
 near(angles.top.pitch, JS_IO.pitch)
   ? ok("and the pitch is too", `${angles.top.pitch}° vs ${JS_IO.pitch}°`)
   : bad("and the pitch is too", `${angles.top.pitch}° — that site tips ${JS_IO.pitch}°`);
+// One time constant in, an exponential chase has covered 1-1/e = 63% of the
+// distance. Allowing 40-85% for frame timing: anything at ~100% has snapped,
+// anything near 0 is not moving at all.
+{
+  const frac = angles.partial.yaw / JS_IO.yaw;
+  (frac > 0.40 && frac < 0.85)
+    ? ok('it chases the pointer rather than snapping to it',
+         `${Math.round(frac * 100)}% of the way after one time constant`)
+    : bad('it chases the pointer rather than snapping to it',
+          `${Math.round(frac * 100)}% after 170ms — jisoo.io eases at 1-exp(-dt*6), which is 63%`);
+}
 angles.anim === 'ad-idle'
   ? ok('the lockup drifts on its own, as theirs does', `${angles.anim} ${angles.dur}`)
   : bad('the lockup drifts on its own, as theirs does', angles.anim);
