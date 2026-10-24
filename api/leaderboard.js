@@ -2,7 +2,12 @@ import { Redis } from '@upstash/redis';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
-const redis = Redis.fromEnv();
+// Guarded on purpose, the way kcharts-live.js does it. Redis.fromEnv() throws
+// when the two UPSTASH_* vars are missing, and at module scope that throw takes
+// the whole function down before the handler is ever entered — the request gets
+// an opaque FUNCTION_INVOCATION_FAILED with no hint of the cause.
+let redis = null, redisInitError = null;
+try { redis = Redis.fromEnv(); } catch (e) { redisInitError = e; }
 const LB_KEY = 'bu_leaderboard_v1';
 const ANALYTICS_KEY = 'bu_analytics_v1';
 const GOAL_HISTORY_KEY = 'bu_goal_history_v1';
@@ -185,7 +190,7 @@ async function extensionCountsForUser(sb, appUserId, dayFrom, dayTo, weekFrom, w
   return out;
 }
 
-export default async function handler(req, res) {
+async function handlerInner(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -1489,3 +1494,24 @@ export default async function handler(req, res) {
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
+// Every Redis call in here can also throw at REQUEST time, which is what
+// actually happened on 2026-10-24: the env vars were present and module init
+// succeeded, but Upstash had suspended the database for exceeding its monthly
+// bandwidth, so it answered non-2xx and the SDK threw on every command. With no
+// catch, that surfaced as FUNCTION_INVOCATION_FAILED — a 96-byte page naming
+// nothing — and the outage read as a Spotify scraper-quota problem for hours.
+// A store that is unreachable is a 503 with a reason, not a crash.
+export default async function handler(req, res) {
+  if (!redis) {
+    return res.status(503).json({
+      error: 'store_unavailable',
+      detail: redisInitError?.message || 'UPSTASH_REDIS_REST_URL / _TOKEN are not set',
+    });
+  }
+  try {
+    return await handlerInner(req, res);
+  } catch (e) {
+    if (res.headersSent) throw e;
+    return res.status(503).json({ error: 'store_unavailable', detail: e?.message || String(e) });
+  }
+}
