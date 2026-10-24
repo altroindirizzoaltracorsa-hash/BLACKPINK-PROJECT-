@@ -205,6 +205,14 @@ jobs:
         if: always()
         run: node .github/scripts/test_youtube_history_reads.mjs
 
+      # When Upstash suspended the database, four endpoints answered a 96-byte
+      # FUNCTION_INVOCATION_FAILED that named nothing, and the stream cards sat
+      # there showing a seeded July chart as if it were today. Hours went into
+      # working out it was neither the scrapers nor the env vars.
+      - name: A missing store is a 503 with a reason, not a crash
+        if: always()
+        run: node .github/scripts/test_store_unavailable.mjs
+
       # Spotify files a pre-release single under its own album name, so the
       # BY ALBUM view showed the same record twice and the EP's total was
       # missing the track carrying most of its streams.

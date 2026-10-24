@@ -6901,9 +6901,24 @@ async function fetchSpotifyStreams() {
     renderMoreMilestones();
     showPendingMilestone();
   } catch(e) {
+    // The seeded history rendered above is a PLACEHOLDER shown while the API
+    // loads. When the API never answers it stays on screen, and a months-old
+    // chart under a live-looking card is indistinguishable from a current one —
+    // on 2026-10-24 that is exactly what happened: /api/streams was down for
+    // hours and the cards showed a July chart with no indication anything was
+    // wrong, so the outage was first read as a Spotify scraper problem.
+    // Say it instead.
     for (const t of SPOTIFY_TRACKS) {
       const el = document.getElementById(`count-${t.id}`);
-      if (el && el.textContent === 'Loading…') el.textContent = 'Live count coming soon';
+      if (el && el.textContent === 'Loading…') el.textContent = 'Live count unavailable';
+      const inc = document.getElementById(`increase-${t.id}`);
+      if (inc) {
+        inc.innerHTML = '<span style="color:var(--dim,#888)">Live counts are temporarily unavailable — the figures below are the last seeded snapshot, not today\'s.</span>';
+        inc.style.display = 'block';
+      }
+      const panel = document.getElementById(`history-${t.id}`);
+      const title = panel && panel.querySelector('.history-title');
+      if (title && !/not live/i.test(title.textContent)) title.textContent += ' — not live';
     }
   }
 }
