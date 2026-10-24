@@ -136,6 +136,13 @@ jobs:
         if: always()
         run: node .github/scripts/test_track_wiring.mjs
 
+      # Spotify files a pre-release single under its own album name, so the
+      # BY ALBUM view showed the same record twice and the EP's total was
+      # missing the track carrying most of its streams.
+      - name: Albums group by record, not by sleeve
+        if: always()
+        run: node .github/scripts/test_album_grouping.mjs
+
       # The daily challenge folds each EP behind one tile. Three ways that goes
       # wrong without throwing: a track shown both inside the EP and loose, a
       # summary that is not the sum of what opening it reveals, and a body
