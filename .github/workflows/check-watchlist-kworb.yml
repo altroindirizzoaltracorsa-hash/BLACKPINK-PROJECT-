@@ -1,0 +1,38 @@
+name: Is a watched track on kworb yet?
+
+# The re-seed trigger, asked once a day instead of whenever somebody remembers.
+#
+# A track on data/group_watchlist.json is recorded with counted=false BECAUSE
+# kworb has not listed it. When kworb does, that group's pinned catalogue is
+# out of date and its total is short a record it should now hold — and it reads
+# like a quiet week rather than like a missing album, which is why this needs
+# asking rather than noticing.
+#
+# A RED RUN IS THE NOTIFICATION. Green means nothing to do. It does not re-seed
+# by itself: kworb mid-update can pin a partial list, which is worse than being
+# a day late, so a person looks first.
+on:
+  schedule:
+    # 08:41 UTC. Not :00 — GitHub queues scheduled runs behind the top-of-hour
+    # crush and on this repo that delay measured 2h10m–5h on every run, which
+    # is the whole reason fetch-catalog.yml's slots avoid round minutes too.
+    - cron: '41 8 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: check-watchlist-kworb
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install httpx
+        run: pip install httpx
+      - name: Ask kworb
+        run: python .github/scripts/check_watchlist_on_kworb.py
