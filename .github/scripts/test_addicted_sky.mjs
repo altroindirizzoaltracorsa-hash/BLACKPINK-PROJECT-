@@ -159,6 +159,32 @@ console.log('--- the angles are jisoo.io\'s');
       ? ok('and it comes back to square on', `${a.back.toFixed(2)}°`)
       : bad('and it comes back to square on', `${a.back.toFixed(2)}°`);
   }
+  // The GEARING: how far it turns for a given amount of finger. This is what
+  // was wrong while the angles were right — the pointer was normalised over
+  // the CARD rather than the window, so the whole turn arrived in a drag a
+  // third as long and it swung far more than that site does for the same
+  // gesture. Their x is one unit per half a window of travel.
+  const gear = await page.evaluate(() => new Promise(res => {
+    const sky = document.querySelector('[data-addicted-sky]');
+    const s = sky._adScene; if (!s) return res(null);
+    const r = sky.getBoundingClientRect();
+    const ev = (t, dx) => sky.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true,
+      pointerId: 1, pointerType: 'mouse',
+      clientX: r.left + r.width / 2 + dx, clientY: r.top + r.height / 2 }));
+    ev('pointerdown', 0); ev('pointermove', 0);
+    setTimeout(() => {
+      const from = s.yawDeg();
+      ev('pointermove', 100);                      // exactly 100px of travel
+      setTimeout(() => res({ deg: s.yawDeg() - from, half: window.innerWidth / 2 }), 1500);
+    }, 1500);
+  }));
+  if (!gear) bad('the pointer gearing is jisoo.io\'s');
+  else {
+    const want = (100 / gear.half) * JS_IO.yaw;
+    Math.abs(gear.deg - want) <= 1.0
+      ? ok('the pointer gearing is jisoo.io\'s', `${gear.deg.toFixed(1)}° per 100px, theirs ${want.toFixed(1)}°`)
+      : bad('the pointer gearing is jisoo.io\'s', `${gear.deg.toFixed(1)}° per 100px, theirs ${want.toFixed(1)}°`);
+  }
   await ctx.close();
 }
 
@@ -178,17 +204,25 @@ console.log('--- the fallback, with WebGL refused');
       pointerId: 1, pointerType: 'mouse', clientX: r.left + r.width * fx, clientY: r.top + r.height * 0.5 }));
     ev('pointerdown', 1); ev('pointermove', 1);
     await wait(1100);
+    // What the EDGE of this sky can reach. The pointer is geared to the
+    // window, the way jisoo.io gears it to its own full-window canvas, so a
+    // card narrower than the screen cannot reach the full angle — the same as
+    // not being able to drag past the edge of their screen.
+    const reach = Math.min(1, (r.width / 2) / (window.innerWidth / 2));
     return { scene: !!sky._adScene, canvas: !!sky.querySelector('.ad-gl canvas'),
              flat: getComputedStyle(orbit).display, logoLoaded: logo && logo.naturalWidth > 0,
-             yaw: turn() };
+             yaw: turn(), reach };
   });
   !st.scene && !st.canvas ? ok('no model is mounted') : bad('no model is mounted', JSON.stringify(st));
   st.flat !== 'none' && st.logoLoaded
     ? ok('the flat lockup is still there and loaded')
     : bad('the flat lockup is still there and loaded', JSON.stringify(st));
-  Math.abs(st.yaw - JS_IO.yaw) <= 0.6
-    ? ok('and it still turns, by the same angle', `${st.yaw.toFixed(2)}° vs ${JS_IO.yaw}°`)
-    : bad('and it still turns, by the same angle', `${st.yaw.toFixed(2)}°`);
+  {
+    const want = JS_IO.yaw * st.reach;
+    Math.abs(st.yaw - want) <= 0.8
+      ? ok('and it still turns, on the same gearing', `${st.yaw.toFixed(2)}° at this sky's edge, want ${want.toFixed(2)}°`)
+      : bad('and it still turns, on the same gearing', `${st.yaw.toFixed(2)}°, want ${want.toFixed(2)}°`);
+  }
   if (errs.length) { console.log('    page errors: ' + errs.slice(0, 2).join(' | ')); fails += errs.length; }
   await ctx.close();
 }

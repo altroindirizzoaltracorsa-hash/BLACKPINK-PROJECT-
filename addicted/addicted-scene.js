@@ -115,8 +115,14 @@ export async function mountAddictedScene(host, glbUrl, opts = {}) {
   start();
 
   return {
-    // fx/fy are 0…1 across the host; normalised to −1…1 the way that site does.
-    point(fx, fy) { tgX = (fx - 0.5) * 2; tgY = (fy - 0.5) * 2; start(); },
+    // Already normalised to −1…1, the units jisoo.io's rotation.y/x expect.
+    aim(nx, ny) {
+      const c = (v) => Math.max(-1, Math.min(1, v));
+      tgX = c(nx); tgY = c(ny); start();
+    },
+    // fx/fy are 0…1 across the host; kept because it is the natural way to
+    // say "the far edge" when driving the scene directly.
+    point(fx, fy) { this.aim((fx - 0.5) * 2, (fy - 0.5) * 2); },
     rest() { tgX = 0; tgY = 0; start(); },
     start, stop,
     yawDeg() { return logoRoot.rotation.y * 180 / Math.PI; },
