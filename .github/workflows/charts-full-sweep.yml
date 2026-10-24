@@ -1,0 +1,135 @@
+name: Charts full sweep
+
+# Fetch EVERY country, every day — the thing the single-burst sweep could not do.
+#
+# The burst walked all 74 countries in list order at 8 at a time. Spotify
+# rate-limits the charts service on a rolling window, so the budget ran out
+# partway down and, because the order never changed, it ran out in the SAME
+# PLACE every time: the tail of the alphabet. Measured 2026-10-24 — skipped
+# SG SV TH TR TW UA US UY VE VN ZA, which is positions 63-74 unbroken, plus CY.
+# Thailand (66), Taiwan (68), Ukraine (69), the United States (70) and Vietnam
+# (73) were therefore never fetched at all, for twelve days, while charting.
+#
+# The in-handler retry could not save them: it waits 2 SECONDS, on the belief
+# (written in proxy-image.js) that "the rate window resets within a couple of
+# seconds". It does not — that is the whole reason the weekly types were moved
+# to separate hourly slots.
+#
+# So this drives the sweep in CHUNKS with real gaps, and then comes back for
+# whatever each chunk reported as skipped. Completeness is checked, not hoped
+# for: the job FAILS if any country is still unfetched at the end, because a
+# silent partial sweep is exactly the failure being fixed here.
+on:
+  schedule:
+    # Pre-dawn Rome, after Spotify's daily charts have published and while the
+    # canary traffic is quiet. Minute deliberately off :00 and :30 — GitHub
+    # sheds top-of-hour runs, measured at 2h10m-5h late on this repo.
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+    inputs:
+      kinds:
+        description: 'songs, artists, or both (default both)'
+        required: false
+        default: 'both'
+      chunk:
+        description: 'Countries per request (default 10)'
+        required: false
+        default: '10'
+      gap:
+        description: 'Seconds between chunks (default 150)'
+        required: false
+        default: '150'
+      backoff:
+        description: 'Seconds to wait after a round that still left countries unfetched (default 600)'
+        required: false
+        default: '600'
+      base_url:
+        description: 'Base URL (blank = production)'
+        required: false
+        default: ''
+
+# One sweep at a time. Two overlapping sweeps would compete for the same rate
+# budget and both come back partial — which is the bug, not a mitigation.
+concurrency:
+  group: charts-full-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    # 74 countries in chunks of 10 with 150s gaps is ~20 min per kind, plus
+    # retry rounds. Generous headroom so a slow round is not truncated.
+    timeout-minutes: 180
+    steps:
+      - name: Sweep every country in chunks
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          BASE: ${{ inputs.base_url != '' && inputs.base_url || 'https://www.blinksunited.com' }}
+          KINDS: ${{ inputs.kinds != '' && inputs.kinds || 'both' }}
+          CHUNK: ${{ inputs.chunk != '' && inputs.chunk || '10' }}
+          GAP: ${{ inputs.gap != '' && inputs.gap || '150' }}
+          BACKOFF: ${{ inputs.backoff != '' && inputs.backoff || '600' }}
+        run: |
+          set -u
+          # The country list, in the handler's own order. Kept here so a chunk
+          # is a contiguous slice of the same list the handler filters against;
+          # an unknown code is dropped by the handler, never passed to an alias.
+          ALL="global ae ar at au be bg bo br by ca ch cl co cr cy cz de dk do ec ee eg es fi fr gb gr gt hk hn hu id ie il in is it jp kr kz lt lu lv ma mx my ng ni nl no nz pa pe ph pk pl pt py ro sa se sg sk sv th tr tw ua us uy ve vn za"
+          TOTAL=$(echo $ALL | wc -w)
+          echo "country list: $TOTAL"
+
+          overall_fail=0
+
+          sweep_kind() {   # sweep_kind <songs|artists>
+            kind="$1"
+            echo "═══ $kind ═══"
+            remaining="$ALL"
+            round=0
+            while [ -n "$remaining" ] && [ "$round" -lt 4 ]; do
+              round=$((round+1))
+              echo "── round $round · $(echo $remaining | wc -w) country(ies) to fetch ──"
+              next=""
+              set -- $remaining
+              while [ "$#" -gt 0 ]; do
+                batch=""
+                n=0
+                while [ "$#" -gt 0 ] && [ "$n" -lt "$CHUNK" ]; do
+                  batch="${batch:+$batch,}$1"; shift; n=$((n+1))
+                done
+                code=$(curl -sS -L --max-time 180 -o /tmp/chunk.json -w '%{http_code}' \
+                  -H "x-admin-secret: $ADMIN_KEY" \
+                  "$BASE/api/proxy-image?charts=fetch-$kind&type=daily&countries=$batch") || code=000
+                if [ "$code" != "200" ]; then
+                  echo "  [$batch] HTTP $code — whole chunk retried next round"
+                  next="$next $(echo $batch | tr ',' ' ')"
+                else
+                  sk=$(jq -r '(.skippedCountries // []) | join(" ")' /tmp/chunk.json | tr 'A-Z' 'a-z')
+                  up=$(jq -r '.upserted // 0' /tmp/chunk.json)
+                  echo "  [$batch] ok · upserted $up · skipped: ${sk:-none}"
+                  [ -n "$sk" ] && next="$next $sk"
+                fi
+                # Only pause when there is more to do: a trailing sleep adds
+                # ~2.5 min to every run for nothing.
+                if [ "$#" -gt 0 ]; then sleep "$GAP"; fi
+              done
+              remaining=$(echo $next | xargs -n1 2>/dev/null | sort -u | xargs || true)
+              # A round that fixed nothing will not fix anything next round
+              # either — back off hard rather than hammer a limiter.
+              [ -n "$remaining" ] && { echo "  still missing: $remaining"; sleep "$BACKOFF"; }
+            done
+            if [ -n "$remaining" ]; then
+              echo "::error::$kind — never fetched: $remaining"
+              echo "::notice title=sweep::$kind INCOMPLETE — missing $(echo $remaining | wc -w): $remaining"
+              overall_fail=1
+            else
+              echo "::notice title=sweep::$kind complete — all $TOTAL countries fetched"
+            fi
+          }
+
+          case "$KINDS" in
+            songs)   sweep_kind songs ;;
+            artists) sweep_kind artists ;;
+            *)       sweep_kind songs; echo "cooling down between kinds…"; sleep "$BACKOFF"; sweep_kind artists ;;
+          esac
+
+          exit $overall_fail
