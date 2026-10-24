@@ -1745,8 +1745,10 @@
     background: rgba(255,255,255,0.06); color: var(--white, #fff);
     border: 1px solid rgba(255,255,255,0.22); transition: background 0.2s ease, border-color 0.2s ease; }
   .cd-arrow:hover { background: rgba(255,0,102,0.18); border-color: rgba(255,0,102,0.6); }
-  /* Touch gets the swipe, which is better than a 32px target next to a card edge. */
-  @media (hover: none) { .cd-arrow { display: none; } }
+  /* Touch gets the arrows too. They were hidden there because a 32px target
+     next to a card edge is a bad one — so on a device without hover they get
+     a 44px target rather than no target at all. The swipe still works. */
+  @media (hover: none) { .cd-arrow { width: 44px; height: 44px; font-size: 1.35rem; } }
   .cd-card { background: var(--card); border: 1px solid rgba(255,0,102,0.32); padding: 1.5rem 1.4rem; text-align: left; box-shadow: 0 18px 50px -30px rgba(255,0,102,0.7); }
   .cd-eyebrow { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.2em; text-transform: uppercase; color: #ff74ac; margin-bottom: 0.45rem; }
   .cd-title { font-family: var(--display); font-size: 2rem; letter-spacing: 0.02em; color: var(--white); line-height: 0.98; margin-bottom: 0.35rem; word-break: break-word; }
@@ -3805,7 +3807,11 @@
              and an auto-discovered drop would quietly stop appearing if that
              stopped matching. It is `hidden` until the script counts the slides,
              so controls never appear with nothing behind them. -->
-        <div class="cd-wrap" data-carousel data-carousel-fit aria-label="Countdowns">
+        <!-- Slower than the picture strips inside the cards (5.5s/4.5s): a
+             countdown card is a date, a clock and a row of buttons to take in,
+             not one photograph. It only advances while it is actually on
+             screen, so reading further down the page does not move it. -->
+        <div class="cd-wrap" data-carousel data-carousel-fit data-carousel-autoplay="9000" aria-label="Countdowns">
           <!-- The EP lands at midnight wherever you are, so there is no one
                instant to count to and data-target-local names the DATE instead:
                each reader's own midnight is the target. (The "Tarantino" MV is
@@ -17417,9 +17423,10 @@ function initCarousel(track) {
     });
   }
 
-  // Autoplay, where it is asked for. It stops for good the moment somebody
-  // touches the thing — a carousel that keeps yanking itself out from under a
-  // reader is worse than one that never moved.
+  // Autoplay, where it is asked for. It stops for good once somebody takes
+  // the thing over — a carousel that keeps yanking itself out from under a
+  // reader is worse than one that never moved. The hard part is what counts
+  // as taking it over: see the binding below.
   const every = Number(track.dataset.carouselAutoplay || 0);
   let timer = null, held = false;
   function hold() { held = true; stop(); }
@@ -17438,10 +17445,37 @@ function initCarousel(track) {
     }, every);
   }
   if (every) {
-    ['pointerdown', 'wheel', 'touchstart', 'focusin', 'keydown'].forEach(ev =>
+    // Unambiguous: the wheel, the keyboard, focus landing inside. The dots and
+    // arrows call hold() from their own handlers above.
+    ['wheel', 'focusin', 'keydown'].forEach(ev =>
       track.addEventListener(ev, hold, { passive: true, once: true }));
-    track.addEventListener('pointerenter', stop);
-    track.addEventListener('pointerleave', start);
+    // A finger is NOT by itself a choice, and binding hold() to touchstart
+    // assumed it was. Most fingers that land here are scrolling the page past
+    // the card, so on a phone the first of those killed the looping for the
+    // rest of the visit — measured, not guessed: untouched the strip advanced,
+    // and after a single finger-down it never moved again.
+    // So pause while the finger is down, and only hold for good once the drag
+    // is unmistakably a sideways swipe of this carousel.
+    let downX = 0, downY = 0, down = false;
+    track.addEventListener('pointerdown', (e) => {
+      down = true; downX = e.clientX; downY = e.clientY; stop();
+    }, { passive: true });
+    track.addEventListener('pointermove', (e) => {
+      if (!down) return;
+      const dx = Math.abs(e.clientX - downX), dy = Math.abs(e.clientY - downY);
+      if (dx > 12 && dx > dy) hold();
+    }, { passive: true });
+    // On the DOCUMENT, not the track: a drag that ends with the finger past
+    // the card's edge fires its pointerup somewhere else entirely, and the
+    // pause taken on pointerdown would never be lifted.
+    const endDrag = () => { if (down) { down = false; start(); } };
+    ['pointerup', 'pointercancel'].forEach(ev =>
+      document.addEventListener(ev, endDrag, { passive: true }));
+    // Hover-pause is a mouse idea. On touch, pointerenter fires on the tap and
+    // the matching pointerleave may never arrive, which would leave it stopped
+    // with nothing to restart it.
+    track.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') stop(); });
+    track.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') start(); });
     document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
     start();
   }
