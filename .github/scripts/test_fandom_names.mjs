@@ -92,6 +92,17 @@ async function openPage(opts = {}) {
     if (u.pathname === '/badges' || u.pathname === '/')
       return route.fulfill({ path: INDEX, contentType: 'text/html' });
     if (u.hostname.includes('fonts.g')) return route.continue();
+    // The service worker is refused outright, not answered with the 204 below.
+    // index.html reloads the page once on `controllerchange`, and that reload
+    // destroys the execution context mid-check: this suite died on CI with
+    // "Execution context was destroyed, most likely because of a navigation",
+    // on the evaluate right after the page loads. A 204 is still a RESPONSE,
+    // and whether a browser accepts it as a worker script is its own business;
+    // a 404 cannot be registered by any of them. The SW reload is the only
+    // thing in this page that navigates without a click — established by
+    // elimination: there is no meta refresh, no form, and every other
+    // location.assign is behind a button.
+    if (u.pathname === '/sw.js') return route.fulfill({ status: 404, body: '' });
     if (u.pathname.startsWith('/api/')) {
       if (req.method() === 'POST') {
         let body = {};
