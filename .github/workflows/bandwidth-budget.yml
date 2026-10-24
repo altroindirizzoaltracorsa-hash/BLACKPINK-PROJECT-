@@ -1,0 +1,34 @@
+name: Bandwidth budget
+
+# What one request to each public endpoint costs, checked daily.
+#
+# The database was suspended on 2026-10-24 for exceeding its monthly bandwidth,
+# and the first warning anyone got was the site going down. Nothing in the repo
+# was watching the number that caused it, because that number is not traffic —
+# it is how many bytes each route sends per call, which is a property of the
+# code and drifts quietly as payloads grow.
+#
+# A RED RUN MEANS A ROUTE GOT FATTER (or lost its edge cache). Green means the
+# cost per request is where it was left.
+on:
+  schedule:
+    # 07:53 UTC. Not :00 — GitHub queues scheduled runs behind the top-of-hour
+    # crush and on this repo that delay measured 2h10m-5h on every run.
+    - cron: '53 7 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: bandwidth-budget
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Measure each endpoint
+        run: python .github/scripts/check_bandwidth_budget.py
