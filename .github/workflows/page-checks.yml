@@ -136,6 +136,13 @@ jobs:
         if: always()
         run: node .github/scripts/test_track_wiring.mjs
 
+      # A video can carry a 24h mark and still never be recorded, in which case
+      # the pin is silently never taken — nothing errors, the figure is just
+      # gone. Tarantino lost its 24h number exactly that way.
+      - name: Every marked video is actually recorded
+        if: always()
+        run: node .github/scripts/test_youtube_marks.mjs
+
       # Spotify files a pre-release single under its own album name, so the
       # BY ALBUM view showed the same record twice and the EP's total was
       # missing the track carrying most of its streams.
