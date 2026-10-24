@@ -218,45 +218,106 @@ const links = await page.evaluate(async () => {
     : bad('and no two campaigns share one link', vals.join(' | ') || 'no table');
 }
 
-// 3b. The lightning heart has to FIT, on both shapes of card. It was sized off
-// the width alone, which is fine at 1:1 and wrong at 16:9: 56% of 1200px is
-// 672px of heart on a 675px canvas, so the landscape card drew a heart with
-// its top lobes sliced off the edge and the lockup lying across its middle.
-// Nothing threw and the card above still read as "drew something".
-// Asked of the overlay itself, with a recording context, so the answer is the
-// rectangle the card really draws rather than a guess from pixels — clouds
-// are bright too, and no pixel test can tell heart from sky reliably.
-const fit = await page.evaluate(() => {
-  // Not window._presaveCardData: it is a top-level `let`, which makes a global
-  // binding that is NOT a property of window, so that reads undefined.
-  const data = (typeof _presaveCardData !== 'undefined') ? _presaveCardData : null;
-  const ov = data && data.overlay;
-  if (typeof ov !== 'function') return null;
+// 3b. The heart and the name are ONE piece of artwork. On the official art
+// the lettering crosses the heart's middle; they share a centre. Both ways
+// that has broken here were silent and both still drew a handsome card:
+// sizing the heart off the card's width alone put 672px of it on a 675px
+// canvas, with the top lobes sliced off the edge, and placing it at a
+// fraction of the card's height left it floating above the name — a different
+// distance above it on each format, because the layouts differ.
+//
+// So this measures the two rectangles the card really draws, from a real
+// draw in both formats. Pixels cannot answer it: the clouds behind are
+// bright too, and nothing sampled tells heart from sky.
+const art = await page.evaluate(async () => {
+  const proto = CanvasRenderingContext2D.prototype;
+  const real = proto.drawImage;
+  let seen = [];
+  proto.drawImage = function (img, x, y, w, h) {
+    const src = (img && (img.currentSrc || img.src)) || '';
+    if (arguments.length >= 5) seen.push({ src, x, y, w, h });
+    return real.apply(this, arguments);
+  };
+  // Cleared BEFORE the draw it is meant to catch, not after: the first
+  // version of this reset the log once the card had already been drawn and
+  // then reported, with a straight face, that no heart was ever drawn.
+  const shot = async (label, trigger) => {
+    seen = [];
+    await trigger();
+    await new Promise(r2 => setTimeout(r2, 900));
+    const c = document.getElementById('card-canvas');
+    const pick = (re) => seen.filter(s => re.test(s.src)).pop() || null;
+    return { label, w: c.width, h: c.height, heart: pick(/heart-lightning/), title: pick(/logo-full/) };
+  };
   const out = [];
-  for (const [w, h, name] of [[1200, 675, 'landscape'], [1080, 1080, 'square']]) {
-    let box = null;
-    const rec = { save(){}, restore(){}, set globalAlpha(v){}, get globalAlpha(){ return 1; },
-                  drawImage(img, x, y, dw, dh) { box = { x, y, dw, dh }; } };
-    ov(rec, w, h);
-    out.push({ name, w, h, box });
-  }
+  try {
+    out.push(await shot('landscape', () => window.openAddictedCard()));
+    out.push(await shot('square', async () => document.getElementById('fmt-square').click()));
+    document.getElementById('fmt-landscape').click();
+    await new Promise(r2 => setTimeout(r2, 900));
+  } finally { proto.drawImage = real; }
   return out;
 });
-if (!fit) { bad('the lightning heart fits the card', 'no overlay on the card data'); }
-else for (const f of fit) {
-  if (!f.box) { bad(`the lightning heart fits the ${f.name} card`, 'nothing drawn'); continue; }
-  const { x, y, dw, dh } = f.box;
-  const inside = x >= 0 && y >= 0 && x + dw <= f.w + 0.5 && y + dh <= f.h + 0.5;
-  // And big enough to still read as the artwork rather than a sticker.
-  const big = dw >= f.w * 0.25 && dh >= f.h * 0.25;
-  (inside && big)
-    ? ok(`the lightning heart fits the ${f.name} card`,
-         `${Math.round(dw)}×${Math.round(dh)} at ${Math.round(x)},${Math.round(y)} in ${f.w}×${f.h}`)
-    : bad(`the lightning heart fits the ${f.name} card`,
-          !inside ? `drawn ${Math.round(dw)}×${Math.round(dh)} at ${Math.round(x)},${Math.round(y)} — ${
-                      y < 0 ? `${Math.round(-y)}px off the top` :
-                      x < 0 ? `${Math.round(-x)}px off the left` : 'past the bottom or right edge'}`
-                  : `only ${Math.round(dw)}×${Math.round(dh)} on a ${f.w}×${f.h} card — too small to read`);
+// Where ADDICTED itself sits inside the art file, read off the file. The
+// lockup is two words — ADDICTED over JISOO — so the image's own centre falls
+// in the gap between them, and a heart centred there hangs low enough that
+// its lobes vanish behind the letters. Deliberately NOT the fraction the page
+// uses: that would only check the number against itself. This finds the blank
+// band separating the two words and derives the word's centre from it, so if
+// the artwork is ever replaced the expectation follows the new art.
+const band = await page.evaluate(async () => {
+  const img = await new Promise((res, rej) => {
+    const i = new Image(); i.onload = () => res(i); i.onerror = rej;
+    i.src = '/addicted/addicted-logo-full-v2.png';
+  });
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height).data;
+  const rows = [];
+  for (let y = 0; y < c.height; y++) {
+    let n = 0;
+    for (let x = 0; x < c.width; x++) { const i = (y * c.width + x) * 4; if (d[i + 3] > 24 && d[i] + d[i + 1] + d[i + 2] > 40) n++; }
+    rows.push(n);
+  }
+  const first = rows.findIndex(n => n > 1);
+  if (first < 0) return null;
+  let last = c.height - 1; while (last > first && rows[last] <= 1) last--;
+  let best = null, run = null;
+  for (let y = first; y <= last; y++) {
+    if (rows[y] <= 1) { run = run || { a: y, b: y }; run.b = y; }
+    else if (run) { if (!best || run.b - run.a > best.b - best.a) best = run; run = null; }
+  }
+  if (run && (!best || run.b - run.a > best.b - best.a)) best = run;
+  if (!best) return null;
+  return { frac: ((first + best.a) / 2) / c.height, top: first, split: best.a, h: c.height };
+});
+if (!band) bad('the ADDICTED wordmark can be found in its art file', 'no blank band between the two words');
+else ok('ADDICTED sits at this much of its art file', `${Math.round(band.frac * 100)}% down (rows ${band.top}-${band.split} of ${band.h})`);
+
+for (const f of art) {
+  if (!f.heart || !f.title) {
+    bad(`the heart frames the name on the ${f.label} card`,
+        `${!f.heart ? 'no heart' : 'no wordmark'} drawn — ${f.w}x${f.h}`);
+    continue;
+  }
+  const hc = f.heart.y + f.heart.h / 2;
+  // The WORD's centre inside the drawn lockup, not the drawn image's.
+  const tc = f.title.y + f.title.h * (band ? band.frac : 0.5);
+  const gap = Math.abs(hc - tc);
+  // Inside the canvas, sharing the wordmark's centre line, and narrower than
+  // the wordmark — the name reads ACROSS the heart, it does not sit under it.
+  const inside = f.heart.x >= -0.5 && f.heart.y >= -0.5 &&
+                 f.heart.x + f.heart.w <= f.w + 0.5 && f.heart.y + f.heart.h <= f.h + 0.5;
+  const onCentre = gap <= Math.max(6, f.h * 0.012);
+  const across = f.heart.w < f.title.w && f.heart.w > f.title.w * 0.4;
+  (inside && onCentre && across)
+    ? ok(`the heart frames the name on the ${f.label} card`,
+         `heart ${Math.round(f.heart.w)}x${Math.round(f.heart.h)}, centres ${Math.round(gap)}px apart`)
+    : bad(`the heart frames the name on the ${f.label} card`,
+          !inside   ? `heart runs off the canvas: ${Math.round(f.heart.w)}x${Math.round(f.heart.h)} at ${Math.round(f.heart.x)},${Math.round(f.heart.y)} in ${f.w}x${f.h}`
+          : !onCentre ? `heart centre is ${Math.round(gap)}px from ADDICTED's own centre — the lettering is meant to cross the heart's middle`
+                      : `heart is ${Math.round(f.heart.w)}px wide against a ${Math.round(f.title.w)}px wordmark`);
 }
 
 // 4. Each campaign's badge is wired into both places that show it.

@@ -22946,9 +22946,56 @@ function drawPresaveCard(canvas, d) {
     const dw = photo.naturalWidth * scale, dh = photo.naturalHeight * scale;
     ctx.drawImage(photo, (W - dw) / 2, -(dh - H) * (d.focalBias ?? 0.12), dw, dh);
   }
+  // The bottom block is MEASURED here, before anything is drawn over the
+  // photo, so the overlay can be placed against the type rather than against
+  // the canvas. ADDICTED needs that: its heart belongs around the wordmark,
+  // the way the official art has it, and a fraction of the card's height can
+  // only ever be near that by luck — it was not, on either shape.
+  // Nothing below draws; it is all arithmetic, so it is safe this early.
+  // ── Bottom content block ──
+  const BP = Math.round(H * 0.085);
+  const titleImg = d.titleImg, logoImg = d.logoImg;
+  // 0.62 of the card is jenn.ie's proportion, where the lockup is one item
+  // in a left-hand column. A card built AROUND the lockup wants it larger:
+  // at 0.62 the ADDICTED artwork sat small in the middle of the square
+  // with a band of empty sky over it. Opt-in per release, so nothing
+  // already drawn changes.
+  const titleW = Math.min(W * (d.titleFrac || 0.62), W - PX * 2);
+  const titleH = (titleImg && titleImg.naturalWidth) ? titleW * (titleImg.naturalHeight / titleImg.naturalWidth) : 0;
+  const logoH  = Math.round(H * 0.062);
+  const logoW  = (logoImg && logoImg.naturalHeight) ? logoH * (logoImg.naturalWidth / logoImg.naturalHeight) : 0;
+  const gapXS = Math.round(H * 0.01), gapS = Math.round(H * 0.016), gapM = Math.round(H * 0.03);
+  const dateH = Math.round(H * 0.03), ctaH = Math.round(H * 0.03);
+  const headSize   = Math.round(H * 0.082);  // earned "I PRE-SAVED"
+  const cdLineH    = Math.round(H * 0.032);  // earned countdown sub-line
+  const cdEyebrowH = Math.round(H * 0.024);  // not-earned eyebrow
+  const cdBigSize  = Math.round(H * 0.11);   // not-earned big countdown
+
+  // The accent and the headline face follow the release too. Defaulting to
+  // jenn.ie's loverYellow and Cormorant keeps every existing card identical.
+  const ACCENT = d.accent || '#ffe051';
+  const HEADFONT = d.headFont || 'italic 700 %SPX% "Cormorant Garamond", serif';
+  const blockH = d.earned
+    ? logoH + gapS + titleH + gapM + headSize + gapXS + cdLineH + gapS + dateH + gapM + ctaH
+    : logoH + gapS + titleH + gapM + cdEyebrowH + gapXS + cdBigSize + gapS + dateH + gapM + ctaH;
+  let y = H - BP - blockH;
+
+  // Left by default, which is jenn.ie's layout and PRESS PLAY's. A release
+  // whose artwork is built around a centred lockup — ADDICTED's lettering
+  // sits inside a centred heart — reads as broken when the type under it
+  // starts at the left margin: the heart is on the middle line and the name
+  // beneath it is not. `align: 'center'` puts the whole block on that line.
+  // Opt-in, so every card drawn before this is unchanged to the pixel.
+  const mid = d.align === 'center';
+  const tx = mid ? Math.round(W / 2) : PX;            // where text begins
+  const ix = (w) => mid ? Math.round((W - w) / 2) : PX;  // where an image does
+  // Where the title image will land, handed to the overlay so it can build
+  // around it. Measured the same way it is drawn, a few lines down.
+  const titleBox = { x: ix(titleW), y: y + logoH + gapS, w: titleW, h: titleH };
+
   // A release can lay its own art over the photo before the scrims go down —
   // ADDICTED's lightning heart sits between the sky and the type.
-  if (typeof d.overlay === 'function') { try { d.overlay(ctx, W, H); } catch {} }
+  if (typeof d.overlay === 'function') { try { d.overlay(ctx, W, H, { title: titleBox }); } catch {} }
   // Scrims — subtle at top, strong at the bottom for text legibility
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0,    `rgba(${SCRIM},0.55)`);
@@ -22990,38 +23037,6 @@ function drawPresaveCard(canvas, d) {
   const cdCompact = isOut ? 'OUT NOW ✨' : `OUT IN ${cdd}D ${p2(cdh)}H ${p2(cdm)}M`;
   const cdBig     = isOut ? 'OUT NOW'    : `${cdd}D ${p2(cdh)}H ${p2(cdm)}M`;
 
-  // ── Bottom content block ──
-  const BP = Math.round(H * 0.085);
-  const titleImg = d.titleImg, logoImg = d.logoImg;
-  const titleW = Math.min(W * 0.62, W - PX * 2);
-  const titleH = (titleImg && titleImg.naturalWidth) ? titleW * (titleImg.naturalHeight / titleImg.naturalWidth) : 0;
-  const logoH  = Math.round(H * 0.062);
-  const logoW  = (logoImg && logoImg.naturalHeight) ? logoH * (logoImg.naturalWidth / logoImg.naturalHeight) : 0;
-  const gapXS = Math.round(H * 0.01), gapS = Math.round(H * 0.016), gapM = Math.round(H * 0.03);
-  const dateH = Math.round(H * 0.03), ctaH = Math.round(H * 0.03);
-  const headSize   = Math.round(H * 0.082);  // earned "I PRE-SAVED"
-  const cdLineH    = Math.round(H * 0.032);  // earned countdown sub-line
-  const cdEyebrowH = Math.round(H * 0.024);  // not-earned eyebrow
-  const cdBigSize  = Math.round(H * 0.11);   // not-earned big countdown
-
-  // The accent and the headline face follow the release too. Defaulting to
-  // jenn.ie's loverYellow and Cormorant keeps every existing card identical.
-  const ACCENT = d.accent || '#ffe051';
-  const HEADFONT = d.headFont || 'italic 700 %SPX% "Cormorant Garamond", serif';
-  const blockH = d.earned
-    ? logoH + gapS + titleH + gapM + headSize + gapXS + cdLineH + gapS + dateH + gapM + ctaH
-    : logoH + gapS + titleH + gapM + cdEyebrowH + gapXS + cdBigSize + gapS + dateH + gapM + ctaH;
-  let y = H - BP - blockH;
-
-  // Left by default, which is jenn.ie's layout and PRESS PLAY's. A release
-  // whose artwork is built around a centred lockup — ADDICTED's lettering
-  // sits inside a centred heart — reads as broken when the type under it
-  // starts at the left margin: the heart is on the middle line and the name
-  // beneath it is not. `align: 'center'` puts the whole block on that line.
-  // Opt-in, so every card drawn before this is unchanged to the pixel.
-  const mid = d.align === 'center';
-  const tx = mid ? Math.round(W / 2) : PX;            // where text begins
-  const ix = (w) => mid ? Math.round((W - w) / 2) : PX;  // where an image does
   ctx.textAlign = mid ? 'center' : 'left';
 
   ctx.textBaseline = 'top';
@@ -23165,6 +23180,7 @@ async function openAddictedCard() {
     // The lockup lives inside a centred heart; the name and the dates belong
     // on the same middle line, not against the left margin.
     align: 'center',
+    titleFrac: 0.72,   // the artwork IS the card here, not a column item
     stampTint: '#0b0618', stampPill: '#b6a3ff', stampInk: '#0b0618',
     accent: '#b6a3ff', claim: 'I pre-saved',
     headFont: '500 %SPX% "CinzelVariable", Georgia, serif',
@@ -23180,13 +23196,43 @@ async function openAddictedCard() {
     // at 16:9 it lands at about a third of the width — the proportion
     // jisoo.io's own key art uses, where the lettering reads THROUGH the
     // heart rather than beside it.
-    overlay: (ctx, W, H) => {
+    overlay: (ctx, W, H, box) => {
       if (!bolt || !bolt.naturalWidth) return;
       const ratio = bolt.naturalHeight / bolt.naturalWidth;
-      let bw = W * 0.56, bh = bw * ratio;
-      const maxH = H * 0.62;                 // the type block owns the rest
-      if (bh > maxH) { bh = maxH; bw = bh / ratio; }
-      const top = Math.max(H * 0.035, H * 0.30 - bh / 2);
+      const t = box && box.title;
+      // AROUND THE WORDMARK, which is the whole look: on the official art the
+      // lettering crosses the heart's middle, both sharing one centre. Placing
+      // the heart at a fraction of the card's height instead put it above the
+      // name on the 16:9 card and well above it on the 1:1 one — the two
+      // halves of one piece of artwork, drifting apart by however much the
+      // layout happened to differ.
+      //
+      // Sized off the lockup too, not off the canvas. The heart is NARROWER
+      // than the name on the official art — the name reads across it — so it
+      // is three quarters of the title's width, and it scales with the title
+      // on any card shape rather than needing a number per format.
+      let bw = t && t.w ? t.w * 0.78 : W * 0.56;
+      let bh = bw * ratio;
+      // On the WORD, not on the lockup. The art file is ADDICTED above JISOO,
+      // and its centre falls in the gap between them — so centring the heart
+      // on the image hung it low enough that the lobes disappeared behind the
+      // letters and all you saw was the point below JISOO. Measured off the
+      // file rather than guessed: 1955x727, with an empty band at rows
+      // 447-463 separating the two words, which puts ADDICTED's own centre at
+      // (37+447)/2 = 242, a third of the way down. The official art has the
+      // lettering across the heart's middle; this is what makes that true.
+      const WORD_MID = 0.333;
+      const cy = t && t.h ? t.y + t.h * WORD_MID : H * 0.30;
+      // If it will not fit at that size, the SIZE gives way, never the
+      // alignment. Clamping the position instead is what the earlier version
+      // did, and it quietly slid the heart 13px off the word on the 16:9 card
+      // — far enough to see, and invisible in the code, because a clamp
+      // reports nothing. The room is whichever edge is nearer, doubled.
+      const margin = H * 0.03;
+      const room = 2 * Math.min(cy - margin, H - margin - cy);
+      bh = Math.min(bh, room, H * 0.62);
+      bw = bh / ratio;
+      const top = cy - bh / 2;
       ctx.save(); ctx.globalAlpha = 0.9;
       ctx.drawImage(bolt, (W - bw) / 2, top, bw, bh);
       ctx.restore();
