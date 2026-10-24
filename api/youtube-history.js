@@ -483,29 +483,48 @@ export default async function handler(req, res) {
   //    points ≈ a few hours) for the live-growing chart; otherwise the hourly
   //    long-term series (bu_yt_hist_*). Both are [{t,v,l,c}] newest-last.
   try {
-    const listKey = req.query.live ? liveKey : key;
-    const lo = req.query.live ? '-1200' : '0';
-    // One pipeline, six id-length blocks: [display series][24h pin][ms hash]
-    // [hourly hist series][fine live series][superseded 24h pins]. Blocks 4 and 5
-    // feed milestone derivation; block 6 is the chain of replaced 24h records.
+    const isLive = !!req.query.live;
+    // On a live poll the hourly series is read ONLY to extend `merged` for
+    // milestone derivation — the displayed series is the fine live list. Reading
+    // all MAX_POINTS of it every 45s was the single largest consumer of Upstash
+    // bandwidth on this account (it is what suspended the database on
+    // 2026-10-24), and it bought almost nothing: a crossing older than this tail
+    // has long since been frozen into bu_yt_ms_*, and groupCrossings(existing)
+    // already wins its slot over anything re-derived. The non-live poll still
+    // reads the FULL series and still does complete derivation and healing, so
+    // the self-heal is intact — it runs on that path's cadence instead of this
+    // one's. Sized well past the "cron dropped 4-5 runs" gap the pin logic
+    // exists to cover.
+    const HIST_TAIL_ON_LIVE = 300;          // ~12 days of hourly points
+    const histLo = isLive ? String(-HIST_TAIL_ON_LIVE) : '0';
+    // One pipeline, five id-length blocks: [24h pin][ms hash][hourly hist series]
+    // [fine live series][superseded 24h pins]. Blocks 3 and 4 feed milestone
+    // derivation and one of them is also the display series (block 4 when live,
+    // block 3 otherwise).
+    //
+    // There used to be a sixth block in front of these holding the display
+    // series, which re-fetched whichever of blocks 3/4 it resolved to — the
+    // same LRANGE, byte for byte, twice in one pipeline on every single call.
     const n = ids.length;
     const parseList = arr => (arr || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
-    const cmds = ids.map(id => ['LRANGE', listKey(id), lo, '-1'])
-      .concat(ids.map(id => ['GET', pinKey(id)]))
+    const cmds = ids.map(id => ['GET', pinKey(id)])
       .concat(ids.map(id => ['HGETALL', `bu_yt_ms_${id}`]))
-      .concat(ids.map(id => ['LRANGE', key(id), '0', '-1']))
+      .concat(ids.map(id => ['LRANGE', key(id), histLo, '-1']))
       .concat(ids.map(id => ['LRANGE', liveKey(id), '-1200', '-1']))
       .concat(ids.map(id => ['LRANGE', prevPinKey(id), '0', '-1']));
     const results = await upstash(cmds);
     const videos = {}, milestones = {}, viewMilestones = {}, mergedById = {};
     const heal = []; // NX writes to freeze any newly-derived crossing / 24h pin
     ids.forEach((id, i) => {
-      videos[id] = parseList(results[i]?.result);
-      const m = results[n + i]?.result;
+      const m = results[i]?.result;
       if (m) { try { milestones[id] = JSON.parse(m); } catch {} }
-      const existing = parseHash(results[2 * n + i]?.result);
+      const existing = parseHash(results[n + i]?.result);
+      const hist = parseList(results[2 * n + i]?.result);
+      const live = parseList(results[3 * n + i]?.result);
+      // The display series is one of the two already in hand, not a third read.
+      videos[id] = isLive ? live : hist;
       // Merge hourly + fine series (time-ascending, deduped) and derive crossings.
-      const merged = [...parseList(results[3 * n + i]?.result), ...parseList(results[4 * n + i]?.result)]
+      const merged = [...hist, ...live]
         .sort((a, b) => a.t - b.t).filter((p, k, a) => k === 0 || p.t !== a[k - 1].t);
       mergedById[id] = merged;
       const derived = deriveMilestones(merged, releaseMs(id));
@@ -552,7 +571,7 @@ export default async function handler(req, res) {
       // Everything this 24h record has previously been, oldest first. Nothing is
       // overwritten in place — a re-pin moves the old record here.
       if (milestones[id]) {
-        const prev = parseList(results[5 * n + i]?.result);
+        const prev = parseList(results[4 * n + i]?.result);
         if (prev.length) milestones[id] = { ...milestones[id], superseded: prev };
       }
     });

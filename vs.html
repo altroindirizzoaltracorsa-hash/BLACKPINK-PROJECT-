@@ -880,9 +880,17 @@
   poll();
   setInterval(poll, POLL_MS);
   pollHistory();
-  setInterval(pollHistory, 45 * 1000);   // re-read history/milestones/24h pins often
+  // Both of these were far tighter than the data they read. The live chart does
+  // not depend on either: poll() grows it every 15s from /api/youtube-stats via
+  // appendLive(), and refreshes viewMilestones on the same tick. What these two
+  // add is the stored series and the frozen pins — and the hourly series gains a
+  // point roughly once an HOUR (MIN_GAP_MS). At 45s and 5min against an
+  // admin-only page that sits open for hours, they were re-reading the same rows
+  // all day: ~220 MB/hour of Upstash bandwidth, which is what used up a 10 GB
+  // monthly allowance and suspended the database.
+  setInterval(pollHistory, 2 * 60 * 1000);    // milestones/24h pins — minutes, not seconds
   pollHourly();
-  setInterval(pollHourly, 5 * 60 * 1000);   // hourly snapshots change slowly
+  setInterval(pollHourly, 15 * 60 * 1000);    // hourly snapshots change once an hour
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ poll(); pollHistory(); pollHourly(); } });
 </script>
 </body>
