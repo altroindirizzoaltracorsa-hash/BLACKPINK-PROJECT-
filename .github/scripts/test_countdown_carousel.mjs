@@ -179,6 +179,56 @@ console.log('--- the countdown cards, on the home page');
   await page.close();
 }
 
+console.log('--- nothing hangs off the side of a card');
+{
+  // Narrowing the cards to 80% to let the neighbours show took about 56px off
+  // every card, and three things that had been sized off the WINDOW did not
+  // notice: both clocks (one of whose clamp FLOOR was already wider than the
+  // card) and the SaWaDiKa wordmark, which has a 220px floor and sat in a
+  // 156px box. All three hung off the right-hand edge. Checked at three real
+  // phone widths, because the narrowest is where a floor bites first.
+  for (const w of [360, 390, 414]) {
+    const page=await newPage(w,900);
+    await page.goto(base+'/',{waitUntil:'domcontentloaded'});
+    await page.locator(TRACK).waitFor({timeout:20000});
+    await page.waitForTimeout(2800);
+    const over=await page.evaluate(()=>{
+      const out=[];
+      document.querySelectorAll('#home-countdowns .cd-card').forEach(card=>{
+        if(getComputedStyle(card).display==='none') return;
+        const cs=getComputedStyle(card), cr=card.getBoundingClientRect();
+        const L=cr.left+parseFloat(cs.paddingLeft), R=cr.right-parseFloat(cs.paddingRight);
+        const slug=card.dataset.slug||card.className;
+        card.querySelectorAll('*').forEach(el=>{
+          if(getComputedStyle(el).display==='none') return;
+          // These bleed to the card's edge on purpose: width:calc(100% + 2.8rem)
+          // with a matching negative margin.
+          if(el.closest('.ad-sky, .cd-hero, .st-hero')) return;
+          // And anything inside a sideways scroller is MEANT to sit outside
+          // the visible box — that is what makes it a scroller.
+          for(let p=el.parentElement;p&&p!==card;p=p.parentElement){
+            const ox=getComputedStyle(p).overflowX;
+            if(ox==='auto'||ox==='scroll') return;
+          }
+          const r=el.getBoundingClientRect();
+          if(!r.width) return;
+          const spill=Math.max(L-r.left, r.right-R);
+          if(spill>1.5) out.push({slug, el:el.className||el.tagName, spill:Math.round(spill),
+                                  text:(el.textContent||'').trim().slice(0,20)});
+        });
+      });
+      const best={};
+      out.forEach(o=>{ if(!best[o.slug]||o.spill>best[o.slug].spill) best[o.slug]=o; });
+      return Object.values(best);
+    });
+    over.length
+      ? bad(`nothing overflows its card at ${w}px`,
+            over.map(o=>`${o.slug} <${o.el}> by ${o.spill}px`).join('; '))
+      : ok(`nothing overflows its card at ${w}px`);
+    await page.close();
+  }
+}
+
 console.log('--- the deep link shows one card, so there is nothing to page through');
 {
   const page=await newPage();
