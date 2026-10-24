@@ -41,6 +41,22 @@ async function openPage(opts = {}) {
   const errs = [];
   p.on('pageerror', (e) => errs.push(String(e)));
 
+  // Say the tutorial has been seen BEFORE the page runs, the way the other
+  // fifteen suites do. This one instead removed #tutorial-overlay once, 1200ms
+  // after load — which is a race, and it lost on CI: the tutorial opens on a
+  // timer, so on a slower runner it appeared AFTER the removal and then sat
+  // over the page swallowing clicks. The failure was a 30s timeout on a chip
+  // that was visible, enabled and stable the whole time, with
+  // "<div id=tutorial-overlay> intercepts pointer events" in the call log.
+  // A flag set before the first script cannot be out-raced.
+  await p.addInitScript(() => {
+    try {
+      localStorage.setItem('bu_tutorial_seen', '1');
+      localStorage.setItem('ltal_reminder_dismissed_v1', '1');
+      localStorage.setItem('ext_update_dismissed_1.9.7', '1');
+    } catch (e) {}
+  });
+
   // The stub stands in for supabase-js before any page script runs. `window.__sbLog`
   // is what the assertions read: every rpc, every updateUser, in order.
   await p.addInitScript(({ user, rpc }) => {
