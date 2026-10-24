@@ -30,6 +30,13 @@ import { chromium } from './_playwright.mjs';
 const ROOT = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
 const SPA=/^\/(countdowns|voting|vote|streams|charts|badges|leaderboard|account|feedback)(\/|$)/;
 const server=createServer(async(req,res)=>{const p=req.url.split('?')[0];
+  // The service worker is withheld on purpose. index.html reloads the page
+  // once on `controllerchange`, which is right in a browser and fatal here:
+  // the reload lands mid-check and tears down the execution context, so a
+  // run fails with "Cannot read properties of null" on an element the
+  // locator had just waited for. Measured, not guessed — it took out the hub
+  // section roughly one run in three. Nothing below tests caching.
+  if(p==='/sw.js'){res.writeHead(404);res.end('');return;}
   const file=p==='/'?'/index.html':SPA.test(p)?'/index.html':p;
   try{const b=await readFile(ROOT+file);const e=file.split('.').pop();
     res.writeHead(200,{'content-type':{html:'text/html',js:'text/javascript',css:'text/css',json:'application/json',
@@ -138,14 +145,45 @@ console.log('--- the countdown cards, on the home page');
   !s.pageOverflow ? ok('and the PAGE does not') : bad('and the PAGE does not');
   s.lit===0 ? ok('the first dot is lit') : bad('the first dot is lit',`lit=${s.lit}`);
 
+  // One flick must move one card. A real fling cannot be driven from here —
+  // synthetic touch carries no momentum and synthesizeScrollGesture will not
+  // drive this element — so what is checked is the condition the browser needs
+  // in order to honour it: the rule is in the stylesheet, unconditionally,
+  // BEFORE the finger lands. That is the whole lesson of the first attempt,
+  // which gated it on a class added at pointerdown: a fling runs on the
+  // compositor, which reads the snap rules as the gesture begins, so a class
+  // set by JavaScript can arrive after the decision is already made. Checked
+  // at rest with no classes on the wrap, which is the state a finger meets.
+  // The matching half — that a dot press for a far card still goes all the way
+  // there rather than crawling one slide — is the dot check further down.
+  const snap = await page.evaluate(()=>{
+    const t=document.querySelector('#home-countdowns > .cd-wrap');
+    const cards=[...t.children].filter(c=>c.nodeType===1&&c.classList.contains('cd-card'));
+    return { cls:[...t.classList].filter(c=>c==='is-jumping'||c==='is-dragging'),
+             stops:cards.map(c=>getComputedStyle(c).scrollSnapStop) };
+  });
+  const allStop = snap.stops.length>0 && snap.stops.every(v=>v==='always');
+  (allStop && !snap.cls.length)
+    ? ok('a flick is held to one card',`scroll-snap-stop: always on all ${snap.stops.length}, with no class needed`)
+    : bad('a flick is held to one card',
+          !allStop ? `scroll-snap-stop reads ${[...new Set(snap.stops)].join('/')||'nothing'} at rest — a fling will run past several cards`
+                   : `only true while ${snap.cls.join('+')} is set, which is too late for a compositor fling`);
+
   // Same here: hold autoplay still so the position under test is the one the
   // check put it in.
   await page.evaluate(()=>document.querySelector('#home-countdowns > .cd-wrap')
     .dispatchEvent(new Event('focusin',{bubbles:true})));
   // Scroll the track and watch the dots follow the real position.
   await page.evaluate(()=>{const t=document.querySelector('#home-countdowns > .cd-wrap');
-    t.scrollBy({left:t.clientWidth*2, behavior:'auto'});});
-  await page.waitForTimeout(600);
+    // Through the page's own navigation, and aimed by the card's place in the
+    // RUNNING ORDER rather than its position in the DOM — looping rotates the
+    // DOM, so a bare index means a different card each time round. (A plain
+    // two-card scrollBy is also no longer something a finger can do: one
+    // flick moves one card, which is the feature.)
+    const sl=[...t.children].filter(c=>c.nodeType===1&&getComputedStyle(c).display!=='none');
+    const pos=sl.findIndex(c=>(c._cdLogical!=null?c._cdLogical:sl.indexOf(c))===2);
+    carouselGo(t, pos, false);});
+  await page.waitForTimeout(900);
   s=await state(page);
   // The lit dot must name the card that is centred. Compared in the authored
   // order, because that is what the dots are: a fixed row standing for the
@@ -175,18 +213,21 @@ console.log('--- the countdown cards, on the home page');
     .dispatchEvent(new Event('focusin',{bubbles:true})));
   const fit = await page.evaluate(async ()=>{
     const t=document.querySelector('#home-countdowns > .cd-wrap');
-    const slides=[...t.children].filter(c=>getComputedStyle(c).display!=='none');
+    const live=()=>[...t.children].filter(c=>c.nodeType===1&&getComputedStyle(c).display!=='none');
+    // Hold the CARDS, not their indexes. Looping moves cards between the ends
+    // of the track, so an index walked in a loop names a different card each
+    // time and the height read back belongs to its neighbour.
+    const cards=live();
     const out=[];
-    for (let i=0;i<slides.length;i++){
-      const d=slides[i].getBoundingClientRect().left - t.getBoundingClientRect().left;
-      t.scrollBy({left:d, behavior:'auto'});
+    for (const card of cards){
+      carouselGo(t, live().indexOf(card), false);
       // 320ms read the height mid-ease and made this a coin toss between runs.
       // The settle is debounced 160ms after the scroll stops, and only THEN
       // does the height start a 250ms transition — so nothing under 410ms can
       // see the final value. The failures looked exactly like that: 701 vs
       // 712, 850 vs 864, a height still travelling toward the right one.
       await new Promise(r=>setTimeout(r,700));
-      out.push({card:Math.round(slides[i].offsetHeight), track:Math.round(t.clientHeight)});
+      out.push({card:Math.round(card.offsetHeight), track:Math.round(t.clientHeight)});
     }
     return out;
   });
@@ -283,7 +324,7 @@ console.log('--- it runs endlessly, in both directions');
     return { slug: sl[at]?.dataset.slug, lit: dots.findIndex(d=>d.classList.contains('is-on')), n: sl.length };
   });
   const go=async(dir)=>{ await page.locator(`#home-countdowns > [data-carousel-nav] [data-carousel-dir="${dir}"]`).click();
-                         await page.waitForTimeout(850); return where(); };
+                         await page.waitForTimeout(1300); return where(); };
   const first=await where();
   // All the way round and one past the end.
   const seen=[first.slug];

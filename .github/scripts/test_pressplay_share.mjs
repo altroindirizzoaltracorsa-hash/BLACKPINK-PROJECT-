@@ -16,6 +16,11 @@ import { chromium } from './_playwright.mjs';
 const ROOT = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
 const SPA=/^\/(countdowns|voting|vote|streams|charts|badges|leaderboard|account|feedback)(\/|$)/;
 const server=createServer(async(req,res)=>{const p=decodeURIComponent(req.url.split('?')[0]);
+  // Withhold the service worker. index.html reloads once on
+  // `controllerchange`, and that reload lands mid-check and tears down the
+  // execution context — the run dies on an element the locator had just
+  // waited for. Nothing here tests caching.
+  if(p==='/sw.js'){res.writeHead(404);res.end('');return;}
   const file=p==='/'?'/index.html':SPA.test(p)?'/index.html':p;
   try{const b=await readFile(ROOT+file);const e=file.split('.').pop();
     res.writeHead(200,{'content-type':{html:'text/html',js:'text/javascript',css:'text/css',json:'application/json',

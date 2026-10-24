@@ -1744,10 +1744,18 @@
     transition: opacity 0.3s ease; }
   /* One swipe moves one card: a flick otherwise carries its momentum across
      three or four of them and you arrive somewhere you did not aim for.
-     Only while a finger is actually down, though — scroll-snap-stop binds
-     PROGRAMMATIC scrolling too, so applying it always meant a dot press for a
-     far card crawled one slide at a time instead of going there. */
-  .cd-wrap[data-carousel].is-dragging > .cd-card { scroll-snap-stop: always; }
+     Unconditional, deliberately. The first attempt put this behind a class
+     added on pointerdown, which does not work: a touch fling is run on the
+     compositor, which reads the snap rules as the gesture begins, so a class
+     set by JavaScript at pointerdown can arrive after the decision is made.
+     It has to be in the stylesheet before the finger lands. */
+  .cd-wrap[data-carousel] > .cd-card { scroll-snap-stop: always; }
+  /* The cost of that: scroll-snap-stop binds PROGRAMMATIC scrolling too, so a
+     dot press for a far card would crawl one slide at a time. carouselGo
+     lifts it around every scroll it starts — main thread, set before the
+     scroll begins, so unlike the pointerdown attempt this one is in time.
+     The rule then only ever governs a finger, which is all it was for. */
+  .cd-wrap[data-carousel].is-jumping > .cd-card { scroll-snap-stop: normal; }
   /* The first try put a fade over both edges so a clipped neighbour would not
      end in a hard vertical cut. It read beautifully and defeated the point:
      the sliver was 11px and the fade covered all of it, so the neighbours
@@ -17564,6 +17572,13 @@ function carouselGo(track, n, smooth = true) {
   // overshoots by exactly that much on every dot and every arrow.
   const sr = slides[i].getBoundingClientRect(), tr = track.getBoundingClientRect();
   const delta = (sr.left + sr.width / 2) - (tr.left + tr.width / 2);
+  // Lift the one-at-a-time rule for the length of this scroll. It exists to
+  // stop a FLICK running away across three cards; a move the page itself
+  // asked for is already deliberate, and leaving the rule on would clamp a
+  // dot press for a far card to the very next one. Off again once settled.
+  track.classList.add('is-jumping');
+  clearTimeout(track._jumpT);
+  track._jumpT = setTimeout(() => track.classList.remove('is-jumping'), 900);
   // scrollBy, not scrollIntoView: the latter would also scroll the PAGE to bring
   // the track into view, yanking the reader somewhere they did not ask to go.
   track.scrollBy({ left: delta, behavior: (smooth && !prefersReducedMotion()) ? 'smooth' : 'auto' });
@@ -17643,7 +17658,16 @@ function initCarousel(track) {
     if (typeof track._cdDefer === 'function') track._cdDefer();
     carouselFit(track, carouselSlides(track), false);
     clearTimeout(settle);
-    settle = setTimeout(() => { track.classList.remove('is-dragging'); paint(); }, 160);
+    settle = setTimeout(() => {
+      // Snapped and stopped: take its height, and put the one-card-per-flick
+      // rule back the moment a programmatic scroll has finished with it. The
+      // 900ms in carouselGo is only the backstop for a scroll that emits no
+      // events at all (already there, nothing to move); going by the scroll
+      // itself keeps the rule off for as long as the move lasts and no longer,
+      // so a finger landing just after autoplay still gets one card.
+      track.classList.remove('is-jumping');
+      paint();
+    }, 160);
     if (frame) return;
     frame = requestAnimationFrame(() => { frame = 0; paint(); });
   }, { passive: true });
@@ -17718,7 +17742,6 @@ function initCarousel(track) {
     let down = false;
     track.addEventListener('pointerdown', () => {
       down = true; stop();
-      track.classList.add('is-dragging');   // one card per flick, while dragging
     }, { passive: true });
     track.addEventListener('wheel', defer, { passive: true });
     // On the DOCUMENT, not the track: a drag that ends with the finger past
