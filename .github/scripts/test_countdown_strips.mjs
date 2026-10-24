@@ -42,7 +42,7 @@ console.log('--- each countdown page carries its own strip');
 for (const [slug,name,n] of CARDS) {
   const page=await browser.newPage({viewport:{width:390,height:900}});
   await page.addInitScript(()=>{try{localStorage.setItem('bu_tutorial_seen','1');
-    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.7','1');}catch(e){}});
+    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.8','1');}catch(e){}});
   const errs=[]; page.on('pageerror',e=>errs.push(e.message));
   const miss=[]; page.on('response',r=>{ if(r.status()>=400 && /strips\/|tarantino\//.test(r.url())) miss.push(r.url()); });
   await page.goto(base+'/countdowns/'+slug,{waitUntil:'domcontentloaded'});
@@ -85,7 +85,7 @@ console.log('--- and on the home carousel too, which is where people look');
 {
   const page=await browser.newPage({viewport:{width:390,height:900}});
   await page.addInitScript(()=>{try{localStorage.setItem('bu_tutorial_seen','1');
-    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.7','1');}catch(e){}});
+    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.8','1');}catch(e){}});
   await page.goto(base+'/',{waitUntil:'domcontentloaded'});
   await page.locator('#home-countdowns > .cd-wrap').waitFor({timeout:20000});
   await page.waitForTimeout(3500);
@@ -138,7 +138,7 @@ console.log('--- the PRESS PLAY community playlists');
   for (const [path,label] of [['/','home card'],['/countdowns/lalisaofficial.com','release page']]) {
     const page=await browser.newPage({viewport:{width:390,height:900}});
     await page.addInitScript(()=>{try{localStorage.setItem('bu_tutorial_seen','1');
-      localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.7','1');}catch(e){}});
+      localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.8','1');}catch(e){}});
     await page.goto(base+path,{waitUntil:'domcontentloaded'});
     await page.locator('.cd-card-lisa').waitFor({timeout:20000});
     await page.waitForTimeout(3000);

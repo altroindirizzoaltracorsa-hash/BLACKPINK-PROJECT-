@@ -34,7 +34,7 @@ const ok=(m,d)=>console.log(`  ok   ${m}${d?` (${d})`:''}`);
 const bad=(m,d)=>{fails++;console.log(`  FAIL ${m}${d?` (${d})`:''}`);};
 const page=await browser.newPage({viewport:{width:430,height:950}});
 await page.addInitScript(()=>{try{localStorage.setItem('bu_tutorial_seen','1');
-  localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.7','1');}catch(e){}});
+  localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.8','1');}catch(e){}});
 const errs=[]; page.on('pageerror',e=>errs.push(e.message));
 await page.goto(base+'/countdowns/lalisaofficial.com',{waitUntil:'domcontentloaded'});
 await page.locator('.cd-card-lisa').waitFor({timeout:20000});

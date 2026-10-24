@@ -42,7 +42,7 @@ const bad=(m,d)=>{fails++;console.log(`  FAIL ${m}${d?` (${d})`:''}`);};
 async function readAll(tz){
   const page=await browser.newPage({viewport:{width:390,height:900}, timezoneId:tz});
   await page.addInitScript(()=>{try{localStorage.setItem('bu_tutorial_seen','1');
-    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.7','1');}catch(e){}});
+    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.8','1');}catch(e){}});
   await page.goto(base+'/',{waitUntil:'domcontentloaded'});
   await page.locator('#home-countdowns > .cd-wrap').waitFor({timeout:20000});
   await page.waitForTimeout(3000);

@@ -72,7 +72,13 @@ object KcaVoteParser {
         "favorite-music-group-or-duo" to "BLACKPINK",
         "favorite-music-collaboration" to "Dracula (with JENNIE)",
         "favorite-female-artist" to "ROSÉ",
-        "favorite-global-music-star" to "BINI"
+        "favorite-global-music-star" to "BINI",
+        // Slug and title read off the live ballot, not typed from the category
+        // name: the slug is favorite-ANIMATED-MALE-voice while the ballot
+        // prints "Favorite Male Animated Voice", so the obvious guess matches
+        // nothing and counts nothing. Re-read on 24 Oct when the trade came
+        // back; both strings were unchanged.
+        "favorite-animated-male-voice-from-a-movie" to "Ahn Hyo-seop"
     )
 
     /**
@@ -86,7 +92,8 @@ object KcaVoteParser {
      */
     val FANDOMS: List<Pair<String, String>> = listOf(
         "blink" to "BLINK",
-        "bloom" to "BLOOM"
+        "bloom" to "BLOOM",
+        "pauljjak" to "Pauljjak"
     )
 
     /** Past this the collab is over and the app stops posting to it. */

@@ -52,7 +52,7 @@ const bad=(m,d)=>{fails++;console.log(`  FAIL ${m}${d?` (${d})`:''}`);};
 async function newPage(w=390,h=900){
   const page=await browser.newPage({viewport:{width:w,height:h}});
   await page.addInitScript(()=>{try{localStorage.setItem('bu_tutorial_seen','1');
-    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.7','1');}catch(e){}});
+    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.8','1');}catch(e){}});
   return page;
 }
 const TRACK='#home-countdowns > .cd-wrap';
@@ -603,7 +603,7 @@ console.log('--- what a phone gets: arrows, dots and a carousel that runs itself
   const ctx=await browser.newContext({viewport:{width:390,height:900}, hasTouch:true, isMobile:true});
   const page=await ctx.newPage();
   await page.addInitScript(()=>{try{localStorage.setItem('bu_tutorial_seen','1');
-    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.7','1');}catch(e){}});
+    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.8','1');}catch(e){}});
   await page.goto(base+'/',{waitUntil:'domcontentloaded'});
   await page.locator(TRACK).waitFor({timeout:20000});
   await page.waitForTimeout(3000);
@@ -662,7 +662,7 @@ console.log('--- swiping the hub must not navigate away');
   const ctx = await browser.newContext({viewport:{width:390,height:900}, hasTouch:true});
   const page = await ctx.newPage();
   await page.addInitScript(()=>{try{localStorage.setItem('bu_tutorial_seen','1');
-    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.7','1');}catch(e){}});
+    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.8','1');}catch(e){}});
   await page.goto(base+'/countdowns',{waitUntil:'domcontentloaded'});
   await page.locator(TRACK).waitFor({timeout:20000});
   await page.waitForTimeout(3000);

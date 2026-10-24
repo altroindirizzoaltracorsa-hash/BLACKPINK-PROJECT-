@@ -52,7 +52,7 @@ const SLUG_RE = /^[\w .'’&()-]{1,80}$/;        // a ballot category, as the pa
 // on purpose: it is stored, counted and printed on a page, and the caller is
 // an extension that anybody can edit.
 const FANDOM_RE = /^[a-z][a-z0-9-]{0,23}$/;
-// A fandom key is also the start of an auto display name (bloom1, bloom2) —
+// A fandom key is also the start of an auto display name (bloom1, pauljjak1) —
 // but only if it has the shape fan_display_names.sql accepts as a prefix, which
 // is narrower: no hyphens, at least two characters. A key outside it is still a
 // perfectly good fandom to count people under; it just never names anybody,

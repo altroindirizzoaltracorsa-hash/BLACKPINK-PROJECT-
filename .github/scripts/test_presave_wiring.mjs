@@ -82,7 +82,7 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 414, height: 900 } });
 const errs = []; page.on('pageerror', e => errs.push(e.message));
 await page.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen','1');
-  localStorage.setItem('ltal_reminder_dismissed_v1','1'); localStorage.setItem('ext_update_dismissed_1.9.7','1'); } catch (e) {} });
+  localStorage.setItem('ltal_reminder_dismissed_v1','1'); localStorage.setItem('ext_update_dismissed_1.9.8','1'); } catch (e) {} });
 await page.goto(`http://127.0.0.1:${server.address().port}/countdowns/addicted`, { waitUntil: 'load' });
 // Wait for the page to have FILLED IN, not for a number of seconds. The bar
 // arrives over a fetch, and the card now also pulls three.js and a 933KB
