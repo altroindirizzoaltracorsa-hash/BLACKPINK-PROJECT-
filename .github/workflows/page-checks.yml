@@ -20,6 +20,7 @@ on:
       - 'awards.html'
       - 'collabs.html'
       - 'api/collabs.js'
+      - 'api/proxy-image.js'
       - 'vote-extension/**'
       - 'android-app/app/src/main/**'
       - 'vmas.html'
@@ -39,6 +40,7 @@ on:
       - 'awards.html'
       - 'collabs.html'
       - 'api/collabs.js'
+      - 'api/proxy-image.js'
       - 'vote-extension/**'
       - 'android-app/app/src/main/**'
       - 'vmas.html'
@@ -157,6 +159,14 @@ jobs:
       - name: The ADDICTED sky strikes and the logo turns
         if: always()
         run: node .github/scripts/test_addicted_sky.mjs
+
+      # A pre-save campaign is seven things in five files and every half-wired
+      # state is silent — above all a counter the API has no branch for, which
+      # leaves the bar reading "0 / 50" for the whole campaign and looks
+      # exactly like a release nobody pre-saved.
+      - name: Every pre-save campaign is wired end to end
+        if: always()
+        run: node .github/scripts/test_presave_wiring.mjs
 
       - name: Campaign goal checklists are wired up
         if: always()
