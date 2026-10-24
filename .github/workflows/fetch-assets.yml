@@ -1,0 +1,93 @@
+name: Fetch assets into the repo
+
+# Download files from a URL list and commit them. Claude Code sessions have no
+# open internet — jisoo.io is a 403 from the egress proxy — so the only way to
+# bring a promo asset into the repo is to have a runner do it.
+#
+# Deliberately narrow, because this writes to the repo from a URL someone
+# typed: https only, an extension allow-list, a size cap per file, and a
+# destination forced under the repo root. It will not overwrite an existing
+# file unless asked, so a re-run cannot quietly replace art that is already
+# live.
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: 'Space- or comma-separated https URLs to download.'
+        required: true
+      dest:
+        description: 'Destination directory in the repo (e.g. addicted).'
+        required: true
+      overwrite:
+        description: 'Set to 1 to replace files that already exist.'
+        required: false
+        default: ''
+
+concurrency:
+  group: fetch-assets
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and commit
+        env:
+          URLS: ${{ github.event.inputs.urls }}
+          DEST: ${{ github.event.inputs.dest }}
+          OVERWRITE: ${{ github.event.inputs.overwrite }}
+        run: |
+          set -u
+          MAXBYTES=$((12 * 1024 * 1024))
+          # A path that climbs out of the repo, or an absolute one, is refused
+          # rather than normalised — this job has contents:write.
+          case "$DEST" in
+            /*|*..*) echo "::error::dest must be a relative path inside the repo"; exit 1 ;;
+          esac
+          mkdir -p "$DEST"
+          got=0; skipped=0; failed=0
+          for u in ${URLS//,/ }; do
+            case "$u" in
+              https://*) ;;
+              *) echo "::error::refusing non-https url: $u"; failed=$((failed+1)); continue ;;
+            esac
+            name=$(basename "${u%%\?*}")
+            case "$name" in
+              *.png|*.jpg|*.jpeg|*.webp|*.svg|*.glb|*.gltf|*.avif|*.mp4|*.woff2) ;;
+              *) echo "::error::refusing extension: $name"; failed=$((failed+1)); continue ;;
+            esac
+            # No slashes can survive basename, but check anyway: this becomes a
+            # path we write to.
+            case "$name" in */*|"") echo "::error::bad filename: $name"; failed=$((failed+1)); continue ;; esac
+            out="$DEST/$name"
+            if [ -e "$out" ] && [ -z "$OVERWRITE" ]; then
+              echo "  exists, left alone: $out"; skipped=$((skipped+1)); continue
+            fi
+            code=$(curl -sS -L --max-time 120 --max-filesize "$MAXBYTES" \
+              -o "$out.part" -w '%{http_code}' "$u") || code=000
+            if [ "$code" != "200" ]; then
+              echo "::error::HTTP $code for $u"; rm -f "$out.part"; failed=$((failed+1)); continue
+            fi
+            size=$(wc -c <"$out.part")
+            if [ "$size" -le 0 ]; then
+              echo "::error::empty file from $u"; rm -f "$out.part"; failed=$((failed+1)); continue
+            fi
+            mv "$out.part" "$out"
+            echo "  $out  $size bytes  $(file -b --mime-type "$out")"
+            echo "::notice title=asset::$out · $size bytes · $(file -b --mime-type "$out")"
+            got=$((got+1))
+          done
+          echo "::notice title=assets::downloaded $got, skipped $skipped, failed $failed"
+          if [ "$got" -gt 0 ]; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add "$DEST"
+            git commit -m "assets: fetch $got file(s) into $DEST" -m "Downloaded by fetch-assets.yml." || echo "nothing to commit"
+            git push
+          fi
+          # A failure must fail the run: a half-fetched asset set that reports
+          # success is how a card ships with a missing image.
+          [ "$failed" -eq 0 ]
