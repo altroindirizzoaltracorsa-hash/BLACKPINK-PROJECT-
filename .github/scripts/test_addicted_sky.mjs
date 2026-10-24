@@ -31,6 +31,12 @@ const TYPE = { html: 'text/html; charset=utf-8', js: 'text/javascript', mjs: 'te
   webp: 'image/webp', glb: 'model/gltf-binary', woff2: 'font/woff2', ttf: 'font/ttf', mp4: 'video/mp4' };
 const server = createServer(async (req, res) => {
   const p = decodeURIComponent(req.url.split('?')[0]);
+  // No service worker in tests. The page registers one and reloads once
+  // when it takes control — by design, so a visitor swaps to the fresh
+  // build — but inside a test that is a navigation landing in the middle
+  // of sampling, and it destroys the execution context. It cost three
+  // runs in ten before this.
+  if (p === '/sw.js') { res.writeHead(404); return res.end(''); }
   const file = p === '/' ? '/index.html' : SPA.test(p) ? '/index.html' : p;
   try { const b = await readFile(ROOT + file);
     res.writeHead(200, { 'content-type': TYPE[file.split('.').pop()] || 'application/octet-stream' });
