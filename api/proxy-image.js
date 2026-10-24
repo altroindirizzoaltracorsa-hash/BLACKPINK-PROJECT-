@@ -413,6 +413,22 @@ async function getChartsAuthToken() {
 // is the last run we recorded", not "the calendar day before": a gap in our
 // recording still leaves the row before it as the previous run, which is what
 // gates RE-ENTRY rather than a date subtraction.
+// Charts Spotify does not publish. Asking for one spends a request from a rate
+// budget that was already too small to finish a sweep, and buys a 404.
+//
+// Verified per alias rather than inferred from a single miss: Cyprus has no
+// DAILY song chart, no artist chart and no album chart — but it does have a
+// weekly song chart, so dropping the country outright would throw away real
+// data. Anything not listed here that 404s is still handled at runtime; this
+// only avoids paying for the ones already known to be absent.
+const NO_SUCH_CHART = new Set([
+  'regional-cy-daily',
+  'artist-cy-daily',
+  'album-cy-weekly',
+]);
+const chartPublished = (kind, country, chartType) =>
+  !NO_SUCH_CHART.has(`${kind}-${String(country).toLowerCase()}-${chartType}`);
+
 function priorForDate(priors, groupDates, date) {
   const prior = (priors || []).find(p => p.tracking_date < date) || null;
   const lastRun = (groupDates || []).find(d => d < date);
@@ -1152,7 +1168,9 @@ export default async function handler(req, res) {
       const wantTypes = (req.query.type === 'daily' || req.query.type === 'weekly') ? [req.query.type] : ['daily', 'weekly'];
       const jobs = [];
       const sweepCountries = chartCountriesFor(req);
-      for (const chartType of wantTypes) for (const country of sweepCountries) jobs.push({ chartType, country });
+      for (const chartType of wantTypes) for (const country of sweepCountries) {
+        if (chartPublished('artist', country, chartType)) jobs.push({ chartType, country });
+      }
       // Main pass at moderate concurrency, then retry whatever failed after a short
       // cooldown — the charts service 429s a rapid ~150-request burst, but the rate
       // window resets within a couple of seconds. Genuine "no such chart" aliases,
@@ -1234,7 +1252,7 @@ export default async function handler(req, res) {
         return failed;
       };
       const sleep = ms => new Promise(r => setTimeout(r, ms));
-      let failed = await runAlbumJobs(chartCountriesFor(req), 8);
+      let failed = await runAlbumJobs(chartCountriesFor(req).filter(c => chartPublished('album', c, 'weekly')), 8);
       for (let attempt = 0; attempt < 2 && failed.length; attempt++) { await sleep(2000); failed = await runAlbumJobs(failed, 6); }
 
       await upstashSet('bu_album_charts', { date: today, rows });
@@ -1314,7 +1332,9 @@ export default async function handler(req, res) {
       };
       const jobs = [];
       const sweepCountries = chartCountriesFor(req);
-      for (const chartType of wantTypes) for (const country of sweepCountries) jobs.push({ chartType, country });
+      for (const chartType of wantTypes) for (const country of sweepCountries) {
+        if (chartPublished('regional', country, chartType)) jobs.push({ chartType, country });
+      }
       const sleep = ms => new Promise(r => setTimeout(r, ms));
       let skipped = await runJobs(jobs, 8);
       for (let attempt = 0; attempt < 2 && skipped.length; attempt++) { await sleep(2000); skipped = await runJobs(skipped, 6); }

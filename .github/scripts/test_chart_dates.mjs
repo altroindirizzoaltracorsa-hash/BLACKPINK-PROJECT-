@@ -95,5 +95,37 @@ src.includes('tracking_date: _date')
   ? bad('a "tracking_date: today" survives in the songs sweep')
   : ok('no "tracking_date: today" left in the songs sweep');
 
+console.log('\n--- charts Spotify does not publish ---');
+// Cyprus has no DAILY song chart, no artist chart and no album chart, but it
+// DOES have a weekly song chart — so the country must not be dropped, only the
+// aliases that 404. Each was checked individually; a single 404 is not grounds
+// to stop asking for the others.
+const sk = src.match(/const NO_SUCH_CHART = new Set\(\[[\s\S]*?\]\);\s*const chartPublished = [\s\S]*?;\n/);
+if (!sk) { console.log('  FAIL chartPublished not found in api/proxy-image.js'); process.exit(1); }
+const chartPublished = new Function(`${sk[0]} return chartPublished;`)();
+ok('chartPublished lifted from the handler');
+eq('cy daily songs is not requested',  chartPublished('regional', 'cy', 'daily'),  false);
+eq('cy WEEKLY songs still is',         chartPublished('regional', 'cy', 'weekly'), true);
+eq('cy daily artists is not',          chartPublished('artist',   'cy', 'daily'),  false);
+eq('cy albums is not',                 chartPublished('album',    'cy', 'weekly'), false);
+eq('an unverified alias is still tried', chartPublished('artist', 'cy', 'weekly'), true);
+eq('other countries are untouched',    chartPublished('regional', 'th', 'daily'),  true);
+eq('matching ignores case',            chartPublished('regional', 'CY', 'daily'),  false);
+
+// Knowing which charts are absent is useless if a sweep does not ask. These
+// are source checks, which are weaker than driving the handler — but the
+// handler needs Supabase and a Spotify token to run, and a sweep that quietly
+// stopped consulting the list would otherwise pass every behavioural test
+// here while paying for 404s again.
+for (const [kind, needle] of [
+  ['songs',   "chartPublished('regional', country, chartType)"],
+  ['artists', "chartPublished('artist', country, chartType)"],
+  ['albums',  "chartPublished('album', c, 'weekly')"],
+]) {
+  src.includes(needle)
+    ? ok(`the ${kind} sweep consults the skip list`)
+    : bad(`the ${kind} sweep consults the skip list`);
+}
+
 console.log(fails ? `\n${fails} failure(s)` : '\nall good');
 process.exit(fails ? 1 : 0);
