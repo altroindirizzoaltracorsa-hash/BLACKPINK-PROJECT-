@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-24T16:18:00.225Z",
+  "generatedAt": "2026-10-24T19:06:24.047Z",
   "date": "2026-10-24",
   "source": "https://xn--o39an51b2re.com",
   "charts": [
@@ -21,18 +21,9 @@
       "kr": "실시간 차트",
       "label": "Melon · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/melon/realtime",
-      "available": true,
-      "totalRows": 100,
-      "entries": [
-        {
-          "rank": 93,
-          "previous": 81,
-          "song": "toxic till the end",
-          "artists": "로제 (ROSÉ)",
-          "member": "ROSÉ",
-          "link": "https://www.melon.com/song/detail.htm?songId=38300904"
-        }
-      ]
+      "available": false,
+      "totalRows": 0,
+      "entries": []
     },
     {
       "key": "melon-realtime-5-min",
@@ -392,8 +383,8 @@
           "link": "https://www.melon.com/song/detail.htm?songId=38300904"
         },
         {
-          "rank": 62,
-          "previous": 62,
+          "rank": 63,
+          "previous": 63,
           "song": "뛰어(JUMP)",
           "artists": "BLACKPINK",
           "member": "BLACKPINK",
@@ -533,10 +524,10 @@
       "label": "Melon · Newest (1w)",
       "url": "https://xn--o39an51b2re.com/chart/melon/newest-w1",
       "available": true,
-      "totalRows": 54,
+      "totalRows": 55,
       "entries": [
         {
-          "rank": 36,
+          "rank": 37,
           "previous": 36,
           "song": "Tarantino",
           "artists": "리사 (LISA)",
@@ -556,7 +547,7 @@
       "totalRows": 100,
       "entries": [
         {
-          "rank": 88,
+          "rank": 90,
           "previous": 88,
           "song": "Tarantino",
           "artists": "리사 (LISA)",
@@ -768,42 +759,9 @@
       "kr": "실시간 차트",
       "label": "Genie · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/genie/realtime",
-      "available": true,
-      "totalRows": 250,
-      "entries": [
-        {
-          "rank": 71,
-          "previous": 79,
-          "song": "toxic till the end",
-          "artists": "로제 (ROSÉ)",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108575614"
-        },
-        {
-          "rank": 77,
-          "previous": 70,
-          "song": "뛰어(JUMP)",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=110931419"
-        },
-        {
-          "rank": 108,
-          "previous": 106,
-          "song": "like JENNIE",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=109342665"
-        },
-        {
-          "rank": 127,
-          "previous": 117,
-          "song": "APT.",
-          "artists": "로제 (ROSÉ), 로제 (ROSÉ) & Bruno Mars, Bruno Mars",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108107291"
-        }
-      ]
+      "available": false,
+      "totalRows": 0,
+      "entries": []
     },
     {
       "key": "genie-daily",
@@ -989,15 +947,15 @@
       "entries": [
         {
           "rank": 84,
-          "previous": 85,
+          "previous": 84,
           "song": "toxic till the end",
           "artists": "로제 (ROSÉ)",
           "member": "ROSÉ",
           "link": "https://www.music-flo.com/detail/track/522311944/details"
         },
         {
-          "rank": 85,
-          "previous": 83,
+          "rank": 86,
+          "previous": 85,
           "song": "뛰어(JUMP)",
           "artists": "BLACKPINK",
           "member": "BLACKPINK",
@@ -1005,15 +963,15 @@
         },
         {
           "rank": 89,
-          "previous": 88,
+          "previous": 89,
           "song": "APT.",
           "artists": "로제 (ROSÉ), Bruno Mars",
           "member": "ROSÉ",
           "link": "https://www.music-flo.com/detail/track/517125479/details"
         },
         {
-          "rank": 96,
-          "previous": 95,
+          "rank": 97,
+          "previous": 96,
           "song": "like JENNIE",
           "artists": "제니 (JENNIE)",
           "member": "JENNIE",
@@ -1224,7 +1182,7 @@
   ],
   "summary": {
     "chartsChecked": 26,
-    "chartsAvailable": 25,
-    "totalEntries": 114
+    "chartsAvailable": 23,
+    "totalEntries": 109
   }
 }
