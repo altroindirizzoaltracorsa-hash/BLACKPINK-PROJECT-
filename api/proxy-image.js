@@ -751,19 +751,25 @@ export default async function handler(req, res) {
   // ── GET ?jisoo_save=count|increment — JISOO "CLICK" pre-save counter ───────
   // Same simple Upstash INCR counter, one distinct key per campaign.
   // ── GET ?newtrick_save=count|increment — ROSÉ "new trick" pre-save counter ──
+  // ── GET ?addicted_save=count|increment — JISOO "ADDICTED" pre-save counter ──
+  // ADDICTED is its own key, not CLICK's: two JISOO singles sharing one counter
+  // would show the new release opening at the old one's total.
   if (req.query.jennie_save === 'count' || req.query.jennie_save === 'increment' ||
       req.query.fa_save === 'count'     || req.query.fa_save === 'increment' ||
       req.query.lisa_save === 'count'   || req.query.lisa_save === 'increment' ||
       req.query.jisoo_save === 'count'  || req.query.jisoo_save === 'increment' ||
+      req.query.addicted_save === 'count' || req.query.addicted_save === 'increment' ||
       req.query.newtrick_save === 'count' || req.query.newtrick_save === 'increment') {
     if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ count: 0 });
     const campaign = req.query.jisoo_save != null ? 'jisoo'
+                   : req.query.addicted_save != null ? 'addicted'
                    : req.query.lisa_save != null ? 'lisa'
                    : req.query.fa_save   != null ? 'fa'
                    : req.query.newtrick_save != null ? 'newtrick'
                    : 'ltal';
-    const action = req.query.jisoo_save ?? req.query.lisa_save ?? req.query.fa_save ?? req.query.newtrick_save ?? req.query.jennie_save;
+    const action = req.query.jisoo_save ?? req.query.addicted_save ?? req.query.lisa_save ?? req.query.fa_save ?? req.query.newtrick_save ?? req.query.jennie_save;
     const KEY = campaign === 'jisoo' ? 'bu_jisoo_click_saves'
+              : campaign === 'addicted' ? 'bu_jisoo_addicted_saves'
               : campaign === 'lisa' ? 'bu_lisa_sawadika_joins'
               : campaign === 'fa'   ? 'bu_jennie_fallenangel_saves'
               : campaign === 'newtrick' ? 'bu_rose_newtrick_saves'
