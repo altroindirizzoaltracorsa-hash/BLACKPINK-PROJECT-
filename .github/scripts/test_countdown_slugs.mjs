@@ -11,7 +11,7 @@
 // that list gets the generic site preview with nothing failing anywhere.
 // `newtrick` had a card, and a /countdowns/newtrick link in the hub, and
 // neither of the other two, for over a month.
-import { readFile } from 'node:fs/promises';
+import { readFile, access } from 'node:fs/promises';
 const ROOT = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
 const ix = await readFile(ROOT + '/index.html', 'utf8');
 const mw = await readFile(ROOT + '/middleware.js', 'utf8');
@@ -71,11 +71,56 @@ else {
 }
 // The worldwide-times list must be generated from the same instant the card
 // counts to; two copies of a date is two chances to be wrong.
-const after = ix.slice(ix.indexOf('data-slug="addicted"'));
-const times = after.slice(0, after.indexOf('</div>\n          <!--'));
-times.includes('data-times-for="2026-10-30T04:00:00Z"')
+const cardBlock = (slug) => {
+  const i = ix.indexOf(`data-slug="${slug}"`);
+  if (i < 0) return '';
+  // From the card's own tag to the start of the next card — enough to hold
+  // everything the card owns and nothing from its neighbour.
+  const rest = ix.slice(i);
+  const next = rest.indexOf('<div class="cd-card', 1);
+  return next < 0 ? rest : rest.slice(0, next);
+};
+const addicted = cardBlock('addicted');
+addicted.includes('data-times-for="2026-10-30T04:00:00Z"')
   ? ok('the worldwide-times list uses that same instant')
   : bad('the worldwide-times list uses that same instant');
+
+// The bug this section exists for: the ADDICTED card was written inside
+// #cd-past — the block that carries `hidden` on the home page and is revealed
+// only on the /countdowns hub. Nothing failed. The slug was wired, the link
+// preview was there, the deep link worked, every check above passed, and a
+// release a week away simply never appeared on the home carousel.
+// A countdown still ahead of us belongs in the live wrap.
+const pastAt = ix.indexOf('<div id="cd-past"');
+const pastBlock = pastAt < 0 ? '' : ix.slice(pastAt);
+pastAt < 0 ? bad('#cd-past is in the page') : ok('#cd-past is in the page');
+const attr = (tag, name) => (tag.match(new RegExp(`${name}="([^"]*)"`)) || [])[1];
+const buried = [...pastBlock.matchAll(/<div class="cd-card[^"]*"[^>]*>/g)]
+  .map(m => ({ slug: attr(m[0], 'data-slug'), target: attr(m[0], 'data-target') }))
+  .filter(c => c.target && new Date(c.target) > new Date());
+buried.length
+  ? bad('no countdown still ahead of us is buried in the hidden #cd-past block',
+        buried.map(c => `${c.slug} → ${c.target}`).join(', '))
+  : ok('no countdown still ahead of us is buried in the hidden #cd-past block');
+
+// Its art comes from jisoo.io and lives in the repo. A renamed or missing
+// file is a broken image on the card and nothing anywhere says so.
+const srcs = [...addicted.matchAll(/src="(\/addicted\/[^"]+)"/g)].map(m => m[1]);
+srcs.length >= 3
+  ? ok('the card carries jisoo.io\'s art', `${srcs.length} files`)
+  : bad('the card carries jisoo.io\'s art', `${srcs.length} /addicted/ images referenced`);
+for (const s of srcs) {
+  try { await access(ROOT + s); ok(`  ${s} is in the repo`); }
+  catch { bad(`  ${s} is in the repo — referenced but not on disk`); }
+}
+// The pieces that make it move. Each is silent when it goes: the sky with no
+// hook is a still picture, and a strike with no bolt flashes nothing. That it
+// actually strikes is checked where it can be measured — test_addicted_sky.mjs.
+addicted.includes('data-addicted-sky')
+  ? ok('the sky is wired to the script') : bad('the sky is wired to the script');
+/class="ad-bolt"/.test(addicted) && /class="ad-logo"/.test(addicted)
+  ? ok('the lightning and the lockup are both there')
+  : bad('the lightning and the lockup are both there');
 
 console.log(fails ? `\n${fails} failure(s)` : '\nall good');
 process.exit(fails ? 1 : 0);
