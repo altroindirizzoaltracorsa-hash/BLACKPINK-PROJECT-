@@ -57,6 +57,23 @@ jobs:
                 join artist_tracks a on a.id = s.track_ref
                where a.artist_id = '5L1lO4eRHmJ7a0Q6csE5cT'
             ) x;
+          -- The ALBUM each track is filed under. /streams groups "BY ALBUM" on
+          -- this string, so a pre-release single carries its own album name and
+          -- splits off from the EP it is actually on.
+          select '  album: ' || coalesce(album,'(null)') || '  <- '
+                 || string_agg(name, ', ' order by name)
+            from artist_tracks
+           where artist_id = '5L1lO4eRHmJ7a0Q6csE5cT'
+             and (album ilike '%press%play%' or name in
+                  ('SaWaDiKa','V12','Cobra','Tarantino','Cut U Off','Sweat'))
+           group by album order by album;
+          -- Same question for JENNIE's EP, whose single also split off.
+          select '  album: ' || coalesce(album,'(null)') || '  <- '
+                 || string_agg(name, ', ' order by name)
+            from artist_tracks
+           where artist_id = '250b0Wlc5Vk0CoUsaCY84M'
+             and (album ilike '%fallen%angel%' or name ilike '%less than a lover%')
+           group by album order by album;
           -- ...and the same for everyone, because "LISA is two days behind" and
           -- "Spotify has not published since Tuesday" look identical from one
           -- artist and mean opposite things: the first is ours to fix, the
