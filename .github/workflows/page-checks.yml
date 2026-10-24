@@ -13,6 +13,8 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/workflows/fetch-spotify-artists.yml'
+      - '.github/scripts/test_canary_dispatch.sh'
       - 'index.html'
       - 'projects.html'
       - 'awards.html'
@@ -30,6 +32,8 @@ on:
       - '.github/workflows/page-checks.yml'
   pull_request:
     paths:
+      - '.github/workflows/fetch-spotify-artists.yml'
+      - '.github/scripts/test_canary_dispatch.sh'
       - 'index.html'
       - 'projects.html'
       - 'awards.html'
@@ -135,6 +139,13 @@ jobs:
       - name: Every track is wired all the way through
         if: always()
         run: node .github/scripts/test_track_wiring.mjs
+
+      # The canary hands its refresh to the chunked sweep. Every way that
+      # handover breaks is quiet — above all a refused dispatch passing as
+      # success, which looks just like a canary that found nothing to do.
+      - name: The canary dispatches the chunked sweep
+        if: always()
+        run: bash .github/scripts/test_canary_dispatch.sh
 
       # Spotify publishes its daily charts in arrears, so a row stamped with
       # the fetch date is dated one to two days ahead of the data in it.
