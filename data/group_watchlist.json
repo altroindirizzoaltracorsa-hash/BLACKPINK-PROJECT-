@@ -64,5 +64,12 @@
       { "id": "0pMoUGdpD8nupNP1mSdZUn", "name": "You're Under Arrest" },
       { "id": "1mre3HoVD50XwY02NvxKZZ", "name": "Pop" }
     ]
+  },
+
+  "1SIocsqdEefUTE6XKGUiVS": {
+    "_note": "BABYMONSTER — DESERVE, album DESERVE, out 2026-10-23. One track, a single. Not on kworb as of 2026-10-24 (probe-track-playcount), so the pinned catalogue — 43 tracks, seeded 2026/09/04 — does not count it yet. Spotify served play_count 0 on the 24th, and that is a real integer zero rather than a missing value: the probe prints (none) when it is missing and printed 0. Early rows may be zeros until Spotify exposes a count; they are honest readings and cost nothing, because watch rows are outside every total. If it is STILL zero once the song is plainly streaming, suspect the id before the song.",
+    "tracks": [
+      { "id": "7It5Iy4mnJWMhESt7qfipt", "name": "DESERVE" }
+    ]
   }
 }
