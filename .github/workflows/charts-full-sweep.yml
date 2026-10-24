@@ -84,6 +84,7 @@ jobs:
             kind="$1"
             echo "═══ $kind ═══"
             remaining="$ALL"
+            nochart=""
             round=0
             while [ -n "$remaining" ] && [ "$round" -lt 4 ]; do
               round=$((round+1))
@@ -104,8 +105,14 @@ jobs:
                   next="$next $(echo $batch | tr ',' ' ')"
                 else
                   sk=$(jq -r '(.skippedCountries // []) | join(" ")' /tmp/chunk.json | tr 'A-Z' 'a-z')
+                  nc=$(jq -r '(.noChartCountries // []) | join(" ")' /tmp/chunk.json | tr 'A-Z' 'a-z')
                   up=$(jq -r '.upserted // 0' /tmp/chunk.json)
-                  echo "  [$batch] ok · upserted $up · skipped: ${sk:-none}"
+                  echo "  [$batch] ok · upserted $up · skipped: ${sk:-none}${nc:+ · no chart: $nc}"
+                  # A 404 is Spotify saying that chart does not exist, which no
+                  # amount of retrying changes — regional-cy-daily is one. Those
+                  # are recorded and dropped, never requeued, or the sweep could
+                  # never complete and the job would be red every night forever.
+                  [ -n "$nc" ] && nochart="$nochart $nc"
                   [ -n "$sk" ] && next="$next $sk"
                 fi
                 # Only pause when there is more to do: a trailing sleep adds
@@ -117,12 +124,17 @@ jobs:
               # either — back off hard rather than hammer a limiter.
               [ -n "$remaining" ] && { echo "  still missing: $remaining"; sleep "$BACKOFF"; }
             done
+            nochart=$(echo $nochart | xargs -n1 2>/dev/null | sort -u | xargs || true)
+            nc_n=$(echo $nochart | wc -w)
             if [ -n "$remaining" ]; then
               echo "::error::$kind — never fetched: $remaining"
               echo "::notice title=sweep::$kind INCOMPLETE — missing $(echo $remaining | wc -w): $remaining"
               overall_fail=1
             else
-              echo "::notice title=sweep::$kind complete — all $TOTAL countries fetched"
+              # "Complete" counts the countries Spotify actually publishes. The
+              # ones with no chart are named rather than quietly subtracted, so
+              # the number is checkable instead of just reassuring.
+              echo "::notice title=sweep::$kind complete — $(( TOTAL - nc_n ))/$TOTAL fetched${nochart:+, no chart on Spotify: $nochart}"
             fi
           }
 
