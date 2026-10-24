@@ -3925,6 +3925,108 @@
              not one photograph. It only advances while it is actually on
              screen, so reading further down the page does not move it. -->
         <div class="cd-wrap" data-carousel data-carousel-fit data-carousel-autoplay="9000" aria-label="Countdowns">
+          <!-- JISOO — "ADDICTED", counted down at jisoo.io. ONE worldwide
+               instant (13:00 KST = 04:00 UTC), confirmed rather than assumed:
+               the same clock JISOO's CLICK used and the same one the jisoo.io
+               teaser itself counted to. Not the midnight-local rule the PRESS
+               PLAY EP needed, so this card carries data-target and no
+               data-target-local.
+               Read off jisoo.io from a runner — the page is a Three.js teaser
+               whose only date is its own countdown target, and the release
+               date came from the user. That page's own countdown was the
+               ANNOUNCEMENT — it ran out at 13:00 KST on Oct 24 — and this
+               card counts to the release, a week after it.
+               No MV premiere yet. When there is one it gets its own row with
+               its own instant, the way Tarantino's did on the PRESS PLAY card.
+               data-prerelease-name keeps the auto-discovered prerelease card
+               from appearing a second time alongside this one.
+               LIVE wrap, not #cd-past: this release is still ahead of us. It
+               sat in the past block for a day and nothing failed — the slug
+               was wired, the deep link worked — it simply never appeared on
+               the home page. -->
+          <div class="cd-card cd-card-addicted" data-slug="addicted" data-target="2026-10-30T04:00:00Z" data-live="OUT NOW ✨" data-plain="1" data-prerelease-name="addicted">
+            <!-- jisoo.io's own art, fetched off the site itself: its storm
+                 sky, its lightning heart, its ADDICTED lockup. There the logo
+                 is a WebGL mesh that swings when you shove it and the sky
+                 cracks behind it; here the lockup tilts toward the pointer or
+                 the finger and the bolt strikes on touch. The same two
+                 gestures, without the ~1.6MB that three.js plus
+                 addicted-logo-v6.glb would cost a phone to render one card in
+                 a carousel. The GLB is kept in addicted/ for the day the
+                 release gets its own page and can afford the real scene. -->
+            <div class="ad-sky" data-addicted-sky>
+              <img class="ad-clouds" src="/addicted/addicted-bg-clouds-v1.webp" alt="" loading="lazy">
+              <img class="ad-bolt" src="/addicted/addicted-heart-lightning-v1.webp" alt="" loading="lazy">
+              <div class="ad-logo-orbit">
+                <img class="ad-logo" src="/addicted/addicted-logo-full-v2.png" alt="JISOO — ADDICTED" loading="lazy"
+                     onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cd-title ad-title-fallback',textContent:'ADDICTED'}))">
+              </div>
+              <!-- The real model goes here once it has loaded, and the flat
+                   lockup above stays as the fallback: no WebGL, a refused
+                   context, a failed fetch, or Save-Data all leave the card
+                   exactly as it was rather than empty. -->
+              <div class="ad-gl" data-addicted-gl hidden></div>
+              <div class="ad-grab" aria-hidden="true"></div>
+            </div>
+            <div class="cd-eyebrow">JISOO · New Single · jisoo.io</div>
+            <div class="cd-badge-chip ad-locket" id="addicted-badge" style="display:none;"><img src="/addicted/addicted-heart-lightning-v1.webp" alt="" aria-hidden="true">Early Supporter</div>
+            <div class="cd-sub">Fri, Oct 30, 2026 · 1PM KST / 12AM EDT<span class="cd-sub-local" data-local-target></span></div>
+            <div class="cd-timer cd-timer-plain" data-timer></div>
+            <div class="cd-goal" id="addicted-goal" style="display:none;">
+              <div class="cd-goal-top">
+                <span class="cd-goal-label">🎯 Blinks pre-saved</span>
+                <span class="cd-goal-nums" id="addicted-goal-nums"></span>
+              </div>
+              <div class="cd-goal-bar"><div class="cd-goal-fill" id="addicted-goal-fill" style="width:0%"></div></div>
+            </div>
+            <div class="cd-links">
+              <a class="cd-btn ad-btn" href="https://jisoo.lnk.to/addicted" target="_blank" rel="noopener" onclick="saveAddicted()">Pre-save ↗</a>
+              <a class="cd-btn ad-btn ad-btn-ghost" href="https://www.jisoo.io" target="_blank" rel="noopener">jisoo.io ↗</a>
+              <button class="cd-btn ad-btn ad-btn-ghost" onclick="openAddictedCard()">📸 Share</button>
+            </div>
+            <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
+              <summary>Release times worldwide</summary>
+              <div class="cd-times-body" data-times-for="2026-10-30T04:00:00Z"></div>
+            </details>
+          </div>
+          <!-- JENNIE — "Someone to Hold", the song she wrote for Netflix's
+               animated Cinderella film "Steps". Target is the FILM's premiere:
+               Netflix goes live globally at 12AM PT (= 08:00 UTC; Nov 20 is PST),
+               and the soundtrack is dated the same day. The song's own DSP time
+               has NOT been announced — if it turns out to drop at 1PM KST like
+               Jennie's own singles, this target moves to 2026-11-20T04:00:00Z
+               and so does data-times-for below. Don't guess it into the copy. -->
+          <div class="cd-card cd-card-steps" data-slug="steps" data-target="2026-11-20T08:00:00Z" data-live="OUT NOW ✨">
+            <div class="st-hero">
+              <div class="st-eyebrow">Featuring an original song by</div>
+              <img class="st-wordmark" src="/steps/someone-to-hold.svg" width="10736" height="1820"
+                   alt="Someone to Hold" loading="lazy"
+                   onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'st-title',textContent:'Someone to Hold'}))">
+              <img class="st-by" src="/steps/jennie.svg" width="3690" height="1256"
+                   alt="JENNIE" loading="lazy"
+                   onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'st-by-text',textContent:'JENNIE'}))">
+              <!-- "Only on Netflix" belongs to the FILM, not the song: the song
+                   is on the soundtrack album and goes to the streaming services
+                   like any other release. Worded so it cannot read as the song
+                   being a Netflix exclusive. -->
+              <div class="st-film">From the Netflix film Steps · Nov 20</div>
+            </div>
+            <div class="cd-eyebrow">JENNIE · Original Song · Netflix Film</div>
+            <div class="cd-sub">Fri, Nov 20, 2026 · counting to the film's Netflix premiere · <b>12AM PT / 3AM ET</b><span class="cd-sub-local" data-local-target></span></div>
+            <div class="cd-timer" data-timer></div>
+            <div class="st-note">
+              Jennie wrote and performs <b>“Someone to Hold”</b> for <b>Steps</b>, Netflix Animation's
+              Cinderella story told by the stepsisters — her <b>first song written for an animated film</b>.
+              It leads <b>Steps (Soundtrack from the Netflix Film)</b> — out on streaming the same day as the film.
+            </div>
+            <div class="st-pending">
+              Pre-save link and release time not announced yet — they go here as soon as they are.
+            </div>
+            <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
+              <summary>Premiere times worldwide</summary>
+              <div class="cd-times-body" data-times-for="2026-11-20T08:00:00Z"></div>
+            </details>
+          </div>
           <!-- The EP lands at midnight wherever you are, so there is no one
                instant to count to and data-target-local names the DATE instead:
                each reader's own midnight is the target. (The "Tarantino" MV is
@@ -4061,44 +4163,6 @@
               </details>
               <div class="cd-goals-block" id="lisa-goals-list" style="display:none;"></div>
             </div>
-          </div>
-          <!-- JENNIE — "Someone to Hold", the song she wrote for Netflix's
-               animated Cinderella film "Steps". Target is the FILM's premiere:
-               Netflix goes live globally at 12AM PT (= 08:00 UTC; Nov 20 is PST),
-               and the soundtrack is dated the same day. The song's own DSP time
-               has NOT been announced — if it turns out to drop at 1PM KST like
-               Jennie's own singles, this target moves to 2026-11-20T04:00:00Z
-               and so does data-times-for below. Don't guess it into the copy. -->
-          <div class="cd-card cd-card-steps" data-slug="steps" data-target="2026-11-20T08:00:00Z" data-live="OUT NOW ✨">
-            <div class="st-hero">
-              <div class="st-eyebrow">Featuring an original song by</div>
-              <img class="st-wordmark" src="/steps/someone-to-hold.svg" width="10736" height="1820"
-                   alt="Someone to Hold" loading="lazy"
-                   onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'st-title',textContent:'Someone to Hold'}))">
-              <img class="st-by" src="/steps/jennie.svg" width="3690" height="1256"
-                   alt="JENNIE" loading="lazy"
-                   onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'st-by-text',textContent:'JENNIE'}))">
-              <!-- "Only on Netflix" belongs to the FILM, not the song: the song
-                   is on the soundtrack album and goes to the streaming services
-                   like any other release. Worded so it cannot read as the song
-                   being a Netflix exclusive. -->
-              <div class="st-film">From the Netflix film Steps · Nov 20</div>
-            </div>
-            <div class="cd-eyebrow">JENNIE · Original Song · Netflix Film</div>
-            <div class="cd-sub">Fri, Nov 20, 2026 · counting to the film's Netflix premiere · <b>12AM PT / 3AM ET</b><span class="cd-sub-local" data-local-target></span></div>
-            <div class="cd-timer" data-timer></div>
-            <div class="st-note">
-              Jennie wrote and performs <b>“Someone to Hold”</b> for <b>Steps</b>, Netflix Animation's
-              Cinderella story told by the stepsisters — her <b>first song written for an animated film</b>.
-              It leads <b>Steps (Soundtrack from the Netflix Film)</b> — out on streaming the same day as the film.
-            </div>
-            <div class="st-pending">
-              Pre-save link and release time not announced yet — they go here as soon as they are.
-            </div>
-            <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
-              <summary>Premiere times worldwide</summary>
-              <div class="cd-times-body" data-times-for="2026-11-20T08:00:00Z"></div>
-            </details>
           </div>
           <div class="cd-card cd-card-newtrick" data-slug="newtrick" data-target="2026-09-17T23:00:00Z" data-live="OUT NOW ✨" data-plain="1" data-prerelease-name="new trick">
             <div class="nt-hero"><img src="/newtrick/newtrick-cover.jpg" alt="ROSÉ — new trick (single cover)" loading="lazy"></div>
@@ -4251,70 +4315,6 @@
                 <a href="https://open.spotify.com/playlist/0Okuq4zDJxC6OdbRSnprKW" target="_blank" rel="noopener">SAWADIKA x PINKS →</a>
                 <a href="https://open.spotify.com/playlist/2DsXcGwzpgqqD4vsp8IIAE" target="_blank" rel="noopener">SAWADIKA x BP →</a>
               </div>
-            </details>
-          </div>
-          <!-- JISOO — "ADDICTED", counted down at jisoo.io. ONE worldwide
-               instant (13:00 KST = 04:00 UTC), confirmed rather than assumed:
-               the same clock JISOO's CLICK used and the same one the jisoo.io
-               teaser itself counted to. Not the midnight-local rule the PRESS
-               PLAY EP needed, so this card carries data-target and no
-               data-target-local.
-               Read off jisoo.io from a runner — the page is a Three.js teaser
-               whose only date is its own countdown target, and the release
-               date came from the user. That page's own countdown was the
-               ANNOUNCEMENT — it ran out at 13:00 KST on Oct 24 — and this
-               card counts to the release, a week after it.
-               No MV premiere yet. When there is one it gets its own row with
-               its own instant, the way Tarantino's did on the PRESS PLAY card.
-               data-prerelease-name keeps the auto-discovered prerelease card
-               from appearing a second time alongside this one.
-               LIVE wrap, not #cd-past: this release is still ahead of us. It
-               sat in the past block for a day and nothing failed — the slug
-               was wired, the deep link worked — it simply never appeared on
-               the home page. -->
-          <div class="cd-card cd-card-addicted" data-slug="addicted" data-target="2026-10-30T04:00:00Z" data-live="OUT NOW ✨" data-plain="1" data-prerelease-name="addicted">
-            <!-- jisoo.io's own art, fetched off the site itself: its storm
-                 sky, its lightning heart, its ADDICTED lockup. There the logo
-                 is a WebGL mesh that swings when you shove it and the sky
-                 cracks behind it; here the lockup tilts toward the pointer or
-                 the finger and the bolt strikes on touch. The same two
-                 gestures, without the ~1.6MB that three.js plus
-                 addicted-logo-v6.glb would cost a phone to render one card in
-                 a carousel. The GLB is kept in addicted/ for the day the
-                 release gets its own page and can afford the real scene. -->
-            <div class="ad-sky" data-addicted-sky>
-              <img class="ad-clouds" src="/addicted/addicted-bg-clouds-v1.webp" alt="" loading="lazy">
-              <img class="ad-bolt" src="/addicted/addicted-heart-lightning-v1.webp" alt="" loading="lazy">
-              <div class="ad-logo-orbit">
-                <img class="ad-logo" src="/addicted/addicted-logo-full-v2.png" alt="JISOO — ADDICTED" loading="lazy"
-                     onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cd-title ad-title-fallback',textContent:'ADDICTED'}))">
-              </div>
-              <!-- The real model goes here once it has loaded, and the flat
-                   lockup above stays as the fallback: no WebGL, a refused
-                   context, a failed fetch, or Save-Data all leave the card
-                   exactly as it was rather than empty. -->
-              <div class="ad-gl" data-addicted-gl hidden></div>
-              <div class="ad-grab" aria-hidden="true"></div>
-            </div>
-            <div class="cd-eyebrow">JISOO · New Single · jisoo.io</div>
-            <div class="cd-badge-chip ad-locket" id="addicted-badge" style="display:none;"><img src="/addicted/addicted-heart-lightning-v1.webp" alt="" aria-hidden="true">Early Supporter</div>
-            <div class="cd-sub">Fri, Oct 30, 2026 · 1PM KST / 12AM EDT<span class="cd-sub-local" data-local-target></span></div>
-            <div class="cd-timer cd-timer-plain" data-timer></div>
-            <div class="cd-goal" id="addicted-goal" style="display:none;">
-              <div class="cd-goal-top">
-                <span class="cd-goal-label">🎯 Blinks pre-saved</span>
-                <span class="cd-goal-nums" id="addicted-goal-nums"></span>
-              </div>
-              <div class="cd-goal-bar"><div class="cd-goal-fill" id="addicted-goal-fill" style="width:0%"></div></div>
-            </div>
-            <div class="cd-links">
-              <a class="cd-btn ad-btn" href="https://jisoo.lnk.to/addicted" target="_blank" rel="noopener" onclick="saveAddicted()">Pre-save ↗</a>
-              <a class="cd-btn ad-btn ad-btn-ghost" href="https://www.jisoo.io" target="_blank" rel="noopener">jisoo.io ↗</a>
-              <button class="cd-btn ad-btn ad-btn-ghost" onclick="openAddictedCard()">📸 Share</button>
-            </div>
-            <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
-              <summary>Release times worldwide</summary>
-              <div class="cd-times-body" data-times-for="2026-10-30T04:00:00Z"></div>
             </details>
           </div>
         </div>

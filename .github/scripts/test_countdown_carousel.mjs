@@ -85,8 +85,13 @@ console.log('--- the countdown cards, on the home page');
   s.slides>=5 ? ok('every card is a slide',`${s.slides}`) : bad('every card is a slide',`${s.slides}`);
 
   // The running order is a decision, not whatever order the cards were written
-  // in, and it is invisible from any one card's markup. PRESS PLAY leads.
-  const ORDER = ['lalisaofficial.com','steps','newtrick','jisoo.io','hellosawadika.com'];
+  // in, and it is invisible from any one card's markup.
+  //
+  // What is still AHEAD comes first, soonest to furthest: ADDICTED on Oct 30,
+  // then Someone to Hold with the Steps film on Nov 20. Then the ones already
+  // out, newest first. PRESS PLAY led this list until it was released on the
+  // 23rd; a countdown to a date that has passed is not the thing to open on.
+  const ORDER = ['addicted','steps','lalisaofficial.com','newtrick','jisoo.io','hellosawadika.com'];
   const got = await page.evaluate(()=>[...document.querySelectorAll('#home-countdowns > .cd-wrap > .cd-card')]
     .map(c=>c.dataset.slug));
   // Auto-discovered pre-releases are inserted ahead of everything on purpose,
@@ -95,8 +100,8 @@ console.log('--- the countdown cards, on the home page');
   JSON.stringify(hand)===JSON.stringify(ORDER)
     ? ok('they run in the order they are meant to', hand.join(' → '))
     : bad('they run in the order they are meant to', `got ${hand.join(' → ')}`);
-  got[0]===ORDER[0] ? ok('and the carousel opens on PRESS PLAY')
-                    : bad('and the carousel opens on PRESS PLAY',`opens on ${got[0]}`);
+  got[0]===ORDER[0] ? ok('and the carousel opens on the next release',`${got[0]}`)
+                    : bad('and the carousel opens on the next release',`opens on ${got[0]}, want ${ORDER[0]}`);
   s.dots===s.slides ? ok('one dot per slide',`${s.dots}`) : bad('one dot per slide',`${s.dots} dots / ${s.slides} slides`);
   s.navHidden===false ? ok('the controls are shown') : bad('the controls are shown',`hidden=${s.navHidden}`);
   // Side by side: a card no longer fills the track, because the neighbours
