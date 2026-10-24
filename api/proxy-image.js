@@ -395,6 +395,22 @@ async function getChartsAuthToken() {
 
 // kind = 'artist' | 'album'. Alias: `${kind}-${country}-${chartType}` (albums are
 // weekly-only on Spotify's charts service).
+// A sweep may be driven in CHUNKS rather than as one 74-country burst. Spotify
+// rate-limits this service on a rolling window, and a burst runs out of budget
+// partway down the list — always at the same place, because the list is walked
+// in order, so the tail (SG…ZA, which is Thailand, Taiwan, Ukraine, the US,
+// Vietnam) was never fetched at all. ?countries=th,tw,… restricts a call to a
+// subset so the caller can spread a full sweep across minutes and come back for
+// whatever was skipped. Filtered THROUGH the known list, never used directly:
+// the value ends up in a chart alias.
+function chartCountriesFor(req) {
+  const only = String(req.query.countries || '')
+    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  if (!only.length) return CHART_COUNTRIES;
+  const want = new Set(only);
+  return CHART_COUNTRIES.filter(c => want.has(c));
+}
+
 async function fetchOfficialChart(token, kind, chartType, country) {
   const alias = `${kind}-${country.toLowerCase()}-${chartType}`;
   const r = await fetch(`https://charts-spotify-com-service.spotify.com/auth/v0/charts/${alias}/latest`, {
@@ -1114,7 +1130,8 @@ export default async function handler(req, res) {
       // two invocations apart to stay under Spotify's rate limit); default is both.
       const wantTypes = (req.query.type === 'daily' || req.query.type === 'weekly') ? [req.query.type] : ['daily', 'weekly'];
       const jobs = [];
-      for (const chartType of wantTypes) for (const country of CHART_COUNTRIES) jobs.push({ chartType, country });
+      const sweepCountries = chartCountriesFor(req);
+      for (const chartType of wantTypes) for (const country of sweepCountries) jobs.push({ chartType, country });
       // Main pass at moderate concurrency, then retry whatever failed after a short
       // cooldown — the charts service 429s a rapid ~150-request burst, but the rate
       // window resets within a couple of seconds. Genuine "no such chart" aliases,
@@ -1196,7 +1213,7 @@ export default async function handler(req, res) {
         return failed;
       };
       const sleep = ms => new Promise(r => setTimeout(r, ms));
-      let failed = await runAlbumJobs(CHART_COUNTRIES, 8);
+      let failed = await runAlbumJobs(chartCountriesFor(req), 8);
       for (let attempt = 0; attempt < 2 && failed.length; attempt++) { await sleep(2000); failed = await runAlbumJobs(failed, 6); }
 
       await upstashSet('bu_album_charts', { date: today, rows });
@@ -1264,7 +1281,8 @@ export default async function handler(req, res) {
         return failed;
       };
       const jobs = [];
-      for (const chartType of wantTypes) for (const country of CHART_COUNTRIES) jobs.push({ chartType, country });
+      const sweepCountries = chartCountriesFor(req);
+      for (const chartType of wantTypes) for (const country of sweepCountries) jobs.push({ chartType, country });
       const sleep = ms => new Promise(r => setTimeout(r, ms));
       let skipped = await runJobs(jobs, 8);
       for (let attempt = 0; attempt < 2 && skipped.length; attempt++) { await sleep(2000); skipped = await runJobs(skipped, 6); }
@@ -1331,6 +1349,7 @@ export default async function handler(req, res) {
       // rate-limited out of the sweep" look exactly the same.
       return res.status(200).json({
         ok: true, date: today, upserted: upsertRows.length, skipped: skipped.length,
+        requested: sweepCountries.length,
         skippedCountries: [...new Set(skipped.map(s => s.country.toUpperCase()))].sort(),
         matchedCountries: [...new Set(upsertRows.map(r => r.country))].sort(),
       });
