@@ -150,6 +150,47 @@ drew.litFraction > 0.5
   ? ok('and it actually drew something', `${Math.round(drew.litFraction * 100)}% of sampled pixels are not black`)
   : bad('and it actually drew something', `${Math.round(drew.litFraction * 100)}% — a blank card`);
 
+// 3b. The lightning heart has to FIT, on both shapes of card. It was sized off
+// the width alone, which is fine at 1:1 and wrong at 16:9: 56% of 1200px is
+// 672px of heart on a 675px canvas, so the landscape card drew a heart with
+// its top lobes sliced off the edge and the lockup lying across its middle.
+// Nothing threw and the card above still read as "drew something".
+// Asked of the overlay itself, with a recording context, so the answer is the
+// rectangle the card really draws rather than a guess from pixels — clouds
+// are bright too, and no pixel test can tell heart from sky reliably.
+const fit = await page.evaluate(() => {
+  // Not window._presaveCardData: it is a top-level `let`, which makes a global
+  // binding that is NOT a property of window, so that reads undefined.
+  const data = (typeof _presaveCardData !== 'undefined') ? _presaveCardData : null;
+  const ov = data && data.overlay;
+  if (typeof ov !== 'function') return null;
+  const out = [];
+  for (const [w, h, name] of [[1200, 675, 'landscape'], [1080, 1080, 'square']]) {
+    let box = null;
+    const rec = { save(){}, restore(){}, set globalAlpha(v){}, get globalAlpha(){ return 1; },
+                  drawImage(img, x, y, dw, dh) { box = { x, y, dw, dh }; } };
+    ov(rec, w, h);
+    out.push({ name, w, h, box });
+  }
+  return out;
+});
+if (!fit) { bad('the lightning heart fits the card', 'no overlay on the card data'); }
+else for (const f of fit) {
+  if (!f.box) { bad(`the lightning heart fits the ${f.name} card`, 'nothing drawn'); continue; }
+  const { x, y, dw, dh } = f.box;
+  const inside = x >= 0 && y >= 0 && x + dw <= f.w + 0.5 && y + dh <= f.h + 0.5;
+  // And big enough to still read as the artwork rather than a sticker.
+  const big = dw >= f.w * 0.25 && dh >= f.h * 0.25;
+  (inside && big)
+    ? ok(`the lightning heart fits the ${f.name} card`,
+         `${Math.round(dw)}×${Math.round(dh)} at ${Math.round(x)},${Math.round(y)} in ${f.w}×${f.h}`)
+    : bad(`the lightning heart fits the ${f.name} card`,
+          !inside ? `drawn ${Math.round(dw)}×${Math.round(dh)} at ${Math.round(x)},${Math.round(y)} — ${
+                      y < 0 ? `${Math.round(-y)}px off the top` :
+                      x < 0 ? `${Math.round(-x)}px off the left` : 'past the bottom or right edge'}`
+                  : `only ${Math.round(dw)}×${Math.round(dh)} on a ${f.w}×${f.h} card — too small to read`);
+}
+
 // 4. Each campaign's badge is wired into both places that show it.
 for (const [ls, name] of [['ADDICTED_SAVE_LS', 'addicted'], ['JISOO_SAVE_LS', 'jisoo'],
                           ['NEWTRICK_SAVE_LS', 'newtrick'], ['FA_SAVE_LS', 'fa'], ['LISA_SAVE_LS', 'lisa']]) {
