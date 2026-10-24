@@ -1742,20 +1742,29 @@
   .cd-wrap[data-carousel]::after { content: ''; flex: 0 0 10%; }
   .cd-wrap[data-carousel] > .cd-card { flex: 0 0 80%; min-width: 0; scroll-snap-align: center;
     transition: opacity 0.3s ease; }
-  /* One swipe moves one card: a flick otherwise carries its momentum across
-     three or four of them and you arrive somewhere you did not aim for.
-     Unconditional, deliberately. The first attempt put this behind a class
-     added on pointerdown, which does not work: a touch fling is run on the
-     compositor, which reads the snap rules as the gesture begins, so a class
-     set by JavaScript at pointerdown can arrive after the decision is made.
-     It has to be in the stylesheet before the finger lands. */
-  .cd-wrap[data-carousel] > .cd-card { scroll-snap-stop: always; }
-  /* The cost of that: scroll-snap-stop binds PROGRAMMATIC scrolling too, so a
-     dot press for a far card would crawl one slide at a time. carouselGo
-     lifts it around every scroll it starts — main thread, set before the
-     scroll begins, so unlike the pointerdown attempt this one is in time.
-     The rule then only ever governs a finger, which is all it was for. */
-  .cd-wrap[data-carousel].is-jumping > .cd-card { scroll-snap-stop: normal; }
+  /* ONE SWIPE, ONE CARD — third attempt, and the first two failed for the same
+     reason, so the reason is the comment.
+     A touch fling is not run by this page. The browser hands the gesture to
+     the compositor thread, which carries the momentum and decides where to
+     stop by reading the snap rules AS THE GESTURE BEGINS. So neither
+     `scroll-snap-stop: always` behind a class added on pointerdown (attempt
+     one) nor the same rule left on unconditionally (attempt two) governed it:
+     one arrived too late, and the other was read correctly and still let a
+     fast flick cross three cards, because snap-stop constrains where a scroll
+     may stop and not how much momentum it is given.
+     The fix is to not have a native fling at all. `touch-action: pan-y` keeps
+     vertical panning with the page and gives US every sideways movement: the
+     browser never scrolls this track itself, there is no momentum to tame,
+     and the gesture is handled on the main thread where a class is always in
+     time. The handler in initCarousel follows the finger and, on release,
+     moves exactly one card from the one that was centred when it landed. */
+  .cd-wrap[data-carousel] { touch-action: pan-y; }
+  /* While WE are the scroller, snapping would fight every frame of the drag:
+     each scrollLeft write would be re-snapped to the nearest card and the
+     card would stick instead of following. Unlike the two attempts above this
+     class governs our own main-thread writes, not a compositor fling, so it
+     cannot be late. Restored on release, which is what centres the card. */
+  .cd-wrap[data-carousel].is-dragging { scroll-snap-type: none; }
   /* The first try put a fade over both edges so a clipped neighbour would not
      end in a hard vertical cut. It read beautifully and defeated the point:
      the sliver was 11px and the fade covered all of it, so the neighbours
@@ -4212,67 +4221,6 @@
               <div class="cd-times-body" data-times-for="2026-09-17T23:00:00Z"></div>
             </details>
           </div>
-          <div class="cd-card cd-card-jisoo is-teaser" id="jisoo-card" data-slug="jisoo.io" data-target="2026-09-04T04:00:00Z" data-live="OUT NOW ✨" data-stars="1">
-            <div class="js-look-toggle" role="group" aria-label="Card style">
-              <button type="button" data-look="teaser" onclick="setJisooLook('teaser')">Teaser</button>
-              <button type="button" data-look="carnival" onclick="setJisooLook('carnival')">Carnival</button>
-            </div>
-            <img class="jt-hero" src="/jisoo-click-teaser.webp" alt="JISOO — CLICK · out Sep 4, 2026 · 1PM KST" loading="lazy">
-            <a class="js-teaser" href="https://youtu.be/LzgE8ift2Uw" target="_blank" rel="noopener" title="Watch the JISOO — CLICK MV teaser"><img src="/jisoo-teaser.webp" alt="Watch the JISOO — CLICK MV teaser"></a>
-            <div class="js-body">
-              <img class="js-title" src="/jisoo-word-jisoo.webp" alt="JISOO" loading="lazy">
-              <div class="cd-sub"><span class="js-date">Thu, Sep 4, 2026</span><span class="js-tz">1PM KST / 12AM EDT</span><span class="cd-sub-local" data-local-target></span></div>
-              <div class="cd-eyebrow">JISOO · 1st Single · jisoo.io</div>
-              <div class="cd-badge-chip js-locket" id="jisoo-badge" style="display:none;"><img src="/jisoo-heart.webp" alt="">Early Supporter</div>
-              <div class="cd-timer" data-timer></div>
-              <div class="cd-goal" id="jisoo-goal" style="display:none;">
-                <div class="cd-goal-top">
-                  <span class="cd-goal-label">🎯 Blinks pre-saved</span>
-                  <span class="cd-goal-nums" id="jisoo-goal-nums"></span>
-                </div>
-                <div class="cd-goal-bar"><div class="cd-goal-fill" id="jisoo-goal-fill" style="width:0%"></div></div>
-              </div>
-              <img class="js-park" src="/Jisoopark2.webp" alt="" loading="lazy">
-              <div class="cd-links">
-                <a class="cd-btn js-presave" href="https://jisoo.lnk.to/CLICK" target="_blank" rel="noopener" onclick="saveJisooClick()">Pre-save ↗</a>
-                <a class="cd-btn js-click" href="https://www.jisoo.io" target="_blank" rel="noopener"><img src="/jisoo-word-click.webp" alt="CLICK">jisoo.io&nbsp;↗</a>
-                <a class="cd-btn cd-btn-ghost js-teaser-btn" href="https://youtu.be/LzgE8ift2Uw" target="_blank" rel="noopener">▶ MV Teaser ↗</a>
-                <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
-              </div>
-              <!-- Pictures from CLICK. The carnival teaser is the card's own
-                   header image, so it is not repeated here. Both of these are
-                   16:9 and fill the frame exactly. -->
-              <div class="cd-strip" style="--cd-frame-ratio: 16 / 9;" data-carousel data-carousel-autoplay="4500"
-                   aria-label="Pictures from CLICK">
-                <a class="cd-frame" href="/strips/click-1.webp" target="_blank" rel="noopener">
-                  <img src="/strips/click-1.webp" loading="lazy" alt="JISOO holding a battered teddy bear with glowing blue eyes"></a>
-                <a class="cd-frame" href="/strips/click-2.webp" target="_blank" rel="noopener">
-                  <img src="/strips/click-2.webp" loading="lazy" alt="JISOO resting her chin on her hand beside the bear and a wall of red buttons"></a>
-              </div>
-              <div class="cd-nav cd-strip-nav" data-carousel-nav hidden>
-                <div class="cd-dots" data-carousel-dots></div>
-              </div>
-              <div class="cd-goals-block" id="jisoo-goals-list" style="display:none;"></div>
-              <div class="cd-cs" id="jisoo-cs" style="display:none;">
-                <span class="cd-cs-head">◇ Blinks United scrobbles</span>
-                <span class="cd-cs-num" id="jisoo-cs-num">—</span>
-                <span class="cd-cs-sub">CLICK plays counted from our community</span>
-                <div class="cd-cs-rows" id="jisoo-cs-rows"></div>
-              </div>
-              <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
-                <summary>Release times worldwide</summary>
-                <div class="cd-times-body" data-times-for="2026-09-04T04:00:00Z"></div>
-              </details>
-              <details class="cd-times cd-playlists">
-                <summary>🎧 Community Playlists</summary>
-                <div class="cd-times-body">
-                  <a href="https://open.spotify.com/playlist/5sArj0HSAuzrCWDa49DSSi" target="_blank" rel="noopener">CLICK FOCUSED →</a>
-                  <a href="https://open.spotify.com/playlist/442pgnOEzTvf077afIaRD4" target="_blank" rel="noopener">CLICK x PINKS →</a>
-                  <a href="https://open.spotify.com/playlist/7IqOrCPWS2dtCPJ4XkG1bt" target="_blank" rel="noopener">CLICK x BP →</a>
-                </div>
-              </details>
-            </div>
-          </div>
           <div class="cd-card cd-card-sawadika" data-slug="hellosawadika.com" data-target="2026-09-04T00:00:00Z" data-live="OUT NOW ✨" data-plain="1">
             <div class="sw-hero"><img src="/sawadika/sawadika-cover.jpg" alt="LISA — SaWaDiKa (single cover)" loading="lazy"></div>
             <div class="sw-cycle">
@@ -4409,6 +4357,71 @@
                 <a href="https://open.spotify.com/playlist/1DuecZYsDYRh69AfVxt56F" target="_blank" rel="noopener">FALLEN ANGEL x BP →</a>
               </div>
             </details>
+          </div>
+            <!-- CLICK is over: moved out of the live row into the past block on
+                 2026-10-24. Its deep link still works — applyCountdownFilter
+                 searches the whole section, past block included — so
+                 /countdowns/jisoo.io keeps resolving to this card. -->
+          <div class="cd-card cd-card-jisoo is-teaser" id="jisoo-card" data-slug="jisoo.io" data-target="2026-09-04T04:00:00Z" data-live="OUT NOW ✨" data-stars="1">
+            <div class="js-look-toggle" role="group" aria-label="Card style">
+              <button type="button" data-look="teaser" onclick="setJisooLook('teaser')">Teaser</button>
+              <button type="button" data-look="carnival" onclick="setJisooLook('carnival')">Carnival</button>
+            </div>
+            <img class="jt-hero" src="/jisoo-click-teaser.webp" alt="JISOO — CLICK · out Sep 4, 2026 · 1PM KST" loading="lazy">
+            <a class="js-teaser" href="https://youtu.be/LzgE8ift2Uw" target="_blank" rel="noopener" title="Watch the JISOO — CLICK MV teaser"><img src="/jisoo-teaser.webp" alt="Watch the JISOO — CLICK MV teaser"></a>
+            <div class="js-body">
+              <img class="js-title" src="/jisoo-word-jisoo.webp" alt="JISOO" loading="lazy">
+              <div class="cd-sub"><span class="js-date">Thu, Sep 4, 2026</span><span class="js-tz">1PM KST / 12AM EDT</span><span class="cd-sub-local" data-local-target></span></div>
+              <div class="cd-eyebrow">JISOO · 1st Single · jisoo.io</div>
+              <div class="cd-badge-chip js-locket" id="jisoo-badge" style="display:none;"><img src="/jisoo-heart.webp" alt="">Early Supporter</div>
+              <div class="cd-timer" data-timer></div>
+              <div class="cd-goal" id="jisoo-goal" style="display:none;">
+                <div class="cd-goal-top">
+                  <span class="cd-goal-label">🎯 Blinks pre-saved</span>
+                  <span class="cd-goal-nums" id="jisoo-goal-nums"></span>
+                </div>
+                <div class="cd-goal-bar"><div class="cd-goal-fill" id="jisoo-goal-fill" style="width:0%"></div></div>
+              </div>
+              <img class="js-park" src="/Jisoopark2.webp" alt="" loading="lazy">
+              <div class="cd-links">
+                <a class="cd-btn js-presave" href="https://jisoo.lnk.to/CLICK" target="_blank" rel="noopener" onclick="saveJisooClick()">Pre-save ↗</a>
+                <a class="cd-btn js-click" href="https://www.jisoo.io" target="_blank" rel="noopener"><img src="/jisoo-word-click.webp" alt="CLICK">jisoo.io&nbsp;↗</a>
+                <a class="cd-btn cd-btn-ghost js-teaser-btn" href="https://youtu.be/LzgE8ift2Uw" target="_blank" rel="noopener">▶ MV Teaser ↗</a>
+                <button class="cd-btn cd-btn-ghost js-share" onclick="openJisooCard()"><img src="/jisoo-heart.webp" alt="">Share</button>
+              </div>
+              <!-- Pictures from CLICK. The carnival teaser is the card's own
+                   header image, so it is not repeated here. Both of these are
+                   16:9 and fill the frame exactly. -->
+              <div class="cd-strip" style="--cd-frame-ratio: 16 / 9;" data-carousel data-carousel-autoplay="4500"
+                   aria-label="Pictures from CLICK">
+                <a class="cd-frame" href="/strips/click-1.webp" target="_blank" rel="noopener">
+                  <img src="/strips/click-1.webp" loading="lazy" alt="JISOO holding a battered teddy bear with glowing blue eyes"></a>
+                <a class="cd-frame" href="/strips/click-2.webp" target="_blank" rel="noopener">
+                  <img src="/strips/click-2.webp" loading="lazy" alt="JISOO resting her chin on her hand beside the bear and a wall of red buttons"></a>
+              </div>
+              <div class="cd-nav cd-strip-nav" data-carousel-nav hidden>
+                <div class="cd-dots" data-carousel-dots></div>
+              </div>
+              <div class="cd-goals-block" id="jisoo-goals-list" style="display:none;"></div>
+              <div class="cd-cs" id="jisoo-cs" style="display:none;">
+                <span class="cd-cs-head">◇ Blinks United scrobbles</span>
+                <span class="cd-cs-num" id="jisoo-cs-num">—</span>
+                <span class="cd-cs-sub">CLICK plays counted from our community</span>
+                <div class="cd-cs-rows" id="jisoo-cs-rows"></div>
+              </div>
+              <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
+                <summary>Release times worldwide</summary>
+                <div class="cd-times-body" data-times-for="2026-09-04T04:00:00Z"></div>
+              </details>
+              <details class="cd-times cd-playlists">
+                <summary>🎧 Community Playlists</summary>
+                <div class="cd-times-body">
+                  <a href="https://open.spotify.com/playlist/5sArj0HSAuzrCWDa49DSSi" target="_blank" rel="noopener">CLICK FOCUSED →</a>
+                  <a href="https://open.spotify.com/playlist/442pgnOEzTvf077afIaRD4" target="_blank" rel="noopener">CLICK x PINKS →</a>
+                  <a href="https://open.spotify.com/playlist/7IqOrCPWS2dtCPJ4XkG1bt" target="_blank" rel="noopener">CLICK x BP →</a>
+                </div>
+              </details>
+            </div>
           </div>
             <div class="cd-card cd-card-vma" data-slug="vmas" data-target="2026-09-25T22:00:00Z" data-live="VOTING CLOSED">
               <div class="vma-slides" data-vma-carousel>
@@ -7042,6 +7055,17 @@ function cdListMode(on) {
   if (!wrap) return;
   wrap._cdPaused = !!on;
   if (on) {
+    // Put the authored order back. Looping browses by MOVING a card from one
+    // end of the track to the other, so after a few swipes — or just after
+    // opening, which rotates once to keep a card on each side of the first —
+    // the first node in the track is not the first countdown. A carousel does
+    // not care: its dots are indexed by the card rather than by where it sits.
+    // A list is read top to bottom, so there the rotation shows, and it showed
+    // as /countdowns opening on hellosawadika.com. Measured, not guessed: the
+    // DOM order on the hub began with the card the loop had just carried
+    // round, while the home carousel still read correctly.
+    const cards = [...wrap.children].filter(c => c.nodeType === 1 && c._cdLogical != null);
+    if (cards.length) cards.sort((a, b) => a._cdLogical - b._cdLogical).forEach(c => wrap.appendChild(c));
     wrap.removeAttribute('data-carousel');
     wrap.style.height = '';                       // carouselFit's inline height
     wrap.classList.remove('is-single');
@@ -17493,11 +17517,14 @@ function carouselSlides(track) {
     el.nodeType === 1 && getComputedStyle(el).display !== 'none');
 }
 
-function carouselActive(track, slides) {
+function carouselActive(track, slides, at) {
   // Whichever slide's centre is nearest the track's centre. Derived from the
   // real scroll position rather than counted by us, so a flick that crosses two
   // slides, or a snap we did not initiate, still lights the right dot.
-  const mid = track.scrollLeft + track.clientWidth / 2;
+  // `at` overrides that position: the swipe handler asks which card was
+  // centred when the finger LANDED, which is what "one card along" is measured
+  // from — not where the drag happened to leave the track.
+  const mid = (at == null ? track.scrollLeft : at) + track.clientWidth / 2;
   let best = 0, bestGap = Infinity;
   slides.forEach((s, i) => {
     const gap = Math.abs((s.offsetLeft + s.offsetWidth / 2) - mid);
@@ -17560,6 +17587,13 @@ function carouselLoopKeep(track) {
   track._loopBusy = true;
   track.scrollLeft = before + move;     // absolute, not relative
   track._loopBusy = false;
+  // A drag in progress is holding the scroll position the gesture started
+  // from, and the rotation just moved every card by `move`. Left unsaid, the
+  // next pointermove would write that stale anchor back and undo the
+  // compensation — the cards would jump a full card sideways mid-swipe,
+  // exactly at the ends, which is where looping does its work. The swipe
+  // handler takes this up and clears it.
+  track._loopShift = (track._loopShift || 0) + move;
 }
 
 function carouselGo(track, n, smooth = true) {
@@ -17570,18 +17604,23 @@ function carouselGo(track, n, smooth = true) {
   // while a card filled the track; once the neighbours peek in, the card you
   // are going to sits a spacer's width in from the edge, and aligning edges
   // overshoots by exactly that much on every dot and every arrow.
-  const sr = slides[i].getBoundingClientRect(), tr = track.getBoundingClientRect();
-  const delta = (sr.left + sr.width / 2) - (tr.left + tr.width / 2);
-  // Lift the one-at-a-time rule for the length of this scroll. It exists to
-  // stop a FLICK running away across three cards; a move the page itself
-  // asked for is already deliberate, and leaving the rule on would clamp a
-  // dot press for a far card to the very next one. Off again once settled.
-  track.classList.add('is-jumping');
-  clearTimeout(track._jumpT);
-  track._jumpT = setTimeout(() => track.classList.remove('is-jumping'), 900);
-  // scrollBy, not scrollIntoView: the latter would also scroll the PAGE to bring
-  // the track into view, yanking the reader somewhere they did not ask to go.
-  track.scrollBy({ left: delta, behavior: (smooth && !prefersReducedMotion()) ? 'smooth' : 'auto' });
+  //
+  // ABSOLUTE, from the layout, rather than a scrollBy of a measured delta.
+  // This cost a whole card of overshoot and it is worth stating precisely: a
+  // relative scroll is composed with whatever scroll animation is already in
+  // flight, and re-enabling scroll-snap starts one. Releasing a swipe did
+  // both at once — snap began sliding to the nearest card while our scrollBy
+  // was measured against the position the finger left — so a one-card move
+  // became a two-card move. Traced: delta read ~320px where the geometry
+  // called for 90. scrollTo of a computed position cannot be composed with
+  // anything, and the arithmetic is the same relationship carouselActive
+  // already reads positions by, so the two can never disagree.
+  //
+  // (scrollTo, not scrollIntoView: the latter would also scroll the PAGE to
+  // bring the track into view, yanking the reader somewhere they did not ask
+  // to go.)
+  const left = slides[i].offsetLeft + slides[i].offsetWidth / 2 - track.clientWidth / 2;
+  track.scrollTo({ left, behavior: (smooth && !prefersReducedMotion()) ? 'smooth' : 'auto' });
 }
 
 function prefersReducedMotion() {
@@ -17659,14 +17698,11 @@ function initCarousel(track) {
     carouselFit(track, carouselSlides(track), false);
     clearTimeout(settle);
     settle = setTimeout(() => {
-      // Snapped and stopped: take its height, and put the one-card-per-flick
-      // rule back the moment a programmatic scroll has finished with it. The
-      // 900ms in carouselGo is only the backstop for a scroll that emits no
-      // events at all (already there, nothing to move); going by the scroll
-      // itself keeps the rule off for as long as the move lasts and no longer,
-      // so a finger landing just after autoplay still gets one card.
-      track.classList.remove('is-jumping');
-      paint();
+      // Stopped. Snapping goes back on only now: through the release
+      // animation it would be a second thing moving the track, which is
+      // exactly how a one-card swipe became a two-card one.
+      track.classList.remove('is-dragging');
+      paint();                                   // settled: take its height
     }, 160);
     if (frame) return;
     frame = requestAnimationFrame(() => { frame = 0; paint(); });
@@ -17729,6 +17765,69 @@ function initCarousel(track) {
   // produces, see below.
   function defer() { stop(); start(); }
   track._cdDefer = defer;
+
+  // ── The swipe, handled here rather than by the browser ──────────────────
+  // Paired with `touch-action: pan-y` in the stylesheet, which is what stops
+  // the browser scrolling this track itself: no native fling, so nothing
+  // carries momentum across three cards, and the decision is made on the main
+  // thread instead of on the compositor. See the CSS comment for why the two
+  // earlier scroll-snap-stop attempts could not have worked.
+  //
+  // Only the card track. The picture strips inside a card are a carousel too
+  // and they are fine as they are — small frames where a fling that runs a
+  // couple along is no loss, and taking their gesture would mean a finger
+  // crossing a photo could no longer scroll the page.
+  if (track.classList.contains('cd-wrap')) {
+    // Below this, which way the finger is going is guesswork; above it, the
+    // axis is decided once and does not change for the rest of the gesture,
+    // so a drifting thumb cannot flip a page-scroll into a card change.
+    const SLOP = 8;
+    let gId = -1, gx = 0, gy = 0, gLeft = 0, axis = '';
+    track.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'touch' || track._cdPaused) return;
+      gId = e.pointerId; gx = e.clientX; gy = e.clientY; gLeft = track.scrollLeft; axis = '';
+      track._loopShift = 0;
+    }, { passive: true });
+    // On the DOCUMENT: a swipe that runs past the edge of the card stops
+    // sending the track anything, and the move would die halfway with the
+    // drag never released. Keyed by pointerId so a second finger elsewhere on
+    // the page cannot steer it.
+    document.addEventListener('pointermove', (e) => {
+      if (e.pointerId !== gId) return;
+      const dx = e.clientX - gx, dy = e.clientY - gy;
+      if (!axis) {
+        if (Math.abs(dx) < SLOP && Math.abs(dy) < SLOP) return;
+        if (Math.abs(dx) <= Math.abs(dy)) { axis = 'y'; gId = -1; return; }  // the page's gesture
+        axis = 'x';
+        track.classList.add('is-dragging');
+      }
+      // Take up any rotation the loop did under us, so the anchor still means
+      // the same card it did when the finger landed.
+      if (track._loopShift) { gLeft += track._loopShift; track._loopShift = 0; }
+      track.scrollLeft = gLeft - dx;        // the cards follow the finger
+    }, { passive: true });
+    const release = (e) => {
+      if (e.pointerId !== gId) return;
+      gId = -1;
+      if (axis !== 'x') return;
+      axis = '';
+      const slides = carouselSlides(track);
+      // Take up a rotation the loop did since the last move, or the anchor
+      // below names the card next door.
+      if (track._loopShift) { gLeft += track._loopShift; track._loopShift = 0; }
+      // Measured from where the finger LANDED, and one card at most however
+      // far the drag ran: that is the whole point of owning the gesture.
+      const from = carouselActive(track, slides, gLeft);
+      const dx = e.clientX - gx;
+      // A twelfth of the track, floored at 30px — below that it reads as a
+      // tap that wobbled, and the card it came from is the one to return to.
+      const far = Math.abs(dx) >= Math.max(30, track.clientWidth * 0.12);
+      carouselGo(track, from + (far ? (dx < 0 ? 1 : -1) : 0));
+      defer();
+    };
+    ['pointerup', 'pointercancel'].forEach(ev =>
+      document.addEventListener(ev, release, { passive: true }));
+  }
   if (every) {
     // Focus landing inside is a keyboard user reading; that one stays put
     // rather than resuming under them.
