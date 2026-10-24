@@ -62,6 +62,15 @@ const state=(page)=>page.evaluate(()=>{
     cardW: slides[0]?Math.round(slides[0].getBoundingClientRect().width):0,
     trackW: Math.round(t.clientWidth), trackH: Math.round(t.getBoundingClientRect().height),
     pageOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+    // How many pixels of the NEXT card fall inside the track's own box. This
+    // is the whole point of side-by-side, and it is measured off the rendered
+    // rectangles rather than inferred from the widths.
+    neighbourVisible: (()=>{
+      const tb=t.getBoundingClientRect(), nx=slides[at+1]||slides[at-1];
+      if(!nx) return 0;
+      const b=nx.getBoundingClientRect();
+      return Math.round(Math.max(0, Math.min(b.right,tb.right)-Math.max(b.left,tb.left)));
+    })(),
     active: slides[at]?.className.split(' ').find(c=>c.startsWith('cd-card-'))||slides[at]?.dataset.slug};
 });
 
@@ -90,7 +99,23 @@ console.log('--- the countdown cards, on the home page');
                     : bad('and the carousel opens on PRESS PLAY',`opens on ${got[0]}`);
   s.dots===s.slides ? ok('one dot per slide',`${s.dots}`) : bad('one dot per slide',`${s.dots} dots / ${s.slides} slides`);
   s.navHidden===false ? ok('the controls are shown') : bad('the controls are shown',`hidden=${s.navHidden}`);
-  s.cardW===s.trackW ? ok('one card fills the view',`${s.cardW}px`) : bad('one card fills the view',`card ${s.cardW} vs track ${s.trackW}`);
+  // Side by side: a card no longer fills the track, because the neighbours
+  // have to show at the edges — otherwise the row reads as a single card that
+  // changes when you are not looking, and nothing tells you there are five
+  // more. Between 75% and 92%: narrower and the card itself starts to suffer,
+  // wider and the peek is a sliver nobody notices.
+  const ratio = s.cardW / s.trackW;
+  (ratio > 0.75 && ratio < 0.92)
+    ? ok('a card leaves room for its neighbours',`${s.cardW} of ${s.trackW}px, ${Math.round(ratio*100)}%`)
+    : bad('a card leaves room for its neighbours',`${s.cardW} of ${s.trackW}px, ${Math.round(ratio*100)}%`);
+  // And they are actually ON SCREEN, which the ratio alone does not prove —
+  // a gap, or an edge fade, big enough to hide them passes the check above.
+  // Both of those happened: the first attempt scored 84% here and showed an
+  // 11px sliver under a fade that covered it, which is no peek at all. 18px
+  // is about where a strip of a card starts reading as a card.
+  s.neighbourVisible >= 18
+    ? ok('and the next countdown really is visible',`${s.neighbourVisible}px of it`)
+    : bad('and the next countdown really is visible',`only ${s.neighbourVisible}px — too thin to read as a card`);
   s.horiz ? ok('the track scrolls sideways') : bad('the track scrolls sideways');
   !s.pageOverflow ? ok('and the PAGE does not') : bad('and the PAGE does not');
   s.lit===0 ? ok('the first dot is lit') : bad('the first dot is lit',`lit=${s.lit}`);
@@ -164,11 +189,17 @@ console.log('--- the deep link shows one card, so there is nothing to page throu
     const t=document.querySelector('#home-countdowns > .cd-wrap');
     const nav=document.querySelector('#home-countdowns > [data-carousel-nav]');
     const vis=[...t.children].filter(c=>getComputedStyle(c).display!=='none');
-    return {slides:vis.length, navHidden:nav.hidden, dots:nav.querySelectorAll('.cd-dot').length};
+    return {slides:vis.length, navHidden:nav.hidden, dots:nav.querySelectorAll('.cd-dot').length,
+            cardW: vis[0]?Math.round(vis[0].getBoundingClientRect().width):0,
+            trackW: Math.round(t.clientWidth)};
   });
   s.slides===1 ? ok('one slide') : bad('one slide',`${s.slides}`);
   s.navHidden===true ? ok('and the controls take themselves away') : bad('and the controls take themselves away');
   s.dots<=1 ? ok('no stale dots left over',`${s.dots}`) : bad('no stale dots left over',`${s.dots}`);
+  // With no neighbours to peek at, leaving room for them only makes the card
+  // narrow for nothing — so the single-slide case goes back to filling.
+  Math.abs(s.cardW-s.trackW)<=2 ? ok('and it fills the view, with nothing to peek at',`${s.cardW}px`)
+                                : bad('and it fills the view, with nothing to peek at',`card ${s.cardW} vs track ${s.trackW}`);
   await page.close();
 }
 
