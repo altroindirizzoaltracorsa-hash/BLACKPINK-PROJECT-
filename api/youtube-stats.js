@@ -9,6 +9,13 @@
 //
 // Env: YOUTUBE_API_KEY (required); UPSTASH_REDIS_REST_URL / _TOKEN (optional cache).
 
+// SECOND DATABASE (optional) — see the note in api/streams.js. Reads
+// UPSTASH_REDIS_REST_URL_B/_TOKEN_B when both are set, otherwise the primary.
+// This endpoint's data regenerates on its own schedule, so a fresh store costs
+// it history, not correctness.
+const storeUrl = () => process.env.UPSTASH_REDIS_REST_URL_B || process.env.UPSTASH_REDIS_REST_URL;
+const storeToken = () => process.env.UPSTASH_REDIS_REST_TOKEN_B || process.env.UPSTASH_REDIS_REST_TOKEN;
+
 const YT_API = 'https://www.googleapis.com/youtube/v3/videos';
 const CACHE_TTL = 14; // seconds — just under the 15s client poll so points stay fresh
 const LIVE_MAX = 5760; // fine points kept per video (~24h at ~15s)
@@ -121,11 +128,11 @@ function mergeCrossings(stored, derived) {
 }
 
 async function upstashPipe(cmds) {
-  if (!process.env.UPSTASH_REDIS_REST_URL) return;
+  if (!storeUrl()) return;
   try {
-    await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
+    await fetch(`${storeUrl()}/pipeline`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${storeToken()}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(cmds),
     });
   } catch {}
@@ -168,11 +175,11 @@ function parseHash(result) {
 }
 
 async function upstashRead(cmds) {
-  if (!process.env.UPSTASH_REDIS_REST_URL) return [];
+  if (!storeUrl()) return [];
   try {
-    const r = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
+    const r = await fetch(`${storeUrl()}/pipeline`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${storeToken()}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(cmds),
     });
     return await r.json();
@@ -180,10 +187,10 @@ async function upstashRead(cmds) {
 }
 
 async function upstashGet(k) {
-  if (!process.env.UPSTASH_REDIS_REST_URL) return null;
+  if (!storeUrl()) return null;
   try {
-    const r = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/get/${encodeURIComponent(k)}`, {
-      headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}` },
+    const r = await fetch(`${storeUrl()}/get/${encodeURIComponent(k)}`, {
+      headers: { Authorization: `Bearer ${storeToken()}` },
     });
     const d = await r.json();
     if (d.result == null) return null;
@@ -191,11 +198,11 @@ async function upstashGet(k) {
   } catch { return null; }
 }
 async function upstashSetEx(k, v, ttl) {
-  if (!process.env.UPSTASH_REDIS_REST_URL) return;
+  if (!storeUrl()) return;
   try {
-    await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
+    await fetch(`${storeUrl()}/pipeline`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${storeToken()}`, 'Content-Type': 'application/json' },
       body: JSON.stringify([['SET', k, JSON.stringify(v), 'EX', String(ttl)]]),
     });
   } catch {}

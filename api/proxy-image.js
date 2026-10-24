@@ -492,9 +492,16 @@ async function storeGlobalSnapshot(date, jumpTotal, shutdownTotal, ddududuTotal)
   }
 }
 
+// SECOND DATABASE (optional) — see the note in api/streams.js. Reads
+// UPSTASH_REDIS_REST_URL_B/_TOKEN_B when both are set, otherwise the primary.
+// This endpoint's data regenerates on its own schedule, so a fresh store costs
+// it history, not correctness.
+const storeUrl = () => process.env.UPSTASH_REDIS_REST_URL_B || process.env.UPSTASH_REDIS_REST_URL;
+const storeToken = () => process.env.UPSTASH_REDIS_REST_TOKEN_B || process.env.UPSTASH_REDIS_REST_TOKEN;
+
 async function upstashGet(key) {
-  const r = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/get/${encodeURIComponent(key)}`, {
-    headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}` },
+  const r = await fetch(`${storeUrl()}/get/${encodeURIComponent(key)}`, {
+    headers: { Authorization: `Bearer ${storeToken()}` },
   });
   const d = await r.json();
   if (d.result === null || d.result === undefined) return null;
@@ -502,20 +509,20 @@ async function upstashGet(key) {
 }
 
 async function upstashSet(key, value) {
-  await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
+  await fetch(`${storeUrl()}/pipeline`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${storeToken()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify([['SET', key, JSON.stringify(value)]]),
   });
 }
 
 // SET with an expiry, for the Musicat stale-while-error cache below.
 async function upstashSetEx(key, value, ttlSeconds) {
-  if (!process.env.UPSTASH_REDIS_REST_URL) return;
+  if (!storeUrl()) return;
   try {
-    await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
+    await fetch(`${storeUrl()}/pipeline`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${storeToken()}`, 'Content-Type': 'application/json' },
       body: JSON.stringify([['SET', key, JSON.stringify(value), 'EX', String(ttlSeconds)]]),
     });
   } catch {}
@@ -528,7 +535,7 @@ export default async function handler(req, res) {
 
   // ── GET ?global_milestones=list (public) ──────────────────────��───────────
   if (req.query.global_milestones === 'list') {
-    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ milestones: [] });
+    if (!storeUrl()) return res.status(200).json({ milestones: [] });
     try {
       const milestones = await upstashGet('bu_global_milestones_list');
       return res.status(200).json({ milestones: Array.isArray(milestones) ? milestones : [] });
@@ -540,7 +547,7 @@ export default async function handler(req, res) {
     const adminSecret = process.env.ADMIN_SECRET;
     const key = req.headers['x-admin-secret'] || req.query.key;
     if (!adminSecret || key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
-    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(500).json({ error: 'Redis not configured' });
+    if (!storeUrl()) return res.status(500).json({ error: 'Redis not configured' });
     const { track, milestone, total, date, art } = req.query;
     if (!track || !milestone || !total) return res.status(400).json({ error: 'Required: track, milestone, total' });
     const msNum    = Number(milestone);
@@ -564,7 +571,7 @@ export default async function handler(req, res) {
 
   // ── GET ?artist_charts=list (public) ────────────────────────────────────────
   if (req.query.artist_charts === 'list') {
-    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ entries: [] });
+    if (!storeUrl()) return res.status(200).json({ entries: [] });
     try {
       const entries = await upstashGet('bu_artist_charts');
       return res.status(200).json({ entries: Array.isArray(entries) ? entries : [] });
@@ -576,7 +583,7 @@ export default async function handler(req, res) {
     const adminSecret = process.env.ADMIN_SECRET;
     const key = req.headers['x-admin-secret'] || req.query.key;
     if (!adminSecret || key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
-    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(500).json({ error: 'Redis not configured' });
+    if (!storeUrl()) return res.status(500).json({ error: 'Redis not configured' });
     const { artist, position, change, chartName, region, date, art } = req.query;
     if (!artist || !position) return res.status(400).json({ error: 'artist and position required' });
     const pos = parseInt(position, 10);
@@ -607,7 +614,7 @@ export default async function handler(req, res) {
     const adminSecret = process.env.ADMIN_SECRET;
     const key = req.headers['x-admin-secret'] || req.query.key;
     if (!adminSecret || key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
-    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(500).json({ error: 'Redis not configured' });
+    if (!storeUrl()) return res.status(500).json({ error: 'Redis not configured' });
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: 'id required' });
     let existing = [];
@@ -619,7 +626,7 @@ export default async function handler(req, res) {
 
   // ── GET ?ltal_goals=list (public) — campaign-goal checkmarks + meta ─────────
   if (req.query.ltal_goals === 'list') {
-    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ reached: {}, yt_mv_views: null, countries: null });
+    if (!storeUrl()) return res.status(200).json({ reached: {}, yt_mv_views: null, countries: null });
     try {
       const stored = await upstashGet('bu_ltal_goals');
       const obj = (stored && typeof stored === 'object') ? stored : {};
@@ -640,7 +647,7 @@ export default async function handler(req, res) {
     const adminSecret = process.env.ADMIN_SECRET;
     const key = req.headers['x-admin-secret'] || req.query.key;
     if (!adminSecret || key !== adminSecret) return res.status(401).json({ error: 'Unauthorized' });
-    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(500).json({ error: 'Redis not configured' });
+    if (!storeUrl()) return res.status(500).json({ error: 'Redis not configured' });
 
     let stored = {};
     try { stored = (await upstashGet('bu_ltal_goals')) || {}; if (typeof stored !== 'object') stored = {}; } catch {}
@@ -760,7 +767,7 @@ export default async function handler(req, res) {
       req.query.jisoo_save === 'count'  || req.query.jisoo_save === 'increment' ||
       req.query.addicted_save === 'count' || req.query.addicted_save === 'increment' ||
       req.query.newtrick_save === 'count' || req.query.newtrick_save === 'increment') {
-    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ count: 0 });
+    if (!storeUrl()) return res.status(200).json({ count: 0 });
     const campaign = req.query.jisoo_save != null ? 'jisoo'
                    : req.query.addicted_save != null ? 'addicted'
                    : req.query.lisa_save != null ? 'lisa'
@@ -776,8 +783,8 @@ export default async function handler(req, res) {
               : 'bu_jennie_ltal_saves';
     try {
       if (action === 'increment') {
-        const r = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/incr/${KEY}`, {
-          headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}` },
+        const r = await fetch(`${storeUrl()}/incr/${KEY}`, {
+          headers: { Authorization: `Bearer ${storeToken()}` },
         });
         const d = await r.json();
         return res.status(200).json({ count: Number(d.result) || 0 });
@@ -941,7 +948,7 @@ export default async function handler(req, res) {
     // members are gone from that chart → serve empty, not the stale last-known rows.
     // Countries merely SKIPPED on the latest run aren't in the marker, so they keep
     // showing their last-known data instead of being wrongly blanked.
-    if (process.env.UPSTASH_REDIS_REST_URL) {
+    if (storeUrl()) {
       try {
         const run = await upstashGet(`bu_songchart_run_${chartType}`);
         if (run && run.date > latest.tracking_date && Array.isArray(run.countries) && run.countries.includes(country)) {
@@ -1086,7 +1093,7 @@ export default async function handler(req, res) {
   // view's chart only if it actually changed. One heavy fetch max per view per
   // window keeps us well under Spotify's rate limit and the function timeout.
   if (req.query.charts === 'visit-refresh') {
-    if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.ADMIN_SECRET) return res.status(200).json({ ok: false });
+    if (!storeUrl() || !process.env.ADMIN_SECRET) return res.status(200).json({ ok: false });
     const view = ['songs', 'artists', 'albums'].includes(req.query.view) ? req.query.view : 'songs';
     const CFG = {
       songs:   { fpKey: 'bu_chart_fp_song_daily',   kind: 'regional', type: 'daily',  fetch: 'fetch-songs&type=daily'   },
@@ -1218,7 +1225,7 @@ export default async function handler(req, res) {
     const bearer = req.headers.authorization === `Bearer ${cronSecret}` && cronSecret;
     const adminKey = (req.headers['x-admin-secret'] || req.query.key) === adminSecret && adminSecret;
     if (!bearer && !adminKey) return res.status(401).json({ error: 'Unauthorized' });
-    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(500).json({ error: 'Redis not configured' });
+    if (!storeUrl()) return res.status(500).json({ error: 'Redis not configured' });
 
     const today = new Date().toISOString().slice(0, 10);
     try {
@@ -1395,7 +1402,7 @@ export default async function handler(req, res) {
       // genuine drop-off ("checked, members no longer here") apart from a transient
       // skip ("didn't manage to check this run") — so departed songs stop lingering
       // as stale rows without blanking countries that were merely rate-limited.
-      if (process.env.UPSTASH_REDIS_REST_URL) {
+      if (storeUrl()) {
         try {
           for (const ct of wantTypes) {
             const failedForType = new Set(skipped.filter(s => s.chartType === ct).map(s => s.country.toUpperCase()));
@@ -1434,7 +1441,7 @@ export default async function handler(req, res) {
 
   // ── GET ?charts=list-albums&country=ALL|XX — members' weekly Top Albums ────
   if (req.query.charts === 'list-albums') {
-    if (!process.env.UPSTASH_REDIS_REST_URL) return res.status(200).json({ chartType: 'weekly', country: 'ALL', trackingDate: null, rows: [] });
+    if (!storeUrl()) return res.status(200).json({ chartType: 'weekly', country: 'ALL', trackingDate: null, rows: [] });
     let stored = {};
     try { stored = (await upstashGet('bu_album_charts')) || {}; } catch {}
     const all = Array.isArray(stored.rows) ? stored.rows : [];
@@ -1606,8 +1613,8 @@ export default async function handler(req, res) {
     if (!adminSecret || providedSecret !== adminSecret) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    const UPSTASH_URL   = process.env.UPSTASH_REDIS_REST_URL;
-    const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+    const UPSTASH_URL   = storeUrl();
+    const UPSTASH_TOKEN = storeToken();
     if (!UPSTASH_URL || !UPSTASH_TOKEN) {
       return res.status(500).json({ error: 'Missing UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN' });
     }

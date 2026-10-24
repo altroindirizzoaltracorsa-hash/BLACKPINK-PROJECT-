@@ -22,7 +22,24 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 // true 5-minute up/down for every charting song. Degrades to "NEW" (no
 // movement) if Redis is unavailable.
 let redis = null;
-try { redis = Redis.fromEnv(); } catch { redis = null; }
+// SECOND DATABASE (optional). Upstash suspended the primary on 2026-10-24 for
+// exceeding its free monthly bandwidth, and a free plan can neither export nor
+// browse a suspended database — the data is intact but unreachable until the
+// allowance resets on the 1st. Setting UPSTASH_REDIS_REST_URL_B/_TOKEN_B points
+// the endpoints whose data rebuilds itself at a fresh free database so the site
+// runs, while the leaderboard keeps using the primary and simply stays down:
+// bu_leaderboard_v1 is mutated in place rather than recomputed from Supabase,
+// so pointing IT at an empty store would start it at zero and never self-heal.
+// Leaving it be means it returns intact with nothing to merge.
+// Unset both vars and everything goes back to one database.
+function redisClient() {
+  const url = process.env.UPSTASH_REDIS_REST_URL_B;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN_B;
+  if (url && token) return new Redis({ url, token });
+  return Redis.fromEnv();
+}
+
+try { redis = redisClient(); } catch { redis = null; }
 const PREV_KEY = (chartKey) => 'kc5_prev:' + chartKey;
 const REBASE_MS = 270000; // 4.5 min — roll the baseline forward once this elapses
 

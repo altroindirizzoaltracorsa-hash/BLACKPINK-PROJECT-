@@ -1,6 +1,23 @@
 import { Redis } from '@upstash/redis';
 
-const redis = Redis.fromEnv();
+// SECOND DATABASE (optional). Upstash suspended the primary on 2026-10-24 for
+// exceeding its free monthly bandwidth, and a free plan can neither export nor
+// browse a suspended database — the data is intact but unreachable until the
+// allowance resets on the 1st. Setting UPSTASH_REDIS_REST_URL_B/_TOKEN_B points
+// the endpoints whose data rebuilds itself at a fresh free database so the site
+// runs, while the leaderboard keeps using the primary and simply stays down:
+// bu_leaderboard_v1 is mutated in place rather than recomputed from Supabase,
+// so pointing IT at an empty store would start it at zero and never self-heal.
+// Leaving it be means it returns intact with nothing to merge.
+// Unset both vars and everything goes back to one database.
+function redisClient() {
+  const url = process.env.UPSTASH_REDIS_REST_URL_B;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN_B;
+  if (url && token) return new Redis({ url, token });
+  return Redis.fromEnv();
+}
+
+const redis = redisClient();
 const KEY = 'bp_current_playlist';
 const OAUTH_REDIRECT_URI = 'https://blinksunited.com/api/spotify-oauth-callback';
 
