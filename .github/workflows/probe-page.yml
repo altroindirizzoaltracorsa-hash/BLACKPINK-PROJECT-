@@ -15,8 +15,12 @@ on:
     inputs:
       path:
         description: 'Path on www.blinksunited.com (e.g. /voting or /)'
-        required: true
+        required: false
         default: '/'
+      url:
+        description: 'Absolute URL to fetch INSTEAD of a path on our own site (e.g. https://www.jisoo.io/). The admin secret is never sent off-site.'
+        required: false
+        default: ''
       expect:
         description: 'Strings that must ALL be present, separated by |||'
         required: false
@@ -44,12 +48,33 @@ jobs:
           EXPECT: ${{ github.event.inputs.expect }}
           FORBID: ${{ github.event.inputs.forbid }}
           ADMIN: ${{ github.event.inputs.admin }}
+          URL: ${{ github.event.inputs.url }}
           SHOW: ${{ github.event.inputs.show }}
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
         run: |
           set -u
           BASE="https://www.blinksunited.com"
-          echo "===== GET $BASE$P ====="
+          TARGET="$BASE$P"
+          OFFSITE=0
+          if [ -n "$URL" ]; then
+            case "$URL" in
+              https://*|http://*) TARGET="$URL" ;;
+              *) echo "::error::url must be absolute http(s)"; exit 1 ;;
+            esac
+            # Our own host reached by absolute URL is still our own host.
+            case "$URL" in
+              https://www.blinksunited.com/*|https://blinksunited.com/*) OFFSITE=0 ;;
+              *) OFFSITE=1 ;;
+            esac
+          fi
+          # The admin secret authenticates US to OUR site. Sending it anywhere
+          # else hands a third party a credential, so off-site fetches drop it
+          # outright rather than trusting the caller not to ask.
+          if [ "$OFFSITE" = "1" ] && [ -n "$ADMIN" ]; then
+            echo "::error::refusing to send the admin secret off-site ($TARGET)"
+            exit 1
+          fi
+          echo "===== GET $TARGET ====="
           # -S so curl reports transport errors; the status line is echoed before
           # any pattern check so a 404 or a redirect is obvious on its own.
           # Admin-gated endpoints (/api/youtube-history and friends) answer 401
@@ -59,11 +84,12 @@ jobs:
           # target or a log line.
           if [ -n "$ADMIN" ]; then
             if [ -z "$ADMIN_KEY" ]; then echo "::error::admin=1 but ADMIN_KEY is not set"; exit 1; fi
-            code=$(curl -sSL -w '%{http_code}' -o /tmp/page \
-              -H "x-admin-secret: $ADMIN_KEY" "$BASE$P")
+            out=$(curl -sSL -w '%{http_code} %{url_effective}' -o /tmp/page \
+              -H "x-admin-secret: $ADMIN_KEY" "$TARGET")
           else
-            code=$(curl -sSL -w '%{http_code}' -o /tmp/page "$BASE$P")
+            out=$(curl -sSL -w '%{http_code} %{url_effective}' -o /tmp/page "$TARGET")
           fi
+          code=${out%% *}; EFF=${out#* }
           echo "HTTP $code · $(wc -c </tmp/page) bytes"
           if [ "$code" != "200" ]; then echo "::error::expected HTTP 200, got $code"; exit 1; fi
 
@@ -106,7 +132,12 @@ jobs:
           # The while loop above runs in a subshell (pipeline), so a variable set
           # inside it would not survive — failures go to a file instead.
           : > /tmp/failures; : > /tmp/results
-          echo "HTTP $code · $(wc -c </tmp/page) bytes · final URL $(curl -sSL -o /dev/null -w '%{url_effective}' "$BASE$P")" >> /tmp/results
+          # EFF is captured by the fetch above. This used to re-request the
+          # page purely to report where it landed — a second hit on every
+          # probe, and after the off-site change it would have re-requested
+          # the WRONG url, reporting our own site while having fetched
+          # somewhere else.
+          echo "HTTP $code · $(wc -c </tmp/page) bytes · final URL ${EFF:-$TARGET}" >> /tmp/results
           echo "----- must be present -----"; check expect "$EXPECT"
           echo "----- must be absent -----";  check forbid "$FORBID"
 
