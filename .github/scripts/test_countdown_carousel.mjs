@@ -11,7 +11,11 @@
 //   * the MV frames are display:none everywhere but the release page, and a
 //     child of a hidden parent still reports a display of its own — so their
 //     dots will happily appear on a home card with no strip behind them;
-//   * autoplay has to stop for good the first time somebody touches it;
+//   * autoplay has to stop for good once somebody TAKES IT OVER — and a
+//     finger landing on the track is not that. Binding it to touchstart meant
+//     one finger scrolling the page past the card killed the looping for the
+//     rest of the visit, which on a phone is every visit;
+//   * the arrows have to exist on a phone, at a size a thumb can hit;
 //   * and a swipe across the cards must not open the countdown underneath.
 //     That last one is TOUCH only: a mouse drag over a scroll container fires
 //     no click at all in Chromium, so a mouse "swipe" would pass this test
@@ -117,7 +121,12 @@ console.log('--- the countdown cards, on the home page');
     for (let i=0;i<slides.length;i++){
       const d=slides[i].getBoundingClientRect().left - t.getBoundingClientRect().left;
       t.scrollBy({left:d, behavior:'auto'});
-      await new Promise(r=>setTimeout(r,320));
+      // 320ms read the height mid-ease and made this a coin toss between runs.
+      // The settle is debounced 160ms after the scroll stops, and only THEN
+      // does the height start a 250ms transition — so nothing under 410ms can
+      // see the final value. The failures looked exactly like that: 701 vs
+      // 712, 850 vs 864, a height still travelling toward the right one.
+      await new Promise(r=>setTimeout(r,700));
       out.push({card:Math.round(slides[i].offsetHeight), track:Math.round(t.clientHeight)});
     }
     return out;
@@ -192,19 +201,108 @@ console.log('--- the MV frames inside the card');
   f=await read();
   f.at!==before ? ok('it advances on its own',`${before} → ${f.at}`) : bad('it advances on its own',`stuck at ${f.at}`);
   f.lit===f.at ? ok('and the dot keeps up') : bad('and the dot keeps up',`at ${f.at}, lit ${f.lit}`);
-  // Touch it, and it must stop for good.
-  await page.locator('.cd-card-lisa .cd-strip').dispatchEvent('pointerdown');
+  // A finger landing on the track is NOT a choice, and treating it as one is
+  // what made the looping die on a phone: hold() was bound to touchstart, so
+  // the first finger that was only scrolling the page past this card stopped
+  // it for the rest of the visit. A mostly-vertical drag is that finger.
+  const strip = page.locator('.cd-card-lisa .cd-strip');
+  const touch = (type, x, y) => strip.dispatchEvent(type,
+    { clientX: x, clientY: y, pointerId: 1, pointerType: 'touch', bubbles: true });
+  await touch('pointerdown', 100, 300);
+  await touch('pointermove', 104, 200);          // dy 100, dx 4 — a page scroll
+  await touch('pointerup',   104, 200);
   // Settle first. An autoplay tick fired just before the touch is still
   // scrolling smoothly, so reading the position now catches it mid-flight and
   // the comparison below fails on a carousel that did stop — which is how this
   // check went red once in four runs.
   await page.waitForTimeout(1200);
+  const scrolled=(await read()).at;
+  await page.waitForTimeout(7000);
+  const afterScroll=(await read()).at;
+  afterScroll!==scrolled ? ok('a finger only scrolling the page does not stop it',`${scrolled} → ${afterScroll}`)
+                         : bad('a finger only scrolling the page does not stop it',`stuck at ${scrolled}`);
+
+  // Same finger, but released past the card's edge — its pointerup lands on
+  // some other element, so a handler bound to the track would never see it
+  // and the pause taken on pointerdown would never lift.
+  await touch('pointerdown', 100, 300);
+  await touch('pointermove', 104, 180);
+  await page.evaluate(() => document.body.dispatchEvent(new PointerEvent('pointerup',
+    { bubbles: true, pointerId: 1, pointerType: 'touch', clientX: 104, clientY: 60 })));
+  await page.waitForTimeout(1200);
+  const offEdge=(await read()).at;
+  await page.waitForTimeout(7000);
+  const afterOffEdge=(await read()).at;
+  afterOffEdge!==offEdge ? ok('and a drag released off the card still lets it resume',`${offEdge} → ${afterOffEdge}`)
+                         : bad('and a drag released off the card still lets it resume',`stuck at ${offEdge}`);
+
+  // A sideways drag IS taking it over, and that holds for good.
+  await touch('pointerdown', 300, 300);
+  await touch('pointermove', 230, 303);          // dx 70, dy 3 — a real swipe
+  await touch('pointerup',   230, 303);
+  await page.waitForTimeout(1200);
   const held=(await read()).at;
-  await page.waitForTimeout(6000);
+  await page.waitForTimeout(7000);
   const after=(await read()).at;
-  after===held ? ok('and stops for good once you touch it',`held on ${held}`)
-               : bad('and stops for good once you touch it',`${held} → ${after}`);
+  after===held ? ok('and stops for good once you swipe it',`held on ${held}`)
+               : bad('and stops for good once you swipe it',`${held} → ${after}`);
   await page.close();
+}
+
+console.log('--- what a phone gets: arrows, dots and a carousel that runs itself');
+{
+  // isMobile, not just hasTouch: `@media (hover: none)` is what hid the arrows,
+  // and only mobile emulation sets that media feature.
+  const ctx=await browser.newContext({viewport:{width:390,height:900}, hasTouch:true, isMobile:true});
+  const page=await ctx.newPage();
+  await page.addInitScript(()=>{try{localStorage.setItem('bu_tutorial_seen','1');
+    localStorage.setItem('ltal_reminder_dismissed_v1','1');localStorage.setItem('ext_update_dismissed_1.9.7','1');}catch(e){}});
+  await page.goto(base+'/',{waitUntil:'domcontentloaded'});
+  await page.locator(TRACK).waitFor({timeout:20000});
+  await page.waitForTimeout(3000);
+  const controls=await page.evaluate(()=>{
+    const nav=document.querySelector('#home-countdowns > [data-carousel-nav]');
+    const arrows=nav?[...nav.querySelectorAll('.cd-arrow')]:[];
+    return {navHidden:nav?nav.hidden:null, dots:nav?nav.querySelectorAll('.cd-dot').length:0,
+      arrows:arrows.map(a=>{const r=a.getBoundingClientRect();
+        return {shown:getComputedStyle(a).display!=='none', w:Math.round(r.width), h:Math.round(r.height),
+                dir:a.dataset.carouselDir};})};
+  });
+  controls.arrows.length===2 ? ok('both arrows are in the nav') : bad('both arrows are in the nav',`${controls.arrows.length}`);
+  controls.arrows.every(a=>a.shown)
+    ? ok('and a phone can see them')
+    : bad('and a phone can see them','display:none — the (hover:none) rule is back');
+  // 44px is the smallest target a thumb reliably hits, and the reason they
+  // were hidden here in the first place was that 32px next to a card edge is
+  // not one. Showing them at 32px would repeat that mistake, not fix it.
+  const small=controls.arrows.filter(a=>a.w<40||a.h<40);
+  small.length ? bad('and they are big enough to hit',small.map(a=>`${a.w}×${a.h}`).join(', '))
+               : ok('and they are big enough to hit',controls.arrows.map(a=>`${a.w}×${a.h}`).join(', '));
+  controls.dots>1 ? ok('the dots are there too',`${controls.dots}`) : bad('the dots are there too',`${controls.dots}`);
+
+  // Tapping an arrow moves it, which is the whole point of showing them.
+  const where=()=>page.evaluate(()=>{const t=document.querySelector('#home-countdowns > .cd-wrap');
+    return Math.round(t.scrollLeft);});
+  const x0=await where();
+  await page.locator('#home-countdowns > [data-carousel-nav] [data-carousel-dir="1"]').tap();
+  await page.waitForTimeout(900);
+  const x1=await where();
+  x1>x0 ? ok('tapping › moves to the next countdown',`${x0} → ${x1}`)
+        : bad('tapping › moves to the next countdown',`${x0} → ${x1}`);
+
+  // And it runs on its own. The arrow tap above was a deliberate choice, so it
+  // has already held autoplay — reload to get an untouched carousel.
+  await page.goto(base+'/',{waitUntil:'domcontentloaded'});
+  await page.locator(TRACK).waitFor({timeout:20000});
+  await page.waitForTimeout(2500);
+  await page.locator(TRACK).scrollIntoViewIfNeeded().catch(()=>{});
+  await page.waitForTimeout(800);
+  const y0=await where();
+  await page.waitForTimeout(12000);              // the countdown carousel is 9000ms
+  const y1=await where();
+  y1!==y0 ? ok('and the countdowns advance on their own',`${y0} → ${y1}`)
+          : bad('and the countdowns advance on their own',`stuck at ${y0}`);
+  await ctx.close();
 }
 
 console.log('--- swiping the hub must not navigate away');
