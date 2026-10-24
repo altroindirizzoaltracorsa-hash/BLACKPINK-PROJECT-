@@ -135,6 +135,59 @@ tilt.after === tilt.rest
   ? ok('a cancelled drag — a carousel swipe — puts it back')
   : bad('a cancelled drag — a carousel swipe — puts it back', `${tilt.after} vs rest ${tilt.rest}`);
 
+// ── The angles are jisoo.io's, not ours ────────────────────────────────────
+// Read off that page: logoRoot.rotation.y = x*0.42 + idle*0.6, rotation.x =
+// -y*0.3, with the pointer normalised to −1…1. That is 24.06° of yaw and
+// 17.19° of pitch at the edges, and an idle drift of ±1.72° on a ~10.5s
+// cycle. They are pinned here because the first version was tuned by feel:
+// it read −0.5…0.5 into a 26° multiplier, so its real maximum was 13° — half
+// the reference — while the number in the source looked like a match. A
+// multiplier alone cannot be checked; the rendered angle can.
+const JS_IO = { yaw: 24.06, pitch: 17.19, idle: 1.72 };
+const angles = await page.evaluate(async () => {
+  const sky = document.querySelector('[data-addicted-sky]');
+  const logo = sky.querySelector('.ad-logo');
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const read = () => {
+    const m = new DOMMatrix(getComputedStyle(logo).transform);
+    const c = v => Math.max(-1, Math.min(1, v));
+    return { yaw: +(Math.asin(c(-m.m13)) * 180 / Math.PI).toFixed(2),
+             pitch: +(Math.asin(c(m.m23)) * 180 / Math.PI).toFixed(2) };
+  };
+  const at = (fx, fy) => { const r = sky.getBoundingClientRect();
+    const ev = t => sky.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true,
+      pointerId: 1, pointerType: 'mouse', clientX: r.left + r.width * fx, clientY: r.top + r.height * fy }));
+    ev('pointerdown'); ev('pointermove'); };
+  at(1, 0.5); await wait(280); const right = read();
+  at(0.5, 0);  await wait(280); const top = read();
+  const orbit = sky.querySelector('.ad-logo-orbit');
+  const anim = orbit ? getComputedStyle(orbit).animationName : '(no orbit)';
+  const dur  = orbit ? getComputedStyle(orbit).animationDuration : '';
+  return { right, top, anim, dur,
+           persp: getComputedStyle(sky).perspective,
+           skyH: Math.round(sky.getBoundingClientRect().height) };
+});
+const near = (got, want, tol = 0.6) => Math.abs(got - want) <= tol;
+near(angles.right.yaw, JS_IO.yaw)
+  ? ok("the yaw at the edge is jisoo.io's", `${angles.right.yaw}° vs ${JS_IO.yaw}°`)
+  : bad("the yaw at the edge is jisoo.io's", `${angles.right.yaw}° — that site turns ${JS_IO.yaw}°`);
+near(angles.top.pitch, JS_IO.pitch)
+  ? ok("and the pitch is too", `${angles.top.pitch}° vs ${JS_IO.pitch}°`)
+  : bad("and the pitch is too", `${angles.top.pitch}° — that site tips ${JS_IO.pitch}°`);
+angles.anim === 'ad-idle'
+  ? ok('the lockup drifts on its own, as theirs does', `${angles.anim} ${angles.dur}`)
+  : bad('the lockup drifts on its own, as theirs does', angles.anim);
+// Their camera is PerspectiveCamera(38°); the CSS equal of that is
+// (height/2)/tan(19°), which depends on the sky's height and so cannot be one
+// fixed px value. Checked as the relationship, not as a number.
+{
+  const want = Math.round((angles.skyH / 2) / Math.tan(19 * Math.PI / 180));
+  const got = parseFloat(angles.persp);
+  Math.abs(got - want) <= 6
+    ? ok('the perspective matches a 38° camera at this height', `${got}px for a ${angles.skyH}px sky`)
+    : bad('the perspective matches a 38° camera at this height', `${got}px, want ~${want}px`);
+}
+
 // ── And now with a REAL finger ─────────────────────────────────────────────
 // Everything above dispatches PointerEvents straight at the element, and
 // those are never cancelled — so they pass on a logo that does not move at
