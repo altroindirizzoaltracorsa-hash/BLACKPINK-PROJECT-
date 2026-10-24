@@ -136,6 +136,12 @@ jobs:
         if: always()
         run: node .github/scripts/test_track_wiring.mjs
 
+      # Spotify publishes its daily charts in arrears, so a row stamped with
+      # the fetch date is dated one to two days ahead of the data in it.
+      - name: Chart rows carry the chart's own date
+        if: always()
+        run: node .github/scripts/test_chart_dates.mjs
+
       # A video can carry a 24h mark and still never be recorded, in which case
       # the pin is silently never taken — nothing errors, the figure is just
       # gone. Tarantino lost its 24h number exactly that way.
