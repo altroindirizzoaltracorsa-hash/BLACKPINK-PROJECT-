@@ -25,6 +25,17 @@ const PAGES = {
 // shared link shows that specific countdown's card (title + date + art) instead
 // of the generic site preview.
 const COUNTDOWNS = {
+  addicted: {
+    title: 'JISOO — ADDICTED, Oct 30, 2026 | Countdown · BLINKS UNITED',
+    description: "Counting down to JISOO's ADDICTED — Oct 30, 2026 (1PM KST / 12AM EDT). Pre-save at jisoo.lnk.to/addicted.",
+  },
+  // Had a card and a /countdowns/newtrick link in the hub, but no entry here
+  // and no matcher line — so sharing it fell back to the generic site preview,
+  // silently. Found while adding ADDICTED; a slug needs all three.
+  newtrick: {
+    title: 'ROSÉ — new trick, Sep 17, 2026 | Countdown · BLINKS UNITED',
+    description: "ROSÉ's 'new trick' — world premiere Sep 17, 2026 (7PM EDT / Sep 18, 8AM KST).",
+  },
   'jisoo.io': {
     title: 'JISOO — Sep 4, 2026 | Countdown · BLINKS UNITED',
     description: "Counting down to JISOO — Sep 4, 2026 (1PM KST / 12AM EDT). CLICK jisoo.io.",
@@ -73,6 +84,7 @@ export const config = {
     '/countdowns',
     '/countdowns/jisoo.io', '/countdowns/jenn.ie', '/countdowns/hellosawadika.com',
     '/countdowns/lalisaofficial.com', '/countdowns/steps', '/countdowns/vmas',
+    '/countdowns/addicted', '/countdowns/newtrick',
   ],
 };
 
