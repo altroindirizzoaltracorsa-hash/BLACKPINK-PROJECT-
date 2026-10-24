@@ -403,6 +403,22 @@ async function getChartsAuthToken() {
 // subset so the caller can spread a full sweep across minutes and come back for
 // whatever was skipped. Filtered THROUGH the known list, never used directly:
 // the value ends up in a chart alias.
+// Which stored row is "the previous chart" for a row dated `date`, and whether
+// it is the group's most recent recorded run. Both lists are date-DESCENDING.
+//
+// A module-level function because it is the subtle half of dating rows by the
+// chart's own day rather than the fetch day, and a test cannot reach a closure
+// buried in a serverless handler — it can only retype it, which tests the copy
+// and passes while the original is wrong. `consecutive` means "the prior row
+// is the last run we recorded", not "the calendar day before": a gap in our
+// recording still leaves the row before it as the previous run, which is what
+// gates RE-ENTRY rather than a date subtraction.
+function priorForDate(priors, groupDates, date) {
+  const prior = (priors || []).find(p => p.tracking_date < date) || null;
+  const lastRun = (groupDates || []).find(d => d < date);
+  return { prior, consecutive: !!(prior && prior.tracking_date === lastRun) };
+}
+
 function chartCountriesFor(req) {
   const only = String(req.query.countries || '')
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -1248,7 +1264,18 @@ export default async function handler(req, res) {
     try {
       const token = await getChartsAuthToken();
       const rows = [];
+      // The chart states the day it covers, and the fetch date is not it.
+      // Spotify publishes in arrears: at 06:30 UTC on 2026-10-24 the service
+      // was still serving the 2026-10-22 chart. Stamping rows with "today"
+      // therefore dated every row one to two days ahead of the data in it, and
+      // /spotify-charts showed a two-day-old chart under today's heading.
+      // Taken per country, because they do not all roll over together.
+      const chartDateOf = d =>
+        d?.displayChart?.date
+        || d?.displayChart?.chartMetadata?.dimensions?.latestDate
+        || null;
       const collect = (country, chartType, data) => {
+        const chartDate = chartDateOf(data) || today;
         const entries = data?.entries ?? data?.displayChart?.entries ?? [];
         for (const entry of entries) {
           const meta = entry.trackMetadata || {};
@@ -1270,7 +1297,7 @@ export default async function handler(req, res) {
             country: country.toUpperCase(), chart_type: chartType, position: d.currentRank,
             previous_position: prevRank, position_change: prevRank != null ? prevRank - d.currentRank : null,
             peak_position: d.peakRank ?? null, days_on_chart: d.appearancesOnChart ?? null,
-            streams, total_streams: null, _es: es,
+            streams, total_streams: null, _es: es, _date: chartDate,
           });
         }
       };
@@ -1294,36 +1321,41 @@ export default async function handler(req, res) {
 
       // Compute streams_change + NEW/RE-ENTRY from our own stored history.
       let priorRows = [];
+      // A superset: the newest chart date in this batch bounds the query, and
+      // each row then picks the newest prior strictly before ITS OWN date.
+      const maxChartDate = rows.reduce((m, r) => (r._date > m ? r._date : m), '0000-00-00');
       if (rows.length) {
         const trackIds = [...new Set(rows.map(r => r.spotify_track_id).filter(Boolean))];
         const countries = [...new Set(rows.map(r => r.country))];
         if (trackIds.length) {
           const pr = await sbFetch(
-            `/chart_positions?spotify_track_id=in.(${trackIds.join(',')})&country=in.(${countries.join(',')})&tracking_date=lt.${today}` +
+            `/chart_positions?spotify_track_id=in.(${trackIds.join(',')})&country=in.(${countries.join(',')})&tracking_date=lt.${maxChartDate}` +
             `&select=spotify_track_id,country,chart_type,position,streams,tracking_date&order=tracking_date.desc`,
             { headers: { Accept: 'application/json' } },
           );
           if (pr.ok) priorRows = await pr.json();
         }
       }
-      const priorByKey = {}, lastRunByGroup = {};
-      for (const r of priorRows) {
+      // Kept as date-descending lists rather than a single newest, because
+      // "the previous chart" is now relative to each row's own date.
+      const priorsByKey = {}, groupDates = {};
+      for (const r of [...priorRows].sort((a, b) => b.tracking_date.localeCompare(a.tracking_date))) {
         const key = `${r.spotify_track_id}::${r.country}::${r.chart_type}`;
-        if (!(key in priorByKey)) priorByKey[key] = r;
+        (priorsByKey[key] ||= []).push(r);
         const g = `${r.country}::${r.chart_type}`;
-        if (!lastRunByGroup[g] || r.tracking_date > lastRunByGroup[g]) lastRunByGroup[g] = r.tracking_date;
+        (groupDates[g] ||= []).push(r.tracking_date);
       }
       const upsertRows = rows.map(r => {
         const key = `${r.spotify_track_id}::${r.country}::${r.chart_type}`;
-        const prior = priorByKey[key];
-        const consecutive = prior && prior.tracking_date === lastRunByGroup[`${r.country}::${r.chart_type}`];
+        const { prior, consecutive } = priorForDate(
+          priorsByKey[key], groupDates[`${r.country}::${r.chart_type}`], r._date);
         let entry_status;
         if (r._es.includes('NEW') || !prior) entry_status = 'NEW';
         else if (r._es.includes('RE') || !consecutive) entry_status = 'RE-ENTRY';
         else entry_status = r.position_change > 0 ? 'MOVED_UP' : r.position_change < 0 ? 'MOVED_DOWN' : 'NO_CHANGE';
         const streams_change = (consecutive && r.streams != null && prior.streams != null) ? r.streams - prior.streams : null;
-        const { _es, ...clean } = r;
-        return { ...clean, tracking_date: today, entry_status, streams_change };
+        const { _es, _date, ...clean } = r;
+        return { ...clean, tracking_date: _date, entry_status, streams_change };
       });
 
       if (upsertRows.length) {
@@ -1366,6 +1398,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         ok: true, date: today, upserted: upsertRows.length, skipped: skipped.length,
         requested: sweepCountries.length,
+        chartDates: [...new Set(upsertRows.map(r => r.tracking_date))].sort(),
         skippedCountries: unfetched,
         noChartCountries: noChart,
         matchedCountries: [...new Set(upsertRows.map(r => r.country))].sort(),
