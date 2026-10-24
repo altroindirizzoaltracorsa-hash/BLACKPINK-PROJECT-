@@ -57,8 +57,15 @@ const state=(page)=>page.evaluate(()=>{
   let at=0,g=Infinity;
   slides.forEach((s,i)=>{const d=Math.abs((s.offsetLeft+s.offsetWidth/2)-mid); if(d<g){g=d;at=i;}});
   const dots=nav?[...nav.querySelectorAll('.cd-dot')]:[];
+  // The loop moves cards between the ends, so where a card SITS is not where
+  // it comes in the running order. `at` is the DOM position of whatever is
+  // centred; `atLogical` is that card's place in the authored order, which is
+  // what the dots are indexed by.
+  const lg = (el)=> (el && el._cdLogical!=null) ? el._cdLogical : slides.indexOf(el);
   return {slides:slides.length, dots:dots.length, lit:dots.findIndex(d=>d.classList.contains('is-on')),
-    navHidden: nav?nav.hidden:null, at, horiz: t.scrollWidth>t.clientWidth+2,
+    navHidden: nav?nav.hidden:null, at, atLogical: lg(slides[at]),
+    showing: slides[at]?.dataset.slug,
+    horiz: t.scrollWidth>t.clientWidth+2,
     cardW: slides[0]?Math.round(slides[0].getBoundingClientRect().width):0,
     trackW: Math.round(t.clientWidth), trackH: Math.round(t.getBoundingClientRect().height),
     pageOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
@@ -92,16 +99,22 @@ console.log('--- the countdown cards, on the home page');
   // out, newest first. PRESS PLAY led this list until it was released on the
   // 23rd; a countdown to a date that has passed is not the thing to open on.
   const ORDER = ['addicted','steps','lalisaofficial.com','newtrick','jisoo.io','hellosawadika.com'];
+  // Read the AUTHORED order, not the DOM order: with looping on, the track
+  // rotates cards between its ends, so the DOM order is the running order
+  // turned by however many times it has wrapped.
   const got = await page.evaluate(()=>[...document.querySelectorAll('#home-countdowns > .cd-wrap > .cd-card')]
-    .map(c=>c.dataset.slug));
+    .map((c,i)=>({slug:c.dataset.slug, k: c._cdLogical!=null ? c._cdLogical : i}))
+    .sort((a,b)=>a.k-b.k).map(o=>o.slug));
   // Auto-discovered pre-releases are inserted ahead of everything on purpose,
   // so compare the hand-authored cards in the order they appear among them.
   const hand = got.filter(g=>ORDER.includes(g));
   JSON.stringify(hand)===JSON.stringify(ORDER)
     ? ok('they run in the order they are meant to', hand.join(' → '))
     : bad('they run in the order they are meant to', `got ${hand.join(' → ')}`);
-  got[0]===ORDER[0] ? ok('and the carousel opens on the next release',`${got[0]}`)
-                    : bad('and the carousel opens on the next release',`opens on ${got[0]}, want ${ORDER[0]}`);
+  // What is ON SCREEN at rest, which is the thing that matters and is not the
+  // same as what is first in the DOM once the track can rotate.
+  s.showing===ORDER[0] ? ok('and the carousel opens on the next release',`${s.showing}`)
+                       : bad('and the carousel opens on the next release',`opens on ${s.showing}, want ${ORDER[0]}`);
   s.dots===s.slides ? ok('one dot per slide',`${s.dots}`) : bad('one dot per slide',`${s.dots} dots / ${s.slides} slides`);
   s.navHidden===false ? ok('the controls are shown') : bad('the controls are shown',`hidden=${s.navHidden}`);
   // Side by side: a card no longer fills the track, because the neighbours
@@ -130,8 +143,13 @@ console.log('--- the countdown cards, on the home page');
     t.scrollBy({left:t.clientWidth*2, behavior:'auto'});});
   await page.waitForTimeout(600);
   s=await state(page);
-  (s.lit===s.at && s.at===2) ? ok('the dots follow the scroll position',`slide ${s.at}, "${s.active}"`)
-                             : bad('the dots follow the scroll position',`at ${s.at}, lit ${s.lit}`);
+  // The lit dot must name the card that is centred. Compared in the authored
+  // order, because that is what the dots are: a fixed row standing for the
+  // running order, not for where a card happens to sit after the track has
+  // rotated. Scrolling two slides on from the opener lands on the third card.
+  (s.lit===s.atLogical && s.atLogical===2)
+    ? ok('the dots follow the scroll position',`"${s.showing}", dot ${s.lit}`)
+    : bad('the dots follow the scroll position',`showing "${s.showing}" (order ${s.atLogical}), lit ${s.lit}`);
 
   // A dot is a destination, not a decoration.
   // Scoped to the countdown nav: the MV frames have dots of their own, inside
@@ -232,6 +250,80 @@ console.log('--- nothing hangs off the side of a card');
       : ok(`nothing overflows its card at ${w}px`);
     await page.close();
   }
+}
+
+console.log('--- it runs endlessly, in both directions');
+{
+  const page=await newPage();
+  await page.goto(base+'/',{waitUntil:'domcontentloaded'});
+  await page.locator(TRACK).waitFor({timeout:20000});
+  await page.waitForTimeout(3000);
+  // Which CARD is centred, and which dot is lit for it. Both matter: the loop
+  // works by moving cards in the DOM, so a card's position changes under it
+  // and a dot indexed by position would skate across the row every time the
+  // track turned over.
+  const where=()=>page.evaluate(()=>{
+    const t=document.querySelector('#home-countdowns > .cd-wrap');
+    const nav=document.querySelector('#home-countdowns > [data-carousel-nav]');
+    const sl=[...t.children].filter(c=>c.nodeType===1&&getComputedStyle(c).display!=='none');
+    const mid=t.scrollLeft+t.clientWidth/2;
+    let at=0,g=Infinity; sl.forEach((s,i)=>{const d=Math.abs((s.offsetLeft+s.offsetWidth/2)-mid); if(d<g){g=d;at=i;}});
+    const dots=[...nav.querySelectorAll('.cd-dot')];
+    return { slug: sl[at]?.dataset.slug, lit: dots.findIndex(d=>d.classList.contains('is-on')), n: sl.length };
+  });
+  const go=async(dir)=>{ await page.locator(`#home-countdowns > [data-carousel-nav] [data-carousel-dir="${dir}"]`).click();
+                         await page.waitForTimeout(850); return where(); };
+  const first=await where();
+  // All the way round and one past the end.
+  const seen=[first.slug];
+  let w=first;
+  for (let i=0;i<first.n;i++){ w=await go(1); seen.push(w.slug); }
+  const wrapped = seen[seen.length-1]===first.slug;
+  wrapped ? ok('forward past the last card carries on into the first',seen.join(' → '))
+          : bad('forward past the last card carries on into the first',seen.join(' → '));
+  new Set(seen.slice(0,first.n)).size===first.n
+    ? ok('and it passes every card exactly once on the way',`${first.n} cards`)
+    : bad('and it passes every card exactly once on the way',seen.join(','));
+  w.lit===first.lit ? ok('the dot comes back round with it',`dot ${w.lit}`)
+                    : bad('the dot comes back round with it',`dot ${w.lit}, started on ${first.lit}`);
+  // And backwards off the front edge.
+  const back=await go(-1);
+  back.slug!==first.slug && back.lit!==first.lit
+    ? ok('and back past the first carries on into the last',`${first.slug} ← ${back.slug}`)
+    : bad('and back past the first carries on into the last',JSON.stringify(back));
+  await page.close();
+}
+
+console.log('--- the hub lists them, it does not page through them');
+{
+  const page=await newPage();
+  await page.goto(base+'/countdowns',{waitUntil:'domcontentloaded'});
+  await page.locator(TRACK).waitFor({timeout:20000});
+  await page.waitForTimeout(3000);
+  const r=await page.evaluate(()=>{
+    const w=document.querySelector('#home-countdowns > .cd-wrap');
+    const nav=document.querySelector('#home-countdowns > [data-carousel-nav]');
+    const cards=[...w.children].filter(c=>c.nodeType===1&&getComputedStyle(c).display!=='none');
+    const tops=cards.map(c=>Math.round(c.getBoundingClientRect().top));
+    return { n: cards.length, dir: getComputedStyle(w).flexDirection,
+             stacked: new Set(tops).size===tops.length,
+             navHidden: nav?nav.hidden:null, inlineHeight: w.style.height||'',
+             dimmed: cards.filter(c=>c.classList.contains('is-ahead')).length,
+             widthsSame: new Set(cards.map(c=>Math.round(c.getBoundingClientRect().width))).size===1,
+             pageOverflow: document.documentElement.scrollWidth>window.innerWidth+1 };
+  });
+  r.n>=5 ? ok('every countdown is on the page',`${r.n}`) : bad('every countdown is on the page',`${r.n}`);
+  r.dir==='column' && r.stacked
+    ? ok('one under another, not side by side')
+    : bad('one under another, not side by side',JSON.stringify(r));
+  r.navHidden===true ? ok('and the carousel controls stand down')
+                     : bad('and the carousel controls stand down',`navHidden=${r.navHidden}`);
+  // A list has no single height to take and nothing to dim: both are carousel
+  // ideas that would be left behind on the cards if the switch were partial.
+  !r.inlineHeight ? ok('the track drops its fitted height') : bad('the track drops its fitted height',r.inlineHeight);
+  r.dimmed===0 ? ok('and nothing is dimmed as a neighbour') : bad('and nothing is dimmed as a neighbour',`${r.dimmed}`);
+  !r.pageOverflow ? ok('the page still does not scroll sideways') : bad('the page still does not scroll sideways');
+  await page.close();
 }
 
 console.log('--- the deep link shows one card, so there is nothing to page through');

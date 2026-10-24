@@ -59,6 +59,12 @@ const SPA = /^\/(countdowns|voting|vote|streams|charts|badges|leaderboard|accoun
 const server = createServer(async (req, res) => {
   const p = decodeURIComponent(req.url.split('?')[0]);
   // Stand in for the counter so the bar has a number to render.
+  // No service worker in tests. The page registers one and reloads once
+  // when it takes control — by design, so a visitor swaps to the fresh
+  // build — but inside a test that is a navigation landing in the middle
+  // of sampling, and it destroys the execution context. It cost three
+  // runs in ten before this.
+  if (p === '/sw.js') { res.writeHead(404); return res.end(''); }
   if (p === '/api/proxy-image' && /addicted_save=count/.test(req.url)) {
     res.writeHead(200, { 'content-type': 'application/json' });
     return res.end(JSON.stringify({ count: 37 }));
@@ -78,7 +84,15 @@ const errs = []; page.on('pageerror', e => errs.push(e.message));
 await page.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen','1');
   localStorage.setItem('ltal_reminder_dismissed_v1','1'); localStorage.setItem('ext_update_dismissed_1.9.7','1'); } catch (e) {} });
 await page.goto(`http://127.0.0.1:${server.address().port}/countdowns/addicted`, { waitUntil: 'load' });
-await page.waitForTimeout(3000);
+// Wait for the page to have FILLED IN, not for a number of seconds. The bar
+// arrives over a fetch, and the card now also pulls three.js and a 933KB
+// model alongside it; a fixed sleep that was comfortable before that went in
+// started losing a race about one run in three, and read an empty bar as a
+// broken one.
+await page.waitForFunction(() => {
+  const el = document.getElementById('addicted-goal-nums');
+  return typeof window.openAddictedCard === 'function' && el && /\d/.test(el.textContent || '');
+}, null, { timeout: 30000 }).catch(() => {});
 
 const r = await page.evaluate(() => {
   const el = id => document.getElementById(id);

@@ -3924,7 +3924,7 @@
              countdown card is a date, a clock and a row of buttons to take in,
              not one photograph. It only advances while it is actually on
              screen, so reading further down the page does not move it. -->
-        <div class="cd-wrap" data-carousel data-carousel-fit data-carousel-autoplay="9000" aria-label="Countdowns">
+        <div class="cd-wrap" data-carousel data-carousel-fit data-carousel-loop data-carousel-autoplay="9000" aria-label="Countdowns">
           <!-- JISOO — "ADDICTED", counted down at jisoo.io. ONE worldwide
                instant (13:00 KST = 04:00 UTC), confirmed rather than assumed:
                the same clock JISOO's CLICK used and the same one the jisoo.io
@@ -7008,8 +7008,35 @@ function setupCountdownsPage() {
   if (sec && mount && sec.parentElement !== mount) { mount.appendChild(sec); _cdMountedInHub = true; }
   _initCountdownsCardClicks();
   applyCountdownFilter(slug);
+  // The hub is the page you go to in order to SEE them all. A carousel there
+  // hides five of six behind a swipe and makes the page about the one you
+  // happen to be on — so on the hub they are a list, one under another, each
+  // at its own full height. A deep link shows one card and the question does
+  // not arise. The home page keeps the carousel.
+  cdListMode(!slug);
   renderHomeCountdowns();
   syncCarousels(mount || undefined);
+}
+
+// Turn the countdown carousel into a plain column, and back. Nothing is
+// re-created: the same cards stay where they are with the same state (the
+// ADDICTED card's WebGL context included), the track simply stops being a
+// scroller and the controls stand down.
+function cdListMode(on) {
+  const wrap = document.querySelector('#home-countdowns > .cd-wrap');
+  const nav = document.querySelector('#home-countdowns > [data-carousel-nav]');
+  if (!wrap) return;
+  wrap._cdPaused = !!on;
+  if (on) {
+    wrap.removeAttribute('data-carousel');
+    wrap.style.height = '';                       // carouselFit's inline height
+    wrap.classList.remove('is-single');
+    wrap.querySelectorAll(':scope > .cd-card.is-ahead').forEach(c => c.classList.remove('is-ahead'));
+    if (nav) nav.hidden = true;
+  } else {
+    wrap.setAttribute('data-carousel', '');
+    if (typeof wrap._carouselSync === 'function') wrap._carouselSync();
+  }
 }
 
 // On the /countdowns hub, clicking a card (anywhere except its own buttons/links)
@@ -7042,6 +7069,7 @@ function restoreHomeCountdowns() {
   // past block's visibility from this flag, so clearing it afterwards would send
   // the section home with the finished countdowns still showing.
   _cdMountedInHub = false;
+  cdListMode(false);
   applyCountdownFilter('');
 }
 function applyCountdownFilter(slug) {
@@ -17470,6 +17498,7 @@ function carouselActive(track, slides) {
 // card you are ON, and expands to the tallest for as long as you are moving, so
 // a taller neighbour is never clipped on its way past.
 function carouselFit(track, slides, settled) {
+  if (track._cdPaused) return;        // a list has no single height to take
   if (!('carouselFit' in track.dataset) || !slides.length) return;
   const h = settled ? slides[carouselActive(track, slides)].offsetHeight
                     : Math.max(...slides.map(s => s.offsetHeight));
@@ -17478,6 +17507,45 @@ function carouselFit(track, slides, settled) {
   // while the animation catches up. Settling back down can be eased.
   track.style.transition = (settled && !prefersReducedMotion()) ? 'height 0.25s ease' : 'none';
   track.style.height = h + 'px';
+}
+
+// ── Endless countdowns ───────────────────────────────────────────────────────
+// Opt in with data-carousel-loop. Past the last card you carry on into the
+// first, and back past the first you carry on into the last, with no rewind
+// in between.
+//
+// Done by MOVING a card from one end to the other and compensating the scroll
+// by exactly its width, never by cloning. These cards are not inert markup:
+// two carry ids, all carry handlers and scrobbler state, and ADDICTED holds a
+// live WebGL context. A clone would duplicate the ids and stand up a second
+// renderer; moving a node keeps every one of those intact.
+//
+// All the cards are the same width (flex: 0 0 80%), so one step is the gap
+// between any two neighbours' offsets, and the compensation is exact.
+function carouselLoopKeep(track) {
+  if (!('carouselLoop' in track.dataset) || track._cdPaused || track._loopBusy) return;
+  const slides = carouselSlides(track);
+  // Under three there is no "other end" to rotate towards worth having.
+  if (slides.length < 3) return;
+  const step = slides[1].offsetLeft - slides[0].offsetLeft;
+  if (step <= 0) return;
+  const at = carouselActive(track, slides);
+  // Keep at least one card on each side of the one being read, so forward and
+  // back always have somewhere real to go.
+  let move = 0;
+  // Read the position BEFORE touching the DOM. Moving a card inside a
+  // scroll-snap container makes the browser re-snap on the spot, so by the
+  // time the mutation returns, scrollLeft is already some other number — and
+  // a `+=` would add the compensation to that instead of to where we were.
+  // That is exactly how this first went wrong: the carousel opened one card
+  // along, because the shift was applied on top of a snap correction.
+  const before = track.scrollLeft;
+  if (at >= slides.length - 1) { track.appendChild(slides[0]); move = -step; }
+  else if (at <= 0) { track.insertBefore(slides[slides.length - 1], slides[0]); move = step; }
+  if (!move) return;
+  track._loopBusy = true;
+  track.scrollLeft = before + move;     // absolute, not relative
+  track._loopBusy = false;
 }
 
 function carouselGo(track, n, smooth = true) {
@@ -17503,11 +17571,15 @@ function prefersReducedMotion() {
 function initCarousel(track) {
   if (track._carouselInit) return;
   track._carouselInit = true;
+  // The running order as authored, kept on the elements so it survives the
+  // DOM rotation that looping does.
+  carouselSlides(track).forEach((el, i) => { el._cdLogical = i; });
   const nav = track.parentElement
     ? track.parentElement.querySelector(':scope > [data-carousel-nav]') : null;
   const dotBox = nav ? nav.querySelector('[data-carousel-dots]') : null;
 
   const paint = () => {
+    if (track._cdPaused) return;     // mounted as a list; nothing to lay out
     // Not rendered at all — the strip of MV frames is display:none everywhere
     // but the release's own page. Children of a hidden parent still report a
     // display of their own, so counting them would raise controls over nothing.
@@ -17524,13 +17596,23 @@ function initCarousel(track) {
       b.type = 'button';
       b.className = 'cd-dot';
       b.addEventListener('click', () => {
-        carouselGo(track, [...dotBox.children].indexOf(b));
+        const want = [...dotBox.children].indexOf(b);
+        const now = carouselSlides(track);
+        // Find where that card is RIGHT NOW, which rotation may have moved.
+        const pos = now.findIndex(el => (el._cdLogical != null ? el._cdLogical : now.indexOf(el)) === want);
+        carouselGo(track, pos < 0 ? want : pos);
         hold();                                   // a tap is a choice; stop moving it
       });
       dotBox.appendChild(b);
     }
     carouselFit(track, slides, true);
+    carouselLoopKeep(track);
     const at = carouselActive(track, slides);
+    // With looping on, a card's position in the DOM changes as the track
+    // rotates, so the dots are indexed by the CARD rather than by where it
+    // currently sits — otherwise the lit dot would jump across the row every
+    // time the loop turned over.
+    const logical = (el) => (el && el._cdLogical != null) ? el._cdLogical : slides.indexOf(el);
     // The cards either side are dimmed, so the peek reads as "there is more
     // here" rather than as two cards crowding the one you are reading. Only
     // on the card track: the picture strips inside a card are flush frames
@@ -17538,8 +17620,9 @@ function initCarousel(track) {
     if (track.classList.contains('cd-wrap')) {
       slides.forEach((s, i) => s.classList.toggle('is-ahead', i !== at));
     }
+    const lit = logical(slides[at]);
     [...dotBox.children].forEach((d, i) => {
-      d.classList.toggle('is-on', i === at);
+      d.classList.toggle('is-on', i === lit);
       d.setAttribute('aria-label', `Go to ${i + 1} of ${slides.length}`);
       d.setAttribute('aria-current', i === at ? 'true' : 'false');
     });
@@ -17591,7 +17674,7 @@ function initCarousel(track) {
       // Pointless and rude while off-screen or in a hidden tab — and with a
       // strip on each countdown, every one but the card being looked at is
       // parked off to the side of the carousel.
-      if (document.hidden || !track.clientWidth) return;
+      if (document.hidden || !track.clientWidth || track._cdPaused) return;
       const r = track.getBoundingClientRect();
       if (r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth) return;
       const slides = carouselSlides(track);
