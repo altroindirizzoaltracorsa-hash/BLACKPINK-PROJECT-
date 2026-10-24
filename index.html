@@ -2123,8 +2123,20 @@
     0%, 100% { transform: translate(-50%, -50%) rotateY(-1.72deg); }
     50%      { transform: translate(-50%, -50%) rotateY(1.72deg); }
   }
+  /* The model's canvas fills the sky. While it is up, the flat lockup and its
+     idle orbit stand down — two ADDICTEDs on one card would be a bug nobody
+     needs to see. */
+  .ad-gl { position: absolute; inset: 0; }
+  .ad-sky.has-gl .ad-logo-orbit { display: none; }
+  /* The one patch of the sky that claims a sideways drag, sized and placed on
+     the lockup itself. The canvas fills the whole sky, so giving IT pan-y
+     would mean a swipe anywhere on the art could no longer move the carousel
+     — the model would have quietly taken the gesture the flat card left
+     alone. Everything outside this box still swipes. */
+  .ad-grab { position: absolute; left: 50%; top: 50%; width: min(86%, 420px);
+    aspect-ratio: 1955 / 727; transform: translate(-50%, -50%);
+    touch-action: pan-y; }
   .ad-logo { display: block; width: 100%; height: auto;
-    touch-action: pan-y;
     transform: rotateX(var(--ad-rx, 0deg)) rotateY(var(--ad-ry, 0deg));
     /* No transition: the script eases the VALUES on jisoo.io's own curve
        (1 - exp(-dt*6)) every frame. A transition on top of that would damp an
@@ -4277,6 +4289,12 @@
                 <img class="ad-logo" src="/addicted/addicted-logo-full-v2.png" alt="JISOO — ADDICTED" loading="lazy"
                      onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cd-title ad-title-fallback',textContent:'ADDICTED'}))">
               </div>
+              <!-- The real model goes here once it has loaded, and the flat
+                   lockup above stays as the fallback: no WebGL, a refused
+                   context, a failed fetch, or Save-Data all leave the card
+                   exactly as it was rather than empty. -->
+              <div class="ad-gl" data-addicted-gl hidden></div>
+              <div class="ad-grab" aria-hidden="true"></div>
             </div>
             <div class="cd-eyebrow">JISOO · New Single · jisoo.io</div>
             <div class="cd-badge-chip ad-locket" id="addicted-badge" style="display:none;"><img src="/addicted/addicted-heart-lightning-v1.webp" alt="" aria-hidden="true">Early Supporter</div>
@@ -18376,6 +18394,62 @@ function adFitPerspective(sky) {
   if (!h) return;
   sky.style.perspective = Math.round((h / 2) / Math.tan((AD_FOV_DEG / 2) * Math.PI / 180)) + 'px';
 }
+// Bring the real model in when the card is about to be looked at, rather than
+// at page load. It is ~1.7MB of library and model; on the home page that is a
+// cost every visitor pays whether or not they ever reach this card, and
+// nothing about the card needs it to exist before then. Everything here fails
+// back to the flat lockup, which is already on screen and stays until the
+// model is genuinely ready.
+const AD_SCENE_URL = '/addicted/addicted-scene.js';
+const AD_MODEL_URL = '/addicted/addicted-logo-v6.glb';
+function adCanRun3D() {
+  try {
+    // Someone on a metered connection asked not to be sent 1.7MB.
+    if (navigator.connection && navigator.connection.saveData) return false;
+    const c = document.createElement('canvas');
+    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+  } catch (e) { return false; }
+}
+function adMountSceneWhenSeen(sky, reduce) {
+  const host = sky.querySelector('[data-addicted-gl]');
+  if (!host || sky._adSceneTried || !adCanRun3D()) return;
+
+  const mount = async () => {
+    if (sky._adSceneTried) return;
+    sky._adSceneTried = true;
+    try {
+      const mod = await import(AD_SCENE_URL);
+      const scene = await mod.mountAddictedScene(host, AD_MODEL_URL, { reduce });
+      host.hidden = false;
+      sky.classList.add('has-gl');
+      sky._adScene = scene;
+      // A card parked off to the side of the carousel does not need a render
+      // loop; neither does a hidden tab.
+      const seen = new IntersectionObserver((es) => {
+        es.forEach(e => (e.isIntersecting && !document.hidden) ? scene.start() : scene.stop());
+      }, { rootMargin: '100px' });
+      seen.observe(sky);
+      document.addEventListener('visibilitychange',
+        () => (document.hidden ? scene.stop() : scene.start()));
+    } catch (e) {
+      // The flat lockup is still there and still works. Nothing to undo.
+      host.remove();
+    }
+  };
+
+  if (!('IntersectionObserver' in window)) { mount(); return; }
+  // Watch the countdowns SECTION, not the card. On the home page the card is
+  // the sixth slide of a sideways carousel, so its own rect sits several
+  // screens off to the right and watching it would mean the model only ever
+  // loaded for someone who swiped that far. Reaching the countdowns is the
+  // trigger; whether you swipe to ADDICTED is not.
+  const watch = document.getElementById('home-countdowns') || sky.closest('.cd-card') || sky;
+  const io = new IntersectionObserver((entries) => {
+    if (entries.some(e => e.isIntersecting)) { io.disconnect(); mount(); }
+  }, { rootMargin: '400px' });   // a screenful of warning before it is needed
+  io.observe(watch);
+}
+
 function setupAddictedSky(sky) {
   if (!sky || sky._adInit) return;
   sky._adInit = true;
@@ -18383,11 +18457,14 @@ function setupAddictedSky(sky) {
   const reduce = prefersReducedMotion();
 
   // The sky's height changes with the card's width, so the perspective that
-  // matches a 38° camera changes with it.
+  // matches a 38° camera changes with it. Only the flat path needs this —
+  // the model carries its own camera.
   adFitPerspective(sky);
   if (window.ResizeObserver) {
     try { new ResizeObserver(() => adFitPerspective(sky)).observe(sky); } catch {}
   }
+
+  adMountSceneWhenSeen(sky, reduce);
 
   let clearing = 0;
   const strike = () => {
@@ -18442,14 +18519,20 @@ function setupAddictedSky(sky) {
     // Its own figures, in radians, converted once:
     //   rotation.y = x * 0.42   → 24.06°
     //   rotation.x = -y * 0.3   → 17.19°
-    tgX = ((ev.clientX - r.left) / r.width  - 0.5) * 2;
-    tgY = ((ev.clientY - r.top)  / r.height - 0.5) * 2;
+    const fx = (ev.clientX - r.left) / r.width, fy = (ev.clientY - r.top) / r.height;
+    // Once the model is up it runs its own chase on the same constant, so the
+    // pointer goes straight to it and the CSS path stands down. Two chases on
+    // one value would damp it twice.
+    if (sky._adScene) { sky._adScene.point(fx, fy); return; }
+    tgX = (fx - 0.5) * 2;
+    tgY = (fy - 0.5) * 2;
     chase();
   };
   // Rest is a target like any other — it is chased home on the same curve
   // rather than snapped, which is what that site does when the pointer goes.
   const rest = () => {
     sky.classList.remove('is-grabbed');
+    if (sky._adScene) { sky._adScene.rest(); return; }
     if (!logo || reduce) return;
     tgX = 0; tgY = 0;
     chase();
@@ -18460,7 +18543,17 @@ function setupAddictedSky(sky) {
   // pointerup lands ~80ms later and undoes it inside its own 90ms transition,
   // so nothing ever renders. Poke it on the left and it swings right.
   const knock = (fromLeft) => {
-    if (reduce || !logo) return;
+    if (reduce) return;
+    // With the model up, the poke is the same gesture expressed as a target:
+    // shove it to the far edge and let go, so it swings and settles on that
+    // site's own curve instead of a keyframe of ours.
+    if (sky._adScene) {
+      sky._adScene.point(fromLeft ? 1 : 0, 0.5);
+      clearTimeout(sky._adKnockT);
+      sky._adKnockT = setTimeout(() => sky._adScene && sky._adScene.rest(), 190);
+      return;
+    }
+    if (!logo) return;
     // Sized to that site's own maximum yaw. The poke itself is ours — jisoo.io
     // is a hover scene and has nothing for a tap that never moves.
     logo.style.setProperty('--ad-knock', (fromLeft ? 1 : -1) * AD_YAW_DEG + 'deg');
