@@ -90,10 +90,19 @@ console.log('--- and on the home carousel too, which is where people look');
   await page.locator('#home-countdowns > .cd-wrap').waitFor({timeout:20000});
   await page.waitForTimeout(3500);
   const r=await page.evaluate(()=>{
-    const strips=[...document.querySelectorAll('#home-countdowns .cd-strip')];
-    const navs=[...document.querySelectorAll('#home-countdowns .cd-strip-nav')];
+    // The LIVE row, not the whole section. #cd-past sits inside
+    // #home-countdowns and carries `hidden` on the home page, and CLICK moved
+    // in there on 2026-10-24 — so a query across the section counts a card
+    // nobody can see. Worse, it counted it as SHOWN: `hidden` puts
+    // display:none on the past block, and a strip inside it still reports a
+    // display of its own, which is the trap this file's own header warns
+    // about. offsetParent is the honest answer — null for anything inside a
+    // display:none ancestor — so the count cannot drift from what renders.
+    const live=document.querySelector('#home-countdowns > .cd-wrap');
+    const strips=[...live.querySelectorAll('.cd-strip')];
+    const navs=[...live.querySelectorAll('.cd-strip-nav')];
     return { strips: strips.length,
-             shown: strips.filter(e=>getComputedStyle(e).display!=='none').length,
+             shown: strips.filter(e=>e.offsetParent && getComputedStyle(e).display!=='none').length,
              withDots: navs.filter(n=>!n.hidden && n.querySelectorAll('.cd-dot').length>1).length,
              times: [...document.querySelectorAll('#home-countdowns .cd-card:not(.cd-card-lisa) .cd-times')]
                       .filter(e=>getComputedStyle(e).display!=='none').length,
@@ -103,9 +112,12 @@ console.log('--- and on the home carousel too, which is where people look');
              lisaTimes: [...document.querySelectorAll('#home-countdowns .cd-card-lisa .cd-times:not(.cd-playlists)')]
                       .filter(e=>getComputedStyle(e).display!=='none').length };
   });
-  r.shown===3 ? ok('all three strips are on the home page too',`${r.shown}/${r.strips}`)
-              : bad('all three strips are on the home page too',`${r.shown}/${r.strips} shown`);
-  r.withDots===3 ? ok('each with its dots') : bad('each with its dots',`${r.withDots}`);
+  // Two, not three: CLICK's strip is on CLICK's card, and that card is in the
+  // past block now rather than the home row. Its own section above still
+  // checks the strip itself, on /countdowns/jisoo.io where it is visible.
+  r.shown===2 ? ok('the live row carries its strips too',`${r.shown}/${r.strips}`)
+              : bad('the live row carries its strips too',`${r.shown}/${r.strips} shown`);
+  r.withDots===2 ? ok('each with its dots') : bad('each with its dots',`${r.withDots}`);
   r.times>0 ? ok("the other cards' own release times are untouched",`${r.times} shown`)
             : bad("the other cards' own release times are untouched",'they were hidden');
   r.lisaTimes===0 ? ok("and the MV's worldwide times stay on the release's own page")
