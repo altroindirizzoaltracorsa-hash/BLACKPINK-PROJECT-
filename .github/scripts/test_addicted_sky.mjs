@@ -75,21 +75,26 @@ const peakOpacity = async (act) => page.evaluate(async (doAct) => {
     bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch',
     clientX: r.left + r.width * x, clientY: r.top + r.height * y }));
   if (doAct) at(0.5, 0.5, 'pointerdown');
-  let peak = 0;
+  let peak = 0, low = 1;
   for (let i = 0; i < 60; i++) {           // ~1s at 60fps, the strike is 900ms
-    peak = Math.max(peak, parseFloat(getComputedStyle(bolt).opacity) || 0);
+    const o = parseFloat(getComputedStyle(bolt).opacity) || 0;
+    peak = Math.max(peak, o); low = Math.min(low, o);
     await new Promise(r2 => requestAnimationFrame(r2));
   }
   if (doAct) at(0.5, 0.5, 'pointerup');
-  return peak;
+  return { peak, low };
 }, act);
 
+// NOT "it never lights while untouched" — it does, on its own, every few
+// seconds, and the first version of this check went red the moment one of
+// those idle strikes landed inside the sample. What must be true is that it
+// comes back to dark, which is what a bolt stuck at opacity 1 would fail.
 const quiet = await peakOpacity(false);
-quiet < 0.2 ? ok('untouched, the bolt is dark', `peak opacity ${quiet.toFixed(2)}`)
-            : bad('untouched, the bolt is dark', `peak opacity ${quiet.toFixed(2)} — it should be waiting`);
+quiet.low < 0.05 ? ok('untouched, the bolt returns to dark', `down to ${quiet.low.toFixed(2)}`)
+                 : bad('untouched, the bolt returns to dark', `never below ${quiet.low.toFixed(2)} — it is stuck lit`);
 const struck = await peakOpacity(true);
-struck > 0.7 ? ok('touching the sky fires the lightning', `peak opacity ${struck.toFixed(2)}`)
-             : bad('touching the sky fires the lightning', `peak opacity ${struck.toFixed(2)}`);
+struck.peak > 0.7 ? ok('touching the sky fires the lightning', `peak opacity ${struck.peak.toFixed(2)}`)
+                  : bad('touching the sky fires the lightning', `peak opacity ${struck.peak.toFixed(2)}`);
 
 // ── The logo ───────────────────────────────────────────────────────────────
 // Three rendered transforms: at rest, dragged left, dragged right. The point
@@ -105,7 +110,10 @@ const tilt = await page.evaluate(async () => {
     bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch',
     clientX: b.left + b.width * x, clientY: b.top + b.height * y })); };
   const t = () => getComputedStyle(logo).transform;
-  await wait(500);
+  // The pointerup that ended the strike check above was a tap, so it set the
+  // lockup swinging — 640ms of it. Reading "rest" at 500ms caught the swing
+  // and then compared everything against a tilted baseline.
+  await wait(1500);
   const rest = t();
   at(0.04, 0.5, 'pointerdown'); at(0.04, 0.5, 'pointermove'); await wait(260);
   const left = t();
@@ -126,6 +134,76 @@ tilt.left !== tilt.rest
 tilt.after === tilt.rest
   ? ok('a cancelled drag — a carousel swipe — puts it back')
   : bad('a cancelled drag — a carousel swipe — puts it back', `${tilt.after} vs rest ${tilt.rest}`);
+
+// ── And now with a REAL finger ─────────────────────────────────────────────
+// Everything above dispatches PointerEvents straight at the element, and
+// those are never cancelled — so they pass on a logo that does not move at
+// all in a hand. That is not a hypothetical: it is what shipped. Chromium
+// claimed the drag for a scroll after two pointermoves, sent pointercancel,
+// and the logo rendered a rotation of 6.7e-08 degrees while this file
+// reported three different transforms and called it green.
+// So: drive the touch through CDP, let the browser decide what to do with
+// the gesture, and measure the rotation the way an eye would — a rotated
+// element projects NARROWER than it is laid out.
+const ctx = await browser.newContext({ viewport: { width: 390, height: 900 }, hasTouch: true, isMobile: true });
+const tp = await ctx.newPage();
+await tp.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen', '1');
+  localStorage.setItem('ltal_reminder_dismissed_v1', '1'); localStorage.setItem('ext_update_dismissed_1.9.7', '1'); } catch (e) {} });
+await tp.goto(`http://127.0.0.1:${server.address().port}/countdowns/addicted`, { waitUntil: 'load' });
+await tp.waitForTimeout(2500);
+// How far the lockup is actually turned, in degrees, read off the matrix the
+// browser composited. NOT the projected width, which was the first attempt
+// and is useless here: under perspective the near edge is magnified by about
+// as much as the far edge shrinks, so a real 4.7° turn moved the bounding box
+// by 0.19% and the check called it motionless.
+// The first column of the matrix is where the element's local X axis ended up,
+// so its out-of-screen component is the sine of the turn; same for Y with the
+// second column. One number, zero when flat on, whichever way it is tipped.
+const turnDeg = () => tp.evaluate(() => {
+  const l = document.querySelector('.ad-logo');
+  if (!l) return 0;
+  const t = getComputedStyle(l).transform;
+  if (!t || t === 'none') return 0;
+  const m = new DOMMatrix(t);
+  const out = Math.min(1, Math.hypot(m.m13, m.m23));
+  return Math.asin(out) * 180 / Math.PI;
+});
+const lbox = await tp.locator('[data-addicted-sky]').first().boundingBox();
+if (!lbox) { bad('the sky is reachable on a phone'); }
+else {
+  const cdp = await ctx.newCDPSession(tp);
+  const send = (type, x, y) => cdp.send('Input.dispatchTouchEvent',
+    { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+  const cx = lbox.x + lbox.width / 2, cy = lbox.y + lbox.height / 2;
+  const reach = lbox.width * 0.36;                 // centre out towards the edge
+  await tp.waitForTimeout(1200);                   // let any idle strike pass
+  const flat = await turnDeg();
+  await send('touchStart', cx, cy);
+  let peak = 0;
+  for (let i = 1; i <= 8; i++) {
+    await send('touchMove', cx + (reach * i) / 8, cy + 2);
+    await tp.waitForTimeout(45);
+    peak = Math.max(peak, await turnDeg());
+  }
+  await send('touchEnd', cx + reach, cy + 2);
+  flat < 1 ? ok('at rest the lockup is square on', `${flat.toFixed(2)}°`)
+           : bad('at rest the lockup is square on', `${flat.toFixed(2)}°`);
+  peak > 2 ? ok('a real finger turns it', `${peak.toFixed(1)}° at the furthest point`)
+           : bad('a real finger turns it',
+                 `only ${peak.toFixed(2)}° — the browser took the gesture and it never moved`);
+
+  // A poke that never drags has to move it too, or tapping the card does
+  // nothing at all and "touch the logo" is a lie on the commonest gesture.
+  await tp.waitForTimeout(1200);
+  await send('touchStart', cx - lbox.width * 0.2, cy);
+  await tp.waitForTimeout(30);
+  await send('touchEnd', cx - lbox.width * 0.2, cy);
+  let knock = 0;
+  for (let i = 0; i < 28; i++) { knock = Math.max(knock, await turnDeg()); await tp.waitForTimeout(25); }
+  knock > 4 ? ok('and a tap with no drag swings it', `${knock.toFixed(1)}° at the peak`)
+            : bad('and a tap with no drag swings it', `only ${knock.toFixed(2)}°`);
+  await ctx.close();
+}
 
 await browser.close(); server.close();
 console.log(fails ? `\n${fails} failure(s)` : '\nall good');

@@ -1731,7 +1731,31 @@
     scrollbar-width: none; -ms-overflow-style: none; }
   .cd-wrap[data-carousel]::-webkit-scrollbar { display: none; }
   .cd-wrap[data-carousel-fit] { overflow-y: hidden; }
-  .cd-wrap[data-carousel] > .cd-card { flex: 0 0 100%; min-width: 0; scroll-snap-align: center; }
+  /* Side by side: the next countdown and the last one show at the edges, so
+     the row reads as a row rather than as one card that changes when you are
+     not looking. The spacers are ::before/::after rather than padding — a
+     flex scroll container does not reliably include its end padding in the
+     scrollable area, and a pseudo-element is not in .children, so the slide
+     count, the dots and the active-slide maths are all untouched by them. */
+  .cd-wrap[data-carousel] { gap: 0.3rem; }
+  .cd-wrap[data-carousel]::before,
+  .cd-wrap[data-carousel]::after { content: ''; flex: 0 0 10%; }
+  .cd-wrap[data-carousel] > .cd-card { flex: 0 0 80%; min-width: 0; scroll-snap-align: center;
+    transition: opacity 0.3s ease; }
+  /* The first try put a fade over both edges so a clipped neighbour would not
+     end in a hard vertical cut. It read beautifully and defeated the point:
+     the sliver was 11px and the fade covered all of it, so the neighbours
+     were invisible — which is the one thing this change exists to fix. The
+     cards are simply dimmed instead, which separates them without hiding
+     them. is-ahead is set from paint(), off the real scroll position. */
+  .cd-wrap[data-carousel] > .cd-card.is-ahead { opacity: 0.45; }
+  /* A deep link shows exactly one card. Peeking at nothing just makes it
+     narrow, so the single-slide case goes back to filling the view. The class
+     is set from paint(), which already counts the slides. */
+  .cd-wrap[data-carousel].is-single { gap: 0; }
+  .cd-wrap[data-carousel].is-single::before,
+  .cd-wrap[data-carousel].is-single::after { flex-basis: 0; }
+  .cd-wrap[data-carousel].is-single > .cd-card { flex-basis: 100%; }
   .cd-nav { display: flex; align-items: center; justify-content: center; gap: 0.9rem; margin-top: 1rem; }
   .cd-nav[hidden] { display: none; }   /* author display:flex outranks the UA rule */
   .cd-dots { display: flex; align-items: center; justify-content: center; gap: 7px; }
@@ -2044,7 +2068,16 @@
   }
   /* The lockup rides above both. --ad-rx/--ad-ry are written by the script;
      with no script they stay 0 and this is simply a still. */
+  /* touch-action: pan-y is what makes it move AT ALL under a real finger.
+     With the default, Chromium claimed the drag for a scroll after two
+     pointermoves and sent pointercancel — measured: the logo rendered a
+     rotation of 6.7e-08 degrees, i.e. it never moved, while synthetic events
+     in a test moved it perfectly because nothing ever cancels those.
+     pan-y, not none: a vertical finger still scrolls the page as it should,
+     and only the sideways drag is kept for the logo. Dragging anywhere else
+     on the sky still swipes the carousel. */
   .ad-logo { position: absolute; left: 50%; top: 50%; width: min(86%, 420px); height: auto;
+    touch-action: pan-y;
     transform: translate(-50%, -50%) rotateX(var(--ad-rx, 0deg)) rotateY(var(--ad-ry, 0deg));
     transition: transform 420ms cubic-bezier(.22,.9,.3,1);
     filter: drop-shadow(0 6px 22px rgba(9,5,20,0.75)) drop-shadow(0 0 26px rgba(182,163,255,0.35));
@@ -2052,6 +2085,16 @@
   /* While a finger is down the logo tracks it directly — a 420ms ease on
      every move trails the finger by a third of a second. */
   .ad-sky.is-grabbed .ad-logo { transition: transform 90ms linear; }
+  /* The poke. Overshoots, comes back past centre, settles — the swing of
+     something hanging, not a slide back to zero. */
+  .ad-logo.is-knocked { animation: ad-knock 640ms cubic-bezier(.25,1,.3,1); }
+  @keyframes ad-knock {
+    0%   { transform: translate(-50%, -50%) rotateY(0deg); }
+    20%  { transform: translate(-50%, -50%) rotateY(var(--ad-knock, 17deg)) scale(1.035); }
+    48%  { transform: translate(-50%, -50%) rotateY(calc(var(--ad-knock, 17deg) * -0.45)); }
+    74%  { transform: translate(-50%, -50%) rotateY(calc(var(--ad-knock, 17deg) * 0.18)); }
+    100% { transform: translate(-50%, -50%) rotateY(0deg); }
+  }
   .ad-title-fallback { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); color: #fff; }
   /* Reduced motion keeps the art and drops the movement: the bolt simply
      sits there lit, which is what the still of this scene looks like. */
@@ -2059,6 +2102,7 @@
     .ad-sky.is-striking .ad-bolt, .ad-sky.is-striking .ad-clouds { animation: none; }
     .ad-bolt { opacity: 0.55; }
     .ad-logo { transition: none; }
+    .ad-logo.is-knocked { animation: none; }
   }
 
   /* Auto-detected pre-release card (built by loadAutoPrereleases from Spotify).
@@ -17345,7 +17389,12 @@ function carouselGo(track, n, smooth = true) {
   const slides = carouselSlides(track);
   if (!slides.length) return;
   const i = (n % slides.length + slides.length) % slides.length;
-  const delta = slides[i].getBoundingClientRect().left - track.getBoundingClientRect().left;
+  // CENTRE to centre, not left edge to left edge. Those were the same thing
+  // while a card filled the track; once the neighbours peek in, the card you
+  // are going to sits a spacer's width in from the edge, and aligning edges
+  // overshoots by exactly that much on every dot and every arrow.
+  const sr = slides[i].getBoundingClientRect(), tr = track.getBoundingClientRect();
+  const delta = (sr.left + sr.width / 2) - (tr.left + tr.width / 2);
   // scrollBy, not scrollIntoView: the latter would also scroll the PAGE to bring
   // the track into view, yanking the reader somewhere they did not ask to go.
   track.scrollBy({ left: delta, behavior: (smooth && !prefersReducedMotion()) ? 'smooth' : 'auto' });
@@ -17370,6 +17419,9 @@ function initCarousel(track) {
     if (!track.clientWidth && !track.offsetParent) { if (nav) nav.hidden = true; return; }
     const slides = carouselSlides(track);
     if (nav) nav.hidden = slides.length < 2;     // controls for one slide are furniture
+    // One slide has no neighbours to show, so the side-by-side peek would only
+    // make it narrow. A deep link is exactly that case.
+    track.classList.toggle('is-single', slides.length < 2);
     if (!dotBox) { carouselFit(track, slides, true); return; }
     while (dotBox.children.length > slides.length) dotBox.lastChild.remove();
     while (dotBox.children.length < slides.length) {
@@ -17384,6 +17436,9 @@ function initCarousel(track) {
     }
     carouselFit(track, slides, true);
     const at = carouselActive(track, slides);
+    // The cards either side are dimmed, so the peek reads as "there is more
+    // here" rather than as two cards crowding the one you are reading.
+    slides.forEach((s, i) => s.classList.toggle('is-ahead', i !== at));
     [...dotBox.children].forEach((d, i) => {
       d.classList.toggle('is-on', i === at);
       d.setAttribute('aria-label', `Go to ${i + 1} of ${slides.length}`);
@@ -18178,11 +18233,37 @@ function setupAddictedSky(sky) {
     logo.style.setProperty('--ad-rx', '0deg');
   };
 
-  sky.addEventListener('pointerdown', (ev) => { sky.classList.add('is-grabbed'); tilt(ev); strike(); });
-  sky.addEventListener('pointermove', tilt, { passive: true });
+  // A tap that never drags has to move it too — on jisoo.io the logo swings
+  // when you poke it. The tilt taken on pointerdown cannot do that on its own:
+  // pointerup lands ~80ms later and undoes it inside its own 90ms transition,
+  // so nothing ever renders. Poke it on the left and it swings right.
+  const knock = (fromLeft) => {
+    if (reduce || !logo) return;
+    logo.style.setProperty('--ad-knock', (fromLeft ? 17 : -17) + 'deg');
+    logo.classList.remove('is-knocked');
+    void logo.offsetWidth;
+    logo.classList.add('is-knocked');
+  };
+  if (logo) logo.addEventListener('animationend', () => logo.classList.remove('is-knocked'));
+
+  let dragged = 0, downX = 0, downY = 0;
+  sky.addEventListener('pointerdown', (ev) => {
+    sky.classList.add('is-grabbed');
+    dragged = 0; downX = ev.clientX; downY = ev.clientY;
+    tilt(ev); strike();
+  });
+  sky.addEventListener('pointermove', (ev) => {
+    dragged = Math.max(dragged, Math.hypot(ev.clientX - downX, ev.clientY - downY));
+    tilt(ev);
+  }, { passive: true });
+  sky.addEventListener('pointerup', (ev) => {
+    const r = sky.getBoundingClientRect();
+    if (dragged < 8) knock(ev.clientX < r.left + r.width / 2);
+    rest();
+  });
   // pointercancel is the one that matters on a phone: it is what arrives when
-  // the browser decides the drag was a carousel swipe and takes it over.
-  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => sky.addEventListener(ev, rest));
+  // the browser decides the drag was a scroll and takes it over.
+  ['pointercancel', 'pointerleave'].forEach(ev => sky.addEventListener(ev, rest));
 
   // Idle strikes on a random gap, so two of these on one page do not flash in
   // lockstep. Skipped while the tab is hidden or the card is not rendered —
