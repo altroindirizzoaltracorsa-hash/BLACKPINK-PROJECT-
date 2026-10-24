@@ -3874,6 +3874,7 @@
                   <a href="https://open.spotify.com/playlist/3sxqqL3OF3s7HeG14kwbyH" target="_blank" rel="noopener">TARANTINO x BP →</a>
                 </div>
               </details>
+              <div class="cd-goals-block" id="lisa-goals-list" style="display:none;"></div>
             </div>
           </div>
           <!-- JENNIE — "Someone to Hold", the song she wrote for Netflix's
@@ -18475,7 +18476,63 @@ const CAMPAIGN_GOALS = [
       { id: 'nt_bb_digsales',label: 'Digital Song Sales (Top 10)' },
     ]},
   ] },
-  { slug: 'press-play',   name: 'Press Play — LISA (EP)',     releaseAt: '2026-10-23T04:00:00Z', mount: 'lisa-goals-list',  categories: [] },
+  // From LISANATIONS' PRESS PLAY goals poster, kept in its own two halves —
+  // ALBUM GOALS and TITLE TRACK GOALS — and split by platform the way the
+  // poster is, so a row here is a line there and the two can be checked
+  // against each other. Only REACHED goals ever render publicly, so listing
+  // all 25 costs nothing on the card until one lands. The title track is
+  // Tarantino: it is the promoted track and the one with the MV; there is no
+  // song called "Press Play" on the EP.
+  { slug: 'press-play',   name: 'Press Play — LISA (EP)',     releaseAt: '2026-10-23T04:00:00Z', mount: 'lisa-goals-list',  categories: [
+    { category: '💿 EP · Spotify', items: [
+      { id: 'pp_ep_sp_top200',   label: 'Spotify · 3+ tracks in the Top 200' },
+      { id: 'pp_ep_sp_title20',  label: 'Spotify · Title track in the Top 20' },
+      { id: 'pp_ep_sp_debut10m', label: 'Spotify · Debut streams counter: 10M' },
+      { id: 'pp_ep_sp_global',   label: 'Spotify · Global: 6–7.5M' },
+    ]},
+    { category: '💿 EP · Charts', items: [
+      { id: 'pp_ep_ch_bb200',    label: 'Billboard 200 · Debut' },
+      { id: 'pp_ep_ch_ukalbums', label: 'UK Albums Chart · Debut' },
+    ]},
+    { category: '💿 EP · iTunes', items: [
+      { id: 'pp_ep_it_no1s',   label: 'iTunes · 30 #1s' },
+      { id: 'pp_ep_it_top10',  label: 'iTunes · Top 10 in 9 markets (US, UK, CA, DE, FR, BR, JP, AU, MX)' },
+    ]},
+    { category: '💿 EP · Apple Music', items: [
+      { id: 'pp_ep_am_no1s', label: 'Apple Music · 10 #1s' },
+    ]},
+    { category: '🔫 Tarantino · Spotify', items: [
+      { id: 'pp_tt_sp_debut', label: 'Spotify · Global chart debut' },
+      { id: 'pp_tt_sp_24h',   label: 'Spotify · 24 hours (filtered): 2–2.5M' },
+    ]},
+    { category: '🔫 Tarantino · YouTube', items: [
+      { id: 'pp_tt_yt_24h',   label: 'YouTube · 24 hours: 10M views' },
+      { id: 'pp_tt_yt_w1',    label: 'YouTube · Week 1: 30M views' },
+      { id: 'pp_tt_yt_debut', label: 'YouTube · Global chart debut' },
+    ]},
+    { category: '🔫 Tarantino · Shazam', items: [
+      { id: 'pp_tt_sz_24h', label: 'Shazam · 24 hours: 10K' },
+      { id: 'pp_tt_sz_w1',  label: 'Shazam · Week 1: 30K' },
+    ]},
+    { category: '🔫 Tarantino · iTunes', items: [
+      { id: 'pp_tt_it_24h_no1s', label: 'iTunes · 24 hours: 20 #1s' },
+      { id: 'pp_tt_it_w1_no1s',  label: 'iTunes · Week 1: 40 #1s' },
+      { id: 'pp_tt_it_usa',      label: 'iTunes · USA Top 10' },
+      { id: 'pp_tt_it_uk',       label: 'iTunes · UK Top 20' },
+      { id: 'pp_tt_it_ww',       label: 'iTunes · Worldwide Top 5' },
+      { id: 'pp_tt_it_eu',       label: 'iTunes · European Top 10' },
+    ]},
+    { category: '🔫 Tarantino · Apple Music', items: [
+      { id: 'pp_tt_am_top100', label: 'Apple Music · Top 100 Global entry' },
+      { id: 'pp_tt_am_debut',  label: 'Apple Music · Global chart debut' },
+      { id: 'pp_tt_am_daily',  label: 'Apple Music · 25+ Daily Top 100 charts' },
+    ]},
+    { category: '🔫 Tarantino · Charts', items: [
+      { id: 'pp_tt_ch_bb',      label: 'Billboard major charts · Debut' },
+      { id: 'pp_tt_ch_uk',      label: 'UK charts · Debut' },
+      { id: 'pp_tt_ch_entries', label: 'Official chart entries: 5+' },
+    ]},
+  ] },
   { slug: 'ltal',         name: 'Less Than a Lover — JENNIE', releaseAt: null,                   mount: 'ltal-goals-list',  categories: LTAL_GOALS },
 ];
 function getCampaign(slug) { return CAMPAIGN_GOALS.find(c => c.slug === slug) || CAMPAIGN_GOALS[0]; }

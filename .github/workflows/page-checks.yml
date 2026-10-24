@@ -140,6 +140,13 @@ jobs:
         if: always()
         run: node .github/scripts/test_track_wiring.mjs
 
+      # A campaign can be registered with no goals and a mount that does not
+      # exist, and nothing throws — the renderer returns early on both. PRESS
+      # PLAY sat like that while the admin picker said "no goals yet".
+      - name: Campaign goal checklists are wired up
+        if: always()
+        run: node .github/scripts/test_campaign_goals.mjs
+
       # The canary hands its refresh to the chunked sweep. Every way that
       # handover breaks is quiet — above all a refused dispatch passing as
       # success, which looks just like a canary that found nothing to do.
