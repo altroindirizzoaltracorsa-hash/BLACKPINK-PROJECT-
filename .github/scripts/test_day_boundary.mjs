@@ -38,6 +38,11 @@ const SOURCES = [
   ['api/control-ranking.js', 'getTimeBounds',         r => r.dayFrom * 1000],
   ['api/playlist.js',        'currentItalyDayStart',  r => r],
   ['api/sync-playlist.js',   'currentItalyDayStart',  r => r],
+  // A SEVENTH copy, found only after the other six were fixed: it expressed the
+  // same boundary as dayBoundaryUTC('Europe/Rome', 2) — a correct conversion of
+  // a wrong hour — so searching for the `2 - offset` arithmetic never saw it.
+  // Listed here because the next one will be written differently too.
+  ['api/statsfm.js',         'siteDayStartISO',       r => Date.parse(r)],
 ];
 
 // Instants chosen to straddle both changeovers and both sides of the old
@@ -110,6 +115,27 @@ for (const [iso, why] of MOMENTS) {
     const diffH = (got - expected) / 3600000;
     check(got === expected, `${file} → ${fn}()`,
           got === expected ? '' : `${new Date(got).toISOString()} — off by ${diffH}h`);
+  }
+}
+
+console.log('\n--- nothing schedules or buckets off a local wall clock');
+// The rule, stated once: UTC is the reference, local time is for DISPLAY only.
+// Every instance of this bug so far has been a local hour reached by a different
+// route — hand-rolled DST arithmetic in six files, an accurate Intl conversion of
+// "2 AM Rome" in a seventh, and a watch window reading the Rome clock to decide
+// when to poll (which slid an hour on 2026-10-25 and stopped matching
+// fetch-catalog.yml's slots). So the check is on the INPUT, not the arithmetic:
+// server-side timing must not consult a named zone at all.
+{
+  const SERVER = ['api/streams.js', 'api/statsfm.js', 'api/leaderboard.js',
+                  'api/cron-scrobbles.js', 'api/control-ranking.js',
+                  'api/playlist.js', 'api/sync-playlist.js'];
+  for (const file of SERVER) {
+    const src = readFileSync(root + file, 'utf8');
+    const code = src.split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    const hits = code.match(/timeZone:\s*['"`]Europe\/|dayBoundaryUTC\s*\(/g) || [];
+    check(hits.length === 0, `${file} does not read a named timezone`,
+          [...new Set(hits)].join(', '));
   }
 }
 
