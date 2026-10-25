@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-10-24T10:25:23.853Z",
+  "generatedAt": "2026-10-25T10:52:46.865Z",
   "chartType": "daily",
-  "date": "2026-10-24",
+  "date": "2026-10-25",
   "regions": {
     "global": {
       "region": "Global",
       "gl": "US",
       "period": {
-        "entityId": "daily:20261024:global",
+        "entityId": "daily:20261025:global",
         "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
+        "startDate": "20261025",
+        "endDate": "20261025",
         "region": "global"
       },
       "totalEntries": 100,
@@ -18,14 +18,62 @@
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 57,
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 43011363,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 15,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 1939250,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 23,
           "name": "SaWaDiKa (Official Music Video)",
           "artists": [
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 1080999,
+          "viewCount": 1792158,
           "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 36,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 1493381,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 77,
+          "name": "V12 (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "mbYFoU3-B7Y",
+          "viewCount": 1037023,
+          "releaseDate": "2026-10-22"
         }
       ]
     },
@@ -33,250 +81,26 @@
       "region": "South Korea",
       "gl": "KR",
       "period": {
-        "entityId": "daily:20261024:kr",
+        "entityId": "daily:20261025:kr",
         "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
+        "startDate": "20261025",
+        "endDate": "20261025",
         "region": "kr"
       },
       "totalEntries": 100,
-      "hits": []
-    },
-    "jp": {
-      "region": "Japan",
-      "gl": "JP",
-      "period": {
-        "entityId": "daily:20261024:jp",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "jp"
-      },
-      "totalEntries": 100,
-      "hits": []
-    },
-    "tw": {
-      "region": "Taiwan",
-      "gl": "TW",
-      "period": {
-        "entityId": "daily:20261024:tw",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "tw"
-      },
-      "totalEntries": 100,
       "hits": [
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 89,
-          "name": "SaWaDiKa (Official Music Video)",
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
           "artists": [
             "LISA"
           ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 13265,
-          "releaseDate": "2026-09-03"
-        }
-      ]
-    },
-    "hk": {
-      "region": "Hong Kong",
-      "gl": "HK",
-      "period": {
-        "entityId": "daily:20261024:hk",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "hk"
-      },
-      "totalEntries": 100,
-      "hits": [
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "LISA",
-          "position": 72,
-          "name": "SaWaDiKa (Official Music Video)",
-          "artists": [
-            "LISA"
-          ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 3436,
-          "releaseDate": "2026-09-03"
-        }
-      ]
-    },
-    "id": {
-      "region": "Indonesia",
-      "gl": "ID",
-      "period": {
-        "entityId": "daily:20261024:id",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "id"
-      },
-      "totalEntries": 100,
-      "hits": []
-    },
-    "th": {
-      "region": "Thailand",
-      "gl": "TH",
-      "period": {
-        "entityId": "daily:20261024:th",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "th"
-      },
-      "totalEntries": 100,
-      "hits": [
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "LISA",
-          "position": 53,
-          "name": "SaWaDiKa (Official Music Video)",
-          "artists": [
-            "LISA"
-          ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 148943,
-          "releaseDate": "2026-09-03"
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 2620247,
+          "releaseDate": "2026-10-22"
         },
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "JENNIE",
-          "position": 76,
-          "name": "One Of The Girls",
-          "artists": [
-            "The Weeknd",
-            "JENNIE",
-            "Lily-Rose Depp"
-          ],
-          "videoId": "Mx92lTYxrJQ",
-          "viewCount": 105252,
-          "releaseDate": "2023-07-06"
-        }
-      ]
-    },
-    "ph": {
-      "region": "Philippines",
-      "gl": "PH",
-      "period": {
-        "entityId": "daily:20261024:ph",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "ph"
-      },
-      "totalEntries": 100,
-      "hits": []
-    },
-    "my": {
-      "region": "Malaysia",
-      "gl": "MY",
-      "period": {
-        "entityId": "daily:20261024:my",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "my"
-      },
-      "totalEntries": 100,
-      "hits": [
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "LISA",
-          "position": 51,
-          "name": "SaWaDiKa (Official Music Video)",
-          "artists": [
-            "LISA"
-          ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 27433,
-          "releaseDate": "2026-09-03"
-        },
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "JENNIE",
-          "position": 75,
-          "name": "One Of The Girls",
-          "artists": [
-            "The Weeknd",
-            "JENNIE",
-            "Lily-Rose Depp"
-          ],
-          "videoId": "Mx92lTYxrJQ",
-          "viewCount": 21852,
-          "releaseDate": "2023-07-06"
-        }
-      ]
-    },
-    "vn": {
-      "region": "Vietnam",
-      "gl": "VN",
-      "period": {
-        "entityId": "daily:20261024:vn",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "vn"
-      },
-      "totalEntries": 100,
-      "hits": []
-    },
-    "sg": {
-      "region": "Singapore",
-      "gl": "SG",
-      "period": {
-        "entityId": "daily:20261024:sg",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "sg"
-      },
-      "totalEntries": 101,
-      "hits": [
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "LISA",
-          "position": 18,
-          "name": "SaWaDiKa (Official Music Video)",
-          "artists": [
-            "LISA"
-          ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 5170,
-          "releaseDate": "2026-09-03"
-        }
-      ]
-    },
-    "in": {
-      "region": "India",
-      "gl": "IN",
-      "period": {
-        "entityId": "daily:20261024:in",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "in"
-      },
-      "totalEntries": 100,
-      "hits": []
-    },
-    "au": {
-      "region": "Australia",
-      "gl": "AU",
-      "period": {
-        "entityId": "daily:20261024:au",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "au"
-      },
-      "totalEntries": 100,
-      "hits": [
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
@@ -286,8 +110,682 @@
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 9478,
+          "viewCount": 40453,
           "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 91,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 27289,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 94,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 26939,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "jp": {
+      "region": "Japan",
+      "gl": "JP",
+      "period": {
+        "entityId": "daily:20261025:jp",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "jp"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 82,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 81378,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "tw": {
+      "region": "Taiwan",
+      "gl": "TW",
+      "period": {
+        "entityId": "daily:20261025:tw",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "tw"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 4,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 107249,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 41,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 26836,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 57,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 21762,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 61,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 20077,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
+    "hk": {
+      "region": "Hong Kong",
+      "gl": "HK",
+      "period": {
+        "entityId": "daily:20261025:hk",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "hk"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 254662,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 30,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 6962,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 34,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 6605,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 45,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 5354,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 82,
+          "name": "V12 (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "mbYFoU3-B7Y",
+          "viewCount": 3288,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "id": {
+      "region": "Indonesia",
+      "gl": "ID",
+      "period": {
+        "entityId": "daily:20261025:id",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "id"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 4944184,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 93,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 107294,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
+    "th": {
+      "region": "Thailand",
+      "gl": "TH",
+      "period": {
+        "entityId": "daily:20261025:th",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "th"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 3162016,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 20,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 388313,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 23,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 302542,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 24,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 301408,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 39,
+          "name": "V12 (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "mbYFoU3-B7Y",
+          "viewCount": 203541,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 51,
+          "name": "Cobra (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "KhoQ6YY4OB8",
+          "viewCount": 162698,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 81,
+          "name": "One Of The Girls",
+          "artists": [
+            "The Weeknd",
+            "JENNIE",
+            "Lily-Rose Depp"
+          ],
+          "videoId": "Mx92lTYxrJQ",
+          "viewCount": 103594,
+          "releaseDate": "2023-07-06"
+        }
+      ]
+    },
+    "ph": {
+      "region": "Philippines",
+      "gl": "PH",
+      "period": {
+        "entityId": "daily:20261025:ph",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "ph"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 5,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 316996,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 80,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 54401,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 86,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 52481,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "my": {
+      "region": "Malaysia",
+      "gl": "MY",
+      "period": {
+        "entityId": "daily:20261025:my",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "my"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 923577,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 21,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 45695,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 35,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 35577,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 53,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 28842,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 82,
+          "name": "One Of The Girls",
+          "artists": [
+            "The Weeknd",
+            "JENNIE",
+            "Lily-Rose Depp"
+          ],
+          "videoId": "Mx92lTYxrJQ",
+          "viewCount": 21496,
+          "releaseDate": "2023-07-06"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 89,
+          "name": "V12 (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "mbYFoU3-B7Y",
+          "viewCount": 20690,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "vn": {
+      "region": "Vietnam",
+      "gl": "VN",
+      "period": {
+        "entityId": "daily:20261025:vn",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "vn"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 7,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 288040,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "sg": {
+      "region": "Singapore",
+      "gl": "SG",
+      "period": {
+        "entityId": "daily:20261025:sg",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "sg"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 253467,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 8,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 8696,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 10,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 8582,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 18,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 6173,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 39,
+          "name": "V12 (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "mbYFoU3-B7Y",
+          "viewCount": 4302,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 67,
+          "name": "Cobra (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "KhoQ6YY4OB8",
+          "viewCount": 3176,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "in": {
+      "region": "India",
+      "gl": "IN",
+      "period": {
+        "entityId": "daily:20261025:in",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "in"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 8824251,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "au": {
+      "region": "Australia",
+      "gl": "AU",
+      "period": {
+        "entityId": "daily:20261025:au",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "au"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 456324,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 25,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 17304,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 40,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 12669,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 57,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 10655,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 91,
+          "name": "V12 (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "mbYFoU3-B7Y",
+          "viewCount": 7222,
+          "releaseDate": "2026-10-22"
         }
       ]
     },
@@ -295,23 +793,48 @@
       "region": "New Zealand",
       "gl": "NZ",
       "period": {
-        "entityId": "daily:20261024:nz",
+        "entityId": "daily:20261025:nz",
         "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
+        "startDate": "20261025",
+        "endDate": "20261025",
         "region": "nz"
       },
       "totalEntries": 100,
-      "hits": []
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 5,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 10483,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 85,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 2356,
+          "releaseDate": "2026-09-03"
+        }
+      ]
     },
     "us": {
       "region": "United States",
       "gl": "US",
       "period": {
-        "entityId": "daily:20261024:us",
+        "entityId": "daily:20261025:us",
         "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
+        "startDate": "20261025",
+        "endDate": "20261025",
         "region": "us"
       },
       "totalEntries": 100,
@@ -319,14 +842,50 @@
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 73,
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 4615550,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 23,
           "name": "SaWaDiKa (Official Music Video)",
           "artists": [
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 76298,
+          "viewCount": 147681,
           "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 40,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 116755,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 87,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 82400,
+          "releaseDate": "2026-10-22"
         }
       ]
     },
@@ -334,11 +893,637 @@
       "region": "Canada",
       "gl": "CA",
       "period": {
-        "entityId": "daily:20261024:ca",
+        "entityId": "daily:20261025:ca",
         "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
+        "startDate": "20261025",
+        "endDate": "20261025",
         "region": "ca"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 1067165,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 16,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 23459,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 22,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 20915,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 41,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 12678,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 66,
+          "name": "Cobra (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "KhoQ6YY4OB8",
+          "viewCount": 9573,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 94,
+          "name": "V12 (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "mbYFoU3-B7Y",
+          "viewCount": 8120,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "mx": {
+      "region": "Mexico",
+      "gl": "MX",
+      "period": {
+        "entityId": "daily:20261025:mx",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "mx"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 2172909,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 80,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 87310,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
+    "br": {
+      "region": "Brazil",
+      "gl": "BR",
+      "period": {
+        "entityId": "daily:20261025:br",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "br"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 4769725,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "ar": {
+      "region": "Argentina",
+      "gl": "AR",
+      "period": {
+        "entityId": "daily:20261025:ar",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "ar"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 67,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 67332,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "cl": {
+      "region": "Chile",
+      "gl": "CL",
+      "period": {
+        "entityId": "daily:20261025:cl",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "cl"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 25,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 37932,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "co": {
+      "region": "Colombia",
+      "gl": "CO",
+      "period": {
+        "entityId": "daily:20261025:co",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "co"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 56,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 55190,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "pe": {
+      "region": "Peru",
+      "gl": "PE",
+      "period": {
+        "entityId": "daily:20261025:pe",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "pe"
+      },
+      "totalEntries": 99,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 40,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 51646,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "gb": {
+      "region": "United Kingdom",
+      "gl": "GB",
+      "period": {
+        "entityId": "daily:20261025:gb",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "gb"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 1648941,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 23,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 29273,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 32,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 24283,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 66,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 17080,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "fr": {
+      "region": "France",
+      "gl": "FR",
+      "period": {
+        "entityId": "daily:20261025:fr",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "fr"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 1539332,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 57,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 41610,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 75,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 30337,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 78,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 29358,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
+    "de": {
+      "region": "Germany",
+      "gl": "DE",
+      "period": {
+        "entityId": "daily:20261025:de",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "de"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 2255787,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 31,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 37527,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 51,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 28342,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 55,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 26927,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 95,
+          "name": "V12 (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "mbYFoU3-B7Y",
+          "viewCount": 18328,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 100,
+          "name": "Cobra (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "KhoQ6YY4OB8",
+          "viewCount": 17992,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "es": {
+      "region": "Spain",
+      "gl": "ES",
+      "period": {
+        "entityId": "daily:20261025:es",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "es"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 13,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 68994,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 96,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 18538,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "it": {
+      "region": "Italy",
+      "gl": "IT",
+      "period": {
+        "entityId": "daily:20261025:it",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "it"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 14,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 57485,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 93,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 16530,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "nl": {
+      "region": "Netherlands",
+      "gl": "NL",
+      "period": {
+        "entityId": "daily:20261025:nl",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "nl"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 1,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 515423,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 25,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 8727,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 38,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 7194,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 42,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 6563,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 70,
+          "name": "V12 (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "mbYFoU3-B7Y",
+          "viewCount": 4492,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 73,
+          "name": "Cobra (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "KhoQ6YY4OB8",
+          "viewCount": 4347,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "se": {
+      "region": "Sweden",
+      "gl": "SE",
+      "period": {
+        "entityId": "daily:20261025:se",
+        "periodType": "daily",
+        "startDate": "20261025",
+        "endDate": "20261025",
+        "region": "se"
       },
       "totalEntries": 100,
       "hits": [
@@ -351,254 +1536,68 @@
             "LISA"
           ],
           "videoId": "-5ZXrO_lYSA",
-          "viewCount": 56770,
+          "viewCount": 17158,
           "releaseDate": "2026-10-22"
         },
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 48,
-          "name": "SaWaDiKa (Official Music Video)",
+          "position": 20,
+          "name": "Sweat (Lyric Video)",
           "artists": [
             "LISA"
           ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 11049,
-          "releaseDate": "2026-09-03"
-        }
-      ]
-    },
-    "mx": {
-      "region": "Mexico",
-      "gl": "MX",
-      "period": {
-        "entityId": "daily:20261024:mx",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "mx"
-      },
-      "totalEntries": 100,
-      "hits": [
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "LISA",
-          "position": 10,
-          "name": "Tarantino (Official Music Video)",
-          "artists": [
-            "LISA"
-          ],
-          "videoId": "-5ZXrO_lYSA",
-          "viewCount": 318530,
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 3908,
           "releaseDate": "2026-10-22"
-        }
-      ]
-    },
-    "br": {
-      "region": "Brazil",
-      "gl": "BR",
-      "period": {
-        "entityId": "daily:20261024:br",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "br"
-      },
-      "totalEntries": 100,
-      "hits": []
-    },
-    "ar": {
-      "region": "Argentina",
-      "gl": "AR",
-      "period": {
-        "entityId": "daily:20261024:ar",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "ar"
-      },
-      "totalEntries": 100,
-      "hits": []
-    },
-    "cl": {
-      "region": "Chile",
-      "gl": "CL",
-      "period": {
-        "entityId": "daily:20261024:cl",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "cl"
-      },
-      "totalEntries": 100,
-      "hits": []
-    },
-    "co": {
-      "region": "Colombia",
-      "gl": "CO",
-      "period": {
-        "entityId": "daily:20261024:co",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "co"
-      },
-      "totalEntries": 100,
-      "hits": []
-    },
-    "pe": {
-      "region": "Peru",
-      "gl": "PE",
-      "period": {
-        "entityId": "daily:20261024:pe",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "pe"
-      },
-      "totalEntries": 99,
-      "hits": []
-    },
-    "gb": {
-      "region": "United Kingdom",
-      "gl": "GB",
-      "period": {
-        "entityId": "daily:20261024:gb",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "gb"
-      },
-      "totalEntries": 100,
-      "hits": [
+        },
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 71,
+          "position": 38,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 2974,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 52,
           "name": "SaWaDiKa (Official Music Video)",
           "artists": [
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 12363,
+          "viewCount": 2548,
           "releaseDate": "2026-09-03"
-        }
-      ]
-    },
-    "fr": {
-      "region": "France",
-      "gl": "FR",
-      "period": {
-        "entityId": "daily:20261024:fr",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "fr"
-      },
-      "totalEntries": 99,
-      "hits": []
-    },
-    "de": {
-      "region": "Germany",
-      "gl": "DE",
-      "period": {
-        "entityId": "daily:20261024:de",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "de"
-      },
-      "totalEntries": 100,
-      "hits": [
+        },
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 78,
-          "name": "SaWaDiKa (Official Music Video)",
+          "position": 73,
+          "name": "V12 (Lyric Video)",
           "artists": [
             "LISA"
           ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 16704,
-          "releaseDate": "2026-09-03"
-        }
-      ]
-    },
-    "es": {
-      "region": "Spain",
-      "gl": "ES",
-      "period": {
-        "entityId": "daily:20261024:es",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "es"
-      },
-      "totalEntries": 100,
-      "hits": []
-    },
-    "it": {
-      "region": "Italy",
-      "gl": "IT",
-      "period": {
-        "entityId": "daily:20261024:it",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "it"
-      },
-      "totalEntries": 100,
-      "hits": []
-    },
-    "nl": {
-      "region": "Netherlands",
-      "gl": "NL",
-      "period": {
-        "entityId": "daily:20261024:nl",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "nl"
-      },
-      "totalEntries": 100,
-      "hits": [
+          "videoId": "mbYFoU3-B7Y",
+          "viewCount": 1981,
+          "releaseDate": "2026-10-22"
+        },
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 59,
-          "name": "SaWaDiKa (Official Music Video)",
+          "position": 77,
+          "name": "Cobra (Lyric Video)",
           "artists": [
             "LISA"
           ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 4076,
-          "releaseDate": "2026-09-03"
-        }
-      ]
-    },
-    "se": {
-      "region": "Sweden",
-      "gl": "SE",
-      "period": {
-        "entityId": "daily:20261024:se",
-        "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
-        "region": "se"
-      },
-      "totalEntries": 101,
-      "hits": [
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "LISA",
-          "position": 59,
-          "name": "SaWaDiKa (Official Music Video)",
-          "artists": [
-            "LISA"
-          ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 1853,
-          "releaseDate": "2026-09-03"
+          "videoId": "KhoQ6YY4OB8",
+          "viewCount": 1930,
+          "releaseDate": "2026-10-22"
         }
       ]
     },
@@ -606,10 +1605,10 @@
       "region": "Norway",
       "gl": "NO",
       "period": {
-        "entityId": "daily:20261024:no",
+        "entityId": "daily:20261025:no",
         "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
+        "startDate": "20261025",
+        "endDate": "20261025",
         "region": "no"
       },
       "totalEntries": 100,
@@ -617,14 +1616,74 @@
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 37,
+          "position": 2,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 9231,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 16,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 2158,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 29,
+          "name": "Cut U Off (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "HeRaW85VaLY",
+          "viewCount": 1581,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 36,
           "name": "SaWaDiKa (Official Music Video)",
           "artists": [
             "LISA"
           ],
           "videoId": "FyS5dAywkEo",
-          "viewCount": 993,
+          "viewCount": 1321,
           "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 49,
+          "name": "Cobra (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "KhoQ6YY4OB8",
+          "viewCount": 1058,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 54,
+          "name": "V12 (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "mbYFoU3-B7Y",
+          "viewCount": 975,
+          "releaseDate": "2026-10-22"
         }
       ]
     },
@@ -632,57 +1691,121 @@
       "region": "Poland",
       "gl": "PL",
       "period": {
-        "entityId": "daily:20261024:pl",
+        "entityId": "daily:20261025:pl",
         "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
+        "startDate": "20261025",
+        "endDate": "20261025",
         "region": "pl"
       },
       "totalEntries": 100,
-      "hits": []
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 44,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 49274,
+          "releaseDate": "2026-10-22"
+        }
+      ]
     },
     "tr": {
       "region": "Turkey",
       "gl": "TR",
       "period": {
-        "entityId": "daily:20261024:tr",
+        "entityId": "daily:20261025:tr",
         "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
+        "startDate": "20261025",
+        "endDate": "20261025",
         "region": "tr"
       },
       "totalEntries": 100,
-      "hits": []
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 27,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 239377,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 90,
+          "name": "Sweat (Lyric Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "rvMwVzaxjYU",
+          "viewCount": 82607,
+          "releaseDate": "2026-10-22"
+        }
+      ]
     },
     "sa": {
       "region": "Saudi Arabia",
       "gl": "SA",
       "period": {
-        "entityId": "daily:20261024:sa",
+        "entityId": "daily:20261025:sa",
         "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
+        "startDate": "20261025",
+        "endDate": "20261025",
         "region": "sa"
       },
-      "totalEntries": 99,
-      "hits": []
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 21,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 54591,
+          "releaseDate": "2026-10-22"
+        }
+      ]
     },
     "za": {
       "region": "South Africa",
       "gl": "ZA",
       "period": {
-        "entityId": "daily:20261024:za",
+        "entityId": "daily:20261025:za",
         "periodType": "daily",
-        "startDate": "20261024",
-        "endDate": "20261024",
+        "startDate": "20261025",
+        "endDate": "20261025",
         "region": "za"
       },
       "totalEntries": 100,
-      "hits": []
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 47,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 28521,
+          "releaseDate": "2026-10-22"
+        }
+      ]
     }
   },
   "summary": {
-    "totalHits": 18,
+    "totalHits": 110,
     "regionsChecked": 34
   }
 }
