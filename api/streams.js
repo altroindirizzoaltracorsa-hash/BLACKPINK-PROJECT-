@@ -55,19 +55,23 @@ const MERGE_SPIKE_ABS = 15_000_000;
 // far less aggressively there to protect the RapidAPI quota.
 function getCacheTtlMs(needsDailyUpdate) {
   if (!needsDailyUpdate) return 4 * 60 * 60 * 1000; // today's bump already seen — recheck in ~4h
-  const romeHour = Number(
-    new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Rome', hour: 'numeric', hour12: false }).format(new Date())
-  );
-  // Active watch window: 3pm Rome straight through to 7am next morning. Spotify's
-  // streaming day resets at 00:00 UTC (= 2am Rome in summer) and lately the daily
-  // play-count refresh has been landing in the small hours AFTER that reset — the
-  // usual cause of "2-day gap" entries, since the old window shut at midnight Rome
-  // and nothing polled in the early morning to catch it. The overnight hours cover
-  // the 2am-reset-through-dawn stretch where those late refreshes appear. The quiet
-  // stretch is only 7am–3pm, when yesterday's numbers are already booked and the
-  // next refresh isn't due yet. Running the window this long is cheap because the
-  // canary gate means just ONE track is polled while we wait for the bump.
-  if (romeHour >= 7 && romeHour < 15) return Infinity; // quiet: nothing new to find
+  const utcHour = new Date().getUTCHours();
+  // Active watch window: 13:00 UTC straight through to 05:00 the next morning.
+  // Spotify's streaming day resets at 00:00 UTC and the daily play-count refresh
+  // has lately been landing in the small hours AFTER that reset — the usual cause
+  // of "2-day gap" entries, since an earlier window shut before then and nothing
+  // polled at dawn to catch it. The quiet stretch is 05:00–13:00 UTC, when
+  // yesterday's numbers are already booked and the next refresh is not due.
+  // Running the window this long is cheap because the canary gate means just ONE
+  // track is polled while we wait for the bump.
+  //
+  // IN UTC, NOT IN ROME HOURS. This read the Europe/Rome clock and went quiet
+  // 07:00-15:00 local, which is 05:00-13:00 UTC in summer and 06:00-14:00 in
+  // winter — so on 2026-10-25 the whole window slid an hour later against the
+  // publish it exists to catch, and stopped matching fetch-catalog.yml's slots
+  // (13:23 -> 05:19 UTC), which CLAUDE.md documents as deliberately the same
+  // span. The hours below ARE that span.
+  if (utcHour >= 5 && utcHour < 13) return Infinity; // quiet: nothing new to find
   return 15 * 60 * 1000; // in the watch window — poll every ~15min
 }
 
