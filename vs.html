@@ -880,17 +880,20 @@
   poll();
   setInterval(poll, POLL_MS);
   pollHistory();
-  // Both of these were far tighter than the data they read. The live chart does
-  // not depend on either: poll() grows it every 15s from /api/youtube-stats via
-  // appendLive(), and refreshes viewMilestones on the same tick. What these two
-  // add is the stored series and the frozen pins — and the hourly series gains a
-  // point roughly once an HOUR (MIN_GAP_MS). At 45s and 5min against an
-  // admin-only page that sits open for hours, they were re-reading the same rows
-  // all day: ~220 MB/hour of Upstash bandwidth, which is what used up a 10 GB
-  // monthly allowance and suspended the database.
-  setInterval(pollHistory, 2 * 60 * 1000);    // milestones/24h pins — minutes, not seconds
+  // Frequent on purpose: milestones and 24h marks are the point of this page, and
+  // a crossing seen two minutes late is a crossing missed.
+  //
+  // This cadence is affordable now only because the per-poll cost came down.
+  // Measured against the live deployment on 2026-10-25: a ?live=1 poll is 458 KB
+  // and an hourly poll 241 KB, so 45s + 5min works out at ~40 MB/hour with the
+  // page open — roughly 230 hours of a 10 GB month. Before the duplicate read
+  // and the full-history read were removed the same cadence cost ~220 MB/hour,
+  // about 45 hours, which is what exhausted the allowance and suspended the
+  // database. The frequency was never the problem; what each poll dragged along
+  // was. Re-measure before raising either of these.
+  setInterval(pollHistory, 45 * 1000);
   pollHourly();
-  setInterval(pollHourly, 15 * 60 * 1000);    // hourly snapshots change once an hour
+  setInterval(pollHourly, 5 * 60 * 1000);
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ poll(); pollHistory(); pollHourly(); } });
 </script>
 </body>

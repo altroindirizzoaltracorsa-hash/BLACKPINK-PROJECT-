@@ -164,22 +164,41 @@ console.log('\n--- each block still lands in the field it feeds');
         JSON.stringify(body.videos[ID]));
 }
 
-console.log('\n--- vs.html does not poll faster than the data moves');
-// The other half of the same bill, and the half that is not in the API file at
-// all. The live chart is grown client-side by poll() every 15s; these two only
-// carry the stored series and the frozen pins, and the hourly series gains a
-// point about once an hour.
+console.log('\n--- the page stays inside a bandwidth budget at its chosen cadence');
+// NOT a cap on how often it polls. Milestones and 24h marks are the point of
+// /vs.html and a crossing seen two minutes late is a crossing missed, so the
+// cadence is deliberately fast. What matters is the PRODUCT: how often, times
+// how much each poll drags along. The original bug was entirely the second
+// factor — the same 45s cadence cost ~220 MB/hour before the duplicate read and
+// the full-history read were removed, and ~40 MB/hour after.
+//
+// Sizes measured against the live deployment on 2026-10-25. They will drift as
+// the stored series grow; re-measure with probe-page.yml (admin=1) rather than
+// trusting these numbers forever.
 {
   const page = readFileSync(root + 'vs.html', 'utf8');
-  const every = name => {
+  const everySec = name => {
     const m = page.match(new RegExp(`setInterval\\(${name},\\s*([^)]+)\\)`));
-    return m ? Math.round(Function(`return (${m[1]})`)() / 1000) : null;
+    return m ? Function(`return (${m[1]})`)() / 1000 : null;
   };
-  const hist = every('pollHistory'), hourlyMs = every('pollHourly');
-  check(hist !== null && hist >= 120,
-        'pollHistory runs no more than once every 2 minutes', `${hist}s`);
-  check(hourlyMs !== null && hourlyMs >= 900,
-        'pollHourly runs no more than once every 15 minutes', `${hourlyMs}s`);
+  const LIVE_KB = 458, HOURLY_KB = 241;   // measured
+  const BUDGET_MB_PER_HOUR = 80;          // ~2x current; ~125h of a 10 GB month
+
+  const hist = everySec('pollHistory'), hourly = everySec('pollHourly');
+  check(hist !== null && hourly !== null, 'found both poll intervals',
+        `pollHistory=${hist}s pollHourly=${hourly}s`);
+
+  // A floor, because anything under half a minute is a mistake rather than a
+  // choice and would burn the month in days whatever the payload size.
+  check(hist >= 30, 'pollHistory polls no tighter than 30s', `${hist}s`);
+
+  const mbPerHour = hist && hourly
+    ? ((3600 / hist) * LIVE_KB + (3600 / hourly) * HOURLY_KB) / 1024
+    : Infinity;
+  const hoursPer10GB = Math.round(10 * 1024 / mbPerHour);
+  check(mbPerHour <= BUDGET_MB_PER_HOUR,
+        `the two polls together stay under ${BUDGET_MB_PER_HOUR} MB/hour`,
+        `${mbPerHour.toFixed(1)} MB/hour with the page open — about ${hoursPer10GB}h of a 10 GB month`);
 }
 
 console.log(`\nFAILURES: ${fails.length}`);
