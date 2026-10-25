@@ -28,40 +28,55 @@ Read-only: one GET per endpoint.
 """
 import json
 import os
+import re
 import sys
 import urllib.request
 
 BASE = os.environ.get("BASE", "https://www.blinksunited.com")
 
-# (path, max KB, must be edge-cached)
+# (path, max KB, api file that must set s-maxage — or None if the route is
+# deliberately uncached)
 #
 # Budgets are set a little above what each route measured when it was last
 # looked at, so ordinary drift is quiet and a step change is not. Raising one
 # is a perfectly reasonable thing to do — but it should be a decision somebody
 # makes, which is the whole point of putting a number here.
 ENDPOINTS = [
-    ("/api/leaderboard",                     300, True),   # 240 KB measured
-    ("/api/streams",                         120, True),
-    ("/api/playlist",                         80, True),
-    ("/api/kcharts-live",                     80, True),
-    ("/api/collabs?id=bvp-kca-2026",          60, True),
+    ("/api/leaderboard",                     300, "api/leaderboard.js"),   # 235 KB measured
+    ("/api/streams",                         120, "api/streams.js"),       # 8.9 KB
+    ("/api/playlist",                         80, "api/playlist.js"),      # 0.1 KB
+    ("/api/kcharts-live",                     80, "api/kcharts-live.js"),  # 0.5 KB
+    # A live vote board, intentionally no-store. Size still budgeted.
+    ("/api/collabs?id=bvp-kca-2026",          60, None),                   # 7.0 KB
 ]
 
-CACHE_OK = ("s-maxage", "max-age")
+# THE CDN TTL CANNOT BE READ OFF THE RESPONSE. Vercel strips `s-maxage` and
+# serves `public, max-age=0, must-revalidate` to the client, caching at the edge
+# per the stripped directive. The first version of this check parsed the
+# response header and got every row wrong in a different way: /api/streams and
+# /api/playlist PASSED on the `max-age=0` substring while proving nothing,
+# /api/kcharts-live FAILED on a bare `public` although it sets s-maxage=120, and
+# /api/collabs FAILED for being uncached when it is a live vote board and is
+# meant to be. So the directive is read from the source, where it is
+# unambiguous, and the response supplies only the size.
+CACHE_RE = re.compile(r"Cache-Control['\"],\s*['\"][^'\"]*s-maxage=\d+")
 
 
 def probe(path):
     req = urllib.request.Request(BASE + path, headers={"User-Agent": "bandwidth-budget/1"})
     with urllib.request.urlopen(req, timeout=60) as r:
         body = r.read()
-        return r.status, len(body), (r.headers.get("Cache-Control") or "")
+        # x-vercel-cache (HIT/MISS/STALE/BYPASS) is the one live signal that says
+        # whether the edge is caching this route at all. Reported, not asserted:
+        # a MISS is the normal answer for the first request after a deploy.
+        return r.status, len(body), (r.headers.get("x-vercel-cache") or "-")
 
 
 def main():
     fails, rows = [], []
-    for path, max_kb, needs_cache in ENDPOINTS:
+    for path, max_kb, src in ENDPOINTS:
         try:
-            status, size, cc = probe(path)
+            status, size, vercel_cache = probe(path)
         except Exception as e:
             # Unreachable is not a pass. It is also not a budget failure — say
             # which it is rather than letting a network blip read as "fine".
@@ -71,12 +86,19 @@ def main():
 
         kb = size / 1024
         over = kb > max_kb
-        cached = any(t in cc.lower() for t in CACHE_OK)
-        bad_cache = needs_cache and not cached
+        bad_cache = False
+        if src:
+            try:
+                bad_cache = not CACHE_RE.search(open(src, encoding="utf-8").read())
+            except OSError as e:
+                bad_cache = True
+                print(f"  !! {src}: {e}", file=sys.stderr)
 
         flag = "FAIL" if (over or bad_cache) else " ok "
-        print(f"  {flag}  {path:34s} {kb:8.1f} KB / {max_kb} KB   cache: {cc or '(none)'}")
-        rows.append((path, round(kb, 1), max_kb, cc))
+        print(f"  {flag}  {path:34s} {kb:8.1f} KB / {max_kb} KB   "
+              f"s-maxage in source: {'no' if bad_cache else ('yes' if src else 'n/a')}   "
+              f"edge: {vercel_cache}")
+        rows.append((path, round(kb, 1), max_kb, vercel_cache))
 
         if status != 200:
             fails.append(f"{path}: HTTP {status}")
@@ -90,8 +112,8 @@ def main():
             )
         if bad_cache:
             fails.append(
-                f"{path}: no edge cache, so this payload is re-read from the store for "
-                f"EVERY visitor rather than once per TTL"
+                f"{path}: {src} sets no s-maxage, so this payload is re-read from the "
+                f"store for EVERY visitor rather than once per edge TTL"
             )
 
     print("\n" + json.dumps({"base": BASE, "measured": rows}, indent=2))
@@ -102,7 +124,7 @@ def main():
             print(f"::error::{f}")
         print(f"\n{len(fails)} endpoint budget(s) exceeded.")
         return 1
-    print("\nevery endpoint is inside its budget and edge-cached.")
+    print("\nevery endpoint is inside its budget, and every cacheable one sets s-maxage.")
     return 0
 
 
