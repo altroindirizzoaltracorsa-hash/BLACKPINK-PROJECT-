@@ -31,26 +31,14 @@ function extractPlaylistId(url) {
   return match ? match[1] : null;
 }
 
-// Replicate the Italy 2am reset logic from index.html / control-ranking.js
-function lastSunday(year, month) {
-  const d = new Date(Date.UTC(year, month + 1, 0));
-  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
-  return d;
-}
-function getItalyOffset() {
-  const now = new Date();
-  const year = now.getUTCFullYear();
-  return (now >= lastSunday(year, 2) && now < lastSunday(year, 9)) ? 2 : 1;
-}
-// Start of the current Italy-day (the most recent past 2am boundary), in ms.
+// Day boundary = 00:00 UTC — Spotify's own rollover, and the same boundary
+// index.html buckets scores against. It was computed as 2 AM Rome, which equals
+// 00:00 UTC only on summer time; when DST ended on 2026-10-25 it slid to 01:00
+// UTC and stopped matching. No hour or city is named here — the reset is
+// formatted in the reader's local clock where it is displayed.
 function currentItalyDayStart() {
-  const offset = getItalyOffset();
-  const it = new Date(Date.now() + offset * 3600 * 1000);
-  const y = it.getUTCFullYear(), m = it.getUTCMonth(), d = it.getUTCDate();
-  const hour = it.getUTCHours();
-  let dayStart = new Date(Date.UTC(y, m, d, 2 - offset, 0, 0));
-  if (hour < 2) dayStart = new Date(dayStart.getTime() - 86400000);
-  return dayStart.getTime();
+  const n = new Date();
+  return Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate());
 }
 function nextItaly2am() {
   return currentItalyDayStart() + 86400000;

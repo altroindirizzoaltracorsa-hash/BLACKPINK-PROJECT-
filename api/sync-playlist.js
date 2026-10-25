@@ -26,22 +26,14 @@ const OAUTH_REDIRECT_URI = 'https://blinksunited.com/api/spotify-oauth-callback'
 // currently host a live playlist, the highest day number is the newest one.
 const DAY_PATTERN = /\[Day\s*(\d+)\]/i;
 
-function _lastSunday(year, month) {
-  const d = new Date(Date.UTC(year, month + 1, 0));
-  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
-  return d;
-}
-function _italyOffset() {
-  const now = new Date();
-  return (now >= _lastSunday(now.getUTCFullYear(), 2) && now < _lastSunday(now.getUTCFullYear(), 9)) ? 2 : 1;
-}
+// Day boundary = 00:00 UTC — Spotify's own rollover, and the same boundary
+// index.html buckets scores against. It was computed as 2 AM Rome, which equals
+// 00:00 UTC only on summer time; when DST ended on 2026-10-25 it slid to 01:00
+// UTC and stopped matching. No hour or city is named here — the reset is
+// formatted in the reader's local clock where it is displayed.
 function currentItalyDayStart() {
-  const offset = _italyOffset();
-  const it = new Date(Date.now() + offset * 3600 * 1000);
-  const [y, m, d, h] = [it.getUTCFullYear(), it.getUTCMonth(), it.getUTCDate(), it.getUTCHours()];
-  let start = new Date(Date.UTC(y, m, d, 2 - offset, 0, 0));
-  if (h < 2) start = new Date(start.getTime() - 86400000);
-  return start.getTime();
+  const n = new Date();
+  return Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate());
 }
 
 function getAccountIds() {
