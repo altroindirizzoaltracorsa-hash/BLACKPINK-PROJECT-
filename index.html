@@ -12838,38 +12838,31 @@ async function fetchRecentScrobbles(username, from, to, maxPages = 50, fetchFn =
 }
 
 
-// ── TIME HELPERS (Italy = CET/CEST, reset at 2am) ────────────
-function getItalyOffset() {
-  // Italy is UTC+1 (CET) or UTC+2 (CEST)
-  // Simple approximation: check if DST is active (last Sun March – last Sun Oct)
-  const now = new Date();
-  const year = now.getUTCFullYear();
-  const dstStart = lastSunday(year, 2); // March
-  const dstEnd   = lastSunday(year, 9); // October
-  return (now >= dstStart && now < dstEnd) ? 2 : 1;
+// ── TIME HELPERS — the day turns over at 00:00 UTC ────────────
+// That is where Spotify's streaming day turns over worldwide, and the whole
+// site — leaderboard, badges, scrobblers — is meant to turn over with it.
+//
+// It used to be computed as 2 AM Rome: `Date.UTC(y, m, d, 2 - offset)` with
+// offset 2 in summer and 1 in winter. That lands on 00:00 UTC only while Italy
+// is on summer time. When DST ended on 2026-10-25 the offset became 1, the
+// boundary slid to 01:00 UTC, and the site's day stopped agreeing with the day
+// its numbers come from — an hour of plays filed under the wrong date, twice a
+// year, in opposite directions.
+//
+// Nothing here names an hour or a city on purpose. The reset is SHOWN in the
+// reader's own clock by localResetLabel(), so it reads 1 AM in Rome through
+// winter, 2 AM through summer, and the right hour in Manila or São Paulo,
+// without a single one of those being written down.
+function utcDayStart(at = Date.now()) {
+  const n = new Date(at);
+  return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
 }
-function lastSunday(year, month) {
-  const d = new Date(Date.UTC(year, month + 1, 0)); // last day of month
-  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
-  return d;
-}
-function italyNow() {
-  const offset = getItalyOffset();
-  return new Date(Date.now() + offset * 3600 * 1000);
-}
-// Day boundary = 2am Italy
 function getDayBounds() {
-  const it = italyNow();
-  const y = it.getUTCFullYear(), m = it.getUTCMonth(), d = it.getUTCDate();
-  const hour = it.getUTCHours();
-  const offset = getItalyOffset();
-  // If before 2am Italy, the "day" started at 2am yesterday
-  let dayStart = new Date(Date.UTC(y, m, d, 2 - offset, 0, 0));
-  if (hour < 2) dayStart = new Date(dayStart.getTime() - 86400000);
+  const dayStart = utcDayStart();
   const dayEnd = new Date(dayStart.getTime() + 86400000);
   return { from: Math.floor(dayStart / 1000), to: Math.floor(dayEnd / 1000) };
 }
-// Week boundary = Mon 2am Italy to Sun 2am Italy
+// Week boundary = Monday 00:00 UTC to the next Monday 00:00 UTC
 function getWeekBounds() {
   const { from: dayFrom } = getDayBounds();
   const dayFromDate = new Date(dayFrom * 1000);

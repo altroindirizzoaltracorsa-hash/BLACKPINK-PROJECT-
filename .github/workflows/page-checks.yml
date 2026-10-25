@@ -229,6 +229,13 @@ jobs:
         if: always()
         run: node .github/scripts/test_lb_song_labels.mjs
 
+      # The day boundary was computed as 2 AM Rome, which equals 00:00 UTC only
+      # on summer time. DST ended 2026-10-25 and it slid to 01:00 UTC — an hour
+      # of plays filed under the previous date, in six separate copies.
+      - name: The day turns over at 00:00 UTC, all year
+        if: always()
+        run: node .github/scripts/test_day_boundary.mjs
+
       # Spotify files a pre-release single under its own album name, so the
       # BY ALBUM view showed the same record twice and the EP's total was
       # missing the track carrying most of its streams.

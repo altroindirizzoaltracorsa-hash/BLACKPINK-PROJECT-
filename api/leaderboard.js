@@ -147,13 +147,14 @@ function updateLeaderStreak(data) {
 }
 
 // ── Italy 2am day/week bounds (unix seconds), matching cron-scrobbles.js ──
-function bpLastSunday(y, m) { const d = new Date(Date.UTC(y, m + 1, 0)); d.setUTCDate(d.getUTCDate() - d.getUTCDay()); return d; }
-function bpItalyOffset() { const n = new Date(); const y = n.getUTCFullYear(); return (n >= bpLastSunday(y, 2) && n < bpLastSunday(y, 9)) ? 2 : 1; }
+// Day boundary = 00:00 UTC — Spotify's own rollover, and the same boundary
+// index.html buckets scores against. It was computed as 2 AM Rome, which equals
+// 00:00 UTC only on summer time; when DST ended on 2026-10-25 it slid to 01:00
+// UTC and stopped matching. No hour or city is named here — the reset is
+// formatted in the reader's local clock where it is displayed.
 function bpDayBounds() {
-  const offset = bpItalyOffset();
-  const it = new Date(Date.now() + offset * 3600 * 1000);
-  let dayStart = new Date(Date.UTC(it.getUTCFullYear(), it.getUTCMonth(), it.getUTCDate(), 2 - offset, 0, 0));
-  if (it.getUTCHours() < 2) dayStart = new Date(dayStart.getTime() - 86400000);
+  const n = new Date();
+  const dayStart = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
   return { from: Math.floor(dayStart / 1000), to: Math.floor((dayStart.getTime() + 86400000) / 1000) };
 }
 function bpWeekBounds() {

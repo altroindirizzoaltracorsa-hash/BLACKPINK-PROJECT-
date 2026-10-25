@@ -6,23 +6,14 @@ const LASTFM_KEY = '666b8ef2f3cc360fbc20df275fba2981';
 const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
 
 // Replicate Italy 2am reset logic from index.html
-function lastSunday(year, month) {
-  const d = new Date(Date.UTC(year, month + 1, 0));
-  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
-  return d;
-}
-function getItalyOffset() {
-  const now = new Date();
-  const year = now.getUTCFullYear();
-  return (now >= lastSunday(year, 2) && now < lastSunday(year, 9)) ? 2 : 1;
-}
+// Day boundary = 00:00 UTC — Spotify's own rollover, and the same boundary
+// index.html buckets scores against. It was computed as 2 AM Rome, which equals
+// 00:00 UTC only on summer time; when DST ended on 2026-10-25 it slid to 01:00
+// UTC and stopped matching. No hour or city is named here — the reset is
+// formatted in the reader's local clock where it is displayed.
 function getTimeBounds() {
-  const offset = getItalyOffset();
-  const it   = new Date(Date.now() + offset * 3600 * 1000);
-  const y = it.getUTCFullYear(), m = it.getUTCMonth(), d = it.getUTCDate();
-  const hour = it.getUTCHours();
-  let dayStart = new Date(Date.UTC(y, m, d, 2 - offset, 0, 0));
-  if (hour < 2) dayStart = new Date(dayStart.getTime() - 86400000);
+  const n = new Date();
+  const dayStart = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
   const dayEnd = new Date(dayStart.getTime() + 86400000);
   const dow = dayStart.getUTCDay();
   const daysToMon = dow === 0 ? 6 : dow - 1;
