@@ -433,7 +433,28 @@ async function handlerInner(req, res) {
     // window. Half a minute is unnoticeable; minutes would not be. Beyond ~2
     // requests a minute a longer TTL buys nothing anyway — the cache is already
     // absorbing everything above that.
-    res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=120');
+    //
+    // NO CACHED COPY MAY STRADDLE THE DAILY RESET. A flat 30s TTL plus 120s of
+    // stale-while-revalidate means the edge can keep serving a pre-reset board
+    // for over two minutes after 00:00 UTC — showing yesterday's standings at
+    // the one moment of the day everybody is looking. So both windows are
+    // clamped to the time left before the boundary: they shrink as it
+    // approaches and hit zero exactly on it, which forces the first request of
+    // the new day to come from the store. Away from the boundary this is an
+    // ordinary 30s cache.
+    const nowMs = Date.now();
+    const nextReset = Date.UTC(
+      new Date(nowMs).getUTCFullYear(), new Date(nowMs).getUTCMonth(),
+      new Date(nowMs).getUTCDate() + 1);
+    const secsToReset = Math.max(0, Math.floor((nextReset - nowMs) / 1000));
+    // The two windows ADD UP: a copy can be served for s-maxage, and then for
+    // stale-while-revalidate more on top. Clamping each to secsToReset
+    // separately is not enough — at 90s before the reset that gives 30 + 90,
+    // which keeps serving the old board half a minute into the new day. So the
+    // stale window gets only whatever is left after the fresh one.
+    const ttl = Math.min(30, secsToReset);
+    const swr = Math.min(120, Math.max(0, secsToReset - ttl));
+    res.setHeader('Cache-Control', `s-maxage=${ttl}, stale-while-revalidate=${swr}`);
     const { banned, renameLog, ...publicData } = data;
     return res.status(200).json(publicData);
   }
