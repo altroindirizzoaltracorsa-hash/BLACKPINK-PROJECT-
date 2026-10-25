@@ -9487,6 +9487,22 @@ const TRACKS = [
   { id: 'cutuoff',     title: 'CUT U OFF',         artist: 'LISA',   track: 'Cut U Off',          year: '2026', era: 'PRESS PLAY',   spotify: 'https://open.spotify.com/track/4NOZnyEKqujVEhHYobZfrk' },
   { id: 'sweat',       title: 'SWEAT',             artist: 'LISA',   track: 'Sweat',              year: '2026', era: 'PRESS PLAY',   spotify: 'https://open.spotify.com/track/2dvKssoXPLt3RwTEGCIdGd' },
 ];
+
+// Display name for a leaderboard sub-tab, taken from TRACKS rather than typed
+// out beside it. This replaced five identical hand-written ternary chains, all
+// of which ended `: 'LESS THAN A LOVER'` — so every id they had not been taught
+// fell through to Jennie's song. The whole PRESS PLAY EP did: V12, COBRA,
+// TARANTINO, CUT U OFF and SWEAT each announced themselves as LESS THAN A LOVER
+// on the board, in the heading, and on the shared card. SaWaDiKa was fine only
+// because it shipped as a single a month earlier and had been added by hand,
+// and `ltal` looked fine because the fallback happened to be its own title —
+// which is why five copies of this survived review.
+//
+// An unknown id now renders as the id in capitals: wrong, but visibly wrong,
+// instead of confidently naming a different song.
+const LB_SONG_TITLE = Object.fromEntries(TRACKS.map(t => [t.id, t.title]));
+const lbSongLabel = (id, allLabel) =>
+  id === 'all' ? allLabel : (LB_SONG_TITLE[id] || String(id || '').toUpperCase());
 // Every id the scrobble counters carry, derived from TRACKS rather than typed
 // out again. It was typed out again — twenty-two times, as `{ jump: 0, … }` and
 // `['jump', …]` — and the PRESS PLAY EP went into TRACKS' server-side twin, the
@@ -13753,7 +13769,17 @@ function showBreakdown(type, key) {
     'weekly:ltal':      'LESS THAN A LOVER — This Week',
   };
   const compositeKey = key ? `${type}:${key}` : type;
-  document.getElementById('breakdown-title').textContent = '// ' + (labels[compositeKey] || labels[type] || type.toUpperCase());
+  // Same trap as the sub-tab labels, one step milder: this map was hand-written
+  // too and only ever learned jump/shutdown/ddududu/ltal, so every other track
+  // — the PRESS PLAY EP among them — fell past it to `type.toUpperCase()` and
+  // titled the popup "DAILY". Wrong rather than misattributed, but still wrong.
+  // Build the missing rows from TRACKS instead of adding five more by hand.
+  const PERIOD_SUFFIX = { overall: 'All Time', daily: 'Today', weekly: 'This Week' };
+  const derived = key && PERIOD_SUFFIX[type] && LB_SONG_TITLE[key]
+    ? `${LB_SONG_TITLE[key]} — ${PERIOD_SUFFIX[type]}`
+    : null;
+  document.getElementById('breakdown-title').textContent =
+    '// ' + (labels[compositeKey] || derived || labels[type] || type.toUpperCase());
 
   let getVal;
   if (type === 'artistPlays')     getVal = a => a.artistPlays;
@@ -15771,7 +15797,7 @@ function renderLeaderboard() {
     if (totalEl) totalEl.textContent = '';
   } else {
     const periodLabel = lbPeriod === 'daily' ? 'streams today' : lbPeriod === 'weekly' ? 'streams this week' : 'total streams';
-    const songLabel   = lbSong === 'all' ? 'All Campaign Tracks' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : lbSong === 'sawadika' ? 'SAWADIKA' : lbSong === 'click' ? 'CLICK' : lbSong === 'newtrick' ? 'NEW TRICK' : 'LESS THAN A LOVER';
+    const songLabel   = lbSongLabel(lbSong, 'All Campaign Tracks');
     const colHeader   = lbSong === 'all'
       ? (lbPeriod === 'daily' ? 'Streams Today' : lbPeriod === 'weekly' ? 'Streams This Week' : 'Total Streams')
       : `${songLabel} — ${lbPeriod === 'daily' ? 'Today' : lbPeriod === 'weekly' ? 'This Week' : 'All Time'}`;
@@ -15997,7 +16023,7 @@ function renderLeagues() {
     })
     .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
 
-  const songLabel = lbSong === 'all' ? 'All Campaign Tracks' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : lbSong === 'sawadika' ? 'SAWADIKA' : lbSong === 'click' ? 'CLICK' : lbSong === 'newtrick' ? 'NEW TRICK' : 'LESS THAN A LOVER';
+  const songLabel = lbSongLabel(lbSong, 'All Campaign Tracks');
   const periodWord = lbPeriod === 'daily' ? 'Today' : lbPeriod === 'weekly' ? 'This Week' : 'All Time';
   const periodLabel = lbPeriod === 'daily' ? 'streams today' : lbPeriod === 'weekly' ? 'streams this week' : 'total streams';
 
@@ -21201,7 +21227,7 @@ async function shareLbCard() {
   _cardLogo = await getBuLogo();
   renderLbCard(_cardLogo);
   const periodLabel = lbCardPeriodLabel();
-  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : lbSong === 'sawadika' ? 'SAWADIKA' : lbSong === 'click' ? 'CLICK' : lbSong === 'newtrick' ? 'NEW TRICK' : 'LESS THAN A LOVER';
+  const songLabel   = lbSongLabel(lbSong, 'ALL TRACKS');
   label.textContent = `LEADERBOARD · ${periodLabel} · ${songLabel}`;
 }
 
@@ -21259,7 +21285,7 @@ function shiftLbCardRange(dir) {
   _lbCardRangeStart = next;
   renderLbCard(_cardLogo);
   const periodLabel = lbCardPeriodLabel();
-  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : lbSong === 'sawadika' ? 'SAWADIKA' : lbSong === 'click' ? 'CLICK' : lbSong === 'newtrick' ? 'NEW TRICK' : 'LESS THAN A LOVER';
+  const songLabel   = lbSongLabel(lbSong, 'ALL TRACKS');
   document.getElementById('card-box-label').textContent = `LEADERBOARD · ${periodLabel} · ${songLabel}`;
 }
 
@@ -21296,7 +21322,7 @@ function renderLbCard(logo) {
 
   // Period + song subtitle
   const periodLabel = lbCardPeriodLabel();
-  const songLabel   = lbSong === 'all' ? 'ALL TRACKS' : lbSong === 'jump' ? 'JUMP' : lbSong === 'shutdown' ? 'SHUT DOWN' : lbSong === 'ddududu' ? 'DDU-DU DDU-DU' : lbSong === 'go' ? 'GO' : lbSong === 'fallenangel' ? 'FALLEN ANGEL' : lbSong === 'heaven' ? 'HEAVEN' : lbSong === 'sawadika' ? 'SAWADIKA' : lbSong === 'click' ? 'CLICK' : lbSong === 'newtrick' ? 'NEW TRICK' : 'LESS THAN A LOVER';
+  const songLabel   = lbSongLabel(lbSong, 'ALL TRACKS');
   const rangeLabel  = allEntries.length > LB_CARD_PAGE_SIZE
     ? ` · RANK ${_lbCardRangeStart + 1}–${Math.min(_lbCardRangeStart + LB_CARD_PAGE_SIZE, allEntries.length)}`
     : '';

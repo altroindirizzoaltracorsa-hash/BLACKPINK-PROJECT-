@@ -221,6 +221,14 @@ jobs:
         if: always()
         run: node .github/scripts/test_store_split.mjs
 
+      # The whole PRESS PLAY EP announced itself as LESS THAN A LOVER on the
+      # leaderboard: five copies of a hand-written ternary chain all ended
+      # `: 'LESS THAN A LOVER'`, so any track they had not been taught borrowed
+      # Jennie's title. ltal read correctly because the fallback WAS its title.
+      - name: Every leaderboard track names itself
+        if: always()
+        run: node .github/scripts/test_lb_song_labels.mjs
+
       # Spotify files a pre-release single under its own album name, so the
       # BY ALBUM view showed the same record twice and the EP's total was
       # missing the track carrying most of its streams.
