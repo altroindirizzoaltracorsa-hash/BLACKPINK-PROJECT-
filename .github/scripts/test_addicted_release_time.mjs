@@ -146,7 +146,16 @@ console.log('\n--- the snippet is linked, not embedded');
   // release card.
   const row = (card.match(/<div class="ad-snippet-links">[\s\S]*?<\/div>/) || [''])[0];
   const hrefs = [...row.matchAll(/href="([^"]*)"/g)].map(m => m[1]);
-  check(hrefs.length > 0, `the snippet row has ${hrefs.length} link(s)`);
+  check(hrefs.length === 3, `the snippet row has ${hrefs.length} link(s)`, hrefs.join(' '));
+  for (const host of ['youtube.com', 'instagram.com', 'tiktok.com']) {
+    check(hrefs.some(h => h.includes(host)), `${host} is linked`);
+  }
+  // Share-tracking tokens are stripped before a link goes on a public page:
+  // ?obrf= on Instagram and ?is= on YouTube identify whoever copied the link,
+  // do nothing for the post, and would be handed to every visitor alike.
+  check(!hrefs.some(h => /[?&](obrf|is|si|_r|_t)=/.test(h)),
+        'and none carries a share-tracking parameter',
+        hrefs.filter(h => /[?&](obrf|is|si|_r|_t)=/.test(h)).join(' '));
   check(hrefs.every(h => /^https:\/\/\S+\.\S+/.test(h)),
         'and every one is a real URL, no placeholders',
         hrefs.filter(h => !/^https:\/\/\S+\.\S+/.test(h)).join(' / ') || hrefs.join(' / '));
