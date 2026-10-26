@@ -213,11 +213,14 @@
       rgba(0,0,0,0.55) 0 5px, rgba(255,255,255,0.30) 5px 10px); }
   .pr-nums { font-family: "DM Mono", ui-monospace, monospace; font-size: 0.7rem;
     color: var(--muted); white-space: nowrap; }
-  /* The secondary figure in each row: a headcount beside the name, a raw total
-     beside the average. Dimmed because the bar is drawn on the OTHER number —
-     a total at full strength next to a per-person bar is the one pairing that
-     reads as the bar being wrong. */
   .pr-tot { opacity: 0.55; }
+  /* One trade, with its sides under it. The trade name is the heading and the
+     fandom rows are indented under it, so the eye reads "this trade, by these
+     sides" rather than eight rows of equal rank. */
+  .pr-group { margin-bottom: 0.7rem; }
+  .pr-trade { font-size: 0.72rem; margin-bottom: 0.3rem; }
+  .pr-sub { margin-left: 0.9rem; }
+  @media (max-width: 420px) { .pr-sub { margin-left: 0.6rem; } }
   .pr-note { font-size: 0.66rem; color: var(--muted); margin: 0.55rem 0 0; line-height: 1.6; }
   /* The view selector. Same control as the period tabs, smaller: those switch
      what the whole card counts, these switch how one block is read. */
@@ -909,14 +912,42 @@ if (DEMO_OPTION) {
                board: [{ name: 'Voter A', votes: 68, byCat: { 'favorite-music-group-or-duo': 17 } },
                        { name: 'Voter B', votes: 52, byCat: { 'favorite-global-music-star': 13 } }],
                fandoms: { blink: { people: 9, votes: 104 }, bloom: { people: 3, votes: 56 },
-                          pauljjak: { people: 4, votes: 40 }, unsaid: { people: 1, votes: 10 } } },
+                          pauljjak: { people: 4, votes: 40 }, unsaid: { people: 1, votes: 10 } },
+               fandomCats: {
+                 blink:    { 'favorite-music-group-or-duo': 20, 'favorite-music-collaboration': 20,
+                             'favorite-female-artist': 19, 'favorite-global-music-star': 20,
+                             'favorite-animated-male-voice-from-a-movie': 18 },
+                 bloom:    { 'favorite-music-group-or-duo': 12, 'favorite-music-collaboration': 12,
+                             'favorite-female-artist': 11, 'favorite-global-music-star': 12,
+                             'favorite-animated-male-voice-from-a-movie': 10 },
+                 pauljjak: { 'favorite-music-group-or-duo': 8, 'favorite-music-collaboration': 7,
+                             'favorite-female-artist': 7, 'favorite-global-music-star': 6,
+                             'favorite-animated-male-voice-from-a-movie': 6 },
+                 unsaid:   { 'favorite-music-group-or-duo': 4, 'favorite-music-collaboration': 4,
+                             'favorite-female-artist': 4, 'favorite-global-music-star': 4,
+                             'favorite-animated-male-voice-from-a-movie': 4 },
+               } },
       week:  { byCat: { 'favorite-music-group-or-duo': 240, 'favorite-music-collaboration': 236,
                         'favorite-female-artist': 228, 'favorite-global-music-star': 232,
                         'favorite-animated-male-voice-from-a-movie': 205 },
                board: [{ name: 'Voter A', votes: 320, byCat: { 'favorite-music-group-or-duo': 80 } },
                        { name: 'Voter B', votes: 268, byCat: { 'favorite-global-music-star': 67 } }],
                fandoms: { blink: { people: 22, votes: 620 }, bloom: { people: 7, votes: 286 },
-                          pauljjak: { people: 9, votes: 200 }, unsaid: { people: 2, votes: 30 } } },
+                          pauljjak: { people: 9, votes: 200 }, unsaid: { people: 2, votes: 30 } },
+               fandomCats: {
+                 blink:    { 'favorite-music-group-or-duo': 140, 'favorite-music-collaboration': 138,
+                             'favorite-female-artist': 133, 'favorite-global-music-star': 136,
+                             'favorite-animated-male-voice-from-a-movie': 120 },
+                 bloom:    { 'favorite-music-group-or-duo': 50, 'favorite-music-collaboration': 49,
+                             'favorite-female-artist': 47, 'favorite-global-music-star': 48,
+                             'favorite-animated-male-voice-from-a-movie': 42 },
+                 pauljjak: { 'favorite-music-group-or-duo': 34, 'favorite-music-collaboration': 33,
+                             'favorite-female-artist': 32, 'favorite-global-music-star': 32,
+                             'favorite-animated-male-voice-from-a-movie': 28 },
+                 unsaid:   { 'favorite-music-group-or-duo': 16, 'favorite-music-collaboration': 16,
+                             'favorite-female-artist': 16, 'favorite-global-music-star': 16,
+                             'favorite-animated-male-voice-from-a-movie': 15 },
+               } },
       all:   { byCat: { 'favorite-music-group-or-duo': 440, 'favorite-music-collaboration': 435,
                         'favorite-female-artist': 420, 'favorite-global-music-star': 425,
                         'favorite-animated-male-voice-from-a-movie': 390 },
@@ -928,7 +959,25 @@ if (DEMO_OPTION) {
                        { name: 'Voter C', votes: 196, byCat: { 'favorite-music-group-or-duo': 49 } }],
                // 34 people averaging 34.7 against 9 averaging 50.
                fandoms: { blink: { people: 34, votes: 1180 }, bloom: { people: 9, votes: 450 },
-                          pauljjak: { people: 12, votes: 300 }, unsaid: { people: 3, votes: 90 } } },
+                          pauljjak: { people: 12, votes: 300 }, unsaid: { people: 3, votes: 90 } },
+               // The same people, per category. Summed per slug these come to
+               // the byCat figures above — the sides under a trade are
+               // everybody, so a sample where they did not add up would
+               // preview a page that cannot happen.
+               fandomCats: {
+                 blink:    { 'favorite-music-group-or-duo': 250, 'favorite-music-collaboration': 248,
+                             'favorite-female-artist': 240, 'favorite-global-music-star': 242,
+                             'favorite-animated-male-voice-from-a-movie': 200 },
+                 bloom:    { 'favorite-music-group-or-duo': 96, 'favorite-music-collaboration': 95,
+                             'favorite-female-artist': 90, 'favorite-global-music-star': 94,
+                             'favorite-animated-male-voice-from-a-movie': 75 },
+                 pauljjak: { 'favorite-music-group-or-duo': 64, 'favorite-music-collaboration': 62,
+                             'favorite-female-artist': 60, 'favorite-global-music-star': 59,
+                             'favorite-animated-male-voice-from-a-movie': 55 },
+                 unsaid:   { 'favorite-music-group-or-duo': 30, 'favorite-music-collaboration': 30,
+                             'favorite-female-artist': 30, 'favorite-global-music-star': 30,
+                             'favorite-animated-male-voice-from-a-movie': 60 },
+               } },
     },
     days: [5, 4, 3, 2, 1, 0].map(function (b, i) {
       return { day: _dday(b), votes: [180, 240, 300, 360, 470, 170][i],
@@ -1157,51 +1206,103 @@ function pairingRows(c, p) {
   });
 }
 
-// The same rows, drawn for the people who logged them.
+// The same four trades, each one split by the side the voter says they are on.
 //
-// One row per self-declared side, and this is the ONLY cut of this block that
-// mentions a fandom. The trade rows above are votes an ACT received, and those
-// cannot be attributed to a fandom in any way — everyone in a collab votes the
-// whole ballot, so there is no such thing as "the BLOOM share of JENNIE's
-// votes". What can be attributed, once somebody says what they are, is the
-// person: who turned up, and how much they logged.
+// "40 blinks voted for BLACKPINK and 40 blinks voted for BINI; 34 blooms voted
+// for BLACKPINK and 34 blooms voted for BINI" — the row anatomy of the trade
+// view, one row per fandom underneath each trade. It is the question a vote
+// trade actually exists to answer: did the other side turn up in our
+// categories, and did ours turn up in theirs.
 //
-// So the two views sit under one selector and count two different things, which
-// is exactly what a selector invites a reader to forget. Each carries its own
-// note, and neither number is derived from the other.
-function voterRows(c, p) {
-  if (!c.fandoms || !c.fandoms.length) return [];
-  var f = (p && p.fandoms) || null;
-  // Every declared side, listed at zero as well: a side missing from the list
-  // reads as "they are not in this", and before anybody has answered that is
-  // the whole picture.
-  var rows = c.fandoms.map(function (x) {
-    var got = (f && f[x.key]) || {};
-    return { key: x.key, label: x.label, colour: x.colour || 'var(--pink)',
-             people: Number(got.people) || 0, votes: Number(got.votes) || 0 };
+// WHAT MAKES THIS ATTRIBUTABLE, when the headline bar is not. A vote is not
+// labelled with a fandom and never will be. A PERSON is: they say once which
+// side they are on, and their own picks are recorded per round, so
+// `fandomCats` is a sum over people who declared, never a guess about a vote.
+// The reach of that claim is exactly the people who answered — which is why
+// "didn't say" is a side here like any other rather than being spread across
+// the rest, and why a side's row goes missing from a trade only when that side
+// logged nothing in it.
+//
+// It comes from the API, uncapped. Deriving it on this page from `board` would
+// work today and silently go short of the category totals the day this collab
+// passes BOARD_MAX voters — a failure that looks exactly like a quiet week.
+// An older deployment with no `fandomCats` has no view here at all, which is
+// the right failure: the selector simply does not appear.
+function voterTradeRows(c, p) {
+  if (!c.pairings || !c.fandoms || !c.fandoms.length) return [];
+  var fc = (p && p.fandomCats) || null;
+  if (!fc) return [];
+  var n = function (k, sl) { return Math.max(0, Number((fc[k] || {})[sl]) || 0); };
+
+  // The declared sides, then one row for everybody a declared side does not
+  // cover: people who never answered, and people who picked a side this collab
+  // no longer carries (it had a second partner for two days). Both are the same
+  // situation — nothing recognises them — and keeping them makes the rows under
+  // a trade add up to that trade's own numbers.
+  var sides = c.fandoms.map(function (x) {
+    return { key: x.key, label: x.label, colour: x.colour || 'var(--pink)', keys: [x.key] };
   });
-  // A key the collab no longer lists is the same situation as never having
-  // answered — this trade carried a second partner for two days and the people
-  // who picked that side are still logging. Folded into one row rather than
-  // dropped, so the rows account for everybody the period has.
   var known = {};
   c.fandoms.forEach(function (x) { known[x.key] = true; });
-  var other = { key: 'unsaid', label: 'Didn’t say', colour: 'var(--muted)', people: 0, votes: 0 };
-  for (var k in (f || {})) {
-    if (known[k]) continue;
-    other.people += Number((f[k] || {}).people) || 0;
-    other.votes  += Number((f[k] || {}).votes)  || 0;
+  var strays = Object.keys(fc).filter(function (k) { return !known[k]; });
+  if (strays.length) {
+    sides.push({ key: 'unsaid', label: 'Didn’t say', colour: 'var(--muted)', keys: strays });
   }
-  if (other.people) rows.push(other);
-  // The BAR is votes-each, not the total — the same rule the turnout block
-  // further down follows, for the same reason. Comparing raw totals between
-  // sides with different headcounts compares reach rather than effort: one side
-  // finds the counter on its own site, the other has to be told it exists.
-  // Drawn on totals, 34 people averaging 34.7 get a full bar beside 9
-  // averaging 50, and the picture then contradicts the figure printed next to
-  // it.
-  rows.forEach(function (r) { r.each = r.people ? r.votes / r.people : 0; });
-  return rows;
+  var sum = function (s, sl) {
+    return s.keys.reduce(function (a, k) { return a + n(k, sl); }, 0);
+  };
+
+  var count = function (key) {
+    var t = {};
+    c.pairings.forEach(function (q) { t[q[key]] = (t[q[key]] || 0) + 1; });
+    return t;
+  };
+  var usUsed = count('us'), themUsed = count('them');
+  var nameOf = function (sl) {
+    var row = (c.theyGive || []).concat(c.weGive || [])
+      .filter(function (x) { return x.slug === sl; })[0];
+    return row ? (row.who || row.nominee || sl) : sl;
+  };
+  var colourOf = function (sl) {
+    var give = (c.weGive || []).filter(function (x) { return x.slug === sl; })[0];
+    if (!give) return '#ff0066';
+    var who = give.who || give.nominee;
+    var pr = (c.partners || []).filter(function (x) { return x.act === who; })[0];
+    return (pr && pr.colour) || 'var(--them)';
+  };
+
+  return c.pairings.map(function (q) {
+    var rows = sides.map(function (s) {
+      return { key: s.key, label: s.label, colour: s.colour,
+               us: sum(s, q.us), them: sum(s, q.them) };
+    }).filter(function (r) { return r.us > 0 || r.them > 0; });
+    // One denominator per trade, not per row. Scaled to its own total, a side
+    // that logged two votes draws the same bar as one that logged a thousand —
+    // the same failure as drawing a per-person figure on the totals, with the
+    // picture contradicting the number beside it. Shared, the bar lengths are
+    // the sides' sizes and the split inside each one is still its balance.
+    var most = rows.reduce(function (a, r) { return Math.max(a, r.us + r.them); }, 0) || 1;
+    return {
+      us:   { slug: q.us,   act: nameOf(q.us),   colour: colourOf(q.us),
+              repeat: usUsed[q.us] > 1 },
+      them: { slug: q.them, act: nameOf(q.them), colour: colourOf(q.them),
+              repeat: themUsed[q.them] > 1 },
+      rows: rows, most: most,
+    };
+  });
+}
+
+// The declared sides with nothing logged anywhere in this period. Said once in
+// words rather than as an empty row under each of the four trades: a side
+// missing from the block still has to be accounted for, but sixteen empty
+// tracks are not an account of anything.
+function voterSilent(c, p) {
+  var fc = (p && p.fandomCats) || {};
+  return (c.fandoms || []).filter(function (x) {
+    var got = fc[x.key] || {};
+    for (var k in got) if (Number(got[k]) > 0) return false;
+    return true;
+  }).map(function (x) { return x.label; });
 }
 
 // Which cut of the block is showing. 'trade' is what was asked for first and
@@ -1210,7 +1311,7 @@ var PAIR_VIEW = 'trade';
 
 function pairingsHtml(c, p) {
   var trade = pairingRows(c, p);
-  var voters = voterRows(c, p);
+  var voters = voterTradeRows(c, p);
   if (!trade.length && !voters.length) return '';
   var views = [{ k: 'trade', label: 'By trade', has: trade.length },
                { k: 'voter', label: 'By voter', has: voters.length }]
@@ -1229,42 +1330,55 @@ function pairingsHtml(c, p) {
       }).join('') + '</div>'
     : '';
   return '<div class="pairings">' + tabs
-    + (view === 'voter' ? voterViewHtml(voters) : tradeViewHtml(trade))
+    + (view === 'voter' ? voterViewHtml(c, voters, voterSilent(c, p)) : tradeViewHtml(trade))
     + '</div>';
 }
 
-function voterViewHtml(rows) {
-  var most = Math.max.apply(null, rows.map(function (r) { return r.each; }).concat([0.0001]));
-  var any = rows.some(function (r) { return r.people > 0; });
-  return '<div class="pairings-head">Who logged them</div>'
-    + rows.map(function (r) {
-        var avg = Math.round(r.each * 10) / 10;
-        return '<div class="pr-row">'
-          + '<div class="pr-name"><span style="color:' + esc(r.colour) + '">' + esc(r.label)
-          + '</span> <span class="pr-tot">' + fmt(r.people) + ' '
-          + (r.people === 1 ? 'person' : 'people') + '</span></div>'
-          + '<div class="pr-bar">'
-          // Nothing drawn for a side nobody has joined. A segment of any width
-          // is a claim, and two part-filled tracks read as a contest that
-          // nobody is actually in yet.
-          + (r.people
-              ? '<div class="pr-seg" style="width:' + (r.each / most * 100)
-                + '%;background-color:' + esc(r.colour) + '"></div>'
-              : '')
-          + '</div>'
-          + '<div class="pr-nums">'
-          + (r.people ? avg + ' each<span class="pr-tot"> · ' + fmt(r.votes) + '</span>' : '—')
-          + '</div>'
+function voterViewHtml(c, groups, silent) {
+  return '<div class="pairings-head">Each trade, by who voted it</div>'
+    + groups.map(function (g) {
+        return '<div class="pr-group">'
+          + '<div class="pr-trade"><span style="color:' + esc(g.us.colour) + '">' + esc(g.us.act)
+          + '</span> × <span style="color:' + esc(g.them.colour) + '">' + esc(g.them.act)
+          + '</span></div>'
+          + (g.rows.length
+              ? g.rows.map(function (r) {
+                  // Same two segments as the trade view and the same colours:
+                  // the bar is still "this much to ours, this much to theirs".
+                  // The FANDOM is the row's name, never a segment — colouring a
+                  // segment by fandom would draw a vote as belonging to one.
+                  return '<div class="pr-row pr-sub">'
+                    + '<div class="pr-name"><span style="color:' + esc(r.colour) + '">'
+                    + esc(r.label) + '</span></div>'
+                    + '<div class="pr-bar">'
+                    // background-COLOR, never the `background` shorthand: the
+                    // shorthand resets background-image to none and an inline
+                    // style outranks the stylesheet, which silently wiped
+                    // .pr-repeat's hatch once already.
+                    + '<div class="pr-seg' + (g.us.repeat ? ' pr-repeat' : '') + '" style="width:'
+                    + (r.us / g.most * 100) + '%;background-color:' + esc(g.us.colour) + '"></div>'
+                    + '<div class="pr-seg' + (g.them.repeat ? ' pr-repeat' : '') + '" style="width:'
+                    + (r.them / g.most * 100) + '%;background-color:' + esc(g.them.colour) + '"></div>'
+                    + '</div>'
+                    + '<div class="pr-nums">' + fmt(r.us) + (g.us.repeat ? '*' : '')
+                    + ' / ' + fmt(r.them) + (g.them.repeat ? '*' : '') + '</div>'
+                    + '</div>';
+                }).join('')
+              : '<div class="pr-row pr-sub"><div class="pr-name pr-tot">nobody yet</div>'
+                + '<div class="pr-bar"></div><div class="pr-nums">—</div></div>')
           + '</div>';
       }).join('')
-    + '<p class="pr-note"><b>Not the rows above, split up.</b> Those votes cannot be traced to a '
-    + 'fandom at all — everyone here votes the whole ballot. This counts <b>people</b>, by what '
-    + 'they tell us they are, and everything their counter recorded — not a share of the rows '
-    + 'above. <b>The bars are votes each</b>, not the totals: one side finds the '
-    + 'counter on its own site and the other has to be told it exists, so comparing the totals '
-    + 'compares reach more than effort. Self-declared, and nobody is asked to prove it.'
-    + (any ? '' : ' Nobody has said which side they are on yet — the counter asks once, after '
-      + 'your first round.')
+    + '<p class="pr-note"><b>Still do not add these up.</b> The <b>*</b> and the hatching mean '
+    + 'what they mean in the other view — one ballot slot standing behind more than one trade — '
+    + 'and splitting the rows by side does not make those votes separate. <b>Down a trade</b> they '
+    + 'do add up: the sides under it are everybody, so they come to that trade\'s own numbers.'
+    + '<br>This is <b>people, counted per category</b>: somebody says once which side they are on '
+    + 'and their own picks are recorded, so a row is a sum over the people who answered — never a '
+    + 'guess about a vote. Self-declared, nobody is asked to prove it, and anybody who has not '
+    + 'answered is in <b>Didn’t say</b> rather than spread across the rest.'
+    + (silent && silent.length
+        ? '<br>Nothing logged yet under ' + esc(silent.join(' or ')) + '.'
+        : '')
     + '</p>';
 }
 
@@ -2068,8 +2182,17 @@ function tallyHtml(c) {
       + pairingsHtml(c, p)
       + '<div class="tally-note">'
       + '<b>These are not two teams.</b> Blinks and ' + esc(partnerFandoms(c))
-      + ' both vote the whole ballot, so neither number belongs to one fandom — and nothing here '
-      + 'can tell which fandom a vote came from. The gap is slot counts, not standings: '
+      + ' both vote the whole ballot, so neither number belongs to one fandom: a vote in '
+      + esc(acts[0]) + '’s category is not a blink’s vote. '
+      // The page used to say nothing here could tell which fandom a vote came
+      // from. That was about the right thing — this bar is not a fandom score —
+      // but as written it was a claim about capability, and the trade rows now
+      // have a view that DOES attribute, through the person rather than the
+      // vote. Saying both would be the page contradicting itself, so this says
+      // the part that is true and points at the part that does it.
+      + 'Who logged a vote can be told, for the people who have said which side they are on — '
+      + 'that is the <b>by voter</b> view of the rows below, and it is about voters, not votes. '
+      + 'The gap is slot counts, not standings: '
       + esc(acts[0]) + (acts.length > 1 ? ' and the rest are' : ' is') + ' up in ' + themSlots
       + ' ' + catWord(themSlots) + ' and ' + esc(partnerActs(c)) + ' in ' + usSlots
       + ', so one pass through the ballot adds ' + themSlots + ' on one side and ' + usSlots
@@ -2189,8 +2312,10 @@ function fandomsHtml(c) {
               + fmt(unsaid.votes) + ' votes are in the totals above like everyone else’s.</div>'
             : '')
     + '<div class="sub-note"><b>This is not the bar.</b> It counts <b>people</b>, by what they '
-    + 'tell us they are — the votes themselves still cannot be traced to a fandom, because '
-    + 'everyone here votes the whole ballot. <b>The bars are votes each</b>, not the totals: '
+    + 'tell us they are — a vote carries no fandom of its own, and everyone here votes the whole '
+    + 'ballot, so the bar above is not a score between sides. What these same people put in each '
+    + 'category is the <b>by voter</b> view of the trade rows higher up. '
+    + '<b>The bars are votes each</b>, not the totals: '
     + 'one side finds the counter on its own site and the other has to be told it exists, so '
     + 'comparing the totals compares reach more than effort. Self-declared, and nobody is asked '
     + 'to prove it.'

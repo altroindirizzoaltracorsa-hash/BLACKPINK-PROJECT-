@@ -1110,9 +1110,16 @@ console.log('--- who is logging: people by declared side, never a split of the v
   /this is not the bar/i.test(note)
     ? ok('and the block says it is not the bar')
     : bad('and the block says it is not the bar', note.slice(0, 120));
-  /cannot be traced to a fandom/i.test(note)
-    ? ok('and repeats that a vote cannot be traced to a fandom')
-    : bad('and repeats that a vote cannot be traced to a fandom', note.slice(0, 160));
+  // Narrowed when the trade rows gained a by-voter view. The page used to say
+  // a vote could not be traced to a fandom at all; that view attributes through
+  // the PERSON who declared a side, so the blanket claim became false and the
+  // page would have been saying both things at once. What has to survive is the
+  // part that is still true: a vote carries no fandom of its own, so this bar
+  // is not a score between sides. test_collab_views.mjs holds the other end —
+  // that the old sentence is gone from every note on the page.
+  /carries no fandom of its own/i.test(note)
+    ? ok('and repeats that a vote carries no fandom of its own')
+    : bad('and repeats that a vote carries no fandom of its own', note.slice(0, 160));
   /self-declared/i.test(note)
     ? ok('and that it is self-declared')
     : bad('and that it is self-declared', note.slice(0, 160));

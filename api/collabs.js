@@ -188,21 +188,34 @@ function periodFrom(rows, fandomOf) {
     .sort((a, b) => b.votes - a.votes || String(a.name || '').localeCompare(String(b.name || '')))
     .slice(0, BOARD_MAX);
 
-  // Who turned up, by what they say they are. PEOPLE and their logged votes —
-  // never a split of the per-act totals above, which cannot be attributed to a
-  // fandom at all because everyone votes the whole ballot. `people` is what
-  // makes the average meaningful, and the average is what makes this readable
-  // when one side simply has more accounts than the other.
+  // Who turned up, by what they say they are. `people` is what makes the
+  // average meaningful, and the average is what makes this readable when one
+  // side simply has more accounts than the other.
+  //
+  // `fandomCats` is the same people's votes, kept per CATEGORY: what the side
+  // that says it is BLOOM actually put in each slot of the trade. That is the
+  // one question a vote trade exists to answer, and it is answerable because a
+  // person declares a side once and their own `cats` are recorded per round —
+  // so the attribution is per PERSON, never a guess about a vote.
+  //
+  // Two things it is not. It covers only people who have said, which is why
+  // 'unsaid' is a key here like any other rather than being spread across the
+  // rest. And it is built from `per`, not from `board`: the board is cut to
+  // BOARD_MAX, and a split derived from it would quietly go short of the
+  // category totals on the day this collab passes 200 voters, in a way that
+  // looks exactly like a quiet week.
   const fandoms = {};
+  const fandomCats = {};
   for (const e of per.values()) {
     if (e.votes <= 0) continue;
     const k = e.fandom || 'unsaid';
     const f = fandoms[k] || (fandoms[k] = { people: 0, votes: 0 });
     f.people += 1;
     f.votes += e.votes;
+    addInto(fandomCats[k] || (fandomCats[k] = {}), e.byCat);
   }
 
-  return { byCat, board, fandoms, total: sumOf(byCat) };
+  return { byCat, board, fandoms, fandomCats, total: sumOf(byCat) };
 }
 
 export default async function handler(req, res) {
