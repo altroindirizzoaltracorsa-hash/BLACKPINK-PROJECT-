@@ -198,7 +198,11 @@
   .pr-row { display: grid; grid-template-columns: minmax(0, 8.5rem) 1fr auto; gap: 0.5rem;
     align-items: center; margin-bottom: 0.35rem; }
   .pr-name { font-size: 0.72rem; min-width: 0; overflow-wrap: anywhere; }
-  .pr-bar { display: flex; height: 7px; border-radius: 4px; overflow: hidden;
+  /* 11px, not 7. The shared-slot hatch has to be legible inside this bar, and
+     at 7px a diagonal stripe is thinner than the bar is tall — it averaged out
+     into a slightly darker solid colour, which marked nothing. Checked by
+     rendering it, not by reading the rule. */
+  .pr-bar { display: flex; height: 11px; border-radius: 5px; overflow: hidden;
     background: rgba(255,255,255,0.07); min-width: 0; }
   .pr-seg { transition: width 0.6s ease; }
   /* THE SHARED SLOT. BINI has one category standing behind three of these rows;
@@ -206,7 +210,7 @@
      stripes are drawn over the act's own colour so it is still recognisably
      theirs — greying it out would have read as "this one did not count". */
   .pr-repeat { background-image: repeating-linear-gradient(135deg,
-      rgba(0,0,0,0.42) 0 3px, rgba(255,255,255,0.14) 3px 6px); }
+      rgba(0,0,0,0.55) 0 5px, rgba(255,255,255,0.30) 5px 10px); }
   .pr-nums { font-family: "DM Mono", ui-monospace, monospace; font-size: 0.7rem;
     color: var(--muted); white-space: nowrap; }
   .pr-note { font-size: 0.66rem; color: var(--muted); margin: 0.55rem 0 0; line-height: 1.6; }
@@ -1147,24 +1151,23 @@ function pairingRows(c, p) {
 function pairingsHtml(c, p) {
   var rows = pairingRows(c, p);
   if (!rows.length) return '';
-  var seg = function (side) {
-    var w = Math.max(0, side.n);
-    return { w: w, html: '<div class="pr-seg' + (side.repeat ? ' pr-repeat' : '')
-      + '" style="background:' + esc(side.colour) + '"'
-      + (side.repeat ? ' title="The same ballot slot, shown in every trade it is part of"' : '')
-      + '></div>' };
-  };
   return '<div class="pairings"><div class="pairings-head">Each trade, on its own</div>'
     + rows.map(function (r) {
-        var a = seg(r.us), b = seg(r.them), tot = (a.w + b.w) || 1;
+        var tot = (Math.max(0, r.us.n) + Math.max(0, r.them.n)) || 1;
         return '<div class="pr-row">'
           + '<div class="pr-name"><span style="color:' + esc(r.us.colour) + '">' + esc(r.us.act)
           + '</span> × <span style="color:' + esc(r.them.colour) + '">' + esc(r.them.act) + '</span></div>'
           + '<div class="pr-bar">'
+          // background-COLOR, never the `background` shorthand: the shorthand
+          // resets background-image to none, and an inline style outranks the
+          // stylesheet — so writing `background:` here silently wiped
+          // .pr-repeat's hatch and every segment rendered solid. The class was
+          // applied and the rule existed; only the picture was wrong, which is
+          // why this was caught by looking at it rather than by the test.
           + '<div class="pr-seg' + (r.us.repeat ? ' pr-repeat' : '') + '" style="width:'
-          + (r.us.n / tot * 100) + '%;background:' + esc(r.us.colour) + '"></div>'
+          + (r.us.n / tot * 100) + '%;background-color:' + esc(r.us.colour) + '"></div>'
           + '<div class="pr-seg' + (r.them.repeat ? ' pr-repeat' : '') + '" style="width:'
-          + (r.them.n / tot * 100) + '%;background:' + esc(r.them.colour) + '"></div>'
+          + (r.them.n / tot * 100) + '%;background-color:' + esc(r.them.colour) + '"></div>'
           + '</div>'
           + '<div class="pr-nums">' + fmt(r.us.n) + (r.us.repeat ? '*' : '')
           + ' / ' + fmt(r.them.n) + (r.them.repeat ? '*' : '') + '</div>'
