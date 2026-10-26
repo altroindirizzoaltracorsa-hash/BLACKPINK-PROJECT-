@@ -76,7 +76,7 @@ for (const wrong of ['2026-10-30T04:00:00Z', '2026-10-29T22:00:00Z', '2026-10-30
 console.log('\n--- every copy in the site agrees');
 {
   const page = readFileSync(root + 'index.html', 'utf8');
-  const card = page.match(/<div class="cd-card cd-card-addicted"[\s\S]*?<\/details>\s*<\/div>/);
+  const card = page.match(/<div class="cd-card cd-card-addicted"[\s\S]*?(?=<div class="cd-card )/);
   check(!!card, 'found the ADDICTED card');
   const block = card ? card[0] : '';
 
@@ -106,13 +106,19 @@ console.log('\n--- the assets, where each one belongs');
     check(readFileSync(root + f.slice(1)).length > 1000, `${f} exists in the repo`);
   }
 
-  const card = (page.match(/<div class="cd-card cd-card-addicted"[\s\S]*?<\/details>/) || [''])[0];
-  const inCarousel = f => card.includes(f);
+  const card = (page.match(/<div class="cd-card cd-card-addicted"[\s\S]*?(?=<div class="cd-card )/) || [''])[0];
+  const strip = (card.match(/<div class="cd-strip[\s\S]*?<\/div>/) || [''])[0];
+  const inCarousel = f => strip.includes(f);
   // The key visual already carries the ADDICTED lockup, which the card renders
   // two inches above the strip — in the carousel it read as the same artwork
   // twice. It belongs to the share card, where it IS the picture.
   check(inCarousel('/strips/addicted-1.webp'), 'the portrait is in the carousel');
-  check(inCarousel('/strips/addicted-3.jpg'), 'the timetable is in the carousel');
+  // The timetable is not a photograph and never belonged beside one — it is
+  // the release times, so it sits in "Release times worldwide" above the list
+  // that renders the same instant in the reader's own clock. Keeping it out of
+  // the strip is also what lets the strip take the portrait's 3:4 shape.
+  check(!inCarousel('/strips/addicted-3.jpg'), 'the timetable is NOT in the carousel');
+  check(/<a class="ad-timetable"[\s\S]*?addicted-3\.jpg/.test(card), 'it is in the release-times section');
   check(!inCarousel('/strips/addicted-2.jpg'), 'the key visual is NOT in the carousel');
 
   const pics = page.match(/const ADDICTED_CARD_PICS = \[([\s\S]*?)\];/);
@@ -136,8 +142,12 @@ console.log('\n--- the snippet is linked, not embedded');
 // for a song. These go to where it plays by itself in a feed.
 {
   const page = readFileSync(root + 'index.html', 'utf8');
-  const card = (page.match(/<div class="cd-card cd-card-addicted"[\s\S]*?<\/details>/) || [''])[0];
+  const card = (page.match(/<div class="cd-card cd-card-addicted"[\s\S]*?(?=<div class="cd-card )/) || [''])[0];
   check(/youtube\.com\/shorts\/rdPMdCzb5yg/.test(card), 'the YouTube snippet is linked');
+  // One control, not three competing with Pre-save. <details> so it works
+  // before the page's script has run.
+  const summaries = card.match(/<summary class="[^"]*ad-snippet-summary/g) || [];
+  check(summaries.length === 1, 'and it is ONE button that opens the choices', `${summaries.length} found`);
   check(!/ytm-card|ytmPlay|i\.ytimg\.com|youtube(-nocookie)?\.com\/embed/.test(card),
         'and nothing on the card embeds or previews it');
 

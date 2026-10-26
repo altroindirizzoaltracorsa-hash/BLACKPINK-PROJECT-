@@ -2092,10 +2092,24 @@
   .ad-btn-ghost:hover { background: rgba(182,163,255,0.16); color: var(--ad-light); }
   .cd-card-addicted .cd-badge-chip { color: var(--ad-text); border-color: rgba(182,163,255,0.6); background: rgba(12,7,24,0.4); margin: 0 auto 1rem; }
   .cd-card-addicted .ad-locket img { height: 1.05rem; width: auto; display: block; }
-  .ad-snippet-links { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center;
-    justify-content: center; margin: 0.7rem auto 0.2rem; }
-  .ad-snippet-label { width: 100%; text-align: center; font-size: 0.74rem; letter-spacing: 0.08em;
-    text-transform: uppercase; color: var(--ad-light); opacity: 0.85; margin-bottom: 0.1rem; }
+  /* No border, no letterbox backing: the photo is nearly black and the card is
+     nearly black, so anything drawn around it reads as a box with nothing in
+     it. At the portrait's own ratio there is nothing to letterbox anyway. */
+  .cd-card-addicted .ad-strip { overflow: visible; }
+  .cd-card-addicted .ad-strip .cd-frame { border: 0; }
+  .cd-card-addicted .ad-strip .cd-frame img { background: transparent; object-fit: cover; }
+  .ad-snippet { width: 100%; margin: 0.6rem auto 0; text-align: center; }
+  .ad-snippet-summary { display: inline-block; cursor: pointer; list-style: none; }
+  .ad-snippet-summary::-webkit-details-marker { display: none; }
+  .ad-snippet[open] .ad-snippet-summary { opacity: 0.75; }
+  .ad-snippet-links { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center;
+    margin: 0.5rem auto 0; }
+  .ad-snippet-links a { font-size: 0.8rem; padding: 0.35rem 0.7rem; border-radius: 999px;
+    color: var(--ad-text); text-decoration: none;
+    border: 1px solid rgba(182,163,255,0.5); background: rgba(12,7,24,0.4); }
+  .ad-snippet-links a:hover { border-color: var(--ad-light); }
+  .ad-timetable { display: block; margin: 0 0 0.6rem; border-radius: 6px; overflow: hidden; line-height: 0; }
+  .ad-timetable img { display: block; width: 100%; height: auto; }
   .cd-card-addicted .cd-goal-label { color: var(--ad-text); opacity: 0.92; }
   .cd-card-addicted .cd-goal-nums { color: var(--ad-light); }
   .cd-card-addicted .cd-goal-nums span { color: rgba(232,225,255,0.7); }
@@ -4029,48 +4043,50 @@
               </div>
               <div class="cd-goal-bar"><div class="cd-goal-fill" id="addicted-goal-fill" style="width:0%"></div></div>
             </div>
-            <!-- The official assets. The key visual (addicted-2) is deliberately
-                 NOT here: it already carries the ADDICTED lockup, which the card
-                 is showing two inches above it, so in the strip it read as the
-                 same artwork twice. It is still offered as a share-card
-                 background, where it is the whole picture rather than a
-                 duplicate. Mixed shapes on purpose — .cd-frame is object-fit:
-                 contain over black, so the portrait letterboxes whole rather
-                 than being cropped to match the 16:9 timetable. -->
-            <div class="cd-strip" style="--cd-frame-ratio: 16 / 9;" data-carousel data-carousel-autoplay="5000"
-                 aria-label="ADDICTED promotional images">
+            <!-- One picture, at ITS shape. It was in a 16:9 frame with the
+                 timetable, and a 3:4 portrait fitted into 16:9 is pillarboxed:
+                 black down both sides, a pale 1px border around the lot, and
+                 the photo itself reduced to a strip up the middle. On a photo
+                 that is almost entirely black already that read as a frame
+                 drawn around nothing. So the strip takes the portrait's own
+                 ratio, and on this card the border and the letterbox backing
+                 are dropped — the picture simply sits on the card.
+
+                 The timetable moved into "Release times worldwide" below,
+                 which is what it is. It never belonged in a picture carousel
+                 next to a photograph, and that is also why the two could not
+                 agree on a frame shape. -->
+            <div class="cd-strip ad-strip" style="--cd-frame-ratio: 3 / 4;" aria-label="ADDICTED promotional image">
               <a class="cd-frame" href="/strips/addicted-1.webp" target="_blank" rel="noopener">
                 <img src="/strips/addicted-1.webp" loading="lazy" alt="JISOO looking through a gap in a beaded curtain"></a>
-              <a class="cd-frame" href="/strips/addicted-3.jpg" target="_blank" rel="noopener">
-                <img src="/strips/addicted-3.jpg" loading="lazy" alt="ADDICTED release timetable, fourteen cities"></a>
             </div>
-            <div class="cd-nav cd-strip-nav" data-carousel-nav hidden>
-              <div class="cd-dots" data-carousel-dots></div>
-            </div>
-            <!-- LINKS OUT, NOT A PLAYER. An embedded preview cannot start on its
-                 own: browsers refuse audio before a gesture, so anything that
-                 played by itself would have to be muted, which is no use for a
-                 snippet of a song. Rather than a player that sits there looking
-                 like it should be playing, these go to where it already plays
-                 by itself in a feed.
+            <!-- LINKS OUT, NOT A PLAYER. An embedded preview cannot start on
+                 its own — browsers refuse audio before a gesture, so anything
+                 playing by itself would have to be muted, which is no use for a
+                 snippet of a song. These go to where it already plays by itself
+                 in a feed.
 
-                 The Instagram url arrived as .../reel/De9E9T8p_2B/?obrf=MTQ3...
-                 and is stored without it: obrf is a share-tracking token tied
-                 to whoever copied the link, it does nothing for the post, and
-                 putting it on a public page hands every visitor the same
-                 marker. The YouTube one lost its ?is= for the same reason. The
-                 TikTok link is the vt.tiktok.com short form as supplied —
-                 these do expire, so if that button ever dead-ends, replace it
-                 with the full www.tiktok.com/@user/video/<id> url. -->
-            <div class="ad-snippet-links">
-              <span class="ad-snippet-label">◇ Hear the snippet</span>
-              <a class="cd-btn ad-btn ad-btn-ghost" href="https://youtube.com/shorts/rdPMdCzb5yg"
-                 target="_blank" rel="noopener">YouTube ↗</a>
-              <a class="cd-btn ad-btn ad-btn-ghost" href="https://www.instagram.com/reel/De9E9T8p_2B/"
-                 target="_blank" rel="noopener">Instagram ↗</a>
-              <a class="cd-btn ad-btn ad-btn-ghost" href="https://vt.tiktok.com/ZSg4yFEAg/"
-                 target="_blank" rel="noopener">TikTok ↗</a>
-            </div>
+                 One button that opens the three, rather than three buttons: the
+                 row competed with Pre-save for attention and said the same
+                 thing three times. <details> rather than script, so it works
+                 before the page's JS has run and keyboard/screen-reader
+                 behaviour comes from the element.
+
+                 The Instagram url arrived with ?obrf=MTQ3... and is stored
+                 without it: a share-tracking token tied to whoever copied the
+                 link, which does nothing for the post and would be handed to
+                 every visitor alike. The YouTube one lost its ?is= likewise.
+                 TikTok is the vt.tiktok.com short form as supplied — those do
+                 expire, so if it dead-ends, swap in the full
+                 www.tiktok.com/@user/video/<id> url. -->
+            <details class="ad-snippet">
+              <summary class="cd-btn ad-btn ad-btn-ghost ad-snippet-summary">▶ Hear the snippet</summary>
+              <div class="ad-snippet-links">
+                <a href="https://youtube.com/shorts/rdPMdCzb5yg" target="_blank" rel="noopener">YouTube ↗</a>
+                <a href="https://www.instagram.com/reel/De9E9T8p_2B/" target="_blank" rel="noopener">Instagram ↗</a>
+                <a href="https://vt.tiktok.com/ZSg4yFEAg/" target="_blank" rel="noopener">TikTok ↗</a>
+              </div>
+            </details>
             <div class="cd-links">
               <a class="cd-btn ad-btn" href="https://jisoo.lnk.to/addicted" target="_blank" rel="noopener" onclick="saveAddicted()">Pre-save ↗</a>
               <a class="cd-btn ad-btn ad-btn-ghost" href="https://www.jisoo.io" target="_blank" rel="noopener">jisoo.io ↗</a>
@@ -4078,6 +4094,11 @@
             </div>
             <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
               <summary>Release times worldwide</summary>
+              <!-- The official poster first, then the same instant in the
+                   reader's own clock. The poster is the source; the list below
+                   it is the one line that is actually theirs. -->
+              <a class="ad-timetable" href="/strips/addicted-3.jpg" target="_blank" rel="noopener">
+                <img src="/strips/addicted-3.jpg" loading="lazy" alt="ADDICTED release timetable — fourteen cities"></a>
               <div class="cd-times-body" data-times-for="2026-10-29T23:00:00Z"></div>
             </details>
           </div>
