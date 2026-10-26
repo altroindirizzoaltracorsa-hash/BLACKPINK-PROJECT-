@@ -62,9 +62,9 @@ const card = ix.match(/<div class="cd-card[^"]*"[^>]*data-slug="addicted"[^>]*>/
 if (!card) { bad('the ADDICTED card exists'); }
 else {
   ok('the ADDICTED card exists');
-  /data-target="2026-10-30T04:00:00Z"/.test(card[0])
-    ? ok('it counts to 2026-10-30T04:00:00Z', '13:00 KST')
-    : bad('it counts to 2026-10-30T04:00:00Z', card[0].slice(0, 120));
+  /data-target="2026-10-29T23:00:00Z"/.test(card[0])
+    ? ok('it counts to 2026-10-29T23:00:00Z', '08:00 KST Oct 30')
+    : bad('it counts to 2026-10-29T23:00:00Z', card[0].slice(0, 120));
   /data-target-local/.test(card[0])
     ? bad('it is a single instant, not midnight-local — data-target-local must be absent')
     : ok('it is a single instant, not midnight-local');
@@ -81,7 +81,7 @@ const cardBlock = (slug) => {
   return next < 0 ? rest : rest.slice(0, next);
 };
 const addicted = cardBlock('addicted');
-addicted.includes('data-times-for="2026-10-30T04:00:00Z"')
+addicted.includes('data-times-for="2026-10-29T23:00:00Z"')
   ? ok('the worldwide-times list uses that same instant')
   : bad('the worldwide-times list uses that same instant');
 

@@ -27,7 +27,7 @@ const PAGES = {
 const COUNTDOWNS = {
   addicted: {
     title: 'JISOO — ADDICTED, Oct 30, 2026 | Countdown · BLINKS UNITED',
-    description: "Counting down to JISOO's ADDICTED — Oct 30, 2026 (1PM KST / 12AM EDT). Pre-save at jisoo.lnk.to/addicted.",
+    description: "Counting down to JISOO's ADDICTED — Oct 30, 2026 (8AM KST / Oct 29, 7PM EDT). Pre-save at jisoo.lnk.to/addicted.",
     // Without this the slug was wired everywhere else and the shared link
     // still came up bare: a title and a line of text, no picture. Built from
     // jisoo.io's own three plates at the 1200x630 the others use.

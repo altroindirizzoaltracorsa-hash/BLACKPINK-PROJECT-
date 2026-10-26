@@ -2092,6 +2092,11 @@
   .ad-btn-ghost:hover { background: rgba(182,163,255,0.16); color: var(--ad-light); }
   .cd-card-addicted .cd-badge-chip { color: var(--ad-text); border-color: rgba(182,163,255,0.6); background: rgba(12,7,24,0.4); margin: 0 auto 1rem; }
   .cd-card-addicted .ad-locket img { height: 1.05rem; width: auto; display: block; }
+  .ad-snippet { width: 100%; margin: 0.6rem auto 0; }
+  .ad-snippet .ytm-card { width: 100%; }
+  .ad-snippet-link { display: block; margin-top: 0.4rem; font-size: 0.78rem; text-align: center;
+    color: var(--ad-light); text-decoration: none; opacity: 0.9; }
+  .ad-snippet-link:hover { text-decoration: underline; }
   .cd-card-addicted .cd-goal-label { color: var(--ad-text); opacity: 0.92; }
   .cd-card-addicted .cd-goal-nums { color: var(--ad-light); }
   .cd-card-addicted .cd-goal-nums span { color: rgba(232,225,255,0.7); }
@@ -3983,7 +3988,7 @@
                sat in the past block for a day and nothing failed — the slug
                was wired, the deep link worked — it simply never appeared on
                the home page. -->
-          <div class="cd-card cd-card-addicted" data-slug="addicted" data-target="2026-10-30T04:00:00Z" data-live="OUT NOW ✨" data-plain="1" data-prerelease-name="addicted">
+          <div class="cd-card cd-card-addicted" data-slug="addicted" data-target="2026-10-29T23:00:00Z" data-live="OUT NOW ✨" data-plain="1" data-prerelease-name="addicted">
             <!-- jisoo.io's own art, fetched off the site itself: its storm
                  sky, its lightning heart, its ADDICTED lockup. There the logo
                  is a WebGL mesh that swings when you shove it and the sky
@@ -4009,7 +4014,14 @@
             </div>
             <div class="cd-eyebrow">JISOO · New Single · jisoo.io</div>
             <div class="cd-badge-chip ad-locket" id="addicted-badge" style="display:none;"><img src="/addicted/addicted-heart-lightning-v1.webp" alt="" aria-hidden="true">Early Supporter</div>
-            <div class="cd-sub">Fri, Oct 30, 2026 · 1PM KST / 12AM EDT<span class="cd-sub-local" data-local-target></span></div>
+            <!-- 2026-10-29T23:00:00Z. Taken from the official TIMETABLE poster, whose
+     fourteen cities all resolve to that one instant — checked against every
+     one of them rather than converted by hand. It was 2026-10-30T04:00:00Z
+     (1PM KST), the hour JISOO's CLICK and the other singles used, which
+     would have left the countdown showing five hours remaining while the
+     song was already out. The date differs by zone, so both are named:
+     Oct 30 in Seoul is still Oct 29 in New York. -->
+            <div class="cd-sub">Oct 30, 2026 · 8AM KST · Thu Oct 29, 7PM EDT<span class="cd-sub-local" data-local-target></span></div>
             <div class="cd-timer cd-timer-plain" data-timer></div>
             <div class="cd-goal" id="addicted-goal" style="display:none;">
               <div class="cd-goal-top">
@@ -4018,6 +4030,49 @@
               </div>
               <div class="cd-goal-bar"><div class="cd-goal-fill" id="addicted-goal-fill" style="width:0%"></div></div>
             </div>
+            <!-- The official assets. Mixed shapes on purpose — .cd-frame is
+                 object-fit: contain over black, so the portrait letterboxes
+                 whole rather than being cropped to fit the two 16:9 ones. -->
+            <div class="cd-strip" style="--cd-frame-ratio: 16 / 9;" data-carousel data-carousel-autoplay="5000"
+                 aria-label="ADDICTED promotional images">
+              <a class="cd-frame" href="/strips/addicted-2.jpg" target="_blank" rel="noopener">
+                <img src="/strips/addicted-2.jpg" loading="lazy" alt="ADDICTED key visual — JISOO behind a beaded curtain, the ADDICTED lockup beside her"></a>
+              <a class="cd-frame" href="/strips/addicted-1.webp" target="_blank" rel="noopener">
+                <img src="/strips/addicted-1.webp" loading="lazy" alt="JISOO looking through a gap in a beaded curtain"></a>
+              <a class="cd-frame" href="/strips/addicted-3.jpg" target="_blank" rel="noopener">
+                <img src="/strips/addicted-3.jpg" loading="lazy" alt="ADDICTED release timetable, fourteen cities"></a>
+            </div>
+            <div class="cd-nav cd-strip-nav" data-carousel-nav hidden>
+              <div class="cd-dots" data-carousel-dots></div>
+            </div>
+            <!-- The snippet, through the same click-to-play facade the YouTube
+                 milestones use: no iframe and no third-party cookie until
+                 somebody asks for one, and ytmPlay() passes autoplay=1 so the
+                 tap that opens it is also the gesture that starts the sound.
+                 A browser will not start audio before that tap, so a snippet
+                 that played by itself would have to be muted — which is no use
+                 for a song. One tap, with sound, is the closest thing there is. -->
+            <div class="ad-snippet">
+              <div class="ytm-card" data-vid="rdPMdCzb5yg">
+                <button class="ytm-thumb" type="button" aria-label="Play the ADDICTED snippet" onclick="ytmPlay(this)">
+                  <!-- hqdefault, and no ytmThumb* handlers. Those live ~21,000
+                       lines below this markup, so an image that fails FAST — as
+                       it does with no network — fires onerror while the page is
+                       still parsing, before the function exists:
+                       "ytmThumbNext is not defined", which the carousel suite
+                       caught. The milestones grid can use them because it is
+                       built by script, after they are defined; static markup
+                       cannot. hqdefault exists for every video, so there is
+                       nothing to fall back FROM, and the onerror here calls
+                       nothing. -->
+                  <img src="https://i.ytimg.com/vi/rdPMdCzb5yg/hqdefault.jpg" alt="" loading="lazy"
+                       onerror="this.style.visibility='hidden'">
+                  <span class="ytm-play-badge"></span>
+                </button>
+                <div class="ytm-player"></div>
+              </div>
+              <a class="ad-snippet-link" href="https://youtube.com/shorts/rdPMdCzb5yg" target="_blank" rel="noopener">Watch the snippet on YouTube ↗</a>
+            </div>
             <div class="cd-links">
               <a class="cd-btn ad-btn" href="https://jisoo.lnk.to/addicted" target="_blank" rel="noopener" onclick="saveAddicted()">Pre-save ↗</a>
               <a class="cd-btn ad-btn ad-btn-ghost" href="https://www.jisoo.io" target="_blank" rel="noopener">jisoo.io ↗</a>
@@ -4025,7 +4080,7 @@
             </div>
             <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
               <summary>Release times worldwide</summary>
-              <div class="cd-times-body" data-times-for="2026-10-30T04:00:00Z"></div>
+              <div class="cd-times-body" data-times-for="2026-10-29T23:00:00Z"></div>
             </details>
           </div>
           <!-- JENNIE — "Someone to Hold", the song she wrote for Netflix's
@@ -18625,7 +18680,12 @@ try {
 // because sharing a key between two releases would merge their counts.
 const ADDICTED_SAVE_LS    = 'bu_jisoo_addicted_saved';
 const ADDICTED_SAVE_GOAL  = 50;
-const ADDICTED_RELEASE_AT = '2026-10-30T04:00:00Z'; // Oct 30, 2026 · 1PM KST / 12AM EDT
+// The pre-save block hides itself at this instant and the share card stamps
+// it, so it has to be the SAME moment the card counts to. It was an
+// independent copy of the old 1PM KST guess; both are now the released
+// instant off the official timetable. If one ever moves, move both —
+// test_countdown_slugs.mjs checks they agree.
+const ADDICTED_RELEASE_AT = '2026-10-29T23:00:00Z'; // Oct 30, 2026 · 8AM KST / Oct 29 7PM EDT
 
 function renderAddictedBadge() {
   const el = document.getElementById('addicted-badge');
@@ -23238,7 +23298,7 @@ async function openAddictedCard() {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
-  document.getElementById('release-pic-picker').style.display = 'none';
+  buildPicPicker(ADDICTED_CARD_PICS.map(pic => pic.url), 'selectAddictedCardArt');
   _cardType = 'presave';
   _cardTrackId = null;
   _cardFormat = 'landscape';
@@ -23284,6 +23344,12 @@ async function openAddictedCard() {
     // jisoo.io's own key art uses, where the lettering reads THROUGH the
     // heart rather than beside it.
     overlay: (ctx, W, H, box) => {
+      // Two of the official pictures ARE the key art — they already carry the
+      // ADDICTED lockup and the heart. Drawing ours over them puts the wordmark
+      // on the card twice, at two sizes, on top of itself. When one of those is
+      // chosen the picture speaks for itself and this stands down;
+      // selectAddictedCardArt clears titleImg for the same reason.
+      if (_presaveCardData && _presaveCardData.artHasLockup) return;
       if (!bolt || !bolt.naturalWidth) return;
       const ratio = bolt.naturalHeight / bolt.naturalWidth;
       const t = box && box.title;
@@ -23325,7 +23391,7 @@ async function openAddictedCard() {
       ctx.restore();
     },
     releaseAt: ADDICTED_RELEASE_AT,
-    dateLine: 'Out Oct 30, 2026 · 1PM KST / 12AM EDT',
+    dateLine: 'Out Oct 30, 2026 · 8AM KST / Oct 29, 7PM EDT',
     dateShort: 'out Oct 30, 2026',
     cta: '▶ PRE-SAVE · JISOO.IO',
     verb: 'drops', verbCta: 'Pre-save it',
@@ -25066,6 +25132,38 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
   ctx.letterSpacing = '2px';
   ctx.fillText('blinksunited.com', brandX, H - (landscape ? 30 : 42));
 
+  _markCardReady(canvas);
+}
+
+// The ADDICTED share card's background, choosable. The default stays jisoo.io's
+// storm sky — the look the card shipped with — with the three official pictures
+// offered beside it.
+//
+// hasLockup is the part that matters: addicted-2 and addicted-3 already have the
+// ADDICTED wordmark printed on them, so the card must not draw its own on top.
+// Picking one of those clears titleImg and makes the heart overlay stand down;
+// picking the sky or the plain portrait puts both back.
+const ADDICTED_CARD_PICS = [
+  { url: '/addicted/addicted-bg-clouds-v1.webp', hasLockup: false },
+  { url: '/strips/addicted-1.webp',              hasLockup: false },
+  { url: '/strips/addicted-2.jpg',               hasLockup: true  },
+  { url: '/strips/addicted-3.jpg',               hasLockup: true  },
+];
+
+async function selectAddictedCardArt(url, thumbEl) {
+  document.querySelectorAll('.release-pic-thumb').forEach(t => t.classList.remove('active'));
+  if (thumbEl) thumbEl.classList.add('active');
+  const canvas = document.getElementById('card-canvas');
+  const label  = document.getElementById('card-box-label');
+  if (label) label.textContent = 'GENERATING…';
+  const pick = ADDICTED_CARD_PICS.find(pic => pic.url === url) || ADDICTED_CARD_PICS[0];
+  const art  = await loadImg(pick.url).catch(() => null);
+  if (!art || !_presaveCardData) return;
+  _presaveCardData.photo = art;
+  _presaveCardData.artHasLockup = pick.hasLockup;
+  _presaveCardData.titleImg = pick.hasLockup ? null : (_adLogoImg || null);
+  if (label) label.textContent = _presaveCardData.earned ? "I'M AN EARLY SUPPORTER" : 'ADDICTED · COUNTDOWN';
+  drawPresaveCard(canvas, _presaveCardData);
   _markCardReady(canvas);
 }
 
