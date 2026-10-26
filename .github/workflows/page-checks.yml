@@ -236,6 +236,15 @@ jobs:
         if: always()
         run: node .github/scripts/test_day_boundary.mjs
 
+      # The countdown was set to 1PM KST, the hour JISOO's earlier singles used.
+      # The official timetable says 8AM KST — five hours earlier — so the card
+      # would have shown time remaining while the song was already out, and the
+      # old test asserted the wrong value and so protected the bug. This derives
+      # the instant from the poster's fourteen cities instead.
+      - name: ADDICTED goes out when the timetable says
+        if: always()
+        run: node .github/scripts/test_addicted_release_time.mjs
+
       # Spotify files a pre-release single under its own album name, so the
       # BY ALBUM view showed the same record twice and the EP's total was
       # missing the track carrying most of its streams.
