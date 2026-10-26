@@ -214,13 +214,66 @@
   .pr-nums { font-family: "DM Mono", ui-monospace, monospace; font-size: 0.7rem;
     color: var(--muted); white-space: nowrap; }
   .pr-tot { opacity: 0.55; }
-  /* One trade, with its sides under it. The trade name is the heading and the
-     fandom rows are indented under it, so the eye reads "this trade, by these
-     sides" rather than eight rows of equal rank. */
-  .pr-group { margin-bottom: 0.7rem; }
-  .pr-trade { font-size: 0.72rem; margin-bottom: 0.3rem; }
-  .pr-sub { margin-left: 0.9rem; }
-  @media (max-width: 420px) { .pr-sub { margin-left: 0.6rem; } }
+
+  /* Who voted what: sides down, ballot slots across. Five slots and four sides
+     fit at phone width only just, so the table is allowed to scroll inside its
+     own wrapper rather than widening the page — the one exception the layout
+     makes, and it has to be on the wrapper, never the card. */
+  /* Edge shadows that appear ONLY while there is more table to reach. Two
+     covers painted in the card's own colour scroll WITH the content
+     (background-attachment: local) and sit over two shadows pinned to the
+     frame, so at rest each shadow is hidden and it uncovers as you scroll.
+     A fade drawn unconditionally would promise more table on a desktop where
+     the whole thing already fits, and a "swipe for the rest" line would say it
+     in words. This cannot be wrong about it. */
+  .vt-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch;
+    background:
+      linear-gradient(to right, var(--card) 40%, rgba(20,13,20,0)) left center,
+      linear-gradient(to left,  var(--card) 40%, rgba(20,13,20,0)) right center,
+      radial-gradient(farthest-side at 0 50%, rgba(255,255,255,0.26), rgba(255,255,255,0)) left center,
+      radial-gradient(farthest-side at 100% 50%, rgba(255,255,255,0.26), rgba(255,255,255,0)) right center;
+    background-repeat: no-repeat;
+    background-size: 28px 100%, 28px 100%, 12px 100%, 12px 100%;
+    background-attachment: local, local, scroll, scroll; }
+  /* FIXED layout, and every slot column the same width. The bar under each
+     number is a percentage of its own cell, so columns of different widths make
+     those bars incomparable — with the widths left to the content, BLINKs' 200
+     for Ahn Hyo-seop drew a LONGER bar than their 250 for BLACKPINK, because
+     the longer name made a wider column. The picture said the opposite of the
+     numbers it sat under, and every check passed. */
+  .vt { border-collapse: collapse; width: 100%; font-size: 0.66rem; table-layout: fixed;
+    /* Below this the columns squeeze until a name breaks mid-word and the
+       header reads as a vertical stack of letters. The wrapper scrolls instead,
+       which is what it is for — the PAGE must never scroll sideways, the table
+       may. */
+    min-width: 27rem; }
+  .vt th, .vt td { padding: 0.28rem 0.4rem; text-align: right; white-space: nowrap; }
+  .vt th:first-child, .vt .vt-side { width: 6.2rem; }
+  .vt .vt-split:last-child { width: 3.4rem; }
+  /* Headers wrap on WORDS, now that the width is not theirs to set — never
+     mid-word, which turned "AHN HYO-SEOP" into six stacked fragments. */
+  .vt thead th { font-size: 0.56rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted); font-weight: 400; padding-bottom: 0.35rem; white-space: normal;
+    overflow-wrap: normal; word-break: keep-all; hyphens: none; vertical-align: bottom; }
+  @media (max-width: 460px) {
+    .vt { font-size: 0.62rem; min-width: 25rem; }
+    .vt th, .vt td { padding: 0.26rem 0.28rem; }
+    .vt th:first-child, .vt .vt-side { width: 4.8rem; }
+    .vt .vt-split:last-child { width: 2.9rem; }
+  }
+  .vt tbody td { font-family: "DM Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums; color: var(--white); }
+  .vt .vt-side { text-align: left; padding-left: 0; font-family: inherit; }
+  .vt-all { color: var(--muted); }
+  /* Where the trade falls: our slots to the left of it, the partners' to the
+     right. Ten names in a row otherwise say nothing about which half is which. */
+  .vt-split { border-left: 1px solid rgba(255,255,255,0.14); }
+  .vt tbody tr + tr td { border-top: 1px solid rgba(255,255,255,0.06); }
+  /* The number is the content; the bar under it is a second reading of the same
+     figure, thin enough that it cannot be mistaken for the number. */
+  .vt-cell { position: relative; padding-bottom: 5px; }
+  .vt-bar { position: absolute; right: 0; bottom: 0; height: 2px; border-radius: 1px;
+    opacity: 0.75; }
   .pr-note { font-size: 0.66rem; color: var(--muted); margin: 0.55rem 0 0; line-height: 1.6; }
   /* The view selector. Same control as the period tabs, smaller: those switch
      what the whole card counts, these switch how one block is read. */
@@ -1206,13 +1259,21 @@ function pairingRows(c, p) {
   });
 }
 
-// The same four trades, each one split by the side the voter says they are on.
+// Who voted what: one row per self-declared side, one column per ballot slot.
 //
-// "40 blinks voted for BLACKPINK and 40 blinks voted for BINI; 34 blooms voted
-// for BLACKPINK and 34 blooms voted for BINI" — the row anatomy of the trade
-// view, one row per fandom underneath each trade. It is the question a vote
-// trade actually exists to answer: did the other side turn up in our
-// categories, and did ours turn up in theirs.
+// It answers the question a vote trade exists to ask — did the other side turn
+// up in our categories, and did ours turn up in theirs — and it says it in four
+// rows because it is drawn on CATEGORIES, not on trades.
+//
+// That is the whole reason this is a table. Drawn as the four trades with the
+// sides under each, which is what it was first, three of the four repeat BINI's
+// single ballot category and two repeat BLACKPINK's: thirty-two numbers for
+// fifteen facts, with an asterisk on about three quarters of them to say which
+// ones were the same figure twice. A mark carried by nearly everything has
+// stopped marking anything, and the do-not-sum warning, which is a real one,
+// ended up applying to most of the block instead of to an exception. Across a
+// row of this table nothing repeats, so nothing needs the asterisk at all. The
+// pairings are still named, in the other view, where they are the subject.
 //
 // WHAT MAKES THIS ATTRIBUTABLE, when the headline bar is not. A vote is not
 // labelled with a fandom and never will be. A PERSON is: they say once which
@@ -1228,17 +1289,29 @@ function pairingRows(c, p) {
 // passes BOARD_MAX voters — a failure that looks exactly like a quiet week.
 // An older deployment with no `fandomCats` has no view here at all, which is
 // the right failure: the selector simply does not appear.
-function voterTradeRows(c, p) {
-  if (!c.pairings || !c.fandoms || !c.fandoms.length) return [];
+function voterTable(c, p) {
+  if (!c.fandoms || !c.fandoms.length) return null;
   var fc = (p && p.fandomCats) || null;
-  if (!fc) return [];
+  if (!fc) return null;
   var n = function (k, sl) { return Math.max(0, Number((fc[k] || {})[sl]) || 0); };
 
-  // The declared sides, then one row for everybody a declared side does not
+  // Ours first, then theirs — the same order the trade view reads in, and the
+  // same colours, so a column is recognisably the act it belongs to. Taken
+  // from the collab's own two lists rather than from `pairings`, because a slot
+  // that is in no pairing is still a slot somebody voted.
+  var cols = (c.theyGive || []).map(function (x) {
+      return { slug: x.slug, act: x.who || x.nominee || x.slug, colour: '#ff0066', ours: true };
+    }).concat((c.weGive || []).map(function (x) {
+      var who = x.who || x.nominee;
+      var pr = (c.partners || []).filter(function (y) { return y.act === who; })[0];
+      return { slug: x.slug, act: who || x.slug, colour: (pr && pr.colour) || 'var(--them)', ours: false };
+    }));
+
+  // Every declared side, then one row for everybody a declared side does not
   // cover: people who never answered, and people who picked a side this collab
   // no longer carries (it had a second partner for two days). Both are the same
-  // situation — nothing recognises them — and keeping them makes the rows under
-  // a trade add up to that trade's own numbers.
+  // situation — nothing recognises them — and keeping them is what makes a
+  // column come to the figure the other view prints for that slot.
   var sides = c.fandoms.map(function (x) {
     return { key: x.key, label: x.label, colour: x.colour || 'var(--pink)', keys: [x.key] };
   });
@@ -1248,54 +1321,26 @@ function voterTradeRows(c, p) {
   if (strays.length) {
     sides.push({ key: 'unsaid', label: 'Didn’t say', colour: 'var(--muted)', keys: strays });
   }
-  var sum = function (s, sl) {
-    return s.keys.reduce(function (a, k) { return a + n(k, sl); }, 0);
-  };
 
-  var count = function (key) {
-    var t = {};
-    c.pairings.forEach(function (q) { t[q[key]] = (t[q[key]] || 0) + 1; });
-    return t;
-  };
-  var usUsed = count('us'), themUsed = count('them');
-  var nameOf = function (sl) {
-    var row = (c.theyGive || []).concat(c.weGive || [])
-      .filter(function (x) { return x.slug === sl; })[0];
-    return row ? (row.who || row.nominee || sl) : sl;
-  };
-  var colourOf = function (sl) {
-    var give = (c.weGive || []).filter(function (x) { return x.slug === sl; })[0];
-    if (!give) return '#ff0066';
-    var who = give.who || give.nominee;
-    var pr = (c.partners || []).filter(function (x) { return x.act === who; })[0];
-    return (pr && pr.colour) || 'var(--them)';
-  };
+  var rows = sides.map(function (s) {
+    var cells = cols.map(function (col) {
+      return s.keys.reduce(function (a, k) { return a + n(k, col.slug); }, 0);
+    });
+    return { key: s.key, label: s.label, colour: s.colour, cells: cells,
+             total: cells.reduce(function (a, b) { return a + b; }, 0),
+             // Shaded ACROSS the row: how even that side's own ballot was, which
+             // is the thing a trade is checked on. Down a column it would only
+             // redraw the headcounts, which the turnout block already carries.
+             most: cells.reduce(function (a, b) { return Math.max(a, b); }, 0) };
+  }).filter(function (r) { return r.total > 0; });
 
-  return c.pairings.map(function (q) {
-    var rows = sides.map(function (s) {
-      return { key: s.key, label: s.label, colour: s.colour,
-               us: sum(s, q.us), them: sum(s, q.them) };
-    }).filter(function (r) { return r.us > 0 || r.them > 0; });
-    // One denominator per trade, not per row. Scaled to its own total, a side
-    // that logged two votes draws the same bar as one that logged a thousand —
-    // the same failure as drawing a per-person figure on the totals, with the
-    // picture contradicting the number beside it. Shared, the bar lengths are
-    // the sides' sizes and the split inside each one is still its balance.
-    var most = rows.reduce(function (a, r) { return Math.max(a, r.us + r.them); }, 0) || 1;
-    return {
-      us:   { slug: q.us,   act: nameOf(q.us),   colour: colourOf(q.us),
-              repeat: usUsed[q.us] > 1 },
-      them: { slug: q.them, act: nameOf(q.them), colour: colourOf(q.them),
-              repeat: themUsed[q.them] > 1 },
-      rows: rows, most: most,
-    };
-  });
+  return rows.length ? { cols: cols, rows: rows } : null;
 }
 
 // The declared sides with nothing logged anywhere in this period. Said once in
-// words rather than as an empty row under each of the four trades: a side
-// missing from the block still has to be accounted for, but sixteen empty
-// tracks are not an account of anything.
+// words rather than as a row of dashes: a side missing from the table still has
+// to be accounted for, or it reads as "they are not in this" — but an empty row
+// across five columns is a worse account than a sentence.
 function voterSilent(c, p) {
   var fc = (p && p.fandomCats) || {};
   return (c.fandoms || []).filter(function (x) {
@@ -1311,10 +1356,10 @@ var PAIR_VIEW = 'trade';
 
 function pairingsHtml(c, p) {
   var trade = pairingRows(c, p);
-  var voters = voterTradeRows(c, p);
-  if (!trade.length && !voters.length) return '';
+  var voters = voterTable(c, p);
+  if (!trade.length && !voters) return '';
   var views = [{ k: 'trade', label: 'By trade', has: trade.length },
-               { k: 'voter', label: 'By voter', has: voters.length }]
+               { k: 'voter', label: 'By voter', has: voters ? 1 : 0 }]
     .filter(function (v) { return v.has; });
   // The selected view has to exist. A collab with no declared sides (or none
   // with a trade list) would otherwise render an empty block under a lit tab,
@@ -1334,48 +1379,49 @@ function pairingsHtml(c, p) {
     + '</div>';
 }
 
-function voterViewHtml(c, groups, silent) {
-  return '<div class="pairings-head">Each trade, by who voted it</div>'
-    + groups.map(function (g) {
-        return '<div class="pr-group">'
-          + '<div class="pr-trade"><span style="color:' + esc(g.us.colour) + '">' + esc(g.us.act)
-          + '</span> × <span style="color:' + esc(g.them.colour) + '">' + esc(g.them.act)
-          + '</span></div>'
-          + (g.rows.length
-              ? g.rows.map(function (r) {
-                  // Same two segments as the trade view and the same colours:
-                  // the bar is still "this much to ours, this much to theirs".
-                  // The FANDOM is the row's name, never a segment — colouring a
-                  // segment by fandom would draw a vote as belonging to one.
-                  return '<div class="pr-row pr-sub">'
-                    + '<div class="pr-name"><span style="color:' + esc(r.colour) + '">'
-                    + esc(r.label) + '</span></div>'
-                    + '<div class="pr-bar">'
-                    // background-COLOR, never the `background` shorthand: the
-                    // shorthand resets background-image to none and an inline
-                    // style outranks the stylesheet, which silently wiped
-                    // .pr-repeat's hatch once already.
-                    + '<div class="pr-seg' + (g.us.repeat ? ' pr-repeat' : '') + '" style="width:'
-                    + (r.us / g.most * 100) + '%;background-color:' + esc(g.us.colour) + '"></div>'
-                    + '<div class="pr-seg' + (g.them.repeat ? ' pr-repeat' : '') + '" style="width:'
-                    + (r.them / g.most * 100) + '%;background-color:' + esc(g.them.colour) + '"></div>'
-                    + '</div>'
-                    + '<div class="pr-nums">' + fmt(r.us) + (g.us.repeat ? '*' : '')
-                    + ' / ' + fmt(r.them) + (g.them.repeat ? '*' : '') + '</div>'
-                    + '</div>';
-                }).join('')
-              : '<div class="pr-row pr-sub"><div class="pr-name pr-tot">nobody yet</div>'
-                + '<div class="pr-bar"></div><div class="pr-nums">—</div></div>')
-          + '</div>';
+function voterViewHtml(c, t, silent) {
+  var ours = t.cols.filter(function (x) { return x.ours; }).length;
+  return '<div class="pairings-head">Who voted what</div>'
+    + '<div class="vt-wrap"><table class="vt"><thead><tr><th></th>'
+    + t.cols.map(function (col, i) {
+        // The divider falls where the trade does: our slots on one side, the
+        // partners' on the other. Without it the table is ten columns of names
+        // and nothing says which half is which.
+        return '<th' + (i === ours ? ' class="vt-split"' : '') + '><span style="color:'
+          + esc(col.colour) + '">' + esc(col.act) + '</span></th>';
       }).join('')
-    + '<p class="pr-note"><b>Still do not add these up.</b> The <b>*</b> and the hatching mean '
-    + 'what they mean in the other view — one ballot slot standing behind more than one trade — '
-    + 'and splitting the rows by side does not make those votes separate. <b>Down a trade</b> they '
-    + 'do add up: the sides under it are everybody, so they come to that trade\'s own numbers.'
-    + '<br>This is <b>people, counted per category</b>: somebody says once which side they are on '
-    + 'and their own picks are recorded, so a row is a sum over the people who answered — never a '
-    + 'guess about a vote. Self-declared, nobody is asked to prove it, and anybody who has not '
-    + 'answered is in <b>Didn’t say</b> rather than spread across the rest.'
+    + '<th class="vt-split">all</th></tr></thead><tbody>'
+    + t.rows.map(function (r) {
+        return '<tr><td class="vt-side"><span style="color:' + esc(r.colour) + '">'
+          + esc(r.label) + '</span></td>'
+          + r.cells.map(function (v, i) {
+              // The shading is ACROSS the row — where this side's own ballot
+              // was short. Down a column it would only redraw the headcounts,
+              // and a reader comparing the shading between rows would be
+              // comparing two different scales. Said in the note, because a
+              // picture that needs a caption still needs the caption.
+              return '<td' + (i === ours ? ' class="vt-split"' : '') + '>'
+                + '<div class="vt-cell">' + (v ? fmt(v) : '<span class="pr-tot">—</span>')
+                // background-COLOR, never the `background` shorthand — it
+                // resets background-image, and an inline style outranks the
+                // stylesheet. That silently wiped the trade view's hatch once.
+                + (v ? '<i class="vt-bar" style="width:' + (v / (r.most || 1) * 100)
+                       + '%;background-color:' + esc(t.cols[i].colour) + '"></i>' : '')
+                + '</div></td>';
+            }).join('')
+          + '<td class="vt-split vt-all">' + fmt(r.total) + '</td></tr>';
+      }).join('')
+    + '</tbody></table></div>'
+    + '<p class="pr-note"><b>This is people, counted per category.</b> Somebody says once which '
+    + 'side they are on and their own picks are recorded, so a cell is a sum over the people who '
+    + 'answered — never a guess about a vote. Self-declared, nobody is asked to prove it, and '
+    + 'anybody who has not answered is in <b>Didn’t say</b> rather than spread across the rest.'
+    + '<br>One column is one ballot slot, so <b>a column does add up</b> to what the other view '
+    + 'shows for it — the rows are everybody. Nothing repeats across a row, which is why there are '
+    + 'no asterisks here: the repetition in the other view is four <i>trades</i> drawn from these '
+    + 'same slots.'
+    + '<br><b>The shading runs across a row</b>, against that side\'s own best column — where a '
+    + 'side was short, not how big it is. The <b>all</b> column is the size.'
     + (silent && silent.length
         ? '<br>Nothing logged yet under ' + esc(silent.join(' or ')) + '.'
         : '')

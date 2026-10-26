@@ -2,33 +2,40 @@
 //
 // Run: node .github/scripts/test_collab_views.mjs
 //
-// One selector switches between the same four trades read two ways:
+// One selector, two readings of the same votes:
 //
 //   BY TRADE — what each ballot slot received, one row per pairing.
-//   BY VOTER — the same four, each split into one row per self-declared side:
-//     "40 blinks voted for BLACKPINK and 40 for BINI; 34 blooms voted for
-//     BLACKPINK and 34 for BINI".
+//   BY VOTER — a table: one row per self-declared side, one column per ballot
+//     slot. "BLOOMs put 96 in BLACKPINK's category and 94 in BINI's."
 //
-// THE CLAIM THIS CHANGES. The page used to say a vote could not be traced to a
-// fandom. The second view attributes — not a vote, which carries no fandom, but
-// a PERSON: somebody says once which side they are on and their own picks are
-// recorded per round, so a row is a sum over people who answered. The reach of
-// that is exactly those people, which is why "didn't say" has to be a row of
-// its own and never spread across the others — doing that would put votes under
-// a fandom on the strength of nothing.
+// WHY THE SECOND ONE IS A TABLE, and why that is the thing to protect. Drawn as
+// the four trades with the sides under each — which is what it was first — three
+// of the four repeat BINI's single ballot category and two repeat BLACKPINK's:
+// thirty-two numbers for fifteen facts, with an asterisk on about three
+// quarters of them to say which were the same figure twice. The do-not-sum
+// warning is a real one and it ended up applying to most of the block rather
+// than to an exception. Across a row of the table nothing repeats, so nothing
+// needs the asterisk. If this view ever goes back to being drawn on trades,
+// that is what comes back with it.
 //
-// Three failures live here and none of them throws.
+// THE CLAIM THIS CHANGED. The page used to say a vote could not be traced to a
+// fandom. This view attributes — not a vote, which carries no fandom, but a
+// PERSON: somebody declares a side once and their own picks are recorded per
+// round, so a cell is a sum over people who answered. The reach of that is
+// exactly those people, which is why "didn't say" is a row of its own and never
+// shared out: doing that would put votes under a fandom on the strength of
+// nothing.
 //
-//   1. Summing. BINI's one ballot category stands behind three of the four
-//      trades, and splitting each trade by side multiplies the same votes again.
-//      The hatch and the * have to survive into this view.
-//   2. The denominator. Rows inside a trade share one, so the bar lengths are
-//      the sides' sizes; scaled to its own total, a side that logged two votes
-//      draws the same bar as one that logged a thousand.
-//   3. The source. `fandomCats` is built in the API from every row; derived on
-//      the page from `board` it would be right until the collab passes
-//      BOARD_MAX voters and then quietly go short, which looks like a quiet
-//      week. The page must not reconstruct it.
+// Three failures live here and none throws.
+//
+//   1. A column that does not add up to the slot's own total — a side dropped,
+//      a stray key ignored — and the table quietly understates somebody.
+//   2. Shading drawn down the columns instead of across the rows. It would look
+//      finer (every big side full, every small one short) and would say the
+//      headcounts, which the turnout block already says, instead of where a
+//      side's ballot was short, which is what a trade is checked on.
+//   3. The split rebuilt on the page from `board`, which is cut to BOARD_MAX:
+//      exact until this collab passes 200 voters, then quietly short.
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { chromium } from './_playwright.mjs';
@@ -78,223 +85,244 @@ console.log('--- the selector offers both views and starts on the trade');
   check(tabs.every((t) => t.pressed === (t.on ? 'true' : 'false')), 'aria-pressed matches what is lit');
 }
 
-console.log('\n--- the voter view is the same trades, each split by side');
+console.log('\n--- the voter view is sides down, ballot slots across');
 await page.click('.pr-tabs .tab:nth-child(2)');
 await page.waitForTimeout(400);
-const v = await page.evaluate(() => {
-  const groups = [...document.querySelectorAll('.pairings .pr-group')].map((g) => ({
-    trade: g.querySelector('.pr-trade').textContent.replace(/\s+/g, ' ').trim(),
-    rows: [...g.querySelectorAll('.pr-row')].map((r) => ({
-      name: r.querySelector('.pr-name').textContent.trim(),
-      nums: r.querySelector('.pr-nums').textContent.trim(),
-      segs: [...r.querySelectorAll('.pr-seg')].map((s) => ({
-        px: Math.round(s.getBoundingClientRect().width),
-        hatched: s.classList.contains('pr-repeat'),
-      })),
+const t = await page.evaluate(() => {
+  const head = [...document.querySelectorAll('.vt thead th')].map((th) => th.textContent.trim());
+  const rows = [...document.querySelectorAll('.vt tbody tr')].map((tr) => ({
+    side: tr.querySelector('.vt-side').textContent.trim(),
+    cells: [...tr.querySelectorAll('td')].slice(1, -1).map((td) => ({
+      n: Number(td.textContent.replace(/[^\d]/g, '') || 0),
+      // The DRAWN width, off the element. Reading the style string back would
+      // only confirm the number that was written into it.
+      px: (() => { const b = td.querySelector('.vt-bar'); return b ? Math.round(b.getBoundingClientRect().width) : 0; })(),
+      cell: (() => { const d = td.querySelector('.vt-cell'); return d ? Math.round(d.getBoundingClientRect().width) : 0; })(),
+      split: td.classList.contains('vt-split'),
     })),
+    all: Number((tr.querySelector('.vt-all') || {}).textContent.replace(/[^\d]/g, '') || 0),
   }));
   const c = COLLABS.find((x) => x.id === 'bvp-kca-2026');
   const p = c.tally.periods[PERIOD];
-  return { groups, pairings: c.pairings, byCat: p.byCat, fandomCats: p.fandomCats,
+  return { head, rows,
+           ours: (c.theyGive || []).map((x) => ({ slug: x.slug, act: x.who || x.nominee })),
+           theirs: (c.weGive || []).map((x) => ({ slug: x.slug, act: x.who || x.nominee })),
+           byCat: p.byCat, fandomCats: p.fandomCats,
            sides: c.fandoms.map((x) => ({ key: x.key, label: x.label })),
-           head: document.querySelector('.pairings-head').textContent.trim(),
-           note: document.querySelector('.pairings .pr-note').textContent };
+           head1: document.querySelector('.pairings-head').textContent.trim(),
+           note: document.querySelector('.pairings .pr-note').textContent.replace(/\s+/g, ' ') };
 });
+const cols = t.ours.concat(t.theirs);
 {
-  check(v.groups.length === v.pairings.length,
-        `${v.groups.length} group(s) for ${v.pairings.length} trade(s)`,
-        v.groups.map((g) => g.trade).join(' | '));
-  // The trade names are the ones the other view prints: the split is of these
-  // four trades, not of some other grouping that happens to have four rows.
-  check(v.groups.every((g) => /×/.test(g.trade)), 'each names its trade', v.groups[0] && v.groups[0].trade);
-  check(v.groups.every((g) => g.rows.length > 0), 'and carries rows under it');
-  check(v.groups.every((g) => g.rows.every((r) => r.segs.length === 2)),
-        'every row has the two segments of a trade, ours and theirs');
-  // The fandom names the ROW. A segment coloured by fandom would be drawing a
-  // vote as belonging to one, which is the thing this view does not claim.
-  const labels = v.sides.map((s) => s.label).concat(['Didn’t say']);
-  check(v.groups.every((g) => g.rows.every((r) => labels.some((l) => r.name.includes(l)))),
-        'and is named for a side', v.groups[0] && v.groups[0].rows.map((r) => r.name).join(', '));
+  // One column per ballot slot the collab has, in trade order: ours, then
+  // theirs. Taken from the collab's own lists, so a slot added to the trade
+  // appears here without touching this test.
+  check(t.head.length === cols.length + 2,
+        `${t.head.length - 2} slot column(s) for ${cols.length} slot(s)`, t.head.join(' | '));
+  check(cols.every((col, i) => t.head[i + 1].includes(col.act)),
+        'each names its act, ours first then theirs', t.head.slice(1, -1).join(' | '));
+  check(/all/i.test(t.head[t.head.length - 1]), 'and the last column is the row total', t.head[t.head.length - 1]);
+  // The divider falls where the trade does.
+  check(t.rows.every((r) => r.cells.filter((x) => x.split).length === 1
+        && r.cells.findIndex((x) => x.split) === t.ours.length),
+        'a rule separates our slots from the partners\'', String(t.ours.length));
 }
 
-console.log('\n--- the numbers are the real per-side, per-category counts');
+console.log('\n--- every cell is that side\'s own count for that slot');
 {
   const key = {};
-  for (const s of v.sides) key[s.label] = [s.key];
-  const strays = Object.keys(v.fandomCats).filter((k) => !v.sides.some((s) => s.key === k));
-  key['Didn’t say'] = strays;
-  let wrong = [];
-  v.groups.forEach((g, i) => {
-    const q = v.pairings[i];
-    for (const r of g.rows) {
-      const ks = key[Object.keys(key).find((l) => r.name.includes(l))] || [];
-      const want = [q.us, q.them].map((sl) =>
-        ks.reduce((a, k) => a + ((v.fandomCats[k] || {})[sl] || 0), 0));
-      const got = r.nums.replace(/[*\s]/g, '').split('/').map((x) => Number(x.replace(/,/g, '')));
-      if (got[0] !== want[0] || got[1] !== want[1]) {
-        wrong.push(`${g.trade} ${r.name}: ${got.join('/')} want ${want.join('/')}`);
-      }
-    }
-  });
-  check(wrong.length === 0, 'every row prints that side\'s own two counts', wrong.join(' | '));
+  for (const s of t.sides) key[s.label] = [s.key];
+  key['Didn’t say'] = Object.keys(t.fandomCats).filter((k) => !t.sides.some((s) => s.key === k));
+  const wrong = [];
+  for (const r of t.rows) {
+    const ks = key[Object.keys(key).find((l) => r.side.includes(l))] || [];
+    cols.forEach((col, i) => {
+      const want = ks.reduce((a, k) => a + ((t.fandomCats[k] || {})[col.slug] || 0), 0);
+      if (r.cells[i].n !== want) wrong.push(`${r.side}/${col.act}: ${r.cells[i].n} want ${want}`);
+    });
+    const tot = cols.reduce((a, col) => a + ks.reduce((b, k) => b + ((t.fandomCats[k] || {})[col.slug] || 0), 0), 0);
+    if (r.all !== tot) wrong.push(`${r.side} all: ${r.all} want ${tot}`);
+  }
+  check(wrong.length === 0, 'and the "all" column is its row', wrong.join(' | '));
 
-  // The property that makes the split honest: the sides under one trade are
-  // everybody, so they come to that trade's own numbers. If "didn't say" were
-  // dropped, or a stray key ignored, this is what would go short.
-  let off = [];
-  v.groups.forEach((g, i) => {
-    const q = v.pairings[i];
-    const tot = g.rows.reduce((a, r) => {
-      const n = r.nums.replace(/[*\s]/g, '').split('/').map((x) => Number(x.replace(/,/g, '')));
-      return [a[0] + n[0], a[1] + n[1]];
-    }, [0, 0]);
-    if (tot[0] !== v.byCat[q.us] || tot[1] !== v.byCat[q.them]) {
-      off.push(`${g.trade}: ${tot.join('/')} vs ${v.byCat[q.us]}/${v.byCat[q.them]}`);
-    }
+  // THE PROPERTY THAT MAKES THE TABLE HONEST. The rows are everybody, so a
+  // column comes to the figure the trade view prints for that slot. Dropping
+  // "didn't say", or ignoring a key the collab no longer lists, is exactly what
+  // this catches — and it is silent on the page, because a column that is short
+  // still looks like a column.
+  const off = [];
+  cols.forEach((col, i) => {
+    const sum = t.rows.reduce((a, r) => a + r.cells[i].n, 0);
+    if (sum !== t.byCat[col.slug]) off.push(`${col.act}: ${sum} vs ${t.byCat[col.slug]}`);
   });
-  check(off.length === 0, 'and down a trade they add up to that trade\'s totals', off.join(' | '));
+  check(off.length === 0, 'and a column adds up to that slot\'s own total', off.join(' | '));
 }
 
-console.log('\n--- a shared ballot slot stays marked after the split');
-// BINI's one category stands behind three trades. Splitting each of those by
-// side multiplies the same votes again, so the hatch and the * matter MORE
-// here, not less.
+console.log('\n--- the shading runs ACROSS a row, not down a column');
+// Across: where that side's own ballot was short, which is what a trade is
+// checked on. Down: the headcounts again, which the turnout block already
+// carries — and a reader comparing shading between rows would be comparing two
+// different scales without being told.
 {
-  const used = {};
-  for (const q of v.pairings) { used[q.us] = (used[q.us] || 0) + 1; used[q.them] = (used[q.them] || 0) + 1; }
-  const shared = v.pairings.map((q, i) => ({ i, us: used[q.us] > 1, them: used[q.them] > 1 }));
-  check(shared.some((s) => s.us || s.them), 'the sample really has a shared slot',
-        shared.map((s) => `${s.us ? 'us' : ''}${s.them ? 'them' : ''}`).join(','));
-  let bad = [];
-  shared.forEach((s) => {
-    for (const r of v.groups[s.i].rows) {
-      if (!!r.segs[0].hatched !== s.us || !!r.segs[1].hatched !== s.them) {
-        bad.push(`${v.groups[s.i].trade} ${r.name}`);
+  const bad = [];
+  for (const r of t.rows) {
+    const most = Math.max(...r.cells.map((x) => x.n));
+    for (const x of r.cells) {
+      if (!x.n) { if (x.px) bad.push(`${r.side} empty cell drew ${x.px}px`); continue; }
+      if (Math.abs(x.px / x.cell - x.n / most) > 0.06) {
+        bad.push(`${r.side} ${Math.round(x.px / x.cell * 100)}% vs ${Math.round(x.n / most * 100)}%`);
       }
     }
+  }
+  check(bad.length === 0, 'each bar is its cell against the row\'s best', bad.join(' | '));
+
+  // AND THE CELLS HAVE TO BE THE SAME WIDTH. Each bar is a percentage of its
+  // own cell, so columns of different widths make the bars incomparable — with
+  // the widths left to the content, BLINKs' 200 for Ahn Hyo-seop drew a longer
+  // bar than their 250 for BLACKPINK, because the longer name made a wider
+  // column. Everything above passed while the picture said the opposite of the
+  // numbers printed on it. Only measuring the cells finds that.
+  const widths = t.rows[0].cells.map((x) => x.cell);
+  check(Math.max(...widths) - Math.min(...widths) <= 2,
+        'and every slot column is the same width, so the bars compare',
+        widths.join(', '));
+  // The row's best really is full, which is what makes a short one read short.
+  const longest = t.rows.map((r) => {
+    const most = Math.max(...r.cells.map((x) => x.n));
+    const at = r.cells.find((x) => x.n === most);
+    return { side: r.side, pct: Math.round(at.px / at.cell * 100) };
   });
-  check(bad.length === 0, 'and every row of a shared trade is hatched on that side', bad.join(' | '));
-  const stars = v.groups.filter((g, i) => shared[i].us || shared[i].them)
-    .every((g) => g.rows.every((r) => r.nums.includes('*')));
-  check(stars, 'and carries the asterisk in its numbers');
-  check(/do not add these up/i.test(v.note), 'and the note still says not to sum them');
+  check(longest.every((x) => x.pct >= 94), 'and each row\'s best column fills its cell',
+        longest.map((x) => `${x.side} ${x.pct}%`).join(', '));
+
+  // And the rule is not vacuous: on this data the two scales disagree, so a
+  // column-scaled build would have been caught.
+  const colMost = cols.map((col, i) => Math.max(...t.rows.map((r) => r.cells[i].n)));
+  const differs = t.rows.some((r) => {
+    const rowMost = Math.max(...r.cells.map((x) => x.n));
+    return r.cells.some((x, i) => x.n && Math.abs(x.n / rowMost - x.n / colMost[i]) > 0.06);
+  });
+  check(differs, 'and the two scales really differ on this data, so the check can tell');
 }
 
-console.log('\n--- rows inside a trade share one denominator');
-// Scaled to its own total, a side that logged two votes draws the same bar as
-// one that logged a thousand — the picture then contradicts the numbers printed
-// beside it. Measured off the rendered elements, not off the style string.
+console.log('\n--- nothing repeats, so nothing is asterisked');
+// The reason this is a table at all. Each ballot slot appears once across a
+// row, so the mark that the trade view needs on three quarters of its numbers
+// is not needed here on any of them.
 {
-  let bad = [];
-  v.groups.forEach((g) => {
-    const tot = g.rows.map((r) => ({
-      name: r.name,
-      n: r.nums.replace(/[*\s]/g, '').split('/').map((x) => Number(x.replace(/,/g, ''))).reduce((a, b) => a + b, 0),
-      px: r.segs.reduce((a, s) => a + s.px, 0),
-    }));
-    const top = tot.reduce((a, b) => (b.n > a.n ? b : a));
-    for (const t of tot) {
-      if (Math.abs(t.px / top.px - t.n / top.n) > 0.05) {
-        bad.push(`${g.trade} ${t.name} ${Math.round(t.px / top.px * 100)}% vs ${Math.round(t.n / top.n * 100)}%`);
-      }
-    }
+  const slugs = cols.map((x) => x.slug);
+  check(new Set(slugs).size === slugs.length, 'each ballot slot has exactly one column',
+        slugs.join(', '));
+  const marks = await page.evaluate(() => ({
+    stars: (document.querySelector('.vt').textContent.match(/\*/g) || []).length,
+    hatched: document.querySelectorAll('.vt .pr-repeat').length,
+  }));
+  check(marks.stars === 0, 'no asterisk anywhere in the table', String(marks.stars));
+  check(marks.hatched === 0, 'and nothing hatched');
+  // The other view still carries both: the repetition is real there.
+  const trade = await page.evaluate(() => {
+    setPairView('trade');
+    const n = { stars: (document.querySelector('.pairings').textContent.match(/\*/g) || []).length,
+                hatched: document.querySelectorAll('.pairings .pr-repeat').length };
+    setPairView('voter');
+    return n;
   });
-  check(bad.length === 0, 'a bigger side draws a longer bar, in proportion', bad.join(' | '));
-  // And the rule is visible rather than vacuous: the sides in a trade really
-  // do differ in size, so a per-row denominator would have been caught.
-  const spread = v.groups.every((g) => {
-    const ns = g.rows.map((r) => r.nums.replace(/[*\s]/g, '').split('/')
-      .map((x) => Number(x.replace(/,/g, ''))).reduce((a, b) => a + b, 0));
-    return Math.max(...ns) > Math.min(...ns) * 1.3;
+  check(trade.stars > 0 && trade.hatched > 0,
+        'while the trade view keeps its marks', `${trade.stars} stars, ${trade.hatched} hatched`);
+}
+
+console.log('\n--- "didn\'t say" is its own row, never spread across the others');
+{
+  const got = await page.evaluate(() => {
+    const c = COLLABS.find((x) => x.id === 'bvp-kca-2026');
+    const slug = c.theyGive[0].slug;
+    const fc = { blink: { [slug]: 10 },
+                 'a-side-this-collab-dropped': { [slug]: 3 },
+                 unsaid: { [slug]: 7 } };
+    const tb = voterTable(c, { fandomCats: fc });
+    const i = tb.cols.findIndex((x) => x.slug === slug);
+    return { rows: tb.rows.map((r) => ({ label: r.label, n: r.cells[i] })) };
   });
-  check(spread, 'and the sample has sides of different sizes, so the check can tell');
+  const blink = got.rows.filter((r) => /BLINK/i.test(r.label))[0] || {};
+  const other = got.rows.filter((r) => /Didn/i.test(r.label))[0] || {};
+  check(blink.n === 10, 'a declared side carries only its own votes', String(blink.n));
+  // The never-answered and a side the collab no longer has are the same
+  // situation — nothing recognises them — and both belong in that one row.
+  check(other.n === 10, 'and one row carries the undeclared AND the dropped side', String(other.n));
+  check(!got.rows.some((r) => /Pauljjak/i.test(r.label)),
+        'a side with nothing logged is not given an empty row');
 }
 
 console.log('\n--- a side that logged nothing is accounted for in words');
-// Sixteen empty tracks are not an account of anything, but a side that simply
-// vanishes reads as "they are not in this".
 {
   const got = await page.evaluate(() => {
     const c = COLLABS.find((x) => x.id === 'bvp-kca-2026');
     const quiet = JSON.parse(JSON.stringify(c.tally.periods.all.fandomCats));
     delete quiet.pauljjak;
-    const groups = voterTradeRows(c, { fandomCats: quiet });
     const silent = voterSilent(c, { fandomCats: quiet });
     const box = document.createElement('div');
-    box.innerHTML = voterViewHtml(c, groups, silent);
-    return { silent, rows: [...box.querySelectorAll('.pr-row')].map((r) => r.textContent),
-             note: box.querySelector('.pr-note').textContent };
+    box.innerHTML = voterViewHtml(c, voterTable(c, { fandomCats: quiet }), silent);
+    return { silent, note: box.querySelector('.pr-note').textContent };
   });
   check(got.silent.length === 1 && /Pauljjak/.test(got.silent[0]),
         'the quiet side is identified', got.silent.join(', '));
-  check(!got.rows.some((t) => /Pauljjak/.test(t)), 'it draws no rows');
-  check(/Nothing logged yet under Pauljjak/.test(got.note), 'and the note says so', got.note.slice(-120));
-}
-
-console.log('\n--- "didn\'t say" is its own row, never spread across the others');
-// The reach of the attribution is the people who answered. Folding their votes
-// into the declared sides would put votes under a fandom on the strength of
-// nothing at all — which is the one claim this page has always refused.
-{
-  const got = await page.evaluate(() => {
-    const c = COLLABS.find((x) => x.id === 'bvp-kca-2026');
-    const fc = { blink: { 'favorite-music-group-or-duo': 10, 'favorite-global-music-star': 10 },
-                 'a-side-this-collab-dropped': { 'favorite-music-group-or-duo': 3, 'favorite-global-music-star': 3 },
-                 unsaid: { 'favorite-music-group-or-duo': 7, 'favorite-global-music-star': 7 } };
-    const g = voterTradeRows(c, { fandomCats: fc })
-      .filter((x) => x.us.slug === 'favorite-music-group-or-duo')[0];
-    return { rows: g.rows.map((r) => ({ label: r.label, us: r.us, them: r.them })) };
-  });
-  const blink = got.rows.filter((r) => /BLINK/i.test(r.label))[0] || {};
-  const other = got.rows.filter((r) => /Didn/i.test(r.label))[0] || {};
-  check(blink.us === 10, 'a declared side carries only its own votes', String(blink.us));
-  check(!!other, 'and there is a row for everybody else');
-  // Both the never-answered and a key the collab no longer has: same situation,
-  // one row, and keeping it is what makes the trade add up.
-  check(other.us === 10, 'carrying the undeclared AND the dropped side', String(other.us));
+  check(/Nothing logged yet under Pauljjak/.test(got.note), 'and the note says so', got.note.slice(-90));
 }
 
 console.log('\n--- the split comes from the API, not rebuilt from the capped board');
 {
   const src = await readFile(ROOT + '/collabs.html', 'utf8');
   const api = await readFile(ROOT + '/api/collabs.js', 'utf8');
-  check(/fandomCats\[k\]\s*\|\|\s*\(fandomCats\[k\]\s*=\s*\{\}\)/.test(api)
-        && /for \(const e of per\.values\(\)\)[\s\S]{0,420}fandomCats/.test(api),
+  check(/for \(const e of per\.values\(\)\)[\s\S]{0,420}fandomCats/.test(api),
         'the API builds it from every row, not from `board`');
   check(/return \{ byCat, board, fandoms, fandomCats, total/.test(api), 'and sends it');
-  // The page may READ p.fandomCats and must never assemble one of its own out
-  // of board rows — which would be right until the 201st voter.
   const lines = src.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l));
   const leak = lines.filter((l) => /\.board\b/.test(l) && /fandom/i.test(l));
   check(leak.length === 0, 'and the page never reconstructs it from the board',
         leak.map((l) => l.trim().slice(0, 70)).join(' | '));
-  // No fandomCats, no view: an older deployment loses the tab rather than
-  // showing a split of nothing.
   const none = await page.evaluate(() => {
     const c = COLLABS.find((x) => x.id === 'bvp-kca-2026');
-    return voterTradeRows(c, { byCat: c.tally.periods.all.byCat }).length;
+    return voterTable(c, { byCat: c.tally.periods.all.byCat });
   });
-  check(none === 0, 'and without it the view has no rows at all', String(none));
+  check(none === null, 'and without it there is no table at all', JSON.stringify(none));
 }
 
 console.log('\n--- the page no longer claims it cannot tell who logged a vote');
-// It used to say "nothing here can tell which fandom a vote came from". That
-// was the right instinct about the wrong object: the BAR is not a fandom score,
-// but the claim as written is about capability, and this view attributes
-// through the person. Saying both would be the page contradicting itself.
 {
   const notes = await page.evaluate(() => ({
     tally: document.querySelector('.tally-note').textContent.replace(/\s+/g, ' '),
     turnout: [...document.querySelectorAll('.sub-note')].map((n) => n.textContent.replace(/\s+/g, ' ')).join(' '),
   }));
-  const all = notes.tally + ' ' + notes.turnout + ' ' + v.note.replace(/\s+/g, ' ');
+  const all = notes.tally + ' ' + notes.turnout + ' ' + t.note;
   check(!/cannot be traced to a fandom|can tell which fandom a vote came from/i.test(all),
         'the old blanket claim is gone', (all.match(/[^.]*fandom a vote[^.]*\./) || [])[0] || '');
   check(/not a blink’s vote|carries no fandom of its own/i.test(all),
         'replaced by the narrower true one: a vote carries no fandom');
   check(/self-declared/i.test(all), 'and the attribution is still marked self-declared');
-  check(/Didn’t say/i.test(v.note), 'and the voter note names where the unanswered go');
+  check(/Didn’t say/.test(t.note), 'the table\'s note names where the unanswered go');
+  check(/shading runs across a row/i.test(t.note), 'and says which way the shading reads');
   check(/not two teams/i.test(notes.tally), 'the bar still says it is not two teams');
+}
+
+console.log('\n--- it fits a phone, and the page still does not scroll sideways');
+// The table may scroll inside its own wrapper. The PAGE may not — that is the
+// rule the whole site is held to, and a wide table is the classic way to break
+// it without anything looking wrong on a desktop.
+{
+  const small = await open('/collabs?demo=b', 390);
+  await small.evaluate(() => { setPairView('voter'); });
+  await small.waitForTimeout(300);
+  const got = await small.evaluate(() => ({
+    page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    wrapScrolls: (() => { const w = document.querySelector('.vt-wrap');
+      return w ? w.scrollWidth > w.clientWidth : null; })(),
+    rows: document.querySelectorAll('.vt tbody tr').length,
+  }));
+  check(got.page <= 1, 'no sideways scroll on the page at 390px', `${got.page}px`);
+  check(got.rows > 0, 'the table is there', `${got.rows} rows`);
+  check(got.wrapScrolls !== null, 'inside a wrapper that may scroll on its own',
+        String(got.wrapScrolls));
+  await small.close();
 }
 
 console.log('\n--- a collab with no sides keeps the trade rows and loses the control');
