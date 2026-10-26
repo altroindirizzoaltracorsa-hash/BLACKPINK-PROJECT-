@@ -2092,11 +2092,10 @@
   .ad-btn-ghost:hover { background: rgba(182,163,255,0.16); color: var(--ad-light); }
   .cd-card-addicted .cd-badge-chip { color: var(--ad-text); border-color: rgba(182,163,255,0.6); background: rgba(12,7,24,0.4); margin: 0 auto 1rem; }
   .cd-card-addicted .ad-locket img { height: 1.05rem; width: auto; display: block; }
-  .ad-snippet { width: 100%; margin: 0.6rem auto 0; }
-  .ad-snippet .ytm-card { width: 100%; }
-  .ad-snippet-link { display: block; margin-top: 0.4rem; font-size: 0.78rem; text-align: center;
-    color: var(--ad-light); text-decoration: none; opacity: 0.9; }
-  .ad-snippet-link:hover { text-decoration: underline; }
+  .ad-snippet-links { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center;
+    justify-content: center; margin: 0.7rem auto 0.2rem; }
+  .ad-snippet-label { width: 100%; text-align: center; font-size: 0.74rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ad-light); opacity: 0.85; margin-bottom: 0.1rem; }
   .cd-card-addicted .cd-goal-label { color: var(--ad-text); opacity: 0.92; }
   .cd-card-addicted .cd-goal-nums { color: var(--ad-light); }
   .cd-card-addicted .cd-goal-nums span { color: rgba(232,225,255,0.7); }
@@ -4030,13 +4029,16 @@
               </div>
               <div class="cd-goal-bar"><div class="cd-goal-fill" id="addicted-goal-fill" style="width:0%"></div></div>
             </div>
-            <!-- The official assets. Mixed shapes on purpose — .cd-frame is
-                 object-fit: contain over black, so the portrait letterboxes
-                 whole rather than being cropped to fit the two 16:9 ones. -->
+            <!-- The official assets. The key visual (addicted-2) is deliberately
+                 NOT here: it already carries the ADDICTED lockup, which the card
+                 is showing two inches above it, so in the strip it read as the
+                 same artwork twice. It is still offered as a share-card
+                 background, where it is the whole picture rather than a
+                 duplicate. Mixed shapes on purpose — .cd-frame is object-fit:
+                 contain over black, so the portrait letterboxes whole rather
+                 than being cropped to match the 16:9 timetable. -->
             <div class="cd-strip" style="--cd-frame-ratio: 16 / 9;" data-carousel data-carousel-autoplay="5000"
                  aria-label="ADDICTED promotional images">
-              <a class="cd-frame" href="/strips/addicted-2.jpg" target="_blank" rel="noopener">
-                <img src="/strips/addicted-2.jpg" loading="lazy" alt="ADDICTED key visual — JISOO behind a beaded curtain, the ADDICTED lockup beside her"></a>
               <a class="cd-frame" href="/strips/addicted-1.webp" target="_blank" rel="noopener">
                 <img src="/strips/addicted-1.webp" loading="lazy" alt="JISOO looking through a gap in a beaded curtain"></a>
               <a class="cd-frame" href="/strips/addicted-3.jpg" target="_blank" rel="noopener">
@@ -4045,33 +4047,19 @@
             <div class="cd-nav cd-strip-nav" data-carousel-nav hidden>
               <div class="cd-dots" data-carousel-dots></div>
             </div>
-            <!-- The snippet, through the same click-to-play facade the YouTube
-                 milestones use: no iframe and no third-party cookie until
-                 somebody asks for one, and ytmPlay() passes autoplay=1 so the
-                 tap that opens it is also the gesture that starts the sound.
-                 A browser will not start audio before that tap, so a snippet
-                 that played by itself would have to be muted — which is no use
-                 for a song. One tap, with sound, is the closest thing there is. -->
-            <div class="ad-snippet">
-              <div class="ytm-card" data-vid="rdPMdCzb5yg">
-                <button class="ytm-thumb" type="button" aria-label="Play the ADDICTED snippet" onclick="ytmPlay(this)">
-                  <!-- hqdefault, and no ytmThumb* handlers. Those live ~21,000
-                       lines below this markup, so an image that fails FAST — as
-                       it does with no network — fires onerror while the page is
-                       still parsing, before the function exists:
-                       "ytmThumbNext is not defined", which the carousel suite
-                       caught. The milestones grid can use them because it is
-                       built by script, after they are defined; static markup
-                       cannot. hqdefault exists for every video, so there is
-                       nothing to fall back FROM, and the onerror here calls
-                       nothing. -->
-                  <img src="https://i.ytimg.com/vi/rdPMdCzb5yg/hqdefault.jpg" alt="" loading="lazy"
-                       onerror="this.style.visibility='hidden'">
-                  <span class="ytm-play-badge"></span>
-                </button>
-                <div class="ytm-player"></div>
-              </div>
-              <a class="ad-snippet-link" href="https://youtube.com/shorts/rdPMdCzb5yg" target="_blank" rel="noopener">Watch the snippet on YouTube ↗</a>
+            <!-- LINKS OUT, NOT A PLAYER. An embedded preview cannot start on its
+                 own: browsers refuse audio before a gesture, so anything that
+                 played by itself would have to be muted, which is no use for a
+                 snippet of a song. Rather than a player that sits there looking
+                 like it should be playing, these go to where it already plays
+                 by itself in a feed.
+                 TODO: the Instagram and TikTok posts need their URLs — add them
+                 beside the YouTube one; test_addicted_release_time.mjs counts
+                 the buttons and will tell you if a dead one gets left behind. -->
+            <div class="ad-snippet-links">
+              <span class="ad-snippet-label">◇ Hear the snippet</span>
+              <a class="cd-btn ad-btn ad-btn-ghost" href="https://youtube.com/shorts/rdPMdCzb5yg"
+                 target="_blank" rel="noopener">YouTube ↗</a>
             </div>
             <div class="cd-links">
               <a class="cd-btn ad-btn" href="https://jisoo.lnk.to/addicted" target="_blank" rel="noopener" onclick="saveAddicted()">Pre-save ↗</a>
