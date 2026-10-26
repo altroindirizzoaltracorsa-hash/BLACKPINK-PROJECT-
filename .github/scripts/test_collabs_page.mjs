@@ -477,10 +477,13 @@ const FIX = {
 await prev.evaluate((fix) => { COLLABS[0].tally = fix; render(); }, FIX);
 await prev.waitForTimeout(300);
 
-const tabCount = await prev.locator('.tab').count();
+// Scoped to `.tabs`, the PERIOD row. The trade block grew its own selector
+// using the same control style, so a bare `.tab` now matches five buttons and
+// two lit ones — which is a strict-mode throw, not a readable failure.
+const tabCount = await prev.locator('.tabs > .tab').count();
 tabCount === 3 ? ok('three tabs', 'today / this week / all time')
                : bad('three tabs', `${tabCount}`);
-const activeTab = (await prev.locator('.tab.on').textContent()).trim();
+const activeTab = (await prev.locator('.tabs > .tab.on').textContent()).trim();
 activeTab === 'All time' ? ok('all time leads') : bad('all time leads', activeTab);
 
 // The bar opens the split, and the split is per category.
@@ -525,7 +528,7 @@ await prev.waitForTimeout(200);
 
 // Tabs move the bar AND the board together.
 const allNums = (await prev.locator('.tally-nums').textContent()).trim();
-await prev.locator('.tab', { hasText: 'Today' }).click();
+await prev.locator('.tabs > .tab', { hasText: 'Today' }).click();
 await prev.waitForTimeout(250);
 const todayNums = (await prev.locator('.tally-nums').textContent()).trim();
 (/\b9\b/.test(todayNums) && /\b3\b/.test(todayNums) && todayNums !== allNums)
@@ -1302,7 +1305,7 @@ console.log('--- the board and the day grid are drawn before any votes exist');
   await bare.goto(base + '/collabs', { waitUntil: 'domcontentloaded' });
   await bare.waitForTimeout(1200);
   const shape = await bare.evaluate(() => ({
-    tabs: document.querySelectorAll('.tab').length,
+    tabs: document.querySelectorAll('.tabs > .tab').length,
     headers: [...document.querySelectorAll('.board th')].map((t) => t.textContent.trim()),
     boardRows: document.querySelectorAll('.board tbody tr').length,
     boardEmpty: (document.querySelector('.board-empty') || {}).textContent || '',

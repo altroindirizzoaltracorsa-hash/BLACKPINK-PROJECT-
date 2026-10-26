@@ -253,6 +253,15 @@ jobs:
         if: always()
         run: node .github/scripts/test_collab_pairings.mjs
 
+      # One selector now switches between votes an act received and people by
+      # the side they say they are on. Reading the second as the first split up
+      # is a claim about other fandoms' voting the page has no data for — and
+      # the bars are votes EACH, which drawn on totals contradicts the figure
+      # printed beside them while looking perfectly healthy.
+      - name: The collab block's two views count different things
+        if: always()
+        run: node .github/scripts/test_collab_views.mjs
+
       # Spotify files a pre-release single under its own album name, so the
       # BY ALBUM view showed the same record twice and the EP's total was
       # missing the track carrying most of its streams.

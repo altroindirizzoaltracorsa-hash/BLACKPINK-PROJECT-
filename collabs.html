@@ -213,7 +213,16 @@
       rgba(0,0,0,0.55) 0 5px, rgba(255,255,255,0.30) 5px 10px); }
   .pr-nums { font-family: "DM Mono", ui-monospace, monospace; font-size: 0.7rem;
     color: var(--muted); white-space: nowrap; }
+  /* The secondary figure in each row: a headcount beside the name, a raw total
+     beside the average. Dimmed because the bar is drawn on the OTHER number —
+     a total at full strength next to a per-person bar is the one pairing that
+     reads as the bar being wrong. */
+  .pr-tot { opacity: 0.55; }
   .pr-note { font-size: 0.66rem; color: var(--muted); margin: 0.55rem 0 0; line-height: 1.6; }
+  /* The view selector. Same control as the period tabs, smaller: those switch
+     what the whole card counts, these switch how one block is read. */
+  .pr-tabs { display: flex; gap: 0.35rem; margin-bottom: 0.6rem; }
+  .pr-tabs .tab { font-size: 0.55rem; padding: 0.4rem 0.5rem; }
   @media (max-width: 420px) {
     .pr-row { grid-template-columns: 1fr auto; grid-template-areas: "name nums" "bar bar"; }
     .pr-name { grid-area: name; } .pr-nums { grid-area: nums; } .pr-bar { grid-area: bar; }
@@ -1148,10 +1157,119 @@ function pairingRows(c, p) {
   });
 }
 
+// The same rows, drawn for the people who logged them.
+//
+// One row per self-declared side, and this is the ONLY cut of this block that
+// mentions a fandom. The trade rows above are votes an ACT received, and those
+// cannot be attributed to a fandom in any way — everyone in a collab votes the
+// whole ballot, so there is no such thing as "the BLOOM share of JENNIE's
+// votes". What can be attributed, once somebody says what they are, is the
+// person: who turned up, and how much they logged.
+//
+// So the two views sit under one selector and count two different things, which
+// is exactly what a selector invites a reader to forget. Each carries its own
+// note, and neither number is derived from the other.
+function voterRows(c, p) {
+  if (!c.fandoms || !c.fandoms.length) return [];
+  var f = (p && p.fandoms) || null;
+  // Every declared side, listed at zero as well: a side missing from the list
+  // reads as "they are not in this", and before anybody has answered that is
+  // the whole picture.
+  var rows = c.fandoms.map(function (x) {
+    var got = (f && f[x.key]) || {};
+    return { key: x.key, label: x.label, colour: x.colour || 'var(--pink)',
+             people: Number(got.people) || 0, votes: Number(got.votes) || 0 };
+  });
+  // A key the collab no longer lists is the same situation as never having
+  // answered — this trade carried a second partner for two days and the people
+  // who picked that side are still logging. Folded into one row rather than
+  // dropped, so the rows account for everybody the period has.
+  var known = {};
+  c.fandoms.forEach(function (x) { known[x.key] = true; });
+  var other = { key: 'unsaid', label: 'Didn’t say', colour: 'var(--muted)', people: 0, votes: 0 };
+  for (var k in (f || {})) {
+    if (known[k]) continue;
+    other.people += Number((f[k] || {}).people) || 0;
+    other.votes  += Number((f[k] || {}).votes)  || 0;
+  }
+  if (other.people) rows.push(other);
+  // The BAR is votes-each, not the total — the same rule the turnout block
+  // further down follows, for the same reason. Comparing raw totals between
+  // sides with different headcounts compares reach rather than effort: one side
+  // finds the counter on its own site, the other has to be told it exists.
+  // Drawn on totals, 34 people averaging 34.7 get a full bar beside 9
+  // averaging 50, and the picture then contradicts the figure printed next to
+  // it.
+  rows.forEach(function (r) { r.each = r.people ? r.votes / r.people : 0; });
+  return rows;
+}
+
+// Which cut of the block is showing. 'trade' is what was asked for first and
+// stays the default: it is the thing the collab is.
+var PAIR_VIEW = 'trade';
+
 function pairingsHtml(c, p) {
-  var rows = pairingRows(c, p);
-  if (!rows.length) return '';
-  return '<div class="pairings"><div class="pairings-head">Each trade, on its own</div>'
+  var trade = pairingRows(c, p);
+  var voters = voterRows(c, p);
+  if (!trade.length && !voters.length) return '';
+  var views = [{ k: 'trade', label: 'By trade', has: trade.length },
+               { k: 'voter', label: 'By voter', has: voters.length }]
+    .filter(function (v) { return v.has; });
+  // The selected view has to exist. A collab with no declared sides (or none
+  // with a trade list) would otherwise render an empty block under a lit tab,
+  // which looks exactly like a view that has broken.
+  var view = views.filter(function (v) { return v.k === PAIR_VIEW; }).length ? PAIR_VIEW : views[0].k;
+  // One tab on its own is a filter that has lost its other option, so the
+  // selector appears only when there is somewhere else to go.
+  var tabs = views.length > 1
+    ? '<div class="pr-tabs">' + views.map(function (v) {
+        return '<button class="tab' + (v.k === view ? ' on' : '') + '" type="button" '
+          + 'aria-pressed="' + (v.k === view ? 'true' : 'false') + '" '
+          + 'onclick="setPairView(\'' + v.k + '\')">' + esc(v.label) + '</button>';
+      }).join('') + '</div>'
+    : '';
+  return '<div class="pairings">' + tabs
+    + (view === 'voter' ? voterViewHtml(voters) : tradeViewHtml(trade))
+    + '</div>';
+}
+
+function voterViewHtml(rows) {
+  var most = Math.max.apply(null, rows.map(function (r) { return r.each; }).concat([0.0001]));
+  var any = rows.some(function (r) { return r.people > 0; });
+  return '<div class="pairings-head">Who logged them</div>'
+    + rows.map(function (r) {
+        var avg = Math.round(r.each * 10) / 10;
+        return '<div class="pr-row">'
+          + '<div class="pr-name"><span style="color:' + esc(r.colour) + '">' + esc(r.label)
+          + '</span> <span class="pr-tot">' + fmt(r.people) + ' '
+          + (r.people === 1 ? 'person' : 'people') + '</span></div>'
+          + '<div class="pr-bar">'
+          // Nothing drawn for a side nobody has joined. A segment of any width
+          // is a claim, and two part-filled tracks read as a contest that
+          // nobody is actually in yet.
+          + (r.people
+              ? '<div class="pr-seg" style="width:' + (r.each / most * 100)
+                + '%;background-color:' + esc(r.colour) + '"></div>'
+              : '')
+          + '</div>'
+          + '<div class="pr-nums">'
+          + (r.people ? avg + ' each<span class="pr-tot"> · ' + fmt(r.votes) + '</span>' : '—')
+          + '</div>'
+          + '</div>';
+      }).join('')
+    + '<p class="pr-note"><b>Not the rows above, split up.</b> Those votes cannot be traced to a '
+    + 'fandom at all — everyone here votes the whole ballot. This counts <b>people</b>, by what '
+    + 'they tell us they are, and every category each of them logged, which is not limited to the '
+    + 'ones in this trade. <b>The bars are votes each</b>, not the totals: one side finds the '
+    + 'counter on its own site and the other has to be told it exists, so comparing the totals '
+    + 'compares reach more than effort. Self-declared, and nobody is asked to prove it.'
+    + (any ? '' : ' Nobody has said which side they are on yet — the counter asks once, after '
+      + 'your first round.')
+    + '</p>';
+}
+
+function tradeViewHtml(rows) {
+  return '<div class="pairings-head">Each trade, on its own</div>'
     + rows.map(function (r) {
         var tot = (Math.max(0, r.us.n) + Math.max(0, r.them.n)) || 1;
         return '<div class="pr-row">'
@@ -1175,8 +1293,7 @@ function pairingsHtml(c, p) {
       }).join('')
     + '<p class="pr-note"><b>Do not add these up.</b> A hatched bar and a <b>*</b> mark the '
     + 'same ballot slot appearing in more than one trade — BINI has one category, so the same '
-    + 'votes stand behind all three BINI rows. The bar above counts each category once.</p>'
-    + '</div>';
+    + 'votes stand behind all three BINI rows. The bar above counts each category once.</p>';
 }
 
 // ── DRAFT: three ways to count a complete pass ──────────────────────────────
@@ -2183,6 +2300,7 @@ function kstToday() {
 }
 
 function setPeriod(k) { PERIOD = k; DAY_OPEN = null; render(); }
+function setPairView(k) { PAIR_VIEW = k; render(); }
 function toggleSplit() { SPLIT_OPEN = !SPLIT_OPEN; render(); }
 function openDay(k) { DAY_OPEN = (DAY_OPEN === k) ? null : k; render(); }
 
