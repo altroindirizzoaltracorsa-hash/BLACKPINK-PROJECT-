@@ -34,6 +34,8 @@ const SECONDARY = new Set([
   // a debug write" — it carries nothing worth stranding on a locked database.
   'ingest-scrobble',
   'statsfm',
+  // Read-only diagnostic; follows whichever database is configured.
+  'redis-report',
 ]);
 // Endpoints that must stay on the PRIMARY, whatever else moves.
 // Votes, like the leaderboard, cannot be merged back from two stores after the
