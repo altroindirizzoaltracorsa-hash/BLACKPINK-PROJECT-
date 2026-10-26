@@ -80,6 +80,18 @@ console.log('\n--- a slot used by more than one trade is marked as shared');
   check(/class="pr-seg' \+ \(r\.us\.repeat \? ' pr-repeat' : ''\)/.test(page)
         && /class="pr-seg' \+ \(r\.them\.repeat \? ' pr-repeat' : ''\)/.test(page),
         'and both sides can carry it');
+
+  // AND IT HAS TO SURVIVE THE INLINE STYLE. `background:` is a shorthand that
+  // resets background-image to none, and an inline style outranks the
+  // stylesheet — so the segments were written with `background:<colour>`, which
+  // silently wiped the hatch. The rule existed, the class was applied, every
+  // check above passed, and all four rows still rendered solid. Only looking at
+  // it found that. The colour must be set as background-COLOR.
+  const segWrites = (page.match(/class="pr-seg[^]*?style="[^"]*"/g) || []);
+  check(segWrites.length > 0, `found ${segWrites.length} segment style writes`);
+  check(segWrites.every(w => !/;\s*background\s*:/.test(w)),
+        'segments set background-color, not the background shorthand',
+        segWrites.filter(w => /;\s*background\s*:/.test(w)).map(w => w.slice(-46)).join(' | '));
   check(/Do not add these up/.test(page), 'and the rows carry a do-not-sum warning');
 }
 
