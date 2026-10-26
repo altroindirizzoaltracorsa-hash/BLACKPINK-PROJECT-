@@ -4053,13 +4053,23 @@
                  snippet of a song. Rather than a player that sits there looking
                  like it should be playing, these go to where it already plays
                  by itself in a feed.
-                 TODO: the Instagram and TikTok posts need their URLs — add them
-                 beside the YouTube one; test_addicted_release_time.mjs counts
-                 the buttons and will tell you if a dead one gets left behind. -->
+
+                 The Instagram url arrived as .../reel/De9E9T8p_2B/?obrf=MTQ3...
+                 and is stored without it: obrf is a share-tracking token tied
+                 to whoever copied the link, it does nothing for the post, and
+                 putting it on a public page hands every visitor the same
+                 marker. The YouTube one lost its ?is= for the same reason. The
+                 TikTok link is the vt.tiktok.com short form as supplied —
+                 these do expire, so if that button ever dead-ends, replace it
+                 with the full www.tiktok.com/@user/video/<id> url. -->
             <div class="ad-snippet-links">
               <span class="ad-snippet-label">◇ Hear the snippet</span>
               <a class="cd-btn ad-btn ad-btn-ghost" href="https://youtube.com/shorts/rdPMdCzb5yg"
                  target="_blank" rel="noopener">YouTube ↗</a>
+              <a class="cd-btn ad-btn ad-btn-ghost" href="https://www.instagram.com/reel/De9E9T8p_2B/"
+                 target="_blank" rel="noopener">Instagram ↗</a>
+              <a class="cd-btn ad-btn ad-btn-ghost" href="https://vt.tiktok.com/ZSg4yFEAg/"
+                 target="_blank" rel="noopener">TikTok ↗</a>
             </div>
             <div class="cd-links">
               <a class="cd-btn ad-btn" href="https://jisoo.lnk.to/addicted" target="_blank" rel="noopener" onclick="saveAddicted()">Pre-save ↗</a>
