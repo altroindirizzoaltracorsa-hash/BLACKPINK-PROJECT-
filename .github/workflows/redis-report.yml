@@ -1,0 +1,49 @@
+name: What is in Redis
+
+# Which key families hold the data, and how much each one weighs.
+#
+# Upstash bills bandwidth and its console reports a single number for the whole
+# database, with no per-caller breakdown — Redis keeps none. When the allowance
+# ran out on 2026-10-24 the only way to attribute it was reading the code and
+# measuring endpoints one at a time. Bandwidth is SIZE x HOW OFTEN; this gives
+# the size half directly, from the live database, so the next conversation
+# starts from a measurement instead of an inference.
+#
+# Read-only, and deliberately cheap: it reads key NAMES and LENGTHS, never
+# values (one sampled element per list, to get a per-entry size). The exception
+# is gzip=1, which reads exactly one value — the largest — to measure what
+# compression would save.
+on:
+  workflow_dispatch:
+    inputs:
+      gzip:
+        description: 'Set to 1 to also gzip the single largest value and report the ratio'
+        required: false
+        default: ''
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask the site
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          GZIP: ${{ github.event.inputs.gzip }}
+        run: |
+          set -u
+          if [ -z "$ADMIN_KEY" ]; then echo "::error::ADMIN_KEY is not set"; exit 1; fi
+          URL="https://www.blinksunited.com/api/redis-report"
+          [ "$GZIP" = "1" ] && URL="$URL?gzip=1"
+          code=$(curl -sS --max-time 120 -o /tmp/report.txt -w '%{http_code}' \
+                   -H "x-admin-secret: $ADMIN_KEY" "$URL")
+          echo "HTTP $code"
+          echo
+          cat /tmp/report.txt
+          echo
+          if [ "$code" != "200" ]; then echo "::error::report failed (HTTP $code)"; exit 1; fi
+          # Also as annotations, because the job log lives in blob storage a
+          # Claude Code session cannot fetch.
+          head -40 /tmp/report.txt | while IFS= read -r l || [ -n "$l" ]; do
+            [ -n "$l" ] && echo "::notice title=redis::$(printf '%s' "$l" | sed 's/%/%25/g')"
+          done
