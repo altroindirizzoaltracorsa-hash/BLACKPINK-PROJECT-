@@ -99,31 +99,57 @@ console.log('\n--- every copy in the site agrees');
         'the share card\'s date line names the real hour', dateLine);
 }
 
-console.log('\n--- the assets and the snippet are wired in');
+console.log('\n--- the assets, where each one belongs');
 {
   const page = readFileSync(root + 'index.html', 'utf8');
   for (const f of ['/strips/addicted-1.webp', '/strips/addicted-2.jpg', '/strips/addicted-3.jpg']) {
-    check(page.includes(f), `${f} is on the page`);
     check(readFileSync(root + f.slice(1)).length > 1000, `${f} exists in the repo`);
   }
-  check(/data-vid="rdPMdCzb5yg"/.test(page), 'the snippet is embedded');
-  // The facade matters: no iframe until someone taps, so no third-party cookie
-  // for a visitor who never watches it.
-  check(!/youtube(-nocookie)?\.com\/embed\/rdPMdCzb5yg/.test(page),
-        'and only as a click-to-play facade, not a live iframe');
 
-  // Every picture the picker offers must declare whether it already carries the
-  // lockup. A new one added without the flag would be drawn under a second copy
-  // of the wordmark.
+  const card = (page.match(/<div class="cd-card cd-card-addicted"[\s\S]*?<\/details>/) || [''])[0];
+  const inCarousel = f => card.includes(f);
+  // The key visual already carries the ADDICTED lockup, which the card renders
+  // two inches above the strip — in the carousel it read as the same artwork
+  // twice. It belongs to the share card, where it IS the picture.
+  check(inCarousel('/strips/addicted-1.webp'), 'the portrait is in the carousel');
+  check(inCarousel('/strips/addicted-3.jpg'), 'the timetable is in the carousel');
+  check(!inCarousel('/strips/addicted-2.jpg'), 'the key visual is NOT in the carousel');
+
   const pics = page.match(/const ADDICTED_CARD_PICS = \[([\s\S]*?)\];/);
   check(!!pics, 'the share-card picker has a picture list');
   if (pics) {
+    check(pics[1].includes('/strips/addicted-2.jpg'), 'but it IS a share-card background');
     const rows = pics[1].split('\n').filter(l => l.includes('url:'));
-    check(rows.length >= 2, `it offers ${rows.length} backgrounds`);
+    check(rows.length >= 2, `the picker offers ${rows.length} backgrounds`);
+    // A picture added without the flag would be drawn under a second copy of
+    // the wordmark.
     check(rows.every(l => /hasLockup:\s*(true|false)/.test(l)),
           'and every one declares hasLockup',
           rows.filter(l => !/hasLockup:/.test(l)).join(' / '));
   }
+}
+
+console.log('\n--- the snippet is linked, not embedded');
+// Asked for explicitly, and for a good reason: a preview that cannot start on
+// its own is a player sitting there looking broken. Browsers refuse audio
+// before a gesture, so an autoplaying snippet would have to be muted — no use
+// for a song. These go to where it plays by itself in a feed.
+{
+  const page = readFileSync(root + 'index.html', 'utf8');
+  const card = (page.match(/<div class="cd-card cd-card-addicted"[\s\S]*?<\/details>/) || [''])[0];
+  check(/youtube\.com\/shorts\/rdPMdCzb5yg/.test(card), 'the YouTube snippet is linked');
+  check(!/ytm-card|ytmPlay|i\.ytimg\.com|youtube(-nocookie)?\.com\/embed/.test(card),
+        'and nothing on the card embeds or previews it');
+
+  // Every link in the row must actually go somewhere. A placeholder left
+  // behind while waiting for the Instagram or TikTok URL is a dead button on a
+  // release card.
+  const row = (card.match(/<div class="ad-snippet-links">[\s\S]*?<\/div>/) || [''])[0];
+  const hrefs = [...row.matchAll(/href="([^"]*)"/g)].map(m => m[1]);
+  check(hrefs.length > 0, `the snippet row has ${hrefs.length} link(s)`);
+  check(hrefs.every(h => /^https:\/\/\S+\.\S+/.test(h)),
+        'and every one is a real URL, no placeholders',
+        hrefs.filter(h => !/^https:\/\/\S+\.\S+/.test(h)).join(' / ') || hrefs.join(' / '));
 }
 
 console.log(`\nFAILURES: ${fails.length}`);
