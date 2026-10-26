@@ -245,6 +245,14 @@ jobs:
         if: always()
         run: node .github/scripts/test_addicted_release_time.mjs
 
+      # The per-trade rows show BINI's single ballot category behind three of
+      # them. Summed, that is three times the votes that exist — so a shared
+      # slot must stay hatched and marked, and the rows must never imply three
+      # agreements where BLOOMs made one.
+      - name: The collab trade rows do not double-count
+        if: always()
+        run: node .github/scripts/test_collab_pairings.mjs
+
       # Spotify files a pre-release single under its own album name, so the
       # BY ALBUM view showed the same record twice and the EP's total was
       # missing the track carrying most of its streams.
