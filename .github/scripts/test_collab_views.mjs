@@ -292,8 +292,15 @@ console.log('\n--- the page no longer claims it cannot tell who logged a vote');
   const notes = await page.evaluate(() => ({
     tally: document.querySelector('.tally-note').textContent.replace(/\s+/g, ' '),
     turnout: [...document.querySelectorAll('.sub-note')].map((n) => n.textContent.replace(/\s+/g, ' ')).join(' '),
+    // THE WHOLE PAGE, not the three notes I happened to edit. Scoped to those,
+    // this passed while a fourth copy sat in the static "How a trade works"
+    // list further down — "nothing here knows whether the person who picked
+    // BLACKPINK is a blink or not" — and the deployed page carried the new
+    // view and the old denial at the same time. A claim about what the page
+    // says has to be checked against what the page says.
+    page: document.body.innerText.replace(/\s+/g, ' '),
   }));
-  const all = notes.tally + ' ' + notes.turnout + ' ' + t.note;
+  const all = notes.tally + ' ' + notes.turnout + ' ' + t.note + ' ' + notes.page;
   check(!/cannot be traced to a fandom|can tell which fandom a vote came from/i.test(all),
         'the old blanket claim is gone', (all.match(/[^.]*fandom a vote[^.]*\./) || [])[0] || '');
   check(/not a blink’s vote|carries no fandom of its own/i.test(all),
