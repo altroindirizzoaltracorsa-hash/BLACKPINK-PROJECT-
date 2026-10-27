@@ -23139,7 +23139,12 @@ function drawPresaveCard(canvas, d) {
   ctx.fillRect(0, 0, W, H);
 
   // Full-bleed photo (cover, biased toward the top so JENNIE's face stays framed)
-  const photo = d.photo;
+  //
+  // A release may supply a second cut shot for a wide frame; the card asks for
+  // it by the SHAPE it is drawing rather than by a format flag, so the choice
+  // is made from the same numbers the cover maths uses and cannot disagree
+  // with the canvas it is filling.
+  const photo = (W > H && d.photoWide) ? d.photoWide : d.photo;
   if (photo && photo.naturalWidth) {
     const scale = Math.max(W / photo.naturalWidth, H / photo.naturalHeight);
     const dw = photo.naturalWidth * scale, dh = photo.naturalHeight * scale;
@@ -25195,12 +25200,21 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
 // ADDICTED wordmark printed on them, so the card must not draw its own on top.
 // Picking one of those clears titleImg and makes the heart overlay stand down;
 // picking the sky or the plain portrait puts both back.
+//
+// `wide` is the same picture shot for a wide frame, used when the card is in
+// landscape. One thumbnail, two files: a second thumbnail of what reads as the
+// same photograph would be a choice nobody can make sensibly, and cropping the
+// 3:4 portrait to 16:9 throws away either her face or the lockup — the
+// official wide cut keeps both, at exactly the canvas ratio, so landscape
+// crops nothing at all. Both faces of an entry must agree about hasLockup,
+// since the flag is read once at pick time for whichever one the format asks
+// for; these do.
 const ADDICTED_CARD_PICS = [
   { url: '/addicted/addicted-bg-clouds-v1.webp', hasLockup: false },
   { url: '/strips/addicted-1.webp',              hasLockup: false },
   { url: '/strips/addicted-2.jpg',               hasLockup: true  },
   { url: '/strips/addicted-3.jpg',               hasLockup: true  },
-  { url: '/strips/addicted-4.jpg',               hasLockup: true  },
+  { url: '/strips/addicted-4.jpg',               hasLockup: true, wide: '/strips/addicted-5.jpg' },
 ];
 
 async function selectAddictedCardArt(url, thumbEl) {
@@ -25210,9 +25224,19 @@ async function selectAddictedCardArt(url, thumbEl) {
   const label  = document.getElementById('card-box-label');
   if (label) label.textContent = 'GENERATING…';
   const pick = ADDICTED_CARD_PICS.find(pic => pic.url === url) || ADDICTED_CARD_PICS[0];
-  const art  = await loadImg(pick.url).catch(() => null);
+  // BOTH faces are loaded here, not on the format switch. setCardFormat redraws
+  // synchronously — it resizes the canvas and calls the draw — so a file
+  // fetched at that moment would arrive after the frame it was wanted for, and
+  // the card would show the old shape until something else redrew it.
+  const [art, wide] = await Promise.all([
+    loadImg(pick.url).catch(() => null),
+    pick.wide ? loadImg(pick.wide).catch(() => null) : Promise.resolve(null),
+  ]);
   if (!art || !_presaveCardData) return;
   _presaveCardData.photo = art;
+  // Null when this pick has no wide cut, which is what makes the draw fall
+  // back to the one photo rather than to whatever the last pick left behind.
+  _presaveCardData.photoWide = wide;
   _presaveCardData.artHasLockup = pick.hasLockup;
   _presaveCardData.titleImg = pick.hasLockup ? null : (_adLogoImg || null);
   if (label) label.textContent = _presaveCardData.earned ? "I'M AN EARLY SUPPORTER" : 'ADDICTED · COUNTDOWN';

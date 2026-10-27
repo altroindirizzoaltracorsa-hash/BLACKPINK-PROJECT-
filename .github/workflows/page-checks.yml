@@ -164,6 +164,14 @@ jobs:
         if: always()
         run: node .github/scripts/test_addicted_sky.mjs
 
+      # One of the share-card backgrounds comes in two cuts, a portrait and the
+      # official wide, chosen by the shape being drawn and sharing one
+      # thumbnail. Every way that breaks leaves a finished-looking card — above
+      # all the wide cut surviving onto the NEXT background somebody picks.
+      - name: The ADDICTED card picks the right cut for its shape
+        if: always()
+        run: node .github/scripts/test_addicted_card_art.mjs
+
       # A pre-save campaign is seven things in five files and every half-wired
       # state is silent — above all a counter the API has no branch for, which
       # leaves the bar reading "0 / 50" for the whole campaign and looks
