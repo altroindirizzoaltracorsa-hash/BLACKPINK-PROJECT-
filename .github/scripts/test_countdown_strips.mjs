@@ -100,10 +100,17 @@ console.log('--- and on the home carousel too, which is where people look');
     // display:none ancestor — so the count cannot drift from what renders.
     const live=document.querySelector('#home-countdowns > .cd-wrap');
     const strips=[...live.querySelectorAll('.cd-strip')];
-    const navs=[...live.querySelectorAll('.cd-strip-nav')];
-    return { strips: strips.length,
-             shown: strips.filter(e=>e.offsetParent && getComputedStyle(e).display!=='none').length,
-             withDots: navs.filter(n=>!n.hidden && n.querySelectorAll('.cd-dot').length>1).length,
+    const shown=strips.filter(e=>e.offsetParent && getComputedStyle(e).display!=='none');
+    return { strips: strips.length, shown: shown.length,
+             // Per strip, so a card with one picture cannot fail a count of
+             // navs: dots are a control for choosing BETWEEN pictures, and one
+             // picture has nothing to choose.
+             needDots: shown.filter(e=>e.querySelectorAll('.cd-frame').length>1).length,
+             withDots: shown.filter(e=>{
+               const n=e.parentElement && e.parentElement.querySelector('.cd-strip-nav');
+               return e.querySelectorAll('.cd-frame').length>1
+                 && n && !n.hidden && n.querySelectorAll('.cd-dot').length>1;
+             }).length,
              times: [...document.querySelectorAll('#home-countdowns .cd-card:not(.cd-card-lisa) .cd-times')]
                       .filter(e=>getComputedStyle(e).display!=='none').length,
              // :not(.cd-playlists) — the playlists panel is a .cd-times element
@@ -112,12 +119,22 @@ console.log('--- and on the home carousel too, which is where people look');
              lisaTimes: [...document.querySelectorAll('#home-countdowns .cd-card-lisa .cd-times:not(.cd-playlists)')]
                       .filter(e=>getComputedStyle(e).display!=='none').length };
   });
-  // Two, not three: CLICK's strip is on CLICK's card, and that card is in the
-  // past block now rather than the home row. Its own section above still
-  // checks the strip itself, on /countdowns/jisoo.io where it is visible.
-  r.shown===2 ? ok('the live row carries its strips too',`${r.shown}/${r.strips}`)
-              : bad('the live row carries its strips too',`${r.shown}/${r.strips} shown`);
-  r.withDots===2 ? ok('each with its dots') : bad('each with its dots',`${r.withDots}`);
+  // Counted from the row, not written down. This asserted TWO — right on the
+  // day it was written, when CLICK had just moved into the past block — and it
+  // went red the moment ADDICTED arrived with pictures of its own. A release
+  // adding a strip is the feature working; a check that has to be edited for it
+  // is a check that fails for correct changes, and this one did it silently on
+  // main because the run for that push had been cancelled by the next one.
+  //
+  // What is actually being guarded is still here: the query is scoped to the
+  // LIVE row, so a card in the hidden past block cannot be counted, and every
+  // strip the row does carry has to render.
+  (r.strips>0 && r.shown===r.strips)
+    ? ok('every strip in the live row renders',`${r.shown}/${r.strips}`)
+    : bad('every strip in the live row renders',`${r.shown}/${r.strips} shown`);
+  r.withDots===r.needDots
+    ? ok('each with its dots',`${r.withDots}/${r.needDots}`)
+    : bad('each with its dots',`${r.withDots}/${r.needDots}`);
   r.times>0 ? ok("the other cards' own release times are untouched",`${r.times} shown`)
             : bad("the other cards' own release times are untouched",'they were hidden');
   r.lisaTimes===0 ? ok("and the MV's worldwide times stay on the release's own page")
