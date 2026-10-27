@@ -20,6 +20,7 @@ on:
       - 'awards.html'
       - 'collabs.html'
       - 'api/collabs.js'
+      - 'api/leaderboard.js'
       - 'api/proxy-image.js'
       - 'addicted/**'
       - 'vendor/three/**'
@@ -42,6 +43,7 @@ on:
       - 'awards.html'
       - 'collabs.html'
       - 'api/collabs.js'
+      - 'api/leaderboard.js'
       - 'api/proxy-image.js'
       - 'addicted/**'
       - 'vendor/three/**'
@@ -236,6 +238,16 @@ jobs:
       - name: Every leaderboard track names itself
         if: always()
         run: node .github/scripts/test_lb_song_labels.mjs
+
+      # The board is 235 KB in one key and the heaviest thing the site reads,
+      # so its cache window is most of the Upstash bill — and the one cache
+      # that has to end at a precise instant, because a copy served across
+      # 00:00 UTC shows yesterday's standings. s-maxage and
+      # stale-while-revalidate ADD UP, which is how it once kept serving the
+      # old board 90 seconds into the new day.
+      - name: The leaderboard cache ends exactly at the reset
+        if: always()
+        run: node .github/scripts/test_leaderboard_cache.mjs
 
       # The day boundary was computed as 2 AM Rome, which equals 00:00 UTC only
       # on summer time. DST ended 2026-10-25 and it slid to 01:00 UTC — an hour
