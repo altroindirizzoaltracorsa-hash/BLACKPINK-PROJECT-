@@ -452,7 +452,19 @@ async function handlerInner(req, res) {
     // separately is not enough — at 90s before the reset that gives 30 + 90,
     // which keeps serving the old board half a minute into the new day. So the
     // stale window gets only whatever is left after the fresh one.
-    const ttl = Math.min(30, secsToReset);
+    // 60, not 30. This payload is the single heaviest thing the site reads —
+    // 235 KB, the whole board in one key — and at 30s it is bounded at about
+    // two origin reads a minute per Vercel edge region, roughly 20 GB a month
+    // under continuous traffic. That is most of the 10 GB allowance that ran
+    // out on 2026-10-24. Doubling the window halves it, and costs a reader at
+    // most another half-minute of a board that is already a snapshot.
+    //
+    // The reset is the part that was in question, and it is not affected: the
+    // clamp below makes the served copy expire exactly at the day boundary
+    // whatever this number is, so a longer window never carries yesterday's
+    // board into today.
+    const LB_TTL = 60;
+    const ttl = Math.min(LB_TTL, secsToReset);
     const swr = Math.min(120, Math.max(0, secsToReset - ttl));
     res.setHeader('Cache-Control', `s-maxage=${ttl}, stale-while-revalidate=${swr}`);
     const { banned, renameLog, ...publicData } = data;
