@@ -151,8 +151,29 @@ export default async function handler(req, res) {
           key: target.biggest, raw: raw.length, gzipped: gz,
           ratio: raw.length ? +(raw.length / gz).toFixed(1) : null,
         };
+      } else if (target.type === 'list' && target.biggest) {
+        // A SAMPLE of the list, not the list. This used to skip anything that
+        // was not a plain string, which skipped the biggest family on the
+        // database — the one the question is actually about — and left the
+        // answer to the only family small enough not to matter.
+        //
+        // The sample is what makes it safe: a bulk read is how these are
+        // really fetched, so the ratio has to come from a run of entries
+        // rather than from one (a single 54-byte row compresses to nothing
+        // useful and would report gzip as a LOSS), but reading the whole
+        // 687 KB list to measure it would put this diagnostic into the bill
+        // it exists to explain. The figure is extrapolated and says so.
+        const SAMPLE = 200;
+        const [v] = await upstash([['LRANGE', target.biggest, String(-SAMPLE), '-1']]);
+        const got = Array.isArray(v?.result) ? v.result : [];
+        const raw = got.join('\n');
+        const gz = gzipSync(Buffer.from(raw)).length;
+        compression = {
+          key: target.biggest, sampled: got.length, raw: raw.length, gzipped: gz,
+          ratio: raw.length ? +(raw.length / gz).toFixed(1) : null,
+        };
       } else {
-        compression = { note: 'largest family is not a plain string; skipped' };
+        compression = { note: `largest family is a ${target.type}; not sampled` };
       }
     }
 
@@ -174,7 +195,24 @@ export default async function handler(req, res) {
     lines.push('times how often it is read — cross-reference the callers in the repo.');
     if (compression) {
       lines.push('');
-      lines.push(compression.note || `Compression on ${compression.key}: ${human(compression.raw)} raw -> ${human(compression.gzipped)} gzipped (${compression.ratio}x)`);
+      if (compression.note) {
+        lines.push(compression.note);
+      } else if (compression.sampled != null) {
+        // Said as a sample, with the extrapolation shown rather than folded
+        // into a single number: the ratio is measured, the family total it
+        // implies is arithmetic, and the two should not be read as one
+        // measurement.
+        const row = list[0];
+        lines.push(`Compression on ${compression.key}: ${compression.sampled} entries sampled, `
+          + `${human(compression.raw)} raw -> ${human(compression.gzipped)} gzipped (${compression.ratio}x)`);
+        if (compression.ratio) {
+          lines.push(`At that ratio the ${row.family} family's ${human(row.bytes)} would move as `
+            + `~${human(Math.round(row.bytes / compression.ratio))} — IF Upstash bills compressed bytes,`);
+          lines.push('which is their answer to give. This measures what there is to gain, not whether you get it.');
+        }
+      } else {
+        lines.push(`Compression on ${compression.key}: ${human(compression.raw)} raw -> ${human(compression.gzipped)} gzipped (${compression.ratio}x)`);
+      }
     }
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');
