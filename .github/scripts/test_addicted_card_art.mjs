@@ -189,6 +189,71 @@ await page.waitForTimeout(2000);
   check(state.title === !WITHOUT.hasLockup, 'and the drawn wordmark follows the flag');
 }
 
+console.log('\n--- the Early Supporter pill keeps off a picture that says so');
+// It is drawn top-right. On the star-dress portrait that corner is her face,
+// and the pill landed across her mouth — a card that is correct, legible and
+// ruined, with nothing in the code able to know, because nothing here can see
+// a face. The picture declares the corner instead.
+//
+// Found by looking at a real card on a phone, not by anything here, so what
+// this holds is the rule that came out of it: a background that asks for the
+// corner to be left alone gets the pill stacked under the wordmark on the
+// left, and every other background keeps it exactly where it was.
+{
+  const PILL = [182, 163, 255];                       // ADDICTED's stampPill
+  // Where the pill actually landed, found by its own colour on the canvas.
+  // Reading the coordinates back out of the drawing code would only agree
+  // with itself.
+  // Scanned over the TOP BAND only. The card's own type — "I PRE-SAVED", the
+  // pre-save line — is drawn in the same purple, so a scan of the whole canvas
+  // returns a box spanning the pill and the text under it, and reports the
+  // pill as reaching three quarters of the way across when it does not. The
+  // question here is only where the pill sits in the top band.
+  const box = () => page.evaluate((want) => {
+    const c = document.getElementById('card-canvas');
+    const band = Math.round(c.height * 0.3);
+    const d = c.getContext('2d').getImageData(0, 0, c.width, band).data;
+    let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1, n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (Math.abs(d[i]-want[0]) < 18 && Math.abs(d[i+1]-want[1]) < 18 && Math.abs(d[i+2]-want[2]) < 18) {
+        const p = (i / 4) | 0, x = p % c.width, y = (p / c.width) | 0;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; n++;
+      }
+    }
+    return n < 200 ? null : { x0: x0/c.width, x1: x1/c.width, y0: y0/c.height, y1: y1/c.height, n };
+  }, PILL);
+
+  for (const [url, fmt, stacked] of [
+    [WITH.url,    'square',    true],
+    [WITH.url,    'landscape', true],
+    [WITHOUT.url, 'square',    false],
+  ]) {
+    await page.unroute('**' + WITH.url).catch(() => {});
+    await page.unroute('**' + WITH.wide).catch(() => {});
+    await page.evaluate((f) => setCardFormat(f, document.getElementById('fmt-' + f)), fmt);
+    await page.evaluate((u) => selectAddictedCardArt(u), url);
+    await page.waitForTimeout(1500);
+    // The card only draws the pill once the viewer has actually earned it.
+    await page.evaluate(() => { _presaveCardData.earned = true;
+      drawPresaveCard(document.getElementById('card-canvas'), _presaveCardData); });
+    await page.waitForTimeout(400);
+    const b = await box();
+    const name = `${url.split('/').pop()} ${fmt}`;
+    check(!!b, `${name}: the pill is on the card`, b ? `${b.n}px` : 'not found');
+    if (!b) continue;
+    check(b.x0 >= 0 && b.x1 <= 1 && b.y0 >= 0 && b.y1 <= 1, `${name}: and wholly inside it`);
+    if (stacked) {
+      // The corner it was asked to leave alone, and the row it was asked to
+      // take instead. Checked as geometry rather than as a flag, because the
+      // flag being read is not the thing that was wrong.
+      check(b.x1 < 0.55, `${name}: it stays out of the right half`, `right edge ${Math.round(b.x1*100)}%`);
+      check(b.y0 > 0.09, `${name}: and sits below the wordmark row`, `top ${Math.round(b.y0*100)}%`);
+    } else {
+      check(b.x1 > 0.8, `${name}: it is still in the top-right`, `right edge ${Math.round(b.x1*100)}%`);
+    }
+  }
+}
+
 console.log('\n--- nothing threw');
 check(errs.length === 0, 'no page errors', errs.join(' | '));
 

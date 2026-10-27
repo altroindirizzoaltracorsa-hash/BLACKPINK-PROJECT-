@@ -23082,13 +23082,20 @@ function _drawSupporterBadge(ctx, W, rightX, baselineY, opts) {
   const pillH = Math.max(emH, fontPx) + padY * 2;   // pill hugs its contents
   const pillW = padX * 2 + emW + gap + textW;
   // Right-align within the margin, but keep the whole pill on-card (never clipped
-  // by the top / left / right edges).
+  // by the top / left / right edges). `leftX` pins the left edge instead, for a
+  // card that has to keep its top-right corner clear.
   const pad = Math.round(W * 0.02);
-  const pillX = Math.max(pad, rightX - pillW);
+  const pillX = (opts.leftX != null) ? Math.max(pad, opts.leftX)
+                                     : Math.max(pad, rightX - pillW);
   let pillY = Math.round(baselineY - fontPx * 0.32 - pillH / 2);   // centre on the text row
   const topMargin = Math.round(H * 0.028);
   if (pillY < topMargin) pillY = topMargin;
   const cy = pillY + pillH / 2;
+  // Measure only. The pill sizes itself from its contents — the label's width
+  // and the emblem's trimmed bounds — so a caller that needs to put something
+  // under it has to ask rather than guess, and asking must not paint.
+  if (opts.measure) { ctx.textBaseline = 'alphabetic'; ctx.letterSpacing = '0px';
+                      return { x: pillX, y: pillY, w: pillW, h: pillH }; }
   _roundRectPath(ctx, pillX, pillY, pillW, pillH, pillH / 2);
   ctx.fillStyle = pill;
   ctx.fill();
@@ -23109,6 +23116,9 @@ function _drawSupporterBadge(ctx, W, rightX, baselineY, opts) {
   ctx.fillStyle = ink;
   ctx.fillText(label, cx, cy);
   ctx.textBaseline = 'alphabetic';
+  // Where it ended up, so a caller stacking something under it does not have to
+  // guess the height it chose from its own contents.
+  return { x: pillX, y: pillY, w: pillW, h: pillH };
   ctx.letterSpacing = '0px';
   ctx.textAlign = 'left';
 }
@@ -23221,9 +23231,25 @@ function drawPresaveCard(canvas, d) {
   if (d.earned) {
     // Early Supporter stamp: the release's own emblem in its own pill.
     // Fallen Angel's loverYellow is the default so nothing else moves.
-    _drawSupporterBadge(ctx, W, W - Math.round(W * 0.03), topY,
-      { emblem: d.emblemImg || d.titleImg, tint: d.stampTint || '#020a0b',
-        pill: d.stampPill || '#ffe051', ink: d.stampInk || '#020a0b' });
+    //
+    // `stampStack` moves it under the wordmark on the LEFT, for a background
+    // whose subject is in the top-right corner. On the square crop of the
+    // star-dress portrait the pill landed across JISOO's mouth and chin — the
+    // card was correct, legible and ruined, and no check could have known,
+    // because nothing here can see where a face is. The picture says so
+    // instead.
+    const stampOpts = { emblem: d.emblemImg || d.titleImg, tint: d.stampTint || '#020a0b',
+                        pill: d.stampPill || '#ffe051', ink: d.stampInk || '#020a0b' };
+    if (d.stampStack) {
+      // One row below the wordmark, left-aligned with it. The row's height is
+      // the pill's own, which it works out from its contents, so this asks for
+      // it rather than assuming a fraction of the card.
+      const probe = _drawSupporterBadge(ctx, W, 0, topY, { ...stampOpts, measure: true });
+      _drawSupporterBadge(ctx, W, 0, topY + Math.round(probe.h * 0.95) + Math.round(H * 0.012),
+        { ...stampOpts, leftX: PX });
+    } else {
+      _drawSupporterBadge(ctx, W, W - Math.round(W * 0.03), topY, stampOpts);
+    }
   } else {
     ctx.textAlign = 'right';
     ctx.fillStyle = 'rgba(245,240,240,0.7)';
@@ -25214,7 +25240,12 @@ const ADDICTED_CARD_PICS = [
   { url: '/strips/addicted-1.webp',              hasLockup: false },
   { url: '/strips/addicted-2.jpg',               hasLockup: true  },
   { url: '/strips/addicted-3.jpg',               hasLockup: true  },
-  { url: '/strips/addicted-4.jpg',               hasLockup: true, wide: '/strips/addicted-5.jpg' },
+  // stampStack: her face is in the top-right corner of both cuts, which is
+  // where the Early Supporter pill goes. It landed across her mouth. The card
+  // cannot see a face, so the picture is what says to stack the pill on the
+  // left instead.
+  { url: '/strips/addicted-4.jpg',               hasLockup: true, wide: '/strips/addicted-5.jpg',
+    stampStack: true },
 ];
 
 async function selectAddictedCardArt(url, thumbEl) {
@@ -25237,6 +25268,9 @@ async function selectAddictedCardArt(url, thumbEl) {
   // Null when this pick has no wide cut, which is what makes the draw fall
   // back to the one photo rather than to whatever the last pick left behind.
   _presaveCardData.photoWide = wide;
+  // Always assigned, like photoWide and for the same reason: left set, the
+  // previous picture's answer about its own corner would govern this one.
+  _presaveCardData.stampStack = !!pick.stampStack;
   _presaveCardData.artHasLockup = pick.hasLockup;
   _presaveCardData.titleImg = pick.hasLockup ? null : (_adLogoImg || null);
   if (label) label.textContent = _presaveCardData.earned ? "I'M AN EARLY SUPPORTER" : 'ADDICTED · COUNTDOWN';
