@@ -213,7 +213,72 @@
       rgba(0,0,0,0.55) 0 5px, rgba(255,255,255,0.30) 5px 10px); }
   .pr-nums { font-family: "DM Mono", ui-monospace, monospace; font-size: 0.7rem;
     color: var(--muted); white-space: nowrap; }
+  .pr-tot { opacity: 0.55; }
+
+  /* Who voted what: sides down, ballot slots across. Five slots and four sides
+     fit at phone width only just, so the table is allowed to scroll inside its
+     own wrapper rather than widening the page — the one exception the layout
+     makes, and it has to be on the wrapper, never the card. */
+  /* Edge shadows that appear ONLY while there is more table to reach. Two
+     covers painted in the card's own colour scroll WITH the content
+     (background-attachment: local) and sit over two shadows pinned to the
+     frame, so at rest each shadow is hidden and it uncovers as you scroll.
+     A fade drawn unconditionally would promise more table on a desktop where
+     the whole thing already fits, and a "swipe for the rest" line would say it
+     in words. This cannot be wrong about it. */
+  .vt-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch;
+    background:
+      linear-gradient(to right, var(--card) 40%, rgba(20,13,20,0)) left center,
+      linear-gradient(to left,  var(--card) 40%, rgba(20,13,20,0)) right center,
+      radial-gradient(farthest-side at 0 50%, rgba(255,255,255,0.26), rgba(255,255,255,0)) left center,
+      radial-gradient(farthest-side at 100% 50%, rgba(255,255,255,0.26), rgba(255,255,255,0)) right center;
+    background-repeat: no-repeat;
+    background-size: 28px 100%, 28px 100%, 12px 100%, 12px 100%;
+    background-attachment: local, local, scroll, scroll; }
+  /* FIXED layout, and every slot column the same width. The bar under each
+     number is a percentage of its own cell, so columns of different widths make
+     those bars incomparable — with the widths left to the content, BLINKs' 200
+     for Ahn Hyo-seop drew a LONGER bar than their 250 for BLACKPINK, because
+     the longer name made a wider column. The picture said the opposite of the
+     numbers it sat under, and every check passed. */
+  .vt { border-collapse: collapse; width: 100%; font-size: 0.66rem; table-layout: fixed;
+    /* Below this the columns squeeze until a name breaks mid-word and the
+       header reads as a vertical stack of letters. The wrapper scrolls instead,
+       which is what it is for — the PAGE must never scroll sideways, the table
+       may. */
+    min-width: 27rem; }
+  .vt th, .vt td { padding: 0.28rem 0.4rem; text-align: right; white-space: nowrap; }
+  .vt th:first-child, .vt .vt-side { width: 6.2rem; }
+  .vt .vt-split:last-child { width: 3.4rem; }
+  /* Headers wrap on WORDS, now that the width is not theirs to set — never
+     mid-word, which turned "AHN HYO-SEOP" into six stacked fragments. */
+  .vt thead th { font-size: 0.56rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted); font-weight: 400; padding-bottom: 0.35rem; white-space: normal;
+    overflow-wrap: normal; word-break: keep-all; hyphens: none; vertical-align: bottom; }
+  @media (max-width: 460px) {
+    .vt { font-size: 0.62rem; min-width: 25rem; }
+    .vt th, .vt td { padding: 0.26rem 0.28rem; }
+    .vt th:first-child, .vt .vt-side { width: 4.8rem; }
+    .vt .vt-split:last-child { width: 2.9rem; }
+  }
+  .vt tbody td { font-family: "DM Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums; color: var(--white); }
+  .vt .vt-side { text-align: left; padding-left: 0; font-family: inherit; }
+  .vt-all { color: var(--muted); }
+  /* Where the trade falls: our slots to the left of it, the partners' to the
+     right. Ten names in a row otherwise say nothing about which half is which. */
+  .vt-split { border-left: 1px solid rgba(255,255,255,0.14); }
+  .vt tbody tr + tr td { border-top: 1px solid rgba(255,255,255,0.06); }
+  /* The number is the content; the bar under it is a second reading of the same
+     figure, thin enough that it cannot be mistaken for the number. */
+  .vt-cell { position: relative; padding-bottom: 5px; }
+  .vt-bar { position: absolute; right: 0; bottom: 0; height: 2px; border-radius: 1px;
+    opacity: 0.75; }
   .pr-note { font-size: 0.66rem; color: var(--muted); margin: 0.55rem 0 0; line-height: 1.6; }
+  /* The view selector. Same control as the period tabs, smaller: those switch
+     what the whole card counts, these switch how one block is read. */
+  .pr-tabs { display: flex; gap: 0.35rem; margin-bottom: 0.6rem; }
+  .pr-tabs .tab { font-size: 0.55rem; padding: 0.4rem 0.5rem; }
   @media (max-width: 420px) {
     .pr-row { grid-template-columns: 1fr auto; grid-template-areas: "name nums" "bar bar"; }
     .pr-name { grid-area: name; } .pr-nums { grid-area: nums; } .pr-bar { grid-area: bar; }
@@ -900,14 +965,42 @@ if (DEMO_OPTION) {
                board: [{ name: 'Voter A', votes: 68, byCat: { 'favorite-music-group-or-duo': 17 } },
                        { name: 'Voter B', votes: 52, byCat: { 'favorite-global-music-star': 13 } }],
                fandoms: { blink: { people: 9, votes: 104 }, bloom: { people: 3, votes: 56 },
-                          pauljjak: { people: 4, votes: 40 }, unsaid: { people: 1, votes: 10 } } },
+                          pauljjak: { people: 4, votes: 40 }, unsaid: { people: 1, votes: 10 } },
+               fandomCats: {
+                 blink:    { 'favorite-music-group-or-duo': 20, 'favorite-music-collaboration': 20,
+                             'favorite-female-artist': 19, 'favorite-global-music-star': 20,
+                             'favorite-animated-male-voice-from-a-movie': 18 },
+                 bloom:    { 'favorite-music-group-or-duo': 12, 'favorite-music-collaboration': 12,
+                             'favorite-female-artist': 11, 'favorite-global-music-star': 12,
+                             'favorite-animated-male-voice-from-a-movie': 10 },
+                 pauljjak: { 'favorite-music-group-or-duo': 8, 'favorite-music-collaboration': 7,
+                             'favorite-female-artist': 7, 'favorite-global-music-star': 6,
+                             'favorite-animated-male-voice-from-a-movie': 6 },
+                 unsaid:   { 'favorite-music-group-or-duo': 4, 'favorite-music-collaboration': 4,
+                             'favorite-female-artist': 4, 'favorite-global-music-star': 4,
+                             'favorite-animated-male-voice-from-a-movie': 4 },
+               } },
       week:  { byCat: { 'favorite-music-group-or-duo': 240, 'favorite-music-collaboration': 236,
                         'favorite-female-artist': 228, 'favorite-global-music-star': 232,
                         'favorite-animated-male-voice-from-a-movie': 205 },
                board: [{ name: 'Voter A', votes: 320, byCat: { 'favorite-music-group-or-duo': 80 } },
                        { name: 'Voter B', votes: 268, byCat: { 'favorite-global-music-star': 67 } }],
                fandoms: { blink: { people: 22, votes: 620 }, bloom: { people: 7, votes: 286 },
-                          pauljjak: { people: 9, votes: 200 }, unsaid: { people: 2, votes: 30 } } },
+                          pauljjak: { people: 9, votes: 200 }, unsaid: { people: 2, votes: 30 } },
+               fandomCats: {
+                 blink:    { 'favorite-music-group-or-duo': 140, 'favorite-music-collaboration': 138,
+                             'favorite-female-artist': 133, 'favorite-global-music-star': 136,
+                             'favorite-animated-male-voice-from-a-movie': 120 },
+                 bloom:    { 'favorite-music-group-or-duo': 50, 'favorite-music-collaboration': 49,
+                             'favorite-female-artist': 47, 'favorite-global-music-star': 48,
+                             'favorite-animated-male-voice-from-a-movie': 42 },
+                 pauljjak: { 'favorite-music-group-or-duo': 34, 'favorite-music-collaboration': 33,
+                             'favorite-female-artist': 32, 'favorite-global-music-star': 32,
+                             'favorite-animated-male-voice-from-a-movie': 28 },
+                 unsaid:   { 'favorite-music-group-or-duo': 16, 'favorite-music-collaboration': 16,
+                             'favorite-female-artist': 16, 'favorite-global-music-star': 16,
+                             'favorite-animated-male-voice-from-a-movie': 15 },
+               } },
       all:   { byCat: { 'favorite-music-group-or-duo': 440, 'favorite-music-collaboration': 435,
                         'favorite-female-artist': 420, 'favorite-global-music-star': 425,
                         'favorite-animated-male-voice-from-a-movie': 390 },
@@ -919,7 +1012,25 @@ if (DEMO_OPTION) {
                        { name: 'Voter C', votes: 196, byCat: { 'favorite-music-group-or-duo': 49 } }],
                // 34 people averaging 34.7 against 9 averaging 50.
                fandoms: { blink: { people: 34, votes: 1180 }, bloom: { people: 9, votes: 450 },
-                          pauljjak: { people: 12, votes: 300 }, unsaid: { people: 3, votes: 90 } } },
+                          pauljjak: { people: 12, votes: 300 }, unsaid: { people: 3, votes: 90 } },
+               // The same people, per category. Summed per slug these come to
+               // the byCat figures above — the sides under a trade are
+               // everybody, so a sample where they did not add up would
+               // preview a page that cannot happen.
+               fandomCats: {
+                 blink:    { 'favorite-music-group-or-duo': 250, 'favorite-music-collaboration': 248,
+                             'favorite-female-artist': 240, 'favorite-global-music-star': 242,
+                             'favorite-animated-male-voice-from-a-movie': 200 },
+                 bloom:    { 'favorite-music-group-or-duo': 96, 'favorite-music-collaboration': 95,
+                             'favorite-female-artist': 90, 'favorite-global-music-star': 94,
+                             'favorite-animated-male-voice-from-a-movie': 75 },
+                 pauljjak: { 'favorite-music-group-or-duo': 64, 'favorite-music-collaboration': 62,
+                             'favorite-female-artist': 60, 'favorite-global-music-star': 59,
+                             'favorite-animated-male-voice-from-a-movie': 55 },
+                 unsaid:   { 'favorite-music-group-or-duo': 30, 'favorite-music-collaboration': 30,
+                             'favorite-female-artist': 30, 'favorite-global-music-star': 30,
+                             'favorite-animated-male-voice-from-a-movie': 60 },
+               } },
     },
     days: [5, 4, 3, 2, 1, 0].map(function (b, i) {
       return { day: _dday(b), votes: [180, 240, 300, 360, 470, 170][i],
@@ -1148,10 +1259,177 @@ function pairingRows(c, p) {
   });
 }
 
+// Who voted what: one row per self-declared side, one column per ballot slot.
+//
+// It answers the question a vote trade exists to ask — did the other side turn
+// up in our categories, and did ours turn up in theirs — and it says it in four
+// rows because it is drawn on CATEGORIES, not on trades.
+//
+// That is the whole reason this is a table. Drawn as the four trades with the
+// sides under each, which is what it was first, three of the four repeat BINI's
+// single ballot category and two repeat BLACKPINK's: thirty-two numbers for
+// fifteen facts, with an asterisk on about three quarters of them to say which
+// ones were the same figure twice. A mark carried by nearly everything has
+// stopped marking anything, and the do-not-sum warning, which is a real one,
+// ended up applying to most of the block instead of to an exception. Across a
+// row of this table nothing repeats, so nothing needs the asterisk at all. The
+// pairings are still named, in the other view, where they are the subject.
+//
+// WHAT MAKES THIS ATTRIBUTABLE, when the headline bar is not. A vote is not
+// labelled with a fandom and never will be. A PERSON is: they say once which
+// side they are on, and their own picks are recorded per round, so
+// `fandomCats` is a sum over people who declared, never a guess about a vote.
+// The reach of that claim is exactly the people who answered — which is why
+// "didn't say" is a side here like any other rather than being spread across
+// the rest, and why a side's row goes missing from a trade only when that side
+// logged nothing in it.
+//
+// It comes from the API, uncapped. Deriving it on this page from `board` would
+// work today and silently go short of the category totals the day this collab
+// passes BOARD_MAX voters — a failure that looks exactly like a quiet week.
+// An older deployment with no `fandomCats` has no view here at all, which is
+// the right failure: the selector simply does not appear.
+function voterTable(c, p) {
+  if (!c.fandoms || !c.fandoms.length) return null;
+  var fc = (p && p.fandomCats) || null;
+  if (!fc) return null;
+  var n = function (k, sl) { return Math.max(0, Number((fc[k] || {})[sl]) || 0); };
+
+  // Ours first, then theirs — the same order the trade view reads in, and the
+  // same colours, so a column is recognisably the act it belongs to. Taken
+  // from the collab's own two lists rather than from `pairings`, because a slot
+  // that is in no pairing is still a slot somebody voted.
+  var cols = (c.theyGive || []).map(function (x) {
+      return { slug: x.slug, act: x.who || x.nominee || x.slug, colour: '#ff0066', ours: true };
+    }).concat((c.weGive || []).map(function (x) {
+      var who = x.who || x.nominee;
+      var pr = (c.partners || []).filter(function (y) { return y.act === who; })[0];
+      return { slug: x.slug, act: who || x.slug, colour: (pr && pr.colour) || 'var(--them)', ours: false };
+    }));
+
+  // Every declared side, then one row for everybody a declared side does not
+  // cover: people who never answered, and people who picked a side this collab
+  // no longer carries (it had a second partner for two days). Both are the same
+  // situation — nothing recognises them — and keeping them is what makes a
+  // column come to the figure the other view prints for that slot.
+  var sides = c.fandoms.map(function (x) {
+    return { key: x.key, label: x.label, colour: x.colour || 'var(--pink)', keys: [x.key] };
+  });
+  var known = {};
+  c.fandoms.forEach(function (x) { known[x.key] = true; });
+  var strays = Object.keys(fc).filter(function (k) { return !known[k]; });
+  if (strays.length) {
+    sides.push({ key: 'unsaid', label: 'Didn’t say', colour: 'var(--muted)', keys: strays });
+  }
+
+  var rows = sides.map(function (s) {
+    var cells = cols.map(function (col) {
+      return s.keys.reduce(function (a, k) { return a + n(k, col.slug); }, 0);
+    });
+    return { key: s.key, label: s.label, colour: s.colour, cells: cells,
+             total: cells.reduce(function (a, b) { return a + b; }, 0),
+             // Shaded ACROSS the row: how even that side's own ballot was, which
+             // is the thing a trade is checked on. Down a column it would only
+             // redraw the headcounts, which the turnout block already carries.
+             most: cells.reduce(function (a, b) { return Math.max(a, b); }, 0) };
+  }).filter(function (r) { return r.total > 0; });
+
+  return rows.length ? { cols: cols, rows: rows } : null;
+}
+
+// The declared sides with nothing logged anywhere in this period. Said once in
+// words rather than as a row of dashes: a side missing from the table still has
+// to be accounted for, or it reads as "they are not in this" — but an empty row
+// across five columns is a worse account than a sentence.
+function voterSilent(c, p) {
+  var fc = (p && p.fandomCats) || {};
+  return (c.fandoms || []).filter(function (x) {
+    var got = fc[x.key] || {};
+    for (var k in got) if (Number(got[k]) > 0) return false;
+    return true;
+  }).map(function (x) { return x.label; });
+}
+
+// Which cut of the block is showing. 'trade' is what was asked for first and
+// stays the default: it is the thing the collab is.
+var PAIR_VIEW = 'trade';
+
 function pairingsHtml(c, p) {
-  var rows = pairingRows(c, p);
-  if (!rows.length) return '';
-  return '<div class="pairings"><div class="pairings-head">Each trade, on its own</div>'
+  var trade = pairingRows(c, p);
+  var voters = voterTable(c, p);
+  if (!trade.length && !voters) return '';
+  var views = [{ k: 'trade', label: 'By trade', has: trade.length },
+               { k: 'voter', label: 'By voter', has: voters ? 1 : 0 }]
+    .filter(function (v) { return v.has; });
+  // The selected view has to exist. A collab with no declared sides (or none
+  // with a trade list) would otherwise render an empty block under a lit tab,
+  // which looks exactly like a view that has broken.
+  var view = views.filter(function (v) { return v.k === PAIR_VIEW; }).length ? PAIR_VIEW : views[0].k;
+  // One tab on its own is a filter that has lost its other option, so the
+  // selector appears only when there is somewhere else to go.
+  var tabs = views.length > 1
+    ? '<div class="pr-tabs">' + views.map(function (v) {
+        return '<button class="tab' + (v.k === view ? ' on' : '') + '" type="button" '
+          + 'aria-pressed="' + (v.k === view ? 'true' : 'false') + '" '
+          + 'onclick="setPairView(\'' + v.k + '\')">' + esc(v.label) + '</button>';
+      }).join('') + '</div>'
+    : '';
+  return '<div class="pairings">' + tabs
+    + (view === 'voter' ? voterViewHtml(c, voters, voterSilent(c, p)) : tradeViewHtml(trade))
+    + '</div>';
+}
+
+function voterViewHtml(c, t, silent) {
+  var ours = t.cols.filter(function (x) { return x.ours; }).length;
+  return '<div class="pairings-head">Who voted what</div>'
+    + '<div class="vt-wrap"><table class="vt"><thead><tr><th></th>'
+    + t.cols.map(function (col, i) {
+        // The divider falls where the trade does: our slots on one side, the
+        // partners' on the other. Without it the table is ten columns of names
+        // and nothing says which half is which.
+        return '<th' + (i === ours ? ' class="vt-split"' : '') + '><span style="color:'
+          + esc(col.colour) + '">' + esc(col.act) + '</span></th>';
+      }).join('')
+    + '<th class="vt-split">all</th></tr></thead><tbody>'
+    + t.rows.map(function (r) {
+        return '<tr><td class="vt-side"><span style="color:' + esc(r.colour) + '">'
+          + esc(r.label) + '</span></td>'
+          + r.cells.map(function (v, i) {
+              // The shading is ACROSS the row — where this side's own ballot
+              // was short. Down a column it would only redraw the headcounts,
+              // and a reader comparing the shading between rows would be
+              // comparing two different scales. Said in the note, because a
+              // picture that needs a caption still needs the caption.
+              return '<td' + (i === ours ? ' class="vt-split"' : '') + '>'
+                + '<div class="vt-cell">' + (v ? fmt(v) : '<span class="pr-tot">—</span>')
+                // background-COLOR, never the `background` shorthand — it
+                // resets background-image, and an inline style outranks the
+                // stylesheet. That silently wiped the trade view's hatch once.
+                + (v ? '<i class="vt-bar" style="width:' + (v / (r.most || 1) * 100)
+                       + '%;background-color:' + esc(t.cols[i].colour) + '"></i>' : '')
+                + '</div></td>';
+            }).join('')
+          + '<td class="vt-split vt-all">' + fmt(r.total) + '</td></tr>';
+      }).join('')
+    + '</tbody></table></div>'
+    + '<p class="pr-note"><b>This is people, counted per category.</b> Somebody says once which '
+    + 'side they are on and their own picks are recorded, so a cell is a sum over the people who '
+    + 'answered — never a guess about a vote. Self-declared, nobody is asked to prove it, and '
+    + 'anybody who has not answered is in <b>Didn’t say</b> rather than spread across the rest.'
+    + '<br>One column is one ballot slot, so <b>a column does add up</b> to what the other view '
+    + 'shows for it — the rows are everybody. Nothing repeats across a row, which is why there are '
+    + 'no asterisks here: the repetition in the other view is four <i>trades</i> drawn from these '
+    + 'same slots.'
+    + '<br><b>The shading runs across a row</b>, against that side\'s own best column — where a '
+    + 'side was short, not how big it is. The <b>all</b> column is the size.'
+    + (silent && silent.length
+        ? '<br>Nothing logged yet under ' + esc(silent.join(' or ')) + '.'
+        : '')
+    + '</p>';
+}
+
+function tradeViewHtml(rows) {
+  return '<div class="pairings-head">Each trade, on its own</div>'
     + rows.map(function (r) {
         var tot = (Math.max(0, r.us.n) + Math.max(0, r.them.n)) || 1;
         return '<div class="pr-row">'
@@ -1175,8 +1453,7 @@ function pairingsHtml(c, p) {
       }).join('')
     + '<p class="pr-note"><b>Do not add these up.</b> A hatched bar and a <b>*</b> mark the '
     + 'same ballot slot appearing in more than one trade — BINI has one category, so the same '
-    + 'votes stand behind all three BINI rows. The bar above counts each category once.</p>'
-    + '</div>';
+    + 'votes stand behind all three BINI rows. The bar above counts each category once.</p>';
 }
 
 // ── DRAFT: three ways to count a complete pass ──────────────────────────────
@@ -1951,8 +2228,17 @@ function tallyHtml(c) {
       + pairingsHtml(c, p)
       + '<div class="tally-note">'
       + '<b>These are not two teams.</b> Blinks and ' + esc(partnerFandoms(c))
-      + ' both vote the whole ballot, so neither number belongs to one fandom — and nothing here '
-      + 'can tell which fandom a vote came from. The gap is slot counts, not standings: '
+      + ' both vote the whole ballot, so neither number belongs to one fandom: a vote in '
+      + esc(acts[0]) + '’s category is not a blink’s vote. '
+      // The page used to say nothing here could tell which fandom a vote came
+      // from. That was about the right thing — this bar is not a fandom score —
+      // but as written it was a claim about capability, and the trade rows now
+      // have a view that DOES attribute, through the person rather than the
+      // vote. Saying both would be the page contradicting itself, so this says
+      // the part that is true and points at the part that does it.
+      + 'Who logged a vote can be told, for the people who have said which side they are on — '
+      + 'that is the <b>by voter</b> view of the rows below, and it is about voters, not votes. '
+      + 'The gap is slot counts, not standings: '
       + esc(acts[0]) + (acts.length > 1 ? ' and the rest are' : ' is') + ' up in ' + themSlots
       + ' ' + catWord(themSlots) + ' and ' + esc(partnerActs(c)) + ' in ' + usSlots
       + ', so one pass through the ballot adds ' + themSlots + ' on one side and ' + usSlots
@@ -2072,8 +2358,10 @@ function fandomsHtml(c) {
               + fmt(unsaid.votes) + ' votes are in the totals above like everyone else’s.</div>'
             : '')
     + '<div class="sub-note"><b>This is not the bar.</b> It counts <b>people</b>, by what they '
-    + 'tell us they are — the votes themselves still cannot be traced to a fandom, because '
-    + 'everyone here votes the whole ballot. <b>The bars are votes each</b>, not the totals: '
+    + 'tell us they are — a vote carries no fandom of its own, and everyone here votes the whole '
+    + 'ballot, so the bar above is not a score between sides. What these same people put in each '
+    + 'category is the <b>by voter</b> view of the trade rows higher up. '
+    + '<b>The bars are votes each</b>, not the totals: '
     + 'one side finds the counter on its own site and the other has to be told it exists, so '
     + 'comparing the totals compares reach more than effort. Self-declared, and nobody is asked '
     + 'to prove it.'
@@ -2183,6 +2471,7 @@ function kstToday() {
 }
 
 function setPeriod(k) { PERIOD = k; DAY_OPEN = null; render(); }
+function setPairView(k) { PAIR_VIEW = k; render(); }
 function toggleSplit() { SPLIT_OPEN = !SPLIT_OPEN; render(); }
 function openDay(k) { DAY_OPEN = (DAY_OPEN === k) ? null : k; render(); }
 

@@ -121,6 +121,41 @@ console.log('--- who turned up, by the side they declared');
   const earlier = api.periodFrom(rows.filter((r) => r.day === '2026-10-18'), fandomOf);
   check(earlier.fandoms.blink && earlier.fandoms.blink.people === 1,
         'and a side declared later still labels the earlier days');
+
+  // The same people, kept per CATEGORY — what /collabs draws as the by-voter
+  // view of each trade. It is a sum over people who declared a side, which is
+  // why "didn't say" is a key of its own here as well.
+  check(all.fandomCats.blink.X === 10, 'their categories are kept per side too',
+        JSON.stringify(all.fandomCats.blink));
+  check(all.fandomCats.unsaid && all.fandomCats.unsaid.X === 1,
+        'with the unanswered kept apart rather than shared out',
+        JSON.stringify(all.fandomCats.unsaid));
+  // The property the page relies on to say the rows under a trade add up: the
+  // sides are everybody, so per category they come to the pooled figure.
+  const catSum = Object.values(all.fandomCats).reduce((a, m) => a + (m.X || 0), 0);
+  check(catSum === all.byCat.X, 'and per category the sides come to the pooled total',
+        `${catSum} vs ${all.byCat.X}`);
+}
+
+console.log('--- the per-side split is built from everybody, not from the board');
+// `board` is cut to BOARD_MAX. A split derived from it would be exact until the
+// collab passed that many voters and then quietly go short of the category
+// totals — on a page whose whole job is to say what each side contributed, and
+// looking exactly like a quiet week. So: more voters than the board can hold.
+{
+  const many = [];
+  for (let i = 0; i < 260; i++) {
+    many.push({ app_user_id: 'u' + i, day: '2026-10-19', votes: 2, cats: { X: 2 },
+                display_name: 'v' + i, fandom: i % 2 ? 'blink' : 'bloom' });
+  }
+  const fandomOf = new Map(many.map((r) => [r.app_user_id, r.fandom]));
+  const p2 = api.periodFrom(many, fandomOf);
+  check(p2.board.length < 260, `the board really is capped (${p2.board.length} of 260)`);
+  const split = Object.values(p2.fandomCats).reduce((a, m) => a + (m.X || 0), 0);
+  check(split === p2.byCat.X, 'and the split still accounts for every vote',
+        `${split} vs ${p2.byCat.X}`);
+  const people = Object.values(p2.fandoms).reduce((a, f) => a + f.people, 0);
+  check(people === 260, 'as does the headcount', String(people));
 }
 
 console.log('--- what may be used as a fandom key');
